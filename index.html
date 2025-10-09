@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HangVidU - Simple Video Chat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>HangVidU</h1>
+        
+        <!-- Video containers -->
+        <div class="video-container">
+            <video id="localVideo" autoplay muted playsinline></video>
+            <video id="remoteVideo" autoplay playsinline></video>
+        </div>
+        
+        <!-- Connection controls -->
+        <div class="controls">
+            <input type="text" id="roomId" placeholder="Enter room ID" />
+            <button id="createRoom">Create Room</button>
+            <button id="joinRoom">Join Room</button>
+            <button id="hangUp" disabled>Hang Up</button>
+        </div>
+        
+        <!-- Status display -->
+        <div id="status" class="status"></div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
