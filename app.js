@@ -1,195 +1,259 @@
-// Simple WebRTC video chat implementation
+// URL-based WebRTC video chat - no server needed!
 let localStream;
 let remoteStream;
 let peerConnection;
-let roomId;
+let isInitiator = false;
+let iceCandidates = [];
 
-// Configuration for STUN server (Google's public STUN server)
+// Configuration for STUN server
 const configuration = {
-    iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' }
-    ]
+  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
 };
 
 // Get DOM elements
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
-const roomIdInput = document.getElementById('roomId');
-const createRoomBtn = document.getElementById('createRoom');
-const joinRoomBtn = document.getElementById('joinRoom');
+const startChatBtn = document.getElementById('startChat');
 const hangUpBtn = document.getElementById('hangUp');
 const statusDiv = document.getElementById('status');
+const linkContainer = document.getElementById('linkContainer');
+const shareLink = document.getElementById('shareLink');
+const copyLinkBtn = document.getElementById('copyLink');
 
 // Initialize - get user media
 async function init() {
-    try {
-        localStream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: false  // Start with audio off for your use case
-        });
-        localVideo.srcObject = localStream;
-        updateStatus('Camera ready. Create or join a room to start.');
-    } catch (error) {
-        console.error('Error accessing media devices:', error);
-        updateStatus('Error: Could not access camera. Please check permissions.');
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: false, // Start with audio off for your use case
+    });
+    localVideo.srcObject = localStream;
+
+    // Check if we're joining from a link
+    const urlParams = new URLSearchParams(window.location.search);
+    const offerData = urlParams.get('offer');
+
+    if (offerData) {
+      // We're joining someone's room
+      updateStatus('Connecting to video chat...');
+      startChatBtn.style.display = 'none';
+      await joinFromLink(offerData);
+    } else {
+      // We're ready to create a room
+      updateStatus('Camera ready. Click to generate a video chat link.');
     }
+  } catch (error) {
+    console.error('Error accessing media devices:', error);
+    updateStatus('Error: Could not access camera. Please check permissions.');
+  }
 }
 
 // Create a peer connection
 function createPeerConnection() {
-    peerConnection = new RTCPeerConnection(configuration);
-    
-    // Add local stream tracks to the connection
-    localStream.getTracks().forEach(track => {
-        peerConnection.addTrack(track, localStream);
-    });
-    
-    // Handle remote stream
-    peerConnection.ontrack = (event) => {
-        remoteStream = event.streams[0];
-        remoteVideo.srcObject = remoteStream;
-        updateStatus('Connected!');
-    };
-    
-    // Handle ICE candidates
-    peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-            // In a real app, you'd send this to the other peer via signaling server
-            console.log('New ICE candidate:', event.candidate);
-        }
-    };
-    
-    // Handle connection state changes
-    peerConnection.onconnectionstatechange = () => {
-        updateStatus(`Connection state: ${peerConnection.connectionState}`);
-    };
+  peerConnection = new RTCPeerConnection(configuration);
+  iceCandidates = [];
+
+  // Add local stream tracks to the connection
+  localStream.getTracks().forEach((track) => {
+    peerConnection.addTrack(track, localStream);
+  });
+
+  // Handle remote stream
+  peerConnection.ontrack = (event) => {
+    remoteStream = event.streams[0];
+    remoteVideo.srcObject = remoteStream;
+    updateStatus('Connected! You can now see each other.');
+  };
+
+  // Collect ICE candidates
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+      iceCandidates.push(event.candidate);
+    }
+  };
+
+  // Handle connection state changes
+  peerConnection.onconnectionstatechange = () => {
+    const state = peerConnection.connectionState;
+    if (state === 'connected') {
+      updateStatus('Connected! Video chat is active.');
+    } else if (state === 'failed' || state === 'disconnected') {
+      updateStatus('Connection lost. Please refresh and try again.');
+    }
+  };
 }
 
-// Create room (caller)
-async function createRoom() {
-    roomId = generateRoomId();
-    roomIdInput.value = roomId;
-    
+// Generate video chat link (initiator)
+async function generateChatLink() {
+  isInitiator = true;
+  createPeerConnection();
+
+  // Create offer
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(offer);
+
+  // Wait a bit for ICE candidates to gather
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+
+  // Create compressed offer data
+  const offerData = {
+    sdp: offer.sdp,
+    ice: iceCandidates,
+  };
+
+  // Compress and encode for URL
+  const compressed = btoa(JSON.stringify(offerData));
+  const shareUrl = `${window.location.origin}${
+    window.location.pathname
+  }?offer=${encodeURIComponent(compressed)}`;
+
+  // Show the link
+  shareLink.value = shareUrl;
+  linkContainer.style.display = 'block';
+  startChatBtn.disabled = true;
+  hangUpBtn.disabled = false;
+
+  updateStatus(
+    'Link generated! Share it with your partner. Waiting for them to connect...'
+  );
+
+  // Start polling for answer in URL hash
+  pollForAnswer();
+}
+
+// Join from link (receiver)
+async function joinFromLink(offerDataEncoded) {
+  try {
+    // Decode offer
+    const offerData = JSON.parse(atob(decodeURIComponent(offerDataEncoded)));
+
     createPeerConnection();
-    
-    // Create offer
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    
-    // In a real app, you'd send this offer to a signaling server
-    // For demo purposes, we'll copy it to clipboard
-    const offerData = {
+
+    // Set remote description
+    await peerConnection.setRemoteDescription(
+      new RTCSessionDescription({
         type: 'offer',
-        sdp: offer.sdp
+        sdp: offerData.sdp,
+      })
+    );
+
+    // Add remote ICE candidates
+    for (const candidate of offerData.ice) {
+      await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+    }
+
+    // Create answer
+    const answer = await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answer);
+
+    // Wait for ICE candidates
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Create answer data
+    const answerData = {
+      sdp: answer.sdp,
+      ice: iceCandidates,
     };
-    
-    await navigator.clipboard.writeText(JSON.stringify(offerData));
-    updateStatus(`Room created! ID: ${roomId}. Offer copied to clipboard. Share with your partner.`);
-    
-    // Enable/disable buttons
-    createRoomBtn.disabled = true;
-    joinRoomBtn.disabled = true;
+
+    // Send answer back via URL hash
+    const compressed = btoa(JSON.stringify(answerData));
+    window.location.hash = `answer=${compressed}`;
+
     hangUpBtn.disabled = false;
-    
-    // For demo: prompt for answer
-    promptForAnswer();
+    updateStatus('Connecting...');
+  } catch (error) {
+    console.error('Error joining from link:', error);
+    updateStatus('Error: Invalid or expired link');
+  }
 }
 
-// Join room (callee)
-async function joinRoom() {
-    roomId = roomIdInput.value;
-    if (!roomId) {
-        updateStatus('Please enter a room ID');
-        return;
-    }
-    
-    createPeerConnection();
-    
-    // For demo: get offer from clipboard or prompt
-    const offerText = await promptForOffer();
-    if (!offerText) return;
-    
-    try {
-        const offerData = JSON.parse(offerText);
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(offerData));
-        
-        // Create answer
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
-        
-        // Copy answer to clipboard
-        const answerData = {
+// Poll for answer (when initiator)
+function pollForAnswer() {
+  const checkInterval = setInterval(async () => {
+    if (window.location.hash.includes('answer=')) {
+      clearInterval(checkInterval);
+
+      const hash = window.location.hash.substring(1);
+      const answerData = hash.split('answer=')[1];
+
+      try {
+        const answer = JSON.parse(atob(answerData));
+
+        // Set remote description
+        await peerConnection.setRemoteDescription(
+          new RTCSessionDescription({
             type: 'answer',
-            sdp: answer.sdp
-        };
-        
-        await navigator.clipboard.writeText(JSON.stringify(answerData));
-        updateStatus('Answer created and copied to clipboard. Share with room creator.');
-        
-        // Enable/disable buttons
-        createRoomBtn.disabled = true;
-        joinRoomBtn.disabled = true;
-        hangUpBtn.disabled = false;
-    } catch (error) {
-        console.error('Error joining room:', error);
-        updateStatus('Error: Invalid offer data');
+            sdp: answer.sdp,
+          })
+        );
+
+        // Add remote ICE candidates
+        for (const candidate of answer.ice) {
+          await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        }
+
+        updateStatus('Connected! You can now see each other.');
+        linkContainer.style.display = 'none';
+      } catch (error) {
+        console.error('Error processing answer:', error);
+        updateStatus('Error connecting. Please try again.');
+      }
     }
+  }, 1000);
 }
 
 // Hang up
 function hangUp() {
-    if (peerConnection) {
-        peerConnection.close();
-        peerConnection = null;
-    }
-    
-    if (remoteVideo.srcObject) {
-        remoteVideo.srcObject.getTracks().forEach(track => track.stop());
-        remoteVideo.srcObject = null;
-    }
-    
-    // Reset UI
-    createRoomBtn.disabled = false;
-    joinRoomBtn.disabled = false;
-    hangUpBtn.disabled = true;
-    roomIdInput.value = '';
-    updateStatus('Disconnected. Ready to create or join a room.');
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+
+  if (remoteVideo.srcObject) {
+    remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
+    remoteVideo.srcObject = null;
+  }
+
+  // Reset UI
+  startChatBtn.disabled = false;
+  startChatBtn.style.display = 'block';
+  hangUpBtn.disabled = true;
+  linkContainer.style.display = 'none';
+  shareLink.value = '';
+
+  // Clear URL parameters and hash
+  window.history.replaceState({}, document.title, window.location.pathname);
+
+  updateStatus('Disconnected. Ready to generate a new video chat link.');
 }
 
-// Helper functions
-function generateRoomId() {
-    return Math.random().toString(36).substr(2, 9);
-}
-
-function updateStatus(message) {
-    statusDiv.textContent = message;
-}
-
-async function promptForOffer() {
-    const offer = prompt('Paste the offer from the room creator:');
-    return offer;
-}
-
-async function promptForAnswer() {
-    setTimeout(async () => {
-        const answer = prompt('Once your partner joins, paste their answer here:');
-        if (answer) {
-            try {
-                const answerData = JSON.parse(answer);
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(answerData));
-                updateStatus('Connected!');
-            } catch (error) {
-                console.error('Error setting answer:', error);
-                updateStatus('Error: Invalid answer data');
-            }
-        }
+// Copy link to clipboard
+async function copyLink() {
+  try {
+    await navigator.clipboard.writeText(shareLink.value);
+    copyLinkBtn.textContent = 'Copied!';
+    setTimeout(() => {
+      copyLinkBtn.textContent = 'Copy Link';
     }, 2000);
+  } catch (err) {
+    shareLink.select();
+    document.execCommand('copy');
+    copyLinkBtn.textContent = 'Copied!';
+    setTimeout(() => {
+      copyLinkBtn.textContent = 'Copy Link';
+    }, 2000);
+  }
+}
+
+// Helper function
+function updateStatus(message) {
+  statusDiv.textContent = message;
 }
 
 // Event listeners
-createRoomBtn.addEventListener('click', createRoom);
-joinRoomBtn.addEventListener('click', joinRoom);
+startChatBtn.addEventListener('click', generateChatLink);
 hangUpBtn.addEventListener('click', hangUp);
+copyLinkBtn.addEventListener('click', copyLink);
 
 // Initialize on page load
 init();

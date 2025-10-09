@@ -18,10 +18,15 @@
         
         <!-- Connection controls -->
         <div class="controls">
-            <input type="text" id="roomId" placeholder="Enter room ID" />
-            <button id="createRoom">Create Room</button>
-            <button id="joinRoom">Join Room</button>
+            <button id="startChat" class="primary-btn">Generate Video Chat Link</button>
             <button id="hangUp" disabled>Hang Up</button>
+        </div>
+        
+        <!-- Link display -->
+        <div id="linkContainer" class="link-container" style="display: none;">
+            <p>Share this link with your partner:</p>
+            <input type="text" id="shareLink" readonly />
+            <button id="copyLink">Copy Link</button>
         </div>
         
         <!-- Status display -->
