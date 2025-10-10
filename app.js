@@ -329,12 +329,27 @@ function setupWatchSync() {
   });
 
   // Listen for play/pause
-  roomRef.child('stream/playing').on('value', (snapshot) => {
+  roomRef.child('stream/playing').on('value', async (snapshot) => {
     if (isSyncing) return;
     const playing = snapshot.val();
     if (playing === true && sharedVideo.paused) {
-      sharedVideo.play();
-      syncStatus.textContent = 'Partner pressed play';
+      try {
+        await sharedVideo.play();
+        syncStatus.textContent = 'Playing in sync';
+      } catch (error) {
+        // Android autoplay blocked - need user interaction
+        syncStatus.textContent = '▶️ Tap the video to start playing';
+        syncStatus.style.background = '#FF5722';
+        syncStatus.style.fontSize = '16px';
+
+        // Clear the warning once they manually play
+        const clearWarning = () => {
+          syncStatus.style.background = '#2a2a2a';
+          syncStatus.style.fontSize = '14px';
+          sharedVideo.removeEventListener('play', clearWarning);
+        };
+        sharedVideo.addEventListener('play', clearWarning);
+      }
     } else if (playing === false && !sharedVideo.paused) {
       sharedVideo.pause();
       syncStatus.textContent = 'Partner pressed pause';
@@ -359,7 +374,7 @@ function setupWatchSync() {
         playing: true,
         time: sharedVideo.currentTime,
       });
-      setTimeout(() => (isSyncing = false), 500);
+      setTimeout(() => (isSyncing = false), 1000);
     }
   });
 
@@ -370,7 +385,7 @@ function setupWatchSync() {
         playing: false,
         time: sharedVideo.currentTime,
       });
-      setTimeout(() => (isSyncing = false), 500);
+      setTimeout(() => (isSyncing = false), 1000);
     }
   });
 
@@ -380,7 +395,7 @@ function setupWatchSync() {
       db.ref(`rooms/${roomId}/stream`).update({
         time: sharedVideo.currentTime,
       });
-      setTimeout(() => (isSyncing = false), 500);
+      setTimeout(() => (isSyncing = false), 1000);
     }
   });
 
