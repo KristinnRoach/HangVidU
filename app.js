@@ -45,9 +45,10 @@ const streamUrlInput = document.getElementById('streamUrl');
 const loadStreamBtn = document.getElementById('loadStream');
 const sharedVideo = document.getElementById('sharedVideo');
 const syncStatus = document.getElementById('syncStatus');
-const uploadBtn = document.getElementById('uploadBtn');
 const videoFileInput = document.getElementById('videoFile');
 const uploadProgress = document.getElementById('uploadProgress');
+
+// const uploadBtn = document.getElementById('uploadBtn'); // Temporarily disabled
 
 let watchMode = false;
 let isSyncing = false; // Prevent sync loops
@@ -447,58 +448,59 @@ function setupWatchSync() {
   });
 }
 
-// ===== UPLOAD VIDEO =====
-uploadBtn.addEventListener('click', () => {
-  videoFileInput.click();
-});
+// ===== UPLOAD VIDEO ===== // ! Temporarily disabled
 
-videoFileInput.addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+// uploadBtn.addEventListener('click', () => {
+//   videoFileInput.click();
+// });
 
-  // ! NOTE: No check for file size - will fail if over Firebase limit
+// videoFileInput.addEventListener('change', async (e) => {
+//   const file = e.target.files[0];
+//   if (!file) return;
 
-  uploadProgress.style.display = 'block';
-  uploadProgress.textContent = 'Uploading 0%...';
-});
+//   // NOTE: No check for file size - will fail if over Firebase limit
 
-const storageRef = storage.ref(`videos/${Date.now()}_${file.name}`);
-const uploadTask = storageRef.put(file);
+//   uploadProgress.style.display = 'block';
+//   uploadProgress.textContent = 'Uploading 0%...';
+// });
 
-uploadTask.on(
-  'state_changed',
-  (snapshot) => {
-    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-    uploadProgress.textContent = `Uploading ${Math.round(progress)}%...`;
-  },
-  (error) => {
-    // Firebase limit exceeded or other error
-    if (error.code === 'storage/quota-exceeded') {
-      uploadProgress.textContent = '❌ Storage quota exceeded (5GB limit)';
-    } else if (error.code === 'storage/unauthorized') {
-      uploadProgress.textContent =
-        '❌ Permission denied - check Firebase rules';
-    } else {
-      uploadProgress.textContent = `❌ Upload failed: ${error.message}`;
-    }
-    uploadProgress.style.color = '#f44336';
-    console.error(error);
-  },
-  async () => {
-    // Success callback
-    const url = await uploadTask.snapshot.ref.getDownloadURL();
-    streamUrlInput.value = url;
-    uploadProgress.style.display = 'none';
-    uploadProgress.style.color = '#fff'; // Reset color
+// const storageRef = storage.ref(`videos/${Date.now()}_${file.name}`);
+// const uploadTask = storageRef.put(file);
 
-    sharedVideo.src = url;
-    syncStatus.textContent = 'Upload complete! Shared with partner.';
+// uploadTask.on(
+//   'state_changed',
+//   (snapshot) => {
+//     const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+//     uploadProgress.textContent = `Uploading ${Math.round(progress)}%...`;
+//   },
+//   (error) => {
+//     // Firebase limit exceeded or other error
+//     if (error.code === 'storage/quota-exceeded') {
+//       uploadProgress.textContent = '❌ Storage quota exceeded (5GB limit)';
+//     } else if (error.code === 'storage/unauthorized') {
+//       uploadProgress.textContent =
+//         '❌ Permission denied - check Firebase rules';
+//     } else {
+//       uploadProgress.textContent = `❌ Upload failed: ${error.message}`;
+//     }
+//     uploadProgress.style.color = '#f44336';
+//     console.error(error);
+//   },
+//   async () => {
+//     // Success callback
+//     const url = await uploadTask.snapshot.ref.getDownloadURL();
+//     streamUrlInput.value = url;
+//     uploadProgress.style.display = 'none';
+//     uploadProgress.style.color = '#fff'; // Reset color
 
-    if (roomId) {
-      db.ref(`rooms/${roomId}/stream`).set({ url });
-    }
-  }
-);
+//     sharedVideo.src = url;
+//     syncStatus.textContent = 'Upload complete! Shared with partner.';
+
+//     if (roomId) {
+//       db.ref(`rooms/${roomId}/stream`).set({ url });
+//     }
+//   }
+// );
 
 // ===== EVENT LISTENERS =====
 startChatBtn.addEventListener('click', createRoom);
