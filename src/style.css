@@ -28,6 +28,20 @@ h1 {
   color: #fff;
 }
 
+a {
+  color: #4c81af;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+  text-shadow: 0 0 5px rgba(85, 109, 137, 0.282);
+}
+
+a span {
+  text-decoration: none;
+}
+
 .video-container {
   display: flex;
   gap: 20px;
@@ -46,7 +60,13 @@ video {
 }
 
 #localVideo {
-  transform: scaleX(-1); /* Mirror local video */
+  transform: scaleX(-1);
+  will-change: transform;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) 0.2s;
+}
+
+#localVideo:picture-in-picture {
+  transform: scaleX(1);
 }
 
 .controls {
