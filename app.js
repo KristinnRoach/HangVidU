@@ -35,6 +35,7 @@ const statusDiv = document.getElementById('status');
 const linkContainer = document.getElementById('linkContainer');
 const shareLink = document.getElementById('shareLink');
 const copyLinkBtn = document.getElementById('copyLink');
+const pipBtn = document.getElementById('pipBtn');
 const toggleMuteBtn = document.getElementById('toggleMute');
 const toggleVideoBtn = document.getElementById('toggleVideo');
 const toggleModeBtn = document.getElementById('toggleMode');
@@ -100,6 +101,7 @@ async function createRoom() {
 
   peerConnection.ontrack = (event) => {
     remoteVideo.srcObject = event.streams[0];
+    pipBtn.style.display = 'block';
     updateStatus('Connected!');
   };
 
@@ -258,6 +260,24 @@ async function copyLink() {
     document.execCommand('copy');
   }
 }
+
+// Enable Picture in Picture for partners videofeed
+async function togglePiP() {
+  try {
+    if (document.pictureInPictureElement) {
+      await document.exitPictureInPicture();
+      pipBtn.textContent = 'Float Partner Video';
+    } else {
+      await remoteVideo.requestPictureInPicture();
+      pipBtn.textContent = 'Exit Float Mode';
+    }
+  } catch (error) {
+    console.error('PiP error:', error);
+    updateStatus('Picture-in-Picture not supported');
+  }
+}
+
+pipBtn.addEventListener('click', togglePiP);
 
 function updateStatus(message) {
   statusDiv.textContent = message;
@@ -436,43 +456,49 @@ videoFileInput.addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  // Check file size (limit to 100MB for free tier)
-  if (file.size > 100 * 1024 * 1024) {
-    syncStatus.textContent = '❌ File too large (max 100MB)';
-    return;
-  }
+  // ! NOTE: No check for file size - will fail if over Firebase limit
 
   uploadProgress.style.display = 'block';
   uploadProgress.textContent = 'Uploading 0%...';
-
-  const storageRef = storage.ref(`videos/${Date.now()}_${file.name}`);
-  const uploadTask = storageRef.put(file);
-
-  uploadTask.on(
-    'state_changed',
-    (snapshot) => {
-      const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-      uploadProgress.textContent = `Uploading ${Math.round(progress)}%...`;
-    },
-    (error) => {
-      uploadProgress.textContent = '❌ Upload failed';
-      console.error(error);
-    },
-    async () => {
-      const url = await uploadTask.snapshot.ref.getDownloadURL();
-      streamUrlInput.value = url;
-      uploadProgress.style.display = 'none';
-
-      // Auto-load and share with partner
-      sharedVideo.src = url;
-      syncStatus.textContent = 'Upload complete! Shared with partner.';
-
-      if (roomId) {
-        db.ref(`rooms/${roomId}/stream`).set({ url });
-      }
-    }
-  );
 });
+
+const storageRef = storage.ref(`videos/${Date.now()}_${file.name}`);
+const uploadTask = storageRef.put(file);
+
+uploadTask.on(
+  'state_changed',
+  (snapshot) => {
+    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+    uploadProgress.textContent = `Uploading ${Math.round(progress)}%...`;
+  },
+  (error) => {
+    // Firebase limit exceeded or other error
+    if (error.code === 'storage/quota-exceeded') {
+      uploadProgress.textContent = '❌ Storage quota exceeded (5GB limit)';
+    } else if (error.code === 'storage/unauthorized') {
+      uploadProgress.textContent =
+        '❌ Permission denied - check Firebase rules';
+    } else {
+      uploadProgress.textContent = `❌ Upload failed: ${error.message}`;
+    }
+    uploadProgress.style.color = '#f44336';
+    console.error(error);
+  },
+  async () => {
+    // Success callback
+    const url = await uploadTask.snapshot.ref.getDownloadURL();
+    streamUrlInput.value = url;
+    uploadProgress.style.display = 'none';
+    uploadProgress.style.color = '#fff'; // Reset color
+
+    sharedVideo.src = url;
+    syncStatus.textContent = 'Upload complete! Shared with partner.';
+
+    if (roomId) {
+      db.ref(`rooms/${roomId}/stream`).set({ url });
+    }
+  }
+);
 
 // ===== EVENT LISTENERS =====
 startChatBtn.addEventListener('click', createRoom);
