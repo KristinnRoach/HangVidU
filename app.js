@@ -19,7 +19,7 @@ let localStream;
 let peerConnection;
 let roomId = null;
 let isInitiator = false;
-let isAudioMuted = true;
+let isAudioMuted = false;
 
 const configuration = {
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
@@ -46,6 +46,9 @@ const toggleMuteBtn = document.getElementById('toggleMute');
 
       localVideo.srcObject = localStream;
       toggleMuteBtn.style.display = 'block';
+
+      // ! IMMEDIATE MUTE - for solo testing
+      toggleMute();
 
       // Check if joining existing room
       const urlParams = new URLSearchParams(window.location.search);
