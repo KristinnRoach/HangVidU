@@ -13,6 +13,7 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+const storage = firebase.storage();
 
 // ===== WEBRTC SETUP =====
 let localStream;
@@ -43,6 +44,10 @@ const streamUrlInput = document.getElementById('streamUrl');
 const loadStreamBtn = document.getElementById('loadStream');
 const sharedVideo = document.getElementById('sharedVideo');
 const syncStatus = document.getElementById('syncStatus');
+const uploadBtn = document.getElementById('uploadBtn');
+const videoFileInput = document.getElementById('videoFile');
+const uploadProgress = document.getElementById('uploadProgress');
+
 let watchMode = false;
 let isSyncing = false; // Prevent sync loops
 
@@ -295,22 +300,6 @@ function toggleWatchMode() {
   }
 }
 
-// function loadStream() {
-//   const url = streamUrlInput.value.trim();
-//   if (!url) {
-//     syncStatus.textContent = 'Please enter a stream URL';
-//     return;
-//   }
-
-//   sharedVideo.src = url;
-//   syncStatus.textContent = 'Loading video...';
-
-//   // Notify partner
-//   if (roomId) {
-//     db.ref(`rooms/${roomId}/stream`).set({ url });
-//   }
-// }
-
 function loadStream() {
   const url = streamUrlInput.value.trim();
   if (!url) {
@@ -337,16 +326,6 @@ function setupWatchSync() {
   if (!roomId) return;
 
   const roomRef = db.ref(`rooms/${roomId}`);
-
-  // // Listen for stream URL changes
-  // roomRef.child('stream/url').on('value', (snapshot) => {
-  //   const url = snapshot.val();
-  //   if (url && url !== streamUrlInput.value) {
-  //     streamUrlInput.value = url;
-  //     sharedVideo.src = url;
-  //     syncStatus.textContent = 'Partner loaded a video';
-  //   }
-  // });
 
   // Listen for stream URL changes
   roomRef.child('stream/url').on('value', (snapshot) => {
@@ -447,6 +426,53 @@ function setupWatchSync() {
     syncStatus.textContent = 'Playing in sync';
   });
 }
+
+// ===== UPLOAD VIDEO =====
+uploadBtn.addEventListener('click', () => {
+  videoFileInput.click();
+});
+
+videoFileInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // Check file size (limit to 100MB for free tier)
+  if (file.size > 100 * 1024 * 1024) {
+    syncStatus.textContent = '❌ File too large (max 100MB)';
+    return;
+  }
+
+  uploadProgress.style.display = 'block';
+  uploadProgress.textContent = 'Uploading 0%...';
+
+  const storageRef = storage.ref(`videos/${Date.now()}_${file.name}`);
+  const uploadTask = storageRef.put(file);
+
+  uploadTask.on(
+    'state_changed',
+    (snapshot) => {
+      const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+      uploadProgress.textContent = `Uploading ${Math.round(progress)}%...`;
+    },
+    (error) => {
+      uploadProgress.textContent = '❌ Upload failed';
+      console.error(error);
+    },
+    async () => {
+      const url = await uploadTask.snapshot.ref.getDownloadURL();
+      streamUrlInput.value = url;
+      uploadProgress.style.display = 'none';
+
+      // Auto-load and share with partner
+      sharedVideo.src = url;
+      syncStatus.textContent = 'Upload complete! Shared with partner.';
+
+      if (roomId) {
+        db.ref(`rooms/${roomId}/stream`).set({ url });
+      }
+    }
+  );
+});
 
 // ===== EVENT LISTENERS =====
 startChatBtn.addEventListener('click', createRoom);

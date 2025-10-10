@@ -24,7 +24,17 @@
             placeholder="Paste stream URL (both people need to paste the same URL)"
           />
           <button id="loadStream">Load Video</button>
+
+          <input
+            type="file"
+            id="videoFile"
+            accept="video/*"
+            style="display: none"
+          />
+          <button id="uploadBtn">📁 Upload Video</button>
+          <div id="uploadProgress" style="display: none"></div>
         </div>
+
         <video id="sharedVideo" controls playsinline></video>
         <div id="syncStatus" class="sync-status">Waiting for video...</div>
       </div>
@@ -53,6 +63,8 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+
     <script src="app.js"></script>
   </body>
 </html>
