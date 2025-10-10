@@ -1,64 +1,34 @@
-# HangVidU - Simple Video Chat
+# HangVidU
 
-A minimal peer-to-peer video chat application that doesn't interfere with system audio - perfect for "hanging out" while working on separate tasks.
+A simple peer-to-peer video chat app with a watch-together mode.
 
-## Features
-- Video-only streaming (no audio interference with your work)
-- Simple peer-to-peer connection using WebRTC
-- No server required for basic functionality
-- Works directly in the browser
-- Deployable to GitHub Pages
+## What it does
 
-## How to Use
+- **Video Chat**: Create a room, share the link, and video chat with one person
+- **Watch Mode**: Both people paste the same video URL and watch in sync (play/pause/seek)
+- WebRTC for video, Firebase for signaling
 
-### Local Testing
-1. Open `index.html` in a modern web browser (Chrome, Firefox, Safari, Edge)
-2. Allow camera permissions when prompted
+## Setup
 
-### Creating a Connection (Current Simple Method)
-Since this is a minimal demo without a signaling server, connection requires manual sharing:
+1. Replace Firebase config in `app.js` with your own (current keys are exposed)
+2. Host the three files on any web server
+3. Requires HTTPS for camera/mic access (localhost works for testing)
 
-**Person 1 (Room Creator):**
-1. Click "Create Room"
-2. The offer data is automatically copied to your clipboard
-3. Share this data with your partner (via any messaging app)
-4. Wait for your partner to send back their answer
-5. Paste the answer when prompted
+## Usage
 
-**Person 2 (Room Joiner):**
-1. Enter the room ID shared by Person 1
-2. Click "Join Room"
-3. Paste the offer data when prompted
-4. The answer is automatically copied to your clipboard
-5. Share this answer back to Person 1
+1. Click "Generate Video Chat Link"
+2. Share the link with one other person
+3. Optional: Click "Switch to Watch Mode" to watch videos together
 
-## Deployment to GitHub Pages
-1. Push this folder to a GitHub repository
-2. Go to Settings → Pages
-3. Select source branch and folder
-4. Your app will be available at `https://[username].github.io/[repository-name]/`
+## Limitations
 
-## Technical Notes
-- Uses WebRTC for peer-to-peer video streaming
-- Currently uses manual signaling (copy/paste) for simplicity
-- Uses Google's public STUN server for NAT traversal
-- Audio is disabled by default to prevent system audio suppression
+- Only works for 1-to-1 connections
+- Firebase keys are exposed in client code (normal for this type of setup, but set security rules)
+- No authentication or room persistence
+- Watch mode requires both users to manually paste the same video URL
 
-## Future Improvements
-When ready to expand:
-- Add a proper signaling server (WebSocket or Firebase)
-- Add audio toggle option
-- Add screen sharing capability
-- Add text chat
-- Improve connection reliability with TURN servers
-- Add recording capabilities
+## Requirements
 
-## Browser Requirements
 - Modern browser with WebRTC support
-- Camera permissions
-- HTTPS connection (required for camera access when deployed)
-
-## Privacy
-- All video streams are peer-to-peer
-- No video data passes through any server
-- Connection data (offers/answers) must be manually shared
+- Camera/microphone permissions
+- Internet connection
