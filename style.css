@@ -162,6 +162,14 @@ button:disabled {
   background: #f57c00;
 }
 
+#toggleVideo {
+  background: #9c27b0;
+}
+
+#toggleVideo:hover:not(:disabled) {
+  background: #7b1fa2;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .video-container {

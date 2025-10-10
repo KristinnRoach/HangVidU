@@ -20,6 +20,7 @@ let peerConnection;
 let roomId = null;
 let isInitiator = false;
 let isAudioMuted = false;
+let isVideoOn = true;
 
 const configuration = {
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
@@ -34,6 +35,7 @@ const linkContainer = document.getElementById('linkContainer');
 const shareLink = document.getElementById('shareLink');
 const copyLinkBtn = document.getElementById('copyLink');
 const toggleMuteBtn = document.getElementById('toggleMute');
+const toggleVideoBtn = document.getElementById('toggleVideo');
 
 // ===== INITIALIZE =====
 async function init() {
@@ -46,6 +48,7 @@ async function init() {
 
     localVideo.srcObject = localStream;
     toggleMuteBtn.style.display = 'block';
+    toggleVideoBtn.style.display = 'block';
 
     // ! IMMEDIATE MUTE - for solo testing
     toggleMute();
@@ -203,7 +206,9 @@ async function hangUp() {
   hangUpBtn.disabled = true;
   linkContainer.style.display = 'none';
   toggleMuteBtn.style.display = 'none';
+  toggleVideoBtn.style.display = 'none';
   isAudioMuted = false;
+  isVideoOn = true;
   shareLink.value = '';
   window.history.replaceState({}, document.title, window.location.pathname);
 
@@ -239,10 +244,20 @@ function toggleMute() {
   }
 }
 
+function toggleVideo() {
+  const videoTrack = localStream.getVideoTracks()[0];
+  if (videoTrack) {
+    isVideoOn = !isVideoOn;
+    videoTrack.enabled = isVideoOn;
+    toggleVideoBtn.textContent = isVideoOn ? 'Turn Video Off' : 'Turn Video On';
+  }
+}
+
 // ===== EVENT LISTENERS =====
 startChatBtn.addEventListener('click', createRoom);
 hangUpBtn.addEventListener('click', hangUp);
 copyLinkBtn.addEventListener('click', copyLink);
 toggleMuteBtn.addEventListener('click', toggleMute);
+toggleVideoBtn.addEventListener('click', toggleVideo);
 
 init();
