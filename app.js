@@ -19,6 +19,7 @@ let localStream;
 let peerConnection;
 let roomId = null;
 let isInitiator = false;
+let isAudioMuted = true;
 
 const configuration = {
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
@@ -32,32 +33,37 @@ const statusDiv = document.getElementById('status');
 const linkContainer = document.getElementById('linkContainer');
 const shareLink = document.getElementById('shareLink');
 const copyLinkBtn = document.getElementById('copyLink');
+const toggleMuteBtn = document.getElementById('toggleMute');
++(
+  // ===== INITIALIZE =====
+  async function init() {
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+      localVideo.srcObject = localStream;
 
-// ===== INITIALIZE =====
-async function init() {
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true,
-    });
-    localVideo.srcObject = localStream;
+      localVideo.srcObject = localStream;
+      toggleMuteBtn.style.display = 'block';
 
-    // Check if joining existing room
-    const urlParams = new URLSearchParams(window.location.search);
-    roomId = urlParams.get('room');
+      // Check if joining existing room
+      const urlParams = new URLSearchParams(window.location.search);
+      roomId = urlParams.get('room');
 
-    if (roomId) {
-      updateStatus('Connecting...');
-      startChatBtn.style.display = 'none';
-      await joinRoom(roomId);
-    } else {
-      updateStatus('Ready. Click to generate video chat link.');
+      if (roomId) {
+        updateStatus('Connecting...');
+        startChatBtn.style.display = 'none';
+        await joinRoom(roomId);
+      } else {
+        updateStatus('Ready. Click to generate video chat link.');
+      }
+    } catch (error) {
+      console.error('Media error:', error);
+      updateStatus('Error: Could not access camera/mic. Check permissions.');
     }
-  } catch (error) {
-    console.error('Media error:', error);
-    updateStatus('Error: Could not access camera/mic. Check permissions.');
   }
-}
+);
 
 // ===== CREATE ROOM (Person A) =====
 async function createRoom() {
@@ -194,6 +200,8 @@ async function hangUp() {
   startChatBtn.style.display = 'block';
   hangUpBtn.disabled = true;
   linkContainer.style.display = 'none';
+  toggleMuteBtn.style.display = 'none';
+  isAudioMuted = false;
   shareLink.value = '';
   window.history.replaceState({}, document.title, window.location.pathname);
 
@@ -220,9 +228,19 @@ function updateStatus(message) {
   statusDiv.textContent = message;
 }
 
+function toggleMute() {
+  const audioTrack = localStream.getAudioTracks()[0];
+  if (audioTrack) {
+    isAudioMuted = !isAudioMuted;
+    audioTrack.enabled = !isAudioMuted;
+    toggleMuteBtn.textContent = isAudioMuted ? 'Unmute Audio' : 'Mute Audio';
+  }
+}
+
 // ===== EVENT LISTENERS =====
 startChatBtn.addEventListener('click', createRoom);
 hangUpBtn.addEventListener('click', hangUp);
 copyLinkBtn.addEventListener('click', copyLink);
+toggleMuteBtn.addEventListener('click', toggleMute);
 
 init();
