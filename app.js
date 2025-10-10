@@ -295,7 +295,22 @@ function toggleWatchMode() {
   }
 }
 
-// Add new function - Load stream:
+// function loadStream() {
+//   const url = streamUrlInput.value.trim();
+//   if (!url) {
+//     syncStatus.textContent = 'Please enter a stream URL';
+//     return;
+//   }
+
+//   sharedVideo.src = url;
+//   syncStatus.textContent = 'Loading video...';
+
+//   // Notify partner
+//   if (roomId) {
+//     db.ref(`rooms/${roomId}/stream`).set({ url });
+//   }
+// }
+
 function loadStream() {
   const url = streamUrlInput.value.trim();
   if (!url) {
@@ -304,7 +319,7 @@ function loadStream() {
   }
 
   sharedVideo.src = url;
-  syncStatus.textContent = 'Loading video...';
+  syncStatus.textContent = 'Video sent to partner...';
 
   // Notify partner
   if (roomId) {
@@ -312,19 +327,40 @@ function loadStream() {
   }
 }
 
-// Add new function - Setup sync listeners:
+function acceptSharedVideo() {
+  sharedVideo.src = streamUrlInput.value;
+  syncStatus.textContent = 'Loading shared video...';
+  syncStatus.style.background = '#2a2a2a';
+}
+
 function setupWatchSync() {
   if (!roomId) return;
 
   const roomRef = db.ref(`rooms/${roomId}`);
 
+  // // Listen for stream URL changes
+  // roomRef.child('stream/url').on('value', (snapshot) => {
+  //   const url = snapshot.val();
+  //   if (url && url !== streamUrlInput.value) {
+  //     streamUrlInput.value = url;
+  //     sharedVideo.src = url;
+  //     syncStatus.textContent = 'Partner loaded a video';
+  //   }
+  // });
+
   // Listen for stream URL changes
   roomRef.child('stream/url').on('value', (snapshot) => {
     const url = snapshot.val();
-    if (url && url !== streamUrlInput.value) {
+    if (url && url !== streamUrlInput.value && url !== sharedVideo.src) {
+      // Show accept prompt instead of auto-loading
       streamUrlInput.value = url;
-      sharedVideo.src = url;
-      syncStatus.textContent = 'Partner loaded a video';
+      syncStatus.innerHTML = `
+      Partner shared a video: 
+      <button onclick="acceptSharedVideo()" style="margin-left: 10px; padding: 5px 15px;">
+        ✓ Accept & Load
+      </button>
+    `;
+      syncStatus.style.background = '#2196f3';
     }
   });
 
