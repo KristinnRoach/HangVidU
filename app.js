@@ -36,6 +36,15 @@ const shareLink = document.getElementById('shareLink');
 const copyLinkBtn = document.getElementById('copyLink');
 const toggleMuteBtn = document.getElementById('toggleMute');
 const toggleVideoBtn = document.getElementById('toggleVideo');
+const toggleModeBtn = document.getElementById('toggleMode');
+const watchContainer = document.getElementById('watchContainer');
+const videoContainer = document.querySelector('.video-container');
+const streamUrlInput = document.getElementById('streamUrl');
+const loadStreamBtn = document.getElementById('loadStream');
+const sharedVideo = document.getElementById('sharedVideo');
+const syncStatus = document.getElementById('syncStatus');
+let watchMode = false;
+let isSyncing = false; // Prevent sync loops
 
 // ===== INITIALIZE =====
 async function init() {
@@ -129,6 +138,9 @@ async function createRoom() {
   startChatBtn.disabled = true;
   hangUpBtn.disabled = false;
 
+  setupWatchSync();
+  toggleModeBtn.style.display = 'block';
+
   updateStatus('Link ready! Waiting for partner...');
 }
 
@@ -178,6 +190,9 @@ async function joinRoom(roomId) {
     peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
   });
 
+  setupWatchSync();
+  toggleModeBtn.style.display = 'block';
+
   hangUpBtn.disabled = false;
 }
 
@@ -207,9 +222,17 @@ async function hangUp() {
   linkContainer.style.display = 'none';
   toggleMuteBtn.style.display = 'none';
   toggleVideoBtn.style.display = 'none';
+  toggleModeBtn.style.display = 'none';
+  watchContainer.style.display = 'none';
+  videoContainer.style.display = 'flex';
+  shareLink.value = '';
+  sharedVideo.src = '';
+  streamUrlInput.value = '';
+  syncStatus.textContent = '';
+  watchMode = false;
   isAudioMuted = false;
   isVideoOn = true;
-  shareLink.value = '';
+
   window.history.replaceState({}, document.title, window.location.pathname);
 
   updateStatus('Disconnected. Ready for new chat.');
@@ -253,11 +276,134 @@ function toggleVideo() {
   }
 }
 
+function toggleWatchMode() {
+  watchMode = !watchMode;
+
+  if (watchMode) {
+    // Switch to watch mode
+    videoContainer.style.display = 'none';
+    watchContainer.style.display = 'block';
+    toggleModeBtn.textContent = 'Switch to Video Chat';
+    syncStatus.textContent = 'Paste the same stream URL as your partner';
+  } else {
+    // Switch back to video chat
+    videoContainer.style.display = 'flex';
+    watchContainer.style.display = 'none';
+    toggleModeBtn.textContent = 'Switch to Watch Mode';
+    sharedVideo.src = '';
+    streamUrlInput.value = '';
+  }
+}
+
+// Add new function - Load stream:
+function loadStream() {
+  const url = streamUrlInput.value.trim();
+  if (!url) {
+    syncStatus.textContent = 'Please enter a stream URL';
+    return;
+  }
+
+  sharedVideo.src = url;
+  syncStatus.textContent = 'Loading video...';
+
+  // Notify partner
+  if (roomId) {
+    db.ref(`rooms/${roomId}/stream`).set({ url });
+  }
+}
+
+// Add new function - Setup sync listeners:
+function setupWatchSync() {
+  if (!roomId) return;
+
+  const roomRef = db.ref(`rooms/${roomId}`);
+
+  // Listen for stream URL changes
+  roomRef.child('stream/url').on('value', (snapshot) => {
+    const url = snapshot.val();
+    if (url && url !== streamUrlInput.value) {
+      streamUrlInput.value = url;
+      sharedVideo.src = url;
+      syncStatus.textContent = 'Partner loaded a video';
+    }
+  });
+
+  // Listen for play/pause
+  roomRef.child('stream/playing').on('value', (snapshot) => {
+    if (isSyncing) return;
+    const playing = snapshot.val();
+    if (playing === true && sharedVideo.paused) {
+      sharedVideo.play();
+      syncStatus.textContent = 'Partner pressed play';
+    } else if (playing === false && !sharedVideo.paused) {
+      sharedVideo.pause();
+      syncStatus.textContent = 'Partner pressed pause';
+    }
+  });
+
+  // Listen for seek
+  roomRef.child('stream/time').on('value', (snapshot) => {
+    if (isSyncing) return;
+    const time = snapshot.val();
+    if (time !== null && Math.abs(sharedVideo.currentTime - time) > 2) {
+      sharedVideo.currentTime = time;
+      syncStatus.textContent = `Syncing to ${Math.floor(time)}s`;
+    }
+  });
+
+  // Send local events to Firebase
+  sharedVideo.addEventListener('play', () => {
+    if (roomId && !isSyncing) {
+      isSyncing = true;
+      db.ref(`rooms/${roomId}/stream`).update({
+        playing: true,
+        time: sharedVideo.currentTime,
+      });
+      setTimeout(() => (isSyncing = false), 500);
+    }
+  });
+
+  sharedVideo.addEventListener('pause', () => {
+    if (roomId && !isSyncing) {
+      isSyncing = true;
+      db.ref(`rooms/${roomId}/stream`).update({
+        playing: false,
+        time: sharedVideo.currentTime,
+      });
+      setTimeout(() => (isSyncing = false), 500);
+    }
+  });
+
+  sharedVideo.addEventListener('seeked', () => {
+    if (roomId && !isSyncing) {
+      isSyncing = true;
+      db.ref(`rooms/${roomId}/stream`).update({
+        time: sharedVideo.currentTime,
+      });
+      setTimeout(() => (isSyncing = false), 500);
+    }
+  });
+
+  sharedVideo.addEventListener('loadeddata', () => {
+    syncStatus.textContent = 'Video loaded! Press play to start.';
+  });
+
+  sharedVideo.addEventListener('waiting', () => {
+    syncStatus.textContent = 'Buffering...';
+  });
+
+  sharedVideo.addEventListener('playing', () => {
+    syncStatus.textContent = 'Playing in sync';
+  });
+}
+
 // ===== EVENT LISTENERS =====
 startChatBtn.addEventListener('click', createRoom);
 hangUpBtn.addEventListener('click', hangUp);
 copyLinkBtn.addEventListener('click', copyLink);
 toggleMuteBtn.addEventListener('click', toggleMute);
 toggleVideoBtn.addEventListener('click', toggleVideo);
+toggleModeBtn.addEventListener('click', toggleWatchMode);
+loadStreamBtn.addEventListener('click', loadStream);
 
 init();

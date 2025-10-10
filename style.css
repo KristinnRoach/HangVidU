@@ -170,6 +170,45 @@ button:disabled {
   background: #7b1fa2;
 }
 
+#watchContainer {
+  margin: 20px auto;
+  max-width: 900px;
+}
+
+.watch-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.watch-controls input {
+  flex: 1;
+}
+
+#sharedVideo {
+  width: 100%;
+  max-width: 900px;
+  background: #000;
+}
+
+.sync-status {
+  text-align: center;
+  padding: 10px;
+  background: #2a2a2a;
+  border-radius: 5px;
+  margin-top: 10px;
+  color: #aaa;
+  font-size: 14px;
+}
+
+#toggleMode {
+  background: #ff5722;
+}
+
+#toggleMode:hover:not(:disabled) {
+  background: #e64a19;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .video-container {
