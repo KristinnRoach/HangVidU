@@ -2,7 +2,8 @@
 const firebaseConfig = {
   apiKey: 'AIzaSyA-fvCaKCjyEFX__YAVr1oPGdVsUEhFehA',
   authDomain: 'vidu-aae11.firebaseapp.com',
-  databaseURL: 'https://vidu-aae11-default-rtdb.firebaseio.com',
+  databaseURL:
+    'https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app',
   projectId: 'vidu-aae11',
   storageBucket: 'vidu-aae11.firebasestorage.app',
   messagingSenderId: '765724787439',
