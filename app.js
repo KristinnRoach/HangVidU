@@ -34,39 +34,38 @@ const linkContainer = document.getElementById('linkContainer');
 const shareLink = document.getElementById('shareLink');
 const copyLinkBtn = document.getElementById('copyLink');
 const toggleMuteBtn = document.getElementById('toggleMute');
-+(
-  // ===== INITIALIZE =====
-  async function init() {
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
-      localVideo.srcObject = localStream;
 
-      localVideo.srcObject = localStream;
-      toggleMuteBtn.style.display = 'block';
+// ===== INITIALIZE =====
+async function init() {
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    });
+    localVideo.srcObject = localStream;
 
-      // ! IMMEDIATE MUTE - for solo testing
-      toggleMute();
+    localVideo.srcObject = localStream;
+    toggleMuteBtn.style.display = 'block';
 
-      // Check if joining existing room
-      const urlParams = new URLSearchParams(window.location.search);
-      roomId = urlParams.get('room');
+    // ! IMMEDIATE MUTE - for solo testing
+    toggleMute();
 
-      if (roomId) {
-        updateStatus('Connecting...');
-        startChatBtn.style.display = 'none';
-        await joinRoom(roomId);
-      } else {
-        updateStatus('Ready. Click to generate video chat link.');
-      }
-    } catch (error) {
-      console.error('Media error:', error);
-      updateStatus('Error: Could not access camera/mic. Check permissions.');
+    // Check if joining existing room
+    const urlParams = new URLSearchParams(window.location.search);
+    roomId = urlParams.get('room');
+
+    if (roomId) {
+      updateStatus('Connecting...');
+      startChatBtn.style.display = 'none';
+      await joinRoom(roomId);
+    } else {
+      updateStatus('Ready. Click to generate video chat link.');
     }
+  } catch (error) {
+    console.error('Media error:', error);
+    updateStatus('Error: Could not access camera/mic. Check permissions.');
   }
-);
+}
 
 // ===== CREATE ROOM (Person A) =====
 async function createRoom() {
