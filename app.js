@@ -1,16 +1,27 @@
-// URL-based WebRTC video chat - no server needed!
-let localStream;
-let remoteStream;
-let peerConnection;
-let isInitiator = false;
-let iceCandidates = [];
+// ===== FIREBASE CONFIG  =====
+const firebaseConfig = {
+  apiKey: 'AIzaSyA-fvCaKCjyEFX__YAVr1oPGdVsUEhFehA',
+  authDomain: 'vidu-aae11.firebaseapp.com',
+  projectId: 'vidu-aae11',
+  storageBucket: 'vidu-aae11.firebasestorage.app',
+  messagingSenderId: '765724787439',
+  appId: '1:765724787439:web:61a3b5dd538149564c911a',
+  measurementId: 'G-EGJ53HLGY4',
+};
 
-// Configuration for STUN server
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ===== WEBRTC SETUP =====
+let localStream;
+let peerConnection;
+let roomId = null;
+let isInitiator = false;
+
 const configuration = {
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
 };
 
-// Get DOM elements
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
 const startChatBtn = document.getElementById('startChat');
@@ -20,190 +31,145 @@ const linkContainer = document.getElementById('linkContainer');
 const shareLink = document.getElementById('shareLink');
 const copyLinkBtn = document.getElementById('copyLink');
 
-// Initialize - get user media
+// ===== INITIALIZE =====
 async function init() {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({
       video: true,
-      audio: false, // Start with audio off for your use case
+      audio: true,
     });
     localVideo.srcObject = localStream;
 
-    // Check if we're joining from a link
+    // Check if joining existing room
     const urlParams = new URLSearchParams(window.location.search);
-    const offerData = urlParams.get('offer');
+    roomId = urlParams.get('room');
 
-    if (offerData) {
-      // We're joining someone's room
-      updateStatus('Connecting to video chat...');
+    if (roomId) {
+      updateStatus('Connecting...');
       startChatBtn.style.display = 'none';
-      await joinFromLink(offerData);
+      await joinRoom(roomId);
     } else {
-      // We're ready to create a room
-      updateStatus('Camera ready. Click to generate a video chat link.');
+      updateStatus('Ready. Click to generate video chat link.');
     }
   } catch (error) {
-    console.error('Error accessing media devices:', error);
-    updateStatus('Error: Could not access camera. Please check permissions.');
+    console.error('Media error:', error);
+    updateStatus('Error: Could not access camera/mic. Check permissions.');
   }
 }
 
-// Create a peer connection
-function createPeerConnection() {
-  peerConnection = new RTCPeerConnection(configuration);
-  iceCandidates = [];
+// ===== CREATE ROOM (Person A) =====
+async function createRoom() {
+  isInitiator = true;
+  roomId = generateRoomId();
 
-  // Add local stream tracks to the connection
+  const roomRef = db.ref(`rooms/${roomId}`);
+
+  // Create peer connection
+  peerConnection = new RTCPeerConnection(configuration);
+
   localStream.getTracks().forEach((track) => {
     peerConnection.addTrack(track, localStream);
   });
 
-  // Handle remote stream
   peerConnection.ontrack = (event) => {
-    remoteStream = event.streams[0];
-    remoteVideo.srcObject = remoteStream;
-    updateStatus('Connected! You can now see each other.');
+    remoteVideo.srcObject = event.streams[0];
+    updateStatus('Connected!');
   };
 
-  // Collect ICE candidates
   peerConnection.onicecandidate = (event) => {
     if (event.candidate) {
-      iceCandidates.push(event.candidate);
+      roomRef.child('callerCandidates').push(event.candidate.toJSON());
     }
   };
-
-  // Handle connection state changes
-  peerConnection.onconnectionstatechange = () => {
-    const state = peerConnection.connectionState;
-    if (state === 'connected') {
-      updateStatus('Connected! Video chat is active.');
-    } else if (state === 'failed' || state === 'disconnected') {
-      updateStatus('Connection lost. Please refresh and try again.');
-    }
-  };
-}
-
-// Generate video chat link (initiator)
-async function generateChatLink() {
-  isInitiator = true;
-  createPeerConnection();
 
   // Create offer
   const offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
 
-  // Wait a bit for ICE candidates to gather
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+  await roomRef.set({
+    offer: {
+      type: offer.type,
+      sdp: offer.sdp,
+    },
+  });
 
-  // Create compressed offer data
-  const offerData = {
-    sdp: offer.sdp,
-    ice: iceCandidates,
-  };
+  // Listen for answer
+  roomRef.child('answer').on('value', async (snapshot) => {
+    const answer = snapshot.val();
+    if (answer && !peerConnection.currentRemoteDescription) {
+      await peerConnection.setRemoteDescription(
+        new RTCSessionDescription(answer)
+      );
+    }
+  });
 
-  // Compress and encode for URL
-  const compressed = btoa(JSON.stringify(offerData));
-  const shareUrl = `${window.location.origin}${
-    window.location.pathname
-  }?offer=${encodeURIComponent(compressed)}`;
+  // Listen for callee ICE candidates
+  roomRef.child('calleeCandidates').on('child_added', (snapshot) => {
+    const candidate = snapshot.val();
+    peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+  });
 
-  // Show the link
-  shareLink.value = shareUrl;
+  // Show link
+  const url = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+  shareLink.value = url;
   linkContainer.style.display = 'block';
   startChatBtn.disabled = true;
   hangUpBtn.disabled = false;
 
-  updateStatus(
-    'Link generated! Share it with your partner. Waiting for them to connect...'
-  );
-
-  // Start polling for answer in URL hash
-  pollForAnswer();
+  updateStatus('Link ready! Waiting for partner...');
 }
 
-// Join from link (receiver)
-async function joinFromLink(offerDataEncoded) {
-  try {
-    // Decode offer
-    const offerData = JSON.parse(atob(decodeURIComponent(offerDataEncoded)));
+// ===== JOIN ROOM (Person B) =====
+async function joinRoom(roomId) {
+  const roomRef = db.ref(`rooms/${roomId}`);
+  const roomSnapshot = await roomRef.once('value');
 
-    createPeerConnection();
-
-    // Set remote description
-    await peerConnection.setRemoteDescription(
-      new RTCSessionDescription({
-        type: 'offer',
-        sdp: offerData.sdp,
-      })
-    );
-
-    // Add remote ICE candidates
-    for (const candidate of offerData.ice) {
-      await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-    }
-
-    // Create answer
-    const answer = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
-
-    // Wait for ICE candidates
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    // Create answer data
-    const answerData = {
-      sdp: answer.sdp,
-      ice: iceCandidates,
-    };
-
-    // Send answer back via URL hash
-    const compressed = btoa(JSON.stringify(answerData));
-    window.location.hash = `answer=${compressed}`;
-
-    hangUpBtn.disabled = false;
-    updateStatus('Connecting...');
-  } catch (error) {
-    console.error('Error joining from link:', error);
-    updateStatus('Error: Invalid or expired link');
+  if (!roomSnapshot.exists()) {
+    updateStatus('Error: Invalid room link');
+    return;
   }
-}
 
-// Poll for answer (when initiator)
-function pollForAnswer() {
-  const checkInterval = setInterval(async () => {
-    if (window.location.hash.includes('answer=')) {
-      clearInterval(checkInterval);
+  peerConnection = new RTCPeerConnection(configuration);
 
-      const hash = window.location.hash.substring(1);
-      const answerData = hash.split('answer=')[1];
+  localStream.getTracks().forEach((track) => {
+    peerConnection.addTrack(track, localStream);
+  });
 
-      try {
-        const answer = JSON.parse(atob(answerData));
+  peerConnection.ontrack = (event) => {
+    remoteVideo.srcObject = event.streams[0];
+    updateStatus('Connected!');
+  };
 
-        // Set remote description
-        await peerConnection.setRemoteDescription(
-          new RTCSessionDescription({
-            type: 'answer',
-            sdp: answer.sdp,
-          })
-        );
-
-        // Add remote ICE candidates
-        for (const candidate of answer.ice) {
-          await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-        }
-
-        updateStatus('Connected! You can now see each other.');
-        linkContainer.style.display = 'none';
-      } catch (error) {
-        console.error('Error processing answer:', error);
-        updateStatus('Error connecting. Please try again.');
-      }
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+      roomRef.child('calleeCandidates').push(event.candidate.toJSON());
     }
-  }, 1000);
+  };
+
+  // Get offer and set remote description
+  const offer = roomSnapshot.val().offer;
+  await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+
+  // Create answer
+  const answer = await peerConnection.createAnswer();
+  await peerConnection.setLocalDescription(answer);
+
+  await roomRef.child('answer').set({
+    type: answer.type,
+    sdp: answer.sdp,
+  });
+
+  // Listen for caller ICE candidates
+  roomRef.child('callerCandidates').on('child_added', (snapshot) => {
+    const candidate = snapshot.val();
+    peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+  });
+
+  hangUpBtn.disabled = false;
 }
 
-// Hang up
-function hangUp() {
+// ===== HANG UP =====
+async function hangUp() {
   if (peerConnection) {
     peerConnection.close();
     peerConnection = null;
@@ -214,46 +180,47 @@ function hangUp() {
     remoteVideo.srcObject = null;
   }
 
+  // Clean up Firebase
+  if (roomId && isInitiator) {
+    await db.ref(`rooms/${roomId}`).remove();
+  }
+
   // Reset UI
+  roomId = null;
+  isInitiator = false;
   startChatBtn.disabled = false;
   startChatBtn.style.display = 'block';
   hangUpBtn.disabled = true;
   linkContainer.style.display = 'none';
   shareLink.value = '';
-
-  // Clear URL parameters and hash
   window.history.replaceState({}, document.title, window.location.pathname);
 
-  updateStatus('Disconnected. Ready to generate a new video chat link.');
+  updateStatus('Disconnected. Ready for new chat.');
 }
 
-// Copy link to clipboard
+// ===== HELPERS =====
+function generateRoomId() {
+  return Math.random().toString(36).substring(2, 15);
+}
+
 async function copyLink() {
   try {
     await navigator.clipboard.writeText(shareLink.value);
     copyLinkBtn.textContent = 'Copied!';
-    setTimeout(() => {
-      copyLinkBtn.textContent = 'Copy Link';
-    }, 2000);
+    setTimeout(() => (copyLinkBtn.textContent = 'Copy Link'), 2000);
   } catch (err) {
     shareLink.select();
     document.execCommand('copy');
-    copyLinkBtn.textContent = 'Copied!';
-    setTimeout(() => {
-      copyLinkBtn.textContent = 'Copy Link';
-    }, 2000);
   }
 }
 
-// Helper function
 function updateStatus(message) {
   statusDiv.textContent = message;
 }
 
-// Event listeners
-startChatBtn.addEventListener('click', generateChatLink);
+// ===== EVENT LISTENERS =====
+startChatBtn.addEventListener('click', createRoom);
 hangUpBtn.addEventListener('click', hangUp);
 copyLinkBtn.addEventListener('click', copyLink);
 
-// Initialize on page load
 init();
