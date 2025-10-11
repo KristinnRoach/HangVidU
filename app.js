@@ -6,22 +6,25 @@ import {
   closePiP,
 } from './pip.js';
 
-// ===== FIREBASE CONFIG  =====
+// ===== FIREBASE CONFIG (Vite + npm) =====
+import { initializeApp } from 'firebase/app';
+import { getDatabase } from 'firebase/database';
+import { getStorage } from 'firebase/storage';
+
 const firebaseConfig = {
-  apiKey: 'AIzaSyA-fvCaKCjyEFX__YAVr1oPGdVsUEhFehA',
-  authDomain: 'vidu-aae11.firebaseapp.com',
-  databaseURL:
-    'https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app',
-  projectId: 'vidu-aae11',
-  storageBucket: 'vidu-aae11.firebasestorage.app',
-  messagingSenderId: '765724787439',
-  appId: '1:765724787439:web:61a3b5dd538149564c911a',
-  measurementId: 'G-EGJ53HLGY4',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const storage = firebase.storage();
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const storage = getStorage(app);
 
 // ===== WEBRTC SETUP =====
 let localStream;

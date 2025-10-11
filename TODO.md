@@ -1,7 +1,3 @@
-IF using server.go:
-
-    [] fix paths in all scripts and server.go files
-
 Free file transfer + storage options:
 
     [] Easiest: GitHub CDN
@@ -17,7 +13,13 @@ UI / UX:
 
     [] Video effects
 
+# Thoughts for later:
+
 Stremio:
 
     [] Explore options:
         - Electron ? Download addon (already forked)
+
+IF using server.go:
+
+    [] fix paths in all scripts and server.go files
