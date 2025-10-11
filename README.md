@@ -30,4 +30,4 @@ A simple peer-to-peer video chat app with a watch-together mode.
 
 - Modern browser with WebRTC support (Chrome, Edge, Safari, Firefox)
 - Camera/microphone permissions
-- Internet connection
+- Internet connection.
