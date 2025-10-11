@@ -1,5 +1,6 @@
 // pip.js - Robust Picture-in-Picture implementation
 
+const PREFER_DOCUMENT_PIP = false; // Easy toggle for dev -> Prefer Document PiP (Chrome/Edge) over native video PiP (Safari/Firefox)
 let pipWindow = null;
 let isNativePipActive = false;
 
@@ -9,20 +10,20 @@ let isNativePipActive = false;
 export async function togglePiP(remoteVideo, pipBtn, updateStatus) {
   console.log('[PiP] Toggle requested', {
     hasDocumentPiP: 'documentPictureInPicture' in window,
+    hasNativeVideoPiP: 'pictureInPictureEnabled' in document,
     hasStream: !!remoteVideo.srcObject,
     pipWindowOpen: !!pipWindow,
     nativePipActive: isNativePipActive,
   });
 
   try {
-    // Validate stream exists
     if (!remoteVideo.srcObject) {
       console.warn('[PiP] No remote stream available');
       updateStatus('Connect to a partner first');
       return;
     }
 
-    // Close existing Document PiP
+    // Close existing PiP
     if (pipWindow) {
       console.log('[PiP] Closing existing Document PiP window');
       pipWindow.close();
@@ -32,7 +33,7 @@ export async function togglePiP(remoteVideo, pipBtn, updateStatus) {
     }
 
     // Try Document PiP first (Chrome/Edge only)
-    if ('documentPictureInPicture' in window) {
+    if (PREFER_DOCUMENT_PIP && 'documentPictureInPicture' in window) {
       await openDocumentPiP(remoteVideo, pipBtn);
     } else {
       // Fallback to native video PiP
@@ -40,7 +41,7 @@ export async function togglePiP(remoteVideo, pipBtn, updateStatus) {
     }
   } catch (error) {
     console.error('[PiP] Error:', error.name, error.message, error);
-    
+
     // User-friendly error messages
     if (error.name === 'NotAllowedError') {
       updateStatus('Picture-in-Picture blocked. Check browser permissions.');
@@ -57,7 +58,7 @@ export async function togglePiP(remoteVideo, pipBtn, updateStatus) {
  */
 async function openDocumentPiP(remoteVideo, pipBtn) {
   console.log('[PiP] Opening Document PiP window');
-  
+
   try {
     pipWindow = await window.documentPictureInPicture.requestWindow({
       width: 400,
@@ -77,25 +78,25 @@ async function openDocumentPiP(remoteVideo, pipBtn) {
       throw new Error('PiP window closed immediately');
     }
 
-  // Copy styles
-  [...document.styleSheets].forEach((styleSheet) => {
-    try {
-      const cssRules = [...styleSheet.cssRules]
-        .map((rule) => rule.cssText)
-        .join('');
-      const style = document.createElement('style');
-      style.textContent = cssRules;
-      pipWindow.document.head.appendChild(style);
-    } catch (e) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = styleSheet.href;
-      pipWindow.document.head.appendChild(link);
-    }
-  });
+    // Copy styles
+    [...document.styleSheets].forEach((styleSheet) => {
+      try {
+        const cssRules = [...styleSheet.cssRules]
+          .map((rule) => rule.cssText)
+          .join('');
+        const style = document.createElement('style');
+        style.textContent = cssRules;
+        pipWindow.document.head.appendChild(style);
+      } catch (e) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = styleSheet.href;
+        pipWindow.document.head.appendChild(link);
+      }
+    });
 
-  // Create minimal UI
-  pipWindow.document.body.innerHTML = `
+    // Create minimal UI
+    pipWindow.document.body.innerHTML = `
     <div style="display: flex; flex-direction: column; height: 100vh; background: #1a1a1a;">
       <video id="pipVideo" autoplay muted playsinline style="flex: 1; width: 100%; background: #000;"></video>
       <button id="pipMute" style="padding: 10px; background: #ff9800; color: white; border: none; cursor: pointer; font-size: 14px;">
@@ -104,66 +105,71 @@ async function openDocumentPiP(remoteVideo, pipBtn) {
     </div>
   `;
 
-  const pipVideo = pipWindow.document.getElementById('pipVideo');
-  const pipMute = pipWindow.document.getElementById('pipMute');
+    const pipVideo = pipWindow.document.getElementById('pipVideo');
+    const pipMute = pipWindow.document.getElementById('pipMute');
 
-  // Validate stream has active tracks
-  const videoTracks = remoteVideo.srcObject.getVideoTracks();
-  const audioTracks = remoteVideo.srcObject.getAudioTracks();
-  console.log('[PiP] Stream tracks:', {
-    video: videoTracks.length,
-    audio: audioTracks.length,
-    videoActive: videoTracks[0]?.enabled,
-    audioActive: audioTracks[0]?.enabled,
-  });
+    // Validate stream has active tracks
+    const videoTracks = remoteVideo.srcObject.getVideoTracks();
+    const audioTracks = remoteVideo.srcObject.getAudioTracks();
+    console.log('[PiP] Stream tracks:', {
+      video: videoTracks.length,
+      audio: audioTracks.length,
+      videoActive: videoTracks[0]?.enabled,
+      audioActive: audioTracks[0]?.enabled,
+    });
 
-  // Move stream to PiP video
-  pipVideo.srcObject = remoteVideo.srcObject;
-  console.log('[PiP] Stream attached to PiP video');
+    // Move stream to PiP video
+    pipVideo.srcObject = remoteVideo.srcObject;
+    console.log('[PiP] Stream attached to PiP video');
 
-  // Note: Video starts muted to allow autoplay (browser policy)
-  // User can unmute with the button below
-  console.log('[PiP] Video will autoplay (muted initially for browser policy)');
+    // Note: Video starts muted to allow autoplay (browser policy)
+    // User can unmute with the button below
+    console.log(
+      '[PiP] Video will autoplay (muted initially for browser policy)'
+    );
 
-  // Mute/Unmute button
-  let isPipMuted = true; // Starts muted due to autoplay policy
-  pipMute.addEventListener('click', () => {
-    if (!remoteVideo.srcObject) {
-      console.warn('[PiP] Remote stream no longer available');
-      return;
-    }
-    
-    isPipMuted = !isPipMuted;
-    pipVideo.muted = isPipMuted;
-    
-    pipMute.textContent = isPipMuted ? 'Unmute Partner' : 'Mute Partner';
-    pipMute.style.background = isPipMuted ? '#ff9800' : '#4caf50';
-    console.log('[PiP] Partner audio in PiP window:', isPipMuted ? 'MUTED' : 'UNMUTED');
-  });
+    // Mute/Unmute button
+    let isPipMuted = true; // Starts muted due to autoplay policy
+    pipMute.addEventListener('click', () => {
+      if (!remoteVideo.srcObject) {
+        console.warn('[PiP] Remote stream no longer available');
+        return;
+      }
 
-  // Handle window close
-  pipWindow.addEventListener('pagehide', () => {
-    console.log('[PiP] Document PiP window closed by user or browser');
-    pipWindow = null;
-    pipBtn.textContent = 'Float Partner Video';
-  });
+      isPipMuted = !isPipMuted;
+      pipVideo.muted = isPipMuted;
 
-  // Debug: Check if window is actually visible
-  pipWindow.addEventListener('load', () => {
-    console.log('[PiP] Document PiP window loaded event fired');
-  });
+      pipMute.textContent = isPipMuted ? 'Unmute Partner' : 'Mute Partner';
+      pipMute.style.background = isPipMuted ? '#ff9800' : '#4caf50';
+      console.log(
+        '[PiP] Partner audio in PiP window:',
+        isPipMuted ? 'MUTED' : 'UNMUTED'
+      );
+    });
 
-  // Add error handler for the PiP video element
-  pipVideo.addEventListener('error', (e) => {
-    console.error('[PiP] Video element error:', e);
-  });
+    // Handle window close
+    pipWindow.addEventListener('pagehide', () => {
+      console.log('[PiP] Document PiP window closed by user or browser');
+      pipWindow = null;
+      pipBtn.textContent = 'Float Partner Video';
+    });
 
-  pipVideo.addEventListener('loadedmetadata', () => {
-    console.log('[PiP] Video metadata loaded in PiP window');
-  });
+    // Debug: Check if window is actually visible
+    pipWindow.addEventListener('load', () => {
+      console.log('[PiP] Document PiP window loaded event fired');
+    });
 
-  pipBtn.textContent = 'Close Float Window';
-  console.log('[PiP] Document PiP setup complete');
+    // Add error handler for the PiP video element
+    pipVideo.addEventListener('error', (e) => {
+      console.error('[PiP] Video element error:', e);
+    });
+
+    pipVideo.addEventListener('loadedmetadata', () => {
+      console.log('[PiP] Video metadata loaded in PiP window');
+    });
+
+    pipBtn.textContent = 'Close Float Window';
+    console.log('[PiP] Document PiP setup complete');
   } catch (error) {
     console.error('[PiP] Error during Document PiP setup:', error);
     if (pipWindow) {
@@ -217,7 +223,9 @@ export function setupNativePipListeners(remoteVideo, pipBtn) {
  * but listeners are here for easy re-enabling if needed
  */
 export function setupLocalVideoPipListeners(localVideo, pipBtn) {
-  console.log('[PiP] Setting up native PiP event listeners for local video (currently disabled)');
+  console.log(
+    '[PiP] Setting up native PiP event listeners for local video (currently disabled)'
+  );
 
   localVideo.addEventListener('enterpictureinpicture', () => {
     console.log('[PiP] Local video entered native PiP');

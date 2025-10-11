@@ -26,22 +26,8 @@ A simple peer-to-peer video chat app with a watch-together mode.
 - No authentication or room persistence for now
 - Watch mode requires both users to manually paste the same video URL
 
-## Development
-
-See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed setup instructions.
-
-**Quick start:**
-
-```bash
-pnpm dev     # Start local server at http://localhost:8000
-```
-
 ## Requirements
 
 - Modern browser with WebRTC support (Chrome, Edge, Safari, Firefox)
 - Camera/microphone permissions
 - Internet connection
-
-## Download Desktop App
-
-Download standalone executables from [GitHub Releases](https://github.com/kristinnroach/HangVidU/releases).

@@ -18,5 +18,12 @@ test-results/
 playwright-report/
 playwright/.cache/
 
+
+# Notes / examples / drafts 
+reference-examples/**/*
 **/*.reff.txt
 **/*.reff.md
+
+# Build exectuables to run local server (possibly add later)
+scripts
+
