@@ -19,7 +19,7 @@
         <video id="remoteVideo" autoplay playsinline></video>
       </div>
 
-      <!-- Watch Together Mode -->
+      <!-- Watch Together Mode  disablePictureInPicture -->
       <div id="watchContainer" style="display: none">
         <div class="watch-controls">
           <input
@@ -35,8 +35,6 @@
             accept="video/*"
             style="display: none"
           />
-          <button id="pipBtn" style="display: none">Float Partner Video</button>
-
           <!-- <button id="uploadBtn">📁 Upload Video</button> -->
           <div id="uploadProgress" style="display: none"></div>
         </div>
@@ -53,6 +51,7 @@
         <button id="toggleMode" style="display: none">
           Switch to Watch Mode
         </button>
+        <button id="pipBtn" style="display: none">Float Partner Video</button>
         <button id="toggleMute" style="display: none">Mute Audio</button>
         <button id="toggleVideo" style="display: none">Turn Video Off</button>
         <button id="hangUp" disabled>Hang Up</button>

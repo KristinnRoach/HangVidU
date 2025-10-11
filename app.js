@@ -1,5 +1,10 @@
 // app.js
-import { togglePiP2 } from './pip.js';
+import {
+  togglePiP,
+  setupNativePipListeners,
+  setupLocalVideoPipListeners,
+  closePiP,
+} from './pip.js';
 
 // ===== FIREBASE CONFIG  =====
 const firebaseConfig = {
@@ -69,7 +74,8 @@ async function init() {
     toggleMuteBtn.style.display = 'block';
     toggleVideoBtn.style.display = 'block';
 
-    toggleMute(); // ! IMMEDIATE MUTE - for solo testing - remove
+    // Setup local video PiP listeners (for future use if disablePictureInPicture is removed)
+    setupLocalVideoPipListeners(localVideo, pipBtn);
 
     // Check if joining existing room
     const urlParams = new URLSearchParams(window.location.search);
@@ -105,6 +111,7 @@ async function createRoom() {
   peerConnection.ontrack = (event) => {
     remoteVideo.srcObject = event.streams[0];
     pipBtn.style.display = 'block';
+    setupNativePipListeners(remoteVideo, pipBtn);
     updateStatus('Connected!');
   };
 
@@ -172,6 +179,8 @@ async function joinRoom(roomId) {
 
   peerConnection.ontrack = (event) => {
     remoteVideo.srcObject = event.streams[0];
+    pipBtn.style.display = 'block';
+    setupNativePipListeners(remoteVideo, pipBtn);
     updateStatus('Connected!');
   };
 
@@ -208,6 +217,9 @@ async function joinRoom(roomId) {
 
 // ===== HANG UP =====
 async function hangUp() {
+  // Close any PiP windows first
+  closePiP(pipBtn);
+
   if (peerConnection) {
     peerConnection.close();
     peerConnection = null;
@@ -263,29 +275,10 @@ async function copyLink() {
     document.execCommand('copy');
   }
 }
-
-// Enable Picture in Picture for partners videofeed
-async function togglePiP() {
-  try {
-    if (document.pictureInPictureElement) {
-      await document.exitPictureInPicture();
-      pipBtn.textContent = 'Float Partner Video';
-    } else {
-      await remoteVideo.requestPictureInPicture();
-      pipBtn.textContent = 'Exit Float Mode';
-    }
-  } catch (error) {
-    console.error('PiP error:', error);
-    updateStatus('Picture-in-Picture not supported');
-  }
-}
-
+// ===== Picture-in-Picture =====
 pipBtn.addEventListener('click', async () => {
-  console.debug('Click Handler: Toggling PiP...');
-  await togglePiP();
-
-  // await togglePiP2(remoteVideo, pipBtn, updateStatus);
-}); // ! TESTING
+  await togglePiP(remoteVideo, pipBtn, updateStatus);
+});
 
 function updateStatus(message) {
   statusDiv.textContent = message;
@@ -344,11 +337,11 @@ function loadStream() {
   }
 }
 
-function acceptSharedVideo() {
+window.acceptSharedVideo = function () {
   sharedVideo.src = streamUrlInput.value;
   syncStatus.textContent = 'Loading shared video...';
   syncStatus.style.background = '#2a2a2a';
-}
+};
 
 function setupWatchSync() {
   if (!roomId) return;
@@ -455,67 +448,16 @@ function setupWatchSync() {
   });
 }
 
-// ===== UPLOAD VIDEO ===== // ! Temporarily disabled
-
-// uploadBtn.addEventListener('click', () => {
-//   videoFileInput.click();
-// });
-
-// videoFileInput.addEventListener('change', async (e) => {
-//   const file = e.target.files[0];
-//   if (!file) return;
-
-//   // NOTE: No check for file size - will fail if over Firebase limit
-
-//   uploadProgress.style.display = 'block';
-//   uploadProgress.textContent = 'Uploading 0%...';
-// });
-
-// const storageRef = storage.ref(`videos/${Date.now()}_${file.name}`);
-// const uploadTask = storageRef.put(file);
-
-// uploadTask.on(
-//   'state_changed',
-//   (snapshot) => {
-//     const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-//     uploadProgress.textContent = `Uploading ${Math.round(progress)}%...`;
-//   },
-//   (error) => {
-//     // Firebase limit exceeded or other error
-//     if (error.code === 'storage/quota-exceeded') {
-//       uploadProgress.textContent = '❌ Storage quota exceeded (5GB limit)';
-//     } else if (error.code === 'storage/unauthorized') {
-//       uploadProgress.textContent =
-//         '❌ Permission denied - check Firebase rules';
-//     } else {
-//       uploadProgress.textContent = `❌ Upload failed: ${error.message}`;
-//     }
-//     uploadProgress.style.color = '#f44336';
-//     console.error(error);
-//   },
-//   async () => {
-//     // Success callback
-//     const url = await uploadTask.snapshot.ref.getDownloadURL();
-//     streamUrlInput.value = url;
-//     uploadProgress.style.display = 'none';
-//     uploadProgress.style.color = '#fff'; // Reset color
-
-//     sharedVideo.src = url;
-//     syncStatus.textContent = 'Upload complete! Shared with partner.';
-
-//     if (roomId) {
-//       db.ref(`rooms/${roomId}/stream`).set({ url });
-//     }
-//   }
-// );
+// ===== UPLOAD VIDEO =====
+// TODO: Implement file transfer via WebRTC DataChannel or GitHub CDN
+// See TODO.md for implementation options
 
 // ===== EVENT LISTENERS =====
 
 document.addEventListener('keydown', (e) => {
-  // TODO:  test
   if (e.altKey && e.key === 'p' && remoteVideo.srcObject) {
     e.preventDefault();
-    togglePiP();
+    togglePiP(remoteVideo, pipBtn, updateStatus);
   }
 });
 

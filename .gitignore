@@ -7,6 +7,16 @@ dist/
 build/
 node_modules/
 
+# Package manager
+pnpm-lock.yaml
+
+# Environment variables
+.env
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
 
 **/*.reff.txt
 **/*.reff.md

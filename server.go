@@ -10,7 +10,7 @@ import (
     "time"
 )
 
-//go:embed index.html app.js style.css
+//go:embed index.html app.js pip.js style.css
 var content embed.FS
 
 func main() {
