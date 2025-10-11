@@ -1,5 +1,7 @@
 // app.js
 
+import './style.css';
+
 import { initializeApp } from 'firebase/app';
 import {
   getDatabase,
