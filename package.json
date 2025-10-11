@@ -4,7 +4,9 @@
   "description": "Simple peer-to-peer video chat with watch-together mode",
   "type": "module",
   "scripts": {
-    "dev": "echo 'Start VS Code Live Server manually, then run tests' && exit 1",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug"
@@ -21,7 +23,8 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@playwright/test": "^1.56.0"
+    "@playwright/test": "^1.56.0",
+    "vite": "^5.4.11"
   },
   "dependencies": {
     "firebase": "^12.4.0"
