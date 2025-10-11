@@ -1,82 +1,103 @@
-// ===== FIREBASE CONFIG  =====
+// app.js
+
+import { initializeApp } from 'firebase/app';
+import {
+  getDatabase,
+  ref,
+  set,
+  get,
+  push,
+  child,
+  onValue,
+  onChildAdded,
+  remove,
+} from 'firebase/database';
+import { getStorage } from 'firebase/storage';
+
+import {
+  localVideo,
+  remoteVideo,
+  sharedVideo,
+  startChatBtn,
+  hangUpBtn,
+  copyLinkBtn,
+  pipBtn,
+  toggleMuteBtn,
+  toggleVideoBtn,
+  toggleModeBtn,
+  loadStreamBtn,
+  statusDiv,
+  linkContainer,
+  watchContainer,
+  videoContainer,
+  shareLink,
+  streamUrlInput,
+  videoFileInput,
+  syncStatus,
+  uploadProgress,
+} from './elements.js';
+
+import {
+  togglePiP,
+  setupNativePipListeners,
+  setupLocalVideoPipListeners,
+  closePiP,
+} from './pip.js';
+
+// ===== CONFIGURATION =====
 const firebaseConfig = {
-  apiKey: 'AIzaSyA-fvCaKCjyEFX__YAVr1oPGdVsUEhFehA',
-  authDomain: 'vidu-aae11.firebaseapp.com',
-  databaseURL:
-    'https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app',
-  projectId: 'vidu-aae11',
-  storageBucket: 'vidu-aae11.firebasestorage.app',
-  messagingSenderId: '765724787439',
-  appId: '1:765724787439:web:61a3b5dd538149564c911a',
-  measurementId: 'G-EGJ53HLGY4',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const storage = firebase.storage();
-
-// ===== WEBRTC SETUP =====
-let localStream;
-let peerConnection;
-let roomId = null;
-let isInitiator = false;
-let isAudioMuted = false;
-let isVideoOn = true;
-
-const configuration = {
+const webRTCConfig = {
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
 };
 
-const localVideo = document.getElementById('localVideo');
-const remoteVideo = document.getElementById('remoteVideo');
-const startChatBtn = document.getElementById('startChat');
-const hangUpBtn = document.getElementById('hangUp');
-const statusDiv = document.getElementById('status');
-const linkContainer = document.getElementById('linkContainer');
-const shareLink = document.getElementById('shareLink');
-const copyLinkBtn = document.getElementById('copyLink');
-const pipBtn = document.getElementById('pipBtn');
-const toggleMuteBtn = document.getElementById('toggleMute');
-const toggleVideoBtn = document.getElementById('toggleVideo');
-const toggleModeBtn = document.getElementById('toggleMode');
-const watchContainer = document.getElementById('watchContainer');
-const videoContainer = document.querySelector('.video-container');
-const streamUrlInput = document.getElementById('streamUrl');
-const loadStreamBtn = document.getElementById('loadStream');
-const sharedVideo = document.getElementById('sharedVideo');
-const syncStatus = document.getElementById('syncStatus');
-const videoFileInput = document.getElementById('videoFile');
-const uploadProgress = document.getElementById('uploadProgress');
+// ===== FIREBASE SERVICES =====
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const storage = getStorage(app);
 
-// const uploadBtn = document.getElementById('uploadBtn'); // Temporarily disabled
-
-let watchMode = false;
-let isSyncing = false; // Prevent sync loops
+// ===== STATE =====
+const state = {
+  localStream: null,
+  peerConnection: null,
+  roomId: null,
+  isInitiator: false,
+  isAudioMuted: false,
+  isVideoOn: true,
+  watchMode: false,
+  isSyncing: false,
+};
 
 // ===== INITIALIZE =====
 async function init() {
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({
+    state.localStream = await navigator.mediaDevices.getUserMedia({
       video: true,
       audio: true,
     });
-    localVideo.srcObject = localStream;
-
-    localVideo.srcObject = localStream;
+    localVideo.srcObject = state.localStream;
     toggleMuteBtn.style.display = 'block';
     toggleVideoBtn.style.display = 'block';
 
-    // ! IMMEDIATE MUTE - for solo testing
-    toggleMute();
+    setupLocalVideoPipListeners(localVideo, pipBtn);
 
     // Check if joining existing room
     const urlParams = new URLSearchParams(window.location.search);
-    roomId = urlParams.get('room');
+    state.roomId = urlParams.get('room');
 
-    if (roomId) {
+    if (state.roomId) {
       updateStatus('Connecting...');
       startChatBtn.style.display = 'none';
-      await joinRoom(roomId);
+      await joinRoom(state.roomId);
     } else {
       updateStatus('Ready. Click to generate video chat link.');
     }
@@ -88,35 +109,37 @@ async function init() {
 
 // ===== CREATE ROOM (Person A) =====
 async function createRoom() {
-  isInitiator = true;
-  roomId = generateRoomId();
+  state.isInitiator = true;
+  state.roomId = generateRoomId();
 
-  const roomRef = db.ref(`rooms/${roomId}`);
+  const roomRef = ref(db, `rooms/${state.roomId}`);
 
   // Create peer connection
-  peerConnection = new RTCPeerConnection(configuration);
+  state.peerConnection = new RTCPeerConnection(webRTCConfig);
 
-  localStream.getTracks().forEach((track) => {
-    peerConnection.addTrack(track, localStream);
+  state.localStream.getTracks().forEach((track) => {
+    state.peerConnection.addTrack(track, state.localStream);
   });
 
-  peerConnection.ontrack = (event) => {
+  state.peerConnection.ontrack = (event) => {
     remoteVideo.srcObject = event.streams[0];
     pipBtn.style.display = 'block';
+    setupNativePipListeners(remoteVideo, pipBtn);
     updateStatus('Connected!');
   };
 
-  peerConnection.onicecandidate = (event) => {
+  state.peerConnection.onicecandidate = (event) => {
     if (event.candidate) {
-      roomRef.child('callerCandidates').push(event.candidate.toJSON());
+      const candidatesRef = ref(db, `rooms/${state.roomId}/callerCandidates`);
+      push(candidatesRef, event.candidate.toJSON());
     }
   };
 
   // Create offer
-  const offer = await peerConnection.createOffer();
-  await peerConnection.setLocalDescription(offer);
+  const offer = await state.peerConnection.createOffer();
+  await state.peerConnection.setLocalDescription(offer);
 
-  await roomRef.set({
+  await set(roomRef, {
     offer: {
       type: offer.type,
       sdp: offer.sdp,
@@ -124,23 +147,25 @@ async function createRoom() {
   });
 
   // Listen for answer
-  roomRef.child('answer').on('value', async (snapshot) => {
+  const answerRef = ref(db, `rooms/${state.roomId}/answer`);
+  onValue(answerRef, async (snapshot) => {
     const answer = snapshot.val();
-    if (answer && !peerConnection.currentRemoteDescription) {
-      await peerConnection.setRemoteDescription(
+    if (answer && !state.peerConnection.currentRemoteDescription) {
+      await state.peerConnection.setRemoteDescription(
         new RTCSessionDescription(answer)
       );
     }
   });
 
   // Listen for callee ICE candidates
-  roomRef.child('calleeCandidates').on('child_added', (snapshot) => {
+  const calleeCandidatesRef = ref(db, `rooms/${state.roomId}/calleeCandidates`);
+  onChildAdded(calleeCandidatesRef, (snapshot) => {
     const candidate = snapshot.val();
-    peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+    state.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
   });
 
   // Show link
-  const url = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+  const url = `${window.location.origin}${window.location.pathname}?room=${state.roomId}`;
   shareLink.value = url;
   linkContainer.style.display = 'block';
   startChatBtn.disabled = true;
@@ -154,48 +179,55 @@ async function createRoom() {
 
 // ===== JOIN ROOM (Person B) =====
 async function joinRoom(roomId) {
-  const roomRef = db.ref(`rooms/${roomId}`);
-  const roomSnapshot = await roomRef.once('value');
+  const roomRef = ref(db, `rooms/${roomId}`);
+  const roomSnapshot = await get(roomRef);
 
   if (!roomSnapshot.exists()) {
     updateStatus('Error: Invalid room link');
     return;
   }
 
-  peerConnection = new RTCPeerConnection(configuration);
+  state.peerConnection = new RTCPeerConnection(webRTCConfig);
 
-  localStream.getTracks().forEach((track) => {
-    peerConnection.addTrack(track, localStream);
+  state.localStream.getTracks().forEach((track) => {
+    state.peerConnection.addTrack(track, state.localStream);
   });
 
-  peerConnection.ontrack = (event) => {
+  state.peerConnection.ontrack = (event) => {
     remoteVideo.srcObject = event.streams[0];
+    pipBtn.style.display = 'block';
+    setupNativePipListeners(remoteVideo, pipBtn);
     updateStatus('Connected!');
   };
 
-  peerConnection.onicecandidate = (event) => {
+  state.peerConnection.onicecandidate = (event) => {
     if (event.candidate) {
-      roomRef.child('calleeCandidates').push(event.candidate.toJSON());
+      const candidatesRef = ref(db, `rooms/${state.roomId}/calleeCandidates`);
+      push(candidatesRef, event.candidate.toJSON());
     }
   };
 
   // Get offer and set remote description
   const offer = roomSnapshot.val().offer;
-  await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+  await state.peerConnection.setRemoteDescription(
+    new RTCSessionDescription(offer)
+  );
 
   // Create answer
-  const answer = await peerConnection.createAnswer();
-  await peerConnection.setLocalDescription(answer);
+  const answer = await state.peerConnection.createAnswer();
+  await state.peerConnection.setLocalDescription(answer);
 
-  await roomRef.child('answer').set({
+  const answerRef = ref(db, `rooms/${state.roomId}/answer`);
+  await set(answerRef, {
     type: answer.type,
     sdp: answer.sdp,
   });
 
   // Listen for caller ICE candidates
-  roomRef.child('callerCandidates').on('child_added', (snapshot) => {
+  const callerCandidatesRef = ref(db, `rooms/${state.roomId}/callerCandidates`);
+  onChildAdded(callerCandidatesRef, (snapshot) => {
     const candidate = snapshot.val();
-    peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+    state.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
   });
 
   setupWatchSync();
@@ -206,9 +238,12 @@ async function joinRoom(roomId) {
 
 // ===== HANG UP =====
 async function hangUp() {
-  if (peerConnection) {
-    peerConnection.close();
-    peerConnection = null;
+  // Close any PiP windows first
+  closePiP(pipBtn);
+
+  if (state.peerConnection) {
+    state.peerConnection.close();
+    state.peerConnection = null;
   }
 
   if (remoteVideo.srcObject) {
@@ -217,13 +252,14 @@ async function hangUp() {
   }
 
   // Clean up Firebase
-  if (roomId && isInitiator) {
-    await db.ref(`rooms/${roomId}`).remove();
+  if (state.roomId && state.isInitiator) {
+    const roomRef = ref(db, `rooms/${state.roomId}`);
+    await remove(roomRef);
   }
 
   // Reset UI
-  roomId = null;
-  isInitiator = false;
+  state.roomId = null;
+  state.isInitiator = false;
   startChatBtn.disabled = false;
   startChatBtn.style.display = 'block';
   hangUpBtn.disabled = true;
@@ -237,9 +273,9 @@ async function hangUp() {
   sharedVideo.src = '';
   streamUrlInput.value = '';
   syncStatus.textContent = '';
-  watchMode = false;
-  isAudioMuted = false;
-  isVideoOn = true;
+  state.watchMode = false;
+  state.isAudioMuted = false;
+  state.isVideoOn = true;
 
   window.history.replaceState({}, document.title, window.location.pathname);
 
@@ -261,51 +297,41 @@ async function copyLink() {
     document.execCommand('copy');
   }
 }
-
-// Enable Picture in Picture for partners videofeed
-async function togglePiP() {
-  try {
-    if (document.pictureInPictureElement) {
-      await document.exitPictureInPicture();
-      pipBtn.textContent = 'Float Partner Video';
-    } else {
-      await remoteVideo.requestPictureInPicture();
-      pipBtn.textContent = 'Exit Float Mode';
-    }
-  } catch (error) {
-    console.error('PiP error:', error);
-    updateStatus('Picture-in-Picture not supported');
-  }
-}
-
-pipBtn.addEventListener('click', togglePiP);
+// ===== Picture-in-Picture =====
+pipBtn.addEventListener('click', async () => {
+  await togglePiP(remoteVideo, pipBtn, updateStatus);
+});
 
 function updateStatus(message) {
   statusDiv.textContent = message;
 }
 
 function toggleMute() {
-  const audioTrack = localStream.getAudioTracks()[0];
+  const audioTrack = state.localStream.getAudioTracks()[0];
   if (audioTrack) {
-    isAudioMuted = !isAudioMuted;
-    audioTrack.enabled = !isAudioMuted;
-    toggleMuteBtn.textContent = isAudioMuted ? 'Unmute Audio' : 'Mute Audio';
+    state.isAudioMuted = !state.isAudioMuted;
+    audioTrack.enabled = !state.isAudioMuted;
+    toggleMuteBtn.textContent = state.isAudioMuted
+      ? 'Unmute Audio'
+      : 'Mute Audio';
   }
 }
 
 function toggleVideo() {
-  const videoTrack = localStream.getVideoTracks()[0];
+  const videoTrack = state.localStream.getVideoTracks()[0];
   if (videoTrack) {
-    isVideoOn = !isVideoOn;
-    videoTrack.enabled = isVideoOn;
-    toggleVideoBtn.textContent = isVideoOn ? 'Turn Video Off' : 'Turn Video On';
+    state.isVideoOn = !state.isVideoOn;
+    videoTrack.enabled = state.isVideoOn;
+    toggleVideoBtn.textContent = state.isVideoOn
+      ? 'Turn Video Off'
+      : 'Turn Video On';
   }
 }
 
 function toggleWatchMode() {
-  watchMode = !watchMode;
+  state.watchMode = !state.watchMode;
 
-  if (watchMode) {
+  if (state.watchMode) {
     // Switch to watch mode
     videoContainer.style.display = 'none';
     watchContainer.style.display = 'block';
@@ -332,24 +358,24 @@ function loadStream() {
   syncStatus.textContent = 'Video sent to partner...';
 
   // Notify partner
-  if (roomId) {
-    db.ref(`rooms/${roomId}/stream`).set({ url });
+  if (state.roomId) {
+    const streamRef = ref(db, `rooms/${state.roomId}/stream`);
+    set(streamRef, { url });
   }
 }
 
-function acceptSharedVideo() {
+window.acceptSharedVideo = function () {
   sharedVideo.src = streamUrlInput.value;
   syncStatus.textContent = 'Loading shared video...';
   syncStatus.style.background = '#2a2a2a';
-}
+};
 
 function setupWatchSync() {
-  if (!roomId) return;
-
-  const roomRef = db.ref(`rooms/${roomId}`);
+  if (!state.roomId) return;
 
   // Listen for stream URL changes
-  roomRef.child('stream/url').on('value', (snapshot) => {
+  const streamUrlRef = ref(db, `rooms/${state.roomId}/stream/url`);
+  onValue(streamUrlRef, (snapshot) => {
     const url = snapshot.val();
     if (url && url !== streamUrlInput.value && url !== sharedVideo.src) {
       // Show accept prompt instead of auto-loading
@@ -365,8 +391,9 @@ function setupWatchSync() {
   });
 
   // Listen for play/pause
-  roomRef.child('stream/playing').on('value', async (snapshot) => {
-    if (isSyncing) return;
+  const playingRef = ref(db, `rooms/${state.roomId}/stream/playing`);
+  onValue(playingRef, async (snapshot) => {
+    if (state.isSyncing) return;
     const playing = snapshot.val();
     if (playing === true && sharedVideo.paused) {
       try {
@@ -393,8 +420,9 @@ function setupWatchSync() {
   });
 
   // Listen for seek
-  roomRef.child('stream/time').on('value', (snapshot) => {
-    if (isSyncing) return;
+  const timeRef = ref(db, `rooms/${state.roomId}/stream/time`);
+  onValue(timeRef, (snapshot) => {
+    if (state.isSyncing) return;
     const time = snapshot.val();
     if (time !== null && Math.abs(sharedVideo.currentTime - time) > 2) {
       sharedVideo.currentTime = time;
@@ -404,34 +432,41 @@ function setupWatchSync() {
 
   // Send local events to Firebase
   sharedVideo.addEventListener('play', () => {
-    if (roomId && !isSyncing) {
-      isSyncing = true;
-      db.ref(`rooms/${roomId}/stream`).update({
+    if (state.roomId && !state.isSyncing) {
+      state.isSyncing = true;
+      const streamRef = ref(db, `rooms/${state.roomId}/stream`);
+      set(streamRef, {
         playing: true,
         time: sharedVideo.currentTime,
+        url: sharedVideo.src,
       });
-      setTimeout(() => (isSyncing = false), 1000);
+      setTimeout(() => (state.isSyncing = false), 1000);
     }
   });
 
   sharedVideo.addEventListener('pause', () => {
-    if (roomId && !isSyncing) {
-      isSyncing = true;
-      db.ref(`rooms/${roomId}/stream`).update({
+    if (state.roomId && !state.isSyncing) {
+      state.isSyncing = true;
+      const streamRef = ref(db, `rooms/${state.roomId}/stream`);
+      set(streamRef, {
         playing: false,
         time: sharedVideo.currentTime,
+        url: sharedVideo.src,
       });
-      setTimeout(() => (isSyncing = false), 1000);
+      setTimeout(() => (state.isSyncing = false), 1000);
     }
   });
 
   sharedVideo.addEventListener('seeked', () => {
-    if (roomId && !isSyncing) {
-      isSyncing = true;
-      db.ref(`rooms/${roomId}/stream`).update({
+    if (state.roomId && !state.isSyncing) {
+      state.isSyncing = true;
+      const streamRef = ref(db, `rooms/${state.roomId}/stream`);
+      set(streamRef, {
+        playing: !sharedVideo.paused,
         time: sharedVideo.currentTime,
+        url: sharedVideo.src,
       });
-      setTimeout(() => (isSyncing = false), 1000);
+      setTimeout(() => (state.isSyncing = false), 1000);
     }
   });
 
@@ -448,61 +483,19 @@ function setupWatchSync() {
   });
 }
 
-// ===== UPLOAD VIDEO ===== // ! Temporarily disabled
-
-// uploadBtn.addEventListener('click', () => {
-//   videoFileInput.click();
-// });
-
-// videoFileInput.addEventListener('change', async (e) => {
-//   const file = e.target.files[0];
-//   if (!file) return;
-
-//   // NOTE: No check for file size - will fail if over Firebase limit
-
-//   uploadProgress.style.display = 'block';
-//   uploadProgress.textContent = 'Uploading 0%...';
-// });
-
-// const storageRef = storage.ref(`videos/${Date.now()}_${file.name}`);
-// const uploadTask = storageRef.put(file);
-
-// uploadTask.on(
-//   'state_changed',
-//   (snapshot) => {
-//     const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-//     uploadProgress.textContent = `Uploading ${Math.round(progress)}%...`;
-//   },
-//   (error) => {
-//     // Firebase limit exceeded or other error
-//     if (error.code === 'storage/quota-exceeded') {
-//       uploadProgress.textContent = '❌ Storage quota exceeded (5GB limit)';
-//     } else if (error.code === 'storage/unauthorized') {
-//       uploadProgress.textContent =
-//         '❌ Permission denied - check Firebase rules';
-//     } else {
-//       uploadProgress.textContent = `❌ Upload failed: ${error.message}`;
-//     }
-//     uploadProgress.style.color = '#f44336';
-//     console.error(error);
-//   },
-//   async () => {
-//     // Success callback
-//     const url = await uploadTask.snapshot.ref.getDownloadURL();
-//     streamUrlInput.value = url;
-//     uploadProgress.style.display = 'none';
-//     uploadProgress.style.color = '#fff'; // Reset color
-
-//     sharedVideo.src = url;
-//     syncStatus.textContent = 'Upload complete! Shared with partner.';
-
-//     if (roomId) {
-//       db.ref(`rooms/${roomId}/stream`).set({ url });
-//     }
-//   }
-// );
+// ===== UPLOAD VIDEO =====
+// TODO: Implement file transfer via WebRTC DataChannel or GitHub CDN
+// See TODO.md for implementation options
 
 // ===== EVENT LISTENERS =====
+
+document.addEventListener('keydown', (e) => {
+  if (e.altKey && e.key === 'p' && remoteVideo.srcObject) {
+    e.preventDefault();
+    togglePiP(remoteVideo, pipBtn, updateStatus);
+  }
+});
+
 startChatBtn.addEventListener('click', createRoom);
 hangUpBtn.addEventListener('click', hangUp);
 copyLinkBtn.addEventListener('click', copyLink);

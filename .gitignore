@@ -1,4 +1,31 @@
 **/*/.DS_Store
 .DS_Store
 
+.vscode/
+
+dist/
+build/
+node_modules/
+
+# Package manager
+pnpm-lock.yaml
+
+# Environment variables
+.env
+.env.local
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+
+# Notes / examples / drafts 
+reference-examples/
 **/*.reff.txt
+**/*.reff.md
+
+# Build exectuables to run local server (possibly add later)
+scripts/
+go/
+
