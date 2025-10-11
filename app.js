@@ -1,3 +1,6 @@
+// app.js
+import { togglePiP2 } from './pip.js';
+
 // ===== FIREBASE CONFIG  =====
 const firebaseConfig = {
   apiKey: 'AIzaSyA-fvCaKCjyEFX__YAVr1oPGdVsUEhFehA',
@@ -66,8 +69,7 @@ async function init() {
     toggleMuteBtn.style.display = 'block';
     toggleVideoBtn.style.display = 'block';
 
-    // ! IMMEDIATE MUTE - for solo testing
-    toggleMute();
+    toggleMute(); // ! IMMEDIATE MUTE - for solo testing - remove
 
     // Check if joining existing room
     const urlParams = new URLSearchParams(window.location.search);
@@ -278,7 +280,12 @@ async function togglePiP() {
   }
 }
 
-pipBtn.addEventListener('click', togglePiP);
+pipBtn.addEventListener('click', async () => {
+  console.debug('Click Handler: Toggling PiP...');
+  await togglePiP();
+
+  // await togglePiP2(remoteVideo, pipBtn, updateStatus);
+}); // ! TESTING
 
 function updateStatus(message) {
   statusDiv.textContent = message;
@@ -503,6 +510,15 @@ function setupWatchSync() {
 // );
 
 // ===== EVENT LISTENERS =====
+
+document.addEventListener('keydown', (e) => {
+  // TODO:  test
+  if (e.altKey && e.key === 'p' && remoteVideo.srcObject) {
+    e.preventDefault();
+    togglePiP();
+  }
+});
+
 startChatBtn.addEventListener('click', createRoom);
 hangUpBtn.addEventListener('click', hangUp);
 copyLinkBtn.addEventListener('click', copyLink);

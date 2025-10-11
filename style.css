@@ -69,6 +69,10 @@ video {
   transform: scaleX(1);
 }
 
+#localVideo:picture-in-picture:hover {
+  opacity: 0.5;
+}
+
 .controls {
   display: flex;
   gap: 10px;

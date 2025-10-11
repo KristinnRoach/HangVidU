@@ -1,4 +1,12 @@
 **/*/.DS_Store
 .DS_Store
 
+.vscode/
+
+dist/
+build/
+node_modules/
+
+
 **/*.reff.txt
+**/*.reff.md
