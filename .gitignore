@@ -1,6 +1,5 @@
 
-build-app/executables/
-
+go-server/executables/
 reference-examples/
 
 **/*.reff.txt
