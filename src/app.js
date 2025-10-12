@@ -6,6 +6,8 @@ import {
   closePiP,
 } from './pip.js';
 
+// TEST COMMENT _ REMOVE
+
 // ===== FIREBASE CONFIG  =====
 const firebaseConfig = {
   apiKey: 'AIzaSyA-fvCaKCjyEFX__YAVr1oPGdVsUEhFehA',

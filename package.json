@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "gh-deploy": "pnpm build && npx gh-pages -d dist",
     "preview": "vite preview",
     "build:go": "sh go-server/build-scripts/build.sh"
   },
