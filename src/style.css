@@ -65,9 +65,9 @@ video {
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) 0.2s;
 }
 
-/* #localVideo:picture-in-picture {
+#localVideo:picture-in-picture {
   transform: scaleX(1);
-} */
+}
 
 /* #localVideo:picture-in-picture:hover {
   opacity: 1;
@@ -176,6 +176,8 @@ button:disabled {
   align-items: center;
   justify-content: center;
   color: #aaa;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
 #toggleMute {
@@ -194,25 +196,48 @@ button:disabled {
   background: #7b1fa2;
 }
 
-#watchContainer {
-  margin: 20px auto;
-  max-width: 900px;
-}
-
 .watch-controls {
   display: flex;
   gap: 10px;
   margin-bottom: 20px;
+  width: 100%;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .watch-controls input {
   flex: 1;
 }
 
-#sharedVideo {
+#watchContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  gap: 1rem;
+  width: 100%;
+  margin: 20px auto;
+}
+
+#sharedVideo,
+#yt-player-div {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   width: 100%;
   max-width: 900px;
-  background: #000;
+  margin: 0 auto 0 auto;
+  background: transparent;
+}
+
+#sharedVideo {
+  min-height: 200px;
+}
+
+#yt-iframe {
+  margin: 0 auto;
+  display: block;
 }
 
 .sync-status {
@@ -223,6 +248,10 @@ button:disabled {
   margin-top: 10px;
   color: #aaa;
   font-size: 14px;
+  width: 100%;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 #toggleMode {
