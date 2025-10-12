@@ -1,5 +1,5 @@
 // app.js
-import { togglePiP2 } from './pip.js';
+import { togglePiP, setupNativePipListeners, setupLocalVideoPipListeners, closePiP } from './pip.js';
 
 // ===== FIREBASE CONFIG  =====
 const firebaseConfig = {
@@ -69,6 +69,9 @@ async function init() {
     toggleMuteBtn.style.display = 'block';
     toggleVideoBtn.style.display = 'block';
 
+    // Setup local video PiP listeners (for future use if disablePictureInPicture is removed)
+    setupLocalVideoPipListeners(localVideo, pipBtn);
+
     toggleMute(); // ! IMMEDIATE MUTE - for solo testing - remove
 
     // Check if joining existing room
@@ -105,6 +108,7 @@ async function createRoom() {
   peerConnection.ontrack = (event) => {
     remoteVideo.srcObject = event.streams[0];
     pipBtn.style.display = 'block';
+    setupNativePipListeners(remoteVideo, pipBtn);
     updateStatus('Connected!');
   };
 
@@ -172,6 +176,8 @@ async function joinRoom(roomId) {
 
   peerConnection.ontrack = (event) => {
     remoteVideo.srcObject = event.streams[0];
+    pipBtn.style.display = 'block';
+    setupNativePipListeners(remoteVideo, pipBtn);
     updateStatus('Connected!');
   };
 
@@ -208,6 +214,9 @@ async function joinRoom(roomId) {
 
 // ===== HANG UP =====
 async function hangUp() {
+  // Close any PiP windows first
+  closePiP(pipBtn);
+
   if (peerConnection) {
     peerConnection.close();
     peerConnection = null;
@@ -263,29 +272,10 @@ async function copyLink() {
     document.execCommand('copy');
   }
 }
-
-// Enable Picture in Picture for partners videofeed
-async function togglePiP() {
-  try {
-    if (document.pictureInPictureElement) {
-      await document.exitPictureInPicture();
-      pipBtn.textContent = 'Float Partner Video';
-    } else {
-      await remoteVideo.requestPictureInPicture();
-      pipBtn.textContent = 'Exit Float Mode';
-    }
-  } catch (error) {
-    console.error('PiP error:', error);
-    updateStatus('Picture-in-Picture not supported');
-  }
-}
-
+// ===== Picture-in-Picture =====
 pipBtn.addEventListener('click', async () => {
-  console.debug('Click Handler: Toggling PiP...');
-  await togglePiP();
-
-  // await togglePiP2(remoteVideo, pipBtn, updateStatus);
-}); // ! TESTING
+  await togglePiP(remoteVideo, pipBtn, updateStatus);
+});
 
 function updateStatus(message) {
   statusDiv.textContent = message;
@@ -512,10 +502,9 @@ function setupWatchSync() {
 // ===== EVENT LISTENERS =====
 
 document.addEventListener('keydown', (e) => {
-  // TODO:  test
   if (e.altKey && e.key === 'p' && remoteVideo.srcObject) {
     e.preventDefault();
-    togglePiP();
+    togglePiP(remoteVideo, pipBtn, updateStatus);
   }
 });
 
