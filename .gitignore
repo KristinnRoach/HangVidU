@@ -10,3 +10,5 @@ node_modules/
 
 **/*.reff.txt
 **/*.reff.md
+
+reference-examples/
