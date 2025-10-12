@@ -2,6 +2,7 @@
   "name": "hangvidu",
   "private": true,
   "version": "0.0.0",
+  "description": "Simple peer-to-peer video chat with watch-together mode",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,8 +11,18 @@
     "preview": "vite preview",
     "build:go": "sh go-server/build-scripts/build.sh"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kristinnroach/hangvidu"
+  },
+  "keywords": [
+    "webrtc",
+    "video-chat",
+    "peer-to-peer"
+  ],
+  "author": "",
+  "license": "MIT",
   "devDependencies": {
     "vite": "^7.1.7"
   }
 }
- 

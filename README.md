@@ -4,14 +4,14 @@ A simple peer-to-peer video chat app with a watch-together mode.
 
 ## Try it now
 
-**Live demo**: [https://yourusername.github.io/hangvidu](https://yourusername.github.io/hangvidu)
+**Live demo**: [https://kristinnroach.github.io/HangVidU/](https://kristinnroach.github.io/HangVidU/)
 
 ## Usage
 
 1. Click "Generate Video Chat Link"
 2. Share the link with one other person
 3. Optional: Click "Switch to Watch Mode" to watch videos together
-4. In "Watch Mode" send a link to stream to your partner
+4. Experimental: In "Watch Mode" send a link to stream to your partner
 
 ## What it does
 
@@ -26,14 +26,8 @@ A simple peer-to-peer video chat app with a watch-together mode.
 - No authentication or room persistence for now
 - Watch mode requires both users to manually paste the same video URL
 
-## Dev/Local Setup
-
-1. Replace Firebase config in `app.js` with your own (current keys are exposed)
-2. Host the three files on any web server
-3. Requires HTTPS for camera/mic access (localhost works for testing)
-
 ## Requirements
 
-- Modern browser with WebRTC support
+- Modern browser with WebRTC support (Chrome, Edge, Safari, Firefox)
 - Camera/microphone permissions
-- Internet connection
+- Internet connection.
