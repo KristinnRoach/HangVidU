@@ -1,14 +1,13 @@
 **/*/.DS_Store
 .DS_Store
-
 .vscode/
 
 dist/
 build/
+executables/
 node_modules/
 
+reference-examples/
 
 **/*.reff.txt
 **/*.reff.md
-
-reference-examples/
