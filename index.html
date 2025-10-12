@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HangVidU - Simple Video Chat</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>
+        <a href="https://kristinnroach.github.io/HangVidU/">
+          <span>HangVidU</span></a
+        >
+      </h1>
+
+      <div class="video-container">
+        <video id="localVideo" autoplay muted playsinline></video>
+        <video id="remoteVideo" autoplay playsinline></video>
+      </div>
+
+      <!-- Watch Together Mode  disablePictureInPicture -->
+      <div id="watchContainer" style="display: none">
+        <div class="watch-controls">
+          <input
+            type="text"
+            id="streamUrl"
+            placeholder="Paste stream URL (both people need to paste the same URL)"
+          />
+          <button id="loadStream">Load Video</button>
+
+          <input
+            type="file"
+            id="videoFile"
+            accept="video/*"
+            style="display: none"
+          />
+          <!-- <button id="uploadBtn">📁 Upload Video</button> -->
+          <div id="uploadProgress" style="display: none"></div>
+        </div>
+
+        <video id="sharedVideo" controls playsinline></video>
+        <div id="syncStatus" class="sync-status">Waiting for video...</div>
+      </div>
+
+      <!-- Mode Toggle -->
+      <div class="controls">
+        <button id="startChat" class="primary-btn">
+          Generate Video Chat Link
+        </button>
+        <button id="toggleMode" style="display: none">
+          Switch to Watch Mode
+        </button>
+        <button id="pipBtn" style="display: none">Float Partner Video</button>
+        <button id="toggleMute" style="display: none">Mute Audio</button>
+        <button id="toggleVideo" style="display: none">Turn Video Off</button>
+        <button id="hangUp" disabled>Hang Up</button>
+      </div>
+
+      <div id="linkContainer" class="link-container" style="display: none">
+        <p>Share this link with your partner:</p>
+        <input type="text" id="shareLink" readonly />
+        <button id="copyLink">Copy Link</button>
+      </div>
+
+      <div id="status" class="status"></div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+
+    <script type="module" src="/src/app.js"></script>
+  </body>
+</html>
