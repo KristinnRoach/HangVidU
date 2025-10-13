@@ -1,6 +1,6 @@
 // roomService.test.js
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import * as roomService from '../services/roomService.js';
+import * as roomService from '../roomService.js';
 
 // Mock db
 const mockRef = () => ({

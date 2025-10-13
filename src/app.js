@@ -27,6 +27,14 @@ import {
   // fullscreenSelfBtn,
 } from './lib/ui/elements.js';
 
+import { loadState, saveState, clearState } from './lib/storage.js';
+
+import {
+  setConnectionStatus,
+  listenForPartnerReconnection,
+  clearConnectionStatus,
+} from './lib/connectionStatus.js';
+
 import { createRoom, joinRoom, removeRoom } from './lib/roomService.js';
 import { db } from './lib/firebase.js';
 import * as ui from './lib/ui/ui.js';
@@ -49,14 +57,18 @@ import {
 
 import { hasFrontAndBackCameras, switchCamera } from './lib/devices.js';
 
-// ====== WEBRTC SETUP ======
 const configuration = {
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
 };
 
+// ====== STATE ======
+
 let localStream;
 let peerConnection;
 let roomId = null;
+let reconnectionListener = null;
+let wasConnected = false;
+
 let isInitiator = false;
 let isAudioMuted = false;
 let isVideoOn = true;
@@ -64,43 +76,17 @@ let currentFacingMode = 'user'; // 'user' = front, 'environment' = back
 let watchMode = false;
 let isSyncing = false; // Prevent sync loops
 
-// ===== LOCAL STORAGE =====
-const STORAGE_KEY = 'hangvidu_session';
-
-function saveState() {
-  const state = {
+function saveCurrentState() {
+  saveState({
     roomId,
     isInitiator,
     isAudioMuted,
     isVideoOn,
     currentFacingMode,
     watchMode,
+    wasConnected,
     streamUrl: streamUrlInput.value,
-    timestamp: Date.now(),
-  };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
-
-function loadState() {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (!stored) return null;
-
-  try {
-    const state = JSON.parse(stored);
-    // Expire after 24 hours
-    if (Date.now() - state.timestamp > 24 * 60 * 60 * 1000) {
-      clearState();
-      return null;
-    }
-    return state;
-  } catch (e) {
-    clearState();
-    return null;
-  }
-}
-
-function clearState() {
-  localStorage.removeItem(STORAGE_KEY);
+  });
 }
 
 // ===== INITIALIZE =====
@@ -144,7 +130,7 @@ async function init() {
           localVideo,
           peerConnection,
         });
-        saveState();
+        saveCurrentState();
       },
       handleToggleMute: toggleMute,
       handleToggleVideo: toggleVideo,
@@ -159,12 +145,11 @@ async function init() {
       toggleMute();
     }
 
-    // Try to restore from localStorage first
-    const savedState = loadState();
+    // Check URL params first, then saved state
     const urlParams = new URLSearchParams(window.location.search);
     const urlRoomId = urlParams.get('room');
+    const savedState = loadState();
 
-    // URL takes precedence over saved state
     roomId = urlRoomId || savedState?.roomId;
 
     if (roomId) {
@@ -176,12 +161,20 @@ async function init() {
         isAudioMuted = savedState.isAudioMuted;
         isVideoOn = savedState.isVideoOn;
         currentFacingMode = savedState.currentFacingMode;
+        isInitiator = savedState.isInitiator;
+        watchMode = savedState.watchMode || false;
+        wasConnected = savedState.wasConnected || false;
 
         if (!isVideoOn) toggleVideo();
         if (isAudioMuted) toggleMute();
       }
 
-      await joinChatRoom(roomId);
+      // Check if this is a reconnection (had successful connection) or fresh join
+      if (savedState?.wasConnected) {
+        await handleReconnection();
+      } else {
+        await joinChatRoom(roomId);
+      }
 
       // Restore watch mode state after connection
       if (savedState?.watchMode && !watchMode) {
@@ -201,7 +194,112 @@ function setupRemoteStream(event) {
   remoteVideo.srcObject = event.streams[0];
   pipBtn.style.display = 'block';
   addRemoteVideoPipListeners(remoteVideo, pipBtn);
+
+  wasConnected = true;
+  saveCurrentState();
+
   updateStatus('Connected!');
+}
+
+async function handlePartnerReconnecting() {
+  updateStatus('Partner reconnecting...');
+
+  // Close existing peer connection
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+
+  // Clear remote video
+  if (remoteVideo.srcObject) {
+    remoteVideo.srcObject = null;
+  }
+
+  // If I'm the initiator, create new offer for reconnecting joiner
+  if (isInitiator) {
+    await createNewOffer();
+  }
+
+  // If I'm the joiner, wait for reconnecting initiator to create new offer
+}
+
+async function handleReconnection() {
+  const role = isInitiator ? 'initiator' : 'joiner';
+
+  updateStatus('Reconnecting...');
+
+  // Signal to partner that we're reconnecting
+  await setConnectionStatus(roomId, role, 'reconnecting');
+
+  // Small delay to let partner detect and reset
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
+  // Clear stale offer/answer
+  const roomRef = db.ref(`rooms/${roomId}`);
+  if (isInitiator) {
+    await roomRef.child('answer').remove();
+    await roomRef.child('calleeCandidates').remove();
+  } else {
+    await roomRef.child('callerCandidates').remove();
+  }
+
+  // Follow role-based reconnection
+  if (isInitiator) {
+    await createNewOffer();
+  }
+  // Joiner waits - partner will trigger new offer via handlePartnerReconnecting
+}
+
+async function createNewOffer() {
+  // Create fresh peer connection
+  peerConnection = new RTCPeerConnection(configuration);
+
+  localStream.getTracks().forEach((track) => {
+    peerConnection.addTrack(track, localStream);
+  });
+
+  peerConnection.ontrack = setupRemoteStream;
+
+  const roomRef = db.ref(`rooms/${roomId}`);
+
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+      roomRef.child('callerCandidates').push(event.candidate.toJSON());
+    }
+  };
+
+  // Create and send new offer
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(offer);
+  await roomRef.child('offer').set(offer);
+
+  // Listen for answer
+  roomRef.child('answer').on('value', async (snapshot) => {
+    const answer = snapshot.val();
+    if (answer && !peerConnection.currentRemoteDescription) {
+      await peerConnection.setRemoteDescription(
+        new RTCSessionDescription(answer)
+      );
+    }
+  });
+
+  // Listen for callee ICE candidates
+  roomRef.child('calleeCandidates').on('child_added', (snapshot) => {
+    const candidate = snapshot.val();
+    peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+  });
+
+  // Mark as connected
+  await setConnectionStatus(roomId, 'initiator', 'connected');
+
+  // Set up reconnection listener
+  reconnectionListener = listenForPartnerReconnection(
+    roomId,
+    'initiator',
+    handlePartnerReconnecting
+  );
+
+  updateStatus('Reconnected! Waiting for partner...');
 }
 
 // ===== CREATE ROOM (Person A) =====
@@ -257,9 +355,17 @@ async function initiateChatRoom() {
   setupWatchSync();
   toggleModeBtn.style.display = 'block';
 
-  updateStatus('Link ready! Waiting for partner...');
+  const role = 'initiator';
+  setConnectionStatus(roomId, role, 'connected');
+  reconnectionListener = listenForPartnerReconnection(
+    roomId,
+    role,
+    handlePartnerReconnecting
+  );
 
-  saveState();
+  saveCurrentState();
+
+  updateStatus('Link ready! Waiting for partner...');
 }
 
 // ===== JOIN ROOM (Person B) =====
@@ -307,10 +413,17 @@ async function joinChatRoom(roomId) {
 
   setupWatchSync();
   toggleModeBtn.style.display = 'block';
-
   hangUpBtn.disabled = false;
 
-  saveState();
+  const role = 'joiner';
+  setConnectionStatus(roomId, role, 'connected');
+  reconnectionListener = listenForPartnerReconnection(
+    roomId,
+    role,
+    handlePartnerReconnecting
+  );
+
+  saveCurrentState();
 }
 
 // ===== HANG UP =====
@@ -352,12 +465,11 @@ async function hangUp() {
   watchMode = false;
   isAudioMuted = false;
   isVideoOn = true;
+  wasConnected = false;
 
   window.history.replaceState({}, document.title, window.location.pathname);
-
-  updateStatus('Disconnected. Ready for new chat.');
-
   clearState();
+  updateStatus('Disconnected. Ready for new chat.');
 }
 
 // ===== HELPERS =====
@@ -382,12 +494,12 @@ function updateStatus(message) {
 
 function toggleMute() {
   isAudioMuted = ui.toggleMute(localStream, toggleMuteBtn, isAudioMuted);
-  saveState();
+  saveCurrentState();
 }
 
 function toggleVideo() {
   isVideoOn = ui.toggleVideo(localStream, toggleVideoBtn, isVideoOn);
-  saveState();
+  saveCurrentState();
 }
 
 function toggleWatchMode() {
@@ -400,7 +512,7 @@ function toggleWatchMode() {
     streamUrlInput,
     syncStatus
   );
-  saveState();
+  saveCurrentState();
 }
 
 function loadStream() {
@@ -423,7 +535,7 @@ function loadStream() {
     db.ref(`rooms/${roomId}/stream`).set({ url });
   }
 
-  saveState();
+  saveCurrentState();
 }
 
 // --- YOUTUBE SYNC ---
