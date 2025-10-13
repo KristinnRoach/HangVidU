@@ -43,7 +43,7 @@ import {
 
 import { hasFrontAndBackCameras, switchCamera } from './lib/devices.js';
 
-// ===== WEBRTC SETUP =====
+// ====== WEBRTC SETUP ======
 const configuration = {
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
 };
