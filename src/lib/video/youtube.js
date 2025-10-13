@@ -1,5 +1,4 @@
 // youtube.js
-// Minimal YouTube embed/sync helpers for Watch Together mode
 
 let ytPlayer = null;
 let ytReady = false;

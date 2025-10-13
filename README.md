@@ -8,7 +8,7 @@ A simple peer-to-peer video chat app with a watch-together mode.
 
 ## Usage
 
-1. Click "Generate Video Chat Link"
+1. Click "Start Chat" to generate a one-time video chat link
 2. Share the link with one other person
 3. Optional: Click "Switch to Watch Mode" to watch videos together
 4. Experimental: In "Watch Mode" send a link to stream to your partner

@@ -15,11 +15,11 @@
       </h1>
 
       <div class="video-container">
-        <video id="localVideo" autoplay muted playsinline></video>
+        <video id="localVideo" autoplay playsinline muted></video>
         <video id="remoteVideo" autoplay playsinline></video>
       </div>
 
-      <!-- Watch Together Mode  disablePictureInPicture -->
+      <!-- Watch Together Mode  -->
       <div id="watchContainer" style="display: none">
         <div class="watch-controls">
           <input
@@ -45,14 +45,15 @@
 
       <!-- Mode Toggle -->
       <div class="controls">
-        <button id="startChat" class="primary-btn">
-          Generate Video Chat Link
-        </button>
+        <button id="startChat" class="primary-btn">Start New Chat</button>
         <button id="toggleMode" style="display: none">
           Switch to Watch Mode
         </button>
         <button id="pipBtn" style="display: none">Float Partner Video</button>
         <button id="toggleMute" style="display: none">Mute Mic</button>
+        <button id="switchCameraBtn" style="display: none">
+          Switch Camera
+        </button>
         <button id="toggleVideo" style="display: none">Turn Video Off</button>
         <button id="hangUp" disabled>Hang Up</button>
       </div>
