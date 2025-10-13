@@ -8,6 +8,7 @@ export const startChatBtn = document.getElementById('startChat');
 export const hangUpBtn = document.getElementById('hangUp');
 export const copyLinkBtn = document.getElementById('copyLink');
 export const pipBtn = document.getElementById('pipBtn');
+export const switchCameraBtn = document.getElementById('switchCameraBtn');
 export const toggleMuteBtn = document.getElementById('toggleMute');
 export const toggleVideoBtn = document.getElementById('toggleVideo');
 export const toggleModeBtn = document.getElementById('toggleMode');

@@ -1,0 +1,54 @@
+
+// ===== UPLOAD VIDEO ===== // Temporarily disabled since Firebase storage costs // Todo: try IDB with fb sync ?
+
+// uploadBtn.addEventListener('click', () => {
+//   videoFileInput.click();
+// });
+
+// videoFileInput.addEventListener('change', async (e) => {
+//   const file = e.target.files[0];
+//   if (!file) return;
+
+//   // NOTE: No check for file size - will fail if over Firebase limit
+
+//   uploadProgress.style.display = 'block';
+//   uploadProgress.textContent = 'Uploading 0%...';
+// });
+
+// const storageRef = storage.ref(`videos/${Date.now()}_${file.name}`);
+// const uploadTask = storageRef.put(file);
+
+// uploadTask.on(
+//   'state_changed',
+//   (snapshot) => {
+//     const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+//     uploadProgress.textContent = `Uploading ${Math.round(progress)}%...`;
+//   },
+//   (error) => {
+//     // Firebase limit exceeded or other error
+//     if (error.code === 'storage/quota-exceeded') {
+//       uploadProgress.textContent = '❌ Storage quota exceeded (5GB limit)';
+//     } else if (error.code === 'storage/unauthorized') {
+//       uploadProgress.textContent =
+//         '❌ Permission denied - check Firebase rules';
+//     } else {
+//       uploadProgress.textContent = `❌ Upload failed: ${error.message}`;
+//     }
+//     uploadProgress.style.color = '#f44336';
+//     console.error(error);
+//   },
+//   async () => {
+//     // Success callback
+//     const url = await uploadTask.snapshot.ref.getDownloadURL();
+//     streamUrlInput.value = url;
+//     uploadProgress.style.display = 'none';
+//     uploadProgress.style.color = '#fff'; // Reset color
+
+//     sharedVideo.src = url;
+//     syncStatus.textContent = 'Upload complete! Shared with partner.';
+
+//     if (roomId) {
+//       db.ref(`rooms/${roomId}/stream`).set({ url });
+//     }
+//   }
+// );

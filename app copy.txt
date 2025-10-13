@@ -7,7 +7,6 @@ import {
   hangUpBtn,
   copyLinkBtn,
   pipBtn,
-  switchCameraBtn,
   toggleMuteBtn,
   toggleVideoBtn,
   toggleModeBtn,
@@ -19,18 +18,18 @@ import {
   shareLink,
   streamUrlInput,
   syncStatus,
-} from './lib/ui/elements.js';
+} from './elements.js';
 
-import { createRoom, joinRoom, removeRoom } from './lib/roomService.js';
-import { db } from './lib/firebase.js';
-import * as ui from './lib/ui/ui.js';
-import { setupEventListeners } from './lib/ui/events.js';
+import { createRoom, joinRoom, removeRoom } from './roomService.js';
+
+import { db } from './firebaseService.js';
+
 import {
   handlePipToggleBtn,
   addRemoteVideoPipListeners,
   addLocalVideoPipListeners,
   closePiP,
-} from './lib/ui/pip.js';
+} from './pip.js';
 
 import {
   isYouTubeUrl,
@@ -39,9 +38,7 @@ import {
   hideYouTubePlayer,
   getYTPlayer,
   getYTReady,
-} from './lib/video/youtube.js';
-
-import { hasFrontAndBackCameras, switchCamera } from './lib/devices.js';
+} from './youtube.js';
 
 // ===== WEBRTC SETUP =====
 const configuration = {
@@ -54,7 +51,6 @@ let roomId = null;
 let isInitiator = false;
 let isAudioMuted = false;
 let isVideoOn = true;
-let currentFacingMode = 'user'; // 'user' = front, 'environment' = back
 let watchMode = false;
 let isSyncing = false; // Prevent sync loops
 
@@ -67,47 +63,11 @@ async function init() {
     });
     localVideo.srcObject = localStream;
 
+    localVideo.srcObject = localStream;
     toggleMuteBtn.style.display = 'block';
     toggleVideoBtn.style.display = 'block';
 
-    // Display switch camera button only if device has both front and back cameras
-    if (await hasFrontAndBackCameras()) {
-      switchCameraBtn.style.display = 'block';
-    } else {
-      switchCameraBtn.style.display = 'none';
-    }
-    // addLocalVideoPipListeners(localVideo, pipBtn);
-
-    setupEventListeners({
-      startChatBtn,
-      hangUpBtn,
-      copyLinkBtn,
-      switchCameraBtn,
-      toggleMuteBtn,
-      toggleVideoBtn,
-      toggleModeBtn,
-      loadStreamBtn,
-      pipBtn,
-      remoteVideo,
-      handleStartChat: initiateChatRoom,
-      handleHangUp: hangUp,
-      handleCopyLink: copyLink,
-      handleSwitchCamera: async () => {
-        currentFacingMode = await switchCamera({
-          localStream,
-          currentFacingMode,
-          localVideo,
-          peerConnection,
-        });
-      },
-      handleToggleMute: toggleMute,
-      handleToggleVideo: toggleVideo,
-      handleToggleMode: toggleWatchMode,
-      handleLoadStream: loadStream,
-      handlePipToggle: () =>
-        handlePipToggleBtn(remoteVideo, pipBtn, updateStatus),
-      updateStatus,
-    });
+    addLocalVideoPipListeners(localVideo, pipBtn);
 
     if (import.meta.env.DEV) {
       toggleMute();
@@ -129,13 +89,6 @@ async function init() {
   }
 }
 
-function setupRemoteStream(event) {
-  remoteVideo.srcObject = event.streams[0];
-  pipBtn.style.display = 'block';
-  addRemoteVideoPipListeners(remoteVideo, pipBtn);
-  updateStatus('Connected!');
-}
-
 // ===== CREATE ROOM (Person A) =====
 async function initiateChatRoom() {
   isInitiator = true;
@@ -155,7 +108,12 @@ async function initiateChatRoom() {
   // Create room in DB and get ref
   const roomRef = await createRoom(roomId, offer);
 
-  peerConnection.ontrack = setupRemoteStream;
+  peerConnection.ontrack = (event) => {
+    remoteVideo.srcObject = event.streams[0];
+    pipBtn.style.display = 'block';
+    addRemoteVideoPipListeners(remoteVideo, pipBtn);
+    updateStatus('Connected!');
+  };
 
   peerConnection.onicecandidate = (event) => {
     if (event.candidate) {
@@ -208,7 +166,12 @@ async function joinChatRoom(roomId) {
     peerConnection.addTrack(track, localStream);
   });
 
-  peerConnection.ontrack = setupRemoteStream;
+  peerConnection.ontrack = (event) => {
+    remoteVideo.srcObject = event.streams[0];
+    pipBtn.style.display = 'block';
+    addRemoteVideoPipListeners(remoteVideo, pipBtn);
+    updateStatus('Connected!');
+  };
 
   peerConnection.onicecandidate = (event) => {
     if (event.candidate) {
@@ -301,29 +264,50 @@ async function copyLink() {
     document.execCommand('copy');
   }
 }
+// ===== Picture-in-Picture =====
+pipBtn.addEventListener('click', async () => {
+  await handlePipToggleBtn(remoteVideo, pipBtn, updateStatus);
+});
 
 function updateStatus(message) {
-  ui.updateStatus(statusDiv, message);
+  statusDiv.textContent = message;
 }
 
 function toggleMute() {
-  isAudioMuted = ui.toggleMute(localStream, toggleMuteBtn, isAudioMuted);
+  const audioTrack = localStream.getAudioTracks()[0];
+  if (audioTrack) {
+    isAudioMuted = !isAudioMuted;
+    audioTrack.enabled = !isAudioMuted;
+    toggleMuteBtn.textContent = isAudioMuted ? 'Unmute Mic' : 'Mute Mic';
+  }
 }
 
 function toggleVideo() {
-  isVideoOn = ui.toggleVideo(localStream, toggleVideoBtn, isVideoOn);
+  const videoTrack = localStream.getVideoTracks()[0];
+  if (videoTrack) {
+    isVideoOn = !isVideoOn;
+    videoTrack.enabled = isVideoOn;
+    toggleVideoBtn.textContent = isVideoOn ? 'Turn Video Off' : 'Turn Video On';
+  }
 }
 
 function toggleWatchMode() {
-  watchMode = ui.toggleWatchMode(
-    watchMode,
-    videoContainer,
-    watchContainer,
-    toggleModeBtn,
-    sharedVideo,
-    streamUrlInput,
-    syncStatus
-  );
+  watchMode = !watchMode;
+
+  if (watchMode) {
+    // Switch to watch mode
+    videoContainer.style.display = 'none';
+    watchContainer.style.display = 'block';
+    toggleModeBtn.textContent = 'Switch to Video Chat';
+    syncStatus.textContent = 'Paste the same stream URL as your partner';
+  } else {
+    // Switch back to video chat
+    videoContainer.style.display = 'flex';
+    watchContainer.style.display = 'none';
+    toggleModeBtn.textContent = 'Switch to Watch Mode';
+    sharedVideo.src = '';
+    streamUrlInput.value = '';
+  }
 }
 
 function loadStream() {
@@ -501,4 +485,75 @@ function setupWatchSync() {
   });
 }
 
+// ===== EVENT LISTENERS =====
+
+document.addEventListener('keydown', (e) => {
+  if (e.altKey && e.key === 'p' && remoteVideo.srcObject) {
+    e.preventDefault();
+    handlePipToggleBtn(remoteVideo, pipBtn, updateStatus);
+  }
+});
+
+startChatBtn.addEventListener('click', initiateChatRoom);
+hangUpBtn.addEventListener('click', hangUp);
+copyLinkBtn.addEventListener('click', copyLink);
+toggleMuteBtn.addEventListener('click', toggleMute);
+toggleVideoBtn.addEventListener('click', toggleVideo);
+toggleModeBtn.addEventListener('click', toggleWatchMode);
+loadStreamBtn.addEventListener('click', loadStream);
+
 init();
+
+// ===== UPLOAD VIDEO ===== // Temporarily disabled since Firebase storage costs // Todo: try IDB with fb sync ?
+
+// uploadBtn.addEventListener('click', () => {
+//   videoFileInput.click();
+// });
+
+// videoFileInput.addEventListener('change', async (e) => {
+//   const file = e.target.files[0];
+//   if (!file) return;
+
+//   // NOTE: No check for file size - will fail if over Firebase limit
+
+//   uploadProgress.style.display = 'block';
+//   uploadProgress.textContent = 'Uploading 0%...';
+// });
+
+// const storageRef = storage.ref(`videos/${Date.now()}_${file.name}`);
+// const uploadTask = storageRef.put(file);
+
+// uploadTask.on(
+//   'state_changed',
+//   (snapshot) => {
+//     const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+//     uploadProgress.textContent = `Uploading ${Math.round(progress)}%...`;
+//   },
+//   (error) => {
+//     // Firebase limit exceeded or other error
+//     if (error.code === 'storage/quota-exceeded') {
+//       uploadProgress.textContent = '❌ Storage quota exceeded (5GB limit)';
+//     } else if (error.code === 'storage/unauthorized') {
+//       uploadProgress.textContent =
+//         '❌ Permission denied - check Firebase rules';
+//     } else {
+//       uploadProgress.textContent = `❌ Upload failed: ${error.message}`;
+//     }
+//     uploadProgress.style.color = '#f44336';
+//     console.error(error);
+//   },
+//   async () => {
+//     // Success callback
+//     const url = await uploadTask.snapshot.ref.getDownloadURL();
+//     streamUrlInput.value = url;
+//     uploadProgress.style.display = 'none';
+//     uploadProgress.style.color = '#fff'; // Reset color
+
+//     sharedVideo.src = url;
+//     syncStatus.textContent = 'Upload complete! Shared with partner.';
+
+//     if (roomId) {
+//       db.ref(`rooms/${roomId}/stream`).set({ url });
+//     }
+//   }
+// );

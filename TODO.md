@@ -6,10 +6,8 @@ Free file transfer + storage options:
 
 UI / UX:
 
-    [x] Floating unintrusive windows for "just having u around" - PiP (pic in pic API!)
-
-    [] Progressively enhance with Document PiP:
-        [] Add mute button on floating window
+    [] Default to native PiP (bail on Doc pip for now)
+    [] Test mute button on floating window
 
     [] Video effects
 
