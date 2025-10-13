@@ -58,6 +58,45 @@ let currentFacingMode = 'user'; // 'user' = front, 'environment' = back
 let watchMode = false;
 let isSyncing = false; // Prevent sync loops
 
+// ===== LOCAL STORAGE =====
+const STORAGE_KEY = 'hangvidu_session';
+
+function saveState() {
+  const state = {
+    roomId,
+    isInitiator,
+    isAudioMuted,
+    isVideoOn,
+    currentFacingMode,
+    watchMode,
+    streamUrl: streamUrlInput.value,
+    timestamp: Date.now(),
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function loadState() {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (!stored) return null;
+
+  try {
+    const state = JSON.parse(stored);
+    // Expire after 24 hours
+    if (Date.now() - state.timestamp > 24 * 60 * 60 * 1000) {
+      clearState();
+      return null;
+    }
+    return state;
+  } catch (e) {
+    clearState();
+    return null;
+  }
+}
+
+function clearState() {
+  localStorage.removeItem(STORAGE_KEY);
+}
+
 // ===== INITIALIZE =====
 async function init() {
   try {
@@ -99,6 +138,7 @@ async function init() {
           localVideo,
           peerConnection,
         });
+        saveState();
       },
       handleToggleMute: toggleMute,
       handleToggleVideo: toggleVideo,
@@ -112,14 +152,36 @@ async function init() {
     if (import.meta.env.DEV) {
       toggleMute();
     }
-    // Check if joining existing room
+
+    // Try to restore from localStorage first
+    const savedState = loadState();
     const urlParams = new URLSearchParams(window.location.search);
-    roomId = urlParams.get('room');
+    const urlRoomId = urlParams.get('room');
+
+    // URL takes precedence over saved state
+    roomId = urlRoomId || savedState?.roomId;
 
     if (roomId) {
       updateStatus('Connecting...');
       startChatBtn.style.display = 'none';
+
+      // Restore UI state
+      if (savedState) {
+        isAudioMuted = savedState.isAudioMuted;
+        isVideoOn = savedState.isVideoOn;
+        currentFacingMode = savedState.currentFacingMode;
+
+        if (!isVideoOn) toggleVideo();
+        if (isAudioMuted) toggleMute();
+      }
+
       await joinChatRoom(roomId);
+
+      // Restore watch mode state after connection
+      if (savedState?.watchMode && !watchMode) {
+        toggleWatchMode();
+        if (savedState.streamUrl) streamUrlInput.value = savedState.streamUrl;
+      }
     } else {
       updateStatus('Ready. Click to generate video chat link.');
     }
@@ -190,6 +252,8 @@ async function initiateChatRoom() {
   toggleModeBtn.style.display = 'block';
 
   updateStatus('Link ready! Waiting for partner...');
+
+  saveState();
 }
 
 // ===== JOIN ROOM (Person B) =====
@@ -239,6 +303,8 @@ async function joinChatRoom(roomId) {
   toggleModeBtn.style.display = 'block';
 
   hangUpBtn.disabled = false;
+
+  saveState();
 }
 
 // ===== HANG UP =====
@@ -284,6 +350,8 @@ async function hangUp() {
   window.history.replaceState({}, document.title, window.location.pathname);
 
   updateStatus('Disconnected. Ready for new chat.');
+
+  clearState();
 }
 
 // ===== HELPERS =====
@@ -308,10 +376,12 @@ function updateStatus(message) {
 
 function toggleMute() {
   isAudioMuted = ui.toggleMute(localStream, toggleMuteBtn, isAudioMuted);
+  saveState();
 }
 
 function toggleVideo() {
   isVideoOn = ui.toggleVideo(localStream, toggleVideoBtn, isVideoOn);
+  saveState();
 }
 
 function toggleWatchMode() {
@@ -324,6 +394,7 @@ function toggleWatchMode() {
     streamUrlInput,
     syncStatus
   );
+  saveState();
 }
 
 function loadStream() {
@@ -345,6 +416,8 @@ function loadStream() {
   if (roomId) {
     db.ref(`rooms/${roomId}/stream`).set({ url });
   }
+
+  saveState();
 }
 
 // --- YOUTUBE SYNC ---
