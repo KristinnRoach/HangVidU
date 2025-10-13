@@ -19,6 +19,12 @@ import {
   shareLink,
   streamUrlInput,
   syncStatus,
+
+  // Todo:
+  // mutePartnerBtn,
+  // fullscreenPartnerBtn,
+  // muteSelfBtn,
+  // fullscreenSelfBtn,
 } from './lib/ui/elements.js';
 
 import { createRoom, joinRoom, removeRoom } from './lib/roomService.js';

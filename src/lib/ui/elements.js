@@ -23,6 +23,14 @@ export const syncStatus = document.getElementById('syncStatus');
 
 export const shareLink = document.getElementById('shareLink');
 export const streamUrlInput = document.getElementById('streamUrl');
+
+export const mutePartnerBtn = document.getElementById('mutePartnerBtn');
+export const fullscreenPartnerBtn = document.getElementById(
+  'fullscreenPartnerBtn'
+);
+export const muteSelfBtn = document.getElementById('muteSelfBtn');
+export const fullscreenSelfBtn = document.getElementById('fullscreenSelfBtn');
+
 // export const videoFileInput = document.getElementById('videoFile');
 // export const uploadProgress = document.getElementById('uploadProgress');
 // const uploadBtn = document.getElementById('uploadBtn'); // Temporarily disabled
