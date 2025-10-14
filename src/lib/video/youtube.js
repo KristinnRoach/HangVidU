@@ -1,8 +1,13 @@
-// youtube.js
+// youtube.js - YouTube player feature
 
-let ytPlayer = null;
-let ytReady = false;
-let ytCurrentId = null;
+// ===== FEATURE STATE =====
+const youtubeState = {
+  player: null,
+  ready: false,
+  currentId: null,
+};
+
+// ===== PUBLIC API =====
 
 export function isYouTubeUrl(url) {
   return /(?:youtu.be\/|youtube.com\/(?:watch\?v=|embed\/|v\/))([\w-]{11})/.test(
@@ -19,44 +24,49 @@ export function getYouTubeId(url) {
 
 export function showYouTubePlayer(videoId, sharedVideo, onStateChangeCb) {
   sharedVideo.style.display = 'none';
-  // Remove old iframe if any
+
   const old = document.getElementById('yt-iframe');
   if (old) old.remove();
-  // Create new div for YouTube
+
   let ytDiv = document.getElementById('yt-player-div');
   if (!ytDiv) {
     ytDiv = document.createElement('div');
     ytDiv.id = 'yt-player-div';
     sharedVideo.parentNode.insertBefore(ytDiv, sharedVideo);
   }
+
   ytDiv.innerHTML = '<div id="yt-iframe"></div>';
   ytDiv.style.display = '';
-  ytPlayer = new YT.Player('yt-iframe', {
+
+  youtubeState.player = new YT.Player('yt-iframe', {
     height: '360',
     width: '640',
     videoId,
     events: {
       onReady: () => {
-        ytReady = true;
+        youtubeState.ready = true;
       },
       onStateChange: onStateChangeCb,
     },
   });
-  ytCurrentId = videoId;
+  youtubeState.currentId = videoId;
 }
 
 export function hideYouTubePlayer(sharedVideo) {
   const ytDiv = document.getElementById('yt-player-div');
   if (ytDiv) ytDiv.style.display = 'none';
+
   sharedVideo.style.display = '';
-  ytPlayer = null;
-  ytReady = false;
-  ytCurrentId = null;
+
+  youtubeState.player = null;
+  youtubeState.ready = false;
+  youtubeState.currentId = null;
 }
 
 export function getYTPlayer() {
-  return ytPlayer;
+  return youtubeState.player;
 }
+
 export function getYTReady() {
-  return ytReady;
+  return youtubeState.ready;
 }
