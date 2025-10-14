@@ -1,7 +1,7 @@
 // youtube.js - YouTube player feature
 
 // ===== FEATURE STATE =====
-const youtubeState = {
+const state = {
   player: null,
   ready: false,
   currentId: null,
@@ -38,18 +38,18 @@ export function showYouTubePlayer(videoId, sharedVideo, onStateChangeCb) {
   ytDiv.innerHTML = '<div id="yt-iframe"></div>';
   ytDiv.style.display = '';
 
-  youtubeState.player = new YT.Player('yt-iframe', {
+  state.player = new YT.Player('yt-iframe', {
     height: '360',
     width: '640',
     videoId,
     events: {
       onReady: () => {
-        youtubeState.ready = true;
+        state.ready = true;
       },
       onStateChange: onStateChangeCb,
     },
   });
-  youtubeState.currentId = videoId;
+  state.currentId = videoId;
 }
 
 export function hideYouTubePlayer(sharedVideo) {
@@ -58,15 +58,18 @@ export function hideYouTubePlayer(sharedVideo) {
 
   sharedVideo.style.display = '';
 
-  youtubeState.player = null;
-  youtubeState.ready = false;
-  youtubeState.currentId = null;
+  state.player = null;
+  state.ready = false;
+  state.currentId = null;
 }
 
 export function getYTPlayer() {
-  return youtubeState.player;
+  return state.player;
 }
 
 export function getYTReady() {
-  return youtubeState.ready;
+  return state.ready;
 }
+
+// Export only IF needed:
+// export { state as youtubeState }

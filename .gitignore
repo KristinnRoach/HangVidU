@@ -45,3 +45,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Notes / Instructions
+STRUCTURE.md
+Warp.md
+Instructions.md
