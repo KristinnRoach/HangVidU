@@ -162,7 +162,7 @@ async function init() {
 }
 
 function determineRoomAction({ urlRoomId, savedState }) {
-  const roomId = urlRoomId || savedState?.roomId;
+  const roomId = urlRoomId; // NOTE:  Disabled returning to saved room until properly implemented. //   || savedState?.roomId;
   if (!roomId) return { action: 'idle' };
   return { action: 'join', roomId };
 }
