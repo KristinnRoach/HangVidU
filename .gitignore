@@ -16,6 +16,16 @@ reference-examples/
 **/*.reff.txt
 **/*.reff.md
 
+# Trash / old files to be deleted
+trash/
+**/trash
+**/*.trash.txt
+**/*.trash.md
+
+# Temporary files
+tmp/
+temp/
+
 # Build exectuables to run local server (possibly add later)
 go-server/executables/
 
