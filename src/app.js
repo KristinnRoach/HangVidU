@@ -137,7 +137,7 @@ async function init() {
         });
         saveCurrentState();
       },
-      handleToggleMute: toggleMute,
+      handleToggleMute: toggleMuteSelfMic,
       handleToggleVideo: toggleVideo,
       handleToggleMode: toggleWatchMode,
       handleLoadStream: loadStream,
@@ -169,7 +169,7 @@ async function init() {
         watchMode = savedState.watchMode || false;
         wasConnected = savedState.wasConnected || false;
         if (!isVideoOn) toggleVideo();
-        if (isAudioMuted) toggleMute();
+        if (isAudioMuted) toggleMuteSelfMic();
       }
       console.log('🔄 Calling handleReconnection');
       await handleReconnection();
@@ -189,7 +189,7 @@ async function init() {
         watchMode = savedState.watchMode || false;
         wasConnected = savedState.wasConnected || false;
         if (!isVideoOn) toggleVideo();
-        if (isAudioMuted) toggleMute();
+        if (isAudioMuted) toggleMuteSelfMic();
       }
       console.log('🆕 Calling joinChatRoom');
       await joinChatRoom(roomId);
@@ -202,7 +202,7 @@ async function init() {
     }
 
     if (import.meta.env.DEV) {
-      toggleMute();
+      toggleMuteSelfMic();
     }
   } catch (error) {
     let userMessage = 'Error: Could not access camera/mic.';
@@ -670,13 +670,17 @@ function updateStatus(message) {
   ui.updateStatus(statusDiv, message);
 }
 
-function toggleMute() {
+function toggleMuteSelfMic() {
   isAudioMuted = ui.toggleMuteMic(localStream, toggleMuteBtn, isAudioMuted);
-  // Also update the hover-button icon
+  // Update the hover-button icon for muteSelfBtn
   const icon = muteSelfBtn.querySelector('i');
   if (icon) {
-    icon.className = isAudioMuted ? 'fa fa-volume-mute' : 'fa fa-volume-up';
+    icon.className = isAudioMuted
+      ? 'fa fa-microphone-slash'
+      : 'fa fa-microphone';
   }
+  // Ensure toggleMuteBtn stays in sync
+  toggleMuteBtn.textContent = isAudioMuted ? 'Unmute Mic' : 'Mute Mic';
   saveCurrentState();
 }
 
@@ -900,7 +904,7 @@ fullscreenSelfBtn?.addEventListener('click', () => {
   }
 });
 
-muteSelfBtn?.addEventListener('click', () => toggleMute());
+muteSelfBtn?.addEventListener('click', () => toggleMuteSelfMic());
 
 mutePartnerBtn?.addEventListener('click', () => {
   const audioTrack = remoteVideo.srcObject?.getAudioTracks()[0];
@@ -914,5 +918,41 @@ mutePartnerBtn?.addEventListener('click', () => {
     }
   }
 });
+
+function setupTouchControls(wrapper) {
+  let hideTimeout;
+
+  function showControls() {
+    wrapper.classList.add('show-controls');
+    clearTimeout(hideTimeout);
+    hideTimeout = setTimeout(() => {
+      wrapper.classList.remove('show-controls');
+    }, 3000); // 3 seconds auto-hide
+  }
+
+  // Listen to both 'touchstart' and 'click'
+  wrapper.addEventListener('touchstart', showControls);
+  wrapper.addEventListener('click', (e) => {
+    // Prevent play/pause if clicking controls
+    if (e.target.closest('.hover-controls')) return;
+    showControls();
+  });
+
+  // keep controls onscreen if interacting with buttons
+  wrapper
+    .querySelector('.hover-controls')
+    .addEventListener('mouseenter', () => clearTimeout(hideTimeout));
+
+  // Hide controls when leaving the controller area
+  wrapper
+    .querySelector('.hover-controls')
+    .addEventListener('mouseleave', () => {
+      hideTimeout = setTimeout(() => {
+        wrapper.classList.remove('show-controls');
+      }, 2000);
+    });
+}
+
+document.querySelectorAll('.video-wrapper').forEach(setupTouchControls);
 
 init();
