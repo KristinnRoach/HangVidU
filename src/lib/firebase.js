@@ -1,6 +1,7 @@
 // src/lib/firebase.js
 
-// Exports the initialized Firebase Realtime Database instance
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/database';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -12,12 +13,6 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
-
-if (typeof firebase === 'undefined') {
-  throw new Error(
-    '[firebase.js] Global firebase object is not defined! Make sure the Firebase CDN scripts are loaded before your app code runs.'
-  );
-}
 
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
