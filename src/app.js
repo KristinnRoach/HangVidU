@@ -250,6 +250,14 @@ async function hangUp() {
     remoteVideo.srcObject = null;
   }
 
+  // Stop local media too
+  const localStream = getLocalStream();
+  if (localStream) {
+    localStream.getTracks().forEach((t) => t.stop());
+    localVideo.srcObject = null;
+    setLocalStream(null);
+  }
+
   await disconnect({ onStatusUpdate: updateStatus });
 
   // Reset UI
