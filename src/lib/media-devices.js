@@ -67,33 +67,50 @@ export async function switchCamera({
   const newFacingMode =
     state.currentFacingMode === 'user' ? 'environment' : 'user';
 
-  // Stop current video tracks
-  localStream.getVideoTracks().forEach((track) => track.stop());
+  const videoTrack = localStream.getVideoTracks()[0];
 
-  // Get new stream
+  try {
+    // Attempt to apply constraints to the existing video track
+    await videoTrack.applyConstraints({ facingMode: newFacingMode });
+    state.currentFacingMode = newFacingMode;
+    return; // Exit early if constraints were successfully applied
+  } catch (error) {
+    console.warn(
+      'applyConstraints failed, falling back to getUserMedia:',
+      error
+    );
+  }
+
+  // Fallback: Get a new stream
   const newStream = await navigator.mediaDevices.getUserMedia({
     video: { facingMode: newFacingMode },
-    audio: !state.isAudioMuted, // Respect the current mute state
+    audio: false, // Reuse existing audio track
   });
 
   const newVideoTrack = newStream.getVideoTracks()[0];
-  localStream.removeTrack(localStream.getVideoTracks()[0]);
-  localStream.addTrack(newVideoTrack);
-  localVideo.srcObject = localStream;
 
-  // Ensure audio track state matches the current mute state
-  const newAudioTrack = newStream.getAudioTracks()[0];
-  if (newAudioTrack) {
-    newAudioTrack.enabled = !state.isAudioMuted;
-  }
-
-  // Update peer connection if connected
+  // Replace the video track in the peer connection
   if (peerConnection) {
     const sender = peerConnection
       .getSenders()
       .find((s) => s.track && s.track.kind === 'video');
     if (sender) sender.replaceTrack(newVideoTrack);
   }
+
+  // Update the local stream
+  localStream.removeTrack(videoTrack);
+  localStream.addTrack(newVideoTrack);
+  localVideo.srcObject = localStream;
+
+  // Stop the old video track
+  videoTrack.stop();
+
+  // Stop any unused tracks in the new stream
+  newStream.getTracks().forEach((track) => {
+    if (track !== newVideoTrack) {
+      track.stop();
+    }
+  });
 
   state.currentFacingMode = newFacingMode;
 }

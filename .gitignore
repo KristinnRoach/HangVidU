@@ -19,6 +19,8 @@ reference-examples/
 # Trash / old files to be deleted
 trash/
 **/trash
+**/*.trash.txt
+**/*.trash.md
 
 # Temporary files
 tmp/

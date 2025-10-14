@@ -173,9 +173,17 @@ export async function disconnect({ onStatusUpdate }) {
   cleanupFirebaseListeners();
 
   if (state.peerConnection) {
+    state.peerConnection.ontrack = null;
+    state.peerConnection.onicecandidate = null;
     state.peerConnection.close();
     state.peerConnection = null;
   }
+
+  // // Stop local media
+  // if (state.localStream) {
+  //   state.localStream.getTracks().forEach((t) => t.stop());
+  //   state.localStream = null;
+  // }
 
   // Clean up Firebase room
   if (state.roomId && state.isInitiator) {
@@ -196,8 +204,10 @@ export function restoreConnectionState(savedState) {
   if (!savedState) return;
 
   if (savedState.roomId) state.roomId = savedState.roomId;
-  if (savedState.isInitiator !== undefined) state.isInitiator = savedState.isInitiator;
-  if (savedState.wasConnected !== undefined) state.wasConnected = savedState.wasConnected;
+  if (savedState.isInitiator !== undefined)
+    state.isInitiator = savedState.isInitiator;
+  if (savedState.wasConnected !== undefined)
+    state.wasConnected = savedState.wasConnected;
 }
 
 // ===== PRIVATE HELPERS =====
@@ -205,9 +215,12 @@ export function restoreConnectionState(savedState) {
 function handleRemoteStream(event, onRemoteStream) {
   state.wasConnected = true;
   if (import.meta.env.DEV) {
-    console.log('✅ Connection established, wasConnected =', state.wasConnected);
+    console.log(
+      '✅ Connection established, wasConnected =',
+      state.wasConnected
+    );
   }
-  
+
   if (onRemoteStream) {
     onRemoteStream(event.streams[0]);
   }
