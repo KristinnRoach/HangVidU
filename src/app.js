@@ -1,4 +1,4 @@
-// app.js
+// src/app.js
 import {
   localVideo,
   remoteVideo,
@@ -19,7 +19,21 @@ import {
   shareLink,
   streamUrlInput,
   syncStatus,
+
+  // Todo:
+  mutePartnerBtn,
+  fullscreenPartnerBtn,
+  muteSelfBtn,
+  fullscreenSelfBtn,
 } from './lib/ui/elements.js';
+
+import { loadState, saveState, clearState } from './lib/storage.js';
+
+import {
+  setConnectionStatus,
+  listenForPartnerReconnection,
+  clearConnectionStatus,
+} from './lib/connectionStatus.js';
 
 import { createRoom, joinRoom, removeRoom } from './lib/roomService.js';
 import { db } from './lib/firebase.js';
@@ -43,14 +57,18 @@ import {
 
 import { hasFrontAndBackCameras, switchCamera } from './lib/devices.js';
 
-// ===== WEBRTC SETUP =====
 const configuration = {
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
 };
 
+// ====== STATE ======
+
 let localStream;
 let peerConnection;
 let roomId = null;
+let reconnectionListener = null;
+let wasConnected = false;
+
 let isInitiator = false;
 let isAudioMuted = false;
 let isVideoOn = true;
@@ -58,8 +76,26 @@ let currentFacingMode = 'user'; // 'user' = front, 'environment' = back
 let watchMode = false;
 let isSyncing = false; // Prevent sync loops
 
+function saveCurrentState() {
+  saveState({
+    roomId,
+    isInitiator,
+    isAudioMuted,
+    isVideoOn,
+    currentFacingMode,
+    watchMode,
+    wasConnected,
+    streamUrl: streamUrlInput.value,
+  });
+}
+
+// ===== PURE LOGIC FOR REFRESH DECISION (for testing) =====
+import { decideRefreshAction } from './lib/refreshLogic.js';
+
 // ===== INITIALIZE =====
 async function init() {
+  console.log('🚀 init() called');
+
   try {
     localStream = await navigator.mediaDevices.getUserMedia({
       video: true,
@@ -76,7 +112,6 @@ async function init() {
     } else {
       switchCameraBtn.style.display = 'none';
     }
-    // addLocalVideoPipListeners(localVideo, pipBtn);
 
     setupEventListeners({
       startChatBtn,
@@ -99,6 +134,7 @@ async function init() {
           localVideo,
           peerConnection,
         });
+        saveCurrentState();
       },
       handleToggleMute: toggleMute,
       handleToggleVideo: toggleVideo,
@@ -109,37 +145,354 @@ async function init() {
       updateStatus,
     });
 
-    if (import.meta.env.DEV) {
-      toggleMute();
-    }
-    // Check if joining existing room
+    // Check URL params first, then saved state
     const urlParams = new URLSearchParams(window.location.search);
-    roomId = urlParams.get('room');
+    const urlRoomId = urlParams.get('room');
+    const savedState = loadState();
 
-    if (roomId) {
+    console.log('📦 savedState:', savedState);
+
+    // Use extracted logic for testability
+    const decision = decideRefreshAction({ urlRoomId, savedState });
+    roomId = decision.roomId;
+
+    if (decision.action === 'reconnect') {
       updateStatus('Connecting...');
       startChatBtn.style.display = 'none';
+      // Restore UI state
+      if (savedState) {
+        isAudioMuted = savedState.isAudioMuted;
+        isVideoOn = savedState.isVideoOn;
+        currentFacingMode = savedState.currentFacingMode;
+        isInitiator = savedState.isInitiator;
+        watchMode = savedState.watchMode || false;
+        wasConnected = savedState.wasConnected || false;
+        if (!isVideoOn) toggleVideo();
+        if (isAudioMuted) toggleMute();
+      }
+      console.log('🔄 Calling handleReconnection');
+      await handleReconnection();
+      if (savedState?.watchMode && !watchMode) {
+        toggleWatchMode();
+        if (savedState.streamUrl) streamUrlInput.value = savedState.streamUrl;
+      }
+    } else if (decision.action === 'join') {
+      updateStatus('Connecting...');
+      startChatBtn.style.display = 'none';
+      // Restore UI state
+      if (savedState) {
+        isAudioMuted = savedState.isAudioMuted;
+        isVideoOn = savedState.isVideoOn;
+        currentFacingMode = savedState.currentFacingMode;
+        isInitiator = savedState.isInitiator;
+        watchMode = savedState.watchMode || false;
+        wasConnected = savedState.wasConnected || false;
+        if (!isVideoOn) toggleVideo();
+        if (isAudioMuted) toggleMute();
+      }
+      console.log('🆕 Calling joinChatRoom');
       await joinChatRoom(roomId);
+      if (savedState?.watchMode && !watchMode) {
+        toggleWatchMode();
+        if (savedState.streamUrl) streamUrlInput.value = savedState.streamUrl;
+      }
     } else {
       updateStatus('Ready. Click to generate video chat link.');
     }
+
+    if (import.meta.env.DEV) {
+      toggleMute();
+    }
   } catch (error) {
-    console.error('Media error:', error);
-    updateStatus('Error: Could not access camera/mic. Check permissions.');
+    let userMessage = 'Error: Could not access camera/mic.';
+
+    if (error.name === 'NotAllowedError') {
+      userMessage +=
+        ' Permission denied. Please allow access to your camera and microphone.';
+    } else if (
+      error.name === 'NotFoundError' ||
+      error.name === 'DevicesNotFoundError'
+    ) {
+      userMessage += ' No camera or microphone found on this device.';
+    } else if (
+      error.name === 'NotReadableError' ||
+      error.name === 'TrackStartError'
+    ) {
+      userMessage +=
+        ' Camera or microphone is already in use by another application.';
+    } else if (
+      error.name === 'OverconstrainedError' ||
+      error.name === 'ConstraintNotSatisfiedError'
+    ) {
+      userMessage +=
+        ' The requested media device is not available or does not support the requested constraints.';
+    } else if (error.name === 'NotSupportedError') {
+      userMessage +=
+        ' Your browser or device does not support video/audio capture, or HTTPS is required.';
+    } else {
+      userMessage += ' ' + error.message;
+    }
+
+    console.error('Media error:', userMessage, error);
+    updateStatus(userMessage);
   }
 }
 
 function setupRemoteStream(event) {
-  remoteVideo.srcObject = event.streams[0];
-  pipBtn.style.display = 'block';
-  addRemoteVideoPipListeners(remoteVideo, pipBtn);
-  updateStatus('Connected!');
+  // Only set srcObject if not already set to this stream
+  if (remoteVideo.srcObject !== event.streams[0]) {
+    remoteVideo.srcObject = event.streams[0];
+    pipBtn.style.display = 'block';
+    addRemoteVideoPipListeners(remoteVideo, pipBtn);
+
+    wasConnected = true;
+    console.log('✅ Connection established, wasConnected =', wasConnected);
+
+    saveCurrentState();
+
+    updateStatus('Connected!');
+    // Debug: Log remoteVideo state with a unique call count to distinguish multiple logs
+    if (!window.__remoteVideoDebugCount) window.__remoteVideoDebugCount = 1;
+    else window.__remoteVideoDebugCount++;
+    const debugId = window.__remoteVideoDebugCount;
+    console.log(`[DEBUG][Connected!][#${debugId}] remoteVideo:`, {
+      srcObject: remoteVideo.srcObject,
+      videoTracks: remoteVideo.srcObject?.getVideoTracks?.() || null,
+      readyState: remoteVideo.readyState,
+      videoWidth: remoteVideo.videoWidth,
+      videoHeight: remoteVideo.videoHeight,
+      currentTime: remoteVideo.currentTime,
+      paused: remoteVideo.paused,
+      ended: remoteVideo.ended,
+      display: remoteVideo.style.display,
+      event,
+      stack: new Error().stack,
+    });
+    // Try to auto-play remoteVideo (may be blocked by browser)
+    if (remoteVideo.paused && remoteVideo.srcObject) {
+      remoteVideo.play().catch((e) => {
+        console.warn(
+          '[DEBUG][Connected!][#' + debugId + '] remoteVideo.play() failed:',
+          e
+        );
+      });
+    }
+  } else {
+    // Debug: Duplicate ontrack event ignored
+    if (!window.__remoteVideoDebugCount) window.__remoteVideoDebugCount = 1;
+    else window.__remoteVideoDebugCount++;
+    const debugId = window.__remoteVideoDebugCount;
+    console.log(
+      `[DEBUG][Connected!][#${debugId}] Duplicate ontrack event ignored. remoteVideo.srcObject already set to this stream.`,
+      {
+        srcObject: remoteVideo.srcObject,
+        event,
+        stack: new Error().stack,
+      }
+    );
+  }
+}
+
+async function handlePartnerReconnecting() {
+  updateStatus('Partner reconnecting...');
+
+  // Remove old Firebase listeners
+  cleanupFirebaseListeners();
+
+  // Close existing peer connection
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+
+  // Clear remote video
+  if (remoteVideo.srcObject) {
+    remoteVideo.srcObject = null;
+  }
+
+  if (isInitiator) {
+    // Initiator creates new offer
+    await createNewOffer();
+  } else {
+    // Joiner waits for new offer - set up ONE-TIME listener
+    updateStatus('Waiting for partner to reconnect...');
+    const roomRef = db.ref(`rooms/${roomId}`);
+
+    roomRef.child('offer').once('value', async (snapshot) => {
+      const offer = snapshot.val();
+      console.log('[RECONN-DEBUG] Joiner received offer snapshot:', offer);
+      if (!offer) return;
+
+      // Create fresh peer connection
+      peerConnection = new RTCPeerConnection(configuration);
+
+      localStream.getTracks().forEach((track) => {
+        peerConnection.addTrack(track, localStream);
+      });
+
+      console.log(
+        '[DEBUG] Assigning peerConnection.ontrack in handlePartnerReconnecting'
+      );
+      peerConnection.ontrack = setupRemoteStream;
+
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+          roomRef.child('calleeCandidates').push(event.candidate.toJSON());
+        }
+      };
+
+      await peerConnection.setRemoteDescription(
+        new RTCSessionDescription(offer)
+      );
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+      console.log('[RECONN-DEBUG] Joiner setting answer in Firebase:', {
+        type: answer.type,
+        sdp: answer.sdp,
+      });
+      await roomRef.child('answer').set({ type: answer.type, sdp: answer.sdp });
+      console.log('[RECONN-DEBUG] Joiner set answer in Firebase.');
+      // Immediately read back the answer from Firebase
+      const answerSnapshot = await roomRef.child('answer').once('value');
+      console.log(
+        '[RECONN-DEBUG] Joiner read-back answer from Firebase:',
+        answerSnapshot.val()
+      );
+
+      // Listen for caller ICE candidates
+      roomRef.child('callerCandidates').on('child_added', (snapshot) => {
+        const candidate = snapshot.val();
+        if (peerConnection) {
+          peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        }
+      });
+
+      await setConnectionStatus(roomId, 'joiner', 'connected');
+    });
+  }
+}
+
+async function handleReconnection() {
+  console.log(
+    '🔄 handleReconnection started, isInitiator:',
+    isInitiator,
+    'roomId:',
+    roomId
+  );
+
+  if (!roomId) {
+    console.error('No roomId found for reconnection');
+    updateStatus('Error: No room ID found for reconnection.');
+    return;
+  }
+  const role = isInitiator ? 'initiator' : 'joiner';
+
+  updateStatus('Reconnecting...');
+
+  // Signal to partner that we're reconnecting
+  await setConnectionStatus(roomId, role, 'reconnecting');
+
+  // Small delay to let partner detect and reset
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
+  // Clear stale offer/answer
+  const roomRef = db.ref(`rooms/${roomId}`);
+  if (isInitiator) {
+    await roomRef.child('answer').remove();
+    await roomRef.child('calleeCandidates').remove();
+  } else {
+    await roomRef.child('callerCandidates').remove();
+  }
+
+  // Follow role-based reconnection
+  if (isInitiator) {
+    await createNewOffer();
+  }
+  // Joiner waits - partner will trigger new offer via handlePartnerReconnecting
+}
+
+async function createNewOffer() {
+  // Create fresh peer connection
+  peerConnection = new RTCPeerConnection(configuration);
+
+  localStream.getTracks().forEach((track) => {
+    peerConnection.addTrack(track, localStream);
+  });
+
+  console.log('[DEBUG] Assigning peerConnection.ontrack in createNewOffer');
+  peerConnection.ontrack = setupRemoteStream;
+
+  const roomRef = db.ref(`rooms/${roomId}`);
+
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+      roomRef.child('callerCandidates').push(event.candidate.toJSON());
+    }
+  };
+
+  // Create and send new offer
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(offer);
+  await roomRef.child('offer').set(offer);
+
+  // Listen for answer
+  console.log(
+    '[RECONN-DEBUG] Initiator attaching answer listener at path:',
+    roomRef.child('answer').toString()
+  );
+  roomRef.child('answer').on('value', async (snapshot) => {
+    const answer = snapshot.val();
+    console.log('[RECONN-DEBUG] Initiator received answer snapshot:', answer);
+    if (answer && !peerConnection.currentRemoteDescription) {
+      await peerConnection.setRemoteDescription(
+        new RTCSessionDescription(answer)
+      );
+      console.log(
+        '[RECONN-DEBUG] Initiator set remote description with answer.'
+      );
+    }
+  });
+  // Immediately read back the answer from Firebase after attaching listener
+  const answerSnapshot = await roomRef.child('answer').once('value');
+  console.log(
+    '[RECONN-DEBUG] Initiator immediate read-back answer from Firebase:',
+    answerSnapshot.val()
+  );
+
+  // --- DEBUG: Delay before immediate read-back (remove if not needed) ---
+  setTimeout(async () => {
+    const delayedAnswerSnapshot = await roomRef.child('answer').once('value');
+    console.log(
+      '[RECONN-DEBUG] Initiator delayed (2s) read-back answer from Firebase:',
+      delayedAnswerSnapshot.val()
+    );
+  }, 2000);
+
+  // Listen for callee ICE candidates
+  roomRef.child('calleeCandidates').on('child_added', (snapshot) => {
+    const candidate = snapshot.val();
+    peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+  });
+
+  // Mark as connected
+  await setConnectionStatus(roomId, 'initiator', 'connected');
+
+  // Set up reconnection listener
+  reconnectionListener = listenForPartnerReconnection(
+    roomId,
+    'initiator',
+    handlePartnerReconnecting
+  );
+
+  updateStatus('Reconnected! Waiting for partner...');
 }
 
 // ===== CREATE ROOM (Person A) =====
 async function initiateChatRoom() {
   isInitiator = true;
-  roomId = generateRoomId();
+  if (!roomId) {
+    roomId = generateRoomId();
+  }
 
   // Create peer connection
   peerConnection = new RTCPeerConnection(configuration);
@@ -155,6 +508,7 @@ async function initiateChatRoom() {
   // Create room in DB and get ref
   const roomRef = await createRoom(roomId, offer);
 
+  console.log('[DEBUG] Assigning peerConnection.ontrack in initiateChatRoom');
   peerConnection.ontrack = setupRemoteStream;
 
   peerConnection.onicecandidate = (event) => {
@@ -189,6 +543,16 @@ async function initiateChatRoom() {
   setupWatchSync();
   toggleModeBtn.style.display = 'block';
 
+  const role = 'initiator';
+  setConnectionStatus(roomId, role, 'connected');
+  reconnectionListener = listenForPartnerReconnection(
+    roomId,
+    role,
+    handlePartnerReconnecting
+  );
+
+  saveCurrentState();
+
   updateStatus('Link ready! Waiting for partner...');
 }
 
@@ -208,6 +572,7 @@ async function joinChatRoom(roomId) {
     peerConnection.addTrack(track, localStream);
   });
 
+  console.log('[DEBUG] Assigning peerConnection.ontrack in joinChatRoom');
   peerConnection.ontrack = setupRemoteStream;
 
   peerConnection.onicecandidate = (event) => {
@@ -237,14 +602,25 @@ async function joinChatRoom(roomId) {
 
   setupWatchSync();
   toggleModeBtn.style.display = 'block';
-
   hangUpBtn.disabled = false;
+
+  const role = 'joiner';
+  setConnectionStatus(roomId, role, 'connected');
+  reconnectionListener = listenForPartnerReconnection(
+    roomId,
+    role,
+    handlePartnerReconnecting
+  );
+
+  saveCurrentState();
 }
 
 // ===== HANG UP =====
 async function hangUp() {
   // Close any PiP windows first
   closePiP(pipBtn);
+
+  cleanupFirebaseListeners();
 
   if (peerConnection) {
     peerConnection.close();
@@ -280,15 +656,26 @@ async function hangUp() {
   watchMode = false;
   isAudioMuted = false;
   isVideoOn = true;
+  wasConnected = false;
 
   window.history.replaceState({}, document.title, window.location.pathname);
-
+  clearState();
   updateStatus('Disconnected. Ready for new chat.');
 }
 
 // ===== HELPERS =====
 function generateRoomId() {
   return Math.random().toString(36).substring(2, 15);
+}
+
+function cleanupFirebaseListeners() {
+  if (!roomId) return;
+
+  const roomRef = db.ref(`rooms/${roomId}`);
+  roomRef.child('answer').off();
+  roomRef.child('offer').off();
+  roomRef.child('callerCandidates').off();
+  roomRef.child('calleeCandidates').off();
 }
 
 async function copyLink() {
@@ -307,11 +694,13 @@ function updateStatus(message) {
 }
 
 function toggleMute() {
-  isAudioMuted = ui.toggleMute(localStream, toggleMuteBtn, isAudioMuted);
+  isAudioMuted = ui.toggleMuteMic(localStream, toggleMuteBtn, isAudioMuted);
+  saveCurrentState();
 }
 
 function toggleVideo() {
   isVideoOn = ui.toggleVideo(localStream, toggleVideoBtn, isVideoOn);
+  saveCurrentState();
 }
 
 function toggleWatchMode() {
@@ -324,6 +713,7 @@ function toggleWatchMode() {
     streamUrlInput,
     syncStatus
   );
+  saveCurrentState();
 }
 
 function loadStream() {
@@ -345,6 +735,8 @@ function loadStream() {
   if (roomId) {
     db.ref(`rooms/${roomId}/stream`).set({ url });
   }
+
+  saveCurrentState();
 }
 
 // --- YOUTUBE SYNC ---
@@ -500,5 +892,56 @@ function setupWatchSync() {
     syncStatus.textContent = 'Playing in sync';
   });
 }
+
+// Add event handlers for fullscreen and mute buttons
+fullscreenPartnerBtn.addEventListener('click', () => {
+  if (remoteVideo.requestFullscreen) {
+    remoteVideo.requestFullscreen();
+  } else if (remoteVideo.webkitRequestFullscreen) {
+    // Safari
+    remoteVideo.webkitRequestFullscreen();
+  } else if (remoteVideo.msRequestFullscreen) {
+    // IE11
+    remoteVideo.msRequestFullscreen();
+  }
+});
+
+fullscreenSelfBtn.addEventListener('click', () => {
+  if (localVideo.requestFullscreen) {
+    localVideo.requestFullscreen();
+  } else if (localVideo.webkitRequestFullscreen) {
+    // Safari
+    localVideo.webkitRequestFullscreen();
+  } else if (localVideo.msRequestFullscreen) {
+    // IE11
+    localVideo.msRequestFullscreen();
+  }
+});
+
+muteSelfBtn.addEventListener('click', () => {
+  const audioTrack = localVideo.srcObject?.getAudioTracks()[0];
+  if (audioTrack) {
+    audioTrack.enabled = !audioTrack.enabled;
+    const icon = muteSelfBtn.querySelector('i');
+    if (icon) {
+      icon.className = audioTrack.enabled
+        ? 'fa fa-volume-mute'
+        : 'fa fa-volume-up';
+    }
+  }
+});
+
+mutePartnerBtn.addEventListener('click', () => {
+  const audioTrack = remoteVideo.srcObject?.getAudioTracks()[0];
+  if (audioTrack) {
+    audioTrack.enabled = !audioTrack.enabled;
+    const icon = mutePartnerBtn.querySelector('i');
+    if (icon) {
+      icon.className = audioTrack.enabled
+        ? 'fa fa-volume-mute'
+        : 'fa fa-volume-up';
+    }
+  }
+});
 
 init();

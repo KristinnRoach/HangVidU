@@ -7,10 +7,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "vitest",
     "gh-deploy": "pnpm build && npx gh-pages -d dist",
     "preview": "vite preview",
-    "build:go": "sh go-server/build-scripts/build.sh"
+    "build:go": "sh go-server/build-scripts/build.sh",
+    "test": "vitest",
+    "test:e2e": "playwright test",
+    "test:ui": "playwright test --ui"
   },
   "repository": {
     "type": "git",
@@ -24,6 +26,8 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "jsdom": "^27.0.0",
     "vite": "^7.1.7",
     "vitest": "^3.2.4"
   }

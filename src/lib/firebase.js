@@ -1,4 +1,5 @@
-// firebaseService.js
+// src/lib/firebase.js
+
 // Exports the initialized Firebase Realtime Database instance
 
 const firebaseConfig = {
@@ -12,7 +13,15 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-firebase.initializeApp(firebaseConfig);
+if (typeof firebase === 'undefined') {
+  throw new Error(
+    '[firebase.js] Global firebase object is not defined! Make sure the Firebase CDN scripts are loaded before your app code runs.'
+  );
+}
+
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
 
 export const db = firebase.database();
 // const storage = firebase.storage();

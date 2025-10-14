@@ -5,7 +5,7 @@ export function updateStatus(statusDiv, message) {
   statusDiv.textContent = message;
 }
 
-export function toggleMute(localStream, toggleMuteBtn, isAudioMuted) {
+export function toggleMuteMic(localStream, toggleMuteBtn, isAudioMuted) {
   const audioTrack = localStream.getAudioTracks()[0];
   if (audioTrack) {
     isAudioMuted = !isAudioMuted;
