@@ -678,18 +678,22 @@ function setupTouchControls(wrapper) {
   });
 
   // keep controls onscreen if interacting with buttons
-  wrapper
-    .querySelector('.hover-controls')
-    .addEventListener('mouseenter', () => clearTimeout(hideTimeout));
+
+  const controls = wrapper.querySelector('.hover-controls');
+
+  // keep controls onscreen if interacting with buttons
+  controls.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
+  controls.addEventListener('touchstart', () => clearTimeout(hideTimeout), {
+    passive: true,
+  });
+  controls.addEventListener('click', () => clearTimeout(hideTimeout));
 
   // Hide controls when leaving the controller area
-  wrapper
-    .querySelector('.hover-controls')
-    .addEventListener('mouseleave', () => {
-      hideTimeout = setTimeout(() => {
-        wrapper.classList.remove('show-controls');
-      }, 2000);
-    });
+  controls.addEventListener('mouseleave', () => {
+    hideTimeout = setTimeout(() => {
+      wrapper.classList.remove('show-controls');
+    }, 2000);
+  });
 }
 
 document.querySelectorAll('.video-wrapper').forEach(setupTouchControls);
