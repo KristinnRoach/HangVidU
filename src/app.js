@@ -29,20 +29,16 @@ import {
 
 import { loadState, saveState, clearState } from './lib/storage.js';
 
-import {
-  setConnectionStatus,
-  listenForPartnerReconnection,
-  clearConnectionStatus,
-} from './lib/connectionStatus.js';
+import { setConnectionStatus } from './lib/connectionStatus.js';
 
 import { createRoom, joinRoom, removeRoom } from './lib/roomService.js';
 import { db } from './lib/firebase.js';
+import { handleMediaError } from './lib/error-handling.js';
 import * as ui from './lib/ui/ui.js';
 import { setupEventListeners } from './lib/ui/events.js';
 import {
   handlePipToggleBtn,
   addRemoteVideoPipListeners,
-  addLocalVideoPipListeners,
   closePiP,
 } from './lib/ui/pip.js';
 
@@ -57,10 +53,6 @@ import {
 
 import { hasFrontAndBackCameras, switchCamera } from './lib/devices.js';
 
-// ===== FEATURE FLAGS =====
-
-const ENABLE_RECONNECT_ON_RELOAD = !!import.meta.env.DEV;
-
 // ===== Config =====
 const configuration = {
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
@@ -71,7 +63,6 @@ const configuration = {
 let localStream;
 let peerConnection;
 let roomId = null;
-let reconnectionListener = null;
 let wasConnected = false;
 
 let isInitiator = false;
@@ -94,13 +85,9 @@ function saveCurrentState() {
   });
 }
 
-// ===== PURE LOGIC FOR REFRESH DECISION (for testing) =====
-import { decideRefreshAction } from './lib/refreshLogic.js';
-
 // ===== INITIALIZE =====
-async function init() {
-  console.log('🚀 init() called');
 
+async function init() {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({
       video: true,
@@ -112,7 +99,6 @@ async function init() {
     toggleMuteBtn.style.display = 'block';
     toggleVideoBtn.style.display = 'block';
 
-    // Display switch camera button only if device has both front and back cameras
     if (await hasFrontAndBackCameras()) {
       switchCameraBtn.style.display = 'block';
     } else {
@@ -151,63 +137,18 @@ async function init() {
       updateStatus,
     });
 
-    // Check URL params first, then saved state
     const urlParams = new URLSearchParams(window.location.search);
     const urlRoomId = urlParams.get('room');
     const savedState = loadState();
 
-    console.log('📦 savedState:', savedState);
-
-    // Use extracted logic for testability
-    const decision = decideRefreshAction({ urlRoomId, savedState });
+    const decision = determineRoomAction({ urlRoomId, savedState });
     roomId = decision.roomId;
 
-    if (!ENABLE_RECONNECT_ON_RELOAD && decision.action === 'reconnect') {
-      // Block the reconnect logic if the flag is set to false // NOTE: for testing
-      updateStatus('Ready. Click to generate video chat link.');
-      return;
-    }
-
-    if (decision.action === 'reconnect') {
+    if (decision.action === 'join') {
       updateStatus('Connecting...');
       startChatBtn.style.display = 'none';
-      // Restore UI state
-      if (savedState) {
-        isAudioMuted = savedState.isAudioMuted;
-        isVideoOn = savedState.isVideoOn;
-        currentFacingMode = savedState.currentFacingMode;
-        isInitiator = savedState.isInitiator;
-        watchMode = savedState.watchMode || false;
-        wasConnected = savedState.wasConnected || false;
-        if (!isVideoOn) toggleVideo();
-        if (isAudioMuted) toggleMuteSelfMic();
-      }
-      console.log('🔄 Calling handleReconnection');
-      await handleReconnection();
-      if (savedState?.watchMode && !watchMode) {
-        toggleWatchMode();
-        if (savedState.streamUrl) streamUrlInput.value = savedState.streamUrl;
-      }
-    } else if (decision.action === 'join') {
-      updateStatus('Connecting...');
-      startChatBtn.style.display = 'none';
-      // Restore UI state
-      if (savedState) {
-        isAudioMuted = savedState.isAudioMuted;
-        isVideoOn = savedState.isVideoOn;
-        currentFacingMode = savedState.currentFacingMode;
-        isInitiator = savedState.isInitiator;
-        watchMode = savedState.watchMode || false;
-        wasConnected = savedState.wasConnected || false;
-        if (!isVideoOn) toggleVideo();
-        if (isAudioMuted) toggleMuteSelfMic();
-      }
-      console.log('🆕 Calling joinChatRoom');
+      restoreUIState(savedState);
       await joinChatRoom(roomId);
-      if (savedState?.watchMode && !watchMode) {
-        toggleWatchMode();
-        if (savedState.streamUrl) streamUrlInput.value = savedState.streamUrl;
-      }
     } else {
       updateStatus('Ready. Click to generate video chat link.');
     }
@@ -216,37 +157,31 @@ async function init() {
       toggleMuteSelfMic();
     }
   } catch (error) {
-    let userMessage = 'Error: Could not access camera/mic.';
+    handleMediaError(error);
+  }
+}
 
-    if (error.name === 'NotAllowedError') {
-      userMessage +=
-        ' Permission denied. Please allow access to your camera and microphone.';
-    } else if (
-      error.name === 'NotFoundError' ||
-      error.name === 'DevicesNotFoundError'
-    ) {
-      userMessage += ' No camera or microphone found on this device.';
-    } else if (
-      error.name === 'NotReadableError' ||
-      error.name === 'TrackStartError'
-    ) {
-      userMessage +=
-        ' Camera or microphone is already in use by another application.';
-    } else if (
-      error.name === 'OverconstrainedError' ||
-      error.name === 'ConstraintNotSatisfiedError'
-    ) {
-      userMessage +=
-        ' The requested media device is not available or does not support the requested constraints.';
-    } else if (error.name === 'NotSupportedError') {
-      userMessage +=
-        ' Your browser or device does not support video/audio capture, or HTTPS is required.';
-    } else {
-      userMessage += ' ' + error.message;
-    }
+function determineRoomAction({ urlRoomId, savedState }) {
+  const roomId = urlRoomId || savedState?.roomId;
+  if (!roomId) return { action: 'idle' };
+  return { action: 'join', roomId };
+}
 
-    console.error('Media error:', userMessage, error);
-    updateStatus(userMessage);
+function restoreUIState(savedState) {
+  if (!savedState) return;
+
+  isAudioMuted = savedState.isAudioMuted;
+  isVideoOn = savedState.isVideoOn;
+  currentFacingMode = savedState.currentFacingMode;
+  isInitiator = savedState.isInitiator;
+  watchMode = savedState.watchMode || false;
+  wasConnected = savedState.wasConnected || false;
+
+  if (!isVideoOn) toggleVideo();
+  if (isAudioMuted) toggleMuteSelfMic();
+  if (savedState.watchMode && !watchMode) {
+    toggleWatchMode();
+    if (savedState.streamUrl) streamUrlInput.value = savedState.streamUrl;
   }
 }
 
@@ -274,205 +209,6 @@ function setupRemoteStream(event) {
       console.log('Duplicate ontrack event ignored');
     }
   }
-}
-
-async function handlePartnerReconnecting() {
-  updateStatus('Partner reconnecting...');
-
-  // Remove old Firebase listeners
-  cleanupFirebaseListeners();
-
-  // Close existing peer connection
-  if (peerConnection) {
-    peerConnection.close();
-    peerConnection = null;
-  }
-
-  // Clear remote video
-  if (remoteVideo.srcObject) {
-    remoteVideo.srcObject = null;
-  }
-
-  if (isInitiator) {
-    // Initiator creates new offer
-    await createNewOffer();
-  } else {
-    // Joiner waits for new offer - set up persistent listener
-    updateStatus('Waiting for partner to reconnect...');
-    const roomRef = db.ref(`rooms/${roomId}`);
-
-    roomRef.child('offer').on('value', async (snapshot) => {
-      await handleOfferSnapshot(snapshot);
-      // Remove the listener after processing the offer
-      roomRef.child('offer').off('value');
-    });
-
-    // Immediately check if an offer already exists
-    const existingOfferSnapshot = await roomRef.child('offer').once('value');
-    if (existingOfferSnapshot.val()) {
-      await handleOfferSnapshot(existingOfferSnapshot);
-    }
-  }
-}
-
-async function handleOfferSnapshot(snapshot) {
-  const offer = snapshot.val();
-  console.log('[RECONN-DEBUG] Joiner received offer snapshot:', offer);
-  if (!offer) return;
-
-  // Create fresh peer connection
-  peerConnection = new RTCPeerConnection(configuration);
-
-  localStream.getTracks().forEach((track) => {
-    peerConnection.addTrack(track, localStream);
-  });
-
-  console.log(
-    '[DEBUG] Assigning peerConnection.ontrack in handleOfferSnapshot'
-  );
-  peerConnection.ontrack = setupRemoteStream;
-
-  peerConnection.onicecandidate = (event) => {
-    if (event.candidate) {
-      db.ref(`rooms/${roomId}/callerCandidates`).push(event.candidate.toJSON());
-    }
-  };
-
-  await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-  const answer = await peerConnection.createAnswer();
-  await peerConnection.setLocalDescription(answer);
-  console.log('[RECONN-DEBUG] Joiner setting answer in Firebase:', {
-    type: answer.type,
-    sdp: answer.sdp,
-  });
-  await db
-    .ref(`rooms/${roomId}/answer`)
-    .set({ type: answer.type, sdp: answer.sdp });
-  console.log('[RECONN-DEBUG] Joiner set answer in Firebase.');
-
-  // Listen for caller ICE candidates
-  db.ref(`rooms/${roomId}/callerCandidates`).on('child_added', (snapshot) => {
-    const candidate = snapshot.val();
-    peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-  });
-
-  await setConnectionStatus(roomId, 'joiner', 'connected');
-}
-
-async function handleReconnection() {
-  console.log(
-    '🔄 handleReconnection started, isInitiator:',
-    isInitiator,
-    'roomId:',
-    roomId
-  );
-
-  if (!roomId) {
-    console.error('No roomId found for reconnection');
-    updateStatus('Error: No room ID found for reconnection.');
-    return;
-  }
-  const role = isInitiator ? 'initiator' : 'joiner';
-
-  updateStatus('Reconnecting...');
-
-  // Signal to partner that we're reconnecting
-  await setConnectionStatus(roomId, role, 'reconnecting');
-
-  // Small delay to let partner detect and reset
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-
-  // Clear stale offer/answer
-  const roomRef = db.ref(`rooms/${roomId}`);
-  if (isInitiator) {
-    await roomRef.child('answer').remove();
-    await roomRef.child('calleeCandidates').remove();
-  } else {
-    await roomRef.child('callerCandidates').remove();
-    await roomRef.child('offer').remove();
-  }
-
-  // Follow role-based reconnection
-  if (isInitiator) {
-    await createNewOffer();
-  }
-  // Joiner waits - partner will trigger new offer via handlePartnerReconnecting
-}
-
-async function createNewOffer() {
-  // Create fresh peer connection
-  peerConnection = new RTCPeerConnection(configuration);
-
-  localStream.getTracks().forEach((track) => {
-    peerConnection.addTrack(track, localStream);
-  });
-
-  console.log('[DEBUG] Assigning peerConnection.ontrack in createNewOffer');
-  peerConnection.ontrack = setupRemoteStream;
-
-  const roomRef = db.ref(`rooms/${roomId}`);
-
-  peerConnection.onicecandidate = (event) => {
-    if (event.candidate) {
-      roomRef.child('callerCandidates').push(event.candidate.toJSON());
-    }
-  };
-
-  // Create and send new offer
-  const offer = await peerConnection.createOffer();
-  await peerConnection.setLocalDescription(offer);
-  await roomRef.child('offer').set(offer);
-
-  // Listen for answer
-  console.log(
-    '[RECONN-DEBUG] Initiator attaching answer listener at path:',
-    roomRef.child('answer').toString()
-  );
-  roomRef.child('answer').on('value', async (snapshot) => {
-    const answer = snapshot.val();
-    console.log('[RECONN-DEBUG] Initiator received answer snapshot:', answer);
-    if (answer && !peerConnection.currentRemoteDescription) {
-      await peerConnection.setRemoteDescription(
-        new RTCSessionDescription(answer)
-      );
-      console.log(
-        '[RECONN-DEBUG] Initiator set remote description with answer.'
-      );
-    }
-  });
-  // Immediately read back the answer from Firebase after attaching listener
-  const answerSnapshot = await roomRef.child('answer').once('value');
-  console.log(
-    '[RECONN-DEBUG] Initiator immediate read-back answer from Firebase:',
-    answerSnapshot.val()
-  );
-
-  // --- DEBUG: Delay before immediate read-back (remove if not needed) ---
-  setTimeout(async () => {
-    const delayedAnswerSnapshot = await roomRef.child('answer').once('value');
-    console.log(
-      '[RECONN-DEBUG] Initiator delayed (2s) read-back answer from Firebase:',
-      delayedAnswerSnapshot.val()
-    );
-  }, 2000);
-
-  // Listen for callee ICE candidates
-  roomRef.child('calleeCandidates').on('child_added', (snapshot) => {
-    const candidate = snapshot.val();
-    peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-  });
-
-  // Mark as connected
-  await setConnectionStatus(roomId, 'initiator', 'connected');
-
-  // Set up reconnection listener
-  reconnectionListener = listenForPartnerReconnection(
-    roomId,
-    'initiator',
-    handlePartnerReconnecting
-  );
-
-  updateStatus('Reconnected! Waiting for partner...');
 }
 
 // ===== CREATE ROOM (Person A) =====
@@ -533,11 +269,6 @@ async function initiateChatRoom() {
 
   const role = 'initiator';
   setConnectionStatus(roomId, role, 'connected');
-  reconnectionListener = listenForPartnerReconnection(
-    roomId,
-    role,
-    handlePartnerReconnecting
-  );
 
   saveCurrentState();
 
@@ -594,11 +325,6 @@ async function joinChatRoom(roomId) {
 
   const role = 'joiner';
   setConnectionStatus(roomId, role, 'connected');
-  reconnectionListener = listenForPartnerReconnection(
-    roomId,
-    role,
-    handlePartnerReconnecting
-  );
 
   saveCurrentState();
 }

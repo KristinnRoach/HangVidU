@@ -1,15 +1,11 @@
 // src/lib/storage.js
 
-const TEMP_DISABLE_LOCAL_STORAGE = false;
-
 // Simple localStorage-based state persistence with expiry
 
 const STORAGE_KEY = 'hangvidu_session';
 const SESSION_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
 
 export function saveState(state) {
-  if (TEMP_DISABLE_LOCAL_STORAGE) return;
-
   const stateWithTimestamp = {
     ...state,
     timestamp: Date.now(),
@@ -18,8 +14,6 @@ export function saveState(state) {
 }
 
 export function loadState() {
-  if (TEMP_DISABLE_LOCAL_STORAGE) return null;
-
   const stored = localStorage.getItem(STORAGE_KEY);
   if (!stored) return null;
 
@@ -41,7 +35,5 @@ export function loadState() {
 }
 
 export function clearState() {
-  if (TEMP_DISABLE_LOCAL_STORAGE) return;
-
   localStorage.removeItem(STORAGE_KEY);
 }
