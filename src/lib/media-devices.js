@@ -73,13 +73,19 @@ export async function switchCamera({
   // Get new stream
   const newStream = await navigator.mediaDevices.getUserMedia({
     video: { facingMode: newFacingMode },
-    audio: true,
+    audio: !state.isAudioMuted, // Respect the current mute state
   });
 
   const newVideoTrack = newStream.getVideoTracks()[0];
   localStream.removeTrack(localStream.getVideoTracks()[0]);
   localStream.addTrack(newVideoTrack);
   localVideo.srcObject = localStream;
+
+  // Ensure audio track state matches the current mute state
+  const newAudioTrack = newStream.getAudioTracks()[0];
+  if (newAudioTrack) {
+    newAudioTrack.enabled = !state.isAudioMuted;
+  }
 
   // Update peer connection if connected
   if (peerConnection) {
