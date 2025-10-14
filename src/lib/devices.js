@@ -1,3 +1,5 @@
+// src/lib/devices.js
+
 /**
  * Checks if the browser supports mediaDevices and enumerateDevices.
  * @returns {boolean}

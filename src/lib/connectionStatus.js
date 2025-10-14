@@ -1,3 +1,5 @@
+// src/lib/connectionStatus.js
+
 import { db } from './firebase.js';
 
 export function setConnectionStatus(roomId, role, status) {
