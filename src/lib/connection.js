@@ -51,8 +51,14 @@ export async function connect({ onRemoteStream, onStatusUpdate }) {
 
   // Create peer connection
   state.peerConnection = new RTCPeerConnection(configuration);
+  // Queue remote ICE until remoteDescription is set
+  const pendingCalleeCandidates = [];
 
   // Add local tracks
+  if (!state.localStream) {
+    onStatusUpdate?.('Error: No local media. Please allow mic/camera.');
+    throw new Error('connect called without localStream set');
+  }
   state.localStream.getTracks().forEach((track) => {
     state.peerConnection.addTrack(track, state.localStream);
   });
@@ -86,13 +92,28 @@ export async function connect({ onRemoteStream, onStatusUpdate }) {
       await state.peerConnection.setRemoteDescription(
         new RTCSessionDescription(answer)
       );
+      // Drain queued ICE
+      for (const c of pendingCalleeCandidates) {
+        try {
+          await state.peerConnection.addIceCandidate(c);
+        } catch (e) {
+          console.warn('Failed to add queued ICE candidate', e);
+        }
+      }
+      pendingCalleeCandidates.length = 0;
     }
   });
 
   // Listen for callee ICE candidates
   roomRef.child('calleeCandidates').on('child_added', (snapshot) => {
-    const candidate = snapshot.val();
-    state.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+    const candidate = new RTCIceCandidate(snapshot.val());
+    if (state.peerConnection.currentRemoteDescription) {
+      state.peerConnection
+        .addIceCandidate(candidate)
+        .catch((e) => console.warn('addIceCandidate failed', e));
+    } else {
+      pendingCalleeCandidates.push(candidate);
+    }
   });
 
   setConnectionStatus(state.roomId, 'initiator', 'connected');
@@ -124,6 +145,10 @@ export async function join({ roomId, onRemoteStream, onStatusUpdate }) {
   state.peerConnection = new RTCPeerConnection(configuration);
 
   // Add local tracks
+  if (!state.localStream) {
+    onStatusUpdate?.('Error: No local media. Please allow mic/camera.');
+    throw new Error('join called without localStream set');
+  }
   state.localStream.getTracks().forEach((track) => {
     state.peerConnection.addTrack(track, state.localStream);
   });
@@ -179,11 +204,11 @@ export async function disconnect({ onStatusUpdate }) {
     state.peerConnection = null;
   }
 
-  // // Stop local media
-  // if (state.localStream) {
-  //   state.localStream.getTracks().forEach((t) => t.stop());
-  //   state.localStream = null;
-  // }
+  // Stop local media
+  if (state.localStream) {
+    state.localStream.getTracks().forEach((t) => t.stop());
+    state.localStream = null;
+  }
 
   // Clean up Firebase room
   if (state.roomId && state.isInitiator) {
