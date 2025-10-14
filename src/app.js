@@ -57,6 +57,11 @@ import {
 
 import { hasFrontAndBackCameras, switchCamera } from './lib/devices.js';
 
+// ===== FEATURE FLAGS =====
+
+const ENABLE_RECONNECT_ON_RELOAD = !!import.meta.env.DEV;
+
+// ===== Config =====
 const configuration = {
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
 };
@@ -156,6 +161,12 @@ async function init() {
     // Use extracted logic for testability
     const decision = decideRefreshAction({ urlRoomId, savedState });
     roomId = decision.roomId;
+
+    if (!ENABLE_RECONNECT_ON_RELOAD && decision.action === 'reconnect') {
+      // Block the reconnect logic if the flag is set to false // NOTE: for testing
+      updateStatus('Ready. Click to generate video chat link.');
+      return;
+    }
 
     if (decision.action === 'reconnect') {
       updateStatus('Connecting...');
