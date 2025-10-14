@@ -53,6 +53,8 @@ import {
 
 import { hasFrontAndBackCameras, switchCamera } from './lib/devices.js';
 
+import '@fortawesome/fontawesome-free/css/all.min.css';
+
 // ===== Config =====
 const configuration = {
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
