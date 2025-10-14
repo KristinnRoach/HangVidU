@@ -101,6 +101,7 @@ async function init() {
       video: true,
       audio: true,
     });
+
     localVideo.srcObject = localStream;
 
     toggleMuteBtn.style.display = 'block';
@@ -244,52 +245,23 @@ function setupRemoteStream(event) {
     remoteVideo.srcObject = event.streams[0];
     pipBtn.style.display = 'block';
     addRemoteVideoPipListeners(remoteVideo, pipBtn);
-
     wasConnected = true;
-    console.log('✅ Connection established, wasConnected =', wasConnected);
-
+    if (import.meta.env.DEV) {
+      console.log('✅ Connection established, wasConnected =', wasConnected);
+    }
     saveCurrentState();
-
     updateStatus('Connected!');
-    // Debug: Log remoteVideo state with a unique call count to distinguish multiple logs
-    if (!window.__remoteVideoDebugCount) window.__remoteVideoDebugCount = 1;
-    else window.__remoteVideoDebugCount++;
-    const debugId = window.__remoteVideoDebugCount;
-    console.log(`[DEBUG][Connected!][#${debugId}] remoteVideo:`, {
-      srcObject: remoteVideo.srcObject,
-      videoTracks: remoteVideo.srcObject?.getVideoTracks?.() || null,
-      readyState: remoteVideo.readyState,
-      videoWidth: remoteVideo.videoWidth,
-      videoHeight: remoteVideo.videoHeight,
-      currentTime: remoteVideo.currentTime,
-      paused: remoteVideo.paused,
-      ended: remoteVideo.ended,
-      display: remoteVideo.style.display,
-      event,
-      stack: new Error().stack,
-    });
-    // Try to auto-play remoteVideo (may be blocked by browser)
     if (remoteVideo.paused && remoteVideo.srcObject) {
       remoteVideo.play().catch((e) => {
-        console.warn(
-          '[DEBUG][Connected!][#' + debugId + '] remoteVideo.play() failed:',
-          e
-        );
+        if (import.meta.env.DEV) {
+          console.warn('remoteVideo.play() failed:', e);
+        }
       });
     }
   } else {
-    // Debug: Duplicate ontrack event ignored
-    if (!window.__remoteVideoDebugCount) window.__remoteVideoDebugCount = 1;
-    else window.__remoteVideoDebugCount++;
-    const debugId = window.__remoteVideoDebugCount;
-    console.log(
-      `[DEBUG][Connected!][#${debugId}] Duplicate ontrack event ignored. remoteVideo.srcObject already set to this stream.`,
-      {
-        srcObject: remoteVideo.srcObject,
-        event,
-        stack: new Error().stack,
-      }
-    );
+    if (import.meta.env.DEV) {
+      console.log('Duplicate ontrack event ignored');
+    }
   }
 }
 
@@ -314,62 +286,66 @@ async function handlePartnerReconnecting() {
     // Initiator creates new offer
     await createNewOffer();
   } else {
-    // Joiner waits for new offer - set up ONE-TIME listener
+    // Joiner waits for new offer - set up persistent listener
     updateStatus('Waiting for partner to reconnect...');
     const roomRef = db.ref(`rooms/${roomId}`);
 
-    roomRef.child('offer').once('value', async (snapshot) => {
-      const offer = snapshot.val();
-      console.log('[RECONN-DEBUG] Joiner received offer snapshot:', offer);
-      if (!offer) return;
-
-      // Create fresh peer connection
-      peerConnection = new RTCPeerConnection(configuration);
-
-      localStream.getTracks().forEach((track) => {
-        peerConnection.addTrack(track, localStream);
-      });
-
-      console.log(
-        '[DEBUG] Assigning peerConnection.ontrack in handlePartnerReconnecting'
-      );
-      peerConnection.ontrack = setupRemoteStream;
-
-      peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-          roomRef.child('calleeCandidates').push(event.candidate.toJSON());
-        }
-      };
-
-      await peerConnection.setRemoteDescription(
-        new RTCSessionDescription(offer)
-      );
-      const answer = await peerConnection.createAnswer();
-      await peerConnection.setLocalDescription(answer);
-      console.log('[RECONN-DEBUG] Joiner setting answer in Firebase:', {
-        type: answer.type,
-        sdp: answer.sdp,
-      });
-      await roomRef.child('answer').set({ type: answer.type, sdp: answer.sdp });
-      console.log('[RECONN-DEBUG] Joiner set answer in Firebase.');
-      // Immediately read back the answer from Firebase
-      const answerSnapshot = await roomRef.child('answer').once('value');
-      console.log(
-        '[RECONN-DEBUG] Joiner read-back answer from Firebase:',
-        answerSnapshot.val()
-      );
-
-      // Listen for caller ICE candidates
-      roomRef.child('callerCandidates').on('child_added', (snapshot) => {
-        const candidate = snapshot.val();
-        if (peerConnection) {
-          peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-        }
-      });
-
-      await setConnectionStatus(roomId, 'joiner', 'connected');
+    roomRef.child('offer').on('value', async (snapshot) => {
+      await handleOfferSnapshot(snapshot);
+      // Remove the listener after processing the offer
+      roomRef.child('offer').off('value');
     });
+
+    // Immediately check if an offer already exists
+    const existingOfferSnapshot = await roomRef.child('offer').once('value');
+    if (existingOfferSnapshot.val()) {
+      await handleOfferSnapshot(existingOfferSnapshot);
+    }
   }
+}
+
+async function handleOfferSnapshot(snapshot) {
+  const offer = snapshot.val();
+  console.log('[RECONN-DEBUG] Joiner received offer snapshot:', offer);
+  if (!offer) return;
+
+  // Create fresh peer connection
+  peerConnection = new RTCPeerConnection(configuration);
+
+  localStream.getTracks().forEach((track) => {
+    peerConnection.addTrack(track, localStream);
+  });
+
+  console.log(
+    '[DEBUG] Assigning peerConnection.ontrack in handleOfferSnapshot'
+  );
+  peerConnection.ontrack = setupRemoteStream;
+
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+      db.ref(`rooms/${roomId}/callerCandidates`).push(event.candidate.toJSON());
+    }
+  };
+
+  await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+  const answer = await peerConnection.createAnswer();
+  await peerConnection.setLocalDescription(answer);
+  console.log('[RECONN-DEBUG] Joiner setting answer in Firebase:', {
+    type: answer.type,
+    sdp: answer.sdp,
+  });
+  await db
+    .ref(`rooms/${roomId}/answer`)
+    .set({ type: answer.type, sdp: answer.sdp });
+  console.log('[RECONN-DEBUG] Joiner set answer in Firebase.');
+
+  // Listen for caller ICE candidates
+  db.ref(`rooms/${roomId}/callerCandidates`).on('child_added', (snapshot) => {
+    const candidate = snapshot.val();
+    peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+  });
+
+  await setConnectionStatus(roomId, 'joiner', 'connected');
 }
 
 async function handleReconnection() {
@@ -402,6 +378,7 @@ async function handleReconnection() {
     await roomRef.child('calleeCandidates').remove();
   } else {
     await roomRef.child('callerCandidates').remove();
+    await roomRef.child('offer').remove();
   }
 
   // Follow role-based reconnection
@@ -695,6 +672,11 @@ function updateStatus(message) {
 
 function toggleMute() {
   isAudioMuted = ui.toggleMuteMic(localStream, toggleMuteBtn, isAudioMuted);
+  // Also update the hover-button icon
+  const icon = muteSelfBtn.querySelector('i');
+  if (icon) {
+    icon.className = isAudioMuted ? 'fa fa-volume-mute' : 'fa fa-volume-up';
+  }
   saveCurrentState();
 }
 
@@ -894,7 +876,7 @@ function setupWatchSync() {
 }
 
 // Add event handlers for fullscreen and mute buttons
-fullscreenPartnerBtn.addEventListener('click', () => {
+fullscreenPartnerBtn?.addEventListener('click', () => {
   if (remoteVideo.requestFullscreen) {
     remoteVideo.requestFullscreen();
   } else if (remoteVideo.webkitRequestFullscreen) {
@@ -906,7 +888,7 @@ fullscreenPartnerBtn.addEventListener('click', () => {
   }
 });
 
-fullscreenSelfBtn.addEventListener('click', () => {
+fullscreenSelfBtn?.addEventListener('click', () => {
   if (localVideo.requestFullscreen) {
     localVideo.requestFullscreen();
   } else if (localVideo.webkitRequestFullscreen) {
@@ -918,20 +900,9 @@ fullscreenSelfBtn.addEventListener('click', () => {
   }
 });
 
-muteSelfBtn.addEventListener('click', () => {
-  const audioTrack = localVideo.srcObject?.getAudioTracks()[0];
-  if (audioTrack) {
-    audioTrack.enabled = !audioTrack.enabled;
-    const icon = muteSelfBtn.querySelector('i');
-    if (icon) {
-      icon.className = audioTrack.enabled
-        ? 'fa fa-volume-mute'
-        : 'fa fa-volume-up';
-    }
-  }
-});
+muteSelfBtn?.addEventListener('click', () => toggleMute());
 
-mutePartnerBtn.addEventListener('click', () => {
+mutePartnerBtn?.addEventListener('click', () => {
   const audioTrack = remoteVideo.srcObject?.getAudioTracks()[0];
   if (audioTrack) {
     audioTrack.enabled = !audioTrack.enabled;
