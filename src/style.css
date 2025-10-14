@@ -52,7 +52,9 @@ a span {
 
 .video-wrapper {
   position: relative;
-  display: inline-block;
+  display: flex;
+  flex: 1;
+
   width: 100%;
   max-width: 500px;
 }
@@ -86,6 +88,17 @@ a span {
 
 .hover-controls:hover button:hover {
   background: rgba(0, 0, 0, 0.8);
+}
+
+@media (pointer: coarse) {
+  .video-wrapper:hover .hover-controls {
+    opacity: 0; /* Disable hover effect on touch devices */
+  }
+}
+
+.video-wrapper.show-controls .hover-controls {
+  opacity: 1 !important;
+  pointer-events: auto;
 }
 
 video {
