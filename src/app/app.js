@@ -27,7 +27,7 @@ import {
   fullscreenSelfBtn,
 } from '../lib/ui/elements.js';
 
-import { loadState, saveState, clearState } from '../storage/localStorage.js;';
+import { loadState, saveState, clearState } from '../storage/localStorage.js';
 
 import {
   connect,
