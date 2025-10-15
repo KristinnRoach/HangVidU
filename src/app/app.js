@@ -327,7 +327,7 @@ async function initiateChatRoom() {
   if (isStartChatInProgress()) return;
   setStartChatInProgress(true);
   try {
-    if (!isInitialized) {
+    if (!isInitialized()) {
       const success = await init();
       if (!success) {
         console.error('Failed to initialize media devices.');
@@ -433,7 +433,7 @@ async function hangUp() {
   window.history.replaceState({}, document.title, window.location.pathname);
   clearState();
 
-  isInitialized = false;
+  setInitialized(false);
 }
 
 // ===== HELPERS =====
