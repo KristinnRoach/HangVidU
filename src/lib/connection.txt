@@ -1,5 +1,4 @@
-// src/lib/connection.js - WebRTC connection management with Firebase signaling
-// Refactored to ensure robust teardown, fullCleanup orchestrator, and auto-reconnect (5s).
+// connection.js - WebRTC connection management with Firebase signaling
 
 import { db } from './firebase.js';
 import { setConnectionStatus } from './connectionStatus.js';
@@ -16,15 +15,6 @@ const state = {
   wasConnected: false,
   peerConnection: null,
   localStream: null,
-  // internal callback storage so internal reconnection attempts can reuse the same callbacks
-  callbacks: {
-    onRemoteStream: null,
-    onStatusUpdate: null,
-    remoteVideo: null,
-  },
-  // timers & flags
-  autoReconnectTimer: null,
-  autoReconnectDeadline: null,
 };
 
 // ===== PUBLIC API =====
@@ -53,15 +43,7 @@ export function getPeerConnection() {
   return state.peerConnection;
 }
 
-/**
- * connect({ onRemoteStream, onStatusUpdate })
- * - Creates room (initiator)
- */
 export async function connect({ onRemoteStream, onStatusUpdate }) {
-  // store callbacks for potential internal reconnect attempts
-  state.callbacks.onRemoteStream = onRemoteStream;
-  state.callbacks.onStatusUpdate = onStatusUpdate;
-
   state.isInitiator = true;
   if (!state.roomId) {
     state.roomId = generateRoomId();
@@ -69,7 +51,6 @@ export async function connect({ onRemoteStream, onStatusUpdate }) {
 
   // Create peer connection
   state.peerConnection = new RTCPeerConnection(configuration);
-  attachCommonPeerConnectionHandlers(state.peerConnection);
 
   // Robust ICE candidate storage before roomRef exists
   let roomRef = null;
@@ -124,7 +105,7 @@ export async function connect({ onRemoteStream, onStatusUpdate }) {
     console.log('[DEBUG] Assigning peerConnection.ontrack in connect');
   }
   state.peerConnection.ontrack = (event) => {
-    handleRemoteStream(event, state.callbacks.onRemoteStream);
+    handleRemoteStream(event, onRemoteStream);
   };
 
   // Listen for answer
@@ -178,29 +159,22 @@ export async function connect({ onRemoteStream, onStatusUpdate }) {
   };
 }
 
-/**
- * join({ roomId, onRemoteStream, onStatusUpdate, remoteVideo })
- * - Joins an existing room as callee / joiner.
- */
 export async function join({
   roomId,
   onRemoteStream,
   onStatusUpdate,
   remoteVideo,
 }) {
-  // store callbacks for potential internal reconnect attempts
-  state.callbacks.onRemoteStream = onRemoteStream;
-  state.callbacks.onStatusUpdate = onStatusUpdate;
-  state.callbacks.remoteVideo = remoteVideo || null;
-
   // ---- FULL CLEANUP of old state ----
-  // This ensures joining always starts fresh
   if (remoteVideo?.srcObject) {
     remoteVideo.srcObject.getTracks().forEach((t) => t.stop());
     remoteVideo.srcObject = null;
   }
   if (state.peerConnection) {
-    cleanupPeerConnection();
+    state.peerConnection.ontrack = null;
+    state.peerConnection.onicecandidate = null;
+    state.peerConnection.close();
+    state.peerConnection = null;
   }
   cleanupFirebaseListeners();
 
@@ -216,7 +190,6 @@ export async function join({
 
   // ---- Create peer connection, setup ICE queuing ----
   state.peerConnection = new RTCPeerConnection(configuration);
-  attachCommonPeerConnectionHandlers(state.peerConnection);
 
   let iceCandidatesQueue = [];
   state.peerConnection.onicecandidate = (event) => {
@@ -251,7 +224,7 @@ export async function join({
     console.log('[DEBUG] Assigning peerConnection.ontrack in join');
   }
   state.peerConnection.ontrack = (event) => {
-    handleRemoteStream(event, state.callbacks.onRemoteStream);
+    handleRemoteStream(event, onRemoteStream);
   };
 
   // ---- Get offer/set remote description ----
@@ -293,9 +266,9 @@ export async function join({
       }
       await performJoinReconnection({
         roomRef,
-        onRemoteStream: state.callbacks.onRemoteStream,
-        onStatusUpdate: state.callbacks.onStatusUpdate,
-        remoteVideo: state.callbacks.remoteVideo,
+        onRemoteStream,
+        onStatusUpdate,
+        remoteVideo,
       });
       await roomRef.child('reconnecting').set(false);
     }
@@ -306,10 +279,6 @@ export async function join({
   return { success: true };
 }
 
-/**
- * performJoinReconnection - used when initiator sends a new offer while the joiner is already connected.
- * Tears down old pc/tracks and establishes new pc with new offer -> answer exchange.
- */
 async function performJoinReconnection({
   roomRef,
   onRemoteStream,
@@ -326,12 +295,12 @@ async function performJoinReconnection({
   }
   cleanupFirebaseListeners();
   if (state.peerConnection) {
-    cleanupPeerConnection();
+    state.peerConnection.close();
+    state.peerConnection = null;
   }
 
   // --- Start new connection ---
   state.peerConnection = new RTCPeerConnection(configuration);
-  attachCommonPeerConnectionHandlers(state.peerConnection);
 
   let iceCandidatesQueue = [];
   state.peerConnection.onicecandidate = (event) => {
@@ -403,10 +372,6 @@ async function performJoinReconnection({
   onStatusUpdate?.('Partner reconnected!');
 }
 
-/**
- * reconnect({ onRemoteStream, onStatusUpdate, remoteVideo })
- * - Explicit reconnection attempt triggered by application UI/logic.
- */
 export async function reconnect({
   onRemoteStream,
   onStatusUpdate,
@@ -415,12 +380,6 @@ export async function reconnect({
   if (!state.roomId) throw new Error('Cannot reconnect: no roomId');
   if (import.meta.env.DEV)
     console.log('[RECONNECT] Attempting to reconnect to room:', state.roomId);
-
-  // Save callbacks
-  state.callbacks.onRemoteStream = onRemoteStream;
-  state.callbacks.onStatusUpdate = onStatusUpdate;
-  state.callbacks.remoteVideo =
-    remoteVideo || state.callbacks.remoteVideo || null;
 
   const roomRef = db.ref(`rooms/${state.roomId}`);
 
@@ -436,14 +395,15 @@ export async function reconnect({
       console.log('[RECONNECT] Cleared old remote video');
   }
   if (state.peerConnection) {
-    cleanupPeerConnection();
+    state.peerConnection.ontrack = null;
+    state.peerConnection.onicecandidate = null;
+    state.peerConnection.close();
+    state.peerConnection = null;
   }
   cleanupFirebaseListeners();
 
   // --- New peer connection and ICE queuing ---
   state.peerConnection = new RTCPeerConnection(configuration);
-  attachCommonPeerConnectionHandlers(state.peerConnection);
-
   let iceCandidatesQueue = [];
   state.peerConnection.onicecandidate = (event) => {
     if (event.candidate) {
@@ -523,15 +483,14 @@ export async function reconnect({
   return { success: true };
 }
 
-/**
- * disconnect({ onStatusUpdate })
- * - Explicit user hangup / disconnect.
- */
 export async function disconnect({ onStatusUpdate }) {
   cleanupFirebaseListeners();
 
   if (state.peerConnection) {
-    cleanupPeerConnection();
+    state.peerConnection.ontrack = null;
+    state.peerConnection.onicecandidate = null;
+    state.peerConnection.close();
+    state.peerConnection = null;
   }
 
   // Stop local media
@@ -550,12 +509,11 @@ export async function disconnect({ onStatusUpdate }) {
   state.isInitiator = false;
   state.wasConnected = false;
 
-  onStatusUpdate?.('Disconnected. Ready for new chat.');
+  if (onStatusUpdate) {
+    onStatusUpdate('Disconnected. Ready for new chat.');
+  }
 }
 
-/**
- * restoreConnectionState(savedState)
- */
 export function restoreConnectionState(savedState) {
   if (!savedState) return;
 
@@ -582,318 +540,18 @@ async function handleRemoteStream(event, onRemoteStream) {
   }
 }
 
-/**
- * cleanupPeerConnection()
- * - Remove event handlers, close pc, null reference.
- */
-export function cleanupPeerConnection() {
-  try {
-    if (!state.peerConnection) return;
-    if (import.meta.env.DEV) console.log('[CLEANUP] cleanupPeerConnection');
-
-    // Remove event handlers (best-effort)
-    try {
-      state.peerConnection.ontrack = null;
-      state.peerConnection.onicecandidate = null;
-      state.peerConnection.onconnectionstatechange = null;
-      state.peerConnection.oniceconnectionstatechange = null;
-      state.peerConnection.onnegotiationneeded = null;
-      // Any other event handlers you may have set should be nulled here.
-    } catch (e) {
-      if (import.meta.env.DEV)
-        console.warn('[CLEANUP] remove handlers failed', e);
-    }
-
-    try {
-      state.peerConnection.getSenders?.()?.forEach((s) => {
-        // detach track references
-        try {
-          if (s.track) s.track.stop?.();
-        } catch (e) {}
-      });
-    } catch (e) {}
-
-    try {
-      state.peerConnection.close();
-    } catch (e) {
-      if (import.meta.env.DEV) console.warn('[CLEANUP] pc.close() failed', e);
-    }
-  } finally {
-    state.peerConnection = null;
-  }
-}
-
-/**
- * cleanupMedia()
- * - Stop local stream tracks, clear local stream state.
- */
-export function cleanupMedia() {
-  try {
-    if (import.meta.env.DEV) console.log('[CLEANUP] cleanupMedia');
-
-    if (state.localStream) {
-      try {
-        state.localStream.getTracks().forEach((t) => {
-          try {
-            t.stop();
-          } catch (e) {}
-        });
-      } catch (e) {}
-      state.localStream = null;
-    }
-  } finally {
-    // nothing else
-  }
-}
-
-/**
- * cleanupFirebaseListeners()
- * - Remove firebase listeners attached to the current roomId
- */
 function cleanupFirebaseListeners() {
   if (!state.roomId) return;
 
   const roomRef = db.ref(`rooms/${state.roomId}`);
-  try {
-    roomRef.child('answer').off();
-    roomRef.child('offer').off();
-    roomRef.child('callerCandidates').off();
-    roomRef.child('calleeCandidates').off();
-    roomRef.child('reconnecting').off();
-  } catch (e) {
-    if (import.meta.env.DEV) console.warn('[CLEANUP] Firebase off() failed', e);
-  }
+  roomRef.child('answer').off();
+  roomRef.child('offer').off();
+  roomRef.child('callerCandidates').off();
+  roomRef.child('calleeCandidates').off();
 }
 
-/**
- * cleanupFirebaseRoom(roomId)
- * - Remove the entire room from Firebase (safe to call repeatedly).
- */
-export async function cleanupFirebaseRoom(roomId) {
-  if (!roomId) return;
-  if (import.meta.env.DEV)
-    console.log('[CLEANUP] cleanupFirebaseRoom for', roomId);
-  try {
-    await db.ref(`rooms/${roomId}`).remove();
-  } catch (e) {
-    if (import.meta.env.DEV)
-      console.warn('[CLEANUP] cleanupFirebaseRoom failed', e);
-  }
-}
-
-/**
- * resetAppState()
- * - Clears in-memory state fields (keeps callbacks if needed).
- * - Clears localStorage/sessionStorage (per user request).
- * - Enforces a short delay (150ms) to avoid browser race conditions before new connection.
- */
-export async function resetAppState() {
-  if (import.meta.env.DEV) console.log('[CLEANUP] resetAppState');
-
-  state.roomId = null;
-  state.isInitiator = false;
-  state.wasConnected = false;
-
-  // Clear storage as requested (remove all keys)
-  try {
-    localStorage.clear();
-    sessionStorage.clear();
-  } catch (e) {
-    if (import.meta.env.DEV) console.warn('[CLEANUP] storage clear failed', e);
-  }
-
-  // small delay to avoid race conditions when immediately creating new PeerConnections
-  await delay(150);
-}
-
-/**
- * fullCleanup({ deleteRoom = true })
- * - Orchestrator that calls cleanupPeerConnection, cleanupMedia, cleanupFirebaseRoom (if requested), resetAppState
- */
-export async function fullCleanup({ deleteRoom = true } = {}) {
-  if (import.meta.env.DEV)
-    console.log('[CLEANUP] fullCleanup start', {
-      deleteRoom,
-      roomId: state.roomId,
-    });
-
-  // Stop auto-reconnect timers if any
-  if (state.autoReconnectTimer) {
-    clearTimeout(state.autoReconnectTimer);
-    state.autoReconnectTimer = null;
-    state.autoReconnectDeadline = null;
-  }
-
-  // 1) Remove firebase listeners
-  cleanupFirebaseListeners();
-
-  // 2) Close and null peer connection
-  cleanupPeerConnection();
-
-  // 3) Stop local media
-  cleanupMedia();
-
-  // 4) Delete room from Firebase if requested (and roomId exists)
-  if (deleteRoom && state.roomId) {
-    try {
-      await cleanupFirebaseRoom(state.roomId);
-    } catch (e) {
-      if (import.meta.env.DEV)
-        console.warn('[CLEANUP] cleanupFirebaseRoom threw', e);
-    }
-  }
-
-  // 5) Reset app-level state and storages (with delay)
-  await resetAppState();
-
-  if (import.meta.env.DEV) console.log('[CLEANUP] fullCleanup complete');
-}
-
-/**
- * attachCommonPeerConnectionHandlers(pc)
- * - Adds connection state watchers that attempt auto-reconnect (max 5s), then call fullCleanup
- */
-function attachCommonPeerConnectionHandlers(pc) {
-  if (!pc) return;
-
-  pc.onconnectionstatechange = () => {
-    if (import.meta.env.DEV) {
-      console.log('[PC] connectionState:', pc.connectionState);
-    }
-    // If connection goes to disconnected/failed, attempt a short auto-reconnect
-    if (
-      pc.connectionState === 'disconnected' ||
-      pc.connectionState === 'failed'
-    ) {
-      // Avoid multiple timers
-      if (state.autoReconnectTimer) return;
-
-      // Start auto-reconnect attempt window
-      state.autoReconnectDeadline = Date.now() + 5000; // 5s window
-      const notify = state.callbacks.onStatusUpdate;
-      notify?.('Connection lost — attempting to reconnect...');
-      if (import.meta.env.DEV) console.log('[AUTO-RECONNECT] starting (5s)');
-
-      // Try to attempt an internal reconnect flow:
-      state.autoReconnectTimer = setTimeout(async () => {
-        state.autoReconnectTimer = null;
-        // If we are already connected again, skip teardown
-        if (
-          state.peerConnection &&
-          state.peerConnection.connectionState === 'connected'
-        ) {
-          notify?.('Reconnected');
-          return;
-        }
-
-        // Try one explicit reconnect path (calls exported reconnect)
-        try {
-          // If there's a roomId, call exported reconnect to recreate offer/answer cycle.
-          if (state.roomId) {
-            if (import.meta.env.DEV)
-              console.log('[AUTO-RECONNECT] calling reconnect()');
-            await reconnect({
-              onRemoteStream: state.callbacks.onRemoteStream,
-              onStatusUpdate: state.callbacks.onStatusUpdate,
-              remoteVideo: state.callbacks.remoteVideo,
-            });
-
-            // Give a short moment for the new pc to reach connected state
-            const settled = await waitForConnectionOrTimeout(5000); // second safety window (up to 5s)
-            if (settled) {
-              state.callbacks.onStatusUpdate?.('Reconnected!');
-              if (import.meta.env.DEV) console.log('[AUTO-RECONNECT] success');
-              return;
-            }
-          }
-        } catch (e) {
-          if (import.meta.env.DEV)
-            console.warn('[AUTO-RECONNECT] reconnect() threw', e);
-        }
-
-        // If we reach here, the auto-reconnect failed — perform full cleanup
-        state.callbacks.onStatusUpdate?.(
-          'Reconnect failed — cleaning up session.'
-        );
-        if (import.meta.env.DEV)
-          console.log('[AUTO-RECONNECT] failed, calling fullCleanup');
-
-        try {
-          await fullCleanup({ deleteRoom: true });
-        } catch (e) {
-          if (import.meta.env.DEV)
-            console.warn('[AUTO-RECONNECT] fullCleanup failed', e);
-        }
-        state.callbacks.onStatusUpdate?.('Disconnected. Ready for new chat.');
-      }, 0); // immediate scheduling; we rely on waitForConnectionOrTimeout to watch state
-    } else if (pc.connectionState === 'connected') {
-      // If we reconnect successfully before timer, clear timers
-      if (state.autoReconnectTimer) {
-        clearTimeout(state.autoReconnectTimer);
-        state.autoReconnectTimer = null;
-        state.autoReconnectDeadline = null;
-        if (import.meta.env.DEV)
-          console.log('[AUTO-RECONNECT] cleared after connect');
-      }
-    }
-  };
-
-  // Optional: watch ICE connection state as well
-  pc.oniceconnectionstatechange = () => {
-    if (import.meta.env.DEV) {
-      console.log('[PC] iceConnectionState:', pc.iceConnectionState);
-    }
-    // Some browsers set iceConnectionState to 'disconnected' before connectionState changes
-    if (
-      pc.iceConnectionState === 'disconnected' ||
-      pc.iceConnectionState === 'failed'
-    ) {
-      // reuse the connectionState handler for logic
-      pc.onconnectionstatechange?.();
-    }
-  };
-}
-
-/**
- * waitForConnectionOrTimeout(ms)
- * - Resolves true if current peerConnection reaches connected within ms, otherwise false.
- */
-function waitForConnectionOrTimeout(ms) {
-  return new Promise((resolve) => {
-    const start = Date.now();
-    const interval = 200;
-    let stopped = false;
-    const check = () => {
-      if (stopped) return;
-      if (
-        state.peerConnection &&
-        state.peerConnection.connectionState === 'connected'
-      ) {
-        stopped = true;
-        resolve(true);
-        return;
-      }
-      if (Date.now() - start >= ms) {
-        stopped = true;
-        resolve(false);
-        return;
-      }
-      setTimeout(check, interval);
-    };
-    check();
-  });
-}
-
-/**
- * cleanupFirebaseRoom(roomId) wrapper above is exported.
- * helper: generateRoomId, delay
- */
 function generateRoomId() {
   return Math.random().toString(36).substring(2, 15);
-}
-
-function delay(ms) {
-  return new Promise((res) => setTimeout(res, ms));
 }
 
 // ===== FIREBASE SIGNALING =====
@@ -926,3 +584,401 @@ async function removeRoomFromFirebase(roomId) {
   }
   await db.ref(`rooms/${roomId}`).remove();
 }
+
+// export async function connect({ onRemoteStream, onStatusUpdate }) {
+//   state.isInitiator = true;
+//   if (!state.roomId) {
+//     state.roomId = generateRoomId();
+//   }
+
+//   // Create peer connection
+//   state.peerConnection = new RTCPeerConnection(configuration);
+//   // Queue remote ICE until remoteDescription is set
+//   const pendingCalleeCandidates = [];
+//   let processingAnswer = false; // Prevent duplicate answer processing
+
+//   // Add local tracks
+//   if (!state.localStream) {
+//     onStatusUpdate?.('Error: No local media. Please allow mic/camera.');
+//     throw new Error('connect called without localStream set');
+//   }
+//   state.localStream.getTracks().forEach((track) => {
+//     state.peerConnection.addTrack(track, state.localStream);
+//   });
+
+//   // Create offer
+//   const offer = await state.peerConnection.createOffer();
+//   await state.peerConnection.setLocalDescription(offer);
+
+//   // Create room in Firebase
+//   const roomRef = await createRoomInFirebase(state.roomId, offer);
+
+//   // Setup remote stream handler
+//   if (import.meta.env.DEV) {
+//     console.log('[DEBUG] Assigning peerConnection.ontrack in connect');
+//   }
+//   state.peerConnection.ontrack = (event) => {
+//     handleRemoteStream(event, onRemoteStream);
+//   };
+
+//   // Handle ICE candidates
+//   state.peerConnection.onicecandidate = (event) => {
+//     if (event.candidate) {
+//       roomRef.child('callerCandidates').push(event.candidate.toJSON());
+//     }
+//   };
+
+//   // Listen for answer
+//   roomRef.child('answer').on('value', async (snapshot) => {
+//     const answer = snapshot.val();
+//     if (
+//       answer &&
+//       !processingAnswer &&
+//       !state.peerConnection.currentRemoteDescription
+//     ) {
+//       processingAnswer = true;
+//       await state.peerConnection.setRemoteDescription(
+//         new RTCSessionDescription(answer)
+//       );
+//       // Drain queued ICE
+//       for (const c of pendingCalleeCandidates) {
+//         try {
+//           await state.peerConnection.addIceCandidate(c);
+//         } catch (e) {
+//           console.warn('Failed to add queued ICE candidate', e);
+//         }
+//       }
+//       pendingCalleeCandidates.length = 0;
+//       processingAnswer = false;
+//     }
+//   });
+
+//   // Listen for callee ICE candidates
+//   roomRef.child('calleeCandidates').on('child_added', (snapshot) => {
+//     const candidate = new RTCIceCandidate(snapshot.val());
+//     if (state.peerConnection.currentRemoteDescription) {
+//       state.peerConnection
+//         .addIceCandidate(candidate)
+//         .catch((e) => console.warn('addIceCandidate failed', e));
+//     } else {
+//       pendingCalleeCandidates.push(candidate);
+//     }
+//   });
+
+//   setConnectionStatus(state.roomId, 'initiator', 'connected');
+
+//   if (onStatusUpdate) {
+//     onStatusUpdate('Link ready! Waiting for partner...');
+//   }
+
+//   return {
+//     roomId: state.roomId,
+//     shareUrl: `${window.location.origin}${window.location.pathname}?room=${state.roomId}`,
+//   };
+// }
+
+// export async function join({
+//   roomId,
+//   onRemoteStream,
+//   onStatusUpdate,
+//   remoteVideo,
+// }) {
+//   state.roomId = roomId;
+
+//   // Join room in Firebase
+//   const { roomRef, roomSnapshot } = await joinRoomInFirebase(roomId);
+
+//   if (!roomSnapshot.exists()) {
+//     if (onStatusUpdate) {
+//       onStatusUpdate('Error: Invalid room link');
+//     }
+//     return { success: false };
+//   }
+
+//   // Create peer connection
+//   state.peerConnection = new RTCPeerConnection(configuration);
+
+//   // Add local tracks
+//   if (!state.localStream) {
+//     onStatusUpdate?.('Error: No local media. Please allow mic/camera.');
+//     throw new Error('join called without localStream set');
+//   }
+//   state.localStream.getTracks().forEach((track) => {
+//     state.peerConnection.addTrack(track, state.localStream);
+//   });
+
+//   // Setup remote stream handler
+//   if (import.meta.env.DEV) {
+//     console.log('[DEBUG] Assigning peerConnection.ontrack in join');
+//   }
+//   state.peerConnection.ontrack = (event) => {
+//     handleRemoteStream(event, onRemoteStream);
+//   };
+
+//   // Handle ICE candidates
+//   state.peerConnection.onicecandidate = (event) => {
+//     if (event.candidate) {
+//       roomRef.child('calleeCandidates').push(event.candidate.toJSON());
+//     }
+//   };
+
+//   // Get offer and set remote description
+//   const offer = roomSnapshot.val().offer;
+//   await state.peerConnection.setRemoteDescription(
+//     new RTCSessionDescription(offer)
+//   );
+
+//   // Create answer
+//   const answer = await state.peerConnection.createAnswer();
+//   await state.peerConnection.setLocalDescription(answer);
+
+//   await roomRef.child('answer').set({
+//     type: answer.type,
+//     sdp: answer.sdp,
+//   });
+
+//   // Listen for caller ICE candidates
+//   roomRef.child('callerCandidates').on('child_added', (snapshot) => {
+//     const candidate = snapshot.val();
+//     state.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+//   });
+
+//   // Listen for reconnection signal from initiator
+//   roomRef.child('reconnecting').on('value', async (snapshot) => {
+//     const isReconnecting = snapshot.val();
+//     if (isReconnecting && state.peerConnection) {
+//       if (import.meta.env.DEV) {
+//         console.log('[JOIN] Initiator is reconnecting, handling new offer...');
+//       }
+
+//       // Clear old remote video if present
+//       if (remoteVideo?.srcObject) {
+//         remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
+//         remoteVideo.srcObject = null;
+//         if (import.meta.env.DEV) {
+//           console.log('[JOIN] Cleared old remote video before reconnection');
+//         }
+//       }
+
+//       // CRITICAL: Clean up old Firebase listeners before creating new peer connection
+//       cleanupFirebaseListeners();
+//       if (import.meta.env.DEV) {
+//         console.log('[JOIN] Cleaned up old Firebase listeners');
+//       }
+
+//       // Close old connection
+//       state.peerConnection.close();
+
+//       // Create new peer connection
+//       state.peerConnection = new RTCPeerConnection(configuration);
+
+//       // Add local tracks
+//       state.localStream.getTracks().forEach((track) => {
+//         state.peerConnection.addTrack(track, state.localStream);
+//       });
+
+//       // Setup handlers
+//       state.peerConnection.ontrack = (event) => {
+//         handleRemoteStream(event, onRemoteStream);
+//       };
+
+//       state.peerConnection.onicecandidate = (event) => {
+//         if (event.candidate) {
+//           roomRef.child('calleeCandidates').push(event.candidate.toJSON());
+//         }
+//       };
+
+//       // Get new offer
+//       const newSnapshot = await roomRef.once('value');
+//       const newOffer = newSnapshot.val().offer;
+//       await state.peerConnection.setRemoteDescription(
+//         new RTCSessionDescription(newOffer)
+//       );
+
+//       // Create new answer
+//       const newAnswer = await state.peerConnection.createAnswer();
+//       await state.peerConnection.setLocalDescription(newAnswer);
+
+//       // Send new answer
+//       await roomRef.child('answer').set({
+//         type: newAnswer.type,
+//         sdp: newAnswer.sdp,
+//       });
+
+//       // Listen for new ICE candidates
+//       roomRef.child('callerCandidates').on('child_added', (snapshot) => {
+//         const candidate = snapshot.val();
+//         state.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+//       });
+
+//       if (import.meta.env.DEV) {
+//         console.log('[JOIN] Reconnection complete, new answer sent');
+//       }
+
+//       if (onStatusUpdate) {
+//         onStatusUpdate('Partner reconnected!');
+//       }
+
+//       // Clear reconnecting flag
+//       await roomRef.child('reconnecting').set(false);
+//     }
+//   });
+
+//   setConnectionStatus(state.roomId, 'joiner', 'connected');
+
+//   return { success: true };
+// }
+
+// export async function reconnect({
+//   onRemoteStream,
+//   onStatusUpdate,
+//   remoteVideo,
+// }) {
+//   if (!state.roomId) {
+//     throw new Error('Cannot reconnect: no roomId');
+//   }
+
+//   if (import.meta.env.DEV) {
+//     console.log('[RECONNECT] Attempting to reconnect to room:', state.roomId);
+//   }
+
+//   const roomRef = db.ref(`rooms/${state.roomId}`);
+
+//   // CRITICAL: Clear old ICE candidates before reconnection
+//   if (import.meta.env.DEV) {
+//     console.log('[RECONNECT] Clearing old ICE candidates...');
+//   }
+//   await roomRef.child('callerCandidates').remove();
+//   await roomRef.child('calleeCandidates').remove();
+
+//   // Clear old remote video if present
+//   if (remoteVideo && remoteVideo.srcObject) {
+//     remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
+//     remoteVideo.srcObject = null;
+//     if (import.meta.env.DEV) {
+//       console.log('[RECONNECT] Cleared old remote video');
+//     }
+//   }
+
+//   // Create new peer connection
+//   state.peerConnection = new RTCPeerConnection(configuration);
+
+//   // Add local tracks
+//   state.localStream.getTracks().forEach((track) => {
+//     state.peerConnection.addTrack(track, state.localStream);
+//   });
+
+//   if (state.isInitiator) {
+//     // Initiator: Create new offer and update Firebase
+//     const offer = await state.peerConnection.createOffer();
+//     await state.peerConnection.setLocalDescription(offer);
+
+//     // Replace old offer with new one
+//     await roomRef.update({
+//       offer: {
+//         type: offer.type,
+//         sdp: offer.sdp,
+//       },
+//       reconnecting: true,
+//     });
+
+//     if (import.meta.env.DEV) {
+//       console.log('[RECONNECT] New offer sent');
+//     }
+
+//     // Setup handlers
+//     state.peerConnection.ontrack = (event) => {
+//       handleRemoteStream(event, onRemoteStream);
+//     };
+
+//     state.peerConnection.onicecandidate = (event) => {
+//       if (event.candidate) {
+//         roomRef.child('callerCandidates').push(event.candidate.toJSON());
+//       }
+//     };
+
+//     let processingAnswer = false; // Prevent duplicate answer processing
+
+//     // Listen for new answer
+//     roomRef.child('answer').on('value', async (snapshot) => {
+//       const answer = snapshot.val();
+//       if (
+//         answer &&
+//         !processingAnswer &&
+//         !state.peerConnection.currentRemoteDescription
+//       ) {
+//         processingAnswer = true;
+//         await state.peerConnection.setRemoteDescription(
+//           new RTCSessionDescription(answer)
+//         );
+//         if (import.meta.env.DEV) {
+//           console.log('[RECONNECT] Answer received');
+//         }
+//         processingAnswer = false;
+//       }
+//     });
+
+//     // Listen for callee ICE candidates
+//     roomRef.child('calleeCandidates').on('child_added', (snapshot) => {
+//       const candidate = snapshot.val();
+//       state.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+//     });
+
+//     if (onStatusUpdate) {
+//       onStatusUpdate('Reconnecting... waiting for partner');
+//     }
+//   } else {
+//     // Joiner: Wait for new offer, create new answer
+//     const roomSnapshot = await roomRef.once('value');
+
+//     if (!roomSnapshot.exists()) {
+//       if (onStatusUpdate) {
+//         onStatusUpdate('Error: Room no longer exists');
+//       }
+//       return { success: false };
+//     }
+
+//     // Setup handlers
+//     state.peerConnection.ontrack = (event) => {
+//       handleRemoteStream(event, onRemoteStream);
+//     };
+
+//     state.peerConnection.onicecandidate = (event) => {
+//       if (event.candidate) {
+//         roomRef.child('calleeCandidates').push(event.candidate.toJSON());
+//       }
+//     };
+
+//     // Get new offer
+//     const offer = roomSnapshot.val().offer;
+//     await state.peerConnection.setRemoteDescription(
+//       new RTCSessionDescription(offer)
+//     );
+
+//     // Create new answer
+//     const answer = await state.peerConnection.createAnswer();
+//     await state.peerConnection.setLocalDescription(answer);
+
+//     // Update answer in Firebase
+//     await roomRef.child('answer').set({
+//       type: answer.type,
+//       sdp: answer.sdp,
+//     });
+
+//     if (import.meta.env.DEV) {
+//       console.log('[RECONNECT] New answer sent');
+//     }
+
+//     // Listen for caller ICE candidates
+//     roomRef.child('callerCandidates').on('child_added', (snapshot) => {
+//       const candidate = snapshot.val();
+//       state.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+//     });
+
+//     if (onStatusUpdate) {
+//       onStatusUpdate('Reconnected!');
+//     }
+//   }
+
+//   return { success: true };
+// }

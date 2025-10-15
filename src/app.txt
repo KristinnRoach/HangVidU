@@ -41,8 +41,6 @@ import {
   getPeerConnection,
   getLocalStream,
   restoreConnectionState,
-  fullCleanup, // new orchestrator
-  cleanupFirebaseRoom, // optional if needed elsewhere
 } from './lib/connection.js';
 import { handleMediaError } from './lib/error-handling.js';
 import * as ui from './lib/ui/ui.js';
@@ -160,6 +158,7 @@ async function init() {
     if (decision.action === 'join') {
       updateStatus('Connecting...');
       startChatBtn.style.display = 'none';
+      // restoreUIState(savedState); // TODO: cherry pick UI state to restore based on connection status etc..
       await joinChatRoom(decision.roomId);
     } else if (decision.action === 'reconnect') {
       updateStatus('Reconnecting...');
@@ -168,6 +167,7 @@ async function init() {
       if (connectionState) {
         restoreConnectionState(connectionState);
       }
+      // restoreUIState(savedState); // TODO: same as above
       await reconnectChatRoom();
     } else {
       updateStatus('Ready. Click to generate video chat link.');
@@ -341,11 +341,108 @@ function repairConnectionHandler() {
   window.location.reload(); // Or call hangUp, then startChatBtn.click() if you want to restart without full page reload
 }
 
+// async function handleRemoteStream(stream) {
+//   // Only set srcObject if not already set to this stream
+//   if (remoteVideo && remoteVideo.srcObject !== stream) {
+//     // Minimal signaling state log before attaching stream
+//     const pc = getPeerConnection && getPeerConnection();
+//     if (pc) {
+//       console.log('[SIGNALING] handleRemoteStream:', {
+//         signalingState: pc.signalingState,
+//         remoteDescription: pc.remoteDescription?.type,
+//         localDescription: pc.localDescription?.type,
+//       });
+//     }
+
+//     remoteVideo.srcObject = stream;
+
+//     // Immediately inspect video track state after assignment
+//     const videoTrack = stream.getVideoTracks()[0];
+//     if (videoTrack) {
+//       console.log(
+//         'video track muted:',
+//         videoTrack.muted,
+//         'enabled:',
+//         videoTrack.enabled
+//       );
+//     }
+
+//     // TEMP: Debug track events
+//     videoTrack?.addEventListener('mute', () => {
+//       console.log('[TRACK] Video track MUTED');
+//     });
+//     videoTrack?.addEventListener('unmute', () => {
+//       console.log('[TRACK] Video track UNMUTED');
+//     });
+
+//     // FORCE RELOAD // ? TRYING to fix reconnection
+//     remoteVideo.load();
+//     console.log(
+//       '[VIDEO] About to call play(), srcObject exists:',
+//       !!remoteVideo.srcObject
+//     );
+//     await remoteVideo.play();
+
+//     pipBtn.style.display = 'block';
+//     addRemoteVideoPipListeners(remoteVideo, pipBtn);
+//     saveCurrentState();
+//     updateStatus('Connected!');
+
+//     // Debug: Check stream health
+//     if (import.meta.env.DEV) {
+//       const videoTracks = stream.getVideoTracks();
+//       const audioTracks = stream.getAudioTracks();
+//       console.log(
+//         '[DEBUG STREAM] Video tracks:',
+//         videoTracks.length,
+//         videoTracks.map(
+//           (t) =>
+//             `${t.label} enabled=${t.enabled} muted=${t.muted} readyState=${t.readyState}`
+//         )
+//       );
+//       console.log(
+//         '[DEBUG STREAM] Audio tracks:',
+//         audioTracks.length,
+//         audioTracks.map(
+//           (t) =>
+//             `${t.label} enabled=${t.enabled} muted=${t.muted} readyState=${t.readyState}`
+//         )
+//       );
+
+//       // Check if video element is actually playing
+//       setTimeout(() => {
+//         console.log('[DEBUG VIDEO] remoteVideo.paused:', remoteVideo.paused);
+//         console.log(
+//           '[DEBUG VIDEO] remoteVideo.readyState:',
+//           remoteVideo.readyState
+//         );
+//         console.log(
+//           '[DEBUG VIDEO] remoteVideo.videoWidth:',
+//           remoteVideo.videoWidth
+//         );
+//         console.log(
+//           '[DEBUG VIDEO] remoteVideo.videoHeight:',
+//           remoteVideo.videoHeight
+//         );
+//       }, 1000);
+//     }
+
+//     if (remoteVideo.paused && remoteVideo.srcObject) {
+//       remoteVideo.play().catch((e) => {
+//         if (import.meta.env.DEV) {
+//           console.warn('remoteVideo.play() failed:', e);
+//         }
+//       });
+//     }
+//   } else {
+//     if (import.meta.env.DEV) {
+//       console.log('Duplicate ontrack event ignored');
+//     }
+//   }
+// }
+
 // ===== CREATE ROOM (Person A) =====
 async function initiateChatRoom() {
-  // Wait briefly to ensure previous teardown fully settled
-  await new Promise((r) => setTimeout(r, 150));
-
   const { roomId, shareUrl } = await connect({
     onRemoteStream: handleRemoteStream,
     onStatusUpdate: updateStatus,
@@ -365,9 +462,6 @@ async function initiateChatRoom() {
 
 // ===== JOIN ROOM (Person B) =====
 async function joinChatRoom(roomId) {
-  // Wait briefly to ensure previous teardown fully settled
-  await new Promise((r) => setTimeout(r, 150));
-
   const result = await join({
     roomId,
     onRemoteStream: handleRemoteStream,
@@ -446,8 +540,20 @@ async function hangUp() {
   // Close any PiP windows first
   closePiP(pipBtn);
 
-  // Use fullCleanup orchestrator (deleteRoom true)
-  await fullCleanup({ deleteRoom: true });
+  if (remoteVideo.srcObject) {
+    remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
+    remoteVideo.srcObject = null;
+  }
+
+  // Stop local media too
+  const localStream = getLocalStream();
+  if (localStream) {
+    localStream.getTracks().forEach((t) => t.stop());
+    localVideo.srcObject = null;
+    setLocalStream(null);
+  }
+
+  await disconnect({ onStatusUpdate: updateStatus });
 
   // Reset UI
   startChatBtn.disabled = false;
@@ -592,36 +698,5 @@ function setupTouchControls(wrapper) {
 }
 
 document.querySelectorAll('.video-wrapper').forEach(setupTouchControls);
-
-// Ensure full cleanup on page unload / visibility change
-window.addEventListener('pagehide', async () => {
-  // pagehide fires on navigation away / refresh / close for modern browsers
-  try {
-    await fullCleanup({ deleteRoom: true });
-  } catch (e) {
-    if (import.meta.env.DEV) console.warn('pagehide fullCleanup failed', e);
-  }
-});
-
-window.addEventListener('beforeunload', async (e) => {
-  // best-effort synchronous cleanup; avoid async blocking ops
-  try {
-    // stop and null video elements (synchronous)
-    if (remoteVideo?.srcObject) {
-      remoteVideo.srcObject.getTracks().forEach((t) => t.stop());
-      remoteVideo.srcObject = null;
-    }
-    if (localVideo?.srcObject) {
-      localVideo.srcObject.getTracks().forEach((t) => t.stop());
-      localVideo.srcObject = null;
-    }
-
-    // remove firebase room synchronously is not possible; but we attempt an async call
-    // We still call fullCleanup but cannot await it reliably here.
-    fullCleanup({ deleteRoom: true }).catch(() => {});
-  } catch (err) {
-    // ignore errors during unload
-  }
-});
 
 init();
