@@ -33,6 +33,7 @@ import {
   connect,
   join,
   disconnect,
+  reconnect,
   setLocalStream,
   getRoomId,
   getIsInitiator,
@@ -82,6 +83,7 @@ function saveCurrentState() {
     watchMode: getWatchMode(),
     wasConnected: getWasConnected(),
     streamUrl: streamUrlInput.value,
+    lastActive: Date.now(),
   });
 }
 
@@ -141,13 +143,32 @@ async function init() {
     const urlRoomId = urlParams.get('room');
     const savedState = loadState();
 
-    const decision = determineRoomAction({ urlRoomId, savedState });
+    // Extract only connection-related state
+    const connectionState = savedState
+      ? {
+          roomId: savedState.roomId,
+          wasConnected: savedState.wasConnected,
+          isInitiator: savedState.isInitiator,
+          lastActive: savedState.lastActive,
+        }
+      : null;
+
+    const decision = determineRoomAction({ urlRoomId, connectionState });
 
     if (decision.action === 'join') {
       updateStatus('Connecting...');
       startChatBtn.style.display = 'none';
-      restoreUIState(savedState);
+      // restoreUIState(savedState); // TODO: cherry pick UI state to restore based on connection status etc..
       await joinChatRoom(decision.roomId);
+    } else if (decision.action === 'reconnect') {
+      updateStatus('Reconnecting...');
+      startChatBtn.style.display = 'none';
+      // Restore connection state before reconnecting
+      if (connectionState) {
+        restoreConnectionState(connectionState);
+      }
+      // restoreUIState(savedState); // TODO: same as above
+      await reconnectChatRoom();
     } else {
       updateStatus('Ready. Click to generate video chat link.');
     }
@@ -160,10 +181,27 @@ async function init() {
   }
 }
 
-function determineRoomAction({ urlRoomId, savedState }) {
-  const roomId = urlRoomId; // NOTE:  Disabled returning to saved room until properly implemented. //   || savedState?.roomId;
-  if (!roomId) return { action: 'idle' };
-  return { action: 'join', roomId };
+function determineRoomAction({ urlRoomId, connectionState }) {
+  // Priority 1: URL room (someone shared a link)
+  if (urlRoomId) {
+    return { action: 'join', roomId: urlRoomId };
+  }
+
+  // Priority 2: Reconnection (page refresh during active call)
+  // Only allow reconnect if lastActive is recent (within 2 minutes)
+  const now = Date.now();
+  const MAX_RECONNECT_AGE = 2 * 60 * 1000; // 2 minutes
+  if (
+    connectionState?.roomId &&
+    connectionState?.wasConnected &&
+    connectionState?.lastActive &&
+    now - connectionState.lastActive < MAX_RECONNECT_AGE
+  ) {
+    return { action: 'reconnect', roomId: connectionState.roomId };
+  }
+
+  // Default: idle, waiting to start
+  return { action: 'idle' };
 }
 
 function restoreUIState(savedState) {
@@ -180,27 +218,228 @@ function restoreUIState(savedState) {
   }
 }
 
-function handleRemoteStream(stream) {
-  // Only set srcObject if not already set to this stream
-  if (remoteVideo.srcObject !== stream) {
-    remoteVideo.srcObject = stream;
-    pipBtn.style.display = 'block';
-    addRemoteVideoPipListeners(remoteVideo, pipBtn);
-    saveCurrentState();
-    updateStatus('Connected!');
-    if (remoteVideo.paused && remoteVideo.srcObject) {
-      remoteVideo.play().catch((e) => {
-        if (import.meta.env.DEV) {
-          console.warn('remoteVideo.play() failed:', e);
-        }
-      });
-    }
-  } else {
+async function handleRemoteStream(stream) {
+  // Always set srcObject (your reconnect code should avoid zombie tracks)
+
+  if (remoteVideo.srcObject === stream) {
     if (import.meta.env.DEV) {
       console.log('Duplicate ontrack event ignored');
     }
+    return;
   }
+
+  if (!stream) {
+    console.warn('handleRemoteStream called with null stream');
+    return;
+  }
+
+  if (!remoteVideo) {
+    console.warn('handleRemoteStream: remoteVideo element not found');
+    return;
+  }
+
+  const pc = getPeerConnection && getPeerConnection();
+  if (pc) {
+    console.log('[SIGNALING] handleRemoteStream:', {
+      signalingState: pc.signalingState,
+      remoteDescription: pc.remoteDescription?.type,
+      localDescription: pc.localDescription?.type,
+    });
+  }
+
+  // Defensive: always make a new stream object
+  const freshStream = new MediaStream(stream.getTracks());
+  if (remoteVideo.srcObject) {
+    remoteVideo.srcObject.getTracks().forEach((t) => t.stop());
+    remoteVideo.srcObject = null;
+  }
+  remoteVideo.srcObject = freshStream;
+
+  // Inspect video/audio track health immediately
+  const videoTrack = stream.getVideoTracks()[0];
+  if (videoTrack) {
+    console.log(
+      'video track muted:',
+      videoTrack.muted,
+      'enabled:',
+      videoTrack.enabled
+    );
+    videoTrack.addEventListener('mute', () => {
+      console.log('[TRACK] Video track MUTED');
+    });
+    videoTrack.addEventListener('unmute', () => {
+      console.log('[TRACK] Video track UNMUTED');
+    });
+  }
+
+  // Do NOT call remoteVideo.load()
+  // Only one play()—if it fails, catch/log
+  try {
+    await remoteVideo.play();
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn('remoteVideo.play() failed:', e);
+  }
+
+  pipBtn.style.display = 'block';
+  addRemoteVideoPipListeners(remoteVideo, pipBtn);
+  saveCurrentState();
+  updateStatus('Connected!');
+
+  // Streaming health debug logs
+  if (import.meta.env.DEV) {
+    const vTracks = stream.getVideoTracks();
+    const aTracks = stream.getAudioTracks();
+    console.log(
+      '[DEBUG STREAM] Video tracks:',
+      vTracks.length,
+      vTracks.map(
+        (t) =>
+          `${t.label} enabled=${t.enabled} muted=${t.muted} readyState=${t.readyState}`
+      )
+    );
+    console.log(
+      '[DEBUG STREAM] Audio tracks:',
+      aTracks.length,
+      aTracks.map(
+        (t) =>
+          `${t.label} enabled=${t.enabled} muted=${t.muted} readyState=${t.readyState}`
+      )
+    );
+    setTimeout(() => {
+      console.log('[DEBUG VIDEO] remoteVideo.paused:', remoteVideo.paused);
+      console.log(
+        '[DEBUG VIDEO] remoteVideo.readyState:',
+        remoteVideo.readyState
+      );
+      console.log(
+        '[DEBUG VIDEO] remoteVideo.videoWidth:',
+        remoteVideo.videoWidth
+      );
+      console.log(
+        '[DEBUG VIDEO] remoteVideo.videoHeight:',
+        remoteVideo.videoHeight
+      );
+    }, 1000);
+  }
+
+  // If video doesn't start within 2 seconds, offer repair option
+  setTimeout(() => {
+    if (remoteVideo.readyState < 2 || remoteVideo.videoWidth === 0) {
+      updateStatus(
+        'Remote video is not loading. Click anywhere to restart connection.'
+      );
+      // Or use a visible #repairBtn instead of body:
+      document.body.addEventListener('click', repairConnectionHandler, {
+        once: true,
+      });
+    }
+  }, 2000);
 }
+
+function repairConnectionHandler() {
+  updateStatus('Forcing connection repair...');
+  window.location.reload(); // Or call hangUp, then startChatBtn.click() if you want to restart without full page reload
+}
+
+// async function handleRemoteStream(stream) {
+//   // Only set srcObject if not already set to this stream
+//   if (remoteVideo && remoteVideo.srcObject !== stream) {
+//     // Minimal signaling state log before attaching stream
+//     const pc = getPeerConnection && getPeerConnection();
+//     if (pc) {
+//       console.log('[SIGNALING] handleRemoteStream:', {
+//         signalingState: pc.signalingState,
+//         remoteDescription: pc.remoteDescription?.type,
+//         localDescription: pc.localDescription?.type,
+//       });
+//     }
+
+//     remoteVideo.srcObject = stream;
+
+//     // Immediately inspect video track state after assignment
+//     const videoTrack = stream.getVideoTracks()[0];
+//     if (videoTrack) {
+//       console.log(
+//         'video track muted:',
+//         videoTrack.muted,
+//         'enabled:',
+//         videoTrack.enabled
+//       );
+//     }
+
+//     // TEMP: Debug track events
+//     videoTrack?.addEventListener('mute', () => {
+//       console.log('[TRACK] Video track MUTED');
+//     });
+//     videoTrack?.addEventListener('unmute', () => {
+//       console.log('[TRACK] Video track UNMUTED');
+//     });
+
+//     // FORCE RELOAD // ? TRYING to fix reconnection
+//     remoteVideo.load();
+//     console.log(
+//       '[VIDEO] About to call play(), srcObject exists:',
+//       !!remoteVideo.srcObject
+//     );
+//     await remoteVideo.play();
+
+//     pipBtn.style.display = 'block';
+//     addRemoteVideoPipListeners(remoteVideo, pipBtn);
+//     saveCurrentState();
+//     updateStatus('Connected!');
+
+//     // Debug: Check stream health
+//     if (import.meta.env.DEV) {
+//       const videoTracks = stream.getVideoTracks();
+//       const audioTracks = stream.getAudioTracks();
+//       console.log(
+//         '[DEBUG STREAM] Video tracks:',
+//         videoTracks.length,
+//         videoTracks.map(
+//           (t) =>
+//             `${t.label} enabled=${t.enabled} muted=${t.muted} readyState=${t.readyState}`
+//         )
+//       );
+//       console.log(
+//         '[DEBUG STREAM] Audio tracks:',
+//         audioTracks.length,
+//         audioTracks.map(
+//           (t) =>
+//             `${t.label} enabled=${t.enabled} muted=${t.muted} readyState=${t.readyState}`
+//         )
+//       );
+
+//       // Check if video element is actually playing
+//       setTimeout(() => {
+//         console.log('[DEBUG VIDEO] remoteVideo.paused:', remoteVideo.paused);
+//         console.log(
+//           '[DEBUG VIDEO] remoteVideo.readyState:',
+//           remoteVideo.readyState
+//         );
+//         console.log(
+//           '[DEBUG VIDEO] remoteVideo.videoWidth:',
+//           remoteVideo.videoWidth
+//         );
+//         console.log(
+//           '[DEBUG VIDEO] remoteVideo.videoHeight:',
+//           remoteVideo.videoHeight
+//         );
+//       }, 1000);
+//     }
+
+//     if (remoteVideo.paused && remoteVideo.srcObject) {
+//       remoteVideo.play().catch((e) => {
+//         if (import.meta.env.DEV) {
+//           console.warn('remoteVideo.play() failed:', e);
+//         }
+//       });
+//     }
+//   } else {
+//     if (import.meta.env.DEV) {
+//       console.log('Duplicate ontrack event ignored');
+//     }
+//   }
+// }
 
 // ===== CREATE ROOM (Person A) =====
 async function initiateChatRoom() {
@@ -227,6 +466,7 @@ async function joinChatRoom(roomId) {
     roomId,
     onRemoteStream: handleRemoteStream,
     onStatusUpdate: updateStatus,
+    remoteVideo,
   });
 
   if (!result.success) {
@@ -236,6 +476,61 @@ async function joinChatRoom(roomId) {
   setupWatchSync({ roomId, sharedVideo, streamUrlInput, syncStatus });
   toggleModeBtn.style.display = 'block';
   hangUpBtn.disabled = false;
+
+  saveCurrentState();
+}
+
+// ===== RECONNECT =====
+function hasLiveRemoteVideo(videoEl) {
+  return (
+    videoEl &&
+    videoEl.srcObject &&
+    videoEl.videoWidth > 0 &&
+    videoEl.readyState >= 2 // HAVE_CURRENT_DATA
+  );
+}
+
+async function reconnectChatRoom() {
+  const result = await reconnect({
+    onRemoteStream: handleRemoteStream,
+    onStatusUpdate: updateStatus,
+    remoteVideo,
+  });
+
+  if (!result.success || !hasLiveRemoteVideo(remoteVideo)) {
+    // Clean up UI to initial state
+    updateStatus('Ready. Click to generate video chat link.');
+    startChatBtn.disabled = false;
+    startChatBtn.style.display = 'block';
+    hangUpBtn.disabled = true;
+    linkContainer.style.display = 'none';
+    toggleMuteBtn.style.display = 'none';
+    toggleVideoBtn.style.display = 'none';
+    toggleModeBtn.style.display = 'none';
+    watchContainer.style.display = 'none';
+    videoContainer.style.display = 'flex';
+    shareLink.value = '';
+    sharedVideo.src = '';
+    streamUrlInput.value = '';
+    syncStatus.textContent = '';
+    window.history.replaceState({}, document.title, window.location.pathname);
+    clearState();
+    return;
+  }
+
+  const roomId = getRoomId();
+
+  // Restore UI state
+  if (getIsInitiator()) {
+    const shareUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+    shareLink.value = shareUrl;
+    linkContainer.style.display = 'block';
+  }
+
+  setupWatchSync({ roomId, sharedVideo, streamUrlInput, syncStatus });
+  toggleModeBtn.style.display = 'block';
+  hangUpBtn.disabled = false;
+  startChatBtn.style.display = 'none';
 
   saveCurrentState();
 }
