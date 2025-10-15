@@ -1,5 +1,7 @@
-// lib/state.js - Single source of truth
-const state = {
+// src/app/state.js - Single source of truth
+
+const appState = {
+  // isInitialized: false, // ? should be here ? Currently a flag at top of app.js
   connection: 'idle', // idle | connecting | connected | reconnecting | disconnected
   room: {
     id: null,
@@ -29,10 +31,10 @@ export function onChange(callback) {
 }
 
 export function updateState(updates) {
-  Object.assign(state, updates);
-  listeners.forEach((fn) => fn(state));
+  Object.assign(appState, updates);
+  listeners.forEach((fn) => fn(appState));
 }
 
 export function getState() {
-  return state;
+  return appState;
 }

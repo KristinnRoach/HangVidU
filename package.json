@@ -27,6 +27,7 @@
   "license": "MIT",
   "devDependencies": {
     "@playwright/test": "^1.56.0",
+    "@vitejs/plugin-basic-ssl": "^2.1.0",
     "jsdom": "^27.0.0",
     "vite": "^7.1.7",
     "vite-plugin-pwa": "^1.1.0",

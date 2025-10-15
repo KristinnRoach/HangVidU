@@ -1,4 +1,4 @@
-// src/lib/firebase.js
+// src/storage/firebaseRealTimeDB.js
 
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/database';

@@ -1,6 +1,4 @@
-// src/lib/storage.js
-
-// Simple localStorage-based state persistence with expiry
+// src/storage/localStorage.js
 
 const STORAGE_KEY = 'hangvidu_session';
 const SESSION_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours

@@ -2,10 +2,12 @@
 
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import basicSsl from '@vitejs/plugin-basic-ssl';
 
 export default defineConfig({
   base: '/HangVidU/',
   plugins: [
+    basicSsl(),
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
@@ -30,4 +32,8 @@ export default defineConfig({
       },
     }),
   ],
+  server: {
+    https: true,
+    host: true, // To expose to LAN devices as well
+  },
 });
