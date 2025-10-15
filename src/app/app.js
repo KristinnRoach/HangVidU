@@ -43,6 +43,8 @@ import {
 } from '../features/connect/connection.js';
 
 import { ConnectionMonitor } from '../features/connect/connection-monitor.js';
+import { PageReloadManager } from '../features/session/page-reload-manager.js';
+import { updateState } from './state.js';
 
 import {
   handlePipToggleBtn,
@@ -79,18 +81,33 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 
 let isInitialized = false;
 let connectionMonitor = null;
+let pageReloadManager = null;
+let autoSaveCleanup = null;
 
 function saveCurrentState() {
-  saveState({
-    roomId: getRoomId(),
-    isInitiator: getIsInitiator(),
-    isAudioMuted: getIsAudioMuted(),
-    isVideoOn: getIsVideoOn(),
-    currentFacingMode: getCurrentFacingMode(),
-    watchMode: getWatchMode(),
-    wasConnected: getWasConnected(),
-    streamUrl: streamUrlInput.value,
+  // Update centralized state
+  updateState({
+    room: {
+      id: getRoomId(),
+      isInitiator: getIsInitiator(),
+      partnerOnline: getWasConnected(),
+    },
+    ui: {
+      isAudioMuted: getIsAudioMuted(),
+      isVideoOn: getIsVideoOn(),
+      currentFacingMode: getCurrentFacingMode(),
+      watchMode: getWatchMode(),
+    },
+    sync: {
+      streamUrl: streamUrlInput.value,
+      isSyncing: false,
+    },
   });
+
+  // Save to localStorage via page reload manager
+  if (pageReloadManager) {
+    pageReloadManager.saveCurrentSession();
+  }
 }
 
 // ===== INITIALIZE =====
@@ -102,6 +119,37 @@ async function init() {
   }
 
   try {
+    // Initialize page reload manager
+    pageReloadManager = new PageReloadManager();
+    pageReloadManager.setCallbacks({
+      onMediaRestore: restoreMediaDevices,
+      onConnectionRestore: restoreConnection,
+      onUIRestore: restoreUIStateFromReload,
+      onStatusUpdate: updateStatus,
+    });
+
+    // Check if we should restore from page reload
+    if (pageReloadManager.shouldRestoreSession()) {
+      updateStatus('Detected previous session. Restoring...');
+
+      try {
+        const restorationResult = await pageReloadManager.restoreSession();
+
+        if (restorationResult.success) {
+          // Session restored successfully
+          isInitialized = true;
+          setupAutoSave();
+          return true;
+        } else {
+          // Restoration failed, continue with normal initialization
+          updateStatus('Session restoration failed. Starting fresh...');
+        }
+      } catch (error) {
+        console.error('Session restoration error:', error);
+        updateStatus('Starting fresh...');
+      }
+    }
+
     const localStream = await navigator.mediaDevices.getUserMedia({
       video: true,
       audio: true,
@@ -174,6 +222,7 @@ async function init() {
     }
 
     isInitialized = true;
+    setupAutoSave();
     return true;
   } catch (error) {
     handleMediaError(error);
@@ -209,10 +258,10 @@ function handleRemoteStream(stream) {
     pipBtn.style.display = 'block';
     addRemoteVideoPipListeners(remoteVideo, pipBtn);
     saveCurrentState();
-    
+
     // Don't immediately show "Connected!" - let the monitor validate first
     updateStatus('Received video stream. Validating...');
-    
+
     if (remoteVideo.paused && remoteVideo.srcObject) {
       remoteVideo.play().catch((e) => {
         if (import.meta.env.DEV) {
@@ -220,15 +269,15 @@ function handleRemoteStream(stream) {
         }
       });
     }
-    
+
     // Start enhanced connection monitoring
     if (!connectionMonitor) {
       connectionMonitor = new ConnectionMonitor({
         videoValidationTimeout: 10000,
         maxRetries: 3,
-        retryDelay: 2000
+        retryDelay: 2000,
       });
-      
+
       connectionMonitor.setCallbacks({
         onStatusUpdate: updateStatus,
         onConnectionStateChange: (newState, oldState) => {
@@ -240,18 +289,17 @@ function handleRemoteStream(stream) {
           if (import.meta.env.DEV) {
             console.log('Connection validation complete:', result);
           }
-          
+
           if (!result.success) {
             // Validation failed - show error and potentially retry
             console.warn('Video stream validation failed:', result.error);
           }
-        }
+        },
       });
     }
-    
+
     // Start monitoring the remote video
     connectionMonitor.startMonitoring(remoteVideo, getPeerConnection());
-    
   } else {
     if (import.meta.env.DEV) {
       console.log('Duplicate ontrack event ignored');
@@ -317,11 +365,21 @@ async function joinChatRoom(roomId) {
 async function hangUp() {
   // Close any PiP windows first
   closePiP(pipBtn);
-  
+
   // Clean up connection monitor
   if (connectionMonitor) {
     connectionMonitor.cleanup();
     connectionMonitor = null;
+  }
+
+  // Clean up page reload manager
+  if (pageReloadManager) {
+    pageReloadManager.clearSession();
+  }
+
+  if (autoSaveCleanup) {
+    autoSaveCleanup();
+    autoSaveCleanup = null;
   }
 
   if (remoteVideo.srcObject) {
@@ -364,6 +422,135 @@ async function hangUp() {
 
 function updateStatus(message, el = statusDiv) {
   el.textContent = message;
+}
+
+function setupAutoSave() {
+  if (autoSaveCleanup) {
+    autoSaveCleanup(); // Clean up previous setup
+  }
+
+  if (pageReloadManager) {
+    autoSaveCleanup = pageReloadManager.setupAutoSave();
+  }
+}
+
+// ===== PAGE RELOAD RESTORATION =====
+
+async function restoreMediaDevices({
+  isAudioMuted,
+  isVideoOn,
+  currentFacingMode,
+}) {
+  try {
+    // Get media with the same constraints as before
+    const constraints = {
+      video: isVideoOn ? { facingMode: currentFacingMode } : false,
+      audio: true,
+    };
+
+    const localStream = await navigator.mediaDevices.getUserMedia(constraints);
+    setLocalStream(localStream);
+    localVideo.srcObject = localStream;
+
+    // Restore media state
+    if (isAudioMuted) {
+      toggleMuteSelfMic();
+    }
+
+    if (!isVideoOn) {
+      toggleVideo();
+    }
+
+    // Show appropriate buttons
+    toggleMuteBtn.style.display = 'block';
+    toggleVideoBtn.style.display = 'block';
+
+    if (await hasFrontAndBackCameras()) {
+      switchCameraBtn.style.display = 'block';
+    }
+
+    if (import.meta.env.DEV) {
+      console.log('Media devices restored successfully');
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to restore media devices:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function restoreConnection({ roomId, isInitiator, wasConnected }) {
+  try {
+    if (isInitiator) {
+      // For initiators, we can't really restore the connection
+      // since the room might have expired. Show the link again.
+      updateStatus(
+        'Session restored. Share the link to reconnect with your partner.'
+      );
+
+      shareLink.value = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+      linkContainer.style.display = 'block';
+      startChatBtn.disabled = true;
+      hangUpBtn.disabled = false;
+      toggleModeBtn.style.display = 'block';
+
+      return { success: true };
+    } else {
+      // For joiners, attempt to rejoin the room
+      updateStatus('Reconnecting to room...');
+
+      const result = await join({
+        roomId,
+        onRemoteStream: handleRemoteStream,
+        onStatusUpdate: updateStatus,
+      });
+
+      if (result.success) {
+        hangUpBtn.disabled = false;
+        toggleModeBtn.style.display = 'block';
+        return { success: true };
+      } else {
+        throw new Error('Failed to rejoin room');
+      }
+    }
+  } catch (error) {
+    console.error('Failed to restore connection:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+function restoreUIStateFromReload({
+  isAudioMuted,
+  isVideoOn,
+  watchMode,
+  streamUrl,
+}) {
+  try {
+    // Restore watch mode if it was active
+    if (watchMode && !getWatchMode()) {
+      toggleWatchMode();
+
+      if (streamUrl) {
+        streamUrlInput.value = streamUrl;
+      }
+    }
+
+    // Update button states to match restored media state
+    if (isAudioMuted) {
+      toggleMuteBtn.textContent = 'Unmute Mic';
+    }
+
+    if (!isVideoOn) {
+      toggleVideoBtn.textContent = 'Turn Video On';
+    }
+
+    if (import.meta.env.DEV) {
+      console.log('UI state restored successfully');
+    }
+  } catch (error) {
+    console.error('Failed to restore UI state:', error);
+  }
 }
 
 function toggleMuteSelfMic() {

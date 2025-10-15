@@ -2,6 +2,8 @@
 
 import { db } from '../../storage/firebaseRealTimeDB.js';
 import { setConnectionStatus } from './connectionStatus.js';
+import { IceCandidateManager } from './ice-candidate-manager.js';
+import { ConnectionStateManager } from './connection-state-manager.js';
 
 // ===== CONFIG =====
 const configuration = {
@@ -15,6 +17,9 @@ const state = {
   wasConnected: false,
   peerConnection: null,
   localStream: null,
+  iceCandidateManager: null,
+  connectionStateManager: null,
+  roomRef: null,
 };
 
 // ===== PUBLIC API =====
@@ -51,8 +56,6 @@ export async function connect({ onRemoteStream, onStatusUpdate }) {
 
   // Create peer connection
   state.peerConnection = new RTCPeerConnection(configuration);
-  // Queue remote ICE until remoteDescription is set
-  const pendingCalleeCandidates = [];
 
   // Add local tracks
   if (!state.localStream) {
@@ -68,7 +71,7 @@ export async function connect({ onRemoteStream, onStatusUpdate }) {
   await state.peerConnection.setLocalDescription(offer);
 
   // Create room in Firebase
-  const roomRef = await createRoomInFirebase(state.roomId, offer);
+  state.roomRef = await createRoomInFirebase(state.roomId, offer);
 
   // Setup remote stream handler
   if (import.meta.env.DEV) {
@@ -78,45 +81,70 @@ export async function connect({ onRemoteStream, onStatusUpdate }) {
     handleRemoteStream(event, onRemoteStream);
   };
 
-  // Handle ICE candidates
-  state.peerConnection.onicecandidate = (event) => {
-    if (event.candidate) {
-      roomRef.child('callerCandidates').push(event.candidate.toJSON());
+  // Initialize ICE candidate manager
+  state.iceCandidateManager = new IceCandidateManager(
+    state.peerConnection,
+    state.roomRef,
+    'caller'
+  );
+
+  // Initialize connection state manager
+  state.connectionStateManager = new ConnectionStateManager(
+    state.peerConnection,
+    {
+      connectionTimeout: 30000,
+      reconnectAttempts: 3,
+      reconnectDelay: 2000,
     }
-  };
+  );
+
+  state.connectionStateManager.setCallbacks({
+    onStateChange: (newState, oldState) => {
+      if (import.meta.env.DEV) {
+        console.log(`Connection state (caller): ${oldState} → ${newState}`);
+      }
+    },
+    onConnected: (connectionTime) => {
+      if (import.meta.env.DEV) {
+        console.log(`Caller connected in ${connectionTime}ms`);
+      }
+    },
+    onDisconnected: () => {
+      onStatusUpdate?.('Connection lost. Attempting to reconnect...');
+    },
+    onFailed: (reason) => {
+      onStatusUpdate?.(`Connection failed: ${reason}`);
+    },
+    onReconnecting: (attempt, maxAttempts) => {
+      onStatusUpdate?.(`Reconnecting... (${attempt}/${maxAttempts})`);
+    },
+  });
 
   // Listen for answer
-  roomRef.child('answer').on('value', async (snapshot) => {
+  state.roomRef.child('answer').on('value', async (snapshot) => {
     const answer = snapshot.val();
     if (answer && !state.peerConnection.currentRemoteDescription) {
-      await state.peerConnection.setRemoteDescription(
-        new RTCSessionDescription(answer)
-      );
-      // Drain queued ICE
-      for (const c of pendingCalleeCandidates) {
-        try {
-          await state.peerConnection.addIceCandidate(c);
-        } catch (e) {
-          console.warn('Failed to add queued ICE candidate', e);
+      try {
+        await state.peerConnection.setRemoteDescription(
+          new RTCSessionDescription(answer)
+        );
+
+        // Notify ICE candidate manager that remote description is set
+        await state.iceCandidateManager.onRemoteDescriptionSet();
+
+        if (import.meta.env.DEV) {
+          console.log(
+            'Remote description set (caller), processing queued candidates'
+          );
         }
+      } catch (error) {
+        console.error('Failed to set remote description (caller):', error);
+        onStatusUpdate?.('Connection error: Failed to process answer');
       }
-      pendingCalleeCandidates.length = 0;
     }
   });
 
-  // Listen for callee ICE candidates
-  roomRef.child('calleeCandidates').on('child_added', (snapshot) => {
-    const candidate = new RTCIceCandidate(snapshot.val());
-    if (state.peerConnection.currentRemoteDescription) {
-      state.peerConnection
-        .addIceCandidate(candidate)
-        .catch((e) => console.warn('addIceCandidate failed', e));
-    } else {
-      pendingCalleeCandidates.push(candidate);
-    }
-  });
-
-  setConnectionStatus(state.roomId, 'initiator', 'connected');
+  setConnectionStatus(state.roomId, 'initiator', 'waiting');
 
   if (onStatusUpdate) {
     onStatusUpdate('Link ready! Waiting for partner...');
@@ -141,6 +169,8 @@ export async function join({ roomId, onRemoteStream, onStatusUpdate }) {
     return { success: false };
   }
 
+  state.roomRef = roomRef;
+
   // Create peer connection
   state.peerConnection = new RTCPeerConnection(configuration);
 
@@ -161,45 +191,98 @@ export async function join({ roomId, onRemoteStream, onStatusUpdate }) {
     handleRemoteStream(event, onRemoteStream);
   };
 
-  // Handle ICE candidates
-  state.peerConnection.onicecandidate = (event) => {
-    if (event.candidate) {
-      roomRef.child('calleeCandidates').push(event.candidate.toJSON());
-    }
-  };
-
-  // Get offer and set remote description
-  const offer = roomSnapshot.val().offer;
-  await state.peerConnection.setRemoteDescription(
-    new RTCSessionDescription(offer)
+  // Initialize ICE candidate manager
+  state.iceCandidateManager = new IceCandidateManager(
+    state.peerConnection,
+    state.roomRef,
+    'callee'
   );
 
-  // Create answer
-  const answer = await state.peerConnection.createAnswer();
-  await state.peerConnection.setLocalDescription(answer);
+  // Initialize connection state manager
+  state.connectionStateManager = new ConnectionStateManager(
+    state.peerConnection,
+    {
+      connectionTimeout: 30000,
+      reconnectAttempts: 3,
+      reconnectDelay: 2000,
+    }
+  );
 
-  await roomRef.child('answer').set({
-    type: answer.type,
-    sdp: answer.sdp,
+  state.connectionStateManager.setCallbacks({
+    onStateChange: (newState, oldState) => {
+      if (import.meta.env.DEV) {
+        console.log(`Connection state (callee): ${oldState} → ${newState}`);
+      }
+    },
+    onConnected: (connectionTime) => {
+      if (import.meta.env.DEV) {
+        console.log(`Callee connected in ${connectionTime}ms`);
+      }
+    },
+    onDisconnected: () => {
+      onStatusUpdate?.('Connection lost. Attempting to reconnect...');
+    },
+    onFailed: (reason) => {
+      onStatusUpdate?.(`Connection failed: ${reason}`);
+    },
+    onReconnecting: (attempt, maxAttempts) => {
+      onStatusUpdate?.(`Reconnecting... (${attempt}/${maxAttempts})`);
+    },
   });
 
-  // Listen for caller ICE candidates
-  roomRef.child('callerCandidates').on('child_added', (snapshot) => {
-    const candidate = snapshot.val();
-    state.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-  });
+  try {
+    // Get offer and set remote description
+    const offer = roomSnapshot.val().offer;
+    await state.peerConnection.setRemoteDescription(
+      new RTCSessionDescription(offer)
+    );
 
-  setConnectionStatus(state.roomId, 'joiner', 'connected');
+    // Notify ICE candidate manager that remote description is set
+    await state.iceCandidateManager.onRemoteDescriptionSet();
 
-  return { success: true };
+    // Create answer
+    const answer = await state.peerConnection.createAnswer();
+    await state.peerConnection.setLocalDescription(answer);
+
+    await state.roomRef.child('answer').set({
+      type: answer.type,
+      sdp: answer.sdp,
+    });
+
+    setConnectionStatus(state.roomId, 'joiner', 'connecting');
+
+    if (import.meta.env.DEV) {
+      console.log('Join process completed (callee)');
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to join room:', error);
+    onStatusUpdate?.(`Failed to join: ${error.message}`);
+    return { success: false };
+  }
 }
 
 export async function disconnect({ onStatusUpdate }) {
+  // Clean up managers first
+  if (state.iceCandidateManager) {
+    state.iceCandidateManager.cleanup();
+    state.iceCandidateManager = null;
+  }
+
+  if (state.connectionStateManager) {
+    state.connectionStateManager.cleanup();
+    state.connectionStateManager = null;
+  }
+
   cleanupFirebaseListeners();
 
   if (state.peerConnection) {
     state.peerConnection.ontrack = null;
     state.peerConnection.onicecandidate = null;
+    state.peerConnection.onconnectionstatechange = null;
+    state.peerConnection.oniceconnectionstatechange = null;
+    state.peerConnection.onicegatheringstatechange = null;
     state.peerConnection.close();
     state.peerConnection = null;
   }
@@ -219,6 +302,7 @@ export async function disconnect({ onStatusUpdate }) {
   state.roomId = null;
   state.isInitiator = false;
   state.wasConnected = false;
+  state.roomRef = null;
 
   if (onStatusUpdate) {
     onStatusUpdate('Disconnected. Ready for new chat.');
@@ -233,6 +317,39 @@ export function restoreConnectionState(savedState) {
     state.isInitiator = savedState.isInitiator;
   if (savedState.wasConnected !== undefined)
     state.wasConnected = savedState.wasConnected;
+}
+
+export function getConnectionDiagnostics() {
+  const diagnostics = {
+    roomId: state.roomId,
+    isInitiator: state.isInitiator,
+    wasConnected: state.wasConnected,
+    peerConnection: null,
+    iceCandidateManager: null,
+    connectionStateManager: null,
+  };
+
+  if (state.peerConnection) {
+    diagnostics.peerConnection = {
+      connectionState: state.peerConnection.connectionState,
+      iceConnectionState: state.peerConnection.iceConnectionState,
+      iceGatheringState: state.peerConnection.iceGatheringState,
+      signalingState: state.peerConnection.signalingState,
+      localDescription: !!state.peerConnection.localDescription,
+      remoteDescription: !!state.peerConnection.currentRemoteDescription,
+    };
+  }
+
+  if (state.iceCandidateManager) {
+    diagnostics.iceCandidateManager = state.iceCandidateManager.getState();
+  }
+
+  if (state.connectionStateManager) {
+    diagnostics.connectionStateManager =
+      state.connectionStateManager.getState();
+  }
+
+  return diagnostics;
 }
 
 // ===== PRIVATE HELPERS =====
