@@ -9,7 +9,7 @@ import {
   hideYouTubePlayer,
   getYTPlayer,
   getYTReady,
-} from './video/youtube.js';
+} from './youtube/youtube.js';
 
 // ===== STATE =====
 const state = {

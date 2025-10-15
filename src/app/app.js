@@ -40,8 +40,8 @@ import {
   getPeerConnection,
   getLocalStream,
   restoreConnectionState,
-} from '../lib/connection.js';
-import { handleMediaError } from '../lib/error-handling.js';
+} from '../lib/connection/connection.js';
+import { handleMediaError } from '../lib/error/error-handling.js';
 import * as ui from '../lib/ui/ui.js';
 import { setupEventListeners } from '../lib/ui/events.js';
 import {

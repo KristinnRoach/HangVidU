@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { saveState, loadState, clearState } from '../storage.js';
+import {
+  saveState,
+  loadState,
+  clearState,
+} from '../../storage/localStorage.js';
 
 describe('localStorage persistence', () => {
   beforeEach(() => {
