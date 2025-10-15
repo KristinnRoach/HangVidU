@@ -1,10 +1,11 @@
-export async function copyLink(button) {
+export async function copyLink(inputEl, buttonEl) {
   try {
-    await navigator.clipboard.writeText(shareLink.value);
-    button.textContent = 'Copied!';
-    setTimeout(() => (button.textContent = 'Copy Link'), 2000);
+    await navigator.clipboard.writeText(inputEl.value);
+    buttonEl.textContent = 'Copied!';
+    setTimeout(() => (buttonEl.textContent = 'Copy Link'), 2000);
+    return true;
   } catch (err) {
-    shareLink.select();
-    document.execCommand('copy');
+    console.error('Failed to copy: ', err);
+    return false;
   }
 }

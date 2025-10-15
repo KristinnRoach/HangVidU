@@ -129,7 +129,11 @@ async function init() {
       remoteVideo,
       handleStartChat: initiateChatRoom,
       handleHangUp: hangUp,
-      handleCopyLink: () => copyLink(shareLink, copyLinkBtn, updateStatus),
+      handleCopyLink: () => {
+        const success = copyLink(shareLink, copyLinkBtn);
+        if (success) updateStatus('Link copied!');
+        else updateStatus('Please copy manually.');
+      },
       handleSwitchCamera: async () => {
         await switchCamera({
           localStream: getLocalStream(),
