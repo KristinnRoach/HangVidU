@@ -3,7 +3,7 @@ import {
   saveState,
   loadState,
   clearState,
-} from '../../storage/localStorage.js';
+} from '../storage/localStorage.js';
 
 describe('localStorage persistence', () => {
   beforeEach(() => {

@@ -3,10 +3,10 @@ import {
   setConnectionStatus,
   listenForPartnerReconnection,
   clearConnectionStatus,
-} from '../connection/connectionStatus.js';
+} from '../features/connect/connectionStatus.js';
 
 // Mock Firebase
-vi.mock('../../storage/firebaseRealTimeDB.js', () => {
+vi.mock('../storage/firebaseRealTimeDB.js', () => {
   const mockRef = {
     set: vi.fn(() => Promise.resolve()),
     on: vi.fn(),
@@ -21,7 +21,7 @@ vi.mock('../../storage/firebaseRealTimeDB.js', () => {
   return { db: mockDb };
 });
 
-import { db } from '../../storage/firebaseRealTimeDB.js';
+import { db } from '../storage/firebaseRealTimeDB.js';
 
 describe('Firebase connection status helpers', () => {
   beforeEach(() => {

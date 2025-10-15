@@ -40,7 +40,9 @@ import {
   getPeerConnection,
   getLocalStream,
   restoreConnectionState,
-} from '../features/connection/connection.js';
+} from '../features/connect/connection.js';
+
+import { ConnectionMonitor } from '../features/connect/connection-monitor.js';
 
 import {
   handlePipToggleBtn,
@@ -76,6 +78,7 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 // ====== STATE ======
 
 let isInitialized = false;
+let connectionMonitor = null;
 
 function saveCurrentState() {
   saveState({
@@ -206,7 +209,10 @@ function handleRemoteStream(stream) {
     pipBtn.style.display = 'block';
     addRemoteVideoPipListeners(remoteVideo, pipBtn);
     saveCurrentState();
-    updateStatus('Connected!');
+    
+    // Don't immediately show "Connected!" - let the monitor validate first
+    updateStatus('Received video stream. Validating...');
+    
     if (remoteVideo.paused && remoteVideo.srcObject) {
       remoteVideo.play().catch((e) => {
         if (import.meta.env.DEV) {
@@ -214,6 +220,38 @@ function handleRemoteStream(stream) {
         }
       });
     }
+    
+    // Start enhanced connection monitoring
+    if (!connectionMonitor) {
+      connectionMonitor = new ConnectionMonitor({
+        videoValidationTimeout: 10000,
+        maxRetries: 3,
+        retryDelay: 2000
+      });
+      
+      connectionMonitor.setCallbacks({
+        onStatusUpdate: updateStatus,
+        onConnectionStateChange: (newState, oldState) => {
+          if (import.meta.env.DEV) {
+            console.log(`Connection state: ${oldState} → ${newState}`);
+          }
+        },
+        onValidationComplete: (result) => {
+          if (import.meta.env.DEV) {
+            console.log('Connection validation complete:', result);
+          }
+          
+          if (!result.success) {
+            // Validation failed - show error and potentially retry
+            console.warn('Video stream validation failed:', result.error);
+          }
+        }
+      });
+    }
+    
+    // Start monitoring the remote video
+    connectionMonitor.startMonitoring(remoteVideo, getPeerConnection());
+    
   } else {
     if (import.meta.env.DEV) {
       console.log('Duplicate ontrack event ignored');
@@ -279,6 +317,12 @@ async function joinChatRoom(roomId) {
 async function hangUp() {
   // Close any PiP windows first
   closePiP(pipBtn);
+  
+  // Clean up connection monitor
+  if (connectionMonitor) {
+    connectionMonitor.cleanup();
+    connectionMonitor = null;
+  }
 
   if (remoteVideo.srcObject) {
     remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
