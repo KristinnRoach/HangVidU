@@ -92,7 +92,7 @@ function saveCurrentState() {
 async function init() {
   if (isInitialized) {
     console.debug('init() called when isInitialized is true.');
-    return;
+    return true;
   }
 
   try {
@@ -164,9 +164,11 @@ async function init() {
     }
 
     isInitialized = true;
+    return true;
   } catch (error) {
     handleMediaError(error);
     isInitialized = false;
+    return false;
   }
 }
 
@@ -220,12 +222,13 @@ async function initiateChatRoom() {
   startChatInProgress = true;
   try {
     if (!isInitialized) {
-      await init();
+      const success = await init();
+      if (!success) {
+        console.error('Failed to initialize media devices.');
+        return;
+      }
     }
-    if (!isInitialized) {
-      console.error('Failed to initialize media devices.');
-      return;
-    }
+
     const { roomId, shareUrl } = await connect({
       onRemoteStream: handleRemoteStream,
       onStatusUpdate: updateStatus,
