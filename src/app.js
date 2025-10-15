@@ -41,8 +41,8 @@ import {
   getPeerConnection,
   getLocalStream,
   restoreConnectionState,
-  fullCleanup, // new orchestrator
-  cleanupFirebaseRoom, // optional if needed elsewhere
+  fullCleanup,
+  cleanupFirebaseRoom,
 } from './lib/connection.js';
 import { handleMediaError } from './lib/error-handling.js';
 import * as ui from './lib/ui/ui.js';
