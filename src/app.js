@@ -72,6 +72,8 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 
 // ====== STATE ======
 
+let isInitialized = false;
+
 function saveCurrentState() {
   saveState({
     roomId: getRoomId(),
@@ -88,6 +90,11 @@ function saveCurrentState() {
 // ===== INITIALIZE =====
 
 async function init() {
+  if (isInitialized) {
+    console.debug('init() called when isInitialized is true.');
+    return;
+  }
+
   try {
     const localStream = await navigator.mediaDevices.getUserMedia({
       video: true,
@@ -155,6 +162,8 @@ async function init() {
     if (import.meta.env.DEV) {
       toggleMuteSelfMic();
     }
+
+    isInitialized = true;
   } catch (error) {
     handleMediaError(error);
   }
@@ -204,6 +213,13 @@ function handleRemoteStream(stream) {
 
 // ===== CREATE ROOM (Person A) =====
 async function initiateChatRoom() {
+  if (!isInitialized) {
+    await init();
+  }
+  if (!isInitialized) {
+    console.error('Failed to initialize media devices.');
+    return;
+  }
   const { roomId, shareUrl } = await connect({
     onRemoteStream: handleRemoteStream,
     onStatusUpdate: updateStatus,
@@ -277,6 +293,8 @@ async function hangUp() {
 
   window.history.replaceState({}, document.title, window.location.pathname);
   clearState();
+
+  isInitialized = false;
 }
 
 // ===== HELPERS =====
