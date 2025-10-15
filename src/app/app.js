@@ -129,8 +129,8 @@ async function init() {
       remoteVideo,
       handleStartChat: initiateChatRoom,
       handleHangUp: hangUp,
-      handleCopyLink: () => {
-        const success = copyLink(shareLink, copyLinkBtn);
+      handleCopyLink: async () => {
+        const success = await copyLink(shareLink, copyLinkBtn);
         if (success) updateStatus('Link copied!');
         else updateStatus('Please copy manually.');
       },
