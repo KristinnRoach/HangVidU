@@ -1,22 +1,43 @@
-Free file transfer + storage options:
-
-    [] Easiest: GitHub CDN
-
-    [] Better and still free: RTC transfer + IDB storage
+# Misc TODO's:
 
 UI / UX:
 
-    [] Default to native PiP (bail on Doc pip for now)
-    [] Test mute button on floating window
+    [] Detect and handle the case when connection is established but remoteVideo is blank/black - not streaming actual video (check if streams video track is muted, check readyState, dimensions, etc.. )
+    
+    [] Handle page reload during call
 
-    [] Video effects
+    [] Ensure robust fallbacks for maximum compatibility
+        - see src/utils/fallback/
+
+Core features: 
+
+    [] User uploaded video in Watch Mode
+        - Need to sync playback position 
+        - Free file transfer + storage options:
+            [] Easiest: GitHub CDN ?
+            [] Better and still free: RTC transfer + IDB storage
+
+    [] Support conference calls, more than two people on the same call. 
+
+    [] Support other platforms? (Currently just Youtube and direct video urls)
+
+Standalone: 
+
+    PWA: 
+        [] Add install button
+        [] Test core functionality
+        [] Assess core benefits and create a plan
+
+Fun / Extra:
+
+    [] Video effects / filters / shaders
 
 # Thoughts for later:
 
-Stremio:
-
-    [] Explore options:
-        - Electron ? Download addon (already forked)
+Things to consider / research: 
+    - Stremio support ?
+    - Electron ?
+    - Is server.go useful ?
 
 IF using server.go:
 
