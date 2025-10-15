@@ -44,7 +44,16 @@ import {
 
 import { ConnectionMonitor } from '../features/connect/connection-monitor.js';
 import { PageReloadManager } from '../features/session/page-reload-manager.js';
-import { updateState } from './state.js';
+import {
+  updateState,
+  setInitialized,
+  isInitialized,
+  setStartChatInProgress,
+  isStartChatInProgress,
+  setManager,
+  getManager,
+  clearManagers,
+} from './state.js';
 
 import {
   handlePipToggleBtn,
@@ -78,11 +87,7 @@ import { copyLink } from '../utils/clipboard.js';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
 // ====== STATE ======
-
-let isInitialized = false;
-let connectionMonitor = null;
-let pageReloadManager = null;
-let autoSaveCleanup = null;
+// App-level state is now managed in ./state.js
 
 function saveCurrentState() {
   // Update centralized state
@@ -105,6 +110,7 @@ function saveCurrentState() {
   });
 
   // Save to localStorage via page reload manager
+  const pageReloadManager = getManager('pageReloadManager');
   if (pageReloadManager) {
     pageReloadManager.saveCurrentSession();
   }
@@ -113,14 +119,15 @@ function saveCurrentState() {
 // ===== INITIALIZE =====
 
 async function init() {
-  if (isInitialized) {
+  if (isInitialized()) {
     console.debug('init() called when isInitialized is true.');
     return true;
   }
 
   try {
     // Initialize page reload manager
-    pageReloadManager = new PageReloadManager();
+    const pageReloadManager = new PageReloadManager();
+    setManager('pageReloadManager', pageReloadManager);
     pageReloadManager.setCallbacks({
       onMediaRestore: restoreMediaDevices,
       onConnectionRestore: restoreConnection,
@@ -129,15 +136,17 @@ async function init() {
     });
 
     // Check if we should restore from page reload
-    if (pageReloadManager.shouldRestoreSession()) {
+    if (getManager('pageReloadManager').shouldRestoreSession()) {
       updateStatus('Detected previous session. Restoring...');
 
       try {
-        const restorationResult = await pageReloadManager.restoreSession();
+        const restorationResult = await getManager(
+          'pageReloadManager'
+        ).restoreSession();
 
         if (restorationResult.success) {
           // Session restored successfully
-          isInitialized = true;
+          setInitialized(true);
           setupAutoSave();
           return true;
         } else {
@@ -221,12 +230,12 @@ async function init() {
       toggleMuteSelfMic();
     }
 
-    isInitialized = true;
+    setInitialized(true);
     setupAutoSave();
     return true;
   } catch (error) {
     handleMediaError(error);
-    isInitialized = false;
+    setInitialized(false);
     return false;
   }
 }
@@ -271,8 +280,8 @@ function handleRemoteStream(stream) {
     }
 
     // Start enhanced connection monitoring
-    if (!connectionMonitor) {
-      connectionMonitor = new ConnectionMonitor({
+    if (!getManager('connectionMonitor')) {
+      const connectionMonitor = new ConnectionMonitor({
         videoValidationTimeout: 10000,
         maxRetries: 3,
         retryDelay: 2000,
@@ -296,10 +305,15 @@ function handleRemoteStream(stream) {
           }
         },
       });
+
+      setManager('connectionMonitor', connectionMonitor);
     }
 
     // Start monitoring the remote video
-    connectionMonitor.startMonitoring(remoteVideo, getPeerConnection());
+    getManager('connectionMonitor').startMonitoring(
+      remoteVideo,
+      getPeerConnection()
+    );
   } else {
     if (import.meta.env.DEV) {
       console.log('Duplicate ontrack event ignored');
@@ -308,11 +322,10 @@ function handleRemoteStream(stream) {
 }
 
 // ===== CREATE ROOM (Person A) =====
-let startChatInProgress = false;
 
 async function initiateChatRoom() {
-  if (startChatInProgress) return;
-  startChatInProgress = true;
+  if (isStartChatInProgress()) return;
+  setStartChatInProgress(true);
   try {
     if (!isInitialized) {
       const success = await init();
@@ -338,7 +351,7 @@ async function initiateChatRoom() {
 
     saveCurrentState();
   } finally {
-    startChatInProgress = false;
+    setStartChatInProgress(false);
   }
 }
 
@@ -367,20 +380,25 @@ async function hangUp() {
   closePiP(pipBtn);
 
   // Clean up connection monitor
+  const connectionMonitor = getManager('connectionMonitor');
   if (connectionMonitor) {
     connectionMonitor.cleanup();
-    connectionMonitor = null;
   }
 
   // Clean up page reload manager
+  const pageReloadManager = getManager('pageReloadManager');
   if (pageReloadManager) {
     pageReloadManager.clearSession();
   }
 
+  // Clean up auto save
+  const autoSaveCleanup = getManager('autoSaveCleanup');
   if (autoSaveCleanup) {
     autoSaveCleanup();
-    autoSaveCleanup = null;
   }
+
+  // Clear all managers
+  clearManagers();
 
   if (remoteVideo.srcObject) {
     remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
@@ -425,12 +443,15 @@ function updateStatus(message, el = statusDiv) {
 }
 
 function setupAutoSave() {
-  if (autoSaveCleanup) {
-    autoSaveCleanup(); // Clean up previous setup
+  const currentCleanup = getManager('autoSaveCleanup');
+  if (currentCleanup) {
+    currentCleanup(); // Clean up previous setup
   }
 
+  const pageReloadManager = getManager('pageReloadManager');
   if (pageReloadManager) {
-    autoSaveCleanup = pageReloadManager.setupAutoSave();
+    const cleanup = pageReloadManager.setupAutoSave();
+    setManager('autoSaveCleanup', cleanup);
   }
 }
 
