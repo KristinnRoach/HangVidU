@@ -318,8 +318,8 @@ async function hangUp() {
 
 // ===== HELPERS =====
 
-function updateStatus(message, statusDiv = statusDiv) {
-  statusDiv.textContent = message;
+function updateStatus(message, el = statusDiv) {
+  el.textContent = message;
 }
 
 function toggleMuteSelfMic() {
@@ -364,8 +364,7 @@ fullscreenSelfBtn?.addEventListener('click', () =>
 
 muteSelfBtn?.addEventListener('click', () => toggleMuteSelfMic());
 
-mutePartnerBtn?.addEventListener(
-  'click',
+mutePartnerBtn?.addEventListener('click', () =>
   hoverControlHandlers.onMutePartnerClick(remoteVideo, mutePartnerBtn)
 );
 

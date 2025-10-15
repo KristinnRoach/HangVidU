@@ -10,10 +10,11 @@ export function setupTouchControls(wrapper) {
   }
 
   // Listen to both 'touchstart' and 'click'
-  wrapper.addEventListener('touchstart', showControls);
+  wrapper.addEventListener('touchstart', showControls, { passive: true });
   wrapper.addEventListener('click', (e) => {
     // Prevent play/pause if clicking controls
-    if (e.target.closest('.hover-controls')) return;
+    if (e.target instanceof Element && e.target.closest('.hover-controls'))
+      return;
     showControls();
   });
 
@@ -22,16 +23,18 @@ export function setupTouchControls(wrapper) {
   const controls = wrapper.querySelector('.hover-controls');
 
   // keep controls onscreen if interacting with buttons
-  controls.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
-  controls.addEventListener('touchstart', () => clearTimeout(hideTimeout), {
-    passive: true,
-  });
-  controls.addEventListener('click', () => clearTimeout(hideTimeout));
+  if (controls) {
+    controls.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
+    controls.addEventListener('touchstart', () => clearTimeout(hideTimeout), {
+      passive: true,
+    });
+    controls.addEventListener('click', () => clearTimeout(hideTimeout));
 
-  // Hide controls when leaving the controller area
-  controls.addEventListener('mouseleave', () => {
-    hideTimeout = setTimeout(() => {
-      wrapper.classList.remove('show-controls');
-    }, 2000);
-  });
+    // Hide controls when leaving the controller area
+    controls.addEventListener('mouseleave', () => {
+      hideTimeout = setTimeout(() => {
+        wrapper.classList.remove('show-controls');
+      }, 2000);
+    });
+  }
 }
