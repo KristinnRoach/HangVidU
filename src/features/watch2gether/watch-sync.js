@@ -1,6 +1,6 @@
 // watch-sync.js - Watch mode and video sync feature
 
-import { db } from '../storage/firebaseRealTimeDB.js';
+import { db } from '../../storage/firebaseRealTimeDB.js';
 
 import {
   isYouTubeUrl,
@@ -9,7 +9,7 @@ import {
   hideYouTubePlayer,
   getYTPlayer,
   getYTReady,
-} from './youtube/youtube.js';
+} from './youtube.js';
 
 // ===== STATE =====
 const state = {

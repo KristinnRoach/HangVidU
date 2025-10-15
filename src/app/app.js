@@ -25,7 +25,7 @@ import {
   fullscreenPartnerBtn,
   muteSelfBtn,
   fullscreenSelfBtn,
-} from '../lib/ui/elements.js';
+} from './elements.js';
 
 import { loadState, saveState, clearState } from '../storage/localStorage.js';
 
@@ -40,22 +40,20 @@ import {
   getPeerConnection,
   getLocalStream,
   restoreConnectionState,
-} from '../lib/connection/connection.js';
-import { handleMediaError } from '../lib/error/error-handling.js';
-import * as ui from '../lib/ui/ui.js';
-import { setupEventListeners } from '../lib/ui/events.js';
+} from '../features/connection/connection.js';
+
 import {
   handlePipToggleBtn,
   addRemoteVideoPipListeners,
   closePiP,
-} from '../lib/ui/pip.js';
+} from '../features/videoChat/pip.js';
 
 import {
   toggleWatchMode as toggleWatchModeSync,
   loadStream as loadStreamSync,
   setupWatchSync,
   getWatchMode,
-} from '../lib/watch-sync.js';
+} from '../features/watch2gether/watch-sync.js';
 
 import {
   toggleMute,
@@ -66,7 +64,12 @@ import {
   getIsVideoOn,
   getCurrentFacingMode,
   restoreMediaState,
-} from '../lib/media-devices.js';
+} from '../features/videoChat/media-devices.js';
+
+import { setupEventListeners } from './events.js';
+import { handleMediaError } from '../utils/error/error-handling.js';
+import { setupTouchControls } from '../utils/ui/touch-controls.js';
+import { copyLink } from '../utils/clipboard.js';
 
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
@@ -126,7 +129,7 @@ async function init() {
       remoteVideo,
       handleStartChat: initiateChatRoom,
       handleHangUp: hangUp,
-      handleCopyLink: copyLink,
+      handleCopyLink: () => copyLink(shareLink, copyLinkBtn, updateStatus),
       handleSwitchCamera: async () => {
         await switchCamera({
           localStream: getLocalStream(),
@@ -311,19 +314,8 @@ async function hangUp() {
 
 // ===== HELPERS =====
 
-async function copyLink() {
-  try {
-    await navigator.clipboard.writeText(shareLink.value);
-    copyLinkBtn.textContent = 'Copied!';
-    setTimeout(() => (copyLinkBtn.textContent = 'Copy Link'), 2000);
-  } catch (err) {
-    shareLink.select();
-    document.execCommand('copy');
-  }
-}
-
-function updateStatus(message) {
-  ui.updateStatus(statusDiv, message);
+function updateStatus(message, statusDiv = statusDiv) {
+  statusDiv.textContent = message;
 }
 
 function toggleMuteSelfMic() {
@@ -354,84 +346,26 @@ function loadStream() {
   saveCurrentState();
 }
 
-// Add event handlers for fullscreen and mute buttons
-fullscreenPartnerBtn?.addEventListener('click', () => {
-  if (remoteVideo.requestFullscreen) {
-    remoteVideo.requestFullscreen();
-  } else if (remoteVideo.webkitRequestFullscreen) {
-    // Safari
-    remoteVideo.webkitRequestFullscreen();
-  } else if (remoteVideo.msRequestFullscreen) {
-    // IE11
-    remoteVideo.msRequestFullscreen();
-  }
-});
+// ===== EVENT LISTENERS ===== // Todo: consolidate patterns / structure
 
-fullscreenSelfBtn?.addEventListener('click', () => {
-  if (localVideo.requestFullscreen) {
-    localVideo.requestFullscreen();
-  } else if (localVideo.webkitRequestFullscreen) {
-    // Safari
-    localVideo.webkitRequestFullscreen();
-  } else if (localVideo.msRequestFullscreen) {
-    // IE11
-    localVideo.msRequestFullscreen();
-  }
-});
+import { hoverControlHandlers } from '../features/videoChat/video-controls.js';
+
+fullscreenPartnerBtn?.addEventListener('click', () =>
+  hoverControlHandlers.onFullscreenClick(remoteVideo)
+);
+
+fullscreenSelfBtn?.addEventListener('click', () =>
+  hoverControlHandlers.onFullscreenClick(localVideo)
+);
 
 muteSelfBtn?.addEventListener('click', () => toggleMuteSelfMic());
 
-mutePartnerBtn?.addEventListener('click', () => {
-  const audioTrack = remoteVideo.srcObject?.getAudioTracks()[0];
-  if (audioTrack) {
-    audioTrack.enabled = !audioTrack.enabled;
-    const icon = mutePartnerBtn.querySelector('i');
-    if (icon) {
-      icon.className = audioTrack.enabled
-        ? 'fa fa-volume-mute'
-        : 'fa fa-volume-up';
-    }
-  }
-});
+mutePartnerBtn?.addEventListener(
+  'click',
+  hoverControlHandlers.onMutePartnerClick(remoteVideo, mutePartnerBtn)
+);
 
-function setupTouchControls(wrapper) {
-  let hideTimeout;
-
-  function showControls() {
-    wrapper.classList.add('show-controls');
-    clearTimeout(hideTimeout);
-    hideTimeout = setTimeout(() => {
-      wrapper.classList.remove('show-controls');
-    }, 3000); // 3 seconds auto-hide
-  }
-
-  // Listen to both 'touchstart' and 'click'
-  wrapper.addEventListener('touchstart', showControls);
-  wrapper.addEventListener('click', (e) => {
-    // Prevent play/pause if clicking controls
-    if (e.target.closest('.hover-controls')) return;
-    showControls();
-  });
-
-  // keep controls onscreen if interacting with buttons
-
-  const controls = wrapper.querySelector('.hover-controls');
-
-  // keep controls onscreen if interacting with buttons
-  controls.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
-  controls.addEventListener('touchstart', () => clearTimeout(hideTimeout), {
-    passive: true,
-  });
-  controls.addEventListener('click', () => clearTimeout(hideTimeout));
-
-  // Hide controls when leaving the controller area
-  controls.addEventListener('mouseleave', () => {
-    hideTimeout = setTimeout(() => {
-      wrapper.classList.remove('show-controls');
-    }, 2000);
-  });
-}
-
+// Touch controls for mobile: show/hide buttons on tap
 document.querySelectorAll('.video-wrapper').forEach(setupTouchControls);
 
 init();
