@@ -1,4 +1,4 @@
-// src/app.js
+// src/app/app.js
 import {
   localVideo,
   remoteVideo,
@@ -25,9 +25,9 @@ import {
   fullscreenPartnerBtn,
   muteSelfBtn,
   fullscreenSelfBtn,
-} from './lib/ui/elements.js';
+} from '../lib/ui/elements.js';
 
-import { loadState, saveState, clearState } from './lib/storage.js';
+import { loadState, saveState, clearState } from '../lib/storage.js';
 
 import {
   connect,
@@ -40,22 +40,22 @@ import {
   getPeerConnection,
   getLocalStream,
   restoreConnectionState,
-} from './lib/connection.js';
-import { handleMediaError } from './lib/error-handling.js';
-import * as ui from './lib/ui/ui.js';
-import { setupEventListeners } from './lib/ui/events.js';
+} from '../lib/connection.js';
+import { handleMediaError } from '../lib/error-handling.js';
+import * as ui from '../lib/ui/ui.js';
+import { setupEventListeners } from '../lib/ui/events.js';
 import {
   handlePipToggleBtn,
   addRemoteVideoPipListeners,
   closePiP,
-} from './lib/ui/pip.js';
+} from '../lib/ui/pip.js';
 
 import {
   toggleWatchMode as toggleWatchModeSync,
   loadStream as loadStreamSync,
   setupWatchSync,
   getWatchMode,
-} from './lib/watch-sync.js';
+} from '../lib/watch-sync.js';
 
 import {
   toggleMute,
@@ -66,7 +66,7 @@ import {
   getIsVideoOn,
   getCurrentFacingMode,
   restoreMediaState,
-} from './lib/media-devices.js';
+} from '../lib/media-devices.js';
 
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
@@ -166,6 +166,7 @@ async function init() {
     isInitialized = true;
   } catch (error) {
     handleMediaError(error);
+    isInitialized = false;
   }
 }
 
@@ -212,29 +213,37 @@ function handleRemoteStream(stream) {
 }
 
 // ===== CREATE ROOM (Person A) =====
+let startChatInProgress = false;
+
 async function initiateChatRoom() {
-  if (!isInitialized) {
-    await init();
+  if (startChatInProgress) return;
+  startChatInProgress = true;
+  try {
+    if (!isInitialized) {
+      await init();
+    }
+    if (!isInitialized) {
+      console.error('Failed to initialize media devices.');
+      return;
+    }
+    const { roomId, shareUrl } = await connect({
+      onRemoteStream: handleRemoteStream,
+      onStatusUpdate: updateStatus,
+    });
+
+    // Show link
+    shareLink.value = shareUrl;
+    linkContainer.style.display = 'block';
+    startChatBtn.disabled = true;
+    hangUpBtn.disabled = false;
+
+    setupWatchSync({ roomId, sharedVideo, streamUrlInput, syncStatus });
+    toggleModeBtn.style.display = 'block';
+
+    saveCurrentState();
+  } finally {
+    startChatInProgress = false;
   }
-  if (!isInitialized) {
-    console.error('Failed to initialize media devices.');
-    return;
-  }
-  const { roomId, shareUrl } = await connect({
-    onRemoteStream: handleRemoteStream,
-    onStatusUpdate: updateStatus,
-  });
-
-  // Show link
-  shareLink.value = shareUrl;
-  linkContainer.style.display = 'block';
-  startChatBtn.disabled = true;
-  hangUpBtn.disabled = false;
-
-  setupWatchSync({ roomId, sharedVideo, streamUrlInput, syncStatus });
-  toggleModeBtn.style.display = 'block';
-
-  saveCurrentState();
 }
 
 // ===== JOIN ROOM (Person B) =====

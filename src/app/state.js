@@ -1,4 +1,5 @@
-// lib/appState.js - Single source of truth
+// src/app/state.js - Single source of truth
+
 const appState = {
   // isInitialized: false, // ? should be here ? Currently a flag at top of app.js
   connection: 'idle', // idle | connecting | connected | reconnecting | disconnected
