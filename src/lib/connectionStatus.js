@@ -1,6 +1,6 @@
 // src/lib/connectionStatus.js
 
-import { db } from './firebase.js';
+import { db } from '../storage/firebaseRealTimeDB.js';
 
 export function setConnectionStatus(roomId, role, status) {
   if (!roomId || !role) return;

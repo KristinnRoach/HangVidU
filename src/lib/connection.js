@@ -1,6 +1,6 @@
 // connection.js - WebRTC connection management with Firebase signaling
 
-import { db } from './firebase.js';
+import { db } from '../storage/firebaseRealTimeDB.js';
 import { setConnectionStatus } from './connectionStatus.js';
 
 // ===== CONFIG =====
