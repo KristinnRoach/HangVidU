@@ -7,9 +7,6 @@ import {
   hangUpBtn,
   copyLinkBtn,
   pipBtn,
-  switchCameraBtn,
-  toggleMuteBtn,
-  toggleVideoBtn,
   toggleModeBtn,
   loadStreamBtn,
   statusDiv,
@@ -22,12 +19,11 @@ import {
   titleHeader,
   titleLink,
   titleText,
-
-  // Todo:
   mutePartnerBtn,
   fullscreenPartnerBtn,
   muteSelfBtn,
   videoSelfBtn,
+  switchCameraSelfBtn,
   fullscreenSelfBtn,
 } from './elements.js';
 
@@ -67,15 +63,16 @@ import {
 } from '../features/watch2gether/watch-sync.js';
 
 import {
-  toggleMute,
-  toggleVideo as toggleVideoDevice,
-  switchCamera,
-  hasFrontAndBackCameras,
   getIsAudioMuted,
   getIsVideoOn,
   getCurrentFacingMode,
   restoreMediaState,
 } from '../features/videoChat/media-devices.js';
+
+import {
+  setupVideoControls,
+  updateVideoControlIcons,
+} from '../features/videoChat/video-controls.js';
 
 import { setupEventListeners } from './events.js';
 import { handleMediaError } from '../utils/error/error-handling.js';
@@ -179,22 +176,25 @@ async function init() {
     setLocalStream(localStream);
     localVideo.srcObject = localStream;
 
-    toggleMuteBtn.style.display = 'block';
-    toggleVideoBtn.style.display = 'block';
-
-    if (await hasFrontAndBackCameras()) {
-      switchCameraBtn.style.display = 'block';
-    } else {
-      switchCameraBtn.style.display = 'none';
-    }
+    // Setup video controls
+    await setupVideoControls({
+      localVideo,
+      remoteVideo,
+      muteSelfBtn,
+      videoSelfBtn,
+      switchCameraSelfBtn,
+      fullscreenSelfBtn,
+      mutePartnerBtn,
+      fullscreenPartnerBtn,
+      getLocalStream,
+      getPeerConnection,
+      onStateChange: saveCurrentState,
+    });
 
     setupEventListeners({
       startChatBtn,
       hangUpBtn,
       copyLinkBtn,
-      switchCameraBtn,
-      toggleMuteBtn,
-      toggleVideoBtn,
       toggleModeBtn,
       loadStreamBtn,
       pipBtn,
@@ -206,16 +206,6 @@ async function init() {
         if (success) updateStatus('Link copied!');
         else updateStatus('Please copy manually.');
       },
-      handleSwitchCamera: async () => {
-        await switchCamera({
-          localStream: getLocalStream(),
-          localVideo,
-          peerConnection: getPeerConnection(),
-        });
-        saveCurrentState();
-      },
-      handleToggleMute: toggleMuteSelfMic,
-      handleToggleVideo: toggleVideo,
       handleToggleMode: toggleWatchMode,
       handleLoadStream: loadStream,
       handlePipToggle: () =>
@@ -239,7 +229,10 @@ async function init() {
     }
 
     if (import.meta.env.DEV) {
-      toggleMuteSelfMic();
+      // Auto-mute in development mode
+      if (muteSelfBtn) {
+        muteSelfBtn.click();
+      }
     }
 
     setupAutoSave();
@@ -262,8 +255,8 @@ function restoreUIState(savedState) {
   restoreMediaState(savedState);
   restoreConnectionState(savedState);
 
-  if (!getIsVideoOn()) toggleVideo();
-  if (getIsAudioMuted()) toggleMuteSelfMic();
+  // Update video control icons to match restored state
+  updateVideoControlIcons({ muteSelfBtn, videoSelfBtn });
   if (savedState.watchMode && !getWatchMode()) {
     toggleWatchMode();
     if (savedState.streamUrl) streamUrlInput.value = savedState.streamUrl;
@@ -449,8 +442,6 @@ async function hangUp() {
   startChatBtn.style.display = 'block';
   hangUpBtn.disabled = true;
   linkContainer.style.display = 'none';
-  toggleMuteBtn.style.display = 'none';
-  toggleVideoBtn.style.display = 'none';
   toggleModeBtn.style.display = 'none';
   watchContainer.style.display = 'none';
   videoContainer.style.display = 'flex';
@@ -499,34 +490,23 @@ async function restoreMediaDevices({
     setLocalStream(localStream);
     localVideo.srcObject = localStream;
 
-    // Restore media state
-    if (isAudioMuted) {
-      toggleMuteSelfMic();
-    }
+    // Setup video controls with restored state
+    await setupVideoControls({
+      localVideo,
+      remoteVideo,
+      muteSelfBtn,
+      videoSelfBtn,
+      switchCameraSelfBtn,
+      fullscreenSelfBtn,
+      mutePartnerBtn,
+      fullscreenPartnerBtn,
+      getLocalStream,
+      getPeerConnection,
+      onStateChange: saveCurrentState,
+    });
 
-    if (!isVideoOn) {
-      toggleVideo();
-    }
-
-    // Update hover control icons to match restored state
-    if (videoSelfBtn) {
-      const icon = videoSelfBtn.querySelector('i');
-      if (isVideoOn) {
-        icon.className = 'fa fa-video';
-        videoSelfBtn.setAttribute('aria-label', 'Turn video off');
-      } else {
-        icon.className = 'fa fa-video-slash';
-        videoSelfBtn.setAttribute('aria-label', 'Turn video on');
-      }
-    }
-
-    // Show appropriate buttons
-    toggleMuteBtn.style.display = 'block';
-    toggleVideoBtn.style.display = 'block';
-
-    if (await hasFrontAndBackCameras()) {
-      switchCameraBtn.style.display = 'block';
-    }
+    // Update icons to match restored state
+    updateVideoControlIcons({ muteSelfBtn, videoSelfBtn });
 
     if (import.meta.env.DEV) {
       console.log('Media devices restored successfully');
@@ -605,14 +585,8 @@ function restoreUIStateFromReload({
       }
     }
 
-    // Update button states to match restored media state (with null checks)
-    if (isAudioMuted && toggleMuteBtn) {
-      toggleMuteBtn.textContent = 'Unmute Mic';
-    }
-
-    if (!isVideoOn && toggleVideoBtn) {
-      toggleVideoBtn.textContent = 'Turn Video On';
-    }
+    // Update video control icons to match restored state
+    updateVideoControlIcons({ muteSelfBtn, videoSelfBtn });
 
     if (import.meta.env.DEV) {
       console.log('UI state restored successfully');
@@ -620,29 +594,6 @@ function restoreUIStateFromReload({
   } catch (error) {
     console.error('Failed to restore UI state:', error);
   }
-}
-
-function toggleMuteSelfMic() {
-  toggleMute({ localStream: getLocalStream(), toggleMuteBtn, muteSelfBtn });
-  saveCurrentState();
-}
-
-function toggleVideo() {
-  toggleVideoDevice({ localStream: getLocalStream(), toggleVideoBtn });
-
-  // Update hover control icon
-  if (videoSelfBtn) {
-    const icon = videoSelfBtn.querySelector('i');
-    if (getIsVideoOn()) {
-      icon.className = 'fa fa-video';
-      videoSelfBtn.setAttribute('aria-label', 'Turn video off');
-    } else {
-      icon.className = 'fa fa-video-slash';
-      videoSelfBtn.setAttribute('aria-label', 'Turn video on');
-    }
-  }
-
-  saveCurrentState();
 }
 
 function toggleWatchMode() {
@@ -686,26 +637,6 @@ function updateTitleText() {
     ? 'Switch to Video Chat'
     : 'Switch to Watch Mode';
 }
-
-// ===== EVENT LISTENERS ===== // Todo: consolidate patterns / structure
-
-import { hoverControlHandlers } from '../features/videoChat/video-controls.js';
-
-fullscreenPartnerBtn?.addEventListener('click', () =>
-  hoverControlHandlers.onFullscreenClick(remoteVideo)
-);
-
-fullscreenSelfBtn?.addEventListener('click', () =>
-  hoverControlHandlers.onFullscreenClick(localVideo)
-);
-
-muteSelfBtn?.addEventListener('click', () => toggleMuteSelfMic());
-
-videoSelfBtn?.addEventListener('click', () => toggleVideo());
-
-mutePartnerBtn?.addEventListener('click', () =>
-  hoverControlHandlers.onMutePartnerClick(remoteVideo, mutePartnerBtn)
-);
 
 // Touch controls for mobile: show/hide buttons on tap
 document.querySelectorAll('.video-wrapper').forEach(setupTouchControls);

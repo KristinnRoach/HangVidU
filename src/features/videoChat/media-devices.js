@@ -21,17 +21,12 @@ export function getCurrentFacingMode() {
   return state.currentFacingMode;
 }
 
-export function toggleMute({ localStream, toggleMuteBtn, muteSelfBtn }) {
+export function toggleMute({ localStream, muteSelfBtn }) {
   const audioTrack = localStream.getAudioTracks()[0];
   if (!audioTrack) return;
 
   state.isAudioMuted = !state.isAudioMuted;
   audioTrack.enabled = !state.isAudioMuted;
-
-  // Update button text
-  if (toggleMuteBtn) {
-    toggleMuteBtn.textContent = state.isAudioMuted ? 'Unmute Mic' : 'Mute Mic';
-  }
 
   // Update hover-button icon
   if (muteSelfBtn) {
@@ -44,18 +39,23 @@ export function toggleMute({ localStream, toggleMuteBtn, muteSelfBtn }) {
   }
 }
 
-export function toggleVideo({ localStream, toggleVideoBtn }) {
+export function toggleVideo({ localStream, videoSelfBtn }) {
   const videoTrack = localStream.getVideoTracks()[0];
   if (!videoTrack) return;
 
   state.isVideoOn = !state.isVideoOn;
   videoTrack.enabled = state.isVideoOn;
 
-  // Update button text
-  if (toggleVideoBtn) {
-    toggleVideoBtn.textContent = state.isVideoOn
-      ? 'Turn Video Off'
-      : 'Turn Video On';
+  // Update hover-button icon
+  if (videoSelfBtn) {
+    const icon = videoSelfBtn.querySelector('i');
+    if (icon) {
+      icon.className = state.isVideoOn ? 'fa fa-video' : 'fa fa-video-slash';
+      videoSelfBtn.setAttribute(
+        'aria-label',
+        state.isVideoOn ? 'Turn video off' : 'Turn video on'
+      );
+    }
   }
 }
 

@@ -31,8 +31,8 @@ Standalone:
 
     PWA:
         [] Add install button
-        [] Test core functionality
-        [] Assess core benefits and create a plan
+        [] Decide which offline capabilities are most feasible and useful
+        [] Implement chosen features
 
 Fun / Extra:
 
