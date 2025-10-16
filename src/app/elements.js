@@ -8,9 +8,9 @@ export const startChatBtn = document.getElementById('startChat');
 export const hangUpBtn = document.getElementById('hangUp');
 export const copyLinkBtn = document.getElementById('copyLink');
 export const pipBtn = document.getElementById('pipBtn');
-export const switchCameraBtn = document.getElementById('switchCameraBtn');
-export const toggleMuteBtn = document.getElementById('toggleMute');
-export const toggleVideoBtn = document.getElementById('toggleVideo');
+export const switchCameraSelfBtn = document.getElementById(
+  'switchCameraSelfBtn'
+);
 export const toggleModeBtn = document.getElementById('toggleMode');
 export const loadStreamBtn = document.getElementById('loadStream');
 
@@ -29,7 +29,12 @@ export const fullscreenPartnerBtn = document.getElementById(
   'fullscreenPartnerBtn'
 );
 export const muteSelfBtn = document.getElementById('muteSelfBtn');
+export const videoSelfBtn = document.getElementById('videoSelfBtn');
 export const fullscreenSelfBtn = document.getElementById('fullscreenSelfBtn');
+
+export const titleHeader = document.getElementById('titleHeader');
+export const titleLink = document.getElementById('titleLink');
+export const titleText = document.getElementById('titleText');
 
 // export const videoFileInput = document.getElementById('videoFile');
 // export const uploadProgress = document.getElementById('uploadProgress');

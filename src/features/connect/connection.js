@@ -13,7 +13,7 @@ const configuration = {
 // ===== STATE =====
 const state = {
   roomId: null,
-  isInitiator: false,
+  role: null, // 'initiator' | 'joiner' | null
   wasConnected: false,
   peerConnection: null,
   localStream: null,
@@ -28,8 +28,13 @@ export function getRoomId() {
   return state.roomId;
 }
 
+export function getRole() {
+  return state.role;
+}
+
+// Backward compatibility helper
 export function getIsInitiator() {
-  return state.isInitiator;
+  return state.role === 'initiator';
 }
 
 export function getWasConnected() {
@@ -49,7 +54,7 @@ export function getPeerConnection() {
 }
 
 export async function connect({ onRemoteStream, onStatusUpdate }) {
-  state.isInitiator = true;
+  state.role = 'initiator';
   if (!state.roomId) {
     state.roomId = generateRoomId();
   }
@@ -85,12 +90,13 @@ export async function connect({ onRemoteStream, onStatusUpdate }) {
   state.iceCandidateManager = new IceCandidateManager(
     state.peerConnection,
     state.roomRef,
-    'caller'
+    'initiator'
   );
 
   // Initialize connection state manager
   state.connectionStateManager = new ConnectionStateManager(
     state.peerConnection,
+    'initiator',
     {
       connectionTimeout: 30000,
       reconnectAttempts: 3,
@@ -118,19 +124,53 @@ export async function connect({ onRemoteStream, onStatusUpdate }) {
     onReconnecting: (attempt, maxAttempts) => {
       onStatusUpdate?.(`Reconnecting... (${attempt}/${maxAttempts})`);
     },
+    onIceRestart: async (offer) => {
+      // Send ICE restart offer through Firebase signaling
+      try {
+        await state.roomRef.child('offer').set({
+          type: offer.type,
+          sdp: offer.sdp,
+        });
+        if (import.meta.env.DEV) {
+          console.log('ICE restart offer sent (caller)');
+        }
+      } catch (error) {
+        console.error('Failed to send ICE restart offer:', error);
+        throw error;
+      }
+    },
   });
 
-  // Listen for answer
+  // Listen for answer (initial and ICE restart)
+  let lastAnswerSdp = null;
   state.roomRef.child('answer').on('value', async (snapshot) => {
     const answer = snapshot.val();
-    if (answer && !state.peerConnection.currentRemoteDescription) {
+    if (answer && answer.sdp !== lastAnswerSdp) {
       try {
+        const isIceRestart = !!state.peerConnection.currentRemoteDescription;
+
+        if (import.meta.env.DEV) {
+          console.log(
+            isIceRestart
+              ? 'Received ICE restart answer (caller)'
+              : 'Received initial answer (caller)'
+          );
+        }
+
         await state.peerConnection.setRemoteDescription(
           new RTCSessionDescription(answer)
         );
 
+        lastAnswerSdp = answer.sdp;
+
         // Notify ICE candidate manager that remote description is set
-        await state.iceCandidateManager.onRemoteDescriptionSet();
+        if (state.iceCandidateManager) {
+          await state.iceCandidateManager.onRemoteDescriptionSet();
+        } else {
+          console.warn(
+            'ICE candidate manager not available during answer processing'
+          );
+        }
 
         if (import.meta.env.DEV) {
           console.log(
@@ -158,6 +198,7 @@ export async function connect({ onRemoteStream, onStatusUpdate }) {
 
 export async function join({ roomId, onRemoteStream, onStatusUpdate }) {
   state.roomId = roomId;
+  state.role = 'joiner';
 
   // Join room in Firebase
   const { roomRef, roomSnapshot } = await joinRoomInFirebase(roomId);
@@ -195,12 +236,13 @@ export async function join({ roomId, onRemoteStream, onStatusUpdate }) {
   state.iceCandidateManager = new IceCandidateManager(
     state.peerConnection,
     state.roomRef,
-    'callee'
+    'joiner'
   );
 
   // Initialize connection state manager
   state.connectionStateManager = new ConnectionStateManager(
     state.peerConnection,
+    'joiner',
     {
       connectionTimeout: 30000,
       reconnectAttempts: 3,
@@ -238,7 +280,11 @@ export async function join({ roomId, onRemoteStream, onStatusUpdate }) {
     );
 
     // Notify ICE candidate manager that remote description is set
-    await state.iceCandidateManager.onRemoteDescriptionSet();
+    if (state.iceCandidateManager) {
+      await state.iceCandidateManager.onRemoteDescriptionSet();
+    } else {
+      console.warn('ICE candidate manager not available during join');
+    }
 
     // Create answer
     const answer = await state.peerConnection.createAnswer();
@@ -250,6 +296,52 @@ export async function join({ roomId, onRemoteStream, onStatusUpdate }) {
     });
 
     setConnectionStatus(state.roomId, 'joiner', 'connecting');
+
+    // Listen for ICE restart offers
+    let lastOfferSdp = state.peerConnection.currentRemoteDescription?.sdp;
+    state.roomRef.child('offer').on('value', async (snapshot) => {
+      const offer = snapshot.val();
+      if (
+        offer &&
+        state.peerConnection.currentRemoteDescription &&
+        offer.sdp !== lastOfferSdp
+      ) {
+        // This is an ICE restart offer (we already have a remote description and it's different)
+        try {
+          if (import.meta.env.DEV) {
+            console.log('Received ICE restart offer (callee)');
+          }
+
+          await state.peerConnection.setRemoteDescription(offer);
+
+          lastOfferSdp = offer.sdp;
+
+          // Notify ICE candidate manager that remote description is updated
+          if (state.iceCandidateManager) {
+            await state.iceCandidateManager.onRemoteDescriptionSet();
+          } else {
+            console.warn(
+              'ICE candidate manager not available during ICE restart'
+            );
+          }
+
+          // Create new answer
+          const answer = await state.peerConnection.createAnswer();
+          await state.peerConnection.setLocalDescription(answer);
+
+          await state.roomRef.child('answer').set({
+            type: answer.type,
+            sdp: answer.sdp,
+          });
+
+          if (import.meta.env.DEV) {
+            console.log('ICE restart answer sent (callee)');
+          }
+        } catch (error) {
+          console.error('Failed to handle ICE restart offer:', error);
+        }
+      }
+    });
 
     if (import.meta.env.DEV) {
       console.log('Join process completed (callee)');
@@ -294,13 +386,13 @@ export async function disconnect({ onStatusUpdate }) {
   }
 
   // Clean up Firebase room
-  if (state.roomId && state.isInitiator) {
+  if (state.roomId && state.role === 'initiator') {
     await removeRoomFromFirebase(state.roomId);
   }
 
   // Reset state
   state.roomId = null;
-  state.isInitiator = false;
+  state.role = null;
   state.wasConnected = false;
   state.roomRef = null;
 
@@ -313,8 +405,12 @@ export function restoreConnectionState(savedState) {
   if (!savedState) return;
 
   if (savedState.roomId) state.roomId = savedState.roomId;
-  if (savedState.isInitiator !== undefined)
-    state.isInitiator = savedState.isInitiator;
+  // Handle both old isInitiator format and new role format
+  if (savedState.role) {
+    state.role = savedState.role;
+  } else if (savedState.isInitiator !== undefined) {
+    state.role = savedState.isInitiator ? 'initiator' : 'joiner';
+  }
   if (savedState.wasConnected !== undefined)
     state.wasConnected = savedState.wasConnected;
 }
@@ -322,7 +418,8 @@ export function restoreConnectionState(savedState) {
 export function getConnectionDiagnostics() {
   const diagnostics = {
     roomId: state.roomId,
-    isInitiator: state.isInitiator,
+    role: state.role,
+    isInitiator: state.role === 'initiator', // Backward compatibility
     wasConnected: state.wasConnected,
     peerConnection: null,
     iceCandidateManager: null,

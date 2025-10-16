@@ -226,22 +226,6 @@ button:disabled {
   margin: 0 auto;
 }
 
-#toggleMute {
-  background: #ff9800;
-}
-
-#toggleMute:hover:not(:disabled) {
-  background: #f57c00;
-}
-
-#toggleVideo {
-  background: #9c27b0;
-}
-
-#toggleVideo:hover:not(:disabled) {
-  background: #7b1fa2;
-}
-
 .watch-controls {
   display: flex;
   gap: 10px;

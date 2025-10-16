@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-  saveState,
-  loadState,
-  clearState,
-} from '../storage/localStorage.js';
+import { saveState, loadState, clearState } from '../storage/localStorage.js';
 
 describe('localStorage persistence', () => {
   beforeEach(() => {
@@ -14,7 +10,8 @@ describe('localStorage persistence', () => {
   it('should save state to localStorage', () => {
     const state = {
       roomId: 'test123',
-      isInitiator: true,
+      role: 'initiator',
+      isInitiator: true, // Backward compatibility
       isAudioMuted: false,
     };
 
@@ -22,21 +19,24 @@ describe('localStorage persistence', () => {
 
     const stored = JSON.parse(localStorage.getItem('hangvidu_session'));
     expect(stored.roomId).toBe('test123');
-    expect(stored.isInitiator).toBe(true);
+    expect(stored.role).toBe('initiator');
+    expect(stored.isInitiator).toBe(true); // Backward compatibility
     expect(stored.timestamp).toBeDefined();
   });
 
   it('should load valid state from localStorage', () => {
     const state = {
       roomId: 'test123',
-      isInitiator: true,
+      role: 'initiator',
+      isInitiator: true, // Backward compatibility
     };
 
     saveState(state);
     const loaded = loadState();
 
     expect(loaded.roomId).toBe('test123');
-    expect(loaded.isInitiator).toBe(true);
+    expect(loaded.role).toBe('initiator');
+    expect(loaded.isInitiator).toBe(true); // Backward compatibility
   });
 
   it('should return null if no state exists', () => {

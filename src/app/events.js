@@ -5,9 +5,6 @@ export function setupEventListeners({
   startChatBtn,
   hangUpBtn,
   copyLinkBtn,
-  switchCameraBtn,
-  toggleMuteBtn,
-  toggleVideoBtn,
   toggleModeBtn,
   loadStreamBtn,
   pipBtn,
@@ -15,12 +12,9 @@ export function setupEventListeners({
   handleStartChat,
   handleHangUp,
   handleCopyLink,
-  handleToggleMute,
-  handleToggleVideo,
   handleToggleMode,
   handleLoadStream,
   handlePipToggle,
-  handleSwitchCamera,
   updateStatus,
 }) {
   document.addEventListener('keydown', (e) => {
@@ -32,9 +26,6 @@ export function setupEventListeners({
   startChatBtn.addEventListener('click', handleStartChat);
   hangUpBtn.addEventListener('click', handleHangUp);
   copyLinkBtn.addEventListener('click', handleCopyLink);
-  switchCameraBtn.addEventListener('click', handleSwitchCamera);
-  toggleMuteBtn.addEventListener('click', handleToggleMute);
-  toggleVideoBtn.addEventListener('click', handleToggleVideo);
   toggleModeBtn.addEventListener('click', handleToggleMode);
   loadStreamBtn.addEventListener('click', handleLoadStream);
   pipBtn.addEventListener('click', handlePipToggle);

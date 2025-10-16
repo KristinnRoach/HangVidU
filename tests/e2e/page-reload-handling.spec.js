@@ -60,15 +60,18 @@ test.describe('Page Reload Handling', () => {
       await page1.click('#startChat');
       await expect(page1.locator('#linkContainer')).toBeVisible();
 
+      // Hover over local video to show controls
+      await page1.locator('#localVideo').hover();
+
       // Mute audio
-      await page1.click('#toggleMute');
-      await expect(page1.locator('#toggleMute')).toContainText('Unmute');
+      const muteBtn = page1.locator('#muteSelfBtn');
+      await muteBtn.click();
+      await expect(muteBtn.locator('i')).toHaveClass(/fa-microphone/);
 
       // Turn off video
-      await page1.click('#toggleVideo');
-      await expect(page1.locator('#toggleVideo')).toContainText(
-        'Turn Video On'
-      );
+      const videoBtn = page1.locator('#videoSelfBtn');
+      await videoBtn.click();
+      await expect(videoBtn.locator('i')).toHaveClass(/fa-video-slash/);
 
       // Wait for state to be saved
       await page1.waitForTimeout(1000);
@@ -80,17 +83,13 @@ test.describe('Page Reload Handling', () => {
       // Wait for restoration
       await page1.waitForTimeout(5000);
 
-      // Check if UI state was restored
-      const muteButtonText = await page1.locator('#toggleMute').textContent();
-      const videoButtonText = await page1.locator('#toggleVideo').textContent();
-
-      console.log('After reload - Mute button:', muteButtonText);
-      console.log('After reload - Video button:', videoButtonText);
+      // Check if UI state was restored by hovering and checking icons
+      await page1.locator('#localVideo').hover();
 
       // Note: The exact restoration depends on the implementation
-      // At minimum, the buttons should be visible and have some state
-      await expect(page1.locator('#toggleMute')).toBeVisible();
-      await expect(page1.locator('#toggleVideo')).toBeVisible();
+      // At minimum, the buttons should be visible
+      await expect(page1.locator('#muteSelfBtn')).toBeVisible();
+      await expect(page1.locator('#videoSelfBtn')).toBeVisible();
     } finally {
       await cleanupConnection(page1, null);
       await cleanup();

@@ -15,6 +15,7 @@ import {
 const state = {
   watchMode: false,
   isSyncing: false,
+  streamUrl: '',
 };
 
 // ===== PUBLIC API =====
@@ -25,6 +26,14 @@ export function getWatchMode() {
 
 export function getIsSyncing() {
   return state.isSyncing;
+}
+
+export function getStreamUrl() {
+  return state.streamUrl;
+}
+
+export function setStreamUrl(url) {
+  state.streamUrl = url;
 }
 
 export function toggleWatchMode({
