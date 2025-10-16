@@ -9,10 +9,12 @@ const config = {
     quotaExceeded: false,
   },
   sync: {
-    // SYNC TOGGLE: Change this flag to switch between sync systems
-    // false = Firebase Legacy Sync (known working)
-    // true  = WebRTC Sync (new implementation)
-    useWebRTC: false,
+    // SYNC IMPLEMENTATION: Firebase is the ONLY working implementation
+    // false = Firebase Sync (PRODUCTION - reliable, tested)
+    // true  = WebRTC Sync (BROKEN - do not use, data channel issues)
+    //
+    // DECISION: Continue using Firebase for all signaling and sync operations
+    useWebRTC: false, // DO NOT CHANGE - WebRTC sync is non-functional
   },
 };
 

@@ -1,4 +1,16 @@
-// watch-sync.js - Watch mode and video sync feature with improved sync system
+// watch-sync.js - WebRTC-based sync implementation
+//
+// ⚠️  WARNING: THIS IMPLEMENTATION IS NON-FUNCTIONAL ⚠️
+//
+// Status: BROKEN - Data channel issues prevent sync operations
+// Use: src/features/watch2gether/watch-sync-legacy.js instead
+//
+// Issues:
+// - WebRTC data channel establishment failures
+// - Transport errors causing all sync events to fail
+// - Complex state management causing reliability problems
+//
+// Decision: Continue using Firebase-based sync (watch-sync-legacy.js)
 
 import { db } from '../../storage/firebaseRealTimeDB.js';
 import { getRoomId, getPeerConnection } from '../connect/connection.js';

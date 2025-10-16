@@ -1,8 +1,10 @@
-# Legacy Watch-Sync Functionality Documentation
+# Firebase Watch-Sync Implementation Documentation
 
-This document describes the original watch-sync.js functionality before refactoring to use the new SyncManager and YouTubePlayerAdapter components.
+**IMPORTANT: Firebase is the ONLY working sync implementation. The WebRTC sync system is experimental and non-functional.**
 
-## Current Working Features
+This document describes the Firebase-based watch-sync functionality, which is the current production implementation.
+
+## Current Working Features (Firebase Only)
 
 ### Core State Management
 
@@ -58,22 +60,21 @@ rooms/{roomId}/stream/
 - Shows visual feedback for sync status
 - Graceful fallback for unsupported media
 
-## Known Limitations (Addressed by Refactor)
+## Architecture Decision: Firebase vs WebRTC
 
-1. **Basic Sync Loop Prevention**: Simple timeout-based approach
-2. **No Retry Logic**: Failed sync operations are not retried
-3. **No Event Queuing**: Events lost if player not ready
-4. **Limited Error Recovery**: Basic error handling only
-5. **Tight Coupling**: Sync logic mixed with UI and player controls
-6. **No Conflict Resolution**: No handling of simultaneous user actions
+**Current Status (January 2025):**
 
-## Rollback Instructions
+- **Firebase Sync**: ✅ WORKING - Production ready, reliable sync
+- **WebRTC Sync**: ❌ NON-FUNCTIONAL - Data channel issues, transport errors
+- **Firebase Signaling**: ✅ WORKING - Will continue using for video chat signaling
 
-If the refactor causes issues, restore functionality by:
+**Decision**: Continue using Firebase for both video chat signaling AND watch-sync functionality. The WebRTC refactor has been abandoned due to complexity and reliability issues.
 
-1. Copy `watch-sync-legacy.js` back to `watch-sync.js`
-2. Ensure all imports in consuming modules still work
-3. Test basic sync functionality between two browser instances
+## Implementation Status
+
+- `watch-sync-legacy.js` → **Production implementation** (Firebase-based)
+- `watch-sync.js` → **Experimental/broken** (WebRTC-based, do not use)
+- Toggle available in `src/config/api-config.js` but should remain `useWebRTC: false`
 
 ## Files Involved in Original Implementation
 

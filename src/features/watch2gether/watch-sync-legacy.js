@@ -106,35 +106,67 @@ function initializeSearchUI() {
 }
 
 async function handleVideoSelection(video) {
-  // Get current room ID and elements
-  const roomId = getRoomId();
+  // Get elements
   const sharedVideo = document.getElementById('sharedVideo');
   const streamUrlInput = document.getElementById('streamUrl');
-
-  if (!roomId) {
-    console.warn('No active room found for video selection');
-    return;
-  }
+  const syncStatus = document.getElementById('syncStatus');
 
   // Update URL input with selected video
   if (streamUrlInput) {
     streamUrlInput.value = video.url;
   }
 
+  // Update status
+  if (syncStatus) {
+    syncStatus.textContent = `Loading "${video.title}"...`;
+  }
+
   try {
-    // Load the selected video using existing loadStream function
-    await loadStream({
-      roomId,
-      url: video.url,
-      sharedVideo,
-      syncStatus: { textContent: `Loading "${video.title}"...` },
-    });
+    // Check if we have an active room for syncing
+    const roomId = getRoomId();
+
+    if (roomId) {
+      // We're in a call - use the sync-enabled loadStream function
+      await loadStream({
+        roomId,
+        url: video.url,
+        sharedVideo,
+        syncStatus: syncStatus || {
+          textContent: `Loading "${video.title}"...`,
+        },
+      });
+    } else {
+      // No active call - just play the video locally
+      await playVideoLocally(video.url, sharedVideo, syncStatus);
+    }
 
     if (import.meta.env.DEV) {
       console.log('Video loaded from search selection:', video.title);
     }
   } catch (error) {
     console.error('Failed to load selected video:', error);
+    if (syncStatus) {
+      syncStatus.textContent = 'Failed to load video. Please try again.';
+    }
+  }
+}
+
+async function playVideoLocally(url, sharedVideo, syncStatus) {
+  if (isYouTubeUrl(url)) {
+    const vid = getYouTubeId(url);
+    showYouTubePlayer(vid, sharedVideo, () => {
+      // No sync needed when playing locally
+    });
+    if (syncStatus) {
+      syncStatus.textContent = 'YouTube video loaded (local playback)';
+    }
+  } else {
+    hideYouTubePlayer(sharedVideo);
+    sharedVideo.src = url;
+    sharedVideo.style.display = 'block';
+    if (syncStatus) {
+      syncStatus.textContent = 'Video loaded (local playback)';
+    }
   }
 }
 
