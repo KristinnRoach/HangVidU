@@ -57,6 +57,7 @@ import {
   toggleWatchMode as toggleWatchModeSync,
   loadStream as loadStreamSync,
   setupWatchSync,
+  // cleanupWatchSync,
   getWatchMode,
   getStreamUrl,
   setStreamUrl,
@@ -78,6 +79,10 @@ import { setupEventListeners } from './events.js';
 import { handleMediaError } from '../utils/error/error-handling.js';
 import { setupTouchControls } from '../utils/ui/touch-controls.js';
 import { copyLink } from '../utils/clipboard.js';
+import {
+  initializeApiConfig,
+  validateApiConfig,
+} from '../config/api-config.js';
 
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
@@ -127,6 +132,16 @@ async function init() {
   }
 
   try {
+    // Initialize API configuration
+    initializeApiConfig();
+
+    // Validate API configuration and warn about missing keys
+    const apiValidation = validateApiConfig();
+    if (!apiValidation.isValid && import.meta.env.DEV) {
+      console.warn('API Configuration Issues:');
+      apiValidation.missing.forEach((key) => console.warn(`- Missing: ${key}`));
+      apiValidation.warnings.forEach((warning) => console.warn(`- ${warning}`));
+    }
     // Initialize page reload manager
     pageReloadManager = new PageReloadManager();
     pageReloadManager.setCallbacks({
@@ -348,7 +363,14 @@ async function initiateChatRoom() {
     startChatBtn.disabled = true;
     hangUpBtn.disabled = false;
 
-    setupWatchSync({ roomId, sharedVideo, streamUrlInput, syncStatus });
+    setupWatchSync({
+      roomId,
+      sharedVideo,
+      streamUrlInput,
+      syncStatus,
+      peerConnection: getPeerConnection(),
+      isInitiator: getIsInitiator(),
+    });
     enableTitleModeToggle(); // Enable title as mode toggle
 
     saveCurrentState();
@@ -372,7 +394,14 @@ async function joinChatRoom(roomId) {
     return;
   }
 
-  setupWatchSync({ roomId, sharedVideo, streamUrlInput, syncStatus });
+  setupWatchSync({
+    roomId,
+    sharedVideo,
+    streamUrlInput,
+    syncStatus,
+    peerConnection: getPeerConnection(),
+    isInitiator: getIsInitiator(),
+  });
   toggleModeBtn.style.display = 'block';
   hangUpBtn.disabled = false;
   enableTitleModeToggle(); // Enable title as mode toggle
@@ -420,6 +449,15 @@ async function hangUp() {
     }
     autoSaveCleanup = null;
   }
+
+  // Clean up watch sync
+  // try {
+  //   cleanupWatchSync();
+  // } catch (error) {
+  //   if (import.meta.env.DEV) {
+  //     console.warn('Error during watch sync cleanup:', error);
+  //   }
+  // }
 
   if (remoteVideo.srcObject) {
     remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
