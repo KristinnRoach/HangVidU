@@ -5,7 +5,7 @@ import {
   loadState,
   clearState,
 } from '../../storage/localStorage.js';
-import { updateState, getState } from '../../app/state.js';
+import { getRoomId, getRole } from '../connect/connection.js';
 
 /**
  * Manages page reload scenarios to maintain call continuity
@@ -33,19 +33,19 @@ export class PageReloadManager {
    * Save current session state before page unload
    */
   saveCurrentSession(connectionMonitor = null, getFeatureState = {}) {
-    const currentState = getState();
+    const roomId = getRoomId();
+    const role = getRole();
 
     // Only save if we're in an active session
-    if (!currentState.room.id) {
+    if (!roomId) {
       return;
     }
 
     const sessionData = {
       // Room information
-      roomId: currentState.room.id,
-      role: currentState.room.role,
-      isInitiator: currentState.room.role === 'initiator', // Backward compatibility
-      partnerOnline: currentState.room.partnerOnline,
+      roomId: roomId,
+      role: role,
+      isInitiator: role === 'initiator', // Backward compatibility
 
       // Connection state (from ConnectionMonitor if available)
       connectionState: this.getConnectionState(connectionMonitor),
@@ -126,18 +126,7 @@ export class PageReloadManager {
     try {
       this.restorationCallbacks.onStatusUpdate?.('Restoring session...');
 
-      // Update app state
-      updateState({
-        room: {
-          id: savedState.roomId,
-          role:
-            savedState.role ||
-            (savedState.isInitiator ? 'initiator' : 'joiner'),
-          partnerOnline: savedState.partnerOnline,
-        },
-      });
-
-      // Feature module state will be restored via callbacks
+      // Feature module state will be restored via callbacks // TODO: Clarify this comment! Is this implemented?
 
       // Restore media first
       const mediaRestored = await this.restoreMedia(savedState);
@@ -171,9 +160,6 @@ export class PageReloadManager {
 
       // Clear invalid state
       clearState();
-      updateState({
-        room: { id: null, role: null, partnerOnline: false },
-      });
 
       return { success: false, reason: error.message };
     } finally {
@@ -285,12 +271,9 @@ export class PageReloadManager {
           return;
         }
 
-        const currentState = getState();
+        const roomId = getRoomId();
         const connectionMonitor = getConnectionMonitor();
-        if (
-          currentState.room.id &&
-          this.getConnectionState(connectionMonitor) !== 'idle'
-        ) {
+        if (roomId && this.getConnectionState(connectionMonitor) !== 'idle') {
           this.saveCurrentSession(connectionMonitor);
         }
       }, 10000); // Save every 10 seconds
@@ -358,9 +341,6 @@ export class PageReloadManager {
    */
   clearSession() {
     clearState();
-    updateState({
-      room: { id: null, role: null, partnerOnline: false },
-    });
   }
 
   /**

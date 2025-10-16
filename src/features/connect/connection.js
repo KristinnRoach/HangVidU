@@ -32,7 +32,6 @@ export function getRole() {
   return state.role;
 }
 
-// Backward compatibility helper
 export function getIsInitiator() {
   return state.role === 'initiator';
 }

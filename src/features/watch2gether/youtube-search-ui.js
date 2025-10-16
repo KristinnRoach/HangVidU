@@ -202,6 +202,15 @@ function showSearchError(message) {
     } else if (message.includes('API not available')) {
       userMessage =
         'YouTube search is currently unavailable. Please use manual URL input.';
+    } else if (
+      message.includes('key is invalid') ||
+      message.includes('key restricted')
+    ) {
+      userMessage =
+        'YouTube API key configuration issue. Please check your API key or use manual URL input.';
+    } else if (message.includes('access denied')) {
+      userMessage =
+        'YouTube search is temporarily unavailable. Please use manual URL input.';
     }
 
     state.searchResults.innerHTML = `

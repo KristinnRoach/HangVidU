@@ -563,6 +563,7 @@ export async function setupWatchSync({
   streamUrlInput,
   syncStatus,
   peerConnection,
+  callerRole, // ? Should we use role here? (initator vs joiner)
 }) {
   if (!roomId) return;
 

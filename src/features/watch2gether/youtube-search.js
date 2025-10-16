@@ -197,9 +197,23 @@ async function performSearch(query, options) {
   if (!response.ok) {
     if (response.status === 403) {
       const errorData = await response.json().catch(() => ({}));
-      if (errorData.error?.errors?.[0]?.reason === 'quotaExceeded') {
+      const errorReason = errorData.error?.errors?.[0]?.reason;
+
+      if (errorReason === 'quotaExceeded') {
         setYouTubeQuotaExceeded(true);
         throw new Error('YouTube API quota exceeded');
+      } else if (
+        errorReason === 'keyInvalid' ||
+        errorReason === 'keyRestricted'
+      ) {
+        setYouTubeQuotaExceeded(true); // Treat as unavailable
+        throw new Error('YouTube API key is invalid or restricted');
+      } else {
+        // Generic 403 error - likely quota or permission issue
+        setYouTubeQuotaExceeded(true);
+        throw new Error(
+          'YouTube API access denied - quota exceeded or key restricted'
+        );
       }
     }
     throw new Error(`Search request failed: ${response.status}`);

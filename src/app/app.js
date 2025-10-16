@@ -36,7 +36,6 @@ import {
   setLocalStream,
   getRoomId,
   getRole,
-  getIsInitiator,
   getWasConnected,
   getPeerConnection,
   getLocalStream,
@@ -45,7 +44,6 @@ import {
 
 import { ConnectionMonitor } from '../features/connect/connection-monitor.js';
 import { PageReloadManager } from '../features/session/page-reload-manager.js';
-import { updateState } from './state.js';
 
 import {
   handlePipToggleBtn,
@@ -96,15 +94,6 @@ let autoSaveCleanup = null;
 // App-level state is now managed in ./state.js
 
 function saveCurrentState() {
-  // Update centralized state
-  updateState({
-    room: {
-      id: getRoomId(),
-      role: getRole(),
-      partnerOnline: getWasConnected(),
-    },
-  });
-
   // Update feature module state
   setStreamUrl(streamUrlInput.value);
 
@@ -175,7 +164,7 @@ async function init() {
         console.error('Session restoration error:', error);
         // Clear potentially stale session state
         try {
-          await pageReloadManager.clearSession();
+          pageReloadManager.clearSession();
         } catch (clearError) {
           console.error('Failed to clear session state:', clearError);
         }
@@ -369,9 +358,9 @@ async function initiateChatRoom() {
       streamUrlInput,
       syncStatus,
       peerConnection: getPeerConnection(),
-      isInitiator: getIsInitiator(),
+      callerRole: getRole(),
     });
-    enableTitleModeToggle(); // Enable title as mode toggle
+    disableTitleLink(); // Prevent accidental page reloads
 
     saveCurrentState();
   } catch (error) {
@@ -400,11 +389,10 @@ async function joinChatRoom(roomId) {
     streamUrlInput,
     syncStatus,
     peerConnection: getPeerConnection(),
-    isInitiator: getIsInitiator(),
+    callerRole: getRole(),
   });
-  toggleModeBtn.style.display = 'block';
   hangUpBtn.disabled = false;
-  enableTitleModeToggle(); // Enable title as mode toggle
+  disableTitleLink(); // Prevent accidental page reloads
 
   saveCurrentState();
 }
@@ -479,14 +467,13 @@ async function hangUp() {
   startChatBtn.style.display = 'block';
   hangUpBtn.disabled = true;
   linkContainer.style.display = 'none';
-  toggleModeBtn.style.display = 'none';
   watchContainer.style.display = 'none';
   videoContainer.style.display = 'flex';
   shareLink.value = '';
   sharedVideo.src = '';
   streamUrlInput.value = '';
   syncStatus.textContent = '';
-  disableTitleModeToggle(); // Restore normal title
+  enableTitleLink();
 
   window.history.replaceState({}, document.title, window.location.pathname);
   clearState();
@@ -556,11 +543,9 @@ async function restoreMediaDevices({
   }
 }
 
-async function restoreConnection({ roomId, role, isInitiator, wasConnected }) {
+async function restoreConnection({ roomId, role }) {
   try {
-    // Handle both new role format and legacy isInitiator format
-    const isRoomInitiator =
-      role === 'initiator' || (role === undefined && isInitiator);
+    const isRoomInitiator = role === 'initiator';
 
     if (isRoomInitiator) {
       // For initiators, we can't really restore the connection
@@ -573,8 +558,7 @@ async function restoreConnection({ roomId, role, isInitiator, wasConnected }) {
       linkContainer.style.display = 'block';
       startChatBtn.disabled = true;
       hangUpBtn.disabled = false;
-      toggleModeBtn.style.display = 'block';
-      enableTitleModeToggle(); // Enable title as mode toggle
+      disableTitleLink(); // Prevent accidental page reloads
 
       return { success: true };
     } else {
@@ -589,8 +573,7 @@ async function restoreConnection({ roomId, role, isInitiator, wasConnected }) {
 
       if (result.success) {
         hangUpBtn.disabled = false;
-        toggleModeBtn.style.display = 'block';
-        enableTitleModeToggle(); // Enable title as mode toggle
+        disableTitleLink(); // Prevent accidental page reloads
         return { success: true };
       } else {
         throw new Error('Failed to rejoin room');
@@ -642,7 +625,6 @@ function toggleWatchMode() {
     streamUrlInput,
     syncStatus,
   });
-  updateTitleText(); // Update title text after mode change
   saveCurrentState();
 }
 
@@ -654,25 +636,17 @@ function loadStream() {
 
 // ===== TITLE MODE TOGGLE =====
 
-function enableTitleModeToggle() {
-  titleLink.href = '#';
-  titleLink.onclick = (e) => {
-    e.preventDefault();
-    toggleWatchMode();
-  };
-  updateTitleText();
+function disableTitleLink() {
+  titleLink.href = ''; // Todo: ensure this robustly prevents a page reload across browsers
 }
 
-function disableTitleModeToggle() {
-  titleLink.href = 'https://kristinnroach.github.io/HangVidU/';
-  titleLink.onclick = null;
-  titleText.textContent = 'HangVidU';
-}
-
-function updateTitleText() {
-  titleText.textContent = getWatchMode()
-    ? 'Switch to Video Chat'
-    : 'Switch to Watch Mode';
+function enableTitleLink() {
+  if (import.meta.env.DEV) {
+    titleLink.href = '#';
+  }
+  if (import.meta.env.PROD) {
+    titleLink.href = 'https://kristinnroach.github.io/HangVidU/';
+  }
 }
 
 // Touch controls for mobile: show/hide buttons on tap

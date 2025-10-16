@@ -11,7 +11,7 @@ export const pipBtn = document.getElementById('pipBtn');
 export const switchCameraSelfBtn = document.getElementById(
   'switchCameraSelfBtn'
 );
-export const toggleModeBtn = document.getElementById('toggleMode'); // TODO: Refactor / cleanup
+export const toggleModeBtn = document.getElementById('toggleMode');
 export const loadStreamBtn = document.getElementById('loadStream');
 
 export const statusDiv = document.getElementById('status');
