@@ -152,8 +152,26 @@ export async function connect({ onRemoteStream, onStatusUpdate }) {
           console.log(
             isIceRestart
               ? 'Received ICE restart answer (caller)'
-              : 'Received initial answer (caller)'
+              : 'Received initial answer (caller)',
+            'Current signaling state:',
+            state.peerConnection.signalingState
           );
+        }
+
+        // Check if we can set remote description
+        const signalingState = state.peerConnection.signalingState;
+        if (signalingState === 'stable' && !isIceRestart) {
+          if (import.meta.env.DEV) {
+            console.log('Ignoring answer - already in stable state');
+          }
+          return;
+        }
+
+        if (signalingState === 'closed') {
+          if (import.meta.env.DEV) {
+            console.log('Ignoring answer - connection is closed');
+          }
+          return;
         }
 
         await state.peerConnection.setRemoteDescription(
@@ -308,7 +326,20 @@ export async function join({ roomId, onRemoteStream, onStatusUpdate }) {
         // This is an ICE restart offer (we already have a remote description and it's different)
         try {
           if (import.meta.env.DEV) {
-            console.log('Received ICE restart offer (callee)');
+            console.log(
+              'Received ICE restart offer (callee)',
+              'Current signaling state:',
+              state.peerConnection.signalingState
+            );
+          }
+
+          // Check if we can set remote description
+          const signalingState = state.peerConnection.signalingState;
+          if (signalingState === 'closed') {
+            if (import.meta.env.DEV) {
+              console.log('Ignoring ICE restart offer - connection is closed');
+            }
+            return;
           }
 
           await state.peerConnection.setRemoteDescription(offer);
