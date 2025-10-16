@@ -6,14 +6,26 @@ import { expect } from '@playwright/test';
  * Set up two browser contexts for peer-to-peer testing
  */
 export async function setupTwoPeerConnection(browser) {
-  const context1 = await browser.newContext({
-    permissions: ['camera', 'microphone'],
+  // Get browser name to handle Firefox differently
+  const browserName = browser.browserType().name();
+
+  const contextOptions = {
     ignoreHTTPSErrors: true,
-  });
-  const context2 = await browser.newContext({
-    permissions: ['camera', 'microphone'],
-    ignoreHTTPSErrors: true,
-  });
+  };
+
+  // Firefox doesn't support permissions array, uses preferences instead
+  if (browserName === 'firefox') {
+    contextOptions.firefoxUserPrefs = {
+      'media.navigator.streams.fake': true,
+      'media.navigator.permission.disabled': true,
+    };
+  } else {
+    // Chromium/WebKit support permissions array
+    contextOptions.permissions = ['camera', 'microphone'];
+  }
+
+  const context1 = await browser.newContext(contextOptions);
+  const context2 = await browser.newContext(contextOptions);
 
   const page1 = await context1.newPage();
   const page2 = await context2.newPage();
