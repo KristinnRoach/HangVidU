@@ -2,10 +2,17 @@
 
 // ===== CONFIGURATION STATE =====
 const config = {
+  _initialized: false,
   youtube: {
     apiKey: null,
     baseUrl: 'https://www.googleapis.com/youtube/v3',
     quotaExceeded: false,
+  },
+  sync: {
+    // SYNC TOGGLE: Change this flag to switch between sync systems
+    // false = Firebase Legacy Sync (known working)
+    // true  = WebRTC Sync (new implementation)
+    useWebRTC: false,
   },
 };
 
@@ -16,7 +23,9 @@ const config = {
  * Must be called before using any API services
  */
 export function initializeApiConfig() {
-  // YouTube API configuration
+  if (config._initialized) return;
+  config._initialized = true;
+
   config.youtube.apiKey = import.meta.env.VITE_YOUTUBE_API_KEY;
 
   if (import.meta.env.DEV) {
@@ -24,6 +33,9 @@ export function initializeApiConfig() {
       youtube: {
         hasApiKey: !!config.youtube.apiKey,
         baseUrl: config.youtube.baseUrl,
+      },
+      sync: {
+        system: config.sync.useWebRTC ? 'WebRTC' : 'Firebase Legacy',
       },
     });
   }
@@ -51,6 +63,16 @@ export function setYouTubeQuotaExceeded(exceeded = true) {
   if (import.meta.env.DEV) {
     console.warn('YouTube API quota status changed:', exceeded);
   }
+}
+
+/**
+ * Get sync configuration
+ * @returns {Object} Sync config object
+ */
+export function getSyncConfig() {
+  return {
+    useWebRTC: config.sync.useWebRTC,
+  };
 }
 
 /**

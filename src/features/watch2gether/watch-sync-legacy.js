@@ -3,6 +3,7 @@
 // This file preserves the original working functionality for rollback purposes
 
 import { db } from '../../storage/firebaseRealTimeDB.js';
+import { getRoomId } from '../connect/connection.js';
 
 import {
   isYouTubeUrl,
@@ -12,6 +13,12 @@ import {
   getYTPlayer,
   getYTReady,
 } from './youtube.js';
+
+import {
+  initializeSearchUI as initSearchUI,
+  updateSearchAvailability,
+  cleanupSearchUI,
+} from './youtube-search-ui.js';
 
 // ===== STATE =====
 const state = {
@@ -38,6 +45,99 @@ export function setStreamUrl(url) {
   state.streamUrl = url;
 }
 
+// ===== COMPATIBILITY STUBS =====
+// These functions exist in the WebRTC version but not in legacy
+// Adding stubs to maintain API compatibility
+
+export function getSyncStatusInfo() {
+  return {
+    isConnected: true, // Firebase is always "connected" if we have internet
+    isSyncing: state.isSyncing,
+    lastError: null,
+    autoResyncEnabled: false,
+    manualResyncAvailable: false,
+    playerReady: true,
+    hasActiveVideo: !!state.streamUrl,
+    syncHealth: { score: 100, status: 'excellent', issues: [] },
+  };
+}
+
+export function triggerManualResync() {
+  // Legacy system doesn't need manual resync
+  return Promise.resolve(false);
+}
+
+export function setAutoResyncEnabled(enabled) {
+  // Legacy system doesn't support auto resync
+  if (import.meta.env.DEV) {
+    console.log('Auto resync not supported in legacy mode');
+  }
+}
+
+export function getErrorDetails() {
+  return {
+    lastError: null,
+    timestamp: null,
+    syncHealth: { score: 100, status: 'excellent', issues: [] },
+    componentStatus: {
+      syncManager: false,
+      playerAdapter: false,
+      transport: false,
+      webrtcConnected: false,
+    },
+    troubleshootingSteps: [],
+  };
+}
+
+export function executeTroubleshootingAction(action) {
+  // Legacy system doesn't support troubleshooting actions
+  return Promise.resolve(false);
+}
+
+// ===== SEARCH UI FUNCTIONALITY =====
+
+function initializeSearchUI() {
+  initSearchUI(handleVideoSelection);
+  updateSearchAvailability();
+
+  if (import.meta.env.DEV) {
+    console.log('YouTube search UI initialized for legacy watch mode');
+  }
+}
+
+async function handleVideoSelection(video) {
+  // Get current room ID and elements
+  const roomId = getRoomId();
+  const sharedVideo = document.getElementById('sharedVideo');
+  const streamUrlInput = document.getElementById('streamUrl');
+
+  if (!roomId) {
+    console.warn('No active room found for video selection');
+    return;
+  }
+
+  // Update URL input with selected video
+  if (streamUrlInput) {
+    streamUrlInput.value = video.url;
+  }
+
+  try {
+    // Load the selected video using existing loadStream function
+    await loadStream({
+      roomId,
+      url: video.url,
+      sharedVideo,
+      syncStatus: { textContent: `Loading "${video.title}"...` },
+    });
+
+    if (import.meta.env.DEV) {
+      console.log('Video loaded from search selection:', video.title);
+    }
+  } catch (error) {
+    console.error('Failed to load selected video:', error);
+  }
+}
+
 export function toggleWatchMode({
   videoContainer,
   watchContainer,
@@ -52,13 +152,20 @@ export function toggleWatchMode({
     videoContainer.style.display = 'none';
     watchContainer.style.display = 'block';
     toggleModeBtn.textContent = 'Switch to Video Chat';
-    syncStatus.textContent = 'Paste the same stream URL as your partner';
+    syncStatus.textContent =
+      'Search for videos or paste the same stream URL as your partner';
+
+    // Initialize search UI
+    initializeSearchUI();
   } else {
     videoContainer.style.display = 'flex';
     watchContainer.style.display = 'none';
     toggleModeBtn.textContent = 'Switch to Watch Mode';
     sharedVideo.src = '';
     streamUrlInput.value = '';
+
+    // Clean up search UI
+    cleanupSearchUI();
   }
 
   return state.watchMode;

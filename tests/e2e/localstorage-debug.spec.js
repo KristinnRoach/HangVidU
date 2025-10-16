@@ -77,7 +77,7 @@ test.describe('LocalStorage Debug', () => {
     expect(true).toBe(true);
   });
 
-  test('should check if page reload manager is causing issues', async ({
+  test('should check localStorage behavior during app lifecycle', async ({
     page,
   }) => {
     await mockFirebaseForTesting(page);
