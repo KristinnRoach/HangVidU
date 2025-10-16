@@ -8,6 +8,12 @@ Bugfixes:
 
 UI / UX:
 
+    [] Elaborate drafted "Fallback" strategy in utils/fallback/ :
+        [] Consider different browser / platform permissions
+        [] Which browsers / platforms do we prioritize, which are feasible?
+        [] Plan, steering, specs and prioritized implementation roadmap
+
+
     [] Detect and handle the case when connection is established but remoteVideo is blank/black - not streaming actual video (check if streams video track is muted, check readyState, dimensions, etc.. )
 
     [] Handle page reload during call
@@ -32,7 +38,8 @@ Standalone:
     PWA:
         [] Add install button
         [] Decide which offline capabilities are most feasible and useful
-        [] Implement chosen features
+        [] Plan, steering, specs and prioritized implementation roadmap
+
 
 Fun / Extra:
 
