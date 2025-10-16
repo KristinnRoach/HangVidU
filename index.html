@@ -9,9 +9,9 @@
   </head>
   <body>
     <div class="container">
-      <h1>
-        <a href="https://kristinnroach.github.io/HangVidU/">
-          <span>HangVidU</span></a
+      <h1 id="titleHeader">
+        <a id="titleLink" href="https://kristinnroach.github.io/HangVidU/">
+          <span id="titleText">HangVidU</span></a
         >
       </h1>
 
@@ -21,6 +21,9 @@
           <div class="hover-controls">
             <button id="muteSelfBtn" aria-label="Mute/unmute mic">
               <i class="fa fa-volume-mute"></i>
+            </button>
+            <button id="videoSelfBtn" aria-label="Turn video on/off">
+              <i class="fa fa-video"></i>
             </button>
             <button id="fullscreenSelfBtn" aria-label="Fullscreen">
               <i class="fa fa-expand"></i>
@@ -72,11 +75,15 @@
           Switch to Watch Mode
         </button>
         <button id="pipBtn" style="display: none">Float Partner Video</button>
-        <button id="toggleMute" style="display: none">Mute Mic</button>
+        <button id="toggleMute" style="display: none !important">
+          Mute Mic
+        </button>
         <button id="switchCameraBtn" style="display: none">
           Switch Camera
         </button>
-        <button id="toggleVideo" style="display: none">Turn Video Off</button>
+        <button id="toggleVideo" style="display: none !important">
+          Turn Video Off
+        </button>
         <button id="hangUp" disabled>Hang Up</button>
       </div>
 

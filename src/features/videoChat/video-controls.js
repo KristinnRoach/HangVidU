@@ -28,8 +28,8 @@ const onMutePartnerClick = (remoteVideo, mutePartnerBtn) => {
     const icon = mutePartnerBtn.querySelector('i');
     if (icon) {
       icon.className = audioTrack.enabled
-        ? 'fa fa-volume-up'
-        : 'fa fa-volume-mute';
+        ? 'fa fa-volume-mute'
+        : 'fa fa-volume-up';
     }
   }
 };

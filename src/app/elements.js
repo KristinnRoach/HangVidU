@@ -29,7 +29,12 @@ export const fullscreenPartnerBtn = document.getElementById(
   'fullscreenPartnerBtn'
 );
 export const muteSelfBtn = document.getElementById('muteSelfBtn');
+export const videoSelfBtn = document.getElementById('videoSelfBtn');
 export const fullscreenSelfBtn = document.getElementById('fullscreenSelfBtn');
+
+export const titleHeader = document.getElementById('titleHeader');
+export const titleLink = document.getElementById('titleLink');
+export const titleText = document.getElementById('titleText');
 
 // export const videoFileInput = document.getElementById('videoFile');
 // export const uploadProgress = document.getElementById('uploadProgress');

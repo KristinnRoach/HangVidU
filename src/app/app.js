@@ -19,11 +19,15 @@ import {
   shareLink,
   streamUrlInput,
   syncStatus,
+  titleHeader,
+  titleLink,
+  titleText,
 
   // Todo:
   mutePartnerBtn,
   fullscreenPartnerBtn,
   muteSelfBtn,
+  videoSelfBtn,
   fullscreenSelfBtn,
 } from './elements.js';
 
@@ -35,6 +39,7 @@ import {
   disconnect,
   setLocalStream,
   getRoomId,
+  getRole,
   getIsInitiator,
   getWasConnected,
   getPeerConnection,
@@ -44,16 +49,7 @@ import {
 
 import { ConnectionMonitor } from '../features/connect/connection-monitor.js';
 import { PageReloadManager } from '../features/session/page-reload-manager.js';
-import {
-  updateState,
-  setInitialized,
-  isInitialized,
-  setStartChatInProgress,
-  isStartChatInProgress,
-  setManager,
-  getManager,
-  clearManagers,
-} from './state.js';
+import { updateState } from './state.js';
 
 import {
   handlePipToggleBtn,
@@ -66,6 +62,8 @@ import {
   loadStream as loadStreamSync,
   setupWatchSync,
   getWatchMode,
+  getStreamUrl,
+  setStreamUrl,
 } from '../features/watch2gether/watch-sync.js';
 
 import {
@@ -86,6 +84,12 @@ import { copyLink } from '../utils/clipboard.js';
 
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
+// ====== MANAGERS ======
+// App-level manager instances (not shared state)
+let connectionMonitor = null;
+let pageReloadManager = null;
+let autoSaveCleanup = null;
+
 // ====== STATE ======
 // App-level state is now managed in ./state.js
 
@@ -94,40 +98,40 @@ function saveCurrentState() {
   updateState({
     room: {
       id: getRoomId(),
-      isInitiator: getIsInitiator(),
+      role: getRole(),
       partnerOnline: getWasConnected(),
-    },
-    ui: {
-      isAudioMuted: getIsAudioMuted(),
-      isVideoOn: getIsVideoOn(),
-      currentFacingMode: getCurrentFacingMode(),
-      watchMode: getWatchMode(),
-    },
-    sync: {
-      streamUrl: streamUrlInput.value,
-      isSyncing: false,
     },
   });
 
+  // Update feature module state
+  setStreamUrl(streamUrlInput.value);
+
   // Save to localStorage via page reload manager
-  const pageReloadManager = getManager('pageReloadManager');
   if (pageReloadManager) {
-    pageReloadManager.saveCurrentSession();
+    pageReloadManager.saveCurrentSession(connectionMonitor, {
+      getIsAudioMuted,
+      getIsVideoOn,
+      getCurrentFacingMode,
+      getWatchMode,
+      getStreamUrl,
+    });
   }
 }
 
 // ===== INITIALIZE =====
 
 async function init() {
-  if (isInitialized()) {
-    console.debug('init() called when isInitialized is true.');
+  // Check if already initialized by looking for existing managers and local stream
+  if (pageReloadManager && getLocalStream()) {
+    if (import.meta.env.DEV) {
+      console.debug('init() called when already initialized.');
+    }
     return true;
   }
 
   try {
     // Initialize page reload manager
-    const pageReloadManager = new PageReloadManager();
-    setManager('pageReloadManager', pageReloadManager);
+    pageReloadManager = new PageReloadManager();
     pageReloadManager.setCallbacks({
       onMediaRestore: restoreMediaDevices,
       onConnectionRestore: restoreConnection,
@@ -136,25 +140,33 @@ async function init() {
     });
 
     // Check if we should restore from page reload
-    if (getManager('pageReloadManager').shouldRestoreSession()) {
+    if (pageReloadManager.shouldRestoreSession()) {
       updateStatus('Detected previous session. Restoring...');
 
       try {
-        const restorationResult = await getManager(
-          'pageReloadManager'
-        ).restoreSession();
+        const restorationResult = await pageReloadManager.restoreSession();
 
         if (restorationResult.success) {
           // Session restored successfully
-          setInitialized(true);
           setupAutoSave();
           return true;
         } else {
-          // Restoration failed, continue with normal initialization
+          // Restoration failed, clear stale session state
+          try {
+            pageReloadManager.clearSession();
+          } catch (clearError) {
+            console.error('Failed to clear session state:', clearError);
+          }
           updateStatus('Session restoration failed. Starting fresh...');
         }
       } catch (error) {
         console.error('Session restoration error:', error);
+        // Clear potentially stale session state
+        try {
+          await pageReloadManager.clearSession();
+        } catch (clearError) {
+          console.error('Failed to clear session state:', clearError);
+        }
         updateStatus('Starting fresh...');
       }
     }
@@ -230,12 +242,10 @@ async function init() {
       toggleMuteSelfMic();
     }
 
-    setInitialized(true);
     setupAutoSave();
     return true;
   } catch (error) {
     handleMediaError(error);
-    setInitialized(false);
     return false;
   }
 }
@@ -280,8 +290,8 @@ function handleRemoteStream(stream) {
     }
 
     // Start enhanced connection monitoring
-    if (!getManager('connectionMonitor')) {
-      const connectionMonitor = new ConnectionMonitor({
+    if (!connectionMonitor) {
+      connectionMonitor = new ConnectionMonitor({
         videoValidationTimeout: 10000,
         maxRetries: 3,
         retryDelay: 2000,
@@ -305,15 +315,10 @@ function handleRemoteStream(stream) {
           }
         },
       });
-
-      setManager('connectionMonitor', connectionMonitor);
     }
 
     // Start monitoring the remote video
-    getManager('connectionMonitor').startMonitoring(
-      remoteVideo,
-      getPeerConnection()
-    );
+    connectionMonitor.startMonitoring(remoteVideo, getPeerConnection());
   } else {
     if (import.meta.env.DEV) {
       console.log('Duplicate ontrack event ignored');
@@ -324,15 +329,19 @@ function handleRemoteStream(stream) {
 // ===== CREATE ROOM (Person A) =====
 
 async function initiateChatRoom() {
-  if (isStartChatInProgress()) return;
-  setStartChatInProgress(true);
+  // Check if already in progress by looking for existing room or disabled start button
+  if (getRoomId() || startChatBtn.disabled) {
+    if (import.meta.env.DEV) {
+      console.debug('initiateChatRoom() called when already in progress.');
+    }
+    return;
+  }
+
   try {
-    if (!isInitialized()) {
-      const success = await init();
-      if (!success) {
-        console.error('Failed to initialize media devices.');
-        return;
-      }
+    const success = await init();
+    if (!success) {
+      console.error('Failed to initialize media devices.');
+      return;
     }
 
     const { roomId, shareUrl } = await connect({
@@ -348,10 +357,14 @@ async function initiateChatRoom() {
 
     setupWatchSync({ roomId, sharedVideo, streamUrlInput, syncStatus });
     toggleModeBtn.style.display = 'block';
+    enableTitleModeToggle(); // Enable title as mode toggle
 
     saveCurrentState();
-  } finally {
-    setStartChatInProgress(false);
+  } catch (error) {
+    console.error('Failed to initiate chat room:', error);
+    // Reset UI state on error
+    startChatBtn.disabled = false;
+    linkContainer.style.display = 'none';
   }
 }
 
@@ -370,6 +383,7 @@ async function joinChatRoom(roomId) {
   setupWatchSync({ roomId, sharedVideo, streamUrlInput, syncStatus });
   toggleModeBtn.style.display = 'block';
   hangUpBtn.disabled = false;
+  enableTitleModeToggle(); // Enable title as mode toggle
 
   saveCurrentState();
 }
@@ -380,25 +394,40 @@ async function hangUp() {
   closePiP(pipBtn);
 
   // Clean up connection monitor
-  const connectionMonitor = getManager('connectionMonitor');
   if (connectionMonitor) {
-    connectionMonitor.cleanup();
+    try {
+      connectionMonitor.cleanup();
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('Error during connection monitor cleanup:', error);
+      }
+    }
+    connectionMonitor = null;
   }
 
   // Clean up page reload manager
-  const pageReloadManager = getManager('pageReloadManager');
   if (pageReloadManager) {
-    pageReloadManager.clearSession();
+    try {
+      pageReloadManager.clearSession();
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('Error clearing session:', error);
+      }
+    }
+    pageReloadManager = null;
   }
 
   // Clean up auto save
-  const autoSaveCleanup = getManager('autoSaveCleanup');
   if (autoSaveCleanup) {
-    autoSaveCleanup();
+    try {
+      autoSaveCleanup();
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('Error during auto-save cleanup:', error);
+      }
+    }
+    autoSaveCleanup = null;
   }
-
-  // Clear all managers
-  clearManagers();
 
   if (remoteVideo.srcObject) {
     remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
@@ -429,11 +458,10 @@ async function hangUp() {
   sharedVideo.src = '';
   streamUrlInput.value = '';
   syncStatus.textContent = '';
+  disableTitleModeToggle(); // Restore normal title
 
   window.history.replaceState({}, document.title, window.location.pathname);
   clearState();
-
-  setInitialized(false);
 }
 
 // ===== HELPERS =====
@@ -443,15 +471,13 @@ function updateStatus(message, el = statusDiv) {
 }
 
 function setupAutoSave() {
-  const currentCleanup = getManager('autoSaveCleanup');
-  if (currentCleanup) {
-    currentCleanup(); // Clean up previous setup
+  if (autoSaveCleanup) {
+    autoSaveCleanup(); // Clean up previous setup
+    autoSaveCleanup = null;
   }
 
-  const pageReloadManager = getManager('pageReloadManager');
   if (pageReloadManager) {
-    const cleanup = pageReloadManager.setupAutoSave();
-    setManager('autoSaveCleanup', cleanup);
+    autoSaveCleanup = pageReloadManager.setupAutoSave(() => connectionMonitor);
   }
 }
 
@@ -482,6 +508,18 @@ async function restoreMediaDevices({
       toggleVideo();
     }
 
+    // Update hover control icons to match restored state
+    if (videoSelfBtn) {
+      const icon = videoSelfBtn.querySelector('i');
+      if (isVideoOn) {
+        icon.className = 'fa fa-video';
+        videoSelfBtn.setAttribute('aria-label', 'Turn video off');
+      } else {
+        icon.className = 'fa fa-video-slash';
+        videoSelfBtn.setAttribute('aria-label', 'Turn video on');
+      }
+    }
+
     // Show appropriate buttons
     toggleMuteBtn.style.display = 'block';
     toggleVideoBtn.style.display = 'block';
@@ -501,9 +539,13 @@ async function restoreMediaDevices({
   }
 }
 
-async function restoreConnection({ roomId, isInitiator, wasConnected }) {
+async function restoreConnection({ roomId, role, isInitiator, wasConnected }) {
   try {
-    if (isInitiator) {
+    // Handle both new role format and legacy isInitiator format
+    const isRoomInitiator =
+      role === 'initiator' || (role === undefined && isInitiator);
+
+    if (isRoomInitiator) {
       // For initiators, we can't really restore the connection
       // since the room might have expired. Show the link again.
       updateStatus(
@@ -515,6 +557,7 @@ async function restoreConnection({ roomId, isInitiator, wasConnected }) {
       startChatBtn.disabled = true;
       hangUpBtn.disabled = false;
       toggleModeBtn.style.display = 'block';
+      enableTitleModeToggle(); // Enable title as mode toggle
 
       return { success: true };
     } else {
@@ -530,6 +573,7 @@ async function restoreConnection({ roomId, isInitiator, wasConnected }) {
       if (result.success) {
         hangUpBtn.disabled = false;
         toggleModeBtn.style.display = 'block';
+        enableTitleModeToggle(); // Enable title as mode toggle
         return { success: true };
       } else {
         throw new Error('Failed to rejoin room');
@@ -548,21 +592,25 @@ function restoreUIStateFromReload({
   streamUrl,
 }) {
   try {
-    // Restore watch mode if it was active
-    if (watchMode && !getWatchMode()) {
+    // Restore watch mode if it was active and toggle button exists
+    if (watchMode && !getWatchMode() && toggleModeBtn) {
       toggleWatchMode();
+    }
 
-      if (streamUrl) {
+    // Restore stream URL in feature module
+    if (streamUrl) {
+      setStreamUrl(streamUrl);
+      if (streamUrlInput) {
         streamUrlInput.value = streamUrl;
       }
     }
 
-    // Update button states to match restored media state
-    if (isAudioMuted) {
+    // Update button states to match restored media state (with null checks)
+    if (isAudioMuted && toggleMuteBtn) {
       toggleMuteBtn.textContent = 'Unmute Mic';
     }
 
-    if (!isVideoOn) {
+    if (!isVideoOn && toggleVideoBtn) {
       toggleVideoBtn.textContent = 'Turn Video On';
     }
 
@@ -581,6 +629,19 @@ function toggleMuteSelfMic() {
 
 function toggleVideo() {
   toggleVideoDevice({ localStream: getLocalStream(), toggleVideoBtn });
+
+  // Update hover control icon
+  if (videoSelfBtn) {
+    const icon = videoSelfBtn.querySelector('i');
+    if (getIsVideoOn()) {
+      icon.className = 'fa fa-video';
+      videoSelfBtn.setAttribute('aria-label', 'Turn video off');
+    } else {
+      icon.className = 'fa fa-video-slash';
+      videoSelfBtn.setAttribute('aria-label', 'Turn video on');
+    }
+  }
+
   saveCurrentState();
 }
 
@@ -593,6 +654,7 @@ function toggleWatchMode() {
     streamUrlInput,
     syncStatus,
   });
+  updateTitleText(); // Update title text after mode change
   saveCurrentState();
 }
 
@@ -600,6 +662,29 @@ function loadStream() {
   const url = streamUrlInput.value.trim();
   loadStreamSync({ roomId: getRoomId(), url, sharedVideo, syncStatus });
   saveCurrentState();
+}
+
+// ===== TITLE MODE TOGGLE =====
+
+function enableTitleModeToggle() {
+  titleLink.href = '#';
+  titleLink.onclick = (e) => {
+    e.preventDefault();
+    toggleWatchMode();
+  };
+  updateTitleText();
+}
+
+function disableTitleModeToggle() {
+  titleLink.href = 'https://kristinnroach.github.io/HangVidU/';
+  titleLink.onclick = null;
+  titleText.textContent = 'HangVidU';
+}
+
+function updateTitleText() {
+  titleText.textContent = getWatchMode()
+    ? 'Switch to Video Chat'
+    : 'Switch to Watch Mode';
 }
 
 // ===== EVENT LISTENERS ===== // Todo: consolidate patterns / structure
@@ -615,6 +700,8 @@ fullscreenSelfBtn?.addEventListener('click', () =>
 );
 
 muteSelfBtn?.addEventListener('click', () => toggleMuteSelfMic());
+
+videoSelfBtn?.addEventListener('click', () => toggleVideo());
 
 mutePartnerBtn?.addEventListener('click', () =>
   hoverControlHandlers.onMutePartnerClick(remoteVideo, mutePartnerBtn)

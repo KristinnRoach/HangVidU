@@ -4,8 +4,9 @@
  * Manages WebRTC connection states with proper error handling and recovery
  */
 export class ConnectionStateManager {
-  constructor(peerConnection, options = {}) {
+  constructor(peerConnection, role, options = {}) {
     this.peerConnection = peerConnection;
+    this.role = role; // 'initiator' or 'joiner'
     this.options = {
       connectionTimeout: 30000,
       reconnectAttempts: 3,
@@ -255,13 +256,35 @@ export class ConnectionStateManager {
   async attemptReconnection() {
     if (import.meta.env.DEV) {
       console.log(
-        `Attempting reconnection ${this.state.reconnectAttempt}/${this.options.reconnectAttempts}`
+        `Attempting reconnection ${this.state.reconnectAttempt}/${this.options.reconnectAttempts} (${this.role})`
       );
     }
 
     try {
       // Restart ICE
       await this.peerConnection.restartIce();
+
+      // Only initiator initiates SDP renegotiation for ICE restart
+      if (this.role === 'initiator') {
+        // Perform SDP renegotiation for ICE restart
+        const offer = await this.peerConnection.createOffer({
+          iceRestart: true,
+        });
+        await this.peerConnection.setLocalDescription(offer);
+
+        // Send the new offer through signaling
+        if (this.callbacks.onIceRestart) {
+          try {
+            await this.callbacks.onIceRestart(offer);
+          } catch (signalingError) {
+            console.error('ICE restart signaling failed:', signalingError);
+            throw signalingError;
+          }
+        } else {
+          console.warn('No onIceRestart callback provided for signaling');
+        }
+      }
+      // Joiner will respond to incoming ICE restart offer through existing offer listener
 
       // Reset start time for timeout calculation
       this.state.startTime = Date.now();
@@ -342,8 +365,25 @@ export class ConnectionStateManager {
    * Clean up timers and listeners
    */
   cleanup() {
+    // Clear timers
     this.clearConnectionTimeout();
     this.clearReconnectTimer();
+
+    // Remove WebRTC event listeners to prevent memory leaks
+    if (this.peerConnection) {
+      this.peerConnection.onconnectionstatechange = null;
+      this.peerConnection.oniceconnectionstatechange = null;
+    }
+
+    // Clear callback references to prevent memory leaks
+    this.callbacks = {
+      onStateChange: null,
+      onConnected: null,
+      onDisconnected: null,
+      onFailed: null,
+      onReconnecting: null,
+      onIceRestart: null,
+    };
 
     // Reset state
     this.state = {

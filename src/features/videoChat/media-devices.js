@@ -38,8 +38,8 @@ export function toggleMute({ localStream, toggleMuteBtn, muteSelfBtn }) {
     const icon = muteSelfBtn.querySelector('i');
     if (icon) {
       icon.className = state.isAudioMuted
-        ? 'fa fa-microphone-slash'
-        : 'fa fa-microphone';
+        ? 'fa fa-microphone'
+        : 'fa fa-microphone-slash';
     }
   }
 }

@@ -13,6 +13,7 @@ import { updateState, getState } from '../../app/state.js';
 export class PageReloadManager {
   constructor() {
     this.isRestoring = false;
+    this.autoSaveCleanup = null;
     this.restorationCallbacks = {
       onMediaRestore: null,
       onConnectionRestore: null,
@@ -31,7 +32,7 @@ export class PageReloadManager {
   /**
    * Save current session state before page unload
    */
-  saveCurrentSession() {
+  saveCurrentSession(connectionMonitor = null, getFeatureState = {}) {
     const currentState = getState();
 
     // Only save if we're in an active session
@@ -42,21 +43,22 @@ export class PageReloadManager {
     const sessionData = {
       // Room information
       roomId: currentState.room.id,
-      isInitiator: currentState.room.isInitiator,
+      role: currentState.room.role,
+      isInitiator: currentState.room.role === 'initiator', // Backward compatibility
       partnerOnline: currentState.room.partnerOnline,
 
-      // Connection state
-      connectionState: currentState.connection,
-      wasConnected: currentState.connection === 'connected',
+      // Connection state (from ConnectionMonitor if available)
+      connectionState: this.getConnectionState(connectionMonitor),
+      wasConnected: this.getWasConnected(connectionMonitor),
 
-      // Media state
-      isAudioMuted: currentState.ui.isAudioMuted,
-      isVideoOn: currentState.ui.isVideoOn,
-      currentFacingMode: currentState.ui.currentFacingMode,
+      // Media state (from feature modules)
+      isAudioMuted: getFeatureState.getIsAudioMuted?.() || false,
+      isVideoOn: getFeatureState.getIsVideoOn?.() || true,
+      currentFacingMode: getFeatureState.getCurrentFacingMode?.() || 'user',
 
-      // Watch mode state
-      watchMode: currentState.ui.watchMode,
-      streamUrl: currentState.sync.streamUrl,
+      // Watch mode state (from feature modules)
+      watchMode: getFeatureState.getWatchMode?.() || false,
+      streamUrl: getFeatureState.getStreamUrl?.() || '',
 
       // Timestamps
       sessionStartTime: Date.now(),
@@ -96,10 +98,11 @@ export class PageReloadManager {
       return false;
     }
 
-    // Check if we were actually connected
-    if (!savedState.wasConnected) {
+    // Check if we were at least attempting to connect
+    // Allow restoration for any non-idle state (connecting, connected, reconnecting, disconnected)
+    if (!savedState.connectionState || savedState.connectionState === 'idle') {
       if (import.meta.env.DEV) {
-        console.log('Session was not connected, not restoring');
+        console.log('Session was idle, not restoring');
       }
       return false;
     }
@@ -118,6 +121,7 @@ export class PageReloadManager {
     }
 
     this.isRestoring = true;
+    this.pauseAutoSave();
 
     try {
       this.restorationCallbacks.onStatusUpdate?.('Restoring session...');
@@ -126,21 +130,14 @@ export class PageReloadManager {
       updateState({
         room: {
           id: savedState.roomId,
-          isInitiator: savedState.isInitiator,
+          role:
+            savedState.role ||
+            (savedState.isInitiator ? 'initiator' : 'joiner'),
           partnerOnline: savedState.partnerOnline,
         },
-        connection: 'reconnecting',
-        ui: {
-          isAudioMuted: savedState.isAudioMuted,
-          isVideoOn: savedState.isVideoOn,
-          currentFacingMode: savedState.currentFacingMode,
-          watchMode: savedState.watchMode,
-        },
-        sync: {
-          streamUrl: savedState.streamUrl || '',
-          isSyncing: false,
-        },
       });
+
+      // Feature module state will be restored via callbacks
 
       // Restore media first
       const mediaRestored = await this.restoreMedia(savedState);
@@ -175,13 +172,13 @@ export class PageReloadManager {
       // Clear invalid state
       clearState();
       updateState({
-        connection: 'idle',
-        room: { id: null, isInitiator: false, partnerOnline: false },
+        room: { id: null, role: null, partnerOnline: false },
       });
 
       return { success: false, reason: error.message };
     } finally {
       this.isRestoring = false;
+      this.resumeAutoSave();
     }
   }
 
@@ -225,7 +222,10 @@ export class PageReloadManager {
       const connectionResult =
         await this.restorationCallbacks.onConnectionRestore?.({
           roomId: savedState.roomId,
-          isInitiator: savedState.isInitiator,
+          role:
+            savedState.role ||
+            (savedState.isInitiator ? 'initiator' : 'joiner'),
+          isInitiator: savedState.isInitiator, // Backward compatibility
           wasConnected: savedState.wasConnected,
         });
 
@@ -267,25 +267,57 @@ export class PageReloadManager {
   /**
    * Set up automatic state saving
    */
-  setupAutoSave() {
-    // Save state periodically during active sessions
-    const saveInterval = setInterval(() => {
-      const currentState = getState();
-      if (currentState.room.id && currentState.connection !== 'idle') {
+  setupAutoSave(getConnectionMonitor = () => null) {
+    // Don't start auto-save if currently restoring
+    if (this.isRestoring) {
+      return () => {}; // Return no-op cleanup
+    }
+
+    let saveInterval = null;
+
+    // Create interval that respects restoration state
+    const startInterval = () => {
+      if (saveInterval) return; // Already running
+
+      saveInterval = setInterval(() => {
+        // Skip saving if restoring or paused
+        if (this.isRestoring || this._autoSavePaused) {
+          return;
+        }
+
+        const currentState = getState();
+        const connectionMonitor = getConnectionMonitor();
+        if (
+          currentState.room.id &&
+          this.getConnectionState(connectionMonitor) !== 'idle'
+        ) {
+          this.saveCurrentSession(connectionMonitor);
+        }
+      }, 10000); // Save every 10 seconds
+    };
+
+    const stopInterval = () => {
+      if (saveInterval) {
+        clearInterval(saveInterval);
+        saveInterval = null;
+      }
+    };
+
+    // Start the interval
+    startInterval();
+
+    // Save state before page unload (but not during restoration)
+    const handleBeforeUnload = () => {
+      if (!this.isRestoring) {
         this.saveCurrentSession();
       }
-    }, 10000); // Save every 10 seconds
-
-    // Save state before page unload
-    const handleBeforeUnload = () => {
-      this.saveCurrentSession();
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     // Save state when page becomes hidden (mobile/tab switching)
     const handleVisibilityChange = () => {
-      if (document.hidden) {
+      if (document.hidden && !this.isRestoring) {
         this.saveCurrentSession();
       }
     };
@@ -294,10 +326,24 @@ export class PageReloadManager {
 
     // Return cleanup function
     return () => {
-      clearInterval(saveInterval);
+      stopInterval();
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
+  }
+
+  /**
+   * Pause auto-save during restoration
+   */
+  pauseAutoSave() {
+    this._autoSavePaused = true;
+  }
+
+  /**
+   * Resume auto-save after restoration
+   */
+  resumeAutoSave() {
+    this._autoSavePaused = false;
   }
 
   /**
@@ -313,11 +359,33 @@ export class PageReloadManager {
   clearSession() {
     clearState();
     updateState({
-      connection: 'idle',
-      room: { id: null, isInitiator: false, partnerOnline: false },
-      ui: { watchMode: false },
-      sync: { streamUrl: '', isSyncing: false },
+      room: { id: null, role: null, partnerOnline: false },
     });
+  }
+
+  /**
+   * Get connection state from ConnectionMonitor if available, fallback to 'idle'
+   */
+  getConnectionState(connectionMonitor) {
+    if (connectionMonitor) {
+      const monitorState = connectionMonitor.getState();
+      return monitorState.connectionState || 'idle';
+    }
+    return 'idle';
+  }
+
+  /**
+   * Determine if connection was established based on ConnectionMonitor state
+   */
+  getWasConnected(connectionMonitor) {
+    if (connectionMonitor) {
+      const monitorState = connectionMonitor.getState();
+      return (
+        monitorState.connectionState === 'connected' ||
+        monitorState.videoValidated
+      );
+    }
+    return false;
   }
 
   /**
@@ -332,7 +400,10 @@ export class PageReloadManager {
       savedState: savedState
         ? {
             roomId: savedState.roomId,
-            isInitiator: savedState.isInitiator,
+            role:
+              savedState.role ||
+              (savedState.isInitiator ? 'initiator' : 'joiner'),
+            isInitiator: savedState.isInitiator, // Backward compatibility
             sessionAge: savedState.lastActivity
               ? Date.now() - savedState.lastActivity
               : null,

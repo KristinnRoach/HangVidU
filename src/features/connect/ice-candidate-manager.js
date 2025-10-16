@@ -7,7 +7,7 @@ export class IceCandidateManager {
   constructor(peerConnection, roomRef, role) {
     this.peerConnection = peerConnection;
     this.roomRef = roomRef;
-    this.role = role; // 'caller' or 'callee'
+    this.role = role; // 'initiator' or 'joiner'
 
     // Queue for candidates received before remote description is set
     this.pendingCandidates = [];
@@ -21,6 +21,16 @@ export class IceCandidateManager {
       iceGatheringComplete: false,
     };
 
+    // Bind event handlers to maintain proper 'this' context
+    this.handleLocalCandidateWrapped = this.handleLocalCandidate.bind(this);
+    this.handleICEGatheringStateChange =
+      this.handleICEGatheringStateChange.bind(this);
+    this.handleICEConnectionStateChange =
+      this.handleICEConnectionStateChange.bind(this);
+
+    // Bind Firebase listener handlers for proper cleanup
+    this._onRemoteCandidateAdded = this._onRemoteCandidateAdded.bind(this);
+
     this.setupICEHandling();
   }
 
@@ -28,38 +38,55 @@ export class IceCandidateManager {
    * Set up ICE candidate handling
    */
   setupICEHandling() {
-    // Handle local ICE candidates
-    this.peerConnection.onicecandidate = (event) => {
-      this.handleLocalCandidate(event);
-    };
+    // Handle local ICE candidates using addEventListener
+    this.peerConnection.addEventListener(
+      'icecandidate',
+      this.handleLocalCandidateWrapped
+    );
 
-    // Monitor ICE gathering state
-    this.peerConnection.onicegatheringstatechange = () => {
-      const state = this.peerConnection.iceGatheringState;
+    // Monitor ICE gathering state using addEventListener
+    this.peerConnection.addEventListener(
+      'icegatheringstatechange',
+      this.handleICEGatheringStateChange
+    );
 
-      if (import.meta.env.DEV) {
-        console.log(`ICE gathering state (${this.role}):`, state);
-      }
-
-      if (state === 'complete') {
-        this.state.iceGatheringComplete = true;
-        this.onICEGatheringComplete?.();
-      }
-    };
-
-    // Monitor ICE connection state
-    this.peerConnection.oniceconnectionstatechange = () => {
-      const state = this.peerConnection.iceConnectionState;
-
-      if (import.meta.env.DEV) {
-        console.log(`ICE connection state (${this.role}):`, state);
-      }
-
-      this.onICEConnectionStateChange?.(state);
-    };
+    // Monitor ICE connection state using addEventListener
+    this.peerConnection.addEventListener(
+      'iceconnectionstatechange',
+      this.handleICEConnectionStateChange
+    );
 
     // Listen for remote candidates
     this.listenForRemoteCandidates();
+  }
+
+  /**
+   * Handle ICE gathering state changes
+   */
+  handleICEGatheringStateChange() {
+    const state = this.peerConnection.iceGatheringState;
+
+    if (import.meta.env.DEV) {
+      console.log(`ICE gathering state (${this.role}):`, state);
+    }
+
+    if (state === 'complete') {
+      this.state.iceGatheringComplete = true;
+      this.onICEGatheringComplete?.();
+    }
+  }
+
+  /**
+   * Handle ICE connection state changes
+   */
+  handleICEConnectionStateChange() {
+    const state = this.peerConnection.iceConnectionState;
+
+    if (import.meta.env.DEV) {
+      console.log(`ICE connection state (${this.role}):`, state);
+    }
+
+    this.onICEConnectionStateChange?.(state);
   }
 
   /**
@@ -78,7 +105,7 @@ export class IceCandidateManager {
 
       // Send to Firebase
       const candidatesPath =
-        this.role === 'caller' ? 'callerCandidates' : 'calleeCandidates';
+        this.role === 'initiator' ? 'callerCandidates' : 'calleeCandidates';
       this.roomRef
         .child(candidatesPath)
         .push(event.candidate.toJSON())
@@ -98,20 +125,30 @@ export class IceCandidateManager {
    */
   listenForRemoteCandidates() {
     const remoteCandidatesPath =
-      this.role === 'caller' ? 'calleeCandidates' : 'callerCandidates';
+      this.role === 'initiator' ? 'calleeCandidates' : 'callerCandidates';
 
-    this.roomRef.child(remoteCandidatesPath).on('child_added', (snapshot) => {
-      const candidateData = snapshot.val();
+    // Store the path for cleanup
+    this._remoteCandidatesPath = remoteCandidatesPath;
+    this._remoteCandidatesRef = this.roomRef.child(remoteCandidatesPath);
 
-      if (!candidateData) return;
+    // Attach listener with stored handler reference
+    this._remoteCandidatesRef.on('child_added', this._onRemoteCandidateAdded);
+  }
 
-      try {
-        const candidate = new RTCIceCandidate(candidateData);
-        this.handleRemoteCandidate(candidate);
-      } catch (error) {
-        console.warn('Failed to create RTCIceCandidate:', error, candidateData);
-      }
-    });
+  /**
+   * Handle remote candidate added Firebase event
+   */
+  _onRemoteCandidateAdded(snapshot) {
+    const candidateData = snapshot.val();
+
+    if (!candidateData) return;
+
+    try {
+      const candidate = new RTCIceCandidate(candidateData);
+      this.handleRemoteCandidate(candidate);
+    } catch (error) {
+      console.warn('Failed to create RTCIceCandidate:', error, candidateData);
+    }
   }
 
   /**
@@ -228,10 +265,32 @@ export class IceCandidateManager {
    * Clean up listeners and state
    */
   cleanup() {
-    // Remove Firebase listeners
-    const remoteCandidatesPath =
-      this.role === 'caller' ? 'calleeCandidates' : 'callerCandidates';
-    this.roomRef.child(remoteCandidatesPath).off();
+    // Remove WebRTC event listeners to prevent memory leaks
+    if (this.peerConnection) {
+      this.peerConnection.removeEventListener(
+        'icecandidate',
+        this.handleLocalCandidateWrapped
+      );
+      this.peerConnection.removeEventListener(
+        'icegatheringstatechange',
+        this.handleICEGatheringStateChange
+      );
+      this.peerConnection.removeEventListener(
+        'iceconnectionstatechange',
+        this.handleICEConnectionStateChange
+      );
+    }
+
+    // Remove Firebase listeners with specific handler references
+    if (this._remoteCandidatesRef && this._onRemoteCandidateAdded) {
+      this._remoteCandidatesRef.off(
+        'child_added',
+        this._onRemoteCandidateAdded
+      );
+      this._remoteCandidatesRef = null;
+      this._onRemoteCandidateAdded = null;
+      this._remoteCandidatesPath = null;
+    }
 
     // Clear queued candidates
     this.pendingCandidates.length = 0;

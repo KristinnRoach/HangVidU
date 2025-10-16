@@ -15,9 +15,9 @@ global.mockFirebase = {
     update: vi.fn().mockResolvedValue(),
     onDisconnect: vi.fn().mockReturnValue({
       set: vi.fn().mockResolvedValue(),
-      remove: vi.fn().mockResolvedValue()
-    })
-  })
+      remove: vi.fn().mockResolvedValue(),
+    }),
+  }),
 };
 
 // Mock WebRTC APIs
@@ -36,7 +36,7 @@ global.RTCPeerConnection = vi.fn().mockImplementation(() => ({
   ontrack: null,
   onicecandidate: null,
   onconnectionstatechange: null,
-  oniceconnectionstatechange: null
+  oniceconnectionstatechange: null,
 }));
 
 global.RTCIceCandidate = vi.fn().mockImplementation((init) => ({
@@ -46,26 +46,30 @@ global.RTCIceCandidate = vi.fn().mockImplementation((init) => ({
   toJSON: vi.fn().mockReturnValue({
     candidate: init?.candidate || 'mock-candidate',
     sdpMLineIndex: init?.sdpMLineIndex || 0,
-    sdpMid: init?.sdpMid || '0'
-  })
+    sdpMid: init?.sdpMid || '0',
+  }),
 }));
 
 // Mock MediaStream
 global.MediaStream = vi.fn().mockImplementation(() => ({
   getTracks: vi.fn().mockReturnValue([]),
-  getVideoTracks: vi.fn().mockReturnValue([{
-    kind: 'video',
-    enabled: true,
-    stop: vi.fn(),
-    applyConstraints: vi.fn().mockResolvedValue()
-  }]),
-  getAudioTracks: vi.fn().mockReturnValue([{
-    kind: 'audio',
-    enabled: true,
-    stop: vi.fn()
-  }]),
+  getVideoTracks: vi.fn().mockReturnValue([
+    {
+      kind: 'video',
+      enabled: true,
+      stop: vi.fn(),
+      applyConstraints: vi.fn().mockResolvedValue(),
+    },
+  ]),
+  getAudioTracks: vi.fn().mockReturnValue([
+    {
+      kind: 'audio',
+      enabled: true,
+      stop: vi.fn(),
+    },
+  ]),
   addTrack: vi.fn(),
-  removeTrack: vi.fn()
+  removeTrack: vi.fn(),
 }));
 
 // Mock navigator.mediaDevices
@@ -77,23 +81,23 @@ Object.defineProperty(global.navigator, 'mediaDevices', {
         deviceId: 'mock-video-1',
         kind: 'videoinput',
         label: 'Mock Camera (Front)',
-        groupId: 'mock-group-1'
+        groupId: 'mock-group-1',
       },
       {
         deviceId: 'mock-video-2',
-        kind: 'videoinput', 
+        kind: 'videoinput',
         label: 'Mock Camera (Back)',
-        groupId: 'mock-group-2'
+        groupId: 'mock-group-2',
       },
       {
         deviceId: 'mock-audio-1',
         kind: 'audioinput',
         label: 'Mock Microphone',
-        groupId: 'mock-group-3'
-      }
-    ])
+        groupId: 'mock-group-3',
+      },
+    ]),
   },
-  writable: true
+  writable: true,
 });
 
 // Mock DOM elements commonly used in tests
@@ -118,7 +122,7 @@ global.document.createElement = vi.fn().mockImplementation((tagName) => {
     value: '',
     checked: false,
     disabled: false,
-    hidden: false
+    hidden: false,
   };
 
   // Special handling for video elements
@@ -130,7 +134,7 @@ global.document.createElement = vi.fn().mockImplementation((tagName) => {
       paused: true,
       play: vi.fn().mockResolvedValue(),
       pause: vi.fn(),
-      load: vi.fn()
+      load: vi.fn(),
     });
   }
 
@@ -143,9 +147,9 @@ global.document.createElement = vi.fn().mockImplementation((tagName) => {
         fillStyle: '',
         font: '',
         fillRect: vi.fn(),
-        fillText: vi.fn()
+        fillText: vi.fn(),
       }),
-      captureStream: vi.fn().mockReturnValue(new MediaStream())
+      captureStream: vi.fn().mockReturnValue(new MediaStream()),
     });
   }
 
@@ -153,11 +157,20 @@ global.document.createElement = vi.fn().mockImplementation((tagName) => {
 });
 
 // Mock localStorage
+const localStorageData = {};
 global.localStorage = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn()
+  getItem: vi.fn((key) => localStorageData[key] || null),
+  setItem: vi.fn((key, value) => {
+    localStorageData[key] = value;
+  }),
+  removeItem: vi.fn((key) => {
+    delete localStorageData[key];
+  }),
+  clear: vi.fn(() => {
+    Object.keys(localStorageData).forEach(
+      (key) => delete localStorageData[key]
+    );
+  }),
 };
 
 // Mock URL constructor
@@ -169,18 +182,21 @@ global.URL = vi.fn().mockImplementation((url) => {
       get: vi.fn().mockImplementation((key) => {
         const params = new URLSearchParams(mockUrl.search);
         return params.get(key);
-      })
-    }
+      }),
+    },
   };
 });
 
 // Mock crypto for room ID generation
-global.crypto = {
-  randomUUID: vi.fn().mockReturnValue('mock-uuid-12345'),
-  getRandomValues: vi.fn().mockImplementation((array) => {
-    for (let i = 0; i < array.length; i++) {
-      array[i] = Math.floor(Math.random() * 256);
-    }
-    return array;
-  })
-};
+Object.defineProperty(global, 'crypto', {
+  value: {
+    randomUUID: vi.fn().mockReturnValue('mock-uuid-12345'),
+    getRandomValues: vi.fn().mockImplementation((array) => {
+      for (let i = 0; i < array.length; i++) {
+        array[i] = Math.floor(Math.random() * 256);
+      }
+      return array;
+    }),
+  },
+  writable: true,
+});
