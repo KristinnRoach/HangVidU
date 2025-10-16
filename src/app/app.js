@@ -36,7 +36,6 @@ import {
   setLocalStream,
   getRoomId,
   getRole,
-  getIsInitiator,
   getWasConnected,
   getPeerConnection,
   getLocalStream,
@@ -44,8 +43,6 @@ import {
 } from '../features/connect/connection.js';
 
 import { ConnectionMonitor } from '../features/connect/connection-monitor.js';
-import { PageReloadManager } from '../features/session/page-reload-manager.js';
-import { updateState } from './state.js';
 
 import {
   handlePipToggleBtn,
@@ -53,14 +50,32 @@ import {
   closePiP,
 } from '../features/videoChat/pip.js';
 
-import {
-  toggleWatchMode as toggleWatchModeSync,
-  loadStream as loadStreamSync,
+import { getSyncConfig } from '../config/api-config.js';
+
+// Import both sync modules - we'll choose which to use at runtime
+import * as webrtcSync from '../features/watch2gether/watch-sync.js';
+import * as legacySync from '../features/watch2gether/watch-sync-legacy.js';
+
+// Select sync module based on configuration
+const syncConfig = getSyncConfig();
+const syncModule = syncConfig.useWebRTC ? webrtcSync : legacySync;
+
+if (import.meta.env.DEV) {
+  console.log(
+    'Using sync system:',
+    syncConfig.useWebRTC ? 'WebRTC' : 'Firebase Legacy'
+  );
+}
+
+const {
+  toggleWatchMode: toggleWatchModeSync,
+  loadStream: loadStreamSync,
   setupWatchSync,
+  // cleanupWatchSync,
   getWatchMode,
   getStreamUrl,
   setStreamUrl,
-} from '../features/watch2gether/watch-sync.js';
+} = syncModule;
 
 import {
   getIsAudioMuted,
@@ -78,94 +93,46 @@ import { setupEventListeners } from './events.js';
 import { handleMediaError } from '../utils/error/error-handling.js';
 import { setupTouchControls } from '../utils/ui/touch-controls.js';
 import { copyLink } from '../utils/clipboard.js';
+import {
+  initializeApiConfig,
+  validateApiConfig,
+} from '../config/api-config.js';
 
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
 // ====== MANAGERS ======
-// App-level manager instances (not shared state)
 let connectionMonitor = null;
-let pageReloadManager = null;
-let autoSaveCleanup = null;
-
-// ====== STATE ======
-// App-level state is now managed in ./state.js
 
 function saveCurrentState() {
-  // Update centralized state
-  updateState({
-    room: {
-      id: getRoomId(),
-      role: getRole(),
-      partnerOnline: getWasConnected(),
-    },
-  });
-
   // Update feature module state
   setStreamUrl(streamUrlInput.value);
-
-  // Save to localStorage via page reload manager
-  if (pageReloadManager) {
-    pageReloadManager.saveCurrentSession(connectionMonitor, {
-      getIsAudioMuted,
-      getIsVideoOn,
-      getCurrentFacingMode,
-      getWatchMode,
-      getStreamUrl,
-    });
-  }
 }
 
 // ===== INITIALIZE =====
 
+let isInitialized = false;
+
 async function init() {
-  // Check if already initialized by looking for existing managers and local stream
-  if (pageReloadManager && getLocalStream()) {
+  // Check if already initialized
+  if (isInitialized) {
     if (import.meta.env.DEV) {
       console.debug('init() called when already initialized.');
     }
     return true;
   }
 
+  isInitialized = true;
+
   try {
-    // Initialize page reload manager
-    pageReloadManager = new PageReloadManager();
-    pageReloadManager.setCallbacks({
-      onMediaRestore: restoreMediaDevices,
-      onConnectionRestore: restoreConnection,
-      onUIRestore: restoreUIStateFromReload,
-      onStatusUpdate: updateStatus,
-    });
+    // Initialize API configuration
+    initializeApiConfig();
 
-    // Check if we should restore from page reload
-    if (pageReloadManager.shouldRestoreSession()) {
-      updateStatus('Detected previous session. Restoring...');
-
-      try {
-        const restorationResult = await pageReloadManager.restoreSession();
-
-        if (restorationResult.success) {
-          // Session restored successfully
-          setupAutoSave();
-          return true;
-        } else {
-          // Restoration failed, clear stale session state
-          try {
-            pageReloadManager.clearSession();
-          } catch (clearError) {
-            console.error('Failed to clear session state:', clearError);
-          }
-          updateStatus('Session restoration failed. Starting fresh...');
-        }
-      } catch (error) {
-        console.error('Session restoration error:', error);
-        // Clear potentially stale session state
-        try {
-          await pageReloadManager.clearSession();
-        } catch (clearError) {
-          console.error('Failed to clear session state:', clearError);
-        }
-        updateStatus('Starting fresh...');
-      }
+    // Validate API configuration and warn about missing keys
+    const apiValidation = validateApiConfig();
+    if (!apiValidation.isValid && import.meta.env.DEV) {
+      console.warn('API Configuration Issues:');
+      apiValidation.missing.forEach((key) => console.warn(`- Missing: ${key}`));
+      apiValidation.warnings.forEach((warning) => console.warn(`- ${warning}`));
     }
 
     const localStream = await navigator.mediaDevices.getUserMedia({
@@ -222,7 +189,7 @@ async function init() {
     if (decision.action === 'join') {
       updateStatus('Connecting...');
       startChatBtn.style.display = 'none';
-      restoreUIState(savedState);
+      // restoreUIState(savedState);
       await joinChatRoom(decision.roomId);
     } else {
       updateStatus('Ready. Click to generate video chat link.');
@@ -235,7 +202,6 @@ async function init() {
       }
     }
 
-    setupAutoSave();
     return true;
   } catch (error) {
     handleMediaError(error);
@@ -244,7 +210,7 @@ async function init() {
 }
 
 function determineRoomAction({ urlRoomId, savedState }) {
-  const roomId = urlRoomId; // NOTE:  Disabled returning to saved room until properly implemented. //   || savedState?.roomId;
+  const roomId = urlRoomId; //  || savedState?.roomId;
   if (!roomId) return { action: 'idle' };
   return { action: 'join', roomId };
 }
@@ -348,8 +314,15 @@ async function initiateChatRoom() {
     startChatBtn.disabled = true;
     hangUpBtn.disabled = false;
 
-    setupWatchSync({ roomId, sharedVideo, streamUrlInput, syncStatus });
-    enableTitleModeToggle(); // Enable title as mode toggle
+    setupWatchSync({
+      roomId,
+      sharedVideo,
+      streamUrlInput,
+      syncStatus,
+      peerConnection: getPeerConnection(),
+      callerRole: getRole(),
+    });
+    disableTitleLink(); // Prevent accidental page reloads
 
     saveCurrentState();
   } catch (error) {
@@ -372,16 +345,24 @@ async function joinChatRoom(roomId) {
     return;
   }
 
-  setupWatchSync({ roomId, sharedVideo, streamUrlInput, syncStatus });
-  toggleModeBtn.style.display = 'block';
+  setupWatchSync({
+    roomId,
+    sharedVideo,
+    streamUrlInput,
+    syncStatus,
+    peerConnection: getPeerConnection(),
+    callerRole: getRole(),
+  });
   hangUpBtn.disabled = false;
-  enableTitleModeToggle(); // Enable title as mode toggle
+  disableTitleLink(); // Prevent accidental page reloads
 
   saveCurrentState();
 }
 
 // ===== HANG UP =====
 async function hangUp() {
+  isInitialized = false;
+
   // Close any PiP windows first
   closePiP(pipBtn);
 
@@ -397,29 +378,14 @@ async function hangUp() {
     connectionMonitor = null;
   }
 
-  // Clean up page reload manager
-  if (pageReloadManager) {
-    try {
-      pageReloadManager.clearSession();
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.warn('Error clearing session:', error);
-      }
-    }
-    pageReloadManager = null;
-  }
-
-  // Clean up auto save
-  if (autoSaveCleanup) {
-    try {
-      autoSaveCleanup();
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.warn('Error during auto-save cleanup:', error);
-      }
-    }
-    autoSaveCleanup = null;
-  }
+  // Clean up watch sync
+  // try {
+  //   cleanupWatchSync();
+  // } catch (error) {
+  //   if (import.meta.env.DEV) {
+  //     console.warn('Error during watch sync cleanup:', error);
+  //   }
+  // }
 
   if (remoteVideo.srcObject) {
     remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
@@ -441,14 +407,13 @@ async function hangUp() {
   startChatBtn.style.display = 'block';
   hangUpBtn.disabled = true;
   linkContainer.style.display = 'none';
-  toggleModeBtn.style.display = 'none';
   watchContainer.style.display = 'none';
   videoContainer.style.display = 'flex';
   shareLink.value = '';
   sharedVideo.src = '';
   streamUrlInput.value = '';
   syncStatus.textContent = '';
-  disableTitleModeToggle(); // Restore normal title
+  enableTitleLink();
 
   window.history.replaceState({}, document.title, window.location.pathname);
   clearState();
@@ -460,141 +425,6 @@ function updateStatus(message, el = statusDiv) {
   el.textContent = message;
 }
 
-function setupAutoSave() {
-  if (autoSaveCleanup) {
-    autoSaveCleanup(); // Clean up previous setup
-    autoSaveCleanup = null;
-  }
-
-  if (pageReloadManager) {
-    autoSaveCleanup = pageReloadManager.setupAutoSave(() => connectionMonitor);
-  }
-}
-
-// ===== PAGE RELOAD RESTORATION =====
-
-async function restoreMediaDevices({
-  isAudioMuted,
-  isVideoOn,
-  currentFacingMode,
-}) {
-  try {
-    // Get media with the same constraints as before
-    const constraints = {
-      video: isVideoOn ? { facingMode: currentFacingMode } : false,
-      audio: true,
-    };
-
-    const localStream = await navigator.mediaDevices.getUserMedia(constraints);
-    setLocalStream(localStream);
-    localVideo.srcObject = localStream;
-
-    // Setup video controls with restored state
-    await setupVideoControls({
-      localVideo,
-      remoteVideo,
-      muteSelfBtn,
-      videoSelfBtn,
-      switchCameraSelfBtn,
-      fullscreenSelfBtn,
-      mutePartnerBtn,
-      fullscreenPartnerBtn,
-      getLocalStream,
-      getPeerConnection,
-      onStateChange: saveCurrentState,
-    });
-
-    // Update icons to match restored state
-    updateVideoControlIcons({ muteSelfBtn, videoSelfBtn });
-
-    if (import.meta.env.DEV) {
-      console.log('Media devices restored successfully');
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error('Failed to restore media devices:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-async function restoreConnection({ roomId, role, isInitiator, wasConnected }) {
-  try {
-    // Handle both new role format and legacy isInitiator format
-    const isRoomInitiator =
-      role === 'initiator' || (role === undefined && isInitiator);
-
-    if (isRoomInitiator) {
-      // For initiators, we can't really restore the connection
-      // since the room might have expired. Show the link again.
-      updateStatus(
-        'Session restored. Share the link to reconnect with your partner.'
-      );
-
-      shareLink.value = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
-      linkContainer.style.display = 'block';
-      startChatBtn.disabled = true;
-      hangUpBtn.disabled = false;
-      toggleModeBtn.style.display = 'block';
-      enableTitleModeToggle(); // Enable title as mode toggle
-
-      return { success: true };
-    } else {
-      // For joiners, attempt to rejoin the room
-      updateStatus('Reconnecting to room...');
-
-      const result = await join({
-        roomId,
-        onRemoteStream: handleRemoteStream,
-        onStatusUpdate: updateStatus,
-      });
-
-      if (result.success) {
-        hangUpBtn.disabled = false;
-        toggleModeBtn.style.display = 'block';
-        enableTitleModeToggle(); // Enable title as mode toggle
-        return { success: true };
-      } else {
-        throw new Error('Failed to rejoin room');
-      }
-    }
-  } catch (error) {
-    console.error('Failed to restore connection:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-function restoreUIStateFromReload({
-  isAudioMuted,
-  isVideoOn,
-  watchMode,
-  streamUrl,
-}) {
-  try {
-    // Restore watch mode if it was active and toggle button exists
-    if (watchMode && !getWatchMode() && toggleModeBtn) {
-      toggleWatchMode();
-    }
-
-    // Restore stream URL in feature module
-    if (streamUrl) {
-      setStreamUrl(streamUrl);
-      if (streamUrlInput) {
-        streamUrlInput.value = streamUrl;
-      }
-    }
-
-    // Update video control icons to match restored state
-    updateVideoControlIcons({ muteSelfBtn, videoSelfBtn });
-
-    if (import.meta.env.DEV) {
-      console.log('UI state restored successfully');
-    }
-  } catch (error) {
-    console.error('Failed to restore UI state:', error);
-  }
-}
-
 function toggleWatchMode() {
   toggleWatchModeSync({
     videoContainer,
@@ -604,7 +434,6 @@ function toggleWatchMode() {
     streamUrlInput,
     syncStatus,
   });
-  updateTitleText(); // Update title text after mode change
   saveCurrentState();
 }
 
@@ -616,25 +445,17 @@ function loadStream() {
 
 // ===== TITLE MODE TOGGLE =====
 
-function enableTitleModeToggle() {
-  titleLink.href = '#';
-  titleLink.onclick = (e) => {
-    e.preventDefault();
-    toggleWatchMode();
-  };
-  updateTitleText();
+function disableTitleLink() {
+  titleLink.href = ''; // Todo: ensure this robustly prevents a page reload across browsers
 }
 
-function disableTitleModeToggle() {
-  titleLink.href = 'https://kristinnroach.github.io/HangVidU/';
-  titleLink.onclick = null;
-  titleText.textContent = 'HangVidU';
-}
-
-function updateTitleText() {
-  titleText.textContent = getWatchMode()
-    ? 'Switch to Video Chat'
-    : 'Switch to Watch Mode';
+function enableTitleLink() {
+  if (import.meta.env.DEV) {
+    titleLink.href = '#';
+  }
+  if (import.meta.env.PROD) {
+    titleLink.href = 'https://kristinnroach.github.io/HangVidU/';
+  }
 }
 
 // Touch controls for mobile: show/hide buttons on tap

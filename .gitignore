@@ -16,6 +16,10 @@ reference-examples/
 **/*.reff.txt
 **/*.reff.md
 
+DRAFTS/
+**/*.DRAFT.txt
+**/*.DRAFT.md
+
 # Trash / old files to be deleted
 trash/
 **/trash
