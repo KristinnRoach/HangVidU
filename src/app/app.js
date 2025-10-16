@@ -349,7 +349,6 @@ async function initiateChatRoom() {
     hangUpBtn.disabled = false;
 
     setupWatchSync({ roomId, sharedVideo, streamUrlInput, syncStatus });
-    toggleModeBtn.style.display = 'block';
     enableTitleModeToggle(); // Enable title as mode toggle
 
     saveCurrentState();

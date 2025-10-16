@@ -2,6 +2,8 @@
 
 Bugfixes:
 
+    [] Refactor old toggleModeBtn vs title link logic. Should be functionally the same as it is now, but should be separate elements (even though both are in the same place and look the same they serve different purposes)
+
     Youtube sync:
         [] Ensure sync works both ways - all callers can pause, play, seek and others will sync
         [] Make sync robust - test and optimize
@@ -39,7 +41,6 @@ Standalone:
         [] Add install button
         [] Decide which offline capabilities are most feasible and useful
         [] Plan, steering, specs and prioritized implementation roadmap
-
 
 Fun / Extra:
 

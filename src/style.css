@@ -284,14 +284,6 @@ button:disabled {
   margin-right: auto;
 }
 
-#toggleMode {
-  background: #ff5722;
-}
-
-#toggleMode:hover:not(:disabled) {
-  background: #e64a19;
-}
-
 /* Responsive design */
 @media (max-width: 768px) {
   .video-container {
