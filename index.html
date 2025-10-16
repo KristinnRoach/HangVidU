@@ -53,26 +53,48 @@
 
       <!-- Watch Together Mode  -->
       <div id="watchContainer" style="display: none">
-        <div class="watch-controls">
-          <input
-            type="text"
-            id="streamUrl"
-            placeholder="Paste stream URL (both people need to paste the same URL)"
-          />
-          <button id="loadStream">Load Video</button>
-
-          <input
-            type="file"
-            id="videoFile"
-            accept="video/*"
+        <!-- YouTube Search Section -->
+        <div class="search-section">
+          <div class="search-controls">
+            <input
+              type="text"
+              id="searchQuery"
+              placeholder="Search YouTube videos..."
+            />
+            <button id="searchBtn">Search</button>
+          </div>
+          <div
+            id="searchResults"
+            class="search-results"
             style="display: none"
-          />
-          <!-- <button id="uploadBtn">📁 Upload Video</button> -->
-          <div id="uploadProgress" style="display: none"></div>
+          ></div>
+        </div>
+
+        <!-- Manual URL Input Section -->
+        <div class="url-section">
+          <div class="section-divider">
+            <span>or paste a URL directly</span>
+          </div>
+          <div class="watch-controls">
+            <input
+              type="text"
+              id="streamUrl"
+              placeholder="Paste stream URL (both people need to paste the same URL)"
+            />
+            <button id="loadStream">Load Video</button>
+          </div>
         </div>
 
         <video id="sharedVideo" controls playsinline></video>
         <div id="syncStatus" class="sync-status">Waiting for video...</div>
+
+        <input
+          type="file"
+          id="videoFile"
+          accept="video/*"
+          style="display: none"
+        />
+        <div id="uploadProgress" style="display: none"></div>
       </div>
 
       <!-- Mode Toggle -->

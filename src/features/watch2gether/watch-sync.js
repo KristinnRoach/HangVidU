@@ -1,6 +1,7 @@
 // watch-sync.js - Watch mode and video sync feature with improved sync system
 
 import { db } from '../../storage/firebaseRealTimeDB.js';
+import { getRoomId, getPeerConnection } from '../connect/connection.js';
 import {
   createSyncManager,
   getSyncManager,
@@ -28,6 +29,12 @@ import {
   getYTReady,
 } from './youtube.js';
 
+import {
+  initializeSearchUI as initSearchUI,
+  updateSearchAvailability,
+  cleanupSearchUI,
+} from './youtube-search-ui.js';
+
 // ===== STATE =====
 const state = {
   watchMode: false,
@@ -48,6 +55,60 @@ const state = {
 };
 
 // ===== PUBLIC API =====
+
+/**
+ * Initialize YouTube search UI when entering watch mode
+ */
+function initializeSearchUI() {
+  initSearchUI(handleVideoSelection);
+  updateSearchAvailability();
+
+  if (import.meta.env.DEV) {
+    console.log('YouTube search UI initialized for watch mode');
+  }
+}
+
+/**
+ * Handle video selection from search results
+ * @param {Object} video - Selected video object
+ */
+async function handleVideoSelection(video) {
+  // Get current room ID and elements
+  const roomId = getRoomId();
+  const sharedVideo = document.getElementById('sharedVideo');
+  const streamUrlInput = document.getElementById('streamUrl');
+
+  if (!roomId) {
+    updateSyncStatus('No active room found', 'error');
+    return;
+  }
+
+  // Update URL input with selected video
+  if (streamUrlInput) {
+    streamUrlInput.value = video.url;
+  }
+
+  // Update sync status
+  updateSyncStatus(`Loading "${video.title}"...`);
+
+  try {
+    // Load the selected video using existing loadStream function
+    await loadStream({
+      roomId,
+      url: video.url,
+      sharedVideo,
+      syncStatus: state.syncStatusElement,
+      peerConnection: getPeerConnection(),
+    });
+
+    if (import.meta.env.DEV) {
+      console.log('Video loaded from search selection:', video.title);
+    }
+  } catch (error) {
+    console.error('Failed to load selected video:', error);
+    updateSyncStatus('Failed to load video. Please try again.', 'error');
+  }
+}
 
 export function getWatchMode() {
   return state.watchMode;
@@ -396,7 +457,12 @@ export function toggleWatchMode({
     videoContainer.style.display = 'none';
     watchContainer.style.display = 'block';
     toggleModeBtn.textContent = 'Switch to Video Chat';
-    updateSyncStatus('Paste the same stream URL as your partner');
+    updateSyncStatus(
+      'Search for videos or paste the same stream URL as your partner'
+    );
+
+    // Initialize YouTube search UI
+    initializeSearchUI();
 
     // Add manual resync button to UI if not already present
     addManualResyncButton(syncStatus);
@@ -409,6 +475,9 @@ export function toggleWatchMode({
 
     // Clean up sync components when leaving watch mode
     cleanupSyncComponents();
+
+    // Clean up search UI
+    cleanupSearchUI();
   }
 
   return state.watchMode;

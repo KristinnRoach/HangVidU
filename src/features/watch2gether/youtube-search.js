@@ -151,6 +151,17 @@ export function clearSearchCache() {
   }
 }
 
+/**
+ * Reset quota exceeded status (for testing or manual reset)
+ */
+export function resetQuotaStatus() {
+  setYouTubeQuotaExceeded(false);
+
+  if (import.meta.env.DEV) {
+    console.log('YouTube quota status reset');
+  }
+}
+
 // ===== PRIVATE HELPERS =====
 
 /**
