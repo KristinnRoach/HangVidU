@@ -9,6 +9,14 @@ const state = {
   eventListeners: new Map(),
   syncLoopPrevention: new Map(), // eventId -> timestamp
   lastSyncTime: 0,
+  // Connection monitoring
+  connectionState: 'idle', // idle, connecting, connected, reconnecting, failed
+  heartbeatInterval: null,
+  missedHeartbeats: 0,
+  maxMissedHeartbeats: 3,
+  // Event delivery tracking
+  pendingEvents: new Map(), // eventId -> { event, timestamp, retryCount }
+  maxRetries: 3,
 };
 
 // ===== PUBLIC API =====
@@ -52,27 +60,18 @@ export function initializeWebRTCSync(peerConnection, isInitiator) {
 }
 
 /**
- * Send sync event through WebRTC data channel
+ * Send sync event through WebRTC data channel with retry logic
  * @param {string} eventType - Type of sync event
  * @param {Object} data - Event data
  * @returns {boolean} Success status
  */
 export function sendSyncEvent(eventType, data) {
-  if (!state.dataChannel || state.dataChannel.readyState !== 'open') {
-    // Queue message for when channel is ready
-    state.messageQueue.push({ eventType, data, timestamp: Date.now() });
-
-    if (import.meta.env.DEV) {
-      console.log('Sync event queued (channel not ready):', eventType);
-    }
-    return false;
-  }
-
   const event = {
     type: eventType,
     data: data || {},
     timestamp: Date.now(),
     eventId: generateEventId(),
+    requiresConfirmation: true,
   };
 
   // Prevent sync loops
@@ -83,21 +82,89 @@ export function sendSyncEvent(eventType, data) {
     return false;
   }
 
+  return sendEventWithRetry(event);
+}
+
+/**
+ * Send event with retry logic
+ * @param {Object} event - Event to send
+ * @param {number} attempt - Current attempt number
+ * @returns {boolean} Success status
+ */
+function sendEventWithRetry(event, attempt = 1) {
+  if (!state.dataChannel || state.dataChannel.readyState !== 'open') {
+    // Queue message for when channel is ready
+    state.messageQueue.push(event);
+
+    if (import.meta.env.DEV) {
+      console.log('Sync event queued (channel not ready):', event.type);
+    }
+    return false;
+  }
+
   try {
     state.dataChannel.send(JSON.stringify(event));
+
+    // Track for delivery confirmation
+    if (event.requiresConfirmation) {
+      state.pendingEvents.set(event.eventId, {
+        event,
+        timestamp: Date.now(),
+        retryCount: attempt,
+      });
+
+      // Set timeout for confirmation
+      setTimeout(() => {
+        checkEventDelivery(event.eventId);
+      }, 5000); // 5 second timeout
+    }
 
     // Mark as recent to prevent loops
     state.syncLoopPrevention.set(event.eventId, Date.now());
     state.lastSyncTime = Date.now();
 
     if (import.meta.env.DEV) {
-      console.log('Sync event sent:', eventType, data);
+      console.log('Sync event sent:', event.type, 'attempt:', attempt);
     }
 
     return true;
   } catch (error) {
     console.error('Failed to send sync event:', error);
+
+    // Retry if we haven't exceeded max attempts
+    if (attempt < state.maxRetries) {
+      if (import.meta.env.DEV) {
+        console.log('Retrying event send, attempt:', attempt + 1);
+      }
+      setTimeout(() => {
+        sendEventWithRetry(event, attempt + 1);
+      }, 1000 * attempt); // Exponential backoff
+    }
+
     return false;
+  }
+}
+
+/**
+ * Check if event was delivered and retry if needed
+ * @param {string} eventId - Event ID to check
+ */
+function checkEventDelivery(eventId) {
+  const pendingEvent = state.pendingEvents.get(eventId);
+  if (!pendingEvent) return; // Already confirmed
+
+  const { event, retryCount } = pendingEvent;
+
+  if (retryCount < state.maxRetries) {
+    if (import.meta.env.DEV) {
+      console.log('Event not confirmed, retrying:', eventId);
+    }
+    sendEventWithRetry(event, retryCount + 1);
+  } else {
+    if (import.meta.env.DEV) {
+      console.warn('Event delivery failed after max retries:', eventId);
+    }
+    state.pendingEvents.delete(eventId);
   }
 }
 
@@ -132,7 +199,10 @@ export function getSyncStatus() {
     isConnected: state.isConnected,
     isInitiator: state.isInitiator,
     channelState: state.dataChannel?.readyState || 'none',
+    connectionState: state.connectionState,
     queuedMessages: state.messageQueue.length,
+    pendingEvents: state.pendingEvents.size,
+    missedHeartbeats: state.missedHeartbeats,
     lastSyncTime: state.lastSyncTime,
   };
 }
@@ -141,6 +211,9 @@ export function getSyncStatus() {
  * Clean up WebRTC sync resources
  */
 export function cleanupWebRTCSync() {
+  // Stop connection monitoring
+  stopConnectionMonitoring();
+
   if (state.dataChannel) {
     try {
       state.dataChannel.close();
@@ -151,10 +224,13 @@ export function cleanupWebRTCSync() {
 
   state.dataChannel = null;
   state.isConnected = false;
+  state.connectionState = 'idle';
   state.messageQueue = [];
   state.eventListeners.clear();
   state.syncLoopPrevention.clear();
+  state.pendingEvents.clear();
   state.lastSyncTime = 0;
+  state.missedHeartbeats = 0;
 
   if (import.meta.env.DEV) {
     console.log('WebRTC sync cleaned up');
@@ -170,10 +246,15 @@ export function cleanupWebRTCSync() {
 function setupDataChannelHandlers(dataChannel) {
   dataChannel.onopen = () => {
     state.isConnected = true;
+    state.connectionState = 'connected';
+    state.missedHeartbeats = 0;
 
     if (import.meta.env.DEV) {
       console.log('WebRTC sync data channel opened');
     }
+
+    // Start connection monitoring
+    startConnectionMonitoring();
 
     // Process queued messages
     processMessageQueue();
@@ -184,10 +265,14 @@ function setupDataChannelHandlers(dataChannel) {
 
   dataChannel.onclose = () => {
     state.isConnected = false;
+    state.connectionState = 'disconnected';
 
     if (import.meta.env.DEV) {
       console.log('WebRTC sync data channel closed');
     }
+
+    // Stop connection monitoring
+    stopConnectionMonitoring();
 
     // Notify listeners
     notifyEventListeners('connection', { connected: false });
@@ -217,10 +302,36 @@ function setupDataChannelHandlers(dataChannel) {
 function handleIncomingSyncEvent(syncEvent) {
   const { type, data, eventId, timestamp } = syncEvent;
 
+  // Handle special event types
+  if (type === 'heartbeat') {
+    sendHeartbeatResponse(eventId);
+    return;
+  }
+
+  if (type === 'heartbeat-response') {
+    // Reset missed heartbeats counter
+    state.missedHeartbeats = 0;
+    return;
+  }
+
+  if (type === 'delivery-confirmation') {
+    // Remove from pending events
+    state.pendingEvents.delete(data.originalEventId);
+    if (import.meta.env.DEV) {
+      console.log('Delivery confirmed for event:', data.originalEventId);
+    }
+    return;
+  }
+
   // Validate event
   if (!type || !eventId) {
     console.warn('Invalid sync event received:', syncEvent);
     return;
+  }
+
+  // Send delivery confirmation if required
+  if (syncEvent.requiresConfirmation) {
+    sendDeliveryConfirmation(eventId);
   }
 
   // Check for sync loops
@@ -328,4 +439,137 @@ function isRecentEvent(eventId) {
  */
 function generateEventId() {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Start connection monitoring with heartbeats
+ */
+function startConnectionMonitoring() {
+  if (state.heartbeatInterval) {
+    clearInterval(state.heartbeatInterval);
+  }
+
+  state.heartbeatInterval = setInterval(() => {
+    sendHeartbeat();
+  }, 10000); // Send heartbeat every 10 seconds
+
+  if (import.meta.env.DEV) {
+    console.log('Connection monitoring started');
+  }
+}
+
+/**
+ * Stop connection monitoring
+ */
+function stopConnectionMonitoring() {
+  if (state.heartbeatInterval) {
+    clearInterval(state.heartbeatInterval);
+    state.heartbeatInterval = null;
+  }
+
+  if (import.meta.env.DEV) {
+    console.log('Connection monitoring stopped');
+  }
+}
+
+/**
+ * Send heartbeat to check connection
+ */
+function sendHeartbeat() {
+  if (!state.dataChannel || state.dataChannel.readyState !== 'open') {
+    handleMissedHeartbeat();
+    return;
+  }
+
+  const heartbeat = {
+    type: 'heartbeat',
+    timestamp: Date.now(),
+    eventId: generateEventId(),
+  };
+
+  try {
+    state.dataChannel.send(JSON.stringify(heartbeat));
+
+    // Set timeout to detect missed response
+    setTimeout(() => {
+      handleMissedHeartbeat();
+    }, 5000); // 5 second timeout
+  } catch (error) {
+    console.error('Failed to send heartbeat:', error);
+    handleMissedHeartbeat();
+  }
+}
+
+/**
+ * Send heartbeat response
+ * @param {string} originalEventId - Original heartbeat event ID
+ */
+function sendHeartbeatResponse(originalEventId) {
+  if (!state.dataChannel || state.dataChannel.readyState !== 'open') {
+    return;
+  }
+
+  const response = {
+    type: 'heartbeat-response',
+    timestamp: Date.now(),
+    eventId: generateEventId(),
+    data: { originalEventId },
+  };
+
+  try {
+    state.dataChannel.send(JSON.stringify(response));
+  } catch (error) {
+    console.error('Failed to send heartbeat response:', error);
+  }
+}
+
+/**
+ * Handle missed heartbeat
+ */
+function handleMissedHeartbeat() {
+  state.missedHeartbeats++;
+
+  if (import.meta.env.DEV) {
+    console.warn(
+      'Missed heartbeat:',
+      state.missedHeartbeats,
+      '/',
+      state.maxMissedHeartbeats
+    );
+  }
+
+  if (state.missedHeartbeats >= state.maxMissedHeartbeats) {
+    if (import.meta.env.DEV) {
+      console.error('Connection lost - too many missed heartbeats');
+    }
+
+    state.connectionState = 'failed';
+    notifyEventListeners('connection', {
+      connected: false,
+      reason: 'heartbeat_timeout',
+    });
+  }
+}
+
+/**
+ * Send delivery confirmation
+ * @param {string} originalEventId - Original event ID
+ */
+function sendDeliveryConfirmation(originalEventId) {
+  if (!state.dataChannel || state.dataChannel.readyState !== 'open') {
+    return;
+  }
+
+  const confirmation = {
+    type: 'delivery-confirmation',
+    timestamp: Date.now(),
+    eventId: generateEventId(),
+    data: { originalEventId },
+  };
+
+  try {
+    state.dataChannel.send(JSON.stringify(confirmation));
+  } catch (error) {
+    console.error('Failed to send delivery confirmation:', error);
+  }
 }
