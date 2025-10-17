@@ -27,8 +27,8 @@ export function initializeSearchUI(onVideoSelectCallback) {
   state.onVideoSelect = onVideoSelectCallback;
 
   // Get DOM elements
-  state.searchInput = document.getElementById('searchQuery');
-  state.searchButton = document.getElementById('searchBtn');
+  state.searchInput = document.getElementById('videoTextInput');
+  state.searchButton = document.getElementById('videoTextInputBtn');
   state.searchResults = document.getElementById('searchResults');
 
   if (!state.searchInput || !state.searchButton || !state.searchResults) {
@@ -132,16 +132,27 @@ export function updateSearchAvailability() {
 // ===== PRIVATE HELPERS =====
 
 /**
+ * Handle search button click
+ */
+async function handleSearchClick() {
+  const inputString = state.searchInput.value;
+  await performSearch(inputString);
+}
+
+/**
  * Set up event listeners for search UI
  */
 function setupEventListeners() {
   // Search button click
-  state.searchButton.addEventListener('click', handleSearchClick);
+  state.searchButton.addEventListener('click', () =>
+    handleSelectVideo(state.searchInput.value)
+  ); // handleSearchClick);
 
   // Enter key in search input
   state.searchInput.addEventListener('keypress', (event) => {
     if (event.key === 'Enter') {
-      handleSearchClick();
+      //handleSearchClick();
+      handleSelectVideo(state.searchInput.value);
     }
   });
 
@@ -151,14 +162,6 @@ function setupEventListeners() {
       clearSearchResults();
     }
   });
-}
-
-/**
- * Handle search button click
- */
-async function handleSearchClick() {
-  const query = state.searchInput.value;
-  await performSearch(query);
 }
 
 /**
@@ -294,7 +297,10 @@ function displaySearchResults(results) {
     '.search-result-item'
   );
   resultItems.forEach((item, index) => {
-    item.addEventListener('click', () => handleVideoSelect(results[index]));
+    item.addEventListener(
+      'click',
+      async () => await handleVideoSelect(results[index])
+    );
   });
 }
 
@@ -329,9 +335,9 @@ function createSearchResultHTML(result) {
  * Handle video selection from search results
  * @param {Object} video - Selected video object
  */
-function handleVideoSelect(video) {
+async function handleVideoSelect(video) {
   if (state.onVideoSelect) {
-    state.onVideoSelect(video);
+    await state.onVideoSelect(video);
   }
 
   // Clear search results after selection

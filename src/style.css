@@ -305,14 +305,14 @@ button:disabled {
     width: 100%;
   }
 }
-/* YouTube Search Styles */
-.search-section {
+
+.video-text-input-section {
   width: 100%;
   max-width: 900px;
   margin: 0 auto 20px auto;
 }
 
-.search-controls {
+.video-text-input-controls {
   display: flex;
   gap: 10px;
   margin-bottom: 15px;

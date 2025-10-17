@@ -51,17 +51,17 @@
         </div>
       </div>
 
-      <!-- Watch Together Mode  -->
+      <!-- Watch Together Mode -->
       <div id="watchContainer" style="display: none">
-        <!-- YouTube Search Section -->
-        <div class="search-section">
-          <div class="search-controls">
+        <!-- Request Video Text Input -->
+        <div class="video-text-input-section">
+          <div class="video-text-input-controls">
             <input
               type="text"
-              id="searchQuery"
-              placeholder="Search YouTube videos..."
+              id="videoTextInput"
+              placeholder="Search or paste link..."
             />
-            <button id="searchBtn">Search</button>
+            <button id="videoTextInputBtn">Search</button>
           </div>
           <div
             id="searchResults"
@@ -70,7 +70,24 @@
           ></div>
         </div>
 
-        <!-- TODO: REMOVE or make optional using same input. // Manual URL Input Section -->
+        <!-- YouTube Search Section <- LEGACY - DELETE WHEN POSSIBLE -->
+        <div class="search-section" style="display: none">
+          <div class="search-controls">
+            <input
+              type="text"
+              id="searchQuery"
+              placeholder="Search YouTube videos..."
+            />
+            <button id="videoTextInputBtn">Search</button>
+          </div>
+          <div
+            id="searchResults"
+            class="search-results"
+            style="display: none"
+          ></div>
+        </div>
+
+        <!-- Manual URL Input Section <- LEGACY - DELETE WHEN POSSIBLE -->
         <div class="url-section" style="display: none">
           <div class="section-divider">
             <span>or paste a URL directly</span>

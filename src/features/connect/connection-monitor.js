@@ -13,8 +13,6 @@ export class ConnectionMonitor {
   constructor(options = {}) {
     this.options = {
       videoValidationTimeout: 8000,
-      maxRetries: 3,
-      retryDelay: 2000,
       monitorInterval: 3000,
       ...options,
     };
@@ -23,8 +21,6 @@ export class ConnectionMonitor {
       connectionState: 'idle', // idle, connecting, validating, connected, failed
       videoValidated: false,
       audioValidated: false,
-      retryCount: 0,
-      lastError: null,
     };
 
     this.callbacks = {
@@ -69,8 +65,12 @@ export class ConnectionMonitor {
 
       await this.validateRemoteVideo(remoteVideoElement);
       this.updateConnectionState('connected');
-      this.updateStatus('Connected! Video streaming successfully.');
 
+      if (this.state.videoValidated) {
+        this.updateStatus('Connected! Video streaming successfully.');
+      } else {
+        this.updateStatus('Connected, but video stream has issues)');
+      }
       // Start continuous monitoring with less aggressive settings
       this.startContinuousMonitoring(remoteVideoElement);
 
@@ -242,57 +242,6 @@ export class ConnectionMonitor {
   }
 
   /**
-   * Handle validation failure with retry logic
-   */
-  async handleValidationFailure(error, videoElement, peerConnection) {
-    this.state.lastError = error;
-    this.state.retryCount++;
-
-    if (this.state.retryCount <= this.options.maxRetries) {
-      this.updateStatus(
-        `Connection issue detected. Retrying... (${this.state.retryCount}/${this.options.maxRetries})`
-      );
-
-      // Wait before retry
-      await new Promise((resolve) =>
-        setTimeout(resolve, this.options.retryDelay)
-      );
-
-      try {
-        await this.validateRemoteVideo(videoElement);
-        this.updateConnectionState('connected');
-        this.updateStatus('Connected! Video streaming successfully.');
-        this.startContinuousMonitoring(videoElement);
-
-        this.callbacks.onValidationComplete?.({
-          success: true,
-          videoValidated: this.state.videoValidated,
-          audioValidated: this.state.audioValidated,
-          retriesUsed: this.state.retryCount,
-        });
-      } catch (retryError) {
-        await this.handleValidationFailure(
-          retryError,
-          videoElement,
-          peerConnection
-        );
-      }
-    } else {
-      // Max retries exceeded
-      this.updateConnectionState('failed');
-      this.updateStatus(
-        'Connection failed: Unable to establish video stream. Please try again.'
-      );
-
-      this.callbacks.onValidationComplete?.({
-        success: false,
-        error: error.message,
-        retriesUsed: this.state.retryCount,
-      });
-    }
-  }
-
-  /**
    * Handle general connection failure
    */
   handleConnectionFailure(reason) {
@@ -340,7 +289,5 @@ export class ConnectionMonitor {
     this.state.connectionState = 'idle';
     this.state.videoValidated = false;
     this.state.audioValidated = false;
-    this.state.retryCount = 0;
-    this.state.lastError = null;
   }
 }

@@ -97,12 +97,44 @@ export function executeTroubleshootingAction(action) {
 // ===== SEARCH UI FUNCTIONALITY =====
 
 function initializeSearchUI() {
-  initSearchUI(handleVideoSelection);
+  // initSearchUI(handleVideoSelection, handleUrlLoad);
+  initSearchUI(handleSelectVideo);
+
+  initSearchUI();
   updateSearchAvailability();
 
   if (import.meta.env.DEV) {
     console.log('YouTube search UI initialized for legacy watch mode');
   }
+}
+
+export async function handleSelectVideo(inputString) {
+  console.warn('handleSelectVideo, inputString', inputString);
+  const roomId = getRoomId();
+  const sharedVideo = document.getElementById('sharedVideo');
+  const syncStatus = document.getElementById('syncStatus');
+
+  if (isYouTubeUrl(inputString)) {
+    loadStream({ roomId, inputString, sharedVideo, syncStatus });
+    return;
+    //db.ref(`rooms/${roomId}/stream`).set({ url });
+    //   } else if (isYouTubeUrl) {
+    //     db.ref(`rooms/${roomId}/stream`).set({ url });
+  } else {
+    await performSearch(inputString);
+  }
+}
+
+/**
+ * Handle direct URL loading from search input
+ * @param {string} url - URL to load
+ */
+function handleUrlLoad(url) {
+  const roomId = getRoomId();
+  const sharedVideo = document.getElementById('sharedVideo');
+  const syncStatus = document.getElementById('syncStatus');
+
+  loadStream({ roomId, url, sharedVideo, syncStatus });
 }
 
 async function handleVideoSelection(video) {
@@ -201,6 +233,25 @@ export function toggleWatchMode({
   }
 
   return state.watchMode;
+}
+
+export function loadYoutubeUrl({ roomId, url, sharedVideo, syncStatus }) {
+  const vid = getYouTubeId(url);
+
+  if (vid) {
+    // todo: validate
+    showYouTubePlayer(vid, sharedVideo, (event) =>
+      onYouTubeStateChange(event, roomId)
+    );
+    syncStatus.textContent = 'YouTube video sent to partner...';
+  } else {
+    hideYouTubePlayer(sharedVideo);
+    syncStatus.textContent = 'YouTube video not found...';
+  }
+
+  if (roomId) {
+    db.ref(`rooms/${roomId}/stream`).set({ url });
+  }
 }
 
 export function loadStream({ roomId, url, sharedVideo, syncStatus }) {

@@ -50,21 +50,46 @@ import {
   closePiP,
 } from '../features/videoChat/pip.js';
 
-import { getSyncConfig } from '../config/api-config.js';
-
-// Import both sync modules - we'll choose which to use at runtime
-import * as webrtcSync from '../features/watch2gether/watch-sync.js';
-import * as legacySync from '../features/watch2gether/watch-sync-legacy.js';
-
-// Select sync module based on configuration
-const syncConfig = getSyncConfig();
-const syncModule = syncConfig.useWebRTC ? webrtcSync : legacySync;
+import * as sync from '../features/watch2gether/watch-sync-legacy.js';
 
 if (import.meta.env.DEV) {
   console.log(
     'Using sync system:',
     syncConfig.useWebRTC ? 'WebRTC' : 'Firebase Legacy'
   );
+}
+
+export function toggleWatchMode({
+  videoContainer,
+  watchContainer,
+  toggleModeBtn,
+  sharedVideo,
+  streamUrlInput,
+  syncStatus,
+}) {
+  state.watchMode = !state.watchMode;
+
+  if (state.watchMode) {
+    videoContainer.style.display = 'none';
+    watchContainer.style.display = 'block';
+    toggleModeBtn.textContent = 'Switch to Video Chat';
+    syncStatus.textContent =
+      'Search for videos or paste the same stream URL as your partner';
+
+    // Initialize search UI
+    initializeSearchUI();
+  } else {
+    videoContainer.style.display = 'flex';
+    watchContainer.style.display = 'none';
+    toggleModeBtn.textContent = 'Switch to Watch Mode';
+    sharedVideo.src = '';
+    streamUrlInput.value = '';
+
+    // Clean up search UI
+    cleanupSearchUI();
+  }
+
+  return state.watchMode;
 }
 
 const {
@@ -75,7 +100,7 @@ const {
   getWatchMode,
   getStreamUrl,
   setStreamUrl,
-} = syncModule;
+} = sync;
 
 import {
   getIsAudioMuted,
