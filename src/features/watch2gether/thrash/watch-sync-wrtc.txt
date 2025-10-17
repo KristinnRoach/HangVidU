@@ -12,8 +12,8 @@
 //
 // Decision: Continue using Firebase-based sync (watch-sync-legacy.js)
 
-import { db } from '../../storage/firebaseRealTimeDB.js';
-import { getRoomId, getPeerConnection } from '../connect/connection.js';
+import { db } from '../../../storage/firebaseRealTimeDB.js';
+import { getRoomId, getPeerConnection } from '../../connect/connection.js';
 import {
   createSyncManager,
   getSyncManager,
@@ -23,7 +23,7 @@ import {
   createYouTubePlayerAdapter,
   getYouTubePlayerAdapter,
   cleanupYouTubePlayerAdapter,
-} from './youtube-player-adapter.js';
+} from '../youtube-player-adapter.js';
 import {
   initializeWebRTCSync,
   sendSyncEvent as sendWebRTCEvent,
@@ -39,13 +39,13 @@ import {
   hideYouTubePlayer,
   getYTPlayer,
   getYTReady,
-} from './youtube.js';
+} from '../youtube.js';
 
 import {
   initializeSearchUI as initSearchUI,
   updateSearchAvailability,
   cleanupSearchUI,
-} from './youtube-search-ui.js';
+} from '../youtube-search-ui.js';
 
 // ===== STATE =====
 const state = {

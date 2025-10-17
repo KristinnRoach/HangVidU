@@ -1,5 +1,5 @@
 import { isYouTubeUrl } from './youtube.js';
-import { loadStream } from './watch-sync-legacy.js';
+import { loadStream } from './watch-sync-fb.js';
 import { db } from '../../storage/firebaseRealTimeDB.js';
 import { getRoomId } from '../connect/connection.js';
 import { isHostedVideoUrl } from './utils.js';
@@ -72,7 +72,7 @@ import { performSearch } from './youtube-search-ui.js';
 // }
 
 export async function handleSelectVideo(inputString) {
-  console.warn('handleSelectVideo, inputString', inputString);
+  // console.warn('handleSelectVideo, inputString', inputString);
   const roomId = getRoomId();
   const sharedVideo = document.getElementById('sharedVideo');
   const syncStatus = document.getElementById('syncStatus');

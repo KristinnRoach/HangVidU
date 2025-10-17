@@ -4,7 +4,7 @@
 
 This document describes the Firebase-based watch-sync functionality, which is the current production implementation.
 
-## Current Working Features (Firebase Only)
+## Current Working Features
 
 ### Core State Management
 
@@ -62,31 +62,10 @@ rooms/{roomId}/stream/
 
 ## Architecture Decision: Firebase vs WebRTC
 
-**Current Status (January 2025):**
+**Current Status (Oct 2025):**
 
 - **Firebase Sync**: ✅ WORKING - Production ready, reliable sync
 - **WebRTC Sync**: ❌ NON-FUNCTIONAL - Data channel issues, transport errors
 - **Firebase Signaling**: ✅ WORKING - Will continue using for video chat signaling
 
 **Decision**: Continue using Firebase for both video chat signaling AND watch-sync functionality. The WebRTC refactor has been abandoned due to complexity and reliability issues.
-
-## Implementation Status
-
-- `watch-sync-legacy.js` → **Production implementation** (Firebase-based)
-- `watch-sync.js` → **Experimental/broken** (WebRTC-based, do not use)
-- Toggle available in `src/config/api-config.js` but should remain `useWebRTC: false`
-
-## Files Involved in Original Implementation
-
-- `src/features/watch2gether/watch-sync.js` (main sync logic)
-- `src/features/watch2gether/youtube.js` (YouTube player integration)
-- `src/storage/firebaseRealTimeDB.js` (Firebase connection)
-
-## Testing the Legacy Implementation
-
-To verify the backup works:
-
-1. Temporarily rename current `watch-sync.js`
-2. Copy `watch-sync-legacy.js` to `watch-sync.js`
-3. Test basic sync between two browser tabs
-4. Restore original file structure

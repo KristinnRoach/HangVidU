@@ -1,7 +1,4 @@
-// watch-sync-legacy.js - BACKUP of original watch-sync.js implementation
-// Created as backup before refactoring to use new SyncManager and YouTubePlayerAdapter
-// This file preserves the original working functionality for rollback purposes
-
+// watch-sync-fb.js - Watch2Gether sync functionality using Firebase Realtime Database
 import { db } from '../../storage/firebaseRealTimeDB.js';
 import { getRoomId } from '../connect/connection.js';
 
@@ -45,62 +42,11 @@ export function setStreamUrl(url) {
   state.streamUrl = url;
 }
 
-// ===== COMPATIBILITY STUBS =====
-// These functions exist in the WebRTC version but not in legacy
-// Adding stubs to maintain API compatibility
-
-export function getSyncStatusInfo() {
-  return {
-    isConnected: true, // Firebase is always "connected" if we have internet
-    isSyncing: state.isSyncing,
-    lastError: null,
-    autoResyncEnabled: false,
-    manualResyncAvailable: false,
-    playerReady: true,
-    hasActiveVideo: !!state.streamUrl,
-    syncHealth: { score: 100, status: 'excellent', issues: [] },
-  };
-}
-
-export function triggerManualResync() {
-  // Legacy system doesn't need manual resync
-  return Promise.resolve(false);
-}
-
-export function setAutoResyncEnabled(enabled) {
-  // Legacy system doesn't support auto resync
-  if (import.meta.env.DEV) {
-    console.log('Auto resync not supported in legacy mode');
-  }
-}
-
-export function getErrorDetails() {
-  return {
-    lastError: null,
-    timestamp: null,
-    syncHealth: { score: 100, status: 'excellent', issues: [] },
-    componentStatus: {
-      syncManager: false,
-      playerAdapter: false,
-      transport: false,
-      webrtcConnected: false,
-    },
-    troubleshootingSteps: [],
-  };
-}
-
-export function executeTroubleshootingAction(action) {
-  // Legacy system doesn't support troubleshooting actions
-  return Promise.resolve(false);
-}
-
 // ===== SEARCH UI FUNCTIONALITY =====
 
 function initializeSearchUI() {
-  // initSearchUI(handleVideoSelection, handleUrlLoad);
-  initSearchUI(handleSelectVideo);
-
-  initSearchUI();
+  initSearchUI(handleVideoSelection, handleUrlLoad);
+  // initSearchUI(handleSelectVideo);
   updateSearchAvailability();
 
   if (import.meta.env.DEV) {

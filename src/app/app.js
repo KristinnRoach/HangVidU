@@ -52,45 +52,38 @@ import {
 
 import * as sync from '../features/watch2gether/watch-sync-legacy.js';
 
-if (import.meta.env.DEV) {
-  console.log(
-    'Using sync system:',
-    syncConfig.useWebRTC ? 'WebRTC' : 'Firebase Legacy'
-  );
-}
+// export function toggleWatchMode({
+//   videoContainer,
+//   watchContainer,
+//   toggleModeBtn,
+//   sharedVideo,
+//   streamUrlInput,
+//   syncStatus,
+// }) {
+//   state.watchMode = !state.watchMode;
 
-export function toggleWatchMode({
-  videoContainer,
-  watchContainer,
-  toggleModeBtn,
-  sharedVideo,
-  streamUrlInput,
-  syncStatus,
-}) {
-  state.watchMode = !state.watchMode;
+//   if (state.watchMode) {
+//     videoContainer.style.display = 'none';
+//     watchContainer.style.display = 'block';
+//     toggleModeBtn.textContent = 'Switch to Video Chat';
+//     syncStatus.textContent =
+//       'Search for videos or paste the same stream URL as your partner';
 
-  if (state.watchMode) {
-    videoContainer.style.display = 'none';
-    watchContainer.style.display = 'block';
-    toggleModeBtn.textContent = 'Switch to Video Chat';
-    syncStatus.textContent =
-      'Search for videos or paste the same stream URL as your partner';
+//     // Initialize search UI
+//     initializeSearchUI();
+//   } else {
+//     videoContainer.style.display = 'flex';
+//     watchContainer.style.display = 'none';
+//     toggleModeBtn.textContent = 'Switch to Watch Mode';
+//     sharedVideo.src = '';
+//     streamUrlInput.value = '';
 
-    // Initialize search UI
-    initializeSearchUI();
-  } else {
-    videoContainer.style.display = 'flex';
-    watchContainer.style.display = 'none';
-    toggleModeBtn.textContent = 'Switch to Watch Mode';
-    sharedVideo.src = '';
-    streamUrlInput.value = '';
+//     // Clean up search UI
+//     cleanupSearchUI();
+//   }
 
-    // Clean up search UI
-    cleanupSearchUI();
-  }
-
-  return state.watchMode;
-}
+//   return state.watchMode;
+// }
 
 const {
   toggleWatchMode: toggleWatchModeSync,
@@ -114,7 +107,7 @@ import {
   updateVideoControlIcons,
 } from '../features/videoChat/video-controls.js';
 
-import { setupEventListeners } from './events.js';
+// import { setupEventListeners } from './events.js';
 import { handleMediaError } from '../utils/error/error-handling.js';
 import { setupTouchControls } from '../utils/ui/touch-controls.js';
 import { copyLink } from '../utils/clipboard.js';
@@ -183,27 +176,39 @@ async function init() {
       onStateChange: saveCurrentState,
     });
 
-    setupEventListeners({
-      startChatBtn,
-      hangUpBtn,
-      copyLinkBtn,
-      toggleModeBtn,
-      loadStreamBtn,
-      pipBtn,
-      remoteVideo,
-      handleStartChat: initiateChatRoom,
-      handleHangUp: hangUp,
-      handleCopyLink: async () => {
-        const success = await copyLink(shareLink, copyLinkBtn);
-        if (success) updateStatus('Link copied!');
-        else updateStatus('Please copy manually.');
-      },
-      handleToggleMode: toggleWatchMode,
-      handleLoadStream: loadStream,
-      handlePipToggle: () =>
-        handlePipToggleBtn(remoteVideo, pipBtn, updateStatus),
-      updateStatus,
+    // setupEventListeners({
+    //   startChatBtn,
+    //   hangUpBtn,
+    //   copyLinkBtn,
+    //   toggleModeBtn,
+    //   loadStreamBtn,
+    //   pipBtn,
+    //   remoteVideo,
+    //   handleStartChat: initiateChatRoom,
+    //   handleHangUp: hangUp,
+    //   handleCopyLink: async () => {
+    //     const success = await copyLink(shareLink, copyLinkBtn);
+    //     if (success) updateStatus('Link copied!');
+    //     else updateStatus('Please copy manually.');
+    //   },
+    //   handleToggleMode: toggleWatchMode,
+    //   handleLoadStream: loadStream,
+    //   handlePipToggle: () =>
+    //     handlePipToggleBtn(remoteVideo, pipBtn, updateStatus),
+    // });
+
+    startChatBtn.addEventListener('click', initiateChatRoom);
+    hangUpBtn.addEventListener('click', hangUp);
+    copyLinkBtn.addEventListener('click', async () => {
+      const success = await copyLink(shareLink, copyLinkBtn);
+      if (success) updateStatus('Link copied!');
+      else updateStatus('Please copy manually.');
     });
+    toggleModeBtn.addEventListener('click', toggleWatchMode);
+    loadStreamBtn.addEventListener('click', loadStream);
+    pipBtn.addEventListener('click', () =>
+      handlePipToggleBtn(remoteVideo, pipBtn, updateStatus)
+    );
 
     const urlParams = new URLSearchParams(window.location.search);
     const urlRoomId = urlParams.get('room');

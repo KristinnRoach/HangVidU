@@ -1,5 +1,6 @@
 // youtube-search-ui.js - YouTube search UI functionality
 
+import { handleSelectVideo } from './videoInputHandler.js';
 import {
   searchVideos,
   isSearchAvailable,
