@@ -1,12 +1,15 @@
 // src/features/connect/ice-candidate-manager.js - Robust ICE candidate handling
 
+import { ref, push, onChildAdded, off } from 'firebase/database';
+
 /**
  * Manages ICE candidate queuing and processing for reliable WebRTC connections
  */
 export class IceCandidateManager {
-  constructor(peerConnection, roomRef, role) {
+  constructor(peerConnection, roomRef, role, db) {
     this.peerConnection = peerConnection;
-    this.roomRef = roomRef;
+    this.roomRef = roomRef; // The database reference
+    this.db = db; // The database instance
     this.role = role; // 'initiator' or 'joiner'
 
     // Queue for candidates received before remote description is set
@@ -32,6 +35,17 @@ export class IceCandidateManager {
     this._onRemoteCandidateAdded = this._onRemoteCandidateAdded.bind(this);
 
     this.setupICEHandling();
+  }
+
+  /**
+   * Get room ID from roomRef
+   */
+  getRoomId() {
+    // Extract room ID from the ref path
+    // The roomRef should be like ref(db, 'rooms/abc123')
+    const path = this.roomRef.toString();
+    const match = path.match(/rooms\/([^\/]+)/);
+    return match ? match[1] : null;
   }
 
   /**
@@ -103,15 +117,21 @@ export class IceCandidateManager {
         );
       }
 
-      // Send to Firebase
+      // Send to Firebase using modular SDK
       const candidatesPath =
         this.role === 'initiator' ? 'callerCandidates' : 'calleeCandidates';
-      this.roomRef
-        .child(candidatesPath)
-        .push(event.candidate.toJSON())
-        .catch((error) => {
-          console.error('Failed to send ICE candidate to Firebase:', error);
-        });
+
+      const roomId = this.getRoomId();
+      if (!roomId) {
+        console.error('Cannot send ICE candidate: room ID not found');
+        return;
+      }
+
+      const candidatesRef = ref(this.db, `rooms/${roomId}/${candidatesPath}`);
+
+      push(candidatesRef, event.candidate.toJSON()).catch((error) => {
+        console.error('Failed to send ICE candidate to Firebase:', error);
+      });
     } else {
       // null candidate indicates end of candidates
       if (import.meta.env.DEV) {
@@ -127,12 +147,21 @@ export class IceCandidateManager {
     const remoteCandidatesPath =
       this.role === 'initiator' ? 'calleeCandidates' : 'callerCandidates';
 
+    const roomId = this.getRoomId();
+    if (!roomId) {
+      console.error('Cannot listen for remote candidates: room ID not found');
+      return;
+    }
+
     // Store the path for cleanup
     this._remoteCandidatesPath = remoteCandidatesPath;
-    this._remoteCandidatesRef = this.roomRef.child(remoteCandidatesPath);
+    this._remoteCandidatesRef = ref(
+      this.db,
+      `rooms/${roomId}/${remoteCandidatesPath}`
+    );
 
     // Attach listener with stored handler reference
-    this._remoteCandidatesRef.on('child_added', this._onRemoteCandidateAdded);
+    onChildAdded(this._remoteCandidatesRef, this._onRemoteCandidateAdded);
   }
 
   /**
@@ -281,9 +310,10 @@ export class IceCandidateManager {
       );
     }
 
-    // Remove Firebase listeners with specific handler references
-    if (this._remoteCandidatesRef && this._onRemoteCandidateAdded) {
-      this._remoteCandidatesRef.off(
+    // Remove Firebase listeners using modular SDK
+    if (this._remoteCandidatesRef) {
+      off(
+        this._remoteCandidatesRef,
         'child_added',
         this._onRemoteCandidateAdded
       );

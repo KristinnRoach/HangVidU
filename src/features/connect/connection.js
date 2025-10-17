@@ -1,11 +1,23 @@
 // connection.js - WebRTC connection management with Firebase signaling
-
-import { db } from '../../storage/firebaseRealTimeDB.js';
 import { setConnectionStatus } from './connectionStatus.js';
 import { IceCandidateManager } from './ice-candidate-manager.js';
 import { ConnectionStateManager } from './connection-state-manager.js';
 
-// ===== CONFIG =====
+import {
+  ref,
+  push,
+  set,
+  onValue,
+  onChildAdded,
+  update,
+  get,
+  off,
+  remove,
+} from 'firebase/database';
+
+import { db } from '../../storage/firebase.js';
+
+// ===== ICE CONFIG =====
 const configuration = {
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
 };
@@ -66,6 +78,7 @@ export async function connect({ onRemoteStream, onStatusUpdate }) {
     onStatusUpdate?.('Error: No local media. Please allow mic/camera.');
     throw new Error('connect called without localStream set');
   }
+
   state.localStream.getTracks().forEach((track) => {
     state.peerConnection.addTrack(track, state.localStream);
   });
@@ -81,6 +94,7 @@ export async function connect({ onRemoteStream, onStatusUpdate }) {
   if (import.meta.env.DEV) {
     console.log('[DEBUG] Assigning peerConnection.ontrack in connect');
   }
+
   state.peerConnection.ontrack = (event) => {
     handleRemoteStream(event, onRemoteStream);
   };
@@ -89,7 +103,8 @@ export async function connect({ onRemoteStream, onStatusUpdate }) {
   state.iceCandidateManager = new IceCandidateManager(
     state.peerConnection,
     state.roomRef,
-    'initiator'
+    'initiator',
+    db
   );
 
   // Initialize connection state manager
@@ -126,7 +141,8 @@ export async function connect({ onRemoteStream, onStatusUpdate }) {
     onIceRestart: async (offer) => {
       // Send ICE restart offer through Firebase signaling
       try {
-        await state.roomRef.child('offer').set({
+        const offerRef = ref(db, `rooms/${state.roomId}/offer`);
+        await set(offerRef, {
           type: offer.type,
           sdp: offer.sdp,
         });
@@ -142,12 +158,12 @@ export async function connect({ onRemoteStream, onStatusUpdate }) {
 
   // Listen for answer (initial and ICE restart)
   let lastAnswerSdp = null;
-  state.roomRef.child('answer').on('value', async (snapshot) => {
+  const answerRef = ref(db, `rooms/${state.roomId}/answer`);
+  onValue(answerRef, async (snapshot) => {
     const answer = snapshot.val();
     if (answer && answer.sdp !== lastAnswerSdp) {
       try {
         const isIceRestart = !!state.peerConnection.currentRemoteDescription;
-
         if (import.meta.env.DEV) {
           console.log(
             isIceRestart
@@ -177,7 +193,6 @@ export async function connect({ onRemoteStream, onStatusUpdate }) {
         await state.peerConnection.setRemoteDescription(
           new RTCSessionDescription(answer)
         );
-
         lastAnswerSdp = answer.sdp;
 
         // Notify ICE candidate manager that remote description is set
@@ -202,7 +217,6 @@ export async function connect({ onRemoteStream, onStatusUpdate }) {
   });
 
   setConnectionStatus(state.roomId, 'initiator', 'waiting');
-
   if (onStatusUpdate) {
     onStatusUpdate('Link ready! Waiting for partner...');
   }
@@ -237,6 +251,7 @@ export async function join({ roomId, onRemoteStream, onStatusUpdate }) {
     onStatusUpdate?.('Error: No local media. Please allow mic/camera.');
     throw new Error('join called without localStream set');
   }
+
   state.localStream.getTracks().forEach((track) => {
     state.peerConnection.addTrack(track, state.localStream);
   });
@@ -245,6 +260,7 @@ export async function join({ roomId, onRemoteStream, onStatusUpdate }) {
   if (import.meta.env.DEV) {
     console.log('[DEBUG] Assigning peerConnection.ontrack in join');
   }
+
   state.peerConnection.ontrack = (event) => {
     handleRemoteStream(event, onRemoteStream);
   };
@@ -253,7 +269,8 @@ export async function join({ roomId, onRemoteStream, onStatusUpdate }) {
   state.iceCandidateManager = new IceCandidateManager(
     state.peerConnection,
     state.roomRef,
-    'joiner'
+    'joiner',
+    db
   );
 
   // Initialize connection state manager
@@ -307,7 +324,8 @@ export async function join({ roomId, onRemoteStream, onStatusUpdate }) {
     const answer = await state.peerConnection.createAnswer();
     await state.peerConnection.setLocalDescription(answer);
 
-    await state.roomRef.child('answer').set({
+    const answerRef = ref(db, `rooms/${state.roomId}/answer`);
+    await set(answerRef, {
       type: answer.type,
       sdp: answer.sdp,
     });
@@ -316,7 +334,8 @@ export async function join({ roomId, onRemoteStream, onStatusUpdate }) {
 
     // Listen for ICE restart offers
     let lastOfferSdp = state.peerConnection.currentRemoteDescription?.sdp;
-    state.roomRef.child('offer').on('value', async (snapshot) => {
+    const offerRef = ref(db, `rooms/${state.roomId}/offer`);
+    onValue(offerRef, async (snapshot) => {
       const offer = snapshot.val();
       if (
         offer &&
@@ -343,7 +362,6 @@ export async function join({ roomId, onRemoteStream, onStatusUpdate }) {
           }
 
           await state.peerConnection.setRemoteDescription(offer);
-
           lastOfferSdp = offer.sdp;
 
           // Notify ICE candidate manager that remote description is updated
@@ -359,7 +377,8 @@ export async function join({ roomId, onRemoteStream, onStatusUpdate }) {
           const answer = await state.peerConnection.createAnswer();
           await state.peerConnection.setLocalDescription(answer);
 
-          await state.roomRef.child('answer').set({
+          const answerRef = ref(db, `rooms/${state.roomId}/answer`);
+          await set(answerRef, {
             type: answer.type,
             sdp: answer.sdp,
           });
@@ -435,12 +454,14 @@ export function restoreConnectionState(savedState) {
   if (!savedState) return;
 
   if (savedState.roomId) state.roomId = savedState.roomId;
+
   // Handle both old isInitiator format and new role format
   if (savedState.role) {
     state.role = savedState.role;
   } else if (savedState.isInitiator !== undefined) {
     state.role = savedState.isInitiator ? 'initiator' : 'joiner';
   }
+
   if (savedState.wasConnected !== undefined)
     state.wasConnected = savedState.wasConnected;
 }
@@ -489,7 +510,6 @@ function handleRemoteStream(event, onRemoteStream) {
       state.wasConnected
     );
   }
-
   if (onRemoteStream) {
     onRemoteStream(event.streams[0]);
   }
@@ -498,11 +518,15 @@ function handleRemoteStream(event, onRemoteStream) {
 function cleanupFirebaseListeners() {
   if (!state.roomId) return;
 
-  const roomRef = db.ref(`rooms/${state.roomId}`);
-  roomRef.child('answer').off();
-  roomRef.child('offer').off();
-  roomRef.child('callerCandidates').off();
-  roomRef.child('calleeCandidates').off();
+  const answerRef = ref(db, `rooms/${state.roomId}/answer`);
+  const offerRef = ref(db, `rooms/${state.roomId}/offer`);
+  const callerCandidatesRef = ref(db, `rooms/${state.roomId}/callerCandidates`);
+  const calleeCandidatesRef = ref(db, `rooms/${state.roomId}/calleeCandidates`);
+
+  off(answerRef);
+  off(offerRef);
+  off(callerCandidatesRef);
+  off(calleeCandidatesRef);
 }
 
 function generateRoomId() {
@@ -512,8 +536,8 @@ function generateRoomId() {
 // ===== FIREBASE SIGNALING =====
 
 async function createRoomInFirebase(roomId, offer) {
-  const roomRef = db.ref(`rooms/${roomId}`);
-  await roomRef.set({
+  const roomRef = ref(db, `rooms/${roomId}`);
+  await set(roomRef, {
     offer: {
       type: offer.type,
       sdp: offer.sdp,
@@ -523,8 +547,8 @@ async function createRoomInFirebase(roomId, offer) {
 }
 
 async function joinRoomInFirebase(roomId) {
-  const roomRef = db.ref(`rooms/${roomId}`);
-  const roomSnapshot = await roomRef.once('value');
+  const roomRef = ref(db, `rooms/${roomId}`);
+  const roomSnapshot = await get(roomRef);
   return { roomRef, roomSnapshot };
 }
 
@@ -537,5 +561,6 @@ async function removeRoomFromFirebase(roomId) {
       new Date().toISOString()
     );
   }
-  await db.ref(`rooms/${roomId}`).remove();
+  const roomRef = ref(db, `rooms/${roomId}`);
+  await remove(roomRef);
 }

@@ -27,7 +27,7 @@ import {
   fullscreenSelfBtn,
 } from './elements.js';
 
-import { loadState, saveState, clearState } from '../storage/localStorage.js';
+import { loadState, saveState, clearState } from '../storage/local-storage.js';
 
 import {
   connect,
@@ -52,13 +52,12 @@ import {
 
 import { getSyncConfig } from '../config/api-config.js';
 
-// Import both sync modules - we'll choose which to use at runtime
-import * as webrtcSync from '../features/watch2gether/watch-sync.js';
-import * as legacySync from '../features/watch2gether/watch-sync-legacy.js';
+// import * as webrtcSync from '../features/watch2gether/watch-sync.js';
+import * as sync from '../features/watch2gether/watch-sync.js';
 
 // Select sync module based on configuration
 const syncConfig = getSyncConfig();
-const syncModule = syncConfig.useWebRTC ? webrtcSync : legacySync;
+const syncModule = syncConfig.useWebRTC ? webrtcSync : sync;
 
 if (import.meta.env.DEV) {
   console.log(
