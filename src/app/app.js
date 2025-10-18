@@ -27,7 +27,7 @@ import {
   fullscreenSelfBtn,
 } from './elements.js';
 
-import { loadState, saveState, clearState } from '../storage/local-storage.js';
+// import { loadState, saveState, clearState } from '../storage/local-storage.js';
 
 import {
   connect,
@@ -181,9 +181,8 @@ async function init() {
 
     const urlParams = new URLSearchParams(window.location.search);
     const urlRoomId = urlParams.get('room');
-    const savedState = loadState();
 
-    const decision = determineRoomAction({ urlRoomId, savedState });
+    const decision = determineRoomAction({ urlRoomId });
 
     if (decision.action === 'join') {
       updateStatus('Connecting...');
@@ -208,7 +207,7 @@ async function init() {
   }
 }
 
-function determineRoomAction({ urlRoomId, savedState }) {
+function determineRoomAction({ urlRoomId }) {
   const roomId = urlRoomId; //  || savedState?.roomId;
   if (!roomId) return { action: 'idle' };
   return { action: 'join', roomId };
@@ -445,6 +444,7 @@ function loadStream() {
 // ===== TITLE MODE TOGGLE =====
 
 function disableTitleLink() {
+  console.debug('Disabling title link to prevent page reloads.');
   titleLink.href = ''; // Todo: ensure this robustly prevents a page reload across browsers
 }
 

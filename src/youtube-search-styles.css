@@ -1,0 +1,127 @@
+/* ============================================================================
+   YOUTUBE SEARCH STYLES
+   ============================================================================ */
+
+.search-section {
+  margin-bottom: 1rem;
+}
+
+.search-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+#searchQuery {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+#searchBtn {
+  padding: 0.5rem 1rem;
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+#searchBtn:hover {
+  background: #1976d2;
+}
+
+#searchBtn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.search-results {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  margin-top: 0.5rem;
+}
+
+.search-result-item {
+  display: flex;
+  gap: 1rem;
+  padding: 0.75rem;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+  transition: background 0.2s;
+}
+
+.search-result-item:hover {
+  background: #f5f5f5;
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.result-thumbnail {
+  width: 120px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.result-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.result-title {
+  font-weight: 500;
+  font-size: 14px;
+  color: #333;
+  line-height: 1.3;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.result-channel {
+  font-size: 12px;
+  color: #666;
+}
+
+.search-loading,
+.search-error,
+.no-results {
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+}
+
+.search-error {
+  color: #d32f2f;
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+  .result-thumbnail {
+    width: 80px;
+    height: 60px;
+  }
+
+  .result-title {
+    font-size: 13px;
+  }
+
+  .result-channel {
+    font-size: 11px;
+  }
+}
