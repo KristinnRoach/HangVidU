@@ -100,6 +100,7 @@ const configuration = {
 let pc = null; // RTCPeerConnection
 let localStream = null; // Local media stream
 let roomId = null; // Current room ID
+let peerId = null; // Unique peer ID
 let role = null; // 'initiator' | 'joiner'
 let watchMode = false; // Watch-together mode active
 let ytPlayer = null; // YouTube player instance
@@ -112,11 +113,16 @@ const firebaseListeners = [];
 let lastAnswerSdp = null;
 let lastOfferSdp = null;
 
+// Prevent feedback loops in bidirectional sync
+let lastLocalAction = 0;
+
 // ============================================================================
 // INITIALIZATION & MEDIA SETUP
 // ============================================================================
 
 async function init() {
+  peerId = Math.random().toString(36).substring(2, 15);
+
   try {
     // Get user media
     localStream = await navigator.mediaDevices.getUserMedia({
@@ -388,6 +394,11 @@ async function answerCall() {
 // WATCH-TOGETHER SYNC (Firebase-based)
 // ============================================================================
 
+// STATE
+let justSeeked = false;
+let seekDebounceTimeout = null;
+let syncInterval = null;
+
 function setupWatchSync() {
   if (!roomId) return;
 
@@ -396,27 +407,28 @@ function setupWatchSync() {
   // Listen for video state changes from partner
   const watchCallback = (snapshot) => {
     const data = snapshot.val();
+    console.debug('watchCallback, role:', role, 'snapshot.val(): ', data);
     if (!data) return;
 
-    // Only joiner follows the initiator's commands
-    if (role !== 'joiner') return;
+    // Ignore updates we sent ourselves
+    if (data.updatedBy === peerId) return;
+
+    // Ignore if we just performed a local action
+    if (Date.now() - lastLocalAction < 500) return;
 
     // Load video if URL changes
     if (data.url && data.url !== streamUrlInput.value) {
       streamUrlInput.value = data.url;
-
       if (isYouTubeUrl(data.url)) {
         loadYouTubeVideoWithSync(data.url);
       } else {
         // Regular video
         sharedVideo.style.display = 'block';
         sharedVideo.src = data.url;
-
         // Hide YouTube container if it exists
         const ytContainer = document.getElementById('ytPlayerContainer');
         if (ytContainer) ytContainer.style.display = 'none';
       }
-
       syncStatus.textContent = 'Video loaded';
     }
 
@@ -427,36 +439,73 @@ function setupWatchSync() {
         const currentState = getYouTubePlayerState();
         const isPlaying = currentState === YT_STATE.PLAYING;
 
-        if (data.playing && !isPlaying) {
-          playYouTubeVideo();
-        } else if (!data.playing && isPlaying) {
-          pauseYouTubeVideo();
+        // Handle seek in YouTube with debounce
+        if (
+          currentState === YT_STATE.BUFFERING ||
+          currentState === YT_STATE.UNSTARTED
+        ) {
+          justSeeked = true;
+          if (seekDebounceTimeout) clearTimeout(seekDebounceTimeout);
+          seekDebounceTimeout = setTimeout(() => {
+            justSeeked = false;
+            // Send final state after seek settles
+            const finalState = getYouTubePlayerState();
+            const finalPlaying = finalState === YT_STATE.PLAYING;
+            update(ref(db, `rooms/${roomId}/watch`), {
+              playing: finalPlaying,
+              currentTime: getYouTubeCurrentTime(),
+              updatedBy: peerId,
+            });
+          }, 700);
+        } else if (justSeeked) {
+          // Ignore transient pause/play events right after seek
+          return;
+        } else {
+          // Sync play/pause
+          if (data.playing && !isPlaying) {
+            playYouTubeVideo();
+          } else if (!data.playing && isPlaying) {
+            pauseYouTubeVideo();
+          }
         }
       }
 
-      // Sync current time (with 2 second tolerance)
+      // Sync current time with tolerance
       if (data.currentTime !== undefined) {
         const currentTime = getYouTubeCurrentTime();
         const timeDiff = Math.abs(currentTime - data.currentTime);
-        if (timeDiff > 2) {
+        if (timeDiff > 0.3 && !justSeeked) {
           seekYouTubeVideo(data.currentTime);
+          // After seek, ensure correct play/pause state
+          setTimeout(() => {
+            if (data.playing) {
+              playYouTubeVideo();
+            } else {
+              pauseYouTubeVideo();
+            }
+          }, 500); // 500ms after seek
         }
       }
     } else if (!data.isYouTube && sharedVideo.src) {
-      // Regular video sync
-      if (data.playing !== undefined && sharedVideo.paused === data.playing) {
-        if (data.playing) {
+      // Regular video sync (no debounce needed)
+      if (data.playing !== undefined) {
+        if (data.playing && sharedVideo.paused) {
           sharedVideo.play().catch((e) => console.warn('Play failed:', e));
-        } else {
+        } else if (!data.playing && !sharedVideo.paused) {
           sharedVideo.pause();
         }
       }
 
-      // Sync current time (with 2 second tolerance)
+      // Sync current time
       if (data.currentTime !== undefined) {
         const timeDiff = Math.abs(sharedVideo.currentTime - data.currentTime);
-        if (timeDiff > 2) {
+        if (timeDiff > 1) {
           sharedVideo.currentTime = data.currentTime;
+          if (data.playing) {
+            sharedVideo.play().catch((e) => console.warn('Play failed:', e));
+          } else {
+            sharedVideo.pause();
+          }
         }
       }
     }
@@ -465,45 +514,56 @@ function setupWatchSync() {
   onValue(watchRef, watchCallback);
   trackListener(watchRef, watchCallback);
 
-  // If initiator, send local video state changes to Firebase
-  if (role === 'initiator') {
-    // Regular video element listeners
-    sharedVideo.addEventListener('play', () => {
-      if (!ytPlayer) {
-        const watchRef = ref(db, `rooms/${roomId}/watch`);
-        update(watchRef, { playing: true, isYouTube: false });
-      }
-    });
+  // Regular video element listeners
+  sharedVideo.addEventListener('play', () => {
+    if (!ytPlayer && roomId) {
+      lastLocalAction = Date.now();
+      // const watchRef = ref(db, `rooms/${roomId}/watch`);
+      update(watchRef, {
+        playing: true,
+        isYouTube: false,
+        updatedBy: peerId,
+      });
+    }
+  });
 
-    sharedVideo.addEventListener('pause', () => {
-      if (!ytPlayer) {
-        const watchRef = ref(db, `rooms/${roomId}/watch`);
-        update(watchRef, { playing: false, isYouTube: false });
-      }
-    });
+  sharedVideo.addEventListener('pause', () => {
+    if (!ytPlayer && roomId) {
+      lastLocalAction = Date.now();
+      // const watchRef = ref(db, `rooms/${roomId}/watch`);
+      update(watchRef, {
+        playing: false,
+        isYouTube: false,
+        updatedBy: peerId,
+      });
+    }
+  });
 
-    sharedVideo.addEventListener('seeked', () => {
-      if (!ytPlayer) {
-        const watchRef = ref(db, `rooms/${roomId}/watch`);
-        update(watchRef, {
-          currentTime: sharedVideo.currentTime,
-          isYouTube: false,
-        });
-      }
-    });
+  sharedVideo.addEventListener('seeked', () => {
+    if (!ytPlayer && roomId) {
+      lastLocalAction = Date.now();
+      // const watchRef = ref(db, `rooms/${roomId}/watch`);
+      update(watchRef, {
+        currentTime: sharedVideo.currentTime,
+        playing: !sharedVideo.paused,
+        isYouTube: false,
+        updatedBy: peerId,
+      });
+    }
+  });
 
-    // Periodic sync for regular videos (every 5 seconds)
-    setInterval(() => {
-      if (!ytPlayer && sharedVideo.src && !sharedVideo.paused) {
-        const watchRef = ref(db, `rooms/${roomId}/watch`);
-        update(watchRef, {
-          currentTime: sharedVideo.currentTime,
-          playing: !sharedVideo.paused,
-          isYouTube: false,
-        });
-      }
-    }, 5000);
-  }
+  // Periodic sync for regular videos (every 5 seconds)
+  syncInterval = setInterval(() => {
+    if (!ytPlayer && sharedVideo.src && !sharedVideo.paused && roomId) {
+      // const watchRef = ref(db, `rooms/${roomId}/watch`);
+      update(watchRef, {
+        currentTime: sharedVideo.currentTime,
+        playing: !sharedVideo.paused,
+        isYouTube: false,
+        updatedBy: peerId,
+      });
+    }
+  }, 5000);
 
   if (import.meta.env.DEV) {
     console.log('Watch sync setup complete for role:', role);
@@ -518,6 +578,8 @@ function loadStream() {
     return;
   }
 
+  lastLocalAction = Date.now();
+
   if (isYouTubeUrl(url)) {
     loadYouTubeVideoWithSync(url);
   } else {
@@ -531,14 +593,15 @@ function loadStream() {
     if (ytContainer) ytContainer.style.display = 'none';
   }
 
-  // Sync to Firebase if in a room
-  if (roomId && role === 'initiator') {
+  // Both participants can sync to Firebase
+  if (roomId) {
     const watchRef = ref(db, `rooms/${roomId}/watch`);
     set(watchRef, {
       url: url,
       playing: false,
       currentTime: 0,
       isYouTube: isYouTubeUrl(url),
+      updatedBy: peerId,
     });
   }
 }
@@ -552,6 +615,8 @@ function handleVideoSelection(video) {
 // ============================================================================
 // YOUTUBE PLAYER INTEGRATION
 // ============================================================================
+
+let ytSeekInProgress = false;
 
 async function loadYouTubeVideoWithSync(url) {
   const videoId = extractYouTubeId(url);
@@ -586,32 +651,58 @@ async function loadYouTubeVideoWithSync(url) {
         ytReady = true;
         syncStatus.textContent = 'YouTube video ready';
 
-        // If initiator, set initial state in Firebase
-        if (role === 'initiator' && roomId) {
+        // Both participants can set initial state in Firebase
+        if (roomId) {
           const watchRef = ref(db, `rooms/${roomId}/watch`);
           set(watchRef, {
             url: url,
             playing: false,
             currentTime: 0,
             isYouTube: true,
+            updatedBy: peerId,
           });
         }
       },
       onStateChange: (event) => {
-        // Only initiator sends state changes
-        if (role === 'initiator' && roomId) {
-          const watchRef = ref(db, `rooms/${roomId}/watch`);
-          const player = getYouTubePlayer();
+        const watchRef = ref(db, `rooms/${roomId}/watch`);
+        const player = getYouTubePlayer();
 
-          if (player) {
-            const playing = event.data === YT_STATE.PLAYING;
-            const currentTime = getYouTubeCurrentTime();
+        if (!player) return;
 
+        const playing = event.data === YT_STATE.PLAYING;
+        const paused = event.data === YT_STATE.PAUSED;
+        const buffering = event.data === YT_STATE.BUFFERING;
+
+        // When buffering (seek started), mark justSeeked true and store intended state
+        if (buffering) {
+          justSeeked = true;
+          if (seekDebounceTimeout) clearTimeout(seekDebounceTimeout);
+          seekDebounceTimeout = setTimeout(() => {
+            justSeeked = false;
+            // After debounce timeout, send stable state
+            const actualState = getYouTubePlayerState();
+            const stablePlaying = actualState === YT_STATE.PLAYING;
             update(watchRef, {
-              playing: playing,
-              currentTime: currentTime,
+              playing: stablePlaying,
+              currentTime: getYouTubeCurrentTime(),
+              updatedBy: peerId,
             });
-          }
+          }, 700);
+          return; // Don't send state update immediately on BUFFERING
+        }
+
+        // If event is PAUSED during debounce window, ignore to prevent toggling
+        if (paused && justSeeked) {
+          return; // Ignore this transient pause event right after seek
+        }
+
+        // If outside debounce window, on PAUSED or PLAYING send updates normally
+        if (!justSeeked && (playing || paused)) {
+          update(watchRef, {
+            playing: playing,
+            currentTime: getYouTubeCurrentTime(),
+            updatedBy: peerId,
+          });
         }
       },
     });
@@ -783,6 +874,8 @@ pipBtn.onclick = async () => {
 // HANG UP / CLEANUP
 // ============================================================================
 async function hangUp() {
+  console.debug('Hanging up...');
+
   // Stop local media
   if (localStream) {
     localStream.getTracks().forEach((track) => track.stop());
@@ -817,6 +910,19 @@ async function hangUp() {
   const ytContainer = document.getElementById('ytPlayerContainer');
   if (ytContainer) {
     ytContainer.remove();
+  }
+
+  // Clear debounce timeout if any
+  if (seekDebounceTimeout) {
+    clearTimeout(seekDebounceTimeout);
+    seekDebounceTimeout = null;
+  }
+  justSeeked = false;
+
+  // Clear periodic sync interval if stored (e.g., store in let syncInterval)
+  if (syncInterval) {
+    clearInterval(syncInterval);
+    syncInterval = null;
   }
 
   // Remove room from Firebase (optional - rooms can auto-expire)
@@ -939,13 +1045,21 @@ async function autoJoinFromUrl() {
 // INITIALIZE ON PAGE LOAD
 // ============================================================================
 
-// Handle page leave warning
-window.addEventListener('beforeunload', (event) => {
-  if (pc && pc.connectionState === 'connected') {
-    event.preventDefault();
-    event.returnValue = '';
+// Handle page leave
+window.addEventListener('beforeunload', (e) => {
+  // Trigger browser's generic "leave page?" dialog if in active call (in PROD)
+  if (import.meta.env.PROD && pc && pc.connectionState === 'connected') {
+    e.preventDefault();
+    e.returnValue = // NOTE: Modern browsers ignore returnValue text
+      'You are in an active call. Are you sure you want to leave?';
+    return e.returnValue;
   }
+
+  // Clean up resources
+  hangUp();
 });
+
+// window.onload = () => { };
 
 // Touch controls for mobile (show/hide buttons on tap)
 document.querySelectorAll('.video-wrapper').forEach((wrapper) => {
@@ -965,15 +1079,3 @@ document.querySelectorAll('.video-wrapper').forEach((wrapper) => {
 
 // Auto-join if room parameter exists
 autoJoinFromUrl();
-
-// Warn user before leaving page during active call
-window.addEventListener('beforeunload', (e) => {
-  if (pc && pc.connectionState === 'connected') {
-    // Trigger browser's generic "leave page?" dialog
-    e.preventDefault();
-    // NOTE: Modern browsers ignore returnValue text
-    e.returnValue =
-      'You are in an active call. Are you sure you want to leave?';
-    return e.returnValue;
-  }
-});
