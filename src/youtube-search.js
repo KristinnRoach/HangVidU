@@ -9,6 +9,7 @@ let onVideoSelectCallback = null;
 let hasLoadedResults = false;
 let isDisplayingSearchResults = false;
 let lastSearchQuery = '';
+let focusedResultIndex = -1;
 
 // ===== API CONFIGURATION =====
 const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
@@ -34,6 +35,23 @@ export function initializeSearchUI(onVideoSelect) {
     return;
   }
 
+  const isDirectUrl = (str) => {
+    return /^https?:\/\//i.test(str);
+  };
+
+  const focusResult = (index) => {
+    const items = searchResults.querySelectorAll('.search-result-item');
+    items.forEach((item, i) => {
+      if (i === index) {
+        item.classList.add('focused');
+        item.scrollIntoView({ block: 'nearest' });
+      } else {
+        item.classList.remove('focused');
+      }
+    });
+    focusedResultIndex = index;
+  };
+
   // Add search button event listener
   searchBtn.onclick = async () => {
     const query = searchQuery.value.trim();
@@ -41,18 +59,69 @@ export function initializeSearchUI(onVideoSelect) {
       showError('Please enter a search term');
       return;
     }
-
-    await searchYouTube(query);
+    if (hasLoadedResults && query === lastSearchQuery) {
+      displaySearchResults(searchResultsCache);
+    } else if (!isDirectUrl(query)) {
+      await searchYouTube(query);
+    } else {
+      // Treat as direct video link
+      if (onVideoSelectCallback) {
+        onVideoSelectCallback({
+          url: query,
+          title: query,
+          channel: '',
+          thumbnail: '',
+          id: query,
+        });
+      }
+      searchResults.style.display = 'none';
+      searchQuery.value = '';
+      return;
+    }
   };
 
   searchContainer.addEventListener('keydown', async (e) => {
+    const items = searchResults.querySelectorAll('.search-result-item');
+    if (items.length > 0 && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      e.preventDefault();
+      if (e.key === 'ArrowDown') {
+        let next = focusedResultIndex + 1;
+        if (next >= items.length) next = 0;
+        focusResult(next);
+      } else if (e.key === 'ArrowUp') {
+        let prev = focusedResultIndex - 1;
+        if (prev < 0) prev = items.length - 1;
+        focusResult(prev);
+      }
+      return;
+    }
+
     if (e.key === 'Enter') {
+      // If a result is focused, select it
+      if (items.length > 0 && focusedResultIndex >= 0) {
+        items[focusedResultIndex].click();
+        return;
+      }
       const query = searchQuery.value.trim();
       if (query) {
         if (hasLoadedResults && query === lastSearchQuery) {
           displaySearchResults(searchResultsCache);
-        } else {
+        } else if (!isDirectUrl(query)) {
           await searchYouTube(query);
+        } else {
+          // Treat as direct video link
+          if (onVideoSelectCallback) {
+            onVideoSelectCallback({
+              url: query,
+              title: query,
+              channel: '',
+              thumbnail: '',
+              id: query,
+            });
+          }
+          searchResults.style.display = 'none';
+          searchQuery.value = '';
+          return;
         }
       }
     } else if (e.key === 'Escape' && isDisplayingSearchResults) {
@@ -149,6 +218,7 @@ function displaySearchResults(results) {
 
   if (!results || results.length === 0) {
     searchResults.innerHTML = '<div class="no-results">No results found</div>';
+    focusedResultIndex = -1;
     return;
   }
 
@@ -173,6 +243,7 @@ function displaySearchResults(results) {
         // Clear search input
         const searchQuery = document.getElementById('searchQuery');
         if (searchQuery) searchQuery.value = '';
+        focusedResultIndex = -1;
       }
     };
 
@@ -181,6 +252,19 @@ function displaySearchResults(results) {
 
   searchResults.style.display = 'block';
   isDisplayingSearchResults = true;
+
+  // Focus the first result
+  focusedResultIndex = 0;
+
+  const items = searchResults.querySelectorAll('.search-result-item');
+  items.forEach((item, i) => {
+    if (i === focusedResultIndex) {
+      item.classList.add('focused');
+      item.scrollIntoView({ block: 'nearest' });
+    } else {
+      item.classList.remove('focused');
+    }
+  });
 }
 
 /**

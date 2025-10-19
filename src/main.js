@@ -29,7 +29,7 @@ import {
   statusDiv,
   linkContainer,
   watchContainer,
-  videoContainer,
+  chatContainer,
   shareLink,
   streamUrlInput,
   syncStatus,
@@ -248,7 +248,7 @@ async function createCall() {
   };
 
   onValue(answerRef, answerCallback);
-  trackListener(answerRef, answerCallback);
+  trackListener(answerRef, 'value', answerCallback);
 
   // Listen for ICE candidates from joiner
   const calleeCandidatesRef = ref(db, `rooms/${roomId}/calleeCandidates`);
@@ -262,7 +262,7 @@ async function createCall() {
   };
 
   onChildAdded(calleeCandidatesRef, calleeCallback);
-  trackListener(calleeCandidatesRef, calleeCallback);
+  trackListener(calleeCandidatesRef, 'child_added', calleeCallback);
 
   // Setup watch-together sync
   setupWatchSync();
@@ -366,7 +366,7 @@ async function answerCall() {
   };
 
   onChildAdded(callerCandidatesRef, callerCallback);
-  trackListener(callerCandidatesRef, callerCallback);
+  trackListener(callerCandidatesRef, 'child_added', callerCallback);
 
   // Set remote description (offer)
   await pc.setRemoteDescription(new RTCSessionDescription(offer));
@@ -399,6 +399,16 @@ async function answerCall() {
 let justSeeked = false;
 let seekDebounceTimeout = null;
 let syncInterval = null;
+
+// UTILS
+function updateWatchState(updates) {
+  if (!roomId) return;
+  const watchRef = ref(db, `rooms/${roomId}/watch`);
+  update(watchRef, {
+    ...updates,
+    updatedBy: peerId,
+  });
+}
 
 function setupWatchSync() {
   if (!roomId) return;
@@ -451,10 +461,9 @@ function setupWatchSync() {
             // Send final state after seek settles
             const finalState = getYouTubePlayerState();
             const finalPlaying = finalState === YT_STATE.PLAYING;
-            update(ref(db, `rooms/${roomId}/watch`), {
+            updateWatchState({
               playing: finalPlaying,
               currentTime: getYouTubeCurrentTime(),
-              updatedBy: peerId,
             });
           }, 700);
         } else if (justSeeked) {
@@ -512,58 +521,45 @@ function setupWatchSync() {
   };
 
   onValue(watchRef, watchCallback);
-  trackListener(watchRef, watchCallback);
+  trackListener(watchRef, 'value', watchCallback);
 
   // Regular video element listeners
   sharedVideo.addEventListener('play', () => {
     if (!ytPlayer && roomId) {
       lastLocalAction = Date.now();
-      // const watchRef = ref(db, `rooms/${roomId}/watch`);
-      update(watchRef, {
-        playing: true,
-        isYouTube: false,
-        updatedBy: peerId,
-      });
+      updateWatchState({ playing: true, isYouTube: false });
     }
   });
 
   sharedVideo.addEventListener('pause', () => {
     if (!ytPlayer && roomId) {
       lastLocalAction = Date.now();
-      // const watchRef = ref(db, `rooms/${roomId}/watch`);
-      update(watchRef, {
-        playing: false,
-        isYouTube: false,
-        updatedBy: peerId,
-      });
+      updateWatchState({ playing: false, isYouTube: false });
     }
   });
 
   sharedVideo.addEventListener('seeked', () => {
     if (!ytPlayer && roomId) {
       lastLocalAction = Date.now();
-      // const watchRef = ref(db, `rooms/${roomId}/watch`);
-      update(watchRef, {
+      updateWatchState({
         currentTime: sharedVideo.currentTime,
         playing: !sharedVideo.paused,
         isYouTube: false,
-        updatedBy: peerId,
       });
     }
   });
 
+  // NOTE: Possibly redundant, removed for now.
   // Periodic sync for regular videos (every 5 seconds)
-  syncInterval = setInterval(() => {
-    if (!ytPlayer && sharedVideo.src && !sharedVideo.paused && roomId) {
-      // const watchRef = ref(db, `rooms/${roomId}/watch`);
-      update(watchRef, {
-        currentTime: sharedVideo.currentTime,
-        playing: !sharedVideo.paused,
-        isYouTube: false,
-        updatedBy: peerId,
-      });
-    }
-  }, 5000);
+  // syncInterval = setInterval(() => {
+  //   if (!ytPlayer && sharedVideo.src && !sharedVideo.paused && roomId) {
+  //     updateWatchState({
+  //       currentTime: sharedVideo.currentTime,
+  //       playing: !sharedVideo.paused,
+  //       isYouTube: false,
+  //     });
+  //   }
+  // }, 5000);
 
   if (import.meta.env.DEV) {
     console.log('Watch sync setup complete for role:', role);
@@ -583,13 +579,14 @@ function loadStream() {
   if (isYouTubeUrl(url)) {
     loadYouTubeVideoWithSync(url);
   } else {
+    // Hide YouTube container and destroy player if switching to direct video
+    ytContainer.style.display = 'none';
+    destroyYouTubePlayer();
+
     // Show regular video element
     sharedVideo.style.display = 'block';
     sharedVideo.src = url;
     syncStatus.textContent = 'Video loaded';
-
-    // Hide YouTube container
-    ytContainer.style.display = 'none';
   }
 
   // Both participants can sync to Firebase
@@ -614,8 +611,6 @@ function handleVideoSelection(video) {
 // ============================================================================
 // YOUTUBE PLAYER INTEGRATION
 // ============================================================================
-
-let ytSeekInProgress = false;
 
 async function loadYouTubeVideoWithSync(url) {
   const videoId = extractYouTubeId(url);
@@ -655,9 +650,7 @@ async function loadYouTubeVideoWithSync(url) {
         }
       },
       onStateChange: (event) => {
-        const watchRef = ref(db, `rooms/${roomId}/watch`);
         const player = getYouTubePlayer();
-
         if (!player) return;
 
         const playing = event.data === YT_STATE.PLAYING;
@@ -673,10 +666,10 @@ async function loadYouTubeVideoWithSync(url) {
             // After debounce timeout, send stable state
             const actualState = getYouTubePlayerState();
             const stablePlaying = actualState === YT_STATE.PLAYING;
-            update(watchRef, {
+
+            updateWatchState({
               playing: stablePlaying,
               currentTime: getYouTubeCurrentTime(),
-              updatedBy: peerId,
             });
           }, 700);
           return; // Don't send state update immediately on BUFFERING
@@ -689,10 +682,9 @@ async function loadYouTubeVideoWithSync(url) {
 
         // If outside debounce window, on PAUSED or PLAYING send updates normally
         if (!justSeeked && (playing || paused)) {
-          update(watchRef, {
+          updateWatchState({
             playing: playing,
             currentTime: getYouTubeCurrentTime(),
-            updatedBy: peerId,
           });
         }
       },
@@ -718,7 +710,7 @@ function toggleWatchMode() {
   watchMode = !watchMode;
 
   if (watchMode) {
-    videoContainer.style.display = 'none';
+    chatContainer.style.display = 'none';
     watchContainer.style.display = 'block';
     toggleModeBtn.textContent = 'Switch to Chat Mode';
     syncStatus.textContent =
@@ -726,14 +718,14 @@ function toggleWatchMode() {
 
     initializeSearchUI(handleVideoSelection);
   } else {
-    videoContainer.style.display = 'flex';
+    chatContainer.style.display = 'flex';
     watchContainer.style.display = 'none';
     toggleModeBtn.textContent = 'Switch to Watch Mode';
 
     // Hide YouTube player when switching back to chat
     clearSearchResults();
     ytContainer.style.display = 'none';
-    sharedVideo.style.display = 'block';
+    sharedVideo.style.display = 'none';
   }
 }
 
@@ -883,9 +875,10 @@ async function hangUp() {
   }
 
   // Remove Firebase listeners
-  firebaseListeners.forEach(({ ref: fbRef, callback }) => {
-    off(fbRef, 'value', callback);
-    off(fbRef, 'child_added', callback);
+  firebaseListeners.forEach(({ ref: fbRef, type, callback }) => {
+    off(fbRef, type, callback);
+    // off(fbRef, 'value', callback);
+    // off(fbRef, 'child_added', callback);
   });
   firebaseListeners.length = 0;
 
@@ -922,11 +915,11 @@ async function hangUp() {
   hangUpBtn.disabled = true;
   linkContainer.style.display = 'none';
   watchContainer.style.display = 'none';
-  videoContainer.style.display = 'flex';
+  chatContainer.style.display = 'flex';
   pipBtn.style.display = 'none';
   shareLink.value = '';
   sharedVideo.src = '';
-  sharedVideo.style.display = 'block';
+  sharedVideo.style.display = 'none';
   streamUrlInput.value = '';
   syncStatus.textContent = '';
 
@@ -984,8 +977,8 @@ function updateStatus(message) {
   }
 }
 
-function trackListener(fbRef, callback) {
-  firebaseListeners.push({ ref: fbRef, callback });
+function trackListener(fbRef, type, callback) {
+  firebaseListeners.push({ ref: fbRef, type, callback });
 }
 
 function disableTitleLink() {
