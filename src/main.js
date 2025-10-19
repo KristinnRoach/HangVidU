@@ -29,7 +29,7 @@ import {
   statusDiv,
   linkContainer,
   watchContainer,
-  videoContainer,
+  chatContainer,
   shareLink,
   streamUrlInput,
   syncStatus,
@@ -248,7 +248,7 @@ async function createCall() {
   };
 
   onValue(answerRef, answerCallback);
-  trackListener(answerRef, answerCallback);
+  trackListener(answerRef, 'value', answerCallback);
 
   // Listen for ICE candidates from joiner
   const calleeCandidatesRef = ref(db, `rooms/${roomId}/calleeCandidates`);
@@ -262,7 +262,7 @@ async function createCall() {
   };
 
   onChildAdded(calleeCandidatesRef, calleeCallback);
-  trackListener(calleeCandidatesRef, calleeCallback);
+  trackListener(calleeCandidatesRef, 'child_added', calleeCallback);
 
   // Setup watch-together sync
   setupWatchSync();
@@ -366,7 +366,7 @@ async function answerCall() {
   };
 
   onChildAdded(callerCandidatesRef, callerCallback);
-  trackListener(callerCandidatesRef, callerCallback);
+  trackListener(callerCandidatesRef, 'child_added', callerCallback);
 
   // Set remote description (offer)
   await pc.setRemoteDescription(new RTCSessionDescription(offer));
@@ -521,7 +521,7 @@ function setupWatchSync() {
   };
 
   onValue(watchRef, watchCallback);
-  trackListener(watchRef, watchCallback);
+  trackListener(watchRef, 'value', watchCallback);
 
   // Regular video element listeners
   sharedVideo.addEventListener('play', () => {
@@ -549,16 +549,17 @@ function setupWatchSync() {
     }
   });
 
+  // NOTE: Possibly redundant, removed for now.
   // Periodic sync for regular videos (every 5 seconds)
-  syncInterval = setInterval(() => {
-    if (!ytPlayer && sharedVideo.src && !sharedVideo.paused && roomId) {
-      updateWatchState({
-        currentTime: sharedVideo.currentTime,
-        playing: !sharedVideo.paused,
-        isYouTube: false,
-      });
-    }
-  }, 5000);
+  // syncInterval = setInterval(() => {
+  //   if (!ytPlayer && sharedVideo.src && !sharedVideo.paused && roomId) {
+  //     updateWatchState({
+  //       currentTime: sharedVideo.currentTime,
+  //       playing: !sharedVideo.paused,
+  //       isYouTube: false,
+  //     });
+  //   }
+  // }, 5000);
 
   if (import.meta.env.DEV) {
     console.log('Watch sync setup complete for role:', role);
@@ -648,9 +649,7 @@ async function loadYouTubeVideoWithSync(url) {
         }
       },
       onStateChange: (event) => {
-        const watchRef = ref(db, `rooms/${roomId}/watch`);
         const player = getYouTubePlayer();
-
         if (!player) return;
 
         const playing = event.data === YT_STATE.PLAYING;
@@ -710,7 +709,7 @@ function toggleWatchMode() {
   watchMode = !watchMode;
 
   if (watchMode) {
-    videoContainer.style.display = 'none';
+    chatContainer.style.display = 'none';
     watchContainer.style.display = 'block';
     toggleModeBtn.textContent = 'Switch to Chat Mode';
     syncStatus.textContent =
@@ -718,14 +717,14 @@ function toggleWatchMode() {
 
     initializeSearchUI(handleVideoSelection);
   } else {
-    videoContainer.style.display = 'flex';
+    chatContainer.style.display = 'flex';
     watchContainer.style.display = 'none';
     toggleModeBtn.textContent = 'Switch to Watch Mode';
 
     // Hide YouTube player when switching back to chat
     clearSearchResults();
     ytContainer.style.display = 'none';
-    sharedVideo.style.display = 'block';
+    sharedVideo.style.display = 'none';
   }
 }
 
@@ -875,9 +874,10 @@ async function hangUp() {
   }
 
   // Remove Firebase listeners
-  firebaseListeners.forEach(({ ref: fbRef, callback }) => {
-    off(fbRef, 'value', callback);
-    off(fbRef, 'child_added', callback);
+  firebaseListeners.forEach(({ ref: fbRef, type, callback }) => {
+    off(fbRef, type, callback);
+    // off(fbRef, 'value', callback);
+    // off(fbRef, 'child_added', callback);
   });
   firebaseListeners.length = 0;
 
@@ -914,11 +914,11 @@ async function hangUp() {
   hangUpBtn.disabled = true;
   linkContainer.style.display = 'none';
   watchContainer.style.display = 'none';
-  videoContainer.style.display = 'flex';
+  chatContainer.style.display = 'flex';
   pipBtn.style.display = 'none';
   shareLink.value = '';
   sharedVideo.src = '';
-  sharedVideo.style.display = 'block';
+  sharedVideo.style.display = 'none';
   streamUrlInput.value = '';
   syncStatus.textContent = '';
 
@@ -976,8 +976,8 @@ function updateStatus(message) {
   }
 }
 
-function trackListener(fbRef, callback) {
-  firebaseListeners.push({ ref: fbRef, callback });
+function trackListener(fbRef, type, callback) {
+  firebaseListeners.push({ ref: fbRef, type, callback });
 }
 
 function disableTitleLink() {
