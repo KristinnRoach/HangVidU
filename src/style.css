@@ -266,8 +266,8 @@ button:disabled {
 }
 
 #yt-iframe {
-  margin: 0 auto;
-  display: block;
+  background-color: #000000;
+  /* display: block; */
 }
 
 .sync-status {
@@ -390,7 +390,8 @@ button:disabled {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-*/ .url-section {
+
+.url-section {
   width: 100%;
   max-width: 900px;
   margin: 0 auto 20px auto;

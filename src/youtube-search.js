@@ -6,6 +6,9 @@
 // ===== STATE =====
 let searchResultsCache = [];
 let onVideoSelectCallback = null;
+let hasLoadedResults = false;
+let isDisplayingSearchResults = false;
+let lastSearchQuery = '';
 
 // ===== API CONFIGURATION =====
 const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
@@ -21,6 +24,7 @@ export function initializeSearchUI(onVideoSelect) {
   onVideoSelectCallback = onVideoSelect;
 
   // Get DOM elements
+  const searchContainer = document.querySelector('.search-section');
   const searchBtn = document.getElementById('searchBtn');
   const searchQuery = document.getElementById('searchQuery');
   const searchResults = document.getElementById('searchResults');
@@ -41,13 +45,18 @@ export function initializeSearchUI(onVideoSelect) {
     await searchYouTube(query);
   };
 
-  // Allow Enter key to trigger search
-  searchQuery.addEventListener('keypress', async (e) => {
+  searchContainer.addEventListener('keydown', async (e) => {
     if (e.key === 'Enter') {
       const query = searchQuery.value.trim();
       if (query) {
-        await searchYouTube(query);
+        if (hasLoadedResults && query === lastSearchQuery) {
+          displaySearchResults(searchResultsCache);
+        } else {
+          await searchYouTube(query);
+        }
       }
+    } else if (e.key === 'Escape' && isDisplayingSearchResults) {
+      searchResults.style.display = 'none';
     }
   });
 
@@ -68,6 +77,8 @@ export function initializeSearchUI(onVideoSelect) {
  * @param {string} query - Search query
  */
 async function searchYouTube(query) {
+  lastSearchQuery = query;
+
   const searchBtn = document.getElementById('searchBtn');
   const searchResults = document.getElementById('searchResults');
 
@@ -82,6 +93,7 @@ async function searchYouTube(query) {
   searchResults.innerHTML =
     '<div class="search-loading">Searching YouTube...</div>';
   searchResults.style.display = 'block';
+  hasLoadedResults = false;
 
   try {
     const response = await fetch(
@@ -104,6 +116,7 @@ async function searchYouTube(query) {
 
     if (!data.items || data.items.length === 0) {
       showError('No videos found');
+      hasLoadedResults = false;
       return;
     }
 
@@ -117,6 +130,7 @@ async function searchYouTube(query) {
     }));
 
     displaySearchResults(searchResultsCache);
+    hasLoadedResults = true;
   } catch (error) {
     console.error('YouTube search failed:', error);
     showError(error.message || 'Search failed. Please try again.');
@@ -166,6 +180,7 @@ function displaySearchResults(results) {
   });
 
   searchResults.style.display = 'block';
+  isDisplayingSearchResults = true;
 }
 
 /**

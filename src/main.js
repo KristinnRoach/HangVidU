@@ -42,7 +42,8 @@ import {
   videoSelfBtn,
   switchCameraSelfBtn,
   fullscreenSelfBtn,
-} from './app/elements.js';
+  ytContainer,
+} from './elements.js';
 
 import {
   isYouTubeUrl,
@@ -425,9 +426,8 @@ function setupWatchSync() {
         // Regular video
         sharedVideo.style.display = 'block';
         sharedVideo.src = data.url;
-        // Hide YouTube container if it exists
-        const ytContainer = document.getElementById('ytPlayerContainer');
-        if (ytContainer) ytContainer.style.display = 'none';
+        // Hide YouTube container
+        ytContainer.style.display = 'none';
       }
       syncStatus.textContent = 'Video loaded';
     }
@@ -588,9 +588,8 @@ function loadStream() {
     sharedVideo.src = url;
     syncStatus.textContent = 'Video loaded';
 
-    // Hide YouTube container if it exists
-    const ytContainer = document.getElementById('ytPlayerContainer');
-    if (ytContainer) ytContainer.style.display = 'none';
+    // Hide YouTube container
+    ytContainer.style.display = 'none';
   }
 
   // Both participants can sync to Firebase
@@ -631,22 +630,14 @@ async function loadYouTubeVideoWithSync(url) {
   // Hide regular video element
   sharedVideo.style.display = 'none';
 
-  // Get or create YouTube container
-  let ytContainer = document.getElementById('ytPlayerContainer');
-  if (!ytContainer) {
-    ytContainer = document.createElement('div');
-    ytContainer.id = 'ytPlayerContainer';
-    ytContainer.style.width = '100%';
-    ytContainer.style.height = '100%';
-    sharedVideo.parentElement.appendChild(ytContainer);
-  }
+  // Show YouTube container
   ytContainer.style.display = 'block';
 
   try {
     // Load YouTube player
     await loadYouTubeVideo({
       url: url,
-      containerId: 'ytPlayerContainer',
+      containerId: 'yt-player-div',
       onReady: (event) => {
         ytReady = true;
         syncStatus.textContent = 'YouTube video ready';
@@ -715,7 +706,7 @@ async function loadYouTubeVideoWithSync(url) {
 
     // Fallback to showing regular video element
     sharedVideo.style.display = 'block';
-    if (ytContainer) ytContainer.style.display = 'none';
+    ytContainer.style.display = 'none';
   }
 }
 
@@ -740,12 +731,8 @@ function toggleWatchMode() {
     toggleModeBtn.textContent = 'Switch to Watch Mode';
 
     // Hide YouTube player when switching back to chat
-    const ytContainer = document.getElementById('ytPlayerContainer');
-
     clearSearchResults();
-    if (ytContainer) {
-      ytContainer.style.display = 'none';
-    }
+    ytContainer.style.display = 'none';
     sharedVideo.style.display = 'block';
   }
 }
@@ -906,11 +893,7 @@ async function hangUp() {
   destroyYouTubePlayer();
   ytPlayer = null;
   ytReady = false;
-
-  const ytContainer = document.getElementById('ytPlayerContainer');
-  if (ytContainer) {
-    ytContainer.remove();
-  }
+  ytContainer.style.display = 'none';
 
   // Clear debounce timeout if any
   if (seekDebounceTimeout) {

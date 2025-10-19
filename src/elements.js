@@ -17,6 +17,7 @@ export const loadStreamBtn = document.getElementById('loadStream');
 export const statusDiv = document.getElementById('status');
 export const linkContainer = document.getElementById('linkContainer');
 export const watchContainer = document.getElementById('watchContainer');
+export const ytContainer = document.getElementById('yt-player-div');
 export const videoContainer = document.querySelector('.video-container');
 
 export const syncStatus = document.getElementById('syncStatus');
