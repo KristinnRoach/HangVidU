@@ -400,6 +400,16 @@ let justSeeked = false;
 let seekDebounceTimeout = null;
 let syncInterval = null;
 
+// UTILS
+function updateWatchState(updates) {
+  if (!roomId) return;
+  const watchRef = ref(db, `rooms/${roomId}/watch`);
+  update(watchRef, {
+    ...updates,
+    updatedBy: peerId,
+  });
+}
+
 function setupWatchSync() {
   if (!roomId) return;
 
@@ -451,10 +461,9 @@ function setupWatchSync() {
             // Send final state after seek settles
             const finalState = getYouTubePlayerState();
             const finalPlaying = finalState === YT_STATE.PLAYING;
-            update(ref(db, `rooms/${roomId}/watch`), {
+            updateWatchState({
               playing: finalPlaying,
               currentTime: getYouTubeCurrentTime(),
-              updatedBy: peerId,
             });
           }, 700);
         } else if (justSeeked) {
@@ -518,36 +527,24 @@ function setupWatchSync() {
   sharedVideo.addEventListener('play', () => {
     if (!ytPlayer && roomId) {
       lastLocalAction = Date.now();
-      // const watchRef = ref(db, `rooms/${roomId}/watch`);
-      update(watchRef, {
-        playing: true,
-        isYouTube: false,
-        updatedBy: peerId,
-      });
+      updateWatchState({ playing: true, isYouTube: false });
     }
   });
 
   sharedVideo.addEventListener('pause', () => {
     if (!ytPlayer && roomId) {
       lastLocalAction = Date.now();
-      // const watchRef = ref(db, `rooms/${roomId}/watch`);
-      update(watchRef, {
-        playing: false,
-        isYouTube: false,
-        updatedBy: peerId,
-      });
+      updateWatchState({ playing: false, isYouTube: false });
     }
   });
 
   sharedVideo.addEventListener('seeked', () => {
     if (!ytPlayer && roomId) {
       lastLocalAction = Date.now();
-      // const watchRef = ref(db, `rooms/${roomId}/watch`);
-      update(watchRef, {
+      updateWatchState({
         currentTime: sharedVideo.currentTime,
         playing: !sharedVideo.paused,
         isYouTube: false,
-        updatedBy: peerId,
       });
     }
   });
@@ -555,12 +552,10 @@ function setupWatchSync() {
   // Periodic sync for regular videos (every 5 seconds)
   syncInterval = setInterval(() => {
     if (!ytPlayer && sharedVideo.src && !sharedVideo.paused && roomId) {
-      // const watchRef = ref(db, `rooms/${roomId}/watch`);
-      update(watchRef, {
+      updateWatchState({
         currentTime: sharedVideo.currentTime,
         playing: !sharedVideo.paused,
         isYouTube: false,
-        updatedBy: peerId,
       });
     }
   }, 5000);
@@ -614,8 +609,6 @@ function handleVideoSelection(video) {
 // ============================================================================
 // YOUTUBE PLAYER INTEGRATION
 // ============================================================================
-
-let ytSeekInProgress = false;
 
 async function loadYouTubeVideoWithSync(url) {
   const videoId = extractYouTubeId(url);
@@ -673,10 +666,10 @@ async function loadYouTubeVideoWithSync(url) {
             // After debounce timeout, send stable state
             const actualState = getYouTubePlayerState();
             const stablePlaying = actualState === YT_STATE.PLAYING;
-            update(watchRef, {
+
+            updateWatchState({
               playing: stablePlaying,
               currentTime: getYouTubeCurrentTime(),
-              updatedBy: peerId,
             });
           }, 700);
           return; // Don't send state update immediately on BUFFERING
@@ -689,10 +682,9 @@ async function loadYouTubeVideoWithSync(url) {
 
         // If outside debounce window, on PAUSED or PLAYING send updates normally
         if (!justSeeked && (playing || paused)) {
-          update(watchRef, {
+          updateWatchState({
             playing: playing,
             currentTime: getYouTubeCurrentTime(),
-            updatedBy: peerId,
           });
         }
       },
