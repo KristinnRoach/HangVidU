@@ -2,10 +2,10 @@
 
     Youtube:
      - sync:
-        [] Ensure sync works both ways - all callers can pause, play, seek and others will sync
+        [x] Ensure sync works both ways - all callers can pause, play, seek and others will sync
         [] Make sync robust - test and optimize
      - search:
-        [] allow searching for videos without navigating to youtube if possible.
+        [x] allow searching for videos without navigating to youtube if possible.
 
 Bugfixes:
 
@@ -19,12 +19,9 @@ UI / UX:
         [] Plan, steering, specs and prioritized implementation roadmap
 
 
-    [] Detect and handle the case when connection is established but remoteVideo is blank/black - not streaming actual video (check if streams video track is muted, check readyState, dimensions, etc.. )
-
-    [] Handle page reload during call
+    [x] Detect and handle the case when connection is established but remoteVideo is blank/black - not streaming actual video (check if streams video track is muted, check readyState, dimensions, etc.. )
 
     [] Ensure robust fallbacks for maximum compatibility
-        - see src/utils/fallback/
 
 Core features:
 
