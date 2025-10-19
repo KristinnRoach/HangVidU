@@ -266,8 +266,8 @@ button:disabled {
 }
 
 #yt-iframe {
-  margin: 0 auto;
-  display: block;
+  background-color: #000000;
+  /* display: block; */
 }
 
 .sync-status {
@@ -305,6 +305,7 @@ button:disabled {
     width: 100%;
   }
 }
+/* 
 /* YouTube Search Styles */
 .search-section {
   width: 100%;

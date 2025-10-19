@@ -44,7 +44,7 @@ export function setStreamUrl(url) {
 }
 
 // ===== COMPATIBILITY STUBS =====
-// These functions exist in the WebRTC version but not in legacy
+// These functions exist in the WebRTC version but not in Firebase version
 // Adding stubs to maintain API compatibility
 
 export function getSyncStatusInfo() {
@@ -61,14 +61,14 @@ export function getSyncStatusInfo() {
 }
 
 export function triggerManualResync() {
-  // Legacy system doesn't need manual resync
+  // Firebase system doesn't need manual resync
   return Promise.resolve(false);
 }
 
 export function setAutoResyncEnabled(enabled) {
-  // Legacy system doesn't support auto resync
+  // Firebase system doesn't support auto resync
   if (import.meta.env.DEV) {
-    console.log('Auto resync not supported in legacy mode');
+    console.log('Auto resync not supported in Firebase mode');
   }
 }
 
@@ -88,7 +88,7 @@ export function getErrorDetails() {
 }
 
 export function executeTroubleshootingAction(action) {
-  // Legacy system doesn't support troubleshooting actions
+  // Firebase system doesn't support troubleshooting actions
   return Promise.resolve(false);
 }
 
@@ -99,7 +99,7 @@ function initializeSearchUI() {
   updateSearchAvailability();
 
   if (import.meta.env.DEV) {
-    console.log('YouTube search UI initialized for legacy watch mode');
+    console.log('YouTube search UI initialized for Firebase watch mode');
   }
 }
 
