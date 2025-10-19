@@ -579,13 +579,14 @@ function loadStream() {
   if (isYouTubeUrl(url)) {
     loadYouTubeVideoWithSync(url);
   } else {
+    // Hide YouTube container and destroy player if switching to direct video
+    ytContainer.style.display = 'none';
+    destroyYouTubePlayer();
+
     // Show regular video element
     sharedVideo.style.display = 'block';
     sharedVideo.src = url;
     syncStatus.textContent = 'Video loaded';
-
-    // Hide YouTube container
-    ytContainer.style.display = 'none';
   }
 
   // Both participants can sync to Firebase
