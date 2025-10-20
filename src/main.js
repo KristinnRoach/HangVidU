@@ -767,7 +767,7 @@ function addLocalVideoEventListeners() {
 muteSelfBtn.onclick = () => {
   if (!localVideo || !localStream) return;
   localVideo.muted = !localVideo.muted;
-  // This will trigger setMicrophoneEnabled via the volumechange listener
+  //  This will trigger setMicrophoneEnabled via the volumechange listener
 };
 
 // Mute/unmute partner
