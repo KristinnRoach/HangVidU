@@ -132,11 +132,9 @@ async function init() {
     });
 
     localVideo.srcObject = localStream;
-
-    // Auto-mute in development mode
-    if (import.meta.env.DEV && muteSelfBtn) {
-      setTimeout(() => muteSelfBtn.click(), 100);
-    }
+    // Ensure local video remains effectively muted when toggling mute in pip window
+    localVideo.volume = 0;
+    addLocalVideoEventListeners();
 
     return true;
   } catch (error) {
@@ -176,6 +174,7 @@ async function createCall() {
     if (remoteVideo.srcObject !== event.streams[0]) {
       remoteVideo.srcObject = event.streams[0];
       pipBtn.style.display = 'block';
+      addRemoteVideoEventListeners();
       updateStatus('Connected!');
     }
   };
@@ -328,6 +327,7 @@ async function answerCall() {
     if (remoteVideo.srcObject !== event.streams[0]) {
       remoteVideo.srcObject = event.streams[0];
       pipBtn.style.display = 'block';
+      addRemoteVideoEventListeners();
       updateStatus('Connected!');
     }
   };
@@ -418,7 +418,6 @@ function setupWatchSync() {
   // Listen for video state changes from partner
   const watchCallback = (snapshot) => {
     const data = snapshot.val();
-    console.debug('watchCallback, role:', role, 'snapshot.val(): ', data);
     if (!data) return;
 
     // Ignore updates we sent ourselves
@@ -733,21 +732,66 @@ function toggleWatchMode() {
 // UI CONTROLS - MEDIA CONTROLS (MUTE, VIDEO, FULLSCREEN)
 // ============================================================================
 
+// STATE
+let localPreviousMuted = localVideo?.muted || false;
+let remotePreviousMuted = remoteVideo?.muted || false;
+// let remotePreviousVolume = false;
+
 // Mute/unmute self
+
+const localVolumeChangeListener = () => {
+  // Volume stays at 0, this is only to sync the speaker icon of pip windows to the muteSelfBtn state
+  if (localVideo.muted !== localPreviousMuted) {
+    const icon = muteSelfBtn.querySelector('i');
+    icon.className = localVideo.muted
+      ? 'fa fa-microphone-slash'
+      : 'fa fa-microphone';
+    localPreviousMuted = localVideo.muted;
+  }
+};
+
+function addLocalVideoEventListeners() {
+  if (!localVideo) return;
+  localVideo.addEventListener('volumechange', localVolumeChangeListener);
+}
+
 muteSelfBtn.onclick = () => {
   if (!localStream) return;
 
   const audioTrack = localStream.getAudioTracks()[0];
   if (audioTrack) {
     audioTrack.enabled = !audioTrack.enabled;
-    const icon = muteSelfBtn.querySelector('i');
-    icon.className = audioTrack.enabled
-      ? 'fa fa-microphone'
-      : 'fa fa-microphone-slash';
   }
+  if (!localVideo) return;
+  // Always sync to pip button (doesnt matter if muted cause volume is 0)
+  localVideo.muted = !audioTrack.enabled;
 };
 
-// Toggle video on/off
+// Mute/unmute partner
+
+const remoteVolumeChangeListener = () => {
+  // Listen for volumechange (only event that fires on "muted") events
+  if (remoteVideo.muted !== remotePreviousMuted) {
+    const icon = mutePartnerBtn.querySelector('i');
+    icon.className = remoteVideo.muted // Sync with PIP button clicks
+      ? 'fa fa-volume-mute'
+      : 'fa fa-volume-up';
+    remotePreviousMuted = remoteVideo.muted;
+  }
+  // For possible future use -> if (remoteVideo.volume !== remotePreviousVolume) {}
+};
+
+function addRemoteVideoEventListeners() {
+  if (!remoteVideo) return;
+  remoteVideo.addEventListener('volumechange', remoteVolumeChangeListener);
+}
+
+mutePartnerBtn.onclick = () => {
+  if (!remoteVideo) return;
+  remoteVideo.muted = !remoteVideo.muted;
+};
+
+// Toggle own video stream on/off
 videoSelfBtn.onclick = () => {
   if (!localStream) return;
 
@@ -791,6 +835,7 @@ if (switchCameraSelfBtn) {
       // Update local video
       localStream = newStream;
       localVideo.srcObject = newStream;
+      //addLocalVideoEventListeners();
     } catch (error) {
       console.error('Failed to switch camera:', error);
     }
@@ -804,21 +849,6 @@ fullscreenSelfBtn.onclick = () => {
   } else if (localVideo.webkitRequestFullscreen) {
     localVideo.webkitRequestFullscreen();
   }
-};
-
-// Mute/unmute partner
-mutePartnerBtn.onclick = () => {
-  if (!remoteVideo.srcObject) return;
-
-  const audioTracks = remoteVideo.srcObject.getAudioTracks();
-  audioTracks.forEach((track) => {
-    track.enabled = !track.enabled;
-  });
-
-  const icon = mutePartnerBtn.querySelector('i');
-  icon.className = audioTracks[0]?.enabled
-    ? 'fa fa-volume-up'
-    : 'fa fa-volume-mute';
 };
 
 // Fullscreen for remote video
@@ -860,12 +890,14 @@ async function hangUp() {
     localStream.getTracks().forEach((track) => track.stop());
     localVideo.srcObject = null;
     localStream = null;
+    localVideo.removeEventListener('volumechange', localVolumeChangeListener);
   }
 
   // Stop remote media
   if (remoteVideo.srcObject) {
     remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
     remoteVideo.srcObject = null;
+    remoteVideo.removeEventListener('volumechange', remoteVolumeChangeListener);
   }
 
   // Close peer connection
@@ -922,6 +954,10 @@ async function hangUp() {
   sharedVideo.style.display = 'none';
   streamUrlInput.value = '';
   syncStatus.textContent = '';
+
+  if (document.pictureInPictureElement) {
+    document.exitPictureInPicture().catch((err) => console.error(err));
+  }
 
   // Reset state
   roomId = null;
