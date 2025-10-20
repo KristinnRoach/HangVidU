@@ -838,7 +838,7 @@ if (switchCameraSelfBtn) {
       // Update local video
       localStream = newStream;
       localVideo.srcObject = newStream;
-      //addLocalVideoEventListeners();
+      addLocalVideoEventListeners();
     } catch (error) {
       console.error('Failed to switch camera:', error);
     }
