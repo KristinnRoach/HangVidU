@@ -132,12 +132,9 @@ async function init() {
     });
 
     localVideo.srcObject = localStream;
-    // addLocalVideoEventListeners();
-
-    // Auto-mute in development mode
-    if (import.meta.env.DEV && muteSelfBtn) {
-      setTimeout(() => muteSelfBtn.click(), 100);
-    }
+    // Ensure local video remains effectively muted when toggling mute in pip window
+    localVideo.volume = 0;
+    addLocalVideoEventListeners();
 
     return true;
   } catch (error) {
@@ -735,49 +732,66 @@ function toggleWatchMode() {
 // UI CONTROLS - MEDIA CONTROLS (MUTE, VIDEO, FULLSCREEN)
 // ============================================================================
 
+// STATE
+let localPreviousMuted = localVideo?.muted || false;
+let remotePreviousMuted = remoteVideo?.muted || false;
+// let remotePreviousVolume = false;
+
 // Mute/unmute self
 
-// ? Verify whether mute affects mic volume sent to peer or just local speaker volume
-// let localPreviousMuted = localVideo?.muted || false;
-// let localPreviousVolume = false;
-
-// function addLocalVideoEventListeners() {
-//   if (!localVideo) return;
-//   localVideo.addEventListener('volumechange', () => {
-//     // Listen for volumechange events to sync with PIP button clicks
-//     if (localVideo.muted !== localPreviousMuted) {
-//       const icon = muteSelfBtn.querySelector('i');
-//       icon.className = localVideo.muted
-//         ? 'fa fa-microphone-slash'
-//         : 'fa fa-microphone';
-//       localPreviousMuted = localVideo.muted;
-//     }
-//     // If needed in future, track volume level changes here
-//     // if (localVideo.volume !== localPreviousVolume) {}
-//   });
-// }
-
-muteSelfBtn.onclick = () => {
-  if (!localVideo) return;
-
-  localVideo.volume = 0;
-
-  const audioTrack = localStream?.getAudioTracks()[0];
-  if (audioTrack) {
-    audioTrack.enabled = !audioTrack.enabled;
+const localVolumeChangeListener = () => {
+  // Volume stays at 0, this is only to sync the speaker icon of pip windows to the muteSelfBtn state
+  if (localVideo.muted !== localPreviousMuted) {
     const icon = muteSelfBtn.querySelector('i');
-    icon.className = !audioTrack.enabled
+    icon.className = localVideo.muted
       ? 'fa fa-microphone-slash'
       : 'fa fa-microphone';
-
-    // ? Verify volume issues, then delete or uncomment:
-    // // Sync to pip button (doesnt matter if muted cause volume is 0)
-    // localVideo.muted = audioTrack.enabled;
-    // localPreviousMuted = localVideo.muted;
+    localPreviousMuted = localVideo.muted;
   }
 };
 
-// Toggle video on/off
+function addLocalVideoEventListeners() {
+  if (!localVideo) return;
+  localVideo.addEventListener('volumechange', localVolumeChangeListener);
+}
+
+muteSelfBtn.onclick = () => {
+  if (!localStream) return;
+
+  const audioTrack = localStream.getAudioTracks()[0];
+  if (audioTrack) {
+    audioTrack.enabled = !audioTrack.enabled;
+  }
+  if (!localVideo) return;
+  // Always sync to pip button (doesnt matter if muted cause volume is 0)
+  localVideo.muted = !audioTrack.enabled;
+};
+
+// Mute/unmute partner
+
+const remoteVolumeChangeListener = () => {
+  // Listen for volumechange (only event that fires on "muted") events
+  if (remoteVideo.muted !== remotePreviousMuted) {
+    const icon = mutePartnerBtn.querySelector('i');
+    icon.className = remoteVideo.muted // Sync with PIP button clicks
+      ? 'fa fa-volume-mute'
+      : 'fa fa-volume-up';
+    remotePreviousMuted = remoteVideo.muted;
+  }
+  // For possible future use -> if (remoteVideo.volume !== remotePreviousVolume) {}
+};
+
+function addRemoteVideoEventListeners() {
+  if (!remoteVideo) return;
+  remoteVideo.addEventListener('volumechange', remoteVolumeChangeListener);
+}
+
+mutePartnerBtn.onclick = () => {
+  if (!remoteVideo) return;
+  remoteVideo.muted = !remoteVideo.muted;
+};
+
+// Toggle own video stream on/off
 videoSelfBtn.onclick = () => {
   if (!localStream) return;
 
@@ -837,35 +851,6 @@ fullscreenSelfBtn.onclick = () => {
   }
 };
 
-// Mute/unmute partner
-
-// Track previous state
-let remotePreviousMuted = remoteVideo?.muted || false;
-// let remotePreviousVolume = false;
-
-function addRemoteVideoEventListeners() {
-  if (!remoteVideo) return;
-  remoteVideo.addEventListener('volumechange', () => {
-    // Listen for volumechange events to sync with PIP button clicks
-    if (remoteVideo.muted !== remotePreviousMuted) {
-      const icon = mutePartnerBtn.querySelector('i');
-      icon.className = remoteVideo.muted
-        ? 'fa fa-volume-mute'
-        : 'fa fa-volume-up';
-      remotePreviousMuted = remoteVideo.muted;
-    }
-    // If needed in future, track volume level changes here
-    // if (remoteVideo.volume !== remotePreviousVolume) {}
-  });
-}
-
-mutePartnerBtn.onclick = () => {
-  if (!remoteVideo) return;
-  remoteVideo.muted = !remoteVideo.muted;
-  // const icon = mutePartnerBtn.querySelector('i');
-  // icon.className = remoteVideo.muted ? 'fa fa-volume-mute' : 'fa fa-volume-up';
-};
-
 // Fullscreen for remote video
 fullscreenPartnerBtn.onclick = () => {
   if (remoteVideo.requestFullscreen) {
@@ -905,14 +890,14 @@ async function hangUp() {
     localStream.getTracks().forEach((track) => track.stop());
     localVideo.srcObject = null;
     localStream = null;
-    localVideo.removeEventListener('volumechange', () => {});
+    localVideo.removeEventListener('volumechange', localVolumeChangeListener);
   }
 
   // Stop remote media
   if (remoteVideo.srcObject) {
     remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
     remoteVideo.srcObject = null;
-    remoteVideo.removeEventListener('volumechange', () => {});
+    remoteVideo.removeEventListener('volumechange', remoteVolumeChangeListener);
   }
 
   // Close peer connection
