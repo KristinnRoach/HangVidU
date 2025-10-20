@@ -739,8 +739,16 @@ let remotePreviousMuted = remoteVideo?.muted || false;
 
 // Mute/unmute self
 
-const localVolumeChangeListener = () => {
-  // Volume stays at 0, this is only to sync the speaker icon of pip windows to the muteSelfBtn state
+const setMicrophoneEnabled = (enabled) => {
+  if (!localStream) return;
+  const audioTrack = localStream.getAudioTracks()[0];
+  if (!audioTrack) return;
+  audioTrack.enabled = enabled;
+};
+
+const syncLocalMuteState = () => {
+  // Speaker volume should always stay 0,
+  // this syncs the pip floating windows mute button to the muteSelfBtn
   if (localVideo.muted !== localPreviousMuted) {
     const icon = muteSelfBtn.querySelector('i');
     icon.className = localVideo.muted
@@ -748,23 +756,18 @@ const localVolumeChangeListener = () => {
       : 'fa fa-microphone';
     localPreviousMuted = localVideo.muted;
   }
+  setMicrophoneEnabled(!localVideo.muted);
 };
 
 function addLocalVideoEventListeners() {
   if (!localVideo) return;
-  localVideo.addEventListener('volumechange', localVolumeChangeListener);
+  localVideo.addEventListener('volumechange', syncLocalMuteState);
 }
 
 muteSelfBtn.onclick = () => {
-  if (!localStream) return;
-
-  const audioTrack = localStream.getAudioTracks()[0];
-  if (audioTrack) {
-    audioTrack.enabled = !audioTrack.enabled;
-  }
-  if (!localVideo) return;
-  // Always sync to pip button (doesnt matter if muted cause volume is 0)
-  localVideo.muted = !audioTrack.enabled;
+  if (!localVideo || !localStream) return;
+  localVideo.muted = !localVideo.muted;
+  // This will trigger setMicrophoneEnabled via the volumechange listener
 };
 
 // Mute/unmute partner
@@ -890,7 +893,7 @@ async function hangUp() {
     localStream.getTracks().forEach((track) => track.stop());
     localVideo.srcObject = null;
     localStream = null;
-    localVideo.removeEventListener('volumechange', localVolumeChangeListener);
+    localVideo.removeEventListener('volumechange', syncLocalMuteState);
   }
 
   // Stop remote media
