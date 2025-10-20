@@ -11,9 +11,7 @@
   <body>
     <div class="container">
       <h1 id="titleHeader">
-        <a id="titleLink" href="https://kristinnroach.github.io/HangVidU/">
-          <span id="titleText">HangVidU</span></a
-        >
+        <a id="titleLink" href="#"> <span id="titleText">HangVidU</span></a>
       </h1>
 
       <div class="video-container">
@@ -39,7 +37,6 @@
           </div>
         </div>
         <div class="video-wrapper">
-          <!-- TODO: Check whether adding "muted" attr to remoteVideo element resolves reconnection issues ! -->
           <video id="remoteVideo" autoplay playsinline></video>
           <div class="hover-controls">
             <button id="mutePartnerBtn" aria-label="Mute/unmute">
@@ -117,9 +114,27 @@
       <div id="status" class="status"></div>
     </div>
 
+    <!-- <div
+      style="display: flex; flex-direction: column; gap: 16px; max-width: 400px"
+    >
+      <div>
+        <label>Video Input:</label>
+        <select-media-device type="videoinput"></select-media-device>
+      </div>
+
+      <div>
+        <label>Audio Input:</label>
+        <select-media-device type="audioinput"></select-media-device>
+      </div>
+
+      <div>
+        <label>Audio Output:</label>
+        <select-media-device type="audiooutput"></select-media-device>
+      </div>
+    </div> -->
+
     <script src="https://www.youtube.com/iframe_api"></script>
 
-    <!-- <script type="module" src="/src/app/app.js"></script> -->
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

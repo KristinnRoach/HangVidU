@@ -43,6 +43,9 @@ import {
   switchCameraSelfBtn,
   fullscreenSelfBtn,
   ytContainer,
+  videoInputSelect,
+  audioInputSelect,
+  audioOutputSelect,
 } from './elements.js';
 
 import {
@@ -61,7 +64,10 @@ import {
 
 import { initializeSearchUI, clearSearchResults } from './youtube-search.js';
 
+import { SelectMediaDevice } from './components/SelectMediaDevice.js';
+
 import '@fortawesome/fontawesome-free/css/all.min.css';
+import { hasFrontAndBackCameras } from './media-devices.js';
 
 // ============================================================================
 // FIREBASE CONFIGURATION
@@ -121,20 +127,29 @@ let lastLocalAction = 0;
 // INITIALIZATION & MEDIA SETUP
 // ============================================================================
 
+const userMediaAudioConstraints = {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
+};
+
 async function init() {
   peerId = Math.random().toString(36).substring(2, 15);
 
   try {
-    // Get user media
     localStream = await navigator.mediaDevices.getUserMedia({
       video: true,
-      audio: true,
+      audio: userMediaAudioConstraints,
     });
 
-    localVideo.srcObject = localStream;
-    // Ensure local video remains effectively muted when toggling mute in pip window
-    localVideo.volume = 0;
-    addLocalVideoEventListeners();
+    // Workaround for mobile browser echo (don't respect "videoEl.volume"):
+    // Create a new stream with only the video track for local preview
+    const videoOnlyStream = new MediaStream(localStream.getVideoTracks());
+    localVideo.srcObject = videoOnlyStream;
+
+    if (await hasFrontAndBackCameras()) {
+      switchCameraSelfBtn.style.display = 'block';
+    }
 
     return true;
   } catch (error) {
@@ -376,12 +391,18 @@ async function answerCall() {
   await pc.setLocalDescription(answer);
 
   // Save answer to Firebase
-  await update(roomRef, {
-    answer: {
-      type: answer.type,
-      sdp: answer.sdp,
-    },
-  });
+  try {
+    await update(roomRef, {
+      answer: {
+        type: answer.type,
+        sdp: answer.sdp,
+      },
+    });
+  } catch (err) {
+    console.error('Failed to update answer in Firebase:', err);
+    updateStatus('Failed to send answer to partner.');
+    return;
+  }
 
   // Setup watch-together sync
   setupWatchSync();
@@ -401,13 +422,18 @@ let seekDebounceTimeout = null;
 let syncInterval = null;
 
 // UTILS
-function updateWatchState(updates) {
+async function updateWatchSyncState(updates) {
   if (!roomId) return;
   const watchRef = ref(db, `rooms/${roomId}/watch`);
-  update(watchRef, {
-    ...updates,
-    updatedBy: peerId,
-  });
+  try {
+    await update(watchRef, {
+      ...updates,
+      updatedBy: peerId,
+    });
+  } catch (err) {
+    console.error('Failed to update watch state:', err);
+    // TODO: consider whether it's worth it to implement retry/backoff here
+  }
 }
 
 function setupWatchSync() {
@@ -455,12 +481,12 @@ function setupWatchSync() {
         ) {
           justSeeked = true;
           if (seekDebounceTimeout) clearTimeout(seekDebounceTimeout);
-          seekDebounceTimeout = setTimeout(() => {
+          seekDebounceTimeout = setTimeout(async () => {
             justSeeked = false;
             // Send final state after seek settles
             const finalState = getYouTubePlayerState();
             const finalPlaying = finalState === YT_STATE.PLAYING;
-            updateWatchState({
+            await updateWatchSyncState({
               playing: finalPlaying,
               currentTime: getYouTubeCurrentTime(),
             });
@@ -523,24 +549,24 @@ function setupWatchSync() {
   trackListener(watchRef, 'value', watchCallback);
 
   // Regular video element listeners
-  sharedVideo.addEventListener('play', () => {
+  sharedVideo.addEventListener('play', async () => {
     if (!ytPlayer && roomId) {
       lastLocalAction = Date.now();
-      updateWatchState({ playing: true, isYouTube: false });
+      await updateWatchSyncState({ playing: true, isYouTube: false });
     }
   });
 
-  sharedVideo.addEventListener('pause', () => {
+  sharedVideo.addEventListener('pause', async () => {
     if (!ytPlayer && roomId) {
       lastLocalAction = Date.now();
-      updateWatchState({ playing: false, isYouTube: false });
+      await updateWatchSyncState({ playing: false, isYouTube: false });
     }
   });
 
-  sharedVideo.addEventListener('seeked', () => {
+  sharedVideo.addEventListener('seeked', async () => {
     if (!ytPlayer && roomId) {
       lastLocalAction = Date.now();
-      updateWatchState({
+      await updateWatchSyncState({
         currentTime: sharedVideo.currentTime,
         playing: !sharedVideo.paused,
         isYouTube: false,
@@ -648,7 +674,7 @@ async function loadYouTubeVideoWithSync(url) {
           });
         }
       },
-      onStateChange: (event) => {
+      onStateChange: async (event) => {
         const player = getYouTubePlayer();
         if (!player) return;
 
@@ -660,13 +686,13 @@ async function loadYouTubeVideoWithSync(url) {
         if (buffering) {
           justSeeked = true;
           if (seekDebounceTimeout) clearTimeout(seekDebounceTimeout);
-          seekDebounceTimeout = setTimeout(() => {
+          seekDebounceTimeout = setTimeout(async () => {
             justSeeked = false;
             // After debounce timeout, send stable state
             const actualState = getYouTubePlayerState();
             const stablePlaying = actualState === YT_STATE.PLAYING;
 
-            updateWatchState({
+            await updateWatchSyncState({
               playing: stablePlaying,
               currentTime: getYouTubeCurrentTime(),
             });
@@ -681,7 +707,7 @@ async function loadYouTubeVideoWithSync(url) {
 
         // If outside debounce window, on PAUSED or PLAYING send updates normally
         if (!justSeeked && (playing || paused)) {
-          updateWatchState({
+          await updateWatchSyncState({
             playing: playing,
             currentTime: getYouTubeCurrentTime(),
           });
@@ -733,7 +759,6 @@ function toggleWatchMode() {
 // ============================================================================
 
 // STATE
-let localPreviousMuted = localVideo?.muted || false;
 let remotePreviousMuted = remoteVideo?.muted || false;
 // let remotePreviousVolume = false;
 
@@ -746,28 +771,23 @@ const setMicrophoneEnabled = (enabled) => {
   audioTrack.enabled = enabled;
 };
 
-const syncLocalMuteState = () => {
-  // Speaker volume should always stay 0,
-  // this syncs the pip floating windows mute button to the muteSelfBtn
-  if (localVideo.muted !== localPreviousMuted) {
-    const icon = muteSelfBtn.querySelector('i');
-    icon.className = localVideo.muted
-      ? 'fa fa-microphone-slash'
-      : 'fa fa-microphone';
-    localPreviousMuted = localVideo.muted;
-  }
-  setMicrophoneEnabled(!localVideo.muted);
+const setLocalVideoMuted = (enabled, volume = 0) => {
+  if (!localVideo) return;
+  localVideo.muted = !enabled;
+  localVideo.volume = volume;
 };
 
-function addLocalVideoEventListeners() {
-  if (!localVideo) return;
-  localVideo.addEventListener('volumechange', syncLocalMuteState);
-}
+const updateMuteMicIcon = (muted) => {
+  const icon = muteSelfBtn.querySelector('i');
+  icon.className = muted ? 'fa fa-microphone-slash' : 'fa fa-microphone';
+};
 
 muteSelfBtn.onclick = () => {
   if (!localVideo || !localStream) return;
-  localVideo.muted = !localVideo.muted;
-  //  This will trigger setMicrophoneEnabled via the volumechange listener
+  const shouldMute = !localVideo.muted;
+  setMicrophoneEnabled(!shouldMute);
+  setLocalVideoMuted(!shouldMute, 0);
+  updateMuteMicIcon(shouldMute);
 };
 
 // Mute/unmute partner
@@ -823,7 +843,7 @@ if (switchCameraSelfBtn) {
       // Get new stream with opposite camera
       const newStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: newFacingMode },
-        audio: true,
+        audio: userMediaAudioConstraints,
       });
 
       // Replace track in peer connection
@@ -838,7 +858,6 @@ if (switchCameraSelfBtn) {
       // Update local video
       localStream = newStream;
       localVideo.srcObject = newStream;
-      addLocalVideoEventListeners();
     } catch (error) {
       console.error('Failed to switch camera:', error);
     }
@@ -893,7 +912,6 @@ async function hangUp() {
     localStream.getTracks().forEach((track) => track.stop());
     localVideo.srcObject = null;
     localStream = null;
-    localVideo.removeEventListener('volumechange', syncLocalMuteState);
   }
 
   // Stop remote media
@@ -973,7 +991,7 @@ async function hangUp() {
   window.history.replaceState({}, document.title, window.location.pathname);
 
   updateStatus('Disconnected. Click "Start New Chat" to begin.');
-  enableTitleLink();
+  // enableTitleLink();
 }
 
 // ============================================================================
@@ -1094,3 +1112,73 @@ document.querySelectorAll('.video-wrapper').forEach((wrapper) => {
 
 // Auto-join if room parameter exists
 autoJoinFromUrl();
+
+// ======= DEVICES ==========
+async function updateLocalMediaDevices() {
+  const videoSource = videoInputSelect?.value;
+  const audioSource = audioInputSelect?.value;
+
+  const userMediaAudioConstraints = {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+  };
+
+  // Build constraints based on selected device IDs
+  const constraints = {
+    video: videoSource ? { deviceId: { exact: videoSource } } : true,
+    audio: audioSource
+      ? {
+          deviceId: { exact: audioSource },
+          ...userMediaAudioConstraints,
+        }
+      : {
+          ...userMediaAudioConstraints,
+        },
+  };
+
+  try {
+    const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+    // Replace tracks in peer connection if exists
+    if (pc) {
+      // Replace video track
+      const videoTrack = newStream.getVideoTracks()[0];
+      const senderV = pc.getSenders().find((s) => s.track?.kind === 'video');
+      if (videoTrack && senderV) senderV.replaceTrack(videoTrack);
+
+      // Replace audio track
+      const audioTrack = newStream.getAudioTracks()[0];
+      const senderA = pc.getSenders().find((s) => s.track?.kind === 'audio');
+      if (audioTrack && senderA) senderA.replaceTrack(audioTrack);
+    }
+
+    // Update local stream and video element
+    localStream = newStream;
+    localVideo.srcObject = newStream;
+  } catch (err) {
+    updateStatus('Could not access selected devices.');
+    console.error(err);
+  }
+}
+
+// Listen for device selection changes
+videoInputSelect?.shadowRoot
+  .querySelector('select')
+  ?.addEventListener('change', updateLocalMediaDevices);
+audioInputSelect?.shadowRoot
+  .querySelector('select')
+  ?.addEventListener('change', updateLocalMediaDevices);
+
+// Set audio output device if supported
+audioOutputSelect?.shadowRoot
+  .querySelector('select')
+  ?.addEventListener('change', (e) => {
+    const sinkId = e.target.value;
+    if (typeof localVideo.sinkId !== 'undefined') {
+      localVideo.setSinkId(sinkId).catch((err) => {
+        updateStatus('Could not set audio output device.');
+        console.error(err);
+      });
+    }
+  });
