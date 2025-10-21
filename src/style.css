@@ -1,4 +1,5 @@
-/* Minimal CSS for HangVidU */
+/* src/style.css */
+
 * {
   margin: 0;
   padding: 0;
@@ -9,17 +10,17 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: #1a1a1a;
   color: #fff;
-  min-height: 100vh;
+  /* min-height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: center; */
 }
 
-.container {
+/* .container {
   width: 100%;
   max-width: 1200px;
   padding: 20px;
-}
+} */
 
 h1 {
   text-align: center;
@@ -101,13 +102,13 @@ a span {
   pointer-events: auto;
 }
 
-video {
+/* video {
   width: 100%;
   max-width: 500px;
   background: #000000;
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-}
+} */
 
 #localVideo {
   transform: scaleX(-1);
@@ -522,4 +523,106 @@ button:disabled {
   margin-bottom: 4px;
   font-family: monospace;
   font-size: 12px;
+}
+
+/* === WIP Re-Style Videos === */
+
+#videos {
+  display: grid;
+  grid-template-columns: 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.video-player {
+  background-color: black;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#remoteVideo {
+  display: none;
+}
+
+.smallFrame {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  height: 170px;
+  width: 300px;
+  border-radius: 5px;
+  border: 2px solid #444;
+  -webkit-box-shadow: 3px 3px 15px -1px rgba(0, 0, 0, 0.77);
+  box-shadow: 3px 3px 15px -1px rgba(0, 0, 0, 0.77);
+  z-index: 999;
+}
+
+/* Control buttons */
+.controls-section {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1em;
+  z-index: 1000;
+}
+
+.control-container {
+  /* background-color: rgb(179, 102, 249, 0.9); */
+  padding: 20px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.control-container:hover {
+  background-color: rgba(219, 219, 219, 0.262);
+}
+
+/* Icons using simple shapes for prototype */
+.control-icon {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ccc;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+#leave-btn {
+  background-color: rgb(255, 80, 80, 1);
+}
+
+#leave-btn:hover {
+  background-color: rgb(255, 50, 50, 1);
+}
+
+/* Muted state */
+.control-container.muted {
+  background-color: rgb(255, 80, 80, 1);
+}
+
+/* Mobile responsive */
+@media screen and (max-width: 600px) {
+  #localVideo {
+    height: 80px;
+    width: 120px;
+  }
+
+  .control-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 14px;
+  }
+
+  .control-container {
+    padding: 15px;
+  }
 }

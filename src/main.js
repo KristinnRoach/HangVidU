@@ -10,6 +10,7 @@ import {
   set,
   onValue,
   onChildAdded,
+  onChildRemoved,
   update,
   get,
   off,
@@ -139,12 +140,17 @@ const userMediaAudioConstraints = {
   autoGainControl: true,
 };
 
+const userMediaVideoConstraints = {
+  width: { min: 640, ideal: 1920, max: 1920 },
+  height: { min: 480, ideal: 1080, max: 1080 },
+};
+
 async function init() {
   peerId = Math.random().toString(36).substring(2, 15);
 
   try {
     localStream = await navigator.mediaDevices.getUserMedia({
-      video: true,
+      video: userMediaVideoConstraints,
       audio: userMediaAudioConstraints,
     });
 
@@ -180,6 +186,51 @@ async function init() {
     return false;
   }
 }
+
+// === WIP ===
+
+let uiHandleRemoteJoined = () => {
+  remoteVideo.style.display = 'block';
+  localVideo.classList.add('smallFrame');
+};
+
+let uiHandleRemoteLeft = () => {
+  remoteVideo.style.display = 'none';
+  localVideo.classList.remove('smallFrame');
+};
+
+// Minimal room members setup for join/leave events
+let membersListeners = [];
+function setupRoomMembers() {
+  if (!roomId || !peerId) return;
+  const membersRef = ref(db, `rooms/${roomId}/members`);
+  const myMemberRef = ref(db, `rooms/${roomId}/members/${peerId}`);
+  set(myMemberRef, { joinedAt: Date.now() });
+
+  // Listen for remote peer join
+  const onJoin = (snapshot) => {
+    if (snapshot.key !== peerId) uiHandleRemoteJoined();
+  };
+  onChildAdded(membersRef, onJoin);
+  membersListeners.push({
+    ref: membersRef,
+    type: 'child_added',
+    callback: onJoin,
+  });
+
+  // Listen for remote peer leave
+  const onLeave = (snapshot) => {
+    if (snapshot.key !== peerId) uiHandleRemoteLeft();
+  };
+  onChildRemoved(membersRef, onLeave);
+  membersListeners.push({
+    ref: membersRef,
+    type: 'child_removed',
+    callback: onLeave,
+  });
+}
+
+// === End of WIP ===
 
 // ============================================================================
 // WEBRTC CONNECTION - INITIATOR (CREATE CALL)
@@ -326,12 +377,26 @@ async function createCall() {
   // Setup watch-together sync
   setupWatchSync();
 
+  // Add self to room members and listen for join/leave
+  setupRoomMembers();
+
   // Show share link
   const shareUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
   shareLink.value = shareUrl;
-  linkContainer.style.display = 'block';
+  // TODO: Cleanup replaced elements and related code, e.g. -> linkContainer.style.display = 'block';
   startChatBtn.disabled = true;
   hangUpBtn.disabled = false;
+
+  // TODO: Make nice
+  // Automatically copy link to clipboard
+  try {
+    await navigator.clipboard.writeText(shareUrl);
+    alert(
+      `Link copied! Share it with someone to start a call.\n\n( link: ${shareUrl} )`
+    );
+  } catch (error) {
+    alert(`Share this link with your partner:\n${shareUrl}`);
+  }
 
   updateStatus('Link ready! Share with your partner.');
 }
@@ -410,6 +475,9 @@ async function answerCall() {
 
   // Setup watch-together sync
   setupWatchSync();
+
+  // Add self to room members and listen for join/leave
+  setupRoomMembers();
 
   hangUpBtn.disabled = false;
   updateStatus('Connecting...');
@@ -744,6 +812,310 @@ function toggleWatchMode() {
   }
 }
 
+// ============================================================================
+// UI CONTROLS - PICTURE-IN-PICTURE
+// ============================================================================
+
+pipBtn.onclick = async () => {
+  try {
+    if (document.pictureInPictureElement) {
+      await document.exitPictureInPicture();
+      pipBtn.textContent = 'Float Partner Video';
+    } else {
+      await remoteVideo.requestPictureInPicture();
+      pipBtn.textContent = 'Exit Floating Video';
+    }
+  } catch (error) {
+    console.error('PiP failed:', error);
+    updateStatus('Picture-in-picture not supported');
+  }
+};
+
+// ============================================================================
+// HANG UP / CLEANUP
+// ============================================================================
+async function hangUp() {
+  console.debug('Hanging up...');
+
+  // Stop local media
+  if (localStream) {
+    localStream.getTracks().forEach((track) => track.stop());
+    localVideo.srcObject = null;
+    localStream = null;
+  }
+
+  // Stop remote media
+  if (remoteVideo.srcObject) {
+    remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
+    remoteVideo.srcObject = null;
+  }
+
+  cleanupMediaControls(remoteVideo);
+
+  // Close peer connection
+  if (pc) {
+    pc.close();
+    pc = null;
+  }
+
+  // Remove Firebase listeners
+  firebaseListeners.forEach(({ ref: fbRef, type, callback }) =>
+    off(fbRef, type, callback)
+  );
+  firebaseListeners.length = 0;
+
+  // Clean up YouTube player
+  destroyYouTubePlayer();
+  ytPlayer = null;
+  ytReady = false;
+  ytContainer.style.display = 'none';
+
+  // Clear debounce timeout if any
+  if (seekDebounceTimeout) {
+    clearTimeout(seekDebounceTimeout);
+    seekDebounceTimeout = null;
+  }
+  justSeeked = false;
+
+  // Remove room from Firebase (optional - rooms can auto-expire)
+  if (roomId && role === 'initiator') {
+    const roomRef = ref(db, `rooms/${roomId}`);
+    remove(roomRef).catch((error) => {
+      console.warn('Failed to remove room:', error);
+    });
+  }
+
+  // Reset UI
+  startChatBtn.disabled = false;
+  startChatBtn.style.display = 'block';
+  hangUpBtn.disabled = true;
+  linkContainer.style.display = 'none';
+  membersListeners.forEach(({ ref: fbRef, type, callback }) =>
+    off(fbRef, type, callback)
+  );
+  membersListeners.length = 0;
+
+  // Remove self from room members
+  if (roomId && peerId) {
+    const myMemberRef = ref(db, `rooms/${roomId}/members/${peerId}`);
+    remove(myMemberRef).catch(() => {});
+  }
+  watchContainer.style.display = 'none';
+  chatContainer.style.display = 'flex';
+  pipBtn.style.display = 'none';
+  shareLink.value = '';
+  sharedVideo.src = '';
+  sharedVideo.style.display = 'none';
+  streamUrlInput.value = '';
+  syncStatus.textContent = '';
+
+  if (document.pictureInPictureElement) {
+    document.exitPictureInPicture().catch((err) => console.error(err));
+  }
+
+  // Reset state
+  roomId = null;
+  role = null;
+  watchMode = false;
+  lastAnswerSdp = null;
+  lastOfferSdp = null;
+
+  // Clear URL parameter
+  window.history.replaceState({}, document.title, window.location.pathname);
+
+  updateStatus('Disconnected. Click "Start New Chat" to begin.');
+}
+
+// ============================================================================
+// EVENT LISTENERS
+// ============================================================================
+
+startChatBtn.onclick = async () => {
+  const success = await init();
+  if (success) {
+    await createCall();
+  }
+};
+
+hangUpBtn.onclick = hangUp;
+
+toggleModeBtn.onclick = toggleWatchMode;
+
+loadStreamBtn.onclick = loadStream;
+
+copyLinkBtn.onclick = async () => {
+  try {
+    await navigator.clipboard.writeText(shareLink.value);
+    updateStatus('Link copied to clipboard!');
+  } catch (error) {
+    // Fallback for older browsers
+    shareLink.select();
+    document.execCommand('copy');
+    updateStatus('Link copied!');
+  }
+};
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+function updateStatus(message) {
+  statusDiv.textContent = message;
+  if (import.meta.env.DEV) {
+    console.log('Status:', message);
+  }
+}
+
+function trackListener(fbRef, type, callback) {
+  firebaseListeners.push({ ref: fbRef, type, callback });
+}
+
+// ============================================================================
+// AUTO-JOIN FROM URL PARAMETER
+// ============================================================================
+
+async function autoJoinFromUrl() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlRoomId = urlParams.get('room');
+
+  if (urlRoomId) {
+    roomId = urlRoomId;
+    updateStatus('Connecting to room...');
+    startChatBtn.style.display = 'none';
+
+    const success = await init();
+    if (success) {
+      await answerCall();
+    }
+  } else {
+    updateStatus('Ready. Click "Start New Chat" to begin.');
+  }
+}
+
+// ============================================================================
+// INITIALIZE ON PAGE LOAD
+// ============================================================================
+
+// Handle page leave
+window.addEventListener('beforeunload', (e) => {
+  // Trigger browser's generic "leave page?" dialog if in active call (in PROD)
+  if (import.meta.env.PROD && pc && pc.connectionState === 'connected') {
+    e.preventDefault();
+    e.returnValue = // NOTE: Modern browsers ignore returnValue text
+      'You are in an active call. Are you sure you want to leave?';
+    return e.returnValue;
+  }
+
+  // Clean up resources
+  hangUp();
+});
+
+// TODO: Touch controls for mobile (show/hide buttons on tap)
+// let hideTimeout;
+// const controls = wrapper.querySelector('.controls-section');
+
+// if (controls) {
+//   wrapper.addEventListener('touchstart', () => {
+//     controls.style.opacity = '1';
+//     clearTimeout(hideTimeout);
+//     hideTimeout = setTimeout(() => {
+//       controls.style.opacity = '0';
+//     }, 3000);
+//   });
+// }
+
+// document.querySelectorAll('.video-wrapper').forEach((wrapper) => {
+//   let hideTimeout;
+//   const controls = wrapper.querySelector('.hover-controls');
+
+//   if (controls) {
+//     wrapper.addEventListener('touchstart', () => {
+//       controls.style.opacity = '1';
+//       clearTimeout(hideTimeout);
+//       hideTimeout = setTimeout(() => {
+//         controls.style.opacity = '0';
+//       }, 3000);
+//     });
+//   }
+// });
+
+// Auto-join if room parameter exists
+autoJoinFromUrl();
+
+// ======= DEVICES ==========
+async function updateLocalMediaDevices() {
+  const videoSource = videoInputSelect?.value;
+  const audioSource = audioInputSelect?.value;
+
+  const userMediaAudioConstraints = {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+  };
+
+  // Build constraints based on selected device IDs
+  const constraints = {
+    video: videoSource
+      ? { deviceId: { exact: videoSource }, ...userMediaVideoConstraints }
+      : { ...userMediaVideoConstraints },
+    audio: audioSource
+      ? {
+          deviceId: { exact: audioSource },
+          ...userMediaAudioConstraints,
+        }
+      : {
+          ...userMediaAudioConstraints,
+        },
+  };
+
+  try {
+    const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+    // Replace tracks in peer connection if exists
+    if (pc) {
+      // Replace video track
+      const videoTrack = newStream.getVideoTracks()[0];
+      const senderV = pc.getSenders().find((s) => s.track?.kind === 'video');
+      if (videoTrack && senderV) senderV.replaceTrack(videoTrack);
+
+      // Replace audio track
+      const audioTrack = newStream.getAudioTracks()[0];
+      const senderA = pc.getSenders().find((s) => s.track?.kind === 'audio');
+      if (audioTrack && senderA) senderA.replaceTrack(audioTrack);
+    }
+
+    // Update local stream and video element
+    const oldStream = localStream;
+    localStream = newStream;
+    localVideo.srcObject = new MediaStream(newStream.getVideoTracks());
+    if (oldStream) oldStream.getTracks().forEach((t) => t.stop()); // Cleanup old tracks
+  } catch (err) {
+    updateStatus('Could not access selected devices.');
+    console.error(err);
+  }
+}
+
+// Listen for device selection changes
+videoInputSelect?.shadowRoot
+  .querySelector('select')
+  ?.addEventListener('change', updateLocalMediaDevices);
+audioInputSelect?.shadowRoot
+  .querySelector('select')
+  ?.addEventListener('change', updateLocalMediaDevices);
+
+// Set audio output device if supported
+audioOutputSelect?.shadowRoot
+  .querySelector('select')
+  ?.addEventListener('change', (e) => {
+    const sinkId = e.target.value;
+    if (typeof remoteVideo?.setSinkId === 'function') {
+      remoteVideo.setSinkId(sinkId).catch((err) => {
+        updateStatus('Could not set audio output device.');
+        console.error(err);
+      });
+    }
+  });
+
 // // ============================================================================
 // // UI CONTROLS - MEDIA CONTROLS (MUTE, VIDEO, FULLSCREEN)
 // // ============================================================================
@@ -871,282 +1243,3 @@ function toggleWatchMode() {
 //     remoteVideo.webkitRequestFullscreen();
 //   }
 // };
-
-// ============================================================================
-// UI CONTROLS - PICTURE-IN-PICTURE
-// ============================================================================
-
-pipBtn.onclick = async () => {
-  try {
-    if (document.pictureInPictureElement) {
-      await document.exitPictureInPicture();
-      pipBtn.textContent = 'Float Partner Video';
-    } else {
-      await remoteVideo.requestPictureInPicture();
-      pipBtn.textContent = 'Exit Floating Video';
-    }
-  } catch (error) {
-    console.error('PiP failed:', error);
-    updateStatus('Picture-in-picture not supported');
-  }
-};
-
-// ============================================================================
-// HANG UP / CLEANUP
-// ============================================================================
-async function hangUp() {
-  console.debug('Hanging up...');
-
-  // Stop local media
-  if (localStream) {
-    localStream.getTracks().forEach((track) => track.stop());
-    localVideo.srcObject = null;
-    localStream = null;
-  }
-
-  // Stop remote media
-  if (remoteVideo.srcObject) {
-    remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
-    remoteVideo.srcObject = null;
-  }
-
-  cleanupMediaControls(remoteVideo);
-
-  // Close peer connection
-  if (pc) {
-    pc.close();
-    pc = null;
-  }
-
-  // Remove Firebase listeners
-  firebaseListeners.forEach(({ ref: fbRef, type, callback }) =>
-    off(fbRef, type, callback)
-  );
-  firebaseListeners.length = 0;
-
-  // Clean up YouTube player
-  destroyYouTubePlayer();
-  ytPlayer = null;
-  ytReady = false;
-  ytContainer.style.display = 'none';
-
-  // Clear debounce timeout if any
-  if (seekDebounceTimeout) {
-    clearTimeout(seekDebounceTimeout);
-    seekDebounceTimeout = null;
-  }
-  justSeeked = false;
-
-  // Remove room from Firebase (optional - rooms can auto-expire)
-  if (roomId && role === 'initiator') {
-    const roomRef = ref(db, `rooms/${roomId}`);
-    remove(roomRef).catch((error) => {
-      console.warn('Failed to remove room:', error);
-    });
-  }
-
-  // Reset UI
-  startChatBtn.disabled = false;
-  startChatBtn.style.display = 'block';
-  hangUpBtn.disabled = true;
-  linkContainer.style.display = 'none';
-  watchContainer.style.display = 'none';
-  chatContainer.style.display = 'flex';
-  pipBtn.style.display = 'none';
-  shareLink.value = '';
-  sharedVideo.src = '';
-  sharedVideo.style.display = 'none';
-  streamUrlInput.value = '';
-  syncStatus.textContent = '';
-
-  if (document.pictureInPictureElement) {
-    document.exitPictureInPicture().catch((err) => console.error(err));
-  }
-
-  // Reset state
-  roomId = null;
-  role = null;
-  watchMode = false;
-  lastAnswerSdp = null;
-  lastOfferSdp = null;
-
-  // Clear URL parameter
-  window.history.replaceState({}, document.title, window.location.pathname);
-
-  updateStatus('Disconnected. Click "Start New Chat" to begin.');
-}
-
-// ============================================================================
-// EVENT LISTENERS
-// ============================================================================
-
-startChatBtn.onclick = async () => {
-  const success = await init();
-  if (success) {
-    await createCall();
-  }
-};
-
-hangUpBtn.onclick = hangUp;
-
-toggleModeBtn.onclick = toggleWatchMode;
-
-loadStreamBtn.onclick = loadStream;
-
-copyLinkBtn.onclick = async () => {
-  try {
-    await navigator.clipboard.writeText(shareLink.value);
-    updateStatus('Link copied to clipboard!');
-  } catch (error) {
-    // Fallback for older browsers
-    shareLink.select();
-    document.execCommand('copy');
-    updateStatus('Link copied!');
-  }
-};
-
-// ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
-
-function updateStatus(message) {
-  statusDiv.textContent = message;
-  if (import.meta.env.DEV) {
-    console.log('Status:', message);
-  }
-}
-
-function trackListener(fbRef, type, callback) {
-  firebaseListeners.push({ ref: fbRef, type, callback });
-}
-
-// ============================================================================
-// AUTO-JOIN FROM URL PARAMETER
-// ============================================================================
-
-async function autoJoinFromUrl() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const urlRoomId = urlParams.get('room');
-
-  if (urlRoomId) {
-    roomId = urlRoomId;
-    updateStatus('Connecting to room...');
-    startChatBtn.style.display = 'none';
-
-    const success = await init();
-    if (success) {
-      await answerCall();
-    }
-  } else {
-    updateStatus('Ready. Click "Start New Chat" to begin.');
-  }
-}
-
-// ============================================================================
-// INITIALIZE ON PAGE LOAD
-// ============================================================================
-
-// Handle page leave
-window.addEventListener('beforeunload', (e) => {
-  // Trigger browser's generic "leave page?" dialog if in active call (in PROD)
-  if (import.meta.env.PROD && pc && pc.connectionState === 'connected') {
-    e.preventDefault();
-    e.returnValue = // NOTE: Modern browsers ignore returnValue text
-      'You are in an active call. Are you sure you want to leave?';
-    return e.returnValue;
-  }
-
-  // Clean up resources
-  hangUp();
-});
-
-// Touch controls for mobile (show/hide buttons on tap)
-document.querySelectorAll('.video-wrapper').forEach((wrapper) => {
-  let hideTimeout;
-  const controls = wrapper.querySelector('.hover-controls');
-
-  if (controls) {
-    wrapper.addEventListener('touchstart', () => {
-      controls.style.opacity = '1';
-      clearTimeout(hideTimeout);
-      hideTimeout = setTimeout(() => {
-        controls.style.opacity = '0';
-      }, 3000);
-    });
-  }
-});
-
-// Auto-join if room parameter exists
-autoJoinFromUrl();
-
-// ======= DEVICES ==========
-async function updateLocalMediaDevices() {
-  const videoSource = videoInputSelect?.value;
-  const audioSource = audioInputSelect?.value;
-
-  const userMediaAudioConstraints = {
-    echoCancellation: true,
-    noiseSuppression: true,
-    autoGainControl: true,
-  };
-
-  // Build constraints based on selected device IDs
-  const constraints = {
-    video: videoSource ? { deviceId: { exact: videoSource } } : true,
-    audio: audioSource
-      ? {
-          deviceId: { exact: audioSource },
-          ...userMediaAudioConstraints,
-        }
-      : {
-          ...userMediaAudioConstraints,
-        },
-  };
-
-  try {
-    const newStream = await navigator.mediaDevices.getUserMedia(constraints);
-
-    // Replace tracks in peer connection if exists
-    if (pc) {
-      // Replace video track
-      const videoTrack = newStream.getVideoTracks()[0];
-      const senderV = pc.getSenders().find((s) => s.track?.kind === 'video');
-      if (videoTrack && senderV) senderV.replaceTrack(videoTrack);
-
-      // Replace audio track
-      const audioTrack = newStream.getAudioTracks()[0];
-      const senderA = pc.getSenders().find((s) => s.track?.kind === 'audio');
-      if (audioTrack && senderA) senderA.replaceTrack(audioTrack);
-    }
-
-    // Update local stream and video element
-    const oldStream = localStream;
-    localStream = newStream;
-    localVideo.srcObject = new MediaStream(newStream.getVideoTracks());
-    if (oldStream) oldStream.getTracks().forEach((t) => t.stop()); // Cleanup old tracks
-  } catch (err) {
-    updateStatus('Could not access selected devices.');
-    console.error(err);
-  }
-}
-
-// Listen for device selection changes
-videoInputSelect?.shadowRoot
-  .querySelector('select')
-  ?.addEventListener('change', updateLocalMediaDevices);
-audioInputSelect?.shadowRoot
-  .querySelector('select')
-  ?.addEventListener('change', updateLocalMediaDevices);
-
-// Set audio output device if supported
-audioOutputSelect?.shadowRoot
-  .querySelector('select')
-  ?.addEventListener('change', (e) => {
-    const sinkId = e.target.value;
-    if (typeof remoteVideo?.setSinkId === 'function') {
-      remoteVideo.setSinkId(sinkId).catch((err) => {
-        updateStatus('Could not set audio output device.');
-        console.error(err);
-      });
-    }
-  });

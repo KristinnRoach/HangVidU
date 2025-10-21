@@ -9,110 +9,160 @@
     <link rel="icon" href="/favicon.ico" />
   </head>
   <body>
-    <div class="container">
-      <h1 id="titleHeader">
-        <a id="titleLink" href="#"> <span id="titleText">HangVidU</span></a>
-      </h1>
+    <!-- <div class="container"> -->
+    <h1 style="display: none" id="titleHeader">
+      <a id="titleLink" href="#"> <span id="titleText">HangVidU</span></a>
+    </h1>
 
-      <div class="video-container">
-        <div class="video-wrapper">
-          <video id="localVideo" autoplay playsinline></video>
-          <div class="hover-controls">
-            <button id="muteSelfBtn" aria-label="Mute/unmute mic">
-              <i class="fa fa-microphone"></i>
-            </button>
-            <button id="videoSelfBtn" aria-label="Turn video on/off">
-              <i class="fa fa-video"></i>
-            </button>
-            <button
-              id="switchCameraSelfBtn"
-              aria-label="Switch camera"
-              style="display: none"
-            >
-              <i class="fa fa-sync-alt"></i>
-            </button>
-            <button id="fullscreenSelfBtn" aria-label="Fullscreen">
-              <i class="fa fa-expand"></i>
-            </button>
-          </div>
-        </div>
-        <div class="video-wrapper">
-          <video id="remoteVideo" autoplay playsinline></video>
-          <div class="hover-controls">
-            <button id="mutePartnerBtn" aria-label="Mute/unmute">
-              <i class="fa fa-volume-up"></i>
-            </button>
-            <button id="fullscreenPartnerBtn" aria-label="Fullscreen">
-              <i class="fa fa-expand"></i>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Watch Together Mode  -->
-      <div id="watchContainer" style="display: none">
-        <!-- YouTube Search Section -->
-        <div class="search-section">
-          <div class="search-controls">
-            <input
-              type="text"
-              id="searchQuery"
-              placeholder="Search YouTube videos..."
-            />
-            <button id="searchBtn">Search</button>
-          </div>
-          <div
-            id="searchResults"
-            class="search-results"
-            style="display: none"
-          ></div>
-        </div>
-
-        <!-- TODO: REMOVE or make optional using same input. // Manual URL Input Section -->
-        <div class="url-section" style="display: none">
-          <div class="section-divider">
-            <span>or paste a URL directly</span>
-          </div>
-          <div class="watch-controls">
-            <input
-              type="text"
-              id="streamUrl"
-              placeholder="Paste stream URL (both people need to paste the same URL)"
-            />
-            <button id="loadStream">Load Video</button>
-          </div>
-        </div>
-
-        <video id="sharedVideo" controls playsinline></video>
-        <div id="yt-player-div"></div>
-        <div id="syncStatus" class="sync-status">Waiting for video...</div>
-
-        <input
-          type="file"
-          id="videoFile"
-          accept="video/*"
+    <!-- <div class="video-container">
+        <div class="video-wrapper"> -->
+    <div id="videos">
+      <video class="video-player" id="localVideo" autoplay playsinline></video>
+      <div class="hover-controls">
+        <!-- <button id="muteSelfBtn" aria-label="Mute/unmute mic">
+          <i class="fa fa-microphone"></i>
+        </button>
+        <button id="videoSelfBtn" aria-label="Turn video on/off">
+          <i class="fa fa-video"></i>
+        </button>
+        <button
+          id="switchCameraSelfBtn"
+          aria-label="Switch camera"
           style="display: none"
-        />
-        <div id="uploadProgress" style="display: none"></div>
+        >
+          <i class="fa fa-sync-alt"></i>
+        </button> -->
+        <button id="fullscreenSelfBtn" aria-label="Fullscreen">
+          <i class="fa fa-expand"></i>
+        </button>
       </div>
-
-      <!-- Mode Toggle -->
-      <div class="chat-controls">
-        <button id="startChat" class="primary-btn">Start New Chat</button>
-        <button id="toggleMode">Switch to Watch Mode</button>
-        <button id="pipBtn" style="display: none">Float Partner Video</button>
-
-        <button id="hangUp" disabled>Hang Up</button>
+      <!-- </div> -->
+      <!-- <div class="video-wrapper"> -->
+      <video class="video-player" id="remoteVideo" autoplay playsinline></video>
+      <div class="hover-controls">
+        <button id="mutePartnerBtn" aria-label="Mute/unmute">
+          <i class="fa fa-volume-up"></i>
+        </button>
+        <!-- <button id="fullscreenPartnerBtn" aria-label="Fullscreen">
+          <i class="fa fa-expand"></i>
+        </button> -->
       </div>
-
-      <div id="linkContainer" class="link-container" style="display: none">
-        <p>Share this link with your partner:</p>
-        <input type="text" id="shareLink" readonly />
-        <button id="copyLink">Copy Link</button>
-      </div>
-
-      <div id="status" class="status"></div>
+      <!-- </div> -->
     </div>
+
+    <div id="controls-section" class="controls-section">
+      <div class="control-container" id="start-chat-btn">
+        <button id="startChat" class="primary-btn">
+          <i class="fa fa-phone"></i>
+        </button>
+      </div>
+      <div class="control-container" id="camera-btn">
+        <button id="videoSelfBtn" aria-label="Turn camera on/off">
+          <i class="fa fa-video"></i>
+        </button>
+      </div>
+      <div class="control-container" id="mic-btn">
+        <button id="muteSelfBtn" aria-label="Mute/unmute mic">
+          <i class="fa fa-microphone"></i>
+        </button>
+      </div>
+      <button
+        id="switchCameraSelfBtn"
+        aria-label="Switch camera"
+        style="display: none"
+      >
+        <i class="fa fa-sync-alt"></i>
+      </button>
+      <div class="control-container" id="mute-btn">
+        <button id="mutePartnerBtn" aria-label="Mute/unmute">
+          <i class="fa fa-volume-mute"></i>
+        </button>
+      </div>
+
+      <div class="control-container" id="fullscreen-btn">
+        <button id="fullscreenPartnerBtn" aria-label="Fullscreen">
+          <i class="fa fa-expand"></i>
+        </button>
+      </div>
+
+      <div class="control-container" id="watch-btn">
+        <button id="toggleMode"><i class="fa fa-film"></i></button>
+      </div>
+      <div class="control-container" id="hang-up-btn">
+        <button id="hangUp" disabled><i class="fa fa-phone-slash"></i></button>
+      </div>
+    </div>
+
+    <!-- Watch Together Mode  -->
+    <div id="watchContainer" style="display: none">
+      <!-- YouTube Search Section -->
+      <div class="search-section">
+        <div class="search-controls">
+          <input
+            type="text"
+            id="searchQuery"
+            placeholder="Search YouTube videos..."
+          />
+          <button id="searchBtn">Search</button>
+        </div>
+        <div
+          id="searchResults"
+          class="search-results"
+          style="display: none"
+        ></div>
+      </div>
+
+      <!-- TODO: REMOVE or make optional using same input. // Manual URL Input Section -->
+      <div class="url-section" style="display: none">
+        <div class="section-divider">
+          <span>or paste a URL directly</span>
+        </div>
+        <div class="watch-controls">
+          <input
+            type="text"
+            id="streamUrl"
+            placeholder="Paste stream URL (both people need to paste the same URL)"
+          />
+          <button id="loadStream">Load Video</button>
+        </div>
+      </div>
+
+      <video
+        style="display: none"
+        id="sharedVideo"
+        controls
+        playsinline
+      ></video>
+      <div style="display: none" id="yt-player-div"></div>
+      <div id="syncStatus" class="sync-status">Waiting for video...</div>
+
+      <input
+        type="file"
+        id="videoFile"
+        accept="video/*"
+        style="display: none"
+      />
+      <div id="uploadProgress" style="display: none"></div>
+    </div>
+
+    <!-- Mode Toggle -->
+    <div style="display: none" class="chat-controls">
+      <!-- <button id="startChat" class="primary-btn">Start New Chat</button>
+      <button id="toggleMode">Switch to Watch Mode</button> -->
+      <button id="pipBtn" style="display: none">Float Partner Video</button>
+
+      <!-- <button id="hangUp" disabled>Hang Up</button> -->
+    </div>
+
+    <div id="linkContainer" class="link-container" style="display: none">
+      <p>Share this link with your partner:</p>
+      <input type="text" id="shareLink" readonly />
+      <button id="copyLink">Copy Link</button>
+    </div>
+
+    <div style="display: none" id="status" class="status"></div>
+
+    <!-- </div> -->
 
     <!-- <div
       style="display: flex; flex-direction: column; gap: 16px; max-width: 400px"
