@@ -150,9 +150,13 @@ export function initializeMediaControls({
     switchCameraSelfBtn.onclick = async () => {
       const localStream = getLocalStream();
       const localVideo = getLocalVideo();
-      const videoTrack = localStream.getVideoTracks()[0];
-      if (!localStream || !videoTrack) {
+      if (!localStream) {
         console.warn('No local stream or no local video track available.');
+        return;
+      }
+      const videoTrack = localStream.getVideoTracks()[0];
+      if (!videoTrack) {
+        console.warn('No local video track available.');
         return;
       }
       const currentFacingMode = videoTrack.getSettings()?.facingMode || 'user';
