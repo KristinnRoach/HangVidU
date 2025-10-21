@@ -90,7 +90,7 @@ export function initializeSearchUI(onVideoSelect) {
         focusResult(next);
       } else if (e.key === 'ArrowUp') {
         let prev = focusedResultIndex - 1;
-        if (prev < 0) prev = items.length - 1;
+        if (prev < 0) prev = focusedResultIndex === -1 ? 0 : items.length - 1;
         focusResult(prev);
       }
       return;

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>select-media-device demo</title>
+    <script src="SelectMediaDevice.js" defer></script>
+  </head>
+  <body>
+    <h1>Select Media Device Demo</h1>
+
+    <div
+      style="display: flex; flex-direction: column; gap: 16px; max-width: 400px"
+    >
+      <div>
+        <label>Video Input:</label>
+        <select-media-device type="videoinput"></select-media-device>
+      </div>
+
+      <div>
+        <label>Audio Input:</label>
+        <select-media-device type="audioinput"></select-media-device>
+      </div>
+
+      <div>
+        <label>Audio Output:</label>
+        <select-media-device type="audiooutput"></select-media-device>
+      </div>
+    </div>
+
+    <script>
+      document.querySelectorAll('select-media-device').forEach((el) => {
+        el.addEventListener('deviceschanged', (e) => {
+          console.log('Devices updated:', e.detail.devices);
+        });
+
+        el.shadowRoot
+          .querySelector('select')
+          .addEventListener('change', (e) => {
+            console.log('Selected device:', e.target.value);
+          });
+      });
+    </script>
+  </body>
+</html>

@@ -4,6 +4,16 @@ export const localVideo = document.getElementById('localVideo');
 export const remoteVideo = document.getElementById('remoteVideo');
 export const sharedVideo = document.getElementById('sharedVideo');
 
+export const videoInputSelect = document.querySelector(
+  'select-media-device[type="videoinput"]'
+);
+export const audioInputSelect = document.querySelector(
+  'select-media-device[type="audioinput"]'
+);
+export const audioOutputSelect = document.querySelector(
+  'select-media-device[type="audiooutput"]'
+);
+
 export const startChatBtn = document.getElementById('startChat');
 export const hangUpBtn = document.getElementById('hangUp');
 export const copyLinkBtn = document.getElementById('copyLink');
