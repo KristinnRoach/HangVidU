@@ -795,7 +795,7 @@ function toggleWatchMode() {
   if (watchMode) {
     chatContainer.style.display = 'none';
     watchContainer.style.display = 'block';
-    toggleModeBtn.textContent = 'Switch to Chat Mode';
+    // toggleModeBtn.textContent = 'Switch to Chat Mode';
     syncStatus.textContent =
       watchMode && roomId ? 'Watch mode ready' : 'Enter a video URL';
 
@@ -803,7 +803,7 @@ function toggleWatchMode() {
   } else {
     chatContainer.style.display = 'flex';
     watchContainer.style.display = 'none';
-    toggleModeBtn.textContent = 'Switch to Watch Mode';
+    // toggleModeBtn.textContent = 'Switch to Watch Mode';
 
     // Hide YouTube player when switching back to chat
     clearSearchResults();

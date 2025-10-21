@@ -178,8 +178,12 @@ export function initializeMediaControls({
         currentFacingMode,
       });
 
-      lastFacingMode = facingMode;
-      console.log('Switched camera to facingMode:', facingMode);
+      if (facingMode === 'user' || facingMode === 'environment') {
+        lastFacingMode = facingMode;
+        console.log('Switched camera to facingMode:', facingMode);
+      } else {
+        console.error('switchCamera returned invalid facingMode:', facingMode);
+      }
     };
   }
 
