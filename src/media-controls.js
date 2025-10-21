@@ -150,20 +150,24 @@ export function initializeMediaControls({
     switchCameraSelfBtn.onclick = async () => {
       const localStream = getLocalStream();
       const localVideo = getLocalVideo();
-      if (!localStream) return;
       const videoTrack = localStream.getVideoTracks()[0];
-      const currentFacingMode = videoTrack.getSettings().facingMode;
+      if (!localStream || !videoTrack) {
+        console.warn('No local stream or no local video track available.');
+        return;
+      }
+      const currentFacingMode = videoTrack.getSettings()?.facingMode || 'user';
       const pc = getPeerConnection?.();
       if (!pc) {
         console.error('PeerConnection is required to switch camera.');
         return;
       }
-      await switchCamera({
+      const facingMode = await switchCamera({
         localStream,
         localVideo,
         peerConnection: pc,
         currentFacingMode,
       });
+      console.log('Switched camera to facingMode:', facingMode);
     };
   }
 
@@ -206,7 +210,7 @@ export function initializeMediaControls({
   // }
 
   // ===== FULLSCREEN FOR LOCAL VIDEO =====
-  if (fullscreenSelfBtn && getLocalVideo()) {
+  if (fullscreenSelfBtn) {
     fullscreenSelfBtn.onclick = () => {
       const localVideo = getLocalVideo();
       if (localVideo.requestFullscreen) {
@@ -218,7 +222,7 @@ export function initializeMediaControls({
   }
 
   // ===== MUTE/UNMUTE PARTNER =====
-  if (mutePartnerBtn && getRemoteVideo()) {
+  if (mutePartnerBtn) {
     mutePartnerBtn.onclick = () => {
       const remoteVideo = getRemoteVideo();
       if (!remoteVideo) return;
@@ -227,7 +231,7 @@ export function initializeMediaControls({
   }
 
   // ===== FULLSCREEN FOR REMOTE VIDEO =====
-  if (fullscreenPartnerBtn && getRemoteVideo()) {
+  if (fullscreenPartnerBtn) {
     fullscreenPartnerBtn.onclick = () => {
       const remoteVideo = getRemoteVideo();
       if (remoteVideo.requestFullscreen) {
