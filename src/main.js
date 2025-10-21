@@ -49,6 +49,12 @@ import {
 } from './elements.js';
 
 import {
+  initializeMediaControls,
+  addRemoteVideoEventListeners,
+  cleanupMediaControls,
+} from './media-controls.js';
+
+import {
   isYouTubeUrl,
   extractYouTubeId,
   loadYouTubeVideo,
@@ -151,6 +157,20 @@ async function init() {
       switchCameraSelfBtn.style.display = 'block';
     }
 
+    initializeMediaControls({
+      localStream,
+      localVideo,
+      remoteVideo,
+      muteSelfBtn,
+      videoSelfBtn,
+      switchCameraSelfBtn,
+      fullscreenSelfBtn,
+      mutePartnerBtn,
+      fullscreenPartnerBtn,
+      pc,
+      audioConstraints: userMediaAudioConstraints,
+    });
+
     return true;
   } catch (error) {
     console.error('Failed to get user media:', error);
@@ -162,6 +182,70 @@ async function init() {
 // ============================================================================
 // WEBRTC CONNECTION - INITIATOR (CREATE CALL)
 // ============================================================================
+
+function setupRemoteStream(pc) {
+  pc.ontrack = (event) => {
+    if (import.meta.env.DEV) {
+      console.log('Received remote track');
+    }
+
+    if (!event.streams || !event.streams[0] instanceof MediaStream) {
+      console.error(
+        'No valid remote MediaStream found in event.streams:',
+        event.streams
+      );
+      return;
+    }
+
+    if (remoteVideo.srcObject !== event.streams[0]) {
+      remoteVideo.srcObject = event.streams[0];
+      pipBtn.style.display = 'block';
+      addRemoteVideoEventListeners(remoteVideo, mutePartnerBtn);
+      updateStatus('Connected!');
+    }
+  };
+}
+
+function setupIceCandidates(pc, role) {
+  pc.onicecandidate = (event) => {
+    if (event.candidate) {
+      const path =
+        role === 'initiator' ? 'callerCandidates' : 'calleeCandidates';
+      const candidateRef = push(ref(db, `rooms/${roomId}/${path}`));
+      set(candidateRef, event.candidate.toJSON());
+    }
+  };
+
+  const remotePath =
+    role === 'initiator' ? 'calleeCandidates' : 'callerCandidates';
+  const remoteCandidatesRef = ref(db, `rooms/${roomId}/${remotePath}`);
+  const callback = (snapshot) => {
+    const candidate = snapshot.val();
+    if (candidate && pc.remoteDescription) {
+      pc.addIceCandidate(new RTCIceCandidate(candidate)).catch((error) => {
+        console.error('Error adding ICE candidate:', error);
+      });
+    }
+  };
+
+  onChildAdded(remoteCandidatesRef, callback);
+  trackListener(remoteCandidatesRef, 'child_added', callback);
+}
+
+function setupConnectionStateHandlers(pc) {
+  pc.onconnectionstatechange = () => {
+    if (import.meta.env.DEV) {
+      console.log('Connection state:', pc.connectionState);
+    }
+    if (pc.connectionState === 'connected') {
+      updateStatus('Connected!');
+    } else if (pc.connectionState === 'disconnected') {
+      updateStatus('Partner disconnected');
+    } else if (pc.connectionState === 'failed') {
+      updateStatus('Connection failed');
+    }
+  };
+}
 
 async function createCall() {
   if (!localStream) {
@@ -181,40 +265,9 @@ async function createCall() {
     pc.addTrack(track, localStream);
   });
 
-  // Handle incoming remote stream
-  pc.ontrack = (event) => {
-    if (import.meta.env.DEV) {
-      console.log('Received remote track');
-    }
-    if (remoteVideo.srcObject !== event.streams[0]) {
-      remoteVideo.srcObject = event.streams[0];
-      pipBtn.style.display = 'block';
-      addRemoteVideoEventListeners();
-      updateStatus('Connected!');
-    }
-  };
-
-  // Send ICE candidates to Firebase
-  pc.onicecandidate = (event) => {
-    if (event.candidate) {
-      const candidateRef = push(ref(db, `rooms/${roomId}/callerCandidates`));
-      set(candidateRef, event.candidate.toJSON());
-    }
-  };
-
-  // Monitor connection state
-  pc.onconnectionstatechange = () => {
-    if (import.meta.env.DEV) {
-      console.log('Connection state:', pc.connectionState);
-    }
-    if (pc.connectionState === 'connected') {
-      updateStatus('Connected!');
-    } else if (pc.connectionState === 'disconnected') {
-      updateStatus('Partner disconnected');
-    } else if (pc.connectionState === 'failed') {
-      updateStatus('Connection failed');
-    }
-  };
+  setupRemoteStream(pc);
+  setupIceCandidates(pc, role);
+  setupConnectionStateHandlers(pc);
 
   // Create offer
   const offer = await pc.createOffer();
@@ -264,20 +317,6 @@ async function createCall() {
   onValue(answerRef, answerCallback);
   trackListener(answerRef, 'value', answerCallback);
 
-  // Listen for ICE candidates from joiner
-  const calleeCandidatesRef = ref(db, `rooms/${roomId}/calleeCandidates`);
-  const calleeCallback = (snapshot) => {
-    const candidate = snapshot.val();
-    if (candidate && pc.remoteDescription) {
-      pc.addIceCandidate(new RTCIceCandidate(candidate)).catch((error) => {
-        console.error('Error adding ICE candidate:', error);
-      });
-    }
-  };
-
-  onChildAdded(calleeCandidatesRef, calleeCallback);
-  trackListener(calleeCandidatesRef, 'child_added', calleeCallback);
-
   // Setup watch-together sync
   setupWatchSync();
 
@@ -289,7 +328,6 @@ async function createCall() {
   hangUpBtn.disabled = false;
 
   updateStatus('Link ready! Share with your partner.');
-  disableTitleLink();
 }
 
 // ============================================================================
@@ -335,53 +373,13 @@ async function answerCall() {
   });
 
   // Handle incoming remote stream
-  pc.ontrack = (event) => {
-    if (import.meta.env.DEV) {
-      console.log('Received remote track');
-    }
-    if (remoteVideo.srcObject !== event.streams[0]) {
-      remoteVideo.srcObject = event.streams[0];
-      pipBtn.style.display = 'block';
-      addRemoteVideoEventListeners();
-      updateStatus('Connected!');
-    }
-  };
+  setupRemoteStream(pc);
 
   // Send ICE candidates to Firebase
-  pc.onicecandidate = (event) => {
-    if (event.candidate) {
-      const candidateRef = push(ref(db, `rooms/${roomId}/calleeCandidates`));
-      set(candidateRef, event.candidate.toJSON());
-    }
-  };
+  setupIceCandidates(pc, role);
 
   // Monitor connection state
-  pc.onconnectionstatechange = () => {
-    if (import.meta.env.DEV) {
-      console.log('Connection state:', pc.connectionState);
-    }
-    if (pc.connectionState === 'connected') {
-      updateStatus('Connected!');
-    } else if (pc.connectionState === 'disconnected') {
-      updateStatus('Partner disconnected');
-    } else if (pc.connectionState === 'failed') {
-      updateStatus('Connection failed');
-    }
-  };
-
-  // Listen for ICE candidates from initiator
-  const callerCandidatesRef = ref(db, `rooms/${roomId}/callerCandidates`);
-  const callerCallback = (snapshot) => {
-    const candidate = snapshot.val();
-    if (candidate && pc.remoteDescription) {
-      pc.addIceCandidate(new RTCIceCandidate(candidate)).catch((error) => {
-        console.error('Error adding ICE candidate:', error);
-      });
-    }
-  };
-
-  onChildAdded(callerCandidatesRef, callerCallback);
-  trackListener(callerCandidatesRef, 'child_added', callerCallback);
+  setupConnectionStateHandlers(pc);
 
   // Set remote description (offer)
   await pc.setRemoteDescription(new RTCSessionDescription(offer));
@@ -409,7 +407,6 @@ async function answerCall() {
 
   hangUpBtn.disabled = false;
   updateStatus('Connecting...');
-  disableTitleLink();
 }
 
 // ============================================================================
@@ -419,7 +416,6 @@ async function answerCall() {
 // STATE
 let justSeeked = false;
 let seekDebounceTimeout = null;
-let syncInterval = null;
 
 // UTILS
 async function updateWatchSyncState(updates) {
@@ -573,18 +569,6 @@ function setupWatchSync() {
       });
     }
   });
-
-  // NOTE: Possibly redundant, removed for now.
-  // Periodic sync for regular videos (every 5 seconds)
-  // syncInterval = setInterval(() => {
-  //   if (!ytPlayer && sharedVideo.src && !sharedVideo.paused && roomId) {
-  //     updateWatchState({
-  //       currentTime: sharedVideo.currentTime,
-  //       playing: !sharedVideo.paused,
-  //       isYouTube: false,
-  //     });
-  //   }
-  // }, 5000);
 
   if (import.meta.env.DEV) {
     console.log('Watch sync setup complete for role:', role);
@@ -754,133 +738,133 @@ function toggleWatchMode() {
   }
 }
 
-// ============================================================================
-// UI CONTROLS - MEDIA CONTROLS (MUTE, VIDEO, FULLSCREEN)
-// ============================================================================
+// // ============================================================================
+// // UI CONTROLS - MEDIA CONTROLS (MUTE, VIDEO, FULLSCREEN)
+// // ============================================================================
 
-// STATE
-let remotePreviousMuted = remoteVideo?.muted || false;
-// let remotePreviousVolume = false;
+// // STATE
+// let remotePreviousMuted = remoteVideo?.muted || false;
+// // let remotePreviousVolume = false;
 
-// Mute/unmute self
+// // Mute/unmute self
 
-const setMicrophoneEnabled = (enabled) => {
-  if (!localStream) return;
-  const audioTrack = localStream.getAudioTracks()[0];
-  if (!audioTrack) return;
-  audioTrack.enabled = enabled;
-};
+// const setMicrophoneEnabled = (enabled) => {
+//   if (!localStream) return;
+//   const audioTrack = localStream.getAudioTracks()[0];
+//   if (!audioTrack) return;
+//   audioTrack.enabled = enabled;
+// };
 
-const setLocalVideoMuted = (enabled, volume = 0) => {
-  if (!localVideo) return;
-  localVideo.muted = !enabled;
-  localVideo.volume = volume;
-};
+// const setLocalVideoMuted = (enabled, volume = 0) => {
+//   if (!localVideo) return;
+//   localVideo.muted = !enabled;
+//   localVideo.volume = volume;
+// };
 
-const updateMuteMicIcon = (muted) => {
-  const icon = muteSelfBtn.querySelector('i');
-  icon.className = muted ? 'fa fa-microphone-slash' : 'fa fa-microphone';
-};
+// const updateMuteMicIcon = (muted) => {
+//   const icon = muteSelfBtn.querySelector('i');
+//   icon.className = muted ? 'fa fa-microphone-slash' : 'fa fa-microphone';
+// };
 
-muteSelfBtn.onclick = () => {
-  if (!localVideo || !localStream) return;
-  const shouldMute = !localVideo.muted;
-  setMicrophoneEnabled(!shouldMute);
-  setLocalVideoMuted(!shouldMute, 0);
-  updateMuteMicIcon(shouldMute);
-};
+// muteSelfBtn.onclick = () => {
+//   if (!localVideo || !localStream) return;
+//   const shouldMute = !localVideo.muted;
+//   setMicrophoneEnabled(!shouldMute);
+//   setLocalVideoMuted(!shouldMute, 0);
+//   updateMuteMicIcon(shouldMute);
+// };
 
-// Mute/unmute partner
+// // Mute/unmute partner
 
-const remoteVolumeChangeListener = () => {
-  // Listen for volumechange (only event that fires on "muted") events
-  if (remoteVideo.muted !== remotePreviousMuted) {
-    const icon = mutePartnerBtn.querySelector('i');
-    icon.className = remoteVideo.muted // Sync with PIP button clicks
-      ? 'fa fa-volume-mute'
-      : 'fa fa-volume-up';
-    remotePreviousMuted = remoteVideo.muted;
-  }
-  // For possible future use -> if (remoteVideo.volume !== remotePreviousVolume) {}
-};
+// const remoteVolumeChangeListener = () => {
+//   // Listen for volumechange (only event that fires on "muted") events
+//   if (remoteVideo.muted !== remotePreviousMuted) {
+//     const icon = mutePartnerBtn.querySelector('i');
+//     icon.className = remoteVideo.muted // Sync with PIP button clicks
+//       ? 'fa fa-volume-mute'
+//       : 'fa fa-volume-up';
+//     remotePreviousMuted = remoteVideo.muted;
+//   }
+//   // For possible future use -> if (remoteVideo.volume !== remotePreviousVolume) {}
+// };
 
-function addRemoteVideoEventListeners() {
-  if (!remoteVideo) return;
-  remoteVideo.addEventListener('volumechange', remoteVolumeChangeListener);
-}
+// function addRemoteVideoEventListeners() {
+//   if (!remoteVideo) return;
+//   remoteVideo.addEventListener('volumechange', remoteVolumeChangeListener);
+// }
 
-mutePartnerBtn.onclick = () => {
-  if (!remoteVideo) return;
-  remoteVideo.muted = !remoteVideo.muted;
-};
+// mutePartnerBtn.onclick = () => {
+//   if (!remoteVideo) return;
+//   remoteVideo.muted = !remoteVideo.muted;
+// };
 
-// Toggle own video stream on/off
-videoSelfBtn.onclick = () => {
-  if (!localStream) return;
+// // Toggle own video stream on/off
+// videoSelfBtn.onclick = () => {
+//   if (!localStream) return;
 
-  const videoTrack = localStream.getVideoTracks()[0];
-  if (videoTrack) {
-    videoTrack.enabled = !videoTrack.enabled;
-    const icon = videoSelfBtn.querySelector('i');
-    icon.className = videoTrack.enabled ? 'fa fa-video' : 'fa fa-video-slash';
-  }
-};
+//   const videoTrack = localStream.getVideoTracks()[0];
+//   if (videoTrack) {
+//     videoTrack.enabled = !videoTrack.enabled;
+//     const icon = videoSelfBtn.querySelector('i');
+//     icon.className = videoTrack.enabled ? 'fa fa-video' : 'fa fa-video-slash';
+//   }
+// };
 
-// Switch camera (mobile)
-if (switchCameraSelfBtn) {
-  switchCameraSelfBtn.onclick = async () => {
-    if (!localStream) return;
+// // Switch camera (mobile)
+// if (switchCameraSelfBtn) {
+//   switchCameraSelfBtn.onclick = async () => {
+//     if (!localStream) return;
 
-    try {
-      const videoTrack = localStream.getVideoTracks()[0];
-      const currentFacingMode = videoTrack.getSettings().facingMode;
-      const newFacingMode =
-        currentFacingMode === 'user' ? 'environment' : 'user';
+//     try {
+//       const videoTrack = localStream.getVideoTracks()[0];
+//       const currentFacingMode = videoTrack.getSettings().facingMode;
+//       const newFacingMode =
+//         currentFacingMode === 'user' ? 'environment' : 'user';
 
-      // Stop current track
-      videoTrack.stop();
+//       // Stop current track
+//       videoTrack.stop();
 
-      // Get new stream with opposite camera
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: newFacingMode },
-        audio: userMediaAudioConstraints,
-      });
+//       // Get new stream with opposite camera
+//       const newStream = await navigator.mediaDevices.getUserMedia({
+//         video: { facingMode: newFacingMode },
+//         audio: userMediaAudioConstraints,
+//       });
 
-      // Replace track in peer connection
-      const newVideoTrack = newStream.getVideoTracks()[0];
-      if (pc) {
-        const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
-        if (sender) {
-          sender.replaceTrack(newVideoTrack);
-        }
-      }
+//       // Replace track in peer connection
+//       const newVideoTrack = newStream.getVideoTracks()[0];
+//       if (pc) {
+//         const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
+//         if (sender) {
+//           sender.replaceTrack(newVideoTrack);
+//         }
+//       }
 
-      // Update local video
-      localStream = newStream;
-      localVideo.srcObject = newStream;
-    } catch (error) {
-      console.error('Failed to switch camera:', error);
-    }
-  };
-}
+//       // Update local video
+//       localStream = newStream;
+//       localVideo.srcObject = newStream;
+//     } catch (error) {
+//       console.error('Failed to switch camera:', error);
+//     }
+//   };
+// }
 
-// Fullscreen for local video
-fullscreenSelfBtn.onclick = () => {
-  if (localVideo.requestFullscreen) {
-    localVideo.requestFullscreen();
-  } else if (localVideo.webkitRequestFullscreen) {
-    localVideo.webkitRequestFullscreen();
-  }
-};
+// // Fullscreen for local video
+// fullscreenSelfBtn.onclick = () => {
+//   if (localVideo.requestFullscreen) {
+//     localVideo.requestFullscreen();
+//   } else if (localVideo.webkitRequestFullscreen) {
+//     localVideo.webkitRequestFullscreen();
+//   }
+// };
 
-// Fullscreen for remote video
-fullscreenPartnerBtn.onclick = () => {
-  if (remoteVideo.requestFullscreen) {
-    remoteVideo.requestFullscreen();
-  } else if (remoteVideo.webkitRequestFullscreen) {
-    remoteVideo.webkitRequestFullscreen();
-  }
-};
+// // Fullscreen for remote video
+// fullscreenPartnerBtn.onclick = () => {
+//   if (remoteVideo.requestFullscreen) {
+//     remoteVideo.requestFullscreen();
+//   } else if (remoteVideo.webkitRequestFullscreen) {
+//     remoteVideo.webkitRequestFullscreen();
+//   }
+// };
 
 // ============================================================================
 // UI CONTROLS - PICTURE-IN-PICTURE
@@ -918,8 +902,9 @@ async function hangUp() {
   if (remoteVideo.srcObject) {
     remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
     remoteVideo.srcObject = null;
-    remoteVideo.removeEventListener('volumechange', remoteVolumeChangeListener);
   }
+
+  cleanupMediaControls(remoteVideo);
 
   // Close peer connection
   if (pc) {
@@ -928,11 +913,9 @@ async function hangUp() {
   }
 
   // Remove Firebase listeners
-  firebaseListeners.forEach(({ ref: fbRef, type, callback }) => {
-    off(fbRef, type, callback);
-    // off(fbRef, 'value', callback);
-    // off(fbRef, 'child_added', callback);
-  });
+  firebaseListeners.forEach(({ ref: fbRef, type, callback }) =>
+    off(fbRef, type, callback)
+  );
   firebaseListeners.length = 0;
 
   // Clean up YouTube player
@@ -947,12 +930,6 @@ async function hangUp() {
     seekDebounceTimeout = null;
   }
   justSeeked = false;
-
-  // Clear periodic sync interval if stored (e.g., store in let syncInterval)
-  if (syncInterval) {
-    clearInterval(syncInterval);
-    syncInterval = null;
-  }
 
   // Remove room from Firebase (optional - rooms can auto-expire)
   if (roomId && role === 'initiator') {
@@ -991,7 +968,6 @@ async function hangUp() {
   window.history.replaceState({}, document.title, window.location.pathname);
 
   updateStatus('Disconnected. Click "Start New Chat" to begin.');
-  // enableTitleLink();
 }
 
 // ============================================================================
@@ -1038,20 +1014,6 @@ function trackListener(fbRef, type, callback) {
   firebaseListeners.push({ ref: fbRef, type, callback });
 }
 
-function disableTitleLink() {
-  titleLink.href = '';
-  titleLink.style.cursor = 'default';
-}
-
-function enableTitleLink() {
-  if (import.meta.env.PROD) {
-    titleLink.href = 'https://kristinnroach.github.io/HangVidU/';
-  } else {
-    titleLink.href = '#';
-  }
-  titleLink.style.cursor = 'pointer';
-}
-
 // ============================================================================
 // AUTO-JOIN FROM URL PARAMETER
 // ============================================================================
@@ -1091,8 +1053,6 @@ window.addEventListener('beforeunload', (e) => {
   // Clean up resources
   hangUp();
 });
-
-// window.onload = () => { };
 
 // Touch controls for mobile (show/hide buttons on tap)
 document.querySelectorAll('.video-wrapper').forEach((wrapper) => {
@@ -1155,7 +1115,8 @@ async function updateLocalMediaDevices() {
 
     // Update local stream and video element
     localStream = newStream;
-    localVideo.srcObject = newStream;
+    const videoOnlyStream = new MediaStream(newStream.getVideoTracks());
+    localVideo.srcObject = videoOnlyStream;
   } catch (err) {
     updateStatus('Could not access selected devices.');
     console.error(err);
