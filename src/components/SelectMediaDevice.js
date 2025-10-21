@@ -4,19 +4,22 @@ export class SelectMediaDevice extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
+    this._onDeviceChange = this.updateDevices.bind(this);
   }
 
   connectedCallback() {
     this.render();
     this.updateDevices();
-    navigator.mediaDevices.addEventListener('devicechange', () =>
-      this.updateDevices()
+    navigator.mediaDevices.addEventListener(
+      'devicechange',
+      this._onDeviceChange
     );
   }
 
   disconnectedCallback() {
-    navigator.mediaDevices.removeEventListener('devicechange', () =>
-      this.updateDevices()
+    navigator.mediaDevices.removeEventListener(
+      'devicechange',
+      this._onDeviceChange
     );
   }
 

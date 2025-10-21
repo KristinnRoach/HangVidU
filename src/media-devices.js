@@ -36,17 +36,16 @@ export async function switchCamera({
   localStream,
   localVideo,
   peerConnection,
+  currentFacingMode,
 }) {
-  const newFacingMode =
-    state.currentFacingMode === 'user' ? 'environment' : 'user';
+  const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
 
   const videoTrack = localStream.getVideoTracks()[0];
 
   try {
     // Attempt to apply constraints to the existing video track
     await videoTrack.applyConstraints({ facingMode: newFacingMode });
-    state.currentFacingMode = newFacingMode;
-    return; // Exit early if constraints were successfully applied
+    return newFacingMode; // Exit early if constraints were successfully applied
   } catch (error) {
     console.warn(
       'applyConstraints failed, falling back to getUserMedia:',
@@ -85,5 +84,5 @@ export async function switchCamera({
     }
   });
 
-  state.currentFacingMode = newFacingMode;
+  return newFacingMode;
 }

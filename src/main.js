@@ -158,16 +158,18 @@ async function init() {
     }
 
     initializeMediaControls({
-      localStream,
-      localVideo,
-      remoteVideo,
+      getLocalStream: () => localStream,
+      getLocalVideo: () => localVideo,
+      getRemoteVideo: () => remoteVideo,
+      getPeerConnection: () => pc,
+
       muteSelfBtn,
       videoSelfBtn,
       switchCameraSelfBtn,
       fullscreenSelfBtn,
       mutePartnerBtn,
       fullscreenPartnerBtn,
-      pc,
+
       audioConstraints: userMediaAudioConstraints,
     });
 
@@ -189,7 +191,11 @@ function setupRemoteStream(pc) {
       console.log('Received remote track');
     }
 
-    if (!event.streams || !event.streams[0] instanceof MediaStream) {
+    if (
+      !event.streams ||
+      !event.streams[0] ||
+      !(event.streams[0] instanceof MediaStream)
+    ) {
       console.error(
         'No valid remote MediaStream found in event.streams:',
         event.streams
@@ -1114,9 +1120,10 @@ async function updateLocalMediaDevices() {
     }
 
     // Update local stream and video element
+    const oldStream = localStream;
     localStream = newStream;
-    const videoOnlyStream = new MediaStream(newStream.getVideoTracks());
-    localVideo.srcObject = videoOnlyStream;
+    localVideo.srcObject = new MediaStream(newStream.getVideoTracks());
+    if (oldStream) oldStream.getTracks().forEach((t) => t.stop()); // Cleanup old tracks
   } catch (err) {
     updateStatus('Could not access selected devices.');
     console.error(err);
@@ -1136,8 +1143,8 @@ audioOutputSelect?.shadowRoot
   .querySelector('select')
   ?.addEventListener('change', (e) => {
     const sinkId = e.target.value;
-    if (typeof localVideo.sinkId !== 'undefined') {
-      localVideo.setSinkId(sinkId).catch((err) => {
+    if (typeof remoteVideo?.setSinkId === 'function') {
+      remoteVideo.setSinkId(sinkId).catch((err) => {
         updateStatus('Could not set audio output device.');
         console.error(err);
       });
