@@ -146,6 +146,8 @@ export function initializeMediaControls({
   }
 
   // ===== SWITCH CAMERA (MOBILE) =====
+  let lastFacingMode = 'user'; // Track facing mode manually
+
   if (switchCameraSelfBtn) {
     switchCameraSelfBtn.onclick = async () => {
       const localStream = getLocalStream();
@@ -159,7 +161,11 @@ export function initializeMediaControls({
         console.warn('No local video track available.');
         return;
       }
-      const currentFacingMode = videoTrack.getSettings()?.facingMode || 'user';
+      // const currentFacingMode = videoTrack.getSettings()?.facingMode || 'user';
+
+      // Use tracked facing mode instead of unreliable getSettings()
+      const currentFacingMode = lastFacingMode;
+
       const pc = getPeerConnection?.();
       if (!pc) {
         console.error('PeerConnection is required to switch camera.');
@@ -171,6 +177,8 @@ export function initializeMediaControls({
         peerConnection: pc,
         currentFacingMode,
       });
+
+      lastFacingMode = facingMode;
       console.log('Switched camera to facingMode:', facingMode);
     };
   }
