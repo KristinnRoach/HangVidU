@@ -1,6 +1,7 @@
 // src/media-controls.js
-
 // Handles all media control button functionality (mute, video, camera, fullscreen)
+
+import { switchCamera } from './media-devices.js';
 
 // ============================================================================
 // STATE
@@ -84,29 +85,29 @@ export function removeRemoteVideoEventListeners(remoteVideo) {
 /**
  * Initialize all media controls
  * @param {Object} params - Configuration object
- * @param {MediaStream} params.localStream - Local media stream
- * @param {HTMLVideoElement} params.localVideo - Local video element
- * @param {HTMLVideoElement} params.remoteVideo - Remote video element
+ * @param {MediaStream} params.getLocalStream - Getter for Local media stream
+ * @param {HTMLVideoElement} params.getLocalVideo - Getter for Local video element
+ * @param {HTMLVideoElement} params.getRemoteVideo - Getter for Remote video element
+ * @param {RTCPeerConnection} params.getPeerConnection - Getter for Peer connection (optional, for camera switch)
  * @param {HTMLElement} params.muteSelfBtn - Mute self button
  * @param {HTMLElement} params.videoSelfBtn - Video toggle button
  * @param {HTMLElement} params.switchCameraSelfBtn - Switch camera button
  * @param {HTMLElement} params.fullscreenSelfBtn - Fullscreen self button
  * @param {HTMLElement} params.mutePartnerBtn - Mute partner button
  * @param {HTMLElement} params.fullscreenPartnerBtn - Fullscreen partner button
- * @param {RTCPeerConnection} params.pc - Peer connection (optional, for camera switch)
  * @param {Object} params.audioConstraints - Audio constraints for camera switch
  */
 export function initializeMediaControls({
-  localStream,
-  localVideo,
-  remoteVideo,
+  getLocalStream,
+  getLocalVideo,
+  getRemoteVideo,
+  getPeerConnection = () => null,
   muteSelfBtn,
   videoSelfBtn,
   switchCameraSelfBtn,
   fullscreenSelfBtn,
   mutePartnerBtn,
   fullscreenPartnerBtn,
-  pc = null,
   audioConstraints = {
     echoCancellation: true,
     noiseSuppression: true,
@@ -116,6 +117,8 @@ export function initializeMediaControls({
   // ===== MUTE/UNMUTE SELF =====
   if (muteSelfBtn) {
     muteSelfBtn.onclick = () => {
+      const localStream = getLocalStream();
+      const localVideo = getLocalVideo();
       if (!localVideo || !localStream) return;
 
       const shouldMute = !localVideo.muted;
@@ -128,6 +131,7 @@ export function initializeMediaControls({
   // ===== TOGGLE VIDEO ON/OFF =====
   if (videoSelfBtn) {
     videoSelfBtn.onclick = () => {
+      const localStream = getLocalStream();
       if (!localStream) return;
 
       const videoTrack = localStream.getVideoTracks()[0];
@@ -144,45 +148,67 @@ export function initializeMediaControls({
   // ===== SWITCH CAMERA (MOBILE) =====
   if (switchCameraSelfBtn) {
     switchCameraSelfBtn.onclick = async () => {
+      const localStream = getLocalStream();
+      const localVideo = getLocalVideo();
       if (!localStream) return;
-
-      try {
-        const videoTrack = localStream.getVideoTracks()[0];
-        const currentFacingMode = videoTrack.getSettings().facingMode;
-        const newFacingMode =
-          currentFacingMode === 'user' ? 'environment' : 'user';
-
-        // Stop current track
-        videoTrack.stop();
-
-        // Get new stream with opposite camera
-        const newStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: newFacingMode },
-          audio: audioConstraints,
-        });
-
-        // Replace track in peer connection if it exists
-        const newVideoTrack = newStream.getVideoTracks()[0];
-        if (pc) {
-          const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
-          if (sender) {
-            sender.replaceTrack(newVideoTrack);
-          }
-        }
-
-        // Update local stream reference (caller must handle this)
-        // Return new stream so caller can update their localStream variable
-        return newStream;
-      } catch (error) {
-        console.error('Failed to switch camera:', error);
-        return null;
+      const videoTrack = localStream.getVideoTracks()[0];
+      const currentFacingMode = videoTrack.getSettings().facingMode;
+      const pc = getPeerConnection?.();
+      if (!pc) {
+        console.error('PeerConnection is required to switch camera.');
+        return;
       }
+      await switchCamera({
+        localStream,
+        localVideo,
+        peerConnection: pc,
+        currentFacingMode,
+      });
     };
   }
 
+  // TODO: delete this after testing:
+  // switchCameraSelfBtn.onclick = async () => {
+  //   if (!localStream) return;
+
+  //   try {
+  //     const videoTrack = localStream.getVideoTracks()[0];
+  //     const currentFacingMode = videoTrack.getSettings().facingMode;
+  //     const newFacingMode =
+  //       currentFacingMode === 'user' ? 'environment' : 'user';
+
+  //     // Stop current track
+  //     videoTrack.stop();
+
+  //     // Get new stream with opposite camera
+  //     const newStream = await navigator.mediaDevices.getUserMedia({
+  //       video: { facingMode: newFacingMode },
+  //       audio: audioConstraints,
+  //     });
+
+  //     // Replace track in peer connection if it exists
+  //     const newVideoTrack = newStream.getVideoTracks()[0];
+  //     if (pc) {
+  //       const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
+  //       if (sender) {
+  //         sender.replaceTrack(newVideoTrack);
+  //       }
+  //     }
+
+  //     // Update local stream reference (caller must handle this)
+  //     // Return new stream so caller can update their localStream variable
+  //     return newStream;
+  //   } catch (error) {
+  //     console.error('Failed to switch camera:', error);
+  //     return null;
+  //   }
+  // };
+  // }
+
   // ===== FULLSCREEN FOR LOCAL VIDEO =====
-  if (fullscreenSelfBtn && localVideo) {
+  if (fullscreenSelfBtn && getLocalVideo()) {
     fullscreenSelfBtn.onclick = () => {
+      const localVideo = getLocalVideo();
       if (localVideo.requestFullscreen) {
         localVideo.requestFullscreen();
       } else if (localVideo.webkitRequestFullscreen) {
@@ -192,16 +218,18 @@ export function initializeMediaControls({
   }
 
   // ===== MUTE/UNMUTE PARTNER =====
-  if (mutePartnerBtn && remoteVideo) {
+  if (mutePartnerBtn && getRemoteVideo()) {
     mutePartnerBtn.onclick = () => {
+      const remoteVideo = getRemoteVideo();
       if (!remoteVideo) return;
       remoteVideo.muted = !remoteVideo.muted;
     };
   }
 
   // ===== FULLSCREEN FOR REMOTE VIDEO =====
-  if (fullscreenPartnerBtn && remoteVideo) {
+  if (fullscreenPartnerBtn && getRemoteVideo()) {
     fullscreenPartnerBtn.onclick = () => {
+      const remoteVideo = getRemoteVideo();
       if (remoteVideo.requestFullscreen) {
         remoteVideo.requestFullscreen();
       } else if (remoteVideo.webkitRequestFullscreen) {
