@@ -93,14 +93,6 @@ a span {
   pointer-events: auto;
 }
 
-/* video {
-  width: 100%;
-  max-width: 500px;
-  background: #000000;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-} */
-
 #localVideo {
   transform: scaleX(-1);
   will-change: transform;
