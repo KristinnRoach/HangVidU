@@ -1,4 +1,9 @@
 function setupPWA(installBtn) {
+  if (!installBtn) {
+    console.warn('setupPWA: install button not found');
+    return;
+  }
+
   let deferredPrompt;
 
   window.addEventListener('beforeinstallprompt', (e) => {
@@ -11,8 +16,13 @@ function setupPWA(installBtn) {
     if (deferredPrompt) {
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
+
       // hide the button after install
-      installBtn.style.display = 'none';
+      if (outcome === 'accepted') {
+        installBtn.style.display = 'none';
+      } else {
+        console.log('User dismissed the install prompt');
+      }
       deferredPrompt = null;
     }
   });

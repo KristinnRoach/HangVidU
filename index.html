@@ -10,7 +10,6 @@
   <body>
     <div class="main-wrapper">
       <div class="top-left-menu">
-        <!-- YouTube Search Section -->
         <div class="search-section">
           <div class="search-controls">
             <input
@@ -43,31 +42,25 @@
           autoplay
           playsinline
         ></video>
-        <div class="hover-controls">
-          <button id="fullscreenSelfBtn" aria-label="Fullscreen">
-            <i class="fa fa-expand"></i>
-          </button>
-        </div>
 
         <video
-          class="video-player"
+          class="video-player hidden"
           id="remoteVideo"
           autoplay
           playsinline
         ></video>
 
         <video
-          class="video-player"
-          style="display: none"
+          class="video-player hidden"
           id="sharedVideo"
           controls
           playsinline
         ></video>
 
-        <div class="video-player" id="yt-player-div"></div>
+        <div class="video-player hidden" id="yt-player-div"></div>
       </div>
 
-      <div id="controls-section" class="controls-section">
+      <div id="controls-section" class="controls-section bottom">
         <div class="control-container" id="start-chat-btn">
           <button id="startChat" class="primary-btn">
             <i class="fa fa-phone"></i>
@@ -127,6 +120,12 @@
         placeholder="Paste stream URL (both people need to paste the same URL)"
       />
       <button id="loadStream">Load Video</button>
+    </div>
+
+    <div style="display: none" class="hover-controls">
+      <button id="fullscreenSelfBtn" aria-label="Fullscreen">
+        <i class="fa fa-expand"></i>
+      </button>
     </div>
 
     <div style="display: none" id="status" class="status"></div>

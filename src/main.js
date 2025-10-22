@@ -42,6 +42,7 @@ import {
   audioInputSelect,
   audioOutputSelect,
   installBtn,
+  controlsSection,
 } from './elements.js';
 
 import {
@@ -105,17 +106,15 @@ const configuration = {
 // ============================================================================
 // GLOBAL STATE
 // ============================================================================
-// Keeping state simple and centralized like simple-main.js reference
 
 let pc = null; // RTCPeerConnection
-let localStream = null; // Local media stream
-let roomId = null; // Current room ID
-let peerId = null; // Unique peer ID
+let localStream = null;
+let roomId = null;
+let peerId = null;
 let role = null; // 'initiator' | 'joiner'
 let ytPlayer = null; // YouTube player instance
 let ytReady = false; // YouTube API loaded
 
-// Track Firebase listeners for proper cleanup
 const firebaseListeners = [];
 
 // Prevent duplicate SDP processing
@@ -124,6 +123,13 @@ let lastOfferSdp = null;
 
 // Prevent feedback loops in bidirectional sync
 let lastLocalAction = 0;
+
+export const isRemoteVideoVideoActive = () => {
+  return (
+    remoteVideo.srcObject &&
+    remoteVideo.srcObject.getVideoTracks().some((track) => track.enabled)
+  );
+};
 
 // ============================================================================
 // INITIALIZATION & MEDIA SETUP
@@ -208,12 +214,12 @@ async function init() {
 // === WIP ===
 
 let uiHandleRemoteJoined = () => {
-  remoteVideo.style.display = 'block';
+  remoteVideo.classList.remove('hidden');
   localVideo.classList.add('smallFrame');
 };
 
 let uiHandleRemoteLeft = () => {
-  remoteVideo.style.display = 'none';
+  remoteVideo.classList.add('hidden');
   localVideo.classList.remove('smallFrame');
 };
 
@@ -281,6 +287,10 @@ function setupRemoteStream(pc) {
       remoteVideo.srcObject = event.streams[0];
       addRemoteVideoEventListeners(remoteVideo, mutePartnerBtn);
       updateStatus('Connected!');
+
+      if (import.meta.env.DEV) {
+        remoteVideo.style.border = '8px solid red';
+      }
     }
   };
 }
@@ -430,12 +440,12 @@ async function createCall() {
 async function answerCall() {
   if (!localStream) {
     updateStatus('Error: Camera not initialized');
-    return;
+    return false;
   }
 
   if (!roomId) {
     updateStatus('Error: No room ID');
-    return;
+    return false;
   }
 
   role = 'joiner';
@@ -446,7 +456,7 @@ async function answerCall() {
 
   if (!roomSnapshot.exists()) {
     updateStatus('Error: Invalid room link');
-    return;
+    return false;
   }
 
   const roomData = roomSnapshot.val();
@@ -454,7 +464,7 @@ async function answerCall() {
 
   if (!offer) {
     updateStatus('Error: No offer found');
-    return;
+    return false;
   }
 
   // Create peer connection
@@ -492,7 +502,7 @@ async function answerCall() {
   } catch (err) {
     console.error('Failed to update answer in Firebase:', err);
     updateStatus('Failed to send answer to partner.');
-    return;
+    return false;
   }
 
   // Setup watch-together sync
@@ -502,7 +512,11 @@ async function answerCall() {
   setupRoomMembers();
 
   hangUpBtn.disabled = false;
+  uiHandleRemoteJoined();
+
   updateStatus('Connecting...');
+
+  return true;
 }
 
 // ============================================================================
@@ -554,10 +568,30 @@ function setupWatchSync() {
         sharedVideo.style.display = 'flex';
         sharedVideo.src = data.url;
         // Hide YouTube container
-        ytContainer.style.display = 'none';
+        ytContainer.classList.add('hidden');
       }
       syncStatus.textContent = 'Video loaded';
     }
+
+    // --- Ensure remoteVideo is always smallFrame when a video is loaded ---
+    const isRemoteVideoInPiP = document.pictureInPictureElement === remoteVideo;
+    const isLocalVideoInPiP = document.pictureInPictureElement === localVideo;
+
+    if (isYTVisible() || isSharedVideoVisible()) {
+      if (isRemoteVideoVideoActive() && !isRemoteVideoInPiP) {
+        remoteVideo.classList.add('smallFrame');
+        localVideo.classList.add('hidden');
+      } else if (!isLocalVideoInPiP) {
+        remoteVideo.classList.remove('smallFrame');
+        localVideo.classList.remove('hidden');
+        localVideo.classList.add('smallFrame');
+      }
+
+      const controlsSection = document.getElementById('controls-section');
+      controlsSection.classList.remove('bottom');
+      controlsSection.classList.add('watch-mode');
+    }
+    // ----------------------------------------------------------------------
 
     // Sync playback state
     if (data.isYouTube && ytPlayer && ytReady) {
@@ -685,7 +719,7 @@ function loadStream() {
     loadYouTubeVideoWithSync(url);
   } else {
     // Hide YouTube container and destroy player if switching to direct video
-    ytContainer.style.display = 'none';
+    hideYouTubePlayer();
     destroyYouTubePlayer();
 
     // Show regular video element
@@ -710,14 +744,75 @@ function loadStream() {
 function handleVideoSelection(video) {
   streamUrlInput.value = video.url;
   loadStream();
+
   remoteVideo.classList.add('smallFrame');
-  localVideo.classList.add('smallFrame');
+  localVideo.classList.add('hidden');
+
+  controlsSection.classList.remove('bottom');
+  controlsSection.classList.add('watch-mode');
+
   syncStatus.textContent = `Loading "${video.title}"...`;
 }
 
 // ============================================================================
 // YOUTUBE PLAYER INTEGRATION
 // ============================================================================
+function isYTVisible() {
+  const ytContainer = document.getElementById('yt-player-div');
+  return (
+    ytContainer &&
+    !ytContainer.classList.contains('hidden') &&
+    ytContainer.style.display !== 'none'
+  );
+}
+
+function isSharedVideoVisible() {
+  return (
+    sharedVideo &&
+    sharedVideo.style.display !== 'none' &&
+    sharedVideo.src &&
+    sharedVideo.src.trim() !== ''
+  );
+}
+
+// HIDE YOUTUBE PLAYER
+export function hideYouTubePlayer() {
+  if (isYTVisible()) {
+    ytContainer.classList.add('hidden');
+  }
+  console.log('Hiding ytContainer:', ytContainer);
+
+  console.log('ytContainer.classList', ytContainer.classList);
+  localVideo.classList.remove('hidden');
+  remoteVideo.classList.remove('smallFrame');
+
+  const controlsSection = document.getElementById('controls-section');
+  controlsSection.classList.remove('watch-mode');
+  controlsSection.classList.add('bottom');
+}
+
+// SHOW YOUTUBE PLAYER
+export function showYouTubePlayer() {
+  const ytContainer = document.getElementById('yt-player-div');
+  if (ytPlayer && ytContainer) {
+    ytContainer.classList.remove('hidden');
+  }
+
+  if (isYTVisible() || isSharedVideoVisible()) {
+    if (isRemoteVideoVideoActive() && !isRemoteVideoInPiP) {
+      remoteVideo.classList.add('smallFrame');
+      localVideo.classList.add('hidden');
+    } else if (!isLocalVideoInPiP) {
+      remoteVideo.classList.remove('smallFrame');
+      localVideo.classList.remove('hidden');
+      localVideo.classList.add('smallFrame');
+    }
+
+    const controlsSection = document.getElementById('controls-section');
+    controlsSection.classList.remove('bottom');
+    controlsSection.classList.add('watch-mode');
+  }
+}
 
 async function loadYouTubeVideoWithSync(url) {
   const videoId = extractYouTubeId(url);
@@ -733,7 +828,7 @@ async function loadYouTubeVideoWithSync(url) {
   sharedVideo.style.display = 'none';
 
   // Show YouTube container
-  ytContainer.style.display = 'flex';
+  showYouTubePlayer();
 
   try {
     // Load YouTube player
@@ -805,7 +900,7 @@ async function loadYouTubeVideoWithSync(url) {
 
     // Fallback to showing regular video element
     sharedVideo.style.display = 'flex';
-    ytContainer.style.display = 'none';
+    hideYouTubePlayer();
   }
 }
 
@@ -903,7 +998,7 @@ function cleanup() {
   destroyYouTubePlayer();
   ytPlayer = null;
   ytReady = false;
-  ytContainer.style.display = 'none';
+  hideYouTubePlayer();
 }
 
 // ============================================================================
@@ -956,12 +1051,18 @@ async function autoJoinFromUrl() {
     updateStatus('Connecting to room...');
     startChatBtn.style.display = 'none';
 
-    const success = await init();
-    if (success) {
-      await answerCall();
+    const initSuccess = await init();
+    let answerSuccess = false;
+    if (initSuccess) answerSuccess = await answerCall();
+
+    if (!initSuccess || !answerSuccess) {
+      startChatBtn.style.display = 'block';
+      return false;
     }
+    return true;
   } else {
     updateStatus('Ready. Click "Start New Chat" to begin.');
+    return false;
   }
 }
 
@@ -970,6 +1071,10 @@ async function autoJoinFromUrl() {
 // ============================================================================
 
 window.onload = async () => {
+  // Auto-join if room parameter exists
+  const joinedSuccess = await autoJoinFromUrl();
+  if (joinedSuccess) return;
+
   const success = await init();
   if (!success) {
     startChatBtn.disabled = true;
@@ -991,38 +1096,6 @@ window.addEventListener('beforeunload', (e) => {
   // Clean up resources
   cleanup();
 });
-
-// TODO: Touch controls for mobile (show/hide buttons on tap)
-// let hideTimeout;
-// const controls = wrapper.querySelector('.controls-section');
-
-// if (controls) {
-//   wrapper.addEventListener('touchstart', () => {
-//     controls.style.opacity = '1';
-//     clearTimeout(hideTimeout);
-//     hideTimeout = setTimeout(() => {
-//       controls.style.opacity = '0';
-//     }, 3000);
-//   });
-// }
-
-// document.querySelectorAll('.video-wrapper').forEach((wrapper) => {
-//   let hideTimeout;
-//   const controls = wrapper.querySelector('.hover-controls');
-
-//   if (controls) {
-//     wrapper.addEventListener('touchstart', () => {
-//       controls.style.opacity = '1';
-//       clearTimeout(hideTimeout);
-//       hideTimeout = setTimeout(() => {
-//         controls.style.opacity = '0';
-//       }, 3000);
-//     });
-//   }
-// });
-
-// Auto-join if room parameter exists
-autoJoinFromUrl();
 
 // ======= DEVICES ==========
 async function updateLocalMediaDevices() {
@@ -1266,3 +1339,32 @@ audioOutputSelect?.shadowRoot
 //     updateStatus('Picture-in-picture not supported');
 //   }
 // };
+
+// TODO: Touch controls for mobile (show/hide buttons on tap)
+// let hideTimeout;
+// const controls = wrapper.querySelector('.controls-section');
+
+// if (controls) {
+//   wrapper.addEventListener('touchstart', () => {
+//     controls.style.opacity = '1';
+//     clearTimeout(hideTimeout);
+//     hideTimeout = setTimeout(() => {
+//       controls.style.opacity = '0';
+//     }, 3000);
+//   });
+// }
+
+// document.querySelectorAll('.video-wrapper').forEach((wrapper) => {
+//   let hideTimeout;
+//   const controls = wrapper.querySelector('.hover-controls');
+
+//   if (controls) {
+//     wrapper.addEventListener('touchstart', () => {
+//       controls.style.opacity = '1';
+//       clearTimeout(hideTimeout);
+//       hideTimeout = setTimeout(() => {
+//         controls.style.opacity = '0';
+//       }, 3000);
+//     });
+//   }
+// });

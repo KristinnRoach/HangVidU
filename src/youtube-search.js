@@ -2,8 +2,6 @@
 // YOUTUBE SEARCH MODULE
 // ============================================================================
 
-import { hideYouTubePlayer, showYouTubePlayer } from './youtube-player';
-
 // ===== ELEMENTS =====
 
 let searchContainer = null;

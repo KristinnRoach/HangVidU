@@ -16,6 +16,7 @@ export const audioOutputSelect = document.querySelector(
   'select-media-device[type="audiooutput"]'
 );
 
+export const controlsSection = document.getElementById('controls-section');
 export const startChatBtn = document.getElementById('startChat');
 export const hangUpBtn = document.getElementById('hangUp');
 export const copyLinkBtn = document.getElementById('copyLink');
