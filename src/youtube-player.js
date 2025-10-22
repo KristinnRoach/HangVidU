@@ -57,11 +57,11 @@ export function extractYouTubeId(url) {
 // YOUTUBE PLAYER MANAGEMENT
 // ============================================================================
 
-export async function loadYouTubeVideo({ 
-  url, 
-  containerId, 
-  onReady, 
-  onStateChange 
+export async function loadYouTubeVideo({
+  url,
+  containerId,
+  onReady,
+  onStateChange,
 }) {
   const videoId = extractYouTubeId(url);
 
@@ -77,6 +77,8 @@ export async function loadYouTubeVideo({
   if (!container) {
     throw new Error(`Container #${containerId} not found`);
   }
+
+  container.style.display = 'flex';
 
   // Destroy existing player if any
   if (ytPlayer) {
@@ -185,3 +187,51 @@ export const YT_STATE = {
   BUFFERING: 3,
   CUED: 5,
 };
+
+// HIDE YOUTUBE PLAYER
+export function hideYouTubePlayer() {
+  const ytContainer = document.getElementById('yt-player-div');
+  if (ytPlayer && ytContainer) {
+    ytContainer.style.display = 'none';
+  }
+
+  // TODO: move to appropriate place
+  document.getElementById('remoteVideo').classList.remove('smallFrame');
+}
+
+// SHOW YOUTUBE PLAYER
+export function showYouTubePlayer() {
+  const ytContainer = document.getElementById('yt-player-div');
+  if (ytPlayer && ytContainer) {
+    ytContainer.style.display = 'block';
+  }
+
+  // TODO: move to appropriate place
+  const localVideo = document.getElementById('localVideo');
+  if (!localVideo.classList.contains('smallFrame')) {
+    localVideo.classList.add('smallFrame');
+  }
+  document.getElementById('remoteVideo').classList.add('smallFrame');
+}
+
+document.addEventListener('keydown', (event) => {
+  // Press 'Y' to toggle YouTube player visibility
+  if (event.key === 'y' || event.key === 'Y') {
+    const ytContainer = document.getElementById('yt-player-div');
+    if (ytContainer) {
+      if (ytContainer.style.display === 'none') {
+        showYouTubePlayer();
+      } else {
+        hideYouTubePlayer();
+      }
+    }
+  }
+  // Hide YouTube player when pressing 'Escape', if player is visible
+  if (event.key === 'Escape') {
+    const ytContainer = document.getElementById('yt-player-div');
+    if (ytContainer && ytContainer.style.display !== 'none') {
+      event.preventDefault();
+      hideYouTubePlayer();
+    }
+  }
+});

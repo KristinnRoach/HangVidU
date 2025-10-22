@@ -1,5 +1,7 @@
 // elements.js - Centralized DOM element exports
 
+export const installBtn = document.getElementById('installBtn');
+
 export const localVideo = document.getElementById('localVideo');
 export const remoteVideo = document.getElementById('remoteVideo');
 export const sharedVideo = document.getElementById('sharedVideo');
@@ -21,8 +23,6 @@ export const pipBtn = document.getElementById('pipBtn');
 export const switchCameraSelfBtn = document.getElementById(
   'switchCameraSelfBtn'
 );
-export const toggleModeBtn = document.getElementById('toggleMode');
-export const loadStreamBtn = document.getElementById('loadStream');
 
 export const statusDiv = document.getElementById('status');
 export const linkContainer = document.getElementById('linkContainer');

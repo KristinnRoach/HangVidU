@@ -23,14 +23,8 @@ import {
   sharedVideo,
   startChatBtn,
   hangUpBtn,
-  copyLinkBtn,
-  pipBtn,
-  toggleModeBtn,
-  loadStreamBtn,
   statusDiv,
   linkContainer,
-  watchContainer,
-  chatContainer,
   shareLink,
   streamUrlInput,
   syncStatus,
@@ -47,6 +41,7 @@ import {
   videoInputSelect,
   audioInputSelect,
   audioOutputSelect,
+  installBtn,
 } from './elements.js';
 
 import {
@@ -69,12 +64,13 @@ import {
   YT_STATE,
 } from './youtube-player.js';
 
-import { initializeSearchUI, clearSearchResults } from './youtube-search.js';
+import { initializeSearchUI } from './youtube-search.js';
 
 import { SelectMediaDevice } from './components/SelectMediaDevice.js';
 
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import { hasFrontAndBackCameras } from './media-devices.js';
+import { setupPWA } from './PWA.js';
 
 // ============================================================================
 // FIREBASE CONFIGURATION
@@ -116,7 +112,6 @@ let localStream = null; // Local media stream
 let roomId = null; // Current room ID
 let peerId = null; // Unique peer ID
 let role = null; // 'initiator' | 'joiner'
-let watchMode = false; // Watch-together mode active
 let ytPlayer = null; // YouTube player instance
 let ytReady = false; // YouTube API loaded
 
@@ -138,11 +133,13 @@ const userMediaAudioConstraints = {
   echoCancellation: true,
   noiseSuppression: true,
   autoGainControl: true,
+  voiceIsolation: true,
 };
 
 const userMediaVideoConstraints = {
   width: { min: 640, ideal: 1920, max: 1920 },
   height: { min: 480, ideal: 1080, max: 1080 },
+  resizeMode: 'crop-and-scale',
 };
 
 async function init() {
@@ -158,6 +155,15 @@ async function init() {
     // Create a new stream with only the video track for local preview
     const videoOnlyStream = new MediaStream(localStream.getVideoTracks());
     localVideo.srcObject = videoOnlyStream;
+
+    if (import.meta.env.DEV) {
+      console.table({
+        videoCapabilities: localStream.getVideoTracks()[0].getCapabilities(),
+        audioCapabilities: localStream.getAudioTracks()[0].getCapabilities(),
+        videoApplied: localStream.getVideoTracks()[0].getSettings(),
+        audioApplied: localStream.getAudioTracks()[0].getSettings(),
+      });
+    }
 
     if (await hasFrontAndBackCameras()) {
       switchCameraSelfBtn.style.display = 'block';
@@ -178,6 +184,18 @@ async function init() {
 
       audioConstraints: userMediaAudioConstraints,
     });
+
+    if (import.meta.env.DEV) {
+      muteSelfBtn.click();
+    }
+
+    setupPWA(installBtn);
+
+    if (import.meta.env.DEV) {
+      installBtn.style.display = 'block';
+    }
+
+    initializeSearchUI(handleVideoSelection);
 
     return true;
   } catch (error) {
@@ -220,9 +238,14 @@ function setupRoomMembers() {
 
   // Listen for remote peer leave
   const onLeave = (snapshot) => {
-    if (snapshot.key !== peerId) uiHandleRemoteLeft();
+    if (snapshot.key !== peerId) {
+      console.info('Partner has left the call');
+    }
+    hangUp();
   };
+
   onChildRemoved(membersRef, onLeave);
+
   membersListeners.push({
     ref: membersRef,
     type: 'child_removed',
@@ -256,7 +279,6 @@ function setupRemoteStream(pc) {
 
     if (remoteVideo.srcObject !== event.streams[0]) {
       remoteVideo.srcObject = event.streams[0];
-      pipBtn.style.display = 'block';
       addRemoteVideoEventListeners(remoteVideo, mutePartnerBtn);
       updateStatus('Connected!');
     }
@@ -529,7 +551,7 @@ function setupWatchSync() {
         loadYouTubeVideoWithSync(data.url);
       } else {
         // Regular video
-        sharedVideo.style.display = 'block';
+        sharedVideo.style.display = 'flex';
         sharedVideo.src = data.url;
         // Hide YouTube container
         ytContainer.style.display = 'none';
@@ -667,7 +689,7 @@ function loadStream() {
     destroyYouTubePlayer();
 
     // Show regular video element
-    sharedVideo.style.display = 'block';
+    sharedVideo.style.display = 'flex';
     sharedVideo.src = url;
     syncStatus.textContent = 'Video loaded';
   }
@@ -688,6 +710,8 @@ function loadStream() {
 function handleVideoSelection(video) {
   streamUrlInput.value = video.url;
   loadStream();
+  remoteVideo.classList.add('smallFrame');
+  localVideo.classList.add('smallFrame');
   syncStatus.textContent = `Loading "${video.title}"...`;
 }
 
@@ -709,7 +733,7 @@ async function loadYouTubeVideoWithSync(url) {
   sharedVideo.style.display = 'none';
 
   // Show YouTube container
-  ytContainer.style.display = 'block';
+  ytContainer.style.display = 'flex';
 
   try {
     // Load YouTube player
@@ -780,56 +804,10 @@ async function loadYouTubeVideoWithSync(url) {
     syncStatus.textContent = 'Failed to load YouTube video';
 
     // Fallback to showing regular video element
-    sharedVideo.style.display = 'block';
+    sharedVideo.style.display = 'flex';
     ytContainer.style.display = 'none';
   }
 }
-
-// ============================================================================
-// UI CONTROLS - WATCH MODE TOGGLE
-// ============================================================================
-
-function toggleWatchMode() {
-  watchMode = !watchMode;
-
-  if (watchMode) {
-    chatContainer.style.display = 'none';
-    watchContainer.style.display = 'block';
-    // toggleModeBtn.textContent = 'Switch to Chat Mode';
-    syncStatus.textContent =
-      watchMode && roomId ? 'Watch mode ready' : 'Enter a video URL';
-
-    initializeSearchUI(handleVideoSelection);
-  } else {
-    chatContainer.style.display = 'flex';
-    watchContainer.style.display = 'none';
-    // toggleModeBtn.textContent = 'Switch to Watch Mode';
-
-    // Hide YouTube player when switching back to chat
-    clearSearchResults();
-    ytContainer.style.display = 'none';
-    sharedVideo.style.display = 'none';
-  }
-}
-
-// ============================================================================
-// UI CONTROLS - PICTURE-IN-PICTURE
-// ============================================================================
-
-pipBtn.onclick = async () => {
-  try {
-    if (document.pictureInPictureElement) {
-      await document.exitPictureInPicture();
-      pipBtn.textContent = 'Float Partner Video';
-    } else {
-      await remoteVideo.requestPictureInPicture();
-      pipBtn.textContent = 'Exit Floating Video';
-    }
-  } catch (error) {
-    console.error('PiP failed:', error);
-    updateStatus('Picture-in-picture not supported');
-  }
-};
 
 // ============================================================================
 // HANG UP / CLEANUP
@@ -837,12 +815,7 @@ pipBtn.onclick = async () => {
 async function hangUp() {
   console.debug('Hanging up...');
 
-  // Stop local media
-  if (localStream) {
-    localStream.getTracks().forEach((track) => track.stop());
-    localVideo.srcObject = null;
-    localStream = null;
-  }
+  uiHandleRemoteLeft();
 
   // Stop remote media
   if (remoteVideo.srcObject) {
@@ -863,12 +836,6 @@ async function hangUp() {
     off(fbRef, type, callback)
   );
   firebaseListeners.length = 0;
-
-  // Clean up YouTube player
-  destroyYouTubePlayer();
-  ytPlayer = null;
-  ytReady = false;
-  ytContainer.style.display = 'none';
 
   // Clear debounce timeout if any
   if (seekDebounceTimeout) {
@@ -900,12 +867,9 @@ async function hangUp() {
     const myMemberRef = ref(db, `rooms/${roomId}/members/${peerId}`);
     remove(myMemberRef).catch(() => {});
   }
-  watchContainer.style.display = 'none';
-  chatContainer.style.display = 'flex';
-  pipBtn.style.display = 'none';
+
   shareLink.value = '';
   sharedVideo.src = '';
-  sharedVideo.style.display = 'none';
   streamUrlInput.value = '';
   syncStatus.textContent = '';
 
@@ -916,7 +880,6 @@ async function hangUp() {
   // Reset state
   roomId = null;
   role = null;
-  watchMode = false;
   lastAnswerSdp = null;
   lastOfferSdp = null;
 
@@ -926,41 +889,51 @@ async function hangUp() {
   updateStatus('Disconnected. Click "Start New Chat" to begin.');
 }
 
+function cleanup() {
+  hangUp();
+
+  // Stop local media
+  if (localStream) {
+    localStream.getTracks().forEach((track) => track.stop());
+    localVideo.srcObject = null;
+    localStream = null;
+  }
+
+  // Clean up YouTube player
+  destroyYouTubePlayer();
+  ytPlayer = null;
+  ytReady = false;
+  ytContainer.style.display = 'none';
+}
+
 // ============================================================================
 // EVENT LISTENERS
 // ============================================================================
 
 startChatBtn.onclick = async () => {
-  const success = await init();
-  if (success) {
-    await createCall();
-  }
+  await createCall();
 };
 
 hangUpBtn.onclick = hangUp;
 
-toggleModeBtn.onclick = toggleWatchMode;
-
-loadStreamBtn.onclick = loadStream;
-
-copyLinkBtn.onclick = async () => {
-  try {
-    await navigator.clipboard.writeText(shareLink.value);
-    updateStatus('Link copied to clipboard!');
-  } catch (error) {
-    // Fallback for older browsers
-    shareLink.select();
-    document.execCommand('copy');
-    updateStatus('Link copied!');
-  }
-};
+// copyLinkBtn.onclick = async () => {
+//   try {
+//     await navigator.clipboard.writeText(shareLink.value);
+//     updateStatus('Link copied to clipboard!');
+//   } catch (error) {
+//     // Fallback for older browsers
+//     shareLink.select();
+//     document.execCommand('copy');
+//     updateStatus('Link copied!');
+//   }
+// };
 
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
 function updateStatus(message) {
-  statusDiv.textContent = message;
+  // statusDiv.textContent = message;
   if (import.meta.env.DEV) {
     console.log('Status:', message);
   }
@@ -996,6 +969,15 @@ async function autoJoinFromUrl() {
 // INITIALIZE ON PAGE LOAD
 // ============================================================================
 
+window.onload = async () => {
+  const success = await init();
+  if (!success) {
+    startChatBtn.disabled = true;
+    console.error('Initialization failed. Cannot start chat.');
+    return;
+  }
+};
+
 // Handle page leave
 window.addEventListener('beforeunload', (e) => {
   // Trigger browser's generic "leave page?" dialog if in active call (in PROD)
@@ -1007,7 +989,7 @@ window.addEventListener('beforeunload', (e) => {
   }
 
   // Clean up resources
-  hangUp();
+  cleanup();
 });
 
 // TODO: Touch controls for mobile (show/hide buttons on tap)
@@ -1241,5 +1223,46 @@ audioOutputSelect?.shadowRoot
 //     remoteVideo.requestFullscreen();
 //   } else if (remoteVideo.webkitRequestFullscreen) {
 //     remoteVideo.webkitRequestFullscreen();
+//   }
+// };
+
+// ============================================================================
+// UI CONTROLS - WATCH MODE TOGGLE
+// ============================================================================
+
+// function toggleWatchMode() {
+//   watchMode = !watchMode;
+
+//   if (watchMode) {
+//     watchContainer.style.display = 'flex';
+//     syncStatus.textContent =
+//       watchMode && roomId ? 'Watch mode ready' : 'Enter a video URL';
+
+//     initializeSearchUI(handleVideoSelection);
+//   } else {
+//     watchContainer.style.display = 'none';
+
+//     clearSearchResults();
+//     ytContainer.style.display = 'none';
+//     sharedVideo.style.display = 'none';
+//   }
+// }
+
+// ============================================================================
+// UI CONTROLS - PICTURE-IN-PICTURE
+// ============================================================================
+
+// pipBtn.onclick = async () => {
+//   try {
+//     if (document.pictureInPictureElement) {
+//       await document.exitPictureInPicture();
+//       pipBtn.textContent = 'Float Partner Video';
+//     } else {
+//       await remoteVideo.requestPictureInPicture();
+//       pipBtn.textContent = 'Exit Floating Video';
+//     }
+//   } catch (error) {
+//     console.error('PiP failed:', error);
+//     updateStatus('Picture-in-picture not supported');
 //   }
 // };

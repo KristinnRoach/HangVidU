@@ -1,9 +1,19 @@
 // ============================================================================
 // YOUTUBE SEARCH MODULE
 // ============================================================================
-// Simplified YouTube search UI with API integration
+
+import { hideYouTubePlayer, showYouTubePlayer } from './youtube-player';
+
+// ===== ELEMENTS =====
+
+let searchContainer = null;
+let searchBtn = null;
+let searchQuery = null;
+let searchResults = null;
 
 // ===== STATE =====
+let isInitialized = false;
+let _initializing = false;
 let searchResultsCache = [];
 let onVideoSelectCallback = null;
 let hasLoadedResults = false;
@@ -22,15 +32,18 @@ const YOUTUBE_API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
  * @param {Function} onVideoSelect - Callback when user selects a video
  */
 export function initializeSearchUI(onVideoSelect) {
+  if (isInitialized || _initializing) return;
+  _initializing = true;
+
   onVideoSelectCallback = onVideoSelect;
 
   // Get DOM elements
-  const searchContainer = document.querySelector('.search-section');
-  const searchBtn = document.getElementById('searchBtn');
-  const searchQuery = document.getElementById('searchQuery');
-  const searchResults = document.getElementById('searchResults');
+  searchContainer = document.querySelector('.search-section');
+  searchBtn = document.getElementById('searchBtn');
+  searchQuery = document.getElementById('searchQuery');
+  searchResults = document.getElementById('searchResults');
 
-  if (!searchBtn || !searchQuery || !searchResults) {
+  if (!searchContainer || !searchBtn || !searchQuery || !searchResults) {
     console.error('YouTube search elements not found in DOM');
     return;
   }
@@ -55,11 +68,23 @@ export function initializeSearchUI(onVideoSelect) {
   // Add search button event listener
   searchBtn.onclick = async () => {
     const query = searchQuery.value.trim();
-    if (!query) {
-      showError('Please enter a search term');
+    if (!searchQuery.classList.contains('visible')) {
+      // Toggle visibility
+      searchQuery.classList.add('visible');
+      searchQuery.focus();
       return;
     }
-    if (hasLoadedResults && query === lastSearchQuery) {
+
+    if (!query) {
+      clearSearchResults();
+      searchQuery.classList.remove('visible');
+      return;
+    }
+    if (
+      hasLoadedResults &&
+      query === lastSearchQuery &&
+      searchResultsCache.length
+    ) {
       displaySearchResults(searchResultsCache);
     } else if (!isDirectUrl(query)) {
       await searchYouTube(query);
@@ -84,6 +109,8 @@ export function initializeSearchUI(onVideoSelect) {
     const items = searchResults.querySelectorAll('.search-result-item');
     if (items.length > 0 && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
       e.preventDefault();
+
+      // Navigate results
       if (e.key === 'ArrowDown') {
         let next = focusedResultIndex + 1;
         if (next >= items.length) next = 0;
@@ -104,7 +131,11 @@ export function initializeSearchUI(onVideoSelect) {
       }
       const query = searchQuery.value.trim();
       if (query) {
-        if (hasLoadedResults && query === lastSearchQuery) {
+        if (
+          hasLoadedResults &&
+          query === lastSearchQuery &&
+          searchResultsCache.length
+        ) {
           displaySearchResults(searchResultsCache);
         } else if (!isDirectUrl(query)) {
           await searchYouTube(query);
@@ -124,9 +155,18 @@ export function initializeSearchUI(onVideoSelect) {
           return;
         }
       }
-    } else if (e.key === 'Escape' && isDisplayingSearchResults) {
-      searchResults.style.display = 'none';
+    } else if (e.key === 'Escape') {
+      if (isDisplayingSearchResults) clearSearchResults();
+      else if (searchQuery.value) searchQuery.value = '';
+      else searchQuery.classList.remove('visible');
     }
+  });
+
+  searchQuery.addEventListener('input', () => {
+    if (searchQuery.value.trim() === '') {
+      clearSearchResults();
+    }
+    focusedResultIndex = -1;
   });
 
   // Check API availability
@@ -139,6 +179,9 @@ export function initializeSearchUI(onVideoSelect) {
   if (import.meta.env.DEV) {
     console.log('YouTube search UI initialized');
   }
+
+  _initializing = false;
+  isInitialized = true;
 }
 
 /**
@@ -146,10 +189,12 @@ export function initializeSearchUI(onVideoSelect) {
  * @param {string} query - Search query
  */
 async function searchYouTube(query) {
-  lastSearchQuery = query;
+  if (!searchBtn || !searchResults) {
+    console.error('Search elements not initialized');
+    return;
+  }
 
-  const searchBtn = document.getElementById('searchBtn');
-  const searchResults = document.getElementById('searchResults');
+  lastSearchQuery = query;
 
   if (!YOUTUBE_API_KEY) {
     showError('YouTube API key not configured');
@@ -158,7 +203,6 @@ async function searchYouTube(query) {
 
   // Show loading state
   searchBtn.disabled = true;
-  searchBtn.textContent = 'Searching...';
   searchResults.innerHTML =
     '<div class="search-loading">Searching YouTube...</div>';
   searchResults.style.display = 'block';
@@ -205,7 +249,6 @@ async function searchYouTube(query) {
     showError(error.message || 'Search failed. Please try again.');
   } finally {
     searchBtn.disabled = false;
-    searchBtn.textContent = 'Search';
   }
 }
 
@@ -214,7 +257,10 @@ async function searchYouTube(query) {
  * @param {Array} results - Array of video objects
  */
 function displaySearchResults(results) {
-  const searchResults = document.getElementById('searchResults');
+  if (!searchResults) {
+    console.error('Search results element not initialized');
+    return;
+  }
 
   if (!results || results.length === 0) {
     searchResults.innerHTML = '<div class="no-results">No results found</div>';
@@ -240,10 +286,14 @@ function displaySearchResults(results) {
         onVideoSelectCallback(video);
         // Hide search results after selection
         searchResults.style.display = 'none';
-        // Clear search input
-        const searchQuery = document.getElementById('searchQuery');
-        if (searchQuery) searchQuery.value = '';
         focusedResultIndex = -1;
+
+        // Clear search input
+        if (!searchQuery) {
+          console.error('Search query element not initialized');
+          return;
+        }
+        searchQuery.value = '';
       }
     };
 
@@ -272,7 +322,10 @@ function displaySearchResults(results) {
  * @param {string} message - Error message
  */
 function showError(message) {
-  const searchResults = document.getElementById('searchResults');
+  if (!searchResults) {
+    console.error('Search results element not initialized');
+    return;
+  }
   searchResults.innerHTML = `<div class="search-error">${message}</div>`;
   searchResults.style.display = 'block';
 }
@@ -281,12 +334,14 @@ function showError(message) {
  * Clear search results
  */
 export function clearSearchResults() {
-  const searchResults = document.getElementById('searchResults');
-  if (searchResults) {
-    searchResults.innerHTML = '';
-    searchResults.style.display = 'none';
-  }
   searchResultsCache = [];
+
+  if (!searchResults) return;
+
+  searchResults.innerHTML = '';
+  searchResults.style.display = 'none';
+  isDisplayingSearchResults = false;
+  focusedResultIndex = -1;
 }
 
 /**
