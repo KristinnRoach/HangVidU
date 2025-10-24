@@ -33,7 +33,7 @@ export default defineConfig({
     }),
   ],
   server: {
-    https: false,
+    https: true, // ?!?!?
     host: true, // To expose to LAN devices as well
     allowedHosts: ['.ngrok-free.app'],
   },

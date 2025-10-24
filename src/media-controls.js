@@ -114,7 +114,7 @@ export function initializeMediaControls({
     autoGainControl: true,
   },
 }) {
-  // ===== MUTE/UNMUTE SELF =====
+  // ===== TOGGLE MIC =====
   if (muteSelfBtn) {
     muteSelfBtn.onclick = () => {
       const localStream = getLocalStream();
@@ -128,7 +128,7 @@ export function initializeMediaControls({
     };
   }
 
-  // ===== TOGGLE VIDEO ON/OFF =====
+  // ===== TOGGLE CAMERA =====
   if (videoSelfBtn) {
     videoSelfBtn.onclick = () => {
       const localStream = getLocalStream();
@@ -178,48 +178,14 @@ export function initializeMediaControls({
         currentFacingMode,
       });
 
-      lastFacingMode = facingMode;
-      console.log('Switched camera to facingMode:', facingMode);
+      if (facingMode === 'user' || facingMode === 'environment') {
+        lastFacingMode = facingMode;
+        console.log('Switched camera to facingMode:', facingMode);
+      } else {
+        console.error('switchCamera returned invalid facingMode:', facingMode);
+      }
     };
   }
-
-  // TODO: delete this after testing:
-  // switchCameraSelfBtn.onclick = async () => {
-  //   if (!localStream) return;
-
-  //   try {
-  //     const videoTrack = localStream.getVideoTracks()[0];
-  //     const currentFacingMode = videoTrack.getSettings().facingMode;
-  //     const newFacingMode =
-  //       currentFacingMode === 'user' ? 'environment' : 'user';
-
-  //     // Stop current track
-  //     videoTrack.stop();
-
-  //     // Get new stream with opposite camera
-  //     const newStream = await navigator.mediaDevices.getUserMedia({
-  //       video: { facingMode: newFacingMode },
-  //       audio: audioConstraints,
-  //     });
-
-  //     // Replace track in peer connection if it exists
-  //     const newVideoTrack = newStream.getVideoTracks()[0];
-  //     if (pc) {
-  //       const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
-  //       if (sender) {
-  //         sender.replaceTrack(newVideoTrack);
-  //       }
-  //     }
-
-  //     // Update local stream reference (caller must handle this)
-  //     // Return new stream so caller can update their localStream variable
-  //     return newStream;
-  //   } catch (error) {
-  //     console.error('Failed to switch camera:', error);
-  //     return null;
-  //   }
-  // };
-  // }
 
   // ===== FULLSCREEN FOR LOCAL VIDEO =====
   if (fullscreenSelfBtn) {
@@ -266,3 +232,41 @@ export function cleanupMediaControls(remoteVideo) {
   removeRemoteVideoEventListeners(remoteVideo);
   remotePreviousMuted = false;
 }
+
+// TODO: delete this after testing:
+// switchCameraSelfBtn.onclick = async () => {
+//   if (!localStream) return;
+
+//   try {
+//     const videoTrack = localStream.getVideoTracks()[0];
+//     const currentFacingMode = videoTrack.getSettings().facingMode;
+//     const newFacingMode =
+//       currentFacingMode === 'user' ? 'environment' : 'user';
+
+//     // Stop current track
+//     videoTrack.stop();
+
+//     // Get new stream with opposite camera
+//     const newStream = await navigator.mediaDevices.getUserMedia({
+//       video: { facingMode: newFacingMode },
+//       audio: audioConstraints,
+//     });
+
+//     // Replace track in peer connection if it exists
+//     const newVideoTrack = newStream.getVideoTracks()[0];
+//     if (pc) {
+//       const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
+//       if (sender) {
+//         sender.replaceTrack(newVideoTrack);
+//       }
+//     }
+
+//     // Update local stream reference (caller must handle this)
+//     // Return new stream so caller can update their localStream variable
+//     return newStream;
+//   } catch (error) {
+//     console.error('Failed to switch camera:', error);
+//     return null;
+//   }
+// };
+// }
