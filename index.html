@@ -13,6 +13,7 @@
         <div class="search-section">
           <div class="search-controls">
             <input
+              class="hidden"
               type="text"
               id="searchQuery"
               placeholder="Search YouTube videos..."
@@ -28,7 +29,7 @@
           ></div>
         </div>
 
-        <button id="installBtn" style="display: none">Install</button>
+        <button id="installBtn">Install</button>
       </div>
 
       <h1 style="display: none" id="titleHeader">
@@ -60,50 +61,44 @@
         <div class="video-player hidden" id="yt-player-div"></div>
       </div>
 
-      <div id="controls-section" class="controls-section bottom">
-        <div class="control-container" id="start-chat-btn">
-          <button id="startChat" class="primary-btn">
-            <i class="fa fa-phone"></i>
-          </button>
-        </div>
-        <div class="control-container" id="camera-btn">
-          <button id="videoSelfBtn" aria-label="Turn camera on/off">
-            <i class="fa fa-video"></i>
-          </button>
-        </div>
-        <div class="control-container" id="mic-btn">
-          <button id="muteSelfBtn" aria-label="Mute/unmute mic">
-            <i class="fa fa-microphone"></i>
-          </button>
-        </div>
+      <div id="chat-controls" class="chat-controls bottom">
+        <button class="chat-btn" id="call-btn">
+          <i class="fa fa-phone"></i>
+        </button>
         <button
+          class="chat-btn"
+          id="camera-btn"
+          aria-label="Turn camera on/off"
+        >
+          <i class="fa fa-video"></i>
+        </button>
+        <button class="chat-btn" id="mic-btn" aria-label="Mute/unmute mic">
+          <i class="fa fa-microphone"></i>
+        </button>
+        <button
+          class="chat-btn"
           id="switchCameraSelfBtn"
           aria-label="Switch camera"
           style="display: none"
         >
           <i class="fa fa-sync-alt"></i>
         </button>
-        <div class="control-container" id="mute-btn">
-          <button id="mutePartnerBtn" aria-label="Mute/unmute">
-            <i class="fa fa-volume-up"></i>
-          </button>
-        </div>
+        <button class="chat-btn" id="mute-btn" aria-label="Mute/unmute">
+          <i class="fa fa-volume-up"></i>
+        </button>
 
-        <div
+        <button
           style="display: none"
-          class="control-container"
-          id="fullscreen-btn"
+          class="chat-btn"
+          id="fullscreen-partner-btn"
+          aria-label="Fullscreen"
         >
-          <button id="fullscreenPartnerBtn" aria-label="Fullscreen">
-            <i class="fa fa-expand"></i>
-          </button>
-        </div>
+          <i class="fa fa-expand"></i>
+        </button>
 
-        <div class="control-container" id="hang-up-btn">
-          <button id="hangUp" disabled>
-            <i class="fa fa-phone-slash"></i>
-          </button>
-        </div>
+        <button class="chat-btn" id="hang-up-btn" disabled>
+          <i class="fa fa-phone-slash"></i>
+        </button>
       </div>
     </div>
 

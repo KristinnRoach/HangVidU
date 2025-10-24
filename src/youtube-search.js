@@ -2,6 +2,10 @@
 // YOUTUBE SEARCH MODULE
 // ============================================================================
 
+import { closeOnClickOutside } from './utils/clickOutside';
+import setupShowHideOnInactivity from './utils/showHideOnInactivity';
+import { isHidden, showElement, hideElement } from './utils/ui-utils';
+
 // ===== ELEMENTS =====
 
 let searchContainer = null;
@@ -19,6 +23,8 @@ let isDisplayingSearchResults = false;
 let lastSearchQuery = '';
 let focusedResultIndex = -1;
 
+let cleanupFunctions = [];
+
 // ===== API CONFIGURATION =====
 const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
 const YOUTUBE_API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
@@ -30,7 +36,7 @@ const YOUTUBE_API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
  * @param {Function} onVideoSelect - Callback when user selects a video
  */
 export function initializeSearchUI(onVideoSelect) {
-  if (isInitialized || _initializing) return;
+  if (isInitialized || _initializing) return false;
   _initializing = true;
 
   onVideoSelectCallback = onVideoSelect;
@@ -43,7 +49,8 @@ export function initializeSearchUI(onVideoSelect) {
 
   if (!searchContainer || !searchBtn || !searchQuery || !searchResults) {
     console.error('YouTube search elements not found in DOM');
-    return;
+    _initializing = false;
+    return false;
   }
 
   const isDirectUrl = (str) => {
@@ -66,16 +73,17 @@ export function initializeSearchUI(onVideoSelect) {
   // Add search button event listener
   searchBtn.onclick = async () => {
     const query = searchQuery.value.trim();
-    if (!searchQuery.classList.contains('visible')) {
+
+    if (isHidden(searchQuery)) {
       // Toggle visibility
-      searchQuery.classList.add('visible');
+      showElement(searchQuery);
       searchQuery.focus();
       return;
     }
 
     if (!query) {
       clearSearchResults();
-      searchQuery.classList.remove('visible');
+      hideElement(searchQuery);
       return;
     }
     if (
@@ -99,14 +107,13 @@ export function initializeSearchUI(onVideoSelect) {
       }
       searchResults.style.display = 'none';
       searchQuery.value = '';
-      return;
     }
   };
 
   searchContainer.addEventListener('keydown', async (e) => {
     const items = searchResults.querySelectorAll('.search-result-item');
     if (items.length > 0 && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-      e.preventDefault();
+      // e.preventDefault();
 
       // Navigate results
       if (e.key === 'ArrowDown') {
@@ -125,6 +132,7 @@ export function initializeSearchUI(onVideoSelect) {
       // If a result is focused, select it
       if (items.length > 0 && focusedResultIndex >= 0) {
         items[focusedResultIndex].click();
+        hideElement(searchQuery);
         return;
       }
       const query = searchQuery.value.trim();
@@ -150,13 +158,14 @@ export function initializeSearchUI(onVideoSelect) {
           }
           searchResults.style.display = 'none';
           searchQuery.value = '';
+          hideElement(searchQuery);
           return;
         }
       }
     } else if (e.key === 'Escape') {
       if (isDisplayingSearchResults) clearSearchResults();
       else if (searchQuery.value) searchQuery.value = '';
-      else searchQuery.classList.remove('visible');
+      else hideElement(searchQuery);
     }
   });
 
@@ -166,6 +175,28 @@ export function initializeSearchUI(onVideoSelect) {
     }
     focusedResultIndex = -1;
   });
+
+  const closeQueryCleanup = closeOnClickOutside(
+    searchQuery,
+    () => hideElement(searchQuery),
+    {
+      ignore: [searchBtn],
+      esc: false, // already handled
+    }
+  );
+
+  cleanupFunctions.push(closeQueryCleanup);
+
+  const closeSearchResultsCleanup = closeOnClickOutside(
+    searchResults,
+    () => hideElement(searchResults),
+    {
+      ignore: [searchBtn],
+      esc: false, // already handled
+    }
+  );
+
+  cleanupFunctions.push(closeSearchResultsCleanup);
 
   // Check API availability
   if (!YOUTUBE_API_KEY) {
@@ -180,6 +211,7 @@ export function initializeSearchUI(onVideoSelect) {
 
   _initializing = false;
   isInitialized = true;
+  return true;
 }
 
 /**
@@ -347,4 +379,9 @@ export function clearSearchResults() {
  */
 export function isSearchAvailable() {
   return !!YOUTUBE_API_KEY;
+}
+
+export function cleanupSearchUI() {
+  clearSearchResults();
+  cleanupFunctions.forEach((cleanupFn) => cleanupFn());
 }

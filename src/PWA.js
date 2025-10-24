@@ -1,3 +1,5 @@
+import { hideElement, showElement } from './utils/ui-utils';
+
 function setupPWA(installBtn) {
   if (!installBtn) {
     console.warn('setupPWA: install button not found');
@@ -9,7 +11,7 @@ function setupPWA(installBtn) {
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    installBtn.style.display = 'block';
+    showElement(installBtn);
   });
 
   installBtn.addEventListener('click', async () => {
@@ -19,7 +21,7 @@ function setupPWA(installBtn) {
 
       // hide the button after install
       if (outcome === 'accepted') {
-        installBtn.style.display = 'none';
+        hideElement(installBtn);
       } else {
         console.log('User dismissed the install prompt');
       }
@@ -29,7 +31,7 @@ function setupPWA(installBtn) {
 
   // hide button if app is already installed
   window.addEventListener('appinstalled', () => {
-    installBtn.style.display = 'none';
+    hideElement(installBtn);
   });
 }
 

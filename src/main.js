@@ -17,11 +17,15 @@ import {
   remove,
 } from 'firebase/database';
 
+import { closeOnClickOutside } from './utils/clickOutside';
+import { isHidden, showElement, hideElement } from './utils/ui-utils';
+import setupShowHideOnInactivity from './utils/showHideOnInactivity.js';
+
 import {
   localVideo,
   remoteVideo,
   sharedVideo,
-  startChatBtn,
+  callBtn,
   hangUpBtn,
   statusDiv,
   linkContainer,
@@ -33,16 +37,15 @@ import {
   titleText,
   mutePartnerBtn,
   fullscreenPartnerBtn,
-  muteSelfBtn,
-  videoSelfBtn,
+  micBtn,
+  cameraBtn,
   switchCameraSelfBtn,
   fullscreenSelfBtn,
-  ytContainer,
   videoInputSelect,
   audioInputSelect,
   audioOutputSelect,
   installBtn,
-  controlsSection,
+  chatControls,
 } from './elements.js';
 
 import {
@@ -63,9 +66,13 @@ import {
   getYouTubeCurrentTime,
   getYouTubePlayerState,
   YT_STATE,
+  getYTContainer,
+  isYTVisible,
+  showYouTubePlayer,
+  hideYouTubePlayer,
 } from './youtube-player.js';
 
-import { initializeSearchUI } from './youtube-search.js';
+import { cleanupSearchUI, initializeSearchUI } from './youtube-search.js';
 
 import { SelectMediaDevice } from './components/SelectMediaDevice.js';
 
@@ -116,6 +123,7 @@ let ytPlayer = null; // YouTube player instance
 let ytReady = false; // YouTube API loaded
 
 const firebaseListeners = [];
+let cleanupFunctions = [];
 
 // Prevent duplicate SDP processing
 let lastAnswerSdp = null;
@@ -140,6 +148,7 @@ const userMediaAudioConstraints = {
   noiseSuppression: true,
   autoGainControl: true,
   voiceIsolation: true,
+  restrictOwnAudio: true,
 };
 
 const userMediaVideoConstraints = {
@@ -148,8 +157,16 @@ const userMediaVideoConstraints = {
   resizeMode: 'crop-and-scale',
 };
 
+// === UI STATE ===
+let watchMode = false;
+let lastWatched = 'none'; // 'yt' | 'url' | 'none'
+
 async function init() {
   peerId = Math.random().toString(36).substring(2, 15);
+
+  // TEMP FIX: (for some reason acts weird when set in HTML)
+  const ytContainer = getYTContainer();
+  ytContainer.classList.add('hidden');
 
   try {
     localStream = await navigator.mediaDevices.getUserMedia({
@@ -181,8 +198,8 @@ async function init() {
       getRemoteVideo: () => remoteVideo,
       getPeerConnection: () => pc,
 
-      muteSelfBtn,
-      videoSelfBtn,
+      muteSelfBtn: micBtn,
+      videoSelfBtn: cameraBtn,
       switchCameraSelfBtn,
       fullscreenSelfBtn,
       mutePartnerBtn,
@@ -192,16 +209,14 @@ async function init() {
     });
 
     if (import.meta.env.DEV) {
-      muteSelfBtn.click();
+      micBtn.click();
     }
 
     setupPWA(installBtn);
 
-    if (import.meta.env.DEV) {
-      installBtn.style.display = 'block';
-    }
-
     initializeSearchUI(handleVideoSelection);
+
+    addWatchModeKeyListener();
 
     return true;
   } catch (error) {
@@ -213,16 +228,6 @@ async function init() {
 
 // === WIP ===
 
-let uiHandleRemoteJoined = () => {
-  remoteVideo.classList.remove('hidden');
-  localVideo.classList.add('smallFrame');
-};
-
-let uiHandleRemoteLeft = () => {
-  remoteVideo.classList.add('hidden');
-  localVideo.classList.remove('smallFrame');
-};
-
 // Minimal room members setup for join/leave events
 let membersListeners = [];
 function setupRoomMembers() {
@@ -233,7 +238,7 @@ function setupRoomMembers() {
 
   // Listen for remote peer join
   const onJoin = (snapshot) => {
-    if (snapshot.key !== peerId) uiHandleRemoteJoined();
+    if (snapshot.key !== peerId) enterCallMode();
   };
   onChildAdded(membersRef, onJoin);
   membersListeners.push({
@@ -392,6 +397,10 @@ async function createCall() {
         return;
       }
 
+      if (import.meta.env.DEV) {
+        micBtn.click();
+      }
+
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
         if (import.meta.env.DEV) {
@@ -416,7 +425,7 @@ async function createCall() {
   const shareUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
   shareLink.value = shareUrl;
   // TODO: Cleanup replaced elements and related code, e.g. -> linkContainer.style.display = 'block';
-  startChatBtn.disabled = true;
+  callBtn.disabled = true;
   hangUpBtn.disabled = false;
 
   // TODO: Make nice
@@ -512,7 +521,7 @@ async function answerCall() {
   setupRoomMembers();
 
   hangUpBtn.disabled = false;
-  uiHandleRemoteJoined();
+  enterCallMode();
 
   updateStatus('Connecting...');
 
@@ -526,6 +535,9 @@ async function answerCall() {
 // STATE
 let justSeeked = false;
 let seekDebounceTimeout = null;
+
+const isRemoteVideoInPiP = document.pictureInPictureElement === remoteVideo;
+const isLocalVideoInPiP = document.pictureInPictureElement === localVideo;
 
 // UTILS
 async function updateWatchSyncState(updates) {
@@ -563,35 +575,16 @@ function setupWatchSync() {
       streamUrlInput.value = data.url;
       if (isYouTubeUrl(data.url)) {
         loadYouTubeVideoWithSync(data.url);
+        lastWatched = 'yt';
       } else {
-        // Regular video
-        sharedVideo.style.display = 'flex';
+        // Direct video
+        showSharedVideo();
         sharedVideo.src = data.url;
-        // Hide YouTube container
-        ytContainer.classList.add('hidden');
+
+        lastWatched = 'url';
       }
       syncStatus.textContent = 'Video loaded';
     }
-
-    // --- Ensure remoteVideo is always smallFrame when a video is loaded ---
-    const isRemoteVideoInPiP = document.pictureInPictureElement === remoteVideo;
-    const isLocalVideoInPiP = document.pictureInPictureElement === localVideo;
-
-    if (isYTVisible() || isSharedVideoVisible()) {
-      if (isRemoteVideoVideoActive() && !isRemoteVideoInPiP) {
-        remoteVideo.classList.add('smallFrame');
-        localVideo.classList.add('hidden');
-      } else if (!isLocalVideoInPiP) {
-        remoteVideo.classList.remove('smallFrame');
-        localVideo.classList.remove('hidden');
-        localVideo.classList.add('smallFrame');
-      }
-
-      const controlsSection = document.getElementById('controls-section');
-      controlsSection.classList.remove('bottom');
-      controlsSection.classList.add('watch-mode');
-    }
-    // ----------------------------------------------------------------------
 
     // Sync playback state
     if (data.isYouTube && ytPlayer && ytReady) {
@@ -624,8 +617,10 @@ function setupWatchSync() {
           // Sync play/pause
           if (data.playing && !isPlaying) {
             playYouTubeVideo();
+            lastWatched = 'yt'; // todo: move lastWathed = 'yt' to event handlers for consistency with sharedVideo
           } else if (!data.playing && isPlaying) {
             pauseYouTubeVideo();
+            lastWatched = 'yt';
           }
         }
       }
@@ -640,8 +635,10 @@ function setupWatchSync() {
           setTimeout(() => {
             if (data.playing) {
               playYouTubeVideo();
+              lastWatched = 'yt';
             } else {
               pauseYouTubeVideo();
+              lastWatched = 'yt';
             }
           }, 500); // 500ms after seek
         }
@@ -680,6 +677,7 @@ function setupWatchSync() {
       lastLocalAction = Date.now();
       await updateWatchSyncState({ playing: true, isYouTube: false });
     }
+    lastWatched = 'url';
   });
 
   sharedVideo.addEventListener('pause', async () => {
@@ -687,6 +685,7 @@ function setupWatchSync() {
       lastLocalAction = Date.now();
       await updateWatchSyncState({ playing: false, isYouTube: false });
     }
+    lastWatched = 'url';
   });
 
   sharedVideo.addEventListener('seeked', async () => {
@@ -698,6 +697,7 @@ function setupWatchSync() {
         isYouTube: false,
       });
     }
+    lastWatched = 'url';
   });
 
   if (import.meta.env.DEV) {
@@ -717,15 +717,17 @@ function loadStream() {
 
   if (isYouTubeUrl(url)) {
     loadYouTubeVideoWithSync(url);
+    lastWatched = 'yt';
   } else {
     // Hide YouTube container and destroy player if switching to direct video
-    hideYouTubePlayer();
+    // hideYouTubePlayer();
     destroyYouTubePlayer();
-
     // Show regular video element
-    sharedVideo.style.display = 'flex';
+    showSharedVideo();
     sharedVideo.src = url;
     syncStatus.textContent = 'Video loaded';
+
+    lastWatched = 'url';
   }
 
   // Both participants can sync to Firebase
@@ -744,74 +746,110 @@ function loadStream() {
 function handleVideoSelection(video) {
   streamUrlInput.value = video.url;
   loadStream();
-
-  remoteVideo.classList.add('smallFrame');
-  localVideo.classList.add('hidden');
-
-  controlsSection.classList.remove('bottom');
-  controlsSection.classList.add('watch-mode');
-
+  enterWatchMode();
   syncStatus.textContent = `Loading "${video.title}"...`;
 }
 
 // ============================================================================
+// UI Layout change helpers
+// ============================================================================
+
+export function showSharedVideo() {
+  sharedVideo.classList.remove('hidden');
+  enterWatchMode();
+}
+
+export function hideSharedVideo() {
+  sharedVideo.classList.add('hidden');
+  exitWatchMode();
+}
+
+export function enterWatchMode() {
+  if (watchMode) return;
+
+  if (isRemoteVideoVideoActive()) {
+    remoteVideo.classList.add('smallFrame');
+    localVideo.classList.add('hidden');
+  } else {
+    localVideo.classList.remove('hidden');
+    localVideo.classList.add('smallFrame');
+  }
+
+  chatControls.classList.remove('bottom');
+  chatControls.classList.add('watch-mode');
+
+  watchMode = true;
+}
+
+export function exitWatchMode() {
+  if (!watchMode) return;
+
+  localVideo.classList.remove('hidden');
+  if (isRemoteVideoVideoActive()) {
+    remoteVideo.classList.remove('smallFrame');
+  } else {
+    localVideo.classList.remove('smallFrame');
+  }
+
+  chatControls.classList.remove('watch-mode');
+  chatControls.classList.add('bottom');
+
+  watchMode = false;
+}
+
+let enterCallMode = () => {
+  remoteVideo.classList.remove('hidden');
+  localVideo.classList.add('smallFrame');
+};
+
+let exitCallMode = () => {
+  remoteVideo.classList.add('hidden');
+  localVideo.classList.remove('smallFrame');
+};
+
+// ============================================================================
 // YOUTUBE PLAYER INTEGRATION
 // ============================================================================
-function isYTVisible() {
-  const ytContainer = document.getElementById('yt-player-div');
-  return (
-    ytContainer &&
-    !ytContainer.classList.contains('hidden') &&
-    ytContainer.style.display !== 'none'
-  );
-}
 
 function isSharedVideoVisible() {
   return (
     sharedVideo &&
-    sharedVideo.style.display !== 'none' &&
+    !sharedVideo.classList.contains('hidden') &&
     sharedVideo.src &&
     sharedVideo.src.trim() !== ''
   );
 }
 
-// HIDE YOUTUBE PLAYER
-export function hideYouTubePlayer() {
-  if (isYTVisible()) {
-    ytContainer.classList.add('hidden');
-  }
-  console.log('Hiding ytContainer:', ytContainer);
+let watchModeKeyListenerAdded = false;
 
-  console.log('ytContainer.classList', ytContainer.classList);
-  localVideo.classList.remove('hidden');
-  remoteVideo.classList.remove('smallFrame');
+function addWatchModeKeyListener() {
+  if (watchModeKeyListenerAdded) return;
 
-  const controlsSection = document.getElementById('controls-section');
-  controlsSection.classList.remove('watch-mode');
-  controlsSection.classList.add('bottom');
-}
-
-// SHOW YOUTUBE PLAYER
-export function showYouTubePlayer() {
-  const ytContainer = document.getElementById('yt-player-div');
-  if (ytPlayer && ytContainer) {
-    ytContainer.classList.remove('hidden');
-  }
-
-  if (isYTVisible() || isSharedVideoVisible()) {
-    if (isRemoteVideoVideoActive() && !isRemoteVideoInPiP) {
-      remoteVideo.classList.add('smallFrame');
-      localVideo.classList.add('hidden');
-    } else if (!isLocalVideoInPiP) {
-      remoteVideo.classList.remove('smallFrame');
-      localVideo.classList.remove('hidden');
-      localVideo.classList.add('smallFrame');
+  document.addEventListener('keydown', (event) => {
+    // Press 'W' to toggle player visibility
+    if (event.key === 'w' || event.key === 'W') {
+      if (lastWatched === 'yt') {
+        if (watchMode && isYTVisible()) showYouTubePlayer();
+        else hideYouTubePlayer();
+      } else if (lastWatched === 'url') {
+        if (watchMode && isSharedVideoVisible()) hideSharedVideo();
+        else showSharedVideo();
+      }
     }
 
-    const controlsSection = document.getElementById('controls-section');
-    controlsSection.classList.remove('bottom');
-    controlsSection.classList.add('watch-mode');
-  }
+    // Hide YouTube player when pressing 'Escape', if player is visible
+    if (event.key === 'Escape') {
+      if (lastWatched === 'yt' && isYTVisible()) {
+        pauseYouTubeVideo();
+        hideYouTubePlayer();
+      } else if (lastWatched === 'url' && isSharedVideoVisible()) {
+        sharedVideo.pause();
+        hideSharedVideo();
+      }
+    }
+  });
+
+  watchModeKeyListenerAdded = true;
 }
 
 async function loadYouTubeVideoWithSync(url) {
@@ -825,16 +863,12 @@ async function loadYouTubeVideoWithSync(url) {
   syncStatus.textContent = 'Loading YouTube video...';
 
   // Hide regular video element
-  sharedVideo.style.display = 'none';
-
-  // Show YouTube container
-  showYouTubePlayer();
+  hideSharedVideo();
 
   try {
     // Load YouTube player
     await loadYouTubeVideo({
       url: url,
-      containerId: 'yt-player-div',
       onReady: (event) => {
         ytReady = true;
         syncStatus.textContent = 'YouTube video ready';
@@ -893,142 +927,38 @@ async function loadYouTubeVideoWithSync(url) {
     });
 
     ytPlayer = getYouTubePlayer();
+
     syncStatus.textContent = 'YouTube video loaded';
   } catch (error) {
     console.error('Failed to load YouTube video:', error);
     syncStatus.textContent = 'Failed to load YouTube video';
-
-    // Fallback to showing regular video element
-    sharedVideo.style.display = 'flex';
-    hideYouTubePlayer();
   }
-}
-
-// ============================================================================
-// HANG UP / CLEANUP
-// ============================================================================
-async function hangUp() {
-  console.debug('Hanging up...');
-
-  uiHandleRemoteLeft();
-
-  // Stop remote media
-  if (remoteVideo.srcObject) {
-    remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
-    remoteVideo.srcObject = null;
-  }
-
-  cleanupMediaControls(remoteVideo);
-
-  // Close peer connection
-  if (pc) {
-    pc.close();
-    pc = null;
-  }
-
-  // Remove Firebase listeners
-  firebaseListeners.forEach(({ ref: fbRef, type, callback }) =>
-    off(fbRef, type, callback)
-  );
-  firebaseListeners.length = 0;
-
-  // Clear debounce timeout if any
-  if (seekDebounceTimeout) {
-    clearTimeout(seekDebounceTimeout);
-    seekDebounceTimeout = null;
-  }
-  justSeeked = false;
-
-  // Remove room from Firebase (optional - rooms can auto-expire)
-  if (roomId && role === 'initiator') {
-    const roomRef = ref(db, `rooms/${roomId}`);
-    remove(roomRef).catch((error) => {
-      console.warn('Failed to remove room:', error);
-    });
-  }
-
-  // Reset UI
-  startChatBtn.disabled = false;
-  startChatBtn.style.display = 'block';
-  hangUpBtn.disabled = true;
-  linkContainer.style.display = 'none';
-  membersListeners.forEach(({ ref: fbRef, type, callback }) =>
-    off(fbRef, type, callback)
-  );
-  membersListeners.length = 0;
-
-  // Remove self from room members
-  if (roomId && peerId) {
-    const myMemberRef = ref(db, `rooms/${roomId}/members/${peerId}`);
-    remove(myMemberRef).catch(() => {});
-  }
-
-  shareLink.value = '';
-  sharedVideo.src = '';
-  streamUrlInput.value = '';
-  syncStatus.textContent = '';
-
-  if (document.pictureInPictureElement) {
-    document.exitPictureInPicture().catch((err) => console.error(err));
-  }
-
-  // Reset state
-  roomId = null;
-  role = null;
-  lastAnswerSdp = null;
-  lastOfferSdp = null;
-
-  // Clear URL parameter
-  window.history.replaceState({}, document.title, window.location.pathname);
-
-  updateStatus('Disconnected. Click "Start New Chat" to begin.');
-}
-
-function cleanup() {
-  hangUp();
-
-  // Stop local media
-  if (localStream) {
-    localStream.getTracks().forEach((track) => track.stop());
-    localVideo.srcObject = null;
-    localStream = null;
-  }
-
-  // Clean up YouTube player
-  destroyYouTubePlayer();
-  ytPlayer = null;
-  ytReady = false;
-  hideYouTubePlayer();
 }
 
 // ============================================================================
 // EVENT LISTENERS
 // ============================================================================
 
-startChatBtn.onclick = async () => {
+callBtn.onclick = async () => {
   await createCall();
 };
 
 hangUpBtn.onclick = hangUp;
 
-// copyLinkBtn.onclick = async () => {
-//   try {
-//     await navigator.clipboard.writeText(shareLink.value);
-//     updateStatus('Link copied to clipboard!');
-//   } catch (error) {
-//     // Fallback for older browsers
-//     shareLink.select();
-//     document.execCommand('copy');
-//     updateStatus('Link copied!');
-//   }
-// };
+// Start hidden, show on activity and auto-hide after inactivity
+const cleanupChatControlAutoHide = setupShowHideOnInactivity(chatControls, {
+  inactivityMs: 2500,
+  hideOnEsc: true,
+});
+
+cleanupFunctions.push(cleanupChatControlAutoHide);
 
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
 function updateStatus(message) {
-  // statusDiv.textContent = message;
+  statusDiv.textContent = message;
   if (import.meta.env.DEV) {
     console.log('Status:', message);
   }
@@ -1049,14 +979,14 @@ async function autoJoinFromUrl() {
   if (urlRoomId) {
     roomId = urlRoomId;
     updateStatus('Connecting to room...');
-    startChatBtn.style.display = 'none';
+    callBtn.style.display = 'none';
 
     const initSuccess = await init();
     let answerSuccess = false;
     if (initSuccess) answerSuccess = await answerCall();
 
     if (!initSuccess || !answerSuccess) {
-      startChatBtn.style.display = 'block';
+      callBtn.style.display = 'block';
       return false;
     }
     return true;
@@ -1077,7 +1007,7 @@ window.onload = async () => {
 
   const success = await init();
   if (!success) {
-    startChatBtn.disabled = true;
+    callBtn.disabled = true;
     console.error('Initialization failed. Cannot start chat.');
     return;
   }
@@ -1170,6 +1100,107 @@ audioOutputSelect?.shadowRoot
       });
     }
   });
+
+// ============================================================================
+// HANG UP / CLEANUP
+// ============================================================================
+
+async function hangUp() {
+  console.debug('Hanging up...');
+
+  exitCallMode();
+
+  // Stop remote media
+  if (remoteVideo.srcObject) {
+    remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
+    remoteVideo.srcObject = null;
+  }
+
+  cleanupMediaControls(remoteVideo);
+
+  // Close peer connection
+  if (pc) {
+    pc.close();
+    pc = null;
+  }
+
+  // Remove Firebase listeners
+  firebaseListeners.forEach(({ ref: fbRef, type, callback }) =>
+    off(fbRef, type, callback)
+  );
+  firebaseListeners.length = 0;
+
+  // Clear debounce timeout if any
+  if (seekDebounceTimeout) {
+    clearTimeout(seekDebounceTimeout);
+    seekDebounceTimeout = null;
+  }
+  justSeeked = false;
+
+  // Remove room from Firebase (optional - rooms can auto-expire)
+  if (roomId && role === 'initiator') {
+    const roomRef = ref(db, `rooms/${roomId}`);
+    remove(roomRef).catch((error) => {
+      console.warn('Failed to remove room:', error);
+    });
+  }
+
+  // Reset UI
+  callBtn.disabled = false;
+  callBtn.style.display = 'block';
+  hangUpBtn.disabled = true;
+  linkContainer.style.display = 'none';
+  membersListeners.forEach(({ ref: fbRef, type, callback }) =>
+    off(fbRef, type, callback)
+  );
+  membersListeners.length = 0;
+
+  // Remove self from room members
+  if (roomId && peerId) {
+    const myMemberRef = ref(db, `rooms/${roomId}/members/${peerId}`);
+    remove(myMemberRef).catch(() => {});
+  }
+
+  shareLink.value = '';
+  sharedVideo.src = '';
+  streamUrlInput.value = '';
+  syncStatus.textContent = '';
+
+  if (document.pictureInPictureElement) {
+    document.exitPictureInPicture().catch((err) => console.error(err));
+  }
+
+  // Reset state
+  roomId = null;
+  role = null;
+  lastAnswerSdp = null;
+  lastOfferSdp = null;
+
+  // Clear URL parameter
+  window.history.replaceState({}, document.title, window.location.pathname);
+
+  updateStatus('Disconnected. Click "Start New Chat" to begin.');
+}
+
+function cleanup() {
+  if (pc || roomId) hangUp();
+
+  // Stop local media
+  if (localStream) {
+    localStream.getTracks().forEach((track) => track.stop());
+    localVideo.srcObject = null;
+    localStream = null;
+  }
+
+  exitWatchMode();
+  lastWatched = 'none';
+  destroyYouTubePlayer();
+  ytPlayer = null;
+  ytReady = false;
+
+  cleanupSearchUI();
+  cleanupFunctions.forEach((cleanupFn) => cleanupFn());
+}
 
 // // ============================================================================
 // // UI CONTROLS - MEDIA CONTROLS (MUTE, VIDEO, FULLSCREEN)
@@ -1316,7 +1347,7 @@ audioOutputSelect?.shadowRoot
 //     watchContainer.style.display = 'none';
 
 //     clearSearchResults();
-//     ytContainer.style.display = 'none';
+//     getYTContainer().style.display = 'none';
 //     sharedVideo.style.display = 'none';
 //   }
 // }
