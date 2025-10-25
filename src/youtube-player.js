@@ -2,12 +2,8 @@
 // YOUTUBE PLAYER MODULE
 // ============================================================================
 
-import {
-  enterWatchMode,
-  exitWatchMode,
-  showSharedVideo,
-  hideSharedVideo,
-} from './main';
+import { enterWatchMode, exitWatchMode } from './main.js';
+import { showElement, hideElement } from './utils/ui-utils.js';
 
 const YT_CONTAINER_ID = 'yt-player-div';
 const YT_PLAYER_ROOT_ID = 'yt-player-root';
@@ -15,6 +11,10 @@ const YT_PLAYER_ROOT_ID = 'yt-player-root';
 let ytPlayer = null;
 let ytReady = false;
 let ytLoadingCallbacks = [];
+
+export const getYouTubePlayer = () => ytPlayer;
+export const isYouTubeReady = () => ytReady;
+export const setYouTubeReady = (ready) => (ytReady = ready);
 
 export const getYTContainer = () => {
   const el = document.getElementById(YT_CONTAINER_ID);
@@ -55,16 +55,14 @@ export function showYouTubePlayer() {
   // Remove any blur state so the player can receive pointer/keyboard events
   wrapper.classList.remove('hidden');
   wrapper.classList.remove('blurred');
-
-  enterWatchMode();
 }
 
 export function hideYouTubePlayer() {
-  if (isYTVisible()) {
-    getYTContainer().classList.add('hidden');
-  }
+  const wrapper = getYTContainer();
 
-  exitWatchMode();
+  if (!wrapper.classList.contains('hidden')) {
+    wrapper.classList.add('hidden');
+  }
 }
 
 export function isYTVisible() {
@@ -117,8 +115,6 @@ export async function loadYouTubeVideo({ url, onReady, onStateChange }) {
     }
     ytPlayer = null;
   }
-
-  showYouTubePlayer();
 
   // Regain event listener control for document
   const blurIframe = (allowSpace = true) => {
@@ -205,7 +201,8 @@ export async function loadYouTubeVideo({ url, onReady, onStateChange }) {
       ytPlayer = new window.YT.Player(YT_PLAYER_ROOT_ID, {
         videoId: videoId,
         playerVars: {
-          autoplay: 0,
+          autoplay: 1, // Auto-play video on load
+          mute: 0, // Start with sound on (1 = muted)
           controls: 1, // Show player controls
           fs: 1, // Show fullscreen button (1 = show)
           rel: 0, // Show related videos at end (0 = no)
@@ -240,18 +237,11 @@ export async function loadYouTubeVideo({ url, onReady, onStateChange }) {
       });
 
       showYouTubePlayer();
+      enterWatchMode(); // TODO: Clarify where enterWatchMode should be called
     } catch (error) {
       reject(error);
     }
   });
-}
-
-export function getYouTubePlayer() {
-  return ytPlayer;
-}
-
-export function isYouTubeReady() {
-  return ytReady;
 }
 
 export function destroyYouTubePlayer() {
@@ -311,3 +301,84 @@ export const YT_STATE = {
   BUFFERING: 3,
   CUED: 5,
 };
+
+// async function loadYouTubeVideoWithSync(url) {
+//   const videoId = extractYouTubeId(url);
+
+//   if (!videoId) {
+//     syncStatus.textContent = 'Invalid YouTube URL';
+//     return;
+//   }
+
+//   syncStatus.textContent = 'Loading YouTube video...';
+
+//   // Hide regular video element
+//   hideElement(sharedVideo);
+
+//   try {
+//     // Load YouTube player
+//     await loadYouTubeVideo({
+//       url: url,
+//       onReady: (event) => {
+//         setYouTubeReady(true);
+//         syncStatus.textContent = 'YouTube video ready';
+
+//         // Both participants can set initial state in Firebase
+//         if (roomId) {
+//           const watchRef = ref(rtdb, `rooms/${roomId}/watch`);
+//           set(watchRef, {
+//             url: url,
+//             playing: false,
+//             currentTime: 0,
+//             isYouTube: true,
+//             updatedBy: peerId,
+//           });
+//         }
+//       },
+//       onStateChange: async (event) => {
+//         const player = getYouTubePlayer();
+//         if (!player) return;
+
+//         const playing = event.data === YT_STATE.PLAYING;
+//         const paused = event.data === YT_STATE.PAUSED;
+//         const buffering = event.data === YT_STATE.BUFFERING;
+
+//         // When buffering (seek started), mark justSeeked true and store intended state
+//         if (buffering) {
+//           justSeeked = true;
+//           if (seekDebounceTimeout) clearTimeout(seekDebounceTimeout);
+//           seekDebounceTimeout = setTimeout(async () => {
+//             justSeeked = false;
+//             // After debounce timeout, send stable state
+//             const actualState = getYouTubePlayerState();
+//             const stablePlaying = actualState === YT_STATE.PLAYING;
+
+//             await updateWatchSyncState({
+//               playing: stablePlaying,
+//               currentTime: getYouTubeCurrentTime(),
+//             });
+//           }, 700);
+//           return; // Don't send state update immediately on BUFFERING
+//         }
+
+//         // If event is PAUSED during debounce window, ignore to prevent toggling
+//         if (paused && justSeeked) {
+//           return; // Ignore this transient pause event right after seek
+//         }
+
+//         // If outside debounce window, on PAUSED or PLAYING send updates normally
+//         if (!justSeeked && (playing || paused)) {
+//           await updateWatchSyncState({
+//             playing: playing,
+//             currentTime: getYouTubeCurrentTime(),
+//           });
+//         }
+//       },
+//     });
+
+//     syncStatus.textContent = 'YouTube video loaded';
+//   } catch (error) {
+//     console.error('Failed to load YouTube video:', error);
+//     syncStatus.textContent = 'Failed to load YouTube video';
+//   }
+// }

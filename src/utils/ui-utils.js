@@ -23,3 +23,13 @@ export const hideElement = (el) => {
 
   el.classList.add('hidden');
 };
+
+export function showSharedVideo() {
+  sharedVideo.classList.remove('hidden');
+  enterWatchMode();
+}
+
+export function hideSharedVideo() {
+  sharedVideo.classList.add('hidden');
+  exitWatchMode();
+}

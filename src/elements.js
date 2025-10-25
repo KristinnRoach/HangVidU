@@ -6,16 +6,6 @@ export const localVideo = document.getElementById('localVideo');
 export const remoteVideo = document.getElementById('remoteVideo');
 export const sharedVideo = document.getElementById('sharedVideo');
 
-export const videoInputSelect = document.querySelector(
-  'select-media-device[type="videoinput"]'
-);
-export const audioInputSelect = document.querySelector(
-  'select-media-device[type="audioinput"]'
-);
-export const audioOutputSelect = document.querySelector(
-  'select-media-device[type="audiooutput"]'
-);
-
 export const chatControls = document.getElementById('chat-controls');
 export const callBtn = document.getElementById('call-btn');
 export const hangUpBtn = document.getElementById('hang-up-btn');
@@ -46,6 +36,20 @@ export const fullscreenSelfBtn = document.getElementById('fullscreenSelfBtn');
 export const titleHeader = document.getElementById('titleHeader');
 export const titleLink = document.getElementById('titleLink');
 export const titleText = document.getElementById('titleText');
+
+// const getElement = (id) => {
+//   const el = document.getElementById(id);
+//   if (!el) {
+//     console.error(`Element with id: ${id} not found.`);
+//     return null;
+//   }
+
+//   return el;
+// };
+
+// export const videoInputSelect
+// export const audioInputSelect
+// export const audioOutputSelect
 
 // export const videoFileInput = document.getElementById('videoFile');
 // export const uploadProgress = document.getElementById('uploadProgress');

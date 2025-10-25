@@ -2,9 +2,9 @@
 // YOUTUBE SEARCH MODULE
 // ============================================================================
 
-import { closeOnClickOutside } from './utils/clickOutside';
-import setupShowHideOnInactivity from './utils/showHideOnInactivity';
-import { isHidden, showElement, hideElement } from './utils/ui-utils';
+import { closeOnClickOutside } from './utils/clickOutside.js';
+import setupShowHideOnInactivity from './utils/showHideOnInactivity.js';
+import { isHidden, showElement, hideElement } from './utils/ui-utils.js';
 
 // ===== ELEMENTS =====
 
@@ -33,13 +33,13 @@ const YOUTUBE_API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
 
 /**
  * Initialize YouTube search UI
- * @param {Function} onVideoSelect - Callback when user selects a video
+ * @param {Function} handleVideoSelection - Callback when user selects a video
  */
-export function initializeSearchUI(onVideoSelect) {
+export function initializeSearchUI(handleVideoSelection) {
   if (isInitialized || _initializing) return false;
   _initializing = true;
 
-  onVideoSelectCallback = onVideoSelect;
+  onVideoSelectCallback = handleVideoSelection;
 
   // Get DOM elements
   searchContainer = document.querySelector('.search-section');
@@ -105,8 +105,11 @@ export function initializeSearchUI(onVideoSelect) {
           id: query,
         });
       }
+
       searchResults.style.display = 'none';
       searchQuery.value = '';
+
+      // enterWatchMode();
     }
   };
 
