@@ -1,11 +1,26 @@
 // ============================================================================
 // YOUTUBE PLAYER MODULE
 // ============================================================================
-// Simplified YouTube player integration for watch-together functionality
+
+import { enterWatchMode, exitWatchMode } from './main.js';
+import { showElement, hideElement } from './utils/ui-utils.js';
+
+const YT_CONTAINER_ID = 'yt-player-div';
+const YT_PLAYER_ROOT_ID = 'yt-player-root';
 
 let ytPlayer = null;
 let ytReady = false;
 let ytLoadingCallbacks = [];
+
+export const getYouTubePlayer = () => ytPlayer;
+export const isYouTubeReady = () => ytReady;
+export const setYouTubeReady = (ready) => (ytReady = ready);
+
+export const getYTContainer = () => {
+  const el = document.getElementById(YT_CONTAINER_ID);
+  if (!el) throw new Error(`Container #${YT_CONTAINER_ID} not found`);
+  return el;
+};
 
 // ============================================================================
 // YOUTUBE API INITIALIZATION
@@ -26,8 +41,34 @@ export function waitForYouTubeAPI() {
 }
 
 // ============================================================================
-// YOUTUBE URL HELPERS
+//  HELPERS
 // ============================================================================
+
+export function showYouTubePlayer() {
+  const wrapper = getYTContainer();
+
+  if (!document.getElementById(YT_PLAYER_ROOT_ID)) {
+    const root = document.createElement('div');
+    root.id = YT_PLAYER_ROOT_ID;
+    wrapper.appendChild(root);
+  }
+  // Remove any blur state so the player can receive pointer/keyboard events
+  wrapper.classList.remove('hidden');
+  wrapper.classList.remove('blurred');
+}
+
+export function hideYouTubePlayer() {
+  const wrapper = getYTContainer();
+
+  if (!wrapper.classList.contains('hidden')) {
+    wrapper.classList.add('hidden');
+  }
+}
+
+export function isYTVisible() {
+  const ytContainer = getYTContainer();
+  return ytContainer && !ytContainer.classList.contains('hidden');
+}
 
 export function isYouTubeUrl(url) {
   if (!url) return false;
@@ -57,28 +98,15 @@ export function extractYouTubeId(url) {
 // YOUTUBE PLAYER MANAGEMENT
 // ============================================================================
 
-export async function loadYouTubeVideo({ 
-  url, 
-  containerId, 
-  onReady, 
-  onStateChange 
-}) {
+export async function loadYouTubeVideo({ url, onReady, onStateChange }) {
   const videoId = extractYouTubeId(url);
 
   if (!videoId) {
     throw new Error('Invalid YouTube URL');
   }
 
-  // Wait for YouTube API
   await waitForYouTubeAPI();
 
-  // Get or create container
-  let container = document.getElementById(containerId);
-  if (!container) {
-    throw new Error(`Container #${containerId} not found`);
-  }
-
-  // Destroy existing player if any
   if (ytPlayer) {
     try {
       ytPlayer.destroy();
@@ -88,16 +116,99 @@ export async function loadYouTubeVideo({
     ytPlayer = null;
   }
 
+  // Regain event listener control for document
+  const blurIframe = (allowSpace = true) => {
+    const ytContainer = getYTContainer();
+    const iframe = ytPlayer.getIframe();
+
+    if (iframe && ytContainer) {
+      // Instead of calling iframe.blur() (which can confuse YouTube's
+      // internal keyboard handling), move focus to the wrapper element.
+      // Use tabindex=-1 so it can be focused programmatically.
+      try {
+        ytContainer.tabIndex = -1;
+        ytContainer.focus({ preventScroll: true });
+      } catch (e) {
+        // fallback to direct blur if focusing wrapper fails
+        if (document.activeElement === iframe) {
+          try {
+            iframe.blur();
+          } catch (er) {
+            /* ignore */
+          }
+        }
+      }
+      ytContainer.classList.add('blurred');
+
+      if (allowSpace) {
+        // Allow spacebar to play and regain focus
+        const onKeydown = (event) => {
+          if (event.code === 'Space') {
+            const ytContainer = getYTContainer();
+            const iframe = ytPlayer.getIframe();
+            // if already focused on iframe, do nothing
+            if (
+              document.activeElement === iframe ||
+              document.activeElement === ytContainer
+            ) {
+              return;
+            }
+            event.preventDefault();
+
+            console.debug('Space pressed, refocusing iframe');
+
+            setTimeout(() => {
+              try {
+                ytContainer.classList.remove('blurred');
+              } catch (e) {
+                /* ignore */
+              }
+            }, 0);
+
+            if (ytPlayer.getPlayerState() !== window.YT.PlayerState.PLAYING) {
+              playYouTubeVideo();
+            } else {
+              pauseYouTubeVideo();
+            }
+          }
+        };
+        document.addEventListener('keydown', onKeydown, { once: true });
+      }
+    }
+  };
+
+  const focusIframe = () => {
+    const ytContainer = getYTContainer();
+    const iframe = ytPlayer.getIframe();
+
+    if (ytContainer && iframe) {
+      ytContainer.classList.remove('blurred');
+      if (document.activeElement !== iframe) {
+        try {
+          iframe.focus();
+        } catch (e) {
+          /* ignore */
+        }
+      }
+    }
+  };
+
   // Create new player
   return new Promise((resolve, reject) => {
     try {
-      ytPlayer = new window.YT.Player(containerId, {
+      // Create the player inside the dedicated root so the iframe replaces
+      // that child element and not the outer wrapper.
+      ytPlayer = new window.YT.Player(YT_PLAYER_ROOT_ID, {
         videoId: videoId,
         playerVars: {
-          autoplay: 0,
-          controls: 1,
-          rel: 0,
-          modestbranding: 1,
+          autoplay: 1, // Auto-play video on load
+          mute: 0, // Start with sound on (1 = muted)
+          controls: 1, // Show player controls
+          fs: 1, // Show fullscreen button (1 = show)
+          rel: 0, // Show related videos at end (0 = no)
+          modestbranding: 1, // Minimal YouTube branding
+          disablekb: 0, // Disable keyboard controls (0 = enabled)
+          origin: window.location.origin,
         },
         events: {
           onReady: (event) => {
@@ -106,6 +217,16 @@ export async function loadYouTubeVideo({
             resolve(ytPlayer);
           },
           onStateChange: (event) => {
+            if (event.data === window.YT.PlayerState.ENDED) {
+              blurIframe(false);
+            }
+            if (event.data === window.YT.PlayerState.PAUSED) {
+              blurIframe();
+            }
+            if (event.data === window.YT.PlayerState.PLAYING) {
+              focusIframe();
+            }
+
             if (onStateChange) onStateChange(event);
           },
           onError: (event) => {
@@ -114,18 +235,13 @@ export async function loadYouTubeVideo({
           },
         },
       });
+
+      showYouTubePlayer();
+      enterWatchMode(); // TODO: Clarify where enterWatchMode should be called
     } catch (error) {
       reject(error);
     }
   });
-}
-
-export function getYouTubePlayer() {
-  return ytPlayer;
-}
-
-export function isYouTubeReady() {
-  return ytReady;
 }
 
 export function destroyYouTubePlayer() {
@@ -185,3 +301,84 @@ export const YT_STATE = {
   BUFFERING: 3,
   CUED: 5,
 };
+
+// async function loadYouTubeVideoWithSync(url) {
+//   const videoId = extractYouTubeId(url);
+
+//   if (!videoId) {
+//     syncStatus.textContent = 'Invalid YouTube URL';
+//     return;
+//   }
+
+//   syncStatus.textContent = 'Loading YouTube video...';
+
+//   // Hide regular video element
+//   hideElement(sharedVideo);
+
+//   try {
+//     // Load YouTube player
+//     await loadYouTubeVideo({
+//       url: url,
+//       onReady: (event) => {
+//         setYouTubeReady(true);
+//         syncStatus.textContent = 'YouTube video ready';
+
+//         // Both participants can set initial state in Firebase
+//         if (roomId) {
+//           const watchRef = ref(rtdb, `rooms/${roomId}/watch`);
+//           set(watchRef, {
+//             url: url,
+//             playing: false,
+//             currentTime: 0,
+//             isYouTube: true,
+//             updatedBy: peerId,
+//           });
+//         }
+//       },
+//       onStateChange: async (event) => {
+//         const player = getYouTubePlayer();
+//         if (!player) return;
+
+//         const playing = event.data === YT_STATE.PLAYING;
+//         const paused = event.data === YT_STATE.PAUSED;
+//         const buffering = event.data === YT_STATE.BUFFERING;
+
+//         // When buffering (seek started), mark justSeeked true and store intended state
+//         if (buffering) {
+//           justSeeked = true;
+//           if (seekDebounceTimeout) clearTimeout(seekDebounceTimeout);
+//           seekDebounceTimeout = setTimeout(async () => {
+//             justSeeked = false;
+//             // After debounce timeout, send stable state
+//             const actualState = getYouTubePlayerState();
+//             const stablePlaying = actualState === YT_STATE.PLAYING;
+
+//             await updateWatchSyncState({
+//               playing: stablePlaying,
+//               currentTime: getYouTubeCurrentTime(),
+//             });
+//           }, 700);
+//           return; // Don't send state update immediately on BUFFERING
+//         }
+
+//         // If event is PAUSED during debounce window, ignore to prevent toggling
+//         if (paused && justSeeked) {
+//           return; // Ignore this transient pause event right after seek
+//         }
+
+//         // If outside debounce window, on PAUSED or PLAYING send updates normally
+//         if (!justSeeked && (playing || paused)) {
+//           await updateWatchSyncState({
+//             playing: playing,
+//             currentTime: getYouTubeCurrentTime(),
+//           });
+//         }
+//       },
+//     });
+
+//     syncStatus.textContent = 'YouTube video loaded';
+//   } catch (error) {
+//     console.error('Failed to load YouTube video:', error);
+//     syncStatus.textContent = 'Failed to load YouTube video';
+//   }
+// }
