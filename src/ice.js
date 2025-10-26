@@ -2,6 +2,9 @@ import { ref, push, set, onChildAdded } from 'firebase/database';
 import { rtdb, trackFirebaseListener } from './firebase.js';
 
 export function setupIceCandidates(pc, role, roomId) {
+  if (!pc || !roomId) {
+    throw new Error('setupIceCandidates: pc and roomId are required');
+  }
   if (role === 'initiator') {
     setupLocalCandidateSender(pc, 'offerCandidates', roomId);
     setupRemoteCandidateListener(pc, 'answerCandidates', roomId);
@@ -9,7 +12,7 @@ export function setupIceCandidates(pc, role, roomId) {
     setupLocalCandidateSender(pc, 'answerCandidates', roomId);
     setupRemoteCandidateListener(pc, 'offerCandidates', roomId);
   } else {
-    console.error(`Invalid role: ${role}, specified for ICE candidate setup.`);
+    throw new Error(`Invalid role: ${role} specified for ICE candidate setup.`);
   }
 }
 

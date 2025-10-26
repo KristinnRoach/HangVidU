@@ -44,12 +44,7 @@ export function setupShowHideOnInactivity(
   );
 
   function showAndSchedule() {
-    try {
-      showElement(element);
-    } catch (e) {
-      // fallback to classList if helper is unavailable
-      element.classList.remove('hidden');
-    }
+    showElement(element);
 
     // Notify caller that element is visible
     try {
@@ -63,11 +58,7 @@ export function setupShowHideOnInactivity(
     }
 
     hideTimeout = setTimeout(() => {
-      try {
-        hideElement(element);
-      } catch (e) {
-        element.classList.add('hidden');
-      }
+      hideElement(element);
       // Notify caller that element was hidden
       try {
         if (typeof onHide === 'function') onHide();
@@ -91,11 +82,6 @@ export function setupShowHideOnInactivity(
       }
       try {
         hideElement(element);
-      } catch (e) {
-        element.classList.add('hidden');
-      }
-      try {
-        if (typeof onHide === 'function') onHide();
       } catch (err) {
         console.warn(
           'showHideOnInactivity onHide (visibilitychange) callback error:',
@@ -116,16 +102,12 @@ export function setupShowHideOnInactivity(
         clearTimeout(hideTimeout);
         hideTimeout = null;
       }
-      try {
-        hideElement(element);
-      } catch (err) {
-        element.classList.add('hidden');
-      }
+      hideElement(element);
       try {
         if (typeof onHide === 'function') onHide();
       } catch (err) {
         console.warn(
-          'showHideOnInactivity onHide (mouseout) callback error:',
+          'showHideOnInactivity onHide (visibilitychange) callback error:',
           err
         );
       }
@@ -142,11 +124,7 @@ export function setupShowHideOnInactivity(
         clearTimeout(hideTimeout);
         hideTimeout = null;
       }
-      try {
-        hideElement(element);
-      } catch (err) {
-        element.classList.add('hidden');
-      }
+      hideElement(element);
       try {
         if (typeof onHide === 'function') onHide();
       } catch (err) {
@@ -163,11 +141,7 @@ export function setupShowHideOnInactivity(
   listenTarget.addEventListener('touchend', onTouchEnd, { passive: true });
 
   // Start hidden
-  try {
-    hideElement(element);
-  } catch (e) {
-    element.classList.add('hidden');
-  }
+  hideElement(element);
 
   // Cleanup function to remove listeners and clear timeout
   function cleanup() {

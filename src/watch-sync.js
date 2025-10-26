@@ -16,9 +16,9 @@ import {
   setYouTubeReady,
 } from './youtube-player.js';
 
-import { streamUrlInput, syncStatus, sharedVideo } from './elements.js'; // TODO: refactor:
-import { enterWatchMode, getPeerId, getRoomId } from './main.js';
+import { sharedVideo } from './elements.js'; // TODO: refactor:
 import { hideElement, showElement } from './utils/ui-utils.js';
+import { enterWatchMode } from './main.js';
 
 // ============================================================================
 // WATCH-TOGETHER SYNC (Firebase-based)
@@ -26,11 +26,12 @@ import { hideElement, showElement } from './utils/ui-utils.js';
 
 // Keep local copy of active room ID to avoid stale/null imports from main.js
 let currentRoomId = null;
+let currentPeerId = null;
 
 let watchMode = false;
 let lastWatched = 'none'; // 'yt' | 'url' | 'none'
 
-// export let currentVideoElement = null;
+let currentVideoUrl = null;
 
 export const isWatchModeActive = () => watchMode;
 export const setWatchMode = (active) => (watchMode = active);
@@ -63,7 +64,7 @@ async function updateWatchSyncState(updates) {
   try {
     await update(watchRef, {
       ...updates,
-      updatedBy: getPeerId(),
+      updatedBy: currentPeerId,
     });
   } catch (err) {
     console.error('Failed to update watch state:', err);
@@ -74,10 +75,11 @@ async function updateWatchSyncState(updates) {
 // -----------------------------------------------------------------------------
 // SYNC SETUP
 // -----------------------------------------------------------------------------
-export function setupWatchSync(roomId, role) {
+export function setupWatchSync(roomId, role, peerId) {
   if (!roomId) return;
 
   currentRoomId = roomId;
+  currentPeerId = peerId;
 
   const watchRef = ref(rtdb, `rooms/${roomId}/watch`);
 
@@ -97,17 +99,11 @@ export function setupWatchSync(roomId, role) {
 function handleWatchUpdate(snapshot) {
   const data = snapshot.val();
   if (!data) return;
-  if (data.updatedBy === getPeerId()) return; // Ignore self-updates
+  if (data.updatedBy === currentPeerId) return; // Ignore self-updates
   if (Date.now() - lastLocalAction < 500) return; // Ignore local race updates
 
-  console.debug('[WatchSync] onValue triggered', {
-    data,
-    myPeer: getPeerId(),
-    updatedBy: data?.updatedBy,
-  });
-
   // -- Handle URL changes -----------------------------------------------------
-  if (data.url && data.url !== streamUrlInput.value) {
+  if (data.url && data.url !== currentVideoUrl) {
     handleRemoteUrlChange(data.url);
   }
 
@@ -123,9 +119,10 @@ function handleWatchUpdate(snapshot) {
 // REMOTE: URL CHANGE
 // -----------------------------------------------------------------------------
 function handleRemoteUrlChange(url) {
-  streamUrlInput.value = url;
+  currentVideoUrl = url;
 
   if (isYouTubeUrl(url)) {
+    hideElement(sharedVideo);
     loadYouTubeVideoWithSync(url);
     lastWatched = 'yt';
   } else {
@@ -134,8 +131,6 @@ function handleRemoteUrlChange(url) {
     sharedVideo.src = url;
     lastWatched = 'url';
   }
-
-  syncStatus.textContent = 'Video loaded';
 }
 
 // -----------------------------------------------------------------------------
@@ -196,7 +191,7 @@ function debounceSeekSync() {
   seekDebounceTimeout = setTimeout(async () => {
     justSeeked = false;
     const finalPlaying = getYouTubePlayerState() === YT_STATE.PLAYING;
-    await updateWatchSyncState(roomId, {
+    await updateWatchSyncState({
       playing: finalPlaying,
       currentTime: getYouTubeCurrentTime(),
     });
@@ -264,23 +259,25 @@ function setupLocalVideoListeners() {
 // -----------------------------------------------------------------------------
 // LOCAL STREAM LOADING
 // -----------------------------------------------------------------------------
-function loadStream() {
-  const url = streamUrlInput.value.trim();
-  if (!url) {
-    syncStatus.textContent = 'Please enter a video URL';
-    return;
-  }
+async function loadStream(url) {
+  if (!url) return false;
 
   lastLocalAction = Date.now();
 
   if (isYouTubeUrl(url)) {
-    loadYouTubeVideoWithSync(url);
+    hideElement(sharedVideo);
+    const success = await loadYouTubeVideoWithSync(url);
+    if (!success) return false;
+
+    enterWatchMode();
     lastWatched = 'yt';
   } else {
     destroyYouTubePlayer();
+
     showElement(sharedVideo);
     sharedVideo.src = url;
-    syncStatus.textContent = 'Video loaded';
+
+    enterWatchMode();
     lastWatched = 'url';
   }
 
@@ -291,24 +288,26 @@ function loadStream() {
       playing: false,
       currentTime: 0,
       isYouTube: isYouTubeUrl(url),
-      updatedBy: getPeerId(),
+      updatedBy: currentPeerId,
     });
   }
+
+  return true;
 }
 
 // -----------------------------------------------------------------------------
 // VIDEO SELECTION
 // -----------------------------------------------------------------------------
-export function handleVideoSelection(video) {
+export async function handleVideoSelection(video) {
   if (!video || !video.url) {
     console.warn(`Non-existing or invalid video.`);
-    return;
+    return false;
   }
 
-  streamUrlInput.value = video.url;
-  loadStream(); // todo: await and return boolean success/failure
-  // enterWatchMode(); // on success only - ensure idempotence
-  syncStatus.textContent = `Loading "${video.title}"...`;
+  currentVideoUrl = video.url;
+
+  const success = await loadStream(video.url);
+  return success;
 }
 
 // TODO: Refactor between youtube-player.js, watch-sync.js, and main.js
@@ -316,23 +315,18 @@ export function handleVideoSelection(video) {
 // YOUTUBE VIDEO LOADING WITH SYNC
 // -----------------------------------------------------------------------------
 
-async function loadYouTubeVideoWithSync(url) {
+async function loadYouTubeVideoWithSync(url, currentRoomId, currentPeerId) {
   if (!currentRoomId) {
     import.meta.env.DEV &&
-      console.debug(`No roomId: ${currentRoomId}, OK if not in call.`);
+      console.debug(`No roomId: ${currentRoomId}, expected IF not in call.`);
   }
 
   const videoId = extractYouTubeId(url);
 
   if (!videoId) {
-    syncStatus.textContent = 'Invalid YouTube URL';
-    return;
+    console.error('Invalid YouTube URL:', url);
+    return false;
   }
-
-  syncStatus.textContent = 'Loading YouTube video...';
-
-  // Hide regular video element
-  hideElement(sharedVideo);
 
   try {
     // Load YouTube player
@@ -340,7 +334,6 @@ async function loadYouTubeVideoWithSync(url) {
       url: url,
       onReady: (event) => {
         setYouTubeReady(true);
-        syncStatus.textContent = 'YouTube video ready';
 
         // Both participants can set initial state in Firebase
         if (currentRoomId) {
@@ -350,7 +343,7 @@ async function loadYouTubeVideoWithSync(url) {
             playing: false,
             currentTime: 0,
             isYouTube: true,
-            updatedBy: getPeerId(),
+            updatedBy: currentPeerId,
           });
         }
       },
@@ -395,9 +388,9 @@ async function loadYouTubeVideoWithSync(url) {
       },
     });
 
-    syncStatus.textContent = 'YouTube video loaded';
+    return true;
   } catch (error) {
     console.error('Failed to load YouTube video:', error);
-    syncStatus.textContent = 'Failed to load YouTube video';
+    return false;
   }
 }

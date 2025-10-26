@@ -24,12 +24,11 @@ export const hideElement = (el) => {
   el.classList.add('hidden');
 };
 
-export function showSharedVideo() {
-  sharedVideo.classList.remove('hidden');
-  enterWatchMode();
-}
-
-export function hideSharedVideo() {
-  sharedVideo.classList.add('hidden');
-  exitWatchMode();
+/**
+ * Checks if a given element is currently in Picture-in-Picture mode.
+ * @param {Element} element - The DOM element to check.
+ * @returns {boolean} True if the element is in PiP, false otherwise.
+ */
+export function isElementInPictureInPicture(element) {
+  return document.pictureInPictureElement === element;
 }

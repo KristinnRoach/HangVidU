@@ -2,7 +2,6 @@
 // YOUTUBE PLAYER MODULE
 // ============================================================================
 
-import { enterWatchMode, exitWatchMode } from './main.js';
 import { showElement, hideElement } from './utils/ui-utils.js';
 
 const YT_CONTAINER_ID = 'yt-player-div';
@@ -52,17 +51,13 @@ export function showYouTubePlayer() {
     root.id = YT_PLAYER_ROOT_ID;
     wrapper.appendChild(root);
   }
-  // Remove any blur state so the player can receive pointer/keyboard events
-  wrapper.classList.remove('hidden');
-  wrapper.classList.remove('blurred');
+  showElement(wrapper);
 }
 
 export function hideYouTubePlayer() {
   const wrapper = getYTContainer();
 
-  if (!wrapper.classList.contains('hidden')) {
-    wrapper.classList.add('hidden');
-  }
+  hideElement(wrapper);
 }
 
 export function isYTVisible() {
@@ -138,7 +133,6 @@ export async function loadYouTubeVideo({ url, onReady, onStateChange }) {
           }
         }
       }
-      ytContainer.classList.add('blurred');
 
       if (allowSpace) {
         // Allow spacebar to play and regain focus
@@ -157,14 +151,6 @@ export async function loadYouTubeVideo({ url, onReady, onStateChange }) {
 
             console.debug('Space pressed, refocusing iframe');
 
-            setTimeout(() => {
-              try {
-                ytContainer.classList.remove('blurred');
-              } catch (e) {
-                /* ignore */
-              }
-            }, 0);
-
             if (ytPlayer.getPlayerState() !== window.YT.PlayerState.PLAYING) {
               playYouTubeVideo();
             } else {
@@ -181,17 +167,16 @@ export async function loadYouTubeVideo({ url, onReady, onStateChange }) {
     const ytContainer = getYTContainer();
     const iframe = ytPlayer.getIframe();
 
-    if (ytContainer && iframe) {
-      ytContainer.classList.remove('blurred');
-      if (document.activeElement !== iframe) {
-        try {
-          iframe.focus();
-        } catch (e) {
-          /* ignore */
-        }
+    if (ytContainer && iframe && document.activeElement !== iframe) {
+      try {
+        iframe.focus();
+      } catch (e) {
+        /* ignore */
       }
     }
   };
+
+  showYouTubePlayer();
 
   // Create new player
   return new Promise((resolve, reject) => {
@@ -235,9 +220,6 @@ export async function loadYouTubeVideo({ url, onReady, onStateChange }) {
           },
         },
       });
-
-      showYouTubePlayer();
-      enterWatchMode(); // TODO: Clarify where enterWatchMode should be called
     } catch (error) {
       reject(error);
     }
@@ -247,6 +229,7 @@ export async function loadYouTubeVideo({ url, onReady, onStateChange }) {
 export function destroyYouTubePlayer() {
   if (ytPlayer) {
     try {
+      hideYouTubePlayer();
       ytPlayer.destroy();
     } catch (error) {
       console.warn('Error destroying YouTube player:', error);

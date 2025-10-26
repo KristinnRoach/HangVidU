@@ -21,10 +21,14 @@ import {
 } from './firebase.js';
 
 import { closeOnClickOutside } from './utils/clickOutside';
-import { isHidden, showElement, hideElement } from './utils/ui-utils';
+import {
+  isHidden,
+  showElement,
+  hideElement,
+  isElementInPictureInPicture,
+} from './utils/ui-utils';
 import { updateStatus } from './utils/status.js';
-import setupShowHideOnInactivity from './utils/showHideOnInactivity.js';
-
+import { setupShowHideOnInactivity } from './utils/showHideOnInactivity.js';
 import {
   localVideo,
   remoteVideo,
@@ -33,7 +37,6 @@ import {
   hangUpBtn,
   linkContainer,
   shareLink,
-  streamUrlInput,
   syncStatus,
   mutePartnerBtn,
   fullscreenPartnerBtn,
@@ -54,7 +57,6 @@ import { userMediaAudioConstraints } from './setupStream.js';
 
 import {
   setupWatchSync,
-  handleVideoSelection,
   isWatchModeActive,
   setWatchMode,
   getLastWatched,
@@ -82,27 +84,24 @@ import {
   cleanupLocalStream,
 } from './setupStream.js';
 
+import { initChatUI } from './chat-ui.js';
+
 // ============================================================================
 // GLOBAL STATE
 // ============================================================================
 
 let pc = null; // RTCPeerConnection
+let dataChannel = null; // RTCDataChannel (for text chat, file transfer, etc.)
 let roomId = null;
 let peerId = null;
 let role = null; // 'initiator' | 'joiner'
+let textChat; // holds chat UI reference
 
 let cleanupFunctions = [];
 
 // Prevent duplicate SDP processing
 let lastAnswerSdp = null;
 let lastOfferSdp = null;
-
-export function getRoomId() {
-  return roomId;
-}
-export function getPeerId() {
-  return peerId;
-}
 
 export const isRemoteVideoVideoActive = () => {
   return (
@@ -118,9 +117,13 @@ export const isRemoteVideoVideoActive = () => {
 async function init() {
   peerId = Math.random().toString(36).substring(2, 15);
 
-  // TEMP FIX: (for some reason acts weird when set in HTML)
-  const ytContainer = getYTContainer();
-  ytContainer.classList.add('hidden');
+  // TEMP FIX: hide YouTube container if present
+  try {
+    const ytContainer = getYTContainer();
+    hideElement(ytContainer);
+  } catch {
+    // Container not present — OK
+  }
 
   try {
     await setUpLocalStream(localVideo);
@@ -147,7 +150,7 @@ async function init() {
 
     setupPWA(installBtn);
 
-    initializeSearchUI(handleVideoSelection);
+    initializeSearchUI();
 
     addWatchModeKeyListener();
 
@@ -161,6 +164,22 @@ async function init() {
     updateStatus('Error: Please allow camera and microphone access.');
     return false;
   }
+}
+
+function setupDataChannel() {
+  dataChannel = pc.createDataChannel('chat');
+  textChat = initChatUI((msg) => {
+    if (dataChannel.readyState === 'open') {
+      dataChannel.send(msg);
+    }
+  });
+
+  dataChannel.onopen = () => {
+    textChat.showChatToggle();
+    textChat.addMessage('💬 Chat connected');
+  };
+
+  dataChannel.onmessage = (e) => textChat.addMessage(`Partner: ${e.data}`);
 }
 
 // === WIP ===
@@ -245,6 +264,9 @@ async function createCall() {
   // Create peer connection
   pc = new RTCPeerConnection(rtcConfig);
 
+  // Create a data channel for text chat
+  setupDataChannel();
+
   // Add local tracks to peer connection
   localStream.getTracks().forEach((track) => {
     pc.addTrack(track, localStream);
@@ -311,7 +333,7 @@ async function createCall() {
   trackFirebaseListener(answerRef, 'value', answerCallback);
 
   // Setup watch-together sync
-  setupWatchSync(roomId, role);
+  setupWatchSync(roomId, role, peerId);
 
   // Add self to room members and listen for join/leave
   setupRoomMembers();
@@ -377,6 +399,18 @@ async function answerCall() {
   // Create peer connection
   pc = new RTCPeerConnection(rtcConfig);
 
+  // Prepare to receive chat DataChannel from initiator
+  pc.ondatachannel = (event) => {
+    dataChannel = event.channel;
+    textChat = initChatUI((msg) => dataChannel.send(msg));
+
+    dataChannel.onopen = () => {
+      textChat.show();
+      textChat.addMessage('💬 Chat connected');
+    };
+    dataChannel.onmessage = (e) => textChat.addMessage(`Partner: ${e.data}`);
+  };
+
   // Add local tracks
   localStream.getTracks().forEach((track) => {
     pc.addTrack(track, localStream);
@@ -414,7 +448,7 @@ async function answerCall() {
   }
 
   // Setup watch-together sync
-  setupWatchSync(roomId, role);
+  setupWatchSync(roomId, role, peerId);
 
   // Add self to room members and listen for join/leave
   setupRoomMembers();
@@ -434,21 +468,24 @@ let seekDebounceTimeout = null; // Todo: Is this still needed?
 // ============================================================================
 
 export function enterWatchMode() {
-  import.meta.env.DEV &&
-    console.debug('ENTER: isWatchModeActive():', isWatchModeActive());
-
   if (isWatchModeActive()) return;
 
   // Todo: Picture-in-Picture instead of smallFrame?
-  // if (isRemoteVideoVideoActive() ) {
-  //   remoteVideo.requestPictureInPicture().catch((err) => console.error(err));
-  // }
-
   if (isRemoteVideoVideoActive()) {
     remoteVideo.classList.add('smallFrame');
-    localVideo.classList.add('hidden');
+    hideElement(localVideo);
+
+    remoteVideo
+      .requestPictureInPicture()
+      .then(() => {
+        // Hide the smallFrame if PiP entered successfully
+        hideElement(remoteVideo);
+      })
+      .catch((err) => {
+        console.error('Failed to enter Picture-in-Picture:', err);
+      });
   } else {
-    localVideo.classList.remove('hidden');
+    showElement(localVideo);
     localVideo.classList.add('smallFrame');
   }
 
@@ -459,14 +496,19 @@ export function enterWatchMode() {
 }
 
 export function exitWatchMode() {
-  import.meta.env.DEV &&
-    console.debug('EXIT: isWatchModeActive():', isWatchModeActive());
-
   if (!isWatchModeActive()) return;
 
-  localVideo.classList.remove('hidden');
+  showElement(localVideo);
+
   if (isRemoteVideoVideoActive()) {
     remoteVideo.classList.remove('smallFrame');
+    showElement(remoteVideo);
+
+    if (isElementInPictureInPicture(remoteVideo)) {
+      document.exitPictureInPicture().catch((err) => {
+        console.error('Failed to exit Picture-in-Picture:', err);
+      });
+    }
   } else {
     localVideo.classList.remove('smallFrame');
   }
@@ -478,12 +520,12 @@ export function exitWatchMode() {
 }
 
 let enterCallMode = () => {
-  remoteVideo.classList.remove('hidden');
+  showElement(remoteVideo);
   localVideo.classList.add('smallFrame');
 };
 
 let exitCallMode = () => {
-  remoteVideo.classList.add('hidden');
+  hideElement(remoteVideo);
   localVideo.classList.remove('smallFrame');
 };
 
@@ -524,6 +566,12 @@ function addWatchModeKeyListener() {
           console.log('Showing YouTube player');
           showYouTubePlayer();
           enterWatchMode();
+
+          // if (isRemoteVideoVideoActive()) {
+          //   remoteVideo
+          //     .requestPictureInPicture()
+          //     .catch((err) => console.error(err));
+          // }
         }
       } else if (getLastWatched() === 'url') {
         console.log('Processing URL case');
@@ -535,6 +583,12 @@ function addWatchModeKeyListener() {
           console.log('Showing shared video');
           showElement(sharedVideo);
           enterWatchMode();
+
+          // if (isRemoteVideoVideoActive()) {
+          //   remoteVideo
+          //     .requestPictureInPicture()
+          //     .catch((err) => console.error(err));
+          // }
         }
       }
     }
@@ -716,7 +770,7 @@ function cleanup() {
 
   shareLink.value = '';
   sharedVideo.src = '';
-  streamUrlInput.value = '';
+  // streamUrlInput.value = '';
   syncStatus.textContent = '';
 
   cleanupLocalStream();
