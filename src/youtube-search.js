@@ -1,15 +1,29 @@
 // ============================================================================
 // YOUTUBE SEARCH MODULE
 // ============================================================================
-// Simplified YouTube search UI with API integration
+
+import { closeOnClickOutside } from './utils/clickOutside.js';
+import setupShowHideOnInactivity from './utils/showHideOnInactivity.js';
+import { isHidden, showElement, hideElement } from './utils/ui-utils.js';
+
+// ===== ELEMENTS =====
+
+let searchContainer = null;
+let searchBtn = null;
+let searchQuery = null;
+let searchResults = null;
 
 // ===== STATE =====
+let isInitialized = false;
+let _initializing = false;
 let searchResultsCache = [];
 let onVideoSelectCallback = null;
 let hasLoadedResults = false;
 let isDisplayingSearchResults = false;
 let lastSearchQuery = '';
 let focusedResultIndex = -1;
+
+let cleanupFunctions = [];
 
 // ===== API CONFIGURATION =====
 const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
@@ -19,20 +33,24 @@ const YOUTUBE_API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
 
 /**
  * Initialize YouTube search UI
- * @param {Function} onVideoSelect - Callback when user selects a video
+ * @param {Function} handleVideoSelection - Callback when user selects a video
  */
-export function initializeSearchUI(onVideoSelect) {
-  onVideoSelectCallback = onVideoSelect;
+export function initializeSearchUI(handleVideoSelection) {
+  if (isInitialized || _initializing) return false;
+  _initializing = true;
+
+  onVideoSelectCallback = handleVideoSelection;
 
   // Get DOM elements
-  const searchContainer = document.querySelector('.search-section');
-  const searchBtn = document.getElementById('searchBtn');
-  const searchQuery = document.getElementById('searchQuery');
-  const searchResults = document.getElementById('searchResults');
+  searchContainer = document.querySelector('.search-section');
+  searchBtn = document.getElementById('searchBtn');
+  searchQuery = document.getElementById('searchQuery');
+  searchResults = document.getElementById('searchResults');
 
-  if (!searchBtn || !searchQuery || !searchResults) {
+  if (!searchContainer || !searchBtn || !searchQuery || !searchResults) {
     console.error('YouTube search elements not found in DOM');
-    return;
+    _initializing = false;
+    return false;
   }
 
   const isDirectUrl = (str) => {
@@ -55,11 +73,24 @@ export function initializeSearchUI(onVideoSelect) {
   // Add search button event listener
   searchBtn.onclick = async () => {
     const query = searchQuery.value.trim();
-    if (!query) {
-      showError('Please enter a search term');
+
+    if (isHidden(searchQuery)) {
+      // Toggle visibility
+      showElement(searchQuery);
+      searchQuery.focus();
       return;
     }
-    if (hasLoadedResults && query === lastSearchQuery) {
+
+    if (!query) {
+      clearSearchResults();
+      hideElement(searchQuery);
+      return;
+    }
+    if (
+      hasLoadedResults &&
+      query === lastSearchQuery &&
+      searchResultsCache.length
+    ) {
       displaySearchResults(searchResultsCache);
     } else if (!isDirectUrl(query)) {
       await searchYouTube(query);
@@ -74,16 +105,20 @@ export function initializeSearchUI(onVideoSelect) {
           id: query,
         });
       }
+
       searchResults.style.display = 'none';
       searchQuery.value = '';
-      return;
+
+      // enterWatchMode();
     }
   };
 
   searchContainer.addEventListener('keydown', async (e) => {
     const items = searchResults.querySelectorAll('.search-result-item');
     if (items.length > 0 && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-      e.preventDefault();
+      // e.preventDefault();
+
+      // Navigate results
       if (e.key === 'ArrowDown') {
         let next = focusedResultIndex + 1;
         if (next >= items.length) next = 0;
@@ -100,11 +135,16 @@ export function initializeSearchUI(onVideoSelect) {
       // If a result is focused, select it
       if (items.length > 0 && focusedResultIndex >= 0) {
         items[focusedResultIndex].click();
+        hideElement(searchQuery);
         return;
       }
       const query = searchQuery.value.trim();
       if (query) {
-        if (hasLoadedResults && query === lastSearchQuery) {
+        if (
+          hasLoadedResults &&
+          query === lastSearchQuery &&
+          searchResultsCache.length
+        ) {
           displaySearchResults(searchResultsCache);
         } else if (!isDirectUrl(query)) {
           await searchYouTube(query);
@@ -121,13 +161,45 @@ export function initializeSearchUI(onVideoSelect) {
           }
           searchResults.style.display = 'none';
           searchQuery.value = '';
+          hideElement(searchQuery);
           return;
         }
       }
-    } else if (e.key === 'Escape' && isDisplayingSearchResults) {
-      searchResults.style.display = 'none';
+    } else if (e.key === 'Escape') {
+      if (isDisplayingSearchResults) clearSearchResults();
+      else if (searchQuery.value) searchQuery.value = '';
+      else hideElement(searchQuery);
     }
   });
+
+  searchQuery.addEventListener('input', () => {
+    if (searchQuery.value.trim() === '') {
+      clearSearchResults();
+    }
+    focusedResultIndex = -1;
+  });
+
+  const closeQueryCleanup = closeOnClickOutside(
+    searchQuery,
+    () => hideElement(searchQuery),
+    {
+      ignore: [searchBtn],
+      esc: false, // already handled
+    }
+  );
+
+  cleanupFunctions.push(closeQueryCleanup);
+
+  const closeSearchResultsCleanup = closeOnClickOutside(
+    searchResults,
+    () => hideElement(searchResults),
+    {
+      ignore: [searchBtn],
+      esc: false, // already handled
+    }
+  );
+
+  cleanupFunctions.push(closeSearchResultsCleanup);
 
   // Check API availability
   if (!YOUTUBE_API_KEY) {
@@ -139,6 +211,10 @@ export function initializeSearchUI(onVideoSelect) {
   if (import.meta.env.DEV) {
     console.log('YouTube search UI initialized');
   }
+
+  _initializing = false;
+  isInitialized = true;
+  return true;
 }
 
 /**
@@ -146,10 +222,12 @@ export function initializeSearchUI(onVideoSelect) {
  * @param {string} query - Search query
  */
 async function searchYouTube(query) {
-  lastSearchQuery = query;
+  if (!searchBtn || !searchResults) {
+    console.error('Search elements not initialized');
+    return;
+  }
 
-  const searchBtn = document.getElementById('searchBtn');
-  const searchResults = document.getElementById('searchResults');
+  lastSearchQuery = query;
 
   if (!YOUTUBE_API_KEY) {
     showError('YouTube API key not configured');
@@ -158,7 +236,6 @@ async function searchYouTube(query) {
 
   // Show loading state
   searchBtn.disabled = true;
-  searchBtn.textContent = 'Searching...';
   searchResults.innerHTML =
     '<div class="search-loading">Searching YouTube...</div>';
   searchResults.style.display = 'block';
@@ -205,7 +282,6 @@ async function searchYouTube(query) {
     showError(error.message || 'Search failed. Please try again.');
   } finally {
     searchBtn.disabled = false;
-    searchBtn.textContent = 'Search';
   }
 }
 
@@ -214,7 +290,10 @@ async function searchYouTube(query) {
  * @param {Array} results - Array of video objects
  */
 function displaySearchResults(results) {
-  const searchResults = document.getElementById('searchResults');
+  if (!searchResults) {
+    console.error('Search results element not initialized');
+    return;
+  }
 
   if (!results || results.length === 0) {
     searchResults.innerHTML = '<div class="no-results">No results found</div>';
@@ -240,10 +319,14 @@ function displaySearchResults(results) {
         onVideoSelectCallback(video);
         // Hide search results after selection
         searchResults.style.display = 'none';
-        // Clear search input
-        const searchQuery = document.getElementById('searchQuery');
-        if (searchQuery) searchQuery.value = '';
         focusedResultIndex = -1;
+
+        // Clear search input
+        if (!searchQuery) {
+          console.error('Search query element not initialized');
+          return;
+        }
+        searchQuery.value = '';
       }
     };
 
@@ -272,7 +355,10 @@ function displaySearchResults(results) {
  * @param {string} message - Error message
  */
 function showError(message) {
-  const searchResults = document.getElementById('searchResults');
+  if (!searchResults) {
+    console.error('Search results element not initialized');
+    return;
+  }
   searchResults.innerHTML = `<div class="search-error">${message}</div>`;
   searchResults.style.display = 'block';
 }
@@ -281,12 +367,14 @@ function showError(message) {
  * Clear search results
  */
 export function clearSearchResults() {
-  const searchResults = document.getElementById('searchResults');
-  if (searchResults) {
-    searchResults.innerHTML = '';
-    searchResults.style.display = 'none';
-  }
   searchResultsCache = [];
+
+  if (!searchResults) return;
+
+  searchResults.innerHTML = '';
+  searchResults.style.display = 'none';
+  isDisplayingSearchResults = false;
+  focusedResultIndex = -1;
 }
 
 /**
@@ -294,4 +382,9 @@ export function clearSearchResults() {
  */
 export function isSearchAvailable() {
   return !!YOUTUBE_API_KEY;
+}
+
+export function cleanupSearchUI() {
+  clearSearchResults();
+  cleanupFunctions.forEach((cleanupFn) => cleanupFn());
 }
