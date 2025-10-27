@@ -1,4 +1,9 @@
 import { addRemoteVideoEventListeners } from './media-controls.js';
+import {
+  userMediaAudioConstraints,
+  userMediaVideoConstraints,
+  getOrientationAwareVideoConstraints,
+} from './media-devices.js';
 import { updateStatus } from './utils/status.js';
 
 let localStream = null;
@@ -13,28 +18,16 @@ export function getLocalStream() {
   return localStream;
 }
 
-export const userMediaAudioConstraints = {
-  echoCancellation: true,
-  noiseSuppression: true,
-  autoGainControl: true,
-  voiceIsolation: true,
-  restrictOwnAudio: true,
-};
-
-export const userMediaVideoConstraints = {
-  width: { min: 640, ideal: 1920, max: 1920 },
-  height: { min: 480, ideal: 1080, max: 1080 },
-  resizeMode: 'crop-and-scale',
-};
-
 export const createLocalStream = async () => {
   if (localStream && localStream instanceof MediaStream) {
     console.debug('Reusing existing local MediaStream.');
     return localStream;
   }
 
+  const videoConstraints = getOrientationAwareVideoConstraints('user');
+
   localStream = await navigator.mediaDevices.getUserMedia({
-    video: userMediaVideoConstraints,
+    video: videoConstraints,
     audio: userMediaAudioConstraints,
   });
 

@@ -1,7 +1,10 @@
 // src/media-controls.js
 // Handles all media control button functionality (mute, video, camera, fullscreen)
 
-import { switchCamera } from './media-devices.js';
+import {
+  switchCamera,
+  updateVideoConstraintsForOrientation,
+} from './media-devices.js';
 
 // ============================================================================
 // STATE
@@ -128,7 +131,7 @@ export function initializeMediaControls({
     };
   }
 
-  // ===== TOGGLE CAMERA =====
+  // ===== TOGGLE CAMERA ON/OFF =====
   if (videoSelfBtn) {
     videoSelfBtn.onclick = () => {
       const localStream = getLocalStream();
@@ -145,44 +148,83 @@ export function initializeMediaControls({
     };
   }
 
+  // // ===== SWITCH CAMERA (MOBILE) =====
+  // let lastFacingMode = 'user'; // Track facing mode manually
+
+  // if (switchCameraSelfBtn) {
+  //   switchCameraSelfBtn.onclick = async () => {
+  //     const localStream = getLocalStream();
+  //     const localVideo = getLocalVideo();
+  //     if (!localStream) {
+  //       console.warn('No local stream or no local video track available.');
+  //       return;
+  //     }
+
+  //     const pc = getPeerConnection?.();
+  //     if (!pc) {
+  //       console.error('PeerConnection is required to switch camera.');
+  //       return;
+  //     }
+  //     const result = await switchCamera({
+  //       localStream,
+  //       localVideo,
+  //       peerConnection: pc,
+  //       currentFacingMode: lastFacingMode,
+  //     });
+
+  //     if (result) {
+  //       lastFacingMode = result.facingMode;
+  //       console.log('Switched camera to facingMode:', lastFacingMode);
+  //     } else {
+  //       console.error('Camera switch failed.');
+  //     }
+  //   };
+  // }
+
   // ===== SWITCH CAMERA (MOBILE) =====
   let lastFacingMode = 'user'; // Track facing mode manually
 
+  // Listen for orientation changes and update constraints
+  const handleOrientationChange = async () => {
+    import.meta.env.DEV && console.debug('Orientation change detected.');
+
+    const localStream = getLocalStream();
+    const localVideo = getLocalVideo();
+    const pc = getPeerConnection?.();
+    if (!localStream || !localVideo || !pc) return;
+
+    await updateVideoConstraintsForOrientation({
+      localStream,
+      localVideo,
+      peerConnection: pc,
+      currentFacingMode: lastFacingMode,
+    });
+  };
+
+  window.addEventListener('orientationchange', handleOrientationChange);
+  // Fallback for modern browsers
+  if (window.screen?.orientation) {
+    window.screen.orientation.addEventListener(
+      'change',
+      handleOrientationChange
+    );
+  }
+
   if (switchCameraSelfBtn) {
     switchCameraSelfBtn.onclick = async () => {
-      const localStream = getLocalStream();
-      const localVideo = getLocalVideo();
-      if (!localStream) {
-        console.warn('No local stream or no local video track available.');
-        return;
-      }
-      const videoTrack = localStream.getVideoTracks()[0];
-      if (!videoTrack) {
-        console.warn('No local video track available.');
-        return;
-      }
-      // const currentFacingMode = videoTrack.getSettings()?.facingMode || 'user';
-
-      // Use tracked facing mode instead of unreliable getSettings()
-      const currentFacingMode = lastFacingMode;
-
-      const pc = getPeerConnection?.();
-      if (!pc) {
-        console.error('PeerConnection is required to switch camera.');
-        return;
-      }
-      const facingMode = await switchCamera({
-        localStream,
-        localVideo,
+      // ...existing code...
+      const result = await switchCamera({
+        localStream: getLocalStream(),
+        localVideo: getLocalVideo(),
         peerConnection: pc,
-        currentFacingMode,
+        currentFacingMode: lastFacingMode,
       });
 
-      if (facingMode === 'user' || facingMode === 'environment') {
-        lastFacingMode = facingMode;
-        console.log('Switched camera to facingMode:', facingMode);
+      if (result) {
+        lastFacingMode = result.facingMode;
+        console.log('Switched camera to facingMode:', lastFacingMode);
       } else {
-        console.error('switchCamera returned invalid facingMode:', facingMode);
+        console.error('Camera switch failed.');
       }
     };
   }
@@ -232,41 +274,3 @@ export function cleanupMediaControls(remoteVideo) {
   removeRemoteVideoEventListeners(remoteVideo);
   remotePreviousMuted = false;
 }
-
-// TODO: delete this after testing:
-// switchCameraSelfBtn.onclick = async () => {
-//   if (!localStream) return;
-
-//   try {
-//     const videoTrack = localStream.getVideoTracks()[0];
-//     const currentFacingMode = videoTrack.getSettings().facingMode;
-//     const newFacingMode =
-//       currentFacingMode === 'user' ? 'environment' : 'user';
-
-//     // Stop current track
-//     videoTrack.stop();
-
-//     // Get new stream with opposite camera
-//     const newStream = await navigator.mediaDevices.getUserMedia({
-//       video: { facingMode: newFacingMode },
-//       audio: audioConstraints,
-//     });
-
-//     // Replace track in peer connection if it exists
-//     const newVideoTrack = newStream.getVideoTracks()[0];
-//     if (pc) {
-//       const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
-//       if (sender) {
-//         sender.replaceTrack(newVideoTrack);
-//       }
-//     }
-
-//     // Update local stream reference (caller must handle this)
-//     // Return new stream so caller can update their localStream variable
-//     return newStream;
-//   } catch (error) {
-//     console.error('Failed to switch camera:', error);
-//     return null;
-//   }
-// };
-// }

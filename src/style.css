@@ -17,10 +17,6 @@ body {
   position: relative;
 }
 
-.hidden {
-  display: none;
-}
-
 #yt-player-div,
 #sharedVideo,
 #yt-player-div iframe,
@@ -33,14 +29,21 @@ body {
   transition: opacity 200ms ease;
 }
 
+#localVideo.hidden,
+#remoteVideo.hidden,
 #yt-player-div.hidden,
 #sharedVideo.hidden,
 #searchQuery.hidden,
 #chat-toggle-btn.hidden,
+.chat-btn.hidden,
 .chat-box.hidden,
 .top-left-menu.hidden {
   opacity: 0 !important;
   pointer-events: none;
+
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
 }
 
 .chat-box {
@@ -87,11 +90,14 @@ a span {
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) 0.2s;
 }
 
-/* #localVideo:picture-in-picture {
+#localVideo.mirrored {
   transform: scaleX(1);
-} */
+}
 
-#localVideo:picture-in-picture {
+#localVideo:picture-in-picture,
+#remoteVideo:picture-in-picture,
+#localVideo.smallFrame:picture-in-picture,
+#remoteVideo.smallFrame:picture-in-picture {
   display: none;
 }
 

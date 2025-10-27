@@ -53,7 +53,10 @@ import {
   cleanupMediaControls,
 } from './media-controls.js';
 
-import { userMediaAudioConstraints } from './setupStream.js';
+import {
+  hasFrontAndBackCameras,
+  userMediaAudioConstraints,
+} from './media-devices.js';
 
 import {
   setupWatchSync,
@@ -74,7 +77,6 @@ import {
 } from './youtube-player.js';
 
 import { cleanupSearchUI, initializeSearchUI } from './youtube-search.js';
-import { hasFrontAndBackCameras } from './media-devices.js';
 import { setupPWA } from './PWA.js';
 import { setupIceCandidates } from './ice.js';
 import {
@@ -129,7 +131,7 @@ async function init() {
     await setUpLocalStream(localVideo);
 
     if (await hasFrontAndBackCameras()) {
-      switchCameraSelfBtn.style.display = 'block';
+      showElement(switchCameraSelfBtn);
     }
 
     initializeMediaControls({
@@ -405,7 +407,7 @@ async function answerCall() {
     textChat = initChatUI((msg) => dataChannel.send(msg));
 
     dataChannel.onopen = () => {
-      textChat.show();
+      textChat.showChatToggle();
       textChat.addMessage('💬 Chat connected');
     };
     dataChannel.onmessage = (e) => textChat.addMessage(`Partner: ${e.data}`);
