@@ -18,6 +18,10 @@ export function getLocalStream() {
   return localStream;
 }
 
+export function setLocalStream(newStream) {
+  localStream = newStream;
+}
+
 export const createLocalStream = async () => {
   if (localStream && localStream instanceof MediaStream) {
     console.debug('Reusing existing local MediaStream.');

@@ -2,7 +2,7 @@
 // YOUTUBE SEARCH MODULE
 // ============================================================================
 
-import { closeOnClickOutside } from './utils/clickOutside.js';
+import { onClickOutside } from './utils/clickOutside.js';
 import setupShowHideOnInactivity from './utils/showHideOnInactivity.js';
 import { isHidden, showElement, hideElement } from './utils/ui-utils.js';
 import { handleVideoSelection } from './watch-sync.js';
@@ -172,7 +172,7 @@ export function initializeSearchUI() {
     focusedResultIndex = -1;
   });
 
-  const closeQueryCleanup = closeOnClickOutside(
+  const closeQueryCleanup = onClickOutside(
     searchQuery,
     () => hideElement(searchQuery),
     {
@@ -183,7 +183,7 @@ export function initializeSearchUI() {
 
   cleanupFunctions.push(closeQueryCleanup);
 
-  const closeSearchResultsCleanup = closeOnClickOutside(
+  const closeSearchResultsCleanup = onClickOutside(
     searchResults,
     () => hideElement(searchResults),
     {
