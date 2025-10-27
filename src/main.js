@@ -20,12 +20,14 @@ import {
   trackFirebaseListener,
 } from './firebase.js';
 
-import { closeOnClickOutside } from './utils/clickOutside';
+import { onClickOutside } from './utils/clickOutside';
 import {
   isHidden,
   showElement,
   hideElement,
   isElementInPictureInPicture,
+  placeInSmallFrame,
+  removeFromSmallFrame,
 } from './utils/ui-utils';
 import { updateStatus } from './utils/status.js';
 import { setupShowHideOnInactivity } from './utils/showHideOnInactivity.js';
@@ -83,10 +85,12 @@ import {
   setUpLocalStream,
   setupRemoteStream,
   getLocalStream,
+  setLocalStream,
   cleanupLocalStream,
 } from './setupStream.js';
 
-import { initChatUI } from './chat-ui.js';
+import { initMessagesUI } from './chat-ui.js';
+import { showCopyLinkModal } from './components/copyLinkModal.js';
 
 // ============================================================================
 // GLOBAL STATE
@@ -97,7 +101,7 @@ let dataChannel = null; // RTCDataChannel (for text chat, file transfer, etc.)
 let roomId = null;
 let peerId = null;
 let role = null; // 'initiator' | 'joiner'
-let textChat; // holds chat UI reference
+let messagesUI; // holds text chat UI reference
 
 let cleanupFunctions = [];
 
@@ -139,6 +143,7 @@ async function init() {
       getLocalVideo: () => localVideo,
       getRemoteVideo: () => remoteVideo,
       getPeerConnection: () => pc,
+      setLocalStream,
 
       muteSelfBtn: micBtn,
       videoSelfBtn: cameraBtn,
@@ -154,7 +159,9 @@ async function init() {
 
     initializeSearchUI();
 
-    addWatchModeKeyListener();
+    addKeyListeners();
+
+    exitCallMode(); // Ensure UI is in initial state
 
     if (import.meta.env.DEV) {
       micBtn.click();
@@ -170,18 +177,25 @@ async function init() {
 
 function setupDataChannel() {
   dataChannel = pc.createDataChannel('chat');
-  textChat = initChatUI((msg) => {
+
+  const sendMessage = (msg) => {
     if (dataChannel.readyState === 'open') {
       dataChannel.send(msg);
     }
-  });
-
-  dataChannel.onopen = () => {
-    textChat.showChatToggle();
-    textChat.addMessage('💬 Chat connected');
   };
 
-  dataChannel.onmessage = (e) => textChat.addMessage(`Partner: ${e.data}`);
+  messagesUI = initMessagesUI(sendMessage);
+
+  dataChannel.onopen = () => {
+    messagesUI.showMessagesToggle();
+    messagesUI.appendChatMessage('💬 Chat connected');
+  };
+
+  dataChannel.onmessage = (e) => messagesUI.receiveMessage(e.data);
+}
+
+function clearUrlParam() {
+  window.history.replaceState({}, document.title, window.location.pathname);
 }
 
 // === WIP ===
@@ -244,10 +258,14 @@ function setupConnectionStateHandlers(pc) {
     }
     if (pc.connectionState === 'connected') {
       updateStatus('Connected!');
+      enterCallMode();
     } else if (pc.connectionState === 'disconnected') {
       updateStatus('Partner disconnected');
+      exitCallMode();
+      clearUrlParam();
     } else if (pc.connectionState === 'failed') {
       updateStatus('Connection failed');
+      clearUrlParam();
     }
   };
 }
@@ -347,19 +365,17 @@ async function createCall() {
   callBtn.disabled = true;
   hangUpBtn.disabled = false;
 
-  // TODO: Make nice
-  // Automatically copy link to clipboard
-  try {
-    await navigator.clipboard.writeText(shareUrl);
-    alert(
-      `Link copied! Share it with someone to start a call.\n\n( link: ${shareUrl} )`
-    );
-    updateStatus('Link ready! Share with your partner.');
-    return true;
-  } catch (error) {
-    alert(`Share this link with your partner:\n${shareUrl}`);
-  }
-  return false;
+  showCopyLinkModal(shareUrl, {
+    onCopy: () => updateStatus('Link ready! Share with your partner.'),
+    onCancel: () => {
+      updateStatus('Call cancelled. Click "Start New Chat" to try again.');
+      hangUp();
+    },
+  });
+
+  updateStatus('Waiting for partner to join...');
+
+  return true;
 }
 
 // ============================================================================
@@ -404,13 +420,13 @@ async function answerCall() {
   // Prepare to receive chat DataChannel from initiator
   pc.ondatachannel = (event) => {
     dataChannel = event.channel;
-    textChat = initChatUI((msg) => dataChannel.send(msg));
+    messagesUI = initMessagesUI((msg) => dataChannel.send(msg));
 
     dataChannel.onopen = () => {
-      textChat.showChatToggle();
-      textChat.addMessage('💬 Chat connected');
+      messagesUI.showMessagesToggle();
+      messagesUI.appendChatMessage('💬 Chat connected');
     };
-    dataChannel.onmessage = (e) => textChat.addMessage(`Partner: ${e.data}`);
+    dataChannel.onmessage = (e) => messagesUI.receiveMessage(e.data);
   };
 
   // Add local tracks
@@ -455,7 +471,6 @@ async function answerCall() {
   // Add self to room members and listen for join/leave
   setupRoomMembers();
 
-  hangUpBtn.disabled = false;
   enterCallMode();
 
   updateStatus('Connecting...');
@@ -469,12 +484,13 @@ let seekDebounceTimeout = null; // Todo: Is this still needed?
 // UI Layout change helpers
 // ============================================================================
 
+let cleanupChatControlAutoHide = null;
+
 export function enterWatchMode() {
   if (isWatchModeActive()) return;
 
-  // Todo: Picture-in-Picture instead of smallFrame?
   if (isRemoteVideoVideoActive()) {
-    remoteVideo.classList.add('smallFrame');
+    placeInSmallFrame(remoteVideo);
     hideElement(localVideo);
 
     remoteVideo
@@ -488,7 +504,7 @@ export function enterWatchMode() {
       });
   } else {
     showElement(localVideo);
-    localVideo.classList.add('smallFrame');
+    // placeInSmallFrame(localVideo);
   }
 
   chatControls.classList.remove('bottom');
@@ -503,7 +519,7 @@ export function exitWatchMode() {
   showElement(localVideo);
 
   if (isRemoteVideoVideoActive()) {
-    remoteVideo.classList.remove('smallFrame');
+    removeFromSmallFrame(remoteVideo);
     showElement(remoteVideo);
 
     if (isElementInPictureInPicture(remoteVideo)) {
@@ -511,9 +527,10 @@ export function exitWatchMode() {
         console.error('Failed to exit Picture-in-Picture:', err);
       });
     }
-  } else {
-    localVideo.classList.remove('smallFrame');
   }
+  // else {
+  //   localVideo.classList.remove('smallFrame');
+  // }
 
   chatControls.classList.remove('watch-mode');
   chatControls.classList.add('bottom');
@@ -523,12 +540,45 @@ export function exitWatchMode() {
 
 let enterCallMode = () => {
   showElement(remoteVideo);
-  localVideo.classList.add('smallFrame');
+  placeInSmallFrame(localVideo);
+
+  callBtn.disabled = true;
+  mutePartnerBtn.disabled = false;
+  hangUpBtn.disabled = false;
+
+  if (!cleanupChatControlAutoHide) {
+    // Start hidden, show on activity and auto-hide after inactivity
+    cleanupChatControlAutoHide = setupShowHideOnInactivity(chatControls, {
+      inactivityMs: 2500,
+      hideOnEsc: true,
+    });
+  }
+
+  // showElement(mutePartnerBtn);
+  // showElement(micBtn);
+  // showElement(cameraBtn);
+  // if (hasFrontAndBackCameras()) {
+  //   showElement(switchCameraSelfBtn);
+  // }
 };
 
 let exitCallMode = () => {
   hideElement(remoteVideo);
-  localVideo.classList.remove('smallFrame');
+  placeInSmallFrame(localVideo); // Always keep local video in small frame
+
+  callBtn.disabled = false;
+  hangUpBtn.disabled = true;
+  mutePartnerBtn.disabled = true;
+
+  if (cleanupChatControlAutoHide) {
+    cleanupChatControlAutoHide();
+    cleanupChatControlAutoHide = null;
+  }
+
+  // hideElement(mutePartnerBtn);
+  // hideElement(switchCameraSelfBtn);
+  // hideElement(micBtn);
+  // hideElement(cameraBtn);
 };
 
 // ============================================================================
@@ -544,56 +594,63 @@ function isSharedVideoVisible() {
   );
 }
 
-let watchModeKeyListenerAdded = false;
+let keyListenersAdded = false;
 
-function addWatchModeKeyListener() {
-  if (watchModeKeyListenerAdded) return;
+function addKeyListeners() {
+  if (keyListenersAdded) return;
+
+  const isTextInputFocused = () => {
+    const activeElement = document.activeElement;
+    return (
+      activeElement &&
+      (activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.isContentEditable)
+    );
+  };
 
   document.addEventListener('keydown', (event) => {
     // Press 'W' to toggle player visibility
-    if (event.key === 'w' || event.key === 'W') {
-      console.log('=== W KEY PRESSED ===');
-      console.log('lastWatched:', getLastWatched());
-      console.log('isYTVisible():', isYTVisible());
-      console.log('isSharedVideoVisible():', isSharedVideoVisible());
-      console.log('isWatchModeActive():', isWatchModeActive());
+    if (!isTextInputFocused()) {
+      if (event.key === 'w' || event.key === 'W') {
+        console.log('=== W KEY PRESSED ===');
+        console.log('lastWatched:', getLastWatched());
+        console.log('isYTVisible():', isYTVisible());
+        console.log('isSharedVideoVisible():', isSharedVideoVisible());
+        console.log('isWatchModeActive():', isWatchModeActive());
 
-      if (getLastWatched() === 'yt') {
-        console.log('Processing YouTube case');
-        if (isYTVisible()) {
-          console.log('Hiding YouTube player');
-          hideYouTubePlayer();
-          exitWatchMode();
-        } else {
-          console.log('Showing YouTube player');
-          showYouTubePlayer();
-          enterWatchMode();
-
-          // if (isRemoteVideoVideoActive()) {
-          //   remoteVideo
-          //     .requestPictureInPicture()
-          //     .catch((err) => console.error(err));
-          // }
+        if (getLastWatched() === 'yt') {
+          console.log('Processing YouTube case');
+          if (isYTVisible()) {
+            console.log('Hiding YouTube player');
+            hideYouTubePlayer();
+            exitWatchMode();
+          } else {
+            console.log('Showing YouTube player');
+            showYouTubePlayer();
+            enterWatchMode();
+          }
+        } else if (getLastWatched() === 'url') {
+          console.log('Processing URL case');
+          if (isSharedVideoVisible()) {
+            console.log('Hiding shared video');
+            hideElement(sharedVideo);
+            exitWatchMode();
+          } else {
+            console.log('Showing shared video');
+            showElement(sharedVideo);
+            enterWatchMode();
+          }
         }
-      } else if (getLastWatched() === 'url') {
-        console.log('Processing URL case');
-        if (isSharedVideoVisible()) {
-          console.log('Hiding shared video');
-          hideElement(sharedVideo);
-          exitWatchMode();
-        } else {
-          console.log('Showing shared video');
-          showElement(sharedVideo);
-          enterWatchMode();
-
-          // if (isRemoteVideoVideoActive()) {
-          //   remoteVideo
-          //     .requestPictureInPicture()
-          //     .catch((err) => console.error(err));
-          // }
+      }
+      // Toggle chat messages with 'M' key
+      if (event.key === 'm' || event.key === 'M') {
+        if (messagesUI) {
+          messagesUI.toggleMessages();
         }
       }
     }
+
     // Hide media player when pressing 'Escape', if player is visible
     if (event.key === 'Escape') {
       if (getLastWatched() === 'yt' && isYTVisible()) {
@@ -607,7 +664,7 @@ function addWatchModeKeyListener() {
     }
   });
 
-  watchModeKeyListenerAdded = true;
+  keyListenersAdded = true;
 }
 
 // ============================================================================
@@ -620,14 +677,6 @@ callBtn.onclick = async () => {
 
 hangUpBtn.onclick = hangUp;
 
-// Start hidden, show on activity and auto-hide after inactivity
-const cleanupChatControlAutoHide = setupShowHideOnInactivity(chatControls, {
-  inactivityMs: 2500,
-  hideOnEsc: true,
-});
-
-cleanupFunctions.push(cleanupChatControlAutoHide);
-
 // ============================================================================
 // AUTO-JOIN FROM URL PARAMETER
 // ============================================================================
@@ -636,24 +685,27 @@ async function autoJoinFromUrl() {
   const urlParams = new URLSearchParams(window.location.search);
   const urlRoomId = urlParams.get('room');
 
-  if (urlRoomId) {
-    roomId = urlRoomId;
-    updateStatus('Connecting to room...');
-    callBtn.style.display = 'none';
-
-    const initSuccess = await init();
-    let answerSuccess = false;
-    if (initSuccess) answerSuccess = await answerCall();
-
-    if (!initSuccess || !answerSuccess) {
-      callBtn.style.display = 'block';
-      return false;
-    }
-    return true;
-  } else {
+  if (!urlRoomId) {
     updateStatus('Ready. Click "Start New Chat" to begin.');
     return false;
   }
+
+  roomId = urlRoomId;
+  updateStatus('Connecting to room...');
+
+  const initSuccess = await init();
+  let answerSuccess = false;
+  if (initSuccess) answerSuccess = await answerCall();
+
+  if (answerSuccess) {
+    return true;
+  } else {
+    showElement(callBtn);
+    hangUpBtn.disabled = true;
+    callBtn.disabled = false;
+    clearUrlParam();
+  }
+  return false;
 }
 
 // ============================================================================
@@ -733,9 +785,9 @@ async function hangUp() {
 
   // Reset UI
   exitCallMode();
-  callBtn.disabled = false;
-  callBtn.style.display = 'block';
+  showElement(callBtn);
   hangUpBtn.disabled = true;
+  callBtn.disabled = false;
   linkContainer.style.display = 'none';
 
   membersListeners.forEach(({ ref: fbRef, type, callback }) =>
@@ -754,10 +806,9 @@ async function hangUp() {
   }
 
   // Cleanup chat UI
-  if (textChat && textChat.cleanup) {
-    textChat.hideChatToggle();
-    textChat.cleanup();
-    textChat = null;
+  if (messagesUI && messagesUI.cleanup) {
+    messagesUI.cleanup();
+    messagesUI = null;
   }
 
   // Reset state

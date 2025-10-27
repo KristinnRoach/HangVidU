@@ -1,64 +1,118 @@
-import { hideElement, showElement } from './utils/ui-utils';
+import { onDoubleClickOutside } from './utils/clickOutside';
+import { hideElement, isHidden, showElement } from './utils/ui-utils';
 
-// chat-ui.js
-export function initChatUI(sendFn) {
+// messages-ui.js
+export function initMessagesUI(sendFn) {
   const container = document.createElement('div');
   container.innerHTML = `
-    <div id="chat-toggle-btn" class="hidden" style="position:fixed; bottom:20px; right:20px; z-index:1000;">
-      <button style="padding:10px 15px; border-radius:50%; background:#007bff; color:#fff; border:none; cursor:pointer; font-size:16px;">
+    <div id="messages-toggle-btn" class="hidden">
+      <button>
         💬
       </button>
     </div>
-    <div id="chat-container" class="chat-box hidden">
-      <div id="chat-messages" style="height:150px; overflow-y:auto; background:#111; color:#eee; padding:6px; font-family:sans-serif; font-size:14px;"></div>
-      <form id="chat-form" style="display:flex; gap:4px; margin-top:6px;">
-        <input id="chat-input" placeholder="Type a message..." style="flex:1; padding:6px; border-radius:4px; border:1px solid #555; background:#222; color:#fff;">
+    <div id="messages-box" class="messages-box hidden">
+      <div id="messages-messages" style="height:150px; overflow-y:auto; background:#111; color:#eee; padding:6px; font-family:sans-serif; font-size:14px;"></div>
+      <form id="messages-form" style="display:flex; gap:4px; margin-top:6px;">
+        <input id="messages-input" placeholder="Type a message..." style="flex:1; padding:6px; border-radius:4px; border:1px solid #555; background:#222; color:#fff;">
         <button style="padding:6px 12px;">Send</button>
       </form>
     </div>
   `;
   document.body.appendChild(container);
 
-  const chatToggleBtn = container.querySelector('#chat-toggle-btn');
-  const chatContainer = container.querySelector('#chat-container');
-  const chatMessages = container.querySelector('#chat-messages');
-  const chatForm = container.querySelector('#chat-form');
-  const chatInput = container.querySelector('#chat-input');
+  const messagesToggleBtn = container.querySelector('#messages-toggle-btn');
+  const messagesBox = container.querySelector('#messages-box');
+  const messagesMessages = container.querySelector('#messages-messages');
+  const messagesForm = container.querySelector('#messages-form');
+  const messagesInput = container.querySelector('#messages-input');
 
-  function toggleChat() {
-    chatContainer.classList.toggle('hidden');
+  let unreadMessagesCount = 0;
+
+  // Observe changes to messagesBox's class to clear unread count when shown
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (
+        mutation.type === 'attributes' &&
+        mutation.attributeName === 'class'
+      ) {
+        if (!messagesBox.classList.contains('hidden')) {
+          unreadMessagesCount = 0;
+        }
+      }
+    });
+  });
+  observer.observe(messagesBox, { attributes: true });
+
+  function toggleMessages() {
+    messagesBox.classList.toggle('hidden');
+    if (!messagesBox.classList.contains('hidden')) {
+      messagesInput.focus();
+    } else {
+      messagesInput.blur();
+    }
   }
 
-  chatToggleBtn.addEventListener('click', toggleChat);
+  messagesToggleBtn.addEventListener('click', toggleMessages);
 
-  // Show chat box
-  function showChatToggle() {
-    showElement(chatToggleBtn);
+  onDoubleClickOutside(
+    messagesBox,
+    () => {
+      hideElement(messagesBox);
+    },
+    { ignore: [messagesToggleBtn], esc: true }
+  );
+
+  function showMessagesToggle() {
+    showElement(messagesToggleBtn);
   }
 
-  function hideChatToggle() {
-    hideElement(chatToggleBtn);
+  function hideMessagesToggle() {
+    hideElement(messagesToggleBtn);
   }
 
   // Display message line
-  function addMessage(text) {
+  function appendChatMessage(text) {
     const p = document.createElement('p');
     p.textContent = text;
-    chatMessages.appendChild(p);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    if (text.startsWith('You:')) {
+      p.style.textAlign = 'right';
+    } else if (text.startsWith('Partner:')) {
+      p.style.textAlign = 'left';
+    }
+    messagesMessages.appendChild(p);
+    messagesMessages.scrollTop = messagesMessages.scrollHeight;
+  }
+
+  function receiveMessage(text) {
+    appendChatMessage(`Partner: ${text}`);
+
+    if (isHidden(messagesBox)) {
+      unreadMessagesCount++;
+      notifyNewMessage();
+    }
+  }
+
+  function notifyNewMessage() {
+    // Visual indication for new message
+    messagesToggleBtn.classList.add('new-message');
+    setTimeout(() => {
+      messagesToggleBtn.classList.remove('new-message');
+    }, 4000);
   }
 
   // Sending UI event
-  chatForm.addEventListener('submit', (e) => {
+  messagesForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    const msg = chatInput.value.trim();
+    const msg = messagesInput.value.trim();
     if (!msg) return;
     sendFn(msg);
-    addMessage(`You: ${msg}`);
-    chatInput.value = '';
+    appendChatMessage(`You: ${msg}`);
+    messagesInput.value = '';
   });
 
   function cleanup() {
+    observer.disconnect();
+    messagesUI.hideMessagesToggle();
     // Remove the container from the DOM
     if (container && container.parentNode) {
       container.parentNode.removeChild(container);
@@ -66,9 +120,11 @@ export function initChatUI(sendFn) {
   }
 
   return {
-    showChatToggle,
-    hideChatToggle,
-    addMessage,
+    appendChatMessage,
+    receiveMessage,
+    toggleMessages,
+    showMessagesToggle,
+    hideMessagesToggle,
     cleanup,
   };
 }
