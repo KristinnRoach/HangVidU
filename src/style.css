@@ -36,8 +36,8 @@ body {
 #yt-player-div,
 #sharedVideo,
 #yt-player-div iframe,
-#chat-toggle-btn,
-.chat-box,
+#messages-toggle-btn,
+.messages-box,
 .top-left-menu {
   opacity: 1 !important;
   pointer-events: auto;
@@ -50,14 +50,15 @@ body {
 #yt-player-div.hidden,
 #sharedVideo.hidden,
 #searchQuery.hidden,
-#chat-toggle-btn.hidden,
+#searchResults.hidden,
+#messages-toggle-btn.hidden,
 #mutePartnerBtn.hidden,
 #call-btn.hidden,
 #hang-up-btn.hidden,
 #switchCameraSelfBtn.hidden,
 #videoSelfBtn.hidden,
 .chat-btn.hidden,
-.chat-box.hidden,
+.messages-box.hidden,
 .top-left-menu.hidden {
   opacity: 0 !important;
   pointer-events: none;
@@ -68,14 +69,14 @@ body {
   top: -9999px;
 }
 
-#chat-toggle-btn {
+#messages-toggle-btn {
   position: fixed;
   bottom: 20px;
   right: 20px;
   z-index: 1000;
 }
 
-#chat-toggle-btn button {
+#messages-toggle-btn button {
   padding: 10px 15px;
   border-radius: 50%;
   background: #007bff;
@@ -85,11 +86,11 @@ body {
   font-size: 16px;
 }
 
-#chat-toggle-btn.new-message button {
+#messages-toggle-btn.new-message button {
   animation: bounce 1s infinite;
 }
 
-.chat-box {
+.messages-box {
   position: fixed;
   bottom: 80px;
   right: 20px;

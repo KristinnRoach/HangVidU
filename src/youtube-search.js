@@ -103,8 +103,9 @@ export function initializeSearchUI() {
 
       hideElement(searchResults);
       searchQuery.value = '';
-
-      // enterWatchMode();
+      hideElement(searchQuery);
+      focusedResultIndex = -1;
+      return;
     }
   };
 
@@ -131,6 +132,8 @@ export function initializeSearchUI() {
       if (items.length > 0 && focusedResultIndex >= 0) {
         items[focusedResultIndex].click();
         hideElement(searchQuery);
+        hideElement(searchResults);
+        focusedResultIndex = -1;
         return;
       }
       const query = searchQuery.value.trim();
@@ -321,6 +324,7 @@ function displaySearchResults(results) {
           return;
         }
         searchQuery.value = '';
+        hideElement(searchQuery);
       }
     };
 

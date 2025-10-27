@@ -26,6 +26,17 @@ export function initMessagesUI(sendFn) {
   const messagesForm = container.querySelector('#messages-form');
   const messagesInput = container.querySelector('#messages-input');
 
+  if (
+    !messagesToggleBtn ||
+    !messagesBox ||
+    !messagesMessages ||
+    !messagesForm ||
+    !messagesInput
+  ) {
+    console.error('Messages UI elements not found.');
+    return null;
+  }
+
   let unreadMessagesCount = 0;
 
   // Observe changes to messagesBox's class to clear unread count when shown
@@ -112,7 +123,7 @@ export function initMessagesUI(sendFn) {
 
   function cleanup() {
     observer.disconnect();
-    messagesUI.hideMessagesToggle();
+    if (messagesToggleBtn) hideMessagesToggle();
     // Remove the container from the DOM
     if (container && container.parentNode) {
       container.parentNode.removeChild(container);
