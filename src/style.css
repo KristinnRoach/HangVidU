@@ -17,10 +17,6 @@ body {
   position: relative;
 }
 
-.hidden {
-  display: none;
-}
-
 #yt-player-div,
 #sharedVideo,
 #yt-player-div iframe,
@@ -33,14 +29,22 @@ body {
   transition: opacity 200ms ease;
 }
 
+#localVideo.hidden,
+#remoteVideo.hidden,
 #yt-player-div.hidden,
 #sharedVideo.hidden,
 #searchQuery.hidden,
 #chat-toggle-btn.hidden,
+.chat-btn.hidden,
 .chat-box.hidden,
 .top-left-menu.hidden {
   opacity: 0 !important;
   pointer-events: none;
+  visibility: hidden;
+
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
 }
 
 .chat-box {
@@ -87,11 +91,14 @@ a span {
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) 0.2s;
 }
 
-/* #localVideo:picture-in-picture {
+#localVideo.mirrored {
   transform: scaleX(1);
-} */
+}
 
-#localVideo:picture-in-picture {
+#localVideo:picture-in-picture,
+#remoteVideo:picture-in-picture,
+#localVideo.smallFrame:picture-in-picture,
+#remoteVideo.smallFrame:picture-in-picture {
   display: none;
 }
 
@@ -245,6 +252,7 @@ button:disabled {
   width: 0;
   opacity: 0;
   pointer-events: none;
+  visibility: hidden;
 
   will-change: width, opacity;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s;
@@ -264,6 +272,8 @@ button:disabled {
   max-width: 900px;
   height: fit-content;
   max-height: 100vh;
+
+  background: transparent;
 }
 
 .search-controls {
@@ -282,7 +292,7 @@ button:disabled {
   height: fit-content;
   max-height: 70vh;
   overflow-y: auto;
-  border: 1px solid #444;
+  /* border: 1px solid #444; */
 }
 
 .search-result-item {
@@ -558,6 +568,7 @@ button:disabled {
 .chat-controls.bottom.hidden {
   opacity: 0;
   pointer-events: none;
+  visibility: hidden;
 }
 
 .chat-btn {

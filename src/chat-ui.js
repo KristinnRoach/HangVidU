@@ -58,9 +58,17 @@ export function initChatUI(sendFn) {
     chatInput.value = '';
   });
 
+  function cleanup() {
+    // Remove the container from the DOM
+    if (container && container.parentNode) {
+      container.parentNode.removeChild(container);
+    }
+  }
+
   return {
     showChatToggle,
     hideChatToggle,
     addMessage,
+    cleanup,
   };
 }

@@ -1,14 +1,19 @@
 // src/media-controls.js
 // Handles all media control button functionality (mute, video, camera, fullscreen)
 
-import { switchCamera } from './media-devices.js';
+import {
+  switchCamera,
+  updateVideoConstraintsForOrientation,
+  userMediaAudioConstraints,
+  userMediaVideoConstraints,
+} from './media-devices.js';
 
 // ============================================================================
 // STATE
 // ============================================================================
 
 let remotePreviousMuted = false;
-let remoteVolumeChangeListener = null;
+let cleanupFunctions = [];
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -55,7 +60,7 @@ export function addRemoteVideoEventListeners(remoteVideo, mutePartnerBtn) {
   if (!remoteVideo) return;
 
   // Listen for volumechange (only event that fires on muted events)
-  remoteVolumeChangeListener = () => {
+  const remoteVolumeChangeListener = () => {
     if (remoteVideo.muted !== remotePreviousMuted) {
       const icon = mutePartnerBtn.querySelector('i');
       icon.className = remoteVideo.muted
@@ -66,16 +71,16 @@ export function addRemoteVideoEventListeners(remoteVideo, mutePartnerBtn) {
   };
 
   remoteVideo.addEventListener('volumechange', remoteVolumeChangeListener);
-}
 
-/**
- * Remove remote video event listeners (cleanup)
- */
-export function removeRemoteVideoEventListeners(remoteVideo) {
-  if (!remoteVideo || !remoteVolumeChangeListener) return;
-
-  remoteVideo.removeEventListener('volumechange', remoteVolumeChangeListener);
-  remoteVolumeChangeListener = null;
+  // Push cleanup function for this listener
+  cleanupFunctions.push(() => {
+    if (remoteVideo) {
+      remoteVideo.removeEventListener(
+        'volumechange',
+        remoteVolumeChangeListener
+      );
+    }
+  });
 }
 
 // ============================================================================
@@ -108,11 +113,6 @@ export function initializeMediaControls({
   fullscreenSelfBtn,
   mutePartnerBtn,
   fullscreenPartnerBtn,
-  audioConstraints = {
-    echoCancellation: true,
-    noiseSuppression: true,
-    autoGainControl: true,
-  },
 }) {
   // ===== TOGGLE MIC =====
   if (muteSelfBtn) {
@@ -128,7 +128,7 @@ export function initializeMediaControls({
     };
   }
 
-  // ===== TOGGLE CAMERA =====
+  // ===== TOGGLE CAMERA ON/OFF =====
   if (videoSelfBtn) {
     videoSelfBtn.onclick = () => {
       const localStream = getLocalStream();
@@ -148,41 +148,74 @@ export function initializeMediaControls({
   // ===== SWITCH CAMERA (MOBILE) =====
   let lastFacingMode = 'user'; // Track facing mode manually
 
+  // Listen for orientation changes and update constraints
+  let isUpdatingForOrientation = false;
+  const handleOrientationChange = async () => {
+    if (isUpdatingForOrientation) return;
+    isUpdatingForOrientation = true;
+    import.meta.env.DEV && console.debug('Orientation change detected.');
+
+    const localStream = getLocalStream();
+    const localVideo = getLocalVideo();
+    const pc = getPeerConnection?.();
+    if (!localStream || !localVideo) {
+      isUpdatingForOrientation = false;
+      return;
+    }
+
+    const result = await updateVideoConstraintsForOrientation({
+      localStream,
+      localVideo,
+      peerConnection: pc,
+      currentFacingMode: lastFacingMode,
+    });
+    // Sync the shared reference if setter is provided
+    if (result?.newStream && typeof setLocalStream === 'function') {
+      setLocalStream(result.newStream);
+    }
+    isUpdatingForOrientation = false;
+  };
+
+  const removeOrientationListeners = (() => {
+    window.addEventListener('orientationchange', handleOrientationChange);
+    let screenListenerAdded = false;
+    if (window.screen?.orientation) {
+      window.screen.orientation.addEventListener(
+        'change',
+        handleOrientationChange
+      );
+      screenListenerAdded = true;
+    }
+    return () => {
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      if (screenListenerAdded) {
+        window.screen.orientation.removeEventListener(
+          'change',
+          handleOrientationChange
+        );
+      }
+    };
+  })();
+
+  cleanupFunctions.push(() => {
+    removeOrientationListeners();
+  });
+
   if (switchCameraSelfBtn) {
     switchCameraSelfBtn.onclick = async () => {
-      const localStream = getLocalStream();
-      const localVideo = getLocalVideo();
-      if (!localStream) {
-        console.warn('No local stream or no local video track available.');
-        return;
-      }
-      const videoTrack = localStream.getVideoTracks()[0];
-      if (!videoTrack) {
-        console.warn('No local video track available.');
-        return;
-      }
-      // const currentFacingMode = videoTrack.getSettings()?.facingMode || 'user';
-
-      // Use tracked facing mode instead of unreliable getSettings()
-      const currentFacingMode = lastFacingMode;
-
-      const pc = getPeerConnection?.();
-      if (!pc) {
-        console.error('PeerConnection is required to switch camera.');
-        return;
-      }
-      const facingMode = await switchCamera({
-        localStream,
-        localVideo,
+      // ...existing code...
+      const result = await switchCamera({
+        localStream: getLocalStream(),
+        localVideo: getLocalVideo(),
         peerConnection: pc,
-        currentFacingMode,
+        currentFacingMode: lastFacingMode,
       });
 
-      if (facingMode === 'user' || facingMode === 'environment') {
-        lastFacingMode = facingMode;
-        console.log('Switched camera to facingMode:', facingMode);
+      if (result) {
+        lastFacingMode = result.facingMode;
+        console.log('Switched camera to facingMode:', lastFacingMode);
       } else {
-        console.error('switchCamera returned invalid facingMode:', facingMode);
+        console.error('Camera switch failed.');
       }
     };
   }
@@ -228,45 +261,11 @@ export function initializeMediaControls({
 /**
  * Cleanup media controls
  */
-export function cleanupMediaControls(remoteVideo) {
-  removeRemoteVideoEventListeners(remoteVideo);
+export function cleanupMediaControls() {
+  // Run all cleanup functions
+  cleanupFunctions.forEach((cleanupFn) => cleanupFn());
+  cleanupFunctions = [];
+
+  // Reset state
   remotePreviousMuted = false;
 }
-
-// TODO: delete this after testing:
-// switchCameraSelfBtn.onclick = async () => {
-//   if (!localStream) return;
-
-//   try {
-//     const videoTrack = localStream.getVideoTracks()[0];
-//     const currentFacingMode = videoTrack.getSettings().facingMode;
-//     const newFacingMode =
-//       currentFacingMode === 'user' ? 'environment' : 'user';
-
-//     // Stop current track
-//     videoTrack.stop();
-
-//     // Get new stream with opposite camera
-//     const newStream = await navigator.mediaDevices.getUserMedia({
-//       video: { facingMode: newFacingMode },
-//       audio: audioConstraints,
-//     });
-
-//     // Replace track in peer connection if it exists
-//     const newVideoTrack = newStream.getVideoTracks()[0];
-//     if (pc) {
-//       const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
-//       if (sender) {
-//         sender.replaceTrack(newVideoTrack);
-//       }
-//     }
-
-//     // Update local stream reference (caller must handle this)
-//     // Return new stream so caller can update their localStream variable
-//     return newStream;
-//   } catch (error) {
-//     console.error('Failed to switch camera:', error);
-//     return null;
-//   }
-// };
-// }
