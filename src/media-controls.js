@@ -3,7 +3,8 @@
 
 import {
   switchCamera,
-  updateVideoConstraintsForOrientation,
+  // updateVideoConstraintsForOrientation,
+  setupOrientationListener,
   userMediaAudioConstraints,
   userMediaVideoConstraints,
 } from './media-devices.js';
@@ -100,7 +101,6 @@ export function addRemoteVideoEventListeners(remoteVideo, mutePartnerBtn) {
  * @param {HTMLElement} params.fullscreenSelfBtn - Fullscreen self button
  * @param {HTMLElement} params.mutePartnerBtn - Mute partner button
  * @param {HTMLElement} params.fullscreenPartnerBtn - Fullscreen partner button
- * @param {Object} params.audioConstraints - Audio constraints for camera switch
  */
 export function initializeMediaControls({
   getLocalStream,
@@ -150,66 +150,80 @@ export function initializeMediaControls({
   let lastFacingMode = 'user'; // Track facing mode manually
 
   // Listen for orientation changes and update constraints
-  let isUpdatingForOrientation = false;
-  const handleOrientationChange = async () => {
-    if (isUpdatingForOrientation) return;
-    isUpdatingForOrientation = true;
-    import.meta.env.DEV && console.debug('Orientation change detected.');
+  // let isUpdatingForOrientation = false;
+  // const handleOrientationChange = async () => {
+  //   if (isUpdatingForOrientation) return;
+  //   isUpdatingForOrientation = true;
+  //   import.meta.env.DEV && console.debug('Orientation change detected.');
 
-    const localStream = getLocalStream();
-    const localVideo = getLocalVideo();
-    const pc = getPeerConnection?.();
-    if (!localStream || !localVideo) {
-      isUpdatingForOrientation = false;
-      return;
-    }
+  //   const localStream = getLocalStream();
+  //   const localVideo = getLocalVideo();
+  //   const pc = getPeerConnection() || null; // May be null
 
-    const result = await updateVideoConstraintsForOrientation({
-      localStream,
-      localVideo,
-      peerConnection: pc,
-      currentFacingMode: lastFacingMode,
-    });
-    // Sync the shared reference if setter is provided
-    if (result?.newStream && typeof setLocalStream === 'function') {
-      setLocalStream(result.newStream);
-    }
-    isUpdatingForOrientation = false;
-  };
+  //   if (!localStream || !localVideo) {
+  //     isUpdatingForOrientation = false;
+  //     return;
+  //   }
 
-  const removeOrientationListeners = (() => {
-    window.addEventListener('orientationchange', handleOrientationChange);
-    let screenListenerAdded = false;
-    if (window.screen?.orientation) {
-      window.screen.orientation.addEventListener(
-        'change',
-        handleOrientationChange
-      );
-      screenListenerAdded = true;
-    }
-    return () => {
-      window.removeEventListener('orientationchange', handleOrientationChange);
-      if (screenListenerAdded) {
-        window.screen.orientation.removeEventListener(
-          'change',
-          handleOrientationChange
-        );
-      }
-    };
-  })();
+  //   import.meta.env.DEV &&
+  //     console.debug('Updating video constraints for orientation. pc: ', pc);
 
-  cleanupFunctions.push(() => {
-    removeOrientationListeners();
-  });
+  //   const result = await updateVideoConstraintsForOrientation({
+  //     localStream,
+  //     localVideo,
+  //     currentFacingMode: lastFacingMode,
+  //     peerConnection: pc || null,
+  //   });
+  //   // Sync the shared reference if setter is provided
+  //   if (result?.newStream && typeof setLocalStream === 'function') {
+  //     setLocalStream(result.newStream);
+  //   }
+  //   isUpdatingForOrientation = false;
+  // };
+
+  // const removeOrientationListeners = (() => {
+  //   //window.addEventListener('orientationchange', handleOrientationChange);
+  //   let screenListenerAdded = false;
+
+  //   const orientationQuery = window.matchMedia('(orientation: portrait)');
+  //   orientationQuery.addEventListener('change', handleOrientationChange);
+  //   screenListenerAdded = true;
+
+  //   // if (window.screen?.orientation) {
+  //   //   window.screen.orientation.addEventListener(
+  //   //     'change',
+  //   //     handleOrientationChange
+  //   //   );
+  //   //   screenListenerAdded = true;
+  //   // }
+  //   return () => {
+  //     // window.removeEventListener('orientationchange', handleOrientationChange);
+  //     if (screenListenerAdded) {
+  //       // window.screen.orientation.removeEventListener(
+  //       //   'change',
+  //       //   handleOrientationChange
+  //       // );
+  //       orientationQuery.removeEventListener('change', handleOrientationChange);
+  //       screenListenerAdded = false;
+  //     }
+  //   };
+  // })();
+
+  // cleanupFunctions.push(() => {
+  //   removeOrientationListeners();
+  // });
+
+  const removeOrientationListener = setupOrientationListener();
+  cleanupFunctions.push(() => removeOrientationListener);
 
   if (switchCameraSelfBtn) {
     switchCameraSelfBtn.onclick = async () => {
-      // ...existing code...
+      // TODO: review
       const result = await switchCamera({
         localStream: getLocalStream(),
         localVideo: getLocalVideo(),
-        peerConnection: pc,
         currentFacingMode: lastFacingMode,
+        peerConnection: pc || null,
       });
 
       if (result) {

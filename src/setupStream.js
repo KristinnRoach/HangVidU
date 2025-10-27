@@ -1,9 +1,11 @@
 import { addRemoteVideoEventListeners } from './media-controls.js';
+
 import {
   userMediaAudioConstraints,
   userMediaVideoConstraints,
   getOrientationAwareVideoConstraints,
 } from './media-devices.js';
+
 import { updateStatus } from './utils/status.js';
 
 let localStream = null;
@@ -31,8 +33,8 @@ export const createLocalStream = async () => {
   const videoConstraints = getOrientationAwareVideoConstraints('user');
 
   localStream = await navigator.mediaDevices.getUserMedia({
-    video: videoConstraints,
-    audio: userMediaAudioConstraints,
+    video: videoConstraints || userMediaVideoConstraints.default,
+    audio: userMediaAudioConstraints.default,
   });
 
   if (import.meta.env.DEV) {

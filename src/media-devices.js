@@ -3,20 +3,28 @@
 // === DEFAULT USER MEDIA CONSTRAINTS ===
 
 export const userMediaAudioConstraints = {
-  echoCancellation: true,
-  noiseSuppression: true,
-  autoGainControl: true,
-  voiceIsolation: true,
-  restrictOwnAudio: true,
+  default: {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+    voiceIsolation: true,
+    restrictOwnAudio: true,
+    highpassFilter: true,
+    typingNoiseDetection: true,
+  },
 };
 
 export const userMediaVideoConstraints = {
-  // width: { min: 640, ideal: 1920, max: 1920 },
-  // height: { min: 480, ideal: 1080, max: 1080 },
-  width: { ideal: 1920 }, // Looser ideals to accommodate portrait
-  height: { ideal: 1080 },
-  aspectRatio: { ideal: 16 / 9 },
-  // resizeMode: 'crop-and-scale',
+  desktop: {
+    width: { min: 1280, ideal: 1920, max: 2560 },
+    height: { min: 720, ideal: 1080, max: 1440 },
+    frameRate: { ideal: 30, max: 60 },
+    aspectRatio: { ideal: 16 / 9 },
+    // resizeMode: 'crop-and-scale', // 'none' | 'crop-and-scale'
+  },
+  // mobile: {
+
+  default: true,
 };
 
 // ===== UTILS =====
@@ -38,7 +46,9 @@ export async function hasFrontAndBackCameras() {
 
   videoDevices.forEach((device) => {
     const label = device.label.toLowerCase();
-    if (label.includes('front')) hasFront = true;
+    if (label.includes('front') || label.includes('user')) {
+      hasFront = true;
+    }
     if (
       label.includes('back') ||
       label.includes('rear') ||
@@ -51,20 +61,73 @@ export async function hasFrontAndBackCameras() {
   return hasFront && hasBack;
 }
 
+// === DRAFT ==== // TODO: review and integrate or remove
+/*
+export async function canSwitchCamera(): Promise<boolean> {
+  // Try to get camera permission and list of video devices
+  try {
+    // Request minimal stream with both facing modes to unlock labels
+    await navigator.mediaDevices.getUserMedia({ video: true });
+
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+
+    let hasFront = false;
+    let hasBack = false;
+
+    // Check device labels for common keywords (case insensitive)
+    videoDevices.forEach((device) => {
+      const label = device.label.toLowerCase();
+      if (label.includes('front') || label.includes('user')) {
+        hasFront = true;
+      }
+      if (label.includes('back') || label.includes('rear') || label.includes('environment')) {
+        hasBack = true;
+      }
+    });
+
+    // If label-check is inconclusive, try facingMode-based getUserMedia as fallback
+    if (!hasFront || !hasBack) {
+      const testFront = await testFacingMode('user');
+      const testBack = await testFacingMode('environment');
+      hasFront = hasFront || testFront;
+      hasBack = hasBack || testBack;
+    }
+
+    return hasFront && hasBack;
+  } catch (e) {
+    // Access denied or device enumeration failed - assume no switch capability
+    return false;
+  }
+}
+
+// Helper function tries to open a stream with a facingMode constraint
+async function testFacingMode(facingMode: 'user' | 'environment'): Promise<boolean> {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+    stream.getTracks().forEach(track => track.stop());
+    return true;
+  } catch {
+    return false;
+  }
+}
+*/
+
 export async function switchCamera({
   localStream,
   localVideo,
-  peerConnection,
   currentFacingMode,
+  peerConnection = null,
 }) {
   const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-  const videoConstraints = getOrientationAwareVideoConstraints(newFacingMode);
+  const videoConstraintsForOrientation =
+    getOrientationAwareVideoConstraints(newFacingMode);
 
   try {
     // Get a new stream with consistent video constraints and audio
     const newStream = await navigator.mediaDevices.getUserMedia({
-      video: videoConstraints,
-      audio: userMediaAudioConstraints,
+      video: videoConstraintsForOrientation,
+      audio: userMediaAudioConstraints.default,
     });
 
     const newVideoTrack = newStream.getVideoTracks()[0];
@@ -116,7 +179,7 @@ export async function switchCamera({
  * Detects the current device orientation.
  * @returns {boolean} True if portrait, false if landscape.
  */
-export function isPortraitOrientation() {
+export function OLD_isPortraitOrientation() {
   return (
     window.screen?.orientation?.type?.includes('portrait') ||
     window.orientation === 0 ||
@@ -129,8 +192,15 @@ export function isPortraitOrientation() {
  * @param {string} facingMode - 'user' or 'environment'.
  * @returns {object} Video constraints object.
  */
-export function getOrientationAwareVideoConstraints(facingMode) {
-  const isPortrait = isPortraitOrientation();
+export function OLD_getOrientationAwareVideoConstraints(facingMode) {
+  const isPortrait = OLD_isPortraitOrientation();
+
+  import.meta.env.DEV &&
+    console.debug(
+      `Orientation detected: ${
+        isPortrait ? 'portrait' : 'landscape'
+      }, facingMode: ${facingMode}`
+    );
 
   if (isPortrait) {
     return {
@@ -156,20 +226,20 @@ export function getOrientationAwareVideoConstraints(facingMode) {
  * @param {RTCPeerConnection} peerConnection - The peer connection.
  * @param {string} currentFacingMode - The current facing mode ('user' or 'environment').
  */
-export async function updateVideoConstraintsForOrientation({
+export async function OLD_updateVideoConstraintsForOrientation({
   localStream,
   localVideo,
-  peerConnection,
   currentFacingMode,
+  peerConnection = null,
 }) {
   const videoConstraints =
-    getOrientationAwareVideoConstraints(currentFacingMode);
+    OLD_getOrientationAwareVideoConstraints(currentFacingMode);
 
   try {
     // Get a new stream with updated constraints (same facing mode)
     const newStream = await navigator.mediaDevices.getUserMedia({
       video: videoConstraints,
-      audio: userMediaAudioConstraints,
+      audio: userMediaAudioConstraints.default,
     });
 
     const newVideoTrack = newStream.getVideoTracks()[0];
@@ -180,7 +250,7 @@ export async function updateVideoConstraintsForOrientation({
     const wasAudioMuted = oldAudioTrack ? !oldAudioTrack.enabled : false;
     const wasVideoMuted = localVideo.muted;
 
-    // Replace tracks in the peer connection
+    // Replace tracks in the peer connection if provided // ? consider refactoring / removing ?
     if (peerConnection) {
       const videoSender = peerConnection
         .getSenders()
@@ -212,3 +282,93 @@ export async function updateVideoConstraintsForOrientation({
     return null;
   }
 }
+// === SIMPLIFIED ORIENTATION LOGIC ===
+
+const createDebugLog = (msg, data) => {
+  if (import.meta.env.DEV) console.debug(msg, data);
+};
+
+let isUpdatingForOrientation = false;
+let orientationListener = null;
+
+export function setupOrientationListener() {
+  // handler
+  if (orientationListener) {
+    orientationListener.removeEventListener('change', handleOrientationChange);
+  }
+  orientationListener = window.matchMedia('(orientation: portrait)');
+  orientationListener.addEventListener('change', handleOrientationChange);
+  return () => {
+    if (orientationListener) {
+      orientationListener.removeEventListener(
+        'change',
+        handleOrientationChange
+      );
+      orientationListener = null;
+    }
+  };
+}
+
+export async function handleOrientationChange({
+  localStream,
+  currentFacingMode,
+  // localVideo,
+  // peerConnection = null,
+}) {
+  if (isUpdatingForOrientation || !localStream?.getVideoTracks()[0]) return;
+  isUpdatingForOrientation = true;
+  createDebugLog('Orientation change detected.');
+  try {
+    const videoTrack = localStream.getVideoTracks()[0];
+    const constraints = getOrientationAwareVideoConstraints(currentFacingMode);
+    createDebugLog('Applying constraints:', constraints);
+    // Apply constraints to existing track (no new stream)
+    await videoTrack.applyConstraints(constraints);
+    createDebugLog('Video constraints updated successfully');
+  } catch (error) {
+    console.error('Failed to apply orientation constraints:', error);
+  } finally {
+    isUpdatingForOrientation = false;
+  }
+}
+
+export function isPortraitOrientation() {
+  return (
+    window.screen?.orientation?.type?.includes('portrait') ||
+    window.orientation === 0 ||
+    window.orientation === 180
+  );
+}
+
+export function getOrientationAwareVideoConstraints(facingMode) {
+  const isPortrait = isPortraitOrientation();
+  createDebugLog(
+    `Orientation: ${
+      isPortrait ? 'portrait' : 'landscape'
+    }, facingMode: ${facingMode}`
+  );
+  return {
+    facingMode,
+    aspectRatio: { ideal: isPortrait ? 9 / 16 : 16 / 9 },
+    width: { ideal: isPortrait ? 1080 : 1920 },
+    height: { ideal: isPortrait ? 1920 : 1080 },
+  };
+}
+
+// === DEBUG ====
+
+// if (import.meta.env.DEV) {
+//   // Modern approach using matchMedia (best browser compatibility)
+//   const orientationQuery = window.matchMedia('(orientation: portrait)');
+
+//   orientationQuery.addEventListener('change', (e) => {
+//     console.log(`Orientation: ${e.matches ? 'portrait' : 'landscape'}`);
+//   });
+
+//   // Log initial state
+//   console.log(
+//     `Initial orientation: ${
+//       orientationQuery.matches ? 'portrait' : 'landscape'
+//     }`
+//   );
+// }
