@@ -146,7 +146,7 @@ export function initializeMediaControls({
   }
 
   // ===== SWITCH CAMERA (MOBILE) =====
-  let lastFacingMode = 'user'; // Track facing mode manually
+  let lastFacingMode = 'user'; // Track  facing mode manually
 
   // Listen for orientation changes and update constraints
   let isUpdatingForOrientation = false;
