@@ -707,7 +707,7 @@ async function hangUp() {
     remoteVideo.srcObject = null;
   }
 
-  cleanupMediaControls(remoteVideo);
+  cleanupMediaControls();
 
   // Close peer connection
   if (pc) {
@@ -753,6 +753,13 @@ async function hangUp() {
     document.exitPictureInPicture().catch((err) => console.error(err));
   }
 
+  // Cleanup chat UI
+  if (textChat && textChat.cleanup) {
+    textChat.hideChatToggle();
+    textChat.cleanup();
+    textChat = null;
+  }
+
   // Reset state
   roomId = null;
   role = null;
@@ -777,7 +784,6 @@ function cleanup() {
 
   cleanupLocalStream();
   localVideo.srcObject = null;
-  cleanupMediaControls(localVideo);
 
   exitWatchMode();
   setLastWatched('none');

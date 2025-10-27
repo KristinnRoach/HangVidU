@@ -40,6 +40,7 @@ body {
 .top-left-menu.hidden {
   opacity: 0 !important;
   pointer-events: none;
+  visibility: hidden;
 
   position: absolute;
   left: -9999px;
@@ -251,6 +252,7 @@ button:disabled {
   width: 0;
   opacity: 0;
   pointer-events: none;
+  visibility: hidden;
 
   will-change: width, opacity;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s;
@@ -270,6 +272,8 @@ button:disabled {
   max-width: 900px;
   height: fit-content;
   max-height: 100vh;
+
+  background: transparent;
 }
 
 .search-controls {
@@ -288,7 +292,7 @@ button:disabled {
   height: fit-content;
   max-height: 70vh;
   overflow-y: auto;
-  border: 1px solid #444;
+  /* border: 1px solid #444; */
 }
 
 .search-result-item {
@@ -564,6 +568,7 @@ button:disabled {
 .chat-controls.bottom.hidden {
   opacity: 0;
   pointer-events: none;
+  visibility: hidden;
 }
 
 .chat-btn {

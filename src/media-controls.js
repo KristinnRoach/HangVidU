@@ -4,6 +4,8 @@
 import {
   switchCamera,
   updateVideoConstraintsForOrientation,
+  userMediaAudioConstraints,
+  userMediaVideoConstraints,
 } from './media-devices.js';
 
 // ============================================================================
@@ -11,7 +13,7 @@ import {
 // ============================================================================
 
 let remotePreviousMuted = false;
-let remoteVolumeChangeListener = null;
+let cleanupFunctions = [];
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -58,7 +60,7 @@ export function addRemoteVideoEventListeners(remoteVideo, mutePartnerBtn) {
   if (!remoteVideo) return;
 
   // Listen for volumechange (only event that fires on muted events)
-  remoteVolumeChangeListener = () => {
+  const remoteVolumeChangeListener = () => {
     if (remoteVideo.muted !== remotePreviousMuted) {
       const icon = mutePartnerBtn.querySelector('i');
       icon.className = remoteVideo.muted
@@ -69,16 +71,16 @@ export function addRemoteVideoEventListeners(remoteVideo, mutePartnerBtn) {
   };
 
   remoteVideo.addEventListener('volumechange', remoteVolumeChangeListener);
-}
 
-/**
- * Remove remote video event listeners (cleanup)
- */
-export function removeRemoteVideoEventListeners(remoteVideo) {
-  if (!remoteVideo || !remoteVolumeChangeListener) return;
-
-  remoteVideo.removeEventListener('volumechange', remoteVolumeChangeListener);
-  remoteVolumeChangeListener = null;
+  // Push cleanup function for this listener
+  cleanupFunctions.push(() => {
+    if (remoteVideo) {
+      remoteVideo.removeEventListener(
+        'volumechange',
+        remoteVolumeChangeListener
+      );
+    }
+  });
 }
 
 // ============================================================================
@@ -111,11 +113,6 @@ export function initializeMediaControls({
   fullscreenSelfBtn,
   mutePartnerBtn,
   fullscreenPartnerBtn,
-  audioConstraints = {
-    echoCancellation: true,
-    noiseSuppression: true,
-    autoGainControl: true,
-  },
 }) {
   // ===== TOGGLE MIC =====
   if (muteSelfBtn) {
@@ -148,67 +145,61 @@ export function initializeMediaControls({
     };
   }
 
-  // // ===== SWITCH CAMERA (MOBILE) =====
-  // let lastFacingMode = 'user'; // Track facing mode manually
-
-  // if (switchCameraSelfBtn) {
-  //   switchCameraSelfBtn.onclick = async () => {
-  //     const localStream = getLocalStream();
-  //     const localVideo = getLocalVideo();
-  //     if (!localStream) {
-  //       console.warn('No local stream or no local video track available.');
-  //       return;
-  //     }
-
-  //     const pc = getPeerConnection?.();
-  //     if (!pc) {
-  //       console.error('PeerConnection is required to switch camera.');
-  //       return;
-  //     }
-  //     const result = await switchCamera({
-  //       localStream,
-  //       localVideo,
-  //       peerConnection: pc,
-  //       currentFacingMode: lastFacingMode,
-  //     });
-
-  //     if (result) {
-  //       lastFacingMode = result.facingMode;
-  //       console.log('Switched camera to facingMode:', lastFacingMode);
-  //     } else {
-  //       console.error('Camera switch failed.');
-  //     }
-  //   };
-  // }
-
   // ===== SWITCH CAMERA (MOBILE) =====
   let lastFacingMode = 'user'; // Track facing mode manually
 
   // Listen for orientation changes and update constraints
+  let isUpdatingForOrientation = false;
   const handleOrientationChange = async () => {
+    if (isUpdatingForOrientation) return;
+    isUpdatingForOrientation = true;
     import.meta.env.DEV && console.debug('Orientation change detected.');
 
     const localStream = getLocalStream();
     const localVideo = getLocalVideo();
     const pc = getPeerConnection?.();
-    if (!localStream || !localVideo || !pc) return;
+    if (!localStream || !localVideo) {
+      isUpdatingForOrientation = false;
+      return;
+    }
 
-    await updateVideoConstraintsForOrientation({
+    const result = await updateVideoConstraintsForOrientation({
       localStream,
       localVideo,
       peerConnection: pc,
       currentFacingMode: lastFacingMode,
     });
+    // Sync the shared reference if setter is provided
+    if (result?.newStream && typeof setLocalStream === 'function') {
+      setLocalStream(result.newStream);
+    }
+    isUpdatingForOrientation = false;
   };
 
-  window.addEventListener('orientationchange', handleOrientationChange);
-  // Fallback for modern browsers
-  if (window.screen?.orientation) {
-    window.screen.orientation.addEventListener(
-      'change',
-      handleOrientationChange
-    );
-  }
+  const removeOrientationListeners = (() => {
+    window.addEventListener('orientationchange', handleOrientationChange);
+    let screenListenerAdded = false;
+    if (window.screen?.orientation) {
+      window.screen.orientation.addEventListener(
+        'change',
+        handleOrientationChange
+      );
+      screenListenerAdded = true;
+    }
+    return () => {
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      if (screenListenerAdded) {
+        window.screen.orientation.removeEventListener(
+          'change',
+          handleOrientationChange
+        );
+      }
+    };
+  })();
+
+  cleanupFunctions.push(() => {
+    removeOrientationListeners();
+  });
 
   if (switchCameraSelfBtn) {
     switchCameraSelfBtn.onclick = async () => {
@@ -270,7 +261,11 @@ export function initializeMediaControls({
 /**
  * Cleanup media controls
  */
-export function cleanupMediaControls(remoteVideo) {
-  removeRemoteVideoEventListeners(remoteVideo);
+export function cleanupMediaControls() {
+  // Run all cleanup functions
+  cleanupFunctions.forEach((cleanupFn) => cleanupFn());
+  cleanupFunctions = [];
+
+  // Reset state
   remotePreviousMuted = false;
 }

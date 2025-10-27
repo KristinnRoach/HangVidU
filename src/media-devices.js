@@ -70,9 +70,10 @@ export async function switchCamera({
     const newVideoTrack = newStream.getVideoTracks()[0];
     const newAudioTrack = newStream.getAudioTracks()[0];
 
-    // Capture the mute state of the old audio track
+    const oldVideoTrack = localStream.getVideoTracks()[0];
+    const wasVideoEnabled = oldVideoTrack ? oldVideoTrack.enabled : true;
     const oldAudioTrack = localStream.getAudioTracks()[0];
-    const wasAudioMuted = oldAudioTrack ? !oldAudioTrack.enabled : false; // Default to not muted if no track
+    const wasAudioMuted = oldAudioTrack ? !oldAudioTrack.enabled : false;
 
     // Replace tracks in the peer connection
     if (peerConnection) {
@@ -87,7 +88,12 @@ export async function switchCamera({
       if (audioSender && newAudioTrack) audioSender.replaceTrack(newAudioTrack);
     }
 
-    // Apply the previous mute state to the new audio track
+    // Apply the previous mic and camera enabled state to the new tracks
+
+    if (newVideoTrack) {
+      newVideoTrack.enabled = wasVideoEnabled;
+    }
+
     if (newAudioTrack) {
       newAudioTrack.enabled = !wasAudioMuted; // Preserve mute state
     }
@@ -95,8 +101,8 @@ export async function switchCamera({
     // Stop old tracks
     localStream.getTracks().forEach((track) => track.stop());
 
-    // Update local video element with the new stream
-    localVideo.srcObject = newStream;
+    // Update local video with video-only stream
+    localVideo.srcObject = new MediaStream([newVideoTrack].filter(Boolean));
 
     // Return the new stream and facing mode for the caller to update references
     return { newStream, facingMode: newFacingMode };
@@ -172,6 +178,7 @@ export async function updateVideoConstraintsForOrientation({
     // Capture the mute state
     const oldAudioTrack = localStream.getAudioTracks()[0];
     const wasAudioMuted = oldAudioTrack ? !oldAudioTrack.enabled : false;
+    const wasVideoMuted = localVideo.muted;
 
     // Replace tracks in the peer connection
     if (peerConnection) {
@@ -196,6 +203,7 @@ export async function updateVideoConstraintsForOrientation({
 
     // Update local video
     localVideo.srcObject = newStream;
+    localVideo.muted = wasVideoMuted;
 
     console.log('Updated video constraints for orientation change.');
     return { newStream };
