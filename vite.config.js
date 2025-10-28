@@ -60,6 +60,20 @@ export default defineConfig(({ mode }) => {
               purpose: 'maskable',
             },
           ],
+          screenshots: [
+            {
+              src: `${basePath}/screenshot-wide.png`,
+              sizes: '1280x720',
+              form_factor: 'wide',
+              type: 'image/png',
+            },
+            {
+              src: `${basePath}/screenshot-narrow.png`,
+              sizes: '540x720',
+              form_factor: 'narrow',
+              type: 'image/png',
+            },
+          ],
         },
       }),
     ],
