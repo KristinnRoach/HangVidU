@@ -1,6 +1,8 @@
 import { devDebug } from './utils/log';
 import { hideElement, showElement } from './utils/ui-utils';
 
+let beforeInstallEvent = null;
+
 function setupPWA(installBtn) {
   if (!installBtn) {
     console.warn('[PWA]: Install button not found');
@@ -8,26 +10,17 @@ function setupPWA(installBtn) {
   }
 
   if (window.matchMedia('(display-mode: standalone)').matches) {
-    devDebug('[PWA]: App is already installed');
+    console.info('[PWA]: App is already installed');
     hideElement(installBtn);
     return;
   }
 
-  let deferredPrompt;
-
-  window.addEventListener('beforeinstallprompt', (e) => {
-    devDebug('[PWA]: beforeinstallprompt event fired');
-    e.preventDefault();
-    deferredPrompt = e;
-    showElement(installBtn);
-  });
-
   installBtn.addEventListener('click', async () => {
     devDebug('[PWA]: Install button clicked');
 
-    if (!deferredPrompt) {
+    if (!beforeInstallEvent) {
       console.warn(
-        '[PWA]: deferredPrompt is null - beforeinstallprompt may not have fired'
+        '[PWA]: beforeInstallEvent is null - beforeinstallprompt may not have fired'
       );
 
       // Check installability criteria
@@ -44,8 +37,8 @@ function setupPWA(installBtn) {
     }
 
     try {
-      await deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
+      await beforeInstallEvent.prompt();
+      const { outcome } = await beforeInstallEvent.userChoice;
 
       devDebug(`User choice: ${outcome}`);
 
@@ -53,7 +46,7 @@ function setupPWA(installBtn) {
         hideElement(installBtn);
       }
 
-      deferredPrompt = null;
+      beforeInstallEvent = null;
     } catch (error) {
       console.error('Error showing install prompt:', error);
     }
@@ -62,8 +55,16 @@ function setupPWA(installBtn) {
   window.addEventListener('appinstalled', () => {
     devDebug('App installed successfully');
     hideElement(installBtn);
-    deferredPrompt = null;
+    beforeInstallEvent = null;
   });
 }
+
+// Attach "beforeinstallprompt" listener as early as possible
+window.addEventListener('beforeinstallprompt', (e) => {
+  console.debug('[PWA]: beforeinstallprompt fired');
+  e.preventDefault();
+  beforeInstallEvent = e;
+  showElement(installBtn);
+});
 
 export { setupPWA };
