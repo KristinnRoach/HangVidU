@@ -209,12 +209,16 @@ export function initializeMediaControls({
   //   };
   // })();
 
-  // cleanupFunctions.push(() => {
-  //   removeOrientationListeners();
-  // });
+  // cleanupFunctions.push(
+  //   removeOrientationListeners
+  // );
 
-  const removeOrientationListener = setupOrientationListener();
-  cleanupFunctions.push(() => removeOrientationListener);
+  const removeOrientationListener = setupOrientationListener({
+    getLocalStream,
+    getFacingMode: () => lastFacingMode,
+  });
+
+  cleanupFunctions.push(removeOrientationListener);
 
   if (switchCameraSelfBtn) {
     switchCameraSelfBtn.onclick = async () => {
@@ -223,12 +227,15 @@ export function initializeMediaControls({
         localStream: getLocalStream(),
         localVideo: getLocalVideo(),
         currentFacingMode: lastFacingMode,
-        peerConnection: pc || null,
+        peerConnection: getPeerConnection() || null,
       });
 
       if (result) {
         lastFacingMode = result.facingMode;
         console.log('Switched camera to facingMode:', lastFacingMode);
+        if (result.newStream && typeof setLocalStream === 'function') {
+          setLocalStream(result.newStream);
+        }
       } else {
         console.error('Camera switch failed.');
       }

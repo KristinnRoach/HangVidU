@@ -119,6 +119,10 @@ export async function switchCamera({
   currentFacingMode,
   peerConnection = null,
 }) {
+  if (!localStream || !localVideo) {
+    console.error('switchCamera: missing localStream or localVideo');
+    return null;
+  }
   const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
   const videoConstraintsForOrientation =
     getOrientationAwareVideoConstraints(newFacingMode);
@@ -290,22 +294,32 @@ const createDebugLog = (msg, data) => {
 
 let isUpdatingForOrientation = false;
 let orientationListener = null;
+let boundOrientationHandler = null;
 
-export function setupOrientationListener() {
-  // handler
-  if (orientationListener) {
-    orientationListener.removeEventListener('change', handleOrientationChange);
+export function setupOrientationListener({ getLocalStream, getFacingMode }) {
+  if (orientationListener && boundOrientationHandler) {
+    orientationListener.removeEventListener('change', boundOrientationHandler);
   }
   orientationListener = window.matchMedia('(orientation: portrait)');
-  orientationListener.addEventListener('change', handleOrientationChange);
+  boundOrientationHandler = () => {
+    try {
+      const ls = typeof getLocalStream === 'function' ? getLocalStream() : null;
+      const fm = typeof getFacingMode === 'function' ? getFacingMode() : 'user';
+      handleOrientationChange({ localStream: ls, currentFacingMode: fm });
+    } catch (e) {
+      console.error('Orientation handler failed:', e);
+    }
+  };
+  orientationListener.addEventListener('change', boundOrientationHandler);
   return () => {
-    if (orientationListener) {
+    if (orientationListener && boundOrientationHandler) {
       orientationListener.removeEventListener(
         'change',
-        handleOrientationChange
+        boundOrientationHandler
       );
-      orientationListener = null;
     }
+    orientationListener = null;
+    boundOrientationHandler = null;
   };
 }
 
