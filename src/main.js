@@ -153,7 +153,7 @@ async function init() {
       fullscreenPartnerBtn,
     });
 
-    setupPWA(installBtn);
+    setupPWA();
 
     initializeSearchUI();
 

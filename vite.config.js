@@ -18,7 +18,6 @@ export default defineConfig(({ mode }) => {
         strategies: 'generateSW',
         injectRegister: 'script',
         workbox: {
-          mode: 'production',
           cleanupOutdatedCaches: true,
         },
         // strategies: 'injectManifest',
