@@ -7,8 +7,6 @@
     <title>HangVidU</title>
     <link rel="stylesheet" href="/src/style.css" />
     <link rel="icon" href="/favicon.ico" />
-    <!-- <link rel="manifest" href="/HangVidU/manifest.webmanifest" /> Todo: verify these paths in PROD
-    <link rel="apple-touch-icon" href="/HangVidU/icon-192.png" /> -->
   </head>
   <body>
     <div class="main-wrapper">
@@ -28,7 +26,9 @@
           <div id="searchResults" class="search-results hidden"></div>
         </div>
 
-        <button id="install-btn">Install</button>
+        <button id="install-btn" title="Install App" class="hidden">
+          <i class="fa fa-info"></i>
+        </button>
       </div>
 
       <h1 style="display: none" id="titleHeader">
