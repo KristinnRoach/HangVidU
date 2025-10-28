@@ -59,10 +59,11 @@ body {
 #hang-up-btn.hidden,
 #switch-camera-btn.hidden,
 #camera-btn.hidden,
+#install-btn.hidden,
 .chat-btn.hidden,
 .messages-box.hidden,
 .top-left-menu.hidden {
-  opacity: 0 !important;
+  opacity: 0 !important; /* Todo: Remove !important */
   pointer-events: none;
   visibility: hidden;
 
@@ -748,7 +749,6 @@ button:disabled {
 
 #install-btn {
   z-index: 1000;
-  display: none;
 }
 
 @media screen and (max-width: 600px) {
