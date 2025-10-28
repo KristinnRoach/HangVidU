@@ -1,19 +1,28 @@
 import { devDebug } from './utils/log';
 import { hideElement, showElement } from './utils/ui-utils';
+import { installBtn } from './elements';
 
 let beforeInstallEvent = null;
 
-function setupPWA(installBtn) {
-  if (!installBtn) {
-    console.warn('[PWA]: Install button not found');
-    return;
-  }
-
+function setupPWA() {
   if (window.matchMedia('(display-mode: standalone)').matches) {
     console.info('[PWA]: App is already installed');
     hideElement(installBtn);
     return;
   }
+
+  if (!installBtn) {
+    console.warn('[PWA]: Install button not found');
+    return;
+  }
+
+  if (!beforeInstallEvent) {
+    console.debug('[PWA]: beforeInstallEvent not assigned yet');
+    hideElement(installBtn);
+    return;
+  }
+
+  showElement(installBtn);
 
   installBtn.addEventListener('click', async () => {
     devDebug('[PWA]: Install button clicked');
@@ -64,7 +73,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   console.debug('[PWA]: beforeinstallprompt fired');
   e.preventDefault();
   beforeInstallEvent = e;
-  showElement(installBtn);
+  if (installBtn) showElement(installBtn);
 });
 
 export { setupPWA };

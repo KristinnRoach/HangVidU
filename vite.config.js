@@ -18,7 +18,6 @@ export default defineConfig(({ mode }) => {
         strategies: 'generateSW',
         injectRegister: 'script',
         workbox: {
-          mode: 'production',
           cleanupOutdatedCaches: true,
         },
         // strategies: 'injectManifest',
@@ -58,6 +57,20 @@ export default defineConfig(({ mode }) => {
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable',
+            },
+          ],
+          screenshots: [
+            {
+              src: `${basePath}/screenshot-wide.png`,
+              sizes: '1280x720',
+              form_factor: 'wide',
+              type: 'image/png',
+            },
+            {
+              src: `${basePath}/screenshot-narrow.png`,
+              sizes: '540x720',
+              form_factor: 'narrow',
+              type: 'image/png',
             },
           ],
         },
