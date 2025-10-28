@@ -484,27 +484,42 @@ let seekDebounceTimeout = null; // Todo: Is this still needed?
 
 let cleanupChatControlAutoHide = null;
 
+function isPiPSupported() {
+  return (
+    'pictureInPictureEnabled' in document &&
+    typeof document.pictureInPictureEnabled === 'boolean' &&
+    document.pictureInPictureEnabled
+  );
+}
+
 export function enterWatchMode() {
   if (isWatchModeActive()) return;
 
-  if (isRemoteVideoVideoActive()) {
-    placeInSmallFrame(remoteVideo);
-    hideElement(localVideo);
-
-    remoteVideo
-      .requestPictureInPicture()
-      .then(() => {
-        // Hide the smallFrame if PiP entered successfully
-        hideElement(remoteVideo);
-      })
-      .catch((err) => {
-        console.error('Failed to enter Picture-in-Picture:', err);
-      });
-  } else {
+  if (!isRemoteVideoVideoActive()) {
     showElement(localVideo);
-    // placeInSmallFrame(localVideo);
-  }
+    placeInSmallFrame(localVideo);
+    hideElement(remoteVideo);
+    removeFromSmallFrame(remoteVideo);
+  } else {
+    hideElement(localVideo);
+    removeFromSmallFrame(localVideo);
 
+    if (isPiPSupported() && !isElementInPictureInPicture(remoteVideo)) {
+      remoteVideo
+        .requestPictureInPicture()
+        .then(() => {
+          // Hide the smallFrame if PiP entered successfully
+          hideElement(remoteVideo);
+          removeFromSmallFrame(remoteVideo);
+        })
+        .catch((err) => {
+          console.error('Failed to enter Picture-in-Picture:', err);
+        });
+    } else {
+      placeInSmallFrame(remoteVideo);
+      showElement(remoteVideo);
+    }
+  }
   chatControls.classList.remove('bottom');
   chatControls.classList.add('watch-mode');
 
@@ -515,9 +530,10 @@ export function exitWatchMode() {
   if (!isWatchModeActive()) return;
 
   showElement(localVideo);
+  placeInSmallFrame(localVideo);
+  removeFromSmallFrame(remoteVideo);
 
   if (isRemoteVideoVideoActive()) {
-    removeFromSmallFrame(remoteVideo);
     showElement(remoteVideo);
 
     if (isElementInPictureInPicture(remoteVideo)) {
