@@ -4,7 +4,7 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   base: '/HangVidU/',
   plugins: [
     ...(mode === 'development' ? [basicSsl()] : []),
@@ -46,4 +46,4 @@ export default defineConfig({
     host: true, // To expose to LAN devices as well
     allowedHosts: ['.ngrok-free.app'],
   },
-});
+}));
