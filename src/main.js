@@ -494,60 +494,80 @@ function isPiPSupported() {
 
 export function enterWatchMode() {
   if (isWatchModeActive()) return;
+  setWatchMode(true);
+
+  chatControls.classList.remove('bottom');
+  chatControls.classList.add('watch-mode');
+  // Disable auto-hide in watch mode to ensure accessibility
+  if (cleanupChatControlAutoHide) {
+    cleanupChatControlAutoHide();
+    cleanupChatControlAutoHide = null;
+  }
 
   if (!isRemoteVideoVideoActive()) {
     showElement(localBoxEl);
     placeInSmallFrame(localBoxEl);
     hideElement(remoteBoxEl);
     removeFromSmallFrame(remoteBoxEl);
-  } else {
-    hideElement(localBoxEl);
-    removeFromSmallFrame(localBoxEl);
-
-    if (isPiPSupported() && !isElementInPictureInPicture(remoteBoxEl)) {
-      remoteBoxEl
-        .requestPictureInPicture()
-        .then(() => {
-          // Hide the smallFrame if PiP entered successfully
-          hideElement(remoteBoxEl);
-          removeFromSmallFrame(remoteBoxEl);
-        })
-        .catch((err) => {
-          console.error('Failed to enter Picture-in-Picture:', err);
-        });
-    } else {
-      placeInSmallFrame(remoteBoxEl);
-      showElement(remoteBoxEl);
-    }
+    return;
   }
-  chatControls.classList.remove('bottom');
-  chatControls.classList.add('watch-mode');
 
-  setWatchMode(true);
+  // Hide local video if remote video is active
+  hideElement(localBoxEl);
+  removeFromSmallFrame(localBoxEl);
+
+  if (isElementInPictureInPicture(remoteVideoEl)) {
+    hideElement(remoteBoxEl); // ensure small-frame is hidden if in PiP
+    removeFromSmallFrame(remoteBoxEl);
+  } else if (isPiPSupported()) {
+    // Try to enter PiP with fallback
+    remoteVideoEl
+      .requestPictureInPicture()
+      .then(() => {
+        // Hide the smallFrame if PiP entered successfully
+        hideElement(remoteBoxEl);
+        removeFromSmallFrame(remoteBoxEl);
+      })
+      .catch((err) => {
+        console.warn('Failed to enter Picture-in-Picture:', err);
+        // Fallback: place in small frame
+        placeInSmallFrame(remoteBoxEl);
+        showElement(remoteBoxEl);
+      });
+  } else {
+    // PiP not supported
+    placeInSmallFrame(remoteBoxEl);
+    showElement(remoteBoxEl);
+  }
 }
 
 export function exitWatchMode() {
   if (!isWatchModeActive()) return;
 
-  showElement(localBoxEl);
-  placeInSmallFrame(localBoxEl);
-  removeFromSmallFrame(remoteBoxEl);
+  chatControls.classList.remove('watch-mode');
+  chatControls.classList.add('bottom');
+
+  // Enable auto-hide again
+  if (!cleanupChatControlAutoHide) {
+    cleanupChatControlAutoHide = setupShowHideOnInactivity(chatControls, {
+      inactivityMs: 2500,
+      hideOnEsc: true,
+    });
+  }
 
   if (isRemoteVideoVideoActive()) {
-    showElement(remoteBoxEl);
-
     if (isElementInPictureInPicture(remoteBoxEl)) {
       document.exitPictureInPicture().catch((err) => {
         console.error('Failed to exit Picture-in-Picture:', err);
       });
     }
-  }
-  // else {
-  //   localVideo.classList.remove('smallFrame');
-  // }
 
-  chatControls.classList.remove('watch-mode');
-  chatControls.classList.add('bottom');
+    removeFromSmallFrame(remoteBoxEl);
+    showElement(remoteBoxEl);
+  }
+
+  placeInSmallFrame(localBoxEl);
+  showElement(localBoxEl);
 
   setWatchMode(false);
 }
