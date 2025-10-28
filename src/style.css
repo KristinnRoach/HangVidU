@@ -725,7 +725,7 @@ button:disabled {
 }
 
 .top-left-menu {
-  position: fixed;
+  position: absolute;
   top: 0px;
   right: 0px;
   z-index: 1000;
