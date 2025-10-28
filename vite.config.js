@@ -7,15 +7,17 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 export default defineConfig({
   base: '/HangVidU/',
   plugins: [
-    basicSsl(),
+    ...(mode === 'development' ? [basicSsl()] : []),
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
         name: 'HangVidU',
         short_name: 'HangVidU',
         description: 'Peer-to-peer video chat with watch-together mode',
-        theme_color: '#2196f3',
+        theme_color: '#82b5ecff',
         background_color: '#1a1a1a',
+        start_url: '/HangVidU/',
+        scope: '/HangVidU/',
         display: 'standalone',
         icons: [
           {
@@ -27,6 +29,13 @@ export default defineConfig({
             src: '/HangVidU/icon-512.png',
             sizes: '512x512',
             type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: '/HangVidU/icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
           },
         ],
       },

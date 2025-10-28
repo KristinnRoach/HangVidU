@@ -1,5 +1,7 @@
 // src/media-devices.js
 
+import { devDebug } from './utils/log';
+
 // === DEFAULT USER MEDIA CONSTRAINTS ===
 
 export const userMediaAudioConstraints = {
@@ -312,10 +314,6 @@ export async function OLD_updateVideoConstraintsForOrientation({
   }
 }
 // === SIMPLIFIED ORIENTATION LOGIC ===
-
-const devDebug = (msg, data) => {
-  if (import.meta.env.DEV) console.debug(msg, data);
-};
 
 let isUpdatingForOrientation = false;
 let orientationListener = null;
