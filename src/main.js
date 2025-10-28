@@ -32,9 +32,9 @@ import {
 import { updateStatus } from './utils/status.js';
 import { setupShowHideOnInactivity } from './utils/showHideOnInactivity.js';
 import {
-  localVideo,
-  remoteVideo,
-  sharedVideo,
+  localVideoEl,
+  remoteVideoEl,
+  sharedVideoEl,
   callBtn,
   hangUpBtn,
   linkContainer,
@@ -44,10 +44,12 @@ import {
   fullscreenPartnerBtn,
   micBtn,
   cameraBtn,
-  switchCameraSelfBtn,
-  fullscreenSelfBtn,
+  switchCameraBtn,
   installBtn,
   chatControls,
+  localBoxEl,
+  remoteBoxEl,
+  sharedBoxEl,
 } from './elements.js';
 
 import {
@@ -71,7 +73,7 @@ import {
 import {
   destroyYouTubePlayer,
   pauseYouTubeVideo,
-  getYTContainer,
+  getYTBox,
   isYTVisible,
   showYouTubePlayer,
   hideYouTubePlayer,
@@ -111,8 +113,8 @@ let lastOfferSdp = null;
 
 export const isRemoteVideoVideoActive = () => {
   return (
-    remoteVideo.srcObject &&
-    remoteVideo.srcObject.getVideoTracks().some((track) => track.enabled)
+    remoteVideoEl.srcObject &&
+    remoteVideoEl.srcObject.getVideoTracks().some((track) => track.enabled)
   );
 };
 
@@ -125,30 +127,29 @@ async function init() {
 
   // TEMP FIX: hide YouTube container if present
   try {
-    const ytContainer = getYTContainer();
-    hideElement(ytContainer);
+    const ytBox = getYTBox();
+    hideElement(ytBox);
   } catch {
     // Container not present — OK
   }
 
   try {
-    await setUpLocalStream(localVideo);
+    await setUpLocalStream(localVideoEl);
 
     if (await hasFrontAndBackCameras()) {
-      showElement(switchCameraSelfBtn);
+      showElement(switchCameraBtn);
     }
 
     initializeMediaControls({
       getLocalStream,
-      getLocalVideo: () => localVideo,
-      getRemoteVideo: () => remoteVideo,
+      getLocalVideo: () => localVideoEl,
+      getRemoteVideo: () => remoteVideoEl,
       getPeerConnection: () => pc,
       setLocalStream,
 
-      muteSelfBtn: micBtn,
-      videoSelfBtn: cameraBtn,
-      switchCameraSelfBtn,
-      fullscreenSelfBtn,
+      micBtn,
+      cameraBtn,
+      switchCameraBtn,
       mutePartnerBtn,
       fullscreenPartnerBtn,
     });
@@ -290,7 +291,7 @@ async function createCall() {
     pc.addTrack(track, localStream);
   });
 
-  if (setupRemoteStream(pc, remoteVideo, mutePartnerBtn)) {
+  if (setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn)) {
     setupIceCandidates(pc, role, roomId);
     setupConnectionStateHandlers(pc);
     console.debug('Peer connection created as initiator with room ID:', roomId);
@@ -432,7 +433,7 @@ async function answerCall() {
     pc.addTrack(track, localStream);
   });
 
-  if (setupRemoteStream(pc, remoteVideo, mutePartnerBtn)) {
+  if (setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn)) {
     setupIceCandidates(pc, role, roomId); // Send ICE candidates to Firebase
     setupConnectionStateHandlers(pc); // Monitor connection state
     console.debug('Peer connection created as joiner for room ID:', roomId);
@@ -484,27 +485,42 @@ let seekDebounceTimeout = null; // Todo: Is this still needed?
 
 let cleanupChatControlAutoHide = null;
 
+function isPiPSupported() {
+  return (
+    'pictureInPictureEnabled' in document &&
+    typeof document.pictureInPictureEnabled === 'boolean' &&
+    document.pictureInPictureEnabled
+  );
+}
+
 export function enterWatchMode() {
   if (isWatchModeActive()) return;
 
-  if (isRemoteVideoVideoActive()) {
-    placeInSmallFrame(remoteVideo);
-    hideElement(localVideo);
-
-    remoteVideo
-      .requestPictureInPicture()
-      .then(() => {
-        // Hide the smallFrame if PiP entered successfully
-        hideElement(remoteVideo);
-      })
-      .catch((err) => {
-        console.error('Failed to enter Picture-in-Picture:', err);
-      });
+  if (!isRemoteVideoVideoActive()) {
+    showElement(localBoxEl);
+    placeInSmallFrame(localBoxEl);
+    hideElement(remoteBoxEl);
+    removeFromSmallFrame(remoteBoxEl);
   } else {
-    showElement(localVideo);
-    // placeInSmallFrame(localVideo);
-  }
+    hideElement(localBoxEl);
+    removeFromSmallFrame(localBoxEl);
 
+    if (isPiPSupported() && !isElementInPictureInPicture(remoteBoxEl)) {
+      remoteBoxEl
+        .requestPictureInPicture()
+        .then(() => {
+          // Hide the smallFrame if PiP entered successfully
+          hideElement(remoteBoxEl);
+          removeFromSmallFrame(remoteBoxEl);
+        })
+        .catch((err) => {
+          console.error('Failed to enter Picture-in-Picture:', err);
+        });
+    } else {
+      placeInSmallFrame(remoteBoxEl);
+      showElement(remoteBoxEl);
+    }
+  }
   chatControls.classList.remove('bottom');
   chatControls.classList.add('watch-mode');
 
@@ -514,13 +530,14 @@ export function enterWatchMode() {
 export function exitWatchMode() {
   if (!isWatchModeActive()) return;
 
-  showElement(localVideo);
+  showElement(localBoxEl);
+  placeInSmallFrame(localBoxEl);
+  removeFromSmallFrame(remoteBoxEl);
 
   if (isRemoteVideoVideoActive()) {
-    removeFromSmallFrame(remoteVideo);
-    showElement(remoteVideo);
+    showElement(remoteBoxEl);
 
-    if (isElementInPictureInPicture(remoteVideo)) {
+    if (isElementInPictureInPicture(remoteBoxEl)) {
       document.exitPictureInPicture().catch((err) => {
         console.error('Failed to exit Picture-in-Picture:', err);
       });
@@ -537,8 +554,8 @@ export function exitWatchMode() {
 }
 
 let enterCallMode = () => {
-  showElement(remoteVideo);
-  placeInSmallFrame(localVideo);
+  showElement(remoteBoxEl);
+  placeInSmallFrame(localBoxEl);
 
   callBtn.disabled = true;
   mutePartnerBtn.disabled = false;
@@ -556,13 +573,15 @@ let enterCallMode = () => {
   // showElement(micBtn);
   // showElement(cameraBtn);
   // if (hasFrontAndBackCameras()) {
-  //   showElement(switchCameraSelfBtn);
+  //   showElement(switchCameraBtn);
   // }
 };
 
 let exitCallMode = () => {
-  hideElement(remoteVideo);
-  placeInSmallFrame(localVideo); // Always keep local video in small frame
+  removeFromSmallFrame(remoteBoxEl);
+  hideElement(remoteBoxEl);
+  placeInSmallFrame(localBoxEl); // Always keep local video in small frame
+  showElement(localBoxEl);
 
   callBtn.disabled = false;
   hangUpBtn.disabled = true;
@@ -574,7 +593,7 @@ let exitCallMode = () => {
   }
 
   // hideElement(mutePartnerBtn);
-  // hideElement(switchCameraSelfBtn);
+  // hideElement(switchCameraBtn);
   // hideElement(micBtn);
   // hideElement(cameraBtn);
 };
@@ -585,10 +604,11 @@ let exitCallMode = () => {
 
 function isSharedVideoVisible() {
   return (
-    sharedVideo &&
-    !sharedVideo.classList.contains('hidden') &&
-    sharedVideo.src &&
-    sharedVideo.src.trim() !== ''
+    sharedVideoEl &&
+    sharedBoxEl &&
+    !sharedBoxEl.classList.contains('hidden') &&
+    sharedVideoEl.src &&
+    sharedVideoEl.src.trim() !== ''
   );
 }
 
@@ -632,11 +652,11 @@ function addKeyListeners() {
           console.log('Processing URL case');
           if (isSharedVideoVisible()) {
             console.log('Hiding shared video');
-            hideElement(sharedVideo);
+            hideElement(sharedVideoEl);
             exitWatchMode();
           } else {
             console.log('Showing shared video');
-            showElement(sharedVideo);
+            showElement(sharedVideoEl);
             enterWatchMode();
           }
         }
@@ -656,8 +676,8 @@ function addKeyListeners() {
         hideYouTubePlayer();
         exitWatchMode();
       } else if (getLastWatched() === 'url' && isSharedVideoVisible()) {
-        sharedVideo.pause();
-        hideElement(sharedVideo);
+        sharedVideoEl.pause();
+        hideElement(sharedVideoEl);
       }
     }
   });
@@ -749,12 +769,10 @@ async function hangUp() {
 
   console.debug('Hanging up...');
 
-  exitCallMode();
-
   // Stop remote media
-  if (remoteVideo.srcObject) {
-    remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
-    remoteVideo.srcObject = null;
+  if (remoteVideoEl.srcObject) {
+    remoteVideoEl.srcObject.getTracks().forEach((track) => track.stop());
+    remoteVideoEl.srcObject = null;
   }
 
   cleanupMediaControls();
@@ -783,10 +801,6 @@ async function hangUp() {
 
   // Reset UI
   exitCallMode();
-  showElement(callBtn);
-  hangUpBtn.disabled = true;
-  callBtn.disabled = false;
-  linkContainer.style.display = 'none';
 
   membersListeners.forEach(({ ref: fbRef, type, callback }) =>
     off(fbRef, type, callback)
@@ -827,12 +841,12 @@ function cleanup() {
   if (pc || roomId) hangUp();
 
   shareLink.value = '';
-  sharedVideo.src = '';
+  sharedVideoEl.src = '';
   // streamUrlInput.value = '';
   syncStatus.textContent = '';
 
   cleanupLocalStream();
-  localVideo.srcObject = null;
+  localVideoEl.srcObject = null;
 
   exitWatchMode();
   setLastWatched('none');

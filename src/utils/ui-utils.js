@@ -29,21 +29,32 @@ export const isInSmallFrame = (element) => {
 };
 
 export const placeInSmallFrame = (element) => {
+  if (!element) {
+    import.meta.env.DEV &&
+      console.warn('placeInSmallFrame: valid element required');
+    return;
+  }
+
   if (!isInSmallFrame(element)) {
     element.classList.add('smallFrame');
-    // Add close icon
-    const icon = document.createElement('button');
-    icon.classList.add('smallFrame-toggle-btn');
+    // Add toggle button
+    const toggle = document.createElement('div');
+    toggle.classList.add('smallFrame-toggle-div');
+    const icon = document.createElement('span');
+    icon.classList.add('smallFrame-toggle-icon');
     icon.textContent = '❮'; // ❮ | ⟨
-    document.body.appendChild(icon);
-    icon.addEventListener('click', () => {
+    toggle.appendChild(icon);
+    element.appendChild(toggle);
+    toggle.addEventListener('click', () => {
       if (element.classList.contains('closed')) {
         // show
         element.classList.remove('closed');
+        toggle.classList.remove('closed');
         icon.classList.remove('closed');
       } else {
         // hide
         element.classList.add('closed');
+        toggle.classList.add('closed');
         icon.classList.add('closed');
       }
     });
@@ -54,8 +65,8 @@ export const removeFromSmallFrame = (element) => {
   if (isInSmallFrame(element)) {
     element.classList.remove('smallFrame');
     // Remove close icon if exists
-    const icon = document.querySelector('.smallFrame-close');
-    if (icon) icon.remove();
+    const closeIcon = document.querySelector('.smallFrame-close');
+    if (closeIcon) closeIcon.remove();
   }
 };
 

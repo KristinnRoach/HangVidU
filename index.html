@@ -25,7 +25,7 @@
           <div id="searchResults" class="search-results hidden"></div>
         </div>
 
-        <button id="installBtn">Install</button>
+        <button id="install-btn">Install</button>
       </div>
 
       <h1 style="display: none" id="titleHeader">
@@ -33,29 +33,22 @@
       </h1>
 
       <div id="videos">
-        <video
-          class="video-player"
-          id="localVideo"
-          autoplay
-          playsinline
-          muted
-        ></video>
+        <div id="local-video-box" class="box video-box local-video-box">
+          <video id="local-video-el" autoplay playsinline muted></video>
+        </div>
 
-        <video
-          class="video-player hidden"
-          id="remoteVideo"
-          autoplay
-          playsinline
-        ></video>
+        <div id="remote-video-box" class="box video-box remote-video-box">
+          <video id="remote-video-el" autoplay playsinline></video>
+        </div>
 
-        <video
-          class="video-player hidden"
-          id="sharedVideo"
-          controls
-          playsinline
-        ></video>
+        <div
+          id="shared-video-box"
+          class="box video-box shared-video-box hidden"
+        >
+          <video id="shared-video-el" controls playsinline></video>
+        </div>
 
-        <div class="video-player hidden" id="yt-player-div"></div>
+        <div id="yt-video-box" class="box video-box yt-video-box hidden"></div>
       </div>
 
       <div id="chat-controls" class="chat-controls bottom">
@@ -71,7 +64,7 @@
         </button>
         <button
           class="chat-btn hidden"
-          id="switchCameraSelfBtn"
+          id="switch-camera-btn"
           aria-label="Switch camera"
         >
           <i class="fa fa-sync-alt"></i>
@@ -98,29 +91,30 @@
       </div>
     </div>
 
-    <div id="linkContainer" class="link-container" style="display: none">
+    <button
+      id="fullscreen-app-btn"
+      style="display: none"
+      aria-label="Fullscreen app"
+    >
+      <i class="fa fa-expand"></i>
+    </button>
+
+    <div id="link-container" class="link-container" style="display: none">
       <p>Share this link with your partner:</p>
-      <input type="text" id="shareLink" readonly />
-      <button id="copyLink">Copy Link</button>
+      <input type="text" id="share-link" readonly />
     </div>
 
     <div style="display: none" class="watch-controls">
       <input
         type="text"
-        id="streamUrl"
+        id="stream-url-input"
         placeholder="Paste stream URL (both people need to paste the same URL)"
       />
       <button id="loadStream">Load Video</button>
     </div>
 
-    <div style="display: none" class="hover-controls">
-      <button id="fullscreenSelfBtn" aria-label="Fullscreen">
-        <i class="fa fa-expand"></i>
-      </button>
-    </div>
-
     <div style="display: none" id="status" class="status"></div>
-    <div style="display: none" id="syncStatus" class="sync-status"></div>
+    <div style="display: none" id="sync-status" class="sync-status"></div>
 
     <script src="https://www.youtube.com/iframe_api"></script>
 
