@@ -37,7 +37,6 @@ import {
   sharedVideoEl,
   callBtn,
   hangUpBtn,
-  linkContainer,
   shareLink,
   syncStatus,
   mutePartnerBtn,
