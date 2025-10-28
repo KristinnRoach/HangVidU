@@ -151,8 +151,6 @@ async function init() {
       fullscreenSelfBtn,
       mutePartnerBtn,
       fullscreenPartnerBtn,
-
-      audioConstraints: userMediaAudioConstraints,
     });
 
     setupPWA(installBtn);
