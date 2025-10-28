@@ -1,29 +1,27 @@
 // elements.js - Centralized DOM element exports
 
-export const installBtn = document.getElementById('installBtn');
+export const installBtn = document.getElementById('install-btn');
 
-export const localVideo = document.getElementById('localVideo');
-export const remoteVideo = document.getElementById('remoteVideo');
-export const sharedVideo = document.getElementById('sharedVideo');
+export const localVideoEl = document.getElementById('local-video-el');
+export const localBoxEl = document.getElementById('local-video-box');
+export const remoteVideoEl = document.getElementById('remote-video-el');
+export const remoteBoxEl = document.getElementById('remote-video-box');
+export const sharedVideoEl = document.getElementById('shared-video-el');
+export const sharedBoxEl = document.getElementById('shared-video-box');
 
 export const chatControls = document.getElementById('chat-controls');
 export const callBtn = document.getElementById('call-btn');
 export const hangUpBtn = document.getElementById('hang-up-btn');
-export const copyLinkBtn = document.getElementById('copyLink');
-export const pipBtn = document.getElementById('pipBtn');
-export const switchCameraSelfBtn = document.getElementById(
-  'switchCameraSelfBtn'
-);
+export const switchCameraBtn = document.getElementById('switch-camera-btn');
 
 export const statusDiv = document.getElementById('status');
-export const linkContainer = document.getElementById('linkContainer');
-export const watchContainer = document.getElementById('watchContainer');
+export const linkContainer = document.getElementById('link-container');
 export const chatContainer = document.getElementById('videos');
 
-export const syncStatus = document.getElementById('syncStatus');
+export const syncStatus = document.getElementById('sync-status');
 
-export const shareLink = document.getElementById('shareLink');
-export const streamUrlInput = document.getElementById('streamUrl');
+export const shareLink = document.getElementById('share-link');
+export const streamUrlInput = document.getElementById('stream-url-input');
 
 export const mutePartnerBtn = document.getElementById('mute-btn');
 export const fullscreenPartnerBtn = document.getElementById(
@@ -31,7 +29,8 @@ export const fullscreenPartnerBtn = document.getElementById(
 );
 export const micBtn = document.getElementById('mic-btn');
 export const cameraBtn = document.getElementById('camera-btn');
-export const fullscreenSelfBtn = document.getElementById('fullscreenSelfBtn');
+
+export const fullscreenAppBtn = document.getElementById('fullscreen-app-btn');
 
 export const titleHeader = document.getElementById('titleHeader');
 export const titleLink = document.getElementById('titleLink');

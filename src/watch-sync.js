@@ -16,7 +16,7 @@ import {
   setYouTubeReady,
 } from './youtube-player.js';
 
-import { sharedVideo } from './elements.js'; // TODO: refactor:
+import { sharedVideoEl } from './elements.js'; // TODO: refactor:
 import { hideElement, showElement } from './utils/ui-utils.js';
 import { enterWatchMode } from './main.js';
 
@@ -122,13 +122,13 @@ function handleRemoteUrlChange(url) {
   currentVideoUrl = url;
 
   if (isYouTubeUrl(url)) {
-    hideElement(sharedVideo);
+    hideElement(sharedVideoEl);
     loadYouTubeVideoWithSync(url);
     lastWatched = 'yt';
   } else {
     destroyYouTubePlayer();
-    showElement(sharedVideo);
-    sharedVideo.src = url;
+    showElement(sharedVideoEl);
+    sharedVideoEl.src = url;
     lastWatched = 'url';
   }
 }
@@ -203,21 +203,21 @@ function debounceSeekSync() {
 // -----------------------------------------------------------------------------
 function handleRegularVideoSync(data) {
   if (data.playing !== undefined) {
-    if (data.playing && sharedVideo.paused) {
-      sharedVideo.play().catch((e) => console.warn('Play failed:', e));
-    } else if (!data.playing && !sharedVideo.paused) {
-      sharedVideo.pause();
+    if (data.playing && sharedVideoEl.paused) {
+      sharedVideoEl.play().catch((e) => console.warn('Play failed:', e));
+    } else if (!data.playing && !sharedVideoEl.paused) {
+      sharedVideoEl.pause();
     }
   }
 
   if (data.currentTime !== undefined) {
-    const timeDiff = Math.abs(sharedVideo.currentTime - data.currentTime);
+    const timeDiff = Math.abs(sharedVideoEl.currentTime - data.currentTime);
     if (timeDiff > 1) {
-      sharedVideo.currentTime = data.currentTime;
+      sharedVideoEl.currentTime = data.currentTime;
       if (data.playing) {
-        sharedVideo.play().catch((e) => console.warn('Play failed:', e));
+        sharedVideoEl.play().catch((e) => console.warn('Play failed:', e));
       } else {
-        sharedVideo.pause();
+        sharedVideoEl.pause();
       }
     }
   }
@@ -227,7 +227,7 @@ function handleRegularVideoSync(data) {
 // LOCAL EVENT LISTENERS
 // -----------------------------------------------------------------------------
 function setupLocalVideoListeners() {
-  sharedVideo.addEventListener('play', async () => {
+  sharedVideoEl.addEventListener('play', async () => {
     if (!getYouTubePlayer() && currentRoomId) {
       lastLocalAction = Date.now();
       await updateWatchSyncState({ playing: true, isYouTube: false });
@@ -235,7 +235,7 @@ function setupLocalVideoListeners() {
     lastWatched = 'url';
   });
 
-  sharedVideo.addEventListener('pause', async () => {
+  sharedVideoEl.addEventListener('pause', async () => {
     if (!getYouTubePlayer() && currentRoomId) {
       lastLocalAction = Date.now();
       await updateWatchSyncState({ playing: false, isYouTube: false });
@@ -243,12 +243,12 @@ function setupLocalVideoListeners() {
     lastWatched = 'url';
   });
 
-  sharedVideo.addEventListener('seeked', async () => {
+  sharedVideoEl.addEventListener('seeked', async () => {
     if (!getYouTubePlayer() && currentRoomId) {
       lastLocalAction = Date.now();
       await updateWatchSyncState({
-        currentTime: sharedVideo.currentTime,
-        playing: !sharedVideo.paused,
+        currentTime: sharedVideoEl.currentTime,
+        playing: !sharedVideoEl.paused,
         isYouTube: false,
       });
     }
@@ -265,7 +265,7 @@ async function loadStream(url) {
   lastLocalAction = Date.now();
 
   if (isYouTubeUrl(url)) {
-    hideElement(sharedVideo);
+    hideElement(sharedVideoEl);
     const success = await loadYouTubeVideoWithSync(url);
     if (!success) return false;
 
@@ -274,8 +274,8 @@ async function loadStream(url) {
   } else {
     destroyYouTubePlayer();
 
-    showElement(sharedVideo);
-    sharedVideo.src = url;
+    showElement(sharedVideoEl);
+    sharedVideoEl.src = url;
 
     enterWatchMode();
     lastWatched = 'url';

@@ -16,6 +16,11 @@
   }
 }
 
+:root {
+  --small-frame-height: 20dvh;
+  --small-frame-width: calc(var(--small-frame-height) * (16 / 9));
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -33,30 +38,27 @@ body {
   position: relative;
 }
 
-#yt-player-div,
-#sharedVideo,
+#yt-video-box,
+#shared-video-box,
 #yt-player-div iframe,
 #messages-toggle-btn,
 .messages-box,
 .top-left-menu {
-  opacity: 1 !important;
+  opacity: 1;
   pointer-events: auto;
   will-change: opacity;
   transition: opacity 200ms ease;
 }
 
-#localVideo.hidden,
-#remoteVideo.hidden,
-#yt-player-div.hidden,
-#sharedVideo.hidden,
+.video-box.hidden,
 #searchQuery.hidden,
 #searchResults.hidden,
 #messages-toggle-btn.hidden,
-#mutePartnerBtn.hidden,
+#mute-btn.hidden,
 #call-btn.hidden,
 #hang-up-btn.hidden,
-#switchCameraSelfBtn.hidden,
-#videoSelfBtn.hidden,
+#switch-camera-btn.hidden,
+#camera-btn.hidden,
 .chat-btn.hidden,
 .messages-box.hidden,
 .top-left-menu.hidden {
@@ -125,18 +127,6 @@ a:hover {
 
 a span {
   text-decoration: none;
-}
-
-#localVideo {
-  display: block;
-  /* transform: scaleX(-1); */
-}
-
-#localVideo:picture-in-picture,
-#remoteVideo:picture-in-picture,
-#localVideo.smallFrame:picture-in-picture,
-#remoteVideo.smallFrame:picture-in-picture {
-  display: none;
 }
 
 input[type='text'] {
@@ -334,16 +324,16 @@ button:disabled {
 
 .search-result-item {
   display: flex;
-  background: #2a2a2a;
+  background-color: #2a2a2a;
   gap: 15px;
   padding: 15px;
   border-bottom: 1px solid #444;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background-color 0.2s;
 }
 
 .search-result-item:hover {
-  background: #777;
+  background-color: #777;
 }
 
 .search-result-item:last-child {
@@ -533,26 +523,58 @@ button:disabled {
   display: grid;
   grid-template-columns: 1fr;
   height: 100vh;
+  width: 100%;
   overflow: hidden;
 }
 
-.video-player {
+.video-box {
+  width: 100%;
+  height: 100%;
+}
+
+.video-box video {
   background-color: black;
+
+  min-width: fit-content;
+  min-height: fit-content;
+
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: inherit;
+  display: block;
+}
+
+.video-box.smallFrame video {
+  object-fit: cover;
+  min-width: 150px;
+  min-height: 84px;
+}
+
+#local-video-el {
+  background-color: transparent;
+  transform: translateX(-1);
+}
+
+#local-video-el:picture-in-picture,
+#remote-video-el:picture-in-picture,
+#local-video-el.smallFrame:picture-in-picture,
+#remote-video-el.smallFrame:picture-in-picture {
+  display: none;
 }
 
 .smallFrame {
-  position: fixed;
+  position: absolute;
   top: 20px;
   left: 20px;
-  height: 170px;
-  width: 300px;
   border-radius: 5px;
-  border: 2px solid #444;
+  /* border: 2px solid #444; */
   -webkit-box-shadow: 3px 3px 15px -1px rgba(0, 0, 0, 0.77);
   box-shadow: 3px 3px 15px -1px rgba(0, 0, 0, 0.77);
+
+  height: var(--small-frame-height);
+  width: var(--small-frame-width);
+
   z-index: 999;
 
   transform: translateX(0);
@@ -560,54 +582,65 @@ button:disabled {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-#localVideo.smallFrame {
-  transform: translateX(-1);
-}
-
 .smallFrame.closed {
-  transform: translateX(-340px);
+  transform: translateX(calc(0px - (var(--small-frame-width) + 20px)));
 }
 
-button.smallFrame-toggle-btn {
-  position: fixed;
-  top: 90px;
-  left: 300px;
-  z-index: 999;
+.smallFrame-toggle-div {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  transform-origin: center;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  background-color: transparent;
+  background: transparent;
   color: white;
   border: none;
   border-radius: 50%;
   width: 20px;
   height: 20px;
   cursor: pointer;
-  font-weight: bold;
   padding: 0.75rem;
 
+  z-index: 9999;
   opacity: 0.5;
   transform: translateX(0) rotate(0deg);
-  will-change: transform;
-  transition: translate 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    rotate 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.25s;
+  will-change: transform, opacity;
+  transition: translate 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-button.smallFrame-toggle-btn.closed {
-  translate: -290px;
+.smallFrame-toggle-div.closed {
+  transform: translateX(55px);
+}
+
+.smallFrame-toggle-icon {
+  background: transparent;
+  text-shadow: 0px 1px 2px #000, 1px 2px 3px #222;
+  padding: 2px;
+  font-size: 1rem;
+  font-weight: bold;
+
+  transform: rotate(0deg);
+  will-change: rotate;
+  transition: rotate 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.25s;
+}
+
+.smallFrame-toggle-icon.closed {
   rotate: 180deg;
-  /* border: 2px solid #b4b4b474; */
 }
 
-button.smallFrame-toggle-btn:hover,
-button.smallFrame-toggle-btn.closed:hover {
+.smallFrame-toggle-div:hover,
+.smallFrame-toggle-div.closed:hover {
   opacity: 1;
   color: #fff;
   background: transparent;
-  /* border: 2px solid #b4b4b478; */
-  /*background: rgba(215, 215, 215, 0.099); */
+}
+
+.smallFrame-toggle-div.closed:hover {
+  box-shadow: #000000b4 0px 0px 30px 2px;
 }
 
 /* Control buttons */
@@ -707,33 +740,24 @@ button.smallFrame-toggle-btn.closed:hover {
   margin-top: 15px;
   margin-right: 15px;
   gap: 10px;
-
-  button {
-    height: 40px;
-  }
 }
 
-#installBtn {
+.top-left-menu button {
+  height: 40px;
+}
+
+#install-btn {
   z-index: 1000;
   display: none;
 }
 
 @media screen and (max-width: 600px) {
-  .smallFrame {
-    height: 80px;
-    width: 120px;
-  }
-
   .chat-btn {
     padding: 12px;
   }
 }
 
 @media (max-width: 768px) {
-  video {
-    max-width: 100%;
-  }
-
   input[type='text'] {
     width: 100%;
   }

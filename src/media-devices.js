@@ -16,15 +16,40 @@ export const userMediaAudioConstraints = {
 
 export const userMediaVideoConstraints = {
   desktop: {
-    width: { min: 1280, ideal: 1920, max: 2560 },
-    height: { min: 720, ideal: 1080, max: 1440 },
-    frameRate: { ideal: 30, max: 60 },
-    aspectRatio: { ideal: 16 / 9 },
-    // resizeMode: 'crop-and-scale', // 'none' | 'crop-and-scale'
+    landscape: {
+      width: { min: 1280, ideal: window.innerWidth, max: 2560 }, // 1920
+      height: { min: 720, ideal: window.innerHeight, max: 1440 }, // 1080
+      frameRate: { min: 15, ideal: 30, max: 60 },
+      aspectRatio: { ideal: 16 / 9 },
+      resizeMode: 'none', // 'none' | 'crop-and-scale'
+    },
+    // portrait mode is the same as landscape for desktop
+    portrait: {
+      width: { min: 1280, ideal: 1920, max: 2560 },
+      height: { min: 720, ideal: 1080, max: 1440 },
+      frameRate: { min: 15, ideal: 30, max: 60 },
+      aspectRatio: { ideal: 16 / 9 },
+      resizeMode: 'none',
+    },
   },
-  // mobile: {
+  mobile: {
+    portrait: {
+      width: { min: 720, ideal: 1080, max: 1440 },
+      height: { min: 1280, ideal: 1920, max: 2560 },
+      aspectRatio: { ideal: 9 / 16 },
+      frameRate: { min: 15, ideal: 30, max: 60 },
+      resizeMode: 'none',
+    },
+    landscape: {
+      width: { min: 1280, ideal: 1920, max: 2560 },
+      height: { min: 720, ideal: 1080, max: 1440 },
+      aspectRatio: { ideal: 16 / 9 },
+      frameRate: { min: 15, ideal: 30, max: 60 },
+      resizeMode: 'none',
+    },
+  },
 
-  default: true,
+  relyOnBrowserDefaults: true, // Just { video: true }
 };
 
 // ===== UTILS =====
@@ -288,7 +313,7 @@ export async function OLD_updateVideoConstraintsForOrientation({
 }
 // === SIMPLIFIED ORIENTATION LOGIC ===
 
-const createDebugLog = (msg, data) => {
+const devDebug = (msg, data) => {
   if (import.meta.env.DEV) console.debug(msg, data);
 };
 
@@ -331,14 +356,14 @@ export async function handleOrientationChange({
 }) {
   if (isUpdatingForOrientation || !localStream?.getVideoTracks()[0]) return;
   isUpdatingForOrientation = true;
-  createDebugLog('Orientation change detected.');
+  devDebug('Orientation change detected.');
   try {
     const videoTrack = localStream.getVideoTracks()[0];
     const constraints = getOrientationAwareVideoConstraints(currentFacingMode);
-    createDebugLog('Applying constraints:', constraints);
+    devDebug('Applying constraints:', constraints);
     // Apply constraints to existing track (no new stream)
     await videoTrack.applyConstraints(constraints);
-    createDebugLog('Video constraints updated successfully');
+    devDebug('Video constraints updated successfully');
   } catch (error) {
     console.error('Failed to apply orientation constraints:', error);
   } finally {
@@ -355,18 +380,29 @@ export function isPortraitOrientation() {
 }
 
 export function getOrientationAwareVideoConstraints(facingMode) {
-  const isPortrait = isPortraitOrientation();
-  createDebugLog(
-    `Orientation: ${
-      isPortrait ? 'portrait' : 'landscape'
-    }, facingMode: ${facingMode}`
+  const orientation = isPortraitOrientation() ? 'portrait' : 'landscape';
+  const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+
+  // Todo: use dimensions if needed
+  // const currentViewport = {
+  //   width: window.innerWidth,
+  //   height: window.innerHeight,
+  // };
+
+  devDebug(
+    `Orientation: ${orientation}, isMobile: ${isMobile}, facingMode: ${facingMode}`
   );
-  return {
-    facingMode,
-    aspectRatio: { ideal: isPortrait ? 9 / 16 : 16 / 9 },
-    width: { ideal: isPortrait ? 1080 : 1920 },
-    height: { ideal: isPortrait ? 1920 : 1080 },
-  };
+
+  if (!isMobile) {
+    // Desktop constraints
+    return {
+      facingMode, // ? is facingMode relevant if !isMobile ?
+      ...userMediaVideoConstraints.desktop,
+    };
+  }
+
+  // Mobile constraints
+  return { facingMode, ...userMediaVideoConstraints.mobile[orientation] };
 }
 
 // === DEBUG ====

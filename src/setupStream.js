@@ -33,7 +33,7 @@ export const createLocalStream = async () => {
   const videoConstraints = getOrientationAwareVideoConstraints('user');
 
   localStream = await navigator.mediaDevices.getUserMedia({
-    video: videoConstraints || userMediaVideoConstraints.default,
+    video: videoConstraints || userMediaVideoConstraints.relyOnBrowserDefaults,
     audio: userMediaAudioConstraints.default,
   });
 

@@ -4,7 +4,7 @@
 
 import { showElement, hideElement } from './utils/ui-utils.js';
 
-const YT_CONTAINER_ID = 'yt-player-div';
+const YT_CONTAINER_ID = 'yt-video-box';
 const YT_PLAYER_ROOT_ID = 'yt-player-root';
 
 let ytPlayer = null;
@@ -15,7 +15,7 @@ export const getYouTubePlayer = () => ytPlayer;
 export const isYouTubeReady = () => ytReady;
 export const setYouTubeReady = (ready) => (ytReady = ready);
 
-export const getYTContainer = () => {
+export const getYTBox = () => {
   const el = document.getElementById(YT_CONTAINER_ID);
   if (!el) throw new Error(`Container #${YT_CONTAINER_ID} not found`);
   return el;
@@ -44,7 +44,7 @@ export function waitForYouTubeAPI() {
 // ============================================================================
 
 export function showYouTubePlayer() {
-  const wrapper = getYTContainer();
+  const wrapper = getYTBox();
 
   if (!document.getElementById(YT_PLAYER_ROOT_ID)) {
     const root = document.createElement('div');
@@ -55,13 +55,13 @@ export function showYouTubePlayer() {
 }
 
 export function hideYouTubePlayer() {
-  const wrapper = getYTContainer();
+  const wrapper = getYTBox();
 
   hideElement(wrapper);
 }
 
 export function isYTVisible() {
-  const ytContainer = getYTContainer();
+  const ytContainer = getYTBox();
   return ytContainer && !ytContainer.classList.contains('hidden');
 }
 
@@ -113,7 +113,7 @@ export async function loadYouTubeVideo({ url, onReady, onStateChange }) {
 
   // Regain event listener control for document
   const blurIframe = (allowSpace = true) => {
-    const ytContainer = getYTContainer();
+    const ytContainer = getYTBox();
     const iframe = ytPlayer.getIframe();
 
     if (iframe && ytContainer) {
@@ -138,7 +138,7 @@ export async function loadYouTubeVideo({ url, onReady, onStateChange }) {
         // Allow spacebar to play and regain focus
         const onKeydown = (event) => {
           if (event.code === 'Space') {
-            const ytContainer = getYTContainer();
+            const ytContainer = getYTBox();
             const iframe = ytPlayer.getIframe();
             // if already focused on iframe, do nothing
             if (
@@ -164,7 +164,7 @@ export async function loadYouTubeVideo({ url, onReady, onStateChange }) {
   };
 
   const focusIframe = () => {
-    const ytContainer = getYTContainer();
+    const ytContainer = getYTBox();
     const iframe = ytPlayer.getIframe();
 
     if (ytContainer && iframe && document.activeElement !== iframe) {

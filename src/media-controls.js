@@ -95,10 +95,9 @@ export function addRemoteVideoEventListeners(remoteVideo, mutePartnerBtn) {
  * @param {HTMLVideoElement} params.getLocalVideo - Getter for Local video element
  * @param {HTMLVideoElement} params.getRemoteVideo - Getter for Remote video element
  * @param {RTCPeerConnection} params.getPeerConnection - Getter for Peer connection (optional, for camera switch)
- * @param {HTMLElement} params.muteSelfBtn - Mute self button
- * @param {HTMLElement} params.videoSelfBtn - Video toggle button
- * @param {HTMLElement} params.switchCameraSelfBtn - Switch camera button
- * @param {HTMLElement} params.fullscreenSelfBtn - Fullscreen self button
+ * @param {HTMLElement} params.micBtn - Local microphone toggle button
+ * @param {HTMLElement} params.cameraBtn - Local camera toggle button
+ * @param {HTMLElement} params.switchCameraBtn - Switch camera button
  * @param {HTMLElement} params.mutePartnerBtn - Mute partner button
  * @param {HTMLElement} params.fullscreenPartnerBtn - Fullscreen partner button
  */
@@ -108,16 +107,15 @@ export function initializeMediaControls({
   getRemoteVideo,
   getPeerConnection = () => null,
   setLocalStream = null,
-  muteSelfBtn,
-  videoSelfBtn,
-  switchCameraSelfBtn,
-  fullscreenSelfBtn,
+  micBtn,
+  cameraBtn,
+  switchCameraBtn,
   mutePartnerBtn,
   fullscreenPartnerBtn,
 }) {
   // ===== TOGGLE MIC =====
-  if (muteSelfBtn) {
-    muteSelfBtn.onclick = () => {
+  if (micBtn) {
+    micBtn.onclick = () => {
       const localStream = getLocalStream();
       const localVideo = getLocalVideo();
       if (!localVideo || !localStream) return;
@@ -125,20 +123,20 @@ export function initializeMediaControls({
       const shouldMute = !localVideo.muted;
       setMicrophoneEnabled(!shouldMute, localStream);
       setLocalVideoMuted(!shouldMute, 0, localVideo);
-      updateMuteMicIcon(shouldMute, muteSelfBtn);
+      updateMuteMicIcon(shouldMute, micBtn);
     };
   }
 
   // ===== TOGGLE CAMERA ON/OFF =====
-  if (videoSelfBtn) {
-    videoSelfBtn.onclick = () => {
+  if (cameraBtn) {
+    cameraBtn.onclick = () => {
       const localStream = getLocalStream();
       if (!localStream) return;
 
       const videoTrack = localStream.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
-        const icon = videoSelfBtn.querySelector('i');
+        const icon = cameraBtn.querySelector('i');
         icon.className = videoTrack.enabled
           ? 'fa fa-video'
           : 'fa fa-video-slash';
@@ -220,8 +218,8 @@ export function initializeMediaControls({
 
   cleanupFunctions.push(removeOrientationListener);
 
-  if (switchCameraSelfBtn) {
-    switchCameraSelfBtn.onclick = async () => {
+  if (switchCameraBtn) {
+    switchCameraBtn.onclick = async () => {
       // TODO: review
       const result = await switchCamera({
         localStream: getLocalStream(),
@@ -238,18 +236,6 @@ export function initializeMediaControls({
         }
       } else {
         console.error('Camera switch failed.');
-      }
-    };
-  }
-
-  // ===== FULLSCREEN FOR LOCAL VIDEO =====
-  if (fullscreenSelfBtn) {
-    fullscreenSelfBtn.onclick = () => {
-      const localVideo = getLocalVideo();
-      if (localVideo.requestFullscreen) {
-        localVideo.requestFullscreen();
-      } else if (localVideo.webkitRequestFullscreen) {
-        localVideo.webkitRequestFullscreen();
       }
     };
   }
