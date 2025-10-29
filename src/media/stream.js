@@ -10,7 +10,7 @@ import { updateStatus } from '../utils/status.js';
 let videoOnlyStream = null;
 
 export const createLocalStream = async () => {
-  const existingStream = getLocalStream();
+  const existingStream = getLocalStream(false); // (false) -> don't log null error
   if (existingStream && existingStream instanceof MediaStream) {
     console.debug('Reusing existing local MediaStream.');
     return existingStream;

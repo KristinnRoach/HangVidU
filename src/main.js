@@ -848,19 +848,19 @@ async function autoJoinFromUrl() {
   roomId = urlRoomId;
   updateStatus('Connecting to room...');
 
-  const initSuccess = await init();
-  let answerSuccess = false;
-  if (initSuccess) answerSuccess = await answerCall();
+  // const initSuccess = await init();
+  // let answerSuccess = false;
+  // if (initSuccess)
 
-  if (answerSuccess) {
-    return true;
-  } else {
+  const answerSuccess = await answerCall();
+
+  if (!answerSuccess) {
     showElement(callBtn);
     hangUpBtn.disabled = true;
     callBtn.disabled = false;
     clearUrlParam();
   }
-  return false;
+  return answerSuccess;
 }
 
 // ============================================================================
@@ -868,16 +868,16 @@ async function autoJoinFromUrl() {
 // ============================================================================
 
 window.onload = async () => {
-  // Auto-join if room parameter exists
-  const joinedSuccess = await autoJoinFromUrl();
-  if (joinedSuccess) return;
-
+  // Always initialize first
   const success = await init();
   if (!success) {
     callBtn.disabled = true;
     console.error('Initialization failed. Cannot start chat.');
     return;
   }
+
+  // Auto-join if room parameter exists
+  await autoJoinFromUrl();
 };
 
 // Handle page leave

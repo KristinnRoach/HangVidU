@@ -1,9 +1,11 @@
 let localStream = null;
 
-export function getLocalStream() {
+export function getLocalStream(logNullError = true) {
   if (!localStream || !(localStream instanceof MediaStream)) {
-    console.error('Invalid local MediaStream accessed:', localStream);
-    console.error('Call createLocalStream() before accessing local stream.');
+    if (logNullError) {
+      console.error('Invalid local MediaStream accessed:', localStream);
+      console.error('Call createLocalStream() before accessing local stream.');
+    }
     return null;
   }
   return localStream;
