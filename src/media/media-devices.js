@@ -164,11 +164,6 @@ export async function switchCamera({
     const newVideoTrack = newStream.getVideoTracks()[0];
     const newAudioTrack = newStream.getAudioTracks()[0];
 
-    const oldVideoTrack = localStream.getVideoTracks()[0];
-    const wasVideoEnabled = oldVideoTrack ? oldVideoTrack.enabled : true;
-    const oldAudioTrack = localStream.getAudioTracks()[0];
-    const wasAudioMuted = oldAudioTrack ? !oldAudioTrack.enabled : false;
-
     // Replace tracks in the peer connection
     if (peerConnection) {
       const videoSender = peerConnection
@@ -206,124 +201,17 @@ export async function switchCamera({
   }
 }
 
-/**
- * Detects the current device orientation.
- * @returns {boolean} True if portrait, false if landscape.
- */
-export function OLD_isPortraitOrientation() {
-  return (
-    window.screen?.orientation?.type?.includes('portrait') ||
-    window.orientation === 0 ||
-    window.orientation === 180
-  );
-}
-
-/**
- * Returns video constraints based on current orientation and facing mode.
- * @param {string} facingMode - 'user' or 'environment'.
- * @returns {object} Video constraints object.
- */
-export function OLD_getOrientationAwareVideoConstraints(facingMode) {
-  const isPortrait = OLD_isPortraitOrientation();
-
-  import.meta.env.DEV &&
-    console.debug(
-      `Orientation detected: ${
-        isPortrait ? 'portrait' : 'landscape'
-      }, facingMode: ${facingMode}`
-    );
-
-  if (isPortrait) {
-    return {
-      facingMode,
-      aspectRatio: { ideal: 9 / 16 }, // Portrait aspect ratio
-      width: { ideal: 1080 }, // Swapped for portrait
-      height: { ideal: 1920 },
-    };
-  } else {
-    return {
-      facingMode,
-      aspectRatio: { ideal: 16 / 9 }, // Landscape aspect ratio
-      width: { ideal: 1920 },
-      height: { ideal: 1080 },
-    };
-  }
-}
-
-/**
- * Updates video constraints based on orientation change (without switching cameras).
- * @param {MediaStream} localStream - The current local stream.
- * @param {HTMLVideoElement} localVideo - The local video element.
- * @param {RTCPeerConnection} peerConnection - The peer connection.
- * @param {string} currentFacingMode - The current facing mode ('user' or 'environment').
- */
-export async function OLD_updateVideoConstraintsForOrientation({
-  localStream,
-  localVideo,
-  currentFacingMode,
-  peerConnection = null,
-}) {
-  const videoConstraints =
-    OLD_getOrientationAwareVideoConstraints(currentFacingMode);
-
-  try {
-    // Get a new stream with updated constraints (same facing mode)
-    const newStream = await navigator.mediaDevices.getUserMedia({
-      video: videoConstraints,
-      audio: userMediaAudioConstraints.default,
-    });
-
-    const newVideoTrack = newStream.getVideoTracks()[0];
-    const newAudioTrack = newStream.getAudioTracks()[0];
-
-    // Capture the mute state
-    const oldAudioTrack = localStream.getAudioTracks()[0];
-    const wasAudioMuted = oldAudioTrack ? !oldAudioTrack.enabled : false;
-    const wasVideoMuted = localVideo.muted;
-
-    // Replace tracks in the peer connection if provided // ? consider refactoring / removing ?
-    if (peerConnection) {
-      const videoSender = peerConnection
-        .getSenders()
-        .find((s) => s.track && s.track.kind === 'video');
-      if (videoSender) videoSender.replaceTrack(newVideoTrack);
-
-      const audioSender = peerConnection
-        .getSenders()
-        .find((s) => s.track && s.track.kind === 'audio');
-      if (audioSender && newAudioTrack) audioSender.replaceTrack(newAudioTrack);
-    }
-
-    // Apply mute state
-    if (newAudioTrack) {
-      newAudioTrack.enabled = !wasAudioMuted;
-    }
-
-    // Stop old tracks
-    localStream.getTracks().forEach((track) => track.stop());
-
-    // Update local video
-    localVideo.srcObject = newStream;
-    localVideo.muted = wasVideoMuted;
-
-    console.log('Updated video constraints for orientation change.');
-    return { newStream };
-  } catch (error) {
-    console.error('Failed to update video constraints for orientation:', error);
-    return null;
-  }
-}
 // === SIMPLIFIED ORIENTATION LOGIC ===
 
 let isUpdatingForOrientation = false;
-let orientationListener = null;
+let orientationQuery = null;
 let boundOrientationHandler = null;
 
 export function setupOrientationListener({ getLocalStream, getFacingMode }) {
-  if (orientationListener && boundOrientationHandler) {
-    orientationListener.removeEventListener('change', boundOrientationHandler);
+  if (orientationQuery && boundOrientationHandler) {
+    orientationQuery.removeEventListener('change', boundOrientationHandler);
   }
-  orientationListener = window.matchMedia('(orientation: portrait)');
+  orientationQuery = window.matchMedia('(orientation: portrait)');
   boundOrientationHandler = () => {
     try {
       const ls = typeof getLocalStream === 'function' ? getLocalStream() : null;
@@ -333,15 +221,12 @@ export function setupOrientationListener({ getLocalStream, getFacingMode }) {
       console.error('Orientation handler failed:', e);
     }
   };
-  orientationListener.addEventListener('change', boundOrientationHandler);
+  orientationQuery.addEventListener('change', boundOrientationHandler);
   return () => {
-    if (orientationListener && boundOrientationHandler) {
-      orientationListener.removeEventListener(
-        'change',
-        boundOrientationHandler
-      );
+    if (orientationQuery && boundOrientationHandler) {
+      orientationQuery.removeEventListener('change', boundOrientationHandler);
     }
-    orientationListener = null;
+    orientationQuery = null;
     boundOrientationHandler = null;
   };
 }
@@ -402,21 +287,3 @@ export function getOrientationAwareVideoConstraints(facingMode) {
   // Mobile constraints
   return { facingMode, ...userMediaVideoConstraints.mobile[orientation] };
 }
-
-// === DEBUG ====
-
-// if (import.meta.env.DEV) {
-//   // Modern approach using matchMedia (best browser compatibility)
-//   const orientationQuery = window.matchMedia('(orientation: portrait)');
-
-//   orientationQuery.addEventListener('change', (e) => {
-//     console.log(`Orientation: ${e.matches ? 'portrait' : 'landscape'}`);
-//   });
-
-//   // Log initial state
-//   console.log(
-//     `Initial orientation: ${
-//       orientationQuery.matches ? 'portrait' : 'landscape'
-//     }`
-//   );
-// }
