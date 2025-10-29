@@ -16,13 +16,15 @@ import {
   setYouTubeReady,
 } from './youtube-player.js';
 
-import { sharedVideoEl } from './elements.js'; // TODO: refactor:
+import { sharedVideoEl, sharedBoxEl } from './elements.js'; // TODO: refactor:
 import { hideElement, showElement } from './utils/ui-utils.js';
 import { enterWatchMode } from './main.js';
 
 // ============================================================================
 // WATCH-TOGETHER SYNC (Firebase-based)
 // ============================================================================
+
+// TODO: if loaded video before making a call or before call is joined, still store a ref to it so if partner joines later can sync automatically
 
 // Keep local copy of active room ID to avoid stale/null imports from main.js
 let currentRoomId = null;
@@ -122,12 +124,12 @@ function handleRemoteUrlChange(url) {
   currentVideoUrl = url;
 
   if (isYouTubeUrl(url)) {
-    hideElement(sharedVideoEl);
+    hideElement(sharedBoxEl);
     loadYouTubeVideoWithSync(url);
     lastWatched = 'yt';
   } else {
     destroyYouTubePlayer();
-    showElement(sharedVideoEl);
+    showElement(sharedBoxEl);
     sharedVideoEl.src = url;
     lastWatched = 'url';
   }
@@ -265,19 +267,17 @@ async function loadStream(url) {
   lastLocalAction = Date.now();
 
   if (isYouTubeUrl(url)) {
-    hideElement(sharedVideoEl);
+    hideElement(sharedBoxEl);
     const success = await loadYouTubeVideoWithSync(url);
     if (!success) return false;
 
-    enterWatchMode();
     lastWatched = 'yt';
   } else {
     destroyYouTubePlayer();
 
-    showElement(sharedVideoEl);
+    showElement(sharedBoxEl);
     sharedVideoEl.src = url;
 
-    enterWatchMode();
     lastWatched = 'url';
   }
 
@@ -307,6 +307,9 @@ export async function handleVideoSelection(video) {
   currentVideoUrl = video.url;
 
   const success = await loadStream(video.url);
+
+  enterWatchMode();
+
   return success;
 }
 

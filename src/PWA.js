@@ -28,8 +28,10 @@ function setupPWA() {
 
   // iOS: Show instructions instead of install prompt
   if (isIOS()) {
-    showElement(installBtn);
+    installBtn.innerHTML = '<i class="fa fa-info"></i>';
     installBtn.title = 'Show Install Instructions';
+    showElement(installBtn);
+
     installBtn.onclick = () => {
       alert(
         "Tap the Share icon and choose 'Add to Home Screen' to install this app."
@@ -64,15 +66,19 @@ function setupPWA() {
       try {
         await beforeInstallEvent.prompt();
         const { outcome } = await beforeInstallEvent.userChoice;
-
-        devDebug(`User choice: ${outcome}`);
+        devDebug(`User choice outcome: ${outcome}`);
 
         if (outcome === 'accepted') {
-          hideElement(installBtn);
+          console.info('[PWA]: User accepted the install prompt');
+        } else {
+          console.info('[PWA]: User dismissed the install prompt');
         }
 
+        hideElement(installBtn);
         beforeInstallEvent = null;
       } catch (error) {
+        hideElement(installBtn);
+
         console.error('Error showing install prompt:', error);
       }
     });

@@ -18,7 +18,6 @@ let searchResults = null;
 let isInitialized = false;
 let _initializing = false;
 let searchResultsCache = [];
-let onVideoSelectCallback = null;
 let lastSearchQuery = '';
 let focusedResultIndex = -1;
 
@@ -37,8 +36,6 @@ const YOUTUBE_API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
 export function initializeSearchUI() {
   if (isInitialized || _initializing) return false;
   _initializing = true;
-
-  onVideoSelectCallback = handleVideoSelection;
 
   // Get DOM elements
   searchContainer = document.querySelector('.search-section');
@@ -91,8 +88,8 @@ export function initializeSearchUI() {
       await searchYouTube(query);
     } else {
       // Treat as direct video link
-      if (onVideoSelectCallback) {
-        await onVideoSelectCallback({
+      if (handleVideoSelection) {
+        await handleVideoSelection({
           url: query,
           title: query,
           channel: '',
@@ -144,8 +141,8 @@ export function initializeSearchUI() {
           await searchYouTube(query);
         } else {
           // Treat as direct video link
-          if (onVideoSelectCallback) {
-            await onVideoSelectCallback({
+          if (handleVideoSelection) {
+            await handleVideoSelection({
               url: query,
               title: query,
               channel: '',
@@ -311,8 +308,8 @@ function displaySearchResults(results) {
     `;
 
     resultItem.onclick = async () => {
-      if (onVideoSelectCallback) {
-        await onVideoSelectCallback(video);
+      if (handleVideoSelection) {
+        await handleVideoSelection(video);
 
         // Hide search results after selection
         hideElement(searchResults);

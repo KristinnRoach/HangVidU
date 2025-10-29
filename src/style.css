@@ -38,9 +38,44 @@ body {
   position: relative;
 }
 
+/* LOBBY */
+
+#lobby {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100%;
+  padding: 2rem;
+  gap: 2rem;
+}
+
+#lobby.hidden {
+  display: none;
+}
+
+#app-title-h1 {
+  text-align: center;
+  font-size: 3rem;
+}
+
+#app-title-a {
+  color: #4c81af;
+  text-decoration: none;
+}
+
+#app-title-a:hover {
+  text-decoration: underline;
+}
+
+#app-title-span {
+  pointer-events: none;
+}
+
 #yt-video-box,
 #shared-video-box,
-#yt-player-div iframe,
+#yt-video-box iframe,
 #messages-toggle-btn,
 .messages-box,
 .top-left-menu {
@@ -221,8 +256,8 @@ button:disabled {
 
 /*** WATCH TOGETHER MODE STYLES ***/
 
-#sharedVideo,
-#yt-player-div {
+#shared-video-box,
+#yt-video-box {
   position: fixed;
   top: 0;
   left: 0;
@@ -237,12 +272,12 @@ button:disabled {
   z-index: 1;
 }
 
-#yt-player-div iframe {
+#yt-video-box iframe {
   width: 100%;
   height: 100%;
 }
 
-#sharedVideo {
+#shared-video-box {
   min-height: 200px;
 }
 
@@ -629,6 +664,8 @@ button:disabled {
   padding: 2px;
   font-size: 1rem;
   font-weight: bold;
+
+  z-index: 9999;
 
   transform: rotate(0deg);
   will-change: rotate;
