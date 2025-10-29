@@ -82,7 +82,7 @@ import {
 } from './youtube-player.js';
 
 import { cleanupSearchUI, initializeSearchUI } from './youtube-search.js';
-import { setupPWA } from './PWA.js';
+import { setupPWA } from './pwa/PWA.js';
 import { setupIceCandidates } from './ice.js';
 import {
   setUpLocalStream,
@@ -96,7 +96,7 @@ import { initMessagesUI } from './chat-ui.js';
 import {
   copyToClipboard,
   showCopyLinkModal,
-} from './components/copyLinkModal.js';
+} from './components/modal/copyLinkModal.js';
 import { devDebug } from './utils/log.js';
 
 // ============================================================================

@@ -25,7 +25,7 @@ export const hideElement = (el) => {
 };
 
 export const isInSmallFrame = (element) => {
-  return element.classList.contains('smallFrame');
+  return element.classList.contains('small-frame');
 };
 
 export const placeInSmallFrame = (element) => {
@@ -36,12 +36,12 @@ export const placeInSmallFrame = (element) => {
   }
 
   if (!isInSmallFrame(element)) {
-    element.classList.add('smallFrame');
+    element.classList.add('small-frame');
     // Add toggle button
     const toggle = document.createElement('div');
-    toggle.classList.add('smallFrame-toggle-div');
+    toggle.classList.add('small-frame-toggle-div');
     const icon = document.createElement('span');
-    icon.classList.add('smallFrame-toggle-icon');
+    icon.classList.add('small-frame-toggle-icon');
     icon.textContent = '❮'; // ❮ | ⟨
     toggle.appendChild(icon);
     element.appendChild(toggle);
@@ -63,9 +63,9 @@ export const placeInSmallFrame = (element) => {
 
 export const removeFromSmallFrame = (element) => {
   if (isInSmallFrame(element)) {
-    element.classList.remove('smallFrame');
+    element.classList.remove('small-frame');
     // Remove close icon if exists
-    const closeIcon = document.querySelector('.smallFrame-close');
+    const closeIcon = document.querySelector('.small-frame-close');
     if (closeIcon) closeIcon.remove();
   }
 };

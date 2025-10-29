@@ -1,4 +1,4 @@
-// src/media-devices.js
+// media-devices.js
 
 import { devDebug } from './utils/log';
 

@@ -4,6 +4,7 @@ export const lobbyDiv = document.getElementById('lobby');
 export const createLinkBtn = document.getElementById('create-link-btn');
 export const copyLinkBtn = document.getElementById('copy-link-btn');
 
+export const videosWrapper = document.getElementById('videos');
 export const localVideoEl = document.getElementById('local-video-el');
 export const localBoxEl = document.getElementById('local-video-box');
 export const remoteVideoEl = document.getElementById('remote-video-el');
@@ -19,22 +20,16 @@ export const switchCameraBtn = document.getElementById('switch-camera-btn');
 export const installBtn = document.getElementById('install-btn');
 
 export const statusDiv = document.getElementById('status');
-export const linkContainer = document.getElementById('link-container');
-export const chatContainer = document.getElementById('videos');
-
 export const syncStatus = document.getElementById('sync-status');
-
-export const shareLink = document.getElementById('share-link');
-export const streamUrlInput = document.getElementById('stream-url-input');
 
 export const mutePartnerBtn = document.getElementById('mute-btn');
 export const fullscreenPartnerBtn = document.getElementById(
-  'fullscreenPartnerBtn'
+  'fullscreen-partner-btn'
 );
 export const micBtn = document.getElementById('mic-btn');
 export const cameraBtn = document.getElementById('camera-btn');
 
-export const fullscreenAppBtn = document.getElementById('fullscreen-app-btn');
+export const appPipBtn = document.getElementById('app-pip-btn');
 
 export const appTitleH1 = document.getElementById('app-title-h1');
 export const appTitleA = document.getElementById('app-title-a');
@@ -46,14 +41,5 @@ export const appTitleSpan = document.getElementById('app-title-span');
 //     console.error(`Element with id: ${id} not found.`);
 //     return null;
 //   }
-
 //   return el;
 // };
-
-// export const videoInputSelect
-// export const audioInputSelect
-// export const audioOutputSelect
-
-// export const videoFileInput = document.getElementById('videoFile');
-// export const uploadProgress = document.getElementById('uploadProgress');
-// const uploadBtn = document.getElementById('uploadBtn'); // Temporarily disabled
