@@ -1,6 +1,8 @@
 // elements.js - Centralized DOM element exports
 
 export const lobbyDiv = document.getElementById('lobby');
+export const createLinkBtn = document.getElementById('create-link-btn');
+export const copyLinkBtn = document.getElementById('copy-link-btn');
 
 export const localVideoEl = document.getElementById('local-video-el');
 export const localBoxEl = document.getElementById('local-video-box');

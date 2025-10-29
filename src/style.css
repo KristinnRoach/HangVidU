@@ -36,6 +36,17 @@ body {
 
 .main-wrapper {
   position: relative;
+  place-content: center;
+  height: 100vh;
+  width: 100vw;
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
 }
 
 /* LOBBY */
@@ -45,14 +56,37 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100vh;
-  width: 100%;
-  padding: 2rem;
-  gap: 2rem;
+
+  place-self: center;
+  padding: 4rem;
+  gap: 1rem;
+
+  font-size: 1.5rem;
+  background: #2d2d2d;
+  border-radius: 12px;
+  max-width: 90vw;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
-#lobby.hidden {
-  display: none;
+#create-link-btn,
+#copy-link-btn {
+  margin-top: 1rem;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+#lobby.hidden,
+#copy-link-btn.hidden,
+#create-link-btn.hidden {
+  visibility: hidden;
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+}
+
+#copy-link-btn.hidden,
+#create-link-btn.hidden {
+  pointer-events: none;
 }
 
 #app-title-h1 {
@@ -62,16 +96,14 @@ body {
 
 #app-title-a {
   color: #4c81af;
-  text-decoration: none;
+  z-index: 1;
 }
 
 #app-title-a:hover {
   text-decoration: underline;
 }
 
-#app-title-span {
-  pointer-events: none;
-}
+/* #app-title-span {} */
 
 #yt-video-box,
 #shared-video-box,
@@ -556,6 +588,10 @@ button:disabled {
 /* === WIP Re-Style Videos === */
 
 #videos {
+  position: fixed;
+  top: 0;
+  left: 0;
+
   display: grid;
   grid-template-columns: 1fr;
   height: 100vh;
@@ -724,6 +760,8 @@ button:disabled {
 
   max-height: 80vh;
   overflow-y: auto;
+
+  pointer-events: auto;
 }
 
 .chat-controls.watch-mode .chat-btn {
