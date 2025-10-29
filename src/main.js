@@ -132,8 +132,12 @@ async function init() {
   peerId = Math.random().toString(36).substring(2, 15);
 
   // TEMP FIX: hide YouTube container if present
-  const ytBox = getYTBox();
-  ytBox && hideElement(ytBox);
+  try {
+    const ytBox = getYTBox();
+    ytBox && hideElement(ytBox);
+  } catch {
+    // ignore
+  }
 
   try {
     await setUpLocalStream(localVideoEl);
@@ -507,6 +511,11 @@ export function enterWatchMode() {
   if (isWatchModeActive()) return;
   setWatchMode(true);
 
+  // Hide lobby if visible
+  hideElement(lobbyDiv);
+  hideElement(createLinkBtn);
+  hideElement(copyLinkBtn);
+
   chatControls.classList.remove('bottom');
   chatControls.classList.add('watch-mode');
   showElement(chatControls);
@@ -565,7 +574,7 @@ export function exitWatchMode() {
   // Enable auto-hide again
   if (!cleanupChatControlAutoHide) {
     cleanupChatControlAutoHide = setupShowHideOnInactivity(chatControls, {
-      inactivityMs: 2500,
+      inactivityMs: 3000,
       hideOnEsc: true,
     });
   }
@@ -584,6 +593,12 @@ export function exitWatchMode() {
   placeInSmallFrame(localBoxEl);
   showElement(localBoxEl);
 
+  if (!isRemoteVideoVideoActive()) {
+    showElement(lobbyDiv);
+    showElement(createLinkBtn);
+    showElement(copyLinkBtn);
+  }
+
   setWatchMode(false);
 }
 
@@ -592,6 +607,8 @@ let enterCallMode = () => {
   placeInSmallFrame(localBoxEl);
 
   hideElement(lobbyDiv);
+  hideElement(createLinkBtn);
+  hideElement(copyLinkBtn);
 
   callBtn.disabled = true;
   mutePartnerBtn.disabled = false;
@@ -650,8 +667,6 @@ let exitCallMode = () => {
   placeInSmallFrame(localBoxEl); // Always keep local video in small frame
   showElement(localBoxEl);
 
-  showElement(lobbyDiv);
-
   callBtn.disabled = false;
   hangUpBtn.disabled = true;
   mutePartnerBtn.disabled = true;
@@ -663,7 +678,11 @@ let exitCallMode = () => {
 
   showElement(chatControls); // Ensure visible
 
+  createLinkBtn.disabled = false;
   copyLinkBtn.disabled = true;
+  showElement(lobbyDiv);
+  showElement(createLinkBtn);
+  showElement(copyLinkBtn);
 };
 
 // ============================================================================
