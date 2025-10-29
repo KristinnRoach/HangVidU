@@ -3,8 +3,12 @@ export const userMediaAudioConstraints = {
     echoCancellation: true,
     noiseSuppression: true,
     autoGainControl: true,
+
+    // Browser should ignore the below constraints if not available
     voiceIsolation: true,
     restrictOwnAudio: true,
+    googHighpassFilter: true, // chromium
+    googTypingNoiseDetection: true, // chromium
     highpassFilter: true,
     typingNoiseDetection: true,
   },
@@ -13,17 +17,17 @@ export const userMediaAudioConstraints = {
 export const userMediaVideoConstraints = {
   desktop: {
     landscape: {
-      width: { min: 1280, ideal: window.innerWidth, max: 2560 },
-      height: { min: 720, ideal: window.innerHeight, max: 1440 },
+      width: { min: 1280, ideal: 1920, max: 2560 }, // Todo: When mobile testing set up:
+      height: { min: 720, ideal: 1080, max: 1440 }, // -> consider using () => window.innerWidth, window.innerHeight
       frameRate: { min: 15, ideal: 30, max: 60 },
       aspectRatio: { ideal: 16 / 9 },
       resizeMode: 'none',
     },
     portrait: {
-      width: { min: 1280, ideal: 1920, max: 2560 },
-      height: { min: 720, ideal: 1080, max: 1440 },
+      width: { min: 720, ideal: 1080, max: 1440 },
+      height: { min: 1280, ideal: 1920, max: 2560 },
       frameRate: { min: 15, ideal: 30, max: 60 },
-      aspectRatio: { ideal: 16 / 9 },
+      aspectRatio: { ideal: 9 / 16 },
       resizeMode: 'none',
     },
   },

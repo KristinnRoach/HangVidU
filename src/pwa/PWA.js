@@ -1,4 +1,4 @@
-import { devDebug } from '../utils/log';
+import { devDebug } from '../utils/dev-utils';
 import { hideElement, showElement } from '../utils/ui-utils';
 import { installBtn } from '../elements';
 
