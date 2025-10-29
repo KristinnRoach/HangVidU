@@ -99,6 +99,8 @@ import {
   showCopyLinkModal,
 } from './components/modal/copyLinkModal.js';
 import { devDebug } from './utils/dev-utils.js';
+import { saveContact } from './storage/idb.js';
+import { storageConfig } from './storage/config.js';
 
 // ============================================================================
 // GLOBAL STATE
@@ -295,6 +297,10 @@ function setupConnectionStateHandlers(pc) {
     if (pc.connectionState === 'connected') {
       updateStatus('Connected!');
       enterCallMode();
+
+      if (roomId && storageConfig.contacts.storeInIDB) {
+        saveContact(roomId);
+      }
     } else if (pc.connectionState === 'disconnected') {
       updateStatus('Partner disconnected');
       exitCallMode();
@@ -810,6 +816,21 @@ createLinkBtn.onclick = async () => await createCall();
 copyLinkBtn.onclick = async () => await handleCopyLink();
 
 hangUpBtn.onclick = async () => await hangUp();
+
+// ============================================================================
+// SAVED ROOM FUNCTIONALITY
+// ============================================================================
+
+async function joinSavedRoom(savedRoomId) {
+  roomId = savedRoomId;
+  updateStatus('Connecting to saved room...');
+
+  const success = await answerCall();
+  if (!success) {
+    updateStatus('Failed to connect to saved room');
+    roomId = null;
+  }
+}
 
 // ============================================================================
 // AUTO-JOIN FROM URL PARAMETER
