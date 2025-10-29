@@ -18,9 +18,9 @@ import {
   removeAllFirebaseListeners,
   rtdb,
   trackFirebaseListener,
-} from './firebase.js';
+} from './p2p/firebase.js';
 
-import { onClickOutside } from './utils/clickOutside';
+import { onClickOutside } from './utils/clickOutside.js';
 import {
   isHidden,
   showElement,
@@ -29,7 +29,7 @@ import {
   placeInSmallFrame,
   removeFromSmallFrame,
   isInSmallFrame,
-} from './utils/ui-utils';
+} from './utils/ui-utils.js';
 import { updateStatus } from './utils/status.js';
 import { setupShowHideOnInactivity } from './utils/showHideOnInactivity.js';
 import {
@@ -56,12 +56,12 @@ import {
 import {
   initializeMediaControls,
   cleanupMediaControls,
-} from './media-controls.js';
+} from './media/media-controls.js';
 
 import {
   hasFrontAndBackCameras,
   userMediaAudioConstraints,
-} from './media-devices.js';
+} from './media/media-devices.js';
 
 import {
   setupWatchSync,
@@ -69,7 +69,7 @@ import {
   setWatchMode,
   getLastWatched,
   setLastWatched,
-} from './watch-sync.js';
+} from './p2p/watch-sync.js';
 
 import {
   destroyYouTubePlayer,
@@ -79,24 +79,27 @@ import {
   showYouTubePlayer,
   hideYouTubePlayer,
   setYouTubeReady,
-} from './youtube-player.js';
+} from './media/youtube/youtube-player.js';
 
-import { cleanupSearchUI, initializeSearchUI } from './youtube-search.js';
-import { setupPWA } from './PWA.js';
-import { setupIceCandidates } from './ice.js';
+import {
+  cleanupSearchUI,
+  initializeSearchUI,
+} from './media/youtube/youtube-search.js';
+import { setupPWA } from './pwa/PWA.js';
+import { setupIceCandidates } from './p2p/ice.js';
 import {
   setUpLocalStream,
   setupRemoteStream,
   getLocalStream,
   setLocalStream,
   cleanupLocalStream,
-} from './setupStream.js';
+} from './media/stream.js';
 
-import { initMessagesUI } from './chat-ui.js';
+import { initMessagesUI } from './components/messages/messages-ui.js';
 import {
   copyToClipboard,
   showCopyLinkModal,
-} from './components/copyLinkModal.js';
+} from './components/modal/copyLinkModal.js';
 import { devDebug } from './utils/log.js';
 
 // ============================================================================

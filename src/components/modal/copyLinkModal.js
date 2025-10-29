@@ -1,3 +1,5 @@
+// modal.js
+
 /**
  * Modern Copy Link Modal
  * Creates and shows a modal dialog for copying links

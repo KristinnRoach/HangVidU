@@ -1,6 +1,6 @@
-// src/media-devices.js
+// media-devices.js
 
-import { devDebug } from './utils/log';
+import { devDebug } from '../utils/log.js';
 
 // === DEFAULT USER MEDIA CONSTRAINTS ===
 

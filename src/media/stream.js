@@ -6,7 +6,7 @@ import {
   getOrientationAwareVideoConstraints,
 } from './media-devices.js';
 
-import { updateStatus } from './utils/status.js';
+import { updateStatus } from '../utils/status.js';
 
 let localStream = null;
 let videoOnlyStream = null;

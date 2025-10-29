@@ -1,6 +1,6 @@
-import { devDebug } from './utils/log';
-import { hideElement, showElement } from './utils/ui-utils';
-import { installBtn } from './elements';
+import { devDebug } from '../utils/log';
+import { hideElement, showElement } from '../utils/ui-utils';
+import { installBtn } from '../elements';
 
 let beforeInstallEvent = null;
 let installBtnHandlerAttached = false;
