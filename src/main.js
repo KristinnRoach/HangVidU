@@ -51,6 +51,7 @@ import {
   lobbyDiv,
   createLinkBtn,
   copyLinkBtn,
+  getElements,
 } from './elements.js';
 
 import {
@@ -97,7 +98,7 @@ import {
   copyToClipboard,
   showCopyLinkModal,
 } from './components/modal/copyLinkModal.js';
-import { devDebug } from './utils/log.js';
+import { devDebug } from './utils/dev-utils.js';
 
 // ============================================================================
 // GLOBAL STATE
@@ -131,6 +132,23 @@ export const isRemoteVideoVideoActive = () => {
 async function init() {
   peerId = Math.random().toString(36).substring(2, 15);
 
+  // Validate critical elements first
+  const elements = getElements();
+  const criticalElements = [
+    'localVideoEl',
+    'remoteVideoEl',
+    'localBoxEl',
+    'remoteBoxEl',
+    'chatControls',
+  ];
+
+  const missingCritical = criticalElements.filter((name) => !elements[name]);
+  if (missingCritical.length > 0) {
+    console.error('Critical elements missing:', missingCritical);
+    updateStatus('Error: Required UI elements not found.');
+    return false;
+  }
+
   // TEMP FIX: hide YouTube container if present
   try {
     const ytBox = getYTBox();
@@ -142,7 +160,8 @@ async function init() {
   try {
     await setUpLocalStream(localVideoEl);
 
-    if (await hasFrontAndBackCameras()) {
+    // Optional feature: camera switching (only if element exists)
+    if (switchCameraBtn && (await hasFrontAndBackCameras())) {
       showElement(switchCameraBtn);
     }
 
@@ -160,15 +179,22 @@ async function init() {
       fullscreenPartnerBtn,
     });
 
-    localVideoEl.addEventListener('enterpictureinpicture', () =>
-      hideElement(localBoxEl)
-    );
+    // Safe event listener attachment
+    if (localVideoEl) {
+      localVideoEl.addEventListener(
+        'enterpictureinpicture',
+        () => localBoxEl && hideElement(localBoxEl)
+      );
 
-    localVideoEl.addEventListener('leavepictureinpicture', () => {
-      if (!(isWatchModeActive() && isRemoteVideoVideoActive())) {
-        showElement(localBoxEl);
-      }
-    });
+      localVideoEl.addEventListener('leavepictureinpicture', () => {
+        if (
+          localBoxEl &&
+          !(isWatchModeActive() && isRemoteVideoVideoActive())
+        ) {
+          showElement(localBoxEl);
+        }
+      });
+    }
 
     setupPWA();
 
@@ -177,8 +203,6 @@ async function init() {
     addKeyListeners();
 
     exitCallMode(); // Ensure UI is in initial state
-
-    // if (import.meta.env.DEV) micBtn.click();
 
     return true;
   } catch (error) {
@@ -266,9 +290,8 @@ const rtcConfig = {
 
 function setupConnectionStateHandlers(pc) {
   pc.onconnectionstatechange = () => {
-    if (import.meta.env.DEV) {
-      console.log('Connection state:', pc.connectionState);
-    }
+    devDebug('Connection state:', pc.connectionState);
+
     if (pc.connectionState === 'connected') {
       updateStatus('Connected!');
       enterCallMode();
@@ -340,20 +363,18 @@ async function createCall() {
         pc.signalingState !== 'have-local-offer' &&
         pc.signalingState !== 'stable'
       ) {
-        if (import.meta.env.DEV) {
-          console.log(
-            'Ignoring answer - unexpected signaling state:',
-            pc.signalingState
-          );
-        }
+        devDebug(
+          'Ignoring answer - unexpected signaling state:',
+          pc.signalingState
+        );
+
         return true;
       }
 
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
-        if (import.meta.env.DEV) {
-          console.log('Remote description set (answer)');
-        }
+        devDebug('Remote description set (answer)');
+
         return true;
       } catch (error) {
         console.error('Failed to set remote description:', error);
@@ -848,7 +869,6 @@ window.addEventListener('beforeunload', (e) => {
     return e.returnValue;
   }
 
-  // Clean up resources
   cleanup();
 });
 
@@ -864,7 +884,6 @@ async function hangUp() {
 
   console.debug('Hanging up...');
 
-  // Stop remote media
   if (remoteVideoEl.srcObject) {
     remoteVideoEl.srcObject.getTracks().forEach((track) => track.stop());
     remoteVideoEl.srcObject = null;
@@ -872,7 +891,6 @@ async function hangUp() {
 
   cleanupMediaControls();
 
-  // Close peer connection
   if (pc) {
     pc.close();
     pc = null;
@@ -880,7 +898,6 @@ async function hangUp() {
 
   removeAllFirebaseListeners();
 
-  // Clear debounce timeout if any
   if (seekDebounceTimeout) {
     clearTimeout(seekDebounceTimeout);
     seekDebounceTimeout = null;
@@ -949,5 +966,3 @@ function cleanup() {
   cleanupSearchUI();
   cleanupFunctions.forEach((cleanupFn) => cleanupFn());
 }
-
-// TODO: move

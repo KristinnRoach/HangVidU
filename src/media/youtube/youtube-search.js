@@ -3,7 +3,6 @@
 // ============================================================================
 
 import { onClickOutside } from '../../utils/clickOutside.js';
-import setupShowHideOnInactivity from '../../utils/showHideOnInactivity.js';
 import { isHidden, showElement, hideElement } from '../../utils/ui-utils.js';
 import { handleVideoSelection } from '../../p2p/watch-sync.js';
 
@@ -33,15 +32,18 @@ const YOUTUBE_API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
  * Initialize YouTube search UI
 //  * @param {Function} handleVideoSelection - Callback when user selects a video
  */
-export function initializeSearchUI() {
+export async function initializeSearchUI() {
   if (isInitialized || _initializing) return false;
   _initializing = true;
 
-  // Get DOM elements
-  searchContainer = document.querySelector('.search-section');
-  searchBtn = document.getElementById('searchBtn');
-  searchQuery = document.getElementById('searchQuery');
-  searchResults = document.getElementById('searchResults');
+  // Use robust access for dynamically loaded search elements
+  const { initializeYouTubeElements } = await import('../../elements.js');
+  const elements = await initializeYouTubeElements();
+
+  searchContainer = elements.searchContainer;
+  searchBtn = elements.searchBtn;
+  searchQuery = elements.searchQuery;
+  searchResults = elements.searchResults;
 
   if (!searchContainer || !searchBtn || !searchQuery || !searchResults) {
     console.error('YouTube search elements not found in DOM');
@@ -54,7 +56,7 @@ export function initializeSearchUI() {
   };
 
   const focusResult = (index) => {
-    const items = searchResults.querySelectorAll('.search-result-item');
+    const items = searchResults?.querySelectorAll('.search-result-item') || [];
     items.forEach((item, i) => {
       if (i === index) {
         item.classList.add('focused');
@@ -63,7 +65,7 @@ export function initializeSearchUI() {
         item.classList.remove('focused');
       }
     });
-    focusedResultIndex = index;
+    focusedResultIndex = index ?? -1;
   };
 
   // Add search button event listener
