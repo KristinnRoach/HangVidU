@@ -1,6 +1,6 @@
 // elements.js - Centralized DOM element exports
 
-export const installBtn = document.getElementById('install-btn');
+export const lobbyDiv = document.getElementById('lobby');
 
 export const localVideoEl = document.getElementById('local-video-el');
 export const localBoxEl = document.getElementById('local-video-box');
@@ -13,6 +13,8 @@ export const chatControls = document.getElementById('chat-controls');
 export const callBtn = document.getElementById('call-btn');
 export const hangUpBtn = document.getElementById('hang-up-btn');
 export const switchCameraBtn = document.getElementById('switch-camera-btn');
+
+export const installBtn = document.getElementById('install-btn');
 
 export const statusDiv = document.getElementById('status');
 export const linkContainer = document.getElementById('link-container');
@@ -32,9 +34,9 @@ export const cameraBtn = document.getElementById('camera-btn');
 
 export const fullscreenAppBtn = document.getElementById('fullscreen-app-btn');
 
-export const titleHeader = document.getElementById('titleHeader');
-export const titleLink = document.getElementById('titleLink');
-export const titleText = document.getElementById('titleText');
+export const appTitleH1 = document.getElementById('app-title-h1');
+export const appTitleA = document.getElementById('app-title-a');
+export const appTitleSpan = document.getElementById('app-title-span');
 
 // const getElement = (id) => {
 //   const el = document.getElementById(id);

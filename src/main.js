@@ -28,6 +28,7 @@ import {
   isElementInPictureInPicture,
   placeInSmallFrame,
   removeFromSmallFrame,
+  isInSmallFrame,
 } from './utils/ui-utils';
 import { updateStatus } from './utils/status.js';
 import { setupShowHideOnInactivity } from './utils/showHideOnInactivity.js';
@@ -44,11 +45,11 @@ import {
   micBtn,
   cameraBtn,
   switchCameraBtn,
-  installBtn,
   chatControls,
   localBoxEl,
   remoteBoxEl,
   sharedBoxEl,
+  lobbyDiv,
 } from './elements.js';
 
 import {
@@ -92,6 +93,7 @@ import {
 
 import { initMessagesUI } from './chat-ui.js';
 import { showCopyLinkModal } from './components/copyLinkModal.js';
+import { devDebug } from './utils/log.js';
 
 // ============================================================================
 // GLOBAL STATE
@@ -125,12 +127,8 @@ async function init() {
   peerId = Math.random().toString(36).substring(2, 15);
 
   // TEMP FIX: hide YouTube container if present
-  try {
-    const ytBox = getYTBox();
-    hideElement(ytBox);
-  } catch {
-    // Container not present — OK
-  }
+  const ytBox = getYTBox();
+  ytBox && hideElement(ytBox);
 
   try {
     await setUpLocalStream(localVideoEl);
@@ -151,6 +149,16 @@ async function init() {
       switchCameraBtn,
       mutePartnerBtn,
       fullscreenPartnerBtn,
+    });
+
+    localVideoEl.addEventListener('enterpictureinpicture', () =>
+      hideElement(localBoxEl)
+    );
+
+    localVideoEl.addEventListener('leavepictureinpicture', () => {
+      if (!(isWatchModeActive() && isRemoteVideoVideoActive())) {
+        showElement(localBoxEl);
+      }
     });
 
     setupPWA();
@@ -483,6 +491,8 @@ let seekDebounceTimeout = null; // Todo: Is this still needed?
 // ============================================================================
 
 let cleanupChatControlAutoHide = null;
+let cleanupRemoteLeavePipHandler = null;
+let cleanupRemoteEnterPipHandler = null;
 
 function isPiPSupported() {
   return (
@@ -498,6 +508,7 @@ export function enterWatchMode() {
 
   chatControls.classList.remove('bottom');
   chatControls.classList.add('watch-mode');
+  showElement(chatControls);
   // Disable auto-hide in watch mode to ensure accessibility
   if (cleanupChatControlAutoHide) {
     cleanupChatControlAutoHide();
@@ -505,10 +516,13 @@ export function enterWatchMode() {
   }
 
   if (!isRemoteVideoVideoActive()) {
-    showElement(localBoxEl);
-    placeInSmallFrame(localBoxEl);
     hideElement(remoteBoxEl);
     removeFromSmallFrame(remoteBoxEl);
+
+    if (!isElementInPictureInPicture(localVideoEl)) {
+      showElement(localBoxEl);
+      placeInSmallFrame(localBoxEl);
+    }
     return;
   }
 
@@ -576,6 +590,8 @@ let enterCallMode = () => {
   showElement(remoteBoxEl);
   placeInSmallFrame(localBoxEl);
 
+  hideElement(lobbyDiv);
+
   callBtn.disabled = true;
   mutePartnerBtn.disabled = false;
   hangUpBtn.disabled = false;
@@ -586,6 +602,44 @@ let enterCallMode = () => {
       inactivityMs: 2500,
       hideOnEsc: true,
     });
+  }
+
+  if (!cleanupRemoteLeavePipHandler) {
+    const remoteLeavePipHandler = () => {
+      if (isWatchModeActive()) placeInSmallFrame(remoteBoxEl);
+      else removeFromSmallFrame(remoteBoxEl);
+      showElement(remoteBoxEl);
+    };
+    // Handle case when user exits PiP manually
+    remoteVideoEl.addEventListener(
+      'leavepictureinpicture',
+      remoteLeavePipHandler
+    );
+
+    cleanupRemoteLeavePipHandler = () =>
+      remoteVideoEl.removeEventListener(
+        'leavepictureinpicture',
+        remoteLeavePipHandler
+      );
+
+    cleanupFunctions.push(cleanupRemoteLeavePipHandler);
+  }
+
+  if (!cleanupRemoteEnterPipHandler) {
+    const remoteEnterPipHandler = () => hideElement(remoteBoxEl);
+
+    remoteVideoEl.addEventListener(
+      'enterpictureinpicture',
+      remoteEnterPipHandler
+    );
+
+    cleanupRemoteEnterPipHandler = () =>
+      remoteVideoEl.removeEventListener(
+        'enterpictureinpicture',
+        remoteEnterPipHandler
+      );
+
+    cleanupFunctions.push(cleanupRemoteEnterPipHandler);
   }
 
   // showElement(mutePartnerBtn);
@@ -601,6 +655,8 @@ let exitCallMode = () => {
   hideElement(remoteBoxEl);
   placeInSmallFrame(localBoxEl); // Always keep local video in small frame
   showElement(localBoxEl);
+
+  showElement(lobbyDiv);
 
   callBtn.disabled = false;
   hangUpBtn.disabled = true;
@@ -657,25 +713,19 @@ function addKeyListeners() {
         console.log('isWatchModeActive():', isWatchModeActive());
 
         if (getLastWatched() === 'yt') {
-          console.log('Processing YouTube case');
           if (isYTVisible()) {
-            console.log('Hiding YouTube player');
             hideYouTubePlayer();
             exitWatchMode();
           } else {
-            console.log('Showing YouTube player');
             showYouTubePlayer();
             enterWatchMode();
           }
         } else if (getLastWatched() === 'url') {
-          console.log('Processing URL case');
           if (isSharedVideoVisible()) {
-            console.log('Hiding shared video');
-            hideElement(sharedVideoEl);
+            hideElement(sharedBoxEl);
             exitWatchMode();
           } else {
-            console.log('Showing shared video');
-            showElement(sharedVideoEl);
+            showElement(sharedBoxEl);
             enterWatchMode();
           }
         }
@@ -693,11 +743,11 @@ function addKeyListeners() {
       if (getLastWatched() === 'yt' && isYTVisible()) {
         pauseYouTubeVideo();
         hideYouTubePlayer();
-        exitWatchMode();
       } else if (getLastWatched() === 'url' && isSharedVideoVisible()) {
         sharedVideoEl.pause();
-        hideElement(sharedVideoEl);
+        hideElement(sharedBoxEl);
       }
+      exitWatchMode();
     }
   });
 
@@ -875,3 +925,5 @@ function cleanup() {
   cleanupSearchUI();
   cleanupFunctions.forEach((cleanupFn) => cleanupFn());
 }
+
+// TODO: move
