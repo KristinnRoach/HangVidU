@@ -58,10 +58,7 @@ import {
   cleanupMediaControls,
 } from './media/media-controls.js';
 
-import {
-  hasFrontAndBackCameras,
-  userMediaAudioConstraints,
-} from './media/media-devices.js';
+import { hasFrontAndBackCameras } from './media/media-devices.js';
 
 import {
   setupWatchSync,
@@ -87,13 +84,13 @@ import {
 } from './media/youtube/youtube-search.js';
 import { setupPWA } from './pwa/PWA.js';
 import { setupIceCandidates } from './p2p/ice.js';
+import { setUpLocalStream, setupRemoteStream } from './media/stream.js';
+
 import {
-  setUpLocalStream,
-  setupRemoteStream,
   getLocalStream,
   setLocalStream,
   cleanupLocalStream,
-} from './media/stream.js';
+} from './media/state.js';
 
 import { initMessagesUI } from './components/messages/messages-ui.js';
 import {

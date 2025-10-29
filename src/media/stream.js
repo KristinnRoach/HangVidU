@@ -1,55 +1,43 @@
 import { addRemoteVideoEventListeners } from './media-controls.js';
-
+import { getLocalStream, setLocalStream } from './state.js';
 import {
   userMediaAudioConstraints,
   userMediaVideoConstraints,
   getOrientationAwareVideoConstraints,
-} from './media-devices.js';
-
+} from './constraints.js';
 import { updateStatus } from '../utils/status.js';
 
-let localStream = null;
 let videoOnlyStream = null;
 
-export function getLocalStream() {
-  if (!localStream || !(localStream instanceof MediaStream)) {
-    console.error('Invalid local MediaStream accessed:', localStream);
-    console.error('Call createLocalStream() before accessing local stream.');
-    return null;
-  }
-  return localStream;
-}
-
-export function setLocalStream(newStream) {
-  localStream = newStream;
-}
-
 export const createLocalStream = async () => {
-  if (localStream && localStream instanceof MediaStream) {
+  const existingStream = getLocalStream();
+  if (existingStream && existingStream instanceof MediaStream) {
     console.debug('Reusing existing local MediaStream.');
-    return localStream;
+    return existingStream;
   }
 
   const videoConstraints = getOrientationAwareVideoConstraints('user');
 
-  localStream = await navigator.mediaDevices.getUserMedia({
+  const newStream = await navigator.mediaDevices.getUserMedia({
     video: videoConstraints || userMediaVideoConstraints.relyOnBrowserDefaults,
     audio: userMediaAudioConstraints.default,
   });
 
+  setLocalStream(newStream);
+
   if (import.meta.env.DEV) {
     console.table({
-      videoCapabilities: localStream.getVideoTracks()[0].getCapabilities(),
-      audioCapabilities: localStream.getAudioTracks()[0].getCapabilities(),
-      videoApplied: localStream.getVideoTracks()[0].getSettings(),
-      audioApplied: localStream.getAudioTracks()[0].getSettings(),
+      videoCapabilities: newStream.getVideoTracks()[0].getCapabilities(),
+      audioCapabilities: newStream.getAudioTracks()[0].getCapabilities(),
+      videoApplied: newStream.getVideoTracks()[0].getSettings(),
+      audioApplied: newStream.getAudioTracks()[0].getSettings(),
     });
   }
-  return localStream;
+  return newStream;
 };
 
 export async function setUpLocalStream(localVideoEl) {
-  localStream = await createLocalStream();
+  const localStream = await createLocalStream();
 
   // Workaround for mobile browser echo (don't respect "videoEl.volume"):
   // Create a new stream with only the video track for local preview
@@ -89,13 +77,6 @@ export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
   };
   return true;
 }
-
-export const cleanupLocalStream = () => {
-  if (localStream) {
-    localStream.getTracks().forEach((track) => track.stop());
-    localStream = null;
-  }
-};
 
 // // ======= DEVICES ==========
 // async function updateLocalMediaDevices() {

@@ -1,13 +1,7 @@
 // src/media-controls.js
 // Handles all media control button functionality (mute, video, camera, fullscreen)
 
-import {
-  switchCamera,
-  // updateVideoConstraintsForOrientation,
-  setupOrientationListener,
-  userMediaAudioConstraints,
-  userMediaVideoConstraints,
-} from './media-devices.js';
+import { switchCamera, setupOrientationListener } from './media-devices.js';
 
 // ============================================================================
 // STATE
