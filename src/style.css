@@ -56,6 +56,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  margin: 0 auto;
 
   place-self: center;
   padding: 3rem;
@@ -734,9 +735,9 @@ button:disabled {
   justify-content: center;
   column-gap: 2dvw;
   flex-wrap: wrap;
-  margin-bottom: 20px;
+  margin: 0 auto 1rem auto;
 
-  z-index: 1000;
+  z-index: 9999;
   pointer-events: auto;
 
   opacity: 1;
