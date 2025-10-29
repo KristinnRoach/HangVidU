@@ -36,7 +36,14 @@
           <a id="app-title-a"> <span id="app-title-span">HangVidU</span></a>
         </h1>
         <p>Create a link to share with your partner and start a video call.</p>
-        <button id="create-link-btn">Create Link</button>
+        <div class="flex-row">
+          <button id="create-link-btn" title="Create new chat link">
+            Create Link
+          </button>
+          <button id="copy-link-btn" title="Copy chat link" disabled>
+            <i class="fa fa-copy"></i>
+          </button>
+        </div>
       </div>
 
       <div id="videos">
@@ -79,7 +86,12 @@
         <button class="chat-btn" id="mic-btn" aria-label="Mute/unmute mic">
           <i class="fa fa-microphone"></i>
         </button>
-        <button class="chat-btn" id="mute-btn" aria-label="Mute/unmute">
+        <button
+          class="chat-btn"
+          id="mute-btn"
+          aria-label="Mute/unmute"
+          disabled
+        >
           <i class="fa fa-volume-up"></i>
         </button>
 

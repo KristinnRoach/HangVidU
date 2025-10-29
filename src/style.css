@@ -36,6 +36,17 @@ body {
 
 .main-wrapper {
   position: relative;
+  place-content: center;
+  height: 100vh;
+  width: 100vw;
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
 }
 
 /* LOBBY */
@@ -45,33 +56,57 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100vh;
-  width: 100%;
-  padding: 2rem;
-  gap: 2rem;
+
+  place-self: center;
+  padding: 3rem;
+
+  font-size: 1.25rem;
+  background: #2d2d2d;
+  border-radius: 12px;
+  max-width: 90vw;
+  box-shadow: 0 4px 12px rgba(11, 11, 11, 0.5);
 }
 
-#lobby.hidden {
-  display: none;
+#lobby p {
+  margin-bottom: 2rem;
+  color: #aaa;
+  text-align: center;
 }
+
+#create-link-btn,
+#copy-link-btn {
+  z-index: 1;
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 200ms;
+}
+
+#copy-link-btn.hidden,
+#create-link-btn.hidden {
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms;
+}
+
+/* #lobby.hidden {
+  opacity: 0;
+} */
 
 #app-title-h1 {
   text-align: center;
-  font-size: 3rem;
+  font-size: 2.5rem;
 }
 
 #app-title-a {
   color: #4c81af;
-  text-decoration: none;
 }
 
 #app-title-a:hover {
   text-decoration: underline;
 }
 
-#app-title-span {
-  pointer-events: none;
-}
+/* #app-title-span {} */
 
 #yt-video-box,
 #shared-video-box,
@@ -556,6 +591,11 @@ button:disabled {
 /* === WIP Re-Style Videos === */
 
 #videos {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+
   display: grid;
   grid-template-columns: 1fr;
   height: 100vh;
@@ -692,14 +732,14 @@ button:disabled {
 .chat-controls {
   display: flex;
   justify-content: center;
-  /* align-items: center; */
   column-gap: 2dvw;
   flex-wrap: wrap;
   margin-bottom: 20px;
 
   z-index: 1000;
-
   pointer-events: auto;
+
+  opacity: 1;
   transition: opacity 200ms ease;
 }
 
@@ -724,6 +764,8 @@ button:disabled {
 
   max-height: 80vh;
   overflow-y: auto;
+
+  pointer-events: auto;
 }
 
 .chat-controls.watch-mode .chat-btn {
@@ -737,6 +779,7 @@ button:disabled {
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
+  transition: opacity 200ms ease, visibility 0s linear 200ms;
 }
 
 .chat-btn {

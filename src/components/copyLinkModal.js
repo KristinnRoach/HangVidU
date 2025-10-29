@@ -332,17 +332,19 @@ function ensureDialogSupport(dialog) {
 }
 
 // Copy to clipboard with fallback
-async function copyToClipboard(text, inputElement) {
-  // Modern Clipboard API
+export async function copyToClipboard(text, inputElement = null) {
+  // Clipboard API
   if (navigator.clipboard && navigator.clipboard.writeText) {
     try {
       await navigator.clipboard.writeText(text);
       return true;
     } catch (err) {
       console.warn('Clipboard API failed, using fallback:', err);
+      return false;
     }
   }
 
+  if (!inputElement) return false;
   // Fallback for older browsers
   try {
     inputElement.select();

@@ -38,7 +38,6 @@ import {
   sharedVideoEl,
   callBtn,
   hangUpBtn,
-  shareLink,
   syncStatus,
   mutePartnerBtn,
   fullscreenPartnerBtn,
@@ -50,6 +49,8 @@ import {
   remoteBoxEl,
   sharedBoxEl,
   lobbyDiv,
+  createLinkBtn,
+  copyLinkBtn,
 } from './elements.js';
 
 import {
@@ -92,7 +93,10 @@ import {
 } from './setupStream.js';
 
 import { initMessagesUI } from './chat-ui.js';
-import { showCopyLinkModal } from './components/copyLinkModal.js';
+import {
+  copyToClipboard,
+  showCopyLinkModal,
+} from './components/copyLinkModal.js';
 import { devDebug } from './utils/log.js';
 
 // ============================================================================
@@ -105,6 +109,7 @@ let roomId = null;
 let peerId = null;
 let role = null; // 'initiator' | 'joiner'
 let messagesUI; // holds text chat UI reference
+let currentRoomLink = null;
 
 let cleanupFunctions = [];
 
@@ -127,8 +132,12 @@ async function init() {
   peerId = Math.random().toString(36).substring(2, 15);
 
   // TEMP FIX: hide YouTube container if present
-  const ytBox = getYTBox();
-  ytBox && hideElement(ytBox);
+  try {
+    const ytBox = getYTBox();
+    ytBox && hideElement(ytBox);
+  } catch {
+    // ignore
+  }
 
   try {
     await setUpLocalStream(localVideoEl);
@@ -169,9 +178,7 @@ async function init() {
 
     exitCallMode(); // Ensure UI is in initial state
 
-    if (import.meta.env.DEV) {
-      micBtn.click();
-    }
+    // if (import.meta.env.DEV) micBtn.click();
 
     return true;
   } catch (error) {
@@ -364,22 +371,20 @@ async function createCall() {
   // Add self to room members and listen for join/leave
   setupRoomMembers();
 
-  // Show share link
-  const shareUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
-  shareLink.value = shareUrl;
-  // TODO: Cleanup replaced elements and related code, e.g. -> linkContainer.style.display = 'block';
-  callBtn.disabled = true;
-  hangUpBtn.disabled = false;
+  // Copy share link
+  currentRoomLink = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
 
-  showCopyLinkModal(shareUrl, {
+  showCopyLinkModal(currentRoomLink, {
     onCopy: () => updateStatus('Link ready! Share with your partner.'),
     onCancel: () => {
       updateStatus('Call cancelled. Click "Start New Chat" to try again.');
-      hangUp();
+      // hangUp();
     },
   });
 
   updateStatus('Waiting for partner to join...');
+
+  copyLinkBtn.disabled = false;
 
   return true;
 }
@@ -506,6 +511,11 @@ export function enterWatchMode() {
   if (isWatchModeActive()) return;
   setWatchMode(true);
 
+  // Hide lobby if visible
+  hideElement(lobbyDiv);
+  hideElement(createLinkBtn);
+  hideElement(copyLinkBtn);
+
   chatControls.classList.remove('bottom');
   chatControls.classList.add('watch-mode');
   showElement(chatControls);
@@ -564,7 +574,7 @@ export function exitWatchMode() {
   // Enable auto-hide again
   if (!cleanupChatControlAutoHide) {
     cleanupChatControlAutoHide = setupShowHideOnInactivity(chatControls, {
-      inactivityMs: 2500,
+      inactivityMs: 3000,
       hideOnEsc: true,
     });
   }
@@ -583,6 +593,12 @@ export function exitWatchMode() {
   placeInSmallFrame(localBoxEl);
   showElement(localBoxEl);
 
+  if (!isRemoteVideoVideoActive()) {
+    showElement(lobbyDiv);
+    showElement(createLinkBtn);
+    showElement(copyLinkBtn);
+  }
+
   setWatchMode(false);
 }
 
@@ -591,6 +607,8 @@ let enterCallMode = () => {
   placeInSmallFrame(localBoxEl);
 
   hideElement(lobbyDiv);
+  hideElement(createLinkBtn);
+  hideElement(copyLinkBtn);
 
   callBtn.disabled = true;
   mutePartnerBtn.disabled = false;
@@ -641,13 +659,6 @@ let enterCallMode = () => {
 
     cleanupFunctions.push(cleanupRemoteEnterPipHandler);
   }
-
-  // showElement(mutePartnerBtn);
-  // showElement(micBtn);
-  // showElement(cameraBtn);
-  // if (hasFrontAndBackCameras()) {
-  //   showElement(switchCameraBtn);
-  // }
 };
 
 let exitCallMode = () => {
@@ -655,8 +666,6 @@ let exitCallMode = () => {
   hideElement(remoteBoxEl);
   placeInSmallFrame(localBoxEl); // Always keep local video in small frame
   showElement(localBoxEl);
-
-  showElement(lobbyDiv);
 
   callBtn.disabled = false;
   hangUpBtn.disabled = true;
@@ -667,10 +676,13 @@ let exitCallMode = () => {
     cleanupChatControlAutoHide = null;
   }
 
-  // hideElement(mutePartnerBtn);
-  // hideElement(switchCameraBtn);
-  // hideElement(micBtn);
-  // hideElement(cameraBtn);
+  showElement(chatControls); // Ensure visible
+
+  createLinkBtn.disabled = false;
+  copyLinkBtn.disabled = true;
+  showElement(lobbyDiv);
+  showElement(createLinkBtn);
+  showElement(copyLinkBtn);
 };
 
 // ============================================================================
@@ -758,11 +770,25 @@ function addKeyListeners() {
 // EVENT LISTENERS
 // ============================================================================
 
-callBtn.onclick = async () => {
-  await createCall();
-};
+async function handleCopyLink() {
+  if (currentRoomLink) {
+    const success = await copyToClipboard(currentRoomLink);
+    if (success) {
+      updateStatus('Link copied to clipboard!');
+      alert('Link copied!');
+    } else {
+      updateStatus('Failed to copy link to clipboard.');
+    }
+  }
+}
 
-hangUpBtn.onclick = hangUp;
+callBtn.onclick = async () => await createCall();
+
+createLinkBtn.onclick = async () => await createCall();
+
+copyLinkBtn.onclick = async () => await handleCopyLink();
+
+hangUpBtn.onclick = async () => await hangUp();
 
 // ============================================================================
 // AUTO-JOIN FROM URL PARAMETER
@@ -868,9 +894,6 @@ async function hangUp() {
     });
   }
 
-  // Reset UI
-  exitCallMode();
-
   membersListeners.forEach(({ ref: fbRef, type, callback }) =>
     off(fbRef, type, callback)
   );
@@ -886,7 +909,9 @@ async function hangUp() {
     document.exitPictureInPicture().catch((err) => console.error(err));
   }
 
-  // Cleanup chat UI
+  // Reset UI
+  exitCallMode();
+
   if (messagesUI && messagesUI.cleanup) {
     messagesUI.cleanup();
     messagesUI = null;
@@ -909,9 +934,8 @@ async function hangUp() {
 function cleanup() {
   if (pc || roomId) hangUp();
 
-  shareLink.value = '';
+  currentRoomLink = null;
   sharedVideoEl.src = '';
-  // streamUrlInput.value = '';
   syncStatus.textContent = '';
 
   cleanupLocalStream();

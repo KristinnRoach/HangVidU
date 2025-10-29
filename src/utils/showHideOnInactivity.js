@@ -15,7 +15,7 @@ import { showElement, hideElement } from './ui-utils.js';
 export function setupShowHideOnInactivity(
   element,
   {
-    inactivityMs = 2500,
+    inactivityMs = 3000,
     listenTarget = document,
     onShow = null,
     onHide = null,
