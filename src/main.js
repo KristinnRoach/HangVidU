@@ -99,6 +99,8 @@ import {
   showCopyLinkModal,
 } from './components/modal/copyLinkModal.js';
 import { devDebug } from './utils/dev-utils.js';
+import { saveContact } from './storage/idb.js';
+import { storageConfig } from './storage/config.js';
 
 // ============================================================================
 // GLOBAL STATE
@@ -295,6 +297,10 @@ function setupConnectionStateHandlers(pc) {
     if (pc.connectionState === 'connected') {
       updateStatus('Connected!');
       enterCallMode();
+
+      if (roomId && storageConfig.contacts.storeInIDB) {
+        saveContact(roomId);
+      }
     } else if (pc.connectionState === 'disconnected') {
       updateStatus('Partner disconnected');
       exitCallMode();
@@ -812,6 +818,21 @@ copyLinkBtn.onclick = async () => await handleCopyLink();
 hangUpBtn.onclick = async () => await hangUp();
 
 // ============================================================================
+// SAVED ROOM FUNCTIONALITY
+// ============================================================================
+
+async function joinSavedRoom(savedRoomId) {
+  roomId = savedRoomId;
+  updateStatus('Connecting to saved room...');
+
+  const success = await answerCall();
+  if (!success) {
+    updateStatus('Failed to connect to saved room');
+    roomId = null;
+  }
+}
+
+// ============================================================================
 // AUTO-JOIN FROM URL PARAMETER
 // ============================================================================
 
@@ -827,19 +848,19 @@ async function autoJoinFromUrl() {
   roomId = urlRoomId;
   updateStatus('Connecting to room...');
 
-  const initSuccess = await init();
-  let answerSuccess = false;
-  if (initSuccess) answerSuccess = await answerCall();
+  // const initSuccess = await init();
+  // let answerSuccess = false;
+  // if (initSuccess)
 
-  if (answerSuccess) {
-    return true;
-  } else {
+  const answerSuccess = await answerCall();
+
+  if (!answerSuccess) {
     showElement(callBtn);
     hangUpBtn.disabled = true;
     callBtn.disabled = false;
     clearUrlParam();
   }
-  return false;
+  return answerSuccess;
 }
 
 // ============================================================================
@@ -847,16 +868,16 @@ async function autoJoinFromUrl() {
 // ============================================================================
 
 window.onload = async () => {
-  // Auto-join if room parameter exists
-  const joinedSuccess = await autoJoinFromUrl();
-  if (joinedSuccess) return;
-
+  // Always initialize first
   const success = await init();
   if (!success) {
     callBtn.disabled = true;
     console.error('Initialization failed. Cannot start chat.');
     return;
   }
+
+  // Auto-join if room parameter exists
+  await autoJoinFromUrl();
 };
 
 // Handle page leave

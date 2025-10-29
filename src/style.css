@@ -761,3 +761,72 @@ button:disabled {
 #install-btn {
   z-index: 1000;
 }
+/* Contacts Styles */
+.contacts-container {
+  margin: 2rem auto;
+  max-width: 600px;
+  padding: 0 1rem;
+}
+
+.contacts-section {
+  background: #2d2d2d;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(11, 11, 11, 0.5);
+  z-index: 9999;
+}
+
+.contacts-section h3 {
+  color: #fff;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  text-align: center;
+}
+
+.contacts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: #3a3a3a;
+  border-radius: 8px;
+}
+
+.contact-call-btn {
+  flex: 1;
+  background: #4caf50;
+  color: white;
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+
+  z-index: 99999;
+}
+
+.contact-call-btn:hover {
+  background: #45a049;
+}
+
+.contact-delete-btn {
+  background: #f44336;
+  color: white;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+
+  z-index: 99999;
+}
+
+.contact-delete-btn:hover {
+  background: #da190b;
+}

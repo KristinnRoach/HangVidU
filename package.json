@@ -30,15 +30,16 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@playwright/test": "^1.56.0",
+    "@playwright/test": "^1.56.1",
     "@vitejs/plugin-basic-ssl": "^2.1.0",
-    "jsdom": "^27.0.0",
-    "vite": "^7.1.7",
+    "jsdom": "^27.0.1",
+    "vite": "^7.1.12",
     "vite-plugin-pwa": "^1.1.0",
-    "vitest": "^3.2.4"
+    "vitest": "^4.0.5"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
+    "dexie": "^4.2.1",
     "firebase": "^12.4.0"
   }
 }
