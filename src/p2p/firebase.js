@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase, off } from 'firebase/database';
+import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
 // ============================================================================
 // FIREBASE CONFIG + INIT
@@ -19,6 +20,7 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const rtdb = getDatabase(app);
+export const auth = getAuth(app);
 
 // ============================================================================
 // FB LISTENER TRACKING
@@ -35,4 +37,38 @@ export function removeAllFirebaseListeners() {
     off(ref, type, callback);
   });
   firebaseListeners.length = 0;
+}
+
+// ============================================================================
+// FB AUTH
+// ============================================================================
+
+export async function signInWithGoogle() {
+  const provider = new GoogleAuthProvider();
+  try {
+    const result = await signInWithPopup(auth, provider);
+    // Google Access Token to access the Google API
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    const token = credential.accessToken;
+    // The signed-in user info.
+    const user = result.user;
+    console.log('Signed in user:', user);
+    console.log('Google Access Token:', token);
+    alert(`Welcome, ${user.displayName}!`);
+  } catch (error) {
+    const errorCode = error.code;
+    const errorMessage = error.message;
+    // The email of the user's account used.
+    const email = error.customData?.email;
+    // The AuthCredential type that was used.
+    const credential = GoogleAuthProvider.credentialFromError(error);
+    console.error(
+      'Error during Google sign-in:',
+      errorMessage,
+      errorCode,
+      email,
+      credential
+    );
+    alert(`Sign-in failed: ${errorMessage}`);
+  }
 }

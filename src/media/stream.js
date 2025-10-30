@@ -6,6 +6,7 @@ import {
   getOrientationAwareVideoConstraints,
 } from './constraints.js';
 import { updateStatus } from '../utils/status.js';
+import { devDebug } from '../utils/dev-utils.js';
 
 let videoOnlyStream = null;
 
@@ -25,14 +26,14 @@ export const createLocalStream = async () => {
 
   setLocalStream(newStream);
 
-  if (import.meta.env.DEV) {
-    console.table({
-      videoCapabilities: newStream.getVideoTracks()[0].getCapabilities(),
-      audioCapabilities: newStream.getAudioTracks()[0].getCapabilities(),
-      videoApplied: newStream.getVideoTracks()[0].getSettings(),
-      audioApplied: newStream.getAudioTracks()[0].getSettings(),
-    });
-  }
+  // if (import.meta.env.DEV) {
+  //   console.table({
+  //     videoCapabilities: newStream.getVideoTracks()[0].getCapabilities(),
+  //     audioCapabilities: newStream.getAudioTracks()[0].getCapabilities(),
+  //     videoApplied: newStream.getVideoTracks()[0].getSettings(),
+  //     audioApplied: newStream.getAudioTracks()[0].getSettings(),
+  //   });
+  // }
   return newStream;
 };
 
@@ -49,9 +50,7 @@ export async function setUpLocalStream(localVideoEl) {
 
 export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
   pc.ontrack = (event) => {
-    if (import.meta.env.DEV) {
-      console.log('Received remote track');
-    }
+    devDebug(`REMOTE TRACK RECEIVED: ${event.track.kind}`);
 
     if (
       !event.streams ||

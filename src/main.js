@@ -101,6 +101,22 @@ import {
 import { devDebug } from './utils/dev-utils.js';
 import { saveContact } from './storage/idb.js';
 import { storageConfig } from './storage/config.js';
+import { saveRecentRoom } from './storage/recent-rooms.js';
+
+// ============================================================================
+// AUTH (GOOGLE SIGN-IN PoC)
+// ============================================================================
+
+import { signInWithGoogle } from './p2p/firebase.js'; // Todo: move
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+
+const auth = getAuth(); // Get the auth instance
+
+document
+  .getElementById('goog-signin-btn')
+  .addEventListener('click', signInWithGoogle);
+
+// onAuthStateChanged(auth, (user) => { ... });
 
 // ============================================================================
 // GLOBAL STATE
@@ -131,8 +147,10 @@ export const isRemoteVideoVideoActive = () => {
 // INITIALIZATION & MEDIA SETUP
 // ============================================================================
 
+const generatePeerId = () => Math.random().toString(36).substring(2, 15);
+
 async function init() {
-  peerId = Math.random().toString(36).substring(2, 15);
+  peerId = generatePeerId();
 
   // Validate critical elements first
   const elements = getElements();
@@ -202,6 +220,8 @@ async function init() {
 
     initializeSearchUI();
 
+    // initRecentCalls();
+
     addKeyListeners();
 
     exitCallMode(); // Ensure UI is in initial state
@@ -262,10 +282,10 @@ function setupRoomMembers() {
 
   // Listen for remote peer leave
   const onPartnerLeft = (snapshot) => {
-    if (snapshot.key !== peerId) {
+    if (snapshot.key !== peerId && pc?.connectionState === 'connected') {
       console.info('Partner has left the call');
     }
-    hangUp();
+    hangUp(); // ! TODO: re-assess what should happen here and review hangUp
   };
 
   onChildRemoved(membersRef, onPartnerLeft);
@@ -298,13 +318,18 @@ function setupConnectionStateHandlers(pc) {
       updateStatus('Connected!');
       enterCallMode();
 
-      if (roomId && storageConfig.contacts.storeInIDB) {
-        saveContact(roomId);
+      if (roomId) {
+        saveRecentRoom(roomId);
+        if (storageConfig.contacts.storeInIDB) {
+          saveContact(roomId);
+        }
       }
     } else if (pc.connectionState === 'disconnected') {
       updateStatus('Partner disconnected');
       exitCallMode();
       clearUrlParam();
+
+      hangUp(); // Check (async)
     } else if (pc.connectionState === 'failed') {
       updateStatus('Connection failed');
       clearUrlParam();
@@ -318,6 +343,9 @@ async function createCall() {
     updateStatus('Error: Camera not initialized');
     return false;
   }
+
+  // const recentCallBtn = document.getElementById('recent-call-btn');
+  // if (recentCallBtn) hideElement(recentCallBtn);
 
   // Generate room ID
   roomId = Math.random().toString(36).substring(2, 15);
@@ -422,6 +450,8 @@ async function createCall() {
 
 async function answerCall() {
   const localStream = getLocalStream();
+
+  devDebug('answerCall roomId: ', roomId);
 
   if (!localStream) {
     updateStatus('Error: Camera not initialized');
@@ -630,6 +660,12 @@ export function exitWatchMode() {
 }
 
 let enterCallMode = () => {
+  // Ensure video element is ready
+  if (!remoteVideoEl || remoteVideoEl.readyState === 0) {
+    console.warn('Remote video element is not ready');
+    // return;
+  }
+
   showElement(remoteBoxEl);
   placeInSmallFrame(localBoxEl);
 
@@ -797,6 +833,18 @@ function addKeyListeners() {
 // EVENT LISTENERS
 // ============================================================================
 
+// const recentCallBtn = document.getElementById('recent-call-btn');
+// if (recentCallBtn) {
+//   recentCallBtn.onclick = async () => {
+//     const lastRoomId = localStorage.getItem('lastRoomId') || null;
+//     if (lastRoomId) {
+//       await joinSavedRoom(lastRoomId);
+//     }
+//   };
+// } else {
+//   console.warn('no recent call button ');
+// }
+
 async function handleCopyLink() {
   if (currentRoomLink) {
     const success = await copyToClipboard(currentRoomLink);
@@ -818,19 +866,21 @@ copyLinkBtn.onclick = async () => await handleCopyLink();
 hangUpBtn.onclick = async () => await hangUp();
 
 // ============================================================================
-// SAVED ROOM FUNCTIONALITY
+// REJOIN RECENT ROOM
 // ============================================================================
 
-async function joinSavedRoom(savedRoomId) {
+async function rejoinRoom(savedRoomId) {
   roomId = savedRoomId;
-  updateStatus('Connecting to saved room...');
+  updateStatus('Rejoining room...');
 
   const success = await answerCall();
   if (!success) {
-    updateStatus('Failed to connect to saved room');
+    updateStatus('Failed to rejoin room');
     roomId = null;
   }
 }
+
+window.rejoinRoom = rejoinRoom;
 
 // ============================================================================
 // AUTO-JOIN FROM URL PARAMETER
@@ -847,10 +897,6 @@ async function autoJoinFromUrl() {
 
   roomId = urlRoomId;
   updateStatus('Connecting to room...');
-
-  // const initSuccess = await init();
-  // let answerSuccess = false;
-  // if (initSuccess)
 
   const answerSuccess = await answerCall();
 
@@ -917,20 +963,22 @@ async function hangUp() {
     pc = null;
   }
 
-  removeAllFirebaseListeners();
-
   if (seekDebounceTimeout) {
     clearTimeout(seekDebounceTimeout);
     seekDebounceTimeout = null;
   }
 
+  // NOTE: Firebase room cleanup disabled to allow re-joining recent calls
+  // TODO: set up auto-expire
   // Remove room from Firebase (optional - rooms can auto-expire)
-  if (roomId && role === 'initiator') {
-    const roomRef = ref(rtdb, `rooms/${roomId}`);
-    remove(roomRef).catch((error) => {
-      console.warn('Failed to remove room:', error);
-    });
-  }
+  // if (roomId && role === 'initiator') {
+  //   const roomRef = ref(rtdb, `rooms/${roomId}`);
+  //   remove(roomRef).catch((error) => {
+  //     console.warn('Failed to remove room:', error);
+  //   });
+  // }
+
+  removeAllFirebaseListeners();
 
   membersListeners.forEach(({ ref: fbRef, type, callback }) =>
     off(fbRef, type, callback)

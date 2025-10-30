@@ -1,5 +1,9 @@
 /* src/style.css */
 
+#goog-signin-btn {
+  z-index: 99999;
+}
+
 @keyframes bounce {
   0%,
   20%,
