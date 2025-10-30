@@ -285,7 +285,7 @@ function setupRoomMembers() {
     if (snapshot.key !== peerId && pc?.connectionState === 'connected') {
       console.info('Partner has left the call');
     }
-    hangUp(); // ! TODO: re-assess what should happen here and review hangUp
+    // hangUp(); // ! TODO: re-assess what should happen here and review hangUp
   };
 
   onChildRemoved(membersRef, onPartnerLeft);
@@ -312,7 +312,7 @@ const rtcConfig = {
 
 function setupConnectionStateHandlers(pc) {
   pc.onconnectionstatechange = () => {
-    devDebug('Connection state:', pc.connectionState);
+    devDebug('onconnectionstatechange:', pc.connectionState);
 
     if (pc.connectionState === 'connected') {
       updateStatus('Connected!');
@@ -335,6 +335,16 @@ function setupConnectionStateHandlers(pc) {
       clearUrlParam();
     }
   };
+
+  pc.addEventListener('iceconnectionstatechange', (e) => {
+    devDebug('ICE iceconnectionstatechange:', pc.iceConnectionState);
+    if (pc.iceConnectionState === 'failed') {
+      /* possibly reconfigure the connection in some way here */
+      /* then request ICE restart */
+      console.warn('ICE connection failed, restarting ICE...');
+      pc.restartIce();
+    }
+  });
 }
 
 async function createCall() {
@@ -1035,3 +1045,64 @@ function cleanup() {
   cleanupSearchUI();
   cleanupFunctions.forEach((cleanupFn) => cleanupFn());
 }
+
+// // Minimal test: Restart ICE button (tries pc.restartIce(), falls back to iceRestart offer)
+// const restartIceBtn = document.createElement('button');
+// restartIceBtn.id = 'restart-ice-btn';
+// restartIceBtn.textContent = 'Restart ICE';
+// restartIceBtn.style.marginTop = '100px';
+// restartIceBtn.style.zIndex = '999999999999';
+// restartIceBtn.onclick = async () => {
+//   if (!pc) {
+//     updateStatus('No active PeerConnection to restart.');
+//     console.warn('No pc to restart');
+//     return;
+//   }
+
+//   try {
+//     if (typeof pc.restartIce === 'function') {
+//       await pc.restartIce();
+//       updateStatus('Called pc.restartIce() — check console & remote peer.');
+//       console.log('pc.restartIce() called');
+//       return;
+//     }
+
+//     // Fallback: create a renegotiation offer with iceRestart
+//     if (!roomId) {
+//       updateStatus('No roomId — cannot send iceRestart offer.');
+//       console.warn('No roomId for iceRestart fallback');
+//       return;
+//     }
+
+//     updateStatus(
+//       'pc.restartIce not available — sending iceRestart offer via Firebase'
+//     );
+//     const offer = await pc.createOffer({ iceRestart: true });
+//     await pc.setLocalDescription(offer);
+
+//     const roomRef = ref(rtdb, `rooms/${roomId}`);
+//     await update(roomRef, {
+//       offer: {
+//         type: offer.type,
+//         sdp: offer.sdp,
+//       },
+//     });
+
+//     updateStatus(
+//       'iceRestart offer sent to Firebase. Waiting for remote answer...'
+//     );
+//     console.log('Sent iceRestart offer', offer);
+//   } catch (err) {
+//     console.error('Restart ICE failed', err);
+//     updateStatus(
+//       'Restart ICE failed: ' + (err && err.message ? err.message : err)
+//     );
+//   }
+// };
+
+// // Append button to lobbyDiv if present (or to body as fallback)
+// if (typeof lobbyDiv !== 'undefined' && lobbyDiv) {
+//   lobbyDiv.appendChild(restartIceBtn);
+// } else {
+//   document.body.appendChild(restartIceBtn);
+// }
