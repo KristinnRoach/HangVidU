@@ -336,15 +336,15 @@ function setupConnectionStateHandlers(pc) {
     }
   };
 
-  pc.addEventListener('iceconnectionstatechange', (e) => {
-    devDebug('ICE iceconnectionstatechange:', pc.iceConnectionState);
-    if (pc.iceConnectionState === 'failed') {
-      /* possibly reconfigure the connection in some way here */
-      /* then request ICE restart */
-      console.warn('ICE connection failed, restarting ICE...');
-      pc.restartIce();
-    }
-  });
+  // pc.addEventListener('iceconnectionstatechange', (e) => {
+  //   devDebug('ICE iceconnectionstatechange:', pc.iceConnectionState);
+  //   if (pc.iceConnectionState === 'failed') {
+  //     /* possibly reconfigure the connection in some way here */
+  //     /* then request ICE restart */
+  //     console.warn('ICE connection failed, restarting ICE...');
+  //     pc.restartIce();
+  //   }
+  // });
 }
 
 async function createCall() {
@@ -353,9 +353,6 @@ async function createCall() {
     updateStatus('Error: Camera not initialized');
     return false;
   }
-
-  // const recentCallBtn = document.getElementById('recent-call-btn');
-  // if (recentCallBtn) hideElement(recentCallBtn);
 
   // Generate room ID
   roomId = Math.random().toString(36).substring(2, 15);
