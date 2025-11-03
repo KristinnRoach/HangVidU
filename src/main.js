@@ -378,6 +378,7 @@ async function createCall(targetRoomId = null) {
 
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        drainIceCandidateQueue(pc); // Explicit drain for immediate effect
         devDebug('Remote description set (answer)');
         return true;
       } catch (error) {
@@ -548,7 +549,8 @@ async function answerCall(roomId) {
 
   // Set remote description (offer)
   await pc.setRemoteDescription(new RTCSessionDescription(offer));
-
+  drainIceCandidateQueue(pc);
+  devDebug('Remote description set (offer)');
   // Create answer
   const answer = await pc.createAnswer();
   await pc.setLocalDescription(answer);
