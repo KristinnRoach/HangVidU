@@ -1,7 +1,7 @@
 // src/p2p/ice.js
 
 import { ref, push, set, onChildAdded } from 'firebase/database';
-import { rtdb, trackFirebaseListener } from './firebase.js';
+import { rtdb, trackRTDBListener } from '../storage/fb-rtdb/rtdb';
 import { devDebug } from '../utils/dev-utils.js';
 
 export function setupIceCandidates(pc, role, roomId) {
@@ -37,13 +37,22 @@ function setupRemoteCandidateListener(pc, path, roomId) {
     devDebug(`❄ Remote ICE candidate added: ${path}`);
 
     const candidate = snapshot.val();
+    // Guard against attempts to add candidates after the PC has been closed or replaced
+    if (!pc || pc.signalingState === 'closed') {
+      devDebug('Skipping ICE candidate: peer connection is closed');
+      return;
+    }
+
+    // Only add after remote description is set
     if (candidate && pc.remoteDescription) {
-      pc.addIceCandidate(new RTCIceCandidate(candidate)).catch((error) => {
-        console.error('Error adding ICE candidate:', error);
-      });
+      try {
+        pc.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (error) {
+        devDebug('Error adding ICE candidate:', error);
+      }
     }
   };
 
   onChildAdded(remoteCandidatesRef, callback);
-  trackFirebaseListener(remoteCandidatesRef, 'child_added', callback);
+  trackRTDBListener(remoteCandidatesRef, 'child_added', callback);
 }

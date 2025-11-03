@@ -1,26 +1,18 @@
+// main.js
+
 // ============================================================================
 // HANGVIDU - P2P VIDEO CHAT WITH WATCH-TOGETHER MODE
 // ============================================================================
 
 import '@fortawesome/fontawesome-free/css/all.min.css';
+import { ref, set, get, remove } from 'firebase/database';
 import {
-  ref,
-  set,
-  onValue,
-  onChildAdded,
-  onChildRemoved,
-  update,
-  get,
-  off,
-  remove,
-} from 'firebase/database';
-import {
-  removeAllFirebaseListeners,
+  onDataChange,
+  removeAllRTDBListeners,
   rtdb,
-  trackFirebaseListener,
-} from './p2p/firebase.js';
+} from './storage/fb-rtdb/rtdb.js';
+import { getLoggedInUserId, getUserId } from './firebase/auth.js';
 
-import { onClickOutside } from './utils/clickOutside.js';
 import {
   isHidden,
   showElement,
@@ -30,8 +22,22 @@ import {
   removeFromSmallFrame,
   isInSmallFrame,
 } from './utils/ui-utils.js';
+
 import { updateStatus } from './utils/status.js';
 import { setupShowHideOnInactivity } from './utils/showHideOnInactivity.js';
+import {
+  saveContact,
+  renderContactsList,
+  getContacts,
+} from './components/contacts/contacts.js';
+import {
+  showCallingUI,
+  hideCallingUI,
+  onCallAnswered,
+  isOutgoingCallFresh,
+  isRoomCallFresh,
+} from './components/calling/calling-ui.js';
+
 import {
   localVideoEl,
   remoteVideoEl,
@@ -49,9 +55,12 @@ import {
   remoteBoxEl,
   sharedBoxEl,
   lobbyDiv,
+  titleAuthBar,
   createLinkBtn,
   copyLinkBtn,
   getElements,
+  joinRoomBtn,
+  roomIdInput,
 } from './elements.js';
 
 import {
@@ -59,15 +68,13 @@ import {
   cleanupMediaControls,
 } from './media/media-controls.js';
 
-import { hasFrontAndBackCameras } from './media/media-devices.js';
-
 import {
   setupWatchSync,
   isWatchModeActive,
   setWatchMode,
   getLastWatched,
   setLastWatched,
-} from './p2p/watch-sync.js';
+} from './firebase/watch-sync.js';
 
 import {
   destroyYouTubePlayer,
@@ -84,13 +91,16 @@ import {
   initializeSearchUI,
 } from './media/youtube/youtube-search.js';
 import { setupPWA } from './pwa/PWA.js';
-import { setupIceCandidates } from './p2p/ice.js';
+import { setupIceCandidates } from './webrtc/ice.js';
 import { setUpLocalStream, setupRemoteStream } from './media/stream.js';
 
 import {
   getLocalStream,
   setLocalStream,
   cleanupLocalStream,
+  getRemoteStream,
+  cleanupRemoteStream,
+  cleanupLocalVideoOnlyStream,
 } from './media/state.js';
 
 import { initMessagesUI } from './components/messages/messages-ui.js';
@@ -99,24 +109,10 @@ import {
   showCopyLinkModal,
 } from './components/modal/copyLinkModal.js';
 import { devDebug } from './utils/dev-utils.js';
-import { saveContact } from './storage/idb.js';
-import { storageConfig } from './storage/config.js';
-import { saveRecentRoom } from './storage/recent-rooms.js';
 
-// ============================================================================
-// AUTH (GOOGLE SIGN-IN PoC)
-// ============================================================================
+import { initializeAuthUI } from './components/auth/auth-ui.js';
 
-import { signInWithGoogle } from './p2p/firebase.js'; // Todo: move
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
-
-const auth = getAuth(); // Get the auth instance
-
-document
-  .getElementById('goog-signin-btn')
-  .addEventListener('click', signInWithGoogle);
-
-// onAuthStateChanged(auth, (user) => { ... });
+import RoomService from './room.js';
 
 // ============================================================================
 // GLOBAL STATE
@@ -124,11 +120,11 @@ document
 
 let pc = null; // RTCPeerConnection
 let dataChannel = null; // RTCDataChannel (for text chat, file transfer, etc.)
-let roomId = null;
-let peerId = null;
+let partnerUserId = null;
 let role = null; // 'initiator' | 'joiner'
 let messagesUI; // holds text chat UI reference
 let currentRoomLink = null;
+let currentRoomId = null; // Track current room ID for contacts
 
 let cleanupFunctions = [];
 
@@ -137,9 +133,9 @@ let lastAnswerSdp = null;
 let lastOfferSdp = null;
 
 export const isRemoteVideoVideoActive = () => {
+  const remoteStream = getRemoteStream(false);
   return (
-    remoteVideoEl.srcObject &&
-    remoteVideoEl.srcObject.getVideoTracks().some((track) => track.enabled)
+    remoteStream && remoteStream.getVideoTracks().some((track) => track.enabled)
   );
 };
 
@@ -147,10 +143,8 @@ export const isRemoteVideoVideoActive = () => {
 // INITIALIZATION & MEDIA SETUP
 // ============================================================================
 
-const generatePeerId = () => Math.random().toString(36).substring(2, 15);
-
 async function init() {
-  peerId = generatePeerId();
+  // Initialize generated user ID if needed (will be created by getUserId() when first used)
 
   // Validate critical elements first
   const elements = getElements();
@@ -160,6 +154,8 @@ async function init() {
     'localBoxEl',
     'remoteBoxEl',
     'chatControls',
+    'lobbyDiv',
+    'titleAuthBar',
   ];
 
   const missingCritical = criticalElements.filter((name) => !elements[name]);
@@ -169,21 +165,15 @@ async function init() {
     return false;
   }
 
-  // TEMP FIX: hide YouTube container if present
   try {
-    const ytBox = getYTBox();
-    ytBox && hideElement(ytBox);
-  } catch {
-    // ignore
-  }
+    setupPWA();
+    initializeSearchUI();
+    addKeyListeners();
 
-  try {
+    const { cleanupAuthUI } = initializeAuthUI(titleAuthBar);
+    cleanupFunctions.push(cleanupAuthUI);
+
     await setUpLocalStream(localVideoEl);
-
-    // Optional feature: camera switching (only if element exists)
-    if (switchCameraBtn && (await hasFrontAndBackCameras())) {
-      showElement(switchCameraBtn);
-    }
 
     initializeMediaControls({
       getLocalStream,
@@ -199,7 +189,6 @@ async function init() {
       fullscreenPartnerBtn,
     });
 
-    // Safe event listener attachment
     if (localVideoEl) {
       localVideoEl.addEventListener(
         'enterpictureinpicture',
@@ -215,14 +204,6 @@ async function init() {
         }
       });
     }
-
-    setupPWA();
-
-    initializeSearchUI();
-
-    // initRecentCalls();
-
-    addKeyListeners();
 
     exitCallMode(); // Ensure UI is in initial state
 
@@ -257,48 +238,6 @@ function clearUrlParam() {
   window.history.replaceState({}, document.title, window.location.pathname);
 }
 
-// === WIP ===
-
-// Minimal room members setup for join/leave events
-let membersListeners = [];
-function setupRoomMembers() {
-  if (!roomId || !peerId) return;
-  const membersRef = ref(rtdb, `rooms/${roomId}/members`);
-  const myMemberRef = ref(rtdb, `rooms/${roomId}/members/${peerId}`);
-  set(myMemberRef, { joinedAt: Date.now() });
-
-  // Listen for remote peer join
-  const onPartnerJoined = (snapshot) => {
-    if (snapshot.key !== peerId) enterCallMode();
-  };
-
-  onChildAdded(membersRef, onPartnerJoined);
-
-  membersListeners.push({
-    ref: membersRef,
-    type: 'child_added',
-    callback: onPartnerJoined,
-  });
-
-  // Listen for remote peer leave
-  const onPartnerLeft = (snapshot) => {
-    if (snapshot.key !== peerId && pc?.connectionState === 'connected') {
-      console.info('Partner has left the call');
-    }
-    // hangUp(); // ! TODO: re-assess what should happen here and review hangUp
-  };
-
-  onChildRemoved(membersRef, onPartnerLeft);
-
-  membersListeners.push({
-    ref: membersRef,
-    type: 'child_removed',
-    callback: onPartnerLeft,
-  });
-}
-
-// === End of WIP ===
-
 // ============================================================================
 // WEBRTC CONNECTION - INITIATOR (CREATE CALL)
 // ============================================================================
@@ -310,6 +249,8 @@ const rtcConfig = {
   ],
 };
 
+let disconnectTimeoutId = null;
+
 function setupConnectionStateHandlers(pc) {
   pc.onconnectionstatechange = () => {
     devDebug('onconnectionstatechange:', pc.connectionState);
@@ -317,51 +258,73 @@ function setupConnectionStateHandlers(pc) {
     if (pc.connectionState === 'connected') {
       updateStatus('Connected!');
       enterCallMode();
-
-      if (roomId) {
-        saveRecentRoom(roomId);
-        if (storageConfig.contacts.storeInIDB) {
-          saveContact(roomId);
-        }
+      // Ensure any calling overlay is dismissed once connected
+      onCallAnswered().catch((e) =>
+        console.warn('Failed to clear calling state on connect:', e)
+      );
+      // Clear any pending disconnect timeout if we reconnect
+      if (disconnectTimeoutId) {
+        clearTimeout(disconnectTimeoutId);
+        disconnectTimeoutId = null;
       }
     } else if (pc.connectionState === 'disconnected') {
-      updateStatus('Partner disconnected');
-      exitCallMode();
-      clearUrlParam();
+      updateStatus('Partner disconnected (reconnecting...)');
 
-      hangUp(); // Check (async)
+      // Wait 3 seconds before hanging up to allow transient disconnects to recover
+      if (disconnectTimeoutId) clearTimeout(disconnectTimeoutId);
+      disconnectTimeoutId = setTimeout(() => {
+        // Only hang up if still disconnected after grace period
+        if (pc && pc.connectionState === 'disconnected') {
+          updateStatus('Partner disconnected');
+          exitCallMode();
+          clearUrlParam();
+          hangUp();
+        }
+        disconnectTimeoutId = null;
+      }, 3000);
     } else if (pc.connectionState === 'failed') {
       updateStatus('Connection failed');
       clearUrlParam();
+      // Clear any pending disconnect timeout
+      if (disconnectTimeoutId) {
+        clearTimeout(disconnectTimeoutId);
+        disconnectTimeoutId = null;
+      }
+      // Immediately hang up on failed (no grace period needed)
+      hangUp();
     }
   };
 
-  // pc.addEventListener('iceconnectionstatechange', (e) => {
-  //   devDebug('ICE iceconnectionstatechange:', pc.iceConnectionState);
-  //   if (pc.iceConnectionState === 'failed') {
-  //     /* possibly reconfigure the connection in some way here */
-  //     /* then request ICE restart */
-  //     console.warn('ICE connection failed, restarting ICE...');
-  //     pc.restartIce();
-  //   }
-  // });
+  pc.addEventListener('iceconnectionstatechange', (e) => {
+    devDebug('ICE iceconnectionstatechange:', pc.iceConnectionState);
+    if (pc.iceConnectionState === 'failed') {
+      /* possibly reconfigure the connection in some way here */
+      /* then request ICE restart */
+      console.warn('ICE connection failed, restarting ICE...');
+      pc.restartIce();
+    }
+  });
 }
 
-async function createCall() {
+async function createCall(targetRoomId = null) {
   const localStream = getLocalStream();
   if (!localStream) {
     updateStatus('Error: Camera not initialized');
     return false;
   }
 
-  // Generate room ID
-  roomId = Math.random().toString(36).substring(2, 15);
-  role = 'initiator';
+  // Clean up any previous connection listeners before creating new ones
+  try {
+    removeAllRTDBListeners();
+    RoomService.cleanupListeners();
+  } catch (e) {
+    /* noop */
+  }
 
-  // Create peer connection
+  role = 'initiator';
   pc = new RTCPeerConnection(rtcConfig);
 
-  // Create a data channel for text chat
+  // Setup Data channel for text messages
   setupDataChannel();
 
   // Add local tracks to peer connection
@@ -369,53 +332,53 @@ async function createCall() {
     pc.addTrack(track, localStream);
   });
 
-  if (setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn)) {
-    setupIceCandidates(pc, role, roomId);
-    setupConnectionStateHandlers(pc);
-    console.debug('Peer connection created as initiator with room ID:', roomId);
-  } else {
+  // Create offer
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+
+  const userId = getUserId();
+
+  const roomId = targetRoomId || Math.random().toString(36).substring(2, 9);
+
+  // Setup remote stream and ICE handlers BEFORE writing the offer to RTDB
+  const successFullySetupRemoteStream = setupRemoteStream(
+    pc,
+    remoteVideoEl,
+    mutePartnerBtn
+  );
+
+  if (!successFullySetupRemoteStream) {
     updateStatus('Error setting up remote stream');
     console.error('Error setting up remote stream');
     return false;
   }
 
-  // Create offer
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
+  setupIceCandidates(pc, role, roomId);
+  setupConnectionStateHandlers(pc);
 
-  // Save offer to Firebase
-  const roomRef = ref(rtdb, `rooms/${roomId}`);
-  await set(roomRef, {
-    offer: {
-      type: offer.type,
-      sdp: offer.sdp,
-    },
-  });
-
-  // Listen for answer from joiner
+  // Listen for answer from joiner BEFORE we write the offer so we won't miss it
   const answerRef = ref(rtdb, `rooms/${roomId}/answer`);
   const answerCallback = async (snapshot) => {
     const answer = snapshot.val();
     if (answer && answer.sdp !== lastAnswerSdp) {
       lastAnswerSdp = answer.sdp;
 
-      // Check signaling state before setting remote description
+      // Only set remote description in an expected signaling state
       if (
-        pc.signalingState !== 'have-local-offer' &&
-        pc.signalingState !== 'stable'
+        !pc ||
+        (pc.signalingState !== 'have-local-offer' &&
+          pc.signalingState !== 'stable')
       ) {
         devDebug(
           'Ignoring answer - unexpected signaling state:',
-          pc.signalingState
+          pc ? pc.signalingState : 'no-pc'
         );
-
         return true;
       }
 
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
         devDebug('Remote description set (answer)');
-
         return true;
       } catch (error) {
         console.error('Failed to set remote description:', error);
@@ -423,26 +386,62 @@ async function createCall() {
       }
     }
   };
+  onDataChange(answerRef, answerCallback);
 
-  onValue(answerRef, answerCallback);
-  trackFirebaseListener(answerRef, 'value', answerCallback);
+  // Create and join room using the chosen roomId (prevents ID mismatch)
+  const actualRoomId = await RoomService.createNewRoom(offer, userId, roomId);
+
+  devDebug(
+    'Peer connection created as initiator with room ID:',
+    actualRoomId || roomId,
+    'userId:',
+    userId
+  );
+
+  // Track current room ID for contacts
+  currentRoomId = roomId;
 
   // Setup watch-together sync
-  setupWatchSync(roomId, role, peerId);
+  setupWatchSync(roomId, role, userId);
 
-  // Add self to room members and listen for join/leave
-  setupRoomMembers();
+  // Setup member listeners
+  RoomService.onMemberJoined(roomId, (snapshot) => {
+    const currentUserId = getUserId();
+    if (snapshot.key !== currentUserId) {
+      partnerUserId = snapshot.key; // Track partner for contacts
+      enterCallMode();
+      // Hide calling UI when partner joins (call answered)
+      onCallAnswered().catch((e) =>
+        console.warn('Failed to clear calling state:', e)
+      );
+    }
+
+    saveRecentCall(roomId).catch((e) =>
+      console.warn('Failed to save recent call:', e)
+    );
+  });
+
+  RoomService.onMemberLeft(roomId, (snapshot) => {
+    const currentUserId = getUserId();
+    if (snapshot.key !== currentUserId && pc?.connectionState === 'connected') {
+      console.info('Partner has left the call');
+    }
+  });
 
   // Copy share link
   currentRoomLink = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
 
-  showCopyLinkModal(currentRoomLink, {
-    onCopy: () => updateStatus('Link ready! Share with your partner.'),
-    onCancel: () => {
-      updateStatus('Call cancelled. Click "Start New Chat" to try again.');
-      // hangUp();
-    },
-  });
+  // Only show copy link modal if not targeting a specific room
+  if (roomId !== targetRoomId) {
+    showCopyLinkModal(currentRoomLink, {
+      onCopy: () => updateStatus('Link ready! Share with your partner.'),
+      onCancel: () => {
+        updateStatus(
+          'Link ready! Use the copy button to use it, or create a new one.'
+        );
+      },
+    });
+  }
 
   updateStatus('Waiting for partner to join...');
 
@@ -455,7 +454,7 @@ async function createCall() {
 // WEBRTC CONNECTION - JOINER (ANSWER CALL)
 // ============================================================================
 
-async function answerCall() {
+async function answerCall(roomId) {
   const localStream = getLocalStream();
 
   devDebug('answerCall roomId: ', roomId);
@@ -470,20 +469,48 @@ async function answerCall() {
     return false;
   }
 
-  role = 'joiner';
+  const roomStatus = await RoomService.checkRoomStatus(roomId);
 
-  // Get room data from Firebase
-  const roomRef = ref(rtdb, `rooms/${roomId}`);
-  const roomSnapshot = await get(roomRef);
-
-  if (!roomSnapshot.exists()) {
+  if (!roomStatus.exists) {
     updateStatus('Error: Invalid room link');
     return false;
   }
 
-  const roomData = roomSnapshot.val();
-  const offer = roomData.offer;
+  if (!roomStatus.hasMembers) {
+    updateStatus('Error: Room is empty - no one to connect with');
+    return false;
+  }
 
+  // Clean up any previous connection listeners before creating new ones
+  try {
+    removeAllRTDBListeners();
+    RoomService.cleanupListeners();
+  } catch (e) {
+    /* noop */
+  }
+
+  role = 'joiner';
+
+  let roomData;
+  try {
+    roomData = await RoomService.getRoomData(roomId);
+  } catch (error) {
+    updateStatus('Error: ' + error.message);
+    return false;
+  }
+
+  // // Get room data from Firebase
+  // const roomRef = ref(rtdb, `rooms/${roomId}`);
+  // const roomSnapshot = await get(roomRef);
+
+  // if (!roomSnapshot.exists()) {
+  //   updateStatus('Error: Invalid room link');
+  //   return false;
+  // }
+
+  // const roomData = roomSnapshot.val();
+
+  const offer = roomData.offer;
   if (!offer) {
     updateStatus('Error: No offer found');
     return false;
@@ -526,14 +553,9 @@ async function answerCall() {
   const answer = await pc.createAnswer();
   await pc.setLocalDescription(answer);
 
-  // Save answer to Firebase
   try {
-    await update(roomRef, {
-      answer: {
-        type: answer.type,
-        sdp: answer.sdp,
-      },
-    });
+    // Save answer to Firebase
+    await RoomService.saveAnswer(roomId, answer);
   } catch (err) {
     console.error('Failed to update answer in Firebase:', err);
     updateStatus('Failed to send answer to partner.');
@@ -541,19 +563,310 @@ async function answerCall() {
   }
 
   // Setup watch-together sync
-  setupWatchSync(roomId, role, peerId);
+  const userId = getUserId();
+  setupWatchSync(roomId, role, userId);
 
-  // Add self to room members and listen for join/leave
-  setupRoomMembers();
+  // Track current room ID for contacts
+  currentRoomId = roomId;
 
-  enterCallMode();
+  // Join as member and setup listeners
+  await RoomService.joinRoom(roomId, userId);
+
+  RoomService.onMemberJoined(roomId, (snapshot) => {
+    const currentUserId = getUserId();
+    if (snapshot.key !== currentUserId) {
+      partnerUserId = snapshot.key; // Track partner for contacts
+      enterCallMode();
+    }
+
+    saveRecentCall(roomId).catch((e) =>
+      console.warn('Failed to save recent call:', e)
+    );
+  });
+
+  RoomService.onMemberLeft(roomId, (snapshot) => {
+    const currentUserId = getUserId();
+    if (snapshot.key !== currentUserId && pc?.connectionState === 'connected') {
+      console.info('Partner has left the call');
+    }
+  });
 
   updateStatus('Connecting...');
 
   return true;
 }
 
-let seekDebounceTimeout = null; // Todo: Is this still needed?
+async function joinOrCreateRoomWithId(customRoomId) {
+  const status = await RoomService.checkRoomStatus(customRoomId);
+
+  if (!status.exists) {
+    devDebug(
+      '[joinOrCreateRoomWithId]: Room with does not exist, creating new one for same id: ',
+      customRoomId
+    );
+    // return await createCall(customRoomId);
+    const created = await createCall(customRoomId);
+
+    return created;
+  }
+  if (!status.hasMembers) {
+    devDebug(
+      'Room is empty - no one to connect with. Creating new Room for same id: ',
+      customRoomId
+    );
+
+    return await createCall(customRoomId);
+  }
+
+  updateStatus('Joining room...');
+
+  return await answerCall(customRoomId);
+}
+
+// Expose for contacts UI
+window.joinOrCreateRoomWithId = joinOrCreateRoomWithId;
+window.showCallingUI = showCallingUI;
+window.hideCallingUI = hideCallingUI;
+
+// ============================================================================
+// RECENT CALLS (24h TTL) + INCOMING CALL LISTENERS
+// ============================================================================
+
+// Track which roomIds we've already attached incoming listeners for
+const listeningRoomIds = new Set();
+
+/**
+ * Save a recent call for the current user (RTDB if logged in, localStorage otherwise).
+ * Expires after 24 hours (expiresAt timestamp).
+ */
+async function saveRecentCall(roomId) {
+  const now = Date.now();
+  const expiresAt = now + 24 * 60 * 60 * 1000; // 24 hours
+  const loggedInUid = getLoggedInUserId();
+
+  if (loggedInUid) {
+    const userRecentRef = ref(
+      rtdb,
+      `users/${loggedInUid}/recentCalls/${roomId}`
+    );
+    await set(userRecentRef, { roomId, savedAt: now, expiresAt });
+    return;
+  }
+
+  // fallback to localStorage for guests
+  try {
+    const raw = localStorage.getItem('recentCalls') || '{}';
+    const obj = JSON.parse(raw);
+    obj[roomId] = { roomId, savedAt: now, expiresAt };
+    localStorage.setItem('recentCalls', JSON.stringify(obj));
+  } catch (e) {
+    console.warn('Failed to save recent call to localStorage', e);
+  }
+}
+
+/**
+ * Remove a recent call entry for the current user (RTDB if logged in, localStorage otherwise).
+ */
+async function removeRecentCall(roomId) {
+  const loggedInUid = getLoggedInUserId();
+
+  if (loggedInUid) {
+    try {
+      await remove(ref(rtdb, `users/${loggedInUid}/recentCalls/${roomId}`));
+    } catch (e) {
+      console.warn('Failed to remove recent call from RTDB', e);
+    }
+    return;
+  }
+
+  // Guest: remove from localStorage
+  try {
+    const raw = localStorage.getItem('recentCalls') || '{}';
+    const obj = JSON.parse(raw);
+    if (obj[roomId]) {
+      delete obj[roomId];
+      localStorage.setItem('recentCalls', JSON.stringify(obj));
+    }
+  } catch (e) {
+    console.warn('Failed to remove recent call from localStorage', e);
+  }
+}
+
+/**
+ * Listen for incoming member joins on a given roomId and log them.
+ */
+function listenForIncomingOnRoom(roomId) {
+  if (!roomId) return;
+  if (listeningRoomIds.has(roomId)) return; // avoid duplicate attachments
+  listeningRoomIds.add(roomId);
+  // Use RoomService's member listener helper
+  RoomService.onMemberJoined(roomId, async (snapshot) => {
+    const joiningUserId = snapshot.key;
+    const memberData = snapshot.val ? snapshot.val() : null;
+    const currentUserId = getUserId();
+    if (joiningUserId && joiningUserId !== currentUserId) {
+      console.log(`incoming call from ${joiningUserId} for room ${roomId}`);
+
+      // Prefer the member's joinedAt as the primary freshness signal (real-time join)
+      const joinedAt =
+        memberData && typeof memberData.joinedAt === 'number'
+          ? memberData.joinedAt
+          : null;
+      const CALL_FRESH_MS = 20000;
+
+      let isFresh = false;
+      if (joinedAt) {
+        isFresh = Date.now() - joinedAt < CALL_FRESH_MS;
+      }
+
+      // If joinedAt isn't present or seems old (e.g., listener attached late),
+      // fall back to caller-scoped outgoing marker (for logged-in callers),
+      // or room-scoped createdAt (for guests)
+      if (!isFresh) {
+        isFresh =
+          (await isOutgoingCallFresh(joiningUserId, roomId)) ||
+          (await isRoomCallFresh(roomId));
+      }
+      if (!isFresh) {
+        console.log(
+          `Ignoring stale incoming call from ${joiningUserId} for room ${roomId}`
+        );
+        return;
+      }
+
+      // Minimal prompt to accept or reject the incoming call.
+      // Only prompt if we're not already in an active call.
+      const inActiveCall = !!pc && pc.connectionState === 'connected';
+      if (inActiveCall) return;
+
+      const accept = window.confirm(
+        `Incoming call from ${joiningUserId} for room ${roomId}.\n\nAccept?`
+      );
+
+      if (accept) {
+        joinOrCreateRoomWithId(roomId).catch((e) => {
+          console.warn('Failed to answer incoming call:', e);
+          updateStatus('Failed to answer incoming call.');
+        });
+      } else {
+        console.log('Incoming call rejected by user');
+        // Optional: remove the saved recent call to avoid repeated prompts
+        // removeRecentCall(roomId).catch(() => {});
+      }
+    }
+  });
+
+  // Listen for member leaves: if the room becomes empty after a leave,
+  // remove this saved recent call for the current user so they don't keep
+  // an incoming notification for a non-existent partner.
+  RoomService.onMemberLeft(roomId, async (snapshot) => {
+    const leavingUserId = snapshot.key;
+    const currentUserId = getUserId();
+
+    // Ignore our own leaves
+    if (!leavingUserId || leavingUserId === currentUserId) return;
+
+    try {
+      const status = await RoomService.checkRoomStatus(roomId);
+      // If no members remain, remove the saved recent call for this client
+      if (!status.hasMembers) {
+        await removeRecentCall(roomId);
+        console.log(
+          `Removed saved recent call for room ${roomId} because it is now empty`
+        );
+      }
+    } catch (e) {
+      console.warn('Failed to evaluate room status on member leave', e);
+    }
+  });
+}
+/**
+ * Read saved recent calls (RTDB or localStorage), remove expired entries,
+ * and attach incoming listeners for each valid room id.
+ */
+async function startListeningForSavedRooms() {
+  // Ensure auth state is initialized before deciding storage location
+  // This prevents a race where we read localStorage as a guest before auth is ready
+  try {
+    if (typeof window !== 'undefined') {
+      const { getCurrentUserAsync } = await import('./firebase/auth.js');
+      await getCurrentUserAsync();
+    }
+  } catch (e) {
+    // non-fatal
+  }
+
+  const loggedInUid = getLoggedInUserId();
+
+  if (loggedInUid) {
+    const userRecentRef = ref(rtdb, `users/${loggedInUid}/recentCalls`);
+    try {
+      const snap = await get(userRecentRef);
+      const val = snap.exists() ? snap.val() : null;
+      const toListen = new Set();
+
+      if (val) {
+        for (const [roomId, meta] of Object.entries(val)) {
+          if (!meta || (meta.expiresAt && meta.expiresAt < Date.now())) {
+            // remove expired
+            await remove(
+              ref(rtdb, `users/${loggedInUid}/recentCalls/${roomId}`)
+            ).catch(() => {});
+            continue;
+          }
+          toListen.add(roomId);
+        }
+      }
+
+      // Also include saved contacts' roomIds
+      try {
+        const contacts = await getContacts();
+        Object.values(contacts || {}).forEach((c) => {
+          if (c?.roomId) toListen.add(c.roomId);
+        });
+      } catch (e) {
+        // ignore
+      }
+
+      toListen.forEach((roomId) => listenForIncomingOnRoom(roomId));
+    } catch (e) {
+      console.warn('Failed to read recent calls from RTDB', e);
+    }
+    return;
+  }
+
+  // Guest: localStorage
+  try {
+    const raw = localStorage.getItem('recentCalls') || '{}';
+    const obj = JSON.parse(raw);
+    const cleaned = {};
+    const toListen = new Set();
+    for (const [roomId, meta] of Object.entries(obj || {})) {
+      if (!meta || (meta.expiresAt && meta.expiresAt < Date.now())) {
+        // skip expired
+        continue;
+      }
+      cleaned[roomId] = meta;
+      toListen.add(roomId);
+    }
+    // Also include saved contacts' roomIds
+    try {
+      const contacts = await getContacts();
+      Object.values(contacts || {}).forEach((c) => {
+        if (c?.roomId) toListen.add(c.roomId);
+      });
+    } catch (e) {
+      // ignore
+    }
+
+    toListen.forEach((roomId) => listenForIncomingOnRoom(roomId));
+
+    // overwrite with cleaned set (remove expired)
+    localStorage.setItem('recentCalls', JSON.stringify(cleaned));
+  } catch (e) {
+    console.warn('Failed to read recent calls from localStorage', e);
+  }
+}
 
 // ============================================================================
 // UI Layout change helpers
@@ -577,8 +890,6 @@ export function enterWatchMode() {
 
   // Hide lobby if visible
   hideElement(lobbyDiv);
-  hideElement(createLinkBtn);
-  hideElement(copyLinkBtn);
 
   chatControls.classList.remove('bottom');
   chatControls.classList.add('watch-mode');
@@ -666,12 +977,34 @@ export function exitWatchMode() {
   setWatchMode(false);
 }
 
+let enterCallModeWaitingForVideo = false;
+
 let enterCallMode = () => {
-  // Ensure video element is ready
-  if (!remoteVideoEl || remoteVideoEl.readyState === 0) {
-    console.warn('Remote video element is not ready');
-    // return;
+  // Check if remote video is ready and playing
+  const remoteStream = getRemoteStream(false);
+  if (
+    !remoteVideoEl ||
+    !remoteStream ||
+    remoteVideoEl.paused ||
+    remoteVideoEl.readyState < 2
+  ) {
+    // Video not ready yet - set up listener if we haven't already
+    if (!enterCallModeWaitingForVideo) {
+      enterCallModeWaitingForVideo = true;
+      remoteVideoEl.addEventListener(
+        'playing',
+        () => {
+          enterCallModeWaitingForVideo = false;
+          enterCallMode();
+        },
+        { once: true }
+      );
+    }
+    return;
   }
+
+  // Video is ready and playing - proceed with entering call mode
+  enterCallModeWaitingForVideo = false;
 
   showElement(remoteBoxEl);
   placeInSmallFrame(localBoxEl);
@@ -873,21 +1206,93 @@ copyLinkBtn.onclick = async () => await handleCopyLink();
 hangUpBtn.onclick = async () => await hangUp();
 
 // ============================================================================
-// REJOIN RECENT ROOM
+// TEST: JOIN ROOM BUTTON (TEMPORARY - FOR TESTING)
 // ============================================================================
 
-async function rejoinRoom(savedRoomId) {
-  roomId = savedRoomId;
-  updateStatus('Rejoining room...');
-
-  const success = await answerCall();
-  if (!success) {
-    updateStatus('Failed to rejoin room');
-    roomId = null;
+function normalizeRoomInput(raw) {
+  let room = raw.trim();
+  if (!room) return '';
+  try {
+    const maybeUrl = new URL(room, window.location.origin);
+    const q = maybeUrl.searchParams.get('room');
+    if (q) return q;
+    const hashMatch = maybeUrl.hash.match(/room=([^&]+)/);
+    if (hashMatch) return decodeURIComponent(hashMatch[1]);
+    return maybeUrl.pathname.replace(/^\//, '') || room;
+  } catch (e) {
+    return room; // not a full URL
   }
 }
 
-window.rejoinRoom = rejoinRoom;
+async function waitForLocalStream(timeoutMs = 5000) {
+  if (getLocalStream()) return true;
+  const start = Date.now();
+  return new Promise((resolve) => {
+    const check = () => {
+      if (getLocalStream()) return resolve(true);
+      if (Date.now() - start > timeoutMs) return resolve(false);
+      setTimeout(check, 150);
+    };
+    check();
+  });
+}
+
+async function registerJoinButton() {
+  if (!joinRoomBtn || !roomIdInput) return false;
+
+  // disable until init enables it
+  joinRoomBtn.disabled = false;
+
+  joinRoomBtn.onclick = async () => {
+    const raw = roomIdInput.value || '';
+    const inputRoomId = normalizeRoomInput(raw);
+    if (!inputRoomId) {
+      updateStatus('Please enter a room ID');
+      return false;
+    }
+
+    const mediaReady = await waitForLocalStream(5000);
+    if (!mediaReady) {
+      updateStatus('Camera not ready. Please allow permissions and try again.');
+      return false;
+    }
+
+    return await joinOrCreateRoomWithId(inputRoomId);
+  };
+
+  return true;
+}
+
+// document.addEventListener('DOMContentLoaded', () => {
+//   if (!joinRoomBtn || !roomIdInput) {
+//     console.warn('Join room button or input element not found');
+//     return;
+//   }
+
+//   joinRoomBtn.onclick = async () => {
+//     let inputRoomId = roomIdInput.value.trim();
+//     if (!inputRoomId) {
+//       updateStatus('Please enter a room ID');
+//       return;
+//     }
+
+//     // Normalize if user pasted a full URL like https://.../?room=ROOMID
+//     try {
+//       const maybeUrl = new URL(inputRoomId, window.location.origin);
+//       const q = maybeUrl.searchParams.get('room');
+//       if (q) inputRoomId = q;
+//       else {
+//         // also accept hash or path-style ids if needed
+//         const hashMatch = maybeUrl.hash.match(/room=([^&]+)/);
+//         if (hashMatch) inputRoomId = decodeURIComponent(hashMatch[1]);
+//       }
+//     } catch (e) {
+//       // not a full URL -- keep input as-is
+//     }
+
+//     await joinOrCreateRoomWithId(inputRoomId);
+//   };
+// });
 
 // ============================================================================
 // AUTO-JOIN FROM URL PARAMETER
@@ -897,23 +1302,17 @@ async function autoJoinFromUrl() {
   const urlParams = new URLSearchParams(window.location.search);
   const urlRoomId = urlParams.get('room');
 
-  if (!urlRoomId) {
-    updateStatus('Ready. Click "Start New Chat" to begin.');
-    return false;
-  }
+  if (!urlRoomId) return false;
 
-  roomId = urlRoomId;
-  updateStatus('Connecting to room...');
+  const success = await joinOrCreateRoomWithId(urlRoomId);
 
-  const answerSuccess = await answerCall();
-
-  if (!answerSuccess) {
-    showElement(callBtn);
-    hangUpBtn.disabled = true;
-    callBtn.disabled = false;
+  if (!success) {
     clearUrlParam();
+    exitCallMode();
   }
-  return answerSuccess;
+
+  updateStatus('Auto-joined room from URL');
+  return success;
 }
 
 // ============================================================================
@@ -921,20 +1320,36 @@ async function autoJoinFromUrl() {
 // ============================================================================
 
 window.onload = async () => {
-  // Always initialize first
-  const success = await init();
-  if (!success) {
+  const initSuccess = await init();
+
+  if (!initSuccess) {
     callBtn.disabled = true;
     console.error('Initialization failed. Cannot start chat.');
     return;
   }
 
+  const joinBtnSuccess = await registerJoinButton();
+  if (!joinBtnSuccess) devDebug('Join button registration failed');
+
+  // Render saved contacts list in lobby
+  renderContactsList(lobbyDiv).catch((e) => {
+    console.warn('Failed to render contacts list:', e);
+  });
+
+  // Start listening for incoming calls on any saved/recent room ids
+  startListeningForSavedRooms().catch((e) =>
+    console.warn('Failed to start saved-room listeners', e)
+  );
+
   // Auto-join if room parameter exists
-  await autoJoinFromUrl();
+  const autoJoinedSuccessfully = await autoJoinFromUrl();
+  if (autoJoinedSuccessfully) return;
+
+  updateStatus('Ready. Click "Start New Chat" to begin.');
 };
 
 // Handle page leave
-window.addEventListener('beforeunload', (e) => {
+window.addEventListener('beforeunload', async (e) => {
   // Trigger browser's generic "leave page?" dialog if in active call (in PROD)
   if (import.meta.env.PROD && pc && pc.connectionState === 'connected') {
     e.preventDefault();
@@ -943,7 +1358,7 @@ window.addEventListener('beforeunload', (e) => {
     return e.returnValue;
   }
 
-  cleanup();
+  await cleanup();
 });
 
 // ============================================================================
@@ -958,52 +1373,69 @@ async function hangUp() {
 
   console.debug('Hanging up...');
 
-  if (remoteVideoEl.srcObject) {
-    remoteVideoEl.srcObject.getTracks().forEach((track) => track.stop());
-    remoteVideoEl.srcObject = null;
+  // Hide calling UI if still visible
+  hideCallingUI();
+
+  // Capture partner info before cleanup for contact save
+  const partnerToSave = partnerUserId;
+  const roomToSave = currentRoomId;
+
+  try {
+    await RoomService.leaveRoom(getUserId());
+  } catch (err) {
+    console.warn('leaveRoom failed during hangUp:', err);
   }
 
-  cleanupMediaControls();
+  // Clean up remote stream
+  cleanupRemoteStream();
+  if (remoteVideoEl) {
+    remoteVideoEl.srcObject = null;
+  }
 
   if (pc) {
     pc.close();
     pc = null;
   }
 
-  if (seekDebounceTimeout) {
-    clearTimeout(seekDebounceTimeout);
-    seekDebounceTimeout = null;
+  // Reset SDP tracking so next call can process fresh SDPs
+  lastAnswerSdp = null;
+  lastOfferSdp = null;
+
+  // Reset UI
+  exitCallMode();
+
+  updateStatus('Disconnected. Click "Start New Chat" to begin.');
+
+  // Prompt to save contact after hanging up (if partner was present)
+  if (partnerToSave && roomToSave) {
+    // Small delay so UI settles before prompt
+    setTimeout(() => {
+      saveContact(partnerToSave, roomToSave, lobbyDiv).catch((e) => {
+        console.warn('Failed to save contact:', e);
+      });
+    }, 500);
   }
 
-  // NOTE: Firebase room cleanup disabled to allow re-joining recent calls
-  // TODO: set up auto-expire
-  // Remove room from Firebase (optional - rooms can auto-expire)
-  // if (roomId && role === 'initiator') {
-  //   const roomRef = ref(rtdb, `rooms/${roomId}`);
-  //   remove(roomRef).catch((error) => {
-  //     console.warn('Failed to remove room:', error);
-  //   });
-  // }
+  // Reset partner/room tracking
+  partnerUserId = null;
+  currentRoomId = null;
 
-  removeAllFirebaseListeners();
+  isHangingUp = false;
+}
 
-  membersListeners.forEach(({ ref: fbRef, type, callback }) =>
-    off(fbRef, type, callback)
-  );
-  membersListeners.length = 0;
+async function cleanup() {
+  await hangUp();
 
-  // Remove self from room members
-  if (roomId && peerId) {
-    const myMemberRef = ref(rtdb, `rooms/${roomId}/members/${peerId}`);
-    remove(myMemberRef).catch(() => {});
-  }
+  cleanupMediaControls();
+
+  removeAllRTDBListeners();
+
+  // await RoomService.leaveRoom(getUserId());
+  RoomService.cleanupListeners();
 
   if (document.pictureInPictureElement) {
     document.exitPictureInPicture().catch((err) => console.error(err));
   }
-
-  // Reset UI
-  exitCallMode();
 
   if (messagesUI && messagesUI.cleanup) {
     messagesUI.cleanup();
@@ -1011,7 +1443,6 @@ async function hangUp() {
   }
 
   // Reset state
-  roomId = null;
   role = null;
   lastAnswerSdp = null;
   lastOfferSdp = null;
@@ -1019,20 +1450,18 @@ async function hangUp() {
   // Clear URL parameter
   window.history.replaceState({}, document.title, window.location.pathname);
 
-  updateStatus('Disconnected. Click "Start New Chat" to begin.');
-
-  isHangingUp = false;
-}
-
-function cleanup() {
-  if (pc || roomId) hangUp();
-
   currentRoomLink = null;
   sharedVideoEl.src = '';
   syncStatus.textContent = '';
 
   cleanupLocalStream();
-  localVideoEl.srcObject = null;
+  cleanupLocalVideoOnlyStream();
+  if (localVideoEl) {
+    localVideoEl.srcObject = null;
+  }
+  if (remoteVideoEl) {
+    remoteVideoEl.srcObject = null;
+  }
 
   exitWatchMode();
   setLastWatched('none');
@@ -1042,64 +1471,3 @@ function cleanup() {
   cleanupSearchUI();
   cleanupFunctions.forEach((cleanupFn) => cleanupFn());
 }
-
-// // Minimal test: Restart ICE button (tries pc.restartIce(), falls back to iceRestart offer)
-// const restartIceBtn = document.createElement('button');
-// restartIceBtn.id = 'restart-ice-btn';
-// restartIceBtn.textContent = 'Restart ICE';
-// restartIceBtn.style.marginTop = '100px';
-// restartIceBtn.style.zIndex = '999999999999';
-// restartIceBtn.onclick = async () => {
-//   if (!pc) {
-//     updateStatus('No active PeerConnection to restart.');
-//     console.warn('No pc to restart');
-//     return;
-//   }
-
-//   try {
-//     if (typeof pc.restartIce === 'function') {
-//       await pc.restartIce();
-//       updateStatus('Called pc.restartIce() — check console & remote peer.');
-//       console.log('pc.restartIce() called');
-//       return;
-//     }
-
-//     // Fallback: create a renegotiation offer with iceRestart
-//     if (!roomId) {
-//       updateStatus('No roomId — cannot send iceRestart offer.');
-//       console.warn('No roomId for iceRestart fallback');
-//       return;
-//     }
-
-//     updateStatus(
-//       'pc.restartIce not available — sending iceRestart offer via Firebase'
-//     );
-//     const offer = await pc.createOffer({ iceRestart: true });
-//     await pc.setLocalDescription(offer);
-
-//     const roomRef = ref(rtdb, `rooms/${roomId}`);
-//     await update(roomRef, {
-//       offer: {
-//         type: offer.type,
-//         sdp: offer.sdp,
-//       },
-//     });
-
-//     updateStatus(
-//       'iceRestart offer sent to Firebase. Waiting for remote answer...'
-//     );
-//     console.log('Sent iceRestart offer', offer);
-//   } catch (err) {
-//     console.error('Restart ICE failed', err);
-//     updateStatus(
-//       'Restart ICE failed: ' + (err && err.message ? err.message : err)
-//     );
-//   }
-// };
-
-// // Append button to lobbyDiv if present (or to body as fallback)
-// if (typeof lobbyDiv !== 'undefined' && lobbyDiv) {
-//   lobbyDiv.appendChild(restartIceBtn);
-// } else {
-//   document.body.appendChild(restartIceBtn);
-// }

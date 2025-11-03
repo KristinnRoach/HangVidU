@@ -1,7 +1,12 @@
 // src/media-controls.js
 // Handles all media control button functionality (mute, video, camera, fullscreen)
 
-import { switchCamera, setupOrientationListener } from './media-devices.js';
+import {
+  switchCamera,
+  setupOrientationListener,
+  hasFrontAndBackCameras,
+} from './media-devices.js';
+import { showElement, hideElement } from '../utils/ui-utils.js';
 
 // ============================================================================
 // STATE
@@ -232,6 +237,15 @@ export function initializeMediaControls({
         console.error('Camera switch failed.');
       }
     };
+
+    (async () => {
+      const hasMultipleCameras = await hasFrontAndBackCameras();
+      if (hasMultipleCameras) {
+        showElement(switchCameraBtn);
+      } else {
+        hideElement(switchCameraBtn);
+      }
+    })();
   }
 
   // ===== MUTE/UNMUTE PARTNER =====

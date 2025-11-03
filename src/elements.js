@@ -11,6 +11,7 @@ const getElement = (id) => {
 
 // Element references - initialized after DOM is ready
 let lobbyDiv = null;
+let titleAuthBar = null;
 let createLinkBtn = null;
 let copyLinkBtn = null;
 let videosWrapper = null;
@@ -35,9 +36,12 @@ let appPipBtn = null;
 let appTitleH1 = null;
 let appTitleA = null;
 let appTitleSpan = null;
+let joinRoomBtn = null;
+let roomIdInput = null;
 
 function initializeElements() {
   lobbyDiv = getElement('lobby');
+  titleAuthBar = getElement('title-auth-bar');
   createLinkBtn = getElement('create-link-btn');
   copyLinkBtn = getElement('copy-link-btn');
 
@@ -69,6 +73,8 @@ function initializeElements() {
   appTitleH1 = getElement('app-title-h1');
   appTitleA = getElement('app-title-a');
   appTitleSpan = getElement('app-title-span');
+  joinRoomBtn = getElement('join-room-btn');
+  roomIdInput = getElement('room-id-input');
 }
 
 // Initialize elements when DOM is ready
@@ -81,6 +87,7 @@ if (document.readyState === 'loading') {
 // Export getters to ensure we always return current references
 export const getElements = () => ({
   lobbyDiv,
+  titleAuthBar,
   createLinkBtn,
   copyLinkBtn,
   videosWrapper,
@@ -110,6 +117,7 @@ export const getElements = () => ({
 // Export individual elements (backward compatibility)
 export {
   lobbyDiv,
+  titleAuthBar,
   createLinkBtn,
   copyLinkBtn,
   videosWrapper,
@@ -134,6 +142,8 @@ export {
   appTitleH1,
   appTitleA,
   appTitleSpan,
+  joinRoomBtn,
+  roomIdInput,
 };
 
 /**

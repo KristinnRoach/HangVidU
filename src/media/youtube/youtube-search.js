@@ -4,7 +4,7 @@
 
 import { onClickOutside } from '../../utils/clickOutside.js';
 import { isHidden, showElement, hideElement } from '../../utils/ui-utils.js';
-import { handleVideoSelection } from '../../p2p/watch-sync.js';
+import { handleVideoSelection } from '../../firebase/watch-sync.js';
 
 // ===== ELEMENTS =====
 

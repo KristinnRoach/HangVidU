@@ -15,13 +15,13 @@ export const isHidden = (el) => {
 export const showElement = (el) => {
   if (!elExists(el)) return;
 
-  el.classList.remove('hidden');
+  el.classList.contains('hidden') && el.classList.remove('hidden');
 };
 
 export const hideElement = (el) => {
   if (!elExists(el)) return;
 
-  el.classList.add('hidden');
+  !el.classList.contains('hidden') && el.classList.add('hidden');
 };
 
 export const isInSmallFrame = (element) => {

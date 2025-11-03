@@ -1,85 +1,242 @@
-import { getContacts, deleteContact } from '../../storage/idb.js';
+// contacts.js - Simple contacts management
 
-let contactsContainer = null;
+import { ref, set, get, remove } from 'firebase/database';
+import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
+import { getLoggedInUserId } from '../../firebase/auth.js';
 
-export function initContactsUI() {
-  // Create contacts container if it doesn't exist
-  if (!contactsContainer) {
-    contactsContainer = document.createElement('div');
-    contactsContainer.id = 'contacts-container';
-    contactsContainer.className = 'contacts-container';
+/**
+ * Save a contact for the current user (RTDB if logged in, localStorage otherwise).
+ */
+async function saveContactData(contactId, contactName, roomId) {
+  const loggedInUid = getLoggedInUserId();
 
-    // Insert after the lobby div
-    const lobby = document.getElementById('lobby');
-    lobby.parentNode.insertBefore(contactsContainer, lobby.nextSibling);
-  }
-
-  renderContacts();
-}
-
-export async function renderContacts() {
-  if (!contactsContainer) return;
-
-  const contacts = await getContacts();
-
-  if (contacts.length === 0) {
-    contactsContainer.innerHTML = '';
+  if (loggedInUid) {
+    const contactRef = ref(rtdb, `users/${loggedInUid}/contacts/${contactId}`);
+    await set(contactRef, {
+      contactId,
+      contactName,
+      roomId,
+      savedAt: Date.now(),
+    });
     return;
   }
 
-  contactsContainer.innerHTML = `
-    <div class="contacts-section">
-      <h3>Saved Rooms</h3>
-      <div class="contacts-list">
-        ${contacts
-          .map(
-            (contact) => `
-          <div class="contact-item" data-contact-id="${contact.id}">
-            <button class="contact-call-btn" data-room-id="${contact.roomId}">
-              📞 Room ${contact.roomId.slice(-6)}
-            </button>
-            <button class="contact-delete-btn" data-contact-id="${contact.id}">
-              ✕
-            </button>
-          </div>
-        `
-          )
-          .join('')}
-      </div>
-    </div>
-  `;
-
-  // Add event listeners
-  contactsContainer.addEventListener('click', handleContactClick);
+  // fallback to localStorage for guests
+  try {
+    const raw = localStorage.getItem('contacts') || '{}';
+    const obj = JSON.parse(raw);
+    obj[contactId] = { contactId, contactName, roomId, savedAt: Date.now() };
+    localStorage.setItem('contacts', JSON.stringify(obj));
+  } catch (e) {
+    console.warn('Failed to save contact to localStorage', e);
+  }
 }
 
-async function handleContactClick(event) {
-  const callBtn = event.target.closest('.contact-call-btn');
-  const deleteBtn = event.target.closest('.contact-delete-btn');
+/**
+ * Get all saved contacts for the current user.
+ */
+export async function getContacts() {
+  const loggedInUid = getLoggedInUserId();
 
-  if (callBtn) {
-    const roomId = callBtn.dataset.roomId;
-    // Trigger room join - we'll need to expose this from main.js
-    if (window.joinSavedRoom) {
-      window.joinSavedRoom(roomId);
+  if (loggedInUid) {
+    try {
+      const contactsRef = ref(rtdb, `users/${loggedInUid}/contacts`);
+      const snap = await get(contactsRef);
+      return snap.exists() ? snap.val() : {};
+    } catch (e) {
+      console.warn('Failed to read contacts from RTDB', e);
+      return {};
     }
   }
 
-  if (deleteBtn) {
-    const contactId = parseInt(deleteBtn.dataset.contactId);
-    await deleteContact(contactId);
-    renderContacts();
+  // Guest: localStorage
+  try {
+    const raw = localStorage.getItem('contacts') || '{}';
+    return JSON.parse(raw);
+  } catch (e) {
+    console.warn('Failed to read contacts from localStorage', e);
+    return {};
   }
 }
 
-export function hideContacts() {
-  if (contactsContainer) {
-    contactsContainer.style.display = 'none';
+/**
+ * Prompt user to save contact after hangup, and render contacts list in lobby.
+ */
+export async function saveContact(contactUserId, roomId, lobbyElement) {
+  if (!contactUserId || !roomId) return;
+
+  // If this contact is already saved, don't prompt again.
+  // If the roomId changed, update it silently.
+  const existing = await getContacts();
+  const existingEntry = existing?.[contactUserId];
+  if (existingEntry) {
+    if (existingEntry.roomId !== roomId) {
+      // Keep existing name, just update the roomId
+      await saveContactData(contactUserId, existingEntry.contactName, roomId);
+      await renderContactsList(lobbyElement);
+    }
+    return;
   }
+
+  const shouldSave = window.confirm(
+    `Would you like to save this contact for future calls?`
+  );
+
+  if (!shouldSave) return;
+
+  const contactName =
+    window.prompt('Enter a name for this contact:', contactUserId) ||
+    contactUserId;
+
+  await saveContactData(contactUserId, contactName, roomId);
+
+  // Re-render contacts list
+  await renderContactsList(lobbyElement);
 }
 
-export function showContacts() {
-  if (contactsContainer) {
-    contactsContainer.style.display = 'block';
+/**
+ * Render the contacts list in the lobby element.
+ */
+export async function renderContactsList(lobbyElement) {
+  if (!lobbyElement) return;
+
+  const contacts = await getContacts();
+  const contactIds = Object.keys(contacts);
+
+  // Find or create contacts container
+  let contactsContainer = lobbyElement.querySelector('.contacts-list');
+  if (!contactsContainer) {
+    contactsContainer = document.createElement('div');
+    contactsContainer.className = 'contacts-list';
+    contactsContainer.style.cssText = `
+      margin-top: 20px;
+      padding: 10px;
+      border-top: 1px solid #ccc;
+    `;
+    lobbyElement.appendChild(contactsContainer);
+  }
+
+  if (contactIds.length === 0) {
+    contactsContainer.innerHTML =
+      '<p style="color: #666;">No saved contacts yet.</p>';
+    return;
+  }
+
+  // Render contact items
+  contactsContainer.innerHTML = `
+    <h3 style="margin: 0 0 10px 0; font-size: 16px;">Saved Contacts</h3>
+    <ul style="list-style: none; padding: 0; margin: 0;">
+      ${contactIds
+        .map((id) => {
+          const contact = contacts[id];
+          return `
+            <li style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+              <button 
+                class="contact-call-btn" 
+                data-room-id="${contact.roomId}"
+                data-contact-name="${contact.contactName}"
+                style="
+                  padding: 6px 12px;
+                  background: #4CAF50;
+                  color: white;
+                  border: none;
+                  border-radius: 4px;
+                  cursor: pointer;
+                  font-size: 14px;
+                "
+              >
+                Call
+              </button>
+              <span style="flex: 1;">${contact.contactName}</span>
+              <button 
+                class="contact-delete-btn" 
+                data-contact-id="${id}"
+                style="
+                  padding: 4px 8px;
+                  background: #f44336;
+                  color: white;
+                  border: none;
+                  border-radius: 4px;
+                  cursor: pointer;
+                  font-size: 12px;
+                "
+              >
+                ✕
+              </button>
+            </li>
+          `;
+        })
+        .join('')}
+    </ul>
+  `;
+
+  // Attach event listeners for call/delete buttons
+  attachContactListeners(contactsContainer, lobbyElement);
+}
+
+/**
+ * Attach event listeners to contact list buttons.
+ */
+function attachContactListeners(container, lobbyElement) {
+  // Call buttons
+  container.querySelectorAll('.contact-call-btn').forEach((btn) => {
+    btn.onclick = async () => {
+      const roomId = btn.getAttribute('data-room-id');
+      const contactName = btn.getAttribute('data-contact-name');
+      if (roomId && window.joinOrCreateRoomWithId) {
+        // Show calling UI with contact name
+        if (window.showCallingUI) {
+          await window.showCallingUI(roomId, contactName, () => {
+            // onCancel callback - could add cleanup here if needed
+          });
+        }
+        window.joinOrCreateRoomWithId(roomId).catch((e) => {
+          console.warn('Failed to call contact:', e);
+          if (window.hideCallingUI) window.hideCallingUI();
+        });
+      }
+    };
+  });
+
+  // Delete buttons
+  container.querySelectorAll('.contact-delete-btn').forEach((btn) => {
+    btn.onclick = async () => {
+      const contactId = btn.getAttribute('data-contact-id');
+      if (!contactId) return;
+
+      const confirmed = window.confirm('Delete this contact?');
+      if (!confirmed) return;
+
+      await deleteContact(contactId);
+      await renderContactsList(lobbyElement);
+    };
+  });
+}
+
+/**
+ * Delete a contact.
+ */
+async function deleteContact(contactId) {
+  const loggedInUid = getLoggedInUserId();
+
+  if (loggedInUid) {
+    try {
+      await remove(ref(rtdb, `users/${loggedInUid}/contacts/${contactId}`));
+    } catch (e) {
+      console.warn('Failed to delete contact from RTDB', e);
+    }
+    return;
+  }
+
+  // Guest: remove from localStorage
+  try {
+    const raw = localStorage.getItem('contacts') || '{}';
+    const obj = JSON.parse(raw);
+    if (obj[contactId]) {
+      delete obj[contactId];
+      localStorage.setItem('contacts', JSON.stringify(obj));
+    }
+  } catch (e) {
+    console.warn('Failed to delete contact from localStorage', e);
   }
 }

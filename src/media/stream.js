@@ -1,5 +1,11 @@
 import { addRemoteVideoEventListeners } from './media-controls.js';
-import { getLocalStream, setLocalStream } from './state.js';
+import {
+  getLocalStream,
+  setLocalStream,
+  setRemoteStream,
+  getRemoteStream,
+  setLocalVideoOnlyStream,
+} from './state.js';
 import {
   userMediaAudioConstraints,
   userMediaVideoConstraints,
@@ -7,8 +13,6 @@ import {
 } from './constraints.js';
 import { updateStatus } from '../utils/status.js';
 import { devDebug } from '../utils/dev-utils.js';
-
-let videoOnlyStream = null;
 
 export const createLocalStream = async () => {
   const existingStream = getLocalStream(false); // (false) -> don't log null error
@@ -42,7 +46,8 @@ export async function setUpLocalStream(localVideoEl) {
 
   // Workaround for mobile browser echo (don't respect "videoEl.volume"):
   // Create a new stream with only the video track for local preview
-  videoOnlyStream = new MediaStream(localStream.getVideoTracks());
+  const videoOnlyStream = new MediaStream(localStream.getVideoTracks());
+  setLocalVideoOnlyStream(videoOnlyStream);
   localVideoEl.srcObject = videoOnlyStream;
 
   return true;
@@ -64,8 +69,13 @@ export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
       return false;
     }
 
-    if (remoteVideoEl.srcObject !== event.streams[0]) {
-      remoteVideoEl.srcObject = event.streams[0];
+    const remoteStream = event.streams[0];
+    const currentRemoteStream = getRemoteStream(false);
+
+    // Only update if this is a new/different stream
+    if (currentRemoteStream !== remoteStream) {
+      setRemoteStream(remoteStream);
+      remoteVideoEl.srcObject = remoteStream;
       addRemoteVideoEventListeners(remoteVideoEl, mutePartnerBtn);
       updateStatus('Connected!');
 
