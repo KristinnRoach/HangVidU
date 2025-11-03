@@ -83,21 +83,55 @@ export async function signInWithGoogle() {
     const user = result.user;
     console.log('Signed in user:', user);
 
-    devDebug('Google Access Token:', token);
+    devDebug('Google Access Token exists:', !!token);
   } catch (error) {
-    const errorCode = error.code;
-    const errorMessage = error.message;
+    const errorCode = error?.code || 'unknown';
+    const errorMessage = error?.message || String(error);
     // The email of the user's account used.
-    const email = error.customData?.email;
+    const email = error?.customData?.email;
     // The AuthCredential type that was used.
     const credential = GoogleAuthProvider.credentialFromError(error);
-    console.error(
-      'Error during Google sign-in:',
-      errorMessage,
+
+    console.error('Error during Google sign-in:', {
       errorCode,
+      errorMessage,
       email,
-      credential
-    );
+      credential,
+      origin: typeof window !== 'undefined' ? window.location.origin : 'n/a',
+    });
+
+    if (errorCode === 'auth/unauthorized-domain') {
+      const origin =
+        typeof window !== 'undefined' ? window.location.origin : '';
+      const guidanceLines = [
+        "This app's host is not whitelisted in Firebase Authentication.",
+        'Fix: In Firebase Console, go to Build → Authentication → Settings → Authorized domains and add this origin:',
+        origin ? `• ${origin}` : '• <your dev origin>',
+        '',
+        'Common dev hosts to add:',
+        '• http://localhost (covers any port)',
+        '• http://127.0.0.1',
+        '• http://[::1] (IPv6 localhost)',
+        '• Your LAN IP, e.g. http://192.168.x.y',
+        '',
+        'Tip: avoid opening index.html directly from the filesystem (file://). Use a dev server instead.',
+      ];
+
+      // Try to copy the origin to the clipboard for convenience (best-effort)
+      if (
+        origin &&
+        typeof navigator !== 'undefined' &&
+        navigator.clipboard?.writeText
+      ) {
+        navigator.clipboard.writeText(origin).catch(() => {});
+      }
+
+      alert(
+        `Sign-in failed: Unauthorized domain.\n\n${guidanceLines.join('\n')}`
+      );
+      return;
+    }
+
     alert(`Sign-in failed: ${errorMessage}`);
   }
 }

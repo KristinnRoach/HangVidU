@@ -28,36 +28,6 @@ export function setupIceCandidates(pc, role, roomId) {
   }
 }
 
-/**
- * Drain queued ICE candidates after remote description has been set.
- * This is called automatically via signalingstatechange, but can also
- * be called explicitly for immediate draining.
- */
-export function drainIceCandidateQueue(pc) {
-  if (!pc || !pendingRemoteCandidates.has(pc)) {
-    return;
-  }
-
-  const queue = pendingRemoteCandidates.get(pc);
-  if (queue.length === 0) {
-    return;
-  }
-
-  devDebug(`🔄 Draining ${queue.length} queued ICE candidate(s)`);
-
-  // Process each queued candidate
-  for (const candidateInit of queue) {
-    try {
-      pc.addIceCandidate(new RTCIceCandidate(candidateInit));
-    } catch (error) {
-      devDebug('Error adding queued ICE candidate:', error);
-    }
-  }
-
-  // Clear the queue after draining
-  queue.length = 0;
-}
-
 function setupLocalCandidateSender(pc, path, roomId) {
   pc.onicecandidate = (event) => {
     if (event.candidate) {
@@ -127,4 +97,36 @@ function setupRemoteCandidateListener(pc, path, roomId) {
 
   onChildAdded(remoteCandidatesRef, callback);
   trackRTDBListener(remoteCandidatesRef, 'child_added', callback);
+}
+
+/**
+ * Drain queued ICE candidates after remote description has been set.
+ * This is called automatically via signalingstatechange, but can also
+ * be called explicitly for immediate draining.
+ */
+export function drainIceCandidateQueue(pc) {
+  if (!pc || !pendingRemoteCandidates.has(pc)) {
+    return;
+  }
+
+  const queue = pendingRemoteCandidates.get(pc);
+  if (queue.length === 0) {
+    return;
+  }
+
+  devDebug(`🔄 Draining ${queue.length} queued ICE candidate(s)`);
+
+  // Process each queued candidate
+  for (const candidateInit of queue) {
+    try {
+      pc.addIceCandidate(new RTCIceCandidate(candidateInit)).catch((error) => {
+        devDebug('Error adding queued ICE candidate:', error);
+      });
+    } catch (error) {
+      devDebug('Error adding queued ICE candidate:', error);
+    }
+  }
+
+  // Clear the queue after draining
+  queue.length = 0;
 }

@@ -190,10 +190,13 @@ function attachContactListeners(container, lobbyElement) {
             // onCancel callback - could add cleanup here if needed
           });
         }
-        window.joinOrCreateRoomWithId(roomId).catch((e) => {
-          console.warn('Failed to call contact:', e);
-          if (window.hideCallingUI) window.hideCallingUI();
-        });
+        // Force initiator role when calling a saved contact to ensure a fresh call
+        window
+          .joinOrCreateRoomWithId(roomId, { forceInitiator: true })
+          .catch((e) => {
+            console.warn('Failed to call contact:', e);
+            if (window.hideCallingUI) window.hideCallingUI();
+          });
       }
     };
   });
