@@ -20,6 +20,10 @@ DRAFTS/
 **/*.DRAFT.txt
 **/*.DRAFT.md
 
+# Temp refactoring files
+./src/refactor/
+./src/refactor/**/*
+
 # Trash / old files to be deleted
 trash/
 **/trash
