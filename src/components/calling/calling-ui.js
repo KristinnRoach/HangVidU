@@ -5,7 +5,7 @@ import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, getUserId } from '../../firebase/auth.js';
 import { updateStatus } from '../../utils/status.js';
 
-const CALL_TIMEOUT_MS = 20000; // 20 seconds
+const CALL_TIMEOUT_MS = 30000; // 30 seconds
 
 let activeCallingUI = null;
 let timeoutId = null;

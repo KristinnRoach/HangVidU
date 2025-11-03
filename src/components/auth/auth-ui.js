@@ -50,7 +50,7 @@ export const initializeAuthUI = (parentElement) => {
     if (user) {
       logoutBtn.disabled = false;
       logoutBtn.style.display = 'inline-block';
-      const name = user.displayName;
+      const name = user.displayName || 'Guest User';
       const truncatedName = name.length > 7 ? name.slice(0, 7) + '...' : name;
       userInfoDiv.textContent = `Logged in: ${truncatedName}`;
     } else {
@@ -66,10 +66,6 @@ export const initializeAuthUI = (parentElement) => {
     cleanupListeners();
     isInitialized = false;
     parentElement && parentElement.removeChild(authContainer);
-    authContainer = null;
-    loginBtn = null;
-    logoutBtn = null;
-    userInfoDiv = null;
   };
 
   return { cleanupAuthUI: cleanup };
