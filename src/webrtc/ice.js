@@ -8,6 +8,7 @@ export function setupIceCandidates(pc, role, roomId) {
   if (!pc || !roomId) {
     throw new Error('setupIceCandidates: pc and roomId are required');
   }
+
   if (role === 'initiator') {
     setupLocalCandidateSender(pc, 'offerCandidates', roomId);
     setupRemoteCandidateListener(pc, 'answerCandidates', roomId);
