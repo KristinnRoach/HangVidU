@@ -3,6 +3,8 @@
 import { ref, set, get, remove } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId } from '../../firebase/auth.js';
+import { joinOrCreateRoomWithId } from '../../main.js';
+import { hideCallingUI, showCallingUI } from '../calling/calling-ui.js';
 
 /**
  * Save a contact for the current user (RTDB if logged in, localStorage otherwise).
@@ -183,20 +185,18 @@ function attachContactListeners(container, lobbyElement) {
     btn.onclick = async () => {
       const roomId = btn.getAttribute('data-room-id');
       const contactName = btn.getAttribute('data-contact-name');
-      if (roomId && window.joinOrCreateRoomWithId) {
+      if (roomId) {
         // Show calling UI with contact name
-        if (window.showCallingUI) {
-          await window.showCallingUI(roomId, contactName, () => {
-            // onCancel callback - could add cleanup here if needed
-          });
-        }
+        await showCallingUI(roomId, contactName, () => {
+          // onCancel callback - could add cleanup here if needed
+        });
+
         // Force initiator role when calling a saved contact to ensure a fresh call
-        window
-          .joinOrCreateRoomWithId(roomId, { forceInitiator: true })
-          .catch((e) => {
-            console.warn('Failed to call contact:', e);
-            if (window.hideCallingUI) window.hideCallingUI();
-          });
+
+        joinOrCreateRoomWithId(roomId, { forceInitiator: true }).catch((e) => {
+          console.warn('Failed to call contact:', e);
+          // hideCallingUI(); // ! Temporarily disabled while debugging
+        });
       }
     };
   });
