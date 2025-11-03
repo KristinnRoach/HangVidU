@@ -1,4 +1,4 @@
-import { onDoubleClickOutside } from '../../utils/clickOutside';
+import { onClickOutside, onDoubleClickOutside } from '../../utils/clickOutside';
 import { hideElement, isHidden, showElement } from '../../utils/ui-utils';
 
 // messages-ui.js
@@ -65,7 +65,7 @@ export function initMessagesUI(sendFn) {
 
   messagesToggleBtn.addEventListener('click', toggleMessages);
 
-  onDoubleClickOutside(
+  onClickOutside(
     messagesBox,
     () => {
       hideElement(messagesBox);

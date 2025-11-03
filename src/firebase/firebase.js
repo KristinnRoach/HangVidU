@@ -1,5 +1,4 @@
 import { initializeApp } from 'firebase/app';
-import { getDatabase, off } from 'firebase/database';
 
 // ============================================================================
 // FIREBASE CONFIG + INIT
@@ -17,22 +16,4 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-export const rtdb = getDatabase(app);
-
-// ============================================================================
-// FB LISTENER TRACKING
-// ============================================================================
-
-const firebaseListeners = [];
-
-export function trackFirebaseListener(fbRef, type, callback) {
-  firebaseListeners.push({ ref: fbRef, type, callback });
-}
-
-export function removeAllFirebaseListeners() {
-  firebaseListeners.forEach(({ ref, type, callback }) => {
-    off(ref, type, callback);
-  });
-  firebaseListeners.length = 0;
-}
+export const app = initializeApp(firebaseConfig);

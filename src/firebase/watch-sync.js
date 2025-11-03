@@ -1,5 +1,5 @@
 import { ref, set, onValue, update, get } from 'firebase/database';
-import { rtdb, trackFirebaseListener } from './firebase.js';
+import { onDataChange, rtdb } from '../storage/fb-rtdb/rtdb.js';
 import {
   isYouTubeUrl,
   getYouTubePlayer,
@@ -28,7 +28,7 @@ import { enterWatchMode } from '../main.js';
 
 // Keep local copy of active room ID to avoid stale/null imports from main.js
 let currentRoomId = null;
-let currentPeerId = null;
+let currentUserId = null;
 
 let watchMode = false;
 let lastWatched = 'none'; // 'yt' | 'url' | 'none'
@@ -66,7 +66,7 @@ async function updateWatchSyncState(updates) {
   try {
     await update(watchRef, {
       ...updates,
-      updatedBy: currentPeerId,
+      updatedBy: currentUserId,
     });
   } catch (err) {
     console.error('Failed to update watch state:', err);
@@ -77,16 +77,15 @@ async function updateWatchSyncState(updates) {
 // -----------------------------------------------------------------------------
 // SYNC SETUP
 // -----------------------------------------------------------------------------
-export function setupWatchSync(roomId, role, peerId) {
+export function setupWatchSync(roomId, role, userId) {
   if (!roomId) return;
 
   currentRoomId = roomId;
-  currentPeerId = peerId;
+  currentUserId = userId;
 
   const watchRef = ref(rtdb, `rooms/${roomId}/watch`);
 
-  onValue(watchRef, handleWatchUpdate);
-  trackFirebaseListener(watchRef, 'value', handleWatchUpdate);
+  onDataChange(watchRef, handleWatchUpdate);
 
   setupLocalVideoListeners();
 
@@ -101,7 +100,7 @@ export function setupWatchSync(roomId, role, peerId) {
 function handleWatchUpdate(snapshot) {
   const data = snapshot.val();
   if (!data) return;
-  if (data.updatedBy === currentPeerId) return; // Ignore self-updates
+  if (data.updatedBy === currentUserId) return; // Ignore self-updates
   if (Date.now() - lastLocalAction < 500) return; // Ignore local race updates
 
   // -- Handle URL changes -----------------------------------------------------
@@ -288,7 +287,7 @@ async function loadStream(url) {
       playing: false,
       currentTime: 0,
       isYouTube: isYouTubeUrl(url),
-      updatedBy: currentPeerId,
+      updatedBy: currentUserId,
     });
   }
 
@@ -318,7 +317,7 @@ export async function handleVideoSelection(video) {
 // YOUTUBE VIDEO LOADING WITH SYNC
 // -----------------------------------------------------------------------------
 
-async function loadYouTubeVideoWithSync(url, currentRoomId, currentPeerId) {
+async function loadYouTubeVideoWithSync(url, currentRoomId, currentUserId) {
   if (!currentRoomId) {
     import.meta.env.DEV &&
       console.debug(`No roomId: ${currentRoomId}, expected IF not in call.`);
@@ -346,7 +345,7 @@ async function loadYouTubeVideoWithSync(url, currentRoomId, currentPeerId) {
             playing: false,
             currentTime: 0,
             isYouTube: true,
-            updatedBy: currentPeerId,
+            updatedBy: currentUserId,
           });
         }
       },

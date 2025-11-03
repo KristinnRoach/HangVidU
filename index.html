@@ -32,10 +32,22 @@
       </div>
 
       <div id="lobby" class="lobby">
-        <h1 id="app-title-h1" class="title app-title">
-          <a id="app-title-a"> <span id="app-title-span">HangVidU</span></a>
-        </h1>
-        <p>Create a link to share with your partner and start a video call.</p>
+        <div id="title-auth-bar" class="title-auth-bar">
+          <h1 id="app-title-h1" class="title app-title">
+            <a id="app-title-a"> <span id="app-title-span">HangVidU</span></a>
+          </h1>
+        </div>
+        <div style="margin-top: 20px" class="flex-row">
+          <p>Join existing room:</p>
+          <input type="text" id="room-id-input" placeholder="Enter Room ID"></input>
+          <button id="join-room-btn" title="Join existing room">
+            Join
+          </button>
+        </div>
+        <p style="margin-top: 20px">
+          Or create a new link to share with your partner and start a video
+          call:
+        </p>
         <div class="flex-row">
           <button id="create-link-btn" title="Create new chat link">
             Create Link

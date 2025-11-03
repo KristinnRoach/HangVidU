@@ -1,24 +1,14 @@
 /* src/style.css */
 
-@keyframes bounce {
-  0%,
-  20%,
-  50%,
-  80%,
-  100% {
-    transform: translateY(0);
-  }
-  40% {
-    transform: translateY(-10px);
-  }
-  60% {
-    transform: translateY(-5px);
-  }
-}
-
 :root {
   --small-frame-height: 20dvh;
   --small-frame-width: calc(var(--small-frame-height) * (16 / 9));
+
+  /* z-index system */
+  --z-base: 0;
+  --z-content: 100;
+  --z-ui-overlay: 1000;
+  --z-controls: 2000;
 }
 
 * {
@@ -57,26 +47,69 @@ body {
   align-items: center;
   justify-content: center;
   margin: 0 auto;
+  position: relative;
+  z-index: var(--z-content);
 
   place-self: center;
-  padding: 3rem;
+  padding: 1.5rem;
 
-  font-size: 1.25rem;
+  font-size: 1.2rem;
+
   background: #2d2d2d;
   border-radius: 12px;
   max-width: 90vw;
   box-shadow: 0 4px 12px rgba(11, 11, 11, 0.5);
+
+  color: #bbb;
 }
 
-#lobby p {
+#lobby *,
+#lobby > * {
+  text-shadow: 1px 1px 5px rgba(36, 36, 36, 0.885);
+}
+
+#lobby button {
+  background-color: #1c78c3e3;
+  text-shadow: 1px 1px 5px rgba(36, 36, 36, 0.885);
+  color: rgba(199, 199, 199, 0.999);
+}
+
+#lobby > p {
   margin-bottom: 2rem;
+  text-align: center;
+  text-shadow: 1px 1px 5px rgba(36, 36, 36, 0.885);
+}
+
+#lobby > .title-auth-bar {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: space-evenly;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-info {
+  font-size: 1rem;
   color: #aaa;
   text-align: center;
 }
 
+.auth button {
+  position: relative;
+  z-index: var(--z-ui-overlay);
+  pointer-events: auto;
+}
+
+/* Ensure auth buttons are unclickable when lobby is hidden */
+#lobby.hidden .auth button,
+#lobby.unclickable .auth button {
+  pointer-events: none;
+}
+
 #create-link-btn,
 #copy-link-btn {
-  z-index: 1;
   opacity: 1;
   pointer-events: auto;
   transition: opacity 200ms;
@@ -84,7 +117,6 @@ body {
 
 #copy-link-btn.hidden,
 #create-link-btn.hidden {
-  z-index: -1;
   opacity: 0;
   pointer-events: none;
   transition: opacity 200ms;
@@ -92,6 +124,8 @@ body {
 
 #lobby.hidden {
   opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
 }
 
 #app-title-h1 {
@@ -147,7 +181,7 @@ body {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  z-index: 1000;
+  z-index: var(--z-ui-overlay);
 }
 
 #messages-toggle-btn button {
@@ -176,13 +210,11 @@ body {
   display: flex;
   flex-direction: column;
   padding: 10px;
-
-  z-index: 1000;
+  z-index: var(--z-ui-overlay);
 }
 
 h1 {
   text-align: center;
-  margin-bottom: 30px;
   font-size: 2rem;
   color: #fff;
 }
@@ -274,8 +306,7 @@ button:disabled {
   height: 100%;
   margin: 0 auto;
   background: transparent;
-
-  z-index: 1;
+  z-index: var(--z-base);
 }
 
 #yt-video-box iframe {
@@ -321,19 +352,23 @@ button:disabled {
 
 .search-section {
   border-radius: 8px;
-  z-index: 1000;
-
+  position: relative;
+  z-index: var(--z-ui-overlay);
   width: fit-content;
   max-width: 900px;
   height: fit-content;
   max-height: 100vh;
-
   background: transparent;
 }
 
 .search-controls {
   display: flex;
   gap: 10px;
+}
+
+.search-controls button,
+.search-controls input {
+  pointer-events: auto;
 }
 
 .search-controls input {
@@ -347,7 +382,6 @@ button:disabled {
   height: fit-content;
   max-height: 70vh;
   overflow-y: auto;
-  /* border: 1px solid #444; */
 }
 
 .search-result-item {
@@ -358,6 +392,7 @@ button:disabled {
   border-bottom: 1px solid #444;
   cursor: pointer;
   transition: background-color 0.2s;
+  pointer-events: auto;
 }
 
 .search-result-item:hover {
@@ -519,13 +554,20 @@ button:disabled {
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 0;
-
+  z-index: var(--z-base);
   display: grid;
   grid-template-columns: 1fr;
   height: 100vh;
   width: 100%;
   overflow: hidden;
+  /* Allow clicks to pass through when videos are behind UI */
+  pointer-events: none;
+}
+
+/* Re-enable pointer events on video elements that need interaction */
+#videos video,
+#videos iframe {
+  pointer-events: auto;
 }
 
 .video-box {
@@ -575,18 +617,15 @@ button:disabled {
   top: 20px;
   left: 20px;
   border-radius: 5px;
-  /* border: 2px solid #444; */
   -webkit-box-shadow: 3px 3px 15px -1px rgba(0, 0, 0, 0.77);
   box-shadow: 3px 3px 15px -1px rgba(0, 0, 0, 0.77);
-
   height: var(--small-frame-height);
   width: var(--small-frame-width);
-
-  z-index: 999;
-
+  z-index: var(--z-content);
   transform: translateX(0);
   will-change: transform;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: auto;
 }
 
 .small-frame.closed {
@@ -598,11 +637,10 @@ button:disabled {
   top: 5px;
   right: 5px;
   transform-origin: center;
-
+  z-index: var(--z-controls);
   display: flex;
   align-items: center;
   justify-content: center;
-
   background: transparent;
   color: white;
   border: none;
@@ -611,12 +649,11 @@ button:disabled {
   height: 20px;
   cursor: pointer;
   padding: 0.75rem;
-
-  z-index: 9999;
   opacity: 0.5;
   transform: translateX(0) rotate(0deg);
   will-change: transform, opacity;
   transition: translate 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: auto;
 }
 
 .small-frame-toggle-div.closed {
@@ -629,12 +666,12 @@ button:disabled {
   padding: 2px;
   font-size: 1rem;
   font-weight: bold;
-
-  z-index: 9999;
-
+  position: relative;
   transform: rotate(0deg);
   will-change: rotate;
   transition: rotate 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.25s;
+
+  z-index: var(--z-controls);
 }
 
 .small-frame-toggle-icon.closed {
@@ -660,10 +697,9 @@ button:disabled {
   column-gap: 2dvw;
   flex-wrap: wrap;
   margin: 0 auto 1rem auto;
-
-  z-index: 9999;
+  position: relative;
+  z-index: var(--z-controls);
   pointer-events: auto;
-
   opacity: 1;
   transition: opacity 200ms ease;
 }
@@ -740,15 +776,12 @@ button:disabled {
   position: absolute;
   top: 0px;
   right: 0px;
-  z-index: 1000;
-
+  z-index: var(--z-ui-overlay);
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: center;
-
   height: fit-content;
-
   margin-top: 15px;
   margin-right: 15px;
   gap: 10px;
@@ -758,6 +791,73 @@ button:disabled {
   height: 40px;
 }
 
-#install-btn {
-  z-index: 1000;
+/* Contacts Styles */
+.contacts-container {
+  margin: 2rem auto;
+  max-width: 600px;
+  padding: 0 1rem;
+}
+
+.contacts-section {
+  background: #2d2d2d;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(11, 11, 11, 0.5);
+  position: relative;
+  z-index: var(--z-content);
+}
+
+.contacts-section h3 {
+  color: #fff;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  text-align: center;
+}
+
+.contacts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: #3a3a3a;
+  border-radius: 8px;
+}
+
+.contact-call-btn {
+  flex: 1;
+  background: #4caf50;
+  color: white;
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  position: relative;
+  z-index: var(--z-ui-overlay);
+}
+
+.contact-call-btn:hover {
+  background: #45a049;
+}
+
+.contact-delete-btn {
+  background: #f44336;
+  color: white;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  position: relative;
+  z-index: var(--z-ui-overlay);
+}
+
+.contact-delete-btn:hover {
+  background: #da190b;
 }

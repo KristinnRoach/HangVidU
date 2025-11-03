@@ -323,7 +323,11 @@ function ensureDialogSupport(dialog) {
       this.style.top = '50%';
       this.style.left = '50%';
       this.style.transform = 'translate(-50%, -50%)';
-      this.style.zIndex = '1000';
+      // Use CSS variable for z-index
+      const zIndex = getComputedStyle(document.documentElement)
+        .getPropertyValue('--z-ui-overlay')
+        .trim();
+      this.style.zIndex = zIndex || '1000'; // Fallback to 1000 if variable not found
     };
 
     dialog.close = function () {

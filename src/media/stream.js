@@ -1,16 +1,21 @@
 import { addRemoteVideoEventListeners } from './media-controls.js';
-import { getLocalStream, setLocalStream } from './state.js';
+import {
+  getLocalStream,
+  setLocalStream,
+  setRemoteStream,
+  getRemoteStream,
+  setLocalVideoOnlyStream,
+} from './state.js';
 import {
   userMediaAudioConstraints,
   userMediaVideoConstraints,
   getOrientationAwareVideoConstraints,
 } from './constraints.js';
 import { updateStatus } from '../utils/status.js';
-
-let videoOnlyStream = null;
+import { devDebug } from '../utils/dev-utils.js';
 
 export const createLocalStream = async () => {
-  const existingStream = getLocalStream();
+  const existingStream = getLocalStream(false); // (false) -> don't log null error
   if (existingStream && existingStream instanceof MediaStream) {
     console.debug('Reusing existing local MediaStream.');
     return existingStream;
@@ -25,14 +30,14 @@ export const createLocalStream = async () => {
 
   setLocalStream(newStream);
 
-  if (import.meta.env.DEV) {
-    console.table({
-      videoCapabilities: newStream.getVideoTracks()[0].getCapabilities(),
-      audioCapabilities: newStream.getAudioTracks()[0].getCapabilities(),
-      videoApplied: newStream.getVideoTracks()[0].getSettings(),
-      audioApplied: newStream.getAudioTracks()[0].getSettings(),
-    });
-  }
+  // if (import.meta.env.DEV) {
+  //   console.table({
+  //     videoCapabilities: newStream.getVideoTracks()[0].getCapabilities(),
+  //     audioCapabilities: newStream.getAudioTracks()[0].getCapabilities(),
+  //     videoApplied: newStream.getVideoTracks()[0].getSettings(),
+  //     audioApplied: newStream.getAudioTracks()[0].getSettings(),
+  //   });
+  // }
   return newStream;
 };
 
@@ -41,7 +46,8 @@ export async function setUpLocalStream(localVideoEl) {
 
   // Workaround for mobile browser echo (don't respect "videoEl.volume"):
   // Create a new stream with only the video track for local preview
-  videoOnlyStream = new MediaStream(localStream.getVideoTracks());
+  const videoOnlyStream = new MediaStream(localStream.getVideoTracks());
+  setLocalVideoOnlyStream(videoOnlyStream);
   localVideoEl.srcObject = videoOnlyStream;
 
   return true;
@@ -49,9 +55,7 @@ export async function setUpLocalStream(localVideoEl) {
 
 export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
   pc.ontrack = (event) => {
-    if (import.meta.env.DEV) {
-      console.log('Received remote track');
-    }
+    devDebug(`REMOTE TRACK RECEIVED: ${event.track.kind}`);
 
     if (
       !event.streams ||
@@ -65,8 +69,13 @@ export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
       return false;
     }
 
-    if (remoteVideoEl.srcObject !== event.streams[0]) {
-      remoteVideoEl.srcObject = event.streams[0];
+    const remoteStream = event.streams[0];
+    const currentRemoteStream = getRemoteStream(false);
+
+    // Only update if this is a new/different stream
+    if (currentRemoteStream !== remoteStream) {
+      setRemoteStream(remoteStream);
+      remoteVideoEl.srcObject = remoteStream;
       addRemoteVideoEventListeners(remoteVideoEl, mutePartnerBtn);
       updateStatus('Connected!');
 
