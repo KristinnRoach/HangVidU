@@ -266,7 +266,7 @@ function applyCallResult(result, showLinkModal = false) {
   return true;
 }
 
-async function joinOrCreateRoomWithId(
+export async function joinOrCreateRoomWithId(
   customRoomId,
   { forceInitiator = false } = {}
 ) {
@@ -295,9 +295,9 @@ async function joinOrCreateRoomWithId(
 }
 
 // Expose for contacts UI
-window.joinOrCreateRoomWithId = joinOrCreateRoomWithId;
-window.showCallingUI = showCallingUI;
-window.hideCallingUI = hideCallingUI;
+// window.joinOrCreateRoomWithId = joinOrCreateRoomWithId;
+// window.showCallingUI = showCallingUI;
+// window.hideCallingUI = hideCallingUI;
 
 // ============================================================================
 // RECENT CALLS (24h TTL) + INCOMING CALL LISTENERS
