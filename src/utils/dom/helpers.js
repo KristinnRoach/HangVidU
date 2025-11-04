@@ -97,6 +97,8 @@ const captureInputState = (element) => {
   );
 };
 
+const escapeCSSSelector = (str) => str.replace(/["'\\]/g, '\\$&');
+
 /**
  * Restore input state.
  */
@@ -104,8 +106,9 @@ const restoreInputState = (element, states) => {
   states.forEach((state) => {
     let el = null;
     if (state.name) {
+      const safeName = escapeCSSSelector(state.name);
       el = element.querySelector(
-        `input[name="${state.name}"], textarea[name="${state.name}"], select[name="${state.name}"]`
+        `input[name="${safeName}"], textarea[name="${safeName}"], select[name="${safeName}"]`
       );
     } else if (state.id) {
       el = element.querySelector(`#${state.id}`);
@@ -147,12 +150,19 @@ const captureMediaState = (element) => {
 /**
  * Restore media state.
  */
+// Find a media element by matching resolved src properties to avoid selector pitfalls
+const findMediaBySrc = (root, targetSrc) => {
+  const list = root.querySelectorAll('video, audio');
+  for (const node of list) {
+    if (node.currentSrc === targetSrc || node.src === targetSrc) return node;
+  }
+  return null;
+};
+
 const restoreMediaState = (element, states) => {
   states.forEach((state) => {
     if (!state.src) return;
-    const el = element.querySelector(
-      `video[src="${state.src}"], audio[src="${state.src}"]`
-    );
+    const el = findMediaBySrc(element, state.src);
     if (el) {
       el.currentTime = state.currentTime;
       el.volume = state.volume;

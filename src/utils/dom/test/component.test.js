@@ -15,7 +15,7 @@ describe('createComponent - Critical Usage Issues', () => {
   });
 
   describe('1. Circular Update Detection (CRITICAL)', () => {
-    it('should handle prop changes within onPropUpdate listeners without infinite loops', () => {
+    it('should handle prop changes within onPropUpdated listeners without infinite loops', () => {
       const component = createComponent({
         initialProps: { firstName: 'Ada', lastName: 'Lovelace', fullName: '' },
         template: `<div>\${fullName}</div>`,
@@ -25,7 +25,7 @@ describe('createComponent - Critical Usage Issues', () => {
       let updateCount = 0;
 
       // Listener that triggers another prop update
-      component.onPropUpdate('firstName', (newFirst) => {
+      component.onPropUpdated('firstName', (newFirst) => {
         updateCount++;
         if (updateCount > 10) throw new Error('Infinite loop detected');
         component.fullName = `${newFirst} ${component.lastName}`;
@@ -48,13 +48,13 @@ describe('createComponent - Critical Usage Issues', () => {
       let aUpdateCount = 0;
       let bUpdateCount = 0;
 
-      component.onPropUpdate('a', (newA) => {
+      component.onPropUpdated('a', (newA) => {
         aUpdateCount++;
         if (aUpdateCount > 5) return; // Circuit breaker
         if (newA !== component.b) component.b = newA;
       });
 
-      component.onPropUpdate('b', (newB) => {
+      component.onPropUpdated('b', (newB) => {
         bUpdateCount++;
         if (bUpdateCount > 5) return; // Circuit breaker
         if (newB !== component.a) component.a = newB;
@@ -81,15 +81,15 @@ describe('createComponent - Critical Usage Issues', () => {
 
       const updateLog = [];
 
-      component.onUpdate((props) => {
+      component.onRender((props) => {
         updateLog.push({ type: 'global', props: { ...props } });
       });
 
-      component.onPropUpdate('name', (val) => {
+      component.onPropUpdated('name', (val) => {
         updateLog.push({ type: 'name', value: val });
       });
 
-      component.onPropUpdate('email', (val) => {
+      component.onPropUpdated('email', (val) => {
         updateLog.push({ type: 'email', value: val });
       });
 
@@ -116,7 +116,7 @@ describe('createComponent - Critical Usage Issues', () => {
       });
 
       // Register listener AFTER initial render
-      component.onUpdate(() => renderCount++);
+      component.onRender(() => renderCount++);
 
       // Multiple prop changes in batch - should trigger only ONE render
       component.update({ a: 10, b: 20, c: 30 });
@@ -139,7 +139,7 @@ describe('createComponent - Critical Usage Issues', () => {
       });
 
       let renderCount = 0;
-      component.onUpdate(() => renderCount++);
+      component.onRender(() => renderCount++);
 
       component.a = 10; // Render 1
       component.b = 20; // Render 2
@@ -298,9 +298,9 @@ describe('createComponent - Critical Usage Issues', () => {
       const listener2 = vi.fn();
       const listener3 = vi.fn();
 
-      component.onUpdate(listener1);
-      component.onUpdate(listener2);
-      component.onPropUpdate('count', listener3);
+      component.onRender(listener1);
+      component.onRender(listener2);
+      component.onPropUpdated('count', listener3);
 
       component.count = 1;
       expect(listener1).toHaveBeenCalledTimes(1);
@@ -412,8 +412,8 @@ describe('createComponent - Critical Usage Issues', () => {
       const listener1 = vi.fn();
       const listener2 = vi.fn();
 
-      comp1.onUpdate(listener1);
-      comp2.onUpdate(listener2);
+      comp1.onRender(listener1);
+      comp2.onRender(listener2);
 
       comp1.name = 'Changed1';
       expect(listener1).toHaveBeenCalledTimes(1);
@@ -538,7 +538,7 @@ describe('createComponent - Critical Usage Issues', () => {
       });
 
       const listener = vi.fn();
-      component.onUpdate(listener);
+      component.onRender(listener);
 
       // Set to same value
       component.count = 5;

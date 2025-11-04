@@ -51,7 +51,8 @@ const createComponent = ({
   }
 
   // Global update listeners (any prop updated)
-  const updateListeners = [];
+  const updateListeners = []; // onRender listeners (after render)
+  const propsUpdatedListeners = []; // onAnyPropUpdated listeners (after state change, render optional)
 
   // Per-prop listeners map: { propName: [callback, ...] }
   const propListeners = {};
@@ -89,6 +90,12 @@ const createComponent = ({
     updateListeners.forEach((listener) => listener({ ...currentProps }));
   };
 
+  const notifyPropsUpdated = (changedKeys) => {
+    if (!Array.isArray(changedKeys) || changedKeys.length === 0) return;
+    const payload = { props: { ...currentProps }, changedKeys };
+    propsUpdatedListeners.forEach((listener) => listener(payload));
+  };
+
   // Define getters/setters with per-prop event notification
   for (const prop of Object.keys(initialProps)) {
     propListeners[prop] = [];
@@ -106,6 +113,8 @@ const createComponent = ({
           }
           // Always notify per-prop listeners
           propListeners[prop].forEach((cb) => cb(value));
+          // Notify global props-updated listeners for single prop change
+          notifyPropsUpdated([prop]);
         }
       },
       configurable: true,
@@ -116,6 +125,7 @@ const createComponent = ({
   element.update = (newProps) => {
     let changed = false;
     let shouldRender = false;
+    const changedKeys = [];
 
     for (const key in newProps) {
       if (newProps[key] !== currentProps[key]) {
@@ -129,6 +139,7 @@ const createComponent = ({
           propListeners[key].forEach((cb) => cb(newProps[key]));
         }
         changed = true;
+        changedKeys.push(key);
       }
     }
 
@@ -136,15 +147,31 @@ const createComponent = ({
     if (changed && shouldRender) {
       render(); // render() already calls updateListeners, no need to duplicate
     }
+
+    // Notify global props-updated listeners once per batch
+    if (changedKeys.length > 0) {
+      notifyPropsUpdated(changedKeys);
+    }
   };
 
   /**
    * Registers a callback to run on any prop update.
    * @param {function} listener - Callback receiving current props object.
    */
-  element.onUpdate = (listener) => {
+  element.onRender = (listener) => {
     if (typeof listener === 'function') {
       updateListeners.push(listener);
+    }
+  };
+
+  /**
+   * Registers a callback to run when one or more props are updated (via setter or update()).
+   * Called even if no re-render occurs. Listener receives { props, changedKeys }.
+   * @param {function} listener
+   */
+  element.onAnyPropUpdated = (listener) => {
+    if (typeof listener === 'function') {
+      propsUpdatedListeners.push(listener);
     }
   };
 
@@ -153,7 +180,7 @@ const createComponent = ({
    * @param {string} prop - Property name to listen for.
    * @param {function} listener - Callback receiving the new prop value.
    */
-  element.onPropUpdate = (prop, listener) => {
+  element.onPropUpdated = (prop, listener) => {
     if (typeof listener === 'function' && propListeners[prop]) {
       propListeners[prop].push(listener);
     }
@@ -176,6 +203,7 @@ const createComponent = ({
     }
 
     updateListeners.length = 0;
+    propsUpdatedListeners.length = 0;
     for (const prop in propListeners) {
       propListeners[prop].length = 0;
     }
@@ -221,13 +249,18 @@ export default createComponent;
  *   autoAppend: true,         // default is true
  * });
  *
- * // Listen for any prop updates
- * userCard.onUpdate((props) => {
+ * // Listen for any prop updates (after render)
+ * userCard.onRender((props) => {
  *   console.log('UserCard updated:', props);
  * });
  *
+ * // Listen for any prop changes (render optional)
+ * userCard.onAnyPropUpdated(({ changedKeys }) => {
+ *   console.log('Props changed:', changedKeys);
+ * });
+ *
  * // Listen specifically for name changes
- * userCard.onPropUpdate('name', (newName) => {
+ * userCard.onPropUpdated('name', (newName) => {
  *   console.log('Name changed:', newName);
  * });
  *

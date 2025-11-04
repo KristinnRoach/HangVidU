@@ -163,13 +163,14 @@ const comp = createComponent({
 ## Listeners
 
 ```javascript
-// Listen to any prop change
-card.onUpdate((props) => {
-  console.log('Updated:', props);
-});
+// After each render (DOM updated)
+card.onRender((props) => console.log('Rendered:', props));
 
-// Listen to specific prop
-card.onPropUpdate('count', (newValue) => {
-  console.log('Count changed:', newValue);
-});
+// Any prop change (render optional)
+card.onAnyPropUpdated(({ changedKeys }) =>
+  console.log('Changed:', changedKeys)
+);
+
+// Specific prop
+card.onPropUpdated('count', (v) => console.log('count →', v));
 ```
