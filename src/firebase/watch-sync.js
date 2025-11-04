@@ -17,7 +17,7 @@ import {
 } from '../media/youtube/youtube-player.js';
 
 import { sharedVideoEl, sharedBoxEl } from '../elements.js'; // TODO: refactor:
-import { hideElement, showElement } from '../utils/ui-utils.js';
+import { hideElement, showElement } from '../utils/ui/ui-utils.js';
 import { enterWatchMode } from '../main.js';
 
 // ============================================================================

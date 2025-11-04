@@ -6,7 +6,7 @@ import {
   setupOrientationListener,
   hasFrontAndBackCameras,
 } from './media-devices.js';
-import { showElement, hideElement } from '../utils/ui-utils.js';
+import { showElement, hideElement } from '../utils/ui/ui-utils.js';
 
 // ============================================================================
 // STATE

@@ -2,7 +2,7 @@
 
 import { ref, push, set, onChildAdded } from 'firebase/database';
 import { rtdb, trackRTDBListener } from '../storage/fb-rtdb/rtdb';
-import { devDebug } from '../utils/dev-utils.js';
+import { devDebug } from '../utils/dev/dev-utils.js';
 
 // WeakMap to store queued candidates per peer connection
 const pendingRemoteCandidates = new WeakMap();

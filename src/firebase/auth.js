@@ -6,7 +6,7 @@ import {
   onAuthStateChanged,
 } from 'firebase/auth';
 import { app } from './firebase.js';
-import { devDebug } from '../utils/dev-utils.js';
+import { devDebug } from '../utils/dev/dev-utils.js';
 
 export const auth = getAuth(app);
 let guestUserId = null; // Generated ID when not logged in

@@ -12,12 +12,12 @@
 import { ref } from 'firebase/database';
 import { onDataChange, rtdb } from '../storage/fb-rtdb/rtdb.js';
 import { getUserId } from '../firebase/auth.js';
-import { updateStatus } from '../utils/status.js';
-import { devDebug } from '../utils/dev-utils.js';
+import { updateStatus } from '../utils/ui/status.js';
+import { devDebug } from '../utils/dev/dev-utils.js';
 
-import { drainIceCandidateQueue, setupIceCandidates } from './ice.js';
-import { setupConnectionStateHandlers } from './webrtc.js';
-import { setupDataChannel } from './data-channel.js';
+import { drainIceCandidateQueue, setupIceCandidates } from '../webrtc/ice.js';
+import { setupConnectionStateHandlers } from '../webrtc/webrtc.js';
+import { setupDataChannel } from '../webrtc/data-channel.js';
 import {
   rtcConfig,
   addLocalTracks,
@@ -25,7 +25,7 @@ import {
   createAnswer,
   setRemoteDescription,
   generateRoomId,
-} from './webrtc-utils.js';
+} from '../webrtc/webrtc-utils.js';
 
 import RoomService from '../room.js';
 

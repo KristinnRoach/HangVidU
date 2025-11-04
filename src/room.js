@@ -10,7 +10,7 @@ import {
   off,
 } from 'firebase/database';
 import { getRoomRef, rtdb } from './storage/fb-rtdb/rtdb';
-import { getDiagnosticLogger } from './utils/diagnostic-logger.js';
+import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
 
 class RoomService {
   constructor() {

@@ -1,8 +1,8 @@
 // src/webrtc/webrtc.js
 
-import { devDebug } from '../utils/dev-utils.js';
+import { devDebug } from '../utils/dev/dev-utils.js';
 import { hangUp, enterCallMode, exitCallMode, clearUrlParam } from '../main.js';
-import { updateStatus } from '../utils/status.js';
+import { updateStatus } from '../utils/ui/status.js';
 import { onCallAnswered } from '../components/calling/calling-ui.js';
 
 let disconnectTimeoutId = null;
