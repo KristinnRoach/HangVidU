@@ -96,4 +96,22 @@ describe('createComponent - Event Handler Binding', () => {
     const button = component.querySelector('button');
     expect(button.hasAttribute('onclick')).toBe(false);
   });
+
+  it('should ignore non-function handlers without throwing', () => {
+    const component = createComponent({
+      initialProps: { text: 'Test' },
+      template: `<button onclick="bad">Test</button>`,
+      handlers: {
+        bad: 'not-a-function',
+      },
+      parent: container,
+    });
+
+    const button = component.querySelector('button');
+    expect(button).toBeTruthy();
+    // Attribute should be removed regardless
+    expect(button.hasAttribute('onclick')).toBe(false);
+    // Clicking should not throw and should not call anything
+    expect(() => button.click()).not.toThrow();
+  });
 });

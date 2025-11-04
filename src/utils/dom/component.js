@@ -71,12 +71,15 @@ const createComponent = ({
     const content = html(template, currentProps);
     element.appendChild(content);
 
-    // Attach event handlers
+    // Attach event handlers (only if handler is a function)
     Object.keys(handlers).forEach((handlerName) => {
       const elements = element.querySelectorAll(`[onclick="${handlerName}"]`);
+      const fn = handlers[handlerName];
       elements.forEach((el) => {
         el.removeAttribute('onclick'); // Remove the attribute
-        el.addEventListener('click', handlers[handlerName]);
+        if (typeof fn === 'function') {
+          el.addEventListener('click', fn);
+        }
       });
     });
 
