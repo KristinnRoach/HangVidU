@@ -14,6 +14,7 @@ import {
  * @param {Object} options
  * @param {Object} options.initialProps - Initial properties of the component.
  * @param {string} options.template - Template string with ${prop} placeholders.
+ * @param {Object} [options.handlers] - Event handlers map { handlerName: function }.
  * @param {HTMLElement} [options.parent=null] - Parent element to auto-append component to.
  * @param {string} [options.containerTag='div'] - Tag name of the root element container.
  * @param {string} [options.className=''] - CSS class name(s) to apply to the container element.
@@ -24,6 +25,7 @@ import {
 const createComponent = ({
   initialProps,
   template,
+  handlers = {},
   parent = null,
   containerTag = 'div',
   className = '',
@@ -63,6 +65,15 @@ const createComponent = ({
     element.textContent = '';
     const content = html(template, currentProps);
     element.appendChild(content);
+
+    // Attach event handlers
+    Object.keys(handlers).forEach((handlerName) => {
+      const elements = element.querySelectorAll(`[onclick="${handlerName}"]`);
+      elements.forEach((el) => {
+        el.removeAttribute('onclick'); // Remove the attribute
+        el.addEventListener('click', handlers[handlerName]);
+      });
+    });
 
     // Restore state after render
     if (preserveInputState) {

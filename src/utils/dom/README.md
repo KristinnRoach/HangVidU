@@ -24,6 +24,25 @@ card.count++;
 card.update({ name: 'Alan', count: 10 });
 ```
 
+## Event Handlers
+
+```javascript
+const counter = createComponent({
+  initialProps: { count: 0 },
+  template: `
+    <button onclick="increment">Count: \${count}</button>
+    <button onclick="decrement">-</button>
+  `,
+  handlers: {
+    increment: () => counter.count++,
+    decrement: () => counter.count--,
+  },
+  parent: document.body,
+});
+
+// Handlers survive re-renders automatically
+```
+
 ## With Inputs
 
 ```javascript

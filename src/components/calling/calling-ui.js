@@ -90,12 +90,6 @@ export async function isRoomCallFresh(roomId) {
 export async function showCallingUI(roomId, contactName, onCancel) {
   const showTime = Date.now();
 
-  getDiagnosticLogger().logCallingUILifecycle('SHOW', roomId, {
-    contactName,
-    timestamp: showTime,
-    hasExistingUI: !!activeCallingUI,
-  });
-
   // Remove any existing calling UI first
   hideCallingUI();
 
