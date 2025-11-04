@@ -318,6 +318,84 @@ describe('createComponent - Critical Usage Issues', () => {
       // but we've cleared the arrays, so this documents expected behavior)
     });
 
+    it('should call onCleanup function when dispose() is called', () => {
+      const cleanupFn = vi.fn();
+
+      const component = createComponent({
+        initialProps: { count: 0 },
+        template: `<div>\${count}</div>`,
+        onCleanup: cleanupFn,
+        parent: container,
+      });
+
+      expect(cleanupFn).not.toHaveBeenCalled();
+
+      component.dispose();
+
+      expect(cleanupFn).toHaveBeenCalledTimes(1);
+      expect(container.contains(component)).toBe(false);
+    });
+
+    it('should call all cleanup functions in array when dispose() is called', () => {
+      const cleanup1 = vi.fn();
+      const cleanup2 = vi.fn();
+      const cleanup3 = vi.fn();
+
+      const component = createComponent({
+        initialProps: { count: 0 },
+        template: `<div>\${count}</div>`,
+        onCleanup: [cleanup1, cleanup2, cleanup3],
+        parent: container,
+      });
+
+      expect(cleanup1).not.toHaveBeenCalled();
+      expect(cleanup2).not.toHaveBeenCalled();
+      expect(cleanup3).not.toHaveBeenCalled();
+
+      component.dispose();
+
+      expect(cleanup1).toHaveBeenCalledTimes(1);
+      expect(cleanup2).toHaveBeenCalledTimes(1);
+      expect(cleanup3).toHaveBeenCalledTimes(1);
+      expect(container.contains(component)).toBe(false);
+    });
+
+    it('should handle onCleanup with external resource cleanup', () => {
+      let resourceClosed = false;
+      const mockResource = {
+        close: () => {
+          resourceClosed = true;
+        },
+      };
+
+      const component = createComponent({
+        initialProps: { status: 'active' },
+        template: `<div>\${status}</div>`,
+        onCleanup: () => mockResource.close(),
+        parent: container,
+      });
+
+      expect(resourceClosed).toBe(false);
+
+      component.dispose();
+
+      expect(resourceClosed).toBe(true);
+    });
+
+    it('should not throw if onCleanup array contains non-function values', () => {
+      const cleanup = vi.fn();
+
+      const component = createComponent({
+        initialProps: { count: 0 },
+        template: `<div>\${count}</div>`,
+        onCleanup: [cleanup, null, undefined, 'not-a-function', 42],
+        parent: container,
+      });
+
+      expect(() => component.dispose()).not.toThrow();
+      expect(cleanup).toHaveBeenCalledTimes(1);
+    });
+
     it('should handle multiple components without listener cross-talk', () => {
       const comp1 = createComponent({
         initialProps: { name: 'Comp1' },
@@ -344,6 +422,52 @@ describe('createComponent - Critical Usage Issues', () => {
       comp2.name = 'Changed2';
       expect(listener1).toHaveBeenCalledTimes(1);
       expect(listener2).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('8. Lifecycle (onMount)', () => {
+    it('should call onMount once after initial render', () => {
+      const onMount = vi.fn();
+
+      createComponent({
+        initialProps: { a: 1 },
+        template: `<div>\${a}</div>`,
+        onMount,
+        parent: container,
+      });
+
+      expect(onMount).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call onMount after element has been appended when autoAppend=true', () => {
+      let observedParent = null;
+
+      const comp = createComponent({
+        initialProps: { a: 1 },
+        template: `<div>\${a}</div>`,
+        onMount: (el) => {
+          observedParent = el.parentNode;
+        },
+        parent: container,
+        autoAppend: true,
+      });
+
+      expect(observedParent).toBe(container);
+      expect(container.contains(comp)).toBe(true);
+    });
+
+    it('should still call onMount when autoAppend=false', () => {
+      const onMount = vi.fn();
+      const comp = createComponent({
+        initialProps: { x: 0 },
+        template: `<div>\${x}</div>`,
+        onMount,
+        parent: container,
+        autoAppend: false,
+      });
+
+      expect(onMount).toHaveBeenCalledTimes(1);
+      expect(container.contains(comp)).toBe(false);
     });
   });
 

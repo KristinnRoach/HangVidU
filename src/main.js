@@ -163,8 +163,8 @@ async function init() {
     initializeSearchUI();
     addKeyListeners();
 
-    const { authComponent, cleanupAuthUI } = initializeAuthUI(titleAuthBar);
-    cleanupFunctions.push(cleanupAuthUI);
+    const authComponent = initializeAuthUI(titleAuthBar);
+    cleanupFunctions.push(authComponent.dispose);
 
     await setUpLocalStream(localVideoEl);
 

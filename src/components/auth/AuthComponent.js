@@ -2,20 +2,24 @@
 // AUTH COMPONENT (using createComponent)
 // ============================================================================
 
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth, signInWithGoogle, signOutUser } from '../../firebase/auth';
+import {
+  signInWithGoogle,
+  signOutUser,
+  onAuthChange,
+} from '../../firebase/auth';
 import createComponent from '../../utils/dom/component.js';
 
 let authComponent = null;
-let unsubscribeAuth = null;
 
 export const initializeAuthUI = (parentElement) => {
-  if (authComponent) return { cleanupAuthUI: cleanup };
+  if (authComponent) return authComponent;
 
   if (!parentElement) {
     console.error('Auth UI: Parent element is required');
     return;
   }
+
+  let unsubscribe = null; // tied to component lifecycle via onMount/onCleanup
 
   // Create reactive component
   authComponent = createComponent({
@@ -34,37 +38,27 @@ export const initializeAuthUI = (parentElement) => {
       handleLogin: signInWithGoogle,
       handleLogout: signOutUser,
     },
+    onMount: (el) => {
+      unsubscribe = onAuthChange(({ isLoggedIn, userName }) => {
+        el.update({
+          isLoggedIn,
+          userName,
+          loginDisabledAttr: isLoggedIn ? 'disabled' : '',
+          logoutDisabledAttr: isLoggedIn ? '' : 'disabled',
+        });
+      });
+    },
+    onCleanup: () => {
+      if (unsubscribe) {
+        unsubscribe();
+        unsubscribe = null;
+      }
+      // Always clear the singleton reference on cleanup
+      authComponent = null;
+    },
     className: 'auth flex-row',
     parent: parentElement,
   });
 
-  // Monitor auth state
-  unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-    if (user) {
-      const name = user.displayName || 'Guest User';
-      const truncatedName = name.length > 7 ? name.slice(0, 7) + '...' : name;
-      authComponent.update({
-        isLoggedIn: true,
-        userName: truncatedName,
-        loginDisabledAttr: 'disabled',
-        logoutDisabledAttr: '',
-      });
-    } else {
-      authComponent.update({
-        isLoggedIn: false,
-        userName: 'Guest User',
-        loginDisabledAttr: '',
-        logoutDisabledAttr: 'disabled',
-      });
-    }
-  });
-
-  const cleanup = () => {
-    unsubscribeAuth?.();
-    unsubscribeAuth = null;
-    authComponent?.dispose();
-    authComponent = null;
-  };
-
-  return { authComponent, cleanupAuthUI: cleanup };
+  return authComponent;
 };
