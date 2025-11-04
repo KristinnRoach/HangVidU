@@ -6,8 +6,11 @@ import { updateStatus } from '../utils/status.js';
 import { onCallAnswered } from '../components/calling/calling-ui.js';
 
 let disconnectTimeoutId = null;
+let activePC = null; // connection reference
 
 export function setupConnectionStateHandlers(pc) {
+  activePC = pc; // Mark as active
+
   pc.onconnectionstatechange = () => {
     devDebug('onconnectionstatechange:', pc.connectionState);
 
@@ -29,11 +32,9 @@ export function setupConnectionStateHandlers(pc) {
       // Wait 3 seconds before hanging up to allow transient disconnects to recover
       if (disconnectTimeoutId) clearTimeout(disconnectTimeoutId);
       disconnectTimeoutId = setTimeout(() => {
-        // Only hang up if still disconnected after grace period
-        if (pc && pc.connectionState === 'disconnected') {
+        // Only hang up if still disconnected after grace period and this is still the active connection
+        if (pc === activeConnection && pc.connectionState === 'disconnected') {
           updateStatus('Partner disconnected');
-          exitCallMode();
-          clearUrlParam();
           hangUp();
         }
         disconnectTimeoutId = null;

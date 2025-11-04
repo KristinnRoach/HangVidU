@@ -3,8 +3,9 @@
 import { ref, set, get, remove } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId } from '../../firebase/auth.js';
-import { joinOrCreateRoomWithId } from '../../main.js';
+import { joinOrCreateRoomWithId, listenForIncomingOnRoom } from '../../main.js';
 import { hideCallingUI, showCallingUI } from '../calling/calling-ui.js';
+import confirmDialog from '../primitives/confirm-dialog.js';
 
 /**
  * Save a contact for the current user (RTDB if logged in, localStorage otherwise).
@@ -80,7 +81,7 @@ export async function saveContact(contactUserId, roomId, lobbyElement) {
     return;
   }
 
-  const shouldSave = window.confirm(
+  const shouldSave = await confirmDialog(
     `Would you like to save this contact for future calls?`
   );
 
@@ -91,6 +92,12 @@ export async function saveContact(contactUserId, roomId, lobbyElement) {
     contactUserId;
 
   await saveContactData(contactUserId, contactName, roomId);
+
+  // QUICK FIX: Immediately attach listener for incoming calls on this room
+  console.log(
+    `[CONTACT SAVE] Attaching listener for saved contact room: ${roomId}`
+  );
+  listenForIncomingOnRoom(roomId);
 
   // Re-render contacts list
   await renderContactsList(lobbyElement);
@@ -186,16 +193,21 @@ function attachContactListeners(container, lobbyElement) {
       const roomId = btn.getAttribute('data-room-id');
       const contactName = btn.getAttribute('data-contact-name');
       if (roomId) {
+        // QUICK FIX: Ensure listener is active for this room before calling
+        console.log(
+          `[CONTACT CALL] Ensuring listener is active for room: ${roomId}`
+        );
+        listenForIncomingOnRoom(roomId);
+
         // Show calling UI with contact name
         await showCallingUI(roomId, contactName, () => {
           // onCancel callback - could add cleanup here if needed
         });
 
         // Force initiator role when calling a saved contact to ensure a fresh call
-
         joinOrCreateRoomWithId(roomId, { forceInitiator: true }).catch((e) => {
           console.warn('Failed to call contact:', e);
-          // hideCallingUI(); // ! Temporarily disabled while debugging
+          hideCallingUI();
         });
       }
     };

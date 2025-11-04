@@ -4,6 +4,7 @@ import { ref, set, remove, get } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, getUserId } from '../../firebase/auth.js';
 import { updateStatus } from '../../utils/status.js';
+import { getDiagnosticLogger } from '../../utils/diagnostic-logger.js';
 
 const CALL_TIMEOUT_MS = 30000; // 30 seconds
 
@@ -87,6 +88,14 @@ export async function isRoomCallFresh(roomId) {
  * Show "Calling..." modal with cancel button and auto-timeout
  */
 export async function showCallingUI(roomId, contactName, onCancel) {
+  const showTime = Date.now();
+
+  getDiagnosticLogger().logCallingUILifecycle('SHOW', roomId, {
+    contactName,
+    timestamp: showTime,
+    hasExistingUI: !!activeCallingUI,
+  });
+
   // Remove any existing calling UI first
   hideCallingUI();
 
@@ -149,6 +158,12 @@ export async function showCallingUI(roomId, contactName, onCancel) {
   `;
 
   const handleCancel = async () => {
+    getDiagnosticLogger().logCallingUILifecycle('CANCEL', roomId, {
+      contactName,
+      reason: 'user_cancelled',
+      duration: Date.now() - showTime,
+    });
+
     await clearOutgoingCallState();
     hideCallingUI();
     updateStatus('Call cancelled');
@@ -163,13 +178,22 @@ export async function showCallingUI(roomId, contactName, onCancel) {
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
 
+  // Store roomId for logging purposes
+  overlay.dataset.roomId = roomId;
   activeCallingUI = overlay;
 
-  // Auto-timeout after 20 seconds
+  // Auto-timeout after 30 seconds
   timeoutId = setTimeout(async () => {
+    getDiagnosticLogger().logCallingUILifecycle('TIMEOUT', roomId, {
+      contactName,
+      reason: 'auto_timeout',
+      duration: Date.now() - showTime,
+      timeoutMs: CALL_TIMEOUT_MS,
+    });
+
     await clearOutgoingCallState();
     hideCallingUI();
-    updateStatus('Call timed out - no answer after 20 seconds');
+    updateStatus('Call timed out - no answer after 30 seconds');
     if (onCancel) onCancel();
   }, CALL_TIMEOUT_MS);
 }
@@ -178,6 +202,17 @@ export async function showCallingUI(roomId, contactName, onCancel) {
  * Hide and clean up calling UI
  */
 export function hideCallingUI() {
+  if (activeCallingUI) {
+    // Try to extract roomId from the UI for logging
+    const roomId = activeCallingUI.dataset?.roomId || 'unknown';
+
+    getDiagnosticLogger().logCallingUILifecycle('HIDE', roomId, {
+      reason: 'hide_called',
+      hadTimeout: !!timeoutId,
+      timestamp: Date.now(),
+    });
+  }
+
   if (timeoutId) {
     clearTimeout(timeoutId);
     timeoutId = null;
@@ -193,6 +228,14 @@ export function hideCallingUI() {
  * Hide calling UI and clear outgoing state when call is answered
  */
 export async function onCallAnswered() {
+  if (activeCallingUI) {
+    const roomId = activeCallingUI.dataset?.roomId || 'unknown';
+    getDiagnosticLogger().logCallingUILifecycle('ANSWERED', roomId, {
+      reason: 'call_answered',
+      timestamp: Date.now(),
+    });
+  }
+
   await clearOutgoingCallState();
   hideCallingUI();
 }

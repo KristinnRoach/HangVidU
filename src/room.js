@@ -10,6 +10,7 @@ import {
   off,
 } from 'firebase/database';
 import { getRoomRef, rtdb } from './storage/fb-rtdb/rtdb';
+import { getDiagnosticLogger } from './utils/diagnostic-logger.js';
 
 class RoomService {
   constructor() {
@@ -21,22 +22,51 @@ class RoomService {
    * Create a new room with an offer
    */
   async createNewRoom(offer, userId, roomId = null) {
+    const startTime = Date.now();
     if (!roomId) roomId = Math.random().toString(36).substring(2, 15);
+
+    getDiagnosticLogger().log('ROOM', 'CREATE_START', {
+      roomId,
+      userId,
+      hasOffer: !!offer,
+      timestamp: startTime,
+    });
 
     const roomRef = getRoomRef(roomId);
 
-    await set(roomRef, {
-      offer: {
-        type: offer.type,
-        sdp: offer.sdp,
-      },
-      createdAt: Date.now(),
-      createdBy: userId,
-    });
+    try {
+      await set(roomRef, {
+        offer: {
+          type: offer.type,
+          sdp: offer.sdp,
+        },
+        createdAt: Date.now(),
+        createdBy: userId,
+      });
 
-    await this.joinRoom(roomId, userId);
+      getDiagnosticLogger().logFirebaseOperation('create_room', true, null, {
+        roomId,
+        userId,
+        duration: Date.now() - startTime,
+      });
 
-    return roomId;
+      await this.joinRoom(roomId, userId);
+
+      getDiagnosticLogger().log('ROOM', 'CREATE_COMPLETE', {
+        roomId,
+        userId,
+        totalDuration: Date.now() - startTime,
+      });
+
+      return roomId;
+    } catch (error) {
+      getDiagnosticLogger().logFirebaseOperation('create_room', false, error, {
+        roomId,
+        userId,
+        duration: Date.now() - startTime,
+      });
+      throw error;
+    }
   }
 
   /**
@@ -93,12 +123,48 @@ class RoomService {
    * Join room as a member
    */
   async joinRoom(roomId, userId) {
+    const startTime = Date.now();
     const memberRef = ref(rtdb, `rooms/${roomId}/members/${userId}`);
-    await set(memberRef, {
-      joinedAt: Date.now(),
+
+    getDiagnosticLogger().log('ROOM', 'JOIN_START', {
+      roomId,
+      userId,
+      timestamp: startTime,
     });
 
-    this.currentRoomId = roomId;
+    try {
+      await set(memberRef, {
+        joinedAt: Date.now(),
+      });
+
+      this.currentRoomId = roomId;
+
+      getDiagnosticLogger().logMemberJoinEvent(
+        roomId,
+        userId,
+        {
+          joinedAt: Date.now(),
+          role: 'self',
+        },
+        {
+          operation: 'join_room',
+          duration: Date.now() - startTime,
+        }
+      );
+
+      getDiagnosticLogger().logFirebaseOperation('join_room', true, null, {
+        roomId,
+        userId,
+        duration: Date.now() - startTime,
+      });
+    } catch (error) {
+      getDiagnosticLogger().logFirebaseOperation('join_room', false, error, {
+        roomId,
+        userId,
+        duration: Date.now() - startTime,
+      });
+      throw error;
+    }
   }
 
   /**
@@ -133,6 +199,16 @@ class RoomService {
       type: 'child_added',
       callback,
     });
+
+    getDiagnosticLogger().logListenerAttachment(
+      roomId,
+      'member_join',
+      this.memberListeners.length,
+      {
+        listenerType: 'onMemberJoined',
+        totalListeners: this.memberListeners.length,
+      }
+    );
   }
 
   onMemberLeft(roomId, callback) {
@@ -144,6 +220,16 @@ class RoomService {
       type: 'child_removed',
       callback,
     });
+
+    getDiagnosticLogger().logListenerAttachment(
+      roomId,
+      'member_leave',
+      this.memberListeners.length,
+      {
+        listenerType: 'onMemberLeft',
+        totalListeners: this.memberListeners.length,
+      }
+    );
   }
 
   /**
@@ -179,6 +265,11 @@ class RoomService {
     return () => {
       off(membersRef, 'child_added', joinCb);
       off(membersRef, 'child_removed', leaveCb);
+
+      // ? remove from the internal tracking array to prevent memory leaks
+      this.memberListeners = this.memberListeners.filter(
+        (l) => l.callback !== joinCb && l.callback !== leaveCb
+      );
     };
   }
 
@@ -186,9 +277,30 @@ class RoomService {
    * Clean up all listeners
    */
   cleanupListeners() {
+    const listenerCount = this.memberListeners.length;
+    const roomIds = [
+      ...new Set(
+        this.memberListeners
+          .map((l) => l.ref.toString().match(/rooms\/([^\/]+)\/members/)?.[1])
+          .filter(Boolean)
+      ),
+    ];
+
+    getDiagnosticLogger().log('LISTENER', 'CLEANUP_START', {
+      listenerCount,
+      roomIds,
+      timestamp: Date.now(),
+    });
+
     this.memberListeners.forEach(({ ref: fbRef, type, callback }) => {
       off(fbRef, type, callback);
     });
+
+    getDiagnosticLogger().logListenerCleanup(roomIds, [], {
+      cleanupType: 'room_service_cleanup',
+      listenersRemoved: listenerCount,
+    });
+
     this.memberListeners = [];
   }
 

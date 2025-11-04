@@ -107,6 +107,8 @@ import { devDebug } from './utils/dev-utils.js';
 import { initializeAuthUI } from './components/auth/auth-ui.js';
 
 import RoomService from './room.js';
+import { getDiagnosticLogger } from './utils/diagnostic-logger.js';
+import confirmDialog from './components/primitives/confirm-dialog.js';
 
 // ============================================================================
 // GLOBAL STATE
@@ -242,8 +244,8 @@ function getCallOptions(targetRoomId = null) {
 function applyCallResult(result, showLinkModal = false) {
   if (!result.success) return false;
 
-  // Ensure calling UI is hidden on successful call setup
-  hideCallingUI();
+  // DON'T hide calling UI here - it should stay visible until call is answered
+  // hideCallingUI() is called in onCallAnswered() when connection is established
 
   pc = result.pc;
   role = result.role;
@@ -270,34 +272,74 @@ export async function joinOrCreateRoomWithId(
   customRoomId,
   { forceInitiator = false } = {}
 ) {
+  const startTime = Date.now();
+
   // If caller explicitly wants to initiate (e.g., calling a saved contact),
   // create a fresh offer in this room regardless of existing state.
   if (forceInitiator) {
+    getDiagnosticLogger().logRoomCreation(
+      customRoomId,
+      true,
+      {
+        creationTime: startTime,
+        listenerAttachTime: startTime, // Will be updated when listener attaches
+        timeDiff: 0,
+      },
+      {
+        trigger: 'force_initiator',
+        reason: 'calling_saved_contact',
+      }
+    );
+
     const result = await createCall(getCallOptions(customRoomId));
     return applyCallResult(result, false);
   }
 
-  const status = await RoomService.checkRoomStatus(customRoomId);
+  // Check room status with retry to handle race condition
+  let status = await RoomService.checkRoomStatus(customRoomId);
+
+  // If room exists but appears empty, wait briefly and check again
+  // This handles the race where User A just created room but member data isn't written yet
+  if (status.exists && !status.hasMembers) {
+    await new Promise((resolve) => setTimeout(resolve, 500)); // 500ms delay
+    status = await RoomService.checkRoomStatus(customRoomId);
+  }
 
   // Room doesn't exist OR is empty → create as initiator
   if (!status.exists || !status.hasMembers) {
+    getDiagnosticLogger().logRoomCreation(
+      customRoomId,
+      true,
+      {
+        creationTime: startTime,
+        listenerAttachTime: startTime,
+        timeDiff: 0,
+      },
+      {
+        trigger: 'room_empty_or_nonexistent',
+        roomExists: status.exists,
+        memberCount: status.memberCount || 0,
+      }
+    );
+
     const result = await createCall(getCallOptions(customRoomId));
     return applyCallResult(result, false); // Don't show modal for saved contacts
   }
 
   // Room exists with members → join as joiner
   updateStatus('Joining room...');
+  getDiagnosticLogger().log('ROOM', 'JOINING_EXISTING', {
+    roomId: customRoomId,
+    memberCount: status.memberCount,
+    roomExists: status.exists,
+  });
+
   const result = await answerCall({
     roomId: customRoomId,
     ...getCallOptions(),
   });
   return applyCallResult(result, false);
 }
-
-// Expose for contacts UI
-// window.joinOrCreateRoomWithId = joinOrCreateRoomWithId;
-// window.showCallingUI = showCallingUI;
-// window.hideCallingUI = hideCallingUI;
 
 // ============================================================================
 // RECENT CALLS (24h TTL) + INCOMING CALL LISTENERS
@@ -366,10 +408,37 @@ async function removeRecentCall(roomId) {
 /**
  * Listen for incoming member joins on a given roomId and log them.
  */
-function listenForIncomingOnRoom(roomId) {
+export function listenForIncomingOnRoom(roomId) {
   if (!roomId) return;
-  if (listeningRoomIds.has(roomId)) return; // avoid duplicate attachments
+
+  console.log(`[LISTENER] Attempting to attach listener for room: ${roomId}`);
+
+  if (listeningRoomIds.has(roomId)) {
+    console.log(`[LISTENER] Duplicate listener prevented for room: ${roomId}`);
+    getDiagnosticLogger().logDuplicateListener(roomId, 'member_join', {
+      currentListenerCount: listeningRoomIds.size,
+    });
+    return; // avoid duplicate attachments
+  }
+
+  console.log(
+    `[LISTENER] Attaching new listener for room: ${roomId} (total: ${
+      listeningRoomIds.size + 1
+    })`
+  );
+
   listeningRoomIds.add(roomId);
+
+  listeningRoomIds.add(roomId);
+  getDiagnosticLogger().logListenerAttachment(
+    roomId,
+    'member_join',
+    listeningRoomIds.size,
+    {
+      action: 'incoming_call_listener_attached',
+    }
+  );
+
   // Use RoomService's member listener helper
   RoomService.onMemberJoined(roomId, async (snapshot) => {
     const joiningUserId = snapshot.key;
@@ -377,6 +446,16 @@ function listenForIncomingOnRoom(roomId) {
     const currentUserId = getUserId();
     if (joiningUserId && joiningUserId !== currentUserId) {
       console.log(`incoming call from ${joiningUserId} for room ${roomId}`);
+
+      getDiagnosticLogger().logMemberJoinEvent(
+        roomId,
+        joiningUserId,
+        memberData || {},
+        {
+          detectedBy: 'incoming_call_listener',
+          currentUserId,
+        }
+      );
 
       // Prefer the member's joinedAt as the primary freshness signal (real-time join)
       const joinedAt =
@@ -386,21 +465,60 @@ function listenForIncomingOnRoom(roomId) {
       const CALL_FRESH_MS = 20000;
 
       let isFresh = false;
+      let validationMethod = 'none';
+      let age = 0;
+
       if (joinedAt) {
-        isFresh = Date.now() - joinedAt < CALL_FRESH_MS;
+        age = Date.now() - joinedAt;
+        isFresh = age < CALL_FRESH_MS;
+        validationMethod = 'joinedAt';
       }
 
       // If joinedAt isn't present or seems old (e.g., listener attached late),
       // fall back to caller-scoped outgoing marker (for logged-in callers),
       // or room-scoped createdAt (for guests)
       if (!isFresh) {
-        isFresh =
-          (await isOutgoingCallFresh(joiningUserId, roomId)) ||
-          (await isRoomCallFresh(roomId));
+        const outgoingFresh = await isOutgoingCallFresh(joiningUserId, roomId);
+        const roomFresh = await isRoomCallFresh(roomId);
+        isFresh = outgoingFresh || roomFresh;
+        validationMethod = outgoingFresh
+          ? 'outgoingState'
+          : roomFresh
+          ? 'roomCreatedAt'
+          : 'failed';
       }
+
+      const freshnessResult = {
+        isFresh,
+        method: validationMethod,
+        age,
+        reason: isFresh ? 'call_is_fresh' : 'call_is_stale',
+      };
+
+      getDiagnosticLogger().logIncomingCallEvent(
+        joiningUserId,
+        roomId,
+        freshnessResult,
+        {
+          memberData,
+          joinedAt,
+          CALL_FRESH_MS,
+        }
+      );
+
       if (!isFresh) {
         console.log(
           `Ignoring stale incoming call from ${joiningUserId} for room ${roomId}`
+        );
+        getDiagnosticLogger().logNotificationDecision(
+          'REJECT',
+          'stale_call',
+          roomId,
+          {
+            age,
+            validationMethod,
+            joiningUserId,
+          }
         );
         return;
       }
@@ -408,19 +526,65 @@ function listenForIncomingOnRoom(roomId) {
       // Minimal prompt to accept or reject the incoming call.
       // Only prompt if we're not already in an active call.
       const inActiveCall = !!pc && pc.connectionState === 'connected';
-      if (inActiveCall) return;
+      if (inActiveCall) {
+        getDiagnosticLogger().logNotificationDecision(
+          'REJECT',
+          'already_in_call',
+          roomId,
+          {
+            joiningUserId,
+            currentCallState: pc?.connectionState,
+          }
+        );
+        return;
+      }
 
-      const accept = window.confirm(
+      getDiagnosticLogger().logNotificationDecision(
+        'SHOW',
+        'fresh_call_detected',
+        roomId,
+        {
+          joiningUserId,
+          freshnessResult,
+        }
+      );
+
+      const accept = await confirmDialog(
         `Incoming call from ${joiningUserId} for room ${roomId}.\n\nAccept?`
       );
 
       if (accept) {
+        getDiagnosticLogger().logNotificationDecision(
+          'ACCEPT',
+          'user_accepted',
+          roomId,
+          {
+            joiningUserId,
+          }
+        );
         joinOrCreateRoomWithId(roomId).catch((e) => {
           console.warn('Failed to answer incoming call:', e);
           updateStatus('Failed to answer incoming call.');
+          getDiagnosticLogger().logFirebaseOperation(
+            'join_room_on_accept',
+            false,
+            e,
+            {
+              roomId,
+              joiningUserId,
+            }
+          );
         });
       } else {
         console.log('Incoming call rejected by user');
+        getDiagnosticLogger().logNotificationDecision(
+          'REJECT',
+          'user_rejected',
+          roomId,
+          {
+            joiningUserId,
+          }
+        );
         // Optional: remove the saved recent call to avoid repeated prompts
         // removeRecentCall(roomId).catch(() => {});
       }
@@ -456,6 +620,12 @@ function listenForIncomingOnRoom(roomId) {
  * and attach incoming listeners for each valid room id.
  */
 async function startListeningForSavedRooms() {
+  const startTime = Date.now();
+  getDiagnosticLogger().log('LISTENER', 'STARTUP_BEGIN', {
+    timestamp: startTime,
+    currentListenerCount: listeningRoomIds.size,
+  });
+
   // Ensure auth state is initialized before deciding storage location
   // This prevents a race where we read localStorage as a guest before auth is ready
   try {
@@ -468,6 +638,10 @@ async function startListeningForSavedRooms() {
   }
 
   const loggedInUid = getLoggedInUserId();
+  getDiagnosticLogger().log('LISTENER', 'AUTH_STATE_DETERMINED', {
+    isLoggedIn: !!loggedInUid,
+    userId: loggedInUid || 'guest',
+  });
 
   if (loggedInUid) {
     const userRecentRef = ref(rtdb, `users/${loggedInUid}/recentCalls`);
@@ -500,8 +674,24 @@ async function startListeningForSavedRooms() {
       }
 
       toListen.forEach((roomId) => listenForIncomingOnRoom(roomId));
+
+      getDiagnosticLogger().log('LISTENER', 'STARTUP_COMPLETE', {
+        storage: 'rtdb',
+        roomsToListen: Array.from(toListen),
+        totalListeners: listeningRoomIds.size,
+        duration: Date.now() - startTime,
+      });
     } catch (e) {
       console.warn('Failed to read recent calls from RTDB', e);
+      getDiagnosticLogger().logFirebaseOperation(
+        'read_recent_calls',
+        false,
+        e,
+        {
+          storage: 'rtdb',
+          userId: loggedInUid,
+        }
+      );
     }
     return;
   }
@@ -534,8 +724,19 @@ async function startListeningForSavedRooms() {
 
     // overwrite with cleaned set (remove expired)
     localStorage.setItem('recentCalls', JSON.stringify(cleaned));
+
+    getDiagnosticLogger().log('LISTENER', 'STARTUP_COMPLETE', {
+      storage: 'localStorage',
+      roomsToListen: Array.from(toListen),
+      totalListeners: listeningRoomIds.size,
+      duration: Date.now() - startTime,
+      expiredRoomsRemoved: Object.keys(obj || {}).length - toListen.size,
+    });
   } catch (e) {
     console.warn('Failed to read recent calls from localStorage', e);
+    getDiagnosticLogger().logFirebaseOperation('read_recent_calls', false, e, {
+      storage: 'localStorage',
+    });
   }
 }
 
@@ -940,37 +1141,6 @@ async function registerJoinButton() {
   return true;
 }
 
-// document.addEventListener('DOMContentLoaded', () => {
-//   if (!joinRoomBtn || !roomIdInput) {
-//     console.warn('Join room button or input element not found');
-//     return;
-//   }
-
-//   joinRoomBtn.onclick = async () => {
-//     let inputRoomId = roomIdInput.value.trim();
-//     if (!inputRoomId) {
-//       updateStatus('Please enter a room ID');
-//       return;
-//     }
-
-//     // Normalize if user pasted a full URL like https://.../?room=ROOMID
-//     try {
-//       const maybeUrl = new URL(inputRoomId, window.location.origin);
-//       const q = maybeUrl.searchParams.get('room');
-//       if (q) inputRoomId = q;
-//       else {
-//         // also accept hash or path-style ids if needed
-//         const hashMatch = maybeUrl.hash.match(/room=([^&]+)/);
-//         if (hashMatch) inputRoomId = decodeURIComponent(hashMatch[1]);
-//       }
-//     } catch (e) {
-//       // not a full URL -- keep input as-is
-//     }
-
-//     await joinOrCreateRoomWithId(inputRoomId);
-//   };
-// });
-
 // ============================================================================
 // AUTO-JOIN FROM URL PARAMETER
 // ============================================================================
@@ -1008,15 +1178,15 @@ window.onload = async () => {
   const joinBtnSuccess = await registerJoinButton();
   if (!joinBtnSuccess) devDebug('Join button registration failed');
 
-  // Render saved contacts list in lobby
+  // Start listening for incoming calls on any saved/recent room ids FIRST
+  await startListeningForSavedRooms().catch((e) =>
+    console.warn('Failed to start saved-room listeners', e)
+  );
+
+  // Then render saved contacts list in lobby (now listeners are ready)
   renderContactsList(lobbyDiv).catch((e) => {
     console.warn('Failed to render contacts list:', e);
   });
-
-  // Start listening for incoming calls on any saved/recent room ids
-  startListeningForSavedRooms().catch((e) =>
-    console.warn('Failed to start saved-room listeners', e)
-  );
 
   // Auto-join if room parameter exists
   const autoJoinedSuccessfully = await autoJoinFromUrl();
@@ -1093,6 +1263,8 @@ export async function hangUp() {
   partnerUserId = null;
   currentRoomId = null;
 
+  clearUrlParam();
+
   isHangingUp = false;
 }
 
@@ -1104,7 +1276,8 @@ async function cleanup() {
   removeAllRTDBListeners();
 
   // await RoomService.leaveRoom(getUserId());
-  RoomService.cleanupListeners();
+  // DON'T cleanup all listeners - saved contact listeners should persist
+  // RoomService.cleanupListeners();
 
   if (document.pictureInPictureElement) {
     document.exitPictureInPicture().catch((err) => console.error(err));
@@ -1136,6 +1309,7 @@ async function cleanup() {
   }
 
   exitWatchMode();
+  clearUrlParam();
   setLastWatched('none');
   destroyYouTubePlayer();
   setYouTubeReady(false);
