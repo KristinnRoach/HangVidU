@@ -24,6 +24,25 @@ card.count++;
 card.update({ name: 'Alan', count: 10 });
 ```
 
+## Event Handlers
+
+```javascript
+const counter = createComponent({
+  initialProps: { count: 0 },
+  template: `
+    <button onclick="increment">Count: \${count}</button>
+    <button onclick="decrement">-</button>
+  `,
+  handlers: {
+    increment: () => counter.count++,
+    decrement: () => counter.count--,
+  },
+  parent: document.body,
+});
+
+// Handlers survive re-renders automatically
+```
+
 ## With Inputs
 
 ```javascript
@@ -51,6 +70,12 @@ createComponent({
   parent: document.body, // Optional: parent element
   containerTag: 'section', // Optional: default 'div'
   className: 'my-class', // Optional: CSS class
+  onMount: (el) => {
+    /* runs once after initial render (after append if autoAppend) */
+  },
+  onCleanup: () => {
+    /* runs on dispose() */
+  },
   autoAppend: true, // Optional: default true
   preserveInputState: true, // Optional: default true
 });
@@ -83,6 +108,58 @@ const card = createComponent({
 });
 ```
 
+## Cleanup
+
+```javascript
+// Basic cleanup - removes listeners and detaches from DOM
+component.dispose();
+
+// With custom cleanup function (e.g., unsubscribe from Firebase)
+const authComponent = createComponent({
+  initialProps: { user: null },
+  template: `<div>\${user ? user.name : 'Guest'}</div>`,
+  onCleanup: () => {
+    // Called automatically when dispose() is invoked
+    unsubscribeAuth();
+  },
+  parent: document.body,
+});
+
+// With multiple cleanup functions
+const component = createComponent({
+  initialProps: {
+    /* ... */
+  },
+  template: `/* ... */`,
+  onCleanup: [
+    () => clearInterval(intervalId),
+    () => removeEventListener('resize', handler),
+    () => websocket.close(),
+  ],
+  parent: document.body,
+});
+
+// Later...
+component.dispose(); // Runs all cleanup functions, then removes component
+```
+
+## onMount
+
+```javascript
+// Called once right after the first render.
+// If autoAppend is true (default) and parent is provided,
+// onMount runs after the element has been appended to the parent.
+const comp = createComponent({
+  initialProps: { text: 'Hello' },
+  template: `<div>\${text}</div>`,
+  parent: document.body,
+  onMount: (el) => {
+    // el is the root element of the component
+    el.setAttribute('data-mounted', '1');
+  },
+});
+```
+
 ## Listeners
 
 ```javascript
@@ -95,10 +172,4 @@ card.onUpdate((props) => {
 card.onPropUpdate('count', (newValue) => {
   console.log('Count changed:', newValue);
 });
-```
-
-## Cleanup
-
-```javascript
-card.dispose(); // Removes listeners and detaches from DOM
 ```

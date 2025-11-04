@@ -105,7 +105,7 @@ import {
 } from './components/modal/copyLinkModal.js';
 import { devDebug } from './utils/dev/dev-utils.js';
 
-import { initializeAuthUI } from './components/auth/auth-ui.js';
+import { initializeAuthUI } from './components/auth/AuthComponent.js';
 
 import RoomService from './room.js';
 import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
@@ -163,8 +163,8 @@ async function init() {
     initializeSearchUI();
     addKeyListeners();
 
-    const { cleanupAuthUI } = initializeAuthUI(titleAuthBar);
-    cleanupFunctions.push(cleanupAuthUI);
+    const authComponent = initializeAuthUI(titleAuthBar);
+    cleanupFunctions.push(authComponent.dispose);
 
     await setUpLocalStream(localVideoEl);
 

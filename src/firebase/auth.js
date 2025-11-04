@@ -72,6 +72,34 @@ export function getCurrentUserAsync() {
   });
 }
 
+/**
+ * Subscribe to auth state with a normalized, UI-friendly payload.
+ * Returns Firebase's unsubscribe function.
+ *
+ * @param {(info: { user: import('firebase/auth').User|null, isLoggedIn: boolean, userName: string }) => void} callback
+ * @param {{ truncate?: number }} [options]
+ * @returns {() => void} Unsubscribe function
+ */
+export function onAuthChange(callback, { truncate = 7 } = {}) {
+  return onAuthStateChanged(auth, (user) => {
+    const isLoggedIn = !!user;
+    const rawName = user?.displayName || 'Guest User';
+    const userName =
+      typeof rawName === 'string' && rawName.length > truncate
+        ? rawName.slice(0, truncate) + '...'
+        : rawName;
+
+    try {
+      callback({ user, isLoggedIn, userName });
+    } catch (e) {
+      // Swallow callback errors to avoid breaking the subscription loop
+      // Optionally log in dev mode
+      if (typeof devDebug === 'function')
+        devDebug('onAuthChange callback error', e);
+    }
+  });
+}
+
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
   try {

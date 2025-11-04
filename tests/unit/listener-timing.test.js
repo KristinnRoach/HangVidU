@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { getDiagnosticLogger } from '../../src/utils/diagnostic-logger.js';
+import { getDiagnosticLogger } from '../../src/utils/dev/diagnostic-logger.js';
 
 describe('Listener Timing Fix', () => {
   let logger;

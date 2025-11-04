@@ -14,9 +14,12 @@ import {
  * @param {Object} options
  * @param {Object} options.initialProps - Initial properties of the component.
  * @param {string} options.template - Template string with ${prop} placeholders.
+ * @param {Object} [options.handlers] - Event handlers map { handlerName: function }.
  * @param {HTMLElement} [options.parent=null] - Parent element to auto-append component to.
  * @param {string} [options.containerTag='div'] - Tag name of the root element container.
  * @param {string} [options.className=''] - CSS class name(s) to apply to the container element.
+ * @param {Function} [options.onMount] - Called once after initial render (after append if autoAppend).
+ * @param {Function|Function[]} [options.onCleanup] - Function(s) to run on component disposal.
  * @param {boolean} [options.autoAppend=true] - Whether to append to parent automatically.
  * @param {boolean} [options.preserveInputState=true] - Whether to preserve input/media state during re-renders.
  * @returns {HTMLElement} The root component element with reactive props and update API.
@@ -24,9 +27,12 @@ import {
 const createComponent = ({
   initialProps,
   template,
+  handlers = {},
   parent = null,
   containerTag = 'div',
   className = '',
+  onMount = null,
+  onCleanup = null,
   autoAppend = true,
   preserveInputState = true,
 }) => {
@@ -63,6 +69,15 @@ const createComponent = ({
     element.textContent = '';
     const content = html(template, currentProps);
     element.appendChild(content);
+
+    // Attach event handlers
+    Object.keys(handlers).forEach((handlerName) => {
+      const elements = element.querySelectorAll(`[onclick="${handlerName}"]`);
+      elements.forEach((el) => {
+        el.removeAttribute('onclick'); // Remove the attribute
+        el.addEventListener('click', handlers[handlerName]);
+      });
+    });
 
     // Restore state after render
     if (preserveInputState) {
@@ -149,6 +164,17 @@ const createComponent = ({
    * Call this when component is no longer needed to prevent memory leaks.
    */
   element.dispose = () => {
+    // Run custom cleanup functions if provided
+    if (onCleanup) {
+      if (Array.isArray(onCleanup)) {
+        onCleanup.forEach((fn) => {
+          if (typeof fn === 'function') fn();
+        });
+      } else if (typeof onCleanup === 'function') {
+        onCleanup();
+      }
+    }
+
     updateListeners.length = 0;
     for (const prop in propListeners) {
       propListeners[prop].length = 0;
@@ -160,6 +186,15 @@ const createComponent = ({
 
   if (autoAppend && parent && !parent.contains(element)) {
     parent.appendChild(element);
+  }
+
+  // Call onMount after initial render and (if enabled) append
+  if (typeof onMount === 'function') {
+    try {
+      onMount(element);
+    } catch (_) {
+      /* no-op */
+    }
   }
 
   return element;

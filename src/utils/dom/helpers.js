@@ -8,8 +8,8 @@
  * @returns {string} The escaped, safe string.
  */
 const sanitize = (str) => {
-  if (typeof str !== 'string') return str;
-  return str.replace(/[&<>"'`=\/]/g, (char) => {
+  const s = String(str);
+  return s.replace(/[&<>"'`=\/]/g, (char) => {
     return {
       '&': '&amp;',
       '<': '&lt;',
