@@ -1,8 +1,8 @@
 // src/p2p/ice.js
 
-import { push, set, onChildAdded } from 'firebase/database';
+import { push, set } from 'firebase/database';
 import {
-  trackRTDBListener,
+  addRTDBListener,
   getOfferCandidatesRef,
   getAnswerCandidatesRef,
 } from '../storage/fb-rtdb/rtdb';
@@ -105,8 +105,7 @@ function setupRemoteCandidateListener(pc, path, roomId) {
     }
   };
 
-  onChildAdded(remoteCandidatesRef, callback);
-  trackRTDBListener(remoteCandidatesRef, 'child_added', callback, roomId);
+  addRTDBListener(remoteCandidatesRef, 'child_added', callback, roomId);
 }
 
 /**

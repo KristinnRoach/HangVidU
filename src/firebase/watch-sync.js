@@ -1,5 +1,5 @@
-import { ref, set, onValue, update, get } from 'firebase/database';
-import { onDataChange, rtdb } from '../storage/fb-rtdb/rtdb.js';
+import { set, update } from 'firebase/database';
+import { onDataChange, rtdb, getWatchRef } from '../storage/fb-rtdb/rtdb.js';
 import {
   isYouTubeUrl,
   getYouTubePlayer,
@@ -62,7 +62,7 @@ async function updateWatchSyncState(updates) {
 
   console.debug('Updating watch sync state, roomId:', currentRoomId);
 
-  const watchRef = ref(rtdb, `rooms/${currentRoomId}/watch`);
+  const watchRef = getWatchRef(currentRoomId);
   try {
     await update(watchRef, {
       ...updates,
@@ -83,7 +83,7 @@ export function setupWatchSync(roomId, role, userId) {
   currentRoomId = roomId;
   currentUserId = userId;
 
-  const watchRef = ref(rtdb, `rooms/${roomId}/watch`);
+  const watchRef = getWatchRef(roomId);
 
   onDataChange(watchRef, handleWatchUpdate, roomId);
 
@@ -281,7 +281,7 @@ async function loadStream(url) {
   }
 
   if (currentRoomId) {
-    const watchRef = ref(rtdb, `rooms/${currentRoomId}/watch`);
+    const watchRef = getWatchRef(currentRoomId);
     set(watchRef, {
       url,
       playing: false,
@@ -317,7 +317,7 @@ export async function handleVideoSelection(video) {
 // YOUTUBE VIDEO LOADING WITH SYNC
 // -----------------------------------------------------------------------------
 
-async function loadYouTubeVideoWithSync(url, currentRoomId, currentUserId) {
+async function loadYouTubeVideoWithSync(url) {
   if (!currentRoomId) {
     import.meta.env.DEV &&
       console.debug(`No roomId: ${currentRoomId}, expected IF not in call.`);
@@ -339,7 +339,7 @@ async function loadYouTubeVideoWithSync(url, currentRoomId, currentUserId) {
 
         // Both participants can set initial state in Firebase
         if (currentRoomId) {
-          const watchRef = ref(rtdb, `rooms/${currentRoomId}/watch`);
+          const watchRef = getWatchRef(currentRoomId);
           set(watchRef, {
             url: url,
             playing: false,

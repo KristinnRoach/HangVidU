@@ -1,4 +1,12 @@
-import { getDatabase, ref, get, onValue, off } from 'firebase/database';
+import {
+  getDatabase,
+  ref,
+  get,
+  onValue,
+  onChildAdded,
+  onChildRemoved,
+  off,
+} from 'firebase/database';
 import { app } from '../../firebase/firebase';
 
 export const rtdb = getDatabase(app);
@@ -10,15 +18,37 @@ export const rtdb = getDatabase(app);
 const listeners = [];
 
 /**
- * Track a firebase listener for cleanup.
- * Keeps internal registry so cleanup functions can purge them by scope.
+ * Attach and track a firebase listener for cleanup.
+ * Automatically attaches the listener based on the event type and keeps
+ * internal registry so cleanup functions can purge them by scope.
  * @param {DatabaseReference} fbRef - Firebase database reference
- * @param {string} type - Event type ('value', 'child_added', etc.)
+ * @param {string} type - Event type ('value', 'child_added', 'child_removed')
  * @param {Function} callback - Listener callback
  * @param {string} [roomId] - Optional room ID for room-scoped cleanup
+ * @param {string} [userId] - Optional user ID for user-scoped cleanup
+ * @param {string} [category] - Optional category label for logical grouping
  */
-export function trackRTDBListener(fbRef, type, callback, roomId = null) {
-  listeners.push({ ref: fbRef, type, callback, roomId });
+export function addRTDBListener(
+  fbRef,
+  type,
+  callback,
+  roomId = null,
+  userId = null,
+  category = null
+) {
+  // Attach the listener based on type
+  if (type === 'value') {
+    onValue(fbRef, callback);
+  } else if (type === 'child_added') {
+    onChildAdded(fbRef, callback);
+  } else if (type === 'child_removed') {
+    onChildRemoved(fbRef, callback);
+  } else {
+    console.warn(`Unknown listener type: ${type}`);
+  }
+
+  // Track for cleanup
+  listeners.push({ ref: fbRef, type, callback, roomId, userId, category });
 }
 
 /**
@@ -61,14 +91,42 @@ export function removeRTDBListenersForRoom(roomId) {
 }
 
 /**
+ * Remove all tracked listeners for a specific user in a room.
+ * Use this to dispose a specific user's listeners (e.g., when disposing an old PeerConnection).
+ * @param {string} userId - User ID whose listeners should be removed
+ * @param {string} roomId - Room ID to scope removal
+ */
+export function removeRTDBListenersForUser(userId, roomId) {
+  if (!userId || !roomId) return;
+
+  const shouldRemove = (l) => l.userId === userId && l.roomId === roomId;
+
+  const toRemove = listeners.filter(shouldRemove);
+  toRemove.forEach(({ ref: fbRef, type, callback }) => {
+    try {
+      off(fbRef, type, callback);
+    } catch (err) {
+      console.warn(
+        `Failed to remove listener for user ${userId} in room ${roomId}`,
+        err
+      );
+    }
+  });
+
+  // Prune removed from tracking array
+  const remaining = listeners.filter((l) => !shouldRemove(l));
+  listeners.length = 0;
+  listeners.push(...remaining);
+}
+
+/**
  * Attach a listener for data changes and track it for cleanup.
  * @param {DatabaseReference} fbRef - Firebase database reference
  * @param {Function} callback - Listener callback
  * @param {string} [roomId] - Optional room ID for room-scoped cleanup
  */
 export function onDataChange(fbRef, callback, roomId = null) {
-  onValue(fbRef, callback);
-  trackRTDBListener(fbRef, 'value', callback, roomId);
+  addRTDBListener(fbRef, 'value', callback, roomId);
 }
 
 // ============================================================================
@@ -97,6 +155,8 @@ export const getUserContactsRef = (userId) =>
   ref(rtdb, `users/${userId}/contacts`);
 export const getUserRecentCallsRef = (userId) =>
   ref(rtdb, `users/${userId}/recentCalls`);
+export const getUserRecentCallRef = (userId, roomId) =>
+  ref(rtdb, `users/${userId}/recentCalls/${roomId}`);
 export const getUserOutgoingCallRef = (userId) =>
   ref(rtdb, `users/${userId}/outgoingCall`);
 
