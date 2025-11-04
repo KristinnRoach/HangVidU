@@ -1,4 +1,5 @@
 // main.js
+import { joinRoomForm } from './components/lobby/join-room.js';
 
 // ============================================================================
 // HANGVIDU - P2P VIDEO CHAT WITH WATCH-TOGETHER MODE
@@ -292,6 +293,7 @@ export async function joinOrCreateRoomWithId(
     );
 
     const result = await createCall(getCallOptions(customRoomId));
+
     return applyCallResult(result, false);
   }
 
@@ -328,7 +330,7 @@ export async function joinOrCreateRoomWithId(
     );
 
     const result = await createCall(getCallOptions(customRoomId));
-    return applyCallResult(result, false); // Don't show modal for saved contacts
+    return applyCallResult(result, true); // Show modal when creating via join form
   }
 
   // Room exists with members → join as joiner
@@ -528,7 +530,19 @@ export function listenForIncomingOnRoom(roomId) {
       }
 
       // Minimal prompt to accept or reject the incoming call.
-      // Only prompt if we're not already in an active call.
+      // Only prompt if we're not already in an active call and the room is in a valid offer state.
+      // Check offer/answer state before showing dialog
+      let roomData;
+      try {
+        roomData = await RoomService.getRoomData(roomId);
+      } catch (e) {
+        return; // Room may have been deleted
+      }
+      const hasOffer = !!roomData.offer;
+      const hasAnswer = !!roomData.answer;
+      const offerCreator = roomData.createdBy;
+      if (!hasOffer || hasAnswer || offerCreator === currentUserId) return;
+
       const inActiveCall = !!pc && pc.connectionState === 'connected';
       if (inActiveCall) {
         getDiagnosticLogger().logNotificationDecision(
@@ -1179,8 +1193,27 @@ window.onload = async () => {
     return;
   }
 
-  const joinBtnSuccess = await registerJoinButton();
-  if (!joinBtnSuccess) devDebug('Join button registration failed');
+  const onJoinRoomSubmit = async (roomInputString) => {
+    const inputRoomId = normalizeRoomInput(roomInputString || '');
+    if (!inputRoomId) {
+      updateStatus('Please enter a valid Room ID');
+      return false;
+    }
+
+    const mediaReady = await waitForLocalStream(5000);
+    if (!mediaReady) {
+      updateStatus('Waiting for camera/mic to be ready...');
+      return false;
+    }
+
+    return await joinOrCreateRoomWithId(inputRoomId);
+  };
+
+  // Initialize join room form (replaces registerJoinButton)
+  const joinRoomContainer = document.getElementById('join-room-container');
+  if (joinRoomContainer) {
+    joinRoomForm(joinRoomContainer, onJoinRoomSubmit);
+  }
 
   // Start listening for incoming calls on any saved/recent room ids FIRST
   await startListeningForSavedRooms().catch((e) =>

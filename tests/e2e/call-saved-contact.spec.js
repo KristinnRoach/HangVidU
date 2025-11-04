@@ -94,27 +94,44 @@ test.describe('Call Saved Contact Flow', () => {
         timeout: 10000,
       });
 
-      // Extract room ID from diagnostic logs or URL
-      let roomId = null;
+      // Extract room ID from User A's actual room
+      const roomId = await userAPage.evaluate(() => {
+        // Try multiple methods to get the ACTUAL room ID that was created
 
-      // First try to get from URL
-      roomId = await userAPage.evaluate(() => {
-        const url = new URL(window.location);
-        return url.searchParams.get('room');
-      });
+        // Method 1: Check URL parameters (most reliable)
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlRoomId = urlParams.get('room');
+        if (urlRoomId) return urlRoomId;
 
-      // If not found, extract from diagnostic logs
-      if (!roomId) {
-        const roomCreateLog = userALogs.find((log) =>
-          log.includes('ROOM:CREATE_START')
-        );
-        if (roomCreateLog) {
-          const match = roomCreateLog.match(/roomId:\s*([^,\s}]+)/);
-          if (match) {
-            roomId = match[1];
+        // Method 2: Check global currentRoomId variable
+        if (window.currentRoomId) return window.currentRoomId;
+
+        // Method 3: Extract from currentRoomLink if available
+        if (window.currentRoomLink) {
+          try {
+            const url = new URL(window.currentRoomLink);
+            const linkRoomId = url.searchParams.get('room');
+            if (linkRoomId) return linkRoomId;
+          } catch (e) {
+            // Ignore URL parsing errors
           }
         }
-      }
+
+        // Method 4: Check diagnostic logs for the actual room ID
+        if (window.diagnosticLogger && window.diagnosticLogger.getInstance) {
+          const logger = window.diagnosticLogger.getInstance();
+          const roomLogs = logger.getLogs({ category: 'ROOM' });
+          const createLog = roomLogs.find(
+            (log) => log.event === 'CREATE_START'
+          );
+          if (createLog && createLog.data.roomId) {
+            return createLog.data.roomId;
+          }
+        }
+
+        // If all else fails, return null to indicate failure
+        return null;
+      });
 
       console.log(`✓ User A created room: ${roomId}`);
 
@@ -177,30 +194,40 @@ test.describe('Call Saved Contact Flow', () => {
 
       // Force hang-up for both users
       console.log('Forcing hang-up for both users...');
-      await Promise.all([
-        userAPage.evaluate(() => {
-          if (window.hangUp) {
-            console.log('hangUp function available, calling directly');
-            window.hangUp();
-          } else {
-            console.log(
-              'hangUp function not available, clicking button directly'
-            );
+      await userAPage.evaluate(() => {
+        // Try to call hangUp function directly
+        if (window.hangUp) {
+          console.log('Calling hangUp() for User A');
+          window.hangUp();
+        } else {
+          console.log(
+            'hangUp function not available, clicking button directly'
+          );
+          const hangUpBtn = document.querySelector('#hang-up-btn');
+          if (hangUpBtn) {
+            hangUpBtn.click();
           }
-        }),
-        userBPage.evaluate(() => {
-          if (window.hangUp) {
-            console.log('hangUp function available, calling directly');
-            window.hangUp();
-          } else {
-            console.log(
-              'hangUp function not available, clicking button directly'
-            );
-          }
-        }),
-      ]);
+        }
+      });
 
-      // Wait for hang-up to complete
+      await userBPage.evaluate(() => {
+        // Try to call hangUp function directly
+        if (window.hangUp) {
+          console.log('Calling hangUp() for User B');
+          window.hangUp();
+        } else {
+          console.log(
+            'hangUp function not available, clicking button directly'
+          );
+          const hangUpBtn = document.querySelector('#hang-up-btn');
+          if (hangUpBtn) {
+            hangUpBtn.click();
+          }
+        }
+      });
+
+      await userAPage.waitForTimeout(2000); // Wait for hangup processing
+      await userBPage.waitForTimeout(2000);
       await Promise.all([
         userAPage.waitForTimeout(1000),
         userBPage.waitForTimeout(1000),
@@ -216,26 +243,30 @@ test.describe('Call Saved Contact Flow', () => {
 
       // Handle User A's contact save dialog
       try {
-        await userAPage.waitForSelector('.confirm-dialog', { timeout: 5000 });
-        console.log('User A: Found contact save dialog');
-        await userAPage.click(
-          '.confirm-dialog .confirm-btn, .confirm-dialog button[data-action="confirm"]'
+        await userAPage.waitForSelector(
+          'dialog[open] button[data-action="confirm"]',
+          { timeout: 5000 }
         );
-        console.log('User A: Accepted contact save');
+        await userAPage.click('dialog[open] button[data-action="confirm"]');
+        console.log('✓ User A accepted contact save dialog');
       } catch (e) {
-        console.log('User A: No contact save dialog found or already handled');
+        console.log(
+          '⚠ User A contact save dialog not found or already handled'
+        );
       }
 
       // Handle User B's contact save dialog
       try {
-        await userBPage.waitForSelector('.confirm-dialog', { timeout: 5000 });
-        console.log('User B: Found contact save dialog');
-        await userBPage.click(
-          '.confirm-dialog .confirm-btn, .confirm-dialog button[data-action="confirm"]'
+        await userBPage.waitForSelector(
+          'dialog[open] button[data-action="confirm"]',
+          { timeout: 5000 }
         );
-        console.log('User B: Accepted contact save');
+        await userBPage.click('dialog[open] button[data-action="confirm"]');
+        console.log('✓ User B accepted contact save dialog');
       } catch (e) {
-        console.log('User B: No contact save dialog found or already handled');
+        console.log(
+          '⚠ User B contact save dialog not found or already handled'
+        );
       }
 
       // Wait for contacts to be processed and UI to settle
@@ -264,6 +295,13 @@ test.describe('Call Saved Contact Flow', () => {
       let contactCallInitiated = false;
       if (userAHasContacts) {
         console.log('✓ Found contact call button, clicking...');
+
+        // Close any open dialogs that might block the click
+        await userAPage.evaluate(() => {
+          const dialogs = document.querySelectorAll('dialog[open]');
+          dialogs.forEach((dialog) => dialog.close());
+        });
+
         await userAPage.locator('.contact-call-btn').first().click();
         contactCallInitiated = true;
         console.log('✓ Contact call button clicked');
