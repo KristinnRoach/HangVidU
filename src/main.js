@@ -16,10 +16,10 @@ import {
   isElementInPictureInPicture,
   placeInSmallFrame,
   removeFromSmallFrame,
-} from './utils/ui-utils.js';
+} from './utils/ui/ui-utils.js';
 
-import { updateStatus } from './utils/status.js';
-import { setupShowHideOnInactivity } from './utils/showHideOnInactivity.js';
+import { updateStatus } from './utils/ui/status.js';
+import { setupShowHideOnInactivity } from './utils/ui/showHideOnInactivity.js';
 import {
   saveContact,
   renderContactsList,
@@ -103,12 +103,12 @@ import {
   copyToClipboard,
   showCopyLinkModal,
 } from './components/modal/copyLinkModal.js';
-import { devDebug } from './utils/dev-utils.js';
+import { devDebug } from './utils/dev/dev-utils.js';
 
 import { initializeAuthUI } from './components/auth/auth-ui.js';
 
 import RoomService from './room.js';
-import { getDiagnosticLogger } from './utils/diagnostic-logger.js';
+import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
 import confirmDialog from './components/primitives/confirm-dialog.js';
 
 // ============================================================================

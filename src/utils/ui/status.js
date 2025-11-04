@@ -1,4 +1,4 @@
-import { statusDiv } from '../elements.js';
+import { statusDiv } from '../../elements.js';
 
 export function updateStatus(message) {
   if (statusDiv) {

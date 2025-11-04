@@ -1,5 +1,8 @@
-import { onClickOutside, onDoubleClickOutside } from '../../utils/clickOutside';
-import { hideElement, isHidden, showElement } from '../../utils/ui-utils';
+import {
+  onClickOutside,
+  onDoubleClickOutside,
+} from '../../utils/ui/clickOutside';
+import { hideElement, isHidden, showElement } from '../../utils/ui/ui-utils';
 
 // messages-ui.js
 export function initMessagesUI(sendFn) {

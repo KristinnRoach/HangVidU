@@ -1,5 +1,5 @@
-import { devDebug } from '../utils/dev-utils';
-import { hideElement, showElement } from '../utils/ui-utils';
+import { devDebug } from '../utils/dev/dev-utils';
+import { hideElement, showElement } from '../utils/ui/ui-utils';
 import { installBtn } from '../elements';
 
 let beforeInstallEvent = null;

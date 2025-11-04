@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>createComponent Demo</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+
+      .demo-section {
+        background: white;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .user-card {
+        border: 1px solid #ddd;
+        padding: 15px;
+        border-radius: 4px;
+        background-color: #f9f9f9;
+      }
+
+      .user-card h2 {
+        margin-top: 0;
+        color: #333;
+      }
+
+      .user-card p {
+        margin: 5px 0;
+        color: #666;
+      }
+
+      .controls {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 15px;
+      }
+
+      button {
+        padding: 8px 12px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      .log {
+        background-color: #f0f0f0;
+        padding: 10px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 12px;
+        max-height: 150px;
+        overflow-y: auto;
+        margin-top: 10px;
+      }
+
+      .log-entry {
+        margin: 3px 0;
+        color: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>createComponent Demo</h1>
+
+    <div class="demo-section">
+      <h2>Example 1: Simple User Card with Counters</h2>
+      <div id="card-container"></div>
+      <div class="controls">
+        <button id="btn-name">Change Name</button>
+        <button id="btn-email">Change Email</button>
+        <button id="btn-both">Update Both</button>
+      </div>
+      <div class="log" id="log1"></div>
+    </div>
+
+    <div class="demo-section">
+      <h2>Example 2: Nested Props with Counters</h2>
+      <div id="profile-container"></div>
+      <div class="controls">
+        <button id="btn-profile">Update Profile</button>
+      </div>
+      <div class="log" id="log2"></div>
+    </div>
+
+    <div class="demo-section">
+      <h2>Example 3: Raw HTML with Counter</h2>
+      <div id="html-container"></div>
+      <div class="controls">
+        <button id="btn-html">Update HTML</button>
+      </div>
+      <div class="log" id="log3"></div>
+    </div>
+
+    <div class="demo-section">
+      <h2>Example 4: Text Input Preservation</h2>
+      <div id="input-container"></div>
+      <div class="controls">
+        <button id="btn-change-label">Change Label</button>
+      </div>
+    </div>
+
+    <script type="module">
+      import createComponent from '../component.js';
+
+      const log1 = document.getElementById('log1');
+      function addLog(target, message) {
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.textContent =
+          '[' + new Date().toLocaleTimeString() + '] ' + message;
+        target.appendChild(entry);
+        target.scrollTop = target.scrollHeight;
+      }
+
+      // === Example 1: Simple User Card with Counters ===
+      let nameChangeCount = 0;
+      let emailChangeCount = 0;
+
+      const userCard = createComponent({
+        initialProps: {
+          nameChangeCount: 0,
+          emailChangeCount: 0,
+        },
+        template: `
+          <h2>name \${nameChangeCount}</h2>
+          <p>Email: email \${emailChangeCount}</p>
+      `,
+        className: 'user-card',
+        parent: document.getElementById('card-container'),
+        autoAppend: true,
+      });
+
+      userCard.onUpdate((props) => {
+        addLog(
+          log1,
+          'onUpdate: nameChangeCount=' +
+            props.nameChangeCount +
+            ', emailChangeCount=' +
+            props.emailChangeCount
+        );
+      });
+
+      userCard.onPropUpdate('nameChangeCount', (newCount) => {
+        addLog(log1, 'onPropUpdate (nameChangeCount): ' + newCount);
+      });
+
+      userCard.onPropUpdate('emailChangeCount', (newCount) => {
+        addLog(log1, 'onPropUpdate (emailChangeCount): ' + newCount);
+      });
+
+      document.getElementById('btn-name').addEventListener('click', () => {
+        userCard.nameChangeCount = ++nameChangeCount;
+      });
+
+      document.getElementById('btn-email').addEventListener('click', () => {
+        userCard.emailChangeCount = ++emailChangeCount;
+      });
+
+      document.getElementById('btn-both').addEventListener('click', () => {
+        userCard.update({
+          nameChangeCount: ++nameChangeCount,
+          emailChangeCount: ++emailChangeCount,
+        });
+      });
+
+      // === Example 2: Nested Props with Counters ===
+      let firstNameCount = 0;
+      let cityCount = 0;
+
+      // === Example 2: Nested Props with Counters ===
+      const log2 = document.getElementById('log2');
+      const profileCard = createComponent({
+        initialProps: {
+          user: { firstNameCount: 0, lastNameCount: 0 },
+          contact: { cityCount: 0, countryCount: 0 },
+        },
+        template: `
+          <h2>firstName \${user.firstNameCount} lastName \${user.lastNameCount}</h2>
+          <p>Location: city \${contact.cityCount}, country \${contact.countryCount}</p>
+      `,
+        className: 'user-card',
+        parent: document.getElementById('profile-container'),
+        autoAppend: true,
+      });
+
+      profileCard.onUpdate((props) => {
+        addLog(
+          log2,
+          'Profile updated: firstName=' +
+            props.user.firstNameCount +
+            ', city=' +
+            props.contact.cityCount
+        );
+      });
+
+      document.getElementById('btn-profile').addEventListener('click', () => {
+        profileCard.update({
+          user: {
+            firstNameCount: profileCard.user.firstNameCount + 1,
+            lastNameCount: profileCard.user.lastNameCount + 1,
+          },
+          contact: {
+            cityCount: profileCard.contact.cityCount + 1,
+            countryCount: profileCard.contact.countryCount + 1,
+          },
+        });
+      });
+
+      // === Example 3: Raw HTML with Counter ===
+      let htmlChangeCount = 0;
+
+      const log3 = document.getElementById('log3');
+      const htmlCard = createComponent({
+        initialProps: {
+          htmlChangeCount: 0,
+        },
+        // Manualy adding div is not necessary, but still works
+        template: `
+        <div class="user-card">
+          <h3>HTML Update \${htmlChangeCount}</h3>
+          <p><strong>Bold content</strong></p>
+        </div>
+      `,
+        parent: document.getElementById('html-container'),
+        autoAppend: true,
+      });
+
+      htmlCard.onUpdate((props) => {
+        addLog(log3, 'HTML content updated. Count: ' + props.htmlChangeCount);
+      });
+
+      document.getElementById('btn-html').addEventListener('click', () => {
+        htmlCard.htmlChangeCount = ++htmlChangeCount;
+      });
+
+      // === Example 4: Text Input Preservation ===
+      let lblCount = 0;
+      const inputContainer = document.getElementById('input-container');
+
+      const inputComponent = createComponent({
+        initialProps: { label: 'Label' },
+        template: `
+          <label>\${label}</label>
+          <input id="input-field" type="text" placeholder="Type here" />
+      `,
+        className: 'user-card',
+        parent: inputContainer,
+        autoAppend: true,
+      });
+
+      // With default preserveInputState = true, the typed text is preserved across renders
+      document
+        .getElementById('btn-change-label')
+        .addEventListener('click', () => {
+          inputComponent.label = `Label ${++lblCount}`;
+        });
+
+      // Log initial render
+      addLog(log1, 'User card initialized');
+      addLog(log2, 'Profile card initialized');
+      addLog(log3, 'HTML card initialized');
+    </script>
+  </body>
+</html>

@@ -3,8 +3,8 @@
 import { ref, set, remove, get } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, getUserId } from '../../firebase/auth.js';
-import { updateStatus } from '../../utils/status.js';
-import { getDiagnosticLogger } from '../../utils/diagnostic-logger.js';
+import { updateStatus } from '../../utils/ui/status.js';
+import { getDiagnosticLogger } from '../../utils/dev/diagnostic-logger.js';
 
 const CALL_TIMEOUT_MS = 30000; // 30 seconds
 

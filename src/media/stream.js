@@ -11,8 +11,8 @@ import {
   userMediaVideoConstraints,
   getOrientationAwareVideoConstraints,
 } from './constraints.js';
-import { updateStatus } from '../utils/status.js';
-import { devDebug } from '../utils/dev-utils.js';
+import { updateStatus } from '../utils/ui/status.js';
+import { devDebug } from '../utils/dev/dev-utils.js';
 
 export const createLocalStream = async () => {
   const existingStream = getLocalStream(false); // (false) -> don't log null error
