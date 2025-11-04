@@ -1,7 +1,11 @@
 // src/p2p/ice.js
 
-import { ref, push, set, onChildAdded } from 'firebase/database';
-import { rtdb, trackRTDBListener } from '../storage/fb-rtdb/rtdb';
+import { push, set, onChildAdded } from 'firebase/database';
+import {
+  trackRTDBListener,
+  getOfferCandidatesRef,
+  getAnswerCandidatesRef,
+} from '../storage/fb-rtdb/rtdb';
 import { devDebug } from '../utils/dev/dev-utils.js';
 
 // WeakMap to store queued candidates per peer connection
@@ -32,7 +36,10 @@ function setupLocalCandidateSender(pc, path, roomId) {
   pc.onicecandidate = (event) => {
     if (event.candidate) {
       devDebug(`❄ Local ICE candidate: ${path}`);
-      const candidateRef = push(ref(rtdb, `rooms/${roomId}/${path}`));
+      const candidateRef =
+        path === 'offerCandidates'
+          ? push(getOfferCandidatesRef(roomId))
+          : push(getAnswerCandidatesRef(roomId));
       set(candidateRef, event.candidate.toJSON());
     } else {
       devDebug(`❄ ICE gathering complete for ${path}`);
@@ -41,7 +48,10 @@ function setupLocalCandidateSender(pc, path, roomId) {
 }
 
 function setupRemoteCandidateListener(pc, path, roomId) {
-  const remoteCandidatesRef = ref(rtdb, `rooms/${roomId}/${path}`);
+  const remoteCandidatesRef =
+    path === 'offerCandidates'
+      ? getOfferCandidatesRef(roomId)
+      : getAnswerCandidatesRef(roomId);
 
   // Auto-drain setup: flush queue when remote description is set
   let drainListenerAttached = false;
@@ -96,7 +106,7 @@ function setupRemoteCandidateListener(pc, path, roomId) {
   };
 
   onChildAdded(remoteCandidatesRef, callback);
-  trackRTDBListener(remoteCandidatesRef, 'child_added', callback);
+  trackRTDBListener(remoteCandidatesRef, 'child_added', callback, roomId);
 }
 
 /**

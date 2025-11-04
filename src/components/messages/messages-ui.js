@@ -1,7 +1,4 @@
-import {
-  onClickOutside,
-  onDoubleClickOutside,
-} from '../../utils/ui/clickOutside';
+import { onClickOutside } from '../../utils/ui/clickOutside';
 import { hideElement, isHidden, showElement } from '../../utils/ui/ui-utils';
 
 // messages-ui.js

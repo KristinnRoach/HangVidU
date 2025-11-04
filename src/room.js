@@ -9,7 +9,12 @@ import {
   onChildRemoved,
   off,
 } from 'firebase/database';
-import { getRoomRef, rtdb } from './storage/fb-rtdb/rtdb';
+import {
+  getRoomRef,
+  getRoomMembersRef,
+  getRoomMemberRef,
+  rtdb,
+} from './storage/fb-rtdb/rtdb';
 import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
 
 class RoomService {
@@ -170,21 +175,67 @@ class RoomService {
   /**
    * Leave current room
    */
-  async leaveRoom(userId) {
-    if (!this.currentRoomId) return;
+  async leaveRoom(userId, roomId = null, { deleteRoomIfEmpty = true } = {}) {
+    const targetRoomId = roomId || this.currentRoomId;
+    if (!targetRoomId || !userId) return;
 
-    const memberRef = ref(
-      rtdb,
-      `rooms/${this.currentRoomId}/members/${userId}`
-    );
+    const startTime = Date.now();
 
-    await remove(memberRef).catch(() => {});
+    const memberRef = getRoomMemberRef(targetRoomId, userId);
+    const membersRef = getRoomMembersRef(targetRoomId);
+    const roomRef = getRoomRef(targetRoomId);
+
+    try {
+      await remove(memberRef);
+    } catch (e) {
+      getDiagnosticLogger().logFirebaseOperation(
+        'leave_room_remove_member',
+        false,
+        e,
+        {
+          roomId: targetRoomId,
+          userId,
+        }
+      );
+      // Continue to attempt emptiness cleanup even if removal errored
+    }
+
+    // Optionally delete the entire room if no members remain
+    if (deleteRoomIfEmpty) {
+      try {
+        const snap = await get(membersRef);
+        const members = snap.exists() ? snap.val() : {};
+        const memberCount = members ? Object.keys(members).length : 0;
+
+        if (memberCount === 0) {
+          await remove(roomRef).catch((err) => {
+            getDiagnosticLogger().logFirebaseOperation(
+              'delete_empty_room',
+              false,
+              err,
+              { roomId: targetRoomId }
+            );
+          });
+        }
+      } catch (e) {
+        getDiagnosticLogger().logFirebaseOperation(
+          'check_members_after_leave',
+          false,
+          e,
+          { roomId: targetRoomId }
+        );
+      }
+    }
+
+    // Reset currentRoomId if we're leaving the active room
+    if (!roomId || roomId === this.currentRoomId) {
+      this.currentRoomId = null;
+    }
 
     // NOTE: Do not blindly cleanup all listeners here.
     // Some listeners (e.g., background incoming-call listeners for saved rooms)
     // must persist across calls. Callers should explicitly cleanup per-call listeners
     // at the start of a new call or when tearing down the app.
-    this.currentRoomId = null;
   }
 
   /**

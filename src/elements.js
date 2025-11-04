@@ -1,4 +1,5 @@
 // elements.js - Centralized DOM element exports
+import { devDebug } from './utils/dev/dev-utils.js';
 
 const getElement = (id) => {
   const el = document.getElementById(id);
@@ -36,8 +37,6 @@ let appPipBtn = null;
 let appTitleH1 = null;
 let appTitleA = null;
 let appTitleSpan = null;
-let joinRoomBtn = null;
-let roomIdInput = null;
 
 function initializeElements() {
   lobbyDiv = getElement('lobby');
@@ -58,8 +57,6 @@ function initializeElements() {
   hangUpBtn = getElement('hang-up-btn');
   switchCameraBtn = getElement('switch-camera-btn');
 
-  installBtn = getElement('install-btn');
-
   statusDiv = getElement('status');
   syncStatus = getElement('sync-status');
 
@@ -73,8 +70,6 @@ function initializeElements() {
   appTitleH1 = getElement('app-title-h1');
   appTitleA = getElement('app-title-a');
   appTitleSpan = getElement('app-title-span');
-  joinRoomBtn = getElement('join-room-btn');
-  roomIdInput = getElement('room-id-input');
 }
 
 // Initialize elements when DOM is ready
@@ -142,8 +137,6 @@ export {
   appTitleH1,
   appTitleA,
   appTitleSpan,
-  joinRoomBtn,
-  roomIdInput,
 };
 
 /**
@@ -206,7 +199,7 @@ export async function waitForElements(elementIds, maxRetries = 3, delay = 100) {
  * @returns {Promise<{searchBtn: HTMLElement|null, searchQuery: HTMLElement|null, searchResults: HTMLElement|null, searchContainer: HTMLElement|null}>}
  */
 export async function initializeYouTubeElements() {
-  console.log('Initializing YouTube search elements...');
+  devDebug('Initializing YouTube search elements...');
 
   // These elements are loaded dynamically by the search UI
   const elements = await waitForElements(
@@ -226,7 +219,7 @@ export async function initializeYouTubeElements() {
   if (missing.length > 0) {
     console.warn('Some YouTube elements not found:', missing);
   } else {
-    console.log('All YouTube elements initialized successfully');
+    devDebug('All YouTube elements initialized successfully');
   }
 
   return elements;

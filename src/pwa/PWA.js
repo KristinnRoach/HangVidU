@@ -1,9 +1,10 @@
-import { devDebug } from '../utils/dev/dev-utils';
+import { devDebug, isDev } from '../utils/dev/dev-utils';
 import { hideElement, showElement } from '../utils/ui/ui-utils';
-import { installBtn } from '../elements';
+import createIconButton from '../components/primitives/icon-button.js';
 
 let beforeInstallEvent = null;
 let installBtnHandlerAttached = false;
+let installBtnComponent = null;
 
 function isIOS() {
   return (
@@ -17,20 +18,42 @@ function setupPWA() {
     window.navigator.standalone === true
   ) {
     console.info('[PWA]: App is already installed');
-    hideElement(installBtn);
+    if (installBtnComponent) hideElement(installBtnComponent);
     return;
   }
 
+  // Create install button component if not already created
+  if (!installBtnComponent) {
+    const topRightMenu = document.querySelector('.top-right-menu');
+    if (!topRightMenu) {
+      console.warn('[PWA]: .top-right-menu container not found');
+      return;
+    }
+
+    installBtnComponent = createIconButton({
+      id: 'install-btn',
+      title: 'Install App',
+      iconHtml: '<i class="fa fa-plus"></i>',
+      btnClass: 'hidden', // Start hidden
+      parent: topRightMenu,
+    });
+
+    if (isDev()) showElement(installBtnComponent); // Always visible in DEV for testing
+  }
+
+  const installBtn = installBtnComponent.querySelector('button');
   if (!installBtn) {
-    console.warn('[PWA]: Install button not found');
+    console.warn('[PWA]: Install button element not found in component');
     return;
   }
 
   // iOS: Show instructions instead of install prompt
   if (isIOS()) {
-    installBtn.innerHTML = '<i class="fa fa-info"></i>';
-    installBtn.title = 'Show Install Instructions';
-    showElement(installBtn);
+    installBtnComponent.update({
+      iconHtml: '<i class="fa fa-info"></i>',
+      title: 'Show Install Instructions',
+      btnClass: '', // Remove hidden class
+    });
 
     installBtn.onclick = () => {
       alert(
@@ -74,10 +97,10 @@ function setupPWA() {
           console.info('[PWA]: User dismissed the install prompt');
         }
 
-        hideElement(installBtn);
+        !isDev() && hideElement(installBtnComponent);
         beforeInstallEvent = null;
       } catch (error) {
-        hideElement(installBtn);
+        !isDev() && hideElement(installBtnComponent);
 
         console.error('Error showing install prompt:', error);
       }
@@ -87,15 +110,15 @@ function setupPWA() {
 
   window.addEventListener('appinstalled', () => {
     devDebug('App installed successfully');
-    hideElement(installBtn);
+    !isDev() && hideElement(installBtnComponent);
     beforeInstallEvent = null;
   });
 
   // Show or hide the button based on beforeInstallEvent
   if (beforeInstallEvent) {
-    showElement(installBtn);
+    showElement(installBtnComponent);
   } else {
-    hideElement(installBtn);
+    !isDev() && hideElement(installBtnComponent);
   }
 }
 
@@ -104,7 +127,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   console.debug('[PWA]: beforeinstallprompt fired');
   e.preventDefault();
   beforeInstallEvent = e;
-  if (installBtn) showElement(installBtn);
+  if (installBtnComponent) showElement(installBtnComponent);
 });
 
 export { setupPWA };

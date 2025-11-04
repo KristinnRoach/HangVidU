@@ -674,6 +674,13 @@ Example Usage:
   ) {
     setTimeout(() => {
       try {
+        const logger = getDiagnosticLogger();
+        // Only show banner if explicitly opted-in via localStorage and logging is enabled
+        const consoleOptIn =
+          typeof localStorage !== 'undefined' &&
+          localStorage.getItem('debug:console') === '1';
+        if (!logger.isEnabled || !consoleOptIn) return;
+
         const keys = DiagnosticLogger.getPersistedLogKeys();
         if (keys.length > 0) {
           console.log(

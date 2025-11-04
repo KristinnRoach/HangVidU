@@ -85,7 +85,7 @@ export function setupWatchSync(roomId, role, userId) {
 
   const watchRef = ref(rtdb, `rooms/${roomId}/watch`);
 
-  onDataChange(watchRef, handleWatchUpdate);
+  onDataChange(watchRef, handleWatchUpdate, roomId);
 
   setupLocalVideoListeners();
 
