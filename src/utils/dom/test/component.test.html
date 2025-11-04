@@ -147,21 +147,21 @@
         autoAppend: true,
       });
 
-      userCard.onUpdate((props) => {
+      userCard.onRender((props) => {
         addLog(
           log1,
-          'onUpdate: nameChangeCount=' +
+          'onRender: nameChangeCount=' +
             props.nameChangeCount +
             ', emailChangeCount=' +
             props.emailChangeCount
         );
       });
 
-      userCard.onPropUpdate('nameChangeCount', (newCount) => {
+      userCard.onPropUpdated('nameChangeCount', (newCount) => {
         addLog(log1, 'onPropUpdate (nameChangeCount): ' + newCount);
       });
 
-      userCard.onPropUpdate('emailChangeCount', (newCount) => {
+      userCard.onPropUpdated('emailChangeCount', (newCount) => {
         addLog(log1, 'onPropUpdate (emailChangeCount): ' + newCount);
       });
 
@@ -200,7 +200,7 @@
         autoAppend: true,
       });
 
-      profileCard.onUpdate((props) => {
+      profileCard.onRender((props) => {
         addLog(
           log2,
           'Profile updated: firstName=' +
@@ -242,7 +242,7 @@
         autoAppend: true,
       });
 
-      htmlCard.onUpdate((props) => {
+      htmlCard.onRender((props) => {
         addLog(log3, 'HTML content updated. Count: ' + props.htmlChangeCount);
       });
 

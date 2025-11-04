@@ -16,7 +16,7 @@ export const initializeAuthUI = (parentElement) => {
 
   if (!parentElement) {
     console.error('Auth UI: Parent element is required');
-    return;
+    return null;
   }
 
   let unsubscribe = null; // tied to component lifecycle via onMount/onCleanup
