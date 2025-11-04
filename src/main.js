@@ -538,6 +538,9 @@ export function listenForIncomingOnRoom(roomId) {
       } catch (e) {
         return; // Room may have been deleted
       }
+
+      if (!roomData || typeof roomData !== 'object') return;
+
       const hasOffer = !!roomData.offer;
       const hasAnswer = !!roomData.answer;
       const offerCreator = roomData.createdBy;
@@ -1206,7 +1209,13 @@ window.onload = async () => {
       return false;
     }
 
-    return await joinOrCreateRoomWithId(inputRoomId);
+    try {
+      return await joinOrCreateRoomWithId(inputRoomId);
+    } catch (error) {
+      console.error('Failed to join or create room:', error);
+      updateStatus('Error joining room. Please try again.');
+      return false;
+    }
   };
 
   // Initialize join room form (replaces registerJoinButton)
