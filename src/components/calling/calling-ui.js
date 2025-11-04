@@ -120,7 +120,7 @@ export async function showCallingUI(roomId, contactName, onCancel) {
 
   const modal = document.createElement('div');
   modal.style.cssText = `
-    background: white;
+    background: #4d4e54ff;
     padding: 30px;
     border-radius: 12px;
     text-align: center;
@@ -133,14 +133,14 @@ export async function showCallingUI(roomId, contactName, onCancel) {
   title.style.cssText = `
     margin: 0 0 10px 0;
     font-size: 20px;
-    color: #333;
+    color: #d0d7dbff;
   `;
 
   const subtitle = document.createElement('p');
   subtitle.textContent = 'Waiting for answer...';
   subtitle.style.cssText = `
     margin: 0 0 20px 0;
-    color: #666;
+    color: #bbb;
     font-size: 14px;
   `;
 
@@ -148,7 +148,7 @@ export async function showCallingUI(roomId, contactName, onCancel) {
   cancelBtn.textContent = 'Cancel';
   cancelBtn.style.cssText = `
     padding: 10px 24px;
-    background: #f44336;
+    background: #c34949ff;
     color: white;
     border: none;
     border-radius: 6px;

@@ -81,9 +81,9 @@ export async function saveContact(contactUserId, roomId, lobbyElement) {
     return;
   }
 
-  const shouldSave = await confirmDialog(
-    `Would you like to save this contact for future calls?`
-  );
+  const shouldSave = await confirmDialog(`Save contact?`, {
+    autoRemoveSeconds: 15,
+  });
 
   if (!shouldSave) return;
 
