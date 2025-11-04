@@ -164,7 +164,7 @@ async function init() {
     addKeyListeners();
 
     const authComponent = initializeAuthUI(titleAuthBar);
-    cleanupFunctions.push(authComponent.dispose);
+    if (authComponent) cleanupFunctions.push(authComponent.dispose);
 
     await setUpLocalStream(localVideoEl);
 
