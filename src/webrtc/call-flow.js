@@ -129,7 +129,7 @@ export async function createCall({
       await setRemoteDescription(pc, answer, drainIceCandidateQueue);
     }
   };
-  onDataChange(answerRef, answerCallback);
+  onDataChange(answerRef, answerCallback, roomId);
 
   // ─────────────────────────────────────────────────────────────────────────
   // 6. SETUP ROOM AND SYNC

@@ -1,3 +1,4 @@
+import { devDebug } from '../../utils/dev/dev-utils.js';
 // ============================================================================
 // YOUTUBE SEARCH MODULE
 // ============================================================================
@@ -203,9 +204,7 @@ export async function initializeSearchUI() {
     console.warn('YouTube API key not found. Search will not be available.');
   }
 
-  if (import.meta.env.DEV) {
-    console.log('YouTube search UI initialized');
-  }
+  devDebug('YouTube search UI initialized');
 
   _initializing = false;
   isInitialized = true;

@@ -10,33 +10,65 @@ export const rtdb = getDatabase(app);
 const listeners = [];
 
 /**
- * Track a firebase listener and return an unsubscribe fn.
- * Keeps internal registry so removeAllFirebaseListeners() can purge them.
+ * Track a firebase listener for cleanup.
+ * Keeps internal registry so cleanup functions can purge them by scope.
+ * @param {DatabaseReference} fbRef - Firebase database reference
+ * @param {string} type - Event type ('value', 'child_added', etc.)
+ * @param {Function} callback - Listener callback
+ * @param {string} [roomId] - Optional room ID for room-scoped cleanup
  */
-export function trackRTDBListener(fbRef, type, callback) {
-  listeners.push({ ref: fbRef, type, callback });
-  // return unsubscribe function
-  return () => off(fbRef, type, callback);
+export function trackRTDBListener(fbRef, type, callback, roomId = null) {
+  listeners.push({ ref: fbRef, type, callback, roomId });
 }
 
 /**
  * Remove all tracked listeners and clear registry.
+ * Use this for global app teardown.
  */
 export function removeAllRTDBListeners() {
   listeners.forEach(({ ref: fbRef, type, callback }) => {
     try {
       off(fbRef, type, callback);
     } catch (err) {
-      // swallow cleanup errors
       console.warn('Failed to remove firebase rtdb listener', err);
     }
   });
   listeners.length = 0;
 }
 
-export function onDataChange(fbRef, callback) {
+/**
+ * Remove all tracked listeners for a specific room.
+ * Use this when leaving a call to clean up room-specific listeners
+ * while preserving global/saved-contact listeners.
+ * @param {string} roomId - Room ID to clean up listeners for
+ */
+export function removeRTDBListenersForRoom(roomId) {
+  if (!roomId) return;
+
+  const toRemove = listeners.filter((l) => l.roomId === roomId);
+  toRemove.forEach(({ ref: fbRef, type, callback }) => {
+    try {
+      off(fbRef, type, callback);
+    } catch (err) {
+      console.warn(`Failed to remove listener for room ${roomId}`, err);
+    }
+  });
+
+  // Remove from tracking array
+  const remaining = listeners.filter((l) => l.roomId !== roomId);
+  listeners.length = 0;
+  listeners.push(...remaining);
+}
+
+/**
+ * Attach a listener for data changes and track it for cleanup.
+ * @param {DatabaseReference} fbRef - Firebase database reference
+ * @param {Function} callback - Listener callback
+ * @param {string} [roomId] - Optional room ID for room-scoped cleanup
+ */
+export function onDataChange(fbRef, callback, roomId = null) {
   onValue(fbRef, callback);
-  trackRTDBListener(fbRef, 'value', callback);
+  trackRTDBListener(fbRef, 'value', callback, roomId);
 }
 
 // ============================================================================
@@ -58,6 +90,21 @@ export const getWatchVideoRef = (roomId) =>
   ref(rtdb, `rooms/${roomId}/watch/video`);
 export const getWatchPlaybackRef = (roomId) =>
   ref(rtdb, `rooms/${roomId}/watch/playback`);
+
+// User refs
+export const getUserRef = (userId) => ref(rtdb, `users/${userId}`);
+export const getUserContactsRef = (userId) =>
+  ref(rtdb, `users/${userId}/contacts`);
+export const getUserRecentCallsRef = (userId) =>
+  ref(rtdb, `users/${userId}/recentCalls`);
+export const getUserOutgoingCallRef = (userId) =>
+  ref(rtdb, `users/${userId}/outgoingCall`);
+
+// ICE candidate refs
+export const getOfferCandidatesRef = (roomId) =>
+  ref(rtdb, `rooms/${roomId}/offerCandidates`);
+export const getAnswerCandidatesRef = (roomId) =>
+  ref(rtdb, `rooms/${roomId}/answerCandidates`);
 
 // ============================================================================
 // DATA FETCH UTILITIES

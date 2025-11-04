@@ -1,10 +1,11 @@
 // calling-ui.js - Calling modal with cancel and auto-timeout
 
-import { ref, set, remove, get } from 'firebase/database';
-import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
+import { set, remove, get } from 'firebase/database';
+import { rtdb, getUserOutgoingCallRef } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, getUserId } from '../../firebase/auth.js';
 import { updateStatus } from '../../utils/ui/status.js';
 import { getDiagnosticLogger } from '../../utils/dev/diagnostic-logger.js';
+import RoomService from '../../room.js';
 
 const CALL_TIMEOUT_MS = 30000; // 30 seconds
 
@@ -21,7 +22,7 @@ async function setOutgoingCallState(roomId, targetContactName = null) {
   // Only track for authenticated users (guests don't need cross-session freshness checks)
   if (!loggedInUid) return;
 
-  const outgoingRef = ref(rtdb, `users/${loggedInUid}/outgoingCall`);
+  const outgoingRef = getUserOutgoingCallRef(loggedInUid);
   await set(outgoingRef, {
     roomId,
     targetContactName,
@@ -37,7 +38,7 @@ async function clearOutgoingCallState() {
   const loggedInUid = getLoggedInUserId();
   if (!loggedInUid) return;
 
-  const outgoingRef = ref(rtdb, `users/${loggedInUid}/outgoingCall`);
+  const outgoingRef = getUserOutgoingCallRef(loggedInUid);
   await remove(outgoingRef).catch(() => {});
 }
 
@@ -48,7 +49,7 @@ export async function isOutgoingCallFresh(callerUid, roomId) {
   if (!callerUid) return false;
 
   try {
-    const outgoingRef = ref(rtdb, `users/${callerUid}/outgoingCall`);
+    const outgoingRef = getUserOutgoingCallRef(callerUid);
     const snap = await get(outgoingRef);
     if (!snap.exists()) return false;
 
@@ -88,6 +89,7 @@ export async function isRoomCallFresh(roomId) {
  * Show "Calling..." modal with cancel button and auto-timeout
  */
 export async function showCallingUI(roomId, contactName, onCancel) {
+  const diag = getDiagnosticLogger();
   const showTime = Date.now();
 
   // Remove any existing calling UI first
@@ -152,13 +154,24 @@ export async function showCallingUI(roomId, contactName, onCancel) {
   `;
 
   const handleCancel = async () => {
-    getDiagnosticLogger().logCallingUILifecycle('CANCEL', roomId, {
+    diag.logCallingUILifecycle('CANCEL', roomId, {
       contactName,
       reason: 'user_cancelled',
       duration: Date.now() - showTime,
     });
 
-    await clearOutgoingCallState();
+    // Best-effort cleanup: clear outgoing state and remove our member entry
+    try {
+      await Promise.all([
+        clearOutgoingCallState(),
+        RoomService.leaveRoom(getUserId(), roomId),
+      ]);
+    } catch (e) {
+      diag.log('ROOM', 'CALLER_CANCELLED_CLEANUP_FAIL', {
+        roomId,
+        error: String(e),
+      });
+    }
     hideCallingUI();
     updateStatus('Call cancelled');
     if (onCancel) onCancel();
@@ -178,14 +191,25 @@ export async function showCallingUI(roomId, contactName, onCancel) {
 
   // Auto-timeout after 30 seconds
   timeoutId = setTimeout(async () => {
-    getDiagnosticLogger().logCallingUILifecycle('TIMEOUT', roomId, {
+    diag.logCallingUILifecycle('TIMEOUT', roomId, {
       contactName,
       reason: 'auto_timeout',
       duration: Date.now() - showTime,
       timeoutMs: CALL_TIMEOUT_MS,
     });
 
-    await clearOutgoingCallState();
+    // Best-effort cleanup on timeout as well
+    try {
+      await Promise.all([
+        clearOutgoingCallState(),
+        RoomService.leaveRoom(getUserId(), roomId),
+      ]);
+    } catch (e) {
+      diag.log('ROOM', 'CALLER_TIMEOUT_CLEANUP_FAIL', {
+        roomId,
+        error: String(e),
+      });
+    }
     hideCallingUI();
     updateStatus('Call timed out - no answer after 30 seconds');
     if (onCancel) onCancel();

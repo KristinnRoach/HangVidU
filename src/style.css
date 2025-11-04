@@ -213,7 +213,7 @@ body {
 #yt-video-box iframe,
 #messages-toggle-btn,
 .messages-box,
-.top-left-menu {
+.top-right-menu {
   opacity: 1;
   pointer-events: auto;
   will-change: opacity;
@@ -232,7 +232,7 @@ body {
 #install-btn.hidden,
 .chat-btn.hidden,
 .messages-box.hidden,
-.top-left-menu.hidden {
+.top-right-menu.hidden {
   opacity: 0 !important; /* Todo: Remove !important */
   pointer-events: none;
   visibility: hidden;
@@ -837,7 +837,7 @@ button:disabled {
   background-color: rgb(255, 80, 80, 1);
 }
 
-.top-left-menu {
+.top-right-menu {
   position: absolute;
   top: 0px;
   right: 0px;
@@ -852,7 +852,7 @@ button:disabled {
   gap: 10px;
 }
 
-.top-left-menu button {
+.top-right-menu button {
   height: 40px;
 }
 

@@ -1,16 +1,18 @@
 // src/components/primitives/icon-button.js
-
-// Primitive icon button component using createComponent
-// Props:
-// - title: string (button title/tooltip)
-// - iconHtml: string (raw HTML for icon, e.g., '<i class="fa fa-phone"></i>')
-// - disabledAttr: '' | 'disabled' (use 'disabled' to disable the button)
-// - id: optional id attribute
-// - btnClass: CSS class(es) for styling
-// - onClick: optional click handler
-
 import createComponent from '../../utils/dom/component.js';
 
+/**
+ * Creates a reactive icon button using createComponent.
+ * @param {Object} options - Button configuration
+ * @param {string} [options.title=''] - Button title/tooltip
+ * @param {string} [options.iconHtml=''] - Raw HTML for icon (e.g., '<i class="fa fa-phone"></i>')
+ * @param {string} [options.disabledAttr=''] - '' (enabled) or 'disabled' (disabled)
+ * @param {string} [options.id=''] - Optional id attribute
+ * @param {string} [options.btnClass='chat-btn'] - CSS class(es)
+ * @param {Function} [options.onClick=null] - Click handler
+ * @param {HTMLElement} [options.parent=null] - Parent element to append to
+ * @returns {HTMLElement} Component element with reactive props
+ */
 export function createIconButton({
   title = '',
   iconHtml = '',

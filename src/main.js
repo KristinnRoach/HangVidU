@@ -54,8 +54,6 @@ import {
   createLinkBtn,
   copyLinkBtn,
   getElements,
-  joinRoomBtn,
-  roomIdInput,
 } from './elements.js';
 
 import {
@@ -103,13 +101,17 @@ import {
   copyToClipboard,
   showCopyLinkModal,
 } from './components/modal/copyLinkModal.js';
-import { devDebug } from './utils/dev/dev-utils.js';
+import { devDebug, setDevDebugEnabled } from './utils/dev/dev-utils.js';
 
 import { initializeAuthUI } from './components/auth/AuthComponent.js';
 
 import RoomService from './room.js';
 import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
 import confirmDialog from './components/primitives/confirm-dialog.js';
+
+// Quick access to enable / disable dev debug logs
+setDevDebugEnabled(true);
+getDiagnosticLogger().disable();
 
 // ============================================================================
 // GLOBAL STATE
@@ -137,8 +139,6 @@ export const isRemoteVideoVideoActive = () => {
 // ============================================================================
 
 async function init() {
-  // Initialize generated user ID if needed (will be created by getUserId() when first used)
-
   // Validate critical elements first
   const elements = getElements();
   const criticalElements = [
@@ -418,17 +418,17 @@ async function removeRecentCall(roomId) {
 export function listenForIncomingOnRoom(roomId) {
   if (!roomId) return;
 
-  console.log(`[LISTENER] Attempting to attach listener for room: ${roomId}`);
+  devDebug(`[LISTENER] Attempting to attach listener for room: ${roomId}`);
 
   if (listeningRoomIds.has(roomId)) {
-    console.log(`[LISTENER] Duplicate listener prevented for room: ${roomId}`);
+    devDebug(`[LISTENER] Duplicate listener prevented for room: ${roomId}`);
     getDiagnosticLogger().logDuplicateListener(roomId, 'member_join', {
       currentListenerCount: listeningRoomIds.size,
     });
     return; // avoid duplicate attachments
   }
 
-  console.log(
+  devDebug(
     `[LISTENER] Attaching new listener for room: ${roomId} (total: ${
       listeningRoomIds.size + 1
     })`
@@ -451,7 +451,7 @@ export function listenForIncomingOnRoom(roomId) {
     const memberData = snapshot.val ? snapshot.val() : null;
     const currentUserId = getUserId();
     if (joiningUserId && joiningUserId !== currentUserId) {
-      console.log(`incoming call from ${joiningUserId} for room ${roomId}`);
+      devDebug(`incoming call from ${joiningUserId} for room ${roomId}`);
 
       getDiagnosticLogger().logMemberJoinEvent(
         roomId,
@@ -513,7 +513,7 @@ export function listenForIncomingOnRoom(roomId) {
       );
 
       if (!isFresh) {
-        console.log(
+        devDebug(
           `Ignoring stale incoming call from ${joiningUserId} for room ${roomId}`
         );
         getDiagnosticLogger().logNotificationDecision(
@@ -597,7 +597,7 @@ export function listenForIncomingOnRoom(roomId) {
           );
         });
       } else {
-        console.log('Incoming call rejected by user');
+        devDebug('Incoming call rejected by user');
         getDiagnosticLogger().logNotificationDecision(
           'REJECT',
           'user_rejected',
@@ -606,8 +606,13 @@ export function listenForIncomingOnRoom(roomId) {
             joiningUserId,
           }
         );
-        // Optional: remove the saved recent call to avoid repeated prompts
-        // removeRecentCall(roomId).catch(() => {});
+
+        // Clean up: tell the caller their member entry should be removed
+        // TODO: send a rejection signal via RTDB so the caller knows immediately
+        // For now, the caller's timeout will handle cleanup on their end after 30s
+        await removeRecentCall(roomId).catch((e) => {
+          console.warn('Failed to remove recent call on rejection:', e);
+        });
       }
     }
   });
@@ -627,7 +632,7 @@ export function listenForIncomingOnRoom(roomId) {
       // If no members remain, remove the saved recent call for this client
       if (!status.hasMembers) {
         await removeRecentCall(roomId);
-        console.log(
+        devDebug(
           `Removed saved recent call for room ${roomId} because it is now empty`
         );
       }
