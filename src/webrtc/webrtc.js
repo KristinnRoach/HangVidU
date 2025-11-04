@@ -33,7 +33,7 @@ export function setupConnectionStateHandlers(pc) {
       if (disconnectTimeoutId) clearTimeout(disconnectTimeoutId);
       disconnectTimeoutId = setTimeout(() => {
         // Only hang up if still disconnected after grace period and this is still the active connection
-        if (pc === activeConnection && pc.connectionState === 'disconnected') {
+        if (pc === activePC && pc.connectionState === 'disconnected') {
           updateStatus('Partner disconnected');
           hangUp();
         }

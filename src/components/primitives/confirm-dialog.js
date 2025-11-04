@@ -9,27 +9,24 @@ function confirmDialog(message) {
       </div>
     `;
 
-    if (
-      !dialog.querySelector('[data-action="confirm"]') |
-      dialog.querySelector('[data-action="cancel"]')
-    ) {
+    const confirmBtn = dialog.querySelector('[data-action="confirm"]');
+    const cancelBtn = dialog.querySelector('[data-action="cancel"]');
+
+    if (!confirmBtn || !cancelBtn) {
       console.error('dialog element not found!');
+      resolve(false);
       return;
     }
 
-    dialog
-      .querySelector('[data-action="confirm"]')
-      .addEventListener('click', () => {
-        dialog.close();
-        resolve(true);
-      });
+    confirmBtn.addEventListener('click', () => {
+      dialog.close();
+      resolve(true);
+    });
 
-    dialog
-      .querySelector('[data-action="cancel"]')
-      .addEventListener('click', () => {
-        dialog.close();
-        resolve(false);
-      });
+    cancelBtn.addEventListener('click', () => {
+      dialog.close();
+      resolve(false);
+    });
 
     dialog.addEventListener('cancel', () => resolve(false));
 

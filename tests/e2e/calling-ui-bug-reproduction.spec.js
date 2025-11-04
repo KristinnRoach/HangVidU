@@ -294,30 +294,39 @@ test.describe('Calling UI Bug Reproduction', () => {
 
       console.log('✓ Both users hung up');
 
-      // Step 7: Handle contact saving prompts
+      // Step 7: Handle contact saving prompts (custom confirmDialog)
       console.log('Step 7: Handling contact saving prompts...');
 
-      // Handle contact save prompts that appear as window.confirm dialogs
-      // We need to accept these prompts to save contacts
+      // The app now uses custom confirmDialog instead of window.confirm
+      // We need to wait for and click the confirm buttons in the custom dialogs
 
-      // Set up dialog handlers before they appear
-      userAPage.on('dialog', async (dialog) => {
-        console.log(`User A dialog: ${dialog.message()}`);
-        if (dialog.message().includes('save this contact')) {
-          await dialog.accept();
-        } else {
-          await dialog.dismiss();
-        }
-      });
+      // Wait for User A's contact save dialog and accept it
+      try {
+        await userAPage.waitForSelector(
+          'dialog[open] button[data-action="confirm"]',
+          { timeout: 5000 }
+        );
+        await userAPage.click('dialog[open] button[data-action="confirm"]');
+        console.log('✓ User A accepted contact save dialog');
+      } catch (e) {
+        console.log(
+          '⚠ User A contact save dialog not found or already handled'
+        );
+      }
 
-      userBPage.on('dialog', async (dialog) => {
-        console.log(`User B dialog: ${dialog.message()}`);
-        if (dialog.message().includes('save this contact')) {
-          await dialog.accept();
-        } else {
-          await dialog.dismiss();
-        }
-      });
+      // Wait for User B's contact save dialog and accept it
+      try {
+        await userBPage.waitForSelector(
+          'dialog[open] button[data-action="confirm"]',
+          { timeout: 5000 }
+        );
+        await userBPage.click('dialog[open] button[data-action="confirm"]');
+        console.log('✓ User B accepted contact save dialog');
+      } catch (e) {
+        console.log(
+          '⚠ User B contact save dialog not found or already handled'
+        );
+      }
 
       // Step 8: Ensure contacts are saved and UI is updated
       console.log('Step 8: Ensuring contacts are saved...');
@@ -407,38 +416,50 @@ test.describe('Calling UI Bug Reproduction', () => {
 
       console.log('\n--- PHASE 3: Calling UI Behavior Analysis ---');
 
-      // Step 8: Monitor calling UI behavior
+      // Step 10: Monitor calling UI behavior
       console.log('Step 10: Monitoring calling UI behavior...');
 
-      // Check if calling UI appears
-      const callingUIAppeared = await userAPage
-        .locator('#calling-modal, [id*="calling"], [class*="calling"]')
-        .isVisible({ timeout: 3000 })
-        .catch(() => false);
+      let callingUIAppeared = false;
+      let callingUIDuration = 0;
 
-      console.log(`Calling UI appeared: ${callingUIAppeared}`);
+      if (contactCallInitiated) {
+        // Check if calling UI appears after contact call
+        callingUIAppeared = await userAPage
+          .locator('#calling-modal')
+          .isVisible({ timeout: 3000 })
+          .catch(() => false);
 
-      if (callingUIAppeared) {
-        // Monitor how long calling UI stays visible
-        const callingUIStartTime = Date.now();
+        console.log(`Calling UI appeared: ${callingUIAppeared}`);
 
-        // Wait for calling UI to disappear or timeout
-        try {
-          await userAPage.waitForSelector('#calling-modal', {
-            state: 'hidden',
-            timeout: 35000, // Slightly longer than 30s timeout
-          });
+        if (callingUIAppeared) {
+          console.log('✓ Calling UI is visible - monitoring duration...');
+          const callingUIStartTime = Date.now();
 
-          const callingUIDuration = Date.now() - callingUIStartTime;
-          console.log(`Calling UI was visible for: ${callingUIDuration}ms`);
+          // The calling UI should stay visible until User B answers or it times out
+          // Let's wait a reasonable time to see if it stays visible
+          await userAPage.waitForTimeout(5000); // Wait 5 seconds
 
-          // Check if it disappeared too quickly (less than 5 seconds indicates premature dismissal)
-          if (callingUIDuration < 5000) {
+          // Check if it's still visible
+          const stillVisible = await userAPage
+            .locator('#calling-modal')
+            .isVisible()
+            .catch(() => false);
+
+          callingUIDuration = Date.now() - callingUIStartTime;
+          console.log(
+            `Calling UI duration so far: ${callingUIDuration}ms, still visible: ${stillVisible}`
+          );
+
+          if (!stillVisible && callingUIDuration < 10000) {
             console.log('🚨 BUG DETECTED: Calling UI disappeared too quickly!');
+          } else if (stillVisible) {
+            console.log('✅ FIXED: Calling UI is staying visible as expected!');
           }
-        } catch (e) {
-          console.log('Calling UI timeout or still visible after 35 seconds');
         }
+      } else {
+        console.log(
+          '⚠ Cannot test calling UI - contact call was not initiated'
+        );
       }
 
       // ===================================================================
@@ -447,36 +468,43 @@ test.describe('Calling UI Bug Reproduction', () => {
 
       console.log('\n--- PHASE 4: Incoming Call Detection on User B ---');
 
-      // Step 9: Check if User B receives incoming call notification
+      // Step 11: Check if User B receives incoming call notification
       console.log(
-        'Step 9: Checking if User B receives incoming call notification...'
+        'Step 11: Checking if User B receives incoming call notification...'
       );
 
-      // Wait for potential incoming call notification
-      await userBPage.waitForTimeout(5000);
-
-      // Check for various forms of incoming call UI
-      const incomingCallIndicators = [
-        'confirm', // window.confirm dialog
-        '[id*="incoming"]',
-        '[class*="incoming"]',
-        '[id*="call"]',
-        '[class*="call"]',
-        'dialog',
-        '.modal',
-      ];
-
+      // Wait for potential incoming call notification (custom confirmDialog)
       let hasIncomingCallUI = false;
-      for (const selector of incomingCallIndicators) {
+
+      if (contactCallInitiated) {
         try {
-          if (await userBPage.locator(selector).isVisible({ timeout: 1000 })) {
+          // Wait for the custom confirmDialog to appear
+          await userBPage.waitForSelector('dialog[open]', { timeout: 10000 });
+
+          // Check if it's an incoming call dialog
+          const dialogText = await userBPage.textContent('dialog[open] p');
+          if (dialogText && dialogText.includes('Incoming call')) {
             hasIncomingCallUI = true;
-            console.log(`✓ Found incoming call UI: ${selector}`);
-            break;
+            console.log('✅ FIXED: User B received incoming call dialog!');
+
+            // Accept the incoming call to complete the test
+            await userBPage.click('dialog[open] button[data-action="confirm"]');
+            console.log('✓ User B accepted the incoming call');
+          } else {
+            console.log(
+              `⚠ Dialog appeared but not incoming call: "${dialogText}"`
+            );
           }
         } catch (e) {
-          // Continue checking other selectors
+          console.log('⚠ No incoming call dialog appeared within 10 seconds');
+
+          // Check console logs for incoming call detection
+          // This will be captured in the console output we're monitoring
         }
+      } else {
+        console.log(
+          '⚠ Cannot test incoming call - contact call was not initiated'
+        );
       }
 
       // Also check for browser confirm dialogs by monitoring console
@@ -649,9 +677,16 @@ test.describe('Calling UI Bug Reproduction', () => {
           userB: userBLogs.slice(-50),
         },
         bugDetected: {
-          callingUIDisappears: callingUIAppeared && false, // Based on duration analysis
-          missedIncomingCall: !hasIncomingCallUI,
+          callingUIDisappears:
+            callingUIAppeared &&
+            callingUIDuration > 0 &&
+            callingUIDuration < 10000,
+          missedIncomingCall: contactCallInitiated && !hasIncomingCallUI,
           requiresReload: false, // Based on reload test results
+        },
+        bugFixed: {
+          callingUIStaysVisible: callingUIAppeared && callingUIDuration >= 5000,
+          incomingCallWorksWithoutReload: hasIncomingCallUI,
         },
       };
 
@@ -672,6 +707,15 @@ test.describe('Calling UI Bug Reproduction', () => {
       );
       console.log(
         `Bug detected - Missed incoming call: ${testResults.bugDetected.missedIncomingCall}`
+      );
+      console.log(
+        `Bug detected - Calling UI disappears: ${testResults.bugDetected.callingUIDisappears}`
+      );
+      console.log(
+        `✅ Fix verified - Calling UI stays visible: ${testResults.bugFixed.callingUIStaysVisible}`
+      );
+      console.log(
+        `✅ Fix verified - Incoming call works: ${testResults.bugFixed.incomingCallWorksWithoutReload}`
       );
 
       // Save diagnostic data to file for analysis

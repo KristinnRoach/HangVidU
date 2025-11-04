@@ -299,10 +299,15 @@ export async function joinOrCreateRoomWithId(
   let status = await RoomService.checkRoomStatus(customRoomId);
 
   // If room exists but appears empty, wait briefly and check again
-  // This handles the race where User A just created room but member data isn't written yet
+  // to handle the race where User A just created room but member data isn't written yet
   if (status.exists && !status.hasMembers) {
-    await new Promise((resolve) => setTimeout(resolve, 500)); // 500ms delay
-    status = await RoomService.checkRoomStatus(customRoomId);
+    const maxRetries = 3;
+    let attempt = 0;
+    while (attempt < maxRetries && !status.hasMembers) {
+      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1))); // 250ms, 500ms, 750ms
+      status = await RoomService.checkRoomStatus(customRoomId);
+      attempt++;
+    }
   }
 
   // Room doesn't exist OR is empty → create as initiator
@@ -429,7 +434,6 @@ export function listenForIncomingOnRoom(roomId) {
 
   listeningRoomIds.add(roomId);
 
-  listeningRoomIds.add(roomId);
   getDiagnosticLogger().logListenerAttachment(
     roomId,
     'member_join',
