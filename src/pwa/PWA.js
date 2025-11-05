@@ -1,6 +1,14 @@
-import { devDebug, isDev, tempInfo, tempWarn } from '../utils/dev/dev-utils';
+import {
+  debugPWAInstall,
+  debugVisibility,
+  devDebug,
+  isDev,
+  tempInfo,
+  tempWarn,
+} from '../utils/dev/dev-utils';
 import { hideElement, showElement } from '../utils/ui/ui-utils';
-import createIconButton from '../components/primitives/icon-button.js';
+import createIconButton from '../components/primitives/button/icon-button.js';
+import '../components/primitives/button/lit-icon-button.js';
 
 let beforeInstallEvent = null;
 let installBtnHandlerAttached = false;
@@ -43,6 +51,20 @@ function setupPWA() {
       },
       parent: topRightMenu,
     });
+
+    //   IGNORE commented out TEST CODE:
+    //   installBtnComponent = document.createElement('icon-button');
+    //   installBtnComponent.id = 'install-btn';
+    //   installBtnComponent.title = 'Install App';
+    //   installBtnComponent.iconHtml = '<i class="fa fa-plus"></i>';
+    //   // installBtnComponent.className = 'hidden';
+    //   installBtnComponent.onMount = (el) => {
+    //     if (isDev()) {
+    //       tempInfo('onMount fired for installButtonComponent');
+    //       debugVisibility(el);
+    //     }
+    //   };
+    //   topRightMenu.appendChild(installBtnComponent);
   }
 
   const installBtn =
@@ -79,16 +101,9 @@ function setupPWA() {
           '[PWA]: beforeInstallEvent is null - beforeinstallprompt may not have fired'
         );
 
-        // Check installability criteria
-        if (!('serviceWorker' in navigator)) {
-          console.warn('[PWA]: Service Workers not supported');
-        }
-        if (
-          window.location.protocol !== 'https:' &&
-          window.location.hostname !== 'localhost'
-        ) {
-          console.warn('[PWA]: Not served over HTTPS');
-        }
+        // Show PWA install diagnostics (dev-only by default)
+        debugPWAInstall({ shouldShowInProd: true });
+
         return;
       }
 

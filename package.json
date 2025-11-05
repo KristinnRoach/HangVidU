@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:disable-pwa": "DISABLE_PWA=1 vite",
     "build": "vite build",
     "gh-deploy": "pnpm build && npx gh-pages -d dist",
     "preview": "vite preview",
@@ -42,6 +43,7 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
     "dexie": "^4.2.1",
-    "firebase": "^12.4.0"
+    "firebase": "^12.4.0",
+    "lit": "^3.3.1"
   }
 }

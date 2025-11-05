@@ -1,5 +1,5 @@
 // src/components/primitives/icon-button.js
-import createComponent from '../../utils/dom/component.js';
+import createComponent from '../../../utils/dom/component.js';
 
 /**
  * Creates a reactive icon button using createComponent.
