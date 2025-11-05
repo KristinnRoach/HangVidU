@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     base: basePath,
+    // logLevel: 'warn',
 
     plugins: [
       ...(mode === 'development' ? [mkcert()] : []),
