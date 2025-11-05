@@ -9,9 +9,50 @@ import { app } from './firebase.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 
 export const auth = getAuth(app);
-let guestUserId = null; // Generated ID when not logged in
+let guestUserId = null; // Generated ID when not logged in (cached for session)
 
 const createNewGuestUserId = () => Math.random().toString(36).substring(2, 15);
+
+// Persist a stable per-browser guest ID with TTL
+const GUEST_STORAGE_KEY = 'guestUser';
+const DEFAULT_GUEST_TTL_MS = 48 * 60 * 60 * 1000; // 48 hours
+
+function loadGuestFromLocalStorage() {
+  try {
+    const raw =
+      typeof localStorage !== 'undefined'
+        ? localStorage.getItem(GUEST_STORAGE_KEY)
+        : null;
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || typeof obj !== 'object' || !obj.id) return null;
+    if (obj.expiresAt && Date.now() > obj.expiresAt) {
+      // Expired; clear and treat as missing
+      try {
+        localStorage.removeItem(GUEST_STORAGE_KEY);
+      } catch (_) {}
+      return null;
+    }
+    return obj;
+  } catch (e) {
+    return null;
+  }
+}
+
+function persistGuestToLocalStorage(id, ttlMs = DEFAULT_GUEST_TTL_MS) {
+  const now = Date.now();
+  const payload = {
+    id,
+    createdAt: now,
+    expiresAt: now + ttlMs,
+  };
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(payload));
+    }
+  } catch (_) {}
+  return payload;
+}
 
 /**
  * Get the user ID to use for this session.
@@ -25,9 +66,15 @@ export function getUserId() {
   if (userId) {
     return userId;
   }
-  // If not logged in, use or generate a guest user ID
+  // If not logged in, use or generate a persistent guest user ID (with TTL)
   if (!guestUserId) {
-    guestUserId = createNewGuestUserId();
+    const stored = loadGuestFromLocalStorage();
+    if (stored && stored.id) {
+      guestUserId = stored.id;
+    } else {
+      guestUserId = createNewGuestUserId();
+      persistGuestToLocalStorage(guestUserId);
+    }
   }
   return guestUserId;
 }

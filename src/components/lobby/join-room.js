@@ -1,13 +1,9 @@
-export function joinRoomForm(container, onSubmit) {
+export function initJoinRoomForm(container, onSubmit) {
   if (!container) return;
 
   // Build form structure
   const form = document.createElement('form');
   form.id = 'join-room-form';
-
-  const label = document.createElement('p');
-  label.id = 'join-room-label';
-  label.textContent = 'Join existing room:';
 
   const inputAndButtonContainer = document.createElement('div');
   inputAndButtonContainer.style.display = 'flex';
@@ -17,6 +13,7 @@ export function joinRoomForm(container, onSubmit) {
   input.type = 'text';
   input.id = 'room-id-input';
   input.placeholder = 'Enter Room ID';
+  input.autocomplete = 'off';
 
   const button = document.createElement('button');
   button.type = 'submit';
@@ -26,7 +23,7 @@ export function joinRoomForm(container, onSubmit) {
 
   // Assemble
   inputAndButtonContainer.append(input, button);
-  form.append(label, inputAndButtonContainer);
+  form.append(inputAndButtonContainer);
 
   // Prevent navigation and invoke provided handler
   form.addEventListener('submit', async (e) => {

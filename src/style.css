@@ -4,11 +4,10 @@
   --small-frame-height: 20dvh;
   --small-frame-width: calc(var(--small-frame-height) * (16 / 9));
 
-  /* z-index system */
-  --z-base: 0;
-  --z-content: 100;
-  --z-ui-overlay: 1000;
-  --z-controls: 2000;
+  /* z-index system: simplified 3-layer priority */
+  --z-low: 0; /* videos, background content */
+  --z-mid: 100; /* interactive UI (lobby, search, messages, auth) */
+  --z-high: 200; /* primary controls (chat bar, toggles) */
 }
 
 * {
@@ -118,7 +117,7 @@ body {
   font-size: 1.2rem;
 
   position: relative;
-  z-index: var(--z-content);
+  z-index: var(--z-mid);
 
   background: #2d2d2d;
   border-radius: 12px;
@@ -163,7 +162,7 @@ body {
 
 .auth button {
   position: relative;
-  z-index: var(--z-ui-overlay);
+  z-index: var(--z-mid);
   pointer-events: auto;
 }
 
@@ -246,7 +245,10 @@ body {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  z-index: var(--z-ui-overlay);
+  /* Ensure toggle is above chat controls bar for clickability */
+  z-index: var(--z-high);
+  pointer-events: auto;
+  touch-action: manipulation;
 }
 
 #messages-toggle-btn button {
@@ -275,7 +277,7 @@ body {
   display: flex;
   flex-direction: column;
   padding: 10px;
-  z-index: var(--z-ui-overlay);
+  z-index: var(--z-mid);
 }
 
 h1 {
@@ -371,7 +373,7 @@ button:disabled {
   height: 100%;
   margin: 0 auto;
   background: transparent;
-  z-index: var(--z-base);
+  z-index: var(--z-low);
 }
 
 #yt-video-box iframe {
@@ -418,7 +420,7 @@ button:disabled {
 .search-section {
   border-radius: 8px;
   position: relative;
-  z-index: var(--z-ui-overlay);
+  z-index: var(--z-mid);
   width: fit-content;
   max-width: 900px;
   height: fit-content;
@@ -619,7 +621,7 @@ button:disabled {
   position: absolute;
   top: 0;
   left: 0;
-  z-index: var(--z-base);
+  z-index: var(--z-low);
   display: grid;
   grid-template-columns: 1fr;
   height: 100vh;
@@ -686,7 +688,7 @@ button:disabled {
   box-shadow: 3px 3px 15px -1px rgba(0, 0, 0, 0.77);
   height: var(--small-frame-height);
   width: var(--small-frame-width);
-  z-index: var(--z-content);
+  z-index: var(--z-mid);
   transform: translateX(0);
   will-change: transform;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -702,7 +704,7 @@ button:disabled {
   top: 5px;
   right: 5px;
   transform-origin: center;
-  z-index: var(--z-controls);
+  z-index: var(--z-high);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -736,7 +738,7 @@ button:disabled {
   will-change: rotate;
   transition: rotate 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.25s;
 
-  z-index: var(--z-controls);
+  z-index: var(--z-high);
 }
 
 .small-frame-toggle-icon.closed {
@@ -759,11 +761,12 @@ button:disabled {
 .chat-controls {
   display: flex;
   justify-content: center;
-  column-gap: 2dvw;
+  width: 100%;
+  gap: 2dvw;
   flex-wrap: wrap;
-  margin: 0 auto 1rem auto;
+  margin: 0 auto;
   position: relative;
-  z-index: var(--z-controls);
+  z-index: var(--z-high);
   pointer-events: auto;
   opacity: 1;
   transition: opacity 200ms ease;
@@ -816,6 +819,17 @@ button:disabled {
   align-items: center;
 }
 
+@media (max-width: 600px) {
+  .chat-btn {
+    padding: 14px;
+  }
+
+  .chat-btn.disabled {
+    /* Save space by removing disabled chat buttons on mobile */
+    display: none;
+  }
+}
+
 #call-btn {
   background: #2196f3;
   transition: background-color 0.3s;
@@ -841,7 +855,7 @@ button:disabled {
   position: absolute;
   top: 0px;
   right: 0px;
-  z-index: var(--z-ui-overlay);
+  z-index: var(--z-mid);
   display: flex;
   flex-direction: row;
   justify-content: center;
@@ -869,7 +883,7 @@ button:disabled {
   padding: 1.5rem;
   box-shadow: 0 4px 12px rgba(11, 11, 11, 0.5);
   position: relative;
-  z-index: var(--z-content);
+  z-index: var(--z-mid);
 }
 
 .contacts-section h3 {
@@ -904,7 +918,7 @@ button:disabled {
   cursor: pointer;
   font-size: 0.9rem;
   position: relative;
-  z-index: var(--z-ui-overlay);
+  z-index: var(--z-mid);
 }
 
 .contact-call-btn:hover {
@@ -920,7 +934,7 @@ button:disabled {
   cursor: pointer;
   font-size: 0.8rem;
   position: relative;
-  z-index: var(--z-ui-overlay);
+  z-index: var(--z-mid);
 }
 
 .contact-delete-btn:hover {

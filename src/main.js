@@ -1,5 +1,5 @@
 // main.js
-import { joinRoomForm } from './components/lobby/join-room.js';
+import { initJoinRoomForm } from './components/lobby/join-room.js';
 
 // ============================================================================
 // HANGVIDU - P2P VIDEO CHAT WITH WATCH-TOGETHER MODE
@@ -13,7 +13,7 @@ import {
   getUserRecentCallsRef,
   getUserRecentCallRef,
 } from './storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId, getUserId } from './firebase/auth.js';
+import { getLoggedInUserId, getUserId, onAuthChange } from './firebase/auth.js';
 
 import {
   showElement,
@@ -56,8 +56,8 @@ import {
   sharedBoxEl,
   lobbyDiv,
   titleAuthBar,
-  createLinkBtn,
-  copyLinkBtn,
+  // createLinkBtn,
+  // copyLinkBtn,
   getElements,
 } from './elements.js';
 
@@ -270,7 +270,7 @@ function applyCallResult(result, showLinkModal = false) {
     });
   }
 
-  copyLinkBtn.disabled = false;
+  // copyLinkBtn.disabled = false;
   return true;
 }
 
@@ -609,14 +609,40 @@ export function listenForIncomingOnRoom(roomId) {
           }
         );
 
-        // Clean up: tell the caller their member entry should be removed
-        // TODO: send a rejection signal via RTDB so the caller knows immediately
-        // For now, the caller's timeout will handle cleanup on their end after 30s
+        // Send a direct rejection signal so the caller gets immediate feedback (no 30s timeout)
+        try {
+          await RoomService.rejectCall(roomId, getUserId(), 'user_rejected');
+        } catch (e) {
+          console.warn('Failed to signal rejection via RTDB:', e);
+        }
+
+        // Clean up recent call state for this client
         await removeRecentCall(roomId).catch((e) => {
           console.warn('Failed to remove recent call on rejection:', e);
         });
       }
     }
+  });
+
+  // If caller cancels before we accept, hide any incoming prompt and clear the recent call
+  RoomService.onCallCancelled(roomId, async (snapshot) => {
+    const data =
+      snapshot && typeof snapshot.val === 'function' ? snapshot.val() : null;
+    if (!data) return;
+    try {
+      const { dismissActiveConfirmDialog } = await import(
+        './components/primitives/confirm-dialog.js'
+      );
+      if (typeof dismissActiveConfirmDialog === 'function') {
+        dismissActiveConfirmDialog();
+      }
+    } catch (_) {
+      // best-effort
+    }
+    await removeRecentCall(roomId).catch(() => {});
+    devDebug(
+      `[LISTENER] Incoming call cancelled by caller for room: ${roomId}`
+    );
   });
 
   // Listen for member leaves: if the room becomes empty after a leave,
@@ -682,9 +708,9 @@ async function startListeningForSavedRooms() {
         for (const [roomId, meta] of Object.entries(val)) {
           if (!meta || (meta.expiresAt && meta.expiresAt < Date.now())) {
             // remove expired
-            await remove(
-              ref(rtdb, `users/${loggedInUid}/recentCalls/${roomId}`)
-            ).catch(() => {});
+            await remove(getUserRecentCallRef(loggedInUid, roomId)).catch(
+              () => {}
+            );
             continue;
           }
           toListen.add(roomId);
@@ -870,8 +896,8 @@ export function exitWatchMode() {
 
   if (!isRemoteVideoVideoActive()) {
     showElement(lobbyDiv);
-    showElement(createLinkBtn);
-    showElement(copyLinkBtn);
+    // showElement(createLinkBtn);
+    // showElement(copyLinkBtn);
   }
 
   setWatchMode(false);
@@ -910,12 +936,15 @@ export let enterCallMode = () => {
   placeInSmallFrame(localBoxEl);
 
   hideElement(lobbyDiv);
-  hideElement(createLinkBtn);
-  hideElement(copyLinkBtn);
+  // hideElement(createLinkBtn);
+  // hideElement(copyLinkBtn);
 
   callBtn.disabled = true;
-  mutePartnerBtn.disabled = false;
+  callBtn.classList.add('disabled');
   hangUpBtn.disabled = false;
+  hangUpBtn.classList.remove('disabled');
+  mutePartnerBtn.disabled = false;
+  mutePartnerBtn.classList.remove('disabled');
 
   if (!cleanupChatControlAutoHide) {
     // Start hidden, show on activity and auto-hide after inactivity
@@ -971,8 +1000,11 @@ export let exitCallMode = () => {
   showElement(localBoxEl);
 
   callBtn.disabled = false;
+  callBtn.classList.remove('disabled');
   hangUpBtn.disabled = true;
+  hangUpBtn.classList.add('disabled');
   mutePartnerBtn.disabled = true;
+  mutePartnerBtn.classList.add('disabled');
 
   if (cleanupChatControlAutoHide) {
     cleanupChatControlAutoHide();
@@ -980,12 +1012,12 @@ export let exitCallMode = () => {
   }
 
   showElement(chatControls); // Ensure visible
-
-  createLinkBtn.disabled = false;
-  copyLinkBtn.disabled = true;
   showElement(lobbyDiv);
-  showElement(createLinkBtn);
-  showElement(copyLinkBtn);
+
+  // createLinkBtn.disabled = false;
+  // copyLinkBtn.disabled = true;
+  // showElement(createLinkBtn);
+  // showElement(copyLinkBtn);
 };
 
 // ============================================================================
@@ -1102,12 +1134,12 @@ callBtn.onclick = async () => {
   applyCallResult(result, true);
 };
 
-createLinkBtn.onclick = async () => {
-  const result = await createCall(getCallOptions());
-  applyCallResult(result, true);
-};
+// createLinkBtn.onclick = async () => {
+//   const result = await createCall(getCallOptions());
+//   applyCallResult(result, true);
+// };
 
-copyLinkBtn.onclick = async () => await handleCopyLink();
+// copyLinkBtn.onclick = async () => await handleCopyLink();
 
 hangUpBtn.onclick = async () => await hangUp();
 
@@ -1141,32 +1173,6 @@ async function waitForLocalStream(timeoutMs = 5000) {
     };
     check();
   });
-}
-
-async function registerJoinButton() {
-  if (!joinRoomBtn || !roomIdInput) return false;
-
-  // disable until init enables it
-  joinRoomBtn.disabled = false;
-
-  joinRoomBtn.onclick = async () => {
-    const raw = roomIdInput.value || '';
-    const inputRoomId = normalizeRoomInput(raw);
-    if (!inputRoomId) {
-      updateStatus('Please enter a room ID');
-      return false;
-    }
-
-    const mediaReady = await waitForLocalStream(5000);
-    if (!mediaReady) {
-      updateStatus('Camera not ready. Please allow permissions and try again.');
-      return false;
-    }
-
-    return await joinOrCreateRoomWithId(inputRoomId);
-  };
-
-  return true;
 }
 
 // ============================================================================
@@ -1225,10 +1231,10 @@ window.onload = async () => {
     }
   };
 
-  // Initialize join room form (replaces registerJoinButton)
+  // Initialize join room form
   const joinRoomContainer = document.getElementById('join-room-container');
   if (joinRoomContainer) {
-    joinRoomForm(joinRoomContainer, onJoinRoomSubmit);
+    initJoinRoomForm(joinRoomContainer, onJoinRoomSubmit);
   }
 
   // Start listening for incoming calls on any saved/recent room ids FIRST
@@ -1239,6 +1245,21 @@ window.onload = async () => {
   // Then render saved contacts list in lobby (now listeners are ready)
   renderContactsList(lobbyDiv).catch((e) => {
     console.warn('Failed to render contacts list:', e);
+  });
+
+  // Re-render contacts on auth changes so private contacts are hidden on logout
+  const unsubscribeAuthContacts = onAuthChange(async () => {
+    try {
+      await renderContactsList(lobbyDiv);
+    } catch (e) {
+      console.warn('Failed to re-render contacts on auth change:', e);
+    }
+  });
+  cleanupFunctions.push(() => {
+    try {
+      if (typeof unsubscribeAuthContacts === 'function')
+        unsubscribeAuthContacts();
+    } catch (_) {}
   });
 
   // Auto-join if room parameter exists

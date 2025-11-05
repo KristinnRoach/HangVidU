@@ -5,6 +5,7 @@ import {
   getRoomMembersRef,
   getRoomMemberRef,
   addRTDBListener,
+  getRoomCancellationRef,
   removeRTDBListenersForRoom,
   removeRTDBListenersForUser,
 } from './storage/fb-rtdb/rtdb';
@@ -187,6 +188,91 @@ class RoomService {
     // Some listeners (e.g., background incoming-call listeners for saved rooms)
     // must persist across calls. Callers should explicitly cleanup per-call listeners
     // at the start of a new call or when tearing down the app.
+  }
+
+  /**
+   * Record a direct rejection signal in the room so the caller gets instant feedback.
+   * Keeps schema simple: rooms/{roomId}/rejection = { by, reason, at }
+   * @param {string} roomId
+   * @param {string} byUserId
+   * @param {('user_rejected'|'busy'|'stale_call'|'already_in_call'|string)} [reason]
+   */
+  async rejectCall(roomId, byUserId, reason = 'user_rejected') {
+    if (!roomId || !byUserId) return;
+
+    const roomRef = getRoomRef(roomId);
+    const payload = {
+      rejection: {
+        by: byUserId,
+        reason,
+        at: Date.now(),
+      },
+    };
+
+    try {
+      await update(roomRef, payload);
+      getDiagnosticLogger().log('ROOM', 'REJECT_SET', {
+        roomId,
+        byUserId,
+        reason,
+      });
+    } catch (e) {
+      getDiagnosticLogger().log('ROOM', 'REJECT_SET_FAILED', {
+        roomId,
+        byUserId,
+        reason,
+        error: String(e?.message || e),
+      });
+      throw e;
+    }
+  }
+
+  /**
+   * Record a direct cancellation signal in the room so the callee can hide incoming UI.
+   * rooms/{roomId}/cancellation = { by, reason, at }
+   */
+  async cancelCall(roomId, byUserId, reason = 'caller_cancelled') {
+    if (!roomId || !byUserId) return;
+
+    const roomRef = getRoomRef(roomId);
+    const payload = {
+      cancellation: {
+        by: byUserId,
+        reason,
+        at: Date.now(),
+      },
+    };
+
+    try {
+      await update(roomRef, payload);
+      getDiagnosticLogger().log('ROOM', 'CANCEL_SET', {
+        roomId,
+        byUserId,
+        reason,
+      });
+    } catch (e) {
+      getDiagnosticLogger().log('ROOM', 'CANCEL_SET_FAILED', {
+        roomId,
+        byUserId,
+        reason,
+        error: String(e?.message || e),
+      });
+      throw e;
+    }
+  }
+
+  /**
+   * Listen for caller cancellation so callee can react (hide incoming UI).
+   */
+  onCallCancelled(roomId, callback) {
+    const cancelRef = getRoomCancellationRef(roomId);
+    addRTDBListener(cancelRef, 'value', callback, roomId);
+    getDiagnosticLogger().logFirebaseOperation(
+      'on',
+      'onCallCancelled',
+      `rooms/${roomId}/cancellation`,
+      { event: 'value' }
+    );
   }
 
   /**

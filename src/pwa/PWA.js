@@ -41,8 +41,9 @@ function setupPWA() {
     if (isDev()) showElement(installBtnComponent); // Always visible in DEV for testing
   }
 
-  const installBtn = installBtnComponent.querySelector('button');
-  if (!installBtn) {
+  const installBtn =
+    installBtnComponent.querySelector?.('button') ?? installBtnComponent;
+  if (!(installBtn instanceof HTMLElement)) {
     console.warn('[PWA]: Install button element not found in component');
     return;
   }

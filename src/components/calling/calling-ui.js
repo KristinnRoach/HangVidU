@@ -164,6 +164,7 @@ export async function showCallingUI(roomId, contactName, onCancel) {
     try {
       await Promise.all([
         clearOutgoingCallState(),
+        RoomService.cancelCall(roomId, getUserId(), 'caller_cancelled'),
         RoomService.leaveRoom(getUserId(), roomId),
       ]);
     } catch (e) {
@@ -202,6 +203,7 @@ export async function showCallingUI(roomId, contactName, onCancel) {
     try {
       await Promise.all([
         clearOutgoingCallState(),
+        RoomService.cancelCall(roomId, getUserId(), 'auto_timeout'),
         RoomService.leaveRoom(getUserId(), roomId),
       ]);
     } catch (e) {
@@ -256,4 +258,21 @@ export async function onCallAnswered() {
 
   await clearOutgoingCallState();
   hideCallingUI();
+}
+
+/**
+ * Hide calling UI and clear outgoing state when call is rejected by callee
+ */
+export async function onCallRejected(reason = 'user_rejected') {
+  const diag = getDiagnosticLogger();
+  const roomId = activeCallingUI?.dataset?.roomId || 'unknown';
+
+  diag.logCallingUILifecycle('REJECTED', roomId, {
+    reason,
+    timestamp: Date.now(),
+  });
+
+  await clearOutgoingCallState();
+  hideCallingUI();
+  updateStatus('Call declined');
 }

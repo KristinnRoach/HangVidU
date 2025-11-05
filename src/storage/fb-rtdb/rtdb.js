@@ -141,6 +141,8 @@ export const getRoomMemberRef = (roomId, userId) =>
   ref(rtdb, `rooms/${roomId}/members/${userId}`);
 export const getRoomOfferRef = (roomId) => ref(rtdb, `rooms/${roomId}/offer`);
 export const getRoomAnswerRef = (roomId) => ref(rtdb, `rooms/${roomId}/answer`);
+export const getRoomCancellationRef = (roomId) =>
+  ref(rtdb, `rooms/${roomId}/cancellation`);
 
 // Watch-together refs
 export const getWatchRef = (roomId) => ref(rtdb, `rooms/${roomId}/watch`);

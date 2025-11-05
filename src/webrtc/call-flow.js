@@ -14,6 +14,7 @@ import { onDataChange, rtdb } from '../storage/fb-rtdb/rtdb.js';
 import { getUserId } from '../firebase/auth.js';
 import { updateStatus } from '../utils/ui/status.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
+import { onCallRejected } from '../components/calling/calling-ui.js';
 
 import { drainIceCandidateQueue, setupIceCandidates } from '../webrtc/ice.js';
 import { setupConnectionStateHandlers } from '../webrtc/webrtc.js';
@@ -130,6 +131,39 @@ export async function createCall({
     }
   };
   onDataChange(answerRef, answerCallback, roomId);
+
+  // Also listen for a direct rejection signal for instant feedback
+  const rejectionRef = ref(rtdb, `rooms/${roomId}/rejection`);
+  let rejectionHandled = false;
+  const onRejection = async (snapshot) => {
+    const rej = snapshot.val();
+    if (!rej) return;
+
+    if (rejectionHandled) return;
+    rejectionHandled = true;
+
+    // If we already connected, ignore late rejection
+    if (pc?.connectionState === 'connected') return;
+
+    devDebug('Call rejected by partner', { roomId, rej });
+    // Let calling UI handle status/update if present
+    try {
+      await onCallRejected(rej.reason || 'user_rejected');
+    } catch (_) {
+      updateStatus('Call declined');
+    }
+
+    try {
+      await RoomService.leaveRoom(userId, roomId);
+    } catch (e) {
+      // non-fatal
+    }
+
+    try {
+      pc?.close();
+    } catch (_) {}
+  };
+  onDataChange(rejectionRef, onRejection, roomId);
 
   // ─────────────────────────────────────────────────────────────────────────
   // 6. SETUP ROOM AND SYNC
