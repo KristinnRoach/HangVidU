@@ -2,7 +2,7 @@
 
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import basicSsl from '@vitejs/plugin-basic-ssl';
+import mkcert from 'vite-plugin-mkcert';
 
 export default defineConfig(({ mode }) => {
   const basePath = mode === 'production' ? '/HangVidU/' : '/';
@@ -11,12 +11,15 @@ export default defineConfig(({ mode }) => {
     base: basePath,
 
     plugins: [
-      ...(mode === 'development' ? [basicSsl()] : []),
+      ...(mode === 'development' ? [mkcert()] : []),
       VitePWA({
         includeAssets: ['favicon.ico'],
         registerType: 'autoUpdate',
         strategies: 'generateSW',
         injectRegister: 'script',
+        devOptions: {
+          enabled: true, // enable service worker & manifest during dev for install prompt testing
+        },
         workbox: {
           cleanupOutdatedCaches: true,
         },
@@ -42,18 +45,18 @@ export default defineConfig(({ mode }) => {
 
           icons: [
             {
-              src: `${basePath}icon-192.png`,
+              src: `${basePath}icons/play-arrows-v1/icon-192.png`,
               sizes: '192x192',
               type: 'image/png',
             },
             {
-              src: `${basePath}icon-512.png`,
+              src: `${basePath}icons/play-arrows-v1/icon-512.png`,
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: `${basePath}icon-512.png`,
+              src: `${basePath}icons/play-arrows-v1/icon-512.png`,
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable',
@@ -61,13 +64,13 @@ export default defineConfig(({ mode }) => {
           ],
           screenshots: [
             {
-              src: `${basePath}/screenshot-wide.png`,
+              src: `${basePath}screenshot-wide.png`,
               sizes: '1280x720',
               form_factor: 'wide',
               type: 'image/png',
             },
             {
-              src: `${basePath}/screenshot-narrow.png`,
+              src: `${basePath}screenshot-narrow.png`,
               sizes: '540x720',
               form_factor: 'narrow',
               type: 'image/png',
@@ -77,7 +80,7 @@ export default defineConfig(({ mode }) => {
       }),
     ],
     server: {
-      https: true, // ?!?!?
+      https: true, // use trusted dev cert from mkcert
       host: true, // To expose to LAN devices as well
       allowedHosts: ['.ngrok-free.app'],
     },
