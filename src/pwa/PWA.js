@@ -8,7 +8,6 @@ import {
 } from '../utils/dev/dev-utils';
 import { hideElement, showElement } from '../utils/ui/ui-utils';
 import createIconButton from '../components/primitives/button/icon-button.js';
-import '../components/primitives/button/lit-icon-button.js';
 
 let beforeInstallEvent = null;
 let installBtnHandlerAttached = false;
@@ -51,20 +50,6 @@ function setupPWA() {
       },
       parent: topRightMenu,
     });
-
-    //   IGNORE commented out TEST CODE:
-    //   installBtnComponent = document.createElement('icon-button');
-    //   installBtnComponent.id = 'install-btn';
-    //   installBtnComponent.title = 'Install App';
-    //   installBtnComponent.iconHtml = '<i class="fa fa-plus"></i>';
-    //   // installBtnComponent.className = 'hidden';
-    //   installBtnComponent.onMount = (el) => {
-    //     if (isDev()) {
-    //       tempInfo('onMount fired for installButtonComponent');
-    //       debugVisibility(el);
-    //     }
-    //   };
-    //   topRightMenu.appendChild(installBtnComponent);
   }
 
   const installBtn =

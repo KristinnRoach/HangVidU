@@ -2,7 +2,9 @@
 import { LitElement, html, css } from 'lit';
 import faStyles from '@fortawesome/fontawesome-free/css/all.min.css?inline';
 
-export class IconButton extends LitElement {
+// This is a test draft to compare createComponent vs LitElement web component
+
+export class LitIconButton extends LitElement {
   static properties = {
     id: { type: String },
     title: { type: String },
@@ -105,4 +107,19 @@ export class IconButton extends LitElement {
   }
 }
 
-customElements.define('icon-button', IconButton);
+customElements.define('lit-icon-button', LitIconButton);
+
+//   Usage:
+//   import '../components/primitives/button/lit-icon-button.draft.js';
+//   installBtnComponent = document.createElement('lit-icon-button');
+//   installBtnComponent.id = 'install-btn';
+//   installBtnComponent.title = 'Install App';
+//   installBtnComponent.iconHtml = '<i class="fa fa-plus"></i>';
+//   // installBtnComponent.className = 'hidden';
+//   installBtnComponent.onMount = (el) => {
+//     if (isDev()) {
+//       tempInfo('onMount fired for installButtonComponent');
+//       debugVisibility(el);
+//     }
+//   };
+//   topRightMenu.appendChild(installBtnComponent);
