@@ -1,6 +1,6 @@
 // calling-ui.js - Calling modal with cancel and auto-timeout
 
-import { set, remove, get } from 'firebase/database';
+import { set, remove, get, ref } from 'firebase/database';
 import { rtdb, getUserOutgoingCallRef } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, getUserId } from '../../firebase/auth.js';
 import { updateStatus } from '../../utils/ui/status.js';

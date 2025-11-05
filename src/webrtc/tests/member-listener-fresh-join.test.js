@@ -74,31 +74,52 @@ vi.mock('firebase/database', () => {
 // Provide a minimal app export for rtdb initialization
 vi.mock('../../firebase/firebase', () => ({ app: {} }));
 
+// Mock the diagnostic logger
+vi.mock('../../utils/dev/diagnostic-logger.js', () => ({
+  getDiagnosticLogger: () => ({
+    logFirebaseOperation: vi.fn(),
+    log: vi.fn(),
+  }),
+}));
+
 // Import the RoomService singleton under test
 import RoomService from '../../room.js';
+import {
+  removeRTDBListenersForRoom,
+  removeAllRTDBListeners,
+} from '../../storage/fb-rtdb/rtdb.js';
 
 describe('Incoming-call member listener fires once with fresh joinedAt', () => {
   const roomId = 'room-test-1';
+  const localUserId = 'local-user-123'; // User attaching the incoming-call listener
 
   beforeEach(() => {
     vi.clearAllMocks();
     // Ensure no lingering listeners stored internally
-    RoomService.cleanupListeners();
+    removeAllRTDBListeners();
   });
 
   afterEach(() => {
-    RoomService.cleanupListeners();
+    removeRTDBListenersForRoom(roomId);
   });
 
   it('fires only the active listener (not disposed) and joinedAt is fresh', async () => {
     const oldCb = vi.fn();
-    const unsubscribeOld = RoomService.onIncomingCall(roomId, oldCb);
+    const unsubscribeOld = RoomService.onIncomingCall(
+      roomId,
+      localUserId,
+      oldCb
+    );
 
     // Simulate disposed PC by unsubscribing old listener
     unsubscribeOld();
 
     const newCb = vi.fn();
-    const unsubscribeNew = RoomService.onIncomingCall(roomId, newCb);
+    const unsubscribeNew = RoomService.onIncomingCall(
+      roomId,
+      localUserId,
+      newCb
+    );
 
     const t0 = Date.now();
     // Simulate a remote member joining this room

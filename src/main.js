@@ -6,8 +6,13 @@ import { joinRoomForm } from './components/lobby/join-room.js';
 // ============================================================================
 
 import '@fortawesome/fontawesome-free/css/all.min.css';
-import { ref, set, get, remove } from 'firebase/database';
-import { removeAllRTDBListeners, rtdb } from './storage/fb-rtdb/rtdb.js';
+import { set, get, remove } from 'firebase/database';
+import {
+  removeAllRTDBListeners,
+  rtdb,
+  getUserRecentCallsRef,
+  getUserRecentCallRef,
+} from './storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, getUserId } from './firebase/auth.js';
 
 import {
@@ -365,10 +370,7 @@ async function saveRecentCall(roomId) {
   const loggedInUid = getLoggedInUserId();
 
   if (loggedInUid) {
-    const userRecentRef = ref(
-      rtdb,
-      `users/${loggedInUid}/recentCalls/${roomId}`
-    );
+    const userRecentRef = getUserRecentCallRef(loggedInUid, roomId);
     await set(userRecentRef, { roomId, savedAt: now, expiresAt });
     return;
   }
@@ -392,7 +394,7 @@ async function removeRecentCall(roomId) {
 
   if (loggedInUid) {
     try {
-      await remove(ref(rtdb, `users/${loggedInUid}/recentCalls/${roomId}`));
+      await remove(getUserRecentCallRef(loggedInUid, roomId));
     } catch (e) {
       console.warn('Failed to remove recent call from RTDB', e);
     }
@@ -670,7 +672,7 @@ async function startListeningForSavedRooms() {
   });
 
   if (loggedInUid) {
-    const userRecentRef = ref(rtdb, `users/${loggedInUid}/recentCalls`);
+    const userRecentRef = getUserRecentCallsRef(loggedInUid);
     try {
       const snap = await get(userRecentRef);
       const val = snap.exists() ? snap.val() : null;
@@ -1327,8 +1329,7 @@ async function cleanup() {
   removeAllRTDBListeners();
 
   // await RoomService.leaveRoom(getUserId());
-  // DON'T cleanup all listeners - saved contact listeners should persist
-  // RoomService.cleanupListeners();
+  // Global teardown: safe to remove all listeners on page unload
 
   if (document.pictureInPictureElement) {
     document.exitPictureInPicture().catch((err) => console.error(err));

@@ -40,7 +40,6 @@ describe('Firebase Connection Recovery', () => {
     });
 
     // Step 3: Check if listener cleanup happened (this might be the bug)
-    // In the real code, RoomService.cleanupListeners() might be called too aggressively
     logger.log('LISTENER', 'CLEANUP_CHECK', {
       roomId,
       listenersRemaining: 1, // Should still be 1

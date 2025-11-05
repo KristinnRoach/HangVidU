@@ -21,7 +21,7 @@ vi.mock('../../firebase/firebase', () => ({
 
 vi.mock('../storage/fb-rtdb/rtdb', () => ({
   rtdb: {},
-  trackRTDBListener: vi.fn(),
+  addRTDBListener: vi.fn(),
 }));
 
 vi.mock('../../utils/dev-utils.js', () => ({
