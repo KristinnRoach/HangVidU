@@ -13,8 +13,8 @@ const getElement = (id) => {
 // Element references - initialized after DOM is ready
 let lobbyDiv = null;
 let titleAuthBar = null;
-let createLinkBtn = null;
-let copyLinkBtn = null;
+// let createLinkBtn = null;
+// let copyLinkBtn = null;
 let videosWrapper = null;
 let localVideoEl = null;
 let localBoxEl = null;
@@ -41,8 +41,8 @@ let appTitleSpan = null;
 function initializeElements() {
   lobbyDiv = getElement('lobby');
   titleAuthBar = getElement('title-auth-bar');
-  createLinkBtn = getElement('create-link-btn');
-  copyLinkBtn = getElement('copy-link-btn');
+  // createLinkBtn = getElement('create-link-btn');
+  // copyLinkBtn = getElement('copy-link-btn');
 
   videosWrapper = getElement('videos');
   localVideoEl = getElement('local-video-el');
@@ -83,8 +83,8 @@ if (document.readyState === 'loading') {
 export const getElements = () => ({
   lobbyDiv,
   titleAuthBar,
-  createLinkBtn,
-  copyLinkBtn,
+  // createLinkBtn,
+  // copyLinkBtn,
   videosWrapper,
   localVideoEl,
   localBoxEl,
@@ -113,8 +113,8 @@ export const getElements = () => ({
 export {
   lobbyDiv,
   titleAuthBar,
-  createLinkBtn,
-  copyLinkBtn,
+  // createLinkBtn,
+  // copyLinkBtn,
   videosWrapper,
   localVideoEl,
   localBoxEl,

@@ -123,6 +123,8 @@ export function initMessagesUI(sendFn) {
 
   function cleanup() {
     observer.disconnect();
+    if (messagesBox)
+      messagesBox.removeEventListener('click', onClickMessagesBox);
     if (messagesToggleBtn) hideMessagesToggle();
     // Remove the container from the DOM
     if (container && container.parentNode) {
@@ -139,3 +141,39 @@ export function initMessagesUI(sendFn) {
     cleanup,
   };
 }
+
+// Saving for possible future use:
+// // Auto-focus behavior when clicking inside the open (not hidden) messages box
+// const focusConfig = {
+//   autoFocusTextInput: true,
+//   ignoreSelectors: ['a'],
+//   ignoreElList: [],
+// };
+
+// const onClickMessagesBox = (evt) => {
+//   if (!focusConfig.autoFocusTextInput) return;
+//   if (isHidden(messagesBox)) return;
+
+//   const target = evt.target;
+//   if (
+//     focusConfig.ignoreSelectors?.some(
+//       (sel) => target instanceof Element && target.closest(sel)
+//     )
+//   ) {
+//     return;
+//   }
+
+//   // If we populate ignoreElList (e.g., buttons), ignore those as well
+//   if (
+//     focusConfig.ignoreElList?.some(
+//       (el) => el && (el === target || (el.contains && el.contains(target)))
+//     )
+//   ) {
+//     return;
+//   }
+
+//   // Focus the input when clicking anywhere inside the open messages box
+//   messagesInput.focus();
+// };
+
+// messagesBox.addEventListener('click', onClickMessagesBox);

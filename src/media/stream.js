@@ -79,6 +79,56 @@ export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
       addRemoteVideoEventListeners(remoteVideoEl, mutePartnerBtn);
       updateStatus('Connected!');
 
+      // Ensure the remote video and its container are visible (fix mobile Safari cases)
+      try {
+        const container =
+          document.getElementById('remote-video-box') ||
+          remoteVideoEl.parentElement;
+        if (container) {
+          // Remove any utility hidden class from container or element
+          container.classList?.remove('hidden');
+          remoteVideoEl.classList?.remove('hidden');
+
+          // Force visibility in case a parent applied visibility:hidden via inheritance
+          container.style.visibility = 'visible';
+          container.style.opacity = '1';
+          container.style.position = '';
+          container.style.left = '';
+          container.style.top = '';
+          remoteVideoEl.style.visibility = 'visible';
+          remoteVideoEl.style.opacity = '1';
+
+          // Diagnostic: log container state
+          // (kept lightweight; remove after verifying on device)
+          console.log('[DEBUG] remote container visibility fix', {
+            containerClasses: container.className,
+            containerComputedVisibility: getComputedStyle(container).visibility,
+            videoComputedVisibility: getComputedStyle(remoteVideoEl).visibility,
+          });
+        }
+      } catch (e) {
+        console.warn('Visibility override failed:', e);
+      }
+
+      console.log(
+        '[DEBUG] remoteVideoEl',
+        remoteVideoEl,
+        'srcObject:',
+        remoteVideoEl.srcObject,
+        'videoWidth:',
+        remoteVideoEl.videoWidth,
+        'videoHeight:',
+        remoteVideoEl.videoHeight,
+        'offsetWidth:',
+        remoteVideoEl.offsetWidth,
+        'offsetHeight:',
+        remoteVideoEl.offsetHeight,
+        'computedStyle.display:',
+        getComputedStyle(remoteVideoEl).display,
+        'computedStyle.visibility:',
+        getComputedStyle(remoteVideoEl).visibility
+      );
+
       if (import.meta.env.DEV) {
         remoteVideoEl.style.border = '8px solid red';
       }

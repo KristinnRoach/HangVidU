@@ -1,3 +1,5 @@
+let activeCleanup = null;
+
 function confirmDialog(message, options = {}) {
   return new Promise((resolve) => {
     const dialog = document.createElement('dialog');
@@ -25,6 +27,7 @@ function confirmDialog(message, options = {}) {
       if (autoRemoveTimer) clearTimeout(autoRemoveTimer);
       dialog.close();
       dialog.remove();
+      if (activeCleanup === cleanup) activeCleanup = null;
       resolve(result);
     }
 
@@ -41,6 +44,9 @@ function confirmDialog(message, options = {}) {
     document.body.appendChild(dialog);
     dialog.showModal();
 
+    // Track active cleanup handler for programmatic dismissal
+    activeCleanup = cleanup;
+
     // Auto-remove after X seconds if options.autoRemoveSeconds is set
     if (
       options.autoRemoveSeconds &&
@@ -55,3 +61,13 @@ function confirmDialog(message, options = {}) {
 }
 
 export default confirmDialog;
+export function dismissActiveConfirmDialog() {
+  if (typeof activeCleanup === 'function') {
+    try {
+      activeCleanup(false);
+    } catch (_) {}
+    activeCleanup = null;
+    return true;
+  }
+  return false;
+}

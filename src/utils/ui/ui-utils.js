@@ -16,12 +16,66 @@ export const showElement = (el) => {
   if (!elExists(el)) return;
 
   el.classList.contains('hidden') && el.classList.remove('hidden');
+
+  // DEV diagnostics: log show operations and visibility state
+  if (import.meta.env?.DEV) {
+    try {
+      const cs = getComputedStyle(el);
+      const stack = new Error().stack
+        ?.split('\n')
+        .slice(2, 6) // trim internal frames
+        .map((s) => s.trim());
+      const id = el.id || '(no-id)';
+      const classes = el.className || '';
+      const inRemoteBox =
+        id === 'remote-video-el' ||
+        id === 'remote-video-box' ||
+        el.closest?.('#remote-video-box');
+
+      console.debug('[UI] showElement', {
+        id,
+        classes,
+        visibility: cs.visibility,
+        display: cs.display,
+        opacity: cs.opacity,
+        trace: stack,
+        highlight: !!inRemoteBox,
+      });
+    } catch {}
+  }
 };
 
 export const hideElement = (el) => {
   if (!elExists(el)) return;
 
   !el.classList.contains('hidden') && el.classList.add('hidden');
+
+  // DEV diagnostics: log hide operations and visibility state with call stack
+  if (import.meta.env?.DEV) {
+    try {
+      const cs = getComputedStyle(el);
+      const stack = new Error().stack
+        ?.split('\n')
+        .slice(2, 8)
+        .map((s) => s.trim());
+      const id = el.id || '(no-id)';
+      const classes = el.className || '';
+      const inRemoteBox =
+        id === 'remote-video-el' ||
+        id === 'remote-video-box' ||
+        el.closest?.('#remote-video-box');
+
+      console.debug('[UI] hideElement', {
+        id,
+        classes,
+        visibility: cs.visibility,
+        display: cs.display,
+        opacity: cs.opacity,
+        trace: stack,
+        highlight: !!inRemoteBox,
+      });
+    } catch {}
+  }
 };
 
 export const isInSmallFrame = (element) => {
