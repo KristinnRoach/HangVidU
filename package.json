@@ -25,15 +25,17 @@
   "keywords": [
     "webrtc",
     "video-chat",
-    "peer-to-peer"
+    "peer-to-peer",
+    "watch-together",
+    "youtube"
   ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
     "@playwright/test": "^1.56.1",
-    "@vitejs/plugin-basic-ssl": "^2.1.0",
     "jsdom": "^27.0.1",
     "vite": "^7.1.12",
+    "vite-plugin-mkcert": "^1.17.9",
     "vite-plugin-pwa": "^1.1.0",
     "vitest": "^4.0.5"
   },

@@ -1,11 +1,13 @@
 // src/utils/dom/component.js
+import { tempWarn } from '../dev/dev-utils.js';
 import {
   captureInputState,
   captureMediaState,
   html,
   restoreInputState,
   restoreMediaState,
-} from './helpers.js';
+} from './component-utils.js';
+import { isDOMReady } from './dom-utils.js';
 
 // === MAIN VANILLA JS COMPONENT FUNCTION ===
 
@@ -36,6 +38,13 @@ const createComponent = ({
   autoAppend = true,
   preserveInputState = true,
 }) => {
+  if (!isDOMReady()) {
+    console.error(
+      'createComponent: DOM must be ready before creating components.'
+    );
+    return null;
+  }
+
   const element = document.createElement(containerTag); // container tag customizable
   if (className) element.className = className;
 
@@ -51,11 +60,11 @@ const createComponent = ({
   }
 
   // Global update listeners (any prop updated)
-  const updateListeners = []; // onRender listeners (after render)
-  const propsUpdatedListeners = []; // onAnyPropUpdated listeners (after state change, render optional)
+  const renderListeners = []; // onRender listeners (after render)
+  const anyUpdateListeners = []; // onAnyPropUpdated listeners (after state change, render optional)
 
   // Per-prop listeners map: { propName: [callback, ...] }
-  const propListeners = {};
+  const singlePropListeners = {};
 
   const render = () => {
     // Capture state before render if needed
@@ -71,7 +80,7 @@ const createComponent = ({
     const content = html(template, currentProps);
     element.appendChild(content);
 
-    // Attach event handlers (only if handler is a function)
+    // Attach event handlers // TODO: optimize to avoid re-adding on every render
     Object.keys(handlers).forEach((handlerName) => {
       const elements = element.querySelectorAll(`[onclick="${handlerName}"]`);
       const fn = handlers[handlerName];
@@ -89,19 +98,19 @@ const createComponent = ({
       restoreMediaState(element, mediaState);
     }
 
-    // Notify listeners
-    updateListeners.forEach((listener) => listener({ ...currentProps }));
+    // Notify listeners // TODO: optimize
+    renderListeners.forEach((listener) => listener({ ...currentProps }));
   };
 
   const notifyPropsUpdated = (changedKeys) => {
     if (!Array.isArray(changedKeys) || changedKeys.length === 0) return;
     const payload = { props: { ...currentProps }, changedKeys };
-    propsUpdatedListeners.forEach((listener) => listener(payload));
+    anyUpdateListeners.forEach((listener) => listener(payload));
   };
 
   // Define getters/setters with per-prop event notification
   for (const prop of Object.keys(initialProps)) {
-    propListeners[prop] = [];
+    singlePropListeners[prop] = [];
 
     Object.defineProperty(element, prop, {
       get() {
@@ -115,7 +124,7 @@ const createComponent = ({
             render();
           }
           // Always notify per-prop listeners
-          propListeners[prop].forEach((cb) => cb(value));
+          singlePropListeners[prop].forEach((cb) => cb(value));
           // Notify global props-updated listeners for single prop change
           notifyPropsUpdated([prop]);
         }
@@ -138,8 +147,8 @@ const createComponent = ({
           shouldRender = true;
         }
         // Notify per-prop listeners on batch update
-        if (propListeners[key]) {
-          propListeners[key].forEach((cb) => cb(newProps[key]));
+        if (singlePropListeners[key]) {
+          singlePropListeners[key].forEach((cb) => cb(newProps[key]));
         }
         changed = true;
         changedKeys.push(key);
@@ -148,7 +157,7 @@ const createComponent = ({
 
     // Only re-render if a prop used in the template changed
     if (changed && shouldRender) {
-      render(); // render() already calls updateListeners, no need to duplicate
+      render(); // render() already calls updateListeners
     }
 
     // Notify global props-updated listeners once per batch
@@ -163,7 +172,7 @@ const createComponent = ({
    */
   element.onRender = (listener) => {
     if (typeof listener === 'function') {
-      updateListeners.push(listener);
+      renderListeners.push(listener);
     }
   };
 
@@ -174,7 +183,7 @@ const createComponent = ({
    */
   element.onAnyPropUpdated = (listener) => {
     if (typeof listener === 'function') {
-      propsUpdatedListeners.push(listener);
+      anyUpdateListeners.push(listener);
     }
   };
 
@@ -184,8 +193,8 @@ const createComponent = ({
    * @param {function} listener - Callback receiving the new prop value.
    */
   element.onPropUpdated = (prop, listener) => {
-    if (typeof listener === 'function' && propListeners[prop]) {
-      propListeners[prop].push(listener);
+    if (typeof listener === 'function' && singlePropListeners[prop]) {
+      singlePropListeners[prop].push(listener);
     }
   };
 
@@ -205,10 +214,10 @@ const createComponent = ({
       }
     }
 
-    updateListeners.length = 0;
-    propsUpdatedListeners.length = 0;
-    for (const prop in propListeners) {
-      propListeners[prop].length = 0;
+    renderListeners.length = 0;
+    anyUpdateListeners.length = 0;
+    for (const prop in singlePropListeners) {
+      singlePropListeners[prop].length = 0;
     }
     element.remove();
   };
@@ -223,7 +232,9 @@ const createComponent = ({
   if (typeof onMount === 'function') {
     try {
       onMount(element);
-    } catch (_) {
+      // setTimeout(() => onMount(element), 0); // ! Testing setTimeout to avoid blocking
+    } catch (e) {
+      tempWarn('[createComponent]: Error in onMount handler of component', e);
       /* no-op */
     }
   }

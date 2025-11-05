@@ -117,11 +117,6 @@ export async function renderContactsList(lobbyElement) {
   if (!contactsContainer) {
     contactsContainer = document.createElement('div');
     contactsContainer.className = 'contacts-list';
-    contactsContainer.style.cssText = `
-      margin-top: 20px;
-      padding: 10px;
-      border-top: 1px solid #ccc;
-    `;
     lobbyElement.appendChild(contactsContainer);
   }
 
@@ -156,7 +151,7 @@ export async function renderContactsList(lobbyElement) {
               >
                 Call
               </button>
-              <span style="flex: 1;">${contact.contactName}</span>
+              <span class="contact-name" style="flex: 1;">${contact.contactName}</span>
               <button 
                 class="contact-delete-btn" 
                 data-contact-id="${id}"

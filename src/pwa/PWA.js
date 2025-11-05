@@ -1,4 +1,4 @@
-import { devDebug, isDev } from '../utils/dev/dev-utils';
+import { devDebug, isDev, tempInfo, tempWarn } from '../utils/dev/dev-utils';
 import { hideElement, showElement } from '../utils/ui/ui-utils';
 import createIconButton from '../components/primitives/icon-button.js';
 
@@ -18,7 +18,7 @@ function setupPWA() {
     window.navigator.standalone === true
   ) {
     console.info('[PWA]: App is already installed');
-    if (installBtnComponent) hideElement(installBtnComponent);
+    if (installBtnComponent && !isDev()) hideElement(installBtnComponent);
     return;
   }
 
@@ -34,11 +34,15 @@ function setupPWA() {
       id: 'install-btn',
       title: 'Install App',
       iconHtml: '<i class="fa fa-plus"></i>',
-      btnClass: 'hidden', // Start hidden
+      className: 'hidden', // Start hidden
+      onMount: (el) => {
+        if (isDev()) {
+          tempInfo('onMount fired for installButtonComponent');
+          showElement(el); // Always visible in DEV for testing
+        }
+      },
       parent: topRightMenu,
     });
-
-    if (isDev()) showElement(installBtnComponent); // Always visible in DEV for testing
   }
 
   const installBtn =
@@ -53,8 +57,9 @@ function setupPWA() {
     installBtnComponent.update({
       iconHtml: '<i class="fa fa-info"></i>',
       title: 'Show Install Instructions',
-      btnClass: '', // Remove hidden class
     });
+
+    showElement(installBtnComponent);
 
     installBtn.onclick = () => {
       alert(

@@ -18,22 +18,26 @@ export function createIconButton({
   iconHtml = '',
   disabledAttr = '',
   id = '',
-  btnClass = 'chat-btn',
+  className = '',
+  buttonClass = '',
   onClick = null,
+  onMount = null,
   parent = null,
 } = {}) {
   const template = `
-      <button id="${'${'}id${'}'}" class="${'${'}btnClass${'}'}" title="${'${'}title${'}'}" ${'${'}disabledAttr${'}'} onclick="handleClick">
+      <button id="${'${'}id${'}'}" class="${'${'}buttonClass${'}'}" title="${'${'}title${'}'}" ${'${'}disabledAttr${'}'} onclick="handleClick">
         ${'${'}iconHtml${'}'}
       </button>
     `;
 
   return createComponent({
-    initialProps: { title, iconHtml, disabledAttr, id, btnClass },
+    initialProps: { title, iconHtml, disabledAttr, id, btnClass: buttonClass },
     template,
+    className,
     handlers: {
       handleClick: onClick,
     },
+    onMount,
     parent,
   });
 }
