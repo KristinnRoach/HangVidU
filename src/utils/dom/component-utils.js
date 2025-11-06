@@ -1,4 +1,4 @@
-// src/utils/dom/helpers.js
+// src/utils/dom/component-utils.js
 
 // === Helpers for creating DOM components ===
 

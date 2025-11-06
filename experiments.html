@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Component Experiments</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #1a1a1a;
+        color: #fff;
+        margin: 0;
+        padding: 20px;
+      }
+
+      #app {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <hr style="margin: 40px 0" />
+    <h2 style="text-align: center">Web Components Test</h2>
+
+    <!-- Test Web Components -->
+    <v-counter count="5" label="Web Component"></v-counter>
+    <v-form title="Web Component Form"></v-form>
+
+    <script type="module">
+      import { createCounter } from './src/utils/dom/wip-van-components/counter.js';
+      import { createForm } from './src/utils/dom/wip-van-components/form.js';
+      import './src/utils/dom/wip-van-components/web-components.js';
+
+      const app = document.getElementById('app');
+      createCounter(app);
+      createForm(app);
+
+      // Test programmatic interaction with Web Component
+      setTimeout(() => {
+        const wcCounter = document.querySelector('v-counter');
+        console.log('Web Component count:', wcCounter.count);
+
+        // Test prop reflection
+        wcCounter.count = 100;
+        console.log('Updated count to 100, attribute should reflect');
+      }, 1000);
+    </script>
+  </body>
+</html>

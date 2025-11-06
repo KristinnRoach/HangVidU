@@ -1,4 +1,4 @@
-// src/components/primitives/icon-button.js
+// src/components/design/icon-button.js
 import createComponent from '../../../utils/dom/component.js';
 
 /**

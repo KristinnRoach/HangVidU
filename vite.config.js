@@ -1,6 +1,7 @@
 // vite.config.js
 
 import { defineConfig } from 'vite';
+import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
 import mkcert from 'vite-plugin-mkcert';
 
@@ -11,6 +12,15 @@ export default defineConfig(({ mode }) => {
   return {
     base: basePath,
     // logLevel: 'warn',
+
+    build: {
+      rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+          experiments: path.resolve(__dirname, 'experiments.html'),
+        },
+      },
+    },
 
     plugins: [
       ...(mode === 'development' ? [mkcert()] : []),
@@ -27,6 +37,13 @@ export default defineConfig(({ mode }) => {
               },
               workbox: {
                 cleanupOutdatedCaches: true,
+                navigateFallback: '/index.html', // fallback for SPA navigation
+                navigateFallbackAllowlist: [
+                  // Regex to allow navigation to these pages
+                  /^\/$/, // root
+                  /^\/index\.html$/, // main app entry
+                  /^\/experiments\.html$/, // your experimental page
+                ],
               },
               // strategies: 'injectManifest',
               // srcDir: './service-worker',

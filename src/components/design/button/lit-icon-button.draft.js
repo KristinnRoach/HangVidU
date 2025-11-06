@@ -110,7 +110,7 @@ export class LitIconButton extends LitElement {
 customElements.define('lit-icon-button', LitIconButton);
 
 //   Usage:
-//   import '../components/primitives/button/lit-icon-button.draft.js';
+//   import '../components/design/button/lit-icon-button.draft.js';
 //   installBtnComponent = document.createElement('lit-icon-button');
 //   installBtnComponent.id = 'install-btn';
 //   installBtnComponent.title = 'Install App';

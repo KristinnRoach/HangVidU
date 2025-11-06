@@ -7,7 +7,7 @@ import {
   tempWarn,
 } from '../utils/dev/dev-utils';
 import { hideElement, showElement } from '../utils/ui/ui-utils';
-import createIconButton from '../components/primitives/button/icon-button.js';
+import createIconButton from '../components/design/button/icon-button.js';
 
 let beforeInstallEvent = null;
 let installBtnHandlerAttached = false;
