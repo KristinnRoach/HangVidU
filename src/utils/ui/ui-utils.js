@@ -2,7 +2,8 @@ const elExists = (el) => {
   if (!el) {
     console.warn(
       'Element not found. el.id: =>',
-      el?.id ?? '(no id), el: =>',
+      el?.id ?? '(no id)',
+      'el: =>',
       el
     );
     console.trace();

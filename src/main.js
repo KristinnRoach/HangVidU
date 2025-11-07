@@ -1,5 +1,4 @@
 // main.js
-import { initJoinRoomForm } from './components/lobby/join-room.js';
 
 // ============================================================================
 // HANGVIDU - P2P VIDEO CHAT WITH WATCH-TOGETHER MODE
@@ -9,7 +8,6 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 import { set, get, remove } from 'firebase/database';
 import {
   removeAllRTDBListeners,
-  rtdb,
   getUserRecentCallsRef,
   getUserRecentCallRef,
 } from './storage/fb-rtdb/rtdb.js';
@@ -25,11 +23,13 @@ import {
 
 import { updateStatus } from './utils/ui/status.js';
 import { setupShowHideOnInactivity } from './utils/ui/showHideOnInactivity.js';
+
 import {
   saveContact,
   renderContactsList,
   getContacts,
 } from './components/contacts/contacts.js';
+
 import {
   showCallingUI,
   hideCallingUI,
@@ -37,6 +37,8 @@ import {
   isOutgoingCallFresh,
   isRoomCallFresh,
 } from './components/calling/calling-ui.js';
+
+import { initJoinRoomForm } from './components/lobby/join-room.js';
 
 import {
   localVideoEl,
@@ -112,7 +114,7 @@ import { initializeAuthUI } from './components/auth/AuthComponent.js';
 
 import RoomService from './room.js';
 import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
-import confirmDialog from './components/primitives/confirm-dialog.js';
+import confirmDialog from './components/design/confirm-dialog.js';
 
 // Quick access to enable / disable dev debug logs
 setDevDebugEnabled(true);
@@ -631,7 +633,7 @@ export function listenForIncomingOnRoom(roomId) {
     if (!data) return;
     try {
       const { dismissActiveConfirmDialog } = await import(
-        './components/primitives/confirm-dialog.js'
+        './components/design/confirm-dialog.js'
       );
       if (typeof dismissActiveConfirmDialog === 'function') {
         dismissActiveConfirmDialog();

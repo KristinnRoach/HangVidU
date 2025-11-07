@@ -1,3 +1,5 @@
+// src/media/constraints.js
+
 export const userMediaAudioConstraints = {
   default: {
     echoCancellation: true,

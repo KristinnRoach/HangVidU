@@ -1,4 +1,4 @@
-// src/components/primitives/icon-button.js
+// src/components/design/icon-button.js
 import createComponent from '../../../utils/dom/component.js';
 
 /**
@@ -19,19 +19,18 @@ export function createIconButton({
   disabledAttr = '',
   id = '',
   className = '',
-  buttonClass = '',
   onClick = null,
   onMount = null,
   parent = null,
 } = {}) {
   const template = `
-      <button id="${'${'}id${'}'}" class="${'${'}buttonClass${'}'}" title="${'${'}title${'}'}" ${'${'}disabledAttr${'}'} onclick="handleClick">
+      <button id="${'${'}id${'}'}" title="${'${'}title${'}'}" ${'${'}disabledAttr${'}'} onclick="handleClick">
         ${'${'}iconHtml${'}'}
       </button>
     `;
 
   return createComponent({
-    initialProps: { title, iconHtml, disabledAttr, id, btnClass: buttonClass },
+    initialProps: { title, iconHtml, disabledAttr, id },
     template,
     className,
     handlers: {

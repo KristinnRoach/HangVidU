@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:experiments": "vite --open experiments.html",
     "dev:disable-pwa": "DISABLE_PWA=1 vite",
     "build": "vite build",
     "gh-deploy": "pnpm build && npx gh-pages -d dist",
