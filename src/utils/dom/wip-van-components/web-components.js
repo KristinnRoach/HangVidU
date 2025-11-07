@@ -1,5 +1,5 @@
 // Minimal Web Component test using vanElla
-import { defineComponent } from '../wip-interop/native-web/vanElla.draft.js';
+import { defineComponent } from '../wip-interop/native-web/vanElla.js';
 
 // Define a simple counter Web Component
 defineComponent('v-counter', {

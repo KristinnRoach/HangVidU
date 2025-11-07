@@ -11,7 +11,7 @@
 ### Your Current Stack (vanElla + createComponent)
 
 ```javascript
-// ~100 lines of vanilla code (vanElla.draft.js)
+// ~100 lines of vanilla code (vanElla.js)
 // Zero dependencies
 // Full control
 
@@ -153,7 +153,7 @@ export function createCounter(parent) {
 }
 
 // Web Component wrapper (40 lines with vanElla)
-import { defineComponent } from './vanElla.draft.js';
+import { defineComponent } from './vanElla.js';
 import { createCounter } from './counter.js';
 
 defineComponent('v-counter', {
@@ -261,7 +261,7 @@ customElements.define('v-counter', VCounter);
 
 ## Action Items
 
-**Short term:** Test vanElla.draft.js
+**Short term:** Test vanElla.js
 
 1. Make counter Web Component
 2. Test in vanilla JS

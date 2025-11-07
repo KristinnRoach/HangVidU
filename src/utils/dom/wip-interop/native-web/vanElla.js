@@ -38,9 +38,53 @@ export function defineComponent(
       this._shadow = shadow ? this.attachShadow({ mode: shadow }) : null;
       this._comp = null;
       this._propMap = Object.create(null);
+      this._skipProxy = Object.create(null);
 
-      // Property proxies
+      // Capture any own properties set on the instance BEFORE we define
+      // the property proxies. This preserves values that consumers set
+      // prior to upgrade/definition (common custom elements pattern).
       for (const key of Object.keys(initialProps)) {
+        if (Object.prototype.hasOwnProperty.call(this, key)) {
+          // Try to copy current value. Access may throw for accessors; guard it.
+          try {
+            this._propMap[key] = this[key];
+          } catch (e) {
+            // If we cannot read the value, skip copying but continue safely.
+          }
+
+          const desc = Object.getOwnPropertyDescriptor(this, key);
+          // If the property is explicitly non-configurable we must not try
+          // to delete or replace it — doing so would throw. Mark it so we
+          // can skip defining a proxy for this key later.
+          if (desc && desc.configurable === false) {
+            this._skipProxy[key] = true;
+            // Surface a small warning during development so authors can
+            // discover why the proxy was skipped.
+            console.info(
+              `[${tagName}] Skipping proxy for non-configurable property "${key}" on host element; value preserved but future sets won't proxy to component.`
+            );
+          } else {
+            // Attempt to delete the own property so the upcoming
+            // Object.defineProperty proxy can be installed. If delete fails
+            // (some environments may prevent it), mark to skip proxying.
+            try {
+              // Reflect.deleteProperty returns boolean instead of throwing
+              // in non-strict contexts; constructor is strict so wrap in try.
+              delete this[key];
+            } catch (e) {
+              this._skipProxy[key] = true;
+              console.warn(
+                `[${tagName}] Skipping proxy for property "${key}" because it could not be deleted; value preserved on host element.`
+              );
+            }
+          }
+        }
+      }
+
+      // Property proxies (skip keys that couldn't be safely proxied)
+      for (const key of Object.keys(initialProps)) {
+        if (this._skipProxy && this._skipProxy[key]) continue;
+
         Object.defineProperty(this, key, {
           get: () => (this._comp ? this._comp[key] : this._propMap[key]),
           set: (v) => {
