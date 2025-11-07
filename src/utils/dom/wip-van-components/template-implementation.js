@@ -24,7 +24,7 @@ export function createCounter(parent) {
       <div style="padding: 20px; text-align: center;">
         <h2>Counter POC</h2>
         <button onclick="increment" style="padding: 10px 20px; font-size: 18px;">
-          ${label}: ${count}
+           \${label}: \${count}
         </button>
         <button onclick="reset" style="margin-left: 10px; padding: 10px;">
           Reset

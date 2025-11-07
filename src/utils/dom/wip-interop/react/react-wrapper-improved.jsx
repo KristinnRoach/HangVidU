@@ -43,7 +43,8 @@ export function useVanillaComponent(createFn, props = {}, options = {}) {
 // === PRACTICAL EXAMPLE ===
 
 import { useState } from 'react';
-import { createCounter } from '../../wip-van-components/counter.js';
+// import { createCounter } from '../../wip-van-components/counter.js';
+import createComponent from '../../component.js';
 
 function CounterDemo() {
   const [externalCount, setExternalCount] = useState(0);
@@ -104,9 +105,9 @@ function CounterDemo() {
 // === ALTERNATIVE: Web Component approach ===
 
 /*
-  If you use vanElla.draft.js to create Web Components:
+  If you use vanElla.js to create Web Components:
   
-  import { defineComponent } from './vanElla.draft.js';
+  import { defineComponent } from './vanElla.js';
   
   defineComponent('my-counter', {
     initialProps: { count: 0 },

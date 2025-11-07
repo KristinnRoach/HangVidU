@@ -45,13 +45,6 @@ export default defineConfig(({ mode }) => {
                   /^\/experiments\.html$/, // your experimental page
                 ],
               },
-              // strategies: 'injectManifest',
-              // srcDir: './service-worker',
-              // filename: 'sw.js',
-              // injectManifest: {
-              //   minify: false,
-              //   enableWorkboxModulesLogs: true,
-              // },
 
               manifest: {
                 name: 'HangVidU',

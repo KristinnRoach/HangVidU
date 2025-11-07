@@ -35,7 +35,7 @@ export function useVanillaComponent(createFn, props = {}) {
 
 // === USAGE EXAMPLE ===
 
-import { createCounter } from './wip-components/counter.js';
+import { createCounter } from '../../wip-components/counter.js';
 
 function App() {
   const [count, setCount] = useState(0);
