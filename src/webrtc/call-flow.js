@@ -165,6 +165,51 @@ export async function createCall({
   };
   onDataChange(rejectionRef, onRejection, roomId);
 
+  // Also listen for a cancellation signal so the caller can react immediately
+  // when the callee hangs up (prevents frozen video on the caller side).
+  const cancellationRef = ref(rtdb, `rooms/${roomId}/cancellation`);
+  let cancellationHandled = false;
+  const onCancellation = async (snapshot) => {
+    const cancel = snapshot.val();
+    if (!cancel) return;
+    if (cancellationHandled) return;
+    cancellationHandled = true;
+
+    // If we already connected, still close and cleanup to avoid frozen frames
+    devDebug('Call cancelled by partner', { roomId, cancel });
+    try {
+      updateStatus('Partner disconnected');
+    } catch (_) {}
+
+    // Immediately clear remote video element to avoid a frozen last frame
+    try {
+      if (remoteVideoEl) {
+        remoteVideoEl.srcObject = null;
+      }
+    } catch (e) {
+      console.warn(
+        'Failed to clear remote video element after cancellation',
+        e
+      );
+    }
+
+    try {
+      pc?.close();
+    } catch (_) {}
+
+    // Notify application-level UI to run full cleanup (main hangUp)
+    try {
+      window.dispatchEvent(
+        new CustomEvent('remoteHangup', {
+          detail: { roomId, by: cancel.by, reason: cancel.reason },
+        })
+      );
+    } catch (e) {
+      console.warn('Failed to dispatch remoteHangup event', e);
+    }
+  };
+  onDataChange(cancellationRef, onCancellation, roomId);
+
   // ─────────────────────────────────────────────────────────────────────────
   // 6. SETUP ROOM AND SYNC
   // ─────────────────────────────────────────────────────────────────────────
@@ -318,6 +363,45 @@ export async function answerCall({
   setupConnectionStateHandlers(pc);
 
   devDebug('Peer connection created as joiner', { roomId });
+
+  // Listen for cancellation signal for joiner as well (callee may hang up)
+  const cancellationRefJoiner = ref(rtdb, `rooms/${roomId}/cancellation`);
+  let cancellationHandledJoiner = false;
+  const onCancellationJoiner = async (snapshot) => {
+    const cancel = snapshot.val();
+    if (!cancel) return;
+    if (cancellationHandledJoiner) return;
+    cancellationHandledJoiner = true;
+
+    devDebug('Call cancelled (joiner) by partner', { roomId, cancel });
+    try {
+      updateStatus('Partner disconnected');
+    } catch (_) {}
+
+    try {
+      if (remoteVideoEl) remoteVideoEl.srcObject = null;
+    } catch (e) {
+      console.warn(
+        'Failed to clear remote video element after cancellation (joiner)',
+        e
+      );
+    }
+
+    try {
+      pc?.close();
+    } catch (_) {}
+
+    try {
+      window.dispatchEvent(
+        new CustomEvent('remoteHangup', {
+          detail: { roomId, by: cancel.by, reason: cancel.reason },
+        })
+      );
+    } catch (e) {
+      console.warn('Failed to dispatch remoteHangup event (joiner)', e);
+    }
+  };
+  onDataChange(cancellationRefJoiner, onCancellationJoiner, roomId);
 
   // ─────────────────────────────────────────────────────────────────────────
   // 4. EXCHANGE SDP: SET OFFER, CREATE ANSWER

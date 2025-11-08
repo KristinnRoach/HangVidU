@@ -11,7 +11,7 @@ pnpm install
 
 pnpm dev
 
-Open http://localhost:5174
+Open <http://localhost:5174>
 
 Notes:
 

@@ -800,6 +800,7 @@ async function startListeningForSavedRooms() {
 // UI Layout change helpers
 // ============================================================================
 
+let isInCallMode = false;
 let cleanupChatControlAutoHide = null;
 let cleanupRemoteLeavePipHandler = null;
 let cleanupRemoteEnterPipHandler = null;
@@ -812,102 +813,11 @@ function isPiPSupported() {
   );
 }
 
-export function enterWatchMode() {
-  if (isWatchModeActive()) return;
-  setWatchMode(true);
-
-  // Hide lobby if visible
-  hideElement(lobbyDiv);
-
-  chatControls.classList.remove('bottom');
-  chatControls.classList.add('watch-mode');
-  showElement(chatControls);
-  // Disable auto-hide in watch mode to ensure accessibility
-  if (cleanupChatControlAutoHide) {
-    cleanupChatControlAutoHide();
-    cleanupChatControlAutoHide = null;
-  }
-
-  if (!isRemoteVideoVideoActive()) {
-    hideElement(remoteBoxEl);
-    removeFromSmallFrame(remoteBoxEl);
-
-    if (!isElementInPictureInPicture(localVideoEl)) {
-      showElement(localBoxEl);
-      placeInSmallFrame(localBoxEl);
-    }
-    return;
-  }
-
-  // Hide local video if remote video is active
-  hideElement(localBoxEl);
-  removeFromSmallFrame(localBoxEl);
-
-  if (isElementInPictureInPicture(remoteVideoEl)) {
-    hideElement(remoteBoxEl); // ensure small-frame is hidden if in PiP
-    removeFromSmallFrame(remoteBoxEl);
-  } else if (isPiPSupported()) {
-    // Try to enter PiP with fallback
-    remoteVideoEl
-      .requestPictureInPicture()
-      .then(() => {
-        // Hide the smallFrame if PiP entered successfully
-        hideElement(remoteBoxEl);
-        removeFromSmallFrame(remoteBoxEl);
-      })
-      .catch((err) => {
-        console.warn('Failed to enter Picture-in-Picture:', err);
-        // Fallback: place in small frame
-        placeInSmallFrame(remoteBoxEl);
-        showElement(remoteBoxEl);
-      });
-  } else {
-    // PiP not supported
-    placeInSmallFrame(remoteBoxEl);
-    showElement(remoteBoxEl);
-  }
-}
-
-export function exitWatchMode() {
-  if (!isWatchModeActive()) return;
-
-  chatControls.classList.remove('watch-mode');
-  chatControls.classList.add('bottom');
-
-  // Enable auto-hide again
-  if (!cleanupChatControlAutoHide) {
-    cleanupChatControlAutoHide = setupShowHideOnInactivity(chatControls, {
-      inactivityMs: 3000,
-      hideOnEsc: true,
-    });
-  }
-
-  if (isRemoteVideoVideoActive()) {
-    if (isElementInPictureInPicture(remoteBoxEl)) {
-      document.exitPictureInPicture().catch((err) => {
-        console.error('Failed to exit Picture-in-Picture:', err);
-      });
-    }
-
-    removeFromSmallFrame(remoteBoxEl);
-    showElement(remoteBoxEl);
-  }
-
-  placeInSmallFrame(localBoxEl);
-  showElement(localBoxEl);
-
-  if (!isRemoteVideoVideoActive()) {
-    showElement(lobbyDiv);
-    // showElement(createLinkBtn);
-    // showElement(copyLinkBtn);
-  }
-
-  setWatchMode(false);
-}
-
 let enterCallModeWaitingForVideo = false;
 
 export let enterCallMode = () => {
+  if (isInCallMode) return;
+
   // Check if remote video is ready and playing
   const remoteStream = getRemoteStream(false);
   if (
@@ -934,12 +844,12 @@ export let enterCallMode = () => {
   // Video is ready and playing - proceed with entering call mode
   enterCallModeWaitingForVideo = false;
 
+  isInCallMode = true;
+
   showElement(remoteBoxEl);
   placeInSmallFrame(localBoxEl);
 
   hideElement(lobbyDiv);
-  // hideElement(createLinkBtn);
-  // hideElement(copyLinkBtn);
 
   callBtn.disabled = true;
   callBtn.classList.add('disabled');
@@ -995,7 +905,11 @@ export let enterCallMode = () => {
   }
 };
 
-export let exitCallMode = () => {
+export let exitCallMode = (force = true) => {
+  // ! Temp force=true since this is used as general reset for UI. Todo: refactor later.
+  if (!isInCallMode && !force) return;
+  isInCallMode = false;
+
   removeFromSmallFrame(remoteBoxEl);
   hideElement(remoteBoxEl);
   placeInSmallFrame(localBoxEl); // Always keep local video in small frame
@@ -1013,14 +927,126 @@ export let exitCallMode = () => {
     cleanupChatControlAutoHide = null;
   }
 
-  showElement(chatControls); // Ensure visible
+  showElement(chatControls);
   showElement(lobbyDiv);
-
-  // createLinkBtn.disabled = false;
-  // copyLinkBtn.disabled = true;
-  // showElement(createLinkBtn);
-  // showElement(copyLinkBtn);
 };
+
+export function enterWatchMode() {
+  if (isWatchModeActive()) return;
+  setWatchMode(true);
+
+  // Hide lobby if visible
+  hideElement(lobbyDiv);
+
+  // Chat controls adjustments (minimal UI)
+  chatControls.classList.remove('bottom');
+  chatControls.classList.add('watch-mode');
+
+  if (isInCallMode) {
+    hideElement(callBtn);
+    showElement(hangUpBtn);
+  } else {
+    hideElement(hangUpBtn);
+    hideElement(micBtn);
+    hideElement(mutePartnerBtn);
+    showElement(callBtn);
+  }
+
+  // Minimize further
+  hideElement(cameraBtn);
+  hideElement(switchCameraBtn);
+
+  showElement(chatControls);
+  // Disable auto-hide in watch mode to ensure accessibility
+  if (cleanupChatControlAutoHide) {
+    cleanupChatControlAutoHide();
+    cleanupChatControlAutoHide = null;
+  }
+
+  if (!isRemoteVideoVideoActive()) {
+    hideElement(remoteBoxEl);
+    removeFromSmallFrame(remoteBoxEl);
+
+    if (!isElementInPictureInPicture(localVideoEl)) {
+      showElement(localBoxEl);
+      placeInSmallFrame(localBoxEl);
+    }
+    return;
+  }
+
+  // Hide local video if remote video is active
+  hideElement(localBoxEl);
+  removeFromSmallFrame(localBoxEl);
+
+  if (isElementInPictureInPicture(remoteVideoEl)) {
+    hideElement(remoteBoxEl); // ensure small-frame is hidden if in PiP
+    removeFromSmallFrame(remoteBoxEl);
+  } else if (isPiPSupported()) {
+    // Try to enter PiP with fallback
+    remoteVideoEl
+      .requestPictureInPicture()
+      .then(() => {
+        // Hide the smallFrame if PiP entered successfully
+        hideElement(remoteBoxEl);
+        removeFromSmallFrame(remoteBoxEl);
+      })
+      .catch((err) => {
+        console.warn('Failed to enter Picture-in-Picture:', err);
+        // Fallback: place in small frame
+        placeInSmallFrame(remoteBoxEl);
+        showElement(remoteBoxEl);
+      });
+  } else {
+    // PiP not supported
+    placeInSmallFrame(remoteBoxEl);
+    showElement(remoteBoxEl);
+  }
+}
+
+export function exitWatchMode() {
+  if (!isWatchModeActive()) return;
+
+  showElement(callBtn);
+  showElement(hangUpBtn);
+  showElement(micBtn);
+  showElement(mutePartnerBtn);
+  showElement(callBtn);
+  showElement(cameraBtn);
+  showElement(switchCameraBtn);
+
+  chatControls.classList.remove('watch-mode');
+  chatControls.classList.add('bottom');
+
+  showElement(chatControls);
+
+  // Enable auto-hide again
+  if (!cleanupChatControlAutoHide) {
+    cleanupChatControlAutoHide = setupShowHideOnInactivity(chatControls, {
+      inactivityMs: 3000,
+      hideOnEsc: true,
+    });
+  }
+
+  if (isRemoteVideoVideoActive()) {
+    if (isElementInPictureInPicture(remoteBoxEl)) {
+      document.exitPictureInPicture().catch((err) => {
+        console.error('Failed to exit Picture-in-Picture:', err);
+      });
+    }
+
+    removeFromSmallFrame(remoteBoxEl);
+    showElement(remoteBoxEl);
+  }
+
+  placeInSmallFrame(localBoxEl);
+  showElement(localBoxEl);
+
+  if (!isRemoteVideoVideoActive()) {
+    showElement(lobbyDiv);
+  }
+
+  setWatchMode(false);
+}
 
 // ============================================================================
 // YOUTUBE PLAYER INTEGRATION
@@ -1289,6 +1315,7 @@ window.addEventListener('beforeunload', async (e) => {
 // ============================================================================
 
 let isHangingUp = false;
+let isCleaningUp = false;
 
 export async function hangUp() {
   if (isHangingUp) return;
@@ -1296,34 +1323,24 @@ export async function hangUp() {
 
   console.debug('Hanging up...');
 
-  // Hide calling UI if still visible
   hideCallingUI();
 
   // Capture partner info before cleanup for contact save
   const partnerToSave = partnerUserId;
   const roomToSave = currentRoomId;
 
+  // Signal remote peer that we're hanging up so they don't get a frozen video
+  // (best-effort; room may already be gone)
   try {
-    await RoomService.leaveRoom(getUserId());
+    if (currentRoomId) {
+      await RoomService.cancelCall(currentRoomId, getUserId(), 'user_hung_up');
+    }
   } catch (err) {
-    console.warn('leaveRoom failed during hangUp:', err);
+    console.warn('cancelCall failed during hangUp (non-fatal):', err);
   }
 
-  // Clean up remote stream
-  cleanupRemoteStream();
-  if (remoteVideoEl) {
-    remoteVideoEl.srcObject = null;
-  }
-
-  if (pc) {
-    pc.close();
-    pc = null;
-  }
-
-  // Reset UI
-  exitCallMode();
-
-  updateStatus('Disconnected. Click "Start New Chat" to begin.');
+  // Perform local-only cleanup (does not emit cancellation)
+  await cleanupCall();
 
   // Prompt to save contact after hanging up (if partner was present)
   if (partnerToSave && roomToSave) {
@@ -1343,6 +1360,77 @@ export async function hangUp() {
 
   isHangingUp = false;
 }
+
+/**
+ * Cleanup call state when the partner hung up or we got disconnected.
+ * This does NOT emit a cancel signal — it's intended for remote-triggered
+ * cleanup paths where we should not write a cancellation entry.
+ */
+export async function cleanupCall({ reason } = {}) {
+  if (isCleaningUp) return;
+  isCleaningUp = true;
+
+  console.debug('Cleaning up call', reason || 'remote/unexpected');
+
+  // Hide any calling modal
+  hideCallingUI();
+
+  try {
+    await RoomService.leaveRoom(getUserId());
+  } catch (err) {
+    console.warn('leaveRoom failed during cleanupCall:', err);
+  }
+
+  // Clean up remote stream
+  try {
+    cleanupRemoteStream();
+    if (remoteVideoEl) remoteVideoEl.srcObject = null;
+  } catch (e) {
+    console.warn('Error cleaning remote stream during cleanupCall', e);
+  }
+
+  try {
+    if (pc) {
+      pc.close();
+      pc = null;
+    }
+  } catch (e) {
+    console.warn('Error closing pc during cleanupCall', e);
+  }
+
+  // Reset UI
+  try {
+    exitCallMode();
+  } catch (e) {}
+
+  updateStatus('Disconnected. Click "Start New Chat" to begin.');
+
+  // Do not prompt to save contact here — only prompt on explicit hangUp
+
+  // Reset partner/room tracking
+  partnerUserId = null;
+  currentRoomId = null;
+
+  clearUrlParam();
+
+  isCleaningUp = false;
+}
+
+// Listen for remote hangup signals dispatched by call-flow handlers and
+// delegate to the central hangUp() routine so UI and state are cleaned up
+window.addEventListener('remoteHangup', (ev) => {
+  try {
+    const { roomId, by, reason } = ev?.detail || {};
+    // Only act if this matches the current room
+    if (!roomId || roomId !== currentRoomId) return;
+    // Run remote cleanup (do not emit cancel)
+    cleanupCall({ reason: reason || 'remote_hangup' }).catch((e) =>
+      console.warn('cleanupCall failed after remoteHangup', e)
+    );
+  } catch (e) {
+    console.warn('Error handling remoteHangup event', e);
+  }
+});
 
 async function cleanup() {
   await hangUp();

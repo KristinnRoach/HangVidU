@@ -1,0 +1,60 @@
+/* Simple CSS Reset */
+
+/* Set box-sizing to border-box for all elements */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Remove default margin and padding for most elements */
+body,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+figure,
+blockquote,
+dl,
+dd {
+  margin: 0;
+  padding: 0;
+}
+
+/* Remove list styles */
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Remove default border */
+img,
+picture {
+  max-width: 100%;
+  display: block;
+}
+
+/* Set default font family and size */
+body {
+  min-height: 100vh;
+  line-height: 1.5;
+  font-family: system-ui, sans-serif;
+  background: #fff;
+  color: #222;
+}
+
+/* Remove anchor text decoration by default */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Remove border for images */
+img {
+  border: 0;
+}

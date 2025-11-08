@@ -7,9 +7,9 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: 1, // Single worker for WebRTC coordination
   reporter: [
-    ['html'],
+    ['html', { open: 'never' }],
     ['list'],
-    ...(process.env.CI ? [['github']] : [])
+    ...(process.env.CI ? [['github']] : []),
   ],
   use: {
     baseURL: 'https://localhost:5173/HangVidU',
@@ -25,7 +25,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { 
+      use: {
         ...devices['Desktop Chrome'],
         permissions: ['camera', 'microphone'],
         // Use fake media devices for consistent testing
@@ -40,7 +40,7 @@ export default defineConfig({
     },
     {
       name: 'firefox',
-      use: { 
+      use: {
         ...devices['Desktop Firefox'],
         launchOptions: {
           firefoxUserPrefs: {

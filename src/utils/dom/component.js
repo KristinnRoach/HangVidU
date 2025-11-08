@@ -27,8 +27,8 @@ import { isDOMReady } from './dom-utils.js';
  * @returns {HTMLElement} The root component element with reactive props and update API.
  */
 const createComponent = ({
-  initialProps,
-  template,
+  initialProps = {},
+  template = '',
   handlers = {},
   parent = null,
   containerTag = 'div',
@@ -37,7 +37,7 @@ const createComponent = ({
   onCleanup = null,
   autoAppend = true,
   preserveInputState = true,
-}) => {
+} = {}) => {
   if (!isDOMReady()) {
     console.error(
       'createComponent: DOM must be ready before creating components.'
