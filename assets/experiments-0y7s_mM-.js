@@ -1,4 +1,4 @@
-import{c as k}from"./component-Syt-EVGP.js";function S(o){const t=k({initialProps:{count:0,label:"Click me"},template:`
+import{c as k}from"./component-B-QhcPhh.js";function S(o){const t=k({initialProps:{count:0,label:"Click me"},template:`
       <div style="padding: 20px; text-align: center;">
         <h2>Counter POC</h2>
         <button onclick="increment" style="padding: 10px 20px; font-size: 18px;">
