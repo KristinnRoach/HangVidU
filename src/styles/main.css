@@ -117,7 +117,7 @@ body {
   font-size: 1.2rem;
 
   position: relative;
-  z-index: var(--z-mid);
+  z-index: var(--z-low);
 
   background: #0f0f0f;
   border-radius: 12px;
@@ -761,7 +761,6 @@ button:disabled {
 .chat-controls {
   display: flex;
   justify-content: center;
-  width: 100%;
   gap: 2dvw;
   flex-wrap: wrap;
   margin: 0 auto;
