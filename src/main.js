@@ -1289,6 +1289,7 @@ window.addEventListener('beforeunload', async (e) => {
 // ============================================================================
 
 let isHangingUp = false;
+let isCleaningUp = false;
 
 export async function hangUp() {
   if (isHangingUp) return;
@@ -1296,34 +1297,24 @@ export async function hangUp() {
 
   console.debug('Hanging up...');
 
-  // Hide calling UI if still visible
   hideCallingUI();
 
   // Capture partner info before cleanup for contact save
   const partnerToSave = partnerUserId;
   const roomToSave = currentRoomId;
 
+  // Signal remote peer that we're hanging up so they don't get a frozen video
+  // (best-effort; room may already be gone)
   try {
-    await RoomService.leaveRoom(getUserId());
+    if (currentRoomId) {
+      await RoomService.cancelCall(currentRoomId, getUserId(), 'user_hung_up');
+    }
   } catch (err) {
-    console.warn('leaveRoom failed during hangUp:', err);
+    console.warn('cancelCall failed during hangUp (non-fatal):', err);
   }
 
-  // Clean up remote stream
-  cleanupRemoteStream();
-  if (remoteVideoEl) {
-    remoteVideoEl.srcObject = null;
-  }
-
-  if (pc) {
-    pc.close();
-    pc = null;
-  }
-
-  // Reset UI
-  exitCallMode();
-
-  updateStatus('Disconnected. Click "Start New Chat" to begin.');
+  // Perform local-only cleanup (does not emit cancellation)
+  await cleanupCall();
 
   // Prompt to save contact after hanging up (if partner was present)
   if (partnerToSave && roomToSave) {
@@ -1343,6 +1334,77 @@ export async function hangUp() {
 
   isHangingUp = false;
 }
+
+/**
+ * Cleanup call state when the partner hung up or we got disconnected.
+ * This does NOT emit a cancel signal — it's intended for remote-triggered
+ * cleanup paths where we should not write a cancellation entry.
+ */
+export async function cleanupCall({ reason } = {}) {
+  if (isCleaningUp) return;
+  isCleaningUp = true;
+
+  console.debug('Cleaning up call', reason || 'remote/unexpected');
+
+  // Hide any calling modal
+  hideCallingUI();
+
+  try {
+    await RoomService.leaveRoom(getUserId());
+  } catch (err) {
+    console.warn('leaveRoom failed during cleanupCall:', err);
+  }
+
+  // Clean up remote stream
+  try {
+    cleanupRemoteStream();
+    if (remoteVideoEl) remoteVideoEl.srcObject = null;
+  } catch (e) {
+    console.warn('Error cleaning remote stream during cleanupCall', e);
+  }
+
+  try {
+    if (pc) {
+      pc.close();
+      pc = null;
+    }
+  } catch (e) {
+    console.warn('Error closing pc during cleanupCall', e);
+  }
+
+  // Reset UI
+  try {
+    exitCallMode();
+  } catch (e) {}
+
+  updateStatus('Disconnected. Click "Start New Chat" to begin.');
+
+  // Do not prompt to save contact here — only prompt on explicit hangUp
+
+  // Reset partner/room tracking
+  partnerUserId = null;
+  currentRoomId = null;
+
+  clearUrlParam();
+
+  isCleaningUp = false;
+}
+
+// Listen for remote hangup signals dispatched by call-flow handlers and
+// delegate to the central hangUp() routine so UI and state are cleaned up
+window.addEventListener('remoteHangup', (ev) => {
+  try {
+    const { roomId, by, reason } = ev?.detail || {};
+    // Only act if this matches the current room
+    if (!roomId || roomId !== currentRoomId) return;
+    // Run remote cleanup (do not emit cancel)
+    cleanupCall({ reason: reason || 'remote_hangup' }).catch((e) =>
+      console.warn('cleanupCall failed after remoteHangup', e)
+    );
+  } catch (e) {
+    console.warn('Error handling remoteHangup event', e);
+  }
+});
 
 async function cleanup() {
   await hangUp();
