@@ -1377,9 +1377,8 @@ export async function cleanupCall({ reason } = {}) {
 
   const roomId = currentRoomId;
   if (roomId) {
-    await RoomService.leaveRoom(getUserId(), roomId);
     try {
-      await RoomService.leaveRoom(getUserId());
+      await RoomService.leaveRoom(getUserId(), roomId);
     } catch (err) {
       console.warn('leaveRoom failed during cleanupCall:', err);
     }
