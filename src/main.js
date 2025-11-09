@@ -1028,7 +1028,7 @@ export function exitWatchMode() {
   }
 
   if (isRemoteVideoVideoActive()) {
-    if (isElementInPictureInPicture(remoteBoxEl)) {
+    if (isElementInPictureInPicture(remoteVideoEl)) {
       document.exitPictureInPicture().catch((err) => {
         console.error('Failed to exit Picture-in-Picture:', err);
       });
@@ -1375,10 +1375,13 @@ export async function cleanupCall({ reason } = {}) {
   // Hide any calling modal
   hideCallingUI();
 
-  try {
-    await RoomService.leaveRoom(getUserId());
-  } catch (err) {
-    console.warn('leaveRoom failed during cleanupCall:', err);
+  const roomId = currentRoomId;
+  if (roomId) {
+    try {
+      await RoomService.leaveRoom(getUserId(), roomId);
+    } catch (err) {
+      console.warn('leaveRoom failed during cleanupCall:', err);
+    }
   }
 
   // Clean up remote stream
