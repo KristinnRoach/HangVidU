@@ -8,6 +8,7 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 import { set, get, remove } from 'firebase/database';
 import {
   removeAllRTDBListeners,
+  removeRTDBListenersForRoom,
   getUserRecentCallsRef,
   getUserRecentCallRef,
 } from './storage/fb-rtdb/rtdb.js';
@@ -94,6 +95,7 @@ import { setupPWA } from './pwa/PWA.js';
 import { setUpLocalStream, setupRemoteStream } from './media/stream.js';
 
 import { createCall, answerCall } from './webrtc/call-flow.js';
+import CallController from './webrtc/call-controller.js';
 
 import {
   getLocalStream,
@@ -299,7 +301,10 @@ export async function joinOrCreateRoomWithId(
       }
     );
 
-    const result = await createCall(getCallOptions(customRoomId));
+    //  const result = await createCall(getCallOptions(customRoomId));
+    const result = await CallController.createCall(
+      getCallOptions(customRoomId)
+    );
 
     return applyCallResult(result, false);
   }
@@ -579,6 +584,10 @@ export function listenForIncomingOnRoom(roomId) {
       );
 
       if (accept) {
+        // Remove incoming call listeners before starting active call
+        // This prevents duplicate listener firing (incoming vs active call listeners)
+        removeRTDBListenersForRoom(roomId);
+
         getDiagnosticLogger().logNotificationDecision(
           'ACCEPT',
           'user_accepted',
@@ -626,7 +635,9 @@ export function listenForIncomingOnRoom(roomId) {
     }
   });
 
-  // If caller cancels before we accept, hide any incoming prompt and clear the recent call
+  // INCOMING CALL cancellation listener
+  // Fires when caller cancels BEFORE callee accepts
+  // Dismisses incoming dialog and removes recent call entry
   RoomService.onCallCancelled(roomId, async (snapshot) => {
     const data =
       snapshot && typeof snapshot.val === 'function' ? snapshot.val() : null;
@@ -1158,7 +1169,8 @@ async function handleCopyLink() {
 }
 
 callBtn.onclick = async () => {
-  const result = await createCall(getCallOptions());
+  // const result = await createCall(getCallOptions());
+  const result = await CallController.createCall(getCallOptions());
   applyCallResult(result, true);
 };
 
@@ -1379,6 +1391,13 @@ export async function cleanupCall({ reason } = {}) {
   if (roomId) {
     try {
       await RoomService.leaveRoom(getUserId(), roomId);
+      // After leaving, only clear currentRoomId if it hasn't changed
+      // to prevent a race condition where a new call starts during cleanup.
+      if (currentRoomId === roomId) {
+        currentRoomId = null;
+      }
+      // Reset partner tracking
+      partnerUserId = null;
     } catch (err) {
       console.warn('leaveRoom failed during cleanupCall:', err);
     }
@@ -1407,12 +1426,6 @@ export async function cleanupCall({ reason } = {}) {
   } catch (e) {}
 
   updateStatus('Disconnected. Click "Start New Chat" to begin.');
-
-  // Do not prompt to save contact here — only prompt on explicit hangUp
-
-  // Reset partner/room tracking
-  partnerUserId = null;
-  currentRoomId = null;
 
   clearUrlParam();
 

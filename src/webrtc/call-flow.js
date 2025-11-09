@@ -165,8 +165,9 @@ export async function createCall({
   };
   onDataChange(rejectionRef, onRejection, roomId);
 
-  // Also listen for a cancellation signal so the caller can react immediately
-  // when the callee hangs up (prevents frozen video on the caller side).
+  // ACTIVE CALL cancellation listener
+  // Fires when remote party hangs up DURING active call
+  // Triggers cleanupCall() and clears remote video to prevent frozen frames
   const cancellationRef = ref(rtdb, `rooms/${roomId}/cancellation`);
   let cancellationHandled = false;
   const onCancellation = async (snapshot) => {
