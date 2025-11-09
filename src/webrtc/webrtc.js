@@ -1,9 +1,10 @@
 // src/webrtc/webrtc.js
 
 import { devDebug } from '../utils/dev/dev-utils.js';
-import { hangUp, enterCallMode, exitCallMode, clearUrlParam } from '../main.js';
+import { enterCallMode, exitCallMode, clearUrlParam } from '../main.js';
 import { updateStatus } from '../utils/ui/status.js';
 import { onCallAnswered } from '../components/calling/calling-ui.js';
+import CallController from './call-controller.js';
 
 let disconnectTimeoutId = null;
 let activePC = null; // connection reference
@@ -35,7 +36,10 @@ export function setupConnectionStateHandlers(pc) {
         // Only hang up if still disconnected after grace period and this is still the active connection
         if (pc === activePC && pc.connectionState === 'disconnected') {
           updateStatus('Partner disconnected');
-          hangUp();
+          CallController.hangUp({
+            emitCancel: true,
+            reason: 'connection_lost',
+          });
         }
         disconnectTimeoutId = null;
       }, 3000);
@@ -48,7 +52,7 @@ export function setupConnectionStateHandlers(pc) {
         disconnectTimeoutId = null;
       }
       // Immediately hang up on failed (no grace period needed)
-      hangUp();
+      CallController.hangUp({ emitCancel: true, reason: 'connection_failed' });
     }
   };
 

@@ -96,8 +96,8 @@ import { setupPWA } from './pwa/PWA.js';
 
 import { setUpLocalStream, setupRemoteStream } from './media/stream.js';
 
-import { createCall, answerCall } from './webrtc/call-flow.js';
-import CallController from './webrtc/call-controller.js';
+// OLD: Removed - now using CallController.createCall() and CallController.answerCall()
+// import { createCall, answerCall } from './webrtc/call-flow.js';
 
 import {
   getLocalStream,
@@ -252,13 +252,19 @@ function getCallOptions(targetRoomId = null) {
   };
 }
 
-// Helper to apply call result and update global state
+/**
+ * Helper to apply call result and update global state
+ * Note: CallController also stores this state internally
+ * TODO: Migrate remaining code to use CallController.getState() instead of globals
+ */
 function applyCallResult(result, showLinkModal = false) {
   if (!result.success) return false;
 
   // DON'T hide calling UI here - it should stay visible until call is answered
   // hideCallingUI() is called in onCallAnswered() when connection is established
 
+  // Store in global state (still used by other parts of main.js)
+  // CallController also has this state via createCall/answerCall
   pc = result.pc;
   role = result.role;
   dataChannel = result.dataChannel;
@@ -343,7 +349,9 @@ export async function joinOrCreateRoomWithId(
       }
     );
 
-    const result = await createCall(getCallOptions(customRoomId));
+    const result = await CallController.createCall(
+      getCallOptions(customRoomId)
+    );
     return applyCallResult(result, true); // Show modal when creating via join form
   }
 
@@ -355,7 +363,7 @@ export async function joinOrCreateRoomWithId(
     roomExists: status.exists,
   });
 
-  const result = await answerCall({
+  const result = await CallController.answerCall({
     roomId: customRoomId,
     ...getCallOptions(),
   });
@@ -1356,113 +1364,9 @@ window.addEventListener('beforeunload', async (e) => {
 // HANG UP / CLEANUP
 // ============================================================================
 
+// OLD guard flags - kept for now, will be removed in Task 9
 let isHangingUp = false;
 let isCleaningUp = false;
-
-// OLD: Commented for verification - replaced with CallController.hangUp()
-// export async function hangUp() {
-//   if (isHangingUp) return;
-//   isHangingUp = true;
-//
-//   console.debug('Hanging up...');
-//
-//   hideCallingUI();
-//
-//   // Capture partner info before cleanup for contact save
-//   const partnerToSave = partnerUserId;
-//   const roomToSave = currentRoomId;
-//
-//   // Signal remote peer that we're hanging up so they don't get a frozen video
-//   // (best-effort; room may already be gone)
-//   try {
-//     if (currentRoomId) {
-//       await RoomService.cancelCall(currentRoomId, getUserId(), 'user_hung_up');
-//     }
-//   } catch (err) {
-//     console.warn('cancelCall failed during hangUp (non-fatal):', err);
-//   }
-//
-//   // Perform local-only cleanup (does not emit cancellation)
-//   await cleanupCall();
-//
-//   // Prompt to save contact after hanging up (if partner was present)
-//   if (partnerToSave && roomToSave) {
-//     // Small delay so UI settles before prompt
-//     setTimeout(() => {
-//       saveContact(partnerToSave, roomToSave, lobbyDiv).catch((e) => {
-//         console.warn('Failed to save contact:', e);
-//       });
-//     }, 500);
-//   }
-//
-//   // Reset partner/room tracking
-//   partnerUserId = null;
-//   currentRoomId = null;
-//
-//   clearUrlParam();
-//
-//   isHangingUp = false;
-// }
-
-// OLD: Commented for verification - replaced with CallController.cleanupCall()
-// /**
-//  * Cleanup call state when the partner hung up or we got disconnected.
-//  * This does NOT emit a cancel signal — it's intended for remote-triggered
-//  * cleanup paths where we should not write a cancellation entry.
-//  */
-// export async function cleanupCall({ reason } = {}) {
-//   if (isCleaningUp) return;
-//   isCleaningUp = true;
-//
-//   console.debug('Cleaning up call', reason || 'remote/unexpected');
-//
-//   // Hide any calling modal
-//   hideCallingUI();
-//
-//   const roomId = currentRoomId;
-//   if (roomId) {
-//     try {
-//       await RoomService.leaveRoom(getUserId(), roomId);
-//       // After leaving, only clear currentRoomId if it hasn't changed
-//       // to prevent a race condition where a new call starts during cleanup.
-//       if (currentRoomId === roomId) {
-//         currentRoomId = null;
-//       }
-//       // Reset partner tracking
-//       partnerUserId = null;
-//     } catch (err) {
-//       console.warn('leaveRoom failed during cleanupCall:', err);
-//     }
-//   }
-//
-//   // Clean up remote stream
-//   try {
-//     cleanupRemoteStream();
-//     if (remoteVideoEl) remoteVideoEl.srcObject = null;
-//   } catch (e) {
-//     console.warn('Error cleaning remote stream during cleanupCall', e);
-//   }
-//
-//   try {
-//     if (pc) {
-//       pc.close();
-//       pc = null;
-//     }
-//   } catch (e) {
-//     console.warn('Error closing pc during cleanupCall', e);
-//   }
-//
-//   // Reset UI
-//   try {
-//     exitCallMode();
-//   } catch (e) {}
-//
-//   updateStatus('Disconnected. Click "Start New Chat" to begin.');
-//
-//   clearUrlParam();
-//
-//   isCleaningUp = false;
-// }
 
 // Listen for remote hangup signals dispatched by call-flow handlers and
 // delegate to CallController.cleanupCall() so UI and state are cleaned up
@@ -1491,17 +1395,55 @@ window.addEventListener('remoteHangup', (ev) => {
     clearUrlParam();
 
     // Reset partner/room tracking
-    partnerUserId = null;
     if (currentRoomId === roomId) {
       currentRoomId = null;
+      partnerUserId = null;
     }
   } catch (e) {
     console.warn('Error handling remoteHangup event', e);
   }
 });
 
+// ============================================================================
+// CALLCONTROLLER EVENT SUBSCRIPTIONS
+// ============================================================================
+
+// Subscribe to CallController hangup event
+CallController.on('hangup', ({ roomId, reason }) => {
+  console.debug('CallController hangup event', { roomId, reason });
+  // UI updates already handled in hangUpBtn handler
+});
+
+// Subscribe to CallController cleanup event
+CallController.on('cleanup', ({ roomId, reason }) => {
+  console.debug('CallController cleanup event', { roomId, reason });
+  // Cleanup already handled in remoteHangup listener
+});
+
+// Subscribe to CallController remoteHangup event
+CallController.on('remoteHangup', ({ roomId, partnerId, reason }) => {
+  console.debug('CallController remoteHangup event', {
+    roomId,
+    partnerId,
+    reason,
+  });
+
+  // Prompt to save contact after remote hangup (if partner was present)
+  if (partnerId && roomId) {
+    // Small delay so UI settles before prompt
+    setTimeout(() => {
+      saveContact(partnerId, roomId, lobbyDiv).catch((e) => {
+        console.warn('Failed to save contact after remote hangup:', e);
+      });
+    }, 500);
+  }
+});
+
+// ============================================================================
+
 async function cleanup() {
-  await hangUp();
+  // Call CallController.hangUp for page unload
+  await CallController.hangUp({ emitCancel: true, reason: 'page_unload' });
 
   cleanupMediaControls();
 
