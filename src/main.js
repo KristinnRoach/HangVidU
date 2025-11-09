@@ -236,7 +236,8 @@ function getCallOptions(targetRoomId = null) {
     setupRemoteStream,
     setupWatchSync,
     onMemberJoined: (partnerKey, roomId) => {
-      partnerUserId = partnerKey;
+      partnerUserId = partnerKey; // Set global (still used by DOM event handler)
+      CallController.setPartnerId(partnerKey); // Set in CallController
       enterCallMode();
       onCallAnswered().catch((e) =>
         console.warn('Failed to clear calling state:', e)
@@ -1373,8 +1374,31 @@ let isCleaningUp = false;
 window.addEventListener('remoteHangup', (ev) => {
   try {
     const { roomId, by, reason } = ev?.detail || {};
+    console.debug('DOM remoteHangup event received', {
+      roomId,
+      by,
+      reason,
+      currentRoomId,
+    });
+
     // Only act if this matches the current room
-    if (!roomId || roomId !== currentRoomId) return;
+    if (!roomId || roomId !== currentRoomId) {
+      console.debug('Ignoring remoteHangup - room mismatch', {
+        eventRoomId: roomId,
+        currentRoomId,
+      });
+      return;
+    }
+
+    // Capture partner info BEFORE cleanup for contact save prompt
+    const partnerToSave = partnerUserId;
+    const roomToSave = currentRoomId;
+
+    console.debug('Processing remote hangup', {
+      partnerToSave,
+      roomToSave,
+      willShowPrompt: !!(partnerToSave && roomToSave),
+    });
 
     // Run remote cleanup via CallController (does not emit cancel)
     CallController.cleanupCall({ reason: reason || 'remote_hangup' }).catch(
@@ -1393,6 +1417,16 @@ window.addEventListener('remoteHangup', (ev) => {
     exitCallMode();
     updateStatus('Disconnected. Click "Start New Chat" to begin.');
     clearUrlParam();
+
+    // Prompt to save contact after remote hangup (if partner was present)
+    if (partnerToSave && roomToSave) {
+      // Small delay so UI settles before prompt
+      setTimeout(() => {
+        saveContact(partnerToSave, roomToSave, lobbyDiv).catch((e) => {
+          console.warn('Failed to save contact after remote hangup:', e);
+        });
+      }, 500);
+    }
 
     // Reset partner/room tracking
     if (currentRoomId === roomId) {
