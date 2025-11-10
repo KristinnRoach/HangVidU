@@ -9,6 +9,10 @@ import {
 } from './call-flow.js';
 import RoomService from '../room.js';
 import { getUserId } from '../firebase/auth.js';
+import { ref } from 'firebase/database';
+import { onDataChange, rtdb } from '../storage/fb-rtdb/rtdb.js';
+import { updateStatus } from '../utils/ui/status.js';
+import { devDebug } from '../utils/dev/dev-utils.js';
 
 class SimpleEmitter {
   constructor() {
@@ -84,6 +88,265 @@ class CallController {
   }
 
   /**
+   * Setup cancellation listener for active call.
+   * Tracks listener for cleanup and triggers cleanupCall when remote party hangs up.
+   * @param {string} roomId - Room ID to listen for cancellation
+   */
+  setupCancellationListener(roomId) {
+    if (!roomId) return;
+
+    const cancellationRef = ref(rtdb, `rooms/${roomId}/cancellation`);
+    let cancellationHandled = false;
+
+    const onCancellation = async (snapshot) => {
+      const cancel = snapshot.val();
+      if (!cancel) return;
+      if (cancellationHandled) return;
+      cancellationHandled = true;
+
+      devDebug('Call cancelled by partner', { roomId, cancel });
+      try {
+        updateStatus('Partner disconnected');
+      } catch (_) {}
+
+      // Clear remote video to prevent frozen frame
+      try {
+        if (this.remoteVideoEl) {
+          this.remoteVideoEl.srcObject = null;
+        }
+      } catch (e) {
+        console.warn('Failed to clear remote video after cancellation', e);
+      }
+
+      // Close peer connection
+      try {
+        if (this.pc) {
+          this.pc.close();
+        }
+      } catch (_) {}
+
+      // Trigger cleanup (will emit events for UI updates)
+      try {
+        await this.cleanupCall({
+          reason: cancel.reason || 'remote_cancelled',
+        });
+      } catch (e) {
+        console.warn('Failed to trigger CallController cleanup', e);
+      }
+    };
+
+    // Attach listener
+    onDataChange(cancellationRef, onCancellation, roomId);
+
+    // Track listener for cleanup
+    if (!this.listeners.has('cancellation')) {
+      this.listeners.set('cancellation', []);
+    }
+    this.listeners.get('cancellation').push({
+      ref: cancellationRef,
+      callback: onCancellation,
+      roomId,
+    });
+  }
+
+  /**
+   * Setup answer listener for call initiation.
+   * Tracks listener for cleanup and handles SDP answer from joiner.
+   * @param {string} roomId - Room ID to listen for answer
+   * @param {RTCPeerConnection} pc - Peer connection to set remote description on
+   * @param {Function} drainIceCandidateQueue - Function to drain queued ICE candidates
+   */
+  setupAnswerListener(roomId, pc, drainIceCandidateQueue) {
+    if (!roomId || !pc) return;
+
+    const answerRef = ref(rtdb, `rooms/${roomId}/answer`);
+    const answerCallback = async (snapshot) => {
+      const answer = snapshot.val();
+      if (answer) {
+        const { setRemoteDescription } = await import('./webrtc-utils.js');
+        await setRemoteDescription(pc, answer, drainIceCandidateQueue);
+      }
+    };
+
+    // Attach listener
+    onDataChange(answerRef, answerCallback, roomId);
+
+    // Track listener for cleanup
+    if (!this.listeners.has('answer')) {
+      this.listeners.set('answer', []);
+    }
+    this.listeners.get('answer').push({
+      ref: answerRef,
+      callback: answerCallback,
+      roomId,
+    });
+  }
+
+  /**
+   * Setup rejection listener for call initiation.
+   * Tracks listener for cleanup and handles instant rejection feedback.
+   * @param {string} roomId - Room ID to listen for rejection
+   */
+  setupRejectionListener(roomId) {
+    if (!roomId) return;
+
+    const rejectionRef = ref(rtdb, `rooms/${roomId}/rejection`);
+    let rejectionHandled = false;
+
+    const onRejection = async (snapshot) => {
+      const rej = snapshot.val();
+      if (!rej) return;
+
+      if (rejectionHandled) return;
+      rejectionHandled = true;
+
+      // If already connected, ignore late rejection
+      if (this.pc?.connectionState === 'connected') return;
+
+      devDebug('Call rejected by partner', { roomId, rej });
+
+      // Import onCallRejected dynamically to avoid circular dependencies
+      try {
+        const { onCallRejected } = await import(
+          '../components/calling/calling-ui.js'
+        );
+        await onCallRejected(rej.reason || 'user_rejected');
+      } catch (_) {
+        updateStatus('Call declined');
+      }
+
+      // Cleanup
+      try {
+        await RoomService.leaveRoom(getUserId(), roomId);
+      } catch (e) {
+        // non-fatal
+      }
+
+      try {
+        if (this.pc) {
+          this.pc.close();
+        }
+      } catch (_) {}
+    };
+
+    // Attach listener
+    onDataChange(rejectionRef, onRejection, roomId);
+
+    // Track listener for cleanup
+    if (!this.listeners.has('rejection')) {
+      this.listeners.set('rejection', []);
+    }
+    this.listeners.get('rejection').push({
+      ref: rejectionRef,
+      callback: onRejection,
+      roomId,
+    });
+  }
+
+  /**
+   * Setup member-joined listener for the call.
+   * Tracks listener for cleanup and emits memberJoined event.
+   * @param {string} roomId - Room ID to listen for member joins
+   */
+  setupMemberJoinedListener(roomId) {
+    if (!roomId) return;
+
+    const userId = getUserId();
+    const onMemberJoinedCallback = (snapshot) => {
+      if (snapshot.key !== userId) {
+        // Store partner ID when they join
+        this.setPartnerId(snapshot.key);
+
+        // Emit memberJoined event
+        this.emitter.emit('memberJoined', {
+          memberId: snapshot.key,
+          roomId,
+        });
+      }
+    };
+
+    // Attach listener via RoomService
+    RoomService.onMemberJoined(roomId, onMemberJoinedCallback);
+
+    // Track listener for cleanup
+    if (!this.listeners.has('member-joined')) {
+      this.listeners.set('member-joined', []);
+    }
+    this.listeners.get('member-joined').push({
+      callback: onMemberJoinedCallback,
+      roomId,
+    });
+  }
+
+  /**
+   * Setup member-left listener for the call.
+   * Tracks listener for cleanup and emits memberLeft event.
+   * @param {string} roomId - Room ID to listen for member departures
+   */
+  setupMemberLeftListener(roomId) {
+    if (!roomId) return;
+
+    const userId = getUserId();
+    const onMemberLeftCallback = (snapshot) => {
+      if (snapshot.key !== userId && this.pc?.connectionState === 'connected') {
+        // Emit memberLeft event
+        this.emitter.emit('memberLeft', {
+          memberId: snapshot.key,
+          roomId,
+        });
+      }
+    };
+
+    // Attach listener via RoomService
+    RoomService.onMemberLeft(roomId, onMemberLeftCallback);
+
+    // Track listener for cleanup
+    if (!this.listeners.has('member-left')) {
+      this.listeners.set('member-left', []);
+    }
+    this.listeners.get('member-left').push({
+      callback: onMemberLeftCallback,
+      roomId,
+    });
+  }
+
+  /**
+   * Remove all tracked listeners during cleanup
+   */
+  removeTrackedListeners() {
+    // Import off function for removing Firebase listeners
+    import('firebase/database').then(({ off }) => {
+      for (const [type, listenerArray] of this.listeners.entries()) {
+        for (const listener of listenerArray) {
+          try {
+            // Only use off() for listeners that have a ref (cancellation, rejection)
+            // Member listeners are managed by RoomService and cleaned up via removeRTDBListenersForRoom
+            if (listener.ref) {
+              off(listener.ref, 'value', listener.callback);
+            }
+          } catch (e) {
+            console.warn(`Failed to remove ${type} listener`, e);
+          }
+        }
+      }
+      this.listeners.clear();
+    });
+
+    // Clean up room-scoped RTDB listeners (member-joined, member-left)
+    if (this.roomId) {
+      try {
+        import('../storage/fb-rtdb/rtdb.js').then(
+          ({ removeRTDBListenersForRoom }) => {
+            removeRTDBListenersForRoom(this.roomId);
+          }
+        );
+      } catch (e) {
+        console.warn('Failed to remove RTDB listeners for room', e);
+      }
+    }
+  }
+
+  /**
    * Create a new call as the initiator
    * @param {Object} options - Call options (localStream, remoteVideoEl, etc.)
    * @returns {Promise<Object>} Result with success flag and call artifacts
@@ -112,6 +375,21 @@ class CallController {
       this.dataChannel = result.dataChannel || null;
       this.messagesUI = result.messagesUI || null;
       this.state = 'waiting';
+
+      // Setup answer listener (only for initiator) - must be set up before other listeners
+      // Import drainIceCandidateQueue dynamically
+      const { drainIceCandidateQueue } = await import('./ice.js');
+      this.setupAnswerListener(this.roomId, this.pc, drainIceCandidateQueue);
+
+      // Setup cancellation listener (centralized in CallController)
+      this.setupCancellationListener(this.roomId);
+
+      // Setup rejection listener (only for initiator)
+      this.setupRejectionListener(this.roomId);
+
+      // Setup member listeners
+      this.setupMemberJoinedListener(this.roomId);
+      this.setupMemberLeftListener(this.roomId);
 
       this.emitter.emit('created', {
         roomId: this.roomId,
@@ -155,6 +433,13 @@ class CallController {
       this.dataChannel = result.dataChannel || null;
       this.messagesUI = result.messagesUI || null;
       this.state = 'connected';
+
+      // Setup cancellation listener (centralized in CallController)
+      this.setupCancellationListener(this.roomId);
+
+      // Setup member listeners
+      this.setupMemberJoinedListener(this.roomId);
+      this.setupMemberLeftListener(this.roomId);
 
       this.emitter.emit('answered', { roomId: this.roomId, role: this.role });
       return result;
@@ -240,6 +525,9 @@ class CallController {
       const prevRoom = this.roomId;
       const prevPartnerId = this.partnerId;
 
+      // Remove tracked listeners
+      this.removeTrackedListeners();
+
       // leave room (best-effort)
       try {
         await RoomService.leaveRoom(getUserId(), this.roomId);
@@ -279,7 +567,11 @@ class CallController {
 
       // Reset state
       this.resetState();
-      this.emitter.emit('cleanup', { roomId: prevRoom, reason });
+      this.emitter.emit('cleanup', {
+        roomId: prevRoom,
+        partnerId: prevPartnerId, // Include partnerId for contact save logic
+        reason,
+      });
     } catch (e) {
       this.emitter.emit('error', { phase: 'cleanupCall', error: e });
       throw e;

@@ -12,12 +12,33 @@ vi.mock('../../src/room.js', () => {
     default: {
       cancelCall: vi.fn(),
       leaveRoom: vi.fn(),
+      onMemberJoined: vi.fn(),
+      onMemberLeft: vi.fn(),
     },
   };
 });
 vi.mock('../../src/firebase/auth.js', () => {
   return {
     getUserId: () => 'local-user-id',
+  };
+});
+vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => {
+  return {
+    rtdb: {},
+    onDataChange: vi.fn(),
+    removeRTDBListenersForRoom: vi.fn(),
+  };
+});
+vi.mock('firebase/database', () => {
+  return {
+    ref: vi.fn((db, path) => ({ _path: path })),
+    off: vi.fn(),
+    getDatabase: vi.fn(() => ({})),
+  };
+});
+vi.mock('../../src/webrtc/ice.js', () => {
+  return {
+    drainIceCandidateQueue: vi.fn(),
   };
 });
 
@@ -99,6 +120,7 @@ describe('CallController (unit)', () => {
     const pc = { close: vi.fn() };
     CallController.pc = pc;
     CallController.roomId = 'room-xyz';
+    CallController.partnerId = 'partner-123';
 
     RoomService.leaveRoom.mockResolvedValueOnce();
     RoomService.cancelCall.mockResolvedValueOnce();
@@ -116,6 +138,7 @@ describe('CallController (unit)', () => {
     expect(pc.close).toHaveBeenCalled();
     expect(cleanupEvt).toHaveBeenCalledWith({
       roomId: 'room-xyz',
+      partnerId: 'partner-123',
       reason: 'remote_hangup',
     });
     expect(CallController.getState().state).toBe('idle');
@@ -268,5 +291,225 @@ it('emits callFailed event when answerCall fails', async () => {
   expect(callFailedListener).toHaveBeenCalledWith({
     phase: 'answerCall',
     error: 'Invalid room link',
+  });
+});
+
+// ============================================================================
+// Task 10.1: TDD - Cancellation Listener Tracking Tests (RED phase)
+// ============================================================================
+
+it('tracks cancellation listener in listeners Map after createCall', async () => {
+  const fakeResult = {
+    success: true,
+    pc: { id: 'pc1' },
+    roomId: 'room-123',
+    roomLink: 'https://example/?room=room-123',
+    role: 'initiator',
+    dataChannel: {},
+    messagesUI: {},
+  };
+  createCallFlow.mockResolvedValueOnce(fakeResult);
+
+  await CallController.createCall({ localStream: {} });
+
+  // Verify cancellation listener is tracked
+  expect(CallController.listeners.has('cancellation')).toBe(true);
+  const cancellationListeners = CallController.listeners.get('cancellation');
+  expect(cancellationListeners).toBeDefined();
+  expect(cancellationListeners.length).toBeGreaterThan(0);
+});
+
+it('removes cancellation listener from listeners Map on cleanup', async () => {
+  // Setup: simulate active call with tracked listener
+  const fakeResult = {
+    success: true,
+    pc: { close: vi.fn() },
+    roomId: 'room-456',
+    role: 'initiator',
+  };
+  createCallFlow.mockResolvedValueOnce(fakeResult);
+
+  await CallController.createCall({ localStream: {} });
+
+  // Verify listener is tracked
+  expect(CallController.listeners.has('cancellation')).toBe(true);
+
+  RoomService.leaveRoom.mockResolvedValueOnce();
+
+  // Act: cleanup
+  await CallController.cleanupCall({ reason: 'test_cleanup' });
+
+  // Assert: listener is removed
+  expect(CallController.listeners.has('cancellation')).toBe(false);
+});
+
+it('tracks rejection listener in listeners Map after createCall', async () => {
+  const fakeResult = {
+    success: true,
+    pc: { id: 'pc1' },
+    roomId: 'room-789',
+    roomLink: 'https://example/?room=room-789',
+    role: 'initiator',
+    dataChannel: {},
+    messagesUI: {},
+  };
+  createCallFlow.mockResolvedValueOnce(fakeResult);
+
+  await CallController.createCall({ localStream: {} });
+
+  // Wait a tick for async listener setup to complete
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
+  // Verify rejection listener is tracked
+  expect(CallController.listeners.has('rejection')).toBe(true);
+  const rejectionListeners = CallController.listeners.get('rejection');
+  expect(rejectionListeners).toBeDefined();
+  expect(rejectionListeners.length).toBeGreaterThan(0);
+});
+
+it('removes rejection listener from listeners Map on cleanup', async () => {
+  // Setup: simulate active call with tracked listener
+  const fakeResult = {
+    success: true,
+    pc: { close: vi.fn() },
+    roomId: 'room-rejection',
+    role: 'initiator',
+  };
+  createCallFlow.mockResolvedValueOnce(fakeResult);
+
+  await CallController.createCall({ localStream: {} });
+
+  // Verify listener is tracked
+  expect(CallController.listeners.has('rejection')).toBe(true);
+
+  RoomService.leaveRoom.mockResolvedValueOnce();
+
+  // Act: cleanup
+  await CallController.cleanupCall({ reason: 'test_cleanup' });
+
+  // Assert: listener is removed
+  expect(CallController.listeners.has('rejection')).toBe(false);
+});
+
+// ============================================================================
+// Task 11.1: TDD - Member Listener Tracking Tests (RED phase)
+// ============================================================================
+
+it('tracks member-joined listener in listeners Map after createCall', async () => {
+  const fakeResult = {
+    success: true,
+    pc: { id: 'pc1' },
+    roomId: 'room-members',
+    roomLink: 'https://example/?room=room-members',
+    role: 'initiator',
+    dataChannel: {},
+    messagesUI: {},
+  };
+  createCallFlow.mockResolvedValueOnce(fakeResult);
+
+  await CallController.createCall({ localStream: {} });
+
+  // Verify member-joined listener is tracked
+  expect(CallController.listeners.has('member-joined')).toBe(true);
+  const memberJoinedListeners = CallController.listeners.get('member-joined');
+  expect(memberJoinedListeners).toBeDefined();
+  expect(memberJoinedListeners.length).toBeGreaterThan(0);
+});
+
+it('tracks member-left listener in listeners Map after createCall', async () => {
+  const fakeResult = {
+    success: true,
+    pc: { id: 'pc1' },
+    roomId: 'room-members-left',
+    roomLink: 'https://example/?room=room-members-left',
+    role: 'initiator',
+    dataChannel: {},
+    messagesUI: {},
+  };
+  createCallFlow.mockResolvedValueOnce(fakeResult);
+
+  await CallController.createCall({ localStream: {} });
+
+  // Verify member-left listener is tracked
+  expect(CallController.listeners.has('member-left')).toBe(true);
+  const memberLeftListeners = CallController.listeners.get('member-left');
+  expect(memberLeftListeners).toBeDefined();
+  expect(memberLeftListeners.length).toBeGreaterThan(0);
+});
+
+it('removes member listeners from listeners Map on cleanup', async () => {
+  // Setup: simulate active call with tracked listeners
+  const fakeResult = {
+    success: true,
+    pc: { close: vi.fn() },
+    roomId: 'room-member-cleanup',
+    role: 'initiator',
+  };
+  createCallFlow.mockResolvedValueOnce(fakeResult);
+
+  await CallController.createCall({ localStream: {} });
+
+  // Verify listeners are tracked
+  expect(CallController.listeners.has('member-joined')).toBe(true);
+  expect(CallController.listeners.has('member-left')).toBe(true);
+
+  RoomService.leaveRoom.mockResolvedValueOnce();
+
+  // Act: cleanup
+  await CallController.cleanupCall({ reason: 'test_cleanup' });
+
+  // Assert: listeners are removed
+  expect(CallController.listeners.has('member-joined')).toBe(false);
+  expect(CallController.listeners.has('member-left')).toBe(false);
+});
+
+// ============================================================================
+// CONTACT SAVE SCENARIO TESTS
+// ============================================================================
+
+it('cleanup event includes partnerId for contact save prompt (user-initiated hangup)', async () => {
+  // Setup: simulate active call with partner
+  const pc = { close: vi.fn() };
+  CallController.pc = pc;
+  CallController.roomId = 'room-contact-save';
+  CallController.partnerId = 'partner-user-id';
+
+  RoomService.cancelCall.mockResolvedValueOnce();
+  RoomService.leaveRoom.mockResolvedValueOnce();
+
+  const cleanupListener = vi.fn();
+  CallController.on('cleanup', cleanupListener);
+
+  // Act: User A hangs up
+  await CallController.hangUp({ emitCancel: true, reason: 'user_hung_up' });
+
+  // Assert: cleanup event includes partnerId for contact save
+  expect(cleanupListener).toHaveBeenCalledWith({
+    roomId: 'room-contact-save',
+    partnerId: 'partner-user-id',
+    reason: 'user_hung_up',
+  });
+});
+
+it('cleanup event includes partnerId for contact save prompt (remote hangup)', async () => {
+  // Setup: simulate active call with partner
+  const pc = { close: vi.fn() };
+  CallController.pc = pc;
+  CallController.roomId = 'room-remote-hangup';
+  CallController.partnerId = 'remote-partner-id';
+
+  RoomService.leaveRoom.mockResolvedValueOnce();
+
+  const cleanupListener = vi.fn();
+  CallController.on('cleanup', cleanupListener);
+
+  // Act: Remote party hangs up (triggered by cancellation listener)
+  await CallController.cleanupCall({ reason: 'remote_cancelled' });
+
+  // Assert: cleanup event includes partnerId for contact save
+  expect(cleanupListener).toHaveBeenCalledWith({
+    roomId: 'room-remote-hangup',
+    partnerId: 'remote-partner-id',
+    reason: 'remote_cancelled',
   });
 });

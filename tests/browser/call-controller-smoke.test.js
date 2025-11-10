@@ -29,6 +29,8 @@ vi.mock('../../src/room.js', () => {
     default: {
       cancelCall: vi.fn(),
       leaveRoom: vi.fn(),
+      onMemberJoined: vi.fn(),
+      onMemberLeft: vi.fn(),
     },
   };
 });

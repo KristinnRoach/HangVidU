@@ -9,6 +9,7 @@ export default defineConfig({
       'src/**/*.test.js',
       'tests/unit/**/*.test.js',
       'tests/browser/**/*.test.js',
+      'tests/integration/**/*.test.js',
     ],
     exclude: ['tests/e2e/**/*', 'tests/**/*.spec.js', 'node_modules/**/*'],
     coverage: {
