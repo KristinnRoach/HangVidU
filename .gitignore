@@ -13,6 +13,10 @@ playwright/.cache/
 # Go executables draft
 go-server/
 
+react-sandbox/
+refactor-draft/
+
+
 # Notes / examples / drafts 
 reference-examples/
 **/*.reff.txt
@@ -74,3 +78,8 @@ Warp.md
 Instructions.md
 .coderabbit.yaml
 .kiro
+
+TODO.md
+
+
+experiments.html
