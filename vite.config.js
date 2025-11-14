@@ -17,7 +17,9 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
-          experiments: path.resolve(__dirname, 'experiments.html'),
+          ...(mode === 'development' && {
+            experiments: path.resolve(__dirname, 'experiments.html'),
+          }),
         },
       },
     },
@@ -42,7 +44,6 @@ export default defineConfig(({ mode }) => {
                   // Regex to allow navigation to these pages
                   /^\/$/, // root
                   /^\/index\.html$/, // main app entry
-                  /^\/experiments\.html$/, // your experimental page
                 ],
               },
 
