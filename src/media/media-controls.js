@@ -1,4 +1,4 @@
-// src/media-controls.js
+// media-controls.js
 // Handles all media control button functionality (mute, video, camera, fullscreen)
 
 import {
@@ -6,6 +6,7 @@ import {
   setupOrientationListener,
   hasFrontAndBackCameras,
 } from './media-devices.js';
+import { getFacingMode, setFacingMode } from './state.js';
 import { showElement, hideElement } from '../utils/ui/ui-utils.js';
 
 // ============================================================================
@@ -144,92 +145,26 @@ export function initializeMediaControls({
   }
 
   // ===== SWITCH CAMERA (MOBILE) =====
-  let lastFacingMode = 'user'; // Track facing mode manually
-
-  // Listen for orientation changes and update constraints
-  // let isUpdatingForOrientation = false;
-  // const handleOrientationChange = async () => {
-  //   if (isUpdatingForOrientation) return;
-  //   isUpdatingForOrientation = true;
-  //   import.meta.env.DEV && console.debug('Orientation change detected.');
-
-  //   const localStream = getLocalStream();
-  //   const localVideo = getLocalVideo();
-  //   const pc = getPeerConnection() || null; // May be null
-
-  //   if (!localStream || !localVideo) {
-  //     isUpdatingForOrientation = false;
-  //     return;
-  //   }
-
-  //   import.meta.env.DEV &&
-  //     console.debug('Updating video constraints for orientation. pc: ', pc);
-
-  //   const result = await updateVideoConstraintsForOrientation({
-  //     localStream,
-  //     localVideo,
-  //     currentFacingMode: lastFacingMode,
-  //     peerConnection: pc || null,
-  //   });
-  //   // Sync the shared reference if setter is provided
-  //   if (result?.newStream && typeof setLocalStream === 'function') {
-  //     setLocalStream(result.newStream);
-  //   }
-  //   isUpdatingForOrientation = false;
-  // };
-
-  // const removeOrientationListeners = (() => {
-  //   //window.addEventListener('orientationchange', handleOrientationChange);
-  //   let screenListenerAdded = false;
-
-  //   const orientationQuery = window.matchMedia('(orientation: portrait)');
-  //   orientationQuery.addEventListener('change', handleOrientationChange);
-  //   screenListenerAdded = true;
-
-  //   // if (window.screen?.orientation) {
-  //   //   window.screen.orientation.addEventListener(
-  //   //     'change',
-  //   //     handleOrientationChange
-  //   //   );
-  //   //   screenListenerAdded = true;
-  //   // }
-  //   return () => {
-  //     // window.removeEventListener('orientationchange', handleOrientationChange);
-  //     if (screenListenerAdded) {
-  //       // window.screen.orientation.removeEventListener(
-  //       //   'change',
-  //       //   handleOrientationChange
-  //       // );
-  //       orientationQuery.removeEventListener('change', handleOrientationChange);
-  //       screenListenerAdded = false;
-  //     }
-  //   };
-  // })();
-
-  // cleanupFunctions.push(
-  //   removeOrientationListeners
-  // );
 
   const removeOrientationListener = setupOrientationListener({
     getLocalStream,
-    getFacingMode: () => lastFacingMode,
+    getFacingMode,
   });
 
   cleanupFunctions.push(removeOrientationListener);
 
   if (switchCameraBtn) {
     switchCameraBtn.onclick = async () => {
-      // TODO: review
       const result = await switchCamera({
         localStream: getLocalStream(),
         localVideo: getLocalVideo(),
-        currentFacingMode: lastFacingMode,
+        currentFacingMode: getFacingMode(),
         peerConnection: getPeerConnection() || null,
       });
 
       if (result) {
-        lastFacingMode = result.facingMode;
-        console.log('Switched camera to facingMode:', lastFacingMode);
+        setFacingMode(result.facingMode);
+        console.log('Switched camera to facingMode:', result.facingMode);
         if (result.newStream && typeof setLocalStream === 'function') {
           setLocalStream(result.newStream);
         }
@@ -285,3 +220,67 @@ export function cleanupMediaControls() {
   // Reset state
   remotePreviousMuted = false;
 }
+
+// Listen for orientation changes and update constraints
+// let isUpdatingForOrientation = false;
+// const handleOrientationChange = async () => {
+//   if (isUpdatingForOrientation) return;
+//   isUpdatingForOrientation = true;
+//   import.meta.env.DEV && console.debug('Orientation change detected.');
+
+//   const localStream = getLocalStream();
+//   const localVideo = getLocalVideo();
+//   const pc = getPeerConnection() || null; // May be null
+
+//   if (!localStream || !localVideo) {
+//     isUpdatingForOrientation = false;
+//     return;
+//   }
+
+//   import.meta.env.DEV &&
+//     console.debug('Updating video constraints for orientation. pc: ', pc);
+
+//   const result = await updateVideoConstraintsForOrientation({
+//     localStream,
+//     localVideo,
+//     currentFacingMode: lastFacingMode,
+//     peerConnection: pc || null,
+//   });
+//   // Sync the shared reference if setter is provided
+//   if (result?.newStream && typeof setLocalStream === 'function') {
+//     setLocalStream(result.newStream);
+//   }
+//   isUpdatingForOrientation = false;
+// };
+
+// const removeOrientationListeners = (() => {
+//   //window.addEventListener('orientationchange', handleOrientationChange);
+//   let screenListenerAdded = false;
+
+//   const orientationQuery = window.matchMedia('(orientation: portrait)');
+//   orientationQuery.addEventListener('change', handleOrientationChange);
+//   screenListenerAdded = true;
+
+//   // if (window.screen?.orientation) {
+//   //   window.screen.orientation.addEventListener(
+//   //     'change',
+//   //     handleOrientationChange
+//   //   );
+//   //   screenListenerAdded = true;
+//   // }
+//   return () => {
+//     // window.removeEventListener('orientationchange', handleOrientationChange);
+//     if (screenListenerAdded) {
+//       // window.screen.orientation.removeEventListener(
+//       //   'change',
+//       //   handleOrientationChange
+//       // );
+//       orientationQuery.removeEventListener('change', handleOrientationChange);
+//       screenListenerAdded = false;
+//     }
+//   };
+// })();
+
+// cleanupFunctions.push(
+//   removeOrientationListeners
+// );

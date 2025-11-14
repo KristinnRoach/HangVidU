@@ -1,3 +1,5 @@
+// media/stream.js
+
 import { addRemoteVideoEventListeners } from './media-controls.js';
 import {
   getLocalStream,
@@ -7,9 +9,9 @@ import {
   setLocalVideoOnlyStream,
 } from './state.js';
 import {
-  userMediaAudioConstraints,
-  userMediaVideoConstraints,
-  getOrientationAwareVideoConstraints,
+  getAudioConstraints,
+  getFallbackAudioConstraints,
+  getVideoConstraints,
 } from './constraints.js';
 import { updateStatus } from '../utils/ui/status.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
@@ -21,24 +23,35 @@ export const createLocalStream = async () => {
     return existingStream;
   }
 
-  const videoConstraints = getOrientationAwareVideoConstraints('user');
+  const videoConstraints = getVideoConstraints('user');
+  const audioConstraints = getAudioConstraints();
 
-  const newStream = await navigator.mediaDevices.getUserMedia({
-    video: videoConstraints || userMediaVideoConstraints.relyOnBrowserDefaults,
-    audio: userMediaAudioConstraints.default,
-  });
+  try {
+    const newStream = await navigator.mediaDevices.getUserMedia({
+      video: videoConstraints,
+      audio: audioConstraints,
+    });
 
-  setLocalStream(newStream);
+    setLocalStream(newStream);
 
-  // if (import.meta.env.DEV) {
-  //   console.table({
-  //     videoCapabilities: newStream.getVideoTracks()[0].getCapabilities(),
-  //     audioCapabilities: newStream.getAudioTracks()[0].getCapabilities(),
-  //     videoApplied: newStream.getVideoTracks()[0].getSettings(),
-  //     audioApplied: newStream.getAudioTracks()[0].getSettings(),
-  //   });
-  // }
-  return newStream;
+    return newStream;
+  } catch (error) {
+    if (error.name === 'OverconstrainedError') {
+      console.warn(
+        `❌ Constraint failed on property: ${error.constraint}, falling back to basic constraints`
+      );
+      devDebug('Full error:', error);
+      // Fallback to absolute minimum (avoid Over Constrained error)
+      const fallbackAudioConstraints = getFallbackAudioConstraints();
+      const basicStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: fallbackAudioConstraints,
+      });
+      setLocalStream(basicStream);
+      return basicStream;
+    }
+    throw error;
+  }
 };
 
 export async function setUpLocalStream(localVideoEl) {
@@ -97,37 +110,10 @@ export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
           container.style.top = '';
           remoteVideoEl.style.visibility = 'visible';
           remoteVideoEl.style.opacity = '1';
-
-          // Diagnostic: log container state
-          // (kept lightweight; remove after verifying on device)
-          console.log('[DEBUG] remote container visibility fix', {
-            containerClasses: container.className,
-            containerComputedVisibility: getComputedStyle(container).visibility,
-            videoComputedVisibility: getComputedStyle(remoteVideoEl).visibility,
-          });
         }
       } catch (e) {
         console.warn('Visibility override failed:', e);
       }
-
-      console.log(
-        '[DEBUG] remoteVideoEl',
-        remoteVideoEl,
-        'srcObject:',
-        remoteVideoEl.srcObject,
-        'videoWidth:',
-        remoteVideoEl.videoWidth,
-        'videoHeight:',
-        remoteVideoEl.videoHeight,
-        'offsetWidth:',
-        remoteVideoEl.offsetWidth,
-        'offsetHeight:',
-        remoteVideoEl.offsetHeight,
-        'computedStyle.display:',
-        getComputedStyle(remoteVideoEl).display,
-        'computedStyle.visibility:',
-        getComputedStyle(remoteVideoEl).visibility
-      );
 
       if (import.meta.env.DEV) {
         remoteVideoEl.style.border = '8px solid red';

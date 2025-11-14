@@ -9,10 +9,18 @@ import {
 } from './call-flow.js';
 import RoomService from '../room.js';
 import { getUserId } from '../firebase/auth.js';
-import { ref } from 'firebase/database';
-import { onDataChange, rtdb } from '../storage/fb-rtdb/rtdb.js';
+import { ref, off } from 'firebase/database';
+import {
+  onDataChange,
+  rtdb,
+  removeRTDBListenersForRoom,
+} from '../storage/fb-rtdb/rtdb.js';
 import { updateStatus } from '../utils/ui/status.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
+
+export function createCallController() {
+  return new CallController();
+}
 
 class SimpleEmitter {
   constructor() {
@@ -314,8 +322,8 @@ class CallController {
    * Remove all tracked listeners during cleanup
    */
   removeTrackedListeners() {
-    // Import off function for removing Firebase listeners
-    import('firebase/database').then(({ off }) => {
+    // Remove firebase listeners synchronously using the imported `off`.
+    try {
       for (const [type, listenerArray] of this.listeners.entries()) {
         for (const listener of listenerArray) {
           try {
@@ -329,17 +337,17 @@ class CallController {
           }
         }
       }
+    } catch (e) {
+      console.warn('Failed to remove tracked listeners', e);
+    } finally {
+      // Clear tracking synchronously so callers can rely on immediate state.
       this.listeners.clear();
-    });
+    }
 
     // Clean up room-scoped RTDB listeners (member-joined, member-left)
     if (this.roomId) {
       try {
-        import('../storage/fb-rtdb/rtdb.js').then(
-          ({ removeRTDBListenersForRoom }) => {
-            removeRTDBListenersForRoom(this.roomId);
-          }
-        );
+        removeRTDBListenersForRoom(this.roomId);
       } catch (e) {
         console.warn('Failed to remove RTDB listeners for room', e);
       }
@@ -390,6 +398,15 @@ class CallController {
       // Setup member listeners
       this.setupMemberJoinedListener(this.roomId);
       this.setupMemberLeftListener(this.roomId);
+
+      // // Debug: show tracked listener keys after setup (helps diagnose test timing/race)
+      // try {
+      //   // Use console.debug to avoid noise in normal runs; tests will capture stdout/stderr
+      //   console.debug(
+      //     'listeners after createCall',
+      //     Array.from(this.listeners.keys())
+      //   );
+      // } catch (_) {}
 
       this.emitter.emit('created', {
         roomId: this.roomId,
@@ -581,4 +598,6 @@ class CallController {
   }
 }
 
-export default new CallController();
+// TODO: Decide on singleton vs factory. For now keeping the existing default singleton for backward compatibility:
+const defaultController = new CallController();
+export default defaultController;

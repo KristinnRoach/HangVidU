@@ -1,6 +1,17 @@
+// media/state.js
+
 let remoteStream = null;
 let localStream = null;
 let localVideoOnlyStream = null;
+let currentFacingMode = 'user';
+
+export function getFacingMode() {
+  return currentFacingMode;
+}
+
+export function setFacingMode(facingMode) {
+  currentFacingMode = facingMode;
+}
 
 // ============================================================================
 // REMOTE STREAM STATE
@@ -81,4 +92,5 @@ export function cleanupAllStreams() {
   cleanupLocalStream();
   cleanupRemoteStream();
   cleanupLocalVideoOnlyStream();
+  currentFacingMode = 'user';
 }
