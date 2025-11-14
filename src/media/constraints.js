@@ -1,78 +1,101 @@
 // src/media/constraints.js
 
-export const userMediaAudioConstraints = {
+const userMediaAudioConstraints = {
   default: {
     echoCancellation: true,
     noiseSuppression: true,
     autoGainControl: true,
-
-    // Browser should ignore the below constraints if not available
+  },
+  withVoiceIsolationIfSupported: {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
     voiceIsolation: true,
     restrictOwnAudio: true,
-    googHighpassFilter: true, // chromium
-    googTypingNoiseDetection: true, // chromium
+    googHighpassFilter: true,
+    googTypingNoiseDetection: true,
     highpassFilter: true,
     typingNoiseDetection: true,
   },
 };
 
-export const userMediaVideoConstraints = {
+function getAudioConstraints() {
+  const supported = navigator.mediaDevices.getSupportedConstraints();
+
+  // Check if all enhanced audio features are supported
+  const enhancedPropsToCheck = [
+    'voiceIsolation',
+    'highpassFilter',
+    'typingNoiseDetection',
+  ];
+
+  const allEnhancedSupported = enhancedPropsToCheck.every(
+    (prop) => supported[prop]
+  );
+
+  if (allEnhancedSupported) {
+    return userMediaAudioConstraints.withVoiceIsolationIfSupported;
+  }
+
+  return userMediaAudioConstraints.default;
+}
+
+const getFallbackAudioConstraints = () => userMediaAudioConstraints.default;
+
+const userMediaVideoConstraints = {
   desktop: {
     landscape: {
-      width: { min: 1280, ideal: 1920, max: 2560 }, // Todo: When mobile testing set up:
-      height: { min: 720, ideal: 1080, max: 1440 }, // -> consider using () => window.innerWidth, window.innerHeight
-      frameRate: { min: 15, ideal: 30, max: 60 },
+      width: { ideal: 1920 },
+      height: { ideal: 1080 }, // Todo: When mobile testing set up: -> consider using () => window.innerWidth, window.innerHeight
+      frameRate: { min: 10, ideal: 30 },
       aspectRatio: { ideal: 16 / 9 },
-      resizeMode: 'none',
     },
     portrait: {
-      width: { min: 720, ideal: 1080, max: 1440 },
-      height: { min: 1280, ideal: 1920, max: 2560 },
-      frameRate: { min: 15, ideal: 30, max: 60 },
+      width: { ideal: 1080 },
+      height: { ideal: 1920 },
+      frameRate: { min: 10, ideal: 30 },
       aspectRatio: { ideal: 9 / 16 },
-      resizeMode: 'none',
     },
   },
   mobile: {
     portrait: {
-      width: { min: 720, ideal: 1080, max: 1440 },
-      height: { min: 1280, ideal: 1920, max: 2560 },
+      width: { ideal: 1080 },
+      height: { ideal: 1920 },
       aspectRatio: { ideal: 9 / 16 },
-      frameRate: { min: 15, ideal: 30, max: 60 },
-      resizeMode: 'none',
+      frameRate: { ideal: 30 },
     },
     landscape: {
-      width: { min: 1280, ideal: 1920, max: 2560 },
-      height: { min: 720, ideal: 1080, max: 1440 },
+      width: { ideal: 1920 },
+      height: { ideal: 1080 },
       aspectRatio: { ideal: 16 / 9 },
-      frameRate: { min: 15, ideal: 30, max: 60 },
-      resizeMode: 'none',
+      frameRate: { ideal: 30 },
     },
   },
-  relyOnBrowserDefaults: true,
 };
 
-export function isPortraitOrientation() {
+const isPortraitOrientation = () => {
   return (
     window.screen?.orientation?.type?.includes('portrait') ||
     window.orientation === 0 ||
     window.orientation === 180
   );
-}
+};
 
-export function getOrientationAwareVideoConstraints(facingMode) {
+function getVideoConstraints(facingMode) {
   const orientation = isPortraitOrientation() ? 'portrait' : 'landscape';
   const isMobile = /Mobi|Android/i.test(navigator.userAgent);
 
-  if (!isMobile) {
-    return {
-      facingMode,
-      ...userMediaVideoConstraints.desktop[orientation],
-    };
-  }
+  const deviceType = isMobile ? 'mobile' : 'desktop';
+  const constraints = userMediaVideoConstraints[deviceType][orientation];
 
   return {
     facingMode,
-    ...userMediaVideoConstraints.mobile[orientation],
+    ...constraints,
   };
 }
+
+export {
+  getVideoConstraints,
+  getAudioConstraints,
+  getFallbackAudioConstraints,
+};

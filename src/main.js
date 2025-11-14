@@ -8,6 +8,7 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 import { set, get, remove } from 'firebase/database';
 import {
   removeAllRTDBListeners,
+  removeRTDBListenersForRoom,
   getUserRecentCallsRef,
   getUserRecentCallRef,
 } from './storage/fb-rtdb/rtdb.js';
@@ -39,6 +40,8 @@ import {
 } from './components/calling/calling-ui.js';
 
 import { initJoinRoomForm } from './components/lobby/join-room.js';
+
+import CallController from './webrtc/call-controller.js';
 
 import {
   localVideoEl,
@@ -93,7 +96,8 @@ import { setupPWA } from './pwa/PWA.js';
 
 import { setUpLocalStream, setupRemoteStream } from './media/stream.js';
 
-import { createCall, answerCall } from './webrtc/call-flow.js';
+// OLD: Removed - now using CallController.createCall() and CallController.answerCall()
+// import { createCall, answerCall } from './webrtc/call-flow.js';
 
 import {
   getLocalStream,
@@ -124,13 +128,8 @@ getDiagnosticLogger().disable();
 // GLOBAL STATE
 // ============================================================================
 
-let pc = null; // RTCPeerConnection
-let dataChannel = null; // RTCDataChannel (for text chat, file transfer, etc.)
-let partnerUserId = null;
-let role = null; // 'initiator' | 'joiner'
-let messagesUI; // holds text chat UI reference
-let currentRoomLink = null;
-let currentRoomId = null; // Track current room ID for contacts
+// Call state now managed by CallController - use CallController.getState()
+// to access pc, dataChannel, partnerId, role, messagesUI, roomId, roomLink
 
 let cleanupFunctions = [];
 
@@ -179,7 +178,7 @@ async function init() {
       getLocalStream,
       getLocalVideo: () => localVideoEl,
       getRemoteVideo: () => remoteVideoEl,
-      getPeerConnection: () => pc,
+      getPeerConnection: () => CallController.getState().pc,
       setLocalStream,
 
       micBtn,
@@ -231,39 +230,26 @@ function getCallOptions(targetRoomId = null) {
     mutePartnerBtn,
     setupRemoteStream,
     setupWatchSync,
-    onMemberJoined: (partnerKey, roomId) => {
-      partnerUserId = partnerKey;
-      enterCallMode();
-      onCallAnswered().catch((e) =>
-        console.warn('Failed to clear calling state:', e)
-      );
-      saveRecentCall(roomId).catch((e) =>
-        console.warn('Failed to save recent call:', e)
-      );
-    },
-    onMemberLeft: (partnerKey) => {
-      console.info('Partner has left the call');
-    },
     targetRoomId,
   };
 }
 
-// Helper to apply call result and update global state
+/**
+ * Helper to apply call result and update global state
+ * Note: CallController also stores this state internally
+ * TODO: Migrate remaining code to use CallController.getState() instead of globals
+ */
 function applyCallResult(result, showLinkModal = false) {
   if (!result.success) return false;
 
   // DON'T hide calling UI here - it should stay visible until call is answered
   // hideCallingUI() is called in onCallAnswered() when connection is established
 
-  pc = result.pc;
-  role = result.role;
-  dataChannel = result.dataChannel;
-  messagesUI = result.messagesUI;
-  currentRoomId = result.roomId;
-  currentRoomLink = result.roomLink || null;
+  // CallController already has all state via createCall/answerCall
+  // No need to store in globals anymore
 
-  if (showLinkModal && currentRoomLink) {
-    showCopyLinkModal(currentRoomLink, {
+  if (showLinkModal && result.roomLink) {
+    showCopyLinkModal(result.roomLink, {
       onCopy: () => updateStatus('Link ready! Share with your partner.'),
       onCancel: () =>
         updateStatus(
@@ -299,7 +285,10 @@ export async function joinOrCreateRoomWithId(
       }
     );
 
-    const result = await createCall(getCallOptions(customRoomId));
+    //  const result = await createCall(getCallOptions(customRoomId));
+    const result = await CallController.createCall(
+      getCallOptions(customRoomId)
+    );
 
     return applyCallResult(result, false);
   }
@@ -336,7 +325,9 @@ export async function joinOrCreateRoomWithId(
       }
     );
 
-    const result = await createCall(getCallOptions(customRoomId));
+    const result = await CallController.createCall(
+      getCallOptions(customRoomId)
+    );
     return applyCallResult(result, true); // Show modal when creating via join form
   }
 
@@ -348,7 +339,7 @@ export async function joinOrCreateRoomWithId(
     roomExists: status.exists,
   });
 
-  const result = await answerCall({
+  const result = await CallController.answerCall({
     roomId: customRoomId,
     ...getCallOptions(),
   });
@@ -361,6 +352,57 @@ export async function joinOrCreateRoomWithId(
 
 // Track which roomIds we've already attached incoming listeners for
 const listeningRoomIds = new Set();
+
+// Track incoming call listener cleanup functions for each room
+// Map<roomId, Array<() => void>>
+const incomingListenerCleanups = new Map();
+
+/**
+ * Remove incoming call listeners for a specific room
+ * @param {string} roomId - Room ID to clean up listeners for
+ */
+function removeIncomingListenersForRoom(roomId) {
+  if (!roomId) return;
+
+  devDebug(`[LISTENER] Removing incoming listeners for room: ${roomId}`);
+
+  // Remove from RTDB listener tracking
+  removeRTDBListenersForRoom(roomId);
+
+  // Remove from our tracking sets
+  listeningRoomIds.delete(roomId);
+  incomingListenerCleanups.delete(roomId);
+
+  getDiagnosticLogger().log('LISTENER', 'INCOMING_CLEANUP', {
+    roomId,
+    remainingListeners: listeningRoomIds.size,
+  });
+}
+
+/**
+ * Remove all incoming call listeners (e.g., on logout)
+ */
+function removeAllIncomingListeners() {
+  devDebug(
+    `[LISTENER] Removing all incoming listeners (${listeningRoomIds.size} rooms)`
+  );
+
+  // Get all room IDs before clearing
+  const roomIds = Array.from(listeningRoomIds);
+
+  // Clean up each room's listeners
+  roomIds.forEach((roomId) => {
+    removeRTDBListenersForRoom(roomId);
+  });
+
+  // Clear tracking
+  listeningRoomIds.clear();
+  incomingListenerCleanups.clear();
+
+  getDiagnosticLogger().log('LISTENER', 'ALL_INCOMING_CLEANUP', {
+    roomsCleared: roomIds.length,
+  });
+}
 
 /**
  * Save a recent call for the current user (RTDB if logged in, localStorage otherwise).
@@ -424,21 +466,28 @@ export function listenForIncomingOnRoom(roomId) {
 
   devDebug(`[LISTENER] Attempting to attach listener for room: ${roomId}`);
 
+  // Check if already listening, but allow re-attachment
+  // Firebase RTDB handles duplicate listeners internally, so this is safe
   if (listeningRoomIds.has(roomId)) {
-    devDebug(`[LISTENER] Duplicate listener prevented for room: ${roomId}`);
-    getDiagnosticLogger().logDuplicateListener(roomId, 'member_join', {
-      currentListenerCount: listeningRoomIds.size,
-    });
-    return; // avoid duplicate attachments
+    devDebug(
+      `[LISTENER] Listener already tracked for room: ${roomId}, re-attaching to ensure it's active`
+    );
+    // Remove from tracking so we can re-attach
+    listeningRoomIds.delete(roomId);
+    // Also remove any existing RTDB listeners for this room
+    removeRTDBListenersForRoom(roomId);
   }
 
   devDebug(
-    `[LISTENER] Attaching new listener for room: ${roomId} (total: ${
+    `[LISTENER] Attaching listener for room: ${roomId} (total: ${
       listeningRoomIds.size + 1
     })`
   );
 
   listeningRoomIds.add(roomId);
+
+  // Track cleanup functions for this room
+  const cleanups = [];
 
   getDiagnosticLogger().logListenerAttachment(
     roomId,
@@ -450,183 +499,197 @@ export function listenForIncomingOnRoom(roomId) {
   );
 
   // Use RoomService's member listener helper
-  RoomService.onMemberJoined(roomId, async (snapshot) => {
-    const joiningUserId = snapshot.key;
-    const memberData = snapshot.val ? snapshot.val() : null;
-    const currentUserId = getUserId();
-    if (joiningUserId && joiningUserId !== currentUserId) {
-      devDebug(`incoming call from ${joiningUserId} for room ${roomId}`);
+  const memberJoinedCleanup = RoomService.onMemberJoined(
+    roomId,
+    async (snapshot) => {
+      const joiningUserId = snapshot.key;
+      const memberData = snapshot.val ? snapshot.val() : null;
+      const currentUserId = getUserId();
+      if (joiningUserId && joiningUserId !== currentUserId) {
+        devDebug(`incoming call from ${joiningUserId} for room ${roomId}`);
 
-      getDiagnosticLogger().logMemberJoinEvent(
-        roomId,
-        joiningUserId,
-        memberData || {},
-        {
-          detectedBy: 'incoming_call_listener',
-          currentUserId,
-        }
-      );
-
-      // Prefer the member's joinedAt as the primary freshness signal (real-time join)
-      const joinedAt =
-        memberData && typeof memberData.joinedAt === 'number'
-          ? memberData.joinedAt
-          : null;
-      const CALL_FRESH_MS = 20000;
-
-      let isFresh = false;
-      let validationMethod = 'none';
-      let age = 0;
-
-      if (joinedAt) {
-        age = Date.now() - joinedAt;
-        isFresh = age < CALL_FRESH_MS;
-        validationMethod = 'joinedAt';
-      }
-
-      // If joinedAt isn't present or seems old (e.g., listener attached late),
-      // fall back to caller-scoped outgoing marker (for logged-in callers),
-      // or room-scoped createdAt (for guests)
-      if (!isFresh) {
-        const outgoingFresh = await isOutgoingCallFresh(joiningUserId, roomId);
-        const roomFresh = await isRoomCallFresh(roomId);
-        isFresh = outgoingFresh || roomFresh;
-        validationMethod = outgoingFresh
-          ? 'outgoingState'
-          : roomFresh
-          ? 'roomCreatedAt'
-          : 'failed';
-      }
-
-      const freshnessResult = {
-        isFresh,
-        method: validationMethod,
-        age,
-        reason: isFresh ? 'call_is_fresh' : 'call_is_stale',
-      };
-
-      getDiagnosticLogger().logIncomingCallEvent(
-        joiningUserId,
-        roomId,
-        freshnessResult,
-        {
-          memberData,
-          joinedAt,
-          CALL_FRESH_MS,
-        }
-      );
-
-      if (!isFresh) {
-        devDebug(
-          `Ignoring stale incoming call from ${joiningUserId} for room ${roomId}`
-        );
-        getDiagnosticLogger().logNotificationDecision(
-          'REJECT',
-          'stale_call',
+        getDiagnosticLogger().logMemberJoinEvent(
           roomId,
-          {
-            age,
-            validationMethod,
-            joiningUserId,
-          }
-        );
-        return;
-      }
-
-      // Minimal prompt to accept or reject the incoming call.
-      // Only prompt if we're not already in an active call and the room is in a valid offer state.
-      // Check offer/answer state before showing dialog
-      let roomData;
-      try {
-        roomData = await RoomService.getRoomData(roomId);
-      } catch (e) {
-        return; // Room may have been deleted
-      }
-
-      if (!roomData || typeof roomData !== 'object') return;
-
-      const hasOffer = !!roomData.offer;
-      const hasAnswer = !!roomData.answer;
-      const offerCreator = roomData.createdBy;
-      if (!hasOffer || hasAnswer || offerCreator === currentUserId) return;
-
-      const inActiveCall = !!pc && pc.connectionState === 'connected';
-      if (inActiveCall) {
-        getDiagnosticLogger().logNotificationDecision(
-          'REJECT',
-          'already_in_call',
-          roomId,
-          {
-            joiningUserId,
-            currentCallState: pc?.connectionState,
-          }
-        );
-        return;
-      }
-
-      getDiagnosticLogger().logNotificationDecision(
-        'SHOW',
-        'fresh_call_detected',
-        roomId,
-        {
           joiningUserId,
-          freshnessResult,
-        }
-      );
-
-      const accept = await confirmDialog(
-        `Incoming call from ${joiningUserId} for room ${roomId}.\n\nAccept?`
-      );
-
-      if (accept) {
-        getDiagnosticLogger().logNotificationDecision(
-          'ACCEPT',
-          'user_accepted',
-          roomId,
+          memberData || {},
           {
-            joiningUserId,
+            detectedBy: 'incoming_call_listener',
+            currentUserId,
           }
         );
-        joinOrCreateRoomWithId(roomId).catch((e) => {
-          console.warn('Failed to answer incoming call:', e);
-          updateStatus('Failed to answer incoming call.');
-          getDiagnosticLogger().logFirebaseOperation(
-            'join_room_on_accept',
-            false,
-            e,
+
+        // Prefer the member's joinedAt as the primary freshness signal (real-time join)
+        const joinedAt =
+          memberData && typeof memberData.joinedAt === 'number'
+            ? memberData.joinedAt
+            : null;
+        const CALL_FRESH_MS = 20000;
+
+        let isFresh = false;
+        let validationMethod = 'none';
+        let age = 0;
+
+        if (joinedAt) {
+          age = Date.now() - joinedAt;
+          isFresh = age < CALL_FRESH_MS;
+          validationMethod = 'joinedAt';
+        }
+
+        // If joinedAt isn't present or seems old (e.g., listener attached late),
+        // fall back to caller-scoped outgoing marker (for logged-in callers),
+        // or room-scoped createdAt (for guests)
+        if (!isFresh) {
+          const outgoingFresh = await isOutgoingCallFresh(
+            joiningUserId,
+            roomId
+          );
+          const roomFresh = await isRoomCallFresh(roomId);
+          isFresh = outgoingFresh || roomFresh;
+          validationMethod = outgoingFresh
+            ? 'outgoingState'
+            : roomFresh
+            ? 'roomCreatedAt'
+            : 'failed';
+        }
+
+        const freshnessResult = {
+          isFresh,
+          method: validationMethod,
+          age,
+          reason: isFresh ? 'call_is_fresh' : 'call_is_stale',
+        };
+
+        getDiagnosticLogger().logIncomingCallEvent(
+          joiningUserId,
+          roomId,
+          freshnessResult,
+          {
+            memberData,
+            joinedAt,
+            CALL_FRESH_MS,
+          }
+        );
+
+        if (!isFresh) {
+          devDebug(
+            `Ignoring stale incoming call from ${joiningUserId} for room ${roomId}`
+          );
+          getDiagnosticLogger().logNotificationDecision(
+            'REJECT',
+            'stale_call',
+            roomId,
             {
-              roomId,
+              age,
+              validationMethod,
               joiningUserId,
             }
           );
-        });
-      } else {
-        devDebug('Incoming call rejected by user');
+          return;
+        }
+
+        // Minimal prompt to accept or reject the incoming call.
+        // Only prompt if we're not already in an active call and the room is in a valid offer state.
+        // Check offer/answer state before showing dialog
+        let roomData;
+        try {
+          roomData = await RoomService.getRoomData(roomId);
+        } catch (e) {
+          return; // Room may have been deleted
+        }
+
+        if (!roomData || typeof roomData !== 'object') return;
+
+        const hasOffer = !!roomData.offer;
+        const hasAnswer = !!roomData.answer;
+        const offerCreator = roomData.createdBy;
+        if (!hasOffer || hasAnswer || offerCreator === currentUserId) return;
+
+        const state = CallController.getState();
+        const inActiveCall =
+          !!state.pc && state.pc.connectionState === 'connected';
+        if (inActiveCall) {
+          getDiagnosticLogger().logNotificationDecision(
+            'REJECT',
+            'already_in_call',
+            roomId,
+            {
+              joiningUserId,
+              currentCallState: state.pc?.connectionState,
+            }
+          );
+          return;
+        }
+
         getDiagnosticLogger().logNotificationDecision(
-          'REJECT',
-          'user_rejected',
+          'SHOW',
+          'fresh_call_detected',
           roomId,
           {
             joiningUserId,
+            freshnessResult,
           }
         );
 
-        // Send a direct rejection signal so the caller gets immediate feedback (no 30s timeout)
-        try {
-          await RoomService.rejectCall(roomId, getUserId(), 'user_rejected');
-        } catch (e) {
-          console.warn('Failed to signal rejection via RTDB:', e);
-        }
+        const accept = await confirmDialog(
+          `Incoming call from ${joiningUserId} for room ${roomId}.\n\nAccept?`
+        );
 
-        // Clean up recent call state for this client
-        await removeRecentCall(roomId).catch((e) => {
-          console.warn('Failed to remove recent call on rejection:', e);
-        });
+        if (accept) {
+          // Remove incoming call listeners before starting active call
+          // This prevents duplicate listener firing (incoming vs active call listeners)
+          removeIncomingListenersForRoom(roomId);
+
+          getDiagnosticLogger().logNotificationDecision(
+            'ACCEPT',
+            'user_accepted',
+            roomId,
+            {
+              joiningUserId,
+            }
+          );
+          joinOrCreateRoomWithId(roomId).catch((e) => {
+            console.warn('Failed to answer incoming call:', e);
+            updateStatus('Failed to answer incoming call.');
+            getDiagnosticLogger().logFirebaseOperation(
+              'join_room_on_accept',
+              false,
+              e,
+              {
+                roomId,
+                joiningUserId,
+              }
+            );
+          });
+        } else {
+          devDebug('Incoming call rejected by user');
+          getDiagnosticLogger().logNotificationDecision(
+            'REJECT',
+            'user_rejected',
+            roomId,
+            {
+              joiningUserId,
+            }
+          );
+
+          // Send a direct rejection signal so the caller gets immediate feedback (no 30s timeout)
+          try {
+            await RoomService.rejectCall(roomId, getUserId(), 'user_rejected');
+          } catch (e) {
+            console.warn('Failed to signal rejection via RTDB:', e);
+          }
+
+          // Clean up recent call state for this client
+          await removeRecentCall(roomId).catch((e) => {
+            console.warn('Failed to remove recent call on rejection:', e);
+          });
+        }
       }
     }
-  });
+  );
 
-  // If caller cancels before we accept, hide any incoming prompt and clear the recent call
+  // INCOMING CALL cancellation listener
+  // Fires when caller cancels BEFORE callee accepts
+  // Dismisses incoming dialog and removes recent call entry
   RoomService.onCallCancelled(roomId, async (snapshot) => {
     const data =
       snapshot && typeof snapshot.val === 'function' ? snapshot.val() : null;
@@ -660,10 +723,12 @@ export function listenForIncomingOnRoom(roomId) {
     try {
       const status = await RoomService.checkRoomStatus(roomId);
       // If no members remain, remove the saved recent call for this client
+      // and clean up the incoming listeners for this room
       if (!status.hasMembers) {
         await removeRecentCall(roomId);
+        removeIncomingListenersForRoom(roomId);
         devDebug(
-          `Removed saved recent call for room ${roomId} because it is now empty`
+          `Removed saved recent call and listeners for room ${roomId} because it is now empty`
         );
       }
     } catch (e) {
@@ -1107,8 +1172,9 @@ function addKeyListeners() {
       }
       // Toggle chat messages with 'M' key
       if (event.key === 'm' || event.key === 'M') {
-        if (messagesUI) {
-          messagesUI.toggleMessages();
+        const state = CallController.getState();
+        if (state.messagesUI) {
+          state.messagesUI.toggleMessages();
         }
       }
     }
@@ -1146,8 +1212,9 @@ function addKeyListeners() {
 // }
 
 async function handleCopyLink() {
-  if (currentRoomLink) {
-    const success = await copyToClipboard(currentRoomLink);
+  const state = CallController.getState();
+  if (state.roomLink) {
+    const success = await copyToClipboard(state.roomLink);
     if (success) {
       updateStatus('Link copied to clipboard!');
       alert('Link copied!');
@@ -1158,7 +1225,8 @@ async function handleCopyLink() {
 }
 
 callBtn.onclick = async () => {
-  const result = await createCall(getCallOptions());
+  // const result = await createCall(getCallOptions());
+  const result = await CallController.createCall(getCallOptions());
   applyCallResult(result, true);
 };
 
@@ -1169,7 +1237,13 @@ callBtn.onclick = async () => {
 
 // copyLinkBtn.onclick = async () => await handleCopyLink();
 
-hangUpBtn.onclick = async () => await hangUp();
+hangUpBtn.onclick = async () => {
+  console.debug('Hanging up...');
+
+  // Call CallController.hangUp (emits cancellation and performs cleanup)
+  // The 'cleanup' event handler will handle all UI updates including contact save prompt
+  await CallController.hangUp({ emitCancel: true, reason: 'user_hung_up' });
+};
 
 // ============================================================================
 // TEST: JOIN ROOM BUTTON (TEMPORARY - FOR TESTING)
@@ -1276,11 +1350,25 @@ window.onload = async () => {
   });
 
   // Re-render contacts on auth changes so private contacts are hidden on logout
-  const unsubscribeAuthContacts = onAuthChange(async () => {
+  // Also clean up incoming listeners on logout to prevent accumulation
+  const unsubscribeAuthContacts = onAuthChange(async ({ isLoggedIn }) => {
     try {
       await renderContactsList(lobbyDiv);
+
+      // On logout, clean up all incoming call listeners
+      // They will be re-attached on next login via startListeningForSavedRooms
+      if (!isLoggedIn) {
+        devDebug('[AUTH] User logged out - cleaning up incoming listeners');
+        removeAllIncomingListeners();
+      } else {
+        // On login, re-attach listeners for saved rooms
+        devDebug('[AUTH] User logged in - re-attaching incoming listeners');
+        await startListeningForSavedRooms().catch((e) =>
+          console.warn('Failed to re-attach saved-room listeners on login', e)
+        );
+      }
     } catch (e) {
-      console.warn('Failed to re-render contacts on auth change:', e);
+      console.warn('Failed to handle auth change:', e);
     }
   });
   cleanupFunctions.push(() => {
@@ -1300,7 +1388,12 @@ window.onload = async () => {
 // Handle page leave
 window.addEventListener('beforeunload', async (e) => {
   // Trigger browser's generic "leave page?" dialog if in active call (in PROD)
-  if (import.meta.env.PROD && pc && pc.connectionState === 'connected') {
+  const state = CallController.getState();
+  if (
+    import.meta.env.PROD &&
+    state.pc &&
+    state.pc.connectionState === 'connected'
+  ) {
     e.preventDefault();
     e.returnValue = // NOTE: Modern browsers ignore returnValue text
       'You are in an active call. Are you sure you want to leave?';
@@ -1314,129 +1407,67 @@ window.addEventListener('beforeunload', async (e) => {
 // HANG UP / CLEANUP
 // ============================================================================
 
-let isHangingUp = false;
-let isCleaningUp = false;
+// ============================================================================
+// CALLCONTROLLER EVENT SUBSCRIPTIONS
+// ============================================================================
 
-export async function hangUp() {
-  if (isHangingUp) return;
-  isHangingUp = true;
+// Subscribe to CallController memberJoined event - handles partner joining
+CallController.on('memberJoined', ({ memberId, roomId }) => {
+  console.debug('CallController memberJoined event', { memberId, roomId });
 
-  console.debug('Hanging up...');
+  CallController.setPartnerId(memberId);
+  enterCallMode();
+  onCallAnswered().catch((e) =>
+    console.warn('Failed to clear calling state:', e)
+  );
+  saveRecentCall(roomId).catch((e) =>
+    console.warn('Failed to save recent call:', e)
+  );
+});
 
+// Subscribe to CallController memberLeft event - handles partner leaving
+CallController.on('memberLeft', ({ memberId }) => {
+  console.debug('CallController memberLeft event', { memberId });
+  console.info('Partner has left the call');
+});
+
+// Subscribe to CallController cleanup event - handles ALL cleanup UI updates
+CallController.on('cleanup', ({ roomId, reason }) => {
+  console.debug('CallController cleanup event', { roomId, reason });
+
+  // Perform all UI cleanup
   hideCallingUI();
+  cleanupRemoteStream();
+  exitCallMode();
+  updateStatus('Disconnected. Click "Start New Chat" to begin.');
+  clearUrlParam();
+});
 
-  // Capture partner info before cleanup for contact save
-  const partnerToSave = partnerUserId;
-  const roomToSave = currentRoomId;
+// Subscribe to CallController cleanup event - shows contact save prompt for both users
+CallController.on('cleanup', ({ roomId, partnerId, reason }) => {
+  console.debug('CallController cleanup event', {
+    roomId,
+    partnerId,
+    reason,
+  });
 
-  // Signal remote peer that we're hanging up so they don't get a frozen video
-  // (best-effort; room may already be gone)
-  try {
-    if (currentRoomId) {
-      await RoomService.cancelCall(currentRoomId, getUserId(), 'user_hung_up');
-    }
-  } catch (err) {
-    console.warn('cancelCall failed during hangUp (non-fatal):', err);
-  }
-
-  // Perform local-only cleanup (does not emit cancellation)
-  await cleanupCall();
-
-  // Prompt to save contact after hanging up (if partner was present)
-  if (partnerToSave && roomToSave) {
+  // Prompt to save contact after cleanup (if partner was present)
+  // This fires for BOTH users regardless of who initiated the hangup
+  if (partnerId && roomId) {
     // Small delay so UI settles before prompt
     setTimeout(() => {
-      saveContact(partnerToSave, roomToSave, lobbyDiv).catch((e) => {
-        console.warn('Failed to save contact:', e);
+      saveContact(partnerId, roomId, lobbyDiv).catch((e) => {
+        console.warn('Failed to save contact after cleanup:', e);
       });
     }, 500);
   }
-
-  // Reset partner/room tracking
-  partnerUserId = null;
-  currentRoomId = null;
-
-  clearUrlParam();
-
-  isHangingUp = false;
-}
-
-/**
- * Cleanup call state when the partner hung up or we got disconnected.
- * This does NOT emit a cancel signal — it's intended for remote-triggered
- * cleanup paths where we should not write a cancellation entry.
- */
-export async function cleanupCall({ reason } = {}) {
-  if (isCleaningUp) return;
-  isCleaningUp = true;
-
-  console.debug('Cleaning up call', reason || 'remote/unexpected');
-
-  // Hide any calling modal
-  hideCallingUI();
-
-  const roomId = currentRoomId;
-  if (roomId) {
-    try {
-      await RoomService.leaveRoom(getUserId(), roomId);
-    } catch (err) {
-      console.warn('leaveRoom failed during cleanupCall:', err);
-    }
-  }
-
-  // Clean up remote stream
-  try {
-    cleanupRemoteStream();
-    if (remoteVideoEl) remoteVideoEl.srcObject = null;
-  } catch (e) {
-    console.warn('Error cleaning remote stream during cleanupCall', e);
-  }
-
-  try {
-    if (pc) {
-      pc.close();
-      pc = null;
-    }
-  } catch (e) {
-    console.warn('Error closing pc during cleanupCall', e);
-  }
-
-  // Reset UI
-  try {
-    exitCallMode();
-  } catch (e) {}
-
-  updateStatus('Disconnected. Click "Start New Chat" to begin.');
-
-  // Do not prompt to save contact here — only prompt on explicit hangUp
-
-  // Reset partner/room tracking
-  partnerUserId = null;
-  currentRoomId = null;
-
-  clearUrlParam();
-
-  isCleaningUp = false;
-}
-
-// Listen for remote hangup signals dispatched by call-flow handlers and
-// delegate to the central hangUp() routine so UI and state are cleaned up
-window.addEventListener('remoteHangup', (ev) => {
-  try {
-    const { roomId, by, reason } = ev?.detail || {};
-    // Only act if this matches the current room
-    if (!roomId || roomId !== currentRoomId) return;
-    // Run remote cleanup (do not emit cancel)
-    cleanupCall({ reason: reason || 'remote_hangup' }).catch((e) =>
-      console.warn('cleanupCall failed after remoteHangup', e)
-    );
-  } catch (e) {
-    console.warn('Error handling remoteHangup event', e);
-  }
 });
 
+// ============================================================================
+
 async function cleanup() {
-  await hangUp();
+  // Call CallController.hangUp for page unload
+  await CallController.hangUp({ emitCancel: true, reason: 'page_unload' });
 
   cleanupMediaControls();
 
@@ -1449,19 +1480,16 @@ async function cleanup() {
     document.exitPictureInPicture().catch((err) => console.error(err));
   }
 
-  if (messagesUI && messagesUI.cleanup) {
-    messagesUI.cleanup();
-    messagesUI = null;
+  const state = CallController.getState();
+  if (state.messagesUI && state.messagesUI.cleanup) {
+    state.messagesUI.cleanup();
   }
 
-  // Reset state
-  role = null;
-  dataChannel = null;
+  // CallController.hangUp() already reset all call state
+  // No need to reset globals anymore
 
   // Clear URL parameter
   window.history.replaceState({}, document.title, window.location.pathname);
-
-  currentRoomLink = null;
   sharedVideoEl.src = '';
   syncStatus.textContent = '';
 

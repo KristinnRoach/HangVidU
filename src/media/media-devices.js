@@ -1,10 +1,7 @@
 // media-devices.js
 
 import { devDebug } from '../utils/dev/dev-utils.js';
-import {
-  userMediaAudioConstraints,
-  getOrientationAwareVideoConstraints,
-} from './constraints.js';
+import { getVideoConstraints, getAudioConstraints } from './constraints.js';
 
 // ===== UTILS =====
 
@@ -51,14 +48,12 @@ export async function switchCamera({
     return null;
   }
   const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-  const videoConstraintsForOrientation =
-    getOrientationAwareVideoConstraints(newFacingMode);
 
   try {
     // Get a new stream with consistent video constraints and audio
     const newStream = await navigator.mediaDevices.getUserMedia({
-      video: videoConstraintsForOrientation,
-      audio: userMediaAudioConstraints.default,
+      video: getVideoConstraints(newFacingMode),
+      audio: getAudioConstraints(),
     });
 
     const newVideoTrack = newStream.getVideoTracks()[0];
@@ -145,7 +140,7 @@ export async function handleOrientationChange({
   devDebug('Orientation change detected.');
   try {
     const videoTrack = localStream.getVideoTracks()[0];
-    const constraints = getOrientationAwareVideoConstraints(currentFacingMode);
+    const constraints = getVideoConstraints(currentFacingMode);
     devDebug('Applying constraints:', constraints);
     // Apply constraints to existing track (no new stream)
     await videoTrack.applyConstraints(constraints);

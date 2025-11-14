@@ -9,12 +9,9 @@
  * Each flow is self-contained and easy to follow from top to bottom.
  */
 
-import { ref } from 'firebase/database';
-import { onDataChange, rtdb } from '../storage/fb-rtdb/rtdb.js';
 import { getUserId } from '../firebase/auth.js';
 import { updateStatus } from '../utils/ui/status.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
-import { onCallRejected } from '../components/calling/calling-ui.js';
 
 import { drainIceCandidateQueue, setupIceCandidates } from '../webrtc/ice.js';
 import { setupConnectionStateHandlers } from '../webrtc/webrtc.js';
@@ -51,8 +48,6 @@ import RoomService from '../room.js';
  * @param {HTMLButtonElement} options.mutePartnerBtn - Mute partner button (required)
  * @param {Function} options.setupRemoteStream - Function to setup remote stream handler
  * @param {Function} options.setupWatchSync - Function to setup watch-together sync
- * @param {Function} options.onMemberJoined - Callback when partner joins
- * @param {Function} options.onMemberLeft - Callback when partner leaves
  * @param {string} [options.targetRoomId] - Specific room ID to use (optional, generates random if not provided)
  *
  * @returns {Promise<{ success: boolean, pc: RTCPeerConnection, roomId: string, roomLink: string, dataChannel: RTCDataChannel, messagesUI: object }>}
@@ -63,8 +58,6 @@ export async function createCall({
   mutePartnerBtn,
   setupRemoteStream,
   setupWatchSync,
-  onMemberJoined,
-  onMemberLeft,
   targetRoomId = null,
 }) {
   // ─────────────────────────────────────────────────────────────────────────
@@ -123,92 +116,8 @@ export async function createCall({
   // ─────────────────────────────────────────────────────────────────────────
   // 5. LISTEN FOR ANSWER FROM JOINER
   // ─────────────────────────────────────────────────────────────────────────
-  const answerRef = ref(rtdb, `rooms/${roomId}/answer`);
-  const answerCallback = async (snapshot) => {
-    const answer = snapshot.val();
-    if (answer) {
-      await setRemoteDescription(pc, answer, drainIceCandidateQueue);
-    }
-  };
-  onDataChange(answerRef, answerCallback, roomId);
-
-  // Also listen for a direct rejection signal for instant feedback
-  const rejectionRef = ref(rtdb, `rooms/${roomId}/rejection`);
-  let rejectionHandled = false;
-  const onRejection = async (snapshot) => {
-    const rej = snapshot.val();
-    if (!rej) return;
-
-    if (rejectionHandled) return;
-    rejectionHandled = true;
-
-    // If we already connected, ignore late rejection
-    if (pc?.connectionState === 'connected') return;
-
-    devDebug('Call rejected by partner', { roomId, rej });
-    // Let calling UI handle status/update if present
-    try {
-      await onCallRejected(rej.reason || 'user_rejected');
-    } catch (_) {
-      updateStatus('Call declined');
-    }
-
-    try {
-      await RoomService.leaveRoom(userId, roomId);
-    } catch (e) {
-      // non-fatal
-    }
-
-    try {
-      pc?.close();
-    } catch (_) {}
-  };
-  onDataChange(rejectionRef, onRejection, roomId);
-
-  // Also listen for a cancellation signal so the caller can react immediately
-  // when the callee hangs up (prevents frozen video on the caller side).
-  const cancellationRef = ref(rtdb, `rooms/${roomId}/cancellation`);
-  let cancellationHandled = false;
-  const onCancellation = async (snapshot) => {
-    const cancel = snapshot.val();
-    if (!cancel) return;
-    if (cancellationHandled) return;
-    cancellationHandled = true;
-
-    // If we already connected, still close and cleanup to avoid frozen frames
-    devDebug('Call cancelled by partner', { roomId, cancel });
-    try {
-      updateStatus('Partner disconnected');
-    } catch (_) {}
-
-    // Immediately clear remote video element to avoid a frozen last frame
-    try {
-      if (remoteVideoEl) {
-        remoteVideoEl.srcObject = null;
-      }
-    } catch (e) {
-      console.warn(
-        'Failed to clear remote video element after cancellation',
-        e
-      );
-    }
-
-    try {
-      pc?.close();
-    } catch (_) {}
-
-    // Notify application-level UI to run full cleanup (main hangUp)
-    try {
-      window.dispatchEvent(
-        new CustomEvent('remoteHangup', {
-          detail: { roomId, by: cancel.by, reason: cancel.reason },
-        })
-      );
-    } catch (e) {
-      console.warn('Failed to dispatch remoteHangup event', e);
-    }
-  };
-  onDataChange(cancellationRef, onCancellation, roomId);
+  // OLD: Moved to CallController.setupAnswerListener()
+  // Answer listener is now set up in CallController for proper tracking and cleanup
 
   // ─────────────────────────────────────────────────────────────────────────
   // 6. SETUP ROOM AND SYNC
@@ -216,19 +125,6 @@ export async function createCall({
 
   // 6a. Setup watch-together sync
   setupWatchSync(roomId, role, userId);
-
-  // 6b. Setup member join/leave listeners
-  RoomService.onMemberJoined(roomId, (snapshot) => {
-    if (snapshot.key !== userId) {
-      onMemberJoined(snapshot.key, roomId);
-    }
-  });
-
-  RoomService.onMemberLeft(roomId, (snapshot) => {
-    if (snapshot.key !== userId && pc?.connectionState === 'connected') {
-      onMemberLeft(snapshot.key);
-    }
-  });
 
   // ─────────────────────────────────────────────────────────────────────────
   // 7. RETURN SUCCESS WITH CONNECTION ARTIFACTS
@@ -269,8 +165,6 @@ export async function createCall({
  * @param {HTMLButtonElement} options.mutePartnerBtn - Mute partner button (required)
  * @param {Function} options.setupRemoteStream - Function to setup remote stream handler
  * @param {Function} options.setupWatchSync - Function to setup watch-together sync
- * @param {Function} options.onMemberJoined - Callback when partner joins
- * @param {Function} options.onMemberLeft - Callback when partner leaves
  *
  * @returns {Promise<{ success: boolean, pc: RTCPeerConnection, roomId: string, dataChannel: RTCDataChannel, messagesUI: object }>}
  */
@@ -281,8 +175,6 @@ export async function answerCall({
   mutePartnerBtn,
   setupRemoteStream,
   setupWatchSync,
-  onMemberJoined,
-  onMemberLeft,
 }) {
   // ─────────────────────────────────────────────────────────────────────────
   // 1. VALIDATE PREREQUISITES
@@ -364,45 +256,6 @@ export async function answerCall({
 
   devDebug('Peer connection created as joiner', { roomId });
 
-  // Listen for cancellation signal for joiner as well (callee may hang up)
-  const cancellationRefJoiner = ref(rtdb, `rooms/${roomId}/cancellation`);
-  let cancellationHandledJoiner = false;
-  const onCancellationJoiner = async (snapshot) => {
-    const cancel = snapshot.val();
-    if (!cancel) return;
-    if (cancellationHandledJoiner) return;
-    cancellationHandledJoiner = true;
-
-    devDebug('Call cancelled (joiner) by partner', { roomId, cancel });
-    try {
-      updateStatus('Partner disconnected');
-    } catch (_) {}
-
-    try {
-      if (remoteVideoEl) remoteVideoEl.srcObject = null;
-    } catch (e) {
-      console.warn(
-        'Failed to clear remote video element after cancellation (joiner)',
-        e
-      );
-    }
-
-    try {
-      pc?.close();
-    } catch (_) {}
-
-    try {
-      window.dispatchEvent(
-        new CustomEvent('remoteHangup', {
-          detail: { roomId, by: cancel.by, reason: cancel.reason },
-        })
-      );
-    } catch (e) {
-      console.warn('Failed to dispatch remoteHangup event (joiner)', e);
-    }
-  };
-  onDataChange(cancellationRefJoiner, onCancellationJoiner, roomId);
-
   // ─────────────────────────────────────────────────────────────────────────
   // 4. EXCHANGE SDP: SET OFFER, CREATE ANSWER
   // ─────────────────────────────────────────────────────────────────────────
@@ -431,18 +284,19 @@ export async function answerCall({
   // 5b. Join as member
   await RoomService.joinRoom(roomId, userId);
 
+  // OLD: Moved to CallController
   // 5c. Setup member join/leave listeners
-  RoomService.onMemberJoined(roomId, (snapshot) => {
-    if (snapshot.key !== userId) {
-      onMemberJoined(snapshot.key, roomId);
-    }
-  });
+  // RoomService.onMemberJoined(roomId, (snapshot) => {
+  //   if (snapshot.key !== userId) {
+  //     onMemberJoined(snapshot.key, roomId);
+  //   }
+  // });
 
-  RoomService.onMemberLeft(roomId, (snapshot) => {
-    if (snapshot.key !== userId && pc?.connectionState === 'connected') {
-      onMemberLeft(snapshot.key);
-    }
-  });
+  // RoomService.onMemberLeft(roomId, (snapshot) => {
+  //   if (snapshot.key !== userId && pc?.connectionState === 'connected') {
+  //     onMemberLeft(snapshot.key);
+  //   }
+  // });
 
   // ─────────────────────────────────────────────────────────────────────────
   // 6. RETURN SUCCESS WITH CONNECTION ARTIFACTS

@@ -78,6 +78,12 @@ export async function saveContact(contactUserId, roomId, lobbyElement) {
       await saveContactData(contactUserId, existingEntry.contactName, roomId);
       await renderContactsList(lobbyElement);
     }
+    // CRITICAL FIX: Re-attach listener even if contact already exists
+    // This ensures listener is active after call cleanup removed it
+    console.log(
+      `[CONTACT SAVE] Re-attaching listener for existing contact room: ${roomId}`
+    );
+    listenForIncomingOnRoom(roomId);
     return;
   }
 
