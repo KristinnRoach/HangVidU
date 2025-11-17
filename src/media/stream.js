@@ -14,7 +14,7 @@ import {
   getVideoConstraints,
 } from './constraints.js';
 import { updateStatus } from '../utils/ui/status.js';
-import { devDebug } from '../utils/dev/dev-utils.js';
+import { devDebug, isDev } from '../utils/dev/dev-utils.js';
 
 export const createLocalStream = async () => {
   const existingStream = getLocalStream(false); // (false) -> don't log null error
@@ -115,9 +115,7 @@ export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
         console.warn('Visibility override failed:', e);
       }
 
-      if (import.meta.env.DEV) {
-        remoteVideoEl.style.border = '8px solid red';
-      }
+      // if (isDev()) remoteVideoEl.style.border = '8px solid red';
     }
   };
   return true;
