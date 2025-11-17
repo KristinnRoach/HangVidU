@@ -1,10 +1,26 @@
 import { onClickOutside } from '../../utils/ui/clickOutside';
 import { hideElement, isHidden, showElement } from '../../utils/ui/ui-utils';
 
+const supportsCssAnchors =
+  CSS.supports?.('position-anchor: --msg-toggle') &&
+  CSS.supports?.('right: anchor(right)') &&
+  CSS.supports?.('bottom: anchor(top)');
+
+function isOnScreen(el) {
+  const r = el.getBoundingClientRect();
+  return (
+    r.top >= 0 &&
+    r.left >= 0 &&
+    r.bottom <= window.innerHeight &&
+    r.right <= window.innerWidth
+  );
+}
+
 // messages-ui.js
 export function initMessagesUI(sendFn) {
   const container = document.createElement('div');
   container.innerHTML = `
+  <div id="messages-ui-container" >
     <div id="messages-toggle-btn" class="hidden">
       <button>
         💬
@@ -17,6 +33,7 @@ export function initMessagesUI(sendFn) {
         <button style="padding:6px 12px;">Send</button>
       </form>
     </div>
+  </div>
   `;
   document.body.appendChild(container);
 
@@ -25,6 +42,8 @@ export function initMessagesUI(sendFn) {
   const messagesMessages = container.querySelector('#messages-messages');
   const messagesForm = container.querySelector('#messages-form');
   const messagesInput = container.querySelector('#messages-input');
+  const originalParent = messagesToggleBtn?.parentNode || null;
+  const originalNextSibling = messagesToggleBtn?.nextSibling || null;
 
   if (
     !messagesToggleBtn ||
@@ -38,6 +57,87 @@ export function initMessagesUI(sendFn) {
   }
 
   let unreadMessagesCount = 0;
+
+  // Minimal anchor-to-toggle positioning (no new APIs, robust)
+  let repositionHandlersAttached = false;
+  function positionMessagesBox() {
+    if (
+      !messagesToggleBtn ||
+      !messagesBox ||
+      messagesBox.classList.contains('hidden')
+    )
+      return;
+
+    const btnRect = messagesToggleBtn.getBoundingClientRect();
+    const boxRect = messagesBox.getBoundingClientRect();
+
+    // Prefer above the button; flip below if not enough space
+    const gap = 8;
+    let top = btnRect.top - boxRect.height - gap;
+    if (top < 8) top = btnRect.bottom + gap;
+
+    // Center horizontally over the toggle; clamp to viewport
+    let left = btnRect.left + btnRect.width / 2 - boxRect.width / 2;
+    const maxLeft = window.innerWidth - boxRect.width - 8;
+    if (left < 8) left = 8;
+    if (left > maxLeft) left = maxLeft;
+
+    messagesBox.style.top = `${Math.round(top)}px`;
+    messagesBox.style.left = `${Math.round(left)}px`;
+  }
+
+  function attachRepositionHandlers() {
+    if (repositionHandlersAttached) return;
+    repositionHandlersAttached = true;
+    window.addEventListener('resize', positionMessagesBox, { passive: true });
+    window.addEventListener('scroll', positionMessagesBox, { passive: true });
+    window.addEventListener('orientationchange', positionMessagesBox, {
+      passive: true,
+    });
+  }
+
+  function detachRepositionHandlers() {
+    if (!repositionHandlersAttached) return;
+    repositionHandlersAttached = false;
+    window.removeEventListener('resize', positionMessagesBox);
+    window.removeEventListener('scroll', positionMessagesBox);
+    window.removeEventListener('orientationchange', positionMessagesBox);
+  }
+
+  // Responsive: move the toggle into top bar on small screens for containment
+  const topRightMenu =
+    document.querySelector('.top-bar .top-right-menu') ||
+    document.querySelector('.top-right-menu');
+
+  function moveToggleToTopBar() {
+    if (!messagesToggleBtn || !topRightMenu) return;
+    if (messagesToggleBtn.parentNode !== topRightMenu) {
+      topRightMenu.appendChild(messagesToggleBtn);
+    }
+  }
+
+  function moveToggleBack() {
+    if (!messagesToggleBtn || !originalParent) return;
+    if (messagesToggleBtn.parentNode !== originalParent) {
+      if (
+        originalNextSibling &&
+        originalNextSibling.parentNode === originalParent
+      ) {
+        originalParent.insertBefore(messagesToggleBtn, originalNextSibling);
+      } else {
+        originalParent.appendChild(messagesToggleBtn);
+      }
+    }
+  }
+
+  const mq = window.matchMedia('(max-width: 800px)');
+  const applyPlacement = (e) => {
+    if (e.matches) moveToggleToTopBar();
+    else moveToggleBack();
+  };
+  // Apply immediately and on changes
+  applyPlacement(mq);
+  mq.addEventListener('change', applyPlacement);
 
   // Observe changes to messagesBox's class to clear unread count when shown
   const observer = new MutationObserver((mutations) => {
@@ -58,8 +158,27 @@ export function initMessagesUI(sendFn) {
     messagesBox.classList.toggle('hidden');
     if (!messagesBox.classList.contains('hidden')) {
       messagesInput.focus();
+
+      // Fallback if needed
+      if (!supportsCssAnchors) {
+        positionMessagesBox();
+        attachRepositionHandlers();
+      } else {
+        requestAnimationFrame(() => {
+          if (!isOnScreen(messagesBox)) {
+            positionMessagesBox();
+            attachRepositionHandlers();
+          }
+        });
+      }
     } else {
       messagesInput.blur();
+      detachRepositionHandlers(); // idempotent (no-op if not attached)
+      // Clear inline offsets so CSS anchoring can fully take over next open
+      messagesBox.style.top = '';
+      messagesBox.style.left = '';
+      messagesBox.style.bottom = '';
+      messagesBox.style.right = '';
     }
   }
 
@@ -69,6 +188,7 @@ export function initMessagesUI(sendFn) {
     messagesBox,
     () => {
       hideElement(messagesBox);
+      detachRepositionHandlers();
     },
     { ignore: [messagesToggleBtn], esc: true }
   );
@@ -122,9 +242,13 @@ export function initMessagesUI(sendFn) {
   });
 
   function cleanup() {
+    try {
+      mq.removeEventListener('change', applyPlacement);
+    } catch {}
+    // Ensure toggle restored to original parent on cleanup
+    moveToggleBack();
+    detachRepositionHandlers();
     observer.disconnect();
-    if (messagesBox)
-      messagesBox.removeEventListener('click', onClickMessagesBox);
     if (messagesToggleBtn) hideMessagesToggle();
     // Remove the container from the DOM
     if (container && container.parentNode) {

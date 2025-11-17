@@ -60,6 +60,7 @@ import {
   remoteBoxEl,
   sharedBoxEl,
   lobbyDiv,
+  lobbyCallBtn,
   titleAuthBar,
   // createLinkBtn,
   // copyLinkBtn,
@@ -145,6 +146,9 @@ export const isRemoteVideoVideoActive = () => {
 // ============================================================================
 
 async function init() {
+  initUI();
+  // exitCallMode(); // Ensure UI is in initial state
+
   // Validate critical elements first
   const elements = getElements();
   const criticalElements = [
@@ -172,39 +176,7 @@ async function init() {
     const authComponent = initializeAuthUI(titleAuthBar);
     if (authComponent) cleanupFunctions.push(authComponent.dispose);
 
-    await setUpLocalStream(localVideoEl);
-
-    initializeMediaControls({
-      getLocalStream,
-      getLocalVideo: () => localVideoEl,
-      getRemoteVideo: () => remoteVideoEl,
-      getPeerConnection: () => CallController.getState().pc,
-      setLocalStream,
-
-      micBtn,
-      cameraBtn,
-      switchCameraBtn,
-      mutePartnerBtn,
-      fullscreenPartnerBtn,
-    });
-
-    if (localVideoEl) {
-      localVideoEl.addEventListener(
-        'enterpictureinpicture',
-        () => localBoxEl && hideElement(localBoxEl)
-      );
-
-      localVideoEl.addEventListener('leavepictureinpicture', () => {
-        if (
-          localBoxEl &&
-          !(isWatchModeActive() && isRemoteVideoVideoActive())
-        ) {
-          showElement(localBoxEl);
-        }
-      });
-    }
-
-    exitCallMode(); // Ensure UI is in initial state
+    await initLocalStreamAndMedia(); // Todo: lazy init on first call?
 
     return true;
   } catch (error) {
@@ -216,6 +188,51 @@ async function init() {
 
 export function clearUrlParam() {
   window.history.replaceState({}, document.title, window.location.pathname);
+}
+
+// Todo: remove flag or finialize usage
+let hasInitLocalStreamAndMedia = false;
+
+async function initLocalStreamAndMedia() {
+  if (hasInitLocalStreamAndMedia) return;
+  hasInitLocalStreamAndMedia = true;
+
+  await setUpLocalStream(localVideoEl);
+
+  initializeMediaControls({
+    getLocalStream,
+    getLocalVideo: () => localVideoEl,
+    getRemoteVideo: () => remoteVideoEl,
+    getPeerConnection: () => CallController.getState().pc,
+    setLocalStream,
+
+    micBtn,
+    cameraBtn,
+    switchCameraBtn,
+    mutePartnerBtn,
+    fullscreenPartnerBtn,
+  });
+
+  if (localVideoEl) {
+    localVideoEl.addEventListener(
+      'enterpictureinpicture',
+      () => localBoxEl && hideElement(localBoxEl)
+    );
+
+    localVideoEl.addEventListener('leavepictureinpicture', () => {
+      if (localBoxEl && !(isWatchModeActive() && isRemoteVideoVideoActive())) {
+        showElement(localBoxEl);
+      }
+    });
+  }
+}
+
+function initUI() {
+  hideElement(remoteBoxEl);
+  hideElement(localBoxEl);
+  hideElement(sharedBoxEl);
+  hideElement(chatControls);
+  // hideElement(lobbyDiv);
 }
 
 // ============================================================================
@@ -285,6 +302,8 @@ export async function joinOrCreateRoomWithId(
       }
     );
 
+    await initLocalStreamAndMedia();
+
     //  const result = await createCall(getCallOptions(customRoomId));
     const result = await CallController.createCall(
       getCallOptions(customRoomId)
@@ -324,6 +343,8 @@ export async function joinOrCreateRoomWithId(
         memberCount: status.memberCount || 0,
       }
     );
+
+    await initLocalStreamAndMedia();
 
     const result = await CallController.createCall(
       getCallOptions(customRoomId)
@@ -912,12 +933,15 @@ export let enterCallMode = () => {
   isInCallMode = true;
 
   showElement(remoteBoxEl);
+  showElement(localBoxEl);
   placeInSmallFrame(localBoxEl);
 
   hideElement(lobbyDiv);
+  hideElement(lobbyCallBtn);
 
   callBtn.disabled = true;
   callBtn.classList.add('disabled');
+
   hangUpBtn.disabled = false;
   hangUpBtn.classList.remove('disabled');
   mutePartnerBtn.disabled = false;
@@ -970,7 +994,7 @@ export let enterCallMode = () => {
   }
 };
 
-export let exitCallMode = (force = true) => {
+export let exitCallMode = (force = false) => {
   // ! Temp force=true since this is used as general reset for UI. Todo: refactor later.
   if (!isInCallMode && !force) return;
   isInCallMode = false;
@@ -982,6 +1006,9 @@ export let exitCallMode = (force = true) => {
 
   callBtn.disabled = false;
   callBtn.classList.remove('disabled');
+
+  showElement(lobbyCallBtn);
+
   hangUpBtn.disabled = true;
   hangUpBtn.classList.add('disabled');
   mutePartnerBtn.disabled = true;
@@ -1018,6 +1045,7 @@ export function enterWatchMode() {
   }
 
   // Minimize further
+  hideElement(lobbyCallBtn);
   hideElement(cameraBtn);
   hideElement(switchCameraBtn);
 
@@ -1108,6 +1136,7 @@ export function exitWatchMode() {
 
   if (!isRemoteVideoVideoActive()) {
     showElement(lobbyDiv);
+    showElement(lobbyCallBtn);
   }
 
   setWatchMode(false);
@@ -1224,11 +1253,15 @@ async function handleCopyLink() {
   }
 }
 
-callBtn.onclick = async () => {
+const handleCall = async () => {
+  await initLocalStreamAndMedia();
   // const result = await createCall(getCallOptions());
   const result = await CallController.createCall(getCallOptions());
   applyCallResult(result, true);
 };
+
+callBtn.onclick = handleCall;
+lobbyCallBtn.onclick = handleCall;
 
 // createLinkBtn.onclick = async () => {
 //   const result = await createCall(getCallOptions());
@@ -1334,10 +1367,10 @@ window.onload = async () => {
   };
 
   // Initialize join room form
-  const joinRoomContainer = document.getElementById('join-room-container');
-  if (joinRoomContainer) {
-    initJoinRoomForm(joinRoomContainer, onJoinRoomSubmit);
-  }
+  // const joinRoomContainer = document.getElementById('join-room-container');
+  // if (joinRoomContainer) {
+  //   initJoinRoomForm(joinRoomContainer, onJoinRoomSubmit);
+  // }
 
   // Start listening for incoming calls on any saved/recent room ids FIRST
   await startListeningForSavedRooms().catch((e) =>

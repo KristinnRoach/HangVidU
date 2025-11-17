@@ -129,6 +129,9 @@ export async function renderContactsList(lobbyElement) {
   if (contactIds.length === 0) {
     contactsContainer.innerHTML =
       '<p style="color: #666;">No saved contacts yet.</p>';
+
+    // Set display: none to avoid taking up space when no saved contacts
+    contactsContainer.style.display = 'none';
     return;
   }
 
@@ -145,15 +148,6 @@ export async function renderContactsList(lobbyElement) {
                 class="contact-call-btn" 
                 data-room-id="${contact.roomId}"
                 data-contact-name="${contact.contactName}"
-                style="
-                  padding: 6px 12px;
-                  background: #4CAF50;
-                  color: white;
-                  border: none;
-                  border-radius: 4px;
-                  cursor: pointer;
-                  font-size: 14px;
-                "
               >
                 Call
               </button>
@@ -161,15 +155,6 @@ export async function renderContactsList(lobbyElement) {
               <button 
                 class="contact-delete-btn" 
                 data-contact-id="${id}"
-                style="
-                  padding: 4px 8px;
-                  background: #f44336;
-                  color: white;
-                  border: none;
-                  border-radius: 4px;
-                  cursor: pointer;
-                  font-size: 12px;
-                "
               >
                 ✕
               </button>

@@ -5,68 +5,76 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#82b5ecff" />
     <title>HangVidU</title>
-    <!-- <link rel="stylesheet" href="/src/styles/reset/reset-normalize.css" /> -->
+    <link rel="stylesheet" href="/src/styles/reset/reset-normalize.css" />
     <link rel="stylesheet" href="/src/styles/main.css" />
     <link rel="icon" href="/favicon.ico" />
   </head>
   <body>
     <div class="main-wrapper">
-      <div class="top-right-menu">
-        <div class="search-section">
-          <div class="search-controls">
-            <input
-              class="hidden"
-              type="text"
-              id="searchQuery"
-              placeholder="Search YouTube videos..."
-            />
-            <button id="searchBtn" title="Search YouTube">
-              <i class="fa fa-search"></i>
-            </button>
-          </div>
-          <div id="searchResults" class="search-results hidden"></div>
-        </div>
-      </div>
-
-      <div id="lobby" class="lobby">
+      <div id="top-bar" class="top-bar">
         <div id="title-auth-bar" class="title-auth-bar">
-          <h1 id="app-title-h1" class="title app-title">
+          <h1 id="app-title-h1" class="app-title">
             <a id="app-title-a"> <span id="app-title-span">HangVidU</span></a>
           </h1>
         </div>
 
-        <div id="join-room-container"></div>
+        <!-- <div id="join-room-container"></div> -->
 
-        <!-- <p id="lobby-text" class="p">
-          Or create a new link and share it with a friend:
-        </p>
+        <div class="top-right-menu">
+          <div class="search-section">
+            <div class="search-controls">
+              <input
+                class="hidden"
+                type="text"
+                id="searchQuery"
+                placeholder="Search YouTube videos..."
+              />
+              <button id="searchBtn" title="Search YouTube">
+                <i class="fa fa-search"></i>
+              </button>
+            </div>
+            <div id="searchResults" class="search-results hidden"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="relative-wrapper">
+        <div id="videos">
+          <div id="local-video-box" class="box video-box local-video-box">
+            <video id="local-video-el" autoplay playsinline muted></video>
+          </div>
+
+          <div id="remote-video-box" class="box video-box remote-video-box">
+            <video id="remote-video-el" autoplay playsinline></video>
+          </div>
+
+          <div
+            id="shared-video-box"
+            class="box video-box shared-video-box hidden"
+          >
+            <video id="shared-video-el" controls playsinline></video>
+          </div>
+
+          <div
+            id="yt-video-box"
+            class="box video-box yt-video-box hidden"
+          ></div>
+        </div>
+
+        <div id="lobby" class="lobby">
+          <button class="lobby-btn" id="lobby-call-btn">
+            <i class="fa fa-phone"></i>
+          </button>
+          <!-- <p id="lobby-text" class="p">
+          Or create a new link and share it with a friend:  </p>
         <div class="flex-row">
           <button id="create-link-btn" title="Create new chat link">
             Create Link
           </button>
           <button id="copy-link-btn" title="Copy chat link" disabled>
             <i class="fa fa-copy"></i>
-          </button>
-        </div> -->
-      </div>
-
-      <div id="videos">
-        <div id="local-video-box" class="box video-box local-video-box">
-          <video id="local-video-el" autoplay playsinline muted></video>
+          </button>     </div> -->
         </div>
-
-        <div id="remote-video-box" class="box video-box remote-video-box">
-          <video id="remote-video-el" autoplay playsinline></video>
-        </div>
-
-        <div
-          id="shared-video-box"
-          class="box video-box shared-video-box hidden"
-        >
-          <video id="shared-video-el" controls playsinline></video>
-        </div>
-
-        <div id="yt-video-box" class="box video-box yt-video-box hidden"></div>
       </div>
 
       <div id="chat-controls" class="chat-controls bottom">

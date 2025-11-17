@@ -17,17 +17,86 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Satoshi', 'Roboto', sans-serif;
   background: #1a1a1a;
   color: #ccc;
-  min-height: 100vh;
+}
+
+h1 {
+  text-align: center;
+  font-size: 2rem;
+  color: #fff;
+}
+
+a {
+  color: #4c81af;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+  text-shadow: 0 0 5px rgba(85, 109, 137, 0.282);
+}
+
+a span {
+  text-decoration: none;
+}
+
+input[type='text'] {
+  padding: 10px 15px;
+  border: 1px solid #444;
+  border-radius: 5px;
+  background: #2a2a2a;
+  color: #fff;
+  font-size: 16px;
+  min-width: 200px;
+}
+
+input[type='text']:focus {
+  outline: none;
+  border-color: #4caf50;
+}
+
+button {
+  border: none;
+  border-radius: 5px;
+
+  margin: 0px;
+  line-height: 0%;
+
+  padding: 4px 12px;
+
+  font-size: 16px;
+
+  background-color: #4caf50;
+  color: white;
+
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+button:hover:not(:disabled) {
+  background-color: #39843d;
+}
+
+button:disabled {
+  background-color: #555;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .main-wrapper {
   position: relative;
-  place-content: center;
-  height: 100vh;
-  width: 100vw;
+  height: 100dvh;
+  width: 100dvw;
+
+  overflow: hidden;
+}
+
+.relative-wrapper {
+  position: relative;
+  height: 94%;
+  width: auto;
 }
 
 .flex-row {
@@ -105,53 +174,120 @@ body {
 /* LOBBY */
 
 #lobby {
+  height: 86%;
+  width: 100%;
+
   display: flex;
   flex-direction: column;
+  justify-content: space-evenly;
   align-items: center;
-  justify-content: center;
-  place-self: center;
 
-  margin: 0 auto;
-  gap: 1rem;
-  padding: 1.5rem;
-  font-size: 1.2rem;
+  row-gap: 2rem;
+}
+
+#lobby-call-btn {
+  display: flex;
+
+  place-self: center;
+  padding: 2rem;
+
+  /* width: 20dvw;
+  height: 20dvw; */
+  aspect-ratio: 1;
+
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+
+  /* box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 5 25px 45px rgba(0, 0, 0, 0.8); */
+  box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.15);
+
+  /* fa-phone icon styles: */
+  color: blue;
+  font-size: 8rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+
+  transition: color 0.3s ease, background-color 0.3s ease;
+}
+
+#lobby-call-btn:hover {
+  box-shadow: inset 0 20px 40px rgba(0, 0, 0, 0.3);
+
+  /* fa-phone icon styles: */
+  color: rgb(55, 162, 255);
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), 0 -1px 0 rgba(255, 255, 255, 0.3);
+}
+
+#lobby.hidden {
+  display: none;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.top-bar {
+  background: #121212;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 
   position: relative;
-  z-index: var(--z-low);
+  z-index: var(--z-mid);
 
-  background: #0f0f0f;
-  border-radius: 12px;
-  max-width: 90vw;
-  box-shadow: 0 4px 12px rgba(11, 11, 11, 0.5);
-
-  color: #bbb;
-}
-
-#lobby *,
-#lobby > * {
-  text-shadow: 4px 5px 10px rgba(19, 19, 19, 0.211);
-}
-
-#lobby button {
-  background-color: #1c78c3e3;
-  text-shadow: 1px 1px 5px rgba(36, 36, 36, 0.885);
-  color: rgba(199, 199, 199, 0.999);
-}
-
-#lobby-text {
-  margin: 1rem auto;
-  text-align: center;
-  text-shadow: 1px 1px 5px rgba(36, 36, 36, 0.885);
-}
-
-#lobby > .title-auth-bar {
   display: flex;
   flex-direction: row;
   width: 100%;
-  flex-wrap: wrap;
-  justify-content: space-evenly;
+  height: auto;
+
+  margin: 0 auto;
+  padding: 0.5rem 0.75rem;
+
   align-items: center;
-  gap: 1rem;
+  justify-content: space-between;
+}
+
+.title-auth-bar {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  justify-content: space-between;
+  column-gap: 1.5rem;
+
+  margin-right: 1rem;
+}
+
+#app-title-h1 {
+  font-size: 2rem;
+  margin: 0 0;
+  padding: 0 0;
+  border: none;
+}
+
+#app-title-a {
+  color: #4c81af;
+  height: 100%;
+  text-decoration: none;
+  text-decoration: underline #739cc07b;
+}
+
+#app-title-a:hover {
+  text-decoration: underline #739cc0d8;
+  cursor: grab;
+}
+
+#app-title-a:active {
+  text-decoration: underline #739cc0d8;
+  cursor: grabbing;
+}
+
+#app-title-span {
+  margin: 0;
+  padding: 0;
+}
+
+/* .auth-component { } */
+
+.top-bar button {
+  height: 35px;
 }
 
 .user-info {
@@ -160,18 +296,34 @@ body {
   text-align: center;
 }
 
-.auth button {
-  position: relative;
-  z-index: var(--z-mid);
-  pointer-events: auto;
+.top-right-menu {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
 }
 
-/* Ensure auth buttons are unclickable when lobby is hidden */
-#lobby.hidden .auth button,
-#lobby.unclickable .auth button {
-  pointer-events: none;
+/* Remove background color on smaller screens */
+@media (max-width: 800px) {
+  .top-bar {
+    background-color: transparent;
+    box-shadow: none;
+  }
+
+  .top-bar .top-right-menu {
+    background-color: transparent;
+    box-shadow: none;
+  }
 }
 
+/* Hide title on small screens */
+@media (max-width: 650px) {
+  #app-title-h1 {
+    display: none;
+  }
+}
+
+/* 
 #create-link-btn,
 #copy-link-btn {
   opacity: 1;
@@ -184,28 +336,9 @@ body {
   opacity: 0;
   pointer-events: none;
   transition: opacity 200ms;
-}
+} */
 
-#lobby.hidden {
-  opacity: 0;
-  pointer-events: none;
-  visibility: hidden;
-}
-
-#app-title-h1 {
-  text-align: center;
-  font-size: 2.5rem;
-}
-
-#app-title-a {
-  color: #4c81af;
-}
-
-#app-title-a:hover {
-  text-decoration: underline;
-}
-
-/* #app-title-span {} */
+/* HIDE/SHOW */
 
 #yt-video-box,
 #shared-video-box,
@@ -222,7 +355,6 @@ body {
 .video-box.hidden,
 #searchQuery.hidden,
 #searchResults.hidden,
-#messages-toggle-btn.hidden,
 #mute-btn.hidden,
 #call-btn.hidden,
 #hang-up-btn.hidden,
@@ -230,6 +362,7 @@ body {
 #camera-btn.hidden,
 #install-btn.hidden,
 .chat-btn.hidden,
+#messages-toggle-btn.hidden,
 .messages-box.hidden,
 .top-right-menu.hidden {
   opacity: 0 !important; /* Todo: Remove !important */
@@ -241,99 +374,118 @@ body {
   top: -9999px;
 }
 
+/* MESSAGES UI */
+
+.messages-ui-container {
+  background-color: green;
+  border: solid 2px red;
+
+  color: red;
+}
+
 #messages-toggle-btn {
-  position: fixed;
+  position: absolute;
   bottom: 20px;
   right: 20px;
-  /* Ensure toggle is above chat controls bar for clickability */
-  z-index: var(--z-high);
   pointer-events: auto;
   touch-action: manipulation;
+
+  z-index: var(--z-high);
+
+  /* CSS Anchor Positioning (2025) */
+  anchor-name: --msg-toggle;
 }
 
 #messages-toggle-btn button {
-  padding: 10px 15px;
+  font-size: 1.5rem;
+
+  margin: 0;
+  padding: 1.5rem 1rem;
+
   border-radius: 50%;
   background: #007bff;
   color: #fff;
   border: none;
   cursor: pointer;
-  font-size: 16px;
+
+  transform-origin: bottom center;
+  will-change: transform, box-shadow;
 }
 
 #messages-toggle-btn.new-message button {
-  animation: bounce 1s infinite;
+  animation: bounce 0.8s ease-out 3;
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  20% {
+    transform: translateY(8px);
+  }
+  40% {
+    transform: translateY(-16px);
+  }
+  55% {
+    transform: translateY(0);
+  }
+  75% {
+    transform: translateY(-6px);
+  }
 }
 
 .messages-box {
-  position: fixed;
-  bottom: 80px;
-  right: 20px;
-  width: 300px;
-  max-height: 400px;
-  background: #2a2a2a;
-  border: 1px solid #444;
-  border-radius: 8px;
   display: flex;
   flex-direction: column;
+
+  position: fixed;
+  margin: 0.5rem;
+
   padding: 10px;
+  border: 1px solid #444;
+  border-radius: 8px;
+
+  width: 300px;
+  max-height: 400px;
+
+  background: #2a2a2a;
   z-index: var(--z-mid);
 }
 
-h1 {
-  text-align: center;
-  font-size: 2rem;
-  color: #fff;
+/* Contain the toggle inside the top bar on small screens */
+@media (max-width: 800px) {
+  .top-bar #messages-toggle-btn {
+    position: static;
+    bottom: auto;
+    right: auto;
+    z-index: auto;
+  }
+
+  .top-bar #messages-toggle-btn button {
+    padding: 8px 10px;
+    font-size: 1.2rem;
+  }
 }
 
-a {
-  color: #4c81af;
-  text-decoration: none;
-}
+/* CSS Anchor Positioning with automatic flip (progressive enhancement) */
+@supports (position-anchor: --msg-toggle) and (right: anchor(right)) and
+  (bottom: anchor(top)) {
+  /* Default: toggle is bottom (right) -> anchor above */
+  .messages-box {
+    position-anchor: --msg-toggle;
+    bottom: anchor(top);
+    right: anchor(right);
+  }
 
-a:hover {
-  text-decoration: underline;
-  text-shadow: 0 0 5px rgba(85, 109, 137, 0.282);
-}
-
-a span {
-  text-decoration: none;
-}
-
-input[type='text'] {
-  padding: 10px 15px;
-  border: 1px solid #444;
-  border-radius: 5px;
-  background: #2a2a2a;
-  color: #fff;
-  font-size: 16px;
-  min-width: 200px;
-}
-
-input[type='text']:focus {
-  outline: none;
-  border-color: #4caf50;
-}
-
-button {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 5px;
-  background-color: #4caf50;
-  color: white;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-button:hover:not(:disabled) {
-  background-color: #39843d;
-}
-
-button:disabled {
-  background-color: #555;
-  cursor: not-allowed;
-  opacity: 0.6;
+  /* Small screens: toggle is in top bar → anchor below */
+  @media (max-width: 800px) {
+    .messages-box {
+      top: anchor(bottom);
+      bottom: auto;
+      /* right remains anchored via default rule */
+    }
+  }
 }
 
 #hangUp {
@@ -424,7 +576,7 @@ button:disabled {
   width: fit-content;
   max-width: 900px;
   height: fit-content;
-  max-height: 100vh;
+  max-height: 90vh;
   background: transparent;
 }
 
@@ -550,9 +702,9 @@ button:disabled {
     align-self: center;
   }
 
-  .search-controls {
+  /* .search-controls {
     flex-direction: column;
-  }
+  } */
 
   .search-controls input,
   .search-controls button {
@@ -624,7 +776,8 @@ button:disabled {
   z-index: var(--z-low);
   display: grid;
   grid-template-columns: 1fr;
-  height: 100vh;
+
+  height: 100%;
   width: 100%;
   overflow: hidden;
   /* Allow clicks to pass through when videos are behind UI */
@@ -825,20 +978,26 @@ button:disabled {
   .chat-btn {
     padding: 14px;
   }
-
-  .chat-btn.disabled {
-    /* Save space by removing disabled chat buttons on mobile */
-    display: none;
-  }
 }
 
 #call-btn {
   background: #2196f3;
-  transition: background-color 0.3s;
+  transition: background-color 0.3s, transform 0.3s, padding 0.3s;
 }
 
 #call-btn:hover:not(:disabled) {
   background: #1976d2;
+}
+
+/* Large call button for pre-call state */
+#call-btn.call-btn-large {
+  padding: 40px;
+  font-size: 1.5rem;
+  transform: scale(1.2);
+}
+
+#call-btn.call-btn-large:hover:not(:disabled) {
+  transform: scale(1.25);
 }
 
 #hang-up-btn {
@@ -853,23 +1012,12 @@ button:disabled {
   background-color: rgb(255, 80, 80, 1);
 }
 
-.top-right-menu {
-  position: absolute;
-  top: 0px;
-  right: 0px;
-  z-index: var(--z-mid);
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
-  height: fit-content;
-  margin-top: 15px;
-  margin-right: 15px;
-  gap: 10px;
-}
-
-.top-right-menu button {
-  height: 40px;
+/* HIDE DISABLED BUTTONS */
+@media (max-width: 768px) {
+  /* Save space by removing disabled buttons on mobile */
+  button:disabled {
+    display: none;
+  }
 }
 
 /* Contacts */
@@ -904,10 +1052,9 @@ button:disabled {
 }
 
 .contact-call-btn {
-  flex: 1;
   background: #4caf50;
   border: none;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.9rem;
@@ -922,7 +1069,7 @@ button:disabled {
 .contact-delete-btn {
   background: #f44336;
   border: none;
-  padding: 0.5rem 0.75rem;
+  padding: 0.75rem;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.8rem;

@@ -11,7 +11,7 @@ import createComponent from '../../utils/dom/component.js';
 
 let authComponent = null;
 
-export const initializeAuthUI = (parentElement) => {
+export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
   if (authComponent) return authComponent;
 
   if (!parentElement) {
@@ -20,6 +20,11 @@ export const initializeAuthUI = (parentElement) => {
   }
 
   let unsubscribe = null; // tied to component lifecycle via onMount/onCleanup
+  let loginBtnMarginRightPx = 10;
+
+  if (typeof gapBetweenBtns === 'number') {
+    loginBtnMarginRightPx = gapBetweenBtns;
+  }
 
   // Create reactive component
   authComponent = createComponent({
@@ -28,10 +33,11 @@ export const initializeAuthUI = (parentElement) => {
       userName: 'Guest User',
       loginDisabledAttr: '',
       logoutDisabledAttr: 'disabled',
+      loginBtnMarginRightPx,
     },
     template: `
-      <button id="goog-login-btn" onclick="handleLogin" \${loginDisabledAttr}>Login</button>
-      <button id="goog-logout-btn" onclick="handleLogout" \${logoutDisabledAttr}>Logout</button>
+      <button style="margin-right: \${loginBtnMarginRightPx}px" id="goog-login-btn" class="login-btn" onclick="handleLogin" \${loginDisabledAttr}>Login</button>
+      <button id="goog-logout-btn" class="logout-btn" onclick="handleLogout" \${logoutDisabledAttr}>Logout</button>
       <div class="user-info">\${isLoggedIn ? 'Logged in: ' + userName : 'Logged out'}</div>
     `,
     handlers: {
@@ -56,7 +62,7 @@ export const initializeAuthUI = (parentElement) => {
       // Always clear the singleton reference on cleanup
       authComponent = null;
     },
-    className: 'auth flex-row',
+    className: 'auth-component',
     parent: parentElement,
   });
 
