@@ -134,6 +134,8 @@ export async function renderContactsList(lobbyElement) {
     contactsContainer.style.display = 'none';
     return;
   }
+  // Ensure container is visible when contacts exist (if using inline display: none above)
+  contactsContainer.style.display = '';
 
   // Render contact items
   contactsContainer.innerHTML = `

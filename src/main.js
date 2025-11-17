@@ -995,14 +995,12 @@ export let enterCallMode = () => {
 };
 
 export let exitCallMode = (force = false) => {
-  // ! Temp force=true since this is used as general reset for UI. Todo: refactor later.
+  // Todo: remove "force" flag (used for quick reset during testing)
   if (!isInCallMode && !force) return;
   isInCallMode = false;
 
   removeFromSmallFrame(remoteBoxEl);
   hideElement(remoteBoxEl);
-  placeInSmallFrame(localBoxEl); // Always keep local video in small frame
-  showElement(localBoxEl);
 
   callBtn.disabled = false;
   callBtn.classList.remove('disabled');
@@ -1019,8 +1017,13 @@ export let exitCallMode = (force = false) => {
     cleanupChatControlAutoHide = null;
   }
 
-  showElement(chatControls);
   showElement(lobbyDiv);
+
+  if (!isWatchModeActive()) {
+    placeInSmallFrame(localBoxEl); // Always keep local video in small frame
+    showElement(localBoxEl);
+    showElement(chatControls);
+  }
 };
 
 export function enterWatchMode() {
