@@ -189,6 +189,13 @@ export function initMessagesUI(sendFn) {
     () => {
       hideElement(messagesBox);
       detachRepositionHandlers();
+
+      // TODO: Check if clearing the offsets below is redundant:
+      // Clear inline offsets so CSS anchoring can fully take over next open
+      messagesBox.style.top = '';
+      messagesBox.style.left = '';
+      messagesBox.style.bottom = '';
+      messagesBox.style.right = '';
     },
     { ignore: [messagesToggleBtn], esc: true }
   );

@@ -265,7 +265,6 @@ button:disabled {
 #app-title-a {
   color: #4c81af;
   height: 100%;
-  text-decoration: none;
   text-decoration: underline #739cc07b;
 }
 
@@ -376,12 +375,11 @@ button:disabled {
 
 /* MESSAGES UI */
 
-.messages-ui-container {
+/* .messages-ui-container {
   background-color: green;
   border: solid 2px red;
-
   color: red;
-}
+} */
 
 #messages-toggle-btn {
   position: absolute;
