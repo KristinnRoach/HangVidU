@@ -9,6 +9,7 @@ import {
 } from 'firebase/auth';
 import { app } from './firebase.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
+import { isMobileDevice } from '../utils/env/isMobileDevice.js';
 
 export const auth = getAuth(app);
 let guestUserId = null; // Generated ID when not logged in (cached for session)

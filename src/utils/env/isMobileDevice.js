@@ -1,7 +1,7 @@
 /**
  * Detect if running on a mobile device (iOS/Android)
  */
-function isMobileDevice() {
+export function isMobileDevice() {
   if (typeof window === 'undefined') return false;
 
   const userAgent = navigator.userAgent || navigator.vendor || window.opera;

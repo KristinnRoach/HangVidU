@@ -1344,11 +1344,17 @@ async function autoJoinFromUrl() {
 // ============================================================================
 
 window.onload = async () => {
-  // Handle redirect result first (for mobile Google sign-in)
-  // This must be called before any other auth-dependent code
-  await handleRedirectResult().catch((e) => {
+  // Handle redirect result for mobile Google sign-in
+  // The function will return early if no redirect is detected
+  const redirectResult = await handleRedirectResult().catch((e) => {
     console.warn('Failed to handle redirect result:', e);
+    return null;
   });
+
+  // If we just completed a redirect sign-in, wait for auth state to stabilize
+  if (redirectResult && redirectResult.success) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
 
   const initSuccess = await init();
 
@@ -1398,21 +1404,32 @@ window.onload = async () => {
 
   // Re-render contacts on auth changes so private contacts are hidden on logout
   // Also clean up incoming listeners on logout to prevent accumulation
-  const unsubscribeAuthContacts = onAuthChange(async ({ isLoggedIn }) => {
+  let previousAuthState = null;
+  const unsubscribeAuthContacts = onAuthChange(async ({ isLoggedIn, user }) => {
     try {
+      // Track state changes to differentiate initial load from actual logout
+      const isInitialLoad = previousAuthState === null;
+      const isActualLogout = previousAuthState === true && !isLoggedIn;
+      const isActualLogin = previousAuthState === false && isLoggedIn;
+
+      previousAuthState = isLoggedIn;
+
       await renderContactsList(lobbyDiv);
 
-      // On logout, clean up all incoming call listeners
-      // They will be re-attached on next login via startListeningForSavedRooms
-      if (!isLoggedIn) {
+      // Only clean up on actual logout (not initial load)
+      if (isActualLogout) {
         devDebug('[AUTH] User logged out - cleaning up incoming listeners');
         removeAllIncomingListeners();
-      } else {
+      } else if (isActualLogin) {
         // On login, re-attach listeners for saved rooms
         devDebug('[AUTH] User logged in - re-attaching incoming listeners');
         await startListeningForSavedRooms().catch((e) =>
           console.warn('Failed to re-attach saved-room listeners on login', e)
         );
+      } else if (isInitialLoad && isLoggedIn) {
+        // If user is already logged in on initial load (e.g., after redirect)
+        devDebug('[AUTH] Initial load with logged-in user');
+        // Listeners already attached by startListeningForSavedRooms, no action needed
       }
     } catch (e) {
       console.warn('Failed to handle auth change:', e);
