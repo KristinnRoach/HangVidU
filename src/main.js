@@ -16,7 +16,7 @@ import {
   getLoggedInUserId,
   getUserId,
   onAuthChange,
-  handleRedirectResult,
+  authReady,
 } from './firebase/auth.js';
 
 import {
@@ -177,6 +177,9 @@ async function init() {
     setupPWA();
     initializeSearchUI();
     addKeyListeners();
+
+    // Wait for auth initialization (persistence + redirect processing) before setting up auth UI
+    await authReady;
 
     const authComponent = initializeAuthUI(titleAuthBar);
     if (authComponent) cleanupFunctions.push(authComponent.dispose);
@@ -1344,18 +1347,6 @@ async function autoJoinFromUrl() {
 // ============================================================================
 
 window.onload = async () => {
-  // Handle redirect result for mobile Google sign-in
-  // The function will return early if no redirect is detected
-  const redirectResult = await handleRedirectResult().catch((e) => {
-    console.warn('Failed to handle redirect result:', e);
-    return null;
-  });
-
-  // If we just completed a redirect sign-in, wait for auth state to stabilize
-  if (redirectResult && redirectResult.success) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-
   const initSuccess = await init();
 
   if (!initSuccess) {

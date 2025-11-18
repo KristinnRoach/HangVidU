@@ -46,6 +46,10 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
     },
     onMount: (el) => {
       unsubscribe = onAuthChange(({ isLoggedIn, userName }) => {
+        console.debug('[AuthComponent] Auth state changed:', {
+          isLoggedIn,
+          userName,
+        });
         el.update({
           isLoggedIn,
           userName,

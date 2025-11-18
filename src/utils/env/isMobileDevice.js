@@ -1,22 +1,36 @@
 /**
  * Detect if running on a mobile device (iOS/Android)
+ *
+ * Notes:
+ * - iPadOS in “Request Desktop Website” mode reports as Macintosh; detect via maxTouchPoints.
+ * - Prefer simple, reliable signal to decide redirect vs popup for Firebase Auth.
  */
 export function isMobileDevice() {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined' || typeof navigator === 'undefined')
+    return false;
 
-  const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+  const ua = navigator.userAgent || navigator.vendor || '';
 
-  // Check for iOS
-  const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+  // iOS (including iPadOS with desktop UA)
+  const isiOSUA = /iPad|iPhone|iPod/.test(ua);
+  const isiPadOSDesktopUA =
+    /Macintosh/.test(ua) &&
+    typeof navigator.maxTouchPoints === 'number' &&
+    navigator.maxTouchPoints > 1;
+  const isIOS = (isiOSUA || isiPadOSDesktopUA) && !window.MSStream;
 
-  // Check for Android
-  const isAndroid = /android/i.test(userAgent);
+  // Android
+  const isAndroid = /Android/i.test(ua);
 
-  // Check for mobile Safari specifically
-  const isMobileSafari =
-    isIOS &&
-    /Safari/.test(userAgent) &&
-    !/CriOS|FxiOS|OPiOS|mercury/.test(userAgent);
+  const result = isIOS || isAndroid;
 
-  return isIOS || isAndroid || isMobileSafari;
+  console.table({
+    'User Agent': ua,
+    isAndroid,
+    isiOSUA,
+    isiPadOSDesktopUA,
+    isMobileDevice: result,
+  });
+
+  return result;
 }

@@ -6,14 +6,50 @@ import {
   getRedirectResult,
   signOut,
   onAuthStateChanged,
+  setPersistence,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  inMemoryPersistence,
 } from 'firebase/auth';
 import { app } from './firebase.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { isMobileDevice } from '../utils/env/isMobileDevice.js';
 
 export const auth = getAuth(app);
-let guestUserId = null; // Generated ID when not logged in (cached for session)
 
+// Export a promise that resolves when auth initialization completes
+// This ensures redirect processing finishes before components subscribe to auth state
+export const authReady = (async () => {
+  // Set persistence early with graceful fallback for Safari/iOS/private mode
+  try {
+    await setPersistence(auth, indexedDBLocalPersistence);
+  } catch (_) {
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+    } catch {
+      await setPersistence(auth, inMemoryPersistence);
+    }
+  }
+
+  // After persistence is set, process any pending redirect from a previous sign-in attempt.
+  try {
+    const result = await handleRedirectResult();
+    if (result.success) {
+      console.log(
+        '[AUTH] ✅ Redirect sign-in completed, user:',
+        result.user?.email || result.user?.uid
+      );
+    } else if (result.error) {
+      console.error('[AUTH] ❌ Redirect sign-in failed:', result.error);
+    } else {
+      console.debug('[AUTH] No pending redirect result found.');
+    }
+  } catch (e) {
+    console.error('[AUTH] Error during handleRedirectResult execution:', e);
+  }
+})();
+
+let guestUserId = null; // Generated ID when not logged in (cached for session)
 const createNewGuestUserId = () => Math.random().toString(36).substring(2, 15);
 
 // Persist a stable per-browser guest ID with TTL
@@ -160,6 +196,7 @@ export async function signInWithGoogle() {
   try {
     if (useMobileFlow) {
       // Mobile: Use redirect flow (required for iOS Safari)
+      console.log('[AUTH] Starting redirect sign-in flow...');
       await signInWithRedirect(auth, provider);
       // Note: redirect will navigate away, so code after this won't execute
       // The result will be handled by handleRedirectResult() on return
@@ -243,6 +280,7 @@ export async function signInWithGoogle() {
  * Call this on app initialization to complete the sign-in after redirect
  */
 export async function handleRedirectResult() {
+  console.log('[AUTH] Checking for redirect result...');
   try {
     const result = await getRedirectResult(auth);
 
@@ -252,13 +290,17 @@ export async function handleRedirectResult() {
       const token = credential?.accessToken;
       const user = result.user;
 
-      console.log('Signed in user (via redirect):', user);
+      console.log(
+        '[AUTH] Redirect result found - signed in user:',
+        user?.email || user?.uid
+      );
       devDebug('Google Access Token exists:', !!token);
 
       return { success: true, user };
     }
 
     // No redirect result (normal page load, not returning from auth)
+    console.log('[AUTH] No redirect result (normal page load)');
     return { success: false, user: null };
   } catch (error) {
     const errorCode = error?.code || 'unknown';
