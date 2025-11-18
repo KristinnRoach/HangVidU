@@ -12,7 +12,12 @@ import {
   getUserRecentCallsRef,
   getUserRecentCallRef,
 } from './storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId, getUserId, onAuthChange } from './firebase/auth.js';
+import {
+  getLoggedInUserId,
+  getUserId,
+  onAuthChange,
+  handleRedirectResult,
+} from './firebase/auth.js';
 
 import {
   showElement,
@@ -1339,6 +1344,12 @@ async function autoJoinFromUrl() {
 // ============================================================================
 
 window.onload = async () => {
+  // Handle redirect result first (for mobile Google sign-in)
+  // This must be called before any other auth-dependent code
+  await handleRedirectResult().catch((e) => {
+    console.warn('Failed to handle redirect result:', e);
+  });
+
   const initSuccess = await init();
 
   if (!initSuccess) {

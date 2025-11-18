@@ -2,6 +2,8 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   onAuthStateChanged,
 } from 'firebase/auth';
@@ -149,7 +151,21 @@ export function onAuthChange(callback, { truncate = 7 } = {}) {
 
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
+
+  // Use redirect flow for mobile devices (required for iOS Safari)
+  // Use popup flow for desktop browsers (better UX)
+  const useMobileFlow = isMobileDevice();
+
   try {
+    if (useMobileFlow) {
+      // Mobile: Use redirect flow (required for iOS Safari)
+      await signInWithRedirect(auth, provider);
+      // Note: redirect will navigate away, so code after this won't execute
+      // The result will be handled by handleRedirectResult() on return
+      return;
+    }
+
+    // Desktop: Use popup flow
     const result = await signInWithPopup(auth, provider);
     // Google Access Token to access the Google API
     const credential = GoogleAuthProvider.credentialFromResult(result);
@@ -162,6 +178,16 @@ export async function signInWithGoogle() {
   } catch (error) {
     const errorCode = error?.code || 'unknown';
     const errorMessage = error?.message || String(error);
+
+    // Ignore popup-closed-by-user error (user cancelled auth)
+    if (
+      errorCode === 'auth/popup-closed-by-user' ||
+      errorCode === 'auth/cancelled-popup-request'
+    ) {
+      console.log('Sign-in cancelled by user');
+      return;
+    }
+
     // The email of the user's account used.
     const email = error?.customData?.email;
     // The AuthCredential type that was used.
@@ -208,6 +234,78 @@ export async function signInWithGoogle() {
     }
 
     alert(`Sign-in failed: ${errorMessage}`);
+  }
+}
+
+/**
+ * Handle redirect result after Google sign-in redirect flow (mobile)
+ * Call this on app initialization to complete the sign-in after redirect
+ */
+export async function handleRedirectResult() {
+  try {
+    const result = await getRedirectResult(auth);
+
+    if (result) {
+      // User successfully signed in via redirect
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const token = credential?.accessToken;
+      const user = result.user;
+
+      console.log('Signed in user (via redirect):', user);
+      devDebug('Google Access Token exists:', !!token);
+
+      return { success: true, user };
+    }
+
+    // No redirect result (normal page load, not returning from auth)
+    return { success: false, user: null };
+  } catch (error) {
+    const errorCode = error?.code || 'unknown';
+    const errorMessage = error?.message || String(error);
+    const email = error?.customData?.email;
+    const credential = GoogleAuthProvider.credentialFromError(error);
+
+    console.error('Error handling redirect result:', {
+      errorCode,
+      errorMessage,
+      email,
+      credential,
+      origin: typeof window !== 'undefined' ? window.location.origin : 'n/a',
+    });
+
+    if (errorCode === 'auth/unauthorized-domain') {
+      const origin =
+        typeof window !== 'undefined' ? window.location.origin : '';
+      const guidanceLines = [
+        "This app's host is not whitelisted in Firebase Authentication.",
+        'Fix: In Firebase Console, go to Build → Authentication → Settings → Authorized domains and add this origin:',
+        origin ? `• ${origin}` : '• <your dev origin>',
+        '',
+        'Common dev hosts to add:',
+        '• http://localhost (covers any port)',
+        '• http://127.0.0.1',
+        '• http://[::1] (IPv6 localhost)',
+        '• Your LAN IP, e.g. http://192.168.x.y',
+        '',
+        'Tip: avoid opening index.html directly from the filesystem (file://). Use a dev server instead.',
+      ];
+
+      if (
+        origin &&
+        typeof navigator !== 'undefined' &&
+        navigator.clipboard?.writeText
+      ) {
+        navigator.clipboard.writeText(origin).catch(() => {});
+      }
+
+      alert(
+        `Sign-in failed: Unauthorized domain.\n\n${guidanceLines.join('\n')}`
+      );
+    } else {
+      alert(`Sign-in failed: ${errorMessage}`);
+    }
+
+    return { success: false, user: null, error };
   }
 }
 
