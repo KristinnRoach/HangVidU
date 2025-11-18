@@ -3,8 +3,12 @@ import { initializeApp } from 'firebase/app';
 // ============================================================================
 // FIREBASE CONFIG + INIT
 // ============================================================================
+
+// Use the current domain as authDomain to ensure OAuth redirects back to the correct URL
+// In dev: use ngrok (with Vite proxy for /__/auth)
+// In prod: use Firebase auth domain (it handles /__/auth/handler)
 const authDomain = import.meta.env.DEV
-  ? '29539478b6f7.ngrok-free.app' // Use ngrok domain in dev for redirect to work
+  ? '29539478b6f7.ngrok-free.app'
   : import.meta.env.VITE_FIREBASE_AUTH_DOMAIN;
 
 const firebaseConfig = {

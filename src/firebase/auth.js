@@ -193,9 +193,13 @@ export async function signInWithGoogle() {
   // Use popup flow for desktop browsers (better UX)
   const useMobileFlow = isMobileDevice();
 
+  // In production (gh-pages), use popup even on mobile since redirect has subpath issues
+  // In dev (ngrok with proxy), redirect works fine
+  const forcePopupInProd = import.meta.env.PROD;
+
   try {
-    if (useMobileFlow) {
-      // Mobile: Use redirect flow (required for iOS Safari)
+    if (useMobileFlow && !forcePopupInProd) {
+      // Mobile + Dev: Use redirect flow (required for iOS Safari in some contexts)
       console.log('[AUTH] Starting redirect sign-in flow...');
       await signInWithRedirect(auth, provider);
       // Note: redirect will navigate away, so code after this won't execute
@@ -203,7 +207,7 @@ export async function signInWithGoogle() {
       return;
     }
 
-    // Desktop: Use popup flow
+    // Desktop (or mobile in prod): Use popup flow
     const result = await signInWithPopup(auth, provider);
     // Google Access Token to access the Google API
     const credential = GoogleAuthProvider.credentialFromResult(result);
@@ -223,6 +227,18 @@ export async function signInWithGoogle() {
       errorCode === 'auth/cancelled-popup-request'
     ) {
       console.log('Sign-in cancelled by user');
+      return;
+    }
+
+    // If popup is blocked on mobile in prod, inform user
+    if (
+      errorCode === 'auth/popup-blocked' &&
+      useMobileFlow &&
+      import.meta.env.PROD
+    ) {
+      alert(
+        'Pop-up blocked. Please enable pop-ups for this site in your browser settings, or try signing in from a desktop browser.'
+      );
       return;
     }
 
@@ -280,7 +296,6 @@ export async function signInWithGoogle() {
  * Call this on app initialization to complete the sign-in after redirect
  */
 export async function handleRedirectResult() {
-  console.log('[AUTH] Checking for redirect result...');
   try {
     const result = await getRedirectResult(auth);
 
