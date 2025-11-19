@@ -9,6 +9,8 @@
     "dev:experiments": "vite --open experiments.html",
     "dev:disable-pwa": "DISABLE_PWA=1 vite",
     "build": "vite build",
+    "build:hosting": "BUILD_TARGET=hosting vite build",
+    "fb-deploy": "pnpm build:hosting && firebase deploy --only hosting",
     "gh-deploy": "pnpm build && npx gh-pages -d dist",
     "preview": "vite preview",
     "build:go": "sh go-server/build-scripts/build.sh",

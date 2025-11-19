@@ -17,6 +17,22 @@ import { isMobileDevice } from '../utils/env/isMobileDevice.js';
 
 export const auth = getAuth(app);
 
+// Minimal iOS standalone PWA Safari fallback: armed after a failed attempt,
+// then the next Login tap opens the app URL in Safari (user gesture).
+let safariExternalOpenArmed = false;
+function openInSafariExternal() {
+  try {
+    const a = document.createElement('a');
+    a.href = window.location.href;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer external';
+    // Append to DOM to ensure iOS respects the gesture-triggered click
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch (_) {}
+}
+
 // Export a promise that resolves when auth initialization completes
 // This ensures redirect processing finishes before components subscribe to auth state
 export const authReady = (async () => {
@@ -207,13 +223,23 @@ export async function signInWithGoogle() {
       return false;
     }
   })();
+  const isIOSStandalone =
+    isStandalonePWA && /iphone|ipad|ipod/i.test(navigator.userAgent || '');
 
-  // In production (gh-pages), use popup even on mobile since redirect has subpath issues
-  // In dev (ngrok with proxy), redirect works fine
-  // BUT: In standalone PWA, popup is unreliable/blocked on iOS, so prefer redirect
-  const forcePopupInProd = import.meta.env.PROD && !isStandalonePWA;
+  // In production (gh-pages), always use popup since static hosting lacks /__/auth/handler
+  // In dev (ngrok with proxy), use redirect on mobile/standalone (proxy handles /__/auth)
+  // Note: iOS standalone PWA on gh-pages will try popup; if blocked, we guide user to Safari
+  const forcePopupInProd = import.meta.env.PROD;
 
   try {
+    // If previous attempt failed in iOS standalone PWA, the user can tap Login again
+    // and we open in Safari from the same user gesture.
+    if (isIOSStandalone && safariExternalOpenArmed) {
+      safariExternalOpenArmed = false;
+      openInSafariExternal();
+      return;
+    }
+
     if ((useMobileFlow || isStandalonePWA) && !forcePopupInProd) {
       // Mobile or Standalone PWA (when not forcing popup): Use redirect
       console.log('[AUTH] Starting redirect sign-in flow...');
@@ -233,6 +259,7 @@ export async function signInWithGoogle() {
     console.log('Signed in user:', user);
 
     devDebug('Google Access Token exists:', !!token);
+    safariExternalOpenArmed = false; // clear on success
   } catch (error) {
     const errorCode = error?.code || 'unknown';
     const errorMessage = error?.message || String(error);
@@ -243,6 +270,22 @@ export async function signInWithGoogle() {
       errorCode === 'auth/cancelled-popup-request'
     ) {
       console.log('Sign-in cancelled by user');
+      return;
+    }
+
+    // iOS Standalone PWA: arm Safari fallback and ask user to tap Login again
+    if (
+      (errorCode === 'auth/network-request-failed' ||
+        errorCode === 'auth/popup-blocked') &&
+      isIOSStandalone
+    ) {
+      console.warn(
+        `[AUTH] ${errorCode} inside iOS standalone PWA. Arming Safari fallback.`
+      );
+      safariExternalOpenArmed = true;
+      alert(
+        'Sign-in is blocked in the installed app on iOS.\n\nTap the Login button again to open in Safari and complete sign-in.'
+      );
       return;
     }
 
