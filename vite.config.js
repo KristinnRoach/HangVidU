@@ -6,7 +6,11 @@ import { VitePWA } from 'vite-plugin-pwa';
 import mkcert from 'vite-plugin-mkcert';
 
 export default defineConfig(({ mode }) => {
-  const basePath = mode === 'production' ? '/HangVidU/' : '/';
+  // Allow overriding base path for different prod hosts (gh-pages vs Firebase Hosting)
+  // Usage: BUILD_TARGET=hosting pnpm build -> basePath '/'
+  const target = process.env.BUILD_TARGET || process.env.VITE_BUILD_TARGET;
+  const basePath =
+    mode === 'production' ? (target === 'hosting' ? '/' : '/HangVidU/') : '/';
   const disablePWA = process.env.DISABLE_PWA === '1';
 
   return {

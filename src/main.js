@@ -1346,6 +1346,10 @@ async function autoJoinFromUrl() {
 // INITIALIZE ON PAGE LOAD
 // ============================================================================
 
+// Import and call iOS PWA redirect helper before any other initialization
+import { redirectIOSPWAToHosting } from './utils/env/redirectIOSPWA.js';
+redirectIOSPWAToHosting();
+
 window.onload = async () => {
   const initSuccess = await init();
 
