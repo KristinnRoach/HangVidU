@@ -1,17 +1,13 @@
 /* src/style.css */
 
 /* Import modular styles */
+@import './theme.css';
 @import './animations.css';
 @import './utilities.css';
 
 :root {
   --small-frame-height: 20dvh;
   --small-frame-width: calc(var(--small-frame-height) * (16 / 9));
-
-  /* z-index system: simplified 3-layer priority */
-  --z-low: 0; /* videos, background content */
-  --z-mid: 100; /* interactive UI (lobby, search, messages, auth) */
-  --z-high: 200; /* primary controls (chat bar, toggles) */
 }
 
 * {
@@ -21,25 +17,25 @@
 }
 
 body {
-  font-family: 'Satoshi', 'Roboto', sans-serif;
-  background: #1a1a1a;
-  color: #ccc;
+  font-family: var(--font-family-primary);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
 }
 
 h1 {
   text-align: center;
-  font-size: 2rem;
-  color: #fff;
+  font-size: var(--font-size-2xl);
+  color: var(--text-primary);
 }
 
 a {
-  color: #4c81af;
+  color: var(--color-primary);
   text-decoration: none;
 }
 
 a:hover {
   text-decoration: underline;
-  text-shadow: 0 0 5px rgba(85, 109, 137, 0.282);
+  text-shadow: 0 0 5px var(--color-primary-subtle);
 }
 
 a span {
@@ -47,44 +43,44 @@ a span {
 }
 
 input[type='text'] {
-  padding: 10px 15px;
-  border: 1px solid #444;
-  border-radius: 5px;
-  background: #2a2a2a;
-  color: #fff;
-  font-size: 16px;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
   min-width: 200px;
 }
 
 input[type='text']:focus {
   outline: none;
-  border-color: #4caf50;
+  border-color: var(--color-success);
 }
 
 button {
   border: none;
-  border-radius: 5px;
+  border-radius: var(--radius-md);
 
   margin: 0px;
   line-height: 0%;
 
-  padding: 4px 12px;
+  padding: var(--spacing-xs) var(--spacing-md);
 
-  font-size: 16px;
+  font-size: var(--font-size-md);
 
-  background-color: #4caf50;
+  background-color: var(--color-success);
   color: white;
 
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background-color var(--transition-slow);
 }
 
 button:hover:not(:disabled) {
-  background-color: #39843d;
+  background-color: var(--color-success-hover);
 }
 
 button:disabled {
-  background-color: #555;
+  background-color: var(--border-secondary);
   cursor: not-allowed;
   opacity: 0.6;
 }
@@ -118,13 +114,13 @@ button:disabled {
   gap: 1.5rem;
   max-width: 400px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
 
-  margin: 10px;
+  margin: var(--spacing-md);
   padding: 1rem;
-  box-shadow: 0 4px 12px rgba(11, 11, 11, 0.5);
-  background: #2d2d2d;
-  color: #ccc;
+  box-shadow: var(--shadow-md);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
 }
 
 .confirm-dialog-actions {
@@ -135,9 +131,9 @@ button:disabled {
 
 .confirm-dialog-actions > button {
   padding: 0.5rem 1rem;
-  font-size: small;
+  font-size: var(--font-size-sm);
   border: none;
-  border-radius: 5px;
+  border-radius: var(--radius-md);
   cursor: pointer;
 }
 
@@ -166,12 +162,12 @@ button:disabled {
 /* #join-room-label {} */
 
 #join-room-form input[type='text'] {
-  padding: 10px 15px;
-  border: 1px solid #444;
-  border-radius: 5px;
-  background: #2a2a2a;
-  color: #fff;
-  font-size: 16px;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
   min-width: 200px;
 }
 
@@ -226,8 +222,8 @@ button:disabled {
 /* Removed - using .hidden from utilities.css */
 
 .top-bar {
-  background: #121212;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-md);
 
   position: relative;
   z-index: var(--z-mid);
@@ -262,18 +258,18 @@ button:disabled {
 }
 
 #app-title-a {
-  color: #4c81af;
+  color: var(--color-primary);
   height: 100%;
-  text-decoration: underline #739cc07b;
+  text-decoration: underline var(--color-primary-subtle);
 }
 
 #app-title-a:hover {
-  text-decoration: underline #739cc0d8;
+  text-decoration: underline var(--color-primary-hover);
   cursor: grab;
 }
 
 #app-title-a:active {
-  text-decoration: underline #739cc0d8;
+  text-decoration: underline var(--color-primary-hover);
   cursor: grabbing;
 }
 
@@ -290,7 +286,7 @@ button:disabled {
 
 .user-info {
   font-size: 1rem;
-  color: #aaa;
+  color: var(--text-tertiary);
   text-align: center;
 }
 
