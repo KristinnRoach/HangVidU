@@ -339,6 +339,7 @@ button:disabled {
 
 /* HIDE/SHOW */
 
+.video-box,
 #yt-video-box,
 #shared-video-box,
 #yt-video-box iframe,
@@ -365,13 +366,14 @@ button:disabled {
 #messages-toggle-btn.hidden,
 .messages-box.hidden,
 .top-right-menu.hidden {
-  opacity: 0 !important; /* Todo: Remove !important */
-  pointer-events: none;
+  display: none;
   visibility: hidden;
 
+  /* opacity: 0 !important; 
+  pointer-events: none;
   position: absolute;
   left: -9999px;
-  top: -9999px;
+  top: -9999px; */
 }
 
 /* MESSAGES UI */
@@ -796,6 +798,7 @@ button:disabled {
 
   width: 100%;
   height: 100%;
+  transition: opacity 0.3s ease;
 }
 
 .video-box video {

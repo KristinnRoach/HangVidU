@@ -596,6 +596,14 @@ class CallController {
         console.warn('CallController: failed to cleanup local stream', e);
       }
 
+      // Reset initialization flag to allow stream recreation on next call
+      try {
+        const { resetLocalStreamInitFlag } = await import('../main.js');
+        resetLocalStreamInitFlag();
+      } catch (e) {
+        // Non-fatal if main.js not available (e.g., in tests)
+      }
+
       // Emit remoteHangup event if cleanup was triggered by remote party
       if (this.isRemoteHangup(reason)) {
         this.emitter.emit('remoteHangup', {

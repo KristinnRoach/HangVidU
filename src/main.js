@@ -201,6 +201,11 @@ export function clearUrlParam() {
 // Todo: remove flag or finialize usage
 let hasInitLocalStreamAndMedia = false;
 
+// Reset flag to allow stream re-initialization after cleanup
+export function resetLocalStreamInitFlag() {
+  hasInitLocalStreamAndMedia = false;
+}
+
 async function initLocalStreamAndMedia() {
   if (hasInitLocalStreamAndMedia) return;
   hasInitLocalStreamAndMedia = true;
@@ -1003,11 +1008,12 @@ export let enterCallMode = () => {
   }
 };
 
-export let exitCallMode = (force = false) => {
-  // Todo: remove "force" flag (used for quick reset during testing)
-  if (!isInCallMode && !force) return;
+export let exitCallMode = () => {
+  if (!isInCallMode) return;
   isInCallMode = false;
 
+  removeFromSmallFrame(localBoxEl);
+  hideElement(localBoxEl);
   removeFromSmallFrame(remoteBoxEl);
   hideElement(remoteBoxEl);
 
@@ -1027,12 +1033,7 @@ export let exitCallMode = (force = false) => {
   }
 
   showElement(lobbyDiv);
-
-  if (!isWatchModeActive()) {
-    placeInSmallFrame(localBoxEl); // Always keep local video in small frame
-    showElement(localBoxEl);
-    showElement(chatControls);
-  }
+  showElement(chatControls);
 };
 
 export function enterWatchMode() {
