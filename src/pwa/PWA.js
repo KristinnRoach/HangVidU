@@ -3,6 +3,7 @@ import {
   debugVisibility,
   devDebug,
   isDev,
+  isProd,
   tempInfo,
   tempWarn,
 } from '../utils/dev/dev-utils';
@@ -66,7 +67,10 @@ function setupPWA() {
       title: 'Show Install Instructions',
     });
 
-    showElement(installBtnComponent);
+    // TODO: Fix ui message not displaying (at least on IOS)
+    // For now, just hide in prod
+    if (isProd()) hideElement(installBtnComponent);
+    else showElement(installBtnComponent);
 
     installBtn.onclick = () => {
       alert(
