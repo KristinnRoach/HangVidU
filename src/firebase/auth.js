@@ -205,8 +205,13 @@ export function onAuthChange(callback, { truncate = 7 } = {}) {
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
 
+  // Force account picker every time so user can choose different accounts for now // Todo: "Switch Account" button or select
+  provider.setCustomParameters({
+    prompt: 'select_account',
+  });
+
   // Use redirect flow for mobile devices (required for iOS Safari)
-  // Use popup flow for desktop browsers (better UX)
+  // Use popup flow for desktop browsers
   const useMobileFlow = isMobileDevice();
 
   // Detect standalone PWA (iOS installed app or other platforms)

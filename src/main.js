@@ -251,6 +251,7 @@ function initUI() {
 function getCallOptions(targetRoomId = null) {
   return {
     localStream: getLocalStream(),
+    localVideoEl,
     remoteVideoEl,
     mutePartnerBtn,
     setupRemoteStream,
@@ -1552,12 +1553,14 @@ async function cleanup() {
   sharedVideoEl.src = '';
   syncStatus.textContent = '';
 
+  // Note: Local stream cleanup is now handled by CallController.cleanupCall()
+  // Only clean up if CallController hasn't already (e.g., page unload)
   cleanupLocalStream();
   cleanupLocalVideoOnlyStream();
-  if (localVideoEl) {
+  if (localVideoEl && localVideoEl.srcObject) {
     localVideoEl.srcObject = null;
   }
-  if (remoteVideoEl) {
+  if (remoteVideoEl && remoteVideoEl.srcObject) {
     remoteVideoEl.srcObject = null;
   }
 

@@ -61,6 +61,7 @@ class CallController {
     this.pc = null;
     this.dataChannel = null;
     this.messagesUI = null;
+    this.localVideoEl = null;
     this.remoteVideoEl = null;
     this.isHangingUp = false;
     this.isCleaningUp = false;
@@ -362,7 +363,10 @@ class CallController {
   async createCall(options = {}) {
     this.state = 'creating';
     try {
-      // Store remoteVideoEl reference if provided
+      // Store video element references if provided
+      if (options.localVideoEl) {
+        this.localVideoEl = options.localVideoEl;
+      }
       if (options.remoteVideoEl) {
         this.remoteVideoEl = options.remoteVideoEl;
       }
@@ -430,7 +434,10 @@ class CallController {
   async answerCall(options = {}) {
     this.state = 'joining';
     try {
-      // Store remoteVideoEl reference if provided
+      // Store video element references if provided
+      if (options.localVideoEl) {
+        this.localVideoEl = options.localVideoEl;
+      }
       if (options.remoteVideoEl) {
         this.remoteVideoEl = options.remoteVideoEl;
       }
@@ -564,13 +571,29 @@ class CallController {
         // ignore
       }
 
-      // Clear remote video element to prevent frozen frame
+      // Clear video elements to prevent frozen frames
       try {
         if (this.remoteVideoEl) {
           this.remoteVideoEl.srcObject = null;
         }
       } catch (e) {
         console.warn('CallController: failed to clear remote video', e);
+      }
+
+      try {
+        if (this.localVideoEl) {
+          this.localVideoEl.srcObject = null;
+        }
+      } catch (e) {
+        console.warn('CallController: failed to clear local video', e);
+      }
+
+      // Stop local stream tracks
+      try {
+        const { cleanupLocalStream } = await import('../media/state.js');
+        cleanupLocalStream();
+      } catch (e) {
+        console.warn('CallController: failed to cleanup local stream', e);
       }
 
       // Emit remoteHangup event if cleanup was triggered by remote party
