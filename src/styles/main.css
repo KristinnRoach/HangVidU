@@ -359,6 +359,7 @@ button:disabled {
 #hang-up-btn.hidden,
 #switch-camera-btn.hidden,
 #camera-btn.hidden,
+.hidden:has(#install-btn),
 #install-btn.hidden,
 .chat-btn.hidden,
 #messages-toggle-btn.hidden,

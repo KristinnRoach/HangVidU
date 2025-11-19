@@ -1,14 +1,7 @@
-import {
-  debugPWAInstall,
-  debugVisibility,
-  devDebug,
-  isDev,
-  isProd,
-  tempInfo,
-  tempWarn,
-} from '../utils/dev/dev-utils';
+import { devDebug, isDev, tempInfo } from '../utils/dev/dev-utils';
 import { hideElement, showElement } from '../utils/ui/ui-utils';
 import createIconButton from '../components/design/button/icon-button.js';
+import { debugPWAInstall } from './debug-pwa.js';
 
 let beforeInstallEvent = null;
 let installBtnHandlerAttached = false;
@@ -26,7 +19,7 @@ function setupPWA() {
     window.navigator.standalone === true
   ) {
     console.info('[PWA]: App is already installed');
-    if (installBtnComponent && !isDev()) hideElement(installBtnComponent);
+    if (installBtnComponent) hideElement(installBtnComponent);
     return;
   }
 
@@ -46,7 +39,7 @@ function setupPWA() {
       onMount: (el) => {
         if (isDev()) {
           tempInfo('onMount fired for installButtonComponent');
-          showElement(el); // Always visible in DEV for testing
+          // showElement(el); // Always visible in DEV for testing
         }
       },
       parent: topRightMenu,
@@ -69,7 +62,7 @@ function setupPWA() {
 
     // TODO: Fix ui message not displaying (at least on IOS)
     // For now, just hide in prod
-    if (isProd()) hideElement(installBtnComponent);
+    if (!isDev()) hideElement(installBtnComponent);
     else showElement(installBtnComponent);
 
     installBtn.onclick = () => {
@@ -120,7 +113,7 @@ function setupPWA() {
 
   window.addEventListener('appinstalled', () => {
     devDebug('App installed successfully');
-    !isDev() && hideElement(installBtnComponent);
+    hideElement(installBtnComponent);
     beforeInstallEvent = null;
   });
 
