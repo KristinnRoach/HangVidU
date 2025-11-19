@@ -1,0 +1,17 @@
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Instant hide (no animation) */
+.hidden {
+  display: none !important;
+}
+
+/* Visibility utilities */
+.invisible {
+  visibility: hidden !important;
+}
+
+.visible {
+  visibility: visible !important;
+}

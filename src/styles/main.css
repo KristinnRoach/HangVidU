@@ -1,5 +1,9 @@
 /* src/style.css */
 
+/* Import modular styles */
+@import './animations.css';
+@import './utilities.css';
+
 :root {
   --small-frame-height: 20dvh;
   --small-frame-width: calc(var(--small-frame-height) * (16 / 9));
@@ -219,12 +223,7 @@ button:disabled {
   text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), 0 -1px 0 rgba(255, 255, 255, 0.3);
 }
 
-#lobby.hidden {
-  display: none;
-  opacity: 0;
-  pointer-events: none;
-  visibility: hidden;
-}
+/* Removed - using .hidden from utilities.css */
 
 .top-bar {
   background: #121212;
@@ -322,23 +321,9 @@ button:disabled {
   }
 }
 
-/* 
-#create-link-btn,
-#copy-link-btn {
-  opacity: 1;
-  pointer-events: auto;
-  transition: opacity 200ms;
-}
+/* Removed - dead code */
 
-#copy-link-btn.hidden,
-#create-link-btn.hidden {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 200ms;
-} */
-
-/* HIDE/SHOW */
-
+/* Default visible state for elements that toggle visibility */
 .video-box,
 #yt-video-box,
 #shared-video-box,
@@ -348,32 +333,6 @@ button:disabled {
 .top-right-menu {
   opacity: 1;
   pointer-events: auto;
-  will-change: opacity;
-  transition: opacity 200ms ease;
-}
-
-.video-box.hidden,
-#searchQuery.hidden,
-#searchResults.hidden,
-#mute-btn.hidden,
-#call-btn.hidden,
-#hang-up-btn.hidden,
-#switch-camera-btn.hidden,
-#camera-btn.hidden,
-.hidden:has(#install-btn),
-#install-btn.hidden,
-.chat-btn.hidden,
-#messages-toggle-btn.hidden,
-.messages-box.hidden,
-.top-right-menu.hidden {
-  display: none;
-  visibility: hidden;
-
-  /* opacity: 0 !important; 
-  pointer-events: none;
-  position: absolute;
-  left: -9999px;
-  top: -9999px; */
 }
 
 /* MESSAGES UI */
@@ -554,21 +513,7 @@ button:disabled {
 
 /* YouTube Search Styles */
 
-#searchQuery.hidden {
-  width: 0;
-  opacity: 0;
-  pointer-events: none;
-  visibility: hidden;
-
-  will-change: width, opacity;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s;
-}
-
-#searchQuery {
-  width: 100%;
-  opacity: 1;
-  pointer-events: auto;
-}
+/* Removed - #searchQuery will use animation classes */
 
 .search-section {
   border-radius: 8px;
@@ -959,14 +904,7 @@ button:disabled {
   flex-shrink: 0;
 }
 
-.chat-controls.hidden,
-.chat-controls.watch-mode.hidden,
-.chat-controls.bottom.hidden {
-  opacity: 0;
-  pointer-events: none;
-  visibility: hidden;
-  transition: opacity 200ms ease, visibility 0s linear 200ms;
-}
+/* Removed - .chat-controls will use .fade animation class */
 
 .chat-btn {
   padding: 20px;
