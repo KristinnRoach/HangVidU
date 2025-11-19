@@ -67,7 +67,7 @@ export function addDebugUpdateButton() {
   buttonContainer.style.cssText = `
     position: fixed;
     bottom: 20px;
-    right: 200px;
+    right: 150px;
     z-index: 9999;
     display: flex;
     flex-direction: row;

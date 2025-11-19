@@ -1,0 +1,23 @@
+/* ===== LAYOUT WRAPPERS ===== */
+/* Container query-ready layout wrappers */
+
+.main-wrapper {
+  position: relative;
+  height: 100dvh;
+  width: 100dvw;
+  overflow: hidden;
+
+  /* Enable container queries for child elements */
+  container-type: size;
+  container-name: main;
+}
+
+.relative-wrapper {
+  position: relative;
+  height: 94%;
+  width: auto;
+
+  /* Enable container queries for child elements */
+  container-type: inline-size;
+  container-name: content;
+}

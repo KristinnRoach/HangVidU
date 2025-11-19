@@ -4,7 +4,7 @@
 
 :root {
   --duration-default: 200ms;
-  --easing-default: ease;
+  --easing-default: ease-in-out;
 }
 
 /* Accessibility: Respect reduced motion preference */

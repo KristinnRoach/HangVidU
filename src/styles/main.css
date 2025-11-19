@@ -1,10 +1,13 @@
 /* src/style.css */
 
 /* Import modular styles */
-@import './reset/reset-simple.css';
+@import './base/reset-normalize.css';
+@import './base/typography.css';
 @import './theme.css';
 @import './animations.css';
 @import './utilities.css';
+@import './layout/wrappers.css';
+@import './layout/grid.css';
 
 :root {
   --small-frame-height: 20dvh;
@@ -12,29 +15,7 @@
 }
 
 body {
-  font-family: var(--font-family-primary);
   background: var(--bg-primary);
-  color: var(--text-secondary);
-}
-
-h1 {
-  text-align: center;
-  font-size: var(--font-size-2xl);
-  color: var(--text-primary);
-}
-
-a {
-  color: var(--color-primary);
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
-  text-shadow: 0 0 5px var(--color-primary-subtle);
-}
-
-a span {
-  text-decoration: none;
 }
 
 input[type='text'] {
@@ -57,8 +38,6 @@ button {
   border-radius: var(--radius-md);
 
   margin: 0px;
-  line-height: 0%;
-
   padding: var(--spacing-xs) var(--spacing-md);
 
   font-size: var(--font-size-md);
@@ -80,27 +59,7 @@ button:disabled {
   opacity: 0.6;
 }
 
-.main-wrapper {
-  position: relative;
-  height: 100dvh;
-  width: 100dvw;
-
-  overflow: hidden;
-}
-
-.relative-wrapper {
-  position: relative;
-  height: 94%;
-  width: auto;
-}
-
-.flex-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-}
+/* Layout wrappers and utilities moved to layout/ directory */
 
 .confirm-dialog {
   display: flex;
@@ -238,7 +197,7 @@ button:disabled {
 .title-auth-bar {
   display: flex;
   flex-direction: row;
-  width: 100%;
+  flex: 1;
   justify-content: space-between;
   column-gap: 1.5rem;
 
@@ -290,10 +249,55 @@ button:disabled {
   flex-direction: row;
   align-items: center;
   gap: 1rem;
+  margin-right: 1rem;
 }
 
-/* Remove background color on smaller screens */
-@media (max-width: 800px) {
+#install-btn {
+  margin-right: 0.5rem;
+}
+
+/* ===== CONTAINER QUERY RESPONSIVE DESIGN ===== */
+/* Top bar adapts to container size with smooth animations */
+
+.top-bar {
+  transition: background-color var(--duration-default, 200ms)
+      var(--easing-default, ease),
+    box-shadow var(--duration-default, 200ms) var(--easing-default, ease);
+}
+
+.top-right-menu {
+  transition: background-color var(--duration-default, 200ms)
+      var(--easing-default, ease),
+    box-shadow var(--duration-default, 200ms) var(--easing-default, ease);
+}
+
+#app-title-h1 {
+  opacity: 1;
+  transform: translateX(0);
+  max-width: 100%;
+  transition: opacity var(--duration-default, 200ms) var(--easing-default, ease),
+    transform var(--duration-default, 200ms) var(--easing-default, ease),
+    max-width var(--duration-default, 200ms) var(--easing-default, ease);
+}
+
+/* Auth component with slide animation */
+.title-auth-bar {
+  transition: gap var(--duration-default, 200ms) var(--easing-default, ease);
+}
+
+.auth-component {
+  transition: transform var(--duration-default, 200ms)
+    var(--easing-default, ease);
+}
+
+.auth-component button {
+  transition: transform var(--duration-default, 200ms)
+      var(--easing-default, ease),
+    margin var(--duration-default, 200ms) var(--easing-default, ease);
+}
+
+/* Remove background color on smaller containers */
+@container main (max-width: 800px) {
   .top-bar {
     background-color: transparent;
     box-shadow: none;
@@ -305,10 +309,28 @@ button:disabled {
   }
 }
 
-/* Hide title on small screens */
-@media (max-width: 650px) {
+/* Hide title on small containers with fade-out and slide */
+@container main (max-width: 650px) {
   #app-title-h1 {
-    display: none;
+    opacity: 0;
+    transform: translateX(-20px);
+    pointer-events: none;
+    max-width: 0;
+    overflow: hidden;
+  }
+
+  /* Slide auth buttons left when title disappears */
+  .auth-component {
+    transform: translateX(-20px);
+  }
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .top-bar,
+  .top-right-menu,
+  #app-title-h1 {
+    transition: none !important;
   }
 }
 
@@ -404,8 +426,19 @@ button:disabled {
   z-index: var(--z-mid);
 }
 
-/* Contain the toggle inside the top bar on small screens */
-@media (max-width: 800px) {
+/* Messages toggle with smooth transitions */
+#messages-toggle-btn {
+  transition: position var(--duration-default, 200ms)
+    var(--easing-default, ease);
+}
+
+#messages-toggle-btn button {
+  transition: padding var(--duration-default, 200ms) var(--easing-default, ease),
+    font-size var(--duration-default, 200ms) var(--easing-default, ease);
+}
+
+/* Contain the toggle inside the top bar on small containers */
+@container main (max-width: 800px) {
   .top-bar #messages-toggle-btn {
     position: static;
     bottom: auto;
@@ -429,8 +462,8 @@ button:disabled {
     right: anchor(right);
   }
 
-  /* Small screens: toggle is in top bar → anchor below */
-  @media (max-width: 800px) {
+  /* Small containers: toggle is in top bar → anchor below */
+  @container main (max-width: 800px) {
     .messages-box {
       top: anchor(bottom);
       bottom: auto;

@@ -1,0 +1,88 @@
+/* ===== LAYOUT UTILITIES ===== */
+/* Flexible layout system with container query support */
+
+/* Flexbox utilities */
+.flex-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+/* Flex modifiers */
+.flex-start {
+  justify-content: flex-start;
+}
+
+.flex-end {
+  justify-content: flex-end;
+}
+
+.flex-between {
+  justify-content: space-between;
+}
+
+.flex-around {
+  justify-content: space-around;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+/* Container query utilities */
+/* Automatically animated - add .layout-animated for smooth transitions */
+
+@container (min-width: 600px) {
+  .container-md\:flex-row {
+    flex-direction: row;
+  }
+}
+
+@container (min-width: 800px) {
+  .container-lg\:flex-row {
+    flex-direction: row;
+  }
+}
+
+/* Auto-animate container-responsive classes */
+[class*='container-md:'],
+[class*='container-lg:'] {
+  transition: flex-direction var(--duration-default, 200ms)
+      var(--easing-default, ease),
+    gap var(--duration-default, 200ms) var(--easing-default, ease);
+}
+
+/* ===== LAYOUT ANIMATIONS ===== */
+/* Smooth transitions for layout shifts (container queries, flex changes, etc.) */
+
+.layout-animated {
+  transition: flex-direction var(--duration-default, 200ms)
+      var(--easing-default, ease),
+    gap var(--duration-default, 200ms) var(--easing-default, ease),
+    padding var(--duration-default, 200ms) var(--easing-default, ease),
+    margin var(--duration-default, 200ms) var(--easing-default, ease),
+    width var(--duration-default, 200ms) var(--easing-default, ease),
+    height var(--duration-default, 200ms) var(--easing-default, ease);
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .layout-animated {
+    transition: none !important;
+  }
+}
+
+/* Legacy alias for backwards compatibility */
+.container-responsive {
+  transition: flex-direction 0.3s ease, gap 0.3s ease;
+}
