@@ -193,13 +193,29 @@ export async function signInWithGoogle() {
   // Use popup flow for desktop browsers (better UX)
   const useMobileFlow = isMobileDevice();
 
+  // Detect standalone PWA (iOS installed app or other platforms)
+  const isStandalonePWA = (() => {
+    try {
+      return (
+        (typeof window !== 'undefined' &&
+          window.matchMedia &&
+          window.matchMedia('(display-mode: standalone)').matches) ||
+        // Legacy iOS PWA detection
+        (typeof navigator !== 'undefined' && navigator.standalone === true)
+      );
+    } catch (_) {
+      return false;
+    }
+  })();
+
   // In production (gh-pages), use popup even on mobile since redirect has subpath issues
   // In dev (ngrok with proxy), redirect works fine
-  const forcePopupInProd = import.meta.env.PROD;
+  // BUT: In standalone PWA, popup is unreliable/blocked on iOS, so prefer redirect
+  const forcePopupInProd = import.meta.env.PROD && !isStandalonePWA;
 
   try {
-    if (useMobileFlow && !forcePopupInProd) {
-      // Mobile + Dev: Use redirect flow (required for iOS Safari in some contexts)
+    if ((useMobileFlow || isStandalonePWA) && !forcePopupInProd) {
+      // Mobile or Standalone PWA (when not forcing popup): Use redirect
       console.log('[AUTH] Starting redirect sign-in flow...');
       await signInWithRedirect(auth, provider);
       // Note: redirect will navigate away, so code after this won't execute
@@ -207,7 +223,7 @@ export async function signInWithGoogle() {
       return;
     }
 
-    // Desktop (or mobile in prod): Use popup flow
+    // Desktop (or mobile in prod when not standalone): Use popup flow
     const result = await signInWithPopup(auth, provider);
     // Google Access Token to access the Google API
     const credential = GoogleAuthProvider.credentialFromResult(result);
