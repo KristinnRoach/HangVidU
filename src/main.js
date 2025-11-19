@@ -99,6 +99,7 @@ import {
   initializeSearchUI,
 } from './media/youtube/youtube-search.js';
 import { setupPWA } from './pwa/PWA.js';
+import { addDebugUpdateButton } from './components/notifications/debug-notifications.js';
 
 import { setUpLocalStream, setupRemoteStream } from './media/stream.js';
 
@@ -186,6 +187,9 @@ async function init() {
 
     await initLocalStreamAndMedia(); // Todo: lazy init on first call?
 
+    // Add debug button for testing update notification (dev only)
+    addDebugUpdateButton();
+
     return true;
   } catch (error) {
     console.error('Failed to get user media:', error);
@@ -200,6 +204,11 @@ export function clearUrlParam() {
 
 // Todo: remove flag or finialize usage
 let hasInitLocalStreamAndMedia = false;
+
+// Reset flag to allow stream re-initialization after cleanup
+export function resetLocalStreamInitFlag() {
+  hasInitLocalStreamAndMedia = false;
+}
 
 async function initLocalStreamAndMedia() {
   if (hasInitLocalStreamAndMedia) return;
@@ -251,6 +260,7 @@ function initUI() {
 function getCallOptions(targetRoomId = null) {
   return {
     localStream: getLocalStream(),
+    localVideoEl,
     remoteVideoEl,
     mutePartnerBtn,
     setupRemoteStream,
@@ -1002,11 +1012,12 @@ export let enterCallMode = () => {
   }
 };
 
-export let exitCallMode = (force = false) => {
-  // Todo: remove "force" flag (used for quick reset during testing)
-  if (!isInCallMode && !force) return;
+export let exitCallMode = () => {
+  if (!isInCallMode) return;
   isInCallMode = false;
 
+  removeFromSmallFrame(localBoxEl);
+  hideElement(localBoxEl);
   removeFromSmallFrame(remoteBoxEl);
   hideElement(remoteBoxEl);
 
@@ -1026,12 +1037,7 @@ export let exitCallMode = (force = false) => {
   }
 
   showElement(lobbyDiv);
-
-  if (!isWatchModeActive()) {
-    placeInSmallFrame(localBoxEl); // Always keep local video in small frame
-    showElement(localBoxEl);
-    showElement(chatControls);
-  }
+  showElement(chatControls);
 };
 
 export function enterWatchMode() {
@@ -1552,12 +1558,14 @@ async function cleanup() {
   sharedVideoEl.src = '';
   syncStatus.textContent = '';
 
+  // Note: Local stream cleanup is now handled by CallController.cleanupCall()
+  // Only clean up if CallController hasn't already (e.g., page unload)
   cleanupLocalStream();
   cleanupLocalVideoOnlyStream();
-  if (localVideoEl) {
+  if (localVideoEl && localVideoEl.srcObject) {
     localVideoEl.srcObject = null;
   }
-  if (remoteVideoEl) {
+  if (remoteVideoEl && remoteVideoEl.srcObject) {
     remoteVideoEl.srcObject = null;
   }
 
