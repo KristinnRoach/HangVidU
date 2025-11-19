@@ -1,3 +1,5 @@
+import { isDev } from '../utils/dev/dev-utils';
+
 /**
  * Debug utility for PWA install prompt diagnostics
  * @param {Object} options
