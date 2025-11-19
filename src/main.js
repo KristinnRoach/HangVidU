@@ -99,6 +99,7 @@ import {
   initializeSearchUI,
 } from './media/youtube/youtube-search.js';
 import { setupPWA } from './pwa/PWA.js';
+import { addDebugUpdateButton } from './components/notifications/debug-notifications.js';
 
 import { setUpLocalStream, setupRemoteStream } from './media/stream.js';
 
@@ -185,6 +186,9 @@ async function init() {
     if (authComponent) cleanupFunctions.push(authComponent.dispose);
 
     await initLocalStreamAndMedia(); // Todo: lazy init on first call?
+
+    // Add debug button for testing update notification (dev only)
+    addDebugUpdateButton();
 
     return true;
   } catch (error) {
