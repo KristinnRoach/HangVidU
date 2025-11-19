@@ -99,7 +99,26 @@ export default defineConfig(({ mode }) => {
     server: {
       https: true, // use trusted dev cert from mkcert
       host: true, // To expose to LAN devices as well
-      allowedHosts: ['.ngrok-free.app'],
+      allowedHosts: [
+        '29539478b6f7.ngrok-free.app',
+        '.ngrok-free.app',
+        '192.168.8.100',
+        '169.254.123.79:5173',
+      ],
+
+      proxy: {
+        // Proxy Firebase Auth handler and init.json requests
+        '/__/auth': {
+          target: 'https://vidu-aae11.firebaseapp.com', // Your project's default auth domain
+          changeOrigin: true,
+          rewrite: (path) => path, // Don't rewrite the path
+        },
+        '/__/firebase/init.json': {
+          target: 'https://vidu-aae11.firebaseapp.com', // Your project's default auth domain
+          changeOrigin: true,
+          rewrite: (path) => path, // Don't rewrite the path
+        },
+      },
     },
   };
 });

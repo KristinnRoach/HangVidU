@@ -2,15 +2,54 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   onAuthStateChanged,
+  setPersistence,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  inMemoryPersistence,
 } from 'firebase/auth';
 import { app } from './firebase.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
+import { isMobileDevice } from '../utils/env/isMobileDevice.js';
 
 export const auth = getAuth(app);
-let guestUserId = null; // Generated ID when not logged in (cached for session)
 
+// Export a promise that resolves when auth initialization completes
+// This ensures redirect processing finishes before components subscribe to auth state
+export const authReady = (async () => {
+  // Set persistence early with graceful fallback for Safari/iOS/private mode
+  try {
+    await setPersistence(auth, indexedDBLocalPersistence);
+  } catch (_) {
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+    } catch {
+      await setPersistence(auth, inMemoryPersistence);
+    }
+  }
+
+  // After persistence is set, process any pending redirect from a previous sign-in attempt.
+  try {
+    const result = await handleRedirectResult();
+    if (result.success) {
+      console.log(
+        '[AUTH] ✅ Redirect sign-in completed, user:',
+        result.user?.email || result.user?.uid
+      );
+    } else if (result.error) {
+      console.error('[AUTH] ❌ Redirect sign-in failed:', result.error);
+    } else {
+      console.debug('[AUTH] No pending redirect result found.');
+    }
+  } catch (e) {
+    console.error('[AUTH] Error during handleRedirectResult execution:', e);
+  }
+})();
+
+let guestUserId = null; // Generated ID when not logged in (cached for session)
 const createNewGuestUserId = () => Math.random().toString(36).substring(2, 15);
 
 // Persist a stable per-browser guest ID with TTL
@@ -149,7 +188,26 @@ export function onAuthChange(callback, { truncate = 7 } = {}) {
 
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
+
+  // Use redirect flow for mobile devices (required for iOS Safari)
+  // Use popup flow for desktop browsers (better UX)
+  const useMobileFlow = isMobileDevice();
+
+  // In production (gh-pages), use popup even on mobile since redirect has subpath issues
+  // In dev (ngrok with proxy), redirect works fine
+  const forcePopupInProd = import.meta.env.PROD;
+
   try {
+    if (useMobileFlow && !forcePopupInProd) {
+      // Mobile + Dev: Use redirect flow (required for iOS Safari in some contexts)
+      console.log('[AUTH] Starting redirect sign-in flow...');
+      await signInWithRedirect(auth, provider);
+      // Note: redirect will navigate away, so code after this won't execute
+      // The result will be handled by handleRedirectResult() on return
+      return;
+    }
+
+    // Desktop (or mobile in prod): Use popup flow
     const result = await signInWithPopup(auth, provider);
     // Google Access Token to access the Google API
     const credential = GoogleAuthProvider.credentialFromResult(result);
@@ -162,6 +220,28 @@ export async function signInWithGoogle() {
   } catch (error) {
     const errorCode = error?.code || 'unknown';
     const errorMessage = error?.message || String(error);
+
+    // Ignore popup-closed-by-user error (user cancelled auth)
+    if (
+      errorCode === 'auth/popup-closed-by-user' ||
+      errorCode === 'auth/cancelled-popup-request'
+    ) {
+      console.log('Sign-in cancelled by user');
+      return;
+    }
+
+    // If popup is blocked on mobile in prod, inform user
+    if (
+      errorCode === 'auth/popup-blocked' &&
+      useMobileFlow &&
+      import.meta.env.PROD
+    ) {
+      alert(
+        'Pop-up blocked. Please enable pop-ups for this site in your browser settings, or try signing in from a desktop browser.'
+      );
+      return;
+    }
+
     // The email of the user's account used.
     const email = error?.customData?.email;
     // The AuthCredential type that was used.
@@ -208,6 +288,82 @@ export async function signInWithGoogle() {
     }
 
     alert(`Sign-in failed: ${errorMessage}`);
+  }
+}
+
+/**
+ * Handle redirect result after Google sign-in redirect flow (mobile)
+ * Call this on app initialization to complete the sign-in after redirect
+ */
+export async function handleRedirectResult() {
+  try {
+    const result = await getRedirectResult(auth);
+
+    if (result) {
+      // User successfully signed in via redirect
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const token = credential?.accessToken;
+      const user = result.user;
+
+      console.log(
+        '[AUTH] Redirect result found - signed in user:',
+        user?.email || user?.uid
+      );
+      devDebug('Google Access Token exists:', !!token);
+
+      return { success: true, user };
+    }
+
+    // No redirect result (normal page load, not returning from auth)
+    console.log('[AUTH] No redirect result (normal page load)');
+    return { success: false, user: null };
+  } catch (error) {
+    const errorCode = error?.code || 'unknown';
+    const errorMessage = error?.message || String(error);
+    const email = error?.customData?.email;
+    const credential = GoogleAuthProvider.credentialFromError(error);
+
+    console.error('Error handling redirect result:', {
+      errorCode,
+      errorMessage,
+      email,
+      credential,
+      origin: typeof window !== 'undefined' ? window.location.origin : 'n/a',
+    });
+
+    if (errorCode === 'auth/unauthorized-domain') {
+      const origin =
+        typeof window !== 'undefined' ? window.location.origin : '';
+      const guidanceLines = [
+        "This app's host is not whitelisted in Firebase Authentication.",
+        'Fix: In Firebase Console, go to Build → Authentication → Settings → Authorized domains and add this origin:',
+        origin ? `• ${origin}` : '• <your dev origin>',
+        '',
+        'Common dev hosts to add:',
+        '• http://localhost (covers any port)',
+        '• http://127.0.0.1',
+        '• http://[::1] (IPv6 localhost)',
+        '• Your LAN IP, e.g. http://192.168.x.y',
+        '',
+        'Tip: avoid opening index.html directly from the filesystem (file://). Use a dev server instead.',
+      ];
+
+      if (
+        origin &&
+        typeof navigator !== 'undefined' &&
+        navigator.clipboard?.writeText
+      ) {
+        navigator.clipboard.writeText(origin).catch(() => {});
+      }
+
+      alert(
+        `Sign-in failed: Unauthorized domain.\n\n${guidanceLines.join('\n')}`
+      );
+    } else {
+      alert(`Sign-in failed: ${errorMessage}`);
+    }
+
+    return { success: false, user: null, error };
   }
 }
 
