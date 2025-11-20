@@ -27,10 +27,10 @@ export function initMessagesUI(sendFn) {
       </button>
     </div>
     <div id="messages-box" class="messages-box hidden">
-      <div id="messages-messages" style="height:150px; overflow-y:auto; background:#111; color:#eee; padding:6px; font-family:sans-serif; font-size:14px;"></div>
-      <form id="messages-form" style="display:flex; gap:4px; margin-top:6px;">
-        <input id="messages-input" placeholder="Type a message..." style="flex:1; padding:6px; border-radius:4px; border:1px solid #555; background:#222; color:#fff;">
-        <button style="padding:6px 12px;">Send</button>
+      <div id="messages"></div>
+      <form id="messages-form">
+        <input id="messages-input" placeholder="Type a message...">
+        <button>Send</button>
       </form>
     </div>
   </div>
@@ -39,7 +39,7 @@ export function initMessagesUI(sendFn) {
 
   const messagesToggleBtn = container.querySelector('#messages-toggle-btn');
   const messagesBox = container.querySelector('#messages-box');
-  const messagesMessages = container.querySelector('#messages-messages');
+  const messagesMessages = container.querySelector('#messages');
   const messagesForm = container.querySelector('#messages-form');
   const messagesInput = container.querySelector('#messages-input');
   const originalParent = messagesToggleBtn?.parentNode || null;
