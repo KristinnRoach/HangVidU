@@ -1,0 +1,171 @@
+/* ===== TOP BAR COMPONENT ===== */
+/* Navigation bar with title, auth, and menu */
+
+.top-bar {
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-md);
+
+  position: relative;
+  z-index: var(--z-mid);
+
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: auto;
+
+  margin: 0 auto;
+  padding: 0.5rem 0.75rem;
+
+  align-items: center;
+  justify-content: space-between;
+
+  transition: background-color var(--duration-default, 200ms)
+      var(--easing-default, ease),
+    box-shadow var(--duration-default, 200ms) var(--easing-default, ease);
+}
+
+.top-bar button {
+  height: 35px;
+}
+
+/* Title and Auth Bar */
+
+.title-auth-bar {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  justify-content: space-between;
+  column-gap: 1.5rem;
+
+  margin-right: 1rem;
+
+  transition: gap var(--duration-default, 200ms) var(--easing-default, ease);
+}
+
+/* App Title */
+
+#app-title-h1 {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2rem;
+  margin: 0 0;
+  padding: 0 0;
+  border: none;
+}
+
+#app-title-a {
+  color: var(--color-primary);
+  height: 100%;
+  text-decoration: underline var(--color-primary-subtle);
+}
+
+#app-title-a:hover {
+  text-decoration: underline var(--color-primary-hover);
+  cursor: grab;
+}
+
+#app-title-a:active {
+  text-decoration: underline var(--color-primary-hover);
+  cursor: grabbing;
+}
+
+#app-title-span {
+  margin: 0;
+  padding: 0;
+}
+
+/* Auth Component */
+
+.auth-component {
+  /* Uses auto-animate pattern from animations.css */
+  display: flex;
+  gap: var(--spacing-sm, 0.5rem);
+  align-items: center;
+}
+
+/* Apply auto-animate behavior to children */
+.auth-component > * {
+  @starting-style {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+
+  opacity: 1;
+  transform: translateX(0);
+  transition: var(--transition-default);
+}
+
+.auth-component > button {
+  /* Transitions handled automatically by layout/grid.css */
+
+  /* Modern @starting-style animation */
+  @starting-style {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Top Right Menu */
+
+.top-right-menu {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+  margin-right: 1rem;
+
+  transition: background-color var(--duration-default, 200ms)
+      var(--easing-default, ease),
+    box-shadow var(--duration-default, 200ms) var(--easing-default, ease);
+}
+
+.user-info {
+  font-size: 1rem;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+#install-btn {
+  margin-right: 0.5rem;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+
+/* Remove background color on smaller containers */
+@container main (max-width: 800px) {
+  .top-bar {
+    background-color: transparent;
+    box-shadow: none;
+  }
+
+  .top-bar .top-right-menu {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+/* Make title more compact on small containers */
+@container main (max-width: 650px) {
+  #app-title-h1 {
+    font-size: 1.5rem;
+  }
+}
+
+/* ===== ACCESSIBILITY ===== */
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .auth-component > button {
+    transition: none !important;
+  }
+
+  .top-bar,
+  .top-right-menu,
+  #app-title-h1 {
+    transition: none !important;
+  }
+}
