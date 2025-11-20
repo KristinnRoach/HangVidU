@@ -1,0 +1,96 @@
+/* ============================================
+   MODERN DISPLAY ANIMATIONS WITH FALLBACK
+   ============================================ */
+
+:root {
+  --duration-default: 200ms;
+  --easing-default: ease-in-out;
+}
+
+/* Accessibility: Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .fade,
+  .slide-up,
+  .slide-down,
+  .slide-left,
+  .slide-right {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Fallback for browsers without transition-behavior support */
+@supports not (transition-behavior: allow-discrete) {
+  .fade,
+  .slide-up,
+  .slide-down,
+  .slide-left,
+  .slide-right {
+    visibility: visible;
+    opacity: 1;
+    transform: translate(0, 0);
+    transition: opacity var(--duration-default) var(--easing-default),
+      visibility 0s linear 0s,
+      transform var(--duration-default) var(--easing-default);
+  }
+
+  .fade.hidden,
+  .slide-up.hidden,
+  .slide-down.hidden,
+  .slide-left.hidden,
+  .slide-right.hidden {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-default) var(--easing-default),
+      visibility 0s linear var(--duration-default),
+      transform var(--duration-default) var(--easing-default);
+  }
+}
+
+/* Modern browsers with transition-behavior support */
+@supports (transition-behavior: allow-discrete) {
+  .fade,
+  .slide-up,
+  .slide-down,
+  .slide-left,
+  .slide-right {
+    opacity: 1;
+    transform: translate(0, 0);
+    transition: opacity var(--duration-default) var(--easing-default),
+      transform var(--duration-default) var(--easing-default),
+      display var(--duration-default) var(--easing-default) allow-discrete;
+  }
+
+  .fade.hidden,
+  .slide-up.hidden,
+  .slide-down.hidden,
+  .slide-left.hidden,
+  .slide-right.hidden {
+    display: none;
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+/* Slide variants hidden transforms */
+.slide-up.hidden {
+  transform: translateY(10px);
+}
+.slide-down.hidden {
+  transform: translateY(-10px);
+}
+.slide-left.hidden {
+  transform: translateX(10px);
+}
+.slide-right.hidden {
+  transform: translateX(-10px);
+}
+
+/* Animation speed modifiers */
+.fast {
+  --duration-default: 100ms;
+}
+.slow {
+  --duration-default: 400ms;
+}

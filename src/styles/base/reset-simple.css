@@ -44,8 +44,6 @@ body {
   min-height: 100vh;
   line-height: 1.5;
   font-family: system-ui, sans-serif;
-  background: #fff;
-  color: #222;
 }
 
 /* Remove anchor text decoration by default */

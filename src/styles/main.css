@@ -1,111 +1,65 @@
 /* src/style.css */
 
+/* Import modular styles */
+@import './base/reset-normalize.css';
+@import './base/typography.css';
+@import './theme.css';
+@import './animations.css';
+@import './utilities.css';
+@import './layout/wrappers.css';
+@import './layout/grid.css';
+
 :root {
   --small-frame-height: 20dvh;
   --small-frame-width: calc(var(--small-frame-height) * (16 / 9));
-
-  /* z-index system: simplified 3-layer priority */
-  --z-low: 0; /* videos, background content */
-  --z-mid: 100; /* interactive UI (lobby, search, messages, auth) */
-  --z-high: 200; /* primary controls (chat bar, toggles) */
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
 }
 
 body {
-  font-family: 'Satoshi', 'Roboto', sans-serif;
-  background: #1a1a1a;
-  color: #ccc;
-}
-
-h1 {
-  text-align: center;
-  font-size: 2rem;
-  color: #fff;
-}
-
-a {
-  color: #4c81af;
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
-  text-shadow: 0 0 5px rgba(85, 109, 137, 0.282);
-}
-
-a span {
-  text-decoration: none;
+  background: var(--bg-primary);
 }
 
 input[type='text'] {
-  padding: 10px 15px;
-  border: 1px solid #444;
-  border-radius: 5px;
-  background: #2a2a2a;
-  color: #fff;
-  font-size: 16px;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
   min-width: 200px;
 }
 
 input[type='text']:focus {
   outline: none;
-  border-color: #4caf50;
+  border-color: var(--color-success);
 }
 
 button {
   border: none;
-  border-radius: 5px;
+  border-radius: var(--radius-md);
 
   margin: 0px;
-  line-height: 0%;
+  padding: var(--spacing-xs) var(--spacing-md);
 
-  padding: 4px 12px;
+  font-size: var(--font-size-md);
 
-  font-size: 16px;
-
-  background-color: #4caf50;
+  background-color: var(--color-success);
   color: white;
 
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background-color var(--transition-slow);
 }
 
 button:hover:not(:disabled) {
-  background-color: #39843d;
+  background-color: var(--color-success-hover);
 }
 
 button:disabled {
-  background-color: #555;
+  background-color: var(--border-secondary);
   cursor: not-allowed;
   opacity: 0.6;
 }
 
-.main-wrapper {
-  position: relative;
-  height: 100dvh;
-  width: 100dvw;
-
-  overflow: hidden;
-}
-
-.relative-wrapper {
-  position: relative;
-  height: 94%;
-  width: auto;
-}
-
-.flex-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-}
+/* Layout wrappers and utilities moved to layout/ directory */
 
 .confirm-dialog {
   display: flex;
@@ -114,13 +68,13 @@ button:disabled {
   gap: 1.5rem;
   max-width: 400px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
 
-  margin: 10px;
+  margin: var(--spacing-md);
   padding: 1rem;
-  box-shadow: 0 4px 12px rgba(11, 11, 11, 0.5);
-  background: #2d2d2d;
-  color: #ccc;
+  box-shadow: var(--shadow-md);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
 }
 
 .confirm-dialog-actions {
@@ -131,13 +85,13 @@ button:disabled {
 
 .confirm-dialog-actions > button {
   padding: 0.5rem 1rem;
-  font-size: small;
+  font-size: var(--font-size-sm);
   border: none;
-  border-radius: 5px;
+  border-radius: var(--radius-md);
   cursor: pointer;
 }
 
-/* #join-room-container {
+#join-room-container {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -147,7 +101,7 @@ button:disabled {
   padding: 1.5rem;
   font-size: 1.2rem;
   row-gap: 10rem;
-} */
+}
 
 #join-room-form {
   display: flex;
@@ -162,12 +116,12 @@ button:disabled {
 /* #join-room-label {} */
 
 #join-room-form input[type='text'] {
-  padding: 10px 15px;
-  border: 1px solid #444;
-  border-radius: 5px;
-  background: #2a2a2a;
-  color: #fff;
-  font-size: 16px;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
   min-width: 200px;
 }
 
@@ -219,16 +173,11 @@ button:disabled {
   text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), 0 -1px 0 rgba(255, 255, 255, 0.3);
 }
 
-#lobby.hidden {
-  display: none;
-  opacity: 0;
-  pointer-events: none;
-  visibility: hidden;
-}
+/* Removed - using .hidden from utilities.css */
 
 .top-bar {
-  background: #121212;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-md);
 
   position: relative;
   z-index: var(--z-mid);
@@ -248,7 +197,7 @@ button:disabled {
 .title-auth-bar {
   display: flex;
   flex-direction: row;
-  width: 100%;
+  flex: 1;
   justify-content: space-between;
   column-gap: 1.5rem;
 
@@ -263,18 +212,18 @@ button:disabled {
 }
 
 #app-title-a {
-  color: #4c81af;
+  color: var(--color-primary);
   height: 100%;
-  text-decoration: underline #739cc07b;
+  text-decoration: underline var(--color-primary-subtle);
 }
 
 #app-title-a:hover {
-  text-decoration: underline #739cc0d8;
+  text-decoration: underline var(--color-primary-hover);
   cursor: grab;
 }
 
 #app-title-a:active {
-  text-decoration: underline #739cc0d8;
+  text-decoration: underline var(--color-primary-hover);
   cursor: grabbing;
 }
 
@@ -291,7 +240,7 @@ button:disabled {
 
 .user-info {
   font-size: 1rem;
-  color: #aaa;
+  color: var(--text-tertiary);
   text-align: center;
 }
 
@@ -300,10 +249,55 @@ button:disabled {
   flex-direction: row;
   align-items: center;
   gap: 1rem;
+  margin-right: 1rem;
 }
 
-/* Remove background color on smaller screens */
-@media (max-width: 800px) {
+#install-btn {
+  margin-right: 0.5rem;
+}
+
+/* ===== CONTAINER QUERY RESPONSIVE DESIGN ===== */
+/* Top bar adapts to container size with smooth animations */
+
+.top-bar {
+  transition: background-color var(--duration-default, 200ms)
+      var(--easing-default, ease),
+    box-shadow var(--duration-default, 200ms) var(--easing-default, ease);
+}
+
+.top-right-menu {
+  transition: background-color var(--duration-default, 200ms)
+      var(--easing-default, ease),
+    box-shadow var(--duration-default, 200ms) var(--easing-default, ease);
+}
+
+#app-title-h1 {
+  opacity: 1;
+  transform: translateX(0);
+  max-width: 100%;
+  transition: opacity var(--duration-default, 200ms) var(--easing-default, ease),
+    transform var(--duration-default, 200ms) var(--easing-default, ease),
+    max-width var(--duration-default, 200ms) var(--easing-default, ease);
+}
+
+/* Auth component with slide animation */
+.title-auth-bar {
+  transition: gap var(--duration-default, 200ms) var(--easing-default, ease);
+}
+
+.auth-component {
+  transition: transform var(--duration-default, 200ms)
+    var(--easing-default, ease);
+}
+
+.auth-component button {
+  transition: transform var(--duration-default, 200ms)
+      var(--easing-default, ease),
+    margin var(--duration-default, 200ms) var(--easing-default, ease);
+}
+
+/* Remove background color on smaller containers */
+@container main (max-width: 800px) {
   .top-bar {
     background-color: transparent;
     box-shadow: none;
@@ -315,30 +309,34 @@ button:disabled {
   }
 }
 
-/* Hide title on small screens */
-@media (max-width: 650px) {
+/* Hide title on small containers with fade-out and slide */
+@container main (max-width: 650px) {
   #app-title-h1 {
-    display: none;
+    opacity: 0;
+    transform: translateX(-20px);
+    pointer-events: none;
+    max-width: 0;
+    overflow: hidden;
+  }
+
+  /* Slide auth buttons left when title disappears */
+  .auth-component {
+    transform: translateX(-20px);
   }
 }
 
-/* 
-#create-link-btn,
-#copy-link-btn {
-  opacity: 1;
-  pointer-events: auto;
-  transition: opacity 200ms;
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .top-bar,
+  .top-right-menu,
+  #app-title-h1 {
+    transition: none !important;
+  }
 }
 
-#copy-link-btn.hidden,
-#create-link-btn.hidden {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 200ms;
-} */
+/* Removed - dead code */
 
-/* HIDE/SHOW */
-
+/* Default visible state for elements that toggle visibility */
 .video-box,
 #yt-video-box,
 #shared-video-box,
@@ -348,32 +346,6 @@ button:disabled {
 .top-right-menu {
   opacity: 1;
   pointer-events: auto;
-  will-change: opacity;
-  transition: opacity 200ms ease;
-}
-
-.video-box.hidden,
-#searchQuery.hidden,
-#searchResults.hidden,
-#mute-btn.hidden,
-#call-btn.hidden,
-#hang-up-btn.hidden,
-#switch-camera-btn.hidden,
-#camera-btn.hidden,
-.hidden:has(#install-btn),
-#install-btn.hidden,
-.chat-btn.hidden,
-#messages-toggle-btn.hidden,
-.messages-box.hidden,
-.top-right-menu.hidden {
-  display: none;
-  visibility: hidden;
-
-  /* opacity: 0 !important; 
-  pointer-events: none;
-  position: absolute;
-  left: -9999px;
-  top: -9999px; */
 }
 
 /* MESSAGES UI */
@@ -454,8 +426,19 @@ button:disabled {
   z-index: var(--z-mid);
 }
 
-/* Contain the toggle inside the top bar on small screens */
-@media (max-width: 800px) {
+/* Messages toggle with smooth transitions */
+#messages-toggle-btn {
+  transition: position var(--duration-default, 200ms)
+    var(--easing-default, ease);
+}
+
+#messages-toggle-btn button {
+  transition: padding var(--duration-default, 200ms) var(--easing-default, ease),
+    font-size var(--duration-default, 200ms) var(--easing-default, ease);
+}
+
+/* Contain the toggle inside the top bar on small containers */
+@container main (max-width: 800px) {
   .top-bar #messages-toggle-btn {
     position: static;
     bottom: auto;
@@ -479,8 +462,8 @@ button:disabled {
     right: anchor(right);
   }
 
-  /* Small screens: toggle is in top bar → anchor below */
-  @media (max-width: 800px) {
+  /* Small containers: toggle is in top bar → anchor below */
+  @container main (max-width: 800px) {
     .messages-box {
       top: anchor(bottom);
       bottom: auto;
@@ -554,21 +537,7 @@ button:disabled {
 
 /* YouTube Search Styles */
 
-#searchQuery.hidden {
-  width: 0;
-  opacity: 0;
-  pointer-events: none;
-  visibility: hidden;
-
-  will-change: width, opacity;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s;
-}
-
-#searchQuery {
-  width: 100%;
-  opacity: 1;
-  pointer-events: auto;
-}
+/* Removed - #searchQuery will use animation classes */
 
 .search-section {
   border-radius: 8px;
@@ -959,14 +928,7 @@ button:disabled {
   flex-shrink: 0;
 }
 
-.chat-controls.hidden,
-.chat-controls.watch-mode.hidden,
-.chat-controls.bottom.hidden {
-  opacity: 0;
-  pointer-events: none;
-  visibility: hidden;
-  transition: opacity 200ms ease, visibility 0s linear 200ms;
-}
+/* Removed - .chat-controls will use .fade animation class */
 
 .chat-btn {
   padding: 20px;

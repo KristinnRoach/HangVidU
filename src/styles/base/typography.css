@@ -1,0 +1,28 @@
+/* ===== TYPOGRAPHY ===== */
+/* Global text styles - easy override point for typography design */
+
+body {
+  font-family: var(--font-family-primary);
+  color: var(--text-secondary);
+}
+
+h1 {
+  font-size: var(--font-size-2xl);
+  color: var(--text-primary);
+  text-align: center;
+  margin: 0;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+  text-shadow: 0 0 5px var(--color-primary-subtle);
+}
+
+a span {
+  text-decoration: none;
+}

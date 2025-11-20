@@ -1,0 +1,147 @@
+/* ============================================
+   THEME SYSTEM - Design Tokens
+   ============================================ */
+
+:root {
+  /* ===== COLORS - Dark Mode (Default) ===== */
+
+  /* Backgrounds */
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2a2a2a;
+  --bg-tertiary: #2d2d2d;
+  --bg-elevated: #121212;
+
+  /* Text */
+  --text-primary: #fff;
+  --text-secondary: #ccc;
+  --text-tertiary: #aaa;
+  --text-muted: #888;
+  --text-disabled: #666;
+
+  /* Borders */
+  --border-primary: #444;
+  --border-secondary: #555;
+
+  /* Interactive */
+  --color-primary: #4c81af;
+  --color-primary-hover: #739cc0d8;
+  --color-primary-subtle: #739cc07b;
+
+  /* Actions */
+  --color-success: #4caf50;
+  --color-success-hover: #39843d;
+  --color-success-alt: #45a049;
+
+  --color-danger: #f44336;
+  --color-danger-hover: #da190b;
+
+  --color-info: #007bff;
+  --color-info-hover: #0056b3;
+  --color-info-alt: #2196f3;
+  --color-info-alt-hover: #1976d2;
+
+  --color-warning: #ffc107;
+
+  /* Accents */
+  --color-accent-blue: rgb(55, 162, 255);
+  --color-accent-hover: #777;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --shadow-inset-sm: inset 0 4px 12px rgba(0, 0, 0, 0.15);
+  --shadow-inset-md: inset 0 20px 40px rgba(0, 0, 0, 0.3);
+
+  /* ===== SPACING ===== */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+  --spacing-2xl: 24px;
+  --spacing-3xl: 32px;
+
+  /* ===== SIZING ===== */
+  --radius-sm: 4px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-full: 50%;
+
+  /* ===== TYPOGRAPHY ===== */
+  --font-family-primary: 'Satoshi', 'Roboto', sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 2rem;
+
+  /* ===== Z-INDEX ===== */
+  --z-low: 0;
+  --z-mid: 100;
+  --z-high: 200;
+  --z-overlay: 300;
+  --z-modal: 9999;
+
+  /* ===== TRANSITIONS ===== */
+  --transition-fast: 100ms;
+  --transition-base: 200ms;
+  --transition-slow: 300ms;
+  --transition-slower: 400ms;
+}
+
+/* ===== LIGHT MODE (Soft, not harsh) ===== */
+@media (prefers-color-scheme: light) {
+  :root {
+    /* Backgrounds */
+    --bg-primary: #f5f5f5;
+    --bg-secondary: #e8e8e8;
+    --bg-tertiary: #e0e0e0;
+    --bg-elevated: #ffffff;
+
+    /* Text */
+    --text-primary: #1a1a1a;
+    --text-secondary: #333333;
+    --text-tertiary: #555555;
+    --text-muted: #777777;
+    --text-disabled: #999999;
+
+    /* Borders */
+    --border-primary: #d0d0d0;
+    --border-secondary: #c0c0c0;
+
+    /* Interactive */
+    --color-primary: #3a6a94;
+    --color-primary-hover: #2d5575;
+    --color-primary-subtle: rgba(58, 106, 148, 0.15);
+
+    /* Actions */
+    --color-success: #388e3c;
+    --color-success-hover: #2e7d32;
+    --color-success-alt: #43a047;
+
+    --color-danger: #d32f2f;
+    --color-danger-hover: #c62828;
+
+    --color-info: #0277bd;
+    --color-info-hover: #01579b;
+    --color-info-alt: #1976d2;
+    --color-info-alt-hover: #1565c0;
+
+    --color-warning: #f57c00;
+
+    /* Accents */
+    --color-accent-blue: rgb(25, 118, 210);
+    --color-accent-hover: #bbb;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.15);
+    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.2);
+    --shadow-inset-sm: inset 0 2px 6px rgba(0, 0, 0, 0.08);
+    --shadow-inset-md: inset 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+}

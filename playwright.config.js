@@ -38,18 +38,19 @@ export default defineConfig({
         },
       },
     },
-    {
-      name: 'firefox',
-      use: {
-        ...devices['Desktop Firefox'],
-        launchOptions: {
-          firefoxUserPrefs: {
-            'media.navigator.streams.fake': true,
-            'media.navigator.permission.disabled': true,
-          },
-        },
-      },
-    },
+    // Firefox disabled for CSS standardization - focus on Chromium for visual regression
+    // {
+    //   name: 'firefox',
+    //   use: {
+    //     ...devices['Desktop Firefox'],
+    //     launchOptions: {
+    //       firefoxUserPrefs: {
+    //         'media.navigator.streams.fake': true,
+    //         'media.navigator.permission.disabled': true,
+    //       },
+    //     },
+    //   },
+    // },
   ],
   webServer: {
     command: 'pnpm dev',
