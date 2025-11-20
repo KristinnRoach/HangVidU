@@ -1,0 +1,118 @@
+/* ===== CHAT CONTROLS COMPONENT ===== */
+/* Call control buttons (call, hang-up, mute, camera, etc.) */
+
+.chat-controls {
+  display: flex;
+  justify-content: center;
+  gap: 2dvw;
+  flex-wrap: wrap;
+  margin: 0 auto;
+  position: relative;
+  z-index: var(--z-high);
+  pointer-events: auto;
+  opacity: 1;
+  transition: opacity 200ms ease;
+}
+
+.chat-controls.bottom {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 1;
+
+  pointer-events: auto;
+}
+
+.chat-controls.watch-mode {
+  position: fixed;
+  top: 50%;
+  left: 2vw;
+  transform: translateY(-50%);
+
+  flex-direction: column;
+  opacity: 1;
+
+  max-height: 80vh;
+  overflow-y: auto;
+
+  pointer-events: auto;
+}
+
+.chat-controls.watch-mode .chat-btn {
+  margin-top: 1rem;
+  padding: 10px;
+  width: 50px;
+  height: 50px;
+  flex-shrink: 0;
+}
+
+/* Chat Button Base */
+
+.chat-btn {
+  padding: 20px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+@media (max-width: 600px) {
+  .chat-btn {
+    padding: 14px;
+  }
+}
+
+/* Specific Control Buttons */
+
+#call-btn {
+  background: #2196f3;
+  transition: background-color 0.3s, transform 0.3s, padding 0.3s;
+}
+
+#call-btn:hover:not(:disabled) {
+  background: #1976d2;
+}
+
+/* Large call button for pre-call state */
+#call-btn.call-btn-large {
+  padding: 40px;
+  font-size: 1.5rem;
+  transform: scale(1.2);
+}
+
+#call-btn.call-btn-large:hover:not(:disabled) {
+  transform: scale(1.25);
+}
+
+#hang-up-btn {
+  background-color: rgb(255, 80, 80, 1);
+}
+
+#hang-up-btn:hover {
+  background-color: rgb(255, 50, 50, 1);
+}
+
+#hangUp {
+  background-color: #f44336;
+}
+
+#hangUp:hover:not(:disabled) {
+  background-color: #da190b;
+}
+
+.chat-btn.muted {
+  background-color: rgb(255, 80, 80, 1);
+}
+
+/* Mobile Optimization */
+
+/* Hide disabled buttons on mobile to save space */
+@media (max-width: 768px) {
+  button:disabled {
+    opacity: 0;
+    width: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+}

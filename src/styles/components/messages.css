@@ -1,0 +1,163 @@
+/* ===== MESSAGES COMPONENT ===== */
+/* Messages toggle button and messages box with anchor positioning */
+
+/* Messages Toggle Button */
+
+#messages-toggle-btn {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  pointer-events: auto;
+  touch-action: manipulation;
+
+  z-index: var(--z-high);
+
+  /* CSS Anchor Positioning (2025) */
+  anchor-name: --msg-toggle;
+
+  transition: position var(--duration-default, 200ms)
+    var(--easing-default, ease);
+}
+
+#messages-toggle-btn button {
+  font-size: 1.5rem;
+  padding: 1.5rem 1rem;
+  background: #007bff;
+
+  transform-origin: bottom center;
+  will-change: transform, box-shadow;
+
+  transition: padding var(--duration-default, 200ms) var(--easing-default, ease),
+    font-size var(--duration-default, 200ms) var(--easing-default, ease);
+}
+
+/* New Message Animation */
+
+#messages-toggle-btn.new-message button {
+  animation: bounce 0.8s ease-out 3;
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  20% {
+    transform: translateY(8px);
+  }
+  40% {
+    transform: translateY(-16px);
+  }
+  55% {
+    transform: translateY(0);
+  }
+  75% {
+    transform: translateY(-6px);
+  }
+}
+
+/* Messages Box */
+
+.messages-box {
+  display: flex;
+  flex-direction: column;
+
+  position: fixed;
+
+  /* Fallback positioning for browsers without anchor positioning */
+  bottom: 80px;
+  right: 20px;
+
+  margin: var(--spacing-sm);
+  padding: 10px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+
+  width: 300px;
+  height: fit-content;
+
+  background: var(--bg-secondary);
+  z-index: var(--z-mid);
+}
+
+/* Messages Content Area (extracted from inline styles) */
+
+#messages {
+  min-height: 20dvh;
+  height: fit-content;
+  max-height: 40dvh;
+
+  overflow-y: auto;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  padding: 6px;
+  font-family: sans-serif;
+  font-size: 14px;
+}
+
+/* Messages Form (extracted from inline styles) */
+
+#messages-form {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-top: 6px;
+}
+
+#messages-input {
+  flex: 1;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-secondary);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+#messages-form button {
+  padding: 6px var(--spacing-md);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+
+/* Contain the toggle inside the top bar on small containers */
+@container main (max-width: 800px) {
+  .top-bar #messages-toggle-btn {
+    position: static;
+    bottom: auto;
+    right: auto;
+    z-index: auto;
+  }
+
+  .top-bar #messages-toggle-btn button {
+    padding: 8px 10px;
+    font-size: 1.2rem;
+  }
+
+  /* Position messages box below top bar on small screens (fallback) */
+  .messages-box {
+    top: 80px;
+    right: 20px;
+    bottom: auto;
+  }
+}
+
+/* ===== CSS ANCHOR POSITIONING ===== */
+/* Progressive enhancement - automatic flip based on container size */
+
+@supports (position-anchor: --msg-toggle) and (right: anchor(right)) and
+  (bottom: anchor(top)) {
+  /* Default: toggle is bottom (right) -> anchor above */
+  .messages-box {
+    position-anchor: --msg-toggle;
+    bottom: anchor(top);
+    right: anchor(right);
+  }
+
+  /* Small containers: toggle is in top bar → anchor below */
+  @container main (max-width: 800px) {
+    .messages-box {
+      top: anchor(bottom);
+      bottom: auto;
+      /* right remains anchored via default rule */
+    }
+  }
+}
