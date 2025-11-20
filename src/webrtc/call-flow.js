@@ -10,7 +10,6 @@
  */
 
 import { getUserId } from '../firebase/auth.js';
-import { updateStatus } from '../utils/ui/status.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 
 import { drainIceCandidateQueue, setupIceCandidates } from '../webrtc/ice.js';
@@ -64,7 +63,7 @@ export async function createCall({
   // 1. VALIDATE PREREQUISITES
   // ─────────────────────────────────────────────────────────────────────────
   if (!localStream) {
-    updateStatus('Error: Camera not initialized');
+    devDebug('Error: Camera not initialized');
     return { success: false };
   }
 
@@ -93,7 +92,7 @@ export async function createCall({
     mutePartnerBtn
   );
   if (!remoteStreamSuccess) {
-    updateStatus('Error setting up remote stream');
+    devDebug('Error setting up remote stream');
     console.error('Error setting up remote stream');
     pc.close();
     return { success: false };
@@ -131,7 +130,7 @@ export async function createCall({
   // ─────────────────────────────────────────────────────────────────────────
   const roomLink = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
 
-  updateStatus('Waiting for partner to join...');
+  devDebug('Waiting for partner to join...');
 
   return {
     success: true,
@@ -183,23 +182,23 @@ export async function answerCall({
   devDebug('answerCall', { roomId });
 
   if (!localStream) {
-    updateStatus('Error: Camera not initialized');
+    devDebug('Error: Camera not initialized');
     return { success: false };
   }
 
   if (!roomId) {
-    updateStatus('Error: No room ID');
+    devDebug('Error: No room ID');
     return { success: false };
   }
 
   // Check room status
   const roomStatus = await RoomService.checkRoomStatus(roomId);
   if (!roomStatus.exists) {
-    updateStatus('Error: Invalid room link');
+    devDebug('Error: Invalid room link');
     return { success: false };
   }
   if (!roomStatus.hasMembers) {
-    updateStatus('Error: Room is empty - no one to connect with');
+    devDebug('Error: Room is empty - no one to connect with');
     return { success: false };
   }
 
@@ -208,13 +207,13 @@ export async function answerCall({
   try {
     roomData = await RoomService.getRoomData(roomId);
   } catch (error) {
-    updateStatus('Error: ' + error.message);
+    devDebug('Error: ' + error.message);
     return { success: false };
   }
 
   const offer = roomData.offer;
   if (!offer) {
-    updateStatus('Error: No offer found');
+    devDebug('Error: No offer found');
     return { success: false };
   }
 
@@ -242,7 +241,7 @@ export async function answerCall({
     mutePartnerBtn
   );
   if (!remoteStreamSuccess) {
-    updateStatus('Error setting up remote stream');
+    devDebug('Error setting up remote stream');
     console.error('Error setting up remote stream for joiner');
     pc.close();
     return { success: false };
@@ -269,7 +268,7 @@ export async function answerCall({
     await RoomService.saveAnswer(roomId, answer);
   } catch (err) {
     console.error('Failed to save answer to Firebase:', err);
-    updateStatus('Failed to send answer to partner.');
+    devDebug('Failed to send answer to partner.');
     pc.close();
     return { success: false };
   }
@@ -301,7 +300,7 @@ export async function answerCall({
   // ─────────────────────────────────────────────────────────────────────────
   // 6. RETURN SUCCESS WITH CONNECTION ARTIFACTS
   // ─────────────────────────────────────────────────────────────────────────
-  updateStatus('Connecting...');
+  devDebug('Connecting...');
 
   return {
     success: true,
@@ -336,17 +335,17 @@ export async function joinOrCreateRoom(
 
   if (!status.exists) {
     // Room doesn't exist - create it
-    updateStatus('Creating room...');
+    devDebug('Creating room...');
     return await createCall({ ...createOptions, targetRoomId: customRoomId });
   }
 
   if (!status.hasMembers) {
     // Room exists but empty - create new call with this ID
-    updateStatus('Room is empty, creating new call...');
+    devDebug('Room is empty, creating new call...');
     return await createCall({ ...createOptions, targetRoomId: customRoomId });
   }
 
   // Room exists with members - join as joiner
-  updateStatus('Joining room...');
+  devDebug('Joining room...');
   return await answerCall({ ...answerOptions, roomId: customRoomId });
 }

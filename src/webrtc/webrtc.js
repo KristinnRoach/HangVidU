@@ -2,7 +2,6 @@
 
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { enterCallMode, exitCallMode, clearUrlParam } from '../main.js';
-import { updateStatus } from '../utils/ui/status.js';
 import { onCallAnswered } from '../components/calling/calling-ui.js';
 import CallController from './call-controller.js';
 
@@ -16,7 +15,7 @@ export function setupConnectionStateHandlers(pc) {
     devDebug('onconnectionstatechange:', pc.connectionState);
 
     if (pc.connectionState === 'connected') {
-      updateStatus('Connected!');
+      devDebug('Connected!');
       enterCallMode();
       // Ensure any calling overlay is dismissed once connected
       onCallAnswered().catch((e) =>
@@ -28,14 +27,14 @@ export function setupConnectionStateHandlers(pc) {
         disconnectTimeoutId = null;
       }
     } else if (pc.connectionState === 'disconnected') {
-      updateStatus('Partner disconnected (reconnecting...)');
+      devDebug('Partner disconnected (reconnecting...)');
 
       // Wait 3 seconds before cleaning up to allow transient disconnects to recover
       if (disconnectTimeoutId) clearTimeout(disconnectTimeoutId);
       disconnectTimeoutId = setTimeout(() => {
         // Only clean up if still disconnected after grace period and this is still the active connection
         if (pc === activePC && pc.connectionState === 'disconnected') {
-          updateStatus('Partner disconnected');
+          devDebug('Partner disconnected');
           // Use cleanupCall (not hangUp) because this is remote-initiated disconnect
           CallController.cleanupCall({
             reason: 'connection_lost',
@@ -44,7 +43,7 @@ export function setupConnectionStateHandlers(pc) {
         disconnectTimeoutId = null;
       }, 3000);
     } else if (pc.connectionState === 'failed') {
-      updateStatus('Connection failed');
+      devDebug('Connection failed');
       clearUrlParam();
       // Clear any pending disconnect timeout
       if (disconnectTimeoutId) {

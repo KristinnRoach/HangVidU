@@ -15,7 +15,6 @@ import {
   rtdb,
   removeRTDBListenersForRoom,
 } from '../storage/fb-rtdb/rtdb.js';
-import { updateStatus } from '../utils/ui/status.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 
 export function createCallController() {
@@ -114,9 +113,7 @@ class CallController {
       cancellationHandled = true;
 
       devDebug('Call cancelled by partner', { roomId, cancel });
-      try {
-        updateStatus('Partner disconnected');
-      } catch (_) {}
+      devDebug('Partner disconnected');
 
       // Clear remote video to prevent frozen frame
       try {
@@ -221,7 +218,7 @@ class CallController {
         );
         await onCallRejected(rej.reason || 'user_rejected');
       } catch (_) {
-        updateStatus('Call declined');
+        devDebug('Call declined');
       }
 
       // Cleanup
