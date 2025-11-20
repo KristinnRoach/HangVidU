@@ -104,8 +104,8 @@ export default defineConfig(({ mode }) => {
       https: true, // use trusted dev cert from mkcert
       host: true, // To expose to LAN devices as well
       allowedHosts: [
-        '29539478b6f7.ngrok-free.app',
-        '.ngrok-free.app',
+        'haunted-salley-cunningly.ngrok-free.dev',
+        '.ngrok-free.dev',
         '192.168.8.100',
         '169.254.123.79:5173',
       ],

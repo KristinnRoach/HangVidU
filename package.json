@@ -5,15 +5,16 @@
   "description": "Simple peer-to-peer video chat with watch-together mode",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:experiments": "vite --open experiments.html",
-    "dev:disable-pwa": "DISABLE_PWA=1 vite",
+    "dev": "DISABLE_PWA=1 concurrently \"vite\" \"pnpm ngrok\"",
+    "dev:experiments": "DISABLE_PWA=1 vite --open experiments.html",
+    "dev:pwa": "DISABLE_PWA=0 vite",
     "build": "vite build",
     "build:hosting": "BUILD_TARGET=hosting vite build",
     "fb-deploy": "pnpm build:hosting && firebase deploy --only hosting",
     "gh-deploy": "pnpm build && npx gh-pages -d dist",
     "preview": "vite preview",
     "build:go": "sh go-server/build-scripts/build.sh",
+    "ngrok": "ngrok http https://localhost:5173 --domain=haunted-salley-cunningly.ngrok-free.dev",
     "test": "vitest --run",
     "test:watch": "vitest",
     "test:browser:smoke": "vitest --run tests/browser/",
@@ -42,7 +43,8 @@
     "vite": "^7.1.12",
     "vite-plugin-mkcert": "^1.17.9",
     "vite-plugin-pwa": "^1.1.0",
-    "vitest": "^4.0.5"
+    "vitest": "^4.0.5",
+    "concurrently": "^9.0.0"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",

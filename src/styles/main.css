@@ -290,7 +290,10 @@ button:disabled {
     var(--easing-default, ease);
 }
 
-.auth-component button {
+.auth-component.goog-login-btn {
+  opacity: 1;
+  transform: translateX(3);
+  border: red;
   transition: transform var(--duration-default, 200ms)
       var(--easing-default, ease),
     margin var(--duration-default, 200ms) var(--easing-default, ease);
@@ -319,10 +322,10 @@ button:disabled {
     overflow: hidden;
   }
 
-  /* Slide auth buttons left when title disappears */
+  /* Slide auth buttons left when title disappears
   .auth-component {
     transform: translateX(-20px);
-  }
+  } */
 }
 
 /* Respect reduced motion preference */
@@ -980,7 +983,11 @@ button:disabled {
 @media (max-width: 768px) {
   /* Save space by removing disabled buttons on mobile */
   button:disabled {
-    display: none;
+    /* display: none; */
+    opacity: 0;
+    width: 0;
+    padding: 0;
+    overflow: hidden;
   }
 }
 
