@@ -5,6 +5,12 @@
 :root {
   --duration-default: 200ms;
   --easing-default: ease-in-out;
+
+  --transition-default: opacity var(--duration-default) var(--easing-default),
+    transform var(--duration-default) var(--easing-default),
+    width var(--duration-default) var(--easing-default),
+    padding var(--duration-default) var(--easing-default),
+    margin var(--duration-default) var(--easing-default);
 }
 
 /* Accessibility: Respect reduced motion preference */
@@ -13,11 +19,62 @@
   .slide-up,
   .slide-down,
   .slide-left,
-  .slide-right {
+  .slide-right,
+  .auto-animate,
+  .auto-animate > * {
     transition: none !important;
     animation: none !important;
   }
 }
+
+/* ============================================
+   AUTO-ANIMATE PATTERN (Modern @starting-style)
+   ============================================ */
+/* Automatically animates children when they appear/disappear with display: none */
+
+.auto-animate > * {
+  /* Modern browsers with @starting-style support */
+  @starting-style {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity var(--duration-default) var(--easing-default),
+    transform var(--duration-default) var(--easing-default),
+    display var(--duration-default) allow-discrete;
+}
+
+.auto-animate > *.hidden,
+.auto-animate > *[hidden],
+.auto-animate > *:disabled {
+  display: none;
+  opacity: 0;
+  transform: translateX(10px);
+}
+
+/* Smooth sibling repositioning when items hide/show */
+.auto-animate {
+  display: flex;
+  gap: var(--spacing-sm, 0.5rem);
+}
+
+.auto-animate > * {
+  transition: all var(--duration-default) var(--easing-default);
+}
+
+/* Fallback for browsers without @starting-style */
+@supports not (selector(:has(*))) {
+  .auto-animate > * {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ============================================
+   LEGACY ANIMATION CLASSES
+   ============================================ */
 
 /* Fallback for browsers without transition-behavior support */
 @supports not (transition-behavior: allow-discrete) {

@@ -125,7 +125,7 @@ import { initializeAuthUI } from './components/auth/AuthComponent.js';
 
 import RoomService from './room.js';
 import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
-import confirmDialog from './components/design/confirm-dialog.js';
+import confirmDialog from './components/base/confirm-dialog.js';
 
 // Quick access to enable / disable dev debug logs
 setDevDebugEnabled(true);
@@ -735,7 +735,7 @@ export function listenForIncomingOnRoom(roomId) {
     if (!data) return;
     try {
       const { dismissActiveConfirmDialog } = await import(
-        './components/design/confirm-dialog.js'
+        './components/base/confirm-dialog.js'
       );
       if (typeof dismissActiveConfirmDialog === 'function') {
         dismissActiveConfirmDialog();

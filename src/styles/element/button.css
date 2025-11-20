@@ -1,0 +1,27 @@
+/* ===== BASE BUTTON STYLES ===== */
+/* Generic button defaults - component-specific styles in components/buttons.css */
+
+button {
+  border: none;
+  border-radius: var(--radius-md);
+
+  margin: 0px;
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-md);
+
+  background-color: var(--color-success);
+  color: white;
+
+  cursor: pointer;
+  transition: background-color var(--transition-slow);
+}
+
+button:hover:not(:disabled) {
+  background-color: var(--color-success-hover);
+}
+
+button:disabled {
+  background-color: var(--border-secondary);
+  cursor: not-allowed;
+  opacity: 0.6;
+}

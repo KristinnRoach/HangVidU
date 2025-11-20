@@ -63,26 +63,22 @@
 }
 
 /* ===== LAYOUT ANIMATIONS ===== */
-/* Smooth transitions for layout shifts (container queries, flex changes, etc.) */
+/* Automatic smooth transitions for flex children */
 
-.layout-animated {
-  transition: flex-direction var(--duration-default, 200ms)
-      var(--easing-default, ease),
-    gap var(--duration-default, 200ms) var(--easing-default, ease),
-    padding var(--duration-default, 200ms) var(--easing-default, ease),
-    margin var(--duration-default, 200ms) var(--easing-default, ease),
-    width var(--duration-default, 200ms) var(--easing-default, ease),
-    height var(--duration-default, 200ms) var(--easing-default, ease);
+/* Simple approach: Add .animated-flex to parent container */
+.animated-flex > * {
+  transition: var(--transition-default);
+}
+
+/* Opt-out: Add .no-animate to disable */
+.no-animate > *,
+.no-animate {
+  transition: none !important;
 }
 
 /* Respect reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
-  .layout-animated {
+  .animated-flex > * {
     transition: none !important;
   }
-}
-
-/* Legacy alias for backwards compatibility */
-.container-responsive {
-  transition: flex-direction 0.3s ease, gap 0.3s ease;
 }

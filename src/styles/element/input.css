@@ -1,0 +1,17 @@
+/* ===== BASE INPUT STYLES ===== */
+/* Generic input defaults - component-specific styles in components/inputs.css */
+
+input[type='text'] {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  min-width: 200px;
+}
+
+input[type='text']:focus {
+  outline: none;
+  border-color: var(--color-success);
+}

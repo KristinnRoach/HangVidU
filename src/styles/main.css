@@ -1,8 +1,10 @@
 /* src/style.css */
 
 /* Import modular styles */
-@import './base/reset-normalize.css';
-@import './base/typography.css';
+@import './init/reset-normalize.css';
+@import './init/typography.css';
+@import './element/button.css';
+@import './element/input.css';
 @import './theme.css';
 @import './animations.css';
 @import './utilities.css';
@@ -12,51 +14,6 @@
 :root {
   --small-frame-height: 20dvh;
   --small-frame-width: calc(var(--small-frame-height) * (16 / 9));
-}
-
-body {
-  background: var(--bg-primary);
-}
-
-input[type='text'] {
-  padding: var(--spacing-md) var(--spacing-lg);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  font-size: var(--font-size-md);
-  min-width: 200px;
-}
-
-input[type='text']:focus {
-  outline: none;
-  border-color: var(--color-success);
-}
-
-button {
-  border: none;
-  border-radius: var(--radius-md);
-
-  margin: 0px;
-  padding: var(--spacing-xs) var(--spacing-md);
-
-  font-size: var(--font-size-md);
-
-  background-color: var(--color-success);
-  color: white;
-
-  cursor: pointer;
-  transition: background-color var(--transition-slow);
-}
-
-button:hover:not(:disabled) {
-  background-color: var(--color-success-hover);
-}
-
-button:disabled {
-  background-color: var(--border-secondary);
-  cursor: not-allowed;
-  opacity: 0.6;
 }
 
 /* Layout wrappers and utilities moved to layout/ directory */
@@ -114,16 +71,6 @@ button:disabled {
 }
 
 /* #join-room-label {} */
-
-#join-room-form input[type='text'] {
-  padding: var(--spacing-md) var(--spacing-lg);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  font-size: var(--font-size-md);
-  min-width: 200px;
-}
 
 /* LOBBY */
 
@@ -205,6 +152,9 @@ button:disabled {
 }
 
 #app-title-h1 {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   font-size: 2rem;
   margin: 0 0;
   padding: 0 0;
@@ -271,32 +221,54 @@ button:disabled {
     box-shadow var(--duration-default, 200ms) var(--easing-default, ease);
 }
 
-#app-title-h1 {
-  opacity: 1;
-  transform: translateX(0);
-  max-width: 100%;
-  transition: opacity var(--duration-default, 200ms) var(--easing-default, ease),
-    transform var(--duration-default, 200ms) var(--easing-default, ease),
-    max-width var(--duration-default, 200ms) var(--easing-default, ease);
-}
-
 /* Auth component with slide animation */
 .title-auth-bar {
   transition: gap var(--duration-default, 200ms) var(--easing-default, ease);
 }
 
+/* ===== AUTH COMPONENT AUTO-ANIMATE TEST ===== */
+/* Testing modern @starting-style pattern for login/logout buttons */
+
 .auth-component {
-  transition: transform var(--duration-default, 200ms)
-    var(--easing-default, ease);
+  /* Uses auto-animate pattern from animations.css */
+  display: flex;
+  gap: var(--spacing-sm, 0.5rem);
+  align-items: center;
 }
 
-.auth-component.goog-login-btn {
+/* Apply auto-animate behavior to children */
+.auth-component > * {
+  @starting-style {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+
   opacity: 1;
-  transform: translateX(3);
-  border: red;
-  transition: transform var(--duration-default, 200ms)
-      var(--easing-default, ease),
-    margin var(--duration-default, 200ms) var(--easing-default, ease);
+  transform: translateX(0);
+  transition: var(--transition-default);
+}
+
+.auth-component > button {
+  /* Transitions handled automatically by layout/grid.css */
+
+  /* Modern @starting-style animation */
+  @starting-style {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* When button is disabled, it gets display: none via media query */
+/* The sibling button will smoothly slide into place */
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .auth-component > button {
+    transition: none !important;
+  }
 }
 
 /* Remove background color on smaller containers */
@@ -312,20 +284,11 @@ button:disabled {
   }
 }
 
-/* Hide title on small containers with fade-out and slide */
+/* Make title more compact on small containers */
 @container main (max-width: 650px) {
   #app-title-h1 {
-    opacity: 0;
-    transform: translateX(-20px);
-    pointer-events: none;
-    max-width: 0;
-    overflow: hidden;
+    font-size: 1.5rem;
   }
-
-  /* Slide auth buttons left when title disappears
-  .auth-component {
-    transform: translateX(-20px);
-  } */
 }
 
 /* Respect reduced motion preference */
