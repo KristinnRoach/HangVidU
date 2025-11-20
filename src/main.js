@@ -27,7 +27,6 @@ import {
   removeFromSmallFrame,
 } from './utils/ui/ui-utils.js';
 
-import { updateStatus } from './utils/ui/status.js';
 import { setupShowHideOnInactivity } from './utils/ui/showHideOnInactivity.js';
 
 import {
@@ -54,7 +53,6 @@ import {
   sharedVideoEl,
   callBtn,
   hangUpBtn,
-  syncStatus,
   mutePartnerBtn,
   fullscreenPartnerBtn,
   micBtn,
@@ -170,7 +168,7 @@ async function init() {
   const missingCritical = criticalElements.filter((name) => !elements[name]);
   if (missingCritical.length > 0) {
     console.error('Critical elements missing:', missingCritical);
-    updateStatus('Error: Required UI elements not found.');
+    devDebug('Error: Required UI elements not found.');
     return false;
   }
 
@@ -193,7 +191,7 @@ async function init() {
     return true;
   } catch (error) {
     console.error('Failed to get user media:', error);
-    updateStatus('Error: Please allow camera and microphone access.');
+    devDebug('Error: Please allow camera and microphone access.');
     return false;
   }
 }
@@ -285,9 +283,9 @@ function applyCallResult(result, showLinkModal = false) {
 
   if (showLinkModal && result.roomLink) {
     showCopyLinkModal(result.roomLink, {
-      onCopy: () => updateStatus('Link ready! Share with your partner.'),
+      onCopy: () => devDebug('Link ready! Share with your partner.'),
       onCancel: () =>
-        updateStatus(
+        devDebug(
           'Link ready! Use the copy button to use it, or create a new one.'
         ),
     });
@@ -371,7 +369,7 @@ export async function joinOrCreateRoomWithId(
   }
 
   // Room exists with members → join as joiner
-  updateStatus('Joining room...');
+  devDebug('Joining room...');
   getDiagnosticLogger().log('ROOM', 'JOINING_EXISTING', {
     roomId: customRoomId,
     memberCount: status.memberCount,
@@ -688,7 +686,7 @@ export function listenForIncomingOnRoom(roomId) {
           );
           joinOrCreateRoomWithId(roomId).catch((e) => {
             console.warn('Failed to answer incoming call:', e);
-            updateStatus('Failed to answer incoming call.');
+            devDebug('Failed to answer incoming call.');
             getDiagnosticLogger().logFirebaseOperation(
               'join_room_on_accept',
               false,
@@ -1262,10 +1260,10 @@ async function handleCopyLink() {
   if (state.roomLink) {
     const success = await copyToClipboard(state.roomLink);
     if (success) {
-      updateStatus('Link copied to clipboard!');
+      devDebug('Link copied to clipboard!');
       alert('Link copied!');
     } else {
-      updateStatus('Failed to copy link to clipboard.');
+      devDebug('Failed to copy link to clipboard.');
     }
   }
 }
@@ -1344,7 +1342,7 @@ async function autoJoinFromUrl() {
     exitCallMode();
   }
 
-  updateStatus('Auto-joined room from URL');
+  devDebug('Auto-joined room from URL');
   return success;
 }
 
@@ -1368,13 +1366,13 @@ window.onload = async () => {
   const onJoinRoomSubmit = async (roomInputString) => {
     const inputRoomId = normalizeRoomInput(roomInputString || '');
     if (!inputRoomId) {
-      updateStatus('Please enter a valid Room ID');
+      devDebug('Please enter a valid Room ID');
       return false;
     }
 
     const mediaReady = await waitForLocalStream(5000);
     if (!mediaReady) {
-      updateStatus('Waiting for camera/mic to be ready...');
+      devDebug('Waiting for camera/mic to be ready...');
       return false;
     }
 
@@ -1382,7 +1380,7 @@ window.onload = async () => {
       return await joinOrCreateRoomWithId(inputRoomId);
     } catch (error) {
       console.error('Failed to join or create room:', error);
-      updateStatus('Error joining room. Please try again.');
+      devDebug('Error joining room. Please try again.');
       return false;
     }
   };
@@ -1447,7 +1445,7 @@ window.onload = async () => {
   const autoJoinedSuccessfully = await autoJoinFromUrl();
   if (autoJoinedSuccessfully) return;
 
-  updateStatus('Ready. Click "Start New Chat" to begin.');
+  devDebug('Ready. Click "Start New Chat" to begin.');
 };
 
 // Handle page leave
@@ -1504,7 +1502,7 @@ CallController.on('cleanup', ({ roomId, reason }) => {
   hideCallingUI();
   cleanupRemoteStream();
   exitCallMode();
-  updateStatus('Disconnected. Click "Start New Chat" to begin.');
+  devDebug('Disconnected. Click "Start New Chat" to begin.');
   clearUrlParam();
 });
 
@@ -1556,7 +1554,6 @@ async function cleanup() {
   // Clear URL parameter
   window.history.replaceState({}, document.title, window.location.pathname);
   sharedVideoEl.src = '';
-  syncStatus.textContent = '';
 
   // Note: Local stream cleanup is now handled by CallController.cleanupCall()
   // Only clean up if CallController hasn't already (e.g., page unload)

@@ -28,8 +28,7 @@ let callBtn = null;
 let hangUpBtn = null;
 let switchCameraBtn = null;
 let installBtn = null;
-let statusDiv = null;
-let syncStatus = null;
+
 let mutePartnerBtn = null;
 let fullscreenPartnerBtn = null;
 let micBtn = null;
@@ -59,9 +58,6 @@ function initializeElements() {
   callBtn = getElement('call-btn');
   hangUpBtn = getElement('hang-up-btn');
   switchCameraBtn = getElement('switch-camera-btn');
-
-  statusDiv = getElement('status');
-  syncStatus = getElement('sync-status');
 
   mutePartnerBtn = getElement('mute-btn');
   fullscreenPartnerBtn = getElement('fullscreen-partner-btn');
@@ -101,8 +97,6 @@ export const getElements = () => ({
   hangUpBtn,
   switchCameraBtn,
   installBtn,
-  statusDiv,
-  syncStatus,
   mutePartnerBtn,
   fullscreenPartnerBtn,
   micBtn,
@@ -132,8 +126,6 @@ export {
   hangUpBtn,
   switchCameraBtn,
   installBtn,
-  statusDiv,
-  syncStatus,
   mutePartnerBtn,
   fullscreenPartnerBtn,
   micBtn,

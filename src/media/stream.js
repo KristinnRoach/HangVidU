@@ -13,7 +13,6 @@ import {
   getFallbackAudioConstraints,
   getVideoConstraints,
 } from './constraints.js';
-import { updateStatus } from '../utils/ui/status.js';
 import { devDebug, isDev } from '../utils/dev/dev-utils.js';
 
 export const createLocalStream = async () => {
@@ -90,7 +89,7 @@ export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
       setRemoteStream(remoteStream);
       remoteVideoEl.srcObject = remoteStream;
       addRemoteVideoEventListeners(remoteVideoEl, mutePartnerBtn);
-      updateStatus('Connected!');
+      devDebug('Connected!');
 
       // Ensure the remote video and its container are visible (fix mobile Safari cases)
       try {

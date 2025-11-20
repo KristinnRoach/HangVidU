@@ -3,7 +3,7 @@
 import { set, remove, get, ref } from 'firebase/database';
 import { rtdb, getUserOutgoingCallRef } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, getUserId } from '../../firebase/auth.js';
-import { updateStatus } from '../../utils/ui/status.js';
+import { devDebug } from '../../utils/dev/dev-utils.js';
 import { getDiagnosticLogger } from '../../utils/dev/diagnostic-logger.js';
 import RoomService from '../../room.js';
 
@@ -174,7 +174,7 @@ export async function showCallingUI(roomId, contactName, onCancel) {
       });
     }
     hideCallingUI();
-    updateStatus('Call cancelled');
+    devDebug('Call cancelled');
     if (onCancel) onCancel();
   };
 
@@ -213,7 +213,7 @@ export async function showCallingUI(roomId, contactName, onCancel) {
       });
     }
     hideCallingUI();
-    updateStatus('Call timed out - no answer after 30 seconds');
+    devDebug('Call timed out - no answer after 30 seconds');
     if (onCancel) onCancel();
   }, CALL_TIMEOUT_MS);
 }
@@ -274,5 +274,5 @@ export async function onCallRejected(reason = 'user_rejected') {
 
   await clearOutgoingCallState();
   hideCallingUI();
-  updateStatus('Call declined');
+  devDebug('Call declined');
 }
