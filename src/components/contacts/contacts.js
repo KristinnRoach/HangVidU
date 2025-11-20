@@ -5,7 +5,7 @@ import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId } from '../../firebase/auth.js';
 import { joinOrCreateRoomWithId, listenForIncomingOnRoom } from '../../main.js';
 import { hideCallingUI, showCallingUI } from '../calling/calling-ui.js';
-import confirmDialog from '../design/confirm-dialog.js';
+import confirmDialog from '../base/confirm-dialog.js';
 
 /**
  * Save a contact for the current user (RTDB if logged in, localStorage otherwise).
