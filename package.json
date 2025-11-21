@@ -2,7 +2,7 @@
   "name": "hangvidu",
   "private": true,
   "version": "0.0.0",
-  "description": "Simple peer-to-peer video chat with watch-together mode",
+  "description": "P2P video chat with watch-together mode",
   "type": "module",
   "scripts": {
     "dev": "DISABLE_PWA=1 concurrently \"vite\" \"pnpm ngrok\"",
