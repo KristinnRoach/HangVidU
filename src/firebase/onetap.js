@@ -3,13 +3,15 @@ import { auth, isLoggedIn, setSafariExternalOpenArmed } from './auth.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_APP_GOOGLE_CLIENT_ID;
+
+if (!GOOGLE_CLIENT_ID) {
+  console.error('[ONE TAP] VITE_APP_GOOGLE_CLIENT_ID is not configured');
+}
+
 const oneTapCallbacks = new Set();
 
 /**
- * Initialize Google One Tap
- * @param {Object} [retryAfterClickOutside]
- * @param {'never'|'once'|'always'} [retryAfterClickOutside.shouldRetry] - Controls re-prompting after click outside: 'never', 'once', or 'always'.
- * @param {number} [retryAfterClickOutside.intervalSeconds] - Grace period before retry (seconds).
+ * Initialize Google One Tap (one-time setup)
  */
 
 export function onOneTapStatusChange(callback) {
@@ -38,24 +40,31 @@ function notifyOneTapStatus(status) {
   });
 }
 
-export function initializeOneTap(
-  retryAfterClickOutside = { shouldRetry: 'never', intervalSeconds: 10 }
-) {
-  // Track if we've retried after click outside (for 'once' mode)
-  if (!initializeOneTap._hasRetried) {
-    initializeOneTap._hasRetried = false;
-  }
-  devDebug('[ONE TAP] initializeOneTap called');
+export function initOneTap() {
+  devDebug('[ONE TAP] initOneTap called');
 
   if (typeof google === 'undefined' || !google.accounts?.id) {
     devDebug(
       '[ONE TAP] Google Identity Services library not loaded yet, retrying...'
     );
-    setTimeout(() => initializeOneTap(retryAfterClickOutside), 100);
+    setTimeout(() => initOneTap(), 100);
     return;
   }
 
   devDebug('[ONE TAP] Google library loaded');
+
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleOneTapCredential,
+    auto_select: false,
+    cancel_on_tap_outside: true,
+    context: 'signin',
+    use_fedcm_for_prompt: true,
+  });
+}
+
+export function showOneTapSignin() {
+  devDebug('[ONE TAP] showOneTapSignin called');
 
   if (isLoggedIn()) {
     devDebug('[ONE TAP] User already logged in, skipping');
@@ -70,15 +79,6 @@ export function initializeOneTap(
       'g_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
   }
 
-  google.accounts.id.initialize({
-    client_id: GOOGLE_CLIENT_ID,
-    callback: handleOneTapCredential,
-    auto_select: false,
-    cancel_on_tap_outside: true, // Use false if needed to reduce accidental cooldown/suppression
-    context: 'signin',
-    use_fedcm_for_prompt: true,
-  });
-
   devDebug('[ONE TAP] Calling prompt()...');
 
   google.accounts.id.prompt((notification) => {
@@ -92,36 +92,15 @@ export function initializeOneTap(
       const reason = notification.getSkippedReason();
       devDebug('[ONE TAP] Skipped:', reason);
       notifyOneTapStatus('skipped');
-      // Retry logic for click outside (skipped/dismissed)
-      handleRetryAfterClickOutside('skipped', retryAfterClickOutside);
     } else if (notification.isDismissedMoment()) {
       const reason = notification.getDismissedReason();
       devDebug('[ONE TAP] Dismissed:', reason);
       notifyOneTapStatus('dismissed');
-      handleRetryAfterClickOutside('dismissed', retryAfterClickOutside);
     } else {
       devDebug('[ONE TAP] ✅ Displayed');
       notifyOneTapStatus('displayed');
-      // Reset retry tracking for 'once' mode
-      initializeOneTap._hasRetried = false;
     }
   });
-
-  /**
-   * Handles retry logic after click outside (skipped/dismissed)
-   * @param {'skipped'|'dismissed'} eventType
-   * @param {{shouldRetry: 'never'|'once'|'always', intervalSeconds: number}} opts
-   */
-  function handleRetryAfterClickOutside(eventType, opts) {
-    const { shouldRetry = 'never', intervalSeconds = 10 } = opts || {};
-    if (shouldRetry === 'never') return;
-    if (shouldRetry === 'once' && initializeOneTap._hasRetried) return;
-    initializeOneTap._hasRetried = true;
-    setTimeout(() => {
-      devDebug(`[ONE TAP] Retrying prompt after ${eventType}...`);
-      initializeOneTap(opts);
-    }, intervalSeconds * 1000);
-  }
 }
 
 /**
@@ -180,9 +159,9 @@ export function cancelOneTap() {
  *   - 'dismissed': User dismissed the prompt
  *   - 'not_needed': User already logged in
  *   - 'signing_in': User selected account, Firebase sign-in in progress
- * - Retry logic: opt-in via `shouldRetry` in `initializeOneTap`
  * - Usage:
- *   - Call `initializeOneTap()` after Firebase Auth is ready
+ *   - Call `initOneTap()` once after Firebase Auth is ready
+ *   - Call `showOneTapSignin()` to display the prompt (can be called multiple times)
  *   - Use `onOneTapStatusChange` to update UI (e.g., show loading state)
- * - Console logging is suppressed in production; use `devDebug` for development logs
+ *   - Console logging is suppressed in production; use `devDebug` for development logs
  */

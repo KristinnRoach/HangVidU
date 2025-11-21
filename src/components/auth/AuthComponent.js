@@ -69,7 +69,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         el.update({
           isLoggedIn,
           userName,
-          loginDisabledAttr: 'disabled', // Disable & hide login button onMount
+          // loginDisabledAttr is managed by One Tap status handler only
           logoutDisabledAttr: isLoggedIn ? '' : 'disabled',
           signingInDisplay: 'none', // Hide loading indicator when auth resolves
         });
@@ -104,16 +104,6 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
             signingInDisplay: 'none',
           });
         }
-      });
-
-      requestAnimationFrame(() => {
-        const loginBtn = el.querySelector('#goog-login-btn');
-        console.log('[DEBUG] Login button:', {
-          disabled: loginBtn.disabled,
-          hasDisabledAttr: loginBtn.hasAttribute('disabled'),
-          opacity: window.getComputedStyle(loginBtn).opacity,
-          display: window.getComputedStyle(loginBtn).display,
-        });
       });
     },
     onCleanup: () => {

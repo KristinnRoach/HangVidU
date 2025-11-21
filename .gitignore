@@ -78,8 +78,8 @@ Instructions.md
 Warp.md
 CLAUDE.md
 .coderabbit.yaml
-.kiro
-.claude
+.kiro/
+.claude/
 
 # Misc / Recently added
 TODO.md
