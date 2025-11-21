@@ -12,6 +12,7 @@
     "build:hosting": "BUILD_TARGET=hosting vite build",
     "fb-deploy": "pnpm build:hosting && firebase deploy --only hosting",
     "gh-deploy": "pnpm build && npx gh-pages -d dist",
+    "deploy": "pnpm fb-deploy && pnpm gh-deploy",
     "preview": "vite preview",
     "build:go": "sh go-server/build-scripts/build.sh",
     "ngrok": "ngrok http https://localhost:5173 --domain=haunted-salley-cunningly.ngrok-free.dev",
