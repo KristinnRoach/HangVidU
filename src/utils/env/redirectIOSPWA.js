@@ -37,12 +37,21 @@ export function redirectIOSPWAToHosting() {
   const targetHost = new URL(hostingURL).hostname;
   if (window.location.hostname === targetHost) return;
 
-  // Preserve current path and query
-  const targetURL =
-    hostingURL +
-    window.location.pathname +
-    window.location.search +
-    window.location.hash;
+  // Strip GitHub Pages base path when redirecting to Firebase Hosting
+  // GitHub Pages uses /HangVidU/, Firebase Hosting uses /
+  const ghPagesBase = '/HangVidU/';
+  let targetPath = window.location.pathname;
+
+  if (targetPath.startsWith(ghPagesBase)) {
+    // Strip /HangVidU/ prefix, keeping the rest of the path
+    targetPath = targetPath.slice(ghPagesBase.length - 1); // -1 to keep leading /
+  }
+
+  // Preserve path, query, and hash
+  const targetURL = new URL(
+    targetPath + window.location.search + window.location.hash,
+    hostingURL
+  ).toString();
 
   console.log(
     '[PWA Redirect] iOS standalone PWA on gh-pages → redirecting to Firebase Hosting:',
