@@ -74,7 +74,7 @@ export function initializeOneTap(
     client_id: GOOGLE_CLIENT_ID,
     callback: handleOneTapCredential,
     auto_select: false,
-    cancel_on_tap_outside: false, // Prevent accidental browser-level dismissals
+    cancel_on_tap_outside: true, // Use false if needed to reduce accidental cooldown/suppression
     context: 'signin',
     use_fedcm_for_prompt: true,
   });
@@ -131,6 +131,7 @@ export function initializeOneTap(
 async function handleOneTapCredential(response) {
   try {
     devDebug('[ONE TAP] Received credential, signing in with Firebase...');
+    notifyOneTapStatus('signing_in');
 
     // Create a Google credential from the One Tap JWT
     const credential = GoogleAuthProvider.credential(response.credential);
@@ -172,12 +173,16 @@ export function cancelOneTap() {
 /**
  * Google One Tap Integration
  *
- * - Prevents accidental suppression: `cancel_on_tap_outside: false` (only explicit user actions dismiss prompt)
- * - Status updates: `onOneTapStatusChange(callback)` with status values: 'displayed', 'not_displayed', 'skipped', 'dismissed', 'not_needed'
+ * - Status updates: `onOneTapStatusChange(callback)` with status values:
+ *   - 'displayed': One Tap prompt is showing
+ *   - 'not_displayed': One Tap couldn't be displayed
+ *   - 'skipped': User skipped the prompt
+ *   - 'dismissed': User dismissed the prompt
+ *   - 'not_needed': User already logged in
+ *   - 'signing_in': User selected account, Firebase sign-in in progress
  * - Retry logic: opt-in via `shouldRetry` in `initializeOneTap`
  * - Usage:
  *   - Call `initializeOneTap()` after Firebase Auth is ready
- *   - Use `onOneTapStatusChange` to update UI
- *   - No custom click-outside logic needed
+ *   - Use `onOneTapStatusChange` to update UI (e.g., show loading state)
  * - Console logging is suppressed in production; use `devDebug` for development logs
  */

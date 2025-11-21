@@ -41,11 +41,13 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       userName: 'Guest User',
       loginDisabledAttr: 'disabled', // Start disabled (auto hidden) until One Tap resolves
       logoutDisabledAttr: 'disabled',
+      signingInDisplay: 'none',
       loginBtnMarginRightPx,
     },
     template: `
       <button style="margin-right: \${loginBtnMarginRightPx}px" id="goog-login-btn" class="login-btn" onclick="handleLogin" \${loginDisabledAttr}>Login</button>
       <button id="goog-logout-btn" class="logout-btn" onclick="handleLogout" \${logoutDisabledAttr}>Logout</button>
+      <span class="signing-in-indicator" style="display: \${signingInDisplay}; color: var(--text-secondary, #888); font-size: 0.9rem;">Signing in...</span>
       <div class="user-info">\${isLoggedIn ? 'Logged in: ' + userName : 'Logged out'}</div>
     `,
     handlers: {
@@ -69,6 +71,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           userName,
           loginDisabledAttr: 'disabled', // Disable & hide login button onMount
           logoutDisabledAttr: isLoggedIn ? '' : 'disabled',
+          signingInDisplay: 'none', // Hide loading indicator when auth resolves
         });
       });
 
@@ -76,21 +79,29 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       unsubscribeOneTap = onOneTapStatusChange((status) => {
         devDebug('[AuthComponent] One Tap status:', status);
 
-        // Enable login button if One Tap isn't working/was dismissed and user not logged in
-        if (
+        if (status === 'signing_in') {
+          // Show loading indicator while signing in
+          el.update({
+            signingInDisplay: 'inline-block',
+            loginDisabledAttr: 'disabled', // Hide login button
+          });
+        } else if (
           ['not_displayed', 'skipped', 'dismissed', 'not_needed'].includes(
             status
           )
         ) {
+          // Enable login button if One Tap isn't working/was dismissed and user not logged in
           if (!isLoggedIn()) {
             el.update({
               loginDisabledAttr: '', // Enable (show) login button
+              signingInDisplay: 'none',
             });
           }
         } else if (status === 'displayed') {
           // One Tap is showing - keep login button disabled (hidden)
           el.update({
             loginDisabledAttr: 'disabled',
+            signingInDisplay: 'none',
           });
         }
       });
