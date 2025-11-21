@@ -1,3 +1,16 @@
+// Stub globalThis.__vitest_worker__.metaEnv for tests so Firebase config does not throw
+try {
+  if (typeof globalThis.__vitest_worker__ === 'object') {
+    if (!globalThis.__vitest_worker__.metaEnv)
+      globalThis.__vitest_worker__.metaEnv = {};
+    Object.assign(globalThis.__vitest_worker__.metaEnv, {
+      VITE_FIREBASE_API_KEY: 'dummy',
+      VITE_FIREBASE_AUTH_DOMAIN: 'dummy',
+      VITE_FIREBASE_PROJECT_ID: 'dummy',
+      VITE_APP_GOOGLE_CLIENT_ID: 'dummy',
+    });
+  }
+} catch {}
 // tests/setup.js
 
 import { vi } from 'vitest';

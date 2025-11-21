@@ -85,7 +85,7 @@
 }
 
 /* Apply auto-animate behavior to children */
-.auth-component > * {
+/* .auth-component > * {
   @starting-style {
     opacity: 0;
     transform: translateX(10px);
@@ -94,19 +94,36 @@
   opacity: 1;
   transform: translateX(0);
   transition: var(--transition-default);
-}
+} */
 
-.auth-component > button {
+.login-btn,
+.logout-btn,
+.user-info {
   /* Transitions handled automatically by layout/grid.css */
 
-  /* Modern @starting-style animation */
   @starting-style {
     opacity: 0;
     transform: translateX(10px);
   }
 
-  opacity: 1;
   transform: translateX(0);
+  transition: var(--transition-default);
+}
+
+.login-btn:enabled,
+.logout-btn:enabled {
+  opacity: 1;
+  display: inline-block;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.login-btn:disabled,
+.logout-btn:disabled {
+  opacity: 0;
+  display: none;
+  cursor: none;
+  pointer-events: none;
 }
 
 /* Top Right Menu */

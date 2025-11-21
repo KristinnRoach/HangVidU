@@ -1,37 +1,26 @@
+// src/firebase/auth.js
+
 import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
-  signOut,
   onAuthStateChanged,
   setPersistence,
   indexedDBLocalPersistence,
   browserLocalPersistence,
   inMemoryPersistence,
+  signInWithCredential,
+  signOut,
 } from 'firebase/auth';
 import { app } from './firebase.js';
+
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { isMobileDevice } from '../utils/env/isMobileDevice.js';
+import { initializeOneTap } from './onetap.js';
 
 export const auth = getAuth(app);
-
-// Minimal iOS standalone PWA Safari fallback: armed after a failed attempt,
-// then the next Login tap opens the app URL in Safari (user gesture).
-let safariExternalOpenArmed = false;
-function openInSafariExternal() {
-  try {
-    const a = document.createElement('a');
-    a.href = window.location.href;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer external';
-    // Append to DOM to ensure iOS respects the gesture-triggered click
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  } catch (_) {}
-}
 
 // Export a promise that resolves when auth initialization completes
 // This ensures redirect processing finishes before components subscribe to auth state
@@ -63,7 +52,48 @@ export const authReady = (async () => {
   } catch (e) {
     console.error('[AUTH] Error during handleRedirectResult execution:', e);
   }
+
+  devDebug('[AUTH] Auth initialization complete, scheduling One Tap...');
+
+  // Small delay to ensure page is fully loaded
+  setTimeout(() => {
+    devDebug('[AUTH] Timeout fired, calling initializeOneTap()...');
+    initializeOneTap();
+  }, 500);
 })();
+
+// Minimal iOS standalone PWA Safari fallback: armed after a failed attempt,
+// then the next Login tap opens the app URL in Safari (user gesture).
+let safariExternalOpenArmed = false;
+
+/**
+ * Get whether Safari external open fallback is armed.
+ * @returns {boolean}
+ */
+export function isSafariExternalOpenArmed() {
+  return safariExternalOpenArmed;
+}
+
+/**
+ * Set Safari external open fallback armed state.
+ * @param {boolean} value
+ */
+export function setSafariExternalOpenArmed(value) {
+  safariExternalOpenArmed = value;
+}
+
+function openInSafariExternal() {
+  try {
+    const a = document.createElement('a');
+    a.href = window.location.href;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer external';
+    // Append to DOM to ensure iOS respects the gesture-triggered click
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch (_) {}
+}
 
 let guestUserId = null; // Generated ID when not logged in (cached for session)
 const createNewGuestUserId = () => Math.random().toString(36).substring(2, 15);
@@ -443,3 +473,328 @@ export function signOutUser() {
       // alert(`Sign-out failed: ${error.message}`);
     });
 }
+
+// ============================================================================
+// PASSKEY AUTHENTICATION (WebAuthn)
+// ============================================================================
+
+/** Using extension */
+
+// import {
+//   createUserWithPasskey,
+//   signInWithPasskey,
+//   verifyUserWithPasskey,
+//   isPasskeyAvailable,
+//   unlinkPasskey,
+// } from '@firebase-web-authn/browser';
+
+// // Check if passkeys are supported
+// export async function isPasskeySupported() {
+//   return await isPasskeyAvailable();
+// }
+
+// // Register passkey for signed-in user
+// export async function registerNewPasskey() {
+//   const user = getCurrentUser();
+//   if (!user) {
+//     return { success: false, error: new Error('User must be signed in') };
+//   }
+
+//   try {
+//     await verifyUserWithPasskey(auth);
+//     console.info('[PASSKEY] ✅ Passkey registered successfully');
+//     return { success: true };
+//   } catch (error) {
+//     console.error('[PASSKEY] ❌ Registration failed:', error);
+//     return { success: false, error };
+//   }
+// }
+
+// // Sign in with passkey
+// export async function signInWithPasskey() {
+//   try {
+//     const userCredential = await signInWithPasskey(auth);
+//     console.info('[PASSKEY] ✅ Signed in:', userCredential.user.email);
+//     return { success: true, user: userCredential.user };
+//   } catch (error) {
+//     console.error('[PASSKEY] ❌ Sign-in failed:', error);
+//     return { success: false, error };
+//   }
+// }
+
+// ============================================================================
+
+// /**
+//  * Check if passkeys are supported in the current browser/device
+//  * @returns {boolean} True if WebAuthn is supported
+//  */
+// export function isPasskeySupported() {
+//   return (
+//     typeof window !== 'undefined' &&
+//     window.PublicKeyCredential !== undefined &&
+//     typeof window.PublicKeyCredential === 'function'
+//   );
+// }
+
+// /**
+//  * Check if user has passkeys enrolled for this device/site
+//  * Uses conditional UI availability check
+//  * @returns {Promise<boolean>}
+//  */
+// export async function hasPasskeysAvailable() {
+//   if (!isPasskeySupported()) return false;
+
+//   try {
+//     // Check if conditional mediation is available (indicates passkeys exist)
+//     const available =
+//       await window.PublicKeyCredential.isConditionalMediationAvailable();
+//     return available;
+//   } catch (error) {
+//     console.warn('[PASSKEY] Error checking passkey availability:', error);
+//     return false;
+//   }
+// }
+
+// /**
+//  * Register a new passkey for the currently signed-in user
+//  * User must be authenticated first (e.g., with Google sign-in)
+//  * @returns {Promise<{success: boolean, error?: Error}>}
+//  */
+// export async function registerNewPasskey() {
+//   const user = getCurrentUser();
+
+//   if (!user) {
+//     const error = new Error('User must be signed in to register a passkey');
+//     console.error('[PASSKEY]', error.message);
+//     return { success: false, error };
+//   }
+
+//   if (!isPasskeySupported()) {
+//     const error = new Error(
+//       'Passkeys are not supported on this device/browser'
+//     );
+//     console.error('[PASSKEY]', error.message);
+//     return { success: false, error };
+//   }
+
+//   try {
+//     console.log('[PASSKEY] Starting passkey enrollment for user:', user.uid);
+
+//     // Start the enrollment process - Firebase generates challenge & options
+//     const multiFactorUser = multiFactor(user);
+//     const session = await multiFactorUser.getSession();
+
+//     // Create WebAuthn provider for enrollment
+//     const webAuthnProvider = new WebAuthnProvider();
+
+//     // Get the assertion (this triggers the browser's passkey creation UI)
+//     const assertionResponse = await webAuthnProvider.generateCredential({
+//       user: {
+//         displayName: user.displayName || user.email || 'User',
+//         name: user.email || user.uid,
+//       },
+//       session,
+//     });
+
+//     console.log('[PASSKEY] Credential generated, enrolling with Firebase...');
+
+//     // Enroll the passkey with Firebase
+//     await multiFactorUser.enroll(
+//       assertionResponse,
+//       user.displayName || 'Primary Device'
+//     );
+
+//     console.log('[PASSKEY] ✅ Passkey enrolled successfully');
+//     return { success: true };
+//   } catch (error) {
+//     console.error('[PASSKEY] ❌ Passkey enrollment failed:', error);
+
+//     // Handle common errors
+//     if (error.name === 'NotAllowedError') {
+//       console.log('[PASSKEY] User cancelled passkey creation');
+//     } else if (error.code === 'auth/invalid-multi-factor-session') {
+//       console.log(
+//         '[PASSKEY] Invalid session - user may need to re-authenticate'
+//       );
+//     }
+
+//     return { success: false, error };
+//   }
+// }
+
+// /**
+//  * Sign in with an existing passkey
+//  * This is a passwordless authentication method
+//  * @returns {Promise<{success: boolean, user?: import('firebase/auth').User, error?: Error}>}
+//  */
+// export async function signInWithPasskey() {
+//   if (!isPasskeySupported()) {
+//     const error = new Error(
+//       'Passkeys are not supported on this device/browser'
+//     );
+//     console.error('[PASSKEY]', error.message);
+//     alert('Passkeys are not supported on this browser/device.');
+//     return { success: false, error };
+//   }
+
+//   try {
+//     console.log('[PASSKEY] Starting passkey sign-in...');
+
+//     // Create WebAuthn provider
+//     const webAuthnProvider = new WebAuthnProvider();
+
+//     // Sign in with passkey - this will show the browser's passkey selection UI
+//     const userCredential = await signInWithCredential(
+//       auth,
+//       webAuthnProvider.credential()
+//     );
+
+//     const user = userCredential.user;
+//     console.log('[PASSKEY] ✅ Signed in successfully:', user.email || user.uid);
+
+//     return { success: true, user };
+//   } catch (error) {
+//     console.error('[PASSKEY] ❌ Passkey sign-in failed:', error);
+
+//     // Handle common errors
+//     if (error.name === 'NotAllowedError') {
+//       console.log('[PASSKEY] User cancelled passkey selection');
+//     } else if (error.code === 'auth/invalid-credential') {
+//       alert(
+//         'No passkey found or passkey is invalid. Please sign in another way.'
+//       );
+//     } else if (error.code === 'auth/user-not-found') {
+//       alert('No account found with this passkey.');
+//     } else {
+//       alert(`Passkey sign-in failed: ${error.message}`);
+//     }
+
+//     return { success: false, error };
+//   }
+// }
+// ============================================================================
+// LEGACY PASSKEY AUTHENTICATION CODE - KEEP FOR REFERENCE
+// ============================================================================
+// async function signInWithPasskey() {
+//   // 1. Prepare WebAuthn options for sign-in from Firebase Auth
+//   const webAuthnProvider = new WebAuthnProvider();
+//   let credentialRequestOptions;
+
+//   try {
+//     // Generate the challenge and other options from Firebase
+//     credentialRequestOptions =
+//       await webAuthnProvider.getCredentialRequestOptions();
+//     console.log('Credential Request Options:', credentialRequestOptions);
+//   } catch (error) {
+//     console.error('Error getting credential request options:', error.message);
+//     // Handle error, e.g., no passkeys registered for this site, or user cancelled
+//     return;
+//   }
+
+//   try {
+//     // 2. Ask the browser/device to get an existing passkey credential
+//     // This will prompt the user for biometrics
+//     const assertion = await navigator.credentials.get({
+//       publicKey: credentialRequestOptions.publicKey,
+//     });
+
+//     console.log('Passkey assertion received from device:', assertion);
+
+//     // 3. Sign in the user with the received passkey assertion
+//     const webAuthnCredential = WebAuthnCredential.fromJSON(assertion);
+//     await signInWithCredential(auth, webAuthnCredential);
+
+//     console.log('User signed in with passkey!');
+//     alert('Signed in with Passkey successfully!');
+//   } catch (error) {
+//     console.error('Error getting or signing in with passkey:', error.message);
+//     // User likely cancelled the biometric prompt or an error occurred
+//     alert('Passkey sign-in failed or cancelled.');
+//   }
+// }
+
+// // Example usage (e.g., on a sign-in button click)
+// // signInWithPasskey();
+
+// // This is typically done after a user has already signed in
+// // (e.g., with email/password) and wants to add a passkey
+// // to their account for easier future logins or as a second factor.
+// export async function registerNewPasskey(currentUser) {
+//   if (!currentUser) {
+//     console.error('No user signed in to register a passkey.');
+//     return;
+//   }
+
+//   // 1. Prepare WebAuthn options using Firebase Auth's WebAuthnProvider
+//   // The 'options' object is largely managed by Firebase, but you can pass client-side preferences
+//   const webAuthnProvider = new WebAuthnProvider();
+//   let credentialCreationOptions;
+
+//   try {
+//     // Generate the challenge and other options from Firebase
+//     // This is the crucial step where Firebase prepares the WebAuthn request
+//     credentialCreationOptions =
+//       await webAuthnProvider.getCredentialCreationOptions();
+//     console.log('Credential Creation Options:', credentialCreationOptions);
+//   } catch (error) {
+//     console.error('Error getting credential creation options:', error.message);
+//     // Handle error, e.g., user cancelled or device doesn't support
+//     return;
+//   }
+
+//   try {
+//     // 2. Ask the browser/device to create a new passkey credential
+//     // This will prompt the user for biometrics (Face ID, Touch ID, etc.)
+//     const credential = await navigator.credentials.create({
+//       publicKey: credentialCreationOptions.publicKey,
+//     });
+
+//     console.log('Passkey created by device:', credential);
+
+//     // 3. Enroll the created passkey with the current Firebase user
+//     const webAuthnCredential = WebAuthnCredential.fromJSON(credential);
+//     const multiFactorSession = await multiFactor(currentUser).getSession(); // Get multi-factor session
+//     await multiFactor(currentUser).enroll(
+//       webAuthnCredential,
+//       multiFactorSession
+//     );
+
+//     console.log('Passkey successfully registered to user:', currentUser.uid);
+//     alert('Passkey registered successfully!');
+//   } catch (error) {
+//     console.error('Error creating or enrolling passkey:', error.message);
+//     // User likely cancelled the biometric prompt or an error occurred
+//     alert('Passkey registration failed or cancelled.');
+//   }
+// }
+
+// // Example usage (assuming a user is signed in)
+// // const user = auth.currentUser;
+// // if (user) {
+// //   registerNewPasskey(user);
+// // }
+
+// function isPasskeySupported() {
+//   // Check if the browser supports WebAuthn API
+//   const isWebAuthnSupported = !!window.PublicKeyCredential;
+
+//   // Further checks can be added for specific features like conditional mediation
+//   // (though the Firebase SDK generally abstracts this for basic passkey flows)
+//   // For example, if you specifically need cross-device passkeys, you might check
+//   // if PublicKeyCredential.isConditionalMediationAvailable() returns true.
+
+//   return isWebAuthnSupported;
+// }
+
+// /**  Usage example:
+//       if (isPasskeySupported()) {
+//         // Show "Sign in with Passkey" or "Add Passkey" buttons
+//         document.getElementById('passkeySignInButton').style.display = 'block';
+//         document.getElementById('passkeyRegisterButton').style.display = 'block';
+//       } else {
+//         // Hide passkey options and maybe show a message that it's not supported
+//         document.getElementById('passkeySignInButton').style.display = 'none';
+//         document.getElementById('passkeyRegisterButton').style.display = 'none';
+//         console.log('Passkeys not supported in this browser/device environment.');
+//       }
+// */

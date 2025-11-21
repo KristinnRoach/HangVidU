@@ -1,12 +1,17 @@
-// ============================================================================
-// AUTH COMPONENT (using createComponent)
-// ============================================================================
+// ================================================
+// AUTH COMPONENT
+// ================================================
 
 import {
   signInWithGoogle,
   signOutUser,
   onAuthChange,
+  isLoggedIn,
 } from '../../firebase/auth';
+
+import { cancelOneTap, onOneTapStatusChange } from '../../firebase/onetap';
+import { devDebug } from '../../utils/dev/dev-utils.js';
+
 import createComponent from '../../utils/dom/component.js';
 
 let authComponent = null;
@@ -20,41 +25,94 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
   }
 
   let unsubscribe = null; // tied to component lifecycle via onMount/onCleanup
-  let loginBtnMarginRightPx = 10;
+  let unsubscribeOneTap = null;
 
+  let loginBtnMarginRightPx = 10;
   if (typeof gapBetweenBtns === 'number') {
     loginBtnMarginRightPx = gapBetweenBtns;
   }
 
-  // Create reactive component
+  const initialLoggedIn = isLoggedIn();
+  devDebug('[AuthComponent] Initial logged-in state:', initialLoggedIn);
+
   authComponent = createComponent({
     initialProps: {
-      isLoggedIn: false,
+      isLoggedIn: initialLoggedIn,
       userName: 'Guest User',
-      loginDisabledAttr: '',
+      loginDisabledAttr: 'disabled', // Start disabled (auto hidden) until One Tap resolves
       logoutDisabledAttr: 'disabled',
+      signingInDisplay: 'none',
       loginBtnMarginRightPx,
     },
     template: `
       <button style="margin-right: \${loginBtnMarginRightPx}px" id="goog-login-btn" class="login-btn" onclick="handleLogin" \${loginDisabledAttr}>Login</button>
       <button id="goog-logout-btn" class="logout-btn" onclick="handleLogout" \${logoutDisabledAttr}>Logout</button>
+      <span class="signing-in-indicator" style="display: \${signingInDisplay}; color: var(--text-secondary, #888); font-size: 0.9rem;">Signing in...</span>
       <div class="user-info">\${isLoggedIn ? 'Logged in: ' + userName : 'Logged out'}</div>
     `,
     handlers: {
-      handleLogin: signInWithGoogle,
+      handleLogin: () => {
+        cancelOneTap();
+        signInWithGoogle();
+      },
       handleLogout: signOutUser,
     },
     onMount: (el) => {
+      // Removed custom click-outside logic for One Tap prompt
+
       unsubscribe = onAuthChange(({ isLoggedIn, userName }) => {
         console.debug('[AuthComponent] Auth state changed:', {
           isLoggedIn,
           userName,
         });
+
         el.update({
           isLoggedIn,
           userName,
-          loginDisabledAttr: isLoggedIn ? 'disabled' : '',
+          loginDisabledAttr: 'disabled', // Disable & hide login button onMount
           logoutDisabledAttr: isLoggedIn ? '' : 'disabled',
+          signingInDisplay: 'none', // Hide loading indicator when auth resolves
+        });
+      });
+
+      // Subscribe to One Tap status
+      unsubscribeOneTap = onOneTapStatusChange((status) => {
+        devDebug('[AuthComponent] One Tap status:', status);
+
+        if (status === 'signing_in') {
+          // Show loading indicator while signing in
+          el.update({
+            signingInDisplay: 'inline-block',
+            loginDisabledAttr: 'disabled', // Hide login button
+          });
+        } else if (
+          ['not_displayed', 'skipped', 'dismissed', 'not_needed'].includes(
+            status
+          )
+        ) {
+          // Enable login button if One Tap isn't working/was dismissed and user not logged in
+          if (!isLoggedIn()) {
+            el.update({
+              loginDisabledAttr: '', // Enable (show) login button
+              signingInDisplay: 'none',
+            });
+          }
+        } else if (status === 'displayed') {
+          // One Tap is showing - keep login button disabled (hidden)
+          el.update({
+            loginDisabledAttr: 'disabled',
+            signingInDisplay: 'none',
+          });
+        }
+      });
+
+      requestAnimationFrame(() => {
+        const loginBtn = el.querySelector('#goog-login-btn');
+        console.log('[DEBUG] Login button:', {
+          disabled: loginBtn.disabled,
+          hasDisabledAttr: loginBtn.hasAttribute('disabled'),
+          opacity: window.getComputedStyle(loginBtn).opacity,
+          display: window.getComputedStyle(loginBtn).display,
         });
       });
     },
@@ -63,7 +121,10 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         unsubscribe();
         unsubscribe = null;
       }
-      // Always clear the singleton reference on cleanup
+      if (unsubscribeOneTap) {
+        unsubscribeOneTap();
+        unsubscribeOneTap = null;
+      }
       authComponent = null;
     },
     className: 'auth-component',
