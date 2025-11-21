@@ -19,6 +19,8 @@ import {
   authReady,
 } from './firebase/auth.js';
 
+import { initializeAuthUI } from './components/auth/AuthComponent.js';
+
 import {
   showElement,
   hideElement,
@@ -118,8 +120,6 @@ import {
   showCopyLinkModal,
 } from './components/modal/copyLinkModal.js';
 import { devDebug, setDevDebugEnabled } from './utils/dev/dev-utils.js';
-
-import { initializeAuthUI } from './components/auth/AuthComponent.js';
 
 import RoomService from './room.js';
 import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';

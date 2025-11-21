@@ -1,18 +1,18 @@
 /* ===== MESSAGES COMPONENT ===== */
-/* Messages toggle button and messages box with anchor positioning */
 
-/* Messages Toggle Button */
+/* Toggle Button */
 
 #messages-toggle-btn {
   position: absolute;
   bottom: 20px;
   right: 20px;
+
+  aspect-ratio: 1 / 1;
+
+  z-index: var(--z-high);
   pointer-events: auto;
   touch-action: manipulation;
 
-  z-index: var(--z-high);
-
-  /* CSS Anchor Positioning (2025) */
   anchor-name: --msg-toggle;
 
   transition: position var(--duration-default, 200ms)
@@ -21,8 +21,10 @@
 
 #messages-toggle-btn button {
   font-size: 1.5rem;
-  padding: 1.5rem 1rem;
+  padding: 1rem;
   background: #007bff;
+
+  border-radius: 50%;
 
   transform-origin: bottom center;
   will-change: transform, box-shadow;

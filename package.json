@@ -39,12 +39,12 @@
   "license": "MIT",
   "devDependencies": {
     "@playwright/test": "^1.56.1",
+    "concurrently": "^9.0.0",
     "jsdom": "^27.0.1",
     "vite": "^7.1.12",
     "vite-plugin-mkcert": "^1.17.9",
     "vite-plugin-pwa": "^1.1.0",
-    "vitest": "^4.0.5",
-    "concurrently": "^9.0.0"
+    "vitest": "^4.0.5"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",

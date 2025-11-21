@@ -55,6 +55,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
+
+  transition: var(--transition-default);
 }
 
 @media (max-width: 600px) {
