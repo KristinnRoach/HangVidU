@@ -34,12 +34,12 @@ export default defineConfig(({ mode }) => {
         ? []
         : [
             VitePWA({
-              includeAssets: ['favicon.ico'],
+              includeAssets: ['index.html', 'favicon.ico'],
               registerType: 'prompt',
               strategies: 'generateSW',
               injectRegister: 'script',
               devOptions: {
-                enabled: true, // enable service worker & manifest during dev for install prompt testing
+                enabled: !disablePWA,
               },
               workbox: {
                 cleanupOutdatedCaches: true,
@@ -105,7 +105,6 @@ export default defineConfig(({ mode }) => {
       host: true, // To expose to LAN devices as well
       allowedHosts: [
         'haunted-salley-cunningly.ngrok-free.dev',
-        '.ngrok-free.dev',
         '192.168.8.100',
         '169.254.123.79:5173',
       ],
