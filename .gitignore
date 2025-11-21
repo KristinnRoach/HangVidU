@@ -72,13 +72,14 @@ dist-ssr
 *.sln
 *.sw?
 
-# Notes / Instructions
+# Notes / Instructions / AI
 STRUCTURE.md
-Warp.md
 Instructions.md
+Warp.md
+CLAUDE.md
 .coderabbit.yaml
 .kiro
-CLAUDE.md
+.claude
 
 # Misc / Recently added
 TODO.md
