@@ -490,15 +490,14 @@ export const signInWithAccountSelection = async () => {
   }
 };
 
-export function signOutUser() {
-  return signOut(auth)
-    .then(() => {
-      console.info('User signed out');
-      setTimeout(() => showOneTapSignin(), 1500); // TODO: decide whether this is annoying
-    })
-    .catch((error) => {
-      console.error('Error signing out:', error);
-      // Re-throw the error to allow callers to handle it
-      throw error;
-    });
+export async function signOutUser() {
+  try {
+    await signOut(auth);
+    console.info('User signed out');
+    setTimeout(() => showOneTapSignin(), 1500); // TODO: decide whether this is annoying
+  } catch (error) {
+    console.error('Error signing out:', error);
+    // Re-throw the error to allow callers to handle it
+    throw error;
+  }
 }

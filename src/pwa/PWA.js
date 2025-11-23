@@ -2,6 +2,7 @@ import { devDebug, isDev, tempInfo } from '../utils/dev/dev-utils';
 import { hideElement, showElement } from '../utils/ui/ui-utils';
 import createIconButton from '../components/base/button/icon-button.js';
 import { debugPWAInstall } from './debug-pwa.js';
+import { setupUpdateHandler } from './update-handlers.js';
 
 let beforeInstallEvent = null;
 let installBtnHandlerAttached = false;
@@ -14,6 +15,10 @@ function isIOS() {
 }
 
 function setupPWA() {
+  // Set up PWA update handler (for registerType: 'prompt')
+  // This should run regardless of install button state
+  setupUpdateHandler();
+
   if (
     window.matchMedia('(display-mode: standalone)').matches ||
     window.navigator.standalone === true

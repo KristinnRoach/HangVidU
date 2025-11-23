@@ -67,7 +67,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
 
         signInWithGoogle();
       },
-      handleLogout: signOutUser,
+      handleLogout: async () => signOutUser(),
     },
     onMount: (el) => {
       // Removed custom click-outside logic for One Tap prompt

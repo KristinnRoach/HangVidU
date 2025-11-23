@@ -113,6 +113,9 @@ export function showOneTapSignin() {
     } else if (notification.isDismissedMoment()) {
       devDebug('[ONE TAP] Dismissed');
       notifyOneTapStatus('dismissed');
+    } else {
+      devDebug('[ONE TAP] ✅ Displayed');
+      notifyOneTapStatus('displayed');
     }
   });
 }
