@@ -11,6 +11,7 @@ import {
   indexedDBLocalPersistence,
   browserLocalPersistence,
   inMemoryPersistence,
+  signOut,
 } from 'firebase/auth';
 
 import { app } from './firebase.js';
@@ -460,9 +461,37 @@ export async function handleRedirectResult() {
   }
 }
 
+export const signInWithAccountSelection = async () => {
+  try {
+    devDebug('[AUTH] Sign in with account selection');
+
+    const provider = new GoogleAuthProvider();
+    // Force account selection
+    provider.setCustomParameters({
+      prompt: 'select_account',
+    });
+
+    // Use popup on desktop, redirect on mobile/PWA
+    if (
+      isMobileDevice() ||
+      window.matchMedia('(display-mode: standalone)').matches
+    ) {
+      devDebug('[AUTH] Using redirect flow for mobile/PWA');
+      await signInWithRedirect(auth, provider);
+    } else {
+      devDebug('[AUTH] Using popup flow for desktop');
+      const result = await signInWithPopup(auth, provider);
+      devDebug('[AUTH] Popup sign-in successful:', result.user.email);
+      return result;
+    }
+  } catch (error) {
+    console.error('[AUTH] Account selection sign-in failed:', error);
+    throw error;
+  }
+};
+
 export function signOutUser() {
-  auth
-    .signOut()
+  signOut(auth)
     .then(() => {
       console.info('User signed out');
       setTimeout(() => showOneTapSignin(), 1500); // TODO: decide whether this is annoying

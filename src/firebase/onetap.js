@@ -4,10 +4,6 @@ import { devDebug } from '../utils/dev/dev-utils.js';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_APP_GOOGLE_CLIENT_ID;
 
-if (!GOOGLE_CLIENT_ID) {
-  console.error('[ONE TAP] VITE_APP_GOOGLE_CLIENT_ID is not configured');
-}
-
 const oneTapCallbacks = new Set();
 
 /**
@@ -43,6 +39,13 @@ function notifyOneTapStatus(status) {
 export function initOneTap() {
   devDebug('[ONE TAP] initOneTap called');
 
+  if (!GOOGLE_CLIENT_ID) {
+    console.error(
+      '[ONE TAP] Cannot initialize: VITE_APP_GOOGLE_CLIENT_ID is not configured'
+    );
+    return;
+  }
+
   if (typeof google === 'undefined' || !google.accounts?.id) {
     devDebug(
       '[ONE TAP] Google Identity Services library not loaded yet, retrying...'
@@ -60,6 +63,8 @@ export function initOneTap() {
     cancel_on_tap_outside: true,
     context: 'signin',
     use_fedcm_for_prompt: true,
+    // Add this to show "Continue as" instead of auto-selecting
+    itp_support: true,
   });
 }
 
@@ -72,6 +77,20 @@ export function showOneTapSignin() {
     return;
   }
 
+  if (!window.google?.accounts?.id) {
+    devDebug('[ONE TAP] Google library not loaded yet');
+    return;
+  }
+
+  // if (forceAccountSelection) {
+  //   // Cancel One Tap and force account chooser
+  //   devDebug('[ONE TAP] Canceling One Tap to force account selection');
+  //   window.google.accounts.id.cancel();
+  //   // Trigger traditional sign-in flow with account selection
+  //   notifyOneTapStatus('account_selection_requested');
+  //   return;
+  // }
+
   // DEV: Clear suppression state
   if (import.meta.env.DEV) {
     devDebug('[ONE TAP] DEV mode: clearing g_state cookie');
@@ -79,26 +98,21 @@ export function showOneTapSignin() {
       'g_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
   }
 
-  devDebug('[ONE TAP] Calling prompt()...');
+  devDebug('[ONE TAP] Calling google.accounts.id.prompt()');
+  notifyOneTapStatus('prompting');
 
-  google.accounts.id.prompt((notification) => {
-    devDebug('[ONE TAP] Prompt callback fired!', notification);
+  window.google.accounts.id.prompt((notification) => {
+    devDebug('[ONE TAP] Prompt notification:', notification);
 
     if (notification.isNotDisplayed()) {
-      const reason = notification.getNotDisplayedReason();
-      devDebug('[ONE TAP] Not displayed:', reason);
+      devDebug('[ONE TAP] Not displayed');
       notifyOneTapStatus('not_displayed');
     } else if (notification.isSkippedMoment()) {
-      const reason = notification.getSkippedReason();
-      devDebug('[ONE TAP] Skipped:', reason);
+      devDebug('[ONE TAP] Skipped');
       notifyOneTapStatus('skipped');
     } else if (notification.isDismissedMoment()) {
-      const reason = notification.getDismissedReason();
-      devDebug('[ONE TAP] Dismissed:', reason);
+      devDebug('[ONE TAP] Dismissed');
       notifyOneTapStatus('dismissed');
-    } else {
-      devDebug('[ONE TAP] ✅ Displayed');
-      notifyOneTapStatus('displayed');
     }
   });
 }
