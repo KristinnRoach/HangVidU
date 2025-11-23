@@ -11,9 +11,9 @@
 @import './layout/wrappers.css';
 @import './layout/grid.css';
 
-/* Component styles */
 @import './components/top-bar.css';
 @import './components/lobby.css';
+@import './components/contacts.css';
 @import './components/videos.css';
 @import './components/chat-controls.css';
 @import './components/messages.css';
@@ -230,67 +230,6 @@
   margin-bottom: 4px;
   font-family: monospace;
   font-size: 12px;
-}
-
-/* Contacts */
-
-.contacts-list {
-  background-color: rgb(63, 63, 63);
-  color: whitesmoke;
-
-  border: 2px solid #444;
-  border-radius: 12px;
-
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-
-  column-gap: 0.5rem;
-  padding: 0.5rem;
-  margin: 0 auto;
-  max-width: 600px;
-
-  overflow-y: auto;
-}
-
-.contacts-list button {
-  margin: 0.25rem;
-  box-shadow: 0 4px 12px rgba(11, 11, 11, 0.5);
-}
-
-.contact-name {
-  color: whitesmoke;
-}
-
-.contact-call-btn {
-  background: #4caf50;
-  border: none;
-  padding: 0.75rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  position: relative;
-  z-index: var(--z-mid);
-}
-
-.contact-call-btn:hover {
-  background: #45a049;
-}
-
-.contact-delete-btn {
-  background: #f44336;
-  border: none;
-  padding: 0.75rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.8rem;
-  position: relative;
-  z-index: var(--z-mid);
-}
-
-.contact-delete-btn:hover {
-  background: #da190b;
 }
 
 /* Notifications Toggle */

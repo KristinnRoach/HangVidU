@@ -1,0 +1,65 @@
+/* ============================================
+   CONTACTS COMPONENT
+   ============================================ */
+
+.contacts-container {
+  background-color: rgb(63, 63, 63);
+
+  border: 2px solid #444;
+  border-radius: 12px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  padding: 0.5rem;
+  max-height: 42dvh;
+  overflow-y: auto;
+
+  & h3 {
+    margin: 0 auto 0.75rem auto;
+  }
+
+  & .contacts-list {
+    display: flex;
+    flex-direction: column;
+    row-gap: 0.5rem;
+
+    & .contact-entry {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.2rem 0.4rem;
+
+      column-gap: 0.5rem;
+
+      & button {
+        box-shadow: 0 4px 12px rgba(11, 11, 11, 0.5);
+        font-size: 0.9rem;
+        z-index: var(--z-mid);
+      }
+
+      & .contact-name:hover {
+        text-decoration: underline;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      & .contact-call-btn {
+        background: #438b47;
+      }
+
+      & .contact-call-btn:hover {
+        background: #2c562e;
+      }
+
+      & .contact-delete-btn {
+        background: #ae3b33;
+      }
+
+      & .contact-delete-btn:hover {
+        background: #7b2923;
+      }
+    }
+  }
+}

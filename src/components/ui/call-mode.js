@@ -1,0 +1,171 @@
+// src/components/ui/call-mode.js
+// Call mode UI state management - extracted from main.js
+
+import {
+  localBoxEl,
+  remoteBoxEl,
+  remoteVideoEl,
+  lobbyDiv,
+  lobbyCallBtn,
+  chatControls,
+  callBtn,
+  hangUpBtn,
+  mutePartnerBtn,
+} from '../../elements.js';
+
+import {
+  showElement,
+  hideElement,
+  placeInSmallFrame,
+  removeFromSmallFrame,
+} from '../../utils/ui/ui-utils.js';
+
+import { setupShowHideOnInactivity } from '../../utils/ui/showHideOnInactivity.js';
+import { getRemoteStream } from '../../media/state.js';
+
+// Import from watch-sync
+import { isWatchModeActive } from '../../firebase/watch-sync.js';
+
+// Call mode state
+let isInCallMode = false;
+let enterCallModeWaitingForVideo = false;
+let cleanupRemoteLeavePipHandler = null;
+let cleanupRemoteEnterPipHandler = null;
+let cleanupChatControlAutoHide = null;
+let cleanupFunctions = [];
+
+// Export state getter
+export const getIsInCallMode = () => isInCallMode;
+
+export let enterCallMode = () => {
+  if (isInCallMode) return;
+
+  // Check if remote video is ready and playing
+  const remoteStream = getRemoteStream(false);
+  if (
+    !remoteVideoEl ||
+    !remoteStream ||
+    remoteVideoEl.paused ||
+    remoteVideoEl.readyState < 2
+  ) {
+    // Video not ready yet - set up listener if we haven't already
+    if (!enterCallModeWaitingForVideo) {
+      enterCallModeWaitingForVideo = true;
+      remoteVideoEl.addEventListener(
+        'playing',
+        () => {
+          enterCallModeWaitingForVideo = false;
+          enterCallMode();
+        },
+        { once: true }
+      );
+    }
+    return;
+  }
+
+  // Video is ready and playing - proceed with entering call mode
+  enterCallModeWaitingForVideo = false;
+
+  isInCallMode = true;
+
+  showElement(remoteBoxEl);
+  showElement(localBoxEl);
+  placeInSmallFrame(localBoxEl);
+
+  hideElement(lobbyDiv);
+  hideElement(lobbyCallBtn);
+
+  callBtn.disabled = true;
+  callBtn.classList.add('disabled');
+
+  hangUpBtn.disabled = false;
+  hangUpBtn.classList.remove('disabled');
+  mutePartnerBtn.disabled = false;
+  mutePartnerBtn.classList.remove('disabled');
+
+  if (!cleanupChatControlAutoHide) {
+    // Start hidden, show on activity and auto-hide after inactivity
+    cleanupChatControlAutoHide = setupShowHideOnInactivity(chatControls, {
+      inactivityMs: 2500,
+      hideOnEsc: true,
+    });
+  }
+
+  if (!cleanupRemoteLeavePipHandler) {
+    const remoteLeavePipHandler = () => {
+      if (isWatchModeActive()) placeInSmallFrame(remoteBoxEl);
+      else removeFromSmallFrame(remoteBoxEl);
+      showElement(remoteBoxEl);
+    };
+    // Handle case when user exits PiP manually
+    remoteVideoEl.addEventListener(
+      'leavepictureinpicture',
+      remoteLeavePipHandler
+    );
+
+    cleanupRemoteLeavePipHandler = () =>
+      remoteVideoEl.removeEventListener(
+        'leavepictureinpicture',
+        remoteLeavePipHandler
+      );
+
+    cleanupFunctions.push(cleanupRemoteLeavePipHandler);
+  }
+
+  if (!cleanupRemoteEnterPipHandler) {
+    const remoteEnterPipHandler = () => hideElement(remoteBoxEl);
+
+    remoteVideoEl.addEventListener(
+      'enterpictureinpicture',
+      remoteEnterPipHandler
+    );
+
+    cleanupRemoteEnterPipHandler = () =>
+      remoteVideoEl.removeEventListener(
+        'enterpictureinpicture',
+        remoteEnterPipHandler
+      );
+
+    cleanupFunctions.push(cleanupRemoteEnterPipHandler);
+  }
+};
+
+export let exitCallMode = () => {
+  if (!isInCallMode) return;
+  isInCallMode = false;
+
+  removeFromSmallFrame(localBoxEl);
+  hideElement(localBoxEl);
+  removeFromSmallFrame(remoteBoxEl);
+  hideElement(remoteBoxEl);
+
+  callBtn.disabled = false;
+  callBtn.classList.remove('disabled');
+
+  showElement(lobbyCallBtn);
+
+  hangUpBtn.disabled = true;
+  hangUpBtn.classList.add('disabled');
+  mutePartnerBtn.disabled = true;
+  mutePartnerBtn.classList.add('disabled');
+
+  if (cleanupChatControlAutoHide) {
+    cleanupChatControlAutoHide();
+    cleanupChatControlAutoHide = null;
+  }
+
+  showElement(lobbyDiv);
+  showElement(chatControls);
+};
+
+// Cleanup function for call mode UI
+export function cleanupCallModeUI() {
+  // Run all cleanup functions
+  cleanupFunctions.forEach((fn) => fn());
+  cleanupFunctions = [];
+
+  // Reset state
+  cleanupRemoteLeavePipHandler = null;
+  cleanupRemoteEnterPipHandler = null;
+  cleanupChatControlAutoHide = null;
+}
