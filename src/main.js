@@ -175,7 +175,10 @@ async function init() {
   }
 
   try {
-    setupPWA();
+    if (import.meta.env.VITE_DISABLE_PWA === '0') {
+      (await import('./pwa/PWA.js')).setupPWA;
+    }
+
     initializeSearchUI();
     addKeyListeners();
 
