@@ -5,6 +5,21 @@ import { test, expect } from '@playwright/test';
  *
  * MVP: Captures screenshots of major UI components to ensure
  * CSS refactoring doesn't introduce visual regressions.
+ *
+ * ═══════════════════════════════════════════════════════════════
+ * UPDATING SNAPSHOTS
+ * ═══════════════════════════════════════════════════════════════
+ *
+ * When visual changes are intentional, update snapshots with:
+ *
+ *   pnpm test:e2e --update-snapshots
+ *
+ * Or using the short flag:
+ *
+ *   pnpm test:e2e -u
+ *
+ * This will update all screenshot snapshots in this test file.
+ * ═══════════════════════════════════════════════════════════════
  */
 
 test.describe('Visual Regression - Lobby', () => {

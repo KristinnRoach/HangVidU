@@ -6,15 +6,25 @@ import { showUpdateNotification } from '../components/notifications/update-notif
  * Automatically shows update notification when new version is available.
  */
 export function setupUpdateHandler() {
-  const updateSW = registerSW({
-    onNeedRefresh() {
-      console.info('[PWA] New version available');
-      showUpdateNotification(updateSW);
-    },
-    onOfflineReady() {
-      console.info('[PWA] App ready to work offline');
-    },
-  });
+  try {
+    if (!registerSW) {
+      console.warn('[PWA] registerSW is not available');
+      return;
+    }
 
-  return updateSW;
+    const updateSW = registerSW({
+      onNeedRefresh() {
+        console.info('[PWA] New version available');
+        showUpdateNotification(updateSW);
+      },
+      onOfflineReady() {
+        console.info('[PWA] App ready to work offline');
+      },
+    });
+
+    return updateSW;
+  } catch (error) {
+    console.error('[PWA] Failed to setup update handler:', error);
+    console.warn('[PWA] This may be expected if PWA is disabled or virtual module is not available');
+  }
 }

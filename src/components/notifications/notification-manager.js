@@ -105,6 +105,10 @@ class NotificationManager {
     // Auto-cleanup when notification is disposed
     const originalDispose = notificationElement.dispose;
     notificationElement.dispose = () => {
+      // Call original dispose first to clean up resources
+      if (originalDispose) {
+        originalDispose.call(notificationElement);
+      }
       if (notificationElement.parentElement) {
         notificationElement.remove();
       }
@@ -121,9 +125,7 @@ class NotificationManager {
     const notification = this.notifications.get(id);
     if (notification) {
       // Only dispose if it hasn't been disposed already
-      if (notification.parentElement) {
-        notification.dispose();
-      }
+      if (notification.dispose) notification.dispose();
       this.notifications.delete(id);
       this.updateToggle();
     }
@@ -151,9 +153,7 @@ class NotificationManager {
    */
   clear() {
     this.notifications.forEach((notification) => {
-      if (notification.parentElement) {
-        notification.dispose();
-      }
+      if (notification.dispose) notification.dispose();
     });
     this.notifications.clear();
     this.updateToggle();
