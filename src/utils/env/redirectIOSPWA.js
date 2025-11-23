@@ -58,6 +58,9 @@ export function redirectIOSPWAToHosting() {
   if (targetPath.startsWith(ghPagesBase)) {
     // Strip /HangVidU/ prefix, keeping the rest of the path
     targetPath = '/' + targetPath.slice(ghPagesBase.length);
+  } else if (targetPath === '/HangVidU') {
+    // Handle root path without trailing slash
+    targetPath = '/';
   }
 
   // Preserve path, query, and hash
