@@ -29,6 +29,13 @@ import {
   removeFromSmallFrame,
 } from './utils/ui/ui-utils.js';
 
+import { clearUrlParam } from './utils/url.js';
+import {
+  enterWatchMode,
+  exitWatchMode,
+  isRemoteVideoVideoActive,
+} from './components/ui/watch-mode.js';
+import { enterCallMode, exitCallMode } from './components/ui/call-mode.js';
 import { setupShowHideOnInactivity } from './utils/ui/showHideOnInactivity.js';
 
 import {
@@ -138,13 +145,6 @@ getDiagnosticLogger().disable();
 
 let cleanupFunctions = [];
 
-export const isRemoteVideoVideoActive = () => {
-  const remoteStream = getRemoteStream(false);
-  return (
-    remoteStream && remoteStream.getVideoTracks().some((track) => track.enabled)
-  );
-};
-
 // ============================================================================
 // INITIALIZATION & MEDIA SETUP
 // ============================================================================
@@ -194,10 +194,6 @@ async function init() {
     devDebug('Error: Please allow camera and microphone access.');
     return false;
   }
-}
-
-export function clearUrlParam() {
-  window.history.replaceState({}, document.title, window.location.pathname);
 }
 
 // Todo: remove flag or finialize usage
@@ -896,265 +892,6 @@ async function startListeningForSavedRooms() {
       storage: 'localStorage',
     });
   }
-}
-
-// ============================================================================
-// UI Layout change helpers
-// ============================================================================
-
-let isInCallMode = false;
-let cleanupChatControlAutoHide = null;
-let cleanupRemoteLeavePipHandler = null;
-let cleanupRemoteEnterPipHandler = null;
-
-function isPiPSupported() {
-  return (
-    'pictureInPictureEnabled' in document &&
-    typeof document.pictureInPictureEnabled === 'boolean' &&
-    document.pictureInPictureEnabled
-  );
-}
-
-let enterCallModeWaitingForVideo = false;
-
-export let enterCallMode = () => {
-  if (isInCallMode) return;
-
-  // Check if remote video is ready and playing
-  const remoteStream = getRemoteStream(false);
-  if (
-    !remoteVideoEl ||
-    !remoteStream ||
-    remoteVideoEl.paused ||
-    remoteVideoEl.readyState < 2
-  ) {
-    // Video not ready yet - set up listener if we haven't already
-    if (!enterCallModeWaitingForVideo) {
-      enterCallModeWaitingForVideo = true;
-      remoteVideoEl.addEventListener(
-        'playing',
-        () => {
-          enterCallModeWaitingForVideo = false;
-          enterCallMode();
-        },
-        { once: true }
-      );
-    }
-    return;
-  }
-
-  // Video is ready and playing - proceed with entering call mode
-  enterCallModeWaitingForVideo = false;
-
-  isInCallMode = true;
-
-  showElement(remoteBoxEl);
-  showElement(localBoxEl);
-  placeInSmallFrame(localBoxEl);
-
-  hideElement(lobbyDiv);
-  hideElement(lobbyCallBtn);
-
-  callBtn.disabled = true;
-  callBtn.classList.add('disabled');
-
-  hangUpBtn.disabled = false;
-  hangUpBtn.classList.remove('disabled');
-  mutePartnerBtn.disabled = false;
-  mutePartnerBtn.classList.remove('disabled');
-
-  if (!cleanupChatControlAutoHide) {
-    // Start hidden, show on activity and auto-hide after inactivity
-    cleanupChatControlAutoHide = setupShowHideOnInactivity(chatControls, {
-      inactivityMs: 2500,
-      hideOnEsc: true,
-    });
-  }
-
-  if (!cleanupRemoteLeavePipHandler) {
-    const remoteLeavePipHandler = () => {
-      if (isWatchModeActive()) placeInSmallFrame(remoteBoxEl);
-      else removeFromSmallFrame(remoteBoxEl);
-      showElement(remoteBoxEl);
-    };
-    // Handle case when user exits PiP manually
-    remoteVideoEl.addEventListener(
-      'leavepictureinpicture',
-      remoteLeavePipHandler
-    );
-
-    cleanupRemoteLeavePipHandler = () =>
-      remoteVideoEl.removeEventListener(
-        'leavepictureinpicture',
-        remoteLeavePipHandler
-      );
-
-    cleanupFunctions.push(cleanupRemoteLeavePipHandler);
-  }
-
-  if (!cleanupRemoteEnterPipHandler) {
-    const remoteEnterPipHandler = () => hideElement(remoteBoxEl);
-
-    remoteVideoEl.addEventListener(
-      'enterpictureinpicture',
-      remoteEnterPipHandler
-    );
-
-    cleanupRemoteEnterPipHandler = () =>
-      remoteVideoEl.removeEventListener(
-        'enterpictureinpicture',
-        remoteEnterPipHandler
-      );
-
-    cleanupFunctions.push(cleanupRemoteEnterPipHandler);
-  }
-};
-
-export let exitCallMode = () => {
-  if (!isInCallMode) return;
-  isInCallMode = false;
-
-  removeFromSmallFrame(localBoxEl);
-  hideElement(localBoxEl);
-  removeFromSmallFrame(remoteBoxEl);
-  hideElement(remoteBoxEl);
-
-  callBtn.disabled = false;
-  callBtn.classList.remove('disabled');
-
-  showElement(lobbyCallBtn);
-
-  hangUpBtn.disabled = true;
-  hangUpBtn.classList.add('disabled');
-  mutePartnerBtn.disabled = true;
-  mutePartnerBtn.classList.add('disabled');
-
-  if (cleanupChatControlAutoHide) {
-    cleanupChatControlAutoHide();
-    cleanupChatControlAutoHide = null;
-  }
-
-  showElement(lobbyDiv);
-  showElement(chatControls);
-};
-
-export function enterWatchMode() {
-  if (isWatchModeActive()) return;
-  setWatchMode(true);
-
-  // Hide lobby if visible
-  hideElement(lobbyDiv);
-
-  // Chat controls adjustments (minimal UI)
-  chatControls.classList.remove('bottom');
-  chatControls.classList.add('watch-mode');
-
-  if (isInCallMode) {
-    hideElement(callBtn);
-    showElement(hangUpBtn);
-  } else {
-    hideElement(hangUpBtn);
-    hideElement(micBtn);
-    hideElement(mutePartnerBtn);
-    showElement(callBtn);
-  }
-
-  // Minimize further
-  hideElement(lobbyCallBtn);
-  hideElement(cameraBtn);
-  hideElement(switchCameraBtn);
-
-  showElement(chatControls);
-  // Disable auto-hide in watch mode to ensure accessibility
-  if (cleanupChatControlAutoHide) {
-    cleanupChatControlAutoHide();
-    cleanupChatControlAutoHide = null;
-  }
-
-  if (!isRemoteVideoVideoActive()) {
-    hideElement(remoteBoxEl);
-    removeFromSmallFrame(remoteBoxEl);
-
-    if (!isElementInPictureInPicture(localVideoEl)) {
-      showElement(localBoxEl);
-      placeInSmallFrame(localBoxEl);
-    }
-    return;
-  }
-
-  // Hide local video if remote video is active
-  hideElement(localBoxEl);
-  removeFromSmallFrame(localBoxEl);
-
-  if (isElementInPictureInPicture(remoteVideoEl)) {
-    hideElement(remoteBoxEl); // ensure small-frame is hidden if in PiP
-    removeFromSmallFrame(remoteBoxEl);
-  } else if (isPiPSupported()) {
-    // Try to enter PiP with fallback
-    remoteVideoEl
-      .requestPictureInPicture()
-      .then(() => {
-        // Hide the smallFrame if PiP entered successfully
-        hideElement(remoteBoxEl);
-        removeFromSmallFrame(remoteBoxEl);
-      })
-      .catch((err) => {
-        console.warn('Failed to enter Picture-in-Picture:', err);
-        // Fallback: place in small frame
-        placeInSmallFrame(remoteBoxEl);
-        showElement(remoteBoxEl);
-      });
-  } else {
-    // PiP not supported
-    placeInSmallFrame(remoteBoxEl);
-    showElement(remoteBoxEl);
-  }
-}
-
-export function exitWatchMode() {
-  if (!isWatchModeActive()) return;
-
-  showElement(callBtn);
-  showElement(hangUpBtn);
-  showElement(micBtn);
-  showElement(mutePartnerBtn);
-  showElement(callBtn);
-  showElement(cameraBtn);
-  showElement(switchCameraBtn);
-
-  chatControls.classList.remove('watch-mode');
-  chatControls.classList.add('bottom');
-
-  showElement(chatControls);
-
-  // Enable auto-hide again
-  if (!cleanupChatControlAutoHide) {
-    cleanupChatControlAutoHide = setupShowHideOnInactivity(chatControls, {
-      inactivityMs: 3000,
-      hideOnEsc: true,
-    });
-  }
-
-  if (isRemoteVideoVideoActive()) {
-    if (isElementInPictureInPicture(remoteVideoEl)) {
-      document.exitPictureInPicture().catch((err) => {
-        console.error('Failed to exit Picture-in-Picture:', err);
-      });
-    }
-
-    removeFromSmallFrame(remoteBoxEl);
-    showElement(remoteBoxEl);
-  }
-
-  placeInSmallFrame(localBoxEl);
-  showElement(localBoxEl);
-
-  if (!isRemoteVideoVideoActive()) {
-    showElement(lobbyDiv);
-    showElement(lobbyCallBtn);
-  }
-
-  setWatchMode(false);
 }
 
 // ============================================================================

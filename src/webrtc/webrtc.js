@@ -1,7 +1,8 @@
 // src/webrtc/webrtc.js
 
 import { devDebug } from '../utils/dev/dev-utils.js';
-import { enterCallMode, exitCallMode, clearUrlParam } from '../main.js';
+import { enterCallMode, exitCallMode } from '../components/ui/call-mode.js';
+import { clearUrlParam } from '../utils/url.js';
 import { onCallAnswered } from '../components/calling/calling-ui.js';
 import CallController from './call-controller.js';
 

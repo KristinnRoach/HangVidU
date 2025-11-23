@@ -6,6 +6,7 @@ import { getLoggedInUserId } from '../../firebase/auth.js';
 import { joinOrCreateRoomWithId, listenForIncomingOnRoom } from '../../main.js';
 import { hideCallingUI, showCallingUI } from '../calling/calling-ui.js';
 import confirmDialog from '../base/confirm-dialog.js';
+import { hideElement, showElement } from '../../utils/ui/ui-utils.js';
 
 /**
  * Save a contact for the current user (RTDB if logged in, localStorage otherwise).
@@ -119,33 +120,31 @@ export async function renderContactsList(lobbyElement) {
   const contactIds = Object.keys(contacts);
 
   // Find or create contacts container
-  let contactsContainer = lobbyElement.querySelector('.contacts-list');
+  let contactsContainer = lobbyElement.querySelector('.contacts-container');
   if (!contactsContainer) {
     contactsContainer = document.createElement('div');
-    contactsContainer.className = 'contacts-list';
+    contactsContainer.className = 'contacts-container';
     lobbyElement.appendChild(contactsContainer);
   }
 
   if (contactIds.length === 0) {
-    contactsContainer.innerHTML =
-      '<p style="color: #666;">No saved contacts yet.</p>';
+    contactsContainer.innerHTML = '<p>No saved contacts yet.</p>';
 
-    // Set display: none to avoid taking up space when no saved contacts
-    contactsContainer.style.display = 'none';
+    hideElement(contactsContainer);
     return;
   }
-  // Ensure container is visible when contacts exist (if using inline display: none above)
-  contactsContainer.style.display = '';
+  // Ensure container is visible when contacts exist (if using display: none above)
+  showElement(contactsContainer);
 
   // Render contact items
   contactsContainer.innerHTML = `
-    <h3 style="margin: 0 0 10px 0; font-size: 16px;">Saved Contacts</h3>
-    <ul style="list-style: none; padding: 0; margin: 0;">
+    <h3>Saved Contacts</h3>
+    <div class="contacts-list">
       ${contactIds
         .map((id) => {
           const contact = contacts[id];
           return `
-            <li style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+            <div class="contact-entry">
               <button 
                 class="contact-call-btn" 
                 data-room-id="${contact.roomId}"
@@ -153,18 +152,18 @@ export async function renderContactsList(lobbyElement) {
               >
                 Call
               </button>
-              <span class="contact-name" style="flex: 1;">${contact.contactName}</span>
+              <span class="contact-name">${contact.contactName}</span>
               <button 
                 class="contact-delete-btn" 
                 data-contact-id="${id}"
               >
                 ✕
               </button>
-            </li>
+            </div>
           `;
         })
         .join('')}
-    </ul>
+    </div>
   `;
 
   // Attach event listeners for call/delete buttons
