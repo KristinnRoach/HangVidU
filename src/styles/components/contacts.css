@@ -46,19 +46,19 @@
       }
 
       & .contact-call-btn {
-        background: #438b47;
+        background: #5ba85f;
       }
 
       & .contact-call-btn:hover {
-        background: #2c562e;
+        background: #438b47;
       }
 
       & .contact-delete-btn {
-        background: #ae3b33;
+        background: #d95850;
       }
 
       & .contact-delete-btn:hover {
-        background: #7b2923;
+        background: #ae3b33;
       }
     }
   }

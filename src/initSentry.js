@@ -1,11 +1,17 @@
 import * as Sentry from '@sentry/browser';
 
-Sentry.init({
-  dsn: 'https://adc1b5518c6a55273a1398d1b8b9cd3e@o4510415124496384.ingest.de.sentry.io/4510415129083984',
-  // Setting this option to true will send default PII data to Sentry.
-  // For example, automatic IP address collection on events
-  sendDefaultPii: true,
-});
+const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
+
+if (sentryDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    // Setting this option to true will send default PII data to Sentry.
+    // For example, automatic IP address collection on events
+    sendDefaultPii: true,
+  });
+} else {
+  console.warn('Sentry DSN not provided; error reporting is disabled.');
+}
 
 // myUndefinedFunction(); // Uncomment to debug (should cause error)
 
