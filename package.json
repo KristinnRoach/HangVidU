@@ -15,7 +15,7 @@
     "deploy-all": "pnpm fb-deploy && pnpm gh-deploy",
     "preview": "vite preview",
     "build:go": "sh go-server/build-scripts/build.sh",
-    "ngrok": "ngrok http https://localhost:5173 --domain=haunted-salley-cunningly.ngrok-free.dev",
+    "ngrok": "ngrok http https://localhost:5173 ${NGROK_DOMAIN:+--domain=$NGROK_DOMAIN}",
     "test": "vitest --run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
