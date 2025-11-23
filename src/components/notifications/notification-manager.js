@@ -103,7 +103,10 @@ class NotificationManager {
     this.updateToggle();
 
     // Auto-cleanup when notification is disposed
-    const originalDispose = notificationElement.dispose;
+    if (!notificationElement._originalDispose) {
+      notificationElement._originalDispose = notificationElement.dispose;
+    }
+    const originalDispose = notificationElement._originalDispose;
     notificationElement.dispose = () => {
       // Call original dispose first to clean up resources
       if (originalDispose) {
@@ -114,6 +117,9 @@ class NotificationManager {
       }
       this.notifications.delete(id);
       this.updateToggle();
+      // Restore original dispose after cleanup
+      notificationElement.dispose = originalDispose;
+      delete notificationElement._originalDispose;
     };
   }
 
