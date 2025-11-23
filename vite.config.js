@@ -17,6 +17,12 @@ export default defineConfig(({ mode }) => {
     base: basePath,
     // logLevel: 'warn',
 
+    define: {
+      'import.meta.env.VITE_DISABLE_PWA': JSON.stringify(
+        disablePWA ? '1' : '0'
+      ),
+    },
+
     build: {
       rollupOptions: {
         input: {
@@ -37,7 +43,6 @@ export default defineConfig(({ mode }) => {
               includeAssets: ['index.html', 'favicon.ico'],
               registerType: 'prompt',
               strategies: 'generateSW',
-              injectRegister: 'script',
               devOptions: {
                 enabled: !disablePWA,
               },

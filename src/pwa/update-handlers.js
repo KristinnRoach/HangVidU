@@ -1,12 +1,18 @@
-import { registerSW } from 'virtual:pwa-register';
 import { showUpdateNotification } from '../components/notifications/update-notification.js';
 
 /**
  * Sets up PWA update handling with user prompt.
  * Automatically shows update notification when new version is available.
  */
-export function setupUpdateHandler() {
+export async function setupUpdateHandler() {
+  // Only try to import if PWA is enabled
+  if (import.meta.env.VITE_DISABLE_PWA === '1') {
+    console.debug('[PWA] Update handler not available (PWA disabled)');
+    return;
+  }
   try {
+    const { registerSW } = await import('virtual:pwa-register');
+
     if (!registerSW) {
       console.warn('[PWA] registerSW is not available');
       return;
@@ -24,7 +30,14 @@ export function setupUpdateHandler() {
 
     return updateSW;
   } catch (error) {
+    // Silently fail if virtual module is not available (e.g., PWA disabled)
+    if (
+      error.message?.includes('Failed to resolve') ||
+      error.message?.includes('virtual:pwa-register')
+    ) {
+      console.debug('[PWA] Update handler not available (PWA may be disabled)');
+      return;
+    }
     console.error('[PWA] Failed to setup update handler:', error);
-    console.warn('[PWA] This may be expected if PWA is disabled or virtual module is not available');
   }
 }
