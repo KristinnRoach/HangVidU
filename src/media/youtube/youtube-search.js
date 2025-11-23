@@ -317,9 +317,9 @@ function displaySearchResults(results) {
     resultItem.className = 'search-result-item';
     resultItem.innerHTML = `
       <img src="${video.thumbnail}" alt="${video.title}" class="result-thumbnail">
-      <div class="result-info">
-        <div class="result-title">${video.title}</div>
-        <div class="result-channel">${video.channel}</div>
+      <div class="search-result-info">
+        <div class="search-result-title">${video.title}</div>
+        <div class="search-result-channel">${video.channel}</div>
       </div>
     `;
 

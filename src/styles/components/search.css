@@ -1,0 +1,213 @@
+/* YouTube Search Styles */
+
+/* Removed - #searchQuery will use animation classes */
+
+.search-section {
+  position: relative;
+  border-radius: 8px;
+  position: relative;
+  z-index: var(--z-mid);
+  width: fit-content;
+  max-width: 900px;
+  height: fit-content;
+  max-height: 90vh;
+  background: transparent;
+}
+
+.search-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.search-controls button,
+.search-controls input {
+  pointer-events: auto;
+}
+
+.search-controls input {
+  flex: 1;
+}
+
+.search-results {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: auto;
+
+  min-width: 100%;
+  max-width: 600px;
+
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  margin-top: 15px;
+  background: #2a2a2a;
+  border-radius: 8px;
+  height: fit-content;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.search-result-item {
+  display: flex;
+  background-color: #2a2a2a;
+  gap: 15px;
+  padding: 15px;
+  border-bottom: 1px solid #444;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  pointer-events: auto;
+}
+
+.search-result-item:hover {
+  background-color: #777;
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-thumbnail {
+  max-width: 120px;
+  max-height: 90px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.search-result-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-result-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ddd;
+  margin-bottom: 5px;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.search-result-channel {
+  font-size: 14px;
+  color: #aaa;
+  margin-bottom: 5px;
+}
+
+.search-result-description {
+  font-size: 13px;
+  color: #888;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.search-loading {
+  text-align: center;
+  padding: 20px;
+  color: #aaa;
+  font-style: italic;
+}
+
+.search-error {
+  text-align: center;
+  padding: 20px;
+  color: #f44336;
+  background: rgba(244, 67, 54, 0.1);
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+.search-no-results {
+  text-align: center;
+  padding: 20px;
+  color: #aaa;
+  font-style: italic;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .search-result-item {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .search-result-thumbnail {
+    width: 100%;
+    height: auto;
+    max-width: 200px;
+    align-self: center;
+  }
+
+  /* .search-controls {
+    flex-direction: column;
+  } */
+
+  .search-controls input,
+  .search-controls button {
+    width: 100%;
+  }
+}
+
+.search-unavailable {
+  text-align: center;
+  padding: 30px 20px;
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: 8px;
+  margin: 10px 0;
+}
+
+.search-unavailable-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffc107;
+  margin-bottom: 10px;
+}
+
+.search-unavailable-message {
+  font-size: 14px;
+  color: #fff;
+  margin-bottom: 15px;
+}
+
+.search-unavailable-suggestion {
+  font-size: 14px;
+  color: #aaa;
+  margin-bottom: 20px;
+  line-height: 1.4;
+}
+
+.search-unavailable-examples {
+  text-align: left;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 15px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.search-unavailable-examples strong {
+  color: #fff;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.search-unavailable-examples ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #ccc;
+}
+
+.search-unavailable-examples li {
+  margin-bottom: 4px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+/* End YouTube Search Styles */
