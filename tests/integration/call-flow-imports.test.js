@@ -12,19 +12,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 
 describe('Call-Flow Import Integration', () => {
   beforeAll(() => {
-    // Mock DOM elements that main.js tries to access
-    global.document = {
-      getElementById: () => null,
-      querySelector: () => null,
-      querySelectorAll: () => [],
-      createElement: () => ({}),
-      body: { appendChild: () => {} },
-    };
-    global.window = {
-      location: { origin: 'http://localhost', pathname: '/' },
-      addEventListener: () => {},
-      removeEventListener: () => {},
-    };
+    // Browser mode provides native document and window - no mocking needed
   });
 
   it('call-flow.js can be imported without ReferenceErrors', async () => {

@@ -10,6 +10,7 @@ vi.mock('firebase/database', () => ({
   push: vi.fn(() => ({})),
   set: vi.fn(() => Promise.resolve()),
   onChildAdded: vi.fn(),
+  onChildRemoved: vi.fn(),
   get: vi.fn(() => Promise.resolve({ exists: () => false, val: () => null })),
   onValue: vi.fn(),
   off: vi.fn(),
@@ -74,12 +75,7 @@ describe('ICE Candidate Queuing', () => {
       onChildAddedCallback = callback;
     });
 
-    // Mock RTCIceCandidate constructor
-    global.RTCIceCandidate = class RTCIceCandidate {
-      constructor(candidateInit) {
-        Object.assign(this, candidateInit);
-      }
-    };
+    // Browser mode provides native RTCIceCandidate - no mocking needed
   });
 
   afterEach(() => {

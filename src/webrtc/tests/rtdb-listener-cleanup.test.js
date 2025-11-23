@@ -6,18 +6,28 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('firebase/database', () => {
   const off = vi.fn();
   const onChildAdded = vi.fn();
+  const onChildRemoved = vi.fn();
   const onValue = vi.fn();
   const ref = vi.fn(() => ({}));
   const getDatabase = vi.fn(() => ({}));
   const push = vi.fn(() => ({}));
   const set = vi.fn(() => Promise.resolve());
+  const get = vi.fn(() =>
+    Promise.resolve({ exists: () => false, val: () => null })
+  );
+  const update = vi.fn(() => Promise.resolve());
+  const remove = vi.fn(() => Promise.resolve());
 
   return {
     getDatabase,
     ref,
     push,
     set,
+    get,
+    update,
+    remove,
     onChildAdded,
+    onChildRemoved,
     onValue,
     off,
   };

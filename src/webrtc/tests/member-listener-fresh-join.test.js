@@ -58,6 +58,8 @@ vi.mock('firebase/database', () => {
     return Promise.resolve();
   });
 
+  const onValue = vi.fn();
+
   return {
     getDatabase,
     ref,
@@ -67,6 +69,7 @@ vi.mock('firebase/database', () => {
     remove,
     onChildAdded,
     onChildRemoved,
+    onValue,
     off,
   };
 });
