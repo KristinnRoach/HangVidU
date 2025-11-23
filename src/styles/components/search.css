@@ -116,11 +116,6 @@
 
 .search-error {
   text-align: center;
-  padding: 20px;
-  color: #f44336;
-  background: rgba(244, 67, 54, 0.1);
-  border-radius: 4px;
-  margin: 10px 0;
 }
 
 .search-no-results {
