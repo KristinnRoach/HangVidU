@@ -4,6 +4,8 @@
 // HANGVIDU - P2P VIDEO CHAT WITH WATCH-TOGETHER MODE
 // ============================================================================
 
+import './initSentry.js'; // Initialize Sentry
+
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import { set, get, remove } from 'firebase/database';
 import {
