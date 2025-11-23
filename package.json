@@ -19,7 +19,7 @@
     "build:go": "sh go-server/build-scripts/build.sh",
     "ngrok": "ngrok http https://localhost:5173 ${NGROK_DOMAIN:+--domain=$NGROK_DOMAIN}",
     "test": "vitest --run",
-    "test:all": "pnpm test && pnpm test:e2e",
+    "test:all": "pnpm test:compat && pnpm test:e2e",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:compat": "COMPAT=true vitest --run",
