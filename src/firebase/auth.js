@@ -11,6 +11,7 @@ import {
   indexedDBLocalPersistence,
   browserLocalPersistence,
   inMemoryPersistence,
+  signOut,
 } from 'firebase/auth';
 
 import { app } from './firebase.js';
@@ -461,8 +462,7 @@ export async function handleRedirectResult() {
 }
 
 export function signOutUser() {
-  auth
-    .signOut()
+  signOut(auth)
     .then(() => {
       console.info('User signed out');
       setTimeout(() => showOneTapSignin(), 1500); // TODO: decide whether this is annoying
