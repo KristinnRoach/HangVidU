@@ -1,13 +1,22 @@
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 
+// Enable multi-browser testing with COMPAT=true
+const isCompatMode = process.env.COMPAT === 'true';
+
 export default defineConfig({
   test: {
     browser: {
       enabled: true,
       provider: playwright(),
       headless: true,
-      instances: [{ browser: 'chromium' }],
+      instances: isCompatMode
+        ? [
+            { browser: 'chromium' },
+            { browser: 'firefox' },
+            { browser: 'webkit' },
+          ]
+        : [{ browser: 'chromium' }],
     },
     globals: true,
     setupFiles: ['./tests/setup.js'],
