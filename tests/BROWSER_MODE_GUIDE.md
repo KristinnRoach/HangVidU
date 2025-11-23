@@ -485,11 +485,14 @@ test('full call flow works', async () => {
 ## Running Tests
 
 ```bash
-# Fast feedback during development
+# Fast feedback during development (Chromium only)
 pnpm test:watch
 
-# Run all tests
+# Run all tests (Chromium only)
 pnpm test
+
+# Cross-browser compatibility check (Chromium + Firefox + WebKit)
+pnpm test:compat
 
 # Quick smoke tests
 pnpm test:smoke
@@ -503,6 +506,27 @@ pnpm test:ui
 # E2E tests (slower, use less frequently)
 pnpm test:e2e
 ```
+
+### Browser Testing Strategy
+
+**Daily Development (Fast):**
+
+```bash
+pnpm test              # Chromium only (~2-3 seconds)
+pnpm test:watch        # Watch mode, Chromium only
+```
+
+**Before Release (Thorough):**
+
+```bash
+pnpm test:compat       # All browsers (~6-9 seconds)
+```
+
+**Browser Coverage:**
+
+- **Chromium** - Chrome, Edge, Brave, Opera (80%+ market share)
+- **Firefox** - Firefox (~7% market share)
+- **WebKit** - Safari desktop & iOS (~15% market share)
 
 ## Debugging Tips
 
