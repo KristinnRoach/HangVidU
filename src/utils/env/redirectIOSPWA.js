@@ -33,8 +33,21 @@ export function redirectIOSPWAToHosting() {
     return;
   }
 
-  // Check if we're already on the target host (avoid redirect loop)
-  const targetHost = new URL(hostingURL).hostname;
+  // Normalize hostingURL: remove trailing slash
+  const normalizedHostingURL = hostingURL.replace(/\/$/, '');
+
+  // Validate and check if we're already on the target host (avoid redirect loop)
+  let targetHost;
+  try {
+    targetHost = new URL(normalizedHostingURL).hostname;
+  } catch (error) {
+    console.error(
+      '[PWA Redirect] Invalid VITE_APP_HOSTING_URL:',
+      hostingURL,
+      error
+    );
+    return;
+  }
   if (window.location.hostname === targetHost) return;
 
   // Strip GitHub Pages base path when redirecting to Firebase Hosting
@@ -48,10 +61,16 @@ export function redirectIOSPWAToHosting() {
   }
 
   // Preserve path, query, and hash
-  const targetURL = new URL(
-    targetPath + window.location.search + window.location.hash,
-    hostingURL
-  ).toString();
+  let targetURL;
+  try {
+    targetURL = new URL(
+      targetPath + window.location.search + window.location.hash,
+      normalizedHostingURL
+    ).toString();
+  } catch (error) {
+    console.error('[PWA Redirect] Failed to construct target URL:', error);
+    return;
+  }
 
   console.log(
     '[PWA Redirect] iOS standalone PWA on gh-pages → redirecting to Firebase Hosting:',

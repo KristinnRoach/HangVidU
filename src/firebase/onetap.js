@@ -4,10 +4,6 @@ import { devDebug } from '../utils/dev/dev-utils.js';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_APP_GOOGLE_CLIENT_ID;
 
-if (!GOOGLE_CLIENT_ID) {
-  console.error('[ONE TAP] VITE_APP_GOOGLE_CLIENT_ID is not configured');
-}
-
 const oneTapCallbacks = new Set();
 
 /**
@@ -42,6 +38,13 @@ function notifyOneTapStatus(status) {
 
 export function initOneTap() {
   devDebug('[ONE TAP] initOneTap called');
+
+  if (!GOOGLE_CLIENT_ID) {
+    console.error(
+      '[ONE TAP] Cannot initialize: VITE_APP_GOOGLE_CLIENT_ID is not configured'
+    );
+    return;
+  }
 
   if (typeof google === 'undefined' || !google.accounts?.id) {
     devDebug(
