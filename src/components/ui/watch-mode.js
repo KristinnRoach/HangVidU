@@ -129,7 +129,6 @@ export function exitWatchMode() {
   showElement(hangUpBtn);
   showElement(micBtn);
   showElement(mutePartnerBtn);
-  showElement(callBtn);
   showElement(cameraBtn);
   showElement(switchCameraBtn);
 

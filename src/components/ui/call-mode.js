@@ -167,5 +167,10 @@ export function cleanupCallModeUI() {
   // Reset state
   cleanupRemoteLeavePipHandler = null;
   cleanupRemoteEnterPipHandler = null;
-  cleanupChatControlAutoHide = null;
+
+  // Ensure chat-controls inactivity handler is also cleaned up
+  if (cleanupChatControlAutoHide) {
+    cleanupChatControlAutoHide();
+    cleanupChatControlAutoHide = null;
+  }
 }

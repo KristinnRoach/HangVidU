@@ -44,7 +44,7 @@ export function redirectIOSPWAToHosting() {
 
   if (targetPath.startsWith(ghPagesBase)) {
     // Strip /HangVidU/ prefix, keeping the rest of the path
-    targetPath = targetPath.slice(ghPagesBase.length - 1); // -1 to keep leading /
+    targetPath = '/' + targetPath.slice(ghPagesBase.length);
   }
 
   // Preserve path, query, and hash
