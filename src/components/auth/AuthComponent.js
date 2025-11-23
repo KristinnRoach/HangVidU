@@ -53,6 +53,18 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
     handlers: {
       handleLogin: () => {
         cancelOneTap();
+
+        // Clear One Tap suppression to ensure it shows
+        document.cookie =
+          'g_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+
+        // ! currently always use pop up to allow adding new account
+        // if (typeof google !== 'undefined' && google.accounts?.id) {
+        //   showOneTapSignin();
+        // } else {
+        //   signInWithGoogle();
+        // }
+
         signInWithGoogle();
       },
       handleLogout: signOutUser,
