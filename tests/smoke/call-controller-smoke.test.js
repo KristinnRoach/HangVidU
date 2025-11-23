@@ -7,7 +7,7 @@
  * 2. Idempotency (duplicate calls don't cause issues)
  * 3. Event emission (correct events fire at correct times)
  *
- * Run with: pnpm test:browser:smoke
+ * Run with: pnpm test:smoke
  * Expected runtime: < 5 seconds
  *
  * NOTE: Keep these tests MINIMAL. Do not test edge cases or error scenarios.

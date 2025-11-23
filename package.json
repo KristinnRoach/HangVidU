@@ -18,12 +18,15 @@
     "ngrok": "ngrok http https://localhost:5173 --domain=haunted-salley-cunningly.ngrok-free.dev",
     "test": "vitest --run",
     "test:watch": "vitest",
-    "test:browser:smoke": "vitest --run tests/browser/",
+    "test:ui": "vitest --ui",
+    "test:smoke": "vitest --run tests/smoke/",
+    "test:unit": "vitest --run tests/unit/",
+    "test:integration": "vitest --run tests/integration/",
     "test:e2e": "playwright test",
-    "test:ui": "playwright test --ui",
+    "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
-    "test:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report"
   },
   "repository": {
     "type": "git",
@@ -40,12 +43,13 @@
   "license": "MIT",
   "devDependencies": {
     "@playwright/test": "^1.56.1",
+    "@vitest/browser-playwright": "^4.0.13",
     "concurrently": "^9.0.0",
-    "jsdom": "^27.0.1",
+    "playwright": "^1.56.1",
     "vite": "^7.1.12",
     "vite-plugin-mkcert": "^1.17.9",
     "vite-plugin-pwa": "^1.1.0",
-    "vitest": "^4.0.5"
+    "vitest": "^4.0.13"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
