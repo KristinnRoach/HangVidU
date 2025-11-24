@@ -107,7 +107,6 @@ import {
   cleanupSearchUI,
   initializeSearchUI,
 } from './media/youtube/youtube-search.js';
-import { setupPWA } from './pwa/PWA.js';
 import { addDebugUpdateButton } from './components/notifications/debug-notifications.js';
 
 import { setUpLocalStream, setupRemoteStream } from './media/stream.js';
