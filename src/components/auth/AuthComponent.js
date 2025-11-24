@@ -70,10 +70,8 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       handleLogout: signOutUser,
     },
     onMount: (el) => {
-      // Removed custom click-outside logic for One Tap prompt
-
       unsubscribe = onAuthChange(({ isLoggedIn, userName }) => {
-        console.debug('[AuthComponent] Auth state changed:', {
+        devDebug('[AuthComponent] Auth state changed:', {
           isLoggedIn,
           userName,
         });
@@ -113,7 +111,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         ) {
           // Enable login button if One Tap isn't working/was dismissed and user not logged in
           el.update({
-            loginDisabledAttr: !isLoggedIn() && '', // Enable (show) login button
+            loginDisabledAttr: isLoggedIn() ? 'disabled' : '', // Enable (show) login button
             signingInDisplay: 'none',
           });
         } else if (status === 'displayed') {
