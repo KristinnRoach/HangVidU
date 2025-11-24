@@ -111,7 +111,7 @@ export default defineConfig(({ mode }) => {
       allowedHosts: [
         'haunted-salley-cunningly.ngrok-free.dev',
         '192.168.8.100',
-        '169.254.123.79:5173',
+        '169.254.123.79',
       ],
 
       proxy: {
