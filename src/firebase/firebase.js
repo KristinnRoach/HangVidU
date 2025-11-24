@@ -1,4 +1,8 @@
 import { initializeApp } from 'firebase/app';
+import {
+  initializeAppCheck,
+  ReCaptchaEnterpriseProvider,
+} from 'firebase/app-check';
 
 // ============================================================================
 // FIREBASE CONFIG + INIT
@@ -17,3 +21,20 @@ const firebaseConfig = {
 
 // Initialize Firebase
 export const app = initializeApp(firebaseConfig);
+
+// ============================================================================
+// APP CHECK INIT
+// ============================================================================
+
+// Optional: For local development, get a debug token
+if (import.meta.env.MODE === 'development') {
+  self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+}
+
+// Initialize App Check with the reCAPTCHA Enterprise provider
+const appCheck = initializeAppCheck(app, {
+  provider: new ReCaptchaEnterpriseProvider(
+    import.meta.env.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY
+  ),
+  isTokenAutoRefreshEnabled: true, // Recommended for a smooth user experience
+});
