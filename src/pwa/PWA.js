@@ -13,16 +13,17 @@ function isIOS() {
   );
 }
 
-function setupPWA() {
+async function setupPWA() {
   // Set up PWA update handler (for registerType: 'prompt')
   // This should run regardless of install button state
   if (import.meta.env.VITE_DISABLE_PWA === '0') {
-    import('./update-handlers.js')
-      .setupUpdateHandler()
-      .catch((error) => {
-        // Silently handle errors (PWA may be disabled or module not available)
-        console.debug('[PWA] Update handler setup failed:', error);
-      });
+    try {
+      const module = await import('./update-handlers.js');
+      await module.setupUpdateHandler();
+    } catch (error) {
+      // Silently handle errors (PWA may be disabled or module not available)
+      console.debug('[PWA] Update handler setup failed:', error);
+    }
   }
 
   if (

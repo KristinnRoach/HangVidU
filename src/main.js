@@ -180,7 +180,8 @@ async function init() {
 
   try {
     if (import.meta.env.VITE_DISABLE_PWA === '0') {
-      (await import('./pwa/PWA.js')).setupPWA;
+      const { setupPWA } = await import('./pwa/PWA.js');
+      await setupPWA();
     }
 
     initializeSearchUI();
