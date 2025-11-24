@@ -9,7 +9,7 @@ import {
   isLoggedIn,
 } from '../../firebase/auth';
 
-import { cancelOneTap, onOneTapStatusChange } from '../../firebase/onetap';
+import { onOneTapStatusChange } from '../../firebase/onetap';
 import { devDebug } from '../../utils/dev/dev-utils.js';
 
 import createComponent from '../../utils/dom/component.js';
@@ -43,36 +43,36 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       loginBtnMarginRightPx,
     },
     template: `
-      <button style="margin-right: \${loginBtnMarginRightPx}px" id="goog-login-btn" class="login-btn" onclick="handleLogin" \${isLoggedIn ? 'disabled' : ''}>Login</button>
-      <button id="goog-logout-btn" class="logout-btn" onclick="handleLogout" \${!isLoggedIn ? 'disabled' : ''}>Logout</button>
+      <button style="margin-right: \${loginBtnMarginRightPx}px" id="goog-login-btn" class="login-btn" onclick="handleLogin" disabled>Login</button>
+      <button id="goog-logout-btn" class="logout-btn" onclick="handleLogout" disabled>Logout</button>
       <span class="signing-in-indicator" style="display: \${signingInDisplay}; color: var(--text-secondary, #888); font-size: 0.9rem;">Signing in...</span>
       <div class="user-info">\${isLoggedIn ? 'Logged in: ' + userName : 'Logged out'}</div>
     `,
     handlers: {
-      handleLogin: () => {
-        cancelOneTap();
-
-        // Clear One Tap suppression to ensure it shows
-        document.cookie =
-          'g_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-
-        // ! currently always use pop up to allow adding new account
-        // if (typeof google !== 'undefined' && google.accounts?.id) {
-        //   showOneTapSignin();
-        // } else {
-        //   signInWithGoogle();
-        // }
-
-        signInWithGoogle();
-      },
+      handleLogin: signInWithGoogle,
       handleLogout: signOutUser,
     },
     onMount: (el) => {
+      const updateButtons = (loggedIn) => {
+        const loginBtn = el.querySelector('#goog-login-btn');
+        const logoutBtn = el.querySelector('#goog-logout-btn');
+        if (loginBtn && logoutBtn) {
+          loginBtn.disabled = loggedIn;
+          logoutBtn.disabled = !loggedIn;
+        }
+      };
+
+      // Set initial button states
+      updateButtons(initialLoggedIn);
+
       unsubscribe = onAuthChange(({ isLoggedIn, userName }) => {
         devDebug('[AuthComponent] Auth state changed:', {
           isLoggedIn,
           userName,
         });
+
+        // Update button states with new auth state
+        updateButtons(isLoggedIn);
 
         el.update({
           isLoggedIn,
@@ -114,3 +114,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
 
   return authComponent;
 };
+
+// Clear One Tap suppression to ensure it shows
+// document.cookie =
+//   'g_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';

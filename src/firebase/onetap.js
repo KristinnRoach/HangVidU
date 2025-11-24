@@ -63,8 +63,8 @@ export function initOneTap() {
     cancel_on_tap_outside: true,
     context: 'signin',
     use_fedcm_for_prompt: true,
-    // Add this to show "Continue as" instead of auto-selecting
-    itp_support: true,
+    itp_support: true, // ? Check
+    // prompt_parent_id: 'g_id_onload', // Optional: specify where to render
   });
 }
 
