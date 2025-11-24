@@ -39,14 +39,12 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
     initialProps: {
       isLoggedIn: initialLoggedIn,
       userName: 'Guest User',
-      loginDisabledAttr: 'disabled', // Start disabled (auto hidden) until One Tap resolves
-      logoutDisabledAttr: 'disabled',
       signingInDisplay: 'none',
       loginBtnMarginRightPx,
     },
     template: `
-      <button style="margin-right: \${loginBtnMarginRightPx}px" id="goog-login-btn" class="login-btn" onclick="handleLogin" \${loginDisabledAttr}>Login</button>
-      <button id="goog-logout-btn" class="logout-btn" onclick="handleLogout" \${logoutDisabledAttr}>Logout</button>
+      <button style="margin-right: \${loginBtnMarginRightPx}px" id="goog-login-btn" class="login-btn" onclick="handleLogin" \${isLoggedIn ? 'disabled' : ''}>Login</button>
+      <button id="goog-logout-btn" class="logout-btn" onclick="handleLogout" \${!isLoggedIn ? 'disabled' : ''}>Logout</button>
       <span class="signing-in-indicator" style="display: \${signingInDisplay}; color: var(--text-secondary, #888); font-size: 0.9rem;">Signing in...</span>
       <div class="user-info">\${isLoggedIn ? 'Logged in: ' + userName : 'Logged out'}</div>
     `,
@@ -79,8 +77,6 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         el.update({
           isLoggedIn,
           userName,
-          loginDisabledAttr: isLoggedIn ? 'disabled' : '',
-          logoutDisabledAttr: isLoggedIn ? '' : 'disabled',
           signingInDisplay: 'none', // Hide loading indicator when auth resolves
         });
       });
@@ -88,36 +84,14 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       // Subscribe to One Tap status
       unsubscribeOneTap = onOneTapStatusChange((status) => {
         devDebug('[AuthComponent] One Tap status:', status);
-
-        if (isLoggedIn()) {
-          // Always disable login button if logged in
-          el.update({
-            loginDisabledAttr: 'disabled',
-            signingInDisplay: 'none',
-          });
-          return;
-        }
-
         if (status === 'signing_in') {
           // Show loading indicator while signing in
           el.update({
             signingInDisplay: 'inline-block',
-            loginDisabledAttr: 'disabled', // Hide login button
           });
-        } else if (
-          ['not_displayed', 'skipped', 'dismissed', 'not_needed'].includes(
-            status
-          )
-        ) {
-          // Enable login button if One Tap isn't working/was dismissed and user not logged in
+        } else {
+          // Hide loading indicator for all other statuses
           el.update({
-            loginDisabledAttr: isLoggedIn() ? 'disabled' : '', // Enable (show) login button
-            signingInDisplay: 'none',
-          });
-        } else if (status === 'displayed') {
-          // One Tap is showing - keep login button disabled (hidden)
-          el.update({
-            loginDisabledAttr: 'disabled',
             signingInDisplay: 'none',
           });
         }
