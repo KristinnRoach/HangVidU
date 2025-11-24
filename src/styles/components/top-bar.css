@@ -96,11 +96,33 @@
   transition: var(--transition-default);
 } */
 
+/* Auth buttons - default to hidden */
 .login-btn,
-.logout-btn,
-.user-info {
-  /* Transitions handled automatically by layout/grid.css */
+.logout-btn {
+  opacity: 0;
+  display: none !important;
+  cursor: none;
+  pointer-events: none;
+  transform: translateX(0);
+  transition: var(--transition-default);
+}
 
+/* Only show when explicitly enabled */
+.login-btn:enabled,
+.logout-btn:enabled {
+  opacity: 1;
+  display: inline-block !important;
+  cursor: pointer;
+  pointer-events: auto;
+
+  @starting-style {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
+
+/* User info styling */
+.user-info {
   @starting-style {
     opacity: 0;
     transform: translateX(10px);
@@ -108,22 +130,6 @@
 
   transform: translateX(0);
   transition: var(--transition-default);
-}
-
-.login-btn:enabled,
-.logout-btn:enabled {
-  opacity: 1;
-  display: inline-block;
-  cursor: pointer;
-  pointer-events: auto;
-}
-
-.login-btn:disabled,
-.logout-btn:disabled {
-  opacity: 0;
-  display: none;
-  cursor: none;
-  pointer-events: none;
 }
 
 /* Top Right Menu */

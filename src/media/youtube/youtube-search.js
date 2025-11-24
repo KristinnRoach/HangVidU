@@ -52,21 +52,6 @@ export async function initializeSearchUI() {
     return false;
   }
 
-  // Hide search section when Google One Tap prompt is visible
-  try {
-    const { onOneTapStatusChange } = await import('../../firebase/onetap.js');
-    const unsubscribeOneTap = onOneTapStatusChange((status) => {
-      if (status === 'displayed') {
-        hideElement(searchContainer);
-      } else {
-        showElement(searchContainer);
-      }
-    });
-    cleanupFunctions.push(unsubscribeOneTap);
-  } catch (e) {
-    console.warn('Could not set up One Tap search section visibility:', e);
-  }
-
   const isDirectUrl = (str) => {
     return /^https?:\/\//i.test(str);
   };
