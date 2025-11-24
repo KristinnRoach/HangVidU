@@ -15,7 +15,7 @@
     "build:hosting": "BUILD_TARGET=hosting vite build",
     "deploy:fb": "pnpm build:hosting && firebase deploy --only hosting",
     "deploy:gh": "pnpm build && npx gh-pages -d dist",
-    "deploy:all": "pnpm test:all && pnpm deploy:fb && pnpm deploy:gh",
+    "deploy:all": "pnpm test:compat && pnpm deploy:fb && pnpm deploy:gh",
     "preview": "vite preview",
     "build:go": "sh go-server/build-scripts/build.sh",
     "test": "vitest --run",

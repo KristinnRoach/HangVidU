@@ -103,19 +103,26 @@
 
     border: none;
     border-radius: var(--border-radius-default, 0.5rem);
-    font-size: 1rem;
-    font-weight: 600;
-    box-shadow: var(--shadow-sm);
-    padding: 0.5rem 0.75rem;
 
-    background-color: hsl(from var(--color-primary) h s l / 0.6);
+    /* Fallback for browsers without hsl(from ...) support */
+    background-color: rgba(76, 129, 175, 0.6);
 
     &:active {
-      background-color: hsl(from var(--color-primary) h s l / 0.3);
+      background-color: rgba(76, 129, 175, 0.3);
     }
 
     &:hover {
-      background-color: hsl(from var(--color-primary) h s l / 0.4);
+      background-color: rgba(76, 129, 175, 0.4);
+    }
+
+    @supports (background-color: hsl(from var(--color-primary) h s l / 0.6)) {
+      background-color: hsl(from var(--color-primary) h s l / 0.6);
+      &:active {
+        background-color: hsl(from var(--color-primary) h s l / 0.3);
+      }
+      &:hover {
+        background-color: hsl(from var(--color-primary) h s l / 0.4);
+      }
     }
 
     /* Only show when explicitly enabled */

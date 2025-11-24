@@ -51,9 +51,10 @@
   --shadow-inset-md: inset 0 20px 40px rgba(0, 0, 0, 0.3);
 
   /* ===== SPACING ===== */
+  --spacing-xxs: 2px;
   --spacing-xs: 4px;
   --spacing-sm: 8px;
-  --spacing-md: 12px;
+  --spacing-md: 10px;
   --spacing-lg: 16px;
   --spacing-xl: 20px;
   --spacing-2xl: 24px;
