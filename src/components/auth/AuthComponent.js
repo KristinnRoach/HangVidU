@@ -81,7 +81,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         el.update({
           isLoggedIn,
           userName,
-          // loginDisabledAttr is managed by One Tap status handler only
+          loginDisabledAttr: isLoggedIn ? 'disabled' : '',
           logoutDisabledAttr: isLoggedIn ? '' : 'disabled',
           signingInDisplay: 'none', // Hide loading indicator when auth resolves
         });
@@ -113,7 +113,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         ) {
           // Enable login button if One Tap isn't working/was dismissed and user not logged in
           el.update({
-            loginDisabledAttr: '', // Enable (show) login button
+            loginDisabledAttr: !isLoggedIn() && '', // Enable (show) login button
             signingInDisplay: 'none',
           });
         } else if (status === 'displayed') {
