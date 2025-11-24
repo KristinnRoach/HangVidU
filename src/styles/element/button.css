@@ -2,7 +2,7 @@
 /* Generic button defaults - component-specific styles in components/buttons.css */
 
 button {
-  border: none;
+  border: 2px solid transparent;
   border-radius: var(--radius-md);
 
   margin: 0px;
