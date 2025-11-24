@@ -85,5 +85,5 @@ CLAUDE.md
 TODO.md
 experiments.html
 .firebase/
-
 ./tests/e2e/OUTDATED_IGNORE/
+kill-hanging-dev-processes.sh
