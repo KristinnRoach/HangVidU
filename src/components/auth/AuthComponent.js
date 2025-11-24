@@ -91,6 +91,15 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       unsubscribeOneTap = onOneTapStatusChange((status) => {
         devDebug('[AuthComponent] One Tap status:', status);
 
+        if (isLoggedIn()) {
+          // Always disable login button if logged in
+          el.update({
+            loginDisabledAttr: 'disabled',
+            signingInDisplay: 'none',
+          });
+          return;
+        }
+
         if (status === 'signing_in') {
           // Show loading indicator while signing in
           el.update({
@@ -103,12 +112,10 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           )
         ) {
           // Enable login button if One Tap isn't working/was dismissed and user not logged in
-          if (!isLoggedIn()) {
-            el.update({
-              loginDisabledAttr: '', // Enable (show) login button
-              signingInDisplay: 'none',
-            });
-          }
+          el.update({
+            loginDisabledAttr: '', // Enable (show) login button
+            signingInDisplay: 'none',
+          });
         } else if (status === 'displayed') {
           // One Tap is showing - keep login button disabled (hidden)
           el.update({
