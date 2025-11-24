@@ -8,13 +8,15 @@
   position: relative;
   z-index: var(--z-mid);
 
-  display: flex;
-  flex-direction: row;
   width: 100%;
   height: auto;
 
-  margin: 0 auto;
-  padding: 0.5rem 0.75rem;
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+
+  margin: 0;
+  padding: 0.5rem;
 
   align-items: center;
   justify-content: space-between;
@@ -33,11 +35,7 @@
 .title-auth-bar {
   display: flex;
   flex-direction: row;
-  flex: 1;
-  justify-content: space-between;
-  column-gap: 1.5rem;
-
-  margin-right: 1rem;
+  gap: 1rem;
 
   transition: gap var(--duration-default, 200ms) var(--easing-default, ease);
 }
@@ -82,55 +80,64 @@
   display: flex;
   gap: var(--spacing-sm, 0.5rem);
   align-items: center;
-}
 
-/* Apply auto-animate behavior to children */
-/* .auth-component > * {
-  @starting-style {
-    opacity: 0;
-    transform: translateX(10px);
+  & .user-info {
+    @starting-style {
+      opacity: 0;
+      transform: translateX(10px);
+    }
+
+    transform: translateX(0);
+    transition: var(--transition-default);
   }
 
-  opacity: 1;
-  transform: translateX(0);
-  transition: var(--transition-default);
-} */
+  & .login-btn,
+  & .logout-btn {
+    /* Hidden by default */
+    opacity: 0;
+    display: none;
+    cursor: none;
+    pointer-events: none;
+    transform: translateX(0);
+    transition: var(--transition-default);
 
-/* Auth buttons - default to hidden */
-.login-btn,
-.logout-btn {
-  opacity: 0;
-  display: none !important;
-  cursor: none;
-  pointer-events: none;
-  transform: translateX(0);
-  transition: var(--transition-default);
+    border: none;
+    border-radius: var(--border-radius-default, 0.5rem);
+    font-size: 1rem;
+    font-weight: 600;
+    box-shadow: var(--shadow-sm);
+    padding: 0.5rem 0.75rem;
+
+    background-color: hsl(from var(--color-primary) h s l / 0.6);
+
+    &:active {
+      background-color: hsl(from var(--color-primary) h s l / 0.3);
+    }
+
+    &:hover {
+      background-color: hsl(from var(--color-primary) h s l / 0.4);
+    }
+
+    /* Only show when explicitly enabled */
+    &:enabled {
+      opacity: 1;
+      display: inline-block;
+      cursor: pointer;
+      pointer-events: auto;
+
+      @starting-style {
+        opacity: 0;
+        transform: translateX(10px);
+      }
+    }
+  }
 }
 
-/* Only show when explicitly enabled */
-.login-btn:enabled,
-.logout-btn:enabled {
-  opacity: 1;
-  display: inline-block !important;
+/* .auth-component .login-btn:hover,
+.auth-component .logout-btn:hover {
   cursor: pointer;
-  pointer-events: auto;
-
-  @starting-style {
-    opacity: 0;
-    transform: translateX(10px);
-  }
-}
-
-/* User info styling */
-.user-info {
-  @starting-style {
-    opacity: 0;
-    transform: translateX(10px);
-  }
-
-  transform: translateX(0);
-  transition: var(--transition-default);
-}
+  background-color: hsl(from var(--color-primary) h s l / 0.5);
+} */
 
 /* Top Right Menu */
 
@@ -183,12 +190,12 @@
 /* Respect reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   .auth-component > button {
-    transition: none !important;
+    transition: none;
   }
 
   .top-bar,
   .top-right-menu,
   #app-title-h1 {
-    transition: none !important;
+    transition: none;
   }
 }

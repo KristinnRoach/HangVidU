@@ -10,13 +10,14 @@ button {
   font-size: var(--font-size-md);
 
   background-color: var(--color-success);
-  color: white;
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
 
   cursor: pointer;
   transition: background-color var(--transition-slow);
 }
 
-button:hover:not(:disabled) {
+button:hover {
   background-color: var(--color-success-hover);
 }
 
