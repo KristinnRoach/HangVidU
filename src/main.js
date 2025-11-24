@@ -304,6 +304,15 @@ export async function joinOrCreateRoomWithId(
   customRoomId,
   { forceInitiator = false } = {}
 ) {
+  try {
+    // Always ensure local stream is initialized
+    await initLocalStreamAndMedia();
+  } catch (error) {
+    console.error('Failed to initialize local media stream:', error);
+    devDebug('Error: Could not initialize camera/mic.');
+    return false;
+  }
+
   const startTime = Date.now();
 
   // If caller explicitly wants to initiate (e.g., calling a saved contact),
