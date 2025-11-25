@@ -197,7 +197,7 @@ async function init() {
 
     // Initialize notification system for production (PWA updates, etc.)
     const topRightMenu = document.querySelector('.top-right-menu');
-    if (topRightMenu && !isDev()) {
+    if (topRightMenu) {
       const notificationsToggle = createNotificationsToggle({
         parent: topRightMenu,
         hideWhenAllRead: true, // Hide when no notifications in prod
