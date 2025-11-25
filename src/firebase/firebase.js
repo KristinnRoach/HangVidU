@@ -29,7 +29,7 @@ export const app = initializeApp(firebaseConfig);
 // Optional: For local development, enable debug token generation
 // When set to true, Firebase will log a debug token to the console.
 // Copy that token and register it in Firebase Console > App Check > Debug tokens
-if (import.meta.env.MODE === 'development') {
+if (import.meta.env.MODE === 'development' && typeof self !== 'undefined') {
   self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
 }
 
