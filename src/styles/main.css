@@ -32,4 +32,6 @@
   pointer-events: auto;
 }
 
+/* #recaptcha-container {} */
+
 /* Todo: Review components to minimize redundant lines of CSS, simplify, consolidate and align styles to current system */

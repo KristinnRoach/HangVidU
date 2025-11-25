@@ -63,8 +63,8 @@ export function initOneTap() {
     cancel_on_tap_outside: true,
     context: 'signin',
     use_fedcm_for_prompt: true,
+    //use_fedcm_for_button: true,
     itp_support: true, // ? Check
-    // prompt_parent_id: 'g_id_onload', // Optional: specify where to render
   });
 }
 
@@ -104,10 +104,7 @@ export function showOneTapSignin() {
   window.google.accounts.id.prompt((notification) => {
     devDebug('[ONE TAP] Prompt notification:', notification);
 
-    if (notification.isNotDisplayed()) {
-      devDebug('[ONE TAP] Not displayed');
-      notifyOneTapStatus('not_displayed');
-    } else if (notification.isSkippedMoment()) {
+    if (notification.isSkippedMoment()) {
       devDebug('[ONE TAP] Skipped');
       notifyOneTapStatus('skipped');
     } else if (notification.isDismissedMoment()) {
@@ -171,7 +168,6 @@ export function cancelOneTap() {
  *
  * - Status updates: `onOneTapStatusChange(callback)` with status values:
  *   - 'displayed': One Tap prompt is showing
- *   - 'not_displayed': One Tap couldn't be displayed
  *   - 'skipped': User skipped the prompt
  *   - 'dismissed': User dismissed the prompt
  *   - 'not_needed': User already logged in

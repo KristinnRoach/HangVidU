@@ -7,8 +7,6 @@
     <title>HangVidU</title>
     <link rel="stylesheet" href="/src/styles/main.css" />
     <link rel="icon" href="/favicon.ico" />
-
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
   <body>
     <div class="main-wrapper">
@@ -36,6 +34,8 @@
           </div>
         </div>
       </div>
+
+      <div id="recaptcha-container"></div>
 
       <div class="relative-wrapper">
         <div id="videos">
@@ -136,6 +136,12 @@
       <i class="fa fa-window"></i>
     </button>
 
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script
+      src="https://www.google.com/recaptcha/enterprise.js?onload=onloadCallback&render=explicit"
+      async
+      defer
+    ></script>
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <script type="module" src="/src/main.js"></script>
