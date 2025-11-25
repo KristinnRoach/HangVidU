@@ -1326,15 +1326,3 @@ async function cleanup() {
   cleanupSearchUI();
   cleanupFunctions.forEach((cleanupFn) => cleanupFn());
 }
-
-// === reCAPTCHA ===
-
-window.onloadCallback = function () {
-  grecaptcha.enterprise.render('recaptcha-container', {
-    sitekey: import.meta.env.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY,
-  });
-};
-// trigger manually after script loads
-// if (window.grecaptcha && window.onloadCallback) {
-//   window.onloadCallback();
-// }

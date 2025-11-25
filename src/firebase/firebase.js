@@ -6,6 +6,36 @@ import {
 } from 'firebase/app-check';
 
 // ============================================================================
+// APP CHECK DEBUG TOKEN SETUP (MUST BE BEFORE FIREBASE INIT)
+// ============================================================================
+
+// CRITICAL: Set debug token BEFORE initializing Firebase or any providers
+// This prevents reCAPTCHA from showing "localhost not in allowed domains" error
+const appCheckExplicitDebugToken = import.meta.env
+  .VITE_FIREBASE_APP_CHECK_DEBUG_TOKEN;
+
+if (import.meta.env.MODE === 'development' && typeof self !== 'undefined') {
+  if (
+    typeof appCheckExplicitDebugToken === 'string' &&
+    appCheckExplicitDebugToken.trim() !== ''
+  ) {
+    // If an explicit debug token is provided in .env.development, use it.
+    // This tells App Check to use this specific token for debugging.
+    self.FIREBASE_APPCHECK_DEBUG_TOKEN = appCheckExplicitDebugToken;
+    console.info(
+      `[Firebase App Check: DEV] Using explicit debug token from .env: ${appCheckExplicitDebugToken}`
+    );
+  } else {
+    // If no explicit token, allow App Check to auto-generate and log a new one.
+    // This is useful for first-time setup or if local storage is cleared.
+    self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    console.warn(
+      '[Firebase App Check: DEV] No explicit debug token (VITE_FIREBASE_APPCHECK_DEBUG_TOKEN) found in .env. App Check will auto-generate one. Copy and register this token in Firebase Console. Consider adding it to your .env.development for stable reuse.'
+    );
+  }
+}
+
+// ============================================================================
 // FIREBASE CONFIG + INIT
 // ============================================================================
 
@@ -27,32 +57,10 @@ export const app = initializeApp(firebaseConfig);
 // ============================================================================
 
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY;
-const appCheckExplicitDebugToken = import.meta.env
-  .VITE_FIREBASE_APP_CHECK_DEBUG_TOKEN;
-
 let appCheckProvider;
 
 // --- DEVELOPMENT ENVIRONMENT LOGIC ---
-if (import.meta.env.MODE === 'development' && typeof self !== 'undefined') {
-  if (
-    typeof appCheckExplicitDebugToken === 'string' &&
-    appCheckExplicitDebugToken.trim() !== ''
-  ) {
-    // If an explicit debug token is provided in .env.development, use it.
-    // This tells App Check to use this specific token for debugging.
-    self.FIREBASE_APPCHECK_DEBUG_TOKEN = appCheckExplicitDebugToken;
-    console.info(
-      `[Firebase App Check: DEV] Using explicit debug token from .env: ${appCheckExplicitDebugToken}`
-    );
-  } else {
-    // If no explicit token, allow App Check to auto-generate and log a new one.
-    // This is useful for first-time setup or if local storage is cleared.
-    self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-    console.warn(
-      '[Firebase App Check: DEV] No explicit debug token (VITE_FIREBASE_APPCHECK_DEBUG_TOKEN) found in .env. App Check will auto-generate one. Copy and register this token in Firebase Console. Consider adding it to your .env.development for stable reuse.'
-    );
-  }
-
+if (import.meta.env.MODE === 'development') {
   // In development, we always try to initialize App Check with *a* provider.
   // The self.FIREBASE_APPCHECK_DEBUG_TOKEN setting will make it use the debug token
   // regardless of what the actual provider does for real attestation.
@@ -83,9 +91,11 @@ if (import.meta.env.MODE === 'development' && typeof self !== 'undefined') {
 else {
   // production
   if (typeof recaptchaSiteKey === 'string' && recaptchaSiteKey.trim() !== '') {
+    // Note: ReCaptchaEnterpriseProvider automatically works in invisible mode
+    // It will show a challenge only when needed (based on risk analysis)
     appCheckProvider = new ReCaptchaEnterpriseProvider(recaptchaSiteKey);
     console.info(
-      '[Firebase App Check: PROD] Initializing with ReCAPTCHA Enterprise.'
+      '[Firebase App Check: PROD] Initializing with ReCAPTCHA Enterprise (invisible mode).'
     );
   } else {
     console.error(
