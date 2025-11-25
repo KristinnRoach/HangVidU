@@ -48,11 +48,9 @@ export default defineConfig(({ mode }) => {
               },
               workbox: {
                 cleanupOutdatedCaches: true,
-                navigateFallback: '/index.html', // fallback for SPA navigation
-                navigateFallbackAllowlist: [
-                  // Regex to allow navigation to these pages
-                  /^\/$/, // root
-                  /^\/index\.html$/, // main app entry
+                navigateFallback: `${basePath}index.html`, // fallback for SPA navigation (accounts for base path)
+                navigateFallbackDenylist: [
+                  new RegExp(`^${basePath.replace(/\//g, '\\/')}index\\.html$`), // Don't fallback for index.html itself (prevents cache error)
                 ],
               },
 
@@ -106,6 +104,7 @@ export default defineConfig(({ mode }) => {
           ]),
     ],
     server: {
+      port: process.env.VITE_PORT ? Number(process.env.VITE_PORT) : 5173,
       https: true, // use trusted dev cert from mkcert
       host: true, // To expose to LAN devices as well
       allowedHosts: [
