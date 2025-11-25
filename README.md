@@ -26,7 +26,14 @@ A simple peer-to-peer video chat app with a watch-together mode.
 
 The `pnpm dev` command starts both Vite and ngrok for local development with HTTPS tunneling.
 
-To use a custom ngrok domain (optional), set `NGROK_DOMAIN` in your `.env` file:
+### Environment configuration
+
+Your environment variables are now managed in two files:
+
+- `.env.development` for local/dev settings
+- `.env.production` for production deploys
+
+For custom ngrok domains (optional), set `NGROK_DOMAIN` in your `.env.development` file:
 
 ```bash
 NGROK_DOMAIN=your-custom-domain.ngrok-free.dev

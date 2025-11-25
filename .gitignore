@@ -4,6 +4,10 @@ pnpm-lock.yaml
 # Environment variables
 .env
 .env.local
+.env.production
+.env.development
+.env.testing
+.env.*.local
 
 # Playwright
 test-results/
