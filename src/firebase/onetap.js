@@ -104,13 +104,17 @@ export function showOneTapSignin() {
   window.google.accounts.id.prompt((notification) => {
     devDebug('[ONE TAP] Prompt notification:', notification);
 
-    if (notification.isSkippedMoment()) {
+    // Use new getMomentType() method instead of deprecated isSkippedMoment/isDisplayMoment/isDismissedMoment
+    const momentType = notification.getMomentType();
+    devDebug('[ONE TAP] Moment type:', momentType);
+
+    if (momentType === 'skipped') {
       devDebug('[ONE TAP] Skipped');
       notifyOneTapStatus('skipped');
-    } else if (notification.isDismissedMoment()) {
+    } else if (momentType === 'dismissed') {
       devDebug('[ONE TAP] Dismissed');
       notifyOneTapStatus('dismissed');
-    } else {
+    } else if (momentType === 'display') {
       devDebug('[ONE TAP] ✅ Displayed');
       notifyOneTapStatus('displayed');
     }
