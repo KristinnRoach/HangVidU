@@ -108,6 +108,8 @@ import {
   initializeSearchUI,
 } from './media/youtube/youtube-search.js';
 import { addDebugUpdateButton } from './components/notifications/debug-notifications.js';
+import { notificationManager } from './components/notifications/notification-manager.js';
+import { createNotificationsToggle } from './components/notifications/notifications-toggle.js';
 
 import { setUpLocalStream, setupRemoteStream } from './media/stream.js';
 
@@ -192,6 +194,16 @@ async function init() {
 
     // Add debug button for testing update notification (dev only)
     addDebugUpdateButton();
+
+    // Initialize notification system for production (PWA updates, etc.)
+    const topRightMenu = document.querySelector('.top-right-menu');
+    if (topRightMenu) {
+      const notificationsToggle = createNotificationsToggle({
+        parent: topRightMenu,
+        hideWhenAllRead: true, // Hide when no notifications in prod
+      });
+      notificationManager.setToggle(notificationsToggle);
+    }
 
     return true;
   } catch (error) {
