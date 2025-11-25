@@ -106,6 +106,7 @@ export default defineConfig(({ mode }) => {
           ]),
     ],
     server: {
+      port: process.env.VITE_PORT ? Number(process.env.VITE_PORT) : 5173,
       https: true, // use trusted dev cert from mkcert
       host: true, // To expose to LAN devices as well
       allowedHosts: [

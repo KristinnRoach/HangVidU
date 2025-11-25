@@ -33,7 +33,7 @@ const appCheckExplicitDebugToken = import.meta.env
 let appCheckProvider;
 
 // --- DEVELOPMENT ENVIRONMENT LOGIC ---
-if (import.meta.env.MODE === 'development') {
+if (import.meta.env.MODE === 'development' && typeof self !== 'undefined') {
   if (
     typeof appCheckExplicitDebugToken === 'string' &&
     appCheckExplicitDebugToken.trim() !== ''
@@ -107,35 +107,3 @@ if (appCheckProvider) {
     console.error('[Firebase App Check] initializeAppCheck call failed:', err);
   }
 }
-
-// // Optional: For local development, enable debug token generation
-// // When set to true, Firebase will log a debug token to the console.
-// // Copy that token and register it in Firebase Console > App Check > Debug tokens
-// if (import.meta.env.MODE === 'development' && typeof self !== 'undefined') {
-//   self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-// }
-// // Validate reCAPTCHA site key before initializing App Check
-// if (typeof recaptchaSiteKey === 'string' && recaptchaSiteKey.trim() !== '') {
-//   // Initialize App Check with the reCAPTCHA Enterprise provider
-//   try {
-//     initializeAppCheck(app, {
-//       provider: new ReCaptchaEnterpriseProvider(recaptchaSiteKey),
-//       isTokenAutoRefreshEnabled: true,
-//     });
-//   } catch (err) {
-//     console.error('[Firebase App Check] Initialization failed:', err);
-//   }
-// } else {
-//   if (import.meta.env.MODE === 'production') {
-//     console.error(
-//       '[Firebase App Check: PROD] VITE_RECAPTCHA_ENTERPRISE_SITE_KEY is missing or empty. App Check initialization skipped.'
-//     );
-//   } else {
-//     // Use debug provider in non-production as a safe fallback
-//     console.warn(
-//       '[Firebase App Check: DEV] VITE_RECAPTCHA_ENTERPRISE_SITE_KEY is missing or empty.'
-//     );
-//     // Optionally, you could initialize with a debug provider here if needed
-//     // initializeAppCheck(app, { provider: new DebugAppCheckProvider(), isTokenAutoRefreshEnabled: true });
-//   }
-// }
