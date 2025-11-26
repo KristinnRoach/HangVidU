@@ -145,17 +145,19 @@ export async function renderContactsList(lobbyElement) {
           const contact = contacts[id];
           return `
             <div class="contact-entry">
-              <button 
-                class="contact-call-btn" 
+              <span
+                class="contact-name"
                 data-room-id="${contact.roomId}"
                 data-contact-name="${contact.contactName}"
+                title="Call ${contact.contactName}"
               >
-                Call
-              </button>
-              <span class="contact-name">${contact.contactName}</span>
-              <button 
-                class="contact-delete-btn" 
+                <i class="fa fa-phone"></i>
+                ${contact.contactName}
+              </span>
+              <button
+                class="contact-delete-btn"
                 data-contact-id="${id}"
+                title="Delete contact"
               >
                 ✕
               </button>
@@ -171,14 +173,14 @@ export async function renderContactsList(lobbyElement) {
 }
 
 /**
- * Attach event listeners to contact list buttons.
+ * Attach event listeners to contact list elements.
  */
 function attachContactListeners(container, lobbyElement) {
-  // Call buttons
-  container.querySelectorAll('.contact-call-btn').forEach((btn) => {
-    btn.onclick = async () => {
-      const roomId = btn.getAttribute('data-room-id');
-      const contactName = btn.getAttribute('data-contact-name');
+  // Contact names - click to call
+  container.querySelectorAll('.contact-name').forEach((nameEl) => {
+    nameEl.onclick = async () => {
+      const roomId = nameEl.getAttribute('data-room-id');
+      const contactName = nameEl.getAttribute('data-contact-name');
       if (roomId) {
         // QUICK FIX: Ensure listener is active for this room before calling
         console.log(

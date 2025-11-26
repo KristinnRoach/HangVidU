@@ -33,28 +33,48 @@
 
       column-gap: 0.5rem;
 
-      & button {
-        box-shadow: 0 4px 12px rgba(11, 11, 11, 0.5);
-        font-size: 0.9rem;
-        z-index: var(--z-mid);
+      & .contact-name {
+        flex: 1;
+        cursor: pointer;
+        user-select: none;
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        transition: background-color 0.2s ease;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+
+        & .fa-phone {
+          font-size: 0.95rem;
+          opacity: 0.85;
+          rotate: 15deg;
+
+          color: rgb(74, 172, 74);
+        }
       }
 
       & .contact-name:hover {
-        text-decoration: underline;
-        cursor: pointer;
-        user-select: none;
+        background-color: rgba(91, 168, 95, 0.2);
+
+        & .fa-phone {
+          opacity: 1;
+          rotate: 35deg;
+          color: rgb(70, 200, 70);
+        }
       }
 
-      & .contact-call-btn {
-        background: #5ba85f;
-      }
-
-      & .contact-call-btn:hover {
-        background: #438b47;
+      & .contact-name:active {
+        background-color: rgba(91, 168, 95, 0.4);
       }
 
       & .contact-delete-btn {
-        background: #d95850;
+        background: #a0423c;
+        box-shadow: 0 4px 12px rgba(11, 11, 11, 0.5);
+        font-size: 0.85rem;
+        z-index: var(--z-mid);
+        padding: 0.1rem 0.2rem;
+        flex-shrink: 0;
       }
 
       & .contact-delete-btn:hover {
