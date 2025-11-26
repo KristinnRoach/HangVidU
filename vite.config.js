@@ -127,5 +127,13 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+
+    // Preview server configuration (for testing production builds locally)
+    preview: {
+      port: 4173,
+      // Enable HTTPS if PREVIEW_HTTPS env var is set
+      https: process.env.PREVIEW_HTTPS === '1' ? true : false,
+      host: true,
+    },
   };
 });

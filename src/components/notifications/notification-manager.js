@@ -1,3 +1,5 @@
+import { onClickOutside } from '../../utils/ui/clickOutside.js';
+
 /**
  * Centralized notification manager.
  * Manages multiple notifications in a scrollable list and syncs with the notifications toggle.
@@ -7,6 +9,7 @@ class NotificationManager {
     this.notifications = new Map(); // Map<id, notificationElement>
     this.toggle = null;
     this.container = null;
+    this.clickOutsideCleanup = null;
   }
 
   /**
@@ -42,6 +45,7 @@ class NotificationManager {
   showList() {
     if (this.container) {
       this.container.style.display = 'flex';
+      this.setupClickOutside();
     }
   }
 
@@ -51,6 +55,35 @@ class NotificationManager {
   hideList() {
     if (this.container) {
       this.container.style.display = 'none';
+      this.cleanupClickOutside();
+    }
+  }
+
+  /**
+   * Setup click-outside handler to auto-hide list
+   * @private
+   */
+  setupClickOutside() {
+    if (this.clickOutsideCleanup) return; // Already setup
+
+    this.clickOutsideCleanup = onClickOutside(
+      this.container,
+      () => this.hideList(),
+      {
+        ignore: this.toggle ? [this.toggle] : [],
+        esc: true,
+      }
+    );
+  }
+
+  /**
+   * Cleanup click-outside handler
+   * @private
+   */
+  cleanupClickOutside() {
+    if (this.clickOutsideCleanup) {
+      this.clickOutsideCleanup();
+      this.clickOutsideCleanup = null;
     }
   }
 

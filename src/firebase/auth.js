@@ -261,10 +261,23 @@ export async function signInWithGoogle() {
   const isIOSStandalone =
     isStandalonePWA && /iphone|ipad|ipod/i.test(navigator.userAgent || '');
 
-  // In production (gh-pages), always use popup since static hosting lacks /__/auth/handler
+  // Detect if running on Firebase Hosting (which has /__/auth/handler)
+  // vs GitHub Pages (which doesn't)
+  const isFirebaseHosting = (() => {
+    try {
+      // Firebase Hosting uses / base path (BUILD_TARGET=hosting)
+      // GitHub Pages uses /HangVidU/ base path
+      const base = import.meta.env.BASE_URL || '/';
+      return base === '/';
+    } catch {
+      return false;
+    }
+  })();
+
+  // In production on GitHub Pages, use popup since static hosting lacks /__/auth/handler
+  // In production on Firebase Hosting, allow redirect since /__/auth/handler exists
   // In dev (ngrok with proxy), use redirect on mobile/standalone (proxy handles /__/auth)
-  // Note: iOS standalone PWA on gh-pages will try popup; if blocked, we guide user to Safari
-  const forcePopupInProd = import.meta.env.PROD;
+  const forcePopupInProd = import.meta.env.PROD && !isFirebaseHosting;
 
   try {
     // If previous attempt failed in iOS standalone PWA, the user can tap Login again
@@ -471,11 +484,35 @@ export const signInWithAccountSelection = async () => {
       prompt: 'select_account',
     });
 
-    // Use popup on desktop, redirect on mobile/PWA
-    if (
-      isMobileDevice() ||
-      window.matchMedia('(display-mode: standalone)').matches
-    ) {
+    // Detect Firebase Hosting (same logic as signInWithGoogle)
+    const isFirebaseHosting = (() => {
+      try {
+        const base = import.meta.env.BASE_URL || '/';
+        return base === '/';
+      } catch {
+        return false;
+      }
+    })();
+
+    const isStandalonePWA = (() => {
+      try {
+        return (
+          (typeof window !== 'undefined' &&
+            window.matchMedia &&
+            window.matchMedia('(display-mode: standalone)').matches) ||
+          (typeof navigator !== 'undefined' && navigator.standalone === true)
+        );
+      } catch (_) {
+        return false;
+      }
+    })();
+
+    // Use redirect on mobile/PWA when not forcing popup
+    // (Firebase Hosting supports redirect, GitHub Pages doesn't)
+    const forcePopupInProd = import.meta.env.PROD && !isFirebaseHosting;
+    const shouldUseRedirect = (isMobileDevice() || isStandalonePWA) && !forcePopupInProd;
+
+    if (shouldUseRedirect) {
       devDebug('[AUTH] Using redirect flow for mobile/PWA');
       await signInWithRedirect(auth, provider);
     } else {

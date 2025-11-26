@@ -11,12 +11,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 12px;
   background: transparent;
-  border: none;
   cursor: pointer;
   color: #ccc;
-  font-size: 1.2rem;
   transition: color 0.2s;
 }
 
@@ -32,12 +29,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 2px 4px;
-  background: #f44336;
+  min-width: 11px;
+  height: 11px;
+  padding: 1px 2px;
+  background: #d13a2f;
   color: #fff;
-  border-radius: 9px;
+  border-radius: 29px;
   font-size: 0.7rem;
   font-weight: bold;
   line-height: 1;

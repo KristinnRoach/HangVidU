@@ -7,6 +7,43 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_APP_GOOGLE_CLIENT_ID;
 const oneTapCallbacks = new Set();
 
 /**
+ * Suppress FedCM abort errors that occur when users dismiss One Tap.
+ * These errors are expected behavior and should not clutter the console.
+ */
+function suppressFedCMAbortErrors() {
+  // Only suppress in production to avoid hiding real issues during development
+  if (import.meta.env.DEV) return;
+
+  const originalError = console.error;
+  console.error = (...args) => {
+    const message = args.join(' ');
+
+    // Filter out FedCM abort errors
+    if (
+      message.includes('FedCM') &&
+      message.includes('AbortError') &&
+      message.includes('signal is aborted without reason')
+    ) {
+      // Suppress this expected error
+      return;
+    }
+
+    // Also filter out the generic "The request has been aborted" error
+    if (
+      args.length === 1 &&
+      typeof args[0] === 'string' &&
+      args[0].trim() === 'The request has been aborted.'
+    ) {
+      // Suppress this expected error
+      return;
+    }
+
+    // Pass all other errors through
+    originalError.apply(console, args);
+  };
+}
+
+/**
  * Initialize Google One Tap (one-time setup)
  */
 
@@ -55,6 +92,10 @@ export function initOneTap() {
   }
 
   devDebug('[ONE TAP] Google library loaded');
+
+  // Suppress FedCM abort errors when user dismisses One Tap
+  // These are expected user actions, not actual errors
+  suppressFedCMAbortErrors();
 
   google.accounts.id.initialize({
     client_id: GOOGLE_CLIENT_ID,

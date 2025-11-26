@@ -30,11 +30,17 @@ export function showUpdateNotification(updateSW) {
         notificationManager.remove(NOTIFICATION_ID);
       },
       handleLater: () => {
-        notificationManager.remove(NOTIFICATION_ID);
+        // Keep notification in the manager (bell icon remains)
+        // Just hide the notifications list panel if it's open
+        if (notificationManager.isListVisible()) {
+          notificationManager.hideList();
+        }
+        // Note: notification stays in the list, accessible via bell icon
+        // User can click bell to see it again and update when ready
       },
     },
     className: 'pwa-update-notification',
-    parent: document.body,
+    // Don't specify parent - let notification manager handle placement
   });
 
   // Register with manager (automatically updates toggle)
