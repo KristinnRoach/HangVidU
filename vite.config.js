@@ -23,6 +23,12 @@ export default defineConfig(({ mode }) => {
       ),
     },
 
+    optimizeDeps: {
+      // Exclude virtual PWA module from dependency scanning when PWA is disabled
+      // This prevents "Failed to resolve virtual:pwa-register" warnings in dev mode
+      exclude: disablePWA ? ['virtual:pwa-register'] : [],
+    },
+
     build: {
       rollupOptions: {
         input: {

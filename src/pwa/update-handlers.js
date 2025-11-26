@@ -1,6 +1,16 @@
 import { showUpdateNotification } from '../components/notifications/update-notification.js';
 
 /**
+ * Dynamically imports the PWA register module.
+ * Separated to avoid Vite's static dependency scanner when PWA is disabled.
+ */
+async function importPWARegister() {
+  // @ts-ignore - virtual module only exists when PWA plugin is enabled
+  const { registerSW } = await import('virtual:pwa-register');
+  return registerSW;
+}
+
+/**
  * Sets up PWA update handling with user prompt.
  * Automatically shows update notification when new version is available.
  */
@@ -11,7 +21,7 @@ export async function setupUpdateHandler() {
     return;
   }
   try {
-    const { registerSW } = await import('virtual:pwa-register');
+    const registerSW = await importPWARegister();
 
     if (!registerSW) {
       console.warn('[PWA] registerSW is not available');
