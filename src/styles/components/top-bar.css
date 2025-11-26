@@ -180,11 +180,9 @@
   font-size: 1.2rem;
   border-radius: 50%;
 
-  background-color: red;
-
-  /* display: flex;
+  display: flex;
   align-items: center;
-  justify-content: center; */
+  justify-content: center;
 }
 
 .user-info {
