@@ -8,9 +8,10 @@ import { initMessagesUI } from '../components/messages/messages-ui.js';
  *
  * @param {RTCPeerConnection} pc - The peer connection
  * @param {string} role - 'initiator' or 'joiner'
+ * @param {Function} onMessagesUIReady - Callback invoked when messagesUI is initialized (for joiner's async setup)
  * @returns {{ dataChannel: RTCDataChannel, messagesUI: object }} Channel and UI handler
  */
-export function setupDataChannel(pc, role) {
+export function setupDataChannel(pc, role, onMessagesUIReady = null) {
   let dataChannel;
   let messagesUI;
 
@@ -37,6 +38,11 @@ export function setupDataChannel(pc, role) {
     pc.ondatachannel = (event) => {
       dataChannel = event.channel;
       messagesUI = initMessagesUI((msg) => dataChannel.send(msg));
+
+      // Notify callback that messagesUI is ready
+      if (onMessagesUIReady) {
+        onMessagesUIReady(messagesUI);
+      }
 
       dataChannel.onopen = () => {
         messagesUI.showMessagesToggle();

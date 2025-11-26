@@ -164,6 +164,7 @@ export async function createCall({
  * @param {HTMLButtonElement} options.mutePartnerBtn - Mute partner button (required)
  * @param {Function} options.setupRemoteStream - Function to setup remote stream handler
  * @param {Function} options.setupWatchSync - Function to setup watch-together sync
+ * @param {Function} options.onMessagesUIReady - Callback for when messagesUI is initialized (for joiner's async setup)
  *
  * @returns {Promise<{ success: boolean, pc: RTCPeerConnection, roomId: string, dataChannel: RTCDataChannel, messagesUI: object }>}
  */
@@ -174,6 +175,7 @@ export async function answerCall({
   mutePartnerBtn,
   setupRemoteStream,
   setupWatchSync,
+  onMessagesUIReady = null,
 }) {
   // ─────────────────────────────────────────────────────────────────────────
   // 1. VALIDATE PREREQUISITES
@@ -232,7 +234,7 @@ export async function answerCall({
   addLocalTracks(pc, localStream);
 
   // 3b. Setup data channel (will receive from initiator)
-  const { dataChannel, messagesUI } = setupDataChannel(pc, role);
+  const { dataChannel, messagesUI } = setupDataChannel(pc, role, onMessagesUIReady);
 
   // 3c. Setup remote stream handler
   const remoteStreamSuccess = setupRemoteStream(

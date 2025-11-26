@@ -1260,13 +1260,12 @@ CallController.on('memberJoined', ({ memberId, roomId }) => {
 
 // Subscribe to CallController memberLeft event - handles partner leaving
 CallController.on('memberLeft', ({ memberId }) => {
-  console.debug('CallController memberLeft event', { memberId });
+  devDebug('CallController memberLeft event', { memberId });
   console.info('Partner has left the call');
 });
 
-// Subscribe to CallController cleanup event - handles ALL cleanup UI updates
-CallController.on('cleanup', ({ roomId, reason }) => {
-  console.debug('CallController cleanup event', { roomId, reason });
+CallController.on('cleanup', ({ roomId, partnerId, reason }) => {
+  devDebug('CallController cleanup event', { roomId, partnerId, reason });
 
   // Perform all UI cleanup
   hideCallingUI();
@@ -1274,20 +1273,16 @@ CallController.on('cleanup', ({ roomId, reason }) => {
   exitCallMode();
   devDebug('Disconnected. Click "Start New Chat" to begin.');
   clearUrlParam();
-});
 
-// Subscribe to CallController cleanup event - shows contact save prompt for both users
-CallController.on('cleanup', ({ roomId, partnerId, reason }) => {
-  console.debug('CallController cleanup event', {
-    roomId,
-    partnerId,
-    reason,
-  });
+  // Clean up messages UI if present
+  const state = CallController.getState();
+  if (state.messagesUI && typeof state.messagesUI.cleanup === 'function') {
+    state.messagesUI.cleanup();
+    state.messagesUI = null;
+  }
 
   // Prompt to save contact after cleanup (if partner was present)
-  // This fires for BOTH users regardless of who initiated the hangup
   if (partnerId && roomId) {
-    // Small delay so UI settles before prompt
     setTimeout(() => {
       saveContact(partnerId, roomId, lobbyDiv).catch((e) => {
         console.warn('Failed to save contact after cleanup:', e);
@@ -1295,6 +1290,38 @@ CallController.on('cleanup', ({ roomId, partnerId, reason }) => {
     }, 500);
   }
 });
+
+// // Subscribe to CallController cleanup event - handles ALL cleanup UI updates
+// CallController.on('cleanup', ({ roomId, reason }) => {
+//   console.debug('CallController cleanup event', { roomId, reason });
+
+//   // Perform all UI cleanup
+//   hideCallingUI();
+//   cleanupRemoteStream();
+//   exitCallMode();
+//   devDebug('Disconnected. Click "Start New Chat" to begin.');
+//   clearUrlParam();
+// });
+
+// // Subscribe to CallController cleanup event - shows contact save prompt for both users
+// CallController.on('cleanup', ({ roomId, partnerId, reason }) => {
+//   console.debug('CallController cleanup event', {
+//     roomId,
+//     partnerId,
+//     reason,
+//   });
+
+//   // Prompt to save contact after cleanup (if partner was present)
+//   // This fires for BOTH users regardless of who initiated the hangup
+//   if (partnerId && roomId) {
+//     // Small delay so UI settles before prompt
+//     setTimeout(() => {
+//       saveContact(partnerId, roomId, lobbyDiv).catch((e) => {
+//         console.warn('Failed to save contact after cleanup:', e);
+//       });
+//     }, 500);
+//   }
+// });
 
 // ============================================================================
 

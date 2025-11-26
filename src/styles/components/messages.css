@@ -3,34 +3,12 @@
 /* Toggle Button */
 
 #messages-toggle-btn {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-
-  aspect-ratio: 1 / 1;
-
-  z-index: var(--z-high);
-  pointer-events: auto;
-  touch-action: manipulation;
-
+  position: relative;
   anchor-name: --msg-toggle;
-
-  transition: position var(--duration-default, 200ms)
-    var(--easing-default, ease);
 }
 
 #messages-toggle-btn button {
-  font-size: 1.5rem;
-  padding: 1rem;
-  background: #007bff;
-
-  border-radius: 50%;
-
-  transform-origin: bottom center;
-  will-change: transform, box-shadow;
-
-  transition: padding var(--duration-default, 200ms) var(--easing-default, ease),
-    font-size var(--duration-default, 200ms) var(--easing-default, ease);
+  will-change: transform;
 }
 
 /* New Message Animation */
@@ -120,16 +98,8 @@
 
 /* ===== RESPONSIVE DESIGN ===== */
 
-/* Contain the toggle inside the top bar on small containers */
+/* Position messages box below top bar (fallback) */
 @container main (max-width: 800px) {
-  .top-bar #messages-toggle-btn {
-    position: static;
-    bottom: auto;
-    right: auto;
-    z-index: auto;
-  }
-
-  /* Position messages box below top bar on small screens (fallback) */
   .messages-box {
     top: 80px;
     right: 20px;
@@ -138,23 +108,13 @@
 }
 
 /* ===== CSS ANCHOR POSITIONING ===== */
-/* Progressive enhancement - automatic flip based on container size */
 
-@supports (position-anchor: --msg-toggle) and (right: anchor(right)) and
-  (bottom: anchor(top)) {
-  /* Default: toggle is bottom (right) -> anchor above */
+@supports (position-anchor: --msg-toggle) {
+  /* Toggle is in top bar → anchor messages box below it */
   .messages-box {
     position-anchor: --msg-toggle;
-    bottom: anchor(top);
+    top: anchor(bottom);
     right: anchor(right);
-  }
-
-  /* Small containers: toggle is in top bar → anchor below */
-  @container main (max-width: 800px) {
-    .messages-box {
-      top: anchor(bottom);
-      bottom: auto;
-      /* right remains anchored via default rule */
-    }
+    bottom: auto;
   }
 }

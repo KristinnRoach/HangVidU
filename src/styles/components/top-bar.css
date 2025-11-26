@@ -167,22 +167,27 @@
   order: 3;
 }
 
-/* Consistent button sizing for top-right-menu items */
-.top-right-menu button {
-  padding: 8px 10px;
-  font-size: 1.2rem;
-  min-width: 35px;
-  min-height: 35px;
-}
-
-/* Messages toggle maintains circular appearance in top bar */
-.top-right-menu #messages-toggle-btn button {
-  font-size: 1.2rem;
-  border-radius: 50%;
-
+/* Consistent button sizing for all top-right-menu items */
+.top-right-menu button,
+.top-right-menu .notifications-toggle-btn {
   display: flex;
   align-items: center;
   justify-content: center;
+
+  padding: 0.5rem;
+  min-width: 40px;
+  min-height: 40px;
+
+  font-size: 1.2rem;
+  border-radius: 50%;
+
+  background: transparent;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.top-right-menu button:hover,
+.top-right-menu .notifications-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .user-info {
