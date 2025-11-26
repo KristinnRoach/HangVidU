@@ -129,11 +129,6 @@
     z-index: auto;
   }
 
-  .top-bar #messages-toggle-btn button {
-    padding: 8px 10px;
-    font-size: 1.2rem;
-  }
-
   /* Position messages box below top bar on small screens (fallback) */
   .messages-box {
     top: 80px;

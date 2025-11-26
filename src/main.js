@@ -181,6 +181,13 @@ async function init() {
       await setupPWA();
     }
 
+    // Load PWA update testing utility in development
+    if (import.meta.env.DEV) {
+      import('./pwa/test-update.js').catch(() => {
+        // Silently fail if module not available
+      });
+    }
+
     initializeSearchUI();
     addKeyListeners();
 

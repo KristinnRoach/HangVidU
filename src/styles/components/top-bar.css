@@ -140,12 +140,6 @@
   }
 }
 
-/* .auth-component .login-btn:hover,
-.auth-component .logout-btn:hover {
-  cursor: pointer;
-  background-color: hsl(from var(--color-primary) h s l / 0.5);
-} */
-
 /* Top Right Menu */
 
 .top-right-menu {
@@ -158,6 +152,39 @@
   transition: background-color var(--duration-default, 200ms)
       var(--easing-default, ease),
     box-shadow var(--duration-default, 200ms) var(--easing-default, ease);
+}
+
+/* Control element order: search → messages → notifications */
+.top-right-menu .search-section {
+  order: 1;
+}
+
+.top-right-menu #messages-toggle-btn {
+  order: 2;
+}
+
+.top-right-menu .notifications-toggle-container {
+  order: 3;
+}
+
+/* Consistent button sizing for top-right-menu items */
+.top-right-menu button {
+  padding: 8px 10px;
+  font-size: 1.2rem;
+  min-width: 35px;
+  min-height: 35px;
+}
+
+/* Messages toggle maintains circular appearance in top bar */
+.top-right-menu #messages-toggle-btn button {
+  font-size: 1.2rem;
+  border-radius: 50%;
+
+  background-color: red;
+
+  /* display: flex;
+  align-items: center;
+  justify-content: center; */
 }
 
 .user-info {
