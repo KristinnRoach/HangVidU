@@ -23,13 +23,7 @@ import {
 
 import { initializeAuthUI } from './components/auth/AuthComponent.js';
 
-import {
-  showElement,
-  hideElement,
-  isElementInPictureInPicture,
-  placeInSmallFrame,
-  removeFromSmallFrame,
-} from './utils/ui/ui-utils.js';
+import { showElement, hideElement } from './utils/ui/ui-utils.js';
 
 import { clearUrlParam } from './utils/url.js';
 import {
@@ -38,7 +32,6 @@ import {
   isRemoteVideoVideoActive,
 } from './components/ui/watch-mode.js';
 import { enterCallMode, exitCallMode } from './components/ui/call-mode.js';
-import { setupShowHideOnInactivity } from './utils/ui/showHideOnInactivity.js';
 
 import {
   saveContact,
@@ -50,14 +43,11 @@ import { ringtoneManager } from './media/audio/ringtone-manager.js';
 import { visibilityManager } from './utils/ui/visibility-manager.js';
 
 import {
-  showCallingUI,
   hideCallingUI,
   onCallAnswered,
   isOutgoingCallFresh,
   isRoomCallFresh,
 } from './components/calling/calling-ui.js';
-
-import { initJoinRoomForm } from './components/lobby/join-room.js';
 
 import CallController from './webrtc/call-controller.js';
 
@@ -79,8 +69,6 @@ import {
   lobbyDiv,
   lobbyCallBtn,
   titleAuthBar,
-  // createLinkBtn,
-  // copyLinkBtn,
   getElements,
 } from './elements.js';
 
@@ -92,7 +80,6 @@ import {
 import {
   setupWatchSync,
   isWatchModeActive,
-  setWatchMode,
   getLastWatched,
   setLastWatched,
 } from './firebase/watch-sync.js';
@@ -116,14 +103,10 @@ import { createNotificationsToggle } from './components/notifications/notificati
 
 import { setUpLocalStream, setupRemoteStream } from './media/stream.js';
 
-// OLD: Removed - now using CallController.createCall() and CallController.answerCall()
-// import { createCall, answerCall } from './webrtc/call-flow.js';
-
 import {
   getLocalStream,
   setLocalStream,
   cleanupLocalStream,
-  getRemoteStream,
   cleanupRemoteStream,
   cleanupLocalVideoOnlyStream,
 } from './media/state.js';
@@ -200,7 +183,8 @@ async function init() {
     const authComponent = initializeAuthUI(titleAuthBar);
     if (authComponent) cleanupFunctions.push(authComponent.dispose);
 
-    await initLocalStreamAndMedia(); // Todo: lazy init on first call?
+    // Stream is now lazily initialized when user starts/joins a call
+    // This prevents Bluetooth headphones from entering "call mode" on page load
 
     // Add debug button for testing update notification (dev only)
     addDebugUpdateButton();
@@ -217,8 +201,8 @@ async function init() {
 
     return true;
   } catch (error) {
-    console.error('Failed to get user media:', error);
-    devDebug('Error: Please allow camera and microphone access.');
+    console.error('Initialization error:', error);
+    devDebug('Error: Failed to initialize application.');
     return false;
   }
 }
@@ -703,13 +687,16 @@ export function listenForIncomingOnRoom(roomId) {
         ringtoneManager.playIncoming();
         visibilityManager.startCallIndicators(joiningUserId);
 
-        const accept = await confirmDialog(
-          `Incoming call from ${joiningUserId} for room ${roomId}.\n\nAccept?`
-        );
-
-        // Stop ringtone and visual indicators after user responds
-        ringtoneManager.stop();
-        visibilityManager.stopCallIndicators();
+        let accept = false;
+        try {
+          accept = await confirmDialog(
+            `Incoming call from ${joiningUserId} for room ${roomId}.\n\nAccept?`
+          );
+        } finally {
+          // Stop ringtone and visual indicators after user responds (or on error)
+          ringtoneManager.stop();
+          visibilityManager.stopCallIndicators();
+        }
 
         if (accept) {
           // Remove incoming call listeners before starting active call

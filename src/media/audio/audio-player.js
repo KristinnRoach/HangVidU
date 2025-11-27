@@ -46,9 +46,8 @@ export class AudioPlayer {
    * @returns {Promise<boolean>} True if playback started, false if blocked
    */
   async play() {
-    if (this.isPlaying) {
-      return true; // Already playing
-    }
+    if (!this.audio) return false;
+    if (this.isPlaying) return true;
 
     try {
       await this.audio.play();

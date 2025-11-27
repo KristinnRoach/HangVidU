@@ -187,6 +187,7 @@ class VisibilityManager {
         'release',
         () => {
           console.log('[VisibilityManager] Wake lock released');
+          this.wakeLock = null;
         },
         { once: true }
       );

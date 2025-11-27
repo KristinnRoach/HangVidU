@@ -11,9 +11,49 @@ import { AudioPlayer } from './audio-player.js';
  * Ringtone Manager Singleton
  */
 class RingtoneManager {
-  constructor() {
+  constructor({ incomingSrc, outgoingSrc, volume } = {}) {
+    this.incomingSrc = incomingSrc ?? '/sounds/incoming.mp3';
+    this.outgoingSrc = outgoingSrc ?? '/sounds/outgoing.mp3';
+    this.defaultVolume = volume ?? 0.7;
     this.currentPlayer = null;
     this.currentType = null; // 'incoming', 'outgoing', or null
+  }
+
+  /**
+   * Configure ringtone settings
+   * @param {Object} options - Configuration options
+   * @param {string} [options.incomingSrc] - Path or URL to incoming ringtone
+   * @param {string} [options.outgoingSrc] - Path or URL to outgoing ringtone
+   * @param {number} [options.volume] - Volume level (0.0 to 1.0)
+   */
+  configure({ incomingSrc, outgoingSrc, volume } = {}) {
+    if (incomingSrc !== undefined) this.incomingSrc = incomingSrc;
+    if (outgoingSrc !== undefined) this.outgoingSrc = outgoingSrc;
+    if (volume !== undefined) this.defaultVolume = volume;
+  }
+
+  /**
+   * Set incoming ringtone from URL or path
+   * @param {string} url - URL or path to audio file
+   */
+  setIncomingRingtone(url) {
+    this.incomingSrc = url;
+  }
+
+  /**
+   * Set outgoing ringtone from URL or path
+   * @param {string} url - URL or path to audio file
+   */
+  setOutgoingRingtone(url) {
+    this.outgoingSrc = url;
+  }
+
+  /**
+   * Set ringtone volume
+   * @param {number} volume - Volume level (0.0 to 1.0)
+   */
+  setVolume(volume) {
+    this.defaultVolume = volume;
   }
 
   /**
@@ -21,7 +61,7 @@ class RingtoneManager {
    * @returns {Promise<boolean>} True if playback started successfully
    */
   async playIncoming() {
-    return this._play('incoming', '/sounds/incoming.mp3');
+    return this._play('incoming', this.incomingSrc);
   }
 
   /**
@@ -29,7 +69,7 @@ class RingtoneManager {
    * @returns {Promise<boolean>} True if playback started successfully
    */
   async playOutgoing() {
-    return this._play('outgoing', '/sounds/outgoing.mp3');
+    return this._play('outgoing', this.outgoingSrc);
   }
 
   /**
@@ -47,7 +87,7 @@ class RingtoneManager {
       // Create new player with looping enabled
       this.currentPlayer = new AudioPlayer(src, {
         loop: true,
-        volume: 0.7, // 70% volume - not too loud
+        volume: this.defaultVolume,
       });
 
       this.currentType = type;
