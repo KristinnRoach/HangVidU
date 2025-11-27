@@ -6,6 +6,7 @@ import { getLoggedInUserId, getUserId } from '../../firebase/auth.js';
 import { devDebug } from '../../utils/dev/dev-utils.js';
 import { getDiagnosticLogger } from '../../utils/dev/diagnostic-logger.js';
 import RoomService from '../../room.js';
+import { ringtoneManager } from '../../media/audio/ringtone-manager.js';
 
 const CALL_TIMEOUT_MS = 30000; // 30 seconds
 
@@ -173,6 +174,7 @@ export async function showCallingUI(roomId, contactName, onCancel) {
         error: String(e),
       });
     }
+    ringtoneManager.stop();
     hideCallingUI();
     devDebug('Call cancelled');
     if (onCancel) onCancel();
@@ -189,6 +191,9 @@ export async function showCallingUI(roomId, contactName, onCancel) {
   // Store roomId for logging purposes
   overlay.dataset.roomId = roomId;
   activeCallingUI = overlay;
+
+  // Start outgoing call ringtone
+  ringtoneManager.playOutgoing();
 
   // Auto-timeout after 30 seconds
   timeoutId = setTimeout(async () => {
@@ -212,6 +217,7 @@ export async function showCallingUI(roomId, contactName, onCancel) {
         error: String(e),
       });
     }
+    ringtoneManager.stop();
     hideCallingUI();
     devDebug('Call timed out - no answer after 30 seconds');
     if (onCancel) onCancel();
@@ -222,6 +228,9 @@ export async function showCallingUI(roomId, contactName, onCancel) {
  * Hide and clean up calling UI
  */
 export function hideCallingUI() {
+  // Stop ringtone when hiding UI
+  ringtoneManager.stop();
+
   if (activeCallingUI) {
     // Try to extract roomId from the UI for logging
     const roomId = activeCallingUI.dataset?.roomId || 'unknown';
