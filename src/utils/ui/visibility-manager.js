@@ -51,7 +51,9 @@ class VisibilityManager {
    * @param {string} callerName - Name of caller to display in title
    */
   startCallIndicators(callerName) {
-    console.log(`[VisibilityManager] Starting call indicators for: ${callerName}`);
+    console.log(
+      `[VisibilityManager] Starting call indicators for: ${callerName}`
+    );
 
     // Always start title flashing (even if visible, for consistency)
     this.startTitleFlashing(callerName);
@@ -181,9 +183,13 @@ class VisibilityManager {
       console.log('[VisibilityManager] Wake lock active');
 
       // Re-request wake lock if it's released (e.g., tab visibility change)
-      this.wakeLock.addEventListener('release', () => {
-        console.log('[VisibilityManager] Wake lock released');
-      });
+      this.wakeLock.addEventListener(
+        'release',
+        () => {
+          console.log('[VisibilityManager] Wake lock released');
+        },
+        { once: true }
+      );
     } catch (err) {
       console.warn('[VisibilityManager] Wake lock failed:', err);
     }
@@ -194,11 +200,13 @@ class VisibilityManager {
    */
   releaseWakeLock() {
     if (this.wakeLock) {
-      this.wakeLock
+      const lock = this.wakeLock;
+      this.wakeLock = null; // Clear immediately to prevent race conditions
+
+      lock
         .release()
         .then(() => {
           console.log('[VisibilityManager] Wake lock released manually');
-          this.wakeLock = null;
         })
         .catch((err) => {
           console.warn('[VisibilityManager] Wake lock release failed:', err);
