@@ -307,11 +307,13 @@ export async function joinOrCreateRoomWithId(
   { forceInitiator = false } = {}
 ) {
   try {
-    // Always ensure local stream is initialized
     await initLocalStreamAndMedia();
   } catch (error) {
     console.error('Failed to initialize local media stream:', error);
-    devDebug('Error: Could not initialize camera/mic.');
+    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+      alert('Camera/microphone access is required for video calls. Please click "Allow" when prompted, or check your browser settings.');
+      resetLocalStreamInitFlag();
+    }
     return false;
   }
 
@@ -1037,10 +1039,17 @@ async function handleCopyLink() {
 }
 
 const handleCall = async () => {
-  await initLocalStreamAndMedia();
-  // const result = await createCall(getCallOptions());
-  const result = await CallController.createCall(getCallOptions());
-  applyCallResult(result, true);
+  try {
+    await initLocalStreamAndMedia();
+    const result = await CallController.createCall(getCallOptions());
+    applyCallResult(result, true);
+  } catch (error) {
+    console.error('Failed to start call:', error);
+    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+      alert('Camera/microphone access is required for video calls. Please click "Allow" when prompted, or check your browser settings.');
+      resetLocalStreamInitFlag();
+    }
+  }
 };
 
 callBtn.onclick = handleCall;
