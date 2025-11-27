@@ -4,7 +4,6 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
   getRedirectResult,
   onAuthStateChanged,
   setPersistence,
@@ -16,7 +15,6 @@ import {
 
 import { app } from './firebase.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
-import { isMobileDevice } from '../utils/env/isMobileDevice.js';
 import { initOneTap, showOneTapSignin } from './onetap.js';
 
 export const auth = getAuth(app);
@@ -35,21 +33,20 @@ export const authReady = (async () => {
     }
   }
 
-  // After persistence is set, process any pending redirect from a previous sign-in attempt.
+  // Note: We always use popup flow now, so redirect results are only from
+  // the Safari external fallback (which opens the app URL in Safari browser).
+  // Keep this check in case user completes sign-in in Safari and returns to PWA.
   try {
-    const result = await handleRedirectResult();
-    if (result.success) {
+    const result = await getRedirectResult(auth);
+    if (result?.user) {
       console.log(
-        '[AUTH] ✅ Redirect sign-in completed, user:',
-        result.user?.email || result.user?.uid
+        '[AUTH] ✅ Sign-in completed (via Safari fallback), user:',
+        result.user.email || result.user.uid
       );
-    } else if (result.error) {
-      console.error('[AUTH] ❌ Redirect sign-in failed:', result.error);
-    } else {
-      console.debug('[AUTH] No pending redirect result found.');
     }
   } catch (e) {
-    console.error('[AUTH] Error during handleRedirectResult execution:', e);
+    // Ignore redirect result errors - they're expected when no redirect occurred
+    devDebug('[AUTH] No redirect result:', e.code);
   }
 
   devDebug('[AUTH] Auth initialization complete, scheduling One Tap...');
@@ -240,10 +237,6 @@ export async function signInWithGoogle() {
     prompt: 'select_account',
   });
 
-  // Use redirect flow for mobile devices (required for iOS Safari)
-  // Use popup flow for desktop browsers
-  const useMobileFlow = isMobileDevice();
-
   // Detect standalone PWA (iOS installed app or other platforms)
   const isStandalonePWA = (() => {
     try {
@@ -261,24 +254,6 @@ export async function signInWithGoogle() {
   const isIOSStandalone =
     isStandalonePWA && /iphone|ipad|ipod/i.test(navigator.userAgent || '');
 
-  // Detect if running on Firebase Hosting (which has /__/auth/handler)
-  // vs GitHub Pages (which doesn't)
-  const isFirebaseHosting = (() => {
-    try {
-      // Firebase Hosting uses / base path (BUILD_TARGET=hosting)
-      // GitHub Pages uses /HangVidU/ base path
-      const base = import.meta.env.BASE_URL || '/';
-      return base === '/';
-    } catch {
-      return false;
-    }
-  })();
-
-  // In production on GitHub Pages, use popup since static hosting lacks /__/auth/handler
-  // In production on Firebase Hosting, allow redirect since /__/auth/handler exists
-  // In dev (ngrok with proxy), use redirect on mobile/standalone (proxy handles /__/auth)
-  const forcePopupInProd = import.meta.env.PROD && !isFirebaseHosting;
-
   try {
     // If previous attempt failed in iOS standalone PWA, the user can tap Login again
     // and we open in Safari from the same user gesture.
@@ -288,16 +263,10 @@ export async function signInWithGoogle() {
       return;
     }
 
-    if ((useMobileFlow || isStandalonePWA) && !forcePopupInProd) {
-      // Mobile or Standalone PWA (when not forcing popup): Use redirect
-      console.log('[AUTH] Starting redirect sign-in flow...');
-      await signInWithRedirect(auth, provider);
-      // Note: redirect will navigate away, so code after this won't execute
-      // The result will be handled by handleRedirectResult() on return
-      return;
-    }
-
-    // Desktop (or mobile in prod when not standalone): Use popup flow
+    // ALWAYS use popup flow (even for iOS standalone PWAs)
+    // If popup is blocked, we'll catch the error and fallback to Safari external
+    // This matches the proven working approach from before App Check was added
+    console.log('[AUTH] Starting popup sign-in flow...');
     const result = await signInWithPopup(auth, provider);
     // Google Access Token to access the Google API
     const credential = GoogleAuthProvider.credentialFromResult(result);
@@ -337,12 +306,8 @@ export async function signInWithGoogle() {
       return;
     }
 
-    // If popup is blocked on mobile in prod, inform user
-    if (
-      errorCode === 'auth/popup-blocked' &&
-      useMobileFlow &&
-      import.meta.env.PROD
-    ) {
+    // If popup is blocked (and not iOS standalone which is handled above), inform user
+    if (errorCode === 'auth/popup-blocked') {
       alert(
         'Pop-up blocked. Please enable pop-ups for this site in your browser settings, or try signing in from a desktop browser.'
       );
@@ -398,81 +363,6 @@ export async function signInWithGoogle() {
   }
 }
 
-/**
- * Handle redirect result after Google sign-in redirect flow (mobile)
- * Call this on app initialization to complete the sign-in after redirect
- */
-export async function handleRedirectResult() {
-  try {
-    const result = await getRedirectResult(auth);
-
-    if (result) {
-      // User successfully signed in via redirect
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      const token = credential?.accessToken;
-      const user = result.user;
-
-      console.log(
-        '[AUTH] Redirect result found - signed in user:',
-        user?.email || user?.uid
-      );
-      devDebug('Google Access Token exists:', !!token);
-
-      return { success: true, user };
-    }
-
-    // No redirect result (normal page load, not returning from auth)
-    console.log('[AUTH] No redirect result (normal page load)');
-    return { success: false, user: null };
-  } catch (error) {
-    const errorCode = error?.code || 'unknown';
-    const errorMessage = error?.message || String(error);
-    const email = error?.customData?.email;
-    const credential = GoogleAuthProvider.credentialFromError(error);
-
-    console.error('Error handling redirect result:', {
-      errorCode,
-      errorMessage,
-      email,
-      credential,
-      origin: typeof window !== 'undefined' ? window.location.origin : 'n/a',
-    });
-
-    if (errorCode === 'auth/unauthorized-domain') {
-      const origin =
-        typeof window !== 'undefined' ? window.location.origin : '';
-      const guidanceLines = [
-        "This app's host is not whitelisted in Firebase Authentication.",
-        'Fix: In Firebase Console, go to Build → Authentication → Settings → Authorized domains and add this origin:',
-        origin ? `• ${origin}` : '• <your dev origin>',
-        '',
-        'Common dev hosts to add:',
-        '• http://localhost (covers any port)',
-        '• http://127.0.0.1',
-        '• http://[::1] (IPv6 localhost)',
-        '• Your LAN IP, e.g. http://192.168.x.y',
-        '',
-        'Tip: avoid opening index.html directly from the filesystem (file://). Use a dev server instead.',
-      ];
-
-      if (
-        origin &&
-        typeof navigator !== 'undefined' &&
-        navigator.clipboard?.writeText
-      ) {
-        navigator.clipboard.writeText(origin).catch(() => {});
-      }
-
-      alert(
-        `Sign-in failed: Unauthorized domain.\n\n${guidanceLines.join('\n')}`
-      );
-    } else {
-      alert(`Sign-in failed: ${errorMessage}`);
-    }
-
-    return { success: false, user: null, error };
-  }
-}
 
 export const signInWithAccountSelection = async () => {
   try {
@@ -484,43 +374,11 @@ export const signInWithAccountSelection = async () => {
       prompt: 'select_account',
     });
 
-    // Detect Firebase Hosting (same logic as signInWithGoogle)
-    const isFirebaseHosting = (() => {
-      try {
-        const base = import.meta.env.BASE_URL || '/';
-        return base === '/';
-      } catch {
-        return false;
-      }
-    })();
-
-    const isStandalonePWA = (() => {
-      try {
-        return (
-          (typeof window !== 'undefined' &&
-            window.matchMedia &&
-            window.matchMedia('(display-mode: standalone)').matches) ||
-          (typeof navigator !== 'undefined' && navigator.standalone === true)
-        );
-      } catch (_) {
-        return false;
-      }
-    })();
-
-    // Use redirect on mobile/PWA when not forcing popup
-    // (Firebase Hosting supports redirect, GitHub Pages doesn't)
-    const forcePopupInProd = import.meta.env.PROD && !isFirebaseHosting;
-    const shouldUseRedirect = (isMobileDevice() || isStandalonePWA) && !forcePopupInProd;
-
-    if (shouldUseRedirect) {
-      devDebug('[AUTH] Using redirect flow for mobile/PWA');
-      await signInWithRedirect(auth, provider);
-    } else {
-      devDebug('[AUTH] Using popup flow for desktop');
-      const result = await signInWithPopup(auth, provider);
-      devDebug('[AUTH] Popup sign-in successful:', result.user.email);
-      return result;
-    }
+    // Same logic as signInWithGoogle: always try popup first
+    devDebug('[AUTH] Using popup flow');
+    const result = await signInWithPopup(auth, provider);
+    devDebug('[AUTH] Popup sign-in successful:', result.user.email);
+    return result;
   } catch (error) {
     console.error('[AUTH] Account selection sign-in failed:', error);
     throw error;

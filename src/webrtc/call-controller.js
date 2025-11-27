@@ -439,7 +439,15 @@ class CallController {
         this.remoteVideoEl = options.remoteVideoEl;
       }
 
-      const result = await answerCallFlow(options);
+      // Add callback to capture messagesUI when it's ready (for joiner's async data channel)
+      const onMessagesUIReady = (messagesUI) => {
+        this.messagesUI = messagesUI;
+      };
+
+      const result = await answerCallFlow({
+        ...options,
+        onMessagesUIReady,
+      });
       if (!result || !result.success) {
         this.state = 'idle';
         this.emitter.emit('error', { phase: 'answerCall', detail: result });
@@ -452,7 +460,7 @@ class CallController {
       this.roomId = result.roomId;
       this.role = result.role || 'joiner';
       this.dataChannel = result.dataChannel || null;
-      this.messagesUI = result.messagesUI || null;
+      this.messagesUI = result.messagesUI || null; // Will be updated via callback when data channel connects
       this.state = 'connected';
 
       // Setup cancellation listener (centralized in CallController)
@@ -608,6 +616,15 @@ class CallController {
           partnerId: prevPartnerId,
           reason,
         });
+      }
+
+      // Cleanup messages UI before resetting state
+      if (this.messagesUI && this.messagesUI.cleanup) {
+        try {
+          this.messagesUI.cleanup();
+        } catch (e) {
+          console.warn('CallController: failed to cleanup messages UI', e);
+        }
       }
 
       // Reset state

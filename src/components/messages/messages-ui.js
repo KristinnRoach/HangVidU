@@ -42,8 +42,6 @@ export function initMessagesUI(sendFn) {
   const messagesMessages = container.querySelector('#messages');
   const messagesForm = container.querySelector('#messages-form');
   const messagesInput = container.querySelector('#messages-input');
-  const originalParent = messagesToggleBtn?.parentNode || null;
-  const originalNextSibling = messagesToggleBtn?.nextSibling || null;
 
   if (
     !messagesToggleBtn ||
@@ -104,40 +102,14 @@ export function initMessagesUI(sendFn) {
     window.removeEventListener('orientationchange', positionMessagesBox);
   }
 
-  // Responsive: move the toggle into top bar on small screens for containment
+  // Always place toggle in top-right-menu for consistent layout
   const topRightMenu =
     document.querySelector('.top-bar .top-right-menu') ||
     document.querySelector('.top-right-menu');
 
-  function moveToggleToTopBar() {
-    if (!messagesToggleBtn || !topRightMenu) return;
-    if (messagesToggleBtn.parentNode !== topRightMenu) {
-      topRightMenu.appendChild(messagesToggleBtn);
-    }
+  if (messagesToggleBtn && topRightMenu) {
+    topRightMenu.appendChild(messagesToggleBtn);
   }
-
-  function moveToggleBack() {
-    if (!messagesToggleBtn || !originalParent) return;
-    if (messagesToggleBtn.parentNode !== originalParent) {
-      if (
-        originalNextSibling &&
-        originalNextSibling.parentNode === originalParent
-      ) {
-        originalParent.insertBefore(messagesToggleBtn, originalNextSibling);
-      } else {
-        originalParent.appendChild(messagesToggleBtn);
-      }
-    }
-  }
-
-  const mq = window.matchMedia('(max-width: 800px)');
-  const applyPlacement = (e) => {
-    if (e.matches) moveToggleToTopBar();
-    else moveToggleBack();
-  };
-  // Apply immediately and on changes
-  applyPlacement(mq);
-  mq.addEventListener('change', applyPlacement);
 
   // Observe changes to messagesBox's class to clear unread count when shown
   const observer = new MutationObserver((mutations) => {
@@ -252,11 +224,15 @@ export function initMessagesUI(sendFn) {
     try {
       mq.removeEventListener('change', applyPlacement);
     } catch {}
-    // Ensure toggle restored to original parent on cleanup
-    moveToggleBack();
+
+    // Remove toggle button from its current parent (top-right menu)
+    if (messagesToggleBtn && messagesToggleBtn.parentNode) {
+      messagesToggleBtn.parentNode.removeChild(messagesToggleBtn);
+    }
+
     detachRepositionHandlers();
     observer.disconnect();
-    if (messagesToggleBtn) hideMessagesToggle();
+
     // Remove the container from the DOM
     if (container && container.parentNode) {
       container.parentNode.removeChild(container);

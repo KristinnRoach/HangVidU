@@ -5,8 +5,8 @@
   "description": "P2P video chat with watch-together mode",
   "type": "module",
   "scripts": {
-    "dev": "pnpm kill:silent && DISABLE_PWA=1 concurrently \"vite\" \"pnpm ngrok\"",
-    "dev:pwa": "pnpm kill:silent && DISABLE_PWA=0 vite",
+    "dev": "pnpm kill:silent && DISABLE_PWA=1 concurrently \"vite\" \"pnpm ngrok\" \"sh scripts/show-ngrok-url.sh\"",
+    "dev:pwa": "pnpm kill:silent && DISABLE_PWA=0 concurrently \"vite\" \"pnpm ngrok\" \"sh scripts/show-ngrok-url.sh\"",
     "kill": "fkill :${VITE_PORT:-5173} :${NGROK_PORT:-4040} --force",
     "kill:silent": "fkill :${VITE_PORT:-5173} :${NGROK_PORT:-4040} --force --silent",
     "ngrok": "ngrok http https://localhost:${VITE_PORT:-5173} ${NGROK_DOMAIN:+--domain=$NGROK_DOMAIN}",

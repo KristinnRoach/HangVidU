@@ -120,7 +120,10 @@ export function initializeMediaControls({
       const localVideo = getLocalVideo();
       if (!localVideo || !localStream) return;
 
-      const shouldMute = !localVideo.muted;
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (!audioTrack) return;
+
+      const shouldMute = audioTrack.enabled;
       setMicrophoneEnabled(!shouldMute, localStream);
       setLocalVideoMuted(!shouldMute, 0, localVideo);
       updateMuteMicIcon(shouldMute, micBtn);
