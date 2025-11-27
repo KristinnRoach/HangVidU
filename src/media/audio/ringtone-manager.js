@@ -53,7 +53,7 @@ class RingtoneManager {
    * @param {number} volume - Volume level (0.0 to 1.0)
    */
   setVolume(volume) {
-    this.defaultVolume = volume;
+    this.defaultVolume = Math.max(0, Math.min(1, volume));
   }
 
   /**
