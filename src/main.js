@@ -47,6 +47,7 @@ import {
 } from './components/contacts/contacts.js';
 
 import { ringtoneManager } from './media/audio/ringtone-manager.js';
+import { visibilityManager } from './utils/ui/visibility-manager.js';
 
 import {
   showCallingUI,
@@ -698,15 +699,17 @@ export function listenForIncomingOnRoom(roomId) {
           }
         );
 
-        // Start incoming call ringtone
+        // Start incoming call ringtone and visual indicators
         ringtoneManager.playIncoming();
+        visibilityManager.startCallIndicators(joiningUserId);
 
         const accept = await confirmDialog(
           `Incoming call from ${joiningUserId} for room ${roomId}.\n\nAccept?`
         );
 
-        // Stop ringtone after user responds
+        // Stop ringtone and visual indicators after user responds
         ringtoneManager.stop();
+        visibilityManager.stopCallIndicators();
 
         if (accept) {
           // Remove incoming call listeners before starting active call
