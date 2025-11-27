@@ -46,6 +46,8 @@ import {
   getContacts,
 } from './components/contacts/contacts.js';
 
+import { ringtoneManager } from './media/audio/ringtone-manager.js';
+
 import {
   showCallingUI,
   hideCallingUI,
@@ -696,9 +698,15 @@ export function listenForIncomingOnRoom(roomId) {
           }
         );
 
+        // Start incoming call ringtone
+        ringtoneManager.playIncoming();
+
         const accept = await confirmDialog(
           `Incoming call from ${joiningUserId} for room ${roomId}.\n\nAccept?`
         );
+
+        // Stop ringtone after user responds
+        ringtoneManager.stop();
 
         if (accept) {
           // Remove incoming call listeners before starting active call
