@@ -221,10 +221,6 @@ export function initMessagesUI(sendFn) {
   });
 
   function cleanup() {
-    try {
-      mq.removeEventListener('change', applyPlacement);
-    } catch {}
-
     // Remove toggle button from its current parent (top-right menu)
     if (messagesToggleBtn && messagesToggleBtn.parentNode) {
       messagesToggleBtn.parentNode.removeChild(messagesToggleBtn);

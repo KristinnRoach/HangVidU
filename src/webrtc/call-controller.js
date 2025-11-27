@@ -460,7 +460,12 @@ class CallController {
       this.roomId = result.roomId;
       this.role = result.role || 'joiner';
       this.dataChannel = result.dataChannel || null;
-      this.messagesUI = result.messagesUI || null; // Will be updated via callback when data channel connects
+      // Only set messagesUI from result if we don't have one and result has one
+      // For initiator: result.messagesUI is defined, sets it here
+      // For joiner: messagesUI set via onMessagesUIReady callback, don't overwrite
+      if (!this.messagesUI && result.messagesUI) {
+        this.messagesUI = result.messagesUI;
+      }
       this.state = 'connected';
 
       // Setup cancellation listener (centralized in CallController)

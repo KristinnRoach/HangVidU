@@ -183,7 +183,8 @@ async function init() {
     const authComponent = initializeAuthUI(titleAuthBar);
     if (authComponent) cleanupFunctions.push(authComponent.dispose);
 
-    await initLocalStreamAndMedia(); // Todo: lazy init on first call?
+    // Stream is now lazily initialized when user starts/joins a call
+    // This prevents Bluetooth headphones from entering "call mode" on page load
 
     // Add debug button for testing update notification (dev only)
     addDebugUpdateButton();
@@ -200,8 +201,8 @@ async function init() {
 
     return true;
   } catch (error) {
-    console.error('Failed to get user media:', error);
-    devDebug('Error: Please allow camera and microphone access.');
+    console.error('Initialization error:', error);
+    devDebug('Error: Failed to initialize application.');
     return false;
   }
 }
