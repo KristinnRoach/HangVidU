@@ -262,6 +262,18 @@ function initUI() {
 // CALL SETUP HELPERS
 // ============================================================================
 
+function handleMediaPermissionError(error) {
+  if (
+    error?.name === 'NotAllowedError' ||
+    error?.name === 'PermissionDeniedError'
+  ) {
+    alert(
+      'Camera/microphone access is required for video calls. Please click "Allow" when prompted, or check your browser settings.'
+    );
+  }
+  resetLocalStreamInitFlag();
+}
+
 // Helper to build call options
 function getCallOptions(targetRoomId = null) {
   return {
@@ -282,12 +294,6 @@ function getCallOptions(targetRoomId = null) {
  */
 function applyCallResult(result, showLinkModal = false) {
   if (!result.success) return false;
-
-  // DON'T hide calling UI here - it should stay visible until call is answered
-  // hideCallingUI() is called in onCallAnswered() when connection is established
-
-  // CallController already has all state via createCall/answerCall
-  // No need to store in globals anymore
 
   if (showLinkModal && result.roomLink) {
     showCopyLinkModal(result.roomLink, {
@@ -311,10 +317,7 @@ export async function joinOrCreateRoomWithId(
     await initLocalStreamAndMedia();
   } catch (error) {
     console.error('Failed to initialize local media stream:', error);
-    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-      alert('Camera/microphone access is required for video calls. Please click "Allow" when prompted, or check your browser settings.');
-      resetLocalStreamInitFlag();
-    }
+    handleMediaPermissionError(error);
     return false;
   }
 
@@ -339,7 +342,6 @@ export async function joinOrCreateRoomWithId(
 
     await initLocalStreamAndMedia();
 
-    //  const result = await createCall(getCallOptions(customRoomId));
     const result = await CallController.createCall(
       getCallOptions(customRoomId)
     );
@@ -1014,18 +1016,6 @@ function addKeyListeners() {
 // EVENT LISTENERS
 // ============================================================================
 
-// const recentCallBtn = document.getElementById('recent-call-btn');
-// if (recentCallBtn) {
-//   recentCallBtn.onclick = async () => {
-//     const lastRoomId = localStorage.getItem('lastRoomId') || null;
-//     if (lastRoomId) {
-//       await joinSavedRoom(lastRoomId);
-//     }
-//   };
-// } else {
-//   console.warn('no recent call button ');
-// }
-
 async function handleCopyLink() {
   const state = CallController.getState();
   if (state.roomLink) {
@@ -1046,10 +1036,7 @@ const handleCall = async () => {
     applyCallResult(result, true);
   } catch (error) {
     console.error('Failed to start call:', error);
-    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-      alert('Camera/microphone access is required for video calls. Please click "Allow" when prompted, or check your browser settings.');
-      resetLocalStreamInitFlag();
-    }
+    handleMediaPermissionError(error);
   }
 };
 
@@ -1060,7 +1047,6 @@ lobbyCallBtn.onclick = handleCall;
 //   const result = await createCall(getCallOptions());
 //   applyCallResult(result, true);
 // };
-
 // copyLinkBtn.onclick = async () => await handleCopyLink();
 
 if (exitWatchModeBtn) {
@@ -1258,10 +1244,6 @@ window.addEventListener('beforeunload', async (e) => {
 });
 
 // ============================================================================
-// HANG UP / CLEANUP
-// ============================================================================
-
-// ============================================================================
 // CALLCONTROLLER EVENT SUBSCRIPTIONS
 // ============================================================================
 
@@ -1312,50 +1294,17 @@ CallController.on('cleanup', ({ roomId, partnerId, reason }) => {
   }
 });
 
-// // Subscribe to CallController cleanup event - handles ALL cleanup UI updates
-// CallController.on('cleanup', ({ roomId, reason }) => {
-//   console.debug('CallController cleanup event', { roomId, reason });
-
-//   // Perform all UI cleanup
-//   hideCallingUI();
-//   cleanupRemoteStream();
-//   exitCallMode();
-//   devDebug('Disconnected. Click "Start New Chat" to begin.');
-//   clearUrlParam();
-// });
-
-// // Subscribe to CallController cleanup event - shows contact save prompt for both users
-// CallController.on('cleanup', ({ roomId, partnerId, reason }) => {
-//   console.debug('CallController cleanup event', {
-//     roomId,
-//     partnerId,
-//     reason,
-//   });
-
-//   // Prompt to save contact after cleanup (if partner was present)
-//   // This fires for BOTH users regardless of who initiated the hangup
-//   if (partnerId && roomId) {
-//     // Small delay so UI settles before prompt
-//     setTimeout(() => {
-//       saveContact(partnerId, roomId, lobbyDiv).catch((e) => {
-//         console.warn('Failed to save contact after cleanup:', e);
-//       });
-//     }, 500);
-//   }
-// });
-
+// ============================================================================
+// HANG UP / CLEANUP
 // ============================================================================
 
 async function cleanup() {
   // Call CallController.hangUp for page unload
   await CallController.hangUp({ emitCancel: true, reason: 'page_unload' });
 
-  cleanupMediaControls();
-
-  removeAllRTDBListeners();
-
-  // await RoomService.leaveRoom(getUserId());
   // Global teardown: safe to remove all listeners on page unload
+  cleanupMediaControls();
+  removeAllRTDBListeners();
 
   if (document.pictureInPictureElement) {
     document.exitPictureInPicture().catch((err) => console.error(err));
@@ -1365,9 +1314,6 @@ async function cleanup() {
   if (state.messagesUI && state.messagesUI.cleanup) {
     state.messagesUI.cleanup();
   }
-
-  // CallController.hangUp() already reset all call state
-  // No need to reset globals anymore
 
   // Clear URL parameter
   window.history.replaceState({}, document.title, window.location.pathname);
