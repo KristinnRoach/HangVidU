@@ -33,6 +33,7 @@ let mutePartnerBtn = null;
 let fullscreenPartnerBtn = null;
 let micBtn = null;
 let cameraBtn = null;
+let exitWatchModeBtn = null;
 let appPipBtn = null;
 let appTitleH1 = null;
 let appTitleA = null;
@@ -63,6 +64,7 @@ function initializeElements() {
   fullscreenPartnerBtn = getElement('fullscreen-partner-btn');
   micBtn = getElement('mic-btn');
   cameraBtn = getElement('camera-btn');
+  exitWatchModeBtn = getElement('exit-watch-mode-btn');
 
   appPipBtn = getElement('app-pip-btn');
 
@@ -101,6 +103,7 @@ export const getElements = () => ({
   fullscreenPartnerBtn,
   micBtn,
   cameraBtn,
+  exitWatchModeBtn,
   appPipBtn,
   appTitleH1,
   appTitleA,
@@ -130,6 +133,7 @@ export {
   fullscreenPartnerBtn,
   micBtn,
   cameraBtn,
+  exitWatchModeBtn,
   appPipBtn,
   appTitleH1,
   appTitleA,

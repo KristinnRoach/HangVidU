@@ -13,6 +13,7 @@ import {
   mutePartnerBtn,
   cameraBtn,
   switchCameraBtn,
+  exitWatchModeBtn,
   localBoxEl,
   remoteBoxEl,
 } from '../../elements.js';
@@ -80,6 +81,9 @@ export function enterWatchMode() {
   hideElement(cameraBtn);
   hideElement(switchCameraBtn);
 
+  // Show exit watch mode button
+  showElement(exitWatchModeBtn);
+
   showElement(chatControls);
 
   if (!isRemoteVideoVideoActive()) {
@@ -124,6 +128,9 @@ export function enterWatchMode() {
 
 export function exitWatchMode() {
   if (!isWatchModeActive()) return;
+
+  // Hide exit watch mode button
+  hideElement(exitWatchModeBtn);
 
   showElement(callBtn);
   showElement(hangUpBtn);

@@ -62,6 +62,7 @@ import {
   micBtn,
   cameraBtn,
   switchCameraBtn,
+  exitWatchModeBtn,
   chatControls,
   localBoxEl,
   remoteBoxEl,
@@ -1061,6 +1062,19 @@ lobbyCallBtn.onclick = handleCall;
 // };
 
 // copyLinkBtn.onclick = async () => await handleCopyLink();
+
+if (exitWatchModeBtn) {
+  exitWatchModeBtn.onclick = () => {
+    if (getLastWatched() === 'yt') {
+      pauseYouTubeVideo();
+      hideYouTubePlayer();
+    } else if (getLastWatched() === 'url') {
+      sharedVideoEl.pause();
+      hideElement(sharedBoxEl);
+    }
+    exitWatchMode();
+  };
+}
 
 hangUpBtn.onclick = async () => {
   console.debug('Hanging up...');
