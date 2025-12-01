@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>p5.js Face Mesh Sketch</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background: #1a1a1a;
+      }
+      main {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <main></main>
+
+    <!-- p5.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+
+    <!-- ml5.js library for face detection -->
+    <script src="https://unpkg.com/ml5@1/dist/ml5.min.js"></script>
+
+    <!-- Particle emitter class -->
+    <script src="particle.js"></script>
+
+    <!-- Main sketch -->
+    <script src="p5_face_sketch.js"></script>
+  </body>
+</html>

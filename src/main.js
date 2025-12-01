@@ -98,6 +98,12 @@ import {
   cleanupSearchUI,
   initializeSearchUI,
 } from './media/youtube/youtube-search.js';
+
+import {
+  setupFaceMaskTriggers,
+  cleanupFaceMaskTriggers,
+  preloadFaceMaskLibraries,
+} from './media/face-mask-trigger.js';
 import { addDebugUpdateButton } from './components/notifications/debug-notifications.js';
 import { notificationManager } from './components/notifications/notification-manager.js';
 import { createNotificationsToggle } from './components/notifications/notifications-toggle.js';
@@ -1259,6 +1265,15 @@ CallController.on('memberJoined', ({ memberId, roomId }) => {
   saveRecentCall(roomId).catch((e) =>
     console.warn('Failed to save recent call:', e)
   );
+
+  // Pre-load face mask libraries (Easter egg feature)
+  preloadFaceMaskLibraries()
+    .then(() => {
+      console.log('[FaceMask] Libraries ready - right-click video to activate');
+      // Setup face mask triggers after libraries are loaded
+      setupFaceMaskTriggers(localVideoEl, remoteVideoEl);
+    })
+    .catch((e) => console.warn('Failed to preload face mask libraries:', e));
 });
 
 // Subscribe to CallController memberLeft event - handles partner leaving
@@ -1276,6 +1291,9 @@ CallController.on('cleanup', ({ roomId, partnerId, reason }) => {
   exitCallMode();
   devDebug('Disconnected. Click "Start New Chat" to begin.');
   clearUrlParam();
+
+  // Clean up face mask triggers
+  cleanupFaceMaskTriggers();
 
   // Clean up messages UI if present
   const state = CallController.getState();
