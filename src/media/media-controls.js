@@ -13,35 +13,11 @@ import { showElement, hideElement } from '../utils/ui/ui-utils.js';
 // STATE
 // ============================================================================
 
-let remotePreviousMuted = false;
-let hasAddedRemoteVideoListeners = false;
 let cleanupFunctions = [];
 
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
-
-/**
- * Enable/disable microphone
- */
-function setMicrophoneEnabled(enabled, localStream) {
-  if (!localStream) return;
-
-  const audioTrack = localStream.getAudioTracks()[0];
-  if (!audioTrack) return;
-
-  audioTrack.enabled = enabled;
-}
-
-/**
- * Mute/unmute local video element
- */
-function setLocalVideoMuted(enabled, volume, localVideo) {
-  if (!localVideo) return;
-
-  localVideo.muted = !enabled;
-  localVideo.volume = volume;
-}
 
 /**
  * Update mute mic icon
@@ -56,34 +32,11 @@ function updateMuteMicIcon(muted, muteSelfBtn) {
 // ============================================================================
 
 /**
- * Add event listeners to remote video for volume/mute changes
+ * Initialize remote video - kept for consistency but no longer adds listeners
  */
-export function addRemoteVideoEventListeners(remoteVideo, mutePartnerBtn) {
-  if (!remoteVideo || hasAddedRemoteVideoListeners) return;
-  hasAddedRemoteVideoListeners = true;
-
-  // Listen for volumechange (only event that fires on muted events)
-  const remoteVolumeChangeListener = () => {
-    if (remoteVideo.muted !== remotePreviousMuted) {
-      const icon = mutePartnerBtn.querySelector('i');
-      icon.className = remoteVideo.muted
-        ? 'fa fa-volume-mute'
-        : 'fa fa-volume-up';
-      remotePreviousMuted = remoteVideo.muted;
-    }
-  };
-
-  remoteVideo.addEventListener('volumechange', remoteVolumeChangeListener);
-
-  // Push cleanup function for this listener
-  cleanupFunctions.push(() => {
-    if (remoteVideo) {
-      remoteVideo.removeEventListener(
-        'volumechange',
-        remoteVolumeChangeListener
-      );
-    }
-  });
+export function addRemoteVideoEventListeners() {
+  // No-op: Icon updates now happen inline in button click handler
+  // This function is kept to avoid breaking the call flow API
 }
 
 // ============================================================================
@@ -119,16 +72,13 @@ export function initializeMediaControls({
   if (micBtn) {
     micBtn.onclick = () => {
       const localStream = getLocalStream();
-      const localVideo = getLocalVideo();
-      if (!localVideo || !localStream) return;
+      if (!localStream) return;
 
       const audioTrack = localStream.getAudioTracks()[0];
       if (!audioTrack) return;
 
-      const shouldMute = audioTrack.enabled;
-      setMicrophoneEnabled(!shouldMute, localStream);
-      setLocalVideoMuted(!shouldMute, 0, localVideo);
-      updateMuteMicIcon(shouldMute, micBtn);
+      audioTrack.enabled = !audioTrack.enabled;
+      updateMuteMicIcon(!audioTrack.enabled, micBtn);
     };
   }
 
@@ -193,7 +143,14 @@ export function initializeMediaControls({
     mutePartnerBtn.onclick = () => {
       const remoteVideo = getRemoteVideo();
       if (!remoteVideo) return;
+
       remoteVideo.muted = !remoteVideo.muted;
+
+      // Update icon inline
+      const icon = mutePartnerBtn.querySelector('i');
+      icon.className = remoteVideo.muted
+        ? 'fa fa-volume-mute'
+        : 'fa fa-volume-up';
     };
   }
 
@@ -221,10 +178,6 @@ export function cleanupMediaControls() {
   // Run all cleanup functions
   cleanupFunctions.forEach((cleanupFn) => cleanupFn());
   cleanupFunctions = [];
-
-  // Reset state
-  remotePreviousMuted = false;
-  hasAddedRemoteVideoListeners = false;
 }
 
 // Listen for orientation changes and update constraints
