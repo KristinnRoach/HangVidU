@@ -65,20 +65,7 @@ export async function switchCamera({
     const oldAudioTrack = localStream.getAudioTracks()[0];
     const wasAudioMuted = oldAudioTrack ? !oldAudioTrack.enabled : false;
 
-    // Replace tracks in the peer connection
-    if (peerConnection) {
-      const videoSender = peerConnection
-        .getSenders()
-        .find((s) => s.track && s.track.kind === 'video');
-      if (videoSender) videoSender.replaceTrack(newVideoTrack);
-
-      const audioSender = peerConnection
-        .getSenders()
-        .find((s) => s.track && s.track.kind === 'audio');
-      if (audioSender && newAudioTrack) audioSender.replaceTrack(newAudioTrack);
-    }
-
-    // Apply the previous mic and camera enabled state to the new tracks
+    // Apply the previous mic and camera enabled state to the new tracks BEFORE replaceTrack
     if (newVideoTrack) {
       newVideoTrack.enabled = wasVideoEnabled;
     }
@@ -87,8 +74,21 @@ export async function switchCamera({
       newAudioTrack.enabled = !wasAudioMuted; // Preserve mute state
     }
 
-    // Stop old tracks
+    // Stop old tracks BEFORE replacing (important for mobile camera release)
     localStream.getTracks().forEach((track) => track.stop());
+
+    // Replace tracks in the peer connection (await the promises!)
+    if (peerConnection) {
+      const videoSender = peerConnection
+        .getSenders()
+        .find((s) => s.track && s.track.kind === 'video');
+      if (videoSender) await videoSender.replaceTrack(newVideoTrack);
+
+      const audioSender = peerConnection
+        .getSenders()
+        .find((s) => s.track && s.track.kind === 'audio');
+      if (audioSender && newAudioTrack) await audioSender.replaceTrack(newAudioTrack);
+    }
 
     // Update local video with video-only stream
     localVideo.srcObject = new MediaStream([newVideoTrack].filter(Boolean));
