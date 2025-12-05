@@ -76,6 +76,9 @@ dist-ssr
 *.sln
 *.sw?
 
+# Old version of code files (just kept locally for reference)
+**/OLD_*.js
+
 # Notes / Instructions / AI
 STRUCTURE.md
 Instructions.md
