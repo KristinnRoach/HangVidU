@@ -13,6 +13,11 @@ import { isDOMReady } from './dom-utils.js';
 
 /**
  * Creates a functional vanilla JS component with reactive props and templated rendering.
+ *
+ * NOTE: Templates support simple property interpolation only (${prop}, ${obj.nested}).
+ * Expressions (${count > 0 ? 'yes' : 'no'}) are NOT supported - use onPropUpdated() instead.
+ * See README.md for full template syntax documentation.
+ *
  * @param {Object} options
  * @param {Object} options.initialProps - Initial properties of the component.
  * @param {string} options.template - Template string with ${prop} placeholders.

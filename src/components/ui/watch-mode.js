@@ -63,6 +63,7 @@ export function enterWatchMode() {
 
   // Hide lobby if visible
   hideElement(lobbyDiv);
+  hideElement(lobbyCallBtn);
 
   // Chat controls adjustments (minimal UI)
   chatControls.classList.remove('bottom');
@@ -79,7 +80,6 @@ export function enterWatchMode() {
   }
 
   // Minimize further
-  hideElement(lobbyCallBtn);
   hideElement(cameraBtn);
   hideElement(switchCameraBtn);
 
@@ -157,12 +157,15 @@ export function exitWatchMode() {
     showElement(remoteBoxEl);
   }
 
-  placeInSmallFrame(localBoxEl);
-  showElement(localBoxEl);
-
-  if (!isRemoteVideoVideoActive()) {
+  if (getIsInCallMode()) {
+    placeInSmallFrame(localBoxEl);
+    showElement(localBoxEl);
+  } else {
     showElement(lobbyDiv);
     showElement(lobbyCallBtn);
+
+    removeFromSmallFrame(localBoxEl);
+    hideElement(localBoxEl);
   }
 
   setWatchMode(false);

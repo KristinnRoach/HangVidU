@@ -1,6 +1,5 @@
-import createComponent from '../../utils/dom/component.js';
-import { onClickOutside } from '../../utils/ui/clickOutside.js';
-import { hideElement, isHidden, showElement } from '../../utils/ui/ui-utils.js';
+import { onClickOutside } from '../../utils/ui/clickOutside';
+import { hideElement, isHidden, showElement } from '../../utils/ui/ui-utils';
 
 const supportsCssAnchors =
   CSS.supports?.('position-anchor: --msg-toggle') &&
@@ -17,89 +16,32 @@ function isOnScreen(el) {
   );
 }
 
-/**
- * Creates the messages UI component with chat functionality
- * @param {Function} sendFn - Function to call when sending a message
- * @returns {Object} API with methods to control messages UI
- */
+// messages-ui.js
 export function initMessagesUI(sendFn) {
-  let messagesToggleBtn = null;
-  let messagesBox = null;
-  let messagesMessages = null;
-  let messagesForm = null;
-  let messagesInput = null;
-  let repositionHandlersAttached = false;
-
-  // Create the toggle button component
-  const toggleContainer = createComponent({
-    initialProps: {
-      unreadCount: 0,
-    },
-    template: `
-      <div id="messages-toggle-btn">
-        <button onclick="handleToggle">
-          💬
-          <span class="notification-badge">
-            ${'${'}unreadCount${'}'}
-          </span>
-        </button>
-      </div>
-    `,
-    handlers: {
-      handleToggle: (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        toggleMessages();
-      },
-    },
-    className: 'messages-toggle-container',
-    autoAppend: false,
-  });
-
-  // Manually control badge visibility and animation based on unreadCount
-  let initialBadge = toggleContainer.querySelector('.notification-badge');
-  if (initialBadge) {
-    initialBadge.style.display = 'none'; // Initially hidden
-  }
-
-  toggleContainer.onPropUpdated('unreadCount', (count) => {
-    // Re-query badge each time since re-renders create new elements
-    const badge = toggleContainer.querySelector('.notification-badge');
-    if (badge) {
-      badge.style.display = count > 0 ? 'flex' : 'none';
-    }
-
-    // Trigger animation when count increases
-    if (count > 0) {
-      const btn = toggleContainer.querySelector('#messages-toggle-btn');
-      if (btn) {
-        btn.classList.add('new-message');
-        setTimeout(() => {
-          btn.classList.remove('new-message');
-        }, 4000);
-      }
-    }
-  });
-
-  // Create the messages box component (non-reactive, manual DOM for inputs)
-  const messagesBoxContainer = document.createElement('div');
-  messagesBoxContainer.innerHTML = `
+  const container = document.createElement('div');
+  container.innerHTML = `
+  <div id="messages-ui-container" >
+    <div id="messages-toggle-btn" class="hidden">
+      <button>
+        💬
+      </button>
+    </div>
     <div id="messages-box" class="messages-box hidden">
       <div id="messages"></div>
       <form id="messages-form">
         <input id="messages-input" placeholder="Type a message...">
-        <button type="submit">Send</button>
+        <button>Send</button>
       </form>
     </div>
+  </div>
   `;
-  document.body.appendChild(messagesBoxContainer);
+  document.body.appendChild(container);
 
-  // Get references
-  messagesToggleBtn = toggleContainer.querySelector('#messages-toggle-btn');
-  messagesBox = messagesBoxContainer.querySelector('#messages-box');
-  messagesMessages = messagesBoxContainer.querySelector('#messages');
-  messagesForm = messagesBoxContainer.querySelector('#messages-form');
-  messagesInput = messagesBoxContainer.querySelector('#messages-input');
+  const messagesToggleBtn = container.querySelector('#messages-toggle-btn');
+  const messagesBox = container.querySelector('#messages-box');
+  const messagesMessages = container.querySelector('#messages');
+  const messagesForm = container.querySelector('#messages-form');
+  const messagesInput = container.querySelector('#messages-input');
 
   if (
     !messagesToggleBtn ||
@@ -112,7 +54,10 @@ export function initMessagesUI(sendFn) {
     return null;
   }
 
-  // Position the messages box relative to toggle
+  let unreadMessagesCount = 0;
+
+  // Minimal anchor-to-toggle positioning (no new APIs, robust)
+  let repositionHandlersAttached = false;
   function positionMessagesBox() {
     if (
       !messagesToggleBtn ||
@@ -157,16 +102,16 @@ export function initMessagesUI(sendFn) {
     window.removeEventListener('orientationchange', positionMessagesBox);
   }
 
-  // Place toggle in top-right-menu
+  // Always place toggle in top-right-menu for consistent layout
   const topRightMenu =
     document.querySelector('.top-bar .top-right-menu') ||
     document.querySelector('.top-right-menu');
 
-  if (toggleContainer && topRightMenu) {
-    topRightMenu.appendChild(toggleContainer);
+  if (messagesToggleBtn && topRightMenu) {
+    topRightMenu.appendChild(messagesToggleBtn);
   }
 
-  // Clear unread count when messages box is shown
+  // Observe changes to messagesBox's class to clear unread count when shown
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
       if (
@@ -174,7 +119,7 @@ export function initMessagesUI(sendFn) {
         mutation.attributeName === 'class'
       ) {
         if (!messagesBox.classList.contains('hidden')) {
-          toggleContainer.unreadCount = 0;
+          unreadMessagesCount = 0;
         }
       }
     });
@@ -186,7 +131,7 @@ export function initMessagesUI(sendFn) {
     if (!messagesBox.classList.contains('hidden')) {
       messagesInput.focus();
 
-      // Fallback positioning if needed
+      // Fallback if needed
       if (!supportsCssAnchors) {
         positionMessagesBox();
         attachRepositionHandlers();
@@ -200,8 +145,8 @@ export function initMessagesUI(sendFn) {
       }
     } else {
       messagesInput.blur();
-      detachRepositionHandlers();
-      // Clear inline offsets
+      detachRepositionHandlers(); // idempotent (no-op if not attached)
+      // Clear inline offsets so CSS anchoring can fully take over next open
       messagesBox.style.top = '';
       messagesBox.style.left = '';
       messagesBox.style.bottom = '';
@@ -209,27 +154,30 @@ export function initMessagesUI(sendFn) {
     }
   }
 
+  messagesToggleBtn.addEventListener('click', toggleMessages);
+
   onClickOutside(
     messagesBox,
     () => {
       hideElement(messagesBox);
       detachRepositionHandlers();
 
-      // Clear inline offsets
+      // TODO: Check if clearing the offsets below is redundant:
+      // Clear inline offsets so CSS anchoring can fully take over next open
       messagesBox.style.top = '';
       messagesBox.style.left = '';
       messagesBox.style.bottom = '';
       messagesBox.style.right = '';
     },
-    { ignore: [toggleContainer], esc: true }
+    { ignore: [messagesToggleBtn], esc: true }
   );
 
   function showMessagesToggle() {
-    showElement(toggleContainer);
+    showElement(messagesToggleBtn);
   }
 
   function hideMessagesToggle() {
-    hideElement(toggleContainer);
+    hideElement(messagesToggleBtn);
   }
 
   // Display message line
@@ -249,9 +197,17 @@ export function initMessagesUI(sendFn) {
     appendChatMessage(`Partner: ${text}`);
 
     if (isHidden(messagesBox)) {
-      toggleContainer.unreadCount++;
-      // Animation triggered automatically by onPropUpdated
+      unreadMessagesCount++;
+      notifyNewMessage();
     }
+  }
+
+  function notifyNewMessage() {
+    // Visual indication for new message
+    messagesToggleBtn.classList.add('new-message');
+    setTimeout(() => {
+      messagesToggleBtn.classList.remove('new-message');
+    }, 4000);
   }
 
   // Sending UI event
@@ -265,20 +221,17 @@ export function initMessagesUI(sendFn) {
   });
 
   function cleanup() {
-    // Remove toggle from top-right menu
-    if (toggleContainer && toggleContainer.parentNode) {
-      toggleContainer.parentNode.removeChild(toggleContainer);
+    // Remove toggle button from its current parent (top-right menu)
+    if (messagesToggleBtn && messagesToggleBtn.parentNode) {
+      messagesToggleBtn.parentNode.removeChild(messagesToggleBtn);
     }
 
     detachRepositionHandlers();
     observer.disconnect();
 
-    // Dispose the component
-    toggleContainer.dispose();
-
-    // Remove messages box container
-    if (messagesBoxContainer && messagesBoxContainer.parentNode) {
-      messagesBoxContainer.parentNode.removeChild(messagesBoxContainer);
+    // Remove the container from the DOM
+    if (container && container.parentNode) {
+      container.parentNode.removeChild(container);
     }
   }
 
@@ -291,3 +244,39 @@ export function initMessagesUI(sendFn) {
     cleanup,
   };
 }
+
+// Saving for possible future use:
+// // Auto-focus behavior when clicking inside the open (not hidden) messages box
+// const focusConfig = {
+//   autoFocusTextInput: true,
+//   ignoreSelectors: ['a'],
+//   ignoreElList: [],
+// };
+
+// const onClickMessagesBox = (evt) => {
+//   if (!focusConfig.autoFocusTextInput) return;
+//   if (isHidden(messagesBox)) return;
+
+//   const target = evt.target;
+//   if (
+//     focusConfig.ignoreSelectors?.some(
+//       (sel) => target instanceof Element && target.closest(sel)
+//     )
+//   ) {
+//     return;
+//   }
+
+//   // If we populate ignoreElList (e.g., buttons), ignore those as well
+//   if (
+//     focusConfig.ignoreElList?.some(
+//       (el) => el && (el === target || (el.contains && el.contains(target)))
+//     )
+//   ) {
+//     return;
+//   }
+
+//   // Focus the input when clicking anywhere inside the open messages box
+//   messagesInput.focus();
+// };
+
+// messagesBox.addEventListener('click', onClickMessagesBox);

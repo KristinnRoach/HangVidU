@@ -92,6 +92,55 @@ const profile = createComponent({
 });
 ```
 
+## Template Syntax & Limitations
+
+**✅ Supported:**
+```javascript
+${propName}                    // Simple property
+${user.name}                   // Nested property
+${contentHtml}                 // Raw HTML (props ending with "Html")
+```
+
+**❌ NOT Supported (expressions):**
+```javascript
+${count > 0 ? 'yes' : 'no'}   // Conditional expressions
+${items.length}                // Method calls
+${price * 1.1}                 // Arithmetic
+${name.toUpperCase()}          // String methods
+```
+
+**Why:** Templates use simple string interpolation, not JavaScript evaluation. Expressions are treated as property paths and return empty string when not found.
+
+**Workaround:** Use `onPropUpdated()` for dynamic behavior:
+```javascript
+const toggle = createComponent({
+  initialProps: { count: 0 },
+  template: `<span class="badge">\${count}</span>`,
+});
+
+// Set initial state
+let initialBadge = toggle.querySelector('.badge');
+if (initialBadge) initialBadge.style.display = 'none';
+
+toggle.onPropUpdated('count', (count) => {
+  // IMPORTANT: Re-query element each time - re-renders create new DOM elements
+  const badge = toggle.querySelector('.badge');
+  if (badge) {
+    badge.style.display = count > 0 ? 'flex' : 'none';
+  }
+});
+```
+
+**Template String Escaping:**
+When writing templates inside template literals, escape `${}` placeholders:
+```javascript
+// ❌ Wrong - evaluated immediately as JavaScript
+template: `<div>${count}</div>`
+
+// ✅ Correct - becomes literal "${count}" for createComponent
+template: `<div>${'${'}count${'}'}</div>`
+```
+
 ## Raw HTML (XSS Risk)
 
 ```javascript
@@ -174,3 +223,47 @@ card.onAnyPropUpdated(({ changedKeys }) =>
 // Specific prop
 card.onPropUpdated('count', (v) => console.log('count →', v));
 ```
+
+### When to Use Which Listener?
+
+**Use `onPropUpdated(prop, callback)`** when:
+- ✅ You need to update DOM elements that are IN the template
+- ✅ You need to react to a specific prop change
+- ✅ **Always re-query elements inside the callback** (re-renders create new DOM)
+
+```javascript
+toggle.onPropUpdated('count', (count) => {
+  const badge = toggle.querySelector('.badge'); // ✅ Query fresh each time
+  if (badge) badge.textContent = count;
+});
+```
+
+**Use `onRender(callback)`** when:
+- ✅ You need to do something after ANY prop changes and re-render
+- ✅ You're working with multiple props at once
+- ✅ You need the full props object
+
+```javascript
+card.onRender(({ name, email }) => {
+  // Runs after any prop change that triggers re-render
+  console.log(`Card updated: ${name} (${email})`);
+});
+```
+
+**Use `onAnyPropUpdated(callback)`** when:
+- ✅ You need to track changes WITHOUT waiting for re-render
+- ✅ You need to know which specific props changed
+- ✅ Performance-critical scenarios (runs even if no re-render)
+
+```javascript
+card.onAnyPropUpdated(({ props, changedKeys }) => {
+  if (changedKeys.includes('count')) {
+    // React immediately, even if 'count' isn't in template
+  }
+});
+```
+
+**Rule of thumb:**
+- 90% of the time → `onPropUpdated` (and always re-query elements!)
+- Multiple props → `onRender`
+- Advanced/performance → `onAnyPropUpdated`
