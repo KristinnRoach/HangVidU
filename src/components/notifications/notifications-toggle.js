@@ -22,15 +22,14 @@ export function createNotificationsToggle({
       unreadCount: 0,
       isHidden: true,
     },
-    // TODO: fix non-working display: none for notification-badge in template (later)
     template: `
-      <button 
-        class="notifications-toggle-btn" 
+      <button
+        class="notifications-toggle-btn"
         title="Notifications"
         onclick="handleClick"
       >
         <i class="fa fa-bell"></i>
-        <span class="notification-badge" style="display: ${'${'}unreadCount > 0 ? 'flex' : 'none'${'}'}">
+        <span class="notification-badge">
           ${'${'}unreadCount${'}'}
         </span>
       </button>
@@ -47,6 +46,20 @@ export function createNotificationsToggle({
     },
     className: 'notifications-toggle-container',
     parent,
+  });
+
+  // Manually control badge visibility based on unreadCount
+  let initialBadge = component.querySelector('.notification-badge');
+  if (initialBadge) {
+    initialBadge.style.display = 'none'; // Initially hidden
+  }
+
+  component.onPropUpdated('unreadCount', (count) => {
+    // Re-query badge each time since re-renders create new elements
+    const badge = component.querySelector('.notification-badge');
+    if (badge) {
+      badge.style.display = count > 0 ? 'flex' : 'none';
+    }
   });
 
   // Helper methods

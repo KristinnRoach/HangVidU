@@ -32,13 +32,15 @@ import { isWatchModeActive, setWatchMode } from '../../firebase/watch-sync.js';
 import { getIsInCallMode } from './call-mode.js';
 
 // Import media state
-import { getRemoteStream } from '../../media/state.js';
+import { hasRemoteStream, getRemoteStream } from '../../media/state.js';
 
 // TODO: check if setupShowHideOnInactivity needs integrating here.
 
 // Helper functions
 export const isRemoteVideoVideoActive = () => {
-  const remoteStream = getRemoteStream(false);
+  if (!hasRemoteStream()) return false;
+
+  const remoteStream = getRemoteStream();
   return (
     remoteStream &&
     remoteStream.getVideoTracks().length > 0 &&
@@ -61,6 +63,7 @@ export function enterWatchMode() {
 
   // Hide lobby if visible
   hideElement(lobbyDiv);
+  hideElement(lobbyCallBtn);
 
   // Chat controls adjustments (minimal UI)
   chatControls.classList.remove('bottom');
@@ -77,7 +80,6 @@ export function enterWatchMode() {
   }
 
   // Minimize further
-  hideElement(lobbyCallBtn);
   hideElement(cameraBtn);
   hideElement(switchCameraBtn);
 
@@ -155,12 +157,15 @@ export function exitWatchMode() {
     showElement(remoteBoxEl);
   }
 
-  placeInSmallFrame(localBoxEl);
-  showElement(localBoxEl);
-
-  if (!isRemoteVideoVideoActive()) {
+  if (getIsInCallMode()) {
+    placeInSmallFrame(localBoxEl);
+    showElement(localBoxEl);
+  } else {
     showElement(lobbyDiv);
     showElement(lobbyCallBtn);
+
+    removeFromSmallFrame(localBoxEl);
+    hideElement(localBoxEl);
   }
 
   setWatchMode(false);

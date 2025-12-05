@@ -2,8 +2,10 @@
 
 import { addRemoteVideoEventListeners } from './media-controls.js';
 import {
+  hasLocalStream,
   getLocalStream,
   setLocalStream,
+  hasRemoteStream,
   setRemoteStream,
   getRemoteStream,
   setLocalVideoOnlyStream,
@@ -16,10 +18,9 @@ import {
 import { devDebug, isDev } from '../utils/dev/dev-utils.js';
 
 export const createLocalStream = async () => {
-  const existingStream = getLocalStream(false); // (false) -> don't log null error
-  if (existingStream && existingStream instanceof MediaStream) {
+  if (hasLocalStream()) {
     console.debug('Reusing existing local MediaStream.');
-    return existingStream;
+    return getLocalStream();
   }
 
   const videoConstraints = getVideoConstraints('user');
@@ -69,25 +70,33 @@ export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
   pc.ontrack = (event) => {
     devDebug(`REMOTE TRACK RECEIVED: ${event.track.kind}`);
 
+    const currentRemoteStream = hasRemoteStream() ? getRemoteStream() : null;
+
+    // Try to use stream from event, fallback to creating one from track
+    let newRemoteStream;
     if (
-      !event.streams ||
-      !event.streams[0] ||
-      !(event.streams[0] instanceof MediaStream)
+      event.streams &&
+      event.streams[0] &&
+      event.streams[0] instanceof MediaStream
     ) {
-      console.error(
-        'No valid remote MediaStream found in event.streams:',
-        event.streams
-      );
-      return false;
+      newRemoteStream = event.streams[0];
+    } else {
+      // Fallback: add track to existing stream or create new one
+      console.warn('No stream in track event, using fallback track handling');
+      if (currentRemoteStream) {
+        // Add track to existing stream
+        currentRemoteStream.addTrack(event.track);
+        newRemoteStream = currentRemoteStream;
+      } else {
+        // Create new stream with this track
+        newRemoteStream = new MediaStream([event.track]);
+      }
     }
 
-    const remoteStream = event.streams[0];
-    const currentRemoteStream = getRemoteStream(false);
-
     // Only update if this is a new/different stream
-    if (currentRemoteStream !== remoteStream) {
-      setRemoteStream(remoteStream);
-      remoteVideoEl.srcObject = remoteStream;
+    if (currentRemoteStream !== newRemoteStream) {
+      setRemoteStream(newRemoteStream);
+      remoteVideoEl.srcObject = newRemoteStream;
       addRemoteVideoEventListeners(remoteVideoEl, mutePartnerBtn);
       devDebug('Connected!');
 
@@ -113,14 +122,14 @@ export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
       } catch (e) {
         console.warn('Visibility override failed:', e);
       }
-
-      // if (isDev()) remoteVideoEl.style.border = '8px solid red';
+    } else if (newRemoteStream) {
+      devDebug(`Added ${event.track.kind} track to existing remote stream`);
     }
   };
   return true;
 }
 
-// // ======= DEVICES ==========
+// // ======= DEVICES DRAFT BELOW (IGNORE)  ==========
 // async function updateLocalMediaDevices() {
 //   const videoSource = videoInputSelect?.value;
 //   const audioSource = audioInputSelect?.value;

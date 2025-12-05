@@ -91,15 +91,13 @@ export async function initializeSearchUI() {
       await searchYouTube(query);
     } else {
       // Treat as direct video link
-      if (handleVideoSelection) {
-        await handleVideoSelection({
-          url: query,
-          title: query,
-          channel: '',
-          thumbnail: '',
-          id: query,
-        });
-      }
+      await handleVideoSelection({
+        url: query,
+        title: query,
+        channel: '',
+        thumbnail: '',
+        id: query,
+      });
 
       hideElement(searchResults);
       searchQuery.value = '';
@@ -144,15 +142,14 @@ export async function initializeSearchUI() {
           await searchYouTube(query);
         } else {
           // Treat as direct video link
-          if (handleVideoSelection) {
-            await handleVideoSelection({
-              url: query,
-              title: query,
-              channel: '',
-              thumbnail: '',
-              id: query,
-            });
-          }
+          await handleVideoSelection({
+            url: query,
+            title: query,
+            channel: '',
+            thumbnail: '',
+            id: query,
+          });
+
           hideElement(searchResults);
           focusedResultIndex = -1;
 
@@ -289,7 +286,8 @@ function displaySearchResults(results) {
   }
 
   if (!results || results.length === 0) {
-    searchResults.innerHTML = '<div class="no-results">No results found</div>';
+    searchResults.innerHTML =
+      '<div class="search-no-results">No results found</div>';
     searchResultsCache = [];
     focusedResultIndex = -1;
     return;
@@ -309,21 +307,19 @@ function displaySearchResults(results) {
     `;
 
     resultItem.onclick = async () => {
-      if (handleVideoSelection) {
-        await handleVideoSelection(video);
+      await handleVideoSelection(video);
 
-        // Hide search results after selection
-        hideElement(searchResults);
-        focusedResultIndex = -1;
+      // Hide search results after selection
+      hideElement(searchResults);
+      focusedResultIndex = -1;
 
-        // Clear search input
-        if (!searchQuery) {
-          console.error('Search query element not initialized');
-          return;
-        }
-        searchQuery.value = '';
-        hideElement(searchQuery);
+      // Clear search input
+      if (!searchQuery) {
+        console.error('Search query element not initialized');
+        return;
       }
+      searchQuery.value = '';
+      hideElement(searchQuery);
     };
 
     searchResults.appendChild(resultItem);
