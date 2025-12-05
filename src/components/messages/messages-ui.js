@@ -56,7 +56,7 @@ export function initMessagesUI(sendFn) {
     autoAppend: false,
   });
 
-  // Manually control badge visibility and animation based on unreadCount
+  // Control badge visibility and animation based on unreadCount
   let initialBadge = toggleContainer.querySelector('.notification-badge');
   if (initialBadge) {
     initialBadge.style.display = 'none'; // Initially hidden
