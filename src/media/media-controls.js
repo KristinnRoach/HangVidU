@@ -14,6 +14,7 @@ import { showElement, hideElement } from '../utils/ui/ui-utils.js';
 // ============================================================================
 
 let remotePreviousMuted = false;
+let hasAddedRemoteVideoListeners = false;
 let cleanupFunctions = [];
 
 // ============================================================================
@@ -58,7 +59,8 @@ function updateMuteMicIcon(muted, muteSelfBtn) {
  * Add event listeners to remote video for volume/mute changes
  */
 export function addRemoteVideoEventListeners(remoteVideo, mutePartnerBtn) {
-  if (!remoteVideo) return;
+  if (!remoteVideo || hasAddedRemoteVideoListeners) return;
+  hasAddedRemoteVideoListeners = true;
 
   // Listen for volumechange (only event that fires on muted events)
   const remoteVolumeChangeListener = () => {
@@ -222,6 +224,7 @@ export function cleanupMediaControls() {
 
   // Reset state
   remotePreviousMuted = false;
+  hasAddedRemoteVideoListeners = false;
 }
 
 // Listen for orientation changes and update constraints
