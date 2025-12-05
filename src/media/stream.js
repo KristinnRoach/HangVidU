@@ -93,37 +93,39 @@ export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
       }
     }
 
-    // Only update if this is a new/different stream
+    // Always update stream and video element (handles both new streams and track replacements)
+    setRemoteStream(newRemoteStream);
+    remoteVideoEl.srcObject = newRemoteStream;
+    addRemoteVideoEventListeners(remoteVideoEl, mutePartnerBtn);
+
+    // Log connection status
     if (currentRemoteStream !== newRemoteStream) {
-      setRemoteStream(newRemoteStream);
-      remoteVideoEl.srcObject = newRemoteStream;
-      addRemoteVideoEventListeners(remoteVideoEl, mutePartnerBtn);
       devDebug('Connected!');
-
-      // Ensure the remote video and its container are visible (fix mobile Safari cases)
-      try {
-        const container =
-          document.getElementById('remote-video-box') ||
-          remoteVideoEl.parentElement;
-        if (container) {
-          // Remove any utility hidden class from container or element
-          container.classList?.remove('hidden');
-          remoteVideoEl.classList?.remove('hidden');
-
-          // Force visibility in case a parent applied visibility:hidden via inheritance
-          container.style.visibility = 'visible';
-          container.style.opacity = '1';
-          container.style.position = '';
-          container.style.left = '';
-          container.style.top = '';
-          remoteVideoEl.style.visibility = 'visible';
-          remoteVideoEl.style.opacity = '1';
-        }
-      } catch (e) {
-        console.warn('Visibility override failed:', e);
-      }
-    } else if (newRemoteStream) {
+    } else {
       devDebug(`Added ${event.track.kind} track to existing remote stream`);
+    }
+
+    // Ensure the remote video and its container are visible (fix mobile Safari cases)
+    try {
+      const container =
+        document.getElementById('remote-video-box') ||
+        remoteVideoEl.parentElement;
+      if (container) {
+        // Remove any utility hidden class from container or element
+        container.classList?.remove('hidden');
+        remoteVideoEl.classList?.remove('hidden');
+
+        // Force visibility in case a parent applied visibility:hidden via inheritance
+        container.style.visibility = 'visible';
+        container.style.opacity = '1';
+        container.style.position = '';
+        container.style.left = '';
+        container.style.top = '';
+        remoteVideoEl.style.visibility = 'visible';
+        remoteVideoEl.style.opacity = '1';
+      }
+    } catch (e) {
+      console.warn('Visibility override failed:', e);
     }
   };
   return true;
