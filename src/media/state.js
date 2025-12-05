@@ -17,11 +17,13 @@ export function setFacingMode(facingMode) {
 // REMOTE STREAM STATE
 // ============================================================================
 
-export function getRemoteStream(logNullError = true) {
+export function hasRemoteStream() {
+  return remoteStream instanceof MediaStream;
+}
+
+export function getRemoteStream() {
   if (!remoteStream || !(remoteStream instanceof MediaStream)) {
-    if (logNullError) {
-      console.error('Invalid remote MediaStream accessed:', remoteStream);
-    }
+    console.error('Invalid remote MediaStream accessed:', remoteStream);
     return null;
   }
   return remoteStream;
@@ -42,12 +44,14 @@ export function cleanupRemoteStream() {
 // LOCAL STREAM STATE
 // ============================================================================
 
-export function getLocalStream(logNullError = true) {
+export function hasLocalStream() {
+  return localStream instanceof MediaStream;
+}
+
+export function getLocalStream() {
   if (!localStream || !(localStream instanceof MediaStream)) {
-    if (logNullError) {
-      console.error('Invalid local MediaStream accessed:', localStream);
-      console.error('Call createLocalStream() before accessing local stream.');
-    }
+    console.error('Invalid local MediaStream accessed:', localStream);
+    console.error('Call createLocalStream() before accessing local stream.');
     return null;
   }
   return localStream;

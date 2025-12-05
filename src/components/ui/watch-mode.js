@@ -32,13 +32,15 @@ import { isWatchModeActive, setWatchMode } from '../../firebase/watch-sync.js';
 import { getIsInCallMode } from './call-mode.js';
 
 // Import media state
-import { getRemoteStream } from '../../media/state.js';
+import { hasRemoteStream, getRemoteStream } from '../../media/state.js';
 
 // TODO: check if setupShowHideOnInactivity needs integrating here.
 
 // Helper functions
 export const isRemoteVideoVideoActive = () => {
-  const remoteStream = getRemoteStream(false);
+  if (!hasRemoteStream()) return false;
+
+  const remoteStream = getRemoteStream();
   return (
     remoteStream &&
     remoteStream.getVideoTracks().length > 0 &&

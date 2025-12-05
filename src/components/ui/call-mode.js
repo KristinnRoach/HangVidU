@@ -21,7 +21,7 @@ import {
 } from '../../utils/ui/ui-utils.js';
 
 import { setupShowHideOnInactivity } from '../../utils/ui/showHideOnInactivity.js';
-import { getRemoteStream } from '../../media/state.js';
+import { hasRemoteStream } from '../../media/state.js';
 
 // Import from watch-sync
 import { isWatchModeActive } from '../../firebase/watch-sync.js';
@@ -41,10 +41,9 @@ export let enterCallMode = () => {
   if (isInCallMode) return;
 
   // Check if remote video is ready and playing
-  const remoteStream = getRemoteStream(false);
   if (
     !remoteVideoEl ||
-    !remoteStream ||
+    !hasRemoteStream() ||
     remoteVideoEl.paused ||
     remoteVideoEl.readyState < 2
   ) {

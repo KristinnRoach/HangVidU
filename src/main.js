@@ -105,6 +105,7 @@ import { createNotificationsToggle } from './components/notifications/notificati
 import { setUpLocalStream, setupRemoteStream } from './media/stream.js';
 
 import {
+  hasLocalStream,
   getLocalStream,
   setLocalStream,
   cleanupLocalStream,
@@ -1090,11 +1091,11 @@ function normalizeRoomInput(raw) {
 }
 
 async function waitForLocalStream(timeoutMs = 5000) {
-  if (getLocalStream()) return true;
+  if (hasLocalStream()) return true;
   const start = Date.now();
   return new Promise((resolve) => {
     const check = () => {
-      if (getLocalStream()) return resolve(true);
+      if (hasLocalStream()) return resolve(true);
       if (Date.now() - start > timeoutMs) return resolve(false);
       setTimeout(check, 150);
     };
