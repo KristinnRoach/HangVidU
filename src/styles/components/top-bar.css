@@ -9,6 +9,7 @@
   z-index: var(--z-mid);
 
   width: 100%;
+  max-width: 100vw;
   height: auto;
 
   display: flex;
@@ -36,6 +37,8 @@
   display: flex;
   flex-direction: row;
   gap: 1rem;
+  flex-shrink: 1;
+  min-width: 0;
 
   transition: gap var(--duration-default, 200ms) var(--easing-default, ease);
 }
@@ -147,7 +150,9 @@
   flex-direction: row;
   align-items: center;
   gap: 1rem;
-  margin-right: 1rem;
+  flex-shrink: 1;
+  min-width: 0;
+  padding-right: 0.5rem;
 
   transition: background-color var(--duration-default, 200ms)
       var(--easing-default, ease),
