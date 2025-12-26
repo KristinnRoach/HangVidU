@@ -25,6 +25,7 @@ export default defineConfig({
       'tests/unit/**/*.test.js',
       'tests/smoke/**/*.test.js',
       'tests/integration/**/*.test.js',
+      'tests/investigation/**/*.test.js',
     ],
     exclude: ['tests/e2e/**/*', 'tests/**/*.spec.js', 'node_modules/**/*'],
     coverage: {
