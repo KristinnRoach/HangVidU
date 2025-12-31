@@ -37,6 +37,7 @@ import {
   saveContact,
   renderContactsList,
   getContacts,
+  resolveCallerName,
 } from './components/contacts/contacts.js';
 
 import { ringtoneManager } from './media/audio/ringtone-manager.js';
@@ -689,14 +690,17 @@ export function listenForIncomingOnRoom(roomId) {
           }
         );
 
+        // Resolve caller name from contacts
+        const callerName = await resolveCallerName(roomId, joiningUserId);
+
         // Start incoming call ringtone and visual indicators
         ringtoneManager.playIncoming();
-        visibilityManager.startCallIndicators(joiningUserId);
+        visibilityManager.startCallIndicators(callerName);
 
         let accept = false;
         try {
           accept = await confirmDialog(
-            `Incoming call from ${joiningUserId} for room ${roomId}.\n\nAccept?`
+            `Incoming call from ${callerName}.\n\nAccept?`
           );
         } finally {
           // Stop ringtone and visual indicators after user responds (or on error)
