@@ -64,6 +64,26 @@ export async function getContacts() {
 }
 
 /**
+ * Resolve caller display name from roomId by looking up saved contact.
+ */
+export async function resolveCallerName(roomId, fallbackUserId) {
+  if (!roomId) return fallbackUserId || 'Unknown';
+
+  try {
+    const contacts = await getContacts();
+    for (const contact of Object.values(contacts || {})) {
+      if (contact?.roomId === roomId) {
+        return contact.contactName || contact.contactId || fallbackUserId;
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to resolve caller name', e);
+  }
+
+  return fallbackUserId || 'Unknown';
+}
+
+/**
  * Prompt user to save contact after hangup, and render contacts list in lobby.
  */
 export async function saveContact(contactUserId, roomId, lobbyElement) {
