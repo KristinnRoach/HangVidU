@@ -1048,12 +1048,6 @@ const handleCall = async () => {
 callBtn.onclick = handleCall;
 lobbyCallBtn.onclick = handleCall;
 
-// createLinkBtn.onclick = async () => {
-//   const result = await createCall(getCallOptions());
-//   applyCallResult(result, true);
-// };
-// copyLinkBtn.onclick = async () => await handleCopyLink();
-
 if (exitWatchModeBtn) {
   exitWatchModeBtn.onclick = () => {
     if (getLastWatched() === 'yt') {

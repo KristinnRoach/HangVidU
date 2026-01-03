@@ -122,7 +122,7 @@ export async function createCall({
   // 6. SETUP ROOM AND SYNC
   // ─────────────────────────────────────────────────────────────────────────
 
-  // 6a. Setup watch-together sync
+  // Setup watch-together sync
   setupWatchSync(roomId, role, userId);
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -234,7 +234,11 @@ export async function answerCall({
   addLocalTracks(pc, localStream);
 
   // 3b. Setup data channel (will receive from initiator)
-  const { dataChannel, messagesUI } = setupDataChannel(pc, role, onMessagesUIReady);
+  const { dataChannel, messagesUI } = setupDataChannel(
+    pc,
+    role,
+    onMessagesUIReady
+  );
 
   // 3c. Setup remote stream handler
   const remoteStreamSuccess = setupRemoteStream(
