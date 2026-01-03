@@ -16,6 +16,14 @@
           ".read": "$userId === auth.uid",
           ".write": "$userId === auth.uid"
         },
+        "recentCalls": {
+          ".read": "$userId === auth.uid",
+          ".write": "$userId === auth.uid"
+        },
+        "outgoingCall": {
+          ".read": "$userId === auth.uid",
+          ".write": "$userId === auth.uid"
+        },
         "presence": {
           ".read": true,
           ".write": "$userId === auth.uid"
