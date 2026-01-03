@@ -1,12 +1,15 @@
 // contacts.js - Simple contacts management
 
-import { ref, set, get, remove } from 'firebase/database';
+import { ref, set, get, remove, onValue, off } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId } from '../../firebase/auth.js';
 import { joinOrCreateRoomWithId, listenForIncomingOnRoom } from '../../main.js';
 import { hideCallingUI, showCallingUI } from '../calling/calling-ui.js';
 import confirmDialog from '../base/confirm-dialog.js';
 import { hideElement, showElement } from '../../utils/ui/ui-utils.js';
+
+// Track presence listeners for cleanup
+const presenceListeners = new Map();
 
 /**
  * Save a contact for the current user (RTDB if logged in, localStorage otherwise).
@@ -169,8 +172,10 @@ export async function renderContactsList(lobbyElement) {
                 class="contact-name"
                 data-room-id="${contact.roomId}"
                 data-contact-name="${contact.contactName}"
+                data-contact-id="${id}"
                 title="Call ${contact.contactName}"
               >
+                <span class="presence-indicator" data-contact-id="${id}"></span>
                 <i class="fa fa-phone"></i>
                 ${contact.contactName}
               </span>
@@ -190,6 +195,9 @@ export async function renderContactsList(lobbyElement) {
 
   // Attach event listeners for call/delete buttons
   attachContactListeners(contactsContainer, lobbyElement);
+
+  // Setup presence indicators for each contact
+  setupPresenceIndicators(contactIds);
 }
 
 /**
@@ -234,6 +242,45 @@ function attachContactListeners(container, lobbyElement) {
       await deleteContact(contactId);
       await renderContactsList(lobbyElement);
     };
+  });
+}
+
+/**
+ * Setup presence indicators for contacts list.
+ * Watches each contact's presence and updates indicator color.
+ */
+function setupPresenceIndicators(contactIds) {
+  // Clean up old listeners
+  presenceListeners.forEach(({ ref: presenceRef, callback }) => {
+    off(presenceRef, 'value', callback);
+  });
+  presenceListeners.clear();
+
+  // Only set up presence for logged-in users (guests don't have RTDB presence)
+  if (!getLoggedInUserId()) return;
+
+  contactIds.forEach((contactId) => {
+    const presenceRef = ref(rtdb, `users/${contactId}/presence`);
+    const indicatorEl = document.querySelector(
+      `.presence-indicator[data-contact-id="${contactId}"]`
+    );
+
+    if (!indicatorEl) return;
+
+    const callback = (snapshot) => {
+      const presence = snapshot.val();
+      const isOnline = presence?.state === 'online';
+
+      // Update indicator color
+      indicatorEl.style.backgroundColor = isOnline ? '#00d26a' : '#444';
+      indicatorEl.title = isOnline ? 'Online' : 'Offline';
+    };
+
+    // Start listening
+    onValue(presenceRef, callback);
+
+    // Track for cleanup
+    presenceListeners.set(contactId, { ref: presenceRef, callback });
   });
 }
 
