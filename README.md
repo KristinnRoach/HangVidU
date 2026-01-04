@@ -33,7 +33,7 @@ Your environment variables are now managed in two files:
 - `.env.development` for local/dev settings
 - `.env.production` for production deploys
 
-For custom ngrok domains (optional), set `NGROK_DOMAIN` in your `.env.development` file:
+For custom ngrok domains (optional), set `NGROK_DOMAIN` in your `.env.development` file :
 
 ```bash
 NGROK_DOMAIN=your-custom-domain.ngrok-free.dev
