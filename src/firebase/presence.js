@@ -1,4 +1,4 @@
-import { ref, set, onDisconnect, serverTimestamp } from 'firebase/database';
+import { ref, set, onDisconnect, serverTimestamp, onValue } from 'firebase/database';
 import { rtdb } from '../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId } from './auth.js';
 
@@ -64,13 +64,12 @@ export async function setOffline() {
  */
 export function watchUserPresence(userId, callback) {
   const presenceRef = ref(rtdb, `users/${userId}/presence`);
-  const { onValue, off } = require('firebase/database');
 
-  const listener = onValue(presenceRef, (snapshot) => {
+  const unsubscribe = onValue(presenceRef, (snapshot) => {
     const data = snapshot.val();
     callback(data || { state: 'offline' });
   });
 
   // Return unsubscribe function
-  return () => off(presenceRef, 'value', listener);
+  return unsubscribe;
 }
