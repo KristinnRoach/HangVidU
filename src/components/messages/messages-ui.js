@@ -121,6 +121,16 @@ export function initMessagesUI(sendFn) {
     )
       return;
 
+    // const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
+    // if (isMobile) {
+    //   // Fixed bottom positioning on mobile to avoid keyboard issues
+    //   messagesBox.style.bottom = '80px';
+    //   messagesBox.style.right = '20px';
+    //   messagesBox.style.top = 'auto';
+    //   messagesBox.style.left = 'auto';
+    //   return;
+    // }
+
     const btnRect = messagesToggleBtn.getBoundingClientRect();
     const boxRect = messagesBox.getBoundingClientRect();
 
@@ -184,8 +194,6 @@ export function initMessagesUI(sendFn) {
   function toggleMessages() {
     messagesBox.classList.toggle('hidden');
     if (!messagesBox.classList.contains('hidden')) {
-      messagesInput.focus();
-
       // Fallback positioning if needed
       if (!supportsCssAnchors) {
         positionMessagesBox();
@@ -197,6 +205,12 @@ export function initMessagesUI(sendFn) {
             attachRepositionHandlers();
           }
         });
+      }
+
+      // Focus input after layout settles (skip auto-focus on mobile to avoid keyboard jump)
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (!isMobile) {
+        messagesInput.focus();
       }
     } else {
       messagesInput.blur();
