@@ -260,7 +260,7 @@ export function initMessagesUI(sendFn) {
     const msg = messagesInput.value.trim();
     if (!msg) return;
     sendFn(msg);
-    appendChatMessage(`You: ${msg}`);
+    // Don't append message here - let the listener handle it to avoid duplicates
     messagesInput.value = '';
   });
 

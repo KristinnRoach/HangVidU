@@ -29,6 +29,16 @@
           ".write": "$userId === auth.uid"
         }
       }
+    },
+    "conversations": {
+      "$conversationId": {
+        ".read": "auth != null && ($conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid))",
+        "messages": {
+          "$messageId": {
+            ".write": "auth != null && ($conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid))"
+          }
+        }
+      }
     }
   }
 }
