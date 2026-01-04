@@ -33,6 +33,9 @@ function getConversationId(userId1, userId2) {
  * @param {string} text - Message text
  * @returns {Promise<void>}
  */
+// Message limit per conversation to control storage costs
+const MAX_MESSAGES_PER_CONVERSATION = 100;
+
 export async function sendMessageToRTDB(toUserId, text) {
   const fromUserId = getLoggedInUserId();
   if (!fromUserId) {
@@ -56,6 +59,43 @@ export async function sendMessageToRTDB(toUserId, text) {
     sentAt: serverTimestamp(),
     read: false,
   });
+
+  // Clean up old messages if limit exceeded (best-effort, non-blocking)
+  cleanupOldMessages(conversationId).catch((err) => {
+    console.warn('Failed to cleanup old messages:', err);
+  });
+}
+
+/**
+ * Remove oldest messages if conversation exceeds MAX_MESSAGES_PER_CONVERSATION.
+ * Runs async without blocking send operation.
+ */
+async function cleanupOldMessages(conversationId) {
+  const { get, remove } = await import('firebase/database');
+  const messagesRef = ref(rtdb, `conversations/${conversationId}/messages`);
+
+  const snapshot = await get(messagesRef);
+  if (!snapshot.exists()) return;
+
+  const messages = snapshot.val();
+  const messageCount = Object.keys(messages).length;
+
+  if (messageCount <= MAX_MESSAGES_PER_CONVERSATION) return;
+
+  // Delete oldest messages (keep newest MAX_MESSAGES_PER_CONVERSATION)
+  const toDelete = messageCount - MAX_MESSAGES_PER_CONVERSATION;
+  const sortedMessages = Object.entries(messages).sort(
+    (a, b) => (a[1].sentAt || 0) - (b[1].sentAt || 0)
+  );
+
+  for (let i = 0; i < toDelete; i++) {
+    const [msgId] = sortedMessages[i];
+    await remove(ref(rtdb, `conversations/${conversationId}/messages/${msgId}`));
+  }
+
+  console.log(
+    `[MESSAGING] Cleaned up ${toDelete} old messages from conversation ${conversationId}`
+  );
 }
 
 /**
