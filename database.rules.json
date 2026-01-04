@@ -1,6 +1,26 @@
 {
   "rules": {
-    ".read": true,
-    ".write": true
+    "rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "users": {
+      "$userId": {
+        "contacts": {
+          ".read": "$userId === auth.uid",
+          ".write": "$userId === auth.uid"
+        },
+        "callHistory": {
+          ".read": "$userId === auth.uid",
+          ".write": "$userId === auth.uid"
+        },
+        "presence": {
+          ".read": true,
+          ".write": "$userId === auth.uid"
+        }
+      }
+    }
   }
 }

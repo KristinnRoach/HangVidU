@@ -17,6 +17,8 @@ import { app } from './firebase.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { initOneTap, showOneTapSignin } from './onetap.js';
 
+import { initializePresence, setOffline } from './presence.js';
+
 export const auth = getAuth(app);
 
 // Export a promise that resolves when auth initialization completes
@@ -218,6 +220,13 @@ export function onAuthChange(callback, { truncate = 7 } = {}) {
         ? rawName.slice(0, truncate) + '...'
         : rawName;
 
+    // Initialize presence when user logs in
+    if (isLoggedIn) {
+      initializePresence().catch((err) => {
+        console.warn('Failed to initialize presence:', err);
+      });
+    }
+
     try {
       callback({ user, isLoggedIn, userName });
     } catch (e) {
@@ -363,7 +372,6 @@ export async function signInWithGoogle() {
   }
 }
 
-
 export const signInWithAccountSelection = async () => {
   try {
     devDebug('[AUTH] Sign in with account selection');
@@ -388,6 +396,7 @@ export const signInWithAccountSelection = async () => {
 export async function signOutUser() {
   try {
     await signOut(auth);
+    await setOffline();
     console.info('User signed out');
     setTimeout(() => showOneTapSignin(), 1500); // TODO: decide whether this is annoying
   } catch (error) {

@@ -45,6 +45,15 @@
         align-items: center;
         gap: 0.5rem;
 
+        & .presence-indicator {
+          display: inline-block;
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background-color: #444;
+          transition: background-color 0.3s ease;
+        }
+
         & .fa-phone {
           font-size: 0.95rem;
           opacity: 0.85;
