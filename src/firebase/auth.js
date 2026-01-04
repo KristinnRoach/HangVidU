@@ -395,8 +395,8 @@ export const signInWithAccountSelection = async () => {
 
 export async function signOutUser() {
   try {
-    await signOut(auth);
     await setOffline();
+    await signOut(auth);
     console.info('User signed out');
     setTimeout(() => showOneTapSignin(), 1500); // TODO: decide whether this is annoying
   } catch (error) {

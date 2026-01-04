@@ -16,9 +16,27 @@
           ".read": "$userId === auth.uid",
           ".write": "$userId === auth.uid"
         },
+        "recentCalls": {
+          ".read": "$userId === auth.uid",
+          ".write": "$userId === auth.uid"
+        },
+        "outgoingCall": {
+          ".read": "$userId === auth.uid",
+          ".write": "$userId === auth.uid"
+        },
         "presence": {
           ".read": true,
           ".write": "$userId === auth.uid"
+        }
+      }
+    },
+    "conversations": {
+      "$conversationId": {
+        ".read": "auth != null && ($conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid))",
+        "messages": {
+          "$messageId": {
+            ".write": "auth != null && ($conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid))"
+          }
         }
       }
     }

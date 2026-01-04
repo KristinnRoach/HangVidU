@@ -7,9 +7,17 @@ import { joinOrCreateRoomWithId, listenForIncomingOnRoom } from '../../main.js';
 import { hideCallingUI, showCallingUI } from '../calling/calling-ui.js';
 import confirmDialog from '../base/confirm-dialog.js';
 import { hideElement, showElement } from '../../utils/ui/ui-utils.js';
+import {
+  sendMessageToRTDB,
+  listenToContactMessages,
+} from '../../firebase/messaging.js';
+import { initMessagesUI } from '../messages/messages-ui.js';
 
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
+
+// Track active message UIs and listeners for cleanup
+const activeMessageSessions = new Map();
 
 /**
  * Save a contact for the current user (RTDB if logged in, localStorage otherwise).
@@ -168,6 +176,14 @@ export async function renderContactsList(lobbyElement) {
           const contact = contacts[id];
           return `
             <div class="contact-entry">
+              <button
+                class="contact-message-btn"
+                data-contact-id="${id}"
+                data-contact-name="${contact.contactName}"
+                title="Send message to ${contact.contactName}"
+              >
+                💬
+              </button>
               <span
                 class="contact-name"
                 data-room-id="${contact.roomId}"
@@ -204,6 +220,18 @@ export async function renderContactsList(lobbyElement) {
  * Attach event listeners to contact list elements.
  */
 function attachContactListeners(container, lobbyElement) {
+  // Message buttons - click to open messaging
+  container.querySelectorAll('.contact-message-btn').forEach((btn) => {
+    btn.onclick = (e) => {
+      e.stopPropagation(); // Don't trigger other handlers
+      const contactId = btn.getAttribute('data-contact-id');
+      const contactName = btn.getAttribute('data-contact-name');
+      if (contactId) {
+        openContactMessages(contactId, contactName);
+      }
+    };
+  });
+
   // Contact names - click to call
   container.querySelectorAll('.contact-name').forEach((nameEl) => {
     nameEl.onclick = async () => {
@@ -243,6 +271,64 @@ function attachContactListeners(container, lobbyElement) {
       await renderContactsList(lobbyElement);
     };
   });
+}
+
+/**
+ * Open messaging UI for a specific contact.
+ * Creates a message session with RTDB transport.
+ */
+function openContactMessages(contactId, contactName) {
+  if (!getLoggedInUserId()) {
+    alert('Please sign in to send messages');
+    return;
+  }
+
+  // Check if already have an active session for this contact
+  if (activeMessageSessions.has(contactId)) {
+    const session = activeMessageSessions.get(contactId);
+    session.messagesUI.toggleMessages(); // Just toggle visibility
+    return;
+  }
+
+  // Close any existing contact message session (only one at a time)
+  activeMessageSessions.forEach((session, sessionContactId) => {
+    console.log(`[MESSAGING] Closing previous session with ${session.contactName}`);
+    session.unsubscribe(); // Stop listening to messages
+    session.messagesUI.cleanup(); // Remove UI elements
+    activeMessageSessions.delete(sessionContactId);
+  });
+
+  // Create send function that writes to RTDB
+  const sendFn = (text) => {
+    sendMessageToRTDB(contactId, text);
+  };
+
+  // Initialize messages UI (reuses existing component)
+  const messagesUI = initMessagesUI(sendFn);
+
+  // Start listening for messages with this contact (both sent and received)
+  const unsubscribe = listenToContactMessages(contactId, (text, _msgData, isSentByMe) => {
+    // Display message in UI with correct prefix
+    if (isSentByMe) {
+      messagesUI.appendChatMessage(`You: ${text}`);
+    } else {
+      messagesUI.receiveMessage(text);
+    }
+  });
+
+  // Store session for cleanup
+  activeMessageSessions.set(contactId, {
+    messagesUI,
+    unsubscribe,
+    contactId,
+    contactName,
+  });
+
+  // Show and open the messages UI
+  messagesUI.showMessagesToggle();
+  messagesUI.toggleMessages();
+
+  console.log(`[MESSAGING] Opened messaging session with ${contactName}`);
 }
 
 /**
