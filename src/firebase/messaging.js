@@ -50,7 +50,9 @@ export async function sendMessageToRTDB(toUserId, text) {
   const conversationId = getConversationId(fromUserId, toUserId);
 
   // Write to shared conversation node
-  const messageRef = push(ref(rtdb, `conversations/${conversationId}/messages`));
+  const messageRef = push(
+    ref(rtdb, `conversations/${conversationId}/messages`)
+  );
 
   await set(messageRef, {
     text,
@@ -90,7 +92,9 @@ async function cleanupOldMessages(conversationId) {
 
   for (let i = 0; i < toDelete; i++) {
     const [msgId] = sortedMessages[i];
-    await remove(ref(rtdb, `conversations/${conversationId}/messages/${msgId}`));
+    await remove(
+      ref(rtdb, `conversations/${conversationId}/messages/${msgId}`)
+    );
   }
 
   console.log(
