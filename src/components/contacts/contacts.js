@@ -1,6 +1,17 @@
 // contacts.js - Simple contacts management
 
-import { ref, set, get, remove, onValue, off } from 'firebase/database';
+import {
+  ref,
+  set,
+  get,
+  remove,
+  onValue,
+  off,
+  onChildAdded,
+  query,
+  orderByChild,
+  equalTo,
+} from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId } from '../../firebase/auth.js';
 import { joinOrCreateRoomWithId, listenForIncomingOnRoom } from '../../main.js';
@@ -10,6 +21,7 @@ import { hideElement, showElement } from '../../utils/ui/ui-utils.js';
 import {
   sendMessageToRTDB,
   listenToContactMessages,
+  getUnreadCount,
 } from '../../firebase/messaging.js';
 import { initMessagesUI } from '../messages/messages-ui.js';
 
@@ -18,6 +30,9 @@ const presenceListeners = new Map();
 
 // Track active message UIs and listeners for cleanup // TODO: move to messaging.js?
 export const activeMessageSessions = new Map();
+
+// Track message badge listeners for cleanup
+const messageBadgeListeners = new Map();
 
 /**
  * Save a contact for the current user (RTDB if logged in, localStorage otherwise).
@@ -214,6 +229,12 @@ export async function renderContactsList(lobbyElement) {
 
   // Setup presence indicators for each contact
   setupPresenceIndicators(contactIds);
+
+  // Add unread message badges to contact message buttons
+  await addUnreadBadgesToContacts(contactsContainer, contactIds);
+
+  // Setup real-time listeners to update badges when new messages arrive
+  setupMessageBadgeListeners(contactsContainer, contactIds);
 }
 
 /**
@@ -333,6 +354,9 @@ export function openContactMessages(contactId, contactName) {
   messagesUI.showMessagesToggle();
   messagesUI.toggleMessages();
 
+  // Clear the unread badge for this contact
+  clearContactBadge(contactId);
+
   console.log(`[MESSAGING] Opened messaging session with ${contactName}`);
 }
 
@@ -373,6 +397,109 @@ function setupPresenceIndicators(contactIds) {
     // Track for cleanup
     presenceListeners.set(contactId, { ref: presenceRef, callback });
   });
+}
+
+/**
+ * Add unread message badges to contact message buttons.
+ * Loads initial unread counts and displays badges.
+ */
+async function addUnreadBadgesToContacts(container, contactIds) {
+  if (!getLoggedInUserId()) return; // Only for logged-in users
+
+  for (const contactId of contactIds) {
+    const btn = container.querySelector(
+      `.contact-message-btn[data-contact-id="${contactId}"]`
+    );
+    if (!btn) continue;
+
+    // Get unread count for this contact
+    const count = await getUnreadCount(contactId);
+
+    // Add or update badge
+    updateContactBadge(btn, count);
+  }
+}
+
+/**
+ * Update the badge on a specific contact message button.
+ * Creates badge if needed, updates count, shows/hides based on count.
+ */
+function updateContactBadge(btn, count) {
+  let badge = btn.querySelector('.notification-badge');
+
+  if (count > 0) {
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'notification-badge';
+      btn.appendChild(badge);
+    }
+    badge.textContent = count;
+    badge.style.display = 'flex';
+  } else {
+    // Hide badge if count is 0
+    if (badge) {
+      badge.style.display = 'none';
+    }
+  }
+}
+
+/**
+ * Setup real-time listeners for contact message badges.
+ * Listens for new unread messages and updates badge counts.
+ */
+function setupMessageBadgeListeners(container, contactIds) {
+  // Clean up old listeners
+  messageBadgeListeners.forEach(({ ref: messageRef, callback }) => {
+    off(messageRef, 'child_added', callback);
+  });
+  messageBadgeListeners.clear();
+
+  // Only set up for logged-in users
+  const myUserId = getLoggedInUserId();
+  if (!myUserId) return;
+
+  contactIds.forEach((contactId) => {
+    // Get conversation ID (sorted user IDs)
+    const conversationId = [myUserId, contactId].sort().join('_');
+    const messagesRef = ref(rtdb, `conversations/${conversationId}/messages`);
+
+    const btn = container.querySelector(
+      `.contact-message-btn[data-contact-id="${contactId}"]`
+    );
+    if (!btn) return;
+
+    // Listen for new messages
+    const callback = async (snapshot) => {
+      const msg = snapshot.val();
+      if (!msg) return;
+
+      // Only update badge for unread messages from the contact (not from me)
+      if (msg.from === contactId && !msg.read) {
+        // Refresh the unread count
+        const count = await getUnreadCount(contactId);
+        updateContactBadge(btn, count);
+      }
+    };
+
+    // Start listening
+    onChildAdded(messagesRef, callback);
+
+    // Track for cleanup
+    messageBadgeListeners.set(contactId, { ref: messagesRef, callback });
+  });
+}
+
+/**
+ * Clear the unread badge for a specific contact.
+ * Called when opening messages with that contact.
+ */
+function clearContactBadge(contactId) {
+  const btn = document.querySelector(
+    `.contact-message-btn[data-contact-id="${contactId}"]`
+  );
+  if (btn) {
+    updateContactBadge(btn, 0);
+  }
 }
 
 /**
