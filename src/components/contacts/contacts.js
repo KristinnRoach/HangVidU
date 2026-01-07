@@ -277,7 +277,7 @@ function attachContactListeners(container, lobbyElement) {
  * Open messaging UI for a specific contact.
  * Creates a message session with RTDB transport.
  */
-function openContactMessages(contactId, contactName) {
+export function openContactMessages(contactId, contactName) {
   if (!getLoggedInUserId()) {
     alert('Please sign in to send messages');
     return;

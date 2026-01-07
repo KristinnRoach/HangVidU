@@ -83,7 +83,10 @@ export async function createCall({
   addLocalTracks(pc, localStream);
 
   // 3b. Setup data channel for text chat
-  const { dataChannel, messagesUI } = setupDataChannel(pc, role);
+  // TEMPORARILY DISABLED: Using RTDB contact messaging instead
+  // const { dataChannel, messagesUI } = setupDataChannel(pc, role);
+  const dataChannel = null;
+  const messagesUI = null;
 
   // 3c. Setup remote stream handler
   const remoteStreamSuccess = setupRemoteStream(
@@ -234,11 +237,14 @@ export async function answerCall({
   addLocalTracks(pc, localStream);
 
   // 3b. Setup data channel (will receive from initiator)
-  const { dataChannel, messagesUI } = setupDataChannel(
-    pc,
-    role,
-    onMessagesUIReady
-  );
+  // TEMPORARILY DISABLED: Using RTDB contact messaging instead
+  // const { dataChannel, messagesUI } = setupDataChannel(
+  //   pc,
+  //   role,
+  //   onMessagesUIReady
+  // );
+  const dataChannel = null;
+  const messagesUI = null;
 
   // 3c. Setup remote stream handler
   const remoteStreamSuccess = setupRemoteStream(
