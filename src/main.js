@@ -39,7 +39,6 @@ import {
   getContacts,
   resolveCallerName,
   openContactMessages,
-  activeMessageSessions,
 } from './components/contacts/contacts.js';
 
 import { ringtoneManager } from './media/audio/ringtone-manager.js';
@@ -1249,8 +1248,8 @@ CallController.on('memberJoined', ({ memberId, roomId }) => {
 
   CallController.setPartnerId(memberId);
 
-  // Open contact messaging UI with partner (uses RTDB instead of DataChannel)
-  openContactMessages(memberId, memberId); // Use memberId as name for now
+  // // Open contact messaging UI with partner (uses RTDB instead of DataChannel)
+  // openContactMessages(memberId, memberId); // Use memberId as name for now
 
   enterCallMode();
   onCallAnswered().catch((e) =>

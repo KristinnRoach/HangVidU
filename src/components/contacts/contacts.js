@@ -23,15 +23,13 @@ import {
   listenToContactMessages,
   getUnreadCount,
   markMessagesAsRead,
+  activeMessageSessions,
 } from '../../firebase/messaging.js';
 import { initMessagesUI } from '../messages/messages-ui.js';
 import { createMessageToggle } from '../messages/message-toggle.js';
 
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
-
-// Track active message UIs and listeners for cleanup // TODO: move to messaging.js?
-export const activeMessageSessions = new Map();
 
 // Track message badge listeners for cleanup - Map<contactId, unsubscribe function>
 const messageBadgeListeners = new Map();

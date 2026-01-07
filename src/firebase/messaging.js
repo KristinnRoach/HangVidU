@@ -13,6 +13,9 @@ import {
 import { rtdb } from '../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, getCurrentUser } from './auth.js';
 
+// Track active message sessions (one per contact, max one active)
+export const activeMessageSessions = new Map();
+
 /**
  * Generate a deterministic conversation ID for two users.
  * Uses sorted user IDs to ensure the same conversation ID regardless of who initiates.
@@ -217,4 +220,36 @@ export async function markMessagesAsRead(fromUserId) {
   } catch (err) {
     console.warn('Failed to mark messages as read:', err);
   }
+}
+
+/**
+ * Get the currently active messaging session (if any).
+ * @returns {Object|undefined} Active session object or undefined
+ */
+export function getActiveMessageSession() {
+  return Array.from(activeMessageSessions.values())[0];
+}
+
+/**
+ * Close and cleanup a specific message session.
+ * @param {string} contactId - Contact's user ID
+ */
+export function closeMessageSession(contactId) {
+  const session = activeMessageSessions.get(contactId);
+  if (session) {
+    session.unsubscribe();
+    session.messagesUI.cleanup();
+    activeMessageSessions.delete(contactId);
+  }
+}
+
+/**
+ * Close all active message sessions.
+ */
+export function closeAllMessageSessions() {
+  activeMessageSessions.forEach((session) => {
+    session.unsubscribe();
+    session.messagesUI.cleanup();
+  });
+  activeMessageSessions.clear();
 }
