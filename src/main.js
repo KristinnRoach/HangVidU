@@ -994,29 +994,20 @@ function addKeyListeners() {
           }
         }
       }
-      // Open chat messages with 'M' key, if not already open
-      if (event.key === 'm' || event.key === 'M') {
-        // Get active message session (only one at a time)
-        const sessions = Array.from(activeMessageSessions.values());
-        if (sessions.length > 0) {
-          if (!sessions[0].messagesUI.isMessagesUIOpen()) {
-            event.preventDefault(); // Prevent 'M' from being typed into the input
-            sessions[0].messagesUI.toggleMessages();
-          }
-        }
-      }
     }
 
     // Hide media player when pressing 'Escape', if player is visible
     if (event.key === 'Escape') {
-      if (getLastWatched() === 'yt' && isYTVisible()) {
-        pauseYouTubeVideo();
-        hideYouTubePlayer();
-      } else if (getLastWatched() === 'url' && isSharedVideoVisible()) {
-        sharedVideoEl.pause();
-        hideElement(sharedBoxEl);
+      if (isWatchModeActive()) {
+        if (getLastWatched() === 'yt' && isYTVisible()) {
+          pauseYouTubeVideo();
+          hideYouTubePlayer();
+        } else if (getLastWatched() === 'url' && isSharedVideoVisible()) {
+          sharedVideoEl.pause();
+          hideElement(sharedBoxEl);
+        }
+        exitWatchMode();
       }
-      exitWatchMode();
     }
   });
 

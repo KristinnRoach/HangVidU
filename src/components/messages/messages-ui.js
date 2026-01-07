@@ -281,6 +281,18 @@ export function initMessagesUI(sendFn) {
     messagesInput.value = '';
   });
 
+  // 'M' key shortcut to open messages
+  const openMessagesKeyhandler = (event) => {
+    if (event.key === 'm' || event.key === 'M') {
+      // Only open if not already open and input is not focused
+      if (!isMessagesUIOpen() && !isMessageInputFocused()) {
+        event.preventDefault(); // Prevent 'M' from being typed into the input
+        toggleMessages();
+      }
+    }
+  };
+  document.addEventListener('keydown', openMessagesKeyhandler);
+
   function cleanup() {
     // Remove toggle from top-right menu
     if (toggleContainer && toggleContainer.parentNode) {
@@ -289,6 +301,9 @@ export function initMessagesUI(sendFn) {
 
     detachRepositionHandlers();
     observer.disconnect();
+
+    // Remove keyboard shortcut handler
+    document.removeEventListener('keydown', openMessagesKeyhandler);
 
     // Dispose the component
     toggleContainer.dispose();
