@@ -105,13 +105,14 @@ async function cleanupOldMessages(conversationId) {
 /**
  * Listen to messages with a specific contact (both sent and received).
  * Fetches existing messages AND listens for new ones.
- * Automatically marks received messages as read.
+ * Automatically marks received messages as read when UI is open.
  *
  * @param {string} contactUserId - Contact's user ID
  * @param {Function} onMessage - Callback(text, messageData, isSentByMe) called for each message
+ * @param {Function} [isUIOpen] - Optional callback that returns true if messages UI is currently open
  * @returns {Function} Unsubscribe function to stop listening
  */
-export function listenToContactMessages(contactUserId, onMessage) {
+export function listenToContactMessages(contactUserId, onMessage, isUIOpen) {
   const myUserId = getLoggedInUserId();
   if (!myUserId) {
     console.warn('Cannot listen to messages: not logged in');
@@ -134,11 +135,14 @@ export function listenToContactMessages(contactUserId, onMessage) {
     // Trigger callback with message data
     onMessage(msg.text, msg, isSentByMe);
 
-    // Mark received messages as read
+    // Mark received messages as read ONLY if UI is open
     if (!isSentByMe && !msg.read) {
-      update(snapshot.ref, { read: true }).catch((err) => {
-        console.warn('Failed to mark message as read:', err);
-      });
+      const shouldMarkRead = isUIOpen ? isUIOpen() : true; // Default to true if not provided
+      if (shouldMarkRead) {
+        update(snapshot.ref, { read: true }).catch((err) => {
+          console.warn('Failed to mark message as read:', err);
+        });
+      }
     }
   };
 

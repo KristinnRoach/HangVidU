@@ -1,5 +1,6 @@
 import { onClickOutside } from '../../utils/ui/clickOutside.js';
 import { hideElement, isHidden, showElement } from '../../utils/ui/ui-utils.js';
+import { activeMessageSessions } from '../contacts/contacts.js';
 import { createMessageToggle } from './message-toggle.js';
 
 const supportsCssAnchors =
@@ -112,7 +113,9 @@ export function initMessagesUI(sendFn) {
   document.body.appendChild(messagesBoxContainer);
 
   // Get references
-  messagesToggleBtn = toggleContainer.querySelector('#main-messages-toggle-btn');
+  messagesToggleBtn = toggleContainer.querySelector(
+    '#main-messages-toggle-btn'
+  );
   messagesBox = messagesBoxContainer.querySelector('#messages-box');
   messagesMessages = messagesBoxContainer.querySelector('#messages');
   messagesForm = messagesBoxContainer.querySelector('#messages-form');
@@ -195,10 +198,16 @@ export function initMessagesUI(sendFn) {
       ) {
         if (!messagesBox.classList.contains('hidden')) {
           messageToggle.clearBadge();
+          // Clear per-contact badge if there's an active session
+          const activeSession = Array.from(activeMessageSessions.values())[0];
+          if (activeSession?.toggle) {
+            activeSession.toggle.clearBadge();
+          }
         }
       }
     });
   });
+
   observer.observe(messagesBox, { attributes: true });
 
   function isMessagesUIOpen() {

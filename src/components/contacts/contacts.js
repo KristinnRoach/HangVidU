@@ -24,6 +24,7 @@ import {
   getUnreadCount,
 } from '../../firebase/messaging.js';
 import { initMessagesUI } from '../messages/messages-ui.js';
+import { createMessageToggle } from '../messages/message-toggle.js';
 
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
@@ -33,6 +34,9 @@ export const activeMessageSessions = new Map();
 
 // Track message badge listeners for cleanup
 const messageBadgeListeners = new Map();
+
+// Track contact message toggles for cleanup
+const contactMessageToggles = new Map();
 
 /**
  * Save a contact for the current user (RTDB if logged in, localStorage otherwise).
@@ -191,14 +195,13 @@ export async function renderContactsList(lobbyElement) {
           const contact = contacts[id];
           return `
             <div class="contact-entry">
-              <button
-                class="contact-message-btn"
+            <div class="contact-msg-toggle-container">
+              <span
+                class="contact-message-btn-placeholder"
                 data-contact-id="${id}"
                 data-contact-name="${contact.contactName}"
-                title="Send message to ${contact.contactName}"
-              >
-                💬
-              </button>
+              ></span>
+            </div>
               <span
                 class="contact-name"
                 data-room-id="${contact.roomId}"
@@ -230,11 +233,8 @@ export async function renderContactsList(lobbyElement) {
   // Setup presence indicators for each contact
   setupPresenceIndicators(contactIds);
 
-  // Add unread message badges to contact message buttons
-  await addUnreadBadgesToContacts(contactsContainer, contactIds);
-
-  // Setup real-time listeners to update badges when new messages arrive
-  setupMessageBadgeListeners(contactsContainer, contactIds);
+  // Replace placeholder spans with message toggle components
+  await replaceContactButtonsWithToggles(contactsContainer, contactIds);
 }
 
 /**
@@ -339,15 +339,17 @@ export function openContactMessages(contactId, contactName) {
       } else {
         messagesUI.receiveMessage(text);
       }
-    }
+    },
+    () => messagesUI.isMessagesUIOpen() // Only mark as read when UI is actually open
   );
 
-  // Store session for cleanup
+  // Store session for cleanup (including toggle reference for badge clearing)
   activeMessageSessions.set(contactId, {
     messagesUI,
     unsubscribe,
     contactId,
     contactName,
+    toggle: contactMessageToggles.get(contactId),
   });
 
   // Show and open the messages UI
@@ -355,7 +357,10 @@ export function openContactMessages(contactId, contactName) {
   messagesUI.toggleMessages();
 
   // Clear the unread badge for this contact
-  clearContactBadge(contactId);
+  const toggle = contactMessageToggles.get(contactId);
+  if (toggle) {
+    toggle.clearBadge();
+  }
 
   console.log(`[MESSAGING] Opened messaging session with ${contactName}`);
 }
@@ -400,10 +405,87 @@ function setupPresenceIndicators(contactIds) {
 }
 
 /**
+ * Replace placeholder spans with message toggle components.
+ * Creates toggle for each contact with unread badge support.
+ */
+async function replaceContactButtonsWithToggles(container, contactIds) {
+  if (!getLoggedInUserId()) return; // Only for logged-in users
+
+  // Clean up old toggles before creating new ones
+  contactMessageToggles.forEach((toggle) => {
+    toggle.cleanup();
+  });
+  contactMessageToggles.clear();
+
+  // Clean up old badge listeners
+  messageBadgeListeners.forEach(({ ref: messageRef, callback }) => {
+    off(messageRef, 'child_added', callback);
+  });
+  messageBadgeListeners.clear();
+
+  const myUserId = getLoggedInUserId();
+
+  for (const contactId of contactIds) {
+    const placeholder = container.querySelector(
+      `.contact-message-btn-placeholder[data-contact-id="${contactId}"]`
+    );
+    if (!placeholder) continue;
+
+    const contactName = placeholder.getAttribute('data-contact-name');
+    const parent = placeholder.parentElement; // Store parent before removing placeholder
+
+    // Get initial unread count
+    const initialCount = await getUnreadCount(contactId);
+
+    // Remove placeholder before creating toggle
+    placeholder.remove();
+
+    // Create toggle component
+    const toggle = createMessageToggle({
+      parent: parent,
+      onToggle: () => openContactMessages(contactId, contactName),
+      icon: '💬',
+      initialUnreadCount: initialCount,
+    });
+
+    if (!toggle) {
+      console.error(`Failed to create toggle for contact ${contactId}`);
+      continue;
+    }
+
+    // Store toggle reference
+    contactMessageToggles.set(contactId, toggle);
+
+    // Set up real-time listener for this contact
+    const conversationId = [myUserId, contactId].sort().join('_');
+    const messagesRef = ref(rtdb, `conversations/${conversationId}/messages`);
+
+    const callback = async (snapshot) => {
+      const msg = snapshot.val();
+      if (!msg) return;
+
+      // Only update badge for unread messages from the contact (not from me)
+      if (msg.from === contactId && !msg.read) {
+        // Refresh the unread count
+        const count = await getUnreadCount(contactId);
+        toggle.setUnreadCount(count);
+      }
+    };
+
+    // Start listening
+    onChildAdded(messagesRef, callback);
+
+    // Track for cleanup
+    messageBadgeListeners.set(contactId, { ref: messagesRef, callback });
+  }
+}
+
+/* OLD BADGE FUNCTIONS - TO BE REMOVED AFTER TESTING
+/**
  * Add unread message badges to contact message buttons.
  * Loads initial unread counts and displays badges.
  */
-async function addUnreadBadgesToContacts(container, contactIds) {
+/*async function addUnreadBadgesToContacts(container, contactIds) {
   if (!getLoggedInUserId()) return; // Only for logged-in users
 
   for (const contactId of contactIds) {
