@@ -55,6 +55,7 @@ export function addRemoteVideoEventListeners() {
  * @param {HTMLElement} params.switchCameraBtn - Switch camera button
  * @param {HTMLElement} params.mutePartnerBtn - Mute partner button
  * @param {HTMLElement} params.fullscreenPartnerBtn - Fullscreen partner button
+ * @param {HTMLElement} params.remotePipBtn - Remote video picture-in-picture button
  */
 export function initializeMediaControls({
   getLocalStream,
@@ -67,6 +68,7 @@ export function initializeMediaControls({
   switchCameraBtn,
   mutePartnerBtn,
   fullscreenPartnerBtn,
+  remotePipBtn,
 }) {
   // ===== TOGGLE MIC =====
   if (micBtn) {
@@ -162,6 +164,24 @@ export function initializeMediaControls({
         remoteVideo.requestFullscreen();
       } else if (remoteVideo.webkitRequestFullscreen) {
         remoteVideo.webkitRequestFullscreen();
+      }
+    };
+  }
+
+  // ===== PICTURE-IN-PICTURE FOR REMOTE VIDEO =====
+  if (remotePipBtn) {
+    remotePipBtn.onclick = async () => {
+      const remoteVideo = getRemoteVideo();
+      if (!remoteVideo) return;
+
+      try {
+        if (document.pictureInPictureElement) {
+          await document.exitPictureInPicture();
+        } else if (remoteVideo.requestPictureInPicture) {
+          await remoteVideo.requestPictureInPicture();
+        }
+      } catch (error) {
+        console.error('Picture-in-Picture failed:', error);
       }
     };
   }

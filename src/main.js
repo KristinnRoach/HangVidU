@@ -61,6 +61,7 @@ import {
   hangUpBtn,
   mutePartnerBtn,
   fullscreenPartnerBtn,
+  remotePipBtn,
   micBtn,
   cameraBtn,
   switchCameraBtn,
@@ -237,6 +238,7 @@ async function initLocalStreamAndMedia() {
     switchCameraBtn,
     mutePartnerBtn,
     fullscreenPartnerBtn,
+    remotePipBtn,
   });
 
   if (localVideoEl) {
