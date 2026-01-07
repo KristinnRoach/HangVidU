@@ -183,3 +183,38 @@ export async function getUnreadCount(fromUserId) {
     return 0;
   }
 }
+
+/**
+ * Mark all unread messages from a contact as read.
+ *
+ * @param {string} fromUserId - Contact's user ID
+ * @returns {Promise<void>}
+ */
+export async function markMessagesAsRead(fromUserId) {
+  const myUserId = getLoggedInUserId();
+  if (!myUserId) return;
+
+  const conversationId = getConversationId(myUserId, fromUserId);
+  const conversationRef = ref(rtdb, `conversations/${conversationId}/messages`);
+  const { get } = await import('firebase/database');
+
+  try {
+    const snapshot = await get(conversationRef);
+    if (!snapshot.exists()) return;
+
+    const messages = snapshot.val();
+    const updatePromises = [];
+
+    // Mark all unread messages from the contact as read
+    Object.entries(messages).forEach(([msgId, msg]) => {
+      if (!msg.read && msg.from === fromUserId) {
+        const msgRef = ref(rtdb, `conversations/${conversationId}/messages/${msgId}`);
+        updatePromises.push(update(msgRef, { read: true }));
+      }
+    });
+
+    await Promise.all(updatePromises);
+  } catch (err) {
+    console.warn('Failed to mark messages as read:', err);
+  }
+}
