@@ -181,9 +181,26 @@ export function initMessagesUI(sendFn) {
   });
   observer.observe(messagesBox, { attributes: true });
 
+  function isMessagesUIOpen() {
+    return !messagesBox.classList.contains('hidden');
+  }
+
+  function isMessageInputFocused() {
+    return document.activeElement === messagesInput;
+  }
+
+  function focusMessageInput() {
+    if (!isMessageInputFocused()) messagesInput.focus();
+  }
+
+  function unfocusMessageInput() {
+    if (isMessageInputFocused()) messagesInput.blur();
+  }
+
   function toggleMessages() {
     messagesBox.classList.toggle('hidden');
-    if (!messagesBox.classList.contains('hidden')) {
+
+    if (isMessagesUIOpen()) {
       messagesInput.focus();
 
       // Fallback positioning if needed
@@ -285,9 +302,13 @@ export function initMessagesUI(sendFn) {
   return {
     appendChatMessage,
     receiveMessage,
+    isMessagesUIOpen,
     toggleMessages,
     showMessagesToggle,
     hideMessagesToggle,
+    isMessageInputFocused,
+    focusMessageInput,
+    unfocusMessageInput,
     cleanup,
   };
 }

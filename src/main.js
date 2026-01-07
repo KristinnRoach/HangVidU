@@ -39,6 +39,7 @@ import {
   getContacts,
   resolveCallerName,
   openContactMessages,
+  activeMessageSessions,
 } from './components/contacts/contacts.js';
 
 import { ringtoneManager } from './media/audio/ringtone-manager.js';
@@ -993,11 +994,15 @@ function addKeyListeners() {
           }
         }
       }
-      // Toggle chat messages with 'M' key
+      // Open chat messages with 'M' key, if not already open
       if (event.key === 'm' || event.key === 'M') {
-        const state = CallController.getState();
-        if (state.messagesUI) {
-          state.messagesUI.toggleMessages();
+        // Get active message session (only one at a time)
+        const sessions = Array.from(activeMessageSessions.values());
+        if (sessions.length > 0) {
+          if (!sessions[0].messagesUI.isMessagesUIOpen()) {
+            event.preventDefault(); // Prevent 'M' from being typed into the input
+            sessions[0].messagesUI.toggleMessages();
+          }
         }
       }
     }

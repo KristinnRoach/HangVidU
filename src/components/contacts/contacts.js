@@ -16,8 +16,8 @@ import { initMessagesUI } from '../messages/messages-ui.js';
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
 
-// Track active message UIs and listeners for cleanup
-const activeMessageSessions = new Map();
+// Track active message UIs and listeners for cleanup // TODO: move to messaging.js?
+export const activeMessageSessions = new Map();
 
 /**
  * Save a contact for the current user (RTDB if logged in, localStorage otherwise).
@@ -292,7 +292,9 @@ export function openContactMessages(contactId, contactName) {
 
   // Close any existing contact message session (only one at a time)
   activeMessageSessions.forEach((session, sessionContactId) => {
-    console.log(`[MESSAGING] Closing previous session with ${session.contactName}`);
+    console.log(
+      `[MESSAGING] Closing previous session with ${session.contactName}`
+    );
     session.unsubscribe(); // Stop listening to messages
     session.messagesUI.cleanup(); // Remove UI elements
     activeMessageSessions.delete(sessionContactId);
@@ -307,14 +309,17 @@ export function openContactMessages(contactId, contactName) {
   const messagesUI = initMessagesUI(sendFn);
 
   // Start listening for messages with this contact (both sent and received)
-  const unsubscribe = listenToContactMessages(contactId, (text, _msgData, isSentByMe) => {
-    // Display message in UI with correct prefix
-    if (isSentByMe) {
-      messagesUI.appendChatMessage(`You: ${text}`);
-    } else {
-      messagesUI.receiveMessage(text);
+  const unsubscribe = listenToContactMessages(
+    contactId,
+    (text, _msgData, isSentByMe) => {
+      // Display message in UI with correct prefix
+      if (isSentByMe) {
+        messagesUI.appendChatMessage(`You: ${text}`);
+      } else {
+        messagesUI.receiveMessage(text);
+      }
     }
-  });
+  );
 
   // Store session for cleanup
   activeMessageSessions.set(contactId, {
