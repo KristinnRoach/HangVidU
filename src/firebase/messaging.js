@@ -50,7 +50,9 @@ export async function sendMessageToRTDB(toUserId, text) {
   const conversationId = getConversationId(fromUserId, toUserId);
 
   // Write to shared conversation node
-  const messageRef = push(ref(rtdb, `conversations/${conversationId}/messages`));
+  const messageRef = push(
+    ref(rtdb, `conversations/${conversationId}/messages`)
+  );
 
   await set(messageRef, {
     text,
@@ -90,7 +92,9 @@ async function cleanupOldMessages(conversationId) {
 
   for (let i = 0; i < toDelete; i++) {
     const [msgId] = sortedMessages[i];
-    await remove(ref(rtdb, `conversations/${conversationId}/messages/${msgId}`));
+    await remove(
+      ref(rtdb, `conversations/${conversationId}/messages/${msgId}`)
+    );
   }
 
   console.log(
@@ -101,13 +105,14 @@ async function cleanupOldMessages(conversationId) {
 /**
  * Listen to messages with a specific contact (both sent and received).
  * Fetches existing messages AND listens for new ones.
- * Automatically marks received messages as read.
+ * Automatically marks received messages as read when UI is open.
  *
  * @param {string} contactUserId - Contact's user ID
  * @param {Function} onMessage - Callback(text, messageData, isSentByMe) called for each message
+ * @param {Function} [isUIOpen] - Optional callback that returns true if messages UI is currently open
  * @returns {Function} Unsubscribe function to stop listening
  */
-export function listenToContactMessages(contactUserId, onMessage) {
+export function listenToContactMessages(contactUserId, onMessage, isUIOpen) {
   const myUserId = getLoggedInUserId();
   if (!myUserId) {
     console.warn('Cannot listen to messages: not logged in');
@@ -130,11 +135,14 @@ export function listenToContactMessages(contactUserId, onMessage) {
     // Trigger callback with message data
     onMessage(msg.text, msg, isSentByMe);
 
-    // Mark received messages as read
+    // Mark received messages as read ONLY if UI is open
     if (!isSentByMe && !msg.read) {
-      update(snapshot.ref, { read: true }).catch((err) => {
-        console.warn('Failed to mark message as read:', err);
-      });
+      const shouldMarkRead = isUIOpen ? isUIOpen() : true; // Default to true if not provided
+      if (shouldMarkRead) {
+        update(snapshot.ref, { read: true }).catch((err) => {
+          console.warn('Failed to mark message as read:', err);
+        });
+      }
     }
   };
 
@@ -173,5 +181,40 @@ export async function getUnreadCount(fromUserId) {
   } catch (err) {
     console.warn('Failed to get unread count:', err);
     return 0;
+  }
+}
+
+/**
+ * Mark all unread messages from a contact as read.
+ *
+ * @param {string} fromUserId - Contact's user ID
+ * @returns {Promise<void>}
+ */
+export async function markMessagesAsRead(fromUserId) {
+  const myUserId = getLoggedInUserId();
+  if (!myUserId) return;
+
+  const conversationId = getConversationId(myUserId, fromUserId);
+  const conversationRef = ref(rtdb, `conversations/${conversationId}/messages`);
+  const { get } = await import('firebase/database');
+
+  try {
+    const snapshot = await get(conversationRef);
+    if (!snapshot.exists()) return;
+
+    const messages = snapshot.val();
+    const updatePromises = [];
+
+    // Mark all unread messages from the contact as read
+    Object.entries(messages).forEach(([msgId, msg]) => {
+      if (!msg.read && msg.from === fromUserId) {
+        const msgRef = ref(rtdb, `conversations/${conversationId}/messages/${msgId}`);
+        updatePromises.push(update(msgRef, { read: true }));
+      }
+    });
+
+    await Promise.all(updatePromises);
+  } catch (err) {
+    console.warn('Failed to mark messages as read:', err);
   }
 }

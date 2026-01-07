@@ -33,7 +33,14 @@
 
       column-gap: 0.5rem;
 
-      & .contact-message-btn {
+      & .contact-message-btn,
+      & .messages-toggle-container {
+        position: relative; /* For badge positioning */
+        flex-shrink: 0;
+      }
+
+      & .contact-message-btn,
+      & .messages-toggle-container button {
         background: transparent;
         border: none;
         font-size: 1.1rem;
@@ -41,17 +48,18 @@
         padding: 0.4rem 0.5rem;
         border-radius: 6px;
         transition: background-color 0.2s ease, transform 0.1s ease;
-        flex-shrink: 0;
         opacity: 0.7;
       }
 
-      & .contact-message-btn:hover {
+      & .contact-message-btn:hover,
+      & .messages-toggle-container button:hover {
         background-color: rgba(91, 168, 95, 0.2);
         opacity: 1;
         transform: scale(1.1);
       }
 
-      & .contact-message-btn:active {
+      & .contact-message-btn:active,
+      & .messages-toggle-container button:active {
         background-color: rgba(91, 168, 95, 0.3);
         transform: scale(0.95);
       }

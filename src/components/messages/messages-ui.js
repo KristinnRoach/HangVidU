@@ -1,6 +1,7 @@
-import createComponent from '../../utils/dom/component.js';
 import { onClickOutside } from '../../utils/ui/clickOutside.js';
 import { hideElement, isHidden, showElement } from '../../utils/ui/ui-utils.js';
+import { activeMessageSessions } from '../contacts/contacts.js';
+import { createMessageToggle } from './message-toggle.js';
 
 const supportsCssAnchors =
   CSS.supports?.('position-anchor: --msg-toggle') &&
@@ -30,6 +31,7 @@ export function initMessagesUI(sendFn) {
   let messagesInput = null;
   let repositionHandlersAttached = false;
 
+  /* OLD TOGGLE - COMMENTED OUT FOR TESTING
   // Create the toggle button component
   const toggleContainer = createComponent({
     initialProps: {
@@ -80,6 +82,22 @@ export function initMessagesUI(sendFn) {
       }
     }
   });
+  */
+
+  // NEW TOGGLE using createMessageToggle
+  const topRightMenu =
+    document.querySelector('.top-bar .top-right-menu') ||
+    document.querySelector('.top-right-menu');
+
+  const messageToggle = createMessageToggle({
+    parent: topRightMenu,
+    onToggle: () => toggleMessages(),
+    icon: '💬',
+    initialUnreadCount: 0,
+    id: 'main-messages-toggle-btn', // ID needed for CSS anchor positioning
+  });
+
+  const toggleContainer = messageToggle.element;
 
   // Create the messages box component (non-reactive, manual DOM for inputs)
   const messagesBoxContainer = document.createElement('div');
@@ -95,7 +113,9 @@ export function initMessagesUI(sendFn) {
   document.body.appendChild(messagesBoxContainer);
 
   // Get references
-  messagesToggleBtn = toggleContainer.querySelector('#messages-toggle-btn');
+  messagesToggleBtn = toggleContainer.querySelector(
+    '#main-messages-toggle-btn'
+  );
   messagesBox = messagesBoxContainer.querySelector('#messages-box');
   messagesMessages = messagesBoxContainer.querySelector('#messages');
   messagesForm = messagesBoxContainer.querySelector('#messages-form');
@@ -157,7 +177,9 @@ export function initMessagesUI(sendFn) {
     window.removeEventListener('orientationchange', positionMessagesBox);
   }
 
-  // Place toggle in top-right-menu
+  // Place toggle in top-right-menu (now handled by createMessageToggle)
+  // COMMENTED OUT - toggle is already appended by createMessageToggle
+  /*
   const topRightMenu =
     document.querySelector('.top-bar .top-right-menu') ||
     document.querySelector('.top-right-menu');
@@ -165,6 +187,7 @@ export function initMessagesUI(sendFn) {
   if (toggleContainer && topRightMenu) {
     topRightMenu.appendChild(toggleContainer);
   }
+  */
 
   // Clear unread count when messages box is shown
   const observer = new MutationObserver((mutations) => {
@@ -174,16 +197,39 @@ export function initMessagesUI(sendFn) {
         mutation.attributeName === 'class'
       ) {
         if (!messagesBox.classList.contains('hidden')) {
-          toggleContainer.unreadCount = 0;
+          messageToggle.clearBadge();
+          // Clear per-contact badge if there's an active session
+          const activeSession = Array.from(activeMessageSessions.values())[0];
+          if (activeSession?.toggle) {
+            activeSession.toggle.clearBadge();
+          }
         }
       }
     });
   });
+
   observer.observe(messagesBox, { attributes: true });
+
+  function isMessagesUIOpen() {
+    return !messagesBox.classList.contains('hidden');
+  }
+
+  function isMessageInputFocused() {
+    return document.activeElement === messagesInput;
+  }
+
+  function focusMessageInput() {
+    if (!isMessageInputFocused()) messagesInput.focus();
+  }
+
+  function unfocusMessageInput() {
+    if (isMessageInputFocused()) messagesInput.blur();
+  }
 
   function toggleMessages() {
     messagesBox.classList.toggle('hidden');
-    if (!messagesBox.classList.contains('hidden')) {
+
+    if (isMessagesUIOpen()) {
       messagesInput.focus();
 
       // Fallback positioning if needed
@@ -249,8 +295,10 @@ export function initMessagesUI(sendFn) {
     appendChatMessage(`Partner: ${text}`);
 
     if (isHidden(messagesBox)) {
-      toggleContainer.unreadCount++;
-      // Animation triggered automatically by onPropUpdated
+      // Get current count and increment
+      const currentCount = messageToggle.element.unreadCount || 0;
+      messageToggle.setUnreadCount(currentCount + 1);
+      // Animation triggered automatically by component
     }
   }
 
@@ -264,17 +312,29 @@ export function initMessagesUI(sendFn) {
     messagesInput.value = '';
   });
 
+  // 'M' key shortcut to open messages
+  const openMessagesKeyhandler = (event) => {
+    if (event.key === 'm' || event.key === 'M') {
+      // Only open if not already open and input is not focused
+      if (!isMessagesUIOpen() && !isMessageInputFocused()) {
+        event.preventDefault(); // Prevent 'M' from being typed into the input
+        toggleMessages();
+      }
+    }
+  };
+  document.addEventListener('keydown', openMessagesKeyhandler);
+
   function cleanup() {
-    // Remove toggle from top-right menu
-    if (toggleContainer && toggleContainer.parentNode) {
-      toggleContainer.parentNode.removeChild(toggleContainer);
+    // Cleanup message toggle
+    if (messageToggle) {
+      messageToggle.cleanup();
     }
 
     detachRepositionHandlers();
     observer.disconnect();
 
-    // Dispose the component
-    toggleContainer.dispose();
+    // Remove keyboard shortcut handler
+    document.removeEventListener('keydown', openMessagesKeyhandler);
 
     // Remove messages box container
     if (messagesBoxContainer && messagesBoxContainer.parentNode) {
@@ -285,9 +345,13 @@ export function initMessagesUI(sendFn) {
   return {
     appendChatMessage,
     receiveMessage,
+    isMessagesUIOpen,
     toggleMessages,
     showMessagesToggle,
     hideMessagesToggle,
+    isMessageInputFocused,
+    focusMessageInput,
+    unfocusMessageInput,
     cleanup,
   };
 }

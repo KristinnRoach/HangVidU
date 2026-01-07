@@ -2,18 +2,18 @@
 
 /* Toggle Button */
 
-#messages-toggle-btn {
+#main-messages-toggle-btn {
   position: relative;
   anchor-name: --msg-toggle;
 }
 
-#messages-toggle-btn button {
+#main-messages-toggle-btn button {
   will-change: transform;
 }
 
 /* New Message Animation */
 
-#messages-toggle-btn.new-message button {
+#main-messages-toggle-btn.new-message button {
   animation: bounce 0.8s ease-out 3;
 }
 

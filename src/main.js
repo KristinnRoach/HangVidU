@@ -38,6 +38,8 @@ import {
   renderContactsList,
   getContacts,
   resolveCallerName,
+  openContactMessages,
+  activeMessageSessions,
 } from './components/contacts/contacts.js';
 
 import { ringtoneManager } from './media/audio/ringtone-manager.js';
@@ -992,25 +994,20 @@ function addKeyListeners() {
           }
         }
       }
-      // Toggle chat messages with 'M' key
-      if (event.key === 'm' || event.key === 'M') {
-        const state = CallController.getState();
-        if (state.messagesUI) {
-          state.messagesUI.toggleMessages();
-        }
-      }
     }
 
     // Hide media player when pressing 'Escape', if player is visible
     if (event.key === 'Escape') {
-      if (getLastWatched() === 'yt' && isYTVisible()) {
-        pauseYouTubeVideo();
-        hideYouTubePlayer();
-      } else if (getLastWatched() === 'url' && isSharedVideoVisible()) {
-        sharedVideoEl.pause();
-        hideElement(sharedBoxEl);
+      if (isWatchModeActive()) {
+        if (getLastWatched() === 'yt' && isYTVisible()) {
+          pauseYouTubeVideo();
+          hideYouTubePlayer();
+        } else if (getLastWatched() === 'url' && isSharedVideoVisible()) {
+          sharedVideoEl.pause();
+          hideElement(sharedBoxEl);
+        }
+        exitWatchMode();
       }
-      exitWatchMode();
     }
   });
 
@@ -1251,6 +1248,10 @@ CallController.on('memberJoined', ({ memberId, roomId }) => {
   console.debug('CallController memberJoined event', { memberId, roomId });
 
   CallController.setPartnerId(memberId);
+
+  // Open contact messaging UI with partner (uses RTDB instead of DataChannel)
+  openContactMessages(memberId, memberId); // Use memberId as name for now
+
   enterCallMode();
   onCallAnswered().catch((e) =>
     console.warn('Failed to clear calling state:', e)
