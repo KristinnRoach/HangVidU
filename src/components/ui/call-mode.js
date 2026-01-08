@@ -11,6 +11,7 @@ import {
   callBtn,
   hangUpBtn,
   mutePartnerBtn,
+  remotePipBtn,
 } from '../../elements.js';
 
 import {
@@ -81,6 +82,8 @@ export let enterCallMode = () => {
   hangUpBtn.classList.remove('disabled');
   mutePartnerBtn.disabled = false;
   mutePartnerBtn.classList.remove('disabled');
+  remotePipBtn.disabled = false;
+  remotePipBtn.classList.remove('disabled');
 
   if (!cleanupChatControlAutoHide) {
     // Start hidden, show on activity and auto-hide after inactivity
@@ -147,6 +150,8 @@ export let exitCallMode = () => {
   hangUpBtn.classList.add('disabled');
   mutePartnerBtn.disabled = true;
   mutePartnerBtn.classList.add('disabled');
+  remotePipBtn.disabled = true;
+  remotePipBtn.classList.add('disabled');
 
   if (cleanupChatControlAutoHide) {
     cleanupChatControlAutoHide();
