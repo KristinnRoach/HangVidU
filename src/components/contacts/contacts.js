@@ -15,7 +15,7 @@ import { hideCallingUI, showCallingUI } from '../calling/calling-ui.js';
 import confirmDialog from '../base/confirm-dialog.js';
 import { hideElement, showElement } from '../../utils/ui/ui-utils.js';
 import { messagingController } from '../../messaging/messaging-controller.js';
-import { initMessagesUI } from '../messages/messages-ui.js';
+import { messagesUI } from '../messages/messages-ui.js';
 import { createMessageToggle } from '../messages/message-toggle.js';
 
 // Track presence listeners for cleanup
@@ -295,31 +295,25 @@ export function openContactMessages(contactId, contactName) {
 
   // Check if already have an active session for this contact
   const existingSession = messagingController.getSession(contactId);
-  if (existingSession && existingSession.messagesUI) {
-    existingSession.messagesUI.toggleMessages(); // Just toggle visibility
+  if (existingSession) {
+    // Just show the UI if it's hidden
+    if (!messagesUI.isMessagesUIOpen()) {
+      messagesUI.toggleMessages();
+    }
     return;
   }
 
   // Close any existing contact message session (only one at a time)
   const allSessions = messagingController.getAllSessions();
   allSessions.forEach((session) => {
-    if (session.messagesUI) {
-      console.log(
-        `[MESSAGING] Closing previous session with contact ${session.contactId}`
-      );
-      session.messagesUI.cleanup(); // Remove UI elements
-    }
+    console.log(
+      `[MESSAGING] Closing previous session with contact ${session.contactId}`
+    );
     session.close(); // Close the messaging session
   });
 
-  // Declare session variable for use in callbacks
-  let session = null;
-
-  // Initialize messages UI first (wraps session.send in arrow function for deferred execution)
-  const messagesUI = initMessagesUI((text) => session?.send(text));
-
-  // Open messaging session (onMessage can now safely reference messagesUI)
-  session = messagingController.openSession(contactId, {
+  // Open messaging session
+  const session = messagingController.openSession(contactId, {
     onMessage: (text, _msgData, isSentByMe) => {
       // Display message in UI with correct prefix
       if (isSentByMe) {
@@ -330,10 +324,12 @@ export function openContactMessages(contactId, contactName) {
     },
   });
 
-  // Store UI reference on session for convenience
-  session.messagesUI = messagesUI;
+  // Store metadata on session for reference
   session.contactName = contactName;
   session.toggle = contactMessageToggles.get(contactId);
+
+  // Set this session as the active one in the UI
+  messagesUI.setSession(session);
 
   // Show and open the messages UI
   messagesUI.showMessagesToggle();

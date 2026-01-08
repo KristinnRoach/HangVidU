@@ -1,6 +1,5 @@
 import { onClickOutside } from '../../utils/ui/clickOutside.js';
 import { hideElement, isHidden, showElement } from '../../utils/ui/ui-utils.js';
-import { messagingController } from '../../messaging/messaging-controller.js';
 import { createMessageToggle } from './message-toggle.js';
 
 // Helper: create the messages box DOM and return container + element refs
@@ -152,10 +151,8 @@ export function initMessagesUI() {
         if (!messagesBox.classList.contains('hidden')) {
           messageToggle.clearBadge();
           // Clear per-contact badge if there's an active session
-          const activeSessions = messagingController.getAllSessions();
-          const activeSession = activeSessions[0]; // Only one session at a time
-          if (activeSession?.toggle) {
-            activeSession.toggle.clearBadge();
+          if (currentSession?.toggle) {
+            currentSession.toggle.clearBadge();
           }
         }
       }
@@ -261,9 +258,14 @@ export function initMessagesUI() {
     e.preventDefault();
     const msg = messagesInput.value.trim();
     if (!msg) return;
-    sendFn(msg);
-    // Don't append message here - let the listener handle it to avoid duplicates
-    messagesInput.value = '';
+
+    // Send via current session
+    if (currentSession) {
+      currentSession.send(msg);
+      messagesInput.value = '';
+    } else {
+      console.warn('[MessagesUI] No active session to send message');
+    }
   });
 
   // 'M' key shortcut to open messages
@@ -277,6 +279,33 @@ export function initMessagesUI() {
     }
   };
   document.addEventListener('keydown', openMessagesKeyhandler);
+
+  /**
+   * Clear all messages from the UI
+   */
+  function clearMessages() {
+    messagesMessages.innerHTML = '';
+  }
+
+  /**
+   * Set the active session for this UI
+   * Clears existing messages when switching to a new session
+   * @param {Object} session - Session object from messagingController
+   */
+  function setSession(session) {
+    if (currentSession !== session) {
+      clearMessages();
+    }
+    currentSession = session;
+  }
+
+  /**
+   * Get the currently displayed session
+   * @returns {Object|null} Current session or null
+   */
+  function getCurrentSession() {
+    return currentSession;
+  }
 
   function cleanup() {
     // Cleanup message toggle
@@ -306,6 +335,15 @@ export function initMessagesUI() {
     isMessageInputFocused,
     focusMessageInput,
     unfocusMessageInput,
+    setSession,
+    getCurrentSession,
+    clearMessages,
     cleanup,
   };
 }
+
+/**
+ * Singleton MessagesUI instance
+ * Initialized on first import
+ */
+export const messagesUI = initMessagesUI();
