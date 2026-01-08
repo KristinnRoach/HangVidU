@@ -1,6 +1,6 @@
 # Technology Stack
 
-**Analysis Date:** 2025-12-26
+**Analysis Date:** 2026-01-08
 
 ## Languages
 
@@ -8,84 +8,74 @@
 - JavaScript (ES6+) - All application code (`src/**/*.js`)
 
 **Secondary:**
-- HTML5 - Entry points (`index.html`, `experiments.html`)
-- CSS3 - Modular styling (`src/styles/**/*.css`)
+- None
 
 ## Runtime
 
 **Environment:**
-- Browser runtime: Chrome/Chromium, Firefox, WebKit/Safari (WebRTC and PWA support required)
-- Node.js (for development tooling only)
+- Node.js - No explicit version constraint (no `.nvmrc` file detected)
+- Browser Runtime - Modern browsers with WebRTC, Web Audio, and Media APIs support
 
 **Package Manager:**
-- pnpm - Primary package manager
-- Lockfile: `pnpm-lock.yaml`
+- pnpm - Package manager with `pnpm-lock.yaml` lockfile
 
 ## Frameworks
 
 **Core:**
-- Lit 3.3.1 - Web components framework for base components (`src/components/base/`)
+- Vanilla JavaScript - Primary application code
+- Lit 3.3.1 - Web components library for select UI components (`src/components/base/button/lit-icon-button.draft.js`)
 
 **Testing:**
-- Vitest 4.0.13 - Unit/Integration testing with browser mode
-- @vitest/browser-playwright 4.0.13 - Browser testing provider for native WebRTC APIs
-- Playwright 1.56.1 - E2E testing framework
+- Vitest 4.0.13 - Unit and integration tests in browser mode
+- @vitest/browser-playwright 4.0.13 - Browser test provider
+- Playwright 1.56.1 - End-to-end testing framework
 
 **Build/Dev:**
 - Vite 7.1.12 - Build tool and dev server (`vite.config.js`)
-- vite-plugin-pwa 1.1.0 - Progressive Web App support with Workbox
-- vite-plugin-mkcert 1.17.9 - Self-signed certificates for HTTPS development
-- workbox-window 7.4.0 - Service Worker client library
-- concurrently 9.0.0 - Run multiple processes (dev server + ngrok)
+- vite-plugin-pwa 1.1.0 - Progressive Web App generation
+- vite-plugin-mkcert 1.17.9 - Self-signed certificate generation for HTTPS development
 
 ## Key Dependencies
 
 **Critical:**
-- firebase 12.4.0 - Backend services (`src/firebase/firebase.js`)
-  - firebase/auth - Authentication with Google OAuth
-  - firebase/database - Realtime Database for signaling and watch sync
-  - firebase/app-check - ReCAPTCHA Enterprise security
-- dexie 4.2.1 - IndexedDB wrapper for persistent local data (`src/storage/idb/idb.js`)
-- @fortawesome/fontawesome-free 7.1.0 - Icon library
+- Firebase 12.4.0 - Real-time database, authentication, hosting (`src/firebase/firebase.js`, `src/firebase/auth.js`)
+- Dexie 4.2.1 - IndexedDB wrapper for local data persistence (`src/storage/idb/idb.js`)
 
 **Infrastructure:**
 - @sentry/browser 10.26.0 - Error tracking and monitoring (`src/initSentry.js`)
-- fkill-cli 9.0.0 - Port cleanup utility (development)
+- workbox-window 7.4.0 - Service Worker client library for PWA updates
+- @fortawesome/fontawesome-free 7.1.0 - Icon library
+
+**Development:**
+- concurrently 9.0.0 - Run multiple npm scripts (dev + ngrok)
+- fkill-cli 9.0.0 - Kill processes on ports for dev cleanup
 
 ## Configuration
 
 **Environment:**
-- `.env` files with VITE_ prefix - `.env.example`, `.env.development`, `.env.production`
-- Required variables:
-  - Firebase config (VITE_FIREBASE_*)
-  - YouTube API key (VITE_YOUTUBE_API_KEY)
-  - Sentry DSN (VITE_SENTRY_DSN)
-  - ReCAPTCHA Enterprise site key (VITE_RECAPTCHA_ENTERPRISE_SITE_KEY)
+- `.env.development` - Development environment variables (Firebase keys, YouTube API key)
+- `.env.production` - Production environment variables (Firebase keys, Sentry DSN)
+- `.env.example` - Template for required environment variables
+- All environment variables prefixed with `VITE_` for client exposure
 
 **Build:**
-- `vite.config.js` - Build configuration with dual deployment targets
-- `vitest.config.js` - Test configuration with browser mode
-- `playwright.config.js` - E2E test configuration
-- `firebase.json` - Firebase Hosting deployment config
-- `.firebaserc` - Firebase project association
+- `vite.config.js` - Vite configuration with PWA and HTTPS dev settings
+- Two build targets: `/HangVidU/` base path (GitHub Pages) or `/` (Firebase Hosting)
+- Configured via `BUILD_TARGET` environment variable
 
 ## Platform Requirements
 
 **Development:**
-- Any platform with Node.js (macOS/Linux/Windows)
-- HTTPS required for WebRTC (handled by vite-plugin-mkcert)
-- ngrok for mobile device testing (optional, via `pnpm ngrok`)
+- Any platform with Node.js support (macOS, Linux, Windows)
+- No external dependencies beyond Node.js and pnpm
+- ngrok for HTTPS tunnel in local development (optional custom domain via `NGROK_DOMAIN`)
 
 **Production:**
-- Deployment targets:
-  - Firebase Hosting (primary, base path: `/`)
-  - GitHub Pages (secondary, base path: `/HangVidU/`)
-- Browser requirements:
-  - WebRTC support (Chrome 74+, Firefox 66+, Safari 12.1+)
-  - Service Worker support for PWA features
-  - IndexedDB for local persistence
+- Firebase Hosting - Primary deployment target (`vidu-aae11.web.app`)
+- GitHub Pages - Secondary deployment target with `/HangVidU/` base path
+- Modern browsers with WebRTC support (Chrome, Firefox, Safari, Edge)
 
 ---
 
-*Stack analysis: 2025-12-26*
+*Stack analysis: 2026-01-08*
 *Update after major dependency changes*

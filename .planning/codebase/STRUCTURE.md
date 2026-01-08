@@ -1,271 +1,288 @@
 # Codebase Structure
 
-**Analysis Date:** 2025-12-26
+**Analysis Date:** 2026-01-08
 
 ## Directory Layout
 
 ```
 HangVidU/
-├── src/                    # Application source code
-│   ├── components/         # UI components by feature
-│   ├── firebase/           # Firebase integration (auth, sync)
-│   ├── media/              # Media streams and YouTube
-│   ├── pwa/                # PWA service worker setup
-│   ├── storage/            # Data persistence layer
-│   ├── styles/             # Modular CSS architecture
-│   ├── utils/              # Utility functions
-│   ├── webrtc/             # WebRTC P2P logic
-│   ├── temp/               # Draft/temporary code
-│   ├── main.js             # Main orchestrator (1,342 lines)
-│   ├── elements.js         # DOM element registry
-│   ├── room.js             # Room service
-│   └── initSentry.js       # Error tracking setup
-├── tests/                  # Test suites
-│   ├── unit/               # Unit tests
-│   ├── integration/        # Integration tests
-│   ├── smoke/              # Smoke tests
-│   ├── e2e/                # End-to-end Playwright tests
-│   └── setup.js            # Test configuration
-├── public/                 # Static assets
-├── refactor-draft/         # Refactoring documentation
-├── index.html              # Main entry point
-├── experiments.html        # Dev-only experiments page
-├── vite.config.js          # Build configuration
-├── vitest.config.js        # Test configuration
-├── playwright.config.js    # E2E test configuration
-├── firebase.json           # Firebase Hosting config
-├── .firebaserc             # Firebase project
-├── package.json            # Dependencies and scripts
-├── pnpm-lock.yaml          # Dependency lockfile
-├── .env.example            # Environment variable template
-└── CLAUDE.md               # Developer guidance
+├── src/                      # Application source code
+│   ├── main.js              # Primary entry point (1,342 lines)
+│   ├── elements.js          # DOM element registry
+│   ├── initSentry.js        # Error tracking setup
+│   ├── room.js              # RoomService singleton
+│   │
+│   ├── webrtc/              # WebRTC P2P logic
+│   ├── firebase/            # Firebase services
+│   ├── storage/             # Data persistence
+│   ├── media/               # Media stream management
+│   ├── components/          # UI components
+│   ├── styles/              # Modular CSS architecture
+│   ├── utils/               # Utility functions
+│   ├── pwa/                 # PWA service worker
+│   └── test/                # Test utilities
+│
+├── tests/                   # Test suites
+│   ├── unit/                # Unit tests (Vitest)
+│   ├── integration/         # Integration tests (Vitest)
+│   ├── smoke/               # Smoke tests (Vitest)
+│   ├── investigation/       # Bug investigation tests
+│   └── e2e/                 # E2E tests (Playwright)
+│
+├── index.html               # Main HTML entry
+├── experiments.html         # Experimental features page
+├── vite.config.js           # Vite configuration
+├── vitest.config.js         # Vitest configuration
+├── playwright.config.js     # Playwright E2E configuration
+├── package.json             # Dependencies and scripts
+└── pnpm-lock.yaml          # Lockfile
 ```
 
 ## Directory Purposes
 
-**src/components/**
-- Purpose: UI components organized by feature domain
-- Contains: Vanilla JS and Lit web components
-- Key files: Component initialization and cleanup functions
-- Subdirectories:
-  - `auth/` - Authentication UI (AuthComponent.js, google-one-tap.js)
-  - `calling/` - Call state overlays (calling-ui.js)
-  - `contacts/` - Contact management (contacts.js)
-  - `lobby/` - Pre-call lobby UI (lobby.js)
-  - `messages/` - DataChannel messaging (messages-ui.js)
-  - `notifications/` - Toast and update notifications (notification-manager.js, incoming-call.js)
-  - `modal/` - Link copy dialog (copyLinkModal.js)
-  - `recent-calls/` - Recent calls history
-  - `select/` - Device selection UI
-  - `ui/` - Mode controllers (call-mode.js, watch-mode.js)
-  - `base/` - Reusable base components (button/, dialog/)
-
 **src/webrtc/**
-- Purpose: WebRTC peer-to-peer connection orchestration
-- Contains: Call flow logic, peer connection setup, ICE handling, data channels
+- Purpose: WebRTC peer-to-peer connection logic
+- Contains: Call flow, ICE handling, data channels, peer connection factory
 - Key files:
-  - `call-controller.js` - High-level facade with event emitter (653 lines)
-  - `call-flow.js` - Core connection establishment (353 lines)
+  - `call-controller.js` (653 lines) - Event API + state manager
+  - `call-flow.js` (363 lines) - Initiator/joiner orchestration
   - `webrtc.js` - PeerConnection factory
-  - `ice.js` - ICE candidate management
-  - `data-channel.js` - DataChannel setup
-  - `webrtc-utils.js` - STUN/TURN configuration
-- Subdirectories: `tests/` - WebRTC unit tests
+  - `ice.js` - ICE candidate handling
+  - `data-channel.js` - DataChannel setup (currently disabled)
+- Subdirectories: `tests/` (co-located tests)
 
 **src/firebase/**
-- Purpose: Firebase integration for auth and synchronization
-- Contains: Authentication flows, watch-together sync, Firebase config
+- Purpose: Firebase services and real-time synchronization
+- Contains: Authentication, RTDB operations, watch-together sync, messaging, presence
 - Key files:
-  - `auth.js` - Authentication with fallback chain (398 lines)
-  - `watch-sync.js` - YouTube watch-together sync (398 lines)
-  - `onetap.js` - Google One Tap integration
-  - `firebase.js` - Firebase app initialization
-
-**src/media/**
-- Purpose: Media stream lifecycle and YouTube integration
-- Contains: Camera/mic management, YouTube player, device constraints
-- Key files:
-  - `stream.js` - Stream setup/cleanup
-  - `media-controls.js` - Camera/mic controls
-  - `media-devices.js` - Device enumeration and switching
-  - `state.js` - Media state management
-- Subdirectories:
-  - `audio/` - Audio controls (audio-controls.js)
-  - `youtube/` - YouTube integration (youtube-player.js, youtube-search.js)
+  - `firebase.js` - App initialization
+  - `auth.js` (407 lines) - Google Sign-In + guest auth
+  - `watch-sync.js` (398 lines) - YouTube/video synchronization
+  - `messaging.js` (265 lines) - RTDB contact messaging (NEW)
+  - `presence.js` - User online/offline
+  - `onetap.js` - Google One Tap UI
+- Subdirectories: None
 
 **src/storage/**
-- Purpose: Data persistence and Firebase RTDB abstraction
-- Contains: Firebase RTDB utilities, IndexedDB wrapper, localStorage
+- Purpose: Data persistence abstractions
+- Contains: Firebase RTDB wrappers, IndexedDB, LocalStorage utilities
 - Key files:
-  - `fb-rtdb/rtdb.js` - Firebase RTDB with listener tracking
-  - `idb.js` - IndexedDB abstraction via Dexie
-  - `local/` - LocalStorage utilities (local-storage.js)
+  - `fb-rtdb/rtdb.js` - Firebase RTDB API + listener tracking
+  - `idb/idb.js` - Dexie wrapper for IndexedDB
+  - `local/recent-rooms-local.js` - LocalStorage utilities
+- Subdirectories: `fb-rtdb/`, `idb/`, `local/`
+
+**src/media/**
+- Purpose: Media stream management and YouTube integration
+- Contains: Camera/mic controls, YouTube player, constraints
+- Key files:
+  - `stream.js` - Local/remote stream setup
+  - `state.js` - Stream state singleton
+  - `media-controls.js` - Camera/mic UI controls
+  - `constraints.js` - Video/audio constraints
+  - `media-devices.js` - Device enumeration
+  - `youtube/youtube-player.js` (367 lines) - YouTube IFrame API wrapper
+  - `youtube/youtube-search.js` (391 lines) - YouTube search UI
+  - `audio/ringtone-manager.js` - Call ringtone management
+- Subdirectories: `youtube/`, `audio/`
+
+**src/components/**
+- Purpose: UI components (vanilla JS + Lit)
+- Contains: Authentication, calling UI, contacts, messages, lobby, notifications
+- Key files:
+  - `contacts/contacts.js` (662 lines) - Contact list + presence + message toggles (refactoring pending)
+  - `messages/messages-ui.js` (357 lines) - Main messaging UI
+  - `messages/message-toggle.js` (117 lines) - Reusable toggle component
+  - `messages/OLD_messages-ui.js` - Deprecated implementation
+  - `calling/calling-ui.js` - Incoming call UI
+  - `modal/copyLinkModal.js` (408 lines) - Copy link modal
+  - `notifications/pwa-update-toast.js` - PWA update notification
+- Subdirectories:
+  - `auth/` - Google One Tap container
+  - `base/` - Reusable components (buttons, dialogs)
+    - `base/button/` - Button components (icon-button.js, lit-icon-button.draft.js)
+    - `base/confirm-dialog.js` - Confirmation dialogs
+  - `calling/` - Incoming call UI
+  - `contacts/` - Contact management
+  - `lobby/` - Main lobby UI
+  - `messages/` - In-call chat
+  - `modal/` - Modal dialogs
+  - `notifications/` - Toast notifications
+  - `recent-calls/` - Recent call history
+  - `select/` - Device selection dropdown
+  - `ui/` - State-driven UI (call-mode.js, watch-mode.js)
+  - `self-contained-drafts/` - Draft components
 
 **src/styles/**
 - Purpose: Modular CSS architecture
-- Contains: CSS organized by abstraction level
+- Contains: Resets, element styles, layout utilities, component styles
+- Key files:
+  - `main.css` - Master stylesheet
+  - `theme.css` - CSS custom properties
+  - `animations.css` - Animation utilities
 - Subdirectories:
-  - `init/` - CSS resets and base styles
-  - `element/` - Element-level styles
-  - `layout/` - Layout utilities (flexbox, grid)
+  - `init/` - Resets + typography
+  - `element/` - Element-level styles (button, input)
+  - `layout/` - Layout utilities (grid, flexbox)
   - `components/` - Component-specific styles
-- Key files: `theme.css` (CSS custom properties), `animations.css`
 
 **src/utils/**
 - Purpose: Shared utility functions
-- Contains: UI helpers, DOM utilities, dev tools, environment detection
-- Subdirectories:
-  - `ui/` - UI utilities (ui-utils.js, animations, modals, notifications)
-  - `dom/` - DOM helpers (component-utils.js, event handlers)
-  - `dev/` - Development tools (diagnostic-logger.js, debug-logger.js)
-  - `env/` - Environment detection (isIOSPWA.js, redirectIOSPWA.js)
-- Key files: `url.js` - URL parameter handling
+- Contains: Dev logging, UI helpers, DOM utilities, environment detection
+- Key files:
+  - `dev/dev-utils.js` - Dev logging (`devDebug()`)
+  - `dev/diagnostic-logger.js` (696 lines) - Comprehensive diagnostic logging
+  - `ui/ui-utils.js` - UI helpers (show/hide, visibility)
+  - `dom/component.js` - DOM component utilities
+  - `env/redirectIOSPWA.js` - iOS PWA redirect handling
+- Subdirectories: `dev/`, `ui/`, `dom/`, `env/`
 
 **src/pwa/**
-- Purpose: Progressive Web App functionality
-- Contains: Service worker registration, update notifications, PWA testing
+- Purpose: Progressive Web App setup
+- Contains: Service worker registration, update handling
 - Key files:
   - `PWA.js` - Service worker registration
-  - `update-handlers.js` - Update notification logic
   - `test-update.js` - PWA update testing utilities
+  - `debug-pwa.js` - PWA debugging helpers
+- Subdirectories: None
 
 **src/temp/**
-- Purpose: Draft and temporary code (11 files, should be archived)
-- Contains: Experimental code, examples, reference implementations
-- Subdirectories:
-  - `drafts/` - Draft implementations
-  - `examples/` - Code examples
-  - `p2p/` - P2P reference files
+- Purpose: Temporary/draft files (should be cleaned up)
+- Contains: P2P integration examples, drafts, WIP experiments
+- Key files:
+  - `p2p/integration-example.js` (701 lines)
+  - `drafts/webrtc.js` (330 lines)
+  - `examples/failed-rejoin-attempt.js` (320 lines)
+- Subdirectories: `p2p/`, `drafts/`, `examples/`
+- **Note:** This directory bloats the source tree and should be archived or removed
 
 **tests/**
-- Purpose: Test suites for all layers
-- Contains: Unit, integration, smoke, and E2E tests
+- Purpose: Test suites organized by type
+- Contains: Unit, integration, smoke, investigation, E2E tests
 - Subdirectories:
-  - `unit/` - Unit tests (call-controller.test.js, firebase-connection.test.js)
-  - `integration/` - Integration tests (call-flow-imports.test.js)
-  - `smoke/` - Quick smoke tests (call-controller-smoke.test.js)
-  - `e2e/` - Playwright E2E tests (smoke.spec.js)
-- Key files: `setup.js` - Vitest test configuration
-
-**refactor-draft/**
-- Purpose: Refactoring planning and documentation
-- Contains: Task lists, architectural notes
-- Key files: `task-list.md` - CallController refactoring plan
+  - `unit/` - Isolated function/class tests (Vitest browser mode)
+  - `integration/` - Module integration tests (Vitest browser mode)
+  - `smoke/` - Quick sanity tests (Vitest browser mode)
+  - `investigation/` - Bug investigation tests
+  - `e2e/` - Full workflow tests (Playwright)
 
 ## Key File Locations
 
 **Entry Points:**
-- `index.html` - Main application entry
-- `experiments.html` - Dev-only experiments
-- `src/main.js` - JavaScript entry point and orchestrator (1,342 lines)
+- `index.html` - Main HTML entry
+- `src/main.js` (1,342 lines) - Primary JavaScript entry
+- `src/webrtc/call-controller.js` (653 lines) - WebRTC entry point
 
 **Configuration:**
-- `vite.config.js` - Vite build config (PWA, HTTPS, multi-target)
-- `vitest.config.js` - Test configuration (browser mode with Playwright)
+- `vite.config.js` - Build tool configuration
+- `vitest.config.js` - Test runner configuration
 - `playwright.config.js` - E2E test configuration
-- `firebase.json` - Firebase Hosting deployment
-- `.firebaserc` - Firebase project: vidu-aae11
-- `package.json` - Dependencies and npm scripts
+- `package.json` - Project dependencies and scripts
+- `.env.development` - Development environment variables (gitignored)
+- `.env.production` - Production environment variables (gitignored)
 - `.env.example` - Environment variable template
 
 **Core Logic:**
-- `src/main.js` - Main application orchestrator
-- `src/webrtc/call-controller.js` - Call management facade
-- `src/webrtc/call-flow.js` - WebRTC connection flow
-- `src/room.js` - Room service for signaling
-- `src/firebase/auth.js` - Authentication
-- `src/firebase/watch-sync.js` - Watch-together synchronization
+- `src/room.js` (339 lines) - Room service singleton
+- `src/webrtc/call-flow.js` (363 lines) - Call establishment flow
+- `src/firebase/watch-sync.js` (398 lines) - Watch-together synchronization
+- `src/firebase/messaging.js` (265 lines) - Contact messaging (NEW)
+- `src/firebase/auth.js` (407 lines) - Authentication
 
 **Testing:**
-- `tests/setup.js` - Vitest setup
-- `tests/unit/*.test.js` - Unit tests
-- `tests/e2e/*.spec.js` - E2E tests
-- `src/**/*.test.js` - Co-located component tests
+- `tests/unit/` - Unit tests co-located with logic
+- `tests/e2e/smoke.spec.js` - E2E smoke tests
+- `src/**/tests/` - Co-located test files (e.g., `src/webrtc/tests/ice.test.js`)
 
 **Documentation:**
 - `README.md` - User-facing documentation
-- `CLAUDE.md` - Developer guidance for Claude Code
-- `PWA-TESTING-GUIDE.md` - PWA update testing strategies
-- `ANIMATION-GUIDE.md` - Animation pattern documentation
+- `CLAUDE.md` - Developer instructions for Claude Code
+- `.planning/codebase/` - Codebase documentation (this directory)
+- `.claude/REFACTORING-STATUS.md` - Ongoing refactoring status
 
 ## Naming Conventions
 
 **Files:**
-- kebab-case for multi-word files: `call-controller.js`, `media-controls.js`, `watch-sync.js`
-- PascalCase for class-like components: `AuthComponent.js`
-- *.test.js for Vitest tests: `call-controller.test.js`
-- *.spec.js for Playwright E2E: `smoke.spec.js`
-- index.js for barrel exports (rare in this codebase)
+- kebab-case for all files: `call-controller.js`, `media-controls.js`, `watch-sync.js`
+- Test files: `*.test.js` suffix (Vitest), `*.spec.js` suffix (Playwright E2E only)
+- Draft files: `*.draft.js` or `OLD_*.js` prefix (should be cleaned up)
 
 **Directories:**
-- kebab-case for all directories: `webrtc/`, `media-controls/`, `recent-calls/`
+- kebab-case for all directories: `webrtc/`, `firebase/`, `media/`, `components/`
 - Plural for collections: `components/`, `utils/`, `tests/`
 
 **Special Patterns:**
-- Co-located tests: `icon-button.test.js` alongside `icon-button.js`
-- State modules: `state.js` for module-level state management
-- Cleanup functions: Returned from initialization functions
+- `index.html` - Main HTML entry
+- `main.js` - Primary JavaScript entry
+- `*.test.js` - Vitest tests (co-located or in tests/ directory)
+- `*.spec.js` - Playwright E2E tests (tests/e2e/ only)
 
 ## Where to Add New Code
 
 **New WebRTC Feature:**
 - Primary code: `src/webrtc/`
-- Tests: `tests/unit/` or co-located in `src/webrtc/tests/`
-- Integration: Update `src/webrtc/call-controller.js` facade
+- Tests: `src/webrtc/tests/` or `tests/unit/`
+- Config: `src/webrtc/webrtc.js` (if configuration needed)
+
+**New Firebase Service:**
+- Implementation: `src/firebase/{service-name}.js`
+- RTDB utilities: `src/storage/fb-rtdb/`
+- Tests: `tests/unit/` or `tests/integration/`
 
 **New UI Component:**
-- Implementation: `src/components/{feature}/`
-- Styles: `src/styles/components/{feature}.css`
-- Tests: Co-located `*.test.js` or `tests/unit/`
-- Integration: Initialize in `src/main.js`
+- Implementation: `src/components/{category}/{component-name}.js`
+- Styles: `src/styles/components/{component-name}.css`
+- Tests: `src/components/{category}/tests/` or co-located `*.test.js`
 
 **New Media Feature:**
-- Implementation: `src/media/{feature}/`
-- Tests: Co-located `*.test.js`
-- Controls: Update `src/media/media-controls.js`
-- State: Manage in `src/media/state.js`
+- Implementation: `src/media/{feature-name}.js`
+- Tests: `src/media/tests/` or `tests/unit/`
 
-**New Firebase Integration:**
-- Implementation: `src/firebase/{feature}.js`
-- Storage: Use `src/storage/fb-rtdb/rtdb.js` for RTDB operations
-- Cleanup: Register listeners with scoped cleanup
-- Tests: `tests/unit/firebase-*.test.js`
-
-**New Utility:**
-- Shared helpers: `src/utils/{category}/`
-- UI utilities: `src/utils/ui/`
-- DOM utilities: `src/utils/dom/`
-- Type definitions: TypeScript not used (vanilla JS only)
-
-**New Test:**
-- Unit: `tests/unit/{feature}.test.js`
-- Integration: `tests/integration/{feature}.test.js`
-- Smoke: `tests/smoke/{feature}-smoke.test.js`
-- E2E: `tests/e2e/{flow}.spec.js`
+**Utilities:**
+- Shared helpers: `src/utils/{category}/{helper-name}.js`
+- Tests: `src/utils/{category}/tests/`
 
 ## Special Directories
 
 **src/temp/**
-- Purpose: Draft and experimental code
-- Source: Developer experiments and refactoring drafts
-- Committed: Yes (11 files currently, should be archived)
+- Purpose: Temporary/draft files, integration examples
+- Source: Created during development, not cleaned up
+- Committed: Yes (should be archived or removed)
+- **Concern:** Bloats source tree with 10+ draft files
 
-**public/**
-- Purpose: Static assets served directly
-- Source: Images, icons, manifest
+**src/components/self-contained-drafts/**
+- Purpose: Draft self-contained components
+- Source: Experimental component development
+- Committed: Yes (should be cleaned up)
+
+**src/utils/dom/wip-interop/**
+- Purpose: Work-in-progress React interop experiments
+- Source: Experimental framework interop
+- Committed: Yes (should be archived if not actively used)
+
+**tests/investigation/**
+- Purpose: Bug investigation tests
+- Source: Created during debugging (e.g., camera-switch-freeze.test.js)
+- Committed: Yes (useful for reproducing issues)
+
+**.planning/**
+- Purpose: GSD (Get Shit Done) project planning documents
+- Source: Generated by Claude Code GSD workflow
 - Committed: Yes
+- Structure:
+  - `PROJECT.md` - Project overview
+  - `ROADMAP.md` - Phase roadmap
+  - `STATE.md` - Current project state
+  - `phases/` - Phase plans
+  - `codebase/` - Codebase documentation (this directory)
 
-**dist/**
-- Purpose: Build output
-- Source: Generated by Vite build
-- Committed: No (.gitignore)
-
-**node_modules/**
-- Purpose: npm dependencies
-- Source: Installed via pnpm
-- Committed: No (.gitignore)
+**.claude/**
+- Purpose: Manual refactoring notes
+- Source: Created during vanilla Claude sessions
+- Committed: Yes
+- Files: `REFACTORING-STATUS.md` - Messaging refactoring progress
 
 ---
 
-*Structure analysis: 2025-12-26*
+*Structure analysis: 2026-01-08*
 *Update when directory structure changes*
