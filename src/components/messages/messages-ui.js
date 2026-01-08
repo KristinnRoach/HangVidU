@@ -48,11 +48,12 @@ function isOnScreen(el) {
 
 /**
  * Creates the messages UI component with chat functionality
- * @param {Function} sendFn - Function to call when sending a message
+ * Designed to be a singleton - one instance that displays the active session
  * @returns {Object} API with methods to control messages UI
  */
-export function initMessagesUI(sendFn) {
+export function initMessagesUI() {
   let repositionHandlersAttached = false;
+  let currentSession = null; // Track the currently displayed session
 
   const topRightMenu =
     document.querySelector('.top-bar .top-right-menu') ||
