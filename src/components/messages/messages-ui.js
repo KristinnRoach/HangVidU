@@ -1,6 +1,6 @@
 import { onClickOutside } from '../../utils/ui/clickOutside.js';
 import { hideElement, isHidden, showElement } from '../../utils/ui/ui-utils.js';
-import { getActiveMessageSession } from '../../firebase/messaging.js';
+import { messagingController } from '../../messaging/messaging-controller.js';
 import { createMessageToggle } from './message-toggle.js';
 
 // Helper: create the messages box DOM and return container + element refs
@@ -151,7 +151,8 @@ export function initMessagesUI(sendFn) {
         if (!messagesBox.classList.contains('hidden')) {
           messageToggle.clearBadge();
           // Clear per-contact badge if there's an active session
-          const activeSession = getActiveMessageSession();
+          const activeSessions = messagingController.getAllSessions();
+          const activeSession = activeSessions[0]; // Only one session at a time
           if (activeSession?.toggle) {
             activeSession.toggle.clearBadge();
           }

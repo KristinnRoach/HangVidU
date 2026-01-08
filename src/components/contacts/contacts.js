@@ -7,10 +7,6 @@ import {
   remove,
   onValue,
   off,
-  onChildAdded,
-  query,
-  orderByChild,
-  equalTo,
 } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId } from '../../firebase/auth.js';
@@ -18,13 +14,7 @@ import { joinOrCreateRoomWithId, listenForIncomingOnRoom } from '../../main.js';
 import { hideCallingUI, showCallingUI } from '../calling/calling-ui.js';
 import confirmDialog from '../base/confirm-dialog.js';
 import { hideElement, showElement } from '../../utils/ui/ui-utils.js';
-import {
-  sendMessageToRTDB,
-  listenToContactMessages,
-  getUnreadCount,
-  markMessagesAsRead,
-  activeMessageSessions,
-} from '../../firebase/messaging.js';
+import { messagingController } from '../../messaging/messaging-controller.js';
 import { initMessagesUI } from '../messages/messages-ui.js';
 import { createMessageToggle } from '../messages/message-toggle.js';
 
@@ -304,34 +294,33 @@ export function openContactMessages(contactId, contactName) {
   }
 
   // Check if already have an active session for this contact
-  if (activeMessageSessions.has(contactId)) {
-    const session = activeMessageSessions.get(contactId);
-    session.messagesUI.toggleMessages(); // Just toggle visibility
+  const existingSession = messagingController.getSession(contactId);
+  if (existingSession && existingSession.messagesUI) {
+    existingSession.messagesUI.toggleMessages(); // Just toggle visibility
     return;
   }
 
   // Close any existing contact message session (only one at a time)
-  activeMessageSessions.forEach((session, sessionContactId) => {
-    console.log(
-      `[MESSAGING] Closing previous session with ${session.contactName}`
-    );
-    session.unsubscribe(); // Stop listening to messages
-    session.messagesUI.cleanup(); // Remove UI elements
-    activeMessageSessions.delete(sessionContactId);
+  const allSessions = messagingController.getAllSessions();
+  allSessions.forEach((session) => {
+    if (session.messagesUI) {
+      console.log(
+        `[MESSAGING] Closing previous session with contact ${session.contactId}`
+      );
+      session.messagesUI.cleanup(); // Remove UI elements
+    }
+    session.close(); // Close the messaging session
   });
 
-  // Create send function that writes to RTDB
-  const sendFn = (text) => {
-    sendMessageToRTDB(contactId, text);
-  };
+  // Declare session variable for use in callbacks
+  let session = null;
 
-  // Initialize messages UI (reuses existing component)
-  const messagesUI = initMessagesUI(sendFn);
+  // Initialize messages UI first (wraps session.send in arrow function for deferred execution)
+  const messagesUI = initMessagesUI((text) => session?.send(text));
 
-  // Start listening for messages with this contact (both sent and received)
-  const unsubscribe = listenToContactMessages(
-    contactId,
-    (text, _msgData, isSentByMe) => {
+  // Open messaging session (onMessage can now safely reference messagesUI)
+  session = messagingController.openSession(contactId, {
+    onMessage: (text, _msgData, isSentByMe) => {
       // Display message in UI with correct prefix
       if (isSentByMe) {
         messagesUI.appendChatMessage(`You: ${text}`);
@@ -339,24 +328,19 @@ export function openContactMessages(contactId, contactName) {
         messagesUI.receiveMessage(text);
       }
     },
-    () => messagesUI.isMessagesUIOpen() // Only mark as read when UI is actually open
-  );
-
-  // Store session for cleanup (including toggle reference for badge clearing)
-  activeMessageSessions.set(contactId, {
-    messagesUI,
-    unsubscribe,
-    contactId,
-    contactName,
-    toggle: contactMessageToggles.get(contactId),
   });
+
+  // Store UI reference on session for convenience
+  session.messagesUI = messagesUI;
+  session.contactName = contactName;
+  session.toggle = contactMessageToggles.get(contactId);
 
   // Show and open the messages UI
   messagesUI.showMessagesToggle();
   messagesUI.toggleMessages();
 
-  // Mark all unread messages as read in RTDB
-  markMessagesAsRead(contactId).catch((err) => {
+  // Mark all unread messages as read
+  session.markAsRead().catch((err) => {
     console.warn('Failed to mark messages as read:', err);
   });
 
@@ -470,7 +454,7 @@ async function replaceContactButtonsWithToggles(container, contactIds) {
     // Get initial unread count (with error handling)
     let initialCount = 0;
     try {
-      initialCount = await getUnreadCount(contactId);
+      initialCount = await messagingController.getUnreadCount(contactId);
     } catch (err) {
       console.warn(`[CONTACTS] Failed to get unread count for ${contactId}:`, err);
     }
@@ -497,24 +481,13 @@ async function replaceContactButtonsWithToggles(container, contactIds) {
     // Force badge to correct value immediately (defensive refresh)
     toggle.setUnreadCount(initialCount);
 
-    // Set up real-time listener for this contact
-    const conversationId = [myUserId, contactId].sort().join('_');
-    const messagesRef = ref(rtdb, `conversations/${conversationId}/messages`);
-
-    const callback = async (snapshot) => {
-      const msg = snapshot.val();
-      if (!msg) return;
-
-      // Only update badge for unread messages from the contact (not from me)
-      if (msg.from === contactId && !msg.read) {
-        // Refresh the unread count
-        const count = await getUnreadCount(contactId);
+    // Set up real-time listener for badge updates via messaging controller
+    const unsubscribe = messagingController.listenToUnreadCount(
+      contactId,
+      (count) => {
         toggle.setUnreadCount(count);
       }
-    };
-
-    // Start listening and store unsubscribe function
-    const unsubscribe = onChildAdded(messagesRef, callback);
+    );
 
     // Track unsubscribe function for cleanup
     messageBadgeListeners.set(contactId, unsubscribe);

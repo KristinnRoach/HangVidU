@@ -180,6 +180,48 @@ export class RTDBMessagingTransport extends MessagingTransport {
   }
 
   /**
+   * Listen for unread count changes from a contact
+   * Useful for badge updates without opening a full session
+   * @param {string} contactId - Contact's user ID
+   * @param {Function} onCountChange - Callback(count) called when unread count changes
+   * @returns {Function} Unsubscribe function to stop listening
+   */
+  listenToUnreadCount(contactId, onCountChange) {
+    const myUserId = getLoggedInUserId();
+    if (!myUserId) {
+      console.warn('[RTDBTransport] Cannot listen to unread count: not logged in');
+      return () => {}; // Return no-op unsubscribe
+    }
+
+    const conversationId = this._getConversationId(myUserId, contactId);
+    const messagesRef = ref(rtdb, `conversations/${conversationId}/messages`);
+
+    // Listen for new messages and update count when unread messages arrive
+    const callback = async (snapshot) => {
+      const msg = snapshot.val();
+      if (!msg) return;
+
+      // Only update count for unread messages from the contact (not from me)
+      if (msg.from === contactId && !msg.read) {
+        try {
+          const count = await this.getUnreadCount(contactId);
+          onCountChange(count);
+        } catch (err) {
+          console.warn('[RTDBTransport] Failed to get unread count:', err);
+        }
+      }
+    };
+
+    // Start listening
+    onChildAdded(messagesRef, callback);
+
+    // Return cleanup function
+    return () => {
+      off(messagesRef, 'child_added', callback);
+    };
+  }
+
+  /**
    * Remove oldest messages if conversation exceeds MAX_MESSAGES_PER_CONVERSATION
    * Runs async without blocking send operation
    * @param {string} conversationId - Conversation ID

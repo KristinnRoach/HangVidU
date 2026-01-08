@@ -191,6 +191,23 @@ export class MessagingController {
     }
     return this.transport.getUnreadCount(contactId);
   }
+
+  /**
+   * Listen for unread count changes from a contact
+   * Useful for badge updates without opening a full messaging session
+   * @param {string} contactId - Contact's user ID
+   * @param {Function} onCountChange - Callback(count) called when unread count changes
+   * @returns {Function} Unsubscribe function to stop listening
+   */
+  listenToUnreadCount(contactId, onCountChange) {
+    if (!contactId || typeof contactId !== 'string') {
+      throw new Error('contactId must be a non-empty string');
+    }
+    if (typeof onCountChange !== 'function') {
+      throw new Error('onCountChange must be a function');
+    }
+    return this.transport.listenToUnreadCount(contactId, onCountChange);
+  }
 }
 
 /**

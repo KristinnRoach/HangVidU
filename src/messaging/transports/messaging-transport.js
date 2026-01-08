@@ -52,4 +52,15 @@ export class MessagingTransport {
   async markAsRead(contactId) {
     throw new Error('MessagingTransport.markAsRead() must be implemented by subclass');
   }
+
+  /**
+   * Listen for unread count changes from a contact
+   * @param {string} contactId - Contact's user ID
+   * @param {Function} onCountChange - Callback(count) called when unread count changes
+   * @returns {Function} Unsubscribe function to stop listening
+   * @abstract
+   */
+  listenToUnreadCount(contactId, onCountChange) {
+    throw new Error('MessagingTransport.listenToUnreadCount() must be implemented by subclass');
+  }
 }
