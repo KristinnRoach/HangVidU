@@ -175,7 +175,7 @@ export function initializeMediaControls({
       if (!remoteVideo) return;
 
       try {
-        if (document.pictureInPictureElement) {
+        if (document.pictureInPictureElement === remoteVideo) {
           await document.exitPictureInPicture();
         } else if (remoteVideo.requestPictureInPicture) {
           await remoteVideo.requestPictureInPicture();
