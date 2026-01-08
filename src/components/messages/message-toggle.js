@@ -56,6 +56,18 @@ export function createMessageToggle({
     autoAppend: false,
   });
 
+  // Prefer assigning attributes via DOM APIs rather than interpolating into template
+  if (id && toggleContainer && typeof id === 'string') {
+    try {
+      toggleContainer.id = id;
+    } catch (e) {
+      console.warn(
+        'createMessageToggle: failed to set id on toggleContainer',
+        e
+      );
+    }
+  }
+
   // Control badge visibility and animation based on unreadCount
   let initialBadge = toggleContainer.querySelector('.notification-badge');
   if (initialBadge) {
@@ -93,24 +105,39 @@ export function createMessageToggle({
      * @param {number} count - New unread count
      */
     setUnreadCount(count) {
-      toggleContainer.unreadCount = count;
+      let n = Number(count);
+      if (!Number.isFinite(n) || n < 0) n = 0;
+      toggleContainer.unreadCount = n;
     },
 
     /**
      * Clear the badge (set count to 0)
      */
     clearBadge() {
-      toggleContainer.unreadCount = 0;
+      // Route through setUnreadCount to ensure normalization
+      this.setUnreadCount(0);
     },
 
     /**
      * Cleanup: remove from DOM and dispose component
      */
     cleanup() {
-      if (toggleContainer && toggleContainer.parentNode) {
-        toggleContainer.parentNode.removeChild(toggleContainer);
+      // Dispose first so any onCleanup handlers run while the element
+      // still exists, then ensure it's removed from the DOM.
+      if (toggleContainer && typeof toggleContainer.dispose === 'function') {
+        try {
+          toggleContainer.dispose();
+        } catch (e) {
+          console.warn('createMessageToggle: error during dispose()', e);
+        }
       }
-      toggleContainer.dispose();
+      if (toggleContainer && toggleContainer.parentNode) {
+        try {
+          toggleContainer.parentNode.removeChild(toggleContainer);
+        } catch (e) {
+          /* ignored */
+        }
+      }
     },
   };
 }

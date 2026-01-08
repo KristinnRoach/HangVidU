@@ -97,7 +97,17 @@ const captureInputState = (element) => {
   );
 };
 
-const escapeCSSSelector = (str) => str.replace(/["'\\]/g, '\\$&');
+// Use the native `CSS.escape` when available, otherwise fall back to a
+// small escape function suitable for building ID/class selectors.
+const cssEscape = (str) => {
+  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+    return CSS.escape(String(str));
+  }
+  // Fallback for environments without `CSS.escape`:
+  // escape characters that are unsafe in CSS identifiers by
+  // prefixing them with a backslash.
+  return String(str).replace(/[^_a-zA-Z0-9-]/g, (ch) => '\\' + ch);
+};
 
 /**
  * Restore input state.
@@ -106,12 +116,25 @@ const restoreInputState = (element, states) => {
   states.forEach((state) => {
     let el = null;
     if (state.name) {
-      const safeName = escapeCSSSelector(state.name);
-      el = element.querySelector(
-        `input[name="${safeName}"], textarea[name="${safeName}"], select[name="${safeName}"]`
+      // Safer lookup for name attributes: query all named controls and match
+      // the `name` attribute value directly to avoid building fragile
+      // attribute selectors. This avoids ambiguity and escaping pitfalls.
+      const candidates = element.querySelectorAll(
+        'input[name], textarea[name], select[name]'
       );
+      for (const node of candidates) {
+        if (node.getAttribute('name') === state.name) {
+          el = node;
+          break;
+        }
+      }
     } else if (state.id) {
-      el = element.querySelector(`#${state.id}`);
+      // Use cssEscape for ID selectors to avoid querySelector errors.
+      try {
+        el = element.querySelector('#' + cssEscape(state.id));
+      } catch (e) {
+        el = element.querySelector(`#${state.id}`);
+      }
     } else if (state.path) {
       el = getElementByPath(element, state.path);
     }
