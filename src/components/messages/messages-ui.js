@@ -64,6 +64,7 @@ export function initMessagesUI() {
     icon: '💬',
     initialUnreadCount: 0,
     id: 'main-messages-toggle-btn', // ID needed for CSS anchor positioning
+    startHidden: true,
   });
 
   if (!messageToggle) {

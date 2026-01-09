@@ -19,6 +19,7 @@ export function createMessageToggle({
   icon = '💬',
   initialUnreadCount = 0,
   id = null,
+  startHidden = false,
 } = {}) {
   if (!parent) {
     console.error('createMessageToggle: parent element is required');
@@ -35,8 +36,9 @@ export function createMessageToggle({
     initialProps: {
       unreadCount: initialUnreadCount,
     },
+    // HENDA: <div class="messages-toggle-btn"${id ? ` id="${id}"` : ''}>
     template: `
-      <div class="messages-toggle-btn"${id ? ` id="${id}"` : ''}>
+      <div class="messages-toggle-btn">
         <button onclick="handleToggle">
           ${icon}
           <span class="notification-badge">

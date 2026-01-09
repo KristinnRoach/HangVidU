@@ -36,6 +36,9 @@ const createComponent = ({
   template = '',
   handlers = {},
   parent = null,
+  // TODO: autoWrap??,
+  // !? Get rid of automatic wrapper if not requested to avoid unexpected extra containers + className applies to wrapper!!?
+  // !? Deferred to when able to check ALL usage of createComponent (also blood pressure app?). After that, move to self contained repo I can publish and import anywhere.
   containerTag = 'div',
   className = '',
   onMount = null,
