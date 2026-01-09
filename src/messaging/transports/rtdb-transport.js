@@ -7,6 +7,7 @@ import {
   push,
   set,
   update,
+  get,
   onChildAdded,
   onChildChanged,
   off,
@@ -81,6 +82,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
   /**
    * Listen to messages with a specific contact (both sent and received)
    * Fetches existing messages AND listens for new ones
+   * Optimized: Single bulk read for history + listener for new messages
    * @param {string} contactId - Contact's user ID
    * @param {Function} onMessage - Callback(text, messageData, isSentByMe) for each message
    * @returns {Function} Unsubscribe function to stop listening
@@ -95,19 +97,45 @@ export class RTDBMessagingTransport extends MessagingTransport {
     const conversationId = this._getConversationId(myUserId, contactId);
     const conversationRef = ref(rtdb, `conversations/${conversationId}/messages`);
 
-    // Handle all messages in the conversation
+    // Track seen message IDs to prevent duplicates from race condition
+    const seenMessageIds = new Set();
+
+    // Set up listener for new messages FIRST (before fetching history)
     const messageCallback = (snapshot) => {
+      const msgId = snapshot.key;
       const msg = snapshot.val();
-      if (!msg) return;
+      if (!msg || seenMessageIds.has(msgId)) return;
 
+      seenMessageIds.add(msgId);
       const isSentByMe = msg.from === myUserId;
-
-      // Trigger callback with message data
       onMessage(msg.text, msg, isSentByMe);
     };
 
-    // Start listening to conversation
     onChildAdded(conversationRef, messageCallback);
+
+    // Fetch existing messages with single read (async, non-blocking)
+    get(conversationRef)
+      .then((snapshot) => {
+        if (!snapshot.exists()) return;
+
+        const messages = snapshot.val();
+        // Sort by timestamp to display in chronological order
+        const sortedMessages = Object.entries(messages).sort(
+          (a, b) => (a[1].sentAt || 0) - (b[1].sentAt || 0)
+        );
+
+        // Process each existing message
+        sortedMessages.forEach(([msgId, msg]) => {
+          if (seenMessageIds.has(msgId)) return; // Skip if already processed by listener
+
+          seenMessageIds.add(msgId);
+          const isSentByMe = msg.from === myUserId;
+          onMessage(msg.text, msg, isSentByMe);
+        });
+      })
+      .catch((err) => {
+        console.warn('[RTDBTransport] Failed to load message history:', err);
+      });
 
     // Return cleanup function
     return () => {
@@ -145,6 +173,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
 
   /**
    * Mark all unread messages from a contact as read
+   * Optimized: Single multi-path update instead of N separate writes
    * @param {string} contactId - Contact's user ID
    * @returns {Promise<void>}
    */
@@ -154,27 +183,25 @@ export class RTDBMessagingTransport extends MessagingTransport {
 
     const conversationId = this._getConversationId(myUserId, contactId);
     const conversationRef = ref(rtdb, `conversations/${conversationId}/messages`);
-    const { get } = await import('firebase/database');
 
     try {
       const snapshot = await get(conversationRef);
       if (!snapshot.exists()) return;
 
       const messages = snapshot.val();
-      const updatePromises = [];
+      const updates = {};
 
-      // Mark all unread messages from the contact as read
+      // Build multi-path update object for all unread messages
       Object.entries(messages).forEach(([msgId, msg]) => {
         if (!msg.read && msg.from === contactId) {
-          const msgRef = ref(
-            rtdb,
-            `conversations/${conversationId}/messages/${msgId}`
-          );
-          updatePromises.push(update(msgRef, { read: true }));
+          updates[`conversations/${conversationId}/messages/${msgId}/read`] = true;
         }
       });
 
-      await Promise.all(updatePromises);
+      // Single atomic update for all messages (1 write instead of N)
+      if (Object.keys(updates).length > 0) {
+        await update(ref(rtdb), updates);
+      }
     } catch (err) {
       console.warn('[RTDBTransport] Failed to mark messages as read:', err);
     }
@@ -243,12 +270,12 @@ export class RTDBMessagingTransport extends MessagingTransport {
   /**
    * Remove oldest messages if conversation exceeds MAX_MESSAGES_PER_CONVERSATION
    * Runs async without blocking send operation
+   * Optimized: Single multi-path update instead of N separate deletes
    * @param {string} conversationId - Conversation ID
    * @returns {Promise<void>}
    * @private
    */
   async _cleanupOldMessages(conversationId) {
-    const { get, remove } = await import('firebase/database');
     const messagesRef = ref(rtdb, `conversations/${conversationId}/messages`);
 
     const snapshot = await get(messagesRef);
@@ -265,12 +292,15 @@ export class RTDBMessagingTransport extends MessagingTransport {
       (a, b) => (a[1].sentAt || 0) - (b[1].sentAt || 0)
     );
 
+    // Build multi-path update object with null values (null = delete in Firebase)
+    const updates = {};
     for (let i = 0; i < toDelete; i++) {
       const [msgId] = sortedMessages[i];
-      await remove(
-        ref(rtdb, `conversations/${conversationId}/messages/${msgId}`)
-      );
+      updates[`conversations/${conversationId}/messages/${msgId}`] = null;
     }
+
+    // Single atomic update to delete all old messages (1 write instead of N)
+    await update(ref(rtdb), updates);
 
     console.log(
       `[RTDBTransport] Cleaned up ${toDelete} old messages from conversation ${conversationId}`
