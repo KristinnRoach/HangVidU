@@ -1,13 +1,6 @@
 // contacts.js - Simple contacts management
 
-import {
-  ref,
-  set,
-  get,
-  remove,
-  onValue,
-  off,
-} from 'firebase/database';
+import { ref, set, get, remove, onValue, off } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId } from '../../firebase/auth.js';
 import { joinOrCreateRoomWithId, listenForIncomingOnRoom } from '../../main.js';
@@ -184,13 +177,7 @@ export async function renderContactsList(lobbyElement) {
           const contact = contacts[id];
           return `
             <div class="contact-entry">
-            <div class="contact-msg-toggle-container">
-              <span
-                class="contact-message-btn-placeholder"
-                data-contact-id="${id}"
-                data-contact-name="${contact.contactName}"
-              ></span>
-            </div>
+              <div class="contact-msg-toggle-container" data-contact-id="${id}"></div>
               <span
                 class="contact-name"
                 data-room-id="${contact.roomId}"
@@ -222,8 +209,8 @@ export async function renderContactsList(lobbyElement) {
   // Setup presence indicators for each contact
   setupPresenceIndicators(contactIds);
 
-  // Replace placeholder spans with message toggle components
-  await replaceContactButtonsWithToggles(contactsContainer, contactIds);
+  // Create message toggles directly (no placeholders needed)
+  await createContactMessageToggles(contactsContainer, contactIds, contacts);
 }
 
 /**
@@ -393,17 +380,28 @@ let toggleReplacementInProgress = false;
 let toggleReplacementTimeout = null;
 
 /**
- * Replace placeholder spans with message toggle components.
+ * Create message toggle components for contacts.
  * Creates toggle for each contact with unread badge support.
  */
-async function replaceContactButtonsWithToggles(container, contactIds) {
+async function createContactMessageToggles(container, contactIds, contacts) {
   if (!getLoggedInUserId()) return; // Only for logged-in users
 
-  // Prevent overlapping calls (defensive guard)
+  // Wait if another replacement is in progress (with timeout)
+  const maxWait = 10; // 10 attempts x 100ms = 1 second max wait
+  let attempts = 0;
+  while (toggleReplacementInProgress && attempts < maxWait) {
+    console.log('[CONTACTS] Toggle replacement in progress, waiting...');
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    attempts++;
+  }
+
   if (toggleReplacementInProgress) {
-    console.warn('[CONTACTS] Toggle replacement already in progress, skipping');
+    console.warn(
+      '[CONTACTS] Toggle replacement still in progress after waiting, skipping'
+    );
     return;
   }
+
   toggleReplacementInProgress = true;
 
   // Safety timeout: force reset flag after 5 seconds to prevent permanent lock
@@ -422,72 +420,70 @@ async function replaceContactButtonsWithToggles(container, contactIds) {
     });
     contactMessageToggles.clear();
 
-  // Clean up old badge listeners
-  messageBadgeListeners.forEach((unsubscribe) => {
-    unsubscribe();
-  });
-  messageBadgeListeners.clear();
-
-  const myUserId = getLoggedInUserId();
-
-  for (const contactId of contactIds) {
-    const placeholder = container.querySelector(
-      `.contact-message-btn-placeholder[data-contact-id="${contactId}"]`
-    );
-    if (!placeholder) {
-      console.warn(`[CONTACTS] No placeholder found for contact ${contactId}`);
-      continue;
-    }
-
-    const contactName = placeholder.getAttribute('data-contact-name');
-    const parent = placeholder.parentElement; // Store parent before removing placeholder
-
-    if (!parent) {
-      console.error(`[CONTACTS] No parent element for contact ${contactId}`);
-      continue;
-    }
-
-    // Get initial unread count (with error handling)
-    let initialCount = 0;
-    try {
-      initialCount = await messagingController.getUnreadCount(contactId);
-    } catch (err) {
-      console.warn(`[CONTACTS] Failed to get unread count for ${contactId}:`, err);
-    }
-
-    // Remove placeholder before creating toggle
-    placeholder.remove();
-
-    // Create toggle component
-    const toggle = createMessageToggle({
-      parent: parent,
-      onToggle: () => openContactMessages(contactId, contactName),
-      icon: '💬',
-      initialUnreadCount: initialCount,
+    // Clean up old badge listeners
+    messageBadgeListeners.forEach((unsubscribe) => {
+      unsubscribe();
     });
+    messageBadgeListeners.clear();
 
-    if (!toggle) {
-      console.error(`[CONTACTS] Failed to create toggle for contact ${contactId}`);
-      continue;
-    }
+    const myUserId = getLoggedInUserId();
 
-    // Store toggle reference
-    contactMessageToggles.set(contactId, toggle);
+    for (const contactId of contactIds) {
+      const contact = contacts[contactId];
+      const toggleContainer = container.querySelector(
+        `.contact-msg-toggle-container[data-contact-id="${contactId}"]`
+      );
 
-    // Force badge to correct value immediately (defensive refresh)
-    toggle.setUnreadCount(initialCount);
-
-    // Set up real-time listener for badge updates via messaging controller
-    const unsubscribe = messagingController.listenToUnreadCount(
-      contactId,
-      (count) => {
-        toggle.setUnreadCount(count);
+      if (!toggleContainer) {
+        console.warn(
+          `[CONTACTS] No toggle container found for contact ${contactId}`
+        );
+        continue;
       }
-    );
 
-    // Track unsubscribe function for cleanup
-    messageBadgeListeners.set(contactId, unsubscribe);
-  }
+      // Get initial unread count (with error handling)
+      let initialCount = 0;
+      try {
+        initialCount = await messagingController.getUnreadCount(contactId);
+      } catch (err) {
+        console.warn(
+          `[CONTACTS] Failed to get unread count for ${contactId}:`,
+          err
+        );
+      }
+
+      // Create toggle component directly in the container
+      const toggle = createMessageToggle({
+        parent: toggleContainer,
+        onToggle: () => openContactMessages(contactId, contact.contactName),
+        icon: '💬',
+        initialUnreadCount: initialCount,
+      });
+
+      if (!toggle) {
+        console.error(
+          `[CONTACTS] Failed to create toggle for contact ${contactId}`
+        );
+        continue;
+      }
+
+      // Store toggle reference
+      contactMessageToggles.set(contactId, toggle);
+
+      // Force badge to correct value immediately (defensive refresh)
+      toggle.setUnreadCount(initialCount);
+
+      // Set up real-time listener for badge updates via messaging controller
+      const unsubscribe = messagingController.listenToUnreadCount(
+        contactId,
+        (count) => {
+          toggle.setUnreadCount(count);
+        }
+      );
+
+      // Track unsubscribe function for cleanup
+      messageBadgeListeners.set(contactId, unsubscribe);
+    }
   } finally {
     // Clear timeout and reset flag
     if (toggleReplacementTimeout) {
