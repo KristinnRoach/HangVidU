@@ -16,6 +16,7 @@
     "deploy:fb": "pnpm build:hosting && firebase deploy --only hosting",
     "deploy:gh": "pnpm build && npx gh-pages -d dist",
     "deploy:all": "pnpm test:compat && pnpm deploy:fb && pnpm deploy:gh",
+    "deploy:skip-tests": "pnpm deploy:fb && pnpm deploy:gh",
     "preview": "vite preview",
     "preview:https": "PREVIEW_HTTPS=1 vite preview",
     "test:pwa": "pnpm build:hosting && pnpm preview:https",
