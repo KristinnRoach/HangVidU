@@ -164,7 +164,7 @@ export async function renderContactsList(lobbyElement) {
 
   // Render contact items
   contactsContainer.innerHTML = `
-    <h3>Saved Contacts</h3>
+    <h3>Contacts</h3>
     <div class="contacts-list">
       ${contactIds
         .map((id) => {
