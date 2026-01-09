@@ -113,9 +113,6 @@ export async function saveContact(contactUserId, roomId, lobbyElement) {
     }
     // CRITICAL FIX: Re-attach listener even if contact already exists
     // This ensures listener is active after call cleanup removed it
-    console.log(
-      `[CONTACT SAVE] Re-attaching listener for existing contact room: ${roomId}`
-    );
     listenForIncomingOnRoom(roomId);
     return;
   }
@@ -133,9 +130,6 @@ export async function saveContact(contactUserId, roomId, lobbyElement) {
   await saveContactData(contactUserId, contactName, roomId);
 
   // QUICK FIX: Immediately attach listener for incoming calls on this room
-  console.log(
-    `[CONTACT SAVE] Attaching listener for saved contact room: ${roomId}`
-  );
   listenForIncomingOnRoom(roomId);
 
   // Re-render contacts list
@@ -236,9 +230,6 @@ function attachContactListeners(container, lobbyElement) {
       const contactName = nameEl.getAttribute('data-contact-name');
       if (roomId) {
         // QUICK FIX: Ensure listener is active for this room before calling
-        console.log(
-          `[CONTACT CALL] Ensuring listener is active for room: ${roomId}`
-        );
         listenForIncomingOnRoom(roomId);
 
         // Show calling UI with contact name
@@ -293,10 +284,7 @@ export function openContactMessages(contactId, contactName) {
   // Close any existing contact message session (only one at a time)
   const allSessions = messagingController.getAllSessions();
   allSessions.forEach((session) => {
-    console.log(
-      `[MESSAGING] Closing previous session with contact ${session.contactId}`
-    );
-    session.close(); // Close the messaging session
+    session.close();
   });
 
   // Open messaging session
@@ -332,8 +320,6 @@ export function openContactMessages(contactId, contactName) {
   if (toggle) {
     toggle.clearBadge();
   }
-
-  console.log(`[MESSAGING] Opened messaging session with ${contactName}`);
 }
 
 /**
@@ -390,13 +376,12 @@ async function createContactMessageToggles(container, contactIds, contacts) {
   const maxWait = 10; // 10 attempts x 100ms = 1 second max wait
   let attempts = 0;
   while (toggleReplacementInProgress && attempts < maxWait) {
-    console.log('[CONTACTS] Toggle replacement in progress, waiting...');
     await new Promise((resolve) => setTimeout(resolve, 100));
     attempts++;
   }
 
   if (toggleReplacementInProgress) {
-    console.warn(
+    console.debug(
       '[CONTACTS] Toggle replacement still in progress after waiting, skipping'
     );
     return;
@@ -470,9 +455,6 @@ async function createContactMessageToggles(container, contactIds, contacts) {
       // Store toggle reference
       contactMessageToggles.set(contactId, toggle);
 
-      // Force badge to correct value immediately (defensive refresh)
-      toggle.setUnreadCount(initialCount);
-
       // Set up real-time listener for badge updates via messaging controller
       const unsubscribe = messagingController.listenToUnreadCount(
         contactId,
@@ -483,6 +465,17 @@ async function createContactMessageToggles(container, contactIds, contacts) {
 
       // Track unsubscribe function for cleanup
       messageBadgeListeners.set(contactId, unsubscribe);
+
+      // Refresh badge after listener is set up (in case count changed during setup)
+      try {
+        const currentCount = await messagingController.getUnreadCount(contactId);
+        toggle.setUnreadCount(currentCount);
+      } catch (err) {
+        console.warn(
+          `[CONTACTS] Failed to refresh unread count for ${contactId}:`,
+          err
+        );
+      }
     }
   } finally {
     // Clear timeout and reset flag
