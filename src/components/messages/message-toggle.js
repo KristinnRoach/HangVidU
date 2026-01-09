@@ -54,7 +54,7 @@ export function createMessageToggle({
         onToggle();
       },
     },
-    className: 'messages-toggle-container',
+    className: 'messages-toggle-container' + (startHidden ? ' hidden' : ''),
     autoAppend: false,
   });
 
