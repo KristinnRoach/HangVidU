@@ -294,7 +294,7 @@ export function initMessagesUI() {
    * @param {Object} session - Session object from messagingController
    */
   function setSession(session) {
-    if (currentSession !== session) {
+    if (currentSession !== null && currentSession !== session) {
       clearMessages();
     }
     currentSession = session;

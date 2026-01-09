@@ -54,7 +54,7 @@ export function createMessageToggle({
         onToggle();
       },
     },
-    className: 'messages-toggle-container',
+    className: 'messages-toggle-container' + (startHidden ? ' hidden' : ''),
     autoAppend: false,
   });
 
@@ -70,10 +70,10 @@ export function createMessageToggle({
     }
   }
 
-  // Control badge visibility and animation based on unreadCount
+  // Control badge visibility based on initial unreadCount
   let initialBadge = toggleContainer.querySelector('.notification-badge');
   if (initialBadge) {
-    initialBadge.style.display = 'none'; // Initially hidden
+    initialBadge.style.display = initialUnreadCount > 0 ? 'flex' : 'none';
   }
 
   toggleContainer.onPropUpdated('unreadCount', (count) => {

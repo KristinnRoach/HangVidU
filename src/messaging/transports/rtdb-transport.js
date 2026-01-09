@@ -8,6 +8,7 @@ import {
   set,
   update,
   onChildAdded,
+  onChildChanged,
   off,
   serverTimestamp,
 } from 'firebase/database';
@@ -196,28 +197,46 @@ export class RTDBMessagingTransport extends MessagingTransport {
     const conversationId = this._getConversationId(myUserId, contactId);
     const messagesRef = ref(rtdb, `conversations/${conversationId}/messages`);
 
-    // Listen for new messages and update count when unread messages arrive
-    const callback = async (snapshot) => {
-      const msg = snapshot.val();
-      if (!msg) return;
-
-      // Only update count for unread messages from the contact (not from me)
-      if (msg.from === contactId && !msg.read) {
-        try {
-          const count = await this.getUnreadCount(contactId);
-          onCountChange(count);
-        } catch (err) {
-          console.warn('[RTDBTransport] Failed to get unread count:', err);
-        }
+    // Shared callback for both new messages and status changes
+    const updateCount = async () => {
+      try {
+        const count = await this.getUnreadCount(contactId);
+        onCountChange(count);
+      } catch (err) {
+        console.warn('[RTDBTransport] Failed to get unread count:', err);
       }
     };
 
-    // Start listening
-    onChildAdded(messagesRef, callback);
+    // Listen for new messages from the contact
+    const onAddedCallback = async (snapshot) => {
+      const msg = snapshot.val();
+      if (!msg) return;
 
-    // Return cleanup function
+      // Update count when new unread message arrives from contact
+      if (msg.from === contactId && !msg.read) {
+        await updateCount();
+      }
+    };
+
+    // Listen for message status changes (e.g., read status)
+    const onChangedCallback = async (snapshot) => {
+      const msg = snapshot.val();
+      if (!msg) return;
+
+      // Update count when message from contact is marked as read
+      if (msg.from === contactId) {
+        await updateCount();
+      }
+    };
+
+    // Start listening for both new messages and changes
+    onChildAdded(messagesRef, onAddedCallback);
+    onChildChanged(messagesRef, onChangedCallback);
+
+    // Return cleanup function that removes both listeners
     return () => {
-      off(messagesRef, 'child_added', callback);
+      off(messagesRef, 'child_added', onAddedCallback);
+      off(messagesRef, 'child_changed', onChangedCallback);
     };
   }
 
