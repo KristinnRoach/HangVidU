@@ -1,10 +1,16 @@
 let activeCleanup = null;
 
+function sanitizeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 function confirmDialog(message, options = {}) {
   return new Promise((resolve) => {
     const dialog = document.createElement('dialog');
     dialog.innerHTML = `
-      <p>${message}</p>
+      <p>${sanitizeHTML(message)}</p>
       <div class="confirm-dialog-actions">
         <button data-action="cancel">Cancel</button>
         <button data-action="confirm" autofocus>Confirm</button>
