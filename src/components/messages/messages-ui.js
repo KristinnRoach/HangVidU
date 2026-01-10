@@ -240,7 +240,17 @@ export function initMessagesUI() {
       p.style.textAlign = 'left';
     }
     messagesMessages.appendChild(p);
-    messagesMessages.scrollTop = messagesMessages.scrollHeight;
+    // Keep newest message visible
+    scrollMessagesToEnd();
+  }
+
+  // Ensure the messages container is scrolled to the newest message
+  function scrollMessagesToEnd() {
+    if (!messagesMessages) return;
+    // Use rAF so scrolling happens after layout/positioning changes
+    requestAnimationFrame(() => {
+      messagesMessages.scrollTop = messagesMessages.scrollHeight;
+    });
   }
 
   function receiveMessage(text) {
@@ -289,17 +299,23 @@ export function initMessagesUI() {
   }
 
   /**
+      // When opening, ensure we show the latest messages
+      scrollMessagesToEnd();
    * Set the active session for this UI
    * Clears existing messages when switching to a new session
    * @param {Object} session - Session object from messagingController
    */
   function setSession(session) {
+    // After positioning settle, ensure scroll is at end
+    scrollMessagesToEnd();
     if (currentSession !== null && currentSession !== session) {
       clearMessages();
     }
     currentSession = session;
   }
 
+  // After layout adjustments, ensure newest message is visible
+  scrollMessagesToEnd();
   /**
    * Get the currently displayed session
    * @returns {Object|null} Current session or null
