@@ -164,7 +164,7 @@ export async function renderContactsList(lobbyElement) {
 
   // Render contact items
   contactsContainer.innerHTML = `
-    <h3>Saved Contacts</h3>
+    <h3>Contacts</h3>
     <div class="contacts-list">
       ${contactIds
         .map((id) => {
@@ -413,6 +413,7 @@ async function createContactMessageToggles(container, contactIds, contacts) {
 
     const myUserId = getLoggedInUserId();
 
+    // Phase 1: Create all toggles immediately (non-blocking)
     for (const contactId of contactIds) {
       const contact = contacts[contactId];
       const toggleContainer = container.querySelector(
@@ -426,23 +427,12 @@ async function createContactMessageToggles(container, contactIds, contacts) {
         continue;
       }
 
-      // Get initial unread count (with error handling)
-      let initialCount = 0;
-      try {
-        initialCount = await messagingController.getUnreadCount(contactId);
-      } catch (err) {
-        console.warn(
-          `[CONTACTS] Failed to get unread count for ${contactId}:`,
-          err
-        );
-      }
-
-      // Create toggle component directly in the container
+      // Create toggle with 0 count initially - will update asynchronously
       const toggle = createMessageToggle({
         parent: toggleContainer,
         onToggle: () => openContactMessages(contactId, contact.contactName),
         icon: '💬',
-        initialUnreadCount: initialCount,
+        initialUnreadCount: 0,
       });
 
       if (!toggle) {
@@ -465,18 +455,27 @@ async function createContactMessageToggles(container, contactIds, contacts) {
 
       // Track unsubscribe function for cleanup
       messageBadgeListeners.set(contactId, unsubscribe);
-
-      // Refresh badge after listener is set up (in case count changed during setup)
-      try {
-        const currentCount = await messagingController.getUnreadCount(contactId);
-        toggle.setUnreadCount(currentCount);
-      } catch (err) {
-        console.warn(
-          `[CONTACTS] Failed to refresh unread count for ${contactId}:`,
-          err
-        );
-      }
     }
+
+    // Phase 2: Fetch all unread counts in parallel (non-blocking)
+    Promise.all(
+      contactIds.map((contactId) =>
+        messagingController
+          .getUnreadCount(contactId)
+          .then((count) => {
+            const toggle = contactMessageToggles.get(contactId);
+            if (toggle) {
+              toggle.setUnreadCount(count);
+            }
+          })
+          .catch((err) =>
+            console.warn(
+              `[CONTACTS] Failed to get unread count for ${contactId}:`,
+              err
+            )
+          )
+      )
+    );
   } finally {
     // Clear timeout and reset flag
     if (toggleReplacementTimeout) {
