@@ -246,12 +246,13 @@ export function initMessagesUI() {
     scrollMessagesToEnd();
   }
 
-  // Ensure the messages container is scrolled to the newest message
+  let scrollRafId = null;
   function scrollMessagesToEnd() {
     if (!messagesMessages) return;
-    // Use rAF so scrolling happens after layout/positioning changes
-    requestAnimationFrame(() => {
+    if (scrollRafId !== null) cancelAnimationFrame(scrollRafId);
+    scrollRafId = requestAnimationFrame(() => {
       messagesMessages.scrollTop = messagesMessages.scrollHeight;
+      scrollRafId = null;
     });
   }
 
@@ -308,6 +309,7 @@ export function initMessagesUI() {
    */
   function clearMessages() {
     messagesMessages.innerHTML = '';
+    messagesMessages.scrollTop = 0;
   }
 
   /**
