@@ -182,8 +182,8 @@ export function initMessagesUI() {
     messagesBox.classList.toggle('hidden');
 
     if (isMessagesUIOpen()) {
+      // If we just opened:
       messagesInput.focus();
-
       // Fallback positioning if needed
       if (!supportsCssAnchors) {
         positionMessagesBox();
@@ -196,7 +196,9 @@ export function initMessagesUI() {
           }
         });
       }
+      scrollMessagesToEnd();
     } else {
+      // If we just closed:
       messagesInput.blur();
       detachRepositionHandlers();
       // Clear inline offsets
@@ -279,11 +281,21 @@ export function initMessagesUI() {
     }
   });
 
+  const isTextInputFocused = () => {
+    const activeElement = document.activeElement;
+    return (
+      activeElement &&
+      (activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.isContentEditable)
+    );
+  };
+
   // 'M' key shortcut to open messages
   const openMessagesKeyhandler = (event) => {
     if (event.key === 'm' || event.key === 'M') {
       // Only open if not already open and input is not focused
-      if (!isMessagesUIOpen() && !isMessageInputFocused()) {
+      if (!isMessagesUIOpen() && !isTextInputFocused()) {
         event.preventDefault(); // Prevent 'M' from being typed into the input
         toggleMessages();
       }
@@ -299,23 +311,17 @@ export function initMessagesUI() {
   }
 
   /**
-      // When opening, ensure we show the latest messages
-      scrollMessagesToEnd();
    * Set the active session for this UI
    * Clears existing messages when switching to a new session
    * @param {Object} session - Session object from messagingController
    */
   function setSession(session) {
-    // After positioning settle, ensure scroll is at end
-    scrollMessagesToEnd();
     if (currentSession !== null && currentSession !== session) {
       clearMessages();
     }
     currentSession = session;
   }
 
-  // After layout adjustments, ensure newest message is visible
-  scrollMessagesToEnd();
   /**
    * Get the currently displayed session
    * @returns {Object|null} Current session or null
