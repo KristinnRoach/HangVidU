@@ -287,6 +287,11 @@ export function openContactMessages(contactId, contactName) {
     session.close();
   });
 
+  // Clear messages UI and reset session BEFORE opening new session
+  // (otherwise onChildAdded fires synchronously and messages get cleared afterward)
+  messagesUI.clearMessages();
+  messagesUI.setSession(null); // Reset so setSession() below doesn't re-clear
+
   // Open messaging session
   const session = messagingController.openSession(contactId, {
     onMessage: (text, _msgData, isSentByMe) => {
@@ -303,7 +308,7 @@ export function openContactMessages(contactId, contactName) {
   session.contactName = contactName;
   session.toggle = contactMessageToggles.get(contactId);
 
-  // Set this session as the active one in the UI
+  // Set this session as the active one in the UI (won't clear since we just did)
   messagesUI.setSession(session);
 
   // Show and open the messages UI
