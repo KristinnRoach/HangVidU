@@ -1,4 +1,10 @@
-import { ref, set, onDisconnect, serverTimestamp, onValue } from 'firebase/database';
+import {
+  ref,
+  set,
+  onDisconnect,
+  serverTimestamp,
+  onValue,
+} from 'firebase/database';
 import { rtdb } from '../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId } from './auth.js';
 
