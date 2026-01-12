@@ -81,8 +81,8 @@ export class RTDBMessagingTransport extends MessagingTransport {
 
   /**
    * Listen to messages with a specific contact (both sent and received)
-   * Fetches existing messages AND listens for new ones
-   * Optimized: Single bulk read for history + listener for new messages
+   * Uses Firebase's onChildAdded which delivers existing messages synchronously,
+   * then listens for new messages as they arrive.
    * @param {string} contactId - Contact's user ID
    * @param {Function} onMessage - Callback(text, messageData, isSentByMe) for each message
    * @returns {Function} Unsubscribe function to stop listening
@@ -97,10 +97,11 @@ export class RTDBMessagingTransport extends MessagingTransport {
     const conversationId = this._getConversationId(myUserId, contactId);
     const conversationRef = ref(rtdb, `conversations/${conversationId}/messages`);
 
-    // Track seen message IDs to prevent duplicates from race condition
+    // Track seen message IDs to prevent duplicate processing
     const seenMessageIds = new Set();
 
-    // Set up listener for new messages FIRST (before fetching history)
+    // onChildAdded fires synchronously for all existing messages,
+    // then continues firing for new messages as they arrive
     const messageCallback = (snapshot) => {
       const msgId = snapshot.key;
       const msg = snapshot.val();
@@ -112,30 +113,6 @@ export class RTDBMessagingTransport extends MessagingTransport {
     };
 
     onChildAdded(conversationRef, messageCallback);
-
-    // Fetch existing messages with single read (async, non-blocking)
-    get(conversationRef)
-      .then((snapshot) => {
-        if (!snapshot.exists()) return;
-
-        const messages = snapshot.val();
-        // Sort by timestamp to display in chronological order
-        const sortedMessages = Object.entries(messages).sort(
-          (a, b) => (a[1].sentAt || 0) - (b[1].sentAt || 0)
-        );
-
-        // Process each existing message
-        sortedMessages.forEach(([msgId, msg]) => {
-          if (seenMessageIds.has(msgId)) return; // Skip if already processed by listener
-
-          seenMessageIds.add(msgId);
-          const isSentByMe = msg.from === myUserId;
-          onMessage(msg.text, msg, isSentByMe);
-        });
-      })
-      .catch((err) => {
-        console.warn('[RTDBTransport] Failed to load message history:', err);
-      });
 
     // Return cleanup function
     return () => {

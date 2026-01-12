@@ -1,6 +1,7 @@
 import { onClickOutside } from '../../utils/ui/clickOutside.js';
 import { hideElement, isHidden, showElement } from '../../utils/ui/ui-utils.js';
 import { createMessageToggle } from './message-toggle.js';
+import { isMobileDevice } from '../../utils/env/isMobileDevice.js';
 
 // Helper: create the messages box DOM and return container + element refs
 function createMessageBox() {
@@ -20,6 +21,26 @@ function createMessageBox() {
   const messagesMessages = messagesBoxContainer.querySelector('#messages');
   const messagesForm = messagesBoxContainer.querySelector('#messages-form');
   const messagesInput = messagesBoxContainer.querySelector('#messages-input');
+
+  // Prevent viewport resize/shift when virtual keyboard appears on mobile
+  if ('virtualKeyboard' in navigator) {
+    navigator.virtualKeyboard.overlaysContent = true;
+  }
+
+  // TODO: Proper fix for autoscroll on mobile when THIS specific text input is focused (keyboard open)
+  // if (isMobileDevice()) {
+  //   messagesInput.addEventListener('focus', () => {
+  //     document.body.style.overflow = 'hidden';
+  //     document.body.style.position = 'fixed';
+  //     document.body.style.width = '100%';
+  //   });
+
+  //   messagesInput.addEventListener('blur', () => {
+  //     document.body.style.overflow = '';
+  //     document.body.style.position = '';
+  //     document.body.style.width = '';
+  //   });
+  // }
 
   return {
     messagesBoxContainer,
@@ -183,7 +204,10 @@ export function initMessagesUI() {
 
     if (isMessagesUIOpen()) {
       // If we just opened:
-      messagesInput.focus();
+      // Only auto-focus on desktop; let mobile users tap to focus naturally
+      if (!isMobileDevice()) {
+        messagesInput.focus();
+      }
       // Fallback positioning if needed
       if (!supportsCssAnchors) {
         positionMessagesBox();
@@ -199,7 +223,10 @@ export function initMessagesUI() {
       scrollMessagesToEnd();
     } else {
       // If we just closed:
-      messagesInput.blur();
+      // Only blur if actually focused (avoids mobile keyboard issues)
+      if (document.activeElement === messagesInput) {
+        messagesInput.blur();
+      }
       detachRepositionHandlers();
       // Clear inline offsets
       messagesBox.style.top = '';
@@ -209,20 +236,24 @@ export function initMessagesUI() {
     }
   }
 
-  onClickOutside(
-    messagesBox,
-    () => {
-      hideElement(messagesBox);
-      detachRepositionHandlers();
+  // onClickOutside removed for mobile, test again when auto scrolling issue is unresolved
+  if (!isMobileDevice()) {
+    // Close messages box when clicking outside (desktop only)
+    onClickOutside(
+      messagesBox,
+      () => {
+        hideElement(messagesBox);
+        detachRepositionHandlers();
 
-      // Clear inline offsets
-      messagesBox.style.top = '';
-      messagesBox.style.left = '';
-      messagesBox.style.bottom = '';
-      messagesBox.style.right = '';
-    },
-    { ignore: [messageToggle.element], esc: true }
-  );
+        // Clear inline offsets
+        messagesBox.style.top = '';
+        messagesBox.style.left = '';
+        messagesBox.style.bottom = '';
+        messagesBox.style.right = '';
+      },
+      { ignore: [messageToggle.element], esc: true }
+    );
+  }
 
   function showMessagesToggle() {
     showElement(messageToggle.element);
@@ -246,12 +277,13 @@ export function initMessagesUI() {
     scrollMessagesToEnd();
   }
 
-  // Ensure the messages container is scrolled to the newest message
+  let scrollRafId = null;
   function scrollMessagesToEnd() {
     if (!messagesMessages) return;
-    // Use rAF so scrolling happens after layout/positioning changes
-    requestAnimationFrame(() => {
+    if (scrollRafId !== null) cancelAnimationFrame(scrollRafId);
+    scrollRafId = requestAnimationFrame(() => {
       messagesMessages.scrollTop = messagesMessages.scrollHeight;
+      scrollRafId = null;
     });
   }
 
@@ -308,6 +340,7 @@ export function initMessagesUI() {
    */
   function clearMessages() {
     messagesMessages.innerHTML = '';
+    messagesMessages.scrollTop = 0;
   }
 
   /**
