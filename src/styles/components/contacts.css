@@ -15,6 +15,9 @@
   padding: 0.5rem;
   max-height: 42dvh;
   overflow-y: auto;
+  /* prevent the container from growing off-screen on narrow viewports */
+  max-width: 95vw;
+  box-sizing: border-box;
 
   & h3 {
     margin: 0 auto 0.75rem auto;
@@ -32,6 +35,8 @@
       padding: 0.2rem 0.4rem;
 
       column-gap: 0.5rem;
+      /* allow children (flex items) to shrink on small screens */
+      min-width: 0;
 
       & .contact-message-btn,
       & .messages-toggle-container {
@@ -75,6 +80,11 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        /* ensure long names truncate instead of pushing layout */
+        min-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
 
         & .presence-indicator {
           display: inline-block;
@@ -91,6 +101,11 @@
           rotate: 15deg;
 
           color: rgb(74, 172, 74);
+        }
+
+        .presence-indicator,
+        .fa-phone {
+          flex-shrink: 0;
         }
       }
 

@@ -20,6 +20,9 @@ const messageBadgeListeners = new Map();
 // Track contact message toggles for cleanup
 const contactMessageToggles = new Map();
 
+// Limit displayed contact name length in the UI (keep full name in title)
+const MAX_CONTACT_NAME_CHARS = 14;
+
 /**
  * Save a contact for the current user (RTDB if logged in, localStorage otherwise).
  */
@@ -181,7 +184,13 @@ export async function renderContactsList(lobbyElement) {
               >
                 <span class="presence-indicator" data-contact-id="${id}"></span>
                 <i class="fa fa-phone"></i>
-                ${contact.contactName}
+                ${
+                  contact.contactName &&
+                  contact.contactName.length > MAX_CONTACT_NAME_CHARS
+                    ? contact.contactName.slice(0, MAX_CONTACT_NAME_CHARS - 2) +
+                      '..'
+                    : contact.contactName
+                }
               </span>
               <button
                 class="contact-delete-btn"
