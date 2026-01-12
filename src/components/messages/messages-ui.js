@@ -163,6 +163,9 @@ export function initMessagesUI() {
     window.removeEventListener('orientationchange', positionMessagesBox);
   }
 
+  // Will hold the cleanup function returned by onClickOutside()
+  let removeMessagesBoxClickOutside = null;
+
   // Clear unread count when messages box is shown
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
@@ -236,10 +239,10 @@ export function initMessagesUI() {
     }
   }
 
-  // onClickOutside removed for mobile, test again when auto scrolling issue is unresolved
+  // onClickOutside removed for mobile, test again when auto scrolling issue is resolved
   if (!isMobileDevice()) {
     // Close messages box when clicking outside (desktop only)
-    onClickOutside(
+    removeMessagesBoxClickOutside = onClickOutside(
       messagesBox,
       () => {
         hideElement(messagesBox);
@@ -339,6 +342,10 @@ export function initMessagesUI() {
    * Clear all messages from the UI
    */
   function clearMessages() {
+    if (scrollRafId !== null) {
+      cancelAnimationFrame(scrollRafId);
+      scrollRafId = null;
+    }
     messagesMessages.innerHTML = '';
     messagesMessages.scrollTop = 0;
   }
@@ -370,6 +377,17 @@ export function initMessagesUI() {
     }
 
     detachRepositionHandlers();
+    // Remove document click/escape listeners created by onClickOutside
+    if (typeof removeMessagesBoxClickOutside === 'function') {
+      try {
+        removeMessagesBoxClickOutside();
+      } catch (err) {
+        console.error(
+          'Error removing messages box outside click handler:',
+          err
+        );
+      }
+    }
     observer.disconnect();
 
     // Remove keyboard shortcut handler
