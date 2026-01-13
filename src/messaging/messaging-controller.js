@@ -25,7 +25,9 @@ export class MessagingController {
    */
   constructor(transport, fileTransport = null) {
     if (!transport) {
-      throw new Error('MessagingController requires a transport implementation');
+      throw new Error(
+        'MessagingController requires a transport implementation'
+      );
     }
 
     this.transport = transport;
@@ -65,7 +67,9 @@ export class MessagingController {
 
     // Return existing session if already open
     if (this.sessions.has(contactId)) {
-      console.warn(`[MessagingController] Session already open for ${contactId}`);
+      console.info(
+        `[MessagingController] Session already open for ${contactId}`
+      );
       return this.sessions.get(contactId);
     }
 
@@ -79,10 +83,20 @@ export class MessagingController {
         }
 
         // Notify unread count changes (only for received messages)
-        if (!isSentByMe && onUnreadChange && typeof onUnreadChange === 'function') {
-          this.transport.getUnreadCount(contactId)
-            .then(count => onUnreadChange(count))
-            .catch(err => console.warn('[MessagingController] Failed to get unread count:', err));
+        if (
+          !isSentByMe &&
+          onUnreadChange &&
+          typeof onUnreadChange === 'function'
+        ) {
+          this.transport
+            .getUnreadCount(contactId)
+            .then((count) => onUnreadChange(count))
+            .catch((err) =>
+              console.warn(
+                '[MessagingController] Failed to get unread count:',
+                err
+              )
+            );
         }
       }
     );
@@ -98,7 +112,9 @@ export class MessagingController {
        */
       send: (text) => {
         if (!text || typeof text !== 'string') {
-          return Promise.reject(new Error('Message text must be a non-empty string'));
+          return Promise.reject(
+            new Error('Message text must be a non-empty string')
+          );
         }
         return this.transport.send(contactId, text);
       },
@@ -241,7 +257,9 @@ export class MessagingController {
    */
   async sendFile(file, onProgress) {
     if (!this.fileTransport) {
-      throw new Error('File transport not available. Files can only be sent during active calls.');
+      throw new Error(
+        'File transport not available. Files can only be sent during active calls.'
+      );
     }
 
     if (!this.fileTransport.isReady()) {

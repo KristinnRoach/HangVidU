@@ -1,6 +1,6 @@
 // Simple chunking:  64KB chunks
 const CHUNK_SIZE = 64 * 1024; // 64KB
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_FILE_SIZE = 900 * 1024 * 1024; // 900MB
 
 export class FileTransfer {
   constructor(dataChannel) {

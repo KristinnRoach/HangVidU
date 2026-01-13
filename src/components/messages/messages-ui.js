@@ -134,6 +134,9 @@ export function initMessagesUI() {
   const fileInput = document.getElementById('file-input');
   const sendBtn = messagesForm.querySelector('button[type="submit"]');
 
+  // Hide attachment button by default (shown when FileTransfer is available)
+  hideElement(attachBtn);
+
   // Attach button opens file picker
   attachBtn.addEventListener('click', () => {
     fileInput.click();
@@ -320,9 +323,26 @@ export function initMessagesUI() {
   }
 
   // Display message line
-  function appendChatMessage(text) {
+  function appendChatMessage(text, options = {}) {
     const p = document.createElement('p');
-    p.textContent = text;
+
+    // Handle clickable file downloads
+    if (options.fileDownload) {
+      const { fileName, url } = options.fileDownload;
+      const prefix = text.split(fileName)[0]; // e.g., "📎 Partner sent: "
+
+      p.textContent = prefix;
+      const link = document.createElement('a');
+      link.textContent = fileName;
+      link.href = url;
+      link.download = fileName;
+      link.style.cursor = 'pointer';
+      link.style.textDecoration = 'underline';
+      p.appendChild(link);
+    } else {
+      p.textContent = text;
+    }
+
     if (text.startsWith('You:')) {
       p.style.textAlign = 'right';
     } else if (text.startsWith('Partner:')) {
@@ -425,25 +445,27 @@ export function initMessagesUI() {
 
   /**
    * Set the FileTransfer instance for this UI
-   * @param {FileTransfer} instance - FileTransfer instance from data-channel setup
+   * @param {FileTransfer} instance - FileTransfer instance from data-channel setup (or null to clear)
    */
   function setFileTransfer(instance) {
     fileTransfer = instance;
 
-    // Setup file received handler
+    // Show/hide attachment button based on FileTransfer availability
     if (fileTransfer) {
-      fileTransfer.onFileReceived = (file) => {
-        // Auto-download the received file
-        const url = URL.createObjectURL(file);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = file.name;
-        a.click();
-        URL.revokeObjectURL(url);
+      showElement(attachBtn);
 
-        // Show in UI
-        appendChatMessage(`📎 Partner sent: ${file.name}`);
+      // Setup file received handler
+      fileTransfer.onFileReceived = (file) => {
+        // Create download URL
+        const url = URL.createObjectURL(file);
+
+        // Show in UI with clickable download link
+        appendChatMessage(`📎 Partner sent: ${file.name}`, {
+          fileDownload: { fileName: file.name, url },
+        });
       };
+    } else {
+      hideElement(attachBtn);
     }
   }
 
