@@ -291,6 +291,7 @@ export function openContactMessages(
   // Check if already have an active session for this contact
   const existingSession = messagingController.getSession(contactId);
   if (existingSession) {
+    messagesUI.showMessagesToggle();
     // Just show the UI if openMessageBox is true (and not already open)
     if (openMessageBox && !messagesUI.isMessagesUIOpen()) {
       messagesUI.toggleMessages();

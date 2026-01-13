@@ -13,7 +13,9 @@ export class FileTransfer {
   async sendFile(file, onProgress) {
     // Validate size
     if (file.size > MAX_FILE_SIZE) {
-      throw new Error('File too large (max 100MB)');
+      throw new Error(
+        `File too large (max ${MAX_FILE_SIZE / (1024 * 1024)} MB)`
+      );
     }
 
     // Validate DataChannel state

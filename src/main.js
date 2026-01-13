@@ -1256,10 +1256,10 @@ CallController.on('memberJoined', ({ memberId, roomId }) => {
   // Show messages toggle for file transfer during call
   messagesUI.showMessagesToggle();
 
-  // Open contact messaging UI with partner (uses RTDB instead of DataChannel)
+  // Open contact messaging UI with partner
+  // TODO: Refactor to avoid dependency on contacts.js ? Check messaging controller and clarify public API
   openContactMessages(memberId, memberId); // Use memberId as name for now
 
-  messagingController.openSession(memberId);
   enterCallMode();
   onCallAnswered().catch((e) =>
     console.warn('Failed to clear calling state:', e)

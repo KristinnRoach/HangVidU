@@ -338,6 +338,12 @@ export function initMessagesUI() {
       link.download = fileName;
       link.style.cursor = 'pointer';
       link.style.textDecoration = 'underline';
+
+      // Revoke the object URL after click to prevent memory leaks
+      link.addEventListener('click', () => {
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+      });
+
       p.appendChild(link);
     } else {
       p.textContent = text;
