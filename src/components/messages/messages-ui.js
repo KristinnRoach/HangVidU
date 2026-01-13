@@ -134,6 +134,11 @@ export function initMessagesUI() {
   const fileInput = document.getElementById('file-input');
   const sendBtn = messagesForm.querySelector('button[type="submit"]');
 
+  // Attach button opens file picker
+  attachBtn.addEventListener('click', () => {
+    fileInput.click();
+  });
+
   // Handle file selection for sending
   fileInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];

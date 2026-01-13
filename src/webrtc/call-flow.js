@@ -14,7 +14,6 @@ import { devDebug } from '../utils/dev/dev-utils.js';
 
 import { drainIceCandidateQueue, setupIceCandidates } from '../webrtc/ice.js';
 import { setupConnectionStateHandlers } from '../webrtc/webrtc.js';
-import { setupDataChannel } from '../webrtc/data-channel.js';
 import {
   rtcConfig,
   addLocalTracks,
@@ -82,9 +81,8 @@ export async function createCall({
   // 3a. Add local media tracks
   addLocalTracks(pc, localStream);
 
-  // 3b. Setup data channel for securely sending files
-  // TODO: add user customizable option (in settings) to only use data channel for messaging (for privacy, loses chat history and offline messaging)
-  const { dataChannel, fileTransfer } = setupDataChannel(pc, role);
+  // 3b. Setup data channel for file transfer
+  const dataChannel = pc.createDataChannel('files');
 
   // 3c. Setup remote stream handler
   const remoteStreamSuccess = setupRemoteStream(
@@ -139,7 +137,6 @@ export async function createCall({
     roomId,
     roomLink,
     dataChannel,
-    messagesUI,
     role,
   };
 }
@@ -234,15 +231,12 @@ export async function answerCall({
   // 3a. Add local media tracks
   addLocalTracks(pc, localStream);
 
-  // 3b. Setup data channel (will receive from initiator)
-  // TEMPORARILY DISABLED: Using RTDB contact messaging instead
-  // const { dataChannel, messagesUI } = setupDataChannel(
-  //   pc,
-  //   role,
-  //   onMessagesUIReady
-  // );
-  const dataChannel = null;
-  const messagesUI = null;
+  // 3b. Setup data channel listener (joiner receives from initiator)
+  let dataChannel = null;
+  pc.ondatachannel = (event) => {
+    dataChannel = event.channel;
+    devDebug('[Call Flow] DataChannel received by joiner', { label: dataChannel.label });
+  };
 
   // 3c. Setup remote stream handler
   const remoteStreamSuccess = setupRemoteStream(
@@ -317,7 +311,6 @@ export async function answerCall({
     pc,
     roomId,
     dataChannel,
-    messagesUI,
     role,
   };
 }
