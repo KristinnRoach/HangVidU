@@ -8,11 +8,21 @@ function createMessageBox() {
   const messagesBoxContainer = document.createElement('div');
   messagesBoxContainer.innerHTML = `
     <div id="messages-box" class="messages-box hidden">
+      
       <div id="messages"></div>
+      
+      <div class="message-attachments">
+        <input type="file" id="file-input" style="display: none" />
+        <button type="button" id="attach-file-btn" title="Attach file">
+          <i class="fa fa-paperclip"></i>
+        </button>
+      </div>
+
       <form id="messages-form">
         <input id="messages-input" placeholder="Type a message...">
         <button type="submit">Send</button>
       </form>
+
     </div>
   `;
   document.body.appendChild(messagesBoxContainer);
@@ -21,6 +31,44 @@ function createMessageBox() {
   const messagesMessages = messagesBoxContainer.querySelector('#messages');
   const messagesForm = messagesBoxContainer.querySelector('#messages-form');
   const messagesInput = messagesBoxContainer.querySelector('#messages-input');
+
+  const attachBtn = document.getElementById('attach-file-btn');
+  const fileInput = document.getElementById('file-input');
+  const sendBtn = messagesForm.querySelector('button[type="submit"]');
+
+  attachBtn.addEventListener('click', () => fileInput.click());
+
+  // Handle file selection for sending
+  fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file || !fileTransfer) {
+      if (!fileTransfer) {
+        console.warn('[MessagesUI] FileTransfer not initialized');
+      }
+      return;
+    }
+
+    // Disable send button during transfer
+    sendBtn.disabled = true;
+    const originalText = sendBtn.textContent;
+    sendBtn.textContent = 'Sending...';
+
+    try {
+      await fileTransfer.sendFile(file, (progress) => {
+        sendBtn.textContent = `${Math.round(progress * 100)}%`;
+      });
+
+      // Show in UI
+      appendChatMessage(`📎 You sent: ${file.name}`);
+    } catch (err) {
+      console.error('[MessagesUI] File send failed:', err);
+      appendChatMessage('❌ Failed to send file');
+    } finally {
+      sendBtn.disabled = false;
+      sendBtn.textContent = originalText;
+      fileInput.value = ''; // Reset input
+    }
+  });
 
   // Prevent viewport resize/shift when virtual keyboard appears on mobile
   if ('virtualKeyboard' in navigator) {
@@ -74,6 +122,7 @@ function isOnScreen(el) {
 export function initMessagesUI() {
   let repositionHandlersAttached = false;
   let currentSession = null; // Track the currently displayed session
+  let fileTransfer = null; // FileTransfer instance set by setFileTransfer()
 
   const topRightMenu =
     document.querySelector('.top-bar .top-right-menu') ||
@@ -370,6 +419,30 @@ export function initMessagesUI() {
     return currentSession;
   }
 
+  /**
+   * Set the FileTransfer instance for this UI
+   * @param {FileTransfer} instance - FileTransfer instance from data-channel setup
+   */
+  function setFileTransfer(instance) {
+    fileTransfer = instance;
+
+    // Setup file received handler
+    if (fileTransfer) {
+      fileTransfer.onFileReceived = (file) => {
+        // Auto-download the received file
+        const url = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.name;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        // Show in UI
+        appendChatMessage(`📎 Partner sent: ${file.name}`);
+      };
+    }
+  }
+
   function cleanup() {
     // Cleanup message toggle
     if (messageToggle) {
@@ -412,6 +485,7 @@ export function initMessagesUI() {
     setSession,
     getCurrentSession,
     clearMessages,
+    setFileTransfer,
     cleanup,
   };
 }

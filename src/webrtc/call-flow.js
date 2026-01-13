@@ -82,11 +82,13 @@ export async function createCall({
   // 3a. Add local media tracks
   addLocalTracks(pc, localStream);
 
-  // 3b. Setup data channel for text chat
-  // TEMPORARILY DISABLED: Using RTDB contact messaging instead
-  // const { dataChannel, messagesUI } = setupDataChannel(pc, role);
-  const dataChannel = null;
-  const messagesUI = null;
+  // 3b. Setup data channel for securely sending files
+  // TODO: add user customizable option (in settings) to only use data channel for messaging (for privacy, loses chat history and offline messaging)
+  const { dataChannel, messagesUI } = setupDataChannel(
+    pc,
+    role
+    // ?? onMessagesUIReady
+  );
 
   // 3c. Setup remote stream handler
   const remoteStreamSuccess = setupRemoteStream(

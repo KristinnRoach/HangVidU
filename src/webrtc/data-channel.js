@@ -1,5 +1,6 @@
 // src/webrtc/data-channel.js
 import { initMessagesUI } from '../components/messages/messages-ui.js';
+import { FileTransfer } from '../file-transfer.js';
 
 /**
  * Setup data channel for text chat and file transfer.
@@ -14,6 +15,7 @@ import { initMessagesUI } from '../components/messages/messages-ui.js';
 export function setupDataChannel(pc, role, onMessagesUIReady = null) {
   let dataChannel;
   let messagesUI;
+  let fileTransfer;
 
   if (role === 'initiator') {
     // Initiator creates the data channel
@@ -26,18 +28,37 @@ export function setupDataChannel(pc, role, onMessagesUIReady = null) {
     };
 
     messagesUI = initMessagesUI(sendMessage);
+    fileTransfer = new FileTransfer(dataChannel);
+    messagesUI.setFileTransfer(fileTransfer);
 
     dataChannel.onopen = () => {
       messagesUI.showMessagesToggle();
       messagesUI.appendChatMessage('💬 Chat connected');
     };
 
-    dataChannel.onmessage = (e) => messagesUI.receiveMessage(e.data);
+    dataChannel.onmessage = (event) => {
+      // Check if it's a file transfer message
+      if (typeof event.data === 'string') {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'FILE_META' || msg.type === 'FILE_CHUNK') {
+          fileTransfer.handleMessage(event.data);
+          return;
+        }
+      } else {
+        // Binary data - assume it's file chunk
+        fileTransfer.handleMessage(event.data);
+        return;
+      }
+      // Otherwise, handle as text message
+      messagesUI.receiveMessage(event.data);
+    };
   } else if (role === 'joiner') {
     // Joiner waits to receive the data channel from initiator
     pc.ondatachannel = (event) => {
       dataChannel = event.channel;
       messagesUI = initMessagesUI((msg) => dataChannel.send(msg));
+      fileTransfer = new FileTransfer(dataChannel);
+      messagesUI.setFileTransfer(fileTransfer);
 
       // Notify callback that messagesUI is ready
       if (onMessagesUIReady) {
@@ -48,9 +69,24 @@ export function setupDataChannel(pc, role, onMessagesUIReady = null) {
         messagesUI.showMessagesToggle();
         messagesUI.appendChatMessage('💬 Chat connected');
       };
-      dataChannel.onmessage = (e) => messagesUI.receiveMessage(e.data);
+      dataChannel.onmessage = (event) => {
+        // Check if it's a file transfer message
+        if (typeof event.data === 'string') {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'FILE_META' || msg.type === 'FILE_CHUNK') {
+            fileTransfer.handleMessage(event.data);
+            return;
+          }
+        } else {
+          // Binary data - assume it's file chunk
+          fileTransfer.handleMessage(event.data);
+          return;
+        }
+        // Otherwise, handle as text message
+        messagesUI.receiveMessage(event.data);
+      };
     };
   }
 
-  return { dataChannel, messagesUI };
+  return { dataChannel, messagesUI, fileTransfer };
 }
