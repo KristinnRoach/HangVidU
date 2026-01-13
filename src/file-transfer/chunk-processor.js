@@ -61,9 +61,9 @@ export function parseEmbeddedChunkPacket(arrayBuffer) {
       return null;
     }
 
-    // 2. Read metadata length (4 bytes)
-    const lengthView = new Uint32Array(arrayBuffer, 0, 1);
-    const metaLength = lengthView[0];
+    // 2. Read metadata length (4 bytes) using DataView for consistent endianness
+    const dataView = new DataView(arrayBuffer);
+    const metaLength = dataView.getUint32(0, true); // true = little-endian
 
     // 3. Verify packet integrity
     const expectedTotalLength = 4 + metaLength;

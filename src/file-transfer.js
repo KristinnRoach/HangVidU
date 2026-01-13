@@ -11,6 +11,7 @@ export class FileTransfer {
     this.dataChannel = dataChannel;
     this.receivedChunks = new Map(); // fileId -> chunks array
     this.fileMetadata = new Map(); // fileId -> metadata
+    this.onFileError = null; // Optional callback for file transfer errors
   }
 
   // Send file
@@ -56,12 +57,12 @@ export class FileTransfer {
         totalChunks,
       };
       const metaBytes = new TextEncoder().encode(JSON.stringify(metadata));
-      const metaLength = new Uint32Array([metaBytes.length]);
 
-      // Assemble packet
+      // Use DataView for consistent endianness (little-endian)
       const packet = new ArrayBuffer(4 + metaBytes.length + chunk.byteLength);
       const view = new Uint8Array(packet);
-      view.set(new Uint8Array(metaLength.buffer), 0);
+      const dataView = new DataView(packet);
+      dataView.setUint32(0, metaBytes.length, true); // true = little-endian
       view.set(metaBytes, 4);
       view.set(new Uint8Array(chunk), 4 + metaBytes.length);
 
