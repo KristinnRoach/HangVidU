@@ -41,6 +41,8 @@ import {
   openContactMessages,
 } from './components/contacts/contacts.js';
 
+import { messagesUI } from './components/messages/messages-ui.js';
+
 import { ringtoneManager } from './media/audio/ringtone-manager.js';
 import { visibilityManager } from './utils/ui/visibility-manager.js';
 
@@ -1126,6 +1128,7 @@ async function autoJoinFromUrl() {
 
 // Import and call iOS PWA redirect helper before any other initialization
 import { redirectIOSPWAToHosting } from './utils/env/redirectIOSPWA.js';
+import { messagingController } from './messaging/messaging-controller.js';
 redirectIOSPWAToHosting();
 
 window.onload = async () => {
@@ -1250,9 +1253,13 @@ CallController.on('memberJoined', ({ memberId, roomId }) => {
 
   CallController.setPartnerId(memberId);
 
-  // // Open contact messaging UI with partner (uses RTDB instead of DataChannel)
-  // openContactMessages(memberId, memberId); // Use memberId as name for now
+  // Show messages toggle for file transfer during call
+  messagesUI.showMessagesToggle();
 
+  // Open contact messaging UI with partner (uses RTDB instead of DataChannel)
+  openContactMessages(memberId, memberId); // Use memberId as name for now
+
+  messagingController.openSession(memberId);
   enterCallMode();
   onCallAnswered().catch((e) =>
     console.warn('Failed to clear calling state:', e)
