@@ -1,5 +1,9 @@
-// Simple chunking:  64KB chunks
-const CHUNK_SIZE = 64 * 1024; // 64KB
+import { TransferConfig } from './file-transfer/config.js';
+import { parseEmbeddedChunkPacket } from './file-transfer/chunk-processor.js';
+import { validateAssembly } from './file-transfer/file-assembler.js';
+
+// Use PrivyDrop's network chunk size for WebRTC safe transmission
+const CHUNK_SIZE = TransferConfig.FILE_CONFIG.NETWORK_CHUNK_SIZE; // 64KB
 const MAX_FILE_SIZE = 900 * 1024 * 1024; // 900MB
 
 export class FileTransfer {
@@ -38,22 +42,31 @@ export class FileTransfer {
       })
     );
 
-    // 2. Send chunks
+    // 2. Send chunks with embedded metadata (atomic send)
     for (let i = 0; i < totalChunks; i++) {
       const start = i * CHUNK_SIZE;
       const end = Math.min(start + CHUNK_SIZE, file.size);
       const chunk = await file.slice(start, end).arrayBuffer();
 
-      // Send chunk with index
-      const chunkData = JSON.stringify({
+      // Create embedded packet: [4-byte length][JSON metadata][chunk data]
+      const metadata = {
         type: 'FILE_CHUNK',
         fileId,
         chunkIndex: i,
         totalChunks,
-      });
+      };
+      const metaBytes = new TextEncoder().encode(JSON.stringify(metadata));
+      const metaLength = new Uint32Array([metaBytes.length]);
 
-      this.dataChannel.send(chunkData);
-      this.dataChannel.send(chunk);
+      // Assemble packet
+      const packet = new ArrayBuffer(4 + metaBytes.length + chunk.byteLength);
+      const view = new Uint8Array(packet);
+      view.set(new Uint8Array(metaLength.buffer), 0);
+      view.set(metaBytes, 4);
+      view.set(new Uint8Array(chunk), 4 + metaBytes.length);
+
+      // Send single atomic packet
+      this.dataChannel.send(packet);
 
       if (onProgress) {
         onProgress((i + 1) / totalChunks);
@@ -76,19 +89,30 @@ export class FileTransfer {
         this.receivedChunks.set(msg.fileId, []);
         this.onFileMetaReceived?.(msg);
       }
-
-      if (msg.type === 'FILE_CHUNK') {
-        this.currentChunk = msg; // Store for next binary message
-      }
     } else {
-      // Binary data - it's a chunk
-      const meta = this.currentChunk;
-      const chunks = this.receivedChunks.get(meta.fileId);
-      chunks[meta.chunkIndex] = data;
+      // Binary data - parse embedded packet
+      const parsed = parseEmbeddedChunkPacket(data);
+      if (!parsed) {
+        console.error('[FileTransfer] Failed to parse embedded chunk packet');
+        return;
+      }
+
+      const { chunkMeta, chunkData } = parsed;
+      const chunks = this.receivedChunks.get(chunkMeta.fileId);
+
+      if (!chunks) {
+        console.error(
+          '[FileTransfer] Received chunk for unknown file:',
+          chunkMeta.fileId
+        );
+        return;
+      }
+
+      chunks[chunkMeta.chunkIndex] = chunkData;
 
       // Check if complete
-      if (chunks.filter((c) => c).length === meta.totalChunks) {
-        this.assembleFile(meta.fileId);
+      if (chunks.filter((c) => c).length === chunkMeta.totalChunks) {
+        this.assembleFile(chunkMeta.fileId);
       }
     }
   }
@@ -97,6 +121,28 @@ export class FileTransfer {
     const meta = this.fileMetadata.get(fileId);
     const chunks = this.receivedChunks.get(fileId);
 
+    // Validate assembly before creating file
+    const validation = validateAssembly(chunks, meta.size, meta.totalChunks);
+
+    if (!validation.isComplete) {
+      console.error('[FileTransfer] File assembly failed:', {
+        fileId,
+        fileName: meta.name,
+        ...validation,
+      });
+
+      // Notify user of error if callback is provided
+      if (this.onFileError) {
+        this.onFileError({
+          fileName: meta.name,
+          reason: 'incomplete',
+          details: validation,
+        });
+      }
+      return;
+    }
+
+    // Validation passed - assemble file
     const blob = new Blob(chunks, { type: meta.mimeType });
     const file = new File([blob], meta.name, { type: meta.mimeType });
 
