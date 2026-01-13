@@ -41,22 +41,30 @@ export class DataChannelFileTransport extends FileTransport {
    * @private
    */
   _setupMessageHandling() {
+    // Store existing handler (if any)
+    const existingHandler = this.dataChannel.onmessage;
+
     this.dataChannel.onmessage = (event) => {
-      // Check if this is a file transfer message
+      // Check if it's a file transfer message
       if (typeof event.data === 'string') {
         try {
           const msg = JSON.parse(event.data);
-          // Handle file transfer protocol messages (FILE_META, FILE_CHUNK)
           if (msg.type === 'FILE_META' || msg.type === 'FILE_CHUNK') {
             this.fileTransfer.handleMessage(event.data);
-            return;
+            return; // Handled by file transfer
           }
         } catch (e) {
-          // Not JSON or not our message format - ignore
+          // Not JSON or not file transfer - fall through
         }
-      } else {
-        // Binary data - assume it's a file chunk
+      } else if (event.data instanceof ArrayBuffer) {
+        // Binary data - assume file chunk
         this.fileTransfer.handleMessage(event.data);
+        return;
+      }
+
+      // Not a file transfer message - pass to existing handler
+      if (existingHandler) {
+        existingHandler(event);
       }
     };
   }
