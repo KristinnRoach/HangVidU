@@ -241,16 +241,21 @@ function attachContactListeners(container, lobbyElement) {
         // QUICK FIX: Ensure listener is active for this room before calling
         listenForIncomingOnRoom(roomId);
 
-        // Show calling UI with contact name
-        await showCallingUI(roomId, contactName, () => {
-          // onCancel callback - could add cleanup here if needed
+        // Request permissions before showing calling ui and playing audio.
+        // Force initiator role when calling a saved contact to ensure a fresh call
+        const success = joinOrCreateRoomWithId(roomId, {
+          forceInitiator: true,
+        }).catch((e) => {
+          console.warn('Failed to call contact:', e);
+          return false;
         });
 
-        // Force initiator role when calling a saved contact to ensure a fresh call
-        joinOrCreateRoomWithId(roomId, { forceInitiator: true }).catch((e) => {
-          console.warn('Failed to call contact:', e);
-          hideCallingUI();
-        });
+        // Only show calling UI if permissions granted and call initiated
+        if (success) {
+          await showCallingUI(roomId, contactName, () => {
+            // TODO: Check if something (e.g. hangup handler, cleanup) needed here
+          });
+        }
       }
     };
   });

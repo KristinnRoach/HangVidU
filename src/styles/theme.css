@@ -91,32 +91,30 @@
   --transition-slower: 400ms;
 }
 
-/* ===== LIGHT MODE (Soft, not harsh) ===== */
+/* ===== LIGHT MODE - TEMPORARILY DISABLED ===== */
+/* TODO: Light mode has issues that need fixing. Uncomment the block below to re-enable. */
+
+/*
 @media (prefers-color-scheme: light) {
   :root {
-    /* Backgrounds */
     --bg-primary: #f5f5f5;
     --bg-secondary: #e8e8e8;
     --bg-tertiary: #e0e0e0;
     --bg-elevated: #ffffff;
 
-    /* Text */
     --text-primary: #1a1a1a;
     --text-secondary: #333333;
     --text-tertiary: #555555;
     --text-muted: #777777;
     --text-disabled: #999999;
 
-    /* Borders */
     --border-primary: #d0d0d0;
     --border-secondary: #c0c0c0;
 
-    /* Interactive */
     --color-primary: #3a6a94;
     --color-primary-hover: #2d5575;
     --color-primary-subtle: rgba(58, 106, 148, 0.15);
 
-    /* Actions */
     --color-success: #388e3c;
     --color-success-hover: #2e7d32;
 
@@ -128,11 +126,9 @@
 
     --color-warning: #f57c00;
 
-    /* Accents */
     --color-accent-blue: rgb(25, 118, 210);
     --color-accent-hover: #bbb;
 
-    /* Shadows */
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
     --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.15);
     --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.2);
@@ -140,3 +136,4 @@
     --shadow-inset-md: inset 0 4px 12px rgba(0, 0, 0, 0.12);
   }
 }
+*/
