@@ -278,7 +278,11 @@ function attachContactListeners(container, lobbyElement) {
  * Open messaging UI for a specific contact.
  * Creates a message session with RTDB transport.
  */
-export function openContactMessages(contactId, contactName) {
+export function openContactMessages(
+  contactId,
+  contactName,
+  openMessageBox = false
+) {
   if (!getLoggedInUserId()) {
     alert('Please sign in to send messages');
     return;
@@ -287,8 +291,8 @@ export function openContactMessages(contactId, contactName) {
   // Check if already have an active session for this contact
   const existingSession = messagingController.getSession(contactId);
   if (existingSession) {
-    // Just show the UI if it's hidden
-    if (!messagesUI.isMessagesUIOpen()) {
+    // Just show the UI if openMessageBox is true (and not already open)
+    if (openMessageBox && !messagesUI.isMessagesUIOpen()) {
       messagesUI.toggleMessages();
     }
     return;
@@ -326,7 +330,11 @@ export function openContactMessages(contactId, contactName) {
 
   // Show and open the messages UI
   messagesUI.showMessagesToggle();
-  messagesUI.toggleMessages();
+
+  // Just show the UI if openMessageBox is true (and not already open)
+  if (openMessageBox && !messagesUI.isMessagesUIOpen()) {
+    messagesUI.toggleMessages();
+  }
 
   // Mark all unread messages as read
   session.markAsRead().catch((err) => {
@@ -448,7 +456,8 @@ async function createContactMessageToggles(container, contactIds, contacts) {
       // Create toggle with 0 count initially - will update asynchronously
       const toggle = createMessageToggle({
         parent: toggleContainer,
-        onToggle: () => openContactMessages(contactId, contact.contactName),
+        onToggle: () =>
+          openContactMessages(contactId, contact.contactName, true), // Note: true = open message box
         icon: '💬',
         initialUnreadCount: 0,
       });
