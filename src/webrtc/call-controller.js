@@ -16,6 +16,9 @@ import {
   removeRTDBListenersForRoom,
 } from '../storage/fb-rtdb/rtdb.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
+import { DataChannelFileTransport } from '../messaging/transports/datachannel-file-transport.js';
+import { messagingController } from '../messaging/messaging-controller.js';
+import { messagesUI } from '../components/messages/messages-ui.js';
 
 export function createCallController() {
   return new CallController();
@@ -385,6 +388,11 @@ class CallController {
       this.messagesUI = result.messagesUI || null;
       this.state = 'waiting';
 
+      // Setup file transport when DataChannel opens (for initiator)
+      if (this.dataChannel) {
+        this.setupFileTransport(this.dataChannel);
+      }
+
       // Setup answer listener (only for initiator) - must be set up before other listeners
       // Import drainIceCandidateQueue dynamically
       const { drainIceCandidateQueue } = await import('./ice.js');
@@ -468,6 +476,11 @@ class CallController {
       }
       this.state = 'connected';
 
+      // Setup file transport when DataChannel is ready (for joiner, may be delayed)
+      if (this.dataChannel) {
+        this.setupFileTransport(this.dataChannel);
+      }
+
       // Setup cancellation listener (centralized in CallController)
       this.setupCancellationListener(this.roomId);
 
@@ -482,6 +495,40 @@ class CallController {
       this.emitter.emit('error', { phase: 'answerCall', error: err });
       this.emitCallFailed('answerCall', err);
       throw err;
+    }
+  }
+
+  /**
+   * Setup file transport when DataChannel is ready
+   * Creates DataChannelFileTransport and connects it to messagingController and messagesUI
+   * @param {RTCDataChannel} dataChannel - The WebRTC DataChannel
+   * @private
+   */
+  setupFileTransport(dataChannel) {
+    if (!dataChannel) return;
+
+    // Wait for DataChannel to open before creating transport
+    const initTransport = () => {
+      try {
+        // Create file transport
+        const fileTransport = new DataChannelFileTransport(dataChannel);
+
+        // Connect to messagingController
+        messagingController.setFileTransport(fileTransport);
+
+        // Connect to messagesUI for file operations
+        messagesUI.setFileTransfer(fileTransport.fileTransfer);
+
+        devDebug('[CallController] File transport initialized');
+      } catch (err) {
+        console.error('[CallController] Failed to setup file transport:', err);
+      }
+    };
+
+    if (dataChannel.readyState === 'open') {
+      initTransport();
+    } else {
+      dataChannel.addEventListener('open', initTransport, { once: true });
     }
   }
 
@@ -621,6 +668,14 @@ class CallController {
           partnerId: prevPartnerId,
           reason,
         });
+      }
+
+      // Cleanup file transport
+      try {
+        messagingController.clearFileTransport();
+        messagesUI.setFileTransfer(null);
+      } catch (e) {
+        console.warn('CallController: failed to cleanup file transport', e);
       }
 
       // Cleanup messages UI before resetting state

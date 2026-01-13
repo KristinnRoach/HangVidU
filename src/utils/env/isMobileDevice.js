@@ -5,7 +5,7 @@
  * - iPadOS in “Request Desktop Website” mode reports as Macintosh; detect via maxTouchPoints.
  * - Prefer simple, reliable signal to decide redirect vs popup for Firebase Auth.
  */
-export function isMobileDevice() {
+export function isMobileDevice(logInfo = false) {
   if (typeof window === 'undefined' || typeof navigator === 'undefined')
     return false;
 
@@ -24,13 +24,15 @@ export function isMobileDevice() {
 
   const result = isIOS || isAndroid;
 
-  console.table({
-    'User Agent': ua,
-    isAndroid,
-    isiOSUA,
-    isiPadOSDesktopUA,
-    isMobileDevice: result,
-  });
+  if (logInfo) {
+    console.table({
+      'User Agent': ua,
+      isAndroid,
+      isiOSUA,
+      isiPadOSDesktopUA,
+      isMobileDevice: result,
+    });
+  }
 
   return result;
 }
