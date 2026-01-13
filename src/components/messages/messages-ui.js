@@ -32,44 +32,6 @@ function createMessageBox() {
   const messagesForm = messagesBoxContainer.querySelector('#messages-form');
   const messagesInput = messagesBoxContainer.querySelector('#messages-input');
 
-  const attachBtn = document.getElementById('attach-file-btn');
-  const fileInput = document.getElementById('file-input');
-  const sendBtn = messagesForm.querySelector('button[type="submit"]');
-
-  attachBtn.addEventListener('click', () => fileInput.click());
-
-  // Handle file selection for sending
-  fileInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file || !fileTransfer) {
-      if (!fileTransfer) {
-        console.warn('[MessagesUI] FileTransfer not initialized');
-      }
-      return;
-    }
-
-    // Disable send button during transfer
-    sendBtn.disabled = true;
-    const originalText = sendBtn.textContent;
-    sendBtn.textContent = 'Sending...';
-
-    try {
-      await fileTransfer.sendFile(file, (progress) => {
-        sendBtn.textContent = `${Math.round(progress * 100)}%`;
-      });
-
-      // Show in UI
-      appendChatMessage(`📎 You sent: ${file.name}`);
-    } catch (err) {
-      console.error('[MessagesUI] File send failed:', err);
-      appendChatMessage('❌ Failed to send file');
-    } finally {
-      sendBtn.disabled = false;
-      sendBtn.textContent = originalText;
-      fileInput.value = ''; // Reset input
-    }
-  });
-
   // Prevent viewport resize/shift when virtual keyboard appears on mobile
   if ('virtualKeyboard' in navigator) {
     navigator.virtualKeyboard.overlaysContent = true;
@@ -166,6 +128,43 @@ export function initMessagesUI() {
     console.error('Messages UI elements not found.');
     return null;
   }
+
+  // Get file input elements after messageBox is created
+  const attachBtn = document.getElementById('attach-file-btn');
+  const fileInput = document.getElementById('file-input');
+  const sendBtn = messagesForm.querySelector('button[type="submit"]');
+
+  // Handle file selection for sending
+  fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file || !fileTransfer) {
+      if (!fileTransfer) {
+        console.warn('[MessagesUI] FileTransfer not initialized');
+      }
+      return;
+    }
+
+    // Disable send button during transfer
+    sendBtn.disabled = true;
+    const originalText = sendBtn.textContent;
+    sendBtn.textContent = 'Sending...';
+
+    try {
+      await fileTransfer.sendFile(file, (progress) => {
+        sendBtn.textContent = `${Math.round(progress * 100)}%`;
+      });
+
+      // Show in UI
+      appendChatMessage(`📎 You sent: ${file.name}`);
+    } catch (err) {
+      console.error('[MessagesUI] File send failed:', err);
+      appendChatMessage('❌ Failed to send file');
+    } finally {
+      sendBtn.disabled = false;
+      sendBtn.textContent = originalText;
+      fileInput.value = ''; // Reset input
+    }
+  });
 
   // Position the messages box relative to toggle
   function positionMessagesBox() {

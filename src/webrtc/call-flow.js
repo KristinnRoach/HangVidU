@@ -84,11 +84,7 @@ export async function createCall({
 
   // 3b. Setup data channel for securely sending files
   // TODO: add user customizable option (in settings) to only use data channel for messaging (for privacy, loses chat history and offline messaging)
-  const { dataChannel, messagesUI } = setupDataChannel(
-    pc,
-    role
-    // ?? onMessagesUIReady
-  );
+  const { dataChannel, fileTransfer } = setupDataChannel(pc, role);
 
   // 3c. Setup remote stream handler
   const remoteStreamSuccess = setupRemoteStream(

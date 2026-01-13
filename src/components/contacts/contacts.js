@@ -243,13 +243,12 @@ function attachContactListeners(container, lobbyElement) {
 
         // Request permissions before showing calling ui and playing audio.
         // Force initiator role when calling a saved contact to ensure a fresh call
-        const success = joinOrCreateRoomWithId(roomId, {
+        const success = await joinOrCreateRoomWithId(roomId, {
           forceInitiator: true,
         }).catch((e) => {
           console.warn('Failed to call contact:', e);
           return false;
         });
-
         // Only show calling UI if permissions granted and call initiated
         if (success) {
           await showCallingUI(roomId, contactName, () => {
