@@ -1,5 +1,5 @@
 import { TransferConfig } from './file-transfer/config.js';
-import { parseEmbeddedChunkPacket } from './file-transfer/chunk-processor.js';
+import { parseEmbeddedChunkPacket, convertToArrayBuffer } from './file-transfer/chunk-processor.js';
 import { validateAssembly } from './file-transfer/file-assembler.js';
 
 // Use PrivyDrop's network chunk size for WebRTC safe transmission
@@ -81,7 +81,7 @@ export class FileTransfer {
   }
 
   // Receive handler
-  handleMessage(data) {
+  async handleMessage(data) {
     if (typeof data === 'string') {
       const msg = JSON.parse(data);
 
@@ -91,8 +91,15 @@ export class FileTransfer {
         this.onFileMetaReceived?.(msg);
       }
     } else {
-      // Binary data - parse embedded packet
-      const parsed = parseEmbeddedChunkPacket(data);
+      // Binary data - convert to ArrayBuffer (handles Blob for Firefox compatibility)
+      const arrayBuffer = await convertToArrayBuffer(data);
+      if (!arrayBuffer) {
+        console.error('[FileTransfer] Failed to convert binary data to ArrayBuffer');
+        return;
+      }
+
+      // Parse embedded packet
+      const parsed = parseEmbeddedChunkPacket(arrayBuffer);
       if (!parsed) {
         console.error('[FileTransfer] Failed to parse embedded chunk packet');
         return;
