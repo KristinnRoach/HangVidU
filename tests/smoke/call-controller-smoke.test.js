@@ -38,6 +38,9 @@ vi.mock('../../src/room.js', () => {
 vi.mock('../../src/firebase/auth.js', () => {
   return {
     getUserId: () => 'test-user-id',
+    getCurrentUser: () => ({ uid: 'test-user-id' }),
+    isLoggedIn: () => true,
+    getLoggedInUserId: () => 'test-user-id',
   };
 });
 
@@ -70,7 +73,7 @@ describe('CallController Smoke Tests', () => {
         roomId: 'room-123',
         roomLink: 'https://example.com/?room=room-123',
         role: 'initiator',
-        dataChannel: {},
+        dataChannel: { addEventListener: vi.fn(), readyState: 'open' },
         messagesUI: {},
       };
       createCallFlow.mockResolvedValueOnce(mockResult);
@@ -95,7 +98,7 @@ describe('CallController Smoke Tests', () => {
         pc: { id: 'pc2' },
         roomId: 'room-456',
         role: 'joiner',
-        dataChannel: {},
+        dataChannel: { addEventListener: vi.fn(), readyState: 'open' },
         messagesUI: {},
       };
       answerCallFlow.mockResolvedValueOnce(mockResult);
