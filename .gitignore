@@ -97,7 +97,5 @@ kill-hanging-dev-processes.sh
 sync-gh-secrets.sh
 .vscode/
 PWA-TESTING-GUIDE.md
-./coverage//
-
-
-./coverage/
+coverage/
+*.lcov
