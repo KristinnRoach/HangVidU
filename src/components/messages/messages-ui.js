@@ -85,6 +85,7 @@ export function initMessagesUI() {
   let repositionHandlersAttached = false;
   let currentSession = null; // Track the currently displayed session
   let fileTransfer = null; // FileTransfer instance set by setFileTransfer()
+  let isReceivingFile = false; // Track if currently receiving a file
 
   const topRightMenu =
     document.querySelector('.top-bar .top-right-menu') ||
@@ -152,8 +153,7 @@ export function initMessagesUI() {
       return;
     }
 
-    // Disable send button during transfer
-    sendBtn.disabled = true;
+    // Show progress during transfer (don't disable - CSS hides disabled buttons)
     const originalText = sendBtn.textContent;
     sendBtn.textContent = 'Sending...';
 
@@ -168,7 +168,6 @@ export function initMessagesUI() {
       console.error('[MessagesUI] File send failed:', err);
       appendChatMessage('❌ Failed to send file');
     } finally {
-      sendBtn.disabled = false;
       sendBtn.textContent = originalText;
       fileInput.value = ''; // Reset input
     }
@@ -456,7 +455,7 @@ export function initMessagesUI() {
   function setFileTransfer(instance) {
     fileTransfer = instance;
 
-    // Show/hide attachment button based on FileTransfer availability
+    // Show/hide attachment button based on FileTransport availability
     if (fileTransfer) {
       showElement(attachBtn);
 
@@ -469,6 +468,18 @@ export function initMessagesUI() {
         appendChatMessage(`📎 Partner sent: ${file.name}`, {
           fileDownload: { fileName: file.name, url },
         });
+
+        // Reset button text after receive completes
+        if (isReceivingFile) {
+          sendBtn.textContent = 'Send';
+          isReceivingFile = false;
+        }
+      };
+
+      // Setup receive progress handler
+      fileTransfer.onReceiveProgress = (progress) => {
+        isReceivingFile = true;
+        sendBtn.textContent = `${Math.round(progress * 100)}%`;
       };
     } else {
       hideElement(attachBtn);

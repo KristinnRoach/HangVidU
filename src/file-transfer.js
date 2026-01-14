@@ -1,10 +1,13 @@
 import { TransferConfig } from './file-transfer/config.js';
-import { parseEmbeddedChunkPacket, convertToArrayBuffer } from './file-transfer/chunk-processor.js';
+import {
+  parseEmbeddedChunkPacket,
+  convertToArrayBuffer,
+} from './file-transfer/chunk-processor.js';
 import { validateAssembly } from './file-transfer/file-assembler.js';
 
 // Use PrivyDrop's network chunk size for WebRTC safe transmission
 const CHUNK_SIZE = TransferConfig.FILE_CONFIG.NETWORK_CHUNK_SIZE; // 64KB
-const MAX_FILE_SIZE = 900 * 1024 * 1024; // 900MB
+const MAX_FILE_SIZE = 9000 * 1024 * 1024; // X * 1024 * 1024 = X MB
 
 export class FileTransfer {
   constructor(dataChannel) {
@@ -12,6 +15,7 @@ export class FileTransfer {
     this.receivedChunks = new Map(); // fileId -> chunks array
     this.fileMetadata = new Map(); // fileId -> metadata
     this.onFileError = null; // Optional callback for file transfer errors
+    this.onReceiveProgress = null; // Optional callback for receive progress
   }
 
   // Send file
@@ -94,7 +98,9 @@ export class FileTransfer {
       // Binary data - convert to ArrayBuffer (handles Blob for Firefox compatibility)
       const arrayBuffer = await convertToArrayBuffer(data);
       if (!arrayBuffer) {
-        console.error('[FileTransfer] Failed to convert binary data to ArrayBuffer');
+        console.error(
+          '[FileTransfer] Failed to convert binary data to ArrayBuffer'
+        );
         return;
       }
 
@@ -117,6 +123,12 @@ export class FileTransfer {
       }
 
       chunks[chunkMeta.chunkIndex] = chunkData;
+
+      // Report receive progress
+      if (this.onReceiveProgress) {
+        const receivedCount = chunks.filter((c) => c).length;
+        this.onReceiveProgress(receivedCount / chunkMeta.totalChunks);
+      }
 
       // Check if complete
       if (chunks.filter((c) => c).length === chunkMeta.totalChunks) {

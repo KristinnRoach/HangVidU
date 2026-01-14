@@ -88,6 +88,18 @@ export class DataChannelFileTransport extends FileTransport {
   }
 
   /**
+   * Set callback for receive progress updates
+   * @param {Function} callback - Callback(progress) with progress from 0 to 1
+   */
+  onReceiveProgress(callback) {
+    if (typeof callback !== 'function') {
+      throw new Error('onReceiveProgress callback must be a function');
+    }
+
+    this.fileTransfer.onReceiveProgress = callback;
+  }
+
+  /**
    * Check if the DataChannel is ready to send files
    * @returns {boolean} True if ready, false otherwise
    */

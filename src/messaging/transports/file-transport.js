@@ -35,6 +35,15 @@ export class FileTransport {
   }
 
   /**
+   * Set callback for receive progress updates
+   * @param {Function} callback - Callback(progress) with progress from 0 to 1
+   * @abstract
+   */
+  onReceiveProgress(callback) {
+    throw new Error('FileTransport.onReceiveProgress() must be implemented by subclass');
+  }
+
+  /**
    * Check if the transport is ready to send files
    * @returns {boolean} True if ready, false otherwise
    * @abstract
