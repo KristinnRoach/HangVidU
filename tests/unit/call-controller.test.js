@@ -20,6 +20,9 @@ vi.mock('../../src/room.js', () => {
 vi.mock('../../src/firebase/auth.js', () => {
   return {
     getUserId: () => 'local-user-id',
+    getCurrentUser: () => ({ uid: 'local-user-id' }),
+    isLoggedIn: () => true,
+    getLoggedInUserId: () => 'local-user-id',
   };
 });
 vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => {
@@ -33,6 +36,17 @@ vi.mock('firebase/database', () => {
   return {
     ref: vi.fn((db, path) => ({ _path: path })),
     off: vi.fn(),
+    get: vi.fn(),
+    set: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+    onValue: vi.fn(),
+    onChildAdded: vi.fn(),
+    onChildChanged: vi.fn(),
+    onChildRemoved: vi.fn(),
+    onChildMoved: vi.fn(),
+    push: vi.fn(),
+    serverTimestamp: vi.fn(() => ({ '.sv': 'timestamp' })),
     getDatabase: vi.fn(() => ({})),
   };
 });
@@ -63,7 +77,7 @@ describe('CallController (unit)', () => {
       roomId: 'room-123',
       roomLink: 'https://example/?room=room-123',
       role: 'initiator',
-      dataChannel: {},
+      dataChannel: { addEventListener: vi.fn(), readyState: 'open' },
       messagesUI: {},
     };
     createCallFlow.mockResolvedValueOnce(fakeResult);
@@ -305,7 +319,7 @@ it('tracks cancellation listener in listeners Map after createCall', async () =>
     roomId: 'room-123',
     roomLink: 'https://example/?room=room-123',
     role: 'initiator',
-    dataChannel: {},
+    dataChannel: { addEventListener: vi.fn(), readyState: 'open' },
     messagesUI: {},
   };
   createCallFlow.mockResolvedValueOnce(fakeResult);
@@ -350,7 +364,7 @@ it('tracks rejection listener in listeners Map after createCall', async () => {
     roomId: 'room-789',
     roomLink: 'https://example/?room=room-789',
     role: 'initiator',
-    dataChannel: {},
+    dataChannel: { addEventListener: vi.fn(), readyState: 'open' },
     messagesUI: {},
   };
   createCallFlow.mockResolvedValueOnce(fakeResult);
@@ -402,7 +416,7 @@ it('tracks member-joined listener in listeners Map after createCall', async () =
     roomId: 'room-members',
     roomLink: 'https://example/?room=room-members',
     role: 'initiator',
-    dataChannel: {},
+    dataChannel: { addEventListener: vi.fn(), readyState: 'open' },
     messagesUI: {},
   };
   createCallFlow.mockResolvedValueOnce(fakeResult);
@@ -423,7 +437,7 @@ it('tracks member-left listener in listeners Map after createCall', async () => 
     roomId: 'room-members-left',
     roomLink: 'https://example/?room=room-members-left',
     role: 'initiator',
-    dataChannel: {},
+    dataChannel: { addEventListener: vi.fn(), readyState: 'open' },
     messagesUI: {},
   };
   createCallFlow.mockResolvedValueOnce(fakeResult);
