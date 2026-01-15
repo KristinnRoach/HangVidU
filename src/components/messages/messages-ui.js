@@ -488,6 +488,36 @@ export function initMessagesUI() {
     }
   }
 
+  /**
+   * Reset the messages UI for a new user session (e.g., on logout).
+   * Clears messages, session, and hides the UI without destroying DOM elements.
+   */
+  function reset() {
+    clearMessages();
+    currentSession = null;
+    fileTransfer = null;
+    isReceivingFile = false;
+    hideMessagesToggle();
+    hideElement(messagesBox);
+    messageToggle.clearBadge();
+
+    // Reset send button text in case file transfer was in progress
+    if (sendBtn) {
+      sendBtn.textContent = 'Send';
+    }
+
+    // Hide attachment button (will be shown again when FileTransfer is available)
+    hideElement(attachBtn);
+
+    // Clear inline positioning
+    messagesBox.style.top = '';
+    messagesBox.style.left = '';
+    messagesBox.style.bottom = '';
+    messagesBox.style.right = '';
+
+    detachRepositionHandlers();
+  }
+
   function cleanup() {
     // Cleanup message toggle
     if (messageToggle) {
@@ -531,6 +561,7 @@ export function initMessagesUI() {
     getCurrentSession,
     clearMessages,
     setFileTransfer,
+    reset,
     cleanup,
   };
 }

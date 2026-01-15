@@ -261,27 +261,33 @@ export async function signInWithGoogle() {
     prompt: 'select_account',
   });
 
-  // Detect standalone PWA (iOS installed app or other platforms)
-  const isStandalonePWA = (() => {
-    try {
-      return (
-        (typeof window !== 'undefined' &&
-          window.matchMedia &&
-          window.matchMedia('(display-mode: standalone)').matches) ||
-        // Legacy iOS PWA detection
-        (typeof navigator !== 'undefined' && navigator.standalone === true)
-      );
-    } catch (_) {
-      return false;
-    }
-  })();
-  const isIOSStandalone =
-    isStandalonePWA && /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+  // Detect standalone PWA - must check BOTH conditions to avoid false positives
+  // navigator.standalone is iOS-only, display-mode: standalone works cross-platform
+  const displayModeStandalone =
+    typeof window !== 'undefined' &&
+    window.matchMedia?.('(display-mode: standalone)').matches;
+  const navigatorStandalone =
+    typeof navigator !== 'undefined' && navigator.standalone === true;
+  const isStandalonePWA = displayModeStandalone || navigatorStandalone;
+
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+  const isIOSStandalone = isStandalonePWA && isIOS;
+
+  // Debug: Log PWA detection state (remove after debugging)
+  console.log('[AUTH] PWA detection:', {
+    displayModeStandalone,
+    navigatorStandalone,
+    isStandalonePWA,
+    isIOS,
+    isIOSStandalone,
+    safariExternalOpenArmed,
+  });
 
   try {
     // If previous attempt failed in iOS standalone PWA, the user can tap Login again
     // and we open in Safari from the same user gesture.
     if (isIOSStandalone && safariExternalOpenArmed) {
+      console.log('[AUTH] Using Safari external fallback');
       safariExternalOpenArmed = false;
       openInSafariExternal();
       return;
