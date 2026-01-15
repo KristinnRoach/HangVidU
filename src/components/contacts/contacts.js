@@ -312,12 +312,14 @@ export function openContactMessages(
 
   // Open messaging session
   const session = messagingController.openSession(contactId, {
-    onMessage: (text, _msgData, isSentByMe) => {
+    onMessage: (text, msgData, isSentByMe) => {
       // Display message in UI with correct prefix
       if (isSentByMe) {
         messagesUI.appendChatMessage(`You: ${text}`);
       } else {
-        messagesUI.receiveMessage(text);
+        // Only count as unread if message hasn't been read yet
+        const isUnread = !msgData.read;
+        messagesUI.receiveMessage(text, { isUnread });
       }
     },
   });

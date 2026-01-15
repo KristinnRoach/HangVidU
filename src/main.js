@@ -347,8 +347,6 @@ export async function joinOrCreateRoomWithId(
       }
     );
 
-    await initLocalStreamAndMedia();
-
     const result = await CallController.createCall(
       getCallOptions(customRoomId)
     );
@@ -388,11 +386,10 @@ export async function joinOrCreateRoomWithId(
       }
     );
 
-    await initLocalStreamAndMedia();
-
     const result = await CallController.createCall(
       getCallOptions(customRoomId)
     );
+
     return applyCallResult(result, true); // Show modal when creating via join form
   }
 

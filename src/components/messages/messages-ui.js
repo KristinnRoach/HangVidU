@@ -368,11 +368,13 @@ export function initMessagesUI() {
     });
   }
 
-  function receiveMessage(text) {
+  function receiveMessage(text, { isUnread = true } = {}) {
     appendChatMessage(`Partner: ${text}`);
 
-    if (isHidden(messagesBox)) {
-      // Get current count and increment
+    // Only increment unread count if:
+    // 1. The messages box is hidden (user can't see the message)
+    // 2. The message is actually unread (not a historical already-read message)
+    if (isHidden(messagesBox) && isUnread) {
       const currentCount = messageToggle.element.unreadCount || 0;
       messageToggle.setUnreadCount(currentCount + 1);
       // Animation triggered automatically by component
