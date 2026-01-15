@@ -501,6 +501,9 @@ export function initMessagesUI() {
     hideElement(messagesBox);
     messageToggle.clearBadge();
 
+    // Clear any unsent message text
+    messagesInput.value = '';
+
     // Reset send button text in case file transfer was in progress
     if (sendBtn) {
       sendBtn.textContent = 'Send';
