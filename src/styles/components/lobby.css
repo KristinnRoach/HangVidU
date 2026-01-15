@@ -15,12 +15,19 @@
 
 /* Lobby Call Button */
 
+#lobby-call-and-join-div {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 4rem;
+  max-width: 70dvw;
+}
+
 #lobby-call-btn {
   display: flex;
 
-  place-self: center;
   padding: 2rem;
-
   aspect-ratio: 1;
 
   justify-content: center;
@@ -30,8 +37,8 @@
   box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.15);
 
   /* fa-phone icon styles: */
+  font-size: 6rem;
   color: blue;
-  font-size: 8rem;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 
   transition: color 0.3s ease, background-color 0.3s ease;
@@ -40,13 +47,43 @@
 #lobby-call-btn:hover {
   box-shadow: inset 0 20px 40px rgba(0, 0, 0, 0.3);
 
-  /* fa-phone icon styles: */
+  /* fa icon styles: */
   color: rgb(55, 162, 255);
   text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), 0 -1px 0 rgba(255, 255, 255, 0.3);
 }
 
-/* Join Room Form */
+#paste-join-btn {
+  padding: var(--spacing-md) var(--spacing-lg);
 
+  border-radius: 50%;
+  padding: 2rem;
+  aspect-ratio: 1;
+
+  font-size: 1.2rem;
+  border: none;
+  cursor: pointer;
+
+  background-color: var(--btn-primary-bg);
+  box-shadow: var(--shadow-sm);
+
+  /* fa icon: */
+  font-size: 6rem;
+  color: var(--btn-primary-text);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+#paste-join-btn:hover {
+  background-color: var(--btn-primary-bg-hover);
+  box-shadow: var(--shadow-md);
+
+  /* fa icon: */
+  color: rgb(55, 162, 255);
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), 0 -1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* Join Room Form 
 #join-room-container {
   display: flex;
   flex-direction: column;
@@ -67,7 +104,7 @@
   align-items: center;
   justify-content: center;
   gap: 1rem;
-}
+} */
 
 /* Confirm Dialog (used in lobby for confirmations) */
 
