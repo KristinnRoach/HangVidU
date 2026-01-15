@@ -1217,7 +1217,14 @@ window.onload = async () => {
 
       // Only clean up on actual logout (not initial load)
       if (isActualLogout) {
-        devDebug('[AUTH] User logged out - cleaning up incoming listeners');
+        devDebug('[AUTH] User logged out - cleaning up messaging and listeners');
+
+        // Clear messages UI to prevent previous user's messages from being visible
+        messagesUI.reset();
+
+        // Close all messaging sessions (stops RTDB listeners for old user's conversations)
+        messagingController.closeAllSessions();
+
         removeAllIncomingListeners();
       } else if (isActualLogin) {
         // On login, re-attach listeners for saved rooms
