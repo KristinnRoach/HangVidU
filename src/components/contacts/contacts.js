@@ -178,7 +178,7 @@ export async function renderContactsList(lobbyElement) {
               <div class="contact-msg-toggle-container" data-contact-id="${id}"></div>
               <span
                 class="contact-name"
-                data-room-id="${contact.roomId}"
+                data-room-id="${contact.roomId || ''}"
                 data-contact-name="${contact.contactName}"
                 data-contact-id="${id}"
                 title="Call ${contact.contactName}"
