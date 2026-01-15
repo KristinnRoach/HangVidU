@@ -21,6 +21,23 @@ import { initializePresence, setOffline } from './presence.js';
 
 export const auth = getAuth(app);
 
+// Production-aware auth logger: avoid printing PII in production builds
+const isProd =
+  typeof import.meta !== 'undefined' && Boolean(import.meta.env?.PROD);
+function logAuthError(context, error, extra = {}) {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'n/a';
+  if (isProd) {
+    console.error(`[AUTH] ${context}:`, {
+      code: error?.code || 'unknown',
+      message: error?.message || String(error),
+      origin,
+      ...extra,
+    });
+  } else {
+    console.error(`[AUTH] ${context}:`, error, extra, { origin });
+  }
+}
+
 // Export a promise that resolves when auth initialization completes
 // This ensures redirect processing finishes before components subscribe to auth state
 export const authReady = (async () => {
@@ -41,10 +58,8 @@ export const authReady = (async () => {
   try {
     const result = await getRedirectResult(auth);
     if (result?.user) {
-      console.log(
-        '[AUTH] ✅ Sign-in completed (via Safari fallback), user:',
-        result.user.email || result.user.uid
-      );
+      // Do not print user displayName in production logs
+      devDebug('[AUTH] ✅ Sign-in completed (via Safari fallback)');
     }
   } catch (e) {
     // Ignore redirect result errors - they're expected when no redirect occurred
@@ -282,7 +297,8 @@ export async function signInWithGoogle() {
     const token = credential.accessToken;
     // The signed-in user info.
     const user = result.user;
-    console.log('Signed in user:', user);
+    // Use devDebug for local troubleshooting.
+    devDebug('Signed in user: ', user.displayName);
 
     devDebug('Google Access Token exists:', !!token);
     safariExternalOpenArmed = false; // clear on success
@@ -323,17 +339,11 @@ export async function signInWithGoogle() {
       return;
     }
 
-    // The email of the user's account used.
+    // The email of the user's account used (do not print raw value in prod)
     const email = error?.customData?.email;
-    // The AuthCredential type that was used.
-    const credential = GoogleAuthProvider.credentialFromError(error);
-
-    console.error('Error during Google sign-in:', {
-      errorCode,
-      errorMessage,
-      email,
-      credential,
-      origin: typeof window !== 'undefined' ? window.location.origin : 'n/a',
+    // Log error in a production-safe way
+    logAuthError('Google sign-in', error, {
+      email: email ? '<redacted>' : undefined,
     });
 
     if (errorCode === 'auth/unauthorized-domain') {
@@ -388,7 +398,7 @@ export const signInWithAccountSelection = async () => {
     devDebug('[AUTH] Popup sign-in successful:', result.user.email);
     return result;
   } catch (error) {
-    console.error('[AUTH] Account selection sign-in failed:', error);
+    logAuthError('Account selection sign-in', error);
     throw error;
   }
 };
@@ -400,7 +410,7 @@ export async function signOutUser() {
     console.info('User signed out');
     setTimeout(() => showOneTapSignin(), 1500); // TODO: decide whether this is annoying
   } catch (error) {
-    console.error('Error signing out:', error);
+    logAuthError('Sign out', error);
     // Re-throw the error to allow callers to handle it
     throw error;
   }
