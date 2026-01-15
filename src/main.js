@@ -41,6 +41,13 @@ import {
   openContactMessages,
 } from './components/contacts/contacts.js';
 
+import {
+  listenForInvites,
+  acceptInvite,
+  declineInvite,
+  cleanupInviteListeners,
+} from './contacts/invitations.js';
+
 import { messagesUI } from './components/messages/messages-ui.js';
 
 import { ringtoneManager } from './media/audio/ringtone-manager.js';
@@ -1155,6 +1162,44 @@ async function autoJoinFromUrl() {
 }
 
 // ============================================================================
+// CONTACT INVITATIONS
+// ============================================================================
+
+/**
+ * Set up listener for incoming contact invitations.
+ * Shows a confirmation dialog when an invite is received.
+ */
+function setupInviteListener() {
+  listenForInvites(async (fromUserId, inviteData) => {
+    // Show confirmation dialog
+    const accept = await confirmDialog(
+      `${inviteData.fromName || 'Someone'} wants to connect.\n\nAccept contact invitation?`
+    );
+
+    if (accept) {
+      try {
+        await acceptInvite(fromUserId, inviteData);
+        console.log('[INVITATIONS] Contact added:', inviteData.fromName);
+        // Refresh contacts list
+        await renderContactsList(lobbyDiv).catch(() => {});
+        // Show success message
+        alert(`Added ${inviteData.fromName} to your contacts!`);
+      } catch (e) {
+        console.error('[INVITATIONS] Failed to accept invite:', e);
+        alert('Failed to add contact. Please try again.');
+      }
+    } else {
+      try {
+        await declineInvite(fromUserId);
+        console.log('[INVITATIONS] Invite declined');
+      } catch (e) {
+        console.error('[INVITATIONS] Failed to decline invite:', e);
+      }
+    }
+  });
+}
+
+// ============================================================================
 // INITIALIZE ON PAGE LOAD
 // ============================================================================
 
@@ -1228,16 +1273,21 @@ window.onload = async () => {
       if (isActualLogout) {
         devDebug('[AUTH] User logged out - cleaning up incoming listeners');
         removeAllIncomingListeners();
+        cleanupInviteListeners();
       } else if (isActualLogin) {
         // On login, re-attach listeners for saved rooms
         devDebug('[AUTH] User logged in - re-attaching incoming listeners');
         await startListeningForSavedRooms().catch((e) =>
           console.warn('Failed to re-attach saved-room listeners on login', e)
         );
+        // Start listening for contact invites
+        setupInviteListener();
       } else if (isInitialLoad && isLoggedIn) {
         // If user is already logged in on initial load (e.g., after redirect)
         devDebug('[AUTH] Initial load with logged-in user');
         // Listeners already attached by startListeningForSavedRooms, no action needed
+        // Start listening for contact invites
+        setupInviteListener();
       }
     } catch (e) {
       console.warn('Failed to handle auth change:', e);
