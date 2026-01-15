@@ -1048,27 +1048,36 @@ lobbyCallBtn.onclick = handleCall;
 
 // Paste & Join: read clipboard, extract room ID, and join
 if (pasteJoinBtn) {
-  pasteJoinBtn.onclick = async () => {
-    try {
-      const clipboardText = await navigator.clipboard.readText();
-      const roomId = normalizeRoomInput(clipboardText);
+  if (navigator.clipboard && navigator.clipboard.readText) {
+    pasteJoinBtn.onclick = async () => {
+      try {
+        const clipboardText = await navigator.clipboard.readText();
+        const roomId = normalizeRoomInput(clipboardText);
 
-      if (!roomId) {
-        alert('No valid room link found in clipboard.');
-        return;
-      }
+        if (!roomId) {
+          alert('No valid room link found in clipboard.');
+          return;
+        }
 
-      await joinOrCreateRoomWithId(roomId);
-    } catch (error) {
-      // Clipboard access denied or other error
-      if (error.name === 'NotAllowedError') {
-        alert('Clipboard access denied. Please allow clipboard access or paste the link manually.');
-      } else {
-        console.error('Paste & Join failed:', error);
-        alert('Failed to read clipboard. Please try again.');
+        await joinOrCreateRoomWithId(roomId);
+      } catch (error) {
+        // Clipboard access denied or other error
+        if (error.name === 'NotAllowedError') {
+          alert(
+            'Clipboard access denied. Please allow clipboard access or paste the link manually.'
+          );
+        } else {
+          console.error('Paste & Join failed:', error);
+          alert('Failed to read clipboard. Please try again.');
+        }
       }
-    }
-  };
+    };
+  } else {
+    pasteJoinBtn.style.display = 'none';
+    console.warn(
+      'Paste & Join button hidden: Clipboard API not available in this context (requires HTTPS).'
+    );
+  }
 }
 
 if (exitWatchModeBtn) {
