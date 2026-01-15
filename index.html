@@ -62,9 +62,18 @@
         <!-- Lobby -->
 
         <div id="lobby" class="lobby">
-          <button title="Start Call" class="lobby-btn" id="lobby-call-btn">
-            <i class="fa fa-phone"></i>
-          </button>
+          <div id="lobby-call-and-join-div" class="lobby-call-and-join-div">
+            <button title="Start Call" class="lobby-btn" id="lobby-call-btn">
+              <i class="fa fa-phone"></i>
+            </button>
+            <button
+              title="Paste invite link and join call (needs an invite link in clipboard)"
+              class="lobby-btn"
+              id="paste-join-btn"
+            >
+              <i class="fa fa-paste"></i>
+            </button>
+          </div>
 
           <!-- <p id="lobby-text" class="p">
             Or create a new link and share it with a friend:

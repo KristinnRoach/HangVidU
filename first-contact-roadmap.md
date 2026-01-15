@@ -11,6 +11,8 @@ HangVidU's post-onboarding UX is solid (calling/messaging saved contacts works g
 
 This requires out-of-band communication for every new connection.
 
+**Temporary Workaround:** A "Paste & Join" button was added to the lobby (`index.html`, `main.js`) to help PWA users join via copied links. This should be removed or revised once the proper first-contact flow is implemented.
+
 ## Goal
 
 Make initial contact as frictionless as possible by:

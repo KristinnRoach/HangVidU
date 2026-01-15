@@ -75,6 +75,7 @@ import {
   lobbyDiv,
   lobbyCallBtn,
   titleAuthBar,
+  pasteJoinBtn,
   getElements,
 } from './elements.js';
 
@@ -1044,6 +1045,31 @@ const handleCall = async () => {
 
 callBtn.onclick = handleCall;
 lobbyCallBtn.onclick = handleCall;
+
+// Paste & Join: read clipboard, extract room ID, and join
+if (pasteJoinBtn) {
+  pasteJoinBtn.onclick = async () => {
+    try {
+      const clipboardText = await navigator.clipboard.readText();
+      const roomId = normalizeRoomInput(clipboardText);
+
+      if (!roomId) {
+        alert('No valid room link found in clipboard.');
+        return;
+      }
+
+      await joinOrCreateRoomWithId(roomId);
+    } catch (error) {
+      // Clipboard access denied or other error
+      if (error.name === 'NotAllowedError') {
+        alert('Clipboard access denied. Please allow clipboard access or paste the link manually.');
+      } else {
+        console.error('Paste & Join failed:', error);
+        alert('Failed to read clipboard. Please try again.');
+      }
+    }
+  };
+}
 
 if (exitWatchModeBtn) {
   exitWatchModeBtn.onclick = () => {
