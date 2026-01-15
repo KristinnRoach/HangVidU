@@ -6,6 +6,12 @@
         ".write": true
       }
     },
+    "usersByEmail": {
+      "$emailHash": {
+        ".read": "auth != null",
+        ".write": "auth != null && newData.child('uid').val() === auth.uid"
+      }
+    },
     "users": {
       "$userId": {
         "contacts": {
