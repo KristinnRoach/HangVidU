@@ -48,6 +48,8 @@ import {
   cleanupInviteListeners,
 } from './contacts/invitations.js';
 
+import { showAddContactModal } from './components/contacts/add-contact-modal.js';
+
 import { messagesUI } from './components/messages/messages-ui.js';
 
 import { ringtoneManager } from './media/audio/ringtone-manager.js';
@@ -83,6 +85,7 @@ import {
   lobbyCallBtn,
   titleAuthBar,
   pasteJoinBtn,
+  addContactBtn,
   getElements,
 } from './elements.js';
 
@@ -1085,6 +1088,13 @@ if (pasteJoinBtn) {
       'Paste & Join button hidden: Clipboard API not available in this context (requires HTTPS).'
     );
   }
+}
+
+// Add Contact button
+if (addContactBtn) {
+  addContactBtn.onclick = async () => {
+    await showAddContactModal();
+  };
 }
 
 if (exitWatchModeBtn) {
