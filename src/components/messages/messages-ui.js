@@ -612,7 +612,8 @@ export function initMessagesUI() {
             a.click();
             
             // Revoke blob URL after a delay to allow download to start
-            setTimeout(() => URL.revokeObjectURL(url), 100);
+            // Using 1 second to be safe for slow devices/large files
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
             
             appendChatMessage(`📎 Downloaded: ${file.name}`);
           }

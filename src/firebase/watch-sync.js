@@ -235,15 +235,19 @@ function handleRegularVideoSync(data) {
 // LOCAL EVENT LISTENERS
 // -----------------------------------------------------------------------------
 function setupLocalVideoListeners() {
+  // Helper to preserve 'file' mode when handling regular video events
+  const preserveFileMode = () => {
+    if (lastWatched !== 'file') {
+      lastWatched = 'url';
+    }
+  };
+
   sharedVideoEl.addEventListener('play', async () => {
     if (!getYouTubePlayer() && currentRoomId) {
       lastLocalAction = Date.now();
       await updateWatchSyncState({ playing: true, isYouTube: false });
     }
-    // Preserve 'file' mode if already set, otherwise set to 'url'
-    if (lastWatched !== 'file') {
-      lastWatched = 'url';
-    }
+    preserveFileMode();
   });
 
   sharedVideoEl.addEventListener('pause', async () => {
@@ -251,10 +255,7 @@ function setupLocalVideoListeners() {
       lastLocalAction = Date.now();
       await updateWatchSyncState({ playing: false, isYouTube: false });
     }
-    // Preserve 'file' mode if already set, otherwise set to 'url'
-    if (lastWatched !== 'file') {
-      lastWatched = 'url';
-    }
+    preserveFileMode();
   });
 
   sharedVideoEl.addEventListener('seeked', async () => {
@@ -266,10 +267,7 @@ function setupLocalVideoListeners() {
         isYouTube: false,
       });
     }
-    // Preserve 'file' mode if already set, otherwise set to 'url'
-    if (lastWatched !== 'file') {
-      lastWatched = 'url';
-    }
+    preserveFileMode();
   });
 }
 
