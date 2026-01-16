@@ -1198,46 +1198,61 @@ async function autoJoinFromUrl() {
 // CONTACT INVITATIONS
 // ============================================================================
 
+// Queue for incoming invites (can be used by notification system later)
+const pendingInvites = [];
+let isProcessingInvite = false;
+
+/**
+ * Process the next invite in the queue.
+ * Shows dialogs one at a time to prevent overlap.
+ */
+async function processNextInvite() {
+  if (isProcessingInvite || pendingInvites.length === 0) return;
+
+  isProcessingInvite = true;
+  const { fromUserId, inviteData } = pendingInvites.shift();
+
+  const accept = await confirmDialog(
+    `${inviteData.fromName || 'Someone'} wants to connect.\n\nAccept contact invitation?`
+  );
+
+  if (accept) {
+    try {
+      await acceptInvite(fromUserId, inviteData);
+      console.log('[INVITATIONS] Contact added:', inviteData.fromName);
+      await renderContactsList(lobbyDiv).catch(() => {});
+      alert(`Added ${inviteData.fromName} to your contacts!`);
+    } catch (e) {
+      console.error('[INVITATIONS] Failed to accept invite:', e);
+      alert('Failed to add contact. Please try again.');
+    }
+  } else {
+    try {
+      await declineInvite(fromUserId);
+      console.log('[INVITATIONS] Invite declined');
+    } catch (e) {
+      console.error('[INVITATIONS] Failed to decline invite:', e);
+    }
+  }
+
+  isProcessingInvite = false;
+  processNextInvite();
+}
+
 /**
  * Set up listener for incoming contact invitations.
- * Shows a confirmation dialog when an invite is received.
+ * Queues invites and processes them one at a time.
  */
 function setupInviteListener() {
-  // Listen for incoming invites
-  listenForInvites(async (fromUserId, inviteData) => {
-    // Show confirmation dialog
-    const accept = await confirmDialog(
-      `${inviteData.fromName || 'Someone'} wants to connect.\n\nAccept contact invitation?`
-    );
-
-    if (accept) {
-      try {
-        await acceptInvite(fromUserId, inviteData);
-        console.log('[INVITATIONS] Contact added:', inviteData.fromName);
-        // Refresh contacts list
-        await renderContactsList(lobbyDiv).catch(() => {});
-        // Show success message
-        alert(`Added ${inviteData.fromName} to your contacts!`);
-      } catch (e) {
-        console.error('[INVITATIONS] Failed to accept invite:', e);
-        alert('Failed to add contact. Please try again.');
-      }
-    } else {
-      try {
-        await declineInvite(fromUserId);
-        console.log('[INVITATIONS] Invite declined');
-      } catch (e) {
-        console.error('[INVITATIONS] Failed to decline invite:', e);
-      }
-    }
+  listenForInvites((fromUserId, inviteData) => {
+    pendingInvites.push({ fromUserId, inviteData });
+    processNextInvite();
   });
 
   // Listen for accepted invites (when someone accepts your invite)
   listenForAcceptedInvites(async (acceptedByUserId, acceptData) => {
     console.log('[INVITATIONS] Your invite was accepted by:', acceptData.acceptedByName);
-    // Refresh contacts list to show the new contact
     await renderContactsList(lobbyDiv).catch(() => {});
-    // Optionally show a notification
     alert(`${acceptData.acceptedByName} accepted your invitation!`);
   });
 }

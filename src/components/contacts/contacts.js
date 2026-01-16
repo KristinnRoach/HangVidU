@@ -240,15 +240,18 @@ function attachContactListeners(container, lobbyElement) {
       const contactName = nameEl.getAttribute('data-contact-name');
       const contactId = nameEl.getAttribute('data-contact-id');
       
-      // If no roomId is saved, generate deterministic room ID
+      // If no roomId is saved, generate and persist it
       if (!roomId && contactId) {
         const myUserId = getLoggedInUserId();
         if (myUserId) {
           try {
             roomId = getDeterministicRoomId(myUserId, contactId);
             console.log('[CONTACTS] Generated deterministic room ID:', roomId);
+            // Persist the generated roomId
+            await saveContactData(contactId, contactName, roomId);
+            nameEl.setAttribute('data-room-id', roomId);
           } catch (e) {
-            console.error('[CONTACTS] Failed to generate deterministic room ID:', e);
+            console.error('[CONTACTS] Failed to generate or save room ID:', e);
             return;
           }
         }

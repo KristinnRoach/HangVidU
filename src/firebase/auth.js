@@ -427,3 +427,66 @@ export async function signOutUser() {
     throw error;
   }
 }
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_APP_GOOGLE_CLIENT_ID;
+
+/**
+ * Request Google Contacts access via Google Identity Services Token Model.
+ * Opens a popup to request the contacts.readonly scope.
+ * @returns {Promise<string>} - Google access token with contacts scope
+ * @throws {Error} - If authorization fails or is cancelled
+ */
+export function requestContactsAccess() {
+  return new Promise((resolve, reject) => {
+    if (!GOOGLE_CLIENT_ID) {
+      reject(new Error('Google Client ID not configured'));
+      return;
+    }
+
+    // Wait for GIS library to load
+    if (typeof google === 'undefined' || !google.accounts?.oauth2) {
+      reject(new Error('Google Identity Services not loaded'));
+      return;
+    }
+
+    const currentUser = getCurrentUser();
+
+    console.log('[AUTH] Requesting contacts access via GIS Token Model...');
+
+    const tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/contacts.readonly https://www.googleapis.com/auth/contacts.other.readonly',
+      hint: currentUser?.email || undefined,
+      callback: (response) => {
+        if (response.error) {
+          console.error('[AUTH] Token request error:', response.error);
+          if (response.error === 'access_denied') {
+            reject(new Error('Authorization cancelled'));
+          } else {
+            reject(new Error(response.error_description || response.error));
+          }
+          return;
+        }
+
+        if (!response.access_token) {
+          reject(new Error('No access token received'));
+          return;
+        }
+
+        console.log('[AUTH] Contacts access granted');
+        resolve(response.access_token);
+      },
+      error_callback: (error) => {
+        console.error('[AUTH] Token client error:', error);
+        if (error.type === 'popup_closed') {
+          reject(new Error('Authorization cancelled'));
+        } else {
+          reject(new Error(error.message || 'Authorization failed'));
+        }
+      },
+    });
+
+    // Request the token (opens popup)
+    tokenClient.requestAccessToken();
+  });
+}

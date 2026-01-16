@@ -18,18 +18,9 @@ export function hashEmail(email) {
   // Normalize: lowercase and trim
   const normalized = email.toLowerCase().trim();
 
-  // Base64 encode
-  const base64 = btoa(normalized);
-
-  // Replace Firebase-incompatible characters: . $ # [ ] /
-  // Use underscores and hyphens as replacements
-  const safe = base64
-    .replace(/\./g, '_')
-    .replace(/\$/g, '-')
-    .replace(/#/g, '-')
-    .replace(/\[/g, '-')
-    .replace(/\]/g, '-')
-    .replace(/\//g, '-');
+  // UTF-8 safe base64 encode, then replace / for Firebase compatibility
+  const base64 = btoa(unescape(encodeURIComponent(normalized)));
+  const safe = base64.replace(/\//g, '-');
 
   return safe;
 }
