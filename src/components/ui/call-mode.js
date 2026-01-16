@@ -1,5 +1,5 @@
 // src/components/ui/call-mode.js
-// Call mode UI state management - extracted from main.js
+// Call mode UI state management
 
 import {
   localBoxEl,
@@ -38,7 +38,7 @@ let cleanupFunctions = [];
 // Export state getter
 export const getIsInCallMode = () => isInCallMode;
 
-export let enterCallMode = () => {
+export const enterCallMode = () => {
   if (isInCallMode) return;
 
   // Check if remote video is ready and playing
@@ -132,7 +132,7 @@ export let enterCallMode = () => {
   }
 };
 
-export let exitCallMode = () => {
+export const exitCallMode = () => {
   if (!isInCallMode) return;
   isInCallMode = false;
 
@@ -143,8 +143,6 @@ export let exitCallMode = () => {
 
   callBtn.disabled = false;
   callBtn.classList.remove('disabled');
-
-  showElement(lobbyCallBtn);
 
   hangUpBtn.disabled = true;
   hangUpBtn.classList.add('disabled');
@@ -158,8 +156,11 @@ export let exitCallMode = () => {
     cleanupChatControlAutoHide = null;
   }
 
-  showElement(lobbyDiv);
-  showElement(chatControls);
+  if (!isWatchModeActive()) {
+    showElement(lobbyCallBtn);
+    showElement(lobbyDiv);
+    showElement(chatControls);
+  }
 };
 
 // Cleanup function for call mode UI

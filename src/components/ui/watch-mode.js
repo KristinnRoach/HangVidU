@@ -1,5 +1,5 @@
 // src/components/ui/watch-mode.js
-// Watch mode UI state management - extracted from main.js
+// Watch mode UI state management
 
 import {
   localVideoEl,
@@ -88,23 +88,12 @@ export function enterWatchMode() {
 
   showElement(chatControls);
 
-  if (!isRemoteVideoVideoActive()) {
-    hideElement(remoteBoxEl);
-    removeFromSmallFrame(remoteBoxEl);
-
-    if (!isElementInPictureInPicture(localVideoEl)) {
-      showElement(localBoxEl);
-      placeInSmallFrame(localBoxEl);
-    }
-    return;
-  }
-
   // Hide local video if remote video is active
   hideElement(localBoxEl);
   removeFromSmallFrame(localBoxEl);
+  hideElement(remoteBoxEl);
 
   if (isElementInPictureInPicture(remoteVideoEl)) {
-    hideElement(remoteBoxEl); // ensure small-frame is hidden if in PiP
     removeFromSmallFrame(remoteBoxEl);
   } else if (isPiPSupported()) {
     // Try to enter PiP with fallback
@@ -112,7 +101,6 @@ export function enterWatchMode() {
       .requestPictureInPicture()
       .then(() => {
         // Hide the smallFrame if PiP entered successfully
-        hideElement(remoteBoxEl);
         removeFromSmallFrame(remoteBoxEl);
       })
       .catch((err) => {
