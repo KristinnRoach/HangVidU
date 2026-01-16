@@ -90,6 +90,11 @@
   border: 1px solid var(--border-secondary);
   background: var(--bg-elevated);
   color: var(--text-primary);
+  box-sizing: border-box;
+  min-height: 36px;
+  overflow: hidden;
+  resize: none;
+  place-content: center;
 }
 
 #messages-form button {

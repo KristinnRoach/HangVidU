@@ -1,5 +1,9 @@
 import { set, update, remove } from 'firebase/database';
-import { onDataChange, rtdb, getWatchRef, getWatchRequestRef } from '../storage/fb-rtdb/rtdb.js';
+import {
+  onDataChange,
+  getWatchRef,
+  getWatchRequestRef,
+} from '../storage/fb-rtdb/rtdb.js';
 import {
   isYouTubeUrl,
   getYouTubePlayer,
@@ -184,7 +188,7 @@ export async function cancelWatchRequest() {
  */
 function handleWatchRequestUpdate(snapshot) {
   const data = snapshot.val();
-  
+
   // Request was cancelled or doesn't exist
   if (!data) {
     currentFileRequest = null;
@@ -352,7 +356,11 @@ function setupLocalVideoListeners() {
   sharedVideoEl.addEventListener('play', async () => {
     if (!getYouTubePlayer() && currentRoomId) {
       lastLocalAction = Date.now();
-      await updateWatchSyncState({ playing: true, isYouTube: false });
+      await updateWatchSyncState({
+        playing: true,
+        currentTime: sharedVideoEl.currentTime,
+        isYouTube: false,
+      });
     }
     preserveFileMode();
   });
@@ -363,7 +371,15 @@ function setupLocalVideoListeners() {
 
     if (!getYouTubePlayer() && currentRoomId) {
       lastLocalAction = Date.now();
-      await updateWatchSyncState({ playing: false, isYouTube: false });
+      // DEBUG
+      console.log('[SYNC DEBUG] Local pause event:', {
+        currentTime: sharedVideoEl.currentTime,
+      });
+      await updateWatchSyncState({
+        playing: false,
+        currentTime: sharedVideoEl.currentTime,
+        isYouTube: false,
+      });
     }
     preserveFileMode();
   });
@@ -374,11 +390,15 @@ function setupLocalVideoListeners() {
   });
 
   // Only reset wasPlayingBeforeSeek on actual user pause (not seek-triggered)
-  sharedVideoEl.addEventListener('pause', () => {
-    if (!sharedVideoEl.seeking) {
-      wasPlayingBeforeSeek = false;
-    }
-  }, true); // Use capture to run before our other pause handler
+  sharedVideoEl.addEventListener(
+    'pause',
+    () => {
+      if (!sharedVideoEl.seeking) {
+        wasPlayingBeforeSeek = false;
+      }
+    },
+    true
+  ); // Use capture to run before our other pause handler
 
   sharedVideoEl.addEventListener('seeked', async () => {
     if (!getYouTubePlayer() && currentRoomId) {
@@ -400,7 +420,7 @@ async function loadStream(url) {
   if (!url) return false;
 
   lastLocalAction = Date.now();
-  
+
   const isBlob = isBlobUrl(url);
 
   if (isYouTubeUrl(url)) {
@@ -421,7 +441,7 @@ async function loadStream(url) {
   // Sync to Firebase
   if (currentRoomId) {
     const watchRef = getWatchRef(currentRoomId);
-    
+
     if (isBlob) {
       // For blob URLs, only sync playback state (not the URL)
       // Use set() to ensure the isYouTube field is initialized
@@ -451,7 +471,7 @@ async function loadStream(url) {
 // -----------------------------------------------------------------------------
 export async function handleVideoSelection(source) {
   let url;
-  
+
   // Accept File object or URL string
   if (source instanceof File) {
     if (!source.type.startsWith('video/')) {

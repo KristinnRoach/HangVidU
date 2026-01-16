@@ -2,7 +2,12 @@ import { onClickOutside } from '../../utils/ui/clickOutside.js';
 import { hideElement, isHidden, showElement } from '../../utils/ui/ui-utils.js';
 import { createMessageToggle } from './message-toggle.js';
 import { isMobileDevice } from '../../utils/env/isMobileDevice.js';
-import { handleVideoSelection, createWatchRequest, acceptWatchRequest, cancelWatchRequest } from '../../firebase/watch-sync.js';
+import {
+  handleVideoSelection,
+  createWatchRequest,
+  acceptWatchRequest,
+  cancelWatchRequest,
+} from '../../firebase/watch-sync.js';
 
 // Helper: create the messages box DOM and return container + element refs
 function createMessageBox() {
@@ -20,7 +25,7 @@ function createMessageBox() {
       </div>
 
       <form id="messages-form">
-        <input id="messages-input" placeholder="Type a message...">
+        <textarea id="messages-input" placeholder="Type a message..." rows="1"></textarea>
         <button type="submit">Send</button>
       </form>
 
@@ -36,6 +41,21 @@ function createMessageBox() {
   // Prevent viewport resize/shift when virtual keyboard appears on mobile
   if ('virtualKeyboard' in navigator) {
     navigator.virtualKeyboard.overlaysContent = true;
+  }
+
+  // Make the textarea auto-grow with content (minimal JS autosize)
+  if (messagesInput && messagesInput.tagName === 'TEXTAREA') {
+    messagesInput.style.overflow = 'hidden';
+    messagesInput.style.resize = 'none';
+    const adjustInputHeight = () => {
+      messagesInput.style.height = 'auto';
+      messagesInput.style.height = `${messagesInput.scrollHeight}px`;
+    };
+    messagesInput.addEventListener('input', adjustInputHeight, {
+      passive: true,
+    });
+    // initialize height
+    requestAnimationFrame(adjustInputHeight);
   }
 
   // TODO: Proper fix for autoscroll on mobile when THIS specific text input is focused (keyboard open)
@@ -203,7 +223,7 @@ export function initMessagesUI() {
         align-items: center;
         z-index: 10000;
       `;
-      
+
       // Create prompt dialog
       const dialog = document.createElement('div');
       dialog.className = 'file-action-prompt';
@@ -216,7 +236,7 @@ export function initMessagesUI() {
         width: 90%;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
       `;
-      
+
       dialog.innerHTML = `
         <div style="text-align: center;">
           <div style="font-size: 48px; margin-bottom: 16px;">📹</div>
@@ -254,43 +274,43 @@ export function initMessagesUI() {
           </div>
         </div>
       `;
-      
+
       overlay.appendChild(dialog);
       document.body.appendChild(overlay);
-      
+
       // Set filename safely using textContent to prevent XSS
       const fileNameDisplay = dialog.querySelector('#file-name-display');
       fileNameDisplay.textContent = fileName;
-      
+
       // Add hover effects
       const downloadBtn = dialog.querySelector('#download-file-btn');
       const watchBtn = dialog.querySelector('#watch-together-btn');
-      
+
       downloadBtn.addEventListener('mouseenter', () => {
         downloadBtn.style.background = 'var(--bg-hover, #333)';
       });
       downloadBtn.addEventListener('mouseleave', () => {
         downloadBtn.style.background = 'var(--bg-secondary, #2a2a2a)';
       });
-      
+
       watchBtn.addEventListener('mouseenter', () => {
         watchBtn.style.opacity = '0.9';
       });
       watchBtn.addEventListener('mouseleave', () => {
         watchBtn.style.opacity = '1';
       });
-      
+
       // Handle button clicks
       downloadBtn.addEventListener('click', () => {
         overlay.remove();
         resolve('download');
       });
-      
+
       watchBtn.addEventListener('click', () => {
         overlay.remove();
         resolve('watch');
       });
-      
+
       // Close on overlay click
       overlay.addEventListener('click', (e) => {
         if (e.target === overlay) {
@@ -323,7 +343,7 @@ export function initMessagesUI() {
         align-items: center;
         z-index: 10000;
       `;
-      
+
       // Create prompt dialog
       const dialog = document.createElement('div');
       dialog.className = 'watch-request-prompt';
@@ -336,7 +356,7 @@ export function initMessagesUI() {
         width: 90%;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
       `;
-      
+
       dialog.innerHTML = `
         <div style="text-align: center;">
           <div style="font-size: 48px; margin-bottom: 16px;">🎬</div>
@@ -377,43 +397,43 @@ export function initMessagesUI() {
           </div>
         </div>
       `;
-      
+
       overlay.appendChild(dialog);
       document.body.appendChild(overlay);
-      
+
       // Set filename safely
       const fileNameDisplay = dialog.querySelector('#watch-request-filename');
       fileNameDisplay.textContent = fileName;
-      
+
       // Add hover effects
       const declineBtn = dialog.querySelector('#decline-watch-btn');
       const acceptBtn = dialog.querySelector('#accept-watch-btn');
-      
+
       declineBtn.addEventListener('mouseenter', () => {
         declineBtn.style.background = 'var(--bg-hover, #333)';
       });
       declineBtn.addEventListener('mouseleave', () => {
         declineBtn.style.background = 'var(--bg-secondary, #2a2a2a)';
       });
-      
+
       acceptBtn.addEventListener('mouseenter', () => {
         acceptBtn.style.opacity = '0.9';
       });
       acceptBtn.addEventListener('mouseleave', () => {
         acceptBtn.style.opacity = '1';
       });
-      
+
       // Handle button clicks
       declineBtn.addEventListener('click', () => {
         overlay.remove();
         resolve(false);
       });
-      
+
       acceptBtn.addEventListener('click', () => {
         overlay.remove();
         resolve(true);
       });
-      
+
       // Close on overlay click
       overlay.addEventListener('click', (e) => {
         if (e.target === overlay) {
@@ -428,7 +448,7 @@ export function initMessagesUI() {
   window.onFileWatchRequestReceived = async (fileName) => {
     // Check if we have this file
     const file = sentFiles.get(fileName);
-    
+
     if (!file) {
       appendChatMessage(`❌ File not available to watch together: ${fileName}`);
       await cancelWatchRequest();
@@ -440,11 +460,11 @@ export function initMessagesUI() {
 
     // Prompt user to join
     const accepted = await promptJoinWatchTogether(fileName);
-    
+
     if (accepted) {
       appendChatMessage('✅ Joining watch together...');
       const success = await acceptWatchRequest(file);
-      
+
       if (!success) {
         appendChatMessage('❌ Failed to load video');
       }
@@ -453,7 +473,6 @@ export function initMessagesUI() {
       await cancelWatchRequest();
     }
   };
-
 
   // Position the messages box relative to toggle
   function positionMessagesBox() {
@@ -755,15 +774,17 @@ export function initMessagesUI() {
 
           // Prompt user: Download or Watch Together
           const action = await promptFileAction(file.name);
-          
+
           if (action === 'watch') {
             // Show notification in chat
             appendChatMessage(`📹 Partner sent video: ${file.name}`);
-            appendChatMessage('🎬 Requesting partner to join watch together...');
-            
+            appendChatMessage(
+              '🎬 Requesting partner to join watch together...'
+            );
+
             // Load video locally first
             const success = await handleVideoSelection(file);
-            
+
             if (!success) {
               appendChatMessage('❌ Failed to load video');
               return;
@@ -771,7 +792,7 @@ export function initMessagesUI() {
 
             // Create watch request to notify sender
             const requestCreated = await createWatchRequest(file.name, file);
-            
+
             if (requestCreated) {
               appendChatMessage('⏳ Waiting for partner to join...');
             } else {
@@ -783,11 +804,11 @@ export function initMessagesUI() {
             a.href = url;
             a.download = file.name;
             a.click();
-            
+
             // Revoke blob URL after a delay to allow download to start
             // Using 1 second to be safe for slow devices/large files
             setTimeout(() => URL.revokeObjectURL(url), 1000);
-            
+
             appendChatMessage(`📎 Downloaded: ${file.name}`);
           }
         } else {
