@@ -232,8 +232,8 @@ export async function answerCall({
   addLocalTracks(pc, localStream);
 
   // 3b. Setup data channel listener (joiner receives from initiator)
-  // Note: ondatachannel fires during the await calls below (ICE negotiation),
-  // so dataChannel is populated by the time this function returns
+  // Note: ondatachannel may fire during awaits or after return (race condition).
+  // CallController handles late-arriving DataChannels via pc.ondatachannel fallback.
   let dataChannel = null;
   pc.ondatachannel = (event) => {
     dataChannel = event.channel;
