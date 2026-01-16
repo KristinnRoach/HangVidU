@@ -167,7 +167,7 @@
   gap: 1rem;
 }
 
-.add-contact-modal input[type="email"] {
+.add-contact-modal input[type='email'] {
   padding: 0.75rem;
   font-size: 1rem;
   border: 1px solid #555;
@@ -176,7 +176,7 @@
   color: white;
 }
 
-.add-contact-modal input[type="email"]:focus {
+.add-contact-modal input[type='email']:focus {
   outline: none;
   border-color: rgb(74, 172, 74);
 }
@@ -224,23 +224,23 @@
   transition: background-color 0.2s ease;
 }
 
-.add-contact-modal button[data-action="cancel"] {
+.add-contact-modal button[data-action='cancel'] {
   background-color: #555;
   color: white;
 }
 
-.add-contact-modal button[data-action="cancel"]:hover {
+.add-contact-modal button[data-action='cancel']:hover {
   background-color: #666;
 }
 
-.add-contact-modal button[data-action="search"],
-.add-contact-modal button[type="submit"] {
+.add-contact-modal button[data-action='search'],
+.add-contact-modal button[type='submit'] {
   background-color: rgb(74, 172, 74);
   color: white;
 }
 
-.add-contact-modal button[data-action="search"]:hover,
-.add-contact-modal button[type="submit"]:hover {
+.add-contact-modal button[data-action='search']:hover,
+.add-contact-modal button[type='submit']:hover {
   background-color: rgb(70, 200, 70);
 }
 
@@ -248,4 +248,3 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
-
