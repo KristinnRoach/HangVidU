@@ -1212,31 +1212,33 @@ async function processNextInvite() {
   isProcessingInvite = true;
   const { fromUserId, inviteData } = pendingInvites.shift();
 
-  const accept = await confirmDialog(
-    `${inviteData.fromName || 'Someone'} wants to connect.\n\nAccept contact invitation?`
-  );
+  try {
+    const accept = await confirmDialog(
+      `${inviteData.fromName || 'Someone'} wants to connect.\n\nAccept contact invitation?`
+    );
 
-  if (accept) {
-    try {
-      await acceptInvite(fromUserId, inviteData);
-      console.log('[INVITATIONS] Contact added:', inviteData.fromName);
-      await renderContactsList(lobbyDiv).catch(() => {});
-      alert(`Added ${inviteData.fromName} to your contacts!`);
-    } catch (e) {
-      console.error('[INVITATIONS] Failed to accept invite:', e);
-      alert('Failed to add contact. Please try again.');
+    if (accept) {
+      try {
+        await acceptInvite(fromUserId, inviteData);
+        console.log('[INVITATIONS] Contact added:', inviteData.fromName);
+        await renderContactsList(lobbyDiv).catch(() => {});
+        alert(`Added ${inviteData.fromName} to your contacts!`);
+      } catch (e) {
+        console.error('[INVITATIONS] Failed to accept invite:', e);
+        alert('Failed to add contact. Please try again.');
+      }
+    } else {
+      try {
+        await declineInvite(fromUserId);
+        console.log('[INVITATIONS] Invite declined');
+      } catch (e) {
+        console.error('[INVITATIONS] Failed to decline invite:', e);
+      }
     }
-  } else {
-    try {
-      await declineInvite(fromUserId);
-      console.log('[INVITATIONS] Invite declined');
-    } catch (e) {
-      console.error('[INVITATIONS] Failed to decline invite:', e);
-    }
+  } finally {
+    isProcessingInvite = false;
+    processNextInvite();
   }
-
-  isProcessingInvite = false;
-  processNextInvite();
 }
 
 /**
