@@ -24,6 +24,12 @@
             ".write": "auth != null && ($fromUserId === auth.uid || $userId === auth.uid)"
           }
         },
+        "acceptedInvites": {
+          ".read": "$userId === auth.uid",
+          "$acceptedByUserId": {
+            ".write": "auth != null && ($acceptedByUserId === auth.uid || $userId === auth.uid)"
+          }
+        },
         "callHistory": {
           ".read": "$userId === auth.uid",
           ".write": "$userId === auth.uid"
