@@ -82,6 +82,7 @@ export function initializeMediaControls({
       audioTrack.enabled = !audioTrack.enabled;
       updateMuteMicIcon(!audioTrack.enabled, micBtn);
     };
+    import.meta.env.DEV && micBtn.click(); // Auto-mute mic in dev to avoid feedback
   }
 
   // ===== TOGGLE CAMERA ON/OFF =====

@@ -97,6 +97,12 @@ export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
     setRemoteStream(newRemoteStream);
     remoteVideoEl.srcObject = newRemoteStream;
     addRemoteVideoEventListeners(remoteVideoEl, mutePartnerBtn);
+    // Auto-mute partner in dev to avoid feedback
+    if (isDev() && !remoteVideoEl.muted) {
+      remoteVideoEl.muted = true;
+      const icon = mutePartnerBtn?.querySelector('i');
+      if (icon) icon.className = 'fa fa-volume-mute';
+    }
 
     // Log connection status
     if (currentRemoteStream !== newRemoteStream) {
