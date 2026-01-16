@@ -1125,8 +1125,14 @@ if (exitWatchModeBtn) {
     if (getLastWatched() === 'yt') {
       pauseYouTubeVideo();
       hideYouTubePlayer();
-    } else if (getLastWatched() === 'url') {
+    } else if (getLastWatched() === 'url' || getLastWatched() === 'file') {
       sharedVideoEl.pause();
+      
+      // Revoke blob URL to free memory (only if it's a blob)
+      if (sharedVideoEl.src.startsWith('blob:')) {
+        URL.revokeObjectURL(sharedVideoEl.src);
+      }
+      
       hideElement(sharedBoxEl);
     }
     exitWatchMode();

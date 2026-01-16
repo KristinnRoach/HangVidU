@@ -1,5 +1,9 @@
-import { set, update } from 'firebase/database';
-import { onDataChange, rtdb, getWatchRef } from '../storage/fb-rtdb/rtdb.js';
+import { set, update, remove } from 'firebase/database';
+import {
+  onDataChange,
+  getWatchRef,
+  getWatchRequestRef,
+} from '../storage/fb-rtdb/rtdb.js';
 import {
   isYouTubeUrl,
   getYouTubePlayer,
@@ -31,16 +35,20 @@ let currentRoomId = null;
 let currentUserId = null;
 
 let watchMode = false;
-let lastWatched = 'none'; // 'yt' | 'url' | 'none'
+let lastWatched = 'none'; // 'yt' | 'url' | 'file' | 'none'
 
 let currentVideoUrl = null;
+
+// File watch request state
+let currentFileRequest = null; // Stores current file being requested/watched
+let requestTimeout = null; // Timeout for auto-cancel
 
 export const isWatchModeActive = () => watchMode;
 export const setWatchMode = (active) => (watchMode = active);
 
 export const getLastWatched = () => lastWatched;
 export const setLastWatched = (mode) => {
-  if (['yt', 'url', 'none'].includes(mode)) {
+  if (['yt', 'url', 'file', 'none'].includes(mode)) {
     lastWatched = mode;
   } else {
     console.warn('Invalid lastWatched platform:', mode);
@@ -53,6 +61,7 @@ export const setLastWatched = (mode) => {
 let justSeeked = false;
 let seekDebounceTimeout = null;
 let lastLocalAction = 0; // Prevent feedback loops in bidirectional sync
+let wasPlayingBeforeSeek = false; // Track play state before seek for regular videos
 
 // -----------------------------------------------------------------------------
 // FIREBASE SYNC HELPERS
@@ -84,13 +93,119 @@ export function setupWatchSync(roomId, role, userId) {
   currentUserId = userId;
 
   const watchRef = getWatchRef(roomId);
+  const watchRequestRef = getWatchRequestRef(roomId);
 
   onDataChange(watchRef, handleWatchUpdate, roomId);
+  onDataChange(watchRequestRef, handleWatchRequestUpdate, roomId);
 
   setupLocalVideoListeners();
 
   if (import.meta.env.DEV) {
     console.log('Watch sync setup complete for role:', role);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// HELPERS
+// -----------------------------------------------------------------------------
+function isBlobUrl(url) {
+  return typeof url === 'string' && url.startsWith('blob:');
+}
+
+// -----------------------------------------------------------------------------
+// FILE WATCH REQUEST HANDLING
+// -----------------------------------------------------------------------------
+
+/**
+ * Create a watch request to notify the other user to join watching
+ */
+export async function createWatchRequest(fileName, file) {
+  if (!currentRoomId || !currentUserId) return false;
+
+  currentFileRequest = { fileName, file };
+
+  const watchRequestRef = getWatchRequestRef(currentRoomId);
+  try {
+    await set(watchRequestRef, {
+      fileName,
+      requestedBy: currentUserId,
+      timestamp: Date.now(),
+    });
+
+    // Auto-cancel after 5 minutes
+    if (requestTimeout) clearTimeout(requestTimeout);
+    requestTimeout = setTimeout(() => {
+      cancelWatchRequest();
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return true;
+  } catch (err) {
+    console.error('Failed to create watch request:', err);
+    return false;
+  }
+}
+
+/**
+ * Accept a watch request and load the video
+ */
+export async function acceptWatchRequest(file) {
+  if (!currentRoomId) return false;
+
+  // Clear the request from Firebase
+  const watchRequestRef = getWatchRequestRef(currentRoomId);
+  try {
+    await remove(watchRequestRef);
+  } catch (err) {
+    console.warn('Failed to remove watch request:', err);
+  }
+
+  // Load the video locally
+  return await handleVideoSelection(file);
+}
+
+/**
+ * Cancel the current watch request
+ */
+export async function cancelWatchRequest() {
+  if (!currentRoomId) return;
+
+  currentFileRequest = null;
+  if (requestTimeout) {
+    clearTimeout(requestTimeout);
+    requestTimeout = null;
+  }
+
+  const watchRequestRef = getWatchRequestRef(currentRoomId);
+  try {
+    await remove(watchRequestRef);
+  } catch (err) {
+    console.warn('Failed to cancel watch request:', err);
+  }
+}
+
+/**
+ * Handle incoming watch request from remote user
+ */
+function handleWatchRequestUpdate(snapshot) {
+  const data = snapshot.val();
+
+  // Request was cancelled or doesn't exist
+  if (!data) {
+    currentFileRequest = null;
+    if (requestTimeout) {
+      clearTimeout(requestTimeout);
+      requestTimeout = null;
+    }
+    return;
+  }
+
+  // Ignore our own requests
+  if (data.requestedBy === currentUserId) return;
+
+  // Notify the UI layer about the incoming request
+  // This will be handled by messages-ui to show a prompt
+  if (window.onFileWatchRequestReceived) {
+    window.onFileWatchRequestReceived(data.fileName);
   }
 }
 
@@ -103,12 +218,12 @@ function handleWatchUpdate(snapshot) {
   if (data.updatedBy === currentUserId) return; // Ignore self-updates
   if (Date.now() - lastLocalAction < 500) return; // Ignore local race updates
 
-  // -- Handle URL changes -----------------------------------------------------
-  if (data.url && data.url !== currentVideoUrl) {
+  // -- Handle URL changes (skip blob URLs - they're local-only) -------------
+  if (data.url && data.url !== currentVideoUrl && !isBlobUrl(data.url)) {
     handleRemoteUrlChange(data.url);
   }
 
-  // -- Handle playback sync ---------------------------------------------------
+  // -- Handle playback sync (works for ALL video sources!) -------------------
   if (data.isYouTube) {
     handleYouTubeSync(data);
   } else {
@@ -203,6 +318,9 @@ function debounceSeekSync() {
 // REMOTE: REGULAR VIDEO SYNC
 // -----------------------------------------------------------------------------
 function handleRegularVideoSync(data) {
+  // Suppress local event handlers while applying remote state
+  lastLocalAction = Date.now();
+
   if (data.playing !== undefined) {
     if (data.playing && sharedVideoEl.paused) {
       sharedVideoEl.play().catch((e) => console.warn('Play failed:', e));
@@ -228,32 +346,70 @@ function handleRegularVideoSync(data) {
 // LOCAL EVENT LISTENERS
 // -----------------------------------------------------------------------------
 function setupLocalVideoListeners() {
+  // Helper to preserve 'file' mode when handling regular video events
+  const preserveFileMode = () => {
+    if (lastWatched !== 'file') {
+      lastWatched = 'url';
+    }
+  };
+
   sharedVideoEl.addEventListener('play', async () => {
     if (!getYouTubePlayer() && currentRoomId) {
       lastLocalAction = Date.now();
-      await updateWatchSyncState({ playing: true, isYouTube: false });
+      await updateWatchSyncState({
+        playing: true,
+        currentTime: sharedVideoEl.currentTime,
+        isYouTube: false,
+      });
     }
-    lastWatched = 'url';
+    preserveFileMode();
   });
 
   sharedVideoEl.addEventListener('pause', async () => {
+    // Skip seek-triggered pauses - the seeked event will send complete state
+    if (sharedVideoEl.seeking) return;
+
     if (!getYouTubePlayer() && currentRoomId) {
       lastLocalAction = Date.now();
-      await updateWatchSyncState({ playing: false, isYouTube: false });
+      // DEBUG
+      console.log('[SYNC DEBUG] Local pause event:', {
+        currentTime: sharedVideoEl.currentTime,
+      });
+      await updateWatchSyncState({
+        playing: false,
+        currentTime: sharedVideoEl.currentTime,
+        isYouTube: false,
+      });
     }
-    lastWatched = 'url';
+    preserveFileMode();
   });
+
+  // Track play state continuously so we know if video was playing before seek
+  sharedVideoEl.addEventListener('playing', () => {
+    wasPlayingBeforeSeek = true;
+  });
+
+  // Only reset wasPlayingBeforeSeek on actual user pause (not seek-triggered)
+  sharedVideoEl.addEventListener(
+    'pause',
+    () => {
+      if (!sharedVideoEl.seeking) {
+        wasPlayingBeforeSeek = false;
+      }
+    },
+    true
+  ); // Use capture to run before our other pause handler
 
   sharedVideoEl.addEventListener('seeked', async () => {
     if (!getYouTubePlayer() && currentRoomId) {
       lastLocalAction = Date.now();
       await updateWatchSyncState({
         currentTime: sharedVideoEl.currentTime,
-        playing: !sharedVideoEl.paused,
+        playing: wasPlayingBeforeSeek,
         isYouTube: false,
       });
     }
-    lastWatched = 'url';
+    preserveFileMode();
   });
 }
 
@@ -264,6 +420,8 @@ async function loadStream(url) {
   if (!url) return false;
 
   lastLocalAction = Date.now();
+
+  const isBlob = isBlobUrl(url);
 
   if (isYouTubeUrl(url)) {
     hideElement(sharedBoxEl);
@@ -277,18 +435,32 @@ async function loadStream(url) {
     showElement(sharedBoxEl);
     sharedVideoEl.src = url;
 
-    lastWatched = 'url';
+    lastWatched = isBlob ? 'file' : 'url';
   }
 
+  // Sync to Firebase
   if (currentRoomId) {
     const watchRef = getWatchRef(currentRoomId);
-    set(watchRef, {
-      url,
-      playing: false,
-      currentTime: 0,
-      isYouTube: isYouTubeUrl(url),
-      updatedBy: currentUserId,
-    });
+
+    if (isBlob) {
+      // For blob URLs, only sync playback state (not the URL)
+      // Use set() to ensure the isYouTube field is initialized
+      await set(watchRef, {
+        playing: false,
+        currentTime: 0,
+        isYouTube: false,
+        updatedBy: currentUserId,
+      });
+    } else {
+      // For regular URLs, sync everything including the URL
+      set(watchRef, {
+        url,
+        playing: false,
+        currentTime: 0,
+        isYouTube: isYouTubeUrl(url),
+        updatedBy: currentUserId,
+      });
+    }
   }
 
   return true;
@@ -297,17 +469,32 @@ async function loadStream(url) {
 // -----------------------------------------------------------------------------
 // VIDEO SELECTION
 // -----------------------------------------------------------------------------
-export async function handleVideoSelection(video) {
-  if (!video || !video.url) {
-    console.warn(`Non-existing or invalid video.`);
+export async function handleVideoSelection(source) {
+  let url;
+
+  // Accept File object or URL string
+  if (source instanceof File) {
+    if (!source.type.startsWith('video/')) {
+      console.warn('Invalid file type:', source.type);
+      return false;
+    }
+    url = URL.createObjectURL(source);
+  } else if (typeof source === 'string') {
+    url = source;
+  } else if (source?.url) {
+    // Legacy: video object with url property
+    url = source.url;
+  } else {
+    console.warn('Invalid video source:', source);
     return false;
   }
 
-  currentVideoUrl = video.url;
+  currentVideoUrl = url;
+  const success = await loadStream(url);
 
-  const success = await loadStream(video.url);
-
-  enterWatchMode();
+  if (success) {
+    enterWatchMode();
+  }
 
   return success;
 }
