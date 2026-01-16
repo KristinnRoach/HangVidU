@@ -30,6 +30,9 @@ vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => {
     rtdb: {},
     onDataChange: vi.fn(),
     removeRTDBListenersForRoom: vi.fn(),
+    // Stubs added for tests that import these named exports
+    getWatchRef: vi.fn(() => ({ refPath: '/watch' })),
+    getWatchRequestRef: vi.fn(() => ({ refPath: '/watchRequests' })),
   };
 });
 vi.mock('firebase/database', () => {
