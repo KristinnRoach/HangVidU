@@ -494,6 +494,8 @@ export async function handleVideoSelection(source) {
 
   if (success) {
     enterWatchMode();
+  } else if (source instanceof File) {
+    URL.revokeObjectURL(url);
   }
 
   return success;
