@@ -143,7 +143,6 @@ export const exitCallMode = () => {
 
   callBtn.disabled = false;
   callBtn.classList.remove('disabled');
-
   hangUpBtn.disabled = true;
   hangUpBtn.classList.add('disabled');
   mutePartnerBtn.disabled = true;
