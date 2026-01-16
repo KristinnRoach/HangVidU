@@ -98,7 +98,7 @@ export function setupWatchSync(roomId, role, userId) {
 // HELPERS
 // -----------------------------------------------------------------------------
 function isBlobUrl(url) {
-  return url && url.startsWith('blob:');
+  return typeof url === 'string' && url.startsWith('blob:');
 }
 
 // -----------------------------------------------------------------------------

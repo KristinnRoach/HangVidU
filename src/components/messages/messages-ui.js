@@ -214,8 +214,7 @@ export function initMessagesUI() {
         <div style="text-align: center;">
           <div style="font-size: 48px; margin-bottom: 16px;">📹</div>
           <h3 style="margin: 0 0 8px 0; color: var(--text-primary, #fff);">Video Received</h3>
-          <p style="margin: 0 0 24px 0; color: var(--text-secondary, #aaa); font-size: 14px;">
-            ${fileName}
+          <p id="file-name-display" style="margin: 0 0 24px 0; color: var(--text-secondary, #aaa); font-size: 14px;">
           </p>
           <div style="display: flex; gap: 12px; justify-content: center;">
             <button id="download-file-btn" style="
@@ -251,6 +250,10 @@ export function initMessagesUI() {
       
       overlay.appendChild(dialog);
       document.body.appendChild(overlay);
+      
+      // Set filename safely using textContent to prevent XSS
+      const fileNameDisplay = dialog.querySelector('#file-name-display');
+      fileNameDisplay.textContent = fileName;
       
       // Add hover effects
       const downloadBtn = dialog.querySelector('#download-file-btn');
@@ -607,7 +610,9 @@ export function initMessagesUI() {
             a.href = url;
             a.download = file.name;
             a.click();
-            URL.revokeObjectURL(url);
+            
+            // Revoke blob URL after a delay to allow download to start
+            setTimeout(() => URL.revokeObjectURL(url), 100);
             
             appendChatMessage(`📎 Downloaded: ${file.name}`);
           }
