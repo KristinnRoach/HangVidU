@@ -18,6 +18,7 @@ import { devDebug } from '../utils/dev/dev-utils.js';
 import { initOneTap, showOneTapSignin } from './onetap.js';
 
 import { initializePresence, setOffline } from './presence.js';
+import { registerUserInDirectory } from '../contacts/user-discovery.js';
 
 export const auth = getAuth(app);
 
@@ -239,6 +240,11 @@ export function onAuthChange(callback, { truncate = 7 } = {}) {
     if (isLoggedIn) {
       initializePresence().catch((err) => {
         console.warn('Failed to initialize presence:', err);
+      });
+
+      // Register user in discovery directory
+      registerUserInDirectory(user).catch((err) => {
+        console.warn('Failed to register user in directory:', err);
       });
     }
 

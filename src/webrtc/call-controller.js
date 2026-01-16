@@ -479,6 +479,12 @@ class CallController {
       // Setup file transport when DataChannel is ready (for joiner, may be delayed)
       if (this.dataChannel) {
         this.setupFileTransport(this.dataChannel);
+      } else if (this.role === 'joiner' && this.pc) {
+        // DataChannel not yet received - set up handler for when it arrives
+        this.pc.ondatachannel = (event) => {
+          this.dataChannel = event.channel;
+          this.setupFileTransport(this.dataChannel);
+        };
       }
 
       // Setup cancellation listener (centralized in CallController)

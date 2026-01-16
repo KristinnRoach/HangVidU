@@ -6,11 +6,23 @@
         ".write": true
       }
     },
+    "usersByEmail": {
+      "$emailHash": {
+        ".read": "auth != null",
+        ".write": "auth != null && newData.child('uid').val() === auth.uid"
+      }
+    },
     "users": {
       "$userId": {
         "contacts": {
           ".read": "$userId === auth.uid",
           ".write": "$userId === auth.uid"
+        },
+        "incomingInvites": {
+          ".read": "$userId === auth.uid",
+          "$fromUserId": {
+            ".write": "auth != null && ($fromUserId === auth.uid || $userId === auth.uid)"
+          }
         },
         "callHistory": {
           ".read": "$userId === auth.uid",

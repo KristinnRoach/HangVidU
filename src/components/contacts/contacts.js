@@ -10,6 +10,7 @@ import { hideElement, showElement } from '../../utils/ui/ui-utils.js';
 import { messagingController } from '../../messaging/messaging-controller.js';
 import { messagesUI } from '../messages/messages-ui.js';
 import { createMessageToggle } from '../messages/message-toggle.js';
+import { getDeterministicRoomId } from '../../utils/room-id.js';
 
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
@@ -177,7 +178,7 @@ export async function renderContactsList(lobbyElement) {
               <div class="contact-msg-toggle-container" data-contact-id="${id}"></div>
               <span
                 class="contact-name"
-                data-room-id="${contact.roomId}"
+                data-room-id="${contact.roomId || ''}"
                 data-contact-name="${contact.contactName}"
                 data-contact-id="${id}"
                 title="Call ${contact.contactName}"
@@ -235,8 +236,24 @@ function attachContactListeners(container, lobbyElement) {
   // Contact names - click to call
   container.querySelectorAll('.contact-name').forEach((nameEl) => {
     nameEl.onclick = async () => {
-      const roomId = nameEl.getAttribute('data-room-id');
+      let roomId = nameEl.getAttribute('data-room-id');
       const contactName = nameEl.getAttribute('data-contact-name');
+      const contactId = nameEl.getAttribute('data-contact-id');
+      
+      // If no roomId is saved, generate deterministic room ID
+      if (!roomId && contactId) {
+        const myUserId = getLoggedInUserId();
+        if (myUserId) {
+          try {
+            roomId = getDeterministicRoomId(myUserId, contactId);
+            console.log('[CONTACTS] Generated deterministic room ID:', roomId);
+          } catch (e) {
+            console.error('[CONTACTS] Failed to generate deterministic room ID:', e);
+            return;
+          }
+        }
+      }
+      
       if (roomId) {
         // QUICK FIX: Ensure listener is active for this room before calling
         listenForIncomingOnRoom(roomId);
