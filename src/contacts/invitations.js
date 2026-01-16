@@ -45,8 +45,38 @@ export async function sendInvite(toUserId, toName = 'User') {
   };
 
   await set(inviteRef, inviteData);
-  
+
   console.log(`[INVITATIONS] Sent invite to ${toName} (${toUserId})`);
+}
+
+/**
+ * Send invitations to multiple users at once.
+ * @param {Array<{userId: string, name: string}>} recipients - Array of recipients
+ * @returns {Promise<{sent: number, failed: number, errors: Array}>} - Results summary
+ */
+export async function sendInvites(recipients) {
+  if (!Array.isArray(recipients) || recipients.length === 0) {
+    return { sent: 0, failed: 0, errors: [] };
+  }
+
+  const results = { sent: 0, failed: 0, errors: [] };
+
+  // Send invites in parallel
+  const promises = recipients.map(async ({ userId, name }) => {
+    try {
+      await sendInvite(userId, name);
+      results.sent++;
+    } catch (err) {
+      results.failed++;
+      results.errors.push({ userId, name, error: err.message });
+      console.error(`[INVITATIONS] Failed to invite ${name}:`, err.message);
+    }
+  });
+
+  await Promise.all(promises);
+
+  console.log(`[INVITATIONS] Batch complete: ${results.sent} sent, ${results.failed} failed`);
+  return results;
 }
 
 /**

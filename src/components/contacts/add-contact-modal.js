@@ -243,54 +243,18 @@ function renderImportResults(container, onHangVidU, notOnHangVidU) {
     container.appendChild(emptyState);
   }
 
-  // Show "Not on HangVidU" as collapsed count + invite link
-  if (notOnHangVidU.length > 0) {
+  // Show "Not on HangVidU" count
+  if (notOnHangVidU.length > 0 && onHangVidU.length > 0) {
     const section = document.createElement('div');
     section.className = 'results-section not-on-app';
-
-    const countText = onHangVidU.length > 0
-      ? `${notOnHangVidU.length} contacts not on HangVidU yet`
-      : '';
-
-    section.innerHTML = `
-      ${countText ? `<p class="muted-text">${countText}</p>` : ''}
-      <button type="button" class="copy-link-btn">
-        <i class="fa fa-link"></i> Copy Invite Link
-      </button>
-      <span class="copy-feedback"></span>
-    `;
-
-    const copyBtn = section.querySelector('.copy-link-btn');
-    const feedback = section.querySelector('.copy-feedback');
-
-    copyBtn.addEventListener('click', async () => {
-      const inviteLink = getAppInviteLink();
-
-      try {
-        await navigator.clipboard.writeText(inviteLink);
-        feedback.textContent = '✓ Copied!';
-        feedback.className = 'copy-feedback success';
-        setTimeout(() => {
-          feedback.textContent = '';
-        }, 2000);
-      } catch (err) {
-        // Fallback for browsers without clipboard API
-        feedback.textContent = inviteLink;
-        feedback.className = 'copy-feedback show-link';
-      }
-    });
-
+    section.innerHTML = `<p class="muted-text">${notOnHangVidU.length} contacts not on HangVidU yet</p>`;
     container.appendChild(section);
-  }
-}
 
-/**
- * Get the app invite link (base URL without room parameter).
- */
-function getAppInviteLink() {
-  const base = window.location.origin + window.location.pathname;
-  // Remove trailing index.html if present
-  return base.replace(/index\.html$/, '');
+    // TODO: Add "Share Invite Link" button here once referral links are implemented.
+    // Referral links would include ?ref=userId parameter, enabling auto-connection
+    // when the invited user signs up. Without this, sharing just sends a generic
+    // app link with no connection logic. See first-contact-roadmap.md for details.
+  }
 }
 
 function escapeHtml(str) {
