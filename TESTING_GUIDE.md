@@ -86,6 +86,29 @@
 
 ---
 
+### Phase 5: Add Contact UI
+
+**What to test:** Simple UI for adding contacts by email
+
+**Steps:**
+1. Click the "Add Contact" button (user-plus icon) in the lobby
+2. Enter an email address of someone registered on HangVidU
+3. Click "Search"
+4. ✅ Should show "Found {Name}! Sending invitation..."
+5. ✅ Should show "✓ Invitation sent to {Name}!"
+6. Modal closes automatically
+
+**Test edge cases:**
+1. Enter your own email → Should show "That's your own email address!"
+2. Enter non-existent email → Should show "{email} is not on HangVidU yet"
+3. Cancel → Modal closes without sending
+
+**Console checks:**
+- On found: `[INVITATIONS] Sent invite to {Name}`
+- On not found: No invite sent
+
+---
+
 ## Current Features Implemented
 
 ✅ **Phase 1:** User Discovery System
@@ -104,8 +127,14 @@
 - Accept/decline invites with confirmation dialog
 - Auto-saves contacts and generates room IDs
 
+✅ **Phase 5:** Add Contact UI (Minimal)
+- Simple "Add Contact" button in lobby
+- Search users by email address
+- Send invites directly from UI
+- Real-time search feedback
+
 ---
 
-## Next: UI for Sending Invites
+## Next: Google Contacts Import (Phase 2)
 
-Coming next: Simple UI to search users by email and send invites.
+Coming next: Import contacts from Google People API to auto-discover friends already on HangVidU.

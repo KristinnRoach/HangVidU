@@ -40,6 +40,7 @@ let appTitleH1 = null;
 let appTitleA = null;
 let appTitleSpan = null;
 let pasteJoinBtn = null;
+let addContactBtn = null;
 
 function initializeElements() {
   lobbyDiv = getElement('lobby');
@@ -75,6 +76,7 @@ function initializeElements() {
   appTitleA = getElement('app-title-a');
   appTitleSpan = getElement('app-title-span');
   pasteJoinBtn = getElement('paste-join-btn');
+  addContactBtn = getElement('add-contact-btn');
 }
 
 // Initialize elements when DOM is ready
@@ -114,6 +116,7 @@ export const getElements = () => ({
   appTitleA,
   appTitleSpan,
   pasteJoinBtn,
+  addContactBtn,
 });
 
 // Export individual elements
@@ -146,6 +149,7 @@ export {
   appTitleA,
   appTitleSpan,
   pasteJoinBtn,
+  addContactBtn,
 };
 
 /**
