@@ -471,6 +471,12 @@ export function initMessagesUI() {
           fileDownload: { fileName: file.name, url },
         });
 
+        // Increment unread count if messages box is hidden
+        if (isHidden(messagesBox)) {
+          const currentCount = messageToggle.element.unreadCount || 0;
+          messageToggle.setUnreadCount(currentCount + 1);
+        }
+
         // Reset button text after receive completes
         if (isReceivingFile) {
           sendBtn.textContent = 'Send';
