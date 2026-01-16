@@ -57,6 +57,7 @@ export const setLastWatched = (mode) => {
 let justSeeked = false;
 let seekDebounceTimeout = null;
 let lastLocalAction = 0; // Prevent feedback loops in bidirectional sync
+let wasPlayingBeforeSeek = false; // Track play state before seek for regular videos
 
 // -----------------------------------------------------------------------------
 // FIREBASE SYNC HELPERS
@@ -313,6 +314,9 @@ function debounceSeekSync() {
 // REMOTE: REGULAR VIDEO SYNC
 // -----------------------------------------------------------------------------
 function handleRegularVideoSync(data) {
+  // Suppress local event handlers while applying remote state
+  lastLocalAction = Date.now();
+
   if (data.playing !== undefined) {
     if (data.playing && sharedVideoEl.paused) {
       sharedVideoEl.play().catch((e) => console.warn('Play failed:', e));
@@ -354,6 +358,9 @@ function setupLocalVideoListeners() {
   });
 
   sharedVideoEl.addEventListener('pause', async () => {
+    // Skip seek-triggered pauses - the seeked event will send complete state
+    if (sharedVideoEl.seeking) return;
+
     if (!getYouTubePlayer() && currentRoomId) {
       lastLocalAction = Date.now();
       await updateWatchSyncState({ playing: false, isYouTube: false });
@@ -361,12 +368,24 @@ function setupLocalVideoListeners() {
     preserveFileMode();
   });
 
+  // Track play state continuously so we know if video was playing before seek
+  sharedVideoEl.addEventListener('playing', () => {
+    wasPlayingBeforeSeek = true;
+  });
+
+  // Only reset wasPlayingBeforeSeek on actual user pause (not seek-triggered)
+  sharedVideoEl.addEventListener('pause', () => {
+    if (!sharedVideoEl.seeking) {
+      wasPlayingBeforeSeek = false;
+    }
+  }, true); // Use capture to run before our other pause handler
+
   sharedVideoEl.addEventListener('seeked', async () => {
     if (!getYouTubePlayer() && currentRoomId) {
       lastLocalAction = Date.now();
       await updateWatchSyncState({
         currentTime: sharedVideoEl.currentTime,
-        playing: !sharedVideoEl.paused,
+        playing: wasPlayingBeforeSeek,
         isYouTube: false,
       });
     }
