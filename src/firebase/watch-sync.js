@@ -503,16 +503,7 @@ export async function handleVideoSelection(source) {
     enterWatchMode();
   } else if (source instanceof File) {
     URL.revokeObjectURL(url);
-  }
-
-  // Revoke object URL if loading failed for a File source to avoid leaks
-  if (!success && source instanceof File) {
     currentVideoUrl = null;
-    try {
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      console.warn('Failed to revoke object URL:', e);
-    }
   }
 
   return success;
