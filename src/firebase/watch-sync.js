@@ -399,16 +399,29 @@ async function loadStream(url) {
     lastWatched = isBlob ? 'file' : 'url';
   }
 
-  // Only sync real URLs to Firebase (not blob URLs)
-  if (currentRoomId && !isBlob) {
+  // Sync to Firebase
+  if (currentRoomId) {
     const watchRef = getWatchRef(currentRoomId);
-    set(watchRef, {
-      url,
-      playing: false,
-      currentTime: 0,
-      isYouTube: isYouTubeUrl(url),
-      updatedBy: currentUserId,
-    });
+    
+    if (isBlob) {
+      // For blob URLs, only sync playback state (not the URL)
+      // Use set() to ensure the isYouTube field is initialized
+      await set(watchRef, {
+        playing: false,
+        currentTime: 0,
+        isYouTube: false,
+        updatedBy: currentUserId,
+      });
+    } else {
+      // For regular URLs, sync everything including the URL
+      set(watchRef, {
+        url,
+        playing: false,
+        currentTime: 0,
+        isYouTube: isYouTubeUrl(url),
+        updatedBy: currentUserId,
+      });
+    }
   }
 
   return true;
