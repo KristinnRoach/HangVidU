@@ -43,12 +43,14 @@ import {
 
 import {
   listenForInvites,
+  listenForAcceptedInvites,
   acceptInvite,
   declineInvite,
   cleanupInviteListeners,
 } from './contacts/invitations.js';
 
 import { showAddContactModal } from './components/contacts/add-contact-modal.js';
+import { getDeterministicRoomId } from './utils/room-id.js';
 
 import { messagesUI } from './components/messages/messages-ui.js';
 
@@ -871,11 +873,21 @@ async function startListeningForSavedRooms() {
         }
       }
 
-      // Also include saved contacts' roomIds
+      // Also include saved contacts' roomIds (or deterministic room IDs)
       try {
         const contacts = await getContacts();
-        Object.values(contacts || {}).forEach((c) => {
-          if (c?.roomId) toListen.add(c.roomId);
+        Object.entries(contacts || {}).forEach(([contactId, c]) => {
+          if (c?.roomId) {
+            toListen.add(c.roomId);
+          } else if (contactId && loggedInUid) {
+            // Generate deterministic room ID for contacts without explicit roomId
+            try {
+              const deterministicRoomId = getDeterministicRoomId(loggedInUid, contactId);
+              toListen.add(deterministicRoomId);
+            } catch (e) {
+              // Skip if unable to generate
+            }
+          }
         });
       } catch (e) {
         // ignore
@@ -918,11 +930,22 @@ async function startListeningForSavedRooms() {
       cleaned[roomId] = meta;
       toListen.add(roomId);
     }
-    // Also include saved contacts' roomIds
+    // Also include saved contacts' roomIds (or deterministic room IDs)
     try {
       const contacts = await getContacts();
-      Object.values(contacts || {}).forEach((c) => {
-        if (c?.roomId) toListen.add(c.roomId);
+      const guestUserId = getUserId(); // Get guest user ID
+      Object.entries(contacts || {}).forEach(([contactId, c]) => {
+        if (c?.roomId) {
+          toListen.add(c.roomId);
+        } else if (contactId && guestUserId) {
+          // Generate deterministic room ID for contacts without explicit roomId
+          try {
+            const deterministicRoomId = getDeterministicRoomId(guestUserId, contactId);
+            toListen.add(deterministicRoomId);
+          } catch (e) {
+            // Skip if unable to generate
+          }
+        }
       });
     } catch (e) {
       // ignore
@@ -1180,6 +1203,7 @@ async function autoJoinFromUrl() {
  * Shows a confirmation dialog when an invite is received.
  */
 function setupInviteListener() {
+  // Listen for incoming invites
   listenForInvites(async (fromUserId, inviteData) => {
     // Show confirmation dialog
     const accept = await confirmDialog(
@@ -1206,6 +1230,15 @@ function setupInviteListener() {
         console.error('[INVITATIONS] Failed to decline invite:', e);
       }
     }
+  });
+
+  // Listen for accepted invites (when someone accepts your invite)
+  listenForAcceptedInvites(async (acceptedByUserId, acceptData) => {
+    console.log('[INVITATIONS] Your invite was accepted by:', acceptData.acceptedByName);
+    // Refresh contacts list to show the new contact
+    await renderContactsList(lobbyDiv).catch(() => {});
+    // Optionally show a notification
+    alert(`${acceptData.acceptedByName} accepted your invitation!`);
   });
 }
 

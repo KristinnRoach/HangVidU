@@ -8,6 +8,7 @@ import { getDeterministicRoomId } from '../utils/room-id.js';
 
 // Track invite listeners for cleanup
 let inviteListener = null;
+let acceptedInviteListener = null;
 
 /**
  * Send a contact invitation to another user.
@@ -88,32 +89,45 @@ export function listenForInvites(callback) {
 
 /**
  * Accept a contact invitation.
- * Saves the contact and removes the invite.
+ * Saves the contact for the accepter and notifies the sender.
  * @param {string} fromUserId - Sender's user ID
  * @param {Object} inviteData - The invite data
  * @returns {Promise<void>}
  */
 export async function acceptInvite(fromUserId, inviteData) {
   const myUserId = getLoggedInUserId();
+  const currentUser = getCurrentUser();
   
-  if (!myUserId) {
+  if (!myUserId || !currentUser) {
     throw new Error('Must be logged in to accept invites');
   }
 
-  // Save contact
-  const contactRef = ref(rtdb, `users/${myUserId}/contacts/${fromUserId}`);
-  await set(contactRef, {
+  // Save contact for me (the accepter)
+  const myContactRef = ref(rtdb, `users/${myUserId}/contacts/${fromUserId}`);
+  await set(myContactRef, {
     contactId: fromUserId,
     contactName: inviteData.fromName || 'User',
     roomId: inviteData.roomId,
     savedAt: Date.now(),
   });
 
+  // Notify the sender that invite was accepted
+  // Write to sender's acceptedInvites path (they will auto-save the contact)
+  const acceptNotificationRef = ref(rtdb, `users/${fromUserId}/acceptedInvites/${myUserId}`);
+  await set(acceptNotificationRef, {
+    acceptedByUserId: myUserId,
+    acceptedByName: currentUser.displayName || 'User',
+    acceptedByEmail: currentUser.email || '',
+    acceptedByPhotoURL: currentUser.photoURL || null,
+    roomId: inviteData.roomId,
+    timestamp: Date.now(),
+  });
+
   // Remove the invite
   const inviteRef = ref(rtdb, `users/${myUserId}/incomingInvites/${fromUserId}`);
   await remove(inviteRef);
 
-  console.log(`[INVITATIONS] Accepted invite from ${inviteData.fromName}`);
+  console.log(`[INVITATIONS] Accepted invite from ${inviteData.fromName} and notified sender`);
 }
 
 /**
@@ -137,17 +151,93 @@ export async function declineInvite(fromUserId) {
 }
 
 /**
+ * Listen for accepted invitations (when someone accepts your invite).
+ * Auto-saves the contact when an invite is accepted.
+ * @param {Function} callback - Called with (acceptedByUserId, acceptData) after contact is saved
+ * @returns {Function} - Cleanup function to stop listening
+ */
+export function listenForAcceptedInvites(callback) {
+  const myUserId = getLoggedInUserId();
+  
+  if (!myUserId) {
+    console.warn('[INVITATIONS] Cannot listen for accepted invites - not logged in');
+    return () => {};
+  }
+
+  // Clean up any existing listener
+  if (acceptedInviteListener) {
+    const acceptedRef = ref(rtdb, `users/${myUserId}/acceptedInvites`);
+    off(acceptedRef, 'value', acceptedInviteListener);
+  }
+
+  const acceptedRef = ref(rtdb, `users/${myUserId}/acceptedInvites`);
+  
+  acceptedInviteListener = onValue(acceptedRef, async (snapshot) => {
+    if (snapshot.exists()) {
+      const accepted = snapshot.val();
+      
+      // Process each accepted invite
+      for (const [acceptedByUserId, acceptData] of Object.entries(accepted)) {
+        if (!acceptData) continue;
+
+        try {
+          // Auto-save the contact
+          const contactRef = ref(rtdb, `users/${myUserId}/contacts/${acceptedByUserId}`);
+          await set(contactRef, {
+            contactId: acceptedByUserId,
+            contactName: acceptData.acceptedByName || 'User',
+            roomId: acceptData.roomId,
+            savedAt: Date.now(),
+          });
+
+          console.log(`[INVITATIONS] Auto-saved contact: ${acceptData.acceptedByName} (invite accepted)`);
+
+          // Remove the accepted notification
+          const acceptNotificationRef = ref(rtdb, `users/${myUserId}/acceptedInvites/${acceptedByUserId}`);
+          await remove(acceptNotificationRef);
+
+          // Call the callback
+          if (callback) {
+            callback(acceptedByUserId, acceptData);
+          }
+        } catch (e) {
+          console.error('[INVITATIONS] Failed to auto-save contact from accepted invite:', e);
+        }
+      }
+    }
+  });
+
+  console.log('[INVITATIONS] Listening for accepted invites');
+  
+  return () => {
+    if (acceptedInviteListener) {
+      const acceptedRef = ref(rtdb, `users/${myUserId}/acceptedInvites`);
+      off(acceptedRef, 'value', acceptedInviteListener);
+      acceptedInviteListener = null;
+    }
+  };
+}
+
+/**
  * Clean up invite listeners.
  * Call this on logout or component unmount.
  */
 export function cleanupInviteListeners() {
-  if (inviteListener) {
-    const myUserId = getLoggedInUserId();
-    if (myUserId) {
-      const invitesRef = ref(rtdb, `users/${myUserId}/incomingInvites`);
-      off(invitesRef, 'value', inviteListener);
-    }
+  const myUserId = getLoggedInUserId();
+  
+  if (inviteListener && myUserId) {
+    const invitesRef = ref(rtdb, `users/${myUserId}/incomingInvites`);
+    off(invitesRef, 'value', inviteListener);
     inviteListener = null;
-    console.log('[INVITATIONS] Cleaned up invite listeners');
+  }
+  
+  if (acceptedInviteListener && myUserId) {
+    const acceptedRef = ref(rtdb, `users/${myUserId}/acceptedInvites`);
+    off(acceptedRef, 'value', acceptedInviteListener);
+    acceptedInviteListener = null;
+  }
+  
+  if (inviteListener === null && acceptedInviteListener === null) {
+    console.log('[INVITATIONS] Cleaned up all invite listeners');
   }
 }
