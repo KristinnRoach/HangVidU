@@ -204,7 +204,7 @@ function renderImportResults(container, onHangVidU, notOnHangVidU) {
           <strong>${escapeHtml(name)}</strong>
           <small>${escapeHtml(email)}</small>
         </span>
-        <button type="button" class="invite-btn" data-uid="${user.uid}" data-name="${escapeHtml(user.displayName)}">
+        <button type="button" class="invite-btn" data-uid="${escapeHtml(user.uid)}" data-name="${escapeHtml(user.displayName)}">
           Invite
         </button>
       `;
@@ -296,5 +296,8 @@ function getAppInviteLink() {
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str || '';
-  return div.innerHTML;
+  // Browser escapes <, >, & via textContent. Also escape quotes for attribute safety.
+  return div.innerHTML
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
