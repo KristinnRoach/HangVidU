@@ -159,6 +159,13 @@ export async function acceptWatchRequest(file) {
     console.warn('Failed to remove watch request:', err);
   }
 
+  // Clear local request state & timeout to prevent lingering timers
+  if (requestTimeout) {
+    clearTimeout(requestTimeout);
+    requestTimeout = null;
+  }
+  currentFileRequest = null;
+
   // Load the video locally
   return await handleVideoSelection(file);
 }
@@ -494,6 +501,15 @@ export async function handleVideoSelection(source) {
 
   if (success) {
     enterWatchMode();
+  }
+
+  // Revoke object URL if loading failed for a File source to avoid leaks
+  if (!success && source instanceof File) {
+    try {
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.warn('Failed to revoke object URL:', e);
+    }
   }
 
   return success;
