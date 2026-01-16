@@ -127,16 +127,37 @@ Make initial contact frictionless by:
 
 ### High Value - Next Up
 
-#### 1. Invite via Email (mailto:)
-Select specific contacts → generate mailto: link with pre-filled message containing app invite link.
+#### 1. Referral Link System ⭐ PREREQUISITE FOR SHARE FEATURES
+Enable shared links to actually connect users by including referrer information.
+
+**Problem:** Current share/copy link just sends generic app URL - no connection logic.
+
+**Solution:** Add `?ref=userId` parameter handling:
+```
+User A shares: https://hangvidu.app/?ref=USER_A_ID
+User B opens link → signs up → app detects ref parameter →
+Auto-creates pending invite between User A and User B
+```
+
+**Implementation:**
+- On app load, check for `?ref=` URL parameter
+- If present and user signs up, store referrer ID
+- After signup, auto-send invite from referrer to new user (or vice versa)
+- Clear the parameter from URL after processing
+
+**Enables:** Web Share API, mailto: invites, QR codes - all become useful once referral links work.
+
+#### 2. Invite via Email (mailto:)
+Select specific contacts → generate mailto: link with pre-filled message containing referral link.
 
 **Implementation:**
 - Add checkboxes to "Not on HangVidU" list
 - "Invite Selected" button
-- Generate `mailto:` URL with recipient emails and invite message
+- Generate `mailto:` URL with recipient emails and referral link
+- Requires: Referral Link System (#1)
 
-#### 2. Web Share API Integration
-Use native share sheet on mobile devices for better UX.
+#### 3. Web Share API Integration
+Use native share sheet on mobile devices to share referral link.
 
 **Implementation:**
 ```javascript
@@ -144,40 +165,44 @@ if (navigator.share) {
   await navigator.share({
     title: 'Join me on HangVidU',
     text: 'Video chat with me on HangVidU!',
-    url: inviteLink,
+    url: getReferralLink(), // includes ?ref=myUserId
   });
 }
 ```
+- Requires: Referral Link System (#1)
 
-#### 3. Batch Invite for Registered Contacts
+#### 4. Batch Invite for Registered Contacts
 "Invite All" button to send invitations to all contacts on HangVidU at once.
+
+**Status:** Infrastructure ready (`sendInvites()` function exists), needs UI integration.
 
 ---
 
 ### Medium Value
 
-#### 4. Invite Expiration
+#### 5. Invite Expiration
 Auto-expire pending invites after X days to prevent stale data.
 
-#### 5. Block/Spam Prevention
+#### 6. Block/Spam Prevention
 - Allow users to block senders
 - Rate limit invite sending
 - Limit pending invites per user
 
-#### 6. Online Status in Import List
+#### 7. Online Status in Import List
 Show which contacts are currently online when importing.
 
 ---
 
 ### Lower Priority
 
-#### 7. Push Notifications for Invites
+#### 8. Push Notifications for Invites
 Notify users of new invites when app is closed (requires FCM setup).
 
-#### 8. QR Code Invite
-Generate QR code containing invite link for in-person sharing.
+#### 9. QR Code Invite
+Generate QR code containing referral link for in-person sharing.
+- Requires: Referral Link System (#1)
 
-#### 9. Discoverable Profile Toggle
+#### 10. Discoverable Profile Toggle
 Let users opt out of being found via email lookup.
 
 ---
