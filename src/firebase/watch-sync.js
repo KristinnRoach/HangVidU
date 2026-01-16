@@ -95,6 +95,13 @@ export function setupWatchSync(roomId, role, userId) {
 }
 
 // -----------------------------------------------------------------------------
+// HELPERS
+// -----------------------------------------------------------------------------
+function isBlobUrl(url) {
+  return url && url.startsWith('blob:');
+}
+
+// -----------------------------------------------------------------------------
 // REMOTE UPDATE HANDLER
 // -----------------------------------------------------------------------------
 function handleWatchUpdate(snapshot) {
@@ -104,7 +111,7 @@ function handleWatchUpdate(snapshot) {
   if (Date.now() - lastLocalAction < 500) return; // Ignore local race updates
 
   // -- Handle URL changes (skip blob URLs - they're local-only) -------------
-  if (data.url && data.url !== currentVideoUrl && !data.url.startsWith('blob:')) {
+  if (data.url && data.url !== currentVideoUrl && !isBlobUrl(data.url)) {
     handleRemoteUrlChange(data.url);
   }
 
@@ -274,7 +281,7 @@ async function loadStream(url) {
 
   lastLocalAction = Date.now();
   
-  const isBlobUrl = url.startsWith('blob:');
+  const isBlob = isBlobUrl(url);
 
   if (isYouTubeUrl(url)) {
     hideElement(sharedBoxEl);
@@ -288,11 +295,11 @@ async function loadStream(url) {
     showElement(sharedBoxEl);
     sharedVideoEl.src = url;
 
-    lastWatched = isBlobUrl ? 'file' : 'url';
+    lastWatched = isBlob ? 'file' : 'url';
   }
 
   // Only sync real URLs to Firebase (not blob URLs)
-  if (currentRoomId && !isBlobUrl) {
+  if (currentRoomId && !isBlob) {
     const watchRef = getWatchRef(currentRoomId);
     set(watchRef, {
       url,

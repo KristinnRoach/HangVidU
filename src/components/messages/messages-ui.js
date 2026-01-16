@@ -2,6 +2,7 @@ import { onClickOutside } from '../../utils/ui/clickOutside.js';
 import { hideElement, isHidden, showElement } from '../../utils/ui/ui-utils.js';
 import { createMessageToggle } from './message-toggle.js';
 import { isMobileDevice } from '../../utils/env/isMobileDevice.js';
+import { handleVideoSelection } from '../../firebase/watch-sync.js';
 
 // Helper: create the messages box DOM and return container + element refs
 function createMessageBox() {
@@ -590,9 +591,6 @@ export function initMessagesUI() {
           const action = await promptFileAction(file.name);
           
           if (action === 'watch') {
-            // Import handleVideoSelection from watch-sync
-            const { handleVideoSelection } = await import('../../firebase/watch-sync.js');
-            
             // Show notification in chat
             appendChatMessage(`📹 Partner sent video: ${file.name}`);
             appendChatMessage('🎬 Starting watch together mode...');
