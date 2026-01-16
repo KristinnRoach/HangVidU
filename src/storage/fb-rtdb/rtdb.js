@@ -150,6 +150,8 @@ export const getWatchVideoRef = (roomId) =>
   ref(rtdb, `rooms/${roomId}/watch/video`);
 export const getWatchPlaybackRef = (roomId) =>
   ref(rtdb, `rooms/${roomId}/watch/playback`);
+export const getWatchRequestRef = (roomId) =>
+  ref(rtdb, `rooms/${roomId}/watch/fileRequest`);
 
 // User refs
 export const getUserRef = (userId) => ref(rtdb, `users/${userId}`);

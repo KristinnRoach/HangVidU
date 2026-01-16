@@ -1,5 +1,5 @@
-import { set, update } from 'firebase/database';
-import { onDataChange, rtdb, getWatchRef } from '../storage/fb-rtdb/rtdb.js';
+import { set, update, remove } from 'firebase/database';
+import { onDataChange, rtdb, getWatchRef, getWatchRequestRef } from '../storage/fb-rtdb/rtdb.js';
 import {
   isYouTubeUrl,
   getYouTubePlayer,
@@ -34,6 +34,10 @@ let watchMode = false;
 let lastWatched = 'none'; // 'yt' | 'url' | 'file' | 'none'
 
 let currentVideoUrl = null;
+
+// File watch request state
+let currentFileRequest = null; // Stores current file being requested/watched
+let requestTimeout = null; // Timeout for auto-cancel
 
 export const isWatchModeActive = () => watchMode;
 export const setWatchMode = (active) => (watchMode = active);
@@ -84,8 +88,10 @@ export function setupWatchSync(roomId, role, userId) {
   currentUserId = userId;
 
   const watchRef = getWatchRef(roomId);
+  const watchRequestRef = getWatchRequestRef(roomId);
 
   onDataChange(watchRef, handleWatchUpdate, roomId);
+  onDataChange(watchRequestRef, handleWatchRequestUpdate, roomId);
 
   setupLocalVideoListeners();
 
@@ -99,6 +105,103 @@ export function setupWatchSync(roomId, role, userId) {
 // -----------------------------------------------------------------------------
 function isBlobUrl(url) {
   return typeof url === 'string' && url.startsWith('blob:');
+}
+
+// -----------------------------------------------------------------------------
+// FILE WATCH REQUEST HANDLING
+// -----------------------------------------------------------------------------
+
+/**
+ * Create a watch request to notify the other user to join watching
+ */
+export async function createWatchRequest(fileName, file) {
+  if (!currentRoomId || !currentUserId) return false;
+
+  currentFileRequest = { fileName, file };
+
+  const watchRequestRef = getWatchRequestRef(currentRoomId);
+  try {
+    await set(watchRequestRef, {
+      fileName,
+      requestedBy: currentUserId,
+      timestamp: Date.now(),
+    });
+
+    // Auto-cancel after 5 minutes
+    if (requestTimeout) clearTimeout(requestTimeout);
+    requestTimeout = setTimeout(() => {
+      cancelWatchRequest();
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return true;
+  } catch (err) {
+    console.error('Failed to create watch request:', err);
+    return false;
+  }
+}
+
+/**
+ * Accept a watch request and load the video
+ */
+export async function acceptWatchRequest(file) {
+  if (!currentRoomId) return false;
+
+  // Clear the request from Firebase
+  const watchRequestRef = getWatchRequestRef(currentRoomId);
+  try {
+    await remove(watchRequestRef);
+  } catch (err) {
+    console.warn('Failed to remove watch request:', err);
+  }
+
+  // Load the video locally
+  return await handleVideoSelection(file);
+}
+
+/**
+ * Cancel the current watch request
+ */
+export async function cancelWatchRequest() {
+  if (!currentRoomId) return;
+
+  currentFileRequest = null;
+  if (requestTimeout) {
+    clearTimeout(requestTimeout);
+    requestTimeout = null;
+  }
+
+  const watchRequestRef = getWatchRequestRef(currentRoomId);
+  try {
+    await remove(watchRequestRef);
+  } catch (err) {
+    console.warn('Failed to cancel watch request:', err);
+  }
+}
+
+/**
+ * Handle incoming watch request from remote user
+ */
+function handleWatchRequestUpdate(snapshot) {
+  const data = snapshot.val();
+  
+  // Request was cancelled or doesn't exist
+  if (!data) {
+    currentFileRequest = null;
+    if (requestTimeout) {
+      clearTimeout(requestTimeout);
+      requestTimeout = null;
+    }
+    return;
+  }
+
+  // Ignore our own requests
+  if (data.requestedBy === currentUserId) return;
+
+  // Notify the UI layer about the incoming request
+  // This will be handled by messages-ui to show a prompt
+  if (window.onFileWatchRequestReceived) {
+    window.onFileWatchRequestReceived(data.fileName);
+  }
 }
 
 // -----------------------------------------------------------------------------
