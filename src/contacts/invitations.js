@@ -68,8 +68,9 @@ export async function sendInvites(recipients) {
       results.sent++;
     } catch (err) {
       results.failed++;
-      results.errors.push({ userId, name, error: err.message });
-      console.error(`[INVITATIONS] Failed to invite ${name}:`, err.message);
+      const msg = (err && err.message) || String(err);
+      results.errors.push({ userId, name, error: msg });
+      console.error(`[INVITATIONS] Failed to invite ${name}:`, msg);
     }
   });
 
