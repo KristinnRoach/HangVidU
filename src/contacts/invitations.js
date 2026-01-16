@@ -1,7 +1,7 @@
 // src/contacts/invitations.js
 // In-app contact invitation system
 
-import { ref, set, remove, onValue, off, get } from 'firebase/database';
+import { ref, set, remove, onChildAdded, get } from 'firebase/database';
 import { rtdb } from '../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, getCurrentUser } from '../firebase/auth.js';
 import { getDeterministicRoomId } from '../utils/room-id.js';
@@ -68,17 +68,12 @@ export function listenForInvites(callback) {
 
   const invitesRef = ref(rtdb, `users/${myUserId}/incomingInvites`);
   
-  inviteListener = onValue(invitesRef, (snapshot) => {
-    if (snapshot.exists()) {
-      const invites = snapshot.val();
-      
-      // Check each invite for pending status
-      Object.entries(invites).forEach(([fromUserId, inviteData]) => {
-        if (inviteData && inviteData.status === 'pending') {
-          console.log(`[INVITATIONS] New invite from ${inviteData.fromName}`);
-          callback(fromUserId, inviteData);
-        }
-      });
+  inviteListener = onChildAdded(invitesRef, (snapshot) => {
+    const fromUserId = snapshot.key;
+    const inviteData = snapshot.val();
+    if (inviteData && inviteData.status === 'pending') {
+      console.log(`[INVITATIONS] New invite from ${inviteData.fromName}`);
+      callback(fromUserId, inviteData);
     }
   });
 
@@ -166,44 +161,39 @@ export function listenForAcceptedInvites(callback) {
 
   // Clean up any existing listener
   if (acceptedInviteListener) {
-    const acceptedRef = ref(rtdb, `users/${myUserId}/acceptedInvites`);
-    off(acceptedRef, 'value', acceptedInviteListener);
+    acceptedInviteListener();
+    acceptedInviteListener = null;
   }
 
   const acceptedRef = ref(rtdb, `users/${myUserId}/acceptedInvites`);
-  
-  acceptedInviteListener = onValue(acceptedRef, async (snapshot) => {
-    if (snapshot.exists()) {
-      const accepted = snapshot.val();
-      
-      // Process each accepted invite
-      for (const [acceptedByUserId, acceptData] of Object.entries(accepted)) {
-        if (!acceptData) continue;
 
-        try {
-          // Auto-save the contact
-          const contactRef = ref(rtdb, `users/${myUserId}/contacts/${acceptedByUserId}`);
-          await set(contactRef, {
-            contactId: acceptedByUserId,
-            contactName: acceptData.acceptedByName || 'User',
-            roomId: acceptData.roomId,
-            savedAt: Date.now(),
-          });
+  acceptedInviteListener = onChildAdded(acceptedRef, async (snapshot) => {
+    const acceptedByUserId = snapshot.key;
+    const acceptData = snapshot.val();
+    if (!acceptData) return;
 
-          console.log(`[INVITATIONS] Auto-saved contact: ${acceptData.acceptedByName} (invite accepted)`);
+    try {
+      // Auto-save the contact
+      const contactRef = ref(rtdb, `users/${myUserId}/contacts/${acceptedByUserId}`);
+      await set(contactRef, {
+        contactId: acceptedByUserId,
+        contactName: acceptData.acceptedByName || 'User',
+        roomId: acceptData.roomId,
+        savedAt: Date.now(),
+      });
 
-          // Remove the accepted notification
-          const acceptNotificationRef = ref(rtdb, `users/${myUserId}/acceptedInvites/${acceptedByUserId}`);
-          await remove(acceptNotificationRef);
+      console.log(`[INVITATIONS] Auto-saved contact: ${acceptData.acceptedByName} (invite accepted)`);
 
-          // Call the callback
-          if (callback) {
-            callback(acceptedByUserId, acceptData);
-          }
-        } catch (e) {
-          console.error('[INVITATIONS] Failed to auto-save contact from accepted invite:', e);
-        }
+      // Remove the accepted notification
+      const acceptNotificationRef = ref(rtdb, `users/${myUserId}/acceptedInvites/${acceptedByUserId}`);
+      await remove(acceptNotificationRef);
+
+      // Call the callback
+      if (callback) {
+        callback(acceptedByUserId, acceptData);
       }
+    } catch (e) {
+      console.error('[INVITATIONS] Failed to auto-save contact from accepted invite:', e);
     }
   });
 
@@ -211,8 +201,7 @@ export function listenForAcceptedInvites(callback) {
   
   return () => {
     if (acceptedInviteListener) {
-      const acceptedRef = ref(rtdb, `users/${myUserId}/acceptedInvites`);
-      off(acceptedRef, 'value', acceptedInviteListener);
+      acceptedInviteListener();
       acceptedInviteListener = null;
     }
   };
@@ -223,21 +212,15 @@ export function listenForAcceptedInvites(callback) {
  * Call this on logout or component unmount.
  */
 export function cleanupInviteListeners() {
-  const myUserId = getLoggedInUserId();
-  
-  if (inviteListener && myUserId) {
-    const invitesRef = ref(rtdb, `users/${myUserId}/incomingInvites`);
-    off(invitesRef, 'value', inviteListener);
+  if (inviteListener) {
+    inviteListener();
     inviteListener = null;
   }
-  
-  if (acceptedInviteListener && myUserId) {
-    const acceptedRef = ref(rtdb, `users/${myUserId}/acceptedInvites`);
-    off(acceptedRef, 'value', acceptedInviteListener);
+
+  if (acceptedInviteListener) {
+    acceptedInviteListener();
     acceptedInviteListener = null;
   }
-  
-  if (inviteListener === null && acceptedInviteListener === null) {
-    console.log('[INVITATIONS] Cleaned up all invite listeners');
-  }
+
+  console.log('[INVITATIONS] Cleaned up all invite listeners');
 }

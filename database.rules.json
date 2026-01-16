@@ -21,13 +21,13 @@
         "incomingInvites": {
           ".read": "$userId === auth.uid",
           "$fromUserId": {
-            ".write": "auth != null && ($fromUserId === auth.uid || $userId === auth.uid)"
+            ".write": "auth != null && (($fromUserId === auth.uid && !data.exists()) || ($userId === auth.uid && !newData.exists()))"
           }
         },
         "acceptedInvites": {
           ".read": "$userId === auth.uid",
           "$acceptedByUserId": {
-            ".write": "auth != null && ($acceptedByUserId === auth.uid || $userId === auth.uid)"
+            ".write": "auth != null && (($acceptedByUserId === auth.uid && !data.exists()) || ($userId === auth.uid && !newData.exists()))"
           }
         },
         "callHistory": {
