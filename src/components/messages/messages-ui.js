@@ -173,6 +173,124 @@ export function initMessagesUI() {
     }
   });
 
+  /**
+   * Prompt user to choose action for received video file
+   * @param {string} fileName - Name of the video file
+   * @returns {Promise<'download'|'watch'>} User's choice
+   */
+  async function promptFileAction(fileName) {
+    return new Promise((resolve) => {
+      // Create modal overlay
+      const overlay = document.createElement('div');
+      overlay.className = 'file-action-overlay';
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+      `;
+      
+      // Create prompt dialog
+      const dialog = document.createElement('div');
+      dialog.className = 'file-action-prompt';
+      dialog.style.cssText = `
+        background: var(--bg-primary, #1a1a1a);
+        border: 1px solid var(--border-color, #333);
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      `;
+      
+      dialog.innerHTML = `
+        <div style="text-align: center;">
+          <div style="font-size: 48px; margin-bottom: 16px;">📹</div>
+          <h3 style="margin: 0 0 8px 0; color: var(--text-primary, #fff);">Video Received</h3>
+          <p style="margin: 0 0 24px 0; color: var(--text-secondary, #aaa); font-size: 14px;">
+            ${fileName}
+          </p>
+          <div style="display: flex; gap: 12px; justify-content: center;">
+            <button id="download-file-btn" style="
+              flex: 1;
+              padding: 12px 24px;
+              background: var(--bg-secondary, #2a2a2a);
+              border: 1px solid var(--border-color, #444);
+              border-radius: 8px;
+              color: var(--text-primary, #fff);
+              cursor: pointer;
+              font-size: 14px;
+              transition: all 0.2s;
+            ">
+              <i class="fa fa-download" style="margin-right: 8px;"></i>Download
+            </button>
+            <button id="watch-together-btn" style="
+              flex: 1;
+              padding: 12px 24px;
+              background: var(--accent-color, #4a9eff);
+              border: none;
+              border-radius: 8px;
+              color: white;
+              cursor: pointer;
+              font-size: 14px;
+              font-weight: 600;
+              transition: all 0.2s;
+            ">
+              <i class="fa fa-play" style="margin-right: 8px;"></i>Watch Together
+            </button>
+          </div>
+        </div>
+      `;
+      
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+      
+      // Add hover effects
+      const downloadBtn = dialog.querySelector('#download-file-btn');
+      const watchBtn = dialog.querySelector('#watch-together-btn');
+      
+      downloadBtn.addEventListener('mouseenter', () => {
+        downloadBtn.style.background = 'var(--bg-hover, #333)';
+      });
+      downloadBtn.addEventListener('mouseleave', () => {
+        downloadBtn.style.background = 'var(--bg-secondary, #2a2a2a)';
+      });
+      
+      watchBtn.addEventListener('mouseenter', () => {
+        watchBtn.style.opacity = '0.9';
+      });
+      watchBtn.addEventListener('mouseleave', () => {
+        watchBtn.style.opacity = '1';
+      });
+      
+      // Handle button clicks
+      downloadBtn.addEventListener('click', () => {
+        overlay.remove();
+        resolve('download');
+      });
+      
+      watchBtn.addEventListener('click', () => {
+        overlay.remove();
+        resolve('watch');
+      });
+      
+      // Close on overlay click
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          overlay.remove();
+          resolve('download'); // Default to download
+        }
+      });
+    });
+  }
+
+
   // Position the messages box relative to toggle
   function positionMessagesBox() {
     if (
@@ -462,14 +580,45 @@ export function initMessagesUI() {
       showElement(attachBtn);
 
       // Setup file received handler
-      fileTransfer.onFileReceived = (file) => {
+      fileTransfer.onFileReceived = async (file) => {
         // Create download URL
         const url = URL.createObjectURL(file);
 
-        // Show in UI with clickable download link
-        appendChatMessage(`📎 Partner sent: ${file.name}`, {
-          fileDownload: { fileName: file.name, url },
-        });
+        // Check if it's a video file
+        if (file.type.startsWith('video/')) {
+          // Prompt user: Download or Watch Together
+          const action = await promptFileAction(file.name);
+          
+          if (action === 'watch') {
+            // Import handleVideoSelection from watch-sync
+            const { handleVideoSelection } = await import('../../firebase/watch-sync.js');
+            
+            // Show notification in chat
+            appendChatMessage(`📹 Partner sent video: ${file.name}`);
+            appendChatMessage('🎬 Starting watch together mode...');
+            
+            // Load video in shared player
+            const success = await handleVideoSelection(file);
+            
+            if (!success) {
+              appendChatMessage('❌ Failed to load video');
+            }
+          } else {
+            // Download the file
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = file.name;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            appendChatMessage(`📎 Downloaded: ${file.name}`);
+          }
+        } else {
+          // Non-video file - show download link as before
+          appendChatMessage(`📎 Partner sent: ${file.name}`, {
+            fileDownload: { fileName: file.name, url },
+          });
+        }
 
         // Increment unread count if messages box is hidden
         if (isHidden(messagesBox)) {

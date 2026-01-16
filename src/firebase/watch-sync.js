@@ -31,7 +31,7 @@ let currentRoomId = null;
 let currentUserId = null;
 
 let watchMode = false;
-let lastWatched = 'none'; // 'yt' | 'url' | 'none'
+let lastWatched = 'none'; // 'yt' | 'url' | 'file' | 'none'
 
 let currentVideoUrl = null;
 
@@ -40,7 +40,7 @@ export const setWatchMode = (active) => (watchMode = active);
 
 export const getLastWatched = () => lastWatched;
 export const setLastWatched = (mode) => {
-  if (['yt', 'url', 'none'].includes(mode)) {
+  if (['yt', 'url', 'file', 'none'].includes(mode)) {
     lastWatched = mode;
   } else {
     console.warn('Invalid lastWatched platform:', mode);
@@ -103,12 +103,12 @@ function handleWatchUpdate(snapshot) {
   if (data.updatedBy === currentUserId) return; // Ignore self-updates
   if (Date.now() - lastLocalAction < 500) return; // Ignore local race updates
 
-  // -- Handle URL changes -----------------------------------------------------
-  if (data.url && data.url !== currentVideoUrl) {
+  // -- Handle URL changes (skip blob URLs - they're local-only) -------------
+  if (data.url && data.url !== currentVideoUrl && !data.url.startsWith('blob:')) {
     handleRemoteUrlChange(data.url);
   }
 
-  // -- Handle playback sync ---------------------------------------------------
+  // -- Handle playback sync (works for ALL video sources!) -------------------
   if (data.isYouTube) {
     handleYouTubeSync(data);
   } else {
@@ -233,7 +233,10 @@ function setupLocalVideoListeners() {
       lastLocalAction = Date.now();
       await updateWatchSyncState({ playing: true, isYouTube: false });
     }
-    lastWatched = 'url';
+    // Preserve 'file' mode if already set, otherwise set to 'url'
+    if (lastWatched !== 'file') {
+      lastWatched = 'url';
+    }
   });
 
   sharedVideoEl.addEventListener('pause', async () => {
@@ -241,7 +244,10 @@ function setupLocalVideoListeners() {
       lastLocalAction = Date.now();
       await updateWatchSyncState({ playing: false, isYouTube: false });
     }
-    lastWatched = 'url';
+    // Preserve 'file' mode if already set, otherwise set to 'url'
+    if (lastWatched !== 'file') {
+      lastWatched = 'url';
+    }
   });
 
   sharedVideoEl.addEventListener('seeked', async () => {
@@ -253,7 +259,10 @@ function setupLocalVideoListeners() {
         isYouTube: false,
       });
     }
-    lastWatched = 'url';
+    // Preserve 'file' mode if already set, otherwise set to 'url'
+    if (lastWatched !== 'file') {
+      lastWatched = 'url';
+    }
   });
 }
 
@@ -264,6 +273,8 @@ async function loadStream(url) {
   if (!url) return false;
 
   lastLocalAction = Date.now();
+  
+  const isBlobUrl = url.startsWith('blob:');
 
   if (isYouTubeUrl(url)) {
     hideElement(sharedBoxEl);
@@ -277,10 +288,11 @@ async function loadStream(url) {
     showElement(sharedBoxEl);
     sharedVideoEl.src = url;
 
-    lastWatched = 'url';
+    lastWatched = isBlobUrl ? 'file' : 'url';
   }
 
-  if (currentRoomId) {
+  // Only sync real URLs to Firebase (not blob URLs)
+  if (currentRoomId && !isBlobUrl) {
     const watchRef = getWatchRef(currentRoomId);
     set(watchRef, {
       url,
@@ -297,17 +309,32 @@ async function loadStream(url) {
 // -----------------------------------------------------------------------------
 // VIDEO SELECTION
 // -----------------------------------------------------------------------------
-export async function handleVideoSelection(video) {
-  if (!video || !video.url) {
-    console.warn(`Non-existing or invalid video.`);
+export async function handleVideoSelection(source) {
+  let url;
+  
+  // Accept File object or URL string
+  if (source instanceof File) {
+    if (!source.type.startsWith('video/')) {
+      console.warn('Invalid file type:', source.type);
+      return false;
+    }
+    url = URL.createObjectURL(source);
+  } else if (typeof source === 'string') {
+    url = source;
+  } else if (source?.url) {
+    // Legacy: video object with url property
+    url = source.url;
+  } else {
+    console.warn('Invalid video source:', source);
     return false;
   }
 
-  currentVideoUrl = video.url;
+  currentVideoUrl = url;
+  const success = await loadStream(url);
 
-  const success = await loadStream(video.url);
-
-  enterWatchMode();
+  if (success) {
+    enterWatchMode();
+  }
 
   return success;
 }
