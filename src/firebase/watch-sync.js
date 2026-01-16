@@ -507,6 +507,7 @@ export async function handleVideoSelection(source) {
 
   // Revoke object URL if loading failed for a File source to avoid leaks
   if (!success && source instanceof File) {
+    currentVideoUrl = null;
     try {
       URL.revokeObjectURL(url);
     } catch (e) {
