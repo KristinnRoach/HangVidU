@@ -18,7 +18,8 @@
   margin-top: 2rem;
   display: flex;
   flex-direction: row;
-  justify-content: space-evenly;
+  justify-content: center;
+  column-gap: min(5dvw, 24px);
   align-items: center;
   width: 100%;
   max-width: 50dvw;
@@ -29,7 +30,7 @@
   justify-content: center;
   align-items: center;
 
-  padding: 1rem;
+  padding: 0.75rem;
   aspect-ratio: 1;
 
   color: rgb(8, 40, 169) !important;
@@ -42,41 +43,23 @@
   box-shadow: var(--shadow-sm);
 
   /* fa-phone icon styles: */
-  font-size: 2.5rem;
+  font-size: 1.5rem;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 
-  transition: color 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    color 0.3s ease,
+    background-color 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .lobby-btn:hover {
   box-shadow: var(--shadow-md);
-  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), 0 -1px 0 rgba(255, 255, 255, 0.3);
+  text-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.4),
+    0 -1px 0 rgba(255, 255, 255, 0.3);
 
   color: rgb(55, 162, 255);
 }
-
-/* Join Room Form 
-#join-room-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  margin: 0 auto;
-  padding: 1.5rem;
-  font-size: 1.2rem;
-  row-gap: 10rem;
-}
-
-#join-room-form {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: wrap;
-  width: 100%;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-} */
 
 /* Confirm Dialog (used in lobby for confirmations) */
 
