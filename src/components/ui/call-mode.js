@@ -19,6 +19,7 @@ import {
   hideElement,
   placeInSmallFrame,
   removeFromSmallFrame,
+  isElementInPictureInPicture,
 } from '../../utils/ui/ui-utils.js';
 
 import { setupShowHideOnInactivity } from '../../utils/ui/showHideOnInactivity.js';
@@ -92,6 +93,7 @@ export const enterCallMode = () => {
 
   if (!cleanupRemoteLeavePipHandler) {
     const remoteLeavePipHandler = () => {
+      if (!isInCallMode) return; // Call ended, don't restore video
       if (isWatchModeActive()) placeInSmallFrame(remoteBoxEl);
       else removeFromSmallFrame(remoteBoxEl);
       showElement(remoteBoxEl);
@@ -132,6 +134,11 @@ export const enterCallMode = () => {
 export const exitCallMode = () => {
   if (!isInCallMode) return;
   isInCallMode = false;
+
+  // Exit PiP first (before cleanup removes the event listener)
+  if (isElementInPictureInPicture(remoteVideoEl)) {
+    document.exitPictureInPicture().catch(() => {});
+  }
 
   removeFromSmallFrame(localBoxEl);
   hideElement(localBoxEl);

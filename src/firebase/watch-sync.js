@@ -257,6 +257,8 @@ function handleRemoteUrlChange(url) {
     sharedVideoEl.src = url;
     lastWatched = 'url';
   }
+
+  enterWatchMode(); // Needed here since handleRemoteUrlChange() bypasses loadStream()
 }
 
 // -----------------------------------------------------------------------------
@@ -473,6 +475,8 @@ async function loadStream(url) {
     }
   }
 
+  enterWatchMode();
+
   return true;
 }
 
@@ -503,8 +507,8 @@ export async function handleVideoSelection(source) {
   const success = await loadStream(url);
 
   if (success) {
-    enterWatchMode();
-  } else if (source instanceof File) {
+    // enterWatchMode(); // moved to loadStream()
+  } else if (isBlobUrl(currentVideoUrl) && source instanceof File) {
     URL.revokeObjectURL(url);
     currentVideoUrl = null;
   }

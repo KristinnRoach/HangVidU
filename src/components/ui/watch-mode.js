@@ -33,6 +33,7 @@ import { getIsInCallMode } from './call-mode.js';
 
 // Import media state
 import { hasRemoteStream, getRemoteStream } from '../../media/state.js';
+import { devDebug } from '../../utils/dev/dev-utils.js';
 
 // TODO: check if setupShowHideOnInactivity needs integrating here.
 
@@ -69,6 +70,8 @@ export function enterWatchMode() {
   chatControls.classList.remove('bottom');
   chatControls.classList.add('watch-mode');
 
+  devDebug('Entered watch mode UI, isInCallMode:', getIsInCallMode());
+
   if (getIsInCallMode()) {
     hideElement(callBtn);
     showElement(hangUpBtn);
@@ -88,31 +91,32 @@ export function enterWatchMode() {
 
   showElement(chatControls);
 
-  // Hide local video if remote video is active
-  hideElement(localBoxEl);
-  removeFromSmallFrame(localBoxEl);
-  hideElement(remoteBoxEl);
+  // Only manage video elements if in an active call
+  if (getIsInCallMode()) {
+    hideElement(localBoxEl);
+    removeFromSmallFrame(localBoxEl);
+    hideElement(remoteBoxEl);
 
-  if (isElementInPictureInPicture(remoteVideoEl)) {
-    removeFromSmallFrame(remoteBoxEl);
-  } else if (isPiPSupported()) {
-    // Try to enter PiP with fallback
-    remoteVideoEl
-      .requestPictureInPicture()
-      .then(() => {
-        // Hide the smallFrame if PiP entered successfully
-        removeFromSmallFrame(remoteBoxEl);
-      })
-      .catch((err) => {
-        console.warn('Failed to enter Picture-in-Picture:', err);
-        // Fallback: place in small frame
-        placeInSmallFrame(remoteBoxEl);
-        showElement(remoteBoxEl);
-      });
-  } else {
-    // PiP not supported
-    placeInSmallFrame(remoteBoxEl);
-    showElement(remoteBoxEl);
+    if (isElementInPictureInPicture(remoteVideoEl)) {
+      removeFromSmallFrame(remoteBoxEl);
+    } else if (isPiPSupported()) {
+      // Try to enter PiP with fallback
+      remoteVideoEl
+        .requestPictureInPicture()
+        .then(() => {
+          removeFromSmallFrame(remoteBoxEl);
+        })
+        .catch((err) => {
+          console.warn('Failed to enter Picture-in-Picture:', err);
+          // Fallback: place in small frame
+          placeInSmallFrame(remoteBoxEl);
+          showElement(remoteBoxEl);
+        });
+    } else {
+      // PiP not supported, use small frame
+      placeInSmallFrame(remoteBoxEl);
+      showElement(remoteBoxEl);
+    }
   }
 }
 

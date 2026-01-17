@@ -70,9 +70,10 @@ export const placeInSmallFrame = (element) => {
 export const removeFromSmallFrame = (element) => {
   if (isInSmallFrame(element)) {
     element.classList.remove('small-frame');
-    // Remove close icon if exists
-    const closeIcon = document.querySelector('.small-frame-close');
-    if (closeIcon) closeIcon.remove();
+    element.classList.remove('closed');
+    // Remove toggle button if exists
+    const toggle = element.querySelector('.small-frame-toggle-div');
+    if (toggle) toggle.remove();
   }
 };
 

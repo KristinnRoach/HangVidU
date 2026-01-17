@@ -182,3 +182,9 @@
 .small-frame-toggle-div.closed:hover {
   box-shadow: #000000b4 0px 0px 30px 2px;
 }
+
+/* Hide small-frame styling when the element is also hidden */
+.small-frame.hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
