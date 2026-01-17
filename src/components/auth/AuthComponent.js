@@ -3,7 +3,8 @@
 // ================================================
 
 import {
-  signInWithGoogle,
+  // signInWithGoogle, // TODO: remove or use
+  signInWithAccountSelection,
   signOutUser,
   onAuthChange,
   isLoggedIn,
@@ -49,7 +50,8 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       <div class="user-info">\${isLoggedIn ? 'Logged in: ' + userName : 'Logged out'}</div>
     `,
     handlers: {
-      handleLogin: signInWithGoogle,
+      // handleLogin: signInWithGoogle, // TODO: remove or use
+      handleLogin: signInWithAccountSelection,
       handleLogout: signOutUser,
     },
     onMount: (el) => {

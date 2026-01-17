@@ -259,6 +259,7 @@ export function onAuthChange(callback, { truncate = 7 } = {}) {
   });
 }
 
+/* // TODO: remove or use:
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
 
@@ -392,7 +393,7 @@ export async function signInWithGoogle() {
 
     alert(`Sign-in failed: ${errorMessage}`);
   }
-}
+} */
 
 export const signInWithAccountSelection = async () => {
   try {
