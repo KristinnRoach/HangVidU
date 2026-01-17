@@ -259,7 +259,7 @@ async function initLocalStreamAndMedia() {
   if (localVideoEl) {
     localVideoEl.addEventListener(
       'enterpictureinpicture',
-      () => localBoxEl && hideElement(localBoxEl)
+      () => localBoxEl && hideElement(localBoxEl),
     );
 
     localVideoEl.addEventListener('leavepictureinpicture', () => {
@@ -288,7 +288,7 @@ function handleMediaPermissionError(error) {
     error?.name === 'PermissionDeniedError'
   ) {
     alert(
-      'Camera/microphone access is required for video calls. Please click "Allow" when prompted, or check your browser settings.'
+      'Camera/microphone access is required for video calls. Please click "Allow" when prompted, or check your browser settings.',
     );
   }
   resetLocalStreamInitFlag();
@@ -320,7 +320,7 @@ function applyCallResult(result, showLinkModal = false) {
       onCopy: () => devDebug('Link ready! Share with your partner.'),
       onCancel: () =>
         devDebug(
-          'Link ready! Use the copy button to use it, or create a new one.'
+          'Link ready! Use the copy button to use it, or create a new one.',
         ),
     });
   }
@@ -331,7 +331,7 @@ function applyCallResult(result, showLinkModal = false) {
 
 export async function joinOrCreateRoomWithId(
   customRoomId,
-  { forceInitiator = false } = {}
+  { forceInitiator = false } = {},
 ) {
   try {
     await initLocalStreamAndMedia();
@@ -357,11 +357,11 @@ export async function joinOrCreateRoomWithId(
       {
         trigger: 'force_initiator',
         reason: 'calling_saved_contact',
-      }
+      },
     );
 
     const result = await CallController.createCall(
-      getCallOptions(customRoomId)
+      getCallOptions(customRoomId),
     );
 
     return applyCallResult(result, false);
@@ -396,11 +396,11 @@ export async function joinOrCreateRoomWithId(
         trigger: 'room_empty_or_nonexistent',
         roomExists: status.exists,
         memberCount: status.memberCount || 0,
-      }
+      },
     );
 
     const result = await CallController.createCall(
-      getCallOptions(customRoomId)
+      getCallOptions(customRoomId),
     );
 
     return applyCallResult(result, true); // Show modal when creating via join form
@@ -459,7 +459,7 @@ function removeIncomingListenersForRoom(roomId) {
  */
 function removeAllIncomingListeners() {
   devDebug(
-    `[LISTENER] Removing all incoming listeners (${listeningRoomIds.size} rooms)`
+    `[LISTENER] Removing all incoming listeners (${listeningRoomIds.size} rooms)`,
   );
 
   // Get all room IDs before clearing
@@ -545,7 +545,7 @@ export function listenForIncomingOnRoom(roomId) {
   // Firebase RTDB handles duplicate listeners internally, so this is safe
   if (listeningRoomIds.has(roomId)) {
     devDebug(
-      `[LISTENER] Listener already tracked for room: ${roomId}, re-attaching to ensure it's active`
+      `[LISTENER] Listener already tracked for room: ${roomId}, re-attaching to ensure it's active`,
     );
     // Remove from tracking so we can re-attach
     listeningRoomIds.delete(roomId);
@@ -556,7 +556,7 @@ export function listenForIncomingOnRoom(roomId) {
   devDebug(
     `[LISTENER] Attaching listener for room: ${roomId} (total: ${
       listeningRoomIds.size + 1
-    })`
+    })`,
   );
 
   listeningRoomIds.add(roomId);
@@ -570,7 +570,7 @@ export function listenForIncomingOnRoom(roomId) {
     listeningRoomIds.size,
     {
       action: 'incoming_call_listener_attached',
-    }
+    },
   );
 
   // Use RoomService's member listener helper
@@ -590,7 +590,7 @@ export function listenForIncomingOnRoom(roomId) {
           {
             detectedBy: 'incoming_call_listener',
             currentUserId,
-          }
+          },
         );
 
         // Prefer the member's joinedAt as the primary freshness signal (real-time join)
@@ -616,15 +616,15 @@ export function listenForIncomingOnRoom(roomId) {
         if (!isFresh) {
           const outgoingFresh = await isOutgoingCallFresh(
             joiningUserId,
-            roomId
+            roomId,
           );
           const roomFresh = await isRoomCallFresh(roomId);
           isFresh = outgoingFresh || roomFresh;
           validationMethod = outgoingFresh
             ? 'outgoingState'
             : roomFresh
-            ? 'roomCreatedAt'
-            : 'failed';
+              ? 'roomCreatedAt'
+              : 'failed';
         }
 
         const freshnessResult = {
@@ -642,12 +642,12 @@ export function listenForIncomingOnRoom(roomId) {
             memberData,
             joinedAt,
             CALL_FRESH_MS,
-          }
+          },
         );
 
         if (!isFresh) {
           devDebug(
-            `Ignoring stale incoming call from ${joiningUserId} for room ${roomId}`
+            `Ignoring stale incoming call from ${joiningUserId} for room ${roomId}`,
           );
           getDiagnosticLogger().logNotificationDecision(
             'REJECT',
@@ -657,7 +657,7 @@ export function listenForIncomingOnRoom(roomId) {
               age,
               validationMethod,
               joiningUserId,
-            }
+            },
           );
           return;
         }
@@ -690,7 +690,7 @@ export function listenForIncomingOnRoom(roomId) {
             {
               joiningUserId,
               currentCallState: state.pc?.connectionState,
-            }
+            },
           );
           return;
         }
@@ -702,7 +702,7 @@ export function listenForIncomingOnRoom(roomId) {
           {
             joiningUserId,
             freshnessResult,
-          }
+          },
         );
 
         // Resolve caller name from contacts
@@ -715,7 +715,7 @@ export function listenForIncomingOnRoom(roomId) {
         let accept = false;
         try {
           accept = await confirmDialog(
-            `Incoming call from ${callerName}.\n\nAccept?`
+            `Incoming call from ${callerName}.\n\nAccept?`,
           );
         } finally {
           // Stop ringtone and visual indicators after user responds (or on error)
@@ -734,7 +734,7 @@ export function listenForIncomingOnRoom(roomId) {
             roomId,
             {
               joiningUserId,
-            }
+            },
           );
           joinOrCreateRoomWithId(roomId).catch((e) => {
             console.warn('Failed to answer incoming call:', e);
@@ -746,7 +746,7 @@ export function listenForIncomingOnRoom(roomId) {
               {
                 roomId,
                 joiningUserId,
-              }
+              },
             );
           });
         } else {
@@ -757,7 +757,7 @@ export function listenForIncomingOnRoom(roomId) {
             roomId,
             {
               joiningUserId,
-            }
+            },
           );
 
           // Send a direct rejection signal so the caller gets immediate feedback (no 30s timeout)
@@ -773,7 +773,7 @@ export function listenForIncomingOnRoom(roomId) {
           });
         }
       }
-    }
+    },
   );
 
   // INCOMING CALL cancellation listener
@@ -784,9 +784,8 @@ export function listenForIncomingOnRoom(roomId) {
       snapshot && typeof snapshot.val === 'function' ? snapshot.val() : null;
     if (!data) return;
     try {
-      const { dismissActiveConfirmDialog } = await import(
-        './components/base/confirm-dialog.js'
-      );
+      const { dismissActiveConfirmDialog } =
+        await import('./components/base/confirm-dialog.js');
       if (typeof dismissActiveConfirmDialog === 'function') {
         dismissActiveConfirmDialog();
       }
@@ -795,7 +794,7 @@ export function listenForIncomingOnRoom(roomId) {
     }
     await removeRecentCall(roomId).catch(() => {});
     devDebug(
-      `[LISTENER] Incoming call cancelled by caller for room: ${roomId}`
+      `[LISTENER] Incoming call cancelled by caller for room: ${roomId}`,
     );
   });
 
@@ -817,7 +816,7 @@ export function listenForIncomingOnRoom(roomId) {
         await removeRecentCall(roomId);
         removeIncomingListenersForRoom(roomId);
         devDebug(
-          `Removed saved recent call and listeners for room ${roomId} because it is now empty`
+          `Removed saved recent call and listeners for room ${roomId} because it is now empty`,
         );
       }
     } catch (e) {
@@ -865,7 +864,7 @@ async function startListeningForSavedRooms() {
           if (!meta || (meta.expiresAt && meta.expiresAt < Date.now())) {
             // remove expired
             await remove(getUserRecentCallRef(loggedInUid, roomId)).catch(
-              () => {}
+              () => {},
             );
             continue;
           }
@@ -882,7 +881,10 @@ async function startListeningForSavedRooms() {
           } else if (contactId && loggedInUid) {
             // Generate deterministic room ID for contacts without explicit roomId
             try {
-              const deterministicRoomId = getDeterministicRoomId(loggedInUid, contactId);
+              const deterministicRoomId = getDeterministicRoomId(
+                loggedInUid,
+                contactId,
+              );
               toListen.add(deterministicRoomId);
             } catch (e) {
               // Skip if unable to generate
@@ -910,7 +912,7 @@ async function startListeningForSavedRooms() {
         {
           storage: 'rtdb',
           userId: loggedInUid,
-        }
+        },
       );
     }
     return;
@@ -940,7 +942,10 @@ async function startListeningForSavedRooms() {
         } else if (contactId && guestUserId) {
           // Generate deterministic room ID for contacts without explicit roomId
           try {
-            const deterministicRoomId = getDeterministicRoomId(guestUserId, contactId);
+            const deterministicRoomId = getDeterministicRoomId(
+              guestUserId,
+              contactId,
+            );
             toListen.add(deterministicRoomId);
           } catch (e) {
             // Skip if unable to generate
@@ -1018,7 +1023,7 @@ function addKeyListeners() {
             showYouTubePlayer();
             enterWatchMode();
           }
-        } else if (getLastWatched() === 'url') {
+        } else if (getLastWatched() === 'url' || getLastWatched() === 'file') {
           if (isSharedVideoVisible()) {
             hideElement(sharedBoxEl);
             exitWatchMode();
@@ -1037,6 +1042,9 @@ function addKeyListeners() {
           pauseYouTubeVideo();
           hideYouTubePlayer();
         } else if (getLastWatched() === 'url' && isSharedVideoVisible()) {
+          sharedVideoEl.pause();
+          hideElement(sharedBoxEl);
+        } else if (getLastWatched() === 'file' && isSharedVideoVisible()) {
           sharedVideoEl.pause();
           hideElement(sharedBoxEl);
         }
@@ -1097,7 +1105,7 @@ if (pasteJoinBtn) {
         // Clipboard access denied or other error
         if (error.name === 'NotAllowedError') {
           alert(
-            'Clipboard access denied. Please allow clipboard access or paste the link manually.'
+            'Clipboard access denied. Please allow clipboard access or paste the link manually.',
           );
         } else {
           console.error('Paste & Join failed:', error);
@@ -1108,7 +1116,7 @@ if (pasteJoinBtn) {
   } else {
     pasteJoinBtn.style.display = 'none';
     console.warn(
-      'Paste & Join button hidden: Clipboard API not available in this context (requires HTTPS).'
+      'Paste & Join button hidden: Clipboard API not available in this context (requires HTTPS).',
     );
   }
 }
@@ -1127,12 +1135,12 @@ if (exitWatchModeBtn) {
       hideYouTubePlayer();
     } else if (getLastWatched() === 'url' || getLastWatched() === 'file') {
       sharedVideoEl.pause();
-      
+
       // Revoke blob URL to free memory (only if it's a blob)
       if (sharedVideoEl.src.startsWith('blob:')) {
         URL.revokeObjectURL(sharedVideoEl.src);
       }
-      
+
       hideElement(sharedBoxEl);
     }
     exitWatchMode();
@@ -1220,7 +1228,7 @@ async function processNextInvite() {
 
   try {
     const accept = await confirmDialog(
-      `${inviteData.fromName || 'Someone'} wants to connect.\n\nAccept contact invitation?`
+      `${inviteData.fromName || 'Someone'} wants to connect.\n\nAccept contact invitation?`,
     );
 
     if (accept) {
@@ -1259,7 +1267,10 @@ function setupInviteListener() {
 
   // Listen for accepted invites (when someone accepts your invite)
   listenForAcceptedInvites(async (acceptedByUserId, acceptData) => {
-    console.log('[INVITATIONS] Your invite was accepted by:', acceptData.acceptedByName);
+    console.log(
+      '[INVITATIONS] Your invite was accepted by:',
+      acceptData.acceptedByName,
+    );
     await renderContactsList(lobbyDiv).catch(() => {});
     alert(`${acceptData.acceptedByName} accepted your invitation!`);
   });
@@ -1313,7 +1324,7 @@ window.onload = async () => {
 
   // Start listening for incoming calls on any saved/recent room ids FIRST
   await startListeningForSavedRooms().catch((e) =>
-    console.warn('Failed to start saved-room listeners', e)
+    console.warn('Failed to start saved-room listeners', e),
   );
 
   // Then render saved contacts list in lobby (now listeners are ready)
@@ -1337,7 +1348,9 @@ window.onload = async () => {
 
       // Only clean up on actual logout (not initial load)
       if (isActualLogout) {
-        devDebug('[AUTH] User logged out - cleaning up messaging and listeners');
+        devDebug(
+          '[AUTH] User logged out - cleaning up messaging and listeners',
+        );
 
         // Clear messages UI to prevent previous user's messages from being visible
         messagesUI.reset();
@@ -1351,7 +1364,7 @@ window.onload = async () => {
         // On login, re-attach listeners for saved rooms
         devDebug('[AUTH] User logged in - re-attaching incoming listeners');
         await startListeningForSavedRooms().catch((e) =>
-          console.warn('Failed to re-attach saved-room listeners on login', e)
+          console.warn('Failed to re-attach saved-room listeners on login', e),
         );
         // Start listening for contact invites
         setupInviteListener();
@@ -1417,10 +1430,10 @@ CallController.on('memberJoined', ({ memberId, roomId }) => {
 
   enterCallMode();
   onCallAnswered().catch((e) =>
-    console.warn('Failed to clear calling state:', e)
+    console.warn('Failed to clear calling state:', e),
   );
   saveRecentCall(roomId).catch((e) =>
-    console.warn('Failed to save recent call:', e)
+    console.warn('Failed to save recent call:', e),
   );
 });
 

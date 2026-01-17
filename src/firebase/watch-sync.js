@@ -40,13 +40,13 @@ let lastWatched = 'none'; // 'yt' | 'url' | 'file' | 'none'
 let currentVideoUrl = null;
 
 // File watch request state
-let currentFileRequest = null; // Stores current file being requested/watched
+let currentFileRequest = null; // Stores current file being requested/watched // TODO: use this?
 let requestTimeout = null; // Timeout for auto-cancel
 
 export const isWatchModeActive = () => watchMode;
 export const setWatchMode = (active) => (watchMode = active);
 
-export const getLastWatched = () => lastWatched;
+export const getLastWatched = () => lastWatched; // 'yt' | 'url' | 'file' | 'none'
 export const setLastWatched = (mode) => {
   if (['yt', 'url', 'file', 'none'].includes(mode)) {
     lastWatched = mode;
@@ -134,9 +134,12 @@ export async function createWatchRequest(fileName, file) {
 
     // Auto-cancel after 5 minutes
     if (requestTimeout) clearTimeout(requestTimeout);
-    requestTimeout = setTimeout(() => {
-      cancelWatchRequest();
-    }, 5 * 60 * 1000); // 5 minutes
+    requestTimeout = setTimeout(
+      () => {
+        cancelWatchRequest();
+      },
+      5 * 60 * 1000,
+    ); // 5 minutes
 
     return true;
   } catch (err) {
@@ -404,7 +407,7 @@ function setupLocalVideoListeners() {
         wasPlayingBeforeSeek = false;
       }
     },
-    true
+    true,
   ); // Use capture to run before our other pause handler
 
   sharedVideoEl.addEventListener('seeked', async () => {

@@ -23,12 +23,9 @@ import {
 
 import { setupShowHideOnInactivity } from '../../utils/ui/showHideOnInactivity.js';
 import { hasRemoteStream } from '../../media/state.js';
+import { isWatchModeActive } from '../../firebase/watch-sync.js'; // Import from watch-sync.js (should probably be from watch-mode.js)
 
-// Import from watch-sync
-import { isWatchModeActive } from '../../firebase/watch-sync.js';
-
-// Call mode state
-let isInCallMode = false;
+let isInCallMode = false; // Call mode state
 let enterCallModeWaitingForVideo = false;
 let cleanupRemoteLeavePipHandler = null;
 let cleanupRemoteEnterPipHandler = null;
@@ -57,7 +54,7 @@ export const enterCallMode = () => {
           enterCallModeWaitingForVideo = false;
           enterCallMode();
         },
-        { once: true }
+        { once: true },
       );
     }
     return;
@@ -102,13 +99,13 @@ export const enterCallMode = () => {
     // Handle case when user exits PiP manually
     remoteVideoEl.addEventListener(
       'leavepictureinpicture',
-      remoteLeavePipHandler
+      remoteLeavePipHandler,
     );
 
     cleanupRemoteLeavePipHandler = () =>
       remoteVideoEl.removeEventListener(
         'leavepictureinpicture',
-        remoteLeavePipHandler
+        remoteLeavePipHandler,
       );
 
     cleanupFunctions.push(cleanupRemoteLeavePipHandler);
@@ -119,13 +116,13 @@ export const enterCallMode = () => {
 
     remoteVideoEl.addEventListener(
       'enterpictureinpicture',
-      remoteEnterPipHandler
+      remoteEnterPipHandler,
     );
 
     cleanupRemoteEnterPipHandler = () =>
       remoteVideoEl.removeEventListener(
         'enterpictureinpicture',
-        remoteEnterPipHandler
+        remoteEnterPipHandler,
       );
 
     cleanupFunctions.push(cleanupRemoteEnterPipHandler);
