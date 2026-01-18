@@ -43,10 +43,12 @@ function createMessageBox() {
     navigator.virtualKeyboard.overlaysContent = true;
   }
 
-  // Make the textarea auto-grow with content (minimal JS autosize)
-  if (messagesInput && messagesInput.tagName === 'TEXTAREA') {
-    messagesInput.style.overflow = 'hidden';
-    messagesInput.style.resize = 'none';
+  // Check for native field-sizing support (Chrome/Edge 123+)
+  const supportsFieldSizing = CSS.supports?.('field-sizing', 'content');
+
+  // JS fallback for auto-grow textarea (browsers without field-sizing)
+  let resetInputHeight = null;
+  if (messagesInput && messagesInput.tagName === 'TEXTAREA' && !supportsFieldSizing) {
     const adjustInputHeight = () => {
       messagesInput.style.height = 'auto';
       messagesInput.style.height = `${messagesInput.scrollHeight}px`;
@@ -54,7 +56,11 @@ function createMessageBox() {
     messagesInput.addEventListener('input', adjustInputHeight, {
       passive: true,
     });
-    // initialize height
+    // Expose reset function for use after clearing input
+    resetInputHeight = () => {
+      messagesInput.style.height = '';
+    };
+    // Initialize height
     requestAnimationFrame(adjustInputHeight);
   }
 
@@ -79,6 +85,7 @@ function createMessageBox() {
     messagesMessages,
     messagesForm,
     messagesInput,
+    resetInputHeight,
   };
 }
 
@@ -140,6 +147,7 @@ export function initMessagesUI() {
     messagesMessages,
     messagesForm,
     messagesInput,
+    resetInputHeight,
   } = createMessageBox();
 
   if (
@@ -682,9 +690,8 @@ export function initMessagesUI() {
     }
   }
 
-  // Sending UI event
-  messagesForm.addEventListener('submit', (e) => {
-    e.preventDefault();
+  // Helper to send the current message
+  function sendMessage() {
     const msg = messagesInput.value.trim();
     if (!msg) return;
 
@@ -692,8 +699,24 @@ export function initMessagesUI() {
     if (currentSession) {
       currentSession.send(msg);
       messagesInput.value = '';
+      // Reset textarea height after clearing (JS fallback only)
+      if (resetInputHeight) resetInputHeight();
     } else {
       console.warn('[MessagesUI] No active session to send message');
+    }
+  }
+
+  // Sending UI event (form submit)
+  messagesForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    sendMessage();
+  });
+
+  // Enter to send, Shift+Enter for new line
+  messagesInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
     }
   });
 
@@ -854,8 +877,9 @@ export function initMessagesUI() {
     hideElement(messagesBox);
     messageToggle.clearBadge();
 
-    // Clear any unsent message text
+    // Clear any unsent message text and reset textarea height
     messagesInput.value = '';
+    if (resetInputHeight) resetInputHeight();
 
     // Reset send button text in case file transfer was in progress
     if (sendBtn) {

@@ -68,11 +68,27 @@
   max-height: 40dvh;
 
   overflow-y: auto;
+  overflow-x: hidden; /* Prevent horizontal scrolling */
   background: var(--bg-elevated);
   color: var(--text-secondary);
   padding: 6px;
   font-family: sans-serif;
   font-size: 14px;
+}
+
+#messages p {
+  margin: 8px 0;
+  white-space: pre-wrap; /* Preserve line breaks from Shift+Enter */
+  overflow-wrap: break-word; /* Wrap long words */
+  word-break: break-word; /* Fallback for older browsers */
+}
+
+#messages p:first-child {
+  margin-top: 0;
+}
+
+#messages p:last-child {
+  margin-bottom: 0;
 }
 
 /* Messages Form (extracted from inline styles) */
@@ -91,10 +107,16 @@
   background: var(--bg-elevated);
   color: var(--text-primary);
   box-sizing: border-box;
-  min-height: 36px;
-  overflow: hidden;
+
+  /* Auto-grow textarea sizing */
+  field-sizing: content; /* Native auto-grow (Chrome/Edge 123+) */
+  min-height: 36px; /* Fallback for browsers without lh support */
+  min-height: 1lh; /* One line minimum */
+  max-height: 5lh; /* Cap at ~5 lines */
+  overflow: hidden; /* Hide scrollbar during auto-grow */
+  overflow-y: auto; /* Show scrollbar when max-height reached */
   resize: none;
-  place-content: center;
+  align-content: start; /* Text starts at top, not centered */
 }
 
 #messages-form button {
