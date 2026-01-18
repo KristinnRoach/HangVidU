@@ -50,7 +50,7 @@ function suppressFedCMAbortErrors() {
 export function onOneTapStatusChange(callback) {
   devDebug(
     '[ONE TAP] Callback registered, total callbacks:',
-    oneTapCallbacks.size + 1
+    oneTapCallbacks.size + 1,
   );
   oneTapCallbacks.add(callback);
   return () => oneTapCallbacks.delete(callback);
@@ -62,7 +62,7 @@ function notifyOneTapStatus(status) {
     status,
     'to',
     oneTapCallbacks.size,
-    'callbacks'
+    'callbacks',
   );
   oneTapCallbacks.forEach((cb) => {
     try {
@@ -78,14 +78,14 @@ export function initOneTap() {
 
   if (!GOOGLE_CLIENT_ID) {
     console.error(
-      '[ONE TAP] Cannot initialize: VITE_APP_GOOGLE_CLIENT_ID is not configured'
+      '[ONE TAP] Cannot initialize: VITE_APP_GOOGLE_CLIENT_ID is not configured',
     );
     return;
   }
 
   if (typeof google === 'undefined' || !google.accounts?.id) {
     devDebug(
-      '[ONE TAP] Google Identity Services library not loaded yet, retrying...'
+      '[ONE TAP] Google Identity Services library not loaded yet, retrying...',
     );
     setTimeout(() => initOneTap(), 100);
     return;
@@ -101,11 +101,11 @@ export function initOneTap() {
     client_id: GOOGLE_CLIENT_ID,
     callback: handleOneTapCredential,
     auto_select: false,
-    cancel_on_tap_outside: true,
+    cancel_on_tap_outside: false, // TODO: come back to this once tested on various devices / browsers
     context: 'signin',
     use_fedcm_for_prompt: true,
-    //use_fedcm_for_button: true,
     itp_support: true, // ? Check
+    // use_fedcm_for_button: true, // Only relevant if adding Google's rendered “GIS button” flow
   });
 }
 
@@ -190,7 +190,7 @@ async function handleOneTapCredential(response) {
     // Handle specific errors
     if (errorCode === 'auth/account-exists-with-different-credential') {
       alert(
-        'An account already exists with the same email but different sign-in credentials.'
+        'An account already exists with the same email but different sign-in credentials.',
       );
     } else {
       alert(`One Tap sign-in failed: ${errorMessage}`);
