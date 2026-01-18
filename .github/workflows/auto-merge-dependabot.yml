@@ -1,0 +1,31 @@
+name: Auto-enable auto-merge for Dependabot PRs
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  enable-auto-merge:
+    if: "github.event.pull_request.user.login == 'dependabot[bot]'"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable auto-merge on Dependabot PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr || pr.user.login !== 'dependabot[bot]') return;
+            const id = pr.node_id;
+            try {
+              await github.graphql(
+                `mutation ($id: ID!) {
+                  enablePullRequestAutoMerge(input:{pullRequestId: $id, mergeMethod: MERGE}) {
+                    pullRequest { number }
+                  }
+                }`, { id }
+              );
+              core.info(`Enabled auto-merge for PR #${pr.number}`);
+            } catch (err) {
+              core.error('Failed to enable auto-merge: ' + err.message);
+              throw err;
+            }
