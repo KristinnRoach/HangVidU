@@ -64,7 +64,7 @@
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
-    "@sentry/browser": "^10.26.0",
+    "@sentry/browser": "^10.34.0",
     "dexie": "^4.2.1",
     "firebase": "^12.8.0",
     "lit": "^3.3.1",
