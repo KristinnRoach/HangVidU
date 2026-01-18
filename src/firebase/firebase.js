@@ -23,14 +23,14 @@ if (import.meta.env.MODE === 'development' && typeof self !== 'undefined') {
     // This tells App Check to use this specific token for debugging.
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = appCheckExplicitDebugToken;
     console.info(
-      `[Firebase App Check: DEV] Using explicit debug token from .env: ${appCheckExplicitDebugToken}`
+      `[Firebase App Check: DEV] Using explicit debug token from .env: ${appCheckExplicitDebugToken}`,
     );
   } else {
     // If no explicit token, allow App Check to auto-generate and log a new one.
     // This is useful for first-time setup or if local storage is cleared.
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
     console.warn(
-      '[Firebase App Check: DEV] No explicit debug token (VITE_FIREBASE_APPCHECK_DEBUG_TOKEN) found in .env. App Check will auto-generate one. Copy and register this token in Firebase Console. Consider adding it to your .env.development for stable reuse.'
+      '[Firebase App Check: DEV] No explicit debug token (VITE_FIREBASE_APPCHECK_DEBUG_TOKEN) found in .env. App Check will auto-generate one. Copy and register this token in Firebase Console. Consider adding it to your .env.development for stable reuse.',
     );
   }
 }
@@ -67,7 +67,7 @@ if (import.meta.env.MODE === 'development') {
   if (typeof recaptchaSiteKey === 'string' && recaptchaSiteKey.trim() !== '') {
     appCheckProvider = new ReCaptchaEnterpriseProvider(recaptchaSiteKey);
     console.info(
-      '[Firebase App Check: DEV] Initializing with ReCAPTCHA Enterprise Provider (debug mode enabled).'
+      '[Firebase App Check: DEV] Initializing with ReCAPTCHA Enterprise Provider (debug mode enabled).',
     );
   } else {
     // If reCAPTCHA key is missing in development, use a CustomProvider as a placeholder.
@@ -77,7 +77,7 @@ if (import.meta.env.MODE === 'development') {
         // This provider won't actually be used for real attestation in debug mode.
         // It just needs to return a valid-looking object.
         console.warn(
-          '[Firebase App Check: DEV] No VITE_RECAPTCHA_ENTERPRISE_SITE_KEY found. Using CustomProvider as fallback for debug mode.'
+          '[Firebase App Check: DEV] No VITE_RECAPTCHA_ENTERPRISE_SITE_KEY found. Using CustomProvider as fallback for debug mode.',
         );
         return {
           token: 'fake-token-for-dev-init',
@@ -95,11 +95,11 @@ else {
     // It will show a challenge only when needed (based on risk analysis)
     appCheckProvider = new ReCaptchaEnterpriseProvider(recaptchaSiteKey);
     console.info(
-      '[Firebase App Check: PROD] Initializing with ReCAPTCHA Enterprise (invisible mode).'
+      '[Firebase App Check: PROD] Initializing with ReCAPTCHA Enterprise (invisible mode).',
     );
   } else {
     console.error(
-      '[Firebase App Check: PROD] VITE_RECAPTCHA_ENTERPRISE_SITE_KEY is missing or empty. App Check will NOT be initialized, leaving Firebase services unprotected!'
+      '[Firebase App Check: PROD] VITE_RECAPTCHA_ENTERPRISE_SITE_KEY is missing or empty. App Check will NOT be initialized, leaving Firebase services unprotected!',
     );
     // In production, if the essential key is missing, App Check cannot be set up.
     throw new Error('Firebase App Check configuration missing in production.');

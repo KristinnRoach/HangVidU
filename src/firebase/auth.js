@@ -110,6 +110,109 @@ function openInSafariExternal() {
   } catch (_) {}
 }
 
+/**
+ * Detect if running in iOS standalone PWA mode.
+ * @returns {{ isStandalonePWA: boolean, isIOS: boolean, isIOSStandalone: boolean }}
+ */
+function detectIOSStandalone() {
+  const displayModeStandalone =
+    typeof window !== 'undefined' &&
+    window.matchMedia?.('(display-mode: standalone)').matches;
+  const navigatorStandalone =
+    typeof navigator !== 'undefined' && navigator.standalone === true;
+  const isStandalonePWA = displayModeStandalone || navigatorStandalone;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+  const isIOSStandalone = isStandalonePWA && isIOS;
+  return { isStandalonePWA, isIOS, isIOSStandalone };
+}
+
+/**
+ * A robust, shared error handler for Google Sign-In popup errors.
+ * Handles user cancellations, popup blockers, iOS PWA fallbacks, and other common issues.
+ * @param {Error} error The error object from a signInWithPopup catch block.
+ */
+function handleSignInError(error) {
+  const errorCode = error?.code || 'unknown';
+  const errorMessage = error?.message || String(error);
+
+  // Ignore popup-closed-by-user error (user cancelled auth)
+  if (
+    errorCode === 'auth/popup-closed-by-user' ||
+    errorCode === 'auth/cancelled-popup-request'
+  ) {
+    console.log('Sign-in cancelled by user');
+    return;
+  }
+
+  const { isIOSStandalone } = detectIOSStandalone();
+
+  // iOS Standalone PWA: arm Safari fallback and ask user to tap Login again
+  if (
+    (errorCode === 'auth/network-request-failed' ||
+      errorCode === 'auth/popup-blocked') &&
+    isIOSStandalone
+  ) {
+    console.warn(
+      `[AUTH] ${errorCode} inside iOS standalone PWA. Arming Safari fallback.`
+    );
+    setSafariExternalOpenArmed(true);
+    alert(
+      'Sign-in is blocked in the installed app on iOS.\n\nTap the Login button again to open in Safari and complete sign-in.'
+    );
+    return;
+  }
+
+  // If popup is blocked (and not iOS standalone which is handled above), inform user
+  if (errorCode === 'auth/popup-blocked') {
+    alert(
+      'Pop-up blocked. Please enable pop-ups for this site in your browser settings, or try signing in from a desktop browser.'
+    );
+    return;
+  }
+
+  // The email of the user's account used (do not print raw value in prod)
+  const email = error?.customData?.email;
+  // Log error in a production-safe way
+  logAuthError('Google sign-in', error, {
+    email: email ? '<redacted>' : undefined,
+  });
+
+  if (errorCode === 'auth/unauthorized-domain') {
+    const origin =
+      typeof window !== 'undefined' ? window.location.origin : '';
+    const guidanceLines = [
+      "This app's host is not whitelisted in Firebase Authentication.",
+      'Fix: In Firebase Console, go to Build → Authentication → Settings → Authorized domains and add this origin:',
+      origin ? `• ${origin}` : '• <your dev origin>',
+      '',
+      'Common dev hosts to add:',
+      '• http://localhost (covers any port)',
+      '• http://127.0.0.1',
+      '• http://[::1] (IPv6 localhost)',
+      '• Your LAN IP, e.g. http://192.168.x.y',
+      '',
+      'Tip: avoid opening index.html directly from the filesystem (file://). Use a dev server instead.',
+    ];
+
+    // Try to copy the origin to the clipboard for convenience (best-effort)
+    if (
+      origin &&
+      typeof navigator !== 'undefined' &&
+      navigator.clipboard?.writeText
+    ) {
+      navigator.clipboard.writeText(origin).catch(() => {});
+    }
+
+    alert(
+      `Sign-in failed: Unauthorized domain.\n\n${guidanceLines.join('\n')}`
+    );
+    return;
+  }
+
+  // Generic fallback for any other errors
+  alert(`Sign-in failed: ${errorMessage}`);
+}
+
 let guestUserId = null; // Generated ID when not logged in (cached for session)
 const createNewGuestUserId = () => Math.random().toString(36).substring(2, 15);
 
@@ -259,159 +362,35 @@ export function onAuthChange(callback, { truncate = 7 } = {}) {
   });
 }
 
-export async function signInWithGoogle() {
+export const signInWithAccountSelection = async () => {
   const provider = new GoogleAuthProvider();
-
-  // Force account picker every time so user can choose different accounts for now // Todo: "Switch Account" button or select
+  // Force account selection
   provider.setCustomParameters({
     prompt: 'select_account',
   });
 
-  // Detect standalone PWA - must check BOTH conditions to avoid false positives
-  // navigator.standalone is iOS-only, display-mode: standalone works cross-platform
-  const displayModeStandalone =
-    typeof window !== 'undefined' &&
-    window.matchMedia?.('(display-mode: standalone)').matches;
-  const navigatorStandalone =
-    typeof navigator !== 'undefined' && navigator.standalone === true;
-  const isStandalonePWA = displayModeStandalone || navigatorStandalone;
-
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
-  const isIOSStandalone = isStandalonePWA && isIOS;
-
-  // Debug: Log PWA detection state (remove after debugging)
-  console.log('[AUTH] PWA detection:', {
-    displayModeStandalone,
-    navigatorStandalone,
-    isStandalonePWA,
-    isIOS,
-    isIOSStandalone,
-    safariExternalOpenArmed,
-  });
+  const { isIOSStandalone } = detectIOSStandalone();
 
   try {
     // If previous attempt failed in iOS standalone PWA, the user can tap Login again
     // and we open in Safari from the same user gesture.
     if (isIOSStandalone && safariExternalOpenArmed) {
-      console.log('[AUTH] Using Safari external fallback');
-      safariExternalOpenArmed = false;
+      devDebug('[AUTH] Using Safari external fallback');
+      setSafariExternalOpenArmed(false);
       openInSafariExternal();
       return;
     }
 
     // ALWAYS use popup flow (even for iOS standalone PWAs)
     // If popup is blocked, we'll catch the error and fallback to Safari external
-    // This matches the proven working approach from before App Check was added
-    console.log('[AUTH] Starting popup sign-in flow...');
-    const result = await signInWithPopup(auth, provider);
-    // Google Access Token to access the Google API
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    const token = credential.accessToken;
-    // The signed-in user info.
-    const user = result.user;
-    // Use devDebug for local troubleshooting.
-    devDebug('Signed in user: ', user.displayName);
-
-    devDebug('Google Access Token exists:', !!token);
-    safariExternalOpenArmed = false; // clear on success
-  } catch (error) {
-    const errorCode = error?.code || 'unknown';
-    const errorMessage = error?.message || String(error);
-
-    // Ignore popup-closed-by-user error (user cancelled auth)
-    if (
-      errorCode === 'auth/popup-closed-by-user' ||
-      errorCode === 'auth/cancelled-popup-request'
-    ) {
-      console.log('Sign-in cancelled by user');
-      return;
-    }
-
-    // iOS Standalone PWA: arm Safari fallback and ask user to tap Login again
-    if (
-      (errorCode === 'auth/network-request-failed' ||
-        errorCode === 'auth/popup-blocked') &&
-      isIOSStandalone
-    ) {
-      console.warn(
-        `[AUTH] ${errorCode} inside iOS standalone PWA. Arming Safari fallback.`
-      );
-      safariExternalOpenArmed = true;
-      alert(
-        'Sign-in is blocked in the installed app on iOS.\n\nTap the Login button again to open in Safari and complete sign-in.'
-      );
-      return;
-    }
-
-    // If popup is blocked (and not iOS standalone which is handled above), inform user
-    if (errorCode === 'auth/popup-blocked') {
-      alert(
-        'Pop-up blocked. Please enable pop-ups for this site in your browser settings, or try signing in from a desktop browser.'
-      );
-      return;
-    }
-
-    // The email of the user's account used (do not print raw value in prod)
-    const email = error?.customData?.email;
-    // Log error in a production-safe way
-    logAuthError('Google sign-in', error, {
-      email: email ? '<redacted>' : undefined,
-    });
-
-    if (errorCode === 'auth/unauthorized-domain') {
-      const origin =
-        typeof window !== 'undefined' ? window.location.origin : '';
-      const guidanceLines = [
-        "This app's host is not whitelisted in Firebase Authentication.",
-        'Fix: In Firebase Console, go to Build → Authentication → Settings → Authorized domains and add this origin:',
-        origin ? `• ${origin}` : '• <your dev origin>',
-        '',
-        'Common dev hosts to add:',
-        '• http://localhost (covers any port)',
-        '• http://127.0.0.1',
-        '• http://[::1] (IPv6 localhost)',
-        '• Your LAN IP, e.g. http://192.168.x.y',
-        '',
-        'Tip: avoid opening index.html directly from the filesystem (file://). Use a dev server instead.',
-      ];
-
-      // Try to copy the origin to the clipboard for convenience (best-effort)
-      if (
-        origin &&
-        typeof navigator !== 'undefined' &&
-        navigator.clipboard?.writeText
-      ) {
-        navigator.clipboard.writeText(origin).catch(() => {});
-      }
-
-      alert(
-        `Sign-in failed: Unauthorized domain.\n\n${guidanceLines.join('\n')}`
-      );
-      return;
-    }
-
-    alert(`Sign-in failed: ${errorMessage}`);
-  }
-}
-
-export const signInWithAccountSelection = async () => {
-  try {
-    devDebug('[AUTH] Sign in with account selection');
-
-    const provider = new GoogleAuthProvider();
-    // Force account selection
-    provider.setCustomParameters({
-      prompt: 'select_account',
-    });
-
-    // Same logic as signInWithGoogle: always try popup first
-    devDebug('[AUTH] Using popup flow');
+    devDebug('[AUTH] Starting popup sign-in flow...');
     const result = await signInWithPopup(auth, provider);
     devDebug('[AUTH] Popup sign-in successful:', result.user.email);
+    setSafariExternalOpenArmed(false); // clear on success
     return result;
   } catch (error) {
-    logAuthError('Account selection sign-in', error);
-    throw error;
+    handleSignInError(error);
+    // Don't re-throw - errors are handled gracefully by handleSignInError
   }
 };
 

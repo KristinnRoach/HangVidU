@@ -57,6 +57,8 @@ export default defineConfig(({ mode }) => {
                 navigateFallback: `${basePath}index.html`, // fallback for SPA navigation (accounts for base path)
                 navigateFallbackDenylist: [
                   new RegExp(`^${basePath.replace(/\//g, '\\/')}index\\.html$`), // Don't fallback for index.html itself (prevents cache error)
+                  /^\/__\//, // Exclude Firebase auth handler paths (/__/auth/handler, etc.)
+                  /^\/auth\//, // Exclude any other auth-related paths
                 ],
               },
 
