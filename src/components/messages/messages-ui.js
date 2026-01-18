@@ -43,10 +43,16 @@ function createMessageBox() {
     navigator.virtualKeyboard.overlaysContent = true;
   }
 
-  // Make the textarea auto-grow with content (minimal JS autosize)
-  if (messagesInput && messagesInput.tagName === 'TEXTAREA') {
-    messagesInput.style.overflow = 'hidden';
-    messagesInput.style.resize = 'none';
+  // Check for native field-sizing support (Chrome/Edge 123+)
+  const supportsFieldSizing = CSS.supports?.('field-sizing', 'content');
+
+  // JS fallback for auto-grow textarea (browsers without field-sizing)
+  let resetInputHeight = null;
+  if (
+    messagesInput &&
+    messagesInput.tagName === 'TEXTAREA' &&
+    !supportsFieldSizing
+  ) {
     const adjustInputHeight = () => {
       messagesInput.style.height = 'auto';
       messagesInput.style.height = `${messagesInput.scrollHeight}px`;
@@ -54,7 +60,11 @@ function createMessageBox() {
     messagesInput.addEventListener('input', adjustInputHeight, {
       passive: true,
     });
-    // initialize height
+    // Expose reset function for use after clearing input
+    resetInputHeight = () => {
+      messagesInput.style.height = '';
+    };
+    // Initialize height
     requestAnimationFrame(adjustInputHeight);
   }
 
@@ -79,6 +89,7 @@ function createMessageBox() {
     messagesMessages,
     messagesForm,
     messagesInput,
+    resetInputHeight,
   };
 }
 
@@ -125,7 +136,7 @@ export function initMessagesUI() {
 
   if (!messageToggle) {
     console.error(
-      'Messages UI: failed to initialize message toggle; aborting messages UI initialization.'
+      'Messages UI: failed to initialize message toggle; aborting messages UI initialization.',
     );
     return null;
   }
@@ -140,6 +151,7 @@ export function initMessagesUI() {
     messagesMessages,
     messagesForm,
     messagesInput,
+    resetInputHeight,
   } = createMessageBox();
 
   if (
@@ -191,7 +203,7 @@ export function initMessagesUI() {
       }
 
       // Show in UI
-      appendChatMessage(`📎 You sent: ${file.name}`);
+      appendChatMessage(`📎 Sent: ${file.name}`, { isSentByMe: true });
     } catch (err) {
       console.error('[MessagesUI] File send failed:', err);
       appendChatMessage('❌ Failed to send file');
@@ -610,7 +622,7 @@ export function initMessagesUI() {
         messagesBox.style.bottom = '';
         messagesBox.style.right = '';
       },
-      { ignore: [messageToggle.element], esc: true }
+      { ignore: [messageToggle.element], esc: true },
     );
   }
 
@@ -622,38 +634,64 @@ export function initMessagesUI() {
     hideElement(messageToggle.element);
   }
 
-  // Display message line
+  /**
+   * Display a message in the chat
+   * @param {string} text - Message content
+   * @param {Object} options
+   * @param {boolean} [options.isSentByMe] - true = right-aligned (local), false = left-aligned (remote), undefined = centered (system)
+   * @param {Object} [options.fileDownload] - File download data { fileName, url }
+   */
   function appendChatMessage(text, options = {}) {
+    const { isSentByMe, senderDisplay, fileDownload } = options;
+    // prefer explicit senderDisplay, otherwise 'Me' for local messages
+    const effectiveSender = senderDisplay ?? (isSentByMe === true ? 'Me' : '');
+
     const p = document.createElement('p');
+    // Apply alignment class based on sender
+    if (isSentByMe === true) p.classList.add('message-local');
+    else if (isSentByMe === false) p.classList.add('message-remote');
 
-    // Handle clickable file downloads
-    if (options.fileDownload) {
-      const { fileName, url } = options.fileDownload;
-      const prefix = text.split(fileName)[0]; // e.g., "📎 Partner sent: "
+    // Always create avatar and text spans — fixed DOM shape
+    const avatarSpan = document.createElement('span');
+    avatarSpan.className =
+      'sender-avatar' + (isSentByMe === true ? ' sender-avatar--me' : '');
+    avatarSpan.textContent = effectiveSender;
+    avatarSpan.setAttribute('aria-hidden', 'true');
 
-      p.textContent = prefix;
+    const textSpan = document.createElement('span');
+    textSpan.className = 'message-text';
+
+    // If no senderDisplay and isSentByMe is undefined, treat as system message
+    if (!senderDisplay && typeof isSentByMe === 'undefined') {
+      p.classList.add('message-system');
+    }
+
+    // Handle clickable file downloads by populating textSpan
+    if (fileDownload) {
+      const { fileName, url } = fileDownload;
+      const prefix = text.split(fileName)[0]; // e.g., "📎 Sent: "
+      if (prefix) textSpan.appendChild(document.createTextNode(prefix));
       const link = document.createElement('a');
       link.textContent = fileName;
       link.href = url;
       link.download = fileName;
       link.style.cursor = 'pointer';
       link.style.textDecoration = 'underline';
-
-      // Revoke the object URL after click to prevent memory leaks
       link.addEventListener('click', () => {
         setTimeout(() => URL.revokeObjectURL(url), 100);
       });
-
-      p.appendChild(link);
+      textSpan.appendChild(link);
     } else {
-      p.textContent = text;
+      textSpan.appendChild(document.createTextNode(text));
     }
 
-    if (text.startsWith('You:')) {
-      p.style.textAlign = 'right';
-    } else if (text.startsWith('Partner:')) {
-      p.style.textAlign = 'left';
-    }
+    // Fixed order: avatar then text; CSS will reorder for local vs remote
+    // Mark file-download messages as system-like so we can hide avatar
+    if (fileDownload) p.classList.add('message-system');
+
+    p.appendChild(avatarSpan);
+    p.appendChild(textSpan);
+
     messagesMessages.appendChild(p);
     // Keep newest message visible
     scrollMessagesToEnd();
@@ -669,8 +707,8 @@ export function initMessagesUI() {
     });
   }
 
-  function receiveMessage(text, { isUnread = true } = {}) {
-    appendChatMessage(`Partner: ${text}`);
+  function receiveMessage(text, { isUnread = true, senderDisplay = 'U' } = {}) {
+    appendChatMessage(text, { isSentByMe: false, senderDisplay });
 
     // Only increment unread count if:
     // 1. The messages box is hidden (user can't see the message)
@@ -682,9 +720,8 @@ export function initMessagesUI() {
     }
   }
 
-  // Sending UI event
-  messagesForm.addEventListener('submit', (e) => {
-    e.preventDefault();
+  // Helper to send the current message
+  function sendMessage() {
     const msg = messagesInput.value.trim();
     if (!msg) return;
 
@@ -692,8 +729,24 @@ export function initMessagesUI() {
     if (currentSession) {
       currentSession.send(msg);
       messagesInput.value = '';
+      // Reset textarea height after clearing (JS fallback only)
+      if (resetInputHeight) resetInputHeight();
     } else {
       console.warn('[MessagesUI] No active session to send message');
+    }
+  }
+
+  // Sending UI event (form submit)
+  messagesForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    sendMessage();
+  });
+
+  // Enter to send, Shift+Enter for new line
+  messagesInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
     }
   });
 
@@ -777,9 +830,11 @@ export function initMessagesUI() {
 
           if (action === 'watch') {
             // Show notification in chat
-            appendChatMessage(`📹 Partner sent video: ${file.name}`);
+            appendChatMessage(`📹 Received video: ${file.name}`, {
+              isSentByMe: false,
+            });
             appendChatMessage(
-              '🎬 Requesting partner to join watch together...'
+              '🎬 Requesting partner to join watch together...',
             );
 
             // Load video locally first
@@ -813,7 +868,8 @@ export function initMessagesUI() {
           }
         } else {
           // Non-video file - show download link as before
-          appendChatMessage(`📎 Partner sent: ${file.name}`, {
+          appendChatMessage(`📎 Received: ${file.name}`, {
+            isSentByMe: false,
             fileDownload: { fileName: file.name, url },
           });
         }
@@ -854,8 +910,9 @@ export function initMessagesUI() {
     hideElement(messagesBox);
     messageToggle.clearBadge();
 
-    // Clear any unsent message text
+    // Clear any unsent message text and reset textarea height
     messagesInput.value = '';
+    if (resetInputHeight) resetInputHeight();
 
     // Reset send button text in case file transfer was in progress
     if (sendBtn) {
@@ -888,7 +945,7 @@ export function initMessagesUI() {
       } catch (err) {
         console.error(
           'Error removing messages box outside click handler:',
-          err
+          err,
         );
       }
     }
