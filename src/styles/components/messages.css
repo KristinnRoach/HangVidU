@@ -83,12 +83,92 @@
   word-break: break-word; /* Fallback for older browsers */
 }
 
+/* Layout: always render avatar + text in DOM; use flex + order to position */
+#messages p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#messages p.message-local {
+  justify-content: flex-end;
+}
+
+#messages p.message-remote {
+  justify-content: flex-start;
+}
+
+/* Hide avatar for system/file messages (temporary placeholder behavior) */
+#messages p.message-system .sender-avatar {
+  display: none;
+}
+
+#messages p.message-system .message-text {
+  margin-left: 0;
+}
+
 #messages p:first-child {
   margin-top: 0;
 }
 
 #messages p:last-child {
   margin-bottom: 0;
+}
+
+/* Message alignment by sender */
+#messages .message-local {
+  text-align: right;
+}
+
+#messages .message-remote {
+  text-align: left;
+}
+
+/* Sender avatar (single-letter placeholder) */
+#messages .sender-avatar {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  max-width: 24px;
+  max-height: 24px;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 24px; /* prevent flexbox from stretching avatar */
+  border-radius: 50%;
+  background: #3757c1;
+  color: #ffffff;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.45),
+    0 0 1px rgba(0, 0, 0, 0.25);
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  margin-right: 8px;
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* Slightly different avatar for local user (on right) */
+#messages .sender-avatar--me {
+  background: #228332; /* subtle green */
+  color: #ffffff;
+  margin-right: 0;
+  margin-left: 8px;
+}
+
+/* Order rules: avatar left for remote, right for local */
+#messages .sender-avatar {
+  order: 0;
+}
+#messages .message-text {
+  order: 1;
+}
+#messages p.message-local .sender-avatar {
+  order: 1;
+}
+#messages p.message-local .message-text {
+  order: 0;
 }
 
 /* Messages Form (extracted from inline styles) */

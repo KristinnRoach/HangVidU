@@ -239,7 +239,7 @@ function attachContactListeners(container, lobbyElement) {
       let roomId = nameEl.getAttribute('data-room-id');
       const contactName = nameEl.getAttribute('data-contact-name');
       const contactId = nameEl.getAttribute('data-contact-id');
-      
+
       // If no roomId is saved, generate and persist it
       if (!roomId && contactId) {
         const myUserId = getLoggedInUserId();
@@ -256,7 +256,7 @@ function attachContactListeners(container, lobbyElement) {
           }
         }
       }
-      
+
       if (roomId) {
         // QUICK FIX: Ensure listener is active for this room before calling
         listenForIncomingOnRoom(roomId);
@@ -301,7 +301,7 @@ function attachContactListeners(container, lobbyElement) {
 export function openContactMessages(
   contactId,
   contactName,
-  openMessageBox = false
+  openMessageBox = false,
 ) {
   if (!getLoggedInUserId()) {
     alert('Please sign in to send messages');
@@ -335,7 +335,7 @@ export function openContactMessages(
     onMessage: (text, msgData, isSentByMe) => {
       // Display message in UI with correct prefix
       if (isSentByMe) {
-        messagesUI.appendChatMessage(`You: ${text}`);
+        messagesUI.appendChatMessage(`${text}`, { isSentByMe: true });
       } else {
         // Only count as unread if message hasn't been read yet
         const isUnread = !msgData.read;
@@ -388,7 +388,7 @@ function setupPresenceIndicators(contactIds) {
   contactIds.forEach((contactId) => {
     const presenceRef = ref(rtdb, `users/${contactId}/presence`);
     const indicatorEl = document.querySelector(
-      `.presence-indicator[data-contact-id="${contactId}"]`
+      `.presence-indicator[data-contact-id="${contactId}"]`,
     );
 
     if (!indicatorEl) return;
@@ -431,7 +431,7 @@ async function createContactMessageToggles(container, contactIds, contacts) {
 
   if (toggleReplacementInProgress) {
     console.debug(
-      '[CONTACTS] Toggle replacement still in progress after waiting, skipping'
+      '[CONTACTS] Toggle replacement still in progress after waiting, skipping',
     );
     return;
   }
@@ -466,12 +466,12 @@ async function createContactMessageToggles(container, contactIds, contacts) {
     for (const contactId of contactIds) {
       const contact = contacts[contactId];
       const toggleContainer = container.querySelector(
-        `.contact-msg-toggle-container[data-contact-id="${contactId}"]`
+        `.contact-msg-toggle-container[data-contact-id="${contactId}"]`,
       );
 
       if (!toggleContainer) {
         console.warn(
-          `[CONTACTS] No toggle container found for contact ${contactId}`
+          `[CONTACTS] No toggle container found for contact ${contactId}`,
         );
         continue;
       }
@@ -487,7 +487,7 @@ async function createContactMessageToggles(container, contactIds, contacts) {
 
       if (!toggle) {
         console.error(
-          `[CONTACTS] Failed to create toggle for contact ${contactId}`
+          `[CONTACTS] Failed to create toggle for contact ${contactId}`,
         );
         continue;
       }
@@ -500,7 +500,7 @@ async function createContactMessageToggles(container, contactIds, contacts) {
         contactId,
         (count) => {
           toggle.setUnreadCount(count);
-        }
+        },
       );
 
       // Track unsubscribe function for cleanup
@@ -521,10 +521,10 @@ async function createContactMessageToggles(container, contactIds, contacts) {
           .catch((err) =>
             console.warn(
               `[CONTACTS] Failed to get unread count for ${contactId}:`,
-              err
-            )
-          )
-      )
+              err,
+            ),
+          ),
+      ),
     );
   } finally {
     // Clear timeout and reset flag
@@ -602,7 +602,7 @@ function setupMessageBadgeListeners(container, contactIds) {
     const messagesRef = ref(rtdb, `conversations/${conversationId}/messages`);
 
     const btn = container.querySelector(
-      `.contact-message-btn[data-contact-id="${contactId}"]`
+      `.contact-message-btn[data-contact-id="${contactId}"]`,
     );
     if (!btn) return;
 
@@ -633,7 +633,7 @@ function setupMessageBadgeListeners(container, contactIds) {
  */
 function clearContactBadge(contactId) {
   const btn = document.querySelector(
-    `.contact-message-btn[data-contact-id="${contactId}"]`
+    `.contact-message-btn[data-contact-id="${contactId}"]`,
   );
   if (btn) {
     updateContactBadge(btn, 0);
