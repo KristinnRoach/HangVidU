@@ -192,11 +192,11 @@
   field-sizing: content; /* Native auto-grow (Chrome/Edge 123+) */
   min-height: 36px; /* Fallback for browsers without lh support */
   min-height: 1lh; /* One line minimum */
+  max-height: 120px; /* Fallback cap for browsers without lh support */
   max-height: 5lh; /* Cap at ~5 lines */
-  overflow: hidden; /* Hide scrollbar during auto-grow */
+  overflow-x: hidden; /* Hide scrollbar during auto-grow */
   overflow-y: auto; /* Show scrollbar when max-height reached */
   resize: none;
-  align-content: start; /* Text starts at top, not centered */
 }
 
 #messages-form button {
