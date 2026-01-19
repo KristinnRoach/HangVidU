@@ -140,6 +140,10 @@ import { onCallConnected, onCallDisconnected } from './ui/call-lifecycle-ui.js';
 
 // Import and call iOS PWA redirect helper
 import { redirectIOSPWAToHosting } from './utils/env/redirectIOSPWA.js';
+import {
+  onWatchModeEntered,
+  onWatchModeExited,
+} from './ui/watch-lifecycle-ui.js';
 redirectIOSPWAToHosting();
 
 // Quick access to enable / disable dev debug logs
@@ -1018,18 +1022,18 @@ function addKeyListeners() {
         if (getLastWatched() === 'yt') {
           if (isYTVisible()) {
             hideYouTubePlayer();
-            exitWatchMode();
+            onWatchModeExited();
           } else {
             showYouTubePlayer();
-            enterWatchMode();
+            onWatchModeEntered();
           }
         } else if (getLastWatched() === 'url' || getLastWatched() === 'file') {
           if (isSharedVideoVisible()) {
             hideElement(sharedBoxEl);
-            exitWatchMode();
+            onWatchModeExited();
           } else {
             showElement(sharedBoxEl);
-            enterWatchMode();
+            onWatchModeEntered();
           }
         }
       }
@@ -1048,7 +1052,7 @@ function addKeyListeners() {
           sharedVideoEl.pause();
           hideElement(sharedBoxEl);
         }
-        exitWatchMode();
+        onWatchModeExited();
       }
     }
   });
@@ -1145,7 +1149,7 @@ if (exitWatchModeBtn) {
 
       hideElement(sharedBoxEl);
     }
-    exitWatchMode();
+    onWatchModeExited();
   };
 }
 
@@ -1504,7 +1508,7 @@ async function cleanup() {
     remoteVideoEl.srcObject = null;
   }
 
-  exitWatchMode();
+  onWatchModeExited();
   clearUrlParam();
   setLastWatched('none');
   destroyYouTubePlayer();
