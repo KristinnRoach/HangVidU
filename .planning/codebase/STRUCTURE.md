@@ -77,6 +77,7 @@ HangVidU/
 ## Directory Purposes
 
 **`src/components/`:**
+
 - Purpose: UI components for all visual elements
 - Contains: Vanilla JS components, some Lit web components
 - Key files:
@@ -90,6 +91,7 @@ HangVidU/
   - `notifications/notification-manager.js`: Toast notification system
 
 **`src/webrtc/`:**
+
 - Purpose: WebRTC peer connection handling
 - Contains: Call lifecycle, ICE handling, connection utilities
 - Key files:
@@ -100,6 +102,7 @@ HangVidU/
   - `webrtc.js`: Connection state handlers
 
 **`src/firebase/`:**
+
 - Purpose: Firebase service integrations
 - Contains: Auth, watch-together sync, presence tracking
 - Key files:
@@ -110,6 +113,7 @@ HangVidU/
   - `presence.js`: Online/offline status tracking
 
 **`src/media/`:**
+
 - Purpose: Media stream and device management
 - Contains: Local/remote streams, constraints, YouTube integration
 - Key files:
@@ -122,12 +126,14 @@ HangVidU/
   - `audio/ringtone-manager.js`: Call ringtones
 
 **`src/storage/fb-rtdb/`:**
+
 - Purpose: Firebase RTDB operations and listener management
 - Contains: Ref builders, data fetching, listener tracking
 - Key files:
   - `rtdb.js`: All RTDB operations, listener cleanup utilities
 
 **`src/messaging/`:**
+
 - Purpose: In-app messaging abstraction
 - Contains: Controller, transport implementations
 - Key files:
@@ -136,17 +142,18 @@ HangVidU/
   - `transports/datachannel-file-transport.js`: P2P file transfer
 
 **`src/utils/`:**
+
 - Purpose: Shared utility functions
 - Contains: UI helpers, DOM manipulation, environment detection
 - Key files:
   - `ui/ui-utils.js`: show/hide, visibility helpers
-  - `ui/view-manager.js`: View state management
   - `dom/component-utils.js`: Component creation helpers
   - `dev/dev-utils.js`: Development logging
   - `env/isMobileDevice.js`: Device detection
   - `room-id.js`: Deterministic room ID generation
 
 **`src/styles/`:**
+
 - Purpose: CSS architecture
 - Contains: Modular CSS organized by concern
 - Key files:
@@ -158,11 +165,13 @@ HangVidU/
 ## Key File Locations
 
 **Entry Points:**
+
 - `index.html`: Main HTML entry, DOM structure
 - `src/main.js`: Application bootstrap, event handlers, call orchestration
 - `src/pwa/PWA.js`: PWA setup (dynamic import)
 
 **Configuration:**
+
 - `vite.config.js`: Build configuration, base path, plugins
 - `vitest.config.js`: Test runner configuration (browser mode)
 - `playwright.config.js`: E2E test configuration
@@ -171,6 +180,7 @@ HangVidU/
 - `database.rules.json`: Firebase RTDB security rules
 
 **Core Logic:**
+
 - `src/webrtc/call-controller.js`: Call lifecycle controller
 - `src/webrtc/call-flow.js`: WebRTC connection establishment
 - `src/room.js`: Firebase room management
@@ -178,6 +188,7 @@ HangVidU/
 - `src/firebase/watch-sync.js`: Watch-together synchronization
 
 **Testing:**
+
 - `tests/e2e/`: Playwright E2E tests
 - `tests/unit/`: Vitest unit tests
 - `tests/integration/`: Vitest integration tests
@@ -186,17 +197,20 @@ HangVidU/
 ## Naming Conventions
 
 **Files:**
+
 - Components: `PascalCase.js` for class-based, `kebab-case.js` for functional
 - Tests: `*.test.js` co-located with source
 - CSS: `kebab-case.css`
 - Draft/WIP: `*.draft.js` suffix
 
 **Directories:**
+
 - Feature-based: `components/`, `webrtc/`, `firebase/`
 - Concern-based: `utils/`, `storage/`, `styles/`
 - Nested by sub-feature: `media/youtube/`, `storage/fb-rtdb/`
 
 **Exports:**
+
 - Components: Named exports for functions, default for classes/singletons
 - Singletons: camelCase instance export (e.g., `messagesUI`, `messagingController`)
 - Elements: Named exports for individual elements, `getElements()` for object
@@ -204,37 +218,44 @@ HangVidU/
 ## Where to Add New Code
 
 **New Feature:**
+
 - Primary code: Create directory under `src/` (e.g., `src/new-feature/`)
 - Main orchestration: Import and wire up in `src/main.js`
 - Tests: Create `src/new-feature/*.test.js` for unit tests
 
 **New Component:**
+
 - Implementation: `src/components/{category}/{component-name}.js`
 - Styles: `src/styles/components/{component-name}.css`
 - Tests: `src/components/{category}/{component-name}.test.js`
 
 **New UI State Manager:**
+
 - Implementation: `src/components/ui/{feature}-mode.js`
 - Import elements from `src/elements.js`
 - Export state getter and enter/exit functions
 
 **New Firebase Operation:**
+
 - Ref builder: Add to `src/storage/fb-rtdb/rtdb.js`
 - Domain logic: Add to `src/firebase/` or relevant service file
 - Listener tracking: Use `addRTDBListener()` for cleanup
 
 **New WebRTC Feature:**
+
 - Implementation: `src/webrtc/{feature}.js`
 - Wire to CallController: Add setup method and event emission
 - Cleanup: Track listeners in `CallController.listeners`
 
 **Utilities:**
+
 - Shared helpers: `src/utils/{category}/{utility}.js`
 - UI utilities: `src/utils/ui/`
 - DOM utilities: `src/utils/dom/`
 - Environment: `src/utils/env/`
 
 **New Test:**
+
 - Unit test: `tests/unit/{feature}.test.js` or co-locate as `src/**/*.test.js`
 - Integration test: `tests/integration/{feature}.test.js`
 - E2E test: `tests/e2e/{feature}.spec.js`
@@ -242,37 +263,44 @@ HangVidU/
 ## Special Directories
 
 **`src/temp/`:**
+
 - Purpose: Draft code, experiments, examples
 - Generated: No
 - Committed: Yes (for reference)
 - Note: Ignore when implementing features
 
 **`dist/`:**
+
 - Purpose: Production build output
 - Generated: Yes (by `pnpm build`)
 - Committed: No (gitignored)
 
 **`dev-dist/`:**
+
 - Purpose: Development PWA service worker output
 - Generated: Yes (by Vite PWA plugin)
 - Committed: No (gitignored)
 
 **`coverage/`:**
+
 - Purpose: Test coverage reports
 - Generated: Yes (by Vitest)
 - Committed: No (gitignored)
 
 **`node_modules/`:**
+
 - Purpose: NPM dependencies
 - Generated: Yes (by pnpm install)
 - Committed: No (gitignored)
 
 **`.planning/`:**
+
 - Purpose: GSD planning and analysis documents
 - Generated: By planning tools
 - Committed: Yes
 
 **`public/`:**
+
 - Purpose: Static assets served as-is
 - Generated: No
 - Committed: Yes
@@ -280,4 +308,4 @@ HangVidU/
 
 ---
 
-*Structure analysis: 2025-01-19*
+_Structure analysis: 2025-01-19_
