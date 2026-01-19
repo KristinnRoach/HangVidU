@@ -4,8 +4,7 @@
 // HANGVIDU - P2P VIDEO CHAT WITH WATCH-TOGETHER MODE
 // ============================================================================
 
-import './initSentry.js'; // Initialize Sentry
-
+import './initSentry.js';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import { set, get, remove } from 'firebase/database';
 import {
@@ -24,46 +23,11 @@ import {
 
 import { clearUrlParam } from './utils/url.js';
 
-import { initializeAuthUI } from './components/auth/AuthComponent.js';
+import { messagingController } from './messaging/messaging-controller.js';
 
-import { showElement, hideElement } from './utils/ui/ui-utils.js';
-
-import {
-  enterWatchMode,
-  exitWatchMode,
-  isRemoteVideoVideoActive,
-} from './ui/legacy/watch-mode.js';
-
-import {
-  saveContact,
-  renderContactsList,
-  getContacts,
-  resolveCallerName,
-  openContactMessages,
-} from './components/contacts/contacts.js';
-
-import {
-  listenForInvites,
-  listenForAcceptedInvites,
-  acceptInvite,
-  declineInvite,
-  cleanupInviteListeners,
-} from './contacts/invitations.js';
-
-import { showAddContactModal } from './components/contacts/add-contact-modal.js';
 import { getDeterministicRoomId } from './utils/room-id.js';
 
-import { messagesUI } from './components/messages/messages-ui.js';
-
 import { ringtoneManager } from './media/audio/ringtone-manager.js';
-import { callIndicators } from './utils/ui/call-indicators.js';
-
-import {
-  hideCallingUI,
-  onCallAnswered,
-  isOutgoingCallFresh,
-  isRoomCallFresh,
-} from './components/calling/calling-ui.js';
 
 import CallController from './webrtc/call-controller.js';
 
@@ -93,33 +57,11 @@ import {
 } from './elements.js';
 
 import {
-  initializeMediaControls,
-  cleanupMediaControls,
-} from './media/media-controls.js';
-
-import {
   setupWatchSync,
   isWatchModeActive,
   getLastWatched,
   setLastWatched,
 } from './firebase/watch-sync.js';
-
-import {
-  destroyYouTubePlayer,
-  pauseYouTubeVideo,
-  isYTVisible,
-  showYouTubePlayer,
-  hideYouTubePlayer,
-  setYouTubeReady,
-} from './media/youtube/youtube-player.js';
-
-import {
-  cleanupSearchUI,
-  initializeSearchUI,
-} from './media/youtube/youtube-search.js';
-import { addDebugUpdateButton } from './components/notifications/debug-notifications.js';
-import { notificationManager } from './components/notifications/notification-manager.js';
-import { createNotificationsToggle } from './components/notifications/notifications-toggle.js';
 
 import { setUpLocalStream, setupRemoteStream } from './media/stream.js';
 
@@ -132,15 +74,73 @@ import {
   cleanupLocalVideoOnlyStream,
 } from './media/state.js';
 
-import {
-  copyToClipboard,
-  showCopyLinkModal,
-} from './components/modal/copyLinkModal.js';
 import { devDebug, setDevDebugEnabled } from './utils/dev/dev-utils.js';
 
 import RoomService from './room.js';
 import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
+
+import {
+  listenForInvites,
+  listenForAcceptedInvites,
+  acceptInvite,
+  declineInvite,
+  cleanupInviteListeners,
+} from './contacts/invitations.js';
+
+// ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
+import {
+  saveContact,
+  renderContactsList,
+  getContacts,
+  resolveCallerName,
+  openContactMessages,
+} from './components/contacts/contacts.js';
+
+import {
+  destroyYouTubePlayer,
+  pauseYouTubeVideo,
+  isYTVisible,
+  showYouTubePlayer,
+  hideYouTubePlayer,
+  setYouTubeReady,
+} from './media/youtube/youtube-player.js';
+
+import {
+  initializeMediaControls,
+  cleanupMediaControls,
+} from './media/media-controls.js';
+import {
+  cleanupSearchUI,
+  initializeSearchUI,
+} from './media/youtube/youtube-search.js';
+import { addDebugUpdateButton } from './components/notifications/debug-notifications.js';
+import { notificationManager } from './components/notifications/notification-manager.js';
+import { createNotificationsToggle } from './components/notifications/notifications-toggle.js';
+
+import { showElement, hideElement } from './utils/ui/ui-utils.js';
+import { initializeAuthUI } from './components/auth/AuthComponent.js';
+import { messagesUI } from './components/messages/messages-ui.js';
 import confirmDialog from './components/base/confirm-dialog.js';
+import { showAddContactModal } from './components/contacts/add-contact-modal.js';
+import { callIndicators } from './utils/ui/call-indicators.js';
+import {
+  copyToClipboard,
+  showCopyLinkModal,
+} from './components/modal/copyLinkModal.js';
+
+import {
+  hideCallingUI,
+  onCallAnswered,
+  isOutgoingCallFresh,
+  isRoomCallFresh,
+} from './components/calling/calling-ui.js';
+import { isRemoteVideoVideoActive } from './ui/legacy/watch-mode.js';
+import { onCallConnected, onCallDisconnected } from './ui/call-lifecycle-ui.js';
+// ____ UI END ____
+
+// Import and call iOS PWA redirect helper
+import { redirectIOSPWAToHosting } from './utils/env/redirectIOSPWA.js';
+redirectIOSPWAToHosting();
 
 // Quick access to enable / disable dev debug logs
 setDevDebugEnabled(true);
@@ -161,7 +161,6 @@ let cleanupFunctions = [];
 
 async function init() {
   initUI();
-  // exitCallMode(); // Ensure UI is in initial state
 
   // Validate critical elements first
   const elements = getElements();
@@ -1204,7 +1203,7 @@ async function autoJoinFromUrl() {
 
   if (!success) {
     clearUrlParam();
-    exitCallMode();
+    onCallDisconnected(); // reset UI state
   }
 
   devDebug('Auto-joined room from URL');
@@ -1282,11 +1281,6 @@ function setupInviteListener() {
 // ============================================================================
 // INITIALIZE ON PAGE LOAD
 // ============================================================================
-
-// Import and call iOS PWA redirect helper before any other initialization
-import { redirectIOSPWAToHosting } from './utils/env/redirectIOSPWA.js';
-import { messagingController } from './messaging/messaging-controller.js';
-redirectIOSPWAToHosting();
 
 window.onload = async () => {
   const initSuccess = await init();
@@ -1431,7 +1425,8 @@ CallController.on('memberJoined', ({ memberId, roomId }) => {
   // TODO: Refactor to avoid dependency on contacts.js ? Check messaging controller and clarify public API
   openContactMessages(memberId, memberId); // Use memberId as name for now
 
-  enterCallMode();
+  onCallConnected();
+
   onCallAnswered().catch((e) =>
     console.warn('Failed to clear calling state:', e),
   );
@@ -1452,7 +1447,7 @@ CallController.on('cleanup', ({ roomId, partnerId, reason }) => {
   // Perform all UI cleanup
   hideCallingUI();
   cleanupRemoteStream();
-  exitCallMode();
+  onCallDisconnected();
   devDebug('Disconnected. Click "Start New Chat" to begin.');
   clearUrlParam();
 
