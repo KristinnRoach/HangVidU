@@ -1,5 +1,5 @@
 /**
- * Visibility Manager Module
+ * Call Indicator Manager Module
  *
  * Manages Page Visibility API integration for incoming call notifications.
  * Provides visual indicators (title flashing, favicon changes, badges) when
@@ -16,10 +16,10 @@ function getFaviconHref() {
 }
 
 /**
- * Visibility Manager Class
+ * CallIndicators Class
  * Singleton managing visual call indicators based on page visibility
  */
-class VisibilityManager {
+class CallIndicators {
   constructor() {
     this.originalTitle = document.title;
     this.originalFavicon = getFaviconHref();
@@ -51,9 +51,7 @@ class VisibilityManager {
    * @param {string} callerName - Name of caller to display in title
    */
   startCallIndicators(callerName) {
-    console.log(
-      `[VisibilityManager] Starting call indicators for: ${callerName}`
-    );
+    console.log(`[CallIndicators] Starting call indicators for: ${callerName}`);
 
     // Always start title flashing (even if visible, for consistency)
     this.startTitleFlashing(callerName);
@@ -72,7 +70,7 @@ class VisibilityManager {
    * Stop all visual indicators
    */
   stopCallIndicators() {
-    console.log('[VisibilityManager] Stopping call indicators');
+    console.log('[CallIndicators] Stopping call indicators');
 
     this.stopTitleFlashing();
     this.restoreFavicon();
@@ -125,7 +123,7 @@ class VisibilityManager {
     const link = document.querySelector("link[rel~='icon']");
     if (link) {
       link.href = iconPath;
-      console.log(`[VisibilityManager] Favicon changed to: ${iconPath}`);
+      console.log(`[CallIndicators] Favicon changed to: ${iconPath}`);
     }
   }
 
@@ -145,10 +143,10 @@ class VisibilityManager {
       navigator
         .setAppBadge(count)
         .then(() => {
-          console.log(`[VisibilityManager] Badge set to: ${count}`);
+          console.log(`[CallIndicators] Badge set to: ${count}`);
         })
         .catch((err) => {
-          console.warn('[VisibilityManager] Badge not supported:', err);
+          console.warn('[CallIndicators] Badge not supported:', err);
         });
     }
   }
@@ -161,10 +159,10 @@ class VisibilityManager {
       navigator
         .clearAppBadge()
         .then(() => {
-          console.log('[VisibilityManager] Badge cleared');
+          console.log('[CallIndicators] Badge cleared');
         })
         .catch((err) => {
-          console.warn('[VisibilityManager] Badge clear failed:', err);
+          console.warn('[CallIndicators] Badge clear failed:', err);
         });
     }
   }
@@ -180,19 +178,19 @@ class VisibilityManager {
 
     try {
       this.wakeLock = await navigator.wakeLock.request('screen');
-      console.log('[VisibilityManager] Wake lock active');
+      console.log('[CallIndicators] Wake lock active');
 
       // Re-request wake lock if it's released (e.g., tab visibility change)
       this.wakeLock.addEventListener(
         'release',
         () => {
-          console.log('[VisibilityManager] Wake lock released');
+          console.log('[CallIndicators] Wake lock released');
           this.wakeLock = null;
         },
-        { once: true }
+        { once: true },
       );
     } catch (err) {
-      console.warn('[VisibilityManager] Wake lock failed:', err);
+      console.warn('[CallIndicators] Wake lock failed:', err);
     }
   }
 
@@ -207,14 +205,14 @@ class VisibilityManager {
       lock
         .release()
         .then(() => {
-          console.log('[VisibilityManager] Wake lock released manually');
+          console.log('[CallIndicators] Wake lock released manually');
         })
         .catch((err) => {
-          console.warn('[VisibilityManager] Wake lock release failed:', err);
+          console.warn('[CallIndicators] Wake lock release failed:', err);
         });
     }
   }
 }
 
 // Export singleton instance
-export const visibilityManager = new VisibilityManager();
+export const callIndicators = new CallIndicators();

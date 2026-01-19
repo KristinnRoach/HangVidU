@@ -55,7 +55,7 @@ import { getDeterministicRoomId } from './utils/room-id.js';
 import { messagesUI } from './components/messages/messages-ui.js';
 
 import { ringtoneManager } from './media/audio/ringtone-manager.js';
-import { visibilityManager } from './utils/ui/visibility-manager.js';
+import { callIndicators } from './utils/ui/call-indicators.js';
 
 import {
   hideCallingUI,
@@ -710,7 +710,7 @@ export function listenForIncomingOnRoom(roomId) {
 
         // Start incoming call ringtone and visual indicators
         ringtoneManager.playIncoming();
-        visibilityManager.startCallIndicators(callerName);
+        callIndicators.startCallIndicators(callerName);
 
         let accept = false;
         try {
@@ -720,7 +720,7 @@ export function listenForIncomingOnRoom(roomId) {
         } finally {
           // Stop ringtone and visual indicators after user responds (or on error)
           ringtoneManager.stop();
-          visibilityManager.stopCallIndicators();
+          callIndicators.stopCallIndicators();
         }
 
         if (accept) {
@@ -1139,6 +1139,8 @@ if (exitWatchModeBtn) {
       // Revoke blob URL to free memory (only if it's a blob)
       if (sharedVideoEl.src.startsWith('blob:')) {
         URL.revokeObjectURL(sharedVideoEl.src);
+        // sharedVideoEl.removeAttribute('src');
+        // sharedVideoEl.load();
       }
 
       hideElement(sharedBoxEl);
