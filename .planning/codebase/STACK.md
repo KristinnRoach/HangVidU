@@ -1,81 +1,103 @@
 # Technology Stack
 
-**Analysis Date:** 2026-01-08
+**Analysis Date:** 2026-01-19
 
 ## Languages
 
 **Primary:**
-- JavaScript (ES6+) - All application code (`src/**/*.js`)
+- JavaScript (ES Modules) - All application code in `src/`
 
 **Secondary:**
-- None
+- TypeScript - Type definitions only (`src/env.d.ts`)
+- CSS - Modular styling system in `src/styles/`
+- HTML - Entry points (`index.html`, `experiments.html`)
 
 ## Runtime
 
 **Environment:**
-- Node.js - No explicit version constraint (no `.nvmrc` file detected)
-- Browser Runtime - Modern browsers with WebRTC, Web Audio, and Media APIs support
+- Node.js v22.12.0+
 
 **Package Manager:**
-- pnpm - Package manager with `pnpm-lock.yaml` lockfile
+- pnpm 10.24.0+
+- Lockfile: `pnpm-lock.yaml` present
 
 ## Frameworks
 
 **Core:**
-- Vanilla JavaScript - Primary application code
-- Lit 3.3.1 - Web components library for select UI components (`src/components/base/button/lit-icon-button.draft.js`)
+- Vite 7.1.12 - Build tool and dev server
+- Lit 3.3.1 - Web components (used sparingly, e.g., `src/components/base/button/lit-icon-button.draft.js`)
 
 **Testing:**
-- Vitest 4.0.13 - Unit and integration tests in browser mode
-- @vitest/browser-playwright 4.0.13 - Browser test provider
-- Playwright 1.56.1 - End-to-end testing framework
+- Vitest 4.0.13 - Unit/integration tests (browser mode)
+- Playwright 1.56.1 - E2E tests and Vitest browser provider
 
 **Build/Dev:**
-- Vite 7.1.12 - Build tool and dev server (`vite.config.js`)
-- vite-plugin-pwa 1.1.0 - Progressive Web App generation
-- vite-plugin-mkcert 1.17.9 - Self-signed certificate generation for HTTPS development
+- vite-plugin-pwa 1.1.0 - PWA generation with Workbox
+- vite-plugin-mkcert 1.17.9 - Local HTTPS certificates
+- concurrently 9.0.0 - Parallel dev processes
+- ngrok - External tunneling for mobile testing
 
 ## Key Dependencies
 
 **Critical:**
-- Firebase 12.4.0 - Real-time database, authentication, hosting (`src/firebase/firebase.js`, `src/firebase/auth.js`)
-- Dexie 4.2.1 - IndexedDB wrapper for local data persistence (`src/storage/idb/idb.js`)
+- `firebase` 12.8.0 - Authentication, Realtime Database, App Check
+- `dexie` 4.2.1 - IndexedDB wrapper for local persistence
+- `@sentry/browser` 10.34.0 - Error tracking and monitoring
+- `workbox-window` 7.4.0 - Service worker registration for PWA
+
+**UI:**
+- `@fortawesome/fontawesome-free` 7.1.0 - Icon library
 
 **Infrastructure:**
-- @sentry/browser 10.26.0 - Error tracking and monitoring (`src/initSentry.js`)
-- workbox-window 7.4.0 - Service Worker client library for PWA updates
-- @fortawesome/fontawesome-free 7.1.0 - Icon library
-
-**Development:**
-- concurrently 9.0.0 - Run multiple npm scripts (dev + ngrok)
-- fkill-cli 9.0.0 - Kill processes on ports for dev cleanup
+- Native WebRTC APIs - Peer-to-peer video connections (no external WebRTC library)
+- YouTube IFrame API - Video player for watch-together mode
 
 ## Configuration
 
 **Environment:**
-- `.env.development` - Development environment variables (Firebase keys, YouTube API key)
-- `.env.production` - Production environment variables (Firebase keys, Sentry DSN)
-- `.env.example` - Template for required environment variables
+- `.env` files for environment-specific config (`.env`, `.env.development`, `.env.production`)
 - All environment variables prefixed with `VITE_` for client exposure
+- Key required vars:
+  - `VITE_FIREBASE_API_KEY`
+  - `VITE_FIREBASE_AUTH_DOMAIN`
+  - `VITE_FIREBASE_PROJECT_ID`
+  - `VITE_FIREBASE_DATABASE_URL`
+  - `VITE_APP_GOOGLE_CLIENT_ID`
+  - `VITE_RECAPTCHA_ENTERPRISE_SITE_KEY`
+  - `VITE_YOUTUBE_API_KEY` (optional, enables search)
+  - `VITE_SENTRY_DSN` (optional, enables error tracking)
 
 **Build:**
-- `vite.config.js` - Vite configuration with PWA and HTTPS dev settings
-- Two build targets: `/HangVidU/` base path (GitHub Pages) or `/` (Firebase Hosting)
-- Configured via `BUILD_TARGET` environment variable
+- `vite.config.js` - Main build configuration
+- `vitest.config.js` - Test runner configuration
+- `playwright.config.js` - E2E test configuration
+- `firebase.json` - Firebase Hosting and Database rules
+- `database.rules.json` - Firebase RTDB security rules
+
+**Build Targets:**
+- GitHub Pages: Base path `/HangVidU/` (default)
+- Firebase Hosting: Base path `/` (set `BUILD_TARGET=hosting`)
 
 ## Platform Requirements
 
 **Development:**
-- Any platform with Node.js support (macOS, Linux, Windows)
-- No external dependencies beyond Node.js and pnpm
-- ngrok for HTTPS tunnel in local development (optional custom domain via `NGROK_DOMAIN`)
+- Node.js 22+
+- pnpm 10+
+- HTTPS required (mkcert provides local certs)
+- Camera/microphone permissions for WebRTC testing
 
 **Production:**
-- Firebase Hosting - Primary deployment target (`vidu-aae11.web.app`)
-- GitHub Pages - Secondary deployment target with `/HangVidU/` base path
-- Modern browsers with WebRTC support (Chrome, Firefox, Safari, Edge)
+- Firebase Hosting (primary)
+- GitHub Pages (secondary)
+- Modern browser with WebRTC support (Chrome, Firefox, Safari, Edge)
+- PWA installable on supported platforms
+
+**Browser Support:**
+- Chromium-based browsers (Chrome, Edge)
+- Firefox
+- WebKit (Safari, iOS Safari)
+- Tests run against all three via Vitest browser mode
 
 ---
 
-*Stack analysis: 2026-01-08*
-*Update after major dependency changes*
+*Stack analysis: 2026-01-19*

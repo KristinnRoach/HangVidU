@@ -1,273 +1,193 @@
 # Architecture
 
-**Analysis Date:** 2026-01-08
+**Analysis Date:** 2025-01-19
 
 ## Pattern Overview
 
-**Overall:** Layered Monolith with Event-Driven Communication
+**Overall:** Event-Driven Controller Architecture with Firebase Signaling
 
 **Key Characteristics:**
-- Single-page application (SPA) using vanilla JavaScript with selective Lit web components
-- Event emitter pattern for WebRTC state management
-- Firebase RTDB as single source of truth for real-time synchronization
-- Module-level state management with getter/setter functions
-- Lazy media initialization to avoid triggering device "call mode" prematurely
+- Vanilla JavaScript with minimal framework dependencies (Lit for some components)
+- WebRTC peer-to-peer connections with Firebase RTDB as signaling server
+- Controller-based abstraction for WebRTC call lifecycle
+- Event emitter pattern for loose coupling between modules
+- Module-level singleton state management
+- Centralized DOM element management via `elements.js`
 
 ## Layers
 
+**Presentation Layer:**
+- Purpose: User interface rendering and interaction handling
+- Location: `src/components/`
+- Contains: UI components (vanilla JS and Lit), modals, notifications, contact management
+- Depends on: Elements layer, UI utilities, Media state
+- Used by: Main orchestration layer
+
+**Controller Layer:**
+- Purpose: Business logic and state coordination for calls and messaging
+- Location: `src/webrtc/call-controller.js`, `src/messaging/messaging-controller.js`
+- Contains: Call lifecycle management, event emission, listener tracking, messaging session management
+- Depends on: WebRTC layer, Room service, Firebase layer
+- Used by: Main orchestration, UI components
+
 **WebRTC Layer:**
-- Purpose: Manage peer-to-peer video connections and media streams
-- Contains: Call orchestration, ICE handling, data channels
+- Purpose: Peer connection establishment and media handling
 - Location: `src/webrtc/`
-  - `call-controller.js` - Event-based API wrapper with state management
-  - `call-flow.js` - Core connection establishment (offer/answer/ICE)
-  - `webrtc.js` - PeerConnection factory and configuration
-  - `ice.js` - ICE candidate handling
-  - `data-channel.js` - DataChannel setup (currently disabled in favor of RTDB messaging)
-- Depends on: Media Layer (for streams), Storage Layer (for signaling via RTDB)
-- Used by: Main app orchestration (`src/main.js`)
+- Contains: Call flow orchestration (`call-flow.js`), ICE handling (`ice.js`), connection utilities (`webrtc-utils.js`, `webrtc.js`)
+- Depends on: Room service, Media layer
+- Used by: Controller layer
+
+**Room/Signaling Layer:**
+- Purpose: Firebase RTDB room management and signaling
+- Location: `src/room.js`, `src/storage/fb-rtdb/rtdb.js`
+- Contains: Room CRUD operations, member join/leave listeners, offer/answer exchange, cancellation signals
+- Depends on: Firebase SDK
+- Used by: WebRTC layer, Controller layer
 
 **Firebase Layer:**
-- Purpose: Real-time synchronization and authentication
-- Contains: Auth, RTDB operations, watch-together sync, contact messaging, presence
+- Purpose: Firebase service initialization and domain-specific Firebase operations
 - Location: `src/firebase/`
-  - `auth.js` - Google OAuth + guest authentication
-  - `firebase.js` - Firebase app initialization
-  - `watch-sync.js` - YouTube/video synchronization via RTDB
-  - `messaging.js` - RTDB-based contact messaging (NEW as of Jan 2026)
-  - `presence.js` - User online/offline tracking
-  - `onetap.js` - Google One Tap UI integration
-- Depends on: Storage Layer (RTDB abstractions)
-- Used by: All layers requiring real-time data or authentication
-
-**Storage Layer:**
-- Purpose: Data persistence and retrieval abstractions
-- Contains: Firebase RTDB wrappers, IndexedDB (Dexie), LocalStorage utilities
-- Location: `src/storage/`
-  - `fb-rtdb/rtdb.js` - Firebase RTDB API with listener tracking and cleanup
-  - `idb/idb.js` - Dexie wrapper for IndexedDB (persistent contacts, messages)
-  - `local/recent-rooms-local.js` - LocalStorage utilities for guest users
+- Contains: Auth (`auth.js`), watch-together sync (`watch-sync.js`), presence (`presence.js`), One Tap (`onetap.js`)
 - Depends on: Firebase SDK
-- Used by: Firebase Layer, Component Layer
+- Used by: All layers requiring auth or sync
 
 **Media Layer:**
-- Purpose: Camera/mic stream management and YouTube player control
-- Contains: Local/remote MediaStream creation, constraints, YouTube API integration
+- Purpose: Local/remote stream management, device controls, YouTube integration
 - Location: `src/media/`
-  - `stream.js` - Local/remote stream setup
-  - `state.js` - Stream state singleton
-  - `media-controls.js` - Camera/mic UI controls
-  - `constraints.js` - Video/audio constraints
-  - `media-devices.js` - Device enumeration
-  - `audio/ringtone-manager.js` - Call ringtone management
-  - `youtube/youtube-player.js` - YouTube IFrame API wrapper
-  - `youtube/youtube-search.js` - YouTube search UI
-- Depends on: Browser MediaDevices APIs, YouTube IFrame API
-- Used by: WebRTC Layer, Component Layer
+- Contains: Stream setup (`stream.js`), media state (`state.js`), controls (`media-controls.js`), YouTube player/search, audio (ringtones)
+- Depends on: Browser MediaDevices API, YouTube IFrame API
+- Used by: WebRTC layer, UI components
 
-**Component Layer:**
-- Purpose: UI components and user interactions
-- Contains: Authentication UI, calling UI, contacts, messages, lobby, notifications
-- Location: `src/components/`
-  - `auth/` - Google One Tap container
-  - `base/` - Reusable components (buttons, dialogs, modals)
-  - `calling/` - Incoming call UI
-  - `contacts/` - Contact list + presence (currently owns message toggles - refactoring pending)
-  - `lobby/` - Main lobby UI
-  - `messages/` - In-call chat (RTDB-based as of Jan 2026)
-    - `messages-ui.js` - Main messaging UI
-    - `message-toggle.js` - Reusable toggle component with badge
-    - `OLD_messages-ui.js` - Deprecated DataChannel implementation
-  - `notifications/` - Toasts + PWA updates
-  - `recent-calls/` - Recent call history
-  - `ui/` - State-driven UI (call-mode.js, watch-mode.js)
-  - `select/` - Device selection dropdown
-- Depends on: All other layers (orchestrates interactions)
-- Used by: Main app entry point
+**Storage Layer:**
+- Purpose: Data persistence abstractions
+- Location: `src/storage/`
+- Contains: Firebase RTDB helpers (`fb-rtdb/rtdb.js`), IndexedDB wrapper (`idb/`), localStorage utilities (`local/`)
+- Depends on: Firebase SDK, Dexie (IndexedDB)
+- Used by: Room service, Contacts, Recent calls
 
-**Utility Layer:**
+**Utilities Layer:**
 - Purpose: Shared helpers and cross-cutting concerns
-- Contains: Dev logging, UI utilities, DOM helpers, environment detection
 - Location: `src/utils/`
-  - `dev/` - Dev logging + diagnostics
-  - `ui/` - UI helpers (show/hide, visibility)
-  - `dom/` - DOM utilities + component helpers
-  - `env/` - Environment detection (iOS PWA handling)
-- Depends on: Nothing (pure utilities)
+- Contains: UI helpers (`ui/`), DOM utilities (`dom/`), environment detection (`env/`), dev tools (`dev/`), URL parsing
+- Depends on: Browser APIs
 - Used by: All layers
 
 ## Data Flow
 
-**Call Initiation Flow:**
+**Call Initiation (Initiator):**
+1. User clicks "Start Call" -> `main.js` -> `CallController.createCall()`
+2. `call-flow.js:createCall()` creates RTCPeerConnection, adds local tracks
+3. SDP offer generated and saved to Firebase RTDB via `RoomService.createNewRoom()`
+4. Room link generated and shown to user via modal
+5. CallController sets up listeners: answer, cancellation, rejection, member-joined/left
+6. Waits for joiner via Firebase RTDB listener on `rooms/{roomId}/answer`
 
-1. User clicks "Call" → `handleCall()` in `src/main.js`
-2. `initLocalStreamAndMedia()` - Lazy initialization of camera/mic
-3. `CallController.createCall(options)`
-4. `call-flow.js::createCall()`:
-   - Create RTCPeerConnection
-   - Add local media tracks
-   - Setup data channel (disabled) & remote stream handler
-   - Setup ICE candidate exchange via RTDB
-   - Create SDP offer
-   - Save offer to Firebase RTDB (`rooms/{roomId}`)
-   - `setupWatchSync()` for video synchronization
-5. Returns `{pc, roomId, roomLink, dataChannel}`
-6. `CallController.setupAnswerListener()` → listens for answer on `rooms/{roomId}/answer`
-7. Partner opens link → `joinOrCreateRoomWithId(roomId)`
-   - Check room status
-   - If empty: create as initiator (race condition handling)
-   - If has members: join as joiner
-8. `call-flow.js::answerCall()`:
-   - Retrieve offer from `rooms/{roomId}`
-   - Create RTCPeerConnection
-   - Add local tracks & setup remote stream
-   - Create SDP answer
-   - Save answer to Firebase RTDB
-   - Setup ICE candidates
-   - `setupWatchSync()` for sync
-9. ICE candidates exchanged via `rooms/{roomId}/iceCandidates/`
-10. PeerConnection established → emit `memberJoined` event
-11. UI transitions to call-mode
+**Call Joining (Joiner):**
+1. User opens room link -> `main.js:autoJoinFromUrl()` or paste-join
+2. `joinOrCreateRoomWithId()` checks room status via `RoomService.checkRoomStatus()`
+3. `CallController.answerCall()` -> `call-flow.js:answerCall()`
+4. Retrieves SDP offer from Firebase RTDB
+5. Creates RTCPeerConnection, sets remote description
+6. Generates SDP answer, saves to Firebase RTDB via `RoomService.saveAnswer()`
+7. ICE candidates exchanged via Firebase RTDB
+8. `pc.ontrack` fires -> `setupRemoteStream()` attaches remote video
 
-**Incoming Call Detection Flow:**
+**Watch-Together Sync:**
+1. User selects video (YouTube URL or local file) -> `watch-sync.js:handleVideoSelection()`
+2. Video state saved to Firebase RTDB: `rooms/{roomId}/watch`
+3. Remote user receives update via `onDataChange()` listener
+4. `handleWatchUpdate()` syncs playback state (play/pause/seek)
+5. Local events (play, pause, seeked) trigger Firebase updates to sync remote
 
-1. `startListeningForSavedRooms()` on page load
-2. Read recent calls from:
-   - Firebase RTDB (logged-in users)
-   - LocalStorage (guests)
-3. For each saved `roomId`: `listenForIncomingOnRoom(roomId)`
-4. `RoomService.onMemberJoined()` listener triggers when partner joins
-5. Validate call freshness (check timestamp, reject if stale >20 seconds)
-6. Prompt user with `confirmDialog("Incoming call from {name}. Accept?")`
-   - Play ringtone & visual indicators
-7. If accepted: `joinOrCreateRoomWithId(roomId)`
-   If rejected: `RoomService.rejectCall(roomId, reason)`
-
-**Watch-Together Sync Flow:**
-
-1. `setupWatchSync(roomId, role, userId)`
-2. Listen to `watch/{roomId}` in Firebase RTDB
-3. On video load (YouTube or URL):
-   - Update watch state: `{videoId, position, isPlaying, updatedBy}`
-   - Save to Firebase
-   - `enterWatchMode()`
-4. Partner receives update via `onDataChange` listener
-5. Sync remote playback:
-   - Load video
-   - Seek to position
-   - Match play/pause state
-   - Debounce fast updates to prevent feedback loops
-
-**Contact Messaging Flow (NEW as of Jan 2026):**
-
-1. User clicks contact message toggle
-2. `openContactMessages(contactId, contactName)` in `src/components/contacts/contacts.js`
-3. Initialize messages UI with `initMessagesUI()` from `src/components/messages/messages-ui.js`
-4. Set up message sending via `sendMessageToRTDB()` from `src/firebase/messaging.js`
-5. Listen for messages via `listenToContactMessages()`
-6. Store session in `activeMessageSessions` Map for cleanup
-7. Mark messages as read when UI is open
-8. Real-time unread badge updates via Firebase listeners
+**State Management:**
+- Call state: `CallController` singleton with event emitter pattern
+- Media state: Module-level variables in `src/media/state.js`
+- UI state: Module-level flags in `call-mode.js`, `watch-mode.js`
+- Auth state: Firebase Auth SDK with `onAuthStateChanged` subscriptions
+- Room state: Firebase RTDB with real-time listeners
 
 ## Key Abstractions
 
-**CallController:**
-- Purpose: Singleton event emitter managing active call state
-- Location: `src/webrtc/call-controller.js`
-- Pattern: Event emitter with in-memory state
-- State shape: `{state, roomId, roomLink, role, partnerId, pc, dataChannel, messagesUI}`
-- Events: `memberJoined`, `memberLeft`, `cleanup`
-- Example usage: `CallController.createCall(options)`, `CallController.on('memberJoined', callback)`
+**CallController (`src/webrtc/call-controller.js`):**
+- Purpose: Thin wrapper over call-flow with event-based API
+- Pattern: Singleton with SimpleEmitter for events
+- Events: `created`, `answered`, `memberJoined`, `memberLeft`, `cleanup`, `error`, `hangup`, `remoteHangup`, `callFailed`
+- State: `roomId`, `partnerId`, `pc`, `dataChannel`, `role` (initiator/joiner)
 
-**RoomService:**
-- Purpose: Singleton managing room lifecycle
-- Location: `src/room.js`
-- Pattern: Firebase RTDB abstractions for room operations
-- Methods: `createNewRoom()`, `joinRoom()`, `checkRoomStatus()`, `rejectCall()`
-- Example usage: `RoomService.createNewRoom(offer, userId, userName)`
+**RoomService (`src/room.js`):**
+- Purpose: Firebase RTDB room operations abstraction
+- Pattern: Singleton service class
+- Methods: `createNewRoom()`, `joinRoom()`, `leaveRoom()`, `checkRoomStatus()`, `saveAnswer()`, `cancelCall()`, `rejectCall()`, `onMemberJoined()`, `onMemberLeft()`
 
-**RTDB Listener Management:**
-- Purpose: Central registry tracking all Firebase listeners
-- Location: `src/storage/fb-rtdb/rtdb.js`
-- Pattern: Listener tracking with scoped cleanup
-- Functions: `addRTDBListener()`, `removeRTDBListenersForRoom()`, `removeAllRTDBListeners()`
-- Example usage: `addRTDBListener(ref, 'value', callback, roomId)`
+**MessagingController (`src/messaging/messaging-controller.js`):**
+- Purpose: Transport-agnostic messaging API
+- Pattern: Session-based with pluggable transports
+- Transports: `RTDBMessagingTransport` (text), `DataChannelFileTransport` (files during calls)
+- Methods: `openSession()`, `closeSession()`, `sendFile()`, `onFileReceived()`
 
-**Element Registry:**
-- Purpose: Centralized DOM element caching
-- Location: `src/elements.js`
-- Pattern: Query-on-demand with late initialization
-- Example usage: `const { localVideoEl, remoteVideoEl } = getElements()`
-
-**Message Session Management:**
-- Purpose: Track active per-contact message sessions
-- Location: `src/firebase/messaging.js`
-- Pattern: Map-based session registry with cleanup functions
-- State: `activeMessageSessions` Map storing `{messagesUI, unsubscribe, contactId, contactName, toggle}`
-- Example usage: `getActiveMessageSession()`, `closeMessageSession(contactId)`, `closeAllMessageSessions()`
+**Elements (`src/elements.js`):**
+- Purpose: Centralized DOM element access with lazy initialization
+- Pattern: Query-on-demand with module-level caching
+- Exports: Individual element references plus `getElements()` getter
+- Utilities: `robustElementAccess()`, `waitForElements()` for dynamic elements
 
 ## Entry Points
 
-**Main HTML:**
-- Location: `index.html`
-- Triggers: Page load
-- Responsibilities: Load `/src/main.js`, define static HTML structure
+**Main Entry (`src/main.js`):**
+- Location: `src/main.js`
+- Triggers: `window.onload`
+- Responsibilities: Initialize app, setup auth UI, register event handlers, auto-join from URL, manage incoming call listeners, orchestrate call lifecycle via CallController events
 
-**Primary Entry:**
-- Location: `src/main.js` (1,342 lines)
-- Triggers: DOM content loaded
-- Responsibilities: Initialize app (auth, media, listeners), handle call lifecycle, event subscriptions to CallController
+**HTML Entry (`index.html`):**
+- Location: `/index.html`
+- Triggers: Browser page load
+- Responsibilities: Define DOM structure, load external scripts (Google Identity Services, YouTube IFrame API), bootstrap `src/main.js`
 
-**WebRTC Entry:**
-- Location: `src/webrtc/call-controller.js`
-- Triggers: Imported as ES6 module
-- Responsibilities: Provide event-based API for call operations
-
-**Firebase Init:**
-- Location: `src/firebase/firebase.js`
-- Triggers: Imported by services needing Firebase
-- Responsibilities: Initialize Firebase app, App Check with reCAPTCHA
-
-**iOS PWA Redirect:**
-- Location: `src/utils/env/redirectIOSPWA.js`
-- Triggers: Before main.js (inline script in HTML)
-- Responsibilities: Handle iOS Safari OAuth fallback
+**PWA Entry (`src/pwa/PWA.js`):**
+- Location: `src/pwa/PWA.js`
+- Triggers: Dynamic import from `main.js` when PWA enabled
+- Responsibilities: Service worker registration, update handling, install prompt
 
 ## Error Handling
 
-**Strategy:** Throw errors from services, catch at component/orchestration level, log and notify user
+**Strategy:** Best-effort with graceful degradation
 
 **Patterns:**
-- Services throw `Error` with descriptive messages
-- Call orchestration catches errors, logs to console with context
-- UI shows generic error messages to users
-- Sentry captures unhandled errors in production
+- WebRTC errors: Logged, user notified via alerts, cleanup triggered
+- Firebase errors: Caught and logged, operations marked as failed (non-fatal for signaling race conditions)
+- Media permission errors: User-friendly alerts with guidance, cleanup of initialization state
+- Auth errors: Centralized handler `handleSignInError()` with iOS PWA Safari fallback
+- Listener cleanup: Always tracked for removal, wrapped in try-catch
 
-**Current Gap:** Many empty `catch (_) {}` blocks silence errors (23 instances found)
+**Recovery:**
+- Call failures trigger `CallController.cleanupCall()` which resets state and emits `cleanup` event
+- Stale call detection prevents showing notifications for old room data
+- Room status checks with retry logic for race conditions during simultaneous join
 
 ## Cross-Cutting Concerns
 
 **Logging:**
-- Dev mode: `devDebug()` from `src/utils/dev/dev-utils.js`
-- Production: Sentry error tracking (`src/initSentry.js`)
-- Diagnostic logging: `getDiagnosticLogger()` for complex debugging
+- Development: `devDebug()` utility for conditional logging
+- Diagnostics: `DiagnosticLogger` for detailed call flow tracing (disabled by default)
+- Production: Sentry integration via `initSentry.js`
 
 **Validation:**
-- Environment variables validated on app init
-- User input sanitization: **Missing** (XSS risk in contact names via `innerHTML`)
-- Firebase rules enforce server-side validation
+- Critical elements validated on init via `getElements()` check
+- Room existence validated via `RoomService.checkRoomStatus()` before joining
+- Call freshness validation to prevent stale call notifications (20s threshold)
 
 **Authentication:**
-- Firebase Auth handles token management
-- Fallback persistence: IndexedDB → LocalStorage → in-memory
-- Guest users get random cached IDs
+- Firebase Auth with Google provider
+- Supports: Authenticated users (Firebase UID), Guest users (generated ID with 48h TTL)
+- iOS PWA: Safari external fallback for blocked popups
+- Presence: Online/offline tracking via Firebase RTDB
 
-**State Management:**
-- Module-level state in key files (main.js, call-controller.js, watch-sync.js, messaging.js)
-- No centralized state store (Redux, Zustand, etc.)
-- State shape documented in each module
+**Cleanup:**
+- RTDB listeners: Tracked by room ID for scoped cleanup via `addRTDBListener()`
+- CallController: `removeTrackedListeners()` removes all call-specific listeners
+- Media streams: `cleanupLocalStream()`, `cleanupRemoteStream()` stop tracks
+- UI: `cleanupCallModeUI()` removes event handlers and PiP state
 
 ---
 
-*Architecture analysis: 2026-01-08*
-*Update when major patterns change*
+*Architecture analysis: 2025-01-19*

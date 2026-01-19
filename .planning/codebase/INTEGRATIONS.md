@@ -1,175 +1,211 @@
 # External Integrations
 
-**Analysis Date:** 2026-01-08
+**Analysis Date:** 2026-01-19
 
 ## APIs & External Services
 
-**Authentication:**
-- Google OAuth 2.0 - Via Google Identity Services library (loaded from Google CDN)
-  - Google One Tap integration - `src/firebase/onetap.js`
-  - Popup/Redirect OAuth flow - `src/firebase/auth.js`
-  - Client ID: `VITE_APP_GOOGLE_CLIENT_ID` (environment variable)
-  - Handles both authenticated and guest users
+**Google Identity Services:**
+- Google One Tap Sign-In - Frictionless authentication
+  - SDK: Google Identity Services (GIS) library loaded via script tag
+  - Client: `src/firebase/onetap.js`
+  - Auth: `VITE_APP_GOOGLE_CLIENT_ID`
+  - Features: One Tap, FedCM support, automatic account selection
 
-**Real-time Synchronization & Signaling:**
-- Firebase Realtime Database (RTDB) - WebRTC signaling, watch-together state sync, contact messaging
-  - Project: `vidu-aae11` (from `.env.production`)
-  - Database URL: `https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app`
-  - Implementation: `src/storage/fb-rtdb/rtdb.js`, `src/room.js`, `src/firebase/watch-sync.js`, `src/firebase/messaging.js`
-  - Data stored: Room offers/answers, ICE candidates, watch state, messages, presence
+**Google Contacts API:**
+- Contacts read access for contact import
+  - SDK: GIS Token Model (OAuth2)
+  - Client: `requestContactsAccess()` in `src/firebase/auth.js`
+  - Scope: `contacts.readonly`, `contacts.other.readonly`
+  - Auth: Uses same `VITE_APP_GOOGLE_CLIENT_ID`
 
-**Security & Bot Prevention:**
-- Firebase App Check with reCAPTCHA Enterprise - Protects Firebase services from abuse
-  - Provider: ReCaptchaEnterpriseProvider (invisible mode in production)
-  - Implementation: `src/firebase/firebase.js`
-  - Config: `VITE_RECAPTCHA_ENTERPRISE_SITE_KEY` (environment variable)
+**YouTube Data API v3:**
+- Video search functionality
+  - SDK: Direct REST API calls
+  - Client: `src/media/youtube/youtube-search.js`
+  - Auth: `VITE_YOUTUBE_API_KEY`
+  - Endpoints used: `/search` for video discovery
 
-**Media & Content:**
-- YouTube Data API v3 - Video search functionality
-  - Endpoint: `https://www.googleapis.com/youtube/v3`
-  - API Key: `VITE_YOUTUBE_API_KEY` (environment variable)
-  - Implementation: `src/media/youtube/youtube-search.js`
+**YouTube IFrame Player API:**
+- Embedded video playback for watch-together
+  - SDK: YouTube IFrame API (loaded dynamically)
+  - Client: `src/media/youtube/youtube-player.js`
+  - Auth: None required (public API)
+  - Features: Play/pause/seek control, state synchronization
 
-**Error Tracking & Monitoring:**
-- Sentry - Error reporting, performance monitoring
-  - DSN: `VITE_SENTRY_DSN` (environment variable, from `.env.production`)
-  - Client: @sentry/browser 10.26.0
-  - Implementation: `src/initSentry.js`
-
-**Hosting & Deployment:**
-- Firebase Hosting - Production hosting with HTTPS
-  - Host URL: `https://vidu-aae11.web.app`
-  - Deployment: `pnpm deploy:fb` → Firebase CLI
-- GitHub Pages - Alternative deployment target
-  - Deployment: `pnpm deploy:gh` → gh-pages CLI
-
-**Development Tools:**
-- ngrok - HTTPS tunnel for local development with remote testing
-  - Config: `NGROK_DOMAIN` (optional custom domain)
-  - Implementation: `package.json` scripts, `scripts/show-ngrok-url.sh`
+**Sentry:**
+- Error tracking and monitoring
+  - SDK: `@sentry/browser` 10.34.0
+  - Client: `src/initSentry.js`
+  - Auth: `VITE_SENTRY_DSN`
+  - Features: Exception capture, optional PII collection
 
 ## Data Storage
 
-**Databases:**
-- Firebase Realtime Database - Primary real-time data store
-  - Connection: via Firebase SDK initialized in `src/firebase/firebase.js`
-  - Client: Firebase 12.4.0
-  - Data: Rooms, signaling, watch state, messages, contacts, presence
+**Firebase Realtime Database:**
+- WebRTC signaling and real-time synchronization
+  - Connection: `VITE_FIREBASE_DATABASE_URL`
+  - Client: `src/storage/fb-rtdb/rtdb.js`
+  - Features: Room management, ICE candidates, watch state sync, presence
+  - Security: `database.rules.json` with auth-based access control
 
-**File Storage:**
-- Not currently used (Firebase Storage configured but inactive)
+**Data Paths:**
+```
+rooms/{roomId}/           # WebRTC signaling data
+  offer                   # SDP offer
+  answer                  # SDP answer
+  offerCandidates/        # ICE candidates from initiator
+  answerCandidates/       # ICE candidates from joiner
+  members/                # Connected participants
+  watch/                  # Watch-together sync state
+  cancellation            # Call cancellation signal
 
-**Caching:**
-- None - No Redis or external caching layer
+users/{userId}/           # User-specific data
+  contacts/               # Saved contacts
+  incomingInvites/        # Pending contact invitations
+  acceptedInvites/        # Accepted invitations
+  recentCalls/            # Call history
+  outgoingCall            # Active outgoing call
+  presence/               # Online/offline status
 
-**Local Storage:**
-- IndexedDB (Dexie 4.2.1) - Local contact management and call history (`src/storage/idb/idb.js`)
-- LocalStorage - Guest user IDs, recent calls (fallback), UI preferences (`src/storage/local/`)
-- Browser Memory - Active call state, streams, peer connection
+usersByEmail/{emailHash}/ # Email-based user lookup
+
+conversations/{id}/       # Direct messages
+  messages/               # Message content
+```
+
+**IndexedDB (Dexie):**
+- Local persistent storage
+  - Client: `src/storage/idb/idb.js`
+  - Database: `HangVidU:Contacts`
+  - Tables: `contacts` (roomId, lastConnected)
+  - Purpose: Offline-capable contact storage
+
+**LocalStorage:**
+- Simple key-value preferences
+  - Client: `src/storage/local/recent-rooms-local.js`
+  - Purpose: Guest user ID persistence, recent rooms
 
 ## Authentication & Identity
 
-**Auth Provider:**
-- Firebase Auth - Email/password + OAuth
-  - Implementation: Firebase SDK with Google provider
-  - Token storage: IndexedDB (primary), LocalStorage (fallback), in-memory (last resort)
-  - Session management: Firebase handles token refresh automatically
-  - Guest support: Random IDs cached for session (`src/firebase/auth.js`)
+**Firebase Authentication:**
+- Primary auth provider
+  - SDK: `firebase/auth` from Firebase SDK
+  - Client: `src/firebase/auth.js`
+  - Providers: Google (via popup or One Tap)
+  - Persistence: IndexedDB (primary), LocalStorage (fallback), in-memory (last resort)
+  - Features:
+    - `signInWithPopup` for explicit sign-in
+    - `signInWithCredential` for One Tap
+    - iOS PWA Safari fallback handling
+    - Guest user support with TTL-based IDs
 
-**OAuth Integrations:**
-- Google OAuth - Social sign-in with One Tap
-  - Credentials: `VITE_APP_GOOGLE_CLIENT_ID` (Supabase dashboard)
-  - Scopes: email, profile
-  - Special handling for iOS PWA mode (`src/utils/env/redirectIOSPWA.js`)
+**Firebase App Check:**
+- App attestation to protect backend resources
+  - SDK: `firebase/app-check`
+  - Client: `src/firebase/firebase.js`
+  - Provider: reCAPTCHA Enterprise (invisible mode)
+  - Auth: `VITE_RECAPTCHA_ENTERPRISE_SITE_KEY`
+  - Development: Debug token support via `VITE_FIREBASE_APP_CHECK_DEBUG_TOKEN`
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- Sentry - Server and client errors
-  - DSN: `VITE_SENTRY_DSN` environment variable
-  - Implementation: `src/initSentry.js`
-
-**Analytics:**
-- None (Firebase Analytics configured but not actively used)
+- Sentry (optional)
+  - Initialization: `src/initSentry.js`
+  - Config: `VITE_SENTRY_DSN` env var
+  - Features: Exception capture, default PII enabled
 
 **Logs:**
-- Browser console only - No external logging service
-  - Dev logging via `src/utils/dev/dev-utils.js` and `src/utils/dev/diagnostic-logger.js`
+- Console logging with dev-only helpers
+  - `devDebug()` from `src/utils/dev/dev-utils.js` - Development-only logging
+  - Production logs use `console.info/warn/error` with PII redaction
+
+**Presence Tracking:**
+- Firebase RTDB presence system
+  - Client: `src/firebase/presence.js`
+  - Features: Online/offline status, last seen timestamp
+  - Implementation: `onDisconnect()` for automatic offline on disconnect
 
 ## CI/CD & Deployment
 
-**Hosting:**
-- Firebase Hosting - Primary target
-  - Deployment: Automatic via `pnpm deploy:fb`
-  - Environment vars: Configured in `.env.production`
-- GitHub Pages - Secondary target
-  - Deployment: Manual via `pnpm deploy:gh`
+**Firebase Hosting:**
+- Primary production deployment
+  - Config: `firebase.json`
+  - Deploy: `pnpm deploy:fb`
+  - Features: SPA rewrites, static asset hosting
+
+**GitHub Pages:**
+- Secondary deployment
+  - Deploy: `pnpm deploy:gh` (uses gh-pages package)
   - Base path: `/HangVidU/`
 
-**CI Pipeline:**
-- None detected - Manual deployment only
+**Development Tunneling:**
+- ngrok for external access during development
+  - Config: `NGROK_DOMAIN` env var (optional)
+  - Purpose: Mobile device testing, webhook testing
 
 ## Environment Configuration
 
-**Development:**
-- Required env vars: Firebase config, YouTube API key, reCAPTCHA key
-- Secrets location: `.env.development` (gitignored)
-- Mock/stub services: Firebase Auth test mode, test API keys
+**Required env vars:**
+```bash
+# Firebase Core
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_DATABASE_URL=
+VITE_FIREBASE_APP_ID=
 
-**Production:**
-- Secrets management: Environment variables in Firebase Hosting config
-- Data: Firebase Realtime Database with production rules
+# Google Auth
+VITE_APP_GOOGLE_CLIENT_ID=
+
+# Firebase App Check
+VITE_RECAPTCHA_ENTERPRISE_SITE_KEY=
+```
+
+**Optional env vars:**
+```bash
+# YouTube (enables search)
+VITE_YOUTUBE_API_KEY=
+
+# Sentry (enables error tracking)
+VITE_SENTRY_DSN=
+
+# Firebase Optional
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_MEASUREMENT_ID=
+
+# Development
+VITE_FIREBASE_APP_CHECK_DEBUG_TOKEN=
+NGROK_DOMAIN=
+VITE_PORT=5173
+```
+
+**Secrets location:**
+- Local: `.env`, `.env.development`, `.env.production` (not committed)
+- Production: Firebase environment or hosting platform secrets
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-- None
+- Firebase Auth handler: `/__/auth/handler` (proxied in dev)
+- Firebase init.json: `/__/firebase/init.json` (proxied in dev)
 
 **Outgoing:**
-- None
+- None (all integrations use client-side SDKs)
 
-## Third-Party Integrations
+## WebRTC Configuration
 
-**WebRTC Infrastructure:**
-- Browser native WebRTC APIs (no third-party WebRTC server)
-  - RTCPeerConnection, MediaDevices.getUserMedia, DataChannel
-  - STUN/TURN servers configured via Firebase/environment
-  - Implementation: `src/webrtc/call-flow.js`, `src/media/stream.js`
+**STUN/TURN Servers:**
+- Uses Google's public STUN servers (default in browser)
+- ICE candidate exchange via Firebase RTDB
+- Implementation: `src/webrtc/ice.js`, `src/webrtc/call-flow.js`
 
-**Service Worker & PWA:**
-- Workbox (via vite-plugin-pwa) - Service Worker generation and caching
-  - Cache strategies, offline support
-  - Implementation: `vite.config.js` VitePWA plugin configuration
-  - Update handling: `src/pwa/PWA.js`, `src/components/notifications/pwa-update-toast.js`
-
-**Font & Icons:**
-- Font Awesome 7.1.0 - UI icons via CSS
-  - Implementation: `src/main.js` (imports `@fortawesome/fontawesome-free/css/all.min.css`)
-
-## Environment Variables (Reference)
-
-Located in `.env.development` and `.env.production`:
-
-| Variable | Service | Purpose |
-|----------|---------|---------|
-| `VITE_APP_GOOGLE_CLIENT_ID` | Google OAuth | Authentication |
-| `VITE_FIREBASE_API_KEY` | Firebase | SDK initialization |
-| `VITE_FIREBASE_AUTH_DOMAIN` | Firebase Auth | OAuth redirect domain |
-| `VITE_FIREBASE_PROJECT_ID` | Firebase | Project identification |
-| `VITE_FIREBASE_DATABASE_URL` | Firebase RTDB | Real-time database connection |
-| `VITE_FIREBASE_STORAGE_BUCKET` | Firebase Storage | Optional media storage |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Firebase | Cloud messaging (optional) |
-| `VITE_FIREBASE_MEASUREMENT_ID` | Firebase Analytics | Usage tracking (optional) |
-| `VITE_FIREBASE_APP_ID` | Firebase | App identification |
-| `VITE_RECAPTCHA_ENTERPRISE_SITE_KEY` | reCAPTCHA Enterprise | Bot prevention |
-| `VITE_YOUTUBE_API_KEY` | YouTube API | Video search |
-| `VITE_SENTRY_DSN` | Sentry | Error reporting endpoint |
-| `VITE_APP_HOSTING_URL` | Firebase Hosting | Canonical app URL |
-| `NGROK_DOMAIN` | ngrok (dev only) | Custom tunnel domain |
-
-**Note:** All values must be kept secret. Never commit `.env` files to version control.
+**Signaling:**
+- Firebase RTDB for SDP offer/answer exchange
+- Room-based signaling model
+- Automatic ICE restart on connection failure
 
 ---
 
-*Integration audit: 2026-01-08*
-*Update when adding/removing external services*
+*Integration audit: 2026-01-19*

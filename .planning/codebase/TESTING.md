@@ -1,71 +1,81 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-01-08
+**Analysis Date:** 2026-01-19
 
 ## Test Framework
 
 **Runner:**
-- Vitest 4.0.13 - Primary test framework with browser mode
-- Config: `vitest.config.js` in project root
-- Browser provider: @vitest/browser-playwright 4.0.13
+- Vitest 4.0.13 (browser mode with Playwright provider)
+- Config: `vitest.config.js`
+
+**Browser Mode:**
+- Tests run in actual Chromium browser (native APIs)
+- No JSDOM - real browser environment
+- Optional cross-browser: `COMPAT=true` runs Chromium + Firefox + WebKit
 
 **Assertion Library:**
-- Vitest built-in `expect`
-- Matchers: `toBe`, `toEqual`, `toThrow`, `toMatchObject`, `toHaveBeenCalledWith`
+- Vitest's built-in `expect()` (compatible with Jest)
 
 **Run Commands:**
 ```bash
-pnpm test                              # Run all tests (Chromium only, fast)
-pnpm test:watch                        # Watch mode for development
-pnpm test:ui                           # Vitest UI for debugging
-pnpm test:compat                       # Cross-browser (Chromium + Firefox + WebKit)
-pnpm test:smoke                        # Quick smoke tests only
-pnpm test:unit                         # Unit tests only
-pnpm test:integration                  # Integration tests only
-pnpm test:e2e                          # Playwright E2E tests
-pnpm test:e2e:ui                       # E2E with Playwright UI
-pnpm test:e2e:headed                   # E2E with visible browser
-pnpm test:e2e:debug                    # Debug E2E tests
-pnpm test:all                          # Full test suite (compat + e2e)
+pnpm test              # Run all tests (Chromium only, fast)
+pnpm test:watch        # Watch mode for development
+pnpm test:ui           # Vitest UI for debugging
+pnpm test:compat       # Cross-browser (Chromium + Firefox + WebKit)
+pnpm test:smoke        # Quick smoke tests only
+pnpm test:unit         # Unit tests only
+pnpm test:integration  # Integration tests only
+pnpm test:coverage     # Run with coverage report
+```
+
+## E2E Framework
+
+**Runner:**
+- Playwright 1.56.1
+- Config: `playwright.config.js`
+
+**Run Commands:**
+```bash
+pnpm test:e2e          # E2E tests (headless)
+pnpm test:e2e:ui       # E2E with Playwright UI
+pnpm test:e2e:headed   # E2E with visible browser
+pnpm test:e2e:debug    # Debug E2E tests
+pnpm test:e2e:report   # View test report
 ```
 
 ## Test File Organization
 
 **Location:**
-- Unit tests: `tests/unit/*.test.js` OR co-located `src/**/*.test.js`
-- Integration tests: `tests/integration/*.test.js`
-- Smoke tests: `tests/smoke/*.test.js`
-- E2E tests: `tests/e2e/*.spec.js` (Playwright, separate from Vitest)
-- Investigation tests: `tests/investigation/*.test.js` (bug reproduction)
+- Co-located tests: `src/**/*.test.js` (next to source)
+- Separate test directories: `tests/unit/`, `tests/integration/`, `tests/smoke/`
+- E2E tests: `tests/e2e/*.spec.js`
 
 **Naming:**
-- Vitest: `*.test.js` suffix
-- Playwright E2E: `*.spec.js` suffix (ONLY for E2E, not unit/integration)
+- Vitest tests: `*.test.js`
+- Playwright E2E: `*.spec.js`
 
 **Structure:**
 ```
-tests/
-├── unit/                              # Isolated function/class tests
-│   ├── call-controller.test.js
-│   └── incoming-listener-cleanup.test.js
-├── integration/                       # Module integration tests
-│   └── call-flow-imports.test.js
-├── smoke/                             # Quick sanity tests
-│   └── call-controller-smoke.test.js
-├── investigation/                     # Bug investigation tests
-│   └── camera-switch-freeze.test.js
-└── e2e/                              # End-to-end tests (Playwright)
-    └── smoke.spec.js
-
 src/
 ├── webrtc/
+│   ├── call-controller.js
 │   └── tests/
-│       └── ice.test.js               # Co-located with ice.js
-├── utils/dom/
-│   └── tests/
-│       └── component.test.js         # Co-located with component.js
-└── components/base/button/
-    └── icon-button.test.js           # Co-located with icon-button.js
+│       ├── ice.test.js
+│       └── rtdb-listener-cleanup.test.js
+├── messaging/
+│   ├── messaging-controller.js
+│   └── messaging-controller.test.js
+tests/
+├── unit/
+│   ├── call-controller.test.js
+│   └── firebase-connection.test.js
+├── integration/
+│   └── call-flow-imports.test.js
+├── smoke/
+│   └── call-controller-smoke.test.js
+├── e2e/
+│   └── smoke.spec.js
+└── setup.js
 ```
 
 ## Test Structure
@@ -74,150 +84,150 @@ src/
 ```javascript
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-describe('ModuleName', () => {
-  describe('functionName', () => {
-    beforeEach(() => {
-      // Setup before each test (reset state, create fixtures)
-    });
+describe('CallController (unit)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    CallController.resetState();
+  });
 
-    afterEach(() => {
-      // Cleanup after each test (restore mocks, remove DOM elements)
-    });
+  afterEach(() => {
+    CallController.resetState();
+  });
 
-    it('should handle success case', () => {
-      // Arrange
-      const input = createTestInput();
+  it('createCall delegates to call-flow and emits created event', async () => {
+    // Arrange
+    const fakeResult = { success: true, roomId: 'room-123' };
+    createCallFlow.mockResolvedValueOnce(fakeResult);
+    const created = vi.fn();
+    CallController.on('created', created);
 
-      // Act
-      const result = functionName(input);
+    // Act
+    const res = await CallController.createCall({ localStream: {} });
 
-      // Assert
-      expect(result).toEqual(expectedOutput);
-    });
-
-    it('should handle error case', () => {
-      expect(() => functionName(null)).toThrow('Invalid input');
-    });
+    // Assert
+    expect(createCallFlow).toHaveBeenCalled();
+    expect(res).toEqual(fakeResult);
+    expect(created).toHaveBeenCalledWith({ roomId: 'room-123', ... });
   });
 });
 ```
 
 **Patterns:**
-- Use `beforeEach` for per-test setup (avoid `beforeAll`)
-- Use `afterEach` to restore mocks and clean up DOM
-- Explicit arrange/act/assert comments in complex tests (optional)
-- One assertion focus per test (but multiple `expect()` calls OK)
+- Group related tests with nested `describe()` blocks
+- Use descriptive test names: "should X when Y"
+- Arrange-Act-Assert structure
+- Reset state in `beforeEach`/`afterEach`
 
 ## Mocking
 
-**Framework:**
-- Vitest built-in mocking (`vi`)
-- Module mocking via `vi.mock()` at top of test file
+**Framework:** Vitest's `vi.mock()` and `vi.fn()`
 
-**Patterns:**
+**Module Mocking Pattern:**
 ```javascript
-import { vi } from 'vitest';
-
-// Mock entire module
+// Mock at top of file, before imports
 vi.mock('../../src/webrtc/call-flow.js', () => ({
   createCall: vi.fn(),
   answerCall: vi.fn(),
 }));
 
-// Mock Firebase functions
-vi.mock('firebase/database', () => ({
-  getDatabase: vi.fn(() => ({})),
-  ref: vi.fn(() => ({})),
-  push: vi.fn(() => ({})),
-  set: vi.fn(() => Promise.resolve()),
-  onChildAdded: vi.fn(),
-  onValue: vi.fn(),
-  off: vi.fn(),
+vi.mock('../../src/room.js', () => ({
+  default: {
+    cancelCall: vi.fn(),
+    leaveRoom: vi.fn(),
+    onMemberJoined: vi.fn(),
+  },
 }));
 
-// Use mocked functions in tests
-import { createCall } from '../../src/webrtc/call-flow.js';
-const mockCreateCall = vi.mocked(createCall);
-mockCreateCall.mockResolvedValue({ success: true });
+vi.mock('../../src/firebase/auth.js', () => ({
+  getUserId: () => 'test-user-id',
+  getCurrentUser: () => ({ uid: 'test-user-id' }),
+  isLoggedIn: () => true,
+}));
+
+vi.mock('firebase/database', () => ({
+  ref: vi.fn((db, path) => ({ _path: path })),
+  off: vi.fn(),
+  get: vi.fn(),
+  set: vi.fn(),
+  onValue: vi.fn(),
+  onChildAdded: vi.fn(),
+}));
+```
+
+**Mock Transport for Testing:**
+```javascript
+class MockTransport {
+  constructor() {
+    this.sentMessages = [];
+    this.listeners = new Map();
+  }
+
+  async send(contactId, text) {
+    this.sentMessages.push({ contactId, text });
+  }
+
+  listen(contactId, onMessage) {
+    this.listeners.set(contactId, onMessage);
+    return () => this.listeners.delete(contactId);
+  }
+
+  // Test helper
+  simulateMessage(contactId, text) {
+    const listener = this.listeners.get(contactId);
+    if (listener) listener(text, { text }, false);
+  }
+}
 ```
 
 **What to Mock:**
-- Firebase database operations (RTDB listeners, reads, writes)
-- External API calls (YouTube search)
-- File system operations (if any)
-- Browser APIs when not in browser mode (rare, since we use browser mode)
+- Firebase database operations
+- External API calls
+- Auth state
+- Dependency modules when testing unit behavior
 
 **What NOT to Mock:**
-- WebRTC APIs (browser mode provides native APIs)
-- Internal pure functions
-- Simple utilities (string manipulation, array helpers)
-
-**Example from `src/webrtc/tests/ice.test.js`:**
-```javascript
-vi.mock('firebase/database', () => ({
-  getDatabase: vi.fn(() => ({})),
-  ref: vi.fn(() => ({})),
-  push: vi.fn(() => ({})),
-  set: vi.fn(() => Promise.resolve()),
-  onChildAdded: vi.fn(),
-  get: vi.fn(() => Promise.resolve({ exists: () => false, val: () => null })),
-  onValue: vi.fn(),
-  off: vi.fn(),
-}));
-
-vi.mock('../../firebase/firebase', () => ({ app: {} }));
-vi.mock('../storage/fb-rtdb/rtdb', () => ({
-  rtdb: {},
-  addRTDBListener: vi.fn(),
-}));
-```
+- Native browser APIs in browser mode (WebRTC, DOM)
+- The module under test
+- Simple utilities without side effects
 
 ## Fixtures and Factories
 
 **Test Data:**
 ```javascript
-// Factory functions in test file
-function createTestConfig(overrides) {
-  return {
-    targetDir: '/tmp/test',
-    global: false,
-    ...overrides,
-  };
-}
+const mockResult = {
+  success: true,
+  pc: { id: 'pc1' },
+  roomId: 'room-123',
+  roomLink: 'https://example.com/?room=room-123',
+  role: 'initiator',
+  dataChannel: { addEventListener: vi.fn(), readyState: 'open' },
+};
 
-function createMockPeerConnection() {
-  return {
-    addIceCandidate: vi.fn().mockResolvedValue(undefined),
-    remoteDescription: null,
-  };
-}
+const mockCandidates = [
+  {
+    candidate: 'candidate:1 1 UDP 2122260223 192.168.1.1 50001 typ host',
+    sdpMid: '0',
+    sdpMLineIndex: 0,
+  },
+];
 ```
 
 **Location:**
-- Factory functions: Define in test file near usage
-- Shared fixtures: Not heavily used (most tests create data inline)
-
-**Example from `tests/unit/call-controller.test.js`:**
-```javascript
-function createMockCallController() {
-  return {
-    state: 'idle',
-    createCall: vi.fn(),
-    answerCall: vi.fn(),
-    hangup: vi.fn(),
-  };
-}
-```
+- Inline in test files for simple fixtures
+- `tests/fixtures/` for shared test data
 
 ## Coverage
 
-**Requirements:**
-- No enforced coverage target
-- Coverage tracked for awareness
+**Requirements:** None enforced (no coverage thresholds)
 
-**Configuration:**
+**View Coverage:**
+```bash
+pnpm test:coverage     # Generate report
+# Reports output to /coverage/
+```
+
+**Coverage config:**
 ```javascript
-// From vitest.config.js
 coverage: {
   reporter: ['text', 'html', 'lcov'],
   exclude: [
@@ -230,63 +240,102 @@ coverage: {
 }
 ```
 
-**View Coverage:**
-```bash
-pnpm test:coverage      # Run tests with coverage
-open coverage/index.html  # View HTML report
-```
-
 ## Test Types
 
 **Unit Tests:**
-- Scope: Test single function/class in isolation
-- Mocking: Mock all external dependencies (Firebase, APIs)
-- Speed: Fast (<100ms per test)
-- Examples: `tests/unit/call-controller.test.js`, `src/webrtc/tests/ice.test.js`
+- Location: `tests/unit/`, `src/**/*.test.js`
+- Scope: Single module/function isolation
+- Heavy mocking of dependencies
+- Fast execution
 
 **Integration Tests:**
-- Scope: Test multiple modules together
-- Mocking: Mock only external boundaries (Firebase, external APIs), use real internal modules
-- Examples: `tests/integration/call-flow-imports.test.js`
+- Location: `tests/integration/`
+- Scope: Module import chains, real module interactions
+- Light mocking (only external services)
+- Verify imports resolve correctly
 
 **Smoke Tests:**
-- Scope: Quick sanity checks for critical functionality
-- Speed: Very fast
-- Examples: `tests/smoke/call-controller-smoke.test.js`
+- Location: `tests/smoke/`
+- Scope: Critical happy paths
+- Minimal mocking
+- Quick verification after refactors
+- Target: < 5 seconds
 
 **E2E Tests:**
-- Framework: Playwright 1.56.1 (separate from Vitest)
-- Scope: Test full user flows in real browser
-- Location: `tests/e2e/smoke.spec.js`
-- Config: `playwright.config.js`
-- Special: Uses fake media devices (`--use-fake-device-for-media-stream`)
+- Location: `tests/e2e/*.spec.js`
+- Scope: Full user flows in browser
+- Uses Playwright with fake media devices
+- Single worker (WebRTC coordination)
+- Extended timeouts for connection establishment
 
 ## Common Patterns
 
 **Async Testing:**
 ```javascript
 it('should handle async operation', async () => {
-  const result = await asyncFunction();
-  expect(result).toBe('expected');
+  const result = await CallController.createCall({ localStream: {} });
+  expect(result.success).toBe(true);
+});
+
+it('should wait for async with timeout', async () => {
+  // Wait a tick for async listener setup
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  expect(CallController.listeners.has('rejection')).toBe(true);
 });
 ```
 
 **Error Testing:**
 ```javascript
-// Synchronous error
-it('should throw on invalid input', () => {
-  expect(() => functionCall()).toThrow('error message');
+it('should throw if transport is missing', () => {
+  expect(() => new MessagingController()).toThrow('transport implementation');
 });
 
-// Async error
-it('should reject on failure', async () => {
-  await expect(asyncCall()).rejects.toThrow('error message');
+it('should reject invalid input', async () => {
+  await expect(session.send('')).rejects.toThrow('non-empty string');
+  await expect(session.send(null)).rejects.toThrow('non-empty string');
 });
 ```
 
-**DOM Testing (Browser Mode):**
+**Event Listener Testing:**
 ```javascript
-describe('Component', () => {
+it('emits remoteHangup event when cleanup is triggered by remote party', async () => {
+  CallController.pc = { close: vi.fn() };
+  CallController.roomId = 'room-remote';
+  CallController.partnerId = 'partner-123';
+
+  const remoteHangupListener = vi.fn();
+  CallController.on('remoteHangup', remoteHangupListener);
+
+  await CallController.cleanupCall({ reason: 'remote_cancelled' });
+
+  expect(remoteHangupListener).toHaveBeenCalledWith({
+    roomId: 'room-remote',
+    partnerId: 'partner-123',
+    reason: 'remote_cancelled',
+  });
+});
+```
+
+**Idempotency Testing:**
+```javascript
+it('multiple rapid hangUp calls only execute once', async () => {
+  CallController.pc = { close: vi.fn() };
+  CallController.roomId = 'room-idempotent';
+  RoomService.cancelCall.mockResolvedValueOnce();
+
+  await Promise.all([
+    CallController.hangUp(),
+    CallController.hangUp(),
+    CallController.hangUp(),
+  ]);
+
+  expect(RoomService.cancelCall).toHaveBeenCalledTimes(1);
+});
+```
+
+**DOM Component Testing:**
+```javascript
+describe('createIconButton', () => {
   let container;
 
   beforeEach(() => {
@@ -298,83 +347,25 @@ describe('Component', () => {
     document.body.innerHTML = '';
   });
 
-  it('renders and fires click handler', () => {
+  it('renders icon and fires click handler', () => {
     const onClick = vi.fn();
-    const component = createComponent({
-      parent: container,
+    const btn = createIconButton({
+      title: 'Call',
+      iconHtml: '<i class="fa fa-phone"></i>',
       onClick,
+      parent: container,
     });
 
-    const button = container.querySelector('button');
+    const button = btn.querySelector('button');
     button.click();
-
-    expect(onClick).toHaveBeenCalled();
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 });
 ```
 
-**Spy Pattern:**
-```javascript
-it('calls dependency with correct arguments', () => {
-  const spy = vi.spyOn(dependency, 'method');
+## E2E Patterns
 
-  functionUnderTest();
-
-  expect(spy).toHaveBeenCalledWith('expected', 'args');
-  spy.mockRestore();
-});
-```
-
-## Browser Mode Configuration
-
-**From `vitest.config.js`:**
-```javascript
-test: {
-  browser: {
-    enabled: true,
-    provider: playwright(),
-    headless: true,
-    instances: isCompatMode
-      ? [
-          { browser: 'chromium' },
-          { browser: 'firefox' },
-          { browser: 'webkit' },
-        ]
-      : [{ browser: 'chromium' }],
-  },
-  globals: true,
-  setupFiles: ['./tests/setup.js'],
-}
-```
-
-**Key Features:**
-- Native browser APIs (WebRTC, MediaDevices) without mocking
-- Cross-browser testing with `COMPAT=true` environment variable
-- Setup file stubs Firebase environment variables
-
-**Setup File (`tests/setup.js`):**
-```javascript
-// Stub import.meta.env for tests so Firebase config does not throw
-try {
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-    Object.assign(import.meta.env, {
-      VITE_FIREBASE_API_KEY: 'dummy',
-      VITE_FIREBASE_AUTH_DOMAIN: 'dummy',
-      // ... other stubs
-    });
-  }
-} catch {}
-```
-
-## E2E Test Configuration
-
-**Playwright Config (`playwright.config.js`):**
-- Single worker (WebRTC coordination required)
-- Fake media streams (`--use-fake-device-for-media-stream`)
-- Self-signed cert acceptance for local HTTPS
-- Extended timeouts for connection establishment
-
-**Example E2E Test (`tests/e2e/smoke.spec.js`):**
+**Playwright E2E Test:**
 ```javascript
 import { test, expect } from '@playwright/test';
 
@@ -384,24 +375,47 @@ test.describe('Core Functionality Smoke Tests', () => {
     await expect(page.locator('#lobby')).toBeVisible();
     await expect(page.locator('#lobby-call-btn')).toBeVisible();
   });
+
+  test('UI elements are present and interactive', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('#lobby-call-btn')).toBeEnabled();
+    await expect(page.locator('#chat-controls')).toBeAttached();
+  });
 });
 ```
 
-## Test Commands Summary
+**WebRTC E2E Config:**
+```javascript
+// playwright.config.js
+use: {
+  permissions: ['camera', 'microphone'],
+  launchOptions: {
+    args: [
+      '--use-fake-ui-for-media-stream',
+      '--use-fake-device-for-media-stream',
+    ],
+  },
+}
+```
 
-| Command | Purpose | Browser(s) | Speed |
-|---------|---------|------------|-------|
-| `pnpm test` | All Vitest tests | Chromium | Fast |
-| `pnpm test:watch` | Watch mode | Chromium | Interactive |
-| `pnpm test:ui` | Vitest UI | Chromium | Interactive |
-| `pnpm test:compat` | Cross-browser | Chromium, Firefox, WebKit | Slow |
-| `pnpm test:smoke` | Smoke tests only | Chromium | Very Fast |
-| `pnpm test:unit` | Unit tests only | Chromium | Fast |
-| `pnpm test:integration` | Integration tests only | Chromium | Medium |
-| `pnpm test:e2e` | Playwright E2E | Chromium | Slow |
-| `pnpm test:all` | Full suite | All | Slowest |
+## Test Setup
+
+**Global Setup (`tests/setup.js`):**
+```javascript
+// Stub import.meta.env for tests
+try {
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    Object.assign(import.meta.env, {
+      VITE_FIREBASE_API_KEY: 'dummy',
+      VITE_FIREBASE_AUTH_DOMAIN: 'dummy',
+      VITE_FIREBASE_PROJECT_ID: 'dummy',
+    });
+  }
+} catch {}
+
+// Browser mode provides native WebRTC APIs - no mocking needed
+```
 
 ---
 
-*Testing analysis: 2026-01-08*
-*Update when test patterns change*
+*Testing analysis: 2026-01-19*
