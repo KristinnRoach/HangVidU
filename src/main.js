@@ -14,6 +14,7 @@ import {
   getUserRecentCallsRef,
   getUserRecentCallRef,
 } from './storage/fb-rtdb/rtdb.js';
+
 import {
   getLoggedInUserId,
   getUserId,
@@ -21,17 +22,17 @@ import {
   authReady,
 } from './firebase/auth.js';
 
+import { clearUrlParam } from './utils/url.js';
+
 import { initializeAuthUI } from './components/auth/AuthComponent.js';
 
 import { showElement, hideElement } from './utils/ui/ui-utils.js';
 
-import { clearUrlParam } from './utils/url.js';
 import {
   enterWatchMode,
   exitWatchMode,
   isRemoteVideoVideoActive,
-} from './components/ui/watch-mode.js';
-import { enterCallMode, exitCallMode } from './components/ui/call-mode.js';
+} from './ui/legacy/watch-mode.js';
 
 import {
   saveContact,

@@ -1,7 +1,7 @@
 // src/webrtc/webrtc.js
 
 import { devDebug } from '../utils/dev/dev-utils.js';
-import { enterCallMode, exitCallMode } from '../components/ui/call-mode.js';
+import { enterCallMode } from '../ui/legacy/call-mode.js';
 import { clearUrlParam } from '../utils/url.js';
 import { onCallAnswered } from '../components/calling/calling-ui.js';
 import CallController from './call-controller.js';
@@ -20,7 +20,7 @@ export function setupConnectionStateHandlers(pc) {
       enterCallMode();
       // Ensure any calling overlay is dismissed once connected
       onCallAnswered().catch((e) =>
-        console.warn('Failed to clear calling state on connect:', e)
+        console.warn('Failed to clear calling state on connect:', e),
       );
       // Clear any pending disconnect timeout if we reconnect
       if (disconnectTimeoutId) {

@@ -22,7 +22,7 @@ import {
 
 import { sharedVideoEl, sharedBoxEl } from '../elements.js'; // TODO: refactor:
 import { hideElement, showElement } from '../utils/ui/ui-utils.js';
-import { enterWatchMode } from '../components/ui/watch-mode.js';
+import { enterWatchMode } from '../ui/legacy/watch-mode.js';
 
 // ============================================================================
 // WATCH-TOGETHER SYNC (Firebase-based)
