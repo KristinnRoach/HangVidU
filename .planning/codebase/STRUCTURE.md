@@ -17,8 +17,9 @@ HangVidU/
 │   │   ├── modal/          # Modal components
 │   │   ├── notifications/  # Toast notifications, update prompts
 │   │   ├── recent-calls/   # Recent calls UI
-│   │   ├── select/         # Media device selector
-│   │   └── ui/             # UI state managers (call-mode, watch-mode)
+│   │   └── select/         # Media device selector
+│   ├── ui/                 # UI lifecycle adapters (refactor in progress)
+│   │   └── legacy/         # Legacy UI state managers (call-mode, watch-mode)
 │   ├── contacts/           # Contact logic (invitations, discovery)
 │   ├── firebase/           # Firebase services (auth, watch-sync, presence)
 │   ├── file-transfer/      # File chunking and assembly
@@ -85,10 +86,17 @@ HangVidU/
   - `messages/messages-ui.js`: Chat overlay with file transfer
   - `calling/calling-ui.js`: Calling/connecting state indicators
   - `contacts/contacts.js`: Contact list rendering and management
-  - `ui/call-mode.js`: Call mode UI state transitions
-  - `ui/watch-mode.js`: Watch-together UI state transitions
   - `base/confirm-dialog.js`: Reusable confirmation dialog
   - `notifications/notification-manager.js`: Toast notification system
+
+**`src/ui/`:**
+- Purpose: UI state management and cross-component UI logic (refactor in progress)
+- Contains: Source of truth for UI state, lifecycle adapters, legacy state managers
+- Key files:
+  - `call-lifecycle-ui.js`: Call UI lifecycle adapter (in development)
+  - `watch-lifecycle-ui.js`: Watch UI lifecycle adapter (in development)
+  - `legacy/call-mode.js`: Legacy call mode UI state transitions
+  - `legacy/watch-mode.js`: Legacy watch-together UI state transitions
 
 **`src/webrtc/`:**
 

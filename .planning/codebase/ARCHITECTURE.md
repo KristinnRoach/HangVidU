@@ -102,7 +102,7 @@
 **State Management:**
 - Call state: `CallController` singleton with event emitter pattern
 - Media state: Module-level variables in `src/media/state.js`
-- UI state: Module-level flags in `call-mode.js`, `watch-mode.js`
+- UI state: Module-level flags in `src/ui/legacy/call-mode.js`, `src/ui/legacy/watch-mode.js` (refactor in progress)
 - Auth state: Firebase Auth SDK with `onAuthStateChanged` subscriptions
 - Room state: Firebase RTDB with real-time listeners
 
