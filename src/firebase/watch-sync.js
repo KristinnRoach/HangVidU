@@ -20,9 +20,10 @@ import {
   setYouTubeReady,
 } from '../media/youtube/youtube-player.js';
 
-import { sharedVideoEl, sharedBoxEl } from '../elements.js'; // TODO: refactor:
+import { sharedVideoEl, sharedBoxEl } from '../elements.js'; // TODO: refactor?
 import { hideElement, showElement } from '../utils/ui/ui-utils.js';
-import { enterWatchMode } from '../components/ui/watch-mode.js';
+
+import { onWatchModeEntered } from '../ui/watch-lifecycle-ui.js';
 
 // ============================================================================
 // WATCH-TOGETHER SYNC (Firebase-based)
@@ -258,7 +259,7 @@ function handleRemoteUrlChange(url) {
     lastWatched = 'url';
   }
 
-  enterWatchMode(); // Needed here since handleRemoteUrlChange() bypasses loadStream()
+  onWatchModeEntered(); // Needed here since handleRemoteUrlChange() bypasses loadStream()
 }
 
 // -----------------------------------------------------------------------------
@@ -475,7 +476,7 @@ async function loadStream(url) {
     }
   }
 
-  enterWatchMode();
+  onWatchModeEntered();
 
   return true;
 }
@@ -507,7 +508,7 @@ export async function handleVideoSelection(source) {
   const success = await loadStream(url);
 
   if (success) {
-    // enterWatchMode(); // moved to loadStream()
+    // onWatchModeEntered(); // moved to loadStream()
   } else if (isBlobUrl(currentVideoUrl) && source instanceof File) {
     URL.revokeObjectURL(url);
     currentVideoUrl = null;

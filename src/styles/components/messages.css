@@ -81,10 +81,8 @@
   white-space: pre-wrap; /* Preserve line breaks from Shift+Enter */
   overflow-wrap: break-word; /* Wrap long words */
   word-break: break-word; /* Fallback for older browsers */
-}
 
-/* Layout: always render avatar + text in DOM; use flex + order to position */
-#messages p {
+  /* Layout: always render avatar + text in DOM; use flex + order to position */
   display: flex;
   align-items: center;
   gap: 8px;
@@ -124,6 +122,32 @@
   text-align: left;
 }
 
+/* Subtle message-bubble styling */
+#messages .message-text {
+  display: inline-block;
+  margin: 4px 0;
+  padding: 8px;
+  border-radius: 16px;
+  order: 1;
+
+  max-width: 88%;
+  word-break: break-word;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
+  color: var(--text-primary);
+}
+
+#messages p.message-local .message-text {
+  background: rgba(74, 158, 255, 0.2);
+  border-radius: 16px 16px 2px 16px;
+  border: 1px solid rgba(84, 162, 251, 0.24);
+}
+
+#messages p.message-remote .message-text {
+  background: rgba(188, 188, 188, 0.205);
+  border-radius: 16px 16px 16px 2px;
+  border: 1px solid rgba(255, 255, 255, 0.274);
+}
+
 /* Sender avatar (single-letter placeholder) */
 #messages .sender-avatar {
   display: inline-flex;
@@ -144,7 +168,8 @@
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  margin-right: 8px;
+  margin-left: 0;
+  margin-right: 2px;
   font-size: 13px;
   line-height: 1;
 }
@@ -154,15 +179,12 @@
   background: #228332; /* subtle green */
   color: #ffffff;
   margin-right: 0;
-  margin-left: 8px;
+  margin-left: 2px;
 }
 
 /* Order rules: avatar left for remote, right for local */
 #messages .sender-avatar {
   order: 0;
-}
-#messages .message-text {
-  order: 1;
 }
 #messages p.message-local .sender-avatar {
   order: 1;
