@@ -21,18 +21,25 @@ function normalizeSafeHref(raw) {
   // Use the browser's URL parser when available to robustly extract protocol.
   // Fallback to regex-based check if URL constructor fails.
   let protocol = '';
+  let parsedUrl = null;
   try {
-    const urlObj = new URL(
+    parsedUrl = new URL(
       href,
       window.location && window.location.origin
         ? window.location.origin
         : undefined,
     );
-    protocol = urlObj.protocol; // e.g., "http:", "https:", "javascript:"
+    protocol = parsedUrl.protocol; // e.g., "http:", "https:", "javascript:"
   } catch (_) {
     const match = href.match(/^([a-zA-Z][a-zA-Z0-9+.-]*:)/);
     protocol = match ? match[1].toLowerCase() : '';
   }
+  // If we successfully parsed the URL, require a non-empty hostname to
+  // avoid turning obviously invalid strings into clickable links.
+  if (parsedUrl && !parsedUrl.hostname) {
+    return null;
+  }
+
 
   const lowerProtocol = protocol.toLowerCase();
   if (lowerProtocol !== 'http:' && lowerProtocol !== 'https:') {
@@ -48,7 +55,8 @@ export function linkifyToFragment(text) {
 
   // Basic URL regex: matches http(s)://... or www....
   // Intentionally simple so it's fast and easy to extend later.
-  const urlRegex = /((?:https?:\/\/|www\.)[^\s<>]+)/g;
+  // Require at least one dot in the host part to reduce false positives.
+  const urlRegex = /((?:https?:\/\/|www\.)[^\s<>]+\.[^\s<>]+)/g;
   let lastIndex = 0;
   let match;
 
