@@ -9,6 +9,8 @@ import {
   cancelWatchRequest,
 } from '../../firebase/watch-sync.js';
 
+import { linkifyToFragment } from '../../utils/linkify.js';
+
 // Helper: create the messages box DOM and return container + element refs
 function createMessageBox() {
   const messagesBoxContainer = document.createElement('div');
@@ -682,7 +684,11 @@ export function initMessagesUI() {
       });
       textSpan.appendChild(link);
     } else {
-      textSpan.appendChild(document.createTextNode(text));
+      // Convert any detected URLs in the message text into clickable links.
+      // Uses a small, focused utility so we can later extend to previews
+      // by also using `extractLinks()` from the same module.
+      const fragment = linkifyToFragment(text);
+      textSpan.appendChild(fragment);
     }
 
     // Fixed order: avatar then text; CSS will reorder for local vs remote

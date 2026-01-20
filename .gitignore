@@ -98,3 +98,6 @@ PWA-TESTING-GUIDE.md
 coverage/
 *.lcov
 first-contact-agent-prompt.md
+
+
+tests/unit/__screenshots__//
