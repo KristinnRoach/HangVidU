@@ -1,0 +1,17 @@
+/* view-state.css - Declarative visibility based on data-view attribute */
+/* Usage: <body data-view="lobby|calling|connected"> */
+
+/* Lobby view: hide call controls */
+body[data-view='lobby'] .call-controls {
+  display: none;
+}
+
+/* Connected view: hide lobby */
+body[data-view='connected'] #lobby {
+  display: none;
+}
+
+/* Calling view: same as lobby for now (modal overlays it) */
+body[data-view='calling'] .call-controls {
+  display: none;
+}

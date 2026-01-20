@@ -1,6 +1,7 @@
 /* src/style.css */
 
 /* Import modular styles */
+@import './view-state.css'; /* Declarative view-based visibility */
 @import './init/reset-normalize.css';
 @import './init/typography.css';
 @import './element/button.css';
