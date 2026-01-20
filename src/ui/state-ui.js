@@ -1,4 +1,7 @@
-// src/ui/state.js
+// src/ui/state-ui.js
+
+// WIP draft of a simple UI state management object.
+
 export const uiState = {
   containerContent: {
     main: 'lobby', // 'lobby' | 'remoteStream' | 'ytVideo' | 'sharedVideo'
@@ -7,9 +10,7 @@ export const uiState = {
   },
 
   // Called by event handlers, not directly by UI modules
-  setView(newView) {
-    if (newView === this.mainContent) return;
-    this.mainContent = newView;
+  setContainerContent(container, content) {
     // No listeners needed - UI modules check state when their events fire
   },
 };
