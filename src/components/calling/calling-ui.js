@@ -7,6 +7,7 @@ import { devDebug } from '../../utils/dev/dev-utils.js';
 import { getDiagnosticLogger } from '../../utils/dev/diagnostic-logger.js';
 import RoomService from '../../room.js';
 import { ringtoneManager } from '../../media/audio/ringtone-manager.js';
+import { uiState } from '../../ui/state.js';
 
 const CALL_TIMEOUT_MS = 30000; // 30 seconds
 
@@ -98,6 +99,9 @@ export async function showCallingUI(roomId, contactName, onCancel) {
 
   // Track outgoing call state in RTDB
   await setOutgoingCallState(roomId, contactName);
+
+  // Set UI state to calling
+  uiState.setView('calling');
 
   // Create modal overlay
   const overlay = document.createElement('div');
@@ -230,6 +234,11 @@ export async function showCallingUI(roomId, contactName, onCancel) {
 export function hideCallingUI() {
   // Stop ringtone when hiding UI
   ringtoneManager.stop();
+
+  // Reset UI state to lobby (unless call connected, which sets 'connected')
+  if (uiState.view === 'calling') {
+    uiState.setView('lobby');
+  }
 
   if (activeCallingUI) {
     // Try to extract roomId from the UI for logging
