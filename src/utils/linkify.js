@@ -102,7 +102,7 @@ export function linkifyToFragment(text) {
 }
 
 export function extractLinks(text) {
-  const urlRegex = /((?:https?:\/\/|www\.)[^\s<>]+)/g;
+  const urlRegex = /((?:https?:\/\/|www\.)[^\s<>]+\.[^\s<>]+)/g;
   const links = [];
   let match;
   while ((match = urlRegex.exec(text)) !== null) {
