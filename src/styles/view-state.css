@@ -15,3 +15,18 @@ body[data-view='connected'] #lobby {
 body[data-view='calling'] .call-controls {
   display: none;
 }
+
+/* ============================================================================
+   MAIN CONTENT STATE
+   Usage: <body data-main-content="remoteStream|ytVideo|sharedVideo">
+   ============================================================================ */
+
+/* Default: show remote stream, hide others */
+body[data-main-content='remoteStream'] #yt-video-box {
+  display: none;
+}
+
+/* Watch mode: show YouTube, hide remote stream */
+body[data-main-content='ytVideo'] #remote-video-box {
+  display: none;
+}

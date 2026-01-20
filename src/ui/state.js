@@ -5,8 +5,8 @@ export const uiState = {
   // High-level app mode
   view: 'lobby', // 'lobby' | 'calling' | 'connected'
 
-  // What's playing in main area (only relevant when connected)
-  mainContent: 'remoteStream', // 'remoteStream' | 'ytVideo' | 'sharedVideo'
+  // Currently focused active media content (if any)
+  currentMedia: 'none', // 'none' | 'remoteStream' | 'ytVideo' | 'sharedVideo'
 
   setView(newView) {
     if (newView === this.view) return;
@@ -15,14 +15,15 @@ export const uiState = {
   },
 
   setMainContent(content) {
-    if (content === this.mainContent) return;
-    this.mainContent = content;
+    if (content === this.currentMedia) return;
+    this.currentMedia = content;
     document.body.dataset.mainContent = content;
   },
 };
 
 // Initialize
 document.body.dataset.view = uiState.view;
+document.body.dataset.mainContent = uiState.currentMedia;
 
 /* Drafts & Notes below while brainstorming UI state management patterns
 
