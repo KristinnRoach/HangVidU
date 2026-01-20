@@ -88,6 +88,8 @@ import {
 } from './contacts/invitations.js';
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
+import './ui/state.js'; // Initialize UI state (sets body data-view attribute)
+
 import {
   saveContact,
   renderContactsList,
