@@ -89,6 +89,13 @@ import {
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
 import './ui/state.js'; // Initialize UI state (sets body data-view attribute)
+import { initUI } from './ui/init-ui.js';
+import { bindCallUI } from './ui/bind-call-ui.js';
+
+import {
+  onWatchModeEntered,
+  onWatchModeExited,
+} from './ui/watch-lifecycle-ui.js';
 
 import {
   saveContact,
@@ -131,7 +138,6 @@ import {
 } from './components/modal/copyLinkModal.js';
 
 import {
-  hideCallingUI,
   onCallAnswered,
   isOutgoingCallFresh,
   isRoomCallFresh,
@@ -142,11 +148,6 @@ import { onCallConnected, onCallDisconnected } from './ui/call-lifecycle-ui.js';
 
 // Import and call iOS PWA redirect helper
 import { redirectIOSPWAToHosting } from './utils/env/redirectIOSPWA.js';
-import {
-  onWatchModeEntered,
-  onWatchModeExited,
-} from './ui/watch-lifecycle-ui.js';
-import { initUI } from './ui/init-ui.js';
 redirectIOSPWAToHosting();
 
 // Quick access to enable / disable dev debug logs
@@ -1287,11 +1288,9 @@ function setupInviteListener() {
 window.onload = async () => {
   const initSuccess = await init();
 
-  if (!initSuccess) {
-    callBtn.disabled = true;
-    console.error('Initialization failed. Cannot start chat.');
-    return;
-  }
+  if (!initSuccess) return;
+
+  bindCallUI(CallController);
 
   const onJoinRoomSubmit = async (roomInputString) => {
     const inputRoomId = normalizeRoomInput(roomInputString || '');
@@ -1428,7 +1427,7 @@ CallController.on('memberJoined', ({ memberId, roomId }) => {
   // TODO: Refactor to avoid dependency on contacts.js ? Check messaging controller and clarify public API
   openContactMessages(memberId, memberId); // Use memberId as name for now
 
-  onCallConnected();
+  // onCallConnected(); // ! Moved to bind-call-ui.js
 
   onCallAnswered().catch((e) =>
     console.warn('Failed to clear calling state:', e),
@@ -1447,13 +1446,9 @@ CallController.on('memberLeft', ({ memberId }) => {
 CallController.on('cleanup', ({ roomId, partnerId, reason }) => {
   devDebug('CallController cleanup event', { roomId, partnerId, reason });
 
-  // Perform all UI cleanup
-  hideCallingUI(); // TODO: refactor UI
-
-  cleanupRemoteStream();
-  onCallDisconnected();
-  devDebug('Disconnected. Click "Start New Chat" to begin.');
-  clearUrlParam();
+  // UI cleanup
+  // hideCallingUI(); // ! Moved to bind-call-ui.js
+  // onCallDisconnected(); // ! Moved to bind-call-ui.js
 
   // Clean up messages UI if present
   const state = CallController.getState();
@@ -1461,6 +1456,9 @@ CallController.on('cleanup', ({ roomId, partnerId, reason }) => {
     state.messagesUI.cleanup();
     state.messagesUI = null;
   }
+
+  cleanupRemoteStream();
+  clearUrlParam();
 
   // Prompt to save contact after cleanup (if partner was present)
   if (partnerId && roomId) {
