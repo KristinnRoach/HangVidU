@@ -314,16 +314,40 @@ export class FCMTransport {
    */
   async sendNotification(targetUserId, payload) {
     try {
-      // Get all tokens for the target user
-      const tokens = await this.getUserTokens(targetUserId);
+      // In production, call Firebase Function to send real FCM notification
+      if (import.meta.env.PROD) {
+        const response = await fetch(
+          'https://europe-west1-vidu-aae11.cloudfunctions.net/sendCallNotification',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              targetUserId,
+              callData: payload.data,
+            }),
+          },
+        );
 
+        if (response.ok) {
+          const result = await response.json();
+          console.log(
+            `[FCMTransport] FCM notification sent to ${targetUserId}:`,
+            result,
+          );
+          return true;
+        } else {
+          console.error(`[FCMTransport] FCM function failed:`, response.status);
+          return false;
+        }
+      }
+
+      // Development fallback: Store in RTDB for testing
+      const tokens = await this.getUserTokens(targetUserId);
       if (tokens.length === 0) {
         console.warn(`[FCMTransport] No tokens found for user ${targetUserId}`);
         return false;
       }
 
-      // For now, we'll store the notification in RTDB and let the client handle it
-      // In a production app, you'd use Firebase Functions to send via FCM Admin SDK
       const notificationRef = ref(rtdb, `notifications/${targetUserId}`);
       const notificationId = push(notificationRef).key;
 
@@ -340,7 +364,7 @@ export class FCMTransport {
       );
 
       console.log(
-        `[FCMTransport] Notification queued for user ${targetUserId}`,
+        `[FCMTransport] Notification queued for user ${targetUserId} (dev mode)`,
       );
       return true;
     } catch (error) {
