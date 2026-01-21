@@ -53,6 +53,7 @@ import {
   titleAuthBar,
   pasteJoinBtn,
   addContactBtn,
+  testNotificationsBtn,
   getElements,
 } from './elements.js';
 
@@ -125,6 +126,7 @@ import {
 import { addDebugUpdateButton } from './components/notifications/debug-notifications.js';
 import { notificationManager } from './components/notifications/notification-manager.js';
 import { createNotificationsToggle } from './components/notifications/notifications-toggle.js';
+import { notificationController } from './notifications/notification-controller.js';
 
 import { showElement, hideElement } from './utils/ui/ui-utils.js';
 import { initializeAuthUI } from './components/auth/AuthComponent.js';
@@ -225,6 +227,18 @@ async function init() {
         hideWhenAllRead: true, // Hide when no notifications in prod
       });
       notificationManager.setToggle(notificationsToggle);
+    }
+
+    // Initialize FCM push notifications
+    try {
+      const fcmInitialized = await notificationController.initialize();
+      if (fcmInitialized) {
+        console.log('[MAIN] FCM notifications initialized successfully');
+      } else {
+        console.warn('[MAIN] FCM notifications failed to initialize');
+      }
+    } catch (error) {
+      console.error('[MAIN] FCM initialization error:', error);
     }
 
     return true;
@@ -708,6 +722,27 @@ export function listenForIncomingOnRoom(roomId) {
         // Resolve caller name from contacts
         const callerName = await resolveCallerName(roomId, joiningUserId);
 
+        // Send push notification if app is backgrounded
+        if (
+          notificationController.isNotificationEnabled() &&
+          notificationController.shouldSendNotification()
+        ) {
+          try {
+            const callData =
+              await notificationController.formatCallNotification({
+                roomId,
+                callerId: joiningUserId,
+                callerName,
+              });
+
+            // Note: In production, this would send to the target user's FCM tokens
+            // For now, we'll just log it since we're the receiver
+            console.log('[MAIN] Would send call notification:', callData);
+          } catch (error) {
+            console.warn('[MAIN] Failed to send call notification:', error);
+          }
+        }
+
         // Start incoming call ringtone and visual indicators
         ringtoneManager.playIncoming();
         callIndicators.startCallIndicators(callerName);
@@ -727,6 +762,11 @@ export function listenForIncomingOnRoom(roomId) {
           // Remove incoming call listeners before starting active call
           // This prevents duplicate listener firing (incoming vs active call listeners)
           removeIncomingListenersForRoom(roomId);
+
+          // Dismiss any call notifications for this room
+          if (notificationController.isNotificationEnabled()) {
+            await notificationController.dismissCallNotifications(roomId);
+          }
 
           getDiagnosticLogger().logNotificationDecision(
             'ACCEPT',
@@ -751,6 +791,12 @@ export function listenForIncomingOnRoom(roomId) {
           });
         } else {
           devDebug('Incoming call rejected by user');
+
+          // Dismiss any call notifications for this room
+          if (notificationController.isNotificationEnabled()) {
+            await notificationController.dismissCallNotifications(roomId);
+          }
+
           getDiagnosticLogger().logNotificationDecision(
             'REJECT',
             'user_rejected',
@@ -1129,6 +1175,59 @@ if (addContactBtn) {
   };
 }
 
+// Test Notifications button (development/testing only)
+if (testNotificationsBtn) {
+  testNotificationsBtn.onclick = async () => {
+    try {
+      console.log('[TEST] Testing notification permissions...');
+
+      const result = await notificationController.requestPermission({
+        title: 'Enable Push Notifications',
+        explain:
+          'Get notified of incoming calls and messages even when HangVidU is closed.',
+        onGranted: () => {
+          console.log('[TEST] Notifications granted!');
+          alert(
+            "✅ Push notifications enabled! You'll now receive notifications for incoming calls.",
+          );
+        },
+        onDenied: (reason) => {
+          console.log('[TEST] Notifications denied:', reason);
+          if (reason === 'silent-block') {
+            alert(
+              '❌ Notifications were blocked silently. Please enable them manually in your browser settings.',
+            );
+          } else if (reason === 'already-denied') {
+            alert(
+              '❌ Notifications were previously denied. Please enable them in your browser settings.',
+            );
+          } else {
+            alert(
+              '❌ Notifications were denied. You can enable them later in your browser settings.',
+            );
+          }
+        },
+        onDismissed: () => {
+          console.log('[TEST] Notification prompt dismissed');
+          alert(
+            '⚠️ Notification prompt was dismissed. You can try again anytime.',
+          );
+        },
+      });
+
+      console.log('[TEST] Permission result:', result);
+
+      // If already enabled, show current status
+      if (notificationController.isNotificationEnabled()) {
+        alert('✅ Push notifications are already enabled!');
+      }
+    } catch (error) {
+      console.error('[TEST] Error testing notifications:', error);
+      alert('❌ Error testing notifications: ' + error.message);
+    }
+  };
+}
+
 if (exitWatchModeBtn) {
   // TODO: refactor UI
   exitWatchModeBtn.onclick = () => {
@@ -1356,6 +1455,16 @@ window.onload = async () => {
         // Close all messaging sessions (stops RTDB listeners for old user's conversations)
         messagingController.closeAllSessions();
 
+        // Disable notifications and clean up FCM tokens
+        if (notificationController.isNotificationEnabled()) {
+          await notificationController.disable().catch((error) => {
+            console.warn(
+              '[AUTH] Failed to disable notifications on logout:',
+              error,
+            );
+          });
+        }
+
         removeAllIncomingListeners();
         cleanupInviteListeners();
       } else if (isActualLogin) {
@@ -1445,6 +1554,13 @@ CallController.on('memberLeft', ({ memberId }) => {
 
 CallController.on('cleanup', ({ roomId, partnerId, reason }) => {
   devDebug('CallController cleanup event', { roomId, partnerId, reason });
+
+  // Clean up call notifications for this room
+  if (roomId && notificationController.isNotificationEnabled()) {
+    notificationController.dismissCallNotifications(roomId).catch((error) => {
+      console.warn('[MAIN] Failed to dismiss call notifications:', error);
+    });
+  }
 
   // UI cleanup
   // hideCallingUI(); // ! Moved to bind-call-ui.js

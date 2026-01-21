@@ -41,6 +41,7 @@ let appTitleA = null;
 let appTitleSpan = null;
 let pasteJoinBtn = null;
 let addContactBtn = null;
+let testNotificationsBtn = null;
 
 function initializeElements() {
   lobbyDiv = getElement('lobby');
@@ -77,6 +78,7 @@ function initializeElements() {
   appTitleSpan = getElement('app-title-span');
   pasteJoinBtn = getElement('paste-join-btn');
   addContactBtn = getElement('add-contact-btn');
+  testNotificationsBtn = getElement('test-notifications-btn');
 }
 
 // Initialize elements when DOM is ready
@@ -117,6 +119,7 @@ export const getElements = () => ({
   appTitleSpan,
   pasteJoinBtn,
   addContactBtn,
+  testNotificationsBtn,
 });
 
 // Export individual elements
@@ -150,6 +153,7 @@ export {
   appTitleSpan,
   pasteJoinBtn,
   addContactBtn,
+  testNotificationsBtn,
 };
 
 /**
@@ -174,7 +178,7 @@ export function robustElementAccess(elementId, maxRetries = 3, delay = 100) {
       attempts++;
       if (attempts >= maxRetries) {
         console.warn(
-          `Element ${elementId} not found after ${maxRetries} attempts`
+          `Element ${elementId} not found after ${maxRetries} attempts`,
         );
         resolve(null);
         return;
@@ -218,7 +222,7 @@ export async function initializeYouTubeElements() {
   const elements = await waitForElements(
     ['searchBtn', 'searchQuery', 'searchResults'],
     5,
-    200
+    200,
   ); // More retries and longer delay for dynamic content
 
   // Search container uses class selector
@@ -278,7 +282,7 @@ export async function elementExists(elementId, retry = false) {
 export async function safeElementOperation(
   elementId,
   operation,
-  retry = false
+  retry = false,
 ) {
   const element = retry
     ? await robustElementAccess(elementId)

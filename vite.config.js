@@ -5,6 +5,50 @@ import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
 import mkcert from 'vite-plugin-mkcert';
 
+// Plugin to inject Firebase config into service worker
+function injectFirebaseConfig() {
+  return {
+    name: 'inject-firebase-config',
+    generateBundle(options, bundle) {
+      // Find the service worker file
+      const swFile = Object.keys(bundle).find((fileName) =>
+        fileName.includes('sw.js'),
+      );
+      if (swFile && bundle[swFile]) {
+        let swContent = bundle[swFile].code;
+
+        // Replace placeholder values with actual environment variables
+        swContent = swContent.replace(
+          /apiKey: 'AIzaSyBxqKJWJWJWJWJWJWJWJWJWJWJWJWJWJWJ'/,
+          `apiKey: '${process.env.VITE_FIREBASE_API_KEY || ''}'`,
+        );
+        swContent = swContent.replace(
+          /authDomain: 'your-project\.firebaseapp\.com'/,
+          `authDomain: '${process.env.VITE_FIREBASE_AUTH_DOMAIN || ''}'`,
+        );
+        swContent = swContent.replace(
+          /projectId: 'your-project-id'/,
+          `projectId: '${process.env.VITE_FIREBASE_PROJECT_ID || ''}'`,
+        );
+        swContent = swContent.replace(
+          /storageBucket: 'your-project\.appspot\.com'/,
+          `storageBucket: '${process.env.VITE_FIREBASE_STORAGE_BUCKET || ''}'`,
+        );
+        swContent = swContent.replace(
+          /messagingSenderId: '123456789012'/,
+          `messagingSenderId: '${process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || ''}'`,
+        );
+        swContent = swContent.replace(
+          /appId: '1:123456789012:web:abcdef123456789012345678'/,
+          `appId: '${process.env.VITE_FIREBASE_APP_ID || ''}'`,
+        );
+
+        bundle[swFile].code = swContent;
+      }
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   // Allow overriding base path for different prod hosts (gh-pages vs Firebase Hosting)
   // Usage: BUILD_TARGET=hosting pnpm build -> basePath '/'
@@ -19,7 +63,7 @@ export default defineConfig(({ mode }) => {
 
     define: {
       'import.meta.env.VITE_DISABLE_PWA': JSON.stringify(
-        disablePWA ? '1' : '0'
+        disablePWA ? '1' : '0',
       ),
     },
 
@@ -42,13 +86,16 @@ export default defineConfig(({ mode }) => {
 
     plugins: [
       ...(mode === 'development' ? [mkcert()] : []),
+      injectFirebaseConfig(), // Inject Firebase config into service worker
       ...(disablePWA
         ? []
         : [
             VitePWA({
               includeAssets: ['index.html', 'favicon.ico'],
               registerType: 'prompt',
-              strategies: 'generateSW',
+              strategies: 'injectManifest',
+              srcDir: 'src',
+              filename: 'sw.js',
               devOptions: {
                 enabled: !disablePWA,
               },
