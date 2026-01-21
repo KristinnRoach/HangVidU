@@ -53,6 +53,14 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 
 // ============================================================================
+// FCM CONFIGURATION
+// ============================================================================
+
+// FCM VAPID key for web push notifications
+// Add VITE_FCM_VAPID_KEY to your .env files
+export const fcmVapidKey = import.meta.env.VITE_FCM_VAPID_KEY;
+
+// ============================================================================
 // APP CHECK INIT
 // ============================================================================
 
