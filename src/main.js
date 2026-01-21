@@ -146,6 +146,7 @@ import {
   onWatchModeEntered,
   onWatchModeExited,
 } from './ui/watch-lifecycle-ui.js';
+import { initUI } from './ui/init-ui.js';
 redirectIOSPWAToHosting();
 
 // Quick access to enable / disable dev debug logs
@@ -274,14 +275,6 @@ async function initLocalStreamAndMedia() {
       }
     });
   }
-}
-
-function initUI() {
-  hideElement(remoteBoxEl);
-  hideElement(localBoxEl);
-  hideElement(sharedBoxEl);
-  hideElement(chatControls);
-  // hideElement(lobbyDiv);
 }
 
 // ============================================================================
@@ -1011,6 +1004,7 @@ function addKeyListeners() {
     );
   };
 
+  // TODO: refactor UI key handling
   document.addEventListener('keydown', (event) => {
     // Press 'W' to toggle player visibility
     if (!isTextInputFocused()) {
@@ -1135,6 +1129,7 @@ if (addContactBtn) {
 }
 
 if (exitWatchModeBtn) {
+  // TODO: refactor UI
   exitWatchModeBtn.onclick = () => {
     if (getLastWatched() === 'yt') {
       pauseYouTubeVideo();
@@ -1155,6 +1150,7 @@ if (exitWatchModeBtn) {
   };
 }
 
+// TODO: refactor UI (actions?)
 hangUpBtn.onclick = async () => {
   console.debug('Hanging up...');
 
@@ -1424,6 +1420,7 @@ CallController.on('memberJoined', ({ memberId, roomId }) => {
 
   CallController.setPartnerId(memberId);
 
+  // TODO: refactor UI
   // Show messages toggle for file transfer during call
   messagesUI.showMessagesToggle();
 
@@ -1451,7 +1448,8 @@ CallController.on('cleanup', ({ roomId, partnerId, reason }) => {
   devDebug('CallController cleanup event', { roomId, partnerId, reason });
 
   // Perform all UI cleanup
-  hideCallingUI();
+  hideCallingUI(); // TODO: refactor UI
+
   cleanupRemoteStream();
   onCallDisconnected();
   devDebug('Disconnected. Click "Start New Chat" to begin.');
@@ -1510,12 +1508,14 @@ async function cleanup() {
     remoteVideoEl.srcObject = null;
   }
 
+  // TODO: refactor UI (teardown)
   onWatchModeExited();
-  clearUrlParam();
   setLastWatched('none');
   destroyYouTubePlayer();
+  cleanupSearchUI();
+
+  clearUrlParam();
   setYouTubeReady(false);
 
-  cleanupSearchUI();
   cleanupFunctions.forEach((cleanupFn) => cleanupFn());
 }
