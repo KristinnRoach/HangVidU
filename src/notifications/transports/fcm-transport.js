@@ -351,11 +351,28 @@ export class FCMTransport {
     try {
       // In production, call Firebase Function to send real FCM notification
       if (import.meta.env.PROD) {
+        let idToken = null;
+        try {
+          const { getLoggedInUserToken } =
+            await import('../../firebase/auth.js');
+          idToken = await getLoggedInUserToken();
+        } catch (e) {
+          console.warn('[FCMTransport] Failed to get auth token:', e);
+        }
+
+        const headers = {
+          'Content-Type': 'application/json',
+        };
+
+        if (idToken) {
+          headers['Authorization'] = `Bearer ${idToken}`;
+        }
+
         const response = await fetch(
           'https://europe-west1-vidu-aae11.cloudfunctions.net/sendCallNotification',
           {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({
               targetUserId,
               callData: payload.data,

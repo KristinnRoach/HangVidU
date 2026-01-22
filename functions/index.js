@@ -3,6 +3,7 @@ const { onRequest } = require('firebase-functions/v2/https');
 const { initializeApp } = require('firebase-admin/app');
 const { getMessaging } = require('firebase-admin/messaging');
 const { getDatabase } = require('firebase-admin/database');
+const { getAuth } = require('firebase-admin/auth');
 
 // Initialize Firebase Admin
 initializeApp();
@@ -21,6 +22,20 @@ exports.sendCallNotification = onRequest(
       // Only allow POST requests
       if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
+      }
+
+      // Verify Authentication
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized: Missing token' });
+      }
+
+      const idToken = authHeader.split('Bearer ')[1];
+      try {
+        await getAuth().verifyIdToken(idToken);
+      } catch (authError) {
+        console.warn('[FCM] Invalid auth token:', authError.message);
+        return res.status(401).json({ error: 'Unauthorized: Invalid token' });
       }
 
       const { targetUserId, callData } = req.body;
