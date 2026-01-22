@@ -88,7 +88,7 @@ import {
   cleanupInviteListeners,
 } from './contacts/invitations.js';
 
-import { getContactByRoomId } from './components/contacts/contacts.js';
+// import { getContactByRoomId } from './components/contacts/contacts.js';
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
 import './ui/state.js'; // Initialize UI state (sets body data-view attribute)
@@ -1588,6 +1588,10 @@ CallController.on(
     if (isMissedCall) {
       console.log('[MAIN] Potential missed call detected for room:', roomId);
       try {
+        // Dynamic import to avoid circular dependency (main.js <-> contacts.js)
+        const { getContactByRoomId } = await import(
+          './components/contacts/contacts.js'
+        );
         const contact = await getContactByRoomId(roomId);
         if (contact && contact.contactId) {
           const { getLoggedInUser } = await import('./firebase/auth.js');

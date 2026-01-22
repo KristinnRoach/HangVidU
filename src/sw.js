@@ -301,7 +301,13 @@ self.addEventListener('message', (event) => {
       break;
 
     default:
-      console.log('[SW] Unknown message type:', type);
+      // Ignore valid Workbox messages or other known internal messages
+      if (type !== undefined) {
+        console.log('[SW] Unknown message type:', type);
+      } else {
+        // Log full data for debugging undefined types (often benign)
+        console.debug('[SW] Message received without type:', event.data);
+      }
   }
 });
 
