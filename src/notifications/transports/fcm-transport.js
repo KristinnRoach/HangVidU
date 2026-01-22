@@ -394,11 +394,9 @@ export class FCMTransport {
       }
 
       // Development fallback: Store in RTDB for testing
-      const tokens = await this.getUserTokens(targetUserId);
-      if (tokens.length === 0) {
-        console.warn(`[FCMTransport] No tokens found for user ${targetUserId}`);
-        return false;
-      }
+      // Note: We skip the token check in Dev since due to security rules
+      // authenticated users can't read other users' tokens directly from the client.
+      // We rely on the write permission to /notifications/{userId} which IS allowed.
 
       const notificationRef = ref(rtdb, `notifications/${targetUserId}`);
       const notificationId = push(notificationRef).key;

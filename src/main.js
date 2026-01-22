@@ -1593,8 +1593,8 @@ CallController.on(
           await import('./components/contacts/contacts.js');
         const contact = await getContactByRoomId(roomId);
         if (contact && contact.contactId) {
-          const { getLoggedInUser } = await import('./firebase/auth.js');
-          const me = getLoggedInUser();
+          const { getCurrentUser } = await import('./firebase/auth.js');
+          const me = getCurrentUser();
           const callerName = me?.displayName || 'Friend';
 
           console.log(
