@@ -12,8 +12,9 @@ import { AudioPlayer } from './audio-player.js';
  */
 class RingtoneManager {
   constructor({ incomingSrc, outgoingSrc, volume } = {}) {
-    this.incomingSrc = incomingSrc ?? '/sounds/incoming.mp3';
-    this.outgoingSrc = outgoingSrc ?? '/sounds/outgoing.mp3';
+    const baseUrl = import.meta.env.BASE_URL;
+    this.incomingSrc = incomingSrc ?? `${baseUrl}sounds/incoming.mp3`;
+    this.outgoingSrc = outgoingSrc ?? `${baseUrl}sounds/outgoing.mp3`;
     this.defaultVolume = volume ?? 0.7;
     this.currentPlayer = null;
     this.currentType = null; // 'incoming', 'outgoing', or null
@@ -99,7 +100,7 @@ class RingtoneManager {
         console.log(`[Ringtone] Playing ${type} ringtone`);
       } else {
         console.warn(
-          `[Ringtone] Failed to start ${type} ringtone (likely autoplay blocked)`
+          `[Ringtone] Failed to start ${type} ringtone (likely autoplay blocked)`,
         );
         // Clean up failed player
         this.currentPlayer?.dispose();
