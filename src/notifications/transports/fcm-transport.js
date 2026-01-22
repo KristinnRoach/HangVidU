@@ -253,12 +253,13 @@ export class FCMTransport {
       timestamp: Date.now().toString(),
     };
 
+    const baseUrl = import.meta.env.BASE_URL;
     const payload = {
       notification: {
         title: `Incoming call from ${callerName}`,
         body: 'Tap to answer or decline',
-        icon: '/icons/play-arrows-v1/icon-192.png',
-        badge: '/icons/play-arrows-v1/icon-192.png',
+        icon: `${baseUrl}icons/play-arrows-v1/icon-192.png`,
+        badge: `${baseUrl}icons/play-arrows-v1/icon-192.png`,
       },
       data: notificationData,
     };
@@ -283,14 +284,15 @@ export class FCMTransport {
       timestamp: Date.now().toString(),
     };
 
+    const baseUrl = import.meta.env.BASE_URL;
     const payload = {
       // Note: notification title/body are handled by Cloud Function in Prod
       // These are for Dev/fallback
       notification: {
         title: `Missed call from ${callerName}`,
         body: 'Tap to call back',
-        icon: '/icons/play-arrows-v1/icon-192.png',
-        badge: '/icons/play-arrows-v1/icon-192.png',
+        icon: `${baseUrl}icons/play-arrows-v1/icon-192.png`,
+        badge: `${baseUrl}icons/play-arrows-v1/icon-192.png`,
       },
       data: notificationData,
     };
@@ -325,12 +327,13 @@ export class FCMTransport {
       timestamp: Date.now().toString(),
     };
 
+    const baseUrl = import.meta.env.BASE_URL;
     const payload = {
       notification: {
         title: `New message from ${senderName}`,
         body: messagePreview,
-        icon: '/icons/play-arrows-v1/icon-192.png',
-        badge: '/icons/play-arrows-v1/icon-192.png',
+        icon: `${baseUrl}icons/play-arrows-v1/icon-192.png`,
+        badge: `${baseUrl}icons/play-arrows-v1/icon-192.png`,
       },
       data: notificationData,
     };

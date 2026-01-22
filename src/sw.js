@@ -86,10 +86,16 @@ if (messaging) {
 
     const { notification, data } = payload;
     const notificationTitle = notification?.title || 'New notification';
+    // Use fully qualified path for icons in SW
+    const baseUrl = self.registration.scope; // This is the robust way in SW: scope covers base path
+    // OR use import.meta.env.BASE_URL if we trust the build to replace it correctly.
+    // Given VitePWA injectManifest, import.meta.env.BASE_URL is reliable.
+    const iconBase = import.meta.env.BASE_URL;
+
     const notificationOptions = {
       body: notification?.body || 'You have a new message',
-      icon: '/icons/play-arrows-v1/icon-192.png',
-      badge: '/icons/play-arrows-v1/icon-192.png',
+      icon: `${iconBase}icons/play-arrows-v1/icon-192.png`,
+      badge: `${iconBase}icons/play-arrows-v1/icon-192.png`,
       data: data || {},
       tag: getNotificationTag(data),
       requireInteraction: data?.type === 'call',
