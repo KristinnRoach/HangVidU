@@ -75,7 +75,7 @@ import {
   cleanupLocalVideoOnlyStream,
 } from './media/state.js';
 
-import { devDebug, setDevDebugEnabled } from './utils/dev/dev-utils.js';
+import { devDebug, isDev, setDevDebugEnabled } from './utils/dev/dev-utils.js';
 
 import RoomService from './room.js';
 import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
@@ -1178,7 +1178,7 @@ if (addContactBtn) {
 }
 
 // Test Notifications button (development/testing only)
-if (testNotificationsBtn) {
+if (isDev() && testNotificationsBtn) {
   testNotificationsBtn.onclick = async () => {
     try {
       console.log('[TEST] Testing notification permissions...');

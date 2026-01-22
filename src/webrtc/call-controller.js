@@ -389,7 +389,7 @@ class CallController {
       this.state = 'waiting';
 
       // Track connection state
-      if (this.pc) {
+      if (this.pc && typeof this.pc.addEventListener === 'function') {
         this.pc.addEventListener('connectionstatechange', () => {
           if (this.pc.connectionState === 'connected') {
             this.wasConnected = true;
@@ -612,8 +612,6 @@ class CallController {
    * Does NOT emit a cancellation signal.
    * @param {Object} options - Cleanup options
    * @param {string} options.reason - Reason for cleanup
-      const prevRole = this.role;
-      const prevWasConnected = this.wasConnected;
    */
   async cleanupCall({ reason } = {}) {
     // Idempotency guard: prevent duplicate cleanup calls
@@ -624,6 +622,8 @@ class CallController {
       // Capture state before reset for event emission
       const prevRoom = this.roomId;
       const prevPartnerId = this.partnerId;
+      const prevRole = this.role;
+      const prevWasConnected = this.wasConnected;
 
       // Remove tracked listeners
       this.removeTrackedListeners();
