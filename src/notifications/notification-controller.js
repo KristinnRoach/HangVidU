@@ -284,6 +284,41 @@ export class NotificationController {
   }
 
   /**
+   * Send a missed call notification
+   * @param {string} targetUserId - User to send notification to
+   * @param {Object} callData - Call information
+   * @returns {Promise<boolean>} True if notification sent
+   */
+  async sendMissedCallNotification(targetUserId, callData) {
+    if (!this.options.enableCallNotifications) {
+      console.log(
+        '[NotificationController] Call notifications disabled (missed call masked)',
+      );
+      return false;
+    }
+
+    try {
+      const success = await this.transport.sendMissedCallNotification(
+        targetUserId,
+        callData,
+      );
+
+      if (success) {
+        console.log(
+          `[NotificationController] Missed call notification sent to ${targetUserId}`,
+        );
+      }
+      return success;
+    } catch (error) {
+      console.error(
+        '[NotificationController] Failed to send missed call notification:',
+        error,
+      );
+      return false;
+    }
+  }
+
+  /**
    * Send a message notification
    * @param {string} targetUserId - User to send notification to
    * @param {Object} messageData - Message information

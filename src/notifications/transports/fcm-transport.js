@@ -271,6 +271,38 @@ export class FCMTransport {
   }
 
   /**
+   * Send a missed call notification to a specific user
+   * @param {string} targetUserId - User ID to send notification to
+   * @param {Object} callData - Call notification data
+   * @returns {Promise<boolean>} True if notification sent successfully
+   */
+  async sendMissedCallNotification(targetUserId, callData) {
+    const { roomId, callerId, callerName } = callData;
+
+    const notificationData = {
+      type: 'missed_call',
+      roomId,
+      callerId,
+      callerName,
+      timestamp: Date.now().toString(),
+    };
+
+    const payload = {
+      // Note: notification title/body are handled by Cloud Function in Prod
+      // These are for Dev/fallback
+      notification: {
+        title: `Missed call from ${callerName}`,
+        body: 'Tap to call back',
+        icon: '/icons/play-arrows-v1/icon-192.png',
+        badge: '/icons/play-arrows-v1/icon-192.png',
+      },
+      data: notificationData,
+    };
+
+    return this.sendNotification(targetUserId, payload);
+  }
+
+  /**
    * Send a message notification to a specific user
    * @param {string} targetUserId - User ID to send notification to
    * @param {Object} messageData - Message notification data

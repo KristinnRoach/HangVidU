@@ -88,6 +88,8 @@ import {
   cleanupInviteListeners,
 } from './contacts/invitations.js';
 
+import { getContactByRoomId } from './components/contacts/contacts.js';
+
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
 import './ui/state.js'; // Initialize UI state (sets body data-view attribute)
 import { initUI } from './ui/init-ui.js';
@@ -1552,39 +1554,83 @@ CallController.on('memberLeft', ({ memberId }) => {
   console.info('Partner has left the call');
 });
 
-CallController.on('cleanup', ({ roomId, partnerId, reason }) => {
-  devDebug('CallController cleanup event', { roomId, partnerId, reason });
-
-  // Clean up call notifications for this room
-  if (roomId && notificationController.isNotificationEnabled()) {
-    notificationController.dismissCallNotifications(roomId).catch((error) => {
-      console.warn('[MAIN] Failed to dismiss call notifications:', error);
+CallController.on(
+  'cleanup',
+  async ({ roomId, partnerId, reason, role, wasConnected }) => {
+    devDebug('CallController cleanup event', {
+      roomId,
+      partnerId,
+      reason,
+      role,
+      wasConnected,
     });
-  }
 
-  // UI cleanup
-  // hideCallingUI(); // ! Moved to bind-call-ui.js
-  // onCallDisconnected(); // ! Moved to bind-call-ui.js
+    // Handle Missed Call Notification
+    // Trigger if: initiator, no partner joined, never established connection, and valid room
+    const isMissedCall =
+      role === 'initiator' && !partnerId && !wasConnected && roomId;
 
-  // Clean up messages UI if present
-  const state = CallController.getState();
-  if (state.messagesUI && typeof state.messagesUI.cleanup === 'function') {
-    state.messagesUI.cleanup();
-    state.messagesUI = null;
-  }
+    if (isMissedCall) {
+      console.log('[MAIN] Potential missed call detected for room:', roomId);
+      try {
+        const contact = await getContactByRoomId(roomId);
+        if (contact && contact.contactId) {
+          const { getLoggedInUser } = await import('./firebase/auth.js');
+          const me = getLoggedInUser();
+          const callerName = me?.displayName || 'Friend';
 
-  cleanupRemoteStream();
-  clearUrlParam();
+          console.log(
+            `[MAIN] Sending missed call notification to ${contact.contactName} (${contact.contactId})`,
+          );
+          await notificationController.sendMissedCallNotification(
+            contact.contactId,
+            {
+              roomId,
+              callerId: getUserId(),
+              callerName,
+            },
+          );
+        } else {
+          console.log(
+            '[MAIN] No saved contact found for room, skipping missed call notification',
+          );
+        }
+      } catch (e) {
+        console.warn('[MAIN] Failed to handle missed call:', e);
+      }
+    }
 
-  // Prompt to save contact after cleanup (if partner was present)
-  if (partnerId && roomId) {
-    setTimeout(() => {
-      saveContact(partnerId, roomId, lobbyDiv).catch((e) => {
-        console.warn('Failed to save contact after cleanup:', e);
+    // Clean up call notifications for this room
+    if (roomId && notificationController.isNotificationEnabled()) {
+      notificationController.dismissCallNotifications(roomId).catch((error) => {
+        console.warn('[MAIN] Failed to dismiss call notifications:', error);
       });
-    }, 500);
-  }
-});
+    }
+
+    // UI cleanup
+    // hideCallingUI(); // ! Moved to bind-call-ui.js
+    // onCallDisconnected(); // ! Moved to bind-call-ui.js
+
+    // Clean up messages UI if present
+    const state = CallController.getState();
+    if (state.messagesUI && typeof state.messagesUI.cleanup === 'function') {
+      state.messagesUI.cleanup();
+      state.messagesUI = null;
+    }
+
+    cleanupRemoteStream();
+    clearUrlParam();
+
+    // Prompt to save contact after cleanup (if partner was present)
+    if (partnerId && roomId) {
+      setTimeout(() => {
+        saveContact(partnerId, roomId, lobbyDiv).catch((e) => {
+          console.warn('Failed to save contact after cleanup:', e);
+        });
+      }, 500);
+    }
+  },
+);
 
 // ============================================================================
 // HANG UP / CLEANUP

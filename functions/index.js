@@ -61,16 +61,28 @@ exports.sendCallNotification = onRequest(
         `[FCM] Found ${tokens.length} tokens for user ${targetUserId}`,
       );
 
+      // Determine notification type and content
+      const type = callData.type || 'call';
+      let title, body;
+
+      if (type === 'missed_call') {
+        title = `Missed call from ${callData.callerName || 'Someone'}`;
+        body = 'Tap to call back';
+      } else {
+        title = `Incoming call from ${callData.callerName || 'Someone'}`;
+        body = 'Tap to answer or decline';
+      }
+
       // Prepare FCM message
       const message = {
         notification: {
-          title: `Incoming call from ${callData.callerName || 'Someone'}`,
-          body: 'Tap to answer or decline',
+          title,
+          body,
           icon: '/icons/play-arrows-v1/icon-192.png',
           badge: '/icons/play-arrows-v1/icon-192.png',
         },
         data: {
-          type: 'call',
+          type,
           roomId: callData.roomId || '',
           callerId: callData.callerId || '',
           callerName: callData.callerName || 'Unknown caller',

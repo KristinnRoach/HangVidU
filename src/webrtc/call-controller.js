@@ -68,6 +68,7 @@ class CallController {
     this.isHangingUp = false;
     this.isCleaningUp = false;
     this.listeners = new Map(); // Track RTDB listeners for cleanup
+    this.wasConnected = false;
   }
 
   getState() {
@@ -216,9 +217,8 @@ class CallController {
 
       // Import onCallRejected dynamically to avoid circular dependencies
       try {
-        const { onCallRejected } = await import(
-          '../components/calling/calling-ui.js'
-        );
+        const { onCallRejected } =
+          await import('../components/calling/calling-ui.js');
         await onCallRejected(rej.reason || 'user_rejected');
       } catch (_) {
         devDebug('Call declined');
@@ -388,6 +388,16 @@ class CallController {
       this.messagesUI = result.messagesUI || null;
       this.state = 'waiting';
 
+      // Track connection state
+      if (this.pc) {
+        this.pc.addEventListener('connectionstatechange', () => {
+          if (this.pc.connectionState === 'connected') {
+            this.wasConnected = true;
+            if (this.state !== 'connected') this.state = 'connected';
+          }
+        });
+      }
+
       // Setup file transport when DataChannel opens (for initiator)
       if (this.dataChannel) {
         this.setupFileTransport(this.dataChannel);
@@ -475,6 +485,7 @@ class CallController {
         this.messagesUI = result.messagesUI;
       }
       this.state = 'connected';
+      this.wasConnected = true;
 
       // Setup file transport when DataChannel is ready (for joiner, may be delayed)
       if (this.dataChannel) {
@@ -601,6 +612,8 @@ class CallController {
    * Does NOT emit a cancellation signal.
    * @param {Object} options - Cleanup options
    * @param {string} options.reason - Reason for cleanup
+      const prevRole = this.role;
+      const prevWasConnected = this.wasConnected;
    */
   async cleanupCall({ reason } = {}) {
     // Idempotency guard: prevent duplicate cleanup calls
@@ -697,6 +710,8 @@ class CallController {
       this.resetState();
       this.emitter.emit('cleanup', {
         roomId: prevRoom,
+        role: prevRole,
+        wasConnected: prevWasConnected,
         partnerId: prevPartnerId, // Include partnerId for contact save logic
         reason,
       });
