@@ -6,10 +6,11 @@ import { VitePWA } from 'vite-plugin-pwa';
 import mkcert from 'vite-plugin-mkcert';
 
 // Plugin to inject Firebase config into service worker
+// Reads from process.env (populated by GitHub Actions secrets during CI)
 function injectFirebaseConfig() {
   return {
     name: 'inject-firebase-config',
-    generateBundle(options, bundle) {
+    generateBundle(_, bundle) {
       // Find the service worker file
       const swFile = Object.keys(bundle).find((fileName) =>
         fileName.includes('sw.js'),
@@ -18,29 +19,30 @@ function injectFirebaseConfig() {
         let swContent = bundle[swFile].code;
 
         // Replace placeholder values with actual environment variables
+        // Regex handles both single and double quotes (minified vs unminified)
         swContent = swContent.replace(
-          /apiKey: 'AIzaSyBxqKJWJWJWJWJWJWJWJWJWJWJWJWJWJWJ'/,
-          `apiKey: '${process.env.VITE_FIREBASE_API_KEY || ''}'`,
+          /apiKey:\s*["']AIzaSyBxqKJWJWJWJWJWJWJWJWJWJWJWJWJWJWJ["']/,
+          `apiKey:"${process.env.VITE_FIREBASE_API_KEY || ''}"`,
         );
         swContent = swContent.replace(
-          /authDomain: 'your-project\.firebaseapp\.com'/,
-          `authDomain: '${process.env.VITE_FIREBASE_AUTH_DOMAIN || ''}'`,
+          /authDomain:\s*["']your-project\.firebaseapp\.com["']/,
+          `authDomain:"${process.env.VITE_FIREBASE_AUTH_DOMAIN || ''}"`,
         );
         swContent = swContent.replace(
-          /projectId: 'your-project-id'/,
-          `projectId: '${process.env.VITE_FIREBASE_PROJECT_ID || ''}'`,
+          /projectId:\s*["']your-project-id["']/,
+          `projectId:"${process.env.VITE_FIREBASE_PROJECT_ID || ''}"`,
         );
         swContent = swContent.replace(
-          /storageBucket: 'your-project\.appspot\.com'/,
-          `storageBucket: '${process.env.VITE_FIREBASE_STORAGE_BUCKET || ''}'`,
+          /storageBucket:\s*["']your-project\.appspot\.com["']/,
+          `storageBucket:"${process.env.VITE_FIREBASE_STORAGE_BUCKET || ''}"`,
         );
         swContent = swContent.replace(
-          /messagingSenderId: '123456789012'/,
-          `messagingSenderId: '${process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || ''}'`,
+          /messagingSenderId:\s*["']123456789012["']/,
+          `messagingSenderId:"${process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || ''}"`,
         );
         swContent = swContent.replace(
-          /appId: '1:123456789012:web:abcdef123456789012345678'/,
-          `appId: '${process.env.VITE_FIREBASE_APP_ID || ''}'`,
+          /appId:\s*["']1:123456789012:web:abcdef123456789012345678["']/,
+          `appId:"${process.env.VITE_FIREBASE_APP_ID || ''}"`,
         );
 
         bundle[swFile].code = swContent;
