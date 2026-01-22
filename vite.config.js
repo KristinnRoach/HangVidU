@@ -7,50 +7,50 @@ import mkcert from 'vite-plugin-mkcert';
 
 // Plugin to inject Firebase config into service worker
 // Reads from process.env (populated by GitHub Actions secrets during CI)
-function injectFirebaseConfig() {
-  return {
-    name: 'inject-firebase-config',
-    generateBundle(_, bundle) {
-      // Find the service worker file
-      // Robust check: must end in sw.js AND have code property (excludes .map files)
-      const swFile = Object.keys(bundle).find(
-        (fileName) => fileName.endsWith('sw.js') && bundle[fileName].code,
-      );
-      if (swFile && bundle[swFile]) {
-        let swContent = bundle[swFile].code;
+// function injectFirebaseConfig() {
+//   return {
+//     name: 'inject-firebase-config',
+//     generateBundle(_, bundle) {
+//       // Find the service worker file
+//       // Robust check: must end in sw.js AND have code property (excludes .map files)
+//       const swFile = Object.keys(bundle).find(
+//         (fileName) => fileName.endsWith('sw.js') && bundle[fileName].code,
+//       );
+//       if (swFile && bundle[swFile]) {
+//         let swContent = bundle[swFile].code;
 
-        // Replace placeholder values with actual environment variables
-        // Regex handles both single and double quotes (minified vs unminified)
-        swContent = swContent.replace(
-          /apiKey:\s*["']AIzaSyBxqKJWJWJWJWJWJWJWJWJWJWJWJWJWJWJ["']/,
-          `apiKey:"${process.env.VITE_FIREBASE_API_KEY || ''}"`,
-        );
-        swContent = swContent.replace(
-          /authDomain:\s*["']your-project\.firebaseapp\.com["']/,
-          `authDomain:"${process.env.VITE_FIREBASE_AUTH_DOMAIN || ''}"`,
-        );
-        swContent = swContent.replace(
-          /projectId:\s*["']your-project-id["']/,
-          `projectId:"${process.env.VITE_FIREBASE_PROJECT_ID || ''}"`,
-        );
-        swContent = swContent.replace(
-          /storageBucket:\s*["']your-project\.appspot\.com["']/,
-          `storageBucket:"${process.env.VITE_FIREBASE_STORAGE_BUCKET || ''}"`,
-        );
-        swContent = swContent.replace(
-          /messagingSenderId:\s*["']123456789012["']/,
-          `messagingSenderId:"${process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || ''}"`,
-        );
-        swContent = swContent.replace(
-          /appId:\s*["']1:123456789012:web:abcdef123456789012345678["']/,
-          `appId:"${process.env.VITE_FIREBASE_APP_ID || ''}"`,
-        );
+//         // Replace placeholder values with actual environment variables
+//         // Regex handles both single and double quotes (minified vs unminified)
+//         swContent = swContent.replace(
+//           /apiKey:\s*["']AIzaSyBxqKJWJWJWJWJWJWJWJWJWJWJWJWJWJWJ["']/,
+//           `apiKey:"${process.env.VITE_FIREBASE_API_KEY || ''}"`,
+//         );
+//         swContent = swContent.replace(
+//           /authDomain:\s*["']your-project\.firebaseapp\.com["']/,
+//           `authDomain:"${process.env.VITE_FIREBASE_AUTH_DOMAIN || ''}"`,
+//         );
+//         swContent = swContent.replace(
+//           /projectId:\s*["']your-project-id["']/,
+//           `projectId:"${process.env.VITE_FIREBASE_PROJECT_ID || ''}"`,
+//         );
+//         swContent = swContent.replace(
+//           /storageBucket:\s*["']your-project\.appspot\.com["']/,
+//           `storageBucket:"${process.env.VITE_FIREBASE_STORAGE_BUCKET || ''}"`,
+//         );
+//         swContent = swContent.replace(
+//           /messagingSenderId:\s*["']123456789012["']/,
+//           `messagingSenderId:"${process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || ''}"`,
+//         );
+//         swContent = swContent.replace(
+//           /appId:\s*["']1:123456789012:web:abcdef123456789012345678["']/,
+//           `appId:"${process.env.VITE_FIREBASE_APP_ID || ''}"`,
+//         );
 
-        bundle[swFile].code = swContent;
-      }
-    },
-  };
-}
+//         bundle[swFile].code = swContent;
+//       }
+//     },
+//   };
+// }
 
 export default defineConfig(({ mode }) => {
   // Allow overriding base path for different prod hosts (gh-pages vs Firebase Hosting)
@@ -89,13 +89,13 @@ export default defineConfig(({ mode }) => {
 
     plugins: [
       ...(mode === 'development' ? [mkcert()] : []),
-      injectFirebaseConfig(), // Inject Firebase config into service worker
+      // injectFirebaseConfig(), // Inject Firebase config into service worker
       ...(disablePWA
         ? []
         : [
             VitePWA({
               includeAssets: ['index.html', 'favicon.ico'],
-              registerType: 'prompt',
+              registerType: 'autoUpdate',
               strategies: 'injectManifest',
               srcDir: 'src',
               filename: 'sw.js',
