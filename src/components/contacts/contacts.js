@@ -80,6 +80,27 @@ export async function getContacts() {
 }
 
 /**
+ * Get contact by roomId. Returns the contact object or null if not found.
+ * Useful for finding who was called when we only have the roomId.
+ */
+export async function getContactByRoomId(roomId) {
+  if (!roomId) return null;
+
+  try {
+    const contacts = await getContacts();
+    for (const contact of Object.values(contacts || {})) {
+      if (contact?.roomId === roomId) {
+        return contact;
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to get contact by roomId', e);
+  }
+
+  return null;
+}
+
+/**
  * Resolve caller display name from roomId by looking up saved contact.
  */
 export async function resolveCallerName(roomId, fallbackUserId) {

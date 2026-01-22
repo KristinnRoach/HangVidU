@@ -53,6 +53,7 @@ import {
   titleAuthBar,
   pasteJoinBtn,
   addContactBtn,
+  testNotificationsBtn,
   getElements,
 } from './elements.js';
 
@@ -74,7 +75,7 @@ import {
   cleanupLocalVideoOnlyStream,
 } from './media/state.js';
 
-import { devDebug, setDevDebugEnabled } from './utils/dev/dev-utils.js';
+import { devDebug, isDev, setDevDebugEnabled } from './utils/dev/dev-utils.js';
 
 import RoomService from './room.js';
 import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
@@ -87,8 +88,17 @@ import {
   cleanupInviteListeners,
 } from './contacts/invitations.js';
 
+// import { getContactByRoomId } from './components/contacts/contacts.js';
+
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
 import './ui/state.js'; // Initialize UI state (sets body data-view attribute)
+import { initUI } from './ui/init-ui.js';
+import { bindCallUI } from './ui/bind-call-ui.js';
+
+import {
+  onWatchModeEntered,
+  onWatchModeExited,
+} from './ui/watch-lifecycle-ui.js';
 
 import {
   saveContact,
@@ -118,6 +128,7 @@ import {
 import { addDebugUpdateButton } from './components/notifications/debug-notifications.js';
 import { notificationManager } from './components/notifications/notification-manager.js';
 import { createNotificationsToggle } from './components/notifications/notifications-toggle.js';
+import { notificationController } from './notifications/notification-controller.js';
 
 import { showElement, hideElement } from './utils/ui/ui-utils.js';
 import { initializeAuthUI } from './components/auth/AuthComponent.js';
@@ -131,7 +142,6 @@ import {
 } from './components/modal/copyLinkModal.js';
 
 import {
-  hideCallingUI,
   onCallAnswered,
   isOutgoingCallFresh,
   isRoomCallFresh,
@@ -142,10 +152,6 @@ import { onCallConnected, onCallDisconnected } from './ui/call-lifecycle-ui.js';
 
 // Import and call iOS PWA redirect helper
 import { redirectIOSPWAToHosting } from './utils/env/redirectIOSPWA.js';
-import {
-  onWatchModeEntered,
-  onWatchModeExited,
-} from './ui/watch-lifecycle-ui.js';
 redirectIOSPWAToHosting();
 
 // Quick access to enable / disable dev debug logs
@@ -225,6 +231,18 @@ async function init() {
       notificationManager.setToggle(notificationsToggle);
     }
 
+    // Initialize FCM push notifications
+    try {
+      const fcmInitialized = await notificationController.initialize();
+      if (fcmInitialized) {
+        console.log('[MAIN] FCM notifications initialized successfully');
+      } else {
+        console.warn('[MAIN] FCM notifications failed to initialize');
+      }
+    } catch (error) {
+      console.error('[MAIN] FCM initialization error:', error);
+    }
+
     return true;
   } catch (error) {
     console.error('Initialization error:', error);
@@ -274,14 +292,6 @@ async function initLocalStreamAndMedia() {
       }
     });
   }
-}
-
-function initUI() {
-  hideElement(remoteBoxEl);
-  hideElement(localBoxEl);
-  hideElement(sharedBoxEl);
-  hideElement(chatControls);
-  // hideElement(lobbyDiv);
 }
 
 // ============================================================================
@@ -714,6 +724,27 @@ export function listenForIncomingOnRoom(roomId) {
         // Resolve caller name from contacts
         const callerName = await resolveCallerName(roomId, joiningUserId);
 
+        // Send push notification if app is backgrounded
+        if (
+          notificationController.isNotificationEnabled() &&
+          notificationController.shouldSendNotification()
+        ) {
+          try {
+            const callData =
+              await notificationController.formatCallNotification({
+                roomId,
+                callerId: joiningUserId,
+                callerName,
+              });
+
+            // Note: In production, this would send to the target user's FCM tokens
+            // For now, we'll just log it since we're the receiver
+            console.log('[MAIN] Would send call notification:', callData);
+          } catch (error) {
+            console.warn('[MAIN] Failed to send call notification:', error);
+          }
+        }
+
         // Start incoming call ringtone and visual indicators
         ringtoneManager.playIncoming();
         callIndicators.startCallIndicators(callerName);
@@ -733,6 +764,11 @@ export function listenForIncomingOnRoom(roomId) {
           // Remove incoming call listeners before starting active call
           // This prevents duplicate listener firing (incoming vs active call listeners)
           removeIncomingListenersForRoom(roomId);
+
+          // Dismiss any call notifications for this room
+          if (notificationController.isNotificationEnabled()) {
+            await notificationController.dismissCallNotifications(roomId);
+          }
 
           getDiagnosticLogger().logNotificationDecision(
             'ACCEPT',
@@ -757,6 +793,12 @@ export function listenForIncomingOnRoom(roomId) {
           });
         } else {
           devDebug('Incoming call rejected by user');
+
+          // Dismiss any call notifications for this room
+          if (notificationController.isNotificationEnabled()) {
+            await notificationController.dismissCallNotifications(roomId);
+          }
+
           getDiagnosticLogger().logNotificationDecision(
             'REJECT',
             'user_rejected',
@@ -1011,6 +1053,7 @@ function addKeyListeners() {
     );
   };
 
+  // TODO: refactor UI key handling
   document.addEventListener('keydown', (event) => {
     // Press 'W' to toggle player visibility
     if (!isTextInputFocused()) {
@@ -1134,7 +1177,62 @@ if (addContactBtn) {
   };
 }
 
+// Test Notifications button (development/testing only)
+if (isDev() && testNotificationsBtn) {
+  showElement(testNotificationsBtn);
+  testNotificationsBtn.onclick = async () => {
+    try {
+      console.log('[TEST] Testing notification permissions...');
+
+      const result = await notificationController.requestPermission({
+        title: 'Enable Push Notifications',
+        explain:
+          'Get notified of incoming calls and messages even when HangVidU is closed.',
+        onGranted: () => {
+          console.log('[TEST] Notifications granted!');
+          alert(
+            "✅ Push notifications enabled! You'll now receive notifications for incoming calls.",
+          );
+        },
+        onDenied: (reason) => {
+          console.log('[TEST] Notifications denied:', reason);
+          if (reason === 'silent-block') {
+            alert(
+              '❌ Notifications were blocked silently. Please enable them manually in your browser settings.',
+            );
+          } else if (reason === 'already-denied') {
+            alert(
+              '❌ Notifications were previously denied. Please enable them in your browser settings.',
+            );
+          } else {
+            alert(
+              '❌ Notifications were denied. You can enable them later in your browser settings.',
+            );
+          }
+        },
+        onDismissed: () => {
+          console.log('[TEST] Notification prompt dismissed');
+          alert(
+            '⚠️ Notification prompt was dismissed. You can try again anytime.',
+          );
+        },
+      });
+
+      console.log('[TEST] Permission result:', result);
+
+      // If already enabled, show current status
+      if (notificationController.isNotificationEnabled()) {
+        alert('✅ Push notifications are already enabled!');
+      }
+    } catch (error) {
+      console.error('[TEST] Error testing notifications:', error);
+      alert('❌ Error testing notifications: ' + error.message);
+    }
+  };
+}
+
 if (exitWatchModeBtn) {
+  // TODO: refactor UI
   exitWatchModeBtn.onclick = () => {
     if (getLastWatched() === 'yt') {
       pauseYouTubeVideo();
@@ -1155,6 +1253,7 @@ if (exitWatchModeBtn) {
   };
 }
 
+// TODO: refactor UI (actions?)
 hangUpBtn.onclick = async () => {
   console.debug('Hanging up...');
 
@@ -1292,10 +1391,22 @@ window.onload = async () => {
   const initSuccess = await init();
 
   if (!initSuccess) {
-    callBtn.disabled = true;
-    console.error('Initialization failed. Cannot start chat.');
+    if (callBtn) {
+      callBtn.disabled = true;
+      callBtn.title =
+        'Initialization failed. Please reload the page or check your camera/microphone permissions.';
+    }
+    console.error(
+      'Initialization failed. Call functionality disabled. Please reload the page.',
+    );
+    alert(
+      'Hangvidu could not initialize properly.\n\n' +
+        'Please check your camera/microphone permissions and reload the page.',
+    );
     return;
   }
+
+  bindCallUI(CallController);
 
   const onJoinRoomSubmit = async (roomInputString) => {
     const inputRoomId = normalizeRoomInput(roomInputString || '');
@@ -1361,6 +1472,16 @@ window.onload = async () => {
         // Close all messaging sessions (stops RTDB listeners for old user's conversations)
         messagingController.closeAllSessions();
 
+        // Disable notifications and clean up FCM tokens
+        if (notificationController.isNotificationEnabled()) {
+          await notificationController.disable().catch((error) => {
+            console.warn(
+              '[AUTH] Failed to disable notifications on logout:',
+              error,
+            );
+          });
+        }
+
         removeAllIncomingListeners();
         cleanupInviteListeners();
       } else if (isActualLogin) {
@@ -1424,6 +1545,7 @@ CallController.on('memberJoined', ({ memberId, roomId }) => {
 
   CallController.setPartnerId(memberId);
 
+  // TODO: refactor UI
   // Show messages toggle for file transfer during call
   messagesUI.showMessagesToggle();
 
@@ -1431,7 +1553,7 @@ CallController.on('memberJoined', ({ memberId, roomId }) => {
   // TODO: Refactor to avoid dependency on contacts.js ? Check messaging controller and clarify public API
   openContactMessages(memberId, memberId); // Use memberId as name for now
 
-  onCallConnected();
+  // onCallConnected(); // ! Moved to bind-call-ui.js
 
   onCallAnswered().catch((e) =>
     console.warn('Failed to clear calling state:', e),
@@ -1447,32 +1569,86 @@ CallController.on('memberLeft', ({ memberId }) => {
   console.info('Partner has left the call');
 });
 
-CallController.on('cleanup', ({ roomId, partnerId, reason }) => {
-  devDebug('CallController cleanup event', { roomId, partnerId, reason });
+CallController.on(
+  'cleanup',
+  async ({ roomId, partnerId, reason, role, wasConnected }) => {
+    devDebug('CallController cleanup event', {
+      roomId,
+      partnerId,
+      reason,
+      role,
+      wasConnected,
+    });
 
-  // Perform all UI cleanup
-  hideCallingUI();
-  cleanupRemoteStream();
-  onCallDisconnected();
-  devDebug('Disconnected. Click "Start New Chat" to begin.');
-  clearUrlParam();
+    // Handle Missed Call Notification
+    // Trigger if: initiator, no partner joined, never established connection, and valid room
+    const isMissedCall =
+      role === 'initiator' && !partnerId && !wasConnected && roomId;
 
-  // Clean up messages UI if present
-  const state = CallController.getState();
-  if (state.messagesUI && typeof state.messagesUI.cleanup === 'function') {
-    state.messagesUI.cleanup();
-    state.messagesUI = null;
-  }
+    if (isMissedCall) {
+      console.log('[MAIN] Potential missed call detected for room:', roomId);
+      try {
+        // Dynamic import to avoid circular dependency (main.js <-> contacts.js)
+        const { getContactByRoomId } =
+          await import('./components/contacts/contacts.js');
+        const contact = await getContactByRoomId(roomId);
+        if (contact && contact.contactId) {
+          const { getCurrentUser } = await import('./firebase/auth.js');
+          const me = getCurrentUser();
+          const callerName = me?.displayName || 'Friend';
 
-  // Prompt to save contact after cleanup (if partner was present)
-  if (partnerId && roomId) {
-    setTimeout(() => {
-      saveContact(partnerId, roomId, lobbyDiv).catch((e) => {
-        console.warn('Failed to save contact after cleanup:', e);
+          console.log(
+            `[MAIN] Sending missed call notification to ${contact.contactName} (${contact.contactId})`,
+          );
+          await notificationController.sendMissedCallNotification(
+            contact.contactId,
+            {
+              roomId,
+              callerId: getUserId(),
+              callerName,
+            },
+          );
+        } else {
+          console.log(
+            '[MAIN] No saved contact found for room, skipping missed call notification',
+          );
+        }
+      } catch (e) {
+        console.warn('[MAIN] Failed to handle missed call:', e);
+      }
+    }
+
+    // Clean up call notifications for this room
+    if (roomId && notificationController.isNotificationEnabled()) {
+      notificationController.dismissCallNotifications(roomId).catch((error) => {
+        console.warn('[MAIN] Failed to dismiss call notifications:', error);
       });
-    }, 500);
-  }
-});
+    }
+
+    // UI cleanup
+    // hideCallingUI(); // ! Moved to bind-call-ui.js
+    // onCallDisconnected(); // ! Moved to bind-call-ui.js
+
+    // Clean up messages UI if present
+    const state = CallController.getState();
+    if (state.messagesUI && typeof state.messagesUI.cleanup === 'function') {
+      state.messagesUI.cleanup();
+      state.messagesUI = null;
+    }
+
+    cleanupRemoteStream();
+    clearUrlParam();
+
+    // Prompt to save contact after cleanup (if partner was present)
+    if (partnerId && roomId) {
+      setTimeout(() => {
+        saveContact(partnerId, roomId, lobbyDiv).catch((e) => {
+          console.warn('Failed to save contact after cleanup:', e);
+        });
+      }, 500);
+    }
+  },
+);
 
 // ============================================================================
 // HANG UP / CLEANUP
@@ -1510,12 +1686,14 @@ async function cleanup() {
     remoteVideoEl.srcObject = null;
   }
 
+  // TODO: refactor UI (teardown)
   onWatchModeExited();
-  clearUrlParam();
   setLastWatched('none');
   destroyYouTubePlayer();
+  cleanupSearchUI();
+
+  clearUrlParam();
   setYouTubeReady(false);
 
-  cleanupSearchUI();
   cleanupFunctions.forEach((cleanupFn) => cleanupFn());
 }
