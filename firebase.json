@@ -14,7 +14,7 @@
   },
   "functions": {
     "source": "functions",
-    "runtime": "nodejs18",
+    "runtime": "nodejs20",
     "region": "europe-west1"
   }
 }
