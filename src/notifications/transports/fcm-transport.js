@@ -87,10 +87,7 @@ export class FCMTransport {
 
       if (token) {
         this.currentToken = token;
-        console.log(
-          '[FCMTransport] Token obtained:',
-          token.substring(0, 20) + '...',
-        );
+        console.log('[FCMTransport] Token obtained');
 
         // Store token in RTDB for the current user
         await this.storeUserToken(token);

@@ -54,10 +54,23 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+let messaging = null;
 
-// Initialize Firebase Messaging
-const messaging = firebase.messaging();
+// Validate config to prevent crashes if env vars are missing
+const isValidConfig = Object.values(firebaseConfig).every(
+  (val) => val && val.length > 0 && !val.includes('your-project'),
+);
+
+if (isValidConfig) {
+  try {
+    firebase.initializeApp(firebaseConfig);
+    messaging = firebase.messaging();
+  } catch (error) {
+    console.error('[SW] Failed to initialize Firebase:', error);
+  }
+} else {
+  console.warn('[SW] Firebase config missing or invalid. FCM disabled.');
+}
 
 // ============================================================================
 // FCM BACKGROUND MESSAGE HANDLING
@@ -67,28 +80,30 @@ const messaging = firebase.messaging();
  * Handle background messages when app is not in foreground
  * This is the core FCM functionality for push notifications
  */
-messaging.onBackgroundMessage((payload) => {
-  console.log('[SW] Background message received:', payload);
+if (messaging) {
+  messaging.onBackgroundMessage((payload) => {
+    console.log('[SW] Background message received:', payload);
 
-  const { notification, data } = payload;
-  const notificationTitle = notification?.title || 'New notification';
-  const notificationOptions = {
-    body: notification?.body || 'You have a new message',
-    icon: '/icons/play-arrows-v1/icon-192.png',
-    badge: '/icons/play-arrows-v1/icon-192.png',
-    data: data || {},
-    tag: getNotificationTag(data),
-    requireInteraction: data?.type === 'call',
-    actions: getNotificationActions(data?.type),
-    silent: false,
-  };
+    const { notification, data } = payload;
+    const notificationTitle = notification?.title || 'New notification';
+    const notificationOptions = {
+      body: notification?.body || 'You have a new message',
+      icon: '/icons/play-arrows-v1/icon-192.png',
+      badge: '/icons/play-arrows-v1/icon-192.png',
+      data: data || {},
+      tag: getNotificationTag(data),
+      requireInteraction: data?.type === 'call',
+      actions: getNotificationActions(data?.type),
+      silent: false,
+    };
 
-  // Show the notification
-  return self.registration.showNotification(
-    notificationTitle,
-    notificationOptions,
-  );
-});
+    // Show the notification
+    return self.registration.showNotification(
+      notificationTitle,
+      notificationOptions,
+    );
+  });
+}
 
 /**
  * Get notification actions based on type
@@ -101,12 +116,14 @@ function getNotificationActions(type) {
       {
         action: 'accept',
         title: 'Accept',
-        icon: '/icons/call-accept.png',
+        // TODO: Add icon assets
+        // icon: '/icons/call-accept.png',
       },
       {
         action: 'decline',
         title: 'Decline',
-        icon: '/icons/call-decline.png',
+        // TODO: Add icon assets
+        // icon: '/icons/call-decline.png',
       },
     ];
   } else if (type === 'message') {
@@ -114,7 +131,8 @@ function getNotificationActions(type) {
       {
         action: 'view',
         title: 'View',
-        icon: '/icons/view.png',
+        // TODO: Add icon assets
+        // icon: '/icons/view.png',
       },
     ];
   }

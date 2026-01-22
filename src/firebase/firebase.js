@@ -57,8 +57,10 @@ export const app = initializeApp(firebaseConfig);
 // ============================================================================
 
 // FCM VAPID key for web push notifications
-// Add VITE_FCM_VAPID_KEY to your .env files
 export const fcmVapidKey = import.meta.env.VITE_FCM_VAPID_KEY;
+if (!fcmVapidKey) {
+  console.error('Missing VITE_FCM_VAPID_KEY: required for FCM web push');
+}
 
 // ============================================================================
 // APP CHECK INIT

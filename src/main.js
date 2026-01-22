@@ -1389,7 +1389,21 @@ function setupInviteListener() {
 window.onload = async () => {
   const initSuccess = await init();
 
-  if (!initSuccess) return;
+  if (!initSuccess) {
+    if (callBtn) {
+      callBtn.disabled = true;
+      callBtn.title =
+        'Initialization failed. Please reload the page or check your camera/microphone permissions.';
+    }
+    console.error(
+      'Initialization failed. Call functionality disabled. Please reload the page.',
+    );
+    alert(
+      'Hangvidu could not initialize properly.\n\n' +
+        'Please check your camera/microphone permissions and reload the page.',
+    );
+    return;
+  }
 
   bindCallUI(CallController);
 

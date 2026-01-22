@@ -541,7 +541,7 @@ export class NotificationController {
    */
   detectBrowser() {
     // Prefer userAgentData when available (Chromium-based browsers)
-    if (navigator.userAgentData?.brands) {
+    if (navigator.userAgentData && navigator.userAgentData.brands) {
       const brands = navigator.userAgentData.brands.map((b) => b.brand);
       if (brands.some((b) => b.includes('Microsoft Edge'))) return 'Edge';
       if (brands.some((b) => b.includes('Google Chrome'))) return 'Chrome';
