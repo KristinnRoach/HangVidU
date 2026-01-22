@@ -12,8 +12,9 @@ function injectFirebaseConfig() {
     name: 'inject-firebase-config',
     generateBundle(_, bundle) {
       // Find the service worker file
-      const swFile = Object.keys(bundle).find((fileName) =>
-        fileName.includes('sw.js'),
+      // Robust check: must end in sw.js AND have code property (excludes .map files)
+      const swFile = Object.keys(bundle).find(
+        (fileName) => fileName.endsWith('sw.js') && bundle[fileName].code,
       );
       if (swFile && bundle[swFile]) {
         let swContent = bundle[swFile].code;

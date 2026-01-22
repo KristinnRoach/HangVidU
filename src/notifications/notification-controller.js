@@ -97,8 +97,11 @@ export class NotificationController {
       return { state: 'denied', reason: 'unsupported' };
     }
 
-    const browser = this.detectBrowser();
+    const browser = this.detectBrowser(); // Todo: use / integrate
     const before = Notification.permission;
+
+    // Sync internal state to ensure enable() works if permission was already granted
+    this.permissionState = before;
 
     // If already granted, enable and return success
     if (before === 'granted') {

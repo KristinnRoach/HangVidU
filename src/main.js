@@ -1179,6 +1179,7 @@ if (addContactBtn) {
 
 // Test Notifications button (development/testing only)
 if (isDev() && testNotificationsBtn) {
+  showElement(testNotificationsBtn);
   testNotificationsBtn.onclick = async () => {
     try {
       console.log('[TEST] Testing notification permissions...');

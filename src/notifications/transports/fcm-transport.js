@@ -179,7 +179,6 @@ export class FCMTransport {
       const tokenData = {
         token,
         deviceInfo: {
-          userAgent: navigator.userAgent,
           platform: this.getPlatform(),
           timestamp: Date.now(),
         },
@@ -308,11 +307,15 @@ export class FCMTransport {
   async sendMessageNotification(targetUserId, messageData) {
     const { senderId, senderName, messageText } = messageData;
 
+    // Guard against non-string messageText
+    const safeMessageText =
+      typeof messageText === 'string' ? messageText : String(messageText || '');
+
     // Truncate message for preview (max 50 chars)
     const messagePreview =
-      messageText.length > 50
-        ? messageText.substring(0, 47) + '...'
-        : messageText;
+      safeMessageText.length > 50
+        ? safeMessageText.substring(0, 47) + '...'
+        : safeMessageText;
 
     const notificationData = {
       type: 'message',

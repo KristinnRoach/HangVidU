@@ -203,6 +203,11 @@ async function handleNotificationClick(data, action) {
  * @param {string} action - Action clicked ('accept', 'decline', or undefined)
  */
 async function handleCallNotificationClick(roomId, action) {
+  // Guard against missing roomId
+  if (!roomId) {
+    return openApp();
+  }
+
   if (action === 'accept') {
     // Open app and auto-join the call
     await openApp(`/?room=${roomId}&autoJoin=true`);
@@ -221,6 +226,11 @@ async function handleCallNotificationClick(roomId, action) {
  * @param {string} senderId - ID of message sender
  */
 async function handleMessageNotificationClick(senderId) {
+  // Guard against missing senderId
+  if (!senderId) {
+    return openApp();
+  }
+
   // Open app and navigate to conversation
   await openApp(`/?contact=${senderId}`);
 }
@@ -251,8 +261,13 @@ async function openApp(path = '/') {
     return client;
   }
 
-  // Open new window
-  return self.clients.openWindow(path);
+  // Open new window (handle scope-relative path)
+  // Ensure path is relative to scope by removing leading slash
+  // (critical for GH Pages subdirectory deployment vs Firebase Hosting root)
+  const relativePath = path.startsWith('/') ? path.slice(1) : path;
+  const url = new URL(relativePath, self.registration.scope).href;
+
+  return self.clients.openWindow(url);
 }
 
 // ============================================================================
