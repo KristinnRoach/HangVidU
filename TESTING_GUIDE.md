@@ -154,4 +154,5 @@
 ## Next: Google Contacts Import (Phase 2)
 
 Coming next:
+
 Import contacts from Google People API to auto-discover friends already on HangVidU.
