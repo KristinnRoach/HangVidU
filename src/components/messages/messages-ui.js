@@ -123,7 +123,6 @@ export function initMessagesUI() {
   let isReceivingFile = false; // Track if currently receiving a file
   let sentFiles = new Map(); // Track sent files by name for watch-together requests
   let receivedFile = null; // Store the last received video file for watch-together
-  let messageIdCounter = 0; // Counter for generating unique message IDs
 
   // Initialize reaction management
   const reactionManager = new ReactionManager();
@@ -642,15 +641,20 @@ export function initMessagesUI() {
     hideElement(messageToggle.element);
   }
 
+  // Map of messageId -> DOM element for reaction updates
+  const messageElements = new Map();
+
   /**
    * Display a message in the chat
    * @param {string} text - Message content
    * @param {Object} options
    * @param {boolean} [options.isSentByMe] - true = right-aligned (local), false = left-aligned (remote), undefined = centered (system)
+   * @param {string} [options.messageId] - Firebase message ID for reactions
+   * @param {Object} [options.reactions] - Initial reactions { type: [userIds] }
    * @param {Object} [options.fileDownload] - File download data { fileName, url }
    */
   function appendChatMessage(text, options = {}) {
-    const { isSentByMe, senderDisplay, fileDownload } = options;
+    const { isSentByMe, senderDisplay, fileDownload, messageId, reactions } = options;
     // prefer explicit senderDisplay, otherwise 'Me' for local messages
     const effectiveSender = senderDisplay ?? (isSentByMe === true ? 'Me' : '');
 
@@ -704,15 +708,34 @@ export function initMessagesUI() {
     p.appendChild(avatarSpan);
     p.appendChild(textSpan);
 
-    // Generate unique message ID and enable reactions (except for system messages)
-    if (typeof isSentByMe !== 'undefined' && !fileDownload) {
-      const messageId = `msg-${messageIdCounter++}-${Date.now()}`;
+    // Enable reactions for real messages (not system messages or file downloads)
+    if (typeof isSentByMe !== 'undefined' && !fileDownload && messageId) {
       p.dataset.messageId = messageId;
-      
-      // Enable double-tap reactions on this message
-      reactionUI.enableDoubleTap(p, messageId, (reactions) => {
-        // Callback when reaction is added - reactions are already rendered by ReactionUI
-        console.log('[MessagesUI] Reaction added:', messageId, reactions);
+      messageElements.set(messageId, p);
+
+      // Render initial reactions if present
+      if (reactions && Object.keys(reactions).length > 0) {
+        // Convert { heart: ['user1'] } to { heart: 1 } for ReactionUI
+        const reactionCounts = {};
+        for (const [type, users] of Object.entries(reactions)) {
+          reactionCounts[type] = users.length;
+        }
+        reactionUI.renderReactions(p, messageId, reactionCounts);
+      }
+
+      // Enable double-tap/long-press reactions
+      reactionUI.enableDoubleTap(p, messageId, (localReactions) => {
+        // Sync reaction to transport
+        if (currentSession) {
+          // Find which reaction was just added (compare with what we had)
+          for (const [type, count] of Object.entries(localReactions)) {
+            if (count > 0) {
+              currentSession.addReaction(messageId, type).catch((err) => {
+                console.warn('[MessagesUI] Failed to sync reaction:', err);
+              });
+            }
+          }
+        }
       });
     }
 
@@ -731,8 +754,8 @@ export function initMessagesUI() {
     });
   }
 
-  function receiveMessage(text, { isUnread = true, senderDisplay = 'U' } = {}) {
-    appendChatMessage(text, { isSentByMe: false, senderDisplay });
+  function receiveMessage(text, { isUnread = true, senderDisplay = 'U', messageId, reactions } = {}) {
+    appendChatMessage(text, { isSentByMe: false, senderDisplay, messageId, reactions });
 
     // Only increment unread count if:
     // 1. The messages box is hidden (user can't see the message)
@@ -953,6 +976,37 @@ export function initMessagesUI() {
     messagesBox.style.right = '';
 
     detachRepositionHandlers();
+
+    // Clear reaction state
+    messageElements.clear();
+    reactionManager.clearAll();
+  }
+
+  /**
+   * Update reactions on an existing message (called when transport notifies of changes)
+   * @param {string} messageId - Firebase message ID
+   * @param {Object} reactions - Reactions { type: [userIds] }
+   */
+  function updateMessageReactions(messageId, reactions) {
+    const element = messageElements.get(messageId);
+    if (!element) return;
+
+    // Convert { heart: ['user1'] } to { heart: 1 } for ReactionUI
+    const reactionCounts = {};
+    for (const [type, users] of Object.entries(reactions || {})) {
+      reactionCounts[type] = users.length;
+    }
+
+    // Update local manager state to match remote
+    reactionManager.clearReactions(messageId);
+    for (const [type, count] of Object.entries(reactionCounts)) {
+      for (let i = 0; i < count; i++) {
+        reactionManager.addReaction(messageId, type);
+      }
+    }
+
+    // Re-render
+    reactionUI.renderReactions(element, messageId, reactionCounts);
   }
 
   function cleanup() {
@@ -987,6 +1041,7 @@ export function initMessagesUI() {
   return {
     appendChatMessage,
     receiveMessage,
+    updateMessageReactions,
     isMessagesUIOpen,
     toggleMessages,
     showMessagesToggle,

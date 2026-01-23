@@ -142,6 +142,36 @@ export class MessagingController {
         this.closeSession(contactId);
       },
 
+      /**
+       * Add a reaction to a message
+       * @param {string} messageId - Message ID to react to
+       * @param {string} reactionType - Type of reaction (e.g., 'heart')
+       * @returns {Promise<void>}
+       */
+      addReaction: (messageId, reactionType) => {
+        return this.transport.addReaction(contactId, messageId, reactionType);
+      },
+
+      /**
+       * Remove a reaction from a message
+       * @param {string} messageId - Message ID
+       * @param {string} reactionType - Type of reaction to remove
+       * @returns {Promise<void>}
+       */
+      removeReaction: (messageId, reactionType) => {
+        return this.transport.removeReaction(contactId, messageId, reactionType);
+      },
+
+      /**
+       * Check if current user has reacted with a specific type
+       * @param {string} messageId - Message ID
+       * @param {string} reactionType - Type of reaction to check
+       * @returns {Promise<boolean>}
+       */
+      hasMyReaction: (messageId, reactionType) => {
+        return this.transport.hasMyReaction(contactId, messageId, reactionType);
+      },
+
       // Internal: unsubscribe function from transport
       _unsubscribe: unsubscribe,
     };
