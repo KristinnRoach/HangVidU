@@ -2,7 +2,7 @@
 
 import { ref, set, get, remove, onValue, off } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId } from '../../firebase/auth.js';
+import { getLoggedInUserId, getCurrentUser } from '../../firebase/auth.js';
 import { joinOrCreateRoomWithId, listenForIncomingOnRoom } from '../../main.js';
 import { hideCallingUI, showCallingUI } from '../calling/calling-ui.js';
 import confirmDialog from '../base/confirm-dialog.js';
@@ -11,6 +11,7 @@ import { messagingController } from '../../messaging/messaging-controller.js';
 import { messagesUI } from '../messages/messages-ui.js';
 import { createMessageToggle } from '../messages/message-toggle.js';
 import { getDeterministicRoomId } from '../../utils/room-id.js';
+import { notificationController } from '../../notifications/notification-controller.js';
 
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
@@ -295,6 +296,29 @@ function attachContactListeners(container, lobbyElement) {
           await showCallingUI(roomId, contactName, () => {
             // TODO: Check if something (e.g. hangup handler, cleanup) needed here
           });
+
+          // Send push notification to the contact being called
+          if (notificationController.isNotificationEnabled()) {
+            try {
+              const currentUser = getCurrentUser();
+              const callerName =
+                currentUser?.displayName ||
+                currentUser?.email ||
+                getLoggedInUserId();
+
+              await notificationController.sendCallNotification(contactId, {
+                roomId,
+                callerId: getLoggedInUserId(),
+                callerName,
+              });
+              console.log('[CONTACTS] Call notification sent to:', contactName);
+            } catch (error) {
+              console.warn(
+                '[CONTACTS] Failed to send call notification:',
+                error,
+              );
+            }
+          }
         }
       }
     };

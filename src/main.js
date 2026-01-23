@@ -243,6 +243,10 @@ async function init() {
       console.error('[MAIN] FCM initialization error:', error);
     }
 
+    // DEBUG: Expose notificationController to window for testing
+    window.notificationController = notificationController;
+    window.getLoggedInUserId = getLoggedInUserId;
+
     return true;
   } catch (error) {
     console.error('Initialization error:', error);
@@ -723,27 +727,6 @@ export function listenForIncomingOnRoom(roomId) {
 
         // Resolve caller name from contacts
         const callerName = await resolveCallerName(roomId, joiningUserId);
-
-        // Send push notification if app is backgrounded
-        if (
-          notificationController.isNotificationEnabled() &&
-          notificationController.shouldSendNotification()
-        ) {
-          try {
-            const callData =
-              await notificationController.formatCallNotification({
-                roomId,
-                callerId: joiningUserId,
-                callerName,
-              });
-
-            // Note: In production, this would send to the target user's FCM tokens
-            // For now, we'll just log it since we're the receiver
-            console.log('[MAIN] Would send call notification:', callData);
-          } catch (error) {
-            console.warn('[MAIN] Failed to send call notification:', error);
-          }
-        }
 
         // Start incoming call ringtone and visual indicators
         ringtoneManager.playIncoming();
@@ -1406,6 +1389,7 @@ window.onload = async () => {
     return;
   }
 
+  // UI handlers (business logic handlers registered separately below)
   bindCallUI(CallController);
 
   const onJoinRoomSubmit = async (roomInputString) => {
@@ -1539,7 +1523,7 @@ window.addEventListener('beforeunload', async (e) => {
 // CALLCONTROLLER EVENT SUBSCRIPTIONS
 // ============================================================================
 
-// Subscribe to CallController memberJoined event - handles partner joining
+// Business logic for memberJoined (UI handled in bind-call-ui.js)
 CallController.on('memberJoined', ({ memberId, roomId }) => {
   console.debug('CallController memberJoined event', { memberId, roomId });
 
@@ -1569,6 +1553,7 @@ CallController.on('memberLeft', ({ memberId }) => {
   console.info('Partner has left the call');
 });
 
+// Business logic for cleanup (UI handled in bind-call-ui.js)
 CallController.on(
   'cleanup',
   async ({ roomId, partnerId, reason, role, wasConnected }) => {
@@ -1579,6 +1564,10 @@ CallController.on(
       role,
       wasConnected,
     });
+
+    // UI cleanup
+    // hideCallingUI(); // ! Moved to bind-call-ui.js
+    // onCallDisconnected(); // ! Moved to bind-call-ui.js
 
     // Handle Missed Call Notification
     // Trigger if: initiator, no partner joined, never established connection, and valid room
