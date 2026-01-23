@@ -7,6 +7,7 @@ import {
 
 import { hideElement } from '../utils/ui/ui-utils.js';
 
+/** Hides video boxes and chat controls on startup (shown when call connects). */
 export function initUI() {
   hideElement(remoteBoxEl);
   hideElement(localBoxEl);

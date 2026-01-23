@@ -1290,6 +1290,7 @@ window.onload = async () => {
 
   if (!initSuccess) return;
 
+  // UI handlers (business logic handlers registered separately below)
   bindCallUI(CallController);
 
   const onJoinRoomSubmit = async (roomInputString) => {
@@ -1413,7 +1414,7 @@ window.addEventListener('beforeunload', async (e) => {
 // CALLCONTROLLER EVENT SUBSCRIPTIONS
 // ============================================================================
 
-// Subscribe to CallController memberJoined event - handles partner joining
+// Business logic for memberJoined (UI handled in bind-call-ui.js)
 CallController.on('memberJoined', ({ memberId, roomId }) => {
   console.debug('CallController memberJoined event', { memberId, roomId });
 
@@ -1443,6 +1444,7 @@ CallController.on('memberLeft', ({ memberId }) => {
   console.info('Partner has left the call');
 });
 
+// Business logic for cleanup (UI handled in bind-call-ui.js)
 CallController.on('cleanup', ({ roomId, partnerId, reason }) => {
   devDebug('CallController cleanup event', { roomId, partnerId, reason });
 
