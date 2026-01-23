@@ -99,3 +99,4 @@ coverage/
 *.lcov
 first-contact-agent-prompt.md
 tests/smoke/__screenshots__/
+**/__screenshots__/

@@ -92,7 +92,7 @@ export class ReactionUI {
     }
 
     // Notify callback
-    if (onReactionChange && typeof onReactionChange === 'function') {
+    if (onReactionChange) {
       onReactionChange(reactions);
     }
   }
@@ -116,19 +116,22 @@ export class ReactionUI {
     // Clear existing reactions
     reactionContainer.innerHTML = '';
 
+    // Check if there are any reactions with count > 0
+    const hasActiveReactions = Object.values(reactions).some(count => count > 0);
+
+    if (!hasActiveReactions) {
+      reactionContainer.style.display = 'none';
+      return;
+    }
+
+    reactionContainer.style.display = '';
+
     // Render each reaction type
     for (const [reactionType, count] of Object.entries(reactions)) {
       if (count > 0) {
         const reactionBadge = this.createReactionBadge(reactionType, count);
         reactionContainer.appendChild(reactionBadge);
       }
-    }
-
-    // Hide container if no reactions
-    if (Object.keys(reactions).length === 0) {
-      reactionContainer.style.display = 'none';
-    } else {
-      reactionContainer.style.display = '';
     }
   }
 
