@@ -10,6 +10,7 @@ import {
 } from '../../firebase/watch-sync.js';
 
 import { linkifyToFragment } from '../../utils/linkify.js';
+import { ReactionManager, ReactionUI } from '../../messaging/reactions/index.js';
 
 // Helper: create the messages box DOM and return container + element refs
 function createMessageBox() {
@@ -122,6 +123,11 @@ export function initMessagesUI() {
   let isReceivingFile = false; // Track if currently receiving a file
   let sentFiles = new Map(); // Track sent files by name for watch-together requests
   let receivedFile = null; // Store the last received video file for watch-together
+  let messageIdCounter = 0; // Counter for generating unique message IDs
+
+  // Initialize reaction management
+  const reactionManager = new ReactionManager();
+  const reactionUI = new ReactionUI(reactionManager);
 
   const topRightMenu =
     document.querySelector('.top-bar .top-right-menu') ||
@@ -697,6 +703,18 @@ export function initMessagesUI() {
 
     p.appendChild(avatarSpan);
     p.appendChild(textSpan);
+
+    // Generate unique message ID and enable reactions (except for system messages)
+    if (typeof isSentByMe !== 'undefined' && !fileDownload) {
+      const messageId = `msg-${messageIdCounter++}-${Date.now()}`;
+      p.dataset.messageId = messageId;
+      
+      // Enable double-tap reactions on this message
+      reactionUI.enableDoubleTap(p, messageId, (reactions) => {
+        // Callback when reaction is added - reactions are already rendered by ReactionUI
+        console.log('[MessagesUI] Reaction added:', messageId, reactions);
+      });
+    }
 
     messagesMessages.appendChild(p);
     // Keep newest message visible

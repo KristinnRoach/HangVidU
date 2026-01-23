@@ -18,6 +18,7 @@
 @import './components/videos.css';
 @import './components/chat-controls.css';
 @import './components/messages.css';
+@import './components/reactions.css';
 @import './components/search.css';
 @import './components/notifications.css';
 
