@@ -70,3 +70,48 @@
 #messages p.message-remote .message-reactions {
   justify-content: flex-start;
 }
+
+/* ===== REACTION PICKER ===== */
+
+.reaction-picker {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--bg-primary, #1a1a1a);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 10001;
+  transform: translateX(-50%) translateY(-100%);
+  animation: picker-appear 0.15s ease-out;
+}
+
+@keyframes picker-appear {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-100%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-100%) scale(1);
+  }
+}
+
+.reaction-picker-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: transform 0.1s ease, background 0.1s ease;
+}
+
+.reaction-picker-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.2);
+}
+
+.reaction-picker-btn:active {
+  transform: scale(0.95);
+}

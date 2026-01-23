@@ -19,13 +19,16 @@ export const DEFAULT_REACTIONS = {
 export const REACTION_CONFIG = {
   // Double-tap detection settings
   doubleTapDelay: 300, // milliseconds between taps to count as double-tap
-  
+
+  // Long-press detection settings
+  longPressDelay: 500, // milliseconds to trigger long-press
+
   // Default reaction type for double-tap
   defaultReaction: 'heart',
-  
+
   // Maximum reactions per message (0 = unlimited)
   maxReactionsPerMessage: 0,
-  
+
   // Enable/disable reaction animations
   enableAnimations: true,
 };
