@@ -22,6 +22,17 @@ import { registerUserInDirectory } from '../contacts/user-discovery.js';
 
 export const auth = getAuth(app);
 
+/**
+ * Get current user's ID token (JWT)
+ * @returns {Promise<string|null>} ID token or null if not logged in
+ */
+export async function getLoggedInUserToken() {
+  const user = auth.currentUser;
+  if (!user) return null;
+  // forceRefresh: false - use cached token if valid
+  return user.getIdToken(false);
+}
+
 // Production-aware auth logger: avoid printing PII in production builds
 const isProd =
   typeof import.meta !== 'undefined' && Boolean(import.meta.env?.PROD);
@@ -153,11 +164,11 @@ function handleSignInError(error) {
     isIOSStandalone
   ) {
     console.warn(
-      `[AUTH] ${errorCode} inside iOS standalone PWA. Arming Safari fallback.`
+      `[AUTH] ${errorCode} inside iOS standalone PWA. Arming Safari fallback.`,
     );
     setSafariExternalOpenArmed(true);
     alert(
-      'Sign-in is blocked in the installed app on iOS.\n\nTap the Login button again to open in Safari and complete sign-in.'
+      'Sign-in is blocked in the installed app on iOS.\n\nTap the Login button again to open in Safari and complete sign-in.',
     );
     return;
   }
@@ -165,7 +176,7 @@ function handleSignInError(error) {
   // If popup is blocked (and not iOS standalone which is handled above), inform user
   if (errorCode === 'auth/popup-blocked') {
     alert(
-      'Pop-up blocked. Please enable pop-ups for this site in your browser settings, or try signing in from a desktop browser.'
+      'Pop-up blocked. Please enable pop-ups for this site in your browser settings, or try signing in from a desktop browser.',
     );
     return;
   }
@@ -178,8 +189,7 @@ function handleSignInError(error) {
   });
 
   if (errorCode === 'auth/unauthorized-domain') {
-    const origin =
-      typeof window !== 'undefined' ? window.location.origin : '';
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const guidanceLines = [
       "This app's host is not whitelisted in Firebase Authentication.",
       'Fix: In Firebase Console, go to Build → Authentication → Settings → Authorized domains and add this origin:',
@@ -204,7 +214,7 @@ function handleSignInError(error) {
     }
 
     alert(
-      `Sign-in failed: Unauthorized domain.\n\n${guidanceLines.join('\n')}`
+      `Sign-in failed: Unauthorized domain.\n\n${guidanceLines.join('\n')}`,
     );
     return;
   }
@@ -434,7 +444,8 @@ export function requestContactsAccess() {
 
     const tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
-      scope: 'https://www.googleapis.com/auth/contacts.readonly https://www.googleapis.com/auth/contacts.other.readonly',
+      scope:
+        'https://www.googleapis.com/auth/contacts.readonly https://www.googleapis.com/auth/contacts.other.readonly',
       hint: currentUser?.email || undefined,
       callback: (response) => {
         if (response.error) {

@@ -3,6 +3,8 @@ import { createNotificationsToggle } from './notifications-toggle.js';
 import { notificationManager } from './notification-manager.js';
 import { isDev } from '../../utils/dev/dev-utils.js';
 
+const HIDE_DEBUG_UI = true; // Set to false to enable debug notification UI in dev mode
+
 let dummyNotificationCounter = 0;
 
 /**
@@ -35,7 +37,7 @@ function createDummyNotification() {
 
   notificationManager.add(id, notification);
   console.log(
-    `[DEBUG] Added notification #${notificationNumber}. Total: ${notificationManager.getCount()}`
+    `[DEBUG] Added notification #${notificationNumber}. Total: ${notificationManager.getCount()}`,
   );
 }
 
@@ -44,7 +46,7 @@ function createDummyNotification() {
  * Only works in dev mode.
  */
 export function addDebugUpdateButton() {
-  if (!isDev()) return;
+  if (HIDE_DEBUG_UI || !isDev()) return;
 
   // Create notifications toggle in top-right menu
   const topRightMenu = document.querySelector('.top-right-menu');

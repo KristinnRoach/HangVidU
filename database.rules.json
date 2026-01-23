@@ -45,7 +45,17 @@
         "presence": {
           ".read": true,
           ".write": "$userId === auth.uid"
+        },
+        "fcmTokens": {
+          ".read": "$userId === auth.uid",
+          ".write": "$userId === auth.uid"
         }
+      }
+    },
+    "notifications": {
+      "$userId": {
+        ".read": "$userId === auth.uid",
+        ".write": "auth != null"
       }
     },
     "conversations": {

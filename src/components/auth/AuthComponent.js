@@ -44,14 +44,23 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       loginBtnMarginRightPx,
     },
     template: `
-      <button style="margin-right: \${loginBtnMarginRightPx}px" id="goog-login-btn" class="login-btn" onclick="handleLogin" disabled>Login</button>
-      <button id="goog-logout-btn" class="logout-btn" onclick="handleLogout" disabled>Logout</button>
+      <button style="margin-right: \${loginBtnMarginRightPx}px" id="goog-login-btn" class="login-btn" onclick="handleLogin">Login</button>
+      <button id="goog-logout-btn" class="logout-btn" onclick="handleLogout">Logout</button>
       <span class="signing-in-indicator" style="display: \${signingInDisplay}; color: var(--text-secondary, #888); font-size: 0.9rem;">Signing in...</span>
       <div class="user-info">\${isLoggedIn ? 'Logged in: ' + userName : 'Logged out'}</div>
     `,
     handlers: {
       // handleLogin: signInWithGoogle, // TODO: remove or use
-      handleLogin: signInWithAccountSelection,
+      handleLogin: async (e) => {
+        try {
+          await signInWithAccountSelection(e);
+        } catch (error) {
+          console.error('[AuthComponent] Handle login error:', error);
+          alert(
+            'Login failed. Please refresh the page, check your connection and try again.',
+          );
+        }
+      },
       handleLogout: signOutUser,
     },
     onMount: (el) => {

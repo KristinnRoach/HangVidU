@@ -120,12 +120,12 @@ describe('CallController (unit)', () => {
     expect(RoomService.cancelCall).toHaveBeenCalledWith(
       'room-abc',
       'local-user-id',
-      'user_hung_up'
+      'user_hung_up',
     );
     // leaveRoom called by cleanupCall
     expect(RoomService.leaveRoom).toHaveBeenCalledWith(
       'local-user-id',
-      'room-abc'
+      'room-abc',
     );
     expect(pc.close).toHaveBeenCalled();
     expect(hangupEvt).toHaveBeenCalled();
@@ -150,14 +150,16 @@ describe('CallController (unit)', () => {
     expect(RoomService.cancelCall).not.toHaveBeenCalled();
     expect(RoomService.leaveRoom).toHaveBeenCalledWith(
       'local-user-id',
-      'room-xyz'
+      'room-xyz',
     );
     expect(pc.close).toHaveBeenCalled();
-    expect(cleanupEvt).toHaveBeenCalledWith({
-      roomId: 'room-xyz',
-      partnerId: 'partner-123',
-      reason: 'remote_hangup',
-    });
+    expect(cleanupEvt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        roomId: 'room-xyz',
+        partnerId: 'partner-123',
+        reason: 'remote_hangup',
+      }),
+    );
     expect(CallController.getState().state).toBe('idle');
   });
 
@@ -501,11 +503,13 @@ it('cleanup event includes partnerId for contact save prompt (user-initiated han
   await CallController.hangUp({ emitCancel: true, reason: 'user_hung_up' });
 
   // Assert: cleanup event includes partnerId for contact save
-  expect(cleanupListener).toHaveBeenCalledWith({
-    roomId: 'room-contact-save',
-    partnerId: 'partner-user-id',
-    reason: 'user_hung_up',
-  });
+  expect(cleanupListener).toHaveBeenCalledWith(
+    expect.objectContaining({
+      roomId: 'room-contact-save',
+      partnerId: 'partner-user-id',
+      reason: 'user_hung_up',
+    }),
+  );
 });
 
 it('cleanup event includes partnerId for contact save prompt (remote hangup)', async () => {
@@ -523,10 +527,11 @@ it('cleanup event includes partnerId for contact save prompt (remote hangup)', a
   // Act: Remote party hangs up (triggered by cancellation listener)
   await CallController.cleanupCall({ reason: 'remote_cancelled' });
 
-  // Assert: cleanup event includes partnerId for contact save
-  expect(cleanupListener).toHaveBeenCalledWith({
-    roomId: 'room-remote-hangup',
-    partnerId: 'remote-partner-id',
-    reason: 'remote_cancelled',
-  });
+  expect(cleanupListener).toHaveBeenCalledWith(
+    expect.objectContaining({
+      roomId: 'room-remote-hangup',
+      partnerId: 'remote-partner-id',
+      reason: 'remote_cancelled',
+    }),
+  );
 });

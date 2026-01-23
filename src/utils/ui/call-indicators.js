@@ -57,7 +57,8 @@ class CallIndicators {
     this.startTitleFlashing(callerName);
 
     // Change favicon
-    this.setFavicon('/icons/phone-ringing.svg');
+    const baseUrl = import.meta.env.BASE_URL;
+    this.setFavicon(`${baseUrl}icons/phone-ringing.svg`);
 
     // Set badge (if supported)
     this.setBadge(1);
