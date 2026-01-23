@@ -96,7 +96,7 @@ export class ReactionManager {
    */
   hasReactions(messageId) {
     const reactions = this.reactions.get(messageId);
-    return reactions && Object.keys(reactions).length > 0;
+    return !!(reactions && Object.keys(reactions).length > 0);
   }
 
   /**
