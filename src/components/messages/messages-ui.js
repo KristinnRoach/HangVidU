@@ -10,7 +10,10 @@ import {
 } from '../../firebase/watch-sync.js';
 
 import { linkifyToFragment } from '../../utils/linkify.js';
-import { ReactionManager, ReactionUI } from '../../messaging/reactions/index.js';
+import {
+  ReactionManager,
+  ReactionUI,
+} from '../../messaging/reactions/index.js';
 
 // Helper: create the messages box DOM and return container + element refs
 function createMessageBox() {
@@ -615,23 +618,25 @@ export function initMessagesUI() {
   }
 
   // onClickOutside removed for mobile, test again when auto scrolling issue is resolved
-  if (!isMobileDevice()) {
-    // Close messages box when clicking outside (desktop only)
-    removeMessagesBoxClickOutside = onClickOutside(
-      messagesBox,
-      () => {
-        hideElement(messagesBox);
-        detachRepositionHandlers();
+  // Close messages box when clicking outside
+  removeMessagesBoxClickOutside = onClickOutside(
+    messagesBox,
+    () => {
+      hideElement(messagesBox);
+      detachRepositionHandlers();
 
-        // Clear inline offsets
-        messagesBox.style.top = '';
-        messagesBox.style.left = '';
-        messagesBox.style.bottom = '';
-        messagesBox.style.right = '';
-      },
-      { ignore: [messageToggle.element], esc: true },
-    );
-  }
+      // Clear inline offsets
+      messagesBox.style.top = '';
+      messagesBox.style.left = '';
+      messagesBox.style.bottom = '';
+      messagesBox.style.right = '';
+    },
+    {
+      ignore: [messageToggle.element],
+      esc: true,
+      ignoreInputBlur: isMobileDevice(), // Prevent accidental closes when dismissing keyboard on mobile
+    },
+  );
 
   function showMessagesToggle() {
     showElement(messageToggle.element);
@@ -654,7 +659,8 @@ export function initMessagesUI() {
    * @param {Object} [options.fileDownload] - File download data { fileName, url }
    */
   function appendChatMessage(text, options = {}) {
-    const { isSentByMe, senderDisplay, fileDownload, messageId, reactions } = options;
+    const { isSentByMe, senderDisplay, fileDownload, messageId, reactions } =
+      options;
     // prefer explicit senderDisplay, otherwise 'Me' for local messages
     const effectiveSender = senderDisplay ?? (isSentByMe === true ? 'Me' : '');
 
@@ -754,8 +760,16 @@ export function initMessagesUI() {
     });
   }
 
-  function receiveMessage(text, { isUnread = true, senderDisplay = 'U', messageId, reactions } = {}) {
-    appendChatMessage(text, { isSentByMe: false, senderDisplay, messageId, reactions });
+  function receiveMessage(
+    text,
+    { isUnread = true, senderDisplay = 'U', messageId, reactions } = {},
+  ) {
+    appendChatMessage(text, {
+      isSentByMe: false,
+      senderDisplay,
+      messageId,
+      reactions,
+    });
 
     // Only increment unread count if:
     // 1. The messages box is hidden (user can't see the message)
