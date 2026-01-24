@@ -1,16 +1,20 @@
 // src/messaging/reactions/ReactionUI.js
 // UI rendering and interaction handling for reactions
 
-import { REACTION_CONFIG, getReactionEmoji, getAvailableReactions } from './ReactionConfig.js';
+import {
+  REACTION_CONFIG,
+  getReactionEmoji,
+  getAvailableReactions,
+} from './ReactionConfig.js';
 
 /**
  * ReactionUI - Handles reaction UI rendering and interactions
- * 
+ *
  * Responsibilities:
  * - Render reaction display on messages
  * - Handle double-tap detection
  * - Trigger reaction animations
- * 
+ *
  * Design principles:
  * - DOM-focused: creates and manages reaction UI elements
  * - Event-driven: responds to user interactions
@@ -55,7 +59,7 @@ export class ReactionUI {
       const now = Date.now();
       const lastTap = this.doubleTapTimers.get(messageElement);
 
-      if (lastTap && (now - lastTap) < REACTION_CONFIG.doubleTapDelay) {
+      if (lastTap && now - lastTap < REACTION_CONFIG.doubleTapDelay) {
         e.preventDefault();
         this.handleDoubleTap(messageElement, messageId, onReactionChange);
         this.doubleTapTimers.delete(messageElement);
@@ -89,10 +93,18 @@ export class ReactionUI {
     messageElement.addEventListener(tapEvent, handleTap, { passive: false });
 
     if (isTouchDevice) {
-      messageElement.addEventListener('touchstart', startLongPress, { passive: true });
-      messageElement.addEventListener('touchend', cancelLongPress, { passive: true });
-      messageElement.addEventListener('touchmove', cancelLongPress, { passive: true });
-      messageElement.addEventListener('touchcancel', cancelLongPress, { passive: true });
+      messageElement.addEventListener('touchstart', startLongPress, {
+        passive: true,
+      });
+      messageElement.addEventListener('touchend', cancelLongPress, {
+        passive: true,
+      });
+      messageElement.addEventListener('touchmove', cancelLongPress, {
+        passive: true,
+      });
+      messageElement.addEventListener('touchcancel', cancelLongPress, {
+        passive: true,
+      });
     } else {
       messageElement.addEventListener('mousedown', startLongPress);
       messageElement.addEventListener('mouseup', cancelLongPress);
@@ -121,26 +133,41 @@ export class ReactionUI {
    * Handle double-tap on a message
    * @param {HTMLElement} messageElement - The message DOM element
    * @param {string} messageId - Unique identifier for the message
-   * @param {Function} onReactionChange - Callback when reaction is added
+   * @param {Function} onReactionChange - Callback when reaction is added/removed
    */
   handleDoubleTap(messageElement, messageId, onReactionChange) {
-    // Add reaction to manager
-    const reactions = this.reactionManager.addReaction(
+    const reactionType = REACTION_CONFIG.defaultReaction;
+
+    // Check if reaction already exists
+    const currentCount = this.reactionManager.getReactionCount(
       messageId,
-      REACTION_CONFIG.defaultReaction
+      reactionType,
     );
+
+    let reactions;
+    if (currentCount > 0) {
+      // Remove reaction (toggle off)
+      reactions = this.reactionManager.removeReaction(messageId, reactionType);
+    } else {
+      // Add reaction (toggle on)
+      reactions = this.reactionManager.addReaction(messageId, reactionType);
+
+      // Show animation only when adding
+      if (REACTION_CONFIG.enableAnimations) {
+        this.showReactionAnimation(messageElement, reactionType);
+      }
+    }
 
     // Update UI
     this.renderReactions(messageElement, messageId, reactions);
 
-    // Show animation
-    if (REACTION_CONFIG.enableAnimations) {
-      this.showReactionAnimation(messageElement, REACTION_CONFIG.defaultReaction);
-    }
-
     // Notify callback
     if (onReactionChange) {
-      onReactionChange(reactions);
+      onReactionChange(
+        reactions,
+        reactionType,
+        currentCount > 0 ? 'remove' : 'add',
+      );
     }
   }
 
@@ -153,7 +180,7 @@ export class ReactionUI {
   renderReactions(messageElement, messageId, reactions) {
     // Find or create reaction container
     let reactionContainer = messageElement.querySelector('.message-reactions');
-    
+
     if (!reactionContainer) {
       reactionContainer = document.createElement('div');
       reactionContainer.className = 'message-reactions';
@@ -164,7 +191,9 @@ export class ReactionUI {
     reactionContainer.innerHTML = '';
 
     // Check if there are any reactions with count > 0
-    const hasActiveReactions = Object.values(reactions).some(count => count > 0);
+    const hasActiveReactions = Object.values(reactions).some(
+      (count) => count > 0,
+    );
 
     if (!hasActiveReactions) {
       reactionContainer.style.display = 'none';
@@ -205,15 +234,15 @@ export class ReactionUI {
     const animation = document.createElement('div');
     animation.className = 'reaction-animation';
     animation.textContent = emoji;
-    
+
     // Position relative to message
     const rect = messageElement.getBoundingClientRect();
     animation.style.position = 'fixed';
     animation.style.left = `${rect.left + rect.width / 2}px`;
     animation.style.top = `${rect.top + rect.height / 2}px`;
-    
+
     document.body.appendChild(animation);
-    
+
     // Remove after animation completes
     setTimeout(() => {
       animation.remove();
@@ -243,7 +272,10 @@ export class ReactionUI {
 
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const updatedReactions = this.reactionManager.addReaction(messageId, type);
+        const updatedReactions = this.reactionManager.addReaction(
+          messageId,
+          type,
+        );
         this.renderReactions(messageElement, messageId, updatedReactions);
 
         if (REACTION_CONFIG.enableAnimations) {

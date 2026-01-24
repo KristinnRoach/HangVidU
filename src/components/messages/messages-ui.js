@@ -10,7 +10,10 @@ import {
 } from '../../firebase/watch-sync.js';
 
 import { linkifyToFragment } from '../../utils/linkify.js';
-import { ReactionManager, ReactionUI } from '../../messaging/reactions/index.js';
+import {
+  ReactionManager,
+  ReactionUI,
+} from '../../messaging/reactions/index.js';
 
 // Helper: create the messages box DOM and return container + element refs
 function createMessageBox() {
@@ -654,7 +657,8 @@ export function initMessagesUI() {
    * @param {Object} [options.fileDownload] - File download data { fileName, url }
    */
   function appendChatMessage(text, options = {}) {
-    const { isSentByMe, senderDisplay, fileDownload, messageId, reactions } = options;
+    const { isSentByMe, senderDisplay, fileDownload, messageId, reactions } =
+      options;
     // prefer explicit senderDisplay, otherwise 'Me' for local messages
     const effectiveSender = senderDisplay ?? (isSentByMe === true ? 'Me' : '');
 
@@ -724,19 +728,31 @@ export function initMessagesUI() {
       }
 
       // Enable double-tap/long-press reactions
-      reactionUI.enableDoubleTap(p, messageId, (localReactions) => {
-        // Sync reaction to transport
-        if (currentSession) {
-          // Find which reaction was just added (compare with what we had)
-          for (const [type, count] of Object.entries(localReactions)) {
-            if (count > 0) {
-              currentSession.addReaction(messageId, type).catch((err) => {
-                console.warn('[MessagesUI] Failed to sync reaction:', err);
-              });
+      reactionUI.enableDoubleTap(
+        p,
+        messageId,
+        (localReactions, reactionType, action) => {
+          // Sync reaction to transport
+          if (currentSession && reactionType) {
+            if (action === 'add') {
+              currentSession
+                .addReaction(messageId, reactionType)
+                .catch((err) => {
+                  console.warn('[MessagesUI] Failed to sync reaction:', err);
+                });
+            } else if (action === 'remove') {
+              currentSession
+                .removeReaction(messageId, reactionType)
+                .catch((err) => {
+                  console.warn(
+                    '[MessagesUI] Failed to sync reaction removal:',
+                    err,
+                  );
+                });
             }
           }
-        }
-      });
+        },
+      );
     }
 
     messagesMessages.appendChild(p);
@@ -754,8 +770,16 @@ export function initMessagesUI() {
     });
   }
 
-  function receiveMessage(text, { isUnread = true, senderDisplay = 'U', messageId, reactions } = {}) {
-    appendChatMessage(text, { isSentByMe: false, senderDisplay, messageId, reactions });
+  function receiveMessage(
+    text,
+    { isUnread = true, senderDisplay = 'U', messageId, reactions } = {},
+  ) {
+    appendChatMessage(text, {
+      isSentByMe: false,
+      senderDisplay,
+      messageId,
+      reactions,
+    });
 
     // Only increment unread count if:
     // 1. The messages box is hidden (user can't see the message)
