@@ -1,5 +1,7 @@
 // firebase-messaging-sw.js
 // Firebase Cloud Messaging Service Worker
+// This file is in /src and uses import.meta.env for environment variables
+// Vite will bundle it and output to root during build
 
 importScripts(
   'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js',
@@ -8,15 +10,16 @@ importScripts(
   'https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js',
 );
 
-// Firebase configuration
+// Firebase configuration using Vite environment variables
+// These values are replaced at build time by Vite
 const firebaseConfig = {
-  apiKey: 'AIzaSyA-fvCaKCjyEFX__YAVr1oPGdVsUEhFehA',
-  authDomain: 'vidu-aae11.web.app',
-  projectId: 'vidu-aae11',
-  storageBucket: 'vidu-aae11.firebasestorage.app',
-  messagingSenderId: '765724787439',
-  appId: '1:765724787439:web:61a3b5dd538149564c911a',
-  measurementId: 'G-EGJ53HLGY4',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase

@@ -5,53 +5,6 @@ import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
 import mkcert from 'vite-plugin-mkcert';
 
-// Plugin to inject Firebase config into service worker
-// Reads from process.env (populated by GitHub Actions secrets during CI)
-// function injectFirebaseConfig() {
-//   return {
-//     name: 'inject-firebase-config',
-//     generateBundle(_, bundle) {
-//       // Find the service worker file
-//       // Robust check: must end in sw.js AND have code property (excludes .map files)
-//       const swFile = Object.keys(bundle).find(
-//         (fileName) => fileName.endsWith('sw.js') && bundle[fileName].code,
-//       );
-//       if (swFile && bundle[swFile]) {
-//         let swContent = bundle[swFile].code;
-
-//         // Replace placeholder values with actual environment variables
-//         // Regex handles both single and double quotes (minified vs unminified)
-//         swContent = swContent.replace(
-//           /apiKey:\s*["']AIzaSyBxqKJWJWJWJWJWJWJWJWJWJWJWJWJWJWJ["']/,
-//           `apiKey:"${process.env.VITE_FIREBASE_API_KEY || ''}"`,
-//         );
-//         swContent = swContent.replace(
-//           /authDomain:\s*["']your-project\.firebaseapp\.com["']/,
-//           `authDomain:"${process.env.VITE_FIREBASE_AUTH_DOMAIN || ''}"`,
-//         );
-//         swContent = swContent.replace(
-//           /projectId:\s*["']your-project-id["']/,
-//           `projectId:"${process.env.VITE_FIREBASE_PROJECT_ID || ''}"`,
-//         );
-//         swContent = swContent.replace(
-//           /storageBucket:\s*["']your-project\.appspot\.com["']/,
-//           `storageBucket:"${process.env.VITE_FIREBASE_STORAGE_BUCKET || ''}"`,
-//         );
-//         swContent = swContent.replace(
-//           /messagingSenderId:\s*["']123456789012["']/,
-//           `messagingSenderId:"${process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || ''}"`,
-//         );
-//         swContent = swContent.replace(
-//           /appId:\s*["']1:123456789012:web:abcdef123456789012345678["']/,
-//           `appId:"${process.env.VITE_FIREBASE_APP_ID || ''}"`,
-//         );
-
-//         bundle[swFile].code = swContent;
-//       }
-//     },
-//   };
-// }
-
 export default defineConfig(({ mode }) => {
   // Allow overriding base path for different prod hosts (gh-pages vs Firebase Hosting)
   // Usage: BUILD_TARGET=hosting pnpm build -> basePath '/'
@@ -80,16 +33,27 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
+          'firebase-messaging-sw': path.resolve(
+            __dirname,
+            'src/firebase-messaging-sw.js',
+          ),
           ...(mode === 'development' && {
             experiments: path.resolve(__dirname, 'experiments.html'),
           }),
+        },
+        output: {
+          entryFileNames: (chunkInfo) => {
+            // Output FCM service worker to root (not in assets/)
+            return chunkInfo.name === 'firebase-messaging-sw'
+              ? '[name].js'
+              : 'assets/[name]-[hash].js';
+          },
         },
       },
     },
 
     plugins: [
       ...(mode === 'development' ? [mkcert()] : []),
-      // injectFirebaseConfig(), // Inject Firebase config into service worker
       ...(disablePWA
         ? []
         : [
