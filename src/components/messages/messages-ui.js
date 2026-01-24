@@ -15,6 +15,7 @@ import {
   ReactionUI,
 } from '../../messaging/reactions/index.js';
 import { REACTION_CONFIG } from '../../messaging/reactions/ReactionConfig.js';
+import { getLoggedInUserId } from '../../firebase/auth.js';
 
 // Helper: create the messages box DOM and return container + element refs
 function createMessageBox() {
@@ -623,7 +624,12 @@ export function initMessagesUI() {
     // Close messages box when clicking outside (desktop only)
     removeMessagesBoxClickOutside = onClickOutside(
       messagesBox,
-      () => {
+      (event) => {
+        // Don't close if clicking on reaction picker
+        if (event.target.closest('.reaction-picker')) {
+          return;
+        }
+
         hideElement(messagesBox);
         detachRepositionHandlers();
 
@@ -739,22 +745,41 @@ export function initMessagesUI() {
           }
 
           try {
-            // Check if user already has this reaction (query Firebase)
-            const hasReaction = await currentSession.hasMyReaction(
-              msgId,
-              reactionType,
-            );
+            // Get all reactions on this message from Firebase
+            const allReactions = await currentSession.getReactions(msgId);
+
+            // Find which reaction type (if any) the current user has
+            const myUserId = getLoggedInUserId();
+            if (!myUserId) {
+              console.warn('[MessagesUI] Cannot react: not logged in');
+              return;
+            }
+
+            let myCurrentReaction = null;
+
+            for (const [type, userIds] of Object.entries(allReactions)) {
+              if (userIds.includes(myUserId)) {
+                myCurrentReaction = type;
+                break;
+              }
+            }
 
             let reactions;
-            if (hasReaction) {
-              // Remove reaction from Firebase
+
+            if (myCurrentReaction === reactionType) {
+              // User clicked the same reaction they already have → remove it (toggle off)
               await currentSession.removeReaction(msgId, reactionType);
-              // Update local state immediately for responsive UI
               reactions = reactionManager.removeReaction(msgId, reactionType);
             } else {
-              // Add reaction to Firebase
+              // User clicked a different reaction (or has none)
+              if (myCurrentReaction) {
+                // Remove old reaction first
+                await currentSession.removeReaction(msgId, myCurrentReaction);
+                reactionManager.removeReaction(msgId, myCurrentReaction);
+              }
+
+              // Add new reaction
               await currentSession.addReaction(msgId, reactionType);
-              // Update local state immediately for responsive UI
               reactions = reactionManager.addReaction(msgId, reactionType);
 
               // Show animation only when adding

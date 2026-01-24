@@ -7,10 +7,8 @@
  */
 export const DEFAULT_REACTIONS = {
   heart: '❤️',
-  // Placeholder for future reactions - easy to extend
-  // thumbsUp: '👍',
-  // laugh: '😂',
-  // surprise: '😮',
+  thumbsUp: '👍',
+  laugh: '😂',
 };
 
 /**

@@ -26,7 +26,7 @@ export class MessagingController {
   constructor(transport, fileTransport = null) {
     if (!transport) {
       throw new Error(
-        'MessagingController requires a transport implementation'
+        'MessagingController requires a transport implementation',
       );
     }
 
@@ -68,7 +68,7 @@ export class MessagingController {
     // Return existing session if already open
     if (this.sessions.has(contactId)) {
       console.info(
-        `[MessagingController] Session already open for ${contactId}`
+        `[MessagingController] Session already open for ${contactId}`,
       );
       return this.sessions.get(contactId);
     }
@@ -94,11 +94,11 @@ export class MessagingController {
             .catch((err) =>
               console.warn(
                 '[MessagingController] Failed to get unread count:',
-                err
-              )
+                err,
+              ),
             );
         }
-      }
+      },
     );
 
     // Create session object
@@ -113,7 +113,7 @@ export class MessagingController {
       send: (text) => {
         if (!text || typeof text !== 'string') {
           return Promise.reject(
-            new Error('Message text must be a non-empty string')
+            new Error('Message text must be a non-empty string'),
           );
         }
         return this.transport.send(contactId, text);
@@ -159,7 +159,11 @@ export class MessagingController {
        * @returns {Promise<void>}
        */
       removeReaction: (messageId, reactionType) => {
-        return this.transport.removeReaction(contactId, messageId, reactionType);
+        return this.transport.removeReaction(
+          contactId,
+          messageId,
+          reactionType,
+        );
       },
 
       /**
@@ -170,6 +174,15 @@ export class MessagingController {
        */
       hasMyReaction: (messageId, reactionType) => {
         return this.transport.hasMyReaction(contactId, messageId, reactionType);
+      },
+
+      /**
+       * Get all reactions for a message
+       * @param {string} messageId - Message ID
+       * @returns {Promise<Object>} Reactions object { reactionType: [userIds] }
+       */
+      getReactions: (messageId) => {
+        return this.transport.getReactions(contactId, messageId);
       },
 
       // Internal: unsubscribe function from transport
@@ -288,7 +301,7 @@ export class MessagingController {
   async sendFile(file, onProgress) {
     if (!this.fileTransport) {
       throw new Error(
-        'File transport not available. Files can only be sent during active calls.'
+        'File transport not available. Files can only be sent during active calls.',
       );
     }
 
@@ -332,5 +345,5 @@ export class MessagingController {
  * Can be replaced with a different transport for testing or privacy settings
  */
 export const messagingController = new MessagingController(
-  new RTDBMessagingTransport()
+  new RTDBMessagingTransport(),
 );

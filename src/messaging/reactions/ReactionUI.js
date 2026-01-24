@@ -30,6 +30,7 @@ export class ReactionUI {
     this.doubleTapTimers = new Map(); // messageElement -> timestamp of last tap
     this.longPressTimers = new Map(); // messageElement -> timeout id
     this.activePicker = null; // Currently open picker element
+    this.activePickerMessageElement = null; // Message element that picker belongs to
   }
 
   /**
@@ -86,6 +87,13 @@ export class ReactionUI {
       if (timerId) {
         clearTimeout(timerId);
         this.longPressTimers.delete(messageElement);
+
+        // Only re-enable selection if picker wasn't shown (cancelled early)
+        // If picker was shown, hidePicker() will re-enable selection
+        if (!this.activePicker) {
+          messageElement.style.userSelect = '';
+          messageElement.style.webkitUserSelect = '';
+        }
       }
     };
 
@@ -243,20 +251,12 @@ export class ReactionUI {
       btn.textContent = emoji;
       btn.dataset.reactionType = type;
 
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        const updatedReactions = this.reactionManager.addReaction(
-          messageId,
-          type,
-        );
-        this.renderReactions(messageElement, messageId, updatedReactions);
 
-        if (REACTION_CONFIG.enableAnimations) {
-          this.showReactionAnimation(messageElement, type);
-        }
-
+        // Delegate to callback (same pattern as double-tap)
         if (onReactionChange) {
-          onReactionChange(updatedReactions);
+          await onReactionChange(type, messageElement, messageId);
         }
 
         this.hidePicker();
@@ -273,6 +273,7 @@ export class ReactionUI {
 
     document.body.appendChild(picker);
     this.activePicker = picker;
+    this.activePickerMessageElement = messageElement; // Track which message this picker belongs to
 
     // Close picker when clicking outside
     const closeOnOutsideClick = (e) => {
@@ -294,6 +295,13 @@ export class ReactionUI {
     if (this.activePicker) {
       this.activePicker.remove();
       this.activePicker = null;
+
+      // Re-enable text selection on the message element
+      if (this.activePickerMessageElement) {
+        this.activePickerMessageElement.style.userSelect = '';
+        this.activePickerMessageElement.style.webkitUserSelect = '';
+        this.activePickerMessageElement = null;
+      }
     }
   }
 
