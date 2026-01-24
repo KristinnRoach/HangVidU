@@ -63,4 +63,43 @@ export class MessagingTransport {
   listenToUnreadCount(contactId, onCountChange) {
     throw new Error('MessagingTransport.listenToUnreadCount() must be implemented by subclass');
   }
+
+  // ========================================================================
+  // REACTIONS
+  // ========================================================================
+
+  /**
+   * Add a reaction to a message
+   * @param {string} contactId - Contact's user ID (to identify conversation)
+   * @param {string} messageId - Message ID to react to
+   * @param {string} reactionType - Type of reaction (e.g., 'heart')
+   * @returns {Promise<void>}
+   * @abstract
+   */
+  async addReaction(contactId, messageId, reactionType) {
+    throw new Error('MessagingTransport.addReaction() must be implemented by subclass');
+  }
+
+  /**
+   * Remove a reaction from a message
+   * @param {string} contactId - Contact's user ID (to identify conversation)
+   * @param {string} messageId - Message ID to remove reaction from
+   * @param {string} reactionType - Type of reaction to remove
+   * @returns {Promise<void>}
+   * @abstract
+   */
+  async removeReaction(contactId, messageId, reactionType) {
+    throw new Error('MessagingTransport.removeReaction() must be implemented by subclass');
+  }
+
+  /**
+   * Get reactions for a message
+   * @param {string} contactId - Contact's user ID (to identify conversation)
+   * @param {string} messageId - Message ID
+   * @returns {Promise<Object>} Reactions object { reactionType: [userIds] }
+   * @abstract
+   */
+  async getReactions(contactId, messageId) {
+    throw new Error('MessagingTransport.getReactions() must be implemented by subclass');
+  }
 }

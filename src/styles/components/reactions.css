@@ -1,0 +1,117 @@
+/* ===== MESSAGE REACTIONS ===== */
+
+/* Reaction container attached to messages */
+.message-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  align-items: center;
+}
+
+/* Individual reaction badge */
+.reaction-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: default;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.reaction-badge:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.05);
+}
+
+/* Reaction animation (floating emoji) */
+.reaction-animation {
+  pointer-events: none;
+  z-index: 10000;
+  font-size: 32px;
+  animation: float-up 1s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes float-up {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-50%, -100px) scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -150px) scale(1);
+    opacity: 0;
+  }
+}
+
+/* Messages with reactions need a bit more structure */
+#messages p {
+  position: relative;
+}
+
+/* Align reactions based on message side */
+#messages p.message-local .message-reactions {
+  justify-content: flex-end;
+}
+
+#messages p.message-remote .message-reactions {
+  justify-content: flex-start;
+}
+
+/* ===== REACTION PICKER ===== */
+
+.reaction-picker {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--bg-primary, #1a1a1a);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 10001;
+  transform: translateX(-50%) translateY(-100%);
+  animation: picker-appear 0.15s ease-out;
+}
+
+@keyframes picker-appear {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-100%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-100%) scale(1);
+  }
+}
+
+.reaction-picker-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: transform 0.1s ease, background 0.1s ease;
+}
+
+.reaction-picker-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.2);
+}
+
+.reaction-picker-btn:active {
+  transform: scale(0.95);
+}

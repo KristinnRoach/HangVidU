@@ -109,14 +109,32 @@ export class RTDBMessagingTransport extends MessagingTransport {
 
       seenMessageIds.add(msgId);
       const isSentByMe = msg.from === myUserId;
-      onMessage(msg.text, msg, isSentByMe);
+      // Include messageId in the message data for reaction support
+      const msgData = { ...msg, messageId: msgId };
+      onMessage(msg.text, msgData, isSentByMe);
+    };
+
+    // Handle reaction updates on existing messages
+    const reactionCallback = (snapshot) => {
+      const msgId = snapshot.key;
+      const msg = snapshot.val();
+      if (!msg || !seenMessageIds.has(msgId)) return;
+
+      // Only notify if reactions changed (check if reactions field exists)
+      if (msg.reactions !== undefined) {
+        const isSentByMe = msg.from === myUserId;
+        const msgData = { ...msg, messageId: msgId, _reactionUpdate: true };
+        onMessage(msg.text, msgData, isSentByMe);
+      }
     };
 
     onChildAdded(conversationRef, messageCallback);
+    onChildChanged(conversationRef, reactionCallback);
 
     // Return cleanup function
     return () => {
       off(conversationRef, 'child_added', messageCallback);
+      off(conversationRef, 'child_changed', reactionCallback);
     };
   }
 
@@ -131,7 +149,6 @@ export class RTDBMessagingTransport extends MessagingTransport {
 
     const conversationId = this._getConversationId(myUserId, contactId);
     const conversationRef = ref(rtdb, `conversations/${conversationId}/messages`);
-    const { get } = await import('firebase/database');
 
     try {
       const snapshot = await get(conversationRef);
@@ -282,5 +299,103 @@ export class RTDBMessagingTransport extends MessagingTransport {
     console.log(
       `[RTDBTransport] Cleaned up ${toDelete} old messages from conversation ${conversationId}`
     );
+  }
+
+  // ========================================================================
+  // REACTIONS
+  // ========================================================================
+
+  /**
+   * Add a reaction to a message
+   * Stores reactions as { reactionType: { odAg2...: true } } for efficient per-user tracking
+   * @param {string} contactId - Contact's user ID
+   * @param {string} messageId - Message ID to react to
+   * @param {string} reactionType - Type of reaction (e.g., 'heart')
+   * @returns {Promise<void>}
+   */
+  async addReaction(contactId, messageId, reactionType) {
+    const myUserId = getLoggedInUserId();
+    if (!myUserId) {
+      throw new Error('Cannot add reaction: not logged in');
+    }
+
+    const conversationId = this._getConversationId(myUserId, contactId);
+    const reactionPath = `conversations/${conversationId}/messages/${messageId}/reactions/${reactionType}/${myUserId}`;
+
+    await set(ref(rtdb, reactionPath), true);
+  }
+
+  /**
+   * Remove a reaction from a message
+   * @param {string} contactId - Contact's user ID
+   * @param {string} messageId - Message ID to remove reaction from
+   * @param {string} reactionType - Type of reaction to remove
+   * @returns {Promise<void>}
+   */
+  async removeReaction(contactId, messageId, reactionType) {
+    const myUserId = getLoggedInUserId();
+    if (!myUserId) {
+      throw new Error('Cannot remove reaction: not logged in');
+    }
+
+    const conversationId = this._getConversationId(myUserId, contactId);
+    const reactionPath = `conversations/${conversationId}/messages/${messageId}/reactions/${reactionType}/${myUserId}`;
+
+    await set(ref(rtdb, reactionPath), null);
+  }
+
+  /**
+   * Get reactions for a message
+   * @param {string} contactId - Contact's user ID
+   * @param {string} messageId - Message ID
+   * @returns {Promise<Object>} Reactions object { reactionType: [userIds] }
+   */
+  async getReactions(contactId, messageId) {
+    const myUserId = getLoggedInUserId();
+    if (!myUserId) return {};
+
+    const conversationId = this._getConversationId(myUserId, contactId);
+    const reactionsRef = ref(
+      rtdb,
+      `conversations/${conversationId}/messages/${messageId}/reactions`
+    );
+
+    try {
+      const snapshot = await get(reactionsRef);
+      if (!snapshot.exists()) return {};
+
+      const reactionsData = snapshot.val();
+      // Convert { heart: { odAg2: true } } to { heart: ['odAg2'] }
+      const result = {};
+      for (const [type, users] of Object.entries(reactionsData)) {
+        result[type] = Object.keys(users);
+      }
+      return result;
+    } catch (err) {
+      console.warn('[RTDBTransport] Failed to get reactions:', err);
+      return {};
+    }
+  }
+
+  /**
+   * Check if current user has reacted with a specific type
+   * @param {string} contactId - Contact's user ID
+   * @param {string} messageId - Message ID
+   * @param {string} reactionType - Type of reaction to check
+   * @returns {Promise<boolean>}
+   */
+  async hasMyReaction(contactId, messageId, reactionType) {
+    const myUserId = getLoggedInUserId();
+    if (!myUserId) return false;
+
+    const conversationId = this._getConversationId(myUserId, contactId);
+    const reactionPath = `conversations/${conversationId}/messages/${messageId}/reactions/${reactionType}/${myUserId}`;
+
+    try {
+      const snapshot = await get(ref(rtdb, reactionPath));
+      return snapshot.exists();
+    } catch (err) {
+      return false;
+    }
   }
 }
