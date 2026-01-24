@@ -38,7 +38,7 @@ export class ReactionUI {
    * - Long-press: shows reaction picker
    * @param {HTMLElement} messageElement - The message DOM element
    * @param {string} messageId - Unique identifier for the message
-   * @param {Function} onReactionChange - Callback when reaction is added/removed
+   * @param {Function} onReactionChange - Async callback(reactionType, messageElement, messageId) when reaction is toggled
    */
   enableDoubleTap(messageElement, messageId, onReactionChange) {
     if (!messageElement || !messageId) {
@@ -133,41 +133,14 @@ export class ReactionUI {
    * Handle double-tap on a message
    * @param {HTMLElement} messageElement - The message DOM element
    * @param {string} messageId - Unique identifier for the message
-   * @param {Function} onReactionChange - Callback when reaction is added/removed
+   * @param {Function} onReactionChange - Async callback to handle toggle logic
    */
-  handleDoubleTap(messageElement, messageId, onReactionChange) {
+  async handleDoubleTap(messageElement, messageId, onReactionChange) {
     const reactionType = REACTION_CONFIG.defaultReaction;
 
-    // Check if reaction already exists
-    const currentCount = this.reactionManager.getReactionCount(
-      messageId,
-      reactionType,
-    );
-
-    let reactions;
-    if (currentCount > 0) {
-      // Remove reaction (toggle off)
-      reactions = this.reactionManager.removeReaction(messageId, reactionType);
-    } else {
-      // Add reaction (toggle on)
-      reactions = this.reactionManager.addReaction(messageId, reactionType);
-
-      // Show animation only when adding
-      if (REACTION_CONFIG.enableAnimations) {
-        this.showReactionAnimation(messageElement, reactionType);
-      }
-    }
-
-    // Update UI
-    this.renderReactions(messageElement, messageId, reactions);
-
-    // Notify callback
+    // Delegate to callback which has access to session/transport for checking user's reaction state
     if (onReactionChange) {
-      onReactionChange(
-        reactions,
-        reactionType,
-        currentCount > 0 ? 'remove' : 'add',
-      );
+      await onReactionChange(reactionType, messageElement, messageId);
     }
   }
 

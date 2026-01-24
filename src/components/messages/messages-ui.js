@@ -14,6 +14,7 @@ import {
   ReactionManager,
   ReactionUI,
 } from '../../messaging/reactions/index.js';
+import { REACTION_CONFIG } from '../../messaging/reactions/ReactionConfig.js';
 
 // Helper: create the messages box DOM and return container + element refs
 function createMessageBox() {
@@ -731,25 +732,41 @@ export function initMessagesUI() {
       reactionUI.enableDoubleTap(
         p,
         messageId,
-        (localReactions, reactionType, action) => {
-          // Sync reaction to transport
-          if (currentSession && reactionType) {
-            if (action === 'add') {
-              currentSession
-                .addReaction(messageId, reactionType)
-                .catch((err) => {
-                  console.warn('[MessagesUI] Failed to sync reaction:', err);
-                });
-            } else if (action === 'remove') {
-              currentSession
-                .removeReaction(messageId, reactionType)
-                .catch((err) => {
-                  console.warn(
-                    '[MessagesUI] Failed to sync reaction removal:',
-                    err,
-                  );
-                });
+        async (reactionType, messageElement, msgId) => {
+          if (!currentSession) {
+            console.warn('[MessagesUI] No current session for reaction');
+            return;
+          }
+
+          try {
+            // Check if user already has this reaction (query Firebase)
+            const hasReaction = await currentSession.hasMyReaction(
+              msgId,
+              reactionType,
+            );
+
+            let reactions;
+            if (hasReaction) {
+              // Remove reaction from Firebase
+              await currentSession.removeReaction(msgId, reactionType);
+              // Update local state immediately for responsive UI
+              reactions = reactionManager.removeReaction(msgId, reactionType);
+            } else {
+              // Add reaction to Firebase
+              await currentSession.addReaction(msgId, reactionType);
+              // Update local state immediately for responsive UI
+              reactions = reactionManager.addReaction(msgId, reactionType);
+
+              // Show animation only when adding
+              if (REACTION_CONFIG.enableAnimations) {
+                reactionUI.showReactionAnimation(messageElement, reactionType);
+              }
             }
+
+            // Update UI immediately (optimistic update)
+            reactionUI.renderReactions(messageElement, msgId, reactions);
+          } catch (err) {
+            console.warn('[MessagesUI] Failed to toggle reaction:', err);
           }
         },
       );
