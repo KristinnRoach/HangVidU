@@ -617,22 +617,25 @@ export function initMessagesUI() {
     }
   }
 
-  if (!isMobileDevice()) {
-    removeMessagesBoxClickOutside = onClickOutside(
-      messagesBox,
-      () => {
-        hideElement(messagesBox);
-        detachRepositionHandlers();
+  // Close messages box when clicking outside
+  removeMessagesBoxClickOutside = onClickOutside(
+    messagesBox,
+    () => {
+      hideElement(messagesBox);
+      detachRepositionHandlers();
 
-        // Clear inline offsets
-        messagesBox.style.top = '';
-        messagesBox.style.left = '';
-        messagesBox.style.bottom = '';
-        messagesBox.style.right = '';
-      },
-      { ignore: [messageToggle.element], esc: true },
-    );
-  }
+      // Clear inline offsets
+      messagesBox.style.top = '';
+      messagesBox.style.left = '';
+      messagesBox.style.bottom = '';
+      messagesBox.style.right = '';
+    },
+    {
+      ignore: [messageToggle.element],
+      esc: true,
+      ignoreInputBlur: isMobileDevice(), // Prevent accidental closes when dismissing keyboard on mobile
+    },
+  );
 
   function showMessagesToggle() {
     showElement(messageToggle.element);
