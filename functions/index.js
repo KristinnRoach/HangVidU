@@ -93,8 +93,6 @@ exports.sendCallNotification = onRequest(
         notification: {
           title,
           body,
-          icon: '/icons/play-arrows-v1/icon-192.png',
-          badge: '/icons/play-arrows-v1/icon-192.png',
         },
         data: {
           type,
@@ -127,6 +125,8 @@ exports.sendCallNotification = onRequest(
             Urgency: 'high',
           },
           notification: {
+            icon: '/icons/play-arrows-v1/icon-192.png',
+            badge: '/icons/play-arrows-v1/icon-192.png',
             requireInteraction: true,
             tag: `call_${callData.roomId}`,
             actions: [

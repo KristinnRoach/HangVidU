@@ -17,6 +17,7 @@
     "deploy:fb:db": "firebase deploy --only database",
     "deploy:fb:functions": "firebase deploy --only functions",
     "deploy:fb:full": "pnpm build:hosting && firebase deploy",
+    "check:deployment": "curl -s -o /dev/null -w '%{http_code}' -X POST https://europe-west1-vidu-aae11.cloudfunctions.net/sendCallNotification | grep -E '400|401|405' -q && echo '✅ Cloud Function is ready' || echo '❌ Cloud Function not ready'",
     "deploy:gh": "pnpm build && npx gh-pages -d dist",
     "deploy:all": "pnpm test:compat && pnpm deploy:fb && pnpm deploy:gh",
     "deploy:skip-tests": "pnpm deploy:fb && pnpm deploy:gh",

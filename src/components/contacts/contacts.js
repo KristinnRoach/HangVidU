@@ -2,7 +2,7 @@
 
 import { ref, set, get, remove, onValue, off } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId } from '../../firebase/auth.js';
+import { getLoggedInUserId, getCurrentUser } from '../../firebase/auth.js';
 import { joinOrCreateRoomWithId, listenForIncomingOnRoom } from '../../main.js';
 import { hideCallingUI, showCallingUI } from '../calling/calling-ui.js';
 import confirmDialog from '../base/confirm-dialog.js';
@@ -11,6 +11,7 @@ import { messagingController } from '../../messaging/messaging-controller.js';
 import { messagesUI } from '../messages/messages-ui.js';
 import { createMessageToggle } from '../messages/message-toggle.js';
 import { getDeterministicRoomId } from '../../utils/room-id.js';
+import { notificationController } from '../../notifications/notification-controller.js';
 
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
@@ -221,6 +222,13 @@ export async function renderContactsList(lobbyElement) {
               >
                 ✕
               </button>
+              <button
+                class="contact-edit-btn"
+                data-contact-id="${id}"
+                title="Edit contact name"
+              >
+                ✏️
+              </button>
             </div>
           `;
         })
@@ -295,6 +303,29 @@ function attachContactListeners(container, lobbyElement) {
           await showCallingUI(roomId, contactName, () => {
             // TODO: Check if something (e.g. hangup handler, cleanup) needed here
           });
+
+          // Send push notification to the contact being called
+          if (notificationController.isNotificationEnabled()) {
+            try {
+              const currentUser = getCurrentUser();
+              const callerName =
+                currentUser?.displayName ||
+                currentUser?.email ||
+                getLoggedInUserId();
+
+              await notificationController.sendCallNotification(contactId, {
+                roomId,
+                callerId: getLoggedInUserId(),
+                callerName,
+              });
+              console.log('[CONTACTS] Call notification sent to:', contactName);
+            } catch (error) {
+              console.warn(
+                '[CONTACTS] Failed to send call notification:',
+                error,
+              );
+            }
+          }
         }
       }
     };
@@ -311,6 +342,27 @@ function attachContactListeners(container, lobbyElement) {
 
       await deleteContact(contactId);
       await renderContactsList(lobbyElement);
+    };
+  });
+
+  // Edit buttons
+  container.querySelectorAll('.contact-edit-btn').forEach((btn) => {
+    btn.onclick = async () => {
+      const contactId = btn.getAttribute('data-contact-id');
+      if (!contactId) return;
+
+      const contacts = await getContacts();
+      const contact = contacts[contactId];
+      if (!contact) return;
+
+      const newName = prompt(
+        'Enter new name for this contact:',
+        contact.contactName,
+      );
+      if (newName && newName.trim() && newName.trim() !== contact.contactName) {
+        await saveContactData(contactId, newName.trim(), contact.roomId);
+        await renderContactsList(lobbyElement);
+      }
     };
   });
 }
@@ -585,109 +637,109 @@ async function createContactMessageToggles(container, contactIds, contacts) {
   }
 }
 
-/* OLD BADGE FUNCTIONS - TO BE REMOVED AFTER TESTING
-/**
- * Add unread message badges to contact message buttons.
- * Loads initial unread counts and displays badges.
- */
-/*async function addUnreadBadgesToContacts(container, contactIds) {
-  if (!getLoggedInUserId()) return; // Only for logged-in users
+// /* OLD BADGE FUNCTIONS - TO BE REMOVED AFTER TESTING
+// /**
+//  * Add unread message badges to contact message buttons.
+//  * Loads initial unread counts and displays badges.
+//  */
+// /*async function addUnreadBadgesToContacts(container, contactIds) {
+//   if (!getLoggedInUserId()) return; // Only for logged-in users
 
-  for (const contactId of contactIds) {
-    const btn = container.querySelector(
-      `.contact-message-btn[data-contact-id="${contactId}"]`
-    );
-    if (!btn) continue;
+//   for (const contactId of contactIds) {
+//     const btn = container.querySelector(
+//       `.contact-message-btn[data-contact-id="${contactId}"]`
+//     );
+//     if (!btn) continue;
 
-    // Get unread count for this contact
-    const count = await getUnreadCount(contactId);
+//     // Get unread count for this contact
+//     const count = await getUnreadCount(contactId);
 
-    // Add or update badge
-    updateContactBadge(btn, count);
-  }
-}
+//     // Add or update badge
+//     updateContactBadge(btn, count);
+//   }
+// }
 
-/**
- * Update the badge on a specific contact message button.
- * Creates badge if needed, updates count, shows/hides based on count.
- */
-function updateContactBadge(btn, count) {
-  let badge = btn.querySelector('.notification-badge');
+// /**
+//  * Update the badge on a specific contact message button.
+//  * Creates badge if needed, updates count, shows/hides based on count.
+//  */
+// function updateContactBadge(btn, count) {
+//   let badge = btn.querySelector('.notification-badge');
 
-  if (count > 0) {
-    if (!badge) {
-      badge = document.createElement('span');
-      badge.className = 'notification-badge';
-      btn.appendChild(badge);
-    }
-    badge.textContent = count;
-    badge.style.display = 'flex';
-  } else {
-    // Hide badge if count is 0
-    if (badge) {
-      badge.style.display = 'none';
-    }
-  }
-}
+//   if (count > 0) {
+//     if (!badge) {
+//       badge = document.createElement('span');
+//       badge.className = 'notification-badge';
+//       btn.appendChild(badge);
+//     }
+//     badge.textContent = count;
+//     badge.style.display = 'flex';
+//   } else {
+//     // Hide badge if count is 0
+//     if (badge) {
+//       badge.style.display = 'none';
+//     }
+//   }
+// }
 
-/**
- * Setup real-time listeners for contact message badges.
- * Listens for new unread messages and updates badge counts.
- */
-function setupMessageBadgeListeners(container, contactIds) {
-  // Clean up old listeners
-  messageBadgeListeners.forEach(({ ref: messageRef, callback }) => {
-    off(messageRef, 'child_added', callback);
-  });
-  messageBadgeListeners.clear();
+// /**
+//  * Setup real-time listeners for contact message badges.
+//  * Listens for new unread messages and updates badge counts.
+//  */
+// function setupMessageBadgeListeners(container, contactIds) {
+//   // Clean up old listeners
+//   messageBadgeListeners.forEach(({ ref: messageRef, callback }) => {
+//     off(messageRef, 'child_added', callback);
+//   });
+//   messageBadgeListeners.clear();
 
-  // Only set up for logged-in users
-  const myUserId = getLoggedInUserId();
-  if (!myUserId) return;
+//   // Only set up for logged-in users
+//   const myUserId = getLoggedInUserId();
+//   if (!myUserId) return;
 
-  contactIds.forEach((contactId) => {
-    // Get conversation ID (sorted user IDs)
-    const conversationId = [myUserId, contactId].sort().join('_');
-    const messagesRef = ref(rtdb, `conversations/${conversationId}/messages`);
+//   contactIds.forEach((contactId) => {
+//     // Get conversation ID (sorted user IDs)
+//     const conversationId = [myUserId, contactId].sort().join('_');
+//     const messagesRef = ref(rtdb, `conversations/${conversationId}/messages`);
 
-    const btn = container.querySelector(
-      `.contact-message-btn[data-contact-id="${contactId}"]`,
-    );
-    if (!btn) return;
+//     const btn = container.querySelector(
+//       `.contact-message-btn[data-contact-id="${contactId}"]`,
+//     );
+//     if (!btn) return;
 
-    // Listen for new messages
-    const callback = async (snapshot) => {
-      const msg = snapshot.val();
-      if (!msg) return;
+//     // Listen for new messages
+//     const callback = async (snapshot) => {
+//       const msg = snapshot.val();
+//       if (!msg) return;
 
-      // Only update badge for unread messages from the contact (not from me)
-      if (msg.from === contactId && !msg.read) {
-        // Refresh the unread count
-        const count = await getUnreadCount(contactId);
-        updateContactBadge(btn, count);
-      }
-    };
+//       // Only update badge for unread messages from the contact (not from me)
+//       if (msg.from === contactId && !msg.read) {
+//         // Refresh the unread count
+//         const count = await getUnreadCount(contactId);
+//         updateContactBadge(btn, count);
+//       }
+//     };
 
-    // Start listening
-    onChildAdded(messagesRef, callback);
+//     // Start listening
+//     onChildAdded(messagesRef, callback);
 
-    // Track for cleanup
-    messageBadgeListeners.set(contactId, { ref: messagesRef, callback });
-  });
-}
+//     // Track for cleanup
+//     messageBadgeListeners.set(contactId, { ref: messagesRef, callback });
+//   });
+// }
 
-/**
- * Clear the unread badge for a specific contact.
- * Called when opening messages with that contact.
- */
-function clearContactBadge(contactId) {
-  const btn = document.querySelector(
-    `.contact-message-btn[data-contact-id="${contactId}"]`,
-  );
-  if (btn) {
-    updateContactBadge(btn, 0);
-  }
-}
+// /**
+//  * Clear the unread badge for a specific contact.
+//  * Called when opening messages with that contact.
+//  */
+// function clearContactBadge(contactId) {
+//   const btn = document.querySelector(
+//     `.contact-message-btn[data-contact-id="${contactId}"]`,
+//   );
+//   if (btn) {
+//     updateContactBadge(btn, 0);
+//   }
+// }
 
 /**
  * Delete a contact.
