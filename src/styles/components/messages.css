@@ -86,6 +86,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  position: relative;
 }
 
 #messages p.message-local {
@@ -116,6 +117,7 @@
 /* Message alignment by sender */
 #messages .message-local {
   text-align: right;
+  margin-right: 10px; /* avoid scroll-bar overlapping message */
 }
 
 #messages .message-remote {
@@ -125,6 +127,7 @@
 /* Subtle message-bubble styling */
 #messages .message-text {
   display: inline-block;
+  position: relative;
   margin: 4px 0;
   padding: 8px;
   border-radius: 16px;
@@ -176,7 +179,8 @@
 
 /* Slightly different avatar for local user (on right) */
 #messages .sender-avatar--me {
-  background: #228332; /* subtle green */
+  display: none; /* hide local avatar. TODO: Remove completely if deciding to not use local  */
+  background: #228332;
   color: #ffffff;
   margin-right: 0;
   margin-left: 2px;

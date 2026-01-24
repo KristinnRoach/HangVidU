@@ -1553,6 +1553,7 @@ CallController.on('memberLeft', ({ memberId }) => {
   console.info('Partner has left the call');
 });
 
+
 // Business logic for cleanup (UI handled in bind-call-ui.js)
 CallController.on(
   'cleanup',
@@ -1564,6 +1565,10 @@ CallController.on(
       role,
       wasConnected,
     });
+    
+  // UI cleanup
+  // hideCallingUI(); // ! Moved to bind-call-ui.js
+  // onCallDisconnected(); // ! Moved to bind-call-ui.js
 
     // UI cleanup
     // hideCallingUI(); // ! Moved to bind-call-ui.js

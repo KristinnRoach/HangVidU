@@ -1,0 +1,53 @@
+/* 
+  legal-pages.css 
+  Shared styles for privacy-policy.html and terms-of-service.html 
+*/
+body {
+  font-family: 'Satoshi', 'Roboto', sans-serif;
+  line-height: 1.6;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #1a1a1a;
+  color: #eee;
+}
+
+h1 {
+  color: #eee;
+  border-bottom: 1px solid #444;
+  padding-bottom: 10px;
+}
+
+h2 {
+  color: #ccc;
+  margin-top: 30px;
+}
+
+h3 {
+  color: #aaa;
+}
+
+a {
+  color: #4c81af;
+}
+
+a:hover {
+  color: #739cc0d8;
+}
+
+.back-btn {
+  display: inline-block;
+  margin-bottom: 20px;
+  padding: 8px 16px;
+  background-color: #2a2a2a;
+  color: #eee;
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: 14px;
+  border: 1px solid #444;
+}
+
+.back-btn:hover {
+  background-color: #333;
+  color: #fff;
+}

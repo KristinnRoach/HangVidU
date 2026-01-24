@@ -406,13 +406,41 @@ export function openContactMessages(
   // Open messaging session
   const session = messagingController.openSession(contactId, {
     onMessage: (text, msgData, isSentByMe) => {
-      // Display message in UI with correct prefix
+      // Handle reaction updates separately (don't re-append the message)
+      if (msgData._reactionUpdate) {
+        // Convert Firebase reactions format { heart: { odAg2: true } } to { heart: ['odAg2'] }
+        const reactions = {};
+        if (msgData.reactions) {
+          for (const [type, users] of Object.entries(msgData.reactions)) {
+            reactions[type] = Object.keys(users);
+          }
+        }
+        messagesUI.updateMessageReactions(msgData.messageId, reactions);
+        return;
+      }
+
+      // Convert Firebase reactions format for initial display
+      const reactions = {};
+      if (msgData.reactions) {
+        for (const [type, users] of Object.entries(msgData.reactions)) {
+          reactions[type] = Object.keys(users);
+        }
+      }
+
+      // Display message in UI
       if (isSentByMe) {
-        messagesUI.appendChatMessage(`${text}`, { isSentByMe: true });
+        messagesUI.appendChatMessage(text, {
+          isSentByMe: true,
+          messageId: msgData.messageId,
+          reactions,
+        });
       } else {
-        // Only count as unread if message hasn't been read yet
         const isUnread = !msgData.read;
-        messagesUI.receiveMessage(text, { isUnread });
+        messagesUI.receiveMessage(text, {
+          isUnread,
+          messageId: msgData.messageId,
+          reactions,
+        });
       }
     },
   });

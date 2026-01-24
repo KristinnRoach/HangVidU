@@ -50,6 +50,12 @@
   --shadow-inset-sm: inset 0 4px 12px rgba(0, 0, 0, 0.15);
   --shadow-inset-md: inset 0 20px 40px rgba(0, 0, 0, 0.3);
 
+  /* ===== TEXT SHADOWS (Utility tokens for legibility / emphasis) ===== */
+  --text-shadow-subtle: 0 1px 0 rgba(0, 0, 0, 0.45);
+  --text-shadow-medium: 0 2px 4px rgba(0, 0, 0, 0.55);
+  --text-shadow-strong: 0 4px 8px rgba(0, 0, 0, 0.65);
+  --text-shadow-extreme: 0 4px 8px rgba(0, 0, 0, 0.9);
+
   /* ===== SPACING ===== */
   --spacing-xxs: 2px;
   --spacing-xs: 4px;
