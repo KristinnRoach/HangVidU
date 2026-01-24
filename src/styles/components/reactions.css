@@ -1,6 +1,6 @@
 /* ===== MESSAGE REACTIONS ===== */
 
-/* Reaction container attached to messages */
+/* Reaction container - positioned like Messenger (bottom-right of message bubble) */
 .message-reactions {
   display: flex;
   flex-wrap: wrap;
@@ -11,7 +11,7 @@
   right: -1em;
 }
 
-/* Individual reaction badge */
+/* Individual reaction badge - minimal like Messenger */
 .reaction-badge {
   display: inline-flex;
   align-items: center;
@@ -22,12 +22,6 @@
   text-shadow: var(--text-shadow-extreme);
   cursor: default;
   user-select: none;
-  transition: all 0.2s ease;
-}
-
-.reaction-badge:hover {
-  background: rgba(255, 255, 255, 0.15);
-  transform: scale(1.05);
 }
 
 /* Reaction animation (floating emoji) */

@@ -69,6 +69,7 @@
 
   overflow-y: auto;
   overflow-x: hidden; /* Prevent horizontal scrolling */
+  scrollbar-gutter: stable;
   background: var(--bg-elevated);
   color: var(--text-secondary);
   padding: 6px;
@@ -179,7 +180,7 @@
 
 /* Slightly different avatar for local user (on right) */
 #messages .sender-avatar--me {
-  display: none; /* hide local avatar. TODO: Remove completely if deciding to not use local  */
+  display: none; /* hide local avatar. TODO: Remove completely if deciding to not use local avatar */
   background: #228332;
   color: #ffffff;
   margin-right: 0;
