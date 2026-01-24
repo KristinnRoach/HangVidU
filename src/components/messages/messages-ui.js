@@ -617,7 +617,6 @@ export function initMessagesUI() {
     }
   }
 
-  // onClickOutside removed for mobile, test again when auto scrolling issue is resolved
   // Close messages box when clicking outside
   removeMessagesBoxClickOutside = onClickOutside(
     messagesBox,
