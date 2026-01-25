@@ -14,6 +14,8 @@ import {
   ReactionManager,
   ReactionUI,
 } from '../../messaging/reactions/index.js';
+import { REACTION_CONFIG } from '../../messaging/reactions/ReactionConfig.js';
+import { getLoggedInUserId } from '../../firebase/auth.js';
 
 // Helper: create the messages box DOM and return container + element refs
 function createMessageBox() {
@@ -729,19 +731,66 @@ export function initMessagesUI() {
       }
 
       // Enable double-tap/long-press reactions
-      reactionUI.enableDoubleTap(p, messageId, (localReactions) => {
-        // Sync reaction to transport
-        if (currentSession) {
-          // Find which reaction was just added (compare with what we had)
-          for (const [type, count] of Object.entries(localReactions)) {
-            if (count > 0) {
-              currentSession.addReaction(messageId, type).catch((err) => {
-                console.warn('[MessagesUI] Failed to sync reaction:', err);
-              });
-            }
+      reactionUI.enableDoubleTap(
+        p,
+        messageId,
+        async (reactionType, messageElement, msgId) => {
+          if (!currentSession) {
+            console.warn('[MessagesUI] No current session for reaction');
+            return;
           }
-        }
-      });
+
+          try {
+            // Get all reactions on this message from Firebase
+            const allReactions = await currentSession.getReactions(msgId);
+
+            // Find which reaction type (if any) the current user has
+            const myUserId = getLoggedInUserId();
+            if (!myUserId) {
+              console.warn('[MessagesUI] Cannot react: not logged in');
+              return;
+            }
+
+            let myCurrentReaction = null;
+
+            for (const [type, userIds] of Object.entries(allReactions)) {
+              if (userIds.includes(myUserId)) {
+                myCurrentReaction = type;
+                break;
+              }
+            }
+
+            let reactions;
+
+            if (myCurrentReaction === reactionType) {
+              // User clicked the same reaction they already have → remove it (toggle off)
+              await currentSession.removeReaction(msgId, reactionType);
+              reactions = reactionManager.removeReaction(msgId, reactionType);
+            } else {
+              // User clicked a different reaction (or has none)
+              if (myCurrentReaction) {
+                // Remove old reaction first
+                await currentSession.removeReaction(msgId, myCurrentReaction);
+                reactionManager.removeReaction(msgId, myCurrentReaction);
+              }
+
+              // Add new reaction
+              await currentSession.addReaction(msgId, reactionType);
+              reactions = reactionManager.addReaction(msgId, reactionType);
+
+              // Show animation only when adding
+              if (REACTION_CONFIG.enableAnimations) {
+                reactionUI.showReactionAnimation(messageElement, reactionType);
+              }
+            }
+
+            // Update UI immediately (optimistic update)
+            reactionUI.renderReactions(messageElement, msgId, reactions);
+          } catch (err) {
+            console.warn('[MessagesUI] Failed to toggle reaction:', err);
+          }
+        },
+      );
     }
 
     messagesMessages.appendChild(p);

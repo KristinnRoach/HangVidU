@@ -138,6 +138,10 @@
   word-break: break-word;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
   color: var(--text-primary);
+
+  /* Prevent text selection to avoid conflicts with reaction gestures */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 #messages p.message-local .message-text {
