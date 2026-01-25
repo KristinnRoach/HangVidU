@@ -735,25 +735,15 @@ export function initMessagesUI() {
 
       // Render initial reactions if present
       if (reactions && Object.keys(reactions).length > 0) {
-        // Convert { heart: ['user1'] } to { heart: 1 } for ReactionUI
-        const reactionCounts = {};
-        for (const [type, users] of Object.entries(reactions)) {
-          reactionCounts[type] = users.length;
-        }
-        reactionUI.renderReactions(p, messageId, reactionCounts);
+        // Sync local reaction manager with initial state (preserves user IDs)
+        reactionManager.syncFromRemote(messageId, reactions);
 
-        // Sync local reaction manager with initial state
-        reactionManager.clearReactions(messageId);
-        for (const [type, count] of Object.entries(reactionCounts)) {
-          for (let i = 0; i < count; i++) {
-            reactionManager.addReaction(messageId, type);
-          }
-        }
+        // Convert to counts for rendering
+        const reactionCounts = reactionManager.getReactions(messageId);
+        reactionUI.renderReactions(p, messageId, reactionCounts);
       }
 
       // Enable double-tap/long-press reactions
-      // TODO: Fix messages UI disappearing when clicking reaction from picker
-      // The picker selection works but somehow closes the messages UI unexpectedly
       reactionUI.enableDoubleTap(
         p,
         messageId,
@@ -763,25 +753,27 @@ export function initMessagesUI() {
             return;
           }
 
+          const userId = getLoggedInUserId();
+          if (!userId) {
+            console.warn('[MessagesUI] No userId available for reaction');
+            return;
+          }
+
           try {
             if (source === 'doubleTap') {
-              // Double-tap: toggle default reaction
-              const localReactions = reactionManager.getReactions(msgId);
-              const hasAnyReaction = Object.keys(localReactions).length > 0;
+              // Double-tap: toggle my reaction
+              const myReactionType = reactionManager.getUserReactionType(msgId, userId);
 
               let reactions;
 
-              if (hasAnyReaction) {
-                // Remove all existing reactions (toggle off)
-                for (const type of Object.keys(localReactions)) {
-                  await currentSession.removeReaction(msgId, type);
-                  reactionManager.removeReaction(msgId, type);
-                }
-                reactions = {};
+              if (myReactionType) {
+                // I have a reaction - remove it (toggle off)
+                await currentSession.removeReaction(msgId, myReactionType);
+                reactions = reactionManager.removeReaction(msgId, myReactionType, userId);
               } else {
-                // Add default reaction (toggle on)
+                // I don't have a reaction - add default (toggle on)
                 await currentSession.addReaction(msgId, reactionType);
-                reactions = reactionManager.addReaction(msgId, reactionType);
+                reactions = reactionManager.addReaction(msgId, reactionType, userId);
 
                 // Show animation only when adding
                 if (REACTION_CONFIG.enableAnimations) {
@@ -795,31 +787,29 @@ export function initMessagesUI() {
               // Update UI immediately (optimistic update)
               reactionUI.renderReactions(messageElement, msgId, reactions);
             } else if (source === 'picker') {
-              // Picker: always apply selected reaction
-              const localReactions = reactionManager.getReactions(msgId);
-              const existingTypes = Object.keys(localReactions);
+              // Picker: toggle selected reaction for this user
+              const myReactionType = reactionManager.getUserReactionType(msgId, userId);
 
-              // If same reaction already exists, do nothing
-              if (existingTypes.includes(reactionType)) {
-                return;
-              }
+              let reactions;
 
-              // Remove any existing reactions first
-              for (const existingType of existingTypes) {
-                await currentSession.removeReaction(msgId, existingType);
-                reactionManager.removeReaction(msgId, existingType);
-              }
+              if (myReactionType === reactionType) {
+                // Same reaction - toggle off
+                await currentSession.removeReaction(msgId, reactionType);
+                reactions = reactionManager.removeReaction(msgId, reactionType, userId);
+              } else {
+                // Different reaction - remove existing (if any), add new
+                if (myReactionType) {
+                  await currentSession.removeReaction(msgId, myReactionType);
+                  reactionManager.removeReaction(msgId, myReactionType, userId);
+                }
 
-              // Add the new reaction
-              await currentSession.addReaction(msgId, reactionType);
-              const reactions = reactionManager.addReaction(
-                msgId,
-                reactionType,
-              );
+                await currentSession.addReaction(msgId, reactionType);
+                reactions = reactionManager.addReaction(msgId, reactionType, userId);
 
-              // Show animation
-              if (REACTION_CONFIG.enableAnimations) {
-                reactionUI.showReactionAnimation(messageElement, reactionType);
+                // Show animation
+                if (REACTION_CONFIG.enableAnimations) {
+                  reactionUI.showReactionAnimation(messageElement, reactionType);
+                }
               }
 
               // Update UI immediately (optimistic update)
@@ -1100,24 +1090,27 @@ export function initMessagesUI() {
 
     // Check for conflicts: compare with current local state
     const currentLocal = reactionManager.getReactions(messageId);
-    if (JSON.stringify(reactionCounts) === JSON.stringify(currentLocal)) {
+
+    // Compare reaction states (order-independent)
+    const isSameState = (a, b) => {
+      const keysA = Object.keys(a);
+      const keysB = Object.keys(b);
+      return keysA.length === keysB.length && keysA.every((k) => a[k] === b[k]);
+    };
+
+    if (isSameState(reactionCounts, currentLocal)) {
       // Already in sync, no update needed
       return;
     }
 
-    // Log discrepancies for debugging (optional)
+    // Log discrepancies for debugging
     console.debug(`[MessagesUI] Syncing reaction state for ${messageId}:`, {
       local: currentLocal,
       remote: reactionCounts,
     });
 
-    // Update local manager state to match remote
-    reactionManager.clearReactions(messageId);
-    for (const [type, count] of Object.entries(reactionCounts)) {
-      for (let i = 0; i < count; i++) {
-        reactionManager.addReaction(messageId, type);
-      }
-    }
+    // Sync local manager state from remote (preserves user IDs)
+    reactionManager.syncFromRemote(messageId, reactions);
 
     // Re-render
     reactionUI.renderReactions(element, messageId, reactionCounts);

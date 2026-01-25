@@ -29,12 +29,14 @@ export function onClickOutside(element, onClick, options = {}) {
     ignoreInputBlur = false, // New option: ignore clicks that blur input elements
   } = options;
 
-  // Normalize ignore list to HTMLElement references
-  let ignoreList = options.ignore || [];
-  if (typeof ignoreList === 'function') {
-    ignoreList = ignoreList();
-  }
-  ignoreList = Array.isArray(ignoreList) ? ignoreList.filter(Boolean) : [];
+  // Resolve ignore list lazily on each click (supports dynamic ignore elements)
+  const resolveIgnoreList = () => {
+    let list = options.ignore || [];
+    if (typeof list === 'function') {
+      list = list();
+    }
+    return Array.isArray(list) ? list.filter(Boolean) : [];
+  };
 
   // Track if an input was focused before the click (for mobile keyboard handling)
   let inputWasFocused = false;
@@ -46,7 +48,8 @@ export function onClickOutside(element, onClick, options = {}) {
       // If click is inside the element, ignore
       if (element.contains(target)) return;
 
-      // If click is inside any ignore element, ignore
+      // If click is inside any ignore element, ignore (evaluated on each click)
+      const ignoreList = resolveIgnoreList();
       for (const ign of ignoreList) {
         if (ign && ign.contains && ign.contains(target)) return;
         if (ign === target) return;
