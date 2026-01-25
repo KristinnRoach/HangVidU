@@ -1,0 +1,5 @@
+reviews:
+  abort_on_close: false
+  tools:
+    oxlint:
+      enabled: true
