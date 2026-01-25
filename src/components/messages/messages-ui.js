@@ -604,6 +604,33 @@ export function initMessagesUI() {
         });
       }
       scrollMessagesToEnd();
+
+      // Set up outside click handler
+      removeMessagesBoxClickOutside = onClickOutside(
+        messagesBox,
+        () => {
+          hideElement(messagesBox);
+          detachRepositionHandlers();
+
+          // Clear inline offsets
+          messagesBox.style.top = '';
+          messagesBox.style.left = '';
+          messagesBox.style.bottom = '';
+          messagesBox.style.right = '';
+
+          // Clean up the handler since we're closing
+          if (removeMessagesBoxClickOutside) {
+            removeMessagesBoxClickOutside();
+            removeMessagesBoxClickOutside = null;
+          }
+        },
+        {
+          ignore: () =>
+            [messageToggle.element, reactionUI.activePicker].filter(Boolean),
+          esc: true,
+          ignoreInputBlur: isMobileDevice(), // Prevent accidental closes when dismissing keyboard on mobile
+        },
+      );
     } else {
       // If we just closed:
       // Only blur if actually focused (avoids mobile keyboard issues)
@@ -616,28 +643,14 @@ export function initMessagesUI() {
       messagesBox.style.left = '';
       messagesBox.style.bottom = '';
       messagesBox.style.right = '';
+
+      // Clean up outside click handler
+      if (removeMessagesBoxClickOutside) {
+        removeMessagesBoxClickOutside();
+        removeMessagesBoxClickOutside = null;
+      }
     }
   }
-
-  // Close messages box when clicking outside
-  removeMessagesBoxClickOutside = onClickOutside(
-    messagesBox,
-    () => {
-      hideElement(messagesBox);
-      detachRepositionHandlers();
-
-      // Clear inline offsets
-      messagesBox.style.top = '';
-      messagesBox.style.left = '';
-      messagesBox.style.bottom = '';
-      messagesBox.style.right = '';
-    },
-    {
-      ignore: [messageToggle.element],
-      esc: true,
-      ignoreInputBlur: isMobileDevice(), // Prevent accidental closes when dismissing keyboard on mobile
-    },
-  );
 
   function showMessagesToggle() {
     showElement(messageToggle.element);
@@ -739,44 +752,81 @@ export function initMessagesUI() {
       }
 
       // Enable double-tap/long-press reactions
+      // TODO: Fix messages UI disappearing when clicking reaction from picker
+      // The picker selection works but somehow closes the messages UI unexpectedly
       reactionUI.enableDoubleTap(
         p,
         messageId,
-        async (reactionType, messageElement, msgId) => {
+        async (reactionType, messageElement, msgId, source) => {
           if (!currentSession) {
             console.warn('[MessagesUI] No current session for reaction');
             return;
           }
 
           try {
-            // Check if message has any reactions
-            const localReactions = reactionManager.getReactions(msgId);
-            const hasAnyReaction = Object.keys(localReactions).length > 0;
+            if (source === 'doubleTap') {
+              // Double-tap: toggle default reaction
+              const localReactions = reactionManager.getReactions(msgId);
+              const hasAnyReaction = Object.keys(localReactions).length > 0;
 
-            let reactions;
+              let reactions;
 
-            if (hasAnyReaction) {
-              // Remove all existing reactions (toggle off)
-              for (const type of Object.keys(localReactions)) {
-                await currentSession.removeReaction(msgId, type);
-                reactionManager.removeReaction(msgId, type);
+              if (hasAnyReaction) {
+                // Remove all existing reactions (toggle off)
+                for (const type of Object.keys(localReactions)) {
+                  await currentSession.removeReaction(msgId, type);
+                  reactionManager.removeReaction(msgId, type);
+                }
+                reactions = {};
+              } else {
+                // Add default reaction (toggle on)
+                await currentSession.addReaction(msgId, reactionType);
+                reactions = reactionManager.addReaction(msgId, reactionType);
+
+                // Show animation only when adding
+                if (REACTION_CONFIG.enableAnimations) {
+                  reactionUI.showReactionAnimation(
+                    messageElement,
+                    reactionType,
+                  );
+                }
               }
-              reactions = {};
-            } else {
-              // Add default reaction (toggle on)
-              await currentSession.addReaction(msgId, reactionType);
-              reactions = reactionManager.addReaction(msgId, reactionType);
 
-              // Show animation only when adding
+              // Update UI immediately (optimistic update)
+              reactionUI.renderReactions(messageElement, msgId, reactions);
+            } else if (source === 'picker') {
+              // Picker: always apply selected reaction
+              const localReactions = reactionManager.getReactions(msgId);
+              const existingTypes = Object.keys(localReactions);
+
+              // If same reaction already exists, do nothing
+              if (existingTypes.includes(reactionType)) {
+                return;
+              }
+
+              // Remove any existing reactions first
+              for (const existingType of existingTypes) {
+                await currentSession.removeReaction(msgId, existingType);
+                reactionManager.removeReaction(msgId, existingType);
+              }
+
+              // Add the new reaction
+              await currentSession.addReaction(msgId, reactionType);
+              const reactions = reactionManager.addReaction(
+                msgId,
+                reactionType,
+              );
+
+              // Show animation
               if (REACTION_CONFIG.enableAnimations) {
                 reactionUI.showReactionAnimation(messageElement, reactionType);
               }
-            }
 
-            // Update UI immediately (optimistic update)
-            reactionUI.renderReactions(messageElement, msgId, reactions);
+              // Update UI immediately (optimistic update)
+              reactionUI.renderReactions(messageElement, msgId, reactions);
+            }
           } catch (err) {
-            console.warn('[MessagesUI] Failed to toggle reaction:', err);
+            console.warn('[MessagesUI] Failed to handle reaction:', err);
           }
         },
       );
