@@ -56,6 +56,10 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Package manager lockfiles (pnpm only)
+package-lock.json
+yarn.lock
+
 node_modules
 dist
 dev-dist
@@ -82,7 +86,6 @@ STRUCTURE.md
 Instructions.md
 Warp.md
 CLAUDE.md
-.coderabbit.yaml
 .kiro/
 .claude/
 
