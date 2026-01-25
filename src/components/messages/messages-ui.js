@@ -728,6 +728,14 @@ export function initMessagesUI() {
           reactionCounts[type] = users.length;
         }
         reactionUI.renderReactions(p, messageId, reactionCounts);
+
+        // Sync local reaction manager with initial state
+        reactionManager.clearReactions(messageId);
+        for (const [type, count] of Object.entries(reactionCounts)) {
+          for (let i = 0; i < count; i++) {
+            reactionManager.addReaction(messageId, type);
+          }
+        }
       }
 
       // Enable double-tap/long-press reactions
@@ -741,40 +749,21 @@ export function initMessagesUI() {
           }
 
           try {
-            // Get all reactions on this message from Firebase
-            const allReactions = await currentSession.getReactions(msgId);
-
-            // Find which reaction type (if any) the current user has
-            const myUserId = getLoggedInUserId();
-            if (!myUserId) {
-              console.warn('[MessagesUI] Cannot react: not logged in');
-              return;
-            }
-
-            let myCurrentReaction = null;
-
-            for (const [type, userIds] of Object.entries(allReactions)) {
-              if (userIds.includes(myUserId)) {
-                myCurrentReaction = type;
-                break;
-              }
-            }
+            // Check if message has any reactions
+            const localReactions = reactionManager.getReactions(msgId);
+            const hasAnyReaction = Object.keys(localReactions).length > 0;
 
             let reactions;
 
-            if (myCurrentReaction === reactionType) {
-              // User clicked the same reaction they already have → remove it (toggle off)
-              await currentSession.removeReaction(msgId, reactionType);
-              reactions = reactionManager.removeReaction(msgId, reactionType);
-            } else {
-              // User clicked a different reaction (or has none)
-              if (myCurrentReaction) {
-                // Remove old reaction first
-                await currentSession.removeReaction(msgId, myCurrentReaction);
-                reactionManager.removeReaction(msgId, myCurrentReaction);
+            if (hasAnyReaction) {
+              // Remove all existing reactions (toggle off)
+              for (const type of Object.keys(localReactions)) {
+                await currentSession.removeReaction(msgId, type);
+                reactionManager.removeReaction(msgId, type);
               }
-
-              // Add new reaction
+              reactions = {};
+            } else {
+              // Add default reaction (toggle on)
               await currentSession.addReaction(msgId, reactionType);
               reactions = reactionManager.addReaction(msgId, reactionType);
 
@@ -1058,6 +1047,19 @@ export function initMessagesUI() {
     for (const [type, users] of Object.entries(reactions || {})) {
       reactionCounts[type] = users.length;
     }
+
+    // Check for conflicts: compare with current local state
+    const currentLocal = reactionManager.getReactions(messageId);
+    if (JSON.stringify(reactionCounts) === JSON.stringify(currentLocal)) {
+      // Already in sync, no update needed
+      return;
+    }
+
+    // Log discrepancies for debugging (optional)
+    console.debug(`[MessagesUI] Syncing reaction state for ${messageId}:`, {
+      local: currentLocal,
+      remote: reactionCounts,
+    });
 
     // Update local manager state to match remote
     reactionManager.clearReactions(messageId);
