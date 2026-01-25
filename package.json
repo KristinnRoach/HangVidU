@@ -56,7 +56,7 @@
   "devDependencies": {
     "@playwright/test": "^1.58.0",
     "@vitest/browser-playwright": "^4.0.18",
-    "@vitest/coverage-v8": "4.0.18",
+    "@vitest/coverage-v8": "^4.0.18",
     "baseline-browser-mapping": "^2.9.18",
     "concurrently": "^9.0.0",
     "fkill-cli": "~9.0.0",
