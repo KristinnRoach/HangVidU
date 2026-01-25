@@ -6,6 +6,7 @@ import {
   getReactionEmoji,
   getAvailableReactions,
 } from './ReactionConfig.js';
+import { onClickOutside } from '../../utils/ui/clickOutside.js';
 
 /**
  * ReactionUI - Handles reaction UI rendering and interactions
@@ -31,6 +32,7 @@ export class ReactionUI {
     this.longPressTimers = new Map(); // messageElement -> timeout id
     this.activePicker = null; // Currently open picker element
     this.activePickerMessageElement = null; // Message element that picker belongs to
+    this.pickerJustShown = false; // Flag to ignore the first click after showing picker
   }
 
   /**
@@ -148,7 +150,12 @@ export class ReactionUI {
 
     // Delegate to callback which has access to session/transport for checking user's reaction state
     if (onReactionChange) {
-      await onReactionChange(reactionType, messageElement, messageId);
+      await onReactionChange(
+        reactionType,
+        messageElement,
+        messageId,
+        'doubleTap',
+      );
     }
   }
 
@@ -263,7 +270,7 @@ export class ReactionUI {
 
         // Delegate to callback (same pattern as double-tap)
         if (onReactionChange) {
-          await onReactionChange(type, messageElement, messageId);
+          await onReactionChange(type, messageElement, messageId, 'picker');
         }
 
         this.hidePicker();
@@ -281,17 +288,18 @@ export class ReactionUI {
     document.body.appendChild(picker);
     this.activePicker = picker;
     this.activePickerMessageElement = messageElement; // Track which message this picker belongs to
+    this.pickerJustShown = true; // Mark that picker was just shown
 
     // Close picker when clicking outside
-    const closeOnOutsideClick = (e) => {
-      if (!picker.contains(e.target)) {
-        this.hidePicker();
-        document.removeEventListener('click', closeOnOutsideClick, true);
-      }
-    };
-    // Delay to avoid immediate close from the long-press release
     setTimeout(() => {
-      document.addEventListener('click', closeOnOutsideClick, true);
+      this.pickerCleanup = onClickOutside(picker, () => {
+        // Ignore the first outside click after showing picker
+        if (this.pickerJustShown) {
+          this.pickerJustShown = false;
+          return;
+        }
+        this.hidePicker();
+      });
     }, 0);
   }
 
@@ -310,6 +318,14 @@ export class ReactionUI {
         this.activePickerMessageElement = null;
       }
     }
+
+    // Cleanup the outside click listener
+    if (this.pickerCleanup) {
+      this.pickerCleanup();
+      this.pickerCleanup = null;
+    }
+
+    this.pickerJustShown = false;
   }
 
   /**

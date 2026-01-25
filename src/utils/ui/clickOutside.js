@@ -7,7 +7,7 @@
  * @param {HTMLElement} element - The element to detect outside clicks for.
  * @param {(event: Event) => void} onClick - Callback invoked when an outside click or Escape occurs.
  * @param {Object} [options]
- * @param {Array<HTMLElement>} [options.ignore=[]] - Elements to treat as "inside" (e.g. toggle button).
+ * @param {Array<HTMLElement>|Function} [options.ignore=[]] - Elements to treat as "inside" (can be array or function returning array).
  * @param {boolean} [options.esc=true] - Whether to close on Escape key.
  * @param {Array<string>} [options.events=['mousedown','touchstart']] - DOM events to listen for outside interactions.
  * @param {boolean} [options.ignoreInputBlur=false] - Ignore clicks that dismiss mobile keyboard (prevents accidental closes).
@@ -30,7 +30,11 @@ export function onClickOutside(element, onClick, options = {}) {
   } = options;
 
   // Normalize ignore list to HTMLElement references
-  const ignoreList = Array.isArray(ignore) ? ignore.filter(Boolean) : [];
+  let ignoreList = options.ignore || [];
+  if (typeof ignoreList === 'function') {
+    ignoreList = ignoreList();
+  }
+  ignoreList = Array.isArray(ignoreList) ? ignoreList.filter(Boolean) : [];
 
   // Track if an input was focused before the click (for mobile keyboard handling)
   let inputWasFocused = false;

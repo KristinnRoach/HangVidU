@@ -604,6 +604,33 @@ export function initMessagesUI() {
         });
       }
       scrollMessagesToEnd();
+
+      // Set up outside click handler
+      removeMessagesBoxClickOutside = onClickOutside(
+        messagesBox,
+        () => {
+          hideElement(messagesBox);
+          detachRepositionHandlers();
+
+          // Clear inline offsets
+          messagesBox.style.top = '';
+          messagesBox.style.left = '';
+          messagesBox.style.bottom = '';
+          messagesBox.style.right = '';
+
+          // Clean up the handler since we're closing
+          if (removeMessagesBoxClickOutside) {
+            removeMessagesBoxClickOutside();
+            removeMessagesBoxClickOutside = null;
+          }
+        },
+        {
+          ignore: () =>
+            [messageToggle.element, reactionUI.activePicker].filter(Boolean),
+          esc: true,
+          ignoreInputBlur: isMobileDevice(), // Prevent accidental closes when dismissing keyboard on mobile
+        },
+      );
     } else {
       // If we just closed:
       // Only blur if actually focused (avoids mobile keyboard issues)
@@ -616,28 +643,14 @@ export function initMessagesUI() {
       messagesBox.style.left = '';
       messagesBox.style.bottom = '';
       messagesBox.style.right = '';
+
+      // Clean up outside click handler
+      if (removeMessagesBoxClickOutside) {
+        removeMessagesBoxClickOutside();
+        removeMessagesBoxClickOutside = null;
+      }
     }
   }
-
-  // Close messages box when clicking outside
-  removeMessagesBoxClickOutside = onClickOutside(
-    messagesBox,
-    () => {
-      hideElement(messagesBox);
-      detachRepositionHandlers();
-
-      // Clear inline offsets
-      messagesBox.style.top = '';
-      messagesBox.style.left = '';
-      messagesBox.style.bottom = '';
-      messagesBox.style.right = '';
-    },
-    {
-      ignore: [messageToggle.element],
-      esc: true,
-      ignoreInputBlur: isMobileDevice(), // Prevent accidental closes when dismissing keyboard on mobile
-    },
-  );
 
   function showMessagesToggle() {
     showElement(messageToggle.element);
@@ -728,66 +741,92 @@ export function initMessagesUI() {
           reactionCounts[type] = users.length;
         }
         reactionUI.renderReactions(p, messageId, reactionCounts);
+
+        // Sync local reaction manager with initial state
+        reactionManager.clearReactions(messageId);
+        for (const [type, count] of Object.entries(reactionCounts)) {
+          for (let i = 0; i < count; i++) {
+            reactionManager.addReaction(messageId, type);
+          }
+        }
       }
 
       // Enable double-tap/long-press reactions
+      // TODO: Fix messages UI disappearing when clicking reaction from picker
+      // The picker selection works but somehow closes the messages UI unexpectedly
       reactionUI.enableDoubleTap(
         p,
         messageId,
-        async (reactionType, messageElement, msgId) => {
+        async (reactionType, messageElement, msgId, source) => {
           if (!currentSession) {
             console.warn('[MessagesUI] No current session for reaction');
             return;
           }
 
           try {
-            // Get all reactions on this message from Firebase
-            const allReactions = await currentSession.getReactions(msgId);
+            if (source === 'doubleTap') {
+              // Double-tap: toggle default reaction
+              const localReactions = reactionManager.getReactions(msgId);
+              const hasAnyReaction = Object.keys(localReactions).length > 0;
 
-            // Find which reaction type (if any) the current user has
-            const myUserId = getLoggedInUserId();
-            if (!myUserId) {
-              console.warn('[MessagesUI] Cannot react: not logged in');
-              return;
-            }
+              let reactions;
 
-            let myCurrentReaction = null;
+              if (hasAnyReaction) {
+                // Remove all existing reactions (toggle off)
+                for (const type of Object.keys(localReactions)) {
+                  await currentSession.removeReaction(msgId, type);
+                  reactionManager.removeReaction(msgId, type);
+                }
+                reactions = {};
+              } else {
+                // Add default reaction (toggle on)
+                await currentSession.addReaction(msgId, reactionType);
+                reactions = reactionManager.addReaction(msgId, reactionType);
 
-            for (const [type, userIds] of Object.entries(allReactions)) {
-              if (userIds.includes(myUserId)) {
-                myCurrentReaction = type;
-                break;
-              }
-            }
-
-            let reactions;
-
-            if (myCurrentReaction === reactionType) {
-              // User clicked the same reaction they already have → remove it (toggle off)
-              await currentSession.removeReaction(msgId, reactionType);
-              reactions = reactionManager.removeReaction(msgId, reactionType);
-            } else {
-              // User clicked a different reaction (or has none)
-              if (myCurrentReaction) {
-                // Remove old reaction first
-                await currentSession.removeReaction(msgId, myCurrentReaction);
-                reactionManager.removeReaction(msgId, myCurrentReaction);
+                // Show animation only when adding
+                if (REACTION_CONFIG.enableAnimations) {
+                  reactionUI.showReactionAnimation(
+                    messageElement,
+                    reactionType,
+                  );
+                }
               }
 
-              // Add new reaction
+              // Update UI immediately (optimistic update)
+              reactionUI.renderReactions(messageElement, msgId, reactions);
+            } else if (source === 'picker') {
+              // Picker: always apply selected reaction
+              const localReactions = reactionManager.getReactions(msgId);
+              const existingTypes = Object.keys(localReactions);
+
+              // If same reaction already exists, do nothing
+              if (existingTypes.includes(reactionType)) {
+                return;
+              }
+
+              // Remove any existing reactions first
+              for (const existingType of existingTypes) {
+                await currentSession.removeReaction(msgId, existingType);
+                reactionManager.removeReaction(msgId, existingType);
+              }
+
+              // Add the new reaction
               await currentSession.addReaction(msgId, reactionType);
-              reactions = reactionManager.addReaction(msgId, reactionType);
+              const reactions = reactionManager.addReaction(
+                msgId,
+                reactionType,
+              );
 
-              // Show animation only when adding
+              // Show animation
               if (REACTION_CONFIG.enableAnimations) {
                 reactionUI.showReactionAnimation(messageElement, reactionType);
               }
-            }
 
-            // Update UI immediately (optimistic update)
-            reactionUI.renderReactions(messageElement, msgId, reactions);
+              // Update UI immediately (optimistic update)
+              reactionUI.renderReactions(messageElement, msgId, reactions);
+            }
           } catch (err) {
-            console.warn('[MessagesUI] Failed to toggle reaction:', err);
+            console.warn('[MessagesUI] Failed to handle reaction:', err);
           }
         },
       );
@@ -1058,6 +1097,19 @@ export function initMessagesUI() {
     for (const [type, users] of Object.entries(reactions || {})) {
       reactionCounts[type] = users.length;
     }
+
+    // Check for conflicts: compare with current local state
+    const currentLocal = reactionManager.getReactions(messageId);
+    if (JSON.stringify(reactionCounts) === JSON.stringify(currentLocal)) {
+      // Already in sync, no update needed
+      return;
+    }
+
+    // Log discrepancies for debugging (optional)
+    console.debug(`[MessagesUI] Syncing reaction state for ${messageId}:`, {
+      local: currentLocal,
+      remote: reactionCounts,
+    });
 
     // Update local manager state to match remote
     reactionManager.clearReactions(messageId);
