@@ -83,10 +83,10 @@ export function onClickOutside(element, onClick, options = {}) {
   };
 
   const blurHandler = () => {
-    // Small delay to allow the click event to process first
+    // Defer to next event loop to allow click events to process first
     setTimeout(() => {
       inputWasFocused = false;
-    }, 100);
+    }, 0);
   };
 
   // Attach listeners
