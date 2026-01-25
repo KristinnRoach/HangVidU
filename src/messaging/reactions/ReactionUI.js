@@ -165,7 +165,14 @@ export class ReactionUI {
     if (!reactionContainer) {
       reactionContainer = document.createElement('div');
       reactionContainer.className = 'message-reactions';
-      messageElement.appendChild(reactionContainer);
+      // Prefer to attach reactions to the message bubble (`.message-text`) so
+      // they position relative to the bubble instead of the full-width p.
+      const textContainer = messageElement.querySelector('.message-text');
+      if (textContainer) {
+        textContainer.appendChild(reactionContainer);
+      } else {
+        messageElement.appendChild(reactionContainer);
+      }
     }
 
     // Clear existing reactions

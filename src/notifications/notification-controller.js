@@ -569,21 +569,22 @@ export class NotificationController {
   async formatCallNotification(callData) {
     const { roomId, callerId, callerName } = callData;
 
-    let displayName = callerName;
+    let displayName = callerName || callerId || 'Unknown caller';
 
-    // Try to resolve caller name using existing contact system
-    try {
-      // Import resolveCallerName dynamically to avoid circular dependencies
-      const { resolveCallerName } =
-        await import('../components/contacts/contacts.js');
-      displayName = await resolveCallerName(roomId, callerId);
-    } catch (error) {
-      console.warn(
-        '[NotificationController] Failed to resolve caller name:',
-        error,
-      );
-      // Fallback to provided name or user ID
-      displayName = callerName || callerId || 'Unknown caller';
+    // Only try to resolve caller name if not already provided
+    if (!callerName) {
+      try {
+        // Import resolveCallerName dynamically to avoid circular dependencies
+        const { resolveCallerName } =
+          await import('../components/contacts/contacts.js');
+        displayName = await resolveCallerName(roomId, callerId);
+      } catch (error) {
+        console.warn(
+          '[NotificationController] Failed to resolve caller name:',
+          error,
+        );
+        // Fallback already set above
+      }
     }
 
     // Apply privacy mode if enabled

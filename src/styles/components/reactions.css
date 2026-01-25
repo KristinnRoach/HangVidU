@@ -2,14 +2,24 @@
 
 /* Reaction container - positioned like Messenger (bottom-right of message bubble) */
 .message-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
   position: absolute;
-  bottom: -8px;
-  right: -4px;
-  font-size: 14px;
+  bottom: -0.8em;
+  right: -1em;
 }
 
 /* Individual reaction badge - minimal like Messenger */
 .reaction-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0.2em;
+  font-size: 0.8em;
+  color: var(--text-primary);
+  text-shadow: var(--text-shadow-extreme);
   cursor: default;
   user-select: none;
 }
@@ -41,19 +51,28 @@
   }
 }
 
-/* Messages with reactions need a bit more structure */
-#messages p {
+/* Position reactions relative to the message bubble (`.message-text`).
+   This prevents the badges from anchoring to the full-width <p> element
+   which causes them to appear far to the right in wide containers. */
+#messages .message-text {
   position: relative;
 }
 
-/* Position reactions at bottom-right of message text span */
+/* By default the reactions attach to the right edge of the bubble. For
+   remote (left) bubbles we flip to the left side so badges sit beside
+   the bubble as in messenger-style UIs. */
+#messages p.message-local .message-text .message-reactions,
 #messages p.message-local .message-reactions {
-  right: -4px;
+  right: -6px;
+  left: auto;
+  justify-content: flex-end;
 }
 
+#messages p.message-remote .message-text .message-reactions,
 #messages p.message-remote .message-reactions {
+  left: -6px;
   right: auto;
-  left: 32px; /* After avatar */
+  justify-content: flex-start;
 }
 
 /* ===== REACTION PICKER ===== */
@@ -89,7 +108,9 @@
   padding: 4px 6px;
   cursor: pointer;
   border-radius: 6px;
-  transition: transform 0.1s ease, background 0.1s ease;
+  transition:
+    transform 0.1s ease,
+    background 0.1s ease;
 }
 
 .reaction-picker-btn:hover {

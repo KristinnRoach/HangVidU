@@ -87,6 +87,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  position: relative;
 }
 
 #messages p.message-local {
@@ -117,6 +118,7 @@
 /* Message alignment by sender */
 #messages .message-local {
   text-align: right;
+  margin-right: 10px; /* avoid scroll-bar overlapping message */
 }
 
 #messages .message-remote {
@@ -126,6 +128,7 @@
 /* Subtle message-bubble styling */
 #messages .message-text {
   display: inline-block;
+  position: relative;
   margin: 4px 0;
   padding: 8px;
   border-radius: 16px;
