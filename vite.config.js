@@ -33,21 +33,9 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
-          'firebase-messaging-sw': path.resolve(
-            __dirname,
-            'src/firebase-messaging-sw.js',
-          ),
           ...(mode === 'development' && {
             experiments: path.resolve(__dirname, 'experiments.html'),
           }),
-        },
-        output: {
-          entryFileNames: (chunkInfo) => {
-            // Output FCM service worker to root (not in assets/)
-            return chunkInfo.name === 'firebase-messaging-sw'
-              ? '[name].js'
-              : 'assets/[name]-[hash].js';
-          },
         },
       },
     },
