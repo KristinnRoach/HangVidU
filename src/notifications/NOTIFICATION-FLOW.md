@@ -344,10 +344,10 @@ curl -X POST \
     "targetUserId": "YOUR_USER_ID",
     "callData": {
       "type": "call",
-      "roomId": "test-sanity-' $(date +%s) '",
+      "roomId": "test-sanity-'"$(date +%s)"'",
       "callerId": "test-caller",
       "callerName": "Test Caller",
-      "timestamp": "' $(date +%s)000 '"
+      "timestamp": "'"$(date +%s)"000'"
     }
   }'
 ```

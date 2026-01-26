@@ -237,41 +237,11 @@ async function init() {
       if (fcmInitialized) {
         console.log('[MAIN] FCM notifications initialized successfully');
 
-        // In production, request permissions on page load if not already granted
-        if (import.meta.env.PROD) {
-          const permissionState = notificationController.getPermissionState();
-          if (permissionState === 'default') {
-            console.log('[MAIN] Requesting notification permissions...');
-            // Fire permission request asynchronously to avoid blocking app init
-            notificationController
-              .requestPermission({
-                title: 'Enable Push Notifications',
-                explain:
-                  'Get notified of incoming calls and messages even when HangVidU is closed.',
-                onGranted: () => {
-                  console.log('[MAIN] Notification permissions granted');
-                },
-                onDenied: (reason) => {
-                  console.log(
-                    '[MAIN] Notification permissions denied:',
-                    reason,
-                  );
-                },
-                onDismissed: () => {
-                  console.log('[MAIN] Notification prompt dismissed');
-                },
-              })
-              .catch((err) => {
-                console.warn(
-                  '[MAIN] Notification permission request failed:',
-                  err,
-                );
-              });
-          } else if (permissionState === 'granted') {
-            // Permission already granted, just enable
-            await notificationController.enable();
-          }
-        }
+        // Note: Permission requests are handled in onAuthChange after user logs in.
+        // This ensures:
+        // 1. Auth is ready and user is logged in (FCM token can be stored)
+        // 2. Permission request happens from user interaction context (better browser support)
+        // 3. No permission requests for anonymous/logged-out users
       } else {
         console.warn('[MAIN] FCM notifications failed to initialize');
       }
@@ -1526,48 +1496,49 @@ window.onload = async () => {
         devDebug('[AUTH] User logged in - re-attaching incoming listeners');
 
         // Enable notifications for the new user (in production)
+        // This happens after auth is ready and user is confirmed logged in
         if (import.meta.env.PROD) {
-          const permissionState = notificationController.getPermissionState();
-          if (permissionState === 'granted') {
-            // Permission already granted (browser-level), get FCM token for this user
-            console.log('[AUTH] Enabling notifications for logged-in user');
-            await notificationController.enable().catch((error) => {
-              console.warn(
-                '[AUTH] Failed to enable notifications on login:',
-                error,
-              );
-            });
-          } else if (permissionState === 'default') {
-            // Request permission for new user
+          const currentUserId = getLoggedInUserId();
+
+          if (!currentUserId) {
             console.log(
-              '[AUTH] Requesting notification permissions for new user',
+              '[AUTH] Skipping notification setup: no user logged in',
             );
-            notificationController
-              .requestPermission({
-                title: 'Enable Push Notifications',
-                explain:
-                  'Get notified of incoming calls and messages even when HangVidU is closed.',
-                onGranted: () => {
-                  console.log(
-                    '[AUTH] Notification permissions granted for new user',
-                  );
-                },
-                onDenied: (reason) => {
-                  console.log(
-                    '[AUTH] Notification permissions denied:',
-                    reason,
-                  );
-                },
-                onDismissed: () => {
-                  console.log('[AUTH] Notification prompt dismissed');
-                },
-              })
-              .catch((err) => {
-                console.warn(
-                  '[AUTH] Notification permission request failed:',
-                  err,
+          } else {
+            const permissionState = notificationController.getPermissionState();
+
+            if (permissionState === 'granted') {
+              // Permission already granted (browser-level), get FCM token for this user
+              console.log('[AUTH] Enabling notifications for logged-in user');
+              try {
+                await notificationController.enable();
+                console.log('[AUTH] Notifications enabled successfully');
+              } catch (error) {
+                console.error(
+                  '[AUTH] Failed to enable notifications on login:',
+                  error,
                 );
-              });
+              }
+            } else if (permissionState === 'default') {
+              // Request permission for new user
+              // Note: This should ideally be triggered by an explicit user action
+              // (e.g., clicking a "Enable Notifications" button) for better browser support.
+              // However, since this is in the login flow (which is a user action),
+              // it may work in most browsers.
+              console.log(
+                '[AUTH] Notification permission in default state - consider showing opt-in UI',
+              );
+
+              // For now, we defer to explicit user action rather than auto-requesting
+              // Users can enable via the notifications toggle or test button
+              console.log(
+                '[AUTH] User can enable notifications via the notifications toggle',
+              );
+            } else {
+              console.log(
+                '[AUTH] Notification permission denied or unsupported',
+              );
+            }
           }
         }
 
