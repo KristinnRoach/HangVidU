@@ -814,6 +814,18 @@ export function listenForIncomingOnRoom(roomId) {
     const data =
       snapshot && typeof snapshot.val === 'function' ? snapshot.val() : null;
     if (!data) return;
+
+    // Stop ringtone and visual indicators when call is cancelled
+    ringtoneManager.stop();
+    callIndicators.stopCallIndicators();
+
+    // Dismiss any call notifications for this room
+    if (notificationController.isNotificationEnabled()) {
+      await notificationController
+        .dismissCallNotifications(roomId)
+        .catch(() => {});
+    }
+
     try {
       const { dismissActiveConfirmDialog } =
         await import('./components/base/confirm-dialog.js');
@@ -823,7 +835,12 @@ export function listenForIncomingOnRoom(roomId) {
     } catch (_) {
       // best-effort
     }
+
     await removeRecentCall(roomId).catch(() => {});
+
+    // Clean up incoming listeners for this room to prevent stale listener firing
+    removeIncomingListenersForRoom(roomId);
+
     devDebug(
       `[LISTENER] Incoming call cancelled by caller for room: ${roomId}`,
     );
@@ -1553,7 +1570,6 @@ CallController.on('memberLeft', ({ memberId }) => {
   console.info('Partner has left the call');
 });
 
-
 // Business logic for cleanup (UI handled in bind-call-ui.js)
 CallController.on(
   'cleanup',
@@ -1565,10 +1581,10 @@ CallController.on(
       role,
       wasConnected,
     });
-    
-  // UI cleanup
-  // hideCallingUI(); // ! Moved to bind-call-ui.js
-  // onCallDisconnected(); // ! Moved to bind-call-ui.js
+
+    // UI cleanup
+    // hideCallingUI(); // ! Moved to bind-call-ui.js
+    // onCallDisconnected(); // ! Moved to bind-call-ui.js
 
     // UI cleanup
     // hideCallingUI(); // ! Moved to bind-call-ui.js
