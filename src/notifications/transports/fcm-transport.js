@@ -76,28 +76,62 @@ export class FCMTransport {
    */
   async getToken() {
     if (!this.isInitialized) {
+      console.log('[FCMTransport] Not initialized, initializing now...');
       const initialized = await this.initialize();
-      if (!initialized) return null;
+      if (!initialized) {
+        console.error('[FCMTransport] Initialization failed, cannot get token');
+        return null;
+      }
     }
 
     try {
+      console.log('[FCMTransport] Requesting FCM token...');
+      console.log('[FCMTransport] VAPID key present:', !!this.vapidKey);
+      console.log('[FCMTransport] Messaging instance:', !!this.messaging);
+
       const token = await getToken(this.messaging, {
         vapidKey: this.vapidKey,
       });
 
       if (token) {
         this.currentToken = token;
-        console.log('[FCMTransport] Token obtained');
+        console.log('[FCMTransport] Token obtained successfully');
+        console.log(
+          '[FCMTransport] Token (truncated):',
+          token.substring(0, 20) + '...',
+        );
 
         // Store token in RTDB for the current user
         await this.storeUserToken(token);
         return token;
       } else {
         console.warn('[FCMTransport] No registration token available');
+        console.warn('[FCMTransport] This usually means:');
+        console.warn('[FCMTransport]   1. Service worker is not registered');
+        console.warn('[FCMTransport]   2. Notification permission not granted');
+        console.warn('[FCMTransport]   3. VAPID key is incorrect');
         return null;
       }
     } catch (error) {
       console.error('[FCMTransport] Failed to get token:', error);
+      console.error('[FCMTransport] Error name:', error.name);
+      console.error('[FCMTransport] Error code:', error.code);
+      console.error('[FCMTransport] Error message:', error.message);
+
+      // Provide helpful error messages
+      if (error.code === 'messaging/unsupported-browser') {
+        console.error('[FCMTransport] Browser does not support FCM');
+      } else if (error.code === 'messaging/permission-blocked') {
+        console.error('[FCMTransport] Notification permission is blocked');
+      } else if (
+        error.code === 'messaging/failed-service-worker-registration'
+      ) {
+        console.error('[FCMTransport] Service worker registration failed');
+        console.error(
+          '[FCMTransport] Make sure service worker is registered before calling getToken()',
+        );
+      }
+
       return null;
     }
   }
