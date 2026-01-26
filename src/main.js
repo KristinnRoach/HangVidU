@@ -236,6 +236,31 @@ async function init() {
       const fcmInitialized = await notificationController.initialize();
       if (fcmInitialized) {
         console.log('[MAIN] FCM notifications initialized successfully');
+
+        // In production, request permissions on page load if not already granted
+        if (import.meta.env.PROD) {
+          const permissionState = notificationController.getPermissionState();
+          if (permissionState === 'default') {
+            console.log('[MAIN] Requesting notification permissions...');
+            await notificationController.requestPermission({
+              title: 'Enable Push Notifications',
+              explain:
+                'Get notified of incoming calls and messages even when HangVidU is closed.',
+              onGranted: () => {
+                console.log('[MAIN] Notification permissions granted');
+              },
+              onDenied: (reason) => {
+                console.log('[MAIN] Notification permissions denied:', reason);
+              },
+              onDismissed: () => {
+                console.log('[MAIN] Notification prompt dismissed');
+              },
+            });
+          } else if (permissionState === 'granted') {
+            // Permission already granted, just enable
+            await notificationController.enable();
+          }
+        }
       } else {
         console.warn('[MAIN] FCM notifications failed to initialize');
       }
