@@ -242,20 +242,31 @@ async function init() {
           const permissionState = notificationController.getPermissionState();
           if (permissionState === 'default') {
             console.log('[MAIN] Requesting notification permissions...');
-            await notificationController.requestPermission({
-              title: 'Enable Push Notifications',
-              explain:
-                'Get notified of incoming calls and messages even when HangVidU is closed.',
-              onGranted: () => {
-                console.log('[MAIN] Notification permissions granted');
-              },
-              onDenied: (reason) => {
-                console.log('[MAIN] Notification permissions denied:', reason);
-              },
-              onDismissed: () => {
-                console.log('[MAIN] Notification prompt dismissed');
-              },
-            });
+            // Fire permission request asynchronously to avoid blocking app init
+            notificationController
+              .requestPermission({
+                title: 'Enable Push Notifications',
+                explain:
+                  'Get notified of incoming calls and messages even when HangVidU is closed.',
+                onGranted: () => {
+                  console.log('[MAIN] Notification permissions granted');
+                },
+                onDenied: (reason) => {
+                  console.log(
+                    '[MAIN] Notification permissions denied:',
+                    reason,
+                  );
+                },
+                onDismissed: () => {
+                  console.log('[MAIN] Notification prompt dismissed');
+                },
+              })
+              .catch((err) => {
+                console.warn(
+                  '[MAIN] Notification permission request failed:',
+                  err,
+                );
+              });
           } else if (permissionState === 'granted') {
             // Permission already granted, just enable
             await notificationController.enable();
