@@ -17,6 +17,9 @@ console.log('FCM Token:', notificationController.transport.currentToken);
 // If null, check permission state
 console.log('Permission:', Notification.permission);
 console.log('Is enabled:', notificationController.isNotificationEnabled());
+
+// Get your User ID
+console.log('My User ID:', getLoggedInUserId());
 ```
 
 **Copy the FCM token** - you'll need it for testing.
@@ -142,8 +145,10 @@ Only proceed here if Step 2 worked successfully.
 
 ```javascript
 // Run in browser console while logged in
-const token = await firebase.auth().currentUser.getIdToken();
+const { getCurrentUser } = await import('./firebase/auth.js');
+const token = await getCurrentUser()?.getIdToken();
 console.log('Firebase ID Token:', token);
+console.log('My User ID:', getLoggedInUserId());
 ```
 
 ### Send via Cloud Function
@@ -394,7 +399,7 @@ curl -X POST \
 
 ```javascript
 // Get your own user ID
-const myUserId = firebase.auth().currentUser.uid;
+const myUserId = getLoggedInUserId();
 
 // Send call notification to yourself
 await notificationController.sendCallNotification(myUserId, {
