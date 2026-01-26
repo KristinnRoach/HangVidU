@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FCM Diagnostics Dashboard</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #0a0a0a;
+        color: #e0e0e0;
+        padding: 20px;
+        line-height: 1.6;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+        color: #fff;
+      }
+
+      .subtitle {
+        color: #888;
+        margin-bottom: 2rem;
+      }
+
+      .section {
+        background: #1a1a1a;
+        border: 1px solid #333;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .section h2 {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+        color: #fff;
+        border-bottom: 1px solid #333;
+        padding-bottom: 0.5rem;
+      }
+
+      .status-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .status-item {
+        background: #0f0f0f;
+        padding: 1rem;
+        border-radius: 6px;
+        border: 1px solid #2a2a2a;
+      }
+
+      .status-label {
+        font-size: 0.875rem;
+        color: #888;
+        margin-bottom: 0.25rem;
+      }
+
+      .status-value {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #fff;
+      }
+
+      .status-value.success {
+        color: #4ade80;
+      }
+
+      .status-value.error {
+        color: #f87171;
+      }
+
+      .status-value.warning {
+        color: #fbbf24;
+      }
+
+      .button {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background 0.2s;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .button:hover {
+        background: #2563eb;
+      }
+
+      .button:disabled {
+        background: #374151;
+        cursor: not-allowed;
+      }
+
+      .button.secondary {
+        background: #6b7280;
+      }
+
+      .button.secondary:hover {
+        background: #4b5563;
+      }
+
+      .test-result {
+        background: #0f0f0f;
+        padding: 0.75rem;
+        border-radius: 6px;
+        border-left: 3px solid #333;
+        margin-bottom: 0.5rem;
+      }
+
+      .test-result.passed {
+        border-left-color: #4ade80;
+      }
+
+      .test-result.failed {
+        border-left-color: #f87171;
+      }
+
+      .test-name {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+      }
+
+      .test-message {
+        font-size: 0.875rem;
+        color: #888;
+      }
+
+      .issue {
+        background: #1a0f0f;
+        border: 1px solid #4a2020;
+        padding: 1rem;
+        border-radius: 6px;
+        margin-bottom: 0.75rem;
+      }
+
+      .issue.error {
+        border-color: #7f1d1d;
+      }
+
+      .issue.warning {
+        background: #1a1a0f;
+        border-color: #4a4020;
+      }
+
+      .issue-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .issue-severity {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .issue-severity.error {
+        background: #7f1d1d;
+        color: #fca5a5;
+      }
+
+      .issue-severity.warning {
+        background: #78350f;
+        color: #fcd34d;
+      }
+
+      .issue-code {
+        font-family: monospace;
+        font-size: 0.875rem;
+        color: #888;
+      }
+
+      .issue-message {
+        margin-bottom: 0.5rem;
+      }
+
+      .issue-fix {
+        font-size: 0.875rem;
+        color: #888;
+        font-style: italic;
+      }
+
+      .loading {
+        text-align: center;
+        padding: 2rem;
+        color: #888;
+      }
+
+      .platform-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 0.75rem;
+      }
+
+      .platform-item {
+        font-size: 0.875rem;
+      }
+
+      .platform-label {
+        color: #888;
+      }
+
+      .platform-value {
+        color: #fff;
+        font-weight: 500;
+      }
+
+      .limitations {
+        background: #1a1a0f;
+        border: 1px solid #4a4020;
+        padding: 1rem;
+        border-radius: 6px;
+        margin-top: 1rem;
+      }
+
+      .limitations ul {
+        list-style: none;
+        padding-left: 0;
+      }
+
+      .limitations li {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #2a2a0a;
+      }
+
+      .limitations li:last-child {
+        border-bottom: none;
+      }
+
+      .limitations li:before {
+        content: '⚠️ ';
+        margin-right: 0.5rem;
+      }
+
+      code {
+        background: #0f0f0f;
+        padding: 0.125rem 0.375rem;
+        border-radius: 3px;
+        font-family: monospace;
+        font-size: 0.875rem;
+        color: #fbbf24;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔍 FCM Diagnostics Dashboard</h1>
+      <p class="subtitle">Real-time notification system diagnostics</p>
+
+      <div class="section">
+        <h2>Quick Actions</h2>
+        <button class="button" id="runDiagnostics">Run Full Diagnostics</button>
+        <button class="button secondary" id="testNotification">
+          Send Test Notification
+        </button>
+        <button class="button secondary" id="requestPermission">
+          Request Permission
+        </button>
+        <button class="button secondary" id="refreshState">
+          Refresh State
+        </button>
+      </div>
+
+      <div class="section">
+        <h2>Platform Information</h2>
+        <div id="platformInfo" class="loading">Loading...</div>
+      </div>
+
+      <div class="section">
+        <h2>System Status</h2>
+        <div id="systemStatus" class="loading">Loading...</div>
+      </div>
+
+      <div class="section">
+        <h2>Diagnostic Tests</h2>
+        <div id="diagnosticTests">
+          <p class="loading">Click "Run Full Diagnostics" to start</p>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Issues & Recommendations</h2>
+        <div id="issues">
+          <p class="loading">No diagnostics run yet</p>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { diagnosticService } from './diagnostic-service.js';
+      import { notificationController } from '../notifications/notification-controller.js';
+
+      // Show initialization status
+      console.log('[Dashboard] Starting initialization...');
+
+      // Initialize diagnostic service with the existing notification controller
+      diagnosticService.initialize(notificationController);
+
+      // Initialize the notification controller
+      try {
+        console.log('[Dashboard] Initializing notification controller...');
+        const initialized = await notificationController.initialize();
+        console.log(
+          '[Dashboard] Notification controller initialized:',
+          initialized,
+        );
+
+        if (!initialized) {
+          console.warn(
+            '[Dashboard] NotificationController initialization returned false',
+          );
+          // Show warning in UI
+          document.getElementById('systemStatus').innerHTML =
+            '<p style="color: #fbbf24;">⚠️ NotificationController failed to initialize. Check console for details.</p>';
+        }
+      } catch (error) {
+        console.error(
+          '[Dashboard] Failed to initialize notification controller:',
+          error,
+        );
+        document.getElementById('systemStatus').innerHTML =
+          `<p style="color: #f87171;">❌ Initialization error: ${error.message}</p>`;
+      }
+
+      // Load initial state
+      loadSystemState();
+
+      // Button handlers
+      document
+        .getElementById('runDiagnostics')
+        .addEventListener('click', runDiagnostics);
+      document
+        .getElementById('testNotification')
+        .addEventListener('click', sendTestNotification);
+      document
+        .getElementById('requestPermission')
+        .addEventListener('click', requestPermission);
+      document
+        .getElementById('refreshState')
+        .addEventListener('click', loadSystemState);
+
+      async function loadSystemState() {
+        try {
+          const state = await diagnosticService.getSystemState();
+
+          // Display platform info
+          displayPlatformInfo(state.platformSupport);
+
+          // Display system status
+          displaySystemStatus(state);
+        } catch (error) {
+          console.error('Failed to load system state:', error);
+          document.getElementById('systemStatus').innerHTML =
+            `<p style="color: #f87171;">Error loading state: ${error.message}</p>`;
+        }
+      }
+
+      function displayPlatformInfo(platform) {
+        const html = `
+        <div class="platform-info">
+          <div class="platform-item">
+            <div class="platform-label">Browser</div>
+            <div class="platform-value">${platform.browser} ${platform.browserVersion}</div>
+          </div>
+          <div class="platform-item">
+            <div class="platform-label">Operating System</div>
+            <div class="platform-value">${platform.os} ${platform.osVersion}</div>
+          </div>
+          <div class="platform-item">
+            <div class="platform-label">Device Type</div>
+            <div class="platform-value">${platform.deviceType}</div>
+          </div>
+          <div class="platform-item">
+            <div class="platform-label">PWA Mode</div>
+            <div class="platform-value">${platform.isPWA ? 'Yes' : 'No'} ${platform.isStandalone ? '(Standalone)' : ''}</div>
+          </div>
+        </div>
+        ${getPlatformLimitations()}
+      `;
+        document.getElementById('platformInfo').innerHTML = html;
+      }
+
+      function getPlatformLimitations() {
+        const limitations = diagnosticService.getPlatformLimitations();
+        if (limitations.length === 0) return '';
+
+        return `
+        <div class="limitations">
+          <strong>Platform Limitations:</strong>
+          <ul>
+            ${limitations.map((l) => `<li>${l}</li>`).join('')}
+          </ul>
+        </div>
+      `;
+      }
+
+      function displaySystemStatus(state) {
+        const permissionClass =
+          state.permission === 'granted'
+            ? 'success'
+            : state.permission === 'denied'
+              ? 'error'
+              : 'warning';
+
+        const swClass =
+          state.serviceWorkerStatus.registered &&
+          state.serviceWorkerStatus.active
+            ? 'success'
+            : 'error';
+
+        const tokenClass = state.fcmTokenStatus.hasToken ? 'success' : 'error';
+
+        const html = `
+        <div class="status-grid">
+          <div class="status-item">
+            <div class="status-label">Notification Permission</div>
+            <div class="status-value ${permissionClass}">${state.permission}</div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">Service Worker</div>
+            <div class="status-value ${swClass}">
+              ${
+                state.serviceWorkerStatus.registered
+                  ? state.serviceWorkerStatus.active
+                    ? 'Active'
+                    : 'Registered (not active)'
+                  : 'Not Registered'
+              }
+            </div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">FCM Token</div>
+            <div class="status-value ${tokenClass}">
+              ${state.fcmTokenStatus.hasToken ? 'Present' : 'Missing'}
+            </div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">Notification Support</div>
+            <div class="status-value ${diagnosticService.isNotificationSupported() ? 'success' : 'error'}">
+              ${diagnosticService.isNotificationSupported() ? 'Supported' : 'Not Supported'}
+            </div>
+          </div>
+        </div>
+        ${
+          state.fcmTokenStatus.hasToken
+            ? `
+          <div class="status-item">
+            <div class="status-label">FCM Token (truncated)</div>
+            <div class="status-value" style="font-size: 0.875rem; font-family: monospace; color: #888;">
+              ${state.fcmTokenStatus.token}
+            </div>
+          </div>
+        `
+            : ''
+        }
+        ${
+          state.serviceWorkerStatus.scriptURL
+            ? `
+          <div class="status-item">
+            <div class="status-label">Service Worker Script</div>
+            <div class="status-value" style="font-size: 0.75rem; color: #888;">
+              ${state.serviceWorkerStatus.scriptURL}
+            </div>
+          </div>
+        `
+            : ''
+        }
+      `;
+        document.getElementById('systemStatus').innerHTML = html;
+      }
+
+      async function runDiagnostics() {
+        const button = document.getElementById('runDiagnostics');
+        button.disabled = true;
+        button.textContent = 'Running...';
+
+        document.getElementById('diagnosticTests').innerHTML =
+          '<p class="loading">Running diagnostics...</p>';
+        document.getElementById('issues').innerHTML =
+          '<p class="loading">Analyzing...</p>';
+
+        try {
+          console.log('[Dashboard] Starting diagnostics...');
+          const results = await diagnosticService.runDiagnostics();
+          console.log('[Dashboard] Diagnostics completed:', results);
+
+          // Display test results
+          const testsHtml = results.tests
+            .map(
+              (test) => `
+          <div class="test-result ${test.passed ? 'passed' : 'failed'}">
+            <div class="test-name">${test.passed ? '✓' : '✗'} ${test.name}</div>
+            <div class="test-message">${test.message}</div>
+          </div>
+        `,
+            )
+            .join('');
+          document.getElementById('diagnosticTests').innerHTML = testsHtml;
+
+          // Display issues
+          if (results.issues.length === 0) {
+            document.getElementById('issues').innerHTML = `
+            <p style="color: #4ade80;">✓ No issues found! Notifications should work correctly.</p>
+            ${results.recommendations.map((r) => `<p style="color: #888; margin-top: 0.5rem;">${r}</p>`).join('')}
+          `;
+          } else {
+            const issuesHtml = results.issues
+              .map(
+                (issue) => `
+            <div class="issue ${issue.severity}">
+              <div class="issue-header">
+                <span class="issue-severity ${issue.severity}">${issue.severity}</span>
+                <span class="issue-code">${issue.code}</span>
+              </div>
+              <div class="issue-message">${issue.message}</div>
+              <div class="issue-fix">Location: ${issue.location}</div>
+              ${issue.proposedFix ? `<div class="issue-fix">Fix: ${issue.proposedFix}</div>` : ''}
+            </div>
+          `,
+              )
+              .join('');
+
+            const recommendationsHtml = results.recommendations
+              .map(
+                (r) => `<p style="color: #888; margin-top: 0.5rem;">${r}</p>`,
+              )
+              .join('');
+
+            document.getElementById('issues').innerHTML =
+              issuesHtml + recommendationsHtml;
+          }
+
+          // Refresh system state
+          await loadSystemState();
+        } catch (error) {
+          console.error('[Dashboard] Diagnostics failed:', error);
+          console.error('[Dashboard] Error stack:', error.stack);
+          document.getElementById('diagnosticTests').innerHTML =
+            `<p style="color: #f87171;">Diagnostics failed: ${error.message}</p>`;
+          document.getElementById('issues').innerHTML =
+            `<div class="issue error">
+              <div class="issue-header">
+                <span class="issue-severity error">ERROR</span>
+                <span class="issue-code">DIAGNOSTIC_FAILURE</span>
+              </div>
+              <div class="issue-message">${error.message}</div>
+              <div class="issue-fix">Check browser console for details</div>
+            </div>`;
+        } finally {
+          button.disabled = false;
+          button.textContent = 'Run Full Diagnostics';
+        }
+      }
+
+      async function sendTestNotification() {
+        const button = document.getElementById('testNotification');
+        button.disabled = true;
+        button.textContent = 'Sending...';
+
+        try {
+          const result = await diagnosticService.sendTestNotification();
+          alert(result.success ? `✓ ${result.message}` : `✗ ${result.message}`);
+        } catch (error) {
+          alert(`✗ Test failed: ${error.message}`);
+        } finally {
+          button.disabled = false;
+          button.textContent = 'Send Test Notification';
+        }
+      }
+
+      async function requestPermission() {
+        const button = document.getElementById('requestPermission');
+        button.disabled = true;
+        button.textContent = 'Requesting...';
+
+        try {
+          const result = await notificationController.requestPermission();
+          alert(
+            `Permission result: ${result.state}${result.reason ? ` (${result.reason})` : ''}`,
+          );
+          await loadSystemState();
+        } catch (error) {
+          alert(`Permission request failed: ${error.message}`);
+        } finally {
+          button.disabled = false;
+          button.textContent = 'Request Permission';
+        }
+      }
+    </script>
+  </body>
+</html>

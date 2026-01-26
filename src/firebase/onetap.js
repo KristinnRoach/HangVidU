@@ -83,7 +83,22 @@ export function initOneTap() {
     return;
   }
 
+  // Add retry limit to prevent infinite loop
+  if (!initOneTap.retryCount) {
+    initOneTap.retryCount = 0;
+  }
+
   if (typeof google === 'undefined' || !google.accounts?.id) {
+    initOneTap.retryCount++;
+
+    // Stop retrying after 50 attempts (5 seconds)
+    if (initOneTap.retryCount > 50) {
+      devDebug(
+        '[ONE TAP] Google Identity Services library not available after 50 retries, giving up',
+      );
+      return;
+    }
+
     devDebug(
       '[ONE TAP] Google Identity Services library not loaded yet, retrying...',
     );
@@ -92,6 +107,7 @@ export function initOneTap() {
   }
 
   devDebug('[ONE TAP] Google library loaded');
+  initOneTap.retryCount = 0; // Reset counter on success
 
   // Suppress FedCM abort errors when user dismisses One Tap
   // These are expected user actions, not actual errors
