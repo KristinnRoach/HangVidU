@@ -114,6 +114,18 @@ class CallController {
       const cancel = snapshot.val();
       if (!cancel) return;
       if (cancellationHandled) return;
+
+      // Ignore cancellations written by the current user (self-triggered)
+      // This prevents duplicate cleanup when user hangs up (hangUp writes cancellation, then listener fires)
+      const currentUserId = getUserId();
+      if (cancel.by === currentUserId) {
+        devDebug('Ignoring self-triggered cancellation', {
+          roomId,
+          userId: currentUserId,
+        });
+        return;
+      }
+
       cancellationHandled = true;
 
       devDebug('Call cancelled by partner', { roomId, cancel });

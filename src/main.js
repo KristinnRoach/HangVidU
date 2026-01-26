@@ -236,6 +236,42 @@ async function init() {
       const fcmInitialized = await notificationController.initialize();
       if (fcmInitialized) {
         console.log('[MAIN] FCM notifications initialized successfully');
+
+        // In production, request permissions on page load if not already granted
+        if (import.meta.env.PROD) {
+          const permissionState = notificationController.getPermissionState();
+          if (permissionState === 'default') {
+            console.log('[MAIN] Requesting notification permissions...');
+            // Fire permission request asynchronously to avoid blocking app init
+            notificationController
+              .requestPermission({
+                title: 'Enable Push Notifications',
+                explain:
+                  'Get notified of incoming calls and messages even when HangVidU is closed.',
+                onGranted: () => {
+                  console.log('[MAIN] Notification permissions granted');
+                },
+                onDenied: (reason) => {
+                  console.log(
+                    '[MAIN] Notification permissions denied:',
+                    reason,
+                  );
+                },
+                onDismissed: () => {
+                  console.log('[MAIN] Notification prompt dismissed');
+                },
+              })
+              .catch((err) => {
+                console.warn(
+                  '[MAIN] Notification permission request failed:',
+                  err,
+                );
+              });
+          } else if (permissionState === 'granted') {
+            // Permission already granted, just enable
+            await notificationController.enable();
+          }
+        }
       } else {
         console.warn('[MAIN] FCM notifications failed to initialize');
       }
@@ -1488,6 +1524,53 @@ window.onload = async () => {
       } else if (isActualLogin) {
         // On login, re-attach listeners for saved rooms
         devDebug('[AUTH] User logged in - re-attaching incoming listeners');
+
+        // Enable notifications for the new user (in production)
+        if (import.meta.env.PROD) {
+          const permissionState = notificationController.getPermissionState();
+          if (permissionState === 'granted') {
+            // Permission already granted (browser-level), get FCM token for this user
+            console.log('[AUTH] Enabling notifications for logged-in user');
+            await notificationController.enable().catch((error) => {
+              console.warn(
+                '[AUTH] Failed to enable notifications on login:',
+                error,
+              );
+            });
+          } else if (permissionState === 'default') {
+            // Request permission for new user
+            console.log(
+              '[AUTH] Requesting notification permissions for new user',
+            );
+            notificationController
+              .requestPermission({
+                title: 'Enable Push Notifications',
+                explain:
+                  'Get notified of incoming calls and messages even when HangVidU is closed.',
+                onGranted: () => {
+                  console.log(
+                    '[AUTH] Notification permissions granted for new user',
+                  );
+                },
+                onDenied: (reason) => {
+                  console.log(
+                    '[AUTH] Notification permissions denied:',
+                    reason,
+                  );
+                },
+                onDismissed: () => {
+                  console.log('[AUTH] Notification prompt dismissed');
+                },
+              })
+              .catch((err) => {
+                console.warn(
+                  '[AUTH] Notification permission request failed:',
+                  err,
+                );
+              });
+          }
+        }
+
         await startListeningForSavedRooms().catch((e) =>
           console.warn('Failed to re-attach saved-room listeners on login', e),
         );
