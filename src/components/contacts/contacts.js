@@ -305,26 +305,24 @@ function attachContactListeners(container, lobbyElement) {
           });
 
           // Send push notification to the contact being called
-          if (notificationController.isNotificationEnabled()) {
-            try {
-              const currentUser = getCurrentUser();
-              const callerName =
-                currentUser?.displayName ||
-                currentUser?.email ||
-                getLoggedInUserId();
+          // Note: We send this regardless of foreground/background state
+          // because the RECIPIENT should always be notified of incoming calls
+          try {
+            const currentUser = getCurrentUser();
+            const callerName =
+              currentUser?.displayName ||
+              currentUser?.email ||
+              getLoggedInUserId();
 
-              await notificationController.sendCallNotification(contactId, {
-                roomId,
-                callerId: getLoggedInUserId(),
-                callerName,
-              });
-              console.log('[CONTACTS] Call notification sent to:', contactName);
-            } catch (error) {
-              console.warn(
-                '[CONTACTS] Failed to send call notification:',
-                error,
-              );
-            }
+            await notificationController.sendCallNotification(contactId, {
+              roomId,
+              callerId: getLoggedInUserId(),
+              callerName,
+            });
+            console.log('[CONTACTS] Call notification sent to:', contactName);
+          } catch (error) {
+            console.warn('[CONTACTS] Failed to send call notification:', error);
+            // Non-blocking: call continues even if notification fails
           }
         }
       }

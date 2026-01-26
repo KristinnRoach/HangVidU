@@ -248,12 +248,10 @@ export class NotificationController {
       return false;
     }
 
-    if (!this.shouldSendNotification()) {
-      console.log(
-        '[NotificationController] Not sending call notification (app in foreground)',
-      );
-      return false;
-    }
+    // NOTE: We do NOT check shouldSendNotification() here because:
+    // - For outgoing calls: The RECIPIENT should always be notified (they're not in foreground)
+    // - For incoming calls: The caller should check shouldSendNotification() before calling this
+    // This keeps the logic simple and correct for both scenarios
 
     try {
       const success = await this.transport.sendCallNotification(
