@@ -819,6 +819,13 @@ export function listenForIncomingOnRoom(roomId) {
     ringtoneManager.stop();
     callIndicators.stopCallIndicators();
 
+    // Dismiss any call notifications for this room
+    if (notificationController.isNotificationEnabled()) {
+      await notificationController
+        .dismissCallNotifications(roomId)
+        .catch(() => {});
+    }
+
     try {
       const { dismissActiveConfirmDialog } =
         await import('./components/base/confirm-dialog.js');
@@ -828,7 +835,12 @@ export function listenForIncomingOnRoom(roomId) {
     } catch (_) {
       // best-effort
     }
+
     await removeRecentCall(roomId).catch(() => {});
+
+    // Clean up incoming listeners for this room to prevent stale listener firing
+    removeIncomingListenersForRoom(roomId);
+
     devDebug(
       `[LISTENER] Incoming call cancelled by caller for room: ${roomId}`,
     );
