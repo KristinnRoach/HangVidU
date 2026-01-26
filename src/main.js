@@ -1524,6 +1524,53 @@ window.onload = async () => {
       } else if (isActualLogin) {
         // On login, re-attach listeners for saved rooms
         devDebug('[AUTH] User logged in - re-attaching incoming listeners');
+
+        // Enable notifications for the new user (in production)
+        if (import.meta.env.PROD) {
+          const permissionState = notificationController.getPermissionState();
+          if (permissionState === 'granted') {
+            // Permission already granted (browser-level), get FCM token for this user
+            console.log('[AUTH] Enabling notifications for logged-in user');
+            await notificationController.enable().catch((error) => {
+              console.warn(
+                '[AUTH] Failed to enable notifications on login:',
+                error,
+              );
+            });
+          } else if (permissionState === 'default') {
+            // Request permission for new user
+            console.log(
+              '[AUTH] Requesting notification permissions for new user',
+            );
+            notificationController
+              .requestPermission({
+                title: 'Enable Push Notifications',
+                explain:
+                  'Get notified of incoming calls and messages even when HangVidU is closed.',
+                onGranted: () => {
+                  console.log(
+                    '[AUTH] Notification permissions granted for new user',
+                  );
+                },
+                onDenied: (reason) => {
+                  console.log(
+                    '[AUTH] Notification permissions denied:',
+                    reason,
+                  );
+                },
+                onDismissed: () => {
+                  console.log('[AUTH] Notification prompt dismissed');
+                },
+              })
+              .catch((err) => {
+                console.warn(
+                  '[AUTH] Notification permission request failed:',
+                  err,
+                );
+              });
+          }
+        }
+
         await startListeningForSavedRooms().catch((e) =>
           console.warn('Failed to re-attach saved-room listeners on login', e),
         );
