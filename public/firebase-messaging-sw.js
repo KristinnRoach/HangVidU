@@ -3,10 +3,10 @@
 // This is a static file for dev mode - production uses the bundled version from src/
 
 importScripts(
-  'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/12.8.0/firebase-app-compat.js',
 );
 importScripts(
-  'https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js',
+  'https://www.gstatic.com/firebasejs/12.8.0/firebase-messaging-compat.js',
 );
 
 // Firebase configuration - hardcoded for dev mode

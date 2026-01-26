@@ -8,10 +8,10 @@ import { NetworkFirst } from 'workbox-strategies';
 // Import Firebase messaging for service worker context
 // Note: Using compat version for service worker compatibility
 importScripts(
-  'https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/12.8.0/firebase-app-compat.js',
 );
 importScripts(
-  'https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js',
+  'https://www.gstatic.com/firebasejs/12.8.0/firebase-messaging-compat.js',
 );
 
 // ============================================================================
