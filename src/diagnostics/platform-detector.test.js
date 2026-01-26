@@ -193,11 +193,11 @@ describe('PlatformDetector', () => {
       vi.unstubAllGlobals();
     });
 
-    it('returns false when Notification is not available', () => {
-      const originalNotification = global.Notification;
-      delete global.Notification;
+    it('returns false when serviceWorker is not available', () => {
+      vi.stubGlobal('Notification', {});
+      vi.stubGlobal('navigator', {});
       expect(detector.isNotificationSupported()).toBe(false);
-      global.Notification = originalNotification;
+      vi.unstubAllGlobals();
     });
   });
 

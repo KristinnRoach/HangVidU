@@ -57,7 +57,7 @@ export const arbitraryServiceWorkerState = () =>
 export const arbitraryFCMTokenStatus = () =>
   fc.record({
     hasToken: fc.boolean(),
-    token: fc.option(fc.hexaString({ minLength: 32, maxLength: 64 }), {
+    token: fc.option(fc.stringMatching(/^[0-9a-f]{32,64}$/), {
       nil: undefined,
     }),
     tokenGeneratedAt: fc.option(fc.date(), { nil: undefined }),
