@@ -151,9 +151,9 @@ describe('Cancellation Listener - Self-Trigger Prevention', () => {
 });
 
 describe('Real-World Scenario: User A Cancels Call', () => {
-  it('should only send ONE missed call notification when User A cancels', async () => {
+  it.skip('should only send ONE missed call notification when User A cancels', async () => {
     // This test documents the expected behavior after the fix
-
+    // TODO: Implement full-flow mock assertions for notification count
     // Scenario:
     // 1. User A calls User B
     // 2. User A clicks Cancel button
@@ -164,10 +164,7 @@ describe('Real-World Scenario: User A Cancels Call', () => {
     // 7. No cleanup is triggered by the listener
     // 8. Only the explicit cleanup from Cancel button runs
     // 9. Result: ONE missed call notification sent to User B
-
     // Expected: cleanupCall is called ONCE (not twice)
     // Expected: User B receives ONE notification (not two)
-
-    expect(true).toBe(true); // Placeholder - actual test would mock the full flow
   });
 });
