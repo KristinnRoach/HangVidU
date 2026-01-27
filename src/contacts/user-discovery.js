@@ -107,3 +107,30 @@ export async function findUsersByEmails(emails) {
 
   return results;
 }
+
+/**
+ * Remove a user from the discovery directory.
+ * Called when a user deletes their account.
+ * @param {string} email - Email address to remove
+ * @returns {Promise<void>}
+ */
+export async function removeUserFromDirectory(email) {
+  if (!email || typeof email !== 'string') {
+    throw new Error('Invalid email: must be a non-empty string');
+  }
+
+  try {
+    const emailHash = hashEmail(email);
+    const userRef = ref(rtdb, `usersByEmail/${emailHash}`);
+    const { remove } = await import('firebase/database');
+
+    await remove(userRef);
+    console.log('[USER DISCOVERY] Removed user from directory:', email);
+  } catch (error) {
+    console.error(
+      '[USER DISCOVERY] Failed to remove user from directory:',
+      error,
+    );
+    throw error;
+  }
+}

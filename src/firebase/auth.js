@@ -477,7 +477,21 @@ export async function deleteAccount() {
       console.warn('[AUTH] Failed to delete FCM token:', err);
     }
 
-    // 4. Delete the Firebase Auth account
+    // 4. Remove user from discovery directory (so they don't show as "On HangVidU")
+    if (user.email) {
+      try {
+        const { removeUserFromDirectory } =
+          await import('../contacts/user-discovery.js');
+        await removeUserFromDirectory(user.email);
+      } catch (err) {
+        console.warn(
+          '[AUTH] Failed to remove user from discovery directory:',
+          err,
+        );
+      }
+    }
+
+    // 5. Delete the Firebase Auth account
     console.info('[AUTH] Deleting Firebase Auth account...');
     await deleteUser(user);
 

@@ -1,0 +1,119 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Debug User Discovery</title>
+  </head>
+  <body>
+    <h1>Debug User Discovery Directory</h1>
+
+    <div>
+      <h2>Check if user exists in directory</h2>
+      <input
+        type="text"
+        id="emailInput"
+        placeholder="Enter email (e.g., toggurroach@gmail.com)"
+        style="width: 300px"
+      />
+      <button onclick="checkUser()">Check</button>
+      <button onclick="removeUser()">Remove from Directory</button>
+    </div>
+
+    <div
+      id="result"
+      style="margin-top: 20px; padding: 10px; background: #f0f0f0"
+    ></div>
+
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+      import {
+        getDatabase,
+        ref,
+        get,
+        remove,
+      } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+      // Your Firebase config
+      const firebaseConfig = {
+        apiKey: 'AIzaSyDWVN8YqJvhHqVZxGxGxGxGxGxGxGxGxGx', // Replace with your actual config
+        databaseURL:
+          'https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app',
+        projectId: 'vidu-aae11',
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const rtdb = getDatabase(app);
+
+      function hashEmail(email) {
+        const normalized = email.toLowerCase().trim();
+        const base64 = btoa(unescape(encodeURIComponent(normalized)));
+        return base64.replace(/\//g, '-');
+      }
+
+      window.checkUser = async function () {
+        const email = document.getElementById('emailInput').value.trim();
+        if (!email) {
+          alert('Please enter an email');
+          return;
+        }
+
+        const emailHash = hashEmail(email);
+        const userRef = ref(rtdb, `usersByEmail/${emailHash}`);
+
+        try {
+          const snapshot = await get(userRef);
+          const result = document.getElementById('result');
+
+          if (snapshot.exists()) {
+            const data = snapshot.val();
+            result.innerHTML = `
+            <h3>✅ User EXISTS in directory</h3>
+            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>Hash:</strong> ${emailHash}</p>
+            <p><strong>UID:</strong> ${data.uid}</p>
+            <p><strong>Display Name:</strong> ${data.displayName}</p>
+            <p><strong>Registered At:</strong> ${new Date(data.registeredAt).toLocaleString()}</p>
+            <pre>${JSON.stringify(data, null, 2)}</pre>
+          `;
+          } else {
+            result.innerHTML = `
+            <h3>❌ User NOT FOUND in directory</h3>
+            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>Hash:</strong> ${emailHash}</p>
+            <p>This user has been deleted or never registered.</p>
+          `;
+          }
+        } catch (error) {
+          document.getElementById('result').innerHTML =
+            `<p style="color: red;">Error: ${error.message}</p>`;
+        }
+      };
+
+      window.removeUser = async function () {
+        const email = document.getElementById('emailInput').value.trim();
+        if (!email) {
+          alert('Please enter an email');
+          return;
+        }
+
+        if (!confirm(`Remove ${email} from discovery directory?`)) {
+          return;
+        }
+
+        const emailHash = hashEmail(email);
+        const userRef = ref(rtdb, `usersByEmail/${emailHash}`);
+
+        try {
+          await remove(userRef);
+          document.getElementById('result').innerHTML = `
+          <h3>✅ User REMOVED from directory</h3>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Hash:</strong> ${emailHash}</p>
+        `;
+        } catch (error) {
+          document.getElementById('result').innerHTML =
+            `<p style="color: red;">Error: ${error.message}</p>`;
+        }
+      };
+    </script>
+  </body>
+</html>

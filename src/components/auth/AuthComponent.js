@@ -6,6 +6,7 @@ import {
   // signInWithGoogle, // TODO: remove or use
   signInWithAccountSelection,
   signOutUser,
+  deleteAccount,
   onAuthChange,
   isLoggedIn,
 } from '../../firebase/auth';
@@ -46,6 +47,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
     template: `
       <button style="margin-right: \${loginBtnMarginRightPx}px" id="goog-login-btn" class="login-btn" onclick="handleLogin">Login</button>
       <button id="goog-logout-btn" class="logout-btn" onclick="handleLogout">Logout</button>
+      <button id="delete-account-btn" class="delete-account-btn" onclick="handleDeleteAccount">Delete Account</button>
       <span class="signing-in-indicator" style="display: \${signingInDisplay}; color: var(--text-secondary, #888); font-size: 0.9rem;">Signing in...</span>
       <div class="user-info">\${isLoggedIn ? 'Logged in: ' + userName : 'Logged out'}</div>
     `,
@@ -62,14 +64,37 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         }
       },
       handleLogout: signOutUser,
+      handleDeleteAccount: async () => {
+        const confirmed = confirm(
+          'Are you sure you want to delete your account?\n\n' +
+            'This will permanently delete:\n' +
+            '• Your account\n' +
+            '• All contacts\n' +
+            '• Call history\n' +
+            '• All associated data\n\n' +
+            'This action cannot be undone.',
+        );
+
+        if (!confirmed) return;
+
+        try {
+          await deleteAccount();
+          alert('Your account has been deleted successfully.');
+        } catch (error) {
+          console.error('[AuthComponent] Delete account error:', error);
+          alert(error.message || 'Failed to delete account. Please try again.');
+        }
+      },
     },
     onMount: (el) => {
       const updateButtons = (loggedIn) => {
         const loginBtn = el.querySelector('#goog-login-btn');
         const logoutBtn = el.querySelector('#goog-logout-btn');
-        if (loginBtn && logoutBtn) {
+        const deleteBtn = el.querySelector('#delete-account-btn');
+        if (loginBtn && logoutBtn && deleteBtn) {
           loginBtn.disabled = loggedIn;
           logoutBtn.disabled = !loggedIn;
+          deleteBtn.disabled = !loggedIn;
         }
       };
 
