@@ -734,6 +734,27 @@ export function listenForIncomingOnRoom(roomId) {
         // Resolve caller name from contacts
         const callerName = await resolveCallerName(roomId, joiningUserId);
 
+        // Send push notification if app is backgrounded
+        if (notificationController.isNotificationEnabled()) {
+          const shouldSend = notificationController.shouldSendNotification();
+          if (shouldSend) {
+            try {
+              await notificationController.sendCallNotification(joiningUserId, {
+                roomId,
+                callerId: joiningUserId,
+                callerName,
+              });
+              console.log('[MAIN] Incoming call notification sent');
+            } catch (error) {
+              console.error(
+                '[MAIN] Failed to send incoming call notification:',
+                error,
+              );
+              // Non-blocking: continue with foreground dialog
+            }
+          }
+        }
+
         // Start incoming call ringtone and visual indicators
         ringtoneManager.playIncoming();
         callIndicators.startCallIndicators(callerName);
