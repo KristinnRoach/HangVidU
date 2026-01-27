@@ -169,7 +169,18 @@ export async function renderContactsList(lobbyElement) {
   if (!lobbyElement) return;
 
   const contacts = await getContacts();
-  const contactIds = Object.keys(contacts);
+  let contactIds = Object.keys(contacts);
+
+  // Filter out deleted users (no presence node means account was deleted)
+  if (getLoggedInUserId()) {
+    const presenceChecks = await Promise.all(
+      contactIds.map(async (id) => {
+        const snapshot = await get(ref(rtdb, `users/${id}/presence`));
+        return snapshot.exists();
+      }),
+    );
+    contactIds = contactIds.filter((_, i) => presenceChecks[i]);
+  }
 
   // Find or create contacts container
   let contactsContainer = lobbyElement.querySelector('.contacts-container');
