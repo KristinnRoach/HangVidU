@@ -12,7 +12,7 @@ import {
 } from '../../firebase/auth';
 
 import { onOneTapStatusChange } from '../../firebase/onetap';
-import { devDebug } from '../../utils/dev/dev-utils.js';
+import { isDev, devDebug } from '../../utils/dev/dev-utils.js';
 
 import createComponent from '../../utils/dom/component.js';
 
@@ -37,6 +37,11 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
   const initialLoggedIn = isLoggedIn();
   devDebug('[AuthComponent] Initial logged-in state:', initialLoggedIn);
 
+  // DEV-only: Delete Account button is for dev/testing. Will be properly integrated into settings UI later.
+  const deleteAccountBtn = isDev()
+    ? '<button id="delete-account-btn" class="delete-account-btn" onclick="handleDeleteAccount">Delete Account</button>'
+    : '';
+
   authComponent = createComponent({
     initialProps: {
       isLoggedIn: initialLoggedIn,
@@ -47,7 +52,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
     template: `
       <button style="margin-right: \${loginBtnMarginRightPx}px" id="goog-login-btn" class="login-btn" onclick="handleLogin">Login</button>
       <button id="goog-logout-btn" class="logout-btn" onclick="handleLogout">Logout</button>
-      <button id="delete-account-btn" class="delete-account-btn" onclick="handleDeleteAccount">Delete Account</button>
+      ${deleteAccountBtn}
       <span class="signing-in-indicator" style="display: \${signingInDisplay}; color: var(--text-secondary, #888); font-size: 0.9rem;">Signing in...</span>
       <div class="user-info">\${isLoggedIn ? 'Logged in: ' + userName : 'Logged out'}</div>
     `,
@@ -90,12 +95,12 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       const updateButtons = (loggedIn) => {
         const loginBtn = el.querySelector('#goog-login-btn');
         const logoutBtn = el.querySelector('#goog-logout-btn');
-        const deleteBtn = el.querySelector('#delete-account-btn');
-        if (loginBtn && logoutBtn && deleteBtn) {
+        if (loginBtn && logoutBtn) {
           loginBtn.disabled = loggedIn;
           logoutBtn.disabled = !loggedIn;
-          deleteBtn.disabled = !loggedIn;
         }
+        const deleteBtn = el.querySelector('#delete-account-btn');
+        if (deleteBtn) deleteBtn.disabled = !loggedIn;
       };
 
       // Set initial button states
