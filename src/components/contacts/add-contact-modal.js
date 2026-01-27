@@ -10,9 +10,11 @@ import {
   getCurrentUser,
   requestContactsAccess,
   getLoggedInUserId,
+  requestGmailSendAccess,
 } from '../../firebase/auth.js';
 import { fetchGoogleContacts } from '../../contacts/google-contacts.js';
 import { getContacts } from '../contacts/contacts.js';
+import { sendBulkEmailsViaGmail } from '../../contacts/gmail-send.js';
 
 /**
  * Show a modal to add contacts with platform selection and search.
@@ -50,11 +52,11 @@ export async function showAddContactModal() {
         />
       </div>
 
-      <div id="import-status" class="import-status"></div>
-
       <div id="contacts-container" class="contacts-container-modal">
         <p class="empty-state">Select a platform above to import contacts</p>
       </div>
+
+      <div id="import-status" class="import-status"></div>
 
       <div class="modal-footer">
         <button type="button" data-action="cancel" class="cancel-btn">Close</button>
@@ -419,52 +421,117 @@ function renderImportResults(container, allContacts) {
   });
 
   // Handle "Email Invite" button (for users not on HangVidU)
-  shareLinkBtn.addEventListener('click', () => {
+  shareLinkBtn.addEventListener('click', async () => {
     const notOnApp = Array.from(selectedContacts).filter((c) => !c.user);
 
     if (notOnApp.length === 0) return;
 
-    // Generate referral link
+    // Disable button during operation
+    shareLinkBtn.disabled = true;
+    shareLinkBtn.textContent = 'Requesting permission...';
+
+    try {
+      // Step 1: Request Gmail send permission
+      const accessToken = await requestGmailSendAccess();
+
+      shareLinkBtn.textContent = 'Sending emails...';
+
+      // Step 2: Generate referral link
+      const myUserId = getLoggedInUserId();
+      const referralLink = myUserId
+        ? `${window.location.origin}/?ref=${myUserId}`
+        : window.location.origin;
+
+      // Step 3: Get current user's name for personalization
+      const currentUser = getCurrentUser();
+      const senderName = currentUser?.displayName || 'A friend';
+
+      // Step 4: Prepare email content
+      const subject = 'Join me on HangVidU!';
+      const body = `Hi!\n\n${senderName} invited you to join HangVidU - a simple video chat app.\n\nClick here to get started:\n${referralLink}\n\nSee you there!`;
+
+      // Step 5: Send emails via Gmail API
+      const results = await sendBulkEmailsViaGmail(
+        accessToken,
+        notOnApp,
+        subject,
+        body,
+      );
+
+      // Step 6: Show results
+      if (results.sent > 0) {
+        shareLinkBtn.textContent = `✓ Sent ${results.sent} email${results.sent !== 1 ? 's' : ''}!`;
+        shareLinkBtn.classList.add('success');
+
+        // Clear selection after success
+        setTimeout(() => {
+          selectedContacts.clear();
+          updateActionButtons();
+          list
+            .querySelectorAll('.contact-checkbox')
+            .forEach((cb) => (cb.checked = false));
+          selectAllCheckbox.checked = false;
+          shareLinkBtn.classList.remove('success');
+        }, 3000);
+      } else {
+        shareLinkBtn.textContent = 'Failed to send emails';
+        shareLinkBtn.disabled = false;
+      }
+
+      if (results.failed > 0) {
+        console.warn(
+          `[ADD CONTACT] ${results.failed} emails failed:`,
+          results.errors,
+        );
+      }
+    } catch (err) {
+      console.error('[ADD CONTACT] Gmail send error:', err);
+
+      // Fallback to mailto: if Gmail API fails
+      if (err.message === 'Authorization cancelled') {
+        shareLinkBtn.textContent = 'Permission denied - using email client...';
+
+        // Wait a moment then open mailto: as fallback
+        setTimeout(() => {
+          openMailtoFallback(notOnApp);
+          shareLinkBtn.textContent = `Email Invite (${notOnApp.length})`;
+          shareLinkBtn.disabled = false;
+        }, 1500);
+      } else {
+        shareLinkBtn.textContent = 'Error - try again';
+        shareLinkBtn.disabled = false;
+        alert(
+          `Failed to send emails: ${err.message}\n\nPlease try again or use your email client.`,
+        );
+      }
+    }
+  });
+
+  // Fallback function to open mailto: link
+  function openMailtoFallback(contacts) {
     const myUserId = getLoggedInUserId();
     const referralLink = myUserId
       ? `${window.location.origin}/?ref=${myUserId}`
       : window.location.origin;
 
-    // Get current user's name for personalization
     const currentUser = getCurrentUser();
     const senderName = currentUser?.displayName || 'A friend';
 
-    // Prepare email content
     const subject = encodeURIComponent('Join me on HangVidU!');
     const body = encodeURIComponent(
       `Hi!\n\n${senderName} invited you to join HangVidU - a simple video chat app.\n\nClick here to get started:\n${referralLink}\n\nSee you there!\n`,
     );
 
-    // Build mailto: link
     let mailtoLink;
-    if (notOnApp.length === 1) {
-      // Single contact: use "to" field
-      mailtoLink = `mailto:${notOnApp[0].email}?subject=${subject}&body=${body}`;
+    if (contacts.length === 1) {
+      mailtoLink = `mailto:${contacts[0].email}?subject=${subject}&body=${body}`;
     } else {
-      // Multiple contacts: use "bcc" to keep emails private
-      const emails = notOnApp.map((c) => c.email).join(',');
+      const emails = contacts.map((c) => c.email).join(',');
       mailtoLink = `mailto:?bcc=${emails}&subject=${subject}&body=${body}`;
     }
 
-    // Open email client
-    try {
-      window.location.href = mailtoLink;
-
-      // Visual feedback
-      shareLinkBtn.textContent = '✓ Opening email...';
-      setTimeout(() => {
-        shareLinkBtn.textContent = `Email Invite (${notOnApp.length})`;
-      }, 2000);
-    } catch (err) {
-      console.error('[ADD CONTACT] Failed to open mailto:', err);
-      alert('Failed to open email client. Please check your email settings.');
-    }
-  });
+    window.location.href = mailtoLink;
+  }
 }
 
 function escapeHtml(str) {
