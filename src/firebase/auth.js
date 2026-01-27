@@ -11,6 +11,7 @@ import {
   browserLocalPersistence,
   inMemoryPersistence,
   signOut,
+  deleteUser,
 } from 'firebase/auth';
 
 import { app } from './firebase.js';
@@ -417,6 +418,87 @@ export async function signOutUser() {
   }
 }
 
+/**
+ * Delete the current user's account and all associated data.
+ * This will:
+ * 1. Clean up user data in RTDB (contacts, presence, FCM tokens, etc.)
+ * 2. Delete the Firebase Auth account
+ * 3. Sign out the user
+ *
+ * @throws {Error} If user is not logged in or deletion fails
+ */
+export async function deleteAccount() {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('No user logged in');
+  }
+
+  const userId = user.uid;
+
+  try {
+    console.info('[AUTH] Starting account deletion for user:', userId);
+
+    // Import RTDB utilities
+    const { ref, remove } = await import('firebase/database');
+    const { rtdb } = await import('../storage/fb-rtdb/rtdb.js');
+
+    // 1. Set user offline
+    await setOffline();
+
+    // 2. Clean up all user data in RTDB
+    const userDataPaths = [
+      `users/${userId}/fcmTokens`,
+      `users/${userId}/presence`,
+      `users/${userId}/contacts`,
+      `users/${userId}/recentCalls`,
+      `users/${userId}/outgoingCall`,
+      `users/${userId}/incomingInvites`,
+      `users/${userId}/acceptedInvites`,
+      `users/${userId}`, // Remove entire user node
+    ];
+
+    console.info('[AUTH] Cleaning up user data from RTDB...');
+    for (const path of userDataPaths) {
+      try {
+        await remove(ref(rtdb, path));
+      } catch (err) {
+        console.warn(`[AUTH] Failed to remove ${path}:`, err);
+        // Continue with other deletions even if one fails
+      }
+    }
+
+    // 3. Delete FCM token if available
+    try {
+      const { FCMTransport } =
+        await import('../notifications/transports/fcm-transport.js');
+      const fcmTransport = new FCMTransport();
+      await fcmTransport.deleteToken();
+    } catch (err) {
+      console.warn('[AUTH] Failed to delete FCM token:', err);
+    }
+
+    // 4. Delete the Firebase Auth account
+    console.info('[AUTH] Deleting Firebase Auth account...');
+    await deleteUser(user);
+
+    console.info('[AUTH] Account deleted successfully');
+
+    // Show one-tap signin after a delay
+    setTimeout(() => showOneTapSignin(), 1500);
+  } catch (error) {
+    logAuthError('Delete account', error);
+
+    // Provide helpful error messages
+    if (error.code === 'auth/requires-recent-login') {
+      throw new Error(
+        'For security, please sign out and sign in again before deleting your account.',
+      );
+    }
+
+    throw error;
+  }
+}
+
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_APP_GOOGLE_CLIENT_ID;
 
 /**
@@ -468,6 +550,67 @@ export function requestContactsAccess() {
       },
       error_callback: (error) => {
         console.error('[AUTH] Token client error:', error);
+        if (error.type === 'popup_closed') {
+          reject(new Error('Authorization cancelled'));
+        } else {
+          reject(new Error(error.message || 'Authorization failed'));
+        }
+      },
+    });
+
+    // Request the token (opens popup)
+    tokenClient.requestAccessToken();
+  });
+}
+
+/**
+ * Request Gmail send access via Google Identity Services Token Model.
+ * Opens a popup to request the gmail.send scope.
+ * @returns {Promise<string>} - Google access token with Gmail send scope
+ * @throws {Error} - If authorization fails or is cancelled
+ */
+export function requestGmailSendAccess() {
+  return new Promise((resolve, reject) => {
+    if (!GOOGLE_CLIENT_ID) {
+      reject(new Error('Google Client ID not configured'));
+      return;
+    }
+
+    // Wait for GIS library to load
+    if (typeof google === 'undefined' || !google.accounts?.oauth2) {
+      reject(new Error('Google Identity Services not loaded'));
+      return;
+    }
+
+    const currentUser = getCurrentUser();
+
+    console.log('[AUTH] Requesting Gmail send access via GIS Token Model...');
+
+    const tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/gmail.send',
+      hint: currentUser?.email || undefined,
+      callback: (response) => {
+        if (response.error) {
+          console.error('[AUTH] Gmail token request error:', response.error);
+          if (response.error === 'access_denied') {
+            reject(new Error('Authorization cancelled'));
+          } else {
+            reject(new Error(response.error_description || response.error));
+          }
+          return;
+        }
+
+        if (!response.access_token) {
+          reject(new Error('No access token received'));
+          return;
+        }
+
+        console.log('[AUTH] Gmail send access granted');
+        resolve(response.access_token);
+      },
+      error_callback: (error) => {
+        console.error('[AUTH] Gmail token client error:', error);
         if (error.type === 'popup_closed') {
           reject(new Error('Authorization cancelled'));
         } else {
