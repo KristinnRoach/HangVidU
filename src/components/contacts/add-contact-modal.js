@@ -15,7 +15,7 @@ import { fetchGoogleContacts } from '../../contacts/google-contacts.js';
 import { getContacts } from '../contacts/contacts.js';
 
 /**
- * Show a modal to add a contact by email address or import from Google.
+ * Show a modal to add contacts with platform selection and search.
  * @returns {Promise<void>}
  */
 export async function showAddContactModal() {
@@ -24,42 +24,52 @@ export async function showAddContactModal() {
     dialog.classList.add('add-contact-modal');
 
     dialog.innerHTML = `
-      <h2>Add Contact</h2>
+      <h2>Add Contacts</h2>
 
-      <div class="import-section">
-        <button type="button" id="import-google-btn" class="import-btn">
-          <i class="fa fa-google"></i> Import from Google Contacts
+      <div class="platform-selector">
+        <button type="button" class="platform-btn active" data-platform="google" title="Import from Google Contacts">
+          <i class="fa fa-google"></i>
         </button>
-        <div id="import-status" class="import-status"></div>
-        <div id="import-results" class="import-results"></div>
+        <button type="button" class="platform-btn" data-platform="facebook" title="Import from Facebook (Coming soon)" disabled>
+          <i class="fa fa-facebook"></i>
+        </button>
+        <button type="button" class="platform-btn" data-platform="instagram" title="Import from Instagram (Coming soon)" disabled>
+          <i class="fa fa-instagram"></i>
+        </button>
+        <button type="button" class="platform-btn" data-platform="tiktok" title="Import from TikTok (Coming soon)" disabled>
+          <i class="fa fa-tiktok"></i>
+        </button>
       </div>
 
-      <hr class="divider" />
-
-      <p>Or search by email:</p>
-      <form id="add-contact-form">
+      <div class="search-section">
         <input
-          type="email"
-          id="contact-email-input"
-          placeholder="friend@example.com"
-          required
+          type="text"
+          id="contact-search-input"
+          class="contact-search-input"
+          placeholder="Search contacts or enter email..."
         />
-        <div id="search-status" class="search-status"></div>
-        <div class="modal-actions">
-          <button type="button" data-action="cancel">Cancel</button>
-          <button type="submit" data-action="search">Search</button>
-        </div>
-      </form>
+      </div>
+
+      <div id="import-status" class="import-status"></div>
+
+      <div id="contacts-container" class="contacts-container-modal">
+        <p class="empty-state">Select a platform above to import contacts</p>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" data-action="cancel" class="cancel-btn">Close</button>
+      </div>
     `;
 
-    const form = dialog.querySelector('#add-contact-form');
-    const emailInput = dialog.querySelector('#contact-email-input');
-    const searchStatus = dialog.querySelector('#search-status');
     const cancelBtn = dialog.querySelector('[data-action="cancel"]');
-    const searchBtn = dialog.querySelector('[data-action="search"]');
-    const importBtn = dialog.querySelector('#import-google-btn');
+    const searchInput = dialog.querySelector('#contact-search-input');
     const importStatus = dialog.querySelector('#import-status');
-    const importResults = dialog.querySelector('#import-results');
+    const contactsContainer = dialog.querySelector('#contacts-container');
+    const platformBtns = dialog.querySelectorAll('.platform-btn');
+
+    let currentPlatform = 'google';
+    let allContacts = [];
+    let filteredContacts = [];
 
     function cleanup() {
       dialog.close();
@@ -70,63 +80,51 @@ export async function showAddContactModal() {
     cancelBtn.addEventListener('click', cleanup);
     dialog.addEventListener('cancel', cleanup);
 
-    // Manual email search (existing functionality)
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    // Platform selection handler
+    platformBtns.forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (btn.disabled) return;
 
-      const email = emailInput.value.trim();
-      if (!email) return;
+        const platform = btn.getAttribute('data-platform');
 
-      searchBtn.disabled = true;
-      emailInput.disabled = true;
-      searchStatus.textContent = 'Searching...';
-      searchStatus.className = 'search-status searching';
+        // Update active state
+        platformBtns.forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
 
-      try {
-        const user = await findUserByEmail(email);
+        currentPlatform = platform;
 
-        if (!user) {
-          searchStatus.textContent = `${email} is not on HangVidU yet.`;
-          searchStatus.className = 'search-status not-found';
-          searchBtn.disabled = false;
-          emailInput.disabled = false;
-          return;
+        // Import contacts for selected platform
+        if (platform === 'google') {
+          await importGoogleContacts();
         }
-
-        const currentUser = getCurrentUser();
-        if (currentUser && user.uid === currentUser.uid) {
-          searchStatus.textContent = "That's your own email address!";
-          searchStatus.className = 'search-status error';
-          searchBtn.disabled = false;
-          emailInput.disabled = false;
-          return;
-        }
-
-        searchStatus.textContent = `Found ${user.displayName}! Sending invitation...`;
-        searchStatus.className = 'search-status found';
-
-        await sendInvite(user.uid, user.displayName);
-
-        searchStatus.textContent = `✓ Invitation sent to ${user.displayName}!`;
-        searchStatus.className = 'search-status success';
-
-        setTimeout(cleanup, 1500);
-      } catch (error) {
-        console.error('[ADD CONTACT] Error searching for user:', error);
-        searchStatus.textContent =
-          'Error searching for user. Please try again.';
-        searchStatus.className = 'search-status error';
-        searchBtn.disabled = false;
-        emailInput.disabled = false;
-      }
+        // Future: Add handlers for other platforms
+      });
     });
 
-    // Google Contacts import
-    importBtn.addEventListener('click', async () => {
-      importBtn.disabled = true;
+    // Search input handler - filters displayed contacts
+    searchInput.addEventListener('input', () => {
+      const query = searchInput.value.trim().toLowerCase();
+
+      if (!query) {
+        filteredContacts = allContacts;
+      } else {
+        filteredContacts = allContacts.filter((contact) => {
+          const nameMatch = contact.name.toLowerCase().includes(query);
+          const emailMatch = contact.email.toLowerCase().includes(query);
+          return nameMatch || emailMatch;
+        });
+      }
+
+      renderImportResults(contactsContainer, filteredContacts);
+    });
+
+    // Import Google Contacts function
+    async function importGoogleContacts() {
       importStatus.textContent = 'Requesting access...';
       importStatus.className = 'import-status loading';
-      importResults.innerHTML = '';
+      contactsContainer.innerHTML = '';
+      allContacts = [];
+      filteredContacts = [];
 
       try {
         // Step 1: Get access token
@@ -140,7 +138,8 @@ export async function showAddContactModal() {
         if (contacts.length === 0) {
           importStatus.textContent = 'No contacts with email addresses found.';
           importStatus.className = 'import-status not-found';
-          importBtn.disabled = false;
+          contactsContainer.innerHTML =
+            '<p class="empty-state">No contacts found.</p>';
           return;
         }
 
@@ -156,7 +155,7 @@ export async function showAddContactModal() {
 
         // Build results - now including ALL contacts
         const currentUser = getCurrentUser();
-        const allContacts = [];
+        allContacts = [];
 
         for (const contact of contacts) {
           const user = registeredUsers[contact.email];
@@ -172,12 +171,37 @@ export async function showAddContactModal() {
           }
         }
 
+        // Sort contacts by priority:
+        // 1. On HangVidU but not saved (highest priority)
+        // 2. Not on HangVidU or already saved
+        // Within each group, sort alphabetically by name
+        allContacts.sort((a, b) => {
+          // Determine priority groups
+          const getPriority = (contact) => {
+            if (contact.user && !contact.isAlreadySaved) return 1; // On app, not saved
+            return 2; // Not on app or already saved
+          };
+
+          const priorityA = getPriority(a);
+          const priorityB = getPriority(b);
+
+          // Sort by priority first
+          if (priorityA !== priorityB) {
+            return priorityA - priorityB;
+          }
+
+          // Within same priority, sort alphabetically by name
+          return a.name.localeCompare(b.name, undefined, {
+            sensitivity: 'base',
+          });
+        });
+
         // Display results
+        filteredContacts = allContacts;
         importStatus.textContent = `Found ${allContacts.length} contacts`;
         importStatus.className = 'import-status success';
 
-        renderImportResults(importResults, allContacts);
-        importBtn.disabled = false;
+        renderImportResults(contactsContainer, filteredContacts);
       } catch (error) {
         console.error('[ADD CONTACT] Import error:', error);
 
@@ -189,9 +213,10 @@ export async function showAddContactModal() {
           importStatus.className = 'import-status error';
         }
 
-        importBtn.disabled = false;
+        contactsContainer.innerHTML =
+          '<p class="empty-state">Failed to load contacts.</p>';
       }
-    });
+    }
 
     document.body.appendChild(dialog);
     dialog.showModal();
@@ -393,7 +418,7 @@ function renderImportResults(container, allContacts) {
     }, 2000);
   });
 
-  // Handle "Share Invite Link" button (for users not on HangVidU)
+  // Handle "Email Invite" button (for users not on HangVidU)
   shareLinkBtn.addEventListener('click', () => {
     const notOnApp = Array.from(selectedContacts).filter((c) => !c.user);
 

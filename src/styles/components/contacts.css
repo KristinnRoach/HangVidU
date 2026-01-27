@@ -164,137 +164,126 @@
   border: 2px solid #444;
   border-radius: 12px;
   padding: 1.5rem;
-  min-width: 300px;
-  max-width: 500px;
+  min-width: 400px;
+  max-width: 600px;
   color: white;
 }
 
 .add-contact-modal h2 {
   margin-top: 0;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  color: white;
+  text-align: center;
+}
+
+/* Platform Selector */
+.add-contact-modal .platform-selector {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.add-contact-modal .platform-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  border: 2px solid #555;
+  background-color: #444;
+  color: #aaa;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-contact-modal .platform-btn:hover:not(:disabled) {
+  background-color: #555;
+  border-color: rgb(74, 172, 74);
+  color: white;
+  transform: scale(1.05);
+}
+
+.add-contact-modal .platform-btn.active {
+  background-color: rgb(74, 172, 74);
+  border-color: rgb(70, 200, 70);
   color: white;
 }
 
-.add-contact-modal p {
+.add-contact-modal .platform-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Search Section */
+.add-contact-modal .search-section {
   margin-bottom: 1rem;
-  color: #ddd;
 }
 
-.add-contact-modal form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.add-contact-modal input[type='email'] {
+.add-contact-modal .contact-search-input {
+  width: 100%;
   padding: 0.75rem;
   font-size: 1rem;
   border: 1px solid #555;
   border-radius: 6px;
   background-color: #444;
   color: white;
+  box-sizing: border-box;
 }
 
-.add-contact-modal input[type='email']:focus {
+.add-contact-modal .contact-search-input:focus {
   outline: none;
   border-color: rgb(74, 172, 74);
 }
 
-.add-contact-modal .search-status {
-  min-height: 1.5rem;
-  font-size: 0.9rem;
-  padding: 0.5rem;
-  border-radius: 4px;
+.add-contact-modal .contact-search-input::placeholder {
+  color: #888;
 }
 
-.add-contact-modal .search-status.searching {
-  color: #aaa;
+/* Contacts Container */
+.add-contact-modal .contacts-container-modal {
+  min-height: 300px;
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background-color: #444;
+  margin-bottom: 1rem;
 }
 
-.add-contact-modal .search-status.found {
-  color: rgb(74, 172, 74);
-}
-
-.add-contact-modal .search-status.success {
-  color: rgb(70, 200, 70);
-  font-weight: bold;
-}
-
-.add-contact-modal .search-status.not-found {
-  color: #f9c74f;
-}
-
-.add-contact-modal .search-status.error {
-  color: #f94144;
-}
-
-.add-contact-modal .modal-actions {
+/* Modal Footer */
+.add-contact-modal .modal-footer {
   display: flex;
-  gap: 0.75rem;
   justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 1px solid #555;
 }
 
-.add-contact-modal button {
+.add-contact-modal .cancel-btn {
   padding: 0.75rem 1.5rem;
   font-size: 1rem;
   border: none;
   border-radius: 6px;
   cursor: pointer;
+  background-color: #555;
+  color: white;
   transition: background-color 0.2s ease;
 }
 
-.add-contact-modal button[data-action='cancel'] {
-  background-color: #555;
-  color: white;
-}
-
-.add-contact-modal button[data-action='cancel']:hover {
+.add-contact-modal .cancel-btn:hover {
   background-color: #666;
 }
 
-.add-contact-modal button[data-action='search'],
-.add-contact-modal button[type='submit'] {
-  background-color: rgb(74, 172, 74);
-  color: white;
-}
-
-.add-contact-modal button[data-action='search']:hover,
-.add-contact-modal button[type='submit']:hover {
-  background-color: rgb(70, 200, 70);
-}
-
-.add-contact-modal button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Import Section */
-.add-contact-modal .import-section {
-  margin-bottom: 1.5rem;
-}
-
-.add-contact-modal .import-btn {
-  width: 100%;
-  background-color: rgb(74, 172, 74);
-  color: white;
-  padding: 1rem;
-  font-size: 1.1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.add-contact-modal .import-btn:hover {
-  background-color: rgb(70, 200, 70);
-}
-
+/* Import Status */
 .add-contact-modal .import-status {
   min-height: 1.5rem;
   font-size: 0.9rem;
   padding: 0.5rem;
   border-radius: 4px;
-  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
 }
 
 .add-contact-modal .import-status.loading {
