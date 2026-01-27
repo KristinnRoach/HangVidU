@@ -1,10 +1,18 @@
 // src/components/contacts/add-contact-modal.js
 // Modal for adding contacts by email or importing from Google
 
-import { findUserByEmail, findUsersByEmails } from '../../contacts/user-discovery.js';
+import {
+  findUserByEmail,
+  findUsersByEmails,
+} from '../../contacts/user-discovery.js';
 import { sendInvite } from '../../contacts/invitations.js';
-import { getCurrentUser, requestContactsAccess } from '../../firebase/auth.js';
+import {
+  getCurrentUser,
+  requestContactsAccess,
+  getLoggedInUserId,
+} from '../../firebase/auth.js';
 import { fetchGoogleContacts } from '../../contacts/google-contacts.js';
+import { getContacts } from '../contacts/contacts.js';
 
 /**
  * Show a modal to add a contact by email address or import from Google.
@@ -105,7 +113,8 @@ export async function showAddContactModal() {
         setTimeout(cleanup, 1500);
       } catch (error) {
         console.error('[ADD CONTACT] Error searching for user:', error);
-        searchStatus.textContent = 'Error searching for user. Please try again.';
+        searchStatus.textContent =
+          'Error searching for user. Please try again.';
         searchStatus.className = 'search-status error';
         searchBtn.disabled = false;
         emailInput.disabled = false;
@@ -137,29 +146,37 @@ export async function showAddContactModal() {
 
         importStatus.textContent = `Found ${contacts.length} contacts. Checking HangVidU...`;
 
-        // Step 3: Cross-reference with HangVidU users
+        // Step 3: Get saved contacts to check if already connected
+        const savedContacts = await getContacts();
+        const savedContactIds = new Set(Object.keys(savedContacts || {}));
+
+        // Step 4: Cross-reference with HangVidU users
         const emails = contacts.map((c) => c.email);
         const registeredUsers = await findUsersByEmails(emails);
 
-        // Build results
+        // Build results - now including ALL contacts
         const currentUser = getCurrentUser();
-        const onHangVidU = [];
-        const notOnHangVidU = [];
+        const allContacts = [];
 
         for (const contact of contacts) {
           const user = registeredUsers[contact.email];
-          if (user && user.uid !== currentUser?.uid) {
-            onHangVidU.push({ ...contact, user });
-          } else if (!user) {
-            notOnHangVidU.push(contact);
+          const isCurrentUser = user && user.uid === currentUser?.uid;
+          const isAlreadySaved = user && savedContactIds.has(user.uid);
+
+          if (!isCurrentUser) {
+            allContacts.push({
+              ...contact,
+              user,
+              isAlreadySaved,
+            });
           }
         }
 
         // Display results
-        importStatus.textContent = `${onHangVidU.length} on HangVidU, ${notOnHangVidU.length} not yet`;
+        importStatus.textContent = `Found ${allContacts.length} contacts`;
         importStatus.className = 'import-status success';
 
-        renderImportResults(importResults, onHangVidU, notOnHangVidU);
+        renderImportResults(importResults, allContacts);
         importBtn.disabled = false;
       } catch (error) {
         console.error('[ADD CONTACT] Import error:', error);
@@ -182,33 +199,77 @@ export async function showAddContactModal() {
 }
 
 /**
- * Render import results with invite buttons.
+ * Render import results with checkboxes for selection and invite/share actions.
+ * Shows all contacts with indicators for: already saved, on HangVidU, not on HangVidU.
  */
-function renderImportResults(container, onHangVidU, notOnHangVidU) {
+function renderImportResults(container, allContacts) {
   container.innerHTML = '';
 
-  // Case: Some contacts are on HangVidU
-  if (onHangVidU.length > 0) {
-    const section = document.createElement('div');
-    section.className = 'results-section';
-    section.innerHTML = `<h4>On HangVidU (${onHangVidU.length})</h4>`;
+  if (allContacts.length === 0) {
+    container.innerHTML = '<p class="empty-state">No contacts found.</p>';
+    return;
+  }
 
-    const list = document.createElement('ul');
-    list.className = 'contact-list';
+  // Create header with select all checkbox
+  const header = document.createElement('div');
+  header.className = 'results-header';
+  header.innerHTML = `
+    <label class="select-all-label">
+      <input type="checkbox" id="select-all-checkbox" />
+      <span>Select All (${allContacts.length})</span>
+    </label>
+  `;
+  container.appendChild(header);
 
-    for (const { name, email, user } of onHangVidU) {
-      const li = document.createElement('li');
-      li.className = 'contact-item';
-      li.innerHTML = `
-        <span class="contact-info">
-          <strong>${escapeHtml(name)}</strong>
-          <small>${escapeHtml(email)}</small>
-        </span>
+  // Create scrollable contact list
+  const listContainer = document.createElement('div');
+  listContainer.className = 'contacts-scroll-list';
+
+  const list = document.createElement('ul');
+  list.className = 'contact-list';
+
+  // Track selected contacts
+  const selectedContacts = new Set();
+
+  for (const contact of allContacts) {
+    const { name, email, user, isAlreadySaved } = contact;
+
+    const li = document.createElement('li');
+    li.className = 'contact-item';
+
+    // Determine status badge
+    let statusBadge = '';
+    let actionButton = '';
+
+    if (isAlreadySaved) {
+      statusBadge = '<span class="status-badge saved">✓ Saved</span>';
+      actionButton = ''; // No action needed
+    } else if (user) {
+      statusBadge = '<span class="status-badge on-app">On HangVidU</span>';
+      actionButton = `
         <button type="button" class="invite-btn" data-uid="${escapeHtml(user.uid)}" data-name="${escapeHtml(user.displayName)}">
           Invite
         </button>
       `;
+    } else {
+      statusBadge = '<span class="status-badge not-on-app">Not on app</span>';
+      actionButton = ''; // Will use referral link for these
+    }
 
+    li.innerHTML = `
+      <label class="contact-item-label">
+        <input type="checkbox" class="contact-checkbox" data-email="${escapeHtml(email)}" ${isAlreadySaved ? 'disabled' : ''} />
+        <span class="contact-info">
+          <strong>${escapeHtml(name)}</strong>
+          <small>${escapeHtml(email)}</small>
+          ${statusBadge}
+        </span>
+      </label>
+      ${actionButton}
+    `;
+
+    // Handle individual invite button (for users on HangVidU)
+    if (user && !isAlreadySaved) {
       const btn = li.querySelector('.invite-btn');
       btn.addEventListener('click', async () => {
         btn.disabled = true;
@@ -224,44 +285,166 @@ function renderImportResults(container, onHangVidU, notOnHangVidU) {
           btn.disabled = false;
         }
       });
-
-      list.appendChild(li);
     }
 
-    section.appendChild(list);
-    container.appendChild(section);
+    // Handle checkbox selection
+    const checkbox = li.querySelector('.contact-checkbox');
+    if (checkbox && !isAlreadySaved) {
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+          selectedContacts.add(contact);
+        } else {
+          selectedContacts.delete(contact);
+        }
+        updateActionButtons();
+      });
+    }
+
+    list.appendChild(li);
   }
 
-  // Case: No contacts on HangVidU - show empty state
-  if (onHangVidU.length === 0 && notOnHangVidU.length > 0) {
-    const emptyState = document.createElement('div');
-    emptyState.className = 'empty-state';
-    emptyState.innerHTML = `
-      <p>None of your ${notOnHangVidU.length} contacts are on HangVidU yet.</p>
-      <p>Be the first to invite them!</p>
-    `;
-    container.appendChild(emptyState);
+  listContainer.appendChild(list);
+  container.appendChild(listContainer);
+
+  // Handle "Select All" checkbox
+  const selectAllCheckbox = header.querySelector('#select-all-checkbox');
+  selectAllCheckbox.addEventListener('change', () => {
+    const checkboxes = list.querySelectorAll(
+      '.contact-checkbox:not([disabled])',
+    );
+    checkboxes.forEach((cb) => {
+      cb.checked = selectAllCheckbox.checked;
+      const email = cb.getAttribute('data-email');
+      const contact = allContacts.find((c) => c.email === email);
+      if (contact) {
+        if (selectAllCheckbox.checked) {
+          selectedContacts.add(contact);
+        } else {
+          selectedContacts.delete(contact);
+        }
+      }
+    });
+    updateActionButtons();
+  });
+
+  // Create action buttons section
+  const actionsSection = document.createElement('div');
+  actionsSection.className = 'bulk-actions';
+  actionsSection.innerHTML = `
+    <button type="button" id="invite-selected-btn" class="action-btn" disabled>
+      Invite Selected (0)
+    </button>
+    <button type="button" id="share-link-btn" class="action-btn secondary" disabled>
+      Email Invite (0)
+    </button>
+  `;
+  container.appendChild(actionsSection);
+
+  const inviteSelectedBtn = actionsSection.querySelector(
+    '#invite-selected-btn',
+  );
+  const shareLinkBtn = actionsSection.querySelector('#share-link-btn');
+
+  // Update button states based on selection
+  function updateActionButtons() {
+    const selectedArray = Array.from(selectedContacts);
+    const onAppCount = selectedArray.filter(
+      (c) => c.user && !c.isAlreadySaved,
+    ).length;
+    const notOnAppCount = selectedArray.filter((c) => !c.user).length;
+
+    inviteSelectedBtn.disabled = onAppCount === 0;
+    inviteSelectedBtn.textContent = `Invite Selected (${onAppCount})`;
+
+    shareLinkBtn.disabled = notOnAppCount === 0;
+    shareLinkBtn.textContent = `Email Invite (${notOnAppCount})`;
   }
 
-  // Show "Not on HangVidU" count
-  if (notOnHangVidU.length > 0 && onHangVidU.length > 0) {
-    const section = document.createElement('div');
-    section.className = 'results-section not-on-app';
-    section.innerHTML = `<p class="muted-text">${notOnHangVidU.length} contacts not on HangVidU yet</p>`;
-    container.appendChild(section);
+  // Handle "Invite Selected" button (for users on HangVidU)
+  inviteSelectedBtn.addEventListener('click', async () => {
+    const toInvite = Array.from(selectedContacts).filter(
+      (c) => c.user && !c.isAlreadySaved,
+    );
 
-    // TODO: Add "Share Invite Link" button here once referral links are implemented.
-    // Referral links would include ?ref=userId parameter, enabling auto-connection
-    // when the invited user signs up. Without this, sharing just sends a generic
-    // app link with no connection logic. See first-contact-roadmap.md for details.
-  }
+    if (toInvite.length === 0) return;
+
+    inviteSelectedBtn.disabled = true;
+    inviteSelectedBtn.textContent = 'Sending invites...';
+
+    let successCount = 0;
+    for (const contact of toInvite) {
+      try {
+        await sendInvite(contact.user.uid, contact.user.displayName);
+        successCount++;
+      } catch (err) {
+        console.error('[ADD CONTACT] Failed to invite:', contact.name, err);
+      }
+    }
+
+    inviteSelectedBtn.textContent = `✓ Sent ${successCount} invite${successCount !== 1 ? 's' : ''}`;
+    setTimeout(() => {
+      selectedContacts.clear();
+      updateActionButtons();
+      // Uncheck all checkboxes
+      list
+        .querySelectorAll('.contact-checkbox')
+        .forEach((cb) => (cb.checked = false));
+      selectAllCheckbox.checked = false;
+    }, 2000);
+  });
+
+  // Handle "Share Invite Link" button (for users not on HangVidU)
+  shareLinkBtn.addEventListener('click', () => {
+    const notOnApp = Array.from(selectedContacts).filter((c) => !c.user);
+
+    if (notOnApp.length === 0) return;
+
+    // Generate referral link
+    const myUserId = getLoggedInUserId();
+    const referralLink = myUserId
+      ? `${window.location.origin}/?ref=${myUserId}`
+      : window.location.origin;
+
+    // Get current user's name for personalization
+    const currentUser = getCurrentUser();
+    const senderName = currentUser?.displayName || 'A friend';
+
+    // Prepare email content
+    const subject = encodeURIComponent('Join me on HangVidU!');
+    const body = encodeURIComponent(
+      `Hi!\n\n${senderName} invited you to join HangVidU - a simple video chat app.\n\nClick here to get started:\n${referralLink}\n\nSee you there!\n`,
+    );
+
+    // Build mailto: link
+    let mailtoLink;
+    if (notOnApp.length === 1) {
+      // Single contact: use "to" field
+      mailtoLink = `mailto:${notOnApp[0].email}?subject=${subject}&body=${body}`;
+    } else {
+      // Multiple contacts: use "bcc" to keep emails private
+      const emails = notOnApp.map((c) => c.email).join(',');
+      mailtoLink = `mailto:?bcc=${emails}&subject=${subject}&body=${body}`;
+    }
+
+    // Open email client
+    try {
+      window.location.href = mailtoLink;
+
+      // Visual feedback
+      shareLinkBtn.textContent = '✓ Opening email...';
+      setTimeout(() => {
+        shareLinkBtn.textContent = `Email Invite (${notOnApp.length})`;
+      }, 2000);
+    } catch (err) {
+      console.error('[ADD CONTACT] Failed to open mailto:', err);
+      alert('Failed to open email client. Please check your email settings.');
+    }
+  });
 }
 
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str || '';
   // Browser escapes <, >, & via textContent. Also escape quotes for attribute safety.
-  return div.innerHTML
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+  return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }

@@ -267,3 +267,255 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Import Section */
+.add-contact-modal .import-section {
+  margin-bottom: 1.5rem;
+}
+
+.add-contact-modal .import-btn {
+  width: 100%;
+  background-color: rgb(74, 172, 74);
+  color: white;
+  padding: 1rem;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.add-contact-modal .import-btn:hover {
+  background-color: rgb(70, 200, 70);
+}
+
+.add-contact-modal .import-status {
+  min-height: 1.5rem;
+  font-size: 0.9rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+}
+
+.add-contact-modal .import-status.loading {
+  color: #aaa;
+}
+
+.add-contact-modal .import-status.success {
+  color: rgb(70, 200, 70);
+}
+
+.add-contact-modal .import-status.not-found {
+  color: #f9c74f;
+}
+
+.add-contact-modal .import-status.cancelled {
+  color: #aaa;
+}
+
+.add-contact-modal .import-status.error {
+  color: #f94144;
+}
+
+/* Import Results */
+.add-contact-modal .import-results {
+  margin-top: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.add-contact-modal .results-header {
+  padding: 0.75rem;
+  background-color: #555;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+}
+
+.add-contact-modal .select-all-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.add-contact-modal .select-all-label input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+/* Scrollable Contact List */
+.add-contact-modal .contacts-scroll-list {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background-color: #444;
+}
+
+.add-contact-modal .contact-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.add-contact-modal .contact-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  border-bottom: 1px solid #555;
+  gap: 0.75rem;
+}
+
+.add-contact-modal .contact-item:last-child {
+  border-bottom: none;
+}
+
+.add-contact-modal .contact-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.add-contact-modal .contact-item-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  cursor: pointer;
+  user-select: none;
+  min-width: 0;
+}
+
+.add-contact-modal .contact-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.add-contact-modal .contact-checkbox:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.add-contact-modal .contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.add-contact-modal .contact-info strong {
+  color: white;
+  font-size: 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.add-contact-modal .contact-info small {
+  color: #aaa;
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Status Badges */
+.add-contact-modal .status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  margin-top: 0.25rem;
+}
+
+.add-contact-modal .status-badge.saved {
+  background-color: rgba(74, 172, 74, 0.3);
+  color: rgb(70, 200, 70);
+}
+
+.add-contact-modal .status-badge.on-app {
+  background-color: rgba(74, 172, 255, 0.3);
+  color: rgb(100, 180, 255);
+}
+
+.add-contact-modal .status-badge.not-on-app {
+  background-color: rgba(249, 199, 79, 0.3);
+  color: #f9c74f;
+}
+
+/* Invite Button */
+.add-contact-modal .invite-btn {
+  background-color: rgb(74, 172, 74);
+  color: white;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.add-contact-modal .invite-btn:hover {
+  background-color: rgb(70, 200, 70);
+}
+
+.add-contact-modal .invite-btn.sent {
+  background-color: #555;
+  cursor: default;
+}
+
+.add-contact-modal .invite-btn.sent:hover {
+  background-color: #555;
+}
+
+/* Bulk Actions */
+.add-contact-modal .bulk-actions {
+  display: flex;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid #555;
+}
+
+.add-contact-modal .action-btn {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border-radius: 6px;
+  background-color: rgb(74, 172, 74);
+  color: white;
+}
+
+.add-contact-modal .action-btn:hover:not(:disabled) {
+  background-color: rgb(70, 200, 70);
+}
+
+.add-contact-modal .action-btn.secondary {
+  background-color: #357abd;
+}
+
+.add-contact-modal .action-btn.secondary:hover:not(:disabled) {
+  background-color: #4a8fd6;
+}
+
+.add-contact-modal .action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Divider */
+.add-contact-modal .divider {
+  border: none;
+  border-top: 1px solid #555;
+  margin: 1.5rem 0;
+}
+
+/* Empty State */
+.add-contact-modal .empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: #aaa;
+}
