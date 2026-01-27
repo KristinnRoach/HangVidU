@@ -4,6 +4,7 @@
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
 import { NetworkFirst } from 'workbox-strategies';
+import { VIBRATION_PATTERNS } from './media/haptic/vibration-patterns.js';
 
 // Import Firebase messaging for service worker context
 // Note: Using compat version for service worker compatibility
@@ -101,6 +102,7 @@ if (messaging) {
       requireInteraction: data?.type === 'call',
       actions: getNotificationActions(data?.type),
       silent: false,
+      vibrate: getVibrationPattern(data?.type),
     };
 
     // Show the notification
@@ -157,6 +159,23 @@ function getNotificationTag(data) {
     return `message_${data.senderId}`;
   }
   return 'default';
+}
+
+/**
+ * Get vibration pattern based on notification type
+ * @param {string} type - Notification type ('call', 'message', etc.)
+ * @returns {Array<number>} Vibration pattern in milliseconds
+ */
+function getVibrationPattern(type) {
+  if (type === 'call') {
+    // Urgent pattern for incoming calls: vibrate-pause-vibrate-pause-vibrate
+    return [200, 100, 200, 100, 200];
+  } else if (type === 'message') {
+    // Single short vibration for messages
+    return [200];
+  }
+  // Default: single short vibration
+  return [200];
 }
 
 // ============================================================================
