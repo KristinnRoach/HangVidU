@@ -446,33 +446,24 @@ export async function deleteAccount() {
     const { ref, remove } = await import('firebase/database');
     const { rtdb } = await import('../storage/fb-rtdb/rtdb.js');
 
-    // 1. Set user offline and clear cached tokens
+    // 1. Set user offline and clear cached tokens (local/non-destructive)
     await setOffline();
     clearGISTokenCache();
 
-    // 2. Clean up all user data in RTDB
-    const userDataPaths = [
-      `users/${userId}/fcmTokens`,
-      `users/${userId}/presence`,
-      `users/${userId}/contacts`,
-      `users/${userId}/recentCalls`,
-      `users/${userId}/outgoingCall`,
-      `users/${userId}/incomingInvites`,
-      `users/${userId}/acceptedInvites`,
-      `users/${userId}`, // Remove entire user node
-    ];
+    // 2. Delete the Firebase Auth account first to avoid orphaned auth
+    //    accounts if cleanup succeeds but deleteUser fails (requires re-auth)
+    console.info('[AUTH] Deleting Firebase Auth account...');
+    await deleteUser(user);
 
+    // 3. Clean up all user data in RTDB (single removal of entire user node)
     console.info('[AUTH] Cleaning up user data from RTDB...');
-    for (const path of userDataPaths) {
-      try {
-        await remove(ref(rtdb, path));
-      } catch (err) {
-        console.warn(`[AUTH] Failed to remove ${path}:`, err);
-        // Continue with other deletions even if one fails
-      }
+    try {
+      await remove(ref(rtdb, `users/${userId}`));
+    } catch (err) {
+      console.warn('[AUTH] Failed to remove user node from RTDB:', err);
     }
 
-    // 3. Delete FCM token if available
+    // 4. Delete FCM token if available
     try {
       const { FCMTransport } =
         await import('../notifications/transports/fcm-transport.js');
@@ -482,7 +473,7 @@ export async function deleteAccount() {
       console.warn('[AUTH] Failed to delete FCM token:', err);
     }
 
-    // 4. Remove user from discovery directory (so they don't show as "On HangVidU")
+    // 5. Remove user from discovery directory (so they don't show as "On HangVidU")
     if (user.email) {
       try {
         const { removeUserFromDirectory } =
@@ -495,10 +486,6 @@ export async function deleteAccount() {
         );
       }
     }
-
-    // 5. Delete the Firebase Auth account
-    console.info('[AUTH] Deleting Firebase Auth account...');
-    await deleteUser(user);
 
     console.info('[AUTH] Account deleted successfully');
 

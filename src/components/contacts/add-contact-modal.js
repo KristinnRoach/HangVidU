@@ -1,10 +1,7 @@
 // src/components/contacts/add-contact-modal.js
 // Modal for adding contacts by email or importing from Google
 
-import {
-  findUserByEmail,
-  findUsersByEmails,
-} from '../../contacts/user-discovery.js';
+import { findUsersByEmails } from '../../contacts/user-discovery.js';
 import { sendInvite } from '../../contacts/invitations.js';
 import {
   getCurrentUser,
@@ -72,6 +69,7 @@ export async function showAddContactModal() {
     let currentPlatform = 'google';
     let allContacts = [];
     let filteredContacts = [];
+    const selectedContacts = new Set();
 
     function cleanup() {
       dialog.close();
@@ -111,13 +109,13 @@ export async function showAddContactModal() {
         filteredContacts = allContacts;
       } else {
         filteredContacts = allContacts.filter((contact) => {
-          const nameMatch = contact.name.toLowerCase().includes(query);
-          const emailMatch = contact.email.toLowerCase().includes(query);
+          const nameMatch = (contact.name || '').toLowerCase().includes(query);
+          const emailMatch = (contact.email || '').toLowerCase().includes(query);
           return nameMatch || emailMatch;
         });
       }
 
-      renderImportResults(contactsContainer, filteredContacts);
+      renderImportResults(contactsContainer, filteredContacts, selectedContacts);
     });
 
     // Import Google Contacts function
@@ -193,7 +191,7 @@ export async function showAddContactModal() {
           }
 
           // Within same priority, sort alphabetically by name
-          return a.name.localeCompare(b.name, undefined, {
+          return (a.name || '').localeCompare(b.name || '', undefined, {
             sensitivity: 'base',
           });
         });
@@ -203,7 +201,7 @@ export async function showAddContactModal() {
         importStatus.textContent = `Found ${allContacts.length} contacts`;
         importStatus.className = 'import-status success';
 
-        renderImportResults(contactsContainer, filteredContacts);
+        renderImportResults(contactsContainer, filteredContacts, selectedContacts);
       } catch (error) {
         console.error('[ADD CONTACT] Import error:', error);
 
@@ -234,7 +232,7 @@ export async function showAddContactModal() {
  * Render import results with checkboxes for selection and invite/share actions.
  * Shows all contacts with indicators for: already saved, on HangVidU, not on HangVidU.
  */
-function renderImportResults(container, allContacts) {
+function renderImportResults(container, allContacts, selectedContacts) {
   container.innerHTML = '';
 
   if (allContacts.length === 0) {
@@ -259,9 +257,6 @@ function renderImportResults(container, allContacts) {
 
   const list = document.createElement('ul');
   list.className = 'contact-list';
-
-  // Track selected contacts
-  const selectedContacts = new Set();
 
   for (const contact of allContacts) {
     const { name, email, user, isAlreadySaved } = contact;

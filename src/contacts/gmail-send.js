@@ -1,6 +1,13 @@
 // src/contacts/gmail-send.js
 // Gmail API integration for sending emails
 
+/** Convert a Uint8Array to a base64url string (no padding). */
+function uint8ToBase64url(bytes) {
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
 /**
  * Send an email via Gmail API
  * @param {string} accessToken - Gmail API access token
@@ -23,10 +30,7 @@ export async function sendEmailViaGmail(accessToken, to, subject, body) {
   ].join('\r\n');
 
   // Base64url encode (Gmail API requirement)
-  const encodedEmail = btoa(unescape(encodeURIComponent(email)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
+  const encodedEmail = uint8ToBase64url(new TextEncoder().encode(email));
 
   // Send via Gmail API
   const response = await fetch(
