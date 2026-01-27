@@ -350,8 +350,8 @@ export function onAuthChange(callback, { truncate = 7 } = {}) {
         ? rawName.slice(0, truncate) + '...'
         : rawName;
 
-    // Initialize presence when user logs in
     if (isLoggedIn) {
+      // Initialize presence when user logs in
       initializePresence().catch((err) => {
         console.warn('Failed to initialize presence:', err);
       });
@@ -360,6 +360,9 @@ export function onAuthChange(callback, { truncate = 7 } = {}) {
       registerUserInDirectory(user).catch((err) => {
         console.warn('Failed to register user in directory:', err);
       });
+    } else {
+      // Clear cached GIS tokens so they can't leak to another session
+      clearGISTokenCache();
     }
 
     try {
@@ -408,6 +411,7 @@ export const signInWithAccountSelection = async () => {
 export async function signOutUser() {
   try {
     await setOffline();
+    clearGISTokenCache();
     await signOut(auth);
     console.info('User signed out');
     setTimeout(() => showOneTapSignin(), 1500); // TODO: decide whether this is annoying
@@ -442,8 +446,9 @@ export async function deleteAccount() {
     const { ref, remove } = await import('firebase/database');
     const { rtdb } = await import('../storage/fb-rtdb/rtdb.js');
 
-    // 1. Set user offline
+    // 1. Set user offline and clear cached tokens
     await setOffline();
+    clearGISTokenCache();
 
     // 2. Clean up all user data in RTDB
     const userDataPaths = [
@@ -515,20 +520,49 @@ export async function deleteAccount() {
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_APP_GOOGLE_CLIENT_ID;
 
+// --- GIS Token Cache ---
+// Caches access tokens per scope key to avoid re-prompting the user.
+// Tokens are held in memory only (cleared on page reload).
+// Buffer (ms) subtracted from expiry to avoid using a nearly-expired token.
+const TOKEN_EXPIRY_BUFFER_MS = 60_000;
+const _tokenCache = {};
+
+function getCachedToken(key) {
+  const entry = _tokenCache[key];
+  if (entry && Date.now() < entry.expiresAt) return entry.token;
+  delete _tokenCache[key];
+  return null;
+}
+
+function cacheToken(key, token, expiresInSeconds) {
+  _tokenCache[key] = {
+    token,
+    expiresAt: Date.now() + expiresInSeconds * 1000 - TOKEN_EXPIRY_BUFFER_MS,
+  };
+}
+
+/** Clear all cached GIS tokens (e.g. on sign-out). */
+export function clearGISTokenCache() {
+  for (const key in _tokenCache) delete _tokenCache[key];
+}
+
 /**
- * Request Google Contacts access via Google Identity Services Token Model.
- * Opens a popup to request the contacts.readonly scope.
- * @returns {Promise<string>} - Google access token with contacts scope
- * @throws {Error} - If authorization fails or is cancelled
+ * Request a GIS access token for the given scopes.
+ * Returns a cached token when available; otherwise opens the consent popup.
  */
-export function requestContactsAccess() {
+function requestGISToken(cacheKey, scope) {
+  const cached = getCachedToken(cacheKey);
+  if (cached) {
+    console.log(`[AUTH] Using cached ${cacheKey} token`);
+    return Promise.resolve(cached);
+  }
+
   return new Promise((resolve, reject) => {
     if (!GOOGLE_CLIENT_ID) {
       reject(new Error('Google Client ID not configured'));
       return;
     }
 
-    // Wait for GIS library to load
     if (typeof google === 'undefined' || !google.accounts?.oauth2) {
       reject(new Error('Google Identity Services not loaded'));
       return;
@@ -536,16 +570,15 @@ export function requestContactsAccess() {
 
     const currentUser = getCurrentUser();
 
-    console.log('[AUTH] Requesting contacts access via GIS Token Model...');
+    console.log(`[AUTH] Requesting ${cacheKey} access via GIS Token Model...`);
 
     const tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
-      scope:
-        'https://www.googleapis.com/auth/contacts.readonly https://www.googleapis.com/auth/contacts.other.readonly',
+      scope,
       hint: currentUser?.email || undefined,
       callback: (response) => {
         if (response.error) {
-          console.error('[AUTH] Token request error:', response.error);
+          console.error(`[AUTH] ${cacheKey} token request error:`, response.error);
           if (response.error === 'access_denied') {
             reject(new Error('Authorization cancelled'));
           } else {
@@ -559,11 +592,12 @@ export function requestContactsAccess() {
           return;
         }
 
-        console.log('[AUTH] Contacts access granted');
+        console.log(`[AUTH] ${cacheKey} access granted`);
+        cacheToken(cacheKey, response.access_token, response.expires_in || 3600);
         resolve(response.access_token);
       },
       error_callback: (error) => {
-        console.error('[AUTH] Token client error:', error);
+        console.error(`[AUTH] ${cacheKey} token client error:`, error);
         if (error.type === 'popup_closed') {
           reject(new Error('Authorization cancelled'));
         } else {
@@ -572,68 +606,30 @@ export function requestContactsAccess() {
       },
     });
 
-    // Request the token (opens popup)
     tokenClient.requestAccessToken();
   });
 }
 
 /**
+ * Request Google Contacts access via Google Identity Services Token Model.
+ * Returns a cached token if still valid; otherwise opens consent popup.
+ * @returns {Promise<string>} - Google access token with contacts scope
+ */
+export function requestContactsAccess() {
+  return requestGISToken(
+    'contacts',
+    'https://www.googleapis.com/auth/contacts.readonly https://www.googleapis.com/auth/contacts.other.readonly',
+  );
+}
+
+/**
  * Request Gmail send access via Google Identity Services Token Model.
- * Opens a popup to request the gmail.send scope.
+ * Returns a cached token if still valid; otherwise opens consent popup.
  * @returns {Promise<string>} - Google access token with Gmail send scope
- * @throws {Error} - If authorization fails or is cancelled
  */
 export function requestGmailSendAccess() {
-  return new Promise((resolve, reject) => {
-    if (!GOOGLE_CLIENT_ID) {
-      reject(new Error('Google Client ID not configured'));
-      return;
-    }
-
-    // Wait for GIS library to load
-    if (typeof google === 'undefined' || !google.accounts?.oauth2) {
-      reject(new Error('Google Identity Services not loaded'));
-      return;
-    }
-
-    const currentUser = getCurrentUser();
-
-    console.log('[AUTH] Requesting Gmail send access via GIS Token Model...');
-
-    const tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID,
-      scope: 'https://www.googleapis.com/auth/gmail.send',
-      hint: currentUser?.email || undefined,
-      callback: (response) => {
-        if (response.error) {
-          console.error('[AUTH] Gmail token request error:', response.error);
-          if (response.error === 'access_denied') {
-            reject(new Error('Authorization cancelled'));
-          } else {
-            reject(new Error(response.error_description || response.error));
-          }
-          return;
-        }
-
-        if (!response.access_token) {
-          reject(new Error('No access token received'));
-          return;
-        }
-
-        console.log('[AUTH] Gmail send access granted');
-        resolve(response.access_token);
-      },
-      error_callback: (error) => {
-        console.error('[AUTH] Gmail token client error:', error);
-        if (error.type === 'popup_closed') {
-          reject(new Error('Authorization cancelled'));
-        } else {
-          reject(new Error(error.message || 'Authorization failed'));
-        }
-      },
-    });
-
-    // Request the token (opens popup)
-    tokenClient.requestAccessToken();
-  });
+  return requestGISToken(
+    'gmail-send',
+    'https://www.googleapis.com/auth/gmail.send',
+  );
 }
