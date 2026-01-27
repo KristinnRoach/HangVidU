@@ -14,18 +14,21 @@
     },
     "users": {
       "$userId": {
+        ".write": "$userId === auth.uid && !newData.exists()",
         "contacts": {
           ".read": "$userId === auth.uid",
           ".write": "$userId === auth.uid"
         },
         "incomingInvites": {
           ".read": "$userId === auth.uid",
+          ".write": "$userId === auth.uid && !newData.exists()",
           "$fromUserId": {
             ".write": "auth != null && (($fromUserId === auth.uid && !data.exists()) || ($userId === auth.uid && !newData.exists()))"
           }
         },
         "acceptedInvites": {
           ".read": "$userId === auth.uid",
+          ".write": "$userId === auth.uid && !newData.exists()",
           "$acceptedByUserId": {
             ".write": "auth != null && (($acceptedByUserId === auth.uid && !data.exists()) || ($userId === auth.uid && !newData.exists()))"
           }
