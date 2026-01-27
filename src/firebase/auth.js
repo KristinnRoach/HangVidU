@@ -548,7 +548,7 @@ export function clearGISTokenCache() {
 
 /**
  * Request a GIS access token for the given scopes.
- * Returns a cached token when available; otherwise opens the consent popup.
+ * Priority: 1) memory cache  2) silent GIS (prompt:'none')  3) interactive popup.
  */
 function requestGISToken(cacheKey, scope) {
   const cached = getCachedToken(cacheKey);
@@ -569,44 +569,68 @@ function requestGISToken(cacheKey, scope) {
     }
 
     const currentUser = getCurrentUser();
+    const hint = currentUser?.email || undefined;
 
-    console.log(`[AUTH] Requesting ${cacheKey} access via GIS Token Model...`);
-
-    const tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID,
-      scope,
-      hint: currentUser?.email || undefined,
-      callback: (response) => {
-        if (response.error) {
-          console.error(`[AUTH] ${cacheKey} token request error:`, response.error);
-          if (response.error === 'access_denied') {
-            reject(new Error('Authorization cancelled'));
-          } else {
-            reject(new Error(response.error_description || response.error));
-          }
+    function onTokenResponse(response, onNeedConsent) {
+      if (response.error) {
+        if (onNeedConsent) {
+          console.log(`[AUTH] Silent ${cacheKey} token failed (${response.error}), trying interactive...`);
+          onNeedConsent();
           return;
         }
-
-        if (!response.access_token) {
-          reject(new Error('No access token received'));
-          return;
-        }
-
-        console.log(`[AUTH] ${cacheKey} access granted`);
-        cacheToken(cacheKey, response.access_token, response.expires_in || 3600);
-        resolve(response.access_token);
-      },
-      error_callback: (error) => {
-        console.error(`[AUTH] ${cacheKey} token client error:`, error);
-        if (error.type === 'popup_closed') {
+        console.error(`[AUTH] ${cacheKey} token request error:`, response.error);
+        if (response.error === 'access_denied') {
           reject(new Error('Authorization cancelled'));
         } else {
-          reject(new Error(error.message || 'Authorization failed'));
+          reject(new Error(response.error_description || response.error));
         }
+        return;
+      }
+
+      if (!response.access_token) {
+        reject(new Error('No access token received'));
+        return;
+      }
+
+      console.log(`[AUTH] ${cacheKey} access granted`);
+      cacheToken(cacheKey, response.access_token, response.expires_in || 3600);
+      resolve(response.access_token);
+    }
+
+    // Phase 2: Interactive popup (fallback when silent fails)
+    function requestInteractive() {
+      console.log(`[AUTH] Requesting ${cacheKey} access via interactive popup...`);
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope,
+        hint,
+        callback: (response) => onTokenResponse(response, null),
+        error_callback: (error) => {
+          console.error(`[AUTH] ${cacheKey} interactive error:`, error);
+          if (error.type === 'popup_closed') {
+            reject(new Error('Authorization cancelled'));
+          } else {
+            reject(new Error(error.message || 'Authorization failed'));
+          }
+        },
+      });
+      client.requestAccessToken();
+    }
+
+    // Phase 1: Silent attempt (no popup, works if user previously consented)
+    console.log(`[AUTH] Attempting silent ${cacheKey} token acquisition...`);
+    const silentClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope,
+      hint,
+      callback: (response) => onTokenResponse(response, requestInteractive),
+      error_callback: () => {
+        // Shouldn't fire with prompt:'none' (no popup to fail), but fall back defensively
+        console.log(`[AUTH] Silent ${cacheKey} error_callback, trying interactive...`);
+        requestInteractive();
       },
     });
-
-    tokenClient.requestAccessToken();
+    silentClient.requestAccessToken({ prompt: 'none' });
   });
 }
 

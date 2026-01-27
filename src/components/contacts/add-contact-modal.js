@@ -222,6 +222,11 @@ export async function showAddContactModal() {
 
     document.body.appendChild(dialog);
     dialog.showModal();
+
+    // Auto-trigger import for the default active platform
+    if (currentPlatform === 'google') {
+      importGoogleContacts();
+    }
   });
 }
 
