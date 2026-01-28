@@ -93,7 +93,7 @@ import {
   processReferral,
 } from './contacts/referral-handler.js';
 
-import { showSuccessToast } from './utils/ui/toast.js';
+import { showSuccessToast, showErrorToast } from './utils/ui/toast.js';
 
 // import { getContactByRoomId } from './components/contacts/contacts.js';
 
@@ -1356,10 +1356,10 @@ async function processNextInvite() {
         await acceptInvite(fromUserId, inviteData);
         console.log('[INVITATIONS] Contact added:', inviteData.fromName);
         await renderContactsList(lobbyDiv).catch(() => {});
-        alert(`Added ${inviteData.fromName} to your contacts!`);
+        showSuccessToast(`✅ ${inviteData.fromName} added to contacts!`);
       } catch (e) {
         console.error('[INVITATIONS] Failed to accept invite:', e);
-        alert('Failed to add contact. Please try again.');
+        showErrorToast('Failed to add contact. Please try again.');
       }
     } else {
       try {
