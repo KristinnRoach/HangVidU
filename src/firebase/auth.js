@@ -424,10 +424,10 @@ export async function signOutUser() {
 
 /**
  * Delete the current user's account and all associated data.
- * This will:
- * 1. Clean up user data in RTDB (contacts, presence, FCM tokens, etc.)
- * 2. Delete the Firebase Auth account
- * 3. Sign out the user
+ * Cleanup runs before deleteUser() because RTDB security rules require
+ * an authenticated session (auth.uid). If deleteUser() subsequently fails
+ * (e.g. auth/requires-recent-login), the data is already gone but the
+ * auth account remains — the user can simply retry.
  *
  * @throws {Error} If user is not logged in or deletion fails
  */
@@ -442,20 +442,14 @@ export async function deleteAccount() {
   try {
     console.info('[AUTH] Starting account deletion for user:', userId);
 
-    // Import RTDB utilities
-    const { ref, remove } = await import('firebase/database');
-    const { rtdb } = await import('../storage/fb-rtdb/rtdb.js');
-
-    // 1. Set user offline and clear cached tokens (local/non-destructive)
+    // 1. Set user offline and clear cached tokens
     await setOffline();
     clearGISTokenCache();
 
-    // 2. Delete the Firebase Auth account first to avoid orphaned auth
-    //    accounts if cleanup succeeds but deleteUser fails (requires re-auth)
-    console.info('[AUTH] Deleting Firebase Auth account...');
-    await deleteUser(user);
+    // 2. Clean up user data while still authenticated (RTDB rules require auth)
+    const { ref, remove } = await import('firebase/database');
+    const { rtdb } = await import('../storage/fb-rtdb/rtdb.js');
 
-    // 3. Clean up all user data in RTDB (single removal of entire user node)
     console.info('[AUTH] Cleaning up user data from RTDB...');
     try {
       await remove(ref(rtdb, `users/${userId}`));
@@ -463,7 +457,7 @@ export async function deleteAccount() {
       console.warn('[AUTH] Failed to remove user node from RTDB:', err);
     }
 
-    // 4. Delete FCM token if available
+    // 3. Delete FCM token if available
     try {
       const { FCMTransport } =
         await import('../notifications/transports/fcm-transport.js');
@@ -473,7 +467,7 @@ export async function deleteAccount() {
       console.warn('[AUTH] Failed to delete FCM token:', err);
     }
 
-    // 5. Remove user from discovery directory (so they don't show as "On HangVidU")
+    // 4. Remove user from discovery directory (so they don't show as "On HangVidU")
     if (user.email) {
       try {
         const { removeUserFromDirectory } =
@@ -487,14 +481,15 @@ export async function deleteAccount() {
       }
     }
 
-    console.info('[AUTH] Account deleted successfully');
+    // 5. Delete the Firebase Auth account (also signs out the user)
+    console.info('[AUTH] Deleting Firebase Auth account...');
+    await deleteUser(user);
 
-    // Show one-tap signin after a delay
+    console.info('[AUTH] Account deleted successfully');
     setTimeout(() => showOneTapSignin(), 1500);
   } catch (error) {
     logAuthError('Delete account', error);
 
-    // Provide helpful error messages
     if (error.code === 'auth/requires-recent-login') {
       throw new Error(
         'For security, please sign out and sign in again before deleting your account.',

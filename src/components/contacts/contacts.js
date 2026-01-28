@@ -169,18 +169,7 @@ export async function renderContactsList(lobbyElement) {
   if (!lobbyElement) return;
 
   const contacts = await getContacts();
-  let contactIds = Object.keys(contacts);
-
-  // Filter out deleted users (no presence node means account was deleted)
-  if (getLoggedInUserId()) {
-    const presenceChecks = await Promise.all(
-      contactIds.map(async (id) => {
-        const snapshot = await get(ref(rtdb, `users/${id}/presence`));
-        return snapshot.exists();
-      }),
-    );
-    contactIds = contactIds.filter((_, i) => presenceChecks[i]);
-  }
+  const contactIds = Object.keys(contacts);
 
   // Find or create contacts container
   let contactsContainer = lobbyElement.querySelector('.contacts-container');
@@ -255,6 +244,23 @@ export async function renderContactsList(lobbyElement) {
 
   // Create message toggles directly (no placeholders needed)
   await createContactMessageToggles(contactsContainer, contactIds, contacts);
+
+  // Prune deleted users in the background (after render) to avoid blocking
+  if (getLoggedInUserId()) {
+    Promise.all(
+      contactIds.map(async (id) => {
+        const snapshot = await get(ref(rtdb, `users/${id}/presence`));
+        if (!snapshot.exists()) {
+          const entry = contactsContainer.querySelector(
+            `.contact-entry:has([data-contact-id="${id}"])`,
+          );
+          if (entry) entry.remove();
+        }
+      }),
+    ).catch((err) =>
+      console.warn('[CONTACTS] Background presence check failed:', err),
+    );
+  }
 }
 
 /**
