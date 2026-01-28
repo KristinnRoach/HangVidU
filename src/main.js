@@ -1435,7 +1435,7 @@ function setupInviteListener() {
 
 window.onload = async () => {
   // Capture referral link BEFORE auth (stores referrer ID in localStorage)
-  captureReferral();
+  await captureReferral();
 
   const initSuccess = await init();
 

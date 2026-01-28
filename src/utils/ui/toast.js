@@ -9,14 +9,28 @@ import { isDev } from '../dev/dev-utils';
  * @param {number} options.duration - Duration in ms (default: 3000)
  * @param {string} options.type - Toast type: 'success', 'info', 'warning', 'error' (default: 'info')
  * @param {string} options.position - Position: 'top', 'bottom' (default: 'bottom')
+ * @param {Function} options.onClick - Click handler. When set, toast becomes clickable and dismisses on click.
  */
 export function showToast(message, options = {}) {
-  const { duration = 3000, type = 'info', position = 'bottom' } = options;
+  const {
+    duration = 3000,
+    type = 'info',
+    position = 'bottom',
+    onClick,
+  } = options;
 
   // Create toast element
   const toast = document.createElement('div');
   toast.className = `toast toast-${type} toast-${position}`;
   toast.textContent = message;
+
+  if (onClick) {
+    toast.classList.add('toast-clickable');
+    toast.addEventListener('click', () => {
+      onClick();
+      dismiss();
+    });
+  }
 
   // Add to DOM
   document.body.appendChild(toast);
@@ -26,13 +40,17 @@ export function showToast(message, options = {}) {
     toast.classList.add('toast-show');
   });
 
-  // Remove after duration
-  setTimeout(() => {
+  // Shared dismiss logic
+  let dismissed = false;
+  function dismiss() {
+    if (dismissed) return;
+    dismissed = true;
     toast.classList.remove('toast-show');
-    setTimeout(() => {
-      toast.remove();
-    }, 300); // Wait for fade-out animation
-  }, duration);
+    setTimeout(() => toast.remove(), 300);
+  }
+
+  // Remove after duration
+  setTimeout(dismiss, duration);
 }
 
 if (isDev()) {

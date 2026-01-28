@@ -1,18 +1,20 @@
 // referral-handler.js - Handle referral links and auto-add contacts
 // Reuses the existing invitation system for consistency
 
-import { getLoggedInUserId } from '../firebase/auth.js';
+import {
+  getLoggedInUserId,
+  signInWithAccountSelection,
+} from '../firebase/auth.js';
 import { acceptInvite } from './invitations.js';
-import { get, ref } from 'firebase/database';
-import { rtdb } from '../storage/fb-rtdb/rtdb.js';
 import { getDeterministicRoomId } from '../utils/room-id.js';
-import { showSuccessToast } from '../utils/ui/toast.js';
+import { showInfoToast, showSuccessToast } from '../utils/ui/toast.js';
+import { getUserProfile } from '../user/profile.js';
 
 /**
  * Store referrer ID when user arrives via referral link.
  * Called on page load before authentication.
  */
-export function captureReferral() {
+export async function captureReferral() {
   const urlParams = new URLSearchParams(window.location.search);
   const referrerId = urlParams.get('ref');
 
@@ -24,6 +26,19 @@ export function captureReferral() {
     const url = new URL(window.location.href);
     url.searchParams.delete('ref');
     window.history.replaceState({}, '', url.toString());
+
+    // Fetch referrer profile (world-readable, no auth needed)
+    const profile = await getUserProfile(referrerId);
+    const name = profile?.displayName;
+
+    const message = name
+      ? `${name} invited you — tap here to sign in and connect`
+      : 'Tap here to sign in and connect with your inviter';
+
+    showInfoToast(message, {
+      duration: 8000,
+      onClick: () => signInWithAccountSelection(),
+    });
   }
 }
 
@@ -51,19 +66,16 @@ export async function processReferral() {
     console.log('[REFERRAL] Processing referral from:', referrerId);
 
     // Check if referrer exists and get their info
-    const referrerSnapshot = await get(
-      ref(rtdb, `users/${referrerId}/presence`),
-    );
+    const profile = await getUserProfile(referrerId);
 
-    if (!referrerSnapshot.exists()) {
-      console.warn('[REFERRAL] Referrer user not found:', referrerId);
+    if (!profile) {
+      console.warn('[REFERRAL] Referrer profile not found:', referrerId);
       localStorage.removeItem('referredBy');
       return;
     }
 
     // Get referrer's display name
-    const referrerData = referrerSnapshot.val();
-    const referrerName = referrerData?.displayName || referrerId;
+    const referrerName = profile.displayName || referrerId;
 
     // Generate deterministic room ID
     const roomId = getDeterministicRoomId(myUserId, referrerId);
@@ -72,8 +84,8 @@ export async function processReferral() {
     const syntheticInvite = {
       fromUserId: referrerId,
       fromName: referrerName,
-      fromEmail: referrerData?.email || '',
-      fromPhotoURL: referrerData?.photoURL || null,
+      fromEmail: '',
+      fromPhotoURL: profile.photoURL || null,
       roomId: roomId,
       timestamp: Date.now(),
       status: 'pending',

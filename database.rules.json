@@ -45,6 +45,10 @@
           ".read": "$userId === auth.uid",
           ".write": "$userId === auth.uid"
         },
+        "profile": {
+          ".read": true,
+          ".write": "$userId === auth.uid"
+        },
         "presence": {
           ".read": true,
           ".write": "$userId === auth.uid"

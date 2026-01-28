@@ -20,6 +20,7 @@ import { initOneTap, showOneTapSignin } from './onetap.js';
 
 import { initializePresence, setOffline } from './presence.js';
 import { registerUserInDirectory } from '../contacts/user-discovery.js';
+import { saveUserProfile } from '../user/profile.js';
 
 export const auth = getAuth(app);
 
@@ -356,6 +357,11 @@ export function onAuthChange(callback, { truncate = 7 } = {}) {
         console.warn('Failed to initialize presence:', err);
       });
 
+      // Save public profile (displayName, photoURL)
+      saveUserProfile(user).catch((err) => {
+        console.warn('Failed to save user profile:', err);
+      });
+
       // Register user in discovery directory
       registerUserInDirectory(user).catch((err) => {
         console.warn('Failed to register user in directory:', err);
@@ -532,8 +538,16 @@ export function clearGISTokenCache() {
 /**
  * Request a GIS access token for the given scopes.
  * Priority: 1) memory cache  2) silent GIS (prompt:'none')  3) interactive popup.
+ *
+ * @param {string} cacheKey - Key for the token cache
+ * @param {string} scope - OAuth scope(s) to request
+ * @param {Object} [options]
+ * @param {boolean} [options.interactive] - Skip silent attempt and go straight
+ *   to popup. Use when called from a click handler for a scope the user hasn't
+ *   consented to yet — the silent attempt would fail and the async fallback
+ *   loses the user-gesture context, causing browsers to block the popup.
  */
-function requestGISToken(cacheKey, scope) {
+function requestGISToken(cacheKey, scope, { interactive = false } = {}) {
   const cached = getCachedToken(cacheKey);
   if (cached) {
     console.log(`[AUTH] Using cached ${cacheKey} token`);
@@ -580,7 +594,7 @@ function requestGISToken(cacheKey, scope) {
       resolve(response.access_token);
     }
 
-    // Phase 2: Interactive popup (fallback when silent fails)
+    // Interactive popup
     function requestInteractive() {
       console.log(`[AUTH] Requesting ${cacheKey} access via interactive popup...`);
       const client = google.accounts.oauth2.initTokenClient({
@@ -600,7 +614,13 @@ function requestGISToken(cacheKey, scope) {
       client.requestAccessToken();
     }
 
-    // Phase 1: Silent attempt (no popup, works if user previously consented)
+    if (interactive) {
+      // Go straight to popup — preserves the user-gesture context
+      requestInteractive();
+      return;
+    }
+
+    // Silent attempt (no popup, works if user previously consented)
     console.log(`[AUTH] Attempting silent ${cacheKey} token acquisition...`);
     const silentClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
@@ -608,7 +628,6 @@ function requestGISToken(cacheKey, scope) {
       hint,
       callback: (response) => onTokenResponse(response, requestInteractive),
       error_callback: () => {
-        // Shouldn't fire with prompt:'none' (no popup to fail), but fall back defensively
         console.log(`[AUTH] Silent ${cacheKey} error_callback, trying interactive...`);
         requestInteractive();
       },
@@ -619,7 +638,7 @@ function requestGISToken(cacheKey, scope) {
 
 /**
  * Request Google Contacts access via Google Identity Services Token Model.
- * Returns a cached token if still valid; otherwise opens consent popup.
+ * Uses silent-first flow (works without popup after initial consent).
  * @returns {Promise<string>} - Google access token with contacts scope
  */
 export function requestContactsAccess() {
@@ -631,12 +650,16 @@ export function requestContactsAccess() {
 
 /**
  * Request Gmail send access via Google Identity Services Token Model.
- * Returns a cached token if still valid; otherwise opens consent popup.
+ * Uses interactive flow (straight to popup) because gmail.send is a
+ * sensitive scope that requires explicit consent — the silent-then-popup
+ * fallback loses the user-gesture context and gets blocked by browsers.
+ * After first consent, the token is cached and this returns immediately.
  * @returns {Promise<string>} - Google access token with Gmail send scope
  */
 export function requestGmailSendAccess() {
   return requestGISToken(
     'gmail-send',
     'https://www.googleapis.com/auth/gmail.send',
+    { interactive: true },
   );
 }

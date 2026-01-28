@@ -24,6 +24,15 @@
   pointer-events: none;
 }
 
+.toast-clickable {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.toast-clickable:hover {
+  filter: brightness(1.1);
+}
+
 /* Position variants */
 .toast-bottom {
   bottom: 2rem;
