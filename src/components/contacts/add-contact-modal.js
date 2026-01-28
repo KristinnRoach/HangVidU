@@ -27,16 +27,16 @@ export async function showAddContactModal() {
 
       <div class="platform-selector">
         <button type="button" class="platform-btn active" data-platform="google" title="Import from Google Contacts">
-          <i class="fa fa-google"></i>
+          <i class="fa-brands fa-google"></i>
         </button>
         <button type="button" class="platform-btn" data-platform="facebook" title="Import from Facebook (Coming soon)" disabled>
-          <i class="fa fa-facebook"></i>
+          <i class="fa-brands fa-facebook"></i>
         </button>
         <button type="button" class="platform-btn" data-platform="instagram" title="Import from Instagram (Coming soon)" disabled>
-          <i class="fa fa-instagram"></i>
+          <i class="fa-brands fa-instagram"></i>
         </button>
         <button type="button" class="platform-btn" data-platform="tiktok" title="Import from TikTok (Coming soon)" disabled>
-          <i class="fa fa-tiktok"></i>
+          <i class="fa-brands fa-tiktok"></i>
         </button>
       </div>
 
@@ -45,7 +45,7 @@ export async function showAddContactModal() {
           type="text"
           id="contact-search-input"
           class="contact-search-input"
-          placeholder="Search contacts or enter email..."
+          placeholder="Search..."
         />
       </div>
 
