@@ -1492,11 +1492,18 @@ window.onload = async () => {
         removeAllIncomingListeners();
         cleanupInviteListeners();
       } else if (isActualLogin) {
-        // On login, re-attach listeners for saved rooms
+        // On login, re-attach listeners for saved rooms FIRST (before notification setup)
+        // so incoming calls are detected immediately
         devDebug('[AUTH] User logged in - re-attaching incoming listeners');
 
+        await startListeningForSavedRooms().catch((e) =>
+          console.warn('Failed to re-attach saved-room listeners on login', e),
+        );
+        // Start listening for contact invites
+        setupInviteListener();
+
         // Enable notifications for the new user (in production)
-        // This happens after auth is ready and user is confirmed logged in
+        // This happens after listeners are ready so calls aren't missed during FCM setup
         if (import.meta.env.PROD) {
           const currentUserId = getLoggedInUserId();
 
@@ -1520,17 +1527,9 @@ window.onload = async () => {
                 );
               }
             } else if (permissionState === 'default') {
-              // Request permission for new user
-              // Note: This should ideally be triggered by an explicit user action
-              // (e.g., clicking a "Enable Notifications" button) for better browser support.
-              // However, since this is in the login flow (which is a user action),
-              // it may work in most browsers.
               console.log(
                 '[AUTH] Notification permission in default state - consider showing opt-in UI',
               );
-
-              // For now, we defer to explicit user action rather than auto-requesting
-              // Users can enable via the notifications toggle or test button
               console.log(
                 '[AUTH] User can enable notifications via the notifications toggle',
               );
@@ -1541,12 +1540,6 @@ window.onload = async () => {
             }
           }
         }
-
-        await startListeningForSavedRooms().catch((e) =>
-          console.warn('Failed to re-attach saved-room listeners on login', e),
-        );
-        // Start listening for contact invites
-        setupInviteListener();
       } else if (isInitialLoad && isLoggedIn) {
         // If user is already logged in on initial load (e.g., after redirect)
         devDebug('[AUTH] Initial load with logged-in user');
@@ -1702,6 +1695,11 @@ CallController.on(
 
     cleanupRemoteStream();
     clearUrlParam();
+
+    // Re-attach incoming listener so the next call on this room is detected
+    if (roomId) {
+      listenForIncomingOnRoom(roomId);
+    }
 
     // Prompt to save contact after cleanup (if partner was present)
     if (partnerId && roomId) {
