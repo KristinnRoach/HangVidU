@@ -470,7 +470,7 @@ function renderImportResults(
 
       // Step 4: Prepare email content
       const subject = 'Join me on HangVidU!';
-      const body = `Hi!\n\n${senderName} invited you to join HangVidU - a simple video chat app.\n\nClick here to get started:\n${referralLink}\n\nSee you there!`;
+      const body = `Hi!\n\n${senderName} invited you to join HangVidU - an app for text messaging, video calls and video sharing.\n\nClick here to get started:\n${referralLink}\n\nSee you there!`;
 
       // Step 5: Send emails via Gmail API
       const results = await sendBulkEmailsViaGmail(
@@ -541,7 +541,7 @@ function renderImportResults(
 
     const subject = encodeURIComponent('Join me on HangVidU!');
     const body = encodeURIComponent(
-      `Hi!\n\n${senderName} invited you to join HangVidU - a simple video chat app.\n\nClick here to get started:\n${referralLink}\n\nSee you there!\n`,
+      `Hi!\n\n${senderName} invited you to join HangVidU - an app for text messaging, video calls and video sharing.\n\nClick here to get started:\n${referralLink}\n\nSee you there!\n`,
     );
 
     let mailtoLink;

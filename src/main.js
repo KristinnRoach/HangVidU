@@ -88,6 +88,13 @@ import {
   cleanupInviteListeners,
 } from './contacts/invitations.js';
 
+import {
+  captureReferral,
+  processReferral,
+} from './contacts/referral-handler.js';
+
+import { showSuccessToast } from './utils/ui/toast.js';
+
 // import { getContactByRoomId } from './components/contacts/contacts.js';
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
@@ -1384,8 +1391,14 @@ function setupInviteListener() {
       '[INVITATIONS] Your invite was accepted by:',
       acceptData.acceptedByName,
     );
+
+    // Refresh contacts list to show new contact
     await renderContactsList(lobbyDiv).catch(() => {});
-    alert(`${acceptData.acceptedByName} accepted your invitation!`);
+
+    // Show success toast
+    showSuccessToast(
+      `✅ ${acceptData.acceptedByName} is now in your contacts!`,
+    );
   });
 }
 
@@ -1394,6 +1407,9 @@ function setupInviteListener() {
 // ============================================================================
 
 window.onload = async () => {
+  // Capture referral link BEFORE auth (stores referrer ID in localStorage)
+  captureReferral();
+
   const initSuccess = await init();
 
   if (!initSuccess) {
@@ -1496,6 +1512,11 @@ window.onload = async () => {
         // so incoming calls are detected immediately
         devDebug('[AUTH] User logged in - re-attaching incoming listeners');
 
+        // Process referral if user signed up via referral link
+        await processReferral().catch((e) =>
+          console.warn('[REFERRAL] Failed to process referral on login:', e),
+        );
+
         await startListeningForSavedRooms().catch((e) =>
           console.warn('Failed to re-attach saved-room listeners on login', e),
         );
@@ -1543,6 +1564,15 @@ window.onload = async () => {
       } else if (isInitialLoad && isLoggedIn) {
         // If user is already logged in on initial load (e.g., after redirect)
         devDebug('[AUTH] Initial load with logged-in user');
+
+        // Process referral if user signed up via referral link
+        await processReferral().catch((e) =>
+          console.warn(
+            '[REFERRAL] Failed to process referral on initial load:',
+            e,
+          ),
+        );
+
         // Listeners already attached by startListeningForSavedRooms, no action needed
         // Start listening for contact invites
         setupInviteListener();

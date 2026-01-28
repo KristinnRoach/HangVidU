@@ -21,6 +21,7 @@
 @import './components/reactions.css';
 @import './components/search.css';
 @import './components/notifications.css';
+@import './components/toast.css';
 
 /* Default visible state for elements that toggle visibility */
 .video-box,

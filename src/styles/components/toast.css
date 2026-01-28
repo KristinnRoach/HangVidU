@@ -1,0 +1,58 @@
+/* Toast Notifications */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: white;
+
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+  opacity: 0;
+  transition: all 0.3s ease;
+
+  z-index: 10000;
+  max-width: 90vw;
+  text-align: center;
+
+  pointer-events: none;
+}
+
+/* Position variants */
+.toast-bottom {
+  bottom: 2rem;
+}
+
+.toast-top {
+  top: 2rem;
+  transform: translateX(-50%) translateY(-100px);
+}
+
+/* Show state */
+.toast-show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Type variants */
+.toast-success {
+  background-color: #4caf50;
+}
+
+.toast-error {
+  background-color: #f44336;
+}
+
+.toast-warning {
+  background-color: #ff9800;
+}
+
+.toast-info {
+  background-color: #2196f3;
+}
