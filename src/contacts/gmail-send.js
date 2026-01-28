@@ -74,8 +74,9 @@ export async function sendBulkEmailsViaGmail(
 ) {
   const results = { sent: 0, failed: 0, errors: [] };
 
-  // Send emails sequentially to avoid rate limiting
-  for (const recipient of recipients) {
+  // Send emails sequentially with a short delay to respect Gmail API rate limits
+  for (let i = 0; i < recipients.length; i++) {
+    const recipient = recipients[i];
     try {
       await sendEmailViaGmail(accessToken, recipient.email, subject, body);
       results.sent++;
@@ -89,6 +90,10 @@ export async function sendBulkEmailsViaGmail(
         error: msg,
       });
       console.error(`[GMAIL] Failed to send to ${recipient.name}:`, msg);
+    }
+    // Brief pause between sends to avoid hitting Gmail API rate limits
+    if (i < recipients.length - 1) {
+      await new Promise((r) => setTimeout(r, 150));
     }
   }
 

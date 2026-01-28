@@ -522,9 +522,10 @@ function getCachedToken(key) {
 }
 
 function cacheToken(key, token, expiresInSeconds) {
+  const expiry = expiresInSeconds > 0 ? expiresInSeconds : 3600;
   _tokenCache[key] = {
     token,
-    expiresAt: Date.now() + expiresInSeconds * 1000 - TOKEN_EXPIRY_BUFFER_MS,
+    expiresAt: Date.now() + expiry * 1000 - TOKEN_EXPIRY_BUFFER_MS,
   };
 }
 

@@ -314,9 +314,10 @@ function renderImportResults(container, allContacts, selectedContacts) {
       });
     }
 
-    // Handle checkbox selection
+    // Handle checkbox selection — restore checked state from Set
     const checkbox = li.querySelector('.contact-checkbox');
     if (checkbox && !isAlreadySaved) {
+      checkbox.checked = selectedContacts.has(contact);
       checkbox.addEventListener('change', () => {
         if (checkbox.checked) {
           selectedContacts.add(contact);
