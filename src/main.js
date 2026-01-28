@@ -5,7 +5,6 @@
 // ============================================================================
 
 import './initSentry.js';
-import '@fortawesome/fontawesome-free/css/all.min.css';
 import { set, get, remove } from 'firebase/database';
 import {
   removeAllRTDBListeners,
@@ -93,9 +92,11 @@ import {
   processReferral,
 } from './contacts/referral-handler.js';
 
-import { showSuccessToast, showErrorToast } from './utils/ui/toast.js';
-
 // import { getContactByRoomId } from './components/contacts/contacts.js';
+
+// TODO: notificationManager VS notificationController - Compare and clarify distinction or combine!
+import { notificationManager } from './components/notifications/notification-manager.js';
+import { notificationController } from './notifications/notification-controller.js';
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
 import './ui/state.js'; // Initialize UI state (sets body data-view attribute)
@@ -132,10 +133,10 @@ import {
   cleanupSearchUI,
   initializeSearchUI,
 } from './media/youtube/youtube-search.js';
-import { addDebugUpdateButton } from './components/notifications/debug-notifications.js';
-import { notificationManager } from './components/notifications/notification-manager.js';
+
 import { createNotificationsToggle } from './components/notifications/notifications-toggle.js';
-import { notificationController } from './notifications/notification-controller.js';
+import { showSuccessToast, showErrorToast } from './utils/ui/toast.js';
+import { createInviteNotification } from './components/notifications/invite-notification.js';
 
 import { showElement, hideElement } from './utils/ui/ui-utils.js';
 import { initializeAuthUI } from './components/auth/AuthComponent.js';
@@ -155,6 +156,8 @@ import {
 } from './components/calling/calling-ui.js';
 import { isRemoteVideoVideoActive } from './ui/legacy/watch-mode.js';
 import { onCallConnected, onCallDisconnected } from './ui/call-lifecycle-ui.js';
+
+import { addDebugUpdateButton } from './components/notifications/debug-notifications.js';
 // ____ UI END ____
 
 // Import and call iOS PWA redirect helper
@@ -1338,7 +1341,7 @@ let isProcessingInvite = false;
 
 /**
  * Process the next invite in the queue.
- * Shows dialogs one at a time to prevent overlap.
+ * Shows invite notification in the notification list.
  */
 async function processNextInvite() {
   if (isProcessingInvite || pendingInvites.length === 0) return;
@@ -1347,29 +1350,53 @@ async function processNextInvite() {
   const { fromUserId, inviteData } = pendingInvites.shift();
 
   try {
-    const accept = await confirmDialog(
-      `${inviteData.fromName || 'Someone'} wants to connect.\n\nAccept contact invitation?`,
-    );
+    // Create invite notification
+    const inviteNotification = createInviteNotification({
+      fromUserId,
+      inviteData,
+      onAccept: async () => {
+        try {
+          await acceptInvite(fromUserId, inviteData);
+          console.log('[INVITATIONS] Contact added:', inviteData.fromName);
+          await renderContactsList(lobbyDiv).catch(() => {});
+          showSuccessToast(`✅ ${inviteData.fromName} added to contacts!`);
 
-    if (accept) {
-      try {
-        await acceptInvite(fromUserId, inviteData);
-        console.log('[INVITATIONS] Contact added:', inviteData.fromName);
-        await renderContactsList(lobbyDiv).catch(() => {});
-        showSuccessToast(`✅ ${inviteData.fromName} added to contacts!`);
-      } catch (e) {
-        console.error('[INVITATIONS] Failed to accept invite:', e);
-        showErrorToast('Failed to add contact. Please try again.');
-      }
-    } else {
-      try {
-        await declineInvite(fromUserId);
-        console.log('[INVITATIONS] Invite declined');
-      } catch (e) {
-        console.error('[INVITATIONS] Failed to decline invite:', e);
-      }
+          // Remove notification after successful accept
+          notificationManager.remove(`invite-${fromUserId}`);
+        } catch (e) {
+          console.error('[INVITATIONS] Failed to accept invite:', e);
+          showErrorToast('Failed to add contact. Please try again.');
+          // Keep notification visible on error
+        } finally {
+          isProcessingInvite = false;
+          processNextInvite();
+        }
+      },
+      onDecline: async () => {
+        try {
+          await declineInvite(fromUserId);
+          console.log('[INVITATIONS] Invite declined');
+
+          // Remove notification after decline
+          notificationManager.remove(`invite-${fromUserId}`);
+        } catch (e) {
+          console.error('[INVITATIONS] Failed to decline invite:', e);
+        } finally {
+          isProcessingInvite = false;
+          processNextInvite();
+        }
+      },
+    });
+
+    // Add to notification manager
+    notificationManager.add(`invite-${fromUserId}`, inviteNotification);
+
+    // Show the notification list if it's hidden
+    if (!notificationManager.isListVisible()) {
+      notificationManager.showList();
     }
-  } finally {
+  } catch (error) {
+    console.error('[INVITATIONS] Failed to process invite:', error);
     isProcessingInvite = false;
     processNextInvite();
   }

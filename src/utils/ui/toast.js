@@ -1,5 +1,7 @@
 // toast.js - Simple toast notification system
 
+import { isDev } from '../dev/dev-utils';
+
 /**
  * Show a toast notification message.
  * @param {string} message - The message to display
@@ -31,6 +33,16 @@ export function showToast(message, options = {}) {
       toast.remove();
     }, 300); // Wait for fade-out animation
   }, duration);
+}
+
+if (isDev()) {
+  // Add to window for easy testing via browser console
+  window.toast = showToast;
+  window.successToast = showSuccessToast;
+  window.errorToast = showErrorToast;
+  window.infoToast = showInfoToast;
+  window.warningToast = showWarningToast;
+  console.log('Toast functions loaded! Try: successToast("Hello!")');
 }
 
 /**
