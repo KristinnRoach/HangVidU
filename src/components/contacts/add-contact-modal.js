@@ -55,6 +55,8 @@ export async function showAddContactModal() {
 
       <div id="import-status" class="import-status"></div>
 
+      <div id="bulk-actions-container" class="bulk-actions-container"></div>
+
       <div class="modal-footer">
         <button type="button" data-action="cancel" class="cancel-btn">Close</button>
       </div>
@@ -64,6 +66,9 @@ export async function showAddContactModal() {
     const searchInput = dialog.querySelector('#contact-search-input');
     const importStatus = dialog.querySelector('#import-status');
     const contactsContainer = dialog.querySelector('#contacts-container');
+    const bulkActionsContainer = dialog.querySelector(
+      '#bulk-actions-container',
+    );
     const platformBtns = dialog.querySelectorAll('.platform-btn');
 
     let currentPlatform = 'google';
@@ -110,12 +115,19 @@ export async function showAddContactModal() {
       } else {
         filteredContacts = allContacts.filter((contact) => {
           const nameMatch = (contact.name || '').toLowerCase().includes(query);
-          const emailMatch = (contact.email || '').toLowerCase().includes(query);
+          const emailMatch = (contact.email || '')
+            .toLowerCase()
+            .includes(query);
           return nameMatch || emailMatch;
         });
       }
 
-      renderImportResults(contactsContainer, filteredContacts, selectedContacts);
+      renderImportResults(
+        contactsContainer,
+        bulkActionsContainer,
+        filteredContacts,
+        selectedContacts,
+      );
     });
 
     // Import Google Contacts function
@@ -201,7 +213,12 @@ export async function showAddContactModal() {
         importStatus.textContent = `Found ${allContacts.length} contacts`;
         importStatus.className = 'import-status success';
 
-        renderImportResults(contactsContainer, filteredContacts, selectedContacts);
+        renderImportResults(
+          contactsContainer,
+          bulkActionsContainer,
+          filteredContacts,
+          selectedContacts,
+        );
       } catch (error) {
         console.error('[ADD CONTACT] Import error:', error);
 
@@ -232,7 +249,12 @@ export async function showAddContactModal() {
  * Render import results with checkboxes for selection and invite/share actions.
  * Shows all contacts with indicators for: already saved, on HangVidU, not on HangVidU.
  */
-function renderImportResults(container, allContacts, selectedContacts) {
+function renderImportResults(
+  container,
+  bulkActionsContainer,
+  allContacts,
+  selectedContacts,
+) {
   container.innerHTML = '';
 
   if (allContacts.length === 0) {
@@ -287,10 +309,10 @@ function renderImportResults(container, allContacts, selectedContacts) {
       <label class="contact-item-label">
         <input type="checkbox" class="contact-checkbox" data-email="${escapeHtml(email)}" ${isAlreadySaved ? 'disabled' : ''} />
         <span class="contact-info">
-          <strong>${escapeHtml(name)}</strong>
-          <small>${escapeHtml(email)}</small>
-          ${statusBadge}
+          <strong class="contact-name">${escapeHtml(name)}</strong>
+          <small class="contact-email">${escapeHtml(email)}</small>
         </span>
+        ${statusBadge}
       </label>
       ${actionButton}
     `;
@@ -355,23 +377,22 @@ function renderImportResults(container, allContacts, selectedContacts) {
     updateActionButtons();
   });
 
-  // Create action buttons section
-  const actionsSection = document.createElement('div');
-  actionsSection.className = 'bulk-actions';
-  actionsSection.innerHTML = `
-    <button type="button" id="invite-selected-btn" class="action-btn" disabled>
-      Invite Selected (0)
-    </button>
-    <button type="button" id="share-link-btn" class="action-btn secondary" disabled>
-      Email Invite (0)
-    </button>
+  // Create action buttons section - now in separate container outside scrollable area
+  bulkActionsContainer.innerHTML = `
+    <div class="bulk-actions">
+      <button type="button" id="invite-selected-btn" class="action-btn" disabled>
+        Invite Selected (0)
+      </button>
+      <button type="button" id="share-link-btn" class="action-btn secondary" disabled>
+        Email Invite (0)
+      </button>
+    </div>
   `;
-  container.appendChild(actionsSection);
 
-  const inviteSelectedBtn = actionsSection.querySelector(
+  const inviteSelectedBtn = bulkActionsContainer.querySelector(
     '#invite-selected-btn',
   );
-  const shareLinkBtn = actionsSection.querySelector('#share-link-btn');
+  const shareLinkBtn = bulkActionsContainer.querySelector('#share-link-btn');
 
   // Update button states based on selection
   function updateActionButtons() {

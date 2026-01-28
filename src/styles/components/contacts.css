@@ -352,6 +352,7 @@
 
 .add-contact-modal .contact-item {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem;
@@ -398,16 +399,20 @@
 }
 
 .add-contact-modal .contact-info strong {
-  color: white;
   font-size: 1rem;
+  max-width: 15em;
+
+  color: white;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .add-contact-modal .contact-info small {
-  color: #aaa;
   font-size: 0.85rem;
+  max-width: 15em;
+
+  color: #aaa;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -459,6 +464,11 @@
 
 .add-contact-modal .invite-btn.sent:hover {
   background-color: #555;
+}
+
+/* Bulk Actions Container - outside scrollable area */
+.add-contact-modal .bulk-actions-container {
+  margin-top: 1rem;
 }
 
 /* Bulk Actions */
