@@ -316,8 +316,8 @@ function attachContactListeners(container, lobbyElement) {
           });
 
           // Send push notification to the contact being called
-          // Note: We send this regardless of foreground/background state
-          // because the RECIPIENT should always be notified of incoming calls
+          // The sender's foreground state is irrelevant — the recipient
+          // should always be notified of incoming calls
           try {
             const currentUser = getCurrentUser();
             const callerName =

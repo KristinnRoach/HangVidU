@@ -114,22 +114,17 @@ describe('NotificationController', () => {
       );
     });
 
-    it('should not send notification when disabled', async () => {
+    it('should send call notification regardless of isEnabled (push targets recipient)', async () => {
       controller.isEnabled = false;
       const spy = vi.spyOn(mockTransport, 'sendCallNotification');
-
-      // Mock document.hidden to simulate background
-      Object.defineProperty(document, 'hidden', {
-        configurable: true,
-        get: () => true,
-      });
 
       const result = await controller.sendCallNotification('user123', {
         roomId: 'room456',
       });
 
-      // Controller doesn't check isEnabled, only document visibility
-      // So notification will be sent if app is in background
+      // sendCallNotification only checks enableCallNotifications option,
+      // not isEnabled or document visibility — those are irrelevant for
+      // push notifications targeting another device
       expect(result).toBe(true);
       expect(spy).toHaveBeenCalled();
     });
