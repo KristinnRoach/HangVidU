@@ -2,6 +2,8 @@
 
 ## Overview
 
+### NOTE: NotificationManager was renamed to InAppNotificationManager (./in-app-notification-manager.js). TODO: Rename references here.
+
 The notification system consists of three main parts:
 
 1. **NotificationManager** - Centralized manager for all notifications
