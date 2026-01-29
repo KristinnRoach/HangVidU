@@ -63,7 +63,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
 
   // DEV-only: Delete Account button is for dev/testing. Will be properly integrated into settings UI later.
   const deleteAccountBtn = isDev()
-    ? '<button id="delete-account-btn" class="delete-account-btn" onclick="handleDeleteAccount">Delete Account</button>'
+    ? '<button id="delete-account-btn" class="delete-account-btn" style="display: none" onclick="handleDeleteAccount">Delete Account</button>'
     : '';
 
   authComponent = createComponent({
@@ -76,10 +76,12 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       photoDisplay: 'none',
       signingInDisplay: 'none',
       loginBtnMarginRightPx,
+      loginBtnDisplay: initialLoggedIn ? 'none' : 'inline-block',
+      logoutBtnDisplay: initialLoggedIn ? 'inline-block' : 'none',
     },
     template: `
-      <button style="margin-right: \${loginBtnMarginRightPx}px" id="goog-login-btn" class="login-btn" onclick="handleLogin">Login</button>
-      <button id="goog-logout-btn" class="logout-btn" onclick="handleLogout">Logout</button>
+      <button style="margin-right: \${loginBtnMarginRightPx}px; display: \${loginBtnDisplay}" id="goog-login-btn" class="login-btn" onclick="handleLogin">Login</button>
+      <button style="display: \${logoutBtnDisplay}" id="goog-logout-btn" class="logout-btn" onclick="handleLogout">Logout</button>
       ${deleteAccountBtn}
       <span class="signing-in-indicator" style="display: \${signingInDisplay}; color: var(--text-secondary, #888); font-size: 0.9rem;">Signing in...</span>
       <div class="user-info" style="display: \${userInfoDisplay}">
@@ -128,11 +130,13 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         const loginBtn = el.querySelector('#goog-login-btn');
         const logoutBtn = el.querySelector('#goog-logout-btn');
         if (loginBtn && logoutBtn) {
-          loginBtn.disabled = loggedIn;
-          logoutBtn.disabled = !loggedIn;
+          loginBtn.style.display = loggedIn ? 'none' : 'inline-block';
+          logoutBtn.style.display = loggedIn ? 'inline-block' : 'none';
         }
         const deleteBtn = el.querySelector('#delete-account-btn');
-        if (deleteBtn) deleteBtn.disabled = !loggedIn;
+        if (deleteBtn) {
+          deleteBtn.style.display = loggedIn ? 'inline-block' : 'none';
+        }
       };
 
       // Set initial button states
@@ -160,6 +164,8 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           photoDisplay: photoURL ? 'block' : 'none',
           avatarDisplay: photoURL ? 'none' : 'flex',
           signingInDisplay: 'none', // Hide loading indicator when auth resolves
+          loginBtnDisplay: isLoggedIn ? 'none' : 'inline-block',
+          logoutBtnDisplay: isLoggedIn ? 'inline-block' : 'none',
         });
       });
 
