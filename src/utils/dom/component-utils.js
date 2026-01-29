@@ -24,25 +24,39 @@ const sanitize = (str) => {
 };
 
 /**
- * Interpolate props into a template string by replacing ${prop} with the prop value.
- * Supports nested properties (e.g., ${user.name}).
+ * Supported interpolation syntaxes for templates.
+ * - ${prop} (legacy, for backward compatibility)
+ * - [[prop]] (default, preferred for clarity and no JS conflicts)
+ */
+const INTERPOLATION_SYNTAXES = [
+  { regex: /\$\{([^}]+)\}/g, type: 'legacy' }, // NOTE: to be deprecated!
+  { regex: /\[\[([^\]]+)\]\]/g, type: 'default' },
+];
+
+/**
+ * Interpolate props into a template string by replacing supported placeholders with the prop value.
+ * Supports nested properties (e.g., ${user.name} or [[user.name]]).
  * Properties ending with "Html" are treated as raw HTML (unsafe) and not sanitized.
  * @param {string} templateStr - The template string containing placeholders.
  * @param {Object} props - The object of current property values.
  * @returns {string} The interpolated string.
  */
 const interpolate = (templateStr, props) => {
-  return templateStr.replace(/\$\{([^}]+)\}/g, (_, key) => {
-    const trimmedKey = key.trim();
-    // Resolve nested properties (e.g., "user.name")
-    const value = trimmedKey
-      .split('.')
-      .reduce((obj, prop) => obj?.[prop], props);
-    if (value == null) return '';
-    // Properties ending with "Html" are treated as raw/unsafe HTML
-    const isHtml = trimmedKey.endsWith('Html');
-    return isHtml ? String(value) : sanitize(String(value));
-  });
+  let result = templateStr;
+  for (const { regex } of INTERPOLATION_SYNTAXES) {
+    result = result.replace(regex, (_, key) => {
+      const trimmedKey = key.trim();
+      // Resolve nested properties (e.g., "user.name")
+      const value = trimmedKey
+        .split('.')
+        .reduce((obj, prop) => obj?.[prop], props);
+      if (value == null) return '';
+      // Properties ending with "Html" are treated as raw/unsafe HTML
+      const isHtml = trimmedKey.endsWith('Html');
+      return isHtml ? String(value) : sanitize(String(value));
+    });
+  }
+  return result;
 };
 
 /**
@@ -75,7 +89,7 @@ const getPathForElement = (root, target) => {
 const getElementByPath = (root, path) => {
   return path.reduce(
     (node, idx) => (node && node.children ? node.children[idx] : null),
-    root
+    root,
   );
 };
 
@@ -93,7 +107,7 @@ const captureInputState = (element) => {
       selectionStart: el.selectionStart,
       selectionEnd: el.selectionEnd,
       wasFocused: document.activeElement === el,
-    })
+    }),
   );
 };
 
@@ -120,7 +134,7 @@ const restoreInputState = (element, states) => {
       // the `name` attribute value directly to avoid building fragile
       // attribute selectors. This avoids ambiguity and escaping pitfalls.
       const candidates = element.querySelectorAll(
-        'input[name], textarea[name], select[name]'
+        'input[name], textarea[name], select[name]',
       );
       for (const node of candidates) {
         if (node.getAttribute('name') === state.name) {

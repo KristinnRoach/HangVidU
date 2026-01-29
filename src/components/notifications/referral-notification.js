@@ -20,7 +20,7 @@ export function createReferralNotification({
   const name = referrerName || 'Someone';
 
   const iconHtml = referrerPhotoURL
-    ? `<img src="${escapeHtml(referrerPhotoURL)}" alt="${escapeHtml(name)}" class="notification-avatar" />`
+    ? `<img src="[[referrerPhotoURL]]" alt="[[name]]" class="notification-avatar" />`
     : '<span class="notification-icon">👤</span>';
 
   return createNotification({
@@ -32,7 +32,7 @@ export function createReferralNotification({
         </div>
         <div class="notification-body">
           <p class="notification-message">
-            <strong>${escapeHtml(name)}</strong> invited you to connect
+            <strong>[[name]]</strong> invited you to connect
           </p>
           <p class="notification-detail">Sign in to add them as a contact</p>
         </div>

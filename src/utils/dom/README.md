@@ -10,8 +10,8 @@ import createComponent from './component.js';
 const card = createComponent({
   initialProps: { name: 'Ada', count: 0 },
   template: `
-    <h2>\${name}</h2>
-    <p>Count: \${count}</p>
+    <h2>[[name]]</h2>
+    <p>Count: [[count]]</p>
   `,
   parent: document.body,
 });
@@ -30,7 +30,7 @@ card.update({ name: 'Alan', count: 10 });
 const counter = createComponent({
   initialProps: { count: 0 },
   template: `
-    <button onclick="increment">Count: \${count}</button>
+    <button onclick="increment">Count: [[count]]</button>
     <button onclick="decrement">-</button>
   `,
   handlers: {
@@ -49,7 +49,7 @@ const counter = createComponent({
 const form = createComponent({
   initialProps: { label: 'Name' },
   template: `
-    <label>\${label}</label>
+    <label>[[label]]</label>
     <input type="text" placeholder="Type here" />
   `,
   parent: document.body,
@@ -88,34 +88,34 @@ const profile = createComponent({
   initialProps: {
     user: { name: 'Ada', age: 30 },
   },
-  template: `<p>\${user.name} is \${user.age}</p>`,
+  template: `<p>[[user.name]] is [[user.age]]</p>`,
 });
 ```
 
 ## Template Syntax & Limitations
 
 **✅ Supported:**
+
 ```javascript
-${propName}                    // Simple property
-${user.name}                   // Nested property
-${contentHtml}                 // Raw HTML (props ending with "Html")
+[[propName]][[user.name]][[contentHtml]]; // Simple property // Nested property // Raw HTML (props ending with "Html")
 ```
 
 **❌ NOT Supported (expressions):**
+
 ```javascript
-${count > 0 ? 'yes' : 'no'}   // Conditional expressions
-${items.length}                // Method calls
-${price * 1.1}                 // Arithmetic
-${name.toUpperCase()}          // String methods
+[[count > 0 ? 'yes' : 'no']][[items.length]][[price * 1.1]][ // Conditional expressions // Method calls // Arithmetic
+  [name.toUpperCase()]
+]; // String methods
 ```
 
 **Why:** Templates use simple string interpolation, not JavaScript evaluation. Expressions are treated as property paths and return empty string when not found.
 
 **Workaround:** Use `onPropUpdated()` for dynamic behavior:
+
 ```javascript
 const toggle = createComponent({
   initialProps: { count: 0 },
-  template: `<span class="badge">\${count}</span>`,
+  template: `<span class="badge">[[count]]</span>`,
 });
 
 // Set initial state
@@ -132,13 +132,14 @@ toggle.onPropUpdated('count', (count) => {
 ```
 
 **Template String Escaping:**
-When writing templates inside template literals, escape `${}` placeholders:
-```javascript
-// ❌ Wrong - evaluated immediately as JavaScript
-template: `<div>${count}</div>`
+When writing templates inside template literals, use `[[prop]]` to avoid JavaScript interpolation issues:
 
-// ✅ Correct - becomes literal "${count}" for createComponent
-template: `<div>${'${'}count${'}'}</div>`
+```javascript
+// ✅ Preferred - no escaping needed
+template: `<div>[[count]]</div>`;
+
+// Legacy (still supported, but not recommended):
+// template: `<div>${'${'}count${'}'}</div>`
 ```
 
 ## Raw HTML (XSS Risk)
@@ -151,8 +152,8 @@ const card = createComponent({
     iconHtml: '<i class="fa fa-user"></i>', // Raw HTML
   },
   template: `
-    <div>\${safeText}</div>
-    <div>\${iconHtml}</div>
+    <div>[[safeText]]</div>
+    <div>[[iconHtml]]</div>
   `,
 });
 ```
@@ -217,7 +218,7 @@ card.onRender((props) => console.log('Rendered:', props));
 
 // Any prop change (render optional)
 card.onAnyPropUpdated(({ changedKeys }) =>
-  console.log('Changed:', changedKeys)
+  console.log('Changed:', changedKeys),
 );
 
 // Specific prop
@@ -227,6 +228,7 @@ card.onPropUpdated('count', (v) => console.log('count →', v));
 ### When to Use Which Listener?
 
 **Use `onPropUpdated(prop, callback)`** when:
+
 - ✅ You need to update DOM elements that are IN the template
 - ✅ You need to react to a specific prop change
 - ✅ **Always re-query elements inside the callback** (re-renders create new DOM)
@@ -239,6 +241,7 @@ toggle.onPropUpdated('count', (count) => {
 ```
 
 **Use `onRender(callback)`** when:
+
 - ✅ You need to do something after ANY prop changes and re-render
 - ✅ You're working with multiple props at once
 - ✅ You need the full props object
@@ -251,6 +254,7 @@ card.onRender(({ name, email }) => {
 ```
 
 **Use `onAnyPropUpdated(callback)`** when:
+
 - ✅ You need to track changes WITHOUT waiting for re-render
 - ✅ You need to know which specific props changed
 - ✅ Performance-critical scenarios (runs even if no re-render)
@@ -264,6 +268,7 @@ card.onAnyPropUpdated(({ props, changedKeys }) => {
 ```
 
 **Rule of thumb:**
+
 - 90% of the time → `onPropUpdated` (and always re-query elements!)
 - Multiple props → `onRender`
 - Advanced/performance → `onAnyPropUpdated`

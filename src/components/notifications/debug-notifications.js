@@ -18,7 +18,7 @@ function createDummyNotification() {
   const notification = createNotification({
     template: `
       <div class="update-content">
-        <p>Dummy Notification #${'${'}number${'}'}</p>
+        <p>Dummy Notification #[[number]]</p>
         <div class="update-actions">
           <button onclick="handleDismiss">Dismiss</button>
         </div>

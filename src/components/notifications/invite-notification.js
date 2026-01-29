@@ -25,7 +25,7 @@ export function createInviteNotification({
 
   // Use profile picture if available, otherwise use emoji icon
   const iconHtml = fromPhotoURL
-    ? `<img src="${escapeHtml(fromPhotoURL)}" alt="${escapeHtml(fromName)}" class="notification-avatar" />`
+    ? `<img src="[[fromPhotoURL]]" alt="[[fromName]]" class="notification-avatar" />`
     : '<span class="notification-icon">👤</span>';
 
   const notification = createNotification({
@@ -37,7 +37,7 @@ export function createInviteNotification({
         </div>
         <div class="notification-body">
           <p class="notification-message">
-            <strong>${escapeHtml(fromName)}</strong> wants to connect
+            <strong>[[fromName]]</strong> wants to connect
           </p>
           ${fromEmail ? `<p class="notification-detail">${escapeHtml(fromEmail)}</p>` : ''}
         </div>

@@ -10,14 +10,14 @@ export function createForm(parent) {
 
     template: `
       <div style="padding: 20px;">
-        <h2>\${title}</h2>
+        <h2>[[title]]</h2>
         <form>
           <input type="text" name="username" placeholder="Username" style="display: block; margin: 10px 0; padding: 8px;">
           <input type="email" name="email" placeholder="Email" style="display: block; margin: 10px 0; padding: 8px;">
           <textarea name="bio" placeholder="Bio" style="display: block; margin: 10px 0; padding: 8px; width: 200px; height: 60px;"></textarea>
           <button type="submit" style="padding: 10px 20px;">Submit</button>
         </form>
-        <p>Submitted: \${submitCount} times</p>
+        <p>Submitted: [[submitCount]] times</p>
         <button onclick="changeTitle" style="margin-top: 10px; padding: 8px;">
           Change Title (triggers re-render)
         </button>

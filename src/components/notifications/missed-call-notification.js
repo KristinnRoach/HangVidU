@@ -35,7 +35,7 @@ export function createMissedCallNotification({
         </div>
         <div class="notification-body">
           <p class="notification-message">
-            <strong>${escapeHtml(displayName)}</strong> tried to call you
+            <strong>[[displayName]]</strong> tried to call you
           </p>
         </div>
         <div class="notification-actions">

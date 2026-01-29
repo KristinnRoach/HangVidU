@@ -31,6 +31,7 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --run --coverage",
     "test:compat": "COMPAT=true vitest --run",
+    "test:create-component": "vitest --run src/utils/dom/**/*.test.js",
     "test:smoke": "vitest --run tests/smoke/ src/**/*.test.js",
     "test:unit": "vitest --run tests/unit/ src/**/*.test.js",
     "test:integration": "vitest --run tests/integration/ src/**/*.test.js",
