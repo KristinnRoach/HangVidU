@@ -18,6 +18,30 @@ import createComponent from '../../utils/dom/component.js';
 
 let authComponent = null;
 
+/**
+ * Smart truncation that tries to show first name
+ * @param {string} fullName - Full display name
+ * @param {number} maxLength - Maximum length (default 20)
+ * @returns {string} Truncated name
+ */
+function smartTruncateName(fullName, maxLength = 20) {
+  if (!fullName || fullName.length <= maxLength) {
+    return fullName;
+  }
+
+  // Try to extract first name (before first space)
+  const parts = fullName.split(' ');
+  const firstName = parts[0];
+
+  // If first name fits, use it
+  if (firstName.length <= maxLength) {
+    return firstName;
+  }
+
+  // If first name is too long, truncate it
+  return firstName.slice(0, maxLength - 3) + '...';
+}
+
 export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
   if (authComponent) return authComponent;
 
@@ -46,6 +70,10 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
     initialProps: {
       isLoggedIn: initialLoggedIn,
       userName: 'Guest User',
+      userPhotoURL: '',
+      userInfoDisplay: 'none',
+      avatarDisplay: 'none',
+      photoDisplay: 'none',
       signingInDisplay: 'none',
       loginBtnMarginRightPx,
     },
@@ -54,7 +82,11 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       <button id="goog-logout-btn" class="logout-btn" onclick="handleLogout">Logout</button>
       ${deleteAccountBtn}
       <span class="signing-in-indicator" style="display: \${signingInDisplay}; color: var(--text-secondary, #888); font-size: 0.9rem;">Signing in...</span>
-      <div class="user-info">\${isLoggedIn ? 'Logged in: ' + userName : 'Logged out'}</div>
+      <div class="user-info" style="display: \${userInfoDisplay}">
+        <img src="\${userPhotoURL}" alt="\${userName}" class="user-avatar" style="display: \${photoDisplay}" />
+        <span class="user-avatar-placeholder" style="display: \${avatarDisplay}">👤</span>
+        <span class="user-name">\${userName}</span>
+      </div>
     `,
     handlers: {
       // handleLogin: signInWithGoogle, // TODO: remove or use
@@ -106,10 +138,15 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       // Set initial button states
       updateButtons(initialLoggedIn);
 
-      unsubscribe = onAuthChange(({ isLoggedIn, userName }) => {
+      unsubscribe = onAuthChange(({ isLoggedIn, userName, user }) => {
+        // Use smart truncation for display name
+        const displayName = smartTruncateName(user?.displayName || userName);
+        const photoURL = user?.photoURL || '';
+
         devDebug('[AuthComponent] Auth state changed:', {
           isLoggedIn,
-          userName,
+          userName: displayName,
+          photoURL,
         });
 
         // Update button states with new auth state
@@ -117,7 +154,11 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
 
         el.update({
           isLoggedIn,
-          userName,
+          userName: displayName,
+          userPhotoURL: photoURL,
+          userInfoDisplay: isLoggedIn ? 'flex' : 'none',
+          photoDisplay: photoURL ? 'block' : 'none',
+          avatarDisplay: photoURL ? 'none' : 'flex',
           signingInDisplay: 'none', // Hide loading indicator when auth resolves
         });
       });
