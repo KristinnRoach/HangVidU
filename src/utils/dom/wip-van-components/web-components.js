@@ -12,7 +12,7 @@ defineComponent('v-counter', {
     <div style="padding: 20px; border: 2px solid #4CAF50; border-radius: 8px;">
       <h3>Web Component Counter</h3>
       <button onclick="increment" style="padding: 10px 20px; font-size: 16px;">
-        \${label}: \${count}
+        [[label]]: [[count]]
       </button>
       <button onclick="reset" style="margin-left: 10px; padding: 10px;">
         Reset

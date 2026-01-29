@@ -11,7 +11,7 @@ import {
   isLoggedIn,
 } from '../../firebase/auth';
 
-import { onOneTapStatusChange } from '../../firebase/onetap';
+import { onOneTapStatusChange, cancelOneTap } from '../../firebase/onetap';
 import { isDev, devDebug } from '../../utils/dev/dev-utils.js';
 
 import createComponent from '../../utils/dom/component.js';
@@ -71,23 +71,23 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       isLoggedIn: initialLoggedIn,
       userName: 'Guest User',
       userPhotoURL: '',
+      userPhotoDisplay: 'none',
       userInfoDisplay: 'none',
       avatarDisplay: 'none',
-      photoDisplay: 'none',
       signingInDisplay: 'none',
       loginBtnMarginRightPx,
       loginBtnDisplay: initialLoggedIn ? 'none' : 'inline-block',
       logoutBtnDisplay: initialLoggedIn ? 'inline-block' : 'none',
     },
     template: `
-      <button style="margin-right: \${loginBtnMarginRightPx}px; display: \${loginBtnDisplay}" id="goog-login-btn" class="login-btn" onclick="handleLogin">Login</button>
-      <button style="display: \${logoutBtnDisplay}" id="goog-logout-btn" class="logout-btn" onclick="handleLogout">Logout</button>
-      ${deleteAccountBtn}
-      <span class="signing-in-indicator" style="display: \${signingInDisplay}; color: var(--text-secondary, #888); font-size: 0.9rem;">Signing in...</span>
-      <div class="user-info" style="display: \${userInfoDisplay}">
-        <img src="\${userPhotoURL}" alt="\${userName}" class="user-avatar" style="display: \${photoDisplay}" />
-        <span class="user-avatar-placeholder" style="display: \${avatarDisplay}">👤</span>
-        <span class="user-name">\${userName}</span>
+      <button style="margin-right: [[loginBtnMarginRightPx]]px; display: [[loginBtnDisplay]]" id="goog-login-btn" class="login-btn" onclick="handleLogin">Login</button>
+      <button style="display: [[logoutBtnDisplay]]" id="goog-logout-btn" class="logout-btn" onclick="handleLogout">Logout</button>
+      [[deleteAccountBtn]]
+      <span class="signing-in-indicator" style="display: [[signingInDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">Signing in...</span>
+      <div class="user-info" style="display: [[userInfoDisplay]]">
+        <img src="[[userPhotoURL]]" alt="[[userName]]" class="user-avatar" style="display: [[userPhotoDisplay]]" />
+        <span class="user-avatar-placeholder" style="display: [[avatarDisplay]]">👤</span>
+        <span class="user-name">[[userName]]</span>
       </div>
     `,
     handlers: {
@@ -155,9 +155,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
 
         // Cancel One Tap prompt if user logs in (without triggering cooldown)
         if (isLoggedIn) {
-          import('../../firebase/onetap.js').then(({ cancelOneTap }) => {
-            cancelOneTap();
-          });
+          cancelOneTap();
         }
 
         // Update button states with new auth state
@@ -167,8 +165,8 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           isLoggedIn,
           userName: displayName,
           userPhotoURL: photoURL,
+          userPhotoDisplay: photoURL ? 'block' : 'none',
           userInfoDisplay: isLoggedIn ? 'flex' : 'none',
-          photoDisplay: photoURL ? 'block' : 'none',
           avatarDisplay: photoURL ? 'none' : 'flex',
           signingInDisplay: 'none', // Hide loading indicator when auth resolves
           loginBtnDisplay: isLoggedIn ? 'none' : 'inline-block',

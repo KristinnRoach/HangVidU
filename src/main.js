@@ -265,7 +265,7 @@ async function init() {
 
     return true;
   } catch (error) {
-    console.error('Initialization error:', error);
+    console.error('Initialization error:', error, error && error.stack);
     devDebug('Error: Failed to initialize application.');
     return false;
   }

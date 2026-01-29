@@ -14,13 +14,13 @@ import { isDOMReady } from './dom-utils.js';
 /**
  * Creates a functional vanilla JS component with reactive props and templated rendering.
  *
- * NOTE: Templates support simple property interpolation only (${prop}, ${obj.nested}).
- * Expressions (${count > 0 ? 'yes' : 'no'}) are NOT supported - use onPropUpdated() instead.
+ * NOTE: Templates support simple property interpolation only ([[prop]], [[obj.nested]]).
+ * Expressions ([[count > 0 ? 'yes' : 'no']]) are NOT supported - use onPropUpdated() instead.
  * See README.md for full template syntax documentation.
  *
  * @param {Object} options
  * @param {Object} options.initialProps - Initial properties of the component.
- * @param {string} options.template - Template string with ${prop} placeholders.
+ * @param {string} options.template - Template string with [[prop]] placeholders.
  * @param {Object} [options.handlers] - Event handlers map { handlerName: function }.
  * @param {HTMLElement} [options.parent=null] - Parent element to auto-append component to.
  * @param {string} [options.containerTag='div'] - Tag name of the root element container.
@@ -48,7 +48,7 @@ const createComponent = ({
 } = {}) => {
   if (!isDOMReady()) {
     console.error(
-      'createComponent: DOM must be ready before creating components.'
+      'createComponent: DOM must be ready before creating components.',
     );
     return null;
   }
@@ -60,10 +60,10 @@ const createComponent = ({
 
   // Track which props are actually used in the template
   const usedProps = new Set();
-  const placeholderRegex = /\$\{([^}]+)\}/g;
+  const placeholderRegex = /\[\[([^\]]+)\]\]|\$\{([^}]+)\}/g;
   let match;
   while ((match = placeholderRegex.exec(template)) !== null) {
-    const key = match[1].trim().split('.')[0]; // Get root prop (e.g., "user" from "user.name")
+    const key = (match[1] || match[2]).trim().split('.')[0]; // Get root prop (e.g., "user" from "user.name")
     usedProps.add(key);
   }
 
@@ -261,8 +261,8 @@ export default createComponent;
  *   initialProps: { name: 'Ada', email: 'ada@example.com' },
  *   template: `
  *     <div class="user-card">
- *       <h2>${name}</h2>
- *       <p>${email}</p>
+ *       <h2>[[name]]</h2>
+ *       <p>[[email]]</p>
  *     </div>
  *   `,
  *   parent: document.body,

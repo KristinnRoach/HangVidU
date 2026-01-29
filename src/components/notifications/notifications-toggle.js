@@ -30,7 +30,7 @@ export function createNotificationsToggle({
       >
         <i class="fa fa-bell"></i>
         <span class="notification-badge">
-          ${'${'}unreadCount${'}'}
+          [[unreadCount]]
         </span>
       </button>
     `,

@@ -34,15 +34,16 @@ export function createMessageToggle({
   // Create the toggle button component
   const toggleContainer = createComponent({
     initialProps: {
+      icon,
       unreadCount: initialUnreadCount,
     },
     // HENDA: <div class="messages-toggle-btn"${id ? ` id="${id}"` : ''}>
     template: `
       <div class="messages-toggle-btn">
         <button onclick="handleToggle">
-          ${icon}
+          [[icon]]
           <span class="notification-badge">
-            ${'${'}unreadCount${'}'}
+            [[unreadCount]]
           </span>
         </button>
       </div>
@@ -65,7 +66,7 @@ export function createMessageToggle({
     } catch (e) {
       console.warn(
         'createMessageToggle: failed to set id on toggleContainer',
-        e
+        e,
       );
     }
   }

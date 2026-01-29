@@ -24,16 +24,24 @@ const sanitize = (str) => {
 };
 
 /**
- * Interpolate props into a template string by replacing ${prop} with the prop value.
- * Supports nested properties (e.g., ${user.name}).
+ * Supported interpolation syntaxes for templates.
+ * - ${prop} (legacy, for backward compatibility)
+ * - [[prop]] (default, preferred for clarity and no JS conflicts)
+ */
+/** Matches both [[prop]] (preferred) and ${prop} (legacy) in a single pass */
+const INTERPOLATION_REGEX = /\[\[([^\]]+)\]\]|\$\{([^}]+)\}/g;
+
+/**
+ * Interpolate props into a template string by replacing supported placeholders with the prop value.
+ * Supports nested properties (e.g., ${user.name} or [[user.name]]).
  * Properties ending with "Html" are treated as raw HTML (unsafe) and not sanitized.
  * @param {string} templateStr - The template string containing placeholders.
  * @param {Object} props - The object of current property values.
  * @returns {string} The interpolated string.
  */
 const interpolate = (templateStr, props) => {
-  return templateStr.replace(/\$\{([^}]+)\}/g, (_, key) => {
-    const trimmedKey = key.trim();
+  return templateStr.replace(INTERPOLATION_REGEX, (_, bracketKey, dollarKey) => {
+    const trimmedKey = (bracketKey ?? dollarKey).trim();
     // Resolve nested properties (e.g., "user.name")
     const value = trimmedKey
       .split('.')
@@ -75,7 +83,7 @@ const getPathForElement = (root, target) => {
 const getElementByPath = (root, path) => {
   return path.reduce(
     (node, idx) => (node && node.children ? node.children[idx] : null),
-    root
+    root,
   );
 };
 
@@ -93,7 +101,7 @@ const captureInputState = (element) => {
       selectionStart: el.selectionStart,
       selectionEnd: el.selectionEnd,
       wasFocused: document.activeElement === el,
-    })
+    }),
   );
 };
 
@@ -120,7 +128,7 @@ const restoreInputState = (element, states) => {
       // the `name` attribute value directly to avoid building fragile
       // attribute selectors. This avoids ambiguity and escaping pitfalls.
       const candidates = element.querySelectorAll(
-        'input[name], textarea[name], select[name]'
+        'input[name], textarea[name], select[name]',
       );
       for (const node of candidates) {
         if (node.getAttribute('name') === state.name) {
