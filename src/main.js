@@ -1544,6 +1544,9 @@ window.onload = async () => {
           console.warn('[REFERRAL] Failed to process referral on login:', e),
         );
 
+        // Re-render contacts after referral processing (may have added a new contact)
+        await renderContactsList(lobbyDiv).catch(() => {});
+
         await startListeningForSavedRooms().catch((e) =>
           console.warn('Failed to re-attach saved-room listeners on login', e),
         );
