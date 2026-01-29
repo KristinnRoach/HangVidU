@@ -34,6 +34,7 @@ export function createMessageToggle({
   // Create the toggle button component
   const toggleContainer = createComponent({
     initialProps: {
+      icon,
       unreadCount: initialUnreadCount,
     },
     // HENDA: <div class="messages-toggle-btn"${id ? ` id="${id}"` : ''}>

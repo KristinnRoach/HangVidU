@@ -60,10 +60,10 @@ const createComponent = ({
 
   // Track which props are actually used in the template
   const usedProps = new Set();
-  const placeholderRegex = /\$\{([^}]+)\}/g;
+  const placeholderRegex = /\[\[([^\]]+)\]\]|\$\{([^}]+)\}/g;
   let match;
   while ((match = placeholderRegex.exec(template)) !== null) {
-    const key = match[1].trim().split('.')[0]; // Get root prop (e.g., "user" from "user.name")
+    const key = (match[1] || match[2]).trim().split('.')[0]; // Get root prop (e.g., "user" from "user.name")
     usedProps.add(key);
   }
 

@@ -28,10 +28,8 @@ const sanitize = (str) => {
  * - ${prop} (legacy, for backward compatibility)
  * - [[prop]] (default, preferred for clarity and no JS conflicts)
  */
-const INTERPOLATION_SYNTAXES = [
-  { regex: /\$\{([^}]+)\}/g, type: 'legacy' }, // NOTE: to be deprecated!
-  { regex: /\[\[([^\]]+)\]\]/g, type: 'default' },
-];
+/** Matches both [[prop]] (preferred) and ${prop} (legacy) in a single pass */
+const INTERPOLATION_REGEX = /\[\[([^\]]+)\]\]|\$\{([^}]+)\}/g;
 
 /**
  * Interpolate props into a template string by replacing supported placeholders with the prop value.
@@ -42,21 +40,17 @@ const INTERPOLATION_SYNTAXES = [
  * @returns {string} The interpolated string.
  */
 const interpolate = (templateStr, props) => {
-  let result = templateStr;
-  for (const { regex } of INTERPOLATION_SYNTAXES) {
-    result = result.replace(regex, (_, key) => {
-      const trimmedKey = key.trim();
-      // Resolve nested properties (e.g., "user.name")
-      const value = trimmedKey
-        .split('.')
-        .reduce((obj, prop) => obj?.[prop], props);
-      if (value == null) return '';
-      // Properties ending with "Html" are treated as raw/unsafe HTML
-      const isHtml = trimmedKey.endsWith('Html');
-      return isHtml ? String(value) : sanitize(String(value));
-    });
-  }
-  return result;
+  return templateStr.replace(INTERPOLATION_REGEX, (_, bracketKey, dollarKey) => {
+    const trimmedKey = (bracketKey ?? dollarKey).trim();
+    // Resolve nested properties (e.g., "user.name")
+    const value = trimmedKey
+      .split('.')
+      .reduce((obj, prop) => obj?.[prop], props);
+    if (value == null) return '';
+    // Properties ending with "Html" are treated as raw/unsafe HTML
+    const isHtml = trimmedKey.endsWith('Html');
+    return isHtml ? String(value) : sanitize(String(value));
+  });
 };
 
 /**

@@ -70,7 +70,8 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
     initialProps: {
       isLoggedIn: initialLoggedIn,
       userName: 'Guest User',
-      userPhotoImg: '',
+      userPhotoURL: '',
+      userPhotoDisplay: 'none',
       userInfoDisplay: 'none',
       avatarDisplay: 'none',
       signingInDisplay: 'none',
@@ -84,7 +85,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       [[deleteAccountBtn]]
       <span class="signing-in-indicator" style="display: [[signingInDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">Signing in...</span>
       <div class="user-info" style="display: [[userInfoDisplay]]">
-        [[userPhotoImgHtml]]
+        <img src="[[userPhotoURL]]" alt="[[userName]]" class="user-avatar" style="display: [[userPhotoDisplay]]" />
         <span class="user-avatar-placeholder" style="display: [[avatarDisplay]]">👤</span>
         <span class="user-name">[[userName]]</span>
       </div>
@@ -160,15 +161,11 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         // Update button states with new auth state
         updateButtons(isLoggedIn);
 
-        // Conditionally render the user photo img element only if photoURL is truthy
-        const userPhotoImg = photoURL
-          ? `<img src="${photoURL}" alt="${displayName}" class="user-avatar" style="display: block" />`
-          : '';
-
         el.update({
           isLoggedIn,
           userName: displayName,
-          userPhotoImgHtml: userPhotoImg,
+          userPhotoURL: photoURL,
+          userPhotoDisplay: photoURL ? 'block' : 'none',
           userInfoDisplay: isLoggedIn ? 'flex' : 'none',
           avatarDisplay: photoURL ? 'none' : 'flex',
           signingInDisplay: 'none', // Hide loading indicator when auth resolves

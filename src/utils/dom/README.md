@@ -97,15 +97,18 @@ const profile = createComponent({
 **✅ Supported:**
 
 ```javascript
-[[propName]][[user.name]][[contentHtml]]; // Simple property // Nested property // Raw HTML (props ending with "Html")
+[[propName]]                    // Simple property
+[[user.name]]                   // Nested property
+[[contentHtml]]                 // Raw HTML (props ending with "Html")
 ```
 
 **❌ NOT Supported (expressions):**
 
 ```javascript
-[[count > 0 ? 'yes' : 'no']][[items.length]][[price * 1.1]][ // Conditional expressions // Method calls // Arithmetic
-  [name.toUpperCase()]
-]; // String methods
+[[count > 0 ? 'yes' : 'no']]   // Conditional expressions
+[[items.length]]                // Method calls
+[[price * 1.1]]                 // Arithmetic
+[[name.toUpperCase()]]          // String methods
 ```
 
 **Why:** Templates use simple string interpolation, not JavaScript evaluation. Expressions are treated as property paths and return empty string when not found.
