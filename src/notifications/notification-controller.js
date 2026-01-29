@@ -248,10 +248,9 @@ export class NotificationController {
       return false;
     }
 
-    // NOTE: We do NOT check shouldSendNotification() here because:
-    // - For outgoing calls: The RECIPIENT should always be notified (they're not in foreground)
-    // - For incoming calls: The caller should check shouldSendNotification() before calling this
-    // This keeps the logic simple and correct for both scenarios
+    // We skip shouldSendNotification() (visibility check) here because this
+    // sends a push to the RECIPIENT's device — the sender's foreground state
+    // is irrelevant. Only enableCallNotifications gates this.
 
     try {
       const success = await this.transport.sendCallNotification(

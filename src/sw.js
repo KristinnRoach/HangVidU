@@ -167,15 +167,7 @@ function getNotificationTag(data) {
  * @returns {Array<number>} Vibration pattern in milliseconds
  */
 function getVibrationPattern(type) {
-  if (type === 'call') {
-    // Urgent pattern for incoming calls: vibrate-pause-vibrate-pause-vibrate
-    return [200, 100, 200, 100, 200];
-  } else if (type === 'message') {
-    // Single short vibration for messages
-    return [200];
-  }
-  // Default: single short vibration
-  return [200];
+  return VIBRATION_PATTERNS[type] || VIBRATION_PATTERNS.default;
 }
 
 // ============================================================================

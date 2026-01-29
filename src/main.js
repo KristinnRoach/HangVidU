@@ -5,7 +5,6 @@
 // ============================================================================
 
 import './initSentry.js';
-import '@fortawesome/fontawesome-free/css/all.min.css';
 import { set, get, remove } from 'firebase/database';
 import {
   removeAllRTDBListeners,
@@ -88,7 +87,16 @@ import {
   cleanupInviteListeners,
 } from './contacts/invitations.js';
 
+import {
+  captureReferral,
+  processReferral,
+} from './contacts/referral-handler.js';
+
 // import { getContactByRoomId } from './components/contacts/contacts.js';
+
+// TODO: notificationManager VS notificationController - Compare and clarify distinction or combine!
+import { notificationManager } from './components/notifications/notification-manager.js';
+import { notificationController } from './notifications/notification-controller.js';
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
 import './ui/state.js'; // Initialize UI state (sets body data-view attribute)
@@ -125,10 +133,10 @@ import {
   cleanupSearchUI,
   initializeSearchUI,
 } from './media/youtube/youtube-search.js';
-import { addDebugUpdateButton } from './components/notifications/debug-notifications.js';
-import { notificationManager } from './components/notifications/notification-manager.js';
+
 import { createNotificationsToggle } from './components/notifications/notifications-toggle.js';
-import { notificationController } from './notifications/notification-controller.js';
+import { showSuccessToast, showErrorToast } from './utils/ui/toast.js';
+import { createInviteNotification } from './components/notifications/invite-notification.js';
 
 import { showElement, hideElement } from './utils/ui/ui-utils.js';
 import { initializeAuthUI } from './components/auth/AuthComponent.js';
@@ -148,6 +156,8 @@ import {
 } from './components/calling/calling-ui.js';
 import { isRemoteVideoVideoActive } from './ui/legacy/watch-mode.js';
 import { onCallConnected, onCallDisconnected } from './ui/call-lifecycle-ui.js';
+
+import { addDebugUpdateButton } from './components/notifications/debug-notifications.js';
 // ____ UI END ____
 
 // Import and call iOS PWA redirect helper
@@ -733,27 +743,6 @@ export function listenForIncomingOnRoom(roomId) {
 
         // Resolve caller name from contacts
         const callerName = await resolveCallerName(roomId, joiningUserId);
-
-        // Send push notification if app is backgrounded
-        if (notificationController.isNotificationEnabled()) {
-          const shouldSend = notificationController.shouldSendNotification();
-          if (shouldSend) {
-            try {
-              await notificationController.sendCallNotification(joiningUserId, {
-                roomId,
-                callerId: joiningUserId,
-                callerName,
-              });
-              console.log('[MAIN] Incoming call notification sent');
-            } catch (error) {
-              console.error(
-                '[MAIN] Failed to send incoming call notification:',
-                error,
-              );
-              // Non-blocking: continue with foreground dialog
-            }
-          }
-        }
 
         // Start incoming call ringtone and visual indicators
         ringtoneManager.playIncoming();
@@ -1352,7 +1341,7 @@ let isProcessingInvite = false;
 
 /**
  * Process the next invite in the queue.
- * Shows dialogs one at a time to prevent overlap.
+ * Shows invite notification in the notification list.
  */
 async function processNextInvite() {
   if (isProcessingInvite || pendingInvites.length === 0) return;
@@ -1361,29 +1350,53 @@ async function processNextInvite() {
   const { fromUserId, inviteData } = pendingInvites.shift();
 
   try {
-    const accept = await confirmDialog(
-      `${inviteData.fromName || 'Someone'} wants to connect.\n\nAccept contact invitation?`,
-    );
+    // Create invite notification
+    const inviteNotification = createInviteNotification({
+      fromUserId,
+      inviteData,
+      onAccept: async () => {
+        try {
+          await acceptInvite(fromUserId, inviteData);
+          console.log('[INVITATIONS] Contact added:', inviteData.fromName);
+          await renderContactsList(lobbyDiv).catch(() => {});
+          showSuccessToast(`✅ ${inviteData.fromName} added to contacts!`);
 
-    if (accept) {
-      try {
-        await acceptInvite(fromUserId, inviteData);
-        console.log('[INVITATIONS] Contact added:', inviteData.fromName);
-        await renderContactsList(lobbyDiv).catch(() => {});
-        alert(`Added ${inviteData.fromName} to your contacts!`);
-      } catch (e) {
-        console.error('[INVITATIONS] Failed to accept invite:', e);
-        alert('Failed to add contact. Please try again.');
-      }
-    } else {
-      try {
-        await declineInvite(fromUserId);
-        console.log('[INVITATIONS] Invite declined');
-      } catch (e) {
-        console.error('[INVITATIONS] Failed to decline invite:', e);
-      }
+          // Remove notification after successful accept
+          notificationManager.remove(`invite-${fromUserId}`);
+        } catch (e) {
+          console.error('[INVITATIONS] Failed to accept invite:', e);
+          showErrorToast('Failed to add contact. Please try again.');
+          // Keep notification visible on error
+        } finally {
+          isProcessingInvite = false;
+          processNextInvite();
+        }
+      },
+      onDecline: async () => {
+        try {
+          await declineInvite(fromUserId);
+          console.log('[INVITATIONS] Invite declined');
+
+          // Remove notification after decline
+          notificationManager.remove(`invite-${fromUserId}`);
+        } catch (e) {
+          console.error('[INVITATIONS] Failed to decline invite:', e);
+        } finally {
+          isProcessingInvite = false;
+          processNextInvite();
+        }
+      },
+    });
+
+    // Add to notification manager
+    notificationManager.add(`invite-${fromUserId}`, inviteNotification);
+
+    // Show the notification list if it's hidden
+    if (!notificationManager.isListVisible()) {
+      notificationManager.showList();
     }
-  } finally {
+  } catch (error) {
+    console.error('[INVITATIONS] Failed to process invite:', error);
     isProcessingInvite = false;
     processNextInvite();
   }
@@ -1405,8 +1418,14 @@ function setupInviteListener() {
       '[INVITATIONS] Your invite was accepted by:',
       acceptData.acceptedByName,
     );
+
+    // Refresh contacts list to show new contact
     await renderContactsList(lobbyDiv).catch(() => {});
-    alert(`${acceptData.acceptedByName} accepted your invitation!`);
+
+    // Show success toast
+    showSuccessToast(
+      `✅ ${acceptData.acceptedByName} is now in your contacts!`,
+    );
   });
 }
 
@@ -1415,6 +1434,9 @@ function setupInviteListener() {
 // ============================================================================
 
 window.onload = async () => {
+  // Capture referral link BEFORE auth (stores referrer ID in localStorage)
+  await captureReferral();
+
   const initSuccess = await init();
 
   if (!initSuccess) {
@@ -1513,11 +1535,26 @@ window.onload = async () => {
         removeAllIncomingListeners();
         cleanupInviteListeners();
       } else if (isActualLogin) {
-        // On login, re-attach listeners for saved rooms
+        // On login, re-attach listeners for saved rooms FIRST (before notification setup)
+        // so incoming calls are detected immediately
         devDebug('[AUTH] User logged in - re-attaching incoming listeners');
 
+        // Process referral if user signed up via referral link
+        await processReferral().catch((e) =>
+          console.warn('[REFERRAL] Failed to process referral on login:', e),
+        );
+
+        // Re-render contacts after referral processing (may have added a new contact)
+        await renderContactsList(lobbyDiv).catch(() => {});
+
+        await startListeningForSavedRooms().catch((e) =>
+          console.warn('Failed to re-attach saved-room listeners on login', e),
+        );
+        // Start listening for contact invites
+        setupInviteListener();
+
         // Enable notifications for the new user (in production)
-        // This happens after auth is ready and user is confirmed logged in
+        // This happens after listeners are ready so calls aren't missed during FCM setup
         if (import.meta.env.PROD) {
           const currentUserId = getLoggedInUserId();
 
@@ -1541,17 +1578,9 @@ window.onload = async () => {
                 );
               }
             } else if (permissionState === 'default') {
-              // Request permission for new user
-              // Note: This should ideally be triggered by an explicit user action
-              // (e.g., clicking a "Enable Notifications" button) for better browser support.
-              // However, since this is in the login flow (which is a user action),
-              // it may work in most browsers.
               console.log(
                 '[AUTH] Notification permission in default state - consider showing opt-in UI',
               );
-
-              // For now, we defer to explicit user action rather than auto-requesting
-              // Users can enable via the notifications toggle or test button
               console.log(
                 '[AUTH] User can enable notifications via the notifications toggle',
               );
@@ -1562,15 +1591,18 @@ window.onload = async () => {
             }
           }
         }
-
-        await startListeningForSavedRooms().catch((e) =>
-          console.warn('Failed to re-attach saved-room listeners on login', e),
-        );
-        // Start listening for contact invites
-        setupInviteListener();
       } else if (isInitialLoad && isLoggedIn) {
         // If user is already logged in on initial load (e.g., after redirect)
         devDebug('[AUTH] Initial load with logged-in user');
+
+        // Process referral if user signed up via referral link
+        await processReferral().catch((e) =>
+          console.warn(
+            '[REFERRAL] Failed to process referral on initial load:',
+            e,
+          ),
+        );
+
         // Listeners already attached by startListeningForSavedRooms, no action needed
         // Start listening for contact invites
         setupInviteListener();
@@ -1723,6 +1755,11 @@ CallController.on(
 
     cleanupRemoteStream();
     clearUrlParam();
+
+    // Re-attach incoming listener so the next call on this room is detected
+    if (roomId) {
+      listenForIncomingOnRoom(roomId);
+    }
 
     // Prompt to save contact after cleanup (if partner was present)
     if (partnerId && roomId) {

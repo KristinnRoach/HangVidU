@@ -158,3 +158,190 @@
     max-width: none;
   }
 }
+
+/* Invite Notification */
+
+.invite-notification {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-left: 3px solid #4caf50;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  max-width: 300px;
+  min-width: 250px;
+  animation: slideIn 0.3s ease-out;
+}
+
+.invite-notification .notification-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.invite-notification .notification-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.invite-notification .notification-icon {
+  font-size: 1.2rem;
+}
+
+.invite-notification .notification-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.invite-notification .notification-title {
+  font-weight: 600;
+  color: #fff;
+}
+
+.invite-notification .notification-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.invite-notification .notification-message {
+  margin: 0;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.invite-notification .notification-detail {
+  margin: 0;
+  color: #aaa;
+  font-size: 0.85rem;
+}
+
+.invite-notification .notification-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.invite-notification .notification-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.invite-notification .notification-btn-accept {
+  background: #4caf50;
+  color: #fff;
+}
+
+.invite-notification .notification-btn-accept:hover:not(:disabled) {
+  background: #45a049;
+}
+
+.invite-notification .notification-btn-decline {
+  background: #666;
+  color: #fff;
+}
+
+.invite-notification .notification-btn-decline:hover:not(:disabled) {
+  background: #555;
+}
+
+.invite-notification .notification-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Referral Notification - reuses invite structure with blue accent */
+
+.referral-notification {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-left: 3px solid #2196f3;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  max-width: 300px;
+  min-width: 250px;
+  animation: slideIn 0.3s ease-out;
+}
+
+.referral-notification .notification-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.referral-notification .notification-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.referral-notification .notification-icon {
+  font-size: 1.2rem;
+}
+
+.referral-notification .notification-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.referral-notification .notification-title {
+  font-weight: 600;
+  color: #fff;
+}
+
+.referral-notification .notification-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.referral-notification .notification-message {
+  margin: 0;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.referral-notification .notification-detail {
+  margin: 0;
+  color: #aaa;
+  font-size: 0.85rem;
+}
+
+.referral-notification .notification-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.referral-notification .notification-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.referral-notification .notification-btn-accept {
+  background: #2196f3;
+  color: #fff;
+}
+
+.referral-notification .notification-btn-accept:hover:not(:disabled) {
+  background: #1976d2;
+}
+
+.referral-notification .notification-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

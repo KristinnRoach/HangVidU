@@ -71,7 +71,6 @@
     "workbox-strategies": "^7.4.0"
   },
   "dependencies": {
-    "@fortawesome/fontawesome-free": "^7.1.0",
     "@sentry/browser": "^10.36.0",
     "dexie": "^4.2.1",
     "firebase": "^12.8.0",

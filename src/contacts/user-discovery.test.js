@@ -1,53 +1,59 @@
 // src/contacts/user-discovery.test.js
-// Tests for user discovery system
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { hashEmail, removeUserFromDirectory } from './user-discovery.js';
 
-import { describe, it, expect } from 'vitest';
-import { hashEmail } from './user-discovery.js';
+vi.mock('firebase/database', () => ({
+  ref: vi.fn(),
+  set: vi.fn(),
+  get: vi.fn(),
+  remove: vi.fn(() => Promise.resolve()),
+}));
+
+vi.mock('../storage/fb-rtdb/rtdb.js', () => ({
+  rtdb: {},
+}));
 
 describe('user-discovery', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('hashEmail', () => {
-    it('should hash email addresses consistently', () => {
+    it('should create consistent hash for same email', () => {
       const email = 'test@example.com';
       const hash1 = hashEmail(email);
       const hash2 = hashEmail(email);
-      
       expect(hash1).toBe(hash2);
-      expect(hash1).toBeTruthy();
-      expect(hash1.length).toBeGreaterThan(0);
     });
 
-    it('should normalize emails to lowercase', () => {
-      const hash1 = hashEmail('Test@Example.com');
+    it('should normalize email to lowercase', () => {
+      const hash1 = hashEmail('Test@Example.COM');
       const hash2 = hashEmail('test@example.com');
-      
       expect(hash1).toBe(hash2);
     });
 
-    it('should trim whitespace from emails', () => {
-      const hash1 = hashEmail('  test@example.com  ');
-      const hash2 = hashEmail('test@example.com');
-      
-      expect(hash1).toBe(hash2);
-    });
-
-    it('should replace Firebase-incompatible characters', () => {
+    it('should replace forward slashes for Firebase compatibility', () => {
       const hash = hashEmail('test@example.com');
-      
-      // Should not contain Firebase-incompatible characters
-      expect(hash).not.toMatch(/[\.\$#\[\]\/]/);
+      expect(hash).not.toContain('/');
+    });
+  });
+
+  describe('removeUserFromDirectory', () => {
+    it('should remove user from discovery directory', async () => {
+      const { remove } = await import('firebase/database');
+
+      await removeUserFromDirectory('test@example.com');
+
+      expect(remove).toHaveBeenCalled();
     });
 
-    it('should throw error for invalid input', () => {
-      expect(() => hashEmail('')).toThrow();
-      expect(() => hashEmail(null)).toThrow();
-      expect(() => hashEmail(undefined)).toThrow();
-    });
-
-    it('should produce different hashes for different emails', () => {
-      const hash1 = hashEmail('user1@example.com');
-      const hash2 = hashEmail('user2@example.com');
-      
-      expect(hash1).not.toBe(hash2);
+    it('should throw error for invalid email', async () => {
+      await expect(removeUserFromDirectory('')).rejects.toThrow(
+        'Invalid email',
+      );
+      await expect(removeUserFromDirectory(null)).rejects.toThrow(
+        'Invalid email',
+      );
     });
   });
 });

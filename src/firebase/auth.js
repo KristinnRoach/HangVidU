@@ -11,6 +11,7 @@ import {
   browserLocalPersistence,
   inMemoryPersistence,
   signOut,
+  deleteUser,
 } from 'firebase/auth';
 
 import { app } from './firebase.js';
@@ -19,6 +20,7 @@ import { initOneTap, showOneTapSignin } from './onetap.js';
 
 import { initializePresence, setOffline } from './presence.js';
 import { registerUserInDirectory } from '../contacts/user-discovery.js';
+import { saveUserProfile } from '../user/profile.js';
 
 export const auth = getAuth(app);
 
@@ -349,16 +351,24 @@ export function onAuthChange(callback, { truncate = 7 } = {}) {
         ? rawName.slice(0, truncate) + '...'
         : rawName;
 
-    // Initialize presence when user logs in
     if (isLoggedIn) {
+      // Initialize presence when user logs in
       initializePresence().catch((err) => {
         console.warn('Failed to initialize presence:', err);
+      });
+
+      // Save public profile (displayName, photoURL)
+      saveUserProfile(user).catch((err) => {
+        console.warn('Failed to save user profile:', err);
       });
 
       // Register user in discovery directory
       registerUserInDirectory(user).catch((err) => {
         console.warn('Failed to register user in directory:', err);
       });
+    } else {
+      // Clear cached GIS tokens so they can't leak to another session
+      clearGISTokenCache();
     }
 
     try {
@@ -407,6 +417,7 @@ export const signInWithAccountSelection = async () => {
 export async function signOutUser() {
   try {
     await setOffline();
+    clearGISTokenCache();
     await signOut(auth);
     console.info('User signed out');
     setTimeout(() => showOneTapSignin(), 1500); // TODO: decide whether this is annoying
@@ -417,66 +428,238 @@ export async function signOutUser() {
   }
 }
 
+/**
+ * Delete the current user's account and all associated data.
+ * Cleanup runs before deleteUser() because RTDB security rules require
+ * an authenticated session (auth.uid). If deleteUser() subsequently fails
+ * (e.g. auth/requires-recent-login), the data is already gone but the
+ * auth account remains — the user can simply retry.
+ *
+ * @throws {Error} If user is not logged in or deletion fails
+ */
+export async function deleteAccount() {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('No user logged in');
+  }
+
+  const userId = user.uid;
+
+  try {
+    console.info('[AUTH] Starting account deletion for user:', userId);
+
+    // 1. Set user offline and clear cached tokens
+    await setOffline();
+    clearGISTokenCache();
+
+    // 2. Clean up user data while still authenticated (RTDB rules require auth)
+    const { ref, remove } = await import('firebase/database');
+    const { rtdb } = await import('../storage/fb-rtdb/rtdb.js');
+
+    console.info('[AUTH] Cleaning up user data from RTDB...');
+    try {
+      await remove(ref(rtdb, `users/${userId}`));
+    } catch (err) {
+      console.warn('[AUTH] Failed to remove user node from RTDB:', err);
+    }
+
+    // 3. Delete FCM token if available
+    try {
+      const { FCMTransport } =
+        await import('../notifications/transports/fcm-transport.js');
+      const fcmTransport = new FCMTransport();
+      await fcmTransport.deleteToken();
+    } catch (err) {
+      console.warn('[AUTH] Failed to delete FCM token:', err);
+    }
+
+    // 4. Remove user from discovery directory (so they don't show as "On HangVidU")
+    if (user.email) {
+      try {
+        const { removeUserFromDirectory } =
+          await import('../contacts/user-discovery.js');
+        await removeUserFromDirectory(user.email);
+      } catch (err) {
+        console.warn(
+          '[AUTH] Failed to remove user from discovery directory:',
+          err,
+        );
+      }
+    }
+
+    // 5. Delete the Firebase Auth account (also signs out the user)
+    console.info('[AUTH] Deleting Firebase Auth account...');
+    await deleteUser(user);
+
+    console.info('[AUTH] Account deleted successfully');
+    setTimeout(() => showOneTapSignin(), 1500);
+  } catch (error) {
+    logAuthError('Delete account', error);
+
+    if (error.code === 'auth/requires-recent-login') {
+      throw new Error(
+        'For security, please sign out and sign in again before deleting your account.',
+      );
+    }
+
+    throw error;
+  }
+}
+
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_APP_GOOGLE_CLIENT_ID;
 
+// --- GIS Token Cache ---
+// Caches access tokens per scope key to avoid re-prompting the user.
+// Tokens are held in memory only (cleared on page reload).
+// Buffer (ms) subtracted from expiry to avoid using a nearly-expired token.
+const TOKEN_EXPIRY_BUFFER_MS = 60_000;
+const _tokenCache = {};
+
+function getCachedToken(key) {
+  const entry = _tokenCache[key];
+  if (entry && Date.now() < entry.expiresAt) return entry.token;
+  delete _tokenCache[key];
+  return null;
+}
+
+function cacheToken(key, token, expiresInSeconds) {
+  const expiry = expiresInSeconds > 0 ? expiresInSeconds : 3600;
+  _tokenCache[key] = {
+    token,
+    expiresAt: Date.now() + expiry * 1000 - TOKEN_EXPIRY_BUFFER_MS,
+  };
+}
+
+/** Clear all cached GIS tokens (e.g. on sign-out). */
+export function clearGISTokenCache() {
+  for (const key in _tokenCache) delete _tokenCache[key];
+}
+
 /**
- * Request Google Contacts access via Google Identity Services Token Model.
- * Opens a popup to request the contacts.readonly scope.
- * @returns {Promise<string>} - Google access token with contacts scope
- * @throws {Error} - If authorization fails or is cancelled
+ * Request a GIS access token for the given scopes.
+ * Priority: 1) memory cache  2) silent GIS (prompt:'none')  3) interactive popup.
+ *
+ * @param {string} cacheKey - Key for the token cache
+ * @param {string} scope - OAuth scope(s) to request
+ * @param {Object} [options]
+ * @param {boolean} [options.interactive] - Skip silent attempt and go straight
+ *   to popup. Use when called from a click handler for a scope the user hasn't
+ *   consented to yet — the silent attempt would fail and the async fallback
+ *   loses the user-gesture context, causing browsers to block the popup.
  */
-export function requestContactsAccess() {
+function requestGISToken(cacheKey, scope, { interactive = false } = {}) {
+  const cached = getCachedToken(cacheKey);
+  if (cached) {
+    console.log(`[AUTH] Using cached ${cacheKey} token`);
+    return Promise.resolve(cached);
+  }
+
   return new Promise((resolve, reject) => {
     if (!GOOGLE_CLIENT_ID) {
       reject(new Error('Google Client ID not configured'));
       return;
     }
 
-    // Wait for GIS library to load
     if (typeof google === 'undefined' || !google.accounts?.oauth2) {
       reject(new Error('Google Identity Services not loaded'));
       return;
     }
 
     const currentUser = getCurrentUser();
+    const hint = currentUser?.email || undefined;
 
-    console.log('[AUTH] Requesting contacts access via GIS Token Model...');
-
-    const tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID,
-      scope:
-        'https://www.googleapis.com/auth/contacts.readonly https://www.googleapis.com/auth/contacts.other.readonly',
-      hint: currentUser?.email || undefined,
-      callback: (response) => {
-        if (response.error) {
-          console.error('[AUTH] Token request error:', response.error);
-          if (response.error === 'access_denied') {
-            reject(new Error('Authorization cancelled'));
-          } else {
-            reject(new Error(response.error_description || response.error));
-          }
+    function onTokenResponse(response, onNeedConsent) {
+      if (response.error) {
+        if (onNeedConsent) {
+          console.log(`[AUTH] Silent ${cacheKey} token failed (${response.error}), trying interactive...`);
+          onNeedConsent();
           return;
         }
-
-        if (!response.access_token) {
-          reject(new Error('No access token received'));
-          return;
-        }
-
-        console.log('[AUTH] Contacts access granted');
-        resolve(response.access_token);
-      },
-      error_callback: (error) => {
-        console.error('[AUTH] Token client error:', error);
-        if (error.type === 'popup_closed') {
+        console.error(`[AUTH] ${cacheKey} token request error:`, response.error);
+        if (response.error === 'access_denied') {
           reject(new Error('Authorization cancelled'));
         } else {
-          reject(new Error(error.message || 'Authorization failed'));
+          reject(new Error(response.error_description || response.error));
         }
+        return;
+      }
+
+      if (!response.access_token) {
+        reject(new Error('No access token received'));
+        return;
+      }
+
+      console.log(`[AUTH] ${cacheKey} access granted`);
+      cacheToken(cacheKey, response.access_token, response.expires_in || 3600);
+      resolve(response.access_token);
+    }
+
+    // Interactive popup
+    function requestInteractive() {
+      console.log(`[AUTH] Requesting ${cacheKey} access via interactive popup...`);
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope,
+        hint,
+        callback: (response) => onTokenResponse(response, null),
+        error_callback: (error) => {
+          console.error(`[AUTH] ${cacheKey} interactive error:`, error);
+          if (error.type === 'popup_closed') {
+            reject(new Error('Authorization cancelled'));
+          } else {
+            reject(new Error(error.message || 'Authorization failed'));
+          }
+        },
+      });
+      client.requestAccessToken();
+    }
+
+    if (interactive) {
+      // Go straight to popup — preserves the user-gesture context
+      requestInteractive();
+      return;
+    }
+
+    // Silent attempt (no popup, works if user previously consented)
+    console.log(`[AUTH] Attempting silent ${cacheKey} token acquisition...`);
+    const silentClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope,
+      hint,
+      callback: (response) => onTokenResponse(response, requestInteractive),
+      error_callback: () => {
+        console.log(`[AUTH] Silent ${cacheKey} error_callback, trying interactive...`);
+        requestInteractive();
       },
     });
-
-    // Request the token (opens popup)
-    tokenClient.requestAccessToken();
+    silentClient.requestAccessToken({ prompt: 'none' });
   });
+}
+
+/**
+ * Request Google Contacts access via Google Identity Services Token Model.
+ * Uses silent-first flow (works without popup after initial consent).
+ * @returns {Promise<string>} - Google access token with contacts scope
+ */
+export function requestContactsAccess() {
+  return requestGISToken(
+    'contacts',
+    'https://www.googleapis.com/auth/contacts.readonly https://www.googleapis.com/auth/contacts.other.readonly',
+  );
+}
+
+/**
+ * Request Gmail send access via Google Identity Services Token Model.
+ * Uses interactive flow (straight to popup) because gmail.send is a
+ * sensitive scope that requires explicit consent — the silent-then-popup
+ * fallback loses the user-gesture context and gets blocked by browsers.
+ * After first consent, the token is cached and this returns immediately.
+ * @returns {Promise<string>} - Google access token with Gmail send scope
+ */
+export function requestGmailSendAccess() {
+  return requestGISToken(
+    'gmail-send',
+    'https://www.googleapis.com/auth/gmail.send',
+    { interactive: true },
+  );
 }

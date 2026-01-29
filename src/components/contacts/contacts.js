@@ -244,6 +244,23 @@ export async function renderContactsList(lobbyElement) {
 
   // Create message toggles directly (no placeholders needed)
   await createContactMessageToggles(contactsContainer, contactIds, contacts);
+
+  // Prune deleted users in the background (after render) to avoid blocking
+  if (getLoggedInUserId()) {
+    Promise.all(
+      contactIds.map(async (id) => {
+        const snapshot = await get(ref(rtdb, `users/${id}/presence`));
+        if (!snapshot.exists()) {
+          const entry = contactsContainer.querySelector(
+            `.contact-entry:has([data-contact-id="${id}"])`,
+          );
+          if (entry) entry.remove();
+        }
+      }),
+    ).catch((err) =>
+      console.warn('[CONTACTS] Background presence check failed:', err),
+    );
+  }
 }
 
 /**
@@ -305,8 +322,8 @@ function attachContactListeners(container, lobbyElement) {
           });
 
           // Send push notification to the contact being called
-          // Note: We send this regardless of foreground/background state
-          // because the RECIPIENT should always be notified of incoming calls
+          // The sender's foreground state is irrelevant — the recipient
+          // should always be notified of incoming calls
           try {
             const currentUser = getCurrentUser();
             const callerName =
