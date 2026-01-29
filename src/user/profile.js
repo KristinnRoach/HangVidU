@@ -4,15 +4,13 @@
 import { ref, set, get } from 'firebase/database';
 import { rtdb } from '../storage/fb-rtdb/rtdb.js';
 
-let profileSaved = false;
-
 /**
  * Save user profile (displayName, photoURL) to a world-readable node.
- * Called once per session after authentication.
+ * Idempotent — safe to call on every login.
  * @param {import('firebase/auth').User} user
  */
 export async function saveUserProfile(user) {
-  if (!user?.uid || profileSaved) return;
+  if (!user?.uid) return;
 
   const profileRef = ref(rtdb, `users/${user.uid}/profile`);
 
@@ -21,7 +19,6 @@ export async function saveUserProfile(user) {
       displayName: user.displayName || null,
       photoURL: user.photoURL || null,
     });
-    profileSaved = true;
   } catch (error) {
     console.error('Failed to save user profile:', error);
   }
