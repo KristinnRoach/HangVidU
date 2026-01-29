@@ -1,10 +1,10 @@
-// src/notifications/notification-controller.js
+// src/notifications/push-notification-controller.js
 // Unified notification API with transport abstraction
 
 import { FCMTransport } from './transports/fcm-transport.js';
 
 /**
- * NotificationController - Core notification API
+ * PushNotificationController - Core notification API
  *
  * Provides a clean, minimal interface for push notification operations:
  * - Manage notification permissions with excellent UX
@@ -19,11 +19,11 @@ import { FCMTransport } from './transports/fcm-transport.js';
  * - Following MessagingController pattern for consistency
  *
  * UX Reference: /Users/kristinnroachgunnarsson/Desktop/Dev/PoCs/web-push-notifications/web-push-poc/src/notify-permission.js
- * This reference provides excellent browser-aware UX for handling silent permission blocking
+ * This reference provides browser-aware UX for handling silent permission blocking
  */
-export class NotificationController {
+export class PushNotificationController {
   /**
-   * Create a notification controller
+   * Create a push notification controller
    * @param {Object} transport - Transport implementation for notifications (FCMTransport, etc.)
    * @param {Object} options - Configuration options
    */
@@ -46,7 +46,7 @@ export class NotificationController {
   }
 
   /**
-   * Initialize the notification controller
+   * Initialize the push notification controller
    * @returns {Promise<boolean>} True if initialization successful
    */
   async initialize() {
@@ -55,7 +55,7 @@ export class NotificationController {
       const transportReady = await this.transport.initialize();
       if (!transportReady) {
         console.warn(
-          '[NotificationController] Transport initialization failed',
+          '[PushNotificationController] Transport initialization failed',
         );
         return false;
       }
@@ -68,10 +68,13 @@ export class NotificationController {
         this.handleForegroundMessage(payload);
       });
 
-      console.log('[NotificationController] Initialized successfully');
+      console.log('[PushNotificationController] Initialized successfully');
       return true;
     } catch (error) {
-      console.error('[NotificationController] Initialization failed:', error);
+      console.error(
+        '[PushNotificationController] Initialization failed:',
+        error,
+      );
       return false;
     }
   }
@@ -93,7 +96,7 @@ export class NotificationController {
 
     // Check if notifications are supported
     if (!this.isNotificationSupported()) {
-      console.warn('[NotificationController] Notifications not supported');
+      console.warn('[PushNotificationController] Notifications not supported');
       return { state: 'denied', reason: 'unsupported' };
     }
 
@@ -122,7 +125,7 @@ export class NotificationController {
       permission = await Notification.requestPermission();
     } catch (error) {
       console.error(
-        '[NotificationController] Permission request failed:',
+        '[PushNotificationController] Permission request failed:',
         error,
       );
       permission = Notification.permission;
@@ -162,7 +165,7 @@ export class NotificationController {
   async enable() {
     if (this.permissionState !== 'granted') {
       console.warn(
-        '[NotificationController] Cannot enable: permission not granted',
+        '[PushNotificationController] Cannot enable: permission not granted',
       );
       return false;
     }
@@ -171,12 +174,12 @@ export class NotificationController {
       // Get FCM token
       const token = await this.transport.getToken();
       if (!token) {
-        console.warn('[NotificationController] Failed to get FCM token');
+        console.warn('[PushNotificationController] Failed to get FCM token');
         return false;
       }
 
       this.isEnabled = true;
-      console.log('[NotificationController] Notifications enabled');
+      console.log('[PushNotificationController] Notifications enabled');
 
       // Notify callbacks
       this.permissionCallbacks.forEach((callback) => {
@@ -184,7 +187,7 @@ export class NotificationController {
           callback('enabled');
         } catch (error) {
           console.error(
-            '[NotificationController] Error in permission callback:',
+            '[PushNotificationController] Error in permission callback:',
             error,
           );
         }
@@ -193,7 +196,7 @@ export class NotificationController {
       return true;
     } catch (error) {
       console.error(
-        '[NotificationController] Failed to enable notifications:',
+        '[PushNotificationController] Failed to enable notifications:',
         error,
       );
       return false;
@@ -212,7 +215,7 @@ export class NotificationController {
       // Clear active notifications
       this.activeNotifications.clear();
 
-      console.log('[NotificationController] Notifications disabled');
+      console.log('[PushNotificationController] Notifications disabled');
 
       // Notify callbacks
       this.permissionCallbacks.forEach((callback) => {
@@ -220,7 +223,7 @@ export class NotificationController {
           callback('disabled');
         } catch (error) {
           console.error(
-            '[NotificationController] Error in permission callback:',
+            '[PushNotificationController] Error in permission callback:',
             error,
           );
         }
@@ -229,7 +232,7 @@ export class NotificationController {
       return true;
     } catch (error) {
       console.error(
-        '[NotificationController] Failed to disable notifications:',
+        '[PushNotificationController] Failed to disable notifications:',
         error,
       );
       return false;
@@ -244,7 +247,7 @@ export class NotificationController {
    */
   async sendCallNotification(targetUserId, callData) {
     if (!this.options.enableCallNotifications) {
-      console.log('[NotificationController] Call notifications disabled');
+      console.log('[PushNotificationController] Call notifications disabled');
       return false;
     }
 
@@ -269,14 +272,14 @@ export class NotificationController {
         });
 
         console.log(
-          `[NotificationController] Call notification sent to ${targetUserId}`,
+          `[PushNotificationController] Call notification sent to ${targetUserId}`,
         );
       }
 
       return success;
     } catch (error) {
       console.error(
-        '[NotificationController] Failed to send call notification:',
+        '[PushNotificationController] Failed to send call notification:',
         error,
       );
       return false;
@@ -292,7 +295,7 @@ export class NotificationController {
   async sendMissedCallNotification(targetUserId, callData) {
     if (!this.options.enableCallNotifications) {
       console.log(
-        '[NotificationController] Call notifications disabled (missed call masked)',
+        '[PushNotificationController] Call notifications disabled (missed call masked)',
       );
       return false;
     }
@@ -305,13 +308,13 @@ export class NotificationController {
 
       if (success) {
         console.log(
-          `[NotificationController] Missed call notification sent to ${targetUserId}`,
+          `[PushNotificationController] Missed call notification sent to ${targetUserId}`,
         );
       }
       return success;
     } catch (error) {
       console.error(
-        '[NotificationController] Failed to send missed call notification:',
+        '[PushNotificationController] Failed to send missed call notification:',
         error,
       );
       return false;
@@ -326,13 +329,15 @@ export class NotificationController {
    */
   async sendMessageNotification(targetUserId, messageData) {
     if (!this.options.enableMessageNotifications) {
-      console.log('[NotificationController] Message notifications disabled');
+      console.log(
+        '[PushNotificationController] Message notifications disabled',
+      );
       return false;
     }
 
     if (!this.shouldSendNotification()) {
       console.log(
-        '[NotificationController] Not sending message notification (app in foreground)',
+        '[PushNotificationController] Not sending message notification (app in foreground)',
       );
       return false;
     }
@@ -354,14 +359,14 @@ export class NotificationController {
         });
 
         console.log(
-          `[NotificationController] Message notification sent to ${targetUserId}`,
+          `[PushNotificationController] Message notification sent to ${targetUserId}`,
         );
       }
 
       return success;
     } catch (error) {
       console.error(
-        '[NotificationController] Failed to send message notification:',
+        '[PushNotificationController] Failed to send message notification:',
         error,
       );
       return false;
@@ -386,12 +391,12 @@ export class NotificationController {
 
       if (toRemove.length > 0) {
         console.log(
-          `[NotificationController] Dismissed ${toRemove.length} call notifications for room ${roomId}`,
+          `[PushNotificationController] Dismissed ${toRemove.length} call notifications for room ${roomId}`,
         );
       }
     } catch (error) {
       console.error(
-        '[NotificationController] Failed to dismiss call notifications:',
+        '[PushNotificationController] Failed to dismiss call notifications:',
         error,
       );
     }
@@ -415,12 +420,12 @@ export class NotificationController {
 
       if (toRemove.length > 0) {
         console.log(
-          `[NotificationController] Dismissed ${toRemove.length} message notifications from ${senderId}`,
+          `[PushNotificationController] Dismissed ${toRemove.length} message notifications from ${senderId}`,
         );
       }
     } catch (error) {
       console.error(
-        '[NotificationController] Failed to dismiss message notifications:',
+        '[PushNotificationController] Failed to dismiss message notifications:',
         error,
       );
     }
@@ -444,7 +449,7 @@ export class NotificationController {
 
     if (toRemove.length > 0) {
       console.log(
-        `[NotificationController] Cleaned up ${toRemove.length} old notifications`,
+        `[PushNotificationController] Cleaned up ${toRemove.length} old notifications`,
       );
     }
   }
@@ -455,7 +460,7 @@ export class NotificationController {
    */
   handleForegroundMessage(payload) {
     console.log(
-      '[NotificationController] Foreground message received:',
+      '[PushNotificationController] Foreground message received:',
       payload,
     );
 
@@ -465,7 +470,7 @@ export class NotificationController {
         callback(payload);
       } catch (error) {
         console.error(
-          '[NotificationController] Error in notification callback:',
+          '[PushNotificationController] Error in notification callback:',
           error,
         );
       }
@@ -512,7 +517,7 @@ export class NotificationController {
    */
   updateOptions(newOptions) {
     this.options = { ...this.options, ...newOptions };
-    console.log('[NotificationController] Options updated:', this.options);
+    console.log('[PushNotificationController] Options updated:', this.options);
   }
 
   /**
@@ -577,7 +582,7 @@ export class NotificationController {
         displayName = await resolveCallerName(roomId, callerId);
       } catch (error) {
         console.warn(
-          '[NotificationController] Failed to resolve caller name:',
+          '[PushNotificationController] Failed to resolve caller name:',
           error,
         );
         // Fallback already set above
@@ -618,7 +623,7 @@ export class NotificationController {
       }
     } catch (error) {
       console.warn(
-        '[NotificationController] Failed to resolve sender name:',
+        '[PushNotificationController] Failed to resolve sender name:',
         error,
       );
       // Fallback to provided name or user ID
@@ -645,7 +650,10 @@ export class NotificationController {
 }
 
 /**
- * Default notification controller instance using FCM transport
+ * Default push notification controller instance using FCM transport
  * Can be replaced with a different transport for testing
  */
-export const notificationController = new NotificationController();
+export const pushNotificationController = new PushNotificationController();
+
+// Backward compatibility: export as notificationController
+export const notificationController = pushNotificationController;

@@ -1,10 +1,10 @@
 import { onClickOutside } from '../../utils/ui/clickOutside.js';
 
 /**
- * Centralized notification manager.
+ * Centralized in-app notification manager.
  * Manages multiple notifications in a scrollable list and syncs with the notifications toggle.
  */
-class NotificationManager {
+class InAppNotificationManager {
   constructor() {
     this.notifications = new Map(); // Map<id, notificationElement>
     this.toggle = null;
@@ -72,7 +72,7 @@ class NotificationManager {
       {
         ignore: this.toggle ? [this.toggle] : [],
         esc: true,
-      }
+      },
     );
   }
 
@@ -210,4 +210,7 @@ class NotificationManager {
 }
 
 // Export singleton instance
-export const notificationManager = new NotificationManager();
+export const inAppNotificationManager = new InAppNotificationManager();
+
+// Backward compatibility: export as notificationManager
+export const notificationManager = inAppNotificationManager;

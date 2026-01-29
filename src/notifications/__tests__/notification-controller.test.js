@@ -2,7 +2,7 @@
 // Unit tests for NotificationController - can run locally without FCM
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { NotificationController } from '../notification-controller.js';
+import { PushNotificationController } from '../push-notification-controller.js';
 
 // Mock transport for testing
 class MockTransport {
@@ -45,13 +45,13 @@ class MockTransport {
   }
 }
 
-describe('NotificationController', () => {
+describe('PushNotificationController', () => {
   let controller;
   let mockTransport;
 
   beforeEach(() => {
     mockTransport = new MockTransport();
-    controller = new NotificationController(mockTransport);
+    controller = new PushNotificationController(mockTransport);
   });
 
   describe('Initialization', () => {

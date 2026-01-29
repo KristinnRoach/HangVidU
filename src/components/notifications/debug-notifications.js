@@ -1,6 +1,6 @@
 import { createNotification } from './notification.js';
 import { createNotificationsToggle } from './notifications-toggle.js';
-import { notificationManager } from './notification-manager.js';
+import { inAppNotificationManager } from './in-app-notification-manager.js';
 import { isDev } from '../../utils/dev/dev-utils.js';
 
 const HIDE_DEBUG_UI = true; // Set to false to enable debug notification UI in dev mode
@@ -27,7 +27,7 @@ function createDummyNotification() {
     handlers: {
       handleDismiss: () => {
         console.log(`[DEBUG] Dismissed notification #${notificationNumber}`);
-        notificationManager.remove(id);
+        inAppNotificationManager.remove(id);
       },
     },
     initialProps: { number: notificationNumber },
@@ -35,9 +35,9 @@ function createDummyNotification() {
     parent: document.body,
   });
 
-  notificationManager.add(id, notification);
+  inAppNotificationManager.add(id, notification);
   console.log(
-    `[DEBUG] Added notification #${notificationNumber}. Total: ${notificationManager.getCount()}`,
+    `[DEBUG] Added notification #${notificationNumber}. Total: ${inAppNotificationManager.getCount()}`,
   );
 }
 
@@ -62,7 +62,7 @@ export function addDebugUpdateButton() {
   });
 
   // Register toggle with notification manager (auto-wires toggle behavior)
-  notificationManager.setToggle(notificationsToggle);
+  inAppNotificationManager.setToggle(notificationsToggle);
 
   // Create button container
   const buttonContainer = document.createElement('div');
@@ -113,7 +113,7 @@ export function addDebugUpdateButton() {
 
   clearBtn.onclick = () => {
     console.log('[DEBUG] Clearing all notifications');
-    notificationManager.clear();
+    inAppNotificationManager.clear();
     dummyNotificationCounter = 0;
   };
 
