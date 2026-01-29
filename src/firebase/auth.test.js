@@ -41,6 +41,15 @@ vi.mock('../contacts/user-discovery.js', () => ({
 vi.mock('firebase/database', () => ({
   ref: vi.fn(),
   remove: vi.fn(() => Promise.resolve()),
+  get: vi.fn(() => Promise.resolve({ exists: () => false, val: () => null })),
+  set: vi.fn(() => Promise.resolve()),
+  update: vi.fn(() => Promise.resolve()),
+  push: vi.fn(() => ({ key: 'mock-key' })),
+  onValue: vi.fn(),
+  onChildAdded: vi.fn(),
+  onChildRemoved: vi.fn(),
+  off: vi.fn(),
+  serverTimestamp: vi.fn(() => ({ '.sv': 'timestamp' })),
 }));
 
 vi.mock('../storage/fb-rtdb/rtdb.js', () => ({
