@@ -264,7 +264,10 @@ export async function renderContactsList(lobbyElement) {
 }
 
 /**
- * Attach event listeners to contact list elements.
+ * Attach click handlers for message, call, delete, and edit actions on contact list elements.
+ *
+ * @param {Element} container - DOM element that contains the rendered contact entries (buttons and name elements).
+ * @param {Element} lobbyElement - Root lobby element used when actions need to re-render the contacts list or show calling/messaging UI.
  */
 function attachContactListeners(container, lobbyElement) {
   // Message buttons - click to open messaging

@@ -13,9 +13,9 @@ import { createReferralNotification } from '../components/notifications/referral
 import { inAppNotificationManager } from '../components/notifications/in-app-notification-manager.js';
 
 /**
- * Store referrer ID when user arrives via referral link.
- * Shows a clickable toast and a persistent notification prompting sign-in.
- * Called on page load before authentication.
+ * Capture a referral from the URL, persist it, and prompt the user to sign in and connect with the referrer.
+ *
+ * If a `ref` parameter exists in the current URL, the referrer ID is saved to localStorage under `referredBy`, the `ref` parameter is removed from the visible URL, an ephemeral clickable toast prompting sign-in is shown, and a persistent in-app referral notification is registered under the key `referral-{referrerId}`.
  */
 export async function captureReferral() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -57,9 +57,13 @@ export async function captureReferral() {
 }
 
 /**
- * Process referral after user signs in.
- * Uses the same mutual contact-add flow as "Invite Selected".
- * Called after successful authentication.
+ * Process a stored referral link after the current user signs in.
+ *
+ * If a referrer ID is present in localStorage under 'referredBy' and is not the
+ * current user, creates a synthetic invite and accepts it to add the referrer
+ * to the current user's contacts and notify the referrer. On success, shows a
+ * success toast, removes the corresponding in-app referral notification, and
+ * clears 'referredBy'. On error, leaves 'referredBy' intact to allow retry.
  */
 export async function processReferral() {
   const referrerId = localStorage.getItem('referredBy');

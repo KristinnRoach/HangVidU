@@ -8,7 +8,11 @@ const HIDE_DEBUG_UI = true; // Set to false to enable debug notification UI in d
 let dummyNotificationCounter = 0;
 
 /**
- * Creates a dummy notification for testing
+ * Creates and registers a dummy in-app notification for development/testing.
+ *
+ * Increments an internal dummy counter, creates a notification labeled with that
+ * counter value, registers it with the in-app notification manager, and logs
+ * the addition. The notification's dismiss action removes it from the manager.
  */
 function createDummyNotification() {
   dummyNotificationCounter++;
@@ -42,8 +46,10 @@ function createDummyNotification() {
 }
 
 /**
- * Debug utility to manually trigger notifications for testing.
- * Only works in dev mode.
+ * Adds a persistent debug UI that lets developers create and clear dummy in-app notifications.
+ *
+ * When running in development and debug UI is enabled, registers a notifications toggle in the top-right menu
+ * and appends a fixed-position control with "add" and "clear" buttons to the document body. Does nothing otherwise.
  */
 export function addDebugUpdateButton() {
   if (HIDE_DEBUG_UI || !isDev()) return;

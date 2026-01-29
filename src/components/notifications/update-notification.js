@@ -4,9 +4,15 @@ import { inAppNotificationManager } from './in-app-notification-manager.js';
 const NOTIFICATION_ID = 'pwa-update';
 
 /**
- * Shows a notification prompting the user to update the PWA.
- * @param {Function} updateSW - Function to trigger the service worker update
- * @returns {HTMLElement} The notification component
+ * Display an in-app update notification and register it with the notification manager.
+ *
+ * If an update notification with the same id already exists, returns that existing notification
+ * instead of creating a duplicate. The created notification presents "Update" and "Later"
+ * actions: "Update" calls the provided updater and removes the notification from the manager;
+ * "Later" hides the notifications list if visible but keeps the notification registered so it
+ * remains accessible via the manager's UI.
+ * @param {Function} updateSW - Function invoked to trigger the service worker update; called with `true` to reload into the new version.
+ * @returns {HTMLElement} The notification element (or the existing registered notification if one was already present).
  */
 export function showUpdateNotification(updateSW) {
   // Don't show duplicate update notifications

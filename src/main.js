@@ -179,7 +179,14 @@ let cleanupFunctions = [];
 
 // ============================================================================
 // INITIALIZATION & MEDIA SETUP
-// ============================================================================
+/**
+ * Initialize the main application: UI, authentication hooks, media-related controls, and notification subsystems.
+ *
+ * Validates critical DOM elements, registers UI controls and key listeners, waits for auth readiness, initializes
+ * in-app and push notifications, registers cleanup hooks, and exposes debug helpers on `window`.
+ *
+ * @returns {Promise<boolean>} `true` if initialization completed successfully, `false` otherwise.
+ */
 
 async function init() {
   initUI();
@@ -572,7 +579,14 @@ async function removeRecentCall(roomId) {
 }
 
 /**
- * Listen for incoming member joins on a given roomId and log them.
+ * Attach and manage incoming-call listeners for the specified room.
+ *
+ * Listens for remote member joins, call cancellations, and member leaves for the given roomId.
+ * When a fresh incoming join is detected, prompts the user to accept or reject the call and
+ * handles the resulting actions: answering (join), rejecting (signal rejection and clear recent call),
+ * dismissing notifications, playing/stopping ringtone and visual indicators, and cleaning up listeners.
+ *
+ * @param {string} roomId - The room identifier for which incoming-call listeners will be attached.
  */
 export function listenForIncomingOnRoom(roomId) {
   if (!roomId) return;
@@ -1342,8 +1356,11 @@ const pendingInvites = [];
 let isProcessingInvite = false;
 
 /**
- * Process the next invite in the queue.
- * Shows invite notification in the notification list.
+ * Processes the next pending invitation and displays it as an in-app notification.
+ *
+ * If an invite is available and not already being handled, creates a notification for the next invite
+ * and attaches accept/decline handlers that add or decline the contact, update the contacts UI,
+ * remove the notification, and continue processing any remaining invites.
  */
 async function processNextInvite() {
   if (isProcessingInvite || pendingInvites.length === 0) return;
