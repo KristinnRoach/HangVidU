@@ -153,6 +153,13 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           photoURL,
         });
 
+        // Cancel One Tap prompt if user logs in (without triggering cooldown)
+        if (isLoggedIn) {
+          import('../../firebase/onetap.js').then(({ cancelOneTap }) => {
+            cancelOneTap();
+          });
+        }
+
         // Update button states with new auth state
         updateButtons(isLoggedIn);
 
