@@ -1706,7 +1706,7 @@ CallController.on(
       console.log('[MAIN] Potential missed call detected for room:', roomId);
       try {
         // Dynamic import to avoid circular dependency (main.js <-> contacts.js)
-        const { getContactByRoomId } =
+        const { getContactByRoomId, callContact } =
           await import('./components/contacts/contacts.js');
         const contact = await getContactByRoomId(roomId);
         if (contact && contact.contactId) {
@@ -1714,8 +1714,9 @@ CallController.on(
           const me = getCurrentUser();
           const callerName = me?.displayName || 'Friend';
 
+          // Send push notification to the contact
           console.log(
-            `[MAIN] Sending missed call notification to ${contact.contactName} (${contact.contactId})`,
+            `[MAIN] Sending missed call push notification to ${contact.contactName} (${contact.contactId})`,
           );
           await notificationController.sendMissedCallNotification(
             contact.contactId,
@@ -1725,6 +1726,28 @@ CallController.on(
               callerName,
             },
           );
+
+          // Show in-app missed call notification
+          const { createMissedCallNotification } =
+            await import('./components/notifications/missed-call-notification.js');
+          const notificationId = `missed-call-${contact.contactId}-${Date.now()}`;
+          const missedCallNotification = createMissedCallNotification({
+            callerId: contact.contactId,
+            callerName: contact.contactName,
+            roomId,
+            onCallBack: async () => {
+              // Reuse existing callContact flow
+              await callContact(contact.contactId, contact.contactName);
+              // Remove notification after initiating call
+              notificationManager.remove(notificationId);
+            },
+            onDismiss: () => {
+              notificationManager.remove(notificationId);
+            },
+          });
+
+          notificationManager.add(notificationId, missedCallNotification);
+          console.log('[MAIN] In-app missed call notification added');
         } else {
           console.log(
             '[MAIN] No saved contact found for room, skipping missed call notification',

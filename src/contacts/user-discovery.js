@@ -19,8 +19,10 @@ export function hashEmail(email) {
   const normalized = email.toLowerCase().trim();
 
   // UTF-8 safe base64 encode, then replace / for Firebase compatibility
-  const base64 = btoa(unescape(encodeURIComponent(normalized)));
-  const safe = base64.replace(/\//g, '-');
+  let binary = '';
+  for (const b of new TextEncoder().encode(normalized))
+    binary += String.fromCharCode(b);
+  const safe = btoa(binary).replace(/\//g, '-');
 
   return safe;
 }
