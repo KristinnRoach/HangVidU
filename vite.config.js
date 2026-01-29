@@ -11,23 +11,9 @@ export default defineConfig(({ mode }) => {
   const target = process.env.BUILD_TARGET || process.env.VITE_BUILD_TARGET;
   const basePath =
     mode === 'production' ? (target === 'hosting' ? '/' : '/HangVidU/') : '/';
-  const disablePWA = process.env.DISABLE_PWA === '1';
 
   return {
     base: basePath,
-    // logLevel: 'warn',
-
-    define: {
-      'import.meta.env.VITE_DISABLE_PWA': JSON.stringify(
-        disablePWA ? '1' : '0',
-      ),
-    },
-
-    optimizeDeps: {
-      // Exclude virtual PWA module from dependency scanning when PWA is disabled
-      // This prevents "Failed to resolve virtual:pwa-register" warnings in dev mode
-      exclude: disablePWA ? ['virtual:pwa-register'] : [],
-    },
 
     build: {
       rollupOptions: {
@@ -42,79 +28,76 @@ export default defineConfig(({ mode }) => {
 
     plugins: [
       ...(mode === 'development' ? [mkcert()] : []),
-      ...(disablePWA
-        ? []
-        : [
-            VitePWA({
-              includeAssets: ['index.html', 'favicon.ico'],
-              registerType: 'autoUpdate',
-              strategies: 'injectManifest',
-              srcDir: 'src',
-              filename: 'sw.js',
-              devOptions: {
-                enabled: !disablePWA,
-              },
-              workbox: {
-                cleanupOutdatedCaches: true,
-                navigateFallback: `${basePath}index.html`, // fallback for SPA navigation (accounts for base path)
-                navigateFallbackDenylist: [
-                  new RegExp(`^${basePath.replace(/\//g, '\\/')}index\\.html$`), // Don't fallback for index.html itself (prevents cache error)
-                  /^\/__\//, // Exclude Firebase auth handler paths (/__/auth/handler, etc.)
-                  /^\/auth\//, // Exclude any other auth-related paths
-                ],
-              },
+      VitePWA({
+        includeAssets: ['index.html', 'favicon.ico'],
+        registerType: 'autoUpdate',
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'sw.js',
+        devOptions: {
+          enabled: false, // injectManifest with ES modules doesn't work in dev
+          type: 'module',
+        },
+        workbox: {
+          cleanupOutdatedCaches: true,
+          navigateFallback: `${basePath}index.html`, // fallback for SPA navigation (accounts for base path)
+          navigateFallbackDenylist: [
+            new RegExp(`^${basePath.replace(/\//g, '\\/')}index\\.html$`), // Don't fallback for index.html itself (prevents cache error)
+            /^\/__\//, // Exclude Firebase auth handler paths (/__/auth/handler, etc.)
+            /^\/auth\//, // Exclude any other auth-related paths
+          ],
+        },
 
-              manifest: {
-                name: 'HangVidU',
-                short_name: 'HangVidU',
-                description: 'Peer-to-peer video chat with watch-together mode',
+        manifest: {
+          name: 'HangVidU',
+          short_name: 'HangVidU',
+          description: 'Peer-to-peer video chat with watch-together mode',
 
-                start_url: basePath,
-                scope: basePath,
+          start_url: basePath,
+          scope: basePath,
 
-                display: 'standalone',
-                theme_color: '#82b5ecff',
-                background_color: '#1a1a1a',
+          display: 'standalone',
+          theme_color: '#82b5ecff',
+          background_color: '#1a1a1a',
 
-                icons: [
-                  {
-                    src: `${basePath}icons/play-arrows-v1/icon-192.png`,
-                    sizes: '192x192',
-                    type: 'image/png',
-                  },
-                  {
-                    src: `${basePath}icons/play-arrows-v1/icon-512.png`,
-                    sizes: '512x512',
-                    type: 'image/png',
-                    purpose: 'any',
-                  },
-                  {
-                    src: `${basePath}icons/play-arrows-v1/icon-512.png`,
-                    sizes: '512x512',
-                    type: 'image/png',
-                    purpose: 'maskable',
-                  },
-                ],
-                screenshots: [
-                  {
-                    src: `${basePath}screenshot-wide.png`,
-                    sizes: '1280x720',
-                    form_factor: 'wide',
-                    type: 'image/png',
-                  },
-                  {
-                    src: `${basePath}screenshot-narrow.png`,
-                    sizes: '540x720',
-                    form_factor: 'narrow',
-                    type: 'image/png',
-                  },
-                ],
-              },
-            }),
-          ]),
+          icons: [
+            {
+              src: `${basePath}icons/play-arrows-v1/icon-192.png`,
+              sizes: '192x192',
+              type: 'image/png',
+            },
+            {
+              src: `${basePath}icons/play-arrows-v1/icon-512.png`,
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any',
+            },
+            {
+              src: `${basePath}icons/play-arrows-v1/icon-512.png`,
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable',
+            },
+          ],
+          screenshots: [
+            {
+              src: `${basePath}screenshot-wide.png`,
+              sizes: '1280x720',
+              form_factor: 'wide',
+              type: 'image/png',
+            },
+            {
+              src: `${basePath}screenshot-narrow.png`,
+              sizes: '540x720',
+              form_factor: 'narrow',
+              type: 'image/png',
+            },
+          ],
+        },
+      }),
     ],
     server: {
-      port: process.env.VITE_PORT ? Number(process.env.VITE_PORT) : 5173,
+      port: 5173, // Vite default - keep it simple
       https: true, // use trusted dev cert from mkcert
       host: true, // To expose to LAN devices as well
       allowedHosts: [

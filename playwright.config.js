@@ -12,7 +12,7 @@ export default defineConfig({
     ...(process.env.CI ? [['github']] : []),
   ],
   use: {
-    baseURL: `https://localhost:${process.env.VITE_PORT || 5173}/HangVidU`,
+    baseURL: 'https://localhost:5173/HangVidU',
     trace: 'on-first-retry',
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',
@@ -54,7 +54,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'pnpm dev',
-    port: Number(process.env.VITE_PORT) || 5173,
+    port: 5173,
     reuseExistingServer: !process.env.CI,
     timeout: 30000,
   },
