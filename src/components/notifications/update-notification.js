@@ -1,5 +1,5 @@
 import { createNotification } from './notification.js';
-import { notificationManager } from './notification-manager.js';
+import { inAppNotificationManager } from './in-app-notification-manager.js';
 
 const NOTIFICATION_ID = 'pwa-update';
 
@@ -10,8 +10,8 @@ const NOTIFICATION_ID = 'pwa-update';
  */
 export function showUpdateNotification(updateSW) {
   // Don't show duplicate update notifications
-  if (notificationManager.has(NOTIFICATION_ID)) {
-    return notificationManager.notifications.get(NOTIFICATION_ID);
+  if (inAppNotificationManager.has(NOTIFICATION_ID)) {
+    return inAppNotificationManager.notifications.get(NOTIFICATION_ID);
   }
 
   const notification = createNotification({
@@ -27,13 +27,13 @@ export function showUpdateNotification(updateSW) {
     handlers: {
       handleUpdate: () => {
         updateSW(true); // Triggers reload with new version
-        notificationManager.remove(NOTIFICATION_ID);
+        inAppNotificationManager.remove(NOTIFICATION_ID);
       },
       handleLater: () => {
         // Keep notification in the manager (bell icon remains)
         // Just hide the notifications list panel if it's open
-        if (notificationManager.isListVisible()) {
-          notificationManager.hideList();
+        if (inAppNotificationManager.isListVisible()) {
+          inAppNotificationManager.hideList();
         }
         // Note: notification stays in the list, accessible via bell icon
         // User can click bell to see it again and update when ready
@@ -44,7 +44,7 @@ export function showUpdateNotification(updateSW) {
   });
 
   // Register with manager (automatically updates toggle)
-  notificationManager.add(NOTIFICATION_ID, notification);
+  inAppNotificationManager.add(NOTIFICATION_ID, notification);
 
   return notification;
 }

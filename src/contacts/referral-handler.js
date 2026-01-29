@@ -10,7 +10,7 @@ import { getDeterministicRoomId } from '../utils/room-id.js';
 import { showInfoToast, showSuccessToast } from '../utils/ui/toast.js';
 import { getUserProfile } from '../user/profile.js';
 import { createReferralNotification } from '../components/notifications/referral-notification.js';
-import { notificationManager } from '../components/notifications/notification-manager.js';
+import { inAppNotificationManager } from '../components/notifications/in-app-notification-manager.js';
 
 /**
  * Store referrer ID when user arrives via referral link.
@@ -52,7 +52,7 @@ export async function captureReferral() {
       onSignIn: () => signInWithAccountSelection(),
     });
 
-    notificationManager.add(`referral-${referrerId}`, notification);
+    inAppNotificationManager.add(`referral-${referrerId}`, notification);
   }
 }
 
@@ -112,7 +112,7 @@ export async function processReferral() {
     showSuccessToast(`✅ Connected with ${referrerName}!`);
 
     // Clean up referral notification if still showing
-    notificationManager.remove(`referral-${referrerId}`);
+    inAppNotificationManager.remove(`referral-${referrerId}`);
 
     // Clean up
     localStorage.removeItem('referredBy');

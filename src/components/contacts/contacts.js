@@ -11,7 +11,7 @@ import { messagingController } from '../../messaging/messaging-controller.js';
 import { messagesUI } from '../messages/messages-ui.js';
 import { createMessageToggle } from '../messages/message-toggle.js';
 import { getDeterministicRoomId } from '../../utils/room-id.js';
-import { notificationController } from '../../notifications/notification-controller.js';
+import { pushNotificationController } from '../../notifications/push-notification-controller.js';
 
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
@@ -331,7 +331,7 @@ function attachContactListeners(container, lobbyElement) {
               currentUser?.email ||
               getLoggedInUserId();
 
-            await notificationController.sendCallNotification(contactId, {
+            await pushNotificationController.sendCallNotification(contactId, {
               roomId,
               callerId: getLoggedInUserId(),
               callerName,

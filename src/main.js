@@ -94,9 +94,9 @@ import {
 
 // import { getContactByRoomId } from './components/contacts/contacts.js';
 
-// TODO: notificationManager VS notificationController - Compare and clarify distinction or combine!
-import { notificationManager } from './components/notifications/notification-manager.js';
-import { notificationController } from './notifications/notification-controller.js';
+// TODO: inAppNotificationManager VS pushNotificationController - Compare and clarify distinction or combine!
+import { inAppNotificationManager } from './components/notifications/in-app-notification-manager.js';
+import { pushNotificationController } from './notifications/push-notification-controller.js';
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
 import './ui/state.js'; // Initialize UI state (sets body data-view attribute)
@@ -238,12 +238,12 @@ async function init() {
         parent: topRightMenu,
         hideWhenAllRead: true, // Hide when no notifications in prod
       });
-      notificationManager.setToggle(notificationsToggle);
+      inAppNotificationManager.setToggle(notificationsToggle);
     }
 
     // Initialize FCM push notifications
     try {
-      const fcmInitialized = await notificationController.initialize();
+      const fcmInitialized = await pushNotificationController.initialize();
       if (fcmInitialized) {
         console.log('[MAIN] FCM notifications initialized successfully');
 
@@ -259,8 +259,10 @@ async function init() {
       console.error('[MAIN] FCM initialization error:', error);
     }
 
-    // DEBUG: Expose notificationController to window for testing
-    window.notificationController = notificationController;
+    // DEBUG: Expose pushNotificationController to window for testing
+    window.pushNotificationController = pushNotificationController;
+    // Backward compatibility
+    window.notificationController = pushNotificationController;
     window.getLoggedInUserId = getLoggedInUserId;
 
     return true;
@@ -765,8 +767,8 @@ export function listenForIncomingOnRoom(roomId) {
           removeIncomingListenersForRoom(roomId);
 
           // Dismiss any call notifications for this room
-          if (notificationController.isNotificationEnabled()) {
-            await notificationController.dismissCallNotifications(roomId);
+          if (pushNotificationController.isNotificationEnabled()) {
+            await pushNotificationController.dismissCallNotifications(roomId);
           }
 
           getDiagnosticLogger().logNotificationDecision(
@@ -794,8 +796,8 @@ export function listenForIncomingOnRoom(roomId) {
           devDebug('Incoming call rejected by user');
 
           // Dismiss any call notifications for this room
-          if (notificationController.isNotificationEnabled()) {
-            await notificationController.dismissCallNotifications(roomId);
+          if (pushNotificationController.isNotificationEnabled()) {
+            await pushNotificationController.dismissCallNotifications(roomId);
           }
 
           getDiagnosticLogger().logNotificationDecision(
@@ -836,8 +838,8 @@ export function listenForIncomingOnRoom(roomId) {
     callIndicators.stopCallIndicators();
 
     // Dismiss any call notifications for this room
-    if (notificationController.isNotificationEnabled()) {
-      await notificationController
+    if (pushNotificationController.isNotificationEnabled()) {
+      await pushNotificationController
         .dismissCallNotifications(roomId)
         .catch(() => {});
     }
@@ -1200,7 +1202,7 @@ if (isDev() && testNotificationsBtn) {
     try {
       console.log('[TEST] Testing notification permissions...');
 
-      const result = await notificationController.requestPermission({
+      const result = await pushNotificationController.requestPermission({
         title: 'Enable Push Notifications',
         explain:
           'Get notified of incoming calls and messages even when HangVidU is closed.',
@@ -1237,7 +1239,7 @@ if (isDev() && testNotificationsBtn) {
       console.log('[TEST] Permission result:', result);
 
       // If already enabled, show current status
-      if (notificationController.isNotificationEnabled()) {
+      if (pushNotificationController.isNotificationEnabled()) {
         alert('✅ Push notifications are already enabled!');
       }
     } catch (error) {
@@ -1362,7 +1364,7 @@ async function processNextInvite() {
           showSuccessToast(`✅ ${inviteData.fromName} added to contacts!`);
 
           // Remove notification after successful accept
-          notificationManager.remove(`invite-${fromUserId}`);
+          inAppNotificationManager.remove(`invite-${fromUserId}`);
         } catch (e) {
           console.error('[INVITATIONS] Failed to accept invite:', e);
           showErrorToast('Failed to add contact. Please try again.');
@@ -1378,7 +1380,7 @@ async function processNextInvite() {
           console.log('[INVITATIONS] Invite declined');
 
           // Remove notification after decline
-          notificationManager.remove(`invite-${fromUserId}`);
+          inAppNotificationManager.remove(`invite-${fromUserId}`);
         } catch (e) {
           console.error('[INVITATIONS] Failed to decline invite:', e);
         } finally {
@@ -1389,11 +1391,11 @@ async function processNextInvite() {
     });
 
     // Add to notification manager
-    notificationManager.add(`invite-${fromUserId}`, inviteNotification);
+    inAppNotificationManager.add(`invite-${fromUserId}`, inviteNotification);
 
     // Show the notification list if it's hidden
-    if (!notificationManager.isListVisible()) {
-      notificationManager.showList();
+    if (!inAppNotificationManager.isListVisible()) {
+      inAppNotificationManager.showList();
     }
   } catch (error) {
     console.error('[INVITATIONS] Failed to process invite:', error);
@@ -1523,8 +1525,8 @@ window.onload = async () => {
         messagingController.closeAllSessions();
 
         // Disable notifications and clean up FCM tokens
-        if (notificationController.isNotificationEnabled()) {
-          await notificationController.disable().catch((error) => {
+        if (pushNotificationController.isNotificationEnabled()) {
+          await pushNotificationController.disable().catch((error) => {
             console.warn(
               '[AUTH] Failed to disable notifications on logout:',
               error,
@@ -1563,13 +1565,14 @@ window.onload = async () => {
               '[AUTH] Skipping notification setup: no user logged in',
             );
           } else {
-            const permissionState = notificationController.getPermissionState();
+            const permissionState =
+              pushNotificationController.getPermissionState();
 
             if (permissionState === 'granted') {
               // Permission already granted (browser-level), get FCM token for this user
               console.log('[AUTH] Enabling notifications for logged-in user');
               try {
-                await notificationController.enable();
+                await pushNotificationController.enable();
                 console.log('[AUTH] Notifications enabled successfully');
               } catch (error) {
                 console.error(
@@ -1718,7 +1721,7 @@ CallController.on(
           console.log(
             `[MAIN] Sending missed call push notification to ${contact.contactName} (${contact.contactId})`,
           );
-          await notificationController.sendMissedCallNotification(
+          await pushNotificationController.sendMissedCallNotification(
             contact.contactId,
             {
               roomId,
@@ -1739,14 +1742,14 @@ CallController.on(
               // Reuse existing callContact flow
               await callContact(contact.contactId, contact.contactName);
               // Remove notification after initiating call
-              notificationManager.remove(notificationId);
+              inAppNotificationManager.remove(notificationId);
             },
             onDismiss: () => {
-              notificationManager.remove(notificationId);
+              inAppNotificationManager.remove(notificationId);
             },
           });
 
-          notificationManager.add(notificationId, missedCallNotification);
+          inAppNotificationManager.add(notificationId, missedCallNotification);
           console.log('[MAIN] In-app missed call notification added');
         } else {
           console.log(
@@ -1759,10 +1762,12 @@ CallController.on(
     }
 
     // Clean up call notifications for this room
-    if (roomId && notificationController.isNotificationEnabled()) {
-      notificationController.dismissCallNotifications(roomId).catch((error) => {
-        console.warn('[MAIN] Failed to dismiss call notifications:', error);
-      });
+    if (roomId && pushNotificationController.isNotificationEnabled()) {
+      pushNotificationController
+        .dismissCallNotifications(roomId)
+        .catch((error) => {
+          console.warn('[MAIN] Failed to dismiss call notifications:', error);
+        });
     }
 
     // UI cleanup
