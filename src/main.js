@@ -1555,45 +1555,11 @@ window.onload = async () => {
         // Start listening for contact invites
         setupInviteListener();
 
-        // Enable notifications for the new user (in production)
-        // This happens after listeners are ready so calls aren't missed during FCM setup
-        if (import.meta.env.PROD) {
-          const currentUserId = getLoggedInUserId();
-
-          if (!currentUserId) {
-            console.log(
-              '[AUTH] Skipping notification setup: no user logged in',
-            );
-          } else {
-            const permissionState =
-              pushNotificationController.getPermissionState();
-
-            if (permissionState === 'granted') {
-              // Permission already granted (browser-level), get FCM token for this user
-              console.log('[AUTH] Enabling notifications for logged-in user');
-              try {
-                await pushNotificationController.enable();
-                console.log('[AUTH] Notifications enabled successfully');
-              } catch (error) {
-                console.error(
-                  '[AUTH] Failed to enable notifications on login:',
-                  error,
-                );
-              }
-            } else if (permissionState === 'default') {
-              console.log(
-                '[AUTH] Notification permission in default state - consider showing opt-in UI',
-              );
-              console.log(
-                '[AUTH] User can enable notifications via the notifications toggle',
-              );
-            } else {
-              console.log(
-                '[AUTH] Notification permission denied or unsupported',
-              );
-            }
-          }
-        }
+        // Enable push notifications (requestPermission handles all states:
+        // granted → enable, default → prompt, denied → noop)
+        await pushNotificationController.requestPermission().catch((e) =>
+          console.warn('[AUTH] Push notification setup failed:', e),
+        );
       } else if (isInitialLoad && isLoggedIn) {
         // If user is already logged in on initial load (e.g., after redirect)
         devDebug('[AUTH] Initial load with logged-in user');
@@ -1609,6 +1575,11 @@ window.onload = async () => {
         // Listeners already attached by startListeningForSavedRooms, no action needed
         // Start listening for contact invites
         setupInviteListener();
+
+        // Enable push notifications for already-logged-in user
+        await pushNotificationController.requestPermission().catch((e) =>
+          console.warn('[AUTH] Push notification setup failed:', e),
+        );
       }
     } catch (e) {
       console.warn('Failed to handle auth change:', e);

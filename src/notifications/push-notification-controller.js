@@ -2,6 +2,7 @@
 // Unified notification API with transport abstraction
 
 import { FCMTransport } from './transports/fcm-transport.js';
+import { getLoggedInUserId } from '../firebase/auth.js';
 
 /**
  * PushNotificationController - Core notification API
@@ -463,6 +464,16 @@ export class PushNotificationController {
       '[PushNotificationController] Foreground message received:',
       payload,
     );
+
+    // Ignore notifications about the current user's own actions
+    const senderId = payload?.data?.senderId || payload?.data?.callerId;
+    const currentUserId = getLoggedInUserId();
+    if (senderId && currentUserId && senderId === currentUserId) {
+      console.log(
+        '[PushNotificationController] Ignoring self-notification',
+      );
+      return;
+    }
 
     // Notify callbacks
     this.notificationCallbacks.forEach((callback) => {
