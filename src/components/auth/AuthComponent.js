@@ -61,11 +61,6 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
   const initialLoggedIn = isLoggedIn();
   devDebug('[AuthComponent] Initial logged-in state:', initialLoggedIn);
 
-  // DEV-only: Delete Account button is for dev/testing. Will be properly integrated into settings UI later.
-  const deleteAccountBtn = isDev()
-    ? '<button id="delete-account-btn" class="delete-account-btn" style="display: none" onclick="handleDeleteAccount">Delete Account</button>'
-    : '';
-
   authComponent = createComponent({
     initialProps: {
       isLoggedIn: initialLoggedIn,
@@ -82,7 +77,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
     template: `
       <button style="margin-right: [[loginBtnMarginRightPx]]px; display: [[loginBtnDisplay]]" id="goog-login-btn" class="login-btn" onclick="handleLogin">Login</button>
       <button style="display: [[logoutBtnDisplay]]" id="goog-logout-btn" class="logout-btn" onclick="handleLogout">Logout</button>
-      [[deleteAccountBtn]]
+      ${isDev() ? '<button id="delete-account-btn" class="delete-account-btn" onclick="handleDeleteAccount">Delete Account</button>' : ''}
       <span class="signing-in-indicator" style="display: [[signingInDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">Signing in...</span>
       <div class="user-info" style="display: [[userInfoDisplay]]">
         <img src="[[userPhotoURL]]" alt="[[userName]]" class="user-avatar" style="display: [[userPhotoDisplay]]" />
