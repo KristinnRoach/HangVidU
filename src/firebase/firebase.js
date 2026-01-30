@@ -14,7 +14,9 @@ import {
 const appCheckExplicitDebugToken = import.meta.env
   .VITE_FIREBASE_APP_CHECK_DEBUG_TOKEN;
 
-if (import.meta.env.MODE === 'development' && typeof self !== 'undefined') {
+const isDev = import.meta.env.MODE === 'development';
+
+if (isDev && typeof self !== 'undefined') {
   if (
     typeof appCheckExplicitDebugToken === 'string' &&
     appCheckExplicitDebugToken.trim() !== ''
@@ -43,7 +45,7 @@ const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL, // ! SHOULD change in dev for local RTDB emulator ?
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,

@@ -1,5 +1,6 @@
 import {
   getDatabase,
+  connectDatabaseEmulator,
   ref,
   get,
   onValue,
@@ -10,6 +11,13 @@ import {
 import { app } from '../../firebase/firebase';
 
 export const rtdb = getDatabase(app);
+
+const USE_EMULATOR = false;
+
+if (location.hostname === 'localhost' && USE_EMULATOR) {
+  // Point to the RTDB emulator running on localhost.
+  connectDatabaseEmulator(rtdb, '127.0.0.1', 9000);
+}
 
 // ============================================================================
 // LISTENER TRACKING
@@ -34,7 +42,7 @@ export function addRTDBListener(
   callback,
   roomId = null,
   userId = null,
-  category = null
+  category = null,
 ) {
   // Attach the listener based on type
   if (type === 'value') {
@@ -108,7 +116,7 @@ export function removeRTDBListenersForUser(userId, roomId) {
     } catch (err) {
       console.warn(
         `Failed to remove listener for user ${userId} in room ${roomId}`,
-        err
+        err,
       );
     }
   });
@@ -184,7 +192,7 @@ export const getAnswerCandidatesRef = (roomId) =>
 export async function fetchRTDBData(
   dbRef,
   shouldThrow = true,
-  errorMsg = 'Data not found'
+  errorMsg = 'Data not found',
 ) {
   const snapshot = await get(dbRef);
   if (!snapshot.exists()) {
@@ -216,7 +224,7 @@ export async function getRoomOfferFB(roomId) {
   return fetchRTDBData(
     getRoomOfferRef(roomId),
     true,
-    `No offer found for room ${roomId}`
+    `No offer found for room ${roomId}`,
   );
 }
 
@@ -227,7 +235,7 @@ export async function getRoomMembersFB(roomId) {
   return fetchRTDBData(
     getRoomMembersRef(roomId),
     false, // Don't throw if no members yet
-    `No members in room ${roomId}`
+    `No members in room ${roomId}`,
   );
 }
 
@@ -238,7 +246,7 @@ export async function getRoomMemberFB(roomId, userId) {
   return fetchRTDBData(
     getRoomMemberRef(roomId, userId),
     false,
-    `Member ${userId} not found in room ${roomId}`
+    `Member ${userId} not found in room ${roomId}`,
   );
 }
 
@@ -249,6 +257,6 @@ export async function getWatchSyncDataFB(roomId) {
   return fetchRTDBData(
     getWatchRef(roomId),
     false,
-    `No watch state for room ${roomId}`
+    `No watch state for room ${roomId}`,
   );
 }
