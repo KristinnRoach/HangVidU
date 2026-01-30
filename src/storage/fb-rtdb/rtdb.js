@@ -14,7 +14,7 @@ export const rtdb = getDatabase(app);
 
 const USE_EMULATOR = false;
 
-if (location.hostname === 'localhost' && USE_EMULATOR) {
+if (USE_EMULATOR && typeof location && location.hostname === 'localhost') {
   // Point to the RTDB emulator running on localhost.
   connectDatabaseEmulator(rtdb, '127.0.0.1', 9000);
 }
