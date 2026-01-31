@@ -354,7 +354,7 @@ function attachContactListeners(container, lobbyElement) {
       const contactId = btn.getAttribute('data-contact-id');
       if (!contactId) return;
 
-      const confirmed = window.confirm('Delete this contact?');
+      const confirmed = await confirmDialog('Delete this contact?');
       if (!confirmed) return;
 
       await deleteContact(contactId);
@@ -577,4 +577,17 @@ async function deleteContact(contactId) {
   } catch (e) {
     console.warn('Failed to delete contact from localStorage', e);
   }
+}
+
+export function cleanupContacts() {
+  presenceListeners.forEach(({ ref: presenceRef, callback }) => {
+    off(presenceRef, 'value', callback);
+  });
+  presenceListeners.clear();
+
+  messageBadgeListeners.forEach((unsubscribe) => unsubscribe());
+  messageBadgeListeners.clear();
+
+  contactMessageToggles.forEach((toggle) => toggle.cleanup());
+  contactMessageToggles.clear();
 }
