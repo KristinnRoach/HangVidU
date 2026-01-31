@@ -113,7 +113,6 @@ import {
   renderContactsList,
   getContacts,
   resolveCallerName,
-  openContactMessages,
 } from './components/contacts/contacts.js';
 
 import {
@@ -1632,8 +1631,7 @@ CallController.on('memberJoined', ({ memberId, roomId }) => {
   messagesUI.showMessagesToggle();
 
   // Open contact messaging UI with partner
-  // TODO: Refactor to avoid dependency on contacts.js ? Check messaging controller and clarify public API
-  openContactMessages(memberId, memberId); // Use memberId as name for now
+  messagesUI.openContactMessages(memberId, memberId); // Use memberId as name for now
 
   // onCallConnected(); // ! Moved to bind-call-ui.js
 

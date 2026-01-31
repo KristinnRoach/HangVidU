@@ -16,6 +16,7 @@ import {
 } from '../../messaging/reactions/index.js';
 import { REACTION_CONFIG } from '../../messaging/reactions/ReactionConfig.js';
 import { getLoggedInUserId } from '../../firebase/auth.js';
+import { messagingController } from '../../messaging/messaging-controller.js';
 
 // Helper: create the messages box DOM and return container + element refs
 function createMessageBox() {
@@ -555,10 +556,6 @@ export function initMessagesUI() {
       ) {
         if (!messagesBox.classList.contains('hidden')) {
           messageToggle.clearBadge();
-          // Clear per-contact badge if there's an active session
-          if (currentSession?.toggle) {
-            currentSession.toggle.clearBadge();
-          }
         }
       }
     });
@@ -762,18 +759,29 @@ export function initMessagesUI() {
           try {
             if (source === 'doubleTap') {
               // Double-tap: toggle my reaction
-              const myReactionType = reactionManager.getUserReactionType(msgId, userId);
+              const myReactionType = reactionManager.getUserReactionType(
+                msgId,
+                userId,
+              );
 
               let reactions;
 
               if (myReactionType) {
                 // I have a reaction - remove it (toggle off)
                 await currentSession.removeReaction(msgId, myReactionType);
-                reactions = reactionManager.removeReaction(msgId, myReactionType, userId);
+                reactions = reactionManager.removeReaction(
+                  msgId,
+                  myReactionType,
+                  userId,
+                );
               } else {
                 // I don't have a reaction - add default (toggle on)
                 await currentSession.addReaction(msgId, reactionType);
-                reactions = reactionManager.addReaction(msgId, reactionType, userId);
+                reactions = reactionManager.addReaction(
+                  msgId,
+                  reactionType,
+                  userId,
+                );
 
                 // Show animation only when adding
                 if (REACTION_CONFIG.enableAnimations) {
@@ -788,14 +796,21 @@ export function initMessagesUI() {
               reactionUI.renderReactions(messageElement, msgId, reactions);
             } else if (source === 'picker') {
               // Picker: toggle selected reaction for this user
-              const myReactionType = reactionManager.getUserReactionType(msgId, userId);
+              const myReactionType = reactionManager.getUserReactionType(
+                msgId,
+                userId,
+              );
 
               let reactions;
 
               if (myReactionType === reactionType) {
                 // Same reaction - toggle off
                 await currentSession.removeReaction(msgId, reactionType);
-                reactions = reactionManager.removeReaction(msgId, reactionType, userId);
+                reactions = reactionManager.removeReaction(
+                  msgId,
+                  reactionType,
+                  userId,
+                );
               } else {
                 // Different reaction - remove existing (if any), add new
                 if (myReactionType) {
@@ -804,11 +819,18 @@ export function initMessagesUI() {
                 }
 
                 await currentSession.addReaction(msgId, reactionType);
-                reactions = reactionManager.addReaction(msgId, reactionType, userId);
+                reactions = reactionManager.addReaction(
+                  msgId,
+                  reactionType,
+                  userId,
+                );
 
                 // Show animation
                 if (REACTION_CONFIG.enableAnimations) {
-                  reactionUI.showReactionAnimation(messageElement, reactionType);
+                  reactionUI.showReactionAnimation(
+                    messageElement,
+                    reactionType,
+                  );
                 }
               }
 
@@ -1145,6 +1167,107 @@ export function initMessagesUI() {
     }
   }
 
+  /**
+   * Open messaging UI for a specific contact.
+   * Creates a message session with the messaging controller.
+   * @param {string} contactId - Contact's user ID
+   * @param {string} contactName - Display name for the contact
+   * @param {boolean} [openMessageBox=false] - Whether to open the message box immediately
+   */
+  function openContactMessages(contactId, contactName, openMessageBox = false) {
+    if (!getLoggedInUserId()) {
+      alert('Please sign in to send messages');
+      return;
+    }
+
+    // Check if already have an active session for this contact
+    const existingSession = messagingController.getSession(contactId);
+    if (existingSession) {
+      setSession(existingSession);
+      showMessagesToggle();
+
+      if (openMessageBox && !isMessagesUIOpen()) {
+        toggleMessages();
+      }
+
+      existingSession.markAsRead().catch((err) => {
+        console.warn('Failed to mark messages as read:', err);
+      });
+      return;
+    }
+
+    // Close any existing contact message session (only one at a time)
+    const allSessions = messagingController.getAllSessions();
+    allSessions.forEach((session) => {
+      session.close();
+    });
+
+    // Clear messages UI and reset session BEFORE opening new session
+    // (otherwise onChildAdded fires synchronously and messages get cleared afterward)
+    clearMessages();
+    setSession(null); // Reset so setSession() below doesn't re-clear
+
+    // Open messaging session
+    const session = messagingController.openSession(contactId, {
+      onMessage: (text, msgData, isSentByMe) => {
+        // Handle reaction updates separately (don't re-append the message)
+        if (msgData._reactionUpdate) {
+          // Convert Firebase reactions format { heart: { odAg2: true } } to { heart: ['odAg2'] }
+          const reactions = {};
+          if (msgData.reactions) {
+            for (const [type, users] of Object.entries(msgData.reactions)) {
+              reactions[type] = Object.keys(users);
+            }
+          }
+          updateMessageReactions(msgData.messageId, reactions);
+          return;
+        }
+
+        // Convert Firebase reactions format for initial display
+        const reactions = {};
+        if (msgData.reactions) {
+          for (const [type, users] of Object.entries(msgData.reactions)) {
+            reactions[type] = Object.keys(users);
+          }
+        }
+
+        // Display message in UI
+        if (isSentByMe) {
+          appendChatMessage(text, {
+            isSentByMe: true,
+            messageId: msgData.messageId,
+            reactions,
+          });
+        } else {
+          const isUnread = !msgData.read;
+          receiveMessage(text, {
+            isUnread,
+            messageId: msgData.messageId,
+            reactions,
+          });
+        }
+      },
+    });
+
+    // Store metadata on session for reference
+    session.contactName = contactName;
+
+    // Set this session as the active one in the UI (won't clear since we just did)
+    setSession(session);
+
+    // Show and open the messages UI
+    showMessagesToggle();
+
+    if (openMessageBox && !isMessagesUIOpen()) {
+      toggleMessages();
+    }
+
+    // Mark all unread messages as read
+    session.markAsRead().catch((err) => {
+      console.warn('Failed to mark messages as read:', err);
+    });
+  }
+
   return {
     appendChatMessage,
     receiveMessage,
@@ -1160,6 +1283,7 @@ export function initMessagesUI() {
     getCurrentSession,
     clearMessages,
     setFileTransfer,
+    openContactMessages,
     reset,
     cleanup,
   };

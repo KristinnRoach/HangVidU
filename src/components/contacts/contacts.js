@@ -274,7 +274,9 @@ function attachContactListeners(container, lobbyElement) {
       const contactId = btn.getAttribute('data-contact-id');
       const contactName = btn.getAttribute('data-contact-name');
       if (contactId) {
-        openContactMessages(contactId, contactName);
+        messagesUI.openContactMessages(contactId, contactName);
+        const toggle = contactMessageToggles.get(contactId);
+        if (toggle) toggle.clearBadge();
       }
     };
   });
@@ -383,111 +385,6 @@ function attachContactListeners(container, lobbyElement) {
 }
 
 /**
- * Open messaging UI for a specific contact.
- * Creates a message session with RTDB transport.
- */
-export function openContactMessages(
-  contactId,
-  contactName,
-  openMessageBox = false,
-) {
-  if (!getLoggedInUserId()) {
-    alert('Please sign in to send messages');
-    return;
-  }
-
-  // Check if already have an active session for this contact
-  const existingSession = messagingController.getSession(contactId);
-  if (existingSession) {
-    messagesUI.showMessagesToggle();
-    // Just show the UI if openMessageBox is true (and not already open)
-    if (openMessageBox && !messagesUI.isMessagesUIOpen()) {
-      messagesUI.toggleMessages();
-    }
-    return;
-  }
-
-  // Close any existing contact message session (only one at a time)
-  const allSessions = messagingController.getAllSessions();
-  allSessions.forEach((session) => {
-    session.close();
-  });
-
-  // Clear messages UI and reset session BEFORE opening new session
-  // (otherwise onChildAdded fires synchronously and messages get cleared afterward)
-  messagesUI.clearMessages();
-  messagesUI.setSession(null); // Reset so setSession() below doesn't re-clear
-
-  // Open messaging session
-  const session = messagingController.openSession(contactId, {
-    onMessage: (text, msgData, isSentByMe) => {
-      // Handle reaction updates separately (don't re-append the message)
-      if (msgData._reactionUpdate) {
-        // Convert Firebase reactions format { heart: { odAg2: true } } to { heart: ['odAg2'] }
-        const reactions = {};
-        if (msgData.reactions) {
-          for (const [type, users] of Object.entries(msgData.reactions)) {
-            reactions[type] = Object.keys(users);
-          }
-        }
-        messagesUI.updateMessageReactions(msgData.messageId, reactions);
-        return;
-      }
-
-      // Convert Firebase reactions format for initial display
-      const reactions = {};
-      if (msgData.reactions) {
-        for (const [type, users] of Object.entries(msgData.reactions)) {
-          reactions[type] = Object.keys(users);
-        }
-      }
-
-      // Display message in UI
-      if (isSentByMe) {
-        messagesUI.appendChatMessage(text, {
-          isSentByMe: true,
-          messageId: msgData.messageId,
-          reactions,
-        });
-      } else {
-        const isUnread = !msgData.read;
-        messagesUI.receiveMessage(text, {
-          isUnread,
-          messageId: msgData.messageId,
-          reactions,
-        });
-      }
-    },
-  });
-
-  // Store metadata on session for reference
-  session.contactName = contactName;
-  session.toggle = contactMessageToggles.get(contactId);
-
-  // Set this session as the active one in the UI (won't clear since we just did)
-  messagesUI.setSession(session);
-
-  // Show and open the messages UI
-  messagesUI.showMessagesToggle();
-
-  // Just show the UI if openMessageBox is true (and not already open)
-  if (openMessageBox && !messagesUI.isMessagesUIOpen()) {
-    messagesUI.toggleMessages();
-  }
-
-  // Mark all unread messages as read
-  session.markAsRead().catch((err) => {
-    console.warn('Failed to mark messages as read:', err);
-  });
-
-  // Clear the unread badge for this contact
-  const toggle = contactMessageToggles.get(contactId);
-  if (toggle) {
-    toggle.clearBadge();
-  }
-}
-
-/**
  * Setup presence indicators for contacts list.
  * Watches each contact's presence and updates indicator color.
  */
@@ -513,8 +410,7 @@ function setupPresenceIndicators(contactIds) {
       const presence = snapshot.val();
       const isOnline = presence?.state === 'online';
 
-      // Update indicator color
-      indicatorEl.style.backgroundColor = isOnline ? '#00d26a' : '#444';
+      indicatorEl.classList.toggle('online', isOnline);
       indicatorEl.title = isOnline ? 'Online' : 'Offline';
     };
 
@@ -595,8 +491,11 @@ async function createContactMessageToggles(container, contactIds, contacts) {
       // Create toggle with 0 count initially - will update asynchronously
       const toggle = createMessageToggle({
         parent: toggleContainer,
-        onToggle: () =>
-          openContactMessages(contactId, contact.contactName, true), // Note: true = open message box
+        onToggle: () => {
+          messagesUI.openContactMessages(contactId, contact.contactName, true);
+          const toggle = contactMessageToggles.get(contactId);
+          if (toggle) toggle.clearBadge();
+        },
         icon: '💬',
         initialUnreadCount: 0,
       });
@@ -651,110 +550,6 @@ async function createContactMessageToggles(container, contactIds, contacts) {
     toggleReplacementInProgress = false;
   }
 }
-
-// /* OLD BADGE FUNCTIONS - TO BE REMOVED AFTER TESTING
-// /**
-//  * Add unread message badges to contact message buttons.
-//  * Loads initial unread counts and displays badges.
-//  */
-// /*async function addUnreadBadgesToContacts(container, contactIds) {
-//   if (!getLoggedInUserId()) return; // Only for logged-in users
-
-//   for (const contactId of contactIds) {
-//     const btn = container.querySelector(
-//       `.contact-message-btn[data-contact-id="${contactId}"]`
-//     );
-//     if (!btn) continue;
-
-//     // Get unread count for this contact
-//     const count = await getUnreadCount(contactId);
-
-//     // Add or update badge
-//     updateContactBadge(btn, count);
-//   }
-// }
-
-// /**
-//  * Update the badge on a specific contact message button.
-//  * Creates badge if needed, updates count, shows/hides based on count.
-//  */
-// function updateContactBadge(btn, count) {
-//   let badge = btn.querySelector('.notification-badge');
-
-//   if (count > 0) {
-//     if (!badge) {
-//       badge = document.createElement('span');
-//       badge.className = 'notification-badge';
-//       btn.appendChild(badge);
-//     }
-//     badge.textContent = count;
-//     badge.style.display = 'flex';
-//   } else {
-//     // Hide badge if count is 0
-//     if (badge) {
-//       badge.style.display = 'none';
-//     }
-//   }
-// }
-
-// /**
-//  * Setup real-time listeners for contact message badges.
-//  * Listens for new unread messages and updates badge counts.
-//  */
-// function setupMessageBadgeListeners(container, contactIds) {
-//   // Clean up old listeners
-//   messageBadgeListeners.forEach(({ ref: messageRef, callback }) => {
-//     off(messageRef, 'child_added', callback);
-//   });
-//   messageBadgeListeners.clear();
-
-//   // Only set up for logged-in users
-//   const myUserId = getLoggedInUserId();
-//   if (!myUserId) return;
-
-//   contactIds.forEach((contactId) => {
-//     // Get conversation ID (sorted user IDs)
-//     const conversationId = [myUserId, contactId].sort().join('_');
-//     const messagesRef = ref(rtdb, `conversations/${conversationId}/messages`);
-
-//     const btn = container.querySelector(
-//       `.contact-message-btn[data-contact-id="${contactId}"]`,
-//     );
-//     if (!btn) return;
-
-//     // Listen for new messages
-//     const callback = async (snapshot) => {
-//       const msg = snapshot.val();
-//       if (!msg) return;
-
-//       // Only update badge for unread messages from the contact (not from me)
-//       if (msg.from === contactId && !msg.read) {
-//         // Refresh the unread count
-//         const count = await getUnreadCount(contactId);
-//         updateContactBadge(btn, count);
-//       }
-//     };
-
-//     // Start listening
-//     onChildAdded(messagesRef, callback);
-
-//     // Track for cleanup
-//     messageBadgeListeners.set(contactId, { ref: messagesRef, callback });
-//   });
-// }
-
-// /**
-//  * Clear the unread badge for a specific contact.
-//  * Called when opening messages with that contact.
-//  */
-// function clearContactBadge(contactId) {
-//   const btn = document.querySelector(
-//     `.contact-message-btn[data-contact-id="${contactId}"]`,
-//   );
-//   if (btn) {
-//     updateContactBadge(btn, 0);
-//   }
-// }
 
 /**
  * Delete a contact.
