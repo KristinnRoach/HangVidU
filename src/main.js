@@ -113,6 +113,7 @@ import {
   renderContactsList,
   getContacts,
   resolveCallerName,
+  cleanupContacts,
 } from './components/contacts/contacts.js';
 
 import {
@@ -1556,9 +1557,11 @@ window.onload = async () => {
 
         // Enable push notifications (requestPermission handles all states:
         // granted → enable, default → prompt, denied → noop)
-        await pushNotificationController.requestPermission().catch((e) =>
-          console.warn('[AUTH] Push notification setup failed:', e),
-        );
+        await pushNotificationController
+          .requestPermission()
+          .catch((e) =>
+            console.warn('[AUTH] Push notification setup failed:', e),
+          );
       } else if (isInitialLoad && isLoggedIn) {
         // If user is already logged in on initial load (e.g., after redirect)
         devDebug('[AUTH] Initial load with logged-in user');
@@ -1576,9 +1579,11 @@ window.onload = async () => {
         setupInviteListener();
 
         // Enable push notifications for already-logged-in user
-        await pushNotificationController.requestPermission().catch((e) =>
-          console.warn('[AUTH] Push notification setup failed:', e),
-        );
+        await pushNotificationController
+          .requestPermission()
+          .catch((e) =>
+            console.warn('[AUTH] Push notification setup failed:', e),
+          );
       }
     } catch (e) {
       console.warn('Failed to handle auth change:', e);
@@ -1780,6 +1785,7 @@ async function cleanup() {
   // Global teardown: safe to remove all listeners on page unload
   cleanupMediaControls();
   removeAllRTDBListeners();
+  cleanupContacts();
 
   if (document.pictureInPictureElement) {
     document.exitPictureInPicture().catch((err) => console.error(err));
