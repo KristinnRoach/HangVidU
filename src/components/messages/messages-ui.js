@@ -759,18 +759,29 @@ export function initMessagesUI() {
           try {
             if (source === 'doubleTap') {
               // Double-tap: toggle my reaction
-              const myReactionType = reactionManager.getUserReactionType(msgId, userId);
+              const myReactionType = reactionManager.getUserReactionType(
+                msgId,
+                userId,
+              );
 
               let reactions;
 
               if (myReactionType) {
                 // I have a reaction - remove it (toggle off)
                 await currentSession.removeReaction(msgId, myReactionType);
-                reactions = reactionManager.removeReaction(msgId, myReactionType, userId);
+                reactions = reactionManager.removeReaction(
+                  msgId,
+                  myReactionType,
+                  userId,
+                );
               } else {
                 // I don't have a reaction - add default (toggle on)
                 await currentSession.addReaction(msgId, reactionType);
-                reactions = reactionManager.addReaction(msgId, reactionType, userId);
+                reactions = reactionManager.addReaction(
+                  msgId,
+                  reactionType,
+                  userId,
+                );
 
                 // Show animation only when adding
                 if (REACTION_CONFIG.enableAnimations) {
@@ -785,14 +796,21 @@ export function initMessagesUI() {
               reactionUI.renderReactions(messageElement, msgId, reactions);
             } else if (source === 'picker') {
               // Picker: toggle selected reaction for this user
-              const myReactionType = reactionManager.getUserReactionType(msgId, userId);
+              const myReactionType = reactionManager.getUserReactionType(
+                msgId,
+                userId,
+              );
 
               let reactions;
 
               if (myReactionType === reactionType) {
                 // Same reaction - toggle off
                 await currentSession.removeReaction(msgId, reactionType);
-                reactions = reactionManager.removeReaction(msgId, reactionType, userId);
+                reactions = reactionManager.removeReaction(
+                  msgId,
+                  reactionType,
+                  userId,
+                );
               } else {
                 // Different reaction - remove existing (if any), add new
                 if (myReactionType) {
@@ -801,11 +819,18 @@ export function initMessagesUI() {
                 }
 
                 await currentSession.addReaction(msgId, reactionType);
-                reactions = reactionManager.addReaction(msgId, reactionType, userId);
+                reactions = reactionManager.addReaction(
+                  msgId,
+                  reactionType,
+                  userId,
+                );
 
                 // Show animation
                 if (REACTION_CONFIG.enableAnimations) {
-                  reactionUI.showReactionAnimation(messageElement, reactionType);
+                  reactionUI.showReactionAnimation(
+                    messageElement,
+                    reactionType,
+                  );
                 }
               }
 
@@ -1158,10 +1183,16 @@ export function initMessagesUI() {
     // Check if already have an active session for this contact
     const existingSession = messagingController.getSession(contactId);
     if (existingSession) {
+      setSession(existingSession);
       showMessagesToggle();
+
       if (openMessageBox && !isMessagesUIOpen()) {
         toggleMessages();
       }
+
+      existingSession.markAsRead().catch((err) => {
+        console.warn('Failed to mark messages as read:', err);
+      });
       return;
     }
 
