@@ -513,8 +513,7 @@ function setupPresenceIndicators(contactIds) {
       const presence = snapshot.val();
       const isOnline = presence?.state === 'online';
 
-      // Update indicator color
-      indicatorEl.style.backgroundColor = isOnline ? '#00d26a' : '#444';
+      indicatorEl.classList.toggle('online', isOnline);
       indicatorEl.title = isOnline ? 'Online' : 'Offline';
     };
 
@@ -651,110 +650,6 @@ async function createContactMessageToggles(container, contactIds, contacts) {
     toggleReplacementInProgress = false;
   }
 }
-
-// /* OLD BADGE FUNCTIONS - TO BE REMOVED AFTER TESTING
-// /**
-//  * Add unread message badges to contact message buttons.
-//  * Loads initial unread counts and displays badges.
-//  */
-// /*async function addUnreadBadgesToContacts(container, contactIds) {
-//   if (!getLoggedInUserId()) return; // Only for logged-in users
-
-//   for (const contactId of contactIds) {
-//     const btn = container.querySelector(
-//       `.contact-message-btn[data-contact-id="${contactId}"]`
-//     );
-//     if (!btn) continue;
-
-//     // Get unread count for this contact
-//     const count = await getUnreadCount(contactId);
-
-//     // Add or update badge
-//     updateContactBadge(btn, count);
-//   }
-// }
-
-// /**
-//  * Update the badge on a specific contact message button.
-//  * Creates badge if needed, updates count, shows/hides based on count.
-//  */
-// function updateContactBadge(btn, count) {
-//   let badge = btn.querySelector('.notification-badge');
-
-//   if (count > 0) {
-//     if (!badge) {
-//       badge = document.createElement('span');
-//       badge.className = 'notification-badge';
-//       btn.appendChild(badge);
-//     }
-//     badge.textContent = count;
-//     badge.style.display = 'flex';
-//   } else {
-//     // Hide badge if count is 0
-//     if (badge) {
-//       badge.style.display = 'none';
-//     }
-//   }
-// }
-
-// /**
-//  * Setup real-time listeners for contact message badges.
-//  * Listens for new unread messages and updates badge counts.
-//  */
-// function setupMessageBadgeListeners(container, contactIds) {
-//   // Clean up old listeners
-//   messageBadgeListeners.forEach(({ ref: messageRef, callback }) => {
-//     off(messageRef, 'child_added', callback);
-//   });
-//   messageBadgeListeners.clear();
-
-//   // Only set up for logged-in users
-//   const myUserId = getLoggedInUserId();
-//   if (!myUserId) return;
-
-//   contactIds.forEach((contactId) => {
-//     // Get conversation ID (sorted user IDs)
-//     const conversationId = [myUserId, contactId].sort().join('_');
-//     const messagesRef = ref(rtdb, `conversations/${conversationId}/messages`);
-
-//     const btn = container.querySelector(
-//       `.contact-message-btn[data-contact-id="${contactId}"]`,
-//     );
-//     if (!btn) return;
-
-//     // Listen for new messages
-//     const callback = async (snapshot) => {
-//       const msg = snapshot.val();
-//       if (!msg) return;
-
-//       // Only update badge for unread messages from the contact (not from me)
-//       if (msg.from === contactId && !msg.read) {
-//         // Refresh the unread count
-//         const count = await getUnreadCount(contactId);
-//         updateContactBadge(btn, count);
-//       }
-//     };
-
-//     // Start listening
-//     onChildAdded(messagesRef, callback);
-
-//     // Track for cleanup
-//     messageBadgeListeners.set(contactId, { ref: messagesRef, callback });
-//   });
-// }
-
-// /**
-//  * Clear the unread badge for a specific contact.
-//  * Called when opening messages with that contact.
-//  */
-// function clearContactBadge(contactId) {
-//   const btn = document.querySelector(
-//     `.contact-message-btn[data-contact-id="${contactId}"]`,
-//   );
-//   if (btn) {
-//     updateContactBadge(btn, 0);
-//   }
-// }
 
 /**
  * Delete a contact.
