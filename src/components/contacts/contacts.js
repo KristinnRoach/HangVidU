@@ -1,6 +1,6 @@
 // contacts.js - Simple contacts management
 
-import { ref, set, get, remove, onValue, off } from 'firebase/database';
+import { ref, set, get, remove, update, onValue, off } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, getCurrentUser } from '../../firebase/auth.js';
 import { joinOrCreateRoomWithId, listenForIncomingOnRoom } from '../../main.js';
@@ -25,11 +25,20 @@ const contactMessageToggles = new Map();
 // Limit displayed contact name length in the UI (keep full name in title)
 const MAX_CONTACT_NAME_CHARS = 14;
 
+function getSortedContactIds(contacts) {
+  return Object.keys(contacts).sort((a, b) => {
+    const aTime = contacts[a]?.lastInteractionAt || contacts[a]?.savedAt || 0;
+    const bTime = contacts[b]?.lastInteractionAt || contacts[b]?.savedAt || 0;
+    return bTime - aTime;
+  });
+}
+
 /**
  * Save a contact for the current user (RTDB if logged in, localStorage otherwise).
  */
 async function saveContactData(contactId, contactName, roomId) {
   const loggedInUid = getLoggedInUserId();
+  const now = Date.now();
 
   if (loggedInUid) {
     const contactRef = ref(rtdb, `users/${loggedInUid}/contacts/${contactId}`);
@@ -37,7 +46,8 @@ async function saveContactData(contactId, contactName, roomId) {
       contactId,
       contactName,
       roomId,
-      savedAt: Date.now(),
+      savedAt: now,
+      lastInteractionAt: now,
     });
     return;
   }
@@ -46,10 +56,28 @@ async function saveContactData(contactId, contactName, roomId) {
   try {
     const raw = localStorage.getItem('contacts') || '{}';
     const obj = JSON.parse(raw);
-    obj[contactId] = { contactId, contactName, roomId, savedAt: Date.now() };
+    obj[contactId] = {
+      contactId,
+      contactName,
+      roomId,
+      savedAt: now,
+      lastInteractionAt: now,
+    };
     localStorage.setItem('contacts', JSON.stringify(obj));
   } catch (e) {
     console.warn('Failed to save contact to localStorage', e);
+  }
+}
+
+async function updateLastInteraction(contactId) {
+  const loggedInUid = getLoggedInUserId();
+  if (!loggedInUid) return;
+
+  try {
+    const contactRef = ref(rtdb, `users/${loggedInUid}/contacts/${contactId}`);
+    await update(contactRef, { lastInteractionAt: Date.now() });
+  } catch (e) {
+    console.warn('Failed to update lastInteractionAt', e);
   }
 }
 
@@ -169,7 +197,7 @@ export async function renderContactsList(lobbyElement) {
   if (!lobbyElement) return;
 
   const contacts = await getContacts();
-  const contactIds = Object.keys(contacts);
+  const contactIds = getSortedContactIds(contacts);
 
   // Find or create contacts container
   let contactsContainer = lobbyElement.querySelector('.contacts-container');
@@ -317,8 +345,8 @@ function attachContactListeners(container, lobbyElement) {
           console.warn('Failed to call contact:', e);
           return false;
         });
-        // Only show calling UI if permissions granted and call initiated
         if (success) {
+          updateLastInteraction(contactId);
           await showCallingUI(roomId, contactName, () => {
             // TODO: Check if something (e.g. hangup handler, cleanup) needed here
           });
@@ -515,6 +543,7 @@ async function createContactMessageToggles(container, contactIds, contacts) {
         contactId,
         (count) => {
           toggle.setUnreadCount(count);
+          if (count > 0) updateLastInteraction(contactId);
         },
       );
 
