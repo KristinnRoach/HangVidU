@@ -274,7 +274,9 @@ function attachContactListeners(container, lobbyElement) {
       const contactId = btn.getAttribute('data-contact-id');
       const contactName = btn.getAttribute('data-contact-name');
       if (contactId) {
-        openContactMessages(contactId, contactName);
+        messagesUI.openContactMessages(contactId, contactName);
+        const toggle = contactMessageToggles.get(contactId);
+        if (toggle) toggle.clearBadge();
       }
     };
   });
@@ -380,111 +382,6 @@ function attachContactListeners(container, lobbyElement) {
       }
     };
   });
-}
-
-/**
- * Open messaging UI for a specific contact.
- * Creates a message session with RTDB transport.
- */
-export function openContactMessages(
-  contactId,
-  contactName,
-  openMessageBox = false,
-) {
-  if (!getLoggedInUserId()) {
-    alert('Please sign in to send messages');
-    return;
-  }
-
-  // Check if already have an active session for this contact
-  const existingSession = messagingController.getSession(contactId);
-  if (existingSession) {
-    messagesUI.showMessagesToggle();
-    // Just show the UI if openMessageBox is true (and not already open)
-    if (openMessageBox && !messagesUI.isMessagesUIOpen()) {
-      messagesUI.toggleMessages();
-    }
-    return;
-  }
-
-  // Close any existing contact message session (only one at a time)
-  const allSessions = messagingController.getAllSessions();
-  allSessions.forEach((session) => {
-    session.close();
-  });
-
-  // Clear messages UI and reset session BEFORE opening new session
-  // (otherwise onChildAdded fires synchronously and messages get cleared afterward)
-  messagesUI.clearMessages();
-  messagesUI.setSession(null); // Reset so setSession() below doesn't re-clear
-
-  // Open messaging session
-  const session = messagingController.openSession(contactId, {
-    onMessage: (text, msgData, isSentByMe) => {
-      // Handle reaction updates separately (don't re-append the message)
-      if (msgData._reactionUpdate) {
-        // Convert Firebase reactions format { heart: { odAg2: true } } to { heart: ['odAg2'] }
-        const reactions = {};
-        if (msgData.reactions) {
-          for (const [type, users] of Object.entries(msgData.reactions)) {
-            reactions[type] = Object.keys(users);
-          }
-        }
-        messagesUI.updateMessageReactions(msgData.messageId, reactions);
-        return;
-      }
-
-      // Convert Firebase reactions format for initial display
-      const reactions = {};
-      if (msgData.reactions) {
-        for (const [type, users] of Object.entries(msgData.reactions)) {
-          reactions[type] = Object.keys(users);
-        }
-      }
-
-      // Display message in UI
-      if (isSentByMe) {
-        messagesUI.appendChatMessage(text, {
-          isSentByMe: true,
-          messageId: msgData.messageId,
-          reactions,
-        });
-      } else {
-        const isUnread = !msgData.read;
-        messagesUI.receiveMessage(text, {
-          isUnread,
-          messageId: msgData.messageId,
-          reactions,
-        });
-      }
-    },
-  });
-
-  // Store metadata on session for reference
-  session.contactName = contactName;
-  session.toggle = contactMessageToggles.get(contactId);
-
-  // Set this session as the active one in the UI (won't clear since we just did)
-  messagesUI.setSession(session);
-
-  // Show and open the messages UI
-  messagesUI.showMessagesToggle();
-
-  // Just show the UI if openMessageBox is true (and not already open)
-  if (openMessageBox && !messagesUI.isMessagesUIOpen()) {
-    messagesUI.toggleMessages();
-  }
-
-  // Mark all unread messages as read
-  session.markAsRead().catch((err) => {
-    console.warn('Failed to mark messages as read:', err);
-  });
-
-  // Clear the unread badge for this contact
-  const toggle = contactMessageToggles.get(contactId);
-  if (toggle) {
-    toggle.clearBadge();
-  }
 }
 
 /**
@@ -594,8 +491,11 @@ async function createContactMessageToggles(container, contactIds, contacts) {
       // Create toggle with 0 count initially - will update asynchronously
       const toggle = createMessageToggle({
         parent: toggleContainer,
-        onToggle: () =>
-          openContactMessages(contactId, contact.contactName, true), // Note: true = open message box
+        onToggle: () => {
+          messagesUI.openContactMessages(contactId, contact.contactName, true);
+          const toggle = contactMessageToggles.get(contactId);
+          if (toggle) toggle.clearBadge();
+        },
         icon: '💬',
         initialUnreadCount: 0,
       });
