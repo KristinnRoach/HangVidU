@@ -73,7 +73,7 @@
   },
   "dependencies": {
     "@sentry/browser": "^10.36.0",
-    "dexie": "^4.2.1",
+    "dexie": "^4.3.0",
     "firebase": "^12.8.0",
     "workbox-window": "^7.4.0",
     "zod": "^4.3.6"
