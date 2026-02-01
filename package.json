@@ -54,7 +54,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@playwright/test": "^1.58.0",
+    "@playwright/test": "^1.58.1",
     "@vitest/browser-playwright": "^4.0.18",
     "@vitest/coverage-v8": "^4.0.18",
     "baseline-browser-mapping": "^2.9.18",
