@@ -1,11 +1,11 @@
-// src/file-transfer/transport/datachannel-file-transport.js
+// src/file-transfer/transport/webrtc-file-transport.js
 // WebRTC DataChannel implementation of FileTransport
 
 import { FileTransport } from './file-transport.js';
 import { FileTransfer } from '../file-transfer.js';
 
 /**
- * DataChannelFileTransport - WebRTC DataChannel implementation for file transfer
+ * WebRTCFileTransport - WebRTC DataChannel implementation for file transfer
  *
  * Wraps the FileTransfer class to provide a transport-layer abstraction.
  * Handles file transfer over WebRTC DataChannel during active P2P calls.
@@ -15,7 +15,7 @@ import { FileTransfer } from '../file-transfer.js';
  * - Progress tracking
  * - Backpressure handling
  */
-export class DataChannelFileTransport extends FileTransport {
+export class WebRTCFileTransport extends FileTransport {
   /**
    * Create a DataChannel file transport
    * @param {RTCDataChannel} dataChannel - WebRTC DataChannel for file transfer
@@ -24,7 +24,7 @@ export class DataChannelFileTransport extends FileTransport {
     super();
 
     if (!dataChannel) {
-      throw new Error('DataChannelFileTransport requires a DataChannel');
+      throw new Error('WebRTCFileTransport requires a DataChannel');
     }
 
     this.dataChannel = dataChannel;
