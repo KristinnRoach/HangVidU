@@ -1,8 +1,8 @@
-// src/messaging/transports/datachannel-file-transport.js
+// src/file-transfer/transport/datachannel-file-transport.js
 // WebRTC DataChannel implementation of FileTransport
 
 import { FileTransport } from './file-transport.js';
-import { FileTransfer } from '../../file-transfer.js';
+import { FileTransfer } from '../file-transfer.js';
 
 /**
  * DataChannelFileTransport - WebRTC DataChannel implementation for file transfer

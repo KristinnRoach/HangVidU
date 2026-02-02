@@ -1,9 +1,9 @@
-import { TransferConfig } from './file-transfer/config.js';
+import { TransferConfig } from './config.js';
 import {
   parseEmbeddedChunkPacket,
   convertToArrayBuffer,
-} from './file-transfer/chunk-processor.js';
-import { validateAssembly } from './file-transfer/file-assembler.js';
+} from './chunk-processor.js';
+import { validateAssembly } from './file-assembler.js';
 
 // Use PrivyDrop's network chunk size for WebRTC safe transmission
 const CHUNK_SIZE = TransferConfig.FILE_CONFIG.NETWORK_CHUNK_SIZE; // 64KB

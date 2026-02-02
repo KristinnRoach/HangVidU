@@ -16,7 +16,7 @@ import {
   removeRTDBListenersForRoom,
 } from '../storage/fb-rtdb/rtdb.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
-import { DataChannelFileTransport } from '../messaging/transports/datachannel-file-transport.js';
+import { DataChannelFileTransport } from '../file-transfer/transport/datachannel-file-transport.js';
 import { messagingController } from '../messaging/messaging-controller.js';
 import { messagesUI } from '../components/messages/messages-ui.js';
 
