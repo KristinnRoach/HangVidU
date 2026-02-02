@@ -109,7 +109,22 @@ async function setupPeerConnections() {
   const senderChannel = pc1.createDataChannel('files', { ordered: true });
 
   let receiverChannel = null;
-  pc2.ondatachannel = (event) => { receiverChannel = event.channel; };
+  const receiverReady = new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('DataChannel open timeout')), 10000);
+    pc2.ondatachannel = (event) => {
+      receiverChannel = event.channel;
+      if (receiverChannel.readyState === 'open') {
+        clearTimeout(timeout);
+        resolve();
+      } else {
+        receiverChannel.onopen = () => { clearTimeout(timeout); resolve(); };
+        receiverChannel.onerror = (e) => {
+          clearTimeout(timeout);
+          reject(e?.error ?? new Error('DataChannel error'));
+        };
+      }
+    };
+  });
 
   const offer = await pc1.createOffer();
   await pc1.setLocalDescription(offer);
@@ -148,13 +163,7 @@ async function setupPeerConnections() {
   if (senderChannel.readyState !== 'open') {
     await new Promise((resolve) => { senderChannel.onopen = resolve; });
   }
-  if (!receiverChannel || receiverChannel.readyState !== 'open') {
-    await new Promise((resolve) => {
-      if (receiverChannel?.readyState === 'open') return resolve();
-      if (receiverChannel) { receiverChannel.onopen = resolve; return; }
-      setTimeout(() => resolve(), 1000);
-    });
-  }
+  await receiverReady;
 
   return {
     sender: senderChannel,
@@ -355,9 +364,12 @@ describe('Large File Transfer Integration Tests', () => {
           }
           return true;
         };
-        await verify(0, 'First');
-        if (size > 2048) await verify(Math.floor(size / 2), 'Middle');
-        if (size > 2048) await verify(size - 1024, 'Last');
+        const okFirst = await verify(0, 'First');
+        const okMiddle = size > 2048 ? await verify(Math.floor(size / 2), 'Middle') : true;
+        const okLast = size > 2048 ? await verify(size - 1024, 'Last') : true;
+        if (!okFirst || !okMiddle || !okLast) {
+          throw new Error(`Integrity check failed: ${result.errors[0] ?? 'mismatch'}`);
+        }
 
         // Progress stats
         result.progressCallbacks = sendProgress.length;

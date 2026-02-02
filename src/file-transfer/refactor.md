@@ -34,7 +34,7 @@ This document outlines a refactoring plan to improve the file transfer architect
 ## Proposed Folder Structure
 
 ### Previous Structure
-```
+```text
 src/
 ├── file-transfer.js                    # Main FileTransfer class
 ├── file-transfer/
@@ -49,7 +49,7 @@ src/
 ```
 
 ### Current Structure ✅ COMPLETED
-```
+```text
 src/
 └── file-transfer/
     ├── file-transfer.js                 # Core protocol (transport-agnostic)
@@ -249,7 +249,7 @@ Files that import `WebRTCFileTransport`:
 
 ### Layer Responsibilities
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │  CallController (Orchestration)         │
 │  - Creates transports                    │
