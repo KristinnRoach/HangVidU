@@ -519,7 +519,7 @@ export class PushNotificationController {
    * @returns {boolean} True if supported
    */
   isNotificationSupported() {
-    return 'Notification' in window && 'serviceWorker' in navigator;
+    return FCMTransport.isSupported();
   }
 
   /**
