@@ -18,6 +18,10 @@ A simple peer-to-peer video chat app with a watch-together mode.
 
 - WebRTC for P2P connection, Firebase for signaling
 
+## Documentation
+
+- [SimpleX TypeScript SDK](./SIMPLEX-TYPESCRIPT-SDK.md) - Learn about the SimpleX messaging protocol and how it can be used to build privacy-focused chat applications
+
 ## Limitations
 
 - Only works for 1-to-1 connections
