@@ -34,7 +34,7 @@
     "test:smoke": "vitest --run tests/smoke/ src/**/*.test.js",
     "test:unit": "vitest --run tests/unit/ src/**/*.test.js",
     "test:integration": "vitest --run tests/integration/ src/**/*.test.js",
-    "test:file-transfer": "node tests/integration/run-file-transfer.js --",
+    "test:file-transfer": "node tests/integration/run-file-transfer.js",
     "test:file-transfer:full": "node tests/integration/run-file-transfer.js --sizes 100,250,500,750,900,1024",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",

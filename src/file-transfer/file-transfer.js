@@ -7,7 +7,7 @@ import { validateAssembly } from './file-assembler.js';
 
 // Use PrivyDrop's network chunk size for WebRTC safe transmission
 const CHUNK_SIZE = TransferConfig.FILE_CONFIG.NETWORK_CHUNK_SIZE; // 64KB
-const MAX_FILE_SIZE = 9000 * 1024 * 1024; // X * 1024 * 1024 = X MB
+const MAX_FILE_SIZE_MB = 5000;
 
 export class FileTransfer {
   constructor(dataChannel) {
@@ -21,10 +21,8 @@ export class FileTransfer {
   // Send file
   async sendFile(file, onProgress) {
     // Validate size
-    if (file.size > MAX_FILE_SIZE) {
-      throw new Error(
-        `File too large (max ${MAX_FILE_SIZE / (1024 * 1024)} MB)`
-      );
+    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      throw new Error(`File too large (max ${MAX_FILE_SIZE_MB} MB)`);
     }
 
     // Validate DataChannel state
@@ -44,7 +42,7 @@ export class FileTransfer {
         size: file.size,
         mimeType: file.type,
         totalChunks,
-      })
+      }),
     );
 
     // 2. Send chunks with embedded metadata (atomic send)
@@ -99,7 +97,7 @@ export class FileTransfer {
       const arrayBuffer = await convertToArrayBuffer(data);
       if (!arrayBuffer) {
         console.error(
-          '[FileTransfer] Failed to convert binary data to ArrayBuffer'
+          '[FileTransfer] Failed to convert binary data to ArrayBuffer',
         );
         return;
       }
@@ -117,7 +115,7 @@ export class FileTransfer {
       if (!chunks) {
         console.error(
           '[FileTransfer] Received chunk for unknown file:',
-          chunkMeta.fileId
+          chunkMeta.fileId,
         );
         return;
       }
