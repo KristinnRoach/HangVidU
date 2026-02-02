@@ -21,7 +21,7 @@ export class MessagingController {
   /**
    * Create a messaging controller
    * @param {Object} transport - Transport implementation for text messages (RTDBMessagingTransport, etc.)
-   * @param {Object} [fileTransport] - Optional transport implementation for file transfers (DataChannelFileTransport, etc.)
+   * @param {Object} [fileTransport] - Optional transport implementation for file transfers (WebRTCFileTransport, etc.)
    */
   constructor(transport, fileTransport = null) {
     if (!transport) {
@@ -277,7 +277,7 @@ export class MessagingController {
   /**
    * Set the file transport implementation
    * Used when DataChannel becomes available during a call
-   * @param {Object} fileTransport - FileTransport implementation (DataChannelFileTransport, etc.)
+   * @param {Object} fileTransport - FileTransport implementation (WebRTCFileTransport, etc.)
    */
   setFileTransport(fileTransport) {
     this.fileTransport = fileTransport;

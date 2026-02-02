@@ -1,4 +1,4 @@
-// src/messaging/transports/file-transport.js
+// src/file-transfer/transport/file-transport.js
 // Base class defining the file transport interface
 
 /**

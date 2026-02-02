@@ -16,7 +16,7 @@ import {
   removeRTDBListenersForRoom,
 } from '../storage/fb-rtdb/rtdb.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
-import { DataChannelFileTransport } from '../messaging/transports/datachannel-file-transport.js';
+import { WebRTCFileTransport } from '../file-transfer/transport/webrtc-file-transport.js';
 import { messagingController } from '../messaging/messaging-controller.js';
 import { messagesUI } from '../components/messages/messages-ui.js';
 
@@ -529,7 +529,7 @@ class CallController {
 
   /**
    * Setup file transport when DataChannel is ready
-   * Creates DataChannelFileTransport and connects it to messagingController and messagesUI
+   * Creates WebRTCFileTransport and connects it to messagingController and messagesUI
    * @param {RTCDataChannel} dataChannel - The WebRTC DataChannel
    * @private
    */
@@ -540,7 +540,7 @@ class CallController {
     const initTransport = () => {
       try {
         // Create file transport
-        const fileTransport = new DataChannelFileTransport(dataChannel);
+        const fileTransport = new WebRTCFileTransport(dataChannel);
 
         // Connect to messagingController
         messagingController.setFileTransport(fileTransport);
