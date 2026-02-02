@@ -12,28 +12,28 @@ This document outlines a refactoring plan to improve the file transfer architect
 
 ### 1. **Abstraction Leak**
 - `MessagesUI` receives `FileTransfer` directly instead of `FileTransport` interface
-- Location: `src/webrtc/call-controller.js:549`
+- Location: `src/webrtc/call-controller.js:549` (needs verification after file moves)
 - Impact: UI layer knows about concrete implementation, breaking encapsulation
 
 ### 2. **Tight Coupling**
 - `FileTransfer` constructor requires `dataChannel` (WebRTC-specific)
-- Location: `src/file-transfer.js:13`
+- Location: `src/file-transfer/file-transfer.js:13`
 - Impact: Protocol layer is coupled to WebRTC, making it hard to swap transports
 
 ### 3. **Inconsistent Documentation**
 - Comment says "100MB file size limit" but code allows 9000MB
-- Location: `src/messaging/transports/datachannel-file-transport.js:17`
+- Location: `src/file-transfer/transport/webrtc-file-transport.js:17`
 - Impact: Misleading documentation
 
-### 4. **Scattered File Organization**
-- `FileTransfer` is in `src/file-transfer.js` (root level)
-- Transport classes are in `src/messaging/transports/`
+### 4. **Scattered File Organization** ✅ COMPLETED
+- ~~`FileTransfer` is in `src/file-transfer.js` (root level)~~ → Now in `src/file-transfer/file-transfer.js`
+- ~~Transport classes are in `src/messaging/transports/`~~ → Now in `src/file-transfer/transport/`
 - Related utilities are in `src/file-transfer/` directory
-- Impact: Related code is spread across multiple locations
+- Impact: Related code is now consolidated in one location
 
 ## Proposed Folder Structure
 
-### Current Structure
+### Previous Structure
 ```
 src/
 ├── file-transfer.js                    # Main FileTransfer class
@@ -45,10 +45,10 @@ src/
 └── messaging/
     └── transports/
         ├── file-transport.js           # Base interface
-        └── datachannel-file-transport.js
+        └── datachannel-file-transport.js  # (renamed to webrtc-file-transport.js)
 ```
 
-### Proposed Structure
+### Current Structure ✅ COMPLETED
 ```
 src/
 └── file-transfer/
@@ -56,8 +56,9 @@ src/
     ├── config.js
     ├── chunk-processor.js
     ├── file-assembler.js
-    ├── file-transport.js                # Base interface (moved from messaging/transports)
-    └── datachannel-file-transport.js    # WebRTC implementation (moved from messaging/transports)
+    └── transport/
+        ├── file-transport.js            # Base interface (moved from messaging/transports)
+        └── webrtc-file-transport.js     # WebRTC implementation (moved from messaging/transports)
 ```
 
 **Benefits:**
@@ -103,12 +104,12 @@ src/
    ```
 
 3. **Remove DataChannel state checks:**
-   - Move `readyState` validation to `DataChannelFileTransport`
-   - Move `bufferedAmount` backpressure handling to `DataChannelFileTransport`
+   - Move `readyState` validation to `WebRTCFileTransport`
+   - Move `bufferedAmount` backpressure handling to `WebRTCFileTransport`
 
-### Phase 2: Update DataChannelFileTransport
+### Phase 2: Update WebRTCFileTransport
 
-**Changes to `src/file-transfer/datachannel-file-transport.js`:**
+**Changes to `src/file-transfer/transport/webrtc-file-transport.js`:**
 
 1. **Create send function wrapper:**
    ```javascript
@@ -116,7 +117,7 @@ src/
      super();
      
      if (!dataChannel) {
-       throw new Error('DataChannelFileTransport requires a DataChannel');
+       throw new Error('WebRTCFileTransport requires a DataChannel');
      }
 
      this.dataChannel = dataChannel;
@@ -227,23 +228,22 @@ await fileTransfer.sendFile(file, (progress) => { ... });
 
 ### Phase 4: File Reorganization
 
-**Step 1: Move `src/file-transfer.js` → `src/file-transfer/file-transfer.js`**
+**Step 1: Move `src/file-transfer.js` → `src/file-transfer/file-transfer.js`** ✅ COMPLETED
 
-**Step 2: Move `src/messaging/transports/file-transport.js` → `src/file-transfer/file-transport.js`**
+**Step 2: Move `src/messaging/transports/file-transport.js` → `src/file-transfer/transport/file-transport.js`** ✅ COMPLETED
 
-**Step 3: Move `src/messaging/transports/datachannel-file-transport.js` → `src/file-transfer/datachannel-file-transport.js`**
+**Step 3: Move `src/messaging/transports/datachannel-file-transport.js` → `src/file-transfer/transport/webrtc-file-transport.js`** ✅ COMPLETED
 
-**Step 4: Update all imports:**
+**Step 4: Update all imports:** ✅ COMPLETED
 
 Files that import `FileTransfer`:
-- `src/messaging/transports/datachannel-file-transport.js` → Update to `./file-transfer.js`
+- `src/file-transfer/transport/webrtc-file-transport.js` → Updated to `../file-transfer.js`
 
 Files that import `FileTransport`:
-- `src/messaging/transports/datachannel-file-transport.js` → Update to `./file-transport.js`
-- `src/messaging/messaging-controller.js` → Update to `../file-transfer/file-transport.js`
+- `src/file-transfer/transport/webrtc-file-transport.js` → Updated to `./file-transport.js`
 
-Files that import `DataChannelFileTransport`:
-- `src/webrtc/call-controller.js` → Update to `../file-transfer/datachannel-file-transport.js`
+Files that import `WebRTCFileTransport`:
+- `src/webrtc/call-controller.js` → Updated to `../file-transfer/transport/webrtc-file-transport.js`
 
 ## Updated Architecture
 
@@ -258,7 +258,7 @@ Files that import `DataChannelFileTransport`:
                │
                ↓
 ┌─────────────────────────────────────────┐
-│  DataChannelFileTransport               │
+│  WebRTCFileTransport                    │
 │  (Transport Layer - WebRTC specific)    │
 │  - Handles DataChannel lifecycle        │
 │  - Manages backpressure                 │
@@ -306,23 +306,24 @@ Files that import `DataChannelFileTransport`:
 ### Code Changes
 - [ ] Refactor `FileTransfer` constructor to accept send function
 - [ ] Remove DataChannel-specific code from `FileTransfer`
-- [ ] Update `DataChannelFileTransport` to provide send function wrapper
-- [ ] Move backpressure handling to `DataChannelFileTransport`
+- [ ] Update `WebRTCFileTransport` to provide send function wrapper
+- [ ] Move backpressure handling to `WebRTCFileTransport`
 - [ ] Fix `MessagesUI.setFileTransfer()` to accept `FileTransport` interface
 - [ ] Update `CallController` to pass `FileTransport` instead of `FileTransfer`
 - [ ] Update documentation comments (file size limit)
 
-### File Moves
-- [ ] Move `src/file-transfer.js` → `src/file-transfer/file-transfer.js`
-- [ ] Move `src/messaging/transports/file-transport.js` → `src/file-transfer/file-transport.js`
-- [ ] Move `src/messaging/transports/datachannel-file-transport.js` → `src/file-transfer/datachannel-file-transport.js`
+### File Moves ✅ COMPLETED
+- [x] Move `src/file-transfer.js` → `src/file-transfer/file-transfer.js`
+- [x] Move `src/messaging/transports/file-transport.js` → `src/file-transfer/transport/file-transport.js`
+- [x] Move `src/messaging/transports/datachannel-file-transport.js` → `src/file-transfer/transport/webrtc-file-transport.js`
 
-### Import Updates
-- [ ] Update imports in `datachannel-file-transport.js`
-- [ ] Update imports in `messaging-controller.js`
-- [ ] Update imports in `call-controller.js`
-- [ ] Update imports in any test files
-- [ ] Search codebase for any other references
+### Import Updates ✅ COMPLETED
+- [x] Update imports in `webrtc-file-transport.js`
+- [x] Update imports in `call-controller.js`
+- [x] Update class name references (`DataChannelFileTransport` → `WebRTCFileTransport`)
+- [x] Update file path references in comments
+- [ ] Update imports in any test files (if needed)
+- [x] Search codebase for any other references
 
 ### Testing
 - [ ] Verify file transfer still works end-to-end
@@ -336,7 +337,7 @@ Files that import `DataChannelFileTransport`:
 
 1. **Clear Separation of Concerns**
    - Protocol layer (FileTransfer) is transport-agnostic
-   - Transport layer (DataChannelFileTransport) handles WebRTC specifics
+   - Transport layer (WebRTCFileTransport) handles WebRTC specifics
    - UI layer (MessagesUI) uses only interface
 
 2. **Better Testability**
@@ -353,6 +354,116 @@ Files that import `DataChannelFileTransport`:
    - Easy to add WebSocket transport
    - Easy to add other transport mechanisms
    - Protocol layer doesn't need changes
+
+## Additional Improvements
+
+### File Size Limit Testing & Validation
+
+**Goal:** Determine practical file size limits and test large file transfers (1GB+)
+
+**Tasks:**
+- [ ] Create integration tests for large file transfers (1GB, 2GB, 5GB)
+- [ ] Test in multiple browsers (Chrome, Firefox, Safari)
+- [ ] Measure and document:
+  - Transfer time and throughput (MB/s)
+  - Memory usage (before/during/after transfer)
+  - Browser stability (crashes, freezes, timeouts)
+  - Progress callback frequency and performance
+- [ ] Determine practical limits per browser:
+  - Maximum reliable file size
+  - Recommended file size limits for good UX
+  - When to warn users about large files
+- [ ] Test file generation strategy:
+  - Use sparse files or pattern-based generation to avoid using actual disk space
+  - Generate chunks on-demand for very large test files
+- [ ] Document findings and update `MAX_FILE_SIZE` constant if needed
+
+**Test Implementation Notes:**
+- Use Vitest browser mode for testing (real browser APIs)
+- Create test files programmatically without using actual disk space
+- Monitor memory usage via DevTools/performance APIs
+- Test with network throttling to simulate real-world conditions
+
+### Cleanup & Memory Management
+
+**Goal:** Properly clean up file references and blob URLs to prevent memory leaks
+
+**Current Issues:**
+- Blob URLs not revoked when watch-together is used
+- `receivedFile` in `MessagesUI` never cleared
+- `sentFiles` Map grows indefinitely
+- No cleanup on call end for file references
+
+**Tasks:**
+- [ ] Revoke blob URLs when:
+  - Watch mode exits
+  - Call ends
+  - Component unmounts
+  - User navigates away
+- [ ] Clear `receivedFile` reference:
+  - On call end in `CallController.cleanupCall()`
+  - In `MessagesUI.reset()`
+  - When new file is received (replace previous)
+- [ ] Clear `sentFiles` Map:
+  - On call end
+  - In `MessagesUI.reset()`
+  - Implement size limit with LRU eviction (optional)
+- [ ] Add cleanup in `FileTransfer`:
+  - Clear `receivedChunks` and `fileMetadata` on cleanup
+  - Revoke any blob URLs created during transfer
+- [ ] Add cleanup hooks:
+  - `CallController.cleanupCall()` should trigger file cleanup
+  - `MessagesUI.reset()` should clear all file references
+  - Page unload handler should clean up blob URLs
+
+**Implementation Locations:**
+- `src/components/messages/messages-ui.js` - Clear file references
+- `src/webrtc/call-controller.js` - Trigger cleanup on call end
+- `src/file-transfer/file-transfer.js` - Add cleanup method
+- `src/firebase/watch-sync.js` - Revoke blob URLs on watch mode exit
+
+### IndexedDB Integration for Large Files
+
+**Goal:** Store large files in IndexedDB instead of memory to avoid memory pressure
+
+**Current State:**
+- All files stored in memory as `File`/`Blob` objects
+- Large files (>1GB) can cause memory issues
+- No persistence - files lost on page reload
+
+**Tasks:**
+- [ ] Research IndexedDB storage limits per browser
+- [ ] Design storage strategy:
+  - When to use IndexedDB vs memory (file size threshold?)
+  - How to stream chunks to IndexedDB during receive
+  - How to read from IndexedDB for playback/download
+- [ ] Implement IndexedDB storage layer:
+  - Store file metadata (name, size, mimeType, timestamp)
+  - Store file chunks or full file in IndexedDB
+  - Create blob URLs from IndexedDB data
+- [ ] Add cleanup policy:
+  - Auto-delete files after X hours/days
+  - Manual cleanup option
+  - Respect browser storage quotas
+- [ ] Update file transfer flow:
+  - Option 1: Stream chunks directly to IndexedDB during receive
+  - Option 2: Store in memory, then move to IndexedDB after assembly
+  - Consider progressive loading for watch-together (start at 25% downloaded)
+- [ ] Update watch-together to work with IndexedDB:
+  - Load video from IndexedDB if available
+  - Fallback to memory if IndexedDB unavailable
+  - Handle IndexedDB quota exceeded errors gracefully
+
+**Considerations:**
+- IndexedDB has ~50MB limit in some browsers (may need to request quota)
+- File System API (Chrome) might be better for very large files
+- Need to handle browser compatibility
+- May need user permission for persistent storage
+
+**Implementation Priority:**
+- Phase 1: Add IndexedDB storage for files >100MB
+- Phase 2: Stream chunks directly to IndexedDB
+- Phase 3: Progressive loading for watch-together
 
 ## Notes
 
