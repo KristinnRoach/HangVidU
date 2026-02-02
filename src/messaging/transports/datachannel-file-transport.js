@@ -14,7 +14,6 @@ import { FileTransfer } from '../../file-transfer.js';
  * - Chunked file transfer (64KB chunks)
  * - Progress tracking
  * - Backpressure handling
- * - 100MB file size limit
  */
 export class DataChannelFileTransport extends FileTransport {
   /**
