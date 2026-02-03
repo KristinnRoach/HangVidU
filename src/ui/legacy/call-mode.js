@@ -19,7 +19,6 @@ import {
   hideElement,
   placeInSmallFrame,
   removeFromSmallFrame,
-  isElementInPictureInPicture,
   exitPiP,
 } from '../../utils/ui/ui-utils.js';
 
