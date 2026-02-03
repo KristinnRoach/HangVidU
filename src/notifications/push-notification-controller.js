@@ -519,6 +519,10 @@ export class PushNotificationController {
    * @returns {boolean} True if supported
    */
   isNotificationSupported() {
+    const ctor = this.transport?.constructor;
+    if (typeof ctor?.isSupported === 'function') {
+      return ctor.isSupported();
+    }
     return 'Notification' in window && 'serviceWorker' in navigator;
   }
 

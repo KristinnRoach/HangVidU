@@ -36,8 +36,8 @@ export class FCMTransport {
     if (this.isInitialized) return true;
 
     try {
-      // Check if FCM is supported
-      if (!('serviceWorker' in navigator) || !('Notification' in window)) {
+      // Check if FCM is supported (requires Push API for token registration)
+      if (!FCMTransport.isSupported()) {
         console.warn('[FCMTransport] FCM not supported in this environment');
         return false;
       }
@@ -507,6 +507,10 @@ export class FCMTransport {
    * @returns {boolean} True if FCM is supported
    */
   static isSupported() {
-    return 'serviceWorker' in navigator && 'Notification' in window;
+    return (
+      'serviceWorker' in navigator &&
+      'Notification' in window &&
+      'PushManager' in window
+    );
   }
 }

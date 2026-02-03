@@ -151,7 +151,6 @@ import {
 
 import {
   onCallAnswered,
-  isOutgoingCallFresh,
   isRoomCallFresh,
 } from './components/calling/calling-ui.js';
 import { isRemoteVideoVideoActive } from './ui/legacy/watch-mode.js';
@@ -649,20 +648,12 @@ export function listenForIncomingOnRoom(roomId) {
         }
 
         // If joinedAt isn't present or seems old (e.g., listener attached late),
-        // fall back to caller-scoped outgoing marker (for logged-in callers),
-        // or room-scoped createdAt (for guests)
+        // fall back to room-scoped createdAt (publicly readable)
         if (!isFresh) {
-          const outgoingFresh = await isOutgoingCallFresh(
-            joiningUserId,
-            roomId,
-          );
           const roomFresh = await isRoomCallFresh(roomId);
-          isFresh = outgoingFresh || roomFresh;
-          validationMethod = outgoingFresh
-            ? 'outgoingState'
-            : roomFresh
-              ? 'roomCreatedAt'
-              : 'failed';
+          isFresh = roomFresh;
+          validationMethod = roomFresh ? 'roomCreatedAt' : 'failed';
+          age = null; // joinedAt-based age not applicable for this fallback
         }
 
         const freshnessResult = {
