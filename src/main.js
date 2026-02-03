@@ -18,6 +18,7 @@ import {
   getUserId,
   onAuthChange,
   authReady,
+  getCurrentUserAsync,
 } from './firebase/auth.js';
 
 import { clearUrlParam } from './utils/url.js';
@@ -522,7 +523,7 @@ export async function callContact(contactId, contactName, roomId = null) {
 
     // Send push notification
     try {
-      const currentUser = getCurrentUser();
+      const currentUser = await getCurrentUserAsync();
       const callerName =
         currentUser?.displayName || currentUser?.email || getLoggedInUserId();
 
