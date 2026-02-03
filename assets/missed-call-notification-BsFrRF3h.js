@@ -1,4 +1,4 @@
-import{c as s}from"./main-CPoqwh9e.js";function f({callerId:c,callerName:l,roomId:e,onCallBack:t,onDismiss:a}){return s({template:`
+import{c,e as l}from"./main-GAK8T3IG.js";function p({callerId:e,callerName:n,roomId:d,onCallBack:t,onDismiss:a}){return c({template:`
       <div class="notification-content">
         <div class="notification-header">
           <span class="notification-icon">📞</span>
@@ -7,7 +7,7 @@ import{c as s}from"./main-CPoqwh9e.js";function f({callerId:c,callerName:l,roomI
         </div>
         <div class="notification-body">
           <p class="notification-message">
-            <strong>[[displayName]]</strong> tried to call you
+            <strong>${l(n||"Someone")}</strong> tried to call you
           </p>
         </div>
         <div class="notification-actions">
@@ -16,4 +16,4 @@ import{c as s}from"./main-CPoqwh9e.js";function f({callerId:c,callerName:l,roomI
           </button>
         </div>
       </div>
-    `,className:"notification missed-call-notification",handlers:{handleCallBack:async n=>{const i=n.target;i.disabled=!0,i.textContent="Calling...";try{t&&await t()}catch(o){console.error("[MISSED CALL NOTIFICATION] Call back failed:",o),i.disabled=!1,i.textContent="Call Back"}},handleDismiss:()=>{a&&a()}}})}export{f as createMissedCallNotification};
+    `,className:"notification missed-call-notification",handlers:{handleCallBack:async o=>{const i=o.target;i.disabled=!0,i.textContent="Calling...";try{t&&await t()}catch(s){console.error("[MISSED CALL NOTIFICATION] Call back failed:",s),i.disabled=!1,i.textContent="Call Back"}},handleDismiss:()=>{a&&a()}}})}export{p as createMissedCallNotification};
