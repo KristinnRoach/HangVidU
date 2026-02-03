@@ -46,11 +46,17 @@
 
       <div class="relative-wrapper">
         <div id="videos">
-          <div id="local-video-box" class="box video-box local-video-box">
+          <div
+            id="local-video-box"
+            class="hidden box video-box local-video-box"
+          >
             <video id="local-video-el" autoplay playsinline muted></video>
           </div>
 
-          <div id="remote-video-box" class="box video-box remote-video-box">
+          <div
+            id="remote-video-box"
+            class="hidden box video-box remote-video-box"
+          >
             <video id="remote-video-el" autoplay playsinline></video>
           </div>
 
@@ -100,7 +106,7 @@
         </div>
       </div>
 
-      <div id="chat-controls" class="chat-controls bottom">
+      <div id="chat-controls" class="hidden chat-controls bottom">
         <button
           class="chat-btn hidden"
           id="exit-watch-mode-btn"
