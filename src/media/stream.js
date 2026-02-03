@@ -1,6 +1,5 @@
 // media/stream.js
 
-import { addRemoteVideoEventListeners } from './media-controls.js';
 import {
   hasLocalStream,
   getLocalStream,
@@ -38,7 +37,7 @@ export const createLocalStream = async () => {
   } catch (error) {
     if (error.name === 'OverconstrainedError') {
       console.warn(
-        `❌ Constraint failed on property: ${error.constraint}, falling back to basic constraints`
+        `❌ Constraint failed on property: ${error.constraint}, falling back to basic constraints`,
       );
       devDebug('Full error:', error);
       // Fallback to absolute minimum (avoid Over Constrained error)
@@ -96,7 +95,22 @@ export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
     // Always update stream and video element (handles both new streams and track replacements)
     setRemoteStream(newRemoteStream);
     remoteVideoEl.srcObject = newRemoteStream;
-    addRemoteVideoEventListeners(remoteVideoEl, mutePartnerBtn);
+    // Hide video while loading new metadata to prevent flicker/cropping
+    if (event.track.kind === 'video') {
+      if (remoteVideoEl.readyState >= 1) {
+        remoteVideoEl.style.opacity = '1';
+      } else {
+        remoteVideoEl.style.opacity = '0';
+        remoteVideoEl.addEventListener(
+          'loadedmetadata',
+          () => {
+            remoteVideoEl.style.opacity = '1';
+          },
+          { once: true },
+        );
+      }
+    }
+
     // Auto-mute partner in dev to avoid feedback
     if (isDev() && !remoteVideoEl.muted) {
       remoteVideoEl.muted = true;
@@ -128,7 +142,7 @@ export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
         container.style.left = '';
         container.style.top = '';
         remoteVideoEl.style.visibility = 'visible';
-        remoteVideoEl.style.opacity = '1';
+        // Note: don't set remoteVideoEl.style.opacity here - controlled by onloadedmetadata for flicker prevention
       }
     } catch (e) {
       console.warn('Visibility override failed:', e);

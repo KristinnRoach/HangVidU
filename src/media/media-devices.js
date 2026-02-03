@@ -1,6 +1,5 @@
 // media-devices.js
 
-import { devDebug } from '../utils/dev/dev-utils.js';
 import { getVideoConstraints, getAudioConstraints } from './constraints.js';
 
 // ===== UTILS =====
@@ -87,7 +86,8 @@ export async function switchCamera({
       const audioSender = peerConnection
         .getSenders()
         .find((s) => s.track && s.track.kind === 'audio');
-      if (audioSender && newAudioTrack) await audioSender.replaceTrack(newAudioTrack);
+      if (audioSender && newAudioTrack)
+        await audioSender.replaceTrack(newAudioTrack);
     }
 
     // Update local video with video-only stream
@@ -98,56 +98,5 @@ export async function switchCamera({
   } catch (error) {
     console.error('Failed to switch camera:', error);
     return null; // Indicate failure
-  }
-}
-
-// === ORIENTATION LOGIC ===
-
-let isUpdatingForOrientation = false;
-let orientationQuery = null;
-let boundOrientationHandler = null;
-
-export function setupOrientationListener({ getLocalStream, getFacingMode }) {
-  if (orientationQuery && boundOrientationHandler) {
-    orientationQuery.removeEventListener('change', boundOrientationHandler);
-  }
-  orientationQuery = window.matchMedia('(orientation: portrait)');
-  boundOrientationHandler = () => {
-    try {
-      const ls = typeof getLocalStream === 'function' ? getLocalStream() : null;
-      const fm = typeof getFacingMode === 'function' ? getFacingMode() : 'user';
-      handleOrientationChange({ localStream: ls, currentFacingMode: fm });
-    } catch (e) {
-      console.error('Orientation handler failed:', e);
-    }
-  };
-  orientationQuery.addEventListener('change', boundOrientationHandler);
-  return () => {
-    if (orientationQuery && boundOrientationHandler) {
-      orientationQuery.removeEventListener('change', boundOrientationHandler);
-    }
-    orientationQuery = null;
-    boundOrientationHandler = null;
-  };
-}
-
-export async function handleOrientationChange({
-  localStream,
-  currentFacingMode,
-}) {
-  if (isUpdatingForOrientation || !localStream?.getVideoTracks()[0]) return;
-  isUpdatingForOrientation = true;
-  devDebug('Orientation change detected.');
-  try {
-    const videoTrack = localStream.getVideoTracks()[0];
-    const constraints = getVideoConstraints(currentFacingMode);
-    devDebug('Applying constraints:', constraints);
-    // Apply constraints to existing track (no new stream)
-    await videoTrack.applyConstraints(constraints);
-    devDebug('Video constraints updated successfully');
-  } catch (error) {
-    console.error('Failed to apply orientation constraints:', error);
-  } finally {
-    isUpdatingForOrientation = false;
   }
 }

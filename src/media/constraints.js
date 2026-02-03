@@ -1,5 +1,7 @@
 // src/media/constraints.js
 
+import { devDebug } from '../utils/dev/dev-utils.js';
+
 const userMediaAudioConstraints = {
   default: {
     echoCancellation: true,
@@ -30,7 +32,7 @@ function getAudioConstraints() {
   ];
 
   const allEnhancedSupported = enhancedPropsToCheck.every(
-    (prop) => supported[prop]
+    (prop) => supported[prop],
   );
 
   if (allEnhancedSupported) {
@@ -42,51 +44,51 @@ function getAudioConstraints() {
 
 const getFallbackAudioConstraints = () => userMediaAudioConstraints.default;
 
-const userMediaVideoConstraints = {
-  desktop: {
-    landscape: {
-      width: { ideal: 1920 },
-      height: { ideal: 1080 }, // Todo: When mobile testing set up: -> consider using () => window.innerWidth, window.innerHeight
-      frameRate: { min: 10, ideal: 30 },
-      aspectRatio: { ideal: 16 / 9 },
-    },
-    portrait: {
-      width: { ideal: 1080 },
-      height: { ideal: 1920 },
-      frameRate: { min: 10, ideal: 30 },
-      aspectRatio: { ideal: 9 / 16 },
-    },
+const desktopVideoConstraints = {
+  landscape: {
+    width: { ideal: 1920 },
+    height: { ideal: 1080 },
+    frameRate: { min: 10, ideal: 30 },
   },
-  mobile: {
-    portrait: {
-      width: { ideal: 1080 },
-      height: { ideal: 1920 },
-      aspectRatio: { ideal: 9 / 16 },
-      frameRate: { ideal: 30 },
-    },
-    landscape: {
-      width: { ideal: 1920 },
-      height: { ideal: 1080 },
-      aspectRatio: { ideal: 16 / 9 },
-      frameRate: { ideal: 30 },
-    },
+  portrait: {
+    width: { ideal: 1080 },
+    height: { ideal: 1920 },
+    frameRate: { min: 10, ideal: 30 },
   },
 };
 
 const isPortraitOrientation = () => {
-  return (
-    window.screen?.orientation?.type?.includes('portrait') ||
-    window.orientation === 0 ||
-    window.orientation === 180
-  );
+  const mediaQuery = window.matchMedia?.('(orientation: portrait)');
+  if (mediaQuery) {
+    return mediaQuery.matches;
+  }
+
+  const screenOrientation = window.screen?.orientation?.type;
+  if (typeof screenOrientation === 'string') {
+    return screenOrientation.includes('portrait');
+  }
+
+  return window.innerHeight >= window.innerWidth;
 };
 
-function getVideoConstraints(facingMode) {
-  const orientation = isPortraitOrientation() ? 'portrait' : 'landscape';
-  const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+function getVideoConstraints(facingMode, orientation = null) {
+  if (orientation === null) {
+    orientation = isPortraitOrientation() ? 'portrait' : 'landscape';
+  }
 
-  const deviceType = isMobile ? 'mobile' : 'desktop';
-  const constraints = userMediaVideoConstraints[deviceType][orientation];
+  const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+  if (isMobile) {
+    devDebug('getVideoConstraints() - mobile minimal constraints', {
+      facingMode,
+      orientation,
+    });
+    return { facingMode };
+  }
+
+  const constraints = desktopVideoConstraints[orientation];
+
+  devDebug('getVideoConstraints() - desktop', { facingMode, orientation });
+  devDebug('Video constraints:', constraints);
 
   return {
     facingMode,

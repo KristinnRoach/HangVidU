@@ -17,6 +17,7 @@ import {
 import { REACTION_CONFIG } from '../../messaging/reactions/ReactionConfig.js';
 import { getLoggedInUserId } from '../../firebase/auth.js';
 import { messagingController } from '../../messaging/messaging-controller.js';
+import { showInfoToast } from '../../utils/ui/toast.js';
 
 // Helper: create the messages box DOM and return container + element refs
 function createMessageBox() {
@@ -1176,7 +1177,7 @@ export function initMessagesUI() {
    */
   function openContactMessages(contactId, contactName, openMessageBox = false) {
     if (!getLoggedInUserId()) {
-      alert('Please sign in to send messages');
+      showInfoToast('Please sign in to send messages');
       return;
     }
 
