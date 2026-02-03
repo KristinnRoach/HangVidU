@@ -133,7 +133,7 @@ export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
         container.style.left = '';
         container.style.top = '';
         remoteVideoEl.style.visibility = 'visible';
-        remoteVideoEl.style.opacity = '1';
+        // Note: don't set remoteVideoEl.style.opacity here - controlled by onloadedmetadata for flicker prevention
       }
     } catch (e) {
       console.warn('Visibility override failed:', e);
