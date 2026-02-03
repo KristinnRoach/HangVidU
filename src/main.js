@@ -1567,6 +1567,12 @@ window.onload = async () => {
   // UI handlers (business logic handlers registered separately below)
   bindCallUI(CallController);
 
+  // Contact call event (dispatched from contacts.js UI)
+  document.addEventListener('contact:call', (e) => {
+    const { contactId, contactName, roomId } = e.detail;
+    callContact(contactId, contactName, roomId);
+  });
+
   const onJoinRoomSubmit = async (roomInputString) => {
     const inputRoomId = normalizeRoomInput(roomInputString || '');
     if (!inputRoomId) {

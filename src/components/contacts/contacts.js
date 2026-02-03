@@ -3,7 +3,7 @@
 import { ref, set, get, remove, update, onValue, off } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, getCurrentUser } from '../../firebase/auth.js';
-import { joinOrCreateRoomWithId, listenForIncomingOnRoom } from '../../main.js';
+import { listenForIncomingOnRoom } from '../../main.js';
 import { hideCallingUI, showCallingUI } from '../calling/calling-ui.js';
 import confirmDialog from '../base/confirm-dialog.js';
 import { hideElement, showElement } from '../../utils/ui/ui-utils.js';
@@ -317,14 +317,11 @@ function attachContactListeners(container, lobbyElement) {
       const contactId = nameEl.getAttribute('data-contact-id');
 
       if (roomId || contactId) {
-        // Reuse the unified callContact flow from main.js
-        // We use dynamic import to avoid circular dependency issues
-        try {
-          const { callContact } = await import('../../main.js');
-          await callContact(contactId, contactName, roomId);
-        } catch (e) {
-          console.error('[CONTACTS] Failed to initiate call:', e);
-        }
+        document.dispatchEvent(
+          new CustomEvent('contact:call', {
+            detail: { contactId, contactName, roomId },
+          }),
+        );
       }
     };
   });
