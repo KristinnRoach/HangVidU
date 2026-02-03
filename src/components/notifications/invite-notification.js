@@ -1,6 +1,7 @@
 // invite-notification.js - Contact invitation notification component
 
 import { createNotification } from './notification.js';
+import { escapeHtml } from '../../utils/dom/dom-utils.js';
 
 /**
  * Create an invite notification component.
@@ -85,14 +86,4 @@ export function createInviteNotification({
   });
 
   return notification;
-}
-
-/**
- * Escape HTML to prevent XSS
- * @private
- */
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str || '';
-  return div.innerHTML;
 }
