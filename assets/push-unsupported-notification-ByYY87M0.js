@@ -1,4 +1,4 @@
-import{i,c as o}from"./main-B0B0eo4J.js";const t="push-unsupported";function a(){if(i.has(t))return i.notifications.get(t);const n=o({template:`
+import{i,c as o}from"./main-BBid-JiJ.js";const t="push-unsupported";function a(){if(i.has(t))return i.notifications.get(t);const n=o({template:`
       <div class="notification-content">
         <div class="notification-header">
           <span class="notification-title">Push notifications unavailable</span>
