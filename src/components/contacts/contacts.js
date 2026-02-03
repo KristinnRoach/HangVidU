@@ -319,8 +319,12 @@ function attachContactListeners(container, lobbyElement) {
       if (roomId || contactId) {
         // Reuse the unified callContact flow from main.js
         // We use dynamic import to avoid circular dependency issues
-        const { callContact } = await import('../../main.js');
-        await callContact(contactId, contactName, roomId);
+        try {
+          const { callContact } = await import('../../main.js');
+          await callContact(contactId, contactName, roomId);
+        } catch (e) {
+          console.error('[CONTACTS] Failed to initiate call:', e);
+        }
       }
     };
   });

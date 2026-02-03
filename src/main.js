@@ -479,18 +479,30 @@ export async function joinOrCreateRoomWithId(
  * @returns {Promise<boolean>} Success status
  */
 export async function callContact(contactId, contactName, roomId = null) {
+  // Prevent self-calls
+  const myUserId = getUserId();
+  if (contactId && myUserId === contactId) {
+    console.warn('[CALL] Cannot call yourself');
+    return false;
+  }
+
   // If no roomId is provided, try to generate a deterministic one
   if (!roomId && contactId) {
-    const myUserId = getUserId();
     if (myUserId) {
       try {
         roomId = getDeterministicRoomId(myUserId, contactId);
         console.log('[CALL] Generated deterministic room ID:', roomId);
-        // Persist it so both sides use the same room next time
+      } catch (e) {
+        console.error('[CALL] Failed to generate room ID:', e);
+        return false;
+      }
+      // TODO: Clarify if saveContactData is required for subsequent calls.
+      // The deterministic roomId is regenerated each time, so persistence may
+      // only help the OTHER user find the room. Investigate if this can be removed.
+      try {
         await saveContactData(contactId, contactName, roomId);
       } catch (e) {
-        console.error('[CALL] Failed to generate or save room ID:', e);
-        return false;
+        console.warn('[CALL] Failed to persist room ID (continuing):', e);
       }
     }
   }
@@ -525,11 +537,11 @@ export async function callContact(contactId, contactName, roomId = null) {
     try {
       const currentUser = await getCurrentUserAsync();
       const callerName =
-        currentUser?.displayName || currentUser?.email || getLoggedInUserId();
+        currentUser?.displayName || currentUser?.email || myUserId;
 
       await pushNotificationController.sendCallNotification(contactId, {
         roomId,
-        callerId: getLoggedInUserId(),
+        callerId: myUserId,
         callerName,
       });
       console.log('[CALL] Push notification sent to:', contactName);
@@ -932,7 +944,12 @@ export function listenForIncomingOnRoom(roomId) {
 
     // Clean up incoming listeners for this room to prevent stale listener firing
     // UNLESS it is a saved contact - then we want to keep listening
-    const savedContact = await getContactByRoomId(roomId);
+    let savedContact = null;
+    try {
+      savedContact = await getContactByRoomId(roomId);
+    } catch (e) {
+      console.warn('[LISTENER] Failed to check saved contact:', e);
+    }
     if (!savedContact) {
       removeIncomingListenersForRoom(roomId);
     } else {
