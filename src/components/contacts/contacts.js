@@ -3,7 +3,7 @@
 import { ref, set, get, remove, update, onValue, off } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, getCurrentUser } from '../../firebase/auth.js';
-import { joinOrCreateRoomWithId, listenForIncomingOnRoom } from '../../main.js';
+import { listenForIncomingOnRoom } from '../../main.js';
 import { hideCallingUI, showCallingUI } from '../calling/calling-ui.js';
 import confirmDialog from '../base/confirm-dialog.js';
 import { hideElement, showElement } from '../../utils/ui/ui-utils.js';
@@ -36,7 +36,7 @@ function getSortedContactIds(contacts) {
 /**
  * Save a contact for the current user (RTDB if logged in, localStorage otherwise).
  */
-async function saveContactData(contactId, contactName, roomId) {
+export async function saveContactData(contactId, contactName, roomId) {
   const loggedInUid = getLoggedInUserId();
   const now = Date.now();
 
@@ -69,7 +69,7 @@ async function saveContactData(contactId, contactName, roomId) {
   }
 }
 
-async function updateLastInteraction(contactId) {
+export async function updateLastInteraction(contactId) {
   const loggedInUid = getLoggedInUserId();
   if (!loggedInUid) return;
 
@@ -316,62 +316,12 @@ function attachContactListeners(container, lobbyElement) {
       const contactName = nameEl.getAttribute('data-contact-name');
       const contactId = nameEl.getAttribute('data-contact-id');
 
-      // If no roomId is saved, generate and persist it
-      if (!roomId && contactId) {
-        const myUserId = getLoggedInUserId();
-        if (myUserId) {
-          try {
-            roomId = getDeterministicRoomId(myUserId, contactId);
-            console.log('[CONTACTS] Generated deterministic room ID:', roomId);
-            // Persist the generated roomId
-            await saveContactData(contactId, contactName, roomId);
-            nameEl.setAttribute('data-room-id', roomId);
-          } catch (e) {
-            console.error('[CONTACTS] Failed to generate or save room ID:', e);
-            return;
-          }
-        }
-      }
-
-      if (roomId) {
-        // QUICK FIX: Ensure listener is active for this room before calling
-        listenForIncomingOnRoom(roomId);
-
-        // Request permissions before showing calling ui and playing audio.
-        // Force initiator role when calling a saved contact to ensure a fresh call
-        const success = await joinOrCreateRoomWithId(roomId, {
-          forceInitiator: true,
-        }).catch((e) => {
-          console.warn('Failed to call contact:', e);
-          return false;
-        });
-        if (success) {
-          updateLastInteraction(contactId);
-          await showCallingUI(roomId, contactName, () => {
-            // TODO: Check if something (e.g. hangup handler, cleanup) needed here
-          });
-
-          // Send push notification to the contact being called
-          // The sender's foreground state is irrelevant — the recipient
-          // should always be notified of incoming calls
-          try {
-            const currentUser = getCurrentUser();
-            const callerName =
-              currentUser?.displayName ||
-              currentUser?.email ||
-              getLoggedInUserId();
-
-            await pushNotificationController.sendCallNotification(contactId, {
-              roomId,
-              callerId: getLoggedInUserId(),
-              callerName,
-            });
-            console.log('[CONTACTS] Call notification sent to:', contactName);
-          } catch (error) {
-            console.warn('[CONTACTS] Failed to send call notification:', error);
-            // Non-blocking: call continues even if notification fails
-          }
-        }
+      if (roomId || contactId) {
+        document.dispatchEvent(
+          new CustomEvent('contact:call', {
+            detail: { contactId, contactName, roomId },
+          }),
+        );
       }
     };
   });
