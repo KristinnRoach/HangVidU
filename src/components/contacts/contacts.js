@@ -3,7 +3,6 @@
 import { ref, set, get, remove, update, onValue, off } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, getCurrentUser } from '../../firebase/auth.js';
-import { listenForIncomingOnRoom } from '../../main.js';
 import { hideCallingUI, showCallingUI } from '../calling/calling-ui.js';
 import confirmDialog from '../base/confirm-dialog.js';
 import { hideElement, showElement } from '../../utils/ui/ui-utils.js';
@@ -165,9 +164,8 @@ export async function saveContact(contactUserId, roomId, lobbyElement) {
       await saveContactData(contactUserId, existingEntry.contactName, roomId);
       await renderContactsList(lobbyElement);
     }
-    // CRITICAL FIX: Re-attach listener even if contact already exists
-    // This ensures listener is active after call cleanup removed it
-    listenForIncomingOnRoom(roomId);
+    // Ensure listener is active for incoming calls on this room
+    document.dispatchEvent(new CustomEvent('contact:saved', { detail: { roomId } }));
     return;
   }
 
@@ -183,8 +181,8 @@ export async function saveContact(contactUserId, roomId, lobbyElement) {
 
   await saveContactData(contactUserId, contactName, roomId);
 
-  // QUICK FIX: Immediately attach listener for incoming calls on this room
-  listenForIncomingOnRoom(roomId);
+  // Ensure listener is active for incoming calls on this room
+  document.dispatchEvent(new CustomEvent('contact:saved', { detail: { roomId } }));
 
   // Re-render contacts list
   await renderContactsList(lobbyElement);
