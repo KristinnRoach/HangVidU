@@ -110,6 +110,8 @@ export function isPiPSupported() {
  * @returns {Promise<'pip'|'small-frame'|'already-pip'>} Which mode was entered.
  */
 export async function requestPiP(videoEl, fallbackContainerEl) {
+  if (!videoEl || !fallbackContainerEl) return 'small-frame';
+
   if (isElementInPictureInPicture(videoEl)) {
     removeFromSmallFrame(fallbackContainerEl);
     return 'already-pip';
