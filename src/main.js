@@ -255,9 +255,8 @@ async function init() {
         console.warn('[MAIN] FCM notifications failed to initialize');
 
         if (!pushNotificationController.isNotificationSupported()) {
-          const { showPushUnsupportedNotification } = await import(
-            './components/notifications/push-unsupported-notification.js'
-          );
+          const { showPushUnsupportedNotification } =
+            await import('./components/notifications/push-unsupported-notification.js');
           showPushUnsupportedNotification();
         }
       }
@@ -297,7 +296,7 @@ async function initLocalStreamAndMedia() {
     getLocalStream,
     getLocalVideo: () => localVideoEl,
     getRemoteVideo: () => remoteVideoEl,
-    getPeerConnection: () => CallController.getState().pc,
+    getPeerConnection: () => CallController.getPeerConnection(),
     setLocalStream,
 
     micBtn,

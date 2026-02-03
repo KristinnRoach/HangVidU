@@ -84,6 +84,34 @@ class CallController {
     };
   }
 
+  /**
+   * Return the current RTCPeerConnection with diagnostic logging.
+   * Logs warnings for missing or unhealthy connections.
+   */
+  getPeerConnection() {
+    if (!this.pc) {
+      console.warn('CallController.getPeerConnection: pc is null', {
+        state: this.state,
+        roomId: this.roomId,
+        role: this.role,
+        isHangingUp: this.isHangingUp,
+        isCleaningUp: this.isCleaningUp,
+      });
+      return null;
+    }
+
+    const { connectionState, iceConnectionState, signalingState } = this.pc;
+    if (connectionState === 'closed' || iceConnectionState === 'closed') {
+      console.warn('CallController.getPeerConnection: pc is closed', {
+        connectionState,
+        iceConnectionState,
+        signalingState,
+      });
+    }
+
+    return this.pc;
+  }
+
   on(name, fn) {
     this.emitter.on(name, fn);
   }
