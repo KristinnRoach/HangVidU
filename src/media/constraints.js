@@ -1,6 +1,6 @@
 // src/media/constraints.js
 
-import { devDebug } from '../utils/dev/dev-utils';
+import { devDebug } from '../utils/dev/dev-utils.js';
 
 const userMediaAudioConstraints = {
   default: {
@@ -44,34 +44,16 @@ function getAudioConstraints() {
 
 const getFallbackAudioConstraints = () => userMediaAudioConstraints.default;
 
-const userMediaVideoConstraints = {
-  desktop: {
-    landscape: {
-      width: { ideal: 1920 },
-      height: { ideal: 1080 }, // Todo: When mobile testing set up: -> consider using () => window.innerWidth, window.innerHeight
-      frameRate: { min: 10, ideal: 30 },
-      // aspectRatio: { ideal: 16 / 9 },
-    },
-    portrait: {
-      width: { ideal: 1080 },
-      height: { ideal: 1920 },
-      frameRate: { min: 10, ideal: 30 },
-      // aspectRatio: { ideal: 9 / 16 },
-    },
+const desktopVideoConstraints = {
+  landscape: {
+    width: { ideal: 1920 },
+    height: { ideal: 1080 },
+    frameRate: { min: 10, ideal: 30 },
   },
-  mobile: {
-    portrait: {
-      width: { ideal: 1080 },
-      height: { ideal: 1920 },
-      // aspectRatio: { ideal: 9 / 16 },
-      frameRate: { ideal: 30 },
-    },
-    landscape: {
-      width: { ideal: 1920 },
-      height: { ideal: 1080 },
-      // aspectRatio: { ideal: 16 / 9 },
-      frameRate: { ideal: 30 },
-    },
+  portrait: {
+    width: { ideal: 1080 },
+    height: { ideal: 1920 },
+    frameRate: { min: 10, ideal: 30 },
   },
 };
 
@@ -103,10 +85,9 @@ function getVideoConstraints(facingMode, orientation = null) {
     return { facingMode };
   }
 
-  const deviceType = 'desktop';
-  const constraints = userMediaVideoConstraints[deviceType][orientation];
+  const constraints = desktopVideoConstraints[orientation];
 
-  devDebug('getVideoConstraints() - ', { facingMode, orientation, deviceType });
+  devDebug('getVideoConstraints() - desktop', { facingMode, orientation });
   devDebug('Video constraints:', constraints);
 
   return {

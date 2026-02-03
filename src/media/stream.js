@@ -100,6 +100,7 @@ export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
     remoteVideoEl.style.opacity = '0';
     remoteVideoEl.onloadedmetadata = () => {
       remoteVideoEl.style.opacity = '1';
+      remoteVideoEl.onloadedmetadata = null;
     };
 
     // Auto-mute partner in dev to avoid feedback
