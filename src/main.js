@@ -92,7 +92,11 @@ import {
   processReferral,
 } from './contacts/referral-handler.js';
 
-// import { getContactByRoomId } from './components/contacts/contacts.js';
+import {
+  getContactByRoomId,
+  saveContactData,
+  updateLastInteraction,
+} from './components/contacts/contacts.js';
 
 // TODO: inAppNotificationManager VS pushNotificationController - Compare and clarify distinction or combine!
 import { inAppNotificationManager } from './components/notifications/in-app-notification-manager.js';
@@ -462,6 +466,78 @@ export async function joinOrCreateRoomWithId(
     ...getCallOptions(),
   });
   return applyCallResult(result, false);
+}
+
+/**
+ * Unified function to initiate a call to a contact.
+ * Handles room generation, RTDB updates, UI triggers, and push notifications.
+ *
+ * @param {string} contactId - The ID of the contact to call
+ * @param {string} contactName - The name of the contact
+ * @param {string} [roomId] - Existing room ID (generated if not provided)
+ * @returns {Promise<boolean>} Success status
+ */
+export async function callContact(contactId, contactName, roomId = null) {
+  // If no roomId is provided, try to generate a deterministic one
+  if (!roomId && contactId) {
+    const myUserId = getUserId();
+    if (myUserId) {
+      try {
+        roomId = getDeterministicRoomId(myUserId, contactId);
+        console.log('[CALL] Generated deterministic room ID:', roomId);
+        // Persist it so both sides use the same room next time
+        await saveContactData(contactId, contactName, roomId);
+      } catch (e) {
+        console.error('[CALL] Failed to generate or save room ID:', e);
+        return false;
+      }
+    }
+  }
+
+  if (!roomId) {
+    console.error('[CALL] Cannot initiate call: No Room ID available');
+    return false;
+  }
+
+  // Ensure listener is active for this room before calling
+  listenForIncomingOnRoom(roomId);
+
+  // Force initiator role to ensure fresh call nodes in RTDB
+  const success = await joinOrCreateRoomWithId(roomId, {
+    forceInitiator: true,
+  }).catch((e) => {
+    console.warn('[CALL] Failed to join or create room:', e);
+    return false;
+  });
+
+  if (success) {
+    // Update metadata
+    updateLastInteraction(contactId).catch(() => {});
+
+    // Trigger UI (Calling Modal)
+    const { showCallingUI } = await import(
+      './components/calling/calling-ui.js'
+    );
+    await showCallingUI(roomId, contactName);
+
+    // Send push notification
+    try {
+      const currentUser = getCurrentUser();
+      const callerName =
+        currentUser?.displayName || currentUser?.email || getLoggedInUserId();
+
+      await pushNotificationController.sendCallNotification(contactId, {
+        roomId,
+        callerId: getLoggedInUserId(),
+        callerName,
+      });
+      console.log('[CALL] Push notification sent to:', contactName);
+    } catch (error) {
+      console.warn('[CALL] Failed to send push notification:', error);
+    }
+  }
+
+  return success;
 }
 
 // ============================================================================
@@ -854,7 +930,15 @@ export function listenForIncomingOnRoom(roomId) {
     await removeRecentCall(roomId).catch(() => {});
 
     // Clean up incoming listeners for this room to prevent stale listener firing
-    removeIncomingListenersForRoom(roomId);
+    // UNLESS it is a saved contact - then we want to keep listening
+    const savedContact = await getContactByRoomId(roomId);
+    if (!savedContact) {
+      removeIncomingListenersForRoom(roomId);
+    } else {
+      devDebug(
+        `[LISTENER] Preserving listener for saved contact room: ${roomId} after cancellation`,
+      );
+    }
 
     devDebug(
       `[LISTENER] Incoming call cancelled by caller for room: ${roomId}`,
@@ -874,13 +958,21 @@ export function listenForIncomingOnRoom(roomId) {
     try {
       const status = await RoomService.checkRoomStatus(roomId);
       // If no members remain, remove the saved recent call for this client
-      // and clean up the incoming listeners for this room
+      // and clean up the incoming listeners for this room (UNLESS saved contact)
       if (!status.hasMembers) {
         await removeRecentCall(roomId);
-        removeIncomingListenersForRoom(roomId);
-        devDebug(
-          `Removed saved recent call and listeners for room ${roomId} because it is now empty`,
-        );
+
+        const savedContact = await getContactByRoomId(roomId);
+        if (!savedContact) {
+          removeIncomingListenersForRoom(roomId);
+          devDebug(
+            `Removed saved recent call and listeners for room ${roomId} because it is now empty`,
+          );
+        } else {
+          devDebug(
+            `Removed recent call but PRESERVED listeners for saved contact room ${roomId}`,
+          );
+        }
       }
     } catch (e) {
       console.warn('Failed to evaluate room status on member leave', e);
@@ -1457,6 +1549,16 @@ window.onload = async () => {
   // UI handlers (business logic handlers registered separately below)
   bindCallUI(CallController);
 
+  // Ensure listeners are re-attached after a call ends
+  CallController.on('cleanup', async ({ roomId }) => {
+    if (roomId) {
+      // Re-attach listener for this room (it may have been removed on accept or cancel)
+      // This ensures we can receive future calls from this person/room
+      devDebug(`[LISTENER] Call ended, ensuring incoming listener is active for ${roomId}`);
+      listenForIncomingOnRoom(roomId);
+    }
+  });
+
   const onJoinRoomSubmit = async (roomInputString) => {
     const inputRoomId = normalizeRoomInput(roomInputString || '');
     if (!inputRoomId) {
@@ -1680,8 +1782,9 @@ CallController.on(
       console.log('[MAIN] Potential missed call detected for room:', roomId);
       try {
         // Dynamic import to avoid circular dependency (main.js <-> contacts.js)
-        const { getContactByRoomId, callContact } =
-          await import('./components/contacts/contacts.js');
+        const { getContactByRoomId } = await import(
+          './components/contacts/contacts.js'
+        );
         const contact = await getContactByRoomId(roomId);
         if (contact && contact.contactId) {
           const { getCurrentUser } = await import('./firebase/auth.js');
