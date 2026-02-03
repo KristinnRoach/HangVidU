@@ -449,3 +449,97 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* Push Unsupported Notification */
+
+.push-unsupported-notification {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-left: 3px solid #ff9800;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  max-width: 300px;
+  min-width: 250px;
+  animation: slideIn 0.3s ease-out;
+}
+
+.push-unsupported-notification .notification-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.push-unsupported-notification .notification-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+}
+
+.push-unsupported-notification .notification-title {
+  font-weight: 600;
+  color: #fff;
+  flex: 1;
+}
+
+.push-unsupported-notification .notification-dismiss {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+.push-unsupported-notification .notification-dismiss:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.push-unsupported-notification .notification-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.push-unsupported-notification .notification-message {
+  margin: 0;
+  color: #ccc;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.push-unsupported-notification .notification-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.push-unsupported-notification .notification-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.push-unsupported-notification .notification-btn-secondary {
+  background: #666;
+  color: #fff;
+}
+
+.push-unsupported-notification .notification-btn-secondary:hover {
+  background: #555;
+}
