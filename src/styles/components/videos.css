@@ -3,8 +3,7 @@
 /* Video containers for local, remote, shared, and YouTube videos */
 
 :root {
-  --small-frame-height: 20dvh;
-  --small-frame-width: calc(var(--small-frame-height) * (16 / 9));
+  --small-frame-height: 15dvh;
 }
 
 /* Main Videos Container */
@@ -39,7 +38,6 @@
   justify-content: center;
   align-items: center;
 
-  width: 100%;
   height: 100%;
   transition: opacity 0.3s ease;
 }
@@ -60,7 +58,8 @@
 
 .video-box.small-frame video {
   object-fit: cover;
-  min-width: 150px;
+  width: auto;
+  min-width: 80px;
   min-height: 84px;
 }
 
@@ -110,11 +109,12 @@
   position: absolute;
   top: 20px;
   left: 20px;
+  height: var(--small-frame-height);
+
   border-radius: 5px;
   -webkit-box-shadow: 3px 3px 15px -1px rgba(0, 0, 0, 0.77);
   box-shadow: 3px 3px 15px -1px rgba(0, 0, 0, 0.77);
-  height: var(--small-frame-height);
-  width: var(--small-frame-width);
+
   z-index: var(--z-mid);
   transform: translateX(0);
   will-change: transform;
@@ -123,7 +123,7 @@
 }
 
 .small-frame.closed {
-  transform: translateX(calc(0px - (var(--small-frame-width) + 20px)));
+  transform: translateX(calc(-100% - 20px));
 }
 
 /* Small Frame Toggle Button */
