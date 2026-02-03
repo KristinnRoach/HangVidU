@@ -78,33 +78,15 @@ const userMediaVideoConstraints = {
 const isPortraitOrientation = () => {
   const mediaQuery = window.matchMedia?.('(orientation: portrait)');
   if (mediaQuery) {
-    const result = mediaQuery.matches;
-    console.log('isPortraitOrientation check:', {
-      source: 'matchMedia',
-      result,
-    });
-    return result;
+    return mediaQuery.matches;
   }
 
   const screenOrientation = window.screen?.orientation?.type;
   if (typeof screenOrientation === 'string') {
-    const result = screenOrientation.includes('portrait');
-    console.log('isPortraitOrientation check:', {
-      source: 'screen.orientation',
-      screenOrientation,
-      result,
-    });
-    return result;
+    return screenOrientation.includes('portrait');
   }
 
-  const result = window.innerHeight >= window.innerWidth;
-  console.log('isPortraitOrientation check:', {
-    source: 'innerSizeFallback',
-    innerWidth: window.innerWidth,
-    innerHeight: window.innerHeight,
-    result,
-  });
-  return result;
+  return window.innerHeight >= window.innerWidth;
 };
 
 function getVideoConstraints(facingMode, orientation = null) {

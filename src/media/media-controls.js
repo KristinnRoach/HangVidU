@@ -1,11 +1,7 @@
 // media-controls.js
 // Handles all media control button functionality (mute, video, camera, fullscreen)
 
-import {
-  switchCamera,
-  setupOrientationListener,
-  hasFrontAndBackCameras,
-} from './media-devices.js';
+import { switchCamera, hasFrontAndBackCameras } from './media-devices.js';
 import { getFacingMode, setFacingMode } from './state.js';
 import {
   showElement,
@@ -31,18 +27,6 @@ let cleanupFunctions = [];
 function updateMuteMicIcon(muted, muteSelfBtn) {
   const icon = muteSelfBtn.querySelector('i');
   icon.className = muted ? 'fa fa-microphone-slash' : 'fa fa-microphone';
-}
-
-// ============================================================================
-// REMOTE VIDEO EVENT LISTENERS
-// ============================================================================
-
-/**
- * Initialize remote video - kept for consistency but no longer adds listeners
- */
-export function addRemoteVideoEventListeners() {
-  // No-op: Icon updates now happen inline in button click handler
-  // This function is kept to avoid breaking the call flow API
 }
 
 // ============================================================================
@@ -109,17 +93,6 @@ export function initializeMediaControls({
   }
 
   // ===== SWITCH CAMERA (MOBILE) =====
-
-  // TEMP: Disable orientation listener for testing (iOS ignores constraints)
-  // const removeOrientationListener = setupOrientationListener({
-  //   getLocalStream,
-  //   getFacingMode,
-  //   getPeerConnection,
-  //   setLocalStream,
-  // });
-
-  // cleanupFunctions.push(removeOrientationListener);
-
   if (switchCameraBtn) {
     switchCameraBtn.onclick = async () => {
       const result = await switchCamera({
@@ -205,67 +178,3 @@ export function cleanupMediaControls() {
   cleanupFunctions.forEach((cleanupFn) => cleanupFn());
   cleanupFunctions = [];
 }
-
-// Listen for orientation changes and update constraints
-// let isUpdatingForOrientation = false;
-// const handleOrientationChange = async () => {
-//   if (isUpdatingForOrientation) return;
-//   isUpdatingForOrientation = true;
-//   import.meta.env.DEV && console.debug('Orientation change detected.');
-
-//   const localStream = getLocalStream();
-//   const localVideo = getLocalVideo();
-//   const pc = getPeerConnection() || null; // May be null
-
-//   if (!localStream || !localVideo) {
-//     isUpdatingForOrientation = false;
-//     return;
-//   }
-
-//   import.meta.env.DEV &&
-//     console.debug('Updating video constraints for orientation. pc: ', pc);
-
-//   const result = await updateVideoConstraintsForOrientation({
-//     localStream,
-//     localVideo,
-//     currentFacingMode: lastFacingMode,
-//     peerConnection: pc || null,
-//   });
-//   // Sync the shared reference if setter is provided
-//   if (result?.newStream && typeof setLocalStream === 'function') {
-//     setLocalStream(result.newStream);
-//   }
-//   isUpdatingForOrientation = false;
-// };
-
-// const removeOrientationListeners = (() => {
-//   //window.addEventListener('orientationchange', handleOrientationChange);
-//   let screenListenerAdded = false;
-
-//   const orientationQuery = window.matchMedia('(orientation: portrait)');
-//   orientationQuery.addEventListener('change', handleOrientationChange);
-//   screenListenerAdded = true;
-
-//   // if (window.screen?.orientation) {
-//   //   window.screen.orientation.addEventListener(
-//   //     'change',
-//   //     handleOrientationChange
-//   //   );
-//   //   screenListenerAdded = true;
-//   // }
-//   return () => {
-//     // window.removeEventListener('orientationchange', handleOrientationChange);
-//     if (screenListenerAdded) {
-//       // window.screen.orientation.removeEventListener(
-//       //   'change',
-//       //   handleOrientationChange
-//       // );
-//       orientationQuery.removeEventListener('change', handleOrientationChange);
-//       screenListenerAdded = false;
-//     }
-//   };
-// })();
-
-// cleanupFunctions.push(
-//   removeOrientationListeners
-// );

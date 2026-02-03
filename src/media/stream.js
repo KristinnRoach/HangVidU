@@ -1,6 +1,5 @@
 // media/stream.js
 
-import { addRemoteVideoEventListeners } from './media-controls.js';
 import {
   hasLocalStream,
   getLocalStream,
@@ -96,7 +95,6 @@ export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
     // Always update stream and video element (handles both new streams and track replacements)
     setRemoteStream(newRemoteStream);
     remoteVideoEl.srcObject = newRemoteStream;
-    addRemoteVideoEventListeners(remoteVideoEl, mutePartnerBtn);
 
     // Hide video while loading new metadata to prevent flicker/cropping
     remoteVideoEl.style.opacity = '0';
