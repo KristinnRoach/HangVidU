@@ -1176,7 +1176,8 @@ export function initMessagesUI() {
    */
   function openContactMessages(contactId, contactName, openMessageBox = false) {
     if (!getLoggedInUserId()) {
-      alert('Please sign in to send messages');
+      // alert('Please sign in to send messages'); // Todo: add toast
+      console.log('Cannot open messages: user not signed in');
       return;
     }
 

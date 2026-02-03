@@ -110,12 +110,15 @@ export function initializeMediaControls({
 
   // ===== SWITCH CAMERA (MOBILE) =====
 
-  const removeOrientationListener = setupOrientationListener({
-    getLocalStream,
-    getFacingMode,
-  });
+  // TEMP: Disable orientation listener for testing (iOS ignores constraints)
+  // const removeOrientationListener = setupOrientationListener({
+  //   getLocalStream,
+  //   getFacingMode,
+  //   getPeerConnection,
+  //   setLocalStream,
+  // });
 
-  cleanupFunctions.push(removeOrientationListener);
+  // cleanupFunctions.push(removeOrientationListener);
 
   if (switchCameraBtn) {
     switchCameraBtn.onclick = async () => {
