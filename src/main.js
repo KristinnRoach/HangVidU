@@ -653,6 +653,7 @@ export function listenForIncomingOnRoom(roomId) {
           const roomFresh = await isRoomCallFresh(roomId);
           isFresh = roomFresh;
           validationMethod = roomFresh ? 'roomCreatedAt' : 'failed';
+          age = null; // joinedAt-based age not applicable for this fallback
         }
 
         const freshnessResult = {
