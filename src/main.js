@@ -138,7 +138,7 @@ import { createNotificationsToggle } from './components/notifications/notificati
 import { showSuccessToast, showErrorToast } from './utils/ui/toast.js';
 import { createInviteNotification } from './components/notifications/invite-notification.js';
 
-import { showElement, hideElement } from './utils/ui/ui-utils.js';
+import { showElement, hideElement, exitPiP } from './utils/ui/ui-utils.js';
 import { initializeAuthUI } from './components/auth/AuthComponent.js';
 import { messagesUI } from './components/messages/messages-ui.js';
 import confirmDialog from './components/base/confirm-dialog.js';
@@ -1785,9 +1785,7 @@ async function cleanup() {
   removeAllRTDBListeners();
   cleanupContacts();
 
-  if (document.pictureInPictureElement) {
-    document.exitPictureInPicture().catch((err) => console.error(err));
-  }
+  exitPiP();
 
   const state = CallController.getState();
   if (state.messagesUI && state.messagesUI.cleanup) {

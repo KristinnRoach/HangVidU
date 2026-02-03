@@ -21,9 +21,10 @@ import {
 import {
   showElement,
   hideElement,
-  isElementInPictureInPicture,
   placeInSmallFrame,
   removeFromSmallFrame,
+  requestPiP,
+  exitPiP,
 } from '../../utils/ui/ui-utils.js';
 
 import { isWatchModeActive, setWatchMode } from '../../firebase/watch-sync.js';
@@ -49,14 +50,6 @@ export const isRemoteVideoVideoActive = () => {
     remoteStream.getVideoTracks()[0].readyState === 'live'
   );
 };
-
-export function isPiPSupported() {
-  return (
-    'pictureInPictureEnabled' in document &&
-    typeof document.pictureInPictureEnabled === 'boolean' &&
-    document.pictureInPictureEnabled
-  );
-}
 
 export function enterWatchMode() {
   if (isWatchModeActive()) return;
@@ -97,26 +90,7 @@ export function enterWatchMode() {
     removeFromSmallFrame(localBoxEl);
     hideElement(remoteBoxEl);
 
-    if (isElementInPictureInPicture(remoteVideoEl)) {
-      removeFromSmallFrame(remoteBoxEl);
-    } else if (isPiPSupported()) {
-      // Try to enter PiP with fallback
-      remoteVideoEl
-        .requestPictureInPicture()
-        .then(() => {
-          removeFromSmallFrame(remoteBoxEl);
-        })
-        .catch((err) => {
-          console.warn('Failed to enter Picture-in-Picture:', err);
-          // Fallback: place in small frame
-          placeInSmallFrame(remoteBoxEl);
-          showElement(remoteBoxEl);
-        });
-    } else {
-      // PiP not supported, use small frame
-      placeInSmallFrame(remoteBoxEl);
-      showElement(remoteBoxEl);
-    }
+    requestPiP(remoteVideoEl, remoteBoxEl);
   }
 }
 
@@ -139,12 +113,7 @@ export function exitWatchMode() {
   showElement(chatControls);
 
   if (isRemoteVideoVideoActive()) {
-    if (isElementInPictureInPicture(remoteVideoEl)) {
-      document.exitPictureInPicture().catch((err) => {
-        console.error('Failed to exit Picture-in-Picture:', err);
-      });
-    }
-
+    exitPiP(remoteVideoEl);
     removeFromSmallFrame(remoteBoxEl);
     showElement(remoteBoxEl);
   }
