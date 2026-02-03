@@ -1550,16 +1550,6 @@ window.onload = async () => {
   // UI handlers (business logic handlers registered separately below)
   bindCallUI(CallController);
 
-  // Ensure listeners are re-attached after a call ends
-  CallController.on('cleanup', async ({ roomId }) => {
-    if (roomId) {
-      // Re-attach listener for this room (it may have been removed on accept or cancel)
-      // This ensures we can receive future calls from this person/room
-      devDebug(`[LISTENER] Call ended, ensuring incoming listener is active for ${roomId}`);
-      listenForIncomingOnRoom(roomId);
-    }
-  });
-
   const onJoinRoomSubmit = async (roomInputString) => {
     const inputRoomId = normalizeRoomInput(roomInputString || '');
     if (!inputRoomId) {
@@ -1860,7 +1850,7 @@ CallController.on(
     clearUrlParam();
 
     // Re-attach incoming listener so the next call on this room is detected
-    if (roomId) {
+    if (roomId && reason !== 'page_unload') {
       listenForIncomingOnRoom(roomId);
     }
 
