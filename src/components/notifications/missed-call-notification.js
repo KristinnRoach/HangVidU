@@ -1,6 +1,7 @@
 // missed-call-notification.js - Missed call notification component
 
 import { createNotification } from './notification.js';
+import { escapeHtml } from '../../utils/dom/dom-utils.js';
 
 /**
  * Create a missed call notification component.
@@ -35,7 +36,7 @@ export function createMissedCallNotification({
         </div>
         <div class="notification-body">
           <p class="notification-message">
-            <strong>[[displayName]]</strong> tried to call you
+            <strong>${escapeHtml(displayName)}</strong> tried to call you
           </p>
         </div>
         <div class="notification-actions">
@@ -74,12 +75,3 @@ export function createMissedCallNotification({
   return notification;
 }
 
-/**
- * Escape HTML to prevent XSS
- * @private
- */
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str || '';
-  return div.innerHTML;
-}

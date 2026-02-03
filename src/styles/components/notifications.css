@@ -86,21 +86,11 @@
   }
 }
 
-/* Individual Notification Styles */
-
-/* TODO: Consolidate common notification styles and clean up redundant duplicated or non-effective rules */
-
-.pwa-update-notification {
-  background: #2a2a2a;
-  border: 1px solid #444;
-  border-radius: 8px;
-  padding: 1rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  max-width: 300px;
-  min-width: 250px;
-
-  animation: slideIn 0.3s ease-out;
-}
+/* =============================================
+   Shared Notification Base Styles
+   Used by: invite, referral, missed-call, push-unsupported
+   (pwa-update uses different class names, styled separately)
+   ============================================= */
 
 @keyframes slideIn {
   from {
@@ -111,6 +101,193 @@
     transform: translateY(0);
     opacity: 1;
   }
+}
+
+/* Base container - shared by all .notification types */
+.notification {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  max-width: 300px;
+  min-width: 250px;
+  animation: slideIn 0.3s ease-out;
+}
+
+.notification .notification-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.notification .notification-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+}
+
+.notification .notification-icon {
+  font-size: 1.2rem;
+}
+
+.notification .notification-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.notification .notification-title {
+  font-weight: 600;
+  color: #fff;
+  flex: 1;
+}
+
+.notification .notification-dismiss {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+.notification .notification-dismiss:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.notification .notification-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.notification .notification-message {
+  margin: 0;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.notification .notification-detail {
+  margin: 0;
+  color: #aaa;
+  font-size: 0.85rem;
+}
+
+.notification .notification-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.notification .notification-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.notification .notification-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.notification .notification-btn-secondary,
+.notification .notification-btn-decline {
+  background: #666;
+  color: #fff;
+}
+
+.notification .notification-btn-secondary:hover:not(:disabled),
+.notification .notification-btn-decline:hover:not(:disabled) {
+  background: #555;
+}
+
+/* =============================================
+   Per-type overrides (accent colors, unique styles)
+   ============================================= */
+
+/* Invite - green accent */
+.invite-notification {
+  border-left: 3px solid #4caf50;
+}
+
+.invite-notification .notification-btn-accept {
+  background: #4caf50;
+  color: #fff;
+}
+
+.invite-notification .notification-btn-accept:hover:not(:disabled) {
+  background: #45a049;
+}
+
+/* Referral - blue accent */
+.referral-notification {
+  border-left: 3px solid #2196f3;
+}
+
+.referral-notification .notification-btn-accept {
+  background: #2196f3;
+  color: #fff;
+}
+
+.referral-notification .notification-btn-accept:hover:not(:disabled) {
+  background: #1976d2;
+}
+
+/* Missed Call - orange accent */
+.missed-call-notification {
+  border-left: 3px solid #ff9800;
+}
+
+.missed-call-notification .notification-btn-primary {
+  background: #ff9800;
+  color: #fff;
+}
+
+.missed-call-notification .notification-btn-primary:hover:not(:disabled) {
+  background: #f57c00;
+}
+
+/* Push Unsupported - orange accent */
+.push-unsupported-notification {
+  border-left: 3px solid #ff9800;
+}
+
+.push-unsupported-notification .notification-message {
+  color: #ccc;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+/* =============================================
+   PWA Update Notification (uses different class names)
+   ============================================= */
+
+.pwa-update-notification {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  max-width: 300px;
+  min-width: 250px;
+  animation: slideIn 0.3s ease-out;
 }
 
 .pwa-update-notification .update-content {
@@ -159,293 +336,4 @@
     left: 10px;
     max-width: none;
   }
-}
-
-/* Invite Notification */
-
-.invite-notification {
-  background: #2a2a2a;
-  border: 1px solid #444;
-  border-left: 3px solid #4caf50;
-  border-radius: 8px;
-  padding: 1rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  max-width: 300px;
-  min-width: 250px;
-  animation: slideIn 0.3s ease-out;
-}
-
-.invite-notification .notification-content {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.invite-notification .notification-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.invite-notification .notification-icon {
-  font-size: 1.2rem;
-}
-
-.invite-notification .notification-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.invite-notification .notification-title {
-  font-weight: 600;
-  color: #fff;
-}
-
-.invite-notification .notification-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.invite-notification .notification-message {
-  margin: 0;
-  color: #fff;
-  font-size: 0.95rem;
-}
-
-.invite-notification .notification-detail {
-  margin: 0;
-  color: #aaa;
-  font-size: 0.85rem;
-}
-
-.invite-notification .notification-actions {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
-}
-
-.invite-notification .notification-btn {
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.invite-notification .notification-btn-accept {
-  background: #4caf50;
-  color: #fff;
-}
-
-.invite-notification .notification-btn-accept:hover:not(:disabled) {
-  background: #45a049;
-}
-
-.invite-notification .notification-btn-decline {
-  background: #666;
-  color: #fff;
-}
-
-.invite-notification .notification-btn-decline:hover:not(:disabled) {
-  background: #555;
-}
-
-.invite-notification .notification-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Referral Notification - reuses invite structure with blue accent */
-
-.referral-notification {
-  background: #2a2a2a;
-  border: 1px solid #444;
-  border-left: 3px solid #2196f3;
-  border-radius: 8px;
-  padding: 1rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  max-width: 300px;
-  min-width: 250px;
-  animation: slideIn 0.3s ease-out;
-}
-
-.referral-notification .notification-content {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.referral-notification .notification-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.referral-notification .notification-icon {
-  font-size: 1.2rem;
-}
-
-.referral-notification .notification-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.referral-notification .notification-title {
-  font-weight: 600;
-  color: #fff;
-}
-
-.referral-notification .notification-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.referral-notification .notification-message {
-  margin: 0;
-  color: #fff;
-  font-size: 0.95rem;
-}
-
-.referral-notification .notification-detail {
-  margin: 0;
-  color: #aaa;
-  font-size: 0.85rem;
-}
-
-.referral-notification .notification-actions {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
-}
-
-.referral-notification .notification-btn {
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.referral-notification .notification-btn-accept {
-  background: #2196f3;
-  color: #fff;
-}
-
-.referral-notification .notification-btn-accept:hover:not(:disabled) {
-  background: #1976d2;
-}
-
-.referral-notification .notification-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Missed Call Notification */
-
-.missed-call-notification {
-  background: #2a2a2a;
-  border: 1px solid #444;
-  border-left: 3px solid #ff9800;
-  border-radius: 8px;
-  padding: 1rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  max-width: 300px;
-  min-width: 250px;
-  animation: slideIn 0.3s ease-out;
-}
-
-.missed-call-notification .notification-content {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.missed-call-notification .notification-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  position: relative;
-}
-
-.missed-call-notification .notification-icon {
-  font-size: 1.2rem;
-}
-
-.missed-call-notification .notification-title {
-  font-weight: 600;
-  color: #fff;
-  flex: 1;
-}
-
-.missed-call-notification .notification-dismiss {
-  background: none;
-  border: none;
-  color: #aaa;
-  font-size: 1.5rem;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition:
-    background 0.2s,
-    color 0.2s;
-}
-
-.missed-call-notification .notification-dismiss:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-}
-
-.missed-call-notification .notification-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.missed-call-notification .notification-message {
-  margin: 0;
-  color: #fff;
-  font-size: 0.95rem;
-}
-
-.missed-call-notification .notification-actions {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
-}
-
-.missed-call-notification .notification-btn {
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.missed-call-notification .notification-btn-primary {
-  background: #ff9800;
-  color: #fff;
-}
-
-.missed-call-notification .notification-btn-primary:hover:not(:disabled) {
-  background: #f57c00;
-}
-
-.missed-call-notification .notification-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }

@@ -1,6 +1,7 @@
 // referral-notification.js - Referral landing notification for logged-out users
 
 import { createNotification } from './notification.js';
+import { escapeHtml } from '../../utils/dom/dom-utils.js';
 
 /**
  * Create a referral notification prompting sign-in.
@@ -60,14 +61,4 @@ export function createReferralNotification({
       },
     },
   });
-}
-
-/**
- * Escape HTML to prevent XSS
- * @private
- */
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str || '';
-  return div.innerHTML;
 }

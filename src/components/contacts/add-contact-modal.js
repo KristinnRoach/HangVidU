@@ -3,6 +3,7 @@
 
 import { findUsersByEmails } from '../../contacts/user-discovery.js';
 import { sendInvite } from '../../contacts/invitations.js';
+import { escapeHtml } from '../../utils/dom/dom-utils.js';
 import {
   getCurrentUser,
   requestContactsAccess,
@@ -554,11 +555,4 @@ function renderImportResults(
 
     window.location.href = mailtoLink;
   }
-}
-
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str || '';
-  // Browser escapes <, >, & via textContent. Also escape quotes for attribute safety.
-  return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }

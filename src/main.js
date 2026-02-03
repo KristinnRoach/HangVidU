@@ -253,6 +253,13 @@ async function init() {
         // 3. No permission requests for anonymous/logged-out users
       } else {
         console.warn('[MAIN] FCM notifications failed to initialize');
+
+        if (!pushNotificationController.isNotificationSupported()) {
+          const { showPushUnsupportedNotification } = await import(
+            './components/notifications/push-unsupported-notification.js'
+          );
+          showPushUnsupportedNotification();
+        }
       }
     } catch (error) {
       console.error('[MAIN] FCM initialization error:', error);
