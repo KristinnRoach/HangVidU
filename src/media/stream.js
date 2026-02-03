@@ -95,13 +95,21 @@ export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
     // Always update stream and video element (handles both new streams and track replacements)
     setRemoteStream(newRemoteStream);
     remoteVideoEl.srcObject = newRemoteStream;
-
     // Hide video while loading new metadata to prevent flicker/cropping
-    remoteVideoEl.style.opacity = '0';
-    remoteVideoEl.onloadedmetadata = () => {
-      remoteVideoEl.style.opacity = '1';
-      remoteVideoEl.onloadedmetadata = null;
-    };
+    if (event.track.kind === 'video') {
+      if (remoteVideoEl.readyState >= 1) {
+        remoteVideoEl.style.opacity = '1';
+      } else {
+        remoteVideoEl.style.opacity = '0';
+        remoteVideoEl.addEventListener(
+          'loadedmetadata',
+          () => {
+            remoteVideoEl.style.opacity = '1';
+          },
+          { once: true },
+        );
+      }
+    }
 
     // Auto-mute partner in dev to avoid feedback
     if (isDev() && !remoteVideoEl.muted) {
