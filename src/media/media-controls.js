@@ -7,7 +7,13 @@ import {
   hasFrontAndBackCameras,
 } from './media-devices.js';
 import { getFacingMode, setFacingMode } from './state.js';
-import { showElement, hideElement } from '../utils/ui/ui-utils.js';
+import {
+  showElement,
+  hideElement,
+  isElementInPictureInPicture,
+  exitPiP,
+  requestPiP,
+} from '../utils/ui/ui-utils.js';
 
 // ============================================================================
 // STATE
@@ -175,14 +181,10 @@ export function initializeMediaControls({
       const remoteVideo = getRemoteVideo();
       if (!remoteVideo) return;
 
-      try {
-        if (document.pictureInPictureElement === remoteVideo) {
-          await document.exitPictureInPicture();
-        } else if (remoteVideo.requestPictureInPicture) {
-          await remoteVideo.requestPictureInPicture();
-        }
-      } catch (error) {
-        console.error('Picture-in-Picture failed:', error);
+      if (isElementInPictureInPicture(remoteVideo)) {
+        await exitPiP(remoteVideo);
+      } else {
+        await requestPiP(remoteVideo, remoteVideo.parentElement);
       }
     };
   }

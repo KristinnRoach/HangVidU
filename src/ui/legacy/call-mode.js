@@ -19,7 +19,7 @@ import {
   hideElement,
   placeInSmallFrame,
   removeFromSmallFrame,
-  isElementInPictureInPicture,
+  exitPiP,
 } from '../../utils/ui/ui-utils.js';
 
 import { setupShowHideOnInactivity } from '../../utils/ui/showHideOnInactivity.js';
@@ -136,9 +136,7 @@ export const exitCallMode = () => {
   isInCallMode = false;
 
   // Exit PiP first (before cleanup removes the event listener)
-  if (isElementInPictureInPicture(remoteVideoEl)) {
-    document.exitPictureInPicture().catch(() => {});
-  }
+  exitPiP(remoteVideoEl);
 
   removeFromSmallFrame(localBoxEl);
   hideElement(localBoxEl);

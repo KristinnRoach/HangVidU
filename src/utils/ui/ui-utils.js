@@ -85,3 +85,67 @@ export const removeFromSmallFrame = (element) => {
 export function isElementInPictureInPicture(element) {
   return document.pictureInPictureElement === element;
 }
+
+// ============================================================================
+// PICTURE-IN-PICTURE UTILITIES
+// ============================================================================
+
+/**
+ * Whether the browser supports Picture-in-Picture.
+ * @returns {boolean}
+ */
+export function isPiPSupported() {
+  return (
+    'pictureInPictureEnabled' in document &&
+    typeof document.pictureInPictureEnabled === 'boolean' &&
+    document.pictureInPictureEnabled
+  );
+}
+
+/**
+ * Request PiP for a video element, falling back to smallFrame on failure.
+ *
+ * @param {HTMLVideoElement} videoEl - The video element to put in PiP.
+ * @param {HTMLElement} fallbackContainerEl - The container to place in smallFrame if PiP fails.
+ * @returns {Promise<'pip'|'small-frame'|'already-pip'>} Which mode was entered.
+ */
+export async function requestPiP(videoEl, fallbackContainerEl) {
+  if (!videoEl || !fallbackContainerEl) return 'small-frame';
+
+  if (isElementInPictureInPicture(videoEl)) {
+    removeFromSmallFrame(fallbackContainerEl);
+    return 'already-pip';
+  }
+
+  if (!isPiPSupported()) {
+    placeInSmallFrame(fallbackContainerEl);
+    showElement(fallbackContainerEl);
+    return 'small-frame';
+  }
+
+  try {
+    await videoEl.requestPictureInPicture();
+    removeFromSmallFrame(fallbackContainerEl);
+    return 'pip';
+  } catch (err) {
+    console.warn('Failed to enter Picture-in-Picture:', err);
+    placeInSmallFrame(fallbackContainerEl);
+    showElement(fallbackContainerEl);
+    return 'small-frame';
+  }
+}
+
+/**
+ * Exit PiP if the given element (or any element) is currently in PiP.
+ * @param {HTMLVideoElement} [videoEl] - If provided, only exits if this element is in PiP.
+ */
+export async function exitPiP(videoEl) {
+  try {
+    if (videoEl && !isElementInPictureInPicture(videoEl)) return;
+    if (document.pictureInPictureElement) {
+      await document.exitPictureInPicture();
+    }
+  } catch (err) {
+    console.warn('Failed to exit Picture-in-Picture:', err);
+  }
+}
