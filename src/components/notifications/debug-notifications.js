@@ -3,7 +3,7 @@ import { createNotificationsToggle } from './notifications-toggle.js';
 import { inAppNotificationManager } from './in-app-notification-manager.js';
 import { isDev } from '../../utils/dev/dev-utils.js';
 
-const HIDE_DEBUG_UI = true; // Set to false to enable debug notification UI in dev mode
+const HIDE_DEBUG_UI = false; // Set to false to enable debug notification UI in dev mode
 
 let dummyNotificationCounter = 0;
 

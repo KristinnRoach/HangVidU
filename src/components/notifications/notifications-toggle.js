@@ -86,8 +86,5 @@ export function createNotificationsToggle({
     notificationManager = manager;
   };
 
-  // Start hidden
-  component.hide();
-
   return component;
 }

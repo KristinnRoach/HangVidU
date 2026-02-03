@@ -37,7 +37,7 @@
   display: flex;
   flex-direction: row;
   gap: 1rem;
-  flex-shrink: 1;
+  flex: 1 1 auto;
   min-width: 0;
 
   transition: gap var(--duration-default, 200ms) var(--easing-default, ease);
@@ -47,9 +47,14 @@
 
 #app-title-h1 {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   font-size: 2rem;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  transition: max-width var(--duration-default) var(--easing-default);
   margin: 0 0;
   padding: 0 0;
   border: none;
@@ -58,6 +63,7 @@
 #app-title-a {
   color: var(--color-primary);
   height: 100%;
+  max-width: 100%;
   text-decoration: underline var(--color-primary-subtle);
 }
 
@@ -74,6 +80,26 @@
 #app-title-span {
   margin: 0;
   padding: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 520px) {
+  #app-title-h1 {
+    justify-content: flex-start;
+    align-items: center;
+    max-width: 0; /* Switch to 1.3ch to see only "H" */
+  }
+
+  #app-title-span {
+    display: block;
+  }
+
+  #app-title-a {
+    cursor: default;
+    text-decoration: none;
+  }
 }
 
 /* Auth Component */

@@ -18,6 +18,8 @@ import createComponent from '../../utils/dom/component.js';
 
 let authComponent = null;
 
+const SHOW_DEBUG_DELETE_BTN = false; // Set to true to show delete account button in dev mode
+
 /**
  * Smart truncation that tries to show first name
  * @param {string} fullName - Full display name
@@ -77,7 +79,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
     template: `
       <button style="margin-right: [[loginBtnMarginRightPx]]px; display: [[loginBtnDisplay]]" id="goog-login-btn" class="login-btn" onclick="handleLogin">Login</button>
       <button style="display: [[logoutBtnDisplay]]" id="goog-logout-btn" class="logout-btn" onclick="handleLogout">Logout</button>
-      ${isDev() ? '<button id="delete-account-btn" class="delete-account-btn" onclick="handleDeleteAccount">Delete Account</button>' : ''}
+      ${isDev() && SHOW_DEBUG_DELETE_BTN ? '<button id="delete-account-btn" class="delete-account-btn" onclick="handleDeleteAccount">Delete Account</button>' : ''}
       <span class="signing-in-indicator" style="display: [[signingInDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">Signing in...</span>
       <div class="user-info" style="display: [[userInfoDisplay]]">
         <img src="[[userPhotoURL]]" alt="[[userName]]" class="user-avatar" style="display: [[userPhotoDisplay]]" />

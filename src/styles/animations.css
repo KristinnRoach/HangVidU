@@ -3,10 +3,11 @@
    ============================================ */
 
 :root {
-  --duration-default: 200ms;
+  --duration-default: 250ms;
   --easing-default: ease-in-out;
 
-  --transition-default: opacity var(--duration-default) var(--easing-default),
+  --transition-default:
+    opacity var(--duration-default) var(--easing-default),
     transform var(--duration-default) var(--easing-default),
     width var(--duration-default) var(--easing-default),
     padding var(--duration-default) var(--easing-default),
@@ -41,7 +42,8 @@
 
   opacity: 1;
   transform: translateX(0);
-  transition: opacity var(--duration-default) var(--easing-default),
+  transition:
+    opacity var(--duration-default) var(--easing-default),
     transform var(--duration-default) var(--easing-default),
     display var(--duration-default) allow-discrete;
 }
@@ -86,7 +88,8 @@
     visibility: visible;
     opacity: 1;
     transform: translate(0, 0);
-    transition: opacity var(--duration-default) var(--easing-default),
+    transition:
+      opacity var(--duration-default) var(--easing-default),
       visibility 0s linear 0s,
       transform var(--duration-default) var(--easing-default);
   }
@@ -99,7 +102,8 @@
     visibility: hidden;
     opacity: 0;
     pointer-events: none;
-    transition: opacity var(--duration-default) var(--easing-default),
+    transition:
+      opacity var(--duration-default) var(--easing-default),
       visibility 0s linear var(--duration-default),
       transform var(--duration-default) var(--easing-default);
   }
@@ -114,7 +118,8 @@
   .slide-right {
     opacity: 1;
     transform: translate(0, 0);
-    transition: opacity var(--duration-default) var(--easing-default),
+    transition:
+      opacity var(--duration-default) var(--easing-default),
       transform var(--duration-default) var(--easing-default),
       display var(--duration-default) var(--easing-default) allow-discrete;
   }
