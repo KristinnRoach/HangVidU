@@ -866,46 +866,32 @@ export function initMessagesUI() {
     const myUserId = getLoggedInUserId();
     const iAmTheCaller = msgData.callerId === myUserId;
 
-    // Build display text based on event type and viewer perspective
-    let icon = '📞';
-    let text = '';
-
-    if (msgData.eventType === 'missed_call') {
-      if (iAmTheCaller) {
-        // I made the call, they didn't answer
-        text = `Call to ${currentSession?.contactName || 'contact'} - no answer`;
-      } else {
-        // They called me, I missed it
-        text = `Missed call from ${msgData.callerName}`;
-      }
-    } else if (msgData.eventType === 'rejected_call') {
-      if (iAmTheCaller) {
-        // I made the call, they declined
-        text = `Call to ${currentSession?.contactName || 'contact'} - declined`;
-      } else {
-        // They called me, I declined (I'm the one who wrote this message)
-        text = `You declined call from ${msgData.callerName}`;
-      }
-    }
-
     // Create call event message element
     const p = document.createElement('p');
     p.classList.add('message-call-event');
+    // Apply local/remote styling classes for visual consistency
+    if (iAmTheCaller) p.classList.add('message-local');
+    else p.classList.add('message-remote');
 
     // Build content
-    const iconSpan = document.createElement('span');
-    iconSpan.className = 'call-event-icon';
-    iconSpan.textContent = icon;
+    const avatarSpan = document.createElement('span');
+    avatarSpan.className =
+      'sender-avatar' + (iAmTheCaller ? ' sender-avatar--me' : '');
+    avatarSpan.textContent = iAmTheCaller ? 'Me' : msgData.callerName || 'U';
+    avatarSpan.setAttribute('aria-hidden', 'true');
 
-    const textSpan = document.createElement('span');
-    textSpan.className = 'call-event-text';
-    textSpan.textContent = text;
-
-    // Create call back button
+    // Create call back button styled as a message bubble
     const callBackBtn = document.createElement('button');
-    callBackBtn.className = 'call-back-btn';
-    callBackBtn.textContent = iAmTheCaller ? 'Try again' : 'Call back';
+    callBackBtn.className = 'message-text call-back-btn';
     callBackBtn.type = 'button';
+
+    const callBackIcon = document.createElement('i');
+    callBackIcon.className = 'fa fa-phone call-event-icon';
+    callBackIcon.setAttribute('aria-hidden', 'true');
+    callBackBtn.appendChild(callBackIcon);
+    callBackBtn.appendChild(
+      document.createTextNode(iAmTheCaller ? 'Try again' : 'Call back'),
+    );
 
     callBackBtn.addEventListener('click', async () => {
       if (onCallBack) {
@@ -931,8 +917,7 @@ export function initMessagesUI() {
     });
 
     // Assemble the message
-    p.appendChild(iconSpan);
-    p.appendChild(textSpan);
+    p.appendChild(avatarSpan);
     p.appendChild(callBackBtn);
 
     messagesMessages.appendChild(p);
