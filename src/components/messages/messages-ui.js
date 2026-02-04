@@ -27,17 +27,22 @@ function createMessageBox() {
     <div id="messages-box" class="messages-box hidden">
       
       <div id="messages"></div>
-      
-      <div class="message-attachments">
-        <input type="file" id="file-input" style="display: none" />
-        <button type="button" id="attach-file-btn" title="Attach file">
-          <i class="fa fa-paperclip"></i>
-        </button>
-      </div>
+    
 
       <form id="messages-form">
+
         <textarea id="messages-input" placeholder="Type a message..." rows="1"></textarea>
-        <button type="submit">Send</button>
+
+        <div class="message-attachments">
+          <input type="file" id="file-input" style="display: none" />
+          <button type="button" id="attach-file-btn" title="Attach file">
+            <i class="fa fa-paperclip" aria-hidden="true"></i>
+          </button>
+        </div>
+        
+        <button type="submit">
+          <i class="fa fa-paper-plane" aria-hidden="true"></i>
+        </button>
       </form>
 
     </div>
