@@ -18,6 +18,7 @@ import { REACTION_CONFIG } from '../../messaging/reactions/ReactionConfig.js';
 import { getLoggedInUserId } from '../../firebase/auth.js';
 import { messagingController } from '../../messaging/messaging-controller.js';
 import { showInfoToast } from '../../utils/ui/toast.js';
+import { getUserProfile } from '../../user/profile.js';
 
 // Helper: create the messages box DOM and return container + element refs
 function createMessageBox() {
@@ -116,6 +117,27 @@ function isOnScreen(el) {
     r.bottom <= window.innerHeight &&
     r.right <= window.innerWidth
   );
+}
+
+function applyAvatar(avatarSpan, { isLocal, name, photoURL }) {
+  if (!avatarSpan) return;
+
+  if (isLocal) {
+    avatarSpan.textContent = 'Me';
+    return;
+  }
+
+  const initialSource = (name || '').trim();
+  const initial = initialSource ? initialSource[0].toUpperCase() : 'U';
+
+  avatarSpan.textContent = initial;
+
+  if (photoURL) {
+    avatarSpan.classList.add('sender-avatar--image');
+    avatarSpan.style.backgroundImage = `url("${photoURL}")`;
+    avatarSpan.style.backgroundSize = 'cover';
+    avatarSpan.style.backgroundPosition = 'center';
+  }
 }
 
 /**
@@ -685,8 +707,24 @@ export function initMessagesUI() {
     const avatarSpan = document.createElement('span');
     avatarSpan.className =
       'sender-avatar' + (isSentByMe === true ? ' sender-avatar--me' : '');
-    avatarSpan.textContent = effectiveSender;
     avatarSpan.setAttribute('aria-hidden', 'true');
+
+    if (isSentByMe === true) {
+      applyAvatar(avatarSpan, { isLocal: true });
+    } else if (isSentByMe === false) {
+      const contactName = currentSession?.contactName || effectiveSender;
+      const photoURL =
+        currentSession?.contactPhotoURL ||
+        currentSession?.contactProfile?.photoURL ||
+        null;
+      applyAvatar(avatarSpan, {
+        isLocal: false,
+        name: contactName,
+        photoURL,
+      });
+    } else {
+      avatarSpan.textContent = effectiveSender;
+    }
 
     const textSpan = document.createElement('span');
     textSpan.className = 'message-text';
@@ -877,8 +915,22 @@ export function initMessagesUI() {
     const avatarSpan = document.createElement('span');
     avatarSpan.className =
       'sender-avatar' + (iAmTheCaller ? ' sender-avatar--me' : '');
-    avatarSpan.textContent = iAmTheCaller ? 'Me' : msgData.callerName || 'U';
     avatarSpan.setAttribute('aria-hidden', 'true');
+
+    if (iAmTheCaller) {
+      applyAvatar(avatarSpan, { isLocal: true });
+    } else {
+      const contactName = currentSession?.contactName || msgData.callerName;
+      const photoURL =
+        currentSession?.contactPhotoURL ||
+        currentSession?.contactProfile?.photoURL ||
+        null;
+      applyAvatar(avatarSpan, {
+        isLocal: false,
+        name: contactName,
+        photoURL,
+      });
+    }
 
     // Create call back button styled as a message bubble
     const callBackBtn = document.createElement('button');
@@ -1341,6 +1393,20 @@ export function initMessagesUI() {
 
     // Store metadata on session for reference
     session.contactName = contactName;
+
+    // Fetch contact profile (photo + display name) for avatars
+    getUserProfile(contactId)
+      .then((profile) => {
+        if (!profile) return;
+        session.contactProfile = profile;
+        if (!session.contactName && profile.displayName) {
+          session.contactName = profile.displayName;
+        }
+        if (profile.photoURL) {
+          session.contactPhotoURL = profile.photoURL;
+        }
+      })
+      .catch(() => {});
 
     // Set this session as the active one in the UI (won't clear since we just did)
     setSession(session);

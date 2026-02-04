@@ -182,6 +182,11 @@
   line-height: 1;
 }
 
+#messages .sender-avatar--image {
+  color: transparent;
+  text-shadow: none;
+}
+
 /* Slightly different avatar for local user (on right) */
 #messages .sender-avatar--me {
   display: none; /* hide local avatar. TODO: Remove completely if deciding to not use local avatar */
