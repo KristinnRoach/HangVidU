@@ -182,6 +182,11 @@
   line-height: 1;
 }
 
+#messages .sender-avatar--image {
+  color: transparent;
+  text-shadow: none;
+}
+
 /* Slightly different avatar for local user (on right) */
 #messages .sender-avatar--me {
   display: none; /* hide local avatar. TODO: Remove completely if deciding to not use local avatar */
@@ -243,6 +248,64 @@
     right: 20px;
     bottom: auto;
   }
+}
+
+/* ===== CALL EVENT MESSAGES ===== */
+
+#messages p.message-call-event {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Call event local/remote variants to mirror message alignment cues */
+#messages p.message-call-event.message-local {
+  justify-content: flex-end;
+  margin-right: 10px;
+}
+
+#messages p.message-call-event.message-remote {
+  justify-content: flex-start;
+}
+
+#messages .call-event-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+#messages .call-event-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#messages .call-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  font: inherit;
+  letter-spacing: 0.1px;
+  color: var(--text-primary, #fff);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+#messages .call-back-btn:hover {
+  opacity: 0.92;
+}
+
+#messages .call-back-btn:active {
+  opacity: 0.85;
+}
+
+#messages .call-back-btn .call-event-icon {
+  font-size: 14px;
+  line-height: 1;
+  color: rgb(0, 255, 47);
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
 }
 
 /* ===== CSS ANCHOR POSITIONING ===== */

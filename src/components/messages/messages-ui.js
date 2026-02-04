@@ -18,6 +18,7 @@ import { REACTION_CONFIG } from '../../messaging/reactions/ReactionConfig.js';
 import { getLoggedInUserId } from '../../firebase/auth.js';
 import { messagingController } from '../../messaging/messaging-controller.js';
 import { showInfoToast } from '../../utils/ui/toast.js';
+import { getUserProfile } from '../../user/profile.js';
 
 // Helper: create the messages box DOM and return container + element refs
 function createMessageBox() {
@@ -116,6 +117,27 @@ function isOnScreen(el) {
     r.bottom <= window.innerHeight &&
     r.right <= window.innerWidth
   );
+}
+
+function applyAvatar(avatarSpan, { isLocal, name, photoURL }) {
+  if (!avatarSpan) return;
+
+  if (isLocal) {
+    avatarSpan.textContent = 'Me';
+    return;
+  }
+
+  const initialSource = (name || '').trim();
+  const initial = initialSource ? initialSource[0].toUpperCase() : 'U';
+
+  avatarSpan.textContent = initial;
+
+  if (photoURL) {
+    avatarSpan.classList.add('sender-avatar--image');
+    avatarSpan.style.backgroundImage = `url("${photoURL}")`;
+    avatarSpan.style.backgroundSize = 'cover';
+    avatarSpan.style.backgroundPosition = 'center';
+  }
 }
 
 /**
@@ -685,8 +707,24 @@ export function initMessagesUI() {
     const avatarSpan = document.createElement('span');
     avatarSpan.className =
       'sender-avatar' + (isSentByMe === true ? ' sender-avatar--me' : '');
-    avatarSpan.textContent = effectiveSender;
     avatarSpan.setAttribute('aria-hidden', 'true');
+
+    if (isSentByMe === true) {
+      applyAvatar(avatarSpan, { isLocal: true });
+    } else if (isSentByMe === false) {
+      const contactName = currentSession?.contactName || effectiveSender;
+      const photoURL =
+        currentSession?.contactPhotoURL ||
+        currentSession?.contactProfile?.photoURL ||
+        null;
+      applyAvatar(avatarSpan, {
+        isLocal: false,
+        name: contactName,
+        photoURL,
+      });
+    } else {
+      avatarSpan.textContent = effectiveSender;
+    }
 
     const textSpan = document.createElement('span');
     textSpan.className = 'message-text';
@@ -847,6 +885,101 @@ export function initMessagesUI() {
 
     messagesMessages.appendChild(p);
     // Keep newest message visible
+    scrollMessagesToEnd();
+  }
+
+  /**
+   * Display a call event message in the chat (missed call, rejected call)
+   * @param {Object} msgData - Message data from Firebase
+   * @param {string} msgData.eventType - 'missed_call' or 'rejected_call'
+   * @param {string} msgData.callerId - Who initiated the call
+   * @param {string} msgData.callerName - Caller's display name
+   * @param {string} msgData.from - Who wrote the message (could be caller or callee)
+   * @param {Object} options
+   * @param {boolean} [options.isUnread] - Whether message is unread
+   * @param {Function} [options.onCallBack] - Callback when user clicks call back button
+   */
+  function appendCallEventMessage(msgData, options = {}) {
+    const { isUnread = false, onCallBack } = options;
+    const myUserId = getLoggedInUserId();
+    const iAmTheCaller = msgData.callerId === myUserId;
+
+    // Create call event message element
+    const p = document.createElement('p');
+    p.classList.add('message-call-event');
+    // Apply local/remote styling classes for visual consistency
+    if (iAmTheCaller) p.classList.add('message-local');
+    else p.classList.add('message-remote');
+
+    // Build content
+    const avatarSpan = document.createElement('span');
+    avatarSpan.className =
+      'sender-avatar' + (iAmTheCaller ? ' sender-avatar--me' : '');
+    avatarSpan.setAttribute('aria-hidden', 'true');
+
+    if (iAmTheCaller) {
+      applyAvatar(avatarSpan, { isLocal: true });
+    } else {
+      const contactName = currentSession?.contactName || msgData.callerName;
+      const photoURL =
+        currentSession?.contactPhotoURL ||
+        currentSession?.contactProfile?.photoURL ||
+        null;
+      applyAvatar(avatarSpan, {
+        isLocal: false,
+        name: contactName,
+        photoURL,
+      });
+    }
+
+    // Create call back button styled as a message bubble
+    const callBackBtn = document.createElement('button');
+    callBackBtn.className = 'message-text call-back-btn';
+    callBackBtn.type = 'button';
+
+    const callBackIcon = document.createElement('i');
+    callBackIcon.className = 'fa fa-phone call-event-icon';
+    callBackIcon.setAttribute('aria-hidden', 'true');
+    callBackBtn.appendChild(callBackIcon);
+    callBackBtn.appendChild(
+      document.createTextNode(iAmTheCaller ? 'Try again' : 'Call back'),
+    );
+
+    callBackBtn.addEventListener('click', async () => {
+      if (onCallBack) {
+        await onCallBack();
+      } else {
+        // Fallback: try to call via contacts
+        try {
+          const { callContact } = await import('../../main.js');
+          const contactId = iAmTheCaller
+            ? currentSession?.contactId
+            : msgData.callerId;
+          const contactName = iAmTheCaller
+            ? currentSession?.contactName
+            : msgData.callerName;
+          if (contactId && contactName) {
+            await callContact(contactId, contactName);
+          }
+        } catch (e) {
+          console.warn('[MessagesUI] Failed to initiate call back:', e);
+          showInfoToast('Unable to call. Please try again.');
+        }
+      }
+    });
+
+    // Assemble the message
+    p.appendChild(avatarSpan);
+    p.appendChild(callBackBtn);
+
+    messagesMessages.appendChild(p);
+
+    // Handle unread count for received call events
+    if (isUnread && !iAmTheCaller && isHidden(messagesBox)) {
+      const currentCount = messageToggle.element.unreadCount || 0;
+      messageToggle.setUnreadCount(currentCount + 1);
+    }
+
     scrollMessagesToEnd();
   }
 
@@ -1224,6 +1357,14 @@ export function initMessagesUI() {
           return;
         }
 
+        // Handle call event messages (missed_call, rejected_call)
+        if (msgData.type === 'call_event') {
+          appendCallEventMessage(msgData, {
+            isUnread: !msgData.read,
+          });
+          return;
+        }
+
         // Convert Firebase reactions format for initial display
         const reactions = {};
         if (msgData.reactions) {
@@ -1252,6 +1393,20 @@ export function initMessagesUI() {
 
     // Store metadata on session for reference
     session.contactName = contactName;
+
+    // Fetch contact profile (photo + display name) for avatars
+    getUserProfile(contactId)
+      .then((profile) => {
+        if (!profile) return;
+        session.contactProfile = profile;
+        if (!session.contactName && profile.displayName) {
+          session.contactName = profile.displayName;
+        }
+        if (profile.photoURL) {
+          session.contactPhotoURL = profile.photoURL;
+        }
+      })
+      .catch(() => {});
 
     // Set this session as the active one in the UI (won't clear since we just did)
     setSession(session);
