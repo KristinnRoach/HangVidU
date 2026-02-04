@@ -250,6 +250,25 @@
   }
 }
 
+/* Mobile: center messages and expand to fill screen */
+@media (max-width: 600px) {
+  .messages-box {
+    position: fixed;
+    position-anchor: unset;
+    inset: var(--spacing-lg);
+    width: auto;
+    min-width: 0;
+    height: auto;
+    max-height: none;
+  }
+
+  #messages {
+    min-height: 0;
+    max-height: none;
+    flex: 1;
+  }
+}
+
 /* ===== CALL EVENT MESSAGES ===== */
 
 #messages p.message-call-event {
