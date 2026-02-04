@@ -102,6 +102,7 @@ import {
 // TODO: inAppNotificationManager VS pushNotificationController - Compare and clarify distinction or combine!
 import { inAppNotificationManager } from './components/notifications/in-app-notification-manager.js';
 import { pushNotificationController } from './notifications/push-notification-controller.js';
+import { showEnableNotificationsPrompt } from './components/notifications/enable-notifications-prompt.js';
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
 import './ui/state.js'; // Initialize UI state (sets body data-view attribute)
@@ -1680,8 +1681,7 @@ window.onload = async () => {
           });
 
         if (notifResult.state === 'prompt-needed') {
-          console.log('[AUTH] Notification permission not granted - user action required');
-          // TODO: Show enable notifications banner/button
+          showEnableNotificationsPrompt();
         }
       } else if (isInitialLoad && isLoggedIn) {
         // If user is already logged in on initial load (e.g., after redirect)
@@ -1708,8 +1708,7 @@ window.onload = async () => {
           });
 
         if (notifResult.state === 'prompt-needed') {
-          console.log('[AUTH] Notification permission not granted - user action required');
-          // TODO: Show enable notifications banner/button
+          showEnableNotificationsPrompt();
         }
       }
     } catch (e) {
