@@ -281,12 +281,14 @@
     position: fixed;
     position-anchor: unset;
     inset: var(--spacing-lg);
-    width: auto;
-    min-width: 280px;
-    height: auto;
 
-    max-height: calc(94dvh - (2 * var(--spacing-lg)));
-    max-width: calc(100vw - (2 * var(--spacing-lg)));
+    min-width: 280px;
+    width: calc(90dvw - (2 * var(--spacing-lg)));
+    max-width: calc(90dvw - (2 * var(--spacing-lg)));
+
+    min-height: 20dvh;
+    height: auto;
+    max-height: calc(80dvh - (2 * var(--spacing-lg)));
   }
 
   #messages {

@@ -143,6 +143,16 @@ export const exitCallMode = () => {
   removeFromSmallFrame(remoteBoxEl);
   hideElement(remoteBoxEl);
 
+  hideElement(chatControls);
+  if (cleanupChatControlAutoHide) {
+    cleanupChatControlAutoHide();
+    cleanupChatControlAutoHide = null;
+  }
+
+  if (!isWatchModeActive()) {
+    showElement(lobbyDiv);
+  }
+
   callBtn.disabled = false;
   callBtn.classList.remove('disabled');
   hangUpBtn.disabled = true;
@@ -151,17 +161,6 @@ export const exitCallMode = () => {
   mutePartnerBtn.classList.add('disabled');
   remotePipBtn.disabled = true;
   remotePipBtn.classList.add('disabled');
-
-  if (cleanupChatControlAutoHide) {
-    cleanupChatControlAutoHide();
-    cleanupChatControlAutoHide = null;
-  }
-
-  if (!isWatchModeActive()) {
-    showElement(lobbyCallBtn);
-    showElement(lobbyDiv);
-    showElement(chatControls);
-  }
 };
 
 // Cleanup function for call mode UI
