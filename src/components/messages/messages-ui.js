@@ -137,7 +137,22 @@ function applyAvatar(avatarSpan, { isLocal, name, photoURL }) {
     avatarSpan.style.backgroundImage = `url("${photoURL}")`;
     avatarSpan.style.backgroundSize = 'cover';
     avatarSpan.style.backgroundPosition = 'center';
+  } else {
+    avatarSpan.classList.remove('sender-avatar--image');
+    avatarSpan.style.backgroundImage = '';
+    avatarSpan.style.backgroundSize = '';
+    avatarSpan.style.backgroundPosition = '';
   }
+}
+
+function refreshRemoteAvatars(container, { name, photoURL }) {
+  if (!container) return;
+  const avatars = container.querySelectorAll(
+    'p.message-remote .sender-avatar:not(.sender-avatar--me)',
+  );
+  avatars.forEach((avatar) =>
+    applyAvatar(avatar, { isLocal: false, name, photoURL }),
+  );
 }
 
 /**
@@ -1405,6 +1420,11 @@ export function initMessagesUI() {
         if (profile.photoURL) {
           session.contactPhotoURL = profile.photoURL;
         }
+
+        refreshRemoteAvatars(messagesMessages, {
+          name: session.contactName,
+          photoURL: session.contactPhotoURL,
+        });
       })
       .catch(() => {});
 
