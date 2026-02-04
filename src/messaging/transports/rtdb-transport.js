@@ -80,6 +80,47 @@ export class RTDBMessagingTransport extends MessagingTransport {
   }
 
   /**
+   * Write a call event message to the conversation
+   * Used for missed calls, rejected calls, etc.
+   * @param {string} contactId - Contact's user ID
+   * @param {string} eventType - Event type ('missed_call' or 'rejected_call')
+   * @param {Object} metadata - Event metadata
+   * @param {string} metadata.roomId - The call's room ID (for deduplication)
+   * @param {string} metadata.callerId - Who initiated the call
+   * @param {string} metadata.callerName - Caller's display name
+   * @returns {Promise<void>}
+   */
+  async writeCallEventMessage(contactId, eventType, metadata = {}) {
+    const fromUserId = getLoggedInUserId();
+    if (!fromUserId) {
+      throw new Error('Cannot write call event: not logged in');
+    }
+
+    const conversationId = this._getConversationId(fromUserId, contactId);
+
+    // Write to shared conversation node
+    const messageRef = push(
+      ref(rtdb, `conversations/${conversationId}/messages`)
+    );
+
+    await set(messageRef, {
+      type: 'call_event',
+      eventType,
+      callId: metadata.roomId || null,
+      callerId: metadata.callerId || fromUserId,
+      callerName: metadata.callerName || 'Someone',
+      from: fromUserId,
+      sentAt: serverTimestamp(),
+      read: false,
+    });
+
+    // Clean up old messages if limit exceeded (best-effort, non-blocking)
+    this._cleanupOldMessages(conversationId).catch((err) => {
+      console.warn('[RTDBTransport] Failed to cleanup old messages:', err);
+    });
+  }
+
+  /**
    * Listen to messages with a specific contact (both sent and received)
    * Uses Firebase's onChildAdded which delivers existing messages synchronously,
    * then listens for new messages as they arrive.

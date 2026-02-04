@@ -271,6 +271,28 @@ export class MessagingController {
   }
 
   // ========================================================================
+  // CALL EVENT METHODS
+  // ========================================================================
+
+  /**
+   * Send a call event message to a contact
+   * Used to record missed calls, rejected calls, etc. in chat history
+   * @param {string} contactId - Contact's user ID
+   * @param {string} eventType - Event type ('missed_call' or 'rejected_call')
+   * @param {Object} metadata - Event metadata (roomId, callerId, callerName)
+   * @returns {Promise<void>}
+   */
+  async sendCallEventMessage(contactId, eventType, metadata = {}) {
+    if (!contactId || typeof contactId !== 'string') {
+      throw new Error('contactId must be a non-empty string');
+    }
+    if (!eventType || typeof eventType !== 'string') {
+      throw new Error('eventType must be a non-empty string');
+    }
+    return this.transport.writeCallEventMessage(contactId, eventType, metadata);
+  }
+
+  // ========================================================================
   // FILE TRANSFER METHODS
   // ========================================================================
 

@@ -903,6 +903,29 @@ export function listenForIncomingOnRoom(roomId) {
             console.warn('Failed to signal rejection via RTDB:', e);
           }
 
+          // Write rejected call message to chat history
+          // The callee (who rejected) writes this - both parties will see it
+          try {
+            const { getCurrentUser } = await import('./firebase/auth.js');
+            const me = getCurrentUser();
+            const myName = me?.displayName || 'Someone';
+
+            await messagingController.sendCallEventMessage(
+              joiningUserId, // The caller's ID
+              'rejected_call',
+              {
+                roomId,
+                callerId: joiningUserId,
+                callerName,
+                rejectedBy: getUserId(),
+                rejectedByName: myName,
+              },
+            );
+            console.log('[MAIN] Rejected call message written to chat history');
+          } catch (e) {
+            console.warn('[MAIN] Failed to write rejected call message:', e);
+          }
+
           // Clean up recent call state for this client
           await removeRecentCall(roomId).catch((e) => {
             console.warn('Failed to remove recent call on rejection:', e);
@@ -1818,7 +1841,7 @@ CallController.on(
           const me = getCurrentUser();
           const callerName = me?.displayName || 'Friend';
 
-          // Send push notification to the contact
+          // Send push notification to the contact (callee)
           console.log(
             `[MAIN] Sending missed call push notification to ${contact.contactName} (${contact.contactId})`,
           );
@@ -1831,27 +1854,22 @@ CallController.on(
             },
           );
 
-          // Show in-app missed call notification
-          const { createMissedCallNotification } =
-            await import('./components/notifications/missed-call-notification.js');
-          const notificationId = `missed-call-${contact.contactId}-${Date.now()}`;
-          const missedCallNotification = createMissedCallNotification({
-            callerId: contact.contactId,
-            callerName: contact.contactName,
-            roomId,
-            onCallBack: async () => {
-              // Reuse existing callContact flow
-              await callContact(contact.contactId, contact.contactName);
-              // Remove notification after initiating call
-              inAppNotificationManager.remove(notificationId);
-            },
-            onDismiss: () => {
-              inAppNotificationManager.remove(notificationId);
-            },
-          });
-
-          inAppNotificationManager.add(notificationId, missedCallNotification);
-          console.log('[MAIN] In-app missed call notification added');
+          // Write missed call message to chat history
+          // The caller writes this - both parties will see it in their shared conversation
+          try {
+            await messagingController.sendCallEventMessage(
+              contact.contactId,
+              'missed_call',
+              {
+                roomId,
+                callerId: getUserId(),
+                callerName,
+              },
+            );
+            console.log('[MAIN] Missed call message written to chat history');
+          } catch (e) {
+            console.warn('[MAIN] Failed to write missed call message:', e);
+          }
         } else {
           console.log(
             '[MAIN] No saved contact found for room, skipping missed call notification',

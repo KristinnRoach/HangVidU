@@ -850,6 +850,102 @@ export function initMessagesUI() {
     scrollMessagesToEnd();
   }
 
+  /**
+   * Display a call event message in the chat (missed call, rejected call)
+   * @param {Object} msgData - Message data from Firebase
+   * @param {string} msgData.eventType - 'missed_call' or 'rejected_call'
+   * @param {string} msgData.callerId - Who initiated the call
+   * @param {string} msgData.callerName - Caller's display name
+   * @param {string} msgData.from - Who wrote the message (could be caller or callee)
+   * @param {Object} options
+   * @param {boolean} [options.isUnread] - Whether message is unread
+   * @param {Function} [options.onCallBack] - Callback when user clicks call back button
+   */
+  function appendCallEventMessage(msgData, options = {}) {
+    const { isUnread = false, onCallBack } = options;
+    const myUserId = getLoggedInUserId();
+    const iAmTheCaller = msgData.callerId === myUserId;
+
+    // Build display text based on event type and viewer perspective
+    let icon = '📞';
+    let text = '';
+
+    if (msgData.eventType === 'missed_call') {
+      if (iAmTheCaller) {
+        // I made the call, they didn't answer
+        text = `Call to ${currentSession?.contactName || 'contact'} - no answer`;
+      } else {
+        // They called me, I missed it
+        text = `Missed call from ${msgData.callerName}`;
+      }
+    } else if (msgData.eventType === 'rejected_call') {
+      if (iAmTheCaller) {
+        // I made the call, they declined
+        text = `Call to ${currentSession?.contactName || 'contact'} - declined`;
+      } else {
+        // They called me, I declined (I'm the one who wrote this message)
+        text = `You declined call from ${msgData.callerName}`;
+      }
+    }
+
+    // Create call event message element
+    const p = document.createElement('p');
+    p.classList.add('message-call-event');
+
+    // Build content
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'call-event-icon';
+    iconSpan.textContent = icon;
+
+    const textSpan = document.createElement('span');
+    textSpan.className = 'call-event-text';
+    textSpan.textContent = text;
+
+    // Create call back button
+    const callBackBtn = document.createElement('button');
+    callBackBtn.className = 'call-back-btn';
+    callBackBtn.textContent = iAmTheCaller ? 'Try again' : 'Call back';
+    callBackBtn.type = 'button';
+
+    callBackBtn.addEventListener('click', async () => {
+      if (onCallBack) {
+        await onCallBack();
+      } else {
+        // Fallback: try to call via contacts
+        try {
+          const { callContact } = await import('../../main.js');
+          const contactId = iAmTheCaller
+            ? currentSession?.contactId
+            : msgData.callerId;
+          const contactName = iAmTheCaller
+            ? currentSession?.contactName
+            : msgData.callerName;
+          if (contactId && contactName) {
+            await callContact(contactId, contactName);
+          }
+        } catch (e) {
+          console.warn('[MessagesUI] Failed to initiate call back:', e);
+          showInfoToast('Unable to call. Please try again.');
+        }
+      }
+    });
+
+    // Assemble the message
+    p.appendChild(iconSpan);
+    p.appendChild(textSpan);
+    p.appendChild(callBackBtn);
+
+    messagesMessages.appendChild(p);
+
+    // Handle unread count for received call events
+    if (isUnread && !iAmTheCaller && isHidden(messagesBox)) {
+      const currentCount = messageToggle.element.unreadCount || 0;
+      messageToggle.setUnreadCount(currentCount + 1);
+    }
+
+    scrollMessagesToEnd();
+  }
+
   let scrollRafId = null;
   function scrollMessagesToEnd() {
     if (!messagesMessages) return;
@@ -1221,6 +1317,14 @@ export function initMessagesUI() {
             }
           }
           updateMessageReactions(msgData.messageId, reactions);
+          return;
+        }
+
+        // Handle call event messages (missed_call, rejected_call)
+        if (msgData.type === 'call_event') {
+          appendCallEventMessage(msgData, {
+            isUnread: !msgData.read,
+          });
           return;
         }
 
