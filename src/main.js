@@ -102,6 +102,7 @@ import {
 // TODO: inAppNotificationManager VS pushNotificationController - Compare and clarify distinction or combine!
 import { inAppNotificationManager } from './components/notifications/in-app-notification-manager.js';
 import { pushNotificationController } from './notifications/push-notification-controller.js';
+import { showEnableNotificationsPrompt } from './components/notifications/enable-notifications-prompt.js';
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
 import './ui/state.js'; // Initialize UI state (sets body data-view attribute)
@@ -1671,13 +1672,17 @@ window.onload = async () => {
         // Start listening for contact invites
         setupInviteListener();
 
-        // Enable push notifications (requestPermission handles all states:
-        // granted → enable, default → prompt, denied → noop)
-        await pushNotificationController
-          .requestPermission()
-          .catch((e) =>
-            console.warn('[AUTH] Push notification setup failed:', e),
-          );
+        // Enable push notifications if already granted (no prompt without user gesture)
+        const notifResult = await pushNotificationController
+          .enableIfGranted()
+          .catch((e) => {
+            console.warn('[AUTH] Push notification setup failed:', e);
+            return { state: 'error' };
+          });
+
+        if (notifResult.state === 'prompt-needed') {
+          showEnableNotificationsPrompt();
+        }
       } else if (isInitialLoad && isLoggedIn) {
         // If user is already logged in on initial load (e.g., after redirect)
         devDebug('[AUTH] Initial load with logged-in user');
@@ -1694,12 +1699,17 @@ window.onload = async () => {
         // Start listening for contact invites
         setupInviteListener();
 
-        // Enable push notifications for already-logged-in user
-        await pushNotificationController
-          .requestPermission()
-          .catch((e) =>
-            console.warn('[AUTH] Push notification setup failed:', e),
-          );
+        // Enable push notifications if already granted (no prompt without user gesture)
+        const notifResult = await pushNotificationController
+          .enableIfGranted()
+          .catch((e) => {
+            console.warn('[AUTH] Push notification setup failed:', e);
+            return { state: 'error' };
+          });
+
+        if (notifResult.state === 'prompt-needed') {
+          showEnableNotificationsPrompt();
+        }
       }
     } catch (e) {
       console.warn('Failed to handle auth change:', e);

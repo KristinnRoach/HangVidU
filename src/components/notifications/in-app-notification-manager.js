@@ -211,6 +211,3 @@ class InAppNotificationManager {
 
 // Export singleton instance
 export const inAppNotificationManager = new InAppNotificationManager();
-
-// Backward compatibility: export as notificationManager
-export const notificationManager = inAppNotificationManager;

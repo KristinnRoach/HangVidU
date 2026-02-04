@@ -160,6 +160,33 @@ export class PushNotificationController {
   }
 
   /**
+   * Enable notifications if permission is already granted (no prompt).
+   * Safe to call outside user gesture handlers (e.g., in auth callbacks).
+   * Use this on app load/login; use requestPermission() only from click handlers.
+   * @returns {Promise<{state: string, reason?: string}>} Result with state
+   */
+  async enableIfGranted() {
+    if (!this.isNotificationSupported()) {
+      return { state: 'unsupported' };
+    }
+
+    this.permissionState = Notification.permission;
+
+    if (this.permissionState === 'granted') {
+      const enabled = await this.enable();
+      return enabled ? { state: 'enabled' } : { state: 'error', reason: 'enable-failed' };
+    }
+
+    if (this.permissionState === 'denied') {
+      return { state: 'denied' };
+    }
+
+    // Permission is 'default' - user hasn't been asked or dismissed
+    // Don't prompt here (requires user gesture), just signal that action is needed
+    return { state: 'prompt-needed' };
+  }
+
+  /**
    * Enable notifications (get FCM token and set up)
    * @returns {Promise<boolean>} True if enabled successfully
    */
