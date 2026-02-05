@@ -165,7 +165,9 @@ export async function saveContact(contactUserId, roomId, lobbyElement) {
       await renderContactsList(lobbyElement);
     }
     // Ensure listener is active for incoming calls on this room
-    document.dispatchEvent(new CustomEvent('contact:saved', { detail: { roomId } }));
+    document.dispatchEvent(
+      new CustomEvent('contact:saved', { detail: { roomId } }),
+    );
     return;
   }
 
@@ -182,7 +184,9 @@ export async function saveContact(contactUserId, roomId, lobbyElement) {
   await saveContactData(contactUserId, contactName, roomId);
 
   // Ensure listener is active for incoming calls on this room
-  document.dispatchEvent(new CustomEvent('contact:saved', { detail: { roomId } }));
+  document.dispatchEvent(
+    new CustomEvent('contact:saved', { detail: { roomId } }),
+  );
 
   // Re-render contacts list
   await renderContactsList(lobbyElement);
@@ -241,13 +245,7 @@ export async function renderContactsList(lobbyElement) {
                     : contact.contactName
                 }
               </span>
-              <button
-                class="contact-delete-btn"
-                data-contact-id="${id}"
-                title="Delete contact"
-              >
-                ✕
-              </button>
+
               <button
                 class="contact-edit-btn"
                 data-contact-id="${id}"
@@ -255,6 +253,15 @@ export async function renderContactsList(lobbyElement) {
               >
                 ✏️
               </button>
+
+              <button
+                class="contact-delete-btn"
+                data-contact-id="${id}"
+                title="Delete contact"
+              >
+                ✕
+              </button>
+
             </div>
           `;
         })
