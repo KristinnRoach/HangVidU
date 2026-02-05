@@ -1,6 +1,6 @@
 import { onClickOutside } from '../../utils/ui/clickOutside.js';
 import { hideElement, isHidden, showElement } from '../../utils/ui/ui-utils.js';
-import { createMessageToggle } from './message-toggle.js';
+import { createMessageToggle } from './createMessageToggle.js';
 import { isMobileDevice } from '../../utils/env/isMobileDevice.js';
 import {
   handleVideoSelection,

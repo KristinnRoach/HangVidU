@@ -8,7 +8,7 @@ import confirmDialog from '../base/confirm-dialog.js';
 import { hideElement, showElement } from '../../utils/ui/ui-utils.js';
 import { messagingController } from '../../messaging/messaging-controller.js';
 import { messagesUI } from '../messages/messages-ui.js';
-import { createMessageToggle } from '../messages/message-toggle.js';
+import { createMessageToggle } from '../messages/createMessageToggle.js';
 import { getDeterministicRoomId } from '../../utils/room-id.js';
 import { pushNotificationController } from '../../notifications/push-notification-controller.js';
 
