@@ -94,7 +94,7 @@ import {
 } from './contacts/referral-handler.js';
 
 import {
-  getContactByRoomId,
+  getContactById,
   saveContactData,
   updateLastInteraction,
 } from './components/contacts/contacts.js';
@@ -831,7 +831,7 @@ export function listenForIncomingOnRoom(roomId) {
         );
 
         // Resolve caller name from contacts
-        const callerName = await resolveCallerName(roomId, joiningUserId);
+        const callerName = await resolveCallerName(joiningUserId, roomId);
 
         // Start incoming call ringtone and visual indicators
         ringtoneManager.playIncoming();
@@ -970,7 +970,8 @@ export function listenForIncomingOnRoom(roomId) {
     // UNLESS it is a saved contact - then we want to keep listening
     let savedContact = null;
     try {
-      savedContact = await getContactByRoomId(roomId);
+      const callerId = data.by;
+      savedContact = callerId ? await getContactById(callerId) : null;
     } catch (e) {
       console.warn('[LISTENER] Failed to check saved contact:', e);
     }
@@ -1004,7 +1005,7 @@ export function listenForIncomingOnRoom(roomId) {
       if (!status.hasMembers) {
         await removeRecentCall(roomId);
 
-        const savedContact = await getContactByRoomId(roomId);
+        const savedContact = await getContactById(leavingUserId);
         if (!savedContact) {
           removeIncomingListenersForRoom(roomId);
           devDebug(

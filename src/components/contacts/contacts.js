@@ -108,6 +108,22 @@ export async function getContacts() {
 }
 
 /**
+ * Get a saved contact by their user ID (direct key lookup).
+ * @param {string} contactId - The contact's user ID
+ * @returns {Promise<Object|null>} The contact object or null
+ */
+export async function getContactById(contactId) {
+  if (!contactId) return null;
+  try {
+    const contacts = await getContacts();
+    return contacts?.[contactId] || null;
+  } catch (e) {
+    console.warn('Failed to get contact by ID', e);
+    return null;
+  }
+}
+
+/**
  * Get contact by roomId. Returns the contact object or null if not found.
  * Useful for finding who was called when we only have the roomId.
  */
@@ -129,23 +145,32 @@ export async function getContactByRoomId(roomId) {
 }
 
 /**
- * Resolve caller display name from roomId by looking up saved contact.
+ * Resolve caller display name by looking up saved contact.
+ * Looks up by userId (direct key), falls back to roomId scan.
  */
-export async function resolveCallerName(roomId, fallbackUserId) {
-  if (!roomId) return fallbackUserId || 'Unknown';
-
+export async function resolveCallerName(userId, roomId) {
   try {
     const contacts = await getContacts();
-    for (const contact of Object.values(contacts || {})) {
-      if (contact?.roomId === roomId) {
-        return contact.contactName || contact.contactId || fallbackUserId;
+
+    // Direct key lookup by userId
+    if (userId && contacts?.[userId]) {
+      const c = contacts[userId];
+      return c.contactName || c.contactId || userId;
+    }
+
+    // Fallback: scan by roomId for legacy contacts
+    if (roomId) {
+      for (const contact of Object.values(contacts || {})) {
+        if (contact?.roomId === roomId) {
+          return contact.contactName || contact.contactId || userId;
+        }
       }
     }
   } catch (e) {
     console.warn('Failed to resolve caller name', e);
   }
 
-  return fallbackUserId || 'Unknown';
+  return userId || 'Unknown';
 }
 
 /**

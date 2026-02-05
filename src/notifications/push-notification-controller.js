@@ -621,7 +621,7 @@ export class PushNotificationController {
         // Import resolveCallerName dynamically to avoid circular dependencies
         const { resolveCallerName } =
           await import('../components/contacts/contacts.js');
-        displayName = await resolveCallerName(roomId, callerId);
+        displayName = await resolveCallerName(callerId, roomId);
       } catch (error) {
         console.warn(
           '[PushNotificationController] Failed to resolve caller name:',
