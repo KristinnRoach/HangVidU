@@ -60,6 +60,76 @@
   z-index: var(--z-mid);
 }
 
+/* Messages Top Bar */
+
+.messages-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: 2px;
+  padding-bottom: 8px;
+}
+
+.messages-topbar-contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.messages-topbar-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #3757c1;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-size: cover;
+  background-position: center;
+}
+
+.messages-topbar-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.messages-topbar-back,
+.messages-topbar-call {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+
+  box-shadow: none;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.messages-topbar-call {
+  color: rgba(25, 204, 46, 0.855);
+}
+
+.messages-topbar-back:hover,
+.messages-topbar-call:hover {
+  opacity: 0.85;
+  background: rgba(255, 255, 255, 0.1);
+}
+
 /* Messages Content Area (extracted from inline styles) */
 
 #messages {
@@ -73,8 +143,13 @@
   background: var(--bg-elevated);
   color: var(--text-secondary);
   padding: 6px;
+
   font-family: sans-serif;
   font-size: 14px;
+  line-height: 1.4;
+
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-secondary);
 }
 
 #messages p {
@@ -223,13 +298,15 @@
   background: var(--bg-elevated);
   color: var(--text-primary);
   box-sizing: border-box;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
 
   /* Auto-grow textarea sizing */
   field-sizing: content; /* Native auto-grow (Chrome/Edge 123+) */
-  min-height: 36px; /* Fallback for browsers without lh support */
-  min-height: 1lh; /* One line minimum */
-  max-height: 120px; /* Fallback cap for browsers without lh support */
-  max-height: 5lh; /* Cap at ~5 lines */
+  height: auto; /* Initial height - let field-sizing or JS handle it */
+  min-height: calc(1.5em + 12px); /* line-height + (padding * 2) */
+  max-height: calc(7.5em + 12px); /* ~5 lines + padding */
   overflow-x: hidden; /* Hide scrollbar during auto-grow */
   overflow-y: auto; /* Show scrollbar when max-height reached */
   resize: none;

@@ -1,6 +1,7 @@
 import { onClickOutside } from '../../utils/ui/clickOutside.js';
 import { hideElement, isHidden, showElement } from '../../utils/ui/ui-utils.js';
-import { createMessageToggle } from './message-toggle.js';
+import { renderAvatar } from '../../utils/ui/avatar.js';
+import { createMessageToggle } from './createMessageToggle.js';
 import { isMobileDevice } from '../../utils/env/isMobileDevice.js';
 import {
   handleVideoSelection,
@@ -19,95 +20,8 @@ import { getLoggedInUserId } from '../../firebase/auth.js';
 import { messagingController } from '../../messaging/messaging-controller.js';
 import { showInfoToast } from '../../utils/ui/toast.js';
 import { getUserProfile } from '../../user/profile.js';
-
-// Helper: create the messages box DOM and return container + element refs
-function createMessageBox() {
-  const messagesBoxContainer = document.createElement('div');
-  messagesBoxContainer.innerHTML = `
-    <div id="messages-box" class="messages-box hidden">
-      
-      <div id="messages"></div>
-    
-
-      <form id="messages-form">
-
-        <textarea id="messages-input" placeholder="Type a message..." rows="1"></textarea>
-
-        <div class="message-attachments">
-          <input type="file" id="file-input" style="display: none" />
-          <button type="button" id="attach-file-btn" title="Attach file">
-            <i class="fa fa-paperclip" aria-hidden="true"></i>
-          </button>
-        </div>
-        
-        <button type="submit">
-          <i class="fa fa-paper-plane" aria-hidden="true"></i>
-        </button>
-      </form>
-
-    </div>
-  `;
-  document.body.appendChild(messagesBoxContainer);
-
-  const messagesBox = messagesBoxContainer.querySelector('#messages-box');
-  const messagesMessages = messagesBoxContainer.querySelector('#messages');
-  const messagesForm = messagesBoxContainer.querySelector('#messages-form');
-  const messagesInput = messagesBoxContainer.querySelector('#messages-input');
-
-  // Prevent viewport resize/shift when virtual keyboard appears on mobile
-  if ('virtualKeyboard' in navigator) {
-    navigator.virtualKeyboard.overlaysContent = true;
-  }
-
-  // Check for native field-sizing support (Chrome/Edge 123+)
-  const supportsFieldSizing = CSS.supports?.('field-sizing', 'content');
-
-  // JS fallback for auto-grow textarea (browsers without field-sizing)
-  let resetInputHeight = null;
-  if (
-    messagesInput &&
-    messagesInput.tagName === 'TEXTAREA' &&
-    !supportsFieldSizing
-  ) {
-    const adjustInputHeight = () => {
-      messagesInput.style.height = 'auto';
-      messagesInput.style.height = `${messagesInput.scrollHeight}px`;
-    };
-    messagesInput.addEventListener('input', adjustInputHeight, {
-      passive: true,
-    });
-    // Expose reset function for use after clearing input
-    resetInputHeight = () => {
-      messagesInput.style.height = '';
-    };
-    // Initialize height
-    requestAnimationFrame(adjustInputHeight);
-  }
-
-  // TODO: Proper fix for autoscroll on mobile when THIS specific text input is focused (keyboard open)
-  // if (isMobileDevice()) {
-  //   messagesInput.addEventListener('focus', () => {
-  //     document.body.style.overflow = 'hidden';
-  //     document.body.style.position = 'fixed';
-  //     document.body.style.width = '100%';
-  //   });
-
-  //   messagesInput.addEventListener('blur', () => {
-  //     document.body.style.overflow = '';
-  //     document.body.style.position = '';
-  //     document.body.style.width = '';
-  //   });
-  // }
-
-  return {
-    messagesBoxContainer,
-    messagesBox,
-    messagesMessages,
-    messagesForm,
-    messagesInput,
-    resetInputHeight,
-  };
-}
+import { createMessageBox } from './createMessageBox.js';
+import { createMessageTopBar } from './createMessageTopBar.js';
 
 const supportsCssAnchors =
   CSS.supports?.('position-anchor: --msg-toggle') &&
@@ -124,40 +38,12 @@ function isOnScreen(el) {
   );
 }
 
-function applyAvatar(avatarSpan, { isLocal, name, photoURL }) {
-  if (!avatarSpan) return;
-
-  if (isLocal) {
-    avatarSpan.textContent = 'Me';
-    return;
-  }
-
-  const initialSource = (name || '').trim();
-  const initial = initialSource ? initialSource[0].toUpperCase() : 'U';
-
-  avatarSpan.textContent = initial;
-
-  if (photoURL) {
-    avatarSpan.classList.add('sender-avatar--image');
-    avatarSpan.style.backgroundImage = `url("${photoURL}")`;
-    avatarSpan.style.backgroundSize = 'cover';
-    avatarSpan.style.backgroundPosition = 'center';
-  } else {
-    avatarSpan.classList.remove('sender-avatar--image');
-    avatarSpan.style.backgroundImage = '';
-    avatarSpan.style.backgroundSize = '';
-    avatarSpan.style.backgroundPosition = '';
-  }
-}
-
 function refreshRemoteAvatars(container, { name, photoURL }) {
   if (!container) return;
   const avatars = container.querySelectorAll(
     'p.message-remote .sender-avatar:not(.sender-avatar--me)',
   );
-  avatars.forEach((avatar) =>
-    applyAvatar(avatar, { isLocal: false, name, photoURL }),
-  );
+  avatars.forEach((avatar) => renderAvatar(avatar, { name, photoURL }));
 }
 
 /**
@@ -210,6 +96,8 @@ export function initMessagesUI() {
     resetInputHeight,
   } = createMessageBox();
 
+  const messageTopBar = createMessageTopBar();
+
   if (
     !messagesToggleEl ||
     !messagesBox ||
@@ -219,6 +107,28 @@ export function initMessagesUI() {
   ) {
     console.error('Messages UI elements not found.');
     return null;
+  }
+
+  if (messageTopBar?.element) {
+    messagesBox.prepend(messageTopBar.element);
+
+    messageTopBar.setBackHandler(() => {
+      if (isMessagesUIOpen()) {
+        toggleMessages();
+      }
+    });
+
+    messageTopBar.setCallHandler(() => {
+      messagesBox.dispatchEvent(
+        new CustomEvent('contact:call', {
+          bubbles: true,
+          detail: {
+            contactId: currentSession?.contactId || null,
+            contactName: currentSession?.contactName || null,
+          },
+        }),
+      );
+    });
   }
 
   // Get file input elements after messageBox is created
@@ -730,18 +640,14 @@ export function initMessagesUI() {
     avatarSpan.setAttribute('aria-hidden', 'true');
 
     if (isSentByMe === true) {
-      applyAvatar(avatarSpan, { isLocal: true });
+      renderAvatar(avatarSpan, { customFallbackText: 'Me' });
     } else if (isSentByMe === false) {
       const contactName = currentSession?.contactName || effectiveSender;
       const photoURL =
         currentSession?.contactPhotoURL ||
         currentSession?.contactProfile?.photoURL ||
         null;
-      applyAvatar(avatarSpan, {
-        isLocal: false,
-        name: contactName,
-        photoURL,
-      });
+      renderAvatar(avatarSpan, { name: contactName, photoURL });
     } else {
       avatarSpan.textContent = effectiveSender;
     }
@@ -938,18 +844,14 @@ export function initMessagesUI() {
     avatarSpan.setAttribute('aria-hidden', 'true');
 
     if (iAmTheCaller) {
-      applyAvatar(avatarSpan, { isLocal: true });
+      renderAvatar(avatarSpan, { customFallbackText: 'Me' });
     } else {
       const contactName = currentSession?.contactName || msgData.callerName;
       const photoURL =
         currentSession?.contactPhotoURL ||
         currentSession?.contactProfile?.photoURL ||
         null;
-      applyAvatar(avatarSpan, {
-        isLocal: false,
-        name: contactName,
-        photoURL,
-      });
+      renderAvatar(avatarSpan, { name: contactName, photoURL });
     }
 
     // Create call back button styled as a message bubble
@@ -1108,6 +1010,14 @@ export function initMessagesUI() {
       clearMessages();
     }
     currentSession = session;
+
+    if (messageTopBar) {
+      messageTopBar.setContact({
+        name: session?.contactName || '',
+        photoURL:
+          session?.contactPhotoURL || session?.contactProfile?.photoURL || '',
+      });
+    }
   }
 
   /**
@@ -1247,6 +1157,10 @@ export function initMessagesUI() {
     // Clear reaction state
     messageElements.clear();
     reactionManager.clearAll();
+
+    if (messageTopBar) {
+      messageTopBar.setContact({ name: '', photoURL: '' });
+    }
   }
 
   /**
@@ -1296,6 +1210,10 @@ export function initMessagesUI() {
     // Cleanup message toggle
     if (messageToggle) {
       messageToggle.cleanup();
+    }
+
+    if (messageTopBar) {
+      messageTopBar.cleanup();
     }
 
     detachRepositionHandlers();
@@ -1412,7 +1330,12 @@ export function initMessagesUI() {
     });
 
     // Store metadata on session for reference
+    session.contactId = contactId;
     session.contactName = contactName;
+
+    if (messageTopBar) {
+      messageTopBar.setContact({ name: contactName || '', photoURL: '' });
+    }
 
     // Fetch contact profile (photo + display name) for avatars
     getUserProfile(contactId)
@@ -1424,6 +1347,13 @@ export function initMessagesUI() {
         }
         if (profile.photoURL) {
           session.contactPhotoURL = profile.photoURL;
+        }
+
+        if (messageTopBar) {
+          messageTopBar.setContact({
+            name: session.contactName || '',
+            photoURL: session.contactPhotoURL || '',
+          });
         }
 
         refreshRemoteAvatars(messagesMessages, {
