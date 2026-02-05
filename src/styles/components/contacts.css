@@ -163,13 +163,13 @@
 }
 
 /* Add Contact Modal */
+
 .add-contact-modal {
   background-color: rgb(63, 63, 63);
   border: 2px solid #444;
   border-radius: 12px;
-  padding: 1.5rem;
-  min-width: 400px;
-  max-width: 600px;
+  padding: 1rem;
+  width: clamp(220px, 80vw, 600px);
   color: white;
 }
 
