@@ -1,4 +1,4 @@
-import{i,c as o}from"./main-dlMe4-Hi.js";const t="push-unsupported";function a(){if(i.has(t))return i.notifications.get(t);const n=o({template:`
+import{i,c as o}from"./main-CyrQcsOy.js";const t="push-unsupported";function a(){if(i.has(t))return i.notifications.get(t);const n=o({template:`
       <div class="notification-content">
         <div class="notification-header">
           <span class="notification-title">Push notifications unavailable</span>
