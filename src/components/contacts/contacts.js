@@ -162,7 +162,7 @@ export async function resolveCallerName(userId, roomId) {
     if (roomId) {
       for (const contact of Object.values(contacts || {})) {
         if (contact?.roomId === roomId) {
-          return contact.contactName || contact.contactId || userId;
+          return contact.contactName || contact.contactId || 'Unknown'; // userId;
         }
       }
     }
