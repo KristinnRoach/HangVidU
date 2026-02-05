@@ -192,7 +192,7 @@
 
 /* Message alignment by sender */
 #messages .message-local {
-  text-align: right;
+  text-align: left;
   margin-right: 10px; /* avoid scroll-bar overlapping message */
 }
 
@@ -398,32 +398,40 @@
   flex-shrink: 0;
 }
 
+#messages .call-event-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
 #messages .call-event-text {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-weight: 600;
 }
 
 #messages .call-back-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  flex-shrink: 0;
   font: inherit;
   letter-spacing: 0.1px;
   color: var(--text-primary, #fff);
   cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--border-secondary);
+  border-radius: 8px;
+  padding: var(--spacing-xs) var(--spacing-sm);
   transition: opacity 0.15s ease;
 }
 
 #messages .call-back-btn:hover {
-  opacity: 0.92;
+  scale: 1.02;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 #messages .call-back-btn:active {
-  opacity: 0.85;
+  scale: 0.98;
+  background: rgba(255, 255, 255, 0.15);
 }
 
 #messages .call-back-btn .call-event-icon {

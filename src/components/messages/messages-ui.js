@@ -854,9 +854,16 @@ export function initMessagesUI() {
       renderAvatar(avatarSpan, { name: contactName, photoURL });
     }
 
-    // Create call back button styled as a message bubble
+    const callEventBubble = document.createElement('span');
+    callEventBubble.className = 'message-text call-event-content';
+
+    const callStatusText = document.createElement('span');
+    callStatusText.className = 'call-event-text';
+    callStatusText.textContent = iAmTheCaller ? 'No Answer' : 'Missed Call';
+
+    // Create call back action inside the same bubble
     const callBackBtn = document.createElement('button');
-    callBackBtn.className = 'message-text call-back-btn';
+    callBackBtn.className = 'call-back-btn';
     callBackBtn.type = 'button';
 
     const callBackIcon = document.createElement('i');
@@ -891,8 +898,10 @@ export function initMessagesUI() {
     });
 
     // Assemble the message
+    callEventBubble.appendChild(callStatusText);
+    callEventBubble.appendChild(callBackBtn);
     p.appendChild(avatarSpan);
-    p.appendChild(callBackBtn);
+    p.appendChild(callEventBubble);
 
     messagesMessages.appendChild(p);
 
