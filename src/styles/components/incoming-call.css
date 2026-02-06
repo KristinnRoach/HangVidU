@@ -11,9 +11,21 @@
   }
 }
 
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
 dialog.incoming-call-dialog {
   margin: auto;
-  animation: scale-in var(--duration-default) var(--easing-overshoot) forwards;
+  animation:
+    scale-in var(--duration-default) var(--easing-overshoot) forwards,
+    pulse 2s ease-in-out var(--duration-default) infinite;
 
   background: var(--bg-secondary);
   border: 1px solid var(--border-primary);
