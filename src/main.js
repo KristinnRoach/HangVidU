@@ -148,6 +148,7 @@ import { showElement, hideElement, exitPiP } from './utils/ui/ui-utils.js';
 import { initializeAuthUI } from './components/auth/AuthComponent.js';
 import { messagesUI } from './components/messages/messages-ui.js';
 import confirmDialog from './components/base/confirm-dialog.js';
+import { showIncomingCallUI } from './components/calling/incoming-call.js';
 import { showAddContactModal } from './components/contacts/add-contact-modal.js';
 import { callIndicators } from './utils/ui/call-indicators.js';
 import {
@@ -529,9 +530,8 @@ export async function callContact(contactId, contactName, roomId = null) {
     updateLastInteraction(contactId).catch(() => {});
 
     // Trigger UI (Calling Modal)
-    const { showCallingUI } = await import(
-      './components/calling/calling-ui.js'
-    );
+    const { showCallingUI } =
+      await import('./components/calling/calling-ui.js');
     await showCallingUI(roomId, contactName);
 
     // Send push notification
@@ -839,9 +839,19 @@ export function listenForIncomingOnRoom(roomId) {
 
         let accept = false;
         try {
-          accept = await confirmDialog(
-            `Incoming call from ${callerName}.\n\nAccept?`,
-          );
+          // TEST: Using showIncomingCallUI instead of confirmDialog
+          accept = await new Promise((resolve) => {
+            showIncomingCallUI(
+              { roomId, from: callerName },
+              () => resolve(true), // onAccept
+              () => resolve(false), // onReject
+            );
+          });
+
+          // ORIGINAL: confirmDialog approach (commented out for testing)
+          // accept = await confirmDialog(
+          //   `Incoming call from ${callerName}.\n\nAccept?`,
+          // );
         } finally {
           // Stop ringtone and visual indicators after user responds (or on error)
           ringtoneManager.stop();
@@ -955,6 +965,13 @@ export function listenForIncomingOnRoom(roomId) {
     }
 
     try {
+      // Dismiss both incoming call UI variants (for testing)
+      const { dismissActiveIncomingCallUI } =
+        await import('./components/calling/incoming-call.js');
+      if (typeof dismissActiveIncomingCallUI === 'function') {
+        dismissActiveIncomingCallUI();
+      }
+
       const { dismissActiveConfirmDialog } =
         await import('./components/base/confirm-dialog.js');
       if (typeof dismissActiveConfirmDialog === 'function') {
@@ -1832,9 +1849,8 @@ CallController.on(
       console.log('[MAIN] Potential missed call detected for room:', roomId);
       try {
         // Dynamic import to avoid circular dependency (main.js <-> contacts.js)
-        const { getContactByRoomId } = await import(
-          './components/contacts/contacts.js'
-        );
+        const { getContactByRoomId } =
+          await import('./components/contacts/contacts.js');
         const contact = await getContactByRoomId(roomId);
         if (contact && contact.contactId) {
           const { getCurrentUser } = await import('./firebase/auth.js');
