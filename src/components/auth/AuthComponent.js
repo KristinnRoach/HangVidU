@@ -88,7 +88,8 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       </div>
     `,
     handlers: {
-      handleAvatarError: () => {
+      handleAvatarError: (e) => {
+        if (!e.target.isConnected) return; // ignore stale errors from detached elements
         authComponent.update({ userPhotoDisplay: 'none', avatarDisplay: 'flex' });
       },
       // handleLogin: signInWithGoogle, // TODO: remove or use
