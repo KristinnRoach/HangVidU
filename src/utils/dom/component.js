@@ -88,16 +88,20 @@ const createComponent = ({
     const content = html(template, currentProps);
     element.appendChild(content);
 
-    // Attach event handlers // TODO: optimize to avoid re-adding on every render
-    Object.keys(handlers).forEach((handlerName) => {
-      const elements = element.querySelectorAll(`[onclick="${handlerName}"]`);
-      const fn = handlers[handlerName];
-      elements.forEach((el) => {
-        el.removeAttribute('onclick'); // Remove the attribute
+    // Attach event handlers for any on<event>="handlerName" attributes
+    // Single DOM walk: for each on* attr, look up handler by name
+    const allEls = element.querySelectorAll('*');
+    allEls.forEach((el) => {
+      for (const attr of Array.from(el.attributes)) {
+        if (!attr.name.startsWith('on')) continue;
+        if (!(attr.value in handlers)) continue;
+        const fn = handlers[attr.value];
+        const eventType = attr.name.slice(2); // "onclick" -> "click"
+        el.removeAttribute(attr.name);
         if (typeof fn === 'function') {
-          el.addEventListener('click', fn);
+          el.addEventListener(eventType, fn);
         }
-      });
+      }
     });
 
     // Restore state after render

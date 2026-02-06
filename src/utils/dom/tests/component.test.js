@@ -579,4 +579,136 @@ describe('createComponent - Critical Usage Issues', () => {
       expect(container.children.length).toBe(1);
     });
   });
+
+  describe('9. Generalized Event Handler Binding', () => {
+    it('should bind onclick handlers (backward compat)', () => {
+      const clickHandler = vi.fn();
+
+      const component = createComponent({
+        initialProps: {},
+        template: `<button onclick="handleClick">Click me</button>`,
+        handlers: { handleClick: clickHandler },
+        parent: container,
+      });
+
+      const btn = component.querySelector('button');
+      expect(btn.getAttribute('onclick')).toBeNull(); // attribute removed
+      btn.click();
+      expect(clickHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('should bind onerror handlers declared in template', () => {
+      const errorHandler = vi.fn();
+
+      const component = createComponent({
+        initialProps: {},
+        template: `<img src="nonexistent.jpg" onerror="handleImgError" />`,
+        handlers: { handleImgError: errorHandler },
+        parent: container,
+      });
+
+      const img = component.querySelector('img');
+      expect(img.getAttribute('onerror')).toBeNull(); // attribute removed
+
+      // Simulate an error event
+      img.dispatchEvent(new Event('error'));
+      expect(errorHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('should bind onchange handlers declared in template', () => {
+      const changeHandler = vi.fn();
+
+      const component = createComponent({
+        initialProps: {},
+        template: `<input type="text" onchange="handleChange" />`,
+        handlers: { handleChange: changeHandler },
+        parent: container,
+      });
+
+      const input = component.querySelector('input');
+      expect(input.getAttribute('onchange')).toBeNull();
+
+      input.dispatchEvent(new Event('change'));
+      expect(changeHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('should bind oninput handlers declared in template', () => {
+      const inputHandler = vi.fn();
+
+      const component = createComponent({
+        initialProps: {},
+        template: `<input type="text" oninput="handleInput" />`,
+        handlers: { handleInput: inputHandler },
+        parent: container,
+      });
+
+      const input = component.querySelector('input');
+      expect(input.getAttribute('oninput')).toBeNull();
+
+      input.dispatchEvent(new Event('input'));
+      expect(inputHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('should bind multiple different event types in one component', () => {
+      const clickHandler = vi.fn();
+      const errorHandler = vi.fn();
+      const changeHandler = vi.fn();
+
+      const component = createComponent({
+        initialProps: {},
+        template: `
+          <button onclick="handleClick">Click</button>
+          <img src="x.jpg" onerror="handleError" />
+          <select onchange="handleChange"><option>A</option></select>
+        `,
+        handlers: {
+          handleClick: clickHandler,
+          handleError: errorHandler,
+          handleChange: changeHandler,
+        },
+        parent: container,
+      });
+
+      component.querySelector('button').click();
+      component.querySelector('img').dispatchEvent(new Event('error'));
+      component.querySelector('select').dispatchEvent(new Event('change'));
+
+      expect(clickHandler).toHaveBeenCalledTimes(1);
+      expect(errorHandler).toHaveBeenCalledTimes(1);
+      expect(changeHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('should re-bind event handlers after re-render', () => {
+      const errorHandler = vi.fn();
+
+      const component = createComponent({
+        initialProps: { src: 'a.jpg' },
+        template: `<img src="[[src]]" onerror="handleError" />`,
+        handlers: { handleError: errorHandler },
+        parent: container,
+      });
+
+      // Trigger re-render
+      component.src = 'b.jpg';
+
+      // The new img element should also have the handler bound
+      const img = component.querySelector('img');
+      img.dispatchEvent(new Event('error'));
+      expect(errorHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not bind on* attributes whose value is not in handlers map', () => {
+      // Inline JS onerror should pass through untouched (not matched to any handler)
+      const component = createComponent({
+        initialProps: {},
+        template: `<img src="x.jpg" onerror="console.log('inline')" />`,
+        handlers: {},
+        parent: container,
+      });
+
+      const img = component.querySelector('img');
+      // The onerror attribute should still be there since no handler matched
+      expect(img.getAttribute('onerror')).toBe("console.log('inline')");
+    });
+  });
 });

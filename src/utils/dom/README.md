@@ -26,22 +26,59 @@ card.update({ name: 'Alan', count: 10 });
 
 ## Event Handlers
 
+Any `on<event>` attribute in the template can reference a handler by name — not just `onclick`.
+
 ```javascript
 const counter = createComponent({
   initialProps: { count: 0 },
   template: `
     <button onclick="increment">Count: [[count]]</button>
     <button onclick="decrement">-</button>
+    <img src="[[photoURL]]" onerror="handleImgError" />
+    <input type="text" onchange="handleChange" />
   `,
   handlers: {
     increment: () => counter.count++,
     decrement: () => counter.count--,
+    handleImgError: (e) => {
+      e.target.style.display = 'none';
+    },
+    handleChange: (e) => console.log(e.target.value),
   },
   parent: document.body,
 });
 
-// Handlers survive re-renders automatically
+// All handlers survive re-renders automatically
 ```
+
+### Custom Events
+
+The attribute name just maps to `addEventListener(eventType, fn)` — so you can use **any** event name, including Custom Events. The `on` prefix is stripped to get the event type:
+
+```text
+onrequestcoolstuff="docoolstuff"  →  addEventListener('requestcoolstuff', fn)
+```
+
+This means custom events work, but they won't fire from user interaction — you'd need to dispatch them manually:
+
+```javascript
+const widget = createComponent({
+  template: `<div onrequestcoolstuff="docoolstuff">Woah!</div>`,
+  handlers: {
+    docoolstuff: (e) => console.log('Cool!', e.detail),
+  },
+  parent: document.body,
+});
+
+// Fire it manually
+widget
+  .querySelector('div')
+  .dispatchEvent(
+    new CustomEvent('requestcoolstuff', { detail: { level: 'max' } }),
+  );
+```
+
+For most cases, stick to standard DOM events (`click`, `error`, `change`, `input`, `submit`, `mouseenter`, etc.).
 
 ## With Inputs
 
