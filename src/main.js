@@ -148,7 +148,7 @@ import { showElement, hideElement, exitPiP } from './utils/ui/ui-utils.js';
 import { initializeAuthUI } from './components/auth/AuthComponent.js';
 import { messagesUI } from './components/messages/messages-ui.js';
 import confirmDialog from './components/base/confirm-dialog.js';
-import { showIncomingCallUI, resolveIncomingCallUI } from './components/calling/incoming-call.js';
+import { showIncomingCallUI, resolveIncomingCallUI, dismissActiveIncomingCallUI } from './components/calling/incoming-call.js';
 import { showAddContactModal } from './components/contacts/add-contact-modal.js';
 import { callIndicators } from './utils/ui/call-indicators.js';
 import {
@@ -530,9 +530,14 @@ export async function callContact(contactId, contactName, roomId = null) {
     updateLastInteraction(contactId).catch(() => {});
 
     // Trigger UI (Calling Modal)
-    const { showCallingUI } =
-      await import('./components/calling/calling-ui.js');
-    await showCallingUI(roomId, contactName);
+    try {
+      const { showCallingUI } =
+        await import('./components/calling/calling-ui.js');
+      await showCallingUI(roomId, contactName);
+    } catch (error) {
+      console.warn('Failed to show calling UI:', error);
+      // Continue with notification even if UI fails to load
+    }
 
     // Send push notification
     try {
@@ -1029,11 +1034,7 @@ export function listenForIncomingOnRoom(roomId) {
 
     try {
       // Dismiss incoming call UI for this room
-      const { dismissActiveIncomingCallUI } =
-        await import('./components/calling/incoming-call.js');
-      if (typeof dismissActiveIncomingCallUI === 'function') {
-        dismissActiveIncomingCallUI(roomId);
-      }
+      dismissActiveIncomingCallUI(roomId);
 
       // Dismiss legacy confirmDialog (for testing/rollback)
       const { dismissActiveConfirmDialog } =
