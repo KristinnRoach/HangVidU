@@ -839,12 +839,47 @@ export function listenForIncomingOnRoom(roomId) {
 
         let accept = false;
         try {
-          // TEST: Using showIncomingCallUI instead of confirmDialog
+          // Show incoming call UI and await user action OR external state changes
           accept = await new Promise((resolve) => {
-            showIncomingCallUI(
-              { roomId, from: callerName },
-              () => resolve(true), // onAccept
-              () => resolve(false), // onReject
+            // Import resolveIncomingCallUI dynamically
+            import('./components/calling/incoming-call.js').then(
+              ({ resolveIncomingCallUI }) => {
+                // Set up listener for caller cancellation
+                const cancelCleanup = RoomService.onCallCancelled(roomId, (snap) => {
+                  if (snap.exists()) {
+                    devDebug(
+                      `[LISTENER] Caller cancelled call for room ${roomId}`,
+                    );
+                    resolveIncomingCallUI(roomId, 'caller_cancelled');
+                    resolve('caller_cancelled');
+                  }
+                });
+
+                // Set up listener for answer (call answered elsewhere)
+                const answerCleanup = RoomService.onAnswerAdded?.(roomId, () => {
+                  devDebug(
+                    `[LISTENER] Call answered elsewhere for room ${roomId}`,
+                  );
+                  resolveIncomingCallUI(roomId, 'answered_elsewhere');
+                  resolve('answered_elsewhere');
+                });
+
+                // Show UI with callbacks for accept/reject
+                showIncomingCallUI(
+                  { roomId, from: callerName },
+                  () => resolve(true), // onAccept
+                  () => resolve(false), // onReject
+                );
+
+                // Store cleanup for potential manual dismissal
+                if (window.__incomingCallCleanups === undefined) {
+                  window.__incomingCallCleanups = new Map();
+                }
+                window.__incomingCallCleanups.set(roomId, {
+                  cancel: cancelCleanup,
+                  answer: answerCleanup,
+                });
+              }
             );
           });
 
@@ -853,12 +888,20 @@ export function listenForIncomingOnRoom(roomId) {
           //   `Incoming call from ${callerName}.\n\nAccept?`,
           // );
         } finally {
+          // Clean up RTDB listeners for this incoming call
+          if (window.__incomingCallCleanups?.has?.(roomId)) {
+            const cleanups = window.__incomingCallCleanups.get(roomId);
+            if (cleanups.cancel) cleanups.cancel();
+            if (cleanups.answer) cleanups.answer();
+            window.__incomingCallCleanups.delete(roomId);
+          }
+
           // Stop ringtone and visual indicators after user responds (or on error)
           ringtoneManager.stop();
           callIndicators.stopCallIndicators();
         }
 
-        if (accept) {
+        if (accept === true) {
           // Remove incoming call listeners before starting active call
           // This prevents duplicate listener firing (incoming vs active call listeners)
           removeIncomingListenersForRoom(roomId);
@@ -889,7 +932,31 @@ export function listenForIncomingOnRoom(roomId) {
               },
             );
           });
+        } else if (accept === 'caller_cancelled') {
+          devDebug('Incoming call cancelled by caller');
+          // UI is already dismissed by cancellation handler
+          // No rejection message needed, just log it
+          getDiagnosticLogger().logNotificationDecision(
+            'DISMISS',
+            'caller_cancelled',
+            roomId,
+            {
+              joiningUserId,
+            },
+          );
+        } else if (accept === 'answered_elsewhere') {
+          devDebug('Incoming call answered elsewhere');
+          // Call was accepted in another instance
+          getDiagnosticLogger().logNotificationDecision(
+            'DISMISS',
+            'answered_elsewhere',
+            roomId,
+            {
+              joiningUserId,
+            },
+          );
         } else {
+          // User rejected the call
           devDebug('Incoming call rejected by user');
 
           // Dismiss any call notifications for this room
@@ -965,13 +1032,14 @@ export function listenForIncomingOnRoom(roomId) {
     }
 
     try {
-      // Dismiss both incoming call UI variants (for testing)
+      // Dismiss incoming call UI for this room
       const { dismissActiveIncomingCallUI } =
         await import('./components/calling/incoming-call.js');
       if (typeof dismissActiveIncomingCallUI === 'function') {
-        dismissActiveIncomingCallUI();
+        dismissActiveIncomingCallUI(roomId);
       }
 
+      // Dismiss legacy confirmDialog (for testing/rollback)
       const { dismissActiveConfirmDialog } =
         await import('./components/base/confirm-dialog.js');
       if (typeof dismissActiveConfirmDialog === 'function') {

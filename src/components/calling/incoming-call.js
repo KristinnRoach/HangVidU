@@ -1,4 +1,5 @@
-let activeIncomingCallCleanup = null;
+// Map of roomId → resolver function for promise-based UI coordination
+const activeIncomingCallResolvers = new Map();
 
 export function showIncomingCallUI(call, onAccept, onReject) {
   // Minimal ui for testing: transient DOM node appended to body; style with CSS in your app
@@ -18,7 +19,7 @@ export function showIncomingCallUI(call, onAccept, onReject) {
     acceptBtn.disabled = true;
     if (onAccept) await onAccept();
     container.remove();
-    if (activeIncomingCallCleanup === cleanup) activeIncomingCallCleanup = null;
+    activeIncomingCallResolvers.delete(call.roomId);
   };
 
   const rejectBtn = document.createElement('button');
@@ -26,34 +27,53 @@ export function showIncomingCallUI(call, onAccept, onReject) {
   rejectBtn.onclick = async () => {
     if (onReject) await onReject();
     container.remove();
-    if (activeIncomingCallCleanup === cleanup) activeIncomingCallCleanup = null;
+    activeIncomingCallResolvers.delete(call.roomId);
   };
-
-  // Cleanup function for programmatic dismissal
-  function cleanup() {
-    container.remove();
-    if (activeIncomingCallCleanup === cleanup) activeIncomingCallCleanup = null;
-  }
 
   container.appendChild(msg);
   container.appendChild(acceptBtn);
   container.appendChild(rejectBtn);
   document.body.appendChild(container);
 
-  // Track active cleanup for programmatic dismissal
-  activeIncomingCallCleanup = cleanup;
+  // Return resolver function for promise-based coordination
+  // Caller stores this in the Map to resolve the promise when needed
+  const resolver = (result) => {
+    try {
+      container.remove();
+    } catch (_) {}
+    activeIncomingCallResolvers.delete(call.roomId);
+    return result;
+  };
+
+  activeIncomingCallResolvers.set(call.roomId, resolver);
+  return resolver;
 }
 
 /**
- * Dismiss the active incoming call UI (if any)
- * Used when caller cancels before callee responds
+ * Resolve the pending incoming call promise with a given result.
+ * Called when call is answered elsewhere, caller cancels, or UI is dismissed.
+ * @param {string} roomId - The room ID
+ * @param {*} result - The result to resolve the promise with
  */
-export function dismissActiveIncomingCallUI() {
-  if (typeof activeIncomingCallCleanup === 'function') {
+export function resolveIncomingCallUI(roomId, result) {
+  const resolver = activeIncomingCallResolvers.get(roomId);
+  if (resolver) {
+    resolver(result);
+  }
+}
+
+/**
+ * Dismiss the incoming call UI for a specific room.
+ * Used when caller cancels before callee responds or call is answered elsewhere.
+ * @param {string} roomId - The room ID to dismiss
+ */
+export function dismissActiveIncomingCallUI(roomId) {
+  const container = roomId ? document.getElementById(`incoming-call-${roomId}`) : null;
+  if (container) {
     try {
-      activeIncomingCallCleanup();
+      container.remove();
     } catch (_) {}
-    activeIncomingCallCleanup = null;
+    activeIncomingCallResolvers.delete(roomId);
     return true;
   }
   return false;
