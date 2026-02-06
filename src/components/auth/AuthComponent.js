@@ -88,11 +88,8 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       </div>
     `,
     handlers: {
-      handleAvatarError: (e) => {
-        const img = e.target;
-        img.style.display = 'none';
-        const placeholder = img.nextElementSibling;
-        if (placeholder) placeholder.style.display = 'flex';
+      handleAvatarError: () => {
+        authComponent.update({ userPhotoDisplay: 'none', avatarDisplay: 'flex' });
       },
       // handleLogin: signInWithGoogle, // TODO: remove or use
       handleLogin: async (e) => {
