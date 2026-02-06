@@ -530,9 +530,13 @@ export async function callContact(contactId, contactName, roomId = null) {
     updateLastInteraction(contactId).catch(() => {});
 
     // Trigger UI (Calling Modal)
-    const { showCallingUI } =
-      await import('./components/calling/calling-ui.js');
-    await showCallingUI(roomId, contactName);
+    try {
+      const { showCallingUI } =
+        await import('./components/calling/calling-ui.js');
+      await showCallingUI(roomId, contactName);
+    } catch (e) {
+      console.warn('[CALL] Failed to load calling UI:', e);
+    }
 
     // Send push notification
     try {
