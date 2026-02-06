@@ -17,17 +17,24 @@ export function showIncomingCallUI(call, onAccept, onReject) {
   acceptBtn.textContent = 'Accept';
   acceptBtn.onclick = async () => {
     acceptBtn.disabled = true;
-    if (onAccept) await onAccept();
-    container.remove();
-    activeIncomingCallResolvers.delete(call.roomId);
+    try {
+      if (onAccept) await onAccept();
+    } finally {
+      container.remove();
+      activeIncomingCallResolvers.delete(call.roomId);
+    }
   };
 
   const rejectBtn = document.createElement('button');
   rejectBtn.textContent = 'Decline';
   rejectBtn.onclick = async () => {
-    if (onReject) await onReject();
-    container.remove();
-    activeIncomingCallResolvers.delete(call.roomId);
+    rejectBtn.disabled = true;
+    try {
+      if (onReject) await onReject();
+    } finally {
+      container.remove();
+      activeIncomingCallResolvers.delete(call.roomId);
+    }
   };
 
   container.appendChild(msg);
@@ -35,8 +42,7 @@ export function showIncomingCallUI(call, onAccept, onReject) {
   container.appendChild(rejectBtn);
   document.body.appendChild(container);
 
-  // Return resolver function for promise-based coordination
-  // Caller stores this in the Map to resolve the promise when needed
+  // Store resolver function for promise-based coordination via resolveIncomingCallUI()
   const resolver = (result) => {
     try {
       container.remove();
@@ -46,7 +52,6 @@ export function showIncomingCallUI(call, onAccept, onReject) {
   };
 
   activeIncomingCallResolvers.set(call.roomId, resolver);
-  return resolver;
 }
 
 /**

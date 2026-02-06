@@ -565,6 +565,10 @@ const listeningRoomIds = new Set();
 // Map<roomId, Array<() => void>>
 const incomingListenerCleanups = new Map();
 
+// Track RTDB listener cleanups for incoming call UI promise coordination
+// Map<roomId, { cancel: () => void, answer: () => void }>
+const incomingCallPromiseCleanups = new Map();
+
 /**
  * Remove incoming call listeners for a specific room
  * @param {string} roomId - Room ID to clean up listeners for
@@ -868,11 +872,8 @@ export function listenForIncomingOnRoom(roomId) {
               () => resolve(false), // onReject
             );
 
-            // Store cleanup for potential manual dismissal
-            if (window.__incomingCallCleanups === undefined) {
-              window.__incomingCallCleanups = new Map();
-            }
-            window.__incomingCallCleanups.set(roomId, {
+            // Store listener cleanups for later removal
+            incomingCallPromiseCleanups.set(roomId, {
               cancel: cancelCleanup,
               answer: answerCleanup,
             });
@@ -884,11 +885,11 @@ export function listenForIncomingOnRoom(roomId) {
           // );
         } finally {
           // Clean up RTDB listeners for this incoming call
-          if (window.__incomingCallCleanups?.has?.(roomId)) {
-            const cleanups = window.__incomingCallCleanups.get(roomId);
+          if (incomingCallPromiseCleanups.has(roomId)) {
+            const cleanups = incomingCallPromiseCleanups.get(roomId);
             if (cleanups.cancel) cleanups.cancel();
             if (cleanups.answer) cleanups.answer();
-            window.__incomingCallCleanups.delete(roomId);
+            incomingCallPromiseCleanups.delete(roomId);
           }
 
           // Stop ringtone and visual indicators after user responds (or on error)
