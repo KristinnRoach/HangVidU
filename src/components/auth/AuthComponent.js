@@ -186,6 +186,18 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           });
         }
       });
+
+      // Handle avatar image load failures
+      const avatarImg = el.querySelector('.user-avatar');
+      if (avatarImg) {
+        avatarImg.addEventListener('error', () => {
+          avatarImg.style.display = 'none';
+          const placeholder = el.querySelector('.user-avatar-placeholder');
+          if (placeholder) {
+            placeholder.style.display = 'flex';
+          }
+        });
+      }
     },
     onCleanup: () => {
       if (unsubscribe) {
