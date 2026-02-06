@@ -861,7 +861,7 @@ export function listenForIncomingOnRoom(roomId) {
             });
 
             // Set up listener for answer (call answered elsewhere)
-            const answerCleanup = RoomService.onAnswerAdded?.(roomId, () => {
+            const answerCleanup = RoomService.onAnswerAdded(roomId, () => {
               devDebug(
                 `[LISTENER] Call answered elsewhere for room ${roomId}`,
               );
