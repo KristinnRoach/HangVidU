@@ -1,11 +1,19 @@
 /* Incoming Call Dialog */
 
-.incoming-call-notification {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: var(--z-modal);
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+dialog.incoming-call-dialog {
+  margin: auto;
+  animation: scale-in var(--duration-default) var(--easing-overshoot) forwards;
 
   background: var(--bg-secondary);
   border: 1px solid var(--border-primary);
@@ -22,13 +30,13 @@
   align-items: center;
 }
 
-.incoming-call-notification > div:first-child {
+.incoming-call-dialog > div:first-child {
   color: var(--text-primary);
   font-weight: 600;
   text-align: center;
 }
 
-.incoming-call-notification button {
+.incoming-call-dialog button {
   padding: var(--spacing-md) var(--spacing-lg);
   border: none;
   border-radius: var(--radius-md);
@@ -38,23 +46,29 @@
   font-weight: 600;
 }
 
-.incoming-call-notification button:first-of-type {
+.incoming-call-dialog button:first-of-type {
   background: var(--color-success);
 }
 
-.incoming-call-notification button:first-of-type:hover:not(:disabled) {
+.incoming-call-dialog button:first-of-type:hover:not(:disabled) {
   background: var(--color-success-hover);
 }
 
-.incoming-call-notification button:first-of-type:disabled {
+.incoming-call-dialog button:first-of-type:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.incoming-call-notification button:last-of-type {
+.incoming-call-dialog button:last-of-type {
   background: var(--color-danger);
 }
 
-.incoming-call-notification button:last-of-type:hover {
+.incoming-call-dialog button:last-of-type:hover {
   background: var(--color-danger-hover);
+}
+
+/* Dialog backdrop */
+dialog.incoming-call-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
 }

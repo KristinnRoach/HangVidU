@@ -2,16 +2,26 @@
 const activeIncomingCallResolvers = new Map();
 
 export function showIncomingCallUI(call, onAccept, onReject) {
-  // Minimal ui for testing: transient DOM node appended to body; style with CSS in your app
   const id = `incoming-call-${call.roomId}`;
   if (document.getElementById(id)) return; // avoid duplicates
 
-  const container = document.createElement('div');
+  const container = document.createElement('dialog');
   container.id = id;
-  container.className = 'incoming-call-notification';
+  container.className = 'incoming-call-dialog';
+
+  // Prevent ESC key from closing the dialog
+  container.addEventListener('cancel', (e) => {
+    e.preventDefault();
+  });
 
   const msg = document.createElement('div');
   msg.textContent = `${call.from} is calling...`;
+
+  const cleanup = () => {
+    container.close();
+    container.remove();
+    activeIncomingCallResolvers.delete(call.roomId);
+  };
 
   const acceptBtn = document.createElement('button');
   acceptBtn.textContent = 'Accept';
@@ -20,8 +30,7 @@ export function showIncomingCallUI(call, onAccept, onReject) {
     try {
       if (onAccept) await onAccept();
     } finally {
-      container.remove();
-      activeIncomingCallResolvers.delete(call.roomId);
+      cleanup();
     }
   };
 
@@ -32,8 +41,7 @@ export function showIncomingCallUI(call, onAccept, onReject) {
     try {
       if (onReject) await onReject();
     } finally {
-      container.remove();
-      activeIncomingCallResolvers.delete(call.roomId);
+      cleanup();
     }
   };
 
@@ -42,12 +50,14 @@ export function showIncomingCallUI(call, onAccept, onReject) {
   container.appendChild(rejectBtn);
   document.body.appendChild(container);
 
+  // Show as modal dialog (blocks interaction with page)
+  container.showModal();
+
   // Store resolver function for promise-based coordination via resolveIncomingCallUI()
   const resolver = (result) => {
     try {
-      container.remove();
+      cleanup();
     } catch (_) {}
-    activeIncomingCallResolvers.delete(call.roomId);
     return result;
   };
 
@@ -73,9 +83,12 @@ export function resolveIncomingCallUI(roomId, result) {
  * @param {string} roomId - The room ID to dismiss
  */
 export function dismissActiveIncomingCallUI(roomId) {
-  const container = roomId ? document.getElementById(`incoming-call-${roomId}`) : null;
+  const container = roomId
+    ? document.getElementById(`incoming-call-${roomId}`)
+    : null;
   if (container) {
     try {
+      if (container.open) container.close();
       container.remove();
     } catch (_) {}
     activeIncomingCallResolvers.delete(roomId);
