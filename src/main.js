@@ -534,9 +534,8 @@ export async function callContact(contactId, contactName, roomId = null) {
       const { showCallingUI } =
         await import('./components/calling/calling-ui.js');
       await showCallingUI(roomId, contactName);
-    } catch (error) {
-      console.warn('Failed to show calling UI:', error);
-      // Continue with notification even if UI fails to load
+    } catch (e) {
+      console.warn('[CALL] Failed to load calling UI:', e);
     }
 
     // Send push notification
@@ -862,7 +861,7 @@ export function listenForIncomingOnRoom(roomId) {
             });
 
             // Set up listener for answer (call answered elsewhere)
-            const answerCleanup = RoomService.onAnswerAdded?.(roomId, () => {
+            const answerCleanup = RoomService.onAnswerAdded(roomId, () => {
               devDebug(
                 `[LISTENER] Call answered elsewhere for room ${roomId}`,
               );
