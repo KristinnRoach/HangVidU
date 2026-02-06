@@ -82,12 +82,18 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       ${isDev() && SHOW_DEBUG_DELETE_BTN ? '<button id="delete-account-btn" class="delete-account-btn" onclick="handleDeleteAccount">Delete Account</button>' : ''}
       <span class="signing-in-indicator" style="display: [[signingInDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">Signing in...</span>
       <div class="user-info" style="display: [[userInfoDisplay]]">
-        <img src="[[userPhotoURL]]" alt="[[userName]]" class="user-avatar" style="display: [[userPhotoDisplay]]" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+        <img src="[[userPhotoURL]]" alt="[[userName]]" class="user-avatar" style="display: [[userPhotoDisplay]]" onerror="handleAvatarError" />
         <span class="user-avatar-placeholder" style="display: [[avatarDisplay]]">👤</span>
         <span class="user-name">[[userName]]</span>
       </div>
     `,
     handlers: {
+      handleAvatarError: (e) => {
+        const img = e.target;
+        img.style.display = 'none';
+        const placeholder = img.nextElementSibling;
+        if (placeholder) placeholder.style.display = 'flex';
+      },
       // handleLogin: signInWithGoogle, // TODO: remove or use
       handleLogin: async (e) => {
         try {

@@ -88,14 +88,23 @@ const createComponent = ({
     const content = html(template, currentProps);
     element.appendChild(content);
 
-    // Attach event handlers // TODO: optimize to avoid re-adding on every render
+    // Attach event handlers for any on<event>="handlerName" attributes
+    // Supports onclick, onerror, onchange, oninput, onsubmit, etc.
     Object.keys(handlers).forEach((handlerName) => {
-      const elements = element.querySelectorAll(`[onclick="${handlerName}"]`);
       const fn = handlers[handlerName];
-      elements.forEach((el) => {
-        el.removeAttribute('onclick'); // Remove the attribute
-        if (typeof fn === 'function') {
-          el.addEventListener('click', fn);
+
+      // Find all elements that have ANY on* attribute set to this handler name
+      const allEls = element.querySelectorAll('*');
+      allEls.forEach((el) => {
+        const attrs = Array.from(el.attributes);
+        for (const attr of attrs) {
+          if (attr.name.startsWith('on') && attr.value === handlerName) {
+            const eventType = attr.name.slice(2); // "onclick" -> "click"
+            el.removeAttribute(attr.name);
+            if (typeof fn === 'function') {
+              el.addEventListener(eventType, fn);
+            }
+          }
         }
       });
     });
