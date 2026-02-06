@@ -6,6 +6,7 @@ import {
   getRoomMemberRef,
   addRTDBListener,
   getRoomCancellationRef,
+  getRoomAnswerRef,
   removeRTDBListenersForRoom,
   removeRTDBListenersForUser,
 } from './storage/fb-rtdb/rtdb';
@@ -271,6 +272,29 @@ class RoomService {
       'on',
       'onCallCancelled',
       `rooms/${roomId}/cancellation`,
+      { event: 'value' }
+    );
+  }
+
+  /**
+   * Listen for answer being added (call answered by callee)
+   */
+  onAnswerAdded(roomId, callback) {
+    const answerRef = getRoomAnswerRef(roomId);
+    addRTDBListener(
+      answerRef,
+      'value',
+      (snapshot) => {
+        if (snapshot.exists()) {
+          callback(snapshot);
+        }
+      },
+      roomId
+    );
+    getDiagnosticLogger().logFirebaseOperation(
+      'on',
+      'onAnswerAdded',
+      `rooms/${roomId}/answer`,
       { event: 'value' }
     );
   }

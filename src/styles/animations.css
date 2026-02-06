@@ -5,6 +5,7 @@
 :root {
   --duration-default: 250ms;
   --easing-default: ease-in-out;
+  --easing-overshoot: cubic-bezier(0.68, -0.55, 0.27, 1.55);
 
   --transition-default:
     opacity var(--duration-default) var(--easing-default),
@@ -75,7 +76,7 @@
 }
 
 /* ============================================
-   LEGACY ANIMATION CLASSES
+   ANIMATION CLASSES
    ============================================ */
 
 /* Fallback for browsers without transition-behavior support */

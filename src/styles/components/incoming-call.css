@@ -1,0 +1,86 @@
+/* Incoming Call Dialog */
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+dialog.incoming-call-dialog {
+  margin: auto;
+  animation:
+    scale-in var(--duration-default) var(--easing-overshoot) forwards,
+    pulse 2s ease-in-out var(--duration-default) infinite;
+
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-2xl);
+  box-shadow: var(--shadow-md);
+
+  min-width: 280px;
+  max-width: 90%;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  align-items: center;
+}
+
+.incoming-call-dialog > div:first-child {
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: center;
+}
+
+.incoming-call-dialog button {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition-default);
+  color: white;
+  font-weight: 600;
+}
+
+.incoming-call-dialog button:first-of-type {
+  background: var(--color-success);
+}
+
+.incoming-call-dialog button:first-of-type:hover:not(:disabled) {
+  background: var(--color-success-hover);
+}
+
+.incoming-call-dialog button:first-of-type:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.incoming-call-dialog button:last-of-type {
+  background: var(--color-danger);
+}
+
+.incoming-call-dialog button:last-of-type:hover {
+  background: var(--color-danger-hover);
+}
+
+/* Dialog backdrop */
+dialog.incoming-call-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+}

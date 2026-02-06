@@ -148,6 +148,7 @@ import { showElement, hideElement, exitPiP } from './utils/ui/ui-utils.js';
 import { initializeAuthUI } from './components/auth/AuthComponent.js';
 import { messagesUI } from './components/messages/messages-ui.js';
 import confirmDialog from './components/base/confirm-dialog.js';
+import { showIncomingCallUI, resolveIncomingCallUI, dismissActiveIncomingCallUI } from './components/calling/incoming-call.js';
 import { showAddContactModal } from './components/contacts/add-contact-modal.js';
 import { callIndicators } from './utils/ui/call-indicators.js';
 import {
@@ -529,10 +530,13 @@ export async function callContact(contactId, contactName, roomId = null) {
     updateLastInteraction(contactId).catch(() => {});
 
     // Trigger UI (Calling Modal)
-    const { showCallingUI } = await import(
-      './components/calling/calling-ui.js'
-    );
-    await showCallingUI(roomId, contactName);
+    try {
+      const { showCallingUI } =
+        await import('./components/calling/calling-ui.js');
+      await showCallingUI(roomId, contactName);
+    } catch (e) {
+      console.warn('[CALL] Failed to load calling UI:', e);
+    }
 
     // Send push notification
     try {
@@ -564,6 +568,10 @@ const listeningRoomIds = new Set();
 // Track incoming call listener cleanup functions for each room
 // Map<roomId, Array<() => void>>
 const incomingListenerCleanups = new Map();
+
+// Track RTDB listener cleanups for incoming call UI promise coordination
+// Map<roomId, { cancel: () => void, answer: () => void }>
+const incomingCallPromiseCleanups = new Map();
 
 /**
  * Remove incoming call listeners for a specific room
@@ -839,16 +847,61 @@ export function listenForIncomingOnRoom(roomId) {
 
         let accept = false;
         try {
-          accept = await confirmDialog(
-            `Incoming call from ${callerName}.\n\nAccept?`,
-          );
+          // Show incoming call UI and await user action OR external state changes
+          accept = await new Promise((resolve) => {
+            // Set up listener for caller cancellation
+            const cancelCleanup = RoomService.onCallCancelled(roomId, (snap) => {
+              if (snap.exists()) {
+                devDebug(
+                  `[LISTENER] Caller cancelled call for room ${roomId}`,
+                );
+                resolveIncomingCallUI(roomId, 'caller_cancelled');
+                resolve('caller_cancelled');
+              }
+            });
+
+            // Set up listener for answer (call answered elsewhere)
+            const answerCleanup = RoomService.onAnswerAdded(roomId, () => {
+              devDebug(
+                `[LISTENER] Call answered elsewhere for room ${roomId}`,
+              );
+              resolveIncomingCallUI(roomId, 'answered_elsewhere');
+              resolve('answered_elsewhere');
+            });
+
+            // Show UI with callbacks for accept/reject
+            showIncomingCallUI(
+              { roomId, from: callerName },
+              () => resolve(true), // onAccept
+              () => resolve(false), // onReject
+            );
+
+            // Store listener cleanups for later removal
+            incomingCallPromiseCleanups.set(roomId, {
+              cancel: cancelCleanup,
+              answer: answerCleanup,
+            });
+          });
+
+          // ORIGINAL: confirmDialog approach (commented out for testing)
+          // accept = await confirmDialog(
+          //   `Incoming call from ${callerName}.\n\nAccept?`,
+          // );
         } finally {
+          // Clean up RTDB listeners for this incoming call
+          if (incomingCallPromiseCleanups.has(roomId)) {
+            const cleanups = incomingCallPromiseCleanups.get(roomId);
+            if (cleanups.cancel) cleanups.cancel();
+            if (cleanups.answer) cleanups.answer();
+            incomingCallPromiseCleanups.delete(roomId);
+          }
+
           // Stop ringtone and visual indicators after user responds (or on error)
           ringtoneManager.stop();
           callIndicators.stopCallIndicators();
         }
 
-        if (accept) {
+        if (accept === true) {
           // Remove incoming call listeners before starting active call
           // This prevents duplicate listener firing (incoming vs active call listeners)
           removeIncomingListenersForRoom(roomId);
@@ -879,7 +932,31 @@ export function listenForIncomingOnRoom(roomId) {
               },
             );
           });
+        } else if (accept === 'caller_cancelled') {
+          devDebug('Incoming call cancelled by caller');
+          // UI is already dismissed by cancellation handler
+          // No rejection message needed, just log it
+          getDiagnosticLogger().logNotificationDecision(
+            'DISMISS',
+            'caller_cancelled',
+            roomId,
+            {
+              joiningUserId,
+            },
+          );
+        } else if (accept === 'answered_elsewhere') {
+          devDebug('Incoming call answered elsewhere');
+          // Call was accepted in another instance
+          getDiagnosticLogger().logNotificationDecision(
+            'DISMISS',
+            'answered_elsewhere',
+            roomId,
+            {
+              joiningUserId,
+            },
+          );
         } else {
+          // User rejected the call
           devDebug('Incoming call rejected by user');
 
           // Dismiss any call notifications for this room
@@ -955,6 +1032,10 @@ export function listenForIncomingOnRoom(roomId) {
     }
 
     try {
+      // Dismiss incoming call UI for this room
+      dismissActiveIncomingCallUI(roomId);
+
+      // Dismiss legacy confirmDialog (for testing/rollback)
       const { dismissActiveConfirmDialog } =
         await import('./components/base/confirm-dialog.js');
       if (typeof dismissActiveConfirmDialog === 'function') {
@@ -1831,10 +1912,6 @@ CallController.on(
     if (isMissedCall) {
       console.log('[MAIN] Potential missed call detected for room:', roomId);
       try {
-        // Dynamic import to avoid circular dependency (main.js <-> contacts.js)
-        const { getContactByRoomId } = await import(
-          './components/contacts/contacts.js'
-        );
         const contact = await getContactByRoomId(roomId);
         if (contact && contact.contactId) {
           const { getCurrentUser } = await import('./firebase/auth.js');
