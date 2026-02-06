@@ -1912,9 +1912,6 @@ CallController.on(
     if (isMissedCall) {
       console.log('[MAIN] Potential missed call detected for room:', roomId);
       try {
-        // Dynamic import to avoid circular dependency (main.js <-> contacts.js)
-        const { getContactByRoomId } =
-          await import('./components/contacts/contacts.js');
         const contact = await getContactByRoomId(roomId);
         if (contact && contact.contactId) {
           const { getCurrentUser } = await import('./firebase/auth.js');
