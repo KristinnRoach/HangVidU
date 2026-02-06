@@ -148,7 +148,7 @@ import { showElement, hideElement, exitPiP } from './utils/ui/ui-utils.js';
 import { initializeAuthUI } from './components/auth/AuthComponent.js';
 import { messagesUI } from './components/messages/messages-ui.js';
 import confirmDialog from './components/base/confirm-dialog.js';
-import { showIncomingCallUI } from './components/calling/incoming-call.js';
+import { showIncomingCallUI, resolveIncomingCallUI } from './components/calling/incoming-call.js';
 import { showAddContactModal } from './components/contacts/add-contact-modal.js';
 import { callIndicators } from './utils/ui/call-indicators.js';
 import {
@@ -841,46 +841,41 @@ export function listenForIncomingOnRoom(roomId) {
         try {
           // Show incoming call UI and await user action OR external state changes
           accept = await new Promise((resolve) => {
-            // Import resolveIncomingCallUI dynamically
-            import('./components/calling/incoming-call.js').then(
-              ({ resolveIncomingCallUI }) => {
-                // Set up listener for caller cancellation
-                const cancelCleanup = RoomService.onCallCancelled(roomId, (snap) => {
-                  if (snap.exists()) {
-                    devDebug(
-                      `[LISTENER] Caller cancelled call for room ${roomId}`,
-                    );
-                    resolveIncomingCallUI(roomId, 'caller_cancelled');
-                    resolve('caller_cancelled');
-                  }
-                });
-
-                // Set up listener for answer (call answered elsewhere)
-                const answerCleanup = RoomService.onAnswerAdded?.(roomId, () => {
-                  devDebug(
-                    `[LISTENER] Call answered elsewhere for room ${roomId}`,
-                  );
-                  resolveIncomingCallUI(roomId, 'answered_elsewhere');
-                  resolve('answered_elsewhere');
-                });
-
-                // Show UI with callbacks for accept/reject
-                showIncomingCallUI(
-                  { roomId, from: callerName },
-                  () => resolve(true), // onAccept
-                  () => resolve(false), // onReject
+            // Set up listener for caller cancellation
+            const cancelCleanup = RoomService.onCallCancelled(roomId, (snap) => {
+              if (snap.exists()) {
+                devDebug(
+                  `[LISTENER] Caller cancelled call for room ${roomId}`,
                 );
-
-                // Store cleanup for potential manual dismissal
-                if (window.__incomingCallCleanups === undefined) {
-                  window.__incomingCallCleanups = new Map();
-                }
-                window.__incomingCallCleanups.set(roomId, {
-                  cancel: cancelCleanup,
-                  answer: answerCleanup,
-                });
+                resolveIncomingCallUI(roomId, 'caller_cancelled');
+                resolve('caller_cancelled');
               }
+            });
+
+            // Set up listener for answer (call answered elsewhere)
+            const answerCleanup = RoomService.onAnswerAdded?.(roomId, () => {
+              devDebug(
+                `[LISTENER] Call answered elsewhere for room ${roomId}`,
+              );
+              resolveIncomingCallUI(roomId, 'answered_elsewhere');
+              resolve('answered_elsewhere');
+            });
+
+            // Show UI with callbacks for accept/reject
+            showIncomingCallUI(
+              { roomId, from: callerName },
+              () => resolve(true), // onAccept
+              () => resolve(false), // onReject
             );
+
+            // Store cleanup for potential manual dismissal
+            if (window.__incomingCallCleanups === undefined) {
+              window.__incomingCallCleanups = new Map();
+            }
+            window.__incomingCallCleanups.set(roomId, {
+              cancel: cancelCleanup,
+              answer: answerCleanup,
+            });
           });
 
           // ORIGINAL: confirmDialog approach (commented out for testing)
