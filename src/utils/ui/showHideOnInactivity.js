@@ -6,6 +6,8 @@ import { showElement, hideElement } from './ui-utils.js';
  * @param {Object} [options]
  * @param {number} [options.inactivityMs=3000] - milliseconds of inactivity before hiding
  * @param {Array<String>} [options.excludeEvents='keydown']  - Activity events to exclude
+ * @param {Array<String|Element>} [options.excludeElements=[]] - Elements to ignore (CSS selectors or element refs)
+ * @param {boolean} [options.excludeInteractive=false] - Exclude all interactive elements (buttons, inputs, etc.)
  * @param {EventTarget} [options.listenTarget=document] - element/document to attach activity listeners to
  * @param {Function} [options.onShow] - optional callback invoked when element is shown: () => void
  * @param {Function} [options.onHide] - optional callback invoked when element is hidden: () => void
@@ -21,9 +23,25 @@ export function setupShowHideOnInactivity(
     onHide = null,
     hideOnEsc = false,
     excludeEvents = ['keydown'],
-  } = {}
+    excludeElements = [],
+    excludeInteractive = false,
+  } = {},
 ) {
   if (!element) return () => {};
+
+  // Validate excludeElements: remove the controlled element itself
+  const validatedExcludeElements = Array.isArray(excludeElements)
+    ? excludeElements.filter((ex) => {
+        if (ex === element) {
+          console.warn(
+            'setupShowHideOnInactivity: The controlled element cannot be excluded from inactivity show/hide. ' +
+              'Removing it from excludeElements. The controlled element will always respond to inactivity.',
+          );
+          return false;
+        }
+        return true;
+      })
+    : [];
 
   let hideTimeout = null;
 
@@ -40,10 +58,54 @@ export function setupShowHideOnInactivity(
 
   // Allow callers to exclude certain activity events (e.g. exclude 'keydown')
   const filteredActivityEvents = activityEvents.filter(
-    (ev) => !Array.isArray(excludeEvents) || !excludeEvents.includes(ev)
+    (ev) => !Array.isArray(excludeEvents) || !excludeEvents.includes(ev),
   );
 
-  function showAndSchedule() {
+  // Build exclude list with interactive elements selector if requested
+  const finalExcludeElements = [...validatedExcludeElements];
+  if (excludeInteractive) {
+    finalExcludeElements.push(
+      'button, input, textarea, select, a, [role="button"], [role="link"], [role="tab"], [contenteditable], label, details',
+    );
+  }
+
+  function showAndSchedule(event) {
+    // Check if event originated from an excluded element
+    if (event?.target && finalExcludeElements.length > 0) {
+      // Ensure event.target is an Element before using Element methods
+      const targetEl = event.target instanceof Element ? event.target : null;
+      if (!targetEl) return showAndScheduleImpl();
+
+      for (const exclude of finalExcludeElements) {
+        // Handle CSS selector strings
+        if (typeof exclude === 'string') {
+          // Guard against invalid selectors and ensure closest is available
+          if (
+            typeof targetEl.closest === 'function' &&
+            targetEl.closest(exclude)
+          ) {
+            return; // Don't show - event from excluded element
+          }
+        }
+        // Handle direct element references
+        else if (typeof Element !== 'undefined' && exclude instanceof Element) {
+          if (targetEl === exclude) {
+            return; // Don't show - event from excluded element
+          }
+          if (
+            typeof exclude.contains === 'function' &&
+            exclude.contains(targetEl)
+          ) {
+            return; // Don't show - event from excluded element
+          }
+        }
+      }
+    }
+
+    return showAndScheduleImpl();
+  }
+
+  function showAndScheduleImpl() {
     showElement(element);
 
     // Notify caller that element is visible
@@ -71,7 +133,7 @@ export function setupShowHideOnInactivity(
   }
 
   filteredActivityEvents.forEach((ev) =>
-    listenTarget.addEventListener(ev, showAndSchedule, { passive: true })
+    listenTarget.addEventListener(ev, showAndSchedule, { passive: true }),
   );
 
   function onVisibilityChange() {
@@ -84,8 +146,8 @@ export function setupShowHideOnInactivity(
         hideElement(element);
       } catch (err) {
         console.warn(
-          'showHideOnInactivity onHide (visibilitychange) callback error:',
-          err
+          'showHideOnInactivity hideElement (visibilitychange) error:',
+          err,
         );
       }
     } else {
@@ -107,8 +169,8 @@ export function setupShowHideOnInactivity(
         if (typeof onHide === 'function') onHide();
       } catch (err) {
         console.warn(
-          'showHideOnInactivity onHide (visibilitychange) callback error:',
-          err
+          'showHideOnInactivity onHide (mouseout) callback error:',
+          err,
         );
       }
     }
@@ -135,8 +197,8 @@ export function setupShowHideOnInactivity(
 
   document.addEventListener('keydown', onKeyDownForEsc);
 
-  function onTouchEnd() {
-    if (!hideTimeout) showAndSchedule();
+  function onTouchEnd(event) {
+    if (!hideTimeout) showAndSchedule(event);
   }
   listenTarget.addEventListener('touchend', onTouchEnd, { passive: true });
 
@@ -146,7 +208,7 @@ export function setupShowHideOnInactivity(
   // Cleanup function to remove listeners and clear timeout
   function cleanup() {
     filteredActivityEvents.forEach((ev) =>
-      listenTarget.removeEventListener(ev, showAndSchedule)
+      listenTarget.removeEventListener(ev, showAndSchedule),
     );
     document.removeEventListener('visibilitychange', onVisibilityChange);
     listenTarget.removeEventListener('mouseout', onMouseOut);
