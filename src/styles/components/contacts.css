@@ -171,6 +171,31 @@
   padding: 1rem;
   width: clamp(220px, 80vw, 600px);
   color: white;
+  position: relative;
+}
+
+.add-contact-modal .close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  color: #aaa;
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+.add-contact-modal .close-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
 }
 
 .add-contact-modal h2 {

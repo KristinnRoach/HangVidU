@@ -24,6 +24,8 @@ export async function showAddContactModal() {
     dialog.classList.add('add-contact-modal');
 
     dialog.innerHTML = `
+      <button type="button" data-action="cancel" class="close-btn" aria-label="Close">×</button>
+
       <h2>Add Contacts</h2>
 
       <div class="platform-selector">
@@ -58,9 +60,9 @@ export async function showAddContactModal() {
 
       <div id="bulk-actions-container" class="bulk-actions-container"></div>
 
-      <div class="modal-footer">
+      <!-- <div class="modal-footer">
         <button type="button" data-action="cancel" class="cancel-btn">Close</button>
-      </div>
+      </div> -->
     `;
 
     const cancelBtn = dialog.querySelector('[data-action="cancel"]');
