@@ -2,15 +2,13 @@
 
 import { ref, set, get, remove, update, onValue, off } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId, getCurrentUser } from '../../firebase/auth.js';
-import { hideCallingUI, showCallingUI } from '../calling/calling-ui.js';
+import { getLoggedInUserId } from '../../firebase/auth.js';
 import confirmDialog from '../base/confirm-dialog.js';
 import { hideElement, showElement } from '../../utils/ui/ui-utils.js';
 import { messagingController } from '../../messaging/messaging-controller.js';
 import { messagesUI } from '../messages/messages-ui.js';
 import { createMessageToggle } from '../messages/createMessageToggle.js';
-import { getDeterministicRoomId } from '../../utils/room-id.js';
-import { pushNotificationController } from '../../notifications/push-notification-controller.js';
+import { isDev } from '../../utils/dev/dev-utils.js';
 
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
@@ -36,6 +34,13 @@ function getSortedContactIds(contacts) {
  * Save a contact for the current user (RTDB if logged in, localStorage otherwise).
  */
 export async function saveContactData(contactId, contactName, roomId) {
+  if (!contactName || typeof contactName !== 'string' || !contactName.trim()) {
+    console.warn(
+      `[CONTACTS] Invalid contactName for ${contactId}, falling back to 'No Name'`,
+    );
+    contactName = 'No Name';
+  }
+
   const loggedInUid = getLoggedInUserId();
   const now = Date.now();
 
@@ -218,6 +223,17 @@ export async function renderContactsList(lobbyElement) {
   // Ensure container is visible when contacts exist (if using display: none above)
   showElement(contactsContainer);
 
+  // TEMP debug log // TODO remove after testing
+  let i = 0;
+  isDev() &&
+    Object.values(contacts).forEach((contact) => {
+      // console.warn(contact.contactName);
+      if (contact.contactName === 'Töggur Roach') {
+        console.warn(i, contact);
+        i++;
+      }
+    });
+
   // Render contact items
   contactsContainer.innerHTML = `
     <h3>Contacts</h3>
@@ -277,23 +293,6 @@ export async function renderContactsList(lobbyElement) {
 
   // Create message toggles directly (no placeholders needed)
   await createContactMessageToggles(contactsContainer, contactIds, contacts);
-
-  // Prune deleted users in the background (after render) to avoid blocking
-  if (getLoggedInUserId()) {
-    Promise.all(
-      contactIds.map(async (id) => {
-        const snapshot = await get(ref(rtdb, `users/${id}/presence`));
-        if (!snapshot.exists()) {
-          const entry = contactsContainer.querySelector(
-            `.contact-entry:has([data-contact-id="${id}"])`,
-          );
-          if (entry) entry.remove();
-        }
-      }),
-    ).catch((err) =>
-      console.warn('[CONTACTS] Background presence check failed:', err),
-    );
-  }
 }
 
 /**

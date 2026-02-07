@@ -81,7 +81,7 @@ export async function processReferral() {
 
     // Fetch referrer profile (may not exist yet for older users)
     const profile = await getUserProfile(referrerId);
-    const referrerName = profile?.displayName || referrerId;
+    const referrerName = profile?.displayName?.trim() || 'No Name';
     const referrerPhotoURL = profile?.photoURL || null;
 
     // Generate deterministic room ID
