@@ -9,6 +9,7 @@ import { messagingController } from '../../messaging/messaging-controller.js';
 import { messagesUI } from '../messages/messages-ui.js';
 import { createMessageToggle } from '../messages/createMessageToggle.js';
 import { isDev } from '../../utils/dev/dev-utils.js';
+import { t, onLocaleChange } from '../../i18n/index.js';
 
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
@@ -18,6 +19,10 @@ const messageBadgeListeners = new Map();
 
 // Track contact message toggles for cleanup
 const contactMessageToggles = new Map();
+
+// Track locale change listener for cleanup
+let localeUnsubscribe = null;
+let lastRenderedLobby = null;
 
 // Limit displayed contact name length in the UI (keep full name in title)
 const MAX_CONTACT_NAME_CHARS = 14;
@@ -38,7 +43,7 @@ export async function saveContactData(contactId, contactName, roomId) {
     console.warn(
       `[CONTACTS] Invalid contactName for ${contactId}, falling back to 'No Name'`,
     );
-    contactName = 'No Name';
+    contactName = t('contact.no_name');
   }
 
   const loggedInUid = getLoggedInUserId();
@@ -150,7 +155,7 @@ export async function resolveCallerName(roomId, fallbackUserId) {
     console.warn('Failed to resolve caller name', e);
   }
 
-  return fallbackUserId || 'Unknown';
+  return fallbackUserId || t('shared.unknown');
 }
 
 /**
@@ -176,14 +181,14 @@ export async function saveContact(contactUserId, roomId, lobbyElement) {
     return;
   }
 
-  const shouldSave = await confirmDialog(`Save contact?`, {
+  const shouldSave = await confirmDialog(t('contact.save.confirm'), {
     autoRemoveSeconds: 15,
   });
 
   if (!shouldSave) return;
 
   const contactName =
-    window.prompt('Enter a name for this contact:', contactUserId) ||
+    window.prompt(t('contact.name.prompt'), contactUserId) ||
     contactUserId;
 
   await saveContactData(contactUserId, contactName, roomId);
@@ -203,6 +208,14 @@ export async function saveContact(contactUserId, roomId, lobbyElement) {
 export async function renderContactsList(lobbyElement) {
   if (!lobbyElement) return;
 
+  // Set up locale change listener on first render
+  if (!localeUnsubscribe) {
+    lastRenderedLobby = lobbyElement;
+    localeUnsubscribe = onLocaleChange(() => {
+      if (lastRenderedLobby) renderContactsList(lastRenderedLobby);
+    });
+  }
+
   const contacts = await getContacts();
   const contactIds = getSortedContactIds(contacts);
 
@@ -215,7 +228,7 @@ export async function renderContactsList(lobbyElement) {
   }
 
   if (contactIds.length === 0) {
-    contactsContainer.innerHTML = '<p>No saved contacts yet.</p>';
+    contactsContainer.innerHTML = `<p>${t('contact.none')}</p>`;
 
     hideElement(contactsContainer);
     return;
@@ -236,7 +249,7 @@ export async function renderContactsList(lobbyElement) {
 
   // Render contact items
   contactsContainer.innerHTML = `
-    <h3>Contacts</h3>
+    <h3>${t('contact.list.title')}</h3>
     <div class="contacts-list">
       ${contactIds
         .map((id) => {
@@ -249,7 +262,7 @@ export async function renderContactsList(lobbyElement) {
                 data-room-id="${contact.roomId || ''}"
                 data-contact-name="${contact.contactName}"
                 data-contact-id="${id}"
-                title="Call ${contact.contactName}"
+                title="${t('contact.action.call', { name: contact.contactName })}"
               >
                 <span class="presence-indicator" data-contact-id="${id}"></span>
                 <i class="fa fa-phone"></i>
@@ -265,7 +278,7 @@ export async function renderContactsList(lobbyElement) {
               <button
                 class="contact-edit-btn"
                 data-contact-id="${id}"
-                title="Edit contact name"
+                title="${t('contact.action.edit')}"
               >
                 ✏️
               </button>
@@ -273,7 +286,7 @@ export async function renderContactsList(lobbyElement) {
               <button
                 class="contact-delete-btn"
                 data-contact-id="${id}"
-                title="Delete contact"
+                title="${t('contact.action.delete')}"
               >
                 ✕
               </button>
@@ -336,7 +349,7 @@ function attachContactListeners(container, lobbyElement) {
       const contactId = btn.getAttribute('data-contact-id');
       if (!contactId) return;
 
-      const confirmed = await confirmDialog('Delete this contact?');
+      const confirmed = await confirmDialog(t('contact.delete.confirm'));
       if (!confirmed) return;
 
       await deleteContact(contactId);
@@ -355,7 +368,7 @@ function attachContactListeners(container, lobbyElement) {
       if (!contact) return;
 
       const newName = prompt(
-        'Enter new name for this contact:',
+        t('contact.name.edit'),
         contact.contactName,
       );
       if (newName && newName.trim() && newName.trim() !== contact.contactName) {
@@ -573,4 +586,10 @@ export function cleanupContacts() {
 
   contactMessageToggles.forEach((toggle) => toggle.cleanup());
   contactMessageToggles.clear();
+
+  if (localeUnsubscribe) {
+    localeUnsubscribe();
+    localeUnsubscribe = null;
+  }
+  lastRenderedLobby = null;
 }

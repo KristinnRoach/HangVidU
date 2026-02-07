@@ -156,7 +156,7 @@ export function initMessagesUI() {
 
     // Show progress during transfer (don't disable - CSS hides disabled buttons)
     const originalText = sendBtn.textContent;
-    sendBtn.textContent = 'Sending...';
+    sendBtn.textContent = t('message.sending');
 
     try {
       await fileTransfer.sendFile(file, (progress) => {
@@ -169,10 +169,10 @@ export function initMessagesUI() {
       }
 
       // Show in UI
-      appendChatMessage(`📎 Sent: ${file.name}`, { isSentByMe: true });
+      appendChatMessage(`📎 ${t('message.sent', { name: file.name })}`, { isSentByMe: true });
     } catch (err) {
       console.error('[MessagesUI] File send failed:', err);
-      appendChatMessage('❌ Failed to send file');
+      appendChatMessage(t('message.send_failed'));
     } finally {
       sendBtn.textContent = originalText;
       fileInput.value = ''; // Reset input
@@ -218,7 +218,7 @@ export function initMessagesUI() {
       dialog.innerHTML = `
         <div style="text-align: center;">
           <div style="font-size: 48px; margin-bottom: 16px;">📹</div>
-          <h3 style="margin: 0 0 8px 0; color: var(--text-primary, #fff);">Video Received</h3>
+          <h3 style="margin: 0 0 8px 0; color: var(--text-primary, #fff);">${t('message.video_received')}</h3>
           <p id="file-name-display" style="margin: 0 0 24px 0; color: var(--text-secondary, #aaa); font-size: 14px;">
           </p>
           <div style="display: flex; gap: 12px; justify-content: center;">
@@ -233,7 +233,7 @@ export function initMessagesUI() {
               font-size: 14px;
               transition: all 0.2s;
             ">
-              <i class="fa fa-download" style="margin-right: 8px;"></i>Download
+              <i class="fa fa-download" style="margin-right: 8px;"></i>${t('message.download')}
             </button>
             <button id="watch-together-btn" style="
               flex: 1;
@@ -247,7 +247,7 @@ export function initMessagesUI() {
               font-weight: 600;
               transition: all 0.2s;
             ">
-              <i class="fa fa-play" style="margin-right: 8px;"></i>Watch Together
+              <i class="fa fa-play" style="margin-right: 8px;"></i>${t('message.watch_together')}
             </button>
           </div>
         </div>
