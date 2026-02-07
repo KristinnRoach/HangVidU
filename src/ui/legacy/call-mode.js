@@ -88,6 +88,8 @@ export const enterCallMode = () => {
     cleanupChatControlAutoHide = setupShowHideOnInactivity(chatControls, {
       inactivityMs: 2500,
       hideOnEsc: true,
+      excludeElements: ['.messages-box'],
+      excludeInteractive: true, // Exclude all interactive elements
     });
   }
 
