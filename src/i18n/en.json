@@ -1,0 +1,8 @@
+{
+  "app.title": "Messages",
+  "nav.inbox": "Inbox",
+  "nav.settings": "Settings",
+  "msg.input.placeholder": "Type a message…",
+  "msg.send": "Send",
+  "msg.empty": "No messages yet."
+}
