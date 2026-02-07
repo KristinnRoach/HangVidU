@@ -1,3 +1,5 @@
+import { t } from '../../i18n/index.js';
+
 /**
  * Creates the messages box DOM structure and initializes textarea auto-grow behavior.
  * Appends the box to document.body and returns references to key elements.
@@ -21,11 +23,11 @@ export function createMessageBox() {
 
       <form id="messages-form">
 
-        <textarea id="messages-input" placeholder="Type a message..." rows="1"></textarea>
+        <textarea id="messages-input" placeholder="${t('message.placeholder')}" rows="1"></textarea>
 
         <div class="message-attachments">
           <input type="file" id="file-input" style="display: none" />
-          <button type="button" id="attach-file-btn" title="Attach file">
+          <button type="button" id="attach-file-btn" title="${t('message.attach')}">
             <i class="fa fa-paperclip" aria-hidden="true"></i>
           </button>
         </div>

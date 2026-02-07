@@ -4,6 +4,7 @@ import { createNotification } from './notification.js';
 import { inAppNotificationManager } from './in-app-notification-manager.js';
 import { pushNotificationController } from '../../notifications/push-notification-controller.js';
 import { showSuccessToast, showWarningToast } from '../../utils/ui/toast.js';
+import { t } from '../../i18n/index.js';
 
 const NOTIFICATION_ID = 'enable-notifications';
 
@@ -23,17 +24,17 @@ export function showEnableNotificationsPrompt() {
       <div class="notification-content">
         <div class="notification-header">
           <span class="notification-icon">🔔</span>
-          <span class="notification-title">Enable Notifications</span>
+          <span class="notification-title">${t('notification.enable.title')}</span>
           <button class="notification-dismiss" onclick="handleDismiss" title="Dismiss">×</button>
         </div>
         <div class="notification-body">
           <p class="notification-message">
-            Get notified when someone calls you, even when the app is closed.
+            ${t('notification.enable.body')}
           </p>
         </div>
         <div class="notification-actions">
           <button class="notification-btn notification-btn-primary" onclick="handleEnable">
-            Enable
+            ${t('shared.enable')}
           </button>
         </div>
       </div>
@@ -43,27 +44,27 @@ export function showEnableNotificationsPrompt() {
       handleEnable: async (e) => {
         const btn = e.target;
         btn.disabled = true;
-        btn.textContent = 'Enabling...';
+        btn.textContent = t('notification.enable.enabling');
 
         try {
           // This is now in a user gesture handler, so requestPermission will work
           const result = await pushNotificationController.requestPermission();
 
           if (result.state === 'granted') {
-            showSuccessToast('Notifications enabled');
+            showSuccessToast(t('notification.enable.success'));
             inAppNotificationManager.remove(NOTIFICATION_ID);
           } else if (result.state === 'denied') {
-            showWarningToast('Notifications blocked. Check browser settings.');
+            showWarningToast(t('notification.enable.blocked'));
             inAppNotificationManager.remove(NOTIFICATION_ID);
           } else {
             // Dismissed or other state - keep notification for retry
             btn.disabled = false;
-            btn.textContent = 'Enable';
+            btn.textContent = t('shared.enable');
           }
         } catch (error) {
           console.error('[ENABLE NOTIFICATIONS] Failed:', error);
           btn.disabled = false;
-          btn.textContent = 'Enable';
+          btn.textContent = t('shared.enable');
         }
       },
       handleDismiss: () => {

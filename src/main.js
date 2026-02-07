@@ -162,6 +162,7 @@ import {
 } from './components/calling/calling-ui.js';
 import { isRemoteVideoVideoActive } from './ui/legacy/watch-mode.js';
 import { onCallConnected, onCallDisconnected } from './ui/call-lifecycle-ui.js';
+import { initI18n } from './i18n/index.js';
 
 import { addDebugUpdateButton } from './components/notifications/debug-notifications.js';
 // ____ UI END ____
@@ -189,6 +190,7 @@ let cleanupFunctions = [];
 
 async function init() {
   initUI();
+  await initI18n();
 
   // Validate critical elements first
   const elements = getElements();
