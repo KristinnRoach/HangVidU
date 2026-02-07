@@ -188,8 +188,7 @@ export async function saveContact(contactUserId, roomId, lobbyElement) {
   if (!shouldSave) return;
 
   const contactName =
-    window.prompt(t('contact.name.prompt'), contactUserId) ||
-    contactUserId;
+    window.prompt(t('contact.name.prompt'), contactUserId) || contactUserId;
 
   await saveContactData(contactUserId, contactName, roomId);
 
@@ -367,10 +366,7 @@ function attachContactListeners(container, lobbyElement) {
       const contact = contacts[contactId];
       if (!contact) return;
 
-      const newName = prompt(
-        t('contact.name.edit'),
-        contact.contactName,
-      );
+      const newName = prompt(t('contact.name.edit'), contact.contactName);
       if (newName && newName.trim() && newName.trim() !== contact.contactName) {
         await saveContactData(contactId, newName.trim(), contact.roomId);
         await renderContactsList(lobbyElement);

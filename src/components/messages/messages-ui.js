@@ -169,7 +169,9 @@ export function initMessagesUI() {
       }
 
       // Show in UI
-      appendChatMessage(`📎 ${t('message.sent', { name: file.name })}`, { isSentByMe: true });
+      appendChatMessage(`📎 ${t('message.sent', { name: file.name })}`, {
+        isSentByMe: true,
+      });
     } catch (err) {
       console.error('[MessagesUI] File send failed:', err);
       appendChatMessage(t('message.send_failed'));
