@@ -13,6 +13,7 @@ import {
 
 import { onOneTapStatusChange, cancelOneTap } from '../../firebase/onetap';
 import { isDev, devDebug } from '../../utils/dev/dev-utils.js';
+import { t, onLocaleChange } from '../../i18n/index.js';
 
 import createComponent from '../../utils/dom/component.js';
 
@@ -66,7 +67,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
   authComponent = createComponent({
     initialProps: {
       isLoggedIn: initialLoggedIn,
-      userName: 'Guest User',
+      userName: t('auth.guest_user'),
       userPhotoURL: '',
       userPhotoDisplay: 'none',
       userInfoDisplay: 'none',
@@ -77,20 +78,26 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       logoutBtnDisplay: initialLoggedIn ? 'inline-block' : 'none',
     },
     template: `
-      <button style="margin-right: [[loginBtnMarginRightPx]]px; display: [[loginBtnDisplay]]" id="goog-login-btn" class="login-btn" onclick="handleLogin">Login</button>
-      <button style="display: [[logoutBtnDisplay]]" id="goog-logout-btn" class="logout-btn" onclick="handleLogout">Logout</button>
-      ${isDev() && SHOW_DEBUG_DELETE_BTN ? '<button id="delete-account-btn" class="delete-account-btn" onclick="handleDeleteAccount">Delete Account</button>' : ''}
-      <span class="signing-in-indicator" style="display: [[signingInDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">Signing in...</span>
+      <button style="margin-right: [[loginBtnMarginRightPx]]px; display: [[loginBtnDisplay]]" id="goog-login-btn" class="login-btn" onclick="handleLogin">[[t:auth.login]]</button>
+      <button style="display: [[logoutBtnDisplay]]" id="goog-logout-btn" class="logout-btn" onclick="handleLogout">[[t:auth.logout]]</button>
+      ${isDev() && SHOW_DEBUG_DELETE_BTN ? `<button id="delete-account-btn" class="delete-account-btn" onclick="handleDeleteAccount">[[t:auth.delete_account]]</button>` : ''}
+      <span class="signing-in-indicator" style="display: [[signingInDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">[[t:auth.signing_in]]</span>
       <div class="user-info" style="display: [[userInfoDisplay]]">
         <img src="[[userPhotoURL]]" alt="[[userName]]" class="user-avatar" style="display: [[userPhotoDisplay]]" onerror="handleAvatarError" />
         <span class="user-avatar-placeholder" style="display: [[avatarDisplay]]">👤</span>
         <span class="user-name">[[userName]]</span>
       </div>
     `,
+    templateFns: {
+      t: { resolve: t, onChange: onLocaleChange },
+    },
     handlers: {
       handleAvatarError: (e) => {
         if (!e.target.isConnected) return; // ignore stale errors from detached elements
-        authComponent.update({ userPhotoDisplay: 'none', avatarDisplay: 'flex' });
+        authComponent.update({
+          userPhotoDisplay: 'none',
+          avatarDisplay: 'flex',
+        });
       },
       // handleLogin: signInWithGoogle, // TODO: remove or use
       handleLogin: async (e) => {
@@ -98,31 +105,21 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           await signInWithAccountSelection(e);
         } catch (error) {
           console.error('[AuthComponent] Handle login error:', error);
-          alert(
-            'Login failed. Please refresh the page, check your connection and try again.',
-          );
+          alert(t('auth.login_failed'));
         }
       },
       handleLogout: signOutUser,
       handleDeleteAccount: async () => {
-        const confirmed = confirm(
-          'Are you sure you want to delete your account?\n\n' +
-            'This will permanently delete:\n' +
-            '• Your account\n' +
-            '• All contacts\n' +
-            '• Call history\n' +
-            '• All associated data\n\n' +
-            'This action cannot be undone.',
-        );
+        const confirmed = confirm(t('auth.delete_confirm'));
 
         if (!confirmed) return;
 
         try {
           await deleteAccount();
-          alert('Your account has been deleted successfully.');
+          alert(t('auth.delete_success'));
         } catch (error) {
           console.error('[AuthComponent] Delete account error:', error);
-          alert(error.message || 'Failed to delete account. Please try again.');
+          alert(error.message || t('auth.delete_failed'));
         }
       },
     },

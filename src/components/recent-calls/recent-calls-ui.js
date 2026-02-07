@@ -1,6 +1,8 @@
 import { getRecentRooms } from '../storage/recent-rooms.js';
+import { t, onLocaleChange } from '../i18n/index.js';
 
 let recentCallsContainer = null;
+let localeUnsubscribe = null;
 
 export function initRecentCalls() {
   if (!recentCallsContainer) {
@@ -10,6 +12,9 @@ export function initRecentCalls() {
 
     const lobby = document.getElementById('lobby');
     lobby.parentNode.insertBefore(recentCallsContainer, lobby.nextSibling);
+
+    // Subscribe to locale changes to re-render
+    localeUnsubscribe = onLocaleChange(() => renderRecentCalls());
   }
 
   renderRecentCalls();
@@ -27,14 +32,14 @@ export function renderRecentCalls() {
 
   recentCallsContainer.innerHTML = `
     <div class="recent-section">
-      <h3>Recent Calls</h3>
+      <h3>${t('call.recent')}</h3>
       ${rooms
         .map(
           (room) => `
         <button class="recent-call-btn" data-room-id="${room.id}">
-          📞 Rejoin ${room.id.slice(-6)}
+          📞 ${t('call.rejoin', { id: room.id.slice(-6) })}
         </button>
-      `
+      `,
         )
         .join('')}
     </div>

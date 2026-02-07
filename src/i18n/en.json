@@ -79,8 +79,12 @@
   "notification.enable.blocked": "Notifications blocked. Check browser settings.",
   "notification.missed.title": "Missed Call",
   "notification.missed.body": "{name} tried to call you",
+  "notification.missed.suffix": "tried to call you",
+  "notification.missed.call_back": "Call Back",
+  "notification.missed.calling": "Calling...",
   "notification.invite.title": "Contact Invitation",
   "notification.invite.body": "{name} wants to connect",
+  "notification.invite.suffix": "wants to connect",
   "notification.invite.accept": "Accept",
   "notification.invite.decline": "Decline",
   "notification.invite.accepting": "Accepting...",
@@ -90,6 +94,7 @@
   "notification.push.got_it": "Got it",
   "notification.referral.title": "You've been invited",
   "notification.referral.body": "{name} invited you to connect",
+  "notification.referral.suffix": "invited you to connect",
   "notification.referral.sign_in_prompt": "Sign in to add them as a contact",
   "notification.referral.sign_in": "Sign in",
   "notification.referral.signing_in": "Signing in...",
@@ -105,6 +110,12 @@
 
   "auth.login": "Login",
   "auth.logout": "Logout",
+  "auth.signing_in": "Signing in...",
+  "auth.guest_user": "Guest User",
+  "auth.delete_account": "Delete Account",
+  "auth.delete_confirm": "Are you sure you want to delete your account?\n\nThis will permanently delete:\n• Your account\n• All contacts\n• Call history\n• All associated data\n\nThis action cannot be undone.",
+  "auth.delete_success": "Your account has been deleted successfully.",
+  "auth.delete_failed": "Failed to delete account. Please try again.",
   "auth.login_failed": "Login failed. Please refresh the page, check your connection and try again.",
   "auth.ios_blocked": "Sign-in is blocked in the installed app on iOS.\n\nTap the Login button again to open in Safari and complete sign-in.",
   "auth.popup_blocked": "Pop-up blocked. Please enable pop-ups for this site in your browser settings, or try signing in from a desktop browser.",
@@ -153,5 +164,6 @@
   "media.exit_watch": "Exit watch mode",
 
   "referral.sign_in_banner": "Tap here to sign in and connect with your inviter",
-  "referral.sign_in_named": "{name} invited you — tap here to sign in and connect"
+  "referral.sign_in_named": "{name} invited you — tap here to sign in and connect",
+  "referral.connected": "✅ Connected with {name}!"
 }

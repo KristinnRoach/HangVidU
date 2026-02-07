@@ -1,6 +1,7 @@
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { auth, isLoggedIn, setSafariExternalOpenArmed } from './auth.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
+import { t } from '../i18n/index.js';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_APP_GOOGLE_CLIENT_ID;
 
@@ -205,11 +206,9 @@ async function handleOneTapCredential(response) {
 
     // Handle specific errors
     if (errorCode === 'auth/account-exists-with-different-credential') {
-      alert(
-        'An account already exists with the same email but different sign-in credentials.',
-      );
+      alert(t('auth.account_exists'));
     } else {
-      alert(`One Tap sign-in failed: ${errorMessage}`);
+      alert(t('auth.onetap_failed', { error: errorMessage }));
     }
   }
 }

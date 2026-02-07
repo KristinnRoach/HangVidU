@@ -148,7 +148,11 @@ import { showElement, hideElement, exitPiP } from './utils/ui/ui-utils.js';
 import { initializeAuthUI } from './components/auth/AuthComponent.js';
 import { messagesUI } from './components/messages/messages-ui.js';
 import confirmDialog from './components/base/confirm-dialog.js';
-import { showIncomingCallUI, resolveIncomingCallUI, dismissActiveIncomingCallUI } from './components/calling/incoming-call.js';
+import {
+  showIncomingCallUI,
+  resolveIncomingCallUI,
+  dismissActiveIncomingCallUI,
+} from './components/calling/incoming-call.js';
 import { showAddContactModal } from './components/contacts/add-contact-modal.js';
 import { callIndicators } from './utils/ui/call-indicators.js';
 import {
@@ -162,7 +166,7 @@ import {
 } from './components/calling/calling-ui.js';
 import { isRemoteVideoVideoActive } from './ui/legacy/watch-mode.js';
 import { onCallConnected, onCallDisconnected } from './ui/call-lifecycle-ui.js';
-import { initI18n } from './i18n/index.js';
+import { initI18n, setLocale, getLocale } from './i18n/index.js';
 
 import { addDebugUpdateButton } from './components/notifications/debug-notifications.js';
 // ____ UI END ____
@@ -244,9 +248,34 @@ async function init() {
     if (topRightMenu) {
       const notificationsToggle = createNotificationsToggle({
         parent: topRightMenu,
-        hideWhenAllRead: true, // Hide when no notifications in prod
+        hideWhenAllRead: false,
       });
       inAppNotificationManager.setToggle(notificationsToggle);
+
+      // ! TEMP DEV Test: Locale toggle button (remove after i18n testing)
+      if (isDev()) {
+        const toggleBtn = document.createElement('button');
+        toggleBtn.textContent = `🌐 ${getLocale().toUpperCase()}`;
+        toggleBtn.style.cssText = `
+      
+      z-index: 10000;
+      padding: 8px 12px;
+      background: transparent;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    `;
+        toggleBtn.onclick = async () => {
+          const newLocale = getLocale() === 'en' ? 'is' : 'en';
+          await setLocale(newLocale);
+          toggleBtn.textContent = `🌐 ${newLocale.toUpperCase()}`;
+        };
+        topRightMenu.appendChild(toggleBtn);
+      }
     }
 
     // Initialize FCM push notifications
@@ -852,21 +881,22 @@ export function listenForIncomingOnRoom(roomId) {
           // Show incoming call UI and await user action OR external state changes
           accept = await new Promise((resolve) => {
             // Set up listener for caller cancellation
-            const cancelCleanup = RoomService.onCallCancelled(roomId, (snap) => {
-              if (snap.exists()) {
-                devDebug(
-                  `[LISTENER] Caller cancelled call for room ${roomId}`,
-                );
-                resolveIncomingCallUI(roomId, 'caller_cancelled');
-                resolve('caller_cancelled');
-              }
-            });
+            const cancelCleanup = RoomService.onCallCancelled(
+              roomId,
+              (snap) => {
+                if (snap.exists()) {
+                  devDebug(
+                    `[LISTENER] Caller cancelled call for room ${roomId}`,
+                  );
+                  resolveIncomingCallUI(roomId, 'caller_cancelled');
+                  resolve('caller_cancelled');
+                }
+              },
+            );
 
             // Set up listener for answer (call answered elsewhere)
             const answerCleanup = RoomService.onAnswerAdded(roomId, () => {
-              devDebug(
-                `[LISTENER] Call answered elsewhere for room ${roomId}`,
-              );
+              devDebug(`[LISTENER] Call answered elsewhere for room ${roomId}`);
               resolveIncomingCallUI(roomId, 'answered_elsewhere');
               resolve('answered_elsewhere');
             });

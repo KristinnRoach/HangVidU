@@ -11,6 +11,7 @@ import { showInfoToast, showSuccessToast } from '../utils/ui/toast.js';
 import { getUserProfile } from '../user/profile.js';
 import { createReferralNotification } from '../components/notifications/referral-notification.js';
 import { inAppNotificationManager } from '../components/notifications/in-app-notification-manager.js';
+import { t } from '../i18n/index.js';
 
 /**
  * Store referrer ID when user arrives via referral link.
@@ -37,8 +38,8 @@ export async function captureReferral() {
 
     // Clickable toast (ephemeral)
     const message = name
-      ? `${name} invited you — tap here to sign in and connect`
-      : 'Tap here to sign in and connect with your inviter';
+      ? t('referral.sign_in_named', { name })
+      : t('referral.sign_in_banner');
 
     showInfoToast(message, {
       duration: 8000,
@@ -109,7 +110,7 @@ export async function processReferral() {
     );
 
     // Show success toast
-    showSuccessToast(`✅ Connected with ${referrerName}!`);
+    showSuccessToast(t('referral.connected', { name: referrerName }));
 
     // Clean up referral notification if still showing
     inAppNotificationManager.remove(`referral-${referrerId}`);

@@ -2,6 +2,7 @@
 
 import { createNotification } from './notification.js';
 import { escapeHtml } from '../../utils/dom/dom-utils.js';
+import { t, onLocaleChange } from '../../i18n/index.js';
 
 /**
  * Create a missed call notification component.
@@ -31,27 +32,28 @@ export function createMissedCallNotification({
       <div class="notification-content">
         <div class="notification-header">
           <span class="notification-icon">📞</span>
-          <span class="notification-title">Missed Call</span>
-          <button class="notification-dismiss" onclick="handleDismiss" title="Dismiss">×</button>
+          <span class="notification-title">[[t:notification.missed.title]]</span>
+          <button class="notification-dismiss" onclick="handleDismiss" title="[[t:shared.dismiss]]">×</button>
         </div>
         <div class="notification-body">
           <p class="notification-message">
-            <strong>${escapeHtml(displayName)}</strong> tried to call you
+            <strong>${escapeHtml(displayName)}</strong> [[t:notification.missed.suffix]]
           </p>
         </div>
         <div class="notification-actions">
           <button class="notification-btn notification-btn-primary" onclick="handleCallBack">
-            Call Back
+            [[t:notification.missed.call_back]]
           </button>
         </div>
       </div>
     `,
     className: 'notification missed-call-notification',
+    templateFns: { t: { resolve: t, onChange: onLocaleChange } },
     handlers: {
       handleCallBack: async (e) => {
         const btn = e.target;
         btn.disabled = true;
-        btn.textContent = 'Calling...';
+        btn.textContent = t('notification.missed.calling');
 
         try {
           // TODO: Consider switching to event-driven architecture for ALL call flows
@@ -62,7 +64,7 @@ export function createMissedCallNotification({
         } catch (error) {
           console.error('[MISSED CALL NOTIFICATION] Call back failed:', error);
           btn.disabled = false;
-          btn.textContent = 'Call Back';
+          btn.textContent = t('notification.missed.call_back');
         }
       },
       handleDismiss: () => {
@@ -74,4 +76,3 @@ export function createMissedCallNotification({
 
   return notification;
 }
-
