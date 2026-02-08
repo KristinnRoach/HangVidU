@@ -1,5 +1,6 @@
-import { createNotification } from './notification.js';
+import { createNotification, buildTemplate } from './notification.js';
 import { inAppNotificationManager } from './in-app-notification-manager.js';
+import { t, onLocaleChange } from '../../i18n/index.js';
 
 const NOTIFICATION_ID = 'pwa-update';
 
@@ -15,15 +16,13 @@ export function showUpdateNotification(updateSW) {
   }
 
   const notification = createNotification({
-    template: `
-      <div class="update-content">
-        <p>Update available</p>
-        <div class="update-actions">
-          <button onclick="handleUpdate">Update</button>
-          <button onclick="handleLater">Later</button>
-        </div>
-      </div>
-    `,
+    template: buildTemplate({
+      body: `<p class="notification-message">[[t:notification.update.title]]</p>`,
+      actions: `
+        <button class="notification-btn notification-btn-primary" onclick="handleUpdate">[[t:notification.update.update]]</button>
+        <button class="notification-btn notification-btn-secondary" onclick="handleLater">[[t:notification.update.later]]</button>
+      `,
+    }),
     handlers: {
       handleUpdate: () => {
         updateSW(true); // Triggers reload with new version
@@ -39,7 +38,8 @@ export function showUpdateNotification(updateSW) {
         // User can click bell to see it again and update when ready
       },
     },
-    className: 'pwa-update-notification',
+    className: 'notification pwa-update-notification',
+    templateFns: { t: { resolve: t, onChange: onLocaleChange } },
     // Don't specify parent - let notification manager handle placement
   });
 

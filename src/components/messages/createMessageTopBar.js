@@ -1,17 +1,18 @@
 import { renderAvatar } from '../../utils/ui/avatar.js';
+import { t } from '../../i18n/index.js';
 
 export function createMessageTopBar() {
   const root = document.createElement('div');
   root.className = 'messages-top-bar';
   root.innerHTML = `
-    <button type="button" class="messages-topbar-back" aria-label="Back">
+    <button type="button" class="messages-topbar-back" aria-label="${t('shared.back')}">
       <i class="fa fa-chevron-left" aria-hidden="true"></i>
     </button>
     <div class="messages-topbar-contact">
       <span class="messages-topbar-avatar" aria-hidden="true"></span>
       <span class="messages-topbar-name"></span>
     </div>
-    <button type="button" class="messages-topbar-call" aria-label="Call">
+    <button type="button" class="messages-topbar-call" aria-label="${t('message.call')}">
       <i class="fa fa-phone" aria-hidden="true"></i>
     </button>
   `;
@@ -22,7 +23,7 @@ export function createMessageTopBar() {
   const nameEl = root.querySelector('.messages-topbar-name');
 
   const setContact = ({ name = '', photoURL = '' } = {}) => {
-    nameEl.textContent = name || 'Unknown';
+    nameEl.textContent = name || t('shared.unknown');
     renderAvatar(avatar, { name, photoURL, imageClass: 'has-image' });
   };
 

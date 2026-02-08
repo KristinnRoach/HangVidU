@@ -1,3 +1,4 @@
+import { t } from '../../i18n/index.js';
 import { onClickOutside } from '../../utils/ui/clickOutside.js';
 import { hideElement, isHidden, showElement } from '../../utils/ui/ui-utils.js';
 import { renderAvatar } from '../../utils/ui/avatar.js';
@@ -156,7 +157,7 @@ export function initMessagesUI() {
 
     // Show progress during transfer (don't disable - CSS hides disabled buttons)
     const originalText = sendBtn.textContent;
-    sendBtn.textContent = 'Sending...';
+    sendBtn.textContent = t('message.sending');
 
     try {
       await fileTransfer.sendFile(file, (progress) => {
@@ -169,10 +170,12 @@ export function initMessagesUI() {
       }
 
       // Show in UI
-      appendChatMessage(`📎 Sent: ${file.name}`, { isSentByMe: true });
+      appendChatMessage(`📎 ${t('message.sent', { name: file.name })}`, {
+        isSentByMe: true,
+      });
     } catch (err) {
       console.error('[MessagesUI] File send failed:', err);
-      appendChatMessage('❌ Failed to send file');
+      appendChatMessage(t('message.send_failed'));
     } finally {
       sendBtn.textContent = originalText;
       fileInput.value = ''; // Reset input
@@ -218,7 +221,7 @@ export function initMessagesUI() {
       dialog.innerHTML = `
         <div style="text-align: center;">
           <div style="font-size: 48px; margin-bottom: 16px;">📹</div>
-          <h3 style="margin: 0 0 8px 0; color: var(--text-primary, #fff);">Video Received</h3>
+          <h3 style="margin: 0 0 8px 0; color: var(--text-primary, #fff);">${t('message.video_received')}</h3>
           <p id="file-name-display" style="margin: 0 0 24px 0; color: var(--text-secondary, #aaa); font-size: 14px;">
           </p>
           <div style="display: flex; gap: 12px; justify-content: center;">
@@ -233,7 +236,7 @@ export function initMessagesUI() {
               font-size: 14px;
               transition: all 0.2s;
             ">
-              <i class="fa fa-download" style="margin-right: 8px;"></i>Download
+              <i class="fa fa-download" style="margin-right: 8px;"></i>${t('message.download')}
             </button>
             <button id="watch-together-btn" style="
               flex: 1;
@@ -247,7 +250,7 @@ export function initMessagesUI() {
               font-weight: 600;
               transition: all 0.2s;
             ">
-              <i class="fa fa-play" style="margin-right: 8px;"></i>Watch Together
+              <i class="fa fa-play" style="margin-right: 8px;"></i>${t('message.watch_together')}
             </button>
           </div>
         </div>
@@ -338,11 +341,11 @@ export function initMessagesUI() {
       dialog.innerHTML = `
         <div style="text-align: center;">
           <div style="font-size: 48px; margin-bottom: 16px;">🎬</div>
-          <h3 style="margin: 0 0 8px 0; color: var(--text-primary, #fff);">Watch Together Request</h3>
+          <h3 style="margin: 0 0 8px 0; color: var(--text-primary, #fff);">${t('message.watch_request.title')}</h3>
           <p id="watch-request-filename" style="margin: 0 0 24px 0; color: var(--text-secondary, #aaa); font-size: 14px;">
           </p>
           <p style="margin: 0 0 24px 0; color: var(--text-secondary, #aaa); font-size: 13px;">
-            Partner wants to watch this video together
+            ${t('message.watch_request.body')}
           </p>
           <div style="display: flex; gap: 12px; justify-content: center;">
             <button id="decline-watch-btn" style="
@@ -356,7 +359,7 @@ export function initMessagesUI() {
               font-size: 14px;
               transition: all 0.2s;
             ">
-              Decline
+              ${t('call.decline')}
             </button>
             <button id="accept-watch-btn" style="
               flex: 1;
@@ -370,7 +373,7 @@ export function initMessagesUI() {
               font-weight: 600;
               transition: all 0.2s;
             ">
-              <i class="fa fa-play" style="margin-right: 8px;"></i>Join
+              <i class="fa fa-play" style="margin-right: 8px;"></i>${t('shared.join')}
             </button>
           </div>
         </div>
@@ -428,26 +431,26 @@ export function initMessagesUI() {
     const file = sentFiles.get(fileName);
 
     if (!file) {
-      appendChatMessage(`❌ File not available to watch together: ${fileName}`);
+      appendChatMessage(`❌ ${t('message.watch.file_unavailable', { name: fileName })}`);
       await cancelWatchRequest();
       return;
     }
 
     // Show notification
-    appendChatMessage(`🎬 Partner wants to watch: ${fileName}`);
+    appendChatMessage(`🎬 ${t('message.watch.partner_wants', { name: fileName })}`);
 
     // Prompt user to join
     const accepted = await promptJoinWatchTogether(fileName);
 
     if (accepted) {
-      appendChatMessage('✅ Joining watch together...');
+      appendChatMessage(`✅ ${t('message.watch.joining')}`);
       const success = await acceptWatchRequest(file);
 
       if (!success) {
-        appendChatMessage('❌ Failed to load video');
+        appendChatMessage(`❌ ${t('message.watch.failed_load')}`);
       }
     } else {
-      appendChatMessage('❌ Declined watch together request');
+      appendChatMessage(`❌ ${t('message.watch.declined')}`);
       await cancelWatchRequest();
     }
   };
@@ -626,7 +629,7 @@ export function initMessagesUI() {
     const { isSentByMe, senderDisplay, fileDownload, messageId, reactions } =
       options;
     // prefer explicit senderDisplay, otherwise 'Me' for local messages
-    const effectiveSender = senderDisplay ?? (isSentByMe === true ? 'Me' : '');
+    const effectiveSender = senderDisplay ?? (isSentByMe === true ? t('shared.me') : '');
 
     const p = document.createElement('p');
     // Apply alignment class based on sender
@@ -640,7 +643,7 @@ export function initMessagesUI() {
     avatarSpan.setAttribute('aria-hidden', 'true');
 
     if (isSentByMe === true) {
-      renderAvatar(avatarSpan, { customFallbackText: 'Me' });
+      renderAvatar(avatarSpan, { customFallbackText: t('shared.me') });
     } else if (isSentByMe === false) {
       const contactName = currentSession?.contactName || effectiveSender;
       const photoURL =
@@ -844,7 +847,7 @@ export function initMessagesUI() {
     avatarSpan.setAttribute('aria-hidden', 'true');
 
     if (iAmTheCaller) {
-      renderAvatar(avatarSpan, { customFallbackText: 'Me' });
+      renderAvatar(avatarSpan, { customFallbackText: t('shared.me') });
     } else {
       const contactName = currentSession?.contactName || msgData.callerName;
       const photoURL =
@@ -859,7 +862,7 @@ export function initMessagesUI() {
 
     const callStatusText = document.createElement('span');
     callStatusText.className = 'call-event-text';
-    callStatusText.textContent = iAmTheCaller ? 'No Answer' : 'Missed Call';
+    callStatusText.textContent = iAmTheCaller ? t('call.no_answer') : t('call.missed');
 
     // Create call back action inside the same bubble
     const callBackBtn = document.createElement('button');
@@ -871,7 +874,7 @@ export function initMessagesUI() {
     callBackIcon.setAttribute('aria-hidden', 'true');
     callBackBtn.appendChild(callBackIcon);
     callBackBtn.appendChild(
-      document.createTextNode(iAmTheCaller ? 'Try again' : 'Call back'),
+      document.createTextNode(iAmTheCaller ? t('call.try_again') : t('call.callback')),
     );
 
     callBackBtn.addEventListener('click', async () => {
@@ -892,7 +895,7 @@ export function initMessagesUI() {
           }
         } catch (e) {
           console.warn('[MessagesUI] Failed to initiate call back:', e);
-          showInfoToast('Unable to call. Please try again.');
+          showInfoToast(t('error.call_failed'));
         }
       }
     });
@@ -1063,18 +1066,18 @@ export function initMessagesUI() {
 
           if (action === 'watch') {
             // Show notification in chat
-            appendChatMessage(`📹 Received video: ${file.name}`, {
+            appendChatMessage(`📹 ${t('message.received_video', { name: file.name })}`, {
               isSentByMe: false,
             });
             appendChatMessage(
-              '🎬 Requesting partner to join watch together...',
+              `🎬 ${t('message.watch.requesting')}`,
             );
 
             // Load video locally first
             const success = await handleVideoSelection(file);
 
             if (!success) {
-              appendChatMessage('❌ Failed to load video');
+              appendChatMessage(`❌ ${t('message.watch.failed_load')}`);
               return;
             }
 
@@ -1082,9 +1085,9 @@ export function initMessagesUI() {
             const requestCreated = await createWatchRequest(file.name, file);
 
             if (requestCreated) {
-              appendChatMessage('⏳ Waiting for partner to join...');
+              appendChatMessage(`⏳ ${t('message.watch.waiting')}`);
             } else {
-              appendChatMessage('❌ Failed to send watch request');
+              appendChatMessage(`❌ ${t('message.watch.request_failed')}`);
             }
           } else {
             // Download the file
@@ -1097,11 +1100,11 @@ export function initMessagesUI() {
             // Using 1 second to be safe for slow devices/large files
             setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-            appendChatMessage(`📎 Downloaded: ${file.name}`);
+            appendChatMessage(`📎 ${t('message.downloaded', { name: file.name })}`);
           }
         } else {
           // Non-video file - show download link as before
-          appendChatMessage(`📎 Received: ${file.name}`, {
+          appendChatMessage(`📎 ${t('message.received', { name: file.name })}`, {
             isSentByMe: false,
             fileDownload: { fileName: file.name, url },
           });
@@ -1115,7 +1118,7 @@ export function initMessagesUI() {
 
         // Reset button text after receive completes
         if (isReceivingFile) {
-          sendBtn.textContent = 'Send';
+          sendBtn.textContent = t('shared.send');
           isReceivingFile = false;
         }
       };
@@ -1149,7 +1152,7 @@ export function initMessagesUI() {
 
     // Reset send button text in case file transfer was in progress
     if (sendBtn) {
-      sendBtn.textContent = 'Send';
+      sendBtn.textContent = t('shared.send');
     }
 
     // Hide attachment button (will be shown again when FileTransfer is available)
@@ -1257,7 +1260,7 @@ export function initMessagesUI() {
    */
   function openContactMessages(contactId, contactName, openMessageBox = false) {
     if (!getLoggedInUserId()) {
-      showInfoToast('Please sign in to send messages');
+      showInfoToast(t('message.sign_in_required'));
       return;
     }
 

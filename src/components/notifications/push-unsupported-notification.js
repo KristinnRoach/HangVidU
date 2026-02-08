@@ -1,7 +1,8 @@
 // push-unsupported-notification.js - Notification for browsers without Web Push support
 
-import { createNotification } from './notification.js';
+import { createNotification, buildTemplate } from './notification.js';
 import { inAppNotificationManager } from './in-app-notification-manager.js';
+import { t, onLocaleChange } from '../../i18n/index.js';
 
 const NOTIFICATION_ID = 'push-unsupported';
 
@@ -19,27 +20,24 @@ export function showPushUnsupportedNotification() {
   }
 
   const notification = createNotification({
-    template: `
-      <div class="notification-content">
-        <div class="notification-header">
-          <span class="notification-title">Push notifications unavailable</span>
-          <button class="notification-dismiss" onclick="handleDismiss" title="Dismiss">\u00d7</button>
-        </div>
-        <div class="notification-body">
-          <p class="notification-message">
-            Your browser doesn't support push notifications.
-            To receive call alerts when the app isn't focused, install via
-            <strong>Chrome</strong>, <strong>Edge</strong>, or <strong>Firefox</strong>.
-          </p>
-        </div>
-        <div class="notification-actions">
-          <button class="notification-btn notification-btn-secondary" onclick="handleDismiss">
-            Got it
-          </button>
-        </div>
-      </div>
-    `,
+    template: buildTemplate({
+      header: `
+        <span class="notification-title">[[t:notification.push.unsupported.title]]</span>
+        <button class="notification-dismiss" onclick="handleDismiss" title="[[t:shared.dismiss]]">×</button>
+      `,
+      body: `
+        <p class="notification-message">
+          [[t:notification.push.unsupported.body]]
+        </p>
+      `,
+      actions: `
+        <button class="notification-btn notification-btn-secondary" onclick="handleDismiss">
+          [[t:notification.push.got_it]]
+        </button>
+      `,
+    }),
     className: 'notification push-unsupported-notification',
+    templateFns: { t: { resolve: t, onChange: onLocaleChange } },
     handlers: {
       handleDismiss: () => {
         inAppNotificationManager.remove(NOTIFICATION_ID);

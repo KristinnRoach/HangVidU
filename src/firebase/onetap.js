@@ -1,10 +1,32 @@
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { auth, isLoggedIn, setSafariExternalOpenArmed } from './auth.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
+import { t, getLocale, onLocaleChange } from '../i18n/index.js';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_APP_GOOGLE_CLIENT_ID;
+const GIS_SCRIPT_BASE = 'https://accounts.google.com/gsi/client';
 
 const oneTapCallbacks = new Set();
+
+/**
+ * Load the Google Identity Services script with the given locale.
+ * Removes any previously loaded GIS script first.
+ */
+function loadGISScript(locale) {
+  return new Promise((resolve, reject) => {
+    // Remove existing GIS script if present
+    const existing = document.querySelector(`script[src^="${GIS_SCRIPT_BASE}"]`);
+    if (existing) existing.remove();
+
+    const script = document.createElement('script');
+    script.src = `${GIS_SCRIPT_BASE}?hl=${locale}`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load GIS script'));
+    document.head.appendChild(script);
+  });
+}
 
 /**
  * Suppress FedCM abort errors that occur when users dismiss One Tap.
@@ -73,7 +95,7 @@ function notifyOneTapStatus(status) {
   });
 }
 
-export function initOneTap() {
+export async function initOneTap() {
   devDebug('[ONE TAP] initOneTap called');
 
   if (!GOOGLE_CLIENT_ID) {
@@ -83,45 +105,43 @@ export function initOneTap() {
     return;
   }
 
-  // Add retry limit to prevent infinite loop
-  if (!initOneTap.retryCount) {
-    initOneTap.retryCount = 0;
-  }
-
-  if (typeof google === 'undefined' || !google.accounts?.id) {
-    initOneTap.retryCount++;
-
-    // Stop retrying after 50 attempts (5 seconds)
-    if (initOneTap.retryCount > 50) {
-      devDebug(
-        '[ONE TAP] Google Identity Services library not available after 50 retries, giving up',
-      );
-      return;
-    }
-
-    devDebug(
-      '[ONE TAP] Google Identity Services library not loaded yet, retrying...',
-    );
-    setTimeout(() => initOneTap(), 100);
+  // Load GIS script dynamically with current locale
+  try {
+    await loadGISScript(getLocale());
+  } catch (e) {
+    devDebug('[ONE TAP] Failed to load GIS script:', e);
     return;
   }
 
   devDebug('[ONE TAP] Google library loaded');
-  initOneTap.retryCount = 0; // Reset counter on success
 
   // Suppress FedCM abort errors when user dismisses One Tap
   // These are expected user actions, not actual errors
   suppressFedCMAbortErrors();
 
+  initializeGIS();
+
+  // Re-load GIS with new locale when language changes
+  onLocaleChange(async (locale) => {
+    devDebug('[ONE TAP] Locale changed to', locale, '— reloading GIS');
+    try {
+      await loadGISScript(locale);
+      initializeGIS();
+    } catch (e) {
+      devDebug('[ONE TAP] Failed to reload GIS for locale:', e);
+    }
+  });
+}
+
+function initializeGIS() {
   google.accounts.id.initialize({
     client_id: GOOGLE_CLIENT_ID,
     callback: handleOneTapCredential,
     auto_select: false,
-    cancel_on_tap_outside: false, // TODO: come back to this once tested on various devices / browsers
+    cancel_on_tap_outside: false,
     context: 'signin',
     use_fedcm_for_prompt: true,
-    itp_support: true, // ? Check
-    // use_fedcm_for_button: true, // Only relevant if adding Google's rendered “GIS button” flow
+    itp_support: true,
   });
 }
 
@@ -205,11 +225,9 @@ async function handleOneTapCredential(response) {
 
     // Handle specific errors
     if (errorCode === 'auth/account-exists-with-different-credential') {
-      alert(
-        'An account already exists with the same email but different sign-in credentials.',
-      );
+      alert(t('auth.account_exists'));
     } else {
-      alert(`One Tap sign-in failed: ${errorMessage}`);
+      alert(t('auth.onetap_failed', { error: errorMessage }));
     }
   }
 }

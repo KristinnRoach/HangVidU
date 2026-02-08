@@ -13,6 +13,7 @@ import {
 import { fetchGoogleContacts } from '../../contacts/google-contacts.js';
 import { getContacts } from '../contacts/contacts.js';
 import { sendBulkEmailsViaGmail } from '../../contacts/gmail-send.js';
+import { t } from '../../i18n/index.js';
 
 /**
  * Show a modal to add contacts with platform selection and search.
@@ -26,19 +27,19 @@ export async function showAddContactModal() {
     dialog.innerHTML = `
       <button type="button" data-action="cancel" class="close-btn" aria-label="Close">×</button>
 
-      <h2>Add Contacts</h2>
+      <h2>${t('contact.add.title')}</h2>
 
       <div class="platform-selector">
-        <button type="button" class="platform-btn active" data-platform="google" title="Import from Google Contacts">
+        <button type="button" class="platform-btn active" data-platform="google" title="${t('contact.import.google')}">
           <i class="fa-brands fa-google"></i>
         </button>
-        <button type="button" class="platform-btn" data-platform="facebook" title="Import from Facebook (Coming soon)" disabled>
+        <button type="button" class="platform-btn" data-platform="facebook" title="${t('contact.import.facebook')}" disabled>
           <i class="fa-brands fa-facebook"></i>
         </button>
-        <button type="button" class="platform-btn" data-platform="instagram" title="Import from Instagram (Coming soon)" disabled>
+        <button type="button" class="platform-btn" data-platform="instagram" title="${t('contact.import.instagram')}" disabled>
           <i class="fa-brands fa-instagram"></i>
         </button>
-        <button type="button" class="platform-btn" data-platform="tiktok" title="Import from TikTok (Coming soon)" disabled>
+        <button type="button" class="platform-btn" data-platform="tiktok" title="${t('contact.import.tiktok')}" disabled>
           <i class="fa-brands fa-tiktok"></i>
         </button>
       </div>
@@ -48,12 +49,12 @@ export async function showAddContactModal() {
           type="text"
           id="contact-search-input"
           class="contact-search-input"
-          placeholder="Search..."
+          placeholder="${t('contact.search')}"
         />
       </div>
 
       <div id="contacts-container" class="contacts-container-modal">
-        <p class="empty-state">Select a platform above to import contacts</p>
+        <p class="empty-state">${t('contact.import.select_platform')}</p>
       </div>
 
       <div id="import-status" class="import-status"></div>
@@ -135,7 +136,7 @@ export async function showAddContactModal() {
 
     // Import Google Contacts function
     async function importGoogleContacts() {
-      importStatus.textContent = 'Requesting access...';
+      importStatus.textContent = t('contact.import.requesting');
       importStatus.className = 'import-status loading';
       contactsContainer.innerHTML = '';
       allContacts = [];
@@ -145,20 +146,20 @@ export async function showAddContactModal() {
         // Step 1: Get access token
         const accessToken = await requestContactsAccess();
 
-        importStatus.textContent = 'Fetching contacts...';
+        importStatus.textContent = t('contact.import.fetching');
 
         // Step 2: Fetch Google Contacts
         const contacts = await fetchGoogleContacts(accessToken);
 
         if (contacts.length === 0) {
-          importStatus.textContent = 'No contacts with email addresses found.';
+          importStatus.textContent = t('contact.import.no_email');
           importStatus.className = 'import-status not-found';
           contactsContainer.innerHTML =
-            '<p class="empty-state">No contacts found.</p>';
+            `<p class="empty-state">${t('contact.import.none')}</p>`;
           return;
         }
 
-        importStatus.textContent = `Found ${contacts.length} contacts. Checking HangVidU...`;
+        importStatus.textContent = t('contact.import.found_checking', { count: contacts.length });
 
         // Step 3: Get saved contacts to check if already connected
         const savedContacts = await getContacts();
@@ -213,7 +214,7 @@ export async function showAddContactModal() {
 
         // Display results
         filteredContacts = allContacts;
-        importStatus.textContent = `Found ${allContacts.length} contacts`;
+        importStatus.textContent = t('contact.import.found', { count: allContacts.length });
         importStatus.className = 'import-status success';
 
         renderImportResults(
@@ -226,15 +227,15 @@ export async function showAddContactModal() {
         console.error('[ADD CONTACT] Import error:', error);
 
         if (error.message === 'Authorization cancelled') {
-          importStatus.textContent = 'Import cancelled.';
+          importStatus.textContent = t('contact.import.cancelled');
           importStatus.className = 'import-status cancelled';
         } else {
-          importStatus.textContent = `Error: ${error.message}`;
+          importStatus.textContent = t('contact.import.error', { error: error.message });
           importStatus.className = 'import-status error';
         }
 
         contactsContainer.innerHTML =
-          '<p class="empty-state">Failed to load contacts.</p>';
+          `<p class="empty-state">${t('contact.import.failed')}</p>`;
       }
     }
 
@@ -261,7 +262,7 @@ function renderImportResults(
   container.innerHTML = '';
 
   if (allContacts.length === 0) {
-    container.innerHTML = '<p class="empty-state">No contacts found.</p>';
+    container.innerHTML = `<p class="empty-state">${t('contact.import.none')}</p>`;
     return;
   }
 
@@ -271,7 +272,7 @@ function renderImportResults(
   header.innerHTML = `
     <label class="select-all-label">
       <input type="checkbox" id="select-all-checkbox" />
-      <span>Select All (${allContacts.length})</span>
+      <span>${t('contact.select_all', { count: allContacts.length })}</span>
     </label>
   `;
   container.appendChild(header);
@@ -294,17 +295,17 @@ function renderImportResults(
     let actionButton = '';
 
     if (isAlreadySaved) {
-      statusBadge = '<span class="status-badge saved">✓ Saved</span>';
+      statusBadge = `<span class="status-badge saved">✓ ${t('contact.status.saved')}</span>`;
       actionButton = ''; // No action needed
     } else if (user) {
-      statusBadge = '<span class="status-badge on-app">On HangVidU</span>';
+      statusBadge = `<span class="status-badge on-app">${t('contact.status.on_app')}</span>`;
       actionButton = `
         <button type="button" class="invite-btn" data-uid="${escapeHtml(user.uid)}" data-name="${escapeHtml(user.displayName)}">
-          Invite
+          ${t('contact.invite')}
         </button>
       `;
     } else {
-      statusBadge = '<span class="status-badge not-on-app">Not on app</span>';
+      statusBadge = `<span class="status-badge not-on-app">${t('contact.status.not_on_app')}</span>`;
       actionButton = ''; // Will use referral link for these
     }
 
@@ -325,15 +326,15 @@ function renderImportResults(
       const btn = li.querySelector('.invite-btn');
       btn.addEventListener('click', async () => {
         btn.disabled = true;
-        btn.textContent = 'Sending...';
+        btn.textContent = t('shared.sending');
 
         try {
           await sendInvite(user.uid, user.displayName);
-          btn.textContent = '✓ Sent';
+          btn.textContent = `✓ ${t('contact.invite.sent_one')}`;
           btn.classList.add('sent');
         } catch (err) {
           console.error('[ADD CONTACT] Invite error:', err);
-          btn.textContent = 'Error';
+          btn.textContent = t('shared.error');
           btn.disabled = false;
         }
       });
@@ -384,10 +385,10 @@ function renderImportResults(
   bulkActionsContainer.innerHTML = `
     <div class="bulk-actions">
       <button type="button" id="invite-selected-btn" class="action-btn" disabled>
-        Invite Selected (0)
+        ${t('contact.invite.selected', { count: 0 })}
       </button>
       <button type="button" id="share-link-btn" class="action-btn secondary" disabled>
-        Email Invite (0)
+        ${t('contact.invite.email', { count: 0 })}
       </button>
     </div>
   `;
@@ -406,10 +407,10 @@ function renderImportResults(
     const notOnAppCount = selectedArray.filter((c) => !c.user).length;
 
     inviteSelectedBtn.disabled = onAppCount === 0;
-    inviteSelectedBtn.textContent = `Invite Selected (${onAppCount})`;
+    inviteSelectedBtn.textContent = t('contact.invite.selected', { count: onAppCount });
 
     shareLinkBtn.disabled = notOnAppCount === 0;
-    shareLinkBtn.textContent = `Email Invite (${notOnAppCount})`;
+    shareLinkBtn.textContent = t('contact.invite.email', { count: notOnAppCount });
   }
 
   // Handle "Invite Selected" button (for users on HangVidU)
@@ -421,7 +422,7 @@ function renderImportResults(
     if (toInvite.length === 0) return;
 
     inviteSelectedBtn.disabled = true;
-    inviteSelectedBtn.textContent = 'Sending invites...';
+    inviteSelectedBtn.textContent = t('contact.invite.sending');
 
     let successCount = 0;
     for (const contact of toInvite) {
@@ -433,7 +434,7 @@ function renderImportResults(
       }
     }
 
-    inviteSelectedBtn.textContent = `✓ Sent ${successCount} invite${successCount !== 1 ? 's' : ''}`;
+    inviteSelectedBtn.textContent = `✓ ${t('contact.invite.sent', { count: successCount })}`;
     setTimeout(() => {
       selectedContacts.clear();
       updateActionButtons();
@@ -453,13 +454,13 @@ function renderImportResults(
 
     // Disable button during operation
     shareLinkBtn.disabled = true;
-    shareLinkBtn.textContent = 'Requesting permission...';
+    shareLinkBtn.textContent = t('contact.invite.requesting_permission');
 
     try {
       // Step 1: Request Gmail send permission
       const accessToken = await requestGmailSendAccess();
 
-      shareLinkBtn.textContent = 'Sending emails...';
+      shareLinkBtn.textContent = t('contact.invite.sending_emails');
 
       // Step 2: Generate referral link
       const myUserId = getLoggedInUserId();
@@ -472,8 +473,8 @@ function renderImportResults(
       const senderName = currentUser?.displayName || 'A friend';
 
       // Step 4: Prepare email content
-      const subject = 'Join me on HangVidU!';
-      const body = `Hi!\n\n${senderName} invited you to join HangVidU - an app for text messaging, video calls and video sharing.\n\nClick here to get started:\n${referralLink}\n\nSee you there!`;
+      const subject = t('contact.invite.subject');
+      const body = t('contact.invite.body', { name: senderName, link: referralLink });
 
       // Step 5: Send emails via Gmail API
       const results = await sendBulkEmailsViaGmail(
@@ -485,7 +486,7 @@ function renderImportResults(
 
       // Step 6: Show results
       if (results.sent > 0) {
-        shareLinkBtn.textContent = `✓ Sent ${results.sent} email${results.sent !== 1 ? 's' : ''}!`;
+        shareLinkBtn.textContent = `✓ ${t('contact.invite.sent_emails', { count: results.sent })}`;
         shareLinkBtn.classList.add('success');
 
         // Clear selection after success
@@ -499,7 +500,7 @@ function renderImportResults(
           shareLinkBtn.classList.remove('success');
         }, 3000);
       } else {
-        shareLinkBtn.textContent = 'Failed to send emails';
+        shareLinkBtn.textContent = t('contact.invite.failed_emails');
         shareLinkBtn.disabled = false;
       }
 
@@ -514,20 +515,18 @@ function renderImportResults(
 
       // Fallback to mailto: if Gmail API fails
       if (err.message === 'Authorization cancelled') {
-        shareLinkBtn.textContent = 'Permission denied - using email client...';
+        shareLinkBtn.textContent = t('contact.invite.permission_denied');
 
         // Wait a moment then open mailto: as fallback
         setTimeout(() => {
           openMailtoFallback(notOnApp);
-          shareLinkBtn.textContent = `Email Invite (${notOnApp.length})`;
+          shareLinkBtn.textContent = t('contact.invite.email', { count: notOnApp.length });
           shareLinkBtn.disabled = false;
         }, 1500);
       } else {
-        shareLinkBtn.textContent = 'Error - try again';
+        shareLinkBtn.textContent = t('contact.invite.error_retry');
         shareLinkBtn.disabled = false;
-        alert(
-          `Failed to send emails: ${err.message}\n\nPlease try again or use your email client.`,
-        );
+        alert(t('contact.invite.failed_detail', { error: err.message }));
       }
     }
   });
@@ -542,9 +541,9 @@ function renderImportResults(
     const currentUser = getCurrentUser();
     const senderName = currentUser?.displayName || 'A friend';
 
-    const subject = encodeURIComponent('Join me on HangVidU!');
+    const subject = encodeURIComponent(t('contact.invite.subject'));
     const body = encodeURIComponent(
-      `Hi!\n\n${senderName} invited you to join HangVidU - an app for text messaging, video calls and video sharing.\n\nClick here to get started:\n${referralLink}\n\nSee you there!\n`,
+      t('contact.invite.body', { name: senderName, link: referralLink }),
     );
 
     let mailtoLink;

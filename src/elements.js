@@ -1,5 +1,6 @@
 // elements.js - Centralized DOM element exports
 import { devDebug } from './utils/dev/dev-utils.js';
+import { t } from './i18n/index.js';
 
 const getElement = (id) => {
   const el = document.getElementById(id);
@@ -11,11 +12,10 @@ const getElement = (id) => {
 };
 
 // Element references - initialized after DOM is ready
+let appWrapper = null;
 let lobbyDiv = null;
 let lobbyCallBtn = null;
 let titleAuthBar = null;
-// let createLinkBtn = null;
-// let copyLinkBtn = null;
 let videosWrapper = null;
 let localVideoEl = null;
 let localBoxEl = null;
@@ -43,13 +43,48 @@ let pasteJoinBtn = null;
 let addContactBtn = null;
 let testNotificationsBtn = null;
 
+// i18n attributes configuration: { elementId: { attrs: ['attr1', 'attr2'], key: 'translation.key' } }
+const i18nElements = {
+  'app-title-a': { attrs: ['title'], key: 'nav.app_title' },
+  'lobby-call-btn': { attrs: ['title'], key: 'call.start' },
+  'paste-join-btn': { attrs: ['title'], key: 'a11y.paste_join' },
+  'add-contact-btn': { attrs: ['title'], key: 'a11y.add_contact' },
+  'test-notifications-btn': {
+    attrs: ['title'],
+    key: 'a11y.test_notifications',
+  },
+  'exit-watch-mode-btn': { attrs: ['title'], key: 'media.exit_watch' },
+  searchBtn: { attrs: ['title'], key: 'media.youtube.search' },
+  searchQuery: { attrs: ['placeholder'], key: 'media.youtube.placeholder' },
+  'camera-btn': { attrs: ['aria-label'], key: 'a11y.camera_toggle' },
+  'switch-camera-btn': { attrs: ['aria-label'], key: 'a11y.camera_switch' },
+  'mic-btn': { attrs: ['aria-label'], key: 'a11y.mic_toggle' },
+  'mute-btn': { attrs: ['aria-label'], key: 'a11y.partner_mute' },
+  'fullscreen-partner-btn': { attrs: ['aria-label'], key: 'a11y.fullscreen' },
+  'remote-pip-btn': { attrs: ['aria-label'], key: 'a11y.pip' },
+  'app-pip-btn': { attrs: ['aria-label'], key: 'a11y.popup' },
+};
+
+/**
+ * Update all i18n element attributes based on current locale
+ */
+export function updateI18nElements() {
+  Object.entries(i18nElements).forEach(([elementId, { attrs, key }]) => {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const translation = t(key);
+    attrs.forEach((attr) => {
+      el.setAttribute(attr, translation);
+    });
+  });
+}
+
 function initializeElements() {
+  appWrapper = getElement('app');
   lobbyDiv = getElement('lobby');
   lobbyCallBtn = getElement('lobby-call-btn');
 
   titleAuthBar = getElement('title-auth-bar');
-  // createLinkBtn = getElement('create-link-btn');
-  // copyLinkBtn = getElement('copy-link-btn');
 
   videosWrapper = getElement('videos');
   localVideoEl = getElement('local-video-el');
@@ -90,11 +125,10 @@ if (document.readyState === 'loading') {
 
 // Export getters to ensure we always return current references
 export const getElements = () => ({
+  appWrapper,
   lobbyDiv,
   lobbyCallBtn,
   titleAuthBar,
-  // createLinkBtn,
-  // copyLinkBtn,
   videosWrapper,
   localVideoEl,
   localBoxEl,
@@ -124,11 +158,10 @@ export const getElements = () => ({
 
 // Export individual elements
 export {
+  appWrapper,
   lobbyDiv,
   lobbyCallBtn,
   titleAuthBar,
-  // createLinkBtn,
-  // copyLinkBtn,
   videosWrapper,
   localVideoEl,
   localBoxEl,

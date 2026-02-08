@@ -1,3 +1,5 @@
+import { t, onLocaleChange } from '../../i18n/index.js';
+
 /**
  * Creates the messages box DOM structure and initializes textarea auto-grow behavior.
  * Appends the box to document.body and returns references to key elements.
@@ -21,11 +23,11 @@ export function createMessageBox() {
 
       <form id="messages-form">
 
-        <textarea id="messages-input" placeholder="Type a message..." rows="1"></textarea>
+        <textarea id="messages-input" placeholder="" rows="1"></textarea>
 
         <div class="message-attachments">
           <input type="file" id="file-input" style="display: none" />
-          <button type="button" id="attach-file-btn" title="Attach file">
+          <button type="button" id="attach-file-btn" title="">
             <i class="fa fa-paperclip" aria-hidden="true"></i>
           </button>
         </div>
@@ -43,6 +45,19 @@ export function createMessageBox() {
   const messagesMessages = messagesBoxContainer.querySelector('#messages');
   const messagesForm = messagesBoxContainer.querySelector('#messages-form');
   const messagesInput = messagesBoxContainer.querySelector('#messages-input');
+  const attachFileBtn = messagesBoxContainer.querySelector('#attach-file-btn');
+
+  // Update i18n attributes on locale change
+  const updateI18n = () => {
+    if (messagesInput) messagesInput.placeholder = t('message.placeholder');
+    if (attachFileBtn) attachFileBtn.title = t('message.attach');
+  };
+
+  // Set initial values
+  updateI18n();
+
+  // Subscribe to locale changes
+  onLocaleChange(updateI18n);
 
   // Prevent viewport resize/shift when virtual keyboard appears on mobile
   if ('virtualKeyboard' in navigator) {

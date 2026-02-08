@@ -1,9 +1,9 @@
 // src/utils/dom/component.js
-import { tempWarn } from '../dev/dev-utils.js';
 import {
   captureInputState,
   captureMediaState,
   html,
+  sanitize,
   restoreInputState,
   restoreMediaState,
 } from './component-utils.js';
@@ -27,6 +27,10 @@ import { isDOMReady } from './dom-utils.js';
  * @param {string} [options.className=''] - CSS class name(s) to apply to the container element.
  * @param {Function} [options.onMount] - Called once after initial render (after append if autoAppend).
  * @param {Function|Function[]} [options.onCleanup] - Function(s) to run on component disposal.
+ * @param {Object<string, ((string) => string) | {resolve: (string) => string, onChange?: function}>} [options.templateFns]
+ *   String-to-string functions callable from templates via [[prefix:arg]] syntax.
+ *   Either a bare function (static) or { resolve, onChange } for reactive re-rendering.
+ *   Prefix names should contain only letters, numbers, and underscores (e.g., "t", "fmt", "i18n_v2").
  * @param {boolean} [options.autoAppend=true] - Whether to append to parent automatically.
  * @param {boolean} [options.preserveInputState=true] - Whether to preserve input/media state during re-renders.
  * @returns {HTMLElement} The root component element with reactive props and update API.
@@ -43,6 +47,7 @@ const createComponent = ({
   className = '',
   onMount = null,
   onCleanup = null,
+  templateFns = {},
   autoAppend = true,
   preserveInputState = true,
 } = {}) => {
@@ -57,6 +62,51 @@ const createComponent = ({
   if (className) element.className = className;
 
   let currentProps = { ...initialProps };
+
+  // Setup templateFns: extract resolve functions and subscribe to onChange triggers
+  const templateFnResolvers = {};
+  const templateFnCleanups = [];
+  for (const [prefix, config] of Object.entries(templateFns)) {
+    // Validate prefix contains only safe characters
+    if (!/^[a-zA-Z0-9_]+$/.test(prefix)) {
+      console.warn(
+        `[createComponent]: templateFns prefix "${prefix}" contains special characters. ` +
+          `Use only letters, numbers, and underscores (e.g., "t", "fmt", "i18n_v2").`,
+      );
+
+      continue; // Skip to avoid regex injection in render()
+    }
+
+    // Validate resolve function
+    if (typeof config === 'function') {
+      templateFnResolvers[prefix] = config;
+    } else if (typeof config === 'object' && config !== null) {
+      if (typeof config.resolve !== 'function') {
+        console.warn(
+          `[createComponent]: templateFns.${prefix}.resolve is not a function. ` +
+            `Expected a function or an object with a resolve function.`,
+        );
+        continue;
+      }
+      templateFnResolvers[prefix] = config.resolve;
+    } else {
+      console.warn(
+        `[createComponent]: templateFns.${prefix} must be a function or an object with a resolve function.`,
+      );
+      continue;
+    }
+
+    if (config?.onChange) {
+      const unsub = config.onChange(() => render());
+      if (typeof unsub === 'function') {
+        templateFnCleanups.push(unsub);
+      } else {
+        console.warn(
+          `[createComponent]: templateFns.${prefix}.onChange did not return cleanup function`,
+        );
+      }
+    }
+  }
 
   // Track which props are actually used in the template
   const usedProps = new Set();
@@ -83,9 +133,28 @@ const createComponent = ({
       mediaState = captureMediaState(element);
     }
 
+    // Pre-resolve templateFns (e.g. [[t:key]] → resolved string) before prop interpolation
+    let resolvedTemplate = template;
+    for (const [prefix, fn] of Object.entries(templateFnResolvers)) {
+      resolvedTemplate = resolvedTemplate.replace(
+        new RegExp(`\\[\\[${prefix}:([^\\]]+)\\]\\]`, 'g'),
+        (_, key) => {
+          try {
+            return sanitize(String(fn(key.trim()) ?? ''));
+          } catch (e) {
+            console.warn(
+              `[createComponent]: templateFns.${prefix} threw for key "${key.trim()}"`,
+              e,
+            );
+            return `[[${prefix}:${key.trim()}]]`; // Preserve placeholder for debugging
+          }
+        },
+      );
+    }
+
     // Render
     element.textContent = '';
-    const content = html(template, currentProps);
+    const content = html(resolvedTemplate, currentProps);
     element.appendChild(content);
 
     // Attach event handlers for any on<event>="handlerName" attributes
@@ -226,6 +295,9 @@ const createComponent = ({
       }
     }
 
+    templateFnCleanups.forEach((unsub) => {
+      if (typeof unsub === 'function') unsub();
+    });
     renderListeners.length = 0;
     anyUpdateListeners.length = 0;
     for (const prop in singlePropListeners) {
@@ -246,7 +318,10 @@ const createComponent = ({
       onMount(element);
       // setTimeout(() => onMount(element), 0); // ! Testing setTimeout to avoid blocking
     } catch (e) {
-      tempWarn('[createComponent]: Error in onMount handler of component', e);
+      console.warn(
+        '[createComponent]: Error in onMount handler of component',
+        e,
+      );
       /* no-op */
     }
   }

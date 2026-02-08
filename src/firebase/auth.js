@@ -17,12 +17,20 @@ import {
 import { app } from './firebase.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { initOneTap, showOneTapSignin } from './onetap.js';
+import { t } from '../i18n/index.js';
 
 import { initializePresence, setOffline } from './presence.js';
 import { registerUserInDirectory } from '../contacts/user-discovery.js';
 import { saveUserProfile } from '../user/profile.js';
+import { getLocale, onLocaleChange } from '../i18n/index.js';
 
 export const auth = getAuth(app);
+
+// Sync Firebase Auth popup language with app locale
+auth.languageCode = getLocale();
+onLocaleChange((locale) => {
+  auth.languageCode = locale;
+});
 
 /**
  * Get current user's ID token (JWT)
@@ -83,9 +91,9 @@ export const authReady = (async () => {
   devDebug('[AUTH] Auth initialization complete, scheduling One Tap...');
 
   // Small delay to ensure page is fully loaded
-  setTimeout(() => {
+  setTimeout(async () => {
     devDebug('[AUTH] Timeout fired, calling initOneTap()...');
-    initOneTap();
+    await initOneTap();
     showOneTapSignin();
   }, 500);
 })();
@@ -169,17 +177,13 @@ function handleSignInError(error) {
       `[AUTH] ${errorCode} inside iOS standalone PWA. Arming Safari fallback.`,
     );
     setSafariExternalOpenArmed(true);
-    alert(
-      'Sign-in is blocked in the installed app on iOS.\n\nTap the Login button again to open in Safari and complete sign-in.',
-    );
+    alert(t('auth.ios_blocked'));
     return;
   }
 
   // If popup is blocked (and not iOS standalone which is handled above), inform user
   if (errorCode === 'auth/popup-blocked') {
-    alert(
-      'Pop-up blocked. Please enable pop-ups for this site in your browser settings, or try signing in from a desktop browser.',
-    );
+    alert(t('auth.popup_blocked'));
     return;
   }
 
@@ -215,14 +219,12 @@ function handleSignInError(error) {
       navigator.clipboard.writeText(origin).catch(() => {});
     }
 
-    alert(
-      `Sign-in failed: Unauthorized domain.\n\n${guidanceLines.join('\n')}`,
-    );
+    alert(t('auth.unauthorized', { details: guidanceLines.join('\n') }));
     return;
   }
 
   // Generic fallback for any other errors
-  alert(`Sign-in failed: ${errorMessage}`);
+  alert(t('auth.sign_in_failed', { error: errorMessage }));
 }
 
 let guestUserId = null; // Generated ID when not logged in (cached for session)
@@ -571,11 +573,16 @@ function requestGISToken(cacheKey, scope, { interactive = false } = {}) {
     function onTokenResponse(response, onNeedConsent) {
       if (response.error) {
         if (onNeedConsent) {
-          console.log(`[AUTH] Silent ${cacheKey} token failed (${response.error}), trying interactive...`);
+          console.log(
+            `[AUTH] Silent ${cacheKey} token failed (${response.error}), trying interactive...`,
+          );
           onNeedConsent();
           return;
         }
-        console.error(`[AUTH] ${cacheKey} token request error:`, response.error);
+        console.error(
+          `[AUTH] ${cacheKey} token request error:`,
+          response.error,
+        );
         if (response.error === 'access_denied') {
           reject(new Error('Authorization cancelled'));
         } else {
@@ -596,7 +603,9 @@ function requestGISToken(cacheKey, scope, { interactive = false } = {}) {
 
     // Interactive popup
     function requestInteractive() {
-      console.log(`[AUTH] Requesting ${cacheKey} access via interactive popup...`);
+      console.log(
+        `[AUTH] Requesting ${cacheKey} access via interactive popup...`,
+      );
       const client = google.accounts.oauth2.initTokenClient({
         client_id: GOOGLE_CLIENT_ID,
         scope,
@@ -628,7 +637,9 @@ function requestGISToken(cacheKey, scope, { interactive = false } = {}) {
       hint,
       callback: (response) => onTokenResponse(response, requestInteractive),
       error_callback: () => {
-        console.log(`[AUTH] Silent ${cacheKey} error_callback, trying interactive...`);
+        console.log(
+          `[AUTH] Silent ${cacheKey} error_callback, trying interactive...`,
+        );
         requestInteractive();
       },
     });

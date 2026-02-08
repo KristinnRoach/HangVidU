@@ -40,12 +40,13 @@ class InAppNotificationManager {
   }
 
   /**
-   * Show the notifications list
+   * Show the notifications list and mark all as read
    */
   showList() {
     if (this.container) {
       this.container.style.display = 'flex';
       this.setupClickOutside();
+      this.markAllAsRead();
     }
   }
 
@@ -179,6 +180,33 @@ class InAppNotificationManager {
   }
 
   /**
+   * Get count of unread notifications
+   * @returns {number}
+   */
+  getUnreadCount() {
+    let unread = 0;
+    this.notifications.forEach((notification) => {
+      if (!notification.isRead) {
+        unread++;
+      }
+    });
+    return unread;
+  }
+
+  /**
+   * Mark all notifications as read
+   * @private
+   */
+  markAllAsRead() {
+    this.notifications.forEach((notification) => {
+      if (notification.markAsRead) {
+        notification.markAsRead();
+      }
+    });
+    this.updateToggle();
+  }
+
+  /**
    * Check if a notification exists
    * @param {string} id - Notification identifier
    * @returns {boolean}
@@ -199,13 +227,46 @@ class InAppNotificationManager {
   }
 
   /**
-   * Update the toggle badge count
+   * Update the toggle badge count and disabled state
    * @private
    */
   updateToggle() {
     if (this.toggle) {
-      this.toggle.setUnread(this.getCount());
+      const count = this.getCount();
+      const unreadCount = this.getUnreadCount();
+      this.toggle.setCount(count);
+      this.toggle.setUnread(unreadCount);
     }
+  }
+
+  /**
+   * Add a dummy notification for testing (dev only)
+   * @private
+   */
+  addDummy() {
+    // Lazy import to avoid bundling in production
+    import('./notification.js').then(
+      ({ createNotification, buildTemplate }) => {
+        const notificationNumber = this.getCount() + 1;
+        const id = `dummy-notification-${Date.now()}`;
+
+        const notification = createNotification({
+          template: buildTemplate({
+            body: `<p class="notification-message">Dummy Notification #[[number]]</p>`,
+            actions: `<button class="notification-btn notification-btn-secondary" onclick="handleDismiss">Dismiss</button>`,
+          }),
+          handlers: {
+            handleDismiss: () => {
+              this.remove(id);
+            },
+          },
+          initialProps: { number: notificationNumber },
+          className: 'notification',
+        });
+
+        this.add(id, notification);
+      },
+    );
   }
 }
 
