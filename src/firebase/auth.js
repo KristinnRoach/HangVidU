@@ -91,9 +91,9 @@ export const authReady = (async () => {
   devDebug('[AUTH] Auth initialization complete, scheduling One Tap...');
 
   // Small delay to ensure page is fully loaded
-  setTimeout(() => {
+  setTimeout(async () => {
     devDebug('[AUTH] Timeout fired, calling initOneTap()...');
-    initOneTap();
+    await initOneTap();
     showOneTapSignin();
   }, 500);
 })();
