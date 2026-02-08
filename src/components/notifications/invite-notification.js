@@ -1,6 +1,6 @@
 // invite-notification.js - Contact invitation notification component
 
-import { createNotification } from './notification.js';
+import { createNotification, buildTemplate } from './notification.js';
 import { escapeHtml } from '../../utils/dom/dom-utils.js';
 import { t, onLocaleChange } from '../../i18n/index.js';
 
@@ -31,28 +31,26 @@ export function createInviteNotification({
     : '<span class="notification-icon">👤</span>';
 
   const notification = createNotification({
-    template: `
-      <div class="notification-content">
-        <div class="notification-header">
-          ${iconHtml}
-          <span class="notification-title">[[t:notification.invite.title]]</span>
-        </div>
-        <div class="notification-body">
-          <p class="notification-message">
-            <strong>${escapeHtml(fromName)}</strong> [[t:notification.invite.suffix]]
-          </p>
-          ${fromEmail ? `<p class="notification-detail">${escapeHtml(fromEmail)}</p>` : ''}
-        </div>
-        <div class="notification-actions">
-          <button class="notification-btn notification-btn-accept" onclick="handleAccept">
-            [[t:notification.invite.accept]]
-          </button>
-          <button class="notification-btn notification-btn-decline" onclick="handleDecline">
-            [[t:notification.invite.decline]]
-          </button>
-        </div>
-      </div>
-    `,
+    template: buildTemplate({
+      header: `
+        ${iconHtml}
+        <span class="notification-title">[[t:notification.invite.title]]</span>
+      `,
+      body: `
+        <p class="notification-message">
+          <strong>${escapeHtml(fromName)}</strong> [[t:notification.invite.suffix]]
+        </p>
+        ${fromEmail ? `<p class="notification-detail">${escapeHtml(fromEmail)}</p>` : ''}
+      `,
+      actions: `
+        <button class="notification-btn notification-btn-accept" onclick="handleAccept">
+          [[t:notification.invite.accept]]
+        </button>
+        <button class="notification-btn notification-btn-decline" onclick="handleDecline">
+          [[t:notification.invite.decline]]
+        </button>
+      `,
+    }),
     className: 'notification invite-notification',
     templateFns: { t: { resolve: t, onChange: onLocaleChange } },
     handlers: {

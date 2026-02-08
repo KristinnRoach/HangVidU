@@ -128,6 +128,9 @@
   "notification.referral.sign_in": "Skrá inn",
   "notification.referral.signing_in": "Skrái inn...",
   "notification.toggle": "Tilkynningar",
+  "notification.update.title": "Uppfærsla tiltæk",
+  "notification.update.update": "Uppfæra",
+  "notification.update.later": "Seinna",
 
   "dialog.share.title": "Deila þessum tengli",
   "dialog.share.link_label": "Tengill til að afrita",

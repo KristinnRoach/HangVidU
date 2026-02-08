@@ -1,6 +1,6 @@
 // referral-notification.js - Referral landing notification for logged-out users
 
-import { createNotification } from './notification.js';
+import { createNotification, buildTemplate } from './notification.js';
 import { escapeHtml } from '../../utils/dom/dom-utils.js';
 import { t, onLocaleChange } from '../../i18n/index.js';
 
@@ -26,25 +26,23 @@ export function createReferralNotification({
     : '<span class="notification-icon">👤</span>';
 
   return createNotification({
-    template: `
-      <div class="notification-content">
-        <div class="notification-header">
-          ${iconHtml}
-          <span class="notification-title">[[t:notification.referral.title]]</span>
-        </div>
-        <div class="notification-body">
-          <p class="notification-message">
-            <strong>${escapeHtml(name)}</strong> [[t:notification.referral.suffix]]
-          </p>
-          <p class="notification-detail">[[t:notification.referral.sign_in_prompt]]</p>
-        </div>
-        <div class="notification-actions">
-          <button class="notification-btn notification-btn-accept" onclick="handleSignIn">
-            [[t:notification.referral.sign_in]]
-          </button>
-        </div>
-      </div>
-    `,
+    template: buildTemplate({
+      header: `
+        ${iconHtml}
+        <span class="notification-title">[[t:notification.referral.title]]</span>
+      `,
+      body: `
+        <p class="notification-message">
+          <strong>${escapeHtml(name)}</strong> [[t:notification.referral.suffix]]
+        </p>
+        <p class="notification-detail">[[t:notification.referral.sign_in_prompt]]</p>
+      `,
+      actions: `
+        <button class="notification-btn notification-btn-accept" onclick="handleSignIn">
+          [[t:notification.referral.sign_in]]
+        </button>
+      `,
+    }),
     className: 'notification referral-notification',
     templateFns: { t: { resolve: t, onChange: onLocaleChange } },
     handlers: {

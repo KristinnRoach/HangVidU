@@ -56,6 +56,7 @@ import {
   testNotificationsBtn,
   getElements,
   updateI18nElements,
+  appWrapper,
 } from './elements.js';
 
 import {
@@ -167,7 +168,13 @@ import {
 } from './components/calling/calling-ui.js';
 import { isRemoteVideoVideoActive } from './ui/legacy/watch-mode.js';
 import { onCallConnected, onCallDisconnected } from './ui/call-lifecycle-ui.js';
-import { initI18n, setLocale, getLocale, t, onLocaleChange } from './i18n/index.js';
+import {
+  initI18n,
+  setLocale,
+  getLocale,
+  t,
+  onLocaleChange,
+} from './i18n/index.js';
 
 import { addDebugUpdateButton } from './components/notifications/debug-notifications.js';
 // ____ UI END ____
@@ -257,14 +264,19 @@ async function init() {
         hideWhenAllRead: false,
       });
       inAppNotificationManager.setToggle(notificationsToggle);
+    }
 
-      // ! TEMP DEV Test: Locale toggle button (remove after i18n testing)
-      if (isDev()) {
-        const toggleLangBtn = document.createElement('button');
-        toggleLangBtn.textContent = `🌐 ${getLocale().toUpperCase()}`;
-        toggleLangBtn.style.cssText = `
-      
-      z-index: 10000;
+    // ! TEMP DEV Test: Locale toggle button (remove after i18n testing)
+    if (isDev()) {
+      const toggleLangBtn = document.createElement('button', { is: 'button' });
+      toggleLangBtn.id = 'toggle-lang-btn';
+      toggleLangBtn.textContent = `🌐 ${getLocale().toUpperCase()}`;
+      toggleLangBtn.style.cssText = `
+      position: fixed;
+      bottom: 2px;
+      left: 2px;
+
+      z-index: 0;
       padding: 8px 12px;
       background: transparent;
       color: white;
@@ -274,15 +286,14 @@ async function init() {
       font-weight: bold;
       white-space: nowrap;
       cursor: pointer;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      box-shadow: none; 
     `;
-        toggleLangBtn.onclick = async () => {
-          const newLocale = getLocale() === 'en' ? 'is' : 'en';
-          await setLocale(newLocale);
-          toggleLangBtn.textContent = `🌐 ${newLocale.toUpperCase()}`;
-        };
-        topRightMenu.appendChild(toggleLangBtn);
-      }
+      toggleLangBtn.onclick = async () => {
+        const newLocale = getLocale() === 'en' ? 'is' : 'en';
+        await setLocale(newLocale);
+        toggleLangBtn.textContent = `🌐 ${newLocale.toUpperCase()}`;
+      };
+      appWrapper && appWrapper.appendChild(toggleLangBtn);
     }
 
     // Initialize FCM push notifications

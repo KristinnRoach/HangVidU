@@ -1,17 +1,29 @@
 /* view-state.css - Declarative visibility based on data-view attribute */
 /* Usage: <body data-view="lobby|calling|connected"> */
 
-/* Hide call controls */
-body[data-view='lobby'] .call-controls {
-  display: none;
-}
-body[data-view='calling'] .call-controls {
-  display: none;
+body[data-view='lobby'] {
+  & .call-controls {
+    /* & + SPACE = descendant, otherwise same element */
+    display: none;
+  }
+
+  & #legal-footer {
+    display: flex;
+  }
 }
 
-/* Connected view: hide lobby */
-body[data-view='connected'] #lobby {
-  display: none;
+body[data-view='calling'] {
+  & .call-controls {
+    display: none;
+  }
+}
+
+body[data-view='connected'] {
+  & #lobby,
+  & #toggle-lang-btn,
+  & #legal-footer {
+    display: none;
+  }
 }
 
 /* ============================================================================
@@ -20,11 +32,15 @@ body[data-view='connected'] #lobby {
    ============================================================================ */
 
 /* Default: show remote stream, hide others */
-body[data-main-content='remoteStream'] #yt-video-box {
-  display: none;
+body[data-main-content='remoteStream'] {
+  & #yt-video-box {
+    display: none;
+  }
 }
 
 /* Watch mode: show YouTube, hide remote stream */
-body[data-main-content='ytVideo'] #remote-video-box {
-  display: none;
+body[data-main-content='ytVideo'] {
+  & #remote-video-box {
+    display: none;
+  }
 }

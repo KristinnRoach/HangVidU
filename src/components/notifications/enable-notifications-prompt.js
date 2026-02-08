@@ -1,10 +1,10 @@
 // enable-notifications-prompt.js - Prompt user to enable push notifications
 
-import { createNotification } from './notification.js';
+import { createNotification, buildTemplate } from './notification.js';
 import { inAppNotificationManager } from './in-app-notification-manager.js';
 import { pushNotificationController } from '../../notifications/push-notification-controller.js';
 import { showSuccessToast, showWarningToast } from '../../utils/ui/toast.js';
-import { t } from '../../i18n/index.js';
+import { t, onLocaleChange } from '../../i18n/index.js';
 
 const NOTIFICATION_ID = 'enable-notifications';
 
@@ -20,26 +20,25 @@ export function showEnableNotificationsPrompt() {
   }
 
   const notification = createNotification({
-    template: `
-      <div class="notification-content">
-        <div class="notification-header">
-          <span class="notification-icon">🔔</span>
-          <span class="notification-title">${t('notification.enable.title')}</span>
-          <button class="notification-dismiss" onclick="handleDismiss" title="${t('shared.dismiss')}">×</button>
-        </div>
-        <div class="notification-body">
-          <p class="notification-message">
-            ${t('notification.enable.body')}
-          </p>
-        </div>
-        <div class="notification-actions">
-          <button class="notification-btn notification-btn-primary" onclick="handleEnable">
-            ${t('shared.enable')}
-          </button>
-        </div>
-      </div>
-    `,
+    template: buildTemplate({
+      header: `
+        <span class="notification-icon">🔔</span>
+        <span class="notification-title">[[t:notification.enable.title]]</span>
+        <button class="notification-dismiss" onclick="handleDismiss" title="[[t:shared.dismiss]]">×</button>
+      `,
+      body: `
+        <p class="notification-message">
+          [[t:notification.enable.body]]
+        </p>
+      `,
+      actions: `
+        <button class="notification-btn notification-btn-primary" onclick="handleEnable">
+          [[t:shared.enable]]
+        </button>
+      `,
+    }),
     className: 'notification enable-notifications-notification',
+    templateFns: { t: { resolve: t, onChange: onLocaleChange } },
     handlers: {
       handleEnable: async (e) => {
         const btn = e.target;

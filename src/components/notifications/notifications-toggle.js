@@ -20,6 +20,7 @@ export function createNotificationsToggle({
 
   const component = createComponent({
     initialProps: {
+      count: 0,
       unreadCount: 0,
       isHidden: true,
     },
@@ -50,17 +51,29 @@ export function createNotificationsToggle({
     parent,
   });
 
-  // Manually control badge visibility based on unreadCount
-  let initialBadge = component.querySelector('.notification-badge');
+  // Manually set initial state
+  const initialBtn = component.querySelector('.notifications-toggle-btn');
+  const initialBadge = component.querySelector('.notification-badge');
+
+  if (initialBtn) {
+    initialBtn.disabled = component.count === 0; // Disabled when no notifications exist
+  }
+
   if (initialBadge) {
     initialBadge.style.display = 'none'; // Initially hidden
   }
 
-  component.onPropUpdated('unreadCount', (count) => {
-    // Re-query badge each time since re-renders create new elements
+  // Update badge visibility and button disabled state after every render
+  // (fires on re-renders from prop changes OR locale changes)
+  component.onRender((props) => {
     const badge = component.querySelector('.notification-badge');
     if (badge) {
-      badge.style.display = count > 0 ? 'flex' : 'none';
+      badge.style.display = props.unreadCount > 0 ? 'flex' : 'none';
+    }
+
+    const btn = component.querySelector('.notifications-toggle-btn');
+    if (btn) {
+      btn.disabled = props.count === 0; // Disabled only when list is empty
     }
   });
 
@@ -75,9 +88,13 @@ export function createNotificationsToggle({
     component.style.display = 'none';
   };
 
-  component.setUnread = (count) => {
-    component.unreadCount = count;
-    if (count > 0) {
+  component.setCount = (count) => {
+    component.count = count;
+  };
+
+  component.setUnread = (unreadCount) => {
+    component.unreadCount = unreadCount;
+    if (unreadCount > 0) {
       component.show();
     } else {
       hideWhenAllRead && component.hide();
