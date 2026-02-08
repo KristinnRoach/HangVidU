@@ -73,6 +73,8 @@ const createComponent = ({
         `[createComponent]: templateFns prefix "${prefix}" contains special characters. ` +
           `Use only letters, numbers, and underscores (e.g., "t", "fmt", "i18n_v2").`,
       );
+
+      continue; // Skip to avoid regex injection in render()
     }
 
     // Validate resolve function
