@@ -22,8 +22,15 @@ import { t } from '../i18n/index.js';
 import { initializePresence, setOffline } from './presence.js';
 import { registerUserInDirectory } from '../contacts/user-discovery.js';
 import { saveUserProfile } from '../user/profile.js';
+import { getLocale, onLocaleChange } from '../i18n/index.js';
 
 export const auth = getAuth(app);
+
+// Sync Firebase Auth popup language with app locale
+auth.languageCode = getLocale();
+onLocaleChange((locale) => {
+  auth.languageCode = locale;
+});
 
 /**
  * Get current user's ID token (JWT)
