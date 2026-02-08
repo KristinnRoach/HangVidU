@@ -166,7 +166,7 @@ import {
 } from './components/calling/calling-ui.js';
 import { isRemoteVideoVideoActive } from './ui/legacy/watch-mode.js';
 import { onCallConnected, onCallDisconnected } from './ui/call-lifecycle-ui.js';
-import { initI18n, setLocale, getLocale } from './i18n/index.js';
+import { initI18n, setLocale, getLocale, t } from './i18n/index.js';
 
 import { addDebugUpdateButton } from './components/notifications/debug-notifications.js';
 // ____ UI END ____
@@ -370,9 +370,7 @@ function handleMediaPermissionError(error) {
     error?.name === 'NotAllowedError' ||
     error?.name === 'PermissionDeniedError'
   ) {
-    alert(
-      'Camera/microphone access is required for video calls. Please click "Allow" when prompted, or check your browser settings.',
-    );
+    alert(t('error.media.permission'));
   }
   resetLocalStreamInitFlag();
 }
@@ -1379,7 +1377,7 @@ async function handleCopyLink() {
     const success = await copyToClipboard(state.roomLink);
     if (success) {
       devDebug('Link copied to clipboard!');
-      alert('Link copied!');
+      alert(t('status.link_copied'));
     } else {
       devDebug('Failed to copy link to clipboard.');
     }
@@ -1409,7 +1407,7 @@ if (pasteJoinBtn) {
         const roomId = normalizeRoomInput(clipboardText);
 
         if (!roomId) {
-          alert('No valid room link found in clipboard.');
+          alert(t('error.clipboard.no_link'));
           return;
         }
 
@@ -1417,12 +1415,10 @@ if (pasteJoinBtn) {
       } catch (error) {
         // Clipboard access denied or other error
         if (error.name === 'NotAllowedError') {
-          alert(
-            'Clipboard access denied. Please allow clipboard access or paste the link manually.',
-          );
+          alert(t('error.clipboard.denied'));
         } else {
           console.error('Paste & Join failed:', error);
-          alert('Failed to read clipboard. Please try again.');
+          alert(t('error.clipboard.failed'));
         }
       }
     };
@@ -1449,36 +1445,23 @@ if (isDev() && testNotificationsBtn) {
       console.log('[TEST] Testing notification permissions...');
 
       const result = await pushNotificationController.requestPermission({
-        title: 'Enable Push Notifications',
-        explain:
-          'Get notified of incoming calls and messages even when HangVidU is closed.',
         onGranted: () => {
           console.log('[TEST] Notifications granted!');
-          alert(
-            "✅ Push notifications enabled! You'll now receive notifications for incoming calls.",
-          );
+          alert('✅ ' + t('status.push_enabled'));
         },
         onDenied: (reason) => {
           console.log('[TEST] Notifications denied:', reason);
           if (reason === 'silent-block') {
-            alert(
-              '❌ Notifications were blocked silently. Please enable them manually in your browser settings.',
-            );
+            alert('❌ ' + t('error.push.blocked'));
           } else if (reason === 'already-denied') {
-            alert(
-              '❌ Notifications were previously denied. Please enable them in your browser settings.',
-            );
+            alert('❌ ' + t('error.push.denied_prev'));
           } else {
-            alert(
-              '❌ Notifications were denied. You can enable them later in your browser settings.',
-            );
+            alert('❌ ' + t('error.push.denied'));
           }
         },
         onDismissed: () => {
           console.log('[TEST] Notification prompt dismissed');
-          alert(
-            '⚠️ Notification prompt was dismissed. You can try again anytime.',
-          );
+          alert('⚠️ ' + t('error.push.dismissed'));
         },
       });
 
@@ -1486,11 +1469,11 @@ if (isDev() && testNotificationsBtn) {
 
       // If already enabled, show current status
       if (pushNotificationController.isNotificationEnabled()) {
-        alert('✅ Push notifications are already enabled!');
+        alert('✅ ' + t('status.push_already'));
       }
     } catch (error) {
       console.error('[TEST] Error testing notifications:', error);
-      alert('❌ Error testing notifications: ' + error.message);
+      alert('❌ ' + t('error.push.test') + error.message);
     }
   };
 }
@@ -1696,10 +1679,7 @@ window.onload = async () => {
     console.error(
       'Initialization failed. Call functionality disabled. Please reload the page.',
     );
-    alert(
-      'Hangvidu could not initialize properly.\n\n' +
-        'Please check your camera/microphone permissions and reload the page.',
-    );
+    alert(t('error.init.alert'));
     return;
   }
 

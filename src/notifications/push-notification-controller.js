@@ -88,8 +88,6 @@ export class PushNotificationController {
    */
   async requestPermission(options = {}) {
     const {
-      title = 'Enable notifications',
-      explain = 'Get notified of incoming calls and messages even when the app is closed.',
       onGranted = null,
       onDenied = null,
       onDismissed = null,

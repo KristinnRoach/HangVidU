@@ -125,6 +125,7 @@
   "status.push_enabled": "Push tilkynningar virkjaðar! Þú færð nú tilkynningar um símtöl.",
   "status.push_already": "Push tilkynningar eru nú þegar virkjaðar!",
 
+  "error.media.permission": "Aðgangur að myndavél/hljóðnema er nauðsynlegur fyrir myndsímtöl. Smelltu á \"Leyfa\" þegar beðið er um það, eða athugaðu vafrastillingar.",
   "error.call_failed": "Ekki hægt að hringja. Reyndu aftur.",
   "error.clipboard.no_link": "Enginn gildur herbergistengill fundust í klippispjaldi.",
   "error.clipboard.denied": "Aðgangur að klippispjaldi hafnaður. Leyfaðu aðgang að klippispjaldi eða líttu tengilinn inn handvirkt.",

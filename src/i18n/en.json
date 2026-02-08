@@ -143,6 +143,7 @@
   "status.push_enabled": "Push notifications enabled! You'll now receive notifications for incoming calls.",
   "status.push_already": "Push notifications are already enabled!",
 
+  "error.media.permission": "Camera/microphone access is required for video calls. Please click \"Allow\" when prompted, or check your browser settings.",
   "error.call_failed": "Unable to call. Please try again.",
   "error.clipboard.no_link": "No valid room link found in clipboard.",
   "error.clipboard.denied": "Clipboard access denied. Please allow clipboard access or paste the link manually.",
