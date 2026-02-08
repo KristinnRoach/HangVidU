@@ -266,12 +266,11 @@ async function init() {
       inAppNotificationManager.setToggle(notificationsToggle);
     }
 
-    // ! TEMP DEV Test: Locale toggle button (remove after i18n testing)
-    if (isDev()) {
-      const toggleLangBtn = document.createElement('button', { is: 'button' });
-      toggleLangBtn.id = 'toggle-lang-btn';
-      toggleLangBtn.textContent = `🌐 ${getLocale().toUpperCase()}`;
-      toggleLangBtn.style.cssText = `
+    // TODO: integrate into template (and settings menu once implemented) ____
+    const toggleLangBtn = document.createElement('button');
+    toggleLangBtn.id = 'toggle-lang-btn';
+    toggleLangBtn.textContent = `🌐 ${getLocale().toUpperCase()}`;
+    toggleLangBtn.style.cssText = `
       position: fixed;
       bottom: 2px;
       left: 2px;
@@ -288,13 +287,13 @@ async function init() {
       cursor: pointer;
       box-shadow: none; 
     `;
-      toggleLangBtn.onclick = async () => {
-        const newLocale = getLocale() === 'en' ? 'is' : 'en';
-        await setLocale(newLocale);
-        toggleLangBtn.textContent = `🌐 ${newLocale.toUpperCase()}`;
-      };
-      appWrapper && appWrapper.appendChild(toggleLangBtn);
-    }
+    toggleLangBtn.onclick = async () => {
+      const newLocale = getLocale() === 'en' ? 'is' : 'en';
+      await setLocale(newLocale);
+      toggleLangBtn.textContent = `🌐 ${newLocale.toUpperCase()}`;
+    };
+    appWrapper && appWrapper.appendChild(toggleLangBtn);
+    // END TODO ________________________
 
     // Initialize FCM push notifications
     try {

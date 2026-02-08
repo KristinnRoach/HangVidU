@@ -6,7 +6,7 @@ function confirmDialog(message, options = {}) {
   return new Promise((resolve) => {
     const dialog = document.createElement('dialog');
     dialog.innerHTML = `
-      <p>${message}</p>
+      <p></p>
       <div class="confirm-dialog-actions">
         <button data-action="cancel">${t('shared.cancel')}</button>
         <button data-action="confirm" autofocus>${t('shared.confirm')}</button>
@@ -14,6 +14,9 @@ function confirmDialog(message, options = {}) {
     `;
 
     dialog.classList.add('confirm-dialog');
+
+    // Safely set message using textContent to prevent XSS
+    dialog.querySelector('p').textContent = message;
 
     const confirmBtn = dialog.querySelector('[data-action="confirm"]');
     const cancelBtn = dialog.querySelector('[data-action="cancel"]');
