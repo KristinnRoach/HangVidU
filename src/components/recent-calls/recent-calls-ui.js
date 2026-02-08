@@ -13,6 +13,9 @@ export function initRecentCalls() {
     const lobby = document.getElementById('lobby');
     lobby.parentNode.insertBefore(recentCallsContainer, lobby.nextSibling);
 
+    // Register click handler once (event delegation handles dynamic buttons)
+    recentCallsContainer.addEventListener('click', handleRecentClick);
+
     // Subscribe to locale changes to re-render
     localeUnsubscribe = onLocaleChange(() => renderRecentCalls());
   }
@@ -44,8 +47,6 @@ export function renderRecentCalls() {
         .join('')}
     </div>
   `;
-
-  recentCallsContainer.addEventListener('click', handleRecentClick);
 }
 
 function handleRecentClick(event) {
