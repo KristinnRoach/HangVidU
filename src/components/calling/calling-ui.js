@@ -8,6 +8,7 @@ import { getDiagnosticLogger } from '../../utils/dev/diagnostic-logger.js';
 import RoomService from '../../room.js';
 import { ringtoneManager } from '../../media/audio/ringtone-manager.js';
 import { uiState } from '../../ui/state.js';
+import { t } from '../../i18n/index.js';
 
 const CALL_TIMEOUT_MS = 30000; // 30 seconds
 
@@ -130,7 +131,7 @@ export async function showCallingUI(roomId, contactName, onCancel) {
   `;
 
   const title = document.createElement('h2');
-  title.textContent = `Calling ${contactName || 'contact'}...`;
+  title.textContent = t('call.calling', { name: contactName || t('shared.contact') });
   title.style.cssText = `
     margin: 0 0 10px 0;
     font-size: 20px;
@@ -138,7 +139,7 @@ export async function showCallingUI(roomId, contactName, onCancel) {
   `;
 
   const subtitle = document.createElement('p');
-  subtitle.textContent = 'Waiting for answer...';
+  subtitle.textContent = t('call.waiting');
   subtitle.style.cssText = `
     margin: 0 0 20px 0;
     color: #bbb;
@@ -146,7 +147,7 @@ export async function showCallingUI(roomId, contactName, onCancel) {
   `;
 
   const cancelBtn = document.createElement('button');
-  cancelBtn.textContent = 'Cancel';
+  cancelBtn.textContent = t('shared.cancel');
   cancelBtn.style.cssText = `
     padding: 10px 24px;
     background: #c34949ff;

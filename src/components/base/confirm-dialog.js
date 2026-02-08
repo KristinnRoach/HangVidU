@@ -1,3 +1,5 @@
+import { t } from '../../i18n/index.js';
+
 let activeCleanup = null;
 
 function confirmDialog(message, options = {}) {
@@ -6,8 +8,8 @@ function confirmDialog(message, options = {}) {
     dialog.innerHTML = `
       <p>${message}</p>
       <div class="confirm-dialog-actions">
-        <button data-action="cancel">Cancel</button>
-        <button data-action="confirm" autofocus>Confirm</button>
+        <button data-action="cancel">${t('shared.cancel')}</button>
+        <button data-action="confirm" autofocus>${t('shared.confirm')}</button>
       </div>
     `;
 

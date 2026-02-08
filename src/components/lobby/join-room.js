@@ -1,3 +1,5 @@
+import { t } from '../../i18n/index.js';
+
 export function initJoinRoomForm(container, onSubmit) {
   if (!container) return;
 
@@ -12,14 +14,14 @@ export function initJoinRoomForm(container, onSubmit) {
   const input = document.createElement('input');
   input.type = 'text';
   input.id = 'room-id-input';
-  input.placeholder = 'Enter Room ID';
+  input.placeholder = t('call.join.placeholder');
   input.autocomplete = 'off';
 
   const button = document.createElement('button');
   button.type = 'submit';
   button.id = 'join-room-btn';
-  button.title = 'Join existing room';
-  button.textContent = 'Join';
+  button.title = t('call.join.title');
+  button.textContent = t('shared.join');
 
   // Assemble
   inputAndButtonContainer.append(input, button);

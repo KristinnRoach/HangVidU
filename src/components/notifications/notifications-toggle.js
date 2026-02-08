@@ -1,4 +1,5 @@
 import createComponent from '../../utils/dom/component.js';
+import { t, onLocaleChange } from '../../i18n/index.js';
 
 /**
  * Creates a notifications toggle button that shows/hides based on notification count.
@@ -25,7 +26,7 @@ export function createNotificationsToggle({
     template: `
       <button
         class="notifications-toggle-btn"
-        title="Notifications"
+        title="[[t:notification.toggle]]"
         onclick="handleClick"
       >
         <i class="fa fa-bell"></i>
@@ -34,6 +35,7 @@ export function createNotificationsToggle({
         </span>
       </button>
     `,
+    templateFns: { t: { resolve: t, onChange: onLocaleChange } },
     handlers: {
       handleClick: () => {
         // Custom onClick takes precedence, otherwise use default toggle behavior

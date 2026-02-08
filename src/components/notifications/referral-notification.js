@@ -2,6 +2,7 @@
 
 import { createNotification } from './notification.js';
 import { escapeHtml } from '../../utils/dom/dom-utils.js';
+import { t, onLocaleChange } from '../../i18n/index.js';
 
 /**
  * Create a referral notification prompting sign-in.
@@ -29,34 +30,35 @@ export function createReferralNotification({
       <div class="notification-content">
         <div class="notification-header">
           ${iconHtml}
-          <span class="notification-title">You've been invited</span>
+          <span class="notification-title">[[t:notification.referral.title]]</span>
         </div>
         <div class="notification-body">
           <p class="notification-message">
-            <strong>${escapeHtml(name)}</strong> invited you to connect
+            <strong>${escapeHtml(name)}</strong> [[t:notification.referral.suffix]]
           </p>
-          <p class="notification-detail">Sign in to add them as a contact</p>
+          <p class="notification-detail">[[t:notification.referral.sign_in_prompt]]</p>
         </div>
         <div class="notification-actions">
           <button class="notification-btn notification-btn-accept" onclick="handleSignIn">
-            Sign in
+            [[t:notification.referral.sign_in]]
           </button>
         </div>
       </div>
     `,
     className: 'notification referral-notification',
+    templateFns: { t: { resolve: t, onChange: onLocaleChange } },
     handlers: {
       handleSignIn: async (e) => {
         const btn = e.target;
         btn.disabled = true;
-        btn.textContent = 'Signing in...';
+        btn.textContent = t('notification.referral.signing_in');
 
         try {
           if (onSignIn) await onSignIn();
         } catch (error) {
           console.error('[REFERRAL NOTIFICATION] Sign-in failed:', error);
           btn.disabled = false;
-          btn.textContent = 'Sign in';
+          btn.textContent = t('notification.referral.sign_in');
         }
       },
     },

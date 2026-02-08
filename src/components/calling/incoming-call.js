@@ -1,3 +1,5 @@
+import { t } from '../../i18n/index.js';
+
 // Map of roomId → resolver function for promise-based UI coordination
 const activeIncomingCallResolvers = new Map();
 
@@ -15,7 +17,7 @@ export function showIncomingCallUI(call, onAccept, onReject) {
   });
 
   const msg = document.createElement('div');
-  msg.textContent = `${call.from} is calling...`;
+  msg.textContent = t('call.incoming', { name: call.from });
 
   const cleanup = () => {
     container.close();
@@ -24,7 +26,7 @@ export function showIncomingCallUI(call, onAccept, onReject) {
   };
 
   const acceptBtn = document.createElement('button');
-  acceptBtn.textContent = 'Accept';
+  acceptBtn.textContent = t('call.accept');
   acceptBtn.onclick = async () => {
     acceptBtn.disabled = true;
     try {
@@ -35,7 +37,7 @@ export function showIncomingCallUI(call, onAccept, onReject) {
   };
 
   const rejectBtn = document.createElement('button');
-  rejectBtn.textContent = 'Decline';
+  rejectBtn.textContent = t('call.decline');
   rejectBtn.onclick = async () => {
     rejectBtn.disabled = true;
     try {

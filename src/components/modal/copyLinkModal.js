@@ -1,5 +1,7 @@
 // modal.js
 
+import { t } from '../../i18n/index.js';
+
 /**
  * Modern Copy Link Modal
  * Creates and shows a modal dialog for copying links
@@ -31,7 +33,7 @@ function createDialog(link, options) {
   input.className = 'copy-link-dialog__input';
   input.value = link;
   input.readOnly = true;
-  input.setAttribute('aria-label', 'Link to copy');
+  input.setAttribute('aria-label', t('dialog.share.link_label'));
   inputContainer.appendChild(input);
   content.appendChild(inputContainer);
 
@@ -82,11 +84,11 @@ function createDialog(link, options) {
 export function showCopyLinkModal(link, options = {}) {
   // Default options
   const config = {
-    title: 'Share this link',
-    buttonText: 'Copy',
-    cancelText: 'Cancel',
-    successMessage: '✓ Copied to clipboard!',
-    errorMessage: 'Failed to copy. Click the link to select it manually.',
+    title: t('dialog.share.title'),
+    buttonText: t('shared.copy'),
+    cancelText: t('shared.cancel'),
+    successMessage: `✓ ${t('dialog.share.copied')}`,
+    errorMessage: t('dialog.share.copy_failed'),
     autoClose: true,
     autoCloseDelay: 1200,
     onCopy: null,

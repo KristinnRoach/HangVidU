@@ -2,6 +2,7 @@
 
 import { createNotification } from './notification.js';
 import { escapeHtml } from '../../utils/dom/dom-utils.js';
+import { t, onLocaleChange } from '../../i18n/index.js';
 
 /**
  * Create an invite notification component.
@@ -34,30 +35,31 @@ export function createInviteNotification({
       <div class="notification-content">
         <div class="notification-header">
           ${iconHtml}
-          <span class="notification-title">Contact Invitation</span>
+          <span class="notification-title">[[t:notification.invite.title]]</span>
         </div>
         <div class="notification-body">
           <p class="notification-message">
-            <strong>${escapeHtml(fromName)}</strong> wants to connect
+            <strong>${escapeHtml(fromName)}</strong> [[t:notification.invite.suffix]]
           </p>
           ${fromEmail ? `<p class="notification-detail">${escapeHtml(fromEmail)}</p>` : ''}
         </div>
         <div class="notification-actions">
           <button class="notification-btn notification-btn-accept" onclick="handleAccept">
-            Accept
+            [[t:notification.invite.accept]]
           </button>
           <button class="notification-btn notification-btn-decline" onclick="handleDecline">
-            Decline
+            [[t:notification.invite.decline]]
           </button>
         </div>
       </div>
     `,
     className: 'notification invite-notification',
+    templateFns: { t: { resolve: t, onChange: onLocaleChange } },
     handlers: {
       handleAccept: async (e) => {
         const btn = e.target;
         btn.disabled = true;
-        btn.textContent = 'Accepting...';
+        btn.textContent = t('notification.invite.accepting');
 
         try {
           if (onAccept) await onAccept();
@@ -65,13 +67,13 @@ export function createInviteNotification({
         } catch (error) {
           console.error('[INVITE NOTIFICATION] Accept failed:', error);
           btn.disabled = false;
-          btn.textContent = 'Accept';
+          btn.textContent = t('notification.invite.accept');
         }
       },
       handleDecline: async (e) => {
         const btn = e.target;
         btn.disabled = true;
-        btn.textContent = 'Declining...';
+        btn.textContent = t('notification.invite.declining');
 
         try {
           if (onDecline) await onDecline();
@@ -79,7 +81,7 @@ export function createInviteNotification({
         } catch (error) {
           console.error('[INVITE NOTIFICATION] Decline failed:', error);
           btn.disabled = false;
-          btn.textContent = 'Decline';
+          btn.textContent = t('notification.invite.decline');
         }
       },
     },
