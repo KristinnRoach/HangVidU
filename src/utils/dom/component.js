@@ -138,7 +138,17 @@ const createComponent = ({
     for (const [prefix, fn] of Object.entries(templateFnResolvers)) {
       resolvedTemplate = resolvedTemplate.replace(
         new RegExp(`\\[\\[${prefix}:([^\\]]+)\\]\\]`, 'g'),
-        (_, key) => sanitize(String(fn(key.trim()) ?? '')),
+        (_, key) => {
+          try {
+            return sanitize(String(fn(key.trim()) ?? ''));
+          } catch (e) {
+            console.warn(
+              `[createComponent]: templateFns.${prefix} threw for key "${key.trim()}"`,
+              e,
+            );
+            return `[[${prefix}:${key.trim()}]]`; // Preserve placeholder for debugging
+          }
+        },
       );
     }
 

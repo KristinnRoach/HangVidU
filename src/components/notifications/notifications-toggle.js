@@ -29,6 +29,7 @@ export function createNotificationsToggle({
         class="notifications-toggle-btn"
         title="[[t:notification.toggle]]"
         onclick="handleClick"
+        data-count="[[count]]"
       >
         <i class="fa fa-bell"></i>
         <span class="notification-badge">
