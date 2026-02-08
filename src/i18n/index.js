@@ -18,7 +18,13 @@ export function onLocaleChange(cb) {
 }
 
 function notify() {
-  for (const cb of listeners) cb(currentLocale);
+  for (const cb of listeners) {
+    try {
+      cb(currentLocale);
+    } catch (e) {
+      console.error('[i18n]: Error in locale change listener:', e);
+    }
+  }
 }
 
 export async function initI18n() {

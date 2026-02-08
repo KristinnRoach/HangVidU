@@ -74,8 +74,26 @@ const createComponent = ({
           `Use only letters, numbers, and underscores (e.g., "t", "fmt", "i18n_v2").`,
       );
     }
-    templateFnResolvers[prefix] =
-      typeof config === 'function' ? config : config.resolve;
+
+    // Validate resolve function
+    if (typeof config === 'function') {
+      templateFnResolvers[prefix] = config;
+    } else if (typeof config === 'object' && config !== null) {
+      if (typeof config.resolve !== 'function') {
+        console.warn(
+          `[createComponent]: templateFns.${prefix}.resolve is not a function. ` +
+            `Expected a function or an object with a resolve function.`,
+        );
+        continue;
+      }
+      templateFnResolvers[prefix] = config.resolve;
+    } else {
+      console.warn(
+        `[createComponent]: templateFns.${prefix} must be a function or an object with a resolve function.`,
+      );
+      continue;
+    }
+
     if (config?.onChange) {
       const unsub = config.onChange(() => render());
       if (typeof unsub === 'function') {
