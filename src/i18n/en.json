@@ -116,10 +116,6 @@
   "dialog.share.link_label": "Link to copy",
   "dialog.share.copied": "Copied to clipboard!",
   "dialog.share.copy_failed": "Failed to copy. Click the link to select it manually.",
-  "dialog.delete_account.message": "Are you sure you want to delete your account?\n\nThis will permanently delete:\n- Your account\n- All contacts\n- Call history\n- All associated data\n\nThis action cannot be undone.",
-  "dialog.delete_account.success": "Your account has been deleted successfully.",
-  "dialog.delete_account.error": "Failed to delete account. Please try again.",
-
   "auth.login": "Login",
   "auth.logout": "Logout",
   "auth.signing_in": "Signing in...",

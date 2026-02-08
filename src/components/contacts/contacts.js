@@ -43,7 +43,7 @@ export async function saveContactData(contactId, contactName, roomId) {
     console.warn(
       `[CONTACTS] Invalid contactName for ${contactId}, falling back to 'No Name'`,
     );
-    contactName = t('contact.no_name');
+    contactName = '';
   }
 
   const loggedInUid = getLoggedInUserId();
@@ -142,13 +142,13 @@ export async function getContactByRoomId(roomId) {
  * Resolve caller display name from roomId by looking up saved contact.
  */
 export async function resolveCallerName(roomId, fallbackUserId) {
-  if (!roomId) return fallbackUserId || 'Unknown';
+  if (!roomId) return fallbackUserId || t('shared.unknown');
 
   try {
     const contacts = await getContacts();
     for (const contact of Object.values(contacts || {})) {
       if (contact?.roomId === roomId) {
-        return contact.contactName || contact.contactId || fallbackUserId;
+        return contact.contactName || t('contact.no_name');
       }
     }
   } catch (e) {
@@ -255,24 +255,23 @@ export async function renderContactsList(lobbyElement) {
       ${contactIds
         .map((id) => {
           const contact = contacts[id];
+          const name = contact.contactName || t('contact.no_name');
           return `
             <div class="contact-entry">
               <div class="contact-msg-toggle-container" data-contact-id="${id}"></div>
               <span
                 class="contact-name"
                 data-room-id="${contact.roomId || ''}"
-                data-contact-name="${contact.contactName}"
+                data-contact-name="${name}"
                 data-contact-id="${id}"
-                title="${t('contact.action.call', { name: contact.contactName })}"
+                title="${t('contact.action.call', { name })}"
               >
                 <span class="presence-indicator" data-contact-id="${id}"></span>
                 <i class="fa fa-phone"></i>
                 ${
-                  contact.contactName &&
-                  contact.contactName.length > MAX_CONTACT_NAME_CHARS
-                    ? contact.contactName.slice(0, MAX_CONTACT_NAME_CHARS - 2) +
-                      '..'
-                    : contact.contactName
+                  name.length > MAX_CONTACT_NAME_CHARS
+                    ? name.slice(0, MAX_CONTACT_NAME_CHARS - 2) + '..'
+                    : name
                 }
               </span>
 

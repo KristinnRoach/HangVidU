@@ -1673,8 +1673,7 @@ window.onload = async () => {
   if (!initSuccess) {
     if (callBtn) {
       callBtn.disabled = true;
-      callBtn.title =
-        'Initialization failed. Please reload the page or check your camera/microphone permissions.';
+      callBtn.title = t('error.init.button_title');
     }
     console.error(
       'Initialization failed. Call functionality disabled. Please reload the page.',
