@@ -133,6 +133,7 @@
 
     border: none;
     border-radius: var(--border-radius-default, 0.5rem);
+    white-space: nowrap;
 
     /* Fallback for browsers without hsl(from ...) support */
     background-color: rgba(76, 129, 175, 0.6);

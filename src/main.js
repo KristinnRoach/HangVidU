@@ -195,7 +195,6 @@ let cleanupFunctions = [];
 async function init() {
   initUI();
 
-  
   await initI18n();
 
   // Validate critical elements first
@@ -256,9 +255,9 @@ async function init() {
 
       // ! TEMP DEV Test: Locale toggle button (remove after i18n testing)
       if (isDev()) {
-        const toggleBtn = document.createElement('button');
-        toggleBtn.textContent = `🌐 ${getLocale().toUpperCase()}`;
-        toggleBtn.style.cssText = `
+        const toggleLangBtn = document.createElement('button');
+        toggleLangBtn.textContent = `🌐 ${getLocale().toUpperCase()}`;
+        toggleLangBtn.style.cssText = `
       
       z-index: 10000;
       padding: 8px 12px;
@@ -268,15 +267,16 @@ async function init() {
       border-radius: 4px;
       font-size: 12px;
       font-weight: bold;
+      white-space: nowrap;
       cursor: pointer;
       box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     `;
-        toggleBtn.onclick = async () => {
+        toggleLangBtn.onclick = async () => {
           const newLocale = getLocale() === 'en' ? 'is' : 'en';
           await setLocale(newLocale);
-          toggleBtn.textContent = `🌐 ${newLocale.toUpperCase()}`;
+          toggleLangBtn.textContent = `🌐 ${newLocale.toUpperCase()}`;
         };
-        topRightMenu.appendChild(toggleBtn);
+        topRightMenu.appendChild(toggleLangBtn);
       }
     }
 
