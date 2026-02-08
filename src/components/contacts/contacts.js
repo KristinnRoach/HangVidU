@@ -207,9 +207,11 @@ export async function saveContact(contactUserId, roomId, lobbyElement) {
 export async function renderContactsList(lobbyElement) {
   if (!lobbyElement) return;
 
+  // Update lobby reference on every render
+  lastRenderedLobby = lobbyElement;
+
   // Set up locale change listener on first render
   if (!localeUnsubscribe) {
-    lastRenderedLobby = lobbyElement;
     localeUnsubscribe = onLocaleChange(() => {
       if (lastRenderedLobby) renderContactsList(lastRenderedLobby);
     });

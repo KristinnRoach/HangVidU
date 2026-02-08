@@ -149,7 +149,7 @@
   "error.push.dismissed": "Notification prompt was dismissed. You can try again anytime.",
   "error.push.test": "Error testing notifications: ",
   "error.init.button_title": "Initialization failed. Please reload the page or check your camera/microphone permissions.",
-  "error.init.alert": "Hangvidu could not initialize properly.\n\nPlease check your camera/microphone permissions and reload the page.",
+  "error.init.alert": "HangVidU could not initialize properly.\n\nPlease check your camera/microphone permissions and reload the page.",
 
   "a11y.camera_toggle": "Turn camera on/off",
   "a11y.camera_switch": "Switch camera",

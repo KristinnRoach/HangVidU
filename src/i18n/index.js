@@ -28,7 +28,8 @@ export async function initI18n() {
   } catch (e) {
     console.warn('Failed to read saved locale from localStorage:', e);
   }
-  currentLocale = saved || (navigator.language.startsWith('is') ? 'is' : 'en');
+  // Default to 'en' until Icelandic translations are complete
+  currentLocale = saved || 'en';
   await setLocale(currentLocale);
 }
 

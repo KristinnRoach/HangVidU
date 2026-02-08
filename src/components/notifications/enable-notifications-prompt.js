@@ -25,7 +25,7 @@ export function showEnableNotificationsPrompt() {
         <div class="notification-header">
           <span class="notification-icon">🔔</span>
           <span class="notification-title">${t('notification.enable.title')}</span>
-          <button class="notification-dismiss" onclick="handleDismiss" title="Dismiss">×</button>
+          <button class="notification-dismiss" onclick="handleDismiss" title="${t('shared.dismiss')}">×</button>
         </div>
         <div class="notification-body">
           <p class="notification-message">
