@@ -55,6 +55,7 @@ import {
   addContactBtn,
   testNotificationsBtn,
   getElements,
+  updateI18nElements,
 } from './elements.js';
 
 import {
@@ -166,7 +167,7 @@ import {
 } from './components/calling/calling-ui.js';
 import { isRemoteVideoVideoActive } from './ui/legacy/watch-mode.js';
 import { onCallConnected, onCallDisconnected } from './ui/call-lifecycle-ui.js';
-import { initI18n, setLocale, getLocale, t } from './i18n/index.js';
+import { initI18n, setLocale, getLocale, t, onLocaleChange } from './i18n/index.js';
 
 import { addDebugUpdateButton } from './components/notifications/debug-notifications.js';
 // ____ UI END ____
@@ -196,6 +197,10 @@ async function init() {
   initUI();
 
   await initI18n();
+
+  // Hydrate i18n attributes in index.html and re-hydrate on locale change
+  updateI18nElements();
+  onLocaleChange(() => updateI18nElements());
 
   // Validate critical elements first
   const elements = getElements();

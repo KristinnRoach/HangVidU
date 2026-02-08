@@ -711,4 +711,85 @@ describe('createComponent - Critical Usage Issues', () => {
       expect(img.getAttribute('onerror')).toBe("console.log('inline')");
     });
   });
+
+  describe('10. templateFns Reactivity', () => {
+    it('should resolve [[prefix:key]] using the resolve function', () => {
+      const t = (key) => {
+        const translations = { 'label.title': 'Welcome' };
+        return translations[key] || key;
+      };
+
+      const component = createComponent({
+        initialProps: {},
+        template: `<div>[[t:label.title]]</div>`,
+        templateFns: { t: { resolve: t } },
+        parent: container,
+      });
+
+      expect(component.textContent).toBe('Welcome');
+    });
+
+    it('should re-render when onChange callback is triggered', () => {
+      let locale = 'en';
+      let onChangeCallback = null;
+
+      const t = (key) => {
+        const translations = {
+          en: { 'msg.hello': 'Hello' },
+          is: { 'msg.hello': 'Halló' },
+        };
+        return translations[locale]?.[key] || key;
+      };
+
+      const component = createComponent({
+        initialProps: {},
+        template: `<div>[[t:msg.hello]]</div>`,
+        templateFns: {
+          t: {
+            resolve: t,
+            onChange: (callback) => {
+              onChangeCallback = callback;
+              return () => {
+                onChangeCallback = null;
+              };
+            },
+          },
+        },
+        parent: container,
+      });
+
+      expect(component.textContent).toBe('Hello');
+
+      // Change locale and trigger onChange callback
+      locale = 'is';
+      onChangeCallback?.();
+
+      // After onChange fires, re-render should apply new translation
+      expect(component.textContent).toBe('Halló');
+    });
+
+    it('should call cleanup function from onChange when dispose() is called', () => {
+      const cleanupFn = vi.fn();
+
+      const t = (key) => `translated_${key}`;
+
+      const component = createComponent({
+        initialProps: {},
+        template: `<div>[[t:some.key]]</div>`,
+        templateFns: {
+          t: {
+            resolve: t,
+            onChange: () => cleanupFn,
+          },
+        },
+        parent: container,
+      });
+
+      expect(cleanupFn).not.toHaveBeenCalled();
+
+      component.dispose();
+
+      expect(cleanupFn).toHaveBeenCalledTimes(1);
+    });
+  });
 });

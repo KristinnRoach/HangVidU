@@ -1,5 +1,6 @@
 // elements.js - Centralized DOM element exports
 import { devDebug } from './utils/dev/dev-utils.js';
+import { t, onLocaleChange } from './i18n/index.js';
 
 const getElement = (id) => {
   const el = document.getElementById(id);
@@ -42,6 +43,39 @@ let appTitleSpan = null;
 let pasteJoinBtn = null;
 let addContactBtn = null;
 let testNotificationsBtn = null;
+
+// i18n attributes configuration: { elementId: { attrs: ['attr1', 'attr2'], key: 'translation.key' } }
+const i18nElements = {
+  'app-title-a': { attrs: ['title'], key: 'nav.app_title' },
+  'lobby-call-btn': { attrs: ['title'], key: 'call.start' },
+  'paste-join-btn': { attrs: ['title'], key: 'a11y.paste_join' },
+  'add-contact-btn': { attrs: ['title'], key: 'a11y.add_contact' },
+  'test-notifications-btn': { attrs: ['title'], key: 'a11y.test_notifications' },
+  'exit-watch-mode-btn': { attrs: ['title'], key: 'media.exit_watch' },
+  'searchBtn': { attrs: ['title'], key: 'media.youtube.search' },
+  'searchQuery': { attrs: ['placeholder'], key: 'media.youtube.placeholder' },
+  'camera-btn': { attrs: ['aria-label'], key: 'a11y.camera_toggle' },
+  'switch-camera-btn': { attrs: ['aria-label'], key: 'a11y.camera_switch' },
+  'mic-btn': { attrs: ['aria-label'], key: 'a11y.mic_toggle' },
+  'mute-btn': { attrs: ['aria-label'], key: 'a11y.partner_mute' },
+  'fullscreen-partner-btn': { attrs: ['aria-label'], key: 'a11y.fullscreen' },
+  'remote-pip-btn': { attrs: ['aria-label'], key: 'a11y.pip' },
+  'app-pip-btn': { attrs: ['aria-label'], key: 'a11y.popup' },
+};
+
+/**
+ * Update all i18n element attributes based on current locale
+ */
+export function updateI18nElements() {
+  Object.entries(i18nElements).forEach(([elementId, { attrs, key }]) => {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const translation = t(key);
+    attrs.forEach(attr => {
+      el.setAttribute(attr, translation);
+    });
+  });
+}
 
 function initializeElements() {
   lobbyDiv = getElement('lobby');

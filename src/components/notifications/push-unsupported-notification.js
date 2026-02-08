@@ -23,24 +23,23 @@ export function showPushUnsupportedNotification() {
     template: `
       <div class="notification-content">
         <div class="notification-header">
-          <span class="notification-title">Push notifications unavailable</span>
-          <button class="notification-dismiss" onclick="handleDismiss" title="Dismiss">\u00d7</button>
+          <span class="notification-title">[[t:notification.push.unsupported.title]]</span>
+          <button class="notification-dismiss" onclick="handleDismiss" title="[[t:shared.dismiss]]">×</button>
         </div>
         <div class="notification-body">
           <p class="notification-message">
-            Your browser doesn't support push notifications.
-            To receive call alerts when the app isn't focused, install via
-            <strong>Chrome</strong>, <strong>Edge</strong>, or <strong>Firefox</strong>.
+            [[t:notification.push.unsupported.body]]
           </p>
         </div>
         <div class="notification-actions">
           <button class="notification-btn notification-btn-secondary" onclick="handleDismiss">
-            Got it
+            [[t:notification.push.got_it]]
           </button>
         </div>
       </div>
     `,
     className: 'notification push-unsupported-notification',
+    templateFns: { t: { resolve: t, onChange: onLocaleChange } },
     handlers: {
       handleDismiss: () => {
         inAppNotificationManager.remove(NOTIFICATION_ID);
