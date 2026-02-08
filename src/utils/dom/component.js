@@ -1,5 +1,4 @@
 // src/utils/dom/component.js
-import { tempWarn } from '../dev/dev-utils.js';
 import {
   captureInputState,
   captureMediaState,
@@ -31,6 +30,7 @@ import { isDOMReady } from './dom-utils.js';
  * @param {Object<string, ((string) => string) | {resolve: (string) => string, onChange?: function}>} [options.templateFns]
  *   String-to-string functions callable from templates via [[prefix:arg]] syntax.
  *   Either a bare function (static) or { resolve, onChange } for reactive re-rendering.
+ *   Prefix names should contain only letters, numbers, and underscores (e.g., "t", "fmt", "i18n_v2").
  * @param {boolean} [options.autoAppend=true] - Whether to append to parent automatically.
  * @param {boolean} [options.preserveInputState=true] - Whether to preserve input/media state during re-renders.
  * @returns {HTMLElement} The root component element with reactive props and update API.
@@ -67,10 +67,24 @@ const createComponent = ({
   const templateFnResolvers = {};
   const templateFnCleanups = [];
   for (const [prefix, config] of Object.entries(templateFns)) {
+    // Validate prefix contains only safe characters
+    if (!/^[a-zA-Z0-9_]+$/.test(prefix)) {
+      console.warn(
+        `[createComponent]: templateFns prefix "${prefix}" contains special characters. ` +
+          `Use only letters, numbers, and underscores (e.g., "t", "fmt", "i18n_v2").`,
+      );
+    }
     templateFnResolvers[prefix] =
       typeof config === 'function' ? config : config.resolve;
     if (config?.onChange) {
-      templateFnCleanups.push(config.onChange(() => render()));
+      const unsub = config.onChange(() => render());
+      if (typeof unsub === 'function') {
+        templateFnCleanups.push(unsub);
+      } else {
+        console.warn(
+          `[createComponent]: templateFns.${prefix}.onChange did not return cleanup function`,
+        );
+      }
     }
   }
 
@@ -251,7 +265,9 @@ const createComponent = ({
       }
     }
 
-    templateFnCleanups.forEach((unsub) => unsub());
+    templateFnCleanups.forEach((unsub) => {
+      if (typeof unsub === 'function') unsub();
+    });
     renderListeners.length = 0;
     anyUpdateListeners.length = 0;
     for (const prop in singlePropListeners) {
@@ -272,7 +288,10 @@ const createComponent = ({
       onMount(element);
       // setTimeout(() => onMount(element), 0); // ! Testing setTimeout to avoid blocking
     } catch (e) {
-      tempWarn('[createComponent]: Error in onMount handler of component', e);
+      console.warn(
+        '[createComponent]: Error in onMount handler of component',
+        e,
+      );
       /* no-op */
     }
   }

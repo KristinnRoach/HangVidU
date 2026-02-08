@@ -194,6 +194,8 @@ let cleanupFunctions = [];
 
 async function init() {
   initUI();
+
+  
   await initI18n();
 
   // Validate critical elements first

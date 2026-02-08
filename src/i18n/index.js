@@ -22,7 +22,12 @@ function notify() {
 }
 
 export async function initI18n() {
-  const saved = localStorage.getItem(STORAGE_KEY);
+  let saved;
+  try {
+    saved = localStorage.getItem(STORAGE_KEY);
+  } catch (e) {
+    console.warn('Failed to read saved locale from localStorage:', e);
+  }
   currentLocale = saved || (navigator.language.startsWith('is') ? 'is' : 'en');
   await setLocale(currentLocale);
 }
@@ -32,11 +37,32 @@ export function getLocale() {
 }
 
 export async function setLocale(locale) {
-  if (!messages[locale]) locale = 'en';
-  currentLocale = locale;
-  localStorage.setItem(STORAGE_KEY, locale);
-  dict = await messages[locale]().then((m) => m.default || m);
-  notify();
+  // Validate locale is a safe, valid key with a loader function
+  if (
+    !Object.hasOwn(messages, locale) ||
+    typeof messages[locale] !== 'function'
+  ) {
+    locale = 'en';
+  }
+
+  try {
+    // Load first, update state only if successful
+    const newDict = await messages[locale]().then((m) => m.default || m);
+    dict = newDict;
+    currentLocale = locale;
+    try {
+      localStorage.setItem(STORAGE_KEY, locale);
+    } catch (e) {
+      console.warn('Failed to persist locale:', e);
+    }
+    notify();
+  } catch (error) {
+    console.error(`Failed to load locale "${locale}":`, error);
+    if (locale !== 'en') {
+      return setLocale('en'); // Fallback
+    }
+    // If 'en' fails, keep current state, no notify
+  }
 }
 
 export function t(key, params) {
