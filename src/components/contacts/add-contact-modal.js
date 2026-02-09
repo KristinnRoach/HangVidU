@@ -75,7 +75,6 @@ export async function showAddContactModal() {
     );
     const platformBtns = dialog.querySelectorAll('.platform-btn');
 
-    let currentPlatform = 'google';
     let allContacts = [];
     let filteredContacts = [];
     const selectedContacts = new Set();
@@ -99,8 +98,6 @@ export async function showAddContactModal() {
         // Update active state
         platformBtns.forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
-
-        currentPlatform = platform;
 
         // Import contacts for selected platform
         if (platform === 'google') {
@@ -134,7 +131,8 @@ export async function showAddContactModal() {
       );
     });
 
-    // Import Google Contacts function
+    // Import Google Contacts function — must be called from a user click
+    // so the browser allows the OAuth popup on mobile.
     async function importGoogleContacts() {
       importStatus.textContent = t('contact.import.requesting');
       importStatus.className = 'import-status loading';
@@ -143,8 +141,8 @@ export async function showAddContactModal() {
       filteredContacts = [];
 
       try {
-        // Step 1: Get access token
-        const accessToken = await requestContactsAccess();
+        // Step 1: Get access token (interactive to preserve user gesture)
+        const accessToken = await requestContactsAccess({ interactive: true });
 
         importStatus.textContent = t('contact.import.fetching');
 
@@ -241,11 +239,6 @@ export async function showAddContactModal() {
 
     document.body.appendChild(dialog);
     dialog.showModal();
-
-    // Auto-trigger import for the default active platform
-    if (currentPlatform === 'google') {
-      importGoogleContacts();
-    }
   });
 }
 
