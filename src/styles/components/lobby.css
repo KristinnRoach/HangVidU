@@ -14,15 +14,18 @@
 
 /* Buttons */
 
-.lobby-buttons-container {
-  margin-top: 2rem;
+#lobby-buttons-container {
+  /* margin-top: var(--spacing-2xl); */
+
   display: flex;
   flex-direction: row;
   justify-content: center;
-  column-gap: min(5dvw, 24px);
   align-items: center;
+
+  column-gap: min(5dvw, 24px);
   width: 100%;
   max-width: 50dvw;
+  height: 100%;
 }
 
 .lobby-btn {
