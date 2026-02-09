@@ -2,6 +2,13 @@
 /* Usage: <body data-view="lobby|calling|connected"> */
 
 body[data-view='lobby'] {
+  & .lobby-buttons-container {
+    display: none;
+  }
+
+  & #toggle-lang-btn {
+    display: block;
+  }
   & .call-controls {
     /* & + SPACE = descendant, otherwise same element */
     display: none;
@@ -19,6 +26,42 @@ body[data-view='calling'] {
 }
 
 body[data-view='connected'] {
+  & #lobby,
+  & #toggle-lang-btn,
+  & #legal-footer {
+    display: none;
+  }
+}
+
+/* ============================================================================
+  GUEST MODE - Not signed in
+ ============================================================================ */
+
+body[data-view='lobby:guest'] {
+  & .lobby-buttons-container {
+    display: flex;
+  }
+
+  & #toggle-lang-btn {
+    display: block;
+  }
+
+  & .call-controls {
+    display: none;
+  }
+
+  & #legal-footer {
+    display: flex;
+  }
+}
+
+body[data-view='calling:guest'] {
+  & .call-controls {
+    display: none;
+  }
+}
+
+body[data-view='connected:guest'] {
   & #lobby,
   & #toggle-lang-btn,
   & #legal-footer {

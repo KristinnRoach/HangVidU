@@ -3,7 +3,7 @@
 
 export const uiState = {
   // High-level app mode
-  view: 'lobby', // 'lobby' | 'calling' | 'connected'
+  view: 'lobby:guest', // 'lobby' | 'calling' | 'connected' - add ":guest" for not logged in
 
   // Currently focused active media content (if any)
   currentMedia: 'none', // 'none' | 'remoteStream' | 'ytVideo' | 'sharedVideo'
