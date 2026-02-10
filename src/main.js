@@ -1743,7 +1743,7 @@ window.onload = async () => {
   );
 
   // Then render saved contacts list in lobby (now listeners are ready)
-  renderContactsList(lobbyDiv).catch((e) => {
+  await renderContactsList(lobbyDiv).catch((e) => {
     console.warn('Failed to render contacts list:', e);
   });
 
@@ -1863,13 +1863,9 @@ window.onload = async () => {
 
 // Handle page leave
 window.addEventListener('beforeunload', async (e) => {
-  // Trigger browser's generic "leave page?" dialog if in active call (in PROD)
+  // Trigger browser's generic "leave page?" dialog if in active call
   const state = CallController.getState();
-  if (
-    import.meta.env.PROD &&
-    state.pc &&
-    state.pc.connectionState === 'connected'
-  ) {
+  if (state.pc && state.pc.connectionState === 'connected') {
     e.preventDefault();
     e.returnValue = // NOTE: Modern browsers ignore returnValue text
       'You are in an active call. Are you sure you want to leave?';

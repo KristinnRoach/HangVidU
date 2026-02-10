@@ -1,8 +1,8 @@
 /* view-state.css - Declarative visibility based on data-view attribute */
 /* Usage: <body data-view="lobby|calling|connected"> */
 
-body[data-view='lobby'] {
-  & .lobby-buttons-container {
+body[data-view='lobby:user'] {
+  & #lobby-buttons-container {
     display: none;
   }
 
@@ -19,13 +19,13 @@ body[data-view='lobby'] {
   }
 }
 
-body[data-view='calling'] {
+body[data-view='calling:user'] {
   & .call-controls {
     display: none;
   }
 }
 
-body[data-view='connected'] {
+body[data-view='connected:user'] {
   & #lobby,
   & #toggle-lang-btn,
   & #legal-footer {
@@ -38,7 +38,7 @@ body[data-view='connected'] {
  ============================================================================ */
 
 body[data-view='lobby:guest'] {
-  & .lobby-buttons-container {
+  & #lobby-buttons-container {
     display: flex;
   }
 
