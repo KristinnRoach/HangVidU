@@ -14,7 +14,7 @@ import {
   serverTimestamp,
 } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId, getCurrentUser } from '../../firebase/auth.js';
+import { getLoggedInUserId, getCurrentUser } from '../../auth/auth.js';
 
 // Message limit per conversation to control storage costs
 const MAX_MESSAGES_PER_CONVERSATION = 100;
@@ -62,7 +62,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
 
     // Write to shared conversation node
     const messageRef = push(
-      ref(rtdb, `conversations/${conversationId}/messages`)
+      ref(rtdb, `conversations/${conversationId}/messages`),
     );
 
     await set(messageRef, {
@@ -100,7 +100,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
 
     // Write to shared conversation node
     const messageRef = push(
-      ref(rtdb, `conversations/${conversationId}/messages`)
+      ref(rtdb, `conversations/${conversationId}/messages`),
     );
 
     await set(messageRef, {
@@ -136,7 +136,10 @@ export class RTDBMessagingTransport extends MessagingTransport {
     }
 
     const conversationId = this._getConversationId(myUserId, contactId);
-    const conversationRef = ref(rtdb, `conversations/${conversationId}/messages`);
+    const conversationRef = ref(
+      rtdb,
+      `conversations/${conversationId}/messages`,
+    );
 
     // Track seen message IDs to prevent duplicate processing
     const seenMessageIds = new Set();
@@ -189,7 +192,10 @@ export class RTDBMessagingTransport extends MessagingTransport {
     if (!myUserId) return 0;
 
     const conversationId = this._getConversationId(myUserId, contactId);
-    const conversationRef = ref(rtdb, `conversations/${conversationId}/messages`);
+    const conversationRef = ref(
+      rtdb,
+      `conversations/${conversationId}/messages`,
+    );
 
     try {
       const snapshot = await get(conversationRef);
@@ -198,7 +204,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
       const messages = snapshot.val();
       // Count unread messages that were sent by the contact (not by me)
       return Object.values(messages).filter(
-        (msg) => !msg.read && msg.from === contactId
+        (msg) => !msg.read && msg.from === contactId,
       ).length;
     } catch (err) {
       console.warn('[RTDBTransport] Failed to get unread count:', err);
@@ -217,7 +223,10 @@ export class RTDBMessagingTransport extends MessagingTransport {
     if (!myUserId) return;
 
     const conversationId = this._getConversationId(myUserId, contactId);
-    const conversationRef = ref(rtdb, `conversations/${conversationId}/messages`);
+    const conversationRef = ref(
+      rtdb,
+      `conversations/${conversationId}/messages`,
+    );
 
     try {
       const snapshot = await get(conversationRef);
@@ -229,7 +238,8 @@ export class RTDBMessagingTransport extends MessagingTransport {
       // Build multi-path update object for all unread messages
       Object.entries(messages).forEach(([msgId, msg]) => {
         if (!msg.read && msg.from === contactId) {
-          updates[`conversations/${conversationId}/messages/${msgId}/read`] = true;
+          updates[`conversations/${conversationId}/messages/${msgId}/read`] =
+            true;
         }
       });
 
@@ -252,7 +262,9 @@ export class RTDBMessagingTransport extends MessagingTransport {
   listenToUnreadCount(contactId, onCountChange) {
     const myUserId = getLoggedInUserId();
     if (!myUserId) {
-      console.warn('[RTDBTransport] Cannot listen to unread count: not logged in');
+      console.warn(
+        '[RTDBTransport] Cannot listen to unread count: not logged in',
+      );
       return () => {}; // Return no-op unsubscribe
     }
 
@@ -324,7 +336,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
     // Delete oldest messages (keep newest MAX_MESSAGES_PER_CONVERSATION)
     const toDelete = messageCount - MAX_MESSAGES_PER_CONVERSATION;
     const sortedMessages = Object.entries(messages).sort(
-      (a, b) => (a[1].sentAt || 0) - (b[1].sentAt || 0)
+      (a, b) => (a[1].sentAt || 0) - (b[1].sentAt || 0),
     );
 
     // Build multi-path update object with null values (null = delete in Firebase)
@@ -338,7 +350,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
     await update(ref(rtdb), updates);
 
     console.log(
-      `[RTDBTransport] Cleaned up ${toDelete} old messages from conversation ${conversationId}`
+      `[RTDBTransport] Cleaned up ${toDelete} old messages from conversation ${conversationId}`,
     );
   }
 
@@ -398,7 +410,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
     const conversationId = this._getConversationId(myUserId, contactId);
     const reactionsRef = ref(
       rtdb,
-      `conversations/${conversationId}/messages/${messageId}/reactions`
+      `conversations/${conversationId}/messages/${messageId}/reactions`,
     );
 
     try {

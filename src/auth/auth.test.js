@@ -1,4 +1,4 @@
-// src/firebase/auth.test.js
+// src/auth/auth.test.js
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock Firebase modules before importing auth
@@ -20,11 +20,11 @@ vi.mock('firebase/auth', () => ({
   inMemoryPersistence: {},
 }));
 
-vi.mock('./firebase.js', () => ({
+vi.mock('../firebase/firebase.js', () => ({
   app: {},
 }));
 
-vi.mock('./presence.js', () => ({
+vi.mock('../firebase/presence.js', () => ({
   setOffline: vi.fn(() => Promise.resolve()),
   initializePresence: vi.fn(() => Promise.resolve()),
 }));

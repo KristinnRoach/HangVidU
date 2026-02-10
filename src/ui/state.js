@@ -1,9 +1,23 @@
 // src/ui/state.js
+
+import { getLoggedInUserId } from '../auth/auth';
+
 // Simple UI state - single source of truth for app view
+
+// Todo: isLoggedIn system, temp below
+// const isLoggedIn = !!document.body.dataset.loggedIn; // set by server-side rendering or auth module
+// document.body.dataset.view = isLoggedIn ? 'lobby' : 'lobby:guest';
+// export function getIsLoggedIn() {
+//   return !!document.body.dataset.loggedIn;
+// }
+
+const isLoggedin = !!getLoggedInUserId();
+const initialView = isLoggedin ? 'lobby' : 'lobby:guest';
+document.body.dataset.view = initialView;
 
 export const uiState = {
   // High-level app mode
-  view: 'lobby:guest', // 'lobby' | 'calling' | 'connected' - add ":guest" for not logged in
+  view: initialView, // 'lobby' | 'calling' | 'connected' - add ":guest" when not logged in
 
   // Currently focused active media content (if any)
   currentMedia: 'none', // 'none' | 'remoteStream' | 'ytVideo' | 'sharedVideo'

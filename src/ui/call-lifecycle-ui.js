@@ -1,7 +1,7 @@
 // src/ui/call-lifecycle-ui.js
 import { uiState } from './state.js';
 import { enterCallMode, exitCallMode } from './legacy/call-mode.js';
-import { getLoggedInUserId } from '../firebase/auth.js';
+import { getLoggedInUserId } from '../auth/auth.js';
 
 export function onCallConnected() {
   const isLoggedIn = !!getLoggedInUserId();

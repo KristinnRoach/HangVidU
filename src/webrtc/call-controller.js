@@ -8,7 +8,7 @@ import {
   answerCall as answerCallFlow,
 } from './call-flow.js';
 import RoomService from '../room.js';
-import { getUserId } from '../firebase/auth.js';
+import { getUserId } from '../auth/auth.js';
 import { ref, off } from 'firebase/database';
 import {
   onDataChange,

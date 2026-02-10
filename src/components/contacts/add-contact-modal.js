@@ -9,7 +9,7 @@ import {
   requestContactsAccess,
   getLoggedInUserId,
   requestGmailSendAccess,
-} from '../../firebase/auth.js';
+} from '../../auth/auth.js';
 import { fetchGoogleContacts } from '../../contacts/google-contacts.js';
 import { getContacts } from '../contacts/contacts.js';
 import { sendBulkEmailsViaGmail } from '../../contacts/gmail-send.js';
@@ -154,12 +154,13 @@ export async function showAddContactModal() {
         if (contacts.length === 0) {
           importStatus.textContent = t('contact.import.no_email');
           importStatus.className = 'import-status not-found';
-          contactsContainer.innerHTML =
-            `<p class="empty-state">${t('contact.import.none')}</p>`;
+          contactsContainer.innerHTML = `<p class="empty-state">${t('contact.import.none')}</p>`;
           return;
         }
 
-        importStatus.textContent = t('contact.import.found_checking', { count: contacts.length });
+        importStatus.textContent = t('contact.import.found_checking', {
+          count: contacts.length,
+        });
 
         // Step 3: Get saved contacts to check if already connected
         const savedContacts = await getContacts();
@@ -214,7 +215,9 @@ export async function showAddContactModal() {
 
         // Display results
         filteredContacts = allContacts;
-        importStatus.textContent = t('contact.import.found', { count: allContacts.length });
+        importStatus.textContent = t('contact.import.found', {
+          count: allContacts.length,
+        });
         importStatus.className = 'import-status success';
 
         renderImportResults(
@@ -230,12 +233,13 @@ export async function showAddContactModal() {
           importStatus.textContent = t('contact.import.cancelled');
           importStatus.className = 'import-status cancelled';
         } else {
-          importStatus.textContent = t('contact.import.error', { error: error.message });
+          importStatus.textContent = t('contact.import.error', {
+            error: error.message,
+          });
           importStatus.className = 'import-status error';
         }
 
-        contactsContainer.innerHTML =
-          `<p class="empty-state">${t('contact.import.failed')}</p>`;
+        contactsContainer.innerHTML = `<p class="empty-state">${t('contact.import.failed')}</p>`;
       }
     }
 
@@ -407,10 +411,14 @@ function renderImportResults(
     const notOnAppCount = selectedArray.filter((c) => !c.user).length;
 
     inviteSelectedBtn.disabled = onAppCount === 0;
-    inviteSelectedBtn.textContent = t('contact.invite.selected', { count: onAppCount });
+    inviteSelectedBtn.textContent = t('contact.invite.selected', {
+      count: onAppCount,
+    });
 
     shareLinkBtn.disabled = notOnAppCount === 0;
-    shareLinkBtn.textContent = t('contact.invite.email', { count: notOnAppCount });
+    shareLinkBtn.textContent = t('contact.invite.email', {
+      count: notOnAppCount,
+    });
   }
 
   // Handle "Invite Selected" button (for users on HangVidU)
@@ -474,7 +482,10 @@ function renderImportResults(
 
       // Step 4: Prepare email content
       const subject = t('contact.invite.subject');
-      const body = t('contact.invite.body', { name: senderName, link: referralLink });
+      const body = t('contact.invite.body', {
+        name: senderName,
+        link: referralLink,
+      });
 
       // Step 5: Send emails via Gmail API
       const results = await sendBulkEmailsViaGmail(
@@ -520,7 +531,9 @@ function renderImportResults(
         // Wait a moment then open mailto: as fallback
         setTimeout(() => {
           openMailtoFallback(notOnApp);
-          shareLinkBtn.textContent = t('contact.invite.email', { count: notOnApp.length });
+          shareLinkBtn.textContent = t('contact.invite.email', {
+            count: notOnApp.length,
+          });
           shareLinkBtn.disabled = false;
         }, 1500);
       } else {

@@ -9,7 +9,7 @@
  * Each flow is self-contained and easy to follow from top to bottom.
  */
 
-import { getUserId } from '../firebase/auth.js';
+import { getUserId } from '../auth/auth.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 
 import { drainIceCandidateQueue, setupIceCandidates } from '../webrtc/ice.js';
@@ -88,7 +88,7 @@ export async function createCall({
   const remoteStreamSuccess = setupRemoteStream(
     pc,
     remoteVideoEl,
-    mutePartnerBtn
+    mutePartnerBtn,
   );
   if (!remoteStreamSuccess) {
     devDebug('Error setting up remote stream');
@@ -237,14 +237,16 @@ export async function answerCall({
   let dataChannel = null;
   pc.ondatachannel = (event) => {
     dataChannel = event.channel;
-    devDebug('[Call Flow] DataChannel received by joiner', { label: dataChannel.label });
+    devDebug('[Call Flow] DataChannel received by joiner', {
+      label: dataChannel.label,
+    });
   };
 
   // 3c. Setup remote stream handler
   const remoteStreamSuccess = setupRemoteStream(
     pc,
     remoteVideoEl,
-    mutePartnerBtn
+    mutePartnerBtn,
   );
   if (!remoteStreamSuccess) {
     devDebug('Error setting up remote stream');
@@ -334,7 +336,7 @@ export async function answerCall({
 export async function joinOrCreateRoom(
   customRoomId,
   createOptions,
-  answerOptions
+  answerOptions,
 ) {
   const status = await RoomService.checkRoomStatus(customRoomId);
 

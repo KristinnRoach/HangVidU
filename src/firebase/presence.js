@@ -6,7 +6,7 @@ import {
   onValue,
 } from 'firebase/database';
 import { rtdb } from '../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId } from './auth.js';
+import { getLoggedInUserId } from '../auth/auth.js';
 
 let presenceInitialized = false;
 

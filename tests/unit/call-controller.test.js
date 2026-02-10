@@ -17,7 +17,7 @@ vi.mock('../../src/room.js', () => {
     },
   };
 });
-vi.mock('../../src/firebase/auth.js', () => {
+vi.mock('../../src/auth/auth.js', () => {
   return {
     getUserId: () => 'local-user-id',
     getCurrentUser: () => ({ uid: 'local-user-id' }),
