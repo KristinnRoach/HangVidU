@@ -79,6 +79,9 @@ export function initAuth() {
 }
 
 async function _initAuthInternal() {
+  // Signal that auth initialization is in progress
+  setState({ status: 'loading' });
+
   // 1. Set persistence with graceful fallback for Safari/iOS/private mode
   try {
     await setPersistence(auth, indexedDBLocalPersistence);
@@ -304,6 +307,9 @@ export const signInWithAccountSelection = async () => {
 
   const { isIOSStandalone } = detectIOSStandalone();
 
+  // Signal sign-in is in progress (will be cleared by onAuthStateChanged)
+  setState({ status: 'loading' });
+
   try {
     // If previous attempt failed in iOS standalone PWA, the user can tap Login again
     // and we open in Safari from the same user gesture.
@@ -328,6 +334,9 @@ export const signInWithAccountSelection = async () => {
 };
 
 export async function signOutUser() {
+  // Signal sign-out is in progress (will be cleared by onAuthStateChanged)
+  setState({ status: 'loading' });
+
   try {
     await setOffline();
     clearGISTokenCache();
@@ -357,6 +366,9 @@ export async function deleteAccount() {
   }
 
   const userId = user.uid;
+
+  // Signal account deletion is in progress (will be cleared by onAuthStateChanged)
+  setState({ status: 'loading' });
 
   try {
     console.info('[AUTH] Starting account deletion for user:', userId);

@@ -1,6 +1,6 @@
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { auth, setSafariExternalOpenArmed } from './auth.js';
-import { getIsLoggedIn } from './auth-state.js';
+import { getIsLoggedIn, setState } from './auth-state.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { t, getLocale, onLocaleChange } from '../i18n/index.js';
 
@@ -16,7 +16,9 @@ const oneTapCallbacks = new Set();
 function loadGISScript(locale) {
   return new Promise((resolve, reject) => {
     // Remove existing GIS script if present
-    const existing = document.querySelector(`script[src^="${GIS_SCRIPT_BASE}"]`);
+    const existing = document.querySelector(
+      `script[src^="${GIS_SCRIPT_BASE}"]`,
+    );
     if (existing) existing.remove();
 
     const script = document.createElement('script');
@@ -207,6 +209,9 @@ async function handleOneTapCredential(response) {
   try {
     devDebug('[ONE TAP] Received credential, signing in with Firebase...');
     notifyOneTapStatus('signing_in');
+
+    // Signal main auth state that sign-in is in progress (will be cleared by onAuthStateChanged)
+    setState({ status: 'loading' });
 
     // Create a Google credential from the One Tap JWT
     const credential = GoogleAuthProvider.credential(response.credential);

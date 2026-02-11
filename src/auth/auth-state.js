@@ -4,6 +4,9 @@ import { getOrCreateGuestId } from './guest-user.js';
 
 let state = {
   status: 'idle', // 'idle' | 'loading' | 'authenticated' | 'unauthenticated'
+  // 'idle' = before initAuth() completes
+  // 'loading' = auth operation in flight (sign-in/out/delete)
+  // 'authenticated' | 'unauthenticated' = stable login state
   user: null, // { uid, displayName, email, photoURL } | null
   isLoggedIn: false,
 };
