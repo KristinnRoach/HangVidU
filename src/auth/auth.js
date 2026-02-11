@@ -260,11 +260,14 @@ onAuthStateChanged(auth, (firebaseUser) => {
   }
 });
 
-// Sync DOM dataset and UI view with auth state
+// Sync DOM dataset and UI view with auth state // TODO: does this belong here? Should UI state subscribe directly to auth-state.js instead?
 subscribe((state) => {
   document.body.dataset.loggedIn = state.isLoggedIn ? 'true' : 'false';
   uiState.setView(uiState.view);
-  devDebug('[AUTH] document.body.dataset.loggedIn set to', document.body.dataset.loggedIn);
+  devDebug(
+    '[AUTH] document.body.dataset.loggedIn set to',
+    document.body.dataset.loggedIn,
+  );
 });
 
 /**
