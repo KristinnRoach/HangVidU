@@ -1,4 +1,4 @@
-// src/ui/state.js
+// src/ui/ui-state.js
 
 // Simple UI state - single source of truth for app view
 

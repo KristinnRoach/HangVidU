@@ -12,7 +12,7 @@ Clean UI state management with declarative rendering, enabling Messenger-like re
 
 ## Key Files
 
-- `src/ui/state.js` - uiState source of truth
+- `src/ui/ui-state.js` - uiState source of truth
 - `src/ui/init-ui.js` - hides call UI on startup
 - `src/ui/call-lifecycle-ui.js` - call connect/disconnect handlers
 - `src/ui/watch-lifecycle-ui.js` - watch mode enter/exit handlers

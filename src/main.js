@@ -107,7 +107,7 @@ import { pushNotificationController } from './notifications/push-notification-co
 import { showEnableNotificationsPrompt } from './components/notifications/enable-notifications-prompt.js';
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
-import './ui/state.js'; // Initialize UI state (sets body data-view attribute)
+import './ui/ui-state.js'; // Initialize UI state (sets body data-view attribute)
 import { initUI } from './ui/init-ui.js';
 import { bindCallUI } from './ui/bind-call-ui.js';
 

@@ -23,7 +23,7 @@ import { initializePresence, setOffline } from '../firebase/presence.js';
 import { registerUserInDirectory } from '../contacts/user-discovery.js';
 import { saveUserProfile } from '../user/profile.js';
 import { getLocale, onLocaleChange } from '../i18n/index.js';
-import { uiState } from '../ui/state.js';
+import { uiState } from '../ui/ui-state.js';
 
 export const auth = getAuth(app);
 

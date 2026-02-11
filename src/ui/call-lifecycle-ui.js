@@ -1,5 +1,5 @@
 // src/ui/call-lifecycle-ui.js
-import { uiState } from './state.js';
+import { uiState } from './ui-state.js';
 import { enterCallMode, exitCallMode } from './legacy/call-mode.js';
 
 export function onCallConnected() {

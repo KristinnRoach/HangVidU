@@ -1,5 +1,5 @@
 // src/ui/watch-lifecycle-ui.js
-import { uiState } from './state.js';
+import { uiState } from './ui-state.js';
 import { enterWatchMode, exitWatchMode } from './legacy/watch-mode.js';
 
 export function onWatchModeEntered() {

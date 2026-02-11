@@ -7,7 +7,7 @@ import { devDebug } from '../../utils/dev/dev-utils.js';
 import { getDiagnosticLogger } from '../../utils/dev/diagnostic-logger.js';
 import RoomService from '../../room.js';
 import { ringtoneManager } from '../../media/audio/ringtone-manager.js';
-import { uiState } from '../../ui/state.js';
+import { uiState } from '../../ui/ui-state.js';
 import { t } from '../../i18n/index.js';
 
 const CALL_TIMEOUT_MS = 30000; // 30 seconds
