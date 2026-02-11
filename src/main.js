@@ -13,7 +13,7 @@ import {
   getUserRecentCallRef,
 } from './storage/fb-rtdb/rtdb.js';
 
-import { authReady, getCurrentUserAsync } from './auth/auth.js';
+import { initAuth, getCurrentUserAsync } from './auth/auth.js';
 import {
   getLoggedInUserId,
   getUserId,
@@ -243,8 +243,8 @@ async function init() {
     initializeSearchUI();
     addKeyListeners();
 
-    // Wait for auth initialization (persistence + redirect processing) before setting up auth UI
-    await authReady;
+    // Initialize auth (persistence + redirect + onAuthStateChanged listener)
+    await initAuth();
 
     const authComponent = initializeAuthUI(titleAuthBar);
     if (authComponent) cleanupFunctions.push(authComponent.dispose);

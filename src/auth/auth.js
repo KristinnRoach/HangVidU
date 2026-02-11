@@ -62,10 +62,24 @@ function logAuthError(context, error, extra = {}) {
   }
 }
 
-// Export a promise that resolves when auth initialization completes
-// This ensures redirect processing finishes before components subscribe to auth state
-export const authReady = (async () => {
-  // Set persistence early with graceful fallback for Safari/iOS/private mode
+let _initPromise = null;
+
+/**
+ * Initialize auth: set persistence, process redirects, then register
+ * onAuthStateChanged. This ensures Firebase has restored any persisted
+ * session before we publish the first auth state — avoiding a false
+ * 'unauthenticated' flash and premature side-effects.
+ *
+ * Safe to call multiple times — subsequent calls return the same promise.
+ */
+export function initAuth() {
+  if (_initPromise) return _initPromise;
+  _initPromise = _initAuthInternal();
+  return _initPromise;
+}
+
+async function _initAuthInternal() {
+  // 1. Set persistence with graceful fallback for Safari/iOS/private mode
   try {
     await setPersistence(auth, indexedDBLocalPersistence);
   } catch (_) {
@@ -76,19 +90,40 @@ export const authReady = (async () => {
     }
   }
 
-  // Note: We always use popup flow now, so redirect results are only from
-  // the Safari external fallback (which opens the app URL in Safari browser).
-  // Keep this check in case user completes sign-in in Safari and returns to PWA.
+  // 2. Process redirect results (Safari external fallback)
   try {
     const result = await getRedirectResult(auth);
     if (result?.user) {
-      // Do not print user displayName in production logs
-      devDebug('[AUTH] ✅ Sign-in completed (via Safari fallback)');
+      devDebug('[AUTH] Sign-in completed (via Safari fallback)');
     }
   } catch (e) {
-    // Ignore redirect result errors - they're expected when no redirect occurred
     devDebug('[AUTH] No redirect result:', e.code);
   }
+
+  // 3. NOW safe to listen — persistence is set, redirects processed
+  onAuthStateChanged(auth, (firebaseUser) => {
+    const loggedIn = !!firebaseUser;
+    setState(
+      loggedIn
+        ? {
+            status: 'authenticated',
+            isLoggedIn: true,
+            user: normalizeUser(firebaseUser),
+          }
+        : { status: 'unauthenticated', isLoggedIn: false, user: null },
+    );
+    if (!loggedIn) clearGISTokenCache();
+  });
+
+  // 4. DOM/UI sync subscriber
+  subscribe((state) => {
+    document.body.dataset.loggedIn = state.isLoggedIn ? 'true' : 'false';
+    uiState.setView(uiState.view);
+    devDebug(
+      '[AUTH] document.body.dataset.loggedIn set to',
+      document.body.dataset.loggedIn,
+    );
+  });
 
   devDebug('[AUTH] Auth initialization complete, scheduling One Tap...');
 
@@ -98,7 +133,7 @@ export const authReady = (async () => {
     await initOneTap();
     showOneTapSignin();
   }, 500);
-})();
+}
 
 // iOS standalone PWA Safari fallback: armed after a failed attempt,
 // then the next Login tap opens the app URL in Safari (user gesture).
@@ -239,36 +274,6 @@ function normalizeUser(firebaseUser) {
     photoURL: firebaseUser.photoURL,
   };
 }
-
-// --- Core auth state listener: pushes to auth-state.js + runs side effects ---
-onAuthStateChanged(auth, (firebaseUser) => {
-  const loggedIn = !!firebaseUser;
-
-  // Push normalized state (no Firebase objects leak out)
-  setState(
-    loggedIn
-      ? {
-          status: 'authenticated',
-          isLoggedIn: true,
-          user: normalizeUser(firebaseUser),
-        }
-      : { status: 'unauthenticated', isLoggedIn: false, user: null },
-  );
-
-  if (!loggedIn) {
-    clearGISTokenCache();
-  }
-});
-
-// Sync DOM dataset and UI view with auth state // TODO: does this belong here? Should UI state subscribe directly to auth-state.js instead?
-subscribe((state) => {
-  document.body.dataset.loggedIn = state.isLoggedIn ? 'true' : 'false';
-  uiState.setView(uiState.view);
-  devDebug(
-    '[AUTH] document.body.dataset.loggedIn set to',
-    document.body.dataset.loggedIn,
-  );
-});
 
 /**
  * Wait for auth state to be initialized and return the current user.
