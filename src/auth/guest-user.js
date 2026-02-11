@@ -1,7 +1,24 @@
 // src/auth/guest-user.js — persistent guest ID with TTL
 
 let guestUserId = null;
-const createNewGuestUserId = () => Math.random().toString(36).substring(2, 15);
+
+const createNewGuestUserId = () => {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
+    return crypto.randomUUID();
+  }
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.getRandomValues === 'function'
+  ) {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  return Math.random().toString(36).substring(2, 15);
+};
 
 const GUEST_STORAGE_KEY = 'guestUser';
 const DEFAULT_GUEST_TTL_MS = 48 * 60 * 60 * 1000; // 48 hours

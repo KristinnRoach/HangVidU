@@ -65,5 +65,13 @@ export function getUserName() {
  */
 export function subscribe(fn) {
   listeners.add(fn);
+
+  // Call the subscriber immediately with the current state
+  try {
+    fn(state);
+  } catch (e) {
+    console.error('[auth-state] subscriber error:', e);
+  }
+
   return () => listeners.delete(fn);
 }
