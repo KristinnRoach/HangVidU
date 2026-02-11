@@ -3,6 +3,7 @@
 
 import { FileTransport } from './file-transport.js';
 import { FileTransfer } from '../file-transfer.js';
+import { StreamingFileWriter } from '../streaming-file-writer.js';
 
 /**
  * WebRTCFileTransport - WebRTC DataChannel implementation for file transfer
@@ -120,6 +121,9 @@ export class WebRTCFileTransport extends FileTransport {
       this.fileTransfer.onFileReceived = null;
       this.fileTransfer.onFileMetaReceived = null;
     }
+
+    // Wipe any temp OPFS files from streaming transfers
+    StreamingFileWriter.cleanup();
 
     this.dataChannel = null;
     this.fileTransfer = null;

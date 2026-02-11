@@ -4,6 +4,7 @@ import {
   convertToArrayBuffer,
 } from './chunk-processor.js';
 import { validateAssembly } from './file-assembler.js';
+import { StreamingFileWriter } from './streaming-file-writer.js';
 
 // Use PrivyDrop's network chunk size for WebRTC safe transmission
 const CHUNK_SIZE = TransferConfig.FILE_CONFIG.NETWORK_CHUNK_SIZE; // 64KB
@@ -12,8 +13,10 @@ const MAX_FILE_SIZE_MB = 5000;
 export class FileTransfer {
   constructor(dataChannel) {
     this.dataChannel = dataChannel;
-    this.receivedChunks = new Map(); // fileId -> chunks array
+    this.receivedChunks = new Map(); // fileId -> chunks array (in-memory path)
     this.fileMetadata = new Map(); // fileId -> metadata
+    this.streamWriters = new Map(); // fileId -> StreamingFileWriter (OPFS path)
+    this.streamChunkCounts = new Map(); // fileId -> number of chunks received
     this.onFileError = null; // Optional callback for file transfer errors
     this.onReceiveProgress = null; // Optional callback for receive progress
   }
@@ -89,7 +92,29 @@ export class FileTransfer {
 
       if (msg.type === 'FILE_META') {
         this.fileMetadata.set(msg.fileId, msg);
-        this.receivedChunks.set(msg.fileId, []);
+
+        // Decide: OPFS streaming vs in-memory based on size + support
+        const useStreaming =
+          msg.size >= TransferConfig.STREAMING_THRESHOLD &&
+          StreamingFileWriter.isSupported();
+
+        if (useStreaming) {
+          const writer = new StreamingFileWriter(msg.fileId, msg.name);
+          try {
+            await writer.init();
+            this.streamWriters.set(msg.fileId, writer);
+            this.streamChunkCounts.set(msg.fileId, 0);
+          } catch (err) {
+            console.warn(
+              '[FileTransfer] OPFS init failed, falling back to in-memory:',
+              err,
+            );
+            this.receivedChunks.set(msg.fileId, []);
+          }
+        } else {
+          this.receivedChunks.set(msg.fileId, []);
+        }
+
         this.onFileMetaReceived?.(msg);
       }
     } else {
@@ -110,29 +135,84 @@ export class FileTransfer {
       }
 
       const { chunkMeta, chunkData } = parsed;
-      const chunks = this.receivedChunks.get(chunkMeta.fileId);
+      const { fileId, chunkIndex, totalChunks } = chunkMeta;
+
+      // --- OPFS streaming path ---
+      const writer = this.streamWriters.get(fileId);
+      if (writer) {
+        try {
+          await writer.writeChunk(chunkData, chunkIndex * CHUNK_SIZE);
+        } catch (err) {
+          console.error('[FileTransfer] OPFS writeChunk failed:', err);
+          await writer.abort();
+          this.streamWriters.delete(fileId);
+          this.streamChunkCounts.delete(fileId);
+          this.fileMetadata.delete(fileId);
+          this.onFileError?.({
+            fileName: this.fileMetadata.get(fileId)?.name,
+            reason: 'opfs_write_failed',
+            details: err,
+          });
+          return;
+        }
+
+        const count = this.streamChunkCounts.get(fileId) + 1;
+        this.streamChunkCounts.set(fileId, count);
+
+        if (this.onReceiveProgress) {
+          this.onReceiveProgress(count / totalChunks);
+        }
+
+        if (count === totalChunks) {
+          await this._finalizeStream(fileId);
+        }
+        return;
+      }
+
+      // --- In-memory path (unchanged) ---
+      const chunks = this.receivedChunks.get(fileId);
 
       if (!chunks) {
         console.error(
           '[FileTransfer] Received chunk for unknown file:',
-          chunkMeta.fileId,
+          fileId,
         );
         return;
       }
 
-      chunks[chunkMeta.chunkIndex] = chunkData;
+      chunks[chunkIndex] = chunkData;
 
       // Report receive progress
       if (this.onReceiveProgress) {
         const receivedCount = chunks.filter((c) => c).length;
-        this.onReceiveProgress(receivedCount / chunkMeta.totalChunks);
+        this.onReceiveProgress(receivedCount / totalChunks);
       }
 
       // Check if complete
-      if (chunks.filter((c) => c).length === chunkMeta.totalChunks) {
-        this.assembleFile(chunkMeta.fileId);
+      if (chunks.filter((c) => c).length === totalChunks) {
+        this.assembleFile(fileId);
       }
     }
+  }
+
+  /** Finalize an OPFS-streamed file and deliver it. */
+  async _finalizeStream(fileId) {
+    const writer = this.streamWriters.get(fileId);
+    try {
+      const file = await writer.finalize();
+      this.onFileReceived?.(file);
+    } catch (err) {
+      console.error('[FileTransfer] OPFS finalize failed:', err);
+      const meta = this.fileMetadata.get(fileId);
+      this.onFileError?.({
+        fileName: meta?.name,
+        reason: 'opfs_finalize_failed',
+        details: err,
+      });
+    }
+    this.streamWriters.delete(fileId);
+    this.streamChunkCounts.delete(fileId);
+    this.fileMetadata.delete(fileId);
   }
 
   assembleFile(fileId) {
