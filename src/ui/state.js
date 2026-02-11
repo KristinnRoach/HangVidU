@@ -5,7 +5,6 @@
 const isLoggedIn = () => document.body.dataset.loggedIn === 'true';
 
 const getAuthAwareView = (baseView) => {
-  console.warn(isLoggedIn());
   return isLoggedIn() ? `${baseView}:user` : `${baseView}:guest`;
 };
 

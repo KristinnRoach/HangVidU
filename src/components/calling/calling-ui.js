@@ -103,7 +103,7 @@ export async function showCallingUI(roomId, contactName, onCancel) {
   await setOutgoingCallState(roomId, contactName);
 
   // Set UI state to calling
-  const view = isLoggedIn ? 'calling' : 'calling:guest';
+  const view = isLoggedIn ? 'calling:user' : 'calling:guest';
   uiState.setView(view);
 
   // Create modal overlay
@@ -243,7 +243,7 @@ export function hideCallingUI() {
   // Reset UI state to lobby (unless call connected, which sets 'connected')
   const currentView = uiState.view;
   const isLoggedIn = !!getLoggedInUserId();
-  const viewSuffix = isLoggedIn ? '' : ':guest';
+  const viewSuffix = isLoggedIn ? ':user' : ':guest';
   if (currentView === `calling${viewSuffix}`) {
     uiState.setView(`lobby${viewSuffix}`);
   }
