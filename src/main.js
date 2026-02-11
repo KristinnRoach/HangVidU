@@ -13,7 +13,7 @@ import {
   getUserRecentCallRef,
 } from './storage/fb-rtdb/rtdb.js';
 
-import { initAuth, getCurrentUserAsync } from './auth/auth.js';
+import { initAuth, getCurrentUserAsync } from './auth/index.js';
 import {
   getLoggedInUserId,
   getUserId,
@@ -1163,7 +1163,7 @@ async function startListeningForSavedRooms() {
   // This prevents a race where we read localStorage as a guest before auth is ready
   try {
     if (typeof window !== 'undefined') {
-      const { getCurrentUserAsync } = await import('./auth/auth.js');
+      const { getCurrentUserAsync } = await import('./auth/index.js');
       await getCurrentUserAsync();
     }
   } catch (e) {

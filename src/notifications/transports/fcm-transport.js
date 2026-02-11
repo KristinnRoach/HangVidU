@@ -387,7 +387,7 @@ export class FCMTransport {
       if (import.meta.env.PROD) {
         let idToken = null;
         try {
-          const { getLoggedInUserToken } = await import('../../auth/auth.js');
+          const { getLoggedInUserToken } = await import('../../auth/index.js');
           idToken = await getLoggedInUserToken();
         } catch (e) {
           console.warn('[FCMTransport] Failed to get auth token:', e);
