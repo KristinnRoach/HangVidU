@@ -2013,6 +2013,7 @@ CallController.on(
     if (partnerId && roomId) {
       setTimeout(() => {
         saveContact(partnerId, roomId, lobbyDiv).catch((e) => {
+          // NOTE: saveContact currently only for logged in users
           console.warn('Failed to save contact after cleanup:', e);
         });
       }, 500);

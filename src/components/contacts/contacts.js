@@ -164,6 +164,13 @@ export async function resolveCallerName(roomId, fallbackUserId) {
 export async function saveContact(contactUserId, roomId, lobbyElement) {
   if (!contactUserId || !roomId) return;
 
+  if (!getLoggedInUserId()) {
+    console.debug(
+      '[CONTACTS] saveContact called while logged out. Only logged-in users can save contacts.',
+    ); // Prompt to log in?
+    return;
+  }
+
   // If this contact is already saved, don't prompt again.
   // If the roomId changed, update it silently.
   const existing = await getContacts();
