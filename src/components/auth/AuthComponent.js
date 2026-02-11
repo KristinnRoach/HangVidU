@@ -139,7 +139,8 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       updateButtons(initialLoggedIn);
 
       unsubscribe = subscribe(({ isLoggedIn, user }) => {
-        const displayName = smartTruncateName(user?.displayName);
+        const rawName = user?.displayName || user?.email || 'User';
+        const displayName = smartTruncateName(rawName);
         const photoURL = user?.photoURL || '';
 
         devDebug('[AuthComponent] Auth state changed:', {

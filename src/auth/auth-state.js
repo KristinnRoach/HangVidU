@@ -10,15 +10,22 @@ let state = {
 
 const listeners = new Set();
 
+// Ensure immutable snapshot for subscribers
+const snapshot = () => ({
+  ...state,
+  user: state.user ? { ...state.user } : null,
+});
+
 /**
  * Update auth state and notify subscribers.
  * Called by auth.js when Firebase auth state changes — not part of the public API.
  */
 export function setState(next) {
   state = { ...state, ...next };
+  const snap = snapshot();
   for (const fn of listeners) {
     try {
-      fn(state);
+      fn(snap);
     } catch (e) {
       console.error('[auth-state] subscriber error:', e);
     }
@@ -28,7 +35,7 @@ export function setState(next) {
 // --- Public accessors ---
 
 export function getAuthState() {
-  return { ...state };
+  return snapshot();
 }
 
 export function getIsLoggedIn() {
@@ -68,7 +75,7 @@ export function subscribe(fn) {
 
   // Call the subscriber immediately with the current state
   try {
-    fn(state);
+    fn(snapshot());
   } catch (e) {
     console.error('[auth-state] subscriber error:', e);
   }
