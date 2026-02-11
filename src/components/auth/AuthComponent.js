@@ -138,7 +138,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       // Set initial button states
       updateButtons(initialLoggedIn);
 
-      unsubscribe = subscribe(({ isLoggedIn, user }) => {
+      unsubscribe = subscribe(({ isLoggedIn, user, status }) => {
         const rawName = user?.displayName || user?.email || 'User';
         const displayName = smartTruncateName(rawName);
         const photoURL = user?.photoURL || '';
@@ -147,6 +147,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           isLoggedIn,
           userName: displayName,
           photoURL,
+          status,
         });
 
         // Cancel One Tap prompt if user logs in (without triggering cooldown)
@@ -157,6 +158,9 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         // Update button states with new auth state
         updateButtons(isLoggedIn);
 
+        // Show loading indicator during any auth operation (sign-in/out/etc)
+        const signingInDisplay = status === 'loading' ? 'inline-block' : 'none';
+
         el.update({
           isLoggedIn,
           userName: displayName,
@@ -164,7 +168,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           userPhotoDisplay: photoURL ? 'block' : 'none',
           userInfoDisplay: isLoggedIn ? 'flex' : 'none',
           avatarDisplay: photoURL ? 'none' : 'flex',
-          signingInDisplay: 'none',
+          signingInDisplay,
           loginBtnDisplay: isLoggedIn ? 'none' : 'inline-block',
           logoutBtnDisplay: isLoggedIn ? 'inline-block' : 'none',
         });
