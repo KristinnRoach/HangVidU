@@ -377,8 +377,8 @@ export function onAuthChange(callback, { truncate = 7 } = {}) {
     document.body.dataset.loggedIn = isLoggedIn ? 'true' : 'false';
     uiState.setView(uiState.view); // refresh auth-aware view
 
-    console.warn(
-      'document.body.dataset.loggedIn set to',
+    devDebug(
+      '[AUTH] document.body.dataset.loggedIn set to',
       document.body.dataset.loggedIn,
     );
 
