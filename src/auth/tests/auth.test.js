@@ -1,4 +1,4 @@
-// src/auth/auth.test.js
+// src/auth/tests/auth.test.js
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock Firebase modules before importing auth
@@ -12,6 +12,7 @@ vi.mock('firebase/auth', () => ({
   signOut: vi.fn(),
   GoogleAuthProvider: vi.fn(),
   signInWithPopup: vi.fn(),
+  signInWithCredential: vi.fn(),
   getRedirectResult: vi.fn(() => Promise.resolve(null)),
   onAuthStateChanged: vi.fn(),
   setPersistence: vi.fn(() => Promise.resolve()),
@@ -20,25 +21,27 @@ vi.mock('firebase/auth', () => ({
   inMemoryPersistence: {},
 }));
 
-vi.mock('../firebase/firebase.js', () => ({
+vi.mock('../../firebase/firebase.js', () => ({
   app: {},
+  fcmVapidKey: 'test-vapid-key',
 }));
 
-vi.mock('../firebase/presence.js', () => ({
+vi.mock('../../firebase/presence.js', () => ({
   setOffline: vi.fn(() => Promise.resolve()),
 }));
 
-vi.mock('./onetap.js', () => ({
+vi.mock('../onetap.js', () => ({
   initOneTap: vi.fn(),
   showOneTapSignin: vi.fn(),
 }));
 
-vi.mock('./auth-state.js', () => ({
+vi.mock('../auth-state.js', () => ({
   setState: vi.fn(),
   subscribe: vi.fn(),
+  getLoggedInUserId: vi.fn(() => null),
 }));
 
-vi.mock('../ui/ui-state.js', () => ({
+vi.mock('../../ui/ui-state.js', () => ({
   uiState: { view: 'lobby:guest', setView: vi.fn() },
 }));
 
@@ -56,7 +59,7 @@ vi.mock('firebase/database', () => ({
   serverTimestamp: vi.fn(() => ({ '.sv': 'timestamp' })),
 }));
 
-vi.mock('../storage/fb-rtdb/rtdb.js', () => ({
+vi.mock('../../storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
 }));
 
@@ -67,7 +70,7 @@ describe('deleteAccount', () => {
   });
 
   it('should throw error when no user is logged in', async () => {
-    const { deleteAccount } = await import('./auth.js');
+    const { deleteAccount } = await import('../auth.js');
     await expect(deleteAccount()).rejects.toThrow('No user logged in');
   });
 
@@ -81,7 +84,7 @@ describe('deleteAccount', () => {
     error.code = 'auth/requires-recent-login';
     vi.mocked(deleteUser).mockRejectedValue(error);
 
-    const { deleteAccount } = await import('./auth.js');
+    const { deleteAccount } = await import('../auth.js');
 
     await expect(deleteAccount()).rejects.toThrow(
       'For security, please sign out and sign in again before deleting your account.',
