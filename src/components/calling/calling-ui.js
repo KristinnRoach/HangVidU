@@ -2,7 +2,7 @@
 
 import { set, remove, get, ref } from 'firebase/database';
 import { rtdb, getUserOutgoingCallRef } from '../../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId, getUserId } from '../../auth/auth.js';
+import { getLoggedInUserId, getUserId } from '../../auth/auth-state.js';
 import { devDebug } from '../../utils/dev/dev-utils.js';
 import { getDiagnosticLogger } from '../../utils/dev/diagnostic-logger.js';
 import RoomService from '../../room.js';

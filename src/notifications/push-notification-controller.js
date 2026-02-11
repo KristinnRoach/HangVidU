@@ -2,7 +2,7 @@
 // Unified notification API with transport abstraction
 
 import { FCMTransport } from './transports/fcm-transport.js';
-import { getLoggedInUserId } from '../auth/auth.js';
+import { getLoggedInUserId } from '../auth/auth-state.js';
 
 /**
  * PushNotificationController - Core notification API

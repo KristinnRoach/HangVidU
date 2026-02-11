@@ -4,12 +4,8 @@
 import { findUsersByEmails } from '../../contacts/user-discovery.js';
 import { sendInvite } from '../../contacts/invitations.js';
 import { escapeHtml } from '../../utils/dom/dom-utils.js';
-import {
-  getCurrentUser,
-  requestContactsAccess,
-  getLoggedInUserId,
-  requestGmailSendAccess,
-} from '../../auth/auth.js';
+import { requestContactsAccess, requestGmailSendAccess } from '../../auth/auth.js';
+import { getLoggedInUserId, getUser } from '../../auth/auth-state.js';
 import { fetchGoogleContacts } from '../../contacts/google-contacts.js';
 import { getContacts } from '../contacts/contacts.js';
 import { sendBulkEmailsViaGmail } from '../../contacts/gmail-send.js';
@@ -169,7 +165,7 @@ export async function showAddContactModal() {
         const registeredUsers = await findUsersByEmails(emails);
 
         // Build results - now including ALL contacts
-        const currentUser = getCurrentUser();
+        const currentUser = getUser();
         allContacts = [];
 
         for (const contact of contacts) {
@@ -470,7 +466,7 @@ function renderImportResults(
         : window.location.origin;
 
       // Step 3: Get current user's name for personalization
-      const currentUser = getCurrentUser();
+      const currentUser = getUser();
       const senderName = currentUser?.displayName || 'A friend';
 
       // Step 4: Prepare email content
@@ -544,7 +540,7 @@ function renderImportResults(
       ? `${window.location.origin}/?ref=${myUserId}`
       : window.location.origin;
 
-    const currentUser = getCurrentUser();
+    const currentUser = getUser();
     const senderName = currentUser?.displayName || 'A friend';
 
     const subject = encodeURIComponent(t('contact.invite.subject'));

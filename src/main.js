@@ -13,13 +13,12 @@ import {
   getUserRecentCallRef,
 } from './storage/fb-rtdb/rtdb.js';
 
+import { initAuth, getCurrentUserAsync } from './auth/auth.js';
 import {
   getLoggedInUserId,
   getUserId,
-  onAuthChange,
-  authReady,
-  getCurrentUserAsync,
-} from './auth/auth.js';
+  subscribe as subscribeAuth,
+} from './auth/auth-state.js';
 
 import { clearUrlParam } from './utils/url.js';
 
@@ -244,8 +243,8 @@ async function init() {
     initializeSearchUI();
     addKeyListeners();
 
-    // Wait for auth initialization (persistence + redirect processing) before setting up auth UI
-    await authReady;
+    // Initialize auth (persistence + redirect + onAuthStateChanged listener)
+    await initAuth();
 
     const authComponent = initializeAuthUI(titleAuthBar);
     if (authComponent) cleanupFunctions.push(authComponent.dispose);
@@ -1030,8 +1029,8 @@ export function listenForIncomingOnRoom(roomId) {
           // Write rejected call message to chat history
           // The callee (who rejected) writes this - both parties will see it
           try {
-            const { getCurrentUser } = await import('./auth/auth.js');
-            const me = getCurrentUser();
+            const { getUser } = await import('./auth/auth-state.js');
+            const me = getUser();
             const myName = me?.displayName || 'Someone';
 
             await messagingController.sendCallEventMessage(
@@ -1750,7 +1749,7 @@ window.onload = async () => {
   // Re-render contacts on auth changes so private contacts are hidden on logout
   // Also clean up incoming listeners on logout to prevent accumulation
   let previousAuthState = null;
-  const unsubscribeAuthContacts = onAuthChange(async ({ isLoggedIn, user }) => {
+  const unsubscribeAuthContacts = subscribeAuth(async ({ isLoggedIn }) => {
     try {
       // Track state changes to differentiate initial load from actual logout
       const isInitialLoad = previousAuthState === null;
@@ -1938,8 +1937,8 @@ CallController.on(
       try {
         const contact = await getContactByRoomId(roomId);
         if (contact && contact.contactId) {
-          const { getCurrentUser } = await import('./auth/auth.js');
-          const me = getCurrentUser();
+          const { getUser } = await import('./auth/auth-state.js');
+          const me = getUser();
           const callerName = me?.displayName || 'Friend';
 
           // Send push notification to the contact (callee)

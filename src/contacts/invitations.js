@@ -3,7 +3,7 @@
 
 import { ref, set, remove, onChildAdded, get } from 'firebase/database';
 import { rtdb } from '../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId, getCurrentUser } from '../auth/auth.js';
+import { getLoggedInUserId, getUser } from '../auth/auth-state.js';
 import { getDeterministicRoomId } from '../utils/room-id.js';
 
 // Track invite listeners for cleanup
@@ -18,7 +18,7 @@ let acceptedInviteListener = null;
  */
 export async function sendInvite(toUserId, toName = 'User') {
   const myUserId = getLoggedInUserId();
-  const currentUser = getCurrentUser();
+  const currentUser = getUser();
 
   if (!myUserId || !currentUser) {
     throw new Error('Must be logged in to send invites');
@@ -124,7 +124,7 @@ export function listenForInvites(callback) {
  */
 export async function acceptInvite(fromUserId, inviteData) {
   const myUserId = getLoggedInUserId();
-  const currentUser = getCurrentUser();
+  const currentUser = getUser();
 
   if (!myUserId || !currentUser) {
     throw new Error('Must be logged in to accept invites');

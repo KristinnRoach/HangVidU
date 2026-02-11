@@ -1,0 +1,111 @@
+// src/auth/auth-state.js — pure auth state, no Firebase imports
+
+import { getOrCreateGuestId } from './guest-user.js';
+
+let state = {
+  status: 'idle', // 'idle' | 'loading' | 'authenticated' | 'unauthenticated'
+  // 'idle' = before initAuth() completes
+  // 'loading' = auth operation in flight (sign-in/out/delete)
+  // 'authenticated' | 'unauthenticated' = stable login state
+  user: null, // { uid, displayName, email, photoURL } | null
+  isLoggedIn: false,
+};
+
+const listeners = new Set();
+
+// Ensure immutable snapshot for subscribers
+const snapshot = () => ({
+  ...state,
+  user: state.user ? { ...state.user } : null,
+});
+
+/**
+ * Update auth state and notify subscribers.
+ * Called by auth.js when Firebase auth state changes — not part of the public API.
+ */
+export function setState(next) {
+  state = { ...state, ...next };
+  const snap = snapshot();
+  for (const fn of listeners) {
+    try {
+      fn(snap);
+    } catch (e) {
+      console.error('[auth-state] subscriber error:', e);
+    }
+  }
+}
+
+// --- Public accessors ---
+
+export function getAuthState() {
+  return snapshot();
+}
+
+export function getIsLoggedIn() {
+  return state.isLoggedIn;
+}
+
+export function getUser() {
+  return state.user ? { ...state.user } : null;
+}
+
+/**
+ * Returns the authenticated user's UID, or a persistent guest ID as fallback.
+ */
+export function getUserId() {
+  return state.user?.uid ?? getOrCreateGuestId();
+}
+
+/**
+ * Returns the authenticated user's UID, or null if not logged in.
+ */
+export function getLoggedInUserId() {
+  return state.user?.uid ?? null;
+}
+
+export function getUserName() {
+  return state.user?.displayName ?? null;
+}
+
+// --- Subscribe to state changes ---
+
+/**
+ * Subscribe to auth state changes. Called with the full state object.
+ * Returns an unsubscribe function.
+ */
+export function subscribe(fn) {
+  listeners.add(fn);
+
+  // Call the subscriber immediately with the current state
+  try {
+    fn(snapshot());
+  } catch (e) {
+    console.error('[auth-state] subscriber error:', e);
+  }
+
+  return () => listeners.delete(fn);
+}
+
+/**
+ * Resolve when auth state has reached a stable value
+ * ('authenticated' or 'unauthenticated').
+ * Useful for flows that must wait for the first auth resolution.
+ */
+export function waitForAuthReady() {
+  if (state.status === 'authenticated' || state.status === 'unauthenticated') {
+    return Promise.resolve(snapshot());
+  }
+
+  return new Promise((resolve) => {
+    const unsubscribe = subscribe((current) => {
+      if (
+        current.status !== 'authenticated' &&
+        current.status !== 'unauthenticated'
+      ) {
+        return;
+      }
+      unsubscribe();
+      resolve(current);
+    });
+  });
+}

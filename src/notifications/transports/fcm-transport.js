@@ -10,7 +10,7 @@ import {
 import { ref, set, remove, get, push } from 'firebase/database';
 import { app, fcmVapidKey } from '../../firebase/firebase.js';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId } from '../../auth/auth.js';
+import { getLoggedInUserId } from '../../auth/auth-state.js';
 
 /**
  * FCMTransport - Firebase Cloud Messaging transport for push notifications

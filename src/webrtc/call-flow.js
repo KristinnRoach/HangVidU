@@ -9,7 +9,7 @@
  * Each flow is self-contained and easy to follow from top to bottom.
  */
 
-import { getUserId } from '../auth/auth.js';
+import { getUserId } from '../auth/auth-state.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 
 import { drainIceCandidateQueue, setupIceCandidates } from '../webrtc/ice.js';

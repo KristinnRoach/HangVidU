@@ -17,12 +17,13 @@ vi.mock('../../src/room.js', () => {
     },
   };
 });
-vi.mock('../../src/auth/auth.js', () => {
+vi.mock('../../src/auth/auth-state.js', () => {
   return {
     getUserId: () => 'local-user-id',
-    getCurrentUser: () => ({ uid: 'local-user-id' }),
-    isLoggedIn: () => true,
+    getUser: () => ({ uid: 'local-user-id' }),
+    getIsLoggedIn: () => true,
     getLoggedInUserId: () => 'local-user-id',
+    subscribe: vi.fn(() => () => {}),
   };
 });
 vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => {

@@ -3,13 +3,11 @@
 // ================================================
 
 import {
-  // signInWithGoogle, // TODO: remove or use
   signInWithAccountSelection,
   signOutUser,
   deleteAccount,
-  onAuthChange,
-  isLoggedIn,
 } from '../../auth/auth.js';
+import { getIsLoggedIn, subscribe } from '../../auth/auth-state.js';
 
 import { onOneTapStatusChange, cancelOneTap } from '../../auth/onetap.js';
 import { isDev, devDebug } from '../../utils/dev/dev-utils.js';
@@ -61,7 +59,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
     loginBtnMarginRightPx = gapBetweenBtns;
   }
 
-  const initialLoggedIn = isLoggedIn();
+  const initialLoggedIn = getIsLoggedIn();
   devDebug('[AuthComponent] Initial logged-in state:', initialLoggedIn);
 
   authComponent = createComponent({
@@ -140,15 +138,16 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       // Set initial button states
       updateButtons(initialLoggedIn);
 
-      unsubscribe = onAuthChange(({ isLoggedIn, userName, user }) => {
-        // Use smart truncation for display name
-        const displayName = smartTruncateName(user?.displayName || userName);
+      unsubscribe = subscribe(({ isLoggedIn, user, status }) => {
+        const rawName = user?.displayName || user?.email || 'User';
+        const displayName = smartTruncateName(rawName);
         const photoURL = user?.photoURL || '';
 
         devDebug('[AuthComponent] Auth state changed:', {
           isLoggedIn,
           userName: displayName,
           photoURL,
+          status,
         });
 
         // Cancel One Tap prompt if user logs in (without triggering cooldown)
@@ -159,6 +158,9 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         // Update button states with new auth state
         updateButtons(isLoggedIn);
 
+        // Show loading indicator during any auth operation (sign-in/out/etc)
+        const signingInDisplay = status === 'loading' ? 'inline-block' : 'none';
+
         el.update({
           isLoggedIn,
           userName: displayName,
@@ -166,7 +168,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           userPhotoDisplay: photoURL ? 'block' : 'none',
           userInfoDisplay: isLoggedIn ? 'flex' : 'none',
           avatarDisplay: photoURL ? 'none' : 'flex',
-          signingInDisplay: 'none', // Hide loading indicator when auth resolves
+          signingInDisplay,
           loginBtnDisplay: isLoggedIn ? 'none' : 'inline-block',
           logoutBtnDisplay: isLoggedIn ? 'inline-block' : 'none',
         });

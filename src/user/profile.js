@@ -3,13 +3,23 @@
 
 import { ref, set, get } from 'firebase/database';
 import { rtdb } from '../storage/fb-rtdb/rtdb.js';
+import { subscribe } from '../auth/auth-state.js';
+
+// Auto-save profile when user logs in
+subscribe((state) => {
+  if (state.isLoggedIn && state.user) {
+    saveUserProfile(state.user).catch((err) => {
+      console.warn('Failed to save user profile:', err);
+    });
+  }
+});
 
 /**
  * Save user profile (displayName, photoURL) to a world-readable node.
  * Idempotent — safe to call on every login.
- * @param {import('firebase/auth').User} user
+ * @param {{ uid: string, displayName?: string, photoURL?: string }} user
  */
-export async function saveUserProfile(user) {
+async function saveUserProfile(user) {
   if (!user?.uid) return;
 
   const profileRef = ref(rtdb, `users/${user.uid}/profile`);
