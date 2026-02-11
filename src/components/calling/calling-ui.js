@@ -94,7 +94,6 @@ export async function isRoomCallFresh(roomId) {
 export async function showCallingUI(roomId, contactName, onCancel) {
   const diag = getDiagnosticLogger();
   const showTime = Date.now();
-  const isLoggedIn = !!getLoggedInUserId();
 
   // Remove any existing calling UI first
   hideCallingUI();
@@ -103,8 +102,7 @@ export async function showCallingUI(roomId, contactName, onCancel) {
   await setOutgoingCallState(roomId, contactName);
 
   // Set UI state to calling
-  const view = isLoggedIn ? 'calling:user' : 'calling:guest';
-  uiState.setView(view);
+  uiState.setView('calling');
 
   // Create modal overlay
   const overlay = document.createElement('div');
@@ -241,11 +239,8 @@ export function hideCallingUI() {
   ringtoneManager.stop();
 
   // Reset UI state to lobby (unless call connected, which sets 'connected')
-  const currentView = uiState.view;
-  const isLoggedIn = !!getLoggedInUserId();
-  const viewSuffix = isLoggedIn ? ':user' : ':guest';
-  if (currentView === `calling${viewSuffix}`) {
-    uiState.setView(`lobby${viewSuffix}`);
+  if (uiState.getCurrentBaseView() === 'calling') {
+    uiState.setView('lobby');
   }
 
   if (activeCallingUI) {

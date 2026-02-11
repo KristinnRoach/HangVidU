@@ -15,6 +15,10 @@ export const uiState = {
   // Currently focused active media content (if any)
   currentMedia: 'none', // 'none' | 'remoteStream' | 'ytVideo' | 'sharedVideo'
 
+  getCurrentBaseView() {
+    return this.view.split(':')[0];
+  },
+
   setView(newView) {
     const newBaseView = newView.split(':')[0];
     if (!isValidBaseView(newBaseView)) {
