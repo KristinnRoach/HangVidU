@@ -87,15 +87,23 @@ export function subscribe(fn) {
 }
 
 /**
- * Resolve when auth state has been initialized (status != 'idle').
+ * Resolve when auth state has reached a stable value
+ * ('authenticated' or 'unauthenticated').
  * Useful for flows that must wait for the first auth resolution.
  */
 export function waitForAuthReady() {
-  if (state.status !== 'idle') return Promise.resolve(snapshot());
+  if (state.status === 'authenticated' || state.status === 'unauthenticated') {
+    return Promise.resolve(snapshot());
+  }
 
   return new Promise((resolve) => {
     const unsubscribe = subscribe((current) => {
-      if (current.status === 'idle') return;
+      if (
+        current.status !== 'authenticated' &&
+        current.status !== 'unauthenticated'
+      ) {
+        return;
+      }
       unsubscribe();
       resolve(current);
     });

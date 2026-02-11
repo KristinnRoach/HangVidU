@@ -20,7 +20,7 @@ describe('waitForAuthReady', () => {
     expect(snapshot.isLoggedIn).toBe(true);
   });
 
-  it('waits for the first non-idle state', async () => {
+  it('waits for a stable auth state, not loading', async () => {
     const { setState, waitForAuthReady } = await import('../auth-state.js');
 
     setState({ status: 'idle', isLoggedIn: false, user: null });
@@ -32,6 +32,15 @@ describe('waitForAuthReady', () => {
     ]);
     expect(result).toBe('pending');
 
+    // 'loading' should NOT resolve the promise
+    setState({ status: 'loading', isLoggedIn: false, user: null });
+    const stillPending = await Promise.race([
+      ready.then(() => 'ready'),
+      Promise.resolve('pending'),
+    ]);
+    expect(stillPending).toBe('pending');
+
+    // Only a stable state resolves it
     setState({ status: 'unauthenticated', isLoggedIn: false, user: null });
 
     const snapshot = await ready;
