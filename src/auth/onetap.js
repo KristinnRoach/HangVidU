@@ -1,5 +1,6 @@
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
-import { auth, isLoggedIn, setSafariExternalOpenArmed } from './auth.js';
+import { auth, setSafariExternalOpenArmed } from './auth.js';
+import { getIsLoggedIn } from './auth-state.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { t, getLocale, onLocaleChange } from '../i18n/index.js';
 
@@ -148,7 +149,7 @@ function initializeGIS() {
 export function showOneTapSignin() {
   devDebug('[ONE TAP] showOneTapSignin called');
 
-  if (isLoggedIn()) {
+  if (getIsLoggedIn()) {
     devDebug('[ONE TAP] User already logged in, skipping');
     notifyOneTapStatus('not_needed');
     return;

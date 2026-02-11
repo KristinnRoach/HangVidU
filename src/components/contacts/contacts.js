@@ -2,7 +2,7 @@
 
 import { ref, set, get, remove, update, onValue, off } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId } from '../../auth/auth.js';
+import { getLoggedInUserId } from '../../auth/auth-state.js';
 import confirmDialog from '../base/confirm-dialog.js';
 import { hideElement, showElement } from '../../utils/ui/ui-utils.js';
 import { messagingController } from '../../messaging/messaging-controller.js';

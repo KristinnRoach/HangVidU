@@ -3,13 +3,11 @@
 // ================================================
 
 import {
-  // signInWithGoogle, // TODO: remove or use
   signInWithAccountSelection,
   signOutUser,
   deleteAccount,
-  onAuthChange,
-  isLoggedIn,
 } from '../../auth/auth.js';
+import { getIsLoggedIn, subscribe } from '../../auth/auth-state.js';
 
 import { onOneTapStatusChange, cancelOneTap } from '../../auth/onetap.js';
 import { isDev, devDebug } from '../../utils/dev/dev-utils.js';
@@ -61,7 +59,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
     loginBtnMarginRightPx = gapBetweenBtns;
   }
 
-  const initialLoggedIn = isLoggedIn();
+  const initialLoggedIn = getIsLoggedIn();
   devDebug('[AuthComponent] Initial logged-in state:', initialLoggedIn);
 
   authComponent = createComponent({
@@ -140,9 +138,8 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       // Set initial button states
       updateButtons(initialLoggedIn);
 
-      unsubscribe = onAuthChange(({ isLoggedIn, userName, user }) => {
-        // Use smart truncation for display name
-        const displayName = smartTruncateName(user?.displayName || userName);
+      unsubscribe = subscribe(({ isLoggedIn, user }) => {
+        const displayName = smartTruncateName(user?.displayName);
         const photoURL = user?.photoURL || '';
 
         devDebug('[AuthComponent] Auth state changed:', {
@@ -166,7 +163,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           userPhotoDisplay: photoURL ? 'block' : 'none',
           userInfoDisplay: isLoggedIn ? 'flex' : 'none',
           avatarDisplay: photoURL ? 'none' : 'flex',
-          signingInDisplay: 'none', // Hide loading indicator when auth resolves
+          signingInDisplay: 'none',
           loginBtnDisplay: isLoggedIn ? 'none' : 'inline-block',
           logoutBtnDisplay: isLoggedIn ? 'inline-block' : 'none',
         });

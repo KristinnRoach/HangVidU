@@ -38,6 +38,10 @@ vi.mock('../contacts/user-discovery.js', () => ({
   registerUserInDirectory: vi.fn(() => Promise.resolve()),
 }));
 
+vi.mock('./auth-state.js', () => ({
+  setState: vi.fn(),
+}));
+
 vi.mock('firebase/database', () => ({
   ref: vi.fn(),
   remove: vi.fn(() => Promise.resolve()),

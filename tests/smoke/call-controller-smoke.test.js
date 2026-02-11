@@ -35,11 +35,11 @@ vi.mock('../../src/room.js', () => {
   };
 });
 
-vi.mock('../../src/auth/auth.js', () => {
+vi.mock('../../src/auth/auth-state.js', () => {
   return {
     getUserId: () => 'test-user-id',
-    getCurrentUser: () => ({ uid: 'test-user-id' }),
-    isLoggedIn: () => true,
+    getUser: () => ({ uid: 'test-user-id' }),
+    getIsLoggedIn: () => true,
     getLoggedInUserId: () => 'test-user-id',
   };
 });

@@ -14,7 +14,7 @@ import {
   serverTimestamp,
 } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId, getCurrentUser } from '../../auth/auth.js';
+import { getLoggedInUserId, getUser } from '../../auth/auth-state.js';
 
 // Message limit per conversation to control storage costs
 const MAX_MESSAGES_PER_CONVERSATION = 100;
@@ -56,7 +56,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
       throw new Error('Cannot send message: not logged in');
     }
 
-    const user = getCurrentUser();
+    const user = getUser();
     const fromName = user?.displayName || 'Guest User';
     const conversationId = this._getConversationId(fromUserId, contactId);
 

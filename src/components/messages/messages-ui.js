@@ -17,7 +17,7 @@ import {
   ReactionUI,
 } from '../../messaging/reactions/index.js';
 import { REACTION_CONFIG } from '../../messaging/reactions/ReactionConfig.js';
-import { getLoggedInUserId } from '../../auth/auth.js';
+import { getLoggedInUserId } from '../../auth/auth-state.js';
 import { messagingController } from '../../messaging/messaging-controller.js';
 import { showInfoToast } from '../../utils/ui/toast.js';
 import { getUserProfile } from '../../user/profile.js';

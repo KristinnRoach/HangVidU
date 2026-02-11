@@ -1,5 +1,7 @@
 // src/auth/auth.js
 
+import { setState } from './auth-state.js';
+
 import {
   getAuth,
   GoogleAuthProvider,
@@ -228,108 +230,63 @@ function handleSignInError(error) {
   alert(t('auth.sign_in_failed', { error: errorMessage }));
 }
 
-let guestUserId = null; // Generated ID when not logged in (cached for session)
-const createNewGuestUserId = () => Math.random().toString(36).substring(2, 15);
-
-// Persist a stable per-browser guest ID with TTL
-const GUEST_STORAGE_KEY = 'guestUser';
-const DEFAULT_GUEST_TTL_MS = 48 * 60 * 60 * 1000; // 48 hours
-
-function loadGuestFromLocalStorage() {
-  try {
-    const raw =
-      typeof localStorage !== 'undefined'
-        ? localStorage.getItem(GUEST_STORAGE_KEY)
-        : null;
-    if (!raw) return null;
-    const obj = JSON.parse(raw);
-    if (!obj || typeof obj !== 'object' || !obj.id) return null;
-    if (obj.expiresAt && Date.now() > obj.expiresAt) {
-      // Expired; clear and treat as missing
-      try {
-        localStorage.removeItem(GUEST_STORAGE_KEY);
-      } catch (_) {}
-      return null;
-    }
-    return obj;
-  } catch (e) {
-    return null;
-  }
-}
-
-function persistGuestToLocalStorage(id, ttlMs = DEFAULT_GUEST_TTL_MS) {
-  const now = Date.now();
-  const payload = {
-    id,
-    createdAt: now,
-    expiresAt: now + ttlMs,
+// --- Normalize Firebase User to plain object for auth-state ---
+function normalizeUser(firebaseUser) {
+  if (!firebaseUser) return null;
+  return {
+    uid: firebaseUser.uid,
+    displayName: firebaseUser.displayName,
+    email: firebaseUser.email,
+    photoURL: firebaseUser.photoURL,
   };
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(payload));
-    }
-  } catch (_) {}
-  return payload;
 }
 
-/**
- * Get the user ID to use for this session.
- * Returns the authenticated user's UID if logged in,
- * otherwise generates a guest ID
- * (or uses an existing one if already generated).
- * @returns {string} The current user ID
- */
-export function getUserId() {
-  const userId = getLoggedInUserId();
-  if (userId) {
-    return userId;
+// --- Core auth state listener: pushes to auth-state.js + runs side effects ---
+onAuthStateChanged(auth, (firebaseUser) => {
+  const loggedIn = !!firebaseUser;
+
+  // Push normalized state (no Firebase objects leak out)
+  setState(
+    loggedIn
+      ? {
+          status: 'authenticated',
+          isLoggedIn: true,
+          user: normalizeUser(firebaseUser),
+        }
+      : { status: 'unauthenticated', isLoggedIn: false, user: null },
+  );
+
+  // Side effects
+  if (loggedIn) {
+    initializePresence().catch((err) => {
+      console.warn('Failed to initialize presence:', err);
+    });
+    saveUserProfile(firebaseUser).catch((err) => {
+      console.warn('Failed to save user profile:', err);
+    });
+    registerUserInDirectory(firebaseUser).catch((err) => {
+      console.warn('Failed to register user in directory:', err);
+    });
+  } else {
+    clearGISTokenCache();
   }
-  // If not logged in, use or generate a persistent guest user ID (with TTL)
-  if (!guestUserId) {
-    const stored = loadGuestFromLocalStorage();
-    if (stored && stored.id) {
-      guestUserId = stored.id;
-    } else {
-      guestUserId = createNewGuestUserId();
-      persistGuestToLocalStorage(guestUserId);
-    }
-  }
-  return guestUserId;
-}
 
-/**
- * Get the current authenticated user.
- * @returns {import('firebase/auth').User | null} The current user if logged in, null otherwise.
- */
-export function getCurrentUser() {
-  return auth.currentUser;
-}
+  document.body.dataset.loggedIn = loggedIn ? 'true' : 'false';
+  uiState.setView(uiState.view);
 
-/**
- * Check if a user is currently logged in.
- * @returns {boolean} True if user is logged in, false otherwise.
- */
-export function isLoggedIn() {
-  return auth.currentUser !== null;
-}
-
-/**
- * Get the currently logged in user's ID (uid).
- * @returns {string | null} The user's uid if logged in, null otherwise.
- */
-export function getLoggedInUserId() {
-  return auth.currentUser?.uid ?? null;
-}
+  devDebug(
+    '[AUTH] document.body.dataset.loggedIn set to',
+    document.body.dataset.loggedIn,
+  );
+});
 
 /**
  * Wait for auth state to be initialized and return the current user.
- * Useful when you need to ensure auth persistence has been checked.
  * Note: onAuthStateChanged fires once after initialization, so this always resolves.
- * @returns {Promise<import('firebase/auth').User | null>} The current user if logged in, null otherwise.
+ * @returns {Promise<import('firebase/auth').User | null>}
  */
 export function getCurrentUserAsync() {
   return new Promise((resolve) => {
-    // onAuthStateChanged always fires once after auth initialization
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       unsubscribe();
       resolve(user);
@@ -337,60 +294,9 @@ export function getCurrentUserAsync() {
   });
 }
 
-/**
- * Subscribe to auth state with a normalized, UI-friendly payload.
- * Returns Firebase's unsubscribe function.
- *
- * @param {(info: { user: import('firebase/auth').User|null, isLoggedIn: boolean, userName: string }) => void} callback
- * @param {{ truncate?: number }} [options]
- * @returns {() => void} Unsubscribe function
- */
-export function onAuthChange(callback, { truncate = 7 } = {}) {
-  return onAuthStateChanged(auth, (user) => {
-    const isLoggedIn = !!user;
-    const rawName = user?.displayName || 'Guest User';
-    const userName =
-      typeof rawName === 'string' && rawName.length > truncate
-        ? rawName.slice(0, truncate) + '...'
-        : rawName;
-
-    if (isLoggedIn) {
-      // Initialize presence when user logs in
-      initializePresence().catch((err) => {
-        console.warn('Failed to initialize presence:', err);
-      });
-
-      // Save public profile (displayName, photoURL)
-      saveUserProfile(user).catch((err) => {
-        console.warn('Failed to save user profile:', err);
-      });
-
-      // Register user in discovery directory
-      registerUserInDirectory(user).catch((err) => {
-        console.warn('Failed to register user in directory:', err);
-      });
-    } else {
-      // Clear cached GIS tokens so they can't leak to another session
-      clearGISTokenCache();
-    }
-
-    document.body.dataset.loggedIn = isLoggedIn ? 'true' : 'false';
-    uiState.setView(uiState.view); // refresh auth-aware view
-
-    devDebug(
-      '[AUTH] document.body.dataset.loggedIn set to',
-      document.body.dataset.loggedIn,
-    );
-
-    try {
-      callback({ user, isLoggedIn, userName });
-    } catch (e) {
-      // Swallow callback errors to avoid breaking the subscription loop
-      // Optionally log in dev mode
-      if (typeof devDebug === 'function')
-        devDebug('onAuthChange callback error', e);
-    }
-  });
+// Internal helper — used by requestGISToken for login_hint
+function getCurrentUser() {
+  return auth.currentUser;
 }
 
 export const signInWithAccountSelection = async () => {
