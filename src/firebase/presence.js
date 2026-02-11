@@ -8,14 +8,23 @@ import {
 import { rtdb } from '../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, subscribe } from '../auth/auth-state.js';
 
-let presenceInitialized = false;
+let presenceInitializedForUserId = null;
+let lastSeenUserId = null;
 
 // Auto-initialize when user logs in
 subscribe((state) => {
   if (state.isLoggedIn) {
+    const userId = getLoggedInUserId();
+    if (userId && userId !== lastSeenUserId) {
+      presenceInitializedForUserId = null;
+      lastSeenUserId = userId;
+    }
     initializePresence().catch((err) => {
       console.warn('Failed to initialize presence:', err);
     });
+  } else {
+    presenceInitializedForUserId = null;
+    lastSeenUserId = null;
   }
 });
 
@@ -24,7 +33,7 @@ subscribe((state) => {
  */
 async function initializePresence() {
   const userId = getLoggedInUserId();
-  if (!userId || presenceInitialized) return;
+  if (!userId || presenceInitializedForUserId === userId) return;
 
   const presenceRef = ref(rtdb, `users/${userId}/presence`);
 
@@ -42,7 +51,7 @@ async function initializePresence() {
       lastChanged: serverTimestamp(),
     });
 
-    presenceInitialized = true;
+    presenceInitializedForUserId = userId;
     console.log('Presence initialized for user:', userId);
   } catch (error) {
     console.error('Failed to initialize presence:', error);
@@ -64,7 +73,7 @@ export async function setOffline() {
       lastSeen: serverTimestamp(),
       lastChanged: serverTimestamp(),
     });
-    presenceInitialized = false;
+    presenceInitializedForUserId = null;
   } catch (error) {
     console.error('Failed to set offline:', error);
   }
