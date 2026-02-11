@@ -28,7 +28,7 @@ export function setState(next) {
 // --- Public accessors ---
 
 export function getAuthState() {
-  return state;
+  return { ...state };
 }
 
 export function getIsLoggedIn() {
@@ -36,7 +36,7 @@ export function getIsLoggedIn() {
 }
 
 export function getUser() {
-  return state.user;
+  return state.user ? { ...state.user } : null;
 }
 
 /**
