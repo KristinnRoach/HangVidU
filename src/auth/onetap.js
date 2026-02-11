@@ -1,5 +1,6 @@
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
-import { auth, setSafariExternalOpenArmed } from './auth.js';
+import { auth } from './auth-setup.js';
+import { setSafariExternalOpenArmed } from './auth-actions.js';
 import { getIsLoggedIn, setState } from './auth-state.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { t, getLocale, onLocaleChange } from '../i18n/index.js';
