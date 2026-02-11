@@ -658,13 +658,17 @@ function requestGISToken(cacheKey, scope, { interactive = false } = {}) {
 
 /**
  * Request Google Contacts access via Google Identity Services Token Model.
- * Uses silent-first flow (works without popup after initial consent).
+ * @param {Object} [options]
+ * @param {boolean} [options.interactive] - Skip silent attempt and go straight
+ *   to popup. Use when called from a click handler to preserve the user-gesture
+ *   context (mobile browsers block popups without a gesture).
  * @returns {Promise<string>} - Google access token with contacts scope
  */
-export function requestContactsAccess() {
+export function requestContactsAccess({ interactive = false } = {}) {
   return requestGISToken(
     'contacts',
     'https://www.googleapis.com/auth/contacts.readonly https://www.googleapis.com/auth/contacts.other.readonly',
+    { interactive },
   );
 }
 
