@@ -1,4 +1,4 @@
-// src/firebase/auth.js
+// src/auth/auth.js
 
 import {
   getAuth,
@@ -14,15 +14,16 @@ import {
   deleteUser,
 } from 'firebase/auth';
 
-import { app } from './firebase.js';
+import { app } from '../firebase/firebase.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { initOneTap, showOneTapSignin } from './onetap.js';
 import { t } from '../i18n/index.js';
 
-import { initializePresence, setOffline } from './presence.js';
+import { initializePresence, setOffline } from '../firebase/presence.js';
 import { registerUserInDirectory } from '../contacts/user-discovery.js';
 import { saveUserProfile } from '../user/profile.js';
 import { getLocale, onLocaleChange } from '../i18n/index.js';
+import { uiState } from '../ui/state.js';
 
 export const auth = getAuth(app);
 
@@ -372,6 +373,14 @@ export function onAuthChange(callback, { truncate = 7 } = {}) {
       // Clear cached GIS tokens so they can't leak to another session
       clearGISTokenCache();
     }
+
+    document.body.dataset.loggedIn = isLoggedIn ? 'true' : 'false';
+    uiState.setView(uiState.view); // refresh auth-aware view
+
+    devDebug(
+      '[AUTH] document.body.dataset.loggedIn set to',
+      document.body.dataset.loggedIn,
+    );
 
     try {
       callback({ user, isLoggedIn, userName });

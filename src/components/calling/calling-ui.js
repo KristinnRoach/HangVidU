@@ -2,7 +2,7 @@
 
 import { set, remove, get, ref } from 'firebase/database';
 import { rtdb, getUserOutgoingCallRef } from '../../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId, getUserId } from '../../firebase/auth.js';
+import { getLoggedInUserId, getUserId } from '../../auth/auth.js';
 import { devDebug } from '../../utils/dev/dev-utils.js';
 import { getDiagnosticLogger } from '../../utils/dev/diagnostic-logger.js';
 import RoomService from '../../room.js';
@@ -131,7 +131,9 @@ export async function showCallingUI(roomId, contactName, onCancel) {
   `;
 
   const title = document.createElement('h2');
-  title.textContent = t('call.calling', { name: contactName || t('shared.contact') });
+  title.textContent = t('call.calling', {
+    name: contactName || t('shared.contact'),
+  });
   title.style.cssText = `
     margin: 0 0 10px 0;
     font-size: 20px;
@@ -237,7 +239,7 @@ export function hideCallingUI() {
   ringtoneManager.stop();
 
   // Reset UI state to lobby (unless call connected, which sets 'connected')
-  if (uiState.view === 'calling') {
+  if (uiState.getCurrentBaseView() === 'calling') {
     uiState.setView('lobby');
   }
 

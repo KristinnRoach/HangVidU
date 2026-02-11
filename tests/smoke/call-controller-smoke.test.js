@@ -35,7 +35,7 @@ vi.mock('../../src/room.js', () => {
   };
 });
 
-vi.mock('../../src/firebase/auth.js', () => {
+vi.mock('../../src/auth/auth.js', () => {
   return {
     getUserId: () => 'test-user-id',
     getCurrentUser: () => ({ uid: 'test-user-id' }),
@@ -134,7 +134,7 @@ describe('CallController Smoke Tests', () => {
       expect(RoomService.cancelCall).toHaveBeenCalledWith(
         'room-789',
         'test-user-id',
-        'user_hung_up'
+        'user_hung_up',
       );
       expect(hangupListener).toHaveBeenCalled();
       expect(cleanupListener).toHaveBeenCalled();
@@ -155,7 +155,7 @@ describe('CallController Smoke Tests', () => {
       expect(RoomService.cancelCall).not.toHaveBeenCalled();
       expect(RoomService.leaveRoom).toHaveBeenCalledWith(
         'test-user-id',
-        'room-999'
+        'room-999',
       );
       expect(cleanupListener).toHaveBeenCalled();
     });

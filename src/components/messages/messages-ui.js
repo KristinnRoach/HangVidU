@@ -17,7 +17,7 @@ import {
   ReactionUI,
 } from '../../messaging/reactions/index.js';
 import { REACTION_CONFIG } from '../../messaging/reactions/ReactionConfig.js';
-import { getLoggedInUserId } from '../../firebase/auth.js';
+import { getLoggedInUserId } from '../../auth/auth.js';
 import { messagingController } from '../../messaging/messaging-controller.js';
 import { showInfoToast } from '../../utils/ui/toast.js';
 import { getUserProfile } from '../../user/profile.js';
@@ -431,13 +431,17 @@ export function initMessagesUI() {
     const file = sentFiles.get(fileName);
 
     if (!file) {
-      appendChatMessage(`❌ ${t('message.watch.file_unavailable', { name: fileName })}`);
+      appendChatMessage(
+        `❌ ${t('message.watch.file_unavailable', { name: fileName })}`,
+      );
       await cancelWatchRequest();
       return;
     }
 
     // Show notification
-    appendChatMessage(`🎬 ${t('message.watch.partner_wants', { name: fileName })}`);
+    appendChatMessage(
+      `🎬 ${t('message.watch.partner_wants', { name: fileName })}`,
+    );
 
     // Prompt user to join
     const accepted = await promptJoinWatchTogether(fileName);
@@ -629,7 +633,8 @@ export function initMessagesUI() {
     const { isSentByMe, senderDisplay, fileDownload, messageId, reactions } =
       options;
     // prefer explicit senderDisplay, otherwise 'Me' for local messages
-    const effectiveSender = senderDisplay ?? (isSentByMe === true ? t('shared.me') : '');
+    const effectiveSender =
+      senderDisplay ?? (isSentByMe === true ? t('shared.me') : '');
 
     const p = document.createElement('p');
     // Apply alignment class based on sender
@@ -862,7 +867,9 @@ export function initMessagesUI() {
 
     const callStatusText = document.createElement('span');
     callStatusText.className = 'call-event-text';
-    callStatusText.textContent = iAmTheCaller ? t('call.no_answer') : t('call.missed');
+    callStatusText.textContent = iAmTheCaller
+      ? t('call.no_answer')
+      : t('call.missed');
 
     // Create call back action inside the same bubble
     const callBackBtn = document.createElement('button');
@@ -874,7 +881,9 @@ export function initMessagesUI() {
     callBackIcon.setAttribute('aria-hidden', 'true');
     callBackBtn.appendChild(callBackIcon);
     callBackBtn.appendChild(
-      document.createTextNode(iAmTheCaller ? t('call.try_again') : t('call.callback')),
+      document.createTextNode(
+        iAmTheCaller ? t('call.try_again') : t('call.callback'),
+      ),
     );
 
     callBackBtn.addEventListener('click', async () => {
@@ -1066,12 +1075,13 @@ export function initMessagesUI() {
 
           if (action === 'watch') {
             // Show notification in chat
-            appendChatMessage(`📹 ${t('message.received_video', { name: file.name })}`, {
-              isSentByMe: false,
-            });
             appendChatMessage(
-              `🎬 ${t('message.watch.requesting')}`,
+              `📹 ${t('message.received_video', { name: file.name })}`,
+              {
+                isSentByMe: false,
+              },
             );
+            appendChatMessage(`🎬 ${t('message.watch.requesting')}`);
 
             // Load video locally first
             const success = await handleVideoSelection(file);
@@ -1100,14 +1110,19 @@ export function initMessagesUI() {
             // Using 1 second to be safe for slow devices/large files
             setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-            appendChatMessage(`📎 ${t('message.downloaded', { name: file.name })}`);
+            appendChatMessage(
+              `📎 ${t('message.downloaded', { name: file.name })}`,
+            );
           }
         } else {
           // Non-video file - show download link as before
-          appendChatMessage(`📎 ${t('message.received', { name: file.name })}`, {
-            isSentByMe: false,
-            fileDownload: { fileName: file.name, url },
-          });
+          appendChatMessage(
+            `📎 ${t('message.received', { name: file.name })}`,
+            {
+              isSentByMe: false,
+              fileDownload: { fileName: file.name, url },
+            },
+          );
         }
 
         // Increment unread count if messages box is hidden

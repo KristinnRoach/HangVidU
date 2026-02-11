@@ -9,9 +9,9 @@ import {
   deleteAccount,
   onAuthChange,
   isLoggedIn,
-} from '../../firebase/auth';
+} from '../../auth/auth.js';
 
-import { onOneTapStatusChange, cancelOneTap } from '../../firebase/onetap';
+import { onOneTapStatusChange, cancelOneTap } from '../../auth/onetap.js';
 import { isDev, devDebug } from '../../utils/dev/dev-utils.js';
 import { t, onLocaleChange } from '../../i18n/index.js';
 

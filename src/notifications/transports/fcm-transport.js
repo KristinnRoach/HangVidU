@@ -10,7 +10,7 @@ import {
 import { ref, set, remove, get, push } from 'firebase/database';
 import { app, fcmVapidKey } from '../../firebase/firebase.js';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId } from '../../firebase/auth.js';
+import { getLoggedInUserId } from '../../auth/auth.js';
 
 /**
  * FCMTransport - Firebase Cloud Messaging transport for push notifications
@@ -387,8 +387,7 @@ export class FCMTransport {
       if (import.meta.env.PROD) {
         let idToken = null;
         try {
-          const { getLoggedInUserToken } =
-            await import('../../firebase/auth.js');
+          const { getLoggedInUserToken } = await import('../../auth/auth.js');
           idToken = await getLoggedInUserToken();
         } catch (e) {
           console.warn('[FCMTransport] Failed to get auth token:', e);

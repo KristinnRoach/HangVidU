@@ -2,7 +2,7 @@
 // Unified notification API with transport abstraction
 
 import { FCMTransport } from './transports/fcm-transport.js';
-import { getLoggedInUserId } from '../firebase/auth.js';
+import { getLoggedInUserId } from '../auth/auth.js';
 
 /**
  * PushNotificationController - Core notification API
@@ -87,11 +87,7 @@ export class PushNotificationController {
    * @returns {Promise<Object>} Permission result with state and reason
    */
   async requestPermission(options = {}) {
-    const {
-      onGranted = null,
-      onDenied = null,
-      onDismissed = null,
-    } = options;
+    const { onGranted = null, onDenied = null, onDismissed = null } = options;
 
     // Check if notifications are supported
     if (!this.isNotificationSupported()) {
@@ -172,7 +168,9 @@ export class PushNotificationController {
 
     if (this.permissionState === 'granted') {
       const enabled = await this.enable();
-      return enabled ? { state: 'enabled' } : { state: 'error', reason: 'enable-failed' };
+      return enabled
+        ? { state: 'enabled' }
+        : { state: 'error', reason: 'enable-failed' };
     }
 
     if (this.permissionState === 'denied') {
@@ -494,9 +492,7 @@ export class PushNotificationController {
     const senderId = payload?.data?.senderId || payload?.data?.callerId;
     const currentUserId = getLoggedInUserId();
     if (senderId && currentUserId && senderId === currentUserId) {
-      console.log(
-        '[PushNotificationController] Ignoring self-notification',
-      );
+      console.log('[PushNotificationController] Ignoring self-notification');
       return;
     }
 

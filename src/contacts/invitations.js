@@ -3,7 +3,7 @@
 
 import { ref, set, remove, onChildAdded, get } from 'firebase/database';
 import { rtdb } from '../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId, getCurrentUser } from '../firebase/auth.js';
+import { getLoggedInUserId, getCurrentUser } from '../auth/auth.js';
 import { getDeterministicRoomId } from '../utils/room-id.js';
 
 // Track invite listeners for cleanup
@@ -19,7 +19,7 @@ let acceptedInviteListener = null;
 export async function sendInvite(toUserId, toName = 'User') {
   const myUserId = getLoggedInUserId();
   const currentUser = getCurrentUser();
-  
+
   if (!myUserId || !currentUser) {
     throw new Error('Must be logged in to send invites');
   }
@@ -33,7 +33,7 @@ export async function sendInvite(toUserId, toName = 'User') {
 
   // Write invite to recipient's incoming invites
   const inviteRef = ref(rtdb, `users/${toUserId}/incomingInvites/${myUserId}`);
-  
+
   const inviteData = {
     fromUserId: myUserId,
     fromName: currentUser.displayName || 'Anonymous',
@@ -76,7 +76,9 @@ export async function sendInvites(recipients) {
 
   await Promise.all(promises);
 
-  console.log(`[INVITATIONS] Batch complete: ${results.sent} sent, ${results.failed} failed`);
+  console.log(
+    `[INVITATIONS] Batch complete: ${results.sent} sent, ${results.failed} failed`,
+  );
   return results;
 }
 
@@ -88,7 +90,7 @@ export async function sendInvites(recipients) {
  */
 export function listenForInvites(callback) {
   const myUserId = getLoggedInUserId();
-  
+
   if (!myUserId) {
     console.warn('[INVITATIONS] Cannot listen for invites - not logged in');
     return () => {};
@@ -98,7 +100,7 @@ export function listenForInvites(callback) {
   cleanupInviteListeners();
 
   const invitesRef = ref(rtdb, `users/${myUserId}/incomingInvites`);
-  
+
   inviteListener = onChildAdded(invitesRef, (snapshot) => {
     const fromUserId = snapshot.key;
     const inviteData = snapshot.val();
@@ -109,7 +111,7 @@ export function listenForInvites(callback) {
   });
 
   console.log('[INVITATIONS] Listening for incoming invites');
-  
+
   return cleanupInviteListeners;
 }
 
@@ -123,7 +125,7 @@ export function listenForInvites(callback) {
 export async function acceptInvite(fromUserId, inviteData) {
   const myUserId = getLoggedInUserId();
   const currentUser = getCurrentUser();
-  
+
   if (!myUserId || !currentUser) {
     throw new Error('Must be logged in to accept invites');
   }
@@ -139,7 +141,10 @@ export async function acceptInvite(fromUserId, inviteData) {
 
   // Notify the sender that invite was accepted
   // Write to sender's acceptedInvites path (they will auto-save the contact)
-  const acceptNotificationRef = ref(rtdb, `users/${fromUserId}/acceptedInvites/${myUserId}`);
+  const acceptNotificationRef = ref(
+    rtdb,
+    `users/${fromUserId}/acceptedInvites/${myUserId}`,
+  );
   await set(acceptNotificationRef, {
     acceptedByUserId: myUserId,
     acceptedByName: currentUser.displayName || 'User',
@@ -150,10 +155,15 @@ export async function acceptInvite(fromUserId, inviteData) {
   });
 
   // Remove the invite
-  const inviteRef = ref(rtdb, `users/${myUserId}/incomingInvites/${fromUserId}`);
+  const inviteRef = ref(
+    rtdb,
+    `users/${myUserId}/incomingInvites/${fromUserId}`,
+  );
   await remove(inviteRef);
 
-  console.log(`[INVITATIONS] Accepted invite from ${inviteData.fromName} and notified sender`);
+  console.log(
+    `[INVITATIONS] Accepted invite from ${inviteData.fromName} and notified sender`,
+  );
 }
 
 /**
@@ -164,13 +174,16 @@ export async function acceptInvite(fromUserId, inviteData) {
  */
 export async function declineInvite(fromUserId) {
   const myUserId = getLoggedInUserId();
-  
+
   if (!myUserId) {
     throw new Error('Must be logged in to decline invites');
   }
 
   // Remove the invite
-  const inviteRef = ref(rtdb, `users/${myUserId}/incomingInvites/${fromUserId}`);
+  const inviteRef = ref(
+    rtdb,
+    `users/${myUserId}/incomingInvites/${fromUserId}`,
+  );
   await remove(inviteRef);
 
   console.log(`[INVITATIONS] Declined invite from ${fromUserId}`);
@@ -184,9 +197,11 @@ export async function declineInvite(fromUserId) {
  */
 export function listenForAcceptedInvites(callback) {
   const myUserId = getLoggedInUserId();
-  
+
   if (!myUserId) {
-    console.warn('[INVITATIONS] Cannot listen for accepted invites - not logged in');
+    console.warn(
+      '[INVITATIONS] Cannot listen for accepted invites - not logged in',
+    );
     return () => {};
   }
 
@@ -205,7 +220,10 @@ export function listenForAcceptedInvites(callback) {
 
     try {
       // Auto-save the contact
-      const contactRef = ref(rtdb, `users/${myUserId}/contacts/${acceptedByUserId}`);
+      const contactRef = ref(
+        rtdb,
+        `users/${myUserId}/contacts/${acceptedByUserId}`,
+      );
       await set(contactRef, {
         contactId: acceptedByUserId,
         contactName: acceptData.acceptedByName || 'User',
@@ -213,10 +231,15 @@ export function listenForAcceptedInvites(callback) {
         savedAt: Date.now(),
       });
 
-      console.log(`[INVITATIONS] Auto-saved contact: ${acceptData.acceptedByName} (invite accepted)`);
+      console.log(
+        `[INVITATIONS] Auto-saved contact: ${acceptData.acceptedByName} (invite accepted)`,
+      );
 
       // Remove the accepted notification
-      const acceptNotificationRef = ref(rtdb, `users/${myUserId}/acceptedInvites/${acceptedByUserId}`);
+      const acceptNotificationRef = ref(
+        rtdb,
+        `users/${myUserId}/acceptedInvites/${acceptedByUserId}`,
+      );
       await remove(acceptNotificationRef);
 
       // Call the callback
@@ -224,12 +247,15 @@ export function listenForAcceptedInvites(callback) {
         callback(acceptedByUserId, acceptData);
       }
     } catch (e) {
-      console.error('[INVITATIONS] Failed to auto-save contact from accepted invite:', e);
+      console.error(
+        '[INVITATIONS] Failed to auto-save contact from accepted invite:',
+        e,
+      );
     }
   });
 
   console.log('[INVITATIONS] Listening for accepted invites');
-  
+
   return () => {
     if (acceptedInviteListener) {
       acceptedInviteListener();

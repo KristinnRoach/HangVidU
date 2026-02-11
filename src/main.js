@@ -19,7 +19,7 @@ import {
   onAuthChange,
   authReady,
   getCurrentUserAsync,
-} from './firebase/auth.js';
+} from './auth/auth.js';
 
 import { clearUrlParam } from './utils/url.js';
 
@@ -1030,7 +1030,7 @@ export function listenForIncomingOnRoom(roomId) {
           // Write rejected call message to chat history
           // The callee (who rejected) writes this - both parties will see it
           try {
-            const { getCurrentUser } = await import('./firebase/auth.js');
+            const { getCurrentUser } = await import('./auth/auth.js');
             const me = getCurrentUser();
             const myName = me?.displayName || 'Someone';
 
@@ -1164,7 +1164,7 @@ async function startListeningForSavedRooms() {
   // This prevents a race where we read localStorage as a guest before auth is ready
   try {
     if (typeof window !== 'undefined') {
-      const { getCurrentUserAsync } = await import('./firebase/auth.js');
+      const { getCurrentUserAsync } = await import('./auth/auth.js');
       await getCurrentUserAsync();
     }
   } catch (e) {
@@ -1743,7 +1743,7 @@ window.onload = async () => {
   );
 
   // Then render saved contacts list in lobby (now listeners are ready)
-  renderContactsList(lobbyDiv).catch((e) => {
+  await renderContactsList(lobbyDiv).catch((e) => {
     console.warn('Failed to render contacts list:', e);
   });
 
@@ -1863,13 +1863,9 @@ window.onload = async () => {
 
 // Handle page leave
 window.addEventListener('beforeunload', async (e) => {
-  // Trigger browser's generic "leave page?" dialog if in active call (in PROD)
+  // Trigger browser's generic "leave page?" dialog if in active call
   const state = CallController.getState();
-  if (
-    import.meta.env.PROD &&
-    state.pc &&
-    state.pc.connectionState === 'connected'
-  ) {
+  if (state.pc && state.pc.connectionState === 'connected') {
     e.preventDefault();
     e.returnValue = // NOTE: Modern browsers ignore returnValue text
       'You are in an active call. Are you sure you want to leave?';
@@ -1942,7 +1938,7 @@ CallController.on(
       try {
         const contact = await getContactByRoomId(roomId);
         if (contact && contact.contactId) {
-          const { getCurrentUser } = await import('./firebase/auth.js');
+          const { getCurrentUser } = await import('./auth/auth.js');
           const me = getCurrentUser();
           const callerName = me?.displayName || 'Friend';
 
@@ -2017,6 +2013,7 @@ CallController.on(
     if (partnerId && roomId) {
       setTimeout(() => {
         saveContact(partnerId, roomId, lobbyDiv).catch((e) => {
+          // NOTE: saveContact currently only for logged in users
           console.warn('Failed to save contact after cleanup:', e);
         });
       }, 500);

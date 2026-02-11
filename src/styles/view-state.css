@@ -1,7 +1,18 @@
 /* view-state.css - Declarative visibility based on data-view attribute */
 /* Usage: <body data-view="lobby|calling|connected"> */
 
-body[data-view='lobby'] {
+body[data-view='lobby:user'] {
+  & #lobby-buttons-container {
+    display: flex;
+  }
+
+  & #add-contact-btn {
+    display: block;
+  }
+
+  & #toggle-lang-btn {
+    display: block;
+  }
   & .call-controls {
     /* & + SPACE = descendant, otherwise same element */
     display: none;
@@ -12,13 +23,53 @@ body[data-view='lobby'] {
   }
 }
 
-body[data-view='calling'] {
+body[data-view='calling:user'] {
   & .call-controls {
     display: none;
   }
 }
 
-body[data-view='connected'] {
+body[data-view='connected:user'] {
+  & #lobby,
+  & #toggle-lang-btn,
+  & #legal-footer {
+    display: none;
+  }
+}
+
+/* ============================================================================
+  GUEST MODE - Not signed in
+ ============================================================================ */
+
+body[data-view='lobby:guest'] {
+  & #lobby-buttons-container {
+    display: flex;
+  }
+
+  & #add-contact-btn {
+    display: none;
+  }
+
+  & #toggle-lang-btn {
+    display: block;
+  }
+
+  & .call-controls {
+    display: none;
+  }
+
+  & #legal-footer {
+    display: flex;
+  }
+}
+
+body[data-view='calling:guest'] {
+  & .call-controls {
+    display: none;
+  }
+}
+
+body[data-view='connected:guest'] {
   & #lobby,
   & #toggle-lang-btn,
   & #legal-footer {
