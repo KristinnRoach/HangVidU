@@ -82,3 +82,19 @@ export function subscribe(fn) {
 
   return () => listeners.delete(fn);
 }
+
+/**
+ * Resolve when auth state has been initialized (status != 'idle').
+ * Useful for flows that must wait for the first auth resolution.
+ */
+export function waitForAuthReady() {
+  if (state.status !== 'idle') return Promise.resolve(snapshot());
+
+  return new Promise((resolve) => {
+    const unsubscribe = subscribe((current) => {
+      if (current.status === 'idle') return;
+      unsubscribe();
+      resolve(current);
+    });
+  });
+}

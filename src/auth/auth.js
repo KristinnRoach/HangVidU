@@ -1,6 +1,6 @@
 // src/auth/auth.js
 
-import { setState, subscribe } from './auth-state.js';
+import { setState, subscribe, waitForAuthReady } from './auth-state.js';
 
 import {
   getAuth,
@@ -131,6 +131,7 @@ async function _initAuthInternal() {
   setTimeout(async () => {
     devDebug('[AUTH] Timeout fired, calling initOneTap()...');
     await initOneTap();
+    await waitForAuthReady();
     showOneTapSignin();
   }, 500);
 }

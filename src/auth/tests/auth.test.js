@@ -38,6 +38,7 @@ vi.mock('../onetap.js', () => ({
 vi.mock('../auth-state.js', () => ({
   setState: vi.fn(),
   subscribe: vi.fn(),
+  waitForAuthReady: vi.fn(() => Promise.resolve()),
   getLoggedInUserId: vi.fn(() => null),
 }));
 
