@@ -1,4 +1,4 @@
-import{i as t,c as o,b as s,o as a,t as e}from"./main-BdaFbFUY.js";const i="push-unsupported";function p(){if(t.has(i))return t.notifications.get(i);const n=o({template:s({header:`
+import{i as t,c as o,b as s,o as a,t as e}from"./main-MUU5fGfJ.js";const i="push-unsupported";function p(){if(t.has(i))return t.notifications.get(i);const n=o({template:s({header:`
         <span class="notification-title">[[t:notification.push.unsupported.title]]</span>
         <button class="notification-dismiss" onclick="handleDismiss" title="[[t:shared.dismiss]]">×</button>
       `,body:`
