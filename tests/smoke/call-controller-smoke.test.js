@@ -41,6 +41,7 @@ vi.mock('../../src/auth/auth-state.js', () => {
     getUser: () => ({ uid: 'test-user-id' }),
     getIsLoggedIn: () => true,
     getLoggedInUserId: () => 'test-user-id',
+    subscribe: vi.fn(() => () => {}),
   };
 });
 

@@ -6,15 +6,23 @@ import {
   onValue,
 } from 'firebase/database';
 import { rtdb } from '../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId } from '../auth/auth-state.js';
+import { getLoggedInUserId, subscribe } from '../auth/auth-state.js';
 
 let presenceInitialized = false;
 
+// Auto-initialize when user logs in
+subscribe((state) => {
+  if (state.isLoggedIn) {
+    initializePresence().catch((err) => {
+      console.warn('Failed to initialize presence:', err);
+    });
+  }
+});
+
 /**
  * Initialize presence tracking for logged-in user.
- * Call this after authentication.
  */
-export async function initializePresence() {
+async function initializePresence() {
   const userId = getLoggedInUserId();
   if (!userId || presenceInitialized) return;
 

@@ -26,7 +26,6 @@ vi.mock('../firebase/firebase.js', () => ({
 
 vi.mock('../firebase/presence.js', () => ({
   setOffline: vi.fn(() => Promise.resolve()),
-  initializePresence: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('./onetap.js', () => ({
@@ -34,12 +33,13 @@ vi.mock('./onetap.js', () => ({
   showOneTapSignin: vi.fn(),
 }));
 
-vi.mock('../contacts/user-discovery.js', () => ({
-  registerUserInDirectory: vi.fn(() => Promise.resolve()),
-}));
-
 vi.mock('./auth-state.js', () => ({
   setState: vi.fn(),
+  subscribe: vi.fn(),
+}));
+
+vi.mock('../ui/ui-state.js', () => ({
+  uiState: { view: 'lobby:guest', setView: vi.fn() },
 }));
 
 vi.mock('firebase/database', () => ({

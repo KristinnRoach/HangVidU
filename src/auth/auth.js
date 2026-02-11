@@ -1,6 +1,6 @@
 // src/auth/auth.js
 
-import { setState } from './auth-state.js';
+import { setState, subscribe } from './auth-state.js';
 
 import {
   getAuth,
@@ -21,9 +21,7 @@ import { devDebug } from '../utils/dev/dev-utils.js';
 import { initOneTap, showOneTapSignin } from './onetap.js';
 import { t } from '../i18n/index.js';
 
-import { initializePresence, setOffline } from '../firebase/presence.js';
-import { registerUserInDirectory } from '../contacts/user-discovery.js';
-import { saveUserProfile } from '../user/profile.js';
+import { setOffline } from '../firebase/presence.js';
 import { getLocale, onLocaleChange } from '../i18n/index.js';
 import { uiState } from '../ui/ui-state.js';
 
@@ -49,6 +47,7 @@ export async function getLoggedInUserToken() {
 // Production-aware auth logger: avoid printing PII in production builds
 const isProd =
   typeof import.meta !== 'undefined' && Boolean(import.meta.env?.PROD);
+
 function logAuthError(context, error, extra = {}) {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'n/a';
   if (isProd) {
@@ -256,28 +255,16 @@ onAuthStateChanged(auth, (firebaseUser) => {
       : { status: 'unauthenticated', isLoggedIn: false, user: null },
   );
 
-  // Side effects
-  if (loggedIn) {
-    initializePresence().catch((err) => {
-      console.warn('Failed to initialize presence:', err);
-    });
-    saveUserProfile(firebaseUser).catch((err) => {
-      console.warn('Failed to save user profile:', err);
-    });
-    registerUserInDirectory(firebaseUser).catch((err) => {
-      console.warn('Failed to register user in directory:', err);
-    });
-  } else {
+  if (!loggedIn) {
     clearGISTokenCache();
   }
+});
 
-  document.body.dataset.loggedIn = loggedIn ? 'true' : 'false';
+// Sync DOM dataset and UI view with auth state
+subscribe((state) => {
+  document.body.dataset.loggedIn = state.isLoggedIn ? 'true' : 'false';
   uiState.setView(uiState.view);
-
-  devDebug(
-    '[AUTH] document.body.dataset.loggedIn set to',
-    document.body.dataset.loggedIn,
-  );
+  devDebug('[AUTH] document.body.dataset.loggedIn set to', document.body.dataset.loggedIn);
 });
 
 /**

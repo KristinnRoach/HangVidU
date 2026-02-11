@@ -23,6 +23,7 @@ vi.mock('../../src/auth/auth-state.js', () => {
     getUser: () => ({ uid: 'local-user-id' }),
     getIsLoggedIn: () => true,
     getLoggedInUserId: () => 'local-user-id',
+    subscribe: vi.fn(() => () => {}),
   };
 });
 vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => {
