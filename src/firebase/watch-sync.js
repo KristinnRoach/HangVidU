@@ -1,9 +1,11 @@
 import { set, update, remove } from 'firebase/database';
+
 import {
   onDataChange,
   getWatchRef,
   getWatchRequestRef,
 } from '../storage/fb-rtdb/rtdb.js';
+
 import {
   isYouTubeUrl,
   getYouTubePlayer,
@@ -22,7 +24,6 @@ import {
 
 import { sharedVideoEl, sharedBoxEl } from '../elements.js'; // TODO: refactor?
 import { hideElement, showElement } from '../utils/ui/ui-utils.js';
-
 import { onWatchModeEntered } from '../ui/watch-lifecycle-ui.js';
 
 // ============================================================================
@@ -61,7 +62,7 @@ export const setLastWatched = (mode) => {
 // -----------------------------------------------------------------------------
 let justSeeked = false;
 let seekDebounceTimeout = null;
-let lastLocalAction = 0; // Prevent feedback loops in bidirectional sync
+let lastSyncAction = 0; // Debounce both directions of the sync feedback loop
 let wasPlayingBeforeSeek = false; // Track play state before seek for regular videos
 
 // -----------------------------------------------------------------------------
@@ -227,7 +228,7 @@ function handleWatchUpdate(snapshot) {
   const data = snapshot.val();
   if (!data) return;
   if (data.updatedBy === currentUserId) return; // Ignore self-updates
-  if (Date.now() - lastLocalAction < 500) return; // Ignore local race updates
+  if (Date.now() - lastSyncAction < 500) return; // Ignore local race updates
 
   // -- Handle URL changes (skip blob URLs - they're local-only) -------------
   if (data.url && data.url !== currentVideoUrl && !isBlobUrl(data.url)) {
@@ -332,7 +333,7 @@ function debounceSeekSync() {
 // -----------------------------------------------------------------------------
 function handleRegularVideoSync(data) {
   // Suppress local event handlers while applying remote state
-  lastLocalAction = Date.now();
+  lastSyncAction = Date.now();
 
   if (data.playing !== undefined) {
     if (data.playing && sharedVideoEl.paused) {
@@ -367,8 +368,9 @@ function setupLocalVideoListeners() {
   };
 
   sharedVideoEl.addEventListener('play', async () => {
+    if (Date.now() - lastSyncAction < 500) return;
     if (!getYouTubePlayer() && currentRoomId) {
-      lastLocalAction = Date.now();
+      lastSyncAction = Date.now();
       await updateWatchSyncState({
         playing: true,
         currentTime: sharedVideoEl.currentTime,
@@ -379,15 +381,11 @@ function setupLocalVideoListeners() {
   });
 
   sharedVideoEl.addEventListener('pause', async () => {
-    // Skip seek-triggered pauses - the seeked event will send complete state
     if (sharedVideoEl.seeking) return;
+    if (Date.now() - lastSyncAction < 500) return;
 
     if (!getYouTubePlayer() && currentRoomId) {
-      lastLocalAction = Date.now();
-      // DEBUG
-      console.log('[SYNC DEBUG] Local pause event:', {
-        currentTime: sharedVideoEl.currentTime,
-      });
+      lastSyncAction = Date.now();
       await updateWatchSyncState({
         playing: false,
         currentTime: sharedVideoEl.currentTime,
@@ -414,8 +412,9 @@ function setupLocalVideoListeners() {
   ); // Use capture to run before our other pause handler
 
   sharedVideoEl.addEventListener('seeked', async () => {
+    if (Date.now() - lastSyncAction < 500) return;
     if (!getYouTubePlayer() && currentRoomId) {
-      lastLocalAction = Date.now();
+      lastSyncAction = Date.now();
       await updateWatchSyncState({
         currentTime: sharedVideoEl.currentTime,
         playing: wasPlayingBeforeSeek,
@@ -432,7 +431,7 @@ function setupLocalVideoListeners() {
 async function loadStream(url) {
   if (!url) return false;
 
-  lastLocalAction = Date.now();
+  lastSyncAction = Date.now();
 
   const isBlob = isBlobUrl(url);
 
@@ -487,8 +486,8 @@ async function loadStream(url) {
 export async function handleVideoSelection(source) {
   let url;
 
-  // Accept File object or URL string
-  if (source instanceof File) {
+  // Accept File, Blob, or URL string
+  if (source instanceof Blob) {
     if (!source.type.startsWith('video/')) {
       console.warn('Invalid file type:', source.type);
       return false;
@@ -509,7 +508,7 @@ export async function handleVideoSelection(source) {
 
   if (success) {
     // onWatchModeEntered(); // moved to loadStream()
-  } else if (isBlobUrl(currentVideoUrl) && source instanceof File) {
+  } else if (isBlobUrl(currentVideoUrl) && source instanceof Blob) {
     URL.revokeObjectURL(url);
     currentVideoUrl = null;
   }

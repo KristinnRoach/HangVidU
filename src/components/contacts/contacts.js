@@ -244,17 +244,6 @@ export async function renderContactsList(lobbyElement) {
   // Ensure container is visible when contacts exist (if using display: none above)
   showElement(contactsContainer);
 
-  // TEMP debug log // TODO remove after testing
-  let i = 0;
-  isDev() &&
-    Object.values(contacts).forEach((contact) => {
-      // console.warn(contact.contactName);
-      if (contact.contactName === 'Töggur Roach') {
-        console.warn(i, contact);
-        i++;
-      }
-    });
-
   // Render contact items
   contactsContainer.innerHTML = `
     <h3>${t('contact.list.title')}</h3>

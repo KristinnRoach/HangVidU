@@ -17,6 +17,8 @@ export class FileTransfer {
     this.fileMetadata = new Map(); // fileId -> metadata
     this.streamWriters = new Map(); // fileId -> StreamingFileWriter (OPFS path)
     this.streamChunkCounts = new Map(); // fileId -> number of chunks received
+    this.pendingInit = new Map(); // fileId -> Promise (OPFS init in progress)
+    this.earlyChunks = new Map(); // fileId -> [{chunkData, chunkIndex, totalChunks}]
     this.onFileError = null; // Optional callback for file transfer errors
     this.onReceiveProgress = null; // Optional callback for receive progress
   }
@@ -99,18 +101,9 @@ export class FileTransfer {
           StreamingFileWriter.isSupported();
 
         if (useStreaming) {
-          const writer = new StreamingFileWriter(msg.fileId, msg.name);
-          try {
-            await writer.init();
-            this.streamWriters.set(msg.fileId, writer);
-            this.streamChunkCounts.set(msg.fileId, 0);
-          } catch (err) {
-            console.warn(
-              '[FileTransfer] OPFS init failed, falling back to in-memory:',
-              err,
-            );
-            this.receivedChunks.set(msg.fileId, []);
-          }
+          this.earlyChunks.set(msg.fileId, []);
+          const initPromise = this._initStreamWriter(msg.fileId, msg.name);
+          this.pendingInit.set(msg.fileId, initPromise);
         } else {
           this.receivedChunks.set(msg.fileId, []);
         }
@@ -138,34 +131,16 @@ export class FileTransfer {
       const { fileId, chunkIndex, totalChunks } = chunkMeta;
 
       // --- OPFS streaming path ---
+
+      // If init is still in progress, queue the chunk
+      if (this.pendingInit.has(fileId)) {
+        this.earlyChunks.get(fileId)?.push({ chunkData, chunkIndex, totalChunks });
+        return;
+      }
+
       const writer = this.streamWriters.get(fileId);
       if (writer) {
-        try {
-          await writer.writeChunk(chunkData, chunkIndex * CHUNK_SIZE);
-        } catch (err) {
-          console.error('[FileTransfer] OPFS writeChunk failed:', err);
-          await writer.abort();
-          this.streamWriters.delete(fileId);
-          this.streamChunkCounts.delete(fileId);
-          this.fileMetadata.delete(fileId);
-          this.onFileError?.({
-            fileName: this.fileMetadata.get(fileId)?.name,
-            reason: 'opfs_write_failed',
-            details: err,
-          });
-          return;
-        }
-
-        const count = this.streamChunkCounts.get(fileId) + 1;
-        this.streamChunkCounts.set(fileId, count);
-
-        if (this.onReceiveProgress) {
-          this.onReceiveProgress(count / totalChunks);
-        }
-
-        if (count === totalChunks) {
-          await this._finalizeStream(fileId);
-        }
+        await this._writeStreamChunk(fileId, writer, chunkData, chunkIndex, totalChunks);
         return;
       }
 
@@ -195,15 +170,86 @@ export class FileTransfer {
     }
   }
 
+  /** Initialize OPFS writer and flush any chunks that arrived during init. */
+  async _initStreamWriter(fileId, fileName) {
+    const writer = new StreamingFileWriter(fileId, fileName);
+    try {
+      await writer.init();
+      this.streamWriters.set(fileId, writer);
+      this.streamChunkCounts.set(fileId, 0);
+    } catch (err) {
+      console.warn('[FileTransfer] OPFS init failed, falling back to in-memory:', err);
+      this.receivedChunks.set(fileId, []);
+    }
+    this.pendingInit.delete(fileId);
+
+    // Flush early chunks
+    const queued = this.earlyChunks.get(fileId);
+    this.earlyChunks.delete(fileId);
+    if (queued) {
+      for (const { chunkData, chunkIndex, totalChunks } of queued) {
+        const w = this.streamWriters.get(fileId);
+        if (w) {
+          await this._writeStreamChunk(fileId, w, chunkData, chunkIndex, totalChunks);
+        } else {
+          // Fell back to in-memory
+          const chunks = this.receivedChunks.get(fileId);
+          if (chunks) {
+            chunks[chunkIndex] = chunkData;
+            if (chunks.filter((c) => c).length === totalChunks) {
+              this.assembleFile(fileId);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /** Write a single chunk via OPFS and check for completion. */
+  async _writeStreamChunk(fileId, writer, chunkData, chunkIndex, totalChunks) {
+    try {
+      await writer.writeChunk(chunkData, chunkIndex * CHUNK_SIZE);
+    } catch (err) {
+      console.error('[FileTransfer] OPFS writeChunk failed:', err);
+      await writer.abort();
+      this.streamWriters.delete(fileId);
+      this.streamChunkCounts.delete(fileId);
+      this.onFileError?.({
+        fileName: this.fileMetadata.get(fileId)?.name,
+        reason: 'opfs_write_failed',
+        details: err,
+      });
+      return;
+    }
+
+    const count = this.streamChunkCounts.get(fileId) + 1;
+    this.streamChunkCounts.set(fileId, count);
+
+    if (this.onReceiveProgress) {
+      this.onReceiveProgress(count / totalChunks);
+    }
+
+    if (count === totalChunks) {
+      await this._finalizeStream(fileId);
+    }
+  }
+
   /** Finalize an OPFS-streamed file and deliver it. */
   async _finalizeStream(fileId) {
     const writer = this.streamWriters.get(fileId);
+    const meta = this.fileMetadata.get(fileId);
     try {
-      const file = await writer.finalize();
-      this.onFileReceived?.(file);
+      const opfsFile = await writer.finalize();
+      console.debug('[FileTransfer] OPFS finalize ok, size:', opfsFile.size, 'meta.mimeType:', meta.mimeType);
+      // Wrap with correct MIME type (new Blob references same data, no copy)
+      // and restore original filename via defineProperty
+      const typed = new Blob([opfsFile], { type: meta.mimeType });
+      console.debug('[FileTransfer] Blob wrap ok, type:', typed.type, 'size:', typed.size);
+      Object.defineProperty(typed, 'name', { value: meta.name });
+      console.debug('[FileTransfer] calling onFileReceived, callback exists:', !!this.onFileReceived, 'name:', typed.name, 'type:', typed.type);
+      this.onFileReceived?.(typed);
     } catch (err) {
       console.error('[FileTransfer] OPFS finalize failed:', err);
-      const meta = this.fileMetadata.get(fileId);
       this.onFileError?.({
         fileName: meta?.name,
         reason: 'opfs_finalize_failed',
