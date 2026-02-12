@@ -52,6 +52,8 @@ jobs:
               echo "$var=$val" >> .env.production
             fi
           done
+          # Always enable PWA in production builds (not a secret)
+          echo "VITE_ENABLE_PWA=1" >> .env.production
 
       - name: Build
         run: pnpm build
