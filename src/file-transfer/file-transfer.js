@@ -5,8 +5,11 @@ import {
 } from './chunk-processor.js';
 import { validateAssembly } from './file-assembler.js';
 import { StreamingFileWriter } from './streaming-file-writer.js';
+import {
+  isSwServingSupported,
+  registerVideoForServing,
+} from './video-serving.js';
 
-// Use PrivyDrop's network chunk size for WebRTC safe transmission
 const CHUNK_SIZE = TransferConfig.FILE_CONFIG.NETWORK_CHUNK_SIZE; // 64KB
 const MAX_FILE_SIZE_MB = 5000;
 
@@ -267,28 +270,27 @@ export class FileTransfer {
       console.debug(
         '[FileTransfer] OPFS finalize ok, size:',
         opfsFile.size,
-        'meta.mimeType:',
+        'mimeType:',
         meta.mimeType,
       );
-      // Wrap with correct MIME type (new Blob references same data, no copy)
-      // and restore original filename via defineProperty
-      const typed = new Blob([opfsFile], { type: meta.mimeType });
-      console.debug(
-        '[FileTransfer] Blob wrap ok, type:',
-        typed.type,
-        'size:',
-        typed.size,
-      );
-      Object.defineProperty(typed, 'name', { value: meta.name });
-      console.debug(
-        '[FileTransfer] calling onFileReceived, callback exists:',
-        !!this.onFileReceived,
-        'name:',
-        typed.name,
-        'type:',
-        typed.type,
-      );
-      this.onFileReceived?.(typed);
+
+      // For video files with an active SW, serve via SW virtual URL
+      // instead of blob URL — enables range requests for streaming playback
+      if (meta.mimeType?.startsWith('video/') && isSwServingSupported()) {
+        const swUrl = await registerVideoForServing(fileId, meta.mimeType);
+        console.debug('[FileTransfer] SW video URL:', swUrl);
+        // Deliver a thin object so the receiver can distinguish SW-served video
+        this.onFileReceived?.({
+          name: meta.name,
+          type: meta.mimeType,
+          swUrl,
+        });
+      } else {
+        // Non-video or no SW — fall back to blob wrapping
+        const typed = new Blob([opfsFile], { type: meta.mimeType });
+        Object.defineProperty(typed, 'name', { value: meta.name });
+        this.onFileReceived?.(typed);
+      }
     } catch (err) {
       console.error('[FileTransfer] OPFS finalize failed:', err);
       this.onFileError?.({

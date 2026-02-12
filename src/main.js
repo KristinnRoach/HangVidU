@@ -228,7 +228,7 @@ async function init() {
   }
 
   try {
-    if (import.meta.env.VITE_DISABLE_PWA === '0') {
+    if (import.meta.env.VITE_ENABLE_PWA === '1') {
       const { setupPWA } = await import('./pwa/PWA.js');
       await setupPWA();
     }

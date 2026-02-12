@@ -114,6 +114,15 @@ function isBlobUrl(url) {
   return typeof url === 'string' && url.startsWith('blob:');
 }
 
+function isSwVideoUrl(url) {
+  return typeof url === 'string' && url.startsWith('/_video-serve/');
+}
+
+/** URL is local-only (blob or SW-served OPFS) — don't sync to remote. */
+function isLocalVideoUrl(url) {
+  return isBlobUrl(url) || isSwVideoUrl(url);
+}
+
 // -----------------------------------------------------------------------------
 // FILE WATCH REQUEST HANDLING
 // -----------------------------------------------------------------------------
@@ -230,8 +239,8 @@ function handleWatchUpdate(snapshot) {
   if (data.updatedBy === currentUserId) return; // Ignore self-updates
   if (Date.now() - lastSyncAction < 500) return; // Ignore local race updates
 
-  // -- Handle URL changes (skip blob URLs - they're local-only) -------------
-  if (data.url && data.url !== currentVideoUrl && !isBlobUrl(data.url)) {
+  // -- Handle URL changes (skip local-only URLs) ----------------------------
+  if (data.url && data.url !== currentVideoUrl && !isLocalVideoUrl(data.url)) {
     handleRemoteUrlChange(data.url);
   }
 
@@ -433,7 +442,7 @@ async function loadStream(url) {
 
   lastSyncAction = Date.now();
 
-  const isBlob = isBlobUrl(url);
+  const isLocal = isLocalVideoUrl(url);
 
   if (isYouTubeUrl(url)) {
     hideElement(sharedBoxEl);
@@ -447,15 +456,15 @@ async function loadStream(url) {
     showElement(sharedBoxEl);
     sharedVideoEl.src = url;
 
-    lastWatched = isBlob ? 'file' : 'url';
+    lastWatched = isLocal ? 'file' : 'url';
   }
 
   // Sync to Firebase
   if (currentRoomId) {
     const watchRef = getWatchRef(currentRoomId);
 
-    if (isBlob) {
-      // For blob URLs, only sync playback state (not the URL)
+    if (isLocal) {
+      // For local URLs (blob / SW-served OPFS), only sync playback state (not the URL)
       // Use set() to ensure the isYouTube field is initialized
       await set(watchRef, {
         playing: false,

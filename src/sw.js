@@ -5,6 +5,12 @@ import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
 import { NetworkFirst } from 'workbox-strategies';
 import { VIBRATION_PATTERNS } from './media/haptic/vibration-patterns.js';
+import {
+  registerVideo,
+  unregisterVideo,
+  isVideoServeRequest,
+  handleVideoFetch,
+} from './file-transfer/sw-video-handler.js';
 
 // Import Firebase messaging for service worker context
 // Note: Using compat version for service worker compatibility
@@ -24,6 +30,18 @@ precacheAndRoute(self.__WB_MANIFEST);
 
 // Clean up outdated caches
 cleanupOutdatedCaches();
+
+// Video serving from OPFS — intercept /_video-serve/* before other routes
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  if (isVideoServeRequest(url)) {
+    event.respondWith(
+      handleVideoFetch(event.request).then(
+        (response) => response || fetch(event.request),
+      ),
+    );
+  }
+});
 
 // Navigation fallback for SPA
 const navigationRoute = new NavigationRoute(
@@ -309,6 +327,14 @@ self.addEventListener('message', (event) => {
         version: '1.0.0',
         timestamp: Date.now(),
       });
+      break;
+
+    case 'REGISTER_VIDEO':
+      registerVideo(event.data.fileId, event.data.mimeType);
+      break;
+
+    case 'UNREGISTER_VIDEO':
+      unregisterVideo(event.data.fileId);
       break;
 
     default:
