@@ -55,8 +55,10 @@ export class StreamingFileWriter {
    * @param {ArrayBuffer} data
    * @param {number} offset — byte offset within the file
    */
-  async writeChunk(data, offset) {
-    await this._writable.seek(offset);
+  async writeChunk(data, offset, isOrdered) {
+    if (!isOrdered) {
+      await this._writable.seek(offset);
+    }
     await this._writable.write(data);
   }
 

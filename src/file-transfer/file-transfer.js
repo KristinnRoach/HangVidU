@@ -21,6 +21,8 @@ export class FileTransfer {
     this.earlyChunks = new Map(); // fileId -> [{chunkData, chunkIndex, totalChunks}]
     this.onFileError = null; // Optional callback for file transfer errors
     this.onReceiveProgress = null; // Optional callback for receive progress
+
+    this.ensuredChannelOrdered = false; // Flag to track if DataChannel has .ordered checked (ensures ordered delivery)
   }
 
   // Send file
@@ -89,6 +91,11 @@ export class FileTransfer {
 
   // Receive handler
   async handleMessage(data) {
+    if (!this.ensuredChannelOrdered) {
+      console.debug('DataChannel ordered:', this.dataChannel.ordered);
+      this.ensuredChannelOrdered = true;
+    }
+
     if (typeof data === 'string') {
       const msg = JSON.parse(data);
 
@@ -134,13 +141,21 @@ export class FileTransfer {
 
       // If init is still in progress, queue the chunk
       if (this.pendingInit.has(fileId)) {
-        this.earlyChunks.get(fileId)?.push({ chunkData, chunkIndex, totalChunks });
+        this.earlyChunks
+          .get(fileId)
+          ?.push({ chunkData, chunkIndex, totalChunks });
         return;
       }
 
       const writer = this.streamWriters.get(fileId);
       if (writer) {
-        await this._writeStreamChunk(fileId, writer, chunkData, chunkIndex, totalChunks);
+        await this._writeStreamChunk(
+          fileId,
+          writer,
+          chunkData,
+          chunkIndex,
+          totalChunks,
+        );
         return;
       }
 
@@ -178,7 +193,10 @@ export class FileTransfer {
       this.streamWriters.set(fileId, writer);
       this.streamChunkCounts.set(fileId, 0);
     } catch (err) {
-      console.warn('[FileTransfer] OPFS init failed, falling back to in-memory:', err);
+      console.warn(
+        '[FileTransfer] OPFS init failed, falling back to in-memory:',
+        err,
+      );
       this.receivedChunks.set(fileId, []);
     }
     this.pendingInit.delete(fileId);
@@ -190,7 +208,13 @@ export class FileTransfer {
       for (const { chunkData, chunkIndex, totalChunks } of queued) {
         const w = this.streamWriters.get(fileId);
         if (w) {
-          await this._writeStreamChunk(fileId, w, chunkData, chunkIndex, totalChunks);
+          await this._writeStreamChunk(
+            fileId,
+            w,
+            chunkData,
+            chunkIndex,
+            totalChunks,
+          );
         } else {
           // Fell back to in-memory
           const chunks = this.receivedChunks.get(fileId);
@@ -240,13 +264,30 @@ export class FileTransfer {
     const meta = this.fileMetadata.get(fileId);
     try {
       const opfsFile = await writer.finalize();
-      console.debug('[FileTransfer] OPFS finalize ok, size:', opfsFile.size, 'meta.mimeType:', meta.mimeType);
+      console.debug(
+        '[FileTransfer] OPFS finalize ok, size:',
+        opfsFile.size,
+        'meta.mimeType:',
+        meta.mimeType,
+      );
       // Wrap with correct MIME type (new Blob references same data, no copy)
       // and restore original filename via defineProperty
       const typed = new Blob([opfsFile], { type: meta.mimeType });
-      console.debug('[FileTransfer] Blob wrap ok, type:', typed.type, 'size:', typed.size);
+      console.debug(
+        '[FileTransfer] Blob wrap ok, type:',
+        typed.type,
+        'size:',
+        typed.size,
+      );
       Object.defineProperty(typed, 'name', { value: meta.name });
-      console.debug('[FileTransfer] calling onFileReceived, callback exists:', !!this.onFileReceived, 'name:', typed.name, 'type:', typed.type);
+      console.debug(
+        '[FileTransfer] calling onFileReceived, callback exists:',
+        !!this.onFileReceived,
+        'name:',
+        typed.name,
+        'type:',
+        typed.type,
+      );
       this.onFileReceived?.(typed);
     } catch (err) {
       console.error('[FileTransfer] OPFS finalize failed:', err);

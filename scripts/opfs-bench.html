@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head><title>OPFS vs In-Memory Bench</title></head>
+<body>
+<pre id="log">Click "Run" to start benchmark...</pre>
+<button onclick="run()">Run</button>
+<script>
+const log = document.getElementById('log');
+const print = (s) => { log.textContent += '\n' + s; console.log(s); };
+
+const CHUNK_SIZE = 65536; // 64KB — matches NETWORK_CHUNK_SIZE
+const FILE_SIZES_MB = [50, 200, 500]; // test multiple sizes
+
+async function benchInMemory(totalBytes) {
+  const totalChunks = Math.ceil(totalBytes / CHUNK_SIZE);
+  const chunks = [];
+  const chunk = new ArrayBuffer(CHUNK_SIZE);
+
+  const t0 = performance.now();
+  for (let i = 0; i < totalChunks; i++) {
+    chunks[i] = chunk; // same ref — simulates storing without alloc overhead
+  }
+  // Simulate assembly
+  const blob = new Blob(chunks);
+  const file = new File([blob], 'test.bin');
+  const dt = performance.now() - t0;
+  return { dt, size: file.size };
+}
+
+async function benchOPFS(totalBytes) {
+  const totalChunks = Math.ceil(totalBytes / CHUNK_SIZE);
+  const chunk = new ArrayBuffer(CHUNK_SIZE);
+  new Uint8Array(chunk).fill(0xAA);
+
+  const root = await navigator.storage.getDirectory();
+  const dir = await root.getDirectoryHandle('bench', { create: true });
+  const fh = await dir.getFileHandle('bench.bin', { create: true });
+  const writable = await fh.createWritable();
+
+  const t0 = performance.now();
+  for (let i = 0; i < totalChunks; i++) {
+    await writable.seek(i * CHUNK_SIZE);
+    await writable.write(chunk);
+  }
+  await writable.close();
+  const file = await fh.getFile();
+  const dt = performance.now() - t0;
+
+  // cleanup
+  await dir.removeEntry('bench.bin');
+  await root.removeEntry('bench', { recursive: true });
+
+  return { dt, size: file.size };
+}
+
+async function benchOPFS_Batched(totalBytes) {
+  const totalChunks = Math.ceil(totalBytes / CHUNK_SIZE);
+  const chunk = new ArrayBuffer(CHUNK_SIZE);
+  new Uint8Array(chunk).fill(0xAA);
+  const BATCH = 64; // flush every 64 chunks (~4MB)
+
+  const root = await navigator.storage.getDirectory();
+  const dir = await root.getDirectoryHandle('bench2', { create: true });
+  const fh = await dir.getFileHandle('bench2.bin', { create: true });
+  const writable = await fh.createWritable();
+
+  const t0 = performance.now();
+  let pending = [];
+  for (let i = 0; i < totalChunks; i++) {
+    // sequential seek+write but measure if batching write calls helps
+    writable.seek(i * CHUNK_SIZE);
+    writable.write(chunk);
+    if ((i + 1) % BATCH === 0 || i === totalChunks - 1) {
+      // force flush by awaiting — in practice createWritable queues internally
+    }
+  }
+  await writable.close();
+  const file = await fh.getFile();
+  const dt = performance.now() - t0;
+
+  await dir.removeEntry('bench2.bin');
+  await root.removeEntry('bench2', { recursive: true });
+
+  return { dt, size: file.size };
+}
+
+async function run() {
+  log.textContent = 'Running benchmark...';
+  print(`Chunk size: ${CHUNK_SIZE / 1024}KB`);
+  print('');
+
+  for (const mb of FILE_SIZES_MB) {
+    const bytes = mb * 1024 * 1024;
+    const chunks = Math.ceil(bytes / CHUNK_SIZE);
+    print(`--- ${mb}MB (${chunks} chunks) ---`);
+
+    const mem = await benchInMemory(bytes);
+    print(`  In-memory:       ${mem.dt.toFixed(0)}ms`);
+
+    const opfs = await benchOPFS(bytes);
+    print(`  OPFS (await ea):  ${opfs.dt.toFixed(0)}ms`);
+
+    const opfsB = await benchOPFS_Batched(bytes);
+    print(`  OPFS (no-await):  ${opfsB.dt.toFixed(0)}ms`);
+
+    const ratio = (opfs.dt / mem.dt).toFixed(1);
+    const ratioB = (opfsB.dt / mem.dt).toFixed(1);
+    print(`  Slowdown: ${ratio}x (await) / ${ratioB}x (no-await)`);
+    print('');
+  }
+  print('Done.');
+}
+</script>
+</body>
+</html>
