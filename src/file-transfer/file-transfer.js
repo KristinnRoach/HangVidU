@@ -25,7 +25,11 @@ export class FileTransfer {
     this.onFileError = null; // Optional callback for file transfer errors
     this.onReceiveProgress = null; // Optional callback for receive progress
 
-    this.ensuredChannelOrdered = false; // Flag to track if DataChannel has .ordered checked (ensures ordered delivery)
+    this.ensuredChannelOrdered = false;
+
+    // Probe OPFS early so the result is cached before any FILE_META arrives.
+    // This keeps the metadata handler synchronous and avoids chunk race conditions.
+    StreamingFileWriter.probeOPFS();
   }
 
   // Send file
@@ -105,16 +109,18 @@ export class FileTransfer {
       if (msg.type === 'FILE_META') {
         this.fileMetadata.set(msg.fileId, msg);
 
-        // Decide: OPFS streaming vs in-memory based on size + support + quota
-        const opfsCapable =
+        // Decide: OPFS streaming vs in-memory.
+        // Uses the cached OPFS probe (kicked off in constructor) so this
+        // path is fully synchronous — no await gap for chunks to slip through.
+        const opfsAvailable = StreamingFileWriter.isOPFSAvailable();
+        const needsStreaming =
           msg.size >= TransferConfig.STREAMING_THRESHOLD &&
           StreamingFileWriter.isSupported();
-        const useStreaming =
-          opfsCapable && (await StreamingFileWriter.hasEnoughQuota(msg.size));
+        const useStreaming = needsStreaming && opfsAvailable === true;
 
-        if (opfsCapable && !useStreaming) {
+        if (needsStreaming && !useStreaming) {
           console.warn(
-            '[FileTransfer] OPFS quota insufficient, using in-memory transfer for',
+            '[FileTransfer] OPFS unavailable, using in-memory transfer for',
             msg.name,
           );
         }

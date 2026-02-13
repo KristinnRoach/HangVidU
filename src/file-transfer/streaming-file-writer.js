@@ -1,11 +1,19 @@
 const OPFS_DIR_NAME = 'file-transfers';
 const PROBE_FILE_NAME = '__quota_probe__';
+// Probe at the streaming threshold — confirms OPFS is usable for large files.
+// Actual transfers may exceed this; write failures are handled by fallback paths.
+const PROBE_SIZE = 200 * 1024 * 1024; // 200MB (would not work in most "incognito" modes)
 
 /**
  * StreamingFileWriter — writes received file chunks to OPFS (Origin Private File System)
  * so they never accumulate in RAM. After all chunks are written, returns a disk-backed File.
  */
 export class StreamingFileWriter {
+  /** @type {Promise<boolean>|null} */
+  static _probePromise = null;
+  /** @type {boolean|null} null = not yet probed */
+  static _opfsAvailable = null;
+
   /**
    * Feature-detect OPFS + FileSystemWritableFileStream support.
    * @returns {boolean}
@@ -22,19 +30,44 @@ export class StreamingFileWriter {
   }
 
   /**
-   * Check whether the origin can actually write `bytes` to OPFS.
+   * Probe whether OPFS is usable and cache the result.
    *
-   * navigator.storage.estimate() is unreliable in private browsing — it
-   * often reports generous quota but enforces a much lower actual limit.
-   * Instead, we pre-allocate a file of the target size and see if it
-   * succeeds. The probe file is deleted immediately afterward.
+   * Writes a probe file to confirm the origin can actually use OPFS
+   * (fails in incognito/restricted browsers). Call this early (e.g. when
+   * FileTransfer is created) so the result is ready by the time FILE_META
+   * arrives — keeping the streaming decision synchronous and avoiding
+   * race conditions with incoming chunks.
    *
-   * @param {number} bytes — file size in bytes
    * @returns {Promise<boolean>}
    */
-  static async hasEnoughQuota(bytes) {
-    if (!StreamingFileWriter.isSupported()) return false;
+  static probeOPFS() {
+    if (StreamingFileWriter._probePromise)
+      return StreamingFileWriter._probePromise;
 
+    if (!StreamingFileWriter.isSupported()) {
+      StreamingFileWriter._opfsAvailable = false;
+      return Promise.resolve(false);
+    }
+
+    StreamingFileWriter._probePromise = StreamingFileWriter._doProbe().then(
+      (ok) => {
+        StreamingFileWriter._opfsAvailable = ok;
+        return ok;
+      },
+    );
+    return StreamingFileWriter._probePromise;
+  }
+
+  /**
+   * Synchronous check: is OPFS usable? Returns null if probe hasn't completed.
+   * @returns {boolean|null}
+   */
+  static isOPFSAvailable() {
+    return StreamingFileWriter._opfsAvailable;
+  }
+
+  /** @private */
+  static async _doProbe() {
     let dirHandle;
     try {
       const root = await navigator.storage.getDirectory();
@@ -45,19 +78,15 @@ export class StreamingFileWriter {
         create: true,
       });
       const writable = await fileHandle.createWritable();
-      // Truncate to the target size — this forces the browser to reserve
-      // the space without writing actual data, so it's fast.
-      await writable.truncate(bytes);
+      await writable.truncate(PROBE_SIZE);
       await writable.close();
-      // Probe succeeded — clean up
       await dirHandle.removeEntry(PROBE_FILE_NAME);
       return true;
     } catch (err) {
       console.warn(
-        `[OPFS] Probe write failed for ${(bytes / 1024 / 1024).toFixed(1)} MB:`,
+        `[OPFS] Probe write failed (${(PROBE_SIZE / 1024 / 1024).toFixed(0)} MB):`,
         err.name,
       );
-      // Clean up probe file if it was partially created
       try {
         await dirHandle?.removeEntry(PROBE_FILE_NAME);
       } catch {
@@ -65,6 +94,12 @@ export class StreamingFileWriter {
       }
       return false;
     }
+  }
+
+  /** Reset cached probe state (for testing and cleanup). */
+  static resetProbeCache() {
+    StreamingFileWriter._probePromise = null;
+    StreamingFileWriter._opfsAvailable = null;
   }
 
   /**
@@ -144,6 +179,7 @@ export class StreamingFileWriter {
    * Call on hangup / cleanup.
    */
   static async cleanup() {
+    StreamingFileWriter.resetProbeCache();
     if (!StreamingFileWriter.isSupported()) return;
     try {
       const root = await navigator.storage.getDirectory();

@@ -109,6 +109,45 @@ describe('StreamingFileWriter', () => {
     ).rejects.toThrow();
   });
 
+  describe('probeOPFS', () => {
+    afterEach(() => {
+      StreamingFileWriter.resetProbeCache();
+    });
+
+    it('returns a boolean when OPFS is supported', async () => {
+      if (!StreamingFileWriter.isSupported()) return;
+
+      const result = await StreamingFileWriter.probeOPFS();
+      expect(typeof result).toBe('boolean');
+      expect(StreamingFileWriter.isOPFSAvailable()).toBe(result);
+    });
+
+    it('caches the result across multiple calls', async () => {
+      if (!StreamingFileWriter.isSupported()) return;
+
+      const first = StreamingFileWriter.probeOPFS();
+      const second = StreamingFileWriter.probeOPFS();
+      // Same promise instance — only one probe runs
+      expect(second).toBe(first);
+      await first;
+    });
+
+    it('resetProbeCache allows re-probing', async () => {
+      if (!StreamingFileWriter.isSupported()) return;
+
+      await StreamingFileWriter.probeOPFS();
+      expect(StreamingFileWriter.isOPFSAvailable()).not.toBeNull();
+
+      StreamingFileWriter.resetProbeCache();
+      expect(StreamingFileWriter.isOPFSAvailable()).toBeNull();
+    });
+
+    it('isOPFSAvailable returns null before probe completes', () => {
+      StreamingFileWriter.resetProbeCache();
+      expect(StreamingFileWriter.isOPFSAvailable()).toBeNull();
+    });
+  });
+
   it('supports multiple concurrent writers with different fileIds', async () => {
     if (!StreamingFileWriter.isSupported()) return;
 
