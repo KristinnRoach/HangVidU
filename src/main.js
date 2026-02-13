@@ -204,6 +204,14 @@ async function init() {
 
   await initI18n();
 
+  if (isDev() && 'VideoEncoder' in window) {
+    console.info('WebCodecs API is supported in this browser.');
+  } else {
+    console.warn(
+      'WebCodecs API is not supported in this browser. Video recording will be disabled.',
+    );
+  }
+
   // Hydrate i18n attributes in index.html and re-hydrate on locale change
   updateI18nElements();
   onLocaleChange(() => updateI18nElements());
