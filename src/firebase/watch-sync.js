@@ -344,23 +344,24 @@ function handleRegularVideoSync(data) {
   // Suppress local event handlers while applying remote state
   lastSyncAction = Date.now();
 
-  if (data.playing !== undefined) {
-    if (data.playing && sharedVideoEl.paused) {
-      sharedVideoEl.play().catch((e) => console.warn('Play failed:', e));
-    } else if (!data.playing && !sharedVideoEl.paused) {
-      sharedVideoEl.pause();
-    }
-  }
-
+  // Seek FIRST, then set play state — avoids calling play() twice which
+  // causes "The play() request was interrupted by a call to pause()"
   if (data.currentTime !== undefined) {
     const timeDiff = Math.abs(sharedVideoEl.currentTime - data.currentTime);
     if (timeDiff > 1) {
       sharedVideoEl.currentTime = data.currentTime;
-      if (data.playing) {
-        sharedVideoEl.play().catch((e) => console.warn('Play failed:', e));
-      } else {
-        sharedVideoEl.pause();
-      }
+    }
+  }
+
+  if (data.playing !== undefined) {
+    if (data.playing && sharedVideoEl.paused) {
+      sharedVideoEl.play().catch((e) => {
+        // Re-stamp to suppress pause events fired by the failed play()
+        lastSyncAction = Date.now();
+        console.warn('Play failed:', e);
+      });
+    } else if (!data.playing && !sharedVideoEl.paused) {
+      sharedVideoEl.pause();
     }
   }
 }
@@ -431,6 +432,12 @@ function setupLocalVideoListeners() {
       });
     }
     preserveFileMode();
+  });
+
+  // Suppress sync during buffering — the browser fires pause/play events
+  // while the video stalls for data (common with SW-served OPFS files)
+  sharedVideoEl.addEventListener('waiting', () => {
+    lastSyncAction = Date.now();
   });
 }
 
