@@ -4,6 +4,7 @@
 import { FileTransport } from './file-transport.js';
 import { FileTransfer } from '../file-transfer.js';
 import { StreamingFileWriter } from '../streaming-file-writer.js';
+import { showErrorToast } from '../../utils/ui/toast.js';
 
 /**
  * WebRTCFileTransport - WebRTC DataChannel implementation for file transfer
@@ -30,6 +31,18 @@ export class WebRTCFileTransport extends FileTransport {
 
     this.dataChannel = dataChannel;
     this.fileTransfer = new FileTransfer(dataChannel);
+
+    // Surface file transfer errors to the user
+    this.fileTransfer.onFileError = ({ fileName, reason }) => {
+      const name = fileName || 'File';
+      if (reason === 'opfs_write_failed') {
+        showErrorToast(
+          `Transfer failed for "${name}" — not enough storage. Try closing private/incognito tabs or free up space.`,
+        );
+      } else {
+        showErrorToast(`Transfer failed for "${name}".`);
+      }
+    };
 
     // Setup message routing for file transfer protocol
     this._setupMessageHandling();
@@ -120,6 +133,7 @@ export class WebRTCFileTransport extends FileTransport {
     if (this.fileTransfer) {
       this.fileTransfer.onFileReceived = null;
       this.fileTransfer.onFileMetaReceived = null;
+      this.fileTransfer.onFileError = null;
     }
 
     // Wipe any temp OPFS files from streaming transfers

@@ -1,4 +1,5 @@
 const OPFS_DIR_NAME = 'file-transfers';
+const PROBE_FILE_NAME = '__quota_probe__';
 
 /**
  * StreamingFileWriter — writes received file chunks to OPFS (Origin Private File System)
@@ -16,6 +17,52 @@ export class StreamingFileWriter {
         typeof navigator.storage?.getDirectory === 'function'
       );
     } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Check whether the origin can actually write `bytes` to OPFS.
+   *
+   * navigator.storage.estimate() is unreliable in private browsing — it
+   * often reports generous quota but enforces a much lower actual limit.
+   * Instead, we pre-allocate a file of the target size and see if it
+   * succeeds. The probe file is deleted immediately afterward.
+   *
+   * @param {number} bytes — file size in bytes
+   * @returns {Promise<boolean>}
+   */
+  static async hasEnoughQuota(bytes) {
+    if (!StreamingFileWriter.isSupported()) return false;
+
+    let dirHandle;
+    try {
+      const root = await navigator.storage.getDirectory();
+      dirHandle = await root.getDirectoryHandle(OPFS_DIR_NAME, {
+        create: true,
+      });
+      const fileHandle = await dirHandle.getFileHandle(PROBE_FILE_NAME, {
+        create: true,
+      });
+      const writable = await fileHandle.createWritable();
+      // Truncate to the target size — this forces the browser to reserve
+      // the space without writing actual data, so it's fast.
+      await writable.truncate(bytes);
+      await writable.close();
+      // Probe succeeded — clean up
+      await dirHandle.removeEntry(PROBE_FILE_NAME);
+      return true;
+    } catch (err) {
+      console.warn(
+        `[OPFS] Probe write failed for ${(bytes / 1024 / 1024).toFixed(1)} MB:`,
+        err.name,
+      );
+      // Clean up probe file if it was partially created
+      try {
+        await dirHandle?.removeEntry(PROBE_FILE_NAME);
+      } catch {
+        // ignore
+      }
       return false;
     }
   }

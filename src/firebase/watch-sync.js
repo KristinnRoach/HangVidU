@@ -64,6 +64,8 @@ let justSeeked = false;
 let seekDebounceTimeout = null;
 let lastSyncAction = 0; // Debounce both directions of the sync feedback loop
 let wasPlayingBeforeSeek = false; // Track play state before seek for regular videos
+let localListenersAttached = false; // Guard against duplicate listener registration
+let localListenerCleanup = null; // AbortController for removing listeners
 
 // -----------------------------------------------------------------------------
 // FIREBASE SYNC HELPERS
@@ -104,6 +106,32 @@ export function setupWatchSync(roomId, role, userId) {
 
   if (import.meta.env.DEV) {
     console.log('Watch sync setup complete for role:', role);
+  }
+}
+
+/**
+ * Remove local video listeners and reset sync state.
+ * Called from cleanupCall() to prevent stale/duplicate listeners.
+ */
+export function cleanupWatchSync() {
+  if (localListenerCleanup) {
+    localListenerCleanup.abort();
+    localListenerCleanup = null;
+  }
+  localListenersAttached = false;
+
+  currentRoomId = null;
+  currentUserId = null;
+  justSeeked = false;
+  lastSyncAction = 0;
+  wasPlayingBeforeSeek = false;
+  if (seekDebounceTimeout) {
+    clearTimeout(seekDebounceTimeout);
+    seekDebounceTimeout = null;
+  }
+  if (requestTimeout) {
+    clearTimeout(requestTimeout);
+    requestTimeout = null;
   }
 }
 
@@ -370,6 +398,14 @@ function handleRegularVideoSync(data) {
 // LOCAL EVENT LISTENERS
 // -----------------------------------------------------------------------------
 function setupLocalVideoListeners() {
+  if (localListenersAttached) return; // Prevent duplicate listeners
+  localListenersAttached = true;
+
+  // AbortController lets us remove all listeners in one call
+  const ac = new AbortController();
+  const opts = { signal: ac.signal };
+  localListenerCleanup = ac;
+
   // Helper to preserve 'file' mode when handling regular video events
   const preserveFileMode = () => {
     if (lastWatched !== 'file') {
@@ -388,7 +424,7 @@ function setupLocalVideoListeners() {
       });
     }
     preserveFileMode();
-  });
+  }, opts);
 
   sharedVideoEl.addEventListener('pause', async () => {
     if (sharedVideoEl.seeking) return;
@@ -403,12 +439,12 @@ function setupLocalVideoListeners() {
       });
     }
     preserveFileMode();
-  });
+  }, opts);
 
   // Track play state continuously so we know if video was playing before seek
   sharedVideoEl.addEventListener('playing', () => {
     wasPlayingBeforeSeek = true;
-  });
+  }, opts);
 
   // Only reset wasPlayingBeforeSeek on actual user pause (not seek-triggered)
   sharedVideoEl.addEventListener(
@@ -418,8 +454,8 @@ function setupLocalVideoListeners() {
         wasPlayingBeforeSeek = false;
       }
     },
-    true,
-  ); // Use capture to run before our other pause handler
+    { capture: true, signal: ac.signal },
+  );
 
   sharedVideoEl.addEventListener('seeked', async () => {
     if (Date.now() - lastSyncAction < 500) return;
@@ -432,13 +468,13 @@ function setupLocalVideoListeners() {
       });
     }
     preserveFileMode();
-  });
+  }, opts);
 
   // Suppress sync during buffering — the browser fires pause/play events
   // while the video stalls for data (common with SW-served OPFS files)
   sharedVideoEl.addEventListener('waiting', () => {
     lastSyncAction = Date.now();
-  });
+  }, opts);
 }
 
 // -----------------------------------------------------------------------------

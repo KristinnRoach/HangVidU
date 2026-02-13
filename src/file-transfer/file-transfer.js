@@ -105,10 +105,19 @@ export class FileTransfer {
       if (msg.type === 'FILE_META') {
         this.fileMetadata.set(msg.fileId, msg);
 
-        // Decide: OPFS streaming vs in-memory based on size + support
-        const useStreaming =
+        // Decide: OPFS streaming vs in-memory based on size + support + quota
+        const opfsCapable =
           msg.size >= TransferConfig.STREAMING_THRESHOLD &&
           StreamingFileWriter.isSupported();
+        const useStreaming =
+          opfsCapable && (await StreamingFileWriter.hasEnoughQuota(msg.size));
+
+        if (opfsCapable && !useStreaming) {
+          console.warn(
+            '[FileTransfer] OPFS quota insufficient, using in-memory transfer for',
+            msg.name,
+          );
+        }
 
         if (useStreaming) {
           this.earlyChunks.set(msg.fileId, []);
@@ -237,7 +246,10 @@ export class FileTransfer {
     try {
       await writer.writeChunk(chunkData, chunkIndex * CHUNK_SIZE);
     } catch (err) {
-      console.error('[FileTransfer] OPFS writeChunk failed:', err);
+      console.warn(
+        '[FileTransfer] OPFS write failed, aborting streaming transfer:',
+        err.name,
+      );
       await writer.abort();
       this.streamWriters.delete(fileId);
       this.streamChunkCounts.delete(fileId);
