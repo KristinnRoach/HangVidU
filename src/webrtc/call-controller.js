@@ -19,6 +19,7 @@ import { devDebug } from '../utils/dev/dev-utils.js';
 import { WebRTCFileTransport } from '../file-transfer/transport/webrtc-file-transport.js';
 import { messagingController } from '../messaging/messaging-controller.js';
 import { messagesUI } from '../components/messages/messages-ui.js';
+import { cleanupWatchSync } from '../firebase/watch-sync.js';
 
 export function createCallController() {
   return new CallController();
@@ -745,6 +746,9 @@ class CallController {
           console.warn('CallController: failed to cleanup messages UI', e);
         }
       }
+
+      // Cleanup watch-sync listeners to prevent duplicates on next call
+      cleanupWatchSync();
 
       // Reset state
       this.resetState();

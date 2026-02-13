@@ -1,0 +1,139 @@
+<!doctype html>
+<html>
+  <head>
+    <title>v2 OPFS vs In-Memory for WebRTC File Transfer</title>
+  </head>
+  <body>
+    <pre id="log">Click "Run" to start benchmark...</pre>
+    <button onclick="run()">Run</button>
+    <script>
+      const log = document.getElementById('log');
+      const print = (s) => {
+        log.textContent += '\n' + s;
+        console.log(s);
+      };
+
+      const CHUNK_SIZE = 65536; // 64KB — matches typical WebRTC data channel MTU
+      const FILE_SIZES_MB = [1000, 2500, 5000]; // 1GB, 2.5GB, 5GB
+
+      // In-memory: simulate chunks arriving over time, store in array, then single assembly
+      async function benchInMemory(totalBytes) {
+        const totalChunks = Math.ceil(totalBytes / CHUNK_SIZE);
+        const chunks = [];
+        const chunk = new ArrayBuffer(CHUNK_SIZE);
+
+        const t0 = performance.now();
+        for (let i = 0; i < totalChunks; i++) {
+          chunks[i] = chunk.slice(0); // copy to simulate received data
+        }
+        // Single assembly step, like final Blob/File for download
+        const blob = new Blob(chunks);
+        const file = new File([blob], 'received.bin');
+        const dt = performance.now() - t0;
+        return { dt, size: file.size };
+      }
+
+      // v2 OPFS: sequential writes, 4MB buffered chunks (no seeks!)
+      async function benchOPFSSequential(totalBytes) {
+        const totalChunks = Math.ceil(totalBytes / CHUNK_SIZE);
+        const chunk = new ArrayBuffer(CHUNK_SIZE);
+        new Uint8Array(chunk).fill(0xaa);
+
+        const root = await navigator.storage.getDirectory();
+        const dir = await root.getDirectoryHandle('bench_seq', {
+          create: true,
+        });
+        const fh = await dir.getFileHandle('received.bin', { create: true });
+        const writable = await fh.createWritable();
+
+        const t0 = performance.now();
+        let bufferedBytes = 0;
+        let bufferedChunks = [];
+
+        for (let i = 0; i < totalChunks; i++) {
+          bufferedChunks.push(chunk);
+          bufferedBytes += CHUNK_SIZE;
+
+          if (bufferedBytes >= 4 * 1024 * 1024 || i === totalChunks - 1) {
+            // 4MB batches
+            const bigChunk = new Blob(bufferedChunks);
+            await writable.write(bigChunk);
+            bufferedChunks = [];
+            bufferedBytes = 0;
+          }
+        }
+        await writable.close();
+        const file = await fh.getFile();
+        const dt = performance.now() - t0;
+
+        // Cleanup
+        await dir.removeEntry('received.bin');
+
+        return { dt, size: file.size };
+      }
+
+      // Original-style OPFS for comparison (per-chunk await/seek)
+      async function benchOPFSOriginal(totalBytes) {
+        const totalChunks = Math.ceil(totalBytes / CHUNK_SIZE);
+        const chunk = new ArrayBuffer(CHUNK_SIZE);
+        new Uint8Array(chunk).fill(0xaa);
+
+        const root = await navigator.storage.getDirectory();
+        const dir = await root.getDirectoryHandle('bench_orig', {
+          create: true,
+        });
+        const fh = await dir.getFileHandle('received.bin', { create: true });
+        const writable = await fh.createWritable();
+
+        const t0 = performance.now();
+        for (let i = 0; i < totalChunks; i++) {
+          await writable.seek(i * CHUNK_SIZE);
+          await writable.write(chunk);
+        }
+        await writable.close();
+        const file = await fh.getFile();
+        const dt = performance.now() - t0;
+
+        await dir.removeEntry('received.bin');
+
+        return { dt, size: file.size };
+      }
+
+      async function run() {
+        log.textContent =
+          'Running benchmark for WebRTC file receive...\nChunk size: 64KB, Sequential writes, 4MB batches\n';
+        print(`Supports OPFS browsers (Chrome 102+, Edge 102+, Safari 17.2+)`);
+        print('');
+
+        for (const mb of FILE_SIZES_MB) {
+          const bytes = mb * 1024 * 1024;
+          const chunks = Math.ceil(bytes / CHUNK_SIZE);
+          print(`--- ${mb / 1000}GB (${chunks.toLocaleString()} chunks) ---`);
+
+          const mem = await benchInMemory(bytes);
+          print(
+            `  In-memory assembly:  ${mem.dt.toFixed(0)}ms (${(mem.dt / 1000).toFixed(1)}s)`,
+          );
+
+          const opfsSeq = await benchOPFSSequential(bytes);
+          print(
+            `  OPFS sequential 4MB: ${opfsSeq.dt.toFixed(0)}ms (${(opfsSeq.dt / 1000).toFixed(1)}s)`,
+          );
+
+          const opfsOrig = await benchOPFSOriginal(bytes);
+          print(
+            `  OPFS original seek:  ${opfsOrig.dt.toFixed(0)}ms (${(opfsOrig.dt / 1000).toFixed(1)}s)`,
+          );
+
+          const ratioSeq = (opfsSeq.dt / mem.dt).toFixed(1);
+          const ratioOrig = (opfsOrig.dt / mem.dt).toFixed(1);
+          print(`  Slowdown: ${ratioSeq}x (v2) / ${ratioOrig}x (v1)`);
+          print('');
+        }
+        print(
+          'Done. For 10GB+ use DedicatedWorker + FileSystemSyncAccessHandle for best perf.',
+        );
+      }
+    </script>
+  </body>
+</html>

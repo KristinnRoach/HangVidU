@@ -1061,30 +1061,33 @@ export function initMessagesUI() {
       showElement(attachBtn);
 
       // Setup file received handler
+      // `file` can be a Blob/File (in-memory path) or { name, type, swUrl } (SW-served OPFS video)
       fileTransfer.onFileReceived = async (file) => {
-        // Create download URL
-        const url = URL.createObjectURL(file);
+        const isSwServed = !!file.swUrl;
+        const fileName = file.name;
+        const fileType = file.type || '';
 
-        // Check if it's a video file
-        if (file.type.startsWith('video/')) {
+        // Check if it's a video file (Blob or SW-served)
+        if (fileType.startsWith('video/')) {
           // Store the file for potential watch-together
           receivedFile = file;
 
           // Prompt user: Download or Watch Together
-          const action = await promptFileAction(file.name);
+          const action = await promptFileAction(fileName);
 
           if (action === 'watch') {
             // Show notification in chat
             appendChatMessage(
-              `📹 ${t('message.received_video', { name: file.name })}`,
+              `📹 ${t('message.received_video', { name: fileName })}`,
               {
                 isSentByMe: false,
               },
             );
             appendChatMessage(`🎬 ${t('message.watch.requesting')}`);
 
-            // Load video locally first
-            const success = await handleVideoSelection(file);
+            // Load video locally — pass SW URL directly for SW-served files
+            const videoSource = isSwServed ? file.swUrl : file;
+            const success = await handleVideoSelection(videoSource);
 
             if (!success) {
               appendChatMessage(`❌ ${t('message.watch.failed_load')}`);
@@ -1092,7 +1095,7 @@ export function initMessagesUI() {
             }
 
             // Create watch request to notify sender
-            const requestCreated = await createWatchRequest(file.name, file);
+            const requestCreated = await createWatchRequest(fileName, file);
 
             if (requestCreated) {
               appendChatMessage(`⏳ ${t('message.watch.waiting')}`);
@@ -1100,27 +1103,29 @@ export function initMessagesUI() {
               appendChatMessage(`❌ ${t('message.watch.request_failed')}`);
             }
           } else {
-            // Download the file
+            // Download — for SW-served, use the SW URL; otherwise create blob URL
+            const url = isSwServed ? file.swUrl : URL.createObjectURL(file);
             const a = document.createElement('a');
             a.href = url;
-            a.download = file.name;
+            a.download = fileName;
             a.click();
 
-            // Revoke blob URL after a delay to allow download to start
-            // Using 1 second to be safe for slow devices/large files
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            if (!isSwServed) {
+              setTimeout(() => URL.revokeObjectURL(url), 1000);
+            }
 
             appendChatMessage(
-              `📎 ${t('message.downloaded', { name: file.name })}`,
+              `📎 ${t('message.downloaded', { name: fileName })}`,
             );
           }
         } else {
           // Non-video file - show download link as before
+          const url = URL.createObjectURL(file);
           appendChatMessage(
-            `📎 ${t('message.received', { name: file.name })}`,
+            `📎 ${t('message.received', { name: fileName })}`,
             {
               isSentByMe: false,
-              fileDownload: { fileName: file.name, url },
+              fileDownload: { fileName, url },
             },
           );
         }
