@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ProgressivePlayer } from './progressive-player.js';
+import { ProgressivePlayer } from '../progressive-player.js';
 
 describe('ProgressivePlayer', () => {
   let mockVideoElement;

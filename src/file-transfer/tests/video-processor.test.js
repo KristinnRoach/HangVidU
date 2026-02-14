@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { VideoProcessor } from './video-processor.js';
+import { VideoProcessor } from '../video-processor.js';
 
 describe('VideoProcessor', () => {
   describe('isSupported', () => {
