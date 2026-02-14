@@ -47,6 +47,7 @@ vi.mock('../../ui/ui-state.js', () => ({
 }));
 
 vi.mock('firebase/database', () => ({
+  getDatabase: vi.fn(() => ({})),
   ref: vi.fn(),
   remove: vi.fn(() => Promise.resolve()),
   get: vi.fn(() => Promise.resolve({ exists: () => false, val: () => null })),
@@ -57,6 +58,10 @@ vi.mock('firebase/database', () => ({
   onChildAdded: vi.fn(),
   onChildRemoved: vi.fn(),
   off: vi.fn(),
+  onDisconnect: vi.fn(() => ({
+    set: vi.fn(() => Promise.resolve()),
+    remove: vi.fn(() => Promise.resolve()),
+  })),
   serverTimestamp: vi.fn(() => ({ '.sv': 'timestamp' })),
 }));
 

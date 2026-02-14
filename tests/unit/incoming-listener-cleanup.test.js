@@ -7,14 +7,15 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock the RTDB module
-vi.mock('../../src/storage/fb-rtdb/rtdb.js', async () => {
-  const actual = await vi.importActual('../../src/storage/fb-rtdb/rtdb.js');
-  return {
-    ...actual,
-    removeRTDBListenersForRoom: vi.fn(),
-  };
-});
+// Mock the RTDB module - use simple mock instead of async importActual
+vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => ({
+  rtdb: {},
+  removeRTDBListenersForRoom: vi.fn(),
+  addRTDBListener: vi.fn(),
+  removeAllRTDBListeners: vi.fn(),
+  getRoomRef: vi.fn(),
+  getUserOutgoingCallRef: vi.fn(),
+}));
 
 import { removeRTDBListenersForRoom } from '../../src/storage/fb-rtdb/rtdb.js';
 
