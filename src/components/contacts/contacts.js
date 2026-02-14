@@ -92,8 +92,9 @@ export async function updateLastInteraction(contactId) {
 
 /**
  * Get all saved contacts for the current user.
+ * TODO: Add orderBy support (e.g., recentInteraction, name, etc.)
  */
-export async function getContacts() {
+export async function getContacts(orderBy = 'recentInteraction') {
   const loggedInUid = getLoggedInUserId();
 
   if (loggedInUid) {

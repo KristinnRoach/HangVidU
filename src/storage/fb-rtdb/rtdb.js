@@ -2,6 +2,7 @@
 
 import {
   getDatabase,
+  connectDatabaseEmulator,
   ref,
   get,
   onValue,
@@ -12,6 +13,13 @@ import {
 import { app } from '../../firebase/firebase';
 
 export const rtdb = getDatabase(app);
+
+const USE_EMULATOR = false;
+
+if (USE_EMULATOR && typeof location && location.hostname === 'localhost') {
+  // Point to the RTDB emulator running on localhost.
+  connectDatabaseEmulator(rtdb, '127.0.0.1', 9000);
+}
 
 // ============================================================================
 // LISTENER TRACKING
