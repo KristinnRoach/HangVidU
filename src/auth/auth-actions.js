@@ -163,6 +163,7 @@ export const signInWithAccountSelection = async () => {
       devDebug('[AUTH] Using Safari external fallback');
       setSafariExternalOpenArmed(false);
       openInSafariExternal();
+      setState({ status: 'idle' });
       return;
     }
 
@@ -175,6 +176,7 @@ export const signInWithAccountSelection = async () => {
     return result;
   } catch (error) {
     handleSignInError(error);
+    setState({ status: 'idle' });
     // Don't re-throw - errors are handled gracefully by handleSignInError
   }
 };
@@ -191,6 +193,7 @@ export async function signOutUser() {
     setTimeout(() => showOneTapSignin(), 1500); // TODO: decide whether this is annoying
   } catch (error) {
     logAuthError('Sign out', error);
+    setState({ status: 'idle' });
     // Re-throw the error to allow callers to handle it
     throw error;
   }
@@ -266,6 +269,7 @@ export async function deleteAccount() {
     setTimeout(() => showOneTapSignin(), 1500);
   } catch (error) {
     logAuthError('Delete account', error);
+    setState({ status: 'idle' });
 
     if (error.code === 'auth/requires-recent-login') {
       throw new Error(
