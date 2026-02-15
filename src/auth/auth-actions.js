@@ -59,7 +59,9 @@ function detectIOSStandalone() {
   const navigatorStandalone =
     typeof navigator !== 'undefined' && navigator.standalone === true;
   const isStandalonePWA = displayModeStandalone || navigatorStandalone;
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+  const isIOS =
+    typeof navigator !== 'undefined' &&
+    /iphone|ipad|ipod/i.test(navigator.userAgent || '');
   const isIOSStandalone = isStandalonePWA && isIOS;
   return { isStandalonePWA, isIOS, isIOSStandalone };
 }
@@ -71,7 +73,7 @@ function detectIOSStandalone() {
  */
 function handleSignInError(error) {
   const errorCode = error?.code || 'unknown';
-  const errorMessage = error?.message || String(error);
+  // Only log error details, do not show raw error to user
 
   // Ignore popup-closed-by-user error (user cancelled auth)
   if (
@@ -105,43 +107,16 @@ function handleSignInError(error) {
   }
 
   // The email of the user's account used (do not print raw value in prod)
-  const email = error?.customData?.email;
-  // Log error in a production-safe way
-  logAuthError('Google sign-in', error, {
-    email: email ? '<redacted>' : undefined,
-  });
+  // Log error in a production-safe way, do not log email or sensitive data
+  logAuthError('Google sign-in', error);
 
   if (errorCode === 'auth/unauthorized-domain') {
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const guidanceLines = [
-      "This app's host is not whitelisted in Firebase Authentication.",
-      'Fix: In Firebase Console, go to Build → Authentication → Settings → Authorized domains and add this origin:',
-      origin ? `• ${origin}` : '• <your dev origin>',
-      '',
-      'Common dev hosts to add:',
-      '• http://localhost (covers any port)',
-      '• http://127.0.0.1',
-      '• http://[::1] (IPv6 localhost)',
-      '• Your LAN IP, e.g. http://192.168.x.y',
-      '',
-      'Tip: avoid opening index.html directly from the filesystem (file://). Use a dev server instead.',
-    ];
-
-    // Try to copy the origin to the clipboard for convenience (best-effort)
-    if (
-      origin &&
-      typeof navigator !== 'undefined' &&
-      navigator.clipboard?.writeText
-    ) {
-      navigator.clipboard.writeText(origin).catch(() => {});
-    }
-
-    alert(t('auth.unauthorized', { details: guidanceLines.join('\n') }));
+    alert(t('auth.unauthorized'));
     return;
   }
 
   // Generic fallback for any other errors
-  alert(t('auth.sign_in_failed', { error: errorMessage }));
+  alert(t('auth.sign_in_failed'));
 }
 
 export const signInWithAccountSelection = async () => {
@@ -171,7 +146,7 @@ export const signInWithAccountSelection = async () => {
     // If popup is blocked, we'll catch the error and fallback to Safari external
     devDebug('[AUTH] Starting popup sign-in flow...');
     const result = await signInWithPopup(auth, provider);
-    devDebug('[AUTH] Popup sign-in successful:', result.user.email);
+    devDebug('[AUTH] Popup sign-in successful');
     setSafariExternalOpenArmed(false); // clear on success
     return result;
   } catch (error) {
@@ -220,7 +195,7 @@ export async function deleteAccount() {
   setState({ status: 'loading' });
 
   try {
-    console.info('[AUTH] Starting account deletion for user:', userId);
+    console.info('[AUTH] Starting account deletion');
 
     // 1. Set user offline and clear cached tokens
     await setOffline();
