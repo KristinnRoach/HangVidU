@@ -17,7 +17,7 @@ import {
   ReactionUI,
 } from '../../messaging/reactions/index.js';
 import { REACTION_CONFIG } from '../../messaging/reactions/ReactionConfig.js';
-import { getLoggedInUserId } from '../../auth/auth-state.js';
+import { getLoggedInUserId, getIsLoggedIn } from '../../auth/auth-state.js';
 import { messagingController } from '../../messaging/messaging-controller.js';
 import { showInfoToast } from '../../utils/ui/toast.js';
 import { getUserProfile } from '../../user/profile.js';
@@ -28,8 +28,6 @@ const supportsCssAnchors =
   CSS.supports?.('position-anchor: --msg-toggle') &&
   CSS.supports?.('right: anchor(right)') &&
   CSS.supports?.('bottom: anchor(top)');
-
-const isLoggedin = () => !!getLoggedInUserId();
 
 function isOnScreen(el) {
   const r = el.getBoundingClientRect();
@@ -66,7 +64,9 @@ export function initMessagesUI() {
   const reactionManager = new ReactionManager();
   const reactionUI = new ReactionUI(reactionManager);
 
-  const shouldShowAttachButton = () => isLoggedin() && !!fileTransfer;
+  const shouldShowAttachButton = () =>
+    getIsLoggedIn() && (!!fileTransfer || !!currentSession);
+
   const refreshAttachButton = () => {
     if (shouldShowAttachButton()) {
       showElement(attachBtn);
@@ -149,7 +149,7 @@ export function initMessagesUI() {
   const sendBtn = messagesForm.querySelector('button[type="submit"]');
 
   // Hide attachment button by default (shown when FileTransfer is available)
-  refreshAttachButton();
+  // (Initial call is not needed, setSession and setFileTransfer will call it)
 
   // Attach button opens file picker
   attachBtn.addEventListener('click', () => {
@@ -1140,6 +1140,8 @@ export function initMessagesUI() {
           session?.contactPhotoURL || session?.contactProfile?.photoURL || '',
       });
     }
+
+    refreshAttachButton();
   }
 
   /**
@@ -1244,8 +1246,6 @@ export function initMessagesUI() {
         isReceivingFile = true;
         sendBtn.textContent = `${Math.round(progress * 100)}%`;
       };
-    } else {
-      refreshAttachButton();
     }
   }
 
@@ -1270,9 +1270,6 @@ export function initMessagesUI() {
     if (sendBtn) {
       sendBtn.textContent = t('shared.send');
     }
-
-    // Hide attachment button (will be shown again when FileTransfer is available)
-    refreshAttachButton();
 
     // Clear inline positioning
     messagesBox.style.top = '';
