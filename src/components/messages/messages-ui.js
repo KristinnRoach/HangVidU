@@ -188,10 +188,12 @@ export function initMessagesUI() {
       }
     } catch (err) {
       console.error('[MessagesUI] File send failed:', err);
-      appendChatMessage(
-        t('message.send_failed') +
-          '\nFile size is limited when not in an active call with this contact.',
-      );
+
+      const sizeHint = !fileTransfer
+        ? '\nFile size is limited when not in an active call with this contact.'
+        : '';
+
+      appendChatMessage(t('message.send_failed') + sizeHint);
     } finally {
       sendBtn.textContent = originalText;
       fileInput.value = '';

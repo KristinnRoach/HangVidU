@@ -320,6 +320,9 @@ export class MessagingController {
     if (!file) {
       throw new Error('file is required');
     }
+    if (typeof this.transport.sendFile !== 'function') {
+      throw new Error('Transport does not support file messages');
+    }
     return this.transport.sendFile(contactId, file);
   }
 

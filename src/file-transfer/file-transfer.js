@@ -124,6 +124,15 @@ export class FileTransfer {
       }
 
       const meta = this.fileMetadata.get(chunkMeta.fileId);
+
+      if (!meta) {
+        console.error(
+          '[FileTransfer] Received chunk but metadata not found:',
+          chunkMeta.fileId,
+        );
+        return;
+      }
+
       if (!isValidChunkIndex(chunkMeta.chunkIndex, meta.totalChunks)) {
         console.error(
           '[FileTransfer] Invalid chunk index:',
