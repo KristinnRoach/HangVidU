@@ -1,6 +1,8 @@
 import { TransferConfig } from './config.js';
 import {
   parseEmbeddedChunkPacket,
+  createEmbeddedChunkPacket,
+  isValidChunkIndex,
   convertToArrayBuffer,
 } from './chunk-processor.js';
 import { validateAssembly } from './file-assembler.js';
@@ -51,24 +53,11 @@ export class FileTransfer {
       const end = Math.min(start + CHUNK_SIZE, file.size);
       const chunk = await file.slice(start, end).arrayBuffer();
 
-      // Create embedded packet: [4-byte length][JSON metadata][chunk data]
-      const metadata = {
-        type: 'FILE_CHUNK',
-        fileId,
-        chunkIndex: i,
-        totalChunks,
-      };
-      const metaBytes = new TextEncoder().encode(JSON.stringify(metadata));
+      const packet = createEmbeddedChunkPacket(
+        { type: 'FILE_CHUNK', fileId, chunkIndex: i, totalChunks },
+        chunk,
+      );
 
-      // Use DataView for consistent endianness (little-endian)
-      const packet = new ArrayBuffer(4 + metaBytes.length + chunk.byteLength);
-      const view = new Uint8Array(packet);
-      const dataView = new DataView(packet);
-      dataView.setUint32(0, metaBytes.length, true); // true = little-endian
-      view.set(metaBytes, 4);
-      view.set(new Uint8Array(chunk), 4 + metaBytes.length);
-
-      // Send single atomic packet
       this.dataChannel.send(packet);
 
       if (onProgress) {
@@ -115,6 +104,17 @@ export class FileTransfer {
       if (!chunks) {
         console.error(
           '[FileTransfer] Received chunk for unknown file:',
+          chunkMeta.fileId,
+        );
+        return;
+      }
+
+      const meta = this.fileMetadata.get(chunkMeta.fileId);
+      if (!isValidChunkIndex(chunkMeta.chunkIndex, meta.totalChunks)) {
+        console.error(
+          '[FileTransfer] Invalid chunk index:',
+          chunkMeta.chunkIndex,
+          'for file:',
           chunkMeta.fileId,
         );
         return;
