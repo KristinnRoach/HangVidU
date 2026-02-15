@@ -29,6 +29,8 @@ const supportsCssAnchors =
   CSS.supports?.('right: anchor(right)') &&
   CSS.supports?.('bottom: anchor(top)');
 
+const isLoggedin = () => !!getLoggedInUserId();
+
 function isOnScreen(el) {
   const r = el.getBoundingClientRect();
   return (
@@ -63,6 +65,15 @@ export function initMessagesUI() {
   // Initialize reaction management
   const reactionManager = new ReactionManager();
   const reactionUI = new ReactionUI(reactionManager);
+
+  const shouldShowAttachButton = () => isLoggedin() && !!fileTransfer;
+  const refreshAttachButton = () => {
+    if (shouldShowAttachButton()) {
+      showElement(attachBtn);
+    } else {
+      hideElement(attachBtn);
+    }
+  };
 
   const topRightMenu =
     document.querySelector('.top-bar .top-right-menu') ||
@@ -138,7 +149,7 @@ export function initMessagesUI() {
   const sendBtn = messagesForm.querySelector('button[type="submit"]');
 
   // Hide attachment button by default (shown when FileTransfer is available)
-  // ! hideElement(attachBtn);
+  refreshAttachButton();
 
   // Attach button opens file picker
   attachBtn.addEventListener('click', () => {
@@ -1147,9 +1158,9 @@ export function initMessagesUI() {
     fileTransfer = instance;
 
     // Show/hide attachment button based on FileTransport availability
-    if (fileTransfer) {
-      showElement(attachBtn);
+    refreshAttachButton();
 
+    if (fileTransfer) {
       // Setup file received handler
       fileTransfer.onFileReceived = async (file) => {
         // Create download URL
@@ -1234,7 +1245,7 @@ export function initMessagesUI() {
         sendBtn.textContent = `${Math.round(progress * 100)}%`;
       };
     } else {
-      // ! hideElement(attachBtn);
+      refreshAttachButton();
     }
   }
 
@@ -1261,7 +1272,7 @@ export function initMessagesUI() {
     }
 
     // Hide attachment button (will be shown again when FileTransfer is available)
-    // ! hideElement(attachBtn);
+    refreshAttachButton();
 
     // Clear inline positioning
     messagesBox.style.top = '';
