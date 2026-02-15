@@ -3,14 +3,23 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { hashEmail, removeUserFromDirectory } from './user-discovery.js';
 
 vi.mock('firebase/database', () => ({
+  getDatabase: vi.fn(() => ({})),
   ref: vi.fn(),
   set: vi.fn(),
   get: vi.fn(),
   remove: vi.fn(() => Promise.resolve()),
+  onValue: vi.fn(),
+  onChildAdded: vi.fn(),
+  onChildRemoved: vi.fn(),
+  off: vi.fn(),
 }));
 
-vi.mock('../storage/fb-rtdb/rtdb.js', () => ({
-  rtdb: {},
+vi.mock('../../firebase/firebase.js', () => ({
+  app: {},
+}));
+
+vi.mock('../auth/auth-state.js', () => ({
+  subscribe: vi.fn(),
 }));
 
 describe('user-discovery', () => {

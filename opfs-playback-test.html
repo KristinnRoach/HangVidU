@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPFS Playback Test</title>
+<style>
+  body { font-family: system-ui; max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
+  video { width: 100%; max-height: 400px; background: #000; margin: 1rem 0; }
+  #log { background: #111; color: #0f0; padding: 1rem; font-family: monospace; font-size: 13px;
+         white-space: pre-wrap; max-height: 400px; overflow-y: auto; border-radius: 4px; }
+  button { padding: 0.5rem 1rem; margin: 0.25rem; cursor: pointer; }
+  .step { margin: 1rem 0; padding: 1rem; border: 1px solid #ccc; border-radius: 4px; }
+  .step h3 { margin-top: 0; }
+  #memory { font-family: monospace; padding: 0.5rem; background: #222; color: #ff0; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>OPFS Playback Test</h1>
+<p>Tests whether a large video file stored in OPFS can be played via <code>URL.createObjectURL()</code> without loading the entire file into memory.</p>
+
+<div class="step">
+  <h3>Step 1: Pick a video file</h3>
+  <p>Choose a large video file (1GB+ recommended). It will be written to OPFS in chunks.</p>
+  <input type="file" id="filePicker" accept="video/*">
+</div>
+
+<div class="step">
+  <h3>Step 2: Write to OPFS</h3>
+  <button id="writeBtn" disabled>Write to OPFS</button>
+  <button id="clearBtn">Clear OPFS</button>
+  <progress id="writeProgress" value="0" max="100" style="width:100%;display:none"></progress>
+</div>
+
+<div class="step">
+  <h3>Step 3: Play from OPFS</h3>
+  <button id="playOpfsBtn" disabled>Play from OPFS (blob URL)</button>
+  <button id="playDirectBtn" disabled>Play from File directly (control)</button>
+</div>
+
+<div class="step">
+  <h3>Memory Monitor</h3>
+  <div id="memory">Waiting...</div>
+  <p style="font-size:12px;color:#888">Chrome only. Shows JS heap usage. Watch for spikes when playback starts and during seeking.</p>
+</div>
+
+<video id="player" controls></video>
+
+<div id="log"></div>
+
+<script>
+const filePicker = document.getElementById('filePicker');
+const writeBtn = document.getElementById('writeBtn');
+const clearBtn = document.getElementById('clearBtn');
+const playOpfsBtn = document.getElementById('playOpfsBtn');
+const playDirectBtn = document.getElementById('playDirectBtn');
+const writeProgress = document.getElementById('writeProgress');
+const player = document.getElementById('player');
+const memoryEl = document.getElementById('memory');
+const logEl = document.getElementById('log');
+
+let selectedFile = null;
+let opfsFileName = null;
+let currentBlobUrl = null;
+
+function log(msg) {
+  const ts = new Date().toISOString().split('T')[1].slice(0, 12);
+  logEl.textContent += `[${ts}] ${msg}\n`;
+  logEl.scrollTop = logEl.scrollHeight;
+  console.log(msg);
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+}
+
+// Memory monitoring
+function updateMemory() {
+  if (performance.memory) {
+    const used = performance.memory.usedJSHeapSize;
+    const total = performance.memory.totalJSHeapSize;
+    const limit = performance.memory.jsHeapSizeLimit;
+    memoryEl.textContent =
+      `Heap used:  ${formatBytes(used)}\n` +
+      `Heap total: ${formatBytes(total)}\n` +
+      `Heap limit: ${formatBytes(limit)}`;
+  } else {
+    memoryEl.textContent = 'performance.memory not available (Chrome only)';
+  }
+}
+setInterval(updateMemory, 1000);
+updateMemory();
+
+// Step 1: File selection
+filePicker.addEventListener('change', (e) => {
+  selectedFile = e.target.files[0];
+  if (selectedFile) {
+    log(`Selected: ${selectedFile.name} (${formatBytes(selectedFile.size)}, ${selectedFile.type})`);
+    writeBtn.disabled = false;
+    playDirectBtn.disabled = false;
+  }
+});
+
+// Step 2: Write to OPFS
+writeBtn.addEventListener('click', async () => {
+  if (!selectedFile) return;
+
+  try {
+    const root = await navigator.storage.getDirectory();
+    opfsFileName = selectedFile.name;
+
+    log(`Writing "${opfsFileName}" to OPFS...`);
+    writeBtn.disabled = true;
+    writeProgress.style.display = 'block';
+
+    const fileHandle = await root.getFileHandle(opfsFileName, { create: true });
+    const writable = await fileHandle.createWritable();
+
+    const CHUNK_SIZE = 4 * 1024 * 1024; // 4MB chunks
+    const totalChunks = Math.ceil(selectedFile.size / CHUNK_SIZE);
+    let written = 0;
+
+    for (let i = 0; i < totalChunks; i++) {
+      const start = i * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, selectedFile.size);
+      const chunk = selectedFile.slice(start, end);
+      await writable.write(chunk);
+      written += end - start;
+      writeProgress.value = (written / selectedFile.size) * 100;
+    }
+
+    await writable.close();
+
+    // Verify
+    const verifyHandle = await root.getFileHandle(opfsFileName);
+    const verifyFile = await verifyHandle.getFile();
+    log(`OPFS write complete. Stored size: ${formatBytes(verifyFile.size)}`);
+
+    if (verifyFile.size !== selectedFile.size) {
+      log(`WARNING: Size mismatch! Original: ${selectedFile.size}, Stored: ${verifyFile.size}`);
+    }
+
+    playOpfsBtn.disabled = false;
+    writeProgress.style.display = 'none';
+  } catch (err) {
+    log(`OPFS write failed: ${err.message}`);
+    writeBtn.disabled = false;
+    writeProgress.style.display = 'none';
+  }
+});
+
+// Clear OPFS
+clearBtn.addEventListener('click', async () => {
+  try {
+    const root = await navigator.storage.getDirectory();
+    if (opfsFileName) {
+      await root.removeEntry(opfsFileName);
+      log(`Removed "${opfsFileName}" from OPFS`);
+      opfsFileName = null;
+      playOpfsBtn.disabled = true;
+    } else {
+      log('No file to clear');
+    }
+  } catch (err) {
+    log(`Clear failed: ${err.message}`);
+  }
+});
+
+// Step 3a: Play from OPFS
+playOpfsBtn.addEventListener('click', async () => {
+  try {
+    if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+
+    const root = await navigator.storage.getDirectory();
+    const fileHandle = await root.getFileHandle(opfsFileName);
+    const file = await fileHandle.getFile();
+
+    log(`Retrieved from OPFS: ${formatBytes(file.size)}`);
+    log(`Creating blob URL from OPFS file...`);
+
+    const before = performance.memory?.usedJSHeapSize;
+    currentBlobUrl = URL.createObjectURL(file);
+    const after = performance.memory?.usedJSHeapSize;
+
+    if (before && after) {
+      log(`Memory delta from createObjectURL: ${formatBytes(after - before)}`);
+    }
+
+    player.src = currentBlobUrl;
+    log(`Blob URL set. Try playing, seeking, and watch memory.`);
+
+    player.addEventListener('loadedmetadata', () => {
+      log(`Video loaded — duration: ${player.duration.toFixed(1)}s, ` +
+          `${player.videoWidth}x${player.videoHeight}`);
+    }, { once: true });
+
+    player.addEventListener('error', () => {
+      log(`Playback error: ${player.error?.message || 'unknown'}`);
+    }, { once: true });
+
+  } catch (err) {
+    log(`OPFS playback failed: ${err.message}`);
+  }
+});
+
+// Step 3b: Play directly from File (control test)
+playDirectBtn.addEventListener('click', () => {
+  if (!selectedFile) return;
+  if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+
+  log(`Playing directly from File object (control)...`);
+
+  const before = performance.memory?.usedJSHeapSize;
+  currentBlobUrl = URL.createObjectURL(selectedFile);
+  const after = performance.memory?.usedJSHeapSize;
+
+  if (before && after) {
+    log(`Memory delta from createObjectURL: ${formatBytes(after - before)}`);
+  }
+
+  player.src = currentBlobUrl;
+  log(`Direct blob URL set. Compare memory usage with OPFS playback.`);
+
+  player.addEventListener('loadedmetadata', () => {
+    log(`Video loaded — duration: ${player.duration.toFixed(1)}s, ` +
+        `${player.videoWidth}x${player.videoHeight}`);
+  }, { once: true });
+});
+
+// Track seeking memory impact
+player.addEventListener('seeking', () => {
+  if (performance.memory) {
+    log(`Seeking to ${player.currentTime.toFixed(1)}s — heap: ${formatBytes(performance.memory.usedJSHeapSize)}`);
+  }
+});
+
+log('Ready. Pick a video file to begin.');
+log('NOTE: Use Chrome and launch with --enable-precise-memory-info for accurate readings.');
+</script>
+</body>
+</html>

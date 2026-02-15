@@ -1,36 +1,41 @@
 // src/webrtc/tests/member-listener-fresh-join.test.js
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// Stateful listener storage - must be outside vi.mock factory for Vitest hoisting
+const mockListenerState = {
+  childAddedListeners: new Map(),
+  childRemovedListeners: new Map(),
+};
+
 // Firebase RTDB mock with child_added propagation when setting a member node
 vi.mock('firebase/database', () => {
-  const childAddedListeners = new Map(); // path -> Set<cb>
-  const childRemovedListeners = new Map(); // path -> Set<cb>
-
   const getDatabase = vi.fn(() => ({}));
   const ref = vi.fn((/* db */ _db, path) => ({ path }));
 
-  function addListener(map, path, cb) {
+  const addListener = (map, path, cb) => {
     if (!map.has(path)) map.set(path, new Set());
     map.get(path).add(cb);
-  }
-  function removeListener(map, path, cb) {
+  };
+
+  const removeListener = (map, path, cb) => {
     if (!map.has(path)) return;
     map.get(path).delete(cb);
     if (map.get(path).size === 0) map.delete(path);
-  }
+  };
 
   const onChildAdded = vi.fn((fbRef, cb) =>
-    addListener(childAddedListeners, fbRef.path, cb)
+    addListener(mockListenerState.childAddedListeners, fbRef.path, cb),
   );
+
   const onChildRemoved = vi.fn((fbRef, cb) =>
-    addListener(childRemovedListeners, fbRef.path, cb)
+    addListener(mockListenerState.childRemovedListeners, fbRef.path, cb),
   );
 
   const off = vi.fn((fbRef, type, cb) => {
     if (type === 'child_added')
-      removeListener(childAddedListeners, fbRef.path, cb);
+      removeListener(mockListenerState.childAddedListeners, fbRef.path, cb);
     if (type === 'child_removed')
-      removeListener(childRemovedListeners, fbRef.path, cb);
+      removeListener(mockListenerState.childRemovedListeners, fbRef.path, cb);
   });
 
   const get = vi.fn();
@@ -46,7 +51,7 @@ vi.mock('firebase/database', () => {
     if (isMemberPath) {
       const userId = parts[3];
       const parentPath = parts.slice(0, 3).join('/'); // rooms/<roomId>/members
-      const listeners = childAddedListeners.get(parentPath);
+      const listeners = mockListenerState.childAddedListeners.get(parentPath);
       if (listeners && listeners.size) {
         const snapshot = {
           key: userId,
@@ -111,7 +116,7 @@ describe('Incoming-call member listener fires once with fresh joinedAt', () => {
     const unsubscribeOld = RoomService.onIncomingCall(
       roomId,
       localUserId,
-      oldCb
+      oldCb,
     );
 
     // Simulate disposed PC by unsubscribing old listener
@@ -121,7 +126,7 @@ describe('Incoming-call member listener fires once with fresh joinedAt', () => {
     const unsubscribeNew = RoomService.onIncomingCall(
       roomId,
       localUserId,
-      newCb
+      newCb,
     );
 
     const t0 = Date.now();
