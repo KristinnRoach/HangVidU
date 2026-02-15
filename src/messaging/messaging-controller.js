@@ -120,7 +120,7 @@ export class MessagingController {
       },
 
       /**
-       * Send a small file as an RTDB message (base64-encoded, max 1MB).
+       * Send a small file as an RTDB message (base64-encoded, max currently defined in rtdb-transport).
        * Works without an active call.
        * @param {File} file - File to send
        * @returns {Promise<void>}
@@ -310,7 +310,7 @@ export class MessagingController {
    * Send a small file as an RTDB message (base64-encoded).
    * Works without an active WebRTC call — just needs an authenticated user.
    * @param {string} contactId - Recipient's user ID
-   * @param {File} file - File to send (max 1MB)
+   * @param {File} file - File to send (max size defined in rtdb-transport)
    * @returns {Promise<void>}
    */
   async sendFileMessage(contactId, file) {

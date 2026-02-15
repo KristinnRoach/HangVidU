@@ -188,7 +188,10 @@ export function initMessagesUI() {
       }
     } catch (err) {
       console.error('[MessagesUI] File send failed:', err);
-      appendChatMessage(t('message.send_failed'));
+      appendChatMessage(
+        t('message.send_failed') +
+          '\nFile size limited to 2MB except during active call.',
+      );
     } finally {
       sendBtn.textContent = originalText;
       fileInput.value = '';

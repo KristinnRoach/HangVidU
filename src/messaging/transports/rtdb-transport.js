@@ -19,8 +19,8 @@ import { getLoggedInUserId, getUser } from '../../auth/auth-state.js';
 // Message limit per conversation to control storage costs
 const MAX_MESSAGES_PER_CONVERSATION = 100;
 
-// Max file size for RTDB file messages (1MB before base64 encoding)
-const MAX_FILE_SIZE = 1 * 1024 * 1024;
+// Max file size for RTDB file messages (2MB before base64 encoding)
+const MAX_FILE_SIZE = 2 * 1024 * 1024;
 
 /**
  * Convert a File/Blob to a base64 data URL string.
