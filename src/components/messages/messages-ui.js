@@ -190,7 +190,7 @@ export function initMessagesUI() {
       console.error('[MessagesUI] File send failed:', err);
       appendChatMessage(
         t('message.send_failed') +
-          '\nFile size limited to 2MB except during active call.',
+          '\nFile size is limited when not in an active call with this contact.',
       );
     } finally {
       sendBtn.textContent = originalText;
