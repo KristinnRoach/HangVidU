@@ -574,7 +574,7 @@ class CallController {
         messagingController.setFileTransport(fileTransport);
 
         // Connect to messagesUI for file operations
-        messagesUI.setFileTransfer(fileTransport.fileTransfer);
+        messagesUI.setFileTransport(fileTransport);
 
         devDebug('[CallController] File transport initialized');
       } catch (err) {
@@ -732,7 +732,7 @@ class CallController {
       // Cleanup file transport
       try {
         messagingController.clearFileTransport();
-        messagesUI.setFileTransfer(null);
+        messagesUI.setFileTransport(null);
       } catch (e) {
         console.warn('CallController: failed to cleanup file transport', e);
       }

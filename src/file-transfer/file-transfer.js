@@ -7,36 +7,51 @@ import {
 } from './chunk-processor.js';
 import { validateAssembly } from './file-assembler.js';
 
-// Use PrivyDrop's network chunk size for WebRTC safe transmission
 const CHUNK_SIZE = TransferConfig.FILE_CONFIG.NETWORK_CHUNK_SIZE; // 64KB
 const MAX_FILE_SIZE_MB = 5000;
 
+/**
+ * FileTransfer — transport-agnostic chunking protocol engine.
+ *
+ * Handles slicing files into chunks, reassembling incoming chunks,
+ * progress tracking and validation. All I/O goes through the
+ * `send` function provided at construction.
+ */
 export class FileTransfer {
-  constructor(dataChannel) {
-    this.dataChannel = dataChannel;
+  /**
+   * @param {Function} send - Function to send data (string or ArrayBuffer).
+   *   The transport layer provides this (e.g. dataChannel.send.bind(dataChannel)).
+   */
+  constructor(send) {
+    if (typeof send !== 'function') {
+      throw new Error('FileTransfer requires a send function');
+    }
+    this._send = send;
     this.receivedChunks = new Map(); // fileId -> chunks array
     this.fileMetadata = new Map(); // fileId -> metadata
-    this.onFileError = null; // Optional callback for file transfer errors
-    this.onReceiveProgress = null; // Optional callback for receive progress
+    this.onFileReceived = null;
+    this.onFileMetaReceived = null;
+    this.onFileError = null;
+    this.onReceiveProgress = null;
   }
 
-  // Send file
-  async sendFile(file, onProgress) {
-    // Validate size
+  /**
+   * Send a file by slicing it into chunks.
+   * @param {File} file
+   * @param {Function} [onProgress] - Called with 0–1 progress
+   * @param {Function} [waitForDrain] - Optional async function the transport
+   *   can provide to handle backpressure. Called after each chunk send.
+   */
+  async sendFile(file, onProgress, waitForDrain) {
     if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
       throw new Error(`File too large (max ${MAX_FILE_SIZE_MB} MB)`);
-    }
-
-    // Validate DataChannel state
-    if (this.dataChannel.readyState !== 'open') {
-      throw new Error('DataChannel not ready');
     }
 
     const fileId = `${file.name}-${file.size}-${Date.now()}`;
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
     // 1. Send metadata
-    this.dataChannel.send(
+    this._send(
       JSON.stringify({
         type: 'FILE_META',
         fileId,
@@ -47,7 +62,7 @@ export class FileTransfer {
       }),
     );
 
-    // 2. Send chunks with embedded metadata (atomic send)
+    // 2. Send chunks with embedded metadata
     for (let i = 0; i < totalChunks; i++) {
       const start = i * CHUNK_SIZE;
       const end = Math.min(start + CHUNK_SIZE, file.size);
@@ -58,15 +73,14 @@ export class FileTransfer {
         chunk,
       );
 
-      this.dataChannel.send(packet);
+      this._send(packet);
 
       if (onProgress) {
         onProgress((i + 1) / totalChunks);
       }
 
-      // Simple backpressure: wait if buffer too full
-      while (this.dataChannel.bufferedAmount > 256 * 1024) {
-        await new Promise((resolve) => setTimeout(resolve, 10));
+      if (waitForDrain) {
+        await waitForDrain();
       }
     }
   }
@@ -149,7 +163,6 @@ export class FileTransfer {
         ...validation,
       });
 
-      // Notify user of error if callback is provided
       if (this.onFileError) {
         this.onFileError({
           fileName: meta.name,

@@ -4,20 +4,16 @@
 import { FileTransport } from './file-transport.js';
 import { FileTransfer } from '../file-transfer.js';
 
+const BACKPRESSURE_THRESHOLD = 256 * 1024; // 256KB
+
 /**
  * WebRTCFileTransport - WebRTC DataChannel implementation for file transfer
  *
- * Wraps the FileTransfer class to provide a transport-layer abstraction.
- * Handles file transfer over WebRTC DataChannel during active P2P calls.
- *
- * Features:
- * - Chunked file transfer (64KB chunks)
- * - Progress tracking
- * - Backpressure handling
+ * Owns all DataChannel-specific concerns (send, readiness, backpressure,
+ * message routing) and delegates chunking protocol to FileTransfer.
  */
 export class WebRTCFileTransport extends FileTransport {
   /**
-   * Create a DataChannel file transport
    * @param {RTCDataChannel} dataChannel - WebRTC DataChannel for file transfer
    */
   constructor(dataChannel) {
@@ -28,24 +24,22 @@ export class WebRTCFileTransport extends FileTransport {
     }
 
     this.dataChannel = dataChannel;
-    this.fileTransfer = new FileTransfer(dataChannel);
+    this.fileTransfer = new FileTransfer(
+      (data) => this.dataChannel.send(data),
+    );
 
-    // Setup message routing for file transfer protocol
     this._setupMessageHandling();
   }
 
   /**
-   * Setup DataChannel message handling for file transfer
-   * Routes file transfer messages to FileTransfer handler
+   * Route incoming DataChannel messages to the FileTransfer protocol handler.
    * @private
    */
   _setupMessageHandling() {
     this.dataChannel.onmessage = (event) => {
-      // Check if this is a file transfer message
       if (typeof event.data === 'string') {
         try {
           const msg = JSON.parse(event.data);
-          // Handle file transfer protocol messages (FILE_META, FILE_CHUNK)
           if (msg.type === 'FILE_META' || msg.type === 'FILE_CHUNK') {
             this.fileTransfer.handleMessage(event.data);
             return;
@@ -61,64 +55,58 @@ export class WebRTCFileTransport extends FileTransport {
   }
 
   /**
-   * Send a file via DataChannel
-   * @param {File} file - File object to send
-   * @param {Function} [onProgress] - Optional callback(progress) with progress from 0 to 1
-   * @returns {Promise<void>}
+   * Wait until DataChannel bufferedAmount drops below threshold.
+   * Passed to FileTransfer.sendFile as the backpressure callback.
+   * @private
    */
+  async _waitForDrain() {
+    while (this.dataChannel.bufferedAmount > BACKPRESSURE_THRESHOLD) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  }
+
   async sendFile(file, onProgress) {
     if (!this.isReady()) {
       throw new Error('DataChannel not ready');
     }
 
-    return this.fileTransfer.sendFile(file, onProgress);
+    return this.fileTransfer.sendFile(
+      file,
+      onProgress,
+      () => this._waitForDrain(),
+    );
   }
 
-  /**
-   * Set callback for when a file is received
-   * @param {Function} callback - Callback(file) called when file is fully received
-   */
   onFileReceived(callback) {
-    if (typeof callback !== 'function') {
-      throw new Error('onFileReceived callback must be a function');
-    }
-
     this.fileTransfer.onFileReceived = callback;
   }
 
-  /**
-   * Set callback for receive progress updates
-   * @param {Function} callback - Callback(progress) with progress from 0 to 1
-   */
   onReceiveProgress(callback) {
-    if (typeof callback !== 'function') {
-      throw new Error('onReceiveProgress callback must be a function');
-    }
-
     this.fileTransfer.onReceiveProgress = callback;
   }
 
-  /**
-   * Check if the DataChannel is ready to send files
-   * @returns {boolean} True if ready, false otherwise
-   */
-  isReady() {
-    return this.dataChannel && this.dataChannel.readyState === 'open';
+  onFileError(callback) {
+    this.fileTransfer.onFileError = callback;
   }
 
-  /**
-   * Cleanup resources
-   * Removes message handlers and clears references
-   */
+  onFileMetaReceived(callback) {
+    this.fileTransfer.onFileMetaReceived = callback;
+  }
+
+  isReady() {
+    return this.dataChannel?.readyState === 'open';
+  }
+
   cleanup() {
     if (this.dataChannel) {
       this.dataChannel.onmessage = null;
     }
 
-    // Clear FileTransfer references
     if (this.fileTransfer) {
       this.fileTransfer.onFileReceived = null;
       this.fileTransfer.onFileMetaReceived = null;
+      this.fileTransfer.onFileError = null;
+      this.fileTransfer.onReceiveProgress = null;
     }
 
     this.dataChannel = null;

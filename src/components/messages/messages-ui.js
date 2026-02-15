@@ -55,7 +55,7 @@ function refreshRemoteAvatars(container, { name, photoURL }) {
 export function initMessagesUI() {
   let repositionHandlersAttached = false;
   let currentSession = null; // Track the currently displayed session
-  let fileTransfer = null; // FileTransfer instance set by setFileTransfer()
+  let fileTransport = null; // FileTransport instance set by setFileTransport()
   let isReceivingFile = false; // Track if currently receiving a file
   let sentFiles = new Map(); // Track sent files by name for watch-together requests
   let receivedFile = null; // Store the last received video file for watch-together
@@ -65,7 +65,7 @@ export function initMessagesUI() {
   const reactionUI = new ReactionUI(reactionManager);
 
   const shouldShowAttachButton = () =>
-    getIsLoggedIn() && (!!fileTransfer || !!currentSession);
+    getIsLoggedIn() && (!!fileTransport || !!currentSession);
 
   const refreshAttachButton = () => {
     if (shouldShowAttachButton()) {
@@ -149,7 +149,7 @@ export function initMessagesUI() {
   const sendBtn = messagesForm.querySelector('button[type="submit"]');
 
   // Hide attachment button by default (shown when FileTransfer is available)
-  // (Initial call is not needed, setSession and setFileTransfer will call it)
+  // (Initial call is not needed, setSession and setFileTransport will call it)
 
   // Attach button opens file picker
   attachBtn.addEventListener('click', () => {
@@ -165,9 +165,9 @@ export function initMessagesUI() {
     sendBtn.textContent = t('message.sending');
 
     try {
-      if (fileTransfer) {
+      if (fileTransport) {
         // WebRTC DataChannel transfer (active call, large files OK)
-        await fileTransfer.sendFile(file, (progress) => {
+        await fileTransport.sendFile(file, (progress) => {
           sendBtn.textContent = `${Math.round(progress * 100)}%`;
         });
 
@@ -1156,18 +1156,18 @@ export function initMessagesUI() {
   }
 
   /**
-   * Set the FileTransfer instance for this UI
-   * @param {FileTransfer} instance - FileTransfer instance from data-channel setup (or null to clear)
+   * Set the FileTransport instance for this UI
+   * @param {FileTransport|null} transport - FileTransport instance (or null to clear)
    */
-  function setFileTransfer(instance) {
-    fileTransfer = instance;
+  function setFileTransport(transport) {
+    fileTransport = transport;
 
     // Show/hide attachment button based on FileTransport availability
     refreshAttachButton();
 
-    if (fileTransfer) {
+    if (fileTransport) {
       // Setup file received handler
-      fileTransfer.onFileReceived = async (file) => {
+      fileTransport.onFileReceived(async (file) => {
         // Create download URL
         const url = URL.createObjectURL(file);
 
@@ -1242,13 +1242,13 @@ export function initMessagesUI() {
           sendBtn.textContent = t('shared.send');
           isReceivingFile = false;
         }
-      };
+      });
 
       // Setup receive progress handler
-      fileTransfer.onReceiveProgress = (progress) => {
+      fileTransport.onReceiveProgress((progress) => {
         isReceivingFile = true;
         sendBtn.textContent = `${Math.round(progress * 100)}%`;
-      };
+      });
     }
   }
 
@@ -1259,7 +1259,7 @@ export function initMessagesUI() {
   function reset() {
     clearMessages();
     currentSession = null;
-    fileTransfer = null;
+    fileTransport = null;
     isReceivingFile = false;
     hideMessagesToggle();
     hideElement(messagesBox);
@@ -1527,7 +1527,7 @@ export function initMessagesUI() {
     setSession,
     getCurrentSession,
     clearMessages,
-    setFileTransfer,
+    setFileTransport,
     openContactMessages,
     reset,
     cleanup,

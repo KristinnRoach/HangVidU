@@ -8,9 +8,6 @@
  * File transports handle sending/receiving files through different channels
  * (WebRTC DataChannel, WebSocket, etc.).
  *
- * Unlike MessagingTransport which handles text messages with read/unread tracking,
- * FileTransport focuses on binary file transfer with progress tracking.
- *
  * @abstract
  */
 export class FileTransport {
@@ -41,6 +38,24 @@ export class FileTransport {
    */
   onReceiveProgress(callback) {
     throw new Error('FileTransport.onReceiveProgress() must be implemented by subclass');
+  }
+
+  /**
+   * Set callback for file transfer errors
+   * @param {Function} callback - Callback({fileName, reason, details})
+   * @abstract
+   */
+  onFileError(callback) {
+    throw new Error('FileTransport.onFileError() must be implemented by subclass');
+  }
+
+  /**
+   * Set callback for when file metadata is received (before chunks arrive)
+   * @param {Function} callback - Callback(meta) with {fileId, name, size, mimeType, totalChunks}
+   * @abstract
+   */
+  onFileMetaReceived(callback) {
+    throw new Error('FileTransport.onFileMetaReceived() must be implemented by subclass');
   }
 
   /**
