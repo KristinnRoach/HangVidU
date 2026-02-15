@@ -62,6 +62,8 @@ class CallController {
     this.role = null; // initiator | joiner
     this.partnerId = null;
     this.pc = null;
+
+    this.fileTransferController = null;
     this.dataChannel = null;
     this.messagesUI = null;
     this.localVideoEl = null;
@@ -569,10 +571,10 @@ class CallController {
     const initTransport = () => {
       try {
         const transport = new WebRTCFileTransport(dataChannel);
-        const fileController = new FileTransferController(transport);
+        this.fileTransferController = new FileTransferController(transport);
 
         // Connect to messagesUI for file operations
-        messagesUI.setFileTransport(fileController);
+        messagesUI.setFileTransport(this.fileTransferController);
 
         devDebug('[CallController] File transport initialized');
       } catch (err) {
@@ -729,6 +731,8 @@ class CallController {
 
       // Cleanup file transport
       try {
+        this.fileTransferController?.cleanup();
+        this.fileTransferController = null;
         messagesUI.setFileTransport(null);
       } catch (e) {
         console.warn('CallController: failed to cleanup file transport', e);

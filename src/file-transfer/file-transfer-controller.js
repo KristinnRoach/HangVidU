@@ -116,7 +116,16 @@ export class FileTransferController {
   /** @private */
   async _handleMessage(data) {
     if (typeof data === 'string') {
-      const msg = JSON.parse(data);
+      let msg;
+      try {
+        msg = JSON.parse(data);
+      } catch (e) {
+        console.warn(
+          '[FileTransferController] Ignoring invalid JSON message',
+          e,
+        );
+        return;
+      }
 
       if (msg.type === 'FILE_META') {
         this.fileMetadata.set(msg.fileId, msg);

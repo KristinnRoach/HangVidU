@@ -189,7 +189,7 @@ export function initMessagesUI() {
     } catch (err) {
       console.error('[MessagesUI] File send failed:', err);
 
-      const sizeHint = !fileTransfer
+      const sizeHint = !fileTransport
         ? '\nFile size is limited when not in an active call with this contact.'
         : '';
 
