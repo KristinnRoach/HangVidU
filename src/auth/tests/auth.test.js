@@ -64,6 +64,10 @@ vi.mock('../../storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
 }));
 
+vi.mock('../gis-tokens.js', () => ({
+  clearGISTokenCache: vi.fn(),
+}));
+
 describe('deleteAccount', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -71,7 +75,7 @@ describe('deleteAccount', () => {
   });
 
   it('should throw error when no user is logged in', async () => {
-    const { deleteAccount } = await import('../auth.js');
+    const { deleteAccount } = await import('../auth-actions.js');
     await expect(deleteAccount()).rejects.toThrow('No user logged in');
   });
 
@@ -85,7 +89,7 @@ describe('deleteAccount', () => {
     error.code = 'auth/requires-recent-login';
     vi.mocked(deleteUser).mockRejectedValue(error);
 
-    const { deleteAccount } = await import('../auth.js');
+    const { deleteAccount } = await import('../auth-actions.js');
 
     await expect(deleteAccount()).rejects.toThrow(
       'For security, please sign out and sign in again before deleting your account.',

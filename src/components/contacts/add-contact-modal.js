@@ -4,7 +4,7 @@
 import { findUsersByEmails } from '../../contacts/user-discovery.js';
 import { sendInvite } from '../../contacts/invitations.js';
 import { escapeHtml } from '../../utils/dom/dom-utils.js';
-import { requestContactsAccess, requestGmailSendAccess } from '../../auth/auth.js';
+import { requestContactsAccess, requestGmailSendAccess } from '../../auth/index.js';
 import { getLoggedInUserId, getUser } from '../../auth/auth-state.js';
 import { fetchGoogleContacts } from '../../contacts/google-contacts.js';
 import { getContacts } from '../contacts/contacts.js';
