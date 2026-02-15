@@ -6,7 +6,7 @@ import {
   signInWithAccountSelection,
   signOutUser,
   deleteAccount,
-} from '../../auth/auth.js';
+} from '../../auth/index.js';
 import { getIsLoggedIn, subscribe } from '../../auth/auth-state.js';
 
 import { onOneTapStatusChange, cancelOneTap } from '../../auth/onetap.js';
