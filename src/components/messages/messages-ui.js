@@ -1156,18 +1156,18 @@ export function initMessagesUI() {
   }
 
   /**
-   * Set the FileTransport instance for this UI
-   * @param {FileTransport|null} transport - FileTransport instance (or null to clear)
+   * Set the FileTransferController for this UI
+   * @param {FileTransferController|null} controller - Controller instance (or null to clear)
    */
-  function setFileTransport(transport) {
-    fileTransport = transport;
+  function setFileTransport(controller) {
+    fileTransport = controller;
 
-    // Show/hide attachment button based on FileTransport availability
+    // Show/hide attachment button based on file transfer availability
     refreshAttachButton();
 
     if (fileTransport) {
       // Setup file received handler
-      fileTransport.onFileReceived(async (file) => {
+      fileTransport.onFileReceived = async (file) => {
         // Create download URL
         const url = URL.createObjectURL(file);
 
@@ -1242,13 +1242,13 @@ export function initMessagesUI() {
           sendBtn.textContent = t('shared.send');
           isReceivingFile = false;
         }
-      });
+      };
 
       // Setup receive progress handler
-      fileTransport.onReceiveProgress((progress) => {
+      fileTransport.onReceiveProgress = (progress) => {
         isReceivingFile = true;
         sendBtn.textContent = `${Math.round(progress * 100)}%`;
-      });
+      };
     }
   }
 

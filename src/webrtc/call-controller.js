@@ -17,6 +17,7 @@ import {
 } from '../storage/fb-rtdb/rtdb.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { WebRTCFileTransport } from '../file-transfer/transport/webrtc-file-transport.js';
+import { FileTransferController } from '../file-transfer/file-transfer-controller.js';
 import { messagingController } from '../messaging/messaging-controller.js';
 import { messagesUI } from '../components/messages/messages-ui.js';
 
@@ -567,14 +568,11 @@ class CallController {
     // Wait for DataChannel to open before creating transport
     const initTransport = () => {
       try {
-        // Create file transport
-        const fileTransport = new WebRTCFileTransport(dataChannel);
-
-        // Connect to messagingController
-        messagingController.setFileTransport(fileTransport);
+        const transport = new WebRTCFileTransport(dataChannel);
+        const fileController = new FileTransferController(transport);
 
         // Connect to messagesUI for file operations
-        messagesUI.setFileTransport(fileTransport);
+        messagesUI.setFileTransport(fileController);
 
         devDebug('[CallController] File transport initialized');
       } catch (err) {
@@ -731,7 +729,6 @@ class CallController {
 
       // Cleanup file transport
       try {
-        messagingController.clearFileTransport();
         messagesUI.setFileTransport(null);
       } catch (e) {
         console.warn('CallController: failed to cleanup file transport', e);

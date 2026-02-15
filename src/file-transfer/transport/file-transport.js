@@ -1,66 +1,38 @@
 // src/file-transfer/transport/file-transport.js
-// Base class defining the file transport interface
+// Base class defining the raw file transport I/O interface
 
 /**
  * FileTransport - Base class for file transfer transport implementations
  *
- * Defines the contract that all file transfer transports must implement.
- * File transports handle sending/receiving files through different channels
- * (WebRTC DataChannel, WebSocket, etc.).
+ * Defines the raw I/O contract that transport adapters must implement.
+ * Transports handle sending/receiving raw data through a specific channel
+ * (WebRTC DataChannel, WebSocket, etc.). Protocol logic (chunking, assembly,
+ * progress) lives in FileTransferController.
  *
  * @abstract
  */
 export class FileTransport {
   /**
-   * Send a file to a contact
-   * @param {File} file - File object to send
-   * @param {Function} [onProgress] - Optional callback(progress) with progress from 0 to 1
-   * @returns {Promise<void>}
+   * Send raw data (string or ArrayBuffer) through the transport
+   * @param {string|ArrayBuffer} data
    * @abstract
    */
-  async sendFile(file, onProgress) {
-    throw new Error('FileTransport.sendFile() must be implemented by subclass');
+  send(data) {
+    throw new Error('FileTransport.send() must be implemented by subclass');
   }
 
   /**
-   * Set callback for when a file is received
-   * @param {Function} callback - Callback(file) called when file is fully received
+   * Set callback for incoming raw data
+   * @param {Function} callback - Called with raw data (string or ArrayBuffer)
    * @abstract
    */
-  onFileReceived(callback) {
-    throw new Error('FileTransport.onFileReceived() must be implemented by subclass');
+  onMessage(callback) {
+    throw new Error('FileTransport.onMessage() must be implemented by subclass');
   }
 
   /**
-   * Set callback for receive progress updates
-   * @param {Function} callback - Callback(progress) with progress from 0 to 1
-   * @abstract
-   */
-  onReceiveProgress(callback) {
-    throw new Error('FileTransport.onReceiveProgress() must be implemented by subclass');
-  }
-
-  /**
-   * Set callback for file transfer errors
-   * @param {Function} callback - Callback({fileName, reason, details})
-   * @abstract
-   */
-  onFileError(callback) {
-    throw new Error('FileTransport.onFileError() must be implemented by subclass');
-  }
-
-  /**
-   * Set callback for when file metadata is received (before chunks arrive)
-   * @param {Function} callback - Callback(meta) with {fileId, name, size, mimeType, totalChunks}
-   * @abstract
-   */
-  onFileMetaReceived(callback) {
-    throw new Error('FileTransport.onFileMetaReceived() must be implemented by subclass');
-  }
-
-  /**
-   * Check if the transport is ready to send files
-   * @returns {boolean} True if ready, false otherwise
+   * Check if the transport is ready to send
+   * @returns {boolean}
    * @abstract
    */
   isReady() {
@@ -68,8 +40,17 @@ export class FileTransport {
   }
 
   /**
+   * Optional backpressure hook. Returns a promise that resolves when
+   * the transport is ready to accept more data. Returns null if no
+   * backpressure handling is needed.
+   * @returns {Function|null} Async function to await, or null
+   */
+  getWaitForDrain() {
+    return null;
+  }
+
+  /**
    * Cleanup resources when transport is no longer needed
-   * @returns {void}
    * @abstract
    */
   cleanup() {
