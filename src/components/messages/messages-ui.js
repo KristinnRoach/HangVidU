@@ -148,7 +148,7 @@ export function initMessagesUI() {
   const fileInput = document.getElementById('file-input');
   const sendBtn = messagesForm.querySelector('button[type="submit"]');
 
-  // Hide attachment button by default (shown when FileTransfer is available)
+  // Hide attachment button by default (shown when file transfer is available)
   // (Initial call is not needed, setSession and setFileTransport will call it)
 
   // Attach button opens file picker

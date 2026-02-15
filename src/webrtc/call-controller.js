@@ -18,7 +18,6 @@ import {
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { WebRTCFileTransport } from '../file-transfer/transport/webrtc-file-transport.js';
 import { FileTransferController } from '../file-transfer/file-transfer-controller.js';
-import { messagingController } from '../messaging/messaging-controller.js';
 import { messagesUI } from '../components/messages/messages-ui.js';
 
 export function createCallController() {
@@ -560,7 +559,7 @@ class CallController {
 
   /**
    * Setup file transport when DataChannel is ready
-   * Creates WebRTCFileTransport and connects it to messagingController and messagesUI
+   * Creates FileTransferController with WebRTCFileTransport and connects it to messagesUI
    * @param {RTCDataChannel} dataChannel - The WebRTC DataChannel
    * @private
    */

@@ -21,9 +21,8 @@ export class MessagingController {
   /**
    * Create a messaging controller
    * @param {Object} transport - Transport implementation for text messages (RTDBMessagingTransport, etc.)
-   * @param {Object} [fileTransport] - Optional transport implementation for file transfers (WebRTCFileTransport, etc.)
    */
-  constructor(transport, fileTransport = null) {
+  constructor(transport) {
     if (!transport) {
       throw new Error(
         'MessagingController requires a transport implementation',
@@ -31,7 +30,6 @@ export class MessagingController {
     }
 
     this.transport = transport;
-    this.fileTransport = fileTransport;
     this.sessions = new Map(); // contactId -> session object
   }
 
@@ -326,74 +324,6 @@ export class MessagingController {
     return this.transport.sendFile(contactId, file);
   }
 
-  // ========================================================================
-  // FILE TRANSFER METHODS (WebRTC DataChannel, active call only)
-  // ========================================================================
-
-  /**
-   * Set the file transport implementation
-   * Used when DataChannel becomes available during a call
-   * @param {Object} fileTransport - FileTransport implementation (WebRTCFileTransport, etc.)
-   */
-  setFileTransport(fileTransport) {
-    this.fileTransport = fileTransport;
-  }
-
-  /**
-   * Check if file transfer is available
-   * @returns {boolean} True if file transport is set and ready
-   */
-  canSendFiles() {
-    return this.fileTransport !== null && this.fileTransport.isReady();
-  }
-
-  /**
-   * Send a file via the file transport
-   * @param {File} file - File object to send
-   * @param {Function} [onProgress] - Optional callback(progress) with progress from 0 to 1
-   * @returns {Promise<void>}
-   * @throws {Error} If file transport is not available
-   */
-  async sendFile(file, onProgress) {
-    if (!this.fileTransport) {
-      throw new Error(
-        'File transport not available. Files can only be sent during active calls.',
-      );
-    }
-
-    if (!this.fileTransport.isReady()) {
-      throw new Error('File transport not ready');
-    }
-
-    return this.fileTransport.sendFile(file, onProgress);
-  }
-
-  /**
-   * Set callback for when a file is received
-   * @param {Function} callback - Callback(file) called when file is fully received
-   * @throws {Error} If file transport is not available
-   */
-  onFileReceived(callback) {
-    if (!this.fileTransport) {
-      throw new Error('File transport not available');
-    }
-
-    if (typeof callback !== 'function') {
-      throw new Error('onFileReceived callback must be a function');
-    }
-
-    this.fileTransport.onFileReceived(callback);
-  }
-
-  /**
-   * Clear the file transport (called when call ends)
-   */
-  clearFileTransport() {
-    if (this.fileTransport) {
-      this.fileTransport.cleanup();
-      this.fileTransport = null;
-    }
-  }
 }
 
 /**
