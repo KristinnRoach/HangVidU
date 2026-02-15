@@ -131,6 +131,9 @@ export class FileTransferController {
         this.fileMetadata.set(msg.fileId, msg);
         this.receivedChunks.set(msg.fileId, []);
         this.onFileMetaReceived?.(msg);
+        if (msg.totalChunks === 0) {
+          this._assembleFile(msg.fileId);
+        }
       }
     } else {
       const arrayBuffer = await convertToArrayBuffer(data);
@@ -171,14 +174,20 @@ export class FileTransferController {
         return;
       }
 
+      const wasMissing = !chunks[chunkMeta.chunkIndex];
       chunks[chunkMeta.chunkIndex] = chunkData;
 
-      if (this.onReceiveProgress) {
-        const receivedCount = chunks.filter((c) => c).length;
-        this.onReceiveProgress(receivedCount / chunkMeta.totalChunks);
+      if (wasMissing) {
+        meta.receivedCount = (meta.receivedCount ?? 0) + 1;
       }
 
-      if (chunks.filter((c) => c).length === chunkMeta.totalChunks) {
+      const receivedCount = meta.receivedCount ?? 0;
+
+      if (this.onReceiveProgress) {
+        this.onReceiveProgress(receivedCount / meta.totalChunks);
+      }
+
+      if (receivedCount === meta.totalChunks) {
         this._assembleFile(chunkMeta.fileId);
       }
     }

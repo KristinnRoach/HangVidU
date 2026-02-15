@@ -55,7 +55,7 @@ function refreshRemoteAvatars(container, { name, photoURL }) {
 export function initMessagesUI() {
   let repositionHandlersAttached = false;
   let currentSession = null; // Track the currently displayed session
-  let fileTransport = null; // FileTransport instance set by setFileTransport()
+  let fileTransferController = null; // FileTransferController instance set by setFileTransferController()
   let isReceivingFile = false; // Track if currently receiving a file
   let sentFiles = new Map(); // Track sent files by name for watch-together requests
   let receivedFile = null; // Store the last received video file for watch-together
@@ -65,7 +65,7 @@ export function initMessagesUI() {
   const reactionUI = new ReactionUI(reactionManager);
 
   const shouldShowAttachButton = () =>
-    getIsLoggedIn() && (!!fileTransport || !!currentSession);
+    getIsLoggedIn() && (!!fileTransferController || !!currentSession);
 
   const refreshAttachButton = () => {
     if (shouldShowAttachButton()) {
@@ -149,7 +149,7 @@ export function initMessagesUI() {
   const sendBtn = messagesForm.querySelector('button[type="submit"]');
 
   // Hide attachment button by default (shown when file transfer is available)
-  // (Initial call is not needed, setSession and setFileTransport will call it)
+  // (Initial call is not needed, setSession and setFileTransferController will call it)
 
   // Attach button opens file picker
   attachBtn.addEventListener('click', () => {
@@ -165,9 +165,9 @@ export function initMessagesUI() {
     sendBtn.textContent = t('message.sending');
 
     try {
-      if (fileTransport) {
+      if (fileTransferController) {
         // WebRTC DataChannel transfer (active call, large files OK)
-        await fileTransport.sendFile(file, (progress) => {
+        await fileTransferController.sendFile(file, (progress) => {
           sendBtn.textContent = `${Math.round(progress * 100)}%`;
         });
 
@@ -189,7 +189,7 @@ export function initMessagesUI() {
     } catch (err) {
       console.error('[MessagesUI] File send failed:', err);
 
-      const sizeHint = !fileTransport
+      const sizeHint = !fileTransferController
         ? '\nFile size is limited when not in an active call with this contact.'
         : '';
 
@@ -1161,15 +1161,15 @@ export function initMessagesUI() {
    * Set the FileTransferController for this UI
    * @param {FileTransferController|null} controller - Controller instance (or null to clear)
    */
-  function setFileTransport(controller) {
-    fileTransport = controller;
+  function setFileTransferController(controller) {
+    fileTransferController = controller;
 
     // Show/hide attachment button based on file transfer availability
     refreshAttachButton();
 
-    if (fileTransport) {
+    if (fileTransferController) {
       // Setup file received handler
-      fileTransport.onFileReceived = async (file) => {
+      fileTransferController.onFileReceived = async (file) => {
         // Create download URL
         const url = URL.createObjectURL(file);
 
@@ -1247,7 +1247,7 @@ export function initMessagesUI() {
       };
 
       // Setup receive progress handler
-      fileTransport.onReceiveProgress = (progress) => {
+      fileTransferController.onReceiveProgress = (progress) => {
         isReceivingFile = true;
         sendBtn.textContent = `${Math.round(progress * 100)}%`;
       };
@@ -1261,7 +1261,7 @@ export function initMessagesUI() {
   function reset() {
     clearMessages();
     currentSession = null;
-    fileTransport = null;
+    fileTransferController = null;
     isReceivingFile = false;
     hideMessagesToggle();
     hideElement(messagesBox);
@@ -1529,7 +1529,7 @@ export function initMessagesUI() {
     setSession,
     getCurrentSession,
     clearMessages,
-    setFileTransport,
+    setFileTransferController,
     openContactMessages,
     reset,
     cleanup,
