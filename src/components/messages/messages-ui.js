@@ -138,7 +138,7 @@ export function initMessagesUI() {
   const sendBtn = messagesForm.querySelector('button[type="submit"]');
 
   // Hide attachment button by default (shown when FileTransfer is available)
-  hideElement(attachBtn);
+  // ! hideElement(attachBtn);
 
   // Attach button opens file picker
   attachBtn.addEventListener('click', () => {
@@ -148,37 +148,39 @@ export function initMessagesUI() {
   // Handle file selection for sending
   fileInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
-    if (!file || !fileTransfer) {
-      if (!fileTransfer) {
-        console.warn('[MessagesUI] FileTransfer not initialized');
-      }
-      return;
-    }
+    if (!file) return;
 
-    // Show progress during transfer (don't disable - CSS hides disabled buttons)
     const originalText = sendBtn.textContent;
     sendBtn.textContent = t('message.sending');
 
     try {
-      await fileTransfer.sendFile(file, (progress) => {
-        sendBtn.textContent = `${Math.round(progress * 100)}%`;
-      });
+      if (fileTransfer) {
+        // WebRTC DataChannel transfer (active call, large files OK)
+        await fileTransfer.sendFile(file, (progress) => {
+          sendBtn.textContent = `${Math.round(progress * 100)}%`;
+        });
 
-      // Track video files for potential watch-together requests
-      if (file.type.startsWith('video/')) {
-        sentFiles.set(file.name, file);
+        // Track video files for potential watch-together requests
+        if (file.type.startsWith('video/')) {
+          sentFiles.set(file.name, file);
+        }
+
+        appendChatMessage(`📎 ${t('message.sent', { name: file.name })}`, {
+          isSentByMe: true,
+        });
+      } else if (currentSession) {
+        // RTDB file message (no active call, small files only)
+        await currentSession.sendFile(file);
+        // File message will appear via the onMessage listener
+      } else {
+        console.warn('[MessagesUI] No file transport or session available');
       }
-
-      // Show in UI
-      appendChatMessage(`📎 ${t('message.sent', { name: file.name })}`, {
-        isSentByMe: true,
-      });
     } catch (err) {
       console.error('[MessagesUI] File send failed:', err);
       appendChatMessage(t('message.send_failed'));
     } finally {
       sendBtn.textContent = originalText;
-      fileInput.value = ''; // Reset input
+      fileInput.value = '';
     }
   });
 
@@ -926,6 +928,94 @@ export function initMessagesUI() {
     scrollMessagesToEnd();
   }
 
+  /**
+   * Display a file message in the chat (RTDB base64 file)
+   * @param {Object} msgData - Message data from Firebase
+   * @param {boolean} isSentByMe - Whether the current user sent this file
+   */
+  function appendFileMessage(msgData, isSentByMe) {
+    const { fileName, fileType, fileSize, data: dataUrl } = msgData;
+
+    const p = document.createElement('p');
+    p.classList.add(isSentByMe ? 'message-local' : 'message-remote');
+
+    // Avatar
+    const avatarSpan = document.createElement('span');
+    avatarSpan.className =
+      'sender-avatar' + (isSentByMe ? ' sender-avatar--me' : '');
+    avatarSpan.setAttribute('aria-hidden', 'true');
+
+    if (isSentByMe) {
+      renderAvatar(avatarSpan, { customFallbackText: t('shared.me') });
+    } else {
+      const contactName = currentSession?.contactName || '';
+      const photoURL =
+        currentSession?.contactPhotoURL ||
+        currentSession?.contactProfile?.photoURL ||
+        null;
+      renderAvatar(avatarSpan, { name: contactName, photoURL });
+    }
+
+    // Content
+    const textSpan = document.createElement('span');
+    textSpan.className = 'message-text file-message';
+
+    const isImage = fileType && fileType.startsWith('image/');
+    const sizeLabel =
+      fileSize < 1024
+        ? `${fileSize} B`
+        : fileSize < 1024 * 1024
+          ? `${(fileSize / 1024).toFixed(1)} KB`
+          : `${(fileSize / (1024 * 1024)).toFixed(1)} MB`;
+
+    if (isImage && dataUrl) {
+      // Show thumbnail for images
+      const img = document.createElement('img');
+      img.src = dataUrl;
+      img.alt = fileName;
+      img.style.cssText =
+        'max-width: 200px; max-height: 200px; border-radius: 8px; cursor: pointer; display: block; margin-bottom: 4px;';
+      img.addEventListener('click', () => downloadDataUrl(dataUrl, fileName));
+      textSpan.appendChild(img);
+    }
+
+    // Download link
+    const link = document.createElement('a');
+    link.textContent = fileName;
+    link.href = dataUrl;
+    link.download = fileName;
+    link.style.cssText = 'cursor: pointer; text-decoration: underline;';
+    textSpan.appendChild(link);
+
+    const sizeSpan = document.createElement('span');
+    sizeSpan.textContent = ` (${sizeLabel})`;
+    sizeSpan.style.cssText =
+      'color: var(--text-secondary, #aaa); font-size: 12px;';
+    textSpan.appendChild(sizeSpan);
+
+    p.appendChild(avatarSpan);
+    p.appendChild(textSpan);
+    messagesMessages.appendChild(p);
+
+    // Increment unread if hidden and received
+    if (!isSentByMe && isHidden(messagesBox)) {
+      const currentCount = messageToggle.element.unreadCount || 0;
+      messageToggle.setUnreadCount(currentCount + 1);
+    }
+
+    scrollMessagesToEnd();
+  }
+
+  /**
+   * Trigger download of a data URL
+   */
+  function downloadDataUrl(dataUrl, fileName) {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = fileName;
+    a.click();
+  }
+
   let scrollRafId = null;
   function scrollMessagesToEnd() {
     if (!messagesMessages) return;
@@ -1144,7 +1234,7 @@ export function initMessagesUI() {
         sendBtn.textContent = `${Math.round(progress * 100)}%`;
       };
     } else {
-      hideElement(attachBtn);
+      // ! hideElement(attachBtn);
     }
   }
 
@@ -1171,7 +1261,7 @@ export function initMessagesUI() {
     }
 
     // Hide attachment button (will be shown again when FileTransfer is available)
-    hideElement(attachBtn);
+    // ! hideElement(attachBtn);
 
     // Clear inline positioning
     messagesBox.style.top = '';
@@ -1327,6 +1417,12 @@ export function initMessagesUI() {
           appendCallEventMessage(msgData, {
             isUnread: !msgData.read,
           });
+          return;
+        }
+
+        // Handle file messages (RTDB base64)
+        if (msgData.type === 'file') {
+          appendFileMessage(msgData, isSentByMe);
           return;
         }
 

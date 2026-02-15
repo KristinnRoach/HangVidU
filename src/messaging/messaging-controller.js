@@ -120,6 +120,16 @@ export class MessagingController {
       },
 
       /**
+       * Send a small file as an RTDB message (base64-encoded, max 1MB).
+       * Works without an active call.
+       * @param {File} file - File to send
+       * @returns {Promise<void>}
+       */
+      sendFile: (file) => {
+        return this.sendFileMessage(contactId, file);
+      },
+
+      /**
        * Mark all unread messages from this contact as read
        * @returns {Promise<void>}
        */
@@ -293,7 +303,28 @@ export class MessagingController {
   }
 
   // ========================================================================
-  // FILE TRANSFER METHODS
+  // RTDB FILE MESSAGE METHODS (small files, no active call needed)
+  // ========================================================================
+
+  /**
+   * Send a small file as an RTDB message (base64-encoded).
+   * Works without an active WebRTC call — just needs an authenticated user.
+   * @param {string} contactId - Recipient's user ID
+   * @param {File} file - File to send (max 1MB)
+   * @returns {Promise<void>}
+   */
+  async sendFileMessage(contactId, file) {
+    if (!contactId || typeof contactId !== 'string') {
+      throw new Error('contactId must be a non-empty string');
+    }
+    if (!file) {
+      throw new Error('file is required');
+    }
+    return this.transport.sendFile(contactId, file);
+  }
+
+  // ========================================================================
+  // FILE TRANSFER METHODS (WebRTC DataChannel, active call only)
   // ========================================================================
 
   /**
