@@ -984,7 +984,9 @@ export function initMessagesUI() {
           ? `${(fileSize / 1024).toFixed(1)} KB`
           : `${(fileSize / (1024 * 1024)).toFixed(1)} MB`;
 
-    if (isImage && dataUrl) {
+    const isSafeUrl = dataUrl && dataUrl.startsWith('data:');
+
+    if (isImage && isSafeUrl) {
       // Show thumbnail for images
       const img = document.createElement('img');
       img.src = dataUrl;
@@ -998,8 +1000,10 @@ export function initMessagesUI() {
     // Download link
     const link = document.createElement('a');
     link.textContent = fileName;
-    link.href = dataUrl;
-    link.download = fileName;
+    if (isSafeUrl) {
+      link.href = dataUrl;
+      link.download = fileName;
+    }
     link.style.cssText = 'cursor: pointer; text-decoration: underline;';
     textSpan.appendChild(link);
 
