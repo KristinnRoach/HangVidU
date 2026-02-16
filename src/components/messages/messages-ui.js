@@ -16,6 +16,7 @@ import {
 } from '../../file-transfer/video-serving.js';
 
 import { linkifyToFragment } from '../../utils/linkify.js';
+import { isVideoMime } from '../../utils/is-video-mime.js';
 import {
   ReactionManager,
   ReactionUI,
@@ -28,7 +29,6 @@ import { getUserProfile } from '../../user/profile.js';
 import { createMessageBox } from './createMessageBox.js';
 import { createMessageTopBar } from './createMessageTopBar.js';
 import { devDebug } from '../../utils/dev/dev-utils.js';
-import { mime } from 'zod';
 
 const supportsCssAnchors =
   CSS.supports?.('position-anchor: --msg-toggle') &&
@@ -178,7 +178,7 @@ export function initMessagesUI() {
         });
 
         // Track video files for potential watch-together requests
-        if (file.type.startsWith('video/')) {
+        if (isVideoMime(file.type, file)) {
           sentFiles.set(file.name, file);
         }
 
@@ -1189,7 +1189,7 @@ export function initMessagesUI() {
         devDebug('[MessagesUI] Received file:', { file, name, mimeType });
 
         // Check if it's a video file
-        if (mimeType.startsWith('video/')) {
+        if (isVideoMime(mimeType, file)) {
           // Store the file for potential watch-together
           receivedFile = file;
 

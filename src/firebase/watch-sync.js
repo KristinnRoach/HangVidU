@@ -1,3 +1,4 @@
+import { isVideoMime } from '../utils/is-video-mime.js';
 import { set, update, remove } from 'firebase/database';
 import {
   onDataChange,
@@ -559,9 +560,7 @@ export async function handleVideoSelection(source, mimeType) {
 
   // Accept File, Blob, or URL string
   if (source instanceof Blob) {
-    const isVideo =
-      (mimeType && mimeType.startsWith('video/')) ||
-      (source.type && source.type.startsWith('video/'));
+    const isVideo = isVideoMime(mimeType, source);
     if (!isVideo) {
       console.warn(
         'Invalid file type. source.type: ',
