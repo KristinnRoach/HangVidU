@@ -1,24 +1,19 @@
 // src/file-transfer/transport/webrtc-file-transport.js
-// WebRTC DataChannel implementation of FileTransport
+// WebRTC DataChannel adapter for FileTransport
 
 import { FileTransport } from './file-transport.js';
-import { FileTransfer } from '../file-transfer.js';
+
+const BACKPRESSURE_THRESHOLD = 256 * 1024; // 256KB
 
 /**
- * WebRTCFileTransport - WebRTC DataChannel implementation for file transfer
+ * WebRTCFileTransport - DataChannel adapter implementing the raw FileTransport I/O interface.
  *
- * Wraps the FileTransfer class to provide a transport-layer abstraction.
- * Handles file transfer over WebRTC DataChannel during active P2P calls.
- *
- * Features:
- * - Chunked file transfer (64KB chunks)
- * - Progress tracking
- * - Backpressure handling
+ * Owns DataChannel-specific concerns: send, message routing, readiness,
+ * and backpressure. Protocol logic lives in FileTransferController.
  */
 export class WebRTCFileTransport extends FileTransport {
   /**
-   * Create a DataChannel file transport
-   * @param {RTCDataChannel} dataChannel - WebRTC DataChannel for file transfer
+   * @param {RTCDataChannel} dataChannel
    */
   constructor(dataChannel) {
     super();
@@ -28,100 +23,136 @@ export class WebRTCFileTransport extends FileTransport {
     }
 
     this.dataChannel = dataChannel;
-    this.fileTransfer = new FileTransfer(dataChannel);
+    this._messageCallback = null;
 
-    // Setup message routing for file transfer protocol
     this._setupMessageHandling();
   }
 
-  /**
-   * Setup DataChannel message handling for file transfer
-   * Routes file transfer messages to FileTransfer handler
-   * @private
-   */
+  /** @private */
   _setupMessageHandling() {
     this.dataChannel.onmessage = (event) => {
-      // Check if this is a file transfer message
+      if (!this._messageCallback) return;
+
       if (typeof event.data === 'string') {
         try {
           const msg = JSON.parse(event.data);
-          // Handle file transfer protocol messages (FILE_META, FILE_CHUNK)
           if (msg.type === 'FILE_META' || msg.type === 'FILE_CHUNK') {
-            this.fileTransfer.handleMessage(event.data);
+            this._messageCallback(event.data);
             return;
           }
         } catch (e) {
           // Not JSON or not our message format - ignore
         }
       } else {
-        // Binary data - assume it's a file chunk
-        this.fileTransfer.handleMessage(event.data);
+        // Binary data - assume file chunk
+        this._messageCallback(event.data);
       }
     };
   }
 
-  /**
-   * Send a file via DataChannel
-   * @param {File} file - File object to send
-   * @param {Function} [onProgress] - Optional callback(progress) with progress from 0 to 1
-   * @returns {Promise<void>}
-   */
-  async sendFile(file, onProgress) {
-    if (!this.isReady()) {
-      throw new Error('DataChannel not ready');
-    }
-
-    return this.fileTransfer.sendFile(file, onProgress);
+  send(data) {
+    this.dataChannel.send(data);
   }
 
-  /**
-   * Set callback for when a file is received
-   * @param {Function} callback - Callback(file) called when file is fully received
-   */
-  onFileReceived(callback) {
-    if (typeof callback !== 'function') {
-      throw new Error('onFileReceived callback must be a function');
-    }
-
-    this.fileTransfer.onFileReceived = callback;
+  onMessage(callback) {
+    this._messageCallback = callback;
   }
 
-  /**
-   * Set callback for receive progress updates
-   * @param {Function} callback - Callback(progress) with progress from 0 to 1
-   */
-  onReceiveProgress(callback) {
-    if (typeof callback !== 'function') {
-      throw new Error('onReceiveProgress callback must be a function');
-    }
-
-    this.fileTransfer.onReceiveProgress = callback;
-  }
-
-  /**
-   * Check if the DataChannel is ready to send files
-   * @returns {boolean} True if ready, false otherwise
-   */
   isReady() {
-    return this.dataChannel && this.dataChannel.readyState === 'open';
+    return this.dataChannel?.readyState === 'open';
   }
 
-  /**
-   * Cleanup resources
-   * Removes message handlers and clears references
-   */
+  getWaitForDrain() {
+    return async () => {
+      const dc = this.dataChannel;
+      if (
+        !dc ||
+        dc.readyState !== 'open' ||
+        dc.bufferedAmount <= BACKPRESSURE_THRESHOLD
+      )
+        return;
+
+      // Prefer event-driven waiting when supported (`bufferedamountlow`).
+      // Fall back to polling for environments that don't support the event
+      // (old WebViews, test mocks, etc.). Restore any previous threshold
+      // where possible.
+      let prevThreshold;
+      try {
+        prevThreshold = dc.bufferedAmountLowThreshold;
+        dc.bufferedAmountLowThreshold = BACKPRESSURE_THRESHOLD;
+      } catch (e) {
+        // Ignore if not supported or not writable.
+      }
+
+      const useEvent = typeof dc.addEventListener === 'function';
+
+      await new Promise((resolve) => {
+        let resolved = false;
+        let pollId = null;
+
+        const cleanup = () => {
+          try {
+            if (useEvent) dc.removeEventListener('bufferedamountlow', onLow);
+            else dc.onbufferedamountlow = null;
+          } catch (e) {
+            // ignore
+          }
+          if (pollId !== null) clearInterval(pollId);
+        };
+
+        const onLow = () => {
+          if (resolved) return;
+          if (
+            !dc ||
+            dc.readyState !== 'open' ||
+            dc.bufferedAmount <= BACKPRESSURE_THRESHOLD
+          ) {
+            resolved = true;
+            cleanup();
+            resolve();
+          }
+        };
+
+        try {
+          if (useEvent) dc.addEventListener('bufferedamountlow', onLow);
+          else dc.onbufferedamountlow = onLow;
+        } catch (e) {
+          // ignore and rely on poll
+        }
+
+        // immediate check in case it's already drained
+        onLow();
+
+        // polling fallback (modest interval to avoid busy spin)
+        pollId = setInterval(() => {
+          if (
+            !dc ||
+            dc.readyState !== 'open' ||
+            dc.bufferedAmount <= BACKPRESSURE_THRESHOLD
+          ) {
+            if (!resolved) {
+              resolved = true;
+              cleanup();
+              resolve();
+            }
+          }
+        }, 50);
+      }).finally(() => {
+        try {
+          if (prevThreshold !== undefined)
+            dc.bufferedAmountLowThreshold = prevThreshold;
+        } catch (e) {
+          // ignore
+        }
+      });
+    };
+  }
+
   cleanup() {
     if (this.dataChannel) {
       this.dataChannel.onmessage = null;
     }
-
-    // Clear FileTransfer references
-    if (this.fileTransfer) {
-      this.fileTransfer.onFileReceived = null;
-      this.fileTransfer.onFileMetaReceived = null;
-    }
-
+    this._messageCallback = null;
     this.dataChannel = null;
-    this.fileTransfer = null;
   }
 }

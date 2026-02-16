@@ -17,7 +17,7 @@ import {
   ReactionUI,
 } from '../../messaging/reactions/index.js';
 import { REACTION_CONFIG } from '../../messaging/reactions/ReactionConfig.js';
-import { getLoggedInUserId } from '../../auth/auth-state.js';
+import { getLoggedInUserId, getIsLoggedIn } from '../../auth/auth-state.js';
 import { messagingController } from '../../messaging/messaging-controller.js';
 import { showInfoToast } from '../../utils/ui/toast.js';
 import { getUserProfile } from '../../user/profile.js';
@@ -55,7 +55,7 @@ function refreshRemoteAvatars(container, { name, photoURL }) {
 export function initMessagesUI() {
   let repositionHandlersAttached = false;
   let currentSession = null; // Track the currently displayed session
-  let fileTransfer = null; // FileTransfer instance set by setFileTransfer()
+  let fileTransferController = null; // FileTransferController instance set by setFileTransferController()
   let isReceivingFile = false; // Track if currently receiving a file
   let sentFiles = new Map(); // Track sent files by name for watch-together requests
   let receivedFile = null; // Store the last received video file for watch-together
@@ -63,6 +63,17 @@ export function initMessagesUI() {
   // Initialize reaction management
   const reactionManager = new ReactionManager();
   const reactionUI = new ReactionUI(reactionManager);
+
+  const shouldShowAttachButton = () =>
+    getIsLoggedIn() && (!!fileTransferController || !!currentSession);
+
+  const refreshAttachButton = () => {
+    if (shouldShowAttachButton()) {
+      showElement(attachBtn);
+    } else {
+      hideElement(attachBtn);
+    }
+  };
 
   const topRightMenu =
     document.querySelector('.top-bar .top-right-menu') ||
@@ -137,8 +148,8 @@ export function initMessagesUI() {
   const fileInput = document.getElementById('file-input');
   const sendBtn = messagesForm.querySelector('button[type="submit"]');
 
-  // Hide attachment button by default (shown when FileTransfer is available)
-  hideElement(attachBtn);
+  // Hide attachment button by default (shown when file transfer is available)
+  // (Initial call is not needed, setSession and setFileTransferController will call it)
 
   // Attach button opens file picker
   attachBtn.addEventListener('click', () => {
@@ -148,37 +159,44 @@ export function initMessagesUI() {
   // Handle file selection for sending
   fileInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
-    if (!file || !fileTransfer) {
-      if (!fileTransfer) {
-        console.warn('[MessagesUI] FileTransfer not initialized');
-      }
-      return;
-    }
+    if (!file) return;
 
-    // Show progress during transfer (don't disable - CSS hides disabled buttons)
     const originalText = sendBtn.textContent;
     sendBtn.textContent = t('message.sending');
 
     try {
-      await fileTransfer.sendFile(file, (progress) => {
-        sendBtn.textContent = `${Math.round(progress * 100)}%`;
-      });
+      if (fileTransferController) {
+        // WebRTC DataChannel transfer (active call, large files OK)
+        await fileTransferController.sendFile(file, (progress) => {
+          sendBtn.textContent = `${Math.round(progress * 100)}%`;
+        });
 
-      // Track video files for potential watch-together requests
-      if (file.type.startsWith('video/')) {
-        sentFiles.set(file.name, file);
+        // Track video files for potential watch-together requests
+        if (file.type.startsWith('video/')) {
+          sentFiles.set(file.name, file);
+        }
+
+        appendChatMessage(`📎 ${t('message.sent', { name: file.name })}`, {
+          isSentByMe: true,
+        });
+      } else if (currentSession) {
+        // RTDB file message (no active call, small files only)
+        await currentSession.sendFile(file);
+        // File message will appear via the onMessage listener
+      } else {
+        console.warn('[MessagesUI] No file transport or session available');
       }
-
-      // Show in UI
-      appendChatMessage(`📎 ${t('message.sent', { name: file.name })}`, {
-        isSentByMe: true,
-      });
     } catch (err) {
       console.error('[MessagesUI] File send failed:', err);
-      appendChatMessage(t('message.send_failed'));
+
+      const sizeHint = !fileTransferController
+        ? '\n\n' + t('message.file_size_limited')
+        : '';
+
+      appendChatMessage('❌  ' + t('message.send_failed') + sizeHint);
     } finally {
       sendBtn.textContent = originalText;
-      fileInput.value = ''; // Reset input
+      fileInput.value = '';
     }
   });
 
@@ -926,6 +944,98 @@ export function initMessagesUI() {
     scrollMessagesToEnd();
   }
 
+  /**
+   * Display a file message in the chat (RTDB base64 file)
+   * @param {Object} msgData - Message data from Firebase
+   * @param {boolean} isSentByMe - Whether the current user sent this file
+   */
+  function appendFileMessage(msgData, isSentByMe) {
+    const { fileName, fileType, fileSize, data: dataUrl } = msgData;
+
+    const p = document.createElement('p');
+    p.classList.add(isSentByMe ? 'message-local' : 'message-remote');
+
+    // Avatar
+    const avatarSpan = document.createElement('span');
+    avatarSpan.className =
+      'sender-avatar' + (isSentByMe ? ' sender-avatar--me' : '');
+    avatarSpan.setAttribute('aria-hidden', 'true');
+
+    if (isSentByMe) {
+      renderAvatar(avatarSpan, { customFallbackText: t('shared.me') });
+    } else {
+      const contactName = currentSession?.contactName || '';
+      const photoURL =
+        currentSession?.contactPhotoURL ||
+        currentSession?.contactProfile?.photoURL ||
+        null;
+      renderAvatar(avatarSpan, { name: contactName, photoURL });
+    }
+
+    // Content
+    const textSpan = document.createElement('span');
+    textSpan.className = 'message-text file-message';
+
+    const isImage = fileType && fileType.startsWith('image/');
+    const sizeLabel =
+      fileSize < 1024
+        ? `${fileSize} B`
+        : fileSize < 1024 * 1024
+          ? `${(fileSize / 1024).toFixed(1)} KB`
+          : `${(fileSize / (1024 * 1024)).toFixed(1)} MB`;
+
+    const isSafeUrl = dataUrl && dataUrl.startsWith('data:');
+
+    if (isImage && isSafeUrl) {
+      // Show thumbnail for images
+      const img = document.createElement('img');
+      img.src = dataUrl;
+      img.alt = fileName;
+      img.style.cssText =
+        'max-width: 200px; max-height: 200px; border-radius: 8px; cursor: pointer; display: block; margin-bottom: 4px;';
+      img.addEventListener('click', () => downloadDataUrl(dataUrl, fileName));
+      textSpan.appendChild(img);
+    }
+
+    // Download link
+    const link = document.createElement('a');
+    link.textContent = fileName;
+    if (isSafeUrl) {
+      link.href = dataUrl;
+      link.download = fileName;
+    }
+    link.style.cssText = 'cursor: pointer; text-decoration: underline;';
+    textSpan.appendChild(link);
+
+    const sizeSpan = document.createElement('span');
+    sizeSpan.textContent = ` (${sizeLabel})`;
+    sizeSpan.style.cssText =
+      'color: var(--text-secondary, #aaa); font-size: 12px;';
+    textSpan.appendChild(sizeSpan);
+
+    p.appendChild(avatarSpan);
+    p.appendChild(textSpan);
+    messagesMessages.appendChild(p);
+
+    // Increment unread if hidden and received
+    if (!isSentByMe && isHidden(messagesBox)) {
+      const currentCount = messageToggle.element.unreadCount || 0;
+      messageToggle.setUnreadCount(currentCount + 1);
+    }
+
+    scrollMessagesToEnd();
+  }
+
+  /**
+   * Trigger download of a data URL
+   */
+  function downloadDataUrl(dataUrl, fileName) {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = fileName;
+    a.click();
+  }
+
   let scrollRafId = null;
   function scrollMessagesToEnd() {
     if (!messagesMessages) return;
@@ -1039,6 +1149,8 @@ export function initMessagesUI() {
           session?.contactPhotoURL || session?.contactProfile?.photoURL || '',
       });
     }
+
+    refreshAttachButton();
   }
 
   /**
@@ -1050,18 +1162,18 @@ export function initMessagesUI() {
   }
 
   /**
-   * Set the FileTransfer instance for this UI
-   * @param {FileTransfer} instance - FileTransfer instance from data-channel setup (or null to clear)
+   * Set the FileTransferController for this UI
+   * @param {FileTransferController|null} controller - Controller instance (or null to clear)
    */
-  function setFileTransfer(instance) {
-    fileTransfer = instance;
+  function setFileTransferController(controller) {
+    fileTransferController = controller;
 
-    // Show/hide attachment button based on FileTransport availability
-    if (fileTransfer) {
-      showElement(attachBtn);
+    // Show/hide attachment button based on file transfer availability
+    refreshAttachButton();
 
+    if (fileTransferController) {
       // Setup file received handler
-      fileTransfer.onFileReceived = async (file) => {
+      fileTransferController.onFileReceived = async (file) => {
         // Create download URL
         const url = URL.createObjectURL(file);
 
@@ -1139,12 +1251,10 @@ export function initMessagesUI() {
       };
 
       // Setup receive progress handler
-      fileTransfer.onReceiveProgress = (progress) => {
+      fileTransferController.onReceiveProgress = (progress) => {
         isReceivingFile = true;
         sendBtn.textContent = `${Math.round(progress * 100)}%`;
       };
-    } else {
-      hideElement(attachBtn);
     }
   }
 
@@ -1155,8 +1265,12 @@ export function initMessagesUI() {
   function reset() {
     clearMessages();
     currentSession = null;
-    fileTransfer = null;
+
+    fileTransferController = null;
+    sentFiles.clear();
+    receivedFile = null;
     isReceivingFile = false;
+
     hideMessagesToggle();
     hideElement(messagesBox);
     messageToggle.clearBadge();
@@ -1169,9 +1283,6 @@ export function initMessagesUI() {
     if (sendBtn) {
       sendBtn.textContent = t('shared.send');
     }
-
-    // Hide attachment button (will be shown again when FileTransfer is available)
-    hideElement(attachBtn);
 
     // Clear inline positioning
     messagesBox.style.top = '';
@@ -1330,6 +1441,12 @@ export function initMessagesUI() {
           return;
         }
 
+        // Handle file messages (RTDB base64)
+        if (msgData.type === 'file') {
+          appendFileMessage(msgData, isSentByMe);
+          return;
+        }
+
         // Convert Firebase reactions format for initial display
         const reactions = {};
         if (msgData.reactions) {
@@ -1420,7 +1537,7 @@ export function initMessagesUI() {
     setSession,
     getCurrentSession,
     clearMessages,
-    setFileTransfer,
+    setFileTransferController,
     openContactMessages,
     reset,
     cleanup,

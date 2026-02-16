@@ -16,8 +16,7 @@ import {
   removeRTDBListenersForRoom,
 } from '../storage/fb-rtdb/rtdb.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
-import { WebRTCFileTransport } from '../file-transfer/transport/webrtc-file-transport.js';
-import { messagingController } from '../messaging/messaging-controller.js';
+import { FileTransferController } from '../file-transfer/file-transfer-controller.js';
 import { messagesUI } from '../components/messages/messages-ui.js';
 
 export function createCallController() {
@@ -61,6 +60,8 @@ class CallController {
     this.role = null; // initiator | joiner
     this.partnerId = null;
     this.pc = null;
+
+    this.fileTransferController = null;
     this.dataChannel = null;
     this.messagesUI = null;
     this.localVideoEl = null;
@@ -556,29 +557,21 @@ class CallController {
   }
 
   /**
-   * Setup file transport when DataChannel is ready
-   * Creates WebRTCFileTransport and connects it to messagingController and messagesUI
+   * Setup file transfer when DataChannel is ready
+   * Creates FileTransferController and connects it to messagesUI
    * @param {RTCDataChannel} dataChannel - The WebRTC DataChannel
    * @private
    */
   setupFileTransport(dataChannel) {
     if (!dataChannel) return;
 
-    // Wait for DataChannel to open before creating transport
     const initTransport = () => {
       try {
-        // Create file transport
-        const fileTransport = new WebRTCFileTransport(dataChannel);
-
-        // Connect to messagingController
-        messagingController.setFileTransport(fileTransport);
-
-        // Connect to messagesUI for file operations
-        messagesUI.setFileTransfer(fileTransport.fileTransfer);
-
-        devDebug('[CallController] File transport initialized');
+        this.fileTransferController = new FileTransferController(dataChannel);
+        messagesUI.setFileTransferController(this.fileTransferController);
+        devDebug('[CallController] File transfer initialized');
       } catch (err) {
-        console.error('[CallController] Failed to setup file transport:', err);
+        console.error('[CallController] Failed to setup file transfer:', err);
       }
     };
 
@@ -731,8 +724,9 @@ class CallController {
 
       // Cleanup file transport
       try {
-        messagingController.clearFileTransport();
-        messagesUI.setFileTransfer(null);
+        this.fileTransferController?.cleanup();
+        this.fileTransferController = null;
+        messagesUI.setFileTransferController(null);
       } catch (e) {
         console.warn('CallController: failed to cleanup file transport', e);
       }

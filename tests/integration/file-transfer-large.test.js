@@ -16,7 +16,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { WebRTCFileTransport } from '../../src/file-transfer/transport/webrtc-file-transport.js';
+import { FileTransferController } from '../../src/file-transfer/file-transfer-controller.js';
 
 const MB = 1024 * 1024;
 const GB = 1024 * MB;
@@ -295,17 +295,17 @@ describe('Large File Transfer Integration Tests', () => {
         error: null,
       };
 
-      let senderTransport = null;
-      let receiverTransport = null;
+      let senderController = null;
+      let receiverController = null;
       let testFile = null;
       let receivedFile = null;
 
       try {
         result.memoryBefore = getMemoryUsage();
 
-        // Create transports using shared connections
-        senderTransport = new WebRTCFileTransport(sharedConnections.sender);
-        receiverTransport = new WebRTCFileTransport(sharedConnections.receiver);
+        // Create transports and controllers using shared connections
+        senderController = new FileTransferController(sharedConnections.sender);
+        receiverController = new FileTransferController(sharedConnections.receiver);
 
         // Generate test file
         console.log(`[${name}] Generating file...`);
@@ -315,7 +315,7 @@ describe('Large File Transfer Integration Tests', () => {
         // Receiver setup
         const receivePromise = new Promise((resolve, reject) => {
           const timeout = setTimeout(() => reject(new Error('File receive timeout')), 300000);
-          receiverTransport.onFileReceived((file) => { clearTimeout(timeout); receivedFile = file; resolve(file); });
+          receiverController.onFileReceived = (file) => { clearTimeout(timeout); receivedFile = file; resolve(file); };
         });
 
         // Progress tracking with live output
@@ -339,7 +339,7 @@ describe('Large File Transfer Integration Tests', () => {
         console.log(`[${name}] Transferring...`);
         const transferStartTime = performance.now();
 
-        const sendPromise = senderTransport.sendFile(testFile, progressCallback);
+        const sendPromise = senderController.sendFile(testFile, progressCallback);
 
         await Promise.all([sendPromise, receivePromise]);
 
@@ -406,8 +406,8 @@ describe('Large File Transfer Integration Tests', () => {
         hitSizeLimit = true;
         console.log(`[${name}] ^ Known browser limit — skipping larger sizes`);
       } finally {
-        if (senderTransport) senderTransport.cleanup();
-        if (receiverTransport) receiverTransport.cleanup();
+        if (senderController) senderController.cleanup();
+        if (receiverController) receiverController.cleanup();
 
         // Release large file references so GC can reclaim memory between tests
         testFile = null;

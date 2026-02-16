@@ -21,9 +21,8 @@ export class MessagingController {
   /**
    * Create a messaging controller
    * @param {Object} transport - Transport implementation for text messages (RTDBMessagingTransport, etc.)
-   * @param {Object} [fileTransport] - Optional transport implementation for file transfers (WebRTCFileTransport, etc.)
    */
-  constructor(transport, fileTransport = null) {
+  constructor(transport) {
     if (!transport) {
       throw new Error(
         'MessagingController requires a transport implementation',
@@ -31,7 +30,6 @@ export class MessagingController {
     }
 
     this.transport = transport;
-    this.fileTransport = fileTransport;
     this.sessions = new Map(); // contactId -> session object
   }
 
@@ -117,6 +115,16 @@ export class MessagingController {
           );
         }
         return this.transport.send(contactId, text);
+      },
+
+      /**
+       * Send a small file as an RTDB message (base64-encoded, max currently defined in rtdb-transport).
+       * Works without an active call.
+       * @param {File} file - File to send
+       * @returns {Promise<void>}
+       */
+      sendFile: (file) => {
+        return this.sendFileMessage(contactId, file);
       },
 
       /**
@@ -293,73 +301,29 @@ export class MessagingController {
   }
 
   // ========================================================================
-  // FILE TRANSFER METHODS
+  // RTDB FILE MESSAGE METHODS (small files, no active call needed)
   // ========================================================================
 
   /**
-   * Set the file transport implementation
-   * Used when DataChannel becomes available during a call
-   * @param {Object} fileTransport - FileTransport implementation (WebRTCFileTransport, etc.)
-   */
-  setFileTransport(fileTransport) {
-    this.fileTransport = fileTransport;
-  }
-
-  /**
-   * Check if file transfer is available
-   * @returns {boolean} True if file transport is set and ready
-   */
-  canSendFiles() {
-    return this.fileTransport !== null && this.fileTransport.isReady();
-  }
-
-  /**
-   * Send a file via the file transport
-   * @param {File} file - File object to send
-   * @param {Function} [onProgress] - Optional callback(progress) with progress from 0 to 1
+   * Send a small file as an RTDB message (base64-encoded).
+   * Works without an active WebRTC call — just needs an authenticated user.
+   * @param {string} contactId - Recipient's user ID
+   * @param {File} file - File to send (max size defined in rtdb-transport)
    * @returns {Promise<void>}
-   * @throws {Error} If file transport is not available
    */
-  async sendFile(file, onProgress) {
-    if (!this.fileTransport) {
-      throw new Error(
-        'File transport not available. Files can only be sent during active calls.',
-      );
+  async sendFileMessage(contactId, file) {
+    if (!contactId || typeof contactId !== 'string') {
+      throw new Error('contactId must be a non-empty string');
     }
-
-    if (!this.fileTransport.isReady()) {
-      throw new Error('File transport not ready');
+    if (!file) {
+      throw new Error('file is required');
     }
-
-    return this.fileTransport.sendFile(file, onProgress);
+    if (typeof this.transport.sendFile !== 'function') {
+      throw new Error('Transport does not support file messages');
+    }
+    return this.transport.sendFile(contactId, file);
   }
 
-  /**
-   * Set callback for when a file is received
-   * @param {Function} callback - Callback(file) called when file is fully received
-   * @throws {Error} If file transport is not available
-   */
-  onFileReceived(callback) {
-    if (!this.fileTransport) {
-      throw new Error('File transport not available');
-    }
-
-    if (typeof callback !== 'function') {
-      throw new Error('onFileReceived callback must be a function');
-    }
-
-    this.fileTransport.onFileReceived(callback);
-  }
-
-  /**
-   * Clear the file transport (called when call ends)
-   */
-  clearFileTransport() {
-    if (this.fileTransport) {
-      this.fileTransport.cleanup();
-      this.fileTransport = null;
-    }
-  }
 }
 
 /**

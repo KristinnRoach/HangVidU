@@ -42,39 +42,3 @@ export function validateAssembly(chunks, expectedSize, expectedChunksCount) {
   };
 }
 
-/**
- * Get assembly statistics for debugging
- * 
- * @param {Array<ArrayBuffer|null>} chunks - Array of chunks
- * @returns {Object} Statistics including totalChunks, validChunks, totalSize, etc.
- */
-export function getAssemblyStats(chunks) {
-  let validChunks = 0;
-  let totalSize = 0;
-  let firstNullIndex = null;
-  let lastValidIndex = null;
-
-  chunks.forEach((chunk, index) => {
-    if (chunk instanceof ArrayBuffer) {
-      validChunks++;
-      totalSize += chunk.byteLength;
-      lastValidIndex = index;
-    } else {
-      if (firstNullIndex === null) {
-        firstNullIndex = index;
-      }
-    }
-  });
-
-  const averageChunkSize = validChunks > 0 ? totalSize / validChunks : 0;
-
-  return {
-    totalChunks: chunks.length,
-    validChunks,
-    nullChunks: chunks.length - validChunks,
-    totalSize,
-    averageChunkSize,
-    firstNullIndex,
-    lastValidIndex,
-  };
-}

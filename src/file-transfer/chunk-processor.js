@@ -94,41 +94,36 @@ export function parseEmbeddedChunkPacket(arrayBuffer) {
 }
 
 /**
- * Validate chunk metadata
- * 
- * @param {Object} chunkMeta - Chunk metadata to validate
- * @param {string} expectedFileId - Expected file ID
- * @param {number} expectedTotalChunks - Expected total number of chunks
+ * Validate chunk index is within expected bounds
+ *
+ * @param {number} chunkIndex - The chunk index to validate
+ * @param {number} totalChunks - Expected total number of chunks
  * @returns {boolean} True if valid, false otherwise
  */
-export function validateChunk(chunkMeta, expectedFileId, expectedTotalChunks) {
-  if (!chunkMeta) {
-    console.error('[ChunkProcessor] Missing chunk metadata');
-    return false;
-  }
+export function isValidChunkIndex(chunkIndex, totalChunks) {
+  return (
+    Number.isInteger(chunkIndex) &&
+    chunkIndex >= 0 &&
+    chunkIndex < totalChunks
+  );
+}
 
-  if (chunkMeta.fileId !== expectedFileId) {
-    console.error(
-      '[ChunkProcessor] File ID mismatch - expected:',
-      expectedFileId,
-      'got:',
-      chunkMeta.fileId
-    );
-    return false;
-  }
-
-  if (
-    chunkMeta.chunkIndex < 0 ||
-    chunkMeta.chunkIndex >= expectedTotalChunks
-  ) {
-    console.error(
-      '[ChunkProcessor] Invalid chunk index:',
-      chunkMeta.chunkIndex,
-      'total:',
-      expectedTotalChunks
-    );
-    return false;
-  }
-
-  return true;
+/**
+ * Create embedded chunk packet
+ * Format: [4 bytes length (LE)] + [JSON metadata] + [chunk data]
+ * Inverse of parseEmbeddedChunkPacket.
+ *
+ * @param {Object} metadata - Chunk metadata (type, fileId, chunkIndex, totalChunks)
+ * @param {ArrayBuffer} chunkData - The raw chunk bytes
+ * @returns {ArrayBuffer} The assembled binary packet
+ */
+export function createEmbeddedChunkPacket(metadata, chunkData) {
+  const metaBytes = new TextEncoder().encode(JSON.stringify(metadata));
+  const packet = new ArrayBuffer(4 + metaBytes.length + chunkData.byteLength);
+  const view = new Uint8Array(packet);
+  const dataView = new DataView(packet);
+  dataView.setUint32(0, metaBytes.length, true);
+  view.set(metaBytes, 4);
+  view.set(new Uint8Array(chunkData), 4 + metaBytes.length);
+  return packet;
 }
