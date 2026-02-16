@@ -1,0 +1,87 @@
+# Mediabunny
+
+> Complete media toolkit
+
+A JavaScript library for reading, writing, and converting video and audio files. Directly in the browser, and faster than anybunny else.
+
+## Table of Contents
+
+### Getting started
+
+- [Introduction](/guide/introduction.md)
+- [Installation](/guide/installation.md)
+- [Quick start](/guide/quick-start.md)
+
+### Reading
+
+- [Reading media files](/guide/reading-media-files.md)
+- [Media sinks](/guide/media-sinks.md)
+- [Input formats](/guide/input-formats.md)
+
+### Writing
+
+- [Writing media files](/guide/writing-media-files.md)
+- [Media sources](/guide/media-sources.md)
+- [Output formats](/guide/output-formats.md)
+
+### Conversion
+
+- [Converting media files](/guide/converting-media-files.md)
+
+### Miscellaneous
+
+- [Packets & samples](/guide/packets-and-samples.md)
+- [Supported formats & codecs](/guide/supported-formats-and-codecs.md)
+
+### Extensions
+
+- [@mediabunny/mp3-encoder](/guide/extensions/mp3-encoder.md)
+- [@mediabunny/ac3](/guide/extensions/ac3.md)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Codec registry
+
+- [Mediabunny Codec Registry](/codec-registry/overview.md)
+
+### Video
+
+- [AVC (H.264) codec registration](/codec-registry/avc.md)
+- [HEVC (H.265) codec registration](/codec-registry/hevc.md)
+- [VP8 codec registration](/codec-registry/vp8.md)
+- [VP9 codec registration](/codec-registry/vp9.md)
+- [AV1 codec registration](/codec-registry/av1.md)
+
+### Audio
+
+- [AAC codec registration](/codec-registry/aac.md)
+- [Opus codec registration](/codec-registry/opus.md)
+- [MP3 codec registration](/codec-registry/mp3.md)
+- [Vorbis codec registration](/codec-registry/vorbis.md)
+- [FLAC codec registration](/codec-registry/flac.md)
+- [AC-3 codec registration](/codec-registry/ac3.md)
+- [E-AC-3 codec registration](/codec-registry/eac3.md)
+- [Linear PCM codecs registration](/codec-registry/pcm.md)
+- [μ-law PCM codec registration](/codec-registry/ulaw.md)
+- [A-law PCM codec registration](/codec-registry/alaw.md)
+
+### Other
+
+- [Examples](/examples.md)
+- [Mediabunny and LLMs](/llms.md)
