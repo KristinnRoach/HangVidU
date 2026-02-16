@@ -4,11 +4,12 @@
  * License: MIT
  */
 
-const MAX_SIZE_DIFFERENCE = 1024; // 1KB tolerance for size validation
+// No tolerance (changed from 1KB to prevent corrupt files, currently must match expected byte size exactly)
+const MAX_SIZE_DIFFERENCE = 0;
 
 /**
  * Validate file assembly completeness
- * 
+ *
  * @param {Array<ArrayBuffer|null>} chunks - Array of chunks (may contain nulls for missing chunks)
  * @param {number} expectedSize - Expected total file size in bytes
  * @param {number} expectedChunksCount - Expected number of chunks
@@ -30,8 +31,7 @@ export function validateAssembly(chunks, expectedSize, expectedChunksCount) {
 
   const sizeDifference = expectedSize - totalSize;
   const isComplete =
-    validChunks === expectedChunksCount &&
-    Math.abs(sizeDifference) <= MAX_SIZE_DIFFERENCE;
+    validChunks === expectedChunksCount && sizeDifference === 0; // Change to <== MAX_SIZE_DIFFERENCE if using tolerance
 
   return {
     isComplete,
@@ -41,4 +41,3 @@ export function validateAssembly(chunks, expectedSize, expectedChunksCount) {
     sizeDifference,
   };
 }
-

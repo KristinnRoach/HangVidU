@@ -565,7 +565,16 @@ class CallController {
    * @private
    */
   setupFileTransport(dataChannel) {
-    if (!dataChannel) return;
+    if (!dataChannel || !messagesUI) {
+      console.warn(
+        'Cannot setup file transport, missing dataChannel or messagesUI',
+        {
+          hasDataChannel: !!dataChannel,
+          hasMessagesUI: !!messagesUI,
+        },
+      );
+      return;
+    }
 
     const initTransport = () => {
       try {

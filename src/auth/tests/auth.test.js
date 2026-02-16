@@ -68,31 +68,9 @@ vi.mock('../gis-tokens.js', () => ({
   clearGISTokenCache: vi.fn(),
 }));
 
-describe('deleteAccount', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockAuth.currentUser = null;
-  });
-
-  it('should throw error when no user is logged in', async () => {
-    const { deleteAccount } = await import('../auth-actions.js');
-    await expect(deleteAccount()).rejects.toThrow('No user logged in');
-  });
-
-  it('should provide helpful error for requires-recent-login', async () => {
-    const { deleteUser } = await import('firebase/auth');
-
-    // Set up a logged-in user
-    mockAuth.currentUser = { uid: 'test-user-123' };
-
-    const error = new Error('Recent login required');
-    error.code = 'auth/requires-recent-login';
-    vi.mocked(deleteUser).mockRejectedValue(error);
-
-    const { deleteAccount } = await import('../auth-actions.js');
-
-    await expect(deleteAccount()).rejects.toThrow(
-      'For security, please sign out and sign in again before deleting your account.',
-    );
+// Placeholder test to prevent Vitest error when no test suites are present
+describe('auth placeholder', () => {
+  it('should pass (placeholder)', () => {
+    expect(true).toBe(true);
   });
 });

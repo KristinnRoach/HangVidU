@@ -39,6 +39,7 @@ export class FileTransferController {
     this.streamChunkCounts = new Map(); // fileId -> received count
     this.pendingInit = new Map(); // fileId -> Promise (writer init in progress)
     this.earlyChunks = new Map(); // fileId -> [{chunkIndex, chunkData}] (chunks before init)
+    this.writeChains = new Map(); // fileId -> Promise (serializes OPFS writes)
 
     // Public callbacks
     this.onFileReceived = null;
@@ -128,6 +129,7 @@ export class FileTransferController {
     this.streamChunkCounts.clear();
     this.pendingInit.clear();
     this.earlyChunks.clear();
+    this.writeChains.clear();
     StreamingFileWriter.cleanup();
     this.transport.cleanup();
   }
@@ -305,7 +307,8 @@ export class FileTransferController {
     const offset = chunkIndex * CHUNK_SIZE;
     const isOrdered = chunkIndex === (this.streamChunkCounts.get(fileId) ?? 0);
 
-    writer.writeChunk(chunkData, offset, isOrdered).then(() => {
+    const prev = this.writeChains.get(fileId) ?? Promise.resolve();
+    const next = prev.then(() => writer.writeChunk(chunkData, offset, isOrdered)).then(() => {
       const count = (this.streamChunkCounts.get(fileId) ?? 0) + 1;
       this.streamChunkCounts.set(fileId, count);
 
@@ -324,6 +327,7 @@ export class FileTransferController {
         details: { chunkIndex, error: err.message },
       });
     });
+    this.writeChains.set(fileId, next);
   }
 
   /**
@@ -356,6 +360,7 @@ export class FileTransferController {
       // Clean up tracking state (but keep OPFS file for SW serving)
       this.streamWriters.delete(fileId);
       this.streamChunkCounts.delete(fileId);
+      this.writeChains.delete(fileId);
       this.fileMetadata.delete(fileId);
     }
   }
