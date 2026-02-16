@@ -1,3 +1,5 @@
+import { devDebug } from '../utils/dev/dev-utils';
+
 const OPFS_DIR_NAME = 'file-transfers';
 const PROBE_FILE_NAME = '__quota_probe__';
 // Probe at the streaming threshold — confirms OPFS is usable for large files.
@@ -151,10 +153,17 @@ export class StreamingFileWriter {
   async finalize() {
     await this._writable.close();
     this._writable = null;
+
+    const opfsFile = await this._fileHandle.getFile();
+
+    devDebug(
+      `[OPFS] Finalized file: ${this.fileName}. OPFS filename: ${opfsFile.type}, mime-type: ${opfsFile.type}, size: ${opfsFile.size} bytes`,
+    );
+
     // Return the disk-backed File directly — do NOT wrap in new File()
     // as that reads the entire content into memory, defeating OPFS streaming.
     // Note: .name will be the fileId, not the original filename.
-    return await this._fileHandle.getFile();
+    return opfsFile;
   }
 
   /**

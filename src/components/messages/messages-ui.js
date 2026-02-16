@@ -27,6 +27,8 @@ import { showInfoToast } from '../../utils/ui/toast.js';
 import { getUserProfile } from '../../user/profile.js';
 import { createMessageBox } from './createMessageBox.js';
 import { createMessageTopBar } from './createMessageTopBar.js';
+import { devDebug } from '../../utils/dev/dev-utils.js';
+import { mime } from 'zod';
 
 const supportsCssAnchors =
   CSS.supports?.('position-anchor: --msg-toggle') &&
@@ -1178,7 +1180,14 @@ export function initMessagesUI() {
     if (fileTransferController) {
       // Setup file received handler
       // Receives { file, name, mimeType, opfsId } from FileTransferController
-      fileTransferController.onFileReceived = async ({ file, name, mimeType, opfsId }) => {
+      fileTransferController.onFileReceived = async ({
+        file,
+        name,
+        mimeType,
+        opfsId,
+      }) => {
+        devDebug('[MessagesUI] Received file:', { file, name, mimeType });
+
         // Check if it's a video file
         if (mimeType.startsWith('video/')) {
           // Store the file for potential watch-together
@@ -1189,12 +1198,9 @@ export function initMessagesUI() {
 
           if (action === 'watch') {
             // Show notification in chat
-            appendChatMessage(
-              `📹 ${t('message.received_video', { name })}`,
-              {
-                isSentByMe: false,
-              },
-            );
+            appendChatMessage(`📹 ${t('message.received_video', { name })}`, {
+              isSentByMe: false,
+            });
             appendChatMessage(`🎬 ${t('message.watch.requesting')}`);
 
             // If OPFS-streamed and SW available, serve via SW URL
@@ -1203,7 +1209,10 @@ export function initMessagesUI() {
               try {
                 videoSource = await registerVideoForServing(opfsId, mimeType);
               } catch (err) {
-                console.warn('[MessagesUI] SW video registration failed, falling back to blob:', err);
+                console.warn(
+                  '[MessagesUI] SW video registration failed, falling back to blob:',
+                  err,
+                );
                 videoSource = file;
               }
             } else {
@@ -1211,7 +1220,7 @@ export function initMessagesUI() {
             }
 
             // Load video locally first
-            const success = await handleVideoSelection(videoSource);
+            const success = await handleVideoSelection(videoSource, mimeType);
 
             if (!success) {
               appendChatMessage(`❌ ${t('message.watch.failed_load')}`);
@@ -1238,20 +1247,15 @@ export function initMessagesUI() {
             // Using 1 second to be safe for slow devices/large files
             setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-            appendChatMessage(
-              `📎 ${t('message.downloaded', { name })}`,
-            );
+            appendChatMessage(`📎 ${t('message.downloaded', { name })}`);
           }
         } else {
           // Non-video file - show download link
           const url = URL.createObjectURL(file);
-          appendChatMessage(
-            `📎 ${t('message.received', { name })}`,
-            {
-              isSentByMe: false,
-              fileDownload: { fileName: name, url },
-            },
-          );
+          appendChatMessage(`📎 ${t('message.received', { name })}`, {
+            isSentByMe: false,
+            fileDownload: { fileName: name, url },
+          });
         }
 
         // Increment unread count if messages box is hidden
