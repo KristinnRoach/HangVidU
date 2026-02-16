@@ -412,38 +412,50 @@ function setupLocalVideoListeners() {
     }
   };
 
-  sharedVideoEl.addEventListener('play', async () => {
-    if (Date.now() - lastSyncAction < 500) return;
-    if (!getYouTubePlayer() && currentRoomId) {
-      lastSyncAction = Date.now();
-      await updateWatchSyncState({
-        playing: true,
-        currentTime: sharedVideoEl.currentTime,
-        isYouTube: false,
-      });
-    }
-    preserveFileMode();
-  }, opts);
+  sharedVideoEl.addEventListener(
+    'play',
+    async () => {
+      if (Date.now() - lastSyncAction < 500) return;
+      if (!getYouTubePlayer() && currentRoomId) {
+        lastSyncAction = Date.now();
+        await updateWatchSyncState({
+          playing: true,
+          currentTime: sharedVideoEl.currentTime,
+          isYouTube: false,
+        });
+      }
+      preserveFileMode();
+    },
+    opts,
+  );
 
-  sharedVideoEl.addEventListener('pause', async () => {
-    if (sharedVideoEl.seeking) return;
-    if (Date.now() - lastSyncAction < 500) return;
+  sharedVideoEl.addEventListener(
+    'pause',
+    async () => {
+      if (sharedVideoEl.seeking) return;
+      if (Date.now() - lastSyncAction < 500) return;
 
-    if (!getYouTubePlayer() && currentRoomId) {
-      lastSyncAction = Date.now();
-      await updateWatchSyncState({
-        playing: false,
-        currentTime: sharedVideoEl.currentTime,
-        isYouTube: false,
-      });
-    }
-    preserveFileMode();
-  }, opts);
+      if (!getYouTubePlayer() && currentRoomId) {
+        lastSyncAction = Date.now();
+        await updateWatchSyncState({
+          playing: false,
+          currentTime: sharedVideoEl.currentTime,
+          isYouTube: false,
+        });
+      }
+      preserveFileMode();
+    },
+    opts,
+  );
 
   // Track play state continuously so we know if video was playing before seek
-  sharedVideoEl.addEventListener('playing', () => {
-    wasPlayingBeforeSeek = true;
-  }, opts);
+  sharedVideoEl.addEventListener(
+    'playing',
+    () => {
+      wasPlayingBeforeSeek = true;
+    },
+    opts,
+  );
 
   // Only reset wasPlayingBeforeSeek on actual user pause (not seek-triggered)
   sharedVideoEl.addEventListener(
@@ -456,24 +468,32 @@ function setupLocalVideoListeners() {
     { capture: true, signal: ac.signal },
   );
 
-  sharedVideoEl.addEventListener('seeked', async () => {
-    if (Date.now() - lastSyncAction < 500) return;
-    if (!getYouTubePlayer() && currentRoomId) {
-      lastSyncAction = Date.now();
-      await updateWatchSyncState({
-        currentTime: sharedVideoEl.currentTime,
-        playing: wasPlayingBeforeSeek,
-        isYouTube: false,
-      });
-    }
-    preserveFileMode();
-  }, opts);
+  sharedVideoEl.addEventListener(
+    'seeked',
+    async () => {
+      if (Date.now() - lastSyncAction < 500) return;
+      if (!getYouTubePlayer() && currentRoomId) {
+        lastSyncAction = Date.now();
+        await updateWatchSyncState({
+          currentTime: sharedVideoEl.currentTime,
+          playing: wasPlayingBeforeSeek,
+          isYouTube: false,
+        });
+      }
+      preserveFileMode();
+    },
+    opts,
+  );
 
   // Suppress sync during buffering — the browser fires pause/play events
   // while the video stalls for data (common with SW-served OPFS files)
-  sharedVideoEl.addEventListener('waiting', () => {
-    lastSyncAction = Date.now();
-  }, opts);
+  sharedVideoEl.addEventListener(
+    'waiting',
+    () => {
+      lastSyncAction = Date.now();
+    },
+    opts,
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -534,13 +554,21 @@ async function loadStream(url) {
 // -----------------------------------------------------------------------------
 // VIDEO SELECTION
 // -----------------------------------------------------------------------------
-export async function handleVideoSelection(source) {
+export async function handleVideoSelection(source, mimeType) {
   let url;
 
   // Accept File, Blob, or URL string
   if (source instanceof Blob) {
-    if (!source.type.startsWith('video/')) {
-      console.warn('Invalid file type:', source.type);
+    const isVideo =
+      (mimeType && mimeType.startsWith('video/')) ||
+      (source.type && source.type.startsWith('video/'));
+    if (!isVideo) {
+      console.warn(
+        'Invalid file type. source.type: ',
+        source.type,
+        'passed in mimeType:',
+        mimeType,
+      );
       return false;
     }
     url = URL.createObjectURL(source);
