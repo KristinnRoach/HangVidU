@@ -16,7 +16,7 @@
   "shared.me": "Ég",
 
   "call.incoming": "{name} hringir...",
-  "call.accept": "Taka",
+  "call.accept": "Svara",
   "call.decline": "Hafna",
   "call.calling": "Hringi í {name}...",
   "call.waiting": "Bíður svars...",
@@ -27,7 +27,7 @@
   "call.join.title": "Gangast inn í núverandi herbergi",
   "call.no_answer": "Ekkert svar",
   "call.missed": "Ekkert svar",
-  "call.try_again": "Reyna aftur",
+  "call.try_again": "Hringja aftur",
   "call.recent": "Nýleg símtöl",
   "call.rejoin": "Gangast inn aftur í {id}",
 
@@ -115,7 +115,7 @@
   "notification.invite.title": "Boð um tengingu",
   "notification.invite.body": "{name} vill tengjast",
   "notification.invite.suffix": "vill tengjast",
-  "notification.invite.accept": "Taka",
+  "notification.invite.accept": "Samþykkja",
   "notification.invite.decline": "Hafna",
   "notification.invite.accepting": "Tekið á móti...",
   "notification.invite.declining": "Hafnar...",
