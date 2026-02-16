@@ -315,7 +315,7 @@ describe('Large File Transfer Integration Tests', () => {
         // Receiver setup
         const receivePromise = new Promise((resolve, reject) => {
           const timeout = setTimeout(() => reject(new Error('File receive timeout')), 300000);
-          receiverController.onFileReceived = (file) => { clearTimeout(timeout); receivedFile = file; resolve(file); };
+          receiverController.onFileReceived = (result) => { clearTimeout(timeout); receivedFile = result.file; resolve(result.file); };
         });
 
         // Progress tracking with live output

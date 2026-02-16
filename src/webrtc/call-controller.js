@@ -17,7 +17,9 @@ import {
 } from '../storage/fb-rtdb/rtdb.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { FileTransferController } from '../file-transfer/file-transfer-controller.js';
+import { StreamingFileWriter } from '../file-transfer/streaming-file-writer.js';
 import { messagesUI } from '../components/messages/messages-ui.js';
+import { cleanupWatchSync } from '../firebase/watch-sync.js';
 
 export function createCallController() {
   return new CallController();
@@ -730,6 +732,12 @@ class CallController {
       } catch (e) {
         console.warn('CallController: failed to cleanup file transport', e);
       }
+
+      // Cleanup watch-sync listeners to prevent duplicates on next call
+      cleanupWatchSync();
+
+      // Clear OPFS temp files
+      StreamingFileWriter.cleanup();
 
       // Cleanup messages UI before resetting state
       if (this.messagesUI && this.messagesUI.cleanup) {

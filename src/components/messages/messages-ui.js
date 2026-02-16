@@ -10,6 +10,10 @@ import {
   acceptWatchRequest,
   cancelWatchRequest,
 } from '../../firebase/watch-sync.js';
+import {
+  registerVideoForServing,
+  isSwServingSupported,
+} from '../../file-transfer/video-serving.js';
 
 import { linkifyToFragment } from '../../utils/linkify.js';
 import {
@@ -1173,30 +1177,41 @@ export function initMessagesUI() {
 
     if (fileTransferController) {
       // Setup file received handler
-      fileTransferController.onFileReceived = async (file) => {
-        // Create download URL
-        const url = URL.createObjectURL(file);
-
+      // Receives { file, name, mimeType, opfsId } from FileTransferController
+      fileTransferController.onFileReceived = async ({ file, name, mimeType, opfsId }) => {
         // Check if it's a video file
-        if (file.type.startsWith('video/')) {
+        if (mimeType.startsWith('video/')) {
           // Store the file for potential watch-together
           receivedFile = file;
 
           // Prompt user: Download or Watch Together
-          const action = await promptFileAction(file.name);
+          const action = await promptFileAction(name);
 
           if (action === 'watch') {
             // Show notification in chat
             appendChatMessage(
-              `📹 ${t('message.received_video', { name: file.name })}`,
+              `📹 ${t('message.received_video', { name })}`,
               {
                 isSentByMe: false,
               },
             );
             appendChatMessage(`🎬 ${t('message.watch.requesting')}`);
 
+            // If OPFS-streamed and SW available, serve via SW URL
+            let videoSource;
+            if (opfsId && isSwServingSupported()) {
+              try {
+                videoSource = await registerVideoForServing(opfsId, mimeType);
+              } catch (err) {
+                console.warn('[MessagesUI] SW video registration failed, falling back to blob:', err);
+                videoSource = file;
+              }
+            } else {
+              videoSource = file;
+            }
+
             // Load video locally first
-            const success = await handleVideoSelection(file);
+            const success = await handleVideoSelection(videoSource);
 
             if (!success) {
               appendChatMessage(`❌ ${t('message.watch.failed_load')}`);
@@ -1204,7 +1219,7 @@ export function initMessagesUI() {
             }
 
             // Create watch request to notify sender
-            const requestCreated = await createWatchRequest(file.name, file);
+            const requestCreated = await createWatchRequest(name, file);
 
             if (requestCreated) {
               appendChatMessage(`⏳ ${t('message.watch.waiting')}`);
@@ -1213,9 +1228,10 @@ export function initMessagesUI() {
             }
           } else {
             // Download the file
+            const url = URL.createObjectURL(file);
             const a = document.createElement('a');
             a.href = url;
-            a.download = file.name;
+            a.download = name;
             a.click();
 
             // Revoke blob URL after a delay to allow download to start
@@ -1223,16 +1239,17 @@ export function initMessagesUI() {
             setTimeout(() => URL.revokeObjectURL(url), 1000);
 
             appendChatMessage(
-              `📎 ${t('message.downloaded', { name: file.name })}`,
+              `📎 ${t('message.downloaded', { name })}`,
             );
           }
         } else {
-          // Non-video file - show download link as before
+          // Non-video file - show download link
+          const url = URL.createObjectURL(file);
           appendChatMessage(
-            `📎 ${t('message.received', { name: file.name })}`,
+            `📎 ${t('message.received', { name })}`,
             {
               isSentByMe: false,
-              fileDownload: { fileName: file.name, url },
+              fileDownload: { fileName: name, url },
             },
           );
         }
@@ -1248,6 +1265,13 @@ export function initMessagesUI() {
           sendBtn.textContent = t('shared.send');
           isReceivingFile = false;
         }
+      };
+
+      // Setup file error handler
+      fileTransferController.onFileError = ({ fileName, reason }) => {
+        appendChatMessage(
+          `❌ ${t('message.receive_failed', { name: fileName })} (${reason})`,
+        );
       };
 
       // Setup receive progress handler
