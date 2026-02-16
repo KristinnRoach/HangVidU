@@ -82,6 +82,7 @@
   "message.sending": "Sendi...",
   "message.sent": "Sent: {name}",
   "message.send_failed": "Tókst ekki að senda skrá",
+  "message.file_size_limited": "Skráarstærð er takmörkuð þegar þú ert ekki í virku símtali með þessum tengilið.",
   "message.download": "Sækja",
   "message.video_received": "Myndband móttekið",
   "message.watch_together": "Horfa saman",

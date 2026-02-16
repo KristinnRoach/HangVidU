@@ -190,10 +190,10 @@ export function initMessagesUI() {
       console.error('[MessagesUI] File send failed:', err);
 
       const sizeHint = !fileTransferController
-        ? '\nFile size is limited when not in an active call with this contact.'
+        ? '\n\n' + t('message.file_size_limited')
         : '';
 
-      appendChatMessage(t('message.send_failed') + sizeHint);
+      appendChatMessage('❌  ' + t('message.send_failed') + sizeHint);
     } finally {
       sendBtn.textContent = originalText;
       fileInput.value = '';
