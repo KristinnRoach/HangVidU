@@ -1265,8 +1265,12 @@ export function initMessagesUI() {
   function reset() {
     clearMessages();
     currentSession = null;
+
     fileTransferController = null;
+    sentFiles.clear();
+    receivedFile = null;
     isReceivingFile = false;
+
     hideMessagesToggle();
     hideElement(messagesBox);
     messageToggle.clearBadge();
