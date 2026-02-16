@@ -6,6 +6,7 @@ import {
   convertToArrayBuffer,
 } from './chunk-processor.js';
 import { validateAssembly } from './file-assembler.js';
+import { WebRTCFileTransport } from './transport/webrtc-file-transport.js';
 
 const CHUNK_SIZE = TransferConfig.FILE_CONFIG.NETWORK_CHUNK_SIZE; // 64KB
 const MAX_FILE_SIZE_MB = 5000;
@@ -14,18 +15,18 @@ const MAX_FILE_SIZE_MB = 5000;
  * FileTransferController — orchestrates the chunked file transfer protocol.
  *
  * Owns: file slicing, chunk assembly, progress tracking, validation, callbacks.
- * Delegates all I/O to an injected FileTransport.
+ * Delegates all I/O to an internal WebRTCFileTransport.
  */
 export class FileTransferController {
   /**
-   * @param {FileTransport} transport - Raw I/O transport (WebRTCFileTransport, etc.)
+   * @param {RTCDataChannel} dataChannel - WebRTC DataChannel for file transfer
    */
-  constructor(transport) {
-    if (!transport) {
-      throw new Error('FileTransferController requires a transport');
+  constructor(dataChannel) {
+    if (!dataChannel) {
+      throw new Error('FileTransferController requires a dataChannel');
     }
 
-    this.transport = transport;
+    this.transport = new WebRTCFileTransport(dataChannel);
     this.receivedChunks = new Map(); // fileId -> chunks array
     this.fileMetadata = new Map(); // fileId -> metadata
 

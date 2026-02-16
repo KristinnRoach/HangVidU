@@ -16,7 +16,6 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { WebRTCFileTransport } from '../../src/file-transfer/transport/webrtc-file-transport.js';
 import { FileTransferController } from '../../src/file-transfer/file-transfer-controller.js';
 
 const MB = 1024 * 1024;
@@ -305,8 +304,8 @@ describe('Large File Transfer Integration Tests', () => {
         result.memoryBefore = getMemoryUsage();
 
         // Create transports and controllers using shared connections
-        senderController = new FileTransferController(new WebRTCFileTransport(sharedConnections.sender));
-        receiverController = new FileTransferController(new WebRTCFileTransport(sharedConnections.receiver));
+        senderController = new FileTransferController(sharedConnections.sender);
+        receiverController = new FileTransferController(sharedConnections.receiver);
 
         // Generate test file
         console.log(`[${name}] Generating file...`);
