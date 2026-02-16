@@ -17,6 +17,5 @@ export const TransferConfig = {
   },
 
   // Files above this size use OPFS streaming; below stays in-memory.
-  // 50MB is intentionally low for dev/testing — raise to ~1GB once OPFS path is verified.
-  STREAMING_THRESHOLD: 50 * 1024 * 1024, // 50MB
+  STREAMING_THRESHOLD: 50 * 1024 * 1024, // TODO: Find optimal threshold after testing in-memory vs OPFS streaming performance and reliability (current low threshold is for testing, actual could be up to 1.25GB)
 };
