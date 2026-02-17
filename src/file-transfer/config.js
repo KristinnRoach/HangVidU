@@ -15,4 +15,7 @@ export const TransferConfig = {
     BATCH_SIZE: 8, // 8 chunks batch processing - 32MB batch processing improves performance
     NETWORK_CHUNK_SIZE: 65536, // 64KB - WebRTC safe sending size, fixes sendData failed
   },
+
+  // Files above this size use OPFS streaming; below stays in-memory.
+  STREAMING_THRESHOLD: 1000 * 1024 * 1024, // TODO: Find optimal threshold after testing in-memory vs OPFS streaming performance and reliability (current low threshold is for testing, actual could be up to 1.25GB)
 };
