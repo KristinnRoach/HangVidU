@@ -23,6 +23,8 @@ vi.mock('../../firebase/firebase', () => ({
 vi.mock('../storage/fb-rtdb/rtdb', () => ({
   rtdb: {},
   addRTDBListener: vi.fn(),
+  getOfferCandidatesRef: vi.fn(() => ({ _path: 'offerCandidates' })),
+  getAnswerCandidatesRef: vi.fn(() => ({ _path: 'answerCandidates' })),
 }));
 
 vi.mock('../../utils/dev-utils.js', () => ({
@@ -293,6 +295,44 @@ describe('ICE Candidate Queuing', () => {
 
       // Should only add candidates once
       expect(addIceCandidateSpy).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('custom refs parameter', () => {
+    it('should use custom ref getters when provided', () => {
+      const customLocalRef = vi.fn(() => ({ _path: 'dataOfferCandidates' }));
+      const customRemoteRef = vi.fn(() => ({
+        _path: 'dataAnswerCandidates',
+      }));
+
+      mockPc.remoteDescription = { type: 'offer', sdp: 'mock-sdp' };
+
+      setupIceCandidates(mockPc, 'initiator', 'test-room', {
+        getLocalCandidatesRef: customLocalRef,
+        getRemoteCandidatesRef: customRemoteRef,
+      });
+
+      // Verify custom remote ref was called for the listener
+      expect(customRemoteRef).toHaveBeenCalledWith('test-room');
+
+      // Trigger local candidate to verify custom local ref is used
+      const mockCandidate = {
+        toJSON: () => ({ candidate: 'test', sdpMid: '0', sdpMLineIndex: 0 }),
+      };
+      mockPc.onicecandidate({ candidate: mockCandidate });
+
+      expect(customLocalRef).toHaveBeenCalledWith('test-room');
+    });
+
+    it('should fall back to default refs when no custom refs provided', () => {
+      mockPc.remoteDescription = { type: 'offer', sdp: 'mock-sdp' };
+
+      // Call without custom refs (default behavior) — should not throw
+      setupIceCandidates(mockPc, 'initiator', 'test-room');
+
+      // Candidates should still be added when remote desc is set
+      onChildAddedCallback({ val: () => mockCandidates[0] });
+      expect(addIceCandidateSpy).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -45,6 +45,24 @@ vi.mock('../../src/auth/auth-state.js', () => {
   };
 });
 
+vi.mock('../../src/webrtc/data-connection.js', () => {
+  return {
+    createDataConnection: vi.fn(() =>
+      Promise.resolve({
+        pc: { close: vi.fn() },
+        dataChannel: { addEventListener: vi.fn(), readyState: 'open' },
+      }),
+    ),
+    joinDataConnection: vi.fn(() =>
+      Promise.resolve({
+        pc: { close: vi.fn(), ondatachannel: null },
+        dataChannel: { addEventListener: vi.fn(), readyState: 'open' },
+      }),
+    ),
+    closeDataConnection: vi.fn(),
+  };
+});
+
 import CallController from '../../src/webrtc/call-controller.js';
 import {
   createCall as createCallFlow,
@@ -74,7 +92,6 @@ describe('CallController Smoke Tests', () => {
         roomId: 'room-123',
         roomLink: 'https://example.com/?room=room-123',
         role: 'initiator',
-        dataChannel: { addEventListener: vi.fn(), readyState: 'open' },
         messagesUI: {},
       };
       createCallFlow.mockResolvedValueOnce(mockResult);
@@ -99,7 +116,6 @@ describe('CallController Smoke Tests', () => {
         pc: { id: 'pc2' },
         roomId: 'room-456',
         role: 'joiner',
-        dataChannel: { addEventListener: vi.fn(), readyState: 'open' },
         messagesUI: {},
       };
       answerCallFlow.mockResolvedValueOnce(mockResult);

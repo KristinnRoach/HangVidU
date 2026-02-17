@@ -7,6 +7,11 @@ import {
   createCall as createCallFlow,
   answerCall as answerCallFlow,
 } from './call-flow.js';
+import {
+  createDataConnection,
+  joinDataConnection,
+  closeDataConnection,
+} from './data-connection.js';
 import RoomService from '../room.js';
 import { getUserId } from '../auth/auth-state.js';
 import { ref, off } from 'firebase/database';
@@ -62,6 +67,7 @@ class CallController {
     this.role = null; // initiator | joiner
     this.partnerId = null;
     this.pc = null;
+    this.dataPC = null;
 
     this.fileTransferController = null;
     this.dataChannel = null;
@@ -171,7 +177,8 @@ class CallController {
         console.warn('Failed to clear remote video after cancellation', e);
       }
 
-      // Close peer connection
+      // Close peer connections
+      closeDataConnection(this.dataPC);
       try {
         if (this.pc) {
           this.pc.close();
@@ -427,7 +434,6 @@ class CallController {
       this.roomId = result.roomId;
       this.roomLink = result.roomLink || null;
       this.role = result.role || 'initiator';
-      this.dataChannel = result.dataChannel || null;
       this.messagesUI = result.messagesUI || null;
       this.state = 'waiting';
 
@@ -441,9 +447,14 @@ class CallController {
         });
       }
 
-      // Setup file transport when DataChannel opens (for initiator)
-      if (this.dataChannel) {
+      // Create dedicated data connection for file transfer
+      try {
+        const dataResult = await createDataConnection(this.roomId);
+        this.dataPC = dataResult.pc;
+        this.dataChannel = dataResult.dataChannel;
         this.setupFileTransport(this.dataChannel);
+      } catch (err) {
+        console.warn('[CallController] Failed to create data connection:', err);
       }
 
       // Setup answer listener (only for initiator) - must be set up before other listeners
@@ -520,7 +531,6 @@ class CallController {
       this.pc = result.pc;
       this.roomId = result.roomId;
       this.role = result.role || 'joiner';
-      this.dataChannel = result.dataChannel || null;
       // Only set messagesUI from result if we don't have one and result has one
       // For initiator: result.messagesUI is defined, sets it here
       // For joiner: messagesUI set via onMessagesUIReady callback, don't overwrite
@@ -530,15 +540,22 @@ class CallController {
       this.state = 'connected';
       this.wasConnected = true;
 
-      // Setup file transport when DataChannel is ready (for joiner, may be delayed)
-      if (this.dataChannel) {
-        this.setupFileTransport(this.dataChannel);
-      } else if (this.role === 'joiner' && this.pc) {
-        // DataChannel not yet received - set up handler for when it arrives
-        this.pc.ondatachannel = (event) => {
-          this.dataChannel = event.channel;
+      // Join dedicated data connection for file transfer
+      try {
+        const dataResult = await joinDataConnection(this.roomId);
+        this.dataPC = dataResult.pc;
+        this.dataChannel = dataResult.dataChannel;
+        if (this.dataChannel) {
           this.setupFileTransport(this.dataChannel);
-        };
+        } else {
+          // DataChannel not yet received via ondatachannel — wait for it
+          this.dataPC.ondatachannel = (event) => {
+            this.dataChannel = event.channel;
+            this.setupFileTransport(this.dataChannel);
+          };
+        }
+      } catch (err) {
+        console.warn('[CallController] Failed to join data connection:', err);
       }
 
       // Setup cancellation listener (centralized in CallController)
@@ -679,7 +696,10 @@ class CallController {
         // non-fatal
       }
 
-      // Close peer connection
+      // Close peer connections
+      closeDataConnection(this.dataPC);
+      this.dataPC = null;
+
       try {
         if (this.pc) {
           try {

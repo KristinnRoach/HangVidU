@@ -172,6 +172,16 @@ export const getOfferCandidatesRef = (roomId) =>
 export const getAnswerCandidatesRef = (roomId) =>
   ref(rtdb, `rooms/${roomId}/answerCandidates`);
 
+// Data connection refs (separate PeerConnection for file transfer)
+export const getDataOfferRef = (roomId) =>
+  ref(rtdb, `rooms/${roomId}/dataOffer`);
+export const getDataAnswerRef = (roomId) =>
+  ref(rtdb, `rooms/${roomId}/dataAnswer`);
+export const getDataOfferCandidatesRef = (roomId) =>
+  ref(rtdb, `rooms/${roomId}/dataOfferCandidates`);
+export const getDataAnswerCandidatesRef = (roomId) =>
+  ref(rtdb, `rooms/${roomId}/dataAnswerCandidates`);
+
 // ============================================================================
 // DATA FETCH UTILITIES
 // ============================================================================

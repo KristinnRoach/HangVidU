@@ -48,7 +48,7 @@ import RoomService from '../room.js';
  * @param {Function} options.setupWatchSync - Function to setup watch-together sync
  * @param {string} [options.targetRoomId] - Specific room ID to use (optional, generates random if not provided)
  *
- * @returns {Promise<{ success: boolean, pc: RTCPeerConnection, roomId: string, roomLink: string, dataChannel: RTCDataChannel, messagesUI: object }>}
+ * @returns {Promise<{ success: boolean, pc: RTCPeerConnection, roomId: string, roomLink: string }>}
  */
 export async function createCall({
   localStream,
@@ -81,10 +81,7 @@ export async function createCall({
   // 3a. Add local media tracks
   addLocalTracks(pc, localStream);
 
-  // 3b. Setup data channel for file transfer
-  const dataChannel = pc.createDataChannel('files', { priority: 'low' }); // TODO: Create separate connection for data channel (priority: low is a temp band aid to mitigate performance issues)
-
-  // 3c. Setup remote stream handler
+  // 3b. Setup remote stream handler
   const remoteStreamSuccess = setupRemoteStream(
     pc,
     remoteVideoEl,
@@ -97,10 +94,10 @@ export async function createCall({
     return { success: false };
   }
 
-  // 3d. Setup ICE candidate gathering and exchange
+  // 3c. Setup ICE candidate gathering and exchange
   setupIceCandidates(pc, role, roomId);
 
-  // 3e. Setup connection state monitoring
+  // 3d. Setup connection state monitoring
   setupConnectionStateHandlers(pc);
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -136,7 +133,6 @@ export async function createCall({
     pc,
     roomId,
     roomLink,
-    dataChannel,
     role,
   };
 }
@@ -164,7 +160,7 @@ export async function createCall({
  * @param {Function} options.setupWatchSync - Function to setup watch-together sync
  * @param {Function} options.onMessagesUIReady - Callback for when messagesUI is initialized (for joiner's async setup)
  *
- * @returns {Promise<{ success: boolean, pc: RTCPeerConnection, roomId: string, dataChannel: RTCDataChannel, messagesUI: object }>}
+ * @returns {Promise<{ success: boolean, pc: RTCPeerConnection, roomId: string }>}
  */
 export async function answerCall({
   roomId,
@@ -231,18 +227,7 @@ export async function answerCall({
   // 3a. Add local media tracks
   addLocalTracks(pc, localStream);
 
-  // 3b. Setup data channel listener (joiner receives from initiator)
-  // Note: ondatachannel may fire during awaits or after return (race condition).
-  // CallController handles late-arriving DataChannels via pc.ondatachannel fallback.
-  let dataChannel = null;
-  pc.ondatachannel = (event) => {
-    dataChannel = event.channel;
-    devDebug('[Call Flow] DataChannel received by joiner', {
-      label: dataChannel.label,
-    });
-  };
-
-  // 3c. Setup remote stream handler
+  // 3b. Setup remote stream handler
   const remoteStreamSuccess = setupRemoteStream(
     pc,
     remoteVideoEl,
@@ -255,10 +240,10 @@ export async function answerCall({
     return { success: false };
   }
 
-  // 3d. Setup ICE candidate gathering and exchange
+  // 3c. Setup ICE candidate gathering and exchange
   setupIceCandidates(pc, role, roomId);
 
-  // 3e. Setup connection state monitoring
+  // 3d. Setup connection state monitoring
   setupConnectionStateHandlers(pc);
 
   devDebug('Peer connection created as joiner', { roomId });
@@ -314,7 +299,6 @@ export async function answerCall({
     success: true,
     pc,
     roomId,
-    dataChannel,
     role,
   };
 }

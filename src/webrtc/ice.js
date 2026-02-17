@@ -11,7 +11,15 @@ import { devDebug } from '../utils/dev/dev-utils.js';
 // WeakMap to store queued candidates per peer connection
 const pendingRemoteCandidates = new WeakMap();
 
-export function setupIceCandidates(pc, role, roomId) {
+/**
+ * @param {RTCPeerConnection} pc
+ * @param {'initiator'|'joiner'} role
+ * @param {string} roomId
+ * @param {Object} [refs] - Optional custom ref getters for data connection signaling
+ * @param {Function} [refs.getLocalCandidatesRef] - Ref builder for local candidates
+ * @param {Function} [refs.getRemoteCandidatesRef] - Ref builder for remote candidates
+ */
+export function setupIceCandidates(pc, role, roomId, refs = {}) {
   if (!pc || !roomId) {
     throw new Error('setupIceCandidates: pc and roomId are required');
   }
@@ -21,37 +29,36 @@ export function setupIceCandidates(pc, role, roomId) {
     pendingRemoteCandidates.set(pc, []);
   }
 
+  // Resolve ref getters — custom refs override defaults
+  let localRefGetter, remoteRefGetter;
   if (role === 'initiator') {
-    setupLocalCandidateSender(pc, 'offerCandidates', roomId);
-    setupRemoteCandidateListener(pc, 'answerCandidates', roomId);
+    localRefGetter = refs.getLocalCandidatesRef ?? getOfferCandidatesRef;
+    remoteRefGetter = refs.getRemoteCandidatesRef ?? getAnswerCandidatesRef;
   } else if (role === 'joiner') {
-    setupLocalCandidateSender(pc, 'answerCandidates', roomId);
-    setupRemoteCandidateListener(pc, 'offerCandidates', roomId);
+    localRefGetter = refs.getLocalCandidatesRef ?? getAnswerCandidatesRef;
+    remoteRefGetter = refs.getRemoteCandidatesRef ?? getOfferCandidatesRef;
   } else {
     throw new Error(`Invalid role: ${role} specified for ICE candidate setup.`);
   }
+
+  setupLocalCandidateSender(pc, localRefGetter, roomId);
+  setupRemoteCandidateListener(pc, remoteRefGetter, roomId);
 }
 
-function setupLocalCandidateSender(pc, path, roomId) {
+function setupLocalCandidateSender(pc, getLocalRef, roomId) {
   pc.onicecandidate = (event) => {
     if (event.candidate) {
-      devDebug(`❄ Local ICE candidate: ${path}`);
-      const candidateRef =
-        path === 'offerCandidates'
-          ? push(getOfferCandidatesRef(roomId))
-          : push(getAnswerCandidatesRef(roomId));
+      devDebug('❄ Local ICE candidate');
+      const candidateRef = push(getLocalRef(roomId));
       set(candidateRef, event.candidate.toJSON());
     } else {
-      devDebug(`❄ ICE gathering complete for ${path}`);
+      devDebug('❄ ICE gathering complete');
     }
   };
 }
 
-function setupRemoteCandidateListener(pc, path, roomId) {
-  const remoteCandidatesRef =
-    path === 'offerCandidates'
-      ? getOfferCandidatesRef(roomId)
-      : getAnswerCandidatesRef(roomId);
+function setupRemoteCandidateListener(pc, getRemoteRef, roomId) {
+  const remoteCandidatesRef = getRemoteRef(roomId);
 
   // Auto-drain setup: flush queue when remote description is set
   let drainListenerAttached = false;
@@ -70,7 +77,7 @@ function setupRemoteCandidateListener(pc, path, roomId) {
   };
 
   const callback = (snapshot) => {
-    devDebug(`❄ Remote ICE candidate added: ${path}`);
+    devDebug('❄ Remote ICE candidate added');
 
     const candidate = snapshot.val();
 
