@@ -363,6 +363,7 @@ class CallController {
     if (!this.listeners.has('member-left')) {
       this.listeners.set('member-left', []);
     }
+
     this.listeners.get('member-left').push({
       callback: onMemberLeftCallback,
       roomId,
