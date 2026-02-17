@@ -7,8 +7,8 @@ import confirmDialog from '../base/confirm-dialog.js';
 import editContactModal from './edit-contact-modal.js';
 import { hideElement, showElement } from '../../utils/ui/ui-utils.js';
 import { messagesUI } from '../messages/messages-ui.js';
-import { isDev } from '../../utils/dev/dev-utils.js';
 import { t, onLocaleChange } from '../../i18n/index.js';
+import { escapeHtml } from '../../utils/dom/dom-utils.js';
 
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
@@ -237,53 +237,40 @@ export async function renderContactsList(lobbyElement) {
   // Ensure container is visible when contacts exist (if using display: none above)
   showElement(contactsContainer);
 
-  // TEMP debug log // TODO remove after testing
-  let i = 0;
-  isDev() &&
-    Object.values(contacts).forEach((contact) => {
-      // console.warn(contact.contactName);
-      if (contact.contactName === 'Töggur Roach') {
-        console.warn(i, contact);
-        i++;
-      }
-    });
-
-  // Render contact items
+  // Render contact items (escape contact names)
   contactsContainer.innerHTML = `
-   <!-- <h3>${t('contact.list.title')}</h3> -->
     <div class="contacts-list">
       ${contactIds
         .map((id) => {
           const contact = contacts[id];
-          const name = contact.contactName || t('contact.no_name');
+          const rawName = contact.contactName || t('contact.no_name');
+          const escapedName = escapeHtml(rawName);
+          const shortName =
+            escapedName.length > MAX_CONTACT_NAME_CHARS
+              ? escapedName.slice(0, MAX_CONTACT_NAME_CHARS - 2) + '..'
+              : escapedName;
           return `
             <div class="contact-entry">
-              <div class="contact-msg-toggle-container" data-contact-id="${id}"></div>
-              
               <button
                 class="contact-call-btn"
-                data-room-id="${contact.roomId || ''}"
-                data-contact-name="${name}"
-                data-contact-id="${id}"
-                title="${t('contact.action.call', { name })}"
+                data-room-id="${escapeHtml(contact.roomId || '')}"
+                data-contact-name="${escapedName}"
+                data-contact-id="${escapeHtml(id)}"
+                title="${escapeHtml(t('contact.action.call', { name: escapedName }))}"
               >
                 <i class="fa fa-phone"></i>
               </button>
 
-              <span class="presence-indicator" data-contact-id="${id}"></span>
+              <span class="presence-indicator" data-contact-id="${escapeHtml(id)}"></span>
 
-              <span class="contact-name" data-contact-id="${id}" data-contact-name="${name}">
-                ${
-                  name.length > MAX_CONTACT_NAME_CHARS
-                    ? name.slice(0, MAX_CONTACT_NAME_CHARS - 2) + '..'
-                    : name
-                }
+              <span class="contact-name" data-contact-id="${escapeHtml(id)}" data-contact-name="${escapedName}">
+                ${shortName}
               </span>
 
               <button
                 class="contact-edit-btn"
-                data-contact-id="${id}"
-                title="${t('contact.action.edit')}"
+                data-contact-id="${escapeHtml(id)}"
+                title="${escapeHtml(t('contact.action.edit'))}"
               >
                 ⋮
               </button>
