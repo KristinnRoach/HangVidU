@@ -525,6 +525,10 @@ class CallController {
       // Add callback to capture messagesUI when it's ready (for joiner's async data channel)
       const onMessagesUIReady = (messagesUI) => {
         this.messagesUI = messagesUI;
+        // Retry file transfer setup if dataChannel arrived before messagesUI
+        if (this.dataChannel && !this.fileTransferController) {
+          this.setupFileTransport(this.dataChannel);
+        }
       };
 
       const result = await answerCallFlow({
@@ -593,12 +597,15 @@ class CallController {
    * @private
    */
   setupFileTransport(dataChannel) {
-    if (!dataChannel || !messagesUI) {
+    // Prefer instance messagesUI over module singleton
+    const ui = this.messagesUI || messagesUI;
+
+    if (!dataChannel || !ui) {
       console.warn(
         'Cannot setup file transport, missing dataChannel or messagesUI',
         {
           hasDataChannel: !!dataChannel,
-          hasMessagesUI: !!messagesUI,
+          hasMessagesUI: !!ui,
         },
       );
       return;
@@ -607,7 +614,7 @@ class CallController {
     const initTransport = () => {
       try {
         this.fileTransferController = new FileTransferController(dataChannel);
-        messagesUI.setFileTransferController(this.fileTransferController);
+        ui.setFileTransferController(this.fileTransferController);
         devDebug('[CallController] File transfer initialized');
       } catch (err) {
         console.error('[CallController] Failed to setup file transfer:', err);

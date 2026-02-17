@@ -48,7 +48,7 @@ import RoomService from '../room.js';
  * @param {Function} options.setupWatchSync - Function to setup watch-together sync
  * @param {string} [options.targetRoomId] - Specific room ID to use (optional, generates random if not provided)
  *
- * @returns {Promise<{ success: boolean, pc: RTCPeerConnection, roomId: string, roomLink: string }>}
+ * @returns {Promise<{ success: boolean, pc: RTCPeerConnection, roomId: string, roomLink: string, role: string }>}
  */
 export async function createCall({
   localStream,
@@ -160,7 +160,7 @@ export async function createCall({
  * @param {Function} options.setupWatchSync - Function to setup watch-together sync
  * @param {Function} options.onMessagesUIReady - Callback for when messagesUI is initialized (for joiner's async setup)
  *
- * @returns {Promise<{ success: boolean, pc: RTCPeerConnection, roomId: string }>}
+ * @returns {Promise<{ success: boolean, pc: RTCPeerConnection, roomId: string, role: string }>}
  */
 export async function answerCall({
   roomId,
