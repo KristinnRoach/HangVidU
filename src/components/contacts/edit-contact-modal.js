@@ -32,7 +32,8 @@ export default function editContactModal(currentName) {
 
     dialog.querySelector('[data-action="delete"]').onclick = () =>
       cleanup({ action: 'delete' });
-    dialog.querySelector('[data-action="cancel"]').onclick = () => cleanup(null);
+    dialog.querySelector('[data-action="cancel"]').onclick = () =>
+      cleanup(null);
     dialog.querySelector('form').onsubmit = (e) => {
       e.preventDefault();
       const name = input.value.trim();
@@ -43,5 +44,18 @@ export default function editContactModal(currentName) {
 
     document.body.appendChild(dialog);
     dialog.showModal();
+
+    // Track unsaved changes
+    let hasUnsavedChanges = false;
+    input.addEventListener('input', () => {
+      hasUnsavedChanges = input.value.trim() !== currentName;
+    });
+
+    // Close on click outside (backdrop click) only if no unsaved changes
+    dialog.addEventListener('click', (e) => {
+      if (e.target === dialog && !hasUnsavedChanges) {
+        cleanup(null);
+      }
+    });
   });
 }
