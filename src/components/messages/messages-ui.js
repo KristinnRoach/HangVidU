@@ -1208,6 +1208,7 @@ export function initMessagesUI() {
             if (opfsId && isSwServingSupported()) {
               try {
                 videoSource = await registerVideoForServing(opfsId, mimeType);
+                devDebug('[MessagesUI] Serving video via SW at:', videoSource);
               } catch (err) {
                 console.warn(
                   '[MessagesUI] SW video registration failed, falling back to blob:',
@@ -1217,6 +1218,7 @@ export function initMessagesUI() {
               }
             } else {
               videoSource = file;
+              devDebug('[MessagesUI] Serving video via in memory blob URL');
             }
 
             // Load video locally first
