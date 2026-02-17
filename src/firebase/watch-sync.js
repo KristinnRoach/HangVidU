@@ -1,4 +1,5 @@
 import { isVideoMime } from '../utils/is-video-mime.js';
+import { showErrorToast } from '../utils/ui/toast.js';
 import { set, update, remove } from 'firebase/database';
 import {
   onDataChange,
@@ -555,7 +556,6 @@ async function loadStream(url) {
 // -----------------------------------------------------------------------------
 // VIDEO SELECTION
 // -----------------------------------------------------------------------------
-export async function handleVideoSelection(source, mimeType) {
   let url;
 
   // Accept File, Blob, or URL string
@@ -583,6 +583,11 @@ export async function handleVideoSelection(source, mimeType) {
 
   currentVideoUrl = url;
   const success = await loadStream(url);
+
+  // Google Drive link failure notification
+  if (!success && typeof url === 'string' && url.includes('drive.google.com')) {
+    showErrorToast('Failed to load Google Drive link');
+  }
 
   if (success) {
     // onWatchModeEntered(); // moved to loadStream()

@@ -29,22 +29,37 @@ const YOUTUBE_API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
 
 // Todo: Move these utils once gdrive integration structured =====
 export function isGoogleDriveUrl(url) {
-  return /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/.test(url);
+  const result =
+    /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)(?:\/|\?|$)/.test(
+      url,
+    );
+  console.debug('[GDRIVE DETECT] url:', url, 'result:', result);
+  return result;
 }
 
 export function extractGoogleDriveFileId(url) {
   const match = url.match(
-    /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/,
+    /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)(?:\/|\?|$)/,
   );
+  console.debug('[GDRIVE EXTRACT] url:', url, 'match:', match);
+
   return match ? match[1] : null;
 }
 
 export function toGoogleDriveDirectLink(url) {
   const fileId = extractGoogleDriveFileId(url);
-  return fileId
+  const directLink = fileId
     ? `https://drive.google.com/uc?export=download&id=${fileId}`
     : null;
+  console.debug(
+    '[GDRIVE DIRECT LINK] fileId:',
+    fileId,
+    'directLink:',
+    directLink,
+  );
+  return directLink;
 }
+
 // Todo =====
 
 // ===== PUBLIC API =====
@@ -89,16 +104,8 @@ export async function initializeSearchUI() {
     focusedResultIndex = index ?? -1;
   };
 
-  // Add search button event listener
-  searchBtn.onclick = async () => {
-    const query = searchQuery.value.trim();
-
-    if (isHidden(searchQuery)) {
-      showElement(searchQuery);
-      searchQuery.focus();
-      return;
-    }
-
+  // Unified search handler
+  async function handleSearchQuery(query) {
     if (!query) {
       clearSearchResults();
       hideElement(searchQuery);
@@ -107,14 +114,16 @@ export async function initializeSearchUI() {
 
     if (hasLoadedSearchResults() && query === lastSearchQuery) {
       displaySearchResults(searchResultsCache);
-    } else if (!isDirectUrl(query)) {
+    } else if (!isDirectUrl(query) && !isGoogleDriveUrl(query)) {
       await searchYouTube(query);
     } else {
-      // Treat as direct video link
+      // Treat as direct video link (with Google Drive support)
       let url = query;
+      devDebug('Direct URL entered:', url);
       if (isGoogleDriveUrl(query)) {
         // Extract direct link from gdrive "View" link
         url = toGoogleDriveDirectLink(query);
+        devDebug('Extracted Google Drive direct link:', url);
       }
 
       await handleVideoSelection({
@@ -131,13 +140,22 @@ export async function initializeSearchUI() {
       focusedResultIndex = -1;
       return;
     }
+  }
+
+  // Add search button event listener
+  searchBtn.onclick = async () => {
+    const query = searchQuery.value.trim();
+    if (isHidden(searchQuery)) {
+      showElement(searchQuery);
+      searchQuery.focus();
+      return;
+    }
+    await handleSearchQuery(query);
   };
 
   searchContainer.addEventListener('keydown', async (e) => {
     const items = searchResults.querySelectorAll('.search-result-item');
     if (items.length > 0 && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-      // e.preventDefault();
-
       // Navigate results
       if (e.key === 'ArrowDown') {
         let next = focusedResultIndex + 1;
@@ -161,29 +179,7 @@ export async function initializeSearchUI() {
         return;
       }
       const query = searchQuery.value.trim();
-      if (query) {
-        if (hasLoadedSearchResults() && query === lastSearchQuery) {
-          displaySearchResults(searchResultsCache);
-        } else if (!isDirectUrl(query)) {
-          await searchYouTube(query);
-        } else {
-          // Treat as direct video link
-          await handleVideoSelection({
-            url: query,
-            title: query,
-            channel: '',
-            thumbnail: '',
-            id: query,
-          });
-
-          hideElement(searchResults);
-          focusedResultIndex = -1;
-
-          searchQuery.value = '';
-          hideElement(searchQuery);
-          return;
-        }
-      }
+      await handleSearchQuery(query);
     } else if (e.key === 'Escape') {
       if (isSearchResultsElVisible()) clearSearchResults();
       else if (searchQuery.value) searchQuery.value = '';
