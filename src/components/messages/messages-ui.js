@@ -1219,6 +1219,12 @@ export function initMessagesUI() {
             } else {
               videoSource = file;
               devDebug('[MessagesUI] Serving video via in memory blob URL');
+              devDebug(
+                'isSwServingSupported():',
+                isSwServingSupported(),
+                'opfsId:',
+                opfsId,
+              );
             }
 
             // Load video locally first
