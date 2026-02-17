@@ -88,9 +88,11 @@ export function enterWatchMode() {
   if (getIsInCallMode()) {
     hideElement(localBoxEl);
     removeFromSmallFrame(localBoxEl);
-    hideElement(remoteBoxEl);
 
-    requestPiP(remoteVideoEl, remoteBoxEl);
+    placeInSmallFrame(remoteBoxEl);
+    showElement(remoteBoxEl);
+    // hideElement(remoteBoxEl);
+    // requestPiP(remoteVideoEl, remoteBoxEl);
   }
 }
 

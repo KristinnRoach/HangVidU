@@ -27,6 +27,26 @@ let cleanupFunctions = [];
 const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
 const YOUTUBE_API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
 
+// Todo: Move these utils once gdrive integration structured =====
+export function isGoogleDriveUrl(url) {
+  return /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/.test(url);
+}
+
+export function extractGoogleDriveFileId(url) {
+  const match = url.match(
+    /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/,
+  );
+  return match ? match[1] : null;
+}
+
+export function toGoogleDriveDirectLink(url) {
+  const fileId = extractGoogleDriveFileId(url);
+  return fileId
+    ? `https://drive.google.com/uc?export=download&id=${fileId}`
+    : null;
+}
+// Todo =====
+
 // ===== PUBLIC API =====
 
 /**
@@ -74,7 +94,6 @@ export async function initializeSearchUI() {
     const query = searchQuery.value.trim();
 
     if (isHidden(searchQuery)) {
-      // Toggle visibility
       showElement(searchQuery);
       searchQuery.focus();
       return;
@@ -85,14 +104,21 @@ export async function initializeSearchUI() {
       hideElement(searchQuery);
       return;
     }
+
     if (hasLoadedSearchResults() && query === lastSearchQuery) {
       displaySearchResults(searchResultsCache);
     } else if (!isDirectUrl(query)) {
       await searchYouTube(query);
     } else {
       // Treat as direct video link
+      let url = query;
+      if (isGoogleDriveUrl(query)) {
+        // Extract direct link from gdrive "View" link
+        url = toGoogleDriveDirectLink(query);
+      }
+
       await handleVideoSelection({
-        url: query,
+        url: url,
         title: query,
         channel: '',
         thumbnail: '',
@@ -178,7 +204,7 @@ export async function initializeSearchUI() {
     {
       ignore: [searchBtn],
       esc: false, // already handled
-    }
+    },
   );
 
   cleanupFunctions.push(closeQueryCleanup);
@@ -189,7 +215,7 @@ export async function initializeSearchUI() {
     {
       ignore: [searchBtn],
       esc: false, // already handled
-    }
+    },
   );
 
   cleanupFunctions.push(closeSearchResultsCleanup);
@@ -235,8 +261,8 @@ async function searchYouTube(query) {
   try {
     const response = await fetch(
       `${YOUTUBE_API_BASE_URL}/search?part=snippet&maxResults=10&q=${encodeURIComponent(
-        query
-      )}&type=video&key=${YOUTUBE_API_KEY}`
+        query,
+      )}&type=video&key=${YOUTUBE_API_KEY}`,
     );
 
     if (!response.ok) {
