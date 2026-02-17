@@ -24,6 +24,7 @@ import {
 import { REACTION_CONFIG } from '../../messaging/reactions/ReactionConfig.js';
 import { getLoggedInUserId, getIsLoggedIn } from '../../auth/auth-state.js';
 import { messagingController } from '../../messaging/messaging-controller.js';
+import { updateLastInteraction } from '../contacts/contacts.js';
 import { showInfoToast } from '../../utils/ui/toast.js';
 import { getUserProfile } from '../../user/profile.js';
 import { createMessageBox } from './createMessageBox.js';
@@ -1084,6 +1085,7 @@ export function initMessagesUI() {
       messagesInput.value = '';
       // Reset textarea height after clearing (JS fallback only)
       if (resetInputHeight) resetInputHeight();
+      if (currentSession.contactId) updateLastInteraction(currentSession.contactId).catch(() => {});
     } else {
       console.warn('[MessagesUI] No active session to send message');
     }
@@ -1505,6 +1507,7 @@ export function initMessagesUI() {
             messageId: msgData.messageId,
             reactions,
           });
+          updateLastInteraction(contactId).catch(() => {});
         }
       },
     });

@@ -965,6 +965,11 @@ export function listenForIncomingOnRoom(roomId) {
               joiningUserId,
             },
           );
+          // Update lastInteractionAt for answered incoming call
+          getContactByRoomId(roomId).then((c) => {
+            if (c?.contactId) updateLastInteraction(c.contactId);
+          }).catch(() => {});
+
           joinOrCreateRoomWithId(roomId).catch((e) => {
             console.warn('Failed to answer incoming call:', e);
             devDebug('Failed to answer incoming call.');
