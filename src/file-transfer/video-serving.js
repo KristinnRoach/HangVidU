@@ -29,8 +29,7 @@ export async function registerVideoForServing(fileId, mimeType) {
 
   sw.postMessage({
     type: 'REGISTER_VIDEO',
-    fileId,
-    mimeType,
+    data: { fileId, mimeType },
   });
 
   return VIDEO_SERVE_PREFIX + encodeURIComponent(fileId);
@@ -46,7 +45,7 @@ export function unregisterVideo(fileId) {
 
   sw.postMessage({
     type: 'UNREGISTER_VIDEO',
-    fileId,
+    data: { fileId },
   });
 }
 
