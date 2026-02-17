@@ -119,5 +119,7 @@ export function closeDataConnection(pc) {
   if (!pc) return;
   try {
     pc.close();
-  } catch (_) {}
+  } catch (err) {
+    console.error('[DataConnection] Error closing data PC:', err);
+  }
 }

@@ -440,8 +440,12 @@ class CallController {
 
       // Track connection state and create data connection once connected
       if (this.pc && typeof this.pc.addEventListener === 'function') {
-        this.pc.addEventListener('connectionstatechange', async () => {
-          if (this.pc.connectionState === 'connected') {
+        const pc = this.pc; // Capture current PC to guard against stale references
+        pc.addEventListener('connectionstatechange', async () => {
+          // Ignore events from stale PeerConnection
+          if (this.pc !== pc) return;
+
+          if (pc.connectionState === 'connected') {
             this.wasConnected = true;
             if (this.state !== 'connected') this.state = 'connected';
 
