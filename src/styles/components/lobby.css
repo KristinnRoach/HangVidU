@@ -95,3 +95,63 @@
   border-radius: var(--radius-md);
   cursor: pointer;
 }
+
+/* Edit Contact Dialog */
+
+.edit-contact-dialog {
+  max-width: 400px;
+  border: none;
+  border-radius: var(--radius-lg);
+  margin: var(--spacing-md);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-md);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.edit-contact-dialog label {
+  display: block;
+  font-size: var(--font-size-sm);
+  margin-bottom: 1rem;
+}
+
+.edit-contact-dialog input {
+  display: block;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  font-size: var(--font-size-base);
+  border: 1px solid var(--border-color, #555);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  box-sizing: border-box;
+}
+
+.edit-contact-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.edit-contact-actions .spacer {
+  flex: 1;
+}
+
+.edit-contact-actions button {
+  padding: 0.5rem 1rem;
+  font-size: var(--font-size-sm);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.edit-contact-actions button.danger {
+  color: #ff4444;
+  background: transparent;
+}
+
+.edit-contact-actions button.danger:hover {
+  background: rgba(255, 68, 68, 0.1);
+}

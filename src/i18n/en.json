@@ -11,6 +11,7 @@
   "shared.sending": "Sending...",
   "shared.contact": "contact",
   "shared.unknown": "Unknown",
+  "shared.save": "Save",
   "shared.dismiss": "Dismiss",
   "shared.enable": "Enable",
   "shared.me": "Me",
@@ -74,7 +75,7 @@
   "contact.none": "No saved contacts yet.",
   "contact.list.title": "Contacts",
   "contact.action.call": "Call {name}",
-  "contact.action.edit": "Edit contact name",
+  "contact.action.edit": "Edit contact",
   "contact.action.delete": "Delete contact",
 
   "message.placeholder": "Type a message...",

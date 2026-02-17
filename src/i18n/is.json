@@ -11,6 +11,7 @@
   "shared.sending": "Sendi...",
   "shared.contact": "tengiliður",
   "shared.unknown": "Óþekktur",
+  "shared.save": "Vista",
   "shared.dismiss": "Hunsa",
   "shared.enable": "Virkja",
   "shared.me": "Ég",
@@ -74,7 +75,7 @@
   "contact.none": "Engir vistaðir tengiliðir enn.",
   "contact.list.title": "Tengiliðir",
   "contact.action.call": "Hringja í {name}",
-  "contact.action.edit": "Breyta nafni tengiliðar",
+  "contact.action.edit": "Uppfæra tengilið",
   "contact.action.delete": "Eyða tengilið",
 
   "message.placeholder": "Sláðu inn skilaboð...",
