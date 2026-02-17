@@ -59,6 +59,23 @@ vi.mock('../../src/webrtc/ice.js', () => {
     drainIceCandidateQueue: vi.fn(),
   };
 });
+vi.mock('../../src/webrtc/data-connection.js', () => {
+  return {
+    createDataConnection: vi.fn(() =>
+      Promise.resolve({
+        pc: { close: vi.fn() },
+        dataChannel: { addEventListener: vi.fn(), readyState: 'open' },
+      }),
+    ),
+    joinDataConnection: vi.fn(() =>
+      Promise.resolve({
+        pc: { close: vi.fn(), ondatachannel: null },
+        dataChannel: { addEventListener: vi.fn(), readyState: 'open' },
+      }),
+    ),
+    closeDataConnection: vi.fn(),
+  };
+});
 
 import CallController from '../../src/webrtc/call-controller.js';
 import {
@@ -81,7 +98,6 @@ describe('CallController (unit)', () => {
       roomId: 'room-123',
       roomLink: 'https://example/?room=room-123',
       role: 'initiator',
-      dataChannel: { addEventListener: vi.fn(), readyState: 'open' },
       messagesUI: {},
     };
     createCallFlow.mockResolvedValueOnce(fakeResult);
@@ -325,7 +341,6 @@ it('tracks cancellation listener in listeners Map after createCall', async () =>
     roomId: 'room-123',
     roomLink: 'https://example/?room=room-123',
     role: 'initiator',
-    dataChannel: { addEventListener: vi.fn(), readyState: 'open' },
     messagesUI: {},
   };
   createCallFlow.mockResolvedValueOnce(fakeResult);
@@ -370,7 +385,6 @@ it('tracks rejection listener in listeners Map after createCall', async () => {
     roomId: 'room-789',
     roomLink: 'https://example/?room=room-789',
     role: 'initiator',
-    dataChannel: { addEventListener: vi.fn(), readyState: 'open' },
     messagesUI: {},
   };
   createCallFlow.mockResolvedValueOnce(fakeResult);
@@ -422,7 +436,6 @@ it('tracks member-joined listener in listeners Map after createCall', async () =
     roomId: 'room-members',
     roomLink: 'https://example/?room=room-members',
     role: 'initiator',
-    dataChannel: { addEventListener: vi.fn(), readyState: 'open' },
     messagesUI: {},
   };
   createCallFlow.mockResolvedValueOnce(fakeResult);
@@ -443,7 +456,6 @@ it('tracks member-left listener in listeners Map after createCall', async () => 
     roomId: 'room-members-left',
     roomLink: 'https://example/?room=room-members-left',
     role: 'initiator',
-    dataChannel: { addEventListener: vi.fn(), readyState: 'open' },
     messagesUI: {},
   };
   createCallFlow.mockResolvedValueOnce(fakeResult);

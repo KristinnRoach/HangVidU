@@ -10,6 +10,7 @@ import { WebRTCFileTransport } from './transport/webrtc-file-transport.js';
 import { StreamingFileWriter } from './streaming-file-writer.js';
 
 const CHUNK_SIZE = TransferConfig.FILE_CONFIG.NETWORK_CHUNK_SIZE; // 64KB
+const CHUNK_YIELD_INTERVAL = TransferConfig.CHUNK_YIELD_INTERVAL; // null = disabled
 const MAX_FILE_SIZE_MB = 5000;
 
 /**
@@ -105,6 +106,12 @@ export class FileTransferController {
 
       if (waitForDrain) {
         await waitForDrain();
+      }
+
+      // Yield event loop periodically so media packets aren't starved.
+      // CHUNK_YIELD_INTERVAL=null disables this for max throughput.
+      if (CHUNK_YIELD_INTERVAL !== null && (i + 1) % CHUNK_YIELD_INTERVAL === 0) {
+        await new Promise((r) => setTimeout(r, 0));
       }
     }
   }

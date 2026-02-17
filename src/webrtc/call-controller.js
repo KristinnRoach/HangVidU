@@ -7,6 +7,11 @@ import {
   createCall as createCallFlow,
   answerCall as answerCallFlow,
 } from './call-flow.js';
+import {
+  createDataConnection,
+  joinDataConnection,
+  closeDataConnection,
+} from './data-connection.js';
 import RoomService from '../room.js';
 import { getUserId } from '../auth/auth-state.js';
 import { ref, off } from 'firebase/database';
@@ -62,10 +67,10 @@ class CallController {
     this.role = null; // initiator | joiner
     this.partnerId = null;
     this.pc = null;
+    this.dataPC = null;
 
     this.fileTransferController = null;
     this.dataChannel = null;
-    this.messagesUI = null;
     this.localVideoEl = null;
     this.remoteVideoEl = null;
     this.isHangingUp = false;
@@ -171,7 +176,8 @@ class CallController {
         console.warn('Failed to clear remote video after cancellation', e);
       }
 
-      // Close peer connection
+      // Close peer connections
+      closeDataConnection(this.dataPC);
       try {
         if (this.pc) {
           this.pc.close();
@@ -356,6 +362,7 @@ class CallController {
     if (!this.listeners.has('member-left')) {
       this.listeners.set('member-left', []);
     }
+
     this.listeners.get('member-left').push({
       callback: onMemberLeftCallback,
       roomId,
@@ -427,23 +434,36 @@ class CallController {
       this.roomId = result.roomId;
       this.roomLink = result.roomLink || null;
       this.role = result.role || 'initiator';
-      this.dataChannel = result.dataChannel || null;
-      this.messagesUI = result.messagesUI || null;
       this.state = 'waiting';
 
-      // Track connection state
+      // Track connection state and create data connection once connected
       if (this.pc && typeof this.pc.addEventListener === 'function') {
-        this.pc.addEventListener('connectionstatechange', () => {
-          if (this.pc.connectionState === 'connected') {
+        const pc = this.pc; // Capture current PC to guard against stale references
+        pc.addEventListener('connectionstatechange', async () => {
+          // Ignore events from stale PeerConnection
+          if (this.pc !== pc) return;
+
+          if (pc.connectionState === 'connected') {
             this.wasConnected = true;
             if (this.state !== 'connected') this.state = 'connected';
+
+            // Create data connection only after media connection is established
+            // (prevents orphaned data signaling if call is cancelled before partner joins)
+            if (!this.dataPC && this.role === 'initiator') {
+              try {
+                const dataResult = await createDataConnection(this.roomId);
+                this.dataPC = dataResult.pc;
+                this.dataChannel = dataResult.dataChannel;
+                this.setupFileTransport(this.dataChannel);
+              } catch (err) {
+                console.warn(
+                  '[CallController] Failed to create data connection:',
+                  err,
+                );
+              }
+            }
           }
         });
-      }
-
-      // Setup file transport when DataChannel opens (for initiator)
-      if (this.dataChannel) {
-        this.setupFileTransport(this.dataChannel);
       }
 
       // Setup answer listener (only for initiator) - must be set up before other listeners
@@ -500,14 +520,8 @@ class CallController {
         this.remoteVideoEl = options.remoteVideoEl;
       }
 
-      // Add callback to capture messagesUI when it's ready (for joiner's async data channel)
-      const onMessagesUIReady = (messagesUI) => {
-        this.messagesUI = messagesUI;
-      };
-
       const result = await answerCallFlow({
         ...options,
-        onMessagesUIReady,
       });
       if (!result || !result.success) {
         this.state = 'idle';
@@ -520,25 +534,25 @@ class CallController {
       this.pc = result.pc;
       this.roomId = result.roomId;
       this.role = result.role || 'joiner';
-      this.dataChannel = result.dataChannel || null;
-      // Only set messagesUI from result if we don't have one and result has one
-      // For initiator: result.messagesUI is defined, sets it here
-      // For joiner: messagesUI set via onMessagesUIReady callback, don't overwrite
-      if (!this.messagesUI && result.messagesUI) {
-        this.messagesUI = result.messagesUI;
-      }
       this.state = 'connected';
       this.wasConnected = true;
 
-      // Setup file transport when DataChannel is ready (for joiner, may be delayed)
-      if (this.dataChannel) {
-        this.setupFileTransport(this.dataChannel);
-      } else if (this.role === 'joiner' && this.pc) {
-        // DataChannel not yet received - set up handler for when it arrives
-        this.pc.ondatachannel = (event) => {
-          this.dataChannel = event.channel;
+      // Join dedicated data connection for file transfer
+      try {
+        const dataResult = await joinDataConnection(this.roomId);
+        this.dataPC = dataResult.pc;
+        this.dataChannel = dataResult.dataChannel;
+        if (this.dataChannel) {
           this.setupFileTransport(this.dataChannel);
-        };
+        } else {
+          // DataChannel not yet received via ondatachannel — wait for it
+          this.dataPC.ondatachannel = (event) => {
+            this.dataChannel = event.channel;
+            this.setupFileTransport(this.dataChannel);
+          };
+        }
+      } catch (err) {
+        console.warn('[CallController] Failed to join data connection:', err);
       }
 
       // Setup cancellation listener (centralized in CallController)
@@ -679,7 +693,10 @@ class CallController {
         // non-fatal
       }
 
-      // Close peer connection
+      // Close peer connections
+      closeDataConnection(this.dataPC);
+      this.dataPC = null;
+
       try {
         if (this.pc) {
           try {
@@ -749,12 +766,10 @@ class CallController {
       StreamingFileWriter.cleanup();
 
       // Cleanup messages UI before resetting state
-      if (this.messagesUI && this.messagesUI.cleanup) {
-        try {
-          this.messagesUI.cleanup();
-        } catch (e) {
-          console.warn('CallController: failed to cleanup messages UI', e);
-        }
+      try {
+        messagesUI.cleanup();
+      } catch (e) {
+        console.warn('CallController: failed to cleanup messages UI', e);
       }
 
       // Reset state
