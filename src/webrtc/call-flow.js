@@ -158,7 +158,6 @@ export async function createCall({
  * @param {HTMLButtonElement} options.mutePartnerBtn - Mute partner button (required)
  * @param {Function} options.setupRemoteStream - Function to setup remote stream handler
  * @param {Function} options.setupWatchSync - Function to setup watch-together sync
- * @param {Function} options.onMessagesUIReady - Callback for when messagesUI is initialized (for joiner's async setup)
  *
  * @returns {Promise<{ success: boolean, pc: RTCPeerConnection, roomId: string, role: string }>}
  */
@@ -169,7 +168,6 @@ export async function answerCall({
   mutePartnerBtn,
   setupRemoteStream,
   setupWatchSync,
-  onMessagesUIReady = null,
 }) {
   // ─────────────────────────────────────────────────────────────────────────
   // 1. VALIDATE PREREQUISITES

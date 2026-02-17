@@ -71,7 +71,6 @@ class CallController {
 
     this.fileTransferController = null;
     this.dataChannel = null;
-    this.messagesUI = null;
     this.localVideoEl = null;
     this.remoteVideoEl = null;
     this.isHangingUp = false;
@@ -435,7 +434,6 @@ class CallController {
       this.roomId = result.roomId;
       this.roomLink = result.roomLink || null;
       this.role = result.role || 'initiator';
-      this.messagesUI = result.messagesUI || null;
       this.state = 'waiting';
 
       // Track connection state and create data connection once connected
@@ -522,18 +520,8 @@ class CallController {
         this.remoteVideoEl = options.remoteVideoEl;
       }
 
-      // Add callback to capture messagesUI when it's ready (for joiner's async data channel)
-      const onMessagesUIReady = (messagesUI) => {
-        this.messagesUI = messagesUI;
-        // Retry file transfer setup if dataChannel arrived before messagesUI
-        if (this.dataChannel && !this.fileTransferController) {
-          this.setupFileTransport(this.dataChannel);
-        }
-      };
-
       const result = await answerCallFlow({
         ...options,
-        onMessagesUIReady,
       });
       if (!result || !result.success) {
         this.state = 'idle';
@@ -546,12 +534,6 @@ class CallController {
       this.pc = result.pc;
       this.roomId = result.roomId;
       this.role = result.role || 'joiner';
-      // Only set messagesUI from result if we don't have one and result has one
-      // For initiator: result.messagesUI is defined, sets it here
-      // For joiner: messagesUI set via onMessagesUIReady callback, don't overwrite
-      if (!this.messagesUI && result.messagesUI) {
-        this.messagesUI = result.messagesUI;
-      }
       this.state = 'connected';
       this.wasConnected = true;
 
@@ -597,15 +579,12 @@ class CallController {
    * @private
    */
   setupFileTransport(dataChannel) {
-    // Prefer instance messagesUI over module singleton
-    const ui = this.messagesUI || messagesUI;
-
-    if (!dataChannel || !ui) {
+    if (!dataChannel || !messagesUI) {
       console.warn(
         'Cannot setup file transport, missing dataChannel or messagesUI',
         {
           hasDataChannel: !!dataChannel,
-          hasMessagesUI: !!ui,
+          hasMessagesUI: !!messagesUI,
         },
       );
       return;
@@ -614,7 +593,7 @@ class CallController {
     const initTransport = () => {
       try {
         this.fileTransferController = new FileTransferController(dataChannel);
-        ui.setFileTransferController(this.fileTransferController);
+        messagesUI.setFileTransferController(this.fileTransferController);
         devDebug('[CallController] File transfer initialized');
       } catch (err) {
         console.error('[CallController] Failed to setup file transfer:', err);
@@ -787,12 +766,10 @@ class CallController {
       StreamingFileWriter.cleanup();
 
       // Cleanup messages UI before resetting state
-      if (this.messagesUI && this.messagesUI.cleanup) {
-        try {
-          this.messagesUI.cleanup();
-        } catch (e) {
-          console.warn('CallController: failed to cleanup messages UI', e);
-        }
+      try {
+        messagesUI.cleanup();
+      } catch (e) {
+        console.warn('CallController: failed to cleanup messages UI', e);
       }
 
       // Reset state
