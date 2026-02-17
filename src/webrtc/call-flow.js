@@ -82,7 +82,7 @@ export async function createCall({
   addLocalTracks(pc, localStream);
 
   // 3b. Setup data channel for file transfer
-  const dataChannel = pc.createDataChannel('files');
+  const dataChannel = pc.createDataChannel('files', { priority: 'low' }); // TODO: Create separate connection for data channel (priority: low is a temp band aid to mitigate performance issues)
 
   // 3c. Setup remote stream handler
   const remoteStreamSuccess = setupRemoteStream(

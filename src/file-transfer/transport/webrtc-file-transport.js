@@ -3,7 +3,7 @@
 
 import { FileTransport } from './file-transport.js';
 
-const BACKPRESSURE_THRESHOLD = 256 * 1024; // 256KB
+const BACKPRESSURE_THRESHOLD = 128 * 1024; // 128KB // TODO: Consider increasing once a separate webrtc connection for file transfers vs calls has been implemented
 
 /**
  * WebRTCFileTransport - DataChannel adapter implementing the raw FileTransport I/O interface.
