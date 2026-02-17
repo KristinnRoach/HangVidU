@@ -94,9 +94,9 @@ export async function handleVideoFetch(request) {
   }
 
   const start = parseInt(match[1], 10);
-  const end = match[2] ? parseInt(match[2], 10) : fileSize - 1;
+  const end = match[2] ? Math.min(parseInt(match[2], 10), fileSize - 1) : fileSize - 1;
 
-  if (start >= fileSize || end >= fileSize || start > end) {
+  if (start >= fileSize || start > end) {
     return new Response('Range Not Satisfiable', {
       status: 416,
       headers: { 'Content-Range': `bytes */${fileSize}` },

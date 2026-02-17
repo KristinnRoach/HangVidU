@@ -52,7 +52,7 @@ export class FileTransferController {
 
     // Start OPFS probe early so isOPFSAvailable() is ready by FILE_META time
     StreamingFileWriter.probeOPFS().then((available) => {
-      devDebug(`[FileTransferController] Is OPFS available: ${available}`);
+      console.info(`[FileTransferController] Is OPFS available: ${available}`);
     });
   }
 

@@ -1,9 +1,11 @@
 import { isVideoMime } from '../utils/is-video-mime.js';
+import { isSwVideoUrl } from '../file-transfer/video-serving.js';
 import { set, update, remove } from 'firebase/database';
 import {
   onDataChange,
   getWatchRef,
   getWatchRequestRef,
+  removeRTDBListenersForRoom,
 } from '../storage/fb-rtdb/rtdb.js';
 import {
   isYouTubeUrl,
@@ -120,6 +122,11 @@ export function cleanupWatchSync() {
   }
   localListenersAttached = false;
 
+  // Remove remote RTDB listeners before nulling currentRoomId
+  if (currentRoomId) {
+    removeRTDBListenersForRoom(currentRoomId);
+  }
+
   currentRoomId = null;
   currentUserId = null;
   justSeeked = false;
@@ -140,10 +147,6 @@ export function cleanupWatchSync() {
 // -----------------------------------------------------------------------------
 function isBlobUrl(url) {
   return typeof url === 'string' && url.startsWith('blob:');
-}
-
-function isSwVideoUrl(url) {
-  return typeof url === 'string' && url.startsWith('/_video-serve/');
 }
 
 /** URL is local-only (blob or SW-served OPFS) — don't sync to remote. */
