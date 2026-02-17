@@ -4,12 +4,13 @@
 // Isolates DataChannel traffic from the media PeerConnection so large
 // file transfers don't compete with video/audio for SCTP bandwidth.
 
-import { set, onValue, off } from 'firebase/database';
+import { set } from 'firebase/database';
 import {
   getDataOfferRef,
   getDataAnswerRef,
   getDataOfferCandidatesRef,
   getDataAnswerCandidatesRef,
+  onDataChange,
 } from '../storage/fb-rtdb/rtdb.js';
 import {
   rtcConfig,
@@ -41,15 +42,20 @@ export async function createDataConnection(roomId) {
   const offer = await createOffer(pc);
   await set(getDataOfferRef(roomId), { type: offer.type, sdp: offer.sdp });
 
-  // Listen for joiner's answer
-  const answerRef = getDataAnswerRef(roomId);
-  const onAnswer = async (snapshot) => {
-    const answer = snapshot.val();
-    if (!answer) return;
-    off(answerRef, 'value', onAnswer);
-    await setRemoteDescription(pc, answer, drainIceCandidateQueue);
-  };
-  onValue(answerRef, onAnswer);
+  // Listen for joiner's answer — tracked so room cleanup removes it automatically
+  onDataChange(
+    getDataAnswerRef(roomId),
+    async (snapshot) => {
+      const answer = snapshot.val();
+      if (!answer) return;
+      try {
+        await setRemoteDescription(pc, answer, drainIceCandidateQueue);
+      } catch (err) {
+        console.warn('[DataConnection] Failed to set data answer:', err);
+      }
+    },
+    roomId,
+  );
 
   devDebug('[DataConnection] Created (initiator)', { roomId });
   return { pc, dataChannel };
@@ -63,7 +69,7 @@ export async function createDataConnection(roomId) {
  * @returns {Promise<{ pc: RTCPeerConnection, dataChannel: RTCDataChannel }>}
  */
 export function joinDataConnection(roomId) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const pc = new RTCPeerConnection(rtcConfig);
     let dataChannel = null;
 
@@ -79,25 +85,29 @@ export function joinDataConnection(roomId) {
       getRemoteCandidatesRef: getDataOfferCandidatesRef,
     });
 
-    // Listen for initiator's data offer
-    const offerRef = getDataOfferRef(roomId);
-    const onOffer = async (snapshot) => {
-      const offer = snapshot.val();
-      if (!offer) return;
-      off(offerRef, 'value', onOffer);
-
-      await setRemoteDescription(pc, offer, drainIceCandidateQueue);
-
-      const answer = await createAnswer(pc);
-      await set(getDataAnswerRef(roomId), {
-        type: answer.type,
-        sdp: answer.sdp,
-      });
-
-      devDebug('[DataConnection] Joined (joiner)', { roomId });
-      resolve({ pc, dataChannel });
-    };
-    onValue(offerRef, onOffer);
+    // Listen for initiator's data offer — tracked so room cleanup removes it
+    onDataChange(
+      getDataOfferRef(roomId),
+      async (snapshot) => {
+        const offer = snapshot.val();
+        if (!offer) return;
+        try {
+          await setRemoteDescription(pc, offer, drainIceCandidateQueue);
+          const answer = await createAnswer(pc);
+          await set(getDataAnswerRef(roomId), {
+            type: answer.type,
+            sdp: answer.sdp,
+          });
+          devDebug('[DataConnection] Joined (joiner)', { roomId });
+          resolve({ pc, dataChannel });
+        } catch (err) {
+          console.warn('[DataConnection] Failed to complete data join:', err);
+          pc.close();
+          reject(err);
+        }
+      },
+      roomId,
+    );
   });
 }
 
