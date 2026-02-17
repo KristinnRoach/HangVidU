@@ -437,24 +437,30 @@ class CallController {
       this.messagesUI = result.messagesUI || null;
       this.state = 'waiting';
 
-      // Track connection state
+      // Track connection state and create data connection once connected
       if (this.pc && typeof this.pc.addEventListener === 'function') {
-        this.pc.addEventListener('connectionstatechange', () => {
+        this.pc.addEventListener('connectionstatechange', async () => {
           if (this.pc.connectionState === 'connected') {
             this.wasConnected = true;
             if (this.state !== 'connected') this.state = 'connected';
+
+            // Create data connection only after media connection is established
+            // (prevents orphaned data signaling if call is cancelled before partner joins)
+            if (!this.dataPC && this.role === 'initiator') {
+              try {
+                const dataResult = await createDataConnection(this.roomId);
+                this.dataPC = dataResult.pc;
+                this.dataChannel = dataResult.dataChannel;
+                this.setupFileTransport(this.dataChannel);
+              } catch (err) {
+                console.warn(
+                  '[CallController] Failed to create data connection:',
+                  err,
+                );
+              }
+            }
           }
         });
-      }
-
-      // Create dedicated data connection for file transfer
-      try {
-        const dataResult = await createDataConnection(this.roomId);
-        this.dataPC = dataResult.pc;
-        this.dataChannel = dataResult.dataChannel;
-        this.setupFileTransport(this.dataChannel);
-      } catch (err) {
-        console.warn('[CallController] Failed to create data connection:', err);
       }
 
       // Setup answer listener (only for initiator) - must be set up before other listeners
