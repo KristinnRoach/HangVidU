@@ -4,21 +4,14 @@ import { ref, set, get, remove, update, onValue, off } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId } from '../../auth/auth-state.js';
 import confirmDialog from '../base/confirm-dialog.js';
+import editContactModal from './edit-contact-modal.js';
 import { hideElement, showElement } from '../../utils/ui/ui-utils.js';
-import { messagingController } from '../../messaging/messaging-controller.js';
 import { messagesUI } from '../messages/messages-ui.js';
-import { createMessageToggle } from '../messages/createMessageToggle.js';
-import { isDev } from '../../utils/dev/dev-utils.js';
 import { t, onLocaleChange } from '../../i18n/index.js';
+import { escapeHtml } from '../../utils/dom/dom-utils.js';
 
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
-
-// Track message badge listeners for cleanup - Map<contactId, unsubscribe function>
-const messageBadgeListeners = new Map();
-
-// Track contact message toggles for cleanup
-const contactMessageToggles = new Map();
 
 // Track locale change listener for cleanup
 let localeUnsubscribe = null;
@@ -244,58 +237,42 @@ export async function renderContactsList(lobbyElement) {
   // Ensure container is visible when contacts exist (if using display: none above)
   showElement(contactsContainer);
 
-  // TEMP debug log // TODO remove after testing
-  let i = 0;
-  isDev() &&
-    Object.values(contacts).forEach((contact) => {
-      // console.warn(contact.contactName);
-      if (contact.contactName === 'Töggur Roach') {
-        console.warn(i, contact);
-        i++;
-      }
-    });
-
-  // Render contact items
+  // Render contact items (escape contact names)
   contactsContainer.innerHTML = `
-    <h3>${t('contact.list.title')}</h3>
     <div class="contacts-list">
       ${contactIds
         .map((id) => {
           const contact = contacts[id];
-          const name = contact.contactName || t('contact.no_name');
+          const rawName = contact.contactName || t('contact.no_name');
+          const escapedName = escapeHtml(rawName);
+          const shortName =
+            escapedName.length > MAX_CONTACT_NAME_CHARS
+              ? escapedName.slice(0, MAX_CONTACT_NAME_CHARS - 2) + '..'
+              : escapedName;
           return `
             <div class="contact-entry">
-              <div class="contact-msg-toggle-container" data-contact-id="${id}"></div>
-              <span
-                class="contact-name"
-                data-room-id="${contact.roomId || ''}"
-                data-contact-name="${name}"
-                data-contact-id="${id}"
-                title="${t('contact.action.call', { name })}"
+              <button
+                class="contact-call-btn"
+                data-room-id="${escapeHtml(contact.roomId || '')}"
+                data-contact-name="${escapedName}"
+                data-contact-id="${escapeHtml(id)}"
+                title="${escapeHtml(t('contact.action.call', { name: escapedName }))}"
               >
-                <span class="presence-indicator" data-contact-id="${id}"></span>
                 <i class="fa fa-phone"></i>
-                ${
-                  name.length > MAX_CONTACT_NAME_CHARS
-                    ? name.slice(0, MAX_CONTACT_NAME_CHARS - 2) + '..'
-                    : name
-                }
+              </button>
+
+              <span class="presence-indicator" data-contact-id="${escapeHtml(id)}"></span>
+
+              <span class="contact-name" data-contact-id="${escapeHtml(id)}" data-contact-name="${escapedName}">
+                ${shortName}
               </span>
 
               <button
                 class="contact-edit-btn"
-                data-contact-id="${id}"
-                title="${t('contact.action.edit')}"
+                data-contact-id="${escapeHtml(id)}"
+                title="${escapeHtml(t('contact.action.edit'))}"
               >
-                ✏️
-              </button>
-
-              <button
-                class="contact-delete-btn"
-                data-contact-id="${id}"
-                title="${t('contact.action.delete')}"
-              >
-                ✕
+                ⋮
               </button>
 
             </div>
@@ -310,31 +287,14 @@ export async function renderContactsList(lobbyElement) {
 
   // Setup presence indicators for each contact
   setupPresenceIndicators(contactIds);
-
-  // Create message toggles directly (no placeholders needed)
-  await createContactMessageToggles(contactsContainer, contactIds, contacts);
 }
 
 /**
  * Attach event listeners to contact list elements.
  */
 function attachContactListeners(container, lobbyElement) {
-  // Message buttons - click to open messaging
-  container.querySelectorAll('.contact-message-btn').forEach((btn) => {
-    btn.onclick = (e) => {
-      e.stopPropagation(); // Don't trigger other handlers
-      const contactId = btn.getAttribute('data-contact-id');
-      const contactName = btn.getAttribute('data-contact-name');
-      if (contactId) {
-        messagesUI.openContactMessages(contactId, contactName);
-        const toggle = contactMessageToggles.get(contactId);
-        if (toggle) toggle.clearBadge();
-      }
-    };
-  });
-
-  // Contact names - click to call
-  container.querySelectorAll('.contact-name').forEach((nameEl) => {
+  // Call buttons - click to call
+  container.querySelectorAll('.contact-call-btn').forEach((nameEl) => {
     nameEl.onclick = async () => {
       let roomId = nameEl.getAttribute('data-room-id');
       const contactName = nameEl.getAttribute('data-contact-name');
@@ -350,21 +310,18 @@ function attachContactListeners(container, lobbyElement) {
     };
   });
 
-  // Delete buttons
-  container.querySelectorAll('.contact-delete-btn').forEach((btn) => {
-    btn.onclick = async () => {
-      const contactId = btn.getAttribute('data-contact-id');
-      if (!contactId) return;
-
-      const confirmed = await confirmDialog(t('contact.delete.confirm'));
-      if (!confirmed) return;
-
-      await deleteContact(contactId);
-      await renderContactsList(lobbyElement);
+  // Contact name - click to open messages
+  container.querySelectorAll('.contact-name[data-contact-id]').forEach((el) => {
+    el.onclick = () => {
+      const contactId = el.getAttribute('data-contact-id');
+      const contactName = el.getAttribute('data-contact-name');
+      if (contactId) {
+        messagesUI.openContactMessages(contactId, contactName);
+      }
     };
   });
 
-  // Edit buttons
+  // Edit buttons — opens modal with rename + delete
   container.querySelectorAll('.contact-edit-btn').forEach((btn) => {
     btn.onclick = async () => {
       const contactId = btn.getAttribute('data-contact-id');
@@ -374,11 +331,17 @@ function attachContactListeners(container, lobbyElement) {
       const contact = contacts[contactId];
       if (!contact) return;
 
-      const newName = prompt(t('contact.name.edit'), contact.contactName);
-      if (newName && newName.trim() && newName.trim() !== contact.contactName) {
-        await saveContactData(contactId, newName.trim(), contact.roomId);
-        await renderContactsList(lobbyElement);
+      const result = await editContactModal(contact.contactName || '');
+      if (!result) return;
+
+      if (result.action === 'rename') {
+        await saveContactData(contactId, result.name, contact.roomId);
+      } else if (result.action === 'delete') {
+        const confirmed = await confirmDialog(t('contact.delete.confirm'));
+        if (!confirmed) return;
+        await deleteContact(contactId);
       }
+      await renderContactsList(lobbyElement);
     };
   });
 }
@@ -421,136 +384,6 @@ function setupPresenceIndicators(contactIds) {
   });
 }
 
-// Track if toggle replacement is in progress to prevent race conditions
-let toggleReplacementInProgress = false;
-let toggleReplacementTimeout = null;
-
-/**
- * Create message toggle components for contacts.
- * Creates toggle for each contact with unread badge support.
- */
-async function createContactMessageToggles(container, contactIds, contacts) {
-  if (!getLoggedInUserId()) return; // Only for logged-in users
-
-  // Wait if another replacement is in progress (with timeout)
-  const maxWait = 10; // 10 attempts x 100ms = 1 second max wait
-  let attempts = 0;
-  while (toggleReplacementInProgress && attempts < maxWait) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    attempts++;
-  }
-
-  if (toggleReplacementInProgress) {
-    console.debug(
-      '[CONTACTS] Toggle replacement still in progress after waiting, skipping',
-    );
-    return;
-  }
-
-  toggleReplacementInProgress = true;
-
-  // Safety timeout: force reset flag after 5 seconds to prevent permanent lock
-  if (toggleReplacementTimeout) {
-    clearTimeout(toggleReplacementTimeout);
-  }
-  toggleReplacementTimeout = setTimeout(() => {
-    console.warn('[CONTACTS] Toggle replacement timeout - forcing flag reset');
-    toggleReplacementInProgress = false;
-  }, 5000);
-
-  try {
-    // Clean up old toggles before creating new ones
-    contactMessageToggles.forEach((toggle) => {
-      toggle.cleanup();
-    });
-    contactMessageToggles.clear();
-
-    // Clean up old badge listeners
-    messageBadgeListeners.forEach((unsubscribe) => {
-      unsubscribe();
-    });
-    messageBadgeListeners.clear();
-
-    const myUserId = getLoggedInUserId();
-
-    // Phase 1: Create all toggles immediately (non-blocking)
-    for (const contactId of contactIds) {
-      const contact = contacts[contactId];
-      const toggleContainer = container.querySelector(
-        `.contact-msg-toggle-container[data-contact-id="${contactId}"]`,
-      );
-
-      if (!toggleContainer) {
-        console.warn(
-          `[CONTACTS] No toggle container found for contact ${contactId}`,
-        );
-        continue;
-      }
-
-      // Create toggle with 0 count initially - will update asynchronously
-      const toggle = createMessageToggle({
-        parent: toggleContainer,
-        onToggle: () => {
-          messagesUI.openContactMessages(contactId, contact.contactName, true);
-          const toggle = contactMessageToggles.get(contactId);
-          if (toggle) toggle.clearBadge();
-        },
-        icon: '💬',
-        initialUnreadCount: 0,
-      });
-
-      if (!toggle) {
-        console.error(
-          `[CONTACTS] Failed to create toggle for contact ${contactId}`,
-        );
-        continue;
-      }
-
-      // Store toggle reference
-      contactMessageToggles.set(contactId, toggle);
-
-      // Set up real-time listener for badge updates via messaging controller
-      const unsubscribe = messagingController.listenToUnreadCount(
-        contactId,
-        (count) => {
-          toggle.setUnreadCount(count);
-          if (count > 0) updateLastInteraction(contactId);
-        },
-      );
-
-      // Track unsubscribe function for cleanup
-      messageBadgeListeners.set(contactId, unsubscribe);
-    }
-
-    // Phase 2: Fetch all unread counts in parallel (non-blocking)
-    Promise.all(
-      contactIds.map((contactId) =>
-        messagingController
-          .getUnreadCount(contactId)
-          .then((count) => {
-            const toggle = contactMessageToggles.get(contactId);
-            if (toggle) {
-              toggle.setUnreadCount(count);
-            }
-          })
-          .catch((err) =>
-            console.warn(
-              `[CONTACTS] Failed to get unread count for ${contactId}:`,
-              err,
-            ),
-          ),
-      ),
-    );
-  } finally {
-    // Clear timeout and reset flag
-    if (toggleReplacementTimeout) {
-      clearTimeout(toggleReplacementTimeout);
-      toggleReplacementTimeout = null;
-    }
-    toggleReplacementInProgress = false;
-  }
-}
-
 /**
  * Delete a contact.
  */
@@ -584,12 +417,6 @@ export function cleanupContacts() {
     off(presenceRef, 'value', callback);
   });
   presenceListeners.clear();
-
-  messageBadgeListeners.forEach((unsubscribe) => unsubscribe());
-  messageBadgeListeners.clear();
-
-  contactMessageToggles.forEach((toggle) => toggle.cleanup());
-  contactMessageToggles.clear();
 
   if (localeUnsubscribe) {
     localeUnsubscribe();
