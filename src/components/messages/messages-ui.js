@@ -1420,7 +1420,7 @@ export function initMessagesUI() {
    * @param {string} contactName - Display name for the contact
    * @param {boolean} [openMessageBox=false] - Whether to open the message box immediately
    */
-  function openContactMessages(contactId, contactName, openMessageBox = false) {
+  function openContactMessages(contactId, contactName, openMessageBox = true) {
     if (!getLoggedInUserId()) {
       showInfoToast(t('message.sign_in_required'));
       return;

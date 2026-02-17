@@ -75,58 +75,65 @@
         transform: scale(0.95);
       }
 
+      & .contact-call-btn {
+        background: none;
+        border: none;
+        box-shadow: none;
+        padding: 0.4rem;
+        cursor: pointer;
+        color: rgb(74, 172, 74);
+        font-size: 0.95rem;
+        opacity: 0.85;
+        flex-shrink: 0;
+
+        & .fa-phone {
+          rotate: 0deg;
+        }
+      }
+
+      & .contact-call-btn:hover {
+        opacity: 1;
+
+        & .fa-phone {
+          opacity: 1;
+          rotate: 15deg;
+          color: rgb(70, 200, 70);
+        }
+      }
+
+      & .presence-indicator {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #666;
+        transition: background-color 0.3s ease;
+        flex-shrink: 0;
+
+        &.online {
+          background-color: #00d26a;
+        }
+      }
+
       & .contact-name {
         flex: 1;
-        cursor: pointer;
         user-select: none;
         padding: 0.5rem 0.75rem;
         border-radius: 6px;
-        transition: background-color 0.2s ease;
         font-size: 1rem;
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        /* ensure long names truncate instead of pushing layout */
         min-width: 0;
         overflow: hidden;
         white-space: nowrap;
         text-overflow: ellipsis;
-
-        & .presence-indicator {
-          display: inline-block;
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background-color: #444;
-          transition: background-color 0.3s ease;
-
-          &.online {
-            background-color: #00d26a;
-          }
-        }
-
-        & .fa-phone {
-          font-size: 0.95rem;
-          opacity: 0.85;
-          rotate: 15deg;
-
-          color: rgb(74, 172, 74);
-        }
-
-        .presence-indicator,
-        .fa-phone {
-          flex-shrink: 0;
-        }
+        cursor: pointer;
+        transition: background-color 0.2s ease;
       }
 
       & .contact-name:hover {
         background-color: rgba(91, 168, 95, 0.2);
-
-        & .fa-phone {
-          opacity: 1;
-          rotate: 35deg;
-          color: rgb(70, 200, 70);
-        }
       }
 
       & .contact-name:active {

@@ -266,15 +266,20 @@ export async function renderContactsList(lobbyElement) {
           return `
             <div class="contact-entry">
               <div class="contact-msg-toggle-container" data-contact-id="${id}"></div>
-              <span
-                class="contact-name"
+              
+              <button
+                class="contact-call-btn"
                 data-room-id="${contact.roomId || ''}"
                 data-contact-name="${name}"
                 data-contact-id="${id}"
                 title="${t('contact.action.call', { name })}"
               >
-                <span class="presence-indicator" data-contact-id="${id}"></span>
                 <i class="fa fa-phone"></i>
+              </button>
+
+              <span class="presence-indicator" data-contact-id="${id}"></span>
+
+              <span class="contact-name" data-contact-id="${id}" data-contact-name="${name}">
                 ${
                   name.length > MAX_CONTACT_NAME_CHARS
                     ? name.slice(0, MAX_CONTACT_NAME_CHARS - 2) + '..'
@@ -333,8 +338,8 @@ function attachContactListeners(container, lobbyElement) {
     };
   });
 
-  // Contact names - click to call
-  container.querySelectorAll('.contact-name').forEach((nameEl) => {
+  // Call buttons - click to call
+  container.querySelectorAll('.contact-call-btn').forEach((nameEl) => {
     nameEl.onclick = async () => {
       let roomId = nameEl.getAttribute('data-room-id');
       const contactName = nameEl.getAttribute('data-contact-name');
@@ -361,6 +366,19 @@ function attachContactListeners(container, lobbyElement) {
 
       await deleteContact(contactId);
       await renderContactsList(lobbyElement);
+    };
+  });
+
+  // Contact name - click to open messages
+  container.querySelectorAll('.contact-name[data-contact-id]').forEach((el) => {
+    el.onclick = () => {
+      const contactId = el.getAttribute('data-contact-id');
+      const contactName = el.getAttribute('data-contact-name');
+      if (contactId) {
+        messagesUI.openContactMessages(contactId, contactName);
+        const toggle = contactMessageToggles.get(contactId);
+        if (toggle) toggle.clearBadge();
+      }
     };
   });
 
@@ -491,7 +509,7 @@ async function createContactMessageToggles(container, contactIds, contacts) {
       const toggle = createMessageToggle({
         parent: toggleContainer,
         onToggle: () => {
-          messagesUI.openContactMessages(contactId, contact.contactName, true);
+          messagesUI.openContactMessages(contactId, contact.contactName);
           const toggle = contactMessageToggles.get(contactId);
           if (toggle) toggle.clearBadge();
         },

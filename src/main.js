@@ -1889,7 +1889,7 @@ CallController.on('memberJoined', ({ memberId, roomId }) => {
   messagesUI.showMessagesToggle();
 
   // Open contact messaging UI with partner
-  messagesUI.openContactMessages(memberId, memberId); // Use memberId as name for now
+  messagesUI.openContactMessages(memberId, memberId, false); // Prep session, don't open UI during call connect
 
   // onCallConnected(); // ! Moved to bind-call-ui.js
 
