@@ -1,5 +1,4 @@
 import { isVideoMime } from '../utils/is-video-mime.js';
-import { showErrorToast } from '../utils/ui/toast.js';
 import { set, update, remove } from 'firebase/database';
 import {
   onDataChange,
@@ -556,6 +555,7 @@ async function loadStream(url) {
 // -----------------------------------------------------------------------------
 // VIDEO SELECTION
 // -----------------------------------------------------------------------------
+export async function handleVideoSelection(source, mimeType) {
   let url;
 
   // Accept File, Blob, or URL string

@@ -51,7 +51,9 @@ export class FileTransferController {
     this.transport.onMessage((data) => this._handleMessage(data));
 
     // Start OPFS probe early so isOPFSAvailable() is ready by FILE_META time
-    StreamingFileWriter.probeOPFS();
+    StreamingFileWriter.probeOPFS().then((available) => {
+      devDebug(`[FileTransferController] Is OPFS available: ${available}`);
+    });
   }
 
   /**
