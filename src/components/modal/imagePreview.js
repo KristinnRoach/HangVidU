@@ -4,9 +4,9 @@
  *
  * @param {string} src - Image src (data URL or object URL)
  * @param {string} fileName - File name used for the download link
- * @param {string} downloadLabel - Label for the download link
+ * @param {string|null} downloadLabel - Label for the download link (string or null)
  */
-export function showImagePreview(src, fileName, downloadLabel = 'Download') {
+export function showImagePreview(src, fileName, downloadLabel = null) {
   const dialog = document.createElement('dialog');
   dialog.className = 'image-preview-dialog';
 
@@ -18,14 +18,25 @@ export function showImagePreview(src, fileName, downloadLabel = 'Download') {
   const downloadBtn = document.createElement('a');
   downloadBtn.href = src;
   downloadBtn.download = fileName;
-  downloadBtn.textContent = downloadLabel;
   downloadBtn.className = 'image-preview-download';
+  // Font Awesome download icon
+  const downloadIcon = document.createElement('i');
+  downloadIcon.className = 'fa fa-download';
+  downloadBtn.appendChild(downloadIcon);
+  if (typeof downloadLabel === 'string' && downloadLabel.trim() !== '') {
+    const labelSpan = document.createElement('span');
+    labelSpan.textContent = ' ' + downloadLabel;
+    downloadBtn.appendChild(labelSpan);
+  }
 
   const closeBtn = document.createElement('button');
-  closeBtn.textContent = 'x';
   closeBtn.className = 'image-preview-close';
   closeBtn.setAttribute('aria-label', 'Close');
   closeBtn.setAttribute('title', 'Close Image Preview');
+  // Font Awesome close icon
+  const closeIcon = document.createElement('i');
+  closeIcon.className = 'fa fa-close';
+  closeBtn.appendChild(closeIcon);
   closeBtn.addEventListener('click', () => dialog.close());
 
   dialog.appendChild(img);

@@ -1001,7 +1001,7 @@ export function initMessagesUI() {
       img.alt = fileName;
       img.style.cssText =
         'max-width: 200px; max-height: 200px; border-radius: 8px; cursor: pointer; display: block; margin-bottom: 4px;';
-      img.addEventListener('click', () => showImagePreview(dataUrl, fileName, t('message.download')));
+      img.addEventListener('click', () => showImagePreview(dataUrl, fileName));
       textSpan.appendChild(img);
     }
 
@@ -1086,7 +1086,8 @@ export function initMessagesUI() {
       messagesInput.value = '';
       // Reset textarea height after clearing (JS fallback only)
       if (resetInputHeight) resetInputHeight();
-      if (currentSession.contactId) updateLastInteraction(currentSession.contactId).catch(() => {});
+      if (currentSession.contactId)
+        updateLastInteraction(currentSession.contactId).catch(() => {});
     } else {
       console.warn('[MessagesUI] No active session to send message');
     }
