@@ -10,6 +10,7 @@ import {
   exitPiP,
   requestPiP,
 } from '../utils/ui/ui-utils.js';
+import { devDebug } from '../utils/dev/dev-utils.js';
 
 // ============================================================================
 // STATE
@@ -160,7 +161,11 @@ export function initializeMediaControls({
       if (isElementInPictureInPicture(remoteVideo)) {
         await exitPiP(remoteVideo);
       } else {
-        await requestPiP(remoteVideo, remoteVideo.parentElement);
+        const pipResult = await requestPiP(
+          remoteVideo,
+          remoteVideo.parentElement,
+        );
+        devDebug('Picture-in-Picture result:', pipResult);
       }
     };
   }
