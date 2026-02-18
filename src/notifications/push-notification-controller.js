@@ -95,7 +95,7 @@ export class PushNotificationController {
       return { state: 'denied', reason: 'unsupported' };
     }
 
-    const browser = this.detectBrowser(); // Todo: use / integrate
+    const browser = this.detectBrowser();
     const before = Notification.permission;
 
     // Sync internal state to ensure enable() works if permission was already granted
@@ -103,15 +103,18 @@ export class PushNotificationController {
 
     // If already granted, enable and return success
     if (before === 'granted') {
-      await this.enable();
+      const enabled = await this.enable();
+      if (!enabled) {
+        return { state: 'error', reason: 'enable-failed', browser };
+      }
       onGranted?.();
-      return { state: 'granted' };
+      return { state: 'granted', browser };
     }
 
     // If previously denied, provide guidance
     if (before === 'denied') {
       onDenied?.('already-denied');
-      return { state: 'denied', reason: 'already-denied' };
+      return { state: 'denied', reason: 'already-denied', browser };
     }
 
     // Request permission (must be called from user gesture)
@@ -131,26 +134,29 @@ export class PushNotificationController {
 
     // Handle permission result
     if (permission === 'granted') {
-      await this.enable();
+      const enabled = await this.enable();
+      if (!enabled) {
+        return { state: 'error', reason: 'enable-failed', browser };
+      }
       onGranted?.();
-      return { state: 'granted' };
+      return { state: 'granted', browser };
     }
 
     // Detect silent block (permission denied without visible prompt)
     if (before === 'default' && permission === 'denied') {
       onDenied?.('silent-block');
-      return { state: 'denied', reason: 'silent-block' };
+      return { state: 'denied', reason: 'silent-block', browser };
     }
 
     // Handle dismissed/default state
     if (permission === 'default') {
       onDismissed?.();
-      return { state: 'dismissed' };
+      return { state: 'dismissed', browser };
     }
 
     // Generic denied
     onDenied?.();
-    return { state: 'denied' };
+    return { state: 'denied', browser };
   }
 
   /**
