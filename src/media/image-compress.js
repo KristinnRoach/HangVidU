@@ -19,6 +19,12 @@ export async function compressImage(file, quality = 0.85) {
 
   const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
   const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    bitmap.close();
+    return null;
+  }
+
   ctx.drawImage(bitmap, 0, 0);
   bitmap.close();
 
