@@ -15,7 +15,7 @@ class RingtoneManager {
     const baseUrl = import.meta.env.BASE_URL;
     this.incomingSrc = incomingSrc ?? `${baseUrl}sounds/incoming.mp3`;
     this.outgoingSrc = outgoingSrc ?? `${baseUrl}sounds/outgoing.mp3`;
-    this.defaultVolume = volume ?? 0.7;
+    this.defaultVolume = volume ?? 0.4; // 0.0 to 1.0;
     this.currentPlayer = null;
     this.currentType = null; // 'incoming', 'outgoing', or null
   }
