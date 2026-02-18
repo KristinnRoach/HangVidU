@@ -2008,6 +2008,9 @@ CallController.on(
     cleanupRemoteStream();
     clearUrlParam();
 
+    // Re-render contacts list so sort order reflects updated lastInteractionAt
+    renderContactsList(lobbyDiv).catch(() => {});
+
     // Re-attach incoming listener so the next call on this room is detected
     if (roomId && reason !== 'page_unload') {
       listenForIncomingOnRoom(roomId);

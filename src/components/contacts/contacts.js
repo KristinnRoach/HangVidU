@@ -24,7 +24,11 @@ function getSortedContactIds(contacts) {
   return Object.keys(contacts).sort((a, b) => {
     const aTime = contacts[a]?.lastInteractionAt || contacts[a]?.savedAt || 0;
     const bTime = contacts[b]?.lastInteractionAt || contacts[b]?.savedAt || 0;
-    return bTime - aTime;
+    if (aTime !== bTime) return bTime - aTime;
+    // Alphabetical by display name when timestamps are equal
+    const aName = (contacts[a]?.contactName || '').toLowerCase();
+    const bName = (contacts[b]?.contactName || '').toLowerCase();
+    return aName.localeCompare(bName);
   });
 }
 
