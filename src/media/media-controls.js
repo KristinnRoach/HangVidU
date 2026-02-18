@@ -157,7 +157,7 @@ export function initializeMediaControls({
 
   // TODO: Resolve stream freezing issue when entering PiP and re-enable PiP button
   // TEMPORARY: Disable PiP button in PROD until the issue of stream freezing is resolved
-  const TEMP_DISABL_PIP = !isDev() && true;
+  const TEMP_DISABL_PIP = !isDev();
 
   if (!TEMP_DISABL_PIP && remotePipBtn && isPiPSupported()) {
     remotePipBtn.onclick = async () => {
