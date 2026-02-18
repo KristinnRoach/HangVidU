@@ -23,6 +23,7 @@
 @import './components/notifications.css';
 @import './components/incoming-call.css';
 @import './components/toast.css';
+@import './components/image-preview-dialog.css';
 
 /* Default visible state for elements that toggle visibility */
 .video-box,

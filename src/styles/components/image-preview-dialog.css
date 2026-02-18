@@ -1,0 +1,33 @@
+.image-preview-dialog {
+  background: none;
+  border: none;
+  padding: 0;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
+.image-preview-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.image-preview-img {
+  display: block;
+  max-width: 90vw;
+  max-height: 80vh;
+  border-radius: var(--radius-lg);
+}
+
+.image-preview-download {
+  display: block;
+  text-align: center;
+  margin-top: var(--spacing-sm);
+  color: var(--text-secondary);
+  background: transparent;
+  text-decoration: underline;
+}
+
+.image-preview-download:hover {
+  color: var(--text-primary);
+  scale: 1.05;
+  transition: transform 0.2s ease;
+}
