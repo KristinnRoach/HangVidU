@@ -765,11 +765,13 @@ class CallController {
       // Clear OPFS temp files
       StreamingFileWriter.cleanup();
 
-      // Cleanup messages UI before resetting state
+      // Reset messages UI state (clear messages, hide toggle) but keep DOM intact
+      // so openContactMessages still works after a call ends.
+      // cleanup() destroys the singleton's DOM which can't be re-created.
       try {
-        messagesUI.cleanup();
+        messagesUI.reset();
       } catch (e) {
-        console.warn('CallController: failed to cleanup messages UI', e);
+        console.warn('CallController: failed to reset messages UI', e);
       }
 
       // Reset state
