@@ -2005,13 +2005,6 @@ CallController.on(
     // hideCallingUI(); // ! Moved to bind-call-ui.js
     // onCallDisconnected(); // ! Moved to bind-call-ui.js
 
-    // Clean up messages UI if present
-    const state = CallController.getState();
-    if (state.messagesUI && typeof state.messagesUI.cleanup === 'function') {
-      state.messagesUI.cleanup();
-      state.messagesUI = null;
-    }
-
     cleanupRemoteStream();
     clearUrlParam();
 
@@ -2047,10 +2040,7 @@ async function cleanup() {
 
   exitPiP();
 
-  const state = CallController.getState();
-  if (state.messagesUI && state.messagesUI.cleanup) {
-    state.messagesUI.cleanup();
-  }
+  messagesUI.cleanup();
 
   // Clear URL parameter
   window.history.replaceState({}, document.title, window.location.pathname);
