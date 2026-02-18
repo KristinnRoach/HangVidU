@@ -9,7 +9,9 @@ import {
   isElementInPictureInPicture,
   exitPiP,
   requestPiP,
+  isPiPSupported,
 } from '../utils/ui/ui-utils.js';
+import { devDebug, isDev, isProd } from '../utils/dev/dev-utils.js';
 
 // ============================================================================
 // STATE
@@ -152,7 +154,12 @@ export function initializeMediaControls({
   }
 
   // ===== PICTURE-IN-PICTURE FOR REMOTE VIDEO =====
-  if (remotePipBtn) {
+
+  // TODO: Resolve stream freezing issue when entering PiP and re-enable PiP button
+  // TEMPORARY: Disable PiP button in PROD until the issue of stream freezing is resolved
+  const TEMP_DISABL_PIP = !isDev();
+
+  if (!TEMP_DISABL_PIP && remotePipBtn && isPiPSupported()) {
     remotePipBtn.onclick = async () => {
       const remoteVideo = getRemoteVideo();
       if (!remoteVideo) return;
@@ -160,9 +167,15 @@ export function initializeMediaControls({
       if (isElementInPictureInPicture(remoteVideo)) {
         await exitPiP(remoteVideo);
       } else {
-        await requestPiP(remoteVideo, remoteVideo.parentElement);
+        const pipResult = await requestPiP(
+          remoteVideo,
+          remoteVideo.parentElement,
+        );
+        devDebug('Picture-in-Picture result:', pipResult);
       }
     };
+
+    showElement(remotePipBtn);
   }
 }
 

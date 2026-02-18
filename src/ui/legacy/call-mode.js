@@ -95,6 +95,9 @@ export const enterCallMode = () => {
 
   if (!cleanupRemoteLeavePipHandler) {
     const remoteLeavePipHandler = () => {
+      remoteBoxEl.style.opacity = '';
+      remoteBoxEl.style.pointerEvents = '';
+
       if (!isInCallMode) return; // Call ended, don't restore video
       if (isWatchModeActive()) placeInSmallFrame(remoteBoxEl);
       else removeFromSmallFrame(remoteBoxEl);
@@ -116,7 +119,12 @@ export const enterCallMode = () => {
   }
 
   if (!cleanupRemoteEnterPipHandler) {
-    const remoteEnterPipHandler = () => hideElement(remoteBoxEl);
+    const remoteEnterPipHandler = () => {
+      // opacity:0 keeps the compositor pipeline active (unlike display:none or visibility:hidden)
+      // so the PiP window continues to receive frames from the video element
+      remoteBoxEl.style.opacity = '0';
+      remoteBoxEl.style.pointerEvents = 'none';
+    };
 
     remoteVideoEl.addEventListener(
       'enterpictureinpicture',
