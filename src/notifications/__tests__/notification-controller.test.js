@@ -258,4 +258,144 @@ describe('PushNotificationController', () => {
       expect(browser.length).toBeGreaterThan(0);
     });
   });
+
+  describe('requestPermission', () => {
+    let originalNotification;
+
+    beforeEach(async () => {
+      originalNotification = globalThis.Notification;
+      await controller.initialize();
+    });
+
+    afterEach(() => {
+      if (originalNotification) {
+        globalThis.Notification = originalNotification;
+      }
+    });
+
+    it('should return unsupported when notifications are not supported', async () => {
+      // Make isNotificationSupported return false
+      vi.spyOn(controller, 'isNotificationSupported').mockReturnValue(false);
+
+      const result = await controller.requestPermission();
+      expect(result).toEqual({ state: 'denied', reason: 'unsupported' });
+    });
+
+    it('should return already-denied with browser when permission is denied', async () => {
+      vi.stubGlobal('Notification', {
+        permission: 'denied',
+        requestPermission: vi.fn(),
+      });
+      vi.spyOn(controller, 'isNotificationSupported').mockReturnValue(true);
+
+      const result = await controller.requestPermission();
+      expect(result.state).toBe('denied');
+      expect(result.reason).toBe('already-denied');
+      expect(typeof result.browser).toBe('string');
+    });
+
+    it('should return granted with browser when permission is already granted and enable succeeds', async () => {
+      vi.stubGlobal('Notification', {
+        permission: 'granted',
+        requestPermission: vi.fn(),
+      });
+      vi.spyOn(controller, 'isNotificationSupported').mockReturnValue(true);
+
+      const result = await controller.requestPermission();
+      expect(result.state).toBe('granted');
+      expect(typeof result.browser).toBe('string');
+      expect(controller.isEnabled).toBe(true);
+    });
+
+    it('should return enable-failed when permission is granted but token fails', async () => {
+      vi.stubGlobal('Notification', {
+        permission: 'granted',
+        requestPermission: vi.fn(),
+      });
+      vi.spyOn(controller, 'isNotificationSupported').mockReturnValue(true);
+      // Make getToken fail
+      mockTransport.getToken = async () => null;
+
+      const result = await controller.requestPermission();
+      expect(result.state).toBe('error');
+      expect(result.reason).toBe('enable-failed');
+      expect(typeof result.browser).toBe('string');
+      expect(controller.isEnabled).toBe(false);
+    });
+
+    it('should return enable-failed when freshly granted but token fails', async () => {
+      vi.stubGlobal('Notification', {
+        permission: 'default',
+        requestPermission: vi.fn().mockResolvedValue('granted'),
+      });
+      vi.spyOn(controller, 'isNotificationSupported').mockReturnValue(true);
+      mockTransport.getToken = async () => null;
+
+      const result = await controller.requestPermission();
+      expect(result.state).toBe('error');
+      expect(result.reason).toBe('enable-failed');
+    });
+
+    it('should detect silent block when default transitions to denied', async () => {
+      vi.stubGlobal('Notification', {
+        permission: 'default',
+        requestPermission: vi.fn().mockResolvedValue('denied'),
+      });
+      vi.spyOn(controller, 'isNotificationSupported').mockReturnValue(true);
+
+      const result = await controller.requestPermission();
+      expect(result.state).toBe('denied');
+      expect(result.reason).toBe('silent-block');
+      expect(typeof result.browser).toBe('string');
+    });
+
+    it('should return dismissed when permission stays default', async () => {
+      vi.stubGlobal('Notification', {
+        permission: 'default',
+        requestPermission: vi.fn().mockResolvedValue('default'),
+      });
+      vi.spyOn(controller, 'isNotificationSupported').mockReturnValue(true);
+
+      const result = await controller.requestPermission();
+      expect(result.state).toBe('dismissed');
+      expect(typeof result.browser).toBe('string');
+    });
+
+    it('should call onGranted callback on success', async () => {
+      vi.stubGlobal('Notification', {
+        permission: 'granted',
+        requestPermission: vi.fn(),
+      });
+      vi.spyOn(controller, 'isNotificationSupported').mockReturnValue(true);
+
+      const onGranted = vi.fn();
+      await controller.requestPermission({ onGranted });
+      expect(onGranted).toHaveBeenCalled();
+    });
+
+    it('should call onDenied callback with reason on denial', async () => {
+      vi.stubGlobal('Notification', {
+        permission: 'denied',
+        requestPermission: vi.fn(),
+      });
+      vi.spyOn(controller, 'isNotificationSupported').mockReturnValue(true);
+
+      const onDenied = vi.fn();
+      await controller.requestPermission({ onDenied });
+      expect(onDenied).toHaveBeenCalledWith('already-denied');
+    });
+
+    it('should not call onGranted when enable fails', async () => {
+      vi.stubGlobal('Notification', {
+        permission: 'granted',
+        requestPermission: vi.fn(),
+      });
+      vi.spyOn(controller, 'isNotificationSupported').mockReturnValue(true);
+      mockTransport.getToken = async () => null;
+
+      const onGranted = vi.fn();
+      await controller.requestPermission({ onGranted });
+      expect(onGranted).not.toHaveBeenCalled();
+    });
+  });
 });

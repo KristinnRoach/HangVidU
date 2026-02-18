@@ -14,7 +14,7 @@ const NOTIFICATION_ID = 'enable-notifications';
  * @param {string} reason - Denial reason ('already-denied' | 'silent-block' | undefined)
  * @returns {string} Localized guidance message
  */
-function getBlockedMessage(browser, reason) {
+export function getBlockedMessage(browser, reason) {
   if (reason === 'silent-block') {
     return t('notification.enable.silent_block', { browser });
   }
