@@ -11,8 +11,10 @@
  * @param {boolean} [options.esc=true] - Whether to close on Escape key.
  * @param {Array<string>} [options.events=['mousedown','touchstart']] - DOM events to listen for outside interactions.
  * @param {boolean} [options.ignoreInputBlur=false] - Ignore clicks that dismiss mobile keyboard (prevents accidental closes).
+ * @param {boolean} [options.ignoreWhenDialogOpen=true] - If true, will not trigger callback if a <dialog open> is present.
  * @returns {() => void} cleanup - Call to remove all attached listeners.
  */
+
 export function onClickOutside(element, onClick, options = {}) {
   if (!element || typeof onClick !== 'function') {
     throw new Error(
@@ -27,6 +29,7 @@ export function onClickOutside(element, onClick, options = {}) {
     esc = true,
     events = ['mousedown', 'touchstart'],
     ignoreInputBlur = false, // New option: ignore clicks that blur input elements
+    ignoreWhenDialogOpen = true, // New option: skip callback if dialog[open] is present
   } = options;
 
   // Resolve ignore list lazily on each click (supports dynamic ignore elements)
@@ -55,6 +58,11 @@ export function onClickOutside(element, onClick, options = {}) {
         if (ign === target) return;
       }
 
+      // If a native <dialog open> is present, skip (unless option is false)
+      if (ignoreWhenDialogOpen && document.querySelector('dialog[open]')) {
+        return;
+      }
+
       // Mobile-specific: Ignore clicks that are just dismissing the keyboard
       // This prevents the dialog from closing when user taps outside to dismiss keyboard
       if (ignoreInputBlur && inputWasFocused) {
@@ -80,6 +88,10 @@ export function onClickOutside(element, onClick, options = {}) {
 
   const keyHandler = (evt) => {
     if (esc && evt.key === 'Escape') {
+      // If a native <dialog open> is present, skip (unless option is false)
+      if (ignoreWhenDialogOpen && document.querySelector('dialog[open]')) {
+        return;
+      }
       onClick(evt);
     }
   };

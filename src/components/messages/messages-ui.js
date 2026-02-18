@@ -30,7 +30,7 @@ import { getUserProfile } from '../../user/profile.js';
 import { createMessageBox } from './createMessageBox.js';
 import { createMessageTopBar } from './createMessageTopBar.js';
 import { devDebug } from '../../utils/dev/dev-utils.js';
-import { showImagePreview } from '../../utils/ui/imagePreview.js';
+import { showImagePreview } from '../modal/imagePreview.js';
 
 const supportsCssAnchors =
   CSS.supports?.('position-anchor: --msg-toggle') &&
