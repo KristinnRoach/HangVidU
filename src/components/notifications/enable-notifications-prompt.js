@@ -78,9 +78,13 @@ export function showEnableNotificationsPrompt() {
             btn.textContent = t('shared.enable');
           } else if (result.reason === 'unsupported') {
             // Defensive: shouldn't normally reach here, but handle gracefully
-            import('./push-unsupported-notification.js').then(({ showPushUnsupportedNotification }) => {
-              showPushUnsupportedNotification();
-            });
+            import('./push-unsupported-notification.js')
+              .then(({ showPushUnsupportedNotification }) => {
+                showPushUnsupportedNotification();
+              })
+              .catch((err) => {
+                console.error('[ENABLE NOTIFICATIONS] Failed to load unsupported notification:', err);
+              });
             inAppNotificationManager.remove(NOTIFICATION_ID);
           } else if (result.state === 'denied') {
             showWarningToast(getBlockedMessage(result.browser, result.reason));
