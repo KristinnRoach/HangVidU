@@ -95,9 +95,10 @@ export const enterCallMode = () => {
 
   if (!cleanupRemoteLeavePipHandler) {
     const remoteLeavePipHandler = () => {
-      if (!isInCallMode) return; // Call ended, don't restore video
       remoteBoxEl.style.opacity = '';
       remoteBoxEl.style.pointerEvents = '';
+
+      if (!isInCallMode) return; // Call ended, don't restore video
       if (isWatchModeActive()) placeInSmallFrame(remoteBoxEl);
       else removeFromSmallFrame(remoteBoxEl);
       showElement(remoteBoxEl);
