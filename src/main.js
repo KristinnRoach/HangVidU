@@ -579,7 +579,13 @@ export async function callContact(contactId, contactName, roomId = null) {
     try {
       const { showCallingUI } =
         await import('./components/calling/calling-ui.js');
-      await showCallingUI(roomId, contactName);
+      await showCallingUI(roomId, contactName, (reason) => {
+        // Route cancel/timeout through CallController so cleanup event fires
+        // (triggers missed call message, push notification, etc.)
+        CallController.hangUp({ reason }).catch((e) => {
+          console.warn('[CALL] hangUp after cancel/timeout failed:', e);
+        });
+      });
     } catch (e) {
       console.warn('[CALL] Failed to load calling UI:', e);
     }

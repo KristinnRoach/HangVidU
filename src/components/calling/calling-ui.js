@@ -168,23 +168,29 @@ export async function showCallingUI(roomId, contactName, onCancel) {
       duration: Date.now() - showTime,
     });
 
-    // Best-effort cleanup: clear outgoing state and remove our member entry
-    try {
-      await Promise.all([
-        clearOutgoingCallState(),
-        RoomService.cancelCall(roomId, getUserId(), 'caller_cancelled'),
-        RoomService.leaveRoom(getUserId(), roomId),
-      ]);
-    } catch (e) {
-      diag.log('ROOM', 'CALLER_CANCELLED_CLEANUP_FAIL', {
-        roomId,
-        error: String(e),
-      });
-    }
+    // Dismiss UI immediately for responsiveness
     ringtoneManager.stop();
     hideCallingUI();
+    clearOutgoingCallState().catch(() => {});
+
+    if (onCancel) {
+      // Delegate call lifecycle cleanup to caller (CallController.hangUp)
+      onCancel('caller_cancelled');
+    } else {
+      // Fallback: direct cleanup when no callback provided
+      try {
+        await Promise.all([
+          RoomService.cancelCall(roomId, getUserId(), 'caller_cancelled'),
+          RoomService.leaveRoom(getUserId(), roomId),
+        ]);
+      } catch (e) {
+        diag.log('ROOM', 'CALLER_CANCELLED_CLEANUP_FAIL', {
+          roomId,
+          error: String(e),
+        });
+      }
+    }
     devDebug('Call cancelled');
-    if (onCancel) onCancel();
   };
 
   cancelBtn.onclick = handleCancel;
@@ -211,23 +217,29 @@ export async function showCallingUI(roomId, contactName, onCancel) {
       timeoutMs: CALL_TIMEOUT_MS,
     });
 
-    // Best-effort cleanup on timeout as well
-    try {
-      await Promise.all([
-        clearOutgoingCallState(),
-        RoomService.cancelCall(roomId, getUserId(), 'auto_timeout'),
-        RoomService.leaveRoom(getUserId(), roomId),
-      ]);
-    } catch (e) {
-      diag.log('ROOM', 'CALLER_TIMEOUT_CLEANUP_FAIL', {
-        roomId,
-        error: String(e),
-      });
-    }
+    // Dismiss UI immediately for responsiveness
     ringtoneManager.stop();
     hideCallingUI();
+    clearOutgoingCallState().catch(() => {});
+
+    if (onCancel) {
+      // Delegate call lifecycle cleanup to caller (CallController.hangUp)
+      onCancel('auto_timeout');
+    } else {
+      // Fallback: direct cleanup when no callback provided
+      try {
+        await Promise.all([
+          RoomService.cancelCall(roomId, getUserId(), 'auto_timeout'),
+          RoomService.leaveRoom(getUserId(), roomId),
+        ]);
+      } catch (e) {
+        diag.log('ROOM', 'CALLER_TIMEOUT_CLEANUP_FAIL', {
+          roomId,
+          error: String(e),
+        });
+      }
+    }
     devDebug('Call timed out - no answer after 30 seconds');
-    if (onCancel) onCancel();
   }, CALL_TIMEOUT_MS);
 }
 
