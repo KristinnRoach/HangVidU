@@ -579,7 +579,13 @@ export async function callContact(contactId, contactName, roomId = null) {
     try {
       const { showCallingUI } =
         await import('./components/calling/calling-ui.js');
-      await showCallingUI(roomId, contactName);
+      await showCallingUI(roomId, contactName, (reason) => {
+        // Route cancel/timeout through CallController so cleanup event fires
+        // (triggers missed call message, push notification, etc.)
+        CallController.hangUp({ reason }).catch((e) => {
+          console.warn('[CALL] hangUp after cancel/timeout failed:', e);
+        });
+      });
     } catch (e) {
       console.warn('[CALL] Failed to load calling UI:', e);
     }
@@ -1999,13 +2005,6 @@ CallController.on(
     // hideCallingUI(); // ! Moved to bind-call-ui.js
     // onCallDisconnected(); // ! Moved to bind-call-ui.js
 
-    // Clean up messages UI if present
-    const state = CallController.getState();
-    if (state.messagesUI && typeof state.messagesUI.cleanup === 'function') {
-      state.messagesUI.cleanup();
-      state.messagesUI = null;
-    }
-
     cleanupRemoteStream();
     clearUrlParam();
 
@@ -2041,10 +2040,7 @@ async function cleanup() {
 
   exitPiP();
 
-  const state = CallController.getState();
-  if (state.messagesUI && state.messagesUI.cleanup) {
-    state.messagesUI.cleanup();
-  }
+  messagesUI.cleanup();
 
   // Clear URL parameter
   window.history.replaceState({}, document.title, window.location.pathname);
