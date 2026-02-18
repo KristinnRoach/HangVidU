@@ -29,7 +29,12 @@ export function showImagePreview(src, fileName, downloadLabel = 'Download') {
     if (e.target === dialog) dialog.close();
   });
 
-  dialog.addEventListener('close', () => dialog.remove());
+  dialog.addEventListener('close', () => {
+    if (typeof src === 'string' && src.startsWith('blob:')) {
+      URL.revokeObjectURL(src);
+    }
+    dialog.remove();
+  });
 
   document.body.appendChild(dialog);
   dialog.showModal();
