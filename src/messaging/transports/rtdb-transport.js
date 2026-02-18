@@ -2,6 +2,7 @@
 // Firebase Realtime Database messaging transport implementation
 
 import { MessagingTransport } from './messaging-transport.js';
+import { compressImage } from '../../media/image-compress.js';
 import {
   ref,
   push,
@@ -389,9 +390,20 @@ export class RTDBMessagingTransport extends MessagingTransport {
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      throw new Error(
-        `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max ${MAX_FILE_SIZE / 1024 / 1024}MB.`,
-      );
+      if (file.type.startsWith('image/')) {
+        const compressed = await compressImage(file);
+        if (compressed && compressed.size <= MAX_FILE_SIZE) {
+          file = compressed;
+        } else {
+          throw new Error(
+            `Image too large to compress under ${MAX_FILE_SIZE / 1024 / 1024}MB.`,
+          );
+        }
+      } else {
+        throw new Error(
+          `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max ${MAX_FILE_SIZE / 1024 / 1024}MB.`,
+        );
+      }
     }
 
     const user = getUser();
