@@ -316,6 +316,13 @@
   padding: 6px var(--spacing-md);
 }
 
+#messages-form button[type='submit'] {
+  background: var(--color-success);
+  color: var(--text-primary);
+  border: none;
+  box-shadow: var(--shadow-sm);
+}
+
 #attach-file-btn {
   font-size: 16px;
   text-shadow:

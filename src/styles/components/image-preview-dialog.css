@@ -18,6 +18,10 @@
 }
 
 .image-preview-download {
+  position: absolute;
+  top: var(--spacing-sm);
+  right: var(--spacing-sm);
+
   display: block;
   text-align: center;
   margin-top: var(--spacing-sm);
@@ -30,4 +34,26 @@
   color: var(--text-primary);
   scale: 1.05;
   transition: transform 0.2s ease;
+}
+
+.image-preview-close {
+  position: absolute;
+  top: var(--spacing-sm);
+  left: var(--spacing-sm);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+  cursor: pointer;
+
+  scale: 1;
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.image-preview-close:hover {
+  background: transparent;
+  color: var(--text-primary);
+  scale: 1.2;
 }

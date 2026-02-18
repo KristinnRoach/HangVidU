@@ -9,9 +9,8 @@ button {
   padding: var(--spacing-xs) var(--spacing-md);
   font-size: var(--font-size-md);
 
-  background-color: var(--color-success);
+  background-color: transparent;
   color: var(--text-primary);
-  box-shadow: var(--shadow-sm);
 
   cursor: pointer;
   transition: background-color var(--transition-slow);

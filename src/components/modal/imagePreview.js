@@ -21,8 +21,16 @@ export function showImagePreview(src, fileName, downloadLabel = 'Download') {
   downloadBtn.textContent = downloadLabel;
   downloadBtn.className = 'image-preview-download';
 
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = 'x';
+  closeBtn.className = 'image-preview-close';
+  closeBtn.setAttribute('aria-label', 'Close');
+  closeBtn.setAttribute('title', 'Close Image Preview');
+  closeBtn.addEventListener('click', () => dialog.close());
+
   dialog.appendChild(img);
   dialog.appendChild(downloadBtn);
+  dialog.appendChild(closeBtn);
 
   // Close on backdrop click
   dialog.addEventListener('click', (e) => {
