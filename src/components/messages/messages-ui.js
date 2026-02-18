@@ -30,6 +30,7 @@ import { getUserProfile } from '../../user/profile.js';
 import { createMessageBox } from './createMessageBox.js';
 import { createMessageTopBar } from './createMessageTopBar.js';
 import { devDebug } from '../../utils/dev/dev-utils.js';
+import { showImagePreview } from '../modal/imagePreview.js';
 
 const supportsCssAnchors =
   CSS.supports?.('position-anchor: --msg-toggle') &&
@@ -1000,7 +1001,7 @@ export function initMessagesUI() {
       img.alt = fileName;
       img.style.cssText =
         'max-width: 200px; max-height: 200px; border-radius: 8px; cursor: pointer; display: block; margin-bottom: 4px;';
-      img.addEventListener('click', () => downloadDataUrl(dataUrl, fileName));
+      img.addEventListener('click', () => showImagePreview(dataUrl, fileName, t('message.download')));
       textSpan.appendChild(img);
     }
 
