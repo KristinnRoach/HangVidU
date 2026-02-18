@@ -13,7 +13,7 @@ import { isDev } from '../dev/dev-utils';
  */
 export function showToast(message, options = {}) {
   const {
-    duration = 3000,
+    duration = 6000,
     type = 'info',
     position = 'bottom',
     onClick,
