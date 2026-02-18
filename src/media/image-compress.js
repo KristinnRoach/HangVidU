@@ -10,6 +10,11 @@
  * @returns {Promise<File|null>}
  */
 export async function compressImage(file, quality = 0.85) {
+  if (typeof OffscreenCanvas === 'undefined') {
+    bitmap.close();
+    return null;
+  }
+
   let bitmap;
   try {
     bitmap = await createImageBitmap(file);
