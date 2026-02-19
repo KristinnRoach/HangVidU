@@ -56,24 +56,27 @@ export function showImagePreview(src, fileName, downloadLabel = null) {
     },
   });
 
+  const onBackdropClick = (e) => {
+    if (e.target === dialog) {
+      dialog.close();
+    }
+  };
+
   const cleanup = () => {
     cleanupSwipe();
     dialog.removeEventListener('click', onBackdropClick);
-    dialog.removeEventListener('close', onClose);
   };
 
-  // Close on backdrop click
-  dialog.addEventListener('click', (e) => {
-    if (e.target === dialog) dialog.close();
-  });
-
-  dialog.addEventListener('close', () => {
+  const onClose = () => {
     if (typeof src === 'string' && src.startsWith('blob:')) {
       URL.revokeObjectURL(src);
     }
     cleanup();
     dialog.remove();
-  });
+  };
+
+  dialog.addEventListener('click', onBackdropClick);
+  dialog.addEventListener('close', onClose);
 
   document.body.appendChild(dialog);
   dialog.showModal();
