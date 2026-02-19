@@ -10,6 +10,11 @@
     "firebase-admin": "^13.6.0",
     "firebase-functions": "^7.0.3"
   },
+  "pnpm": {
+    "overrides": {
+      "fast-xml-parser": ">=5.3.6"
+    }
+  },
   "scripts": {
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",
