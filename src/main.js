@@ -149,7 +149,6 @@ import { createInviteNotification } from './components/notifications/invite-noti
 import { showElement, hideElement, exitPiP } from './utils/ui/ui-utils.js';
 import { initializeAuthUI } from './components/auth/AuthComponent.js';
 import { messagesUI } from './components/messages/messages-ui.js';
-import confirmDialog from './components/base/confirm-dialog.js';
 import {
   showIncomingCallUI,
   resolveIncomingCallUI,
@@ -935,11 +934,6 @@ export function listenForIncomingOnRoom(roomId) {
               answer: answerCleanup,
             });
           });
-
-          // ORIGINAL: confirmDialog approach (commented out for testing)
-          // accept = await confirmDialog(
-          //   `Incoming call from ${callerName}.\n\nAccept?`,
-          // );
         } finally {
           // Clean up RTDB listeners for this incoming call
           if (incomingCallPromiseCleanups.has(roomId)) {
@@ -973,9 +967,11 @@ export function listenForIncomingOnRoom(roomId) {
             },
           );
           // Update lastInteractionAt for answered incoming call
-          getContactByRoomId(roomId).then((c) => {
-            if (c?.contactId) updateLastInteraction(c.contactId);
-          }).catch(() => {});
+          getContactByRoomId(roomId)
+            .then((c) => {
+              if (c?.contactId) updateLastInteraction(c.contactId);
+            })
+            .catch(() => {});
 
           joinOrCreateRoomWithId(roomId).catch((e) => {
             console.warn('Failed to answer incoming call:', e);
