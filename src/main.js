@@ -107,14 +107,14 @@ import { pushNotificationController } from './notifications/push-notification-co
 import { showEnableNotificationsPrompt } from './ui/components/notifications/enable-notifications-prompt.js';
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
-import './ui/ui-state.js'; // Initialize UI state (sets body data-view attribute)
-import { initUI } from './ui/init-ui.js';
-import { bindCallUI } from './ui/bind-call-ui.js';
+import './ui/core/ui-state.js'; // Initialize UI state (sets body data-view attribute)
+import { initUI } from './ui/core/init-ui.js';
+import { bindCallUI } from './ui/core/bind-call-ui.js';
 
 import {
   onWatchModeEntered,
   onWatchModeExited,
-} from './ui/watch-lifecycle-ui.js';
+} from './ui/core/watch-lifecycle-ui.js';
 
 import {
   saveContact,
@@ -165,8 +165,11 @@ import {
   onCallAnswered,
   isRoomCallFresh,
 } from './ui/components/calling/calling-ui.js';
-import { isRemoteVideoVideoActive } from './ui/legacy/watch-mode.js';
-import { onCallConnected, onCallDisconnected } from './ui/call-lifecycle-ui.js';
+import { isRemoteVideoVideoActive } from './ui/core/legacy/watch-mode.js';
+import {
+  onCallConnected,
+  onCallDisconnected,
+} from './ui/core/call-lifecycle-ui.js';
 import {
   initI18n,
   setLocale,
@@ -579,7 +582,7 @@ export async function callContact(contactId, contactName, roomId = null) {
       const [{ showCallingUI }, { onCallingStarted, onCallingEnded }] =
         await Promise.all([
           import('./ui/components/calling/calling-ui.js'),
-          import('./ui/call-lifecycle-ui.js'),
+          import('./ui/core/call-lifecycle-ui.js'),
         ]);
       onCallingStarted();
       await showCallingUI(roomId, contactName, {
