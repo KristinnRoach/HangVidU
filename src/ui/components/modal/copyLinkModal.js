@@ -1,5 +1,3 @@
-// modal.js
-
 import { t } from '../../../i18n/index.js';
 
 /**
@@ -104,7 +102,7 @@ export function showCopyLinkModal(link, options = {}) {
   // Create dialog elements
   const { dialog, input, copyButton, cancelButton, feedback } = createDialog(
     link,
-    config
+    config,
   );
 
   // Ensure dialog support

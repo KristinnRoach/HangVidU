@@ -1,5 +1,3 @@
-// dom-utils.js
-
 export const isDOMReady = () => document.readyState !== 'loading';
 
 /**

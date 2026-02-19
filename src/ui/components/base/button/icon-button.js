@@ -1,4 +1,5 @@
-// src/components/design/icon-button.js
+// src/ui/components/base/button/icon-button.js
+
 import createComponent from '../../../../ui/component-system/component.js';
 
 /**

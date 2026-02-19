@@ -1,4 +1,3 @@
-// src/utils/dom/component.js
 import {
   captureInputState,
   captureMediaState,

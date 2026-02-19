@@ -1,4 +1,3 @@
-// icon-button.js
 import { LitElement, html, css } from 'lit';
 import faStyles from '@fortawesome/fontawesome-free/css/all.min.css?inline';
 

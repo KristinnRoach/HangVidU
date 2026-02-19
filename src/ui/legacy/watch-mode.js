@@ -1,4 +1,3 @@
-// src/components/ui/watch-mode.js
 // Watch mode UI state management
 
 import {

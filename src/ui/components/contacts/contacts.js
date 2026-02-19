@@ -1,5 +1,3 @@
-// contacts.js - Simple contacts management
-
 import { ref, set, get, remove, update, onValue, off } from 'firebase/database';
 import { rtdb } from '../../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId } from '../../../auth/auth-state.js';

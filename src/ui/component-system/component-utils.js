@@ -1,5 +1,3 @@
-// src/utils/dom/component-utils.js
-
 // === Helpers for creating DOM components ===
 
 /**
@@ -40,17 +38,20 @@ const INTERPOLATION_REGEX = /\[\[([^\]]+)\]\]|\$\{([^}]+)\}/g;
  * @returns {string} The interpolated string.
  */
 const interpolate = (templateStr, props) => {
-  return templateStr.replace(INTERPOLATION_REGEX, (_, bracketKey, dollarKey) => {
-    const trimmedKey = (bracketKey ?? dollarKey).trim();
-    // Resolve nested properties (e.g., "user.name")
-    const value = trimmedKey
-      .split('.')
-      .reduce((obj, prop) => obj?.[prop], props);
-    if (value == null) return '';
-    // Properties ending with "Html" are treated as raw/unsafe HTML
-    const isHtml = trimmedKey.endsWith('Html');
-    return isHtml ? String(value) : sanitize(String(value));
-  });
+  return templateStr.replace(
+    INTERPOLATION_REGEX,
+    (_, bracketKey, dollarKey) => {
+      const trimmedKey = (bracketKey ?? dollarKey).trim();
+      // Resolve nested properties (e.g., "user.name")
+      const value = trimmedKey
+        .split('.')
+        .reduce((obj, prop) => obj?.[prop], props);
+      if (value == null) return '';
+      // Properties ending with "Html" are treated as raw/unsafe HTML
+      const isHtml = trimmedKey.endsWith('Html');
+      return isHtml ? String(value) : sanitize(String(value));
+    },
+  );
 };
 
 /**

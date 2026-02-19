@@ -1,4 +1,4 @@
-// src/components/modal/imagePreview.js
+// src/ui/components/modal/imagePreview.js
 
 import { onSwipe } from '../../utils/swipe-interactions.js';
 
