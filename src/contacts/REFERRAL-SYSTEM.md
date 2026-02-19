@@ -143,7 +143,7 @@ Show referral stats in user profile:
 
 ### Modified Files:
 
-- `src/components/contacts/add-contact-modal.js` - Fixed email messaging
+- `src/ui/components/contacts/add-contact-modal.js` - Fixed email messaging
 - `src/main.js` - Integration points (TODO)
 
 ### Existing Files (Reused):

@@ -4,7 +4,21 @@ Reference doc for the ongoing style refactor. Describes current state, inconsist
 
 ---
 
-## Architecture
+## JS File Structure
+
+UI-related JS has been consolidated under `src/ui/`:
+
+| Old path | New path |
+|---|---|
+| `src/components/` | `src/ui/components/` |
+| `src/utils/ui/` | `src/ui/utils/` |
+| `src/utils/dom/` (component.js, component-utils.js, dom-utils.js) | `src/ui/component-system/` |
+
+`src/utils/` retains non-UI utilities (dev, env, linkify, etc.).
+
+---
+
+## CSS Architecture
 
 **Token system** (`theme.css`) — well-structured:
 - Background: `--bg-primary/secondary/tertiary/elevated`
@@ -85,7 +99,7 @@ Lines 297–315 are commented out. Either implement or remove.
 - `view-state.css` approach (CSS-driven app state) is the right direction
 - Animation classes with `@supports` progressive enhancement are clean
 - CSS anchor positioning for messages/notifications with fallbacks is modern and correct
-- Component CSS file structure mirrors component JS structure
+- Component CSS file structure mirrors component JS structure (`src/styles/components/` mirrors `src/ui/components/`)
 
 ---
 

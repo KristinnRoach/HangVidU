@@ -155,7 +155,7 @@ Implementation completed on January 24, 2026
 
 - `src/firebase/firebase.js` (added FCM config)
 - `src/main.js` (initialize NotificationController)
-- `src/components/contacts/contacts.js` (send notifications on call)
+- `src/ui/components/contacts/contacts.js` (send notifications on call)
 - `vite.config.js` (service worker bundling)
 - `functions/package.json` (FCM dependencies)
 

@@ -1,4 +1,4 @@
-import { showUpdateNotification } from '../components/notifications/update-notification.js';
+import { showUpdateNotification } from '../ui/components/notifications/update-notification.js';
 
 /**
  * Dynamically imports the PWA register module.

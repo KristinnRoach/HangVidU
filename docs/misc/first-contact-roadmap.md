@@ -90,7 +90,7 @@ Make initial contact frictionless by:
 
 **Files:**
 - `src/utils/room-id.js` - Room ID generation
-- `src/components/contacts/contacts.js` - Integration
+- `src/ui/components/contacts/contacts.js` - Integration
 
 **Function:**
 - `getDeterministicRoomId(userId1, userId2)` - Consistent room IDs for user pairs
@@ -100,7 +100,7 @@ Make initial contact frictionless by:
 ### Phase 5: Add Contact UI ✅ COMPLETE
 
 **Files:**
-- `src/components/contacts/add-contact-modal.js` - Import modal
+- `src/ui/components/contacts/add-contact-modal.js` - Import modal
 
 **Features:**
 - "Import from Google Contacts" button

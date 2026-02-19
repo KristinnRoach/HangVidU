@@ -90,7 +90,7 @@ await joinOrCreateRoomWithId(roomId, { forceInitiator: true });
 
 ### Step 3: Send Push Notification to User B
 
-**Location:** `src/components/contacts/contacts.js` → `callContact()`
+**Location:** `src/ui/components/contacts/contacts.js` → `callContact()`
 
 ```javascript
 // After creating call, send notification to User B

@@ -36,7 +36,7 @@
 
 **Implementation Locations:**
 
-- `src/components/messages/messages-ui.js` - Clear file references
+- `src/ui/components/messages/messages-ui.js` - Clear file references
 - `src/webrtc/call-controller.js` - Trigger cleanup on call end
 - `src/file-transfer/file-transfer.js` - Add cleanup method
 - `src/firebase/watch-sync.js` - Revoke blob URLs on watch mode exit
