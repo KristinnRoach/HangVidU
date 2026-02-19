@@ -1,6 +1,6 @@
 // toast.js - Simple toast notification system
 
-import { isDev } from '../dev/dev-utils';
+import { isDev } from '../../utils/dev/dev-utils.js';
 
 /**
  * Show a toast notification message.

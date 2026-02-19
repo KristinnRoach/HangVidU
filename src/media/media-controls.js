@@ -10,7 +10,7 @@ import {
   exitPiP,
   requestPiP,
   isPiPSupported,
-} from '../utils/ui/ui-utils.js';
+} from '../ui/utils/ui-utils.js';
 import { devDebug, isDev, isProd } from '../utils/dev/dev-utils.js';
 
 // ============================================================================

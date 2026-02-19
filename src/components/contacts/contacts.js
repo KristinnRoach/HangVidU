@@ -5,7 +5,7 @@ import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId } from '../../auth/auth-state.js';
 import confirmDialog from '../base/confirm-dialog.js';
 import editContactModal from './edit-contact-modal.js';
-import { hideElement, showElement } from '../../utils/ui/ui-utils.js';
+import { hideElement, showElement } from '../../ui/utils/ui-utils.js';
 import { t, onLocaleChange } from '../../i18n/index.js';
 import { escapeHtml } from '../../utils/dom/dom-utils.js';
 

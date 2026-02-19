@@ -3,7 +3,7 @@
 import { createNotification, buildTemplate } from './notification.js';
 import { inAppNotificationManager } from './in-app-notification-manager.js';
 import { pushNotificationController } from '../../notifications/push-notification-controller.js';
-import { showSuccessToast, showWarningToast, showErrorToast } from '../../utils/ui/toast.js';
+import { showSuccessToast, showWarningToast, showErrorToast } from '../../ui/utils/toast.js';
 import { t, onLocaleChange } from '../../i18n/index.js';
 
 const NOTIFICATION_ID = 'enable-notifications';

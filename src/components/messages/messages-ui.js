@@ -1,7 +1,7 @@
 import { t } from '../../i18n/index.js';
-import { onClickOutside } from '../../utils/ui/clickOutside.js';
-import { hideElement, isHidden, showElement } from '../../utils/ui/ui-utils.js';
-import { renderAvatar } from '../../utils/ui/avatar.js';
+import { onClickOutside } from '../../ui/utils/clickOutside.js';
+import { hideElement, isHidden, showElement } from '../../ui/utils/ui-utils.js';
+import { renderAvatar } from '../../ui/utils/avatar.js';
 import { createMessageToggle } from './createMessageToggle.js';
 import { isMobileDevice } from '../../utils/env/isMobileDevice.js';
 import {
@@ -25,7 +25,7 @@ import { REACTION_CONFIG } from '../../messaging/reactions/ReactionConfig.js';
 import { getLoggedInUserId, getIsLoggedIn } from '../../auth/auth-state.js';
 import { messagingController } from '../../messaging/messaging-controller.js';
 import { updateLastInteraction } from '../contacts/contacts.js';
-import { showInfoToast } from '../../utils/ui/toast.js';
+import { showInfoToast } from '../../ui/utils/toast.js';
 import { getUserProfile } from '../../user/profile.js';
 import { createMessageBox } from './createMessageBox.js';
 import { createMessageTopBar } from './createMessageTopBar.js';

@@ -1,4 +1,4 @@
-import { onClickOutside } from '../../utils/ui/clickOutside.js';
+import { onClickOutside } from '../../ui/utils/clickOutside.js';
 
 /**
  * Centralized in-app notification manager.

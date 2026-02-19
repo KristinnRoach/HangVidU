@@ -1,5 +1,5 @@
 import { devDebug, isDev, tempInfo } from '../utils/dev/dev-utils';
-import { hideElement, showElement } from '../utils/ui/ui-utils';
+import { hideElement, showElement } from '../ui/utils/ui-utils';
 import createIconButton from '../components/base/button/icon-button.js';
 import { debugPWAInstall } from './debug-pwa.js';
 

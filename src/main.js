@@ -143,10 +143,10 @@ import {
 } from './media/youtube/youtube-search.js';
 
 import { createNotificationsToggle } from './components/notifications/notifications-toggle.js';
-import { showSuccessToast, showErrorToast } from './utils/ui/toast.js';
+import { showSuccessToast, showErrorToast } from './ui/utils/toast.js';
 import { createInviteNotification } from './components/notifications/invite-notification.js';
 
-import { showElement, hideElement, exitPiP } from './utils/ui/ui-utils.js';
+import { showElement, hideElement, exitPiP } from './ui/utils/ui-utils.js';
 import { initializeAuthUI } from './components/auth/AuthComponent.js';
 import { messagesUI } from './components/messages/messages-ui.js';
 import {
@@ -155,7 +155,7 @@ import {
   dismissActiveIncomingCallUI,
 } from './components/calling/incoming-call.js';
 import { showAddContactModal } from './components/contacts/add-contact-modal.js';
-import { callIndicators } from './utils/ui/call-indicators.js';
+import { callIndicators } from './ui/utils/call-indicators.js';
 import {
   copyToClipboard,
   showCopyLinkModal,
