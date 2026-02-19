@@ -451,8 +451,9 @@ export function initMessagesUI() {
     });
   }
 
-  // Setup global handler for incoming watch requests
-  window.onFileWatchRequestReceived = async (fileName) => {
+  // Listen for incoming watch requests from watch-sync via CustomEvent
+  document.addEventListener('watch:file-request', async (e) => {
+    const { fileName } = e.detail;
     // Check if we have this file
     const file = sentFiles.get(fileName);
 
@@ -483,7 +484,7 @@ export function initMessagesUI() {
       appendChatMessage(`❌ ${t('message.watch.declined')}`);
       await cancelWatchRequest();
     }
-  };
+  });
 
   // Position the messages box relative to toggle
   function positionMessagesBox() {

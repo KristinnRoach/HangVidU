@@ -576,14 +576,21 @@ export async function callContact(contactId, contactName, roomId = null) {
 
     // Trigger UI (Calling Modal)
     try {
-      const { showCallingUI } =
-        await import('./ui/components/calling/calling-ui.js');
-      await showCallingUI(roomId, contactName, (reason) => {
-        // Route cancel/timeout through CallController so cleanup event fires
-        // (triggers missed call message, push notification, etc.)
-        CallController.hangUp({ reason }).catch((e) => {
-          console.warn('[CALL] hangUp after cancel/timeout failed:', e);
-        });
+      const [{ showCallingUI }, { onCallingStarted, onCallingEnded }] =
+        await Promise.all([
+          import('./ui/components/calling/calling-ui.js'),
+          import('./ui/call-lifecycle-ui.js'),
+        ]);
+      onCallingStarted();
+      await showCallingUI(roomId, contactName, {
+        onCancel: (reason) => {
+          // Route cancel/timeout through CallController so cleanup event fires
+          // (triggers missed call message, push notification, etc.)
+          CallController.hangUp({ reason }).catch((e) => {
+            console.warn('[CALL] hangUp after cancel/timeout failed:', e);
+          });
+        },
+        onHide: onCallingEnded,
       });
     } catch (e) {
       console.warn('[CALL] Failed to load calling UI:', e);
