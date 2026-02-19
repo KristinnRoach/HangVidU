@@ -62,37 +62,20 @@ Most component files hardcode values instead of referencing tokens:
 - `messages.css`: `font-family: sans-serif` instead of `var(--font-family-primary)`
 - `messages.css`: `#3757c1` (avatar color) — raw hex, no token
 
-### 4. Non-existent token referenced
-`top-bar.css:135`: `border-radius: var(--border-radius-default, 0.5rem)` — `--border-radius-default` doesn't exist in `theme.css`. Falls back to `0.5rem` (8px). Should be `var(--radius-lg)`.
-
-### 5. Button base hover is broken by design
+### 4. Button base hover is broken by design
 `element/button.css`: `button:hover { background-color: var(--color-success-hover); }` — every button turns dark green on hover unless explicitly overridden. Every component fights this default.
 
-### 6. `.call-controls` vs `.chat-controls` mismatch
-`view-state.css` targets `.call-controls` in lobby/calling states, but the HTML element uses class `chat-controls`. The view-state display rules have no effect on it.
-
-### 7. Dead code in `chat-controls.css`
-- `#hangUp` selector (line 112) — the HTML button is `id="hang-up-btn"`. This rule is never applied.
-- `rgb(255, 80, 80, 1)` is invalid CSS — `rgb()` takes 3 args. Should be `rgba(255, 80, 80, 1)`.
-
-### 8. Duplicate/contradictory `.lobby-btn` color
-```css
-color: rgb(8, 40, 169) !important;  /* set */
-color: var(--btn-primary-text);      /* overrides it — but this token doesn't exist */
-```
-`--btn-primary-text` is undefined in `theme.css`. The `!important` is overridden by the next line in the same rule, making it dead.
-
-### 9. Inline-styled `#legal-footer`
+### 5. Inline-styled `#legal-footer`
 Fully styled via `style=""` in HTML. No CSS class, no tokens used.
 
-### 10. Commented-out container queries in `top-bar.css`
+### 6. Commented-out container queries in `top-bar.css`
 Lines 297–315 are commented out. Either implement or remove.
 
-### 11. Light mode defined but disabled
+### 7. Light mode defined but disabled
 `theme.css` has a full light mode block commented out ("TODO: fix issues"). No active light mode support.
 
-### 12. `view-state.css` is incomplete for `calling` state
-`calling:user` and `calling:guest` only hide `.call-controls` — nothing else. The calling phase relies on legacy imperative code (`enterCallMode`/`exitCallMode`) rather than CSS-driven state per the refactor roadmap (`src/ui/ui-refactor.md`).
+### 8. `view-state.css` is incomplete for `calling` state
+`calling:user` and `calling:guest` only hide `.chat-controls` — nothing else. The calling phase relies on legacy imperative code (`enterCallMode`/`exitCallMode`) rather than CSS-driven state per the refactor roadmap (`src/ui/ui-refactor.md`).
 
 ---
 
@@ -108,13 +91,9 @@ Lines 297–315 are commented out. Either implement or remove.
 
 ## Refactor priorities
 
-1. Fix `.call-controls` → `.chat-controls` mismatch in `view-state.css`
-2. Fix `button:hover` default (scoped to specific button types, not all buttons)
-3. Remove `#hangUp` dead selector; fix `rgb(a)` syntax error
-4. Remove dead `.lobby-btn` `!important` color and undefined `--btn-primary-text`
-5. Migrate `notifications.css` and `toast.css` hardcoded colors to tokens
-6. Resolve transition token namespace split — pick one approach, document it
-7. Replace `--border-radius-default` reference with `var(--radius-lg)` in `top-bar.css`
-8. Move `#legal-footer` inline styles to a CSS class
-9. Remove commented-out container queries in `top-bar.css`
-10. Expand `view-state.css` to cover calling state properly (per ui-refactor.md)
+1. Fix `button:hover` default (scoped to specific button types, not all buttons)
+2. Migrate `notifications.css` and `toast.css` hardcoded colors to tokens
+3. Resolve transition token namespace split — pick one approach, document it
+4. Move `#legal-footer` inline styles to a CSS class
+5. Remove commented-out container queries in `top-bar.css`
+6. Expand `view-state.css` to cover calling state properly (per ui-refactor.md)

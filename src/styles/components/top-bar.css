@@ -132,7 +132,7 @@
     transition: var(--transition-default);
 
     border: none;
-    border-radius: var(--border-radius-default, 0.5rem);
+    border-radius: var(--radius-lg, 8px);
     white-space: nowrap;
 
     /* Fallback for browsers without hsl(from ...) support */

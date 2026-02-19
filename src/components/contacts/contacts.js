@@ -6,7 +6,6 @@ import { getLoggedInUserId } from '../../auth/auth-state.js';
 import confirmDialog from '../base/confirm-dialog.js';
 import editContactModal from './edit-contact-modal.js';
 import { hideElement, showElement } from '../../utils/ui/ui-utils.js';
-import { messagesUI } from '../messages/messages-ui.js';
 import { t, onLocaleChange } from '../../i18n/index.js';
 import { escapeHtml } from '../../utils/dom/dom-utils.js';
 
@@ -320,7 +319,9 @@ function attachContactListeners(container, lobbyElement) {
       const contactId = el.getAttribute('data-contact-id');
       const contactName = el.getAttribute('data-contact-name');
       if (contactId) {
-        messagesUI.openContactMessages(contactId, contactName);
+        document.dispatchEvent(
+          new CustomEvent('contact:messages-open', { detail: { contactId, contactName } }),
+        );
       }
     };
   });

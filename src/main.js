@@ -1716,6 +1716,10 @@ window.onload = async () => {
     const { contactId, contactName, roomId } = e.detail;
     callContact(contactId, contactName, roomId);
   });
+  document.addEventListener('contact:messages-open', (e) => {
+    const { contactId, contactName } = e.detail;
+    messagesUI.openContactMessages(contactId, contactName);
+  });
   document.addEventListener('contact:saved', (e) => {
     listenForIncomingOnRoom(e.detail.roomId);
   });
