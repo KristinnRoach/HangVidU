@@ -19,6 +19,9 @@ export function showImagePreview(src, fileName, downloadLabel = null) {
   downloadBtn.href = src;
   downloadBtn.download = fileName;
   downloadBtn.className = 'image-preview-download';
+  downloadBtn.setAttribute('aria-label', `Download`);
+  downloadBtn.setAttribute('title', `Download`);
+
   // Font Awesome download icon
   const downloadIcon = document.createElement('i');
   downloadIcon.className = 'fa fa-download';
