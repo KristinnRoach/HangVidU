@@ -4,13 +4,13 @@
 
 const isLoggedIn = () => document.body.dataset.loggedIn === 'true';
 
-const getAuthAwareView = (baseView) => {
+const buildAuthAwareView = (baseView) => {
   return isLoggedIn() ? `${baseView}:user` : `${baseView}:guest`;
 };
 
 export const uiState = {
   // High-level app mode
-  view: getAuthAwareView('lobby'), // 'lobby' | 'calling' | 'connected' - add ":guest" or ":user" suffix based on auth state
+  view: buildAuthAwareView('lobby'), // 'lobby' | 'calling' | 'connected' - add ":guest" or ":user" suffix based on auth state
 
   // Currently focused active media content (if any)
   currentMedia: 'none', // 'none' | 'remoteStream' | 'ytVideo' | 'sharedVideo'
@@ -32,7 +32,7 @@ export const uiState = {
       return;
     }
 
-    const authAwareNewView = getAuthAwareView(newBaseView);
+    const authAwareNewView = buildAuthAwareView(newBaseView);
     if (authAwareNewView === this.view) return;
     this.view = authAwareNewView;
     document.body.dataset.view = authAwareNewView;
