@@ -5,7 +5,7 @@ import {
   chatControls,
 } from '../elements.js';
 
-import { hideElement } from '../utils/ui/ui-utils.js';
+import { hideElement } from './utils/ui-utils.js';
 
 /** Hides video boxes and chat controls on startup (shown when call connects). */
 export function initUI() {

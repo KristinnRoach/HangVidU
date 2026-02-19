@@ -1,0 +1,31 @@
+/* Confirm Dialog */
+
+.confirm-dialog {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  gap: 1.5rem;
+  max-width: 400px;
+  border: none;
+  border-radius: var(--radius-lg);
+
+  margin: var(--spacing-md);
+  padding: 1rem;
+  box-shadow: var(--shadow-md);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.confirm-dialog-actions > button {
+  padding: 0.5rem 1rem;
+  font-size: var(--font-size-sm);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}

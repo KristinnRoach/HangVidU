@@ -620,7 +620,7 @@ export class PushNotificationController {
       try {
         // Import resolveCallerName dynamically to avoid circular dependencies
         const { resolveCallerName } =
-          await import('../components/contacts/contacts.js');
+          await import('../ui/components/contacts/contacts.js');
         displayName = await resolveCallerName(roomId, callerId);
       } catch (error) {
         console.warn(
@@ -657,7 +657,7 @@ export class PushNotificationController {
     try {
       // Import getContacts dynamically to avoid circular dependencies
       const { getContacts } =
-        await import('../components/contacts/contacts.js');
+        await import('../ui/components/contacts/contacts.js');
       const contacts = await getContacts();
 
       if (contacts && contacts[senderId]) {

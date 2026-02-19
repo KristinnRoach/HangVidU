@@ -13,7 +13,7 @@ body[data-view='lobby:user'] {
   & #toggle-lang-btn {
     display: block;
   }
-  & .call-controls {
+  & .chat-controls {
     /* & + SPACE = descendant, otherwise same element */
     display: none;
   }
@@ -24,7 +24,7 @@ body[data-view='lobby:user'] {
 }
 
 body[data-view='calling:user'] {
-  & .call-controls {
+  & .chat-controls {
     display: none;
   }
 }
@@ -54,7 +54,7 @@ body[data-view='lobby:guest'] {
     display: block;
   }
 
-  & .call-controls {
+  & .chat-controls {
     display: none;
   }
 
@@ -64,7 +64,7 @@ body[data-view='lobby:guest'] {
 }
 
 body[data-view='calling:guest'] {
-  & .call-controls {
+  & .chat-controls {
     display: none;
   }
 }

@@ -24,7 +24,7 @@ import {
 } from '../media/youtube/youtube-player.js';
 
 import { sharedVideoEl, sharedBoxEl } from '../elements.js'; // TODO: refactor?
-import { hideElement, showElement } from '../utils/ui/ui-utils.js';
+import { hideElement, showElement } from '../ui/utils/ui-utils.js';
 
 import { onWatchModeEntered } from '../ui/watch-lifecycle-ui.js';
 

@@ -1,4 +1,3 @@
-// src/components/ui/call-mode.js
 // Call mode UI state management
 
 import {
@@ -20,9 +19,9 @@ import {
   placeInSmallFrame,
   removeFromSmallFrame,
   exitPiP,
-} from '../../utils/ui/ui-utils.js';
+} from '../utils/ui-utils.js';
 
-import { setupShowHideOnInactivity } from '../../utils/ui/showHideOnInactivity.js';
+import { setupShowHideOnInactivity } from '../utils/showHideOnInactivity.js';
 import { hasRemoteStream } from '../../media/state.js';
 import { isWatchModeActive } from '../../firebase/watch-sync.js'; // Import from watch-sync.js (should probably be from watch-mode.js)
 

@@ -99,12 +99,12 @@ import {
   getContactByRoomId,
   saveContactData,
   updateLastInteraction,
-} from './components/contacts/contacts.js';
+} from './ui/components/contacts/contacts.js';
 
 // TODO: inAppNotificationManager VS pushNotificationController - Compare and clarify distinction or combine!
-import { inAppNotificationManager } from './components/notifications/in-app-notification-manager.js';
+import { inAppNotificationManager } from './ui/components/notifications/in-app-notification-manager.js';
 import { pushNotificationController } from './notifications/push-notification-controller.js';
-import { showEnableNotificationsPrompt } from './components/notifications/enable-notifications-prompt.js';
+import { showEnableNotificationsPrompt } from './ui/components/notifications/enable-notifications-prompt.js';
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
 import './ui/ui-state.js'; // Initialize UI state (sets body data-view attribute)
@@ -122,7 +122,7 @@ import {
   getContacts,
   resolveCallerName,
   cleanupContacts,
-} from './components/contacts/contacts.js';
+} from './ui/components/contacts/contacts.js';
 
 import {
   destroyYouTubePlayer,
@@ -142,30 +142,29 @@ import {
   initializeSearchUI,
 } from './media/youtube/youtube-search.js';
 
-import { createNotificationsToggle } from './components/notifications/notifications-toggle.js';
-import { showSuccessToast, showErrorToast } from './utils/ui/toast.js';
-import { createInviteNotification } from './components/notifications/invite-notification.js';
+import { createNotificationsToggle } from './ui/components/notifications/notifications-toggle.js';
+import { showSuccessToast, showErrorToast } from './ui/utils/toast.js';
+import { createInviteNotification } from './ui/components/notifications/invite-notification.js';
 
-import { showElement, hideElement, exitPiP } from './utils/ui/ui-utils.js';
-import { initializeAuthUI } from './components/auth/AuthComponent.js';
-import { messagesUI } from './components/messages/messages-ui.js';
-import confirmDialog from './components/base/confirm-dialog.js';
+import { showElement, hideElement, exitPiP } from './ui/utils/ui-utils.js';
+import { initializeAuthUI } from './ui/components/auth/AuthComponent.js';
+import { messagesUI } from './ui/components/messages/messages-ui.js';
 import {
   showIncomingCallUI,
   resolveIncomingCallUI,
   dismissActiveIncomingCallUI,
-} from './components/calling/incoming-call.js';
-import { showAddContactModal } from './components/contacts/add-contact-modal.js';
-import { callIndicators } from './utils/ui/call-indicators.js';
+} from './ui/components/calling/incoming-call.js';
+import { showAddContactModal } from './ui/components/contacts/add-contact-modal.js';
+import { callIndicators } from './ui/utils/call-indicators.js';
 import {
   copyToClipboard,
   showCopyLinkModal,
-} from './components/modal/copyLinkModal.js';
+} from './ui/components/modal/copyLinkModal.js';
 
 import {
   onCallAnswered,
   isRoomCallFresh,
-} from './components/calling/calling-ui.js';
+} from './ui/components/calling/calling-ui.js';
 import { isRemoteVideoVideoActive } from './ui/legacy/watch-mode.js';
 import { onCallConnected, onCallDisconnected } from './ui/call-lifecycle-ui.js';
 import {
@@ -176,7 +175,7 @@ import {
   onLocaleChange,
 } from './i18n/index.js';
 
-import { addDebugUpdateButton } from './components/notifications/debug-notifications.js';
+import { addDebugUpdateButton } from './ui/components/notifications/debug-notifications.js';
 // ____ UI END ____
 
 // Import and call iOS PWA redirect helper
@@ -311,7 +310,7 @@ async function init() {
 
         if (!pushNotificationController.isNotificationSupported()) {
           const { showPushUnsupportedNotification } =
-            await import('./components/notifications/push-unsupported-notification.js');
+            await import('./ui/components/notifications/push-unsupported-notification.js');
           showPushUnsupportedNotification();
         }
       }
@@ -578,7 +577,7 @@ export async function callContact(contactId, contactName, roomId = null) {
     // Trigger UI (Calling Modal)
     try {
       const { showCallingUI } =
-        await import('./components/calling/calling-ui.js');
+        await import('./ui/components/calling/calling-ui.js');
       await showCallingUI(roomId, contactName, (reason) => {
         // Route cancel/timeout through CallController so cleanup event fires
         // (triggers missed call message, push notification, etc.)
@@ -935,11 +934,6 @@ export function listenForIncomingOnRoom(roomId) {
               answer: answerCleanup,
             });
           });
-
-          // ORIGINAL: confirmDialog approach (commented out for testing)
-          // accept = await confirmDialog(
-          //   `Incoming call from ${callerName}.\n\nAccept?`,
-          // );
         } finally {
           // Clean up RTDB listeners for this incoming call
           if (incomingCallPromiseCleanups.has(roomId)) {
@@ -973,9 +967,11 @@ export function listenForIncomingOnRoom(roomId) {
             },
           );
           // Update lastInteractionAt for answered incoming call
-          getContactByRoomId(roomId).then((c) => {
-            if (c?.contactId) updateLastInteraction(c.contactId);
-          }).catch(() => {});
+          getContactByRoomId(roomId)
+            .then((c) => {
+              if (c?.contactId) updateLastInteraction(c.contactId);
+            })
+            .catch(() => {});
 
           joinOrCreateRoomWithId(roomId).catch((e) => {
             console.warn('Failed to answer incoming call:', e);
@@ -1095,7 +1091,7 @@ export function listenForIncomingOnRoom(roomId) {
 
       // Dismiss legacy confirmDialog (for testing/rollback)
       const { dismissActiveConfirmDialog } =
-        await import('./components/base/confirm-dialog.js');
+        await import('./ui/components/base/confirm-dialog.js');
       if (typeof dismissActiveConfirmDialog === 'function') {
         dismissActiveConfirmDialog();
       }
@@ -1715,6 +1711,10 @@ window.onload = async () => {
   document.addEventListener('contact:call', (e) => {
     const { contactId, contactName, roomId } = e.detail;
     callContact(contactId, contactName, roomId);
+  });
+  document.addEventListener('contact:messages-open', (e) => {
+    const { contactId, contactName } = e.detail;
+    messagesUI.openContactMessages(contactId, contactName);
   });
   document.addEventListener('contact:saved', (e) => {
     listenForIncomingOnRoom(e.detail.roomId);

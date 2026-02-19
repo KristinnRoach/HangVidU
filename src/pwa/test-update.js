@@ -9,7 +9,7 @@
  *   window.testPWAUpdate(3000)  // Show after 3 seconds
  */
 
-import { showUpdateNotification } from '../components/notifications/update-notification.js';
+import { showUpdateNotification } from '../ui/components/notifications/update-notification.js';
 
 /**
  * Simulates a PWA update by triggering the update notification

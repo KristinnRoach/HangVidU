@@ -1,6 +1,5 @@
 /* src/style.css */
 
-/* Import modular styles */
 @import './view-state.css'; /* Declarative view-based visibility */
 @import './init/reset-normalize.css';
 @import './init/typography.css';
@@ -21,9 +20,11 @@
 @import './components/reactions.css';
 @import './components/search.css';
 @import './components/notifications.css';
-@import './components/incoming-call.css';
 @import './components/toast.css';
-@import './components/image-preview-dialog.css';
+@import './components/dialog/incoming-call.css';
+@import './components/dialog/image-preview-dialog.css';
+@import './components/dialog/confirm-dialog.css';
+@import './components/dialog/edit-contact-dialog.css';
 
 /* Default visible state for elements that toggle visibility */
 .video-box,

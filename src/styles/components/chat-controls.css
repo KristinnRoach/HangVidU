@@ -102,23 +102,15 @@
 }
 
 #hang-up-btn {
-  background-color: rgb(255, 80, 80, 1);
+  background-color: rgb(255 80 80);
 }
 
 #hang-up-btn:hover {
-  background-color: rgb(255, 50, 50, 1);
-}
-
-#hangUp {
-  background-color: #f44336;
-}
-
-#hangUp:hover:not(:disabled) {
-  background-color: #da190b;
+  background-color: rgb(255 50 50);
 }
 
 .chat-btn.muted {
-  background-color: rgb(255, 80, 80, 1);
+  background-color: rgb(255 80 80);
 }
 
 /* Mobile Optimization */

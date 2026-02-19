@@ -1,4 +1,3 @@
-// src/components/ui/watch-mode.js
 // Watch mode UI state management
 
 import {
@@ -25,7 +24,7 @@ import {
   removeFromSmallFrame,
   requestPiP,
   exitPiP,
-} from '../../utils/ui/ui-utils.js';
+} from '../utils/ui-utils.js';
 
 import { isWatchModeActive, setWatchMode } from '../../firebase/watch-sync.js';
 

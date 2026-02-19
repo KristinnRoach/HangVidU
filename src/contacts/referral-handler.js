@@ -5,10 +5,10 @@ import { signInWithAccountSelection } from '../auth/index.js';
 import { getLoggedInUserId } from '../auth/auth-state.js';
 import { acceptInvite } from './invitations.js';
 import { getDeterministicRoomId } from '../utils/room-id.js';
-import { showInfoToast, showSuccessToast } from '../utils/ui/toast.js';
+import { showInfoToast, showSuccessToast } from '../ui/utils/toast.js';
 import { getUserProfile } from '../user/profile.js';
-import { createReferralNotification } from '../components/notifications/referral-notification.js';
-import { inAppNotificationManager } from '../components/notifications/in-app-notification-manager.js';
+import { createReferralNotification } from '../ui/components/notifications/referral-notification.js';
+import { inAppNotificationManager } from '../ui/components/notifications/in-app-notification-manager.js';
 import { t } from '../i18n/index.js';
 
 /**

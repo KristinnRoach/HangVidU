@@ -23,7 +23,7 @@ import {
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { FileTransferController } from '../file-transfer/file-transfer-controller.js';
 import { StreamingFileWriter } from '../file-transfer/streaming-file-writer.js';
-import { messagesUI } from '../components/messages/messages-ui.js';
+import { messagesUI } from '../ui/components/messages/messages-ui.js';
 import { cleanupWatchSync } from '../firebase/watch-sync.js';
 
 export function createCallController() {
@@ -267,7 +267,7 @@ class CallController {
       // Import onCallRejected dynamically to avoid circular dependencies
       try {
         const { onCallRejected } =
-          await import('../components/calling/calling-ui.js');
+          await import('../ui/components/calling/calling-ui.js');
         await onCallRejected(rej.reason || 'user_rejected');
       } catch (_) {
         devDebug('Call declined');
