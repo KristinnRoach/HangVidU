@@ -15,6 +15,10 @@ export const uiState = {
   // Currently focused active media content (if any)
   currentMedia: 'none', // 'none' | 'remoteStream' | 'ytVideo' | 'sharedVideo'
 
+  getCurrentAuthAwareView() {
+    return this.view;
+  },
+
   getCurrentBaseView() {
     return this.view.split(':')[0];
   },

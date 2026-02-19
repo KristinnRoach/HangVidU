@@ -34,7 +34,7 @@ Clean UI state management with declarative rendering, enabling Messenger-like re
 ### In Progress
 
 - [ ] Verify watch mode `currentMedia` works end-to-end
-- [ ] Rethink state naming (`currentMedia` vs `mainContent` - see state.js notes)
+- [ ] Rethink state naming (`currentMedia` vs `mainContent` - see ui-state.js notes)
 
 ### Future
 
