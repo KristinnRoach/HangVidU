@@ -252,7 +252,11 @@ export function hideCallingUI() {
 
   // Let the lifecycle layer handle view state reset
   if (storedOnHide) {
-    storedOnHide();
+    try {
+      storedOnHide();
+    } catch (e) {
+      console.warn('[calling-ui] onHide callback threw:', e);
+    }
     storedOnHide = null;
   }
 
