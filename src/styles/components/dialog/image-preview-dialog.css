@@ -1,3 +1,5 @@
+/* Image Preview Dialog */
+
 .image-preview-dialog {
   background: none;
   border: none;
@@ -7,7 +9,7 @@
 }
 
 .image-preview-dialog::backdrop {
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0 0 0 / 0.8);
 }
 
 .image-preview-img {
@@ -24,7 +26,7 @@
   border-radius: 50%;
   padding: var(--spacing-xs);
 
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255 255 255 / 0.05);
   border: none;
   color: var(--text-secondary);
 
@@ -33,7 +35,7 @@
 
 .image-preview-close:hover,
 .image-preview-download:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255 255 255 / 0.1);
   color: var(--text-primary);
 }
 
