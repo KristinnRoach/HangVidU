@@ -1,4 +1,4 @@
-// src/ui/bind-call-ui.js
+// src/ui/core/bind-call-ui.js
 
 import { onCallConnected, onCallDisconnected } from './call-lifecycle-ui.js';
 import { hideCallingUI } from '../components/calling/calling-ui.js';
