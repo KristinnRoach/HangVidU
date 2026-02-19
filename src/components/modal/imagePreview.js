@@ -49,9 +49,8 @@ export function showImagePreview(src, fileName, downloadLabel = null) {
   dialog.appendChild(downloadBtn);
   dialog.appendChild(closeBtn);
 
-  const cleanupSwipe = onSwipe(dialog, {
+  const cleanupSwipe = onSwipe(img, {
     onSwipeUp() {
-      console.debug('[ImagePreview] Swipe up detected, closing dialog');
       dialog.close();
     },
   });
