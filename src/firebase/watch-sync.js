@@ -26,7 +26,7 @@ import {
 import { sharedVideoEl, sharedBoxEl } from '../elements.js'; // TODO: refactor?
 import { hideElement, showElement } from '../ui/utils/ui-utils.js';
 
-import { onWatchModeEntered } from '../ui/watch-lifecycle-ui.js';
+import { onWatchModeEntered } from '../ui/core/watch-lifecycle-ui.js';
 
 // ============================================================================
 // WATCH-TOGETHER SYNC (Firebase-based)
@@ -256,7 +256,9 @@ function handleWatchRequestUpdate(snapshot) {
 
   // Notify the UI layer about the incoming request via CustomEvent
   document.dispatchEvent(
-    new CustomEvent('watch:file-request', { detail: { fileName: data.fileName } }),
+    new CustomEvent('watch:file-request', {
+      detail: { fileName: data.fileName },
+    }),
   );
 }
 

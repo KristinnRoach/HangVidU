@@ -4,7 +4,7 @@ import { devDebug } from '../utils/dev/dev-utils.js';
 import { clearUrlParam } from '../utils/url.js';
 import { onCallAnswered } from '../ui/components/calling/calling-ui.js';
 import CallController from './call-controller.js';
-import { onCallConnected } from '../ui/call-lifecycle-ui.js'; // onCallDisconnected not used here so onCallConnected should possibly also be moved
+import { onCallConnected } from '../ui/core/call-lifecycle-ui.js'; // onCallDisconnected not used here so onCallConnected should possibly also be moved
 
 let disconnectTimeoutId = null;
 let activePC = null; // connection reference

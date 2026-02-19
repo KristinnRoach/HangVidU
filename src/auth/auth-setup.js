@@ -17,7 +17,7 @@ import { devDebug } from '../utils/dev/dev-utils.js';
 import { initOneTap, showOneTapSignin } from './onetap.js';
 import { clearGISTokenCache } from './gis-tokens.js';
 import { getLocale, onLocaleChange } from '../i18n/index.js';
-import { uiState } from '../ui/ui-state.js';
+import { uiState } from '../ui/core/ui-state.js';
 
 export const auth = getAuth(app);
 
