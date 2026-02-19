@@ -75,10 +75,15 @@ export function onSwipe(element, callbacks = {}, options = {}) {
       { passive: true, signal },
     );
 
-    // Optional: prevent native scroll for that element if you want full control
-    // element.style.touchAction = 'none'; // CSS property
+    element.addEventListener(
+      'pointercancel',
+      () => {
+        pointerDown = false;
+      },
+      { passive: true, signal },
+    );
   } else {
-    // Fallback: touch events (iOS etc.).[web:13]
+    // Fallback: touch events (iOS etc.)
     let touching = false;
 
     element.addEventListener(
