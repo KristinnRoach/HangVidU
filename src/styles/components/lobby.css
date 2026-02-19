@@ -37,6 +37,7 @@
   aspect-ratio: 1;
 
   background-color: rgb(69, 140, 69);
+  color: var(--text-secondary);
 
   border: none;
   border-radius: 50%;
