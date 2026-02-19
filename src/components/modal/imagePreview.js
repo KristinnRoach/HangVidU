@@ -6,6 +6,8 @@
  * @param {string} fileName - File name used for the download link
  * @param {string|null} downloadLabel - Label for the download link (string or null)
  */
+import { attachSwipeUpToClose } from '../../utils/swipeUpToClose.js';
+
 export function showImagePreview(src, fileName, downloadLabel = null) {
   const dialog = document.createElement('dialog');
   dialog.className = 'image-preview-dialog';
@@ -51,7 +53,14 @@ export function showImagePreview(src, fileName, downloadLabel = null) {
     if (e.target === dialog) dialog.close();
   });
 
+  // Attach swipe-up-to-close gesture
+  let detachSwipe = null;
+  dialog.addEventListener('show', () => {
+    detachSwipe = attachSwipeUpToClose(dialog, () => dialog.close());
+  });
+
   dialog.addEventListener('close', () => {
+    if (detachSwipe) detachSwipe();
     if (typeof src === 'string' && src.startsWith('blob:')) {
       URL.revokeObjectURL(src);
     }
