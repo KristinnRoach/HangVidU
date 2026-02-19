@@ -23,7 +23,6 @@ import {
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { FileTransferController } from '../file-transfer/file-transfer-controller.js';
 import { StreamingFileWriter } from '../file-transfer/streaming-file-writer.js';
-import { messagesUI } from '../ui/components/messages/messages-ui.js';
 import { cleanupWatchSync } from '../firebase/watch-sync.js';
 
 export function createCallController() {
@@ -574,26 +573,22 @@ class CallController {
 
   /**
    * Setup file transfer when DataChannel is ready
-   * Creates FileTransferController and connects it to messagesUI
+   * Creates FileTransferController and emits fileTransportReady
    * @param {RTCDataChannel} dataChannel - The WebRTC DataChannel
    * @private
    */
   setupFileTransport(dataChannel) {
-    if (!dataChannel || !messagesUI) {
-      console.warn(
-        'Cannot setup file transport, missing dataChannel or messagesUI',
-        {
-          hasDataChannel: !!dataChannel,
-          hasMessagesUI: !!messagesUI,
-        },
-      );
+    if (!dataChannel) {
+      console.warn('Cannot setup file transport, missing dataChannel');
       return;
     }
 
     const initTransport = () => {
       try {
         this.fileTransferController = new FileTransferController(dataChannel);
-        messagesUI.setFileTransferController(this.fileTransferController);
+        this.emitter.emit('fileTransportReady', {
+          controller: this.fileTransferController,
+        });
         devDebug('[CallController] File transfer initialized');
       } catch (err) {
         console.error('[CallController] Failed to setup file transfer:', err);
@@ -754,7 +749,6 @@ class CallController {
       try {
         this.fileTransferController?.cleanup();
         this.fileTransferController = null;
-        messagesUI.setFileTransferController(null);
       } catch (e) {
         console.warn('CallController: failed to cleanup file transport', e);
       }
@@ -764,15 +758,6 @@ class CallController {
 
       // Clear OPFS temp files
       StreamingFileWriter.cleanup();
-
-      // Reset messages UI state (clear messages, hide toggle) but keep DOM intact
-      // so openContactMessages still works after a call ends.
-      // cleanup() destroys the singleton's DOM which can't be re-created.
-      try {
-        messagesUI.reset();
-      } catch (e) {
-        console.warn('CallController: failed to reset messages UI', e);
-      }
 
       // Reset state
       this.resetState();

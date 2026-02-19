@@ -7,13 +7,13 @@ import { devDebug } from '../../../utils/dev/dev-utils.js';
 import { getDiagnosticLogger } from '../../../utils/dev/diagnostic-logger.js';
 import RoomService from '../../../room.js';
 import { ringtoneManager } from '../../../media/audio/ringtone-manager.js';
-import { uiState } from '../../ui-state.js';
 import { t } from '../../../i18n/index.js';
 
 const CALL_TIMEOUT_MS = 30000; // 30 seconds
 
 let activeCallingUI = null;
 let timeoutId = null;
+let storedOnHide = null;
 
 /**
  * Write outgoing call state to RTDB so we can verify call freshness
@@ -91,18 +91,18 @@ export async function isRoomCallFresh(roomId) {
 /**
  * Show "Calling..." modal with cancel button and auto-timeout
  */
-export async function showCallingUI(roomId, contactName, onCancel) {
+export async function showCallingUI(roomId, contactName, { onCancel, onHide } = {}) {
   const diag = getDiagnosticLogger();
   const showTime = Date.now();
 
   // Remove any existing calling UI first
   hideCallingUI();
 
+  // Store onHide callback for hideCallingUI to call
+  storedOnHide = onHide || null;
+
   // Track outgoing call state in RTDB
   await setOutgoingCallState(roomId, contactName);
-
-  // Set UI state to calling
-  uiState.setView('calling');
 
   // Create modal overlay
   const overlay = document.createElement('div');
@@ -250,9 +250,14 @@ export function hideCallingUI() {
   // Stop ringtone when hiding UI
   ringtoneManager.stop();
 
-  // Reset UI state to lobby (unless call connected, which sets 'connected')
-  if (uiState.getCurrentBaseView() === 'calling') {
-    uiState.setView('lobby');
+  // Let the lifecycle layer handle view state reset
+  if (storedOnHide) {
+    try {
+      storedOnHide();
+    } catch (e) {
+      console.warn('[calling-ui] onHide callback threw:', e);
+    }
+    storedOnHide = null;
   }
 
   if (activeCallingUI) {

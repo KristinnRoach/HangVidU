@@ -451,8 +451,9 @@ export function initMessagesUI() {
     });
   }
 
-  // Setup global handler for incoming watch requests
-  window.onFileWatchRequestReceived = async (fileName) => {
+  // Listen for incoming watch requests from watch-sync via CustomEvent
+  async function onWatchFileRequest(e) {
+    const { fileName } = e.detail;
     // Check if we have this file
     const file = sentFiles.get(fileName);
 
@@ -483,7 +484,8 @@ export function initMessagesUI() {
       appendChatMessage(`❌ ${t('message.watch.declined')}`);
       await cancelWatchRequest();
     }
-  };
+  }
+  document.addEventListener('watch:file-request', onWatchFileRequest);
 
   // Position the messages box relative to toggle
   function positionMessagesBox() {
@@ -1410,6 +1412,9 @@ export function initMessagesUI() {
 
     // Remove keyboard shortcut handler
     document.removeEventListener('keydown', openMessagesKeyhandler);
+
+    // Remove watch file request handler
+    document.removeEventListener('watch:file-request', onWatchFileRequest);
 
     // Remove messages box container
     if (messagesBoxContainer && messagesBoxContainer.parentNode) {

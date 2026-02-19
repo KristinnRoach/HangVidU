@@ -112,12 +112,12 @@ None of these are individually wrong, but there's no rule for which to use.
 
 The migration direction is already clear from `ui-refactor.md` and the code comments. The remaining gaps:
 
-1. **Replace `window.onFileWatchRequestReceived`** — inject a callback when `setupWatchSync` is called, the same way `onCancel` is injected into `showCallingUI`. Or fire a `CustomEvent` on `document` and listen in `messages-ui.js`.
+1. ~~**Replace `window.onFileWatchRequestReceived`**~~ ✅ **Done** — `watch-sync.js` now dispatches `watch:file-request` CustomEvent on `document`; `messages-ui.js` listens with `document.addEventListener`.
 
-2. **Remove `CallController` → `messagesUI` imports** — move `messagesUI.setFileTransferController()` and `messagesUI.reset()` into `bind-call-ui.js`. Subscribe to `answered` and `cleanup` events there. The controller should not import from the UI layer.
+2. ~~**Remove `CallController` → `messagesUI` imports**~~ ✅ **Done** — `call-controller.js` no longer imports from the UI layer. It emits `fileTransportReady` event; `bind-call-ui.js` subscribes and calls `messagesUI.setFileTransferController()`. Cleanup (`setFileTransferController(null)` + `reset()`) also moved to `bind-call-ui.js` `cleanup` handler.
 
-3. **Remove `calling-ui.js` → `uiState` write** — replace with an `onStateChange` callback injected at construction. The lifecycle layer owns state writes.
+3. ~~**Remove `calling-ui.js` → `uiState` write**~~ ✅ **Done** — `calling-ui.js` no longer imports `uiState`. `showCallingUI` now accepts `{ onCancel, onHide }`. The call site in `main.js` passes `onHide: onCallingEnded` from `call-lifecycle-ui.js`, which owns the state write. `onCallingStarted`/`onCallingEnded` added to `call-lifecycle-ui.js`.
 
-4. **Complete the CSS-driven view migration** — remove `enterCallMode()`/`exitCallMode()` direct DOM manipulation once `view-state.css` covers the calling state fully (tracked in `ui-refactor.md`).
+4. **Complete the CSS-driven view migration** — remove `enterCallMode()`/`exitCallMode()` direct DOM manipulation once `view-state.css` covers the calling state fully (tracked in `ui-refactor.md`). Large scope — deferred.
 
-5. **Pick one button wiring rule** — recommendation: primary call controls wired in `main.js` (they depend on call state); all others wired inside their own component's init function. Document the rule.
+5. **Pick one button wiring rule** — recommendation: primary call controls wired in `main.js` (they depend on call state); all others wired inside their own component's init function. Document the rule. Convention decision — deferred.

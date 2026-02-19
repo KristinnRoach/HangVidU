@@ -254,11 +254,10 @@ function handleWatchRequestUpdate(snapshot) {
   // Ignore our own requests
   if (data.requestedBy === currentUserId) return;
 
-  // Notify the UI layer about the incoming request
-  // This will be handled by messages-ui to show a prompt
-  if (window.onFileWatchRequestReceived) {
-    window.onFileWatchRequestReceived(data.fileName);
-  }
+  // Notify the UI layer about the incoming request via CustomEvent
+  document.dispatchEvent(
+    new CustomEvent('watch:file-request', { detail: { fileName: data.fileName } }),
+  );
 }
 
 // -----------------------------------------------------------------------------
