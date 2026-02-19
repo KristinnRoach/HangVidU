@@ -1,3 +1,7 @@
+// src/components/modal/imagePreview.js
+
+import { onSwipe } from '../../utils/ui/swipe-interactions.js';
+
 /**
  * Opens a full-screen preview modal for an image using the native <dialog> element.
  * Clicking the backdrop or pressing Escape closes the modal.
@@ -6,8 +10,6 @@
  * @param {string} fileName - File name used for the download link
  * @param {string|null} downloadLabel - Label for the download link (string or null)
  */
-import { attachSwipeUpToClose } from '../../utils/swipeUpToClose.js';
-
 export function showImagePreview(src, fileName, downloadLabel = null) {
   const dialog = document.createElement('dialog');
   dialog.className = 'image-preview-dialog';
@@ -24,7 +26,6 @@ export function showImagePreview(src, fileName, downloadLabel = null) {
   downloadBtn.setAttribute('aria-label', `Download`);
   downloadBtn.setAttribute('title', `Download`);
 
-  // Font Awesome download icon
   const downloadIcon = document.createElement('i');
   downloadIcon.className = 'fa fa-download';
   downloadBtn.appendChild(downloadIcon);
@@ -38,7 +39,7 @@ export function showImagePreview(src, fileName, downloadLabel = null) {
   closeBtn.className = 'image-preview-close';
   closeBtn.setAttribute('aria-label', 'Close');
   closeBtn.setAttribute('title', 'Close Image Preview');
-  // Font Awesome close icon
+
   const closeIcon = document.createElement('i');
   closeIcon.className = 'fa fa-close';
   closeBtn.appendChild(closeIcon);
@@ -48,24 +49,33 @@ export function showImagePreview(src, fileName, downloadLabel = null) {
   dialog.appendChild(downloadBtn);
   dialog.appendChild(closeBtn);
 
-  // Close on backdrop click
-  dialog.addEventListener('click', (e) => {
-    if (e.target === dialog) dialog.close();
+  const cleanupSwipe = onSwipe(img, {
+    onSwipeUp() {
+      dialog.close();
+    },
   });
 
-  // Attach swipe-up-to-close gesture
-  let detachSwipe = null;
-  dialog.addEventListener('show', () => {
-    detachSwipe = attachSwipeUpToClose(dialog, () => dialog.close());
-  });
+  const onBackdropClick = (e) => {
+    if (e.target === dialog) {
+      dialog.close();
+    }
+  };
 
-  dialog.addEventListener('close', () => {
-    if (detachSwipe) detachSwipe();
+  const cleanup = () => {
+    cleanupSwipe();
+    dialog.removeEventListener('click', onBackdropClick);
+  };
+
+  const onClose = () => {
     if (typeof src === 'string' && src.startsWith('blob:')) {
       URL.revokeObjectURL(src);
     }
+    cleanup();
     dialog.remove();
-  });
+  };
+
+  dialog.addEventListener('click', onBackdropClick);
+  dialog.addEventListener('close', onClose);
 
   document.body.appendChild(dialog);
   dialog.showModal();
