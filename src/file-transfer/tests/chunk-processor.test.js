@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { convertToArrayBuffer, parseEmbeddedChunkPacket } from './chunk-processor.js';
+import {
+  convertToArrayBuffer,
+  parseEmbeddedChunkPacket,
+} from '../chunk-processor.js';
 
 describe('chunk-processor', () => {
   describe('convertToArrayBuffer', () => {
@@ -52,7 +55,9 @@ describe('chunk-processor', () => {
       const chunkData = new Uint8Array([1, 2, 3, 4, 5]);
 
       // Build packet with little-endian length
-      const packet = new ArrayBuffer(4 + metaBytes.length + chunkData.byteLength);
+      const packet = new ArrayBuffer(
+        4 + metaBytes.length + chunkData.byteLength,
+      );
       const view = new Uint8Array(packet);
       const dataView = new DataView(packet);
       dataView.setUint32(0, metaBytes.length, true); // little-endian
@@ -79,7 +84,9 @@ describe('chunk-processor', () => {
       const chunkData = new Uint8Array([10, 20, 30]);
 
       // Build packet
-      const packet = new ArrayBuffer(4 + metaBytes.length + chunkData.byteLength);
+      const packet = new ArrayBuffer(
+        4 + metaBytes.length + chunkData.byteLength,
+      );
       const view = new Uint8Array(packet);
       const dataView = new DataView(packet);
       dataView.setUint32(0, metaBytes.length, true);
