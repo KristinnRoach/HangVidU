@@ -235,11 +235,14 @@ export async function renderContactsList(lobbyElement) {
   }
 
   if (contactIds.length === 0) {
+    // Ensure per-contact listeners are torn down when list becomes empty
+    setupPresenceIndicators([]);
+    setupUnreadBadges([]);
     contactsContainer.innerHTML = `<p>${t('contact.none')}</p>`;
-
     hideElement(contactsContainer);
     return;
   }
+
   // Ensure container is visible when contacts exist (if using display: none above)
   showElement(contactsContainer);
 
