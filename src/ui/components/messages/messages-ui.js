@@ -1293,6 +1293,11 @@ export function initMessagesUI() {
           });
         }
 
+        // Update interaction timestamp for received files
+        if (currentSession?.contactId) {
+          updateLastInteraction(currentSession.contactId).catch(() => {});
+        }
+
         // Increment unread count if messages box is hidden
         if (isHidden(messagesBox)) {
           const currentCount = messageToggle.element.unreadCount || 0;
@@ -1504,12 +1509,16 @@ export function initMessagesUI() {
           appendCallEventMessage(msgData, {
             isUnread: !msgData.read,
           });
+          updateLastInteraction(contactId).catch(() => {});
           return;
         }
 
         // Handle file messages (RTDB base64)
         if (msgData.type === 'file') {
           appendFileMessage(msgData, isSentByMe);
+          if (!isSentByMe) {
+            updateLastInteraction(contactId).catch(() => {});
+          }
           return;
         }
 
