@@ -389,9 +389,20 @@ export class RTDBMessagingTransport extends MessagingTransport {
       throw new Error('Cannot send file: not logged in');
     }
 
+    // TODO: TEMP DEBUG — remove after iOS testing
+    console.log('[rtdb-transport] sendFile:', {
+      name: file.name,
+      type: file.type,
+      size: `${(file.size / 1024).toFixed(0)}KB`,
+      overLimit: file.size > MAX_FILE_SIZE,
+      isImage: file.type.startsWith('image/'),
+    });
+
     if (file.size > MAX_FILE_SIZE) {
       if (file.type.startsWith('image/')) {
         const compressed = await compressImage(file);
+        // TODO: TEMP DEBUG — remove after iOS testing
+        console.log('[rtdb-transport] compression result:', compressed ? `${(compressed.size / 1024).toFixed(0)}KB` : 'null');
         if (compressed && compressed.size <= MAX_FILE_SIZE) {
           file = compressed;
         } else {
