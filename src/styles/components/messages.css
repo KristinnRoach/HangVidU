@@ -36,6 +36,31 @@
   }
 }
 
+/* All buttons inside messages ui */
+
+.messages-box button,
+#messages button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: fit-content;
+  height: fit-content;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  cursor: pointer;
+
+  box-shadow: none;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  transition: opacity 0.15s ease;
+}
+
+#messages-form [data-lucide] {
+  text-shadow: var(--text-shadow-subtle);
+}
+
 /* Messages Box */
 
 .messages-box {
@@ -44,7 +69,7 @@
 
   position: fixed;
 
-  /* Fallback positioning for browsers without anchor positioning */
+  /* TODO: This is outdated -> Fallback positioning for browsers without anchor positioning */
   bottom: 80px;
   right: 20px;
 
@@ -71,63 +96,55 @@
   padding-bottom: 8px;
 }
 
-.messages-topbar-contact {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  flex: 1;
-}
+/* nested selectors using vanilla CSS nesting */
+.messages-top-bar {
+  & .messages-topbar-contact {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+  }
 
-.messages-topbar-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #3757c1;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background-size: cover;
-  background-position: center;
-}
+  & .messages-topbar-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #3757c1;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-size: cover;
+    background-position: center;
+  }
 
-.messages-topbar-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+  & .messages-topbar-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
-.messages-topbar-back,
-.messages-topbar-call {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
+  & .messages-topbar-back,
+  & .messages-topbar-call {
+    padding: 0 var(--spacing-xs);
+    width: 32px;
+  }
 
-  box-shadow: none;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: opacity 0.15s ease;
-}
+  & .messages-topbar-call {
+    color: rgba(25, 204, 46, 0.855);
+  }
 
-.messages-topbar-call {
-  color: rgba(25, 204, 46, 0.855);
-}
-
-.messages-topbar-back:hover,
-.messages-topbar-call:hover {
-  opacity: 0.85;
-  background: rgba(255, 255, 255, 0.1);
+  & .messages-topbar-back:hover,
+  & .messages-topbar-call:hover {
+    opacity: 0.85;
+    background: rgba(255, 255, 255, 0.1);
+  }
 }
 
 /* Messages Content Area (extracted from inline styles) */
@@ -312,15 +329,19 @@
   resize: none;
 }
 
-#messages-form button {
-  padding: 6px var(--spacing-md);
+#messages-form button[type='submit'] {
+  background-color: var(--color-success);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+
+  transition:
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
-#messages-form button[type='submit'] {
-  background: var(--color-success);
-  color: var(--text-primary);
-  border: none;
-  box-shadow: var(--shadow-sm);
+#messages-form button[type='submit']:hover {
+  background-color: var(--color-success-hover);
+  box-shadow: var(--shadow-md);
 }
 
 #attach-file-btn {
