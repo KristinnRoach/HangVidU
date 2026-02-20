@@ -30,7 +30,7 @@ describe('compressImage', () => {
     const result = await compressImage(file);
 
     expect(result).not.toBeNull();
-    expect(result.size).toBeLessThanOrEqual(950_000);
+    expect(result.size).toBeLessThanOrEqual(700_000);
 
     const bitmap = await createImageBitmap(result);
     expect(bitmap.width).toBeLessThanOrEqual(1280);
@@ -43,7 +43,7 @@ describe('compressImage', () => {
     const result = await compressImage(file);
 
     expect(result).not.toBeNull();
-    expect(result.size).toBeLessThanOrEqual(950_000);
+    expect(result.size).toBeLessThanOrEqual(700_000);
 
     const bitmap = await createImageBitmap(result);
     expect(bitmap.width).toBeLessThanOrEqual(1280);
@@ -56,7 +56,7 @@ describe('compressImage', () => {
     const result = await compressImage(file);
 
     expect(result).not.toBeNull();
-    expect(result.size).toBeLessThanOrEqual(950_000);
+    expect(result.size).toBeLessThanOrEqual(700_000);
 
     const bitmap = await createImageBitmap(result);
     expect(bitmap.width).toBeLessThanOrEqual(1280);

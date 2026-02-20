@@ -389,32 +389,22 @@ export class RTDBMessagingTransport extends MessagingTransport {
       throw new Error('Cannot send file: not logged in');
     }
 
-    // TODO: TEMP DEBUG — remove after iOS testing
-    console.log('[rtdb-transport] sendFile:', {
-      name: file.name,
-      type: file.type,
-      size: `${(file.size / 1024).toFixed(0)}KB`,
-      overLimit: file.size > MAX_FILE_SIZE,
-      isImage: file.type.startsWith('image/'),
-    });
-
-    if (file.size > MAX_FILE_SIZE) {
-      if (file.type.startsWith('image/')) {
-        const compressed = await compressImage(file);
-        // TODO: TEMP DEBUG — remove after iOS testing
-        console.log('[rtdb-transport] compression result:', compressed ? `${(compressed.size / 1024).toFixed(0)}KB` : 'null');
-        if (compressed && compressed.size <= MAX_FILE_SIZE) {
-          file = compressed;
-        } else {
-          throw new Error(
-            `Image too large to compress under ${MAX_FILE_SIZE / 1024 / 1024}MB.`,
-          );
-        }
-      } else {
+    // Always compress images — even files under MAX_FILE_SIZE need it
+    // because base64 encoding adds ~33% overhead
+    if (file.type.startsWith('image/')) {
+      const compressed = await compressImage(file);
+      if (compressed) {
+        file = compressed;
+      } else if (file.size > MAX_FILE_SIZE) {
         throw new Error(
-          `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max ${MAX_FILE_SIZE / 1024 / 1024}MB.`,
+          `Image too large to compress under ${MAX_FILE_SIZE / 1024 / 1024}MB.`,
         );
       }
+      // If compression returned null but file is small enough, send original
+    } else if (file.size > MAX_FILE_SIZE) {
+      throw new Error(
+        `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max ${MAX_FILE_SIZE / 1024 / 1024}MB.`,
+      );
     }
 
     const user = getUser();

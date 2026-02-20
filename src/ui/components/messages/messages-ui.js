@@ -185,14 +185,6 @@ export function initMessagesUI() {
     const file = e.target.files[0];
     if (!file) return;
 
-    // TODO: TEMP DEBUG — remove after iOS testing
-    console.log('[file-input] picked file:', {
-      name: file.name,
-      type: file.type,
-      size: `${(file.size / 1024).toFixed(0)}KB`,
-      lastModified: new Date(file.lastModified).toISOString(),
-    });
-
     const originalText = getSendLabelText();
     setSendLabelText(t('message.sending'));
 

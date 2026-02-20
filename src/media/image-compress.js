@@ -6,27 +6,18 @@
  *
  * @param {File} file - The image file to compress
  * @param {object} [opts]
- * @param {number} [opts.maxBytes=950_000] - Target max file size in bytes
+ * @param {number} [opts.maxBytes=700_000] - Target max file size in bytes (accounts for base64 overhead)
  * @param {number} [opts.maxDimension=1280] - Starting max width or height in px
  * @returns {Promise<File|null>}
  */
 export async function compressImage(
   file,
-  { maxBytes = 950_000, maxDimension = 1280 } = {},
+  { maxBytes = 700_000, maxDimension = 1280 } = {},
 ) {
-  // TODO: TEMP DEBUG — remove after iOS testing
-  console.log('[compressImage] input:', {
-    name: file.name,
-    type: file.type,
-    size: `${(file.size / 1024).toFixed(0)}KB`,
-  });
-
   let bitmap;
   try {
     bitmap = await createImageBitmap(file);
-  } catch (err) {
-    // TODO: TEMP DEBUG — remove after iOS testing
-    console.warn('[compressImage] createImageBitmap failed:', err.message);
+  } catch {
     return null;
   }
 
@@ -36,9 +27,6 @@ export async function compressImage(
   }
 
   const { width, height } = bitmap;
-  // TODO: TEMP DEBUG — remove after iOS testing
-  console.log('[compressImage] bitmap decoded:', { width, height });
-
   const ext = { 'image/webp': '.webp', 'image/jpeg': '.jpg' };
   const formats = ['image/webp', 'image/jpeg'];
 
@@ -71,14 +59,6 @@ export async function compressImage(
         continue;
       }
 
-      // TODO: TEMP DEBUG — remove after iOS testing
-      console.log('[compressImage] attempt:', {
-        type,
-        quality: q,
-        dim: `${tw}x${th}`,
-        size: `${(blob.size / 1024).toFixed(0)}KB`,
-      });
-
       if (blob.size <= maxBytes) {
         bitmap.close();
         const name = file.name.replace(/\.[^.]+$/, '') + ext[type];
@@ -87,8 +67,6 @@ export async function compressImage(
     }
   }
 
-  // TODO: TEMP DEBUG — remove after iOS testing
-  console.warn('[compressImage] could not compress under target size');
   bitmap.close();
   return null;
 }
