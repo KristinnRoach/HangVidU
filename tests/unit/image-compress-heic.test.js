@@ -45,7 +45,9 @@ describe('compressImage — real HEIC files', () => {
         expect(bitmap.height).toBeLessThanOrEqual(1280);
         bitmap.close();
       } else {
-        console.warn(`[${entry.name}] compressImage returned null — format unsupported in this browser`);
+        console.warn(
+          `[${entry.name}] compressImage returned null — format unsupported in this browser`,
+        );
       }
     });
   }

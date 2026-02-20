@@ -30,26 +30,40 @@ export async function compressImage(
   const ext = { 'image/webp': '.webp', 'image/jpeg': '.jpg' };
   const formats = ['image/webp', 'image/jpeg'];
 
+  const safeMaxDim = sanitizeMaxDimension(maxDimension);
+
+  if (safeMaxDim === null) {
+    bitmap.close();
+    return null;
+  }
+
   // Try progressively smaller dimensions and lower quality
+  const d1 = Math.min(800, safeMaxDim);
+  const d2 = Math.min(600, safeMaxDim);
   const steps = [
-    { dim: maxDimension, q: 0.7 },
-    { dim: maxDimension, q: 0.5 },
-    { dim: 800, q: 0.6 },
-    { dim: 800, q: 0.4 },
-    { dim: 600, q: 0.5 },
-    { dim: 600, q: 0.3 },
+    { dim: safeMaxDim, q: 0.7 },
+    { dim: safeMaxDim, q: 0.5 },
+    { dim: d1, q: 0.6 },
+    { dim: d1, q: 0.4 },
+    { dim: d2, q: 0.5 },
+    { dim: d2, q: 0.3 },
   ];
 
+  let canvas = null;
+  let ctx = null;
+  let lastDim = -1;
+
   for (const { dim, q } of steps) {
-    const scale = Math.min(1, dim / Math.max(width, height));
-    const tw = Math.round(width * scale);
-    const th = Math.round(height * scale);
-
-    const canvas = new OffscreenCanvas(tw, th);
-    const ctx = canvas.getContext('2d');
+    if (dim !== lastDim) {
+      const scale = Math.min(1, dim / Math.max(width, height));
+      const tw = Math.round(width * scale);
+      const th = Math.round(height * scale);
+      canvas = new OffscreenCanvas(tw, th);
+      ctx = canvas.getContext('2d');
+      ctx?.drawImage(bitmap, 0, 0, tw, th);
+      lastDim = dim;
+    }
     if (!ctx) continue;
-
-    ctx.drawImage(bitmap, 0, 0, tw, th);
 
     for (const type of formats) {
       let blob;
@@ -69,4 +83,24 @@ export async function compressImage(
 
   bitmap.close();
   return null;
+}
+
+function sanitizeMaxDimension(dim) {
+  const MIN_DIM = 16;
+  const MAX_DIM = 8192;
+
+  if (!Number.isFinite(dim) || dim <= 0) {
+    console.warn('[compressImage] Invalid dimension - skipping this step.');
+    return null;
+  }
+  if (dim < MIN_DIM) {
+    console.debug('compressImage received very small dimension, clamping.');
+    return MIN_DIM;
+  }
+  if (dim > MAX_DIM) {
+    console.debug('compressImage received too large dimension, clamping.');
+    return MAX_DIM;
+  }
+
+  return dim;
 }
