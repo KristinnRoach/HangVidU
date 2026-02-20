@@ -46,7 +46,7 @@ async function setupPWA() {
     installBtnComponent = createIconButton({
       id: 'install-btn',
       title: 'Install App',
-      iconHtml: '<i class="fa fa-plus"></i>',
+      lucideIcon: 'plus',
       className: 'hidden', // Start hidden
       onMount: (el) => {
         if (isDev()) {
@@ -68,7 +68,7 @@ async function setupPWA() {
   // iOS: Show instructions instead of install prompt
   if (isIOS()) {
     installBtnComponent.update({
-      iconHtml: '<i class="fa fa-info"></i>',
+      lucideIcon: 'info',
       title: 'Show Install Instructions',
     });
 

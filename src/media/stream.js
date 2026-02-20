@@ -16,6 +16,8 @@ import {
 } from './constraints.js';
 import { devDebug, isDev } from '../utils/dev/dev-utils.js';
 
+import { initIcons } from '../ui/icons.js';
+
 export const createLocalStream = async () => {
   if (hasLocalStream()) {
     console.debug('Reusing existing local MediaStream.');
@@ -114,8 +116,11 @@ export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
     // Auto-mute partner in dev to avoid feedback
     if (isDev() && !remoteVideoEl.muted) {
       remoteVideoEl.muted = true;
-      const icon = mutePartnerBtn?.querySelector('i');
-      if (icon) icon.className = 'fa fa-volume-mute';
+      const icon = mutePartnerBtn?.querySelector('i, svg');
+      if (icon) {
+        icon.setAttribute('data-lucide', 'volume-x');
+        initIcons(mutePartnerBtn);
+      }
     }
 
     // Log connection status

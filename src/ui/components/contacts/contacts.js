@@ -6,6 +6,7 @@ import editContactModal from './edit-contact-modal.js';
 import { hideElement, showElement } from '../../utils/ui-utils.js';
 import { t, onLocaleChange } from '../../../i18n/index.js';
 import { escapeHtml } from '../../../ui/component-system/dom-utils.js';
+import { initIcons } from '../../icons.js';
 
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
@@ -259,7 +260,7 @@ export async function renderContactsList(lobbyElement) {
                 data-contact-id="${escapeHtml(id)}"
                 title="${escapeHtml(t('contact.action.call', { name: escapedName }))}"
               >
-                <i class="fa fa-phone"></i>
+                <i data-lucide="phone"></i>
               </button>
 
               <span class="presence-indicator" data-contact-id="${escapeHtml(id)}"></span>
@@ -282,6 +283,8 @@ export async function renderContactsList(lobbyElement) {
         .join('')}
     </div>
   `;
+
+  initIcons(contactsContainer);
 
   // Attach event listeners for call/delete buttons
   attachContactListeners(contactsContainer, lobbyElement);

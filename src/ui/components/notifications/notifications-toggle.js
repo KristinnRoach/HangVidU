@@ -1,5 +1,6 @@
 import createComponent from '../../../ui/component-system/component.js';
 import { t, onLocaleChange } from '../../../i18n/index.js';
+import { initIcons } from '../../icons.js';
 
 /**
  * Creates a notifications toggle button that shows/hides based on notification count.
@@ -31,7 +32,7 @@ export function createNotificationsToggle({
         onclick="handleClick"
         data-count="[[count]]"
       >
-        <i class="fa fa-bell"></i>
+        <i data-lucide="bell"></i>
         <span class="notification-badge">
           [[unreadCount]]
         </span>
@@ -76,6 +77,7 @@ export function createNotificationsToggle({
     if (btn) {
       btn.disabled = props.count === 0; // Disabled only when list is empty
     }
+    initIcons(component);
   });
 
   // Helper methods

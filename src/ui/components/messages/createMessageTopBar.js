@@ -1,19 +1,20 @@
 import { renderAvatar } from '../../utils/avatar.js';
 import { t } from '../../../i18n/index.js';
+import { initIcons } from '../../icons.js';
 
 export function createMessageTopBar() {
   const root = document.createElement('div');
   root.className = 'messages-top-bar';
   root.innerHTML = `
     <button type="button" class="messages-topbar-back" aria-label="${t('shared.back')}">
-      <i class="fa fa-chevron-left" aria-hidden="true"></i>
+      <i data-lucide="chevron-left" aria-hidden="true"></i>
     </button>
     <div class="messages-topbar-contact">
       <span class="messages-topbar-avatar" aria-hidden="true"></span>
       <span class="messages-topbar-name"></span>
     </div>
     <button type="button" class="messages-topbar-call" aria-label="${t('message.call')}">
-      <i class="fa fa-phone" aria-hidden="true"></i>
+      <i data-lucide="phone" aria-hidden="true"></i>
     </button>
   `;
 
@@ -41,5 +42,6 @@ export function createMessageTopBar() {
     root.remove();
   };
 
+  initIcons(root);
   return { element: root, setContact, setBackHandler, setCallHandler, cleanup };
 }

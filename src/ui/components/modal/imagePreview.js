@@ -1,6 +1,7 @@
 // src/ui/components/modal/imagePreview.js
 
 import { onSwipe } from '../../utils/swipe-interactions.js';
+import { initIcons } from '../../icons.js';
 
 /**
  * Opens a full-screen preview modal for an image using the native <dialog> element.
@@ -27,7 +28,7 @@ export function showImagePreview(src, fileName, downloadLabel = null) {
   downloadBtn.setAttribute('title', `Download`);
 
   const downloadIcon = document.createElement('i');
-  downloadIcon.className = 'fa fa-download';
+  downloadIcon.setAttribute('data-lucide', 'download');
   downloadBtn.appendChild(downloadIcon);
   if (typeof downloadLabel === 'string' && downloadLabel.trim() !== '') {
     const labelSpan = document.createElement('span');
@@ -41,7 +42,7 @@ export function showImagePreview(src, fileName, downloadLabel = null) {
   closeBtn.setAttribute('title', 'Close Image Preview');
 
   const closeIcon = document.createElement('i');
-  closeIcon.className = 'fa fa-close';
+  closeIcon.setAttribute('data-lucide', 'x');
   closeBtn.appendChild(closeIcon);
   closeBtn.addEventListener('click', () => dialog.close());
 
@@ -78,5 +79,6 @@ export function showImagePreview(src, fileName, downloadLabel = null) {
   dialog.addEventListener('close', onClose);
 
   document.body.appendChild(dialog);
+  initIcons(dialog);
   dialog.showModal();
 }

@@ -1,4 +1,5 @@
 import { t } from '../../../i18n/index.js';
+import { initIcons } from '../../icons.js';
 import { onClickOutside } from '../../utils/clickOutside.js';
 import { hideElement, isHidden, showElement } from '../../utils/ui-utils.js';
 import { renderAvatar } from '../../utils/avatar.js';
@@ -262,7 +263,7 @@ export function initMessagesUI() {
               font-size: 14px;
               transition: all 0.2s;
             ">
-              <i class="fa fa-download" style="margin-right: 8px;"></i>${t('message.download')}
+              <i data-lucide="download" style="margin-right: 8px;"></i>${t('message.download')}
             </button>
             <button id="watch-together-btn" style="
               flex: 1;
@@ -276,7 +277,7 @@ export function initMessagesUI() {
               font-weight: 600;
               transition: all 0.2s;
             ">
-              <i class="fa fa-play" style="margin-right: 8px;"></i>${t('message.watch_together')}
+              <i data-lucide="play" style="margin-right: 8px;"></i>${t('message.watch_together')}
             </button>
           </div>
         </div>
@@ -317,6 +318,8 @@ export function initMessagesUI() {
         overlay.remove();
         resolve('watch');
       });
+
+      initIcons(dialog);
 
       // Close on overlay click
       overlay.addEventListener('click', (e) => {
@@ -399,7 +402,7 @@ export function initMessagesUI() {
               font-weight: 600;
               transition: all 0.2s;
             ">
-              <i class="fa fa-play" style="margin-right: 8px;"></i>${t('shared.join')}
+              <i data-lucide="play" style="margin-right: 8px;"></i>${t('shared.join')}
             </button>
           </div>
         </div>
@@ -440,6 +443,8 @@ export function initMessagesUI() {
         overlay.remove();
         resolve(true);
       });
+
+      initIcons(dialog);
 
       // Close on overlay click
       overlay.addEventListener('click', (e) => {
@@ -905,7 +910,7 @@ export function initMessagesUI() {
     callBackBtn.type = 'button';
 
     const callBackIcon = document.createElement('i');
-    callBackIcon.className = 'fa fa-phone call-event-icon';
+    callBackIcon.setAttribute('data-lucide', 'phone');
     callBackIcon.setAttribute('aria-hidden', 'true');
     callBackBtn.appendChild(callBackIcon);
     callBackBtn.appendChild(
@@ -944,6 +949,7 @@ export function initMessagesUI() {
     p.appendChild(callEventBubble);
 
     messagesMessages.appendChild(p);
+    initIcons(p);
 
     // Handle unread count for received call events
     if (isUnread && !iAmTheCaller && isHidden(messagesBox)) {

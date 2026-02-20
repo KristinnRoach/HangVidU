@@ -168,17 +168,17 @@ describe('createComponent - Critical Usage Issues', () => {
     });
 
     it('should allow raw HTML for properties ending with "Html"', () => {
-      const icon = '<i class="fa fa-user"></i>';
+      const icon = '<i data-lucide="user"></i>';
 
       const component = createComponent({
         initialProps: { iconHtml: icon },
-        template: `<div>\${iconHtml}</div>`,
+        template: `<div>[[iconHtml]]</div>`,
         parent: container,
       });
 
       const iTag = component.querySelector('i');
       expect(iTag).toBeTruthy();
-      expect(iTag.className).toBe('fa fa-user');
+      expect(iTag.getAttribute('data-lucide')).toBe('user');
     });
 
     it('should NOT sanitize nested properties ending with "Html"', () => {

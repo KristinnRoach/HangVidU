@@ -1,5 +1,6 @@
 // media-controls.js
 // Handles all media control button functionality (mute, video, camera, fullscreen)
+import { initIcons } from '../ui/icons.js';
 
 import { switchCamera, hasFrontAndBackCameras } from './media-devices.js';
 import { getFacingMode, setFacingMode } from './state.js';
@@ -27,8 +28,11 @@ let cleanupFunctions = [];
  * Update mute mic icon
  */
 function updateMuteMicIcon(muted, muteSelfBtn) {
-  const icon = muteSelfBtn.querySelector('i');
-  icon.className = muted ? 'fa fa-microphone-slash' : 'fa fa-microphone';
+  const icon = muteSelfBtn.querySelector('i, svg');
+  if (icon) {
+    icon.setAttribute('data-lucide', muted ? 'mic-off' : 'mic');
+    initIcons(muteSelfBtn);
+  }
 }
 
 // ============================================================================
@@ -86,10 +90,11 @@ export function initializeMediaControls({
       const videoTrack = localStream.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
-        const icon = cameraBtn.querySelector('i');
-        icon.className = videoTrack.enabled
-          ? 'fa fa-video'
-          : 'fa fa-video-slash';
+        const icon = cameraBtn.querySelector('i, svg');
+        if (icon) {
+          icon.setAttribute('data-lucide', videoTrack.enabled ? 'video' : 'video-off');
+          initIcons(cameraBtn);
+        }
       }
     };
   }
@@ -134,10 +139,11 @@ export function initializeMediaControls({
       remoteVideo.muted = !remoteVideo.muted;
 
       // Update icon inline
-      const icon = mutePartnerBtn.querySelector('i');
-      icon.className = remoteVideo.muted
-        ? 'fa fa-volume-mute'
-        : 'fa fa-volume-up';
+      const icon = mutePartnerBtn.querySelector('i, svg');
+      if (icon) {
+        icon.setAttribute('data-lucide', remoteVideo.muted ? 'volume-x' : 'volume-2');
+        initIcons(mutePartnerBtn);
+      }
     };
   }
 

@@ -17,14 +17,14 @@ describe('createIconButton', () => {
     const onClick = vi.fn();
     const btn = createIconButton({
       title: 'Call',
-      iconHtml: '<i class="fa fa-phone"></i>',
+      lucideIcon: 'phone',
       onClick,
       parent: container,
     });
 
     const button = btn.querySelector('button');
     expect(button).toBeTruthy();
-    expect(button.querySelector('i')).toBeTruthy();
+    expect(button.querySelector('svg')).toBeTruthy();
 
     button.click();
     expect(onClick).toHaveBeenCalledTimes(1);
@@ -33,7 +33,7 @@ describe('createIconButton', () => {
   it('respects disabledAttr', () => {
     const btn = createIconButton({
       title: 'Copy',
-      iconHtml: '<i class="fa fa-copy"></i>',
+      lucideIcon: 'copy',
       disabledAttr: 'disabled',
       parent: container,
     });

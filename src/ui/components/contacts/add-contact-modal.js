@@ -14,6 +14,7 @@ import { fetchGoogleContacts } from '../../../contacts/google-contacts.js';
 import { getContacts } from '../contacts/contacts.js';
 import { sendBulkEmailsViaGmail } from '../../../contacts/gmail-send.js';
 import { t } from '../../../i18n/index.js';
+import { initIcons } from '../../icons.js';
 
 /**
  * Show a modal to add contacts with platform selection and search.
@@ -31,16 +32,16 @@ export async function showAddContactModal() {
 
       <div class="platform-selector">
         <button type="button" class="platform-btn active" data-platform="google" title="${t('contact.import.google')}">
-          <i class="fa-brands fa-google"></i>
+          <i data-lucide="mail"></i>
         </button>
         <button type="button" class="platform-btn" data-platform="facebook" title="${t('contact.import.facebook')}" disabled>
-          <i class="fa-brands fa-facebook"></i>
+          <i data-lucide="facebook"></i>
         </button>
         <button type="button" class="platform-btn" data-platform="instagram" title="${t('contact.import.instagram')}" disabled>
-          <i class="fa-brands fa-instagram"></i>
+          <i data-lucide="instagram"></i>
         </button>
         <button type="button" class="platform-btn" data-platform="tiktok" title="${t('contact.import.tiktok')}" disabled>
-          <i class="fa-brands fa-tiktok"></i>
+          <i data-lucide="layout-grid"></i>
         </button>
       </div>
 
@@ -242,6 +243,7 @@ export async function showAddContactModal() {
     }
 
     document.body.appendChild(dialog);
+    initIcons(dialog);
     dialog.showModal();
   });
 }
