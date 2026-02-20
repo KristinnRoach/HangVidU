@@ -157,6 +157,21 @@ export function initMessagesUI() {
   const fileInput = document.getElementById('file-input');
   const sendBtn = messagesForm.querySelector('button[type="submit"]');
 
+  // Helpers to read/update the send button label without touching the icon
+  const getSendLabelEl = () => sendBtn?.querySelector?.('.send-button__label');
+  const getSendLabelText = () =>
+    (getSendLabelEl() && getSendLabelEl().textContent) ||
+    (sendBtn && sendBtn.textContent) ||
+    '';
+  const setSendLabelText = (txt) => {
+    const el = getSendLabelEl();
+    if (el) el.textContent = txt;
+    else if (sendBtn) sendBtn.textContent = txt;
+    // keep aria-label in sync for screen readers
+    if (sendBtn) sendBtn.setAttribute('aria-label', txt || t('shared.send'));
+  };
+  // Note: label is empty by default (icon-only). aria-label kept in sync by setSendLabelText.
+
   // Hide attachment button by default (shown when file transfer is available)
   // (Initial call is not needed, setSession and setFileTransferController will call it)
 
@@ -170,14 +185,14 @@ export function initMessagesUI() {
     const file = e.target.files[0];
     if (!file) return;
 
-    const originalText = sendBtn.textContent;
-    sendBtn.textContent = t('message.sending');
+    const originalText = getSendLabelText();
+    setSendLabelText(t('message.sending'));
 
     try {
       if (fileTransferController) {
         // WebRTC DataChannel transfer (active call, large files OK)
         await fileTransferController.sendFile(file, (progress) => {
-          sendBtn.textContent = `${Math.round(progress * 100)}%`;
+          setSendLabelText(`${Math.round(progress * 100)}%`);
         });
 
         // Track video files for potential watch-together requests
@@ -204,7 +219,7 @@ export function initMessagesUI() {
 
       appendChatMessage('❌  ' + t('message.send_failed') + sizeHint);
     } finally {
-      sendBtn.textContent = originalText;
+      setSendLabelText(originalText);
       fileInput.value = '';
     }
   });
@@ -1286,7 +1301,7 @@ export function initMessagesUI() {
 
         // Reset button text after receive completes
         if (isReceivingFile) {
-          sendBtn.textContent = t('shared.send');
+          setSendLabelText('');
           isReceivingFile = false;
         }
       };
@@ -1301,7 +1316,7 @@ export function initMessagesUI() {
       // Setup receive progress handler
       fileTransferController.onReceiveProgress = (progress) => {
         isReceivingFile = true;
-        sendBtn.textContent = `${Math.round(progress * 100)}%`;
+        setSendLabelText(`${Math.round(progress * 100)}%`);
       };
     }
   }
@@ -1329,7 +1344,7 @@ export function initMessagesUI() {
 
     // Reset send button text in case file transfer was in progress
     if (sendBtn) {
-      sendBtn.textContent = t('shared.send');
+      setSendLabelText('');
     }
 
     // Clear inline positioning

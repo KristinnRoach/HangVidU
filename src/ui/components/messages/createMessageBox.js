@@ -33,8 +33,9 @@ export function createMessageBox() {
           </button>
         </div>
         
-        <button type="submit">
+        <button type="submit" class="send-button" aria-label="${t('shared.send')}">
           <i data-lucide="send" aria-hidden="true"></i>
+          <span class="send-button__label"></span>
         </button>
       </form>
 
@@ -48,11 +49,13 @@ export function createMessageBox() {
   const messagesForm = messagesBoxContainer.querySelector('#messages-form');
   const messagesInput = messagesBoxContainer.querySelector('#messages-input');
   const attachFileBtn = messagesBoxContainer.querySelector('#attach-file-btn');
+  const submitBtn = messagesBoxContainer.querySelector('.send-button');
 
   // Update i18n attributes on locale change
   const updateI18n = () => {
     if (messagesInput) messagesInput.placeholder = t('message.placeholder');
     if (attachFileBtn) attachFileBtn.title = t('message.attach');
+    if (submitBtn) submitBtn.setAttribute('aria-label', t('shared.send'));
   };
 
   // Set initial values
