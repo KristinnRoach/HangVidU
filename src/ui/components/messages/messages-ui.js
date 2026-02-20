@@ -32,6 +32,7 @@ import { createMessageBox } from './createMessageBox.js';
 import { createMessageTopBar } from './createMessageTopBar.js';
 import { devDebug } from '../../../utils/dev/dev-utils.js';
 import { showImagePreview } from '../modal/imagePreview.js';
+import { detectDoubleClick } from '../../utils/detectDoubleClick.js';
 
 const supportsCssAnchors =
   CSS.supports?.('position-anchor: --msg-toggle') &&
@@ -1024,7 +1025,16 @@ export function initMessagesUI() {
       img.alt = fileName;
       img.style.cssText =
         'max-width: 200px; max-height: 200px; border-radius: 8px; cursor: pointer; display: block; margin-bottom: 4px;';
-      img.addEventListener('click', () => showImagePreview(dataUrl, fileName));
+
+      const singleClickHandler = () => {
+        showImagePreview(dataUrl, fileName);
+      };
+      // Keep reaction behavior on double-click, only trigger preview on single click
+      const doubleClickHandler = (e) => {
+        e.stopPropagation(); // Prevent triggering single click
+      };
+      detectDoubleClick(img, singleClickHandler, doubleClickHandler);
+
       textSpan.appendChild(img);
     }
 
