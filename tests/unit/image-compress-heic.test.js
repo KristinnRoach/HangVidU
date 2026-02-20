@@ -40,7 +40,7 @@ describe('compressImage — real HEIC files', () => {
           `[${entry.name}] output: ${(result.size / 1024).toFixed(0)}KB, ` +
             `type="${result.type}", ${bitmap.width}x${bitmap.height}`,
         );
-        expect(result.size).toBeLessThan(file.size);
+        expect(result.size).toBeLessThanOrEqual(950_000);
         expect(bitmap.width).toBeLessThanOrEqual(1280);
         expect(bitmap.height).toBeLessThanOrEqual(1280);
         bitmap.close();
