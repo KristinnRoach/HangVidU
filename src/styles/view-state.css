@@ -7,7 +7,7 @@ body[data-view='lobby:user'] {
   }
 
   & #add-contact-btn {
-    display: block;
+    display: flex;
   }
 
   & #toggle-lang-btn {
