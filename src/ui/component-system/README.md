@@ -189,7 +189,7 @@ template: `<div>[[count]]</div>`;
 const card = createComponent({
   initialProps: {
     safeText: '<script>alert(1)</script>', // Sanitized
-    iconHtml: '<i class="fa fa-user"></i>', // Raw HTML
+    iconHtml: '<i data-lucide="user"></i>', // Raw HTML
   },
   template: `
     <div>[[safeText]]</div>

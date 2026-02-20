@@ -7,7 +7,7 @@ import { initIcons } from '../../../icons.js';
  * Creates a reactive icon button using createComponent.
  * @param {Object} options - Button configuration
  * @param {string} [options.title=''] - Button title/tooltip
- * @param {string} [options.iconHtml=''] - Raw HTML for icon (e.g., '<i class="fa fa-phone"></i>')
+ * @param {string} [options.iconHtml=''] - Raw HTML for icon (e.g., '<i data-lucide="phone"></i>')
  * @param {string} [options.disabledAttr=''] - '' (enabled) or 'disabled' (disabled)
  * @param {string} [options.id=''] - Optional id attribute
  * @param {string} [options.btnClass='chat-btn'] - CSS class(es)
@@ -32,7 +32,8 @@ export function createIconButton({
       title, 
       iconHtml: lucideIcon ? `<i data-lucide="${lucideIcon}"></i>` : iconHtml, 
       disabledAttr, 
-      id 
+      id,
+      lucideIcon
     },
     template: `
       <button id="[[id]]" title="[[title]]" [[disabledAttr]] onclick="handleClick">
@@ -48,6 +49,13 @@ export function createIconButton({
       if (onMount) onMount(el);
     },
     parent,
+  });
+
+  // Sync lucideIcon update to iconHtml for template re-render
+  component.onAnyPropUpdated(({ changedKeys }) => {
+    if (changedKeys.includes('lucideIcon')) {
+      component.iconHtml = component.lucideIcon ? `<i data-lucide="${component.lucideIcon}"></i>` : '';
+    }
   });
 
   component.onRender((props) => {

@@ -44,7 +44,7 @@ button.lobby-btn {
   cursor: pointer;
   box-shadow: var(--shadow-sm);
 
-  /* fa-phone icon styles: */
+  /* lucide-icon styles: */
   font-size: 1.5rem;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 

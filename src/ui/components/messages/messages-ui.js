@@ -910,7 +910,7 @@ export function initMessagesUI() {
     callBackBtn.type = 'button';
 
     const callBackIcon = document.createElement('i');
-    callBackIcon.className = 'fa fa-phone call-event-icon';
+    callBackIcon.setAttribute('data-lucide', 'phone');
     callBackIcon.setAttribute('aria-hidden', 'true');
     callBackBtn.appendChild(callBackIcon);
     callBackBtn.appendChild(
@@ -949,6 +949,7 @@ export function initMessagesUI() {
     p.appendChild(callEventBubble);
 
     messagesMessages.appendChild(p);
+    initIcons(p);
 
     // Handle unread count for received call events
     if (isUnread && !iAmTheCaller && isHidden(messagesBox)) {

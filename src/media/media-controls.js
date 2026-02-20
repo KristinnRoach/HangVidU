@@ -28,7 +28,7 @@ let cleanupFunctions = [];
  * Update mute mic icon
  */
 function updateMuteMicIcon(muted, muteSelfBtn) {
-  const icon = muteSelfBtn.querySelector('i');
+  const icon = muteSelfBtn.querySelector('i, svg');
   if (icon) {
     icon.setAttribute('data-lucide', muted ? 'mic-off' : 'mic');
     initIcons(muteSelfBtn);
@@ -90,7 +90,7 @@ export function initializeMediaControls({
       const videoTrack = localStream.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
-        const icon = cameraBtn.querySelector('i');
+        const icon = cameraBtn.querySelector('i, svg');
         if (icon) {
           icon.setAttribute('data-lucide', videoTrack.enabled ? 'video' : 'video-off');
           initIcons(cameraBtn);
@@ -139,7 +139,7 @@ export function initializeMediaControls({
       remoteVideo.muted = !remoteVideo.muted;
 
       // Update icon inline
-      const icon = mutePartnerBtn.querySelector('i');
+      const icon = mutePartnerBtn.querySelector('i, svg');
       if (icon) {
         icon.setAttribute('data-lucide', remoteVideo.muted ? 'volume-x' : 'volume-2');
         initIcons(mutePartnerBtn);

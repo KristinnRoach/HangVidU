@@ -50,7 +50,7 @@
         opacity: 0.85;
         flex-shrink: 0;
 
-        & .fa-phone {
+        & .lucide-icon {
           rotate: 0deg;
         }
       }
@@ -58,7 +58,7 @@
       & .contact-call-btn:hover {
         opacity: 1;
 
-        & .fa-phone {
+        & .lucide-icon {
           opacity: 1;
           rotate: 15deg;
           color: rgb(70, 200, 70);

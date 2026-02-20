@@ -101,7 +101,7 @@ customElements.define('lit-icon-button', LitIconButton);
 //   installBtnComponent = document.createElement('lit-icon-button');
 //   installBtnComponent.id = 'install-btn';
 //   installBtnComponent.title = 'Install App';
-//   installBtnComponent.iconHtml = '<i class="fa fa-plus"></i>';
+//   installBtnComponent.iconHtml = '<i data-lucide="plus"></i>';
 //   // installBtnComponent.className = 'hidden';
 //   installBtnComponent.onMount = (el) => {
 //     if (isDev()) {

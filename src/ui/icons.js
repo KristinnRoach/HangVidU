@@ -75,6 +75,7 @@ export function initIcons(element = document.body) {
   createIcons({
     icons,
     nameAttr: 'data-lucide',
+    root: element,
     attrs: {
       'stroke-width': 2,
       'width': 24,
