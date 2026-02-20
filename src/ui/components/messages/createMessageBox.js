@@ -33,8 +33,9 @@ export function createMessageBox() {
           </button>
         </div>
         
-        <button type="submit">
+        <button type="submit" class="send-button" aria-label="${t('shared.send')}">
           <i data-lucide="send" aria-hidden="true"></i>
+          <span class="send-button__label"></span>
         </button>
       </form>
 
