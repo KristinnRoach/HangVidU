@@ -101,6 +101,21 @@
         background-color: rgba(91, 168, 95, 0.4);
       }
 
+      & .unread-badge {
+        background-color: rgb(74, 172, 74);
+        color: white;
+        font-size: 0.7rem;
+        font-weight: 700;
+        min-width: 18px;
+        height: 18px;
+        line-height: 18px;
+        text-align: center;
+        border-radius: 9px;
+        padding: 0 5px;
+        flex-shrink: 0;
+        box-sizing: border-box;
+      }
+
       & .contact-edit-btn {
         background: transparent;
         box-shadow: none;

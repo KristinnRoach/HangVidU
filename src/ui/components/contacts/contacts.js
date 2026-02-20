@@ -7,9 +7,13 @@ import { hideElement, showElement } from '../../utils/ui-utils.js';
 import { t, onLocaleChange } from '../../../i18n/index.js';
 import { escapeHtml } from '../../../ui/component-system/dom-utils.js';
 import { initIcons } from '../../icons.js';
+import { messagingController } from '../../../messaging/messaging-controller.js';
 
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
+
+// Track unread count listeners for cleanup
+const unreadListeners = new Map();
 
 // Track locale change listener for cleanup
 let localeUnsubscribe = null;
@@ -269,6 +273,8 @@ export async function renderContactsList(lobbyElement) {
                 ${shortName}
               </span>
 
+              <span class="unread-badge" data-contact-id="${escapeHtml(id)}" hidden></span>
+
               <button
                 class="contact-edit-btn"
                 data-contact-id="${escapeHtml(id)}"
@@ -291,6 +297,9 @@ export async function renderContactsList(lobbyElement) {
 
   // Setup presence indicators for each contact
   setupPresenceIndicators(contactIds);
+
+  // Setup unread message badges
+  setupUnreadBadges(contactIds);
 }
 
 /**
@@ -320,6 +329,7 @@ function attachContactListeners(container, lobbyElement) {
       const contactId = el.getAttribute('data-contact-id');
       const contactName = el.getAttribute('data-contact-name');
       if (contactId) {
+        clearUnreadBadge(contactId);
         document.dispatchEvent(
           new CustomEvent('contact:messages-open', {
             detail: { contactId, contactName },
@@ -393,6 +403,58 @@ function setupPresenceIndicators(contactIds) {
 }
 
 /**
+ * Setup unread message badges for contacts list.
+ * Listens to each contact's conversation for unread count changes.
+ */
+function setupUnreadBadges(contactIds) {
+  // Clean up old listeners
+  unreadListeners.forEach((unsub) => unsub());
+  unreadListeners.clear();
+
+  if (!getLoggedInUserId()) return;
+
+  contactIds.forEach((contactId) => {
+    const badgeEl = document.querySelector(
+      `.unread-badge[data-contact-id="${contactId}"]`,
+    );
+    if (!badgeEl) return;
+
+    // Debounce rapid-fire callbacks during initial onChildAdded replay
+    let debounceTimer = null;
+
+    const unsub = messagingController.listenToUnreadCount(
+      contactId,
+      (count) => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          if (count > 0) {
+            badgeEl.textContent = count > 99 ? '99+' : String(count);
+            badgeEl.hidden = false;
+          } else {
+            badgeEl.hidden = true;
+          }
+        }, 50);
+      },
+    );
+
+    unreadListeners.set(contactId, () => {
+      clearTimeout(debounceTimer);
+      unsub();
+    });
+  });
+}
+
+/**
+ * Clear the unread badge for a specific contact (e.g. when messages are opened).
+ */
+export function clearUnreadBadge(contactId) {
+  const badgeEl = document.querySelector(
+    `.unread-badge[data-contact-id="${contactId}"]`,
+  );
+  if (badgeEl) badgeEl.hidden = true;
+}
+
+/**
  * Delete a contact.
  */
 async function deleteContact(contactId) {
@@ -425,6 +487,9 @@ export function cleanupContacts() {
     off(presenceRef, 'value', callback);
   });
   presenceListeners.clear();
+
+  unreadListeners.forEach((unsub) => unsub());
+  unreadListeners.clear();
 
   if (localeUnsubscribe) {
     localeUnsubscribe();
