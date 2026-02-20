@@ -1,28 +1,34 @@
 /**
- * Compress an image File using OffscreenCanvas.
+ * Compress and downscale an image File using OffscreenCanvas.
  *
- * Tries WebP first (better compression), falls back to JPEG.
- * Returns a new File on success, or null if compression failed or
- * the result is larger than the original.
+ * Downscales to fit within maxDimension (preserving aspect ratio),
+ * then tries WebP first (better compression), falls back to JPEG.
  *
  * @param {File} file - The image file to compress
- * @param {number} [quality=0.85] - Encoding quality (0–1)
+ * @param {object} [opts]
+ * @param {number} [opts.quality=0.7] - Encoding quality (0–1)
+ * @param {number} [opts.maxDimension=1280] - Max width or height in px
  * @returns {Promise<File|null>}
  */
-export async function compressImage(file, quality = 0.85) {
+export async function compressImage(file, { quality = 0.7, maxDimension = 1280 } = {}) {
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    return null;
+  }
+
   if (typeof OffscreenCanvas === 'undefined') {
     bitmap.close();
     return null;
   }
 
-  let bitmap;
-  try {
-    bitmap = await createImageBitmap(file);
-  } catch {
-    return null; // Not a valid image
-  }
+  const { width, height } = bitmap;
+  const scale = Math.min(1, maxDimension / Math.max(width, height));
+  const targetW = Math.round(width * scale);
+  const targetH = Math.round(height * scale);
 
-  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  const canvas = new OffscreenCanvas(targetW, targetH);
   const ctx = canvas.getContext('2d');
 
   if (!ctx) {
@@ -30,7 +36,7 @@ export async function compressImage(file, quality = 0.85) {
     return null;
   }
 
-  ctx.drawImage(bitmap, 0, 0);
+  ctx.drawImage(bitmap, 0, 0, targetW, targetH);
   bitmap.close();
 
   const ext = { 'image/webp': '.webp', 'image/jpeg': '.jpg' };
@@ -42,11 +48,9 @@ export async function compressImage(file, quality = 0.85) {
     } catch {
       continue;
     }
-    if (blob.size < file.size) {
-      const name = file.name.replace(/\.[^.]+$/, '') + ext[type];
-      return new File([blob], name, { type });
-    }
+    const name = file.name.replace(/\.[^.]+$/, '') + ext[type];
+    return new File([blob], name, { type });
   }
 
-  return null; // Compression didn't help
+  return null;
 }
