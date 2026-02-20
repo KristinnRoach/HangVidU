@@ -3,6 +3,7 @@
    ============================================ */
 
 .contacts-container {
+  box-sizing: border-box;
   background-color: rgb(63, 63, 63);
 
   border: 2px solid #444;
@@ -10,8 +11,8 @@
 
   display: flex;
   flex-direction: column;
-  /* justify-content: flex-start;
-  align-items: stretch; */
+  justify-content: flex-start;
+  align-items: stretch;
 
   padding: 0.5rem;
   margin: var(--spacing-2xl) auto;
@@ -19,8 +20,6 @@
   overflow-y: auto;
   max-width: 95vw;
   max-height: min(95vh, 100%);
-
-  box-sizing: border-box;
 
   & h3 {
     margin: 0 auto 0.75rem auto;
@@ -43,15 +42,17 @@
         background: none;
         border: none;
         box-shadow: none;
-        padding: 0.4rem;
+        padding: 0.2rem;
         cursor: pointer;
         color: rgb(74, 172, 74);
-        font-size: 0.95rem;
         opacity: 0.85;
         flex-shrink: 0;
 
         & .lucide-icon {
+          width: 20px;
+          height: 20px;
           rotate: 0deg;
+          transition: all 0.2s ease;
         }
       }
 
