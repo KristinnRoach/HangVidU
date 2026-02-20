@@ -276,7 +276,13 @@ export async function renderContactsList(lobbyElement) {
                 ${shortName}
               </span>
 
-              <span class="unread-badge" data-contact-id="${escapeHtml(id)}" hidden></span>
+              <span
+                class="unread-badge"
+                data-contact-id="${escapeHtml(id)}"
+                aria-live="polite"
+                aria-atomic="true"
+                hidden
+              ></span>
 
               <button
                 class="contact-edit-btn"
