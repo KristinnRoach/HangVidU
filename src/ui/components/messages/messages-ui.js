@@ -1049,7 +1049,7 @@ export function initMessagesUI() {
     messagesMessages.appendChild(p);
 
     // Increment unread if hidden and received
-    if (!isSentByMe && isHidden(messagesBox)) {
+    if (!isSentByMe && !msgData.read && isHidden(messagesBox)) {
       const currentCount = messageToggle.element.unreadCount || 0;
       messageToggle.setUnreadCount(currentCount + 1);
     }
