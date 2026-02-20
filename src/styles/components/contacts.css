@@ -85,9 +85,6 @@
         padding: 4px;
         border-radius: 6px;
         font-size: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
         min-width: 0;
         overflow: hidden;
         white-space: nowrap;

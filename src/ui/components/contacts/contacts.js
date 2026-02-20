@@ -16,7 +16,7 @@ let localeUnsubscribe = null;
 let lastRenderedLobby = null;
 
 // Limit displayed contact name length in the UI (keep full name in title)
-const MAX_CONTACT_NAME_CHARS = 14;
+const MAX_CONTACT_NAME_CHARS = 18;
 
 function getSortedContactIds(contacts) {
   return Object.keys(contacts).sort((a, b) => {
