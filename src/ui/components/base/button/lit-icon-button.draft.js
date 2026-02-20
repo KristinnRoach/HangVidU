@@ -1,5 +1,4 @@
 import { LitElement, html, css } from 'lit';
-import faStyles from '@fortawesome/fontawesome-free/css/all.min.css?inline';
 
 // This is a test draft to compare createComponent vs LitElement web component
 
@@ -48,17 +47,6 @@ export class LitIconButton extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-
-    // Inject FontAwesome styles into shadow root
-    if (this.shadowRoot && faStyles) {
-      const existingStyle = this.shadowRoot.querySelector('style[data-fa]');
-      if (!existingStyle) {
-        const style = document.createElement('style');
-        style.setAttribute('data-fa', 'true');
-        style.textContent = faStyles;
-        this.shadowRoot.prepend(style);
-      }
-    }
   }
 
   constructor() {

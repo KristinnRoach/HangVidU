@@ -1,4 +1,5 @@
 import { t, onLocaleChange } from '../../../i18n/index.js';
+import { initIcons } from '../../icons.js';
 
 /**
  * Creates the messages box DOM structure and initializes textarea auto-grow behavior.
@@ -28,18 +29,19 @@ export function createMessageBox() {
         <div class="message-attachments">
           <input type="file" id="file-input" style="display: none" />
           <button type="button" id="attach-file-btn" title="">
-            <i class="fa fa-paperclip" aria-hidden="true"></i>
+            <i data-lucide="paperclip" aria-hidden="true"></i>
           </button>
         </div>
         
         <button type="submit">
-          <i class="fa fa-paper-plane" aria-hidden="true"></i>
+          <i data-lucide="send" aria-hidden="true"></i>
         </button>
       </form>
 
     </div>
   `;
   document.body.appendChild(messagesBoxContainer);
+  initIcons(messagesBoxContainer);
 
   const messagesBox = messagesBoxContainer.querySelector('#messages-box');
   const messagesMessages = messagesBoxContainer.querySelector('#messages');
