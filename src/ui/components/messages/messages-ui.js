@@ -1515,15 +1515,6 @@ export function initMessagesUI() {
           return;
         }
 
-        // Convert Firebase reactions format for initial display
-        const reactions = {};
-        if (msgData.reactions) {
-          for (const [type, users] of Object.entries(msgData.reactions)) {
-            reactions[type] = Object.keys(users);
-          }
-          return;
-        }
-
         // Text message
         if (isSentByMe) {
           appendMessage(text, {
