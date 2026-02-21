@@ -37,15 +37,16 @@
 }
 
 /* All buttons inside messages ui */
+
 .messages-box button,
 #messages button {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
 
   width: fit-content;
   height: fit-content;
-  padding: 8px;
+  padding: var(--spacing-xs) var(--spacing-sm);
   cursor: pointer;
 
   box-shadow: none;
@@ -59,6 +60,8 @@
 #messages-form [data-lucide] {
   text-shadow: var(--text-shadow-subtle);
 }
+
+/* Messages Box */
 
 .messages-box {
   display: flex;
@@ -89,6 +92,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-sm);
+  padding: 2px;
+  padding-bottom: 8px;
 }
 
 /* nested selectors using vanilla CSS nesting */
@@ -127,7 +132,7 @@
 
   & .messages-topbar-back,
   & .messages-topbar-call {
-    padding: 8px var(--spacing-xs);
+    padding: 0 var(--spacing-xs);
     width: 32px;
   }
 
