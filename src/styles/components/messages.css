@@ -235,7 +235,7 @@
 
   white-space: pre-wrap; /* Preserve line breaks from Shift+Enter */
   overflow-wrap: break-word; /* Wrap long words */
-  word-break: break-word; /* Fallback for older browsers */
+  word-break: normal; /* Let overflow-wrap handle word breaking */
 }
 
 #messages .message-entry.local .message-bubble {
