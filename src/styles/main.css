@@ -3,6 +3,7 @@
 @import './view-state.css'; /* Declarative view-based visibility */
 @import './init/reset-normalize.css';
 @import './init/typography.css';
+@import './init/scrollbar.css';
 @import './element/button.css';
 @import './element/input.css';
 @import './theme.css';

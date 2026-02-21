@@ -37,7 +37,6 @@
 }
 
 /* All buttons inside messages ui */
-
 .messages-box button,
 #messages button {
   display: flex;
@@ -152,7 +151,7 @@
 
   overflow-y: auto;
   overflow-x: hidden; /* Prevent horizontal scrolling */
-  scrollbar-gutter: stable;
+
   background: var(--bg-elevated);
   color: var(--text-secondary);
   padding: 6px;
@@ -167,7 +166,6 @@
 
 #messages .message-entry {
   margin: 8px 0;
-
   /* Layout: flex container for avatar + message-bubble */
   display: flex;
   align-items: center;
