@@ -842,10 +842,8 @@ export function initMessagesUI() {
       const singleClickHandler = () => {
         showImagePreview(dataUrl, fileName);
       };
-      const doubleClickHandler = (e) => {
-        e.stopPropagation();
-      };
-      detectDoubleClick(img, singleClickHandler, doubleClickHandler);
+      // No-op on double-click (prevents preview) — event bubbles to reaction handler
+      detectDoubleClick(img, singleClickHandler, () => {});
 
       textSpan.appendChild(img);
     }
