@@ -29,7 +29,7 @@ import {
   Monitor,
   MoreHorizontal,
   Mail,
-  LayoutGrid
+  LayoutGrid,
 } from 'lucide';
 
 // Mapping and exporting only used icons for tree-shaking
@@ -63,13 +63,14 @@ export const icons = {
   Monitor,
   MoreHorizontal,
   Mail,
-  LayoutGrid
+  LayoutGrid,
 };
 
 /**
  * Initialize Lucide icons for elements with data-lucide attribute.
- * Scans the entire document by default.
- * @param {HTMLElement} element - Optional root element to scope the scan.
+ * Scans the passed in root element for elements with data-lucide
+ * attribute and replaces them with corresponding SVG icons.
+ * @param {HTMLElement} element - Optional root element to scope the scan (defaults to document.body)
  */
 export function initIcons(element = document.body) {
   createIcons({
@@ -78,9 +79,9 @@ export function initIcons(element = document.body) {
     root: element,
     attrs: {
       'stroke-width': 2,
-      'width': 24,
-      'height': 24,
-      'class': 'lucide-icon'
-    }
+      width: 24,
+      height: 24,
+      class: 'lucide-icon',
+    },
   });
 }

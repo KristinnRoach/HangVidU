@@ -22,7 +22,7 @@ export function createMessageBox() {
       <div id="messages"></div>
     
 
-      <form id="messages-form">
+      <form id="messages-form" class="input-bar">
 
         <textarea id="messages-input" placeholder="" rows="1"></textarea>
 

@@ -50,6 +50,7 @@ export function createNotificationsToggle({
       },
     },
     className: 'notifications-toggle-container',
+    onMount: (el) => initIcons(el),
     parent,
   });
 
