@@ -267,7 +267,7 @@ export async function renderContactsList(lobbyElement) {
                 data-contact-id="${escapeHtml(id)}"
                 title="${escapeHtml(t('contact.action.call', { name: escapedName }))}"
               >
-                <i data-lucide="phone"></i>
+                <i data-lucide="phone" fill="currentColor" stroke-width="0"></i>
               </button>
 
               <span class="presence-indicator" data-contact-id="${escapeHtml(id)}"></span>
