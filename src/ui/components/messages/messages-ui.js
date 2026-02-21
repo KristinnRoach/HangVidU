@@ -1052,8 +1052,8 @@ export function initMessagesUI() {
     messagesMessages.appendChild(messageEntry);
     scrollMessagesToEnd();
 
-    // Unread badge
-    if (isUnread && isSentByMe === false && isHidden(messagesBox)) {
+    // Increment unread if hidden and received
+    if (!isSentByMe && isUnread && isHidden(messagesBox)) {
       const currentCount = messageToggle.element.unreadCount || 0;
       messageToggle.setUnreadCount(currentCount + 1);
     }
@@ -1508,16 +1508,18 @@ export function initMessagesUI() {
         }
 
         if (msgData.type === 'file') {
-          appendMessage('', {
-            type: 'file',
-            isSentByMe,
-            messageId: msgData.messageId,
-            reactions,
-            isUnread: !isSentByMe && !msgData.read,
-            msgData,
-          });
+          appendFileMessage(msgData, isSentByMe);
           if (!isSentByMe) {
             updateLastInteraction(contactId).catch(() => {});
+          }
+          return;
+        }
+
+        // Convert Firebase reactions format for initial display
+        const reactions = {};
+        if (msgData.reactions) {
+          for (const [type, users] of Object.entries(msgData.reactions)) {
+            reactions[type] = Object.keys(users);
           }
           return;
         }
