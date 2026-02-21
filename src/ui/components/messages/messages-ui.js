@@ -489,9 +489,7 @@ export function initMessagesUI() {
     }
 
     // Show notification
-    appendMessage(
-      `🎬 ${t('message.watch.partner_wants', { name: fileName })}`,
-    );
+    appendMessage(`🎬 ${t('message.watch.partner_wants', { name: fileName })}`);
 
     // Prompt user to join
     const accepted = await promptJoinWatchTogether(fileName);
@@ -689,7 +687,12 @@ export function initMessagesUI() {
   /**
    * Handle a reaction change (double-tap or picker) on a message
    */
-  async function handleReactionChange(reactionType, messageElement, msgId, source) {
+  async function handleReactionChange(
+    reactionType,
+    messageElement,
+    msgId,
+    source,
+  ) {
     if (!currentSession) {
       console.warn('[MessagesUI] No current session for reaction');
       return;
@@ -708,7 +711,11 @@ export function initMessagesUI() {
       if (source === 'doubleTap') {
         if (myReactionType) {
           await currentSession.removeReaction(msgId, myReactionType);
-          reactions = reactionManager.removeReaction(msgId, myReactionType, userId);
+          reactions = reactionManager.removeReaction(
+            msgId,
+            myReactionType,
+            userId,
+          );
         } else {
           await currentSession.addReaction(msgId, reactionType);
           reactions = reactionManager.addReaction(msgId, reactionType, userId);
@@ -719,7 +726,11 @@ export function initMessagesUI() {
       } else if (source === 'picker') {
         if (myReactionType === reactionType) {
           await currentSession.removeReaction(msgId, reactionType);
-          reactions = reactionManager.removeReaction(msgId, reactionType, userId);
+          reactions = reactionManager.removeReaction(
+            msgId,
+            reactionType,
+            userId,
+          );
         } else {
           if (myReactionType) {
             await currentSession.removeReaction(msgId, myReactionType);
@@ -763,10 +774,15 @@ export function initMessagesUI() {
       p,
       {
         onSingleTap,
-        onDoubleTap: () => handleReactionChange(
-          REACTION_CONFIG.defaultReaction, p, messageId, 'doubleTap',
-        ),
-        onLongPress: () => reactionUI.showPicker(p, messageId, handleReactionChange),
+        onDoubleTap: () =>
+          handleReactionChange(
+            REACTION_CONFIG.defaultReaction,
+            p,
+            messageId,
+            'doubleTap',
+          ),
+        onLongPress: () =>
+          reactionUI.showPicker(p, messageId, handleReactionChange),
       },
       {
         doubleTapDelay: REACTION_CONFIG.doubleTapDelay,
@@ -906,6 +922,7 @@ export function initMessagesUI() {
     callBackBtn.type = 'button';
 
     const callBackIcon = document.createElement('i');
+    callBackIcon.className = 'call-event-icon';
     callBackIcon.setAttribute('data-lucide', 'phone');
     callBackIcon.setAttribute('aria-hidden', 'true');
     callBackBtn.appendChild(callBackIcon);
@@ -972,20 +989,33 @@ export function initMessagesUI() {
 
     // Infer system type: no sender and no fileDownload → system notice
     const effectiveType =
-      type !== 'text' ? type
-      : typeof isSentByMe === 'undefined' && !fileDownload ? 'system'
-      : type;
+      type !== 'text'
+        ? type
+        : typeof isSentByMe === 'undefined' && !fileDownload
+          ? 'system'
+          : type;
 
-    // Shell: <p> with alignment classes
+    // message-entry: container with type/sender classes
+    const messageEntry = document.createElement('div');
+    messageEntry.className = 'message-entry';
+    if (effectiveType === 'system') messageEntry.classList.add('system');
+    if (effectiveType === 'call_event')
+      messageEntry.classList.add('call-event');
+    if (isSentByMe === true) messageEntry.classList.add('local');
+    else if (isSentByMe === false) messageEntry.classList.add('remote');
+    if (fileDownload) messageEntry.classList.add('system');
+
+    // Avatar (sibling to message-bubble) - only for remote messages
+    if (isSentByMe === false) {
+      messageEntry.appendChild(createAvatar(isSentByMe));
+    }
+
+    // message-bubble: container for content + reactions
+    const messageBubble = document.createElement('div');
+    messageBubble.className = 'message-bubble';
+
+    // p element inside message-bubble
     const p = document.createElement('p');
-    if (effectiveType === 'system') p.classList.add('message-system');
-    if (effectiveType === 'call_event') p.classList.add('message-call-event');
-    if (isSentByMe === true) p.classList.add('message-local');
-    else if (isSentByMe === false) p.classList.add('message-remote');
-    if (fileDownload) p.classList.add('message-system');
-
-    // Avatar
-    p.appendChild(createAvatar(isSentByMe));
 
     // Type-specific content
     let onSingleTap;
@@ -997,7 +1027,12 @@ export function initMessagesUI() {
         break;
       }
       case 'call_event':
-        p.appendChild(buildCallEventContent(msgData, { onCallBack, isSentByMe: isSentByMe === true }));
+        p.appendChild(
+          buildCallEventContent(msgData, {
+            onCallBack,
+            isSentByMe: isSentByMe === true,
+          }),
+        );
         initIcons(p);
         break;
       default: // 'text', 'system'
@@ -1005,12 +1040,16 @@ export function initMessagesUI() {
         break;
     }
 
-    // Reactions for all non-system types
+    // Build hierarchy: messageBubble → p, then messageEntry → (avatar + messageBubble)
+    messageBubble.appendChild(p);
+    messageEntry.appendChild(messageBubble);
+
+    // Reactions for all non-system types (attach to messageBubble)
     if (effectiveType !== 'system') {
-      attachReactions(p, messageId, reactions, { onSingleTap });
+      attachReactions(messageBubble, messageId, reactions, { onSingleTap });
     }
 
-    messagesMessages.appendChild(p);
+    messagesMessages.appendChild(messageEntry);
     scrollMessagesToEnd();
 
     // Unread badge
