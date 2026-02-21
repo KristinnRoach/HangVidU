@@ -37,39 +37,39 @@ The module has no awareness of its consumers. This is the cleanest layered patte
 
 ### 5. Custom DOM events for cross-component signals
 
-`contacts.js` dispatches `contact:call` and `contact:messages-open` on `document`; `main.js` listens and calls the appropriate handler. Decouples the contacts component from main.js logic without a direct import dependency.
+`contacts.js` dispatches `contact:call` and `messages:toggle` on `document`; `main.js` listens and calls the appropriate handler. Decouples the contacts component from main.js logic without a direct import dependency.
 
 ---
 
 ## Where UI triggers logic
 
-| Trigger | Registered in | Target |
-|---|---|---|
-| `callBtn.onclick`, `lobbyCallBtn.onclick` | `main.js` module scope | `handleCall()` |
-| `hangUpBtn.onclick` | `main.js` module scope | `CallController.hangUp()` |
-| `pasteJoinBtn.onclick` | `main.js` module scope | `joinOrCreateRoomWithId()` |
-| `addContactBtn.onclick` | `main.js` module scope | `showAddContactModal()` |
-| `exitWatchModeBtn.onclick` | `main.js` module scope | `onWatchModeExited()` + cleanup |
-| `.contact-call-btn` click | `contacts.js::attachContactListeners()` | fires `contact:call` custom event |
-| `.contact-name` click | `contacts.js::attachContactListeners()` | fires `contact:messages-open` custom event |
-| Message form submit | `messages-ui.js::initMessagesUI()` | `sendMessage()` via `currentSession.send()` |
-| File input change | `messages-ui.js::initMessagesUI()` | `fileTransferController.sendFile()` |
-| Login/logout buttons | `AuthComponent.js` template `onclick=` | `signInWithAccountSelection()` / `signOutUser()` |
-| Incoming call accept/reject | `incoming-call.js` button handler | `onAccept`/`onReject` callbacks injected from `main.js` |
-| Calling UI cancel | `calling-ui.js` button handler | `onCancel` callback injected from `main.js` |
+| Trigger                                   | Registered in                           | Target                                                  |
+| ----------------------------------------- | --------------------------------------- | ------------------------------------------------------- |
+| `callBtn.onclick`, `lobbyCallBtn.onclick` | `main.js` module scope                  | `handleCall()`                                          |
+| `hangUpBtn.onclick`                       | `main.js` module scope                  | `CallController.hangUp()`                               |
+| `pasteJoinBtn.onclick`                    | `main.js` module scope                  | `joinOrCreateRoomWithId()`                              |
+| `addContactBtn.onclick`                   | `main.js` module scope                  | `showAddContactModal()`                                 |
+| `exitWatchModeBtn.onclick`                | `main.js` module scope                  | `onWatchModeExited()` + cleanup                         |
+| `.contact-call-btn` click                 | `contacts.js::attachContactListeners()` | fires `contact:call` custom event                       |
+| `.contact-name` click                     | `contacts.js::attachContactListeners()` | fires `messages:toggle` custom event                    |
+| Message form submit                       | `messages-ui.js::initMessagesUI()`      | `sendMessage()` via `currentSession.send()`             |
+| File input change                         | `messages-ui.js::initMessagesUI()`      | `fileTransferController.sendFile()`                     |
+| Login/logout buttons                      | `AuthComponent.js` template `onclick=`  | `signInWithAccountSelection()` / `signOutUser()`        |
+| Incoming call accept/reject               | `incoming-call.js` button handler       | `onAccept`/`onReject` callbacks injected from `main.js` |
+| Calling UI cancel                         | `calling-ui.js` button handler          | `onCancel` callback injected from `main.js`             |
 
 ---
 
 ## How logic updates UI
 
-| Mechanism | Where used |
-|---|---|
-| `uiState.setView()` → CSS `data-view` | Call/lobby view switching |
-| `CallController.emit(event)` → subscribed callbacks | All call lifecycle UI updates |
-| `auth-state.subscribe()` callback | Auth component re-renders, contact list, messaging reset |
-| Injected callbacks (`onCancel`, `onAccept`, `onReject`) | Calling UI, incoming call UI |
-| `messagesUI.setFileTransferController(controller)` setter | Called from `CallController.setupFileTransport()` |
-| `window.onFileWatchRequestReceived = fn` | `messages-ui.js` sets it; `watch-sync.js` calls it |
+| Mechanism                                                           | Where used                                                            |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `uiState.setView()` → CSS `data-view`                               | Call/lobby view switching                                             |
+| `CallController.emit(event)` → subscribed callbacks                 | All call lifecycle UI updates                                         |
+| `auth-state.subscribe()` callback                                   | Auth component re-renders, contact list, messaging reset              |
+| Injected callbacks (`onCancel`, `onAccept`, `onReject`)             | Calling UI, incoming call UI                                          |
+| `messagesUI.setFileTransferController(controller)` setter           | Called from `CallController.setupFileTransport()`                     |
+| `window.onFileWatchRequestReceived = fn`                            | `messages-ui.js` sets it; `watch-sync.js` calls it                    |
 | Direct DOM manipulation (`classList`, `showElement`, `hideElement`) | `call-mode.js`, `watch-mode.js`, `calling-ui.js`, `media-controls.js` |
 
 ---
@@ -96,13 +96,13 @@ The module has no awareness of its consumers. This is the cleanest layered patte
 
 Five different approaches are used:
 
-| Approach | Example |
-|---|---|
-| Module-scope assignment in `main.js` | `callBtn.onclick = ...`, `hangUpBtn.onclick = ...` |
-| Inside dedicated init function in component | `initMessagesUI()`, `initializeMediaControls()` |
-| After-render wiring in component | `attachContactListeners()` called after each contact list render |
-| Template-based (Lit) | `AuthComponent.js` inline `onclick=` attributes |
-| Inside `bind-call-ui.js` init | `bindCallUI()` |
+| Approach                                    | Example                                                          |
+| ------------------------------------------- | ---------------------------------------------------------------- |
+| Module-scope assignment in `main.js`        | `callBtn.onclick = ...`, `hangUpBtn.onclick = ...`               |
+| Inside dedicated init function in component | `initMessagesUI()`, `initializeMediaControls()`                  |
+| After-render wiring in component            | `attachContactListeners()` called after each contact list render |
+| Template-based (Lit)                        | `AuthComponent.js` inline `onclick=` attributes                  |
+| Inside `bind-call-ui.js` init               | `bindCallUI()`                                                   |
 
 None of these are individually wrong, but there's no rule for which to use.
 

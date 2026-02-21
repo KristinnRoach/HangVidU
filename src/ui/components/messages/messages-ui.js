@@ -34,6 +34,8 @@ import { devDebug } from '../../../utils/dev/dev-utils.js';
 import { showImagePreview } from '../modal/imagePreview.js';
 import { detectDoubleClick } from '../../utils/detectDoubleClick.js';
 
+// const MAX_MESSAGE_LENGTH = 3000; // Max characters allowed in a message
+
 const supportsCssAnchors =
   CSS.supports?.('position-anchor: --msg-toggle') &&
   CSS.supports?.('right: anchor(right)') &&
@@ -95,7 +97,7 @@ export function initMessagesUI() {
     icon: '💬',
     initialUnreadCount: 0,
     id: 'main-messages-toggle-btn', // ID needed for CSS anchor positioning
-    startHidden: true,
+    startHidden: false,
   });
 
   if (!messageToggle) {
@@ -1349,7 +1351,6 @@ export function initMessagesUI() {
     receivedFile = null;
     isReceivingFile = false;
 
-    hideMessagesToggle();
     hideElement(messagesBox);
     messageToggle.clearBadge();
 

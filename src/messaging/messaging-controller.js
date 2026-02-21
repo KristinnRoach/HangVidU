@@ -262,27 +262,6 @@ export class MessagingController {
   }
 
   /**
-   * Listen for unread count changes from a contact
-   * Useful for badge updates without opening a full messaging session
-   * @param {string} contactId - Contact's user ID
-   * @param {Function} onCountChange - Callback(count) called when unread count changes
-   * @returns {Function} Unsubscribe function to stop listening
-   */
-  listenToUnreadCount(contactId, onCountChange) {
-    if (!contactId || typeof contactId !== 'string') {
-      throw new Error('contactId must be a non-empty string');
-    }
-    if (typeof onCountChange !== 'function') {
-      throw new Error('onCountChange must be a function');
-    }
-    return this.transport.listenToUnreadCount(contactId, onCountChange);
-  }
-
-  // ========================================================================
-  // CALL EVENT METHODS
-  // ========================================================================
-
-  /**
    * Send a call event message to a contact
    * Used to record missed calls, rejected calls, etc. in chat history
    * @param {string} contactId - Contact's user ID
@@ -299,10 +278,6 @@ export class MessagingController {
     }
     return this.transport.writeCallEventMessage(contactId, eventType, metadata);
   }
-
-  // ========================================================================
-  // RTDB FILE MESSAGE METHODS (small files, no active call needed)
-  // ========================================================================
 
   /**
    * Send a small file as an RTDB message (base64-encoded).
@@ -324,6 +299,22 @@ export class MessagingController {
     return this.transport.sendFile(contactId, file);
   }
 
+  /**
+   * Listen for unread count changes from a contact
+   * Useful for badge updates without opening a full messaging session
+   * @param {string} contactId - Contact's user ID
+   * @param {Function} onCountChange - Callback(count) called when unread count changes
+   * @returns {Function} Unsubscribe function to stop listening
+   */
+  listenToUnreadCount(contactId, onCountChange) {
+    if (!contactId || typeof contactId !== 'string') {
+      throw new Error('contactId must be a non-empty string');
+    }
+    if (typeof onCountChange !== 'function') {
+      throw new Error('onCountChange must be a function');
+    }
+    return this.transport.listenToUnreadCount(contactId, onCountChange);
+  }
 }
 
 /**

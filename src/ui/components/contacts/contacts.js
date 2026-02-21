@@ -340,7 +340,7 @@ function attachContactListeners(container, lobbyElement) {
       if (contactId) {
         clearUnreadBadge(contactId);
         document.dispatchEvent(
-          new CustomEvent('contact:messages-open', {
+          new CustomEvent('messages:toggle', {
             detail: { contactId, contactName },
           }),
         );
