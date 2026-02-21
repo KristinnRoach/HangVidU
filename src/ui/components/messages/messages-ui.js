@@ -203,7 +203,7 @@ export function initMessagesUI() {
           sentFiles.set(file.name, file);
         }
 
-        appendChatMessage(`📎 ${t('message.sent', { name: file.name })}`, {
+        appendMessage(`📎 ${t('message.sent', { name: file.name })}`, {
           isSentByMe: true,
         });
       } else if (currentSession) {
@@ -220,7 +220,7 @@ export function initMessagesUI() {
         ? '\n\n' + t('message.file_size_limited')
         : '';
 
-      appendChatMessage('❌  ' + t('message.send_failed') + sizeHint);
+      appendMessage('❌  ' + t('message.send_failed') + sizeHint);
     } finally {
       setSendLabelText(originalText);
       fileInput.value = '';
@@ -481,7 +481,7 @@ export function initMessagesUI() {
     const file = sentFiles.get(fileName);
 
     if (!file) {
-      appendChatMessage(
+      appendMessage(
         `❌ ${t('message.watch.file_unavailable', { name: fileName })}`,
       );
       await cancelWatchRequest();
@@ -489,7 +489,7 @@ export function initMessagesUI() {
     }
 
     // Show notification
-    appendChatMessage(
+    appendMessage(
       `🎬 ${t('message.watch.partner_wants', { name: fileName })}`,
     );
 
@@ -497,14 +497,14 @@ export function initMessagesUI() {
     const accepted = await promptJoinWatchTogether(fileName);
 
     if (accepted) {
-      appendChatMessage(`✅ ${t('message.watch.joining')}`);
+      appendMessage(`✅ ${t('message.watch.joining')}`);
       const success = await acceptWatchRequest(file);
 
       if (!success) {
-        appendChatMessage(`❌ ${t('message.watch.failed_load')}`);
+        appendMessage(`❌ ${t('message.watch.failed_load')}`);
       }
     } else {
-      appendChatMessage(`❌ ${t('message.watch.declined')}`);
+      appendMessage(`❌ ${t('message.watch.declined')}`);
       await cancelWatchRequest();
     }
   }
@@ -671,28 +671,97 @@ export function initMessagesUI() {
   // Map of messageId -> DOM element for reaction updates
   const messageElements = new Map();
 
+  // --- Helpers ---
+
   /**
-   * Display a message in the chat
-   * @param {string} text - Message content
-   * @param {Object} options
-   * @param {boolean} [options.isSentByMe] - true = right-aligned (local), false = left-aligned (remote), undefined = centered (system)
-   * @param {string} [options.messageId] - Firebase message ID for reactions
-   * @param {Object} [options.reactions] - Initial reactions { type: [userIds] }
-   * @param {Object} [options.fileDownload] - File download data { fileName, url }
+   * Convert Firebase reactions format { heart: { odAg2: true } } to { heart: ['odAg2'] }
    */
-  function appendChatMessage(text, options = {}) {
-    const { isSentByMe, senderDisplay, fileDownload, messageId, reactions } =
-      options;
-    // prefer explicit senderDisplay, otherwise 'Me' for local messages
-    const effectiveSender =
-      senderDisplay ?? (isSentByMe === true ? t('shared.me') : '');
+  function convertFirebaseReactions(fbReactions) {
+    const reactions = {};
+    if (fbReactions) {
+      for (const [type, users] of Object.entries(fbReactions)) {
+        reactions[type] = Object.keys(users);
+      }
+    }
+    return reactions;
+  }
 
-    const p = document.createElement('p');
-    // Apply alignment class based on sender
-    if (isSentByMe === true) p.classList.add('message-local');
-    else if (isSentByMe === false) p.classList.add('message-remote');
+  /**
+   * Handle a reaction change (double-tap or picker) on a message
+   */
+  async function handleReactionChange(reactionType, messageElement, msgId, source) {
+    if (!currentSession) {
+      console.warn('[MessagesUI] No current session for reaction');
+      return;
+    }
 
-    // Always create avatar and text spans — fixed DOM shape
+    const userId = getLoggedInUserId();
+    if (!userId) {
+      console.warn('[MessagesUI] No userId available for reaction');
+      return;
+    }
+
+    try {
+      const myReactionType = reactionManager.getUserReactionType(msgId, userId);
+      let reactions;
+
+      if (source === 'doubleTap') {
+        if (myReactionType) {
+          await currentSession.removeReaction(msgId, myReactionType);
+          reactions = reactionManager.removeReaction(msgId, myReactionType, userId);
+        } else {
+          await currentSession.addReaction(msgId, reactionType);
+          reactions = reactionManager.addReaction(msgId, reactionType, userId);
+          if (REACTION_CONFIG.enableAnimations) {
+            reactionUI.showReactionAnimation(messageElement, reactionType);
+          }
+        }
+      } else if (source === 'picker') {
+        if (myReactionType === reactionType) {
+          await currentSession.removeReaction(msgId, reactionType);
+          reactions = reactionManager.removeReaction(msgId, reactionType, userId);
+        } else {
+          if (myReactionType) {
+            await currentSession.removeReaction(msgId, myReactionType);
+            reactionManager.removeReaction(msgId, myReactionType, userId);
+          }
+          await currentSession.addReaction(msgId, reactionType);
+          reactions = reactionManager.addReaction(msgId, reactionType, userId);
+          if (REACTION_CONFIG.enableAnimations) {
+            reactionUI.showReactionAnimation(messageElement, reactionType);
+          }
+        }
+      }
+
+      reactionUI.renderReactions(messageElement, msgId, reactions);
+    } catch (err) {
+      console.warn('[MessagesUI] Failed to handle reaction:', err);
+    }
+  }
+
+  /**
+   * Attach reaction support to a message element. No-op if messageId is falsy.
+   */
+  function attachReactions(p, messageId, reactions) {
+    if (!messageId) return;
+
+    p.dataset.messageId = messageId;
+    messageElements.set(messageId, p);
+
+    if (reactions && Object.keys(reactions).length > 0) {
+      reactionManager.syncFromRemote(messageId, reactions);
+      const reactionCounts = reactionManager.getReactions(messageId);
+      reactionUI.renderReactions(p, messageId, reactionCounts);
+    }
+
+    reactionUI.enableDoubleTap(p, messageId, handleReactionChange);
+  }
+
+  /**
+   * Create an avatar span for a message.
+   * @param {boolean|undefined} isSentByMe - true (local), false (remote), undefined (system)
+   */
+  function createAvatar(isSentByMe) {
     const avatarSpan = document.createElement('span');
     avatarSpan.className =
       'sender-avatar' + (isSentByMe === true ? ' sender-avatar--me' : '');
@@ -701,28 +770,30 @@ export function initMessagesUI() {
     if (isSentByMe === true) {
       renderAvatar(avatarSpan, { customFallbackText: t('shared.me') });
     } else if (isSentByMe === false) {
-      const contactName = currentSession?.contactName || effectiveSender;
+      const contactName = currentSession?.contactName || '';
       const photoURL =
         currentSession?.contactPhotoURL ||
         currentSession?.contactProfile?.photoURL ||
         null;
       renderAvatar(avatarSpan, { name: contactName, photoURL });
-    } else {
-      avatarSpan.textContent = effectiveSender;
     }
+    // system messages: avatar stays empty (hidden via CSS)
 
+    return avatarSpan;
+  }
+
+  // --- Content builders ---
+
+  /**
+   * Build text content span. Handles plain text (linkified) and file-download links.
+   */
+  function buildTextContent(text, { fileDownload } = {}) {
     const textSpan = document.createElement('span');
     textSpan.className = 'message-text';
 
-    // If no senderDisplay and isSentByMe is undefined, treat as system message
-    if (!senderDisplay && typeof isSentByMe === 'undefined') {
-      p.classList.add('message-system');
-    }
-
-    // Handle clickable file downloads by populating textSpan
     if (fileDownload) {
       const { fileName, url } = fileDownload;
-      const prefix = text.split(fileName)[0]; // e.g., "📎 Sent: "
+      const prefix = text.split(fileName)[0];
       if (prefix) textSpan.appendChild(document.createTextNode(prefix));
       const link = document.createElement('a');
       link.textContent = fileName;
@@ -735,278 +806,19 @@ export function initMessagesUI() {
       });
       textSpan.appendChild(link);
     } else {
-      // Convert any detected URLs in the message text into clickable links.
-      // Uses a small, focused utility so we can later extend to previews
-      // by also using `extractLinks()` from the same module.
       const fragment = linkifyToFragment(text);
       textSpan.appendChild(fragment);
     }
 
-    // Fixed order: avatar then text; CSS will reorder for local vs remote
-    // Mark file-download messages as system-like so we can hide avatar
-    if (fileDownload) p.classList.add('message-system');
-
-    p.appendChild(avatarSpan);
-    p.appendChild(textSpan);
-
-    // Enable reactions for real messages (not system messages or file downloads)
-    if (typeof isSentByMe !== 'undefined' && !fileDownload && messageId) {
-      p.dataset.messageId = messageId;
-      messageElements.set(messageId, p);
-
-      // Render initial reactions if present
-      if (reactions && Object.keys(reactions).length > 0) {
-        // Sync local reaction manager with initial state (preserves user IDs)
-        reactionManager.syncFromRemote(messageId, reactions);
-
-        // Convert to counts for rendering
-        const reactionCounts = reactionManager.getReactions(messageId);
-        reactionUI.renderReactions(p, messageId, reactionCounts);
-      }
-
-      // Enable double-tap/long-press reactions
-      reactionUI.enableDoubleTap(
-        p,
-        messageId,
-        async (reactionType, messageElement, msgId, source) => {
-          if (!currentSession) {
-            console.warn('[MessagesUI] No current session for reaction');
-            return;
-          }
-
-          const userId = getLoggedInUserId();
-          if (!userId) {
-            console.warn('[MessagesUI] No userId available for reaction');
-            return;
-          }
-
-          try {
-            if (source === 'doubleTap') {
-              // Double-tap: toggle my reaction
-              const myReactionType = reactionManager.getUserReactionType(
-                msgId,
-                userId,
-              );
-
-              let reactions;
-
-              if (myReactionType) {
-                // I have a reaction - remove it (toggle off)
-                await currentSession.removeReaction(msgId, myReactionType);
-                reactions = reactionManager.removeReaction(
-                  msgId,
-                  myReactionType,
-                  userId,
-                );
-              } else {
-                // I don't have a reaction - add default (toggle on)
-                await currentSession.addReaction(msgId, reactionType);
-                reactions = reactionManager.addReaction(
-                  msgId,
-                  reactionType,
-                  userId,
-                );
-
-                // Show animation only when adding
-                if (REACTION_CONFIG.enableAnimations) {
-                  reactionUI.showReactionAnimation(
-                    messageElement,
-                    reactionType,
-                  );
-                }
-              }
-
-              // Update UI immediately (optimistic update)
-              reactionUI.renderReactions(messageElement, msgId, reactions);
-            } else if (source === 'picker') {
-              // Picker: toggle selected reaction for this user
-              const myReactionType = reactionManager.getUserReactionType(
-                msgId,
-                userId,
-              );
-
-              let reactions;
-
-              if (myReactionType === reactionType) {
-                // Same reaction - toggle off
-                await currentSession.removeReaction(msgId, reactionType);
-                reactions = reactionManager.removeReaction(
-                  msgId,
-                  reactionType,
-                  userId,
-                );
-              } else {
-                // Different reaction - remove existing (if any), add new
-                if (myReactionType) {
-                  await currentSession.removeReaction(msgId, myReactionType);
-                  reactionManager.removeReaction(msgId, myReactionType, userId);
-                }
-
-                await currentSession.addReaction(msgId, reactionType);
-                reactions = reactionManager.addReaction(
-                  msgId,
-                  reactionType,
-                  userId,
-                );
-
-                // Show animation
-                if (REACTION_CONFIG.enableAnimations) {
-                  reactionUI.showReactionAnimation(
-                    messageElement,
-                    reactionType,
-                  );
-                }
-              }
-
-              // Update UI immediately (optimistic update)
-              reactionUI.renderReactions(messageElement, msgId, reactions);
-            }
-          } catch (err) {
-            console.warn('[MessagesUI] Failed to handle reaction:', err);
-          }
-        },
-      );
-    }
-
-    messagesMessages.appendChild(p);
-    // Keep newest message visible
-    scrollMessagesToEnd();
+    return textSpan;
   }
 
   /**
-   * Display a call event message in the chat (missed call, rejected call)
-   * @param {Object} msgData - Message data from Firebase
-   * @param {string} msgData.eventType - 'missed_call' or 'rejected_call'
-   * @param {string} msgData.callerId - Who initiated the call
-   * @param {string} msgData.callerName - Caller's display name
-   * @param {string} msgData.from - Who wrote the message (could be caller or callee)
-   * @param {Object} options
-   * @param {boolean} [options.isUnread] - Whether message is unread
-   * @param {Function} [options.onCallBack] - Callback when user clicks call back button
+   * Build file message content span (RTDB base64 file with thumbnail + download link).
    */
-  function appendCallEventMessage(msgData, options = {}) {
-    const { isUnread = false, onCallBack } = options;
-    const myUserId = getLoggedInUserId();
-    const iAmTheCaller = msgData.callerId === myUserId;
-
-    // Create call event message element
-    const p = document.createElement('p');
-    p.classList.add('message-call-event');
-    // Apply local/remote styling classes for visual consistency
-    if (iAmTheCaller) p.classList.add('message-local');
-    else p.classList.add('message-remote');
-
-    // Build content
-    const avatarSpan = document.createElement('span');
-    avatarSpan.className =
-      'sender-avatar' + (iAmTheCaller ? ' sender-avatar--me' : '');
-    avatarSpan.setAttribute('aria-hidden', 'true');
-
-    if (iAmTheCaller) {
-      renderAvatar(avatarSpan, { customFallbackText: t('shared.me') });
-    } else {
-      const contactName = currentSession?.contactName || msgData.callerName;
-      const photoURL =
-        currentSession?.contactPhotoURL ||
-        currentSession?.contactProfile?.photoURL ||
-        null;
-      renderAvatar(avatarSpan, { name: contactName, photoURL });
-    }
-
-    const callEventBubble = document.createElement('span');
-    callEventBubble.className = 'message-text call-event-content';
-
-    const callStatusText = document.createElement('span');
-    callStatusText.className = 'call-event-text';
-    callStatusText.textContent = iAmTheCaller
-      ? t('call.no_answer')
-      : t('call.missed');
-
-    // Create call back action inside the same bubble
-    const callBackBtn = document.createElement('button');
-    callBackBtn.className = 'call-back-btn';
-    callBackBtn.type = 'button';
-
-    const callBackIcon = document.createElement('i');
-    callBackIcon.setAttribute('data-lucide', 'phone');
-    callBackIcon.setAttribute('aria-hidden', 'true');
-    callBackBtn.appendChild(callBackIcon);
-    callBackBtn.appendChild(
-      document.createTextNode(
-        iAmTheCaller ? t('call.try_again') : t('call.callback'),
-      ),
-    );
-
-    callBackBtn.addEventListener('click', async () => {
-      if (onCallBack) {
-        await onCallBack();
-      } else {
-        // Fallback: try to call via contacts
-        try {
-          const { callContact } = await import('../../../main.js');
-          const contactId = iAmTheCaller
-            ? currentSession?.contactId
-            : msgData.callerId;
-          const contactName = iAmTheCaller
-            ? currentSession?.contactName
-            : msgData.callerName;
-          if (contactId && contactName) {
-            await callContact(contactId, contactName);
-          }
-        } catch (e) {
-          console.warn('[MessagesUI] Failed to initiate call back:', e);
-          showInfoToast(t('error.call_failed'));
-        }
-      }
-    });
-
-    // Assemble the message
-    callEventBubble.appendChild(callStatusText);
-    callEventBubble.appendChild(callBackBtn);
-    p.appendChild(avatarSpan);
-    p.appendChild(callEventBubble);
-
-    messagesMessages.appendChild(p);
-    initIcons(p);
-
-    // Handle unread count for received call events
-    if (isUnread && !iAmTheCaller && isHidden(messagesBox)) {
-      const currentCount = messageToggle.element.unreadCount || 0;
-      messageToggle.setUnreadCount(currentCount + 1);
-    }
-
-    scrollMessagesToEnd();
-  }
-
-  /**
-   * Display a file message in the chat (RTDB base64 file)
-   * @param {Object} msgData - Message data from Firebase
-   * @param {boolean} isSentByMe - Whether the current user sent this file
-   */
-  function appendFileMessage(msgData, isSentByMe) {
+  function buildFileContent(msgData) {
     const { fileName, fileType, fileSize, data: dataUrl } = msgData;
 
-    const p = document.createElement('p');
-    p.classList.add(isSentByMe ? 'message-local' : 'message-remote');
-
-    // Avatar
-    const avatarSpan = document.createElement('span');
-    avatarSpan.className =
-      'sender-avatar' + (isSentByMe ? ' sender-avatar--me' : '');
-    avatarSpan.setAttribute('aria-hidden', 'true');
-
-    if (isSentByMe) {
-      renderAvatar(avatarSpan, { customFallbackText: t('shared.me') });
-    } else {
-      const contactName = currentSession?.contactName || '';
-      const photoURL =
-        currentSession?.contactPhotoURL ||
-        currentSession?.contactProfile?.photoURL ||
-        null;
-      renderAvatar(avatarSpan, { name: contactName, photoURL });
-    }
-
-    // Content
     const textSpan = document.createElement('span');
     textSpan.className = 'message-text file-message';
 
@@ -1021,7 +833,6 @@ export function initMessagesUI() {
     const isSafeUrl = dataUrl && dataUrl.startsWith('data:');
 
     if (isImage && isSafeUrl) {
-      // Show thumbnail for images
       const img = document.createElement('img');
       img.src = dataUrl;
       img.alt = fileName;
@@ -1031,16 +842,14 @@ export function initMessagesUI() {
       const singleClickHandler = () => {
         showImagePreview(dataUrl, fileName);
       };
-      // Keep reaction behavior on double-click, only trigger preview on single click
       const doubleClickHandler = (e) => {
-        e.stopPropagation(); // Prevent triggering single click
+        e.stopPropagation();
       };
       detectDoubleClick(img, singleClickHandler, doubleClickHandler);
 
       textSpan.appendChild(img);
     }
 
-    // Download link
     const link = document.createElement('a');
     link.textContent = fileName;
     if (isSafeUrl) {
@@ -1056,17 +865,135 @@ export function initMessagesUI() {
       'color: var(--text-secondary, #aaa); font-size: 12px;';
     textSpan.appendChild(sizeSpan);
 
-    p.appendChild(avatarSpan);
-    p.appendChild(textSpan);
-    messagesMessages.appendChild(p);
+    return textSpan;
+  }
 
-    // Increment unread if hidden and received
-    if (!isSentByMe && !msgData.read && isHidden(messagesBox)) {
+  /**
+   * Build call event content span (missed/rejected call with callback button).
+   */
+  function buildCallEventContent(msgData, { onCallBack, isSentByMe }) {
+    const callEventBubble = document.createElement('span');
+    callEventBubble.className = 'message-text call-event-content';
+
+    const callStatusText = document.createElement('span');
+    callStatusText.className = 'call-event-text';
+    callStatusText.textContent = isSentByMe
+      ? t('call.no_answer')
+      : t('call.missed');
+
+    const callBackBtn = document.createElement('button');
+    callBackBtn.className = 'call-back-btn';
+    callBackBtn.type = 'button';
+
+    const callBackIcon = document.createElement('i');
+    callBackIcon.setAttribute('data-lucide', 'phone');
+    callBackIcon.setAttribute('aria-hidden', 'true');
+    callBackBtn.appendChild(callBackIcon);
+    callBackBtn.appendChild(
+      document.createTextNode(
+        isSentByMe ? t('call.try_again') : t('call.callback'),
+      ),
+    );
+
+    callBackBtn.addEventListener('click', async () => {
+      if (onCallBack) {
+        await onCallBack();
+      } else {
+        try {
+          const { callContact } = await import('../../../main.js');
+          const contactId = isSentByMe
+            ? currentSession?.contactId
+            : msgData.callerId;
+          const contactName = isSentByMe
+            ? currentSession?.contactName
+            : msgData.callerName;
+          if (contactId && contactName) {
+            await callContact(contactId, contactName);
+          }
+        } catch (e) {
+          console.warn('[MessagesUI] Failed to initiate call back:', e);
+          showInfoToast(t('error.call_failed'));
+        }
+      }
+    });
+
+    callEventBubble.appendChild(callStatusText);
+    callEventBubble.appendChild(callBackBtn);
+
+    return callEventBubble;
+  }
+
+  // --- Unified message entry point ---
+
+  /**
+   * Append a message of any type to the chat UI.
+   * @param {string} text - Message content (used for text/system types)
+   * @param {Object} options
+   * @param {'text'|'file'|'call_event'} [options.type='text'] - Message type
+   * @param {boolean|undefined} [options.isSentByMe] - true (local), false (remote), undefined (system)
+   * @param {string} [options.messageId] - Firebase message ID for reactions
+   * @param {Object} [options.reactions] - Initial reactions { type: [userIds] }
+   * @param {boolean} [options.isUnread=false] - Whether this message is unread
+   * @param {Object} [options.fileDownload] - { fileName, url } for DataChannel file links
+   * @param {Object} [options.msgData] - Raw Firebase msg data (for file/call_event types)
+   * @param {Function} [options.onCallBack] - Callback for call_event "call back" button
+   */
+  function appendMessage(text, options = {}) {
+    const {
+      type = 'text',
+      isSentByMe,
+      messageId,
+      reactions,
+      isUnread = false,
+      fileDownload,
+      msgData,
+      onCallBack,
+    } = options;
+
+    // Infer system type: no sender and no fileDownload → system notice
+    const effectiveType =
+      type !== 'text' ? type
+      : typeof isSentByMe === 'undefined' && !fileDownload ? 'system'
+      : type;
+
+    // Shell: <p> with alignment classes
+    const p = document.createElement('p');
+    if (effectiveType === 'system') p.classList.add('message-system');
+    if (effectiveType === 'call_event') p.classList.add('message-call-event');
+    if (isSentByMe === true) p.classList.add('message-local');
+    else if (isSentByMe === false) p.classList.add('message-remote');
+    if (fileDownload) p.classList.add('message-system');
+
+    // Avatar
+    p.appendChild(createAvatar(isSentByMe));
+
+    // Type-specific content
+    switch (effectiveType) {
+      case 'file':
+        p.appendChild(buildFileContent(msgData));
+        break;
+      case 'call_event':
+        p.appendChild(buildCallEventContent(msgData, { onCallBack, isSentByMe: isSentByMe === true }));
+        initIcons(p);
+        break;
+      default: // 'text', 'system'
+        p.appendChild(buildTextContent(text, { fileDownload }));
+        break;
+    }
+
+    // Reactions for all non-system types
+    if (effectiveType !== 'system') {
+      attachReactions(p, messageId, reactions);
+    }
+
+    messagesMessages.appendChild(p);
+    scrollMessagesToEnd();
+
+    // Unread badge
+    if (isUnread && isSentByMe === false && isHidden(messagesBox)) {
       const currentCount = messageToggle.element.unreadCount || 0;
       messageToggle.setUnreadCount(currentCount + 1);
     }
-
-    scrollMessagesToEnd();
   }
 
   /**
@@ -1091,23 +1018,14 @@ export function initMessagesUI() {
 
   function receiveMessage(
     text,
-    { isUnread = true, senderDisplay = 'U', messageId, reactions } = {},
+    { isUnread = true, messageId, reactions } = {},
   ) {
-    appendChatMessage(text, {
+    appendMessage(text, {
       isSentByMe: false,
-      senderDisplay,
       messageId,
       reactions,
+      isUnread,
     });
-
-    // Only increment unread count if:
-    // 1. The messages box is hidden (user can't see the message)
-    // 2. The message is actually unread (not a historical already-read message)
-    if (isHidden(messagesBox) && isUnread) {
-      const currentCount = messageToggle.element.unreadCount || 0;
-      messageToggle.setUnreadCount(currentCount + 1);
-      // Animation triggered automatically by component
-    }
   }
 
   // Helper to send the current message
@@ -1237,10 +1155,10 @@ export function initMessagesUI() {
 
           if (action === 'watch') {
             // Show notification in chat
-            appendChatMessage(`📹 ${t('message.received_video', { name })}`, {
+            appendMessage(`📹 ${t('message.received_video', { name })}`, {
               isSentByMe: false,
             });
-            appendChatMessage(`🎬 ${t('message.watch.requesting')}`);
+            appendMessage(`🎬 ${t('message.watch.requesting')}`);
 
             // If OPFS-streamed and SW available, serve via SW URL
             let videoSource;
@@ -1270,7 +1188,7 @@ export function initMessagesUI() {
             const success = await handleVideoSelection(videoSource, mimeType);
 
             if (!success) {
-              appendChatMessage(`❌ ${t('message.watch.failed_load')}`);
+              appendMessage(`❌ ${t('message.watch.failed_load')}`);
               return;
             }
 
@@ -1278,9 +1196,9 @@ export function initMessagesUI() {
             const requestCreated = await createWatchRequest(name, file);
 
             if (requestCreated) {
-              appendChatMessage(`⏳ ${t('message.watch.waiting')}`);
+              appendMessage(`⏳ ${t('message.watch.waiting')}`);
             } else {
-              appendChatMessage(`❌ ${t('message.watch.request_failed')}`);
+              appendMessage(`❌ ${t('message.watch.request_failed')}`);
             }
           } else {
             // Download the file
@@ -1294,12 +1212,12 @@ export function initMessagesUI() {
             // Using 1 second to be safe for slow devices/large files
             setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-            appendChatMessage(`📎 ${t('message.downloaded', { name })}`);
+            appendMessage(`📎 ${t('message.downloaded', { name })}`);
           }
         } else {
           // Non-video file - show download link
           const url = URL.createObjectURL(file);
-          appendChatMessage(`📎 ${t('message.received', { name })}`, {
+          appendMessage(`📎 ${t('message.received', { name })}`, {
             isSentByMe: false,
             fileDownload: { fileName: name, url },
           });
@@ -1325,7 +1243,7 @@ export function initMessagesUI() {
 
       // Setup file error handler
       fileTransferController.onFileError = ({ fileName, reason }) => {
-        appendChatMessage(
+        appendMessage(
           `❌ ${t('message.receive_failed', { name: fileName })} (${reason})`,
         );
       };
@@ -1504,54 +1422,53 @@ export function initMessagesUI() {
       onMessage: (text, msgData, isSentByMe) => {
         // Handle reaction updates separately (don't re-append the message)
         if (msgData._reactionUpdate) {
-          // Convert Firebase reactions format { heart: { odAg2: true } } to { heart: ['odAg2'] }
-          const reactions = {};
-          if (msgData.reactions) {
-            for (const [type, users] of Object.entries(msgData.reactions)) {
-              reactions[type] = Object.keys(users);
-            }
-          }
-          updateMessageReactions(msgData.messageId, reactions);
+          updateMessageReactions(
+            msgData.messageId,
+            convertFirebaseReactions(msgData.reactions),
+          );
           return;
         }
 
-        // Handle call event messages (missed_call, rejected_call)
+        const reactions = convertFirebaseReactions(msgData.reactions);
+
         if (msgData.type === 'call_event') {
-          appendCallEventMessage(msgData, {
+          appendMessage('', {
+            type: 'call_event',
+            isSentByMe: msgData.callerId === getLoggedInUserId(),
+            messageId: msgData.messageId,
+            reactions,
             isUnread: !msgData.read,
+            msgData,
           });
           updateLastInteraction(contactId).catch(() => {});
           return;
         }
 
-        // Handle file messages (RTDB base64)
         if (msgData.type === 'file') {
-          appendFileMessage(msgData, isSentByMe);
+          appendMessage('', {
+            type: 'file',
+            isSentByMe,
+            messageId: msgData.messageId,
+            reactions,
+            isUnread: !isSentByMe && !msgData.read,
+            msgData,
+          });
           if (!isSentByMe) {
             updateLastInteraction(contactId).catch(() => {});
           }
           return;
         }
 
-        // Convert Firebase reactions format for initial display
-        const reactions = {};
-        if (msgData.reactions) {
-          for (const [type, users] of Object.entries(msgData.reactions)) {
-            reactions[type] = Object.keys(users);
-          }
-        }
-
-        // Display message in UI
+        // Text message
         if (isSentByMe) {
-          appendChatMessage(text, {
+          appendMessage(text, {
             isSentByMe: true,
             messageId: msgData.messageId,
             reactions,
           });
         } else {
-          const isUnread = !msgData.read;
           receiveMessage(text, {
-            isUnread,
+            isUnread: !msgData.read,
             messageId: msgData.messageId,
             reactions,
           });
@@ -1611,7 +1528,7 @@ export function initMessagesUI() {
   }
 
   return {
-    appendChatMessage,
+    appendMessage,
     receiveMessage,
     updateMessageReactions,
     isMessagesUIOpen,
