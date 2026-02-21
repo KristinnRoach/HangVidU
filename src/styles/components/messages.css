@@ -61,8 +61,6 @@
   text-shadow: var(--text-shadow-subtle);
 }
 
-/* Messages Box */
-
 .messages-box {
   display: flex;
   flex-direction: column;
