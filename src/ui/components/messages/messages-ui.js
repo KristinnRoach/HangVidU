@@ -32,7 +32,7 @@ import { createMessageBox } from './createMessageBox.js';
 import { createMessageTopBar } from './createMessageTopBar.js';
 import { devDebug } from '../../../utils/dev/dev-utils.js';
 import { showImagePreview } from '../modal/imagePreview.js';
-import { detectDoubleClick } from '../../utils/detectDoubleClick.js';
+import { onTapGesture } from '../../utils/detectDoubleClick.js';
 
 // const MAX_MESSAGE_LENGTH = 3000; // Max characters allowed in a message
 
@@ -741,8 +741,13 @@ export function initMessagesUI() {
 
   /**
    * Attach reaction support to a message element. No-op if messageId is falsy.
+   * @param {HTMLElement} p - The message <p> element
+   * @param {string} messageId - Firebase message ID
+   * @param {Object} reactions - Initial reactions { type: [userIds] }
+   * @param {Object} [opts]
+   * @param {Function} [opts.onSingleTap] - Called on single tap (e.g. image preview)
    */
-  function attachReactions(p, messageId, reactions) {
+  function attachReactions(p, messageId, reactions, { onSingleTap } = {}) {
     if (!messageId) return;
 
     p.dataset.messageId = messageId;
@@ -754,7 +759,22 @@ export function initMessagesUI() {
       reactionUI.renderReactions(p, messageId, reactionCounts);
     }
 
-    reactionUI.enableDoubleTap(p, messageId, handleReactionChange);
+    const gesture = onTapGesture(
+      p,
+      {
+        onSingleTap,
+        onDoubleTap: () => handleReactionChange(
+          REACTION_CONFIG.defaultReaction, p, messageId, 'doubleTap',
+        ),
+        onLongPress: () => reactionUI.showPicker(p, messageId, handleReactionChange),
+      },
+      {
+        doubleTapDelay: REACTION_CONFIG.doubleTapDelay,
+        longPressDelay: REACTION_CONFIG.longPressDelay,
+      },
+    );
+
+    p._reactionCleanup = () => gesture.destroy();
   }
 
   /**
@@ -815,6 +835,7 @@ export function initMessagesUI() {
 
   /**
    * Build file message content span (RTDB base64 file with thumbnail + download link).
+   * @returns {{ element: HTMLElement, onSingleTap?: Function }}
    */
   function buildFileContent(msgData) {
     const { fileName, fileType, fileSize, data: dataUrl } = msgData;
@@ -831,6 +852,7 @@ export function initMessagesUI() {
           : `${(fileSize / (1024 * 1024)).toFixed(1)} MB`;
 
     const isSafeUrl = dataUrl && dataUrl.startsWith('data:');
+    let onSingleTap;
 
     if (isImage && isSafeUrl) {
       const img = document.createElement('img');
@@ -838,14 +860,14 @@ export function initMessagesUI() {
       img.alt = fileName;
       img.style.cssText =
         'max-width: 200px; max-height: 200px; border-radius: 8px; cursor: pointer; display: block; margin-bottom: 4px;';
-
-      const singleClickHandler = () => {
-        showImagePreview(dataUrl, fileName);
-      };
-      // No-op on double-click (prevents preview) — event bubbles to reaction handler
-      detectDoubleClick(img, singleClickHandler, () => {});
-
       textSpan.appendChild(img);
+
+      // Open preview on single tap (double-tap handled by reaction system)
+      onSingleTap = (e) => {
+        if (e.target === img || img.contains(e.target)) {
+          showImagePreview(dataUrl, fileName);
+        }
+      };
     }
 
     const link = document.createElement('a');
@@ -863,7 +885,7 @@ export function initMessagesUI() {
       'color: var(--text-secondary, #aaa); font-size: 12px;';
     textSpan.appendChild(sizeSpan);
 
-    return textSpan;
+    return { element: textSpan, onSingleTap };
   }
 
   /**
@@ -966,10 +988,14 @@ export function initMessagesUI() {
     p.appendChild(createAvatar(isSentByMe));
 
     // Type-specific content
+    let onSingleTap;
     switch (effectiveType) {
-      case 'file':
-        p.appendChild(buildFileContent(msgData));
+      case 'file': {
+        const file = buildFileContent(msgData);
+        p.appendChild(file.element);
+        onSingleTap = file.onSingleTap;
         break;
+      }
       case 'call_event':
         p.appendChild(buildCallEventContent(msgData, { onCallBack, isSentByMe: isSentByMe === true }));
         initIcons(p);
@@ -981,7 +1007,7 @@ export function initMessagesUI() {
 
     // Reactions for all non-system types
     if (effectiveType !== 'system') {
-      attachReactions(p, messageId, reactions);
+      attachReactions(p, messageId, reactions, { onSingleTap });
     }
 
     messagesMessages.appendChild(p);
