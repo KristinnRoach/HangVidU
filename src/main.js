@@ -1727,7 +1727,7 @@ window.onload = async () => {
     listenForIncomingOnRoom(e.detail.roomId);
   });
 
-  // TODO: listen for messages:toggle in messagingController and call setSession there to ensure some session is open.
+  // TODO: listen for messages:toggle in messagingController and call setSession there to ensure some session is open (getContactByMostRecentInteraction())
   document.addEventListener('messages:toggle', (e) => {
     const { contactId, contactName } = e.detail;
     messagesUI.openContactMessages(contactId, contactName);

@@ -1,6 +1,7 @@
 // src/messaging/messaging-controller.js
 // Unified messaging API with transport abstraction
 
+import { getContactByMostRecentInteraction } from '../ui/components/contacts/contacts.js';
 import { RTDBMessagingTransport } from './transports/rtdb-transport.js';
 
 /**
@@ -31,6 +32,16 @@ export class MessagingController {
 
     this.transport = transport;
     this.sessions = new Map(); // contactId -> session object
+
+    //     getContactByMostRecentInteraction().then((contact) => {
+    //   if (contact) {
+    //     console.info(
+    //       `[MessagingController] Most recent contact: ${contact.name} (${contact.id})`,
+    //     );
+    //   } else {
+    //     console.info('[MessagingController] No recent contacts found');
+    //   }
+    // });
   }
 
   /**
