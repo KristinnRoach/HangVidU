@@ -1483,6 +1483,8 @@ export function initMessagesUI() {
     // Open messaging session
     const session = messagingController.openSession(contactId, {
       onMessage: (text, msgData, isSentByMe) => {
+        updateLastInteraction(contactId).catch(() => {}); // Update interaction timestamp on any message activity (including reactions)
+
         // Handle reaction updates separately (don't re-append the message)
         if (msgData._reactionUpdate) {
           updateMessageReactions(
@@ -1503,15 +1505,18 @@ export function initMessagesUI() {
             isUnread: !msgData.read,
             msgData,
           });
-          updateLastInteraction(contactId).catch(() => {});
           return;
         }
 
         if (msgData.type === 'file') {
-          appendFileMessage(msgData, isSentByMe);
-          if (!isSentByMe) {
-            updateLastInteraction(contactId).catch(() => {});
-          }
+          appendMessage('', {
+            type: 'file',
+            isSentByMe,
+            messageId: msgData.messageId,
+            reactions,
+            isUnread: !msgData.read,
+            msgData,
+          });
           return;
         }
 
@@ -1528,7 +1533,6 @@ export function initMessagesUI() {
             messageId: msgData.messageId,
             reactions,
           });
-          updateLastInteraction(contactId).catch(() => {});
         }
       },
     });
