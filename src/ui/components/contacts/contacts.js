@@ -22,7 +22,7 @@ let lastRenderedLobby = null;
 // Limit displayed contact name length in the UI (keep full name in title)
 const MAX_CONTACT_NAME_CHARS = 18;
 
-function getSortedContactIds(contacts) {
+function sortContactIdsByLastInteraction(contacts) {
   return Object.keys(contacts).sort((a, b) => {
     const aTime = contacts[a]?.lastInteractionAt || contacts[a]?.savedAt || 0;
     const bTime = contacts[b]?.lastInteractionAt || contacts[b]?.savedAt || 0;
@@ -113,6 +113,22 @@ export async function getContacts() {
   } catch (e) {
     console.warn('Failed to read contacts from localStorage', e);
     return {};
+  }
+}
+
+/**
+ * Get the most recently interacted contact (by lastInteractionAt or savedAt). Returns null if no contacts.
+ * Useful for defaulting to most recent contact in messages or call flows.
+ */
+export async function getContactByMostRecentInteraction() {
+  try {
+    const contacts = await getContacts();
+    const sortedIds = sortContactIdsByLastInteraction(contacts);
+    const mostRecentId = sortedIds[0];
+    return contacts[mostRecentId] || null;
+  } catch (e) {
+    console.warn('Failed to get contact by most recent interaction', e);
+    return null;
   }
 }
 
@@ -224,7 +240,7 @@ export async function renderContactsList(lobbyElement) {
   }
 
   const contacts = await getContacts();
-  const contactIds = getSortedContactIds(contacts);
+  const contactIds = sortContactIdsByLastInteraction(contacts);
 
   // Find or create contacts container
   let contactsContainer = lobbyElement.querySelector('.contacts-container');
@@ -267,7 +283,7 @@ export async function renderContactsList(lobbyElement) {
                 data-contact-id="${escapeHtml(id)}"
                 title="${escapeHtml(t('contact.action.call', { name: escapedName }))}"
               >
-                <i data-lucide="phone"></i>
+                <i data-lucide="phone" fill="currentColor" stroke-width="0"></i>
               </button>
 
               <span class="presence-indicator" data-contact-id="${escapeHtml(id)}"></span>
@@ -340,7 +356,7 @@ function attachContactListeners(container, lobbyElement) {
       if (contactId) {
         clearUnreadBadge(contactId);
         document.dispatchEvent(
-          new CustomEvent('contact:messages-open', {
+          new CustomEvent('messages:toggle', {
             detail: { contactId, contactName },
           }),
         );

@@ -1723,12 +1723,14 @@ window.onload = async () => {
     const { contactId, contactName, roomId } = e.detail;
     callContact(contactId, contactName, roomId);
   });
-  document.addEventListener('contact:messages-open', (e) => {
-    const { contactId, contactName } = e.detail;
-    messagesUI.openContactMessages(contactId, contactName);
-  });
   document.addEventListener('contact:saved', (e) => {
     listenForIncomingOnRoom(e.detail.roomId);
+  });
+
+  // TODO: listen for messages:toggle in messagingController and call setSession there to ensure some session is open (getContactByMostRecentInteraction())
+  document.addEventListener('messages:toggle', (e) => {
+    const { contactId, contactName } = e.detail;
+    messagesUI.openContactMessages(contactId, contactName);
   });
 
   const onJoinRoomSubmit = async (roomInputString) => {
