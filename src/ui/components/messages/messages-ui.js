@@ -970,7 +970,7 @@ export function initMessagesUI() {
    * @param {boolean|undefined} [options.isSentByMe] - true (local), false (remote), undefined (system)
    * @param {string} [options.messageId] - Firebase message ID for reactions
    * @param {Object} [options.reactions] - Initial reactions { type: [userIds] }
-   * @param {boolean} [options.isUnread=false] - Whether this message is unread
+   * @param {boolean} [options.isRead=false] - Whether this message is read
    * @param {Object} [options.fileDownload] - { fileName, url } for DataChannel file links
    * @param {Object} [options.msgData] - Raw Firebase msg data (for file/call_event types)
    * @param {Function} [options.onCallBack] - Callback for call_event "call back" button
@@ -981,7 +981,7 @@ export function initMessagesUI() {
       isSentByMe,
       messageId,
       reactions,
-      isUnread = false,
+      isRead = false,
       fileDownload,
       msgData,
       onCallBack,
@@ -1030,7 +1030,7 @@ export function initMessagesUI() {
         p.appendChild(
           buildCallEventContent(msgData, {
             onCallBack,
-            isSentByMe: isSentByMe === true,
+            isSentByMe,
           }),
         );
         initIcons(p);
@@ -1053,7 +1053,7 @@ export function initMessagesUI() {
     scrollMessagesToEnd();
 
     // Increment unread if hidden and received
-    if (!isSentByMe && isUnread && isHidden(messagesBox)) {
+    if (!isSentByMe && !isRead && isHidden(messagesBox)) {
       const currentCount = messageToggle.element.unreadCount || 0;
       messageToggle.setUnreadCount(currentCount + 1);
     }
@@ -1076,18 +1076,6 @@ export function initMessagesUI() {
     scrollRafId = requestAnimationFrame(() => {
       messagesMessages.scrollTop = messagesMessages.scrollHeight;
       scrollRafId = null;
-    });
-  }
-
-  function receiveMessage(
-    text,
-    { isUnread = true, messageId, reactions } = {},
-  ) {
-    appendMessage(text, {
-      isSentByMe: false,
-      messageId,
-      reactions,
-      isUnread,
     });
   }
 
@@ -1494,44 +1482,18 @@ export function initMessagesUI() {
 
         const reactions = convertFirebaseReactions(msgData.reactions);
 
-        if (msgData.type === 'call_event') {
-          appendMessage('', {
-            type: 'call_event',
-            isSentByMe: msgData.callerId === getLoggedInUserId(),
-            messageId: msgData.messageId,
-            reactions,
-            isUnread: !msgData.read,
-            msgData,
-          });
-          return;
-        }
+        // Determine message type and whether it's text (default)
+        const type = msgData.type;
+        const isText = !type;
 
-        if (msgData.type === 'file') {
-          appendMessage('', {
-            type: 'file',
-            isSentByMe,
-            messageId: msgData.messageId,
-            reactions,
-            isUnread: !msgData.read,
-            msgData,
-          });
-          return;
-        }
-
-        // Text message
-        if (isSentByMe) {
-          appendMessage(text, {
-            isSentByMe: true,
-            messageId: msgData.messageId,
-            reactions,
-          });
-        } else {
-          receiveMessage(text, {
-            isUnread: !msgData.read,
-            messageId: msgData.messageId,
-            reactions,
-          });
-        }
+        appendMessage(isText ? text : '', {
+          ...(type && { type }),
+          isSentByMe: isText ? false : isSentByMe,
+          messageId: msgData.messageId,
+          reactions,
+          isRead: msgData.read,
+          ...(type && { msgData }),
+        });
       },
     });
 
@@ -1587,7 +1549,6 @@ export function initMessagesUI() {
 
   return {
     appendMessage,
-    receiveMessage,
     updateMessageReactions,
     isMessagesUIOpen,
     toggleMessages,
