@@ -74,7 +74,7 @@
     "workbox-strategies": "^7.4.0"
   },
   "dependencies": {
-    "@sentry/browser": "^10.38.0",
+    "@sentry/browser": "^10.39.0",
     "dexie": "^4.3.0",
     "firebase": "^12.9.0",
     "lucide": "^0.575.0",
