@@ -110,6 +110,20 @@ export function initMessagesUI() {
   // Use the component element directly as the toggle button/container
   const messagesToggleEl = messageToggle.element;
 
+  // ! === [TEMP FIX] ===
+  // TODO: Remove this temp fix after ensuring a session is always available or better solution found
+  // Initialize toggle disabled state when no session is active.
+  try {
+    const _btn =
+      messagesToggleEl &&
+      messagesToggleEl.querySelector &&
+      messagesToggleEl.querySelector('button');
+    if (_btn) _btn.disabled = !currentSession;
+  } catch (e) {
+    /* ignore */
+  }
+  // ! === [TEMP FIX] End ===
+
   // Create the messages box
   const {
     messagesBoxContainer,
@@ -1182,7 +1196,20 @@ export function initMessagesUI() {
     }
 
     refreshAttachButton();
+
+    // ! === [TEMP FIX] ===
+    // TODO: Remove this temp fix after ensuring a session is always available or better solution found
+    try {
+      const btn =
+        messagesToggleEl &&
+        messagesToggleEl.querySelector &&
+        messagesToggleEl.querySelector('button');
+      if (btn) btn.disabled = !session;
+    } catch (e) {
+      /* ignore */
+    }
   }
+  // ! === [TEMP FIX] End ===
 
   /**
    * Get the currently displayed session
@@ -1339,6 +1366,17 @@ export function initMessagesUI() {
 
     hideElement(messagesBox);
     messageToggle.clearBadge();
+
+    // Ensure toggle button is disabled when no session exists (reset state)
+    try {
+      const btn =
+        messagesToggleEl &&
+        messagesToggleEl.querySelector &&
+        messagesToggleEl.querySelector('button');
+      if (btn) btn.disabled = true;
+    } catch (e) {
+      /* ignore */
+    }
 
     // Clear any unsent message text and reset textarea height
     messagesInput.value = '';
