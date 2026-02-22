@@ -1132,6 +1132,22 @@ export function initMessagesUI() {
   document.addEventListener('keydown', openMessagesKeyhandler);
 
   /**
+   * Clean up reaction listeners on all message elements.
+   * Called when clearing messages or switching sessions to prevent leaks.
+   */
+  function cleanupReactionListeners() {
+    for (const el of messageElements.values()) {
+      if (typeof el._reactionCleanup === 'function') {
+        try {
+          el._reactionCleanup();
+        } catch (err) {
+          console.error('Failed to cleanup reaction listener:', err);
+        }
+      }
+    }
+  }
+
+  /**
    * Clear all messages from the UI
    */
   function clearMessages() {
@@ -1139,6 +1155,9 @@ export function initMessagesUI() {
       cancelAnimationFrame(scrollRafId);
       scrollRafId = null;
     }
+
+    cleanupReactionListeners();
+    messageElements.clear();
     messagesMessages.innerHTML = '';
     messagesMessages.scrollTop = 0;
   }
