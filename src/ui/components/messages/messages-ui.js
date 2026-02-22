@@ -1100,10 +1100,8 @@ export function initMessagesUI() {
     if (currentSession) {
       currentSession.send(msg);
       messagesInput.value = '';
-      // Reset textarea height after clearing (JS fallback only)
+      // Reset textarea height after clearing
       if (resetInputHeight) resetInputHeight();
-      if (currentSession.contactId)
-        updateLastInteraction(currentSession.contactId).catch(() => {});
     } else {
       console.warn('[MessagesUI] No active session to send message');
     }
