@@ -696,6 +696,3 @@ export class PushNotificationController {
  * Can be replaced with a different transport for testing
  */
 export const pushNotificationController = new PushNotificationController();
-
-// Backward compatibility: export as notificationController
-export const notificationController = pushNotificationController;
