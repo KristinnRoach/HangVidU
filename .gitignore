@@ -89,10 +89,13 @@ CLAUDE.md
 .kiro/
 .claude/
 
+# Firebase
+.firebase/
+functions/service-account-key.json
+
 # Misc / Recently added
 TODO.md
 experiments.html
-.firebase/
 ./tests/e2e/OUTDATED_IGNORE/
 kill-hanging-dev-processes.sh
 sync-gh-secrets.sh
@@ -106,3 +109,4 @@ __screenshots__/
 test-reactions.html
 debug-discovery.html
 src/media/test-images/
+backups/
