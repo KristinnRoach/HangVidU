@@ -114,7 +114,12 @@ describe('MessagingController', () => {
     controller.openSession('contactA');
 
     // Simulate receiving a message
-    mockTransport.simulateMessage('contactA_me', 'Test message', { messageId: 'm1' }, false);
+    mockTransport.simulateMessage(
+      'contactA_me',
+      'Test message',
+      { messageId: 'm1' },
+      false,
+    );
 
     expect(spy).toHaveBeenCalledWith({
       conversationId: 'contactA_me',
@@ -179,16 +184,20 @@ describe('MessagingController', () => {
 
     it('should update reactions in cached history', () => {
       const session = controller.openSession('contactA');
-      mockTransport.simulateMessage('contactA_me', 'Hello', { messageId: 'm1' });
-      
-      // Simulate reaction update
-      mockTransport.simulateMessage('contactA_me', '', { 
-        messageId: 'm1', 
-        _reactionUpdate: true, 
-        reactions: { like: { user1: true } } 
+      mockTransport.simulateMessage('contactA_me', 'Hello', {
+        messageId: 'm1',
       });
 
-      expect(session.history[0].msgData.reactions).toEqual({ like: { user1: true } });
+      // Simulate reaction update
+      mockTransport.simulateMessage('contactA_me', '', {
+        messageId: 'm1',
+        _reactionUpdate: true,
+        reactions: { like: { user1: true } },
+      });
+
+      expect(session.history[0].msgData.reactions).toEqual({
+        like: { user1: true },
+      });
     });
 
     it('should evict oldest session when limit is exceeded', () => {

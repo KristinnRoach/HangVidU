@@ -500,7 +500,11 @@ export class RTDBMessagingTransport extends MessagingTransport {
     );
   }
 
-  async removeReactionFromConversation(conversationId, messageId, reactionType) {
+  async removeReactionFromConversation(
+    conversationId,
+    messageId,
+    reactionType,
+  ) {
     const myUserId = getLoggedInUserId();
     if (!myUserId) {
       throw new Error('Cannot remove reaction: not logged in');

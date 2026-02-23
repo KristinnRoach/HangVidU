@@ -37,7 +37,9 @@ export class MessagingController extends EventEmitter {
 
     // Sync sessionOrder when a session is closed anywhere
     this.on('session:closed', ({ conversationId }) => {
-      this.sessionOrder = this.sessionOrder.filter((id) => id !== conversationId);
+      this.sessionOrder = this.sessionOrder.filter(
+        (id) => id !== conversationId,
+      );
     });
 
     // Global listener for UI-driven session requests
@@ -64,7 +66,8 @@ export class MessagingController extends EventEmitter {
    */
   resolveConversationIdFromContact(contactId) {
     const myUserId = getLoggedInUserId();
-    if (!myUserId) throw new Error('Cannot resolve conversation: not logged in');
+    if (!myUserId)
+      throw new Error('Cannot resolve conversation: not logged in');
     return this.resolveConversationId([myUserId, contactId]);
   }
 
@@ -94,7 +97,9 @@ export class MessagingController extends EventEmitter {
    */
   updateCachedHistoryReactions(session, messageId, reactions) {
     if (!session.history) return;
-    const message = session.history.find((m) => m.msgData.messageId === messageId);
+    const message = session.history.find(
+      (m) => m.msgData.messageId === messageId,
+    );
     if (message) {
       message.msgData.reactions = reactions;
     }
@@ -123,8 +128,8 @@ export class MessagingController extends EventEmitter {
    * Only one session per conversation is allowed. If a session already exists,
    * it will be returned instead of creating a new one.
    *
-   * @param {string} contactId - 
-   * @param {string} contactName - 
+   * @param {string} contactId -
+   * @param {string} contactName -
    * @returns {Object} Session object with methods: send, markAsRead, getUnreadCount, close
    */
   openSession(contactId, contactName) {
@@ -140,8 +145,11 @@ export class MessagingController extends EventEmitter {
 
     // Return existing session if already open
     if (this.sessions.has(conversationId)) {
-      console.debug('[MessagingController] Session already open for conversation:', conversationId);
-      
+      console.debug(
+        '[MessagingController] Session already open for conversation:',
+        conversationId,
+      );
+
       const session = this.sessions.get(conversationId);
       this._touchSession(conversationId);
       this.emit('session:opened', { session });
@@ -163,17 +171,19 @@ export class MessagingController extends EventEmitter {
       },
 
       sendFile: (file) => {
-        // Note: Transport sendFile still uses contactId internally for some logic, 
+        // Note: Transport sendFile still uses contactId internally for some logic,
         // we might need to refactor it to sendFileToConversation too.
         // For now, if we have a 1:1 session, we can derive the contactId.
         if (typeof this.transport.sendFile !== 'function') {
-          return Promise.reject(new Error('Transport does not support file messages'));
+          return Promise.reject(
+            new Error('Transport does not support file messages'),
+          );
         }
         // TODO: Update transport to support sendFileToConversation
         // For 1:1 compatibility:
         const participants = conversationId.split('_');
         const myId = getLoggedInUserId();
-        const contactIdFromCid = participants.find(p => p !== myId);
+        const contactIdFromCid = participants.find((p) => p !== myId);
         return this.transport.sendFile(contactIdFromCid, file);
       },
 
@@ -231,7 +241,11 @@ export class MessagingController extends EventEmitter {
 
         // 2. Cache reaction updates
         if (msgData._reactionUpdate) {
-          this.updateCachedHistoryReactions(session, msgData.messageId, msgData.reactions);
+          this.updateCachedHistoryReactions(
+            session,
+            msgData.messageId,
+            msgData.reactions,
+          );
         }
 
         // 3. Emit general message event for active UI
@@ -263,7 +277,7 @@ export class MessagingController extends EventEmitter {
       },
     );
 
-    session._unsubscribe = unsubscribe; 
+    session._unsubscribe = unsubscribe;
 
     return session;
   }
@@ -315,7 +329,7 @@ export class MessagingController extends EventEmitter {
     // TODO: refactor transport to support writeCallEventToConversation
     const participants = conversationId.split('_');
     const myId = getLoggedInUserId();
-    const contactId = participants.find(p => p !== myId);
+    const contactId = participants.find((p) => p !== myId);
     return this.transport.writeCallEventMessage(contactId, eventType, metadata);
   }
 }

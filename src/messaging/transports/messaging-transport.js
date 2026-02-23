@@ -19,7 +19,9 @@ export class MessagingTransport {
    * @abstract
    */
   async sendToConversation(conversationId, text) {
-    throw new Error('MessagingTransport.sendToConversation() must be implemented by subclass');
+    throw new Error(
+      'MessagingTransport.sendToConversation() must be implemented by subclass',
+    );
   }
 
   /**
@@ -30,7 +32,9 @@ export class MessagingTransport {
    * @abstract
    */
   listenToConversation(conversationId, onMessage) {
-    throw new Error('MessagingTransport.listenToConversation() must be implemented by subclass');
+    throw new Error(
+      'MessagingTransport.listenToConversation() must be implemented by subclass',
+    );
   }
 
   /**
@@ -40,7 +44,9 @@ export class MessagingTransport {
    * @abstract
    */
   async getUnreadCountForConversation(conversationId) {
-    throw new Error('MessagingTransport.getUnreadCountForConversation() must be implemented by subclass');
+    throw new Error(
+      'MessagingTransport.getUnreadCountForConversation() must be implemented by subclass',
+    );
   }
 
   /**
@@ -50,7 +56,9 @@ export class MessagingTransport {
    * @abstract
    */
   async markAsReadForConversation(conversationId) {
-    throw new Error('MessagingTransport.markAsReadForConversation() must be implemented by subclass');
+    throw new Error(
+      'MessagingTransport.markAsReadForConversation() must be implemented by subclass',
+    );
   }
 
   /**
@@ -61,7 +69,9 @@ export class MessagingTransport {
    * @abstract
    */
   listenToUnreadCountForConversation(conversationId, onCountChange) {
-    throw new Error('MessagingTransport.listenToUnreadCountForConversation() must be implemented by subclass');
+    throw new Error(
+      'MessagingTransport.listenToUnreadCountForConversation() must be implemented by subclass',
+    );
   }
 
   /**
@@ -70,7 +80,9 @@ export class MessagingTransport {
    * @returns {string} Conversation ID
    */
   resolveConversationId(participantIds) {
-    throw new Error('MessagingTransport.resolveConversationId() must be implemented by subclass');
+    throw new Error(
+      'MessagingTransport.resolveConversationId() must be implemented by subclass',
+    );
   }
 
   // ========================================================================
@@ -86,7 +98,9 @@ export class MessagingTransport {
    * @abstract
    */
   async addReactionToConversation(conversationId, messageId, reactionType) {
-    throw new Error('MessagingTransport.addReactionToConversation() must be implemented by subclass');
+    throw new Error(
+      'MessagingTransport.addReactionToConversation() must be implemented by subclass',
+    );
   }
 
   /**
@@ -97,8 +111,14 @@ export class MessagingTransport {
    * @returns {Promise<void>}
    * @abstract
    */
-  async removeReactionFromConversation(conversationId, messageId, reactionType) {
-    throw new Error('MessagingTransport.removeReactionFromConversation() must be implemented by subclass');
+  async removeReactionFromConversation(
+    conversationId,
+    messageId,
+    reactionType,
+  ) {
+    throw new Error(
+      'MessagingTransport.removeReactionFromConversation() must be implemented by subclass',
+    );
   }
 
   /**
@@ -109,6 +129,8 @@ export class MessagingTransport {
    * @abstract
    */
   async getReactionsForConversation(conversationId, messageId) {
-    throw new Error('MessagingTransport.getReactionsForConversation() must be implemented by subclass');
+    throw new Error(
+      'MessagingTransport.getReactionsForConversation() must be implemented by subclass',
+    );
   }
 }

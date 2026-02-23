@@ -1585,27 +1585,21 @@ export function initMessagesUI() {
   }
 
   // --- Domain Event Listeners ---
-  messagingController.on(
-    'session:opened',
-    ({ session }) => {
-      openMessagesFromSession(session);
-    },
-  );
+  messagingController.on('session:opened', ({ session }) => {
+    openMessagesFromSession(session);
+  });
 
-  messagingController.on(
-    'message:received',
-    (messageEvent) => {
-      // Only handle if this message belongs to our currently active session
-      if (messageEvent.conversationId !== currentSession?.conversationId) return;
+  messagingController.on('message:received', (messageEvent) => {
+    // Only handle if this message belongs to our currently active session
+    if (messageEvent.conversationId !== currentSession?.conversationId) return;
 
-      // Update interaction timestamp on any message activity
-      if (currentSession.contactId) {
-        updateLastInteraction(currentSession.contactId).catch(() => {});
-      }
+    // Update interaction timestamp on any message activity
+    if (currentSession.contactId) {
+      updateLastInteraction(currentSession.contactId).catch(() => {});
+    }
 
-      processReceivedMessage(messageEvent);
-    },
-  );
+    processReceivedMessage(messageEvent);
+  });
 
   messagingController.on(
     'reaction:updated',

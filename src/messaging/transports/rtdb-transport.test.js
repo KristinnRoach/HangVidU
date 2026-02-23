@@ -73,7 +73,9 @@ describe('RTDBMessagingTransport', () => {
 
   describe('send', () => {
     it('should throw when not logged in', async () => {
-      await expect(transport.send('user123', 'Hello')).rejects.toThrow('not logged in');
+      await expect(transport.send('user123', 'Hello')).rejects.toThrow(
+        'not logged in',
+      );
     });
   });
 });
