@@ -207,16 +207,6 @@ export class RTDBMessagingTransport extends MessagingTransport {
   }
 
   /**
-   * @deprecated Use getUnreadCountForConversation
-   */
-  async getUnreadCount(contactId) {
-    const myUserId = getLoggedInUserId();
-    if (!myUserId) return 0;
-    const conversationId = this.resolveConversationId([myUserId, contactId]);
-    return this.getUnreadCountForConversation(conversationId, contactId);
-  }
-
-  /**
    * Get unread message count for a conversation
    * @param {string} conversationId - Conversation ID
    * @param {string} [fromContactId] - Optional: Only count messages from this user
