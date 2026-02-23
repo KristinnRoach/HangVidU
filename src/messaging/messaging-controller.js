@@ -35,18 +35,20 @@ export class MessagingController extends EventEmitter {
     this.sessions = new Map(); // conversationId -> session object
     this.sessionOrder = []; // conversationId list, from oldest to newest (MRU)
 
-    // Sync sessionOrder when a session is closed anywhere
+    this.on('session:opened', ({ session }) => {
+      // Touch session to update MRU order
+      this._touchSession(session.conversationId);
+    });
+
     this.on('session:closed', ({ conversationId }) => {
+      // Sync sessionOrder when a session is closed anywhere
       this.sessionOrder = this.sessionOrder.filter(
         (id) => id !== conversationId,
       );
     });
 
-    // Global listener for UI-driven session requests
-    document.addEventListener('messages:toggle', (e) => {
-      const { contactId, contactName } = e.detail;
-      this.openSession(contactId, contactName);
-    });
+    // NOTE: UI → controller bridging moved to a centralized bootstrap module
+    // to avoid controller coupling to DOM. See src/bootstrap/ui-to-controller-bridges.js
   }
 
   /**
@@ -151,7 +153,6 @@ export class MessagingController extends EventEmitter {
       );
 
       const session = this.sessions.get(conversationId);
-      this._touchSession(conversationId);
       this.emit('session:opened', { session });
       return session;
     }
@@ -227,7 +228,6 @@ export class MessagingController extends EventEmitter {
 
     // Add session to map, touch it for MRU, and emit event
     this.sessions.set(conversationId, session);
-    this._touchSession(conversationId);
     this.emit('session:opened', { session });
 
     // Start listening to messages via transport
@@ -304,11 +304,10 @@ export class MessagingController extends EventEmitter {
   }
 
   closeAllSessions() {
-    this.sessions.forEach((session) => {
-      if (session._unsubscribe) session._unsubscribe();
+    const conversationIds = Array.from(this.sessions.keys());
+    conversationIds.forEach((conversationId) => {
+      this.closeSession(conversationId);
     });
-    this.sessions.clear();
-    this.sessionOrder = [];
   }
 
   /**

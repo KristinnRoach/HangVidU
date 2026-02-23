@@ -75,6 +75,8 @@ export function initMessagesUI() {
   // Initialize reaction management
   const reactionManager = new ReactionManager();
   const reactionUI = new ReactionUI(reactionManager);
+  // AbortController for grouped lifecycle of UI listeners
+  const ac = new AbortController();
 
   const shouldShowAttachButton = () =>
     getIsLoggedIn() && (!!fileTransferController || !!currentSession);
@@ -1448,6 +1450,12 @@ export function initMessagesUI() {
   }
 
   function cleanup() {
+    // Abort grouped UI listeners
+    try {
+      ac.abort();
+    } catch (err) {
+      console.warn('[MessagesUI] Failed to abort listeners:', err);
+    }
     // Cleanup message toggle
     if (messageToggle) {
       messageToggle.cleanup();
@@ -1585,21 +1593,30 @@ export function initMessagesUI() {
   }
 
   // --- Domain Event Listeners ---
-  messagingController.on('session:opened', ({ session }) => {
-    openMessagesFromSession(session);
-  });
+  messagingController.on(
+    'session:opened',
+    ({ session }) => {
+      openMessagesFromSession(session);
+    },
+    { signal: ac.signal },
+  );
 
-  messagingController.on('message:received', (messageEvent) => {
-    // Only handle if this message belongs to our currently active session
-    if (messageEvent.conversationId !== currentSession?.conversationId) return;
+  messagingController.on(
+    'message:received',
+    (messageEvent) => {
+      // Only handle if this message belongs to our currently active session
+      if (messageEvent.conversationId !== currentSession?.conversationId)
+        return;
 
-    // Update interaction timestamp on any message activity
-    if (currentSession.contactId) {
-      updateLastInteraction(currentSession.contactId).catch(() => {});
-    }
+      // Update interaction timestamp on any message activity
+      if (currentSession.contactId) {
+        updateLastInteraction(currentSession.contactId).catch(() => {});
+      }
 
-    processReceivedMessage(messageEvent);
-  });
+      processReceivedMessage(messageEvent);
+    },
+    { signal: ac.signal },
+  );
 
   messagingController.on(
     'reaction:updated',
@@ -1607,6 +1624,7 @@ export function initMessagesUI() {
       if (conversationId !== currentSession?.conversationId) return;
       updateMessageReactions(messageId, convertFirebaseReactions(reactions));
     },
+    { signal: ac.signal },
   );
 
   return {

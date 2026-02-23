@@ -24,6 +24,8 @@ import {
 import { clearUrlParam } from './utils/url.js';
 
 import { messagingController } from './messaging/messaging-controller.js';
+// UI → controller bridge (maps DOM CustomEvents to controller APIs)
+import './bootstrap/ui-to-controller-bridges.js';
 
 import { getDeterministicRoomId } from './utils/room-id.js';
 

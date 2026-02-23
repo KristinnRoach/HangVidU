@@ -11,14 +11,36 @@ export class EventEmitter {
    * Subscribe to an event
    * @param {string} event - Event name
    * @param {Function} callback - Function to call when event is emitted
+   * @param {Object} [options] - Optional settings
+   * @param {AbortSignal} [options.signal] - AbortSignal to auto-unsubscribe listener
    * @returns {Function} Unsubscribe function
    */
-  on(event, callback) {
+  on(event, callback, options = {}) {
+    const { signal } = options;
+
+    // If the signal is already aborted, do not subscribe.
+    if (signal && signal.aborted) {
+      return () => {};
+    }
+
     if (!this._listeners.has(event)) {
       this._listeners.set(event, new Set());
     }
     this._listeners.get(event).add(callback);
-    return () => this.off(event, callback);
+
+    let onAbort;
+    if (signal) {
+      onAbort = () => {
+        this.off(event, callback);
+        signal.removeEventListener('abort', onAbort);
+      };
+      signal.addEventListener('abort', onAbort, { once: true });
+    }
+
+    return () => {
+      if (signal && onAbort) signal.removeEventListener('abort', onAbort);
+      this.off(event, callback);
+    };
   }
 
   /**
@@ -27,12 +49,12 @@ export class EventEmitter {
    * @param {Function} callback - Function to call once
    * @returns {Function} Unsubscribe function
    */
-  once(event, callback) {
+  once(event, callback, options = {}) {
     const wrapper = (data) => {
       this.off(event, wrapper);
       callback(data);
     };
-    return this.on(event, wrapper);
+    return this.on(event, wrapper, options);
   }
 
   /**
