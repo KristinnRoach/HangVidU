@@ -61,6 +61,15 @@ Why this approach
 - Minimal surface change: existing APIs still work; new conversation APIs are additive.
 - Eases future features (groups, metadata) while keeping current UX stable.
 
-Next steps (suggested)
 
-- I can produce a tiny patch that adds the thin transport wrappers and `openSessionForConversation` (2–3 files changed). Want me to prepare that patch now?
+---
+
+## STATUS: Refactored to Conversation-Centric & Event-Driven (Feb 2026)
+
+The `MessagingController` and `RTDBMessagingTransport` have been refactored to prioritize `conversationId` and use an `EventEmitter` pattern.
+
+### Key Changes:
+1.  **EventEmitter**: `MessagingController` now emits `message:received`, `unread:changed`, and `reaction:updated`.
+2.  **Conversation ID**: `openSession` now takes `conversationId`. Deterministic 1:1 IDs are resolved via `messagingController.resolveConversationIdFromContact(contactId)`.
+3.  **Transport**: `MessagingTransport` base class now contains `ToConversation` method signatures.
+4.  **UI**: `MessagesUI` and `ContactsUI` updated to resolve conversation IDs and subscribe to controller events.

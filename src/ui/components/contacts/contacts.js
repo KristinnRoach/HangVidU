@@ -447,8 +447,11 @@ function setupUnreadBadges(contactIds) {
     // Debounce rapid-fire callbacks during initial onChildAdded replay
     let debounceTimer = null;
 
+    const conversationId =
+      messagingController.resolveConversationIdFromContact(contactId);
+
     const unsub = messagingController.listenToUnreadCount(
-      contactId,
+      conversationId,
       (count) => {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {

@@ -1,0 +1,111 @@
+# Refactoring MessagingController to use EventEmitter
+
+Currently, [MessagingController](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/messaging/messaging-controller.js#20-319) relies heavily on callbacks passed into [openSession(contactId, { onMessage, onUnreadChange })](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/messaging/messaging-controller.js#36-205). This tightly couples the UI ([messages-ui.js](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/ui/components/messages/messages-ui.js)) to the controller's session lifecycle and makes it difficult for other parts of the application (like a global unread badge or notification system) to react to messaging events without passing callbacks deep down.
+
+By upgrading [MessagingController](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/messaging/messaging-controller.js#20-319) to be an `EventEmitter`, we can invert this control. The controller will simply broadcast events, and the UI can subscribe to the events it cares about.
+
+## Proposed Changes
+
+### 1. `src/utils/event-emitter.js`
+We will create a simple, reusable `EventEmitter` base class.
+
+#### [NEW] `src/utils/event-emitter.js`
+```javascript
+export class EventEmitter {
+  constructor() {
+    this._listeners = new Map();
+  }
+
+  on(event, callback) {
+    if (!this._listeners.has(event)) {
+      this._listeners.set(event, new Set());
+    }
+    this._listeners.get(event).add(callback);
+    return () => this.off(event, callback); // Returns unsubscribe function
+  }
+
+  off(event, callback) {
+    if (this._listeners.has(event)) {
+      this._listeners.get(event).delete(callback);
+    }
+  }
+
+  emit(event, data) {
+    if (this._listeners.has(event)) {
+      this._listeners.get(event).forEach(cb => {
+        try {
+          cb(data);
+        } catch (err) {
+          console.error(`EventEmitter: Error in listener for ${event}`, err);
+        }
+      });
+    }
+  }
+}
+```
+
+### 2. [src/messaging/messaging-controller.js](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/messaging/messaging-controller.js)
+We will make [MessagingController](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/messaging/messaging-controller.js#20-319) extend `EventEmitter`.
+
+#### [MODIFY] [src/messaging/messaging-controller.js](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/messaging/messaging-controller.js)
+- Make `MessagingController extends EventEmitter`.
+- Modify [openSession](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/messaging/messaging-controller.js#36-205) to no longer require [onMessage](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/ui/components/messages/messages-ui.js#1528-1555) and `onUnreadChange` callbacks.
+- Inside [openSession](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/messaging/messaging-controller.js#36-205), when `this.transport.listen` fires, emit events:
+  - `this.emit('message:received', { contactId, text, msgData, isSentByMe })`
+  - `this.emit('unread:changed', { contactId, count })`
+- Modify [listenToUnreadCount](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/messaging/messaging-controller.js#302-318) to perhaps also use the event emitter? (Currently it passes a callback directly to the transport). We can emit `unread:changed:global` or similar.
+
+### 3. [src/ui/components/messages/messages-ui.js](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/ui/components/messages/messages-ui.js)
+We will refactor [messages-ui.js](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/ui/components/messages/messages-ui.js) to subscribe to these events instead of passing callbacks to [openSession](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/messaging/messaging-controller.js#36-205).
+
+#### [MODIFY] [src/ui/components/messages/messages-ui.js](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/ui/components/messages/messages-ui.js)
+In [openContactMessages](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/ui/components/messages/messages-ui.js#1486-1606), change how we handle the session:
+
+**Before:**
+```javascript
+const session = messagingController.openSession(contactId, {
+  onMessage: (text, msgData, isSentByMe) => {
+    // Large block of code appending messages, handling reactions, updating unread counts...
+  }
+});
+```
+
+**After:**
+```javascript
+const session = messagingController.openSession(contactId);
+
+// We attach a listener to the controller directly.
+// IMPORTANT: We need to make sure we clean up previous listeners when switching contacts, 
+// or only listen to events for the currently active `contactId`.
+
+const handleMessage = ({ contactId: eventContactId, text, msgData, isSentByMe }) => {
+     // Only process messages for the currently open UI session
+    if (eventContactId !== currentSession?.contactId) return;
+    
+    // ... logic to append messages, handle reactions, etc.
+};
+
+// Listen to the central controller
+messagingController.on('message:received', handleMessage);
+```
+
+**Refactoring Benefits in [messages-ui.js](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/ui/components/messages/messages-ui.js):**
+1.  **Decoupling:** [messages-ui.js](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/ui/components/messages/messages-ui.js) focuses on rendering. It doesn't need to "own" the callbacks that the network transport uses.
+2.  **Global Listeners:** Later, a separate `notifications-ui.js` can listen to `messagingController.on('message:received')` to show toast notifications globally, completely independent of whether the chat box is open.
+3.  **Simpler Session Management:** [openSession](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/messaging/messaging-controller.js#36-205) just returns an object that allows sending commands ([send](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/messaging/messaging-controller.js#106-119), [markAsRead](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/messaging/messaging-controller.js#130-137)), separating the "Command" (methods) from the "Query/Events" (EventEmitter).
+
+## Verification Plan
+
+### Automated Tests
+- Run existing messaging controller tests: `npm run test -- messaging-controller.test.js`
+- Update [messaging-controller.test.js](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/messaging/messaging-controller.test.js) to assert that `emit` is called correctly instead of just firing callbacks.
+
+### Manual Verification
+- Open the application.
+- Open the messaging UI.
+- Verify that opening a chat with a contact still works.
+- Verify that sending a message works and appears in the UI.
+- Open a second instance of the app (or mock receiving a message).
+- Verify that incoming messages appear in the UI for the active contact.
+- Verify that the unread badge updates correctly.
+- Verify that switching between different contacts clears the UI and correctly scopes new incoming messages to that contact.

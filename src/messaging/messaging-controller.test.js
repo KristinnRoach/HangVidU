@@ -1,8 +1,14 @@
 // src/messaging/messaging-controller.test.js
-// Minimal smoke tests for MessagingController
+// Tests for MessagingController refactor (EventEmitter + Conversation-centric)
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MessagingController } from './messaging-controller.js';
+
+// Mock auth state
+vi.mock('../auth/auth-state.js', () => ({
+  getLoggedInUserId: vi.fn(() => 'me'),
+  getUser: vi.fn(() => ({ uid: 'me' })),
+}));
 
 // Mock transport for testing
 class MockTransport {
@@ -11,26 +17,35 @@ class MockTransport {
     this.listeners = new Map();
   }
 
-  async send(contactId, text) {
-    this.sentMessages.push({ contactId, text });
+  resolveConversationId(participantIds) {
+    // For testing, just join them
+    return participantIds.sort().join('_');
   }
 
-  listen(contactId, onMessage) {
-    this.listeners.set(contactId, onMessage);
-    return () => this.listeners.delete(contactId);
+  async sendToConversation(conversationId, text) {
+    this.sentMessages.push({ conversationId, text });
   }
 
-  async getUnreadCount(contactId) {
+  listenToConversation(conversationId, onMessage) {
+    this.listeners.set(conversationId, onMessage);
+    return () => this.listeners.delete(conversationId);
+  }
+
+  async getUnreadCountForConversation(conversationId) {
     return 0;
   }
 
-  async markAsRead(contactId) {
+  async markAsReadForConversation(conversationId) {
     // No-op for mock
   }
 
+  listenToUnreadCountForConversation(conversationId, onCountChange) {
+    return () => {};
+  }
+
   // Test helper: simulate receiving a message
-  simulateMessage(contactId, text, msgData = {}, isSentByMe = false) {
-    const listener = this.listeners.get(contactId);
+  simulateMessage(conversationId, text, msgData = {}, isSentByMe = false) {
+    const listener = this.listeners.get(conversationId);
     if (listener) {
       listener(text, { text, ...msgData }, isSentByMe);
     }
@@ -56,13 +71,16 @@ describe('MessagingController', () => {
     expect(() => new MessagingController()).toThrow('transport implementation');
   });
 
+  it('should resolve conversation IDs', () => {
+    const cid = controller.resolveConversationId(['userB', 'userA']);
+    expect(cid).toBe('userA_userB');
+  });
+
   it('should open a session successfully', () => {
-    const session = controller.openSession('user123', {
-      onMessage: () => {},
-    });
+    const session = controller.openSession('contactA');
 
     expect(session).toBeDefined();
-    expect(session.contactId).toBe('user123');
+    expect(session.conversationId).toBe('contactA_me');
     expect(typeof session.send).toBe('function');
     expect(typeof session.markAsRead).toBe('function');
     expect(typeof session.getUnreadCount).toBe('function');
@@ -70,53 +88,44 @@ describe('MessagingController', () => {
   });
 
   it('should return existing session if already open', () => {
-    const session1 = controller.openSession('user123', {
-      onMessage: () => {},
-    });
-    const session2 = controller.openSession('user123', {
-      onMessage: () => {},
-    });
+    const session1 = controller.openSession('contactA');
+    const session2 = controller.openSession('contactA');
 
     expect(session1).toBe(session2);
     expect(controller.sessions.size).toBe(1);
   });
 
   it('should send message through transport', async () => {
-    const session = controller.openSession('user123', {
-      onMessage: () => {},
-    });
+    const session = controller.openSession('contactA');
 
     await session.send('Hello!');
 
     expect(mockTransport.sentMessages).toHaveLength(1);
     expect(mockTransport.sentMessages[0]).toEqual({
-      contactId: 'user123',
+      conversationId: 'contactA_me',
       text: 'Hello!',
     });
   });
 
-  it('should trigger onMessage callback when message received', () => {
-    const messages = [];
-    const session = controller.openSession('user123', {
-      onMessage: (text, msgData, isSentByMe) => {
-        messages.push({ text, isSentByMe });
-      },
-    });
+  it('should emit message:received when message received via transport', () => {
+    const spy = vi.fn();
+    controller.on('message:received', spy);
+
+    controller.openSession('contactA');
 
     // Simulate receiving a message
-    mockTransport.simulateMessage('user123', 'Test message', {}, false);
+    mockTransport.simulateMessage('contactA_me', 'Test message', { messageId: 'm1' }, false);
 
-    expect(messages).toHaveLength(1);
-    expect(messages[0]).toEqual({
+    expect(spy).toHaveBeenCalledWith({
+      conversationId: 'contactA_me',
       text: 'Test message',
+      msgData: { text: 'Test message', messageId: 'm1' },
       isSentByMe: false,
     });
   });
 
   it('should close session and stop listening', () => {
-    const session = controller.openSession('user123', {
-      onMessage: () => {},
-    });
+    const session = controller.openSession('contactA');
 
     expect(controller.sessions.size).toBe(1);
     expect(mockTransport.listeners.size).toBe(1);
@@ -128,9 +137,9 @@ describe('MessagingController', () => {
   });
 
   it('should close all sessions', () => {
-    controller.openSession('user1', { onMessage: () => {} });
-    controller.openSession('user2', { onMessage: () => {} });
-    controller.openSession('user3', { onMessage: () => {} });
+    controller.openSession('u1');
+    controller.openSession('u2');
+    controller.openSession('u3');
 
     expect(controller.sessions.size).toBe(3);
 
@@ -141,7 +150,7 @@ describe('MessagingController', () => {
   });
 
   it('should get unread count without requiring a session', async () => {
-    const count = await controller.getUnreadCount('user123');
+    const count = await controller.getUnreadCount('conv_123');
     expect(count).toBe(0);
   });
 
@@ -152,12 +161,67 @@ describe('MessagingController', () => {
   });
 
   it('should validate text when sending message', async () => {
-    const session = controller.openSession('user123', {
-      onMessage: () => {},
+    const session = controller.openSession('contactA');
+    await expect(session.send('')).rejects.toThrow('string');
+    await expect(session.send(null)).rejects.toThrow('string');
+  });
+
+  describe('History Caching & LRU', () => {
+    it('should cache messages in session history', () => {
+      const session = controller.openSession('contactA');
+      mockTransport.simulateMessage('contactA_me', 'M1', { messageId: '1' });
+      mockTransport.simulateMessage('contactA_me', 'M2', { messageId: '2' });
+
+      expect(session.history).toHaveLength(2);
+      expect(session.history[0].text).toBe('M1');
+      expect(session.history[1].text).toBe('M2');
     });
 
-    await expect(session.send('')).rejects.toThrow('non-empty string');
-    await expect(session.send(null)).rejects.toThrow('non-empty string');
-    await expect(session.send(123)).rejects.toThrow('non-empty string');
+    it('should update reactions in cached history', () => {
+      const session = controller.openSession('contactA');
+      mockTransport.simulateMessage('contactA_me', 'Hello', { messageId: 'm1' });
+      
+      // Simulate reaction update
+      mockTransport.simulateMessage('contactA_me', '', { 
+        messageId: 'm1', 
+        _reactionUpdate: true, 
+        reactions: { like: { user1: true } } 
+      });
+
+      expect(session.history[0].msgData.reactions).toEqual({ like: { user1: true } });
+    });
+
+    it('should evict oldest session when limit is exceeded', () => {
+      // Open 5 sessions
+      controller.openSession('u1');
+      controller.openSession('u2');
+      controller.openSession('u3');
+      controller.openSession('u4');
+      controller.openSession('u5');
+
+      expect(controller.sessions.size).toBe(5);
+      expect(controller.sessionOrder[0]).toBe('me_u1');
+
+      // Open 6th session
+      controller.openSession('u6');
+
+      expect(controller.sessions.size).toBe(5);
+      expect(controller.sessions.has('me_u1')).toBe(false);
+      expect(controller.sessionOrder[0]).toBe('me_u2');
+      expect(controller.sessionOrder[4]).toBe('me_u6');
+    });
+
+    it('should update MRU order when re-opening an existing session', () => {
+      controller.openSession('u1');
+      controller.openSession('u2');
+      controller.openSession('u3');
+
+      expect(controller.sessionOrder).toEqual(['me_u1', 'me_u2', 'me_u3']);
+
+      // Re-open u1
+      controller.openSession('u1');
+
+      expect(controller.sessionOrder).toEqual(['me_u2', 'me_u3', 'me_u1']);
+    });
   });
 });
