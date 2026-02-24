@@ -1726,9 +1726,12 @@ window.onload = async () => {
     },
   );
 
-  contactsController.on('contact:saved', () => console.info('Contact saved'));
-  contactsController.on('contact:updated', () =>
-    console.info('Contact updated'),
+  contactsController.on('contact:saved', (savedContact) =>
+    console.info('Contact saved: ', savedContact),
+  );
+
+  contactsController.on('contact:updated', (updatedContact) =>
+    console.info('Contact updated: ', updatedContact),
   );
 
   contactsController.on('room:id:created', ({ roomId }) => {
@@ -2018,17 +2021,18 @@ CallController.on(
     // Prompt to save contact after cleanup (if partner was present)
     if (partnerId && roomId) {
       setTimeout(() => {
-        contactsController.handleHangUp(partnerId, roomId).then((result) => {
-          if (result.action === 'prompt-save') {
-            showSaveContactPrompt(partnerId, roomId, lobbyDiv).catch((e) => {
-              console.warn('Failed to show save contact prompt:', e);
-            });
-          }
-        });
-        // saveContact(partnerId, roomId, lobbyDiv).catch((e) => {
-        //   // NOTE: saveContact currently only for logged in users
-        //   console.warn('Failed to save contact after cleanup:', e);
-        // });
+        contactsController
+          .handleHangUp(partnerId, roomId)
+          .then((result) => {
+            if (result.action === 'prompt-save') {
+              showSaveContactPrompt(partnerId, roomId, lobbyDiv).catch((e) => {
+                console.warn('Failed to show save contact prompt:', e);
+              });
+            }
+          })
+          .catch((e) => {
+            console.warn('Failed to handle hang-up contact flow:', e);
+          });
       }, 500);
     }
   },

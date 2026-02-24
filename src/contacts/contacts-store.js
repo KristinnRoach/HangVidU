@@ -38,8 +38,14 @@ async function saveContact(contactId, contactName, roomId) {
 
   if (loggedInUid) {
     const contactRef = ref(rtdb, `users/${loggedInUid}/contacts/${contactId}`);
-    await set(contactRef, contactEntry);
-    return contactEntry;
+
+    try {
+      await set(contactRef, contactEntry);
+      return contactEntry;
+    } catch (e) {
+      console.warn('Failed to save contact to RTDB', e);
+      return null;
+    }
   }
 
   // fallback to localStorage for guests

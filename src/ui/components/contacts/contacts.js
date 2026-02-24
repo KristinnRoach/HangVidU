@@ -30,15 +30,18 @@ export async function showSaveContactPrompt(
   contactUserId,
   roomId,
   parentContainerEl,
+  autoRemoveSeconds = 25,
 ) {
   if (!contactUserId || !roomId || !parentContainerEl) return;
 
   const shouldSave = await confirmDialog(t('contact.save.confirm'), {
-    autoRemoveSeconds: 15,
+    autoRemoveSeconds,
   });
   if (!shouldSave) return;
+
   const name =
     window.prompt(t('contact.name.prompt'), contactUserId) || contactUserId;
+
   await contactsController.saveContact(contactUserId, name, roomId);
   await renderContactsList(parentContainerEl);
 }

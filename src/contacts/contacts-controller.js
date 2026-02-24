@@ -50,12 +50,16 @@ export class ContactsController extends EventEmitter {
     const existing = await contactsStore.getContact(contactId);
     const isRoomIdChange = existing?.roomId && existing.roomId !== roomId;
 
-    await contactsStore.saveContact(contactId, contactName, roomId);
+    const updatedContact = await contactsStore.saveContact(
+      contactId,
+      contactName,
+      roomId,
+    );
     try {
       if (isRoomIdChange) {
         this.emit('room:id:updated', { contactName, roomId });
       } else {
-        this.emit('contact:updated', { contactId, contactName, roomId });
+        this.emit('contact:updated', { updatedContact });
       }
     } catch (e) {
       console.warn('[ContactsController] updateContact(): emit failed', e);
