@@ -1,5 +1,4 @@
 import { messagingController } from '../messaging/messaging-controller.js';
-import { contactsController } from '../contacts/contacts-controller.js';
 
 // Centralized bridge: convert DOM CustomEvents into controller API calls.
 // Keeps UI code free from importing controller directly (contacts.js can remain a dumb UI).

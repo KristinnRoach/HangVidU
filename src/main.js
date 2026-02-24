@@ -29,7 +29,7 @@ import CallController from './webrtc/call-controller.js';
 import { messagingController } from './messaging/messaging-controller.js';
 import { contactsController } from './contacts/contacts-controller.js';
 // UI → controller bridge (maps DOM CustomEvents to controller APIs)
-import './bootstrap/ui-to-controller-bridges.js';
+import { teardownUiToControllerBridges } from './bootstrap/ui-to-controller-bridges.js';
 
 import {
   localVideoEl,
@@ -1933,15 +1933,8 @@ CallController.on(
       wasConnected,
     });
 
-    // UI cleanup
-    // hideCallingUI(); // ! Moved to bind-call-ui.js
-    // onCallDisconnected(); // ! Moved to bind-call-ui.js
 
-    // UI cleanup
-    // hideCallingUI(); // ! Moved to bind-call-ui.js
-    // onCallDisconnected(); // ! Moved to bind-call-ui.js
-
-    // Handle Missed Call Notification
+    // Handle Missed Call - Push notification and chat message
     // Trigger if: initiator, no partner joined, never established connection, and valid room
     const isMissedCall =
       role === 'initiator' && !partnerId && !wasConnected && roomId;
@@ -2003,9 +1996,8 @@ CallController.on(
         });
     }
 
-    // UI cleanup
-    // hideCallingUI(); // ! Moved to bind-call-ui.js
-    // onCallDisconnected(); // ! Moved to bind-call-ui.js
+    // UI cleanup // ! Moved to bind-call-ui.js - TODO: clarify call sites
+    // hideCallingUI(); // onCallDisconnected(); 
 
     cleanupRemoteStream();
     clearUrlParam();
@@ -2039,12 +2031,12 @@ async function cleanup() {
   await CallController.hangUp({ emitCancel: true, reason: 'page_unload' });
 
   // Global teardown: safe to remove all listeners on page unload
+  teardownUiToControllerBridges();
   cleanupMediaControls();
   removeAllRTDBListeners();
   cleanupContacts();
 
   exitPiP();
-
   messagesUI.cleanup();
 
   // Clear URL parameter

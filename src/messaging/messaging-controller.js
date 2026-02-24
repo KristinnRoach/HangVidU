@@ -34,21 +34,6 @@ export class MessagingController extends EventEmitter {
     this.transport = transport;
     this.sessions = new Map(); // conversationId -> session object
     this.sessionOrder = []; // conversationId list, from oldest to newest (MRU)
-
-    this.on('session:opened', ({ session }) => {
-      // Touch session to update MRU order
-      this._touchSession(session.conversationId);
-    });
-
-    this.on('session:closed', ({ conversationId }) => {
-      // Sync sessionOrder when a session is closed anywhere
-      this.sessionOrder = this.sessionOrder.filter(
-        (id) => id !== conversationId,
-      );
-    });
-
-    // NOTE: UI → controller bridging moved to a centralized bootstrap module
-    // to avoid controller coupling to DOM. See src/bootstrap/ui-to-controller-bridges.js
   }
 
   /**
@@ -153,7 +138,8 @@ export class MessagingController extends EventEmitter {
       );
 
       const session = this.sessions.get(conversationId);
-      this.emit('session:opened', { session });
+      this._touchSession(session.conversationId);
+      this.emit('session:resumed', { session });
       return session;
     }
 
@@ -172,20 +158,13 @@ export class MessagingController extends EventEmitter {
       },
 
       sendFile: (file) => {
-        // Note: Transport sendFile still uses contactId internally for some logic,
-        // we might need to refactor it to sendFileToConversation too.
-        // For now, if we have a 1:1 session, we can derive the contactId.
         if (typeof this.transport.sendFile !== 'function') {
           return Promise.reject(
             new Error('Transport does not support file messages'),
           );
         }
-        // TODO: Update transport to support sendFileToConversation
-        // For 1:1 compatibility:
-        const participants = conversationId.split('_');
-        const myId = getLoggedInUserId();
-        const contactIdFromCid = participants.find((p) => p !== myId);
-        return this.transport.sendFile(contactIdFromCid, file);
+        // Update to use conversationId or roomId if multi participant chat support is added
+        return this.transport.sendFile(contactId, file);
       },
 
       markAsRead: () => {
@@ -278,6 +257,7 @@ export class MessagingController extends EventEmitter {
 
     session._unsubscribe = unsubscribe;
 
+    this._touchSession(session.conversationId);
     this.emit('session:opened', { session });
 
     return session;
@@ -292,7 +272,15 @@ export class MessagingController extends EventEmitter {
     if (session) {
       if (session._unsubscribe) session._unsubscribe();
       this.sessions.delete(conversationId);
+      this.sessionOrder = this.sessionOrder.filter(
+        (id) => id !== conversationId,
+      );
       this.emit('session:closed', { conversationId });
+    } else {
+      console.warn(
+        '[MessagingController] Attempted to close non-existent session:',
+        conversationId,
+      );
     }
   }
 
@@ -325,11 +313,7 @@ export class MessagingController extends EventEmitter {
     );
   }
 
-  async sendCallEventMessage(conversationId, eventType, metadata = {}) {
-    // TODO: refactor transport to support writeCallEventToConversation
-    const participants = conversationId.split('_');
-    const myId = getLoggedInUserId();
-    const contactId = participants.find((p) => p !== myId);
+  async sendCallEventMessage(contactId, eventType, metadata = {}) {
     return this.transport.writeCallEventMessage(contactId, eventType, metadata);
   }
 
