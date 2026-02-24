@@ -70,7 +70,6 @@ export async function showSaveContactPrompt(
 //       await renderContactsList(parentContainerEl);
 //     }
 
-//     contactsController.ensureRoomListener(roomId);
 //     return;
 //   }
 
@@ -259,7 +258,7 @@ function attachContactListeners(container, lobbyElement) {
       if (!result) return;
 
       if (result.action === 'rename') {
-        await contactsController.saveContact(
+        await contactsController.updateContact(
           contactId,
           result.name,
           contact.roomId,

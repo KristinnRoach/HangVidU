@@ -1726,7 +1726,16 @@ window.onload = async () => {
     },
   );
 
-  contactsController.on('contact:saved', ({ roomId }) => {
+  contactsController.on('contact:saved', () => console.info('Contact saved'));
+  contactsController.on('contact:updated', () =>
+    console.info('Contact updated'),
+  );
+
+  contactsController.on('room:id:created', ({ roomId }) => {
+    listenForIncomingOnRoom(roomId);
+  });
+
+  contactsController.on('room:id:updated', ({ roomId }) => {
     listenForIncomingOnRoom(roomId);
   });
 

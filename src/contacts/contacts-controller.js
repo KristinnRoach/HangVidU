@@ -1,3 +1,4 @@
+import { getIsLoggedIn } from '../auth/auth-state.js';
 import { EventEmitter } from '../utils/event-emitter.js';
 import { contactsStore } from './contacts-store.js';
 
@@ -6,7 +7,7 @@ import { contactsStore } from './contacts-store.js';
  *
  * - Pattern: extends EventEmitter (same pattern as MessagingController)
  * - Delegates to existing contact utilities for now (see notes below)
- * - Emits events: 'contact:saved', 'contact:deleted', ... TBD
+ * - Emits events: 'contact:saved', 'contact:updated', 'contact:deleted', ... TBD
  *
  * Note: storage layer still WIP - currently using draft in ./contacts-store.js
  *
@@ -19,17 +20,16 @@ export class ContactsController extends EventEmitter {
   }
 
   async handleHangUp(contactUserId, roomId) {
-    if (!getLoggedInUserId())
-      return { action: 'skip', reason: 'not-logged-in' };
+    if (!getIsLoggedIn()) return { action: 'skip', reason: 'not-logged-in' };
 
     const existing = await this.getContacts();
     const entry = existing?.[contactUserId];
 
     if (entry) {
+      // Update roomId for existing contact if changed
       if (entry.roomId !== roomId) {
-        await this.saveContact(contactUserId, entry.contactName, roomId);
+        await this.updateContact(contactUserId, entry.contactName, roomId);
       }
-      this.ensureRoomListener(roomId);
       return { action: 'existing' };
     }
 
@@ -40,13 +40,26 @@ export class ContactsController extends EventEmitter {
     await contactsStore.saveContact(contactId, contactName, roomId);
     try {
       this.emit('contact:saved', { roomId });
+      this.emit('room:id:created', { roomId });
     } catch (e) {
       console.warn('[ContactsController] emit contact:saved failed', e);
     }
   }
 
-  ensureRoomListener(roomId) {
-    this.emit('contact:saved', { roomId });
+  async updateContact(contactId, contactName, roomId) {
+    const existing = await contactsStore.getContact(contactId);
+    const isRoomIdChange = existing?.roomId && existing.roomId !== roomId;
+
+    await contactsStore.saveContact(contactId, contactName, roomId);
+    try {
+      if (isRoomIdChange) {
+        this.emit('room:id:updated', { contactName, roomId });
+      } else {
+        this.emit('contact:updated', { contactId, contactName, roomId });
+      }
+    } catch (e) {
+      console.warn('[ContactsController] updateContact(): emit failed', e);
+    }
   }
 
   async deleteContact(contactId) {
