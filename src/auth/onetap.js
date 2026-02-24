@@ -142,7 +142,7 @@ function initializeGIS() {
     client_id: GOOGLE_CLIENT_ID,
     callback: handleOneTapCredential,
     auto_select: false,
-    cancel_on_tap_outside: false,
+    cancel_on_tap_outside: true,
     context: 'signin',
     use_fedcm_for_prompt: true,
     itp_support: true,
