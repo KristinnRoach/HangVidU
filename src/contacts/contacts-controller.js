@@ -1,3 +1,4 @@
+import { getIsLoggedIn } from '../auth/auth-state.js';
 import { EventEmitter } from '../utils/event-emitter.js';
 import { contactsStore } from './contacts-store.js';
 
@@ -6,7 +7,7 @@ import { contactsStore } from './contacts-store.js';
  *
  * - Pattern: extends EventEmitter (same pattern as MessagingController)
  * - Delegates to existing contact utilities for now (see notes below)
- * - Emits events: 'contact:saved', 'contact:deleted', ... TBD
+ * - Emits events: 'contact:saved', 'contact:updated', 'contact:deleted', ... TBD
  *
  * Note: storage layer still WIP - currently using draft in ./contacts-store.js
  *
@@ -18,12 +19,50 @@ export class ContactsController extends EventEmitter {
     super();
   }
 
+  async handleHangUp(contactUserId, roomId) {
+    if (!getIsLoggedIn()) return { action: 'skip', reason: 'not-logged-in' };
+
+    const existing = await this.getContacts();
+    const entry = existing?.[contactUserId];
+
+    if (entry) {
+      // Update roomId for existing contact if changed
+      if (entry.roomId !== roomId) {
+        await this.updateContact(contactUserId, entry.contactName, roomId);
+      }
+      return { action: 'existing' };
+    }
+
+    return { action: 'prompt-save' };
+  }
+
   async saveContact(contactId, contactName, roomId) {
     await contactsStore.saveContact(contactId, contactName, roomId);
     try {
       this.emit('contact:saved', { roomId });
+      this.emit('room:id:created', { roomId });
     } catch (e) {
       console.warn('[ContactsController] emit contact:saved failed', e);
+    }
+  }
+
+  async updateContact(contactId, contactName, roomId) {
+    const existing = await contactsStore.getContact(contactId);
+    const isRoomIdChange = !!roomId && existing?.roomId !== roomId;
+
+    const updatedContact = await contactsStore.saveContact(
+      contactId,
+      contactName,
+      roomId,
+    );
+    try {
+      if (isRoomIdChange) {
+        this.emit('room:id:updated', { contactName, roomId });
+      } else {
+        this.emit('contact:updated', { updatedContact });
+      }
+    } catch (e) {
+      console.warn('[ContactsController] updateContact(): emit failed', e);
     }
   }
 

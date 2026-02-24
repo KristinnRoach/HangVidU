@@ -16,6 +16,7 @@ function sortContactIdsByLastInteraction(contacts) {
   });
 }
 
+// Returns the contactEntry object if successful otherwize null
 async function saveContact(contactId, contactName, roomId) {
   if (!contactName || typeof contactName !== 'string' || !contactName.trim()) {
     console.warn(
@@ -27,33 +28,37 @@ async function saveContact(contactId, contactName, roomId) {
   const loggedInUid = getLoggedInUserId();
   const now = Date.now();
 
+  const contactEntry = {
+    contactId,
+    contactName,
+    roomId,
+    savedAt: now,
+    lastInteractionAt: now,
+  };
+
   if (loggedInUid) {
     const contactRef = ref(rtdb, `users/${loggedInUid}/contacts/${contactId}`);
-    await set(contactRef, {
-      contactId,
-      contactName,
-      roomId,
-      savedAt: now,
-      lastInteractionAt: now,
-    });
-    return;
+
+    try {
+      await set(contactRef, contactEntry);
+      return contactEntry;
+    } catch (e) {
+      console.warn('Failed to save contact to RTDB', e);
+      return null;
+    }
   }
 
   // fallback to localStorage for guests
   try {
     const raw = localStorage.getItem('contacts') || '{}';
     const obj = JSON.parse(raw);
-    obj[contactId] = {
-      contactId,
-      contactName,
-      roomId,
-      savedAt: now,
-      lastInteractionAt: now,
-    };
+    obj[contactId] = contactEntry;
     localStorage.setItem('contacts', JSON.stringify(obj));
+    return contactEntry;
   } catch (e) {
     console.warn('Failed to save contact to localStorage', e);
   }
+  return null;
 }
 
 async function deleteContact(contactId) {

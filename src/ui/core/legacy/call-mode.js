@@ -5,7 +5,6 @@ import {
   remoteBoxEl,
   remoteVideoEl,
   lobbyDiv,
-  lobbyCallBtn,
   chatControls,
   callBtn,
   hangUpBtn,
@@ -70,7 +69,6 @@ export const enterCallMode = () => {
   placeInSmallFrame(localBoxEl);
 
   hideElement(lobbyDiv);
-  hideElement(lobbyCallBtn);
 
   callBtn.disabled = true;
   callBtn.classList.add('disabled');
@@ -172,7 +170,7 @@ export const exitCallMode = () => {
   remotePipBtn.classList.add('disabled');
 };
 
-// Cleanup function for call mode UI
+// TODO: Where is this called? Cleanup function for call mode UI
 export function cleanupCallModeUI() {
   // Run all cleanup functions
   cleanupFunctions.forEach((fn) => fn());

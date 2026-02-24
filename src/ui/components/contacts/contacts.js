@@ -24,62 +24,72 @@ let lastRenderedLobby = null;
 const MAX_CONTACT_NAME_CHARS = 18;
 
 /**
- * Prompt user to save contact after hangup, and render contacts list in lobby.
+ * Prompt user to save contact after hangup (and render contacts list in lobby)
  */
-export async function saveContact(contactUserId, roomId, parentContainerEl) {
-  if (!contactUserId || !roomId) return;
-
-  if (!getLoggedInUserId()) {
-    // TODO: Fix - simple local save for guests, needs review to guard against any functionality that is currently not available unless logged in via google
-    console.warn(
-      '[CONTACTS] saveContact called while logged out. Only logged-in users can save contacts.',
-    ); // Prompt to log in?
-    alert('Must log in to save contacts!'); // TEMP fix
-    return;
-  }
-
-  // If this contact is already saved, don't prompt again.
-  // If the roomId changed, update it silently.
-  const existing = await contactsController.getContacts();
-  const existingEntry = existing?.[contactUserId];
-  if (existingEntry) {
-    if (existingEntry.roomId !== roomId) {
-      // Keep existing name, just update the roomId
-      await contactsController.saveContact(
-        contactUserId,
-        existingEntry.contactName,
-        roomId,
-      );
-      await renderContactsList(parentContainerEl);
-    }
-
-    // TODO: Move dispatch to controller emmitter
-    // Ensure listener is active for incoming calls on this room
-    document.dispatchEvent(
-      new CustomEvent('contact:saved', { detail: { roomId } }),
-    );
-    return;
-  }
+export async function showSaveContactPrompt(
+  contactUserId,
+  roomId,
+  parentContainerEl,
+  autoRemoveSeconds = 25,
+) {
+  if (!contactUserId || !roomId || !parentContainerEl) return;
 
   const shouldSave = await confirmDialog(t('contact.save.confirm'), {
-    autoRemoveSeconds: 15,
+    autoRemoveSeconds,
   });
-
   if (!shouldSave) return;
 
-  const contactName =
+  const name =
     window.prompt(t('contact.name.prompt'), contactUserId) || contactUserId;
 
-  await contactsController.saveContact(contactUserId, contactName, roomId);
-
-  // Ensure listener is active for incoming calls on this room
-  document.dispatchEvent(
-    new CustomEvent('contact:saved', { detail: { roomId } }),
-  );
-
-  // Re-render contacts list
+  await contactsController.saveContact(contactUserId, name, roomId);
   await renderContactsList(parentContainerEl);
 }
+
+// export async function saveContact(contactUserId, roomId, parentContainerEl) {
+//   if (!contactUserId || !roomId) return;
+
+//   if (!getLoggedInUserId()) {
+//     // TODO: Fix - simple local save for guests, needs review to guard against any functionality that is currently not available unless logged in via google
+//     console.warn(
+//       '[CONTACTS] saveContact called while logged out. Only logged-in users can save contacts.',
+//     ); // Prompt to log in?
+//     alert('Must log in to save contacts!'); // TEMP fix
+//     return;
+//   }
+
+//   // If this contact is already saved, don't prompt again.
+//   // If the roomId changed, update it silently.
+//   const existing = await contactsController.getContacts();
+//   const existingEntry = existing?.[contactUserId];
+//   if (existingEntry) {
+//     if (existingEntry.roomId !== roomId) {
+//       // Keep existing name, just update the roomId
+//       await contactsController.saveContact(
+//         contactUserId,
+//         existingEntry.contactName,
+//         roomId,
+//       );
+//       await renderContactsList(parentContainerEl);
+//     }
+
+//     return;
+//   }
+
+//   const shouldSave = await confirmDialog(t('contact.save.confirm'), {
+//     autoRemoveSeconds: 15,
+//   });
+
+//   if (!shouldSave) return;
+
+//   const contactName =
+//     window.prompt(t('contact.name.prompt'), contactUserId) || contactUserId;
+
+//   await contactsController.saveContact(contactUserId, contactName, roomId);
+
+//   // Re-render contacts list
+//   await renderContactsList(parentContainerEl);
+// }
 
 /**
  * Render the contacts list in the lobby element.
@@ -251,7 +261,7 @@ function attachContactListeners(container, lobbyElement) {
       if (!result) return;
 
       if (result.action === 'rename') {
-        await contactsController.saveContact(
+        await contactsController.updateContact(
           contactId,
           result.name,
           contact.roomId,

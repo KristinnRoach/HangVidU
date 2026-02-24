@@ -18,18 +18,26 @@ function onMessagesToggle(e) {
 }
 
 // Listen for contact-driven UI toggles (contacts.js dispatches this event).
-// Use AbortController so the bridge can be torn down cleanly if needed.
 document.addEventListener('messages:toggle', onMessagesToggle, {
   signal: bridgeAc.signal,
 });
 
-document.addEventListener('contact:call', (e) => {
+function onContactCall(e) {
   const { contactId, contactName } = e?.detail || {};
+  if (!contactId) return;
 
-  contactsController.emit('contact:call', {
-    contactId,
-    contactName,
-  });
+  try {
+    contactsController.emit('contact:call', {
+      contactId,
+      contactName,
+    });
+  } catch (err) {
+    console.warn('[Bridge] Failed to emit contact:call:', err);
+  }
+}
+
+document.addEventListener('contact:call', (e) => onContactCall(e), {
+  signal: bridgeAc.signal,
 });
 
 export function teardownUiToControllerBridges() {
