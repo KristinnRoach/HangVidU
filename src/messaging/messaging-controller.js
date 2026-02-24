@@ -226,8 +226,10 @@ export class MessagingController extends EventEmitter {
           );
         }
 
-        // 3. Emit general message event for active UI
-        this.emit('message:received', messageEvent);
+        // 3. Emit general message event for active UI (skip for reaction-only updates)
+        if (!msgData._reactionUpdate) {
+          this.emit('message:received', messageEvent);
+        }
 
         // Notify if unread count changes
         if (!isSentByMe) {

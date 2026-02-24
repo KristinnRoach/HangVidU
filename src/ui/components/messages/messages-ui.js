@@ -1521,7 +1521,7 @@ export function initMessagesUI() {
 
     appendMessage(isText ? text : '', {
       ...(type && { type }),
-      isSentByMe: isText ? false : isSentByMe,
+      isSentByMe,
       messageId: msgData.messageId,
       reactions,
       isRead: msgData.read,
@@ -1580,41 +1580,41 @@ export function initMessagesUI() {
 
     setCurrentMsgUISession(session);
 
-    // TODO: Delete or test / refine commented out code below (works fine without it for now)
-    // // Seed history from snapshot (fetch last messages) before rendering.
-    // // If the session already has at least `limit` cached messages, skip
-    // // fetching to avoid redundant work (common when background listeners
-    // // already populated the cache).
-    // const _limit = 20;
-    // try {
-    //   if (!session.history || session.history.length < _limit) {
-    //     const history = await messagingController.getConversationHistory(
-    //       session.conversationId,
-    //       { limitToLast: _limit },
-    //     );
-    //     if (Array.isArray(history) && history.length > 0) {
-    //       // Use controller's cache to dedupe against live listener
-    //       history.forEach((evt) =>
-    //         messagingController.cacheHistory(session, evt),
-    //       );
-    //     }
+    // TODO: Delete or test / refine cache code below (works fine without it for now)
+    // Seed history from snapshot (fetch last messages) before rendering.
+    // If the session already has at least `limit` cached messages, skip
+    // fetching to avoid redundant work (common when background listeners
+    // already populated the cache).
+    const _limit = 20;
+    try {
+      if (!session.history || session.history.length < _limit) {
+        const history = await messagingController.getConversationHistory(
+          session.conversationId,
+          { limitToLast: _limit },
+        );
+        if (Array.isArray(history) && history.length > 0) {
+          // Use controller's cache to dedupe against live listener
+          history.forEach((evt) =>
+            messagingController.cacheHistory(session, evt),
+          );
+        }
 
-    //     // Debug: reveal fetched snapshot vs seeded session history
-    //     devDebug('[MessagesUI] fetched history', {
-    //       conversationId: session.conversationId,
-    //       fetched: Array.isArray(history) ? history.length : 0,
-    //       sessionHistory: session.history ? session.history.length : 0,
-    //     });
-    //   } else {
-    //     devDebug(
-    //       '[MessagesUI] skipping fetch — session.history already has',
-    //       session.history.length,
-    //       'messages',
-    //     );
-    //   }
-    // } catch (err) {
-    //   console.warn('[MessagesUI] Failed to fetch initial history:', err);
-    // }
+        // Debug: reveal fetched snapshot vs seeded session history
+        devDebug('[MessagesUI] fetched history', {
+          conversationId: session.conversationId,
+          fetched: Array.isArray(history) ? history.length : 0,
+          sessionHistory: session.history ? session.history.length : 0,
+        });
+      } else {
+        devDebug(
+          '[MessagesUI] skipping fetch — session.history already has',
+          session.history.length,
+          'messages',
+        );
+      }
+    } catch (err) {
+      console.warn('[MessagesUI] Failed to fetch initial history:', err);
+    }
 
     // Render existing history if available
     appendCachedHistory(session);
@@ -1640,13 +1640,20 @@ export function initMessagesUI() {
   );
 
   messagingController.on(
+    'session:resumed',
+    ({ session }) => {
+      openMessagesFromSession(session);
+    },
+    { signal: ac.signal },
+  );
+
+  messagingController.on(
     'message:received',
     (messageEvent) => {
       // Only handle if this message belongs to our currently active session
       if (messageEvent.conversationId !== currentSession?.conversationId)
         return;
 
-      // Update interaction timestamp on any message activity
       if (currentSession.contactId) {
         contactsController
           .updateLastInteraction(currentSession.contactId)
@@ -1663,6 +1670,13 @@ export function initMessagesUI() {
     ({ conversationId, messageId, reactions }) => {
       if (conversationId !== currentSession?.conversationId) return;
       updateMessageReactions(messageId, convertFirebaseReactions(reactions));
+
+      // Update interaction timestamp for reactions as well
+      if (currentSession.contactId) {
+        contactsController
+          .updateLastInteraction(currentSession.contactId)
+          .catch(() => {});
+      }
     },
     { signal: ac.signal },
   );
