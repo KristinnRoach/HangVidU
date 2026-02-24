@@ -2,6 +2,7 @@
 
 // Modal for adding contacts by email or importing from Google
 
+import { contactsController } from '../../../contacts/contacts-controller.js';
 import { findUsersByEmails } from '../../../contacts/user-discovery.js';
 import { sendInvite } from '../../../contacts/invitations.js';
 import { escapeHtml } from '../../../ui/component-system/dom-utils.js';
@@ -11,7 +12,6 @@ import {
 } from '../../../auth/index.js';
 import { getLoggedInUserId, getUser } from '../../../auth/auth-state.js';
 import { fetchGoogleContacts } from '../../../contacts/google-contacts.js';
-import { getContacts } from '../contacts/contacts.js';
 import { sendBulkEmailsViaGmail } from '../../../contacts/gmail-send.js';
 import { t } from '../../../i18n/index.js';
 import { initIcons } from '../../icons.js';
@@ -162,7 +162,7 @@ export async function showAddContactModal() {
         });
 
         // Step 3: Get saved contacts to check if already connected
-        const savedContacts = await getContacts();
+        const savedContacts = await contactsController.getContacts();
         const savedContactIds = new Set(Object.keys(savedContacts || {}));
 
         // Step 4: Cross-reference with HangVidU users

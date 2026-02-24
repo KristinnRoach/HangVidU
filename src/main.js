@@ -21,17 +21,15 @@ import {
   subscribe as subscribeAuth,
 } from './auth/auth-state.js';
 
-import { clearUrlParam } from './utils/url.js';
-
-import { messagingController } from './messaging/messaging-controller.js';
-// UI → controller bridge (maps DOM CustomEvents to controller APIs)
-import './bootstrap/ui-to-controller-bridges.js';
-
-import { getDeterministicRoomId } from './utils/room-id.js';
-
-import { ringtoneManager } from './media/audio/ringtone-manager.js';
+// TODO: inAppNotificationManager VS pushNotificationController - Compare and clarify distinction or combine!
+import { inAppNotificationManager } from './ui/components/notifications/in-app-notification-manager.js';
+import { pushNotificationController } from './notifications/push-notification-controller.js';
 
 import CallController from './webrtc/call-controller.js';
+import { messagingController } from './messaging/messaging-controller.js';
+import { contactsController } from './contacts/contacts-controller.js';
+// UI → controller bridge (maps DOM CustomEvents to controller APIs)
+import './bootstrap/ui-to-controller-bridges.js';
 
 import {
   localVideoEl,
@@ -97,16 +95,11 @@ import {
   processReferral,
 } from './contacts/referral-handler.js';
 
-import {
-  getContactByRoomId,
-  saveContactData,
-  updateLastInteraction,
-} from './ui/components/contacts/contacts.js';
-
-// TODO: inAppNotificationManager VS pushNotificationController - Compare and clarify distinction or combine!
-import { inAppNotificationManager } from './ui/components/notifications/in-app-notification-manager.js';
-import { pushNotificationController } from './notifications/push-notification-controller.js';
 import { showEnableNotificationsPrompt } from './ui/components/notifications/enable-notifications-prompt.js';
+
+import { clearUrlParam } from './utils/url.js';
+import { ringtoneManager } from './media/audio/ringtone-manager.js';
+import { getDeterministicRoomId } from './utils/room-id.js';
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
 import './ui/core/ui-state.js'; // Initialize UI state (sets body data-view attribute)
@@ -121,8 +114,6 @@ import {
 import {
   saveContact,
   renderContactsList,
-  getContacts,
-  resolveCallerName,
   cleanupContacts,
 } from './ui/components/contacts/contacts.js';
 
@@ -185,6 +176,7 @@ import { addDebugUpdateButton } from './ui/components/notifications/debug-notifi
 
 // Import and call iOS PWA redirect helper
 import { redirectIOSPWAToHosting } from './utils/env/redirectIOSPWA.js';
+
 redirectIOSPWAToHosting();
 
 // Quick access to enable / disable dev debug logs
@@ -549,14 +541,14 @@ export async function callContact(contactId, contactName, roomId = null) {
         console.error('[CALL] Failed to generate room ID:', e);
         return false;
       }
-      // TODO: Clarify if saveContactData is required for subsequent calls.
-      // The deterministic roomId is regenerated each time, so persistence may
-      // only help the OTHER user find the room. Investigate if this can be removed.
-      try {
-        await saveContactData(contactId, contactName, roomId);
-      } catch (e) {
-        console.warn('[CALL] Failed to persist room ID (continuing):', e);
-      }
+      // // TODO: Clarify if saveData is required for subsequent calls.
+      // // The deterministic roomId is regenerated each time, so persistence may
+      // // only help the OTHER user find the room. Investigate if this can be removed.
+      // try {
+      //   await contactsController.saveContact(contactId, contactName, roomId);
+      // } catch (e) {
+      //   console.warn('[CALL] Failed to persist room ID (continuing):', e);
+      // }
     }
   }
 
@@ -578,7 +570,7 @@ export async function callContact(contactId, contactName, roomId = null) {
 
   if (success) {
     // Update metadata
-    updateLastInteraction(contactId).catch(() => {});
+    contactsController.updateLastInteraction(contactId).catch(() => {});
 
     // Trigger UI (Calling Modal)
     try {
@@ -903,7 +895,10 @@ export function listenForIncomingOnRoom(roomId) {
         );
 
         // Resolve caller name from contacts
-        const callerName = await resolveCallerName(roomId, joiningUserId);
+        const callerName = await contactsController.resolveCallerName(
+          roomId,
+          joiningUserId,
+        );
 
         // Start incoming call ringtone and visual indicators
         ringtoneManager.playIncoming();
@@ -980,9 +975,11 @@ export function listenForIncomingOnRoom(roomId) {
             },
           );
           // Update lastInteractionAt for answered incoming call
-          getContactByRoomId(roomId)
+          contactsController
+            .getContactByRoomId(roomId)
             .then((c) => {
-              if (c?.contactId) updateLastInteraction(c.contactId);
+              if (c?.contactId)
+                contactsController.updateLastInteraction(c.contactId);
             })
             .catch(() => {});
 
@@ -1118,7 +1115,7 @@ export function listenForIncomingOnRoom(roomId) {
     // UNLESS it is a saved contact - then we want to keep listening
     let savedContact = null;
     try {
-      savedContact = await getContactByRoomId(roomId);
+      savedContact = await contactsController.getContactByRoomId(roomId);
     } catch (e) {
       console.warn('[LISTENER] Failed to check saved contact:', e);
     }
@@ -1152,7 +1149,8 @@ export function listenForIncomingOnRoom(roomId) {
       if (!status.hasMembers) {
         await removeRecentCall(roomId);
 
-        const savedContact = await getContactByRoomId(roomId);
+        const savedContact =
+          await contactsController.getContactByRoomId(roomId);
         if (!savedContact) {
           removeIncomingListenersForRoom(roomId);
           devDebug(
@@ -1219,7 +1217,7 @@ async function startListeningForSavedRooms() {
 
       // Also include saved contacts' roomIds (or deterministic room IDs)
       try {
-        const contacts = await getContacts();
+        const contacts = await contactsController.getContacts();
         Object.entries(contacts || {}).forEach(([contactId, c]) => {
           if (c?.roomId) {
             toListen.add(c.roomId);
@@ -1279,7 +1277,7 @@ async function startListeningForSavedRooms() {
     }
     // Also include saved contacts' roomIds (or deterministic room IDs)
     try {
-      const contacts = await getContacts();
+      const contacts = await contactsController.getContacts();
       const guestUserId = getUserId(); // Get guest user ID
       Object.entries(contacts || {}).forEach(([contactId, c]) => {
         if (c?.roomId) {
@@ -1720,13 +1718,16 @@ window.onload = async () => {
   // UI handlers (business logic handlers registered separately below)
   bindCallUI(CallController);
 
-  // Contact events (dispatched from contacts.js UI)
-  document.addEventListener('contact:call', (e) => {
-    const { contactId, contactName, roomId } = e.detail;
-    callContact(contactId, contactName, roomId);
-  });
-  document.addEventListener('contact:saved', (e) => {
-    listenForIncomingOnRoom(e.detail.roomId);
+  // contactsController events
+  contactsController.on(
+    'contact:call',
+    ({ contactId, contactName, roomId }) => {
+      callContact(contactId, contactName, roomId);
+    },
+  );
+
+  contactsController.on('contact:saved', ({ roomId }) => {
+    listenForIncomingOnRoom(roomId);
   });
 
   const onJoinRoomSubmit = async (roomInputString) => {
@@ -1787,11 +1788,10 @@ window.onload = async () => {
           '[AUTH] User logged out - cleaning up messaging and listeners',
         );
 
-        // Clear messages UI to prevent previous user's messages from being visible
-        messagesUI.reset();
-
-        // Close all messaging sessions (stops RTDB listeners for old user's conversations)
-        messagingController.closeAllSessions();
+        // // Clear messages UI to prevent previous user's messages from being visible
+        // messagesUI.reset();
+        // // Close all messaging sessions (stops RTDB listeners for old user's conversations)
+        // messagingController.closeAllSessions();
 
         // Disable notifications and clean up FCM tokens
         if (pushNotificationController.isNotificationEnabled()) {
@@ -1905,21 +1905,14 @@ CallController.on('memberJoined', ({ memberId, roomId }) => {
 
   CallController.setPartnerId(memberId);
 
-  // TODO: refactor UI
-  // Show messages toggle for file transfer during call
-  messagesUI.showMessagesToggle();
-
-  // Open contact messaging UI with partner
-  messagesUI.openContactMessages(memberId, memberId, false); // Prep session, don't open UI during call connect
-
-  // onCallConnected(); // ! Moved to bind-call-ui.js
-
   onCallAnswered().catch((e) =>
     console.warn('Failed to clear calling state:', e),
   );
-  saveRecentCall(roomId).catch((e) =>
-    console.warn('Failed to save recent call:', e),
-  );
+
+  // TODO: use or delete saveRecentCall
+  // saveRecentCall(roomId).catch((e) =>
+  //   console.warn('Failed to save recent call:', e),
+  // );
 });
 
 // Subscribe to CallController memberLeft event - handles partner leaving
@@ -1956,7 +1949,7 @@ CallController.on(
     if (isMissedCall) {
       console.log('[MAIN] Potential missed call detected for room:', roomId);
       try {
-        const contact = await getContactByRoomId(roomId);
+        const contact = await contactsController.getContactByRoomId(roomId);
         if (contact && contact.contactId) {
           const { getUser } = await import('./auth/auth-state.js');
           const me = getUser();

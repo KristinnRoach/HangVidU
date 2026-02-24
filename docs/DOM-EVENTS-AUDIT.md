@@ -1,6 +1,7 @@
 DOM Events Audit
 
 Format per entry:
+
 - Event: `name`
 - Emitted: file path + line
 - Listeners: file path + line
@@ -74,15 +75,13 @@ Format per entry:
 ---
 
 Other global DOM listeners (native events)
+
 - `document.addEventListener('keydown', ...)` used in multiple places for keyboard shortcuts (e.g., [src/main.js](src/main.js#L1354), [src/ui/components/messages/messages-ui.js](src/ui/components/messages/messages-ui.js#L1148)).
 - `document.addEventListener('visibilitychange', ...)` used for UI inactivity and call indicators ([src/ui/utils/showHideOnInactivity.js](src/ui/utils/showHideOnInactivity.js#L158), [src/ui/utils/call-indicators.js](src/ui/utils/call-indicators.js#L40)).
 
 Summary recommendations
+
 - Keep domain events owned by controllers (Messaging, Call, Contacts). Prefer direct imports for heavy UI components; use the centralized bridge (`src/bootstrap/ui-to-controller-bridges.js`) for lightweight/dumb UI modules that must remain DOM-only.
 - Use `AbortController` or store unsubscribes for all document-level listeners (messages UI and bridge already use `AbortController`).
 - Migrate `contact:call`/`contact:saved` handling into `ContactsController` (or extend the bridge) to reduce ad-hoc document listeners in `main.js`.
 - Reserve `appBus` for cross-cutting concerns (telemetry, global feature flags, non-domain signals).
-
-If you want, I can:
-- (A) Scaffold `src/controllers/contacts-controller.js` and wire the bridge/main handlers to it, or
-- (B) Produce a complete list of all `document.addEventListener` occurrences and native event handlers for a broader audit.

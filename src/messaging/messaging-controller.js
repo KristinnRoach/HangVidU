@@ -228,7 +228,6 @@ export class MessagingController extends EventEmitter {
 
     // Add session to map, touch it for MRU, and emit event
     this.sessions.set(conversationId, session);
-    this.emit('session:opened', { session });
 
     // Start listening to messages via transport
     const unsubscribe = this.transport.listenToConversation(
@@ -278,6 +277,8 @@ export class MessagingController extends EventEmitter {
     );
 
     session._unsubscribe = unsubscribe;
+
+    this.emit('session:opened', { session });
 
     return session;
   }
@@ -330,6 +331,20 @@ export class MessagingController extends EventEmitter {
     const myId = getLoggedInUserId();
     const contactId = participants.find((p) => p !== myId);
     return this.transport.writeCallEventMessage(contactId, eventType, metadata);
+  }
+
+  /**
+   * Fetch a snapshot of recent messages for a conversation.
+   * Delegates to the transport implementation.
+   * @param {string} conversationId
+   * @param {Object} opts
+   * @param {number} opts.limitToLast - number of recent messages to fetch
+   * @returns {Promise<Array<{text, msgData, isSentByMe}>>}
+   */
+  async getConversationHistory(conversationId, opts = { limitToLast: 20 }) {
+    if (!conversationId) return [];
+    if (typeof this.transport.getConversationHistory !== 'function') return [];
+    return await this.transport.getConversationHistory(conversationId, opts);
   }
 }
 
