@@ -9,7 +9,12 @@ const bridgeAc = new AbortController();
 function onMessagesToggle(e) {
   const { contactId, contactName } = e?.detail || {};
   if (!contactId) return;
-  messagingController.openSession(contactId, contactName);
+
+  try {
+    messagingController.openSession(contactId, contactName);
+  } catch (err) {
+    console.warn('[Bridge] Failed to open session:', err);
+  }
 }
 
 // Listen for contact-driven UI toggles (contacts.js dispatches this event).

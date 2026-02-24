@@ -54,8 +54,3 @@ Examples
 
 - Bridge example:
   - DOM `messages:toggle` -> `messagingController.openSession(contactId)`
-
-Notes
-
-- Keep this page minimal; expand to `docs/` full guidelines when conventions stabilize.
-- If you want, I can (a) add preferred ESLint rules for event names, or (b) scaffold an `appBus` prototype and migrate one event as a demo.
