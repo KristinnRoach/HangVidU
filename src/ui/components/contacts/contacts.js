@@ -53,11 +53,7 @@ export async function saveContact(contactUserId, roomId, parentContainerEl) {
       await renderContactsList(parentContainerEl);
     }
 
-    // TODO: Move dispatch to controller emmitter
-    // Ensure listener is active for incoming calls on this room
-    document.dispatchEvent(
-      new CustomEvent('contact:saved', { detail: { roomId } }),
-    );
+    contactsController.emit('contact:saved', { roomId });
     return;
   }
 
@@ -71,11 +67,6 @@ export async function saveContact(contactUserId, roomId, parentContainerEl) {
     window.prompt(t('contact.name.prompt'), contactUserId) || contactUserId;
 
   await contactsController.saveContact(contactUserId, contactName, roomId);
-
-  // Ensure listener is active for incoming calls on this room
-  document.dispatchEvent(
-    new CustomEvent('contact:saved', { detail: { roomId } }),
-  );
 
   // Re-render contacts list
   await renderContactsList(parentContainerEl);
