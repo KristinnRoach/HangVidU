@@ -18,6 +18,24 @@ export class ContactsController extends EventEmitter {
     super();
   }
 
+  async handleHangUp(contactUserId, roomId) {
+    if (!getLoggedInUserId())
+      return { action: 'skip', reason: 'not-logged-in' };
+
+    const existing = await this.getContacts();
+    const entry = existing?.[contactUserId];
+
+    if (entry) {
+      if (entry.roomId !== roomId) {
+        await this.saveContact(contactUserId, entry.contactName, roomId);
+      }
+      this.ensureRoomListener(roomId);
+      return { action: 'existing' };
+    }
+
+    return { action: 'prompt-save' };
+  }
+
   async saveContact(contactId, contactName, roomId) {
     await contactsStore.saveContact(contactId, contactName, roomId);
     try {
@@ -25,6 +43,10 @@ export class ContactsController extends EventEmitter {
     } catch (e) {
       console.warn('[ContactsController] emit contact:saved failed', e);
     }
+  }
+
+  ensureRoomListener(roomId) {
+    this.emit('contact:saved', { roomId });
   }
 
   async deleteContact(contactId) {

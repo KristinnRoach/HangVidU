@@ -91,7 +91,11 @@ export async function isRoomCallFresh(roomId) {
 /**
  * Show "Calling..." modal with cancel button and auto-timeout
  */
-export async function showCallingUI(roomId, contactName, { onCancel, onHide } = {}) {
+export async function showCallingUI(
+  roomId,
+  contactName,
+  { onCancel, onHide } = {},
+) {
   const diag = getDiagnosticLogger();
   const showTime = Date.now();
 

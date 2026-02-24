@@ -112,9 +112,9 @@ import {
 } from './ui/core/watch-lifecycle-ui.js';
 
 import {
-  saveContact,
   renderContactsList,
   cleanupContacts,
+  showSaveContactPrompt,
 } from './ui/components/contacts/contacts.js';
 
 import {
@@ -1933,7 +1933,6 @@ CallController.on(
       wasConnected,
     });
 
-
     // Handle Missed Call - Push notification and chat message
     // Trigger if: initiator, no partner joined, never established connection, and valid room
     const isMissedCall =
@@ -1996,9 +1995,6 @@ CallController.on(
         });
     }
 
-    // UI cleanup // ! Moved to bind-call-ui.js - TODO: clarify call sites
-    // hideCallingUI(); // onCallDisconnected(); 
-
     cleanupRemoteStream();
     clearUrlParam();
 
@@ -2013,10 +2009,17 @@ CallController.on(
     // Prompt to save contact after cleanup (if partner was present)
     if (partnerId && roomId) {
       setTimeout(() => {
-        saveContact(partnerId, roomId, lobbyDiv).catch((e) => {
-          // NOTE: saveContact currently only for logged in users
-          console.warn('Failed to save contact after cleanup:', e);
+        contactsController.handleHangUp(partnerId, roomId).then((result) => {
+          if (result.action === 'prompt-save') {
+            showSaveContactPrompt(partnerId, roomId, lobbyDiv).catch((e) => {
+              console.warn('Failed to show save contact prompt:', e);
+            });
+          }
         });
+        // saveContact(partnerId, roomId, lobbyDiv).catch((e) => {
+        //   // NOTE: saveContact currently only for logged in users
+        //   console.warn('Failed to save contact after cleanup:', e);
+        // });
       }, 500);
     }
   },
