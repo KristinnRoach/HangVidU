@@ -1,7 +1,7 @@
 // src/contacts/invitations.js
 // In-app contact invitation system
 
-import { ref, set, remove, onChildAdded, get } from 'firebase/database';
+import { ref, set, remove, onChildAdded } from 'firebase/database';
 import { rtdb } from '../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, getUser } from '../auth/auth-state.js';
 import { getDeterministicRoomId } from '../utils/room-id.js';

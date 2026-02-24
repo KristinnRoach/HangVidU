@@ -25,7 +25,7 @@ import {
 import { REACTION_CONFIG } from '../../../messaging/reactions/ReactionConfig.js';
 import { getLoggedInUserId, getIsLoggedIn } from '../../../auth/auth-state.js';
 import { messagingController } from '../../../messaging/messaging-controller.js';
-import { updateLastInteraction } from '../contacts/contacts.js';
+import { contactsController } from '../../../contacts/contacts-controller.js';
 import { showInfoToast } from '../../utils/toast.js';
 import { getUserProfile } from '../../../user/profile.js';
 import { createMessageBox } from './createMessageBox.js';
@@ -75,6 +75,8 @@ export function initMessagesUI() {
   // Initialize reaction management
   const reactionManager = new ReactionManager();
   const reactionUI = new ReactionUI(reactionManager);
+  // AbortController for grouped lifecycle of UI listeners
+  const ac = new AbortController();
 
   const shouldShowAttachButton = () =>
     getIsLoggedIn() && (!!fileTransferController || !!currentSession);
@@ -93,7 +95,7 @@ export function initMessagesUI() {
 
   const messageToggle = createMessageToggle({
     parent: topRightMenu,
-    onToggle: () => toggleMessages(),
+    onToggle: () => toggleMessagesUIVisible(),
     icon: '💬',
     initialUnreadCount: 0,
     id: 'main-messages-toggle-btn', // ID needed for CSS anchor positioning
@@ -152,7 +154,7 @@ export function initMessagesUI() {
 
     messageTopBar.setBackHandler(() => {
       if (isMessagesUIOpen()) {
-        toggleMessages();
+        toggleMessagesUIVisible();
       }
     });
 
@@ -602,7 +604,7 @@ export function initMessagesUI() {
     if (isMessageInputFocused()) messagesInput.blur();
   }
 
-  function toggleMessages() {
+  function toggleMessagesUIVisible() {
     messagesBox.classList.toggle('hidden');
 
     if (isMessagesUIOpen()) {
@@ -1139,7 +1141,7 @@ export function initMessagesUI() {
       // Only open if not already open and input is not focused
       if (!isMessagesUIOpen() && !isTextInputFocused()) {
         event.preventDefault(); // Prevent 'M' from being typed into the input
-        toggleMessages();
+        toggleMessagesUIVisible();
       }
     }
   };
@@ -1181,7 +1183,7 @@ export function initMessagesUI() {
    * Clears existing messages when switching to a new session
    * @param {Object} session - Session object from messagingController
    */
-  function setSession(session) {
+  function setCurrentMsgUISession(session) {
     if (currentSession !== null && currentSession !== session) {
       clearMessages();
     }
@@ -1320,7 +1322,9 @@ export function initMessagesUI() {
 
         // Update interaction timestamp for received files
         if (currentSession?.contactId) {
-          updateLastInteraction(currentSession.contactId).catch(() => {});
+          contactsController
+            .updateLastInteraction(currentSession.contactId)
+            .catch(() => {});
         }
 
         // Increment unread count if messages box is hidden
@@ -1448,6 +1452,12 @@ export function initMessagesUI() {
   }
 
   function cleanup() {
+    // Abort grouped UI listeners
+    try {
+      ac.abort();
+    } catch (err) {
+      console.warn('[MessagesUI] Failed to abort listeners:', err);
+    }
     // Cleanup message toggle
     if (messageToggle) {
       messageToggle.cleanup();
@@ -1484,86 +1494,63 @@ export function initMessagesUI() {
   }
 
   /**
-   * Open messaging UI for a specific contact.
-   * Creates a message session with the messaging controller.
-   * @param {string} contactId - Contact's user ID
-   * @param {string} contactName - Display name for the contact
-   * @param {boolean} [openMessageBox=false] - Whether to open the message box immediately
+   * Helper: Render messages from a session's cached history.
+   * This provides the "instant" feel when switching back to a recent chat.
    */
-  function openContactMessages(contactId, contactName, openMessageBox = true) {
-    if (!getLoggedInUserId()) {
-      showInfoToast(t('message.sign_in_required'));
+  function appendCachedHistory(session) {
+    if (!session || !session.history) return;
+    session.history.forEach((event) => processReceivedMessage(event));
+  }
+
+  /**
+   * Core logic to process and render a received message or reaction update.
+   */
+  function processReceivedMessage({ text, msgData, isSentByMe }) {
+    // Handle reaction updates separately
+    if (msgData._reactionUpdate) {
+      updateMessageReactions(
+        msgData.messageId,
+        convertFirebaseReactions(msgData.reactions),
+      );
       return;
     }
 
-    // Check if already have an active session for this contact
-    const existingSession = messagingController.getSession(contactId);
-    if (existingSession) {
-      setSession(existingSession);
+    const reactions = convertFirebaseReactions(msgData.reactions);
+    const type = msgData.type;
+    const isText = !type;
+
+    appendMessage(isText ? text : '', {
+      ...(type && { type }),
+      isSentByMe,
+      messageId: msgData.messageId,
+      reactions,
+      isRead: msgData.read,
+      ...(type && { msgData }),
+    });
+  }
+
+  function openMessagesFromSession(session) {
+    // If it's already the active session, just ensure UI is visible
+    if (currentSession?.conversationId === session.conversationId) {
       showMessagesToggle();
-
-      if (openMessageBox && !isMessagesUIOpen()) {
-        toggleMessages();
+      if (!isMessagesUIOpen()) {
+        toggleMessagesUIVisible();
       }
-
-      existingSession.markAsRead().catch((err) => {
-        console.warn('Failed to mark messages as read:', err);
-      });
       return;
     }
 
-    // Close any existing contact message session (only one at a time)
-    const allSessions = messagingController.getAllSessions();
-    allSessions.forEach((session) => {
-      session.close();
-    });
-
-    // Clear messages UI and reset session BEFORE opening new session
-    // (otherwise onChildAdded fires synchronously and messages get cleared afterward)
     clearMessages();
-    setSession(null); // Reset so setSession() below doesn't re-clear
-
-    // Open messaging session
-    const session = messagingController.openSession(contactId, {
-      onMessage: (text, msgData, isSentByMe) => {
-        updateLastInteraction(contactId).catch(() => {}); // Update interaction timestamp on any message activity (including reactions)
-
-        // Handle reaction updates separately (don't re-append the message)
-        if (msgData._reactionUpdate) {
-          updateMessageReactions(
-            msgData.messageId,
-            convertFirebaseReactions(msgData.reactions),
-          );
-          return;
-        }
-
-        const reactions = convertFirebaseReactions(msgData.reactions);
-
-        // Determine message type and whether it's text (default)
-        const type = msgData.type;
-        const isText = !type;
-
-        appendMessage(isText ? text : '', {
-          ...(type && { type }),
-          isSentByMe: isText ? false : isSentByMe,
-          messageId: msgData.messageId,
-          reactions,
-          isRead: msgData.read,
-          ...(type && { msgData }),
-        });
-      },
-    });
-
-    // Store metadata on session for reference
-    session.contactId = contactId;
-    session.contactName = contactName;
+    setCurrentMsgUISession(null); // Reset temporarily to avoid race conditions
 
     if (messageTopBar) {
-      messageTopBar.setContact({ name: contactName || '', photoURL: '' });
+      messageTopBar.setContact({
+        name: session.contactName || '',
+        photoURL: session.contactPhotoURL || '',
+      });
     }
 
     // Fetch contact profile (photo + display name) for avatars
-    getUserProfile(contactId)
+    getUserProfile(session.contactId)
       .then((profile) => {
         if (!profile) return;
         session.contactProfile = profile;
@@ -1574,7 +1561,10 @@ export function initMessagesUI() {
           session.contactPhotoURL = profile.photoURL;
         }
 
-        if (messageTopBar) {
+        if (
+          messageTopBar &&
+          currentSession?.conversationId === session.conversationId
+        ) {
           messageTopBar.setContact({
             name: session.contactName || '',
             photoURL: session.contactPhotoURL || '',
@@ -1588,37 +1578,87 @@ export function initMessagesUI() {
       })
       .catch(() => {});
 
-    // Set this session as the active one in the UI (won't clear since we just did)
-    setSession(session);
+    setCurrentMsgUISession(session);
 
-    // Show and open the messages UI
+    // Render existing history if available
+    appendCachedHistory(session);
+
     showMessagesToggle();
 
-    if (openMessageBox && !isMessagesUIOpen()) {
-      toggleMessages();
+    if (!isMessagesUIOpen()) {
+      toggleMessagesUIVisible();
     }
 
-    // Mark all unread messages as read
     session.markAsRead().catch((err) => {
       console.warn('Failed to mark messages as read:', err);
     });
   }
 
+  // --- Domain Event Listeners ---
+  messagingController.on(
+    'session:opened',
+    ({ session }) => {
+      openMessagesFromSession(session);
+    },
+    { signal: ac.signal },
+  );
+
+  messagingController.on(
+    'session:resumed',
+    ({ session }) => {
+      openMessagesFromSession(session);
+    },
+    { signal: ac.signal },
+  );
+
+  messagingController.on(
+    'message:received',
+    (messageEvent) => {
+      // Only handle if this message belongs to our currently active session
+      if (messageEvent.conversationId !== currentSession?.conversationId)
+        return;
+
+      if (currentSession.contactId) {
+        contactsController
+          .updateLastInteraction(currentSession.contactId)
+          .catch(() => {});
+      }
+
+      processReceivedMessage(messageEvent);
+    },
+    { signal: ac.signal },
+  );
+
+  messagingController.on(
+    'reaction:updated',
+    ({ conversationId, messageId, reactions }) => {
+      if (conversationId !== currentSession?.conversationId) return;
+      updateMessageReactions(messageId, convertFirebaseReactions(reactions));
+
+      // Update interaction timestamp for reactions as well
+      if (currentSession.contactId) {
+        contactsController
+          .updateLastInteraction(currentSession.contactId)
+          .catch(() => {});
+      }
+    },
+    { signal: ac.signal },
+  );
+
   return {
     appendMessage,
     updateMessageReactions,
     isMessagesUIOpen,
-    toggleMessages,
+    toggleMessages: toggleMessagesUIVisible,
     showMessagesToggle,
     hideMessagesToggle,
     isMessageInputFocused,
     focusMessageInput,
     unfocusMessageInput,
-    setSession,
+    setSession: setCurrentMsgUISession,
     getCurrentSession,
     clearMessages,
     setFileTransferController,
-    openContactMessages,
     reset,
     cleanup,
   };

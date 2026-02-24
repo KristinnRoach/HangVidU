@@ -23,7 +23,7 @@ describe('RTDBMessagingTransport', () => {
   it('should have all required methods', () => {
     expect(typeof transport.send).toBe('function');
     expect(typeof transport.listen).toBe('function');
-    expect(typeof transport.getUnreadCount).toBe('function');
+    expect(typeof transport.getUnreadCountForConversation).toBe('function');
     expect(typeof transport.markAsRead).toBe('function');
   });
 
@@ -58,9 +58,11 @@ describe('RTDBMessagingTransport', () => {
     });
   });
 
-  describe('getUnreadCount', () => {
+  describe('getUnreadCountForConversation', () => {
     it('should return 0 when not logged in', async () => {
-      const count = await transport.getUnreadCount('user123');
+      // Pass a dummy conversation id; function should return 0 when not logged in
+      const count =
+        await transport.getUnreadCountForConversation('user123_user456');
       expect(count).toBe(0);
     });
   });
@@ -73,7 +75,9 @@ describe('RTDBMessagingTransport', () => {
 
   describe('send', () => {
     it('should throw when not logged in', async () => {
-      await expect(transport.send('user123', 'Hello')).rejects.toThrow('not logged in');
+      await expect(transport.send('user123', 'Hello')).rejects.toThrow(
+        'not logged in',
+      );
     });
   });
 });

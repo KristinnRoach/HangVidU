@@ -51,24 +51,58 @@ function fileToBase64(file) {
  */
 export class RTDBMessagingTransport extends MessagingTransport {
   /**
-   * Generate a deterministic conversation ID for two users
-   * Uses sorted user IDs to ensure the same ID regardless of who initiates
-   * @param {string} userId1 - First user ID
-   * @param {string} userId2 - Second user ID
-   * @returns {string} Conversation ID (e.g., "user1_user2")
-   * @private
+   * Resolve a conversation ID for the given participants.
+   * For 1:1, use sorted user IDs.
+   * @param {string[]} participantIds - List of user IDs
+   * @returns {string} Conversation ID
    */
-  _getConversationId(userId1, userId2) {
-    return [userId1, userId2].sort().join('_');
+  resolveConversationId(participantIds) {
+    if (!participantIds || participantIds.length < 2) {
+      throw new Error('resolveConversationId requires at least 2 participants');
+    }
+
+    // Coerce all participant IDs to strings and trim whitespace to avoid
+    // accidental non-string values (e.g. numeric 0) sneaking into the ID.
+    const normalized = participantIds.map((p) => {
+      if (p === null || p === undefined) return '' + p;
+      // Preserve values but coerce to string
+      return String(p).trim();
+    });
+
+    // Diagnose suspicious IDs early to help track down corruption sources
+    const hasSuspicious = normalized.some((id) => id === '' || id === '0');
+    if (hasSuspicious) {
+      console.warn(
+        '[RTDBTransport] resolveConversationId called with suspicious participantIds',
+        {
+          original: participantIds,
+          normalized,
+        },
+      );
+    }
+
+    return normalized.sort().join('_');
   }
 
   /**
-   * Send a message to a contact via RTDB
-   * @param {string} contactId - Recipient's user ID
-   * @param {string} text - Message text
-   * @returns {Promise<void>}
+   * @deprecated Use resolveConversationId
+   * @private
+   */
+  _getConversationId(userId1, userId2) {
+    return this.resolveConversationId([userId1, userId2]);
+  }
+
+  /**
+   * @deprecated Use sendToConversation
    */
   async send(contactId, text) {
+    const fromUserId = getLoggedInUserId();
+    if (!fromUserId) throw new Error('Cannot send message: not logged in');
+    const conversationId = this.resolveConversationId([fromUserId, contactId]);
+    return this.sendToConversation(conversationId, text);
+  }
+
+  async sendToConversation(conversationId, text) {
     const fromUserId = getLoggedInUserId();
     if (!fromUserId) {
       throw new Error('Cannot send message: not logged in');
@@ -76,7 +110,6 @@ export class RTDBMessagingTransport extends MessagingTransport {
 
     const user = getUser();
     const fromName = user?.displayName || 'Guest User';
-    const conversationId = this._getConversationId(fromUserId, contactId);
 
     // Write to shared conversation node
     const messageRef = push(
@@ -91,7 +124,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
       read: false,
     });
 
-    // Clean up old messages if limit exceeded (best-effort, non-blocking)
+    // Clean up old messages if limit exceeded
     this._cleanupOldMessages(conversationId).catch((err) => {
       console.warn('[RTDBTransport] Failed to cleanup old messages:', err);
     });
@@ -139,31 +172,32 @@ export class RTDBMessagingTransport extends MessagingTransport {
   }
 
   /**
-   * Listen to messages with a specific contact (both sent and received)
-   * Uses Firebase's onChildAdded which delivers existing messages synchronously,
-   * then listens for new messages as they arrive.
-   * @param {string} contactId - Contact's user ID
-   * @param {Function} onMessage - Callback(text, messageData, isSentByMe) for each message
-   * @returns {Function} Unsubscribe function to stop listening
+   * @deprecated Use listenToConversation
    */
   listen(contactId, onMessage) {
+    console.warn(
+      '[RTDBTransport] listen(contactId) is deprecated. Use listenToConversation(conversationId) instead.',
+    );
+    const myUserId = getLoggedInUserId();
+    if (!myUserId) return () => {};
+    const conversationId = this.resolveConversationId([myUserId, contactId]);
+    return this.listenToConversation(conversationId, onMessage);
+  }
+
+  listenToConversation(conversationId, onMessage) {
     const myUserId = getLoggedInUserId();
     if (!myUserId) {
       console.warn('[RTDBTransport] Cannot listen to messages: not logged in');
-      return () => {}; // Return no-op unsubscribe
+      return () => {};
     }
 
-    const conversationId = this._getConversationId(myUserId, contactId);
     const conversationRef = ref(
       rtdb,
       `conversations/${conversationId}/messages`,
     );
 
-    // Track seen message IDs to prevent duplicate processing
     const seenMessageIds = new Set();
 
-    // onChildAdded fires synchronously for all existing messages,
-    // then continues firing for new messages as they arrive
     const messageCallback = (snapshot) => {
       const msgId = snapshot.key;
       const msg = snapshot.val();
@@ -171,18 +205,15 @@ export class RTDBMessagingTransport extends MessagingTransport {
 
       seenMessageIds.add(msgId);
       const isSentByMe = msg.from === myUserId;
-      // Include messageId in the message data for reaction support
       const msgData = { ...msg, messageId: msgId };
       onMessage(msg.text, msgData, isSentByMe);
     };
 
-    // Handle reaction updates on existing messages
     const reactionCallback = (snapshot) => {
       const msgId = snapshot.key;
       const msg = snapshot.val();
       if (!msg || !seenMessageIds.has(msgId)) return;
 
-      // Only notify if reactions changed (check if reactions field exists)
       if (msg.reactions !== undefined) {
         const isSentByMe = msg.from === myUserId;
         const msgData = { ...msg, messageId: msgId, _reactionUpdate: true };
@@ -193,7 +224,6 @@ export class RTDBMessagingTransport extends MessagingTransport {
     onChildAdded(conversationRef, messageCallback);
     onChildChanged(conversationRef, reactionCallback);
 
-    // Return cleanup function
     return () => {
       off(conversationRef, 'child_added', messageCallback);
       off(conversationRef, 'child_changed', reactionCallback);
@@ -201,15 +231,15 @@ export class RTDBMessagingTransport extends MessagingTransport {
   }
 
   /**
-   * Get unread message count from a specific contact
-   * @param {string} contactId - Contact's user ID
+   * Get unread message count for a conversation
+   * @param {string} conversationId - Conversation ID
+   * @param {string} [fromContactId] - Optional: Only count messages from this user
    * @returns {Promise<number>} Number of unread messages
    */
-  async getUnreadCount(contactId) {
+  async getUnreadCountForConversation(conversationId, fromContactId) {
     const myUserId = getLoggedInUserId();
     if (!myUserId) return 0;
 
-    const conversationId = this._getConversationId(myUserId, contactId);
     const conversationRef = ref(
       rtdb,
       `conversations/${conversationId}/messages`,
@@ -220,9 +250,13 @@ export class RTDBMessagingTransport extends MessagingTransport {
       if (!snapshot.exists()) return 0;
 
       const messages = snapshot.val();
-      // Count unread messages that were sent by the contact (not by me)
+      // Count unread messages not sent by me.
+      // If fromContactId is provided, filter specifically for that sender.
       return Object.values(messages).filter(
-        (msg) => !msg.read && msg.from === contactId,
+        (msg) =>
+          !msg.read &&
+          msg.from !== myUserId &&
+          (!fromContactId || msg.from === fromContactId),
       ).length;
     } catch (err) {
       console.warn('[RTDBTransport] Failed to get unread count:', err);
@@ -231,16 +265,19 @@ export class RTDBMessagingTransport extends MessagingTransport {
   }
 
   /**
-   * Mark all unread messages from a contact as read
-   * Optimized: Single multi-path update instead of N separate writes
-   * @param {string} contactId - Contact's user ID
-   * @returns {Promise<void>}
+   * @deprecated Use markAsReadForConversation
    */
   async markAsRead(contactId) {
     const myUserId = getLoggedInUserId();
     if (!myUserId) return;
+    const conversationId = this.resolveConversationId([myUserId, contactId]);
+    return this.markAsReadForConversation(conversationId, contactId);
+  }
 
-    const conversationId = this._getConversationId(myUserId, contactId);
+  async markAsReadForConversation(conversationId, fromContactId) {
+    const myUserId = getLoggedInUserId();
+    if (!myUserId) return;
+
     const conversationRef = ref(
       rtdb,
       `conversations/${conversationId}/messages`,
@@ -253,15 +290,19 @@ export class RTDBMessagingTransport extends MessagingTransport {
       const messages = snapshot.val();
       const updates = {};
 
-      // Build multi-path update object for all unread messages
       Object.entries(messages).forEach(([msgId, msg]) => {
-        if (!msg.read && msg.from === contactId) {
+        // Mark as read if not sent by me.
+        // If fromContactId is provided, only mark messages from that sender.
+        if (
+          !msg.read &&
+          msg.from !== myUserId &&
+          (!fromContactId || msg.from === fromContactId)
+        ) {
           updates[`conversations/${conversationId}/messages/${msgId}/read`] =
             true;
         }
       });
 
-      // Single atomic update for all messages (1 write instead of N)
       if (Object.keys(updates).length > 0) {
         await update(ref(rtdb), updates);
       }
@@ -271,61 +312,57 @@ export class RTDBMessagingTransport extends MessagingTransport {
   }
 
   /**
-   * Listen for unread count changes from a contact
-   * Useful for badge updates without opening a full session
-   * @param {string} contactId - Contact's user ID
-   * @param {Function} onCountChange - Callback(count) called when unread count changes
-   * @returns {Function} Unsubscribe function to stop listening
+   * @deprecated Use listenToUnreadCountForConversation
    */
   listenToUnreadCount(contactId, onCountChange) {
+    const myUserId = getLoggedInUserId();
+    if (!myUserId) return () => {};
+    const conversationId = this.resolveConversationId([myUserId, contactId]);
+    return this.listenToUnreadCountForConversation(
+      conversationId,
+      onCountChange,
+    );
+  }
+
+  listenToUnreadCountForConversation(conversationId, onCountChange) {
     const myUserId = getLoggedInUserId();
     if (!myUserId) {
       console.warn(
         '[RTDBTransport] Cannot listen to unread count: not logged in',
       );
-      return () => {}; // Return no-op unsubscribe
+      return () => {};
     }
 
-    const conversationId = this._getConversationId(myUserId, contactId);
     const messagesRef = ref(rtdb, `conversations/${conversationId}/messages`);
 
-    // Shared callback for both new messages and status changes
     const updateCount = async () => {
       try {
-        const count = await this.getUnreadCount(contactId);
+        const count = await this.getUnreadCountForConversation(conversationId);
         onCountChange(count);
       } catch (err) {
         console.warn('[RTDBTransport] Failed to get unread count:', err);
       }
     };
 
-    // Listen for new messages from the contact
     const onAddedCallback = async (snapshot) => {
       const msg = snapshot.val();
       if (!msg) return;
-
-      // Update count when new unread message arrives from contact
-      if (msg.from === contactId && !msg.read) {
+      if (msg.from !== myUserId && !msg.read) {
         await updateCount();
       }
     };
 
-    // Listen for message status changes (e.g., read status)
     const onChangedCallback = async (snapshot) => {
       const msg = snapshot.val();
       if (!msg) return;
-
-      // Update count when message from contact is marked as read
-      if (msg.from === contactId) {
+      if (msg.from !== myUserId) {
         await updateCount();
       }
     };
 
-    // Start listening for both new messages and changes
     onChildAdded(messagesRef, onAddedCallback);
     onChildChanged(messagesRef, onChangedCallback);
 
-    // Return cleanup function that removes both listeners
     return () => {
       off(messagesRef, 'child_added', onAddedCallback);
       off(messagesRef, 'child_changed', onChangedCallback);
@@ -440,55 +477,68 @@ export class RTDBMessagingTransport extends MessagingTransport {
   // ========================================================================
 
   /**
-   * Add a reaction to a message
-   * Stores reactions as { reactionType: { odAg2...: true } } for efficient per-user tracking
-   * @param {string} contactId - Contact's user ID
-   * @param {string} messageId - Message ID to react to
-   * @param {string} reactionType - Type of reaction (e.g., 'heart')
-   * @returns {Promise<void>}
+   * @deprecated Use addReactionToConversation
    */
   async addReaction(contactId, messageId, reactionType) {
+    const myUserId = getLoggedInUserId();
+    if (!myUserId) throw new Error('Cannot add reaction: not logged in');
+    const conversationId = this.resolveConversationId([myUserId, contactId]);
+    return this.addReactionToConversation(
+      conversationId,
+      messageId,
+      reactionType,
+    );
+  }
+
+  async addReactionToConversation(conversationId, messageId, reactionType) {
     const myUserId = getLoggedInUserId();
     if (!myUserId) {
       throw new Error('Cannot add reaction: not logged in');
     }
 
-    const conversationId = this._getConversationId(myUserId, contactId);
     const reactionPath = `conversations/${conversationId}/messages/${messageId}/reactions/${reactionType}/${myUserId}`;
-
     await set(ref(rtdb, reactionPath), true);
   }
 
   /**
-   * Remove a reaction from a message
-   * @param {string} contactId - Contact's user ID
-   * @param {string} messageId - Message ID to remove reaction from
-   * @param {string} reactionType - Type of reaction to remove
-   * @returns {Promise<void>}
+   * @deprecated Use removeReactionFromConversation
    */
   async removeReaction(contactId, messageId, reactionType) {
+    const myUserId = getLoggedInUserId();
+    if (!myUserId) throw new Error('Cannot remove reaction: not logged in');
+    const conversationId = this.resolveConversationId([myUserId, contactId]);
+    return this.removeReactionFromConversation(
+      conversationId,
+      messageId,
+      reactionType,
+    );
+  }
+
+  async removeReactionFromConversation(
+    conversationId,
+    messageId,
+    reactionType,
+  ) {
     const myUserId = getLoggedInUserId();
     if (!myUserId) {
       throw new Error('Cannot remove reaction: not logged in');
     }
 
-    const conversationId = this._getConversationId(myUserId, contactId);
     const reactionPath = `conversations/${conversationId}/messages/${messageId}/reactions/${reactionType}/${myUserId}`;
-
     await set(ref(rtdb, reactionPath), null);
   }
 
   /**
-   * Get reactions for a message
-   * @param {string} contactId - Contact's user ID
-   * @param {string} messageId - Message ID
-   * @returns {Promise<Object>} Reactions object { reactionType: [userIds] }
+   * @deprecated Use getReactionsForConversation
    */
   async getReactions(contactId, messageId) {
     const myUserId = getLoggedInUserId();
     if (!myUserId) return {};
+    const conversationId = this.resolveConversationId([myUserId, contactId]);
+    return this.getReactionsForConversation(conversationId, messageId);
+  }
 
-    const conversationId = this._getConversationId(myUserId, contactId);
+  async getReactionsForConversation(conversationId, messageId) {
     const reactionsRef = ref(
       rtdb,
       `conversations/${conversationId}/messages/${messageId}/reactions`,
@@ -499,7 +549,6 @@ export class RTDBMessagingTransport extends MessagingTransport {
       if (!snapshot.exists()) return {};
 
       const reactionsData = snapshot.val();
-      // Convert { heart: { odAg2: true } } to { heart: ['odAg2'] }
       const result = {};
       for (const [type, users] of Object.entries(reactionsData)) {
         result[type] = Object.keys(users);
