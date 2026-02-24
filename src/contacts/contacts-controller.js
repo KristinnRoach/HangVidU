@@ -48,7 +48,7 @@ export class ContactsController extends EventEmitter {
 
   async updateContact(contactId, contactName, roomId) {
     const existing = await contactsStore.getContact(contactId);
-    const isRoomIdChange = existing?.roomId && existing.roomId !== roomId;
+    const isRoomIdChange = !!roomId && existing?.roomId !== roomId;
 
     const updatedContact = await contactsStore.saveContact(
       contactId,
