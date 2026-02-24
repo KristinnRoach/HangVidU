@@ -9,8 +9,6 @@ import {
   set,
   update,
   get,
-  query,
-  limitToLast,
   onChildAdded,
   onChildChanged,
   off,
@@ -230,50 +228,6 @@ export class RTDBMessagingTransport extends MessagingTransport {
       off(conversationRef, 'child_added', messageCallback);
       off(conversationRef, 'child_changed', reactionCallback);
     };
-  }
-
-  /**
-   * Fetch an ordered snapshot of messages for a conversation.
-   * Returns an array of { text, msgData, isSentByMe } ordered by sentAt ascending.
-   * @param {string} conversationId
-   * @param {Object} opts
-   * @param {number} opts.limitToLast - number of recent messages to fetch (optional)
-   */
-  async getConversationHistory(
-    conversationId,
-    { limitToLast: limit = 20 } = {},
-  ) {
-    const myUserId = getLoggedInUserId();
-    if (!myUserId) return [];
-
-    const messagesRef = ref(rtdb, `conversations/${conversationId}/messages`);
-
-    try {
-      const snap =
-        limit && Number.isFinite(limit)
-          ? await get(query(messagesRef, limitToLast(limit)))
-          : await get(messagesRef);
-
-      if (!snap.exists()) return [];
-
-      const msgs = snap.val();
-      const arr = Object.entries(msgs)
-        .map(([id, m]) => ({ id, m }))
-        .sort((a, b) => (a.m.sentAt || 0) - (b.m.sentAt || 0))
-        .map(({ id, m }) => ({
-          text: m.text || '',
-          msgData: { ...m, messageId: id },
-          isSentByMe: m.from === myUserId,
-        }));
-
-      return arr;
-    } catch (err) {
-      console.warn(
-        '[RTDBTransport] Failed to fetch conversation history:',
-        err,
-      );
-      return [];
-    }
   }
 
   /**

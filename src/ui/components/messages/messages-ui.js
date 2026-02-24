@@ -1529,7 +1529,7 @@ export function initMessagesUI() {
     });
   }
 
-  async function openMessagesFromSession(session) {
+  function openMessagesFromSession(session) {
     // If it's already the active session, just ensure UI is visible
     if (currentSession?.conversationId === session.conversationId) {
       showMessagesToggle();
@@ -1579,42 +1579,6 @@ export function initMessagesUI() {
       .catch(() => {});
 
     setCurrentMsgUISession(session);
-
-    // TODO: Delete or test / refine cache code below (works fine without it for now)
-    // Seed history from snapshot (fetch last messages) before rendering.
-    // If the session already has at least `limit` cached messages, skip
-    // fetching to avoid redundant work (common when background listeners
-    // already populated the cache).
-    const _limit = 20;
-    try {
-      if (!session.history || session.history.length < _limit) {
-        const history = await messagingController.getConversationHistory(
-          session.conversationId,
-          { limitToLast: _limit },
-        );
-        if (Array.isArray(history) && history.length > 0) {
-          // Use controller's cache to dedupe against live listener
-          history.forEach((evt) =>
-            messagingController.cacheHistory(session, evt),
-          );
-        }
-
-        // Debug: reveal fetched snapshot vs seeded session history
-        devDebug('[MessagesUI] fetched history', {
-          conversationId: session.conversationId,
-          fetched: Array.isArray(history) ? history.length : 0,
-          sessionHistory: session.history ? session.history.length : 0,
-        });
-      } else {
-        devDebug(
-          '[MessagesUI] skipping fetch — session.history already has',
-          session.history.length,
-          'messages',
-        );
-      }
-    } catch (err) {
-      console.warn('[MessagesUI] Failed to fetch initial history:', err);
-    }
 
     // Render existing history if available
     appendCachedHistory(session);
