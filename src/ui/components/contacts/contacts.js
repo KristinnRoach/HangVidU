@@ -1,4 +1,4 @@
-import { ref, set, get, remove, update, onValue, off } from 'firebase/database';
+import { ref, onValue, off } from 'firebase/database';
 import { rtdb } from '../../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId } from '../../../auth/auth-state.js';
 import confirmDialog from '../base/confirm-dialog.js';
@@ -8,6 +8,7 @@ import { t, onLocaleChange } from '../../../i18n/index.js';
 import { escapeHtml } from '../../../ui/component-system/dom-utils.js';
 import { initIcons } from '../../icons.js';
 import { messagingController } from '../../../messaging/messaging-controller.js';
+import { contactsController } from '../../../contacts/contacts-controller.js';
 
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
@@ -22,180 +23,37 @@ let lastRenderedLobby = null;
 // Limit displayed contact name length in the UI (keep full name in title)
 const MAX_CONTACT_NAME_CHARS = 18;
 
-function sortContactIdsByLastInteraction(contacts) {
-  return Object.keys(contacts).sort((a, b) => {
-    const aTime = contacts[a]?.lastInteractionAt || contacts[a]?.savedAt || 0;
-    const bTime = contacts[b]?.lastInteractionAt || contacts[b]?.savedAt || 0;
-    if (aTime !== bTime) return bTime - aTime;
-    // Alphabetical by display name when timestamps are equal
-    const aName = (contacts[a]?.contactName || '').toLowerCase();
-    const bName = (contacts[b]?.contactName || '').toLowerCase();
-    return aName.localeCompare(bName);
-  });
-}
-
-/**
- * Save a contact for the current user (RTDB if logged in, localStorage otherwise).
- */
-export async function saveContactData(contactId, contactName, roomId) {
-  if (!contactName || typeof contactName !== 'string' || !contactName.trim()) {
-    console.warn(
-      `[CONTACTS] Invalid contactName for ${contactId}, falling back to 'No Name'`,
-    );
-    contactName = '';
-  }
-
-  const loggedInUid = getLoggedInUserId();
-  const now = Date.now();
-
-  if (loggedInUid) {
-    const contactRef = ref(rtdb, `users/${loggedInUid}/contacts/${contactId}`);
-    await set(contactRef, {
-      contactId,
-      contactName,
-      roomId,
-      savedAt: now,
-      lastInteractionAt: now,
-    });
-    return;
-  }
-
-  // fallback to localStorage for guests
-  try {
-    const raw = localStorage.getItem('contacts') || '{}';
-    const obj = JSON.parse(raw);
-    obj[contactId] = {
-      contactId,
-      contactName,
-      roomId,
-      savedAt: now,
-      lastInteractionAt: now,
-    };
-    localStorage.setItem('contacts', JSON.stringify(obj));
-  } catch (e) {
-    console.warn('Failed to save contact to localStorage', e);
-  }
-}
-
-export async function updateLastInteraction(contactId) {
-  const loggedInUid = getLoggedInUserId();
-  if (!loggedInUid) return;
-
-  try {
-    const contactRef = ref(rtdb, `users/${loggedInUid}/contacts/${contactId}`);
-    await update(contactRef, { lastInteractionAt: Date.now() });
-  } catch (e) {
-    console.warn('Failed to update lastInteractionAt', e);
-  }
-}
-
-/**
- * Get all saved contacts for the current user.
- */
-export async function getContacts() {
-  const loggedInUid = getLoggedInUserId();
-
-  if (loggedInUid) {
-    try {
-      const contactsRef = ref(rtdb, `users/${loggedInUid}/contacts`);
-      const snap = await get(contactsRef);
-      return snap.exists() ? snap.val() : {};
-    } catch (e) {
-      console.warn('Failed to read contacts from RTDB', e);
-      return {};
-    }
-  }
-
-  // Guest: localStorage
-  try {
-    const raw = localStorage.getItem('contacts') || '{}';
-    return JSON.parse(raw);
-  } catch (e) {
-    console.warn('Failed to read contacts from localStorage', e);
-    return {};
-  }
-}
-
-/**
- * Get the most recently interacted contact (by lastInteractionAt or savedAt). Returns null if no contacts.
- * Useful for defaulting to most recent contact in messages or call flows.
- */
-export async function getContactByMostRecentInteraction() {
-  try {
-    const contacts = await getContacts();
-    const sortedIds = sortContactIdsByLastInteraction(contacts);
-    const mostRecentId = sortedIds[0];
-    return contacts[mostRecentId] || null;
-  } catch (e) {
-    console.warn('Failed to get contact by most recent interaction', e);
-    return null;
-  }
-}
-
-/**
- * Get contact by roomId. Returns the contact object or null if not found.
- * Useful for finding who was called when we only have the roomId.
- */
-export async function getContactByRoomId(roomId) {
-  if (!roomId) return null;
-
-  try {
-    const contacts = await getContacts();
-    for (const contact of Object.values(contacts || {})) {
-      if (contact?.roomId === roomId) {
-        return contact;
-      }
-    }
-  } catch (e) {
-    console.warn('Failed to get contact by roomId', e);
-  }
-
-  return null;
-}
-
-/**
- * Resolve caller display name from roomId by looking up saved contact.
- */
-export async function resolveCallerName(roomId, fallbackUserId) {
-  if (!roomId) return fallbackUserId || t('shared.unknown');
-
-  try {
-    const contacts = await getContacts();
-    for (const contact of Object.values(contacts || {})) {
-      if (contact?.roomId === roomId) {
-        return contact.contactName || t('contact.no_name');
-      }
-    }
-  } catch (e) {
-    console.warn('Failed to resolve caller name', e);
-  }
-
-  return fallbackUserId || t('shared.unknown');
-}
-
 /**
  * Prompt user to save contact after hangup, and render contacts list in lobby.
  */
-export async function saveContact(contactUserId, roomId, lobbyElement) {
+export async function saveContact(contactUserId, roomId, parentContainerEl) {
   if (!contactUserId || !roomId) return;
 
   if (!getLoggedInUserId()) {
-    console.debug(
+    // TODO: Fix - simple local save for guests, needs review to guard against any functionality that is currently not available unless logged in via google
+    console.warn(
       '[CONTACTS] saveContact called while logged out. Only logged-in users can save contacts.',
     ); // Prompt to log in?
+    alert('Must log in to save contacts!'); // TEMP fix
     return;
   }
 
   // If this contact is already saved, don't prompt again.
   // If the roomId changed, update it silently.
-  const existing = await getContacts();
+  const existing = await contactsController.getContacts();
   const existingEntry = existing?.[contactUserId];
   if (existingEntry) {
     if (existingEntry.roomId !== roomId) {
       // Keep existing name, just update the roomId
-      await saveContactData(contactUserId, existingEntry.contactName, roomId);
-      await renderContactsList(lobbyElement);
+      await contactsController.saveContact(
+        contactUserId,
+        existingEntry.contactName,
+        roomId,
+      );
+      await renderContactsList(parentContainerEl);
     }
+
+    // TODO: Move dispatch to controller emmitter
     // Ensure listener is active for incoming calls on this room
     document.dispatchEvent(
       new CustomEvent('contact:saved', { detail: { roomId } }),
@@ -212,7 +70,7 @@ export async function saveContact(contactUserId, roomId, lobbyElement) {
   const contactName =
     window.prompt(t('contact.name.prompt'), contactUserId) || contactUserId;
 
-  await saveContactData(contactUserId, contactName, roomId);
+  await contactsController.saveContact(contactUserId, contactName, roomId);
 
   // Ensure listener is active for incoming calls on this room
   document.dispatchEvent(
@@ -220,7 +78,7 @@ export async function saveContact(contactUserId, roomId, lobbyElement) {
   );
 
   // Re-render contacts list
-  await renderContactsList(lobbyElement);
+  await renderContactsList(parentContainerEl);
 }
 
 /**
@@ -239,8 +97,24 @@ export async function renderContactsList(lobbyElement) {
     });
   }
 
-  const contacts = await getContacts();
-  const contactIds = sortContactIdsByLastInteraction(contacts);
+  const contactsResult = await contactsController.getContactsSorted();
+
+  // `getContactsSorted()` returns an array of contact objects (sorted by
+  // lastInteractionAt). Older code assumed an object keyed by contactId,
+  // which caused `Object.keys()` to return numeric indices ("0", "1") —
+  // resulting in contact IDs like "0" being used downstream. Normalize
+  // into an array of entries { id, ...contact } and a parallel id list.
+  let entries = [];
+  if (Array.isArray(contactsResult)) {
+    entries = contactsResult.map((c) => ({ id: c.contactId || '', ...c }));
+  } else if (contactsResult && typeof contactsResult === 'object') {
+    entries = Object.keys(contactsResult).map((id) => ({
+      id,
+      ...contactsResult[id],
+    }));
+  }
+
+  const contactIds = entries.map((e) => e.id);
 
   // Find or create contacts container
   let contactsContainer = lobbyElement.querySelector('.contacts-container');
@@ -265,10 +139,9 @@ export async function renderContactsList(lobbyElement) {
   // Render contact items (escape contact names)
   contactsContainer.innerHTML = `
     <div class="contacts-list">
-      ${contactIds
-        .map((id) => {
-          const contact = contacts[id];
-          const rawName = contact.contactName || t('contact.no_name');
+      ${entries
+        .map(({ id, contactId, contactName, roomId }) => {
+          const rawName = contactName || t('contact.no_name');
           const escapedName = escapeHtml(rawName);
           const shortName =
             escapedName.length > MAX_CONTACT_NAME_CHARS
@@ -278,7 +151,7 @@ export async function renderContactsList(lobbyElement) {
             <div class="contact-entry">
               <button
                 class="contact-call-btn"
-                data-room-id="${escapeHtml(contact.roomId || '')}"
+                data-room-id="${escapeHtml(roomId || '')}"
                 data-contact-name="${escapedName}"
                 data-contact-id="${escapeHtml(id)}"
                 title="${escapeHtml(t('contact.action.call', { name: escapedName }))}"
@@ -339,11 +212,11 @@ function attachContactListeners(container, lobbyElement) {
       const contactId = nameEl.getAttribute('data-contact-id');
 
       if (roomId || contactId) {
-        document.dispatchEvent(
-          new CustomEvent('contact:call', {
-            detail: { contactId, contactName, roomId },
-          }),
-        );
+        contactsController.emit('contact:call', {
+          contactId,
+          contactName,
+          roomId,
+        });
       }
     };
   });
@@ -370,7 +243,7 @@ function attachContactListeners(container, lobbyElement) {
       const contactId = btn.getAttribute('data-contact-id');
       if (!contactId) return;
 
-      const contacts = await getContacts();
+      const contacts = await contactsController.getContacts();
       const contact = contacts[contactId];
       if (!contact) return;
 
@@ -378,11 +251,15 @@ function attachContactListeners(container, lobbyElement) {
       if (!result) return;
 
       if (result.action === 'rename') {
-        await saveContactData(contactId, result.name, contact.roomId);
+        await contactsController.saveContact(
+          contactId,
+          result.name,
+          contact.roomId,
+        );
       } else if (result.action === 'delete') {
         const confirmed = await confirmDialog(t('contact.delete.confirm'));
         if (!confirmed) return;
-        await deleteContact(contactId);
+        await contactsController.deleteContact(contactId);
       }
       await renderContactsList(lobbyElement);
     };
@@ -482,34 +359,6 @@ export function clearUnreadBadge(contactId) {
   if (badgeEl) badgeEl.hidden = true;
 }
 
-/**
- * Delete a contact.
- */
-async function deleteContact(contactId) {
-  const loggedInUid = getLoggedInUserId();
-
-  if (loggedInUid) {
-    try {
-      await remove(ref(rtdb, `users/${loggedInUid}/contacts/${contactId}`));
-    } catch (e) {
-      console.warn('Failed to delete contact from RTDB', e);
-    }
-    return;
-  }
-
-  // Guest: remove from localStorage
-  try {
-    const raw = localStorage.getItem('contacts') || '{}';
-    const obj = JSON.parse(raw);
-    if (obj[contactId]) {
-      delete obj[contactId];
-      localStorage.setItem('contacts', JSON.stringify(obj));
-    }
-  } catch (e) {
-    console.warn('Failed to delete contact from localStorage', e);
-  }
-}
-
 export function cleanupContacts() {
   presenceListeners.forEach(({ ref: presenceRef, callback }) => {
     off(presenceRef, 'value', callback);
@@ -523,5 +372,6 @@ export function cleanupContacts() {
     localeUnsubscribe();
     localeUnsubscribe = null;
   }
+
   lastRenderedLobby = null;
 }

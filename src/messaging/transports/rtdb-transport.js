@@ -9,6 +9,8 @@ import {
   set,
   update,
   get,
+  query,
+  limitToLast,
   onChildAdded,
   onChildChanged,
   off,
@@ -60,7 +62,28 @@ export class RTDBMessagingTransport extends MessagingTransport {
     if (!participantIds || participantIds.length < 2) {
       throw new Error('resolveConversationId requires at least 2 participants');
     }
-    return participantIds.sort().join('_');
+
+    // Coerce all participant IDs to strings and trim whitespace to avoid
+    // accidental non-string values (e.g. numeric 0) sneaking into the ID.
+    const normalized = participantIds.map((p) => {
+      if (p === null || p === undefined) return '' + p;
+      // Preserve values but coerce to string
+      return String(p).trim();
+    });
+
+    // Diagnose suspicious IDs early to help track down corruption sources
+    const hasSuspicious = normalized.some((id) => id === '' || id === '0');
+    if (hasSuspicious) {
+      console.warn(
+        '[RTDBTransport] resolveConversationId called with suspicious participantIds',
+        {
+          original: participantIds,
+          normalized,
+        },
+      );
+    }
+
+    return normalized.sort().join('_');
   }
 
   /**
@@ -154,6 +177,9 @@ export class RTDBMessagingTransport extends MessagingTransport {
    * @deprecated Use listenToConversation
    */
   listen(contactId, onMessage) {
+    console.warn(
+      '[RTDBTransport] listen(contactId) is deprecated. Use listenToConversation(conversationId) instead.',
+    );
     const myUserId = getLoggedInUserId();
     if (!myUserId) return () => {};
     const conversationId = this.resolveConversationId([myUserId, contactId]);
@@ -204,6 +230,50 @@ export class RTDBMessagingTransport extends MessagingTransport {
       off(conversationRef, 'child_added', messageCallback);
       off(conversationRef, 'child_changed', reactionCallback);
     };
+  }
+
+  /**
+   * Fetch an ordered snapshot of messages for a conversation.
+   * Returns an array of { text, msgData, isSentByMe } ordered by sentAt ascending.
+   * @param {string} conversationId
+   * @param {Object} opts
+   * @param {number} opts.limitToLast - number of recent messages to fetch (optional)
+   */
+  async getConversationHistory(
+    conversationId,
+    { limitToLast: limit = 20 } = {},
+  ) {
+    const myUserId = getLoggedInUserId();
+    if (!myUserId) return [];
+
+    const messagesRef = ref(rtdb, `conversations/${conversationId}/messages`);
+
+    try {
+      const snap =
+        limit && Number.isFinite(limit)
+          ? await get(query(messagesRef, limitToLast(limit)))
+          : await get(messagesRef);
+
+      if (!snap.exists()) return [];
+
+      const msgs = snap.val();
+      const arr = Object.entries(msgs)
+        .map(([id, m]) => ({ id, m }))
+        .sort((a, b) => (a.m.sentAt || 0) - (b.m.sentAt || 0))
+        .map(({ id, m }) => ({
+          text: m.text || '',
+          msgData: { ...m, messageId: id },
+          isSentByMe: m.from === myUserId,
+        }));
+
+      return arr;
+    } catch (err) {
+      console.warn(
+        '[RTDBTransport] Failed to fetch conversation history:',
+        err,
+      );
+      return [];
+    }
   }
 
   /**

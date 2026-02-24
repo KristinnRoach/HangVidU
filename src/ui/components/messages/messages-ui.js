@@ -25,7 +25,7 @@ import {
 import { REACTION_CONFIG } from '../../../messaging/reactions/ReactionConfig.js';
 import { getLoggedInUserId, getIsLoggedIn } from '../../../auth/auth-state.js';
 import { messagingController } from '../../../messaging/messaging-controller.js';
-import { updateLastInteraction } from '../contacts/contacts.js';
+import { contactsController } from '../../../contacts/contacts-controller.js';
 import { showInfoToast } from '../../utils/toast.js';
 import { getUserProfile } from '../../../user/profile.js';
 import { createMessageBox } from './createMessageBox.js';
@@ -1322,7 +1322,9 @@ export function initMessagesUI() {
 
         // Update interaction timestamp for received files
         if (currentSession?.contactId) {
-          updateLastInteraction(currentSession.contactId).catch(() => {});
+          contactsController
+            .updateLastInteraction(currentSession.contactId)
+            .catch(() => {});
         }
 
         // Increment unread count if messages box is hidden
@@ -1578,6 +1580,42 @@ export function initMessagesUI() {
 
     setCurrentMsgUISession(session);
 
+    // TODO: Delete or test / refine commented out code below (works fine without it for now)
+    // // Seed history from snapshot (fetch last messages) before rendering.
+    // // If the session already has at least `limit` cached messages, skip
+    // // fetching to avoid redundant work (common when background listeners
+    // // already populated the cache).
+    // const _limit = 20;
+    // try {
+    //   if (!session.history || session.history.length < _limit) {
+    //     const history = await messagingController.getConversationHistory(
+    //       session.conversationId,
+    //       { limitToLast: _limit },
+    //     );
+    //     if (Array.isArray(history) && history.length > 0) {
+    //       // Use controller's cache to dedupe against live listener
+    //       history.forEach((evt) =>
+    //         messagingController.cacheHistory(session, evt),
+    //       );
+    //     }
+
+    //     // Debug: reveal fetched snapshot vs seeded session history
+    //     devDebug('[MessagesUI] fetched history', {
+    //       conversationId: session.conversationId,
+    //       fetched: Array.isArray(history) ? history.length : 0,
+    //       sessionHistory: session.history ? session.history.length : 0,
+    //     });
+    //   } else {
+    //     devDebug(
+    //       '[MessagesUI] skipping fetch — session.history already has',
+    //       session.history.length,
+    //       'messages',
+    //     );
+    //   }
+    // } catch (err) {
+    //   console.warn('[MessagesUI] Failed to fetch initial history:', err);
+    // }
+
     // Render existing history if available
     appendCachedHistory(session);
 
@@ -1610,7 +1648,9 @@ export function initMessagesUI() {
 
       // Update interaction timestamp on any message activity
       if (currentSession.contactId) {
-        updateLastInteraction(currentSession.contactId).catch(() => {});
+        contactsController
+          .updateLastInteraction(currentSession.contactId)
+          .catch(() => {});
       }
 
       processReceivedMessage(messageEvent);
