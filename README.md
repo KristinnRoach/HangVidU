@@ -20,7 +20,7 @@ A simple peer-to-peer video chat app with a watch-together mode.
 
 ## Deployment
 
-- Official deployment target: Firebase Hosting only.
+- Deployment target: Firebase Hosting.
 - Deploy (with compatibility tests): `pnpm deploy:all`
 - Deploy (skip tests): `pnpm deploy:skip-tests`
 - PWA updates are user-controlled (in-app prompt) before activation.
