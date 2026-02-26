@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [
     VitePWA({
       includeAssets: ['index.html', 'favicon.ico'],
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.js',

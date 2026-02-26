@@ -174,11 +174,6 @@ import {
 import { addDebugUpdateButton } from './ui/components/notifications/debug-notifications.js';
 // ____ UI END ____
 
-// Import and call iOS PWA redirect helper
-import { redirectIOSPWAToHosting } from './utils/env/redirectIOSPWA.js';
-
-redirectIOSPWAToHosting();
-
 // Quick access to enable / disable dev debug logs
 setDevDebugEnabled(true);
 getDiagnosticLogger().disable();
@@ -226,7 +221,8 @@ async function init() {
   }
 
   try {
-    if (import.meta.env.VITE_DISABLE_PWA === '0') {
+    const isPWAEnabled = import.meta.env.VITE_ENABLE_PWA !== '0';
+    if (isPWAEnabled) {
       const { setupPWA } = await import('./pwa/PWA.js');
       await setupPWA();
     }

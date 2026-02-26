@@ -13,7 +13,7 @@ import { test, expect } from '@playwright/test';
  * 4. It's active and running
  *
  * IMPORTANT: These tests require PWA to be enabled
- * The dev server must be started with DISABLE_PWA=0
+ * The dev server must be started with VITE_ENABLE_PWA=1
  *
  * Run: pnpm test:e2e
  * Time: ~10 seconds
@@ -99,10 +99,9 @@ test.describe('Service Worker Registration', () => {
 
     console.log('Service Worker Scope:', scope);
 
-    // Scope should match the base URL
-    // For dev: https://localhost:5173/HangVidU/
-    // For prod: https://vidu-aae11.web.app/ or https://kristinnroach.github.io/HangVidU/
-    expect(scope).toMatch(/\/HangVidU\/$/);
+    // Scope should be root-scoped for both local and Firebase Hosting deployments
+    const scopePath = new URL(scope).pathname;
+    expect(scopePath).toBe('/');
   });
 
   test('service worker is controlling the page', async ({ page }) => {

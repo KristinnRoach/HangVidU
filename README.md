@@ -18,6 +18,13 @@ A simple peer-to-peer video chat app with a watch-together mode.
 
 - WebRTC for P2P connection, Firebase for signaling
 
+## Deployment
+
+- Deployment target: Firebase Hosting.
+- Deploy (with compatibility tests): `pnpm deploy:all`
+- Deploy (skip tests): `pnpm deploy:skip-tests`
+- PWA updates are user-controlled (in-app prompt) before activation.
+
 ## Limitations
 
 - Only works for 1-to-1 connections

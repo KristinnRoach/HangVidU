@@ -296,9 +296,8 @@ async function openApp(path = '/') {
     return client;
   }
 
-  // Open new window (handle scope-relative path)
-  // Ensure path is relative to scope by removing leading slash
-  // (critical for GH Pages subdirectory deployment vs Firebase Hosting root)
+  // Open new window relative to the service worker scope
+  // Ensure path is relative by removing any leading slash.
   const relativePath = path.startsWith('/') ? path.slice(1) : path;
   const url = new URL(relativePath, self.registration.scope).href;
 
@@ -317,7 +316,7 @@ self.addEventListener('message', (event) => {
 
   switch (type) {
     case 'SKIP_WAITING':
-      // Skip waiting and activate new service worker immediately
+      // Activate waiting service worker after explicit user action.
       self.skipWaiting();
       break;
 
@@ -352,10 +351,8 @@ self.addEventListener('message', (event) => {
 // SERVICE WORKER LIFECYCLE
 // ============================================================================
 
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => {
   console.log('[SW] Service worker installing...');
-  // Force activation of new service worker
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {

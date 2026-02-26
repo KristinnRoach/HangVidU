@@ -44,8 +44,8 @@ describe('Service Worker Environment Sanity Checks', () => {
   test('base URL is configured correctly', () => {
     const baseUrl = import.meta.env.BASE_URL;
     expect(baseUrl).toBeDefined();
-    // Should be either '/' or '/HangVidU/' depending on build target
-    expect(['/HangVidU/', '/']).toContain(baseUrl);
+    // Firebase Hosting is the only production target
+    expect(baseUrl).toBe('/');
   });
 });
 
