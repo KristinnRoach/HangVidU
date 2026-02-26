@@ -140,6 +140,7 @@ export class MessagingController extends EventEmitter {
       const session = this.sessions.get(conversationId);
       this._touchSession(session.conversationId);
       this.emit('session:resumed', { session });
+
       return session;
     }
 
@@ -263,6 +264,20 @@ export class MessagingController extends EventEmitter {
     this.emit('session:opened', { session });
 
     return session;
+  }
+
+  /**
+   * Display a session in the UI by emitting the appropriate event.
+   * Must be called after openSession() to trigger UI updates.
+   * @param {string} conversationId - Conversation ID
+   */
+  displaySession(conversationId) {
+    const session = this.sessions.get(conversationId);
+    if (!session) {
+      throw new Error(`Cannot display non-existent session: ${conversationId}`);
+    }
+
+    this.emit('session:display', { session });
   }
 
   /**
