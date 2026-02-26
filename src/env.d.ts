@@ -19,6 +19,7 @@ interface ImportMetaEnv {
   readonly VITE_RECAPTCHA_ENTERPRISE_SITE_KEY: string;
 
   // Application
+  readonly VITE_ENABLE_PWA: string;
   readonly VITE_SENTRY_DSN: string;
 
   // Development

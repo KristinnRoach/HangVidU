@@ -16,7 +16,7 @@ async function importPWARegister() {
  */
 export async function setupUpdateHandler() {
   // Only try to import if PWA is enabled
-  if (import.meta.env.VITE_DISABLE_PWA === '1') {
+  if (import.meta.env.VITE_ENABLE_PWA === '0') {
     console.debug('[PWA] Update handler not available (PWA disabled)');
     return;
   }

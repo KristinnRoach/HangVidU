@@ -9,7 +9,7 @@
     "kill": "fkill :5173 :4040 --force",
     "kill:silent": "fkill :5173 :4040 --force --silent",
     "ngrok": "ngrok http https://localhost:5173 ${NGROK_DOMAIN:+--domain=$NGROK_DOMAIN}",
-    "dev:experiments": "DISABLE_PWA=1 vite --open experiments.html",
+    "dev:experiments": "VITE_ENABLE_PWA=0 vite --open experiments.html",
     "build": "vite build",
     "deploy:fb": "pnpm build && firebase deploy --only hosting",
     "deploy:fb:db": "firebase deploy --only database",

@@ -316,7 +316,7 @@ self.addEventListener('message', (event) => {
 
   switch (type) {
     case 'SKIP_WAITING':
-      // Skip waiting and activate new service worker immediately
+      // Activate waiting service worker after explicit user action.
       self.skipWaiting();
       break;
 
@@ -351,10 +351,8 @@ self.addEventListener('message', (event) => {
 // SERVICE WORKER LIFECYCLE
 // ============================================================================
 
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => {
   console.log('[SW] Service worker installing...');
-  // Force activation of new service worker
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {

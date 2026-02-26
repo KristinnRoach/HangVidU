@@ -14,9 +14,10 @@ function isIOS() {
 }
 
 async function setupPWA() {
-  // Set up PWA update handler (for registerType: 'prompt')
-  // This should run regardless of install button state
-  if (import.meta.env.VITE_DISABLE_PWA === '0') {
+  // Set up PWA update handler.
+  // This should run regardless of install button state.
+  const isPWAEnabled = import.meta.env.VITE_ENABLE_PWA !== '0';
+  if (isPWAEnabled) {
     try {
       const module = await import('./update-handlers.js');
       await module.setupUpdateHandler();

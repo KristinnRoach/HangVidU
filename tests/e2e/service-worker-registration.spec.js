@@ -13,7 +13,7 @@ import { test, expect } from '@playwright/test';
  * 4. It's active and running
  *
  * IMPORTANT: These tests require PWA to be enabled
- * The dev server must be started with DISABLE_PWA=0
+ * The dev server must be started with VITE_ENABLE_PWA=1
  *
  * Run: pnpm test:e2e
  * Time: ~10 seconds
