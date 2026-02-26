@@ -6,11 +6,8 @@ import { VitePWA } from 'vite-plugin-pwa';
 import mkcert from 'vite-plugin-mkcert';
 
 export default defineConfig(({ mode }) => {
-  // Allow overriding base path for different prod hosts (gh-pages vs Firebase Hosting)
-  // Usage: BUILD_TARGET=hosting pnpm build -> basePath '/'
-  const target = process.env.BUILD_TARGET || process.env.VITE_BUILD_TARGET;
-  const basePath =
-    mode === 'production' ? (target === 'hosting' ? '/' : '/HangVidU/') : '/';
+  // Firebase Hosting is the only production target.
+  const basePath = '/';
 
   return {
     base: basePath,

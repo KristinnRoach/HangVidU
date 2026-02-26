@@ -99,10 +99,9 @@ test.describe('Service Worker Registration', () => {
 
     console.log('Service Worker Scope:', scope);
 
-    // Scope should match the base URL
-    // For dev: https://localhost:5173/HangVidU/
-    // For prod: https://vidu-aae11.web.app/ or https://kristinnroach.github.io/HangVidU/
-    expect(scope).toMatch(/\/HangVidU\/$/);
+    // Scope should be root-scoped for both local and Firebase Hosting deployments
+    expect(scope).toMatch(/\/$/);
+    expect(scope).not.toContain('/HangVidU/');
   });
 
   test('service worker is controlling the page', async ({ page }) => {

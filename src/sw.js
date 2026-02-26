@@ -296,9 +296,8 @@ async function openApp(path = '/') {
     return client;
   }
 
-  // Open new window (handle scope-relative path)
-  // Ensure path is relative to scope by removing leading slash
-  // (critical for GH Pages subdirectory deployment vs Firebase Hosting root)
+  // Open new window relative to the service worker scope
+  // Ensure path is relative by removing any leading slash.
   const relativePath = path.startsWith('/') ? path.slice(1) : path;
   const url = new URL(relativePath, self.registration.scope).href;
 
