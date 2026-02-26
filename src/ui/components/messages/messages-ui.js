@@ -112,20 +112,6 @@ export function initMessagesUI() {
   // Use the component element directly as the toggle button/container
   const messagesToggleEl = messageToggle.element;
 
-  // ! === [TEMP FIX] ===
-  // TODO: Remove this temp fix after ensuring a session is always available or better solution found
-  // Initialize toggle disabled state when no session is active.
-  try {
-    const _btn =
-      messagesToggleEl &&
-      messagesToggleEl.querySelector &&
-      messagesToggleEl.querySelector('button');
-    if (_btn) _btn.disabled = !currentSession;
-  } catch (e) {
-    /* ignore */
-  }
-  // ! === [TEMP FIX] End ===
-
   // Create the messages box
   const {
     messagesBoxContainer,
@@ -190,9 +176,6 @@ export function initMessagesUI() {
     if (sendBtn) sendBtn.setAttribute('aria-label', txt || t('shared.send'));
   };
   // Note: label is empty by default (icon-only). aria-label kept in sync by setSendLabelText.
-
-  // Hide attachment button by default (shown when file transfer is available)
-  // (Initial call is not needed, setSession and setFileTransferController will call it)
 
   // Attach button opens file picker
   attachBtn.addEventListener('click', () => {
@@ -605,8 +588,12 @@ export function initMessagesUI() {
   }
 
   function toggleMessagesUIVisible() {
-    messagesBox.classList.toggle('hidden');
+    if (!currentSession) {
+      console.warn('[MessagesUI] No active session to display');
+      return;
+    }
 
+    messagesBox.classList.toggle('hidden');
     if (isMessagesUIOpen()) {
       // If we just opened:
       // Only auto-focus on desktop; let mobile users tap to focus naturally
@@ -1198,20 +1185,7 @@ export function initMessagesUI() {
     }
 
     refreshAttachButton();
-
-    // ! === [TEMP FIX] ===
-    // TODO: Remove this temp fix after ensuring a session is always available or better solution found
-    try {
-      const btn =
-        messagesToggleEl &&
-        messagesToggleEl.querySelector &&
-        messagesToggleEl.querySelector('button');
-      if (btn) btn.disabled = !session;
-    } catch (e) {
-      /* ignore */
-    }
   }
-  // ! === [TEMP FIX] End ===
 
   /**
    * Get the currently displayed session
@@ -1371,17 +1345,6 @@ export function initMessagesUI() {
     hideElement(messagesBox);
     messageToggle.clearBadge();
 
-    // Ensure toggle button is disabled when no session exists (reset state)
-    try {
-      const btn =
-        messagesToggleEl &&
-        messagesToggleEl.querySelector &&
-        messagesToggleEl.querySelector('button');
-      if (btn) btn.disabled = true;
-    } catch (e) {
-      /* ignore */
-    }
-
     // Clear any unsent message text and reset textarea height
     messagesInput.value = '';
     if (resetInputHeight) resetInputHeight();
@@ -1529,18 +1492,33 @@ export function initMessagesUI() {
     });
   }
 
-  function openMessagesFromSession(session) {
-    // If it's already the active session, just ensure UI is visible
-    if (currentSession?.conversationId === session.conversationId) {
-      showMessagesToggle();
-      if (!isMessagesUIOpen()) {
-        toggleMessagesUIVisible();
-      }
+  function displayCurrentSession() {
+    if (!currentSession || !currentSession?.conversationId) {
+      console.warn('No currentSession to display:', {
+        currentSession,
+      });
       return;
     }
 
-    clearMessages();
-    setCurrentMsgUISession(null); // Reset temporarily to avoid race conditions
+    if (!isMessagesUIOpen()) {
+      toggleMessagesUIVisible();
+    }
+
+    currentSession.markAsRead().catch((err) => {
+      console.warn('Failed to mark messages as read:', err);
+    });
+  }
+
+  function _prepUIForSession(session) {
+    if (!session) return;
+
+    const isCurrentSession =
+      currentSession?.conversationId === session.conversationId;
+
+    if (!isCurrentSession) {
+      clearMessages();
+      setCurrentMsgUISession(null); // Reset temporarily to avoid race conditions
+    }
 
     if (messageTopBar) {
       messageTopBar.setContact({
@@ -1578,27 +1556,16 @@ export function initMessagesUI() {
       })
       .catch(() => {});
 
-    setCurrentMsgUISession(session);
+    !isCurrentSession && setCurrentMsgUISession(session);
 
-    // Render existing history if available
-    appendCachedHistory(session);
-
-    showMessagesToggle();
-
-    if (!isMessagesUIOpen()) {
-      toggleMessagesUIVisible();
-    }
-
-    session.markAsRead().catch((err) => {
-      console.warn('Failed to mark messages as read:', err);
-    });
+    appendCachedHistory(session); // Render existing history if available
   }
 
   // --- Domain Event Listeners ---
   messagingController.on(
     'session:opened',
     ({ session }) => {
-      openMessagesFromSession(session);
+      _prepUIForSession(session);
     },
     { signal: ac.signal },
   );
@@ -1606,7 +1573,15 @@ export function initMessagesUI() {
   messagingController.on(
     'session:resumed',
     ({ session }) => {
-      openMessagesFromSession(session);
+      _prepUIForSession(session);
+    },
+    { signal: ac.signal },
+  );
+
+  messagingController.on(
+    'session:display',
+    () => {
+      displayCurrentSession();
     },
     { signal: ac.signal },
   );

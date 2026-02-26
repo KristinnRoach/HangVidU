@@ -115,6 +115,7 @@ import {
   renderContactsList,
   cleanupContacts,
   showSaveContactPrompt,
+  autoInitMsgSessionIfNeeded,
 } from './ui/components/contacts/contacts.js';
 
 import {
@@ -1774,6 +1775,11 @@ window.onload = async () => {
   // Then render saved contacts list in lobby (now listeners are ready)
   await renderContactsList(lobbyDiv).catch((e) => {
     console.warn('Failed to render contacts list:', e);
+  });
+
+  // Auto-open first contact session if user has saved contacts
+  await autoInitMsgSessionIfNeeded().catch((e) => {
+    console.warn('Failed to auto-init messaging session:', e);
   });
 
   // Re-render contacts on auth changes so private contacts are hidden on logout
