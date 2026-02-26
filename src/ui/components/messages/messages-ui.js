@@ -1345,17 +1345,6 @@ export function initMessagesUI() {
     hideElement(messagesBox);
     messageToggle.clearBadge();
 
-    // Ensure toggle button is disabled when no session exists (reset state)
-    try {
-      const btn =
-        messagesToggleEl &&
-        messagesToggleEl.querySelector &&
-        messagesToggleEl.querySelector('button');
-      if (btn) btn.disabled = true;
-    } catch (e) {
-      /* ignore */
-    }
-
     // Clear any unsent message text and reset textarea height
     messagesInput.value = '';
     if (resetInputHeight) resetInputHeight();
@@ -1522,13 +1511,14 @@ export function initMessagesUI() {
 
   function _prepUIForSession(session) {
     if (!session) return;
-    if (currentSession?.conversationId === session.conversationId) {
-      // Same session, no need to clear or reset
-      return;
-    }
 
-    clearMessages();
-    setCurrentMsgUISession(null); // Reset temporarily to avoid race conditions
+    const isCurrentSession =
+      currentSession?.conversationId === session.conversationId;
+
+    if (!isCurrentSession) {
+      clearMessages();
+      setCurrentMsgUISession(null); // Reset temporarily to avoid race conditions
+    }
 
     if (messageTopBar) {
       messageTopBar.setContact({
@@ -1566,10 +1556,9 @@ export function initMessagesUI() {
       })
       .catch(() => {});
 
-    setCurrentMsgUISession(session);
+    !isCurrentSession && setCurrentMsgUISession(session);
 
-    // Render existing history if available
-    appendCachedHistory(session);
+    appendCachedHistory(session); // Render existing history if available
   }
 
   // --- Domain Event Listeners ---
