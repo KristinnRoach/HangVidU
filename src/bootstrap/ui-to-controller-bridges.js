@@ -11,13 +11,11 @@ function onMessagesToggle(e) {
   if (!contactId) return;
 
   try {
-    const conversationId = messagingController.resolveConversationIdFromContact(
-      contactId,
-    );
-    const isExistingSession = messagingController.sessions.has(conversationId);
+    const conversationId =
+      messagingController.resolveConversationIdFromContact(contactId);
 
     messagingController.openSession(contactId, contactName);
-    messagingController.displaySession(conversationId, isExistingSession);
+    messagingController.displaySession(conversationId);
   } catch (err) {
     console.warn('[Bridge] Failed to open session:', err);
   }

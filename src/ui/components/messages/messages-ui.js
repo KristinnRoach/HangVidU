@@ -1515,7 +1515,7 @@ export function initMessagesUI() {
       toggleMessagesUIVisible();
     }
 
-    session.markAsRead().catch((err) => {
+    currentSession.markAsRead().catch((err) => {
       console.warn('Failed to mark messages as read:', err);
     });
   }
@@ -1591,7 +1591,7 @@ export function initMessagesUI() {
 
   messagingController.on(
     'session:display',
-    ({}) => {
+    () => {
       displayCurrentSession();
     },
     { signal: ac.signal },
