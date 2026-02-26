@@ -100,8 +100,8 @@ test.describe('Service Worker Registration', () => {
     console.log('Service Worker Scope:', scope);
 
     // Scope should be root-scoped for both local and Firebase Hosting deployments
-    expect(scope).toMatch(/\/$/);
-    expect(scope).not.toContain('/HangVidU/');
+    const scopePath = new URL(scope).pathname;
+    expect(scopePath).toBe('/');
   });
 
   test('service worker is controlling the page', async ({ page }) => {
