@@ -75,7 +75,7 @@
   "dependencies": {
     "@sentry/browser": "^10.39.0",
     "dexie": "^4.3.0",
-    "firebase": "^12.9.0",
+    "firebase": "^12.10.0",
     "lucide": "^0.575.0",
     "workbox-window": "^7.4.0",
     "zod": "^4.3.6"
