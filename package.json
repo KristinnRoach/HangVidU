@@ -64,7 +64,7 @@
     "fkill-cli": "~9.0.0",
     "playwright": "^1.58.1",
     "vite": "^7.3.1",
-    "vite-plugin-mkcert": "^1.17.9",
+    "vite-plugin-mkcert": "^1.17.10",
     "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.0.18",
     "workbox-build": "^7.4.0",
