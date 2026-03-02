@@ -258,7 +258,17 @@ export class MessagingController extends EventEmitter {
       },
     );
 
-    session._unsubscribe = unsubscribe;
+    const unsubscribeUnread = this.transport.listenToUnreadCountForConversation(
+      conversationId,
+      (count, newlyReadMsgIds = []) => {
+        this.emit('unread:changed', { conversationId, count, newlyReadMsgIds });
+      },
+    );
+
+    session._unsubscribe = () => {
+      unsubscribe();
+      unsubscribeUnread();
+    };
 
     this._touchSession(session.conversationId);
     this.emit('session:opened', { session });
@@ -323,10 +333,11 @@ export class MessagingController extends EventEmitter {
     return this.transport.getUnreadCountForConversation(conversationId);
   }
 
-  listenToUnreadCount(conversationId, onCountChange) {
+  listenToUnreadCount(conversationId, onCountChange, onMessageRead) {
     return this.transport.listenToUnreadCountForConversation(
       conversationId,
       onCountChange,
+      onMessageRead,
     );
   }
 

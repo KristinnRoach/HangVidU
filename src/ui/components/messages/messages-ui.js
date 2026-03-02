@@ -963,7 +963,21 @@ export function initMessagesUI() {
     return callEventBubble;
   }
 
-  // --- Unified message entry point ---
+  function formatTimestamp(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const isToday =
+      date.getDate() === now.getDate() &&
+      date.getMonth() === now.getMonth() &&
+      date.getFullYear() === now.getFullYear();
+
+    const timeOptions = { hour: 'numeric', minute: '2-digit' };
+    const dateOptions = { month: 'short', day: 'numeric' };
+
+    return isToday
+      ? date.toLocaleTimeString(undefined, timeOptions)
+      : `${date.toLocaleDateString(undefined, dateOptions)} - ${date.toLocaleTimeString(undefined, timeOptions)}`;
+  }
 
   /**
    * Append a message of any type to the chat UI.
@@ -988,6 +1002,7 @@ export function initMessagesUI() {
       fileDownload,
       msgData,
       onCallBack,
+      timestamp,
     } = options;
 
     // Infer system type: no sender and no fileDownload → system notice
@@ -1001,6 +1016,8 @@ export function initMessagesUI() {
     // message-entry: container with type/sender classes
     const messageEntry = document.createElement('div');
     messageEntry.className = 'message-entry';
+    timestamp && messageEntry.setAttribute('data-timestamp', timestamp);
+
     if (effectiveType === 'system') messageEntry.classList.add('system');
     if (effectiveType === 'call_event')
       messageEntry.classList.add('call-event');
@@ -1046,6 +1063,11 @@ export function initMessagesUI() {
     // Build hierarchy: messageBubble → p, then messageEntry → (avatar + messageBubble)
     messageBubble.appendChild(p);
     messageEntry.appendChild(messageBubble);
+
+    if (isSentByMe === true && isRead) {
+      messageEntry.dataset.read = 'true';
+      messageBubble.dataset.read = 'true';
+    }
 
     // Reactions for all non-system types (attach to messageBubble)
     if (effectiveType !== 'system') {
@@ -1465,6 +1487,9 @@ export function initMessagesUI() {
     session.history.forEach((event) => processReceivedMessage(event));
   }
 
+  let lastTimestamp = 0;
+  const TIMESTAMP_THRESHOLD = 5 * 60 * 1000; // 5 minutes
+
   /**
    * Core logic to process and render a received message or reaction update.
    */
@@ -1478,6 +1503,17 @@ export function initMessagesUI() {
       return;
     }
 
+    const timestamp = msgData?.sentAt || Date.now();
+    const formattedTimestamp = formatTimestamp(msgData?.sentAt || Date.now());
+
+    if (timestamp - lastTimestamp > TIMESTAMP_THRESHOLD) {
+      const timestampEl = document.createElement('div');
+      timestampEl.className = 'message-timestamp';
+      timestampEl.textContent = formattedTimestamp;
+      messagesMessages.appendChild(timestampEl);
+    }
+    lastTimestamp = timestamp;
+
     const reactions = convertFirebaseReactions(msgData.reactions);
     const type = msgData.type;
     const isText = !type;
@@ -1489,6 +1525,7 @@ export function initMessagesUI() {
       reactions,
       isRead: msgData.read,
       ...(type && { msgData }),
+      timestamp,
     });
   }
 
@@ -1582,6 +1619,32 @@ export function initMessagesUI() {
     'session:display',
     () => {
       displayCurrentSession();
+    },
+    { signal: ac.signal },
+  );
+
+  messagingController.on(
+    'unread:changed',
+    ({ conversationId, unreadCount, messageIds = [] }) => {
+      if (conversationId === currentSession?.conversationId) {
+        if (unreadCount === 0) {
+          messageToggle.clearBadge();
+        } else {
+          messageToggle.setUnreadCount(unreadCount);
+        }
+        if (messageIds.length < 1) return;
+
+        // Mark messages as read in the UI if they are now read
+        messageIds.forEach((msgId) => {
+          const messageEntry = messageElements
+            .get(msgId)
+            ?.closest('.message-entry');
+          if (!messageEntry) return;
+          messageEntry.dataset.read = 'true';
+          const bubble = messageEntry.querySelector('.message-bubble');
+          if (bubble) bubble.dataset.read = 'true';
+        });
+      }
     },
     { signal: ac.signal },
   );

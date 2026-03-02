@@ -324,7 +324,11 @@ export class RTDBMessagingTransport extends MessagingTransport {
     );
   }
 
-  listenToUnreadCountForConversation(conversationId, onCountChange) {
+  listenToUnreadCountForConversation(
+    conversationId,
+    onCountChange,
+    onMessageRead = null,
+  ) {
     const myUserId = getLoggedInUserId();
     if (!myUserId) {
       console.warn(
@@ -357,6 +361,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
       if (!msg) return;
       if (msg.from !== myUserId) {
         await updateCount();
+        onMessageRead?.(msg.messageId);
       }
     };
 

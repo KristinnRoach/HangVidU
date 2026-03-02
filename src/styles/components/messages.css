@@ -169,12 +169,19 @@
   border: 1px solid var(--border-secondary);
 }
 
+#messages .message-timestamp {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin: 12px 0 4px;
+}
+
 #messages .message-entry {
   margin: 8px 0;
   /* Layout: flex container for avatar + message-bubble */
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-end;
+  gap: 6px;
   position: relative;
 }
 
@@ -214,7 +221,7 @@
   display: inline-block;
   position: relative;
 
-  margin: 4px 0;
+  margin: 8px 2px;
   padding: 4px 8px;
   line-height: 1.2;
   border-radius: 16px;
@@ -223,14 +230,26 @@
   user-select: none;
   -webkit-user-select: none;
   cursor: pointer;
-}
 
-#messages .message-bubble {
-  margin: 8px 0;
-}
+  &[data-read='true'] {
+    padding-right: 18px;
+  }
 
-#messages .message-bubble p {
-  margin: 0;
+  &[data-read='true']::after {
+    content: '✓';
+    color: #74d877ae;
+
+    position: absolute;
+    bottom: 4px;
+    right: 6px;
+    font-weight: bold;
+    font-size: 12px;
+  }
+
+  & p {
+    display: inline;
+    margin: 0;
+  }
 }
 
 #messages .message-bubble .message-text {
@@ -327,8 +346,9 @@
   color: var(--text-primary);
   box-sizing: border-box;
   font-family: inherit;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 1.4;
+  -webkit-text-size-adjust: 100%;
 
   /* Auto-grow textarea sizing */
   field-sizing: content; /* Native auto-grow (Chrome/Edge 123+) */
