@@ -68,6 +68,7 @@ export function initMessagesUI() {
   let repositionHandlersAttached = false;
   let currentSession = null; // Track the currently displayed session
   let fileTransferController = null; // FileTransferController instance set by setFileTransferController()
+  let inActiveCall = false; // Track if we're currently in an active call
   let isReceivingFile = false; // Track if currently receiving a file
   let sentFiles = new Map(); // Track sent files by name for watch-together requests
   let receivedFile = null; // Store the last received video file for watch-together
@@ -191,7 +192,21 @@ export function initMessagesUI() {
     setSendLabelText(t('message.sending'));
 
     try {
-      if (fileTransferController) {
+      if (inActiveCall) {
+        // In an active call — must use fileTransferController
+        if (!fileTransferController) {
+          // Data channel is still connecting, wait briefly for it
+          console.warn('[MessagesUI] FileTransferController not ready, waiting...');
+          for (let i = 0; i < 20; i++) {
+            await new Promise((r) => setTimeout(r, 50));
+            if (fileTransferController) break;
+          }
+        }
+
+        if (!fileTransferController) {
+          throw new Error('File transfer not ready. Please wait for call to fully connect.');
+        }
+
         // WebRTC DataChannel transfer (active call, large files OK)
         await fileTransferController.sendFile(file, (progress) => {
           setSendLabelText(`${Math.round(progress * 100)}%`);
@@ -215,9 +230,9 @@ export function initMessagesUI() {
     } catch (err) {
       console.error('[MessagesUI] File send failed:', err);
 
-      const sizeHint = !fileTransferController
-        ? '\n\n' + t('message.file_size_limited')
-        : '';
+      const sizeHint = inActiveCall
+        ? ''
+        : '\n\n' + t('message.file_size_limited');
 
       appendMessage('❌  ' + t('message.send_failed') + sizeHint);
     } finally {
@@ -1223,6 +1238,7 @@ export function initMessagesUI() {
    */
   function setFileTransferController(controller) {
     fileTransferController = controller;
+    inActiveCall = !!controller; // Track that we're in an active call when controller is set
 
     // Show/hide attachment button based on file transfer availability
     refreshAttachButton();
@@ -1360,6 +1376,7 @@ export function initMessagesUI() {
     currentSession = null;
 
     fileTransferController = null;
+    inActiveCall = false;
     sentFiles.clear();
     receivedFile = null;
     isReceivingFile = false;
