@@ -196,7 +196,9 @@ export function initMessagesUI() {
         // In an active call — must use fileTransferController
         if (!fileTransferController) {
           // Data channel is still connecting, wait briefly for it
-          console.warn('[MessagesUI] FileTransferController not ready, waiting...');
+          console.warn(
+            '[MessagesUI] FileTransferController not ready, waiting...',
+          );
           for (let i = 0; i < 20; i++) {
             await new Promise((r) => setTimeout(r, 50));
             if (fileTransferController) break;
@@ -204,7 +206,9 @@ export function initMessagesUI() {
         }
 
         if (!fileTransferController) {
-          throw new Error('File transfer not ready. Please wait for call to fully connect.');
+          throw new Error(
+            'File transfer not ready. Please wait for call to fully connect.',
+          );
         }
 
         // WebRTC DataChannel transfer (active call, large files OK)
@@ -549,6 +553,53 @@ export function initMessagesUI() {
     messagesBox.style.left = `${Math.round(left)}px`;
   }
 
+  // Helpers to animate open/close while keeping `.hidden` in sync
+  function openMessagesBox() {
+    // Make element available for layout first
+    if (messagesBox.classList.contains('hidden'))
+      messagesBox.classList.remove('hidden');
+
+    // Position before animating
+    if (!supportsCssAnchors) {
+      positionMessagesBox();
+      attachRepositionHandlers();
+    } else {
+      requestAnimationFrame(() => {
+        if (!isOnScreen(messagesBox)) {
+          positionMessagesBox();
+          attachRepositionHandlers();
+        }
+      });
+    }
+
+    // Trigger CSS transition
+    requestAnimationFrame(() => {
+      messagesBox.classList.add('messages-box--open');
+    });
+  }
+
+  function closeMessagesBox() {
+    // Start closing animation
+    messagesBox.classList.remove('messages-box--open');
+
+    // After transition completes, add hidden to keep legacy utilities working
+    const onDone = (e) => {
+      if (e && e.target !== messagesBox) return;
+      messagesBox.classList.add('hidden');
+      messagesBox.removeEventListener('transitionend', onDone);
+    };
+
+    // Listen for transitionend, but fallback to timeout in case it doesn't fire
+    messagesBox.addEventListener('transitionend', onDone);
+    // Fallback: ensure hidden after 350ms
+    setTimeout(() => {
+      if (!messagesBox.classList.contains('hidden')) {
+        messagesBox.classList.add('hidden');
+        messagesBox.removeEventListener('transitionend', onDone);
+      }
+    }, 350);
+  }
+
   function attachRepositionHandlers() {
     if (repositionHandlersAttached) return;
     repositionHandlersAttached = true;
@@ -607,33 +658,39 @@ export function initMessagesUI() {
       console.warn('[MessagesUI] No active session to display');
       return;
     }
-
-    messagesBox.classList.toggle('hidden');
     if (isMessagesUIOpen()) {
-      // If we just opened:
+      // close
+      // Only blur if actually focused (avoids mobile keyboard issues)
+      if (document.activeElement === messagesInput) messagesInput.blur();
+      detachRepositionHandlers();
+
+      // Clear inline offsets
+      messagesBox.style.top = '';
+      messagesBox.style.left = '';
+      messagesBox.style.bottom = '';
+      messagesBox.style.right = '';
+
+      // Clean up outside click handler
+      if (removeMessagesBoxClickOutside) {
+        removeMessagesBoxClickOutside();
+        removeMessagesBoxClickOutside = null;
+      }
+
+      closeMessagesBox();
+    } else {
+      // open
       // Only auto-focus on desktop; let mobile users tap to focus naturally
-      if (!isMobileDevice()) {
-        messagesInput.focus();
-      }
-      // Fallback positioning if needed
-      if (!supportsCssAnchors) {
-        positionMessagesBox();
-        attachRepositionHandlers();
-      } else {
-        requestAnimationFrame(() => {
-          if (!isOnScreen(messagesBox)) {
-            positionMessagesBox();
-            attachRepositionHandlers();
-          }
-        });
-      }
+      if (!isMobileDevice()) messagesInput.focus();
+
+      openMessagesBox();
       scrollMessagesToEnd();
 
       // Set up outside click handler
       removeMessagesBoxClickOutside = onClickOutside(
         messagesBox,
         () => {
-          hideElement(messagesBox);
+          // animate close when clicking outside
+          closeMessagesBox();
           detachRepositionHandlers();
 
           // Clear inline offsets
@@ -655,24 +712,6 @@ export function initMessagesUI() {
           ignoreInputBlur: isMobileDevice(), // Prevent accidental closes when dismissing keyboard on mobile
         },
       );
-    } else {
-      // If we just closed:
-      // Only blur if actually focused (avoids mobile keyboard issues)
-      if (document.activeElement === messagesInput) {
-        messagesInput.blur();
-      }
-      detachRepositionHandlers();
-      // Clear inline offsets
-      messagesBox.style.top = '';
-      messagesBox.style.left = '';
-      messagesBox.style.bottom = '';
-      messagesBox.style.right = '';
-
-      // Clean up outside click handler
-      if (removeMessagesBoxClickOutside) {
-        removeMessagesBoxClickOutside();
-        removeMessagesBoxClickOutside = null;
-      }
     }
   }
 
