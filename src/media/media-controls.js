@@ -2,11 +2,7 @@
 // Handles all media control button functionality (mute, video, camera, fullscreen)
 import { initIcons } from '../ui/icons.js';
 
-import { switchCamera, hasFrontAndBackCameras } from './media-devices.js';
-import { getFacingMode, setFacingMode } from './state.js';
 import {
-  showElement,
-  hideElement,
   isElementInPictureInPicture,
   exitPiP,
   requestPiP,
@@ -45,10 +41,9 @@ function updateMuteMicIcon(muted, muteSelfBtn) {
  * @param {MediaStream} params.getLocalStream - Getter for Local media stream
  * @param {HTMLVideoElement} params.getLocalVideo - Getter for Local video element
  * @param {HTMLVideoElement} params.getRemoteVideo - Getter for Remote video element
- * @param {RTCPeerConnection} params.getPeerConnection - Getter for Peer connection (optional, for camera switch)
+ * @param {RTCPeerConnection} params.getPeerConnection - Getter for Peer connection (optional)
  * @param {HTMLElement} params.micBtn - Local microphone toggle button
  * @param {HTMLElement} params.cameraBtn - Local camera toggle button
- * @param {HTMLElement} params.switchCameraBtn - Switch camera button
  * @param {HTMLElement} params.mutePartnerBtn - Mute partner button
  * @param {HTMLElement} params.fullscreenPartnerBtn - Fullscreen partner button
  * @param {HTMLElement} params.remotePipBtn - Remote video picture-in-picture button
@@ -58,10 +53,8 @@ export function initializeMediaControls({
   getLocalVideo,
   getRemoteVideo,
   getPeerConnection = () => null,
-  setLocalStream = null,
   micBtn,
   cameraBtn,
-  switchCameraBtn,
   mutePartnerBtn,
   fullscreenPartnerBtn,
   remotePipBtn,
@@ -97,37 +90,6 @@ export function initializeMediaControls({
         }
       }
     };
-  }
-
-  // ===== SWITCH CAMERA (MOBILE) =====
-  if (switchCameraBtn) {
-    switchCameraBtn.onclick = async () => {
-      const result = await switchCamera({
-        localStream: getLocalStream(),
-        localVideo: getLocalVideo(),
-        currentFacingMode: getFacingMode(),
-        peerConnection: getPeerConnection() || null,
-      });
-
-      if (result) {
-        setFacingMode(result.facingMode);
-        console.log('Switched camera to facingMode:', result.facingMode);
-        if (result.newStream && typeof setLocalStream === 'function') {
-          setLocalStream(result.newStream);
-        }
-      } else {
-        console.error('Camera switch failed.');
-      }
-    };
-
-    (async () => {
-      const hasMultipleCameras = await hasFrontAndBackCameras();
-      if (hasMultipleCameras) {
-        showElement(switchCameraBtn);
-      } else {
-        hideElement(switchCameraBtn);
-      }
-    })();
   }
 
   // ===== MUTE/UNMUTE PARTNER =====
