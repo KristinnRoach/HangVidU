@@ -210,7 +210,7 @@ export class MessagingController extends EventEmitter {
     this.sessions.set(conversationId, session);
 
     // Start listening to messages via transport
-    const unsubscribe = this.transport.listenToConversation(
+    const unsubscribe = this.transport.listen(
       conversationId,
       (text, msgData, isSentByMe) => {
         const messageEvent = { conversationId, text, msgData, isSentByMe };

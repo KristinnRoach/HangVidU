@@ -171,20 +171,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
     });
   }
 
-  /**
-   * @deprecated Use listenToConversation
-   */
-  listen(contactId, onMessage) {
-    console.warn(
-      '[RTDBTransport] listen(contactId) is deprecated. Use listenToConversation(conversationId) instead.',
-    );
-    const myUserId = getLoggedInUserId();
-    if (!myUserId) return () => {};
-    const conversationId = this.resolveConversationId([myUserId, contactId]);
-    return this.listenToConversation(conversationId, onMessage);
-  }
-
-  listenToConversation(conversationId, onMessage) {
+  listen(conversationId, onMessage) {
     const myUserId = getLoggedInUserId();
     if (!myUserId) {
       console.warn('[RTDBTransport] Cannot listen to messages: not logged in');
