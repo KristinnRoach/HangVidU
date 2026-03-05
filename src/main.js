@@ -42,7 +42,6 @@ import {
   remotePipBtn,
   micBtn,
   cameraBtn,
-  switchCameraBtn,
   exitWatchModeBtn,
   chatControls,
   localBoxEl,
@@ -350,7 +349,6 @@ async function initLocalStreamAndMedia() {
 
     micBtn,
     cameraBtn,
-    switchCameraBtn,
     mutePartnerBtn,
     fullscreenPartnerBtn,
     remotePipBtn,

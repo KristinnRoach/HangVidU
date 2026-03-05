@@ -11,7 +11,6 @@ import {
   micBtn,
   mutePartnerBtn,
   cameraBtn,
-  switchCameraBtn,
   exitWatchModeBtn,
   localBoxEl,
   remoteBoxEl,
@@ -79,7 +78,6 @@ export function enterWatchMode() {
 
   // Minimize further
   hideElement(cameraBtn);
-  hideElement(switchCameraBtn);
 
   // Show exit watch mode button
   showElement(exitWatchModeBtn);
@@ -109,7 +107,6 @@ export function exitWatchMode() {
   showElement(micBtn);
   showElement(mutePartnerBtn);
   showElement(cameraBtn);
-  showElement(switchCameraBtn);
 
   chatControls.classList.remove('watch-mode');
   chatControls.classList.add('bottom');
