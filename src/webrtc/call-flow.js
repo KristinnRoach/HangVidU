@@ -82,7 +82,7 @@ export async function createCall({
 
   // 3a. Add local media tracks
   const trackHealth = addLocalTracks(pc, localStream);
-  if (!trackHealth.allHealthy) {
+  if (trackHealth.unhealthyKinds.includes('audio')) {
     showErrorToast(t('media.audio_disconnected'));
   }
 
@@ -229,7 +229,7 @@ export async function answerCall({
 
   // 3a. Add local media tracks
   const trackHealth = addLocalTracks(pc, localStream);
-  if (!trackHealth.allHealthy) {
+  if (trackHealth.unhealthyKinds.includes('audio')) {
     showErrorToast(t('media.audio_disconnected'));
   }
 
