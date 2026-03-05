@@ -3,7 +3,7 @@
 import { initIcons } from '../ui/icons.js';
 
 import {
-  switchVideoStreamSource,
+  switchVideoStreamFacingMode,
   hasFrontAndBackCameras,
 } from './media-devices.js';
 import { getFacingMode, setFacingMode } from './state.js';
@@ -108,7 +108,7 @@ export function initializeMediaControls({
   if (switchCameraBtn) {
     switchCameraBtn.onclick = async () => {
       const localStream = getLocalStream();
-      const result = await switchVideoStreamSource(
+      const result = await switchVideoStreamFacingMode(
         getPeerConnection(),
         localStream,
         getFacingMode(),
