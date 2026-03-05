@@ -1,5 +1,8 @@
 // src/webrtc/webrtc-utils.js
 
+import { showErrorToast } from '../ui/utils/toast.js';
+import { t } from '../i18n/index.js';
+
 /**
  * Utilities for WebRTC connection setup and SDP handling.
  * These are low-level operations extracted to keep call flow logic clean.
@@ -72,6 +75,10 @@ export function isValidSignalingState(pc, expectedType) {
  */
 export function addLocalTracks(pc, localStream) {
   localStream.getTracks().forEach((track) => {
+    if (track.kind === 'audio' && track.readyState !== 'live') {
+      console.warn('[WebRTC] Audio track is not live at addLocalTracks:', track.readyState);
+      showErrorToast(t('media.audio_disconnected'));
+    }
     pc.addTrack(track, localStream);
   });
 }
