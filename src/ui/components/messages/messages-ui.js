@@ -1656,8 +1656,7 @@ export function initMessagesUI() {
       .catch(() => {});
 
     !isCurrentSession && setCurrentMsgUISession(session);
-
-    appendCachedHistory(session); // Render existing history if available
+    !isCurrentSession && appendCachedHistory(session); // Render existing history if available
   }
 
   // --- Domain Event Listeners ---
