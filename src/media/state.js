@@ -95,6 +95,9 @@ export function cleanupLocalVideoOnlyStream() {
 // ============================================================================
 
 export function setAudioEndedController(controller) {
+  if (audioEndedAbortController && audioEndedAbortController !== controller) {
+    audioEndedAbortController.abort();
+  }
   audioEndedAbortController = controller;
 }
 
