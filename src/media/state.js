@@ -4,6 +4,7 @@ let remoteStream = null;
 let localStream = null;
 let localVideoOnlyStream = null;
 let currentFacingMode = 'user';
+let audioEndedAbortController = null;
 
 export function getFacingMode() {
   return currentFacingMode;
@@ -63,6 +64,7 @@ export function setLocalStream(newStream) {
 
 export function cleanupLocalStream() {
   if (localStream) {
+    abortAudioEndedController();
     localStream.getTracks().forEach((track) => track.stop());
     localStream = null;
   }
@@ -85,6 +87,24 @@ export function cleanupLocalVideoOnlyStream() {
   // The tracks belong to localStream. We just clear the reference.
   if (localVideoOnlyStream) {
     localVideoOnlyStream = null;
+  }
+}
+
+// ============================================================================
+// AUDIO ENDED MONITORING
+// ============================================================================
+
+export function setAudioEndedController(controller) {
+  if (audioEndedAbortController && audioEndedAbortController !== controller) {
+    audioEndedAbortController.abort();
+  }
+  audioEndedAbortController = controller;
+}
+
+export function abortAudioEndedController() {
+  if (audioEndedAbortController) {
+    audioEndedAbortController.abort();
+    audioEndedAbortController = null;
   }
 }
 

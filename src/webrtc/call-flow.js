@@ -11,6 +11,8 @@
 
 import { getUserId } from '../auth/auth-state.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
+import { showErrorToast } from '../ui/utils/toast.js';
+import { t } from '../i18n/index.js';
 
 import { drainIceCandidateQueue, setupIceCandidates } from '../webrtc/ice.js';
 import { setupConnectionStateHandlers } from '../webrtc/webrtc.js';
@@ -79,7 +81,10 @@ export async function createCall({
   // ─────────────────────────────────────────────────────────────────────────
 
   // 3a. Add local media tracks
-  addLocalTracks(pc, localStream);
+  const trackHealth = addLocalTracks(pc, localStream);
+  if (trackHealth.unhealthyKinds.includes('audio')) {
+    showErrorToast(t('media.audio_disconnected'));
+  }
 
   // 3b. Setup remote stream handler
   const remoteStreamSuccess = setupRemoteStream(
@@ -223,7 +228,10 @@ export async function answerCall({
   // ─────────────────────────────────────────────────────────────────────────
 
   // 3a. Add local media tracks
-  addLocalTracks(pc, localStream);
+  const trackHealth = addLocalTracks(pc, localStream);
+  if (trackHealth.unhealthyKinds.includes('audio')) {
+    showErrorToast(t('media.audio_disconnected'));
+  }
 
   // 3b. Setup remote stream handler
   const remoteStreamSuccess = setupRemoteStream(

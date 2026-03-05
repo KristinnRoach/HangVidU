@@ -199,6 +199,7 @@
   "media.youtube.search": "Search YouTube",
   "media.youtube.placeholder": "Search YouTube videos...",
   "media.exit_watch": "Exit watch mode",
+  "media.audio_disconnected": "Microphone disconnected. Try reloading the page.",
 
   "referral.sign_in_banner": "Tap here to sign in and connect with your inviter",
   "referral.sign_in_named": "{name} invited you — tap here to sign in and connect",

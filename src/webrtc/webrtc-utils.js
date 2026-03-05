@@ -67,13 +67,31 @@ export function isValidSignalingState(pc, expectedType) {
 
 /**
  * Add local media tracks to peer connection.
+ * Skips adding tracks that are already ended to prevent silent/black senders.
+ *
  * @param {RTCPeerConnection} pc - The peer connection
  * @param {MediaStream} localStream - The local media stream
+ * @returns {Object} Track health status
+ * @returns {boolean} .allHealthy - True if all tracks are live and added, false if any were skipped
+ * @returns {string[]} .unhealthyKinds - Array of track kinds that were dead/skipped (e.g. ['audio'])
  */
 export function addLocalTracks(pc, localStream) {
+  const unhealthyKinds = [];
+
   localStream.getTracks().forEach((track) => {
+    if (track.readyState !== 'live') {
+      console.warn(`[WebRTC] ${track.kind} track is not live at addLocalTracks:`, track.readyState);
+      unhealthyKinds.push(track.kind);
+      // Do not add a dead track to avoid permanently silent/black senders.
+      return;
+    }
     pc.addTrack(track, localStream);
   });
+
+  return {
+    allHealthy: unhealthyKinds.length === 0,
+    unhealthyKinds,
+  };
 }
 
 /**

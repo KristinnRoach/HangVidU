@@ -8,6 +8,8 @@ import {
   setRemoteStream,
   getRemoteStream,
   setLocalVideoOnlyStream,
+  setAudioEndedController,
+  abortAudioEndedController,
 } from './state.js';
 import {
   getAudioConstraints,
@@ -15,8 +17,21 @@ import {
   getVideoConstraints,
 } from './constraints.js';
 import { devDebug, isDev } from '../utils/dev/dev-utils.js';
+import { showErrorToast } from '../ui/utils/toast.js';
+import { t } from '../i18n/index.js';
 
 import { initIcons } from '../ui/icons.js';
+
+export function attachAudioMonitor(stream) {
+  abortAudioEndedController(); // Cancel any previous listener first
+  const audioTrack = stream?.getAudioTracks()[0];
+  if (!audioTrack) return;
+  const controller = new AbortController();
+  setAudioEndedController(controller);
+  audioTrack.addEventListener('ended', () => {
+    showErrorToast(t('media.audio_disconnected'));
+  }, { signal: controller.signal });
+}
 
 export const createLocalStream = async () => {
   if (hasLocalStream()) {
@@ -34,6 +49,7 @@ export const createLocalStream = async () => {
     });
 
     setLocalStream(newStream);
+    attachAudioMonitor(newStream);
 
     return newStream;
   } catch (error) {
@@ -49,6 +65,7 @@ export const createLocalStream = async () => {
         audio: fallbackAudioConstraints,
       });
       setLocalStream(basicStream);
+      attachAudioMonitor(basicStream);
       return basicStream;
     }
     throw error;
