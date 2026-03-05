@@ -2,6 +2,8 @@
 // Handles all media control button functionality (mute, video, camera, fullscreen)
 import { initIcons } from '../ui/icons.js';
 
+import { switchVideoStreamSource, hasFrontAndBackCameras } from './media-devices.js';
+import { getFacingMode, setFacingMode } from './state.js';
 import {
   isElementInPictureInPicture,
   exitPiP,
@@ -44,6 +46,7 @@ function updateMuteMicIcon(muted, muteSelfBtn) {
  * @param {RTCPeerConnection} params.getPeerConnection - Getter for Peer connection (optional)
  * @param {HTMLElement} params.micBtn - Local microphone toggle button
  * @param {HTMLElement} params.cameraBtn - Local camera toggle button
+ * @param {HTMLElement} params.switchCameraBtn - Switch camera button (front/back)
  * @param {HTMLElement} params.mutePartnerBtn - Mute partner button
  * @param {HTMLElement} params.fullscreenPartnerBtn - Fullscreen partner button
  * @param {HTMLElement} params.remotePipBtn - Remote video picture-in-picture button
@@ -53,8 +56,10 @@ export function initializeMediaControls({
   getLocalVideo,
   getRemoteVideo,
   getPeerConnection = () => null,
+  setLocalStream = null,
   micBtn,
   cameraBtn,
+  switchCameraBtn,
   mutePartnerBtn,
   fullscreenPartnerBtn,
   remotePipBtn,
@@ -90,6 +95,41 @@ export function initializeMediaControls({
         }
       }
     };
+  }
+
+  // ===== SWITCH VIDEO STREAM SOURCE (FRONT/BACK CAMERA) =====
+  if (switchCameraBtn) {
+    switchCameraBtn.onclick = async () => {
+      const result = await switchVideoStreamSource(
+        getPeerConnection(),
+        getLocalStream(),
+        getFacingMode(),
+      );
+
+      if (result) {
+        setFacingMode(result.facingMode);
+        // Update local video with new video track
+        const localVideo = getLocalVideo();
+        if (localVideo) {
+          localVideo.srcObject = new MediaStream([result.newVideoTrack]);
+        }
+        if (result.newStream && typeof setLocalStream === 'function') {
+          setLocalStream(result.newStream);
+        }
+      } else {
+        console.error('Failed to switch video stream source');
+      }
+    };
+
+    // Show button only if device has multiple cameras
+    (async () => {
+      const hasMultipleCameras = await hasFrontAndBackCameras();
+      if (hasMultipleCameras) {
+        switchCameraBtn.style.display = '';
+      } else {
+        switchCameraBtn.style.display = 'none';
+      }
+    })();
   }
 
   // ===== MUTE/UNMUTE PARTNER =====

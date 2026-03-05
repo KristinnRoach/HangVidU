@@ -36,3 +36,39 @@ export async function hasFrontAndBackCameras() {
   return hasFront && hasBack;
 }
 
+export async function switchVideoStreamSource(pc, localStream, currentFacingMode) {
+  const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+
+  try {
+    // Get new video stream with new facing mode
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: getVideoConstraints(newFacingMode),
+    });
+
+    const newVideoTrack = stream.getVideoTracks()[0];
+    if (!newVideoTrack) {
+      console.error('No video track in new stream');
+      return null;
+    }
+
+    // Preserve enabled state from old track
+    const oldVideoTrack = localStream?.getVideoTracks()[0];
+    if (oldVideoTrack) {
+      newVideoTrack.enabled = oldVideoTrack.enabled;
+    }
+
+    // Replace video track in peer connection
+    if (pc) {
+      const videoSender = pc.getSenders().find((s) => s.track?.kind === 'video');
+      if (videoSender) {
+        await videoSender.replaceTrack(newVideoTrack);
+      }
+    }
+
+    return { newVideoTrack, facingMode: newFacingMode };
+  } catch (error) {
+    console.error('Failed to switch video stream source:', error);
+    return null;
+  }
+}
+
