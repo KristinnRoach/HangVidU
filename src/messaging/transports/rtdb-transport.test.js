@@ -21,7 +21,7 @@ describe('RTDBMessagingTransport', () => {
   });
 
   it('should have all required methods', () => {
-    expect(typeof transport.send).toBe('function');
+    expect(typeof transport.sendToConversation).toBe('function');
     expect(typeof transport.listen).toBe('function');
     expect(typeof transport.getUnreadCountForConversation).toBe('function');
     expect(typeof transport.markAsRead).toBe('function');
@@ -70,14 +70,6 @@ describe('RTDBMessagingTransport', () => {
   describe('markAsRead', () => {
     it('should not throw when not logged in', async () => {
       await expect(transport.markAsRead('user123')).resolves.not.toThrow();
-    });
-  });
-
-  describe('send', () => {
-    it('should throw when not logged in', async () => {
-      await expect(transport.send('user123', 'Hello')).rejects.toThrow(
-        'not logged in',
-      );
     });
   });
 });

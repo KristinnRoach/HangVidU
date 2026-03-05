@@ -92,16 +92,6 @@ export class RTDBMessagingTransport extends MessagingTransport {
     return this.resolveConversationId([userId1, userId2]);
   }
 
-  /**
-   * @deprecated Use sendToConversation
-   */
-  async send(contactId, text) {
-    const fromUserId = getLoggedInUserId();
-    if (!fromUserId) throw new Error('Cannot send message: not logged in');
-    const conversationId = this.resolveConversationId([fromUserId, contactId]);
-    return this.sendToConversation(conversationId, text);
-  }
-
   async sendToConversation(conversationId, text) {
     const fromUserId = getLoggedInUserId();
     if (!fromUserId) {
