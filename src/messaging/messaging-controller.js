@@ -236,8 +236,8 @@ export class MessagingController extends EventEmitter {
         if (!isSentByMe) {
           this.transport
             .getUnreadCountForConversation(conversationId)
-            .then((count) => {
-              this.emit('unread:changed', { conversationId, count });
+            .then((unreadCount) => {
+              this.emit('unread:changed', { conversationId, unreadCount });
             })
             .catch((err) =>
               console.warn(
