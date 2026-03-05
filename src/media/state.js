@@ -91,7 +91,7 @@ export function cleanupLocalVideoOnlyStream() {
 }
 
 // ============================================================================
-// CLEANUP ALL STREAMS
+// AUDIO ENDED MONITORING
 // ============================================================================
 
 export function setAudioEndedController(controller) {
