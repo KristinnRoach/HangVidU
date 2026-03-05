@@ -1687,17 +1687,17 @@ export function initMessagesUI() {
 
   messagingController.on(
     'unread:changed',
-    ({ conversationId, unreadCount, messageIds = [] }) => {
+    ({ conversationId, unreadCount, newlyReadMsgIds = [] }) => {
       if (conversationId === currentSession?.conversationId) {
         if (unreadCount === 0) {
           messageToggle.clearBadge();
         } else {
           messageToggle.setUnreadCount(unreadCount);
         }
-        if (messageIds.length < 1) return;
+        if (newlyReadMsgIds.length < 1) return;
 
         // Mark messages as read in the UI if they are now read
-        messageIds.forEach((msgId) => {
+        newlyReadMsgIds.forEach((msgId) => {
           const messageEntry = messageElements
             .get(msgId)
             ?.closest('.message-entry');

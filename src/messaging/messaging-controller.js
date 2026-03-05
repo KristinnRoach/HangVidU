@@ -260,9 +260,20 @@ export class MessagingController extends EventEmitter {
 
     const unsubscribeUnread = this.transport.listenToUnreadCountForConversation(
       conversationId,
-      (count, newlyReadMsgIds = []) => {
-        this.emit('unread:changed', { conversationId, count, newlyReadMsgIds });
+      (unreadCount, newlyReadMsgIds = []) => {
+        this.emit('unread:changed', {
+          conversationId,
+          unreadCount,
+          newlyReadMsgIds,
+        });
       },
+      // (unreadCount, newlyReadMsgIds = []) => {
+      //   this.emit('unread:changed', {
+      //     conversationId,
+      //     unreadCount,
+      //     newlyReadMsgIds,
+      //   });
+      // },
     );
 
     session._unsubscribe = () => {

@@ -339,10 +339,14 @@ export class RTDBMessagingTransport extends MessagingTransport {
 
     const messagesRef = ref(rtdb, `conversations/${conversationId}/messages`);
 
-    const updateCount = async () => {
+    // Track per-message read state to detect true unread->read transitions.
+    const perMessageReadState = new Map(); // msgId -> boolean
+
+    const updateCount = async (newlyReadMsgIds = []) => {
       try {
-        const count = await this.getUnreadCountForConversation(conversationId);
-        onCountChange(count);
+        const unreadCount =
+          await this.getUnreadCountForConversation(conversationId);
+        onCountChange(unreadCount, newlyReadMsgIds);
       } catch (err) {
         console.warn('[RTDBTransport] Failed to get unread count:', err);
       }
@@ -351,6 +355,9 @@ export class RTDBMessagingTransport extends MessagingTransport {
     const onAddedCallback = async (snapshot) => {
       const msg = snapshot.val();
       if (!msg) return;
+      const msgId = snapshot.key;
+      // Seed read state (child_added fires for existing children initially)
+      perMessageReadState.set(msgId, !!msg.read);
       if (msg.from !== myUserId && !msg.read) {
         await updateCount();
       }
@@ -359,9 +366,26 @@ export class RTDBMessagingTransport extends MessagingTransport {
     const onChangedCallback = async (snapshot) => {
       const msg = snapshot.val();
       if (!msg) return;
-      if (msg.from !== myUserId) {
-        await updateCount();
-        onMessageRead?.(msg.messageId);
+      const msgId = snapshot.key;
+
+      const prevRead = perMessageReadState.get(msgId) || false;
+      const currRead = !!msg.read;
+      perMessageReadState.set(msgId, currRead);
+
+      // Only act on transitions to read
+      if (!prevRead && currRead) {
+        // If the message was sent by *me*, the recipient has now read it —
+        // notify callers so UI (sender) can show read indicators.
+        if (msg.from === myUserId) {
+          await updateCount([msgId]);
+          onMessageRead?.(msgId);
+          return;
+        }
+
+        // If the message was sent by the other user, our unread count changed.
+        if (msg.from !== myUserId) {
+          await updateCount([msgId]);
+        }
       }
     };
 
