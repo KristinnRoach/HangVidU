@@ -1239,6 +1239,9 @@ export function initMessagesUI() {
     messageElements.clear();
     messagesMessages.innerHTML = '';
     messagesMessages.scrollTop = 0;
+    // Reset timestamp separator state so new session histories insert
+    // separators correctly after switching/clearing sessions.
+    lastTimestamp = 0;
   }
 
   /**
@@ -1251,6 +1254,9 @@ export function initMessagesUI() {
       clearMessages();
     }
     currentSession = session;
+    // Reset timestamp tracking when switching sessions so appended
+    // cached history shows correct timestamp separators.
+    lastTimestamp = 0;
 
     if (messageTopBar) {
       messageTopBar.setContact({
