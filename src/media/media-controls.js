@@ -2,13 +2,17 @@
 // Handles all media control button functionality (mute, video, camera, fullscreen)
 import { initIcons } from '../ui/icons.js';
 
-import { switchVideoStreamSource, hasFrontAndBackCameras } from './media-devices.js';
+import {
+  switchVideoStreamSource,
+  hasFrontAndBackCameras,
+} from './media-devices.js';
 import { getFacingMode, setFacingMode } from './state.js';
 import {
   isElementInPictureInPicture,
   exitPiP,
   requestPiP,
   isPiPSupported,
+  showElement,
 } from '../ui/utils/ui-utils.js';
 import { devDebug, isDev, isProd } from '../utils/dev/dev-utils.js';
 
@@ -90,7 +94,10 @@ export function initializeMediaControls({
         videoTrack.enabled = !videoTrack.enabled;
         const icon = cameraBtn.querySelector('i, svg');
         if (icon) {
-          icon.setAttribute('data-lucide', videoTrack.enabled ? 'video' : 'video-off');
+          icon.setAttribute(
+            'data-lucide',
+            videoTrack.enabled ? 'video' : 'video-off',
+          );
           initIcons(cameraBtn);
         }
       }
@@ -100,21 +107,28 @@ export function initializeMediaControls({
   // ===== SWITCH VIDEO STREAM SOURCE (FRONT/BACK CAMERA) =====
   if (switchCameraBtn) {
     switchCameraBtn.onclick = async () => {
+      const localStream = getLocalStream();
       const result = await switchVideoStreamSource(
         getPeerConnection(),
-        getLocalStream(),
+        localStream,
         getFacingMode(),
       );
 
       if (result) {
+        // Explicitly swap video tracks in localStream
+        const oldVideoTrack = localStream.getVideoTracks()[0];
+        if (oldVideoTrack) {
+          localStream.removeTrack(oldVideoTrack);
+        }
+        localStream.addTrack(result.newVideoTrack);
+
+        // Update facing mode state
         setFacingMode(result.facingMode);
-        // Update local video with new video track
+
+        // Update UI (local video element shows video track)
         const localVideo = getLocalVideo();
         if (localVideo) {
           localVideo.srcObject = new MediaStream([result.newVideoTrack]);
-        }
-        if (result.newStream && typeof setLocalStream === 'function') {
-          setLocalStream(result.newStream);
         }
       } else {
         console.error('Failed to switch video stream source');
@@ -143,7 +157,10 @@ export function initializeMediaControls({
       // Update icon inline
       const icon = mutePartnerBtn.querySelector('i, svg');
       if (icon) {
-        icon.setAttribute('data-lucide', remoteVideo.muted ? 'volume-x' : 'volume-2');
+        icon.setAttribute(
+          'data-lucide',
+          remoteVideo.muted ? 'volume-x' : 'volume-2',
+        );
         initIcons(mutePartnerBtn);
       }
     };

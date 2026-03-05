@@ -51,6 +51,9 @@ export async function switchVideoStreamSource(pc, localStream, currentFacingMode
       return null;
     }
 
+    // Stop unused audio tracks (we only need video, keep original audio)
+    stream.getAudioTracks().forEach((track) => track.stop());
+
     // Preserve enabled state from old track
     const oldVideoTrack = localStream?.getVideoTracks()[0];
     if (oldVideoTrack) {
