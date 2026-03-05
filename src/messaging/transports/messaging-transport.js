@@ -31,9 +31,9 @@ export class MessagingTransport {
    * @returns {Function} Unsubscribe function to stop listening
    * @abstract
    */
-  listenToConversation(conversationId, onMessage) {
+  listen(conversationId, onMessage) {
     throw new Error(
-      'MessagingTransport.listenToConversation() must be implemented by subclass',
+      'MessagingTransport.listen() must be implemented by subclass',
     );
   }
 

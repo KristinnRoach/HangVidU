@@ -62,13 +62,9 @@ export async function renderContactsList(lobbyElement) {
     });
   }
 
+  // `getContactsSorted()` returns an array of contact objects (sorted by lastInteractionAt).
   const contactsResult = await contactsController.getContactsSorted();
 
-  // `getContactsSorted()` returns an array of contact objects (sorted by
-  // lastInteractionAt). Older code assumed an object keyed by contactId,
-  // which caused `Object.keys()` to return numeric indices ("0", "1") —
-  // resulting in contact IDs like "0" being used downstream. Normalize
-  // into an array of entries { id, ...contact } and a parallel id list.
   let entries = [];
   if (Array.isArray(contactsResult)) {
     entries = contactsResult.map((c) => ({ id: c.contactId || '', ...c }));
@@ -339,4 +335,26 @@ export function cleanupContacts() {
   }
 
   lastRenderedLobby = null;
+}
+
+/**
+ * Auto-initialize messaging session with first saved contact on app bootstrap.
+ * Runs once at startup if no session is already active and user has saved contacts.
+ */
+export async function autoInitMsgSessionIfNeeded() {
+  // Don't override existing active session
+  if (messagingController.sessions.size > 0) return;
+
+  try {
+    const contacts = await contactsController.getContactsSorted();
+    if (!Array.isArray(contacts) || contacts.length === 0) return;
+
+    const firstContact = contacts[0];
+    if (!firstContact?.contactId) return;
+
+    // Open the session for the first contact
+    messagingController.openSession(firstContact.contactId, firstContact.contactName);
+  } catch (error) {
+    console.warn('[Contacts] Failed to auto-init messaging session:', error);
+  }
 }

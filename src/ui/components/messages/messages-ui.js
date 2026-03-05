@@ -68,6 +68,7 @@ export function initMessagesUI() {
   let repositionHandlersAttached = false;
   let currentSession = null; // Track the currently displayed session
   let fileTransferController = null; // FileTransferController instance set by setFileTransferController()
+  let inActiveCall = false; // Track if we're currently in an active call
   let isReceivingFile = false; // Track if currently receiving a file
   let sentFiles = new Map(); // Track sent files by name for watch-together requests
   let receivedFile = null; // Store the last received video file for watch-together
@@ -111,20 +112,6 @@ export function initMessagesUI() {
 
   // Use the component element directly as the toggle button/container
   const messagesToggleEl = messageToggle.element;
-
-  // ! === [TEMP FIX] ===
-  // TODO: Remove this temp fix after ensuring a session is always available or better solution found
-  // Initialize toggle disabled state when no session is active.
-  try {
-    const _btn =
-      messagesToggleEl &&
-      messagesToggleEl.querySelector &&
-      messagesToggleEl.querySelector('button');
-    if (_btn) _btn.disabled = !currentSession;
-  } catch (e) {
-    /* ignore */
-  }
-  // ! === [TEMP FIX] End ===
 
   // Create the messages box
   const {
@@ -191,9 +178,6 @@ export function initMessagesUI() {
   };
   // Note: label is empty by default (icon-only). aria-label kept in sync by setSendLabelText.
 
-  // Hide attachment button by default (shown when file transfer is available)
-  // (Initial call is not needed, setSession and setFileTransferController will call it)
-
   // Attach button opens file picker
   attachBtn.addEventListener('click', () => {
     fileInput.click();
@@ -208,7 +192,25 @@ export function initMessagesUI() {
     setSendLabelText(t('message.sending'));
 
     try {
-      if (fileTransferController) {
+      if (inActiveCall) {
+        // In an active call — must use fileTransferController
+        if (!fileTransferController) {
+          // Data channel is still connecting, wait briefly for it
+          console.warn(
+            '[MessagesUI] FileTransferController not ready, waiting...',
+          );
+          for (let i = 0; i < 20; i++) {
+            await new Promise((r) => setTimeout(r, 50));
+            if (fileTransferController) break;
+          }
+        }
+
+        if (!fileTransferController) {
+          throw new Error(
+            'File transfer not ready. Please wait for call to fully connect.',
+          );
+        }
+
         // WebRTC DataChannel transfer (active call, large files OK)
         await fileTransferController.sendFile(file, (progress) => {
           setSendLabelText(`${Math.round(progress * 100)}%`);
@@ -232,9 +234,9 @@ export function initMessagesUI() {
     } catch (err) {
       console.error('[MessagesUI] File send failed:', err);
 
-      const sizeHint = !fileTransferController
-        ? '\n\n' + t('message.file_size_limited')
-        : '';
+      const sizeHint = inActiveCall
+        ? ''
+        : '\n\n' + t('message.file_size_limited');
 
       appendMessage('❌  ' + t('message.send_failed') + sizeHint);
     } finally {
@@ -551,6 +553,53 @@ export function initMessagesUI() {
     messagesBox.style.left = `${Math.round(left)}px`;
   }
 
+  // Helpers to animate open/close while keeping `.hidden` in sync
+  function openMessagesBox() {
+    // Make element available for layout first
+    if (messagesBox.classList.contains('hidden'))
+      messagesBox.classList.remove('hidden');
+
+    // Position before animating
+    if (!supportsCssAnchors) {
+      positionMessagesBox();
+      attachRepositionHandlers();
+    } else {
+      requestAnimationFrame(() => {
+        if (!isOnScreen(messagesBox)) {
+          positionMessagesBox();
+          attachRepositionHandlers();
+        }
+      });
+    }
+
+    // Trigger CSS transition
+    requestAnimationFrame(() => {
+      messagesBox.classList.add('messages-box--open');
+    });
+  }
+
+  function closeMessagesBox() {
+    // Start closing animation
+    messagesBox.classList.remove('messages-box--open');
+
+    // After transition completes, add hidden to keep legacy utilities working
+    const onDone = (e) => {
+      if (e && e.target !== messagesBox) return;
+      messagesBox.classList.add('hidden');
+      messagesBox.removeEventListener('transitionend', onDone);
+    };
+
+    // Listen for transitionend, but fallback to timeout in case it doesn't fire
+    messagesBox.addEventListener('transitionend', onDone);
+    // Fallback: ensure hidden after 350ms
+    setTimeout(() => {
+      if (!messagesBox.classList.contains('hidden')) {
+        messagesBox.classList.add('hidden');
+        messagesBox.removeEventListener('transitionend', onDone);
+      }
+    }, 350);
+  }
+
   function attachRepositionHandlers() {
     if (repositionHandlersAttached) return;
     repositionHandlersAttached = true;
@@ -605,33 +654,43 @@ export function initMessagesUI() {
   }
 
   function toggleMessagesUIVisible() {
-    messagesBox.classList.toggle('hidden');
-
+    if (!currentSession) {
+      console.warn('[MessagesUI] No active session to display');
+      return;
+    }
     if (isMessagesUIOpen()) {
-      // If we just opened:
+      // close
+      // Only blur if actually focused (avoids mobile keyboard issues)
+      if (document.activeElement === messagesInput) messagesInput.blur();
+      detachRepositionHandlers();
+
+      // Clear inline offsets
+      messagesBox.style.top = '';
+      messagesBox.style.left = '';
+      messagesBox.style.bottom = '';
+      messagesBox.style.right = '';
+
+      // Clean up outside click handler
+      if (removeMessagesBoxClickOutside) {
+        removeMessagesBoxClickOutside();
+        removeMessagesBoxClickOutside = null;
+      }
+
+      closeMessagesBox();
+    } else {
+      // open
       // Only auto-focus on desktop; let mobile users tap to focus naturally
-      if (!isMobileDevice()) {
-        messagesInput.focus();
-      }
-      // Fallback positioning if needed
-      if (!supportsCssAnchors) {
-        positionMessagesBox();
-        attachRepositionHandlers();
-      } else {
-        requestAnimationFrame(() => {
-          if (!isOnScreen(messagesBox)) {
-            positionMessagesBox();
-            attachRepositionHandlers();
-          }
-        });
-      }
+      if (!isMobileDevice()) messagesInput.focus();
+
+      openMessagesBox();
       scrollMessagesToEnd();
 
       // Set up outside click handler
       removeMessagesBoxClickOutside = onClickOutside(
         messagesBox,
         () => {
-          hideElement(messagesBox);
+          // animate close when clicking outside
+          closeMessagesBox();
           detachRepositionHandlers();
 
           // Clear inline offsets
@@ -653,24 +712,6 @@ export function initMessagesUI() {
           ignoreInputBlur: isMobileDevice(), // Prevent accidental closes when dismissing keyboard on mobile
         },
       );
-    } else {
-      // If we just closed:
-      // Only blur if actually focused (avoids mobile keyboard issues)
-      if (document.activeElement === messagesInput) {
-        messagesInput.blur();
-      }
-      detachRepositionHandlers();
-      // Clear inline offsets
-      messagesBox.style.top = '';
-      messagesBox.style.left = '';
-      messagesBox.style.bottom = '';
-      messagesBox.style.right = '';
-
-      // Clean up outside click handler
-      if (removeMessagesBoxClickOutside) {
-        removeMessagesBoxClickOutside();
-        removeMessagesBoxClickOutside = null;
-      }
     }
   }
 
@@ -976,7 +1017,21 @@ export function initMessagesUI() {
     return callEventBubble;
   }
 
-  // --- Unified message entry point ---
+  function formatTimestamp(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const isToday =
+      date.getDate() === now.getDate() &&
+      date.getMonth() === now.getMonth() &&
+      date.getFullYear() === now.getFullYear();
+
+    const timeOptions = { hour: 'numeric', minute: '2-digit' };
+    const dateOptions = { month: 'short', day: 'numeric' };
+
+    return isToday
+      ? date.toLocaleTimeString(undefined, timeOptions)
+      : `${date.toLocaleDateString(undefined, dateOptions)} - ${date.toLocaleTimeString(undefined, timeOptions)}`;
+  }
 
   /**
    * Append a message of any type to the chat UI.
@@ -1001,6 +1056,7 @@ export function initMessagesUI() {
       fileDownload,
       msgData,
       onCallBack,
+      timestamp,
     } = options;
 
     // Infer system type: no sender and no fileDownload → system notice
@@ -1014,6 +1070,8 @@ export function initMessagesUI() {
     // message-entry: container with type/sender classes
     const messageEntry = document.createElement('div');
     messageEntry.className = 'message-entry';
+    timestamp && messageEntry.setAttribute('data-timestamp', timestamp);
+
     if (effectiveType === 'system') messageEntry.classList.add('system');
     if (effectiveType === 'call_event')
       messageEntry.classList.add('call-event');
@@ -1059,6 +1117,11 @@ export function initMessagesUI() {
     // Build hierarchy: messageBubble → p, then messageEntry → (avatar + messageBubble)
     messageBubble.appendChild(p);
     messageEntry.appendChild(messageBubble);
+
+    if (isSentByMe === true && isRead) {
+      messageEntry.dataset.read = 'true';
+      messageBubble.dataset.read = 'true';
+    }
 
     // Reactions for all non-system types (attach to messageBubble)
     if (effectiveType !== 'system') {
@@ -1176,6 +1239,9 @@ export function initMessagesUI() {
     messageElements.clear();
     messagesMessages.innerHTML = '';
     messagesMessages.scrollTop = 0;
+    // Reset timestamp separator state so new session histories insert
+    // separators correctly after switching/clearing sessions.
+    lastTimestamp = 0;
   }
 
   /**
@@ -1188,6 +1254,9 @@ export function initMessagesUI() {
       clearMessages();
     }
     currentSession = session;
+    // Reset timestamp tracking when switching sessions so appended
+    // cached history shows correct timestamp separators.
+    lastTimestamp = 0;
 
     if (messageTopBar) {
       messageTopBar.setContact({
@@ -1198,20 +1267,7 @@ export function initMessagesUI() {
     }
 
     refreshAttachButton();
-
-    // ! === [TEMP FIX] ===
-    // TODO: Remove this temp fix after ensuring a session is always available or better solution found
-    try {
-      const btn =
-        messagesToggleEl &&
-        messagesToggleEl.querySelector &&
-        messagesToggleEl.querySelector('button');
-      if (btn) btn.disabled = !session;
-    } catch (e) {
-      /* ignore */
-    }
   }
-  // ! === [TEMP FIX] End ===
 
   /**
    * Get the currently displayed session
@@ -1227,6 +1283,7 @@ export function initMessagesUI() {
    */
   function setFileTransferController(controller) {
     fileTransferController = controller;
+    inActiveCall = !!controller; // Track that we're in an active call when controller is set
 
     // Show/hide attachment button based on file transfer availability
     refreshAttachButton();
@@ -1364,23 +1421,13 @@ export function initMessagesUI() {
     currentSession = null;
 
     fileTransferController = null;
+    inActiveCall = false;
     sentFiles.clear();
     receivedFile = null;
     isReceivingFile = false;
 
     hideElement(messagesBox);
     messageToggle.clearBadge();
-
-    // Ensure toggle button is disabled when no session exists (reset state)
-    try {
-      const btn =
-        messagesToggleEl &&
-        messagesToggleEl.querySelector &&
-        messagesToggleEl.querySelector('button');
-      if (btn) btn.disabled = true;
-    } catch (e) {
-      /* ignore */
-    }
 
     // Clear any unsent message text and reset textarea height
     messagesInput.value = '';
@@ -1502,6 +1549,9 @@ export function initMessagesUI() {
     session.history.forEach((event) => processReceivedMessage(event));
   }
 
+  let lastTimestamp = 0;
+  const TIMESTAMP_THRESHOLD = 5 * 60 * 1000; // 5 minutes
+
   /**
    * Core logic to process and render a received message or reaction update.
    */
@@ -1515,6 +1565,17 @@ export function initMessagesUI() {
       return;
     }
 
+    const timestamp = msgData?.sentAt || Date.now();
+    const formattedTimestamp = formatTimestamp(msgData?.sentAt || Date.now());
+
+    if (timestamp - lastTimestamp > TIMESTAMP_THRESHOLD) {
+      const timestampEl = document.createElement('div');
+      timestampEl.className = 'message-timestamp';
+      timestampEl.textContent = formattedTimestamp;
+      messagesMessages.appendChild(timestampEl);
+    }
+    lastTimestamp = timestamp;
+
     const reactions = convertFirebaseReactions(msgData.reactions);
     const type = msgData.type;
     const isText = !type;
@@ -1526,21 +1587,37 @@ export function initMessagesUI() {
       reactions,
       isRead: msgData.read,
       ...(type && { msgData }),
+      timestamp,
     });
   }
 
-  function openMessagesFromSession(session) {
-    // If it's already the active session, just ensure UI is visible
-    if (currentSession?.conversationId === session.conversationId) {
-      showMessagesToggle();
-      if (!isMessagesUIOpen()) {
-        toggleMessagesUIVisible();
-      }
+  function displayCurrentSession() {
+    if (!currentSession || !currentSession?.conversationId) {
+      console.warn('No currentSession to display:', {
+        currentSession,
+      });
       return;
     }
 
-    clearMessages();
-    setCurrentMsgUISession(null); // Reset temporarily to avoid race conditions
+    if (!isMessagesUIOpen()) {
+      toggleMessagesUIVisible();
+    }
+
+    currentSession.markAsRead().catch((err) => {
+      console.warn('Failed to mark messages as read:', err);
+    });
+  }
+
+  function _prepUIForSession(session) {
+    if (!session) return;
+
+    const isCurrentSession =
+      currentSession?.conversationId === session.conversationId;
+
+    if (!isCurrentSession) {
+      clearMessages();
+      setCurrentMsgUISession(null); // Reset temporarily to avoid race conditions
+    }
 
     if (messageTopBar) {
       messageTopBar.setContact({
@@ -1578,27 +1655,15 @@ export function initMessagesUI() {
       })
       .catch(() => {});
 
-    setCurrentMsgUISession(session);
-
-    // Render existing history if available
-    appendCachedHistory(session);
-
-    showMessagesToggle();
-
-    if (!isMessagesUIOpen()) {
-      toggleMessagesUIVisible();
-    }
-
-    session.markAsRead().catch((err) => {
-      console.warn('Failed to mark messages as read:', err);
-    });
+    !isCurrentSession && setCurrentMsgUISession(session);
+    !isCurrentSession && appendCachedHistory(session); // Render existing history if available
   }
 
   // --- Domain Event Listeners ---
   messagingController.on(
     'session:opened',
     ({ session }) => {
-      openMessagesFromSession(session);
+      _prepUIForSession(session);
     },
     { signal: ac.signal },
   );
@@ -1606,7 +1671,41 @@ export function initMessagesUI() {
   messagingController.on(
     'session:resumed',
     ({ session }) => {
-      openMessagesFromSession(session);
+      _prepUIForSession(session);
+    },
+    { signal: ac.signal },
+  );
+
+  messagingController.on(
+    'session:display',
+    () => {
+      displayCurrentSession();
+    },
+    { signal: ac.signal },
+  );
+
+  messagingController.on(
+    'unread:changed',
+    ({ conversationId, unreadCount, newlyReadMsgIds = [] }) => {
+      if (conversationId === currentSession?.conversationId) {
+        if (unreadCount === 0) {
+          messageToggle.clearBadge();
+        } else {
+          messageToggle.setUnreadCount(unreadCount);
+        }
+        if (newlyReadMsgIds.length < 1) return;
+
+        // Mark messages as read in the UI if they are now read
+        newlyReadMsgIds.forEach((msgId) => {
+          const messageEntry = messageElements
+            .get(msgId)
+            ?.closest('.message-entry');
+          if (!messageEntry) return;
+          messageEntry.dataset.read = 'true';
+          const bubble = messageEntry.querySelector('.message-bubble');
+          if (bubble) bubble.dataset.read = 'true';
+        });
+      }
     },
     { signal: ac.signal },
   );

@@ -115,6 +115,7 @@ import {
   renderContactsList,
   cleanupContacts,
   showSaveContactPrompt,
+  autoInitMsgSessionIfNeeded,
 } from './ui/components/contacts/contacts.js';
 
 import {
@@ -1776,6 +1777,11 @@ window.onload = async () => {
     console.warn('Failed to render contacts list:', e);
   });
 
+  // Auto-open first contact session if user has saved contacts
+  await autoInitMsgSessionIfNeeded().catch((e) => {
+    console.warn('Failed to auto-init messaging session:', e);
+  });
+
   // Re-render contacts on auth changes so private contacts are hidden on logout
   // Also clean up incoming listeners on logout to prevent accumulation
   let previousAuthState = null;
@@ -1912,6 +1918,7 @@ CallController.on('memberJoined', ({ memberId, roomId }) => {
   console.debug('CallController memberJoined event', { memberId, roomId });
 
   CallController.setPartnerId(memberId);
+  messagingController.openSession(memberId);
 
   onCallAnswered().catch((e) =>
     console.warn('Failed to clear calling state:', e),

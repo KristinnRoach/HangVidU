@@ -69,10 +69,6 @@
 
   position: fixed;
 
-  /* TODO: This is outdated -> Fallback positioning for browsers without anchor positioning */
-  bottom: 80px;
-  right: 20px;
-
   margin: var(--spacing-sm);
   padding: 8px;
   border: 1px solid var(--border-primary);
@@ -83,6 +79,22 @@
 
   background: var(--bg-secondary);
   z-index: var(--z-mid);
+}
+
+/* Slide / fade animation for show/hide
+   - default state: hidden (out of view, non-interactive)
+   - `.messages-box--open` toggles the visible state and drives transitions
+*/
+.messages-box {
+  transition: transform 220ms ease-in;
+  transform-origin: top right;
+  transform: translateX(-100vw) translateY(0);
+  pointer-events: none;
+}
+.messages-box.messages-box--open {
+  transition: transform 260ms ease-out;
+  transform: translateX(0) translateY(0);
+  pointer-events: auto;
 }
 
 /* Messages Top Bar */
@@ -169,12 +181,19 @@
   border: 1px solid var(--border-secondary);
 }
 
+#messages .message-timestamp {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin: 12px 0 4px;
+}
+
 #messages .message-entry {
   margin: 8px 0;
   /* Layout: flex container for avatar + message-bubble */
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-end;
+  gap: 6px;
   position: relative;
 }
 
@@ -214,7 +233,7 @@
   display: inline-block;
   position: relative;
 
-  margin: 4px 0;
+  margin: 8px 2px;
   padding: 4px 8px;
   line-height: 1.2;
   border-radius: 16px;
@@ -223,14 +242,26 @@
   user-select: none;
   -webkit-user-select: none;
   cursor: pointer;
-}
 
-#messages .message-bubble {
-  margin: 8px 0;
-}
+  &[data-read='true'] {
+    padding-right: 18px;
+  }
 
-#messages .message-bubble p {
-  margin: 0;
+  &[data-read='true']::after {
+    content: '✓';
+    color: #74d877ae;
+
+    position: absolute;
+    bottom: 4px;
+    right: 6px;
+    font-weight: bold;
+    font-size: 12px;
+  }
+
+  & p {
+    display: inline;
+    margin: 0;
+  }
 }
 
 #messages .message-bubble .message-text {
@@ -327,8 +358,9 @@
   color: var(--text-primary);
   box-sizing: border-box;
   font-family: inherit;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 1.4;
+  -webkit-text-size-adjust: 100%;
 
   /* Auto-grow textarea sizing */
   field-sizing: content; /* Native auto-grow (Chrome/Edge 123+) */
@@ -394,15 +426,17 @@
   .messages-box {
     position: fixed;
     position-anchor: unset;
+
+    margin: 0 auto;
     inset: var(--spacing-lg);
 
     min-width: 280px;
-    width: calc(90dvw - (2 * var(--spacing-lg)));
-    max-width: calc(90dvw - (2 * var(--spacing-lg)));
+    width: calc(100dvw - (2 * var(--spacing-lg)));
+    max-width: calc(100dvw - (2 * var(--spacing-lg)));
 
-    min-height: 20dvh;
+    min-height: 25dvh;
     height: auto;
-    max-height: calc(80dvh - (2 * var(--spacing-lg)));
+    max-height: calc(90dvh - (2 * var(--spacing-lg)));
   }
 
   #messages {

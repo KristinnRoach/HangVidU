@@ -140,6 +140,7 @@ export class MessagingController extends EventEmitter {
       const session = this.sessions.get(conversationId);
       this._touchSession(session.conversationId);
       this.emit('session:resumed', { session });
+
       return session;
     }
 
@@ -209,7 +210,7 @@ export class MessagingController extends EventEmitter {
     this.sessions.set(conversationId, session);
 
     // Start listening to messages via transport
-    const unsubscribe = this.transport.listenToConversation(
+    const unsubscribe = this.transport.listen(
       conversationId,
       (text, msgData, isSentByMe) => {
         const messageEvent = { conversationId, text, msgData, isSentByMe };
@@ -235,8 +236,8 @@ export class MessagingController extends EventEmitter {
         if (!isSentByMe) {
           this.transport
             .getUnreadCountForConversation(conversationId)
-            .then((count) => {
-              this.emit('unread:changed', { conversationId, count });
+            .then((unreadCount) => {
+              this.emit('unread:changed', { conversationId, unreadCount });
             })
             .catch((err) =>
               console.warn(
@@ -257,12 +258,47 @@ export class MessagingController extends EventEmitter {
       },
     );
 
-    session._unsubscribe = unsubscribe;
+    const unsubscribeUnread = this.transport.listenToUnreadCountForConversation(
+      conversationId,
+      (unreadCount, newlyReadMsgIds = []) => {
+        this.emit('unread:changed', {
+          conversationId,
+          unreadCount,
+          newlyReadMsgIds,
+        });
+      },
+      // (unreadCount, newlyReadMsgIds = []) => {
+      //   this.emit('unread:changed', {
+      //     conversationId,
+      //     unreadCount,
+      //     newlyReadMsgIds,
+      //   });
+      // },
+    );
+
+    session._unsubscribe = () => {
+      unsubscribe();
+      unsubscribeUnread();
+    };
 
     this._touchSession(session.conversationId);
     this.emit('session:opened', { session });
 
     return session;
+  }
+
+  /**
+   * Display a session in the UI by emitting the appropriate event.
+   * Must be called after openSession() to trigger UI updates.
+   * @param {string} conversationId - Conversation ID
+   */
+  displaySession(conversationId) {
+    const session = this.sessions.get(conversationId);
+    if (!session) {
+      throw new Error(`Cannot display non-existent session: ${conversationId}`);
+    }
+
+    this.emit('session:display', { session });
   }
 
   /**
@@ -308,10 +344,11 @@ export class MessagingController extends EventEmitter {
     return this.transport.getUnreadCountForConversation(conversationId);
   }
 
-  listenToUnreadCount(conversationId, onCountChange) {
+  listenToUnreadCount(conversationId, onCountChange, onMessageRead) {
     return this.transport.listenToUnreadCountForConversation(
       conversationId,
       onCountChange,
+      onMessageRead,
     );
   }
 

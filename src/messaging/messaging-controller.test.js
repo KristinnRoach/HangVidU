@@ -26,7 +26,7 @@ class MockTransport {
     this.sentMessages.push({ conversationId, text });
   }
 
-  listenToConversation(conversationId, onMessage) {
+  listen(conversationId, onMessage) {
     this.listeners.set(conversationId, onMessage);
     return () => this.listeners.delete(conversationId);
   }
