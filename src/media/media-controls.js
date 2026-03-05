@@ -119,6 +119,7 @@ export function initializeMediaControls({
         const oldVideoTrack = localStream.getVideoTracks()[0];
         if (oldVideoTrack) {
           localStream.removeTrack(oldVideoTrack);
+          oldVideoTrack.stop();
         }
         localStream.addTrack(result.newVideoTrack);
 
