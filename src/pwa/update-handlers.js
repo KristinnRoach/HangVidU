@@ -23,9 +23,16 @@ async function importPWARegister() {
  */
 async function checkForUpdates() {
   try {
-    const registration = await navigator.serviceWorker?.ready;
+    // Feature-detect service worker support
+    if (!('serviceWorker' in navigator)) {
+      console.debug('[PWA] Service workers not supported, skipping update check');
+      return;
+    }
+
+    // Use explicit registration lookup instead of .ready to avoid indefinite hangs
+    const registration = await navigator.serviceWorker.getRegistration();
     if (!registration) {
-      console.debug('[PWA] No service worker registration, skipping update check');
+      console.debug('[PWA] No service worker registration found, skipping update check');
       return;
     }
 
@@ -34,7 +41,7 @@ async function checkForUpdates() {
     await registration.update();
     console.debug('[PWA] Service worker update check completed');
   } catch (error) {
-    console.debug('[PWA] Update check error:', error.message);
+    console.debug('[PWA] Update check error:', error);
   }
 }
 
