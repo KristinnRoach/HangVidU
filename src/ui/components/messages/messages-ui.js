@@ -1087,7 +1087,7 @@ export function initMessagesUI() {
     if (fileDownload) messageEntry.classList.add('system');
 
     // Avatar (sibling to message-bubble) - only for remote messages
-    messageEntry.appendChild(createAvatar(classIsSentByMe));
+    !classIsSentByMe && messageEntry.appendChild(createAvatar(classIsSentByMe));
 
     // message-bubble: container for content + reactions
     const messageBubble = document.createElement('div');
