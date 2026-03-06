@@ -178,6 +178,7 @@ import { addDebugUpdateButton } from './ui/components/notifications/debug-notifi
 // Quick access to enable / disable dev debug logs
 setDevDebugEnabled(true);
 getDiagnosticLogger().disable();
+let showDebugUIForNotifications = false;
 
 // ============================================================================
 // GLOBAL STATE
@@ -248,7 +249,7 @@ async function init() {
     // This prevents Bluetooth headphones from entering "call mode" on page load
 
     // Add debug button for testing update notification (dev only)
-    addDebugUpdateButton();
+    showDebugUIForNotifications && addDebugUpdateButton();
 
     // Initialize notification system for production (PWA updates, etc.)
     const topRightMenu = document.querySelector('.top-right-menu');

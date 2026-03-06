@@ -107,6 +107,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
     );
 
     await set(messageRef, {
+      type: 'text',
       text,
       from: fromUserId,
       fromName,

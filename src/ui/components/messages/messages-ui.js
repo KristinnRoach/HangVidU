@@ -1038,7 +1038,7 @@ export function initMessagesUI() {
    * Append a message of any type to the chat UI.
    * @param {string} text - Message content (used for text/system types)
    * @param {Object} options
-   * @param {'text'|'file'|'call_event'} [options.type='text'] - Message type
+   * @param {'text'|'file'|'event'} [options.type='text'] - Message type
    * @param {boolean|undefined} [options.isSentByMe] - true (local), false (remote), undefined (system)
    * @param {string} [options.messageId] - Firebase message ID for reactions
    * @param {Object} [options.reactions] - Initial reactions { type: [userIds] }
@@ -1588,10 +1588,9 @@ export function initMessagesUI() {
     lastTimestamp = timestamp;
 
     const reactions = convertFirebaseReactions(msgData.reactions);
-    const type = msgData.type;
-    const isText = !type;
+    const type = msgData.type || 'text';
 
-    appendMessage(isText ? text : '', {
+    appendMessage(type === 'text' ? text : '', {
       ...(type && { type }),
       isSentByMe,
       messageId: msgData.messageId,
