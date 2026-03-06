@@ -241,7 +241,12 @@ async function simulateTransfer(
 const isFirefox =
   typeof navigator !== 'undefined' && navigator.userAgent.includes('Firefox');
 
-if (!isFirefox) {
+if (isFirefox) {
+  describe.skip('CHUNK_YIELD_INTERVAL Impact Test', () => {});
+  console.info(
+    'Skipping chunk-yield-impact test in Firefox due to ICE issues',
+  );
+} else {
   describe('CHUNK_YIELD_INTERVAL Impact Test', () => {
     let connections = null;
 
