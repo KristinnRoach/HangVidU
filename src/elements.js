@@ -27,6 +27,7 @@ let chatControls = null;
 let callBtn = null;
 let hangUpBtn = null;
 let installBtn = null;
+let switchCameraBtn = null;
 
 let mutePartnerBtn = null;
 let fullscreenPartnerBtn = null;
@@ -56,6 +57,7 @@ const i18nElements = {
   searchBtn: { attrs: ['title'], key: 'media.youtube.search' },
   searchQuery: { attrs: ['placeholder'], key: 'media.youtube.placeholder' },
   'camera-btn': { attrs: ['aria-label'], key: 'a11y.camera_toggle' },
+  'switch-camera-btn': { attrs: ['aria-label'], key: 'a11y.camera_switch' },
   'mic-btn': { attrs: ['aria-label'], key: 'a11y.mic_toggle' },
   'mute-btn': { attrs: ['aria-label'], key: 'a11y.partner_mute' },
   'fullscreen-partner-btn': { attrs: ['aria-label'], key: 'a11y.fullscreen' },
@@ -95,6 +97,7 @@ function initializeElements() {
   chatControls = getElement('chat-controls');
   callBtn = getElement('call-btn');
   hangUpBtn = getElement('hang-up-btn');
+  switchCameraBtn = getElement('switch-camera-btn');
 
   mutePartnerBtn = getElement('mute-btn');
   fullscreenPartnerBtn = getElement('fullscreen-partner-btn');
@@ -137,6 +140,7 @@ export const getElements = () => ({
   callBtn,
   hangUpBtn,
   installBtn,
+  switchCameraBtn,
   mutePartnerBtn,
   fullscreenPartnerBtn,
   remotePipBtn,
@@ -169,6 +173,7 @@ export {
   callBtn,
   hangUpBtn,
   installBtn,
+  switchCameraBtn,
   mutePartnerBtn,
   fullscreenPartnerBtn,
   remotePipBtn,

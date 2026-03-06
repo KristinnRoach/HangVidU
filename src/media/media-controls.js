@@ -3,10 +3,16 @@
 import { initIcons } from '../ui/icons.js';
 
 import {
+  switchVideoStreamFacingMode,
+  hasFrontAndBackCameras,
+} from './media-devices.js';
+import { getFacingMode, setFacingMode } from './state.js';
+import {
   isElementInPictureInPicture,
   exitPiP,
   requestPiP,
   isPiPSupported,
+  showElement,
 } from '../ui/utils/ui-utils.js';
 import { devDebug, isDev, isProd } from '../utils/dev/dev-utils.js';
 
@@ -44,6 +50,7 @@ function updateMuteMicIcon(muted, muteSelfBtn) {
  * @param {RTCPeerConnection} params.getPeerConnection - Getter for Peer connection (optional)
  * @param {HTMLElement} params.micBtn - Local microphone toggle button
  * @param {HTMLElement} params.cameraBtn - Local camera toggle button
+ * @param {HTMLElement} params.switchCameraBtn - Switch camera button (front/back)
  * @param {HTMLElement} params.mutePartnerBtn - Mute partner button
  * @param {HTMLElement} params.fullscreenPartnerBtn - Fullscreen partner button
  * @param {HTMLElement} params.remotePipBtn - Remote video picture-in-picture button
@@ -53,8 +60,10 @@ export function initializeMediaControls({
   getLocalVideo,
   getRemoteVideo,
   getPeerConnection = () => null,
+  setLocalStream = null,
   micBtn,
   cameraBtn,
+  switchCameraBtn,
   mutePartnerBtn,
   fullscreenPartnerBtn,
   remotePipBtn,
@@ -85,11 +94,58 @@ export function initializeMediaControls({
         videoTrack.enabled = !videoTrack.enabled;
         const icon = cameraBtn.querySelector('i, svg');
         if (icon) {
-          icon.setAttribute('data-lucide', videoTrack.enabled ? 'video' : 'video-off');
+          icon.setAttribute(
+            'data-lucide',
+            videoTrack.enabled ? 'video' : 'video-off',
+          );
           initIcons(cameraBtn);
         }
       }
     };
+  }
+
+  // ===== SWITCH VIDEO STREAM SOURCE (FRONT/BACK CAMERA) =====
+  if (switchCameraBtn) {
+    switchCameraBtn.onclick = async () => {
+      const localStream = getLocalStream();
+      const result = await switchVideoStreamFacingMode(
+        getPeerConnection(),
+        localStream,
+        getFacingMode(),
+      );
+
+      if (result) {
+        // Explicitly swap video tracks in localStream
+        const oldVideoTrack = localStream.getVideoTracks()[0];
+        if (oldVideoTrack) {
+          localStream.removeTrack(oldVideoTrack);
+          oldVideoTrack.stop();
+        }
+        localStream.addTrack(result.newVideoTrack);
+
+        // Update facing mode state
+        setFacingMode(result.facingMode);
+
+        // Update UI (local video element shows video track)
+        const localVideo = getLocalVideo();
+        if (localVideo) {
+          localVideo.srcObject = new MediaStream([result.newVideoTrack]);
+        }
+      } else {
+        console.error('Failed to switch video stream source');
+      }
+    };
+
+    // Show button only if device has multiple cameras
+    (async () => {
+      try {
+        const hasMultipleCameras = await hasFrontAndBackCameras();
+        switchCameraBtn.style.display = hasMultipleCameras ? '' : 'none';
+      } catch (error) {
+        console.error('Failed to detect camera availability:', error);
+        switchCameraBtn.style.display = 'none';
+      }
+    })();
   }
 
   // ===== MUTE/UNMUTE PARTNER =====
@@ -103,7 +159,10 @@ export function initializeMediaControls({
       // Update icon inline
       const icon = mutePartnerBtn.querySelector('i, svg');
       if (icon) {
-        icon.setAttribute('data-lucide', remoteVideo.muted ? 'volume-x' : 'volume-2');
+        icon.setAttribute(
+          'data-lucide',
+          remoteVideo.muted ? 'volume-x' : 'volume-2',
+        );
         initIcons(mutePartnerBtn);
       }
     };
