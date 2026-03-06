@@ -74,10 +74,10 @@ export function initMessagesUI() {
   let receivedFile = null; // Store the last received video file for watch-together
   let markAsReadTimeout = null; // Debounce markAsRead calls on incoming messages
 
-  // Initialize reaction management
+  const MARK_AS_READ_DEBOUNCE_MS = 100;
+
   const reactionManager = new ReactionManager();
   const reactionUI = new ReactionUI(reactionManager);
-  // AbortController for grouped lifecycle of UI listeners
   const ac = new AbortController();
 
   const shouldShowAttachButton = () =>
@@ -1251,6 +1251,11 @@ export function initMessagesUI() {
    * @param {Object} session - Session object from messagingController
    */
   function setCurrentMsgUISession(session) {
+    if (markAsReadTimeout !== null) {
+      clearTimeout(markAsReadTimeout);
+      markAsReadTimeout = null;
+    }
+
     if (currentSession !== null && currentSession !== session) {
       clearMessages();
     }
@@ -1421,7 +1426,7 @@ export function initMessagesUI() {
     clearMessages();
     currentSession = null;
     clearTimeout(markAsReadTimeout);
-
+    markAsReadTimeout = null;
     fileTransferController = null;
     inActiveCall = false;
     sentFiles.clear();
@@ -1732,12 +1737,24 @@ export function initMessagesUI() {
 
       // Mark as read if UI is open and message is not from me
       if (isMessagesUIOpen() && !messageEvent.isSentByMe) {
+        const conversationIdAtReceive =
+          currentSession?.conversationId ?? messageEvent.conversationId;
+
         clearTimeout(markAsReadTimeout);
         markAsReadTimeout = setTimeout(() => {
+          markAsReadTimeout = null;
+          if (
+            !currentSession ||
+            currentSession.conversationId !== conversationIdAtReceive ||
+            !isMessagesUIOpen()
+          ) {
+            return;
+          }
+
           currentSession.markAsRead?.().catch((err) => {
             console.warn('Failed to mark messages as read:', err);
           });
-        }, 100);
+        }, MARK_AS_READ_DEBOUNCE_MS);
       }
     },
     { signal: ac.signal },

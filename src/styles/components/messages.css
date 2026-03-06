@@ -275,7 +275,6 @@
     &::after {
       content: '✓';
       color: #74d877ae;
-
       position: absolute;
       bottom: 4px;
       right: 6px;
