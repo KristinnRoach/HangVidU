@@ -4,6 +4,8 @@
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
 import { NetworkFirst } from 'workbox-strategies';
+import { initializeApp } from 'firebase/app';
+import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
 import { VIBRATION_PATTERNS } from './media/haptic/vibration-patterns.js';
 import {
   registerVideo,
@@ -11,15 +13,6 @@ import {
   isVideoServeRequest,
   handleVideoFetch,
 } from './file-transfer/sw-video-handler.js';
-
-// Import Firebase messaging for service worker context
-// Note: Using compat version for service worker compatibility
-importScripts(
-  'https://www.gstatic.com/firebasejs/12.8.0/firebase-app-compat.js',
-);
-importScripts(
-  'https://www.gstatic.com/firebasejs/12.8.0/firebase-messaging-compat.js',
-);
 
 // ============================================================================
 // WORKBOX PWA FUNCTIONALITY
@@ -82,8 +75,8 @@ const isValidConfig = Object.values(firebaseConfig).every(
 
 if (isValidConfig) {
   try {
-    firebase.initializeApp(firebaseConfig);
-    messaging = firebase.messaging();
+    const app = initializeApp(firebaseConfig);
+    messaging = getMessaging(app);
   } catch (error) {
     console.error('[SW] Failed to initialize Firebase:', error);
   }
@@ -100,7 +93,7 @@ if (isValidConfig) {
  * This is the core FCM functionality for push notifications
  */
 if (messaging) {
-  messaging.onBackgroundMessage((payload) => {
+  onBackgroundMessage(messaging, (payload) => {
     console.log('[SW] Background message received:', payload);
 
     const { notification, data } = payload;
