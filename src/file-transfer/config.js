@@ -22,7 +22,7 @@ export const TransferConfig = {
   // Yield the event loop every N chunks during sendFile to let media packets through.
   // Prevents file transfer from monopolizing the NIC send queue during a call.
   // Set to null to disable (max throughput, may cause video lag during transfers).
-  CHUNK_YIELD_INTERVAL: 4, // yield every 4 chunks (~256KB burst before yield)
+  CHUNK_YIELD_INTERVAL: null, // yield every X chunks (1 chunk is ~64KB)
 
   // DataChannel backpressure threshold. Sender pauses when bufferedAmount exceeds this.
   // Higher = fewer pauses = more throughput but more queue saturation.
