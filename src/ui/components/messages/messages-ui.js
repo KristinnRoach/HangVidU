@@ -72,6 +72,7 @@ export function initMessagesUI() {
   let isReceivingFile = false; // Track if currently receiving a file
   let sentFiles = new Map(); // Track sent files by name for watch-together requests
   let receivedFile = null; // Store the last received video file for watch-together
+  let markAsReadTimeout = null; // Debounce markAsRead calls on incoming messages
 
   // Initialize reaction management
   const reactionManager = new ReactionManager();
@@ -1419,6 +1420,7 @@ export function initMessagesUI() {
   function reset() {
     clearMessages();
     currentSession = null;
+    clearTimeout(markAsReadTimeout);
 
     fileTransferController = null;
     inActiveCall = false;
@@ -1499,6 +1501,9 @@ export function initMessagesUI() {
   }
 
   function cleanup() {
+    // Clear pending markAsRead timeout
+    clearTimeout(markAsReadTimeout);
+
     // Abort grouped UI listeners
     try {
       ac.abort();
@@ -1724,6 +1729,16 @@ export function initMessagesUI() {
       }
 
       processReceivedMessage(messageEvent);
+
+      // Mark as read if UI is open and message is not from me
+      if (isMessagesUIOpen() && !messageEvent.isSentByMe) {
+        clearTimeout(markAsReadTimeout);
+        markAsReadTimeout = setTimeout(() => {
+          currentSession.markAsRead?.().catch((err) => {
+            console.warn('Failed to mark messages as read:', err);
+          });
+        }, 100);
+      }
     },
     { signal: ac.signal },
   );
