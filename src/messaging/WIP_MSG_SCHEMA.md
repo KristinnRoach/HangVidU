@@ -7,17 +7,19 @@
 ## What Changed
 
 ### ✅ Completed
+
 - All messages now have explicit `type: 'text' | 'file' | 'event'`
 - Renamed `call_event` → `event` with `eventType` enum
 - Changed `fileType` → `mimeType` for clarity
 - File messages support optional `text` field for captions
-- Event messages use `from: 'system'` and `metadata` object
+- Event messages use `from: 'system'` and `details` object
 - Schema defined in `src/messaging/schema.js` with Zod validation
 
 ### 📋 Pending (RTDB Migration)
+
 - Add `type: 'text'` to existing text messages in RTDB (~100-500 messages)
 - Rename existing `type: 'call_event'` → `type: 'event'`
-- Restructure event metadata (move callerId/callerName → metadata)
+- Restructure event details (move callerId/callerName → details)
 - Update UI to expect explicit types everywhere
 - Update transport layer to handle new structure
 
@@ -26,6 +28,7 @@
 ## Message Structure
 
 ### Conversation Path
+
 ```
 conversations/{conversationId}/messages/{messageId}
 ```
@@ -37,6 +40,7 @@ conversations/{conversationId}/messages/{messageId}
 ## Message Types
 
 ### Text Message
+
 ```javascript
 {
   type: 'text',
@@ -51,6 +55,7 @@ conversations/{conversationId}/messages/{messageId}
 ```
 
 ### File Message
+
 ```javascript
 {
   type: 'file',
@@ -69,6 +74,7 @@ conversations/{conversationId}/messages/{messageId}
 ```
 
 ### Event Message
+
 ```javascript
 {
   type: 'event',
@@ -76,7 +82,7 @@ conversations/{conversationId}/messages/{messageId}
   from: 'system',           // System-generated, not user
   sentAt: 1741254847000,
   read: false,
-  metadata: {               // Event-specific data
+  details: {               // Event-specific data
     callerId: 'user-bob',
     callerName: 'Bob Jones',
     callId: 'room-123'
@@ -105,20 +111,24 @@ conversations/{conversationId}/messages/{messageId}
 ## Key Concepts
 
 ### Type Discriminator
+
 - Explicit `type` field enables discriminated unions
 - Zod schema validates one type per message
 - Future extensibility: add new types without breaking existing logic
 
 ### System-Generated Events
+
 - Event messages always have `from: 'system'`
-- Event-specific data lives in `metadata` object
+- Event-specific data lives in `details` object
 - Future events (typing, polls, etc.) reuse same structure
 
 ### Optional Captions
+
 - File messages support `text` field for user descriptions
 - Simplest design: file + caption = single message unit
 
 ### Read Status
+
 - `read: false` on creation
 - Set to `true` when recipient opens conversation
 - Debounced 100ms to prevent quota spam
@@ -129,6 +139,7 @@ conversations/{conversationId}/messages/{messageId}
 ## Transport Layer (RTDBTransport)
 
 ### Send Flow
+
 ```
 User input → MessagingController.send()
   → RTDBTransport.sendToConversation(conversationId, text)
@@ -136,6 +147,7 @@ User input → MessagingController.send()
 ```
 
 ### Receive Flow
+
 ```
 RTDBTransport.listen(conversationId, onMessage)
   → onChildAdded: emit 'message:received' event
@@ -143,6 +155,7 @@ RTDBTransport.listen(conversationId, onMessage)
 ```
 
 ### Session Caching
+
 - Keeps last 50 messages per conversation in `session.history`
 - Used for instant UI re-hydration when switching sessions
 - Reactions and read status updates propagate to cache
@@ -168,19 +181,23 @@ conversations/
 ## Future Extensibility
 
 ### New Event Types
+
 Add to `eventType` enum in `EventMessageSchema`:
+
 ```javascript
 eventType: z.enum([
   'missed_call',
   'rejected_call',
-  'typing',           // Future
-  'poll_created',     // Future
-  'file_transfer',    // Future
-])
+  'typing', // Future
+  'poll_created', // Future
+  'file_transfer', // Future
+]);
 ```
 
 ### New Message Types
+
 Create new schema, add to `MessageSchema` union:
+
 ```javascript
 const SystemNoticeSchema = z.object({
   type: z.literal('notice'),
@@ -193,7 +210,7 @@ export const MessageSchema = z.union([
   TextMessageSchema,
   FileMessageSchema,
   EventMessageSchema,
-  SystemNoticeSchema,  // New type
+  SystemNoticeSchema, // New type
 ]);
 ```
 
@@ -202,6 +219,7 @@ export const MessageSchema = z.union([
 ## Critical Issues (Pre-Migration)
 
 ### 1. Three-Layer Message Structure Mismatch
+
 - Storage: `{ text, from, sentAt, read }` (no type for text)
 - Transport: adds `messageId`
 - UI: transforms `reactions` format, infers type
@@ -209,6 +227,7 @@ export const MessageSchema = z.union([
 **Resolution:** RTDB migration to add explicit types
 
 ### 2. File Data in RTDB
+
 - Base64 files stored inline (1-2 MB limit)
 - Works now but doesn't scale long-term
 - Future: move to Firebase Storage or S3
@@ -216,6 +235,7 @@ export const MessageSchema = z.union([
 **For now:** Accept RTDB limits; migrate if app scales
 
 ### 3. Reactions Listener Architecture
+
 - Message `child_changed` fires for reaction updates
 - Full message refetched each time
 - If moving reactions to separate collection: need dual listeners
@@ -227,6 +247,7 @@ export const MessageSchema = z.union([
 ## Testing & Validation
 
 ### Schema Validation
+
 ```javascript
 import { MessageSchema, parseMessage } from '@/messaging/schema.js';
 
@@ -239,6 +260,7 @@ MessageSchema.parse(myMessage);
 ```
 
 ### Type Safety
+
 - TypeScript inference works with discriminated unions
 - Zod ensures runtime validation
 - UI can narrow type based on `msg.type`
@@ -246,6 +268,7 @@ MessageSchema.parse(myMessage);
 ---
 
 ## Zod Schema Location
+
 `src/messaging/schema.js` - Single source of truth for message structure
 
 ---
@@ -253,21 +276,25 @@ MessageSchema.parse(myMessage);
 ## Migration Roadmap
 
 **Phase 1: Add Type Field (1-2 hours)**
+
 - RTDB batch update: Add `type: 'text'` to all text messages
 - Update schema: Mark type as required
 - Backward compat: Handle missing type in parser
 
 **Phase 2: Rename Event Type (2-3 hours)**
-- RTDB batch update: `call_event` → `event`, restructure metadata
+
+- RTDB batch update: `call_event` → `event`, restructure details
 - Schema update: New EventMessageSchema
 - Transport update: Handle old/new formats during transition
 
 **Phase 3: UI Updates (1-2 hours)**
+
 - Stop inferring types, use explicit field
 - Update type-based switches
 - Handle `from: 'system'` for events
 
 **Phase 4: Cleanup (1 hour)**
+
 - Remove backward compat code
 - Remove temp flags/migrations
 - Clean up tests
