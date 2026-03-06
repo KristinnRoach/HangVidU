@@ -44,10 +44,10 @@ class MockTransport {
   }
 
   // Test helper: simulate receiving a message
-  simulateMessage(conversationId, text, msgData = {}, isSentByMe = false) {
+  simulateMessage(conversationId, text, msgData = {}) {
     const listener = this.listeners.get(conversationId);
     if (listener) {
-      listener(text, { text, ...msgData }, isSentByMe);
+      listener({ text, from: msgData.from || 'other-user', ...msgData });
     }
   }
 }
@@ -114,18 +114,13 @@ describe('MessagingController', () => {
     controller.openSession('contactA');
 
     // Simulate receiving a message
-    mockTransport.simulateMessage(
-      'contactA_me',
-      'Test message',
-      { messageId: 'm1' },
-      false,
-    );
+    mockTransport.simulateMessage('contactA_me', 'Test message', {
+      messageId: 'm1',
+    });
 
     expect(spy).toHaveBeenCalledWith({
       conversationId: 'contactA_me',
-      text: 'Test message',
-      msgData: { text: 'Test message', messageId: 'm1' },
-      isSentByMe: false,
+      msgData: { text: 'Test message', from: 'other-user', messageId: 'm1' },
     });
   });
 
@@ -178,8 +173,8 @@ describe('MessagingController', () => {
       mockTransport.simulateMessage('contactA_me', 'M2', { messageId: '2' });
 
       expect(session.history).toHaveLength(2);
-      expect(session.history[0].text).toBe('M1');
-      expect(session.history[1].text).toBe('M2');
+      expect(session.history[0].msgData.text).toBe('M1');
+      expect(session.history[1].msgData.text).toBe('M2');
     });
 
     it('should update reactions in cached history', () => {

@@ -184,9 +184,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
       if (!msg || seenMessageIds.has(msgId)) return;
 
       seenMessageIds.add(msgId);
-      const isSentByMe = msg.from === myUserId;
-      const msgData = { ...msg, messageId: msgId };
-      onMessage(msg.text, msgData, isSentByMe);
+      onMessage({ ...msg, messageId: msgId });
     };
 
     const reactionCallback = (snapshot) => {
@@ -195,9 +193,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
       if (!msg || !seenMessageIds.has(msgId)) return;
 
       if (msg.reactions !== undefined) {
-        const isSentByMe = msg.from === myUserId;
-        const msgData = { ...msg, messageId: msgId, _reactionUpdate: true };
-        onMessage(msg.text, msgData, isSentByMe);
+        onMessage({ ...msg, messageId: msgId, _reactionUpdate: true });
       }
     };
 

@@ -212,8 +212,8 @@ export class MessagingController extends EventEmitter {
     // Start listening to messages via transport
     const unsubscribe = this.transport.listen(
       conversationId,
-      (text, msgData, isSentByMe) => {
-        const messageEvent = { conversationId, text, msgData, isSentByMe };
+      (msgData) => {
+        const messageEvent = { conversationId, msgData };
 
         // 1. Cache the message (even if background)
         this.cacheHistory(session, messageEvent);
@@ -233,7 +233,8 @@ export class MessagingController extends EventEmitter {
         }
 
         // Notify if unread count changes
-        if (!isSentByMe) {
+        const isFromMe = msgData.from === getLoggedInUserId();
+        if (!isFromMe) {
           this.transport
             .getUnreadCountForConversation(conversationId)
             .then((unreadCount) => {
