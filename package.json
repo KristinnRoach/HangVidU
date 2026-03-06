@@ -60,11 +60,11 @@
     "baseline-browser-mapping": "^2.10.0",
     "concurrently": "^9.2.1",
     "fast-check": "^4.5.3",
-    "firebase-admin": "^13.6.1",
+    "firebase-admin": "^13.7.0",
     "fkill-cli": "~9.0.0",
     "playwright": "^1.58.1",
     "vite": "^7.3.1",
-    "vite-plugin-mkcert": "^1.17.9",
+    "vite-plugin-mkcert": "^1.17.10",
     "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.0.18",
     "workbox-build": "^7.4.0",
@@ -73,9 +73,9 @@
     "workbox-strategies": "^7.4.0"
   },
   "dependencies": {
-    "@sentry/browser": "^10.39.0",
+    "@sentry/browser": "^10.40.0",
     "dexie": "^4.3.0",
-    "firebase": "^12.9.0",
+    "firebase": "^12.10.0",
     "lucide": "^0.575.0",
     "workbox-window": "^7.4.0",
     "zod": "^4.3.6"
