@@ -1508,6 +1508,7 @@ export function initMessagesUI() {
   function cleanup() {
     // Clear pending markAsRead timeout
     clearTimeout(markAsReadTimeout);
+    markAsReadTimeout = null;
 
     // Abort grouped UI listeners
     try {
@@ -1751,6 +1752,7 @@ export function initMessagesUI() {
             return;
           }
 
+          // TODO: optimize markAsRead (accept msgId?)
           currentSession.markAsRead?.().catch((err) => {
             console.warn('Failed to mark messages as read:', err);
           });
