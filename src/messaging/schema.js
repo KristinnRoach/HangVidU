@@ -36,7 +36,7 @@ const TextMessageSchema = z.object({
       z.record(z.boolean()),
     )
     .optional(),
-  messageId: z.string().optional(), // Added by UI layer
+  messageId: z.string().optional(), // Added by transport layer
 });
 
 // File Message (user-authored file transfer, optionally with caption)
@@ -62,7 +62,13 @@ const EventMessageSchema = z.object({
   from: z.literal('system'), // System-generated events
   sentAt: z.number(),
   read: z.boolean().default(false),
-  details: z.record(z.any()).optional(), // Event-specific data: { callerId, callerName, callId, ... }
+  details: z
+    .object({
+      callerId: z.string().optional(),
+      callerName: z.string().optional(),
+      callId: z.string().nullable().optional(),
+    })
+    .optional(),
   messageId: z.string().optional(),
 });
 
@@ -129,11 +135,17 @@ export const ReactionsSchema = z.record(
 // This is what the messaging controller emits to the UI.
 // Includes both original RTDB fields + computed fields
 
-export const ParsedMessageSchema = MessageSchema.extend({
-  messageId: z.string(), // Always present after parsing
+const parsedFields = {
+  messageId: z.string(), // Always present after parsing (added by transport)
   reactions: z.record(z.array(z.string())).optional(), // { emoji: [uid1, uid2] }
   _reactionUpdate: z.boolean().optional(), // Internal flag for reaction-only updates
-});
+};
+
+export const ParsedMessageSchema = z.union([
+  TextMessageSchema.extend(parsedFields),
+  FileMessageSchema.extend(parsedFields),
+  EventMessageSchema.extend(parsedFields),
+]);
 
 // ============================================================================
 // PARSER FUNCTIONS (following user/schema.js pattern)
