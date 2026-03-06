@@ -19,6 +19,7 @@ import {
   setRemoteDescription,
 } from './webrtc-utils.js';
 import { setupIceCandidates, drainIceCandidateQueue } from './ice.js';
+import { checkAndWarnRTT } from './rtt-monitor.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 
 const DATA_CHANNEL_LABEL = 'files';
@@ -50,6 +51,8 @@ export async function createDataConnection(roomId) {
       if (!answer) return;
       try {
         await setRemoteDescription(pc, answer, drainIceCandidateQueue);
+        // Check RTT after connection is established
+        setTimeout(() => checkAndWarnRTT(pc, 'Data Connection'), 1000);
       } catch (err) {
         console.warn('[DataConnection] Failed to set data answer:', err);
       }
@@ -99,6 +102,8 @@ export function joinDataConnection(roomId) {
             sdp: answer.sdp,
           });
           devDebug('[DataConnection] Joined (joiner)', { roomId });
+          // Check RTT after connection is established
+          setTimeout(() => checkAndWarnRTT(pc, 'Data Connection'), 1000);
           resolve({ pc, dataChannel });
         } catch (err) {
           console.warn('[DataConnection] Failed to complete data join:', err);
