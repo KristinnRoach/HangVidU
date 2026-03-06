@@ -4,7 +4,6 @@ import { showUpdateNotification } from '../ui/components/notifications/update-no
 const UPDATE_CHECK_INTERVAL = 30 * 60 * 1000;
 
 let updateCheckIntervalId = null;
-let updateSWRef = null;
 let visibilityAbortController = null;
 
 /**
@@ -134,8 +133,6 @@ export async function setupUpdateHandler() {
         console.info('[PWA] App ready to work offline');
       },
     });
-
-    updateSWRef = updateSW;
 
     // Start checking for updates periodically
     startPeriodicUpdateChecks();
