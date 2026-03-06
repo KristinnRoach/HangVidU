@@ -243,21 +243,6 @@
   -webkit-user-select: none;
   cursor: pointer;
 
-  &[data-read='true'] {
-    padding-right: 18px;
-  }
-
-  &[data-read='true']::after {
-    content: '✓';
-    color: #74d877ae;
-
-    position: absolute;
-    bottom: 4px;
-    right: 6px;
-    font-weight: bold;
-    font-size: 12px;
-  }
-
   & p {
     display: inline;
     margin: 0;
@@ -282,6 +267,22 @@
   background: rgba(74, 158, 255, 0.2);
   border-radius: 16px 16px 2px 16px;
   border: 1px solid rgba(84, 162, 251, 0.24);
+
+  /* Read receipt: checkmark when recipient reads my message */
+  &[data-read='true'] {
+    padding-right: 18px;
+
+    &::after {
+      content: '✓';
+      color: #74d877ae;
+
+      position: absolute;
+      bottom: 4px;
+      right: 6px;
+      font-weight: bold;
+      font-size: 12px;
+    }
+  }
 }
 
 #messages .message-entry.remote .message-bubble {
