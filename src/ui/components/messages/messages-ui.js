@@ -996,12 +996,13 @@ export function initMessagesUI() {
       } else {
         try {
           const { callContact } = await import('../../../main.js');
+          const details = msgData.details || {};
           const contactId = isSentByMe
             ? currentSession?.contactId
-            : msgData.callerId;
+            : details.callerId;
           const contactName = isSentByMe
             ? currentSession?.contactName
-            : msgData.callerName;
+            : details.callerName;
           if (contactId && contactName) {
             await callContact(contactId, contactName);
           }
@@ -1044,8 +1045,8 @@ export function initMessagesUI() {
    * @param {Object} [options.reactions] - Initial reactions { type: [userIds] }
    * @param {boolean} [options.isRead=false] - Whether this message is read
    * @param {Object} [options.fileDownload] - { fileName, url } for DataChannel file links
-   * @param {Object} [options.msgData] - Raw Firebase msg data (for file/call_event types)
-   * @param {Function} [options.onCallBack] - Callback for call_event "call back" button
+   * @param {Object} [options.msgData] - Raw Firebase msg data (for file/event types)
+   * @param {Function} [options.onCallBack] - Callback for event "call back" button
    */
   function appendMessage(text, options = {}) {
     const {
@@ -1074,7 +1075,7 @@ export function initMessagesUI() {
     timestamp && messageEntry.setAttribute('data-timestamp', timestamp);
 
     if (effectiveType === 'system') messageEntry.classList.add('system');
-    if (effectiveType === 'call_event')
+    if (effectiveType === 'event')
       messageEntry.classList.add('call-event');
     if (isSentByMe === true) messageEntry.classList.add('local');
     else if (isSentByMe === false) messageEntry.classList.add('remote');
@@ -1101,7 +1102,7 @@ export function initMessagesUI() {
         onSingleTap = file.onSingleTap;
         break;
       }
-      case 'call_event':
+      case 'event':
         p.appendChild(
           buildCallEventContent(msgData, {
             onCallBack,

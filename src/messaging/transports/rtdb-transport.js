@@ -126,7 +126,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
    * Used for missed calls, rejected calls, etc.
    * @param {string} contactId - Contact's user ID
    * @param {string} eventType - Event type ('missed_call' or 'rejected_call')
-   * @param {Object} metadata - Event metadata
+   * @param {Object} metadata - Event details
    * @param {string} metadata.roomId - The call's room ID (for deduplication)
    * @param {string} metadata.callerId - Who initiated the call
    * @param {string} metadata.callerName - Caller's display name
@@ -146,12 +146,14 @@ export class RTDBMessagingTransport extends MessagingTransport {
     );
 
     await set(messageRef, {
-      type: 'call_event',
+      type: 'event',
       eventType,
-      callId: metadata.roomId || null,
-      callerId: metadata.callerId || fromUserId,
-      callerName: metadata.callerName || 'Someone',
-      from: fromUserId,
+      from: 'system',
+      details: {
+        callId: metadata.roomId || null,
+        callerId: metadata.callerId || fromUserId,
+        callerName: metadata.callerName || 'Someone',
+      },
       sentAt: serverTimestamp(),
       read: false,
     });

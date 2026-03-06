@@ -62,7 +62,7 @@ const EventMessageSchema = z.object({
   from: z.literal('system'), // System-generated events
   sentAt: z.number(),
   read: z.boolean().default(false),
-  metadata: z.record(z.any()).optional(), // Event-specific data: { callerId, callerName, callId, ... }
+  details: z.record(z.any()).optional(), // Event-specific data: { callerId, callerName, callId, ... }
   messageId: z.string().optional(),
 });
 
@@ -85,9 +85,9 @@ export const ConversationSchema = z.object({
 });
 
 // ============================================================================
-// EVENT MESSAGE METADATA
+// EVENT MESSAGE DETAILS
 // ============================================================================
-// Event messages store event-specific data in the metadata field.
+// Event messages store event-specific data in the details field.
 // Examples:
 //
 // missed_call:
