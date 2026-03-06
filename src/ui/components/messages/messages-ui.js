@@ -965,13 +965,17 @@ export function initMessagesUI() {
   /**
    * Build call event content span (missed/rejected call with callback button).
    */
-  function buildCallEventContent(msgData, { onCallBack, isSentByMe }) {
+  function buildCallEventContent(msgData, { onCallBack }) {
     const callEventBubble = document.createElement('span');
     callEventBubble.className = 'message-text call-event-content';
 
+    const details = msgData.details || {};
+    const currentUserId = getLoggedInUserId();
+    const wasInitiatedByMe = details.callerId === currentUserId;
+
     const callStatusText = document.createElement('span');
     callStatusText.className = 'call-event-text';
-    callStatusText.textContent = isSentByMe
+    callStatusText.textContent = wasInitiatedByMe
       ? t('call.no_answer')
       : t('call.missed');
 
@@ -986,7 +990,7 @@ export function initMessagesUI() {
     callBackBtn.appendChild(callBackIcon);
     callBackBtn.appendChild(
       document.createTextNode(
-        isSentByMe ? t('call.try_again') : t('call.callback'),
+        wasInitiatedByMe ? t('call.try_again') : t('call.callback'),
       ),
     );
 
@@ -997,10 +1001,11 @@ export function initMessagesUI() {
         try {
           const { callContact } = await import('../../../main.js');
           const details = msgData.details || {};
-          const contactId = isSentByMe
+          const wasInitiatedByMe = details.callerId === getLoggedInUserId();
+          const contactId = wasInitiatedByMe
             ? currentSession?.contactId
             : details.callerId;
-          const contactName = isSentByMe
+          const contactName = wasInitiatedByMe
             ? currentSession?.contactName
             : details.callerName;
           if (contactId && contactName) {
@@ -1061,30 +1066,28 @@ export function initMessagesUI() {
       timestamp,
     } = options;
 
-    // Infer system type: no sender and no fileDownload → system notice
-    const effectiveType =
-      type !== 'text'
-        ? type
-        : typeof isSentByMe === 'undefined' && !fileDownload
-          ? 'system'
-          : type;
-
     // message-entry: container with type/sender classes
     const messageEntry = document.createElement('div');
     messageEntry.className = 'message-entry';
     timestamp && messageEntry.setAttribute('data-timestamp', timestamp);
 
-    if (effectiveType === 'system') messageEntry.classList.add('system');
-    if (effectiveType === 'event')
+    if (type === 'event') {
+      // todo: only apply call-event class if eventType is call-related (missed/rejected/etc)
       messageEntry.classList.add('call-event');
-    if (isSentByMe === true) messageEntry.classList.add('local');
-    else if (isSentByMe === false) messageEntry.classList.add('remote');
+    }
+
+    // Temp fix: For event messages, determine local/remote from callerId, not isSentByMe
+    let classIsSentByMe = isSentByMe;
+    if (type === 'event' && msgData?.details?.callerId) {
+      classIsSentByMe = msgData.details.callerId === getLoggedInUserId();
+    }
+
+    if (classIsSentByMe === true) messageEntry.classList.add('local');
+    else if (classIsSentByMe === false) messageEntry.classList.add('remote');
     if (fileDownload) messageEntry.classList.add('system');
 
     // Avatar (sibling to message-bubble) - only for remote messages
-    if (isSentByMe === false) {
-      messageEntry.appendChild(createAvatar(isSentByMe));
-    }
+    messageEntry.appendChild(createAvatar(classIsSentByMe));
 
     // message-bubble: container for content + reactions
     const messageBubble = document.createElement('div');
@@ -1095,7 +1098,7 @@ export function initMessagesUI() {
 
     // Type-specific content
     let onSingleTap;
-    switch (effectiveType) {
+    switch (type) {
       case 'file': {
         const file = buildFileContent(msgData);
         p.appendChild(file.element);
@@ -1111,7 +1114,7 @@ export function initMessagesUI() {
         );
         initIcons(p);
         break;
-      default: // 'text', 'system'
+      default: // 'text'
         p.appendChild(buildTextContent(text, { fileDownload }));
         break;
     }
@@ -1125,10 +1128,8 @@ export function initMessagesUI() {
       messageBubble.dataset.read = 'true';
     }
 
-    // Reactions for all non-system types (attach to messageBubble)
-    if (effectiveType !== 'system') {
-      attachReactions(messageBubble, messageId, reactions, { onSingleTap });
-    }
+    // Reactions (attach to messageBubble)
+    attachReactions(messageBubble, messageId, reactions, { onSingleTap });
 
     messagesMessages.appendChild(messageEntry);
     scrollMessagesToEnd();
