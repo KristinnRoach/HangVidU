@@ -1751,7 +1751,7 @@ export function initMessagesUI() {
             return;
           }
 
-          currentSession.markAsRead?.().catch((err) => {
+          Promise.resolve(currentSession.markAsRead?.()).catch((err) => {
             console.warn('Failed to mark messages as read:', err);
           });
         }, MARK_AS_READ_DEBOUNCE_MS);
