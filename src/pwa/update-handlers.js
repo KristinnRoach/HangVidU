@@ -5,6 +5,7 @@ const UPDATE_CHECK_INTERVAL = 30 * 60 * 1000;
 
 let updateCheckIntervalId = null;
 let updateSWRef = null;
+let visibilityAbortController = null;
 
 /**
  * Dynamically imports the PWA register module.
@@ -59,14 +60,20 @@ function startPeriodicUpdateChecks() {
   }, UPDATE_CHECK_INTERVAL);
 
   // Also check for updates when user switches back to the tab
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      console.debug('[PWA] App came to foreground, checking for updates');
-      checkForUpdates().catch((error) => {
-        console.debug('[PWA] Foreground update check failed:', error);
-      });
-    }
-  });
+  // Use AbortController to safely clean up the listener
+  visibilityAbortController = new AbortController();
+  document.addEventListener(
+    'visibilitychange',
+    () => {
+      if (document.visibilityState === 'visible') {
+        console.debug('[PWA] App came to foreground, checking for updates');
+        checkForUpdates().catch((error) => {
+          console.debug('[PWA] Foreground update check failed:', error);
+        });
+      }
+    },
+    { signal: visibilityAbortController.signal }
+  );
 
   console.info(
     `[PWA] Started periodic update checks (every ${UPDATE_CHECK_INTERVAL / 1000 / 60} minutes)`
@@ -80,6 +87,14 @@ export function stopPeriodicUpdateChecks() {
   if (updateCheckIntervalId !== null) {
     clearInterval(updateCheckIntervalId);
     updateCheckIntervalId = null;
+  }
+
+  if (visibilityAbortController !== null) {
+    visibilityAbortController.abort();
+    visibilityAbortController = null;
+  }
+
+  if (updateCheckIntervalId === null && visibilityAbortController === null) {
     console.info('[PWA] Stopped periodic update checks');
   }
 }
