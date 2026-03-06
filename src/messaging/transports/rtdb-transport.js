@@ -2,6 +2,7 @@
 // Firebase Realtime Database messaging transport implementation
 
 import { MessagingTransport } from './messaging-transport.js';
+import { parseMessage } from '../schema.js';
 import { compressImage } from '../../media/image-compress.js';
 import {
   ref,
@@ -184,7 +185,12 @@ export class RTDBMessagingTransport extends MessagingTransport {
       if (!msg || seenMessageIds.has(msgId)) return;
 
       seenMessageIds.add(msgId);
-      onMessage({ ...msg, messageId: msgId });
+      try {
+        const parsed = parseMessage(msg, msgId);
+        if (parsed) onMessage(parsed);
+      } catch (err) {
+        console.warn('[RTDBTransport] Failed to parse message', msgId, err);
+      }
     };
 
     const reactionCallback = (snapshot) => {
@@ -193,7 +199,12 @@ export class RTDBMessagingTransport extends MessagingTransport {
       if (!msg || !seenMessageIds.has(msgId)) return;
 
       if (msg.reactions !== undefined) {
-        onMessage({ ...msg, messageId: msgId, _reactionUpdate: true });
+        try {
+          const parsed = parseMessage({ ...msg, _reactionUpdate: true }, msgId);
+          if (parsed) onMessage(parsed);
+        } catch (err) {
+          console.warn('[RTDBTransport] Failed to parse reaction update', msgId, err);
+        }
       }
     };
 
@@ -463,7 +474,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
     await set(messageRef, {
       type: 'file',
       fileName: file.name,
-      fileType: file.type,
+      mimeType: file.type,
       fileSize: file.size,
       data: base64,
       from: fromUserId,

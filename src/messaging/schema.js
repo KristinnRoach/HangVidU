@@ -151,7 +151,7 @@ export const ParsedMessageSchema = z.union([
 // PARSER FUNCTIONS (following user/schema.js pattern)
 // ============================================================================
 
-export const parseMessage = (data) => {
+export const parseMessage = (data, messageId) => {
   // Handle missing/undefined gracefully during initial loading
   if (!data) return null;
 
@@ -165,6 +165,7 @@ export const parseMessage = (data) => {
 
   const parsed = {
     ...data,
+    ...(messageId && { messageId }),
     reactions,
   };
 
