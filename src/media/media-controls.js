@@ -138,10 +138,11 @@ export function initializeMediaControls({
 
     // Show button only if device has multiple cameras
     (async () => {
-      const hasMultipleCameras = await hasFrontAndBackCameras();
-      if (hasMultipleCameras) {
-        switchCameraBtn.style.display = '';
-      } else {
+      try {
+        const hasMultipleCameras = await hasFrontAndBackCameras();
+        switchCameraBtn.style.display = hasMultipleCameras ? '' : 'none';
+      } catch (error) {
+        console.error('Failed to detect camera availability:', error);
         switchCameraBtn.style.display = 'none';
       }
     })();
