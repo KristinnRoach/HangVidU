@@ -72,11 +72,12 @@ export function initMessagesUI() {
   let isReceivingFile = false; // Track if currently receiving a file
   let sentFiles = new Map(); // Track sent files by name for watch-together requests
   let receivedFile = null; // Store the last received video file for watch-together
+  let markAsReadTimeout = null; // Debounce markAsRead calls on incoming messages
 
-  // Initialize reaction management
+  const MARK_AS_READ_DEBOUNCE_MS = 100;
+
   const reactionManager = new ReactionManager();
   const reactionUI = new ReactionUI(reactionManager);
-  // AbortController for grouped lifecycle of UI listeners
   const ac = new AbortController();
 
   const shouldShowAttachButton = () =>
@@ -1250,6 +1251,11 @@ export function initMessagesUI() {
    * @param {Object} session - Session object from messagingController
    */
   function setCurrentMsgUISession(session) {
+    if (markAsReadTimeout !== null) {
+      clearTimeout(markAsReadTimeout);
+      markAsReadTimeout = null;
+    }
+
     if (currentSession !== null && currentSession !== session) {
       clearMessages();
     }
@@ -1419,7 +1425,8 @@ export function initMessagesUI() {
   function reset() {
     clearMessages();
     currentSession = null;
-
+    clearTimeout(markAsReadTimeout);
+    markAsReadTimeout = null;
     fileTransferController = null;
     inActiveCall = false;
     sentFiles.clear();
@@ -1499,6 +1506,10 @@ export function initMessagesUI() {
   }
 
   function cleanup() {
+    // Clear pending markAsRead timeout
+    clearTimeout(markAsReadTimeout);
+    markAsReadTimeout = null;
+
     // Abort grouped UI listeners
     try {
       ac.abort();
@@ -1724,6 +1735,29 @@ export function initMessagesUI() {
       }
 
       processReceivedMessage(messageEvent);
+
+      // Mark as read if UI is open and message is not from me
+      if (isMessagesUIOpen() && !messageEvent.isSentByMe) {
+        const conversationIdAtReceive =
+          currentSession?.conversationId ?? messageEvent.conversationId;
+
+        clearTimeout(markAsReadTimeout);
+        markAsReadTimeout = setTimeout(() => {
+          markAsReadTimeout = null;
+          if (
+            !currentSession ||
+            currentSession.conversationId !== conversationIdAtReceive ||
+            !isMessagesUIOpen()
+          ) {
+            return;
+          }
+
+          // TODO: optimize markAsRead (accept msgId?)
+          Promise.resolve(currentSession.markAsRead?.()).catch((err) => {
+            console.warn('Failed to mark messages as read:', err);
+          });
+        }, MARK_AS_READ_DEBOUNCE_MS);
+      }
     },
     { signal: ac.signal },
   );
