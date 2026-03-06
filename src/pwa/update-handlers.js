@@ -1,5 +1,11 @@
 import { showUpdateNotification } from '../ui/components/notifications/update-notification.js';
 
+// Check for updates every 30 minutes (in milliseconds)
+const UPDATE_CHECK_INTERVAL = 30 * 60 * 1000;
+
+let updateCheckIntervalId = null;
+let updateSWRef = null;
+
 /**
  * Dynamically imports the PWA register module.
  * Separated to avoid Vite's static dependency scanner when PWA is disabled.
@@ -11,8 +17,77 @@ async function importPWARegister() {
 }
 
 /**
+ * Checks for updates using the standard Service Worker API.
+ * This triggers the browser to check if the service worker has been updated.
+ */
+async function checkForUpdates() {
+  try {
+    const registration = await navigator.serviceWorker?.ready;
+    if (!registration) {
+      console.debug('[PWA] No service worker registration, skipping update check');
+      return;
+    }
+
+    // The standard API to check for service worker updates
+    // This causes the browser to re-fetch the service worker script and compare it
+    await registration.update();
+    console.debug('[PWA] Service worker update check completed');
+  } catch (error) {
+    console.debug('[PWA] Update check error:', error.message);
+  }
+}
+
+/**
+ * Starts periodic update checks while the app is open.
+ */
+function startPeriodicUpdateChecks() {
+  if (updateCheckIntervalId !== null) {
+    console.debug('[PWA] Periodic update checks already running');
+    return;
+  }
+
+  // Check immediately on start (fire and forget)
+  checkForUpdates().catch((error) => {
+    console.debug('[PWA] Initial update check failed:', error);
+  });
+
+  // Then check every UPDATE_CHECK_INTERVAL
+  updateCheckIntervalId = setInterval(() => {
+    checkForUpdates().catch((error) => {
+      console.debug('[PWA] Periodic update check failed:', error);
+    });
+  }, UPDATE_CHECK_INTERVAL);
+
+  // Also check for updates when user switches back to the tab
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      console.debug('[PWA] App came to foreground, checking for updates');
+      checkForUpdates().catch((error) => {
+        console.debug('[PWA] Foreground update check failed:', error);
+      });
+    }
+  });
+
+  console.info(
+    `[PWA] Started periodic update checks (every ${UPDATE_CHECK_INTERVAL / 1000 / 60} minutes)`
+  );
+}
+
+/**
+ * Stops periodic update checks.
+ */
+export function stopPeriodicUpdateChecks() {
+  if (updateCheckIntervalId !== null) {
+    clearInterval(updateCheckIntervalId);
+    updateCheckIntervalId = null;
+    console.info('[PWA] Stopped periodic update checks');
+  }
+}
+
+/**
  * Sets up PWA update handling with user prompt.
  * Automatically shows update notification when new version is available.
+ * Enables periodic checks so updates are detected even if app is left open.
  */
 export async function setupUpdateHandler() {
   // Only try to import if PWA is enabled
@@ -37,6 +112,11 @@ export async function setupUpdateHandler() {
         console.info('[PWA] App ready to work offline');
       },
     });
+
+    updateSWRef = updateSW;
+
+    // Start checking for updates periodically
+    startPeriodicUpdateChecks();
 
     return updateSW;
   } catch (error) {
