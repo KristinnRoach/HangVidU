@@ -18,6 +18,10 @@ Receive:  RTDB child_added → RTDBTransport.listen() → parseMessage(msg, msgI
             → messages-ui.js processReceivedMessage() → appendMessage(parsedMessage)
 ```
 
+### Event message `from` field
+
+Event messages (missed/rejected calls) use the caller's userId as `from`, not `'system'`. This keeps all unread/read logic consistent — `from` is always a userId across all message types.
+
 ### Zod 4 gotchas
 
 - `z.record(valueSchema)` means **key** validator in Zod 4. Always use `z.record(z.string(), valueSchema)`.
