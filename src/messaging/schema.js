@@ -160,7 +160,9 @@ export const parseMessage = (data, messageId) => {
   // Merge reactions from nested structure: { emoji: { uid: true } } -> { emoji: [uids] }
   const reactions = data.reactions
     ? Object.entries(data.reactions).reduce((acc, [type, users]) => {
-        acc[type] = Object.keys(users);
+        if (users && typeof users === 'object') {
+          acc[type] = Object.keys(users);
+        }
         return acc;
       }, {})
     : undefined;

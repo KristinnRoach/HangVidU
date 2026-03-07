@@ -127,13 +127,13 @@ export class RTDBMessagingTransport extends MessagingTransport {
    * Used for missed calls, rejected calls, etc.
    * @param {string} contactId - Contact's user ID
    * @param {string} eventType - Event type ('missed_call' or 'rejected_call')
-   * @param {Object} metadata - Event details
-   * @param {string} metadata.roomId - The call's room ID (for deduplication)
-   * @param {string} metadata.callerId - Who initiated the call
-   * @param {string} metadata.callerName - Caller's display name
+   * @param {Object} details - Event details
+   * @param {string} details.roomId - The call's room ID (for deduplication)
+   * @param {string} details.callerId - Who initiated the call
+   * @param {string} details.callerName - Caller's display name
    * @returns {Promise<void>}
    */
-  async writeCallEventMessage(contactId, eventType, metadata = {}) {
+  async writeCallEventMessage(contactId, eventType, details = {}) {
     const fromUserId = getLoggedInUserId();
     if (!fromUserId) {
       throw new Error('Cannot write call event: not logged in');
@@ -151,9 +151,9 @@ export class RTDBMessagingTransport extends MessagingTransport {
       eventType,
       from: 'system',
       details: {
-        callId: metadata.roomId || null,
-        callerId: metadata.callerId || fromUserId,
-        callerName: metadata.callerName || 'Someone',
+        callId: details.roomId || null,
+        callerId: details.callerId || fromUserId,
+        callerName: details.callerName || 'Someone',
       },
       sentAt: serverTimestamp(),
       read: false,
@@ -184,10 +184,12 @@ export class RTDBMessagingTransport extends MessagingTransport {
       const msg = snapshot.val();
       if (!msg || seenMessageIds.has(msgId)) return;
 
-      seenMessageIds.add(msgId);
       try {
         const parsed = parseMessage(msg, msgId);
-        if (parsed) onMessage(parsed);
+        if (parsed) {
+          seenMessageIds.add(msgId);
+          onMessage(parsed);
+        }
       } catch (err) {
         console.warn('[RTDBTransport] Failed to parse message', msgId, err);
       }
@@ -203,7 +205,11 @@ export class RTDBMessagingTransport extends MessagingTransport {
           const parsed = parseMessage({ ...msg, _reactionUpdate: true }, msgId);
           if (parsed) onMessage(parsed);
         } catch (err) {
-          console.warn('[RTDBTransport] Failed to parse reaction update', msgId, err);
+          console.warn(
+            '[RTDBTransport] Failed to parse reaction update',
+            msgId,
+            err,
+          );
         }
       }
     };

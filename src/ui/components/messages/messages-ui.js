@@ -736,19 +736,6 @@ export function initMessagesUI() {
   // --- Helpers ---
 
   /**
-   * Convert Firebase reactions format { heart: { odAg2: true } } to { heart: ['odAg2'] }
-   */
-  function convertFirebaseReactions(fbReactions) {
-    const reactions = {};
-    if (fbReactions) {
-      for (const [type, users] of Object.entries(fbReactions)) {
-        reactions[type] = Object.keys(users);
-      }
-    }
-    return reactions;
-  }
-
-  /**
    * Handle a reaction change (double-tap or picker) on a message
    */
   async function handleReactionChange(
@@ -1047,7 +1034,7 @@ export function initMessagesUI() {
     const { onCallBack } = uiOpts;
     const type = parsedMessage.type || 'text';
     const isLocal = isLocalMessage(parsedMessage);
-    const reactions = convertFirebaseReactions(parsedMessage.reactions);
+    const reactions = parsedMessage.reactions;
 
     // message-entry: container with type/sender classes
     const messageEntry = document.createElement('div');
@@ -1582,7 +1569,7 @@ export function initMessagesUI() {
     if (parsedMessage._reactionUpdate) {
       updateMessageReactions(
         parsedMessage.messageId,
-        convertFirebaseReactions(parsedMessage.reactions),
+        parsedMessage.reactions,
       );
       return;
     }
@@ -1764,7 +1751,7 @@ export function initMessagesUI() {
     'reaction:updated',
     ({ conversationId, messageId, reactions }) => {
       if (conversationId !== currentSession?.conversationId) return;
-      updateMessageReactions(messageId, convertFirebaseReactions(reactions));
+      updateMessageReactions(messageId, reactions);
 
       // Update interaction timestamp for reactions as well
       if (currentSession.contactId) {
