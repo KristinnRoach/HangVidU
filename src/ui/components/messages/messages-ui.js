@@ -222,9 +222,8 @@ export function initMessagesUI() {
           sentFiles.set(file.name, file);
         }
 
-        appendMessage({
+        appendEphemeralMessage({
           text: `📎 ${t('message.sent', { name: file.name })}`,
-          from: getLoggedInUserId(),
         });
       } else if (currentSession) {
         // RTDB file message (no active call, small files only)
@@ -240,7 +239,9 @@ export function initMessagesUI() {
         ? ''
         : '\n\n' + t('message.file_size_limited');
 
-      appendMessage({ text: '❌  ' + t('message.send_failed') + sizeHint });
+      appendEphemeralMessage({
+        text: '❌  ' + t('message.send_failed') + sizeHint,
+      });
     } finally {
       setSendLabelText(originalText);
       fileInput.value = '';
@@ -501,26 +502,32 @@ export function initMessagesUI() {
     const file = sentFiles.get(fileName);
 
     if (!file) {
-      appendMessage({ text: `❌ ${t('message.watch.file_unavailable', { name: fileName })}` });
+      appendEphemeralMessage({
+        text: `❌ ${t('message.watch.file_unavailable', { name: fileName })}`,
+      });
       await cancelWatchRequest();
       return;
     }
 
     // Show notification
-    appendMessage({ text: `🎬 ${t('message.watch.partner_wants', { name: fileName })}` });
+    appendEphemeralMessage({
+      text: `🎬 ${t('message.watch.partner_wants', { name: fileName })}`,
+    });
 
     // Prompt user to join
     const accepted = await promptJoinWatchTogether(fileName);
 
     if (accepted) {
-      appendMessage({ text: `✅ ${t('message.watch.joining')}` });
+      appendEphemeralMessage({ text: `✅ ${t('message.watch.joining')}` });
       const success = await acceptWatchRequest(file);
 
       if (!success) {
-        appendMessage({ text: `❌ ${t('message.watch.failed_load')}` });
+        appendEphemeralMessage({
+          text: `❌ ${t('message.watch.failed_load')}`,
+        });
       }
     } else {
-      appendMessage({ text: `❌ ${t('message.watch.declined')}` });
+      appendEphemeralMessage({ text: `❌ ${t('message.watch.declined')}` });
       await cancelWatchRequest();
     }
   }
@@ -876,32 +883,10 @@ export function initMessagesUI() {
 
   // --- Content builders ---
 
-  /**
-   * Build text content span. Handles plain text (linkified) and file-download links.
-   */
-  function buildTextContent(text, { fileDownload } = {}) {
+  function buildTextContent(text) {
     const textSpan = document.createElement('span');
     textSpan.className = 'message-text';
-
-    if (fileDownload) {
-      const { fileName, url } = fileDownload;
-      const prefix = text.split(fileName)[0];
-      if (prefix) textSpan.appendChild(document.createTextNode(prefix));
-      const link = document.createElement('a');
-      link.textContent = fileName;
-      link.href = url;
-      link.download = fileName;
-      link.style.cursor = 'pointer';
-      link.style.textDecoration = 'underline';
-      link.addEventListener('click', () => {
-        setTimeout(() => URL.revokeObjectURL(url), 100);
-      });
-      textSpan.appendChild(link);
-    } else {
-      const fragment = linkifyToFragment(text);
-      textSpan.appendChild(fragment);
-    }
-
+    textSpan.appendChild(linkifyToFragment(text));
     return textSpan;
   }
 
@@ -1056,11 +1041,10 @@ export function initMessagesUI() {
    * Append a message of any type to the chat UI.
    * @param {Object} msgData - Message object (conforms to schema.js or minimal { from, text })
    * @param {Object} [uiOpts] - UI-only options not in the message schema
-   * @param {Object} [uiOpts.fileDownload] - { fileName, url } for DataChannel file links
    * @param {Function} [uiOpts.onCallBack] - Callback for event "call back" button
    */
   function appendMessage(msgData, uiOpts = {}) {
-    const { fileDownload, onCallBack } = uiOpts;
+    const { onCallBack } = uiOpts;
     const type = msgData.type || 'text';
     const isLocal = isLocalMessage(msgData);
     const reactions = convertFirebaseReactions(msgData.reactions);
@@ -1078,7 +1062,6 @@ export function initMessagesUI() {
 
     if (isLocal === true) messageEntry.classList.add('local');
     else if (isLocal === false) messageEntry.classList.add('remote');
-    if (fileDownload) messageEntry.classList.add('system');
 
     // Avatar (sibling to message-bubble) - only for remote messages
     if (isLocal === false) {
@@ -1106,7 +1089,7 @@ export function initMessagesUI() {
         initIcons(p);
         break;
       default: // 'text'
-        p.appendChild(buildTextContent(msgData.text || '', { fileDownload }));
+        p.appendChild(buildTextContent(msgData.text));
         break;
     }
 
@@ -1132,6 +1115,18 @@ export function initMessagesUI() {
       const currentCount = messageToggle.element.unreadCount || 0;
       messageToggle.setUnreadCount(currentCount + 1);
     }
+  }
+
+  function appendEphemeralMessage({ text }) {
+    const entry = document.createElement('div');
+    entry.className = 'message-entry status';
+    const p = document.createElement('p');
+    p.className = 'message-text';
+    p.textContent = text;
+    entry.appendChild(p);
+    messagesMessages.appendChild(entry);
+    scrollMessagesToEnd();
+    return entry;
   }
 
   /**
@@ -1310,11 +1305,12 @@ export function initMessagesUI() {
 
           if (action === 'watch') {
             // Show notification in chat
-            appendMessage({
+            appendEphemeralMessage({
               text: `📹 ${t('message.received_video', { name })}`,
-              from: currentSession?.contactId,
             });
-            appendMessage({ text: `🎬 ${t('message.watch.requesting')}` });
+            appendEphemeralMessage({
+              text: `🎬 ${t('message.watch.requesting')}`,
+            });
 
             // If OPFS-streamed and SW available, serve via SW URL
             let videoSource;
@@ -1344,7 +1340,9 @@ export function initMessagesUI() {
             const success = await handleVideoSelection(videoSource, mimeType);
 
             if (!success) {
-              appendMessage({ text: `❌ ${t('message.watch.failed_load')}` });
+              appendEphemeralMessage({
+                text: `❌ ${t('message.watch.failed_load')}`,
+              });
               return;
             }
 
@@ -1352,9 +1350,13 @@ export function initMessagesUI() {
             const requestCreated = await createWatchRequest(name, file);
 
             if (requestCreated) {
-              appendMessage({ text: `⏳ ${t('message.watch.waiting')}` });
+              appendEphemeralMessage({
+                text: `⏳ ${t('message.watch.waiting')}`,
+              });
             } else {
-              appendMessage({ text: `❌ ${t('message.watch.request_failed')}` });
+              appendEphemeralMessage({
+                text: `❌ ${t('message.watch.request_failed')}`,
+              });
             }
           } else {
             // Download the file
@@ -1368,15 +1370,26 @@ export function initMessagesUI() {
             // Using 1 second to be safe for slow devices/large files
             setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-            appendMessage({ text: `📎 ${t('message.downloaded', { name })}` });
+            appendEphemeralMessage({
+              text: `📎 ${t('message.downloaded', { name })}`,
+            });
           }
         } else {
           // Non-video file - show download link
           const url = URL.createObjectURL(file);
-          appendMessage(
-            { text: `📎 ${t('message.received', { name })}`, from: currentSession?.contactId },
-            { fileDownload: { fileName: name, url } },
+          const entry = appendEphemeralMessage({
+            text: `📎 ${t('message.received', { name })} `,
+          });
+          const link = document.createElement('a');
+          link.textContent = name;
+          link.href = url;
+          link.download = name;
+          link.style.textDecoration = 'underline';
+          link.style.cursor = 'pointer';
+          link.addEventListener('click', () =>
+            setTimeout(() => URL.revokeObjectURL(url), 100),
           );
+          entry.querySelector('.message-text').appendChild(link);
         }
 
         // Update interaction timestamp for received files
@@ -1401,7 +1414,7 @@ export function initMessagesUI() {
 
       // Setup file error handler
       fileTransferController.onFileError = ({ fileName, reason }) => {
-        appendMessage({
+        appendEphemeralMessage({
           text: `❌ ${t('message.receive_failed', { name: fileName })} (${reason})`,
         });
       };

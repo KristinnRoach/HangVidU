@@ -32,8 +32,9 @@ const TextMessageSchema = z.object({
   read: z.boolean().default(false),
   reactions: z
     .record(
+      z.string(),
       // { 'emoji': { userId1: true, userId2: true } }
-      z.record(z.boolean()),
+      z.record(z.string(), z.boolean()),
     )
     .optional(),
   messageId: z.string().optional(), // Added by transport layer
@@ -51,7 +52,7 @@ const FileMessageSchema = z.object({
   fromName: z.string(),
   sentAt: z.number(),
   read: z.boolean().default(false),
-  reactions: z.record(z.record(z.boolean())).optional(),
+  reactions: z.record(z.string(), z.record(z.string(), z.boolean())).optional(),
   messageId: z.string().optional(),
 });
 
@@ -83,7 +84,7 @@ export const MessageSchema = z.union([
 // CONVERSATION STRUCTURE
 // ============================================================================
 
-export const ConversationMessagesSchema = z.record(MessageSchema);
+export const ConversationMessagesSchema = z.record(z.string(), MessageSchema);
 
 // Full conversation object (as it exists in RTDB)
 export const ConversationSchema = z.object({
@@ -125,8 +126,9 @@ export const ConversationSchema = z.object({
 // }
 
 export const ReactionsSchema = z.record(
+  z.string(),
   // reaction type (emoji) -> users who reacted
-  z.record(z.boolean()),
+  z.record(z.string(), z.boolean()),
 );
 
 // ============================================================================
@@ -137,7 +139,7 @@ export const ReactionsSchema = z.record(
 
 const parsedFields = {
   messageId: z.string(), // Always present after parsing (added by transport)
-  reactions: z.record(z.array(z.string())).optional(), // { emoji: [uid1, uid2] }
+  reactions: z.record(z.string(), z.array(z.string())).optional(), // { emoji: [uid1, uid2] }
   _reactionUpdate: z.boolean().optional(), // Internal flag for reaction-only updates
 };
 
