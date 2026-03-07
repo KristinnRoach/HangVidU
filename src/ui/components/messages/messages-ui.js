@@ -1017,10 +1017,6 @@ export function initMessagesUI() {
    */
   function isLocalMessage(parsedMessage) {
     if (!parsedMessage.from) return null;
-    if (parsedMessage.type === 'event' && parsedMessage.details?.callerId) {
-      return parsedMessage.details.callerId === getLoggedInUserId();
-    }
-    if (parsedMessage.from === 'system') return null;
     return parsedMessage.from === getLoggedInUserId();
   }
 

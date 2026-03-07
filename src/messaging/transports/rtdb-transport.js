@@ -149,7 +149,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
     await set(messageRef, {
       type: 'event',
       eventType,
-      from: 'system',
+      from: details.callerId || fromUserId,
       details: {
         callId: details.roomId || null,
         callerId: details.callerId || fromUserId,
