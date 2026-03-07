@@ -970,8 +970,6 @@ export function initMessagesUI() {
       } else {
         try {
           const { callContact } = await import('../../../main.js');
-          const details = parsedMessage.details || {};
-          const wasInitiatedByMe = details.callerId === getLoggedInUserId();
           const contactId = wasInitiatedByMe
             ? currentSession?.contactId
             : details.callerId;
@@ -1562,10 +1560,7 @@ export function initMessagesUI() {
   function processReceivedMessage(parsedMessage) {
     // Handle reaction updates separately
     if (parsedMessage._reactionUpdate) {
-      updateMessageReactions(
-        parsedMessage.messageId,
-        parsedMessage.reactions,
-      );
+      updateMessageReactions(parsedMessage.messageId, parsedMessage.reactions);
       return;
     }
 
