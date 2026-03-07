@@ -56,7 +56,7 @@ const FileMessageSchema = z.object({
   messageId: z.string().optional(),
 });
 
-// Event Message (system-generated event, e.g., missed calls, typing, polls)
+// Event Message (e.g., missed calls, typing, polls)
 const EventMessageSchema = z.object({
   type: z.literal('event'),
   eventType: z.enum(['missed_call', 'rejected_call']),
