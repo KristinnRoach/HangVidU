@@ -54,7 +54,7 @@ function isOnScreen(el) {
 function refreshRemoteAvatars(container, { name, photoURL }) {
   if (!container) return;
   const avatars = container.querySelectorAll(
-    'p.message-remote .sender-avatar:not(.sender-avatar--me)',
+    '.message-entry.remote .sender-avatar:not(.sender-avatar--me)',
   );
   avatars.forEach((avatar) => renderAvatar(avatar, { name, photoURL }));
 }
