@@ -894,13 +894,13 @@ export function initMessagesUI() {
    * Build file message content span (RTDB base64 file with thumbnail + download link).
    * @returns {{ element: HTMLElement, onSingleTap?: Function }}
    */
-  function buildFileContent(msgData) {
-    const { fileName, fileType, fileSize, data: dataUrl } = msgData;
+  function buildFileContent(parsedMessage) {
+    const { fileName, mimeType, fileSize, data: dataUrl } = parsedMessage;
 
     const textSpan = document.createElement('span');
     textSpan.className = 'message-text file-message';
 
-    const isImage = fileType && fileType.startsWith('image/');
+    const isImage = mimeType && mimeType.startsWith('image/');
     const sizeLabel =
       fileSize < 1024
         ? `${fileSize} B`
@@ -948,11 +948,11 @@ export function initMessagesUI() {
   /**
    * Build call event content span (missed/rejected call with callback button).
    */
-  function buildCallEventContent(msgData, { onCallBack }) {
+  function buildCallEventContent(parsedMessage, { onCallBack }) {
     const callEventBubble = document.createElement('span');
     callEventBubble.className = 'message-text call-event-content';
 
-    const details = msgData.details || {};
+    const details = parsedMessage.details || {};
     const currentUserId = getLoggedInUserId();
     const wasInitiatedByMe = details.callerId === currentUserId;
 
@@ -983,7 +983,7 @@ export function initMessagesUI() {
       } else {
         try {
           const { callContact } = await import('../../../main.js');
-          const details = msgData.details || {};
+          const details = parsedMessage.details || {};
           const wasInitiatedByMe = details.callerId === getLoggedInUserId();
           const contactId = wasInitiatedByMe
             ? currentSession?.contactId
@@ -1028,32 +1028,32 @@ export function initMessagesUI() {
    * Returns true (local), false (remote), or null (system/unknown).
    * For event messages (from: 'system'), uses details.callerId instead.
    */
-  function isLocalMessage(msgData) {
-    if (!msgData.from) return null;
-    if (msgData.type === 'event' && msgData.details?.callerId) {
-      return msgData.details.callerId === getLoggedInUserId();
+  function isLocalMessage(parsedMessage) {
+    if (!parsedMessage.from) return null;
+    if (parsedMessage.type === 'event' && parsedMessage.details?.callerId) {
+      return parsedMessage.details.callerId === getLoggedInUserId();
     }
-    if (msgData.from === 'system') return null;
-    return msgData.from === getLoggedInUserId();
+    if (parsedMessage.from === 'system') return null;
+    return parsedMessage.from === getLoggedInUserId();
   }
 
   /**
    * Append a message of any type to the chat UI.
-   * @param {Object} msgData - Message object (conforms to schema.js or minimal { from, text })
+   * @param {Object} parsedMessage - Message object (conforms to schema.js or minimal { from, text })
    * @param {Object} [uiOpts] - UI-only options not in the message schema
    * @param {Function} [uiOpts.onCallBack] - Callback for event "call back" button
    */
-  function appendMessage(msgData, uiOpts = {}) {
+  function appendMessage(parsedMessage, uiOpts = {}) {
     const { onCallBack } = uiOpts;
-    const type = msgData.type || 'text';
-    const isLocal = isLocalMessage(msgData);
-    const reactions = convertFirebaseReactions(msgData.reactions);
+    const type = parsedMessage.type || 'text';
+    const isLocal = isLocalMessage(parsedMessage);
+    const reactions = convertFirebaseReactions(parsedMessage.reactions);
 
     // message-entry: container with type/sender classes
     const messageEntry = document.createElement('div');
     messageEntry.className = 'message-entry';
-    if (msgData.sentAt) {
-      messageEntry.setAttribute('data-timestamp', msgData.sentAt);
+    if (parsedMessage.sentAt) {
+      messageEntry.setAttribute('data-timestamp', parsedMessage.sentAt);
     }
 
     if (type === 'event') {
@@ -1079,17 +1079,17 @@ export function initMessagesUI() {
     let onSingleTap;
     switch (type) {
       case 'file': {
-        const file = buildFileContent(msgData);
+        const file = buildFileContent(parsedMessage);
         p.appendChild(file.element);
         onSingleTap = file.onSingleTap;
         break;
       }
       case 'event':
-        p.appendChild(buildCallEventContent(msgData, { onCallBack }));
+        p.appendChild(buildCallEventContent(parsedMessage, { onCallBack }));
         initIcons(p);
         break;
       default: // 'text'
-        p.appendChild(buildTextContent(msgData.text));
+        p.appendChild(buildTextContent(parsedMessage.text));
         break;
     }
 
@@ -1097,13 +1097,13 @@ export function initMessagesUI() {
     messageBubble.appendChild(p);
     messageEntry.appendChild(messageBubble);
 
-    if (isLocal === true && msgData.read) {
+    if (isLocal === true && parsedMessage.read) {
       messageEntry.dataset.read = 'true';
       messageBubble.dataset.read = 'true';
     }
 
     // Reactions (attach to messageBubble)
-    attachReactions(messageBubble, msgData.messageId, reactions, {
+    attachReactions(messageBubble, parsedMessage.messageId, reactions, {
       onSingleTap,
     });
 
@@ -1111,7 +1111,7 @@ export function initMessagesUI() {
     scrollMessagesToEnd();
 
     // Increment unread if hidden and received from remote
-    if (isLocal === false && !msgData.read && isHidden(messagesBox)) {
+    if (isLocal === false && !parsedMessage.read && isHidden(messagesBox)) {
       const currentCount = messageToggle.element.unreadCount || 0;
       messageToggle.setUnreadCount(currentCount + 1);
     }
@@ -1566,7 +1566,9 @@ export function initMessagesUI() {
    */
   function appendCachedHistory(session) {
     if (!session || !session.history) return;
-    session.history.forEach((event) => processReceivedMessage(event));
+    session.history.forEach((event) =>
+      processReceivedMessage(event.parsedMessage),
+    );
   }
 
   let lastTimestamp = 0;
@@ -1575,17 +1577,17 @@ export function initMessagesUI() {
   /**
    * Core logic to process and render a received message or reaction update.
    */
-  function processReceivedMessage({ msgData }) {
+  function processReceivedMessage(parsedMessage) {
     // Handle reaction updates separately
-    if (msgData._reactionUpdate) {
+    if (parsedMessage._reactionUpdate) {
       updateMessageReactions(
-        msgData.messageId,
-        convertFirebaseReactions(msgData.reactions),
+        parsedMessage.messageId,
+        convertFirebaseReactions(parsedMessage.reactions),
       );
       return;
     }
 
-    const timestamp = msgData.sentAt || Date.now();
+    const timestamp = parsedMessage.sentAt || Date.now();
     const formattedTimestamp = formatTimestamp(timestamp);
 
     if (timestamp - lastTimestamp > TIMESTAMP_THRESHOLD) {
@@ -1596,7 +1598,7 @@ export function initMessagesUI() {
     }
     lastTimestamp = timestamp;
 
-    appendMessage(msgData);
+    appendMessage(parsedMessage);
   }
 
   function displayCurrentSession() {
@@ -1720,10 +1722,9 @@ export function initMessagesUI() {
 
   messagingController.on(
     'message:received',
-    (messageEvent) => {
+    ({ parsedMessage, conversationId }) => {
       // Only handle if this message belongs to our currently active session
-      if (messageEvent.conversationId !== currentSession?.conversationId)
-        return;
+      if (conversationId !== currentSession?.conversationId) return;
 
       if (currentSession.contactId) {
         contactsController
@@ -1731,12 +1732,12 @@ export function initMessagesUI() {
           .catch(() => {});
       }
 
-      processReceivedMessage(messageEvent);
+      processReceivedMessage(parsedMessage);
 
       // Mark as read if UI is open and message is not from me
-      if (isMessagesUIOpen() && !isLocalMessage(messageEvent.msgData)) {
+      if (isMessagesUIOpen() && !isLocalMessage(parsedMessage)) {
         const conversationIdAtReceive =
-          currentSession?.conversationId ?? messageEvent.conversationId;
+          currentSession?.conversationId ?? conversationId;
 
         clearTimeout(markAsReadTimeout);
         markAsReadTimeout = setTimeout(() => {

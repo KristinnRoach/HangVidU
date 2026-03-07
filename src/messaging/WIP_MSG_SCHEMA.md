@@ -4,9 +4,9 @@
 
 ## Architecture
 
-### Two append paths in messages-ui.js
+-### Two append paths in messages-ui.js
 
-- `appendMessage(msgData)` — schema-validated messages from RTDB transport only
+- `appendMessage(parsedMessage)` — schema-validated messages from RTDB transport only
 - `appendEphemeralMessage({ text })` — non-persisted UI notices (status, errors, watch-together, file transfer). Returns DOM element for caller to extend (e.g. attach download link).
 
 ### Message flow
@@ -14,8 +14,8 @@
 ```
 Send:  UI → session.send(text) → RTDBTransport.sendToConversation() → RTDB push
 Receive:  RTDB child_added → RTDBTransport.listen() → parseMessage(msg, msgId)
-            → MessagingController → emit 'message:received' { conversationId, msgData }
-            → messages-ui.js processReceivedMessage() → appendMessage(msgData)
+            → MessagingController → emit 'message:received' { conversationId, parsedMessage }
+            → messages-ui.js processReceivedMessage() → appendMessage(parsedMessage)
 ```
 
 ### Zod 4 gotchas
@@ -26,9 +26,9 @@ Receive:  RTDB child_added → RTDBTransport.listen() → parseMessage(msg, msgI
 
 ## Key files
 
-| File | Role |
-|---|---|
-| `src/messaging/schema.js` | Zod schemas, `parseMessage()` |
-| `src/messaging/messaging-controller.js` | Session management, event emitter |
+| File                                         | Role                                                  |
+| -------------------------------------------- | ----------------------------------------------------- |
+| `src/messaging/schema.js`                    | Zod schemas, `parseMessage()`                         |
+| `src/messaging/messaging-controller.js`      | Session management, event emitter                     |
 | `src/messaging/transports/rtdb-transport.js` | RTDB read/write, calls `parseMessage()` in `listen()` |
-| `src/ui/components/messages/messages-ui.js` | Chat UI: `appendMessage` + `appendEphemeralMessage` |
+| `src/ui/components/messages/messages-ui.js`  | Chat UI: `appendMessage` + `appendEphemeralMessage`   |

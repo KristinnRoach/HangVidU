@@ -67,7 +67,7 @@ export class MessagingController extends EventEmitter {
 
     // Avoid duplicates
     const isDuplicate = session.history.some(
-      (m) => m.msgData.messageId === messageEvent.msgData.messageId,
+      (m) => m.parsedMessage.messageId === messageEvent.parsedMessage.messageId,
     );
     if (isDuplicate) return;
 
@@ -85,10 +85,10 @@ export class MessagingController extends EventEmitter {
   updateCachedHistoryReactions(session, messageId, reactions) {
     if (!session.history) return;
     const message = session.history.find(
-      (m) => m.msgData.messageId === messageId,
+      (m) => m.parsedMessage.messageId === messageId,
     );
     if (message) {
-      message.msgData.reactions = reactions;
+      message.parsedMessage.reactions = reactions;
     }
   }
 
@@ -212,28 +212,33 @@ export class MessagingController extends EventEmitter {
     // Start listening to messages via transport
     const unsubscribe = this.transport.listen(
       conversationId,
-      (msgData) => {
-        const messageEvent = { conversationId, msgData };
+      (parsedMessage) => {
+        // messageEvent is the wrapper the controller emits to listeners/UI.
+        // Shape: { conversationId: string, parsedMessage: Object }
+        // - `conversationId` is the deterministic conversation identifier
+        // - `parsedMessage` is the parsed message object (conforms to ParsedMessageSchema
+        //    produced by the transport/parser)
+        const messageEvent = { conversationId, parsedMessage };
 
         // 1. Cache the message (even if background)
         this.cacheHistory(session, messageEvent);
 
         // 2. Cache reaction updates
-        if (msgData._reactionUpdate) {
+        if (parsedMessage._reactionUpdate) {
           this.updateCachedHistoryReactions(
             session,
-            msgData.messageId,
-            msgData.reactions,
+            parsedMessage.messageId,
+            parsedMessage.reactions,
           );
         }
 
         // 3. Emit general message event for active UI (skip for reaction-only updates)
-        if (!msgData._reactionUpdate) {
+        if (!parsedMessage._reactionUpdate) {
           this.emit('message:received', messageEvent);
         }
 
         // Notify if unread count changes
-        const isFromMe = msgData.from === getLoggedInUserId();
+        const isFromMe = parsedMessage.from === getLoggedInUserId();
         if (!isFromMe) {
           this.transport
             .getUnreadCountForConversation(conversationId)
@@ -249,11 +254,11 @@ export class MessagingController extends EventEmitter {
         }
 
         // Emit specific reaction update event if applicable
-        if (msgData._reactionUpdate) {
+        if (parsedMessage._reactionUpdate) {
           this.emit('reaction:updated', {
             conversationId,
-            messageId: msgData.messageId,
-            reactions: msgData.reactions,
+            messageId: parsedMessage.messageId,
+            reactions: parsedMessage.reactions,
           });
         }
       },

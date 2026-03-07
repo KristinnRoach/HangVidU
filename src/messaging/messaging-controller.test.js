@@ -44,10 +44,14 @@ class MockTransport {
   }
 
   // Test helper: simulate receiving a message
-  simulateMessage(conversationId, text, msgData = {}) {
+  simulateMessage(conversationId, text, parsedMessage = {}) {
     const listener = this.listeners.get(conversationId);
     if (listener) {
-      listener({ text, from: msgData.from || 'other-user', ...msgData });
+      listener({
+        text,
+        from: parsedMessage.from || 'other-user',
+        ...parsedMessage,
+      });
     }
   }
 }
@@ -120,7 +124,11 @@ describe('MessagingController', () => {
 
     expect(spy).toHaveBeenCalledWith({
       conversationId: 'contactA_me',
-      msgData: { text: 'Test message', from: 'other-user', messageId: 'm1' },
+      parsedMessage: {
+        text: 'Test message',
+        from: 'other-user',
+        messageId: 'm1',
+      },
     });
   });
 
@@ -173,8 +181,8 @@ describe('MessagingController', () => {
       mockTransport.simulateMessage('contactA_me', 'M2', { messageId: '2' });
 
       expect(session.history).toHaveLength(2);
-      expect(session.history[0].msgData.text).toBe('M1');
-      expect(session.history[1].msgData.text).toBe('M2');
+      expect(session.history[0].parsedMessage.text).toBe('M1');
+      expect(session.history[1].parsedMessage.text).toBe('M2');
     });
 
     it('should update reactions in cached history', () => {
@@ -190,7 +198,7 @@ describe('MessagingController', () => {
         reactions: { like: { user1: true } },
       });
 
-      expect(session.history[0].msgData.reactions).toEqual({
+      expect(session.history[0].parsedMessage.reactions).toEqual({
         like: { user1: true },
       });
     });

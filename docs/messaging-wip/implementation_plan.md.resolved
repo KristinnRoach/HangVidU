@@ -51,7 +51,7 @@ We will make [MessagingController](file:///Users/kristinnroachgunnarsson/Desktop
 - Make `MessagingController extends EventEmitter`.
 - Modify [openSession](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/messaging/messaging-controller.js#36-205) to no longer require [onMessage](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/ui/components/messages/messages-ui.js#1528-1555) and `onUnreadChange` callbacks.
 - Inside [openSession](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/messaging/messaging-controller.js#36-205), when `this.transport.listen` fires, emit events:
-  - `this.emit('message:received', { contactId, text, msgData, isSentByMe })`
+  - `this.emit('message:received', { contactId, text, parsedMessage, isSentByMe })`
   - `this.emit('unread:changed', { contactId, count })`
 - Modify [listenToUnreadCount](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/messaging/messaging-controller.js#302-318) to perhaps also use the event emitter? (Currently it passes a callback directly to the transport). We can emit `unread:changed:global` or similar.
 
@@ -64,7 +64,7 @@ In [openContactMessages](file:///Users/kristinnroachgunnarsson/Desktop/Dev/HangV
 **Before:**
 ```javascript
 const session = messagingController.openSession(contactId, {
-  onMessage: (text, msgData, isSentByMe) => {
+  onMessage: (text, parsedMessage, isSentByMe) => {
     // Large block of code appending messages, handling reactions, updating unread counts...
   }
 });
@@ -78,11 +78,11 @@ const session = messagingController.openSession(contactId);
 // IMPORTANT: We need to make sure we clean up previous listeners when switching contacts, 
 // or only listen to events for the currently active `contactId`.
 
-const handleMessage = ({ contactId: eventContactId, text, msgData, isSentByMe }) => {
+const handleMessage = ({ contactId: eventContactId, text, parsedMessage, isSentByMe }) => {
      // Only process messages for the currently open UI session
-    if (eventContactId !== currentSession?.contactId) return;
+  if (eventContactId !== currentSession?.contactId) return;
     
-    // ... logic to append messages, handle reactions, etc.
+  // ... logic to append messages, handle reactions, etc.
 };
 
 // Listen to the central controller

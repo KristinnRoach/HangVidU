@@ -27,7 +27,7 @@ export class MessagingTransport {
   /**
    * Listen for messages in a conversation
    * @param {string} conversationId - Conversation ID
-   * @param {Function} onMessage - Callback(msgData) called for each message
+   * @param {Function} onMessage - Callback(parsedMessage) called for each message
    * @returns {Function} Unsubscribe function to stop listening
    * @abstract
    */
