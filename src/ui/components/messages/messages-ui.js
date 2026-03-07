@@ -1012,8 +1012,7 @@ export function initMessagesUI() {
 
   /**
    * Derive whether a message was sent by the local user.
-   * Returns true (local), false (remote), or null (system/unknown).
-   * For event messages (from: 'system'), uses details.callerId instead.
+   * Returns true (local), false (remote), or null (unknown/missing from).
    */
   function isLocalMessage(parsedMessage) {
     if (!parsedMessage.from) return null;

@@ -4,7 +4,7 @@
 
 ## Architecture
 
--### Two append paths in messages-ui.js
+### Two append paths in messages-ui.js
 
 - `appendMessage(parsedMessage)` — schema-validated messages from RTDB transport only
 - `appendEphemeralMessage({ text })` — non-persisted UI notices (status, errors, watch-together, file transfer). Returns DOM element for caller to extend (e.g. attach download link).
