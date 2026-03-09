@@ -664,12 +664,9 @@ export function initMessagesUI() {
   }
 
   function toggleMessagesUIVisible() {
-    if (!currentConversationId) {
-      console.warn('[MessagesUI] No active conversation to display');
-      return;
-    }
     if (isMessagesUIOpen()) {
       // close
+
       // Only blur if actually focused (avoids mobile keyboard issues)
       if (document.activeElement === messagesInput) messagesInput.blur();
       detachRepositionHandlers();
@@ -689,6 +686,12 @@ export function initMessagesUI() {
       closeMessagesBox();
     } else {
       // open
+
+      if (!currentConversationId) {
+        console.warn('[MessagesUI] No active conversation to display');
+        return;
+      }
+
       // Only auto-focus on desktop; let mobile users tap to focus naturally
       if (!isMobileDevice()) messagesInput.focus();
 
@@ -1165,7 +1168,7 @@ export function initMessagesUI() {
         // Reset textarea height after clearing
         if (resetInputHeight) resetInputHeight();
       } catch (err) {
-        messagesInput.value = msg; // Restore message on failure
+        if (messagesInput.value === '') messagesInput.value = msg; // Restore message on failure
         console.error('[MessagesUI] Failed to send message:', err);
       }
     } else {
