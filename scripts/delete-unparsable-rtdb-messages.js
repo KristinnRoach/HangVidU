@@ -66,7 +66,8 @@ async function migrate() {
   let stats = { total: 0, removed: 0, valid: 0 };
 
   for (const [convId, conv] of Object.entries(conversations)) {
-    if (!conv.messages) continue;
+    if (!conv || typeof conv !== 'object') continue;
+    if (!conv.messages || typeof conv.messages !== 'object') continue;
 
     for (const [msgId, msg] of Object.entries(conv.messages)) {
       stats.total++;
