@@ -603,7 +603,6 @@ export async function callContact(contactId, contactName, roomId = null) {
         callerId: myUserId,
         callerName,
       });
-      console.log('[CALL] Push notification sent to:', contactName);
     } catch (error) {
       console.warn('[CALL] Failed to send push notification:', error);
     }

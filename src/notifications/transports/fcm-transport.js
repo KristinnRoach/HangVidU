@@ -385,6 +385,14 @@ export class FCMTransport {
     try {
       // In production, call Firebase Function to send real FCM notification
       if (import.meta.env.PROD) {
+        // Verify FCM is actually initialized before attempting to send
+        if (!this.isInitialized) {
+          console.error(
+            '[FCMTransport] Cannot send in production: FCM not initialized (unsupported environment)',
+          );
+          return false;
+        }
+
         let idToken = null;
         try {
           const { getLoggedInUserToken } = await import('../../auth/index.js');
@@ -431,6 +439,12 @@ export class FCMTransport {
       // authenticated users can't read other users' tokens directly from the client.
       // We rely on the write permission to /notifications/{userId} which IS allowed.
 
+      if (!this.isInitialized) {
+        console.warn(
+          '[FCMTransport] Using RTDB fallback (FCM not supported in this environment)',
+        );
+      }
+
       const notificationRef = ref(rtdb, `notifications/${targetUserId}`);
       const notificationId = push(notificationRef).key;
 
@@ -446,9 +460,11 @@ export class FCMTransport {
         notificationData,
       );
 
+      const mode = this.isInitialized ? 'FCM' : 'RTDB (fallback)';
       console.log(
-        `[FCMTransport] Notification queued for user ${targetUserId} (dev mode)`,
+        `[FCMTransport] Notification sent via ${mode} to user ${targetUserId}`,
       );
+
       return true;
     } catch (error) {
       console.error('[FCMTransport] Failed to send notification:', error);
