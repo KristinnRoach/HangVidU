@@ -66,7 +66,8 @@ function refreshRemoteAvatars(container, { name, photoURL }) {
  */
 export function initMessagesUI() {
   let repositionHandlersAttached = false;
-  let currentSession = null; // Track the currently displayed session
+  let currentConversationId = null; // Track the currently displayed conversation
+  let conversationMetadata = {}; // Store conversation metadata locally: { contactId, contactName, contactProfile, contactPhotoURL }
   let fileTransferController = null; // FileTransferController instance set by setFileTransferController()
   let inActiveCall = false; // Track if we're currently in an active call
   let isReceivingFile = false; // Track if currently receiving a file
@@ -81,7 +82,7 @@ export function initMessagesUI() {
   const ac = new AbortController();
 
   const shouldShowAttachButton = () =>
-    getIsLoggedIn() && (!!fileTransferController || !!currentSession);
+    getIsLoggedIn() && (!!fileTransferController || !!currentConversationId);
 
   const refreshAttachButton = () => {
     if (shouldShowAttachButton()) {
@@ -151,8 +152,8 @@ export function initMessagesUI() {
         new CustomEvent('contact:call', {
           bubbles: true,
           detail: {
-            contactId: currentSession?.contactId || null,
-            contactName: currentSession?.contactName || null,
+            contactId: conversationMetadata.contactId || null,
+            contactName: conversationMetadata.contactName || null,
           },
         }),
       );
@@ -225,12 +226,12 @@ export function initMessagesUI() {
         appendEphemeralMessage({
           text: `📎 ${t('message.sent', { name: file.name })}`,
         });
-      } else if (currentSession) {
+      } else if (currentConversationId) {
         // RTDB file message (no active call, small files only)
-        await currentSession.sendFile(file);
+        await messagingController.sendFile(currentConversationId, file);
         // File message will appear via the onMessage listener
       } else {
-        console.warn('[MessagesUI] No file transport or session available');
+        console.warn('[MessagesUI] No file transport or conversation available');
       }
     } catch (err) {
       console.error('[MessagesUI] File send failed:', err);
@@ -661,8 +662,8 @@ export function initMessagesUI() {
   }
 
   function toggleMessagesUIVisible() {
-    if (!currentSession) {
-      console.warn('[MessagesUI] No active session to display');
+    if (!currentConversationId) {
+      console.warn('[MessagesUI] No active conversation to display');
       return;
     }
     if (isMessagesUIOpen()) {
@@ -744,8 +745,8 @@ export function initMessagesUI() {
     msgId,
     source,
   ) {
-    if (!currentSession) {
-      console.warn('[MessagesUI] No current session for reaction');
+    if (!currentConversationId) {
+      console.warn('[MessagesUI] No current conversation for reaction');
       return;
     }
 
@@ -761,14 +762,14 @@ export function initMessagesUI() {
 
       if (source === 'doubleTap') {
         if (myReactionType) {
-          await currentSession.removeReaction(msgId, myReactionType);
+          await messagingController.removeReaction(currentConversationId, msgId, myReactionType);
           reactions = reactionManager.removeReaction(
             msgId,
             myReactionType,
             userId,
           );
         } else {
-          await currentSession.addReaction(msgId, reactionType);
+          await messagingController.addReaction(currentConversationId, msgId, reactionType);
           reactions = reactionManager.addReaction(msgId, reactionType, userId);
           if (REACTION_CONFIG.enableAnimations) {
             reactionUI.showReactionAnimation(messageElement, reactionType);
@@ -776,7 +777,7 @@ export function initMessagesUI() {
         }
       } else if (source === 'picker') {
         if (myReactionType === reactionType) {
-          await currentSession.removeReaction(msgId, reactionType);
+          await messagingController.removeReaction(currentConversationId, msgId, reactionType);
           reactions = reactionManager.removeReaction(
             msgId,
             reactionType,
@@ -784,10 +785,10 @@ export function initMessagesUI() {
           );
         } else {
           if (myReactionType) {
-            await currentSession.removeReaction(msgId, myReactionType);
+            await messagingController.removeReaction(currentConversationId, msgId, myReactionType);
             reactionManager.removeReaction(msgId, myReactionType, userId);
           }
-          await currentSession.addReaction(msgId, reactionType);
+          await messagingController.addReaction(currentConversationId, msgId, reactionType);
           reactions = reactionManager.addReaction(msgId, reactionType, userId);
           if (REACTION_CONFIG.enableAnimations) {
             reactionUI.showReactionAnimation(messageElement, reactionType);
@@ -857,10 +858,10 @@ export function initMessagesUI() {
     if (isLocal) {
       renderAvatar(avatarSpan, { customFallbackText: t('shared.me') });
     } else {
-      const contactName = currentSession?.contactName || '';
+      const contactName = conversationMetadata.contactName || '';
       const photoURL =
-        currentSession?.contactPhotoURL ||
-        currentSession?.contactProfile?.photoURL ||
+        conversationMetadata.contactPhotoURL ||
+        conversationMetadata.contactProfile?.photoURL ||
         null;
       renderAvatar(avatarSpan, { name: contactName, photoURL });
     }
@@ -971,10 +972,10 @@ export function initMessagesUI() {
         try {
           const { callContact } = await import('../../../main.js');
           const contactId = wasInitiatedByMe
-            ? currentSession?.contactId
+            ? conversationMetadata.contactId
             : details.callerId;
           const contactName = wasInitiatedByMe
-            ? currentSession?.contactName
+            ? conversationMetadata.contactName
             : details.callerName;
           if (contactId && contactName) {
             await callContact(contactId, contactName);
@@ -1130,18 +1131,22 @@ export function initMessagesUI() {
   }
 
   // Helper to send the current message
-  function sendMessage() {
+  async function sendMessage() {
     const msg = messagesInput.value.trim();
     if (!msg) return;
 
-    // Send via current session
-    if (currentSession) {
-      currentSession.send(msg);
-      messagesInput.value = '';
-      // Reset textarea height after clearing
-      if (resetInputHeight) resetInputHeight();
+    // Send via current conversation
+    if (currentConversationId) {
+      try {
+        await messagingController.send(currentConversationId, msg);
+        messagesInput.value = '';
+        // Reset textarea height after clearing
+        if (resetInputHeight) resetInputHeight();
+      } catch (err) {
+        console.error('[MessagesUI] Failed to send message:', err);
+      }
     } else {
-      console.warn('[MessagesUI] No active session to send message');
+      console.warn('[MessagesUI] No active conversation to send message');
     }
   }
 
@@ -1216,29 +1221,38 @@ export function initMessagesUI() {
   }
 
   /**
-   * Set the active session for this UI
-   * Clears existing messages when switching to a new session
-   * @param {Object} session - Session object from messagingController
+   * Prepare UI for a conversation (internal use)
+   * Called after conversation:opened or conversation:resumed event
+   * @param {string} conversationId - Conversation ID
+   * @param {string} contactId - Contact ID
+   * @param {string} contactName - Contact name
    */
-  function setCurrentMsgUISession(session) {
+  function _prepUIForConversation(conversationId, contactId, contactName) {
     if (markAsReadTimeout !== null) {
       clearTimeout(markAsReadTimeout);
       markAsReadTimeout = null;
     }
 
-    if (currentSession !== null && currentSession !== session) {
+    if (currentConversationId !== null && currentConversationId !== conversationId) {
       clearMessages();
     }
-    currentSession = session;
-    // Reset timestamp tracking when switching sessions so appended
+
+    currentConversationId = conversationId;
+    conversationMetadata = {
+      contactId,
+      contactName,
+      contactProfile: null,
+      contactPhotoURL: null,
+    };
+
+    // Reset timestamp tracking when switching conversations so appended
     // cached history shows correct timestamp separators.
     lastTimestamp = 0;
 
     if (messageTopBar) {
       messageTopBar.setContact({
-        name: session?.contactName || '',
-        photoURL:
-          session?.contactPhotoURL || session?.contactProfile?.photoURL || '',
+        name: contactName || '',
+        photoURL: '',
       });
     }
 
@@ -1246,11 +1260,11 @@ export function initMessagesUI() {
   }
 
   /**
-   * Get the currently displayed session
-   * @returns {Object|null} Current session or null
+   * Get the currently displayed conversation ID
+   * @returns {string|null} Current conversation ID or null
    */
-  function getCurrentSession() {
-    return currentSession;
+  function getCurrentConversationId() {
+    return currentConversationId;
   }
 
   /**
@@ -1373,9 +1387,9 @@ export function initMessagesUI() {
         }
 
         // Update interaction timestamp for received files
-        if (currentSession?.contactId) {
+        if (conversationMetadata.contactId) {
           contactsController
-            .updateLastInteraction(currentSession.contactId)
+            .updateLastInteraction(conversationMetadata.contactId)
             .catch(() => {});
         }
 
@@ -1413,7 +1427,8 @@ export function initMessagesUI() {
    */
   function reset() {
     clearMessages();
-    currentSession = null;
+    currentConversationId = null;
+    conversationMetadata = {};
     clearTimeout(markAsReadTimeout);
     markAsReadTimeout = null;
     fileTransferController = null;
@@ -1578,10 +1593,10 @@ export function initMessagesUI() {
     appendMessage(parsedMessage);
   }
 
-  function displayCurrentSession() {
-    if (!currentSession || !currentSession?.conversationId) {
-      console.warn('No currentSession to display:', {
-        currentSession,
+  function displayCurrentConversation() {
+    if (!currentConversationId) {
+      console.warn('No current conversation to display:', {
+        currentConversationId,
       });
       return;
     }
@@ -1590,83 +1605,81 @@ export function initMessagesUI() {
       toggleMessagesUIVisible();
     }
 
-    currentSession.markAsRead().catch((err) => {
+    messagingController.markAsRead(currentConversationId).catch((err) => {
       console.warn('Failed to mark messages as read:', err);
     });
   }
 
-  function _prepUIForSession(session) {
-    if (!session) return;
+  function _displayConversation(conversationId, contactId, contactName) {
+    if (!conversationId) return;
 
-    const isCurrentSession =
-      currentSession?.conversationId === session.conversationId;
+    const isCurrentConversation = currentConversationId === conversationId;
 
-    if (!isCurrentSession) {
+    if (!isCurrentConversation) {
       clearMessages();
-      setCurrentMsgUISession(null); // Reset temporarily to avoid race conditions
     }
 
-    if (messageTopBar) {
-      messageTopBar.setContact({
-        name: session.contactName || '',
-        photoURL: session.contactPhotoURL || '',
-      });
-    }
+    _prepUIForConversation(conversationId, contactId, contactName);
 
     // Fetch contact profile (photo + display name) for avatars
-    getUserProfile(session.contactId)
+    getUserProfile(contactId)
       .then((profile) => {
         if (!profile) return;
-        session.contactProfile = profile;
-        if (!session.contactName && profile.displayName) {
-          session.contactName = profile.displayName;
+
+        // Update metadata with profile info
+        conversationMetadata.contactProfile = profile;
+        if (!conversationMetadata.contactName && profile.displayName) {
+          conversationMetadata.contactName = profile.displayName;
         }
         if (profile.photoURL) {
-          session.contactPhotoURL = profile.photoURL;
+          conversationMetadata.contactPhotoURL = profile.photoURL;
         }
 
         if (
           messageTopBar &&
-          currentSession?.conversationId === session.conversationId
+          currentConversationId === conversationId
         ) {
           messageTopBar.setContact({
-            name: session.contactName || '',
-            photoURL: session.contactPhotoURL || '',
+            name: conversationMetadata.contactName || '',
+            photoURL: conversationMetadata.contactPhotoURL || '',
           });
         }
 
         refreshRemoteAvatars(messagesMessages, {
-          name: session.contactName,
-          photoURL: session.contactPhotoURL,
+          name: conversationMetadata.contactName,
+          photoURL: conversationMetadata.contactPhotoURL,
         });
       })
       .catch(() => {});
 
-    !isCurrentSession && setCurrentMsgUISession(session);
-    !isCurrentSession && appendCachedHistory(session); // Render existing history if available
+    // Render existing cached history
+    const history = messagingController.getHistory(conversationId);
+    if (history && history.length > 0) {
+      appendCachedHistory({ history });
+    }
   }
 
   // --- Domain Event Listeners ---
   messagingController.on(
-    'session:opened',
-    ({ session }) => {
-      _prepUIForSession(session);
+    'conversation:opened',
+    ({ conversationId, contactId, contactName }) => {
+      _displayConversation(conversationId, contactId, contactName);
     },
     { signal: ac.signal },
   );
 
   messagingController.on(
-    'session:resumed',
-    ({ session }) => {
-      _prepUIForSession(session);
+    'conversation:resumed',
+    ({ conversationId, contactId, contactName }) => {
+      _displayConversation(conversationId, contactId, contactName);
     },
     { signal: ac.signal },
   );
 
   messagingController.on(
-    'session:display',
+    'conversation:display',
     () => {
-      displayCurrentSession();
+      displayCurrentConversation();
     },
     { signal: ac.signal },
   );
@@ -1674,7 +1687,7 @@ export function initMessagesUI() {
   messagingController.on(
     'unread:changed',
     ({ conversationId, unreadCount, newlyReadMsgIds = [] }) => {
-      if (conversationId === currentSession?.conversationId) {
+      if (conversationId === currentConversationId) {
         if (unreadCount === 0) {
           messageToggle.clearBadge();
         } else {
@@ -1700,12 +1713,12 @@ export function initMessagesUI() {
   messagingController.on(
     'message:received',
     ({ parsedMessage, conversationId }) => {
-      // Only handle if this message belongs to our currently active session
-      if (conversationId !== currentSession?.conversationId) return;
+      // Only handle if this message belongs to our currently active conversation
+      if (conversationId !== currentConversationId) return;
 
-      if (currentSession.contactId) {
+      if (conversationMetadata.contactId) {
         contactsController
-          .updateLastInteraction(currentSession.contactId)
+          .updateLastInteraction(conversationMetadata.contactId)
           .catch(() => {});
       }
 
@@ -1714,21 +1727,21 @@ export function initMessagesUI() {
       // Mark as read if UI is open and message is not from me
       if (isMessagesUIOpen() && !isLocalMessage(parsedMessage)) {
         const conversationIdAtReceive =
-          currentSession?.conversationId ?? conversationId;
+          currentConversationId ?? conversationId;
 
         clearTimeout(markAsReadTimeout);
         markAsReadTimeout = setTimeout(() => {
           markAsReadTimeout = null;
           if (
-            !currentSession ||
-            currentSession.conversationId !== conversationIdAtReceive ||
+            !currentConversationId ||
+            currentConversationId !== conversationIdAtReceive ||
             !isMessagesUIOpen()
           ) {
             return;
           }
 
           // TODO: optimize markAsRead (accept msgId?)
-          Promise.resolve(currentSession.markAsRead?.()).catch((err) => {
+          messagingController.markAsRead(currentConversationId).catch((err) => {
             console.warn('Failed to mark messages as read:', err);
           });
         }, MARK_AS_READ_DEBOUNCE_MS);
@@ -1740,13 +1753,13 @@ export function initMessagesUI() {
   messagingController.on(
     'reaction:updated',
     ({ conversationId, messageId, reactions }) => {
-      if (conversationId !== currentSession?.conversationId) return;
+      if (conversationId !== currentConversationId) return;
       updateMessageReactions(messageId, reactions);
 
       // Update interaction timestamp for reactions as well
-      if (currentSession.contactId) {
+      if (conversationMetadata.contactId) {
         contactsController
-          .updateLastInteraction(currentSession.contactId)
+          .updateLastInteraction(conversationMetadata.contactId)
           .catch(() => {});
       }
     },
@@ -1763,8 +1776,8 @@ export function initMessagesUI() {
     isMessageInputFocused,
     focusMessageInput,
     unfocusMessageInput,
-    setSession: setCurrentMsgUISession,
-    getCurrentSession,
+    displayConversation: displayCurrentConversation,
+    getCurrentConversationId,
     clearMessages,
     setFileTransferController,
     reset,

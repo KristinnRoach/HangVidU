@@ -32,8 +32,8 @@ export class MessagingController extends EventEmitter {
     }
 
     this.transport = transport;
-    this.sessions = new Map(); // conversationId -> session object
-    this.sessionOrder = []; // conversationId list, from oldest to newest (MRU)
+    this.conversations = new Map(); // conversationId -> internal conversation state
+    this.conversationOrder = []; // conversationId list, from oldest to newest (MRU)
   }
 
   /**
@@ -59,32 +59,32 @@ export class MessagingController extends EventEmitter {
   }
 
   /**
-   * Helper: Add a message to the session's internal history cache.
+   * Helper: Add a message to the conversation's internal history cache.
    * Keeps the last 50 messages for instant UI re-hydration.
    */
-  cacheHistory(session, messageEvent) {
-    if (!session.history) session.history = [];
+  cacheHistory(conversationState, messageEvent) {
+    if (!conversationState.history) conversationState.history = [];
 
     // Avoid duplicates
-    const isDuplicate = session.history.some(
+    const isDuplicate = conversationState.history.some(
       (m) => m.parsedMessage.messageId === messageEvent.parsedMessage.messageId,
     );
     if (isDuplicate) return;
 
-    session.history.push(messageEvent);
+    conversationState.history.push(messageEvent);
 
     // Hard limit on history size to prevent memory bloat
-    if (session.history.length > 50) {
-      session.history.shift();
+    if (conversationState.history.length > 50) {
+      conversationState.history.shift();
     }
   }
 
   /**
    * Helper: Update reactions for a message in the cached history.
    */
-  updateCachedHistoryReactions(session, messageId, reactions) {
-    if (!session.history) return;
-    const message = session.history.find(
+  updateCachedHistoryReactions(conversationState, messageId, reactions) {
+    if (!conversationState.history) return;
+    const message = conversationState.history.find(
       (m) => m.parsedMessage.messageId === messageId,
     );
     if (message) {
@@ -93,33 +93,35 @@ export class MessagingController extends EventEmitter {
   }
 
   /**
-   * Internal: Update session MRU order and handle eviction.
-   * Keeps only the 5 most recently used sessions open.
+   * Internal: Update conversation MRU order and handle eviction.
+   * Keeps only the 5 most recently used conversations open.
    */
-  _touchSession(conversationId) {
+  _touchConversation(conversationId) {
     // Move to end of MRU list (newest)
-    this.sessionOrder = this.sessionOrder.filter((id) => id !== conversationId);
-    this.sessionOrder.push(conversationId);
+    this.conversationOrder = this.conversationOrder.filter(
+      (id) => id !== conversationId,
+    );
+    this.conversationOrder.push(conversationId);
 
     // Evict oldest if limit exceeded
-    if (this.sessionOrder.length > 5) {
-      const oldestId = this.sessionOrder.shift();
-      console.debug('[MessagingController] Evicting oldest session:', oldestId);
-      this.closeSession(oldestId);
+    if (this.conversationOrder.length > 5) {
+      const oldestId = this.conversationOrder.shift();
+      console.debug('[MessagingController] Evicting oldest conversation:', oldestId);
+      this.closeConversation(oldestId);
     }
   }
 
   /**
-   * Open a messaging session for a conversation
+   * Open a messaging conversation
    *
-   * Only one session per conversation is allowed. If a session already exists,
-   * it will be returned instead of creating a new one.
+   * Only one conversation per contactId is allowed. If a conversation already exists,
+   * it will be resumed instead of creating a new one. Emits 'conversation:opened' event
+   * with plain data { conversationId, contactId, contactName }.
    *
-   * @param {string} contactId -
-   * @param {string} contactName -
-   * @returns {Object} Session object with methods: send, markAsRead, getUnreadCount, close
+   * @param {string} contactId - Contact ID
+   * @param {string} contactName - Optional contact name
    */
-  openSession(contactId, contactName) {
+  openConversation(contactId, contactName) {
     if (!contactId || typeof contactId !== 'string') {
       throw new Error('contactId must be a non-empty string');
     }
@@ -130,84 +132,34 @@ export class MessagingController extends EventEmitter {
       throw new Error('conversationId must be a non-empty string');
     }
 
-    // Return existing session if already open
-    if (this.sessions.has(conversationId)) {
+    // Return early if already open (resume instead of re-open)
+    if (this.conversations.has(conversationId)) {
       console.debug(
-        '[MessagingController] Session already open for conversation:',
+        '[MessagingController] Conversation already open:',
         conversationId,
       );
 
-      const session = this.sessions.get(conversationId);
-      this._touchSession(session.conversationId);
-      this.emit('session:resumed', { session });
+      this._touchConversation(conversationId);
+      this.emit('conversation:resumed', {
+        conversationId,
+        contactId,
+        contactName,
+      });
 
-      return session;
+      return;
     }
 
-    // Create session object
-    const session = {
+    // Create internal conversation state (not exposed to callers)
+    const conversationState = {
       conversationId,
       contactId,
       contactName,
       history: [], // Cached messages for instant re-hydration
-
-      send: (text) => {
-        if (!text || typeof text !== 'string') {
-          return Promise.reject(new Error('Message text must be a string'));
-        }
-        return this.transport.sendToConversation(conversationId, text);
-      },
-
-      sendFile: (file) => {
-        if (typeof this.transport.sendFile !== 'function') {
-          return Promise.reject(
-            new Error('Transport does not support file messages'),
-          );
-        }
-        // Update to use conversationId or roomId if multi participant chat support is added
-        return this.transport.sendFile(contactId, file);
-      },
-
-      markAsRead: () => {
-        return this.transport.markAsReadForConversation(conversationId);
-      },
-
-      getUnreadCount: () => {
-        return this.transport.getUnreadCountForConversation(conversationId);
-      },
-
-      close: () => {
-        this.closeSession(conversationId);
-      },
-
-      addReaction: (messageId, reactionType) => {
-        return this.transport.addReactionToConversation(
-          conversationId,
-          messageId,
-          reactionType,
-        );
-      },
-
-      removeReaction: (messageId, reactionType) => {
-        return this.transport.removeReactionFromConversation(
-          conversationId,
-          messageId,
-          reactionType,
-        );
-      },
-
-      getReactions: (messageId) => {
-        return this.transport.getReactionsForConversation(
-          conversationId,
-          messageId,
-        );
-      },
-
-      _unsubscribe: null, // assigned below after listener is attached
+      _unsubscribe: null,
     };
 
-    // Add session to map, touch it for MRU, and emit event
-    this.sessions.set(conversationId, session);
+    // Add conversation to map
+    this.conversations.set(conversationId, conversationState);
 
     // Start listening to messages via transport
     const unsubscribe = this.transport.listen(
@@ -215,18 +167,15 @@ export class MessagingController extends EventEmitter {
       (parsedMessage) => {
         // messageEvent is the wrapper the controller emits to listeners/UI.
         // Shape: { conversationId: string, parsedMessage: Object }
-        // - `conversationId` is the deterministic conversation identifier
-        // - `parsedMessage` is the parsed message object (conforms to ParsedMessageSchema
-        //    produced by the transport/parser)
         const messageEvent = { conversationId, parsedMessage };
 
         // 1. Cache the message (even if background)
-        this.cacheHistory(session, messageEvent);
+        this.cacheHistory(conversationState, messageEvent);
 
         // 2. Cache reaction updates
         if (parsedMessage._reactionUpdate) {
           this.updateCachedHistoryReactions(
-            session,
+            conversationState,
             parsedMessage.messageId,
             parsedMessage.reactions,
           );
@@ -273,73 +222,165 @@ export class MessagingController extends EventEmitter {
           newlyReadMsgIds,
         });
       },
-      // (unreadCount, newlyReadMsgIds = []) => {
-      //   this.emit('unread:changed', {
-      //     conversationId,
-      //     unreadCount,
-      //     newlyReadMsgIds,
-      //   });
-      // },
     );
 
-    session._unsubscribe = () => {
+    conversationState._unsubscribe = () => {
       unsubscribe();
       unsubscribeUnread();
     };
 
-    this._touchSession(session.conversationId);
-    this.emit('session:opened', { session });
-
-    return session;
+    this._touchConversation(conversationId);
+    this.emit('conversation:opened', {
+      conversationId,
+      contactId,
+      contactName,
+    });
   }
 
   /**
-   * Display a session in the UI by emitting the appropriate event.
-   * Must be called after openSession() to trigger UI updates.
+   * Display a conversation in the UI by emitting the appropriate event.
+   * Must be called after openConversation() to trigger UI updates.
    * @param {string} conversationId - Conversation ID
    */
-  displaySession(conversationId) {
-    const session = this.sessions.get(conversationId);
-    if (!session) {
-      throw new Error(`Cannot display non-existent session: ${conversationId}`);
+  displayConversation(conversationId) {
+    const conversationState = this.conversations.get(conversationId);
+    if (!conversationState) {
+      throw new Error(`Cannot display non-existent conversation: ${conversationId}`);
     }
 
-    this.emit('session:display', { session });
+    this.emit('conversation:display', { conversationId });
   }
 
   /**
-   * Close a specific messaging session
+   * Send a message to an open conversation
+   * @param {string} conversationId - Conversation ID
+   * @param {string} text - Message text
+   */
+  async send(conversationId, text) {
+    if (!this.conversations.has(conversationId)) {
+      throw new Error(`No open conversation: ${conversationId}`);
+    }
+
+    if (!text || typeof text !== 'string') {
+      throw new Error('Message text must be a string');
+    }
+
+    return this.transport.sendToConversation(conversationId, text);
+  }
+
+  /**
+   * Send a file to an open conversation
+   * @param {string} conversationId - Conversation ID
+   * @param {File} file - File to send
+   */
+  async sendFile(conversationId, file) {
+    if (!this.conversations.has(conversationId)) {
+      throw new Error(`No open conversation: ${conversationId}`);
+    }
+
+    if (typeof this.transport.sendFile !== 'function') {
+      throw new Error('Transport does not support file messages');
+    }
+
+    // Resolve contactId from internal state
+    const conversationState = this.conversations.get(conversationId);
+    const contactId = conversationState.contactId;
+
+    return this.transport.sendFile(contactId, file);
+  }
+
+  /**
+   * Mark a conversation as read
    * @param {string} conversationId - Conversation ID
    */
-  closeSession(conversationId) {
-    const session = this.sessions.get(conversationId);
-    if (session) {
-      if (session._unsubscribe) session._unsubscribe();
-      this.sessions.delete(conversationId);
-      this.sessionOrder = this.sessionOrder.filter(
+  async markAsRead(conversationId) {
+    if (!this.conversations.has(conversationId)) {
+      throw new Error(`No open conversation: ${conversationId}`);
+    }
+
+    return this.transport.markAsReadForConversation(conversationId);
+  }
+
+  /**
+   * Add a reaction to a message in an open conversation
+   * @param {string} conversationId - Conversation ID
+   * @param {string} messageId - Message ID
+   * @param {string} type - Reaction type (emoji, etc.)
+   */
+  async addReaction(conversationId, messageId, type) {
+    if (!this.conversations.has(conversationId)) {
+      throw new Error(`No open conversation: ${conversationId}`);
+    }
+
+    return this.transport.addReactionToConversation(
+      conversationId,
+      messageId,
+      type,
+    );
+  }
+
+  /**
+   * Remove a reaction from a message in an open conversation
+   * @param {string} conversationId - Conversation ID
+   * @param {string} messageId - Message ID
+   * @param {string} type - Reaction type (emoji, etc.)
+   */
+  async removeReaction(conversationId, messageId, type) {
+    if (!this.conversations.has(conversationId)) {
+      throw new Error(`No open conversation: ${conversationId}`);
+    }
+
+    return this.transport.removeReactionFromConversation(
+      conversationId,
+      messageId,
+      type,
+    );
+  }
+
+  /**
+   * Get cached message history for a conversation
+   * @param {string} conversationId - Conversation ID
+   * @returns {Array} Cached messages
+   */
+  getHistory(conversationId) {
+    const conversationState = this.conversations.get(conversationId);
+    return conversationState ? conversationState.history : [];
+  }
+
+  /**
+   * Close a specific messaging conversation
+   * @param {string} conversationId - Conversation ID
+   */
+  closeConversation(conversationId) {
+    const conversationState = this.conversations.get(conversationId);
+    if (conversationState) {
+      if (conversationState._unsubscribe) conversationState._unsubscribe();
+      this.conversations.delete(conversationId);
+      this.conversationOrder = this.conversationOrder.filter(
         (id) => id !== conversationId,
       );
-      this.emit('session:closed', { conversationId });
+      this.emit('conversation:closed', { conversationId });
     } else {
       console.warn(
-        '[MessagingController] Attempted to close non-existent session:',
+        '[MessagingController] Attempted to close non-existent conversation:',
         conversationId,
       );
     }
   }
 
-  getSession(conversationId) {
-    return this.sessions.get(conversationId);
+  getConversation(conversationId) {
+    // Return internal state for compatibility, but mark as private
+    return this.conversations.get(conversationId);
   }
 
-  getAllSessions() {
-    return Array.from(this.sessions.values());
+  getAllConversations() {
+    return Array.from(this.conversations.values());
   }
 
-  closeAllSessions() {
-    const conversationIds = Array.from(this.sessions.keys());
+  closeAllConversations() {
+    const conversationIds = Array.from(this.conversations.keys());
     conversationIds.forEach((conversationId) => {
-      this.closeSession(conversationId);
+      this.closeConversation(conversationId);
     });
   }
 

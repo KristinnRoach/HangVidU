@@ -1,9 +1,12 @@
 # Messaging System Simplification Roadmap
 
-**Entry point for new sessions**:
-1. Read MEMORY.md § ACTIVE to understand Phase 1 scope
-2. Jump to "Phase 1 Quick Start" section below
-3. Start with Issue 1.1 (Session Ownership)
+**Current status**: Phase 1 ✅ COMPLETE (PR #395). Phase 1.5 (cleanup) available.
+
+**Entry point**:
+1. (Optional) Run `node scripts/migrate-rtdb-messages-cleanup.js --apply` to remove parse warnings
+2. Read MEMORY.md § NEXT for Phase 2 context
+3. Jump to **"Phase 2: Fix Flows"** section (line ~140)
+4. Start with Issue 2.2 (Fix Send Path)
 
 ---
 
@@ -174,6 +177,8 @@ UI.appendMessage() → Controller.send() → RTDB
    → listen → emit → UI.appendMessage() AGAIN
 ```
 Band-aid: `seenMessageIds` prevents visual dup, but inefficient.
+
+**Known issue**: Messages with backtick/template-literal quotes (´text´) trigger double display, likely due to send-path duplication or escaping bug in seenMessageIds check. Will be resolved by proper send-path fix.
 
 **Impact**: Eliminates redundant processing, clarifies flow.
 
