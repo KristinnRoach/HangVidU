@@ -1000,7 +1000,7 @@ export function initMessagesUI() {
       date.getMonth() === now.getMonth() &&
       date.getFullYear() === now.getFullYear();
 
-    const timeOptions = { hour: 'numeric', minute: '2-digit' };
+    const timeOptions = { hour: 'numeric', minute: '2-digit', hour12: false };
     const dateOptions = { month: 'short', day: 'numeric' };
 
     return isToday
