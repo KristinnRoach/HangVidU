@@ -11,40 +11,42 @@
  * 3. Event messages with `from: 'system'`     → sets `from` to `details.callerId`
  *
  * Usage:
- *   node scripts/migrate-rtdb-messages.js              # dry run (default)
- *   node scripts/migrate-rtdb-messages.js --apply       # apply changes
+ *   node scripts/migrate-invalid-rtdb-messages.js              # dry run (default)
+ *   node scripts/migrate-invalid-rtdb-messages.js --apply       # apply changes
  *
  * Requires GOOGLE_APPLICATION_CREDENTIALS or firebase-admin default credentials.
  * Set RTDB_URL if your database URL differs from the default.
  */
 
-import { initializeApp, cert } from 'firebase-admin/app';
-import { getDatabase } from 'firebase-admin/database';
-import { readFileSync } from 'fs';
+import admin from 'firebase-admin';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DRY_RUN = !process.argv.includes('--apply');
 
-// Try to load service account from env or common path
-const serviceAccountPath =
-  process.env.GOOGLE_APPLICATION_CREDENTIALS ||
-  process.env.FIREBASE_SERVICE_ACCOUNT;
+// Load service account from standard location
+const serviceAccountPath = path.join(__dirname, '../functions/service-account-key.json');
 
-const dbUrl =
-  process.env.RTDB_URL || 'https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app';
-
-let appConfig = { databaseURL: dbUrl };
-
-if (serviceAccountPath) {
-  const sa = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
-  appConfig.credential = cert(sa);
+if (!fs.existsSync(serviceAccountPath)) {
+  console.error('❌ Error: service-account-key.json not found at', serviceAccountPath);
+  console.error('Please ensure you have a valid service account key file.');
+  process.exit(1);
 }
 
-const app = initializeApp(appConfig);
-const db = getDatabase(app);
+const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf-8'));
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: 'https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app',
+});
+
+const db = admin.database();
 
 // ---------------------------------------------------------------------------
 // Migration

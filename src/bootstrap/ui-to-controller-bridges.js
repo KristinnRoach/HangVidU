@@ -11,15 +11,17 @@ function onMessagesToggle(e) {
   if (!contactId) return;
 
   try {
-    const session = messagingController.openSession(contactId, contactName);
-    const conversationId = session?.conversationId;
+    messagingController.openConversation(contactId, contactName);
+    const conversationId = messagingController.resolveConversationIdFromContact(
+      contactId,
+    );
     if (conversationId) {
-      messagingController.displaySession(conversationId);
+      messagingController.displayConversation(conversationId);
     } else {
-      console.warn('[Bridge] No conversationId returned from openSession');
+      console.warn('[Bridge] No conversationId returned from openConversation');
     }
   } catch (err) {
-    console.warn('[Bridge] Failed to open session:', err);
+    console.warn('[Bridge] Failed to open conversation:', err);
   }
 }
 

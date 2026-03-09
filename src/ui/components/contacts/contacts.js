@@ -342,8 +342,8 @@ export function cleanupContacts() {
  * Runs once at startup if no session is already active and user has saved contacts.
  */
 export async function autoInitMsgSessionIfNeeded() {
-  // Don't override existing active session
-  if (messagingController.sessions.size > 0) return;
+  // Don't override existing active conversation
+  if (messagingController.conversations.size > 0) return;
 
   try {
     const contacts = await contactsController.getContactsSorted();
@@ -352,9 +352,9 @@ export async function autoInitMsgSessionIfNeeded() {
     const firstContact = contacts[0];
     if (!firstContact?.contactId) return;
 
-    // Open the session for the first contact
-    messagingController.openSession(firstContact.contactId, firstContact.contactName);
+    // Open the conversation for the first contact
+    messagingController.openConversation(firstContact.contactId, firstContact.contactName);
   } catch (error) {
-    console.warn('[Contacts] Failed to auto-init messaging session:', error);
+    console.warn('[Contacts] Failed to auto-init messaging conversation:', error);
   }
 }

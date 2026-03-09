@@ -1918,7 +1918,7 @@ CallController.on('memberJoined', ({ memberId, roomId }) => {
   console.debug('CallController memberJoined event', { memberId, roomId });
 
   CallController.setPartnerId(memberId);
-  messagingController.openSession(memberId);
+  messagingController.openConversation(memberId);
 
   onCallAnswered().catch((e) =>
     console.warn('Failed to clear calling state:', e),
