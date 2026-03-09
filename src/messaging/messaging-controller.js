@@ -6,8 +6,11 @@ import { getLoggedInUserId } from '../auth/auth-state.js';
  * MessagingController - Core messaging API
  *
  * Provides a clean, minimal interface for messaging operations:
- * - Open/close messaging sessions for conversations
- * - Send messages through active sessions
+ * - Open/close messaging conversations
+ * - Send messages and files
+ * - Add/remove reactions
+ * - Mark as read
+ * - Listen to incoming messages and unread count changes
  * - Track unread counts
  * - Abstract transport layer (RTDB, DataChannel, etc.)
  * - Emits events for real-time updates
@@ -106,7 +109,10 @@ export class MessagingController extends EventEmitter {
     // Evict oldest if limit exceeded
     if (this.conversationOrder.length > 5) {
       const oldestId = this.conversationOrder.shift();
-      console.debug('[MessagingController] Evicting oldest conversation:', oldestId);
+      console.debug(
+        '[MessagingController] Evicting oldest conversation:',
+        oldestId,
+      );
       this.closeConversation(oldestId);
     }
   }
@@ -240,12 +246,14 @@ export class MessagingController extends EventEmitter {
   /**
    * Display a conversation in the UI by emitting the appropriate event.
    * Must be called after openConversation() to trigger UI updates.
-   * `@param` {string} conversationId - Conversation ID
+   * @param {string} conversationId - Conversation ID
    */
   displayConversation(conversationId) {
     const conversationState = this.conversations.get(conversationId);
     if (!conversationState) {
-      throw new Error(`Cannot display non-existent conversation: ${conversationId}`);
+      throw new Error(
+        `Cannot display non-existent conversation: ${conversationId}`,
+      );
     }
 
     this.emit('conversation:display', {
@@ -349,7 +357,6 @@ export class MessagingController extends EventEmitter {
   getHistory(conversationId) {
     const conversationState = this.conversations.get(conversationId);
     return conversationState ? [...conversationState.history] : [];
-  }
   }
 
   /**

@@ -3,7 +3,7 @@
 /**
  * Migration script to clean up unparseable messages from RTDB.
  *
- * Removes messages that fail ParsedMessageSchema validation.
+ * Removes messages that fail MessageSchema validation.
  * This eliminates parse warnings that appear in the console after Phase 1 refactor.
  *
  * Usage:
@@ -27,11 +27,38 @@ import { MessageSchema } from '../src/messaging/schema.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DRY_RUN = !process.argv.includes('--apply');
 
+// Read RTDB URL from env, but fall back to the hardcoded default for dry-run.
+const RTDB_URL_FROM_ENV = process.env.RTDB_URL;
+const RTDB_URL =
+  RTDB_URL_FROM_ENV ||
+  'https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app';
+
+// Safety: refuse to run in destructive mode unless RTDB_URL was explicitly provided.
+if (!RTDB_URL) {
+  console.error('❌ Error: RTDB_URL is not set. Aborting.');
+  process.exit(1);
+}
+if (!DRY_RUN && !RTDB_URL_FROM_ENV) {
+  console.error(
+    '❌ Refusing to run with --apply without explicit RTDB_URL environment variable set.',
+  );
+  console.error(
+    'Set RTDB_URL to the target RTDB instance and re-run with --apply.',
+  );
+  process.exit(1);
+}
+
 // Load service account from standard location
-const serviceAccountPath = path.join(__dirname, '../functions/service-account-key.json');
+const serviceAccountPath = path.join(
+  __dirname,
+  '../functions/service-account-key.json',
+);
 
 if (!fs.existsSync(serviceAccountPath)) {
-  console.error('❌ Error: service-account-key.json not found at', serviceAccountPath);
+  console.error(
+    '❌ Error: service-account-key.json not found at',
+    serviceAccountPath,
+  );
   console.error('Please ensure you have a valid service account key file.');
   process.exit(1);
 }
@@ -40,7 +67,7 @@ const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf-8'));
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app',
+  databaseURL: RTDB_URL,
 });
 
 const db = admin.database();
@@ -98,7 +125,9 @@ async function migrate() {
   }
 
   if (DRY_RUN) {
-    console.log('\nDry run complete. Run with --apply to delete unparseable messages.');
+    console.log(
+      '\nDry run complete. Run with --apply to delete unparseable messages.',
+    );
   } else {
     console.log('\nApplying deletions...');
     await db.ref().update(updates);

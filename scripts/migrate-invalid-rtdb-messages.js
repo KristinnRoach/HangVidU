@@ -30,11 +30,38 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DRY_RUN = !process.argv.includes('--apply');
 
+// Read RTDB URL from env, but fall back to the hardcoded default for dry-run.
+const RTDB_URL_FROM_ENV = process.env.RTDB_URL;
+const RTDB_URL =
+  RTDB_URL_FROM_ENV ||
+  'https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app';
+
+// Safety: refuse to run in destructive mode unless RTDB_URL was explicitly provided.
+if (!RTDB_URL) {
+  console.error('❌ Error: RTDB_URL is not set. Aborting.');
+  process.exit(1);
+}
+if (!DRY_RUN && !RTDB_URL_FROM_ENV) {
+  console.error(
+    '❌ Refusing to run with --apply without explicit RTDB_URL environment variable set.',
+  );
+  console.error(
+    'Set RTDB_URL to the target RTDB instance and re-run with --apply.',
+  );
+  process.exit(1);
+}
+
 // Load service account from standard location
-const serviceAccountPath = path.join(__dirname, '../functions/service-account-key.json');
+const serviceAccountPath = path.join(
+  __dirname,
+  '../functions/service-account-key.json',
+);
 
 if (!fs.existsSync(serviceAccountPath)) {
-  console.error('❌ Error: service-account-key.json not found at', serviceAccountPath);
+  console.error(
+    '❌ Error: service-account-key.json not found at',
+    serviceAccountPath,
+  );
   console.error('Please ensure you have a valid service account key file.');
   process.exit(1);
 }
@@ -43,7 +70,7 @@ const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf-8'));
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app',
+  databaseURL: RTDB_URL,
 });
 
 const db = admin.database();
@@ -110,15 +137,12 @@ async function migrate() {
         (msg.type === 'event' || msg.type === 'call_event') &&
         msg.from === 'system'
       ) {
-        const callerId =
-          msg.details?.callerId || msg.callerId || null;
+        const callerId = msg.details?.callerId || msg.callerId || null;
 
         if (callerId) {
           updates[`${basePath}/from`] = callerId;
           stats.systemFromFixed++;
-          console.log(
-            `[from:system] ${basePath} — set from to '${callerId}'`,
-          );
+          console.log(`[from:system] ${basePath} — set from to '${callerId}'`);
         } else {
           console.warn(
             `[from:system] ${basePath} — no callerId found, skipping`,
