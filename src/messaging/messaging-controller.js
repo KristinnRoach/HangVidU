@@ -348,7 +348,8 @@ export class MessagingController extends EventEmitter {
    */
   getHistory(conversationId) {
     const conversationState = this.conversations.get(conversationId);
-    return conversationState ? conversationState.history : [];
+    return conversationState ? [...conversationState.history] : [];
+  }
   }
 
   /**
