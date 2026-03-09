@@ -231,7 +231,9 @@ export function initMessagesUI() {
         await messagingController.sendFile(currentConversationId, file);
         // File message will appear via the onMessage listener
       } else {
-        console.warn('[MessagesUI] No file transport or conversation available');
+        console.warn(
+          '[MessagesUI] No file transport or conversation available',
+        );
       }
     } catch (err) {
       console.error('[MessagesUI] File send failed:', err);
@@ -762,14 +764,22 @@ export function initMessagesUI() {
 
       if (source === 'doubleTap') {
         if (myReactionType) {
-          await messagingController.removeReaction(currentConversationId, msgId, myReactionType);
+          await messagingController.removeReaction(
+            currentConversationId,
+            msgId,
+            myReactionType,
+          );
           reactions = reactionManager.removeReaction(
             msgId,
             myReactionType,
             userId,
           );
         } else {
-          await messagingController.addReaction(currentConversationId, msgId, reactionType);
+          await messagingController.addReaction(
+            currentConversationId,
+            msgId,
+            reactionType,
+          );
           reactions = reactionManager.addReaction(msgId, reactionType, userId);
           if (REACTION_CONFIG.enableAnimations) {
             reactionUI.showReactionAnimation(messageElement, reactionType);
@@ -777,7 +787,11 @@ export function initMessagesUI() {
         }
       } else if (source === 'picker') {
         if (myReactionType === reactionType) {
-          await messagingController.removeReaction(currentConversationId, msgId, reactionType);
+          await messagingController.removeReaction(
+            currentConversationId,
+            msgId,
+            reactionType,
+          );
           reactions = reactionManager.removeReaction(
             msgId,
             reactionType,
@@ -785,10 +799,18 @@ export function initMessagesUI() {
           );
         } else {
           if (myReactionType) {
-            await messagingController.removeReaction(currentConversationId, msgId, myReactionType);
+            await messagingController.removeReaction(
+              currentConversationId,
+              msgId,
+              myReactionType,
+            );
             reactionManager.removeReaction(msgId, myReactionType, userId);
           }
-          await messagingController.addReaction(currentConversationId, msgId, reactionType);
+          await messagingController.addReaction(
+            currentConversationId,
+            msgId,
+            reactionType,
+          );
           reactions = reactionManager.addReaction(msgId, reactionType, userId);
           if (REACTION_CONFIG.enableAnimations) {
             reactionUI.showReactionAnimation(messageElement, reactionType);
@@ -1138,11 +1160,12 @@ export function initMessagesUI() {
     // Send via current conversation
     if (currentConversationId) {
       try {
+        messagesInput.value = ''; // Optimistically clear input
         await messagingController.send(currentConversationId, msg);
-        messagesInput.value = '';
         // Reset textarea height after clearing
         if (resetInputHeight) resetInputHeight();
       } catch (err) {
+        messagesInput.value = msg; // Restore message on failure
         console.error('[MessagesUI] Failed to send message:', err);
       }
     } else {
@@ -1233,17 +1256,33 @@ export function initMessagesUI() {
       markAsReadTimeout = null;
     }
 
-    if (currentConversationId !== null && currentConversationId !== conversationId) {
+    if (
+      currentConversationId !== null &&
+      currentConversationId !== conversationId
+    ) {
       clearMessages();
     }
 
+    const conversationChanged =
+      currentConversationId === null ||
+      currentConversationId !== conversationId;
+
     currentConversationId = conversationId;
-    conversationMetadata = {
-      contactId,
-      contactName,
-      contactProfile: null,
-      contactPhotoURL: null,
-    };
+
+    if (conversationChanged) {
+      // New conversation: reset metadata so we re-fetch profile/photo
+      conversationMetadata = {
+        contactId,
+        contactName,
+        contactProfile: null,
+        contactPhotoURL: null,
+      };
+    } else {
+      // Resuming the same conversation: preserve any previously fetched
+      // `contactProfile` / `contactPhotoURL` to avoid a brief UI flash.
+      conversationMetadata.contactId = contactId;
+      conversationMetadata.contactName = contactName;
+    }
 
     // Reset timestamp tracking when switching conversations so appended
     // cached history shows correct timestamp separators.
@@ -1635,10 +1674,7 @@ export function initMessagesUI() {
           conversationMetadata.contactPhotoURL = profile.photoURL;
         }
 
-        if (
-          messageTopBar &&
-          currentConversationId === conversationId
-        ) {
+        if (messageTopBar && currentConversationId === conversationId) {
           messageTopBar.setContact({
             name: conversationMetadata.contactName || '',
             photoURL: conversationMetadata.contactPhotoURL || '',
@@ -1672,6 +1708,21 @@ export function initMessagesUI() {
     'conversation:resumed',
     ({ conversationId, contactId, contactName }) => {
       _displayConversation(conversationId, contactId, contactName);
+    },
+    { signal: ac.signal },
+  );
+
+  messagingController.on(
+    'conversation:closed',
+    ({ conversationId }) => {
+      if (conversationId !== currentConversationId) return;
+      clearMessages();
+      currentConversationId = null;
+      conversationMetadata = {};
+      refreshAttachButton();
+      if (messageTopBar) {
+        messageTopBar.setContact({ name: '', photoURL: '' });
+      }
     },
     { signal: ac.signal },
   );
@@ -1726,8 +1777,7 @@ export function initMessagesUI() {
 
       // Mark as read if UI is open and message is not from me
       if (isMessagesUIOpen() && !isLocalMessage(parsedMessage)) {
-        const conversationIdAtReceive =
-          currentConversationId ?? conversationId;
+        const conversationIdAtReceive = currentConversationId ?? conversationId;
 
         clearTimeout(markAsReadTimeout);
         markAsReadTimeout = setTimeout(() => {

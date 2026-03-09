@@ -6,8 +6,11 @@ import { getLoggedInUserId } from '../auth/auth-state.js';
  * MessagingController - Core messaging API
  *
  * Provides a clean, minimal interface for messaging operations:
- * - Open/close messaging sessions for conversations
- * - Send messages through active sessions
+ * - Open/close messaging conversations
+ * - Send messages and files
+ * - Add/remove reactions
+ * - Mark as read
+ * - Listen to incoming messages and unread count changes
  * - Track unread counts
  * - Abstract transport layer (RTDB, DataChannel, etc.)
  * - Emits events for real-time updates
@@ -243,7 +246,7 @@ export class MessagingController extends EventEmitter {
   /**
    * Display a conversation in the UI by emitting the appropriate event.
    * Must be called after openConversation() to trigger UI updates.
-   * `@param` {string} conversationId - Conversation ID
+   * @param {string} conversationId - Conversation ID
    */
   displayConversation(conversationId) {
     const conversationState = this.conversations.get(conversationId);
