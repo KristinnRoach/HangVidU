@@ -106,7 +106,10 @@ export class MessagingController extends EventEmitter {
     // Evict oldest if limit exceeded
     if (this.conversationOrder.length > 5) {
       const oldestId = this.conversationOrder.shift();
-      console.debug('[MessagingController] Evicting oldest conversation:', oldestId);
+      console.debug(
+        '[MessagingController] Evicting oldest conversation:',
+        oldestId,
+      );
       this.closeConversation(oldestId);
     }
   }
@@ -245,7 +248,9 @@ export class MessagingController extends EventEmitter {
   displayConversation(conversationId) {
     const conversationState = this.conversations.get(conversationId);
     if (!conversationState) {
-      throw new Error(`Cannot display non-existent conversation: ${conversationId}`);
+      throw new Error(
+        `Cannot display non-existent conversation: ${conversationId}`,
+      );
     }
 
     this.emit('conversation:display', {
@@ -349,7 +354,6 @@ export class MessagingController extends EventEmitter {
   getHistory(conversationId) {
     const conversationState = this.conversations.get(conversationId);
     return conversationState ? [...conversationState.history] : [];
-  }
   }
 
   /**
