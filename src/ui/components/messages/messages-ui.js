@@ -736,9 +736,6 @@ export function initMessagesUI() {
     hideElement(messageToggle.element);
   }
 
-  // Map of messageId -> DOM element for reaction updates
-  const messageElements = new Map();
-
   // --- Helpers ---
 
   /**
@@ -839,7 +836,6 @@ export function initMessagesUI() {
     if (!messageId) return;
 
     p.dataset.messageId = messageId;
-    messageElements.set(messageId, p);
 
     if (reactions && Object.keys(reactions).length > 0) {
       reactionManager.syncFromRemote(messageId, reactions);
@@ -1217,7 +1213,9 @@ export function initMessagesUI() {
    * Called when clearing messages or switching sessions to prevent leaks.
    */
   function cleanupReactionListeners() {
-    for (const el of messageElements.values()) {
+    const messageElements =
+      messagesMessages.querySelectorAll('[data-messageId]');
+    for (const el of messageElements) {
       if (typeof el._reactionCleanup === 'function') {
         try {
           el._reactionCleanup();
@@ -1238,7 +1236,6 @@ export function initMessagesUI() {
     }
 
     cleanupReactionListeners();
-    messageElements.clear();
     messagesMessages.innerHTML = '';
     messagesMessages.scrollTop = 0;
     // Reset timestamp separator state so new session histories insert
@@ -1500,7 +1497,6 @@ export function initMessagesUI() {
     detachRepositionHandlers();
 
     // Clear reaction state
-    messageElements.clear();
     reactionManager.clearAll();
 
     if (messageTopBar) {
@@ -1514,7 +1510,9 @@ export function initMessagesUI() {
    * @param {Object} reactions - Reactions { type: [userIds] }
    */
   function updateMessageReactions(messageId, reactions) {
-    const element = messageElements.get(messageId);
+    const element = messagesMessages.querySelector(
+      `[data-messageId="${messageId}"]`,
+    );
     if (!element) return;
 
     // Convert { heart: ['user1'] } to { heart: 1 } for ReactionUI
@@ -1753,13 +1751,12 @@ export function initMessagesUI() {
 
         // Mark messages as read in the UI if they are now read
         newlyReadMsgIds.forEach((msgId) => {
-          const messageEntry = messageElements
-            .get(msgId)
-            ?.closest('.message-entry');
-          if (!messageEntry) return;
-          messageEntry.dataset.read = 'true';
-          const bubble = messageEntry.querySelector('.message-bubble');
+          const bubble = messagesMessages.querySelector(
+            `[data-messageId="${msgId}"]`,
+          );
           if (bubble) bubble.dataset.read = 'true';
+          const messageEntry = bubble?.closest('.message-entry');
+          if (messageEntry) messageEntry.dataset.read = 'true';
         });
       }
     },
