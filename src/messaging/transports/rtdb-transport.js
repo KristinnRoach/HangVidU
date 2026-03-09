@@ -2,6 +2,7 @@
 // Firebase Realtime Database messaging transport implementation
 
 import { MessagingTransport } from './messaging-transport.js';
+import { parseMessage } from '../schema.js';
 import { compressImage } from '../../media/image-compress.js';
 import {
   ref,
@@ -107,6 +108,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
     );
 
     await set(messageRef, {
+      type: 'text',
       text,
       from: fromUserId,
       fromName,
@@ -125,13 +127,13 @@ export class RTDBMessagingTransport extends MessagingTransport {
    * Used for missed calls, rejected calls, etc.
    * @param {string} contactId - Contact's user ID
    * @param {string} eventType - Event type ('missed_call' or 'rejected_call')
-   * @param {Object} metadata - Event metadata
-   * @param {string} metadata.roomId - The call's room ID (for deduplication)
-   * @param {string} metadata.callerId - Who initiated the call
-   * @param {string} metadata.callerName - Caller's display name
+   * @param {Object} details - Event details
+   * @param {string} details.roomId - The call's room ID (for deduplication)
+   * @param {string} details.callerId - Who initiated the call
+   * @param {string} details.callerName - Caller's display name
    * @returns {Promise<void>}
    */
-  async writeCallEventMessage(contactId, eventType, metadata = {}) {
+  async writeCallEventMessage(contactId, eventType, details = {}) {
     const fromUserId = getLoggedInUserId();
     if (!fromUserId) {
       throw new Error('Cannot write call event: not logged in');
@@ -145,12 +147,14 @@ export class RTDBMessagingTransport extends MessagingTransport {
     );
 
     await set(messageRef, {
-      type: 'call_event',
+      type: 'event',
       eventType,
-      callId: metadata.roomId || null,
-      callerId: metadata.callerId || fromUserId,
-      callerName: metadata.callerName || 'Someone',
-      from: fromUserId,
+      from: details.callerId || fromUserId,
+      details: {
+        callId: details.roomId || null,
+        callerId: details.callerId || fromUserId,
+        callerName: details.callerName || 'Someone',
+      },
       sentAt: serverTimestamp(),
       read: false,
     });
@@ -180,10 +184,15 @@ export class RTDBMessagingTransport extends MessagingTransport {
       const msg = snapshot.val();
       if (!msg || seenMessageIds.has(msgId)) return;
 
-      seenMessageIds.add(msgId);
-      const isSentByMe = msg.from === myUserId;
-      const msgData = { ...msg, messageId: msgId };
-      onMessage(msg.text, msgData, isSentByMe);
+      try {
+        const parsed = parseMessage(msg, msgId);
+        if (parsed) {
+          seenMessageIds.add(msgId);
+          onMessage(parsed);
+        }
+      } catch (err) {
+        console.warn('[RTDBTransport] Failed to parse message', msgId, err);
+      }
     };
 
     const reactionCallback = (snapshot) => {
@@ -192,9 +201,16 @@ export class RTDBMessagingTransport extends MessagingTransport {
       if (!msg || !seenMessageIds.has(msgId)) return;
 
       if (msg.reactions !== undefined) {
-        const isSentByMe = msg.from === myUserId;
-        const msgData = { ...msg, messageId: msgId, _reactionUpdate: true };
-        onMessage(msg.text, msgData, isSentByMe);
+        try {
+          const parsed = parseMessage({ ...msg, _reactionUpdate: true }, msgId);
+          if (parsed) onMessage(parsed);
+        } catch (err) {
+          console.warn(
+            '[RTDBTransport] Failed to parse reaction update',
+            msgId,
+            err,
+          );
+        }
       }
     };
 
@@ -464,7 +480,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
     await set(messageRef, {
       type: 'file',
       fileName: file.name,
-      fileType: file.type,
+      mimeType: file.type,
       fileSize: file.size,
       data: base64,
       from: fromUserId,

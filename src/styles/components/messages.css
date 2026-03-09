@@ -205,13 +205,14 @@
   justify-content: flex-start;
 }
 
-/* Hide avatar for system/file messages (temporary placeholder behavior) */
-#messages .message-entry.system .sender-avatar {
-  display: none;
+#messages .message-entry.status {
+  justify-content: center;
 }
 
-#messages .message-entry.system .message-text {
-  margin-left: 0;
+#messages .message-entry.status .message-text {
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-align: center;
 }
 
 #messages .message-entry:first-child {

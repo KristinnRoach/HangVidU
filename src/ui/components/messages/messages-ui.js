@@ -54,7 +54,7 @@ function isOnScreen(el) {
 function refreshRemoteAvatars(container, { name, photoURL }) {
   if (!container) return;
   const avatars = container.querySelectorAll(
-    'p.message-remote .sender-avatar:not(.sender-avatar--me)',
+    '.message-entry.remote .sender-avatar:not(.sender-avatar--me)',
   );
   avatars.forEach((avatar) => renderAvatar(avatar, { name, photoURL }));
 }
@@ -222,8 +222,8 @@ export function initMessagesUI() {
           sentFiles.set(file.name, file);
         }
 
-        appendMessage(`📎 ${t('message.sent', { name: file.name })}`, {
-          isSentByMe: true,
+        appendEphemeralMessage({
+          text: `📎 ${t('message.sent', { name: file.name })}`,
         });
       } else if (currentSession) {
         // RTDB file message (no active call, small files only)
@@ -239,7 +239,9 @@ export function initMessagesUI() {
         ? ''
         : '\n\n' + t('message.file_size_limited');
 
-      appendMessage('❌  ' + t('message.send_failed') + sizeHint);
+      appendEphemeralMessage({
+        text: '❌  ' + t('message.send_failed') + sizeHint,
+      });
     } finally {
       setSendLabelText(originalText);
       fileInput.value = '';
@@ -500,28 +502,32 @@ export function initMessagesUI() {
     const file = sentFiles.get(fileName);
 
     if (!file) {
-      appendMessage(
-        `❌ ${t('message.watch.file_unavailable', { name: fileName })}`,
-      );
+      appendEphemeralMessage({
+        text: `❌ ${t('message.watch.file_unavailable', { name: fileName })}`,
+      });
       await cancelWatchRequest();
       return;
     }
 
     // Show notification
-    appendMessage(`🎬 ${t('message.watch.partner_wants', { name: fileName })}`);
+    appendEphemeralMessage({
+      text: `🎬 ${t('message.watch.partner_wants', { name: fileName })}`,
+    });
 
     // Prompt user to join
     const accepted = await promptJoinWatchTogether(fileName);
 
     if (accepted) {
-      appendMessage(`✅ ${t('message.watch.joining')}`);
+      appendEphemeralMessage({ text: `✅ ${t('message.watch.joining')}` });
       const success = await acceptWatchRequest(file);
 
       if (!success) {
-        appendMessage(`❌ ${t('message.watch.failed_load')}`);
+        appendEphemeralMessage({
+          text: `❌ ${t('message.watch.failed_load')}`,
+        });
       }
     } else {
-      appendMessage(`❌ ${t('message.watch.declined')}`);
+      appendEphemeralMessage({ text: `❌ ${t('message.watch.declined')}` });
       await cancelWatchRequest();
     }
   }
@@ -730,19 +736,6 @@ export function initMessagesUI() {
   // --- Helpers ---
 
   /**
-   * Convert Firebase reactions format { heart: { odAg2: true } } to { heart: ['odAg2'] }
-   */
-  function convertFirebaseReactions(fbReactions) {
-    const reactions = {};
-    if (fbReactions) {
-      for (const [type, users] of Object.entries(fbReactions)) {
-        reactions[type] = Object.keys(users);
-      }
-    }
-    return reactions;
-  }
-
-  /**
    * Handle a reaction change (double-tap or picker) on a message
    */
   async function handleReactionChange(
@@ -853,17 +846,17 @@ export function initMessagesUI() {
 
   /**
    * Create an avatar span for a message.
-   * @param {boolean|undefined} isSentByMe - true (local), false (remote), undefined (system)
+   * @param {boolean} isLocal - true for local user, false for remote
    */
-  function createAvatar(isSentByMe) {
+  function createAvatar(isLocal) {
     const avatarSpan = document.createElement('span');
     avatarSpan.className =
-      'sender-avatar' + (isSentByMe === true ? ' sender-avatar--me' : '');
+      'sender-avatar' + (isLocal ? ' sender-avatar--me' : '');
     avatarSpan.setAttribute('aria-hidden', 'true');
 
-    if (isSentByMe === true) {
+    if (isLocal) {
       renderAvatar(avatarSpan, { customFallbackText: t('shared.me') });
-    } else if (isSentByMe === false) {
+    } else {
       const contactName = currentSession?.contactName || '';
       const photoURL =
         currentSession?.contactPhotoURL ||
@@ -871,39 +864,16 @@ export function initMessagesUI() {
         null;
       renderAvatar(avatarSpan, { name: contactName, photoURL });
     }
-    // system messages: avatar stays empty (hidden via CSS)
 
     return avatarSpan;
   }
 
   // --- Content builders ---
 
-  /**
-   * Build text content span. Handles plain text (linkified) and file-download links.
-   */
-  function buildTextContent(text, { fileDownload } = {}) {
+  function buildTextContent(text) {
     const textSpan = document.createElement('span');
     textSpan.className = 'message-text';
-
-    if (fileDownload) {
-      const { fileName, url } = fileDownload;
-      const prefix = text.split(fileName)[0];
-      if (prefix) textSpan.appendChild(document.createTextNode(prefix));
-      const link = document.createElement('a');
-      link.textContent = fileName;
-      link.href = url;
-      link.download = fileName;
-      link.style.cursor = 'pointer';
-      link.style.textDecoration = 'underline';
-      link.addEventListener('click', () => {
-        setTimeout(() => URL.revokeObjectURL(url), 100);
-      });
-      textSpan.appendChild(link);
-    } else {
-      const fragment = linkifyToFragment(text);
-      textSpan.appendChild(fragment);
-    }
-
+    textSpan.appendChild(linkifyToFragment(text));
     return textSpan;
   }
 
@@ -911,13 +881,13 @@ export function initMessagesUI() {
    * Build file message content span (RTDB base64 file with thumbnail + download link).
    * @returns {{ element: HTMLElement, onSingleTap?: Function }}
    */
-  function buildFileContent(msgData) {
-    const { fileName, fileType, fileSize, data: dataUrl } = msgData;
+  function buildFileContent(parsedMessage) {
+    const { fileName, mimeType, fileSize, data: dataUrl } = parsedMessage;
 
     const textSpan = document.createElement('span');
     textSpan.className = 'message-text file-message';
 
-    const isImage = fileType && fileType.startsWith('image/');
+    const isImage = mimeType && mimeType.startsWith('image/');
     const sizeLabel =
       fileSize < 1024
         ? `${fileSize} B`
@@ -965,13 +935,17 @@ export function initMessagesUI() {
   /**
    * Build call event content span (missed/rejected call with callback button).
    */
-  function buildCallEventContent(msgData, { onCallBack, isSentByMe }) {
+  function buildCallEventContent(parsedMessage, { onCallBack }) {
     const callEventBubble = document.createElement('span');
     callEventBubble.className = 'message-text call-event-content';
 
+    const details = parsedMessage.details || {};
+    const currentUserId = getLoggedInUserId();
+    const wasInitiatedByMe = details.callerId === currentUserId;
+
     const callStatusText = document.createElement('span');
     callStatusText.className = 'call-event-text';
-    callStatusText.textContent = isSentByMe
+    callStatusText.textContent = wasInitiatedByMe
       ? t('call.no_answer')
       : t('call.missed');
 
@@ -986,7 +960,7 @@ export function initMessagesUI() {
     callBackBtn.appendChild(callBackIcon);
     callBackBtn.appendChild(
       document.createTextNode(
-        isSentByMe ? t('call.try_again') : t('call.callback'),
+        wasInitiatedByMe ? t('call.try_again') : t('call.callback'),
       ),
     );
 
@@ -996,12 +970,12 @@ export function initMessagesUI() {
       } else {
         try {
           const { callContact } = await import('../../../main.js');
-          const contactId = isSentByMe
+          const contactId = wasInitiatedByMe
             ? currentSession?.contactId
-            : msgData.callerId;
-          const contactName = isSentByMe
+            : details.callerId;
+          const contactName = wasInitiatedByMe
             ? currentSession?.contactName
-            : msgData.callerName;
+            : details.callerName;
           if (contactId && contactName) {
             await callContact(contactId, contactName);
           }
@@ -1026,7 +1000,7 @@ export function initMessagesUI() {
       date.getMonth() === now.getMonth() &&
       date.getFullYear() === now.getFullYear();
 
-    const timeOptions = { hour: 'numeric', minute: '2-digit' };
+    const timeOptions = { hour: 'numeric', minute: '2-digit', hour12: false };
     const dateOptions = { month: 'short', day: 'numeric' };
 
     return isToday
@@ -1035,54 +1009,43 @@ export function initMessagesUI() {
   }
 
   /**
-   * Append a message of any type to the chat UI.
-   * @param {string} text - Message content (used for text/system types)
-   * @param {Object} options
-   * @param {'text'|'file'|'call_event'} [options.type='text'] - Message type
-   * @param {boolean|undefined} [options.isSentByMe] - true (local), false (remote), undefined (system)
-   * @param {string} [options.messageId] - Firebase message ID for reactions
-   * @param {Object} [options.reactions] - Initial reactions { type: [userIds] }
-   * @param {boolean} [options.isRead=false] - Whether this message is read
-   * @param {Object} [options.fileDownload] - { fileName, url } for DataChannel file links
-   * @param {Object} [options.msgData] - Raw Firebase msg data (for file/call_event types)
-   * @param {Function} [options.onCallBack] - Callback for call_event "call back" button
+   * Derive whether a message was sent by the local user.
+   * Returns true (local), false (remote), or null (unknown/missing from).
    */
-  function appendMessage(text, options = {}) {
-    const {
-      type = 'text',
-      isSentByMe,
-      messageId,
-      reactions,
-      isRead = false,
-      fileDownload,
-      msgData,
-      onCallBack,
-      timestamp,
-    } = options;
+  function isLocalMessage(parsedMessage) {
+    if (!parsedMessage.from) return null;
+    return parsedMessage.from === getLoggedInUserId();
+  }
 
-    // Infer system type: no sender and no fileDownload → system notice
-    const effectiveType =
-      type !== 'text'
-        ? type
-        : typeof isSentByMe === 'undefined' && !fileDownload
-          ? 'system'
-          : type;
+  /**
+   * Append a message of any type to the chat UI.
+   * @param {Object} parsedMessage - Message object (conforms to schema.js or minimal { from, text })
+   * @param {Object} [uiOpts] - UI-only options not in the message schema
+   * @param {Function} [uiOpts.onCallBack] - Callback for event "call back" button
+   */
+  function appendMessage(parsedMessage, uiOpts = {}) {
+    const { onCallBack } = uiOpts;
+    const type = parsedMessage.type || 'text';
+    const isLocal = isLocalMessage(parsedMessage);
+    const reactions = parsedMessage.reactions;
 
     // message-entry: container with type/sender classes
     const messageEntry = document.createElement('div');
     messageEntry.className = 'message-entry';
-    timestamp && messageEntry.setAttribute('data-timestamp', timestamp);
+    if (parsedMessage.sentAt) {
+      messageEntry.setAttribute('data-timestamp', parsedMessage.sentAt);
+    }
 
-    if (effectiveType === 'system') messageEntry.classList.add('system');
-    if (effectiveType === 'call_event')
+    if (type === 'event') {
       messageEntry.classList.add('call-event');
-    if (isSentByMe === true) messageEntry.classList.add('local');
-    else if (isSentByMe === false) messageEntry.classList.add('remote');
-    if (fileDownload) messageEntry.classList.add('system');
+    }
+
+    if (isLocal === true) messageEntry.classList.add('local');
+    else if (isLocal === false) messageEntry.classList.add('remote');
 
     // Avatar (sibling to message-bubble) - only for remote messages
-    if (isSentByMe === false) {
-      messageEntry.appendChild(createAvatar(isSentByMe));
+    if (isLocal === false) {
+      messageEntry.appendChild(createAvatar(false));
     }
 
     // message-bubble: container for content + reactions
@@ -1094,24 +1057,19 @@ export function initMessagesUI() {
 
     // Type-specific content
     let onSingleTap;
-    switch (effectiveType) {
+    switch (type) {
       case 'file': {
-        const file = buildFileContent(msgData);
+        const file = buildFileContent(parsedMessage);
         p.appendChild(file.element);
         onSingleTap = file.onSingleTap;
         break;
       }
-      case 'call_event':
-        p.appendChild(
-          buildCallEventContent(msgData, {
-            onCallBack,
-            isSentByMe,
-          }),
-        );
+      case 'event':
+        p.appendChild(buildCallEventContent(parsedMessage, { onCallBack }));
         initIcons(p);
         break;
-      default: // 'text', 'system'
-        p.appendChild(buildTextContent(text, { fileDownload }));
+      default: // 'text'
+        p.appendChild(buildTextContent(parsedMessage.text));
         break;
     }
 
@@ -1119,24 +1077,36 @@ export function initMessagesUI() {
     messageBubble.appendChild(p);
     messageEntry.appendChild(messageBubble);
 
-    if (isSentByMe === true && isRead) {
+    if (isLocal === true && parsedMessage.read) {
       messageEntry.dataset.read = 'true';
       messageBubble.dataset.read = 'true';
     }
 
-    // Reactions for all non-system types (attach to messageBubble)
-    if (effectiveType !== 'system') {
-      attachReactions(messageBubble, messageId, reactions, { onSingleTap });
-    }
+    // Reactions (attach to messageBubble)
+    attachReactions(messageBubble, parsedMessage.messageId, reactions, {
+      onSingleTap,
+    });
 
     messagesMessages.appendChild(messageEntry);
     scrollMessagesToEnd();
 
-    // Increment unread if hidden and received
-    if (!isSentByMe && !isRead && isHidden(messagesBox)) {
+    // Increment unread if hidden and received from remote
+    if (isLocal === false && !parsedMessage.read && isHidden(messagesBox)) {
       const currentCount = messageToggle.element.unreadCount || 0;
       messageToggle.setUnreadCount(currentCount + 1);
     }
+  }
+
+  function appendEphemeralMessage({ text }) {
+    const entry = document.createElement('div');
+    entry.className = 'message-entry status';
+    const p = document.createElement('p');
+    p.className = 'message-text';
+    p.textContent = text;
+    entry.appendChild(p);
+    messagesMessages.appendChild(entry);
+    scrollMessagesToEnd();
+    return entry;
   }
 
   /**
@@ -1315,10 +1285,12 @@ export function initMessagesUI() {
 
           if (action === 'watch') {
             // Show notification in chat
-            appendMessage(`📹 ${t('message.received_video', { name })}`, {
-              isSentByMe: false,
+            appendEphemeralMessage({
+              text: `📹 ${t('message.received_video', { name })}`,
             });
-            appendMessage(`🎬 ${t('message.watch.requesting')}`);
+            appendEphemeralMessage({
+              text: `🎬 ${t('message.watch.requesting')}`,
+            });
 
             // If OPFS-streamed and SW available, serve via SW URL
             let videoSource;
@@ -1348,7 +1320,9 @@ export function initMessagesUI() {
             const success = await handleVideoSelection(videoSource, mimeType);
 
             if (!success) {
-              appendMessage(`❌ ${t('message.watch.failed_load')}`);
+              appendEphemeralMessage({
+                text: `❌ ${t('message.watch.failed_load')}`,
+              });
               return;
             }
 
@@ -1356,9 +1330,13 @@ export function initMessagesUI() {
             const requestCreated = await createWatchRequest(name, file);
 
             if (requestCreated) {
-              appendMessage(`⏳ ${t('message.watch.waiting')}`);
+              appendEphemeralMessage({
+                text: `⏳ ${t('message.watch.waiting')}`,
+              });
             } else {
-              appendMessage(`❌ ${t('message.watch.request_failed')}`);
+              appendEphemeralMessage({
+                text: `❌ ${t('message.watch.request_failed')}`,
+              });
             }
           } else {
             // Download the file
@@ -1372,15 +1350,26 @@ export function initMessagesUI() {
             // Using 1 second to be safe for slow devices/large files
             setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-            appendMessage(`📎 ${t('message.downloaded', { name })}`);
+            appendEphemeralMessage({
+              text: `📎 ${t('message.downloaded', { name })}`,
+            });
           }
         } else {
           // Non-video file - show download link
           const url = URL.createObjectURL(file);
-          appendMessage(`📎 ${t('message.received', { name })}`, {
-            isSentByMe: false,
-            fileDownload: { fileName: name, url },
+          const entry = appendEphemeralMessage({
+            text: `📎 ${t('message.received', { name })} `,
           });
+          const link = document.createElement('a');
+          link.textContent = name;
+          link.href = url;
+          link.download = name;
+          link.style.textDecoration = 'underline';
+          link.style.cursor = 'pointer';
+          link.addEventListener('click', () =>
+            setTimeout(() => URL.revokeObjectURL(url), 100),
+          );
+          entry.querySelector('.message-text').appendChild(link);
         }
 
         // Update interaction timestamp for received files
@@ -1405,9 +1394,9 @@ export function initMessagesUI() {
 
       // Setup file error handler
       fileTransferController.onFileError = ({ fileName, reason }) => {
-        appendMessage(
-          `❌ ${t('message.receive_failed', { name: fileName })} (${reason})`,
-        );
+        appendEphemeralMessage({
+          text: `❌ ${t('message.receive_failed', { name: fileName })} (${reason})`,
+        });
       };
 
       // Setup receive progress handler
@@ -1557,7 +1546,9 @@ export function initMessagesUI() {
    */
   function appendCachedHistory(session) {
     if (!session || !session.history) return;
-    session.history.forEach((event) => processReceivedMessage(event));
+    session.history.forEach((event) =>
+      processReceivedMessage(event.parsedMessage),
+    );
   }
 
   let lastTimestamp = 0;
@@ -1566,18 +1557,15 @@ export function initMessagesUI() {
   /**
    * Core logic to process and render a received message or reaction update.
    */
-  function processReceivedMessage({ text, msgData, isSentByMe }) {
+  function processReceivedMessage(parsedMessage) {
     // Handle reaction updates separately
-    if (msgData._reactionUpdate) {
-      updateMessageReactions(
-        msgData.messageId,
-        convertFirebaseReactions(msgData.reactions),
-      );
+    if (parsedMessage._reactionUpdate) {
+      updateMessageReactions(parsedMessage.messageId, parsedMessage.reactions);
       return;
     }
 
-    const timestamp = msgData?.sentAt || Date.now();
-    const formattedTimestamp = formatTimestamp(msgData?.sentAt || Date.now());
+    const timestamp = parsedMessage.sentAt || Date.now();
+    const formattedTimestamp = formatTimestamp(timestamp);
 
     if (timestamp - lastTimestamp > TIMESTAMP_THRESHOLD) {
       const timestampEl = document.createElement('div');
@@ -1587,19 +1575,7 @@ export function initMessagesUI() {
     }
     lastTimestamp = timestamp;
 
-    const reactions = convertFirebaseReactions(msgData.reactions);
-    const type = msgData.type;
-    const isText = !type;
-
-    appendMessage(isText ? text : '', {
-      ...(type && { type }),
-      isSentByMe,
-      messageId: msgData.messageId,
-      reactions,
-      isRead: msgData.read,
-      ...(type && { msgData }),
-      timestamp,
-    });
+    appendMessage(parsedMessage);
   }
 
   function displayCurrentSession() {
@@ -1723,10 +1699,9 @@ export function initMessagesUI() {
 
   messagingController.on(
     'message:received',
-    (messageEvent) => {
+    ({ parsedMessage, conversationId }) => {
       // Only handle if this message belongs to our currently active session
-      if (messageEvent.conversationId !== currentSession?.conversationId)
-        return;
+      if (conversationId !== currentSession?.conversationId) return;
 
       if (currentSession.contactId) {
         contactsController
@@ -1734,12 +1709,12 @@ export function initMessagesUI() {
           .catch(() => {});
       }
 
-      processReceivedMessage(messageEvent);
+      processReceivedMessage(parsedMessage);
 
       // Mark as read if UI is open and message is not from me
-      if (isMessagesUIOpen() && !messageEvent.isSentByMe) {
+      if (isMessagesUIOpen() && !isLocalMessage(parsedMessage)) {
         const conversationIdAtReceive =
-          currentSession?.conversationId ?? messageEvent.conversationId;
+          currentSession?.conversationId ?? conversationId;
 
         clearTimeout(markAsReadTimeout);
         markAsReadTimeout = setTimeout(() => {
@@ -1766,7 +1741,7 @@ export function initMessagesUI() {
     'reaction:updated',
     ({ conversationId, messageId, reactions }) => {
       if (conversationId !== currentSession?.conversationId) return;
-      updateMessageReactions(messageId, convertFirebaseReactions(reactions));
+      updateMessageReactions(messageId, reactions);
 
       // Update interaction timestamp for reactions as well
       if (currentSession.contactId) {
