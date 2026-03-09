@@ -1688,10 +1688,12 @@ export function initMessagesUI() {
       })
       .catch(() => {});
 
-    // Render existing cached history
-    const history = messagingController.getHistory(conversationId);
-    if (history && history.length > 0) {
-      appendCachedHistory({ history });
+    // Render existing cached history (only when switching conversations, not resuming)
+    if (!isCurrentConversation) {
+      const history = messagingController.getHistory(conversationId);
+      if (history && history.length > 0) {
+        appendCachedHistory({ history });
+      }
     }
   }
 
