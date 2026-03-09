@@ -240,7 +240,7 @@ export class MessagingController extends EventEmitter {
   /**
    * Display a conversation in the UI by emitting the appropriate event.
    * Must be called after openConversation() to trigger UI updates.
-   * @param {string} conversationId - Conversation ID
+   * `@param` {string} conversationId - Conversation ID
    */
   displayConversation(conversationId) {
     const conversationState = this.conversations.get(conversationId);
@@ -248,7 +248,11 @@ export class MessagingController extends EventEmitter {
       throw new Error(`Cannot display non-existent conversation: ${conversationId}`);
     }
 
-    this.emit('conversation:display', { conversationId });
+    this.emit('conversation:display', {
+      conversationId,
+      contactId: conversationState.contactId,
+      contactName: conversationState.contactName,
+    });
   }
 
   /**
