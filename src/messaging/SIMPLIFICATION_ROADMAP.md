@@ -88,13 +88,13 @@ No enforced contract. `currentSession` state crosses layers.
 
 **Steps**:
 
-1. [ ] Add `messagingController.setCurrentSession(sessionData)` method
+1. [x] Add `messagingController.setCurrentSession(sessionData)` method
    - Validates: `{ contactId, contactName }`
    - Manages: all initialization in one place
    - Returns: clean session object
-2. [ ] Remove `messagesUI.setSession()` (consolidate into middleware)
-3. [ ] Update call flow: `callController.setupCall()` → `messagingController.setCurrentSession()`
-4. [ ] Ensure `currentSession` only readable by UI (emitted via events)
+2. [x] Remove `messagesUI.setSession()` (consolidate into middleware)
+3. [x] Update call flow: `callController.setupCall()` → `messagingController.setCurrentSession()`
+4. [x] Ensure `currentSession` only readable by UI (emitted via events)
 
 **Success criteria**:
 
@@ -121,18 +121,18 @@ No clear owner. Duplication (IndexedDB + messageElements). Missing contracts.
 
 **Steps**:
 
-1. [ ] Create `STATE_OWNERSHIP.md` mapping all 10+ variables
+1. [x] Create `STATE_OWNERSHIP.md` mapping all 10+ variables
    - Current location
    - Current owner
    - Who reads it
    - Who should own it (desired)
    - Duplication issues
-2. [ ] Categorize by layer:
+2. [x] Categorize by layer:
    - Model state (Controller owns)
    - UI state (messages-ui owns)
    - Side effect state (should be minimal)
-3. [ ] Identify dual caching sources
-4. [ ] Plan consolidation strategy
+3. [x] Identify dual caching sources
+4. [x] Plan consolidation strategy
 
 **Success criteria**:
 
@@ -145,7 +145,7 @@ No clear owner. Duplication (IndexedDB + messageElements). Missing contracts.
 
 ## Phase 2: Fix Flows
 
-### Issue 2.1: Eliminate Dual Caching
+### Issue 2.1: Eliminate Dual Caching ✅ COMPLETE
 
 **Problem**: Message cached in both IndexedDB (Controller) AND messageElements Map (UI)
 
@@ -155,38 +155,94 @@ No clear owner. Duplication (IndexedDB + messageElements). Missing contracts.
 
 **Impact**: Enables send path fix, clarifies state.
 
-**Depends on**: Phase 1.2 (state ownership clarity)
+**Solution implemented (commit 6c7f8a0)**:
+- Removed messageElements Map entirely
+- Kept Controller.history as single source of truth (50-msg in-memory cache)
+- Changed reaction lookups from Map.get() to DOM querySelector by data-messageId
+- Simplified cleanup to query DOM instead of iterating Map
 
-**Size**: Medium (100-150 LoC changes)
-
-**Current flow**:
-
-```
-Receive: RTDB → Controller.cacheHistory(IndexedDB) + UI.messageElements.set()
-         Both stores same data
-```
-
-**Steps**:
-
-1. [ ] Decide: Single source of truth?
-   - **Option A**: IndexedDB only, UI reads from it (slower, complex queries)
-   - **Option B**: messageElements Map only, no IndexedDB (loses persistence)
-   - **Option C**: IndexedDB for persistence, messageElements as display cache (must sync)
-2. [ ] Implement chosen option
-   - Likely Option C (persistence + performance)
-   - messageElements = display cache, auto-sync with IndexedDB
-3. [ ] Remove redundant writes
-4. [ ] Update receive flow to single-path caching
-
-**Success criteria**:
-
-- Single authoritative message store
+**Success criteria**: ✅ ACHIEVED
+- Single source of truth (Controller.history)
 - No dual-write inconsistencies
-- Clear cache hierarchy
+- Clear message storage hierarchy (Controller owns, UI reads via events)
 
 ---
 
 ### Issue 2.2: Fix Send Path — Eliminate Circular RTDB Echo
+
+**Problem**: Sender's message roundtrips through RTDB unnecessarily
+
+```
+Current (convoluted):
+  Sender: RTDB write → listener fires → emit → UI renders
+  Remote: RTDB listener → emit → UI renders
+
+Problem: Sender waits for RTDB echo just to see own message
+```
+
+**Impact**: Eliminates unnecessary roundtrip, simplifies flow.
+
+**Depends on**: Phase 2.1 (state clarity) ✅ COMPLETE
+
+**Size**: Medium (30-50 LoC changes)
+
+**Solution approach**:
+
+Skip emitting own messages in transport listener:
+
+```javascript
+const myUserId = getLoggedInUserId();
+const messageCallback = (snapshot) => {
+  const msg = snapshot.val();
+
+  // Skip own messages - don't emit for local sends
+  if (msg.from === myUserId) {
+    // Cache locally for history, but don't emit
+    cacheMessage(msg);
+    return;
+  }
+
+  // Only emit for remote messages
+  onMessage(parsed);
+};
+```
+
+Return ParsedMessage from Controller.send() so UI can render immediately:
+
+```javascript
+async send(conversationId, text) {
+  // Create message object
+  const messageData = { text, from: userId, ... };
+
+  // Push to RTDB (fire and forget, or await)
+  const pushed = await transport.sendToConversation(...);
+
+  // Return parsed message for UI to render
+  const parsedMessage = parseMessage(messageData, messageId);
+  return parsedMessage;
+}
+```
+
+**Steps**:
+
+1. [ ] Modify Transport.listen(): Skip emit for `msg.from === currentUserId`
+2. [ ] Update Transport: Store own messages in cache, don't emit
+3. [ ] Modify Controller.send(): Return ParsedMessage after RTDB push
+4. [ ] Update UI: Render returned message immediately (no await for emit)
+5. [ ] Remove seenMessageIds check (no longer needed)
+6. [ ] Test both sender and remote flows
+
+**Success criteria**:
+
+- Sender sees own message immediately (from returned ParsedMessage)
+- Remote receives via RTDB emit (as before)
+- No unnecessary roundtrip for own messages
+- seenMessageIds removed (simpler code)
+- Both flows still route through Controller.history cache
+
+---
+
+### Issue 2.2b: Optimistic Rendering (DEFERRED - Separate from circular fix)
 
 **Problem**: Message rendered twice
 
@@ -264,6 +320,20 @@ Cons: Still inefficient
 - Remote clients still receive events
 - No visual duplication
 
+**Next phase**: Phase 2.2b (optimistic render) should add proper error UI.
+
+---
+
+### Issue 2.2b: Optimistic Rendering with Error Handling (DEFERRED - Plan after circular fix)
+
+**Purpose**: Add immediate feedback for sent messages + error handling
+
+**Depends on**: Issue 2.2 (circular RTDB echo fixed)
+
+**Scope**: Add optimistic render UI + error state + retry button
+
+**Steps**: TBD after 2.2 is complete
+
 ---
 
 ### Issue 2.3: Route appendCachedHistory Through Controller
@@ -280,7 +350,7 @@ Inconsistent with receive path (which goes through Controller).
 
 **Impact**: Consistency, validation clarity.
 
-**Depends on**: Phase 2.1 (caching consolidated), Phase 2.2 (send path)
+**Depends on**: Phase 2.1 (caching consolidated) ✅, Phase 2.2 (circular fix)
 
 **Size**: Small (20-30 LoC changes)
 
