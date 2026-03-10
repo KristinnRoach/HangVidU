@@ -106,20 +106,29 @@ export class RTDBMessagingTransport extends MessagingTransport {
     const messageRef = push(
       ref(rtdb, `conversations/${conversationId}/messages`),
     );
+    const messageId = messageRef.key;
 
-    await set(messageRef, {
+    // Local copy uses Date.now(); RTDB gets serverTimestamp()
+    const messageData = {
       type: 'text',
       text,
       from: fromUserId,
       fromName,
-      sentAt: serverTimestamp(),
+      sentAt: Date.now(),
       read: false,
+    };
+
+    await set(messageRef, {
+      ...messageData,
+      sentAt: serverTimestamp(),
     });
 
     // Clean up old messages if limit exceeded
     this._cleanupOldMessages(conversationId).catch((err) => {
       console.warn('[RTDBTransport] Failed to cleanup old messages:', err);
     });
+
+    return { messageId, messageData };
   }
 
   /**
@@ -177,19 +186,17 @@ export class RTDBMessagingTransport extends MessagingTransport {
       `conversations/${conversationId}/messages`,
     );
 
-    const seenMessageIds = new Set();
-
     const messageCallback = (snapshot) => {
       const msgId = snapshot.key;
       const msg = snapshot.val();
-      if (!msg || seenMessageIds.has(msgId)) return;
+      if (!msg) return;
+
+      // Skip own messages — sender renders from Controller.send() return value
+      if (msg.from === myUserId) return;
 
       try {
         const parsed = parseMessage(msg, msgId);
-        if (parsed) {
-          seenMessageIds.add(msgId);
-          onMessage(parsed);
-        }
+        if (parsed) onMessage(parsed);
       } catch (err) {
         console.warn('[RTDBTransport] Failed to parse message', msgId, err);
       }
@@ -198,7 +205,7 @@ export class RTDBMessagingTransport extends MessagingTransport {
     const reactionCallback = (snapshot) => {
       const msgId = snapshot.key;
       const msg = snapshot.val();
-      if (!msg || !seenMessageIds.has(msgId)) return;
+      if (!msg) return;
 
       if (msg.reactions !== undefined) {
         try {

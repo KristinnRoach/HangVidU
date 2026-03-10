@@ -1160,7 +1160,9 @@ export function initMessagesUI() {
     if (currentConversationId) {
       try {
         messagesInput.value = ''; // Optimistically clear input
-        await messagingController.send(currentConversationId, msg);
+        const parsed = await messagingController.send(currentConversationId, msg);
+        // Render sender's own message from return value (no RTDB echo)
+        processReceivedMessage(parsed);
         // Reset textarea height after clearing
         if (resetInputHeight) resetInputHeight();
       } catch (err) {

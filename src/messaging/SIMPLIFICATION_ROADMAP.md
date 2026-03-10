@@ -168,171 +168,226 @@ No clear owner. Duplication (IndexedDB + messageElements). Missing contracts.
 
 ---
 
-### Issue 2.2: Fix Send Path — Eliminate Circular RTDB Echo
+### Issue 2.2: Fix Send Path — Eliminate Circular RTDB Echo ✅ COMPLETE
 
-**Problem**: Sender's message roundtrips through RTDB unnecessarily
+**Core problem**: Sender writes to RTDB, then the RTDB listener echoes the sender's own message back, and the controller emits it as if it were a new incoming message. The sender's message only appears in the UI after this unnecessary round trip.
 
 ```
-Current (convoluted):
-  Sender: RTDB write → listener fires → emit → UI renders
-  Remote: RTDB listener → emit → UI renders
+Current flow (both users identical):
+  User sends → RTDB write → listener fires → Controller emits 'message:received' → UI renders
 
-Problem: Sender waits for RTDB echo just to see own message
+Problem: Sender takes the same path as remote receiver. The message goes up to
+Firebase and comes back down before the sender sees it in the UI.
+
+Band-aid: seenMessageIds Set in rtdb-transport.js:180 deduplicates, but doesn't
+fix the fundamental issue — the sender still waits for the echo.
 ```
 
-**Impact**: Eliminates unnecessary roundtrip, simplifies flow.
+**After fix**:
 
-**Depends on**: Phase 2.1 (state clarity) ✅ COMPLETE
+```
+Sender:  Controller.send() → RTDB write → returns ParsedMessage → UI renders immediately
+Remote:  RTDB listener → Controller emits 'message:received' → UI renders (unchanged)
+```
 
-**Size**: Medium (30-50 LoC changes)
+**Depends on**: Phase 2.1 ✅ COMPLETE
 
-**Solution approach**:
+**Size**: ~40 LoC across 3 files
 
-Skip emitting own messages in transport listener:
+**Decisions resolved**:
+
+- **sentAt**: `serverTimestamp()` is a placeholder, not a number. Local sends use `Date.now()` instead. The schema accepts `z.number()`, which `Date.now()` satisfies. The tiny drift vs server time is negligible for display.
+- **messageId**: `push()` returns a ref with `.key` before `set()` is called. We already have this — just return it.
+- **seenMessageIds**: Fully removed. The `reactionCallback` used it as a guard, but `child_changed` only fires on live changes (not initial load), so stale reactions aren't a risk. Guard removed for simplicity.
+
+**Steps**:
+
+1. [x] **Transport.sendToConversation()**: Return `{ messageId, messageData }` after RTDB push
+2. [x] **Transport.listen()**: Skip emitting own messages, remove `seenMessageIds` entirely
+3. [x] **Controller.send()**: Build and return ParsedMessage, cache it
+4. [x] **UI sendMessage()**: Render the returned message via `processReceivedMessage(parsed)`
+5. [x] **Cleanup**: `seenMessageIds` deleted entirely
+6. [ ] **Test**: Manual verification — sender sees message immediately, remote receives via emit, reactions work on both
+
+**Success criteria**:
+
+- Sender's message renders from Controller.send() return value, not from RTDB echo
+- Remote messages still flow through listener → emit → UI (unchanged)
+- Reactions work on both own and remote messages
+- `seenMessageIds` dedup band-aid removed or renamed to reflect actual purpose
+- Backtick-quote double-display bug resolved (was caused by echo path)
+
+---
+
+### Issue 2.2b: Optimistic Render with Error Handling
+
+**Core problem**: After 2.2, the sender `await`s the RTDB write before rendering. If the write is slow or fails, the user sees nothing. We want the message to appear instantly (optimistic) with visual feedback for pending/failed states.
+
+```
+After 2.2 (good but blocking):
+  User sends → await RTDB write → return ParsedMessage → UI renders
+  Problem: UI blocked until RTDB write completes
+
+After 2.2b (optimistic):
+  User sends → UI renders immediately (pending state) → RTDB write in background
+    → success: update to sent state (or just remove pending indicator)
+    → failure: update to failed state + show retry
+```
+
+**Depends on**: Issue 2.2 (send path returns ParsedMessage)
+
+**Size**: Medium (~80-120 LoC across 3 files)
+
+#### Decisions needed
+
+1. **Message status model**: Add a `_status` field to local messages?
+   - Options: (a) Add `_status: 'pending' | 'sent' | 'failed'` to the ParsedMessage object, (b) track status separately in a Map keyed by messageId
+   - Recommendation: (a) — simpler, status travels with the message. Prefix with `_` to signal it's local-only (not persisted to RTDB), same pattern as `_reactionUpdate`.
+
+2. **Pending indicator style**: What does "pending" look like?
+   - Options: (a) Dimmed/opacity on the message bubble, (b) small spinner/clock icon, (c) subtle "sending..." text
+   - Recommendation: (a) — CSS-only, no new DOM elements. `.message-bubble[data-status="pending"] { opacity: 0.6; }`
+
+3. **Failed state UI**: What does "failed" look like?
+   - Recommendation: Red-tinted bubble + small "Failed to send. Tap to retry" text below the message. Keep it minimal.
+
+4. **Retry mechanism**: Re-send same content with new messageId, or reuse the original?
+   - Recommendation: New messageId (new `push()` call). The original was never written, so the ID is orphaned. Simpler than tracking partial writes.
+
+5. **Timeout**: Should we have a timeout for "pending" → "failed"?
+   - Recommendation: No. Firebase SDK already has built-in timeout/error handling. If `set()` rejects, that's the signal. Don't add a separate timer.
+
+6. **Cache behavior**: When does the message enter Controller.history?
+   - Recommendation: Immediately on send (with `_status: 'pending'`). Update status in-place on success/failure. This way cached history reflects the true state.
+
+#### Implementation plan
+
+**Step 1: Transport returns early, writes in background**
 
 ```javascript
-const myUserId = getLoggedInUserId();
-const messageCallback = (snapshot) => {
-  const msg = snapshot.val();
+// rtdb-transport.js — sendToConversation()
+async sendToConversation(conversationId, text) {
+  const fromUserId = getLoggedInUserId();
+  const fromName = getUser()?.displayName || 'Guest User';
+  const messageRef = push(ref(rtdb, `conversations/${conversationId}/messages`));
+  const messageId = messageRef.key;
+  const messageData = {
+    type: 'text', text, from: fromUserId, fromName,
+    sentAt: Date.now(), read: false,
+  };
 
-  // Skip own messages - don't emit for local sends
-  if (msg.from === myUserId) {
-    // Cache locally for history, but don't emit
-    cacheMessage(msg);
-    return;
-  }
+  // Return immediately for optimistic render
+  // Caller is responsible for awaiting writePromise if needed
+  const writePromise = set(messageRef, {
+    ...messageData,
+    sentAt: serverTimestamp(), // RTDB gets server time; local copy has Date.now()
+  });
 
-  // Only emit for remote messages
-  onMessage(parsed);
-};
+  return { messageId, messageData, writePromise };
+}
 ```
 
-Return ParsedMessage from Controller.send() so UI can render immediately:
+**Step 2: Controller.send() renders optimistically, resolves in background**
 
 ```javascript
+// messaging-controller.js — send()
 async send(conversationId, text) {
-  // Create message object
-  const messageData = { text, from: userId, ... };
+  const { messageId, messageData, writePromise } =
+    this.transport.sendToConversation(conversationId, text);
 
-  // Push to RTDB (fire and forget, or await)
-  const pushed = await transport.sendToConversation(...);
+  const parsed = parseMessage(messageData, messageId);
+  parsed._status = 'pending';
 
-  // Return parsed message for UI to render
-  const parsedMessage = parseMessage(messageData, messageId);
-  return parsedMessage;
+  // Cache immediately
+  const conversationState = this.conversations.get(conversationId);
+  this.cacheHistory(conversationState, { conversationId, parsedMessage: parsed });
+
+  // Resolve RTDB write in background
+  writePromise
+    .then(() => {
+      parsed._status = 'sent';
+      this.emit('message:status', { conversationId, messageId, status: 'sent' });
+    })
+    .catch((err) => {
+      parsed._status = 'failed';
+      this.emit('message:status', { conversationId, messageId, status: 'failed', error: err });
+    });
+
+  return parsed; // UI renders immediately
+}
+```
+
+**Step 3: UI handles status updates**
+
+```javascript
+// messages-ui.js — listen for status changes
+messagingController.on('message:status', ({ messageId, status }) => {
+  const bubble = messagesMessages.querySelector(`[data-messageId="${messageId}"]`);
+  if (!bubble) return;
+
+  const entry = bubble.closest('.message-entry');
+  entry.dataset.status = status;
+
+  if (status === 'failed') {
+    // Add retry affordance if not already present
+    if (!entry.querySelector('.retry-send')) {
+      const retry = document.createElement('button');
+      retry.className = 'retry-send';
+      retry.textContent = 'Failed to send. Tap to retry';
+      retry.onclick = () => retrySend(messageId);
+      entry.appendChild(retry);
+    }
+  }
+});
+```
+
+**Step 4: CSS for status states**
+
+```css
+.message-entry[data-status="pending"] .message-bubble { opacity: 0.6; }
+.message-entry[data-status="failed"] .message-bubble { border-color: var(--color-error); }
+.retry-send { font-size: 0.75rem; color: var(--color-error); cursor: pointer; }
+```
+
+**Step 5: Retry mechanism**
+
+```javascript
+// messages-ui.js
+function retrySend(failedMessageId) {
+  // Find original message text from DOM
+  const bubble = messagesMessages.querySelector(`[data-messageId="${failedMessageId}"]`);
+  const text = bubble?.querySelector('p')?.textContent;
+  if (!text || !currentConversationId) return;
+
+  // Remove failed message from DOM
+  bubble.closest('.message-entry')?.remove();
+
+  // Re-send (creates new messageId)
+  messagingController.send(currentConversationId, text)
+    .then(parsed => processReceivedMessage(parsed));
 }
 ```
 
 **Steps**:
 
-1. [ ] Modify Transport.listen(): Skip emit for `msg.from === currentUserId`
-2. [ ] Update Transport: Store own messages in cache, don't emit
-3. [ ] Modify Controller.send(): Return ParsedMessage after RTDB push
-4. [ ] Update UI: Render returned message immediately (no await for emit)
-5. [ ] Remove seenMessageIds check (no longer needed)
-6. [ ] Test both sender and remote flows
+1. [ ] Change Transport.sendToConversation() to return `{ messageId, messageData, writePromise }`
+2. [ ] Change Controller.send() to return ParsedMessage immediately, resolve write in background
+3. [ ] Add `_status` field to local ParsedMessage (`pending` → `sent` | `failed`)
+4. [ ] Add `message:status` event to Controller
+5. [ ] UI: listen for `message:status`, update `data-status` attribute on message entry
+6. [ ] UI: add retry button on failed messages
+7. [ ] CSS: pending (dimmed), failed (error border + retry text)
+8. [ ] Remove failed message from Controller.history on retry (or mark as superseded)
+9. [ ] Test: send success, send failure (offline/permissions), retry flow
 
 **Success criteria**:
 
-- Sender sees own message immediately (from returned ParsedMessage)
-- Remote receives via RTDB emit (as before)
-- No unnecessary roundtrip for own messages
-- seenMessageIds removed (simpler code)
-- Both flows still route through Controller.history cache
-
----
-
-### Issue 2.2b: Optimistic Rendering (DEFERRED - Separate from circular fix)
-
-**Problem**: Message rendered twice
-
-```
-UI.appendMessage() → Controller.send() → RTDB
-   → listen → emit → UI.appendMessage() AGAIN
-```
-
-Band-aid: `seenMessageIds` prevents visual dup, but inefficient.
-
-**Known issue**: Messages with backtick/template-literal quotes (´text´) trigger double display, likely due to send-path duplication or escaping bug in seenMessageIds check. Will be resolved by proper send-path fix.
-
-**Impact**: Eliminates redundant processing, clarifies flow.
-
-**Depends on**: Phase 2.1 (dual caching fixed), Phase 1.1 (session ownership)
-
-**Size**: Large (200+ LoC changes across multiple files)
-
-**Options**:
-
-**Option A: Optimistic render only (no echo)**
-
-```
-UI.appendMessage(optimistic)
-Controller.send()
-  → RTDB write
-  → validateAndCache (silent, no UI event)
-  → skip emit for local send
-```
-
-Pros: Clean, single render
-Cons: No validation echo, harder to sync errors
-
-**Option B: Await RTDB ack (single authoritative render)**
-
-```
-UI.sendMessage()
-  → Controller.send() [returns Promise]
-    → RTDB push
-    → Wait for listener confirmation
-    → Emit only to remote clients (skip local)
-  → UI.appendMessage(validated)
-```
-
-Pros: Single source of truth, validated render
-Cons: Slower UX, needs ack mechanism
-
-**Option C: Keep circular, optimize dedup (current+improve)**
-
-```
-Keep current flow, but:
-  → Use messageId for dedup (not seenMessageIds)
-  → Skip re-validation for local sends
-  → Mark as "local until confirmed"
-```
-
-Pros: Minimal changes
-Cons: Still inefficient
-
-**Recommended**: Option A or B (eliminate redundancy)
-
-**Steps** (for Option A):
-
-1. [ ] Modify Transport.listen(): Skip emit for messages from currentUser
-   - Only emit for remote messages
-   - Local sends don't trigger event
-2. [ ] Update Controller: No event for own messages
-3. [ ] Validation: Silent, no UI impact
-4. [ ] Remove `seenMessageIds` (no longer needed)
-
-**Success criteria**:
-
-- Message rendered once (optimistic)
-- No RTDB echo for local sends
-- Remote clients still receive events
-- No visual duplication
-
-**Next phase**: Phase 2.2b (optimistic render) should add proper error UI.
-
----
-
-### Issue 2.2b: Optimistic Rendering with Error Handling (DEFERRED - Plan after circular fix)
-
-**Purpose**: Add immediate feedback for sent messages + error handling
-
-**Depends on**: Issue 2.2 (circular RTDB echo fixed)
-
-**Scope**: Add optimistic render UI + error state + retry button
-
-**Steps**: TBD after 2.2 is complete
+- Message appears in UI instantly on send (no wait for RTDB)
+- Pending state is visually subtle (dimmed bubble)
+- Failed state is clear with retry affordance
+- Retry works: removes failed message, re-sends with new ID
+- No duplicate messages in any scenario
+- Controller.history reflects current status of each message
 
 ---
 

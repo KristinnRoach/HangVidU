@@ -1,4 +1,5 @@
 import { RTDBMessagingTransport } from './transports/rtdb-transport.js';
+import { parseMessage } from './schema.js';
 import { EventEmitter } from '../utils/event-emitter.js';
 import { getLoggedInUserId } from '../auth/auth-state.js';
 
@@ -264,9 +265,12 @@ export class MessagingController extends EventEmitter {
   }
 
   /**
-   * Send a message to an open conversation
+   * Send a message to an open conversation.
+   * Returns the ParsedMessage so the caller can render it immediately
+   * (sender doesn't wait for RTDB echo).
    * @param {string} conversationId - Conversation ID
    * @param {string} text - Message text
+   * @returns {Promise<Object>} ParsedMessage for immediate rendering
    */
   async send(conversationId, text) {
     if (!this.conversations.has(conversationId)) {
@@ -277,7 +281,19 @@ export class MessagingController extends EventEmitter {
       throw new Error('Message text must be a string');
     }
 
-    return this.transport.sendToConversation(conversationId, text);
+    const { messageId, messageData } =
+      await this.transport.sendToConversation(conversationId, text);
+
+    const parsed = parseMessage(messageData, messageId);
+
+    // Cache locally (listener skips own messages, so we cache here)
+    const conversationState = this.conversations.get(conversationId);
+    this.cacheHistory(conversationState, {
+      conversationId,
+      parsedMessage: parsed,
+    });
+
+    return parsed;
   }
 
   /**

@@ -26,6 +26,18 @@ class MockTransport {
 
   async sendToConversation(conversationId, text) {
     this.sentMessages.push({ conversationId, text });
+    const messageId = `msg_${Date.now()}_${this.sentMessages.length}`;
+    return {
+      messageId,
+      messageData: {
+        type: 'text',
+        text,
+        from: 'me',
+        fromName: 'Test User',
+        sentAt: Date.now(),
+        read: false,
+      },
+    };
   }
 
   async sendFile(contactId, file) {
@@ -135,15 +147,27 @@ describe('MessagingController', () => {
     expect(spy).toHaveBeenCalledTimes(2);
   });
 
-  it('should send message through transport directly', async () => {
+  it('should send message through transport and return ParsedMessage', async () => {
     controller.openConversation('contactA');
-    await controller.send('contactA_me', 'Hello!');
+    const parsed = await controller.send('contactA_me', 'Hello!');
 
+    // Transport received the message
     expect(mockTransport.sentMessages).toHaveLength(1);
     expect(mockTransport.sentMessages[0]).toEqual({
       conversationId: 'contactA_me',
       text: 'Hello!',
     });
+
+    // Returns a ParsedMessage for immediate rendering
+    expect(parsed).toBeDefined();
+    expect(parsed.text).toBe('Hello!');
+    expect(parsed.from).toBe('me');
+    expect(parsed.messageId).toBeDefined();
+
+    // Message is cached in history
+    const history = controller.getHistory('contactA_me');
+    expect(history).toHaveLength(1);
+    expect(history[0].parsedMessage.text).toBe('Hello!');
   });
 
   it('should throw when sending to non-open conversation', async () => {
