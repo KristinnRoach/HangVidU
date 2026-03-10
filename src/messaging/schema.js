@@ -24,9 +24,7 @@ import { z } from 'zod';
 
 // Reactions: { emoji: [userId1, userId2] }
 // RTDB stores { emoji: { uid: true } } — parseMessage() normalizes to arrays.
-const reactionsField = z
-  .record(z.string(), z.array(z.string()))
-  .optional();
+const reactionsField = z.record(z.string(), z.array(z.string())).optional();
 
 // ============================================================================
 // MESSAGE TYPES
@@ -34,8 +32,8 @@ const reactionsField = z
 
 // Text Message (user-authored message with text content)
 const TextMessageSchema = z.object({
-  type: z.literal('text'),
   messageId: z.string(),
+  type: z.literal('text'),
   text: z.string(),
   from: z.string().min(1, 'Sender UID required'),
   fromName: z.string(),
@@ -47,8 +45,8 @@ const TextMessageSchema = z.object({
 
 // File Message (user-authored file transfer, optionally with caption)
 const FileMessageSchema = z.object({
-  type: z.literal('file'),
   messageId: z.string(),
+  type: z.literal('file'),
   fileName: z.string(),
   mimeType: z.string(),
   fileSize: z.number(),
@@ -64,8 +62,8 @@ const FileMessageSchema = z.object({
 
 // Event Message (e.g., missed calls, typing, polls)
 const EventMessageSchema = z.object({
-  type: z.literal('event'),
   messageId: z.string(),
+  type: z.literal('event'),
   eventType: z.enum(['missed_call', 'rejected_call']),
   from: z.string().min(1),
   sentAt: z.number(),
