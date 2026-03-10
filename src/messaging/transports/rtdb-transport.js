@@ -3,10 +3,8 @@
 
 import { MessagingTransport } from './messaging-transport.js';
 import { parseMessage } from '../schema.js';
-import { compressImage } from '../../media/image-compress.js';
 import {
   ref,
-  push,
   set,
   update,
   get,
@@ -16,27 +14,10 @@ import {
   serverTimestamp,
 } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId, getUser } from '../../auth/auth-state.js';
+import { getLoggedInUserId } from '../../auth/auth-state.js';
 
 // Message limit per conversation to control storage costs
 const MAX_MESSAGES_PER_CONVERSATION = 100;
-
-// Max file size for RTDB file messages (1MB before base64 encoding)
-const MAX_FILE_SIZE = 1 * 1024 * 1024;
-
-/**
- * Convert a File/Blob to a base64 data URL string.
- * @param {File} file
- * @returns {Promise<string>} base64 data URL
- */
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
 
 /**
  * RTDBMessagingTransport - Firebase RTDB implementation
@@ -93,79 +74,24 @@ export class RTDBMessagingTransport extends MessagingTransport {
     return this.resolveConversationId([userId1, userId2]);
   }
 
-  async sendToConversation(conversationId, text) {
-    const fromUserId = getLoggedInUserId();
-    if (!fromUserId) {
-      throw new Error('Cannot send message: not logged in');
-    }
-
-    const user = getUser();
-    const fromName = user?.displayName || 'Guest User';
-
-    // Write to shared conversation node
-    const messageRef = push(
-      ref(rtdb, `conversations/${conversationId}/messages`),
+  /**
+   * Write a message to a conversation.
+   * The controller builds the message data; the transport persists it.
+   * Swaps sentAt with serverTimestamp() for RTDB.
+   * @param {string} conversationId - Conversation ID
+   * @param {string} messageId - Controller-generated message ID
+   * @param {Object} messageData - Complete message data (type, text/file/event fields, from, etc.)
+   * @returns {Promise<void>}
+   */
+  async write(conversationId, messageId, messageData) {
+    const messageRef = ref(
+      rtdb,
+      `conversations/${conversationId}/messages/${messageId}`,
     );
-    const messageId = messageRef.key;
-
-    // Local copy uses Date.now(); RTDB gets serverTimestamp()
-    const messageData = {
-      type: 'text',
-      text,
-      from: fromUserId,
-      fromName,
-      sentAt: Date.now(),
-      read: false,
-    };
 
     await set(messageRef, {
       ...messageData,
       sentAt: serverTimestamp(),
-    });
-
-    // Clean up old messages if limit exceeded
-    this._cleanupOldMessages(conversationId).catch((err) => {
-      console.warn('[RTDBTransport] Failed to cleanup old messages:', err);
-    });
-
-    return { messageId, messageData };
-  }
-
-  /**
-   * Write a call event message to the conversation
-   * Used for missed calls, rejected calls, etc.
-   * @param {string} contactId - Contact's user ID
-   * @param {string} eventType - Event type ('missed_call' or 'rejected_call')
-   * @param {Object} details - Event details
-   * @param {string} details.roomId - The call's room ID (for deduplication)
-   * @param {string} details.callerId - Who initiated the call
-   * @param {string} details.callerName - Caller's display name
-   * @returns {Promise<void>}
-   */
-  async writeCallEventMessage(contactId, eventType, details = {}) {
-    const fromUserId = getLoggedInUserId();
-    if (!fromUserId) {
-      throw new Error('Cannot write call event: not logged in');
-    }
-
-    const conversationId = this._getConversationId(fromUserId, contactId);
-
-    // Write to shared conversation node
-    const messageRef = push(
-      ref(rtdb, `conversations/${conversationId}/messages`),
-    );
-
-    await set(messageRef, {
-      type: 'event',
-      eventType,
-      from: details.callerId || fromUserId,
-      details: {
-        callId: details.roomId || null,
-        callerId: details.callerId || fromUserId,
-        callerName: details.callerName || 'Someone',
-      },
-      sentAt: serverTimestamp(),
-      read: false,
     });
 
     // Clean up old messages if limit exceeded (best-effort, non-blocking)
@@ -436,69 +362,6 @@ export class RTDBMessagingTransport extends MessagingTransport {
     console.log(
       `[RTDBTransport] Cleaned up ${toDelete} old messages from conversation ${conversationId}`,
     );
-  }
-
-  // ========================================================================
-  // FILE MESSAGES
-  // ========================================================================
-
-  /**
-   * Send a file as a message via RTDB (base64-encoded).
-   * For small files only — capped at MAX_FILE_SIZE bytes before encoding.
-   * @param {string} contactId - Recipient's user ID
-   * @param {File} file - File to send
-   * @returns {Promise<void>}
-   */
-  async sendFile(contactId, file) {
-    const fromUserId = getLoggedInUserId();
-    if (!fromUserId) {
-      throw new Error('Cannot send file: not logged in');
-    }
-
-    // Always compress images — even files under MAX_FILE_SIZE need it
-    // because base64 encoding adds ~33% overhead
-    if (file.type.startsWith('image/')) {
-      const compressed = await compressImage(file);
-      if (compressed) {
-        file = compressed;
-      } else if (file.size > MAX_FILE_SIZE) {
-        throw new Error(
-          `Image too large to compress under ${MAX_FILE_SIZE / 1024 / 1024}MB.`,
-        );
-      }
-      // If compression returned null but file is small enough, send original
-    } else if (file.size > MAX_FILE_SIZE) {
-      throw new Error(
-        `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max ${MAX_FILE_SIZE / 1024 / 1024}MB.`,
-      );
-    }
-
-    const user = getUser();
-    const fromName = user?.displayName || 'Guest User';
-    const conversationId = this._getConversationId(fromUserId, contactId);
-
-    // Read file as base64
-    const base64 = await fileToBase64(file);
-
-    const messageRef = push(
-      ref(rtdb, `conversations/${conversationId}/messages`),
-    );
-
-    await set(messageRef, {
-      type: 'file',
-      fileName: file.name,
-      mimeType: file.type,
-      fileSize: file.size,
-      data: base64,
-      from: fromUserId,
-      fromName,
-      sentAt: serverTimestamp(),
-      read: false,
-    });
-
-    this._cleanupOldMessages(conversationId).catch((err) => {
-      console.warn('[RTDBTransport] Failed to cleanup old messages:', err);
-    });
   }
 
   // ========================================================================

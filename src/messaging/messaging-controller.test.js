@@ -7,16 +7,23 @@ import { MessagingController } from './messaging-controller.js';
 // Mock auth state
 vi.mock('../auth/auth-state.js', () => ({
   getLoggedInUserId: vi.fn(() => 'me'),
-  getUser: vi.fn(() => ({ uid: 'me' })),
+  getUser: vi.fn(() => ({ uid: 'me', displayName: 'Test User' })),
+}));
+
+// Mock file processing (no-op in tests)
+vi.mock('../media/image-compress.js', () => ({
+  compressImage: vi.fn(() => null),
+}));
+vi.mock('./utils/file-to-base64.js', () => ({
+  fileToBase64: vi.fn(() => 'data:text/plain;base64,Y29udGVudA=='),
 }));
 
 // Mock transport for testing
 class MockTransport {
   constructor() {
-    this.sentMessages = [];
+    this.writtenMessages = [];
     this.reactions = new Map();
     this.listeners = new Map();
-    this.files = [];
   }
 
   resolveConversationId(participantIds) {
@@ -24,24 +31,8 @@ class MockTransport {
     return participantIds.sort().join('_');
   }
 
-  async sendToConversation(conversationId, text) {
-    this.sentMessages.push({ conversationId, text });
-    const messageId = `msg_${Date.now()}_${this.sentMessages.length}`;
-    return {
-      messageId,
-      messageData: {
-        type: 'text',
-        text,
-        from: 'me',
-        fromName: 'Test User',
-        sentAt: Date.now(),
-        read: false,
-      },
-    };
-  }
-
-  async sendFile(contactId, file) {
-    this.files.push({ contactId, file });
+  async write(conversationId, messageId, messageData) {
+    this.writtenMessages.push({ conversationId, messageId, messageData });
   }
 
   listen(conversationId, onMessage) {
@@ -151,12 +142,11 @@ describe('MessagingController', () => {
     controller.openConversation('contactA');
     const parsed = await controller.send('contactA_me', 'Hello!');
 
-    // Transport received the message
-    expect(mockTransport.sentMessages).toHaveLength(1);
-    expect(mockTransport.sentMessages[0]).toEqual({
-      conversationId: 'contactA_me',
-      text: 'Hello!',
-    });
+    // Transport received the write
+    expect(mockTransport.writtenMessages).toHaveLength(1);
+    expect(mockTransport.writtenMessages[0].conversationId).toBe('contactA_me');
+    expect(mockTransport.writtenMessages[0].messageData.text).toBe('Hello!');
+    expect(mockTransport.writtenMessages[0].messageData.type).toBe('text');
 
     // Returns a ParsedMessage for immediate rendering
     expect(parsed).toBeDefined();
@@ -254,13 +244,15 @@ describe('MessagingController', () => {
 
   it('should send file through transport', async () => {
     controller.openConversation('contactA');
-    const file = new File(['content'], 'test.txt');
+    const file = new File(['content'], 'test.txt', { type: 'text/plain' });
 
-    await controller.sendFile('contactA_me', file);
+    const parsed = await controller.sendFile('contactA_me', file);
 
-    expect(mockTransport.files).toHaveLength(1);
-    expect(mockTransport.files[0].contactId).toBe('contactA');
-    expect(mockTransport.files[0].file).toBe(file);
+    expect(mockTransport.writtenMessages).toHaveLength(1);
+    expect(mockTransport.writtenMessages[0].messageData.type).toBe('file');
+    expect(mockTransport.writtenMessages[0].messageData.fileName).toBe('test.txt');
+    expect(parsed.type).toBe('file');
+    expect(parsed.messageId).toBeDefined();
   });
 
   it('should throw when sending file to non-open conversation', async () => {

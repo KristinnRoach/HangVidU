@@ -21,7 +21,7 @@ describe('RTDBMessagingTransport', () => {
   });
 
   it('should have all required methods', () => {
-    expect(typeof transport.sendToConversation).toBe('function');
+    expect(typeof transport.write).toBe('function');
     expect(typeof transport.listen).toBe('function');
     expect(typeof transport.getUnreadCountForConversation).toBe('function');
     expect(typeof transport.markAsRead).toBe('function');

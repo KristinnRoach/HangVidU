@@ -12,15 +12,17 @@
  */
 export class MessagingTransport {
   /**
-   * Send a message to a conversation
+   * Write a message to a conversation.
+   * The controller builds the message data; the transport just persists it.
    * @param {string} conversationId - Conversation ID
-   * @param {string} text - Message text
+   * @param {string} messageId - Controller-generated message ID
+   * @param {Object} messageData - Complete message data (type, text, from, etc.)
    * @returns {Promise<void>}
    * @abstract
    */
-  async sendToConversation(conversationId, text) {
+  async write(conversationId, messageId, messageData) {
     throw new Error(
-      'MessagingTransport.sendToConversation() must be implemented by subclass',
+      'MessagingTransport.write() must be implemented by subclass',
     );
   }
 

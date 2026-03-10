@@ -1,7 +1,13 @@
 import { RTDBMessagingTransport } from './transports/rtdb-transport.js';
 import { parseMessage } from './schema.js';
+import { generateId } from './utils/generate-id.js';
+import { fileToBase64 } from './utils/file-to-base64.js';
+import { compressImage } from '../media/image-compress.js';
 import { EventEmitter } from '../utils/event-emitter.js';
-import { getLoggedInUserId } from '../auth/auth-state.js';
+import { getLoggedInUserId, getUser } from '../auth/auth-state.js';
+
+// Max file size for file messages (1MB before base64 encoding)
+const MAX_FILE_SIZE = 1 * 1024 * 1024;
 
 /**
  * MessagingController - Core messaging API
@@ -265,7 +271,43 @@ export class MessagingController extends EventEmitter {
   }
 
   /**
-   * Send a message to an open conversation.
+   * Build common message fields (from, fromName, sentAt, read).
+   * @returns {Object}
+   * @private
+   */
+  _baseMessageFields() {
+    const fromUserId = getLoggedInUserId();
+    if (!fromUserId) throw new Error('Cannot send message: not logged in');
+    const fromName = getUser()?.displayName || 'Guest User';
+    return { from: fromUserId, fromName, sentAt: Date.now(), read: false };
+  }
+
+  /**
+   * Write a message to the transport, parse it, cache it, and return it.
+   * @param {string} conversationId
+   * @param {Object} messageData - Complete message fields (type, text/file/event, from, etc.)
+   * @returns {Promise<Object>} ParsedMessage for immediate rendering
+   * @private
+   */
+  async _writeAndCache(conversationId, messageData) {
+    const messageId = generateId();
+
+    await this.transport.write(conversationId, messageId, messageData);
+
+    const parsed = parseMessage(messageData, messageId);
+
+    // Cache locally (listener skips own messages, so we cache here)
+    const conversationState = this.conversations.get(conversationId);
+    this.cacheHistory(conversationState, {
+      conversationId,
+      parsedMessage: parsed,
+    });
+
+    return parsed;
+  }
+
+  /**
+   * Send a text message to an open conversation.
    * Returns the ParsedMessage so the caller can render it immediately
    * (sender doesn't wait for RTDB echo).
    * @param {string} conversationId - Conversation ID
@@ -281,40 +323,51 @@ export class MessagingController extends EventEmitter {
       throw new Error('Message text must be a string');
     }
 
-    const { messageId, messageData } =
-      await this.transport.sendToConversation(conversationId, text);
-
-    const parsed = parseMessage(messageData, messageId);
-
-    // Cache locally (listener skips own messages, so we cache here)
-    const conversationState = this.conversations.get(conversationId);
-    this.cacheHistory(conversationState, {
-      conversationId,
-      parsedMessage: parsed,
+    return this._writeAndCache(conversationId, {
+      type: 'text',
+      text,
+      ...this._baseMessageFields(),
     });
-
-    return parsed;
   }
 
   /**
-   * Send a file to an open conversation
+   * Send a file to an open conversation.
+   * Handles image compression and base64 encoding before writing.
    * @param {string} conversationId - Conversation ID
    * @param {File} file - File to send
+   * @returns {Promise<Object>} ParsedMessage for immediate rendering
    */
   async sendFile(conversationId, file) {
     if (!this.conversations.has(conversationId)) {
       throw new Error(`No open conversation: ${conversationId}`);
     }
 
-    if (typeof this.transport.sendFile !== 'function') {
-      throw new Error('Transport does not support file messages');
+    // Compress images (base64 adds ~33% overhead)
+    if (file.type.startsWith('image/')) {
+      const compressed = await compressImage(file);
+      if (compressed) {
+        file = compressed;
+      } else if (file.size > MAX_FILE_SIZE) {
+        throw new Error(
+          `Image too large to compress under ${MAX_FILE_SIZE / 1024 / 1024}MB.`,
+        );
+      }
+    } else if (file.size > MAX_FILE_SIZE) {
+      throw new Error(
+        `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max ${MAX_FILE_SIZE / 1024 / 1024}MB.`,
+      );
     }
 
-    // Resolve contactId from internal state
-    const conversationState = this.conversations.get(conversationId);
-    const contactId = conversationState.contactId;
+    const base64 = await fileToBase64(file);
 
-    return this.transport.sendFile(contactId, file);
+    return this._writeAndCache(conversationId, {
+      type: 'file',
+      fileName: file.name,
+      mimeType: file.type,
+      fileSize: file.size,
+      data: base64,
+      ...this._baseMessageFields(),
+    });
   }
 
   /**
@@ -428,7 +481,23 @@ export class MessagingController extends EventEmitter {
   }
 
   async sendCallEventMessage(contactId, eventType, metadata = {}) {
-    return this.transport.writeCallEventMessage(contactId, eventType, metadata);
+    const fromUserId = getLoggedInUserId();
+    if (!fromUserId) throw new Error('Cannot send call event: not logged in');
+
+    const conversationId = this.resolveConversationIdFromContact(contactId);
+
+    return this._writeAndCache(conversationId, {
+      type: 'event',
+      eventType,
+      from: metadata.callerId || fromUserId,
+      details: {
+        callId: metadata.roomId || null,
+        callerId: metadata.callerId || fromUserId,
+        callerName: metadata.callerName || 'Someone',
+      },
+      sentAt: Date.now(),
+      read: false,
+    });
   }
 }
 
