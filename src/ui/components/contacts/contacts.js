@@ -190,8 +190,8 @@ function attachContactListeners(container, lobbyElement) {
       if (contactId) {
         clearUnreadBadge(contactId);
         document.dispatchEvent(
-          new CustomEvent('messages:toggle', {
-            detail: { contactId, contactName },
+          new CustomEvent('messages:conversation:select', {
+            detail: { contactId, contactName, displayUI: true },
           }),
         );
       }
@@ -286,7 +286,7 @@ function setupUnreadBadges(contactIds) {
     let debounceTimer = null;
 
     const conversationId =
-      messagingController.resolveConversationIdFromContact(contactId);
+      messagingController.resolveConversationIdFromContactId(contactId);
 
     const unsub = messagingController.listenToUnreadCount(
       conversationId,
@@ -352,9 +352,19 @@ export async function autoInitMsgSessionIfNeeded() {
     const firstContact = contacts[0];
     if (!firstContact?.contactId) return;
 
-    // Open the conversation for the first contact
-    messagingController.openConversation(firstContact.contactId, firstContact.contactName);
+    // Pre select the conversation for the first contact
+    const conversationId =
+      messagingController.resolveConversationIdFromContactId(
+        firstContact.contactId,
+      );
+    await messagingController.selectConversation(
+      conversationId,
+      firstContact.contactName,
+    );
   } catch (error) {
-    console.warn('[Contacts] Failed to auto-init messaging conversation:', error);
+    console.warn(
+      '[Contacts] Failed to auto-init messaging conversation:',
+      error,
+    );
   }
 }
