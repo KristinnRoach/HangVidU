@@ -1,5 +1,3 @@
-// src/messaging/utils/file-to-base64.js
-
 /**
  * Convert a File/Blob to a base64 data URL string.
  * @param {File} file

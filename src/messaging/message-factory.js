@@ -3,18 +3,40 @@
 // The controller uses this to produce canonical messages before passing to any store.
 
 import { MessageSchema } from './schema.js';
-import { generateId } from './utils/generate-id.js';
 import { getLoggedInUserId, getUser } from '../auth/auth-state.js';
+
+/**
+ * Generate a unique, time-sortable ID.
+ *
+ * Format: `{base36 timestamp}-{random}` (e.g. "m1abc23-7f3a9b1c")
+ *
+ * - Time prefix ensures chronological key ordering (important for RTDB
+ *   child_added which fires in key order on initial load).
+ * - Random suffix from crypto.getRandomValues prevents collisions.
+ *
+ * @returns {string} Unique, time-sortable ID
+ */
+function _createMessageId() {
+  const timePart = Date.now().toString(36);
+  const randomPart = crypto.getRandomValues(new Uint32Array(1))[0].toString(36);
+  return `${timePart}-${randomPart}`;
+}
 
 /**
  * Build base fields common to all outgoing messages.
  * @returns {Object} { messageId, from, fromName, sentAt, read }
  */
-function baseFields() {
+function _baseFields() {
   const from = getLoggedInUserId();
   if (!from) throw new Error('Cannot create message: not logged in');
   const fromName = getUser()?.displayName || 'Guest User';
-  return { messageId: generateId(), from, fromName, sentAt: Date.now(), read: false };
+  return {
+    messageId: _createMessageId(),
+    from,
+    fromName,
+    sentAt: Date.now(),
+    read: false,
+  };
 }
 
 /**
@@ -23,7 +45,7 @@ function baseFields() {
  * @returns {Object} Validated MessageSchema object
  */
 export function createTextMessage(text) {
-  return MessageSchema.parse({ type: 'text', text, ...baseFields() });
+  return MessageSchema.parse({ type: 'text', text, ..._baseFields() });
 }
 
 /**
@@ -32,7 +54,14 @@ export function createTextMessage(text) {
  * @returns {Object} Validated MessageSchema object
  */
 export function createFileMessage({ fileName, mimeType, fileSize, data }) {
-  return MessageSchema.parse({ type: 'file', fileName, mimeType, fileSize, data, ...baseFields() });
+  return MessageSchema.parse({
+    type: 'file',
+    fileName,
+    mimeType,
+    fileSize,
+    data,
+    ..._baseFields(),
+  });
 }
 
 /**
@@ -43,5 +72,11 @@ export function createFileMessage({ fileName, mimeType, fileSize, data }) {
  * @returns {Object} Validated MessageSchema object
  */
 export function createEventMessage(eventType, details = {}, overrides = {}) {
-  return MessageSchema.parse({ type: 'event', eventType, details, ...baseFields(), ...overrides });
+  return MessageSchema.parse({
+    type: 'event',
+    eventType,
+    details,
+    ..._baseFields(),
+    ...overrides,
+  });
 }

@@ -40,7 +40,7 @@ const TextMessageSchema = z.object({
   sentAt: z.number(),
   read: z.boolean().default(false),
   reactions: reactionsField,
-  _reactionUpdate: z.boolean().optional(),
+  // _reactionUpdate: z.boolean().optional(),
 });
 
 // File Message (user-authored file transfer, optionally with caption)
@@ -57,7 +57,7 @@ const FileMessageSchema = z.object({
   sentAt: z.number(),
   read: z.boolean().default(false),
   reactions: reactionsField,
-  _reactionUpdate: z.boolean().optional(),
+  // _reactionUpdate: z.boolean().optional(),
 });
 
 // Event Message (e.g., missed calls, typing, polls)
@@ -76,7 +76,7 @@ const EventMessageSchema = z.object({
     })
     .optional(),
   reactions: reactionsField,
-  _reactionUpdate: z.boolean().optional(),
+  // _reactionUpdate: z.boolean().optional(),
 });
 
 // Union of all message types — single schema for both read and write paths

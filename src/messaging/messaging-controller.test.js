@@ -14,7 +14,7 @@ vi.mock('../auth/auth-state.js', () => ({
 vi.mock('../media/image-compress.js', () => ({
   compressImage: vi.fn(() => null),
 }));
-vi.mock('./utils/file-to-base64.js', () => ({
+vi.mock('../utils/file-to-base64.js', () => ({
   fileToBase64: vi.fn(() => 'data:text/plain;base64,Y29udGVudA=='),
 }));
 
@@ -169,7 +169,9 @@ describe('MessagingController', () => {
   it('should validate text when sending message', async () => {
     controller.openConversation('contactA');
     await expect(controller.send('contactA_me', '')).rejects.toThrow('string');
-    await expect(controller.send('contactA_me', null)).rejects.toThrow('string');
+    await expect(controller.send('contactA_me', null)).rejects.toThrow(
+      'string',
+    );
   });
 
   it('should emit message:received when message received via transport', () => {
@@ -250,16 +252,18 @@ describe('MessagingController', () => {
 
     expect(mockTransport.writtenMessages).toHaveLength(1);
     expect(mockTransport.writtenMessages[0].messageData.type).toBe('file');
-    expect(mockTransport.writtenMessages[0].messageData.fileName).toBe('test.txt');
+    expect(mockTransport.writtenMessages[0].messageData.fileName).toBe(
+      'test.txt',
+    );
     expect(parsed.type).toBe('file');
     expect(parsed.messageId).toBeDefined();
   });
 
   it('should throw when sending file to non-open conversation', async () => {
     const file = new File(['content'], 'test.txt');
-    await expect(
-      controller.sendFile('nonexistent', file),
-    ).rejects.toThrow('No open conversation');
+    await expect(controller.sendFile('nonexistent', file)).rejects.toThrow(
+      'No open conversation',
+    );
   });
 
   it('should add reaction', async () => {

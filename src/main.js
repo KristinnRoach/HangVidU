@@ -21,7 +21,7 @@ import {
   subscribe as subscribeAuth,
 } from './auth/auth-state.js';
 
-// TODO: inAppNotificationManager VS pushNotificationController - Compare and clarify distinction or combine!
+// TODO: inAppNotificationManager VS pushNotificationController - Compare and clarify distinction - separate concerns
 import { inAppNotificationManager } from './ui/components/notifications/in-app-notification-manager.js';
 import { pushNotificationController } from './notifications/push-notification-controller.js';
 
@@ -1044,20 +1044,25 @@ export function listenForIncomingOnRoom(roomId) {
           // Write rejected call message to chat history
           // The callee (who rejected) writes this - both parties will see it
           try {
-            const { getUser } = await import('./auth/auth-state.js');
-            const me = getUser();
-            const myName = me?.displayName || 'Someone';
-
-            await messagingController.sendCallEventMessage(
+            const conversationId =
+              messagingController.resolveConversationIdFromContact(
+                joiningUserId,
+              );
+            if (!conversationId) {
+              console.warn('[MAIN] No conversation ID found for user:', {
+                joiningUserId,
+              });
+              return;
+            }
+            await messagingController.sendEventMessage(
               joiningUserId, // The caller's ID
               'rejected_call',
               {
-                roomId,
+                callId: roomId,
                 callerId: joiningUserId,
                 callerName,
-                rejectedBy: getUserId(),
-                rejectedByName: myName,
               },
+              { from: joiningUserId }, // TODO: Why is this needed?? (MULTIPLE joiningUserId sent!)
             );
             console.log('[MAIN] Rejected call message written to chat history');
           } catch (e) {
@@ -1914,11 +1919,11 @@ window.addEventListener('beforeunload', async (e) => {
 // ============================================================================
 
 // Business logic for memberJoined (UI handled in bind-call-ui.js)
-CallController.on('memberJoined', ({ memberId, roomId }) => {
+CallController.on('memberJoined', async ({ memberId, roomId }) => {
   console.debug('CallController memberJoined event', { memberId, roomId });
 
   CallController.setPartnerId(memberId);
-  messagingController.openConversation(memberId);
+  await messagingController.openConversation(memberId);
 
   onCallAnswered().catch((e) =>
     console.warn('Failed to clear calling state:', e),
@@ -1978,11 +1983,11 @@ CallController.on(
           // Write missed call message to chat history
           // The caller writes this - both parties will see it in their shared conversation
           try {
-            await messagingController.sendCallEventMessage(
+            await messagingController.sendEventMessage(
               contact.contactId,
               'missed_call',
               {
-                roomId,
+                callId: roomId,
                 callerId: getUserId(),
                 callerName,
               },

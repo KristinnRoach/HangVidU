@@ -15,6 +15,9 @@ import {
   set,
   update,
   get,
+  query,
+  orderByKey,
+  startAfter,
   onChildAdded,
   onChildChanged,
   off,
@@ -44,14 +47,20 @@ export class RTDBMessageStore extends MessageStore {
     if (!participantIds || participantIds.length < 2) {
       throw new Error('resolveConversationId requires at least 2 participants');
     }
-    return participantIds.map((p) => String(p ?? p).trim()).sort().join('_');
+    return participantIds
+      .map((p) => String(p ?? p).trim())
+      .sort()
+      .join('_');
   }
 
   // ── Downstream (commands) ─────────────────────────────────────────────
 
   async write(conversationId, message) {
     const { messageId, ...fields } = message;
-    const messageRef = ref(rtdb, `conversations/${conversationId}/messages/${messageId}`);
+    const messageRef = ref(
+      rtdb,
+      `conversations/${conversationId}/messages/${messageId}`,
+    );
 
     // Storage transform: replace client timestamp with server timestamp
     await set(messageRef, { ...fields, sentAt: serverTimestamp() });
@@ -81,13 +90,16 @@ export class RTDBMessageStore extends MessageStore {
     if (!myUserId) return;
 
     try {
-      const snapshot = await get(ref(rtdb, `conversations/${conversationId}/messages`));
+      const snapshot = await get(
+        ref(rtdb, `conversations/${conversationId}/messages`),
+      );
       if (!snapshot.exists()) return;
 
       const updates = {};
       Object.entries(snapshot.val()).forEach(([msgId, msg]) => {
         if (!msg.read && msg.from !== myUserId) {
-          updates[`conversations/${conversationId}/messages/${msgId}/read`] = true;
+          updates[`conversations/${conversationId}/messages/${msgId}/read`] =
+            true;
         }
       });
       if (Object.keys(updates).length > 0) await update(ref(rtdb), updates);
@@ -101,7 +113,9 @@ export class RTDBMessageStore extends MessageStore {
     if (!myUserId) return 0;
 
     try {
-      const snapshot = await get(ref(rtdb, `conversations/${conversationId}/messages`));
+      const snapshot = await get(
+        ref(rtdb, `conversations/${conversationId}/messages`),
+      );
       if (!snapshot.exists()) return 0;
       return Object.values(snapshot.val()).filter(
         (msg) => !msg.read && msg.from !== myUserId,
@@ -112,9 +126,56 @@ export class RTDBMessageStore extends MessageStore {
     }
   }
 
+  async fetchHistory(conversationId) {
+    if (!conversationId) {
+      console.warn('fetchHistory requires conversationId');
+      return { messages: [], lastKey: null };
+    }
+
+    if (!getLoggedInUserId()) {
+      console.warn('[RTDBMessageStore] Cannot fetch history: not logged in');
+      return { messages: [], lastKey: null };
+    }
+
+    const messagesRef = ref(rtdb, `conversations/${conversationId}/messages`);
+    const snapshot = await get(messagesRef);
+
+    if (!snapshot.exists()) return { messages: [], lastKey: null };
+
+    const messages = [];
+    let lastKey = null;
+
+    // snapshot.forEach preserves key order (chronological for push IDs)
+    snapshot.forEach((child) => {
+      lastKey = child.key;
+      try {
+        const parsed = parseMessage(child.val(), child.key);
+        if (parsed) messages.push(parsed);
+      } catch (err) {
+        console.warn(
+          '[RTDBMessageStore] History parse failed:',
+          child.key,
+          err,
+        );
+      }
+    });
+
+    return { messages, lastKey };
+  }
+
   // ── Upstream (callbacks) ──────────────────────────────────────────────
 
-  onMessage(conversationId, callback) {
+  /**
+   * Listen for new remote messages.
+   * @param {string} conversationId
+   * @param {function(Object): void} callback
+   * @param {Object} [opts]
+   * @param {string|null} [opts.afterKey] - Start listening after this RTDB key.
+   *   Firebase onChildAdded replays all existing children when attached;
+   *   afterKey prevents re-emitting messages already loaded by fetchHistory().
+   * @returns {function(): void} Unsubscribe
+   */
+  onMessage(conversationId, callback, { afterKey = null } = {}) {
     const myUserId = getLoggedInUserId();
     if (!myUserId) {
       console.warn('[RTDBMessageStore] Cannot listen: not logged in');
@@ -122,6 +183,9 @@ export class RTDBMessageStore extends MessageStore {
     }
 
     const messagesRef = ref(rtdb, `conversations/${conversationId}/messages`);
+    const listenRef = afterKey
+      ? query(messagesRef, orderByKey(), startAfter(afterKey))
+      : messagesRef;
 
     const handler = (snapshot) => {
       const raw = snapshot.val();
@@ -134,8 +198,8 @@ export class RTDBMessageStore extends MessageStore {
       }
     };
 
-    onChildAdded(messagesRef, handler);
-    return () => off(messagesRef, 'child_added', handler);
+    onChildAdded(listenRef, handler);
+    return () => off(listenRef, 'child_added', handler);
   }
 
   onReactionUpdate(conversationId, callback) {
@@ -207,10 +271,13 @@ export class RTDBMessageStore extends MessageStore {
     const keys = Object.keys(messages);
     if (keys.length <= MAX_MESSAGES) return;
 
-    const sorted = Object.entries(messages).sort((a, b) => (a[1].sentAt || 0) - (b[1].sentAt || 0));
+    const sorted = Object.entries(messages).sort(
+      (a, b) => (a[1].sentAt || 0) - (b[1].sentAt || 0),
+    );
     const updates = {};
     for (let i = 0; i < keys.length - MAX_MESSAGES; i++) {
-      updates[`conversations/${conversationId}/messages/${sorted[i][0]}`] = null;
+      updates[`conversations/${conversationId}/messages/${sorted[i][0]}`] =
+        null;
     }
     await update(ref(rtdb), updates);
   }

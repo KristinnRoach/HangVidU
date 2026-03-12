@@ -76,6 +76,18 @@ export class MessageStore {
     throw new Error('Not implemented');
   }
 
+  /**
+   * Fetch full message history for a conversation (one-time read).
+   * Returns all messages (both local and remote), parsed and validated.
+   * @param {string} conversationId
+   * @returns {Promise<{messages: Object[], lastKey: string|null}>}
+   *   messages: validated MessageSchema objects in chronological order
+   *   lastKey: key of the last message (used as cursor for live listeners)
+   */
+  async fetchHistory(conversationId) {
+    throw new Error('Not implemented');
+  }
+
   // ── Upstream (callbacks) ──────────────────────────────────────────────
   // Each distinct event type gets its own listener method.
   // Returns an unsubscribe function.
@@ -85,9 +97,12 @@ export class MessageStore {
    * Must NOT emit the sender's own messages.
    * @param {string} conversationId
    * @param {function(Object): void} callback - Called with validated MessageSchema object
+   * @param {Object} [opts]
+   * @param {string|null} [opts.afterKey] - Only listen for messages added after this key
+   *   (implementation-specific: used to avoid replaying already-fetched history)
    * @returns {function(): void} Unsubscribe
    */
-  onMessage(conversationId, callback) {
+  onMessage(conversationId, callback, opts) {
     throw new Error('Not implemented');
   }
 

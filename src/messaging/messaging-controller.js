@@ -1,10 +1,15 @@
-import { RTDBMessagingTransport } from './transports/rtdb-transport.js';
-import { parseMessage } from './schema.js';
-import { createMessageId } from './utils/create-msg-id.js';
-import { fileToBase64 } from './utils/file-to-base64.js';
+// src/messaging/messaging-controller.js
+
+import { RTDBMessageStore } from './storage/rtdb-message-store.js';
+import { fileToBase64 } from '../utils/file-to-base64.js';
 import { compressImage } from '../media/image-compress.js';
 import { EventEmitter } from '../utils/event-emitter.js';
-import { getLoggedInUserId, getUser } from '../auth/auth-state.js';
+import { getLoggedInUserId } from '../auth/auth-state.js';
+import {
+  createFileMessage,
+  createTextMessage,
+  createEventMessage,
+} from './message-factory.js';
 
 // Max file size for file messages (1MB before base64 encoding)
 const MAX_FILE_SIZE = 1 * 1024 * 1024;
@@ -25,23 +30,23 @@ const MAX_FILE_SIZE = 1 * 1024 * 1024;
  * Design principles:
  * - Event-driven: Emits events instead of relying on deep callbacks
  * - Session-based: Clean lifecycle (open → use → close)
- * - Transport-agnostic: Easy to swap implementations
+ * - Store-agnostic: Easy to swap implementations
  * - UI-decoupled: Controller doesn't know about UI components
  */
 export class MessagingController extends EventEmitter {
   /**
    * Create a messaging controller
-   * @param {Object} transport - Transport implementation (RTDBMessagingTransport, etc.)
+   * @param {Object} store - Store implementation (RTDBMessagingStore, etc.)
    */
-  constructor(transport) {
+  constructor(store) {
     super();
-    if (!transport) {
+    if (!store) {
       throw new Error(
-        'MessagingController requires a transport implementation',
+        'MessagingController requires a MessageStore implementation',
       );
     }
 
-    this.transport = transport;
+    this.store = store;
     this.conversations = new Map(); // conversationId -> internal conversation state
     this.conversationOrder = []; // conversationId list, from oldest to newest (MRU)
   }
@@ -53,7 +58,7 @@ export class MessagingController extends EventEmitter {
    * @returns {string} Conversation ID
    */
   resolveConversationId(participantIds) {
-    return this.transport.resolveConversationId(participantIds);
+    return this.store.resolveConversationId(participantIds);
   }
 
   /**
@@ -61,10 +66,11 @@ export class MessagingController extends EventEmitter {
    * @param {string} contactId
    * @returns {string}
    */
-  resolveConversationIdFromContact(contactId) {
+  resolveConversationIdFromContactId(contactId) {
     const myUserId = getLoggedInUserId();
     if (!myUserId)
       throw new Error('Cannot resolve conversation: not logged in');
+
     return this.resolveConversationId([myUserId, contactId]);
   }
 
@@ -77,7 +83,7 @@ export class MessagingController extends EventEmitter {
 
     // Avoid duplicates
     const isDuplicate = conversationState.history.some(
-      (m) => m.parsedMessage.messageId === messageEvent.parsedMessage.messageId,
+      (m) => m.message.messageId === messageEvent.message.messageId,
     );
     if (isDuplicate) return;
 
@@ -95,10 +101,10 @@ export class MessagingController extends EventEmitter {
   updateCachedHistoryReactions(conversationState, messageId, reactions) {
     if (!conversationState.history) return;
     const message = conversationState.history.find(
-      (m) => m.parsedMessage.messageId === messageId,
+      (m) => m.message.messageId === messageId,
     );
     if (message) {
-      message.parsedMessage.reactions = reactions;
+      message.message.reactions = reactions;
     }
   }
 
@@ -125,22 +131,16 @@ export class MessagingController extends EventEmitter {
   }
 
   /**
-   * Open a messaging conversation
+   * Select a messaging conversation
    *
-   * Only one conversation per contactId is allowed. If a conversation already exists,
-   * it will be resumed instead of creating a new one. Emits 'conversation:opened' event
-   * with plain data { conversationId, contactId, contactName }.
+   * If a conversation already exists, it will be resumed instead of creating a new one.
+   * Fetches history from the store or cache if available, seeds the cache, then attaches live listeners.
+   * Emits 'conversation:selected'
    *
-   * @param {string} contactId - Contact ID
+   * @param {string} conversationId - Contact ID
    * @param {string} contactName - Optional contact name
    */
-  openConversation(contactId, contactName) {
-    if (!contactId || typeof contactId !== 'string') {
-      throw new Error('contactId must be a non-empty string');
-    }
-
-    const conversationId = this.resolveConversationIdFromContact(contactId);
-
+  async selectConversation(conversationId, contactName) {
     if (!conversationId || typeof conversationId !== 'string') {
       throw new Error('conversationId must be a non-empty string');
     }
@@ -155,7 +155,7 @@ export class MessagingController extends EventEmitter {
       this._touchConversation(conversationId);
       this.emit('conversation:resumed', {
         conversationId,
-        contactId,
+        contactId: conversationId,
         contactName,
       });
 
@@ -165,68 +165,47 @@ export class MessagingController extends EventEmitter {
     // Create internal conversation state (not exposed to callers)
     const conversationState = {
       conversationId,
-      contactId,
+      contactId: conversationId,
       contactName,
-      history: [], // Cached messages for instant re-hydration
+      history: [],
       _unsubscribe: null,
     };
 
     // Add conversation to map
     this.conversations.set(conversationId, conversationState);
 
-    // Start listening to messages via transport
-    const unsubscribe = this.transport.listen(
+    // 1. Fetch full history (all messages, local + remote) // TODO: Check cache before fetch!!?
+
+    const { messages, lastKey } = await this.store.fetchHistory(conversationId);
+
+    for (const message of messages) {
+      this.cacheHistory(conversationState, { conversationId, message });
+    }
+
+    // 2. Attach live listeners (after fetch, using lastKey cursor to avoid replay)
+    const offMessage = this.store.onMessage(
       conversationId,
-      (parsedMessage) => {
-        // messageEvent is the wrapper the controller emits to listeners/UI.
-        // Shape: { conversationId: string, parsedMessage: Object }
-        const messageEvent = { conversationId, parsedMessage };
-
-        // 1. Cache the message (even if background)
+      (message) => {
+        const messageEvent = { conversationId, message };
         this.cacheHistory(conversationState, messageEvent);
+        this.emit('message:received', messageEvent);
+      },
+      { afterKey: lastKey },
+    );
 
-        // 2. Cache reaction updates
-        if (parsedMessage._reactionUpdate) {
-          this.updateCachedHistoryReactions(
-            conversationState,
-            parsedMessage.messageId,
-            parsedMessage.reactions,
-          );
-        }
-
-        // 3. Emit general message event for active UI (skip for reaction-only updates)
-        if (!parsedMessage._reactionUpdate) {
-          this.emit('message:received', messageEvent);
-        }
-
-        // Notify if unread count changes
-        const isFromMe = parsedMessage.from === getLoggedInUserId();
-        if (!isFromMe) {
-          this.transport
-            .getUnreadCountForConversation(conversationId)
-            .then((unreadCount) => {
-              this.emit('unread:changed', { conversationId, unreadCount });
-            })
-            .catch((err) =>
-              console.warn(
-                '[MessagingController] Failed to get unread count:',
-                err,
-              ),
-            );
-        }
-
-        // Emit specific reaction update event if applicable
-        if (parsedMessage._reactionUpdate) {
-          this.emit('reaction:updated', {
-            conversationId,
-            messageId: parsedMessage.messageId,
-            reactions: parsedMessage.reactions,
-          });
-        }
+    const offReaction = this.store.onReactionUpdate(
+      conversationId,
+      ({ messageId, reactions }) => {
+        this.updateCachedHistoryReactions(
+          conversationState,
+          messageId,
+          reactions,
+        );
+        this.emit('reaction:updated', { conversationId, messageId, reactions });
       },
     );
 
-    const unsubscribeUnread = this.transport.listenToUnreadCountForConversation(
+    const offUnread = this.store.onUnreadChange(
       conversationId,
       (unreadCount, newlyReadMsgIds = []) => {
         this.emit('unread:changed', {
@@ -238,14 +217,17 @@ export class MessagingController extends EventEmitter {
     );
 
     conversationState._unsubscribe = () => {
-      unsubscribe();
-      unsubscribeUnread();
+      offMessage();
+      offReaction();
+      offUnread();
     };
 
+    // 3. Emit after cache is seeded — UI can render history immediately
     this._touchConversation(conversationId);
+
     this.emit('conversation:opened', {
       conversationId,
-      contactId,
+      contactId: conversationId,
       contactName,
     });
   }
@@ -271,48 +253,30 @@ export class MessagingController extends EventEmitter {
   }
 
   /**
-   * Build common message fields (from, fromName, sentAt, read).
-   * @returns {Object}
-   * @private
-   */
-  _baseMessageFields() {
-    const fromUserId = getLoggedInUserId();
-    if (!fromUserId) throw new Error('Cannot send message: not logged in');
-    const fromName = getUser()?.displayName || 'Guest User';
-    return { from: fromUserId, fromName, sentAt: Date.now(), read: false };
-  }
-
-  /**
-   * Write a message to the transport, parse it, cache it, and return it.
+   * Persist a message and cache it locally.
+   * Throws on write failure. Does not return — caller already holds the message.
    * @param {string} conversationId
-   * @param {Object} messageData - Complete message fields (type, text/file/event, from, etc.)
-   * @returns {Promise<Object>} ParsedMessage for immediate rendering
+   * @param {Object} message - Complete, validated message object
    * @private
    */
-  async _writeAndCache(conversationId, messageData) {
-    const messageId = createMessageId();
+  async _writeAndCache(conversationId, message) {
+    await this.store.write(conversationId, message);
 
-    await this.transport.write(conversationId, messageId, messageData);
-
-    const parsed = parseMessage(messageData, messageId);
-
-    // Cache locally (listener skips own messages, so we cache here)
+    // Cache locally (store.onMessage skips own messages, so we cache here)
     const conversationState = this.conversations.get(conversationId);
     this.cacheHistory(conversationState, {
       conversationId,
-      parsedMessage: parsed,
+      message,
     });
-
-    return parsed;
   }
 
   /**
    * Send a text message to an open conversation.
-   * Returns the ParsedMessage so the caller can render it immediately
-   * (sender doesn't wait for RTDB echo).
+   * Returns the message so the caller can render it immediately
+   * (sender doesn't wait for store echo).
    * @param {string} conversationId - Conversation ID
    * @param {string} text - Message text
-   * @returns {Promise<Object>} ParsedMessage for immediate rendering
+   * @returns {Promise<Object>} Validated message object
    */
   async send(conversationId, text) {
     if (!this.conversations.has(conversationId)) {
@@ -323,11 +287,11 @@ export class MessagingController extends EventEmitter {
       throw new Error('Message text must be a string');
     }
 
-    return this._writeAndCache(conversationId, {
-      type: 'text',
-      text,
-      ...this._baseMessageFields(),
-    });
+    const message = createTextMessage(text);
+    await this._writeAndCache(conversationId, message);
+    this._touchConversation(conversationId);
+    this.emit('message:sent', { conversationId, message });
+    return message;
   }
 
   /**
@@ -335,7 +299,7 @@ export class MessagingController extends EventEmitter {
    * Handles image compression and base64 encoding before writing.
    * @param {string} conversationId - Conversation ID
    * @param {File} file - File to send
-   * @returns {Promise<Object>} ParsedMessage for immediate rendering
+   * @returns {Promise<Object>} Validated message object
    */
   async sendFile(conversationId, file) {
     if (!this.conversations.has(conversationId)) {
@@ -359,15 +323,18 @@ export class MessagingController extends EventEmitter {
     }
 
     const base64 = await fileToBase64(file);
-
-    return this._writeAndCache(conversationId, {
-      type: 'file',
+    const message = createFileMessage({
       fileName: file.name,
       mimeType: file.type,
       fileSize: file.size,
       data: base64,
-      ...this._baseMessageFields(),
     });
+
+    await this._writeAndCache(conversationId, message);
+    this._touchConversation(conversationId);
+    this.emit('message:sent', { conversationId, message });
+
+    return message;
   }
 
   /**
@@ -379,7 +346,7 @@ export class MessagingController extends EventEmitter {
       throw new Error(`No open conversation: ${conversationId}`);
     }
 
-    return this.transport.markAsReadForConversation(conversationId);
+    return this.store.markAsRead(conversationId);
   }
 
   /**
@@ -393,11 +360,7 @@ export class MessagingController extends EventEmitter {
       throw new Error(`No open conversation: ${conversationId}`);
     }
 
-    return this.transport.addReactionToConversation(
-      conversationId,
-      messageId,
-      type,
-    );
+    return this.store.addReaction(conversationId, messageId, type);
   }
 
   /**
@@ -411,11 +374,7 @@ export class MessagingController extends EventEmitter {
       throw new Error(`No open conversation: ${conversationId}`);
     }
 
-    return this.transport.removeReactionFromConversation(
-      conversationId,
-      messageId,
-      type,
-    );
+    return this.store.removeReaction(conversationId, messageId, type);
   }
 
   /**
@@ -469,38 +428,31 @@ export class MessagingController extends EventEmitter {
    * Convenience helpers for unread counts
    */
   async getUnreadCount(conversationId) {
-    return this.transport.getUnreadCountForConversation(conversationId);
+    return this.store.getUnreadCount(conversationId);
   }
 
   listenToUnreadCount(conversationId, onCountChange, onMessageRead) {
-    return this.transport.listenToUnreadCountForConversation(
+    return this.store.onUnreadChange(
       conversationId,
       onCountChange,
       onMessageRead,
     );
   }
 
-  async sendCallEventMessage(contactId, eventType, metadata = {}) {
-    const fromUserId = getLoggedInUserId();
-    if (!fromUserId) throw new Error('Cannot send call event: not logged in');
-
-    const conversationId = this.resolveConversationIdFromContact(contactId);
-
-    return this._writeAndCache(conversationId, {
-      type: 'event',
-      eventType,
-      from: metadata.callerId || fromUserId,
-      details: {
-        callId: metadata.roomId || null,
-        callerId: metadata.callerId || fromUserId,
-        callerName: metadata.callerName || 'Someone',
-      },
-      sentAt: Date.now(),
-      read: false,
-    });
+  /**
+   * Send an event message (e.g. missed call, rejected call).
+   * @param {string} contactId - Contact ID
+   * @param {string} eventType - Event type
+   * @param {Object} [details] - Event-specific details
+   * @param {Object} [overrides] - Optional field overrides (e.g. { from })
+   */
+  async sendEventMessage(contactId, eventType, details = {}, overrides = {}) {
+    const conversationId = this.resolveConversationIdFromContactId(contactId);
+    const message = createEventMessage(eventType, details, overrides);
+    await this._writeAndCache(conversationId, message);
   }
 }
 
 export const messagingController = new MessagingController(
-  new RTDBMessagingTransport(),
+  new RTDBMessageStore(),
 );
