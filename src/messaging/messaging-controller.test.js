@@ -139,7 +139,7 @@ describe('MessagingController', () => {
 
     expect(spy).toHaveBeenCalledWith({
       conversationId: 'contactA_me',
-      contactId: 'contactA_me',
+      contactId: 'contactA',
       contactName: 'Alice',
     });
     expect(controller.conversations.size).toBe(1);
