@@ -1,12 +1,12 @@
 # Messaging System Simplification Roadmap
 
-**Current status**: Phase 1 ✅ COMPLETE (PR #395). Phase 1.5 (cleanup) available.
+**Current status**: Phase 1 ✅ COMPLETE (PR #395). Phase 2.1-2.2 ✅ COMPLETE (branch: phase2-eliminate-dual-caching). Phase 2.2b ready to implement.
 
 **Entry point**:
 
-1. Read MEMORY.md § NEXT for Phase 2 context
-2. Jump to **"Phase 2: Fix Flows"** section (line ~140)
-3. Start with Issue 2.2 (Fix Send Path)
+1. Read MEMORY.md § NEXT for current work context
+2. Phase 2.2 ✅ COMPLETE — sender sees message immediately, no RTDB echo
+3. Next: Phase 2.2b (optimistic render + error handling) or Phase 2.3 (route appendCachedHistory)
 
 ---
 
@@ -35,9 +35,9 @@ The goal: reduce complexity, clarify ownership, improve testability and reusabil
 ┌─────────────────────────────────────────────────────────────┐
 │ Phase 2: FIX FLOWS (eliminate redundancy)                   │
 ├─────────────────────────────────────────────────────────────┤
-│ • [ ] Eliminate Dual Caching: IndexedDB XOR messageElements │
+│ • [x] Eliminate Dual Caching: IndexedDB XOR messageElements │
 │       └─> Unblocks: send path optimization, memory clarity  │
-│ • [ ] Fix Send Path: Eliminate circular RTDB echo           │
+│ • [x] Fix Send Path: Eliminate circular RTDB echo           │
 │       └─> Unblocks: appendCachedHistory simplification      │
 │ • [ ] Route appendCachedHistory: Through Controller, not UI  │
 │       └─> Unblocks: validation consistency                  │
@@ -67,6 +67,45 @@ The goal: reduce complexity, clarify ownership, improve testability and reusabil
 │ • [ ] Thin Orchestrator: messages-ui.js becomes coordinator │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Known Issues & Edge Cases
+
+Deferred issues identified during implementation. Mapped to phases for resolution.
+
+| Issue                   | Description                                                                             | Phase     | Notes                                                                        |
+| ----------------------- | --------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------- |
+| Reaction deletion guard | Last reaction removal not detected; RTDB deletes `reactions` key, stale chips rendered  | Phase 3.3 | Fix: track previous reaction state in `onReactionUpdate()` callback          |
+| Event ownership         | `rejected_call` `from` is callerId, not writer. Semantically odd but logically correct. | Phase 3   | Revisit if adding more event types                                           |
+| History event path      | Cached history not yet routed through `message:received` events                         | Phase 2.3 | Phase 2.3 will emit cached messages through same event path as live messages |
+
+**Resolved**:
+
+- ✅ **serverTimestamp() placeholder** (Phase 2.2): Local sends use `Date.now()` (negligible drift); remote messages resolve `serverTimestamp()` before `onMessage` fires
+
+---
+
+## Technical Reference
+
+### Event message `from` field
+
+Event messages (missed/rejected calls) use the caller's userId as `from`, not `'system'`. This keeps all unread/read logic consistent — `from` is always a userId across all message types.
+
+### Zod 4 Patterns
+
+- `z.record(valueSchema)` validates **keys** in Zod 4. Always use `z.record(z.string(), valueSchema)`.
+- `.extend()` on unions doesn't work — extend each union member individually.
+- `z.record(z.any())` is broken for `details` — use explicit object shape instead.
+
+### Key Files & Roles
+
+- `schema.js` — Zod schemas, `parseMessage()` validation
+- `message-factory.js` — `createTextMessage()`, `createFileMessage()`, `createEventMessage()`
+- `messaging-controller.js` — Session management (`selectConversation`), event emitter, history cache
+- `storage/message-store.js` — Abstract MessageStore interface
+- `storage/rtdb-message-store.js` — RTDB implementation: `write()`, `onMessage()`, `onReactionUpdate()`, `onUnreadChange()`
+- `messages-ui.js` — Chat UI rendering and input
 
 ---
 
@@ -175,21 +214,13 @@ No clear owner. Duplication (IndexedDB + messageElements). Missing contracts.
 **Core problem**: Sender writes to RTDB, then the RTDB listener echoes the sender's own message back, and the controller emits it as if it were a new incoming message. The sender's message only appears in the UI after this unnecessary round trip.
 
 ```
-Current flow (both users identical):
+Before fix (both users identical):
   User sends → RTDB write → listener fires → Controller emits 'message:received' → UI renders
+  Problem: Sender waits for round trip through Firebase before seeing message
 
-Problem: Sender takes the same path as remote receiver. The message goes up to
-Firebase and comes back down before the sender sees it in the UI.
-
-Band-aid: seenMessageIds Set in rtdb-transport.js:180 deduplicates, but doesn't
-fix the fundamental issue — the sender still waits for the echo.
-```
-
-**After fix**:
-
-```
-Sender:  Controller.send() → RTDB write → returns ParsedMessage → UI renders immediately
-Remote:  RTDB listener → Controller emits 'message:received' → UI renders (unchanged)
+After fix:
+  Sender:  Controller.send() → RTDB write → returns ParsedMessage → UI renders immediately
+  Remote:  RTDB listener → Controller emits 'message:received' → UI renders (unchanged)
 ```
 
 **Depends on**: Phase 2.1 ✅ COMPLETE
@@ -200,200 +231,101 @@ Remote:  RTDB listener → Controller emits 'message:received' → UI renders (u
 
 - **sentAt**: `serverTimestamp()` is a placeholder, not a number. Local sends use `Date.now()` instead. The schema accepts `z.number()`, which `Date.now()` satisfies. The tiny drift vs server time is negligible for display.
 - **messageId**: `push()` returns a ref with `.key` before `set()` is called. We already have this — just return it.
-- **seenMessageIds**: Fully removed. The `reactionCallback` used it as a guard, but `child_changed` only fires on live changes (not initial load), so stale reactions aren't a risk. Guard removed for simplicity.
+- **seenMessageIds**: Fully removed. The `onReactionUpdate` callback doesn't need a guard — `child_changed` only fires on live changes (not initial load), so stale reactions aren't a risk.
 
-**Steps**:
+**Implementation (commits b81387a, 7a9ddcb, 7c0bec7)**:
 
-1. [x] **Transport.sendToConversation()**: Return `{ messageId, messageData }` after RTDB push
-2. [x] **Transport.listen()**: Skip emitting own messages, remove `seenMessageIds` entirely
-3. [x] **Controller.send()**: Build and return ParsedMessage, cache it
-4. [x] **UI sendMessage()**: Render the returned message via `processReceivedMessage(parsed)`
-5. [x] **Cleanup**: `seenMessageIds` deleted entirely
-6. [ ] **Test**: Manual verification — sender sees message immediately, remote receives via emit, reactions work on both
+1. [x] **Store.write()**: Changed to `write(conversationId, message)` where message contains full object with nested messageId
+2. [x] **Store.onMessage()**: Filter own messages via `if (msg.from === myUserId) return`
+3. [x] **Store.onReactionUpdate(), onUnreadChange()**: Split into separate callbacks
+4. [x] **Controller.send()**: Builds ParsedMessage, caches immediately, returns to caller
+5. [x] **UI sendMessage()**: Renders returned message immediately via `processReceivedMessage()`
+6. [x] **Cleanup**: `seenMessageIds` deleted, `_reactionUpdate` flag removed
+7. [x] **Test**: Manual verification — sender sees message immediately, remote receives via emit, reactions work on both ✅
 
-**Success criteria**:
+**Success criteria**: ✅ ACHIEVED
 
 - Sender's message renders from Controller.send() return value, not from RTDB echo
 - Remote messages still flow through listener → emit → UI (unchanged)
 - Reactions work on both own and remote messages
-- `seenMessageIds` dedup band-aid removed or renamed to reflect actual purpose
-- Backtick-quote double-display bug resolved (was caused by echo path)
+- No duplicate messages in any scenario
+- Controller.history is single source of truth
 
 ---
 
 ### Issue 2.2b: Optimistic Render with Error Handling
 
+**Status**: Ready to implement. Phase 2.2 foundation complete.
+
 **Core problem**: After 2.2, the sender `await`s the RTDB write before rendering. If the write is slow or fails, the user sees nothing. We want the message to appear instantly (optimistic) with visual feedback for pending/failed states.
 
 ```
-After 2.2 (good but blocking):
+Current (Phase 2.2):
   User sends → await RTDB write → return ParsedMessage → UI renders
   Problem: UI blocked until RTDB write completes
 
-After 2.2b (optimistic):
+Target (Phase 2.2b):
   User sends → UI renders immediately (pending state) → RTDB write in background
-    → success: update to sent state (or just remove pending indicator)
-    → failure: update to failed state + show retry
+    → success: mark sent (or remove pending indicator)
+    → failure: mark failed + show retry
 ```
 
-**Depends on**: Issue 2.2 (send path returns ParsedMessage)
+**Depends on**: Issue 2.2 ✅ COMPLETE
 
 **Size**: Medium (~80-120 LoC across 3 files)
 
-#### Decisions needed
+#### Decisions (finalized for 2.2b)
 
-1. **Message status model**: Add a `_status` field to local messages?
-   - Options: (a) Add `_status: 'pending' | 'sent' | 'failed'` to the ParsedMessage object, (b) track status separately in a Map keyed by messageId
-   - Recommendation: (a) — simpler, status travels with the message. Prefix with `_` to signal it's local-only (not persisted to RTDB), same pattern as `_reactionUpdate`.
+1. **Message status model**: Add `_status: 'pending' | 'sent' | 'failed'` to ParsedMessage
+   - Status travels with message object (local-only, never persisted to RTDB)
+   - Prefix with `_` signals local implementation detail
 
-2. **Pending indicator style**: What does "pending" look like?
-   - Options: (a) Dimmed/opacity on the message bubble, (b) small spinner/clock icon, (c) subtle "sending..." text
-   - Recommendation: (a) — CSS-only, no new DOM elements. `.message-bubble[data-status="pending"] { opacity: 0.6; }`
+2. **Pending indicator style**: Dimmed/opacity CSS-only
+   - `.message-entry[data-status='pending'] .message-bubble { opacity: 0.6; }`
+   - No new DOM elements, minimal visual impact
 
-3. **Failed state UI**: What does "failed" look like?
-   - Recommendation: Red-tinted bubble + small "Failed to send. Tap to retry" text below the message. Keep it minimal.
+3. **Failed state UI**: Error border + retry affordance
+   - Red-tinted bubble border + small "Failed to send. Tap to retry" button
+   - Clear signal with recovery path
 
-4. **Retry mechanism**: Re-send same content with new messageId, or reuse the original?
-   - Recommendation: New messageId (new `push()` call). The original was never written, so the ID is orphaned. Simpler than tracking partial writes.
+4. **Retry mechanism**: New messageId via new `push()` call
+   - Original failed ID is orphaned (never persisted)
+   - Simplifies state management vs tracking partial writes
 
-5. **Timeout**: Should we have a timeout for "pending" → "failed"?
-   - Recommendation: No. Firebase SDK already has built-in timeout/error handling. If `set()` rejects, that's the signal. Don't add a separate timer.
+5. **Timeout behavior**: None — rely on Firebase SDK error handling
+   - If `set()` rejects, that's the failure signal
+   - Don't add separate timer layer
 
-6. **Cache behavior**: When does the message enter Controller.history?
-   - Recommendation: Immediately on send (with `_status: 'pending'`). Update status in-place on success/failure. This way cached history reflects the true state.
+6. **Cache behavior**: Immediate with status tracking
+   - Message enters Controller.history immediately (with `_status: 'pending'`)
+   - Update status in-place on success/failure
+   - Cached history reflects true state at all times
 
 #### Implementation plan
 
-**Step 1: Transport returns early, writes in background**
+**Key changes**:
 
-```javascript
-// rtdb-transport.js — sendToConversation()
-async sendToConversation(conversationId, text) {
-  const fromUserId = getLoggedInUserId();
-  const fromName = getUser()?.displayName || 'Guest User';
-  const messageRef = push(ref(rtdb, `conversations/${conversationId}/messages`));
-  const messageId = messageRef.key;
-  const messageData = {
-    type: 'text', text, from: fromUserId, fromName,
-    sentAt: Date.now(), read: false,
-  };
-
-  // Return immediately for optimistic render
-  // Caller is responsible for awaiting writePromise if needed
-  const writePromise = set(messageRef, {
-    ...messageData,
-    sentAt: serverTimestamp(), // RTDB gets server time; local copy has Date.now()
-  });
-
-  return { messageId, messageData, writePromise };
-}
-```
-
-**Step 2: Controller.send() renders optimistically, resolves in background**
-
-```javascript
-// messaging-controller.js — send()
-async send(conversationId, text) {
-  const { messageId, messageData, writePromise } =
-    this.transport.sendToConversation(conversationId, text);
-
-  const parsed = parseMessage(messageData, messageId);
-  parsed._status = 'pending';
-
-  // Cache immediately
-  const conversationState = this.conversations.get(conversationId);
-  this.cacheHistory(conversationState, { conversationId, parsedMessage: parsed });
-
-  // Resolve RTDB write in background
-  writePromise
-    .then(() => {
-      parsed._status = 'sent';
-      this.emit('message:status', { conversationId, messageId, status: 'sent' });
-    })
-    .catch((err) => {
-      parsed._status = 'failed';
-      this.emit('message:status', { conversationId, messageId, status: 'failed', error: err });
-    });
-
-  return parsed; // UI renders immediately
-}
-```
-
-**Step 3: UI handles status updates**
-
-```javascript
-// messages-ui.js — listen for status changes
-messagingController.on('message:status', ({ messageId, status }) => {
-  const bubble = messagesMessages.querySelector(
-    `[data-message-id="${messageId}"]`,
-  );
-  if (!bubble) return;
-
-  const entry = bubble.closest('.message-entry');
-  entry.dataset.status = status;
-
-  if (status === 'failed') {
-    // Add retry affordance if not already present
-    if (!entry.querySelector('.retry-send')) {
-      const retry = document.createElement('button');
-      retry.className = 'retry-send';
-      retry.textContent = 'Failed to send. Tap to retry';
-      retry.onclick = () => retrySend(messageId);
-      entry.appendChild(retry);
-    }
-  }
-});
-```
-
-**Step 4: CSS for status states**
-
-```css
-.message-entry[data-status='pending'] .message-bubble {
-  opacity: 0.6;
-}
-.message-entry[data-status='failed'] .message-bubble {
-  border-color: var(--color-error);
-}
-.retry-send {
-  font-size: 0.75rem;
-  color: var(--color-error);
-  cursor: pointer;
-}
-```
-
-**Step 5: Retry mechanism**
-
-```javascript
-// messages-ui.js
-function retrySend(failedMessageId) {
-  // Find original message text from DOM
-  const bubble = messagesMessages.querySelector(
-    `[data-message-id="${failedMessageId}"]`,
-  );
-  const text = bubble?.querySelector('p')?.textContent;
-  if (!text || !currentConversationId) return;
-
-  // Remove failed message from DOM
-  bubble.closest('.message-entry')?.remove();
-
-  // Re-send (creates new messageId)
-  messagingController
-    .send(currentConversationId, text)
-    .then((parsed) => processReceivedMessage(parsed));
-}
-```
+- Store.write() must return writePromise for background resolution
+- Controller.send() builds message, caches immediately, starts background write
+- Message status tracked with `_status` field in ParsedMessage object
 
 **Steps**:
 
-1. [ ] Change Transport.sendToConversation() to return `{ messageId, messageData, writePromise }`
-2. [ ] Change Controller.send() to return ParsedMessage immediately, resolve write in background
-3. [ ] Add `_status` field to local ParsedMessage (`pending` → `sent` | `failed`)
-4. [ ] Add `message:status` event to Controller
-5. [ ] UI: listen for `message:status`, update `data-status` attribute on message entry
-6. [ ] UI: add retry button on failed messages
-7. [ ] CSS: pending (dimmed), failed (error border + retry text)
-8. [ ] Remove failed message from Controller.history on retry (or mark as superseded)
-9. [ ] Test: send success, send failure (offline/permissions), retry flow
+1. [ ] Modify `RTDBMessageStore.write()` to return `{ writePromise }` instead of awaiting
+2. [ ] Modify `Controller.send()` to:
+   - Create message via factory
+   - Add `_status: 'pending'` to message
+   - Cache immediately in Controller.history (with pending status)
+   - Start background write via `this.store.write()`
+   - Emit `message:status` events on success/failure
+   - Return message immediately (optimistic render)
+3. [ ] Create `message:status` event emitter in MessagingController
+4. [ ] UI messages-ui.js: Listen for `message:status` event, update `data-status` attribute
+5. [ ] CSS: Add pending state (opacity: 0.6) and failed state (error border)
+6. [ ] UI: Add retry button on failed messages, extract message text, re-send with new messageId
+7. [ ] Remove or mark superseded failed message in Controller.history on retry
+8. [ ] Test: successful send, offline failure, permissions failure, retry flow
+9. [ ] Verify: no duplicates, correct ordering, reactions still work on all states
 
 **Success criteria**:
 
@@ -408,36 +340,34 @@ function retrySend(failedMessageId) {
 
 ### Issue 2.3: Route appendCachedHistory Through Controller
 
+**Status**: Ready to implement. Phase 2.1-2.2 complete.
+
 **Problem**: Direct UI call bypasses validation/caching
 
-```
-Controller._prepUIForSession()
-  → appendCachedHistory()
-    → for each: messagesUI.appendMessage() [direct!]
-```
+Currently: `selectConversation()` calls `fetchHistory()` → caches locally, but not through event path
+Goal: All message flow (cached or live) routes through `'message:received'` event
 
-Inconsistent with receive path (which goes through Controller).
+**Impact**: Consistency, validation clarity, single source of truth for rendering.
 
-**Impact**: Consistency, validation clarity.
-
-**Depends on**: Phase 2.1 (caching consolidated) ✅, Phase 2.2 (circular fix)
+**Depends on**: Phase 2.1 ✅ (caching consolidated), Phase 2.2 ✅ (circular fix)
 
 **Size**: Small (20-30 LoC changes)
 
 **Steps**:
 
-1. [ ] Create `Controller.emitCachedHistory(session)` method
-   - Returns cached messages
-   - Emits 'message:received' for each
+1. [ ] Create `Controller._emitCachedHistory(conversationId)` helper method
+   - Retrieves cached messages from internal conversationState.history
+   - Emits `message:received` event for each cached message
    - Uses same event path as live messages
-2. [ ] Update \_prepUIForSession to use new method
-3. [ ] Remove direct appendCachedHistory call
+2. [ ] Update `selectConversation()` to call new helper after fetching/caching
+3. [ ] Verify UI processReceivedMessage() handles both cached and live messages identically
 
 **Success criteria**:
 
-- Cached messages route through Controller event path
-- Same validation as live messages
-- UI doesn't call appendMessage directly
+- Cached messages route through Controller `message:received` event path
+- Same validation and rendering as live messages
+- Single code path for all message rendering
+- No direct appendCachedHistory calls from UI
 
 ---
 
