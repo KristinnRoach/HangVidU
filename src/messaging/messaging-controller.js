@@ -1,6 +1,6 @@
 import { RTDBMessagingTransport } from './transports/rtdb-transport.js';
 import { parseMessage } from './schema.js';
-import { generateId } from './utils/generate-id.js';
+import { createMessageId } from './utils/create-msg-id.js';
 import { fileToBase64 } from './utils/file-to-base64.js';
 import { compressImage } from '../media/image-compress.js';
 import { EventEmitter } from '../utils/event-emitter.js';
@@ -290,7 +290,7 @@ export class MessagingController extends EventEmitter {
    * @private
    */
   async _writeAndCache(conversationId, messageData) {
-    const messageId = generateId();
+    const messageId = createMessageId();
 
     await this.transport.write(conversationId, messageId, messageData);
 

@@ -13,7 +13,7 @@
  *
  * @returns {string} Unique, time-sortable ID
  */
-export function generateId() {
+export function createMessageId() {
   const timePart = Date.now().toString(36);
   const randomPart = crypto.getRandomValues(new Uint32Array(1))[0].toString(36);
   return `${timePart}-${randomPart}`;
