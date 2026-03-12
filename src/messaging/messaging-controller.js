@@ -69,9 +69,29 @@ export class MessagingController extends EventEmitter {
   resolveConversationIdFromContactId(contactId) {
     const myUserId = getLoggedInUserId();
     if (!myUserId)
-      throw new Error('Cannot resolve conversation: not logged in');
+      throw new Error('Cannot resolve conversation ID: not logged in');
 
     return this.resolveConversationId([myUserId, contactId]);
+  }
+
+  /**
+   * Derive the contact's user ID from a 1:1 conversation ID.
+   * @param {string} conversationId - e.g. "uid1_uid2"
+   * @returns {string} The other participant's user ID
+   */
+  resolveContactIdFromConversationId(conversationId) {
+    const myUserId = getLoggedInUserId();
+    if (!myUserId)
+      throw new Error('Cannot resolve contact ID: not logged in');
+
+    const parts = conversationId.split('_');
+    const contactId = parts.find((id) => id !== myUserId);
+    if (!contactId)
+      throw new Error(
+        `Cannot derive contactId from conversationId: ${conversationId}`,
+      );
+
+    return contactId;
   }
 
   /**
@@ -152,20 +172,23 @@ export class MessagingController extends EventEmitter {
         conversationId,
       );
 
+      const conversationState = this.conversations.get(conversationId);
+
       this._touchConversation(conversationId);
       this.emit('conversation:resumed', {
         conversationId,
-        contactId: conversationId,
-        contactName,
+        contactId: conversationState.contactId,
+        contactName: conversationState.contactName,
       });
 
       return;
     }
 
     // Create internal conversation state (not exposed to callers)
+    const contactId = this.resolveContactIdFromConversationId(conversationId);
     const conversationState = {
       conversationId,
-      contactId: conversationId,
+      contactId,
       contactName,
       history: [],
       _unsubscribe: null,
@@ -227,7 +250,7 @@ export class MessagingController extends EventEmitter {
 
     this.emit('conversation:opened', {
       conversationId,
-      contactId: conversationId,
+      contactId,
       contactName,
     });
   }
