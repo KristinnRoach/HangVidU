@@ -1045,7 +1045,7 @@ export function listenForIncomingOnRoom(roomId) {
           // The callee (who rejected) writes this - both parties will see it
           try {
             const conversationId =
-              messagingController.resolveConversationIdFromContact(
+              messagingController.resolveConversationIdFromContactId(
                 joiningUserId,
               );
             if (!conversationId) {
