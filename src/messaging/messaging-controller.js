@@ -464,13 +464,12 @@ export class MessagingController extends EventEmitter {
 
   /**
    * Send an event message (e.g. missed call, rejected call).
-   * @param {string} contactId - Contact ID
+   * @param {string} conversationId - Conversation ID
    * @param {string} eventType - Event type
    * @param {Object} [details] - Event-specific details
    * @param {Object} [overrides] - Optional field overrides (e.g. { from })
    */
-  async sendEventMessage(contactId, eventType, details = {}, overrides = {}) {
-    const conversationId = this.resolveConversationIdFromContactId(contactId);
+  async sendEventMessage(conversationId, eventType, details = {}, overrides = {}) {
     const message = createEventMessage(eventType, details, overrides);
     await this._writeAndCache(conversationId, message);
   }

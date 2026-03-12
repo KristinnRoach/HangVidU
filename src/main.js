@@ -1055,7 +1055,7 @@ export function listenForIncomingOnRoom(roomId) {
               return;
             }
             await messagingController.sendEventMessage(
-              joiningUserId, // The caller's ID
+              conversationId,
               'rejected_call',
               {
                 callId: roomId,
@@ -1983,8 +1983,12 @@ CallController.on(
           // Write missed call message to chat history
           // The caller writes this - both parties will see it in their shared conversation
           try {
+            const missedCallConvId =
+              messagingController.resolveConversationIdFromContactId(
+                contact.contactId,
+              );
             await messagingController.sendEventMessage(
-              contact.contactId,
+              missedCallConvId,
               'missed_call',
               {
                 callId: roomId,
