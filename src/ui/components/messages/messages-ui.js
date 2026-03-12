@@ -1160,7 +1160,10 @@ export function initMessagesUI() {
     if (currentConversationId) {
       try {
         messagesInput.value = ''; // Optimistically clear input
-        const parsed = await messagingController.send(currentConversationId, msg);
+        const parsed = await messagingController.send(
+          currentConversationId,
+          msg,
+        );
         // Render sender's own message from return value (no RTDB echo)
         processReceivedMessage(parsed);
         // Reset textarea height after clearing
@@ -1216,7 +1219,7 @@ export function initMessagesUI() {
    */
   function cleanupReactionListeners() {
     const messageElements =
-      messagesMessages.querySelectorAll('[data-messageId]');
+      messagesMessages.querySelectorAll('[data-message-id]');
     for (const el of messageElements) {
       if (typeof el._reactionCleanup === 'function') {
         try {
@@ -1513,7 +1516,7 @@ export function initMessagesUI() {
    */
   function updateMessageReactions(messageId, reactions) {
     const element = messagesMessages.querySelector(
-      `[data-messageId="${messageId}"]`,
+      `[data-message-id="${messageId}"]`,
     );
     if (!element) return;
 
@@ -1754,7 +1757,7 @@ export function initMessagesUI() {
         // Mark messages as read in the UI if they are now read
         newlyReadMsgIds.forEach((msgId) => {
           const bubble = messagesMessages.querySelector(
-            `[data-messageId="${msgId}"]`,
+            `[data-message-id="${msgId}"]`,
           );
           if (bubble) bubble.dataset.read = 'true';
           const messageEntry = bubble?.closest('.message-entry');

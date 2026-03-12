@@ -156,12 +156,14 @@ No clear owner. Duplication (IndexedDB + messageElements). Missing contracts.
 **Impact**: Enables send path fix, clarifies state.
 
 **Solution implemented (commit 6c7f8a0)**:
+
 - Removed messageElements Map entirely
 - Kept Controller.history as single source of truth (50-msg in-memory cache)
-- Changed reaction lookups from Map.get() to DOM querySelector by data-messageId
+- Changed reaction lookups from Map.get() to DOM querySelector by data-message-id
 - Simplified cleanup to query DOM instead of iterating Map
 
 **Success criteria**: ✅ ACHIEVED
+
 - Single source of truth (Controller.history)
 - No dual-write inconsistencies
 - Clear message storage hierarchy (Controller owns, UI reads via events)
@@ -322,7 +324,9 @@ async send(conversationId, text) {
 ```javascript
 // messages-ui.js — listen for status changes
 messagingController.on('message:status', ({ messageId, status }) => {
-  const bubble = messagesMessages.querySelector(`[data-messageId="${messageId}"]`);
+  const bubble = messagesMessages.querySelector(
+    `[data-message-id="${messageId}"]`,
+  );
   if (!bubble) return;
 
   const entry = bubble.closest('.message-entry');
@@ -344,9 +348,17 @@ messagingController.on('message:status', ({ messageId, status }) => {
 **Step 4: CSS for status states**
 
 ```css
-.message-entry[data-status="pending"] .message-bubble { opacity: 0.6; }
-.message-entry[data-status="failed"] .message-bubble { border-color: var(--color-error); }
-.retry-send { font-size: 0.75rem; color: var(--color-error); cursor: pointer; }
+.message-entry[data-status='pending'] .message-bubble {
+  opacity: 0.6;
+}
+.message-entry[data-status='failed'] .message-bubble {
+  border-color: var(--color-error);
+}
+.retry-send {
+  font-size: 0.75rem;
+  color: var(--color-error);
+  cursor: pointer;
+}
 ```
 
 **Step 5: Retry mechanism**
@@ -355,7 +367,9 @@ messagingController.on('message:status', ({ messageId, status }) => {
 // messages-ui.js
 function retrySend(failedMessageId) {
   // Find original message text from DOM
-  const bubble = messagesMessages.querySelector(`[data-messageId="${failedMessageId}"]`);
+  const bubble = messagesMessages.querySelector(
+    `[data-message-id="${failedMessageId}"]`,
+  );
   const text = bubble?.querySelector('p')?.textContent;
   if (!text || !currentConversationId) return;
 
@@ -363,8 +377,9 @@ function retrySend(failedMessageId) {
   bubble.closest('.message-entry')?.remove();
 
   // Re-send (creates new messageId)
-  messagingController.send(currentConversationId, text)
-    .then(parsed => processReceivedMessage(parsed));
+  messagingController
+    .send(currentConversationId, text)
+    .then((parsed) => processReceivedMessage(parsed));
 }
 ```
 
