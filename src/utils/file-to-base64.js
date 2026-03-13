@@ -1,6 +1,6 @@
 /**
  * Convert a File/Blob to a base64 data URL string.
- * @param {File} file
+ * @param {File|Blob} file
  * @returns {Promise<string>} base64 data URL
  */
 export function fileToBase64(file) {
