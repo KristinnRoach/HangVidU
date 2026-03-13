@@ -3,7 +3,7 @@
 // The controller uses this to produce canonical messages before passing to any store.
 
 import { MessageSchema } from './schema.js';
-import { getLoggedInUserId, getUser } from '../auth/auth-state.js';
+import { getUserId, getUser } from '../auth/auth-state.js';
 
 /**
  * Generate a unique, time-sortable ID.
@@ -27,8 +27,8 @@ function _createMessageId() {
  * @returns {Object} { messageId, from, fromName, sentAt, read }
  */
 function _baseFields() {
-  const from = getLoggedInUserId();
-  if (!from) throw new Error('Cannot create message: not logged in');
+  const from = getUserId();
+  if (!from) throw new Error('Cannot create message: no active user id');
   const fromName = getUser()?.displayName || 'Guest User';
   return {
     messageId: _createMessageId(),

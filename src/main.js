@@ -674,60 +674,6 @@ function removeAllIncomingListeners() {
 }
 
 /**
- * Save a recent call for the current user (RTDB if logged in, localStorage otherwise).
- * Expires after 24 hours (expiresAt timestamp).
- */
-async function saveRecentCall(roomId) {
-  const now = Date.now();
-  const expiresAt = now + 24 * 60 * 60 * 1000; // 24 hours
-  const loggedInUid = getLoggedInUserId();
-
-  if (loggedInUid) {
-    const userRecentRef = getUserRecentCallRef(loggedInUid, roomId);
-    await set(userRecentRef, { roomId, savedAt: now, expiresAt });
-    return;
-  }
-
-  // fallback to localStorage for guests
-  try {
-    const raw = localStorage.getItem('recentCalls') || '{}';
-    const obj = JSON.parse(raw);
-    obj[roomId] = { roomId, savedAt: now, expiresAt };
-    localStorage.setItem('recentCalls', JSON.stringify(obj));
-  } catch (e) {
-    console.warn('Failed to save recent call to localStorage', e);
-  }
-}
-
-/**
- * Remove a recent call entry for the current user (RTDB if logged in, localStorage otherwise).
- */
-async function removeRecentCall(roomId) {
-  const loggedInUid = getLoggedInUserId();
-
-  if (loggedInUid) {
-    try {
-      await remove(getUserRecentCallRef(loggedInUid, roomId));
-    } catch (e) {
-      console.warn('Failed to remove recent call from RTDB', e);
-    }
-    return;
-  }
-
-  // Guest: remove from localStorage
-  try {
-    const raw = localStorage.getItem('recentCalls') || '{}';
-    const obj = JSON.parse(raw);
-    if (obj[roomId]) {
-      delete obj[roomId];
-      localStorage.setItem('recentCalls', JSON.stringify(obj));
-    }
-  } catch (e) {
-    console.warn('Failed to remove recent call from localStorage', e);
-  }
-}
-
-/**
  * Listen for incoming member joins on a given roomId and log them.
  */
 export function listenForIncomingOnRoom(roomId) {
@@ -1068,11 +1014,6 @@ export function listenForIncomingOnRoom(roomId) {
           } catch (e) {
             console.warn('[MAIN] Failed to write rejected call message:', e);
           }
-
-          // Clean up recent call state for this client
-          await removeRecentCall(roomId).catch((e) => {
-            console.warn('Failed to remove recent call on rejection:', e);
-          });
         }
       }
     },
@@ -1111,8 +1052,6 @@ export function listenForIncomingOnRoom(roomId) {
       // best-effort
     }
 
-    await removeRecentCall(roomId).catch(() => {});
-
     // Clean up incoming listeners for this room to prevent stale listener firing
     // UNLESS it is a saved contact - then we want to keep listening
     let savedContact = null;
@@ -1149,8 +1088,6 @@ export function listenForIncomingOnRoom(roomId) {
       // If no members remain, remove the saved recent call for this client
       // and clean up the incoming listeners for this room (UNLESS saved contact)
       if (!status.hasMembers) {
-        await removeRecentCall(roomId);
-
         const savedContact =
           await contactsController.getContactByRoomId(roomId);
         if (!savedContact) {
@@ -1926,18 +1863,18 @@ CallController.on('memberJoined', async ({ memberId, roomId }) => {
 
   const conversationId =
     messagingController.resolveConversationIdFromContactId(memberId);
-  await messagingController.selectConversation(conversationId, {
-    remoteParticipantIds: [memberId],
-  });
 
-  onCallAnswered().catch((e) =>
-    console.warn('Failed to clear calling state:', e),
-  );
-
-  // TODO: use or delete saveRecentCall
-  // saveRecentCall(roomId).catch((e) =>
-  //   console.warn('Failed to save recent call:', e),
-  // );
+  try {
+    await messagingController.selectConversation(conversationId, {
+      remoteParticipantIds: [memberId],
+    });
+  } catch (e) {
+    console.warn('Failed to select conversation after memberJoined:', e);
+  } finally {
+    onCallAnswered().catch((e) =>
+      console.warn('Failed to clear calling state:', e),
+    );
+  }
 });
 
 // Subscribe to CallController memberLeft event - handles partner leaving

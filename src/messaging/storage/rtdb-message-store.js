@@ -48,7 +48,7 @@ export class RTDBMessageStore extends MessageStore {
       throw new Error('resolveConversationId requires at least 2 participants');
     }
     return participantIds
-      .map((p) => String(p ?? p).trim())
+      .map((p) => String(p || '').trim())
       .sort()
       .join('_');
   }
