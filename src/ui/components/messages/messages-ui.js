@@ -1254,7 +1254,6 @@ export function initMessagesUI() {
    * Called after conversation:selected or conversation:resumed event
    * @param {string} conversationId - Conversation ID
    * @param {string} contactId - Contact ID
-   * @param {string} contactName - Contact name
    */
   function _prepUIForConversation(conversationId, contactId) {
     if (markAsReadTimeout !== null) {
