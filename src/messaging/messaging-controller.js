@@ -75,25 +75,6 @@ export class MessagingController extends EventEmitter {
   }
 
   /**
-   * Derive the contact's user ID from a 1:1 conversation ID.
-   * @param {string} conversationId - e.g. "uid1_uid2"
-   * @returns {string} The other participant's user ID
-   */
-  resolveContactIdFromConversationId(conversationId) {
-    const myUserId = getLoggedInUserId();
-    if (!myUserId) throw new Error('Cannot resolve contact ID: not logged in');
-
-    const parts = conversationId.split('_');
-    const contactId = parts.find((id) => id !== myUserId);
-    if (!contactId)
-      throw new Error(
-        `Cannot derive contactId from conversationId: ${conversationId}`,
-      );
-
-    return contactId;
-  }
-
-  /**
    * Helper: Add a message to the conversation's internal history cache.
    * Keeps the last 50 messages for instant UI re-hydration.
    */
@@ -154,12 +135,14 @@ export class MessagingController extends EventEmitter {
    *
    * If a conversation already exists, it will be resumed instead of creating a new one.
    * Fetches history from the store or cache if available, seeds the cache, then attaches live listeners.
-   * Emits 'conversation:selected'
+   * Emits 'conversation:opened' or 'conversation:resumed'
    *
-   * @param {string} conversationId - Contact ID
-   * @param {string} contactName - Optional contact name
+   * @param {string} conversationId - Conversation ID
+   * @param {Object} [metadata] - Conversation metadata
+   * @param {string[]} [metadata.remoteParticipantIds] - User IDs of other participants (excludes self)
+   * @param {string} [metadata.contactName] - Display name for the conversation
    */
-  async selectConversation(conversationId, contactName) {
+  async selectConversation(conversationId, { remoteParticipantIds = [], contactName } = {}) {
     if (!conversationId || typeof conversationId !== 'string') {
       throw new Error('conversationId must be a non-empty string');
     }
@@ -176,7 +159,7 @@ export class MessagingController extends EventEmitter {
       this._touchConversation(conversationId);
       this.emit('conversation:resumed', {
         conversationId,
-        contactId: conversationState.contactId,
+        remoteParticipantIds: conversationState.remoteParticipantIds,
         contactName: conversationState.contactName,
       });
 
@@ -184,10 +167,9 @@ export class MessagingController extends EventEmitter {
     }
 
     // Create internal conversation state (not exposed to callers)
-    const contactId = this.resolveContactIdFromConversationId(conversationId);
     const conversationState = {
       conversationId,
-      contactId,
+      remoteParticipantIds,
       contactName,
       history: [],
       _unsubscribe: null,
@@ -249,7 +231,7 @@ export class MessagingController extends EventEmitter {
 
     this.emit('conversation:opened', {
       conversationId,
-      contactId,
+      remoteParticipantIds,
       contactName,
     });
   }
@@ -269,7 +251,7 @@ export class MessagingController extends EventEmitter {
 
     this.emit('conversation:display', {
       conversationId,
-      contactId: conversationState.contactId,
+      remoteParticipantIds: conversationState.remoteParticipantIds,
       contactName: conversationState.contactName,
     });
   }

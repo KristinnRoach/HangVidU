@@ -1926,7 +1926,9 @@ CallController.on('memberJoined', async ({ memberId, roomId }) => {
 
   const conversationId =
     messagingController.resolveConversationIdFromContactId(memberId);
-  await messagingController.selectConversation(conversationId);
+  await messagingController.selectConversation(conversationId, {
+    remoteParticipantIds: [memberId],
+  });
 
   onCallAnswered().catch((e) =>
     console.warn('Failed to clear calling state:', e),

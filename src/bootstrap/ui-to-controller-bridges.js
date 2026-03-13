@@ -20,7 +20,10 @@ async function onSelectConversation(e) {
       return;
     }
 
-    await messagingController.selectConversation(conversationId, contactName);
+    await messagingController.selectConversation(conversationId, {
+      remoteParticipantIds: [contactId],
+      contactName,
+    });
 
     if (!displayUI) return;
 

@@ -135,11 +135,14 @@ describe('MessagingController', () => {
     const spy = vi.fn();
     controller.on('conversation:opened', spy);
 
-    await controller.selectConversation('contactA_me', 'Alice');
+    await controller.selectConversation('contactA_me', {
+      remoteParticipantIds: ['contactA'],
+      contactName: 'Alice',
+    });
 
     expect(spy).toHaveBeenCalledWith({
       conversationId: 'contactA_me',
-      contactId: 'contactA',
+      remoteParticipantIds: ['contactA'],
       contactName: 'Alice',
     });
     expect(controller.conversations.size).toBe(1);
@@ -150,8 +153,8 @@ describe('MessagingController', () => {
     controller.on('conversation:opened', spy);
     controller.on('conversation:resumed', spy);
 
-    await controller.selectConversation('contactA_me', 'Alice');
-    await controller.selectConversation('contactA_me', 'Alice');
+    await controller.selectConversation('contactA_me', { remoteParticipantIds: ['contactA'], contactName: 'Alice' });
+    await controller.selectConversation('contactA_me', { remoteParticipantIds: ['contactA'], contactName: 'Alice' });
 
     // Should emit opened once, then resumed on second call
     expect(spy).toHaveBeenCalledTimes(2);

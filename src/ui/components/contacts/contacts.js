@@ -357,10 +357,10 @@ export async function autoInitMsgSessionIfNeeded() {
       messagingController.resolveConversationIdFromContactId(
         firstContact.contactId,
       );
-    await messagingController.selectConversation(
-      conversationId,
-      firstContact.contactName,
-    );
+    await messagingController.selectConversation(conversationId, {
+      remoteParticipantIds: [firstContact.contactId],
+      contactName: firstContact.contactName,
+    });
   } catch (error) {
     console.warn(
       '[Contacts] Failed to auto-init messaging conversation:',

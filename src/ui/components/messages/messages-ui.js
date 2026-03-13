@@ -828,9 +828,8 @@ export function initMessagesUI() {
   }
 
   /**
-   * Attach reaction support to a message element. No-op if messageId is falsy.
-   * @param {HTMLElement} p - The message <p> element
-   * @param {string} messageId - Firebase message ID
+   * Attach reaction support to a message bubble element. No-op if messageId is falsy.
+   * @param {HTMLElement} p - The message bubble element (e.g. the `.message-bubble` container)   * @param {string} messageId - Firebase message ID
    * @param {Object} reactions - Initial reactions { type: [userIds] }
    * @param {Object} [opts]
    * @param {Function} [opts.onSingleTap] - Called on single tap (e.g. image preview)
@@ -1257,7 +1256,7 @@ export function initMessagesUI() {
    * @param {string} contactId - Contact ID
    * @param {string} contactName - Contact name
    */
-  function _prepUIForConversation(conversationId, contactId, contactName) {
+  function _prepUIForConversation(conversationId, contactId) {
     if (markAsReadTimeout !== null) {
       clearTimeout(markAsReadTimeout);
       markAsReadTimeout = null;
@@ -1274,22 +1273,17 @@ export function initMessagesUI() {
       currentConversationId === null ||
       currentConversationId !== conversationId;
 
+    if (!conversationChanged) return; // No change, no need to update UI
+
     currentConversationId = conversationId;
 
-    if (conversationChanged) {
-      // New conversation: reset metadata so we re-fetch profile/photo
-      conversationMetadata = {
-        contactId,
-        contactName,
-        contactProfile: null,
-        contactPhotoURL: null,
-      };
-    } else {
-      // Resuming the same conversation: preserve any previously fetched
-      // `contactProfile` / `contactPhotoURL` to avoid a brief UI flash.
-      conversationMetadata.contactId = contactId;
-      conversationMetadata.contactName = contactName;
-    }
+    // New conversation: reset metadata so we re-fetch profile/photo
+    conversationMetadata = {
+      contactId,
+      contactName: '',
+      contactProfile: null,
+      contactPhotoURL: null,
+    };
 
     // Reset timestamp tracking when switching conversations so appended
     // cached history shows correct timestamp separators.
@@ -1297,7 +1291,7 @@ export function initMessagesUI() {
 
     if (messageTopBar) {
       messageTopBar.setContact({
-        name: contactName || '',
+        name: '',
         photoURL: '',
       });
     }
@@ -1650,7 +1644,7 @@ export function initMessagesUI() {
     });
   }
 
-  function _displayConversation(conversationId, contactId, contactName) {
+  function _displayConversation(conversationId, contactId) {
     if (!conversationId) return;
 
     const isCurrentConversation = currentConversationId === conversationId;
@@ -1659,7 +1653,7 @@ export function initMessagesUI() {
       clearMessages();
     }
 
-    _prepUIForConversation(conversationId, contactId, contactName);
+    _prepUIForConversation(conversationId, contactId);
 
     // Fetch contact profile (photo + display name) for avatars
     getUserProfile(contactId)
@@ -1703,24 +1697,23 @@ export function initMessagesUI() {
   // TODO: SIMPLIFY display logic.
   messagingController.on(
     'conversation:opened',
-    ({ conversationId, contactId, contactName }) => {
-      _displayConversation(conversationId, contactId, contactName);
+    ({ conversationId, remoteParticipantIds }) => {
+      _displayConversation(conversationId, remoteParticipantIds[0]);
     },
     { signal: ac.signal },
   );
 
   messagingController.on(
     'conversation:resumed',
-    ({ conversationId, contactId, contactName }) => {
-      _displayConversation(conversationId, contactId, contactName);
+    ({ conversationId, remoteParticipantIds }) => {
+      _displayConversation(conversationId, remoteParticipantIds[0]);
     },
     { signal: ac.signal },
   );
 
   messagingController.on(
     'conversation:display',
-    ({ conversationId, contactId, contactName }) => {
-      // _displayConversation(conversationId, contactId, contactName);
+    () => {
       displayCurrentConversation();
     },
     { signal: ac.signal },
