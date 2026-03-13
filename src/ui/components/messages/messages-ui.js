@@ -82,7 +82,7 @@ export function initMessagesUI() {
   const ac = new AbortController();
 
   const shouldShowAttachButton = () =>
-    getIsLoggedIn() && (!!fileTransferController || !!currentConversationId);
+    !!fileTransferController || !!currentConversationId; // removed getIsLoggedIn()
 
   const refreshAttachButton = () => {
     if (shouldShowAttachButton()) {
