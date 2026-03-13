@@ -191,6 +191,7 @@ export class MessagingController extends EventEmitter {
     // Add conversation to map before async work — removed on failure below
     this.conversations.set(conversationId, conversationState);
 
+    const subscriptions = [];
     try {
       // 1. Fetch full history (all messages, local + remote)
       const { messages, lastKey } =
@@ -210,6 +211,7 @@ export class MessagingController extends EventEmitter {
         },
         { afterKey: lastKey },
       );
+      subscriptions.push(offMessage);
 
       const offReaction = this.store.onReactionUpdate(
         conversationId,
@@ -226,6 +228,7 @@ export class MessagingController extends EventEmitter {
           });
         },
       );
+      subscriptions.push(offReaction);
 
       const offUnread = this.store.onUnreadChange(
         conversationId,
@@ -237,13 +240,17 @@ export class MessagingController extends EventEmitter {
           });
         },
       );
+      subscriptions.push(offUnread);
 
       conversationState._unsubscribe = () => {
-        offMessage();
-        offReaction();
-        offUnread();
+        subscriptions.forEach((off) => off());
       };
     } catch (err) {
+      subscriptions.forEach((off) => {
+        try {
+          off();
+        } catch {}
+      });
       this.conversations.delete(conversationId);
       throw err;
     }
