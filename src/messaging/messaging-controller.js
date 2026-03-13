@@ -188,55 +188,65 @@ export class MessagingController extends EventEmitter {
       _unsubscribe: null,
     };
 
-    // Add conversation to map
+    // Add conversation to map before async work — removed on failure below
     this.conversations.set(conversationId, conversationState);
 
-    // 1. Fetch full history (all messages, local + remote)
-    const { messages, lastKey } = await this.store.fetchHistory(conversationId);
+    try {
+      // 1. Fetch full history (all messages, local + remote)
+      const { messages, lastKey } =
+        await this.store.fetchHistory(conversationId);
 
-    for (const message of messages) {
-      this.cacheHistory(conversationState, { conversationId, message });
+      for (const message of messages) {
+        this.cacheHistory(conversationState, { conversationId, message });
+      }
+
+      // 2. Attach live listeners (after fetch, using lastKey cursor to avoid replay)
+      const offMessage = this.store.onMessage(
+        conversationId,
+        (message) => {
+          const messageEvent = { conversationId, message };
+          this.cacheHistory(conversationState, messageEvent);
+          this.emit('message:received', messageEvent);
+        },
+        { afterKey: lastKey },
+      );
+
+      const offReaction = this.store.onReactionUpdate(
+        conversationId,
+        ({ messageId, reactions }) => {
+          this.updateCachedHistoryReactions(
+            conversationState,
+            messageId,
+            reactions,
+          );
+          this.emit('reaction:updated', {
+            conversationId,
+            messageId,
+            reactions,
+          });
+        },
+      );
+
+      const offUnread = this.store.onUnreadChange(
+        conversationId,
+        (unreadCount, newlyReadMsgIds = []) => {
+          this.emit('unread:changed', {
+            conversationId,
+            unreadCount,
+            newlyReadMsgIds,
+          });
+        },
+      );
+
+      conversationState._unsubscribe = () => {
+        offMessage();
+        offReaction();
+        offUnread();
+      };
+    } catch (err) {
+      this.conversations.delete(conversationId);
+      throw err;
     }
-
-    // 2. Attach live listeners (after fetch, using lastKey cursor to avoid replay)
-    const offMessage = this.store.onMessage(
-      conversationId,
-      (message) => {
-        const messageEvent = { conversationId, message };
-        this.cacheHistory(conversationState, messageEvent);
-        this.emit('message:received', messageEvent);
-      },
-      { afterKey: lastKey },
-    );
-
-    const offReaction = this.store.onReactionUpdate(
-      conversationId,
-      ({ messageId, reactions }) => {
-        this.updateCachedHistoryReactions(
-          conversationState,
-          messageId,
-          reactions,
-        );
-        this.emit('reaction:updated', { conversationId, messageId, reactions });
-      },
-    );
-
-    const offUnread = this.store.onUnreadChange(
-      conversationId,
-      (unreadCount, newlyReadMsgIds = []) => {
-        this.emit('unread:changed', {
-          conversationId,
-          unreadCount,
-          newlyReadMsgIds,
-        });
-      },
-    );
-
-    conversationState._unsubscribe = () => {
-      offMessage();
-      offReaction();
-      offUnread();
-    };
 
     // 3. Emit after cache is seeded — UI can render history immediately
     this._touchConversation(conversationId);
