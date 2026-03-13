@@ -1682,6 +1682,7 @@ export function initMessagesUI() {
     'conversation:closed',
     ({ conversationId }) => {
       if (conversationId !== currentConversationId) return;
+      currentConversationId = null;
       clearMessages();
       conversationMetadata = {};
       refreshAttachButton();
