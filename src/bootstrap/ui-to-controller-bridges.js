@@ -7,7 +7,7 @@ import { messagingController } from '../messaging/messaging-controller.js';
 const bridgeAc = new AbortController();
 
 async function onSelectConversation(e) {
-  const { contactId, contactName, displayUI } = e?.detail || {};
+  const { contactId, displayUI } = e?.detail || {};
   if (!contactId) return;
 
   try {
@@ -22,12 +22,8 @@ async function onSelectConversation(e) {
 
     await messagingController.selectConversation(conversationId, {
       remoteParticipantIds: [contactId],
-      contactName,
+      displayUI,
     });
-
-    if (!displayUI) return;
-
-    messagingController.displayConversation(conversationId);
   } catch (err) {
     console.warn('[Bridge] Failed to select conversation:', err);
   }

@@ -27,7 +27,6 @@ import { getUserId, getIsLoggedIn } from '../../../auth/auth-state.js';
 import { messagingController } from '../../../messaging/messaging-controller.js';
 import { contactsController } from '../../../contacts/contacts-controller.js';
 import { showInfoToast } from '../../utils/toast.js';
-import { getUserProfile } from '../../../user/profile.js';
 import { createMessageBox } from './createMessageBox.js';
 import { createMessageTopBar } from './createMessageTopBar.js';
 import { devDebug } from '../../../utils/dev/dev-utils.js';
@@ -141,11 +140,7 @@ export function initMessagesUI() {
   if (messageTopBar?.element) {
     messagesBox.prepend(messageTopBar.element);
 
-    messageTopBar.setBackHandler(() => {
-      if (isMessagesUIOpen()) {
-        toggleMessagesUIVisible();
-      }
-    });
+    messageTopBar.setBackHandler(() => closeMessagesUI());
 
     messageTopBar.setCallHandler(() => {
       messagesBox.dispatchEvent(
@@ -666,68 +661,87 @@ export function initMessagesUI() {
     if (isMessageInputFocused()) messagesInput.blur();
   }
 
+  /**
+   * Close the messages UI panel.
+   * No-op if already closed.
+   * Cleans up event listeners and resets positioning.
+   */
+  function closeMessagesUI() {
+    if (!isMessagesUIOpen()) return;
+
+    // Only blur if actually focused (avoids mobile keyboard issues)
+    if (document.activeElement === messagesInput) messagesInput.blur();
+    detachRepositionHandlers();
+
+    // Clear inline offsets
+    messagesBox.style.top = '';
+    messagesBox.style.left = '';
+    messagesBox.style.bottom = '';
+    messagesBox.style.right = '';
+
+    // Clean up outside click handler
+    if (removeMessagesBoxClickOutside) {
+      removeMessagesBoxClickOutside();
+      removeMessagesBoxClickOutside = null;
+    }
+
+    closeMessagesBox();
+  }
+
+  /**
+   * Open the messages UI panel.
+   * No-op if already open.
+   * Marks conversation as read and sets up click-outside handler.
+   */
+  function openMessagesUI() {
+    if (isMessagesUIOpen()) return;
+
+    if (!currentConversationId) {
+      console.warn('[MessagesUI] No active conversation to display');
+      return;
+    }
+
+    openMessagesBox();
+    scrollMessagesToEnd();
+
+    // Only auto-focus on desktop; let mobile users tap to focus naturally
+    if (!isMobileDevice()) messagesInput.focus();
+
+    messagingController.markAsRead(currentConversationId).catch((err) => {
+      console.warn('Failed to mark messages as read:', err);
+    });
+
+    // Set up outside click handler
+
+    // ignore clicks that select conversations (class="contact-entry") + msg toggle + reactions picker
+    removeMessagesBoxClickOutside = onClickOutside(
+      messagesBox,
+      () => closeMessagesUI(),
+      {
+        ignore: () => {
+          const contactEntries = document.querySelectorAll('.contact-entry');
+          const ignoreClickElementsArray = Array.from(contactEntries);
+          ignoreClickElementsArray.push(messageToggle.element);
+          if (reactionUI.activePicker) {
+            ignoreClickElementsArray.push(reactionUI.activePicker);
+          }
+          return ignoreClickElementsArray;
+        },
+        esc: true,
+        ignoreInputBlur: isMobileDevice(), // Prevent accidental closes when dismissing keyboard on mobile
+      },
+    );
+  }
+
+  /**
+   * Toggle the messages UI panel open/closed.
+   * Used by the message toggle button and keyboard shortcut.
+   */
   function toggleMessagesUIVisible() {
     if (isMessagesUIOpen()) {
-      // close
-
-      // Only blur if actually focused (avoids mobile keyboard issues)
-      if (document.activeElement === messagesInput) messagesInput.blur();
-      detachRepositionHandlers();
-
-      // Clear inline offsets
-      messagesBox.style.top = '';
-      messagesBox.style.left = '';
-      messagesBox.style.bottom = '';
-      messagesBox.style.right = '';
-
-      // Clean up outside click handler
-      if (removeMessagesBoxClickOutside) {
-        removeMessagesBoxClickOutside();
-        removeMessagesBoxClickOutside = null;
-      }
-
-      closeMessagesBox();
+      closeMessagesUI();
     } else {
-      // open
-
-      if (!currentConversationId) {
-        console.warn('[MessagesUI] No active conversation to display');
-        return;
-      }
-
-      // Only auto-focus on desktop; let mobile users tap to focus naturally
-      if (!isMobileDevice()) messagesInput.focus();
-
-      openMessagesBox();
-      scrollMessagesToEnd();
-
-      // Set up outside click handler
-      removeMessagesBoxClickOutside = onClickOutside(
-        messagesBox,
-        () => {
-          // animate close when clicking outside
-          closeMessagesBox();
-          detachRepositionHandlers();
-
-          // Clear inline offsets
-          messagesBox.style.top = '';
-          messagesBox.style.left = '';
-          messagesBox.style.bottom = '';
-          messagesBox.style.right = '';
-
-          // Clean up the handler since we're closing
-          if (removeMessagesBoxClickOutside) {
-            removeMessagesBoxClickOutside();
-            removeMessagesBoxClickOutside = null;
-          }
-        },
-        {
-          ignore: () =>
-            [messageToggle.element, reactionUI.activePicker].filter(Boolean),
-          esc: true,
-          ignoreInputBlur: isMobileDevice(), // Prevent accidental closes when dismissing keyboard on mobile
-        },
-      );
+      openMessagesUI();
     }
   }
 
@@ -881,11 +895,14 @@ export function initMessagesUI() {
     if (isLocal) {
       renderAvatar(avatarSpan, { customFallbackText: t('shared.me') });
     } else {
-      const contactName = conversationMetadata.contactName || '';
+      const contactName =
+        conversationMetadata?.contactName ||
+        conversationMetadata?.contactProfile?.displayName ||
+        'U';
       const photoURL =
-        conversationMetadata.contactPhotoURL ||
-        conversationMetadata.contactProfile?.photoURL ||
-        null;
+        conversationMetadata?.contactPhotoURL ||
+        conversationMetadata?.contactProfile?.photoURL ||
+        '';
       renderAvatar(avatarSpan, { name: contactName, photoURL });
     }
 
@@ -1208,7 +1225,7 @@ export function initMessagesUI() {
       // Only open if not already open and input is not focused
       if (!isMessagesUIOpen() && !isTextInputFocused()) {
         event.preventDefault(); // Prevent 'M' from being typed into the input
-        toggleMessagesUIVisible();
+        openMessagesUI();
       }
     }
   };
@@ -1250,53 +1267,50 @@ export function initMessagesUI() {
   }
 
   /**
-   * Prepare UI for a conversation (internal use)
-   * Called after conversation:opened or conversation:resumed event
+   * Prepare UI for a conversation switch.
+   * Clears old messages, resets metadata with profile, renders cached history.
+   * No-op if already showing the same conversation.
    * @param {string} conversationId - Conversation ID
    * @param {string} contactId - Contact ID
-   * @param {string} contactName - Contact name
+   * @param {Object} [state] - Conversation state snapshot with { profile, history }
    */
-  function _prepUIForConversation(conversationId, contactId) {
+  function prepareConversation(conversationId, contactId, conversationState) {
+    if (!conversationId) return;
+    if (currentConversationId === conversationId) return;
+
     if (markAsReadTimeout !== null) {
       clearTimeout(markAsReadTimeout);
       markAsReadTimeout = null;
     }
 
-    if (
-      currentConversationId !== null &&
-      currentConversationId !== conversationId
-    ) {
+    if (currentConversationId !== null) {
       clearMessages();
     }
 
-    const conversationChanged =
-      currentConversationId === null ||
-      currentConversationId !== conversationId;
-
-    if (!conversationChanged) return; // No change, no need to update UI
-
     currentConversationId = conversationId;
-
-    // New conversation: reset metadata so we re-fetch profile/photo
-    conversationMetadata = {
-      contactId,
-      contactName: '',
-      contactProfile: null,
-      contactPhotoURL: null,
-    };
-
-    // Reset timestamp tracking when switching conversations so appended
-    // cached history shows correct timestamp separators.
     lastTimestamp = 0;
 
-    if (messageTopBar) {
-      messageTopBar.setContact({
-        name: '',
-        photoURL: '',
-      });
-    }
+    const profile = conversationState?.profile;
+    const name = profile?.displayName || '';
+    const photoURL = profile?.photoURL || '';
 
+    conversationMetadata = {
+      contactId,
+      contactName: name,
+      contactProfile: profile || null,
+      contactPhotoURL: photoURL,
+    };
+
+    if (messageTopBar) {
+      messageTopBar.setContact({ name, photoURL });
+    }
     refreshAttachButton();
+
+    // Render cached history
+    const history = messagingController.getHistory(conversationId);
+    if (history?.length > 0) {
+      appendCachedHistory({ history });
+    }
   }
 
   /**
@@ -1551,6 +1565,8 @@ export function initMessagesUI() {
   }
 
   function cleanup() {
+    reset(); // Todo: clarify reset vs cleanup
+
     // Clear pending markAsRead timeout
     clearTimeout(markAsReadTimeout);
     markAsReadTimeout = null;
@@ -1626,95 +1642,53 @@ export function initMessagesUI() {
     appendMessage(message);
   }
 
-  function displayCurrentConversation() {
-    if (!currentConversationId) {
-      console.warn('No current conversation to display:', {
-        currentConversationId,
-      });
-      return;
-    }
-
-    if (!isMessagesUIOpen()) {
-      console.warn('Messages UI is not open, opening now');
-      toggleMessagesUIVisible();
-    }
-
-    messagingController.markAsRead(currentConversationId).catch((err) => {
-      console.warn('Failed to mark messages as read:', err);
-    });
-  }
-
-  function _displayConversation(conversationId, contactId) {
-    if (!conversationId) return;
-
-    const isCurrentConversation = currentConversationId === conversationId;
-
-    if (!isCurrentConversation) {
-      clearMessages();
-    }
-
-    _prepUIForConversation(conversationId, contactId);
-
-    // Fetch contact profile (photo + display name) for avatars
-    getUserProfile(contactId)
-      .then((profile) => {
-        if (!profile) return;
-
-        // Update metadata with profile info
-        conversationMetadata.contactProfile = profile;
-        if (!conversationMetadata.contactName && profile.displayName) {
-          conversationMetadata.contactName = profile.displayName;
-        }
-        if (profile.photoURL) {
-          conversationMetadata.contactPhotoURL = profile.photoURL;
-        }
-
-        if (messageTopBar && currentConversationId === conversationId) {
-          messageTopBar.setContact({
-            name: conversationMetadata.contactName || '',
-            photoURL: conversationMetadata.contactPhotoURL || '',
-          });
-        }
-
-        refreshRemoteAvatars(messagesMessages, {
-          name: conversationMetadata.contactName,
-          photoURL: conversationMetadata.contactPhotoURL,
-        });
-      })
-      .catch(() => {});
-
-    // Render existing cached history (only when switching conversations, not resuming)
-    if (!isCurrentConversation) {
-      const history = messagingController.getHistory(conversationId);
-      if (history && history.length > 0) {
-        appendCachedHistory({ history });
-      }
-    }
-  }
-
   // --- Domain Event Listeners ---
 
-  // TODO: SIMPLIFY display logic.
+  // Data ready — prepare conversation UI
   messagingController.on(
-    'conversation:opened',
-    ({ conversationId, remoteParticipantIds }) => {
-      _displayConversation(conversationId, remoteParticipantIds[0]);
+    'conversation:ready',
+    ({
+      conversationId,
+      remoteParticipantIds,
+      displayUI,
+      profile,
+      history,
+    }) => {
+      prepareConversation(conversationId, remoteParticipantIds[0], {
+        profile,
+        history,
+      });
+      if (displayUI) openMessagesUI();
     },
     { signal: ac.signal },
   );
 
+  // Profile loaded — update name/photo
   messagingController.on(
-    'conversation:resumed',
-    ({ conversationId, remoteParticipantIds }) => {
-      _displayConversation(conversationId, remoteParticipantIds[0]);
-    },
-    { signal: ac.signal },
-  );
+    'conversation:profile-updated',
+    ({ conversationId, profile }) => {
+      if (conversationId !== currentConversationId || !profile) return;
 
-  messagingController.on(
-    'conversation:display',
-    () => {
-      displayCurrentConversation();
+      // TODO: Clean up and simplify this (avoid redundant or inconsistent updates)
+
+      conversationMetadata.contactProfile = profile;
+      if (profile.displayName)
+        conversationMetadata.contactName = profile.displayName;
+      if (profile.photoURL)
+        conversationMetadata.contactPhotoURL = profile.photoURL;
+
+      if (messageTopBar) {
+        if (profile.displayName || profile.photoURL) {
+          messageTopBar.setContact({
+            name: profile.displayName || '',
+            photoURL: profile.photoURL || '',
+          });
+        }
+        refreshRemoteAvatars(messagesMessages, {
+          name: profile.displayName || '',
+          photoURL: conversationMetadata.contactPhotoURL,
+        });
+      }
     },
     { signal: ac.signal },
   );
@@ -1723,8 +1697,8 @@ export function initMessagesUI() {
     'conversation:closed',
     ({ conversationId }) => {
       if (conversationId !== currentConversationId) return;
-      clearMessages();
       currentConversationId = null;
+      clearMessages();
       conversationMetadata = {};
       refreshAttachButton();
       if (messageTopBar) {
@@ -1836,12 +1810,13 @@ export function initMessagesUI() {
     updateMessageReactions,
     isMessagesUIOpen,
     toggleMessages: toggleMessagesUIVisible,
+    openMessages: openMessagesUI,
+    closeMessages: closeMessagesUI,
     showMessagesToggle,
     hideMessagesToggle,
     isMessageInputFocused,
     focusMessageInput,
     unfocusMessageInput,
-    displayConversation: displayCurrentConversation,
     getCurrentConversationId,
     clearMessages,
     setFileTransferController,
