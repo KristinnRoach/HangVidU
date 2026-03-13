@@ -140,51 +140,51 @@ describe('MessagingController', () => {
     expect(cid).toBe('userA_userB');
   });
 
-  // TODO: Update
+  it('should open a conversation successfully', async () => {
+    const spy = vi.fn();
+    controller.on('conversation:ready', spy);
 
-  // it('should open a conversation successfully', async () => {
-  //   const spy = vi.fn();
-  //   controller.on('conversation:ready', spy);
+    await controller.selectConversation('contactA_me', {
+      remoteParticipantIds: ['contactA'],
+    });
 
-  //   await controller.selectConversation('contactA_me', {
-  //     remoteParticipantIds: ['contactA'],
-  //   });
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: 'contactA_me',
+        remoteParticipantIds: ['contactA'],
+        displayUI: false,
+      }),
+    );
+    expect(controller.conversations.size).toBe(1);
+  });
 
-  //   expect(spy).toHaveBeenCalledWith({
-  //     conversationId: 'contactA_me',
-  //     remoteParticipantIds: ['contactA'],
-  //     displayUI: false,
-  //   });
-  //   expect(controller.conversations.size).toBe(1);
-  // });
+  it('should emit conversation:ready on resume', async () => {
+    const spy = vi.fn();
+    controller.on('conversation:ready', spy);
 
-  // it('should emit conversation:ready on resume', async () => {
-  //   const spy = vi.fn();
-  //   controller.on('conversation:ready', spy);
+    await controller.selectConversation('contactA_me', {
+      remoteParticipantIds: ['contactA'],
+    });
+    await controller.selectConversation('contactA_me', {
+      remoteParticipantIds: ['contactA'],
+    });
 
-  //   await controller.selectConversation('contactA_me', {
-  //     remoteParticipantIds: ['contactA'],
-  //   });
-  //   await controller.selectConversation('contactA_me', {
-  //     remoteParticipantIds: ['contactA'],
-  //   });
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
 
-  //   expect(spy).toHaveBeenCalledTimes(2);
-  // });
+  it('should pass displayUI through in conversation:ready', async () => {
+    const spy = vi.fn();
+    controller.on('conversation:ready', spy);
 
-  // it('should pass displayUI through in conversation:ready', async () => {
-  //   const spy = vi.fn();
-  //   controller.on('conversation:ready', spy);
+    await controller.selectConversation('contactA_me', {
+      remoteParticipantIds: ['contactA'],
+      displayUI: true,
+    });
 
-  //   await controller.selectConversation('contactA_me', {
-  //     remoteParticipantIds: ['contactA'],
-  //     displayUI: true,
-  //   });
-
-  //   expect(spy).toHaveBeenCalledWith(
-  //     expect.objectContaining({ displayUI: true }),
-  //   );
-  // });
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({ displayUI: true }),
+    );
+  });
 
   it('should fetch profile and emit conversation:profile-updated', async () => {
     const profile = {
