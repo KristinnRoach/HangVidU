@@ -704,18 +704,19 @@ export function initMessagesUI() {
     // Set up outside click handler
 
     // ignore clicks that select conversations (class="contact-entry") + msg toggle + reactions picker
-    const contactEntries = document.querySelectorAll('.contact-entry');
-    const ignoreClickElementsArray = Array.from(contactEntries);
-    ignoreClickElementsArray.push(messageToggle.element);
-    if (reactionUI.activePicker) {
-      ignoreClickElementsArray.push(reactionUI.activePicker);
-    }
-
     removeMessagesBoxClickOutside = onClickOutside(
       messagesBox,
       () => closeMessagesUI(),
       {
-        ignore: () => ignoreClickElementsArray,
+        ignore: () => {
+          const contactEntries = document.querySelectorAll('.contact-entry');
+          const ignoreClickElementsArray = Array.from(contactEntries);
+          ignoreClickElementsArray.push(messageToggle.element);
+          if (reactionUI.activePicker) {
+            ignoreClickElementsArray.push(reactionUI.activePicker);
+          }
+          return ignoreClickElementsArray;
+        },
         esc: true,
         ignoreInputBlur: isMobileDevice(), // Prevent accidental closes when dismissing keyboard on mobile
       },
