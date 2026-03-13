@@ -136,7 +136,7 @@ describe('MessagingController', () => {
 
   it('should open a conversation successfully', async () => {
     const spy = vi.fn();
-    controller.on('conversation:opened', spy);
+    controller.on('conversation:selected', spy);
 
     await controller.selectConversation('contactA_me', {
       remoteParticipantIds: ['contactA'],
@@ -153,7 +153,7 @@ describe('MessagingController', () => {
 
   it('should not re-emit if conversation already open', async () => {
     const spy = vi.fn();
-    controller.on('conversation:opened', spy);
+    controller.on('conversation:selected', spy);
     controller.on('conversation:resumed', spy);
 
     await controller.selectConversation('contactA_me', {

@@ -1251,7 +1251,7 @@ export function initMessagesUI() {
 
   /**
    * Prepare UI for a conversation (internal use)
-   * Called after conversation:opened or conversation:resumed event
+   * Called after conversation:selected or conversation:resumed event
    * @param {string} conversationId - Conversation ID
    * @param {string} contactId - Contact ID
    * @param {string} contactName - Contact name
@@ -1696,7 +1696,7 @@ export function initMessagesUI() {
 
   // TODO: SIMPLIFY display logic.
   messagingController.on(
-    'conversation:opened',
+    'conversation:selected',
     ({ conversationId, remoteParticipantIds }) => {
       _displayConversation(conversationId, remoteParticipantIds[0]);
     },

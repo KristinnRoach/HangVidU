@@ -135,7 +135,7 @@ export class MessagingController extends EventEmitter {
    *
    * If a conversation already exists, it will be resumed instead of creating a new one.
    * Fetches history from the store or cache if available, seeds the cache, then attaches live listeners.
-   * Emits 'conversation:opened' or 'conversation:resumed'
+   * Emits 'conversation:selected' or 'conversation:resumed'
    *
    * @param {string} conversationId - Conversation ID
    * @param {Object} [metadata] - Conversation metadata
@@ -232,7 +232,7 @@ export class MessagingController extends EventEmitter {
     // 3. Emit after cache is seeded — UI can render history immediately
     this._touchConversation(conversationId);
 
-    this.emit('conversation:opened', {
+    this.emit('conversation:selected', {
       conversationId,
       remoteParticipantIds,
       contactName,
