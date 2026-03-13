@@ -1276,7 +1276,7 @@ export function initMessagesUI() {
     lastTimestamp = 0;
 
     const profile = conversationState?.profile;
-    const name = conversationState?.contactName || profile?.displayName || '';
+    const name = profile?.displayName || '';
     const photoURL = profile?.photoURL || '';
 
     conversationMetadata = {
