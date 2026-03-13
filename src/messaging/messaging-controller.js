@@ -164,9 +164,17 @@ export class MessagingController extends EventEmitter {
       this.emit('conversation:ready', {
         conversationId,
         remoteParticipantIds: conversationState.remoteParticipantIds,
-        isNew: false,
         displayUI,
+        conversationState,
       });
+
+      // Re-emit cached profile so UI can update after conversation switch
+      if (conversationState.profile) {
+        this.emit('conversation:profile-updated', {
+          conversationId,
+          profile: conversationState.profile,
+        });
+      }
 
       return;
     }
@@ -236,8 +244,8 @@ export class MessagingController extends EventEmitter {
     this.emit('conversation:ready', {
       conversationId,
       remoteParticipantIds,
-      isNew: true,
       displayUI,
+      conversationState,
     });
 
     // 4. Profile fetch — async, non-blocking

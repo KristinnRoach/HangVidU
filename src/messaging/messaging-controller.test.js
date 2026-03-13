@@ -151,13 +151,12 @@ describe('MessagingController', () => {
     expect(spy).toHaveBeenCalledWith({
       conversationId: 'contactA_me',
       remoteParticipantIds: ['contactA'],
-      isNew: true,
       displayUI: false,
     });
     expect(controller.conversations.size).toBe(1);
   });
 
-  it('should emit conversation:ready with isNew false on resume', async () => {
+  it('should emit conversation:ready on resume', async () => {
     const spy = vi.fn();
     controller.on('conversation:ready', spy);
 
@@ -169,9 +168,6 @@ describe('MessagingController', () => {
     });
 
     expect(spy).toHaveBeenCalledTimes(2);
-    expect(spy).toHaveBeenLastCalledWith(
-      expect.objectContaining({ isNew: false }),
-    );
   });
 
   it('should pass displayUI through in conversation:ready', async () => {
@@ -189,7 +185,10 @@ describe('MessagingController', () => {
   });
 
   it('should fetch profile and emit conversation:profile-updated', async () => {
-    const profile = { displayName: 'Alice', photoURL: 'https://example.com/alice.jpg' };
+    const profile = {
+      displayName: 'Alice',
+      photoURL: 'https://example.com/alice.jpg',
+    };
     mockGetUserProfile.mockResolvedValueOnce(profile);
 
     const spy = vi.fn();
