@@ -11,6 +11,12 @@ vi.mock('../auth/auth-state.js', () => ({
   getUser: vi.fn(() => ({ uid: 'me', displayName: 'Test User' })),
 }));
 
+// Mock profile
+const mockGetUserProfile = vi.fn(() => Promise.resolve(null));
+vi.mock('../user/profile.js', () => ({
+  getUserProfile: (...args) => mockGetUserProfile(...args),
+}));
+
 // Mock file processing (no-op in tests)
 vi.mock('../media/image-compress.js', () => ({
   compressImage: vi.fn(() => null),
@@ -136,37 +142,76 @@ describe('MessagingController', () => {
 
   it('should open a conversation successfully', async () => {
     const spy = vi.fn();
-    controller.on('conversation:selected', spy);
+    controller.on('conversation:ready', spy);
 
     await controller.selectConversation('contactA_me', {
       remoteParticipantIds: ['contactA'],
-      contactName: 'Alice',
     });
 
     expect(spy).toHaveBeenCalledWith({
       conversationId: 'contactA_me',
       remoteParticipantIds: ['contactA'],
-      contactName: 'Alice',
+      isNew: true,
+      displayUI: false,
     });
     expect(controller.conversations.size).toBe(1);
   });
 
-  it('should not re-emit if conversation already open', async () => {
+  it('should emit conversation:ready with isNew false on resume', async () => {
     const spy = vi.fn();
-    controller.on('conversation:selected', spy);
-    controller.on('conversation:resumed', spy);
+    controller.on('conversation:ready', spy);
 
     await controller.selectConversation('contactA_me', {
       remoteParticipantIds: ['contactA'],
-      contactName: 'Alice',
     });
     await controller.selectConversation('contactA_me', {
       remoteParticipantIds: ['contactA'],
-      contactName: 'Alice',
     });
 
-    // Should emit opened once, then resumed on second call
     expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isNew: false }),
+    );
+  });
+
+  it('should pass displayUI through in conversation:ready', async () => {
+    const spy = vi.fn();
+    controller.on('conversation:ready', spy);
+
+    await controller.selectConversation('contactA_me', {
+      remoteParticipantIds: ['contactA'],
+      displayUI: true,
+    });
+
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({ displayUI: true }),
+    );
+  });
+
+  it('should fetch profile and emit conversation:profile-updated', async () => {
+    const profile = { displayName: 'Alice', photoURL: 'https://example.com/alice.jpg' };
+    mockGetUserProfile.mockResolvedValueOnce(profile);
+
+    const spy = vi.fn();
+    controller.on('conversation:profile-updated', spy);
+
+    await controller.selectConversation('contactA_me', {
+      remoteParticipantIds: ['contactA'],
+    });
+
+    // Wait for async profile fetch
+    await vi.waitFor(() => {
+      expect(spy).toHaveBeenCalledWith({
+        conversationId: 'contactA_me',
+        profile,
+      });
+    });
+
+    expect(controller.getProfile('contactA_me')).toEqual(profile);
+  });
+
+  it('should return null for profile of unknown conversation', () => {
+    expect(controller.getProfile('nonexistent')).toBeNull();
   });
 
   it('should send message through store and return message', async () => {

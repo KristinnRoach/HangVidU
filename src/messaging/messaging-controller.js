@@ -5,6 +5,7 @@ import { fileToBase64 } from '../utils/file-to-base64.js';
 import { compressImage } from '../media/image-compress.js';
 import { EventEmitter } from '../utils/event-emitter.js';
 import { getUserId } from '../auth/auth-state.js';
+import { getUserProfile } from '../user/profile.js';
 import {
   createFileMessage,
   createTextMessage,
@@ -135,16 +136,16 @@ export class MessagingController extends EventEmitter {
    *
    * If a conversation already exists, it will be resumed instead of creating a new one.
    * Fetches history from the store or cache if available, seeds the cache, then attaches live listeners.
-   * Emits 'conversation:selected' or 'conversation:resumed'
+   * Emits 'conversation:ready' when data is available.
    *
    * @param {string} conversationId - Conversation ID
-   * @param {Object} [metadata] - Conversation metadata
-   * @param {string[]} [metadata.remoteParticipantIds] - User IDs of other participants (excludes self)
-   * @param {string} [metadata.contactName] - Display name for the conversation
+   * @param {Object} [options]
+   * @param {string[]} [options.remoteParticipantIds] - User IDs of other participants (excludes self)
+   * @param {boolean} [options.displayUI] - Whether to open the conversation panel
    */
   async selectConversation(
     conversationId,
-    { remoteParticipantIds = [], contactName } = {},
+    { remoteParticipantIds = [], displayUI = false } = {},
   ) {
     if (!conversationId || typeof conversationId !== 'string') {
       throw new Error('conversationId must be a non-empty string');
@@ -160,10 +161,11 @@ export class MessagingController extends EventEmitter {
       const conversationState = this.conversations.get(conversationId);
 
       this._touchConversation(conversationId);
-      this.emit('conversation:resumed', {
+      this.emit('conversation:ready', {
         conversationId,
         remoteParticipantIds: conversationState.remoteParticipantIds,
-        contactName: conversationState.contactName,
+        isNew: false,
+        displayUI,
       });
 
       return;
@@ -173,7 +175,7 @@ export class MessagingController extends EventEmitter {
     const conversationState = {
       conversationId,
       remoteParticipantIds,
-      contactName,
+      profile: null,
       history: [],
       _unsubscribe: null,
     };
@@ -181,8 +183,7 @@ export class MessagingController extends EventEmitter {
     // Add conversation to map
     this.conversations.set(conversationId, conversationState);
 
-    // 1. Fetch full history (all messages, local + remote) // TODO: Check cache before fetch!!?
-
+    // 1. Fetch full history (all messages, local + remote)
     const { messages, lastKey } = await this.store.fetchHistory(conversationId);
 
     for (const message of messages) {
@@ -232,31 +233,44 @@ export class MessagingController extends EventEmitter {
     // 3. Emit after cache is seeded — UI can render history immediately
     this._touchConversation(conversationId);
 
-    this.emit('conversation:selected', {
+    this.emit('conversation:ready', {
       conversationId,
       remoteParticipantIds,
-      contactName,
+      isNew: true,
+      displayUI,
     });
+
+    // 4. Profile fetch — async, non-blocking
+    this._fetchProfile(conversationId, remoteParticipantIds[0]);
   }
 
   /**
-   * Display a conversation in the UI by emitting the appropriate event.
-   * Must be called after selectConversation() to trigger UI updates.
-   * @param {string} conversationId - Conversation ID
+   * Fetch and cache a user profile for a conversation.
+   * Emits 'conversation:profile-updated' when resolved.
+   * @param {string} conversationId
+   * @param {string} userId
+   * @private
    */
-  displayConversation(conversationId) {
-    const conversationState = this.conversations.get(conversationId);
-    if (!conversationState) {
-      throw new Error(
-        `Cannot display non-existent conversation: ${conversationId}`,
-      );
+  async _fetchProfile(conversationId, userId) {
+    if (!userId) return;
+    try {
+      const profile = await getUserProfile(userId);
+      const state = this.conversations.get(conversationId);
+      if (!state || !profile) return;
+      state.profile = profile;
+      this.emit('conversation:profile-updated', { conversationId, profile });
+    } catch {
+      // logged in getUserProfile
     }
+  }
 
-    this.emit('conversation:display', {
-      conversationId,
-      remoteParticipantIds: conversationState.remoteParticipantIds,
-      contactName: conversationState.contactName,
-    });
+  /**
+   * Get cached profile for a conversation
+   * @param {string} conversationId
+   * @returns {Object|null}
+   */
+  getProfile(conversationId) {
+    return this.conversations.get(conversationId)?.profile ?? null;
   }
 
   /**

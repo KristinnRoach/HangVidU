@@ -27,7 +27,6 @@ import { getUserId, getIsLoggedIn } from '../../../auth/auth-state.js';
 import { messagingController } from '../../../messaging/messaging-controller.js';
 import { contactsController } from '../../../contacts/contacts-controller.js';
 import { showInfoToast } from '../../utils/toast.js';
-import { getUserProfile } from '../../../user/profile.js';
 import { createMessageBox } from './createMessageBox.js';
 import { createMessageTopBar } from './createMessageTopBar.js';
 import { devDebug } from '../../../utils/dev/dev-utils.js';
@@ -1250,33 +1249,27 @@ export function initMessagesUI() {
   }
 
   /**
-   * Prepare UI for a conversation (internal use)
-   * Called after conversation:selected or conversation:resumed event
+   * Prepare UI for a conversation switch.
+   * Clears old messages, resets metadata, renders cached history.
+   * No-op if already showing the same conversation.
    * @param {string} conversationId - Conversation ID
    * @param {string} contactId - Contact ID
    */
-  function _prepUIForConversation(conversationId, contactId) {
+  function prepareConversation(conversationId, contactId) {
+    if (!conversationId) return;
+    if (currentConversationId === conversationId) return;
+
     if (markAsReadTimeout !== null) {
       clearTimeout(markAsReadTimeout);
       markAsReadTimeout = null;
     }
 
-    if (
-      currentConversationId !== null &&
-      currentConversationId !== conversationId
-    ) {
+    if (currentConversationId !== null) {
       clearMessages();
     }
 
-    const conversationChanged =
-      currentConversationId === null ||
-      currentConversationId !== conversationId;
-
-    if (!conversationChanged) return; // No change, no need to update UI
-
     currentConversationId = conversationId;
-
-    // New conversation: reset metadata so we re-fetch profile/photo
+    lastTimestamp = 0;
     conversationMetadata = {
       contactId,
       contactName: '',
@@ -1284,18 +1277,30 @@ export function initMessagesUI() {
       contactPhotoURL: null,
     };
 
-    // Reset timestamp tracking when switching conversations so appended
-    // cached history shows correct timestamp separators.
-    lastTimestamp = 0;
-
     if (messageTopBar) {
-      messageTopBar.setContact({
-        name: '',
-        photoURL: '',
-      });
+      messageTopBar.setContact({ name: '', photoURL: '' });
     }
-
     refreshAttachButton();
+
+    // Render cached history
+    const history = messagingController.getHistory(conversationId);
+    if (history?.length > 0) {
+      appendCachedHistory({ history });
+    }
+  }
+
+  /**
+   * Show the conversation panel and mark as read.
+   * Must be called after prepareConversation().
+   */
+  function showConversationPanel() {
+    if (!currentConversationId) return;
+    if (!isMessagesUIOpen()) {
+      toggleMessagesUIVisible();
+    }
+    messagingController.markAsRead(currentConversationId).catch((err) => {
+      console.warn('Failed to mark messages as read:', err);
+    });
   }
 
   /**
@@ -1625,95 +1630,38 @@ export function initMessagesUI() {
     appendMessage(message);
   }
 
-  function displayCurrentConversation() {
-    if (!currentConversationId) {
-      console.warn('No current conversation to display:', {
-        currentConversationId,
-      });
-      return;
-    }
-
-    if (!isMessagesUIOpen()) {
-      console.warn('Messages UI is not open, opening now');
-      toggleMessagesUIVisible();
-    }
-
-    messagingController.markAsRead(currentConversationId).catch((err) => {
-      console.warn('Failed to mark messages as read:', err);
-    });
-  }
-
-  function _displayConversation(conversationId, contactId) {
-    if (!conversationId) return;
-
-    const isCurrentConversation = currentConversationId === conversationId;
-
-    if (!isCurrentConversation) {
-      clearMessages();
-    }
-
-    _prepUIForConversation(conversationId, contactId);
-
-    // Fetch contact profile (photo + display name) for avatars
-    getUserProfile(contactId)
-      .then((profile) => {
-        if (!profile) return;
-
-        // Update metadata with profile info
-        conversationMetadata.contactProfile = profile;
-        if (!conversationMetadata.contactName && profile.displayName) {
-          conversationMetadata.contactName = profile.displayName;
-        }
-        if (profile.photoURL) {
-          conversationMetadata.contactPhotoURL = profile.photoURL;
-        }
-
-        if (messageTopBar && currentConversationId === conversationId) {
-          messageTopBar.setContact({
-            name: conversationMetadata.contactName || '',
-            photoURL: conversationMetadata.contactPhotoURL || '',
-          });
-        }
-
-        refreshRemoteAvatars(messagesMessages, {
-          name: conversationMetadata.contactName,
-          photoURL: conversationMetadata.contactPhotoURL,
-        });
-      })
-      .catch(() => {});
-
-    // Render existing cached history (only when switching conversations, not resuming)
-    if (!isCurrentConversation) {
-      const history = messagingController.getHistory(conversationId);
-      if (history && history.length > 0) {
-        appendCachedHistory({ history });
-      }
-    }
-  }
-
   // --- Domain Event Listeners ---
 
-  // TODO: SIMPLIFY display logic.
+  // Data ready — prepare conversation UI
   messagingController.on(
-    'conversation:selected',
-    ({ conversationId, remoteParticipantIds }) => {
-      _displayConversation(conversationId, remoteParticipantIds[0]);
+    'conversation:ready',
+    ({ conversationId, remoteParticipantIds, displayUI }) => {
+      prepareConversation(conversationId, remoteParticipantIds[0]);
+      if (displayUI) showConversationPanel();
     },
     { signal: ac.signal },
   );
 
+  // Profile loaded — update name/photo
   messagingController.on(
-    'conversation:resumed',
-    ({ conversationId, remoteParticipantIds }) => {
-      _displayConversation(conversationId, remoteParticipantIds[0]);
-    },
-    { signal: ac.signal },
-  );
+    'conversation:profile-updated',
+    ({ conversationId, profile }) => {
+      if (conversationId !== currentConversationId || !profile) return;
 
-  messagingController.on(
-    'conversation:display',
-    () => {
-      displayCurrentConversation();
+      if (profile.displayName) conversationMetadata.contactName = profile.displayName;
+      if (profile.photoURL) conversationMetadata.contactPhotoURL = profile.photoURL;
+      conversationMetadata.contactProfile = profile;
+
+      if (messageTopBar) {
+        messageTopBar.setContact({
+          name: conversationMetadata.contactName || '',
+          photoURL: conversationMetadata.contactPhotoURL || '',
+        });
+      }
+      refreshRemoteAvatars(messagesMessages, {
+        name: conversationMetadata.contactName,
+        photoURL: conversationMetadata.contactPhotoURL,
+      });
     },
     { signal: ac.signal },
   );
@@ -1840,7 +1788,7 @@ export function initMessagesUI() {
     isMessageInputFocused,
     focusMessageInput,
     unfocusMessageInput,
-    displayConversation: displayCurrentConversation,
+    showConversationPanel,
     getCurrentConversationId,
     clearMessages,
     setFileTransferController,

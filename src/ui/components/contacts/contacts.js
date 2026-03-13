@@ -186,12 +186,11 @@ function attachContactListeners(container, lobbyElement) {
   container.querySelectorAll('.contact-name[data-contact-id]').forEach((el) => {
     el.onclick = () => {
       const contactId = el.getAttribute('data-contact-id');
-      const contactName = el.getAttribute('data-contact-name');
       if (contactId) {
         clearUnreadBadge(contactId);
         document.dispatchEvent(
           new CustomEvent('messages:conversation:select', {
-            detail: { contactId, contactName, displayUI: true },
+            detail: { contactId, displayUI: true },
           }),
         );
       }
@@ -359,7 +358,6 @@ export async function autoInitMsgSessionIfNeeded() {
       );
     await messagingController.selectConversation(conversationId, {
       remoteParticipantIds: [firstContact.contactId],
-      contactName: firstContact.contactName,
     });
   } catch (error) {
     console.warn(
