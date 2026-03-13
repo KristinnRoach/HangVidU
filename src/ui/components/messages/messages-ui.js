@@ -661,6 +661,11 @@ export function initMessagesUI() {
     if (isMessageInputFocused()) messagesInput.blur();
   }
 
+  /**
+   * Close the messages UI panel.
+   * No-op if already closed.
+   * Cleans up event listeners and resets positioning.
+   */
   function closeMessagesUI() {
     if (!isMessagesUIOpen()) return;
 
@@ -683,6 +688,11 @@ export function initMessagesUI() {
     closeMessagesBox();
   }
 
+  /**
+   * Open the messages UI panel.
+   * No-op if already open.
+   * Marks conversation as read and sets up click-outside handler.
+   */
   function openMessagesUI() {
     if (isMessagesUIOpen()) return;
 
@@ -723,6 +733,10 @@ export function initMessagesUI() {
     );
   }
 
+  /**
+   * Toggle the messages UI panel open/closed.
+   * Used by the message toggle button and keyboard shortcut.
+   */
   function toggleMessagesUIVisible() {
     if (isMessagesUIOpen()) {
       closeMessagesUI();
@@ -1254,10 +1268,11 @@ export function initMessagesUI() {
 
   /**
    * Prepare UI for a conversation switch.
-   * Clears old messages, resets metadata, renders cached history.
+   * Clears old messages, resets metadata with profile, renders cached history.
    * No-op if already showing the same conversation.
    * @param {string} conversationId - Conversation ID
    * @param {string} contactId - Contact ID
+   * @param {Object} [state] - Conversation state snapshot with { profile, history }
    */
   function prepareConversation(conversationId, contactId, conversationState) {
     if (!conversationId) return;
@@ -1636,13 +1651,13 @@ export function initMessagesUI() {
       conversationId,
       remoteParticipantIds,
       displayUI,
-      conversationState,
+      profile,
+      history,
     }) => {
-      prepareConversation(
-        conversationId,
-        remoteParticipantIds[0],
-        conversationState,
-      );
+      prepareConversation(conversationId, remoteParticipantIds[0], {
+        profile,
+        history,
+      });
       if (displayUI) openMessagesUI();
     },
     { signal: ac.signal },
