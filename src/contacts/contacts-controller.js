@@ -20,8 +20,6 @@ export class ContactsController extends EventEmitter {
   }
 
   async handleHangUp(contactUserId, roomId) {
-    if (!getIsLoggedIn()) return { action: 'skip', reason: 'not-logged-in' };
-
     const existing = await this.getContacts();
     const entry = existing?.[contactUserId];
 
@@ -32,6 +30,8 @@ export class ContactsController extends EventEmitter {
       }
       return { action: 'existing' };
     }
+
+    if (!getIsLoggedIn()) return { action: 'skip', reason: 'not-logged-in' };
 
     return { action: 'prompt-save' };
   }

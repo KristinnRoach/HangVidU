@@ -21,7 +21,7 @@ import {
   subscribe as subscribeAuth,
 } from './auth/auth-state.js';
 
-// TODO: inAppNotificationManager VS pushNotificationController - Compare and clarify distinction or combine!
+// TODO: inAppNotificationManager VS pushNotificationController - Compare and clarify distinction - separate concerns
 import { inAppNotificationManager } from './ui/components/notifications/in-app-notification-manager.js';
 import { pushNotificationController } from './notifications/push-notification-controller.js';
 
@@ -674,60 +674,6 @@ function removeAllIncomingListeners() {
 }
 
 /**
- * Save a recent call for the current user (RTDB if logged in, localStorage otherwise).
- * Expires after 24 hours (expiresAt timestamp).
- */
-async function saveRecentCall(roomId) {
-  const now = Date.now();
-  const expiresAt = now + 24 * 60 * 60 * 1000; // 24 hours
-  const loggedInUid = getLoggedInUserId();
-
-  if (loggedInUid) {
-    const userRecentRef = getUserRecentCallRef(loggedInUid, roomId);
-    await set(userRecentRef, { roomId, savedAt: now, expiresAt });
-    return;
-  }
-
-  // fallback to localStorage for guests
-  try {
-    const raw = localStorage.getItem('recentCalls') || '{}';
-    const obj = JSON.parse(raw);
-    obj[roomId] = { roomId, savedAt: now, expiresAt };
-    localStorage.setItem('recentCalls', JSON.stringify(obj));
-  } catch (e) {
-    console.warn('Failed to save recent call to localStorage', e);
-  }
-}
-
-/**
- * Remove a recent call entry for the current user (RTDB if logged in, localStorage otherwise).
- */
-async function removeRecentCall(roomId) {
-  const loggedInUid = getLoggedInUserId();
-
-  if (loggedInUid) {
-    try {
-      await remove(getUserRecentCallRef(loggedInUid, roomId));
-    } catch (e) {
-      console.warn('Failed to remove recent call from RTDB', e);
-    }
-    return;
-  }
-
-  // Guest: remove from localStorage
-  try {
-    const raw = localStorage.getItem('recentCalls') || '{}';
-    const obj = JSON.parse(raw);
-    if (obj[roomId]) {
-      delete obj[roomId];
-      localStorage.setItem('recentCalls', JSON.stringify(obj));
-    }
-  } catch (e) {
-    console.warn('Failed to remove recent call from localStorage', e);
-  }
-}
-
-/**
  * Listen for incoming member joins on a given roomId and log them.
  */
 export function listenForIncomingOnRoom(roomId) {
@@ -1044,30 +990,30 @@ export function listenForIncomingOnRoom(roomId) {
           // Write rejected call message to chat history
           // The callee (who rejected) writes this - both parties will see it
           try {
-            const { getUser } = await import('./auth/auth-state.js');
-            const me = getUser();
-            const myName = me?.displayName || 'Someone';
-
-            await messagingController.sendCallEventMessage(
-              joiningUserId, // The caller's ID
+            const conversationId =
+              messagingController.resolveConversationIdFromContactId(
+                joiningUserId,
+              );
+            if (!conversationId) {
+              console.warn('[MAIN] No conversation ID found for user:', {
+                joiningUserId,
+              });
+              return;
+            }
+            await messagingController.sendEventMessage(
+              conversationId,
               'rejected_call',
               {
-                roomId,
+                callId: roomId,
                 callerId: joiningUserId,
                 callerName,
-                rejectedBy: getUserId(),
-                rejectedByName: myName,
               },
+              { from: joiningUserId }, // TODO: Why is this needed?? (MULTIPLE joiningUserId sent!)
             );
             console.log('[MAIN] Rejected call message written to chat history');
           } catch (e) {
             console.warn('[MAIN] Failed to write rejected call message:', e);
           }
-
-          // Clean up recent call state for this client
-          await removeRecentCall(roomId).catch((e) => {
-            console.warn('Failed to remove recent call on rejection:', e);
-          });
         }
       }
     },
@@ -1106,8 +1052,6 @@ export function listenForIncomingOnRoom(roomId) {
       // best-effort
     }
 
-    await removeRecentCall(roomId).catch(() => {});
-
     // Clean up incoming listeners for this room to prevent stale listener firing
     // UNLESS it is a saved contact - then we want to keep listening
     let savedContact = null;
@@ -1144,8 +1088,6 @@ export function listenForIncomingOnRoom(roomId) {
       // If no members remain, remove the saved recent call for this client
       // and clean up the incoming listeners for this room (UNLESS saved contact)
       if (!status.hasMembers) {
-        await removeRecentCall(roomId);
-
         const savedContact =
           await contactsController.getContactByRoomId(roomId);
         if (!savedContact) {
@@ -1914,20 +1856,25 @@ window.addEventListener('beforeunload', async (e) => {
 // ============================================================================
 
 // Business logic for memberJoined (UI handled in bind-call-ui.js)
-CallController.on('memberJoined', ({ memberId, roomId }) => {
+CallController.on('memberJoined', async ({ memberId, roomId }) => {
   console.debug('CallController memberJoined event', { memberId, roomId });
 
   CallController.setPartnerId(memberId);
-  messagingController.openConversation(memberId);
 
-  onCallAnswered().catch((e) =>
-    console.warn('Failed to clear calling state:', e),
-  );
+  const conversationId =
+    messagingController.resolveConversationIdFromContactId(memberId);
 
-  // TODO: use or delete saveRecentCall
-  // saveRecentCall(roomId).catch((e) =>
-  //   console.warn('Failed to save recent call:', e),
-  // );
+  try {
+    await messagingController.selectConversation(conversationId, {
+      remoteParticipantIds: [memberId],
+    });
+  } catch (e) {
+    console.warn('Failed to select conversation after memberJoined:', e);
+  } finally {
+    onCallAnswered().catch((e) =>
+      console.warn('Failed to clear calling state:', e),
+    );
+  }
 });
 
 // Subscribe to CallController memberLeft event - handles partner leaving
@@ -1978,11 +1925,15 @@ CallController.on(
           // Write missed call message to chat history
           // The caller writes this - both parties will see it in their shared conversation
           try {
-            await messagingController.sendCallEventMessage(
-              contact.contactId,
+            const missedCallConvId =
+              messagingController.resolveConversationIdFromContactId(
+                contact.contactId,
+              );
+            await messagingController.sendEventMessage(
+              missedCallConvId,
               'missed_call',
               {
-                roomId,
+                callId: roomId,
                 callerId: getUserId(),
                 callerName,
               },

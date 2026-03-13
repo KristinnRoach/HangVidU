@@ -23,7 +23,7 @@ import {
   ReactionUI,
 } from '../../../messaging/reactions/index.js';
 import { REACTION_CONFIG } from '../../../messaging/reactions/ReactionConfig.js';
-import { getLoggedInUserId, getIsLoggedIn } from '../../../auth/auth-state.js';
+import { getUserId, getIsLoggedIn } from '../../../auth/auth-state.js';
 import { messagingController } from '../../../messaging/messaging-controller.js';
 import { contactsController } from '../../../contacts/contacts-controller.js';
 import { showInfoToast } from '../../utils/toast.js';
@@ -82,7 +82,7 @@ export function initMessagesUI() {
   const ac = new AbortController();
 
   const shouldShowAttachButton = () =>
-    getIsLoggedIn() && (!!fileTransferController || !!currentConversationId);
+    !!fileTransferController || !!currentConversationId; // removed getIsLoggedIn()
 
   const refreshAttachButton = () => {
     if (shouldShowAttachButton()) {
@@ -228,8 +228,11 @@ export function initMessagesUI() {
         });
       } else if (currentConversationId) {
         // RTDB file message (no active call, small files only)
-        await messagingController.sendFile(currentConversationId, file);
-        // File message will appear via the onMessage listener
+        const message = await messagingController.sendFile(
+          currentConversationId,
+          file,
+        );
+        renderMessage(message);
       } else {
         console.warn(
           '[MessagesUI] No file transport or conversation available',
@@ -736,9 +739,6 @@ export function initMessagesUI() {
     hideElement(messageToggle.element);
   }
 
-  // Map of messageId -> DOM element for reaction updates
-  const messageElements = new Map();
-
   // --- Helpers ---
 
   /**
@@ -755,7 +755,7 @@ export function initMessagesUI() {
       return;
     }
 
-    const userId = getLoggedInUserId();
+    const userId = getUserId();
     if (!userId) {
       console.warn('[MessagesUI] No userId available for reaction');
       return;
@@ -828,9 +828,8 @@ export function initMessagesUI() {
   }
 
   /**
-   * Attach reaction support to a message element. No-op if messageId is falsy.
-   * @param {HTMLElement} p - The message <p> element
-   * @param {string} messageId - Firebase message ID
+   * Attach reaction support to a message bubble element. No-op if messageId is falsy.
+   * @param {HTMLElement} p - The message bubble element (e.g. the `.message-bubble` container)   * @param {string} messageId - Firebase message ID
    * @param {Object} reactions - Initial reactions { type: [userIds] }
    * @param {Object} [opts]
    * @param {Function} [opts.onSingleTap] - Called on single tap (e.g. image preview)
@@ -839,7 +838,6 @@ export function initMessagesUI() {
     if (!messageId) return;
 
     p.dataset.messageId = messageId;
-    messageElements.set(messageId, p);
 
     if (reactions && Object.keys(reactions).length > 0) {
       reactionManager.syncFromRemote(messageId, reactions);
@@ -907,8 +905,8 @@ export function initMessagesUI() {
    * Build file message content span (RTDB base64 file with thumbnail + download link).
    * @returns {{ element: HTMLElement, onSingleTap?: Function }}
    */
-  function buildFileContent(parsedMessage) {
-    const { fileName, mimeType, fileSize, data: dataUrl } = parsedMessage;
+  function buildFileContent(message) {
+    const { fileName, mimeType, fileSize, data: dataUrl } = message;
 
     const textSpan = document.createElement('span');
     textSpan.className = 'message-text file-message';
@@ -961,12 +959,12 @@ export function initMessagesUI() {
   /**
    * Build call event content span (missed/rejected call with callback button).
    */
-  function buildCallEventContent(parsedMessage, { onCallBack }) {
+  function buildCallEventContent(message, { onCallBack }) {
     const callEventBubble = document.createElement('span');
     callEventBubble.className = 'message-text call-event-content';
 
-    const details = parsedMessage.details || {};
-    const currentUserId = getLoggedInUserId();
+    const details = message.details || {};
+    const currentUserId = getUserId();
     const wasInitiatedByMe = details.callerId === currentUserId;
 
     const callStatusText = document.createElement('span');
@@ -1038,28 +1036,28 @@ export function initMessagesUI() {
    * Derive whether a message was sent by the local user.
    * Returns true (local), false (remote), or null (unknown/missing from).
    */
-  function isLocalMessage(parsedMessage) {
-    if (!parsedMessage.from) return null;
-    return parsedMessage.from === getLoggedInUserId();
+  function isLocalMessage(message) {
+    if (!message.from) return null;
+    return message.from === getUserId();
   }
 
   /**
    * Append a message of any type to the chat UI.
-   * @param {Object} parsedMessage - Message object (conforms to schema.js or minimal { from, text })
+   * @param {Object} message - Message object (conforms to schema.js or minimal { from, text })
    * @param {Object} [uiOpts] - UI-only options not in the message schema
    * @param {Function} [uiOpts.onCallBack] - Callback for event "call back" button
    */
-  function appendMessage(parsedMessage, uiOpts = {}) {
+  function appendMessage(message, uiOpts = {}) {
     const { onCallBack } = uiOpts;
-    const type = parsedMessage.type || 'text';
-    const isLocal = isLocalMessage(parsedMessage);
-    const reactions = parsedMessage.reactions;
+    const type = message.type || 'text';
+    const isLocal = isLocalMessage(message);
+    const reactions = message.reactions;
 
     // message-entry: container with type/sender classes
     const messageEntry = document.createElement('div');
     messageEntry.className = 'message-entry';
-    if (parsedMessage.sentAt) {
-      messageEntry.setAttribute('data-timestamp', parsedMessage.sentAt);
+    if (message.sentAt) {
+      messageEntry.setAttribute('data-timestamp', message.sentAt);
     }
 
     if (type === 'event') {
@@ -1085,17 +1083,17 @@ export function initMessagesUI() {
     let onSingleTap;
     switch (type) {
       case 'file': {
-        const file = buildFileContent(parsedMessage);
+        const file = buildFileContent(message);
         p.appendChild(file.element);
         onSingleTap = file.onSingleTap;
         break;
       }
       case 'event':
-        p.appendChild(buildCallEventContent(parsedMessage, { onCallBack }));
+        p.appendChild(buildCallEventContent(message, { onCallBack }));
         initIcons(p);
         break;
       default: // 'text'
-        p.appendChild(buildTextContent(parsedMessage.text));
+        p.appendChild(buildTextContent(message.text));
         break;
     }
 
@@ -1103,13 +1101,13 @@ export function initMessagesUI() {
     messageBubble.appendChild(p);
     messageEntry.appendChild(messageBubble);
 
-    if (isLocal === true && parsedMessage.read) {
+    if (isLocal === true && message.read) {
       messageEntry.dataset.read = 'true';
       messageBubble.dataset.read = 'true';
     }
 
     // Reactions (attach to messageBubble)
-    attachReactions(messageBubble, parsedMessage.messageId, reactions, {
+    attachReactions(messageBubble, message.messageId, reactions, {
       onSingleTap,
     });
 
@@ -1117,7 +1115,7 @@ export function initMessagesUI() {
     scrollMessagesToEnd();
 
     // Increment unread if hidden and received from remote
-    if (isLocal === false && !parsedMessage.read && isHidden(messagesBox)) {
+    if (isLocal === false && !message.read && isHidden(messagesBox)) {
       const currentCount = messageToggle.element.unreadCount || 0;
       messageToggle.setUnreadCount(currentCount + 1);
     }
@@ -1164,9 +1162,13 @@ export function initMessagesUI() {
     if (currentConversationId) {
       try {
         messagesInput.value = ''; // Optimistically clear input
-        await messagingController.send(currentConversationId, msg);
-        // Reset textarea height after clearing
-        if (resetInputHeight) resetInputHeight();
+        const parsed = await messagingController.send(
+          currentConversationId,
+          msg,
+        );
+
+        renderMessage(parsed); // Optimistically render sender's own message from return value
+        if (resetInputHeight) resetInputHeight(); // Reset textarea height
       } catch (err) {
         if (messagesInput.value === '') messagesInput.value = msg; // Restore message on failure
         console.error('[MessagesUI] Failed to send message:', err);
@@ -1217,7 +1219,9 @@ export function initMessagesUI() {
    * Called when clearing messages or switching sessions to prevent leaks.
    */
   function cleanupReactionListeners() {
-    for (const el of messageElements.values()) {
+    const messageElements =
+      messagesMessages.querySelectorAll('[data-message-id]');
+    for (const el of messageElements) {
       if (typeof el._reactionCleanup === 'function') {
         try {
           el._reactionCleanup();
@@ -1238,7 +1242,6 @@ export function initMessagesUI() {
     }
 
     cleanupReactionListeners();
-    messageElements.clear();
     messagesMessages.innerHTML = '';
     messagesMessages.scrollTop = 0;
     // Reset timestamp separator state so new session histories insert
@@ -1253,7 +1256,7 @@ export function initMessagesUI() {
    * @param {string} contactId - Contact ID
    * @param {string} contactName - Contact name
    */
-  function _prepUIForConversation(conversationId, contactId, contactName) {
+  function _prepUIForConversation(conversationId, contactId) {
     if (markAsReadTimeout !== null) {
       clearTimeout(markAsReadTimeout);
       markAsReadTimeout = null;
@@ -1270,22 +1273,17 @@ export function initMessagesUI() {
       currentConversationId === null ||
       currentConversationId !== conversationId;
 
+    if (!conversationChanged) return; // No change, no need to update UI
+
     currentConversationId = conversationId;
 
-    if (conversationChanged) {
-      // New conversation: reset metadata so we re-fetch profile/photo
-      conversationMetadata = {
-        contactId,
-        contactName,
-        contactProfile: null,
-        contactPhotoURL: null,
-      };
-    } else {
-      // Resuming the same conversation: preserve any previously fetched
-      // `contactProfile` / `contactPhotoURL` to avoid a brief UI flash.
-      conversationMetadata.contactId = contactId;
-      conversationMetadata.contactName = contactName;
-    }
+    // New conversation: reset metadata so we re-fetch profile/photo
+    conversationMetadata = {
+      contactId,
+      contactName: '',
+      contactProfile: null,
+      contactPhotoURL: null,
+    };
 
     // Reset timestamp tracking when switching conversations so appended
     // cached history shows correct timestamp separators.
@@ -1293,7 +1291,7 @@ export function initMessagesUI() {
 
     if (messageTopBar) {
       messageTopBar.setContact({
-        name: contactName || '',
+        name: '',
         photoURL: '',
       });
     }
@@ -1500,7 +1498,6 @@ export function initMessagesUI() {
     detachRepositionHandlers();
 
     // Clear reaction state
-    messageElements.clear();
     reactionManager.clearAll();
 
     if (messageTopBar) {
@@ -1514,7 +1511,9 @@ export function initMessagesUI() {
    * @param {Object} reactions - Reactions { type: [userIds] }
    */
   function updateMessageReactions(messageId, reactions) {
-    const element = messageElements.get(messageId);
+    const element = messagesMessages.querySelector(
+      `[data-message-id="${messageId}"]`,
+    );
     if (!element) return;
 
     // Convert { heart: ['user1'] } to { heart: 1 } for ReactionUI
@@ -1603,36 +1602,28 @@ export function initMessagesUI() {
    */
   function appendCachedHistory(session) {
     if (!session || !session.history) return;
-    session.history.forEach((event) =>
-      processReceivedMessage(event.parsedMessage),
-    );
+    session.history.forEach((event) => renderMessage(event.message));
   }
 
   let lastTimestamp = 0;
   const TIMESTAMP_THRESHOLD = 5 * 60 * 1000; // 5 minutes
 
   /**
-   * Core logic to process and render a received message or reaction update.
+   * Core logic to process and render a message or reaction update.
    */
-  function processReceivedMessage(parsedMessage) {
-    // Handle reaction updates separately
-    if (parsedMessage._reactionUpdate) {
-      updateMessageReactions(parsedMessage.messageId, parsedMessage.reactions);
-      return;
-    }
-
-    const timestamp = parsedMessage.sentAt || Date.now();
-    const formattedTimestamp = formatTimestamp(timestamp);
+  function renderMessage(message) {
+    const timestamp = message.sentAt || Date.now();
 
     if (timestamp - lastTimestamp > TIMESTAMP_THRESHOLD) {
       const timestampEl = document.createElement('div');
-      timestampEl.className = 'message-timestamp';
+      const formattedTimestamp = formatTimestamp(timestamp);
       timestampEl.textContent = formattedTimestamp;
+      timestampEl.className = 'message-timestamp';
       messagesMessages.appendChild(timestampEl);
     }
     lastTimestamp = timestamp;
 
-    appendMessage(parsedMessage);
+    appendMessage(message);
   }
 
   function displayCurrentConversation() {
@@ -1644,6 +1635,7 @@ export function initMessagesUI() {
     }
 
     if (!isMessagesUIOpen()) {
+      console.warn('Messages UI is not open, opening now');
       toggleMessagesUIVisible();
     }
 
@@ -1652,7 +1644,7 @@ export function initMessagesUI() {
     });
   }
 
-  function _displayConversation(conversationId, contactId, contactName) {
+  function _displayConversation(conversationId, contactId) {
     if (!conversationId) return;
 
     const isCurrentConversation = currentConversationId === conversationId;
@@ -1661,7 +1653,7 @@ export function initMessagesUI() {
       clearMessages();
     }
 
-    _prepUIForConversation(conversationId, contactId, contactName);
+    _prepUIForConversation(conversationId, contactId);
 
     // Fetch contact profile (photo + display name) for avatars
     getUserProfile(contactId)
@@ -1701,18 +1693,28 @@ export function initMessagesUI() {
   }
 
   // --- Domain Event Listeners ---
+
+  // TODO: SIMPLIFY display logic.
   messagingController.on(
     'conversation:opened',
-    ({ conversationId, contactId, contactName }) => {
-      _displayConversation(conversationId, contactId, contactName);
+    ({ conversationId, remoteParticipantIds }) => {
+      _displayConversation(conversationId, remoteParticipantIds[0]);
     },
     { signal: ac.signal },
   );
 
   messagingController.on(
     'conversation:resumed',
-    ({ conversationId, contactId, contactName }) => {
-      _displayConversation(conversationId, contactId, contactName);
+    ({ conversationId, remoteParticipantIds }) => {
+      _displayConversation(conversationId, remoteParticipantIds[0]);
+    },
+    { signal: ac.signal },
+  );
+
+  messagingController.on(
+    'conversation:display',
+    () => {
+      displayCurrentConversation();
     },
     { signal: ac.signal },
   );
@@ -1733,14 +1735,6 @@ export function initMessagesUI() {
   );
 
   messagingController.on(
-    'conversation:display',
-    () => {
-      displayCurrentConversation();
-    },
-    { signal: ac.signal },
-  );
-
-  messagingController.on(
     'unread:changed',
     ({ conversationId, unreadCount, newlyReadMsgIds = [] }) => {
       if (conversationId === currentConversationId) {
@@ -1753,13 +1747,12 @@ export function initMessagesUI() {
 
         // Mark messages as read in the UI if they are now read
         newlyReadMsgIds.forEach((msgId) => {
-          const messageEntry = messageElements
-            .get(msgId)
-            ?.closest('.message-entry');
-          if (!messageEntry) return;
-          messageEntry.dataset.read = 'true';
-          const bubble = messageEntry.querySelector('.message-bubble');
+          const bubble = messagesMessages.querySelector(
+            `[data-message-id="${msgId}"]`,
+          );
           if (bubble) bubble.dataset.read = 'true';
+          const messageEntry = bubble?.closest('.message-entry');
+          if (messageEntry) messageEntry.dataset.read = 'true';
         });
       }
     },
@@ -1768,7 +1761,7 @@ export function initMessagesUI() {
 
   messagingController.on(
     'message:received',
-    ({ parsedMessage, conversationId }) => {
+    ({ message, conversationId }) => {
       // Only handle if this message belongs to our currently active conversation
       if (conversationId !== currentConversationId) return;
 
@@ -1778,10 +1771,10 @@ export function initMessagesUI() {
           .catch(() => {});
       }
 
-      processReceivedMessage(parsedMessage);
+      renderMessage(message);
 
       // Mark as read if UI is open and message is not from me
-      if (isMessagesUIOpen() && !isLocalMessage(parsedMessage)) {
+      if (isMessagesUIOpen() && !isLocalMessage(message)) {
         const conversationIdAtReceive = currentConversationId ?? conversationId;
 
         clearTimeout(markAsReadTimeout);
@@ -1806,12 +1799,29 @@ export function initMessagesUI() {
   );
 
   messagingController.on(
+    'message:sent',
+    ({ message, conversationId }) => {
+      if (conversationId !== currentConversationId) return;
+
+      // NOTE: Message is already optimistically rendered on send,
+      // so this event is primarily for updating last interaction status
+      // or handling send failures in the future.
+
+      if (conversationMetadata.contactId) {
+        contactsController
+          .updateLastInteraction(conversationMetadata.contactId)
+          .catch(() => {});
+      }
+    },
+    { signal: ac.signal },
+  );
+
+  messagingController.on(
     'reaction:updated',
     ({ conversationId, messageId, reactions }) => {
       if (conversationId !== currentConversationId) return;
       updateMessageReactions(messageId, reactions);
 
-      // Update interaction timestamp for reactions as well
       if (conversationMetadata.contactId) {
         contactsController
           .updateLastInteraction(conversationMetadata.contactId)

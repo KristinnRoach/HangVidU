@@ -32,7 +32,6 @@ Main implications
 Minimal implementation (non-breaking, keep changes small)
 
 1. Transport: add small conversation-centric wrappers in transport implementations (no breaking rename):
-
    - `sendToConversation(conversationId, text)`
    - `listenToConversation(conversationId, onMessage)`
    - `getUnreadCountForConversation(conversationId)`
@@ -41,7 +40,6 @@ Minimal implementation (non-breaking, keep changes small)
      These call the same DB paths as current code but accept `conversationId` directly.
 
 2. Controller: add a convenience method in `MessagingController`:
-
    - `openSessionForConversation(conversationId, {onMessage, onUnreadChange})`
    - Store conversation sessions under a namespaced key (e.g., `conversation:{conversationId}`) to avoid colliding with `contactId` keys.
    - The method should use transport conversation-centric APIs when available and fall back to existing contact-based functions if not.
@@ -61,7 +59,6 @@ Why this approach
 - Minimal surface change: existing APIs still work; new conversation APIs are additive.
 - Eases future features (groups, metadata) while keeping current UX stable.
 
-
 ---
 
 ## STATUS: Refactored to Conversation-Centric & Event-Driven (Feb 2026)
@@ -69,7 +66,8 @@ Why this approach
 The `MessagingController` and `RTDBMessagingTransport` have been refactored to prioritize `conversationId` and use an `EventEmitter` pattern.
 
 ### Key Changes:
+
 1.  **EventEmitter**: `MessagingController` now emits `message:received`, `unread:changed`, and `reaction:updated`.
-2.  **Conversation ID**: `openSession` now takes `conversationId`. Deterministic 1:1 IDs are resolved via `messagingController.resolveConversationIdFromContact(contactId)`.
+2.  **Conversation ID**: `openSession` now takes `conversationId`. Deterministic 1:1 IDs are resolved via `messagingController.resolveConversationIdFromContactId(contactId)`.
 3.  **Transport**: `MessagingTransport` base class now contains `ToConversation` method signatures.
 4.  **UI**: `MessagesUI` and `ContactsUI` updated to resolve conversation IDs and subscribe to controller events.

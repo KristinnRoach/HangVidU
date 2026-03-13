@@ -6,29 +6,41 @@ import { messagingController } from '../messaging/messaging-controller.js';
 
 const bridgeAc = new AbortController();
 
-function onMessagesToggle(e) {
-  const { contactId, contactName } = e?.detail || {};
+async function onSelectConversation(e) {
+  const { contactId, contactName, displayUI } = e?.detail || {};
   if (!contactId) return;
 
   try {
-    messagingController.openConversation(contactId, contactName);
-    const conversationId = messagingController.resolveConversationIdFromContact(
-      contactId,
-    );
-    if (conversationId) {
-      messagingController.displayConversation(conversationId);
-    } else {
-      console.warn('[Bridge] No conversationId returned from openConversation');
+    const conversationId =
+      messagingController.resolveConversationIdFromContactId(contactId);
+    if (!conversationId) {
+      console.warn(
+        '[Bridge] onSelectConversation(): No conversationId found for contactId',
+      );
+      return;
     }
+
+    await messagingController.selectConversation(conversationId, {
+      remoteParticipantIds: [contactId],
+      contactName,
+    });
+
+    if (!displayUI) return;
+
+    messagingController.displayConversation(conversationId);
   } catch (err) {
-    console.warn('[Bridge] Failed to open conversation:', err);
+    console.warn('[Bridge] Failed to select conversation:', err);
   }
 }
 
 // Listen for contact-driven UI toggles (contacts.js dispatches this event).
-document.addEventListener('messages:toggle', onMessagesToggle, {
-  signal: bridgeAc.signal,
-});
+document.addEventListener(
+  'messages:conversation:select',
+  onSelectConversation,
+  {
+    signal: bridgeAc.signal,
+  },
+);
 
 function onContactCall(e) {
   const { contactId, contactName } = e?.detail || {};
