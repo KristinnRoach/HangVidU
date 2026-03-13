@@ -24,7 +24,7 @@ import {
   serverTimestamp,
 } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId } from '../../auth/auth-state.js';
+import { getUserId } from '../../auth/auth-state.js';
 
 const MAX_MESSAGES = 100;
 
@@ -72,21 +72,21 @@ export class RTDBMessageStore extends MessageStore {
   }
 
   async addReaction(conversationId, messageId, reactionType) {
-    const myUserId = getLoggedInUserId();
-    if (!myUserId) throw new Error('Cannot add reaction: not logged in');
+    const myUserId = getUserId();
+    if (!myUserId) throw new Error('Cannot add reaction: missing user id');
     const path = `conversations/${conversationId}/messages/${messageId}/reactions/${reactionType}/${myUserId}`;
     await set(ref(rtdb, path), true);
   }
 
   async removeReaction(conversationId, messageId, reactionType) {
-    const myUserId = getLoggedInUserId();
-    if (!myUserId) throw new Error('Cannot remove reaction: not logged in');
+    const myUserId = getUserId();
+    if (!myUserId) throw new Error('Cannot remove reaction: missing user id');
     const path = `conversations/${conversationId}/messages/${messageId}/reactions/${reactionType}/${myUserId}`;
     await set(ref(rtdb, path), null);
   }
 
   async markAsRead(conversationId) {
-    const myUserId = getLoggedInUserId();
+    const myUserId = getUserId();
     if (!myUserId) return;
 
     try {
@@ -109,7 +109,7 @@ export class RTDBMessageStore extends MessageStore {
   }
 
   async getUnreadCount(conversationId) {
-    const myUserId = getLoggedInUserId();
+    const myUserId = getUserId();
     if (!myUserId) return 0;
 
     try {
@@ -132,8 +132,8 @@ export class RTDBMessageStore extends MessageStore {
       return { messages: [], lastKey: null };
     }
 
-    if (!getLoggedInUserId()) {
-      console.warn('[RTDBMessageStore] Cannot fetch history: not logged in');
+    if (!getUserId()) {
+      console.warn('[RTDBMessageStore] Cannot fetch history: missing user id');
       return { messages: [], lastKey: null };
     }
 
@@ -176,9 +176,9 @@ export class RTDBMessageStore extends MessageStore {
    * @returns {function(): void} Unsubscribe
    */
   onMessage(conversationId, callback, { afterKey = null } = {}) {
-    const myUserId = getLoggedInUserId();
+    const myUserId = getUserId();
     if (!myUserId) {
-      console.warn('[RTDBMessageStore] Cannot listen: not logged in');
+      console.warn('[RTDBMessageStore] Cannot listen: missing user id');
       return () => {};
     }
 
@@ -219,7 +219,7 @@ export class RTDBMessageStore extends MessageStore {
   }
 
   onUnreadChange(conversationId, callback) {
-    const myUserId = getLoggedInUserId();
+    const myUserId = getUserId();
     if (!myUserId) return () => {};
 
     const messagesRef = ref(rtdb, `conversations/${conversationId}/messages`);

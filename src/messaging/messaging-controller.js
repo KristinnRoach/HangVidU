@@ -4,7 +4,7 @@ import { RTDBMessageStore } from './storage/rtdb-message-store.js';
 import { fileToBase64 } from '../utils/file-to-base64.js';
 import { compressImage } from '../media/image-compress.js';
 import { EventEmitter } from '../utils/event-emitter.js';
-import { getLoggedInUserId } from '../auth/auth-state.js';
+import { getUserId } from '../auth/auth-state.js';
 import {
   createFileMessage,
   createTextMessage,
@@ -67,9 +67,9 @@ export class MessagingController extends EventEmitter {
    * @returns {string}
    */
   resolveConversationIdFromContactId(contactId) {
-    const myUserId = getLoggedInUserId();
+    const myUserId = getUserId();
     if (!myUserId)
-      throw new Error('Cannot resolve conversation ID: not logged in');
+      throw new Error('Cannot resolve conversation ID: missing user id');
 
     return this.resolveConversationId([myUserId, contactId]);
   }
@@ -142,7 +142,10 @@ export class MessagingController extends EventEmitter {
    * @param {string[]} [metadata.remoteParticipantIds] - User IDs of other participants (excludes self)
    * @param {string} [metadata.contactName] - Display name for the conversation
    */
-  async selectConversation(conversationId, { remoteParticipantIds = [], contactName } = {}) {
+  async selectConversation(
+    conversationId,
+    { remoteParticipantIds = [], contactName } = {},
+  ) {
     if (!conversationId || typeof conversationId !== 'string') {
       throw new Error('conversationId must be a non-empty string');
     }

@@ -23,7 +23,7 @@ import {
   ReactionUI,
 } from '../../../messaging/reactions/index.js';
 import { REACTION_CONFIG } from '../../../messaging/reactions/ReactionConfig.js';
-import { getLoggedInUserId, getIsLoggedIn } from '../../../auth/auth-state.js';
+import { getUserId, getIsLoggedIn } from '../../../auth/auth-state.js';
 import { messagingController } from '../../../messaging/messaging-controller.js';
 import { contactsController } from '../../../contacts/contacts-controller.js';
 import { showInfoToast } from '../../utils/toast.js';
@@ -755,7 +755,7 @@ export function initMessagesUI() {
       return;
     }
 
-    const userId = getLoggedInUserId();
+    const userId = getUserId();
     if (!userId) {
       console.warn('[MessagesUI] No userId available for reaction');
       return;
@@ -964,7 +964,7 @@ export function initMessagesUI() {
     callEventBubble.className = 'message-text call-event-content';
 
     const details = message.details || {};
-    const currentUserId = getLoggedInUserId();
+    const currentUserId = getUserId();
     const wasInitiatedByMe = details.callerId === currentUserId;
 
     const callStatusText = document.createElement('span');
@@ -1038,7 +1038,7 @@ export function initMessagesUI() {
    */
   function isLocalMessage(message) {
     if (!message.from) return null;
-    return message.from === getLoggedInUserId();
+    return message.from === getUserId();
   }
 
   /**
