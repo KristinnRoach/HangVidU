@@ -7,6 +7,7 @@ import { MessagingController } from './messaging-controller.js';
 // Mock auth state
 vi.mock('../auth/auth-state.js', () => ({
   getLoggedInUserId: vi.fn(() => 'me'),
+  getUserId: vi.fn(() => 'me'),
   getUser: vi.fn(() => ({ uid: 'me', displayName: 'Test User' })),
 }));
 
@@ -123,7 +124,9 @@ describe('MessagingController', () => {
   });
 
   it('should throw if store is missing', () => {
-    expect(() => new MessagingController()).toThrow('MessageStore implementation');
+    expect(() => new MessagingController()).toThrow(
+      'MessageStore implementation',
+    );
   });
 
   it('should resolve conversation IDs', () => {
@@ -153,8 +156,14 @@ describe('MessagingController', () => {
     controller.on('conversation:opened', spy);
     controller.on('conversation:resumed', spy);
 
-    await controller.selectConversation('contactA_me', { remoteParticipantIds: ['contactA'], contactName: 'Alice' });
-    await controller.selectConversation('contactA_me', { remoteParticipantIds: ['contactA'], contactName: 'Alice' });
+    await controller.selectConversation('contactA_me', {
+      remoteParticipantIds: ['contactA'],
+      contactName: 'Alice',
+    });
+    await controller.selectConversation('contactA_me', {
+      remoteParticipantIds: ['contactA'],
+      contactName: 'Alice',
+    });
 
     // Should emit opened once, then resumed on second call
     expect(spy).toHaveBeenCalledTimes(2);
@@ -248,9 +257,15 @@ describe('MessagingController', () => {
   });
 
   it('should validate conversationId when selecting conversation', async () => {
-    await expect(controller.selectConversation('')).rejects.toThrow('non-empty string');
-    await expect(controller.selectConversation(null)).rejects.toThrow('non-empty string');
-    await expect(controller.selectConversation(123)).rejects.toThrow('non-empty string');
+    await expect(controller.selectConversation('')).rejects.toThrow(
+      'non-empty string',
+    );
+    await expect(controller.selectConversation(null)).rejects.toThrow(
+      'non-empty string',
+    );
+    await expect(controller.selectConversation(123)).rejects.toThrow(
+      'non-empty string',
+    );
   });
 
   it('should mark conversation as read', async () => {
