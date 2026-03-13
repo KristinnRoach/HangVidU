@@ -1923,7 +1923,10 @@ CallController.on('memberJoined', async ({ memberId, roomId }) => {
   console.debug('CallController memberJoined event', { memberId, roomId });
 
   CallController.setPartnerId(memberId);
-  await messagingController.openConversation(memberId);
+
+  const conversationId =
+    messagingController.resolveConversationIdFromContactId(memberId);
+  await messagingController.selectConversation(conversationId);
 
   onCallAnswered().catch((e) =>
     console.warn('Failed to clear calling state:', e),

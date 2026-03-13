@@ -81,8 +81,7 @@ export class MessagingController extends EventEmitter {
    */
   resolveContactIdFromConversationId(conversationId) {
     const myUserId = getLoggedInUserId();
-    if (!myUserId)
-      throw new Error('Cannot resolve contact ID: not logged in');
+    if (!myUserId) throw new Error('Cannot resolve contact ID: not logged in');
 
     const parts = conversationId.split('_');
     const contactId = parts.find((id) => id !== myUserId);
@@ -257,7 +256,7 @@ export class MessagingController extends EventEmitter {
 
   /**
    * Display a conversation in the UI by emitting the appropriate event.
-   * Must be called after openConversation() to trigger UI updates.
+   * Must be called after selectConversation() to trigger UI updates.
    * @param {string} conversationId - Conversation ID
    */
   displayConversation(conversationId) {
@@ -469,7 +468,12 @@ export class MessagingController extends EventEmitter {
    * @param {Object} [details] - Event-specific details
    * @param {Object} [overrides] - Optional field overrides (e.g. { from })
    */
-  async sendEventMessage(conversationId, eventType, details = {}, overrides = {}) {
+  async sendEventMessage(
+    conversationId,
+    eventType,
+    details = {},
+    overrides = {},
+  ) {
     const message = createEventMessage(eventType, details, overrides);
     await this._writeAndCache(conversationId, message);
   }
