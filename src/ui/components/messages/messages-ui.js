@@ -5,19 +5,9 @@ import { hideElement, isHidden, showElement } from '../../utils/ui-utils.js';
 import { renderAvatar } from '../../utils/avatar.js';
 import { createMessageToggle } from './createMessageToggle.js';
 import { isMobileDevice } from '../../../utils/env/isMobileDevice.js';
-import {
-  handleVideoSelection,
-  createWatchRequest,
-  acceptWatchRequest,
-  cancelWatchRequest,
-} from '../../../firebase/watch-sync.js';
-import {
-  registerVideoForServing,
-  isSwServingSupported,
-} from '../../../file-transfer/video-serving.js';
+import { createWatchFileHandler } from '../../../watch/watch-file-handler.js';
 
 import { linkifyToFragment } from '../../../utils/linkify.js';
-import { isVideoMime } from '../../../utils/is-video-mime.js';
 import {
   ReactionManager,
   ReactionUI,
@@ -70,8 +60,6 @@ export function initMessagesUI() {
   let fileTransferController = null; // FileTransferController instance set by setFileTransferController()
   let inActiveCall = false; // Track if we're currently in an active call
   let isReceivingFile = false; // Track if currently receiving a file
-  let sentFiles = new Map(); // Track sent files by name for watch-together requests
-  let receivedFile = null; // Store the last received video file for watch-together
   let markAsReadTimeout = null; // Debounce markAsRead calls on incoming messages
 
   const MARK_AS_READ_DEBOUNCE_MS = 100;
@@ -79,6 +67,9 @@ export function initMessagesUI() {
   const reactionManager = new ReactionManager();
   const reactionUI = new ReactionUI(reactionManager);
   const ac = new AbortController();
+  const watchFileHandler = createWatchFileHandler({
+    notify: (msg) => appendEphemeralMessage(msg),
+  });
 
   const shouldShowAttachButton = () =>
     !!fileTransferController || !!currentConversationId; // removed getIsLoggedIn()
@@ -213,10 +204,7 @@ export function initMessagesUI() {
           setSendLabelText(`${Math.round(progress * 100)}%`);
         });
 
-        // Track video files for potential watch-together requests
-        if (isVideoMime(file.type, file)) {
-          sentFiles.set(file.name, file);
-        }
+        watchFileHandler.trackSentVideoFile(file);
 
         appendEphemeralMessage({
           text: `📎 ${t('message.sent', { name: file.name })}`,
@@ -248,291 +236,6 @@ export function initMessagesUI() {
       fileInput.value = '';
     }
   });
-
-  /**
-   * Prompt user to choose action for received video file
-   * @param {string} fileName - Name of the video file
-   * @returns {Promise<'download'|'watch'>} User's choice
-   */
-  async function promptFileAction(fileName) {
-    return new Promise((resolve) => {
-      // Create modal overlay
-      const overlay = document.createElement('div');
-      overlay.className = 'file-action-overlay';
-      overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.7);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 10000;
-      `;
-
-      // Create prompt dialog
-      const dialog = document.createElement('div');
-      dialog.className = 'file-action-prompt';
-      dialog.style.cssText = `
-        background: var(--bg-primary, #1a1a1a);
-        border: 1px solid var(--border-color, #333);
-        border-radius: 12px;
-        padding: 24px;
-        max-width: 400px;
-        width: 90%;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-      `;
-
-      dialog.innerHTML = `
-        <div style="text-align: center;">
-          <div style="font-size: 48px; margin-bottom: 16px;">📹</div>
-          <h3 style="margin: 0 0 8px 0; color: var(--text-primary, #fff);">${t('message.video_received')}</h3>
-          <p id="file-name-display" style="margin: 0 0 24px 0; color: var(--text-secondary, #aaa); font-size: 14px;">
-          </p>
-          <div style="display: flex; gap: 12px; justify-content: center;">
-            <button id="download-file-btn" style="
-              flex: 1;
-              padding: 12px 24px;
-              background: var(--bg-secondary, #2a2a2a);
-              border: 1px solid var(--border-color, #444);
-              border-radius: 8px;
-              color: var(--text-primary, #fff);
-              cursor: pointer;
-              font-size: 14px;
-              transition: all 0.2s;
-            ">
-              <i data-lucide="download" style="margin-right: 8px;"></i>${t('message.download')}
-            </button>
-            <button id="watch-together-btn" style="
-              flex: 1;
-              padding: 12px 24px;
-              background: var(--accent-color, #4a9eff);
-              border: none;
-              border-radius: 8px;
-              color: white;
-              cursor: pointer;
-              font-size: 14px;
-              font-weight: 600;
-              transition: all 0.2s;
-            ">
-              <i data-lucide="play" style="margin-right: 8px;"></i>${t('message.watch_together')}
-            </button>
-          </div>
-        </div>
-      `;
-
-      overlay.appendChild(dialog);
-      document.body.appendChild(overlay);
-
-      // Set filename safely using textContent to prevent XSS
-      const fileNameDisplay = dialog.querySelector('#file-name-display');
-      fileNameDisplay.textContent = fileName;
-
-      // Add hover effects
-      const downloadBtn = dialog.querySelector('#download-file-btn');
-      const watchBtn = dialog.querySelector('#watch-together-btn');
-
-      downloadBtn.addEventListener('mouseenter', () => {
-        downloadBtn.style.background = 'var(--bg-hover, #333)';
-      });
-      downloadBtn.addEventListener('mouseleave', () => {
-        downloadBtn.style.background = 'var(--bg-secondary, #2a2a2a)';
-      });
-
-      watchBtn.addEventListener('mouseenter', () => {
-        watchBtn.style.opacity = '0.9';
-      });
-      watchBtn.addEventListener('mouseleave', () => {
-        watchBtn.style.opacity = '1';
-      });
-
-      // Handle button clicks
-      downloadBtn.addEventListener('click', () => {
-        overlay.remove();
-        resolve('download');
-      });
-
-      watchBtn.addEventListener('click', () => {
-        overlay.remove();
-        resolve('watch');
-      });
-
-      initIcons(dialog);
-
-      // Close on overlay click
-      overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
-          overlay.remove();
-          resolve('download'); // Default to download
-        }
-      });
-    });
-  }
-
-  /**
-   * Prompt sender to join watch together when receiver requests
-   * @param {string} fileName - Name of the video file
-   * @returns {Promise<boolean>} True if user accepts, false otherwise
-   */
-  async function promptJoinWatchTogether(fileName) {
-    return new Promise((resolve) => {
-      // Create modal overlay
-      const overlay = document.createElement('div');
-      overlay.className = 'watch-request-overlay';
-      overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.7);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 10000;
-      `;
-
-      // Create prompt dialog
-      const dialog = document.createElement('div');
-      dialog.className = 'watch-request-prompt';
-      dialog.style.cssText = `
-        background: var(--bg-primary, #1a1a1a);
-        border: 1px solid var(--border-color, #333);
-        border-radius: 12px;
-        padding: 24px;
-        max-width: 400px;
-        width: 90%;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-      `;
-
-      dialog.innerHTML = `
-        <div style="text-align: center;">
-          <div style="font-size: 48px; margin-bottom: 16px;">🎬</div>
-          <h3 style="margin: 0 0 8px 0; color: var(--text-primary, #fff);">${t('message.watch_request.title')}</h3>
-          <p id="watch-request-filename" style="margin: 0 0 24px 0; color: var(--text-secondary, #aaa); font-size: 14px;">
-          </p>
-          <p style="margin: 0 0 24px 0; color: var(--text-secondary, #aaa); font-size: 13px;">
-            ${t('message.watch_request.body')}
-          </p>
-          <div style="display: flex; gap: 12px; justify-content: center;">
-            <button id="decline-watch-btn" style="
-              flex: 1;
-              padding: 12px 24px;
-              background: var(--bg-secondary, #2a2a2a);
-              border: 1px solid var(--border-color, #444);
-              border-radius: 8px;
-              color: var(--text-primary, #fff);
-              cursor: pointer;
-              font-size: 14px;
-              transition: all 0.2s;
-            ">
-              ${t('call.decline')}
-            </button>
-            <button id="accept-watch-btn" style="
-              flex: 1;
-              padding: 12px 24px;
-              background: var(--accent-color, #4a9eff);
-              border: none;
-              border-radius: 8px;
-              color: white;
-              cursor: pointer;
-              font-size: 14px;
-              font-weight: 600;
-              transition: all 0.2s;
-            ">
-              <i data-lucide="play" style="margin-right: 8px;"></i>${t('shared.join')}
-            </button>
-          </div>
-        </div>
-      `;
-
-      overlay.appendChild(dialog);
-      document.body.appendChild(overlay);
-
-      // Set filename safely
-      const fileNameDisplay = dialog.querySelector('#watch-request-filename');
-      fileNameDisplay.textContent = fileName;
-
-      // Add hover effects
-      const declineBtn = dialog.querySelector('#decline-watch-btn');
-      const acceptBtn = dialog.querySelector('#accept-watch-btn');
-
-      declineBtn.addEventListener('mouseenter', () => {
-        declineBtn.style.background = 'var(--bg-hover, #333)';
-      });
-      declineBtn.addEventListener('mouseleave', () => {
-        declineBtn.style.background = 'var(--bg-secondary, #2a2a2a)';
-      });
-
-      acceptBtn.addEventListener('mouseenter', () => {
-        acceptBtn.style.opacity = '0.9';
-      });
-      acceptBtn.addEventListener('mouseleave', () => {
-        acceptBtn.style.opacity = '1';
-      });
-
-      // Handle button clicks
-      declineBtn.addEventListener('click', () => {
-        overlay.remove();
-        resolve(false);
-      });
-
-      acceptBtn.addEventListener('click', () => {
-        overlay.remove();
-        resolve(true);
-      });
-
-      initIcons(dialog);
-
-      // Close on overlay click
-      overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
-          overlay.remove();
-          resolve(false);
-        }
-      });
-    });
-  }
-
-  // Listen for incoming watch requests from watch-sync via CustomEvent
-  async function onWatchFileRequest(e) {
-    const { fileName } = e.detail;
-    // Check if we have this file
-    const file = sentFiles.get(fileName);
-
-    if (!file) {
-      appendEphemeralMessage({
-        text: `❌ ${t('message.watch.file_unavailable', { name: fileName })}`,
-      });
-      await cancelWatchRequest();
-      return;
-    }
-
-    // Show notification
-    appendEphemeralMessage({
-      text: `🎬 ${t('message.watch.partner_wants', { name: fileName })}`,
-    });
-
-    // Prompt user to join
-    const accepted = await promptJoinWatchTogether(fileName);
-
-    if (accepted) {
-      appendEphemeralMessage({ text: `✅ ${t('message.watch.joining')}` });
-      const success = await acceptWatchRequest(file);
-
-      if (!success) {
-        appendEphemeralMessage({
-          text: `❌ ${t('message.watch.failed_load')}`,
-        });
-      }
-    } else {
-      appendEphemeralMessage({ text: `❌ ${t('message.watch.declined')}` });
-      await cancelWatchRequest();
-    }
-  }
-  document.addEventListener('watch:file-request', onWatchFileRequest);
 
   // Position the messages box relative to toggle
   function positionMessagesBox() {
@@ -1343,86 +1046,14 @@ export function initMessagesUI() {
       }) => {
         devDebug('[MessagesUI] Received file:', { file, name, mimeType });
 
-        // Check if it's a video file
-        if (isVideoMime(mimeType, file)) {
-          // Store the file for potential watch-together
-          receivedFile = file;
+        const handledAsVideo = await watchFileHandler.handleReceivedVideo({
+          file,
+          name,
+          mimeType,
+          opfsId,
+        });
 
-          // Prompt user: Download or Watch Together
-          const action = await promptFileAction(name);
-
-          if (action === 'watch') {
-            // Show notification in chat
-            appendEphemeralMessage({
-              text: `📹 ${t('message.received_video', { name })}`,
-            });
-            appendEphemeralMessage({
-              text: `🎬 ${t('message.watch.requesting')}`,
-            });
-
-            // If OPFS-streamed and SW available, serve via SW URL
-            let videoSource;
-            if (opfsId && isSwServingSupported()) {
-              try {
-                videoSource = await registerVideoForServing(opfsId, mimeType);
-                devDebug('[MessagesUI] Serving video via SW at:', videoSource);
-              } catch (err) {
-                console.warn(
-                  '[MessagesUI] SW video registration failed, falling back to blob:',
-                  err,
-                );
-                videoSource = file;
-              }
-            } else {
-              videoSource = file;
-              devDebug('[MessagesUI] Serving video via in memory blob URL');
-              devDebug(
-                'isSwServingSupported():',
-                isSwServingSupported(),
-                'opfsId:',
-                opfsId,
-              );
-            }
-
-            // Load video locally first
-            const success = await handleVideoSelection(videoSource, mimeType);
-
-            if (!success) {
-              appendEphemeralMessage({
-                text: `❌ ${t('message.watch.failed_load')}`,
-              });
-              return;
-            }
-
-            // Create watch request to notify sender
-            const requestCreated = await createWatchRequest(name, file);
-
-            if (requestCreated) {
-              appendEphemeralMessage({
-                text: `⏳ ${t('message.watch.waiting')}`,
-              });
-            } else {
-              appendEphemeralMessage({
-                text: `❌ ${t('message.watch.request_failed')}`,
-              });
-            }
-          } else {
-            // Download the file
-            const url = URL.createObjectURL(file);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = name;
-            a.click();
-
-            // Revoke blob URL after a delay to allow download to start
-            // Using 1 second to be safe for slow devices/large files
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-
-            appendEphemeralMessage({
-              text: `📎 ${t('message.downloaded', { name })}`,
-            });
-          }
-        } else {
+        if (!handledAsVideo) {
           // Non-video file - show download link
           const url = URL.createObjectURL(file);
           const entry = appendEphemeralMessage({
@@ -1487,9 +1118,8 @@ export function initMessagesUI() {
     markAsReadTimeout = null;
     fileTransferController = null;
     inActiveCall = false;
-    sentFiles.clear();
-    receivedFile = null;
     isReceivingFile = false;
+    watchFileHandler.reset();
 
     hideElement(messagesBox);
     messageToggle.clearBadge();
@@ -1603,8 +1233,8 @@ export function initMessagesUI() {
     // Remove keyboard shortcut handler
     document.removeEventListener('keydown', openMessagesKeyhandler);
 
-    // Remove watch file request handler
-    document.removeEventListener('watch:file-request', onWatchFileRequest);
+    // Clean up watch-together file handler
+    watchFileHandler.cleanup();
 
     // Remove messages box container
     if (messagesBoxContainer && messagesBoxContainer.parentNode) {
