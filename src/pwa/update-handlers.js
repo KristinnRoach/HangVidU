@@ -101,27 +101,31 @@ function deferUpdate(updateSW) {
 }
 
 /**
- * Starts periodic update checks while the app is open.
+ * Checks for a service worker that was installed while the app was closed.
+ * (onNeedRefresh only fires for updates detected while the page is open)
+ * @param {Function} updateSW - The updateSW function from registerSW
  */
-function startPeriodicUpdateChecks() {
-  if (updateCheckIntervalId !== null) {
-    console.debug('[PWA] Periodic update checks already running');
+async function startupUpdateCheck(updateSW) {
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (reg?.waiting) {
+      console.info('[PWA] Found waiting service worker at startup');
+      attemptAutoUpdate(updateSW);
+    }
+  } catch (err) {
+    console.debug('[PWA] Startup waiting-check failed:', err);
+  }
+}
+
+/**
+ * Checks for updates when the app becomes visible (tab is switched back).
+ */
+function visibilityChangeCheck() {
+  if (visibilityAbortController !== null) {
+    console.debug('[PWA] Visibility change listener already active');
     return;
   }
 
-  // Check immediately on start (fire and forget)
-  checkForUpdates().catch((error) => {
-    console.debug('[PWA] Initial update check failed:', error);
-  });
-
-  // Then check every UPDATE_CHECK_INTERVAL
-  updateCheckIntervalId = setInterval(() => {
-    checkForUpdates().catch((error) => {
-      console.debug('[PWA] Periodic update check failed:', error);
-    });
-  }, UPDATE_CHECK_INTERVAL);
-
-  // Also check for updates when user switches back to the tab
   // Use AbortController to safely clean up the listener
   visibilityAbortController = new AbortController();
   document.addEventListener(
@@ -137,15 +141,35 @@ function startPeriodicUpdateChecks() {
     { signal: visibilityAbortController.signal },
   );
 
+  console.debug('[PWA] Visibility change listener enabled');
+}
+
+/**
+ * Starts periodic update checks while the app is open.
+ * Checks every UPDATE_CHECK_INTERVAL (30 minutes).
+ */
+function startPeriodicUpdateChecks() {
+  if (updateCheckIntervalId !== null) {
+    console.debug('[PWA] Periodic update checks already running');
+    return;
+  }
+
+  // Check every UPDATE_CHECK_INTERVAL
+  updateCheckIntervalId = setInterval(() => {
+    checkForUpdates().catch((error) => {
+      console.debug('[PWA] Periodic update check failed:', error);
+    });
+  }, UPDATE_CHECK_INTERVAL);
+
   console.info(
     `[PWA] Started periodic update checks (every ${UPDATE_CHECK_INTERVAL / 1000 / 60} minutes)`,
   );
 }
 
 /**
- * Stops periodic update checks.
+ * Stops all automatic update checks (periodic and visibility-based).
  */
-export function stopPeriodicUpdateChecks() {
+export function stopUpdateChecks() {
   if (updateCheckIntervalId !== null) {
     clearInterval(updateCheckIntervalId);
     updateCheckIntervalId = null;
@@ -157,14 +181,14 @@ export function stopPeriodicUpdateChecks() {
   }
 
   if (updateCheckIntervalId === null && visibilityAbortController === null) {
-    console.info('[PWA] Stopped periodic update checks');
+    console.info('[PWA] Stopped automatic update checks');
   }
 }
 
 /**
  * Sets up PWA update handling with auto-update.
  * Auto-applies updates unless the user is in a call, in which case it defers.
- * Enables periodic checks so updates are detected even if app is left open.
+ * Enables startup, visibility, and periodic checks so updates are detected reliably.
  */
 export async function setupUpdateHandler() {
   // Only try to import if PWA is enabled
@@ -190,20 +214,10 @@ export async function setupUpdateHandler() {
       },
     });
 
-    // Start checking for updates periodically
+    // Set up all update check mechanisms
+    await startupUpdateCheck(updateSW);
+    visibilityChangeCheck();
     startPeriodicUpdateChecks();
-
-    // Check for a waiting SW that arrived while the app was closed
-    // (onNeedRefresh only fires for updates detected while the page is open)
-    try {
-      const reg = await navigator.serviceWorker.getRegistration();
-      if (reg?.waiting) {
-        console.info('[PWA] Found waiting service worker at startup');
-        attemptAutoUpdate(updateSW);
-      }
-    } catch (err) {
-      console.debug('[PWA] Startup waiting-check failed:', err);
-    }
 
     return updateSW;
   } catch (error) {
