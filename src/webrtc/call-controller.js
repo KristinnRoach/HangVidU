@@ -92,6 +92,14 @@ class CallController {
   }
 
   /**
+   * Whether the user is in any phase of a call (creating, waiting, joining, or connected).
+   * @returns {boolean}
+   */
+  isInCall() {
+    return this.state !== 'idle';
+  }
+
+  /**
    * Return the current RTCPeerConnection with diagnostic logging.
    * Logs warnings for missing or unhealthy connections.
    */
