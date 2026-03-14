@@ -23,6 +23,7 @@ import { devDebug } from '../utils/dev/dev-utils.js';
  */
 export function createWatchFileHandler({ notify }) {
   const sentFiles = new Map();
+  const downloadUrls = new Set();
 
   // ---------------------------------------------------------------------------
   // PROMPTS
@@ -31,7 +32,7 @@ export function createWatchFileHandler({ notify }) {
   /**
    * Prompt user to choose action for received video file
    * @param {string} fileName
-   * @returns {Promise<'download'|'watch'>}
+   * @returns {Promise<'download'|'watch'|'dismiss'>}
    */
   function promptFileAction(fileName) {
     return new Promise((resolve) => {
@@ -136,7 +137,7 @@ export function createWatchFileHandler({ notify }) {
       overlay.addEventListener('click', (e) => {
         if (e.target === overlay) {
           overlay.remove();
-          resolve('download');
+          resolve('dismiss');
         }
       });
     });
@@ -355,16 +356,30 @@ export function createWatchFileHandler({ notify }) {
       } else {
         notify({ text: `❌ ${t('message.watch.request_failed')}` });
       }
-    } else {
-      // Download the video file
+    } else if (action === 'download') {
+      // Download the video file only when explicitly requested.
       const url = URL.createObjectURL(file);
+      downloadUrls.add(url);
       const a = document.createElement('a');
       a.href = url;
       a.download = name;
       a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-      notify({ text: `📎 ${t('message.downloaded', { name })}` });
+      // Keep a visible link so users can download again later.
+      notify({
+        text: `📎 ${t('message.downloaded_label')} `,
+        downloadUrl: url,
+        downloadName: name,
+      });
+    } else {
+      // Dismissed prompt: do not auto-download. Keep a manual download link.
+      const url = URL.createObjectURL(file);
+      downloadUrls.add(url);
+      notify({
+        text: `📎 ${t('message.received_label')} `,
+        downloadUrl: url,
+        downloadName: name,
+      });
     }
 
     return true;
@@ -381,6 +396,10 @@ export function createWatchFileHandler({ notify }) {
 
   function reset() {
     sentFiles.clear();
+    for (const url of downloadUrls) {
+      URL.revokeObjectURL(url);
+    }
+    downloadUrls.clear();
   }
 
   function cleanup() {

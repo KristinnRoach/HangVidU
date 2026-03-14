@@ -128,7 +128,7 @@ export function initMessagesUI() {
 
   // Initialize watchFileHandler after DOM guards pass (messagesMessages is now safe to use)
   watchFileHandler = createWatchFileHandler({
-    notify: (msg) => appendEphemeralMessage(msg),
+    notify: (content) => appendEphemeralMessage({ content }),
   });
 
   if (messageTopBar?.element) {
@@ -210,7 +210,9 @@ export function initMessagesUI() {
         watchFileHandler.trackSentVideoFile(file);
 
         appendEphemeralMessage({
-          text: `📎 ${t('message.sent', { name: file.name })}`,
+          content: {
+            text: `📎 ${t('message.sent', { name: file.name })}`,
+          },
         });
       } else if (currentConversationId) {
         // Persistent file message (no active call, small files only)
@@ -232,7 +234,9 @@ export function initMessagesUI() {
         : '\n\n' + t('message.file_size_limited');
 
       appendEphemeralMessage({
-        text: '❌  ' + t('message.send_failed') + sizeHint,
+        content: {
+          text: '❌  ' + t('message.send_failed') + sizeHint,
+        },
       });
     } finally {
       setSendLabelText(originalText);
@@ -844,12 +848,32 @@ export function initMessagesUI() {
     }
   }
 
-  function appendEphemeralMessage({ text }) {
+  function appendEphemeralMessage({ content = {} } = {}) {
+    const { text = '', downloadUrl = '', downloadName = '' } = content;
+
+    if (!text && !downloadUrl) return null;
+
     const entry = document.createElement('div');
-    entry.className = 'message-entry status';
+    entry.className = 'message-entry ephemeral';
     const p = document.createElement('p');
     p.className = 'message-text';
-    p.textContent = text;
+
+    if (text) {
+      p.appendChild(document.createTextNode(text));
+    }
+
+    if (downloadUrl) {
+      const link = document.createElement('a');
+      link.textContent = downloadName || downloadUrl;
+      link.href = downloadUrl;
+      if (downloadName) {
+        link.download = downloadName;
+      }
+      link.style.textDecoration = 'underline';
+      link.style.cursor = 'pointer';
+      p.appendChild(link);
+    }
+
     entry.appendChild(p);
     messagesMessages.appendChild(entry);
     scrollMessagesToEnd();
@@ -1066,18 +1090,17 @@ export function initMessagesUI() {
           // Non-video file - show download link
           const url = URL.createObjectURL(file);
           const entry = appendEphemeralMessage({
-            text: `📎 ${t('message.received', { name })} `,
+            content: {
+              text: `📎 ${t('message.received', { name })} `,
+              downloadUrl: url,
+              downloadName: name,
+            },
           });
-          const link = document.createElement('a');
-          link.textContent = name;
-          link.href = url;
-          link.download = name;
-          link.style.textDecoration = 'underline';
-          link.style.cursor = 'pointer';
-          link.addEventListener('click', () =>
-            setTimeout(() => URL.revokeObjectURL(url), 100),
-          );
-          entry.querySelector('.message-text').appendChild(link);
+          entry
+            ?.querySelector('.message-text a')
+            ?.addEventListener('click', () =>
+              setTimeout(() => URL.revokeObjectURL(url), 100),
+            );
         }
 
         // Update interaction timestamp for received files
@@ -1103,7 +1126,9 @@ export function initMessagesUI() {
       // Setup file error handler
       fileTransferController.onFileError = ({ fileName, reason }) => {
         appendEphemeralMessage({
-          text: `❌ ${t('message.receive_failed', { name: fileName })} (${reason})`,
+          content: {
+            text: `❌ ${t('message.receive_failed', { name: fileName })} (${reason})`,
+          },
         });
       };
 
