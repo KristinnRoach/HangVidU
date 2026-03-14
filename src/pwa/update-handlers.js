@@ -1,6 +1,10 @@
-import { showUpdateNotification } from '../ui/components/notifications/update-notification.js';
+// import { showUpdateNotification } from '../ui/components/notifications/update-notification.js';
 import CallController from '../webrtc/call-controller.js';
-import { showInfoToast, showSuccessToast, showErrorToast } from '../ui/utils/toast.js';
+import {
+  showInfoToast,
+  showSuccessToast,
+  showErrorToast,
+} from '../ui/utils/toast.js';
 
 // Check for updates every 30 minutes (in milliseconds)
 const UPDATE_CHECK_INTERVAL = 30 * 60 * 1000;
@@ -27,14 +31,18 @@ async function checkForUpdates() {
   try {
     // Feature-detect service worker support
     if (!('serviceWorker' in navigator)) {
-      console.debug('[PWA] Service workers not supported, skipping update check');
+      console.debug(
+        '[PWA] Service workers not supported, skipping update check',
+      );
       return;
     }
 
     // Use explicit registration lookup instead of .ready to avoid indefinite hangs
     const registration = await navigator.serviceWorker.getRegistration();
     if (!registration) {
-      console.debug('[PWA] No service worker registration found, skipping update check');
+      console.debug(
+        '[PWA] No service worker registration found, skipping update check',
+      );
       return;
     }
 
@@ -58,7 +66,7 @@ async function attemptAutoUpdate(updateSW) {
   }
 
   try {
-    showSuccessToast('Updating...', { duration: 2000 });
+    showInfoToast('Updating...', { duration: 2000 });
     await updateSW(true);
   } catch (err) {
     console.error('[PWA] Auto-update failed:', err);
@@ -78,7 +86,9 @@ function deferUpdate(updateSW) {
   }
 
   pendingUpdateSW = updateSW;
-  showInfoToast('Update available — will apply after your call', { duration: 4000 });
+  showInfoToast('Update available — will apply after your call', {
+    duration: 4000,
+  });
 
   const onCallEnd = () => {
     CallController.off('cleanup', onCallEnd);
@@ -124,11 +134,11 @@ function startPeriodicUpdateChecks() {
         });
       }
     },
-    { signal: visibilityAbortController.signal }
+    { signal: visibilityAbortController.signal },
   );
 
   console.info(
-    `[PWA] Started periodic update checks (every ${UPDATE_CHECK_INTERVAL / 1000 / 60} minutes)`
+    `[PWA] Started periodic update checks (every ${UPDATE_CHECK_INTERVAL / 1000 / 60} minutes)`,
   );
 }
 
