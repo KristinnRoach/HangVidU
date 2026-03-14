@@ -314,10 +314,14 @@ export function createWatchFileHandler({ notify }) {
       notify({ text: `📹 ${t('message.received_video', { name })}` });
       notify({ text: `🎬 ${t('message.watch.requesting')}` });
 
+      const effectiveMimeType = mimeType || file.type;
       let videoSource;
       if (opfsId && isSwServingSupported()) {
         try {
-          videoSource = await registerVideoForServing(opfsId, mimeType);
+          videoSource = await registerVideoForServing(
+            opfsId,
+            effectiveMimeType,
+          );
           devDebug('[WatchFileHandler] Serving video via SW at:', videoSource);
         } catch (err) {
           console.warn(
@@ -329,10 +333,18 @@ export function createWatchFileHandler({ notify }) {
       } else {
         videoSource = file;
         devDebug('[WatchFileHandler] Serving video via in-memory blob URL');
-        devDebug('isSwServingSupported():', isSwServingSupported(), 'opfsId:', opfsId);
+        devDebug(
+          'isSwServingSupported():',
+          isSwServingSupported(),
+          'opfsId:',
+          opfsId,
+        );
       }
 
-      const success = await handleVideoSelection(videoSource, mimeType);
+      const success = await handleVideoSelection(
+        videoSource,
+        effectiveMimeType,
+      );
 
       if (!success) {
         notify({ text: `❌ ${t('message.watch.failed_load')}` });
