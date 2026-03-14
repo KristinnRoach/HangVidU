@@ -1,12 +1,12 @@
 # Messaging System Simplification Roadmap
 
-**Current status**: Phase 1 ✅ | Phase 2.1-2.2 ✅ | Phase 3.2 (watch-together extraction) — IN PROGRESS
+**Current status**: Phase 1 ✅ | Phase 2.1-2.2 ✅ | Phase 3.2 ✅ (PR #401)
 
 **Entry point**:
 
-1. Phase 3.2: Extract watch-together from messages-ui.js (current focus)
-2. Phase 2.2b: Optimistic render + error handling (deferred)
-3. Phase 2.3: Route appendCachedHistory through Controller (deferred)
+1. Phase 3.2 ✅ COMPLETE (PR #401) — watch-together extracted to src/watch/watch-file-handler.js
+2. Next: Phase 2.2b (optimistic render + error) or Phase 3.1 (file state consolidation)
+3. Deferred: Phase 2.3 (route appendCachedHistory)
 
 ---
 
@@ -42,8 +42,8 @@ The goal: reduce complexity, clarify ownership, improve testability and reusabil
 ┌─────────────────────────────────────────────────────────────┐
 │ Phase 3: DECOUPLE DOMAINS (separate concerns)               │
 ├─────────────────────────────────────────────────────────────┤
-│ • [ ] 3.2 Extract Watch-Together from UI ← CURRENT          │
-│       └─> Independent of 3.1 (no file state prereq needed)  │
+│ • [x] 3.2 Extract Watch-Together from UI ✅ (PR #401)       │
+│       Moves ~370 LoC to src/watch/watch-file-handler.js     │
 │ • [ ] 3.1 Consolidate File State (deferred)                 │
 │ • [ ] 3.3 Fix Reactions Deletion (independent)              │
 │ • [ ] 3.4 Move inActiveCall to callController (independent) │
@@ -406,16 +406,45 @@ No clear owner. Side effects during render.
 
 ---
 
-### Issue 3.2: Extract Watch-Together From UI Layer ← CURRENT
+### Issue 3.2: Extract Watch-Together From UI Layer ✅ COMPLETE (PR #401)
 
 **Problem**: Watch-together logic embedded in messages-ui.js — ~250 LoC of modal dialogs,
 file tracking state, event handlers, and OPFS/SW integration that has nothing to do with messaging.
 
 **Depends on**: Nothing. Independent of 3.1 (file state consolidation).
 
-**Size**: Medium (~250 LoC moved out, ~30 LoC integration hooks remain)
+**Size**: Medium (~370 LoC moved out, ~4 integration hooks remain)
 
-**Current coupling points in messages-ui.js**:
+**Solution Implemented (commit 1ea3706)**:
+
+Created `src/watch/watch-file-handler.js` with:
+- `createWatchFileHandler({ notify })` factory
+- `sentFiles` Map + `receivedFile` state (moved from messages-ui)
+- `promptFileAction()` and `promptJoinWatchTogether()` modals
+- `onWatchFileRequest()` handler for incoming watch requests
+- `handleReceivedVideo()` — full video receive flow (detection, OPFS/SW serving, watch request)
+- `trackSentVideoFile()` — called after file send to track videos
+- `reset()` / `cleanup()` state management
+
+messages-ui.js now calls handler via:
+- `watchFileHandler.handleReceivedVideo()` in onFileReceived
+- `watchFileHandler.trackSentVideoFile()` after file send
+- `watchFileHandler.reset()` in reset()
+- `watchFileHandler.cleanup()` in cleanup()
+
+**Removed from messages-ui.js**:
+- Imports: watch-sync, video-serving, isVideoMime
+- ~370 LoC (2 modals, 1 event handler, inline video handling)
+- sentFiles, receivedFile state variables
+
+**Testing**: ✅ Manual verified
+- Build passes
+- 299 tests pass (1 skipped)
+- Video send/receive with Download/Watch prompt works
+- Watch request accept/decline flow verified
+- Non-video files still show download link
+
+**Previous coupling points in messages-ui.js** (now all in handler):
 
 ```
 Imports:
@@ -445,49 +474,6 @@ Cleanup:
   - removeEventListener('watch:file-request') in cleanup()
 ```
 
-**New file**: `src/watch/watch-file-handler.js`
-
-Owns all watch-together file coordination. Messages-ui calls it via simple hooks.
-
-**Steps**:
-
-1. [ ] Create `src/watch/watch-file-handler.js` with:
-   - `sentFiles` Map and `receivedFile` state (moved from messages-ui)
-   - `promptFileAction(fileName)` — the Download/Watch modal
-   - `promptJoinWatchTogether(fileName)` — the Join Watch modal
-   - `onWatchFileRequest(e)` — the `watch:file-request` event handler
-   - `handleReceivedVideo({ file, name, mimeType, opfsId })` — the full video receive flow
-     (video detection, OPFS serving, watch request creation)
-   - `trackSentVideoFile(file)` — called after file send, adds to sentFiles if video
-   - `reset()` — clear state
-   - `cleanup()` — remove event listener
-   - Auto-registers `watch:file-request` listener on init
-
-2. [ ] In messages-ui.js, replace inline watch code with handler calls:
-   - `setFileTransferController().onFileReceived`: if video → `watchFileHandler.handleReceivedVideo()`
-   - File send success: `watchFileHandler.trackSentVideoFile(file)`
-   - `reset()`: `watchFileHandler.reset()`
-   - `cleanup()`: `watchFileHandler.cleanup()`
-
-3. [ ] Remove from messages-ui.js:
-   - `sentFiles`, `receivedFile` state variables
-   - `promptFileAction()`, `promptJoinWatchTogether()`, `onWatchFileRequest()` functions
-   - Imports: watch-sync, video-serving
-   - Inline OPFS/SW logic from onFileReceived
-
-4. [ ] Verify:
-   - `pnpm test` passes
-   - Manual test: send video file → receiver gets Download/Watch prompt
-   - Manual test: watch request flow (accept/decline)
-   - No watch-sync or video-serving imports remain in messages-ui.js
-
-**Success criteria**:
-
-- messages-ui.js has zero watch-together imports (watch-sync, video-serving)
-- Watch file handler is self-contained with clear API
-- messages-ui.js calls handler via 3-4 simple hooks (receive, send, reset, cleanup)
-- No functional regression — same UX as before
-- ~200 LoC removed from messages-ui.js
 
 ---
 
