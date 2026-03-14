@@ -213,7 +213,7 @@ export function initMessagesUI() {
           text: `📎 ${t('message.sent', { name: file.name })}`,
         });
       } else if (currentConversationId) {
-        // RTDB file message (no active call, small files only)
+        // Persistent file message (no active call, small files only)
         const message = await messagingController.sendFile(
           currentConversationId,
           file,
@@ -1032,11 +1032,17 @@ export function initMessagesUI() {
    * @param {FileTransferController|null} controller - Controller instance (or null to clear)
    */
   function setFileTransferController(controller) {
-    fileTransferController = controller;
-    inActiveCall = !!controller; // Track that we're in an active call when controller is set
+    if (!controller) {
+      console.warn(
+        '[MessagesUI] setFileTransferController(): Called with null, ignored (should NOT happen)',
+      );
+      return;
+    }
 
-    // Show/hide attachment button based on file transfer availability
-    refreshAttachButton();
+    fileTransferController = controller;
+    inActiveCall = !!controller; // TODO: Use canonical call state (see CallController)
+
+    refreshAttachButton(); // Show/hide attachment button based on file transfer availability
 
     if (fileTransferController) {
       // Setup file received handler
@@ -1280,13 +1286,7 @@ export function initMessagesUI() {
   // Data ready — prepare conversation UI
   messagingController.on(
     'conversation:ready',
-    ({
-      conversationId,
-      remoteParticipantIds,
-      displayUI,
-      profile,
-      history,
-    }) => {
+    ({ conversationId, remoteParticipantIds, displayUI, profile, history }) => {
       prepareConversation(conversationId, remoteParticipantIds[0], {
         profile,
         history,
