@@ -67,9 +67,7 @@ export function initMessagesUI() {
   const reactionManager = new ReactionManager();
   const reactionUI = new ReactionUI(reactionManager);
   const ac = new AbortController();
-  const watchFileHandler = createWatchFileHandler({
-    notify: (msg) => appendEphemeralMessage(msg),
-  });
+  let watchFileHandler; // Initialized after DOM guards pass
 
   const shouldShowAttachButton = () =>
     !!fileTransferController || !!currentConversationId; // removed getIsLoggedIn()
@@ -127,6 +125,11 @@ export function initMessagesUI() {
     console.error('Messages UI elements not found.');
     return null;
   }
+
+  // Initialize watchFileHandler after DOM guards pass (messagesMessages is now safe to use)
+  watchFileHandler = createWatchFileHandler({
+    notify: (msg) => appendEphemeralMessage(msg),
+  });
 
   if (messageTopBar?.element) {
     messagesBox.prepend(messageTopBar.element);

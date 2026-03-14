@@ -23,7 +23,6 @@ import { devDebug } from '../utils/dev/dev-utils.js';
  */
 export function createWatchFileHandler({ notify }) {
   const sentFiles = new Map();
-  let receivedFile = null;
 
   // ---------------------------------------------------------------------------
   // PROMPTS
@@ -307,7 +306,6 @@ export function createWatchFileHandler({ notify }) {
   async function handleReceivedVideo({ file, name, mimeType, opfsId }) {
     if (!isVideoMime(mimeType, file)) return false;
 
-    receivedFile = file;
     const action = await promptFileAction(name);
 
     if (action === 'watch') {
@@ -383,7 +381,6 @@ export function createWatchFileHandler({ notify }) {
 
   function reset() {
     sentFiles.clear();
-    receivedFile = null;
   }
 
   function cleanup() {
