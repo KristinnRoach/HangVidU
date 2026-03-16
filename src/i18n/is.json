@@ -87,7 +87,7 @@
   "message.download": "Sækja",
   "message.video_received": "Myndband móttekið",
   "message.watch_together": "Horfa saman",
-  "message.received": "Móttekið: {name}",
+  "message.received": "Móttekið:",
   "message.received_label": "Móttekið:",
   "message.received_video": "Myndband móttekið:",
   "message.downloaded": "Sótt: {name}",
