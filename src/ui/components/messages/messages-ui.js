@@ -16,7 +16,11 @@ import { REACTION_CONFIG } from '../../../messaging/reactions/ReactionConfig.js'
 import { getUserId, getIsLoggedIn } from '../../../auth/auth-state.js';
 import { messagingController } from '../../../messaging/messaging-controller.js';
 import { contactsController } from '../../../contacts/contacts-controller.js';
-import { showInfoToast } from '../../utils/toast.js';
+import {
+  showErrorToast,
+  showInfoToast,
+  showSuccessToast,
+} from '../../utils/toast.js';
 import { createMessageBox } from './createMessageBox.js';
 import { createMessageTopBar } from './createMessageTopBar.js';
 import { devDebug } from '../../../utils/dev/dev-utils.js';
@@ -127,9 +131,10 @@ export function initMessagesUI() {
   }
 
   // Initialize watchFileHandler after DOM guards pass (messagesMessages is now safe to use)
-  watchFileHandler = createWatchFileHandler({
-    notify: (content) => appendEphemeralMessage({ content }),
-  });
+  watchFileHandler = createWatchFileHandler();
+
+  // Listen for incoming watch-together requests from remote peer (sender side)
+  document.addEventListener('watch:file-request', onWatchFileRequest);
 
   if (messageTopBar?.element) {
     messagesBox.prepend(messageTopBar.element);
@@ -207,13 +212,19 @@ export function initMessagesUI() {
           setSendLabelText(`${Math.round(progress * 100)}%`);
         });
 
-        watchFileHandler.trackSentVideoFile(file);
+        const sentVideo = watchFileHandler.trackSentFile(file);
 
-        appendEphemeralMessage({
-          content: {
-            text: `📎 ${t('message.sent', { name: file.name })}`,
-          },
-        });
+        if (sentVideo) {
+          appendEphemeralActionMessage({
+            text: t('message.sent'),
+            downloadUrl: sentVideo.downloadUrl,
+            downloadName: sentVideo.name,
+          });
+        } else {
+          appendEphemeralMessage({
+            content: { text: `📎 ${t('message.sent')}` },
+          });
+        }
       } else if (currentConversationId) {
         // Persistent file message (no active call, small files only)
         const message = await messagingController.sendFile(
@@ -881,6 +892,76 @@ export function initMessagesUI() {
   }
 
   /**
+   * Append an ephemeral message with a download link and optional action buttons.
+   * @param {Object} opts
+   * @param {string} opts.text - Message text
+   * @param {string} [opts.downloadUrl] - URL for the download link
+   * @param {string} [opts.downloadName] - File name for the download link
+   * @param {Array<{ label: string, icon?: string, primary?: boolean, onClick: Function }>} [opts.actions]
+   * @returns {HTMLElement}
+   */
+  function appendEphemeralActionMessage({
+    text,
+    downloadUrl,
+    downloadName,
+    actions = [],
+  }) {
+    const entry = document.createElement('div');
+    entry.className = 'message-entry ephemeral';
+
+    const p = document.createElement('p');
+    p.className = 'message-text';
+    p.appendChild(document.createTextNode(text));
+
+    if (downloadUrl) {
+      p.appendChild(document.createTextNode(' '));
+      const link = document.createElement('a');
+      let nameToShow = downloadName || downloadUrl;
+      if (nameToShow.length > 15) {
+        const ext = nameToShow.includes('.')
+          ? nameToShow.slice(nameToShow.lastIndexOf('.'))
+          : '';
+        nameToShow = nameToShow.slice(0, 15) + '...' + ext;
+      }
+      link.textContent = nameToShow;
+      link.href = downloadUrl;
+      if (downloadName) link.download = downloadName;
+      link.style.textDecoration = 'underline';
+      link.style.cursor = 'pointer';
+      p.appendChild(link);
+    }
+
+    entry.appendChild(p);
+
+    if (actions.length > 0) {
+      const bar = document.createElement('div');
+      bar.className = 'ephemeral-actions';
+      bar.style.cssText = 'display: flex; gap: 8px; margin-top: 6px;';
+
+      for (const action of actions) {
+        const btn = document.createElement('button');
+        btn.className = action.primary ? 'action-btn primary' : 'action-btn';
+        btn.textContent = action.label;
+        btn.addEventListener('click', action.onClick, { once: true });
+        if (action.icon) {
+          const icon = document.createElement('i');
+          icon.dataset.lucide = action.icon;
+          icon.style.marginRight = '4px';
+          btn.prepend(icon);
+        }
+        bar.appendChild(btn);
+      }
+
+      entry.appendChild(bar);
+      initIcons(bar);
+    }
+
+    messagesMessages.appendChild(entry);
+    scrollMessagesToEnd();
+    return entry;
+  }
+
+  /**
    * Trigger download of a data URL
    */
   function downloadDataUrl(dataUrl, fileName) {
@@ -1051,6 +1132,91 @@ export function initMessagesUI() {
     return currentConversationId;
   }
 
+  // ---------------------------------------------------------------------------
+  // Watch-together coordination (UI side)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Receiver clicked "Watch Together" on a received video message.
+   * Calls the handler and shows status via ephemeral messages.
+   */
+  async function onRequestWatchTogether({ file, name, mimeType, opfsId }) {
+    appendEphemeralMessage({
+      content: { text: `🎬 ${t('message.watch.request_sent')}` },
+    });
+
+    const result = await watchFileHandler.requestWatchTogether({
+      file,
+      name,
+      mimeType,
+      opfsId,
+    });
+
+    if (result.ok) {
+      showInfoToast(t('message.watch.request_sent', { name }));
+    } else {
+      appendEphemeralMessage({
+        content: { text: `❌ ${t('message.watch.' + result.reason)}` },
+      });
+      showErrorToast(t('message.watch.' + result.reason));
+    }
+  }
+
+  /**
+   * Remote peer requested watch-together for a file we sent.
+   * Shows accept/decline actions in chat.
+   */
+  async function onWatchFileRequest(e) {
+    const { fileName } = e.detail;
+    const file = watchFileHandler.getSentFile(fileName);
+
+    if (!file) {
+      appendEphemeralMessage({
+        content: {
+          text: `❌ ${t('message.watch.file_unavailable', { name: fileName })}`,
+        },
+      });
+      showErrorToast(
+        t('message.watch.file_unavailable_toast', { name: fileName }),
+      );
+
+      await watchFileHandler.declineWatch();
+      return;
+    }
+
+    showInfoToast(t('message.watch.request_received', { name: fileName }));
+
+    appendEphemeralActionMessage({
+      text: t('message.watch.partner_wants', { name: fileName }),
+      actions: [
+        {
+          label: t('shared.join'),
+          icon: 'play',
+          primary: true,
+          onClick: async () => {
+            appendEphemeralMessage({
+              content: { text: `${t('message.watch.joining')}` },
+            });
+            const success = await watchFileHandler.acceptWatch(file);
+            if (success) {
+              appendEphemeralMessage({
+                content: { text: `✅ ${t('message.watch.synced')}` },
+              });
+              showSuccessToast(t('message.watch.synced', { name: fileName }));
+            } else {
+              appendEphemeralMessage({
+                content: { text: `❌ ${t('message.watch.failed_load')}` },
+              });
+              showErrorToast(
+                t('message.watch.failed_load_toast', { name: fileName }),
+              );
+            }
+          },
+        },
+      ],
+    });
+  }
+
   /**
    * Set the FileTransferController for this UI
    * @param {FileTransferController|null} controller - Controller instance (or null to clear)
@@ -1079,15 +1245,34 @@ export function initMessagesUI() {
       }) => {
         devDebug('[MessagesUI] Received file:', { file, name, mimeType });
 
-        const handledAsVideo = await watchFileHandler.handleReceivedVideo({
+        const result = watchFileHandler.checkReceivedFile({
           file,
           name,
           mimeType,
-          opfsId,
         });
 
-        if (!handledAsVideo) {
-          // Non-video file - show download link
+        if (result.isVideo) {
+          appendEphemeralActionMessage({
+            text: t('message.received_video', { name }),
+            downloadUrl: result.downloadUrl,
+            downloadName: result.name,
+            actions: [
+              {
+                label: t('message.watch_together'),
+                icon: 'play',
+                primary: true,
+                onClick: () =>
+                  onRequestWatchTogether({
+                    file,
+                    name,
+                    mimeType: result.mimeType,
+                    opfsId,
+                  }),
+              },
+            ],
+          });
+        } else {
+          // Non-video file — show download link
           const url = URL.createObjectURL(file);
           const entry = appendEphemeralMessage({
             content: {
@@ -1154,6 +1339,7 @@ export function initMessagesUI() {
     inActiveCall = false;
     isReceivingFile = false;
     watchFileHandler.reset();
+    document.removeEventListener('watch:file-request', onWatchFileRequest);
 
     hideElement(messagesBox);
     messageToggle.clearBadge();
