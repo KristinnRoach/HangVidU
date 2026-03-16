@@ -26,6 +26,7 @@ import { createMessageTopBar } from './createMessageTopBar.js';
 import { devDebug } from '../../../utils/dev/dev-utils.js';
 import { showImagePreview } from '../modal/imagePreview.js';
 import { onTapGesture } from '../../utils/detectDoubleClick.js';
+import { escapeHtml } from '../../component-system/dom-utils.js';
 
 // const MAX_MESSAGE_LENGTH = 3000; // Max characters allowed in a message
 
@@ -921,7 +922,7 @@ export function initMessagesUI() {
         const ext = nameToShow.includes('.')
           ? nameToShow.slice(nameToShow.lastIndexOf('.'))
           : '';
-        nameToShow = nameToShow.slice(0, 15) + '...' + ext;
+        nameToShow = escapeHtml(nameToShow.slice(0, 15) + '...' + ext);
       }
       link.textContent = nameToShow;
       link.href = downloadUrl;
