@@ -922,11 +922,11 @@ export function initMessagesUI() {
         const ext = nameToShow.includes('.')
           ? nameToShow.slice(nameToShow.lastIndexOf('.'))
           : '';
-        nameToShow = escapeHtml(nameToShow.slice(0, 15) + '...' + ext);
+        nameToShow = nameToShow.slice(0, 15) + '...' + ext;
       }
       link.textContent = nameToShow;
-      link.href = escapeHtml(downloadUrl);
-      if (downloadName) link.download = escapeHtml(downloadName);
+      link.href = downloadUrl;
+      if (downloadName) link.download = downloadName;
       link.style.textDecoration = 'underline';
       link.style.cursor = 'pointer';
       p.appendChild(link);
