@@ -1223,13 +1223,15 @@ export function initMessagesUI() {
   function setFileTransferController(controller) {
     if (!controller) {
       console.warn(
-        '[MessagesUI] setFileTransferController(): Called with null, ignored (should NOT happen)',
+        '[MessagesUI] setFileTransferController(): Called with null (should NOT happen - investigate)',
       );
       return;
     }
 
     fileTransferController = controller;
     inActiveCall = !!controller; // TODO: Use canonical call state (see CallController)
+
+    watchFileHandler.reset();
 
     refreshAttachButton(); // Show/hide attachment button based on file transfer availability
 
