@@ -22,6 +22,9 @@ export function createWatchFileHandler() {
   /** @type {Map<string, File>} files sent by this user, keyed by name */
   const sentFiles = new Map();
 
+  /** @type {Map<string, string>} object URLs for sent files, keyed by name (for cleanup) */
+  const sentFileObjectUrls = new Map();
+
   // ---------------------------------------------------------------------------
   // Received video detection
   // ---------------------------------------------------------------------------
@@ -40,7 +43,13 @@ export function createWatchFileHandler() {
     const downloadUrl = URL.createObjectURL(file);
     const effectiveMimeType = mimeType || file.type;
 
-    return { isVideo: true, name, file, mimeType: effectiveMimeType, downloadUrl };
+    return {
+      isVideo: true,
+      name,
+      file,
+      mimeType: effectiveMimeType,
+      downloadUrl,
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -64,7 +73,10 @@ export function createWatchFileHandler() {
         videoSource = await registerVideoForServing(opfsId, effectiveMimeType);
         devDebug('[WatchFileHandler] Serving video via SW at:', videoSource);
       } catch (err) {
-        console.warn('[WatchFileHandler] SW registration failed, using blob:', err);
+        console.warn(
+          '[WatchFileHandler] SW registration failed, using blob:',
+          err,
+        );
         videoSource = file;
       }
     } else {
@@ -124,9 +136,12 @@ export function createWatchFileHandler() {
    */
   function trackSentFile(file) {
     if (!isVideoMime(file.type, file)) return null;
+    const existingUrl = sentFileObjectUrls.get(file.name);
+    if (existingUrl) URL.revokeObjectURL(existingUrl);
 
     sentFiles.set(file.name, file);
     const downloadUrl = URL.createObjectURL(file);
+    sentFileObjectUrls.set(file.name, downloadUrl);
 
     return { isVideo: true, name: file.name, downloadUrl };
   }
@@ -136,6 +151,10 @@ export function createWatchFileHandler() {
   // ---------------------------------------------------------------------------
 
   function reset() {
+    for (const url of sentFileObjectUrls.values()) {
+      URL.revokeObjectURL(url);
+    }
+    sentFileObjectUrls.clear();
     sentFiles.clear();
   }
 
