@@ -1454,7 +1454,13 @@ export function initMessagesUI() {
     document.removeEventListener('keydown', openMessagesKeyhandler);
 
     // Clean up watch-together file handler
-    watchFileHandler.cleanup();
+    if (watchFileHandler) {
+      if (typeof watchFileHandler.cleanup === 'function') {
+        watchFileHandler.cleanup();
+      } else if (typeof watchFileHandler.reset === 'function') {
+        watchFileHandler.reset();
+      }
+    }
 
     // Remove messages box container
     if (messagesBoxContainer && messagesBoxContainer.parentNode) {
