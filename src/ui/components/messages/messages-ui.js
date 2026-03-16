@@ -1177,9 +1177,7 @@ export function initMessagesUI() {
           text: `❌ ${t('message.watch.file_unavailable', { name: fileName })}`,
         },
       });
-      showErrorToast(
-        t('message.watch.file_unavailable_toast', { name: fileName }),
-      );
+      showErrorToast(t('message.watch.file_unavailable', { name: fileName }));
 
       await watchFileHandler.declineWatch();
       return;
@@ -1209,7 +1207,7 @@ export function initMessagesUI() {
                 content: { text: `❌ ${t('message.watch.failed_load')}` },
               });
               showErrorToast(
-                t('message.watch.failed_load_toast', { name: fileName }),
+                t('message.watch.failed_load', { name: fileName }),
               );
             }
           },
@@ -1340,7 +1338,6 @@ export function initMessagesUI() {
     inActiveCall = false;
     isReceivingFile = false;
     watchFileHandler.reset();
-    document.removeEventListener('watch:file-request', onWatchFileRequest);
 
     hideElement(messagesBox);
     messageToggle.clearBadge();
