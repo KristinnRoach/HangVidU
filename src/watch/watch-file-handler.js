@@ -35,12 +35,14 @@ export function createWatchFileHandler() {
    * Does NOT trigger any UI or side effects.
    *
    * @param {{ file: File, name: string, mimeType: string }} params
-   * @returns {{ isVideo: true, name: string, file: File, mimeType: string, downloadUrl: string } | { isVideo: false }}
-   */
+   * @returns {{ isVideo: true, name: string, file: File, mimeType: string, downloadUrl: string, revokeDownloadUrl: () => void } | { isVideo: false }}   */
   function checkReceivedFile({ file, name, mimeType }) {
     if (!isVideoMime(mimeType, file)) return { isVideo: false };
 
     const downloadUrl = URL.createObjectURL(file);
+    const revokeDownloadUrl = () => {
+      URL.revokeObjectURL(downloadUrl);
+    };
     const effectiveMimeType = mimeType || file.type;
 
     return {
@@ -49,6 +51,7 @@ export function createWatchFileHandler() {
       file,
       mimeType: effectiveMimeType,
       downloadUrl,
+      revokeDownloadUrl,
     };
   }
 
