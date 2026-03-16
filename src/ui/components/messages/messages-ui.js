@@ -678,9 +678,9 @@ export function initMessagesUI() {
     }
 
     const link = document.createElement('a');
-    link.textContent = fileName;
+    link.textContent = escapeHtml(fileName);
     if (isSafeUrl) {
-      link.href = dataUrl;
+      link.href = escapeHtml(dataUrl);
       link.download = fileName;
     }
     link.style.cssText = 'cursor: pointer; text-decoration: underline;';
@@ -876,8 +876,8 @@ export function initMessagesUI() {
 
     if (downloadUrl) {
       const link = document.createElement('a');
-      link.textContent = downloadName || downloadUrl;
-      link.href = downloadUrl;
+      link.textContent = escapeHtml(downloadName || downloadUrl);
+      link.href = escapeHtml(downloadUrl);
       if (downloadName) {
         link.download = downloadName;
       }
@@ -925,8 +925,8 @@ export function initMessagesUI() {
         nameToShow = escapeHtml(nameToShow.slice(0, 15) + '...' + ext);
       }
       link.textContent = nameToShow;
-      link.href = downloadUrl;
-      if (downloadName) link.download = downloadName;
+      link.href = escapeHtml(downloadUrl);
+      if (downloadName) link.download = escapeHtml(downloadName);
       link.style.textDecoration = 'underline';
       link.style.cursor = 'pointer';
       p.appendChild(link);
