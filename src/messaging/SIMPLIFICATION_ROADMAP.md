@@ -418,19 +418,16 @@ file tracking state, event handlers, and OPFS/SW integration that has nothing to
 **Solution Implemented (commit 1ea3706)**:
 
 Created `src/watch/watch-file-handler.js` with:
-- `createWatchFileHandler({ notify })` factory
-- `sentFiles` Map + `receivedFile` state (moved from messages-ui)
-- `promptFileAction()` and `promptJoinWatchTogether()` modals
-- `onWatchFileRequest()` handler for incoming watch requests
-- `handleReceivedVideo()` — full video receive flow (detection, OPFS/SW serving, watch request)
-- `trackSentVideoFile()` — called after file send to track videos
-- `reset()` / `cleanup()` state management
+- `createWatchFileHandler()` factory
+- internal tracking for sent/received files, keeping watch-together logic out of messages-ui
+- `checkReceivedFile()` — evaluates newly received files for potential watch-together flows
+- `requestWatchTogether()` — starts a watch-together session for an already shared file
+- `reset()` — clears internal state between sessions
 
 messages-ui.js now calls handler via:
-- `watchFileHandler.handleReceivedVideo()` in onFileReceived
-- `watchFileHandler.trackSentVideoFile()` after file send
-- `watchFileHandler.reset()` in reset()
-- `watchFileHandler.cleanup()` in cleanup()
+- `watchFileHandler.checkReceivedFile()` when a file is received
+- `watchFileHandler.requestWatchTogether()` when the user initiates a watch-together session
+- `watchFileHandler.reset()` in its overall reset flow
 
 **Removed from messages-ui.js**:
 - Imports: watch-sync, video-serving, isVideoMime
