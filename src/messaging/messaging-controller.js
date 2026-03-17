@@ -16,6 +16,25 @@ import {
 const MAX_FILE_SIZE = 1 * 1024 * 1024;
 
 /**
+ * @typedef {Object} MessageEvent
+ * @property {string} conversationId
+ * @property {Object} message
+ */
+
+/**
+ * @typedef {{ displayName: string|null, photoURL: string|null }} ParticipantProfile
+ */
+
+/**
+ * @typedef {Object} ConversationState
+ * @property {string} conversationId
+ * @property {string[]} remoteParticipantIds
+ * @property {Object<string, ParticipantProfile>} participants - keyed by userId
+ * @property {MessageEvent[]} history
+ * @property {(() => void)|null} _unsubscribe
+ */
+
+/**
  * MessagingController - Core messaging API
  *
  * Provides a clean, minimal interface for messaging operations:
@@ -48,6 +67,7 @@ export class MessagingController extends EventEmitter {
     }
 
     this.store = store;
+    /** @type {Map<string, ConversationState>} */
     this.conversations = new Map(); // conversationId -> internal conversation state
     this.conversationOrder = []; // conversationId list, from oldest to newest (MRU)
   }
@@ -132,6 +152,26 @@ export class MessagingController extends EventEmitter {
   }
 
   /**
+   * Get the currently selected conversation ID.
+   *
+   * This is defined as the most recently used (MRU) conversation, i.e. the
+   * last entry in {@link conversationOrder}, or {@code null} when there are
+   * no open conversations.
+   *
+   * NOTE: This behavior is relied on by external callers and should be
+   * covered by unit tests for both:
+   *   - the empty case (no conversations -> returns null), and
+   *   - the non-empty case (returns the MRU conversation ID).
+   *
+   * @returns {string|null}
+   */
+  getSelectedConversationId() {
+    return this.conversationOrder.length > 0
+      ? this.conversationOrder[this.conversationOrder.length - 1]
+      : null;
+  }
+
+  /**
    * Select a messaging conversation
    *
    * If a conversation already exists, it will be resumed instead of creating a new one.
@@ -168,14 +208,14 @@ export class MessagingController extends EventEmitter {
         history: Array.isArray(conversationState.history)
           ? [...conversationState.history]
           : [],
-        profile: conversationState.profile,
+        participants: { ...conversationState.participants },
       });
 
-      // Re-emit cached profile so UI can update after conversation switch
-      if (conversationState.profile) {
-        this.emit('conversation:profile-updated', {
+      // Re-emit cached participants so UI can update after conversation switch
+      if (Object.keys(conversationState.participants).length > 0) {
+        this.emit('conversation:meta-updated', {
           conversationId,
-          profile: conversationState.profile,
+          participants: { ...conversationState.participants },
         });
       }
 
@@ -186,7 +226,7 @@ export class MessagingController extends EventEmitter {
     const conversationState = {
       conversationId,
       remoteParticipantIds,
-      profile: null,
+      participants: {},
       history: [],
       _unsubscribe: null,
     };
@@ -268,40 +308,136 @@ export class MessagingController extends EventEmitter {
       history: Array.isArray(conversationState.history)
         ? [...conversationState.history]
         : [],
-      profile: conversationState.profile,
+      participants: { ...conversationState.participants },
     });
 
-    // 4. Profile fetch — async, non-blocking
-    this._fetchProfile(conversationId, remoteParticipantIds[0]);
-  }
-
-  /**
-   * Fetch and cache a user profile for a conversation.
-   * Emits 'conversation:profile-updated' when resolved.
-   * @param {string} conversationId
-   * @param {string} userId
-   * @private
-   */
-  async _fetchProfile(conversationId, userId) {
-    if (!userId) return;
-    try {
-      const profile = await getUserProfile(userId);
-      const state = this.conversations.get(conversationId);
-      if (!state || !profile) return;
-      state.profile = profile;
-      this.emit('conversation:profile-updated', { conversationId, profile });
-    } catch {
-      // logged in getUserProfile
+    // 4. Fetch participant profiles (non-blocking)
+    for (const participantId of remoteParticipantIds) {
+      this._fetchParticipantProfile(participantId).then((profile) => {
+        this._updateParticipantMeta(conversationId, participantId, profile);
+      });
     }
   }
 
   /**
-   * Get cached profile for a conversation
+   * Update a participant's cached profile and emit meta update event.
    * @param {string} conversationId
-   * @returns {Object|null}
+   * @param {string} participantId
+   * @param {ParticipantProfile|null} profile
+   * @private
    */
-  getProfile(conversationId) {
-    return this.conversations.get(conversationId)?.profile ?? null;
+  _updateParticipantMeta(conversationId, participantId, profile) {
+    const state = this.conversations.get(conversationId);
+    if (!state || !profile) return;
+
+    state.participants[participantId] = profile;
+    this.emit('conversation:meta-updated', {
+      conversationId,
+      participants: { ...state.participants },
+    });
+  }
+
+  getSelectedConversationState() {
+    const conversationId = this.getSelectedConversationId();
+    const state = this.conversations.get(conversationId);
+    if (!state) return null;
+    return {
+      conversationId: state.conversationId,
+      remoteParticipantIds: [...state.remoteParticipantIds],
+      participants: { ...state.participants },
+      history: [...state.history],
+    };
+  }
+
+  /**
+   * Get the display name for a conversation.
+   * For 1:1 chats, returns the remote participant's name.
+   * For group chats, joins participant names.
+   * @param {string} conversationId
+   * @returns {string|null}
+   */
+  getConversationDisplayName(conversationId) {
+    const state = this.conversations.get(conversationId);
+    if (!state) return null;
+    const ids = state.remoteParticipantIds;
+    if (ids.length === 1) {
+      return state.participants[ids[0]]?.displayName || null;
+    }
+    const names = ids
+      .map((id) => state.participants[id]?.displayName || '?')
+      .filter(Boolean);
+    return names.length > 0 ? names.join(', ') : null;
+  }
+
+  /**
+   * Get the photo URL for a conversation.
+   * For 1:1 chats, returns the remote participant's photo.
+   * Returns null for group chats (group avatars are a separate concern).
+   * @param {string} conversationId
+   * @returns {string|null}
+   */
+  getConversationPhotoURL(conversationId) {
+    const state = this.conversations.get(conversationId);
+    if (!state) return null;
+    const ids = state.remoteParticipantIds;
+    if (ids.length === 1) {
+      return state.participants[ids[0]]?.photoURL || null;
+    }
+    return null;
+  }
+
+  /**
+   * Get a specific participant's profile.
+   * @param {string} conversationId
+   * @param {string} participantId
+   * @returns {ParticipantProfile|null}
+   */
+  getParticipantProfile(conversationId, participantId) {
+    return (
+      this.conversations.get(conversationId)?.participants[participantId] ||
+      null
+    );
+  }
+
+  /**
+   * Convenience helper to get the remote contact ID for the currently selected 1:1 conversation.
+   * Returns null if there is no selected conversation, if the conversation is not 1:1, or if the conversation state is missing.
+   * Relies on the convention that remoteParticipantIds contains only the other participant(s) excluding self.
+   * @returns {string|null} Remote contact ID or null if not available
+   */
+  getRemoteContactIdForSelected1on1Conversation() {
+    const conversationId = this.getSelectedConversationId();
+    const conversationState = this.conversations.get(conversationId);
+    if (!conversationState) return null;
+
+    if (conversationState.remoteParticipantIds.length !== 1) {
+      console.warn(
+        '[MessagingController] Conversation is not 1:1, cannot determine remote contact ID:',
+        conversationId,
+      );
+      return null;
+    }
+
+    return conversationState.remoteParticipantIds[0];
+  }
+
+  /**
+   * Fetch and cache a user profile for a conversation.
+   * Emits 'conversation:meta-updated' when resolved.
+   * @param {string} participantId
+   * @private
+   */
+  async _fetchParticipantProfile(participantId) {
+    try {
+      const profile = await getUserProfile(participantId);
+      return profile;
+    } catch (e) {
+      console.warn(
+        '[MessagingController] Failed to fetch profile for participant:',
+        participantId,
+        e,
+      );
+    }
   }
 
   /**

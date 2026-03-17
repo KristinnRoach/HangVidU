@@ -186,7 +186,7 @@ describe('MessagingController', () => {
     );
   });
 
-  it('should fetch profile and emit conversation:profile-updated', async () => {
+  it('should fetch participant profile and emit conversation:meta-updated', async () => {
     const profile = {
       displayName: 'Alice',
       photoURL: 'https://example.com/alice.jpg',
@@ -194,7 +194,7 @@ describe('MessagingController', () => {
     mockGetUserProfile.mockResolvedValueOnce(profile);
 
     const spy = vi.fn();
-    controller.on('conversation:profile-updated', spy);
+    controller.on('conversation:meta-updated', spy);
 
     await controller.selectConversation('contactA_me', {
       remoteParticipantIds: ['contactA'],
@@ -204,15 +204,17 @@ describe('MessagingController', () => {
     await vi.waitFor(() => {
       expect(spy).toHaveBeenCalledWith({
         conversationId: 'contactA_me',
-        profile,
+        participants: { contactA: profile },
       });
     });
 
-    expect(controller.getProfile('contactA_me')).toEqual(profile);
-  });
-
-  it('should return null for profile of unknown conversation', () => {
-    expect(controller.getProfile('nonexistent')).toBeNull();
+    expect(
+      controller.getParticipantProfile('contactA_me', 'contactA'),
+    ).toEqual(profile);
+    expect(controller.getConversationDisplayName('contactA_me')).toBe('Alice');
+    expect(controller.getConversationPhotoURL('contactA_me')).toBe(
+      'https://example.com/alice.jpg',
+    );
   });
 
   it('should send message through store and return message', async () => {

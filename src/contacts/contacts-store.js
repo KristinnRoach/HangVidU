@@ -87,6 +87,8 @@ async function deleteContact(contactId) {
 }
 
 async function updateLastInteraction(contactId) {
+  if (!contactId) return;
+
   const loggedInUid = getLoggedInUserId();
   if (!loggedInUid) return;
 

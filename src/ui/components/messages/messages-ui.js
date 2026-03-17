@@ -60,8 +60,6 @@ function refreshRemoteAvatars(container, { name, photoURL }) {
  */
 export function initMessagesUI() {
   let repositionHandlersAttached = false;
-  let currentConversationId = null; // Track the currently displayed conversation
-  let conversationMetadata = {}; // Store conversation metadata locally: { contactId, contactName, contactProfile, contactPhotoURL }
   let fileTransferController = null; // FileTransferController instance set by setFileTransferController()
   let inActiveCall = false; // Track if we're currently in an active call
   let isReceivingFile = false; // Track if currently receiving a file
@@ -75,7 +73,8 @@ export function initMessagesUI() {
   let watchFileHandler; // Initialized after DOM guards pass
 
   const shouldShowAttachButton = () =>
-    !!fileTransferController || !!currentConversationId; // removed getIsLoggedIn()
+    !!fileTransferController ||
+    !!messagingController.getSelectedConversationId(); // removed getIsLoggedIn()
 
   const refreshAttachButton = () => {
     if (shouldShowAttachButton()) {
@@ -143,12 +142,16 @@ export function initMessagesUI() {
     messageTopBar.setBackHandler(() => closeMessagesUI());
 
     messageTopBar.setCallHandler(() => {
+      const state = messagingController.getSelectedConversationState();
+      const conversationId = state?.conversationId;
       messagesBox.dispatchEvent(
         new CustomEvent('contact:call', {
           bubbles: true,
           detail: {
-            contactId: conversationMetadata.contactId || null,
-            contactName: conversationMetadata.contactName || null,
+            contactId: state.remoteParticipantIds[0] || null,
+            contactName:
+              messagingController.getConversationDisplayName(conversationId) ||
+              null,
           },
         }),
       );
@@ -226,17 +229,13 @@ export function initMessagesUI() {
             content: { text: `📎 ${t('message.sent')}` },
           });
         }
-      } else if (currentConversationId) {
+      } else {
         // Persistent file message (no active call, small files only)
         const message = await messagingController.sendFile(
-          currentConversationId,
+          messagingController.getSelectedConversationId(),
           file,
         );
         renderMessage(message);
-      } else {
-        console.warn(
-          '[MessagesUI] No file transport or conversation available',
-        );
       }
     } catch (err) {
       console.error('[MessagesUI] File send failed:', err);
@@ -418,29 +417,29 @@ export function initMessagesUI() {
   function openMessagesUI() {
     if (isMessagesUIOpen()) return;
 
-    if (!currentConversationId) {
+    const selectedConversationId =
+      messagingController.getSelectedConversationId();
+
+    if (!selectedConversationId) {
       console.warn('[MessagesUI] No active conversation to display');
       return;
     }
 
-    openMessagesBox();
-    scrollMessagesToEnd();
-
-    // Only auto-focus on desktop; let mobile users tap to focus naturally
-    if (!isMobileDevice()) messagesInput.focus();
-
-    messagingController.markAsRead(currentConversationId).catch((err) => {
+    messagingController.markAsRead(selectedConversationId).catch((err) => {
       console.warn('Failed to mark messages as read:', err);
     });
 
-    // Set up outside click handler
+    openMessagesBox();
+    scrollMessagesToEnd();
+    if (!isMobileDevice()) messagesInput.focus();
 
-    // ignore clicks that select conversations (class="contact-entry") + msg toggle + reactions picker
+    // Set up outside click handler
     removeMessagesBoxClickOutside = onClickOutside(
       messagesBox,
       () => closeMessagesUI(),
       {
         ignore: () => {
+          // ignore clicks that select conversations (class="contact-entry") + msg toggle + reactions picker
           const contactEntries = document.querySelectorAll('.contact-entry');
           const ignoreClickElementsArray = Array.from(contactEntries);
           ignoreClickElementsArray.push(messageToggle.element);
@@ -486,7 +485,8 @@ export function initMessagesUI() {
     msgId,
     source,
   ) {
-    if (!currentConversationId) {
+    const convId = messagingController.getSelectedConversationId();
+    if (!convId) {
       console.warn('[MessagesUI] No current conversation for reaction');
       return;
     }
@@ -504,7 +504,7 @@ export function initMessagesUI() {
       if (source === 'doubleTap') {
         if (myReactionType) {
           await messagingController.removeReaction(
-            currentConversationId,
+            convId,
             msgId,
             myReactionType,
           );
@@ -514,11 +514,7 @@ export function initMessagesUI() {
             userId,
           );
         } else {
-          await messagingController.addReaction(
-            currentConversationId,
-            msgId,
-            reactionType,
-          );
+          await messagingController.addReaction(convId, msgId, reactionType);
           reactions = reactionManager.addReaction(msgId, reactionType, userId);
           if (REACTION_CONFIG.enableAnimations) {
             reactionUI.showReactionAnimation(messageElement, reactionType);
@@ -526,11 +522,7 @@ export function initMessagesUI() {
         }
       } else if (source === 'picker') {
         if (myReactionType === reactionType) {
-          await messagingController.removeReaction(
-            currentConversationId,
-            msgId,
-            reactionType,
-          );
+          await messagingController.removeReaction(convId, msgId, reactionType);
           reactions = reactionManager.removeReaction(
             msgId,
             reactionType,
@@ -539,17 +531,13 @@ export function initMessagesUI() {
         } else {
           if (myReactionType) {
             await messagingController.removeReaction(
-              currentConversationId,
+              convId,
               msgId,
               myReactionType,
             );
             reactionManager.removeReaction(msgId, myReactionType, userId);
           }
-          await messagingController.addReaction(
-            currentConversationId,
-            msgId,
-            reactionType,
-          );
+          await messagingController.addReaction(convId, msgId, reactionType);
           reactions = reactionManager.addReaction(msgId, reactionType, userId);
           if (REACTION_CONFIG.enableAnimations) {
             reactionUI.showReactionAnimation(messageElement, reactionType);
@@ -617,15 +605,12 @@ export function initMessagesUI() {
     if (isLocal) {
       renderAvatar(avatarSpan, { customFallbackText: t('shared.me') });
     } else {
-      const contactName =
-        conversationMetadata?.contactName ||
-        conversationMetadata?.contactProfile?.displayName ||
-        'U';
+      const conversationId = messagingController.getSelectedConversationId();
+      const displayName =
+        messagingController.getConversationDisplayName(conversationId) || 'U';
       const photoURL =
-        conversationMetadata?.contactPhotoURL ||
-        conversationMetadata?.contactProfile?.photoURL ||
-        '';
-      renderAvatar(avatarSpan, { name: contactName, photoURL });
+        messagingController.getConversationPhotoURL(conversationId) || '';
+      renderAvatar(avatarSpan, { name: displayName, photoURL });
     }
 
     return avatarSpan;
@@ -734,11 +719,15 @@ export function initMessagesUI() {
       } else {
         try {
           const { callContact } = await import('../../../main.js');
+
+          const state = messagingController.getSelectedConversationState();
+          const conversationId = state?.conversationId;
+
           const contactId = wasInitiatedByMe
-            ? conversationMetadata.contactId
+            ? state.remoteParticipantIds[0]
             : details.callerId;
           const contactName = wasInitiatedByMe
-            ? conversationMetadata.contactName
+            ? messagingController.getConversationDisplayName(conversationId)
             : details.callerName;
           if (contactId && contactName) {
             await callContact(contactId, contactName);
@@ -998,14 +987,11 @@ export function initMessagesUI() {
     const msg = messagesInput.value.trim();
     if (!msg) return;
 
-    // Send via current conversation
-    if (currentConversationId) {
+    const convId = messagingController.getSelectedConversationId();
+    if (convId) {
       try {
         messagesInput.value = ''; // Optimistically clear input
-        const parsed = await messagingController.send(
-          currentConversationId,
-          msg,
-        );
+        const parsed = await messagingController.send(convId, msg);
 
         renderMessage(parsed); // Optimistically render sender's own message from return value
         if (resetInputHeight) resetInputHeight(); // Reset textarea height
@@ -1095,34 +1081,22 @@ export function initMessagesUI() {
    * No-op if already showing the same conversation.
    * @param {string} conversationId - Conversation ID
    * @param {string} contactId - Contact ID
-   * @param {Object} [state] - Conversation state snapshot with { profile, history }
    */
-  function prepareConversation(conversationId, contactId, conversationState) {
+  function prepareConversation(conversationId, contactId) {
     if (!conversationId) return;
-    if (currentConversationId === conversationId) return;
 
     if (markAsReadTimeout !== null) {
       clearTimeout(markAsReadTimeout);
       markAsReadTimeout = null;
     }
 
-    if (currentConversationId !== null) {
-      clearMessages();
-    }
-
-    currentConversationId = conversationId;
+    clearMessages();
     lastTimestamp = 0;
 
-    const profile = conversationState?.profile;
-    const name = profile?.displayName || '';
-    const photoURL = profile?.photoURL || '';
-
-    conversationMetadata = {
-      contactId,
-      contactName: name,
-      contactProfile: profile || null,
-      contactPhotoURL: photoURL,
-    };
+    const name =
+      messagingController.getConversationDisplayName(conversationId) || '';
+    const photoURL =
+      messagingController.getConversationPhotoURL(conversationId) || '';
 
     if (messageTopBar) {
       messageTopBar.setContact({ name, photoURL });
@@ -1134,14 +1108,6 @@ export function initMessagesUI() {
     if (history?.length > 0) {
       appendCachedHistory({ history });
     }
-  }
-
-  /**
-   * Get the currently displayed conversation ID
-   * @returns {string|null} Current conversation ID or null
-   */
-  function getCurrentConversationId() {
-    return currentConversationId;
   }
 
   // ---------------------------------------------------------------------------
@@ -1313,11 +1279,9 @@ export function initMessagesUI() {
         }
 
         // Update interaction timestamp for received files
-        if (conversationMetadata.contactId) {
-          contactsController
-            .updateLastInteraction(conversationMetadata.contactId)
-            .catch(() => {});
-        }
+        updateLastInteractionForConversation(
+          messagingController.getSelectedConversationId(),
+        );
 
         // Increment unread count if messages box is hidden
         if (isHidden(messagesBox)) {
@@ -1355,14 +1319,16 @@ export function initMessagesUI() {
    */
   function reset() {
     clearMessages();
-    currentConversationId = null;
-    conversationMetadata = {};
     clearTimeout(markAsReadTimeout);
     markAsReadTimeout = null;
     fileTransferController = null;
     inActiveCall = false;
     isReceivingFile = false;
     watchFileHandler.reset();
+    if (removeMessagesBoxClickOutside) {
+      removeMessagesBoxClickOutside();
+      removeMessagesBoxClickOutside = null;
+    }
 
     hideElement(messagesBox);
     messageToggle.clearBadge();
@@ -1521,46 +1487,44 @@ export function initMessagesUI() {
     appendMessage(message);
   }
 
+  function updateLastInteractionForConversation(conversationId) {
+    const state = messagingController.getConversation(conversationId);
+    const contactId =
+      state?.remoteParticipantIds?.length === 1
+        ? state.remoteParticipantIds[0]
+        : null;
+    if (!contactId) return;
+    contactsController.updateLastInteraction(contactId).catch(() => {});
+  }
+
   // --- Domain Event Listeners ---
 
   // Data ready — prepare conversation UI
   messagingController.on(
     'conversation:ready',
-    ({ conversationId, remoteParticipantIds, displayUI, profile, history }) => {
-      prepareConversation(conversationId, remoteParticipantIds[0], {
-        profile,
-        history,
-      });
+    ({ conversationId, remoteParticipantIds, displayUI }) => {
+      prepareConversation(conversationId, remoteParticipantIds[0]);
       if (displayUI) openMessagesUI();
     },
     { signal: ac.signal },
   );
 
-  // Profile loaded — update name/photo
+  // Update name/photo when display info loads
   messagingController.on(
-    'conversation:profile-updated',
-    ({ conversationId, profile }) => {
-      if (conversationId !== currentConversationId || !profile) return;
+    'conversation:meta-updated',
+    ({ conversationId }) => {
+      if (conversationId !== messagingController.getSelectedConversationId()) {
+        return;
+      }
 
-      // TODO: Clean up and simplify this (avoid redundant or inconsistent updates)
-
-      conversationMetadata.contactProfile = profile;
-      if (profile.displayName)
-        conversationMetadata.contactName = profile.displayName;
-      if (profile.photoURL)
-        conversationMetadata.contactPhotoURL = profile.photoURL;
+      const name =
+        messagingController.getConversationDisplayName(conversationId) || '';
+      const photoURL =
+        messagingController.getConversationPhotoURL(conversationId) || '';
 
       if (messageTopBar) {
-        if (profile.displayName || profile.photoURL) {
-          messageTopBar.setContact({
-            name: profile.displayName || '',
-            photoURL: profile.photoURL || '',
-          });
-        }
-        refreshRemoteAvatars(messagesMessages, {
-          name: profile.displayName || '',
-          photoURL: conversationMetadata.contactPhotoURL,
-        });
+        messageTopBar.setContact({ name, photoURL });
+        refreshRemoteAvatars(messagesMessages, { name, photoURL });
       }
     },
     { signal: ac.signal },
@@ -1569,10 +1533,7 @@ export function initMessagesUI() {
   messagingController.on(
     'conversation:closed',
     ({ conversationId }) => {
-      if (conversationId !== currentConversationId) return;
-      currentConversationId = null;
       clearMessages();
-      conversationMetadata = {};
       refreshAttachButton();
       if (messageTopBar) {
         messageTopBar.setContact({ name: '', photoURL: '' });
@@ -1584,24 +1545,22 @@ export function initMessagesUI() {
   messagingController.on(
     'unread:changed',
     ({ conversationId, unreadCount, newlyReadMsgIds = [] }) => {
-      if (conversationId === currentConversationId) {
-        if (unreadCount === 0) {
-          messageToggle.clearBadge();
-        } else {
-          messageToggle.setUnreadCount(unreadCount);
-        }
-        if (newlyReadMsgIds.length < 1) return;
-
-        // Mark messages as read in the UI if they are now read
-        newlyReadMsgIds.forEach((msgId) => {
-          const bubble = messagesMessages.querySelector(
-            `[data-message-id="${msgId}"]`,
-          );
-          if (bubble) bubble.dataset.read = 'true';
-          const messageEntry = bubble?.closest('.message-entry');
-          if (messageEntry) messageEntry.dataset.read = 'true';
-        });
+      if (unreadCount === 0) {
+        messageToggle.clearBadge();
+      } else {
+        messageToggle.setUnreadCount(unreadCount);
       }
+      if (newlyReadMsgIds.length < 1) return;
+
+      // Mark messages as read in the UI if they are now read
+      newlyReadMsgIds.forEach((msgId) => {
+        const bubble = messagesMessages.querySelector(
+          `[data-message-id="${msgId}"]`,
+        );
+        if (bubble) bubble.dataset.read = 'true';
+        const messageEntry = bubble?.closest('.message-entry');
+        if (messageEntry) messageEntry.dataset.read = 'true';
+      });
     },
     { signal: ac.signal },
   );
@@ -1609,34 +1568,23 @@ export function initMessagesUI() {
   messagingController.on(
     'message:received',
     ({ message, conversationId }) => {
-      // Only handle if this message belongs to our currently active conversation
-      if (conversationId !== currentConversationId) return;
+      updateLastInteractionForConversation(conversationId);
 
-      if (conversationMetadata.contactId) {
-        contactsController
-          .updateLastInteraction(conversationMetadata.contactId)
-          .catch(() => {});
+      const selectedConversationId =
+        messagingController.getSelectedConversationId();
+      if (conversationId !== selectedConversationId) {
+        return;
       }
 
       renderMessage(message);
 
       // Mark as read if UI is open and message is not from me
       if (isMessagesUIOpen() && !isLocalMessage(message)) {
-        const conversationIdAtReceive = currentConversationId ?? conversationId;
-
         clearTimeout(markAsReadTimeout);
         markAsReadTimeout = setTimeout(() => {
           markAsReadTimeout = null;
-          if (
-            !currentConversationId ||
-            currentConversationId !== conversationIdAtReceive ||
-            !isMessagesUIOpen()
-          ) {
-            return;
-          }
 
-          // TODO: optimize markAsRead (accept msgId?)
-          messagingController.markAsRead(currentConversationId).catch((err) => {
+          messagingController.markAsRead(conversationId).catch((err) => {
             console.warn('Failed to mark messages as read:', err);
           });
         }, MARK_AS_READ_DEBOUNCE_MS);
@@ -1648,17 +1596,7 @@ export function initMessagesUI() {
   messagingController.on(
     'message:sent',
     ({ message, conversationId }) => {
-      if (conversationId !== currentConversationId) return;
-
-      // NOTE: Message is already optimistically rendered on send,
-      // so this event is primarily for updating last interaction status
-      // or handling send failures in the future.
-
-      if (conversationMetadata.contactId) {
-        contactsController
-          .updateLastInteraction(conversationMetadata.contactId)
-          .catch(() => {});
-      }
+      updateLastInteractionForConversation(conversationId);
     },
     { signal: ac.signal },
   );
@@ -1666,14 +1604,9 @@ export function initMessagesUI() {
   messagingController.on(
     'reaction:updated',
     ({ conversationId, messageId, reactions }) => {
-      if (conversationId !== currentConversationId) return;
       updateMessageReactions(messageId, reactions);
 
-      if (conversationMetadata.contactId) {
-        contactsController
-          .updateLastInteraction(conversationMetadata.contactId)
-          .catch(() => {});
-      }
+      updateLastInteractionForConversation(conversationId);
     },
     { signal: ac.signal },
   );
@@ -1690,7 +1623,6 @@ export function initMessagesUI() {
     isMessageInputFocused,
     focusMessageInput,
     unfocusMessageInput,
-    getCurrentConversationId,
     clearMessages,
     setFileTransferController,
     reset,
