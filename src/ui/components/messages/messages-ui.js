@@ -1570,6 +1570,12 @@ export function initMessagesUI() {
     ({ message, conversationId }) => {
       updateLastInteractionForConversation(conversationId);
 
+      const selectedConversationId =
+        messagingController.getSelectedConversationId();
+      if (conversationId !== selectedConversationId) {
+        return;
+      }
+
       renderMessage(message);
 
       // Mark as read if UI is open and message is not from me
