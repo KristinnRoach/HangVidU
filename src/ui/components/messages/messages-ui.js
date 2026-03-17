@@ -1165,7 +1165,7 @@ export function initMessagesUI() {
 
   /**
    * Remote peer requested watch-together for a file we sent.
-   * Shows accept/decline actions in chat.
+   * Shows accept action in chat.
    */
   async function onWatchFileRequest(e) {
     const { fileName } = e.detail;
@@ -1225,6 +1225,10 @@ export function initMessagesUI() {
       console.warn(
         '[MessagesUI] setFileTransferController(): Called with null (should NOT happen - investigate)',
       );
+      fileTransferController = null;
+      inActiveCall = false;
+      watchFileHandler.reset();
+      refreshAttachButton();
       return;
     }
 
@@ -1450,8 +1454,8 @@ export function initMessagesUI() {
     }
     observer.disconnect();
 
-    // Remove keyboard shortcut handler
     document.removeEventListener('keydown', openMessagesKeyhandler);
+    document.removeEventListener('watch:file-request', onWatchFileRequest);
 
     // Clean up watch-together file handler
     if (watchFileHandler) {
