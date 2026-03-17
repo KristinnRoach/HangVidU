@@ -1279,11 +1279,9 @@ export function initMessagesUI() {
         }
 
         // Update interaction timestamp for received files
-        contactsController
-          .updateLastInteraction(
-            messagingController.getRemoteContactIdForSelected1on1Conversation(),
-          )
-          .catch(() => {});
+        updateLastInteractionForConversation(
+          messagingController.getSelectedConversationId(),
+        );
 
         // Increment unread count if messages box is hidden
         if (isHidden(messagesBox)) {
@@ -1489,6 +1487,16 @@ export function initMessagesUI() {
     appendMessage(message);
   }
 
+  function updateLastInteractionForConversation(conversationId) {
+    const state = messagingController.getConversation(conversationId);
+    const contactId =
+      state?.remoteParticipantIds?.length === 1
+        ? state.remoteParticipantIds[0]
+        : null;
+    if (!contactId) return;
+    contactsController.updateLastInteraction(contactId).catch(() => {});
+  }
+
   // --- Domain Event Listeners ---
 
   // Data ready — prepare conversation UI
@@ -1505,6 +1513,10 @@ export function initMessagesUI() {
   messagingController.on(
     'conversation:meta-updated',
     ({ conversationId }) => {
+      if (conversationId !== messagingController.getSelectedConversationId()) {
+        return;
+      }
+
       const name =
         messagingController.getConversationDisplayName(conversationId) || '';
       const photoURL =
@@ -1556,11 +1568,7 @@ export function initMessagesUI() {
   messagingController.on(
     'message:received',
     ({ message, conversationId }) => {
-      contactsController
-        .updateLastInteraction(
-          messagingController.getRemoteContactIdForSelected1on1Conversation(),
-        )
-        .catch(() => {});
+      updateLastInteractionForConversation(conversationId);
 
       renderMessage(message);
 
@@ -1582,11 +1590,7 @@ export function initMessagesUI() {
   messagingController.on(
     'message:sent',
     ({ message, conversationId }) => {
-      contactsController
-        .updateLastInteraction(
-          messagingController.getRemoteContactIdForSelected1on1Conversation(),
-        )
-        .catch(() => {});
+      updateLastInteractionForConversation(conversationId);
     },
     { signal: ac.signal },
   );
@@ -1596,11 +1600,7 @@ export function initMessagesUI() {
     ({ conversationId, messageId, reactions }) => {
       updateMessageReactions(messageId, reactions);
 
-      contactsController
-        .updateLastInteraction(
-          messagingController.getRemoteContactIdForSelected1on1Conversation(),
-        )
-        .catch(() => {});
+      updateLastInteractionForConversation(conversationId);
     },
     { signal: ac.signal },
   );
