@@ -208,14 +208,14 @@ export class MessagingController extends EventEmitter {
         history: Array.isArray(conversationState.history)
           ? [...conversationState.history]
           : [],
-        participants: conversationState.participants,
+        participants: { ...conversationState.participants },
       });
 
       // Re-emit cached participants so UI can update after conversation switch
       if (Object.keys(conversationState.participants).length > 0) {
         this.emit('conversation:meta-updated', {
           conversationId,
-          participants: conversationState.participants,
+          participants: { ...conversationState.participants },
         });
       }
 
@@ -308,7 +308,7 @@ export class MessagingController extends EventEmitter {
       history: Array.isArray(conversationState.history)
         ? [...conversationState.history]
         : [],
-      participants: conversationState.participants,
+      participants: { ...conversationState.participants },
     });
 
     // 4. Fetch participant profiles (non-blocking)
@@ -333,13 +333,20 @@ export class MessagingController extends EventEmitter {
     state.participants[participantId] = profile;
     this.emit('conversation:meta-updated', {
       conversationId,
-      participants: state.participants,
+      participants: { ...state.participants },
     });
   }
 
   getSelectedConversationState() {
     const conversationId = this.getSelectedConversationId();
-    return this.conversations.get(conversationId) || null;
+    const state = this.conversations.get(conversationId);
+    if (!state) return null;
+    return {
+      ...state,
+      remoteParticipantIds: [...state.remoteParticipantIds],
+      participants: { ...state.participants },
+      history: [...state.history],
+    };
   }
 
   /**
