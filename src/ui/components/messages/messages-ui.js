@@ -215,7 +215,7 @@ export function initMessagesUI() {
 
         const sentVideo = watchFileHandler.trackSentFile(file);
 
-        if (sentVideo) {
+        if (sentVideo && isSafeDownloadUrl(sentVideo.downloadUrl)) {
           appendEphemeralActionMessage({
             text: t('message.sent'),
             downloadUrl: sentVideo.downloadUrl,
@@ -680,7 +680,8 @@ export function initMessagesUI() {
     const link = document.createElement('a');
     link.textContent = fileName;
     if (isSafeUrl) {
-      link.href = dataUrl;
+      const safeDataUrl = dataUrl;
+      link.href = safeDataUrl;
       link.download = fileName;
     }
     link.style.cssText = 'cursor: pointer; text-decoration: underline;';
@@ -970,8 +971,14 @@ export function initMessagesUI() {
    * Trigger download of a data URL
    */
   function downloadDataUrl(dataUrl, fileName) {
+    if (!isSafeDownloadUrl(dataUrl)) {
+      console.warn('[MessagesUI] downloadDataUrl: URL not safe to download');
+      return;
+    }
     const a = document.createElement('a');
-    a.href = dataUrl;
+    // Store validated URL in new variable to break data flow chain
+    const safeUrl = dataUrl;
+    a.href = safeUrl;
     a.download = fileName;
     a.click();
   }
@@ -1260,7 +1267,7 @@ export function initMessagesUI() {
           mimeType,
         });
 
-        if (result.isVideo) {
+        if (result.isVideo && isSafeDownloadUrl(result.downloadUrl)) {
           appendEphemeralActionMessage({
             text: t('message.received_video', { name }),
             downloadUrl: result.downloadUrl,
@@ -1283,18 +1290,26 @@ export function initMessagesUI() {
         } else {
           // Non-video file — show download link
           const url = URL.createObjectURL(file);
-          const entry = appendEphemeralMessage({
-            content: {
-              text: `📎 ${t('message.received', { name })} `,
-              downloadUrl: url,
-              downloadName: name,
-            },
-          });
-          entry
-            ?.querySelector('.message-text a')
-            ?.addEventListener('click', () =>
-              setTimeout(() => URL.revokeObjectURL(url), 100),
-            );
+          if (isSafeDownloadUrl(url)) {
+            const entry = appendEphemeralMessage({
+              content: {
+                text: `📎 ${t('message.received', { name })} `,
+                downloadUrl: url,
+                downloadName: name,
+              },
+            });
+            entry
+              ?.querySelector('.message-text a')
+              ?.addEventListener('click', () =>
+                setTimeout(() => URL.revokeObjectURL(url), 100),
+              );
+          } else {
+            appendEphemeralMessage({
+              content: {
+                text: `📎 ${t('message.received', { name })}`,
+              },
+            });
+          }
         }
 
         // Update interaction timestamp for received files
