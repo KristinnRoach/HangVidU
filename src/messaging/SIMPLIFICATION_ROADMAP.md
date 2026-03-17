@@ -1,12 +1,12 @@
 # Messaging System Simplification Roadmap
 
-**Current status**: Phase 1 ✅ COMPLETE (PR #395). Phase 2.1-2.2 ✅ COMPLETE (branch: phase2-eliminate-dual-caching). Phase 2.2b ready to implement.
+**Current status**: Phase 1 ✅ | Phase 2.1-2.2 ✅ | Phase 3.2 ✅ (PR #401)
 
 **Entry point**:
 
-1. Read MEMORY.md § NEXT for current work context
-2. Phase 2.2 ✅ COMPLETE — sender sees message immediately, no RTDB echo
-3. Next: Phase 2.2b (optimistic render + error handling) or Phase 2.3 (route appendCachedHistory)
+1. Phase 3.2 ✅ COMPLETE (PR #401) — watch-together extracted to src/watch/watch-file-handler.js
+2. Next: Phase 2.2b (optimistic render + error) or Phase 3.1 (file state consolidation)
+3. Deferred: Phase 2.3 (route appendCachedHistory)
 
 ---
 
@@ -24,36 +24,29 @@ The goal: reduce complexity, clarify ownership, improve testability and reusabil
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Phase 1: FOUNDATIONS (unblock everything)                   │
+│ Phase 1: FOUNDATIONS ✅ COMPLETE                             │
 ├─────────────────────────────────────────────────────────────┤
-│ • [ ] Session Ownership: Single entry point                 │
-│       └─> Blocks: all flows, state clarity, init sequence   │
-│ • [ ] State Ownership Clarity: Map all 10+ state variables  │
-│       └─> Blocks: flow fixes, dual caching, scattered state │
+│ • [x] Session Ownership: Single entry point                 │
+│ • [x] State Ownership Clarity: Map all 10+ state variables  │
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
-│ Phase 2: FIX FLOWS (eliminate redundancy)                   │
+│ Phase 2: FIX FLOWS (partially complete)                     │
 ├─────────────────────────────────────────────────────────────┤
-│ • [x] Eliminate Dual Caching: IndexedDB XOR messageElements │
-│       └─> Unblocks: send path optimization, memory clarity  │
-│ • [x] Fix Send Path: Eliminate circular RTDB echo           │
-│       └─> Unblocks: appendCachedHistory simplification      │
-│ • [ ] Route appendCachedHistory: Through Controller, not UI  │
-│       └─> Unblocks: validation consistency                  │
+│ • [x] 2.1 Eliminate Dual Caching                            │
+│ • [x] 2.2 Fix Send Path: Eliminate circular RTDB echo       │
+│ • [ ] 2.2b Optimistic Render with Error Handling (deferred) │
+│ • [ ] 2.3 Route appendCachedHistory through Controller      │
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
 │ Phase 3: DECOUPLE DOMAINS (separate concerns)               │
 ├─────────────────────────────────────────────────────────────┤
-│ • [ ] Consolidate File State: Single owner, clear API       │
-│       └─> Unblocks: file message rendering reusability      │
-│ • [ ] Extract Watch-Together: From UI layer                 │
-│       └─> Unblocks: independent file rendering              │
-│ • [ ] Fix Reactions Deletion: Proper deletion event guard    │
-│       └─> Unblocks: reaction UI accuracy                    │
-│ • [ ] Move inActiveCall: To callController                  │
-│       └─> Unblocks: cleaner UI layer                        │
+│ • [x] 3.2 Extract Watch-Together from UI ✅ (PR #401)       │
+│       Moves ~370 LoC to src/watch/watch-file-handler.js     │
+│ • [ ] 3.1 Consolidate File State (deferred)                 │
+│ • [ ] 3.3 Fix Reactions Deletion (independent)              │
+│ • [ ] 3.4 Move inActiveCall to callController (independent) │
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
@@ -389,7 +382,7 @@ No clear owner. Side effects during render.
 
 **Impact**: File reusability, testability, watch-together separation.
 
-**Depends on**: Phase 2 flows fixed
+**Depends on**: Phase 2 flows fixed. Independent of 3.2.
 
 **Size**: Large (150-200 LoC changes)
 
@@ -413,47 +406,71 @@ No clear owner. Side effects during render.
 
 ---
 
-### Issue 3.2: Extract Watch-Together From UI Layer
+### Issue 3.2: Extract Watch-Together From UI Layer ✅ COMPLETE (PR #401)
 
-**Problem**: Watch-together logic embedded in messages-ui.js
+**Problem**: Watch-together logic embedded in messages-ui.js — ~250 LoC of modal dialogs,
+file tracking state, event handlers, and OPFS/SW integration that has nothing to do with messaging.
+
+**Depends on**: Nothing. Independent of 3.1 (file state consolidation).
+
+**Size**: Medium (~370 LoC moved out, ~4 integration hooks remain)
+
+**Solution Implemented (commit 1ea3706)**:
+
+Created `src/watch/watch-file-handler.js` with:
+- `createWatchFileHandler()` factory
+- internal tracking for sent/received files, keeping watch-together logic out of messages-ui
+- `checkReceivedFile()` — evaluates newly received files for potential watch-together flows
+- `requestWatchTogether()` — starts a watch-together session for an already shared file
+- `reset()` — clears internal state between sessions
+
+messages-ui.js now calls handler via:
+- `watchFileHandler.checkReceivedFile()` when a file is received
+- `watchFileHandler.requestWatchTogether()` when the user initiates a watch-together session
+- `watchFileHandler.reset()` in its overall reset flow
+
+**Removed from messages-ui.js**:
+- Imports: watch-sync, video-serving, isVideoMime
+- ~370 LoC (2 modals, 1 event handler, inline video handling)
+- sentFiles, receivedFile state variables
+
+**Testing**: ✅ Manual verified
+- Build passes
+- 299 tests pass (1 skipped)
+- Video send/receive with Download/Watch prompt works
+- Watch request accept/decline flow verified
+- Non-video files still show download link
+
+**Previous coupling points in messages-ui.js** (now all in handler):
 
 ```
-buildFileContent() → handleVideoSelection()
-  → registerVideoForServing() [side effect during render!]
+Imports:
+  - handleVideoSelection, createWatchRequest, acceptWatchRequest, cancelWatchRequest (watch-sync)
+  - registerVideoForServing, isSwServingSupported (video-serving)
+
+State:
+  - sentFiles Map — tracks sent video files by name for watch requests
+  - receivedFile — stores last received video file
+
+Functions (~250 LoC):
+  - promptFileAction() — modal: "Download or Watch Together?"
+  - promptJoinWatchTogether() — modal: "Partner wants to watch, join?"
+  - onWatchFileRequest() — handler for 'watch:file-request' CustomEvent
+
+Inline in setFileTransferController().onFileReceived:
+  - Video detection (isVideoMime check)
+  - OPFS/SW serving logic (registerVideoForServing, isSwServingSupported)
+  - Watch request creation (handleVideoSelection + createWatchRequest)
+  - receivedFile assignment
+
+Inline in fileInput change handler:
+  - sentFiles.set(file.name, file) — video file tracking after send
+
+Cleanup:
+  - sentFiles.clear(), receivedFile = null in reset()
+  - removeEventListener('watch:file-request') in cleanup()
 ```
 
-Tightly coupled. Can't render files without triggering watch-sync.
-
-**Impact**: File rendering reusability, separation of concerns.
-
-**Depends on**: Phase 3.1 (file state consolidated)
-
-**Size**: Medium (100-150 LoC extraction)
-
-**Current coupling**:
-
-```
-messagesUI imports: watch-sync module
-buildFileContent() calls: registerVideoForServing()
-buildFileContent() calls: handleVideoSelection()
-```
-
-**Steps**:
-
-1. [ ] Extract pure render: `buildFileMessageUI(parsedMessage)` (no side effects)
-2. [ ] Create `VideoMessageHandler.js`
-   - Owns: video detection, watch-sync integration
-   - Handles: click events, request creation
-   - No rendering (uses renderer)
-3. [ ] Update appendMessage: Render pure content, attach handler separately
-4. [ ] Remove watch-sync import from messages-ui
-
-**Success criteria**:
-
-- File rendering has no side effects
-- Watch-together in separate module
-- Can render video files independently
-- Clear separation: render vs behavior
 
 ---
 

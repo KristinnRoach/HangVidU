@@ -205,11 +205,11 @@
   justify-content: flex-start;
 }
 
-#messages .message-entry.status {
+#messages .message-entry.ephemeral {
   justify-content: center;
 }
 
-#messages .message-entry.status .message-text {
+#messages .message-entry.ephemeral .message-text {
   color: var(--text-secondary);
   font-size: 13px;
   text-align: center;
