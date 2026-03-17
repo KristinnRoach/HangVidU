@@ -26,7 +26,7 @@ import { createMessageTopBar } from './createMessageTopBar.js';
 import { devDebug } from '../../../utils/dev/dev-utils.js';
 import { showImagePreview } from '../modal/imagePreview.js';
 import { onTapGesture } from '../../utils/detectDoubleClick.js';
-import { escapeHtml } from '../../component-system/dom-utils.js';
+import { isSafeDownloadUrl } from '../../../utils/security/validate-url.js';
 
 // const MAX_MESSAGE_LENGTH = 3000; // Max characters allowed in a message
 
@@ -678,9 +678,9 @@ export function initMessagesUI() {
     }
 
     const link = document.createElement('a');
-    link.textContent = escapeHtml(fileName);
+    link.textContent = fileName;
     if (isSafeUrl) {
-      link.href = escapeHtml(dataUrl);
+      link.href = dataUrl;
       link.download = fileName;
     }
     link.style.cssText = 'cursor: pointer; text-decoration: underline;';
@@ -874,10 +874,10 @@ export function initMessagesUI() {
       p.appendChild(document.createTextNode(text));
     }
 
-    if (downloadUrl) {
+    if (downloadUrl && isSafeDownloadUrl(downloadUrl)) {
       const link = document.createElement('a');
-      link.textContent = escapeHtml(downloadName || downloadUrl);
-      link.href = escapeHtml(downloadUrl);
+      link.textContent = downloadName || downloadUrl;
+      link.href = downloadUrl;
       if (downloadName) {
         link.download = downloadName;
       }
@@ -914,7 +914,7 @@ export function initMessagesUI() {
     p.className = 'message-text';
     p.appendChild(document.createTextNode(text));
 
-    if (downloadUrl) {
+    if (downloadUrl && isSafeDownloadUrl(downloadUrl)) {
       p.appendChild(document.createTextNode(' '));
       const link = document.createElement('a');
       let nameToShow = downloadName || downloadUrl;
