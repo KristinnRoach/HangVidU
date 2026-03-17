@@ -917,7 +917,7 @@ export function initMessagesUI() {
     if (downloadUrl && isSafeDownloadUrl(downloadUrl)) {
       p.appendChild(document.createTextNode(' '));
       const link = document.createElement('a');
-      let nameToShow = downloadName || downloadUrl;
+      let nameToShow = downloadName || 'download';
       if (nameToShow.length > 15) {
         const ext = nameToShow.includes('.')
           ? nameToShow.slice(nameToShow.lastIndexOf('.'))
