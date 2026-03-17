@@ -32,7 +32,10 @@ export function createWatchFileHandler() {
   /**
    * Check if a received file is a video.
    * If so, returns info for the caller to render (download URL, file ref).
-   * Does NOT trigger any UI or side effects.
+   * Does not perform any UI updates. For video files, this allocates a
+   * temporary object URL (`downloadUrl`) and returns a `revokeDownloadUrl`
+   * callback that callers must invoke when the URL is no longer needed
+   * to release the associated resources.
    *
    * @param {{ file: File, name: string, mimeType: string }} params
    * @returns {{ isVideo: true, name: string, file: File, mimeType: string, downloadUrl: string, revokeDownloadUrl: () => void } | { isVideo: false }}   */
