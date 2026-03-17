@@ -172,28 +172,6 @@ export class MessagingController extends EventEmitter {
   }
 
   /**
-   * Convenience helper to get the remote contact ID for the currently selected 1:1 conversation.
-   * Returns null if there is no selected conversation, if the conversation is not 1:1, or if the conversation state is missing.
-   * Relies on the convention that remoteParticipantIds contains only the other participant(s) excluding self.
-   * @returns {string|null} Remote contact ID or null if not available
-   */
-  getRemoteContactIdForSelected1on1Conversation() {
-    const conversationId = this.getSelectedConversationId();
-    const conversationState = this.conversations.get(conversationId);
-    if (!conversationState) return null;
-
-    if (conversationState.remoteParticipantIds.length !== 1) {
-      console.warn(
-        '[MessagingController] Conversation is not 1:1, cannot determine remote contact ID:',
-        conversationId,
-      );
-      return null;
-    }
-
-    return conversationState.remoteParticipantIds[0];
-  }
-
-  /**
    * Select a messaging conversation
    *
    * If a conversation already exists, it will be resumed instead of creating a new one.
@@ -412,6 +390,28 @@ export class MessagingController extends EventEmitter {
       this.conversations.get(conversationId)?.participants[participantId] ||
       null
     );
+  }
+
+  /**
+   * Convenience helper to get the remote contact ID for the currently selected 1:1 conversation.
+   * Returns null if there is no selected conversation, if the conversation is not 1:1, or if the conversation state is missing.
+   * Relies on the convention that remoteParticipantIds contains only the other participant(s) excluding self.
+   * @returns {string|null} Remote contact ID or null if not available
+   */
+  getRemoteContactIdForSelected1on1Conversation() {
+    const conversationId = this.getSelectedConversationId();
+    const conversationState = this.conversations.get(conversationId);
+    if (!conversationState) return null;
+
+    if (conversationState.remoteParticipantIds.length !== 1) {
+      console.warn(
+        '[MessagingController] Conversation is not 1:1, cannot determine remote contact ID:',
+        conversationId,
+      );
+      return null;
+    }
+
+    return conversationState.remoteParticipantIds[0];
   }
 
   /**
