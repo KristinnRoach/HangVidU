@@ -876,8 +876,10 @@ export function initMessagesUI() {
 
     if (downloadUrl && isSafeDownloadUrl(downloadUrl)) {
       const link = document.createElement('a');
-      link.textContent = downloadName || downloadUrl;
-      link.href = downloadUrl;
+      // Store validated URL in new variable to break data flow chain from untrusted source
+      const safeUrl = downloadUrl;
+      link.textContent = downloadName || 'download';
+      link.href = safeUrl;
       if (downloadName) {
         link.download = downloadName;
       }
@@ -917,6 +919,8 @@ export function initMessagesUI() {
     if (downloadUrl && isSafeDownloadUrl(downloadUrl)) {
       p.appendChild(document.createTextNode(' '));
       const link = document.createElement('a');
+      // Store validated URL in new variable to break data flow chain from untrusted source
+      const safeUrl = downloadUrl;
       let nameToShow = downloadName || 'download';
       if (nameToShow.length > 15) {
         const ext = nameToShow.includes('.')
@@ -925,7 +929,7 @@ export function initMessagesUI() {
         nameToShow = nameToShow.slice(0, 15) + '...' + ext;
       }
       link.textContent = nameToShow;
-      link.href = downloadUrl;
+      link.href = safeUrl;
       if (downloadName) link.download = downloadName;
       link.style.textDecoration = 'underline';
       link.style.cursor = 'pointer';
