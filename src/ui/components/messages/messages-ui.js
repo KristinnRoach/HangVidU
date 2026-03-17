@@ -26,7 +26,6 @@ import { createMessageTopBar } from './createMessageTopBar.js';
 import { devDebug } from '../../../utils/dev/dev-utils.js';
 import { showImagePreview } from '../modal/imagePreview.js';
 import { onTapGesture } from '../../utils/detectDoubleClick.js';
-import { escapeHtml } from '../../component-system/dom-utils.js';
 
 // const MAX_MESSAGE_LENGTH = 3000; // Max characters allowed in a message
 
@@ -678,9 +677,9 @@ export function initMessagesUI() {
     }
 
     const link = document.createElement('a');
-    link.textContent = escapeHtml(fileName);
+    link.textContent = fileName;
     if (isSafeUrl) {
-      link.href = escapeHtml(dataUrl);
+      link.href = dataUrl;
       link.download = fileName;
     }
     link.style.cssText = 'cursor: pointer; text-decoration: underline;';
@@ -876,8 +875,8 @@ export function initMessagesUI() {
 
     if (downloadUrl) {
       const link = document.createElement('a');
-      link.textContent = escapeHtml(downloadName || downloadUrl);
-      link.href = escapeHtml(downloadUrl);
+      link.textContent = downloadName || downloadUrl;
+      link.href = downloadUrl;
       if (downloadName) {
         link.download = downloadName;
       }
@@ -1212,6 +1211,16 @@ export function initMessagesUI() {
             }
           },
         },
+        {
+          label: t('call.decline'),
+          icon: 'x',
+          onClick: async () => {
+            await watchFileHandler.declineWatch();
+            appendEphemeralMessage({
+              content: { text: `❌ ${t('message.watch.declined')}` },
+            });
+          },
+        },
       ],
     });
   }
@@ -1222,9 +1231,10 @@ export function initMessagesUI() {
    */
   function setFileTransferController(controller) {
     if (!controller) {
-      console.warn(
-        '[MessagesUI] setFileTransferController(): Called with null (should NOT happen - investigate)',
-      );
+      fileTransferController = null;
+      inActiveCall = false;
+      watchFileHandler.reset();
+      refreshAttachButton();
       return;
     }
 
@@ -1452,6 +1462,9 @@ export function initMessagesUI() {
 
     // Remove keyboard shortcut handler
     document.removeEventListener('keydown', openMessagesKeyhandler);
+
+    // Remove watch-together request listener
+    document.removeEventListener('watch:file-request', onWatchFileRequest);
 
     // Clean up watch-together file handler
     if (watchFileHandler) {
