@@ -60,7 +60,7 @@ function refreshRemoteAvatars(container, { name, photoURL }) {
  */
 export function initMessagesUI() {
   let repositionHandlersAttached = false;
-  let currentConversationId = null; // Track the currently displayed conversation
+  let displayedConversationId = null; // What the UI is currently rendering (dedup guard)
   let conversationMetadata = {}; // Store conversation metadata locally: { contactId, contactName, contactProfile, contactPhotoURL }
   let fileTransferController = null; // FileTransferController instance set by setFileTransferController()
   let inActiveCall = false; // Track if we're currently in an active call
@@ -75,7 +75,8 @@ export function initMessagesUI() {
   let watchFileHandler; // Initialized after DOM guards pass
 
   const shouldShowAttachButton = () =>
-    !!fileTransferController || !!currentConversationId; // removed getIsLoggedIn()
+    !!fileTransferController ||
+    !!messagingController.getSelectedConversationId(); // removed getIsLoggedIn()
 
   const refreshAttachButton = () => {
     if (shouldShowAttachButton()) {
@@ -226,10 +227,10 @@ export function initMessagesUI() {
             content: { text: `📎 ${t('message.sent')}` },
           });
         }
-      } else if (currentConversationId) {
+      } else if (displayedConversationId) {
         // Persistent file message (no active call, small files only)
         const message = await messagingController.sendFile(
-          currentConversationId,
+          displayedConversationId,
           file,
         );
         renderMessage(message);
@@ -418,14 +419,12 @@ export function initMessagesUI() {
   function openMessagesUI() {
     if (isMessagesUIOpen()) return;
 
-    let selectedConversationId = currentConversationId;
-    if (!selectedConversationId) {
-      selectedConversationId = messagingController.getSelectedConversationId();
+    const selectedConversationId =
+      messagingController.getSelectedConversationId();
 
-      if (!selectedConversationId) {
-        console.warn('[MessagesUI] No active conversation to display');
-        return;
-      }
+    if (!selectedConversationId) {
+      console.warn('[MessagesUI] No active conversation to display');
+      return;
     }
 
     messagingController.markAsRead(selectedConversationId).catch((err) => {
@@ -488,7 +487,8 @@ export function initMessagesUI() {
     msgId,
     source,
   ) {
-    if (!currentConversationId) {
+    const convId = messagingController.getSelectedConversationId();
+    if (!convId) {
       console.warn('[MessagesUI] No current conversation for reaction');
       return;
     }
@@ -506,7 +506,7 @@ export function initMessagesUI() {
       if (source === 'doubleTap') {
         if (myReactionType) {
           await messagingController.removeReaction(
-            currentConversationId,
+            convId,
             msgId,
             myReactionType,
           );
@@ -516,11 +516,7 @@ export function initMessagesUI() {
             userId,
           );
         } else {
-          await messagingController.addReaction(
-            currentConversationId,
-            msgId,
-            reactionType,
-          );
+          await messagingController.addReaction(convId, msgId, reactionType);
           reactions = reactionManager.addReaction(msgId, reactionType, userId);
           if (REACTION_CONFIG.enableAnimations) {
             reactionUI.showReactionAnimation(messageElement, reactionType);
@@ -528,11 +524,7 @@ export function initMessagesUI() {
         }
       } else if (source === 'picker') {
         if (myReactionType === reactionType) {
-          await messagingController.removeReaction(
-            currentConversationId,
-            msgId,
-            reactionType,
-          );
+          await messagingController.removeReaction(convId, msgId, reactionType);
           reactions = reactionManager.removeReaction(
             msgId,
             reactionType,
@@ -541,17 +533,13 @@ export function initMessagesUI() {
         } else {
           if (myReactionType) {
             await messagingController.removeReaction(
-              currentConversationId,
+              convId,
               msgId,
               myReactionType,
             );
             reactionManager.removeReaction(msgId, myReactionType, userId);
           }
-          await messagingController.addReaction(
-            currentConversationId,
-            msgId,
-            reactionType,
-          );
+          await messagingController.addReaction(convId, msgId, reactionType);
           reactions = reactionManager.addReaction(msgId, reactionType, userId);
           if (REACTION_CONFIG.enableAnimations) {
             reactionUI.showReactionAnimation(messageElement, reactionType);
@@ -1000,14 +988,11 @@ export function initMessagesUI() {
     const msg = messagesInput.value.trim();
     if (!msg) return;
 
-    // Send via current conversation
-    if (currentConversationId) {
+    const convId = messagingController.getSelectedConversationId();
+    if (convId) {
       try {
         messagesInput.value = ''; // Optimistically clear input
-        const parsed = await messagingController.send(
-          currentConversationId,
-          msg,
-        );
+        const parsed = await messagingController.send(convId, msg);
 
         renderMessage(parsed); // Optimistically render sender's own message from return value
         if (resetInputHeight) resetInputHeight(); // Reset textarea height
@@ -1101,18 +1086,18 @@ export function initMessagesUI() {
    */
   function prepareConversation(conversationId, contactId, conversationState) {
     if (!conversationId) return;
-    if (currentConversationId === conversationId) return;
+    if (displayedConversationId === conversationId) return;
 
     if (markAsReadTimeout !== null) {
       clearTimeout(markAsReadTimeout);
       markAsReadTimeout = null;
     }
 
-    if (currentConversationId !== null) {
+    if (displayedConversationId !== null) {
       clearMessages();
     }
 
-    currentConversationId = conversationId;
+    displayedConversationId = conversationId;
     lastTimestamp = 0;
 
     const profile = conversationState?.profile;
@@ -1136,14 +1121,6 @@ export function initMessagesUI() {
     if (history?.length > 0) {
       appendCachedHistory({ history });
     }
-  }
-
-  /**
-   * Get the currently displayed conversation ID
-   * @returns {string|null} Current conversation ID or null
-   */
-  function getCurrentConversationId() {
-    return currentConversationId;
   }
 
   // ---------------------------------------------------------------------------
@@ -1357,7 +1334,7 @@ export function initMessagesUI() {
    */
   function reset() {
     clearMessages();
-    currentConversationId = null;
+    displayedConversationId = null;
     conversationMetadata = {};
     clearTimeout(markAsReadTimeout);
     markAsReadTimeout = null;
@@ -1542,7 +1519,7 @@ export function initMessagesUI() {
   messagingController.on(
     'conversation:profile-updated',
     ({ conversationId, profile }) => {
-      if (conversationId !== currentConversationId || !profile) return;
+      if (conversationId !== displayedConversationId || !profile) return;
 
       // TODO: Clean up and simplify this (avoid redundant or inconsistent updates)
 
@@ -1571,8 +1548,8 @@ export function initMessagesUI() {
   messagingController.on(
     'conversation:closed',
     ({ conversationId }) => {
-      if (conversationId !== currentConversationId) return;
-      currentConversationId = null;
+      if (conversationId !== displayedConversationId) return;
+      displayedConversationId = null;
       clearMessages();
       conversationMetadata = {};
       refreshAttachButton();
@@ -1586,7 +1563,7 @@ export function initMessagesUI() {
   messagingController.on(
     'unread:changed',
     ({ conversationId, unreadCount, newlyReadMsgIds = [] }) => {
-      if (conversationId === currentConversationId) {
+      if (conversationId === displayedConversationId) {
         if (unreadCount === 0) {
           messageToggle.clearBadge();
         } else {
@@ -1611,8 +1588,7 @@ export function initMessagesUI() {
   messagingController.on(
     'message:received',
     ({ message, conversationId }) => {
-      // Only handle if this message belongs to our currently active conversation
-      if (conversationId !== currentConversationId) return;
+      if (conversationId !== displayedConversationId) return;
 
       if (conversationMetadata.contactId) {
         contactsController
@@ -1624,21 +1600,13 @@ export function initMessagesUI() {
 
       // Mark as read if UI is open and message is not from me
       if (isMessagesUIOpen() && !isLocalMessage(message)) {
-        const conversationIdAtReceive = currentConversationId ?? conversationId;
-
         clearTimeout(markAsReadTimeout);
         markAsReadTimeout = setTimeout(() => {
           markAsReadTimeout = null;
-          if (
-            !currentConversationId ||
-            currentConversationId !== conversationIdAtReceive ||
-            !isMessagesUIOpen()
-          ) {
+          if (displayedConversationId !== conversationId || !isMessagesUIOpen())
             return;
-          }
 
-          // TODO: optimize markAsRead (accept msgId?)
-          messagingController.markAsRead(currentConversationId).catch((err) => {
+          messagingController.markAsRead(conversationId).catch((err) => {
             console.warn('Failed to mark messages as read:', err);
           });
         }, MARK_AS_READ_DEBOUNCE_MS);
@@ -1650,11 +1618,7 @@ export function initMessagesUI() {
   messagingController.on(
     'message:sent',
     ({ message, conversationId }) => {
-      if (conversationId !== currentConversationId) return;
-
-      // NOTE: Message is already optimistically rendered on send,
-      // so this event is primarily for updating last interaction status
-      // or handling send failures in the future.
+      if (conversationId !== displayedConversationId) return;
 
       if (conversationMetadata.contactId) {
         contactsController
@@ -1668,7 +1632,7 @@ export function initMessagesUI() {
   messagingController.on(
     'reaction:updated',
     ({ conversationId, messageId, reactions }) => {
-      if (conversationId !== currentConversationId) return;
+      if (conversationId !== displayedConversationId) return;
       updateMessageReactions(messageId, reactions);
 
       if (conversationMetadata.contactId) {
@@ -1692,7 +1656,6 @@ export function initMessagesUI() {
     isMessageInputFocused,
     focusMessageInput,
     unfocusMessageInput,
-    getCurrentConversationId,
     clearMessages,
     setFileTransferController,
     reset,

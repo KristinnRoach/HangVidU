@@ -132,7 +132,17 @@ export class MessagingController extends EventEmitter {
   }
 
   /**
-   * Get the currently selected conversation ID (most recently used)
+   * Get the currently selected conversation ID.
+   *
+   * This is defined as the most recently used (MRU) conversation, i.e. the
+   * last entry in {@link conversationOrder}, or {@code null} when there are
+   * no open conversations.
+   *
+   * NOTE: This behavior is relied on by external callers and should be
+   * covered by unit tests for both:
+   *   - the empty case (no conversations -> returns null), and
+   *   - the non-empty case (returns the MRU conversation ID).
+   *
    * @returns {string|null}
    */
   getSelectedConversationId() {
