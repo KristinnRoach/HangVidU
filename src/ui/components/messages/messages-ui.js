@@ -61,7 +61,6 @@ function refreshRemoteAvatars(container, { name, photoURL }) {
 export function initMessagesUI() {
   let repositionHandlersAttached = false;
   let displayedConversationId = null; // What the UI is currently rendering (dedup guard)
-  let conversationMetadata = {}; // Store conversation metadata locally: { contactId, contactName, contactProfile, contactPhotoURL }
   let fileTransferController = null; // FileTransferController instance set by setFileTransferController()
   let inActiveCall = false; // Track if we're currently in an active call
   let isReceivingFile = false; // Track if currently receiving a file
@@ -144,12 +143,13 @@ export function initMessagesUI() {
     messageTopBar.setBackHandler(() => closeMessagesUI());
 
     messageTopBar.setCallHandler(() => {
+      const state = messagingController.getSelectedConversationState();
       messagesBox.dispatchEvent(
         new CustomEvent('contact:call', {
           bubbles: true,
           detail: {
-            contactId: conversationMetadata.contactId || null,
-            contactName: conversationMetadata.contactName || null,
+            contactId: state.remoteParticipantIds[0] || null,
+            contactName: state.profile.displayName || null,
           },
         }),
       );
@@ -607,15 +607,10 @@ export function initMessagesUI() {
     if (isLocal) {
       renderAvatar(avatarSpan, { customFallbackText: t('shared.me') });
     } else {
-      const contactName =
-        conversationMetadata?.contactName ||
-        conversationMetadata?.contactProfile?.displayName ||
-        'U';
-      const photoURL =
-        conversationMetadata?.contactPhotoURL ||
-        conversationMetadata?.contactProfile?.photoURL ||
-        '';
-      renderAvatar(avatarSpan, { name: contactName, photoURL });
+      const state = messagingController.getSelectedConversationState();
+      const displayName = state?.profile?.displayName || 'U';
+      const photoURL = state?.profile?.photoURL || '';
+      renderAvatar(avatarSpan, { name: displayName, photoURL });
     }
 
     return avatarSpan;
@@ -724,11 +719,14 @@ export function initMessagesUI() {
       } else {
         try {
           const { callContact } = await import('../../../main.js');
+
+          const state = messagingController.getSelectedConversationState();
+
           const contactId = wasInitiatedByMe
-            ? conversationMetadata.contactId
+            ? state.remoteParticipantIds[0]
             : details.callerId;
           const contactName = wasInitiatedByMe
-            ? conversationMetadata.contactName
+            ? state.profile.displayName
             : details.callerName;
           if (contactId && contactName) {
             await callContact(contactId, contactName);
@@ -1100,16 +1098,8 @@ export function initMessagesUI() {
     displayedConversationId = conversationId;
     lastTimestamp = 0;
 
-    const profile = conversationState?.profile;
-    const name = profile?.displayName || '';
-    const photoURL = profile?.photoURL || '';
-
-    conversationMetadata = {
-      contactId,
-      contactName: name,
-      contactProfile: profile || null,
-      contactPhotoURL: photoURL,
-    };
+    const name = conversationState?.profile?.displayName || '';
+    const photoURL = conversationState?.profile?.photoURL || '';
 
     if (messageTopBar) {
       messageTopBar.setContact({ name, photoURL });
@@ -1292,11 +1282,11 @@ export function initMessagesUI() {
         }
 
         // Update interaction timestamp for received files
-        if (conversationMetadata.contactId) {
-          contactsController
-            .updateLastInteraction(conversationMetadata.contactId)
-            .catch(() => {});
-        }
+        contactsController
+          .updateLastInteraction(
+            messagingController.getRemoteContactIdForSelected1on1Conversation(),
+          )
+          .catch(() => {});
 
         // Increment unread count if messages box is hidden
         if (isHidden(messagesBox)) {
@@ -1335,7 +1325,6 @@ export function initMessagesUI() {
   function reset() {
     clearMessages();
     displayedConversationId = null;
-    conversationMetadata = {};
     clearTimeout(markAsReadTimeout);
     markAsReadTimeout = null;
     fileTransferController = null;
@@ -1515,19 +1504,13 @@ export function initMessagesUI() {
     { signal: ac.signal },
   );
 
-  // Profile loaded — update name/photo
+  // Update name/photo when display info loads
   messagingController.on(
-    'conversation:profile-updated',
+    'conversation:meta-updated',
     ({ conversationId, profile }) => {
       if (conversationId !== displayedConversationId || !profile) return;
 
       // TODO: Clean up and simplify this (avoid redundant or inconsistent updates)
-
-      conversationMetadata.contactProfile = profile;
-      if (profile.displayName)
-        conversationMetadata.contactName = profile.displayName;
-      if (profile.photoURL)
-        conversationMetadata.contactPhotoURL = profile.photoURL;
 
       if (messageTopBar) {
         if (profile.displayName || profile.photoURL) {
@@ -1538,7 +1521,7 @@ export function initMessagesUI() {
         }
         refreshRemoteAvatars(messagesMessages, {
           name: profile.displayName || '',
-          photoURL: conversationMetadata.contactPhotoURL,
+          photoURL: profile.photoURL || '',
         });
       }
     },
@@ -1551,7 +1534,6 @@ export function initMessagesUI() {
       if (conversationId !== displayedConversationId) return;
       displayedConversationId = null;
       clearMessages();
-      conversationMetadata = {};
       refreshAttachButton();
       if (messageTopBar) {
         messageTopBar.setContact({ name: '', photoURL: '' });
@@ -1590,11 +1572,11 @@ export function initMessagesUI() {
     ({ message, conversationId }) => {
       if (conversationId !== displayedConversationId) return;
 
-      if (conversationMetadata.contactId) {
-        contactsController
-          .updateLastInteraction(conversationMetadata.contactId)
-          .catch(() => {});
-      }
+      contactsController
+        .updateLastInteraction(
+          messagingController.getRemoteContactIdForSelected1on1Conversation(),
+        )
+        .catch(() => {});
 
       renderMessage(message);
 
@@ -1620,11 +1602,11 @@ export function initMessagesUI() {
     ({ message, conversationId }) => {
       if (conversationId !== displayedConversationId) return;
 
-      if (conversationMetadata.contactId) {
-        contactsController
-          .updateLastInteraction(conversationMetadata.contactId)
-          .catch(() => {});
-      }
+      contactsController
+        .updateLastInteraction(
+          messagingController.getRemoteContactIdForSelected1on1Conversation(),
+        )
+        .catch(() => {});
     },
     { signal: ac.signal },
   );
@@ -1635,11 +1617,11 @@ export function initMessagesUI() {
       if (conversationId !== displayedConversationId) return;
       updateMessageReactions(messageId, reactions);
 
-      if (conversationMetadata.contactId) {
-        contactsController
-          .updateLastInteraction(conversationMetadata.contactId)
-          .catch(() => {});
-      }
+      contactsController
+        .updateLastInteraction(
+          messagingController.getRemoteContactIdForSelected1on1Conversation(),
+        )
+        .catch(() => {});
     },
     { signal: ac.signal },
   );
