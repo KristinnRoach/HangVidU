@@ -132,6 +132,16 @@ export class MessagingController extends EventEmitter {
   }
 
   /**
+   * Get the currently selected conversation ID (most recently used)
+   * @returns {string|null}
+   */
+  getSelectedConversationId() {
+    return this.conversationOrder.length > 0
+      ? this.conversationOrder[this.conversationOrder.length - 1]
+      : null;
+  }
+
+  /**
    * Select a messaging conversation
    *
    * If a conversation already exists, it will be resumed instead of creating a new one.

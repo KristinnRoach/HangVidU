@@ -418,29 +418,31 @@ export function initMessagesUI() {
   function openMessagesUI() {
     if (isMessagesUIOpen()) return;
 
-    if (!currentConversationId) {
-      console.warn('[MessagesUI] No active conversation to display');
-      return;
+    let selectedConversationId = currentConversationId;
+    if (!selectedConversationId) {
+      selectedConversationId = messagingController.getSelectedConversationId();
+
+      if (!selectedConversationId) {
+        console.warn('[MessagesUI] No active conversation to display');
+        return;
+      }
     }
 
-    openMessagesBox();
-    scrollMessagesToEnd();
-
-    // Only auto-focus on desktop; let mobile users tap to focus naturally
-    if (!isMobileDevice()) messagesInput.focus();
-
-    messagingController.markAsRead(currentConversationId).catch((err) => {
+    messagingController.markAsRead(selectedConversationId).catch((err) => {
       console.warn('Failed to mark messages as read:', err);
     });
 
-    // Set up outside click handler
+    openMessagesBox();
+    scrollMessagesToEnd();
+    if (!isMobileDevice()) messagesInput.focus();
 
-    // ignore clicks that select conversations (class="contact-entry") + msg toggle + reactions picker
+    // Set up outside click handler
     removeMessagesBoxClickOutside = onClickOutside(
       messagesBox,
       () => closeMessagesUI(),
       {
         ignore: () => {
+          // ignore clicks that select conversations (class="contact-entry") + msg toggle + reactions picker
           const contactEntries = document.querySelectorAll('.contact-entry');
           const ignoreClickElementsArray = Array.from(contactEntries);
           ignoreClickElementsArray.push(messageToggle.element);
