@@ -60,7 +60,6 @@ function refreshRemoteAvatars(container, { name, photoURL }) {
  */
 export function initMessagesUI() {
   let repositionHandlersAttached = false;
-  let displayedConversationId = null; // What the UI is currently rendering (dedup guard)
   let fileTransferController = null; // FileTransferController instance set by setFileTransferController()
   let inActiveCall = false; // Track if we're currently in an active call
   let isReceivingFile = false; // Track if currently receiving a file
@@ -144,12 +143,15 @@ export function initMessagesUI() {
 
     messageTopBar.setCallHandler(() => {
       const state = messagingController.getSelectedConversationState();
+      const conversationId = state?.conversationId;
       messagesBox.dispatchEvent(
         new CustomEvent('contact:call', {
           bubbles: true,
           detail: {
             contactId: state.remoteParticipantIds[0] || null,
-            contactName: state.profile.displayName || null,
+            contactName:
+              messagingController.getConversationDisplayName(conversationId) ||
+              null,
           },
         }),
       );
@@ -227,17 +229,13 @@ export function initMessagesUI() {
             content: { text: `📎 ${t('message.sent')}` },
           });
         }
-      } else if (displayedConversationId) {
+      } else {
         // Persistent file message (no active call, small files only)
         const message = await messagingController.sendFile(
-          displayedConversationId,
+          messagingController.getSelectedConversationId(),
           file,
         );
         renderMessage(message);
-      } else {
-        console.warn(
-          '[MessagesUI] No file transport or conversation available',
-        );
       }
     } catch (err) {
       console.error('[MessagesUI] File send failed:', err);
@@ -607,9 +605,11 @@ export function initMessagesUI() {
     if (isLocal) {
       renderAvatar(avatarSpan, { customFallbackText: t('shared.me') });
     } else {
-      const state = messagingController.getSelectedConversationState();
-      const displayName = state?.profile?.displayName || 'U';
-      const photoURL = state?.profile?.photoURL || '';
+      const conversationId = messagingController.getSelectedConversationId();
+      const displayName =
+        messagingController.getConversationDisplayName(conversationId) || 'U';
+      const photoURL =
+        messagingController.getConversationPhotoURL(conversationId) || '';
       renderAvatar(avatarSpan, { name: displayName, photoURL });
     }
 
@@ -721,12 +721,13 @@ export function initMessagesUI() {
           const { callContact } = await import('../../../main.js');
 
           const state = messagingController.getSelectedConversationState();
+          const conversationId = state?.conversationId;
 
           const contactId = wasInitiatedByMe
             ? state.remoteParticipantIds[0]
             : details.callerId;
           const contactName = wasInitiatedByMe
-            ? state.profile.displayName
+            ? messagingController.getConversationDisplayName(conversationId)
             : details.callerName;
           if (contactId && contactName) {
             await callContact(contactId, contactName);
@@ -1080,26 +1081,22 @@ export function initMessagesUI() {
    * No-op if already showing the same conversation.
    * @param {string} conversationId - Conversation ID
    * @param {string} contactId - Contact ID
-   * @param {Object} [state] - Conversation state snapshot with { profile, history }
    */
-  function prepareConversation(conversationId, contactId, conversationState) {
+  function prepareConversation(conversationId, contactId) {
     if (!conversationId) return;
-    if (displayedConversationId === conversationId) return;
 
     if (markAsReadTimeout !== null) {
       clearTimeout(markAsReadTimeout);
       markAsReadTimeout = null;
     }
 
-    if (displayedConversationId !== null) {
-      clearMessages();
-    }
-
-    displayedConversationId = conversationId;
+    clearMessages();
     lastTimestamp = 0;
 
-    const name = conversationState?.profile?.displayName || '';
-    const photoURL = conversationState?.profile?.photoURL || '';
+    const name =
+      messagingController.getConversationDisplayName(conversationId) || '';
+    const photoURL =
+      messagingController.getConversationPhotoURL(conversationId) || '';
 
     if (messageTopBar) {
       messageTopBar.setContact({ name, photoURL });
@@ -1324,7 +1321,6 @@ export function initMessagesUI() {
    */
   function reset() {
     clearMessages();
-    displayedConversationId = null;
     clearTimeout(markAsReadTimeout);
     markAsReadTimeout = null;
     fileTransferController = null;
@@ -1498,11 +1494,8 @@ export function initMessagesUI() {
   // Data ready — prepare conversation UI
   messagingController.on(
     'conversation:ready',
-    ({ conversationId, remoteParticipantIds, displayUI, profile, history }) => {
-      prepareConversation(conversationId, remoteParticipantIds[0], {
-        profile,
-        history,
-      });
+    ({ conversationId, remoteParticipantIds, displayUI }) => {
+      prepareConversation(conversationId, remoteParticipantIds[0]);
       if (displayUI) openMessagesUI();
     },
     { signal: ac.signal },
@@ -1511,22 +1504,15 @@ export function initMessagesUI() {
   // Update name/photo when display info loads
   messagingController.on(
     'conversation:meta-updated',
-    ({ conversationId, profile }) => {
-      if (conversationId !== displayedConversationId || !profile) return;
-
-      // TODO: Clean up and simplify this (avoid redundant or inconsistent updates)
+    ({ conversationId }) => {
+      const name =
+        messagingController.getConversationDisplayName(conversationId) || '';
+      const photoURL =
+        messagingController.getConversationPhotoURL(conversationId) || '';
 
       if (messageTopBar) {
-        if (profile.displayName || profile.photoURL) {
-          messageTopBar.setContact({
-            name: profile.displayName || '',
-            photoURL: profile.photoURL || '',
-          });
-        }
-        refreshRemoteAvatars(messagesMessages, {
-          name: profile.displayName || '',
-          photoURL: profile.photoURL || '',
-        });
+        messageTopBar.setContact({ name, photoURL });
+        refreshRemoteAvatars(messagesMessages, { name, photoURL });
       }
     },
     { signal: ac.signal },
@@ -1535,8 +1521,6 @@ export function initMessagesUI() {
   messagingController.on(
     'conversation:closed',
     ({ conversationId }) => {
-      if (conversationId !== displayedConversationId) return;
-      displayedConversationId = null;
       clearMessages();
       refreshAttachButton();
       if (messageTopBar) {
@@ -1549,24 +1533,22 @@ export function initMessagesUI() {
   messagingController.on(
     'unread:changed',
     ({ conversationId, unreadCount, newlyReadMsgIds = [] }) => {
-      if (conversationId === displayedConversationId) {
-        if (unreadCount === 0) {
-          messageToggle.clearBadge();
-        } else {
-          messageToggle.setUnreadCount(unreadCount);
-        }
-        if (newlyReadMsgIds.length < 1) return;
-
-        // Mark messages as read in the UI if they are now read
-        newlyReadMsgIds.forEach((msgId) => {
-          const bubble = messagesMessages.querySelector(
-            `[data-message-id="${msgId}"]`,
-          );
-          if (bubble) bubble.dataset.read = 'true';
-          const messageEntry = bubble?.closest('.message-entry');
-          if (messageEntry) messageEntry.dataset.read = 'true';
-        });
+      if (unreadCount === 0) {
+        messageToggle.clearBadge();
+      } else {
+        messageToggle.setUnreadCount(unreadCount);
       }
+      if (newlyReadMsgIds.length < 1) return;
+
+      // Mark messages as read in the UI if they are now read
+      newlyReadMsgIds.forEach((msgId) => {
+        const bubble = messagesMessages.querySelector(
+          `[data-message-id="${msgId}"]`,
+        );
+        if (bubble) bubble.dataset.read = 'true';
+        const messageEntry = bubble?.closest('.message-entry');
+        if (messageEntry) messageEntry.dataset.read = 'true';
+      });
     },
     { signal: ac.signal },
   );
@@ -1574,8 +1556,6 @@ export function initMessagesUI() {
   messagingController.on(
     'message:received',
     ({ message, conversationId }) => {
-      if (conversationId !== displayedConversationId) return;
-
       contactsController
         .updateLastInteraction(
           messagingController.getRemoteContactIdForSelected1on1Conversation(),
@@ -1589,8 +1569,6 @@ export function initMessagesUI() {
         clearTimeout(markAsReadTimeout);
         markAsReadTimeout = setTimeout(() => {
           markAsReadTimeout = null;
-          if (displayedConversationId !== conversationId || !isMessagesUIOpen())
-            return;
 
           messagingController.markAsRead(conversationId).catch((err) => {
             console.warn('Failed to mark messages as read:', err);
@@ -1604,8 +1582,6 @@ export function initMessagesUI() {
   messagingController.on(
     'message:sent',
     ({ message, conversationId }) => {
-      if (conversationId !== displayedConversationId) return;
-
       contactsController
         .updateLastInteraction(
           messagingController.getRemoteContactIdForSelected1on1Conversation(),
@@ -1618,7 +1594,6 @@ export function initMessagesUI() {
   messagingController.on(
     'reaction:updated',
     ({ conversationId, messageId, reactions }) => {
-      if (conversationId !== displayedConversationId) return;
       updateMessageReactions(messageId, reactions);
 
       contactsController

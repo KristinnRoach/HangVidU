@@ -22,10 +22,14 @@ const MAX_FILE_SIZE = 1 * 1024 * 1024;
  */
 
 /**
+ * @typedef {{ displayName: string|null, photoURL: string|null }} ParticipantProfile
+ */
+
+/**
  * @typedef {Object} ConversationState
  * @property {string} conversationId
  * @property {string[]} remoteParticipantIds
- * @property {Object|null} profile
+ * @property {Object<string, ParticipantProfile>} participants - keyed by userId
  * @property {MessageEvent[]} history
  * @property {(() => void)|null} _unsubscribe
  */
@@ -226,14 +230,14 @@ export class MessagingController extends EventEmitter {
         history: Array.isArray(conversationState.history)
           ? [...conversationState.history]
           : [],
-        profile: conversationState.profile,
+        participants: conversationState.participants,
       });
 
-      // Re-emit cached profile so UI can update after conversation switch
-      if (conversationState.profile) {
+      // Re-emit cached participants so UI can update after conversation switch
+      if (Object.keys(conversationState.participants).length > 0) {
         this.emit('conversation:meta-updated', {
           conversationId,
-          profile: conversationState.profile,
+          participants: conversationState.participants,
         });
       }
 
@@ -244,7 +248,7 @@ export class MessagingController extends EventEmitter {
     const conversationState = {
       conversationId,
       remoteParticipantIds,
-      profile: null,
+      participants: {},
       history: [],
       _unsubscribe: null,
     };
@@ -326,28 +330,33 @@ export class MessagingController extends EventEmitter {
       history: Array.isArray(conversationState.history)
         ? [...conversationState.history]
         : [],
-      profile: conversationState.profile,
+      participants: conversationState.participants,
     });
 
-    // 4. Fetch participant info used to display chat avatars etc - async, non-blocking
-    // Needs updating when support for multi participant chats added (currently just fetches single users info)
-    this._fetchParticipantProfile(remoteParticipantIds[0]).then((profile) => {
-      this._updateConversationMeta(conversationId, profile);
-    });
+    // 4. Fetch participant profiles (non-blocking)
+    for (const participantId of remoteParticipantIds) {
+      this._fetchParticipantProfile(participantId).then((profile) => {
+        this._updateParticipantMeta(conversationId, participantId, profile);
+      });
+    }
   }
 
   /**
-   * Update cached data for a conversation and emit meta update event.
+   * Update a participant's cached profile and emit meta update event.
    * @param {string} conversationId
-   * @param {Object|null} data
+   * @param {string} participantId
+   * @param {ParticipantProfile|null} profile
    * @private
    */
-  _updateConversationMeta(conversationId, data) {
+  _updateParticipantMeta(conversationId, participantId, profile) {
     const state = this.conversations.get(conversationId);
-    if (!state || !data) return;
+    if (!state || !profile) return;
 
-    state.profile = data; // Todo: replace with explicit properties for each participant in prep for multi-chat support
-    this.emit('conversation:meta-updated', { conversationId, profile: data });
+    state.participants[participantId] = profile;
+    this.emit('conversation:meta-updated', {
+      conversationId,
+      participants: state.participants,
+    });
   }
 
   getSelectedConversationState() {
@@ -355,40 +364,55 @@ export class MessagingController extends EventEmitter {
     return this.conversations.get(conversationId) || null;
   }
 
-  // getSelectedConversationPhotoUrl() {
-  //   const conversationId = this.getSelectedConversationId();
-  //   const state = this.conversations.get(conversationId);
-  //   return state?.profile?.photoURL || null;
-  // }
+  /**
+   * Get the display name for a conversation.
+   * For 1:1 chats, returns the remote participant's name.
+   * For group chats, joins participant names.
+   * @param {string} conversationId
+   * @returns {string|null}
+   */
+  getConversationDisplayName(conversationId) {
+    const state = this.conversations.get(conversationId);
+    if (!state) return null;
+    const ids = state.remoteParticipantIds;
+    if (ids.length === 1) {
+      return state.participants[ids[0]]?.displayName || null;
+    }
+    const names = ids
+      .map((id) => state.participants[id]?.displayName || '?')
+      .filter(Boolean);
+    return names.length > 0 ? names.join(', ') : null;
+  }
 
-  // getSelectedConversationDisplayName() {
-  //   const conversationId = this.getSelectedConversationId();
-  //   const state = this.conversations.get(conversationId);
-  //   return state?.profile?.displayName || null;
-  // }
+  /**
+   * Get the photo URL for a conversation.
+   * For 1:1 chats, returns the remote participant's photo.
+   * Returns null for group chats (group avatars are a separate concern).
+   * @param {string} conversationId
+   * @returns {string|null}
+   */
+  getConversationPhotoURL(conversationId) {
+    const state = this.conversations.get(conversationId);
+    if (!state) return null;
+    const ids = state.remoteParticipantIds;
+    if (ids.length === 1) {
+      return state.participants[ids[0]]?.photoURL || null;
+    }
+    return null;
+  }
 
-  // getSelectedConversationMetadata() {
-  //   const conversationId = this.getSelectedConversationId();
-  //   const state = this.conversations.get(conversationId);
-  //   if (!state) return null;
-
-  //   const meta = {
-  //     id: state.conversationId,
-  //     participants: {
-  //       self: {
-  //         userId: getUserId(),
-  //       },
-  //       remote: {
-  //         [state.remoteParticipantIds[0]]: {
-  //           displayName: state.profile.displayName,
-  //           photoURL: state.profile.photoURL,
-  //         },
-  //       },
-  //     },
-  //   };
-
-  //   return meta;
-  // }
+  /**
+   * Get a specific participant's profile.
+   * @param {string} conversationId
+   * @param {string} participantId
+   * @returns {ParticipantProfile|null}
+   */
+  getParticipantProfile(conversationId, participantId) {
+    return (
+      this.conversations.get(conversationId)?.participants[participantId] ||
+      null
+    );
+  }
 
   /**
    * Fetch and cache a user profile for a conversation.
