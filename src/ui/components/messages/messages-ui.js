@@ -1331,6 +1331,10 @@ export function initMessagesUI() {
     inActiveCall = false;
     isReceivingFile = false;
     watchFileHandler.reset();
+    if (removeMessagesBoxClickOutside) {
+      removeMessagesBoxClickOutside();
+      removeMessagesBoxClickOutside = null;
+    }
 
     hideElement(messagesBox);
     messageToggle.clearBadge();
