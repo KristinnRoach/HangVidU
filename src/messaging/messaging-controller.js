@@ -342,7 +342,7 @@ export class MessagingController extends EventEmitter {
     const state = this.conversations.get(conversationId);
     if (!state) return null;
     return {
-      ...state,
+      conversationId: state.conversationId,
       remoteParticipantIds: [...state.remoteParticipantIds],
       participants: { ...state.participants },
       history: [...state.history],
