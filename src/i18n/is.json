@@ -102,7 +102,6 @@
   "message.watch.waiting": "Bíður eftir viðmælanda...",
   "message.watch.request_sent": "Biður viðmælanda um að vera með í samáhorfi...",
   "message.watch.request_failed": "Tókst ekki að senda beiðni um samáhorf",
-  "message.watch_request.title": "Beiðni um samáhorf",
   "message.watch.request_received": "Viðmælandi vill horfa á þetta myndband saman",
   "message.watch.partner_wants": "Viðmælandi vill horfa á: {name}",
   "message.watch.joining": "Gengst inn í samáhorf...",
