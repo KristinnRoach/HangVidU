@@ -8,6 +8,7 @@ import {
 import { validateAssembly } from './file-assembler.js';
 import { WebRTCFileTransport } from './transport/webrtc-file-transport.js';
 import { StreamingFileWriter } from './streaming-file-writer.js';
+import { checkAndWarnRTT } from '../webrtc/rtt-monitor.js';
 
 const CHUNK_SIZE = TransferConfig.FILE_CONFIG.NETWORK_CHUNK_SIZE; // 64KB
 const CHUNK_YIELD_INTERVAL = TransferConfig.CHUNK_YIELD_INTERVAL; // null = disabled
@@ -75,6 +76,14 @@ export class FileTransferController {
     if (!this.transport.isReady()) {
       throw new Error('Transport not ready');
     }
+
+    // Log RTT
+    this.transport.pc &&
+      checkAndWarnRTT(
+        this.transport.pc,
+        'File Transfer Data Channel',
+        'DEV_AND_PROD',
+      );
 
     const fileId = `${file.name}-${file.size}-${Date.now()}`;
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
@@ -164,6 +173,14 @@ export class FileTransferController {
 
   /** @private */
   async _handleMessage(data) {
+    // Log RTT
+    this.transport.pc &&
+      checkAndWarnRTT(
+        this.transport.pc,
+        'File Transfer Data Channel',
+        'DEV_AND_PROD',
+      );
+
     if (typeof data === 'string') {
       let msg;
       try {

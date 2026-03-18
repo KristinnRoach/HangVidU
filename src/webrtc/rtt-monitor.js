@@ -17,7 +17,7 @@ export async function getRTT(pc) {
 
   try {
     const stats = await pc.getStats();
-    for (const report of stats) {
+    for (const report of stats.values()) {
       if (report.type === 'candidate-pair' && report.state === 'succeeded') {
         return Math.round(report.currentRoundTripTime * 1000); // convert to ms
       }
@@ -46,9 +46,11 @@ export async function checkAndWarnRTT(
 
   if (rtt > RTT_WARNING_THRESHOLD) {
     console.warn(
-      `[RTTMonitor] ⚠️ ${label} has high latency: ${rtt}ms. File transfers may be slow.`,
+      `[RTTMonitor] ⚠️ ${label} has high latency. WebRTC peerConnection round trip time (RTT): ${rtt}ms. File transfers may be slow.`,
     );
   } else {
-    console.info(`[RTTMonitor] ${label} RTT: ${rtt}ms (OK)`);
+    console.info(
+      `[RTTMonitor] ${label} WebRTC peerConnection round trip time (RTT): ${rtt}ms (OK)`,
+    );
   }
 }
