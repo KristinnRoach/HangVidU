@@ -1837,7 +1837,7 @@ window.onload = async () => {
   devDebug('Ready. Click "Start New Chat" to begin.');
 };
 
-// Handle page leave
+// Handle page leave, beforeunload is cancellable
 window.addEventListener('beforeunload', async (e) => {
   // Trigger browser's generic "leave page?" dialog if in active call
   const state = CallController.getState();
@@ -1847,7 +1847,10 @@ window.addEventListener('beforeunload', async (e) => {
       'You are in an active call. Are you sure you want to leave?';
     return e.returnValue;
   }
+});
 
+// Cleanup in pagehide (fires on page unload (after beforeunload) and some?? navigations)
+window.addEventListener('pagehide', async () => {
   await cleanup();
 });
 
