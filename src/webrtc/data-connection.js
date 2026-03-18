@@ -52,7 +52,10 @@ export async function createDataConnection(roomId) {
       try {
         await setRemoteDescription(pc, answer, drainIceCandidateQueue);
         // Check RTT after connection is established
-        setTimeout(() => checkAndWarnRTT(pc, 'Data Connection'), 1000);
+        setTimeout(
+          () => checkAndWarnRTT(pc, 'Data Connection', 'DEV_AND_PROD'),
+          1000,
+        );
       } catch (err) {
         console.warn('[DataConnection] Failed to set data answer:', err);
       }
@@ -103,7 +106,10 @@ export function joinDataConnection(roomId) {
           });
           devDebug('[DataConnection] Joined (joiner)', { roomId });
           // Check RTT after connection is established
-          setTimeout(() => checkAndWarnRTT(pc, 'Data Connection'), 1000);
+          setTimeout(
+            () => checkAndWarnRTT(pc, 'Data Connection', 'DEV_AND_PROD'),
+            1000,
+          );
           resolve({ pc, dataChannel });
         } catch (err) {
           console.warn('[DataConnection] Failed to complete data join:', err);

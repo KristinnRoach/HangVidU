@@ -31,11 +31,17 @@ export async function getRTT(pc) {
 /**
  * Check RTT and warn if it exceeds threshold
  * @param {RTCPeerConnection} pc
+ * @param {string} env - 'DEV_ONLY' to log only in development, 'DEV_AND_PROD' to log in all environments
  * @param {string} [label] - Optional label for logging
  */
-export async function checkAndWarnRTT(pc, label = 'WebRTC Connection') {
-  const rtt = await getRTT(pc);
+export async function checkAndWarnRTT(
+  pc,
+  label = 'WebRTC Connection',
+  env = 'DEV_AND_PROD', // 'DEV_ONLY' or 'DEV_AND_PROD''
+) {
+  if (env === 'DEV_ONLY' && !import.meta.env.DEV) return;
 
+  const rtt = await getRTT(pc);
   if (rtt === null) return;
 
   if (rtt > RTT_WARNING_THRESHOLD) {
@@ -43,6 +49,6 @@ export async function checkAndWarnRTT(pc, label = 'WebRTC Connection') {
       `[RTTMonitor] ⚠️ ${label} has high latency: ${rtt}ms. File transfers may be slow.`,
     );
   } else {
-    console.debug(`[RTTMonitor] ${label} RTT: ${rtt}ms (OK)`);
+    console.info(`[RTTMonitor] ${label} RTT: ${rtt}ms (OK)`);
   }
 }

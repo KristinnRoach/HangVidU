@@ -7,11 +7,7 @@ import {
   createCall as createCallFlow,
   answerCall as answerCallFlow,
 } from './call-flow.js';
-import {
-  createDataConnection,
-  joinDataConnection,
-  closeDataConnection,
-} from './data-connection.js';
+import { createDataConnection, joinDataConnection } from './data-connection.js';
 import RoomService from '../room.js';
 import { getUserId } from '../auth/auth-state.js';
 import { ref, off } from 'firebase/database';
@@ -66,10 +62,8 @@ class CallController {
     this.role = null; // initiator | joiner
     this.partnerId = null;
     this.pc = null;
-    this.dataPC = null;
 
     this.fileTransferController = null;
-    this.dataChannel = null;
     this.localVideoEl = null;
     this.remoteVideoEl = null;
     this.isHangingUp = false;
@@ -183,8 +177,7 @@ class CallController {
         console.warn('Failed to clear remote video after cancellation', e);
       }
 
-      // Close peer connections
-      closeDataConnection(this.dataPC);
+      // Close media peer connection
       try {
         if (this.pc) {
           this.pc.close();
@@ -456,12 +449,12 @@ class CallController {
 
             // Create data connection only after media connection is established
             // (prevents orphaned data signaling if call is cancelled before partner joins)
-            if (!this.dataPC && this.role === 'initiator') {
+            if (!this.fileTransferController && this.role === 'initiator') {
               try {
-                const dataResult = await createDataConnection(this.roomId);
-                this.dataPC = dataResult.pc;
-                this.dataChannel = dataResult.dataChannel;
-                this.setupFileTransport(this.dataChannel);
+                const { pc, dataChannel } = await createDataConnection(
+                  this.roomId,
+                );
+                this.setupFileTransport(pc, dataChannel);
               } catch (err) {
                 console.warn(
                   '[CallController] Failed to create data connection:',
@@ -546,16 +539,15 @@ class CallController {
 
       // Join dedicated data connection for file transfer
       try {
-        const dataResult = await joinDataConnection(this.roomId);
-        this.dataPC = dataResult.pc;
-        this.dataChannel = dataResult.dataChannel;
-        if (this.dataChannel) {
-          this.setupFileTransport(this.dataChannel);
+        const { pc, dataChannel } = await joinDataConnection(this.roomId);
+
+        if (pc && dataChannel) {
+          this.setupFileTransport(pc, dataChannel);
         } else {
           // DataChannel not yet received via ondatachannel — wait for it
-          this.dataPC.ondatachannel = (event) => {
-            this.dataChannel = event.channel;
-            this.setupFileTransport(this.dataChannel);
+          pc.ondatachannel = (event) => {
+            let dc = event.channel;
+            this.setupFileTransport(pc, dc);
           };
         }
       } catch (err) {
@@ -582,18 +574,23 @@ class CallController {
   /**
    * Setup file transfer when DataChannel is ready
    * Creates FileTransferController and emits fileTransportReady
+   * @param {RTCPeerConnection} pc - The PeerConnection associated with the call
    * @param {RTCDataChannel} dataChannel - The WebRTC DataChannel
    * @private
    */
-  setupFileTransport(dataChannel) {
-    if (!dataChannel) {
-      console.warn('Cannot setup file transport, missing dataChannel');
+  setupFileTransport(pc, dataChannel) {
+    if (!pc || !dataChannel) {
+      console.warn(
+        'Cannot setup file transport, missing peerConnection or dataChannel',
+      );
       return;
     }
 
     const initTransport = () => {
       try {
-        this.fileTransferController = new FileTransferController(dataChannel);
+        this.fileTransferController = new FileTransferController({
+          webrtc: { pc, dataChannel },
+        });
         this.emitter.emit('fileTransportReady', {
           controller: this.fileTransferController,
         });
@@ -696,10 +693,7 @@ class CallController {
         // non-fatal
       }
 
-      // Close peer connections
-      closeDataConnection(this.dataPC);
-      this.dataPC = null;
-
+      // Close media peer connection
       try {
         if (this.pc) {
           try {

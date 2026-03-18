@@ -212,8 +212,8 @@ if (isFirefox) {
     await receiverReady;
 
     return {
-      sender: senderChannel,
-      receiver: receiverChannel,
+      sender: { pc: pc1, dataChannel: senderChannel },
+      receiver: { pc: pc2, dataChannel: receiverChannel },
       cleanup: () => {
         senderChannel.close();
         if (receiverChannel) receiverChannel.close();
@@ -258,6 +258,8 @@ if (isFirefox) {
 
     // Reuse a single peer connection pair across all tests to avoid repeated setup
     let sharedConnections = null;
+    let senderController = null;
+    let receiverController = null;
 
     beforeAll(async () => {
       console.log('\n[file-transfer-large] Starting test suite');
@@ -269,9 +271,19 @@ if (isFirefox) {
         `[file-transfer-large] Setting up shared peer connection...\n`,
       );
       sharedConnections = await setupPeerConnections();
+
+      // Reuse controllers with shared peer connections across tests.
+      senderController = new FileTransferController({
+        webrtc: sharedConnections.sender,
+      });
+      receiverController = new FileTransferController({
+        webrtc: sharedConnections.receiver,
+      });
     });
 
     afterAll(() => {
+      if (senderController) senderController.cleanup();
+      if (receiverController) receiverController.cleanup();
       if (sharedConnections) sharedConnections.cleanup();
 
       // Summary
@@ -362,21 +374,11 @@ if (isFirefox) {
           error: null,
         };
 
-        let senderController = null;
-        let receiverController = null;
         let testFile = null;
         let receivedFile = null;
 
         try {
           result.memoryBefore = getMemoryUsage();
-
-          // Create transports and controllers using shared connections
-          senderController = new FileTransferController(
-            sharedConnections.sender,
-          );
-          receiverController = new FileTransferController(
-            sharedConnections.receiver,
-          );
 
           // Generate test file
           console.log(`[${name}] Generating file...`);
@@ -505,8 +507,18 @@ if (isFirefox) {
             `[${name}] ^ Known browser limit — skipping larger sizes`,
           );
         } finally {
-          if (senderController) senderController.cleanup();
-          if (receiverController) receiverController.cleanup();
+          if (senderController) {
+            senderController.onFileMetaReceived = null;
+            senderController.onFileReceived = null;
+            senderController.onFileError = null;
+            senderController.onReceiveProgress = null;
+          }
+          if (receiverController) {
+            receiverController.onFileMetaReceived = null;
+            receiverController.onFileReceived = null;
+            receiverController.onFileError = null;
+            receiverController.onReceiveProgress = null;
+          }
 
           // Release large file references so GC can reclaim memory between tests
           testFile = null;

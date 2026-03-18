@@ -24,14 +24,19 @@ const MAX_FILE_SIZE_MB = 5000;
  */
 export class FileTransferController {
   /**
-   * @param {RTCDataChannel} dataChannel - WebRTC DataChannel for file transfer
+   * @param {Object} options
+   * @param {RTCPeerConnection} options.webrtc.pc - The WebRTC PeerConnection
+   * @param {RTCDataChannel} options.webrtc.dataChannel - The WebRTC DataChannel
    */
-  constructor(dataChannel) {
-    if (!dataChannel) {
-      throw new Error('FileTransferController requires a dataChannel');
+  constructor({ webrtc }) {
+    const { pc, dataChannel } = webrtc || {};
+    if (!pc || !dataChannel) {
+      throw new Error(
+        'FileTransferController requires a peerConnection and dataChannel',
+      );
     }
 
-    this.transport = new WebRTCFileTransport(dataChannel);
+    this.transport = new WebRTCFileTransport(pc, dataChannel);
     this.receivedChunks = new Map(); // fileId -> chunks array (in-memory path)
     this.fileMetadata = new Map(); // fileId -> metadata
 
@@ -110,7 +115,10 @@ export class FileTransferController {
 
       // Yield event loop periodically so media packets aren't starved.
       // CHUNK_YIELD_INTERVAL=null disables this for max throughput.
-      if (CHUNK_YIELD_INTERVAL !== null && (i + 1) % CHUNK_YIELD_INTERVAL === 0) {
+      if (
+        CHUNK_YIELD_INTERVAL !== null &&
+        (i + 1) % CHUNK_YIELD_INTERVAL === 0
+      ) {
         await new Promise((r) => setTimeout(r, 0));
       }
     }

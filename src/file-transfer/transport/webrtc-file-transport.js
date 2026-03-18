@@ -14,15 +14,17 @@ const BACKPRESSURE_THRESHOLD = TransferConfig.BACKPRESSURE_THRESHOLD;
  */
 export class WebRTCFileTransport extends FileTransport {
   /**
+   * @param {RTCPeerConnection} pc
    * @param {RTCDataChannel} dataChannel
    */
-  constructor(dataChannel) {
+  constructor(pc, dataChannel) {
     super();
 
-    if (!dataChannel) {
+    if (!pc || !dataChannel) {
       throw new Error('WebRTCFileTransport requires a DataChannel');
     }
 
+    this.pc = pc;
     this.dataChannel = dataChannel;
     this._messageCallback = null;
 
@@ -149,10 +151,28 @@ export class WebRTCFileTransport extends FileTransport {
     };
   }
 
+  closePeerConnection() {
+    // Close the data PeerConnection
+    try {
+      if (this.pc) {
+        this.pc.close();
+      }
+    } catch (e) {
+      console.warn(
+        '[WebRTCFileTransport] Error closing data PC during cleanup:',
+        e,
+      );
+    }
+    this.pc = null;
+  }
+
   cleanup() {
     if (this.dataChannel) {
       this.dataChannel.onmessage = null;
     }
+
+    this.closePeerConnection();
+
     this._messageCallback = null;
     this.dataChannel = null;
   }
