@@ -150,6 +150,7 @@
   "auth.login": "Skrá inn",
   "auth.logout": "Skrá út",
   "auth.signing_in": "Skrái inn...",
+  "auth.signing_out": "Skrái út...",
   "auth.guest_user": "Gestur",
   "auth.delete_account": "Eyða reikningi",
   "auth.delete_confirm": "Ertu viss um að þú viljir eyða reikningnum þínum?\n\nÞetta mun eyða varanlega:\n• Reikningnum þínum\n• Öllum tengiliðum\n• Símtalsögu\n• Öllum tengdum gögnum\n\nÞetta er ekki hægt að afturkalla.",

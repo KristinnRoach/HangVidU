@@ -150,6 +150,7 @@
   "auth.login": "Login",
   "auth.logout": "Logout",
   "auth.signing_in": "Signing in...",
+  "auth.signing_out": "Signing out...",
   "auth.guest_user": "Guest User",
   "auth.delete_account": "Delete Account",
   "auth.delete_confirm": "Are you sure you want to delete your account?\n\nThis will permanently delete:\n• Your account\n• All contacts\n• Call history\n• All associated data\n\nThis action cannot be undone.",

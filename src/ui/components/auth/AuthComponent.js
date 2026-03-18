@@ -71,6 +71,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       userInfoDisplay: 'none',
       avatarDisplay: 'none',
       signingInDisplay: 'none',
+      signingOutDisplay: 'none',
       loginBtnMarginRightPx,
       loginBtnDisplay: initialLoggedIn ? 'none' : 'inline-block',
       logoutBtnDisplay: initialLoggedIn ? 'inline-block' : 'none',
@@ -80,6 +81,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       <button style="display: [[logoutBtnDisplay]]" id="goog-logout-btn" class="logout-btn" onclick="handleLogout">[[t:auth.logout]]</button>
       ${isDev() && SHOW_DEBUG_DELETE_BTN ? `<button id="delete-account-btn" class="delete-account-btn" onclick="handleDeleteAccount">[[t:auth.delete_account]]</button>` : ''}
       <span class="signing-in-indicator" style="display: [[signingInDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">[[t:auth.signing_in]]</span>
+      <span class="signing-in-indicator" style="display: [[signingOutDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">[[t:auth.signing_out]]</span>
       <div class="user-info" style="display: [[userInfoDisplay]]">
         <img src="[[userPhotoURL]]" alt="[[userName]]" class="user-avatar" style="display: [[userPhotoDisplay]]" onerror="handleAvatarError" />
         <span class="user-avatar-placeholder" style="display: [[avatarDisplay]]">👤</span>
@@ -158,8 +160,13 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         // Update button states with new auth state
         updateButtons(isLoggedIn);
 
-        // Show loading indicator during any auth operation (sign-in/out/etc)
-        const signingInDisplay = status === 'loading' ? 'inline-block' : 'none';
+        // Shared loading state is used for sign-in and sign-out.
+        // While still logged in during loading, the action is sign-out.
+        const isLoading = status === 'loading';
+        const signingInDisplay =
+          isLoading && !isLoggedIn ? 'inline-block' : 'none';
+        const signingOutDisplay =
+          isLoading && isLoggedIn ? 'inline-block' : 'none';
 
         el.update({
           isLoggedIn,
@@ -169,6 +176,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           userInfoDisplay: isLoggedIn ? 'flex' : 'none',
           avatarDisplay: photoURL ? 'none' : 'flex',
           signingInDisplay,
+          signingOutDisplay,
           loginBtnDisplay: isLoggedIn ? 'none' : 'inline-block',
           logoutBtnDisplay: isLoggedIn ? 'inline-block' : 'none',
         });
@@ -181,11 +189,13 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           // Show loading indicator while signing in
           el.update({
             signingInDisplay: 'inline-block',
+            signingOutDisplay: 'none',
           });
         } else {
           // Hide loading indicator for all other statuses
           el.update({
             signingInDisplay: 'none',
+            signingOutDisplay: 'none',
           });
         }
       });
