@@ -19,12 +19,12 @@ Run these commands in your browser console to test FCM notifications end-to-end.
 // Check if everything is initialized
 console.log('=== FCM Setup Check ===');
 console.log('User ID:', getLoggedInUserId());
-console.log('FCM Token:', notificationController.transport.currentToken);
+console.log('FCM Token:', pushNotificationController.transport.currentToken);
 console.log('Permission:', Notification.permission);
-console.log('Is Enabled:', notificationController.isNotificationEnabled());
+console.log('Is Enabled:', pushNotificationController.isNotificationEnabled());
 console.log(
   'Transport:',
-  notificationController.transport.messaging ? 'OK' : 'NOT INITIALIZED',
+  pushNotificationController.transport.messaging ? 'OK' : 'NOT INITIALIZED',
 );
 ```
 
@@ -43,9 +43,9 @@ Transport: OK
 
 - User ID is null → You're not logged in
 - FCM Token is null → Permissions not granted or service worker not registered
-- Permission is "default" → Run `await notificationController.requestPermission()`
+- Permission is "default" → Run `await pushNotificationController.requestPermission()`
 - Permission is "denied" → Enable in browser settings
-- Is Enabled is false → Run `await notificationController.enable()`
+- Is Enabled is false → Run `await pushNotificationController.enable()`
 
 ---
 
@@ -60,7 +60,7 @@ const myUserId = getLoggedInUserId();
 // Send a call notification to yourself
 console.log('Sending notification to:', myUserId);
 
-await notificationController.sendCallNotification(myUserId, {
+await pushNotificationController.sendCallNotification(myUserId, {
   roomId: 'test-room-' + Date.now(),
   callerId: myUserId,
   callerName: 'Test Caller',
@@ -183,7 +183,7 @@ const targetUserId = 'MxUu08Lpb6alrqKsY7fQQtgcEZ72'; // Example: Töggur
 const myUserId = getLoggedInUserId();
 
 // Send notification
-await notificationController.sendCallNotification(targetUserId, {
+await pushNotificationController.sendCallNotification(targetUserId, {
   roomId: 'test-room-' + Date.now(),
   callerId: myUserId,
   callerName: 'Test from Console',
@@ -242,7 +242,7 @@ console.log('User ID:', getLoggedInUserId());
 The controller should be exposed globally. Check:
 
 ```javascript
-console.log('Controller:', window.notificationController);
+console.log('Controller:', window.pushNotificationController);
 ```
 
 If undefined, the app didn't initialize properly. Reload the page.
@@ -255,13 +255,13 @@ console.log('Permission:', Notification.permission);
 
 // If "default", request permission
 if (Notification.permission === 'default') {
-  await notificationController.requestPermission();
+  await pushNotificationController.requestPermission();
 }
 
 // If "granted", try to get token
 if (Notification.permission === 'granted') {
-  await notificationController.enable();
-  console.log('Token:', notificationController.transport.currentToken);
+  await pushNotificationController.enable();
+  console.log('Token:', pushNotificationController.transport.currentToken);
 }
 ```
 
@@ -297,8 +297,8 @@ Run this all at once:
 
   // Check setup
   const myUserId = getLoggedInUserId();
-  const fcmToken = notificationController.transport.currentToken;
-  const isEnabled = notificationController.isNotificationEnabled();
+  const fcmToken = pushNotificationController.transport.currentToken;
+  const isEnabled = pushNotificationController.isNotificationEnabled();
 
   console.log('User ID:', myUserId);
   console.log(
@@ -328,7 +328,7 @@ Run this all at once:
   console.log('(Switch to another tab to see it!)');
 
   // Send notification
-  await notificationController.sendCallNotification(myUserId, {
+  await pushNotificationController.sendCallNotification(myUserId, {
     roomId: 'test-room-' + Date.now(),
     callerId: myUserId,
     callerName: 'Console Test',

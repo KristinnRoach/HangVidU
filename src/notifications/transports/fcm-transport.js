@@ -8,7 +8,7 @@ import {
   deleteToken,
 } from 'firebase/messaging';
 import { ref, set, remove, get, push } from 'firebase/database';
-import { app, fcmVapidKey } from '../../firebase/firebase.js';
+import { app } from '../../firebase/firebase.js';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId } from '../../auth/auth-state.js';
 
@@ -22,7 +22,7 @@ export class FCMTransport {
   constructor() {
     this.messaging = null;
     this.currentToken = null;
-    this.vapidKey = fcmVapidKey;
+    this.vapidKey = import.meta.env.VITE_PUSH_VAPID_KEY; // Using the same VAPID key for both FCM and native transports
     this.isInitialized = false;
     this.messageCallbacks = new Set();
     this.tokenRefreshCallbacks = new Set();

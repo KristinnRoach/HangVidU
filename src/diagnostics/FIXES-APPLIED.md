@@ -53,7 +53,7 @@
 
 ### 1. `.env`
 
-- Added `VITE_FCM_VAPID_KEY` configuration
+- Added `VITE_PUSH_VAPID_KEY` configuration
 - Ensures VAPID key is available in all environments
 
 ### 2. `src/diagnostics/dashboard.html`

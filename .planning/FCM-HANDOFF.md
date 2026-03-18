@@ -36,4 +36,4 @@
 
 ## GitHub Secrets Needed
 
-Ensure `VITE_FCM_VAPID_KEY` is added to repository secrets.
+Ensure `VITE_PUSH_VAPID_KEY` is added to repository secrets.

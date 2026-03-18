@@ -225,7 +225,7 @@ Run `pnpm dev` and follow this checklist to validate notification functionality 
 **Manual Test**:
 
 1. Open browser console
-2. Run: `window.notificationController.updateOptions({ privacyMode: true })`
+2. Run: `window.pushNotificationController.updateOptions({ privacyMode: true })`
 3. Receive a call notification
 4. **Expected**: Notification shows "Someone" instead of caller name
 

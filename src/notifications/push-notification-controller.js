@@ -3,6 +3,9 @@
 
 import { FCMTransport } from './transports/fcm-transport.js';
 import { getLoggedInUserId } from '../auth/auth-state.js';
+import { NativeTransport } from './transports/native-transport.js';
+
+const createDefaultTransport = () => new FCMTransport(); // NativeTransport();
 
 /**
  * PushNotificationController - Core notification API
@@ -29,7 +32,12 @@ export class PushNotificationController {
    * @param {Object} options - Configuration options
    */
   constructor(transport = null, options = {}) {
-    this.transport = transport || new FCMTransport();
+    if (!transport) {
+      throw new Error(
+        '[PushNotificationController] Transport implementation is required',
+      );
+    }
+    this.transport = transport;
     this.isEnabled = false;
     this.permissionState = 'default';
     this.options = {
@@ -69,7 +77,7 @@ export class PushNotificationController {
         this.handleForegroundMessage(payload);
       });
 
-      console.log('[PushNotificationController] Initialized successfully');
+      console.log('[PushNotificationController] Initialized');
       return true;
     } catch (error) {
       console.error(
@@ -200,6 +208,13 @@ export class PushNotificationController {
       return false;
     }
 
+    console.debug(
+      '[PushNotificationController] Enabling notifications... isNotificationSupported(): ',
+      this.isNotificationSupported(),
+      'Permission:',
+      this.permissionState,
+    );
+
     try {
       // Get FCM token
       const token = await this.transport.getToken();
@@ -209,7 +224,7 @@ export class PushNotificationController {
       }
 
       this.isEnabled = true;
-      console.log('[PushNotificationController] Notifications enabled');
+      console.info('[PushNotificationController] Notifications enabled');
 
       // Notify callbacks
       this.permissionCallbacks.forEach((callback) => {
@@ -691,8 +706,11 @@ export class PushNotificationController {
   }
 }
 
-/**
- * Default push notification controller instance using FCM transport
- * Can be replaced with a different transport for testing
- */
-export const pushNotificationController = new PushNotificationController();
+let instance = null;
+export const getPushNotificationController = () => {
+  if (!instance) {
+    const transport = createDefaultTransport();
+    instance = new PushNotificationController(transport);
+  }
+  return instance;
+};

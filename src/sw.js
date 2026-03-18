@@ -4,7 +4,7 @@
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
 import { NetworkFirst } from 'workbox-strategies';
-import { initializeApp } from 'firebase/app';
+// import { initializeApp } from 'firebase/app';
 import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
 import { VIBRATION_PATTERNS } from './media/haptic/vibration-patterns.js';
 import {
@@ -50,6 +50,36 @@ const navigationRoute = new NavigationRoute(
 );
 registerRoute(navigationRoute);
 
+// ! TESTING NATIVE PUSH HANDLER
+self.addEventListener('push', (event) => {
+  console.log('[SW] Native push received');
+
+  let payload;
+  try {
+    payload = event.data?.json() || {};
+  } catch {
+    payload = { title: 'Notification', body: event.data?.text() || '' };
+  }
+
+  // Same notification logic as your FCM handler
+  const options = {
+    body: payload.body,
+    icon: `${import.meta.env.BASE_URL}icons/play-arrows-v1/icon-192.png`,
+    //  payload.data || {},
+    tag:
+      payload.data?.type === 'call' ? `call_${payload.data.roomId}` : 'default',
+    vibrate:
+      VIBRATION_PATTERNS[payload.data?.type] || VIBRATION_PATTERNS.default,
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(
+      payload.title || 'Notification',
+      options,
+    ),
+  );
+});
+
 // ============================================================================
 // FIREBASE FCM CONFIGURATION
 // ============================================================================
@@ -73,16 +103,18 @@ const isValidConfig = Object.values(firebaseConfig).every(
   (val) => val && val.length > 0 && !val.includes('your-project'),
 );
 
-if (isValidConfig) {
-  try {
-    const app = initializeApp(firebaseConfig);
-    messaging = getMessaging(app);
-  } catch (error) {
-    console.error('[SW] Failed to initialize Firebase:', error);
-  }
-} else {
-  console.warn('[SW] Firebase config missing or invalid. FCM disabled.');
-}
+// ! TEMPORARILY disabled while investigating posible double init issue
+// if (isValidConfig) {
+//   try {
+//     const app = initializeApp(firebaseConfig);
+//     messaging = getMessaging(app);
+//     console.info('[SW] Firebase initialized for FCM');
+//   } catch (error) {
+//     console.error('[SW] Failed to initialize Firebase:', error);
+//   }
+// } else {
+//   console.warn('[SW] Firebase config missing or invalid. FCM disabled.');
+// }
 
 // ============================================================================
 // FCM BACKGROUND MESSAGE HANDLING

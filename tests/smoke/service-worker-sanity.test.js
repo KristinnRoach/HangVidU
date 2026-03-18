@@ -37,8 +37,8 @@ describe('Service Worker Environment Sanity Checks', () => {
   });
 
   test('FCM VAPID key is configured', () => {
-    expect(import.meta.env.VITE_FCM_VAPID_KEY).toBeDefined();
-    expect(import.meta.env.VITE_FCM_VAPID_KEY).not.toBe('');
+    expect(import.meta.env.VITE_PUSH_VAPID_KEY).toBeDefined();
+    expect(import.meta.env.VITE_PUSH_VAPID_KEY).not.toBe('');
   });
 
   test('base URL is configured correctly', () => {
@@ -70,7 +70,7 @@ describe('Service Worker Configuration Validation', () => {
   });
 
   test('VAPID key is not placeholder value', () => {
-    const vapidKey = import.meta.env.VITE_FCM_VAPID_KEY;
+    const vapidKey = import.meta.env.VITE_PUSH_VAPID_KEY;
 
     expect(vapidKey).not.toContain('your_vapid_key');
     expect(vapidKey.length).toBeGreaterThan(50); // Real VAPID keys are long
