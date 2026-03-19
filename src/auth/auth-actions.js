@@ -212,7 +212,7 @@ export async function deleteAccount() {
       console.warn('[AUTH] Failed to remove user node from RTDB:', err);
     }
 
-    // 3. Delete FCM token if available
+    // 3. Delete FCM token if available // TODO: Check whether we actually need FCM here! Remove if not needed.
     try {
       const { FCMTransport } =
         await import('../notifications/transports/fcm-transport.js');
