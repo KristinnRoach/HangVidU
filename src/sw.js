@@ -12,6 +12,9 @@ import {
   handleVideoFetch,
 } from './file-transfer/sw-video-handler.js';
 
+const PUSH_DEBUG_IDENTITY_CACHE = 'push-debug-identity-v1';
+const PUSH_DEBUG_IDENTITY_PATH = '/__push_debug_identity__';
+
 // ============================================================================
 // WORKBOX PWA FUNCTIONALITY
 // ============================================================================
@@ -49,8 +52,10 @@ const navigationRoute = new NavigationRoute(
 registerRoute(navigationRoute);
 
 self.addEventListener('push', (event) => {
-  console.log('[SW] Web push received');
+  event.waitUntil(handlePushEvent(event));
+});
 
+async function handlePushEvent(event) {
   let payload;
   try {
     payload = event.data?.json() || {};
@@ -58,36 +63,126 @@ self.addEventListener('push', (event) => {
     payload = { title: 'Notification', body: event.data?.text() || '' };
   }
 
+  const localIdentity = await readPushDebugIdentity();
   const data = payload.data || {};
+  const notificationTitle = payload.title || 'Notification';
+  const notificationTag = getNotificationTag(data);
+  const notificationActions = getNotificationActions(data.type);
   const options = {
     body: payload.body || 'Tap to open HangVidU',
     icon: `${import.meta.env.BASE_URL}icons/play-arrows-v1/icon-192.png`,
     badge: `${import.meta.env.BASE_URL}icons/play-arrows-v1/icon-192.png`,
     data,
-    tag: getNotificationTag(data),
+    tag: notificationTag,
     requireInteraction: data.type === 'call',
-    actions: getNotificationActions(data.type),
+    actions: notificationActions,
     vibrate: VIBRATION_PATTERNS[data.type] || VIBRATION_PATTERNS.default,
   };
 
-  console.log('[SW] Showing notification', {
-    title: payload.title || 'Notification',
+  console.log('[SW] Web push received', {
+    hasEventData: Boolean(event.data),
+    localIdentity,
+    intendedTargetUserId: data.targetUserId || null,
+  });
+
+  console.log('[SW] Parsed push payload', {
+    localIdentity,
+    rawPayload: payload,
+    payloadKeys: Object.keys(payload || {}),
+    data,
+    dataKeys: Object.keys(data || {}),
+    title: notificationTitle,
+    body: payload.body || null,
     type: data.type || 'unknown',
     roomId: data.roomId || null,
     callerId: data.callerId || null,
+    callerName: data.callerName || null,
     senderId: data.senderId || null,
+    targetUserId: data.targetUserId || null,
+    hasTopLevelType: Object.prototype.hasOwnProperty.call(payload || {}, 'type'),
+    topLevelType: payload.type || null,
+    hasNestedData: Object.prototype.hasOwnProperty.call(payload || {}, 'data'),
+    expectedCallShape: {
+      hasRoomId: Boolean(data.roomId),
+      hasCallerId: Boolean(data.callerId),
+      hasCallerName: Boolean(data.callerName),
+      typeIsCall: data.type === 'call',
+    },
+  });
+
+  console.log('[SW] Derived notification options', {
+    localIdentity,
+    title: notificationTitle,
     tag: options.tag,
     requireInteraction: options.requireInteraction,
     actionCount: options.actions.length,
+    actions: notificationActions,
+    vibrate: options.vibrate,
   });
 
-  event.waitUntil(
-    self.registration.showNotification(
-      payload.title || 'Notification',
-      options,
-    ),
+  try {
+    await self.registration.showNotification(notificationTitle, options);
+    const notifications = await self.registration.getNotifications({
+      tag: notificationTag,
+    });
+    console.log('[SW] showNotification resolved', {
+      localIdentity,
+      title: notificationTitle,
+      tag: notificationTag,
+      displayedCountForTag: notifications.length,
+      type: data.type || 'unknown',
+      roomId: data.roomId || null,
+      targetUserId: data.targetUserId || null,
+    });
+  } catch (error) {
+    console.error('[SW] showNotification failed', {
+      localIdentity,
+      error,
+      title: notificationTitle,
+      tag: notificationTag,
+      rawPayload: payload,
+      data,
+    });
+    throw error;
+  }
+}
+
+async function persistPushDebugIdentity(identity) {
+  const cache = await caches.open(PUSH_DEBUG_IDENTITY_CACHE);
+  const request = new Request(PUSH_DEBUG_IDENTITY_PATH);
+  await cache.put(
+    request,
+    new Response(JSON.stringify(identity || {}), {
+      headers: { 'Content-Type': 'application/json' },
+    }),
   );
-});
+}
+
+async function readPushDebugIdentity() {
+  try {
+    const cache = await caches.open(PUSH_DEBUG_IDENTITY_CACHE);
+    const response = await cache.match(new Request(PUSH_DEBUG_IDENTITY_PATH));
+    if (!response) {
+      return {
+        userId: null,
+        displayName: 'unknown-user',
+      };
+    }
+
+    const identity = await response.json().catch(() => ({}));
+    return {
+      userId: identity.userId || null,
+      displayName: identity.displayName || identity.userId || 'unknown-user',
+      syncedAt: identity.syncedAt || null,
+    };
+  } catch (error) {
+    console.warn('[SW] Failed to read push debug identity:', error);
+    return {
+      userId: null,
+      displayName: 'unknown-user',
+    };
+  }
+}
 
 /**
  * Get notification actions based on type
@@ -129,7 +224,9 @@ function getNotificationActions(type) {
  * @returns {string} Notification tag
  */
 function getNotificationTag(data) {
-  if (data?.type === 'call' && data?.roomId) {
+  if (data?.type === 'call' && data?.notificationId) {
+    return `call_${data.notificationId}`;
+  } else if (data?.type === 'call' && data?.roomId) {
     return `call_${data.roomId}`;
   } else if (data?.type === 'message' && data?.senderId) {
     return `message_${data.senderId}`;
@@ -284,6 +381,22 @@ self.addEventListener('message', (event) => {
         version: '1.0.0',
         timestamp: Date.now(),
       });
+      break;
+
+    case 'SYNC_PUSH_DEBUG_IDENTITY':
+      event.waitUntil(
+        persistPushDebugIdentity(data)
+          .then(() => {
+            console.log('[SW] Synced push debug identity', {
+              userId: data?.userId || null,
+              displayName:
+                data?.displayName || data?.userId || 'unknown-user',
+            });
+          })
+          .catch((error) => {
+            console.warn('[SW] Failed to sync push debug identity:', error);
+          }),
+      );
       break;
 
     case 'REGISTER_VIDEO':

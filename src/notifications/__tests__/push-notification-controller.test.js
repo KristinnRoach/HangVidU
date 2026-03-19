@@ -201,13 +201,20 @@ describe('PushNotificationController', () => {
 
   it('dismisses call notifications by service worker tag', async () => {
     const close = vi.fn();
-    registration.getNotifications.mockResolvedValue([{ close }]);
+    registration.getNotifications.mockResolvedValue([
+      {
+        close,
+        data: { type: 'call', roomId: 'room-42' },
+      },
+      {
+        close: vi.fn(),
+        data: { type: 'call', roomId: 'room-other' },
+      },
+    ]);
 
     await controller.dismissCallNotifications('room-42');
 
-    expect(registration.getNotifications).toHaveBeenCalledWith({
-      tag: 'call_room-42',
-    });
+    expect(registration.getNotifications).toHaveBeenCalledWith();
     expect(close).toHaveBeenCalled();
   });
 

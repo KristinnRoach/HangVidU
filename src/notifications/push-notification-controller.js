@@ -38,6 +38,7 @@ export class PushNotificationController {
     }
 
     this.permissionState = this.getPermissionState();
+    await this.syncDebugIdentityToServiceWorker();
     console.log('[PushNotificationController] Initialized');
     return true;
   }
@@ -139,6 +140,7 @@ export class PushNotificationController {
     }
 
     try {
+      await this.syncDebugIdentityToServiceWorker();
       this.subscription = await this.ensureSubscription();
       this.isEnabled = true;
       this.notifyPermissionCallbacks('enabled');
@@ -203,7 +205,9 @@ export class PushNotificationController {
     }
 
     try {
+      await this.syncDebugIdentityToServiceWorker();
       const payload = await this.formatCallNotification(callData);
+      this.logPushSendDiagnostics('call', targetUserId, callData, payload);
       const response = await this.callFunction('sendCallNotification', {
         targetUserId,
         callData: payload,
@@ -212,6 +216,7 @@ export class PushNotificationController {
       this.trackNotification(`call_${payload.roomId}`, {
         type: 'call',
         roomId: payload.roomId,
+        notificationId: payload.notificationId,
         targetUserId,
       });
 
@@ -257,10 +262,17 @@ export class PushNotificationController {
     }
 
     try {
+      await this.syncDebugIdentityToServiceWorker();
       const payload = await this.formatCallNotification({
         ...callData,
         type: 'missed_call',
       });
+      this.logPushSendDiagnostics(
+        'missed_call',
+        targetUserId,
+        callData,
+        payload,
+      );
       const response = await this.callFunction('sendCallNotification', {
         targetUserId,
         callData: payload,
@@ -351,7 +363,16 @@ export class PushNotificationController {
 
   async dismissCallNotifications(roomId) {
     if (!roomId) return;
-    await this.closeNotificationsByTag(`call_${roomId}`);
+    const registration = await this.getServiceWorkerRegistration();
+    const notifications = await registration.getNotifications();
+    notifications
+      .filter(
+        (notification) =>
+          notification?.data?.type === 'call' &&
+          notification?.data?.roomId === roomId,
+      )
+      .forEach((notification) => notification.close());
+    this.activeNotifications.delete(`call_${roomId}`);
   }
 
   async dismissMessageNotifications(senderId) {
@@ -373,6 +394,7 @@ export class PushNotificationController {
     await Promise.all(toRemove.map((tag) => this.closeNotificationsByTag(tag)));
   }
 
+  // TODO: Foreground/focused suppression or in-app-only handling not currently implemented
   handleForegroundMessage(payload) {
     this.notificationCallbacks.forEach((callback) => {
       try {
@@ -466,6 +488,11 @@ export class PushNotificationController {
       roomId,
       callerId,
       callerName: displayName,
+      notificationId:
+        callData.notificationId ||
+        `${roomId || 'call'}-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 8)}`,
       type,
     };
   }
@@ -540,6 +567,73 @@ export class PushNotificationController {
     }
 
     return registration;
+  }
+
+  logPushSendDiagnostics(notificationKind, targetUserId, rawCallData, payload) {
+    console.log('[PushNotificationController] Push send diagnostics', {
+      localUser: this.getLocalDebugIdentity(),
+      notificationKind,
+      targetUserId,
+      rawCallData,
+      formattedPayload: payload,
+      payloadKeys: Object.keys(payload || {}),
+      derivedNotificationTag:
+        payload?.type === 'call' && payload?.notificationId
+          ? `call_${payload.notificationId}`
+          : null,
+      payloadNotificationId: payload?.notificationId ?? null,
+      hasRoomId: Boolean(payload?.roomId),
+      hasCallerId: Boolean(payload?.callerId),
+      hasCallerName: Boolean(payload?.callerName),
+      payloadType: payload?.type ?? null,
+      typeMatchesExpected: payload?.type === notificationKind,
+    });
+  }
+
+  getLocalDebugIdentity() {
+    const user = getUser?.() || {};
+    const userId = user.uid || getLoggedInUserId?.() || null;
+    return {
+      userId,
+      displayName: user.displayName || user.email || userId || 'unknown-user',
+    };
+  }
+
+  async syncDebugIdentityToServiceWorker() {
+    if (!('serviceWorker' in navigator)) {
+      return;
+    }
+
+    const identity = this.getLocalDebugIdentity();
+    if (!identity.userId && !identity.displayName) {
+      return;
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.getRegistration();
+      const messenger =
+        registration?.active ||
+        registration?.waiting ||
+        registration?.installing ||
+        navigator.serviceWorker.controller;
+
+      if (!messenger?.postMessage) {
+        return;
+      }
+
+      messenger.postMessage({
+        type: 'SYNC_PUSH_DEBUG_IDENTITY',
+        data: {
+          ...identity,
+          syncedAt: Date.now(),
+        },
+      });
+    } catch (error) {
+      console.warn(
+        '[PushNotificationController] Failed to sync debug identity to service worker:',
+        error,
+      );
+    }
   }
 
   trackNotification(tag, data) {

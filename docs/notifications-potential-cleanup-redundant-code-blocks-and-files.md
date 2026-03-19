@@ -51,7 +51,8 @@ Primary files:
 
 Why it matters:
 
-- The debug-button push works, while the real call-start case does not. That strongly suggests the conflict appears only when the full RTDB incoming-call path is active at the same time.
+- The original real call-start display failure has now been fixed, but the area is still fragile and debugging showed how easy it is to misattribute notification issues when push delivery, service worker display, and RTDB-driven call UI all overlap.
+- The next real issue to isolate is click behavior: the real incoming call notification can now display, but clicking it does not yet successfully answer the call.
 - Even if both paths are individually valid, the ownership boundary is not clear enough yet: which path owns background notification, which path owns foreground UI, and when they are allowed to overlap.
 
 Likely cleanup direction:
@@ -77,6 +78,8 @@ Examples:
 - debug call notification button in the contacts list
 - temporary call-start logging
 - temporary service worker payload logging
+- temporary sender/receiver identity logging
+- temporary backend delivery failure detail logging
 
 Why it matters:
 
@@ -85,8 +88,8 @@ Why it matters:
 
 ## Recommended Cleanup Order
 
-1. Finish isolating the real incoming-call failure.
-2. Decide the final production notification architecture.
-3. Remove stale transport and diagnostic layers.
-4. Remove temporary debug hooks and extra logging.
+1. Fix notification click-to-answer for real incoming calls.
+2. Decide the final production notification architecture for background notification vs foreground incoming-call UX.
+3. Remove temporary debug hooks and extra logging.
+4. Keep the subscription ownership hardening and unique per-attempt call notification identity.
 5. Update docs so the repository has one clear notification story.

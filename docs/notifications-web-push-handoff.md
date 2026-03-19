@@ -22,18 +22,18 @@ Verified manually on deployed site:
 - real file message notifications while app/browser closed or phone locked
 - real missed call notifications while app/browser closed or phone locked
 - manual debug call notification to a target contact
+- real incoming call notification at call start while app/browser closed or in background
 
 ## What Does Not Work Yet
 
-- real incoming call notification at call start
-
-The user should ideally receive a push **when the call starts**, before it degrades into a missed call.
+- clicking the real incoming call notification does not yet successfully answer the call
+- temporary debugging logs and debug-oriented plumbing are still present and should be cleaned up after the click/answer issue is understood
 
 ## Important Context
 
 The current code is a **functional verification slice**, not a clean end-state.
 
-After incoming call notifications are fixed, the plan should be:
+After notification click-to-answer is fixed, the plan should be:
 
 1. avoid adding more complexity unless strictly necessary
 2. identify dead, redundant, overlapping, or duplicate notification code
@@ -58,52 +58,76 @@ These should stay **separate concerns**.
 
 If any future change accidentally mixes them, that should be called out explicitly.
 
-## Current Likely Root Cause For Incoming Call Failure
+## Latest Confirmed Findings
 
-The Web Push pipeline itself is proven working.
+The Web Push pipeline itself is proven working, including real incoming call delivery.
 
-That means the remaining issue is no longer likely to be:
+The original “real incoming call notification does not display” problem is no longer likely to be:
 
 - iPhone/PWA push support
 - VAPID setup
 - subscription storage
-- the backend Web Push send path in isolation
+- the service worker display path in isolation
+- payload shape or notification `type` mismatch
 
 Latest verified findings:
 
 - the real outgoing call flow in [main.js](src/main.js) does reach `sendCallNotification()` on call start
-- the call-start send path now logs `contactId`, `roomId`, and the returned push result
+- sender-side logs now include local user identity, target user identity, payload shape, and backend delivery result
+- receiver-side logs now include local service-worker identity and intended target user identity
+- a stale cross-user subscription bug was confirmed: one of user A's browser subscriptions was stored under user B's `pushSubscriptions`
+- backend registration has now been hardened so a subscription endpoint is removed from other users before being registered to the current authenticated user
+- after removing stale subscriptions and re-registering cleanly, cross-user delivery stopped reproducing
 - on the receiving device, the service worker logs `Web push received` for the real incoming call
 - the debug button next to a contact reliably shows an incoming call notification on the target device
 - missed call notifications still appear reliably
-- commenting out `dismissCallNotifications(...)` in `main.js` did **not** fix the issue
-- an attempted change to skip RTDB incoming-call UI in background did **not** fix the issue and should not be treated as a validated solution
+- the real incoming-call display failure was ultimately fixed by giving each call push a unique notification identity per attempt instead of reusing the stable room-based identity
+- the first topic-based version of that fix failed because Web Push topics must be at most 32 URL-safe characters; hashing the notification identity down to a valid topic resolved that
+- real incoming call pushes now succeed again with `successCount: 1` and `failureCount: 0` in the current clean test state
 
-Most likely suspect now:
+## What Was Actually Wrong
 
-- the real incoming-call failure is specific to displaying the incoming-call push while the full RTDB incoming-call flow is active on the receiving device
-- in other words, this appears to be a **real-call-path display conflict**, not a simple send failure
+There were two real issues uncovered during debugging:
+
+1. subscription ownership contamination:
+   - a browser push subscription ended up stored under multiple users
+   - this caused user A to receive pushes intended for user B during testing
+
+2. real call notifications reused a stable room-based notification identity:
+   - debug pushes used a fresh identity each time and displayed reliably
+   - real call-start pushes reused the same room-based identity
+   - moving to a unique per-attempt call notification identity fixed the display problem
+   - the backend `topic` must remain within the Web Push length/character limit, so the unique notification ID is hashed before being used as a topic
 
 ## Recommended Next Step
 
-Only fix incoming call notifications next, and only if it can be done **without adding more complexity or tech debt**.
+Start next session with notification click/answer behavior only.
+
+Current highest-value question:
+
+- why clicking the real incoming call notification does not successfully answer the call
+
+Do not broaden the scope before that is understood.
 
 Latest debugging sequence already completed:
 
 1. added temporary logs around the real call-start send point in [main.js](src/main.js)
 2. confirmed `sendCallNotification()` is reached on real call start
-3. logged `contactId`, `roomId`, and the returned result/error
+3. logged `contactId`, `roomId`, identity, payload shape, and returned result/error
 4. added temporary service worker logs showing the incoming push payload/type/tag right before `showNotification(...)`
+5. confirmed and fixed cross-user subscription contamination
+6. confirmed and fixed the stable room-based notification identity problem for real incoming calls
 
-Recommended next step later:
+Recommended next step now:
 
-1. compare the service worker log for the first push during a real call against the later missed-call push
-2. compare that against the debug-button push that reliably displays
-3. isolate the exact difference in payload/tag/timing between:
-   - debug push
-   - real incoming-call push
-   - missed-call push
-4. avoid broad architectural changes until the specific browser/runtime behavior is proven
+1. trace the notification click path for a real incoming call end-to-end:
+   - service worker `notificationclick`
+   - `openApp(...)`
+   - app navigation / focus behavior
+   - call answer / join flow after open
+2. verify whether the app opens with the expected room context when the notification is clicked
+3. verify whether the answer action and default notification click behave differently on iOS Home Screen PWA
+4. once the click/answer issue is understood, remove temporary debugging logs and any debug-only plumbing that is no longer needed
 
 ## Current Implementation Notes
 
@@ -112,7 +136,9 @@ These changes were intentionally pragmatic:
 - Web Push is the active client push path for the verified slice
 - message notifications were switched to the working Web Push send path
 - a temporary debug button was added next to contacts to test target-device call pushes
-- temporary debugging logs were added in the call-start path and service worker
+- temporary debugging logs were added in the call-start path, backend response path, and service worker
 - a focused integration test was added to prove `callContact()` attempts the push immediately on successful call start
+- push subscription registration now enforces exclusive ownership of a subscription endpoint across users
+- call pushes now use a unique notification identity per attempt while preserving `roomId` for call routing/click handling
 
 This is acceptable for verification, but should be cleaned up before treating notifications as finalized architecture.

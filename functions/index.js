@@ -56,8 +56,60 @@ function getSubscriptionId(endpoint) {
     .slice(0, 40);
 }
 
+function maskSubscriptionKey(key) {
+  if (!key) return 'unknown';
+  return `${key.slice(0, 8)}...${key.slice(-6)}`;
+}
+
+function buildPushTopic(notificationId) {
+  if (!notificationId) return undefined;
+  return crypto
+    .createHash('sha256')
+    .update(notificationId)
+    .digest('base64url')
+    .slice(0, 32);
+}
+
+async function enforceExclusiveSubscriptionOwnership(
+  db,
+  currentUid,
+  subscriptionId,
+) {
+  const usersSnapshot = await db.ref('users').once('value');
+  const updates = {};
+  const removedFromUserIds = [];
+
+  usersSnapshot.forEach((userSnapshot) => {
+    const uid = userSnapshot.key;
+    if (!uid || uid === currentUid) {
+      return;
+    }
+
+    if (userSnapshot.child(`pushSubscriptions/${subscriptionId}`).exists()) {
+      updates[`users/${uid}/pushSubscriptions/${subscriptionId}`] = null;
+      removedFromUserIds.push(uid);
+    }
+  });
+
+  if (Object.keys(updates).length > 0) {
+    await db.ref().update(updates);
+    console.warn('[Push] Reassigned subscription ownership', {
+      subscriptionKey: maskSubscriptionKey(subscriptionId),
+      claimedByUserId: currentUid,
+      removedFromUserIds,
+    });
+  }
+
+  return removedFromUserIds;
+}
+
 function buildCallPayload(callData = {}) {
   const type = callData.type || 'call';
+  const notificationId =
+    callData.notificationId ||
+    `${callData.roomId || 'call'}-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
   const title =
     type === 'missed_call'
       ? `Missed call from ${callData.callerName || 'Someone'}`
@@ -73,6 +125,8 @@ function buildCallPayload(callData = {}) {
       roomId: callData.roomId || '',
       callerId: callData.callerId || '',
       callerName: callData.callerName || 'Unknown caller',
+      targetUserId: callData.targetUserId || '',
+      notificationId,
       timestamp: Date.now().toString(),
     },
   };
@@ -104,7 +158,14 @@ async function sendWebPushToUser(userId, payload) {
 
   if (!subscriptionsData) {
     console.log(`[Push] No subscriptions for user ${userId}, skipping`);
-    return { sent: false };
+    return {
+      sent: false,
+      reason: 'no-subscriptions',
+      totalSubscriptions: 0,
+      successCount: 0,
+      failureCount: 0,
+      failures: [],
+    };
   }
 
   const entries = Object.entries(subscriptionsData).filter(
@@ -113,7 +174,14 @@ async function sendWebPushToUser(userId, payload) {
 
   if (entries.length === 0) {
     console.log(`[Push] No valid subscriptions for user ${userId}, skipping`);
-    return { sent: false };
+    return {
+      sent: false,
+      reason: 'no-valid-subscriptions',
+      totalSubscriptions: 0,
+      successCount: 0,
+      failureCount: 0,
+      failures: [],
+    };
   }
 
   const payloadJson = JSON.stringify(payload);
@@ -128,8 +196,8 @@ async function sendWebPushToUser(userId, payload) {
           TTL: 60,
           urgency: payload.data?.type === 'call' ? 'high' : 'normal',
           topic:
-            payload.data?.type === 'call' && payload.data?.roomId
-              ? `call_${payload.data.roomId}`
+            payload.data?.type === 'call' && payload.data?.notificationId
+              ? buildPushTopic(payload.data.notificationId)
               : undefined,
         });
         successKeys.push(key);
@@ -171,12 +239,32 @@ async function sendWebPushToUser(userId, payload) {
   console.log(
     `[Push] Sent to ${userId} — success: ${successCount}, failed: ${failureCount}`,
   );
+  if (failureDetails.length > 0) {
+    console.warn('[Push] Delivery failure details:', {
+      userId,
+      payloadType: payload?.data?.type || 'unknown',
+      roomId: payload?.data?.roomId || null,
+      failures: failureDetails.map((failure) => ({
+        subscriptionKey: maskSubscriptionKey(failure.key),
+        statusCode: failure.statusCode || null,
+        message: failure.message || null,
+        body: failure.body || null,
+      })),
+    });
+  }
 
   return {
     sent: successCount > 0,
+    reason: successCount > 0 ? 'sent' : 'all-deliveries-failed',
+    totalSubscriptions: entries.length,
     successCount,
     failureCount,
-    failures: failureDetails,
+    failures: failureDetails.map((failure) => ({
+      subscriptionKey: maskSubscriptionKey(failure.key),
+      statusCode: failure.statusCode || null,
+      message: failure.message || null,
+      body: failure.body || null,
+    })),
   };
 }
 
@@ -202,8 +290,11 @@ exports.registerPushSubscription = onRequest(
 
       const subscriptionId = getSubscriptionId(subscription.endpoint);
       const now = Date.now();
+      const db = getDatabase();
 
-      await getDatabase()
+      await enforceExclusiveSubscriptionOwnership(db, uid, subscriptionId);
+
+      await db
         .ref(`users/${uid}/pushSubscriptions/${subscriptionId}`)
         .set({
           subscription,
@@ -278,21 +369,52 @@ exports.sendCallNotification = onRequest(
 
       const result = await sendWebPushToUser(
         targetUserId,
-        buildCallPayload(callData),
+        buildCallPayload({
+          ...callData,
+          targetUserId,
+        }),
       );
 
       if (!result.sent) {
-        console.warn(
-          '[Push] No push subscriptions found for user when sending call notification:',
+        if (
+          result.reason === 'no-subscriptions' ||
+          result.reason === 'no-valid-subscriptions'
+        ) {
+          console.warn(
+            '[Push] No push subscriptions found for user when sending call notification:',
+            targetUserId,
+          );
+          return res.status(404).json({
+            error: 'No push subscriptions found',
+            reason: result.reason,
+            totalSubscriptions: result.totalSubscriptions,
+            successCount: result.successCount,
+            failureCount: result.failureCount,
+            failures: result.failures,
+          });
+        }
+
+        console.warn('[Push] All push delivery attempts failed', {
           targetUserId,
-        );
-        return res.status(404).json({ error: 'No push subscriptions found' });
+          totalSubscriptions: result.totalSubscriptions,
+          failureCount: result.failureCount,
+          failures: result.failures,
+        });
+        return res.status(502).json({
+          error: 'All push delivery attempts failed',
+          reason: result.reason,
+          totalSubscriptions: result.totalSubscriptions,
+          successCount: result.successCount,
+          failureCount: result.failureCount,
+          failures: result.failures,
+        });
       }
 
       return res.json({
         success: true,
         successCount: result.successCount,
         failureCount: result.failureCount,
+        failures: result.failures,
       });
     } catch (error) {
       console.error('[Push] Error sending call notification:', error);
@@ -320,18 +442,27 @@ exports.sendDebugCallNotification = onRequest(
         roomId: callData.roomId || `debug-${Date.now()}`,
         callerId: callData.callerId || uid,
         callerName: callData.callerName || 'Debug Caller',
+        targetUserId: uid,
         type: callData.type || 'call',
       });
 
       const result = await sendWebPushToUser(uid, payload);
       if (!result.sent) {
-        return res.status(404).json({ error: 'No push subscriptions found' });
+        return res.status(404).json({
+          error: 'No push subscriptions found',
+          reason: result.reason,
+          totalSubscriptions: result.totalSubscriptions,
+          successCount: result.successCount,
+          failureCount: result.failureCount,
+          failures: result.failures,
+        });
       }
 
       return res.json({
         success: true,
         successCount: result.successCount,
         failureCount: result.failureCount,
+        failures: result.failures,
       });
     } catch (error) {
       console.error('[Push] Error sending debug notification:', error);
