@@ -2002,13 +2002,13 @@ CallController.on(
     }
 
     // ! Clean up call notifications for this room
-    // if (roomId && getPushNotificationController()?.isNotificationEnabled()) {
-    //   getPushNotificationController
-    //     .dismissCallNotifications(roomId)
-    //     .catch((error) => {
-    //       console.warn('[MAIN] Failed to dismiss call notifications:', error);
-    //     });
-    // }
+    if (roomId && getPushNotificationController()?.isNotificationEnabled()) {
+      getPushNotificationController()
+        .dismissCallNotifications(roomId)
+        .catch((error) => {
+          console.warn('[MAIN] Failed to dismiss call notifications:', error);
+        });
+    }
 
     cleanupRemoteStream();
     clearUrlParam();
