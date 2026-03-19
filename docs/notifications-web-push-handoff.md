@@ -129,6 +129,10 @@ Recommended next step now:
 3. verify whether the answer action and default notification click behave differently on iOS Home Screen PWA
 4. once the click/answer issue is understood, remove temporary debugging logs and any debug-only plumbing that is no longer needed
 
+Before testing next session:
+
+- make sure both the latest app bundle and the latest service worker from this branch are active on the test devices, otherwise notification-click debugging can be misleading
+
 ## Current Implementation Notes
 
 These changes were intentionally pragmatic:
