@@ -23,10 +23,7 @@ let lastRenderedLobby = null;
 
 // Limit displayed contact name length in the UI (keep full name in title)
 const MAX_CONTACT_NAME_CHARS = 18;
-const SHOW_DEBUG_NOTIFY_BUTTON =
-  typeof import.meta !== 'undefined' &&
-  import.meta.env &&
-  !!import.meta.env.DEV;
+const SHOW_DEBUG_NOTIFY_BUTTON = true;
 
 /**
  * Prompt user to save contact after hangup (and render contacts list in lobby)

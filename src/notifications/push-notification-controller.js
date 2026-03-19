@@ -163,24 +163,23 @@ export class PushNotificationController {
 
       if (subscription) {
         try {
+          await subscription.unsubscribe();
+        } catch (error) {
+          console.warn(
+            '[PushNotificationController] Failed to unsubscribe from push manager:',
+            error,
+          );
+        }
+
+        try {
           await this.unregisterSubscription(subscription);
         } catch (error) {
           console.warn(
             '[PushNotificationController] Failed to unregister subscription from backend:',
             error,
           );
-        } finally {
-          try {
-            await subscription.unsubscribe();
-          } catch (error) {
-            console.warn(
-              '[PushNotificationController] Failed to unsubscribe from push manager:',
-              error,
-            );
-          }
         }
       }
-      success = false;
     } finally {
       this.subscription = null;
       this.isEnabled = false;
@@ -534,7 +533,13 @@ export class PushNotificationController {
     if (!('serviceWorker' in navigator)) {
       throw new Error('Service workers are not available');
     }
-    return navigator.serviceWorker.ready;
+
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (!registration) {
+      throw new Error('No active service worker registration');
+    }
+
+    return registration;
   }
 
   trackNotification(tag, data) {

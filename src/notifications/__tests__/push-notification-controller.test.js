@@ -60,6 +60,7 @@ describe('PushNotificationController', () => {
       configurable: true,
       value: {
         ready: Promise.resolve(registration),
+        getRegistration: vi.fn().mockResolvedValue(registration),
       },
     });
 
@@ -210,6 +211,14 @@ describe('PushNotificationController', () => {
     expect(close).toHaveBeenCalled();
   });
 
+  it('fails fast when no active service worker registration exists', async () => {
+    navigator.serviceWorker.getRegistration.mockResolvedValue(null);
+
+    await expect(controller.dismissCallNotifications('room-42')).rejects.toThrow(
+      'No active service worker registration',
+    );
+  });
+
   it('disables notifications by removing the subscription and unsubscribing', async () => {
     await controller.initialize();
     controller.permissionState = 'granted';
@@ -226,5 +235,31 @@ describe('PushNotificationController', () => {
       }),
     );
     expect(subscription.unsubscribe).toHaveBeenCalled();
+  });
+
+  it('disables local notification state even when backend cleanup fails', async () => {
+    fetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: 'backend cleanup failed' }),
+    });
+
+    await controller.initialize();
+    controller.permissionState = 'granted';
+    controller.isEnabled = true;
+    controller.subscription = subscription;
+    controller.trackNotification('call_room-42', { type: 'call' });
+
+    const callback = vi.fn();
+    controller.onPermissionChange(callback);
+
+    const result = await controller.disable();
+
+    expect(result).toBe(true);
+    expect(subscription.unsubscribe).toHaveBeenCalled();
+    expect(controller.subscription).toBeNull();
+    expect(controller.isEnabled).toBe(false);
+    expect(controller.activeNotifications.size).toBe(0);
+    expect(callback).toHaveBeenCalledWith('disabled');
   });
 });
