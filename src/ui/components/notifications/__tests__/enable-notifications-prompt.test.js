@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 
 // Mock dependencies so the module can load — only t() matters for getBlockedMessage
-vi.mock('../../notifications/push-notification-controller.js', () => ({
-  pushNotificationController: {},
+vi.mock('../../../../notifications/push-notification-controller.js', () => ({
+  getPushNotificationController: vi.fn(() => ({})),
 }));
 vi.mock('./notification.js', () => ({
   createNotification: vi.fn(),
@@ -19,7 +19,8 @@ vi.mock('../../../utils/toast.js', () => ({
 
 // Mock i18n with a fake t() that returns known values for known keys
 const fakeTranslations = {
-  'notification.enable.blocked': 'Notifications blocked. Check browser settings.',
+  'notification.enable.blocked':
+    'Notifications blocked. Check browser settings.',
   'notification.enable.blocked.chrome':
     'Notifications blocked. Click the icon in the address bar to allow.',
   'notification.enable.blocked.firefox':
