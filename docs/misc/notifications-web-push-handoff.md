@@ -9,9 +9,6 @@ The current changes were made to **prove functionality quickly** on the deployed
 Current branch:
 - `codex/notifications-phase-1`
 
-Current commit:
-- `6b1d1cd`
-
 Current PR:
 - [#408](https://github.com/KristinnRoach/HangVidU/pull/408)
 
@@ -61,27 +58,43 @@ If any future change accidentally mixes them, that should be called out explicit
 
 The Web Push pipeline itself is proven working.
 
-That means the remaining issue is likely in the **real call-start path**, not in:
+That means the remaining issue is no longer likely to be:
 - iPhone/PWA push support
 - VAPID setup
-- service worker delivery
 - subscription storage
+- the backend Web Push send path in isolation
 
-Most likely suspect:
-- the real outgoing call flow in [main.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/main.js) is still not reaching or completing the real incoming-call push send reliably at call start
+Latest verified findings:
+- the real outgoing call flow in [main.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/main.js) does reach `sendCallNotification()` on call start
+- the call-start send path now logs `contactId`, `roomId`, and the returned push result
+- on the receiving device, the service worker logs `Web push received` for the real incoming call
+- the debug button next to a contact reliably shows an incoming call notification on the target device
+- missed call notifications still appear reliably
+- commenting out `dismissCallNotifications(...)` in `main.js` did **not** fix the issue
+- an attempted change to skip RTDB incoming-call UI in background did **not** fix the issue and should not be treated as a validated solution
 
-Missed calls work because they go through a different cleanup path after call lifecycle resolution.
+Most likely suspect now:
+- the real incoming-call failure is specific to displaying the incoming-call push while the full RTDB incoming-call flow is active on the receiving device
+- in other words, this appears to be a **real-call-path display conflict**, not a simple send failure
 
 ## Recommended Next Step
 
 Only fix incoming call notifications next, and only if it can be done **without adding more complexity or tech debt**.
 
-Suggested debugging sequence:
-1. add temporary logs around the real call-start send point in [main.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/main.js)
-2. confirm whether `sendCallNotification()` is actually reached on real call start
-3. if reached, log `contactId`, `roomId`, and the exact result/error
-4. if not reached reliably, move the send even earlier in the successful call-start path
-5. add temporary backend log in `sendCallNotification` only if needed to verify the request arrives
+Latest debugging sequence already completed:
+1. added temporary logs around the real call-start send point in [main.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/main.js)
+2. confirmed `sendCallNotification()` is reached on real call start
+3. logged `contactId`, `roomId`, and the returned result/error
+4. added temporary service worker logs showing the incoming push payload/type/tag right before `showNotification(...)`
+
+Recommended next step later:
+1. compare the service worker log for the first push during a real call against the later missed-call push
+2. compare that against the debug-button push that reliably displays
+3. isolate the exact difference in payload/tag/timing between:
+   - debug push
+   - real incoming-call push
+   - missed-call push
+4. avoid broad architectural changes until the specific browser/runtime behavior is proven
 
 ## Current Implementation Notes
 
@@ -89,5 +102,7 @@ These changes were intentionally pragmatic:
 - Web Push replaced the client FCM-oriented path for the verified slice
 - message notifications were switched to the working Web Push send path
 - a temporary debug button was added next to contacts to test target-device call pushes
+- temporary debugging logs were added in the call-start path and service worker
+- a focused integration test was added to prove `callContact()` attempts the push immediately on successful call start
 
 This is acceptable for verification, but should be cleaned up before treating notifications as finalized architecture.

@@ -2,10 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
   const callSequence = [];
+  let memberJoinedHandler = null;
   const pushController = {
     initialize: vi.fn().mockResolvedValue(true),
     isNotificationSupported: vi.fn().mockReturnValue(true),
     isNotificationEnabled: vi.fn().mockReturnValue(true),
+    shouldSendNotification: vi.fn().mockReturnValue(false),
     enableIfGranted: vi.fn().mockResolvedValue({ state: 'enabled' }),
     disable: vi.fn().mockResolvedValue(true),
     requestPermission: vi.fn(),
@@ -53,6 +55,7 @@ const mocks = vi.hoisted(() => {
       return Promise.resolve();
     }),
     getContactByRoomId: vi.fn(),
+    resolveCallerName: vi.fn().mockResolvedValue('Resolved Caller'),
     getContactsSorted: vi.fn().mockResolvedValue([]),
     getContacts: vi.fn().mockResolvedValue({}),
     saveContact: vi.fn(),
@@ -74,6 +77,12 @@ const mocks = vi.hoisted(() => {
 
   return {
     callSequence,
+    get memberJoinedHandler() {
+      return memberJoinedHandler;
+    },
+    set memberJoinedHandler(handler) {
+      memberJoinedHandler = handler;
+    },
     pushController,
     callController,
     contactsController,
@@ -224,12 +233,17 @@ vi.mock('../../src/utils/dev/dev-utils.js', () => ({
 vi.mock('../../src/room.js', () => ({
   default: {
     checkRoomStatus: vi.fn(),
+    getRoomData: vi.fn(),
     cancelCall: vi.fn(),
     leaveRoom: vi.fn(),
-    onMemberJoined: vi.fn(() => () => {}),
+    onMemberJoined: vi.fn((_roomId, callback) => {
+      mocks.memberJoinedHandler = callback;
+      return () => {};
+    }),
     onCallCancelled: vi.fn(() => () => {}),
     onAnswerAdded: vi.fn(() => () => {}),
     onMemberLeft: vi.fn(() => () => {}),
+    rejectCall: vi.fn(),
   },
 }));
 
@@ -398,6 +412,11 @@ vi.mock('../../src/ui/components/notifications/debug-notifications.js', () => ({
   addDebugUpdateButton: vi.fn(),
 }));
 
+import RoomService from '../../src/room.js';
+import { showIncomingCallUI } from '../../src/ui/components/calling/incoming-call.js';
+import { ringtoneManager } from '../../src/media/audio/ringtone-manager.js';
+import { callIndicators } from '../../src/ui/utils/call-indicators.js';
+
 describe('callContact push notification flow', () => {
   let consoleLogSpy;
   let consoleWarnSpy;
@@ -406,6 +425,9 @@ describe('callContact push notification flow', () => {
     vi.resetModules();
     vi.clearAllMocks();
     mocks.callSequence.length = 0;
+    mocks.memberJoinedHandler = null;
+    mocks.pushController.shouldSendNotification.mockReturnValue(false);
+    mocks.pushController.isNotificationEnabled.mockReturnValue(true);
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
@@ -469,6 +491,47 @@ describe('callContact push notification flow', () => {
     expect(consoleWarnSpy).not.toHaveBeenCalledWith(
       '[CALL] Call-start push notification did not succeed',
       expect.anything(),
+    );
+  });
+
+  it('skips RTDB incoming-call UI when push notifications should handle a background call', async () => {
+    mocks.pushController.shouldSendNotification.mockReturnValue(true);
+    RoomService.getRoomData.mockResolvedValue({
+      offer: { type: 'offer' },
+      answer: null,
+      createdBy: 'caller-999',
+    });
+
+    const { listenForIncomingOnRoom } = await import('../../src/main.js');
+
+    listenForIncomingOnRoom('room-background');
+
+    await mocks.memberJoinedHandler({
+      key: 'caller-999',
+      val: () => ({
+        joinedAt: Date.now(),
+      }),
+    });
+
+    expect(showIncomingCallUI).not.toHaveBeenCalled();
+    expect(ringtoneManager.playIncoming).not.toHaveBeenCalled();
+    expect(callIndicators.startCallIndicators).not.toHaveBeenCalled();
+    expect(mocks.contactsController.resolveCallerName).not.toHaveBeenCalled();
+    expect(mocks.logger.logNotificationDecision).toHaveBeenCalledWith(
+      'DEFER',
+      'background_push_only',
+      'room-background',
+      expect.objectContaining({
+        joiningUserId: 'caller-999',
+        pushNotificationsEnabled: true,
+      }),
+    );
+    expect(consoleLogSpy).toHaveBeenCalledWith(
+      '[CALL] Background incoming call detected, using push-only notification path',
+      {
+        roomId: 'room-background',
+        joiningUserId: 'caller-999',
+      },
     );
   });
 });

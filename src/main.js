@@ -853,6 +853,28 @@ export function listenForIncomingOnRoom(roomId) {
           },
         );
 
+        const pushController = getPushNotificationController();
+        const usePushOnlyForBackgroundCall =
+          !!pushController?.isNotificationEnabled?.() &&
+          !!pushController?.shouldSendNotification?.();
+
+        if (usePushOnlyForBackgroundCall) {
+          getDiagnosticLogger().logNotificationDecision(
+            'DEFER',
+            'background_push_only',
+            roomId,
+            {
+              joiningUserId,
+              pushNotificationsEnabled: true,
+            },
+          );
+          console.log('[CALL] Background incoming call detected, using push-only notification path', {
+            roomId,
+            joiningUserId,
+          });
+          return;
+        }
+
         // Resolve caller name from contacts
         const callerName = await contactsController.resolveCallerName(
           roomId,
