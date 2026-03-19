@@ -212,17 +212,7 @@ export async function deleteAccount() {
       console.warn('[AUTH] Failed to remove user node from RTDB:', err);
     }
 
-    // 3. Delete FCM token if available // TODO: Check whether we actually need FCM here! Remove if not needed.
-    try {
-      const { FCMTransport } =
-        await import('../notifications/transports/fcm-transport.js');
-      const fcmTransport = new FCMTransport();
-      await fcmTransport.deleteToken();
-    } catch (err) {
-      console.warn('[AUTH] Failed to delete FCM token:', err);
-    }
-
-    // 4. Remove user from discovery directory (so they don't show as "On HangVidU")
+    // 3. Remove user from discovery directory (so they don't show as "On HangVidU")
     if (user.email) {
       try {
         const { removeUserFromDirectory } =
@@ -236,7 +226,7 @@ export async function deleteAccount() {
       }
     }
 
-    // 5. Delete the Firebase Auth account (also signs out the user)
+    // 4. Delete the Firebase Auth account (also signs out the user)
     console.info('[AUTH] Deleting Firebase Auth account...');
     await deleteUser(user);
 

@@ -2,39 +2,28 @@
 
 This note is intentionally high-level. It only lists the most significant cleanup candidates that currently make the notifications area harder to reason about. It has NOT been properly reviewed by a human.
 
-## 1. Legacy Transport Layer Still In Tree
+## 1. Legacy Transport Layer Was The Highest-Impact Redundancy
 
-The highest-impact redundancy is the old transport-oriented notification stack that still exists alongside the active Web Push slice.
+The highest-impact redundancy was the old transport-oriented notification stack that existed alongside the active Web Push slice.
 
-Primary files:
-
-- [src/notifications/transports/fcm-transport.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/transports/fcm-transport.js)
-- [src/notifications/transports/native-transport.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/transports/native-transport.js)
-- [src/auth/auth-actions.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/auth/auth-actions.js)
+This cleanup has now been done. The repository should treat `pushSubscriptions` plus Web Push as the only supported delivery model.
 
 Why it matters:
 
 - The active implementation now uses `pushSubscriptions`, backend Web Push functions, the service worker, and [src/notifications/push-notification-controller.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/push-notification-controller.js).
-- The FCM and Native transport files still describe a parallel architecture, data model, and failure mode.
-- Some cleanup paths and docs still speak in FCM terms, which increases the chance of future fixes touching the wrong system.
+- Parallel transport layers make the notification area harder to reason about.
+- Stale transport language in cleanup paths and docs increases the chance of future fixes touching the wrong system.
 
 Likely cleanup direction:
 
-- Choose one supported transport architecture for production.
-- Remove or quarantine the inactive transport files once the real incoming-call issue is resolved.
-- Update any remaining account cleanup or token-removal code to use the chosen data model only.
+- Keep one supported transport architecture for production.
+- Keep account cleanup and token-removal code aligned with `pushSubscriptions` only.
 
-## 2. Diagnostics Are Built Around The Old Model
+## 2. Diagnostics Were Built Around The Old Model
 
-A second major redundancy is the diagnostics surface. Much of it appears to target the older FCM/controller shape rather than the current Web Push controller.
+A second major redundancy was the diagnostics surface. Much of it targeted the older notification-controller shape rather than the current Web Push controller.
 
-Primary files:
-
-- [src/diagnostics/dashboard.html](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/diagnostics/dashboard.html)
-- [src/diagnostics/diagnostic-service.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/diagnostics/diagnostic-service.js)
-- [src/diagnostics/README.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/diagnostics/README.md)
-- [src/diagnostics/MANUAL-TESTING-STEPS.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/diagnostics/MANUAL-TESTING-STEPS.md)
-- [src/diagnostics/QUICK-WIN-SUMMARY.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/diagnostics/QUICK-WIN-SUMMARY.md)
+This cleanup has also now been done. Any future diagnostics should be rebuilt around the active Web Push flow only.
 
 Why it matters:
 
@@ -43,7 +32,6 @@ Why it matters:
 
 Likely cleanup direction:
 
-- Either rewrite diagnostics around the active Web Push controller and `pushSubscriptions`, or remove the stale dashboard/docs entirely.
 - Avoid maintaining two developer-debugging stories at once.
 
 ## 3. Two Incoming-Call Notification Mechanisms Compete

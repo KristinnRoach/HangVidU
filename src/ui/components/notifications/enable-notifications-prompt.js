@@ -97,7 +97,7 @@ export function showEnableNotificationsPrompt() {
             result.state === 'error' &&
             result.reason === 'enable-failed'
           ) {
-            // Permission granted but FCM token/setup failed
+            // Permission granted but Web Push setup failed
             showErrorToast(t('notification.enable.failed'));
             btn.disabled = false;
             btn.textContent = t('shared.enable');

@@ -33,7 +33,6 @@ describe('Service Worker Environment Sanity Checks', () => {
   test('Firebase config is loaded', () => {
     expect(import.meta.env.VITE_FIREBASE_API_KEY).toBeDefined();
     expect(import.meta.env.VITE_FIREBASE_PROJECT_ID).toBeDefined();
-    expect(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID).toBeDefined();
   });
 
   test('Web Push VAPID is configured', () => {

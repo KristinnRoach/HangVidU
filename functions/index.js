@@ -4,7 +4,6 @@ const webpush = require('web-push');
 const { onRequest } = require('firebase-functions/v2/https');
 const { onValueCreated } = require('firebase-functions/v2/database');
 const { initializeApp } = require('firebase-admin/app');
-const { getMessaging } = require('firebase-admin/messaging');
 const { getDatabase } = require('firebase-admin/database');
 const { getAuth } = require('firebase-admin/auth');
 
@@ -351,66 +350,6 @@ exports.healthCheck = onRequest((req, res) => {
   });
 });
 
-async function sendFCMToUser(userId, message) {
-  const db = getDatabase();
-  const tokensSnapshot = await db
-    .ref(`users/${userId}/fcmTokens`)
-    .once('value');
-  const tokensData = tokensSnapshot.val();
-
-  if (!tokensData) {
-    console.log(`[FCM] No tokens for user ${userId}, skipping`);
-    return { sent: false };
-  }
-
-  const tokenEntries = Object.entries(tokensData);
-  const tokens = tokenEntries.map(([, td]) => td.token).filter(Boolean);
-
-  if (tokens.length === 0) {
-    console.log(`[FCM] No valid tokens for user ${userId}, skipping`);
-    return { sent: false };
-  }
-
-  const fullMessage = { ...message, tokens };
-  const messaging = getMessaging();
-  const response = await messaging.sendEachForMulticast(fullMessage);
-
-  if (response.failureCount > 0) {
-    const staleKeys = [];
-    response.responses.forEach((resp, idx) => {
-      if (
-        !resp.success &&
-        resp.error &&
-        (resp.error.code === 'messaging/invalid-registration-token' ||
-          resp.error.code === 'messaging/registration-token-not-registered')
-      ) {
-        staleKeys.push(tokenEntries[idx][0]);
-      }
-    });
-
-    if (staleKeys.length > 0) {
-      const updates = {};
-      staleKeys.forEach((key) => {
-        updates[`users/${userId}/fcmTokens/${key}`] = null;
-      });
-      await db.ref().update(updates);
-      console.log(
-        `[FCM] Removed ${staleKeys.length} stale tokens for ${userId}`,
-      );
-    }
-  }
-
-  console.log(
-    `[FCM] Sent to ${userId} — success: ${response.successCount}, failed: ${response.failureCount}`,
-  );
-
-  return {
-    sent: true,
-    successCount: response.successCount,
-    failureCount: response.failureCount,
-  };
-}
-
 exports.sendMessageNotification = onValueCreated(
   {
     ref: '/conversations/{conversationId}/messages/{messageId}',
@@ -433,7 +372,7 @@ exports.sendMessageNotification = onValueCreated(
 
     if (!recipientId) {
       console.warn(
-        '[FCM-msg] Could not determine recipient from',
+        '[Push-msg] Could not determine recipient from',
         conversationId,
       );
       return;

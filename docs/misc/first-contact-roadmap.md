@@ -196,7 +196,7 @@ Show which contacts are currently online when importing.
 ### Lower Priority
 
 #### 8. Push Notifications for Invites
-Notify users of new invites when app is closed (requires FCM setup).
+Notify users of new invites when app is closed (requires Web Push integration).
 
 #### 9. QR Code Invite
 Generate QR code containing referral link for in-person sharing.

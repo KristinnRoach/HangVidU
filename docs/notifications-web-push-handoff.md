@@ -37,7 +37,7 @@ After incoming call notifications are fixed, the plan should be:
 
 1. avoid adding more complexity unless strictly necessary
 2. identify dead, redundant, overlapping, or duplicate notification code
-3. remove obsolete FCM-oriented / fallback / duplicate paths
+3. remove obsolete duplicate / fallback notification paths
 4. settle on a simple, decoupled, localized notifications architecture
 5. define clean usage patterns for calls vs messages vs service worker behavior
 
@@ -109,7 +109,7 @@ Recommended next step later:
 
 These changes were intentionally pragmatic:
 
-- Web Push replaced the client FCM-oriented path for the verified slice
+- Web Push is the active client push path for the verified slice
 - message notifications were switched to the working Web Push send path
 - a temporary debug button was added next to contacts to test target-device call pushes
 - temporary debugging logs were added in the call-start path and service worker

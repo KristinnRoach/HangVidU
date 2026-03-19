@@ -304,7 +304,7 @@ async function init() {
 
         // Note: Permission requests are handled in onAuthChange after user logs in.
         // This ensures:
-        // 1. Auth is ready and user is logged in (FCM token can be stored)
+        // 1. Auth is ready and user is logged in before registering Web Push
         // 2. Permission request happens from user interaction context (better browser support)
         // 3. No permission requests for anonymous/logged-out users
       } else {
@@ -1803,7 +1803,7 @@ window.onload = async () => {
         // // Close all messaging sessions (stops RTDB listeners for old user's conversations)
         // messagingController.closeAllSessions();
 
-        // Disable notifications and clean up FCM tokens
+        // Disable notifications and unregister the current Web Push subscription
         if (getPushNotificationController()?.isNotificationEnabled()) {
           await getPushNotificationController()
             ?.disable()
