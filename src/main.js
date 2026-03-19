@@ -1074,11 +1074,18 @@ export function listenForIncomingOnRoom(roomId) {
     callIndicators.stopCallIndicators();
 
     // ! Dismiss any call notifications for this room
-    // if (getPushNotificationController()?.isNotificationEnabled()) {
-    //   await getPushNotificationController
-    //     .dismissCallNotifications(roomId)
-    //     .catch(() => {});
-    // }
+    try {
+      const pushNotificationController = getPushNotificationController
+        ? getPushNotificationController()
+        : null;
+      if (pushNotificationController?.isNotificationEnabled()) {
+        await pushNotificationController
+          .dismissCallNotifications(roomId)
+          .catch(() => {});
+      }
+    } catch (_) {
+      // best-effort; do not block cancellation flow on notification errors
+    }
 
     try {
       // Dismiss incoming call UI for this room
