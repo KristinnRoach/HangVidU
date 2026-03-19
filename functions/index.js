@@ -1,4 +1,6 @@
 // functions/index.js - Firebase Functions entry point
+const crypto = require('node:crypto');
+const webpush = require('web-push');
 const { onRequest } = require('firebase-functions/v2/https');
 const { onValueCreated } = require('firebase-functions/v2/database');
 const { initializeApp } = require('firebase-admin/app');
@@ -6,164 +8,346 @@ const { getMessaging } = require('firebase-admin/messaging');
 const { getDatabase } = require('firebase-admin/database');
 const { getAuth } = require('firebase-admin/auth');
 
-// Initialize Firebase Admin
 initializeApp();
 
-/**
- * Send FCM call notification to target user
- * Called when someone receives an incoming call
- */
-exports.sendCallNotification = onRequest(
+const REGION = 'europe-west1';
+const pushPublicKey =
+  process.env.WEB_PUSH_VAPID_PUBLIC_KEY || process.env.VITE_PUSH_VAPID_KEY;
+const pushPrivateKey = process.env.WEB_PUSH_VAPID_PRIVATE_KEY;
+const pushContactEmail =
+  process.env.WEB_PUSH_CONTACT_EMAIL || 'mailto:no-reply@hangvidu.app';
+
+if (pushPublicKey && pushPrivateKey) {
+  webpush.setVapidDetails(pushContactEmail, pushPublicKey, pushPrivateKey);
+}
+
+function ensureWebPushConfigured() {
+  if (!pushPublicKey || !pushPrivateKey) {
+    throw new Error(
+      'Web Push VAPID keys are not configured. Set WEB_PUSH_VAPID_PUBLIC_KEY and WEB_PUSH_VAPID_PRIVATE_KEY.',
+    );
+  }
+}
+
+async function verifyAuthHeader(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const error = new Error('Unauthorized: Missing token');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const idToken = authHeader.split('Bearer ')[1];
+  try {
+    const decoded = await getAuth().verifyIdToken(idToken);
+    return decoded.uid;
+  } catch (authError) {
+    console.warn('[Push] Invalid auth token:', authError.message);
+    const error = new Error('Unauthorized: Invalid token');
+    error.statusCode = 401;
+    throw error;
+  }
+}
+
+function getSubscriptionId(endpoint) {
+  return crypto
+    .createHash('sha256')
+    .update(endpoint)
+    .digest('hex')
+    .slice(0, 40);
+}
+
+function buildCallPayload(callData = {}) {
+  const type = callData.type || 'call';
+  const title =
+    type === 'missed_call'
+      ? `Missed call from ${callData.callerName || 'Someone'}`
+      : `Incoming call from ${callData.callerName || 'Someone'}`;
+  const body =
+    type === 'missed_call' ? 'Tap to call back' : 'Tap to answer or decline';
+
+  return {
+    title,
+    body,
+    data: {
+      type,
+      roomId: callData.roomId || '',
+      callerId: callData.callerId || '',
+      callerName: callData.callerName || 'Unknown caller',
+      timestamp: Date.now().toString(),
+    },
+  };
+}
+
+function buildMessagePayload(messageData = {}) {
+  return {
+    title: messageData.senderName || 'Someone',
+    body: messageData.messagePreview || 'Sent you a message',
+    data: {
+      type: 'message',
+      senderId: messageData.senderId || '',
+      senderName: messageData.senderName || 'Someone',
+      messagePreview: messageData.messagePreview || '',
+      conversationId: messageData.conversationId || '',
+      timestamp: Date.now().toString(),
+    },
+  };
+}
+
+async function sendWebPushToUser(userId, payload) {
+  ensureWebPushConfigured();
+
+  const db = getDatabase();
+  const subscriptionsSnapshot = await db
+    .ref(`users/${userId}/pushSubscriptions`)
+    .once('value');
+  const subscriptionsData = subscriptionsSnapshot.val();
+
+  if (!subscriptionsData) {
+    console.log(`[Push] No subscriptions for user ${userId}, skipping`);
+    return { sent: false };
+  }
+
+  const entries = Object.entries(subscriptionsData).filter(
+    ([, value]) => value?.subscription?.endpoint,
+  );
+
+  if (entries.length === 0) {
+    console.log(`[Push] No valid subscriptions for user ${userId}, skipping`);
+    return { sent: false };
+  }
+
+  const payloadJson = JSON.stringify(payload);
+  const successKeys = [];
+  const staleKeys = [];
+  const failureDetails = [];
+
+  await Promise.all(
+    entries.map(async ([key, value]) => {
+      try {
+        await webpush.sendNotification(value.subscription, payloadJson, {
+          TTL: 60,
+          urgency: payload.data?.type === 'call' ? 'high' : 'normal',
+          topic:
+            payload.data?.type === 'call' && payload.data?.roomId
+              ? `call_${payload.data.roomId}`
+              : undefined,
+        });
+        successKeys.push(key);
+      } catch (error) {
+        const statusCode = error.statusCode || error.status;
+        failureDetails.push({
+          key,
+          statusCode,
+          body: error.body,
+          message: error.message,
+        });
+
+        if (statusCode === 404 || statusCode === 410) {
+          staleKeys.push(key);
+        }
+      }
+    }),
+  );
+
+  const updates = {};
+  successKeys.forEach((key) => {
+    updates[`users/${userId}/pushSubscriptions/${key}/lastUsed`] = Date.now();
+  });
+  staleKeys.forEach((key) => {
+    updates[`users/${userId}/pushSubscriptions/${key}`] = null;
+  });
+
+  if (Object.keys(updates).length > 0) {
+    await db.ref().update(updates);
+  }
+
+  if (staleKeys.length > 0) {
+    console.log(`[Push] Removed ${staleKeys.length} stale subscriptions`);
+  }
+
+  const successCount = successKeys.length;
+  const failureCount = failureDetails.length;
+
+  console.log(
+    `[Push] Sent to ${userId} — success: ${successCount}, failed: ${failureCount}`,
+  );
+
+  return {
+    sent: successCount > 0,
+    successCount,
+    failureCount,
+    failures: failureDetails,
+  };
+}
+
+exports.registerPushSubscription = onRequest(
   {
     cors: true,
-    region: 'europe-west1', // Match your RTDB region
+    region: REGION,
   },
   async (req, res) => {
     try {
-      // Only allow POST requests
       if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
       }
 
-      // Verify Authentication
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: 'Unauthorized: Missing token' });
+      const uid = await verifyAuthHeader(req);
+      const { subscription, deviceInfo = {} } = req.body || {};
+
+      if (!subscription?.endpoint || !subscription?.keys) {
+        return res.status(400).json({ error: 'Missing or invalid subscription' });
       }
 
-      const idToken = authHeader.split('Bearer ')[1];
-      try {
-        await getAuth().verifyIdToken(idToken);
-      } catch (authError) {
-        console.warn('[FCM] Invalid auth token:', authError.message);
-        return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+      const subscriptionId = getSubscriptionId(subscription.endpoint);
+      const now = Date.now();
+
+      await getDatabase()
+        .ref(`users/${uid}/pushSubscriptions/${subscriptionId}`)
+        .set({
+          subscription,
+          endpoint: subscription.endpoint,
+          keys: subscription.keys,
+          createdAt: now,
+          lastUsed: now,
+          deviceInfo,
+        });
+
+      return res.json({ success: true, subscriptionId });
+    } catch (error) {
+      console.error('[Push] Failed to register subscription:', error);
+      return res
+        .status(error.statusCode || 500)
+        .json({ error: error.message || 'Internal server error' });
+    }
+  },
+);
+
+exports.removePushSubscription = onRequest(
+  {
+    cors: true,
+    region: REGION,
+  },
+  async (req, res) => {
+    try {
+      if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
       }
 
-      const { targetUserId, callData } = req.body;
+      const uid = await verifyAuthHeader(req);
+      const { endpoint } = req.body || {};
+      if (!endpoint) {
+        return res.status(400).json({ error: 'Missing endpoint' });
+      }
 
+      const subscriptionId = getSubscriptionId(endpoint);
+      await getDatabase()
+        .ref(`users/${uid}/pushSubscriptions/${subscriptionId}`)
+        .remove();
+
+      return res.json({ success: true });
+    } catch (error) {
+      console.error('[Push] Failed to remove subscription:', error);
+      return res
+        .status(error.statusCode || 500)
+        .json({ error: error.message || 'Internal server error' });
+    }
+  },
+);
+
+exports.sendCallNotification = onRequest(
+  {
+    cors: true,
+    region: REGION,
+  },
+  async (req, res) => {
+    try {
+      if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
+      }
+
+      await verifyAuthHeader(req);
+
+      const { targetUserId, callData } = req.body || {};
       if (!targetUserId || !callData) {
         return res
           .status(400)
           .json({ error: 'Missing targetUserId or callData' });
       }
 
-      console.log(
-        `[FCM] Sending call notification to ${targetUserId}:`,
-        callData,
+      const result = await sendWebPushToUser(
+        targetUserId,
+        buildCallPayload(callData),
       );
 
-      // Determine notification type and content
-      const type = callData.type || 'call';
-      let title, body;
-
-      if (type === 'missed_call') {
-        title = `Missed call from ${callData.callerName || 'Someone'}`;
-        body = 'Tap to call back';
-      } else {
-        title = `Incoming call from ${callData.callerName || 'Someone'}`;
-        body = 'Tap to answer or decline';
-      }
-
-      const fcmMessage = {
-        notification: {
-          title,
-          body,
-        },
-        data: {
-          type,
-          roomId: callData.roomId || '',
-          callerId: callData.callerId || '',
-          callerName: callData.callerName || 'Unknown caller',
-          timestamp: Date.now().toString(),
-        },
-        android: {
-          priority: 'high',
-          notification: {
-            channelId: 'calls',
-            priority: 'high',
-            defaultSound: true,
-          },
-        },
-        apns: {
-          payload: {
-            aps: {
-              sound: 'default',
-              badge: 1,
-              contentAvailable: true,
-            },
-          },
-        },
-        webpush: {
-          headers: {
-            Urgency: 'high',
-          },
-          notification: {
-            icon: '/icons/play-arrows-v1/icon-192.png',
-            badge: '/icons/play-arrows-v1/icon-192.png',
-            requireInteraction: true,
-            tag: `call_${callData.roomId}`,
-            actions: [
-              {
-                action: 'accept',
-                title: 'Accept',
-              },
-              {
-                action: 'decline',
-                title: 'Decline',
-              },
-            ],
-          },
-        },
-      };
-
-      const result = await sendFCMToUser(targetUserId, fcmMessage);
-
       if (!result.sent) {
-        return res.status(404).json({ error: 'No FCM tokens found for user' });
+        return res.status(404).json({ error: 'No push subscriptions found' });
       }
 
-      res.json({
+      return res.json({
         success: true,
         successCount: result.successCount,
         failureCount: result.failureCount,
       });
     } catch (error) {
-      console.error('[FCM] Error sending notification:', error);
-      res.status(500).json({
-        error: 'Internal server error',
-        message: error.message,
-      });
+      console.error('[Push] Error sending call notification:', error);
+      return res
+        .status(error.statusCode || 500)
+        .json({ error: error.message || 'Internal server error' });
     }
   },
 );
 
-/**
- * Health check endpoint
- */
+exports.sendDebugCallNotification = onRequest(
+  {
+    cors: true,
+    region: REGION,
+  },
+  async (req, res) => {
+    try {
+      if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
+      }
+
+      const uid = await verifyAuthHeader(req);
+      const callData = req.body?.callData || {};
+      const payload = buildCallPayload({
+        roomId: callData.roomId || `debug-${Date.now()}`,
+        callerId: callData.callerId || uid,
+        callerName: callData.callerName || 'Debug Caller',
+        type: callData.type || 'call',
+      });
+
+      const result = await sendWebPushToUser(uid, payload);
+      if (!result.sent) {
+        return res.status(404).json({ error: 'No push subscriptions found' });
+      }
+
+      return res.json({
+        success: true,
+        successCount: result.successCount,
+        failureCount: result.failureCount,
+      });
+    } catch (error) {
+      console.error('[Push] Error sending debug notification:', error);
+      return res
+        .status(error.statusCode || 500)
+        .json({ error: error.message || 'Internal server error' });
+    }
+  },
+);
+
 exports.healthCheck = onRequest((req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    service: 'hangvidu-fcm-functions',
+    service: 'hangvidu-web-push-functions',
   });
 });
 
-// ============================================================================
-// MESSAGE PUSH NOTIFICATIONS (RTDB trigger)
-// ============================================================================
-
-/**
- * Shared helper: look up FCM tokens for a user, send multicast, clean up stale tokens.
- * @param {string} userId - Target user ID
- * @param {Object} message - Partial FCM message (notification, data, platform overrides).
- *                           `tokens` will be injected automatically.
- * @returns {Promise<{sent: boolean, successCount?: number, failureCount?: number}>}
- */
 async function sendFCMToUser(userId, message) {
   const db = getDatabase();
-  const tokensSnapshot = await db
-    .ref(`users/${userId}/fcmTokens`)
-    .once('value');
+  const tokensSnapshot = await db.ref(`users/${userId}/fcmTokens`).once('value');
   const tokensData = tokensSnapshot.val();
 
   if (!tokensData) {
@@ -183,7 +367,6 @@ async function sendFCMToUser(userId, message) {
   const messaging = getMessaging();
   const response = await messaging.sendEachForMulticast(fullMessage);
 
-  // Clean up stale tokens
   if (response.failureCount > 0) {
     const staleKeys = [];
     response.responses.forEach((resp, idx) => {
@@ -220,19 +403,10 @@ async function sendFCMToUser(userId, message) {
   };
 }
 
-/**
- * Send push notification when a new message is written to a conversation.
- *
- * Trigger path: /conversations/{conversationId}/messages/{messageId}
- * conversationId format: "userId1_userId2" (sorted alphabetically)
- *
- * Message shape (from RTDBMessagingTransport.send):
- *   { text, from, fromName, sentAt, read }
- */
 exports.sendMessageNotification = onValueCreated(
   {
     ref: '/conversations/{conversationId}/messages/{messageId}',
-    region: 'europe-west1',
+    region: REGION,
   },
   async (event) => {
     const message = event.data.val();
@@ -242,63 +416,38 @@ exports.sendMessageNotification = onValueCreated(
     const senderId = message.from;
     const senderName = message.fromName || 'Someone';
 
-    // Derive recipient from conversationId (format: "userA_userB", sorted)
+    if (message.type === 'event') {
+      return;
+    }
+
     const userIds = conversationId.split('_');
     const recipientId = userIds.find((id) => id !== senderId);
 
     if (!recipientId) {
-      console.warn(
-        '[FCM-msg] Could not determine recipient from',
-        conversationId,
-      );
+      console.warn('[FCM-msg] Could not determine recipient from', conversationId);
       return;
     }
 
-    // Truncate message preview
-    const text = typeof message.text === 'string' ? message.text : '';
-    const preview = text.length > 50 ? text.substring(0, 47) + '...' : text;
-
-    const fcmMessage = {
-      notification: {
-        title: `${senderName}`,
-        body: preview || 'Sent you a message',
-      },
-      data: {
-        type: 'message',
-        senderId,
-        senderName,
-        messagePreview: preview,
-        timestamp: Date.now().toString(),
-      },
-      android: {
-        priority: 'high',
-        notification: {
-          channelId: 'messages',
-          defaultSound: true,
-        },
-      },
-      apns: {
-        payload: {
-          aps: {
-            sound: 'default',
-            badge: 1,
-          },
-        },
-      },
-      webpush: {
-        notification: {
-          icon: '/icons/play-arrows-v1/icon-192.png',
-          badge: '/icons/play-arrows-v1/icon-192.png',
-          tag: `message_${senderId}`,
-          actions: [{ action: 'view', title: 'View' }],
-        },
-      },
-    };
+    const text = typeof message.text === 'string' ? message.text.trim() : '';
+    const fileLabel = message.type === 'file' ? 'Sent a file' : '';
+    const previewSource = text || fileLabel;
+    const preview =
+      previewSource.length > 50
+        ? previewSource.substring(0, 47) + '...'
+        : previewSource;
 
     try {
-      await sendFCMToUser(recipientId, fcmMessage);
+      await sendWebPushToUser(
+        recipientId,
+        buildMessagePayload({
+          conversationId,
+          senderId,
+          senderName,
+          messagePreview: preview,
+        }),
+      );
     } catch (error) {
-      console.error('[FCM-msg] Error sending message notification:', error);
+      console.error('[Push-msg] Error sending message notification:', error);
     }
   },
 );

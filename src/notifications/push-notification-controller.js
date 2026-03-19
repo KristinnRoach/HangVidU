@@ -1,45 +1,26 @@
 // src/notifications/push-notification-controller.js
-// Unified notification API with transport abstraction
+// Minimal Web Push controller used by the deployed PWA notification flow.
 
-import { FCMTransport } from './transports/fcm-transport.js';
-import { getLoggedInUserId } from '../auth/auth-state.js';
-import { NativeTransport } from './transports/native-transport.js';
+import { getLoggedInUserId, getUser } from '../auth/auth-state.js';
+import { getLoggedInUserToken } from '../auth/index.js';
 
-const createDefaultTransport = () => new FCMTransport(); // NativeTransport();
+const FUNCTION_REGION = 'europe-west1';
 
-/**
- * PushNotificationController - Core notification API
- *
- * Provides a clean, minimal interface for push notification operations:
- * - Manage notification permissions with excellent UX
- * - Send call and message notifications
- * - Handle notification lifecycle and cleanup
- * - Abstract transport layer (FCM, etc.)
- *
- * Design principles:
- * - Transport-agnostic: Easy to swap implementations
- * - UI-decoupled: Controller doesn't know about UI components
- * - Permission-aware: Graceful handling of permission states
- * - Following MessagingController pattern for consistency
- *
- * UX Reference: /Users/kristinnroachgunnarsson/Desktop/Dev/PoCs/web-push-notifications/web-push-poc/src/notify-permission.js
- * This reference provides browser-aware UX for handling silent permission blocking
- */
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  return Uint8Array.from(rawData, (char) => char.charCodeAt(0));
+}
+
 export class PushNotificationController {
-  /**
-   * Create a push notification controller
-   * @param {Object} transport - Transport implementation for notifications (FCMTransport, etc.)
-   * @param {Object} options - Configuration options
-   */
-  constructor(transport = null, options = {}) {
-    if (!transport) {
-      throw new Error(
-        '[PushNotificationController] Transport implementation is required',
-      );
-    }
-    this.transport = transport;
-    this.isEnabled = false;
+  constructor(options = {}) {
     this.permissionState = 'default';
+    this.isEnabled = false;
+    this.subscription = null;
+    this.permissionCallbacks = new Set();
+    this.notificationCallbacks = new Set();
+    this.activeNotifications = new Map();
     this.options = {
       enableCallNotifications: true,
       enableMessageNotifications: true,
@@ -47,57 +28,23 @@ export class PushNotificationController {
       autoHideSuccessMs: 6000,
       ...options,
     };
-
-    // Track active notifications for cleanup
-    this.activeNotifications = new Map(); // notificationId -> notification data
-    this.permissionCallbacks = new Set();
-    this.notificationCallbacks = new Set();
+    this.vapidKey = import.meta.env.VITE_PUSH_VAPID_KEY;
   }
 
-  /**
-   * Initialize the push notification controller
-   * @returns {Promise<boolean>} True if initialization successful
-   */
   async initialize() {
-    try {
-      // Initialize transport
-      const transportReady = await this.transport.initialize();
-      if (!transportReady) {
-        console.warn(
-          '[PushNotificationController] Transport initialization failed',
-        );
-        return false;
-      }
-
-      // Check current permission state
-      this.permissionState = this.getPermissionState();
-
-      // Set up transport message handling
-      this.transport.onMessage((payload) => {
-        this.handleForegroundMessage(payload);
-      });
-
-      console.log('[PushNotificationController] Initialized');
-      return true;
-    } catch (error) {
-      console.error(
-        '[PushNotificationController] Initialization failed:',
-        error,
-      );
+    if (!this.isNotificationSupported()) {
+      console.warn('[PushNotificationController] Notifications not supported');
       return false;
     }
+
+    this.permissionState = this.getPermissionState();
+    console.log('[PushNotificationController] Initialized');
+    return true;
   }
 
-  /**
-   * Request notification permission with excellent UX
-   * Uses browser detection and handles silent blocking gracefully
-   * @param {Object} options - Permission request options
-   * @returns {Promise<Object>} Permission result with state and reason
-   */
   async requestPermission(options = {}) {
     const { onGranted = null, onDenied = null, onDismissed = null } = options;
 
-    // Check if notifications are supported
     if (!this.isNotificationSupported()) {
       console.warn('[PushNotificationController] Notifications not supported');
       return { state: 'denied', reason: 'unsupported' };
@@ -105,11 +52,8 @@ export class PushNotificationController {
 
     const browser = this.detectBrowser();
     const before = Notification.permission;
-
-    // Sync internal state to ensure enable() works if permission was already granted
     this.permissionState = before;
 
-    // If already granted, enable and return success
     if (before === 'granted') {
       const enabled = await this.enable();
       if (!enabled) {
@@ -119,13 +63,11 @@ export class PushNotificationController {
       return { state: 'granted', browser };
     }
 
-    // If previously denied, provide guidance
     if (before === 'denied') {
       onDenied?.('already-denied');
       return { state: 'denied', reason: 'already-denied', browser };
     }
 
-    // Request permission (must be called from user gesture)
     let permission;
     try {
       permission = await Notification.requestPermission();
@@ -137,10 +79,8 @@ export class PushNotificationController {
       permission = Notification.permission;
     }
 
-    // Update internal state
     this.permissionState = permission;
 
-    // Handle permission result
     if (permission === 'granted') {
       const enabled = await this.enable();
       if (!enabled) {
@@ -150,29 +90,20 @@ export class PushNotificationController {
       return { state: 'granted', browser };
     }
 
-    // Detect silent block (permission denied without visible prompt)
     if (before === 'default' && permission === 'denied') {
       onDenied?.('silent-block');
       return { state: 'denied', reason: 'silent-block', browser };
     }
 
-    // Handle dismissed/default state
     if (permission === 'default') {
       onDismissed?.();
       return { state: 'dismissed', browser };
     }
 
-    // Generic denied
     onDenied?.();
     return { state: 'denied', browser };
   }
 
-  /**
-   * Enable notifications if permission is already granted (no prompt).
-   * Safe to call outside user gesture handlers (e.g., in auth callbacks).
-   * Use this on app load/login; use requestPermission() only from click handlers.
-   * @returns {Promise<{state: string, reason?: string}>} Result with state
-   */
   async enableIfGranted() {
     if (!this.isNotificationSupported()) {
       return { state: 'unsupported' };
@@ -191,15 +122,9 @@ export class PushNotificationController {
       return { state: 'denied' };
     }
 
-    // Permission is 'default' - user hasn't been asked or dismissed
-    // Don't prompt here (requires user gesture), just signal that action is needed
     return { state: 'prompt-needed' };
   }
 
-  /**
-   * Enable notifications (get FCM token and set up)
-   * @returns {Promise<boolean>} True if enabled successfully
-   */
   async enable() {
     if (this.permissionState !== 'granted') {
       console.warn(
@@ -208,36 +133,16 @@ export class PushNotificationController {
       return false;
     }
 
-    console.debug(
-      '[PushNotificationController] Enabling notifications... isNotificationSupported(): ',
-      this.isNotificationSupported(),
-      'Permission:',
-      this.permissionState,
-    );
+    if (!this.vapidKey) {
+      console.warn('[PushNotificationController] VAPID key is missing');
+      return false;
+    }
 
     try {
-      // Get FCM token
-      const token = await this.transport.getToken();
-      if (!token) {
-        console.warn('[PushNotificationController] Failed to get FCM token');
-        return false;
-      }
-
+      this.subscription = await this.ensureSubscription();
       this.isEnabled = true;
+      this.notifyPermissionCallbacks('enabled');
       console.info('[PushNotificationController] Notifications enabled');
-
-      // Notify callbacks
-      this.permissionCallbacks.forEach((callback) => {
-        try {
-          callback('enabled');
-        } catch (error) {
-          console.error(
-            '[PushNotificationController] Error in permission callback:',
-            error,
-          );
-        }
-      });
-
       return true;
     } catch (error) {
       console.error(
@@ -248,32 +153,22 @@ export class PushNotificationController {
     }
   }
 
-  /**
-   * Disable notifications (remove FCM token)
-   * @returns {Promise<boolean>} True if disabled successfully
-   */
   async disable() {
     try {
-      await this.transport.deleteToken();
+      const registration = await this.getServiceWorkerRegistration();
+      const subscription =
+        this.subscription || (await registration.pushManager.getSubscription());
+
+      if (subscription) {
+        await this.unregisterSubscription(subscription);
+        await subscription.unsubscribe();
+      }
+
+      this.subscription = null;
       this.isEnabled = false;
-
-      // Clear active notifications
       this.activeNotifications.clear();
-
+      this.notifyPermissionCallbacks('disabled');
       console.log('[PushNotificationController] Notifications disabled');
-
-      // Notify callbacks
-      this.permissionCallbacks.forEach((callback) => {
-        try {
-          callback('disabled');
-        } catch (error) {
-          console.error(
-            '[PushNotificationController] Error in permission callback:',
-            error,
-          );
-        }
-      });
-
       return true;
     } catch (error) {
       console.error(
@@ -284,44 +179,30 @@ export class PushNotificationController {
     }
   }
 
-  /**
-   * Send a call notification
-   * @param {string} targetUserId - User to send notification to
-   * @param {Object} callData - Call information
-   * @returns {Promise<boolean>} True if notification sent
-   */
   async sendCallNotification(targetUserId, callData) {
     if (!this.options.enableCallNotifications) {
       console.log('[PushNotificationController] Call notifications disabled');
       return false;
     }
 
-    // We skip shouldSendNotification() (visibility check) here because this
-    // sends a push to the RECIPIENT's device — the sender's foreground state
-    // is irrelevant. Only enableCallNotifications gates this.
-
     try {
-      const success = await this.transport.sendCallNotification(
+      const payload = await this.formatCallNotification(callData);
+      const response = await this.callFunction('sendCallNotification', {
         targetUserId,
-        callData,
+        callData: payload,
+      });
+
+      this.trackNotification(`call_${payload.roomId}`, {
+        type: 'call',
+        roomId: payload.roomId,
+        targetUserId,
+      });
+
+      console.log(
+        `[PushNotificationController] Call notification sent to ${targetUserId}`,
+        response,
       );
-
-      if (success) {
-        // Track notification for cleanup
-        const notificationId = `call_${callData.roomId}_${Date.now()}`;
-        this.activeNotifications.set(notificationId, {
-          type: 'call',
-          roomId: callData.roomId,
-          targetUserId,
-          timestamp: Date.now(),
-        });
-
-        console.log(
-          `[PushNotificationController] Call notification sent to ${targetUserId}`,
-        );
-      }
-
-      return success;
+      return true;
     } catch (error) {
       console.error(
         '[PushNotificationController] Failed to send call notification:',
@@ -331,12 +212,6 @@ export class PushNotificationController {
     }
   }
 
-  /**
-   * Send a missed call notification
-   * @param {string} targetUserId - User to send notification to
-   * @param {Object} callData - Call information
-   * @returns {Promise<boolean>} True if notification sent
-   */
   async sendMissedCallNotification(targetUserId, callData) {
     if (!this.options.enableCallNotifications) {
       console.log(
@@ -346,17 +221,20 @@ export class PushNotificationController {
     }
 
     try {
-      const success = await this.transport.sendMissedCallNotification(
+      const payload = await this.formatCallNotification({
+        ...callData,
+        type: 'missed_call',
+      });
+      const response = await this.callFunction('sendCallNotification', {
         targetUserId,
-        callData,
-      );
+        callData: payload,
+      });
 
-      if (success) {
-        console.log(
-          `[PushNotificationController] Missed call notification sent to ${targetUserId}`,
-        );
-      }
-      return success;
+      console.log(
+        `[PushNotificationController] Missed call notification sent to ${targetUserId}`,
+        response,
+      );
+      return true;
     } catch (error) {
       console.error(
         '[PushNotificationController] Failed to send missed call notification:',
@@ -366,158 +244,87 @@ export class PushNotificationController {
     }
   }
 
-  /**
-   * Send a message notification
-   * @param {string} targetUserId - User to send notification to
-   * @param {Object} messageData - Message information
-   * @returns {Promise<boolean>} True if notification sent
-   */
-  async sendMessageNotification(targetUserId, messageData) {
-    if (!this.options.enableMessageNotifications) {
-      console.log(
-        '[PushNotificationController] Message notifications disabled',
-      );
-      return false;
-    }
-
-    if (!this.shouldSendNotification()) {
-      console.log(
-        '[PushNotificationController] Not sending message notification (app in foreground)',
-      );
-      return false;
-    }
-
+  async sendDebugCallNotification(callData = {}) {
     try {
-      const success = await this.transport.sendMessageNotification(
-        targetUserId,
-        messageData,
-      );
-
-      if (success) {
-        // Track notification for cleanup
-        const notificationId = `message_${targetUserId}_${Date.now()}`;
-        this.activeNotifications.set(notificationId, {
-          type: 'message',
-          senderId: messageData.senderId,
-          targetUserId,
-          timestamp: Date.now(),
-        });
-
-        console.log(
-          `[PushNotificationController] Message notification sent to ${targetUserId}`,
-        );
-      }
-
-      return success;
+      const defaults = {
+        roomId: `debug-${Date.now()}`,
+        callerId: getLoggedInUserId() || 'debug-caller',
+        callerName: 'Debug Caller',
+        type: 'call',
+      };
+      const payload = await this.formatCallNotification({
+        ...defaults,
+        ...callData,
+      });
+      const response = await this.callFunction('sendDebugCallNotification', {
+        callData: payload,
+      });
+      console.log('[PushNotificationController] Debug call notification sent');
+      return response;
     } catch (error) {
       console.error(
-        '[PushNotificationController] Failed to send message notification:',
+        '[PushNotificationController] Failed to send debug call notification:',
         error,
       );
-      return false;
+      throw error;
     }
   }
 
-  /**
-   * Dismiss call notifications for a specific room
-   * @param {string} roomId - Room ID to dismiss notifications for
-   */
+  async sendDebugCallNotificationToUser(targetUserId, callData = {}) {
+    if (!targetUserId) {
+      console.warn(
+        '[PushNotificationController] Missing target user for debug call notification',
+      );
+      return false;
+    }
+
+    const { uid, displayName } = getUser() || {};
+
+    const defaults = {
+      roomId: `debug-${Date.now()}`,
+      callerId: uid || getLoggedInUserId() || 'debug-caller',
+      callerName: displayName || 'Debug Caller',
+      type: 'call',
+    };
+
+    return this.sendCallNotification(targetUserId, {
+      ...defaults,
+      ...callData,
+    });
+  }
+
+  async sendMessageNotification(_targetUserId, _messageData) {
+    console.warn(
+      '[PushNotificationController] Message notifications are not implemented in this phase',
+    );
+    return false;
+  }
+
   async dismissCallNotifications(roomId) {
-    try {
-      // Find and remove call notifications for this room
-      const toRemove = [];
-      for (const [notificationId, data] of this.activeNotifications) {
-        if (data.type === 'call' && data.roomId === roomId) {
-          toRemove.push(notificationId);
-        }
-      }
-
-      toRemove.forEach((id) => this.activeNotifications.delete(id));
-
-      if (toRemove.length > 0) {
-        console.log(
-          `[PushNotificationController] Dismissed ${toRemove.length} call notifications for room ${roomId}`,
-        );
-      }
-    } catch (error) {
-      console.error(
-        '[PushNotificationController] Failed to dismiss call notifications:',
-        error,
-      );
-    }
+    if (!roomId) return;
+    await this.closeNotificationsByTag(`call_${roomId}`);
   }
 
-  /**
-   * Dismiss message notifications from a specific sender
-   * @param {string} senderId - Sender ID to dismiss notifications for
-   */
   async dismissMessageNotifications(senderId) {
-    try {
-      // Find and remove message notifications from this sender
-      const toRemove = [];
-      for (const [notificationId, data] of this.activeNotifications) {
-        if (data.type === 'message' && data.senderId === senderId) {
-          toRemove.push(notificationId);
-        }
-      }
-
-      toRemove.forEach((id) => this.activeNotifications.delete(id));
-
-      if (toRemove.length > 0) {
-        console.log(
-          `[PushNotificationController] Dismissed ${toRemove.length} message notifications from ${senderId}`,
-        );
-      }
-    } catch (error) {
-      console.error(
-        '[PushNotificationController] Failed to dismiss message notifications:',
-        error,
-      );
-    }
+    if (!senderId) return;
+    await this.closeNotificationsByTag(`message_${senderId}`);
   }
 
-  /**
-   * Clean up old notifications (older than 24 hours)
-   */
   async cleanupOldNotifications() {
     const now = Date.now();
-    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-
+    const maxAge = 24 * 60 * 60 * 1000;
     const toRemove = [];
-    for (const [notificationId, data] of this.activeNotifications) {
+
+    for (const [tag, data] of this.activeNotifications) {
       if (now - data.timestamp > maxAge) {
-        toRemove.push(notificationId);
+        toRemove.push(tag);
       }
     }
 
-    toRemove.forEach((id) => this.activeNotifications.delete(id));
-
-    if (toRemove.length > 0) {
-      console.log(
-        `[PushNotificationController] Cleaned up ${toRemove.length} old notifications`,
-      );
-    }
+    await Promise.all(toRemove.map((tag) => this.closeNotificationsByTag(tag)));
   }
 
-  /**
-   * Handle foreground messages (when app is active)
-   * @param {Object} payload - Message payload
-   */
   handleForegroundMessage(payload) {
-    console.log(
-      '[PushNotificationController] Foreground message received:',
-      payload,
-    );
-
-    // Ignore notifications about the current user's own actions
-    const senderId = payload?.data?.senderId || payload?.data?.callerId;
-    const currentUserId = getLoggedInUserId();
-    if (senderId && currentUserId && senderId === currentUserId) {
-      console.log('[PushNotificationController] Ignoring self-notification');
-      return;
-    }
-
-    // Notify callbacks
     this.notificationCallbacks.forEach((callback) => {
       try {
         callback(payload);
@@ -530,87 +337,52 @@ export class PushNotificationController {
     });
   }
 
-  /**
-   * Check if we should send a push notification
-   * @returns {boolean} True if should send notification
-   */
   shouldSendNotification() {
-    // Don't send if app is in foreground and visible
     return document.hidden || !document.hasFocus();
   }
 
-  /**
-   * Get current notification permission state
-   * @returns {string} Permission state
-   */
   getPermissionState() {
     if (!this.isNotificationSupported()) return 'unsupported';
     return Notification.permission;
   }
 
-  /**
-   * Check if notifications are enabled
-   * @returns {boolean} True if enabled
-   */
   isNotificationEnabled() {
     return this.isEnabled && this.permissionState === 'granted';
   }
 
-  /**
-   * Check if notifications are supported
-   * @returns {boolean} True if supported
-   */
   isNotificationSupported() {
-    const ctor = this.transport?.constructor;
-    if (typeof ctor?.isSupported === 'function') {
-      return ctor.isSupported();
-    }
-    return 'Notification' in window && 'serviceWorker' in navigator;
+    return (
+      'Notification' in window &&
+      'serviceWorker' in navigator &&
+      'PushManager' in window
+    );
   }
 
-  /**
-   * Update controller options
-   * @param {Object} newOptions - New options to merge
-   */
   updateOptions(newOptions) {
     this.options = { ...this.options, ...newOptions };
     console.log('[PushNotificationController] Options updated:', this.options);
   }
 
-  /**
-   * Listen for permission state changes
-   * @param {Function} callback - Callback function
-   * @returns {Function} Unsubscribe function
-   */
   onPermissionChange(callback) {
     this.permissionCallbacks.add(callback);
     return () => this.permissionCallbacks.delete(callback);
   }
 
-  /**
-   * Listen for notification events
-   * @param {Function} callback - Callback function
-   * @returns {Function} Unsubscribe function
-   */
   onNotification(callback) {
     this.notificationCallbacks.add(callback);
     return () => this.notificationCallbacks.delete(callback);
   }
 
-  /**
-   * Detect browser type for UX customization
-   * @returns {string} Browser name
-   */
   detectBrowser() {
-    // Prefer userAgentData when available (Chromium-based browsers)
     if (navigator.userAgentData && navigator.userAgentData.brands) {
-      const brands = navigator.userAgentData.brands.map((b) => b.brand);
-      if (brands.some((b) => b.includes('Microsoft Edge'))) return 'Edge';
-      if (brands.some((b) => b.includes('Google Chrome'))) return 'Chrome';
-      if (brands.some((b) => b.includes('Chromium'))) return 'Chromium';
+      const brands = navigator.userAgentData.brands.map((brand) => brand.brand);
+      if (brands.some((brand) => brand.includes('Microsoft Edge')))
+        return 'Edge';
+      if (brands.some((brand) => brand.includes('Google Chrome')))
+        return 'Chrome';
+      if (brands.some((brand) => brand.includes('Chromium'))) return 'Chromium';
     }
 
-    // Fallback to UA sniffing
     const ua = navigator.userAgent;
     if (ua.includes('Edg/')) return 'Edge';
     if (ua.includes('Chrome/')) return 'Chrome';
@@ -619,21 +391,13 @@ export class PushNotificationController {
     return 'Your browser';
   }
 
-  /**
-   * Format call notification content with privacy controls
-   * Integrates with existing resolveCallerName() function
-   * @param {Object} callData - Raw call data
-   * @returns {Promise<Object>} Formatted call data
-   */
   async formatCallNotification(callData) {
-    const { roomId, callerId, callerName } = callData;
+    const { roomId, callerId, callerName, type = 'call' } = callData;
 
     let displayName = callerName || callerId || 'Unknown caller';
 
-    // Only try to resolve caller name if not already provided
     if (!callerName) {
       try {
-        // Import resolveCallerName dynamically to avoid circular dependencies
         const { resolveCallerName } =
           await import('../ui/components/contacts/contacts.js');
         displayName = await resolveCallerName(roomId, callerId);
@@ -642,60 +406,32 @@ export class PushNotificationController {
           '[PushNotificationController] Failed to resolve caller name:',
           error,
         );
-        // Fallback already set above
       }
     }
 
-    // Apply privacy mode if enabled
     if (this.options.privacyMode) {
       displayName = 'Someone';
     }
 
     return {
-      ...callData,
+      roomId,
+      callerId,
       callerName: displayName,
+      type,
     };
   }
 
-  /**
-   * Format message notification content with privacy controls
-   * @param {Object} messageData - Raw message data
-   * @returns {Promise<Object>} Formatted message data
-   */
   async formatMessageNotification(messageData) {
     const { senderId, senderName, messageText } = messageData;
 
-    let displayName = senderName;
+    let displayName = senderName || senderId || 'Unknown sender';
     let displayText = messageText;
 
-    // Try to resolve sender name using existing contact system
-    try {
-      // Import getContacts dynamically to avoid circular dependencies
-      const { getContacts } =
-        await import('../ui/components/contacts/contacts.js');
-      const contacts = await getContacts();
-
-      if (contacts && contacts[senderId]) {
-        displayName = contacts[senderId].name || senderName;
-      }
-    } catch (error) {
-      console.warn(
-        '[PushNotificationController] Failed to resolve sender name:',
-        error,
-      );
-      // Fallback to provided name or user ID
-      displayName = senderName || senderId || 'Unknown sender';
-    }
-
-    // Apply privacy mode if enabled
     if (this.options.privacyMode) {
       displayName = 'Someone';
       displayText = 'New message';
-    } else {
-      // Truncate message for preview (max 50 chars)
-      if (displayText && displayText.length > 50) {
-        displayText = displayText.substring(0, 47) + '...';
-      }
+    } else if (displayText && displayText.length > 50) {
+      displayText = displayText.substring(0, 47) + '...';
     }
 
     return {
@@ -704,13 +440,107 @@ export class PushNotificationController {
       messageText: displayText,
     };
   }
+
+  async ensureSubscription() {
+    const registration = await this.getServiceWorkerRegistration();
+    let subscription = await registration.pushManager.getSubscription();
+
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(this.vapidKey),
+      });
+    }
+
+    await this.registerSubscription(subscription);
+    return subscription;
+  }
+
+  async registerSubscription(subscription) {
+    return this.callFunction('registerPushSubscription', {
+      subscription: subscription.toJSON(),
+      deviceInfo: {
+        platform: navigator.platform || 'unknown',
+        userAgent: navigator.userAgent,
+        language: navigator.language,
+      },
+    });
+  }
+
+  async unregisterSubscription(subscription) {
+    return this.callFunction('removePushSubscription', {
+      endpoint: subscription.endpoint,
+    });
+  }
+
+  async closeNotificationsByTag(tag) {
+    const registration = await this.getServiceWorkerRegistration();
+    const notifications = await registration.getNotifications({ tag });
+    notifications.forEach((notification) => notification.close());
+    this.activeNotifications.delete(tag);
+  }
+
+  async getServiceWorkerRegistration() {
+    if (!('serviceWorker' in navigator)) {
+      throw new Error('Service workers are not available');
+    }
+    return navigator.serviceWorker.ready;
+  }
+
+  trackNotification(tag, data) {
+    this.activeNotifications.set(tag, {
+      ...data,
+      timestamp: Date.now(),
+    });
+  }
+
+  notifyPermissionCallbacks(state) {
+    this.permissionCallbacks.forEach((callback) => {
+      try {
+        callback(state);
+      } catch (error) {
+        console.error(
+          '[PushNotificationController] Error in permission callback:',
+          error,
+        );
+      }
+    });
+  }
+
+  getFunctionUrl(functionName) {
+    const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+    return `https://${FUNCTION_REGION}-${projectId}.cloudfunctions.net/${functionName}`;
+  }
+
+  async callFunction(functionName, body) {
+    const idToken = await getLoggedInUserToken();
+    const response = await fetch(this.getFunctionUrl(functionName), {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${idToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        payload?.message ||
+          payload?.error ||
+          `Function ${functionName} failed with status ${response.status}`,
+      );
+    }
+
+    return payload;
+  }
 }
 
 let instance = null;
+
 export const getPushNotificationController = () => {
   if (!instance) {
-    const transport = createDefaultTransport();
-    instance = new PushNotificationController(transport);
+    instance = new PushNotificationController();
   }
   return instance;
 };

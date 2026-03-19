@@ -14,9 +14,10 @@ import {
   getUserRecentCallRef,
 } from './storage/fb-rtdb/rtdb.js';
 
-import { initAuth, getCurrentUserAsync } from './auth/index.js';
+import { initAuth } from './auth/index.js';
 import {
   getLoggedInUserId,
+  getUser,
   getUserId,
   subscribe as subscribeAuth,
 } from './auth/auth-state.js';
@@ -569,6 +570,20 @@ export async function callContact(contactId, contactName, roomId = null) {
     // Update metadata
     contactsController.updateLastInteraction(contactId).catch(() => {});
 
+    // Send push notification immediately from the successful call-start path.
+    try {
+      const me = getUser();
+      const callerName = me?.displayName || me?.email || myUserId;
+
+      await getPushNotificationController().sendCallNotification(contactId, {
+        roomId,
+        callerId: myUserId,
+        callerName,
+      });
+    } catch (error) {
+      console.warn('[CALL] Failed to send push notification:', error);
+    }
+
     // Trigger UI (Calling Modal)
     try {
       const [{ showCallingUI }, { onCallingStarted, onCallingEnded }] =
@@ -589,21 +604,6 @@ export async function callContact(contactId, contactName, roomId = null) {
       });
     } catch (e) {
       console.warn('[CALL] Failed to load calling UI:', e);
-    }
-
-    // Send push notification
-    try {
-      const currentUser = await getCurrentUserAsync();
-      const callerName =
-        currentUser?.displayName || currentUser?.email || myUserId;
-
-      await getPushNotificationController().sendCallNotification(contactId, {
-        roomId,
-        callerId: myUserId,
-        callerName,
-      });
-    } catch (error) {
-      console.warn('[CALL] Failed to send push notification:', error);
     }
   }
 

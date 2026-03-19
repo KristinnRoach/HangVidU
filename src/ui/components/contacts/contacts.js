@@ -9,6 +9,7 @@ import { escapeHtml } from '../../../ui/component-system/dom-utils.js';
 import { initIcons } from '../../icons.js';
 import { messagingController } from '../../../messaging/messaging-controller.js';
 import { contactsController } from '../../../contacts/contacts-controller.js';
+import { getPushNotificationController } from '../../../notifications/push-notification-controller.js';
 
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
@@ -22,6 +23,7 @@ let lastRenderedLobby = null;
 
 // Limit displayed contact name length in the UI (keep full name in title)
 const MAX_CONTACT_NAME_CHARS = 18;
+const SHOW_DEBUG_NOTIFY_BUTTON = true;
 
 /**
  * Prompt user to save contact after hangup (and render contacts list in lobby)
@@ -120,6 +122,22 @@ export async function renderContactsList(lobbyElement) {
                 <i data-lucide="phone" fill="currentColor" stroke-width="0"></i>
               </button>
 
+              ${
+                SHOW_DEBUG_NOTIFY_BUTTON
+                  ? `
+              <button
+                class="contact-debug-notify-btn"
+                data-contact-id="${escapeHtml(id)}"
+                data-contact-name="${escapedName}"
+                title="${escapeHtml(`Send debug call notification to ${rawName}`)}"
+                aria-label="${escapeHtml(`Send debug call notification to ${rawName}`)}"
+              >
+                <i data-lucide="bell" fill="none"></i>
+              </button>
+              `
+                  : ''
+              }
+
               <span class="presence-indicator" data-contact-id="${escapeHtml(id)}"></span>
 
               <span class="contact-name" data-contact-id="${escapeHtml(id)}" data-contact-name="${escapedName}">
@@ -179,6 +197,18 @@ function attachContactListeners(container, lobbyElement) {
           roomId,
         });
       }
+    };
+  });
+
+  container.querySelectorAll('.contact-debug-notify-btn').forEach((buttonEl) => {
+    buttonEl.onclick = async () => {
+      const contactId = buttonEl.getAttribute('data-contact-id');
+      if (!contactId) return;
+
+      const pushNotificationController = getPushNotificationController();
+      await pushNotificationController.sendDebugCallNotificationToUser(
+        contactId,
+      );
     };
   });
 

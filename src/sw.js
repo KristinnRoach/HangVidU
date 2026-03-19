@@ -1,11 +1,9 @@
 // src/sw.js
-// Custom Service Worker with FCM support and Workbox integration
+// Custom Service Worker with Web Push support and Workbox integration
 
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
 import { NetworkFirst } from 'workbox-strategies';
-// import { initializeApp } from 'firebase/app';
-import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
 import { VIBRATION_PATTERNS } from './media/haptic/vibration-patterns.js';
 import {
   registerVideo,
@@ -50,9 +48,8 @@ const navigationRoute = new NavigationRoute(
 );
 registerRoute(navigationRoute);
 
-// ! TESTING NATIVE PUSH HANDLER
 self.addEventListener('push', (event) => {
-  console.log('[SW] Native push received');
+  console.log('[SW] Web push received');
 
   let payload;
   try {
@@ -61,15 +58,16 @@ self.addEventListener('push', (event) => {
     payload = { title: 'Notification', body: event.data?.text() || '' };
   }
 
-  // Same notification logic as your FCM handler
+  const data = payload.data || {};
   const options = {
-    body: payload.body,
+    body: payload.body || 'Tap to open HangVidU',
     icon: `${import.meta.env.BASE_URL}icons/play-arrows-v1/icon-192.png`,
-    //  payload.data || {},
-    tag:
-      payload.data?.type === 'call' ? `call_${payload.data.roomId}` : 'default',
-    vibrate:
-      VIBRATION_PATTERNS[payload.data?.type] || VIBRATION_PATTERNS.default,
+    badge: `${import.meta.env.BASE_URL}icons/play-arrows-v1/icon-192.png`,
+    data,
+    tag: getNotificationTag(data),
+    requireInteraction: data.type === 'call',
+    actions: getNotificationActions(data.type),
+    vibrate: VIBRATION_PATTERNS[data.type] || VIBRATION_PATTERNS.default,
   };
 
   event.waitUntil(
@@ -79,82 +77,6 @@ self.addEventListener('push', (event) => {
     ),
   );
 });
-
-// ============================================================================
-// FIREBASE FCM CONFIGURATION
-// ============================================================================
-
-// Initialize Firebase in service worker context
-// These values should match your main Firebase config
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-};
-
-// Initialize Firebase
-let messaging = null;
-
-// Validate config to prevent crashes if env vars are missing
-const isValidConfig = Object.values(firebaseConfig).every(
-  (val) => val && val.length > 0 && !val.includes('your-project'),
-);
-
-// ! TEMPORARILY disabled while investigating posible double init issue
-// if (isValidConfig) {
-//   try {
-//     const app = initializeApp(firebaseConfig);
-//     messaging = getMessaging(app);
-//     console.info('[SW] Firebase initialized for FCM');
-//   } catch (error) {
-//     console.error('[SW] Failed to initialize Firebase:', error);
-//   }
-// } else {
-//   console.warn('[SW] Firebase config missing or invalid. FCM disabled.');
-// }
-
-// ============================================================================
-// FCM BACKGROUND MESSAGE HANDLING
-// ============================================================================
-
-/**
- * Handle background messages when app is not in foreground
- * This is the core FCM functionality for push notifications
- */
-if (messaging) {
-  onBackgroundMessage(messaging, (payload) => {
-    console.log('[SW] Background message received:', payload);
-
-    const { notification, data } = payload;
-    const notificationTitle = notification?.title || 'New notification';
-    // Use fully qualified path for icons in SW
-    const baseUrl = self.registration.scope; // This is the robust way in SW: scope covers base path
-    // OR use import.meta.env.BASE_URL if we trust the build to replace it correctly.
-    // Given VitePWA injectManifest, import.meta.env.BASE_URL is reliable.
-    const iconBase = import.meta.env.BASE_URL;
-
-    const notificationOptions = {
-      body: notification?.body || 'You have a new message',
-      icon: `${iconBase}icons/play-arrows-v1/icon-192.png`,
-      badge: `${iconBase}icons/play-arrows-v1/icon-192.png`,
-      data: data || {},
-      tag: getNotificationTag(data),
-      requireInteraction: data?.type === 'call',
-      actions: getNotificationActions(data?.type),
-      silent: false,
-      vibrate: getVibrationPattern(data?.type),
-    };
-
-    // Show the notification
-    return self.registration.showNotification(
-      notificationTitle,
-      notificationOptions,
-    );
-  });
-}
 
 /**
  * Get notification actions based on type
@@ -386,4 +308,4 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-console.log('[SW] HangVidU Service Worker with FCM support loaded');
+console.log('[SW] HangVidU Service Worker with Web Push support loaded');

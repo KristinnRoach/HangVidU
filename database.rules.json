@@ -56,6 +56,10 @@
         "fcmTokens": {
           ".read": "$userId === auth.uid",
           ".write": "$userId === auth.uid"
+        },
+        "pushSubscriptions": {
+          ".read": "$userId === auth.uid",
+          ".write": "$userId === auth.uid"
         }
       }
     },

@@ -45,6 +45,11 @@ export function getIsLoggedIn() {
   return state.isLoggedIn;
 }
 
+/**
+ * Get a defensive copy of the current authenticated user.
+ *
+ * @returns {{ uid: string, displayName: string | null, email: string | null, photoURL: string | null } | null}
+ */
 export function getUser() {
   return state.user ? { ...state.user } : null;
 }
