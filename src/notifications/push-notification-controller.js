@@ -160,8 +160,23 @@ export class PushNotificationController {
         this.subscription || (await registration.pushManager.getSubscription());
 
       if (subscription) {
-        await this.unregisterSubscription(subscription);
-        await subscription.unsubscribe();
+        try {
+          await this.unregisterSubscription(subscription);
+        } catch (error) {
+          console.warn(
+            '[PushNotificationController] Failed to unregister push subscription (continuing with local unsubscribe):',
+            error,
+          );
+        } finally {
+          try {
+            await subscription.unsubscribe();
+          } catch (unsubscribeError) {
+            console.warn(
+              '[PushNotificationController] Failed to unsubscribe from push manager:',
+              unsubscribeError,
+            );
+          }
+        }
       }
 
       this.subscription = null;
