@@ -1804,15 +1804,14 @@ window.onload = async () => {
         // messagingController.closeAllSessions();
 
         // Disable notifications and unregister the current Web Push subscription
-        if (getPushNotificationController()?.isNotificationEnabled()) {
-          await getPushNotificationController()
-            ?.disable()
-            .catch((error) => {
-              console.warn(
-                '[AUTH] Failed to disable notifications on logout:',
-                error,
-              );
-            });
+        await getPushNotificationController()
+          ?.disable?.()
+          .catch((error) => {
+            console.warn(
+              '[AUTH] Failed to disable notifications on logout:',
+              error,
+            );
+          });
         }
 
         removeAllIncomingListeners();
