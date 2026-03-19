@@ -42,13 +42,13 @@ After incoming call notifications are fixed, the plan should be:
 Do **not** confuse these two systems:
 
 1. In-app UI notifications:
-   - [in-app-notification-manager.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/ui/components/notifications/in-app-notification-manager.js)
+   - [in-app-notification-manager.js](/src/ui/components/notifications/in-app-notification-manager.js)
 
 2. Web Push notifications:
    - service worker
    - push subscription registration
    - backend send functions
-   - [push-notification-controller.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/push-notification-controller.js)
+   - [push-notification-controller.js](/src/notifications/push-notification-controller.js)
 
 These should stay **separate concerns**.
 
