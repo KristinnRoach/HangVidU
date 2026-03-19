@@ -868,10 +868,13 @@ export function listenForIncomingOnRoom(roomId) {
               pushNotificationsEnabled: true,
             },
           );
-          console.log('[CALL] Background incoming call detected, using push-only notification path', {
-            roomId,
-            joiningUserId,
-          });
+          console.log(
+            '[CALL] Background incoming call detected, using push-only notification path',
+            {
+              roomId,
+              joiningUserId,
+            },
+          );
           return;
         }
 
@@ -942,12 +945,13 @@ export function listenForIncomingOnRoom(roomId) {
           // This prevents duplicate listener firing (incoming vs active call listeners)
           removeIncomingListenersForRoom(roomId);
 
-          // ! Dismiss any call notifications for this room
-          // if (getPushNotificationController()?.isNotificationEnabled()) {
-          //   await getPushNotificationController()?.dismissCallNotifications(
-          //     roomId,
-          //   );
-          // }
+          // Dismiss any call notifications for this room
+          const pushNotificationController = getPushNotificationController?.();
+          if (pushNotificationController?.isNotificationEnabled()) {
+            await pushNotificationController
+              .dismissCallNotifications(roomId)
+              .catch(() => {});
+          }
 
           getDiagnosticLogger().logNotificationDecision(
             'ACCEPT',
@@ -1006,12 +1010,13 @@ export function listenForIncomingOnRoom(roomId) {
           // User rejected the call
           devDebug('Incoming call rejected by user');
 
-          // ! Dismiss any call notifications for this room
-          // if (getPushNotificationController()?.isNotificationEnabled()) {
-          //   await getPushNotificationController()?.dismissCallNotifications(
-          //     roomId,
-          //   );
-          // }
+          // Dismiss any call notifications for this room
+          const pushNotificationController = getPushNotificationController?.();
+          if (pushNotificationController?.isNotificationEnabled()) {
+            await pushNotificationController
+              .dismissCallNotifications(roomId)
+              .catch(() => {});
+          }
 
           getDiagnosticLogger().logNotificationDecision(
             'REJECT',
@@ -1073,12 +1078,13 @@ export function listenForIncomingOnRoom(roomId) {
     ringtoneManager.stop();
     callIndicators.stopCallIndicators();
 
-    // ! Dismiss any call notifications for this room
-    // if (getPushNotificationController()?.isNotificationEnabled()) {
-    //   await getPushNotificationController
-    //     .dismissCallNotifications(roomId)
-    //     .catch(() => {});
-    // }
+    //  Dismiss any call notifications for this room
+    const pushNotificationController = getPushNotificationController?.();
+    if (pushNotificationController?.isNotificationEnabled()) {
+      await pushNotificationController
+        .dismissCallNotifications(roomId)
+        .catch(() => {});
+    }
 
     try {
       // Dismiss incoming call UI for this room
@@ -1825,12 +1831,14 @@ window.onload = async () => {
         setupInviteListener();
 
         // Enable push notifications if already granted (no prompt without user gesture)
-        const notifResult = await getPushNotificationController
-          .enableIfGranted()
-          .catch((e) => {
+        const pushController = getPushNotificationController();
+        let notifResult = { state: 'error' };
+        if (pushController) {
+          notifResult = await pushController.enableIfGranted().catch((e) => {
             console.warn('[AUTH] Push notification setup failed:', e);
             return { state: 'error' };
           });
+        }
 
         if (notifResult.state === 'prompt-needed') {
           showEnableNotificationsPrompt();
@@ -2001,7 +2009,7 @@ CallController.on(
       }
     }
 
-    // ! Clean up call notifications for this room
+    // Clean up call notifications for this room
     if (roomId && getPushNotificationController()?.isNotificationEnabled()) {
       getPushNotificationController()
         .dismissCallNotifications(roomId)
