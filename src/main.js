@@ -574,12 +574,29 @@ export async function callContact(contactId, contactName, roomId = null) {
     try {
       const me = getUser();
       const callerName = me?.displayName || me?.email || myUserId;
-
-      await getPushNotificationController().sendCallNotification(contactId, {
+      console.log('[CALL] Reached call-start push notification send', {
+        contactId,
         roomId,
-        callerId: myUserId,
-        callerName,
       });
+
+      const pushResult =
+        await getPushNotificationController().sendCallNotification(contactId, {
+          roomId,
+          callerId: myUserId,
+          callerName,
+        });
+      console.log('[CALL] Call-start push notification result', {
+        contactId,
+        roomId,
+        pushResult,
+      });
+      if (!pushResult?.ok) {
+        console.warn('[CALL] Call-start push notification did not succeed', {
+          contactId,
+          roomId,
+          pushResult,
+        });
+      }
     } catch (error) {
       console.warn('[CALL] Failed to send push notification:', error);
     }
@@ -903,12 +920,12 @@ export function listenForIncomingOnRoom(roomId) {
           // This prevents duplicate listener firing (incoming vs active call listeners)
           removeIncomingListenersForRoom(roomId);
 
-          // Dismiss any call notifications for this room
-          if (getPushNotificationController()?.isNotificationEnabled()) {
-            await getPushNotificationController()?.dismissCallNotifications(
-              roomId,
-            );
-          }
+          // ! Dismiss any call notifications for this room
+          // if (getPushNotificationController()?.isNotificationEnabled()) {
+          //   await getPushNotificationController()?.dismissCallNotifications(
+          //     roomId,
+          //   );
+          // }
 
           getDiagnosticLogger().logNotificationDecision(
             'ACCEPT',
@@ -967,12 +984,12 @@ export function listenForIncomingOnRoom(roomId) {
           // User rejected the call
           devDebug('Incoming call rejected by user');
 
-          // Dismiss any call notifications for this room
-          if (getPushNotificationController()?.isNotificationEnabled()) {
-            await getPushNotificationController()?.dismissCallNotifications(
-              roomId,
-            );
-          }
+          // ! Dismiss any call notifications for this room
+          // if (getPushNotificationController()?.isNotificationEnabled()) {
+          //   await getPushNotificationController()?.dismissCallNotifications(
+          //     roomId,
+          //   );
+          // }
 
           getDiagnosticLogger().logNotificationDecision(
             'REJECT',
@@ -1034,12 +1051,12 @@ export function listenForIncomingOnRoom(roomId) {
     ringtoneManager.stop();
     callIndicators.stopCallIndicators();
 
-    // Dismiss any call notifications for this room
-    if (getPushNotificationController()?.isNotificationEnabled()) {
-      await getPushNotificationController
-        .dismissCallNotifications(roomId)
-        .catch(() => {});
-    }
+    // ! Dismiss any call notifications for this room
+    // if (getPushNotificationController()?.isNotificationEnabled()) {
+    //   await getPushNotificationController
+    //     .dismissCallNotifications(roomId)
+    //     .catch(() => {});
+    // }
 
     try {
       // Dismiss incoming call UI for this room
@@ -1962,14 +1979,14 @@ CallController.on(
       }
     }
 
-    // Clean up call notifications for this room
-    if (roomId && getPushNotificationController()?.isNotificationEnabled()) {
-      getPushNotificationController
-        .dismissCallNotifications(roomId)
-        .catch((error) => {
-          console.warn('[MAIN] Failed to dismiss call notifications:', error);
-        });
-    }
+    // ! Clean up call notifications for this room
+    // if (roomId && getPushNotificationController()?.isNotificationEnabled()) {
+    //   getPushNotificationController
+    //     .dismissCallNotifications(roomId)
+    //     .catch((error) => {
+    //       console.warn('[MAIN] Failed to dismiss call notifications:', error);
+    //     });
+    // }
 
     cleanupRemoteStream();
     clearUrlParam();

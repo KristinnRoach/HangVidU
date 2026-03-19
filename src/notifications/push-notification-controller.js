@@ -182,7 +182,13 @@ export class PushNotificationController {
   async sendCallNotification(targetUserId, callData) {
     if (!this.options.enableCallNotifications) {
       console.log('[PushNotificationController] Call notifications disabled');
-      return false;
+      return {
+        ok: false,
+        status: null,
+        error: 'call-notifications-disabled',
+        targetUserId,
+        roomId: callData?.roomId || null,
+      };
     }
 
     try {
@@ -202,13 +208,26 @@ export class PushNotificationController {
         `[PushNotificationController] Call notification sent to ${targetUserId}`,
         response,
       );
-      return true;
+      return {
+        ok: true,
+        status: response.status,
+        body: response.payload,
+        targetUserId,
+        roomId: payload.roomId,
+      };
     } catch (error) {
       console.error(
         '[PushNotificationController] Failed to send call notification:',
         error,
       );
-      return false;
+      return {
+        ok: false,
+        status: error.status ?? null,
+        error: error.message,
+        body: error.payload ?? null,
+        targetUserId,
+        roomId: callData?.roomId || null,
+      };
     }
   }
 
@@ -217,7 +236,13 @@ export class PushNotificationController {
       console.log(
         '[PushNotificationController] Call notifications disabled (missed call masked)',
       );
-      return false;
+      return {
+        ok: false,
+        status: null,
+        error: 'call-notifications-disabled',
+        targetUserId,
+        roomId: callData?.roomId || null,
+      };
     }
 
     try {
@@ -234,13 +259,26 @@ export class PushNotificationController {
         `[PushNotificationController] Missed call notification sent to ${targetUserId}`,
         response,
       );
-      return true;
+      return {
+        ok: true,
+        status: response.status,
+        body: response.payload,
+        targetUserId,
+        roomId: payload.roomId,
+      };
     } catch (error) {
       console.error(
         '[PushNotificationController] Failed to send missed call notification:',
         error,
       );
-      return false;
+      return {
+        ok: false,
+        status: error.status ?? null,
+        error: error.message,
+        body: error.payload ?? null,
+        targetUserId,
+        roomId: callData?.roomId || null,
+      };
     }
   }
 
@@ -525,14 +563,20 @@ export class PushNotificationController {
 
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(
+      const error = new Error(
         payload?.message ||
           payload?.error ||
           `Function ${functionName} failed with status ${response.status}`,
       );
+      error.status = response.status;
+      error.payload = payload;
+      throw error;
     }
 
-    return payload;
+    return {
+      status: response.status,
+      payload,
+    };
   }
 }
 

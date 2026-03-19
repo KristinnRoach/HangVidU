@@ -68,6 +68,7 @@ describe('PushNotificationController', () => {
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
+        status: 200,
         json: async () => ({ success: true }),
       }),
     );
@@ -137,7 +138,14 @@ describe('PushNotificationController', () => {
       callerName: 'Caller Name',
     });
 
-    expect(result).toBe(true);
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        status: 200,
+        targetUserId: 'target-user',
+        roomId: 'room-1',
+      }),
+    );
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining('/sendCallNotification'),
       expect.objectContaining({
@@ -173,7 +181,14 @@ describe('PushNotificationController', () => {
       },
     );
 
-    expect(result).toBe(true);
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        status: 200,
+        targetUserId: 'target-user',
+        roomId: 'debug-room',
+      }),
+    );
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining('/sendCallNotification'),
       expect.objectContaining({

@@ -70,6 +70,17 @@ self.addEventListener('push', (event) => {
     vibrate: VIBRATION_PATTERNS[data.type] || VIBRATION_PATTERNS.default,
   };
 
+  console.log('[SW] Showing notification', {
+    title: payload.title || 'Notification',
+    type: data.type || 'unknown',
+    roomId: data.roomId || null,
+    callerId: data.callerId || null,
+    senderId: data.senderId || null,
+    tag: options.tag,
+    requireInteraction: options.requireInteraction,
+    actionCount: options.actions.length,
+  });
+
   event.waitUntil(
     self.registration.showNotification(
       payload.title || 'Notification',
