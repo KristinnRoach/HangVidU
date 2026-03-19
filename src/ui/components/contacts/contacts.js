@@ -21,7 +21,7 @@ const unreadListeners = new Map();
 let localeUnsubscribe = null;
 let lastRenderedLobby = null;
 
-// Limit displayed contact name length in the UI (keep full name in title)
+// Limit displayed contact name length in the UI  (keep full name in title)
 const MAX_CONTACT_NAME_CHARS = 18;
 const SHOW_DEBUG_NOTIFY_BUTTON = true;
 
