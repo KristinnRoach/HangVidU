@@ -36,7 +36,7 @@ describe('Service Worker Environment Sanity Checks', () => {
     expect(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID).toBeDefined();
   });
 
-  test('FCM VAPID key is configured', () => {
+  test('Web Push VAPID is configured', () => {
     expect(import.meta.env.VITE_PUSH_VAPID_KEY).toBeDefined();
     expect(import.meta.env.VITE_PUSH_VAPID_KEY).not.toBe('');
   });

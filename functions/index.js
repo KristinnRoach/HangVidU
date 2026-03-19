@@ -196,7 +196,9 @@ exports.registerPushSubscription = onRequest(
       const { subscription, deviceInfo = {} } = req.body || {};
 
       if (!subscription?.endpoint || !subscription?.keys) {
-        return res.status(400).json({ error: 'Missing or invalid subscription' });
+        return res
+          .status(400)
+          .json({ error: 'Missing or invalid subscription' });
       }
 
       const subscriptionId = getSubscriptionId(subscription.endpoint);
@@ -281,6 +283,10 @@ exports.sendCallNotification = onRequest(
       );
 
       if (!result.sent) {
+        console.warn(
+          '[Push] No push subscriptions found for user when sending call notification:',
+          targetUserId,
+        );
         return res.status(404).json({ error: 'No push subscriptions found' });
       }
 
@@ -347,7 +353,9 @@ exports.healthCheck = onRequest((req, res) => {
 
 async function sendFCMToUser(userId, message) {
   const db = getDatabase();
-  const tokensSnapshot = await db.ref(`users/${userId}/fcmTokens`).once('value');
+  const tokensSnapshot = await db
+    .ref(`users/${userId}/fcmTokens`)
+    .once('value');
   const tokensData = tokensSnapshot.val();
 
   if (!tokensData) {
@@ -424,7 +432,10 @@ exports.sendMessageNotification = onValueCreated(
     const recipientId = userIds.find((id) => id !== senderId);
 
     if (!recipientId) {
-      console.warn('[FCM-msg] Could not determine recipient from', conversationId);
+      console.warn(
+        '[FCM-msg] Could not determine recipient from',
+        conversationId,
+      );
       return;
     }
 

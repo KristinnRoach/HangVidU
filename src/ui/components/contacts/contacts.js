@@ -23,7 +23,10 @@ let lastRenderedLobby = null;
 
 // Limit displayed contact name length in the UI (keep full name in title)
 const MAX_CONTACT_NAME_CHARS = 18;
-const SHOW_DEBUG_NOTIFY_BUTTON = true;
+const SHOW_DEBUG_NOTIFY_BUTTON =
+  typeof import.meta !== 'undefined' &&
+  import.meta.env &&
+  !!import.meta.env.DEV;
 
 /**
  * Prompt user to save contact after hangup (and render contacts list in lobby)
@@ -200,17 +203,21 @@ function attachContactListeners(container, lobbyElement) {
     };
   });
 
-  container.querySelectorAll('.contact-debug-notify-btn').forEach((buttonEl) => {
-    buttonEl.onclick = async () => {
-      const contactId = buttonEl.getAttribute('data-contact-id');
-      if (!contactId) return;
+  if (SHOW_DEBUG_NOTIFY_BUTTON) {
+    container
+      .querySelectorAll('.contact-debug-notify-btn')
+      .forEach((buttonEl) => {
+        buttonEl.onclick = async () => {
+          const contactId = buttonEl.getAttribute('data-contact-id');
+          if (!contactId) return;
 
-      const pushNotificationController = getPushNotificationController();
-      await pushNotificationController.sendDebugCallNotificationToUser(
-        contactId,
-      );
-    };
-  });
+          const pushNotificationController = getPushNotificationController();
+          await pushNotificationController.sendDebugCallNotificationToUser(
+            contactId,
+          );
+        };
+      });
+  }
 
   // Contact name - click to open messages
   container.querySelectorAll('.contact-name[data-contact-id]').forEach((el) => {
