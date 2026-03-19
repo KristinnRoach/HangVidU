@@ -154,6 +154,8 @@ export class PushNotificationController {
   }
 
   async disable() {
+    let success = true;
+
     try {
       const registration = await this.getServiceWorkerRegistration();
       const subscription =
@@ -164,34 +166,29 @@ export class PushNotificationController {
           await this.unregisterSubscription(subscription);
         } catch (error) {
           console.warn(
-            '[PushNotificationController] Failed to unregister push subscription (continuing with local unsubscribe):',
+            '[PushNotificationController] Failed to unregister subscription from backend:',
             error,
           );
         } finally {
           try {
             await subscription.unsubscribe();
-          } catch (unsubscribeError) {
+          } catch (error) {
             console.warn(
               '[PushNotificationController] Failed to unsubscribe from push manager:',
-              unsubscribeError,
+              error,
             );
           }
         }
       }
-
+      success = false;
+    } finally {
       this.subscription = null;
       this.isEnabled = false;
       this.activeNotifications.clear();
       this.notifyPermissionCallbacks('disabled');
       console.log('[PushNotificationController] Notifications disabled');
-      return true;
-    } catch (error) {
-      console.error(
-        '[PushNotificationController] Failed to disable notifications:',
-        error,
-      );
-      return false;
     }
+    return success;
   }
 
   async sendCallNotification(targetUserId, callData) {
