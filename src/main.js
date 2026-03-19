@@ -1078,12 +1078,18 @@ export function listenForIncomingOnRoom(roomId) {
     ringtoneManager.stop();
     callIndicators.stopCallIndicators();
 
-    //  Dismiss any call notifications for this room
-    const pushNotificationController = getPushNotificationController?.();
-    if (pushNotificationController?.isNotificationEnabled()) {
-      await pushNotificationController
-        .dismissCallNotifications(roomId)
-        .catch(() => {});
+    // ! Dismiss any call notifications for this room
+    try {
+      const pushNotificationController = getPushNotificationController
+        ? getPushNotificationController()
+        : null;
+      if (pushNotificationController?.isNotificationEnabled()) {
+        await pushNotificationController
+          .dismissCallNotifications(roomId)
+          .catch(() => {});
+      }
+    } catch (_) {
+      // best-effort; do not block cancellation flow on notification errors
     }
 
     try {
