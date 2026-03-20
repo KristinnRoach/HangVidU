@@ -85,12 +85,35 @@ Examples:
 Why it matters:
 
 - These are useful while isolating the failure.
-- They should be explicitly removed or dev-gated after the incoming-call issue is understood, otherwise they become accidental product surface area and long-term noise.
+- They should be explicitly removed or dev-gated after there is a robust replacement for testing / debugging notification behavior outside production-like flows, otherwise they become accidental product surface area and long-term noise.
+
+Current examples that are intentionally still present for now:
+
+- debug call notification button in the contacts list
+- `window.pushNotificationController`
+
+These are deferred cleanup items, not signals that they should become part of the long-term production surface.
+
+## 5. Subscription Ownership Enforcement Still Has One Major Scalability Risk
+
+The current exclusive-ownership hardening for push subscriptions is correct for the current verification slice, but the implementation still has one major cost profile issue: registration can scan the entire `users` tree to remove a duplicated subscription from other users.
+
+Why it matters:
+
+- This is acceptable while validating the new Web Push path.
+- It should not be treated as the durable end-state if the user base grows.
+- This is the main still-valid major issue to carry into the next architecture/API pass.
+
+Likely cleanup direction:
+
+- replace full-tree scans with a more direct ownership/indexed model once the final notification structure is settled
+- revisit TTL policy only after the final notification shape / types / schema are defined and validated
 
 ## Recommended Cleanup Order
 
 1. Decide the final production notification architecture for background notification vs foreground incoming-call UX.
 2. Remove temporary debug hooks and extra logging.
 3. Keep the subscription ownership hardening and unique per-attempt call notification identity.
-4. Add regression tests once the notification structure is stable enough that the tests will not churn with the refactor.
-5. Update docs so the repository has one clear notification story.
+4. Replace the current full-tree subscription ownership scan with a more direct ownership/indexed approach.
+5. Add regression tests once the notification structure is stable enough that the tests will not churn with the refactor.
+6. Update docs so the repository has one clear notification story.

@@ -119,15 +119,12 @@ Latest debugging sequence already completed:
 Recommended next step now:
 
 1. refine the notification architecture / API / ownership boundaries now that the proof-of-functionality slice is complete
-2. keep temporary debugging logs until the next robustness / cleanup pass is complete
+2. use [notifications-potential-cleanup-redundant-code-blocks-and-files.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/docs/notifications-potential-cleanup-redundant-code-blocks-and-files.md) as the source of truth for deferred cleanup items, temporary debug surface, and still-valid follow-up issues
 3. add regression tests after the structure is settled enough that tests will not churn with the refactor
-4. once the architecture is clearer, remove temporary debugging logs and any debug-only plumbing that is no longer needed
 
 Before testing next session:
 
 - make sure both the latest app bundle and the latest service worker from this branch are active on the test devices, otherwise notification-click debugging can be misleading
-- stale service worker / app bundle mismatches are still a high-likelihood source of false negatives while testing notification-click behavior
-- the service worker currently focuses `clients[0]` when reusing an existing app window; if multiple app windows/tabs are open, notification clicks may focus the wrong client
 
 ## Current Implementation Notes
 
@@ -141,5 +138,7 @@ These changes were intentionally pragmatic:
 - push subscription registration now enforces exclusive ownership of a subscription endpoint across users
 - call pushes now use a unique notification identity per attempt while preserving `roomId` for call routing/click handling
 - notification clicks now work both for fresh app opens and when the service worker reuses an already-open app client by posting a `NAVIGATE` message that the app handles locally
+
+See [notifications-potential-cleanup-redundant-code-blocks-and-files.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/docs/notifications-potential-cleanup-redundant-code-blocks-and-files.md) for deferred cleanup items, temporary debug-only surface, and still-open follow-up concerns.
 
 This is acceptable for verification, but should be cleaned up before treating notifications as finalized architecture.
