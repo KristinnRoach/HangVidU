@@ -421,6 +421,7 @@ function applyCallResult(result, showLinkModal = false) {
   return true;
 }
 
+// TODO: Remove the "create if empty" path, rename to explicit "joinRoomWithId" and "createRoom" functions
 export async function joinOrCreateRoomWithId(
   customRoomId,
   { forceInitiator = false } = {},
@@ -1875,7 +1876,6 @@ window.onload = async () => {
               error,
             );
           });
-        }
 
         removeAllIncomingListeners();
         cleanupInviteListeners();
