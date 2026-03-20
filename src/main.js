@@ -189,6 +189,7 @@ let showDebugUIForNotifications = false;
 // to access pc, dataChannel, partnerId, role, messagesUI, roomId, roomLink
 
 let cleanupFunctions = [];
+let isHandlingServiceWorkerNavigation = false;
 
 // ============================================================================
 // INITIALIZATION & MEDIA SETUP
@@ -473,6 +474,7 @@ export async function joinOrCreateRoomWithId(
     }
   }
 
+  // TODO: Remove this for robust and explicit alternative (if needed, otherwise just remove)
   // Room doesn't exist OR is empty → create as initiator
   if (!status.exists || !status.hasMembers) {
     getDiagnosticLogger().logRoomCreation(
@@ -1588,6 +1590,67 @@ async function autoJoinFromUrl() {
   return success;
 }
 
+async function handleServiceWorkerNavigation(path) {
+  if (!path) return false;
+
+  let targetUrl;
+  try {
+    targetUrl = new URL(path, window.location.origin);
+  } catch (error) {
+    console.warn('[MAIN] Invalid service worker navigation path:', path, error);
+    return false;
+  }
+
+  const roomId = targetUrl.searchParams.get('room');
+  const contactId = targetUrl.searchParams.get('contact');
+
+  window.history.replaceState({}, '', targetUrl);
+
+  console.log('[MAIN] Handling service worker navigation', {
+    path,
+    roomId,
+    contactId,
+  });
+
+  if (!roomId) {
+    return false;
+  }
+
+  if (isHandlingServiceWorkerNavigation) {
+    console.log('[MAIN] Service worker navigation already in progress', {
+      roomId,
+    });
+    return false;
+  }
+
+  isHandlingServiceWorkerNavigation = true;
+
+  try {
+    const success = await joinOrCreateRoomWithId(roomId);
+
+    console.log('[MAIN] Service worker room navigation result', {
+      roomId,
+      success,
+    });
+
+    if (!success) {
+      clearUrlParam();
+      onCallDisconnected();
+    }
+
+    return success;
+  } catch (error) {
+    console.warn('[MAIN] Service worker room navigation failed:', error, {
+      roomId,
+    });
+    clearUrlParam();
+    onCallDisconnected();
+    return false;
+  } finally {
+    isHandlingServiceWorkerNavigation = false;
+  }
+}
+
 // ============================================================================
 // CONTACT INVITATIONS
 // ============================================================================
@@ -1888,6 +1951,33 @@ window.onload = async () => {
         unsubscribeAuthContacts();
     } catch (_) {}
   });
+
+  if ('serviceWorker' in navigator) {
+    const handleServiceWorkerMessage = (event) => {
+      const { type, path } = event.data || {};
+
+      if (type !== 'NAVIGATE') return;
+
+      console.log('[MAIN] Received service worker NAVIGATE message', {
+        path,
+      });
+
+      handleServiceWorkerNavigation(path).catch((error) => {
+        console.warn('[MAIN] Failed to handle service worker NAVIGATE:', error);
+      });
+    };
+
+    navigator.serviceWorker.addEventListener(
+      'message',
+      handleServiceWorkerMessage,
+    );
+    cleanupFunctions.push(() => {
+      navigator.serviceWorker.removeEventListener(
+        'message',
+        handleServiceWorkerMessage,
+      );
+    });
+  }
 
   // Auto-join if room parameter exists
   const autoJoinedSuccessfully = await autoJoinFromUrl();

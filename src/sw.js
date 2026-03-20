@@ -99,7 +99,10 @@ async function handlePushEvent(event) {
     callerName: data.callerName || null,
     senderId: data.senderId || null,
     targetUserId: data.targetUserId || null,
-    hasTopLevelType: Object.prototype.hasOwnProperty.call(payload || {}, 'type'),
+    hasTopLevelType: Object.prototype.hasOwnProperty.call(
+      payload || {},
+      'type',
+    ),
     topLevelType: payload.type || null,
     hasNestedData: Object.prototype.hasOwnProperty.call(payload || {}, 'data'),
     expectedCallShape: {
@@ -300,7 +303,7 @@ async function handleCallNotificationClick(roomId, action) {
 
   if (action === 'accept') {
     // Open app and auto-join the call
-    await openApp(`/?room=${roomId}&autoJoin=true`);
+    await openApp(`/?room=${roomId}`);
   } else if (action === 'decline') {
     // Send decline signal to RTDB (would need Firebase Admin SDK in production)
     console.log('[SW] Call declined via notification');
@@ -389,8 +392,7 @@ self.addEventListener('message', (event) => {
           .then(() => {
             console.log('[SW] Synced push debug identity', {
               userId: data?.userId || null,
-              displayName:
-                data?.displayName || data?.userId || 'unknown-user',
+              displayName: data?.displayName || data?.userId || 'unknown-user',
             });
           })
           .catch((error) => {
