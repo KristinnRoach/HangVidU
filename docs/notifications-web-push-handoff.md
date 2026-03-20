@@ -12,7 +12,7 @@ Current branch:
 
 Current PR:
 
-- [#408](https://github.com/KristinnRoach/HangVidU/pull/408)
+- [#409](https://github.com/KristinnRoach/HangVidU/pull/409)
 
 ## What Works
 
@@ -23,10 +23,10 @@ Verified manually on deployed site:
 - real missed call notifications while app/browser closed or phone locked
 - manual debug call notification to a target contact
 - real incoming call notification at call start while app/browser closed or in background
+- tapping the real incoming call notification now opens/focuses the app and answers the call
 
 ## What Does Not Work Yet
 
-- clicking the real incoming call notification does not yet successfully answer the call
 - temporary debugging logs and debug-oriented plumbing are still present and should be cleaned up after the click/answer issue is understood
 
 ## Important Context
@@ -101,13 +101,9 @@ There were two real issues uncovered during debugging:
 
 ## Recommended Next Step
 
-Start next session with notification click/answer behavior only.
+Start next session with notification architecture cleanup and simplification, not new feature work.
 
-Current highest-value question:
-
-- why clicking the real incoming call notification does not successfully answer the call
-
-Do not broaden the scope before that is understood.
+Do not broaden the scope beyond clarifying API / ownership boundaries for notifications.
 
 Latest debugging sequence already completed:
 
@@ -117,21 +113,21 @@ Latest debugging sequence already completed:
 4. added temporary service worker logs showing the incoming push payload/type/tag right before `showNotification(...)`
 5. confirmed and fixed cross-user subscription contamination
 6. confirmed and fixed the stable room-based notification identity problem for real incoming calls
+7. traced the notification click path end-to-end and confirmed the missing app-side handling for the service worker `NAVIGATE` message when an existing client was reused
+8. added app-side handling for the service worker `NAVIGATE` message so an already-open app now focuses and joins the intended room on notification tap
 
 Recommended next step now:
 
-1. trace the notification click path for a real incoming call end-to-end:
-   - service worker `notificationclick`
-   - `openApp(...)`
-   - app navigation / focus behavior
-   - call answer / join flow after open
-2. verify whether the app opens with the expected room context when the notification is clicked
-3. verify whether the answer action and default notification click behave differently on iOS Home Screen PWA
-4. once the click/answer issue is understood, remove temporary debugging logs and any debug-only plumbing that is no longer needed
+1. refine the notification architecture / API / ownership boundaries now that the proof-of-functionality slice is complete
+2. keep temporary debugging logs until the next robustness / cleanup pass is complete
+3. add regression tests after the structure is settled enough that tests will not churn with the refactor
+4. once the architecture is clearer, remove temporary debugging logs and any debug-only plumbing that is no longer needed
 
 Before testing next session:
 
 - make sure both the latest app bundle and the latest service worker from this branch are active on the test devices, otherwise notification-click debugging can be misleading
+- stale service worker / app bundle mismatches are still a high-likelihood source of false negatives while testing notification-click behavior
+- the service worker currently focuses `clients[0]` when reusing an existing app window; if multiple app windows/tabs are open, notification clicks may focus the wrong client
 
 ## Current Implementation Notes
 
@@ -144,5 +140,6 @@ These changes were intentionally pragmatic:
 - a focused integration test was added to prove `callContact()` attempts the push immediately on successful call start
 - push subscription registration now enforces exclusive ownership of a subscription endpoint across users
 - call pushes now use a unique notification identity per attempt while preserving `roomId` for call routing/click handling
+- notification clicks now work both for fresh app opens and when the service worker reuses an already-open app client by posting a `NAVIGATE` message that the app handles locally
 
 This is acceptable for verification, but should be cleaned up before treating notifications as finalized architecture.

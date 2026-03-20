@@ -51,8 +51,9 @@ Primary files:
 
 Why it matters:
 
-- The original real call-start display failure has now been fixed, but the area is still fragile and debugging showed how easy it is to misattribute notification issues when push delivery, service worker display, and RTDB-driven call UI all overlap.
-- The next real issue to isolate is click behavior: the real incoming call notification can now display, but clicking it does not yet successfully answer the call.
+- The original real call-start display failure has now been fixed, and notification tap-to-answer is also now working, but the area is still fragile and debugging showed how easy it is to misattribute notification issues when push delivery, service worker display, and RTDB-driven call UI all overlap.
+- Two practical gotchas remain important during testing even if they are not architecture decisions:
+  stale service worker / app bundle mismatches can make click-behavior debugging misleading, and the current service worker reuse path focuses `clients[0]`, which may be the wrong app client if multiple tabs/windows are open.
 - Even if both paths are individually valid, the ownership boundary is not clear enough yet: which path owns background notification, which path owns foreground UI, and when they are allowed to overlap.
 
 Likely cleanup direction:
@@ -88,8 +89,8 @@ Why it matters:
 
 ## Recommended Cleanup Order
 
-1. Fix notification click-to-answer for real incoming calls.
-2. Decide the final production notification architecture for background notification vs foreground incoming-call UX.
-3. Remove temporary debug hooks and extra logging.
-4. Keep the subscription ownership hardening and unique per-attempt call notification identity.
+1. Decide the final production notification architecture for background notification vs foreground incoming-call UX.
+2. Remove temporary debug hooks and extra logging.
+3. Keep the subscription ownership hardening and unique per-attempt call notification identity.
+4. Add regression tests once the notification structure is stable enough that the tests will not churn with the refactor.
 5. Update docs so the repository has one clear notification story.
