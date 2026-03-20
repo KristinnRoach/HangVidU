@@ -13,6 +13,35 @@ The key design goals are:
 - low side effects for easy testing and maintenance
 - a straightforward future path for additional delivery adapters such as APN or FCM without creating redundant public APIs
 
+## Current Status
+
+Current active refactor branch:
+
+- `codex/push-notifications-refactor`
+
+Known-good checkpoint branch:
+
+- `codex/notifications-phase-1`
+
+Current refactor checkpoint:
+
+- `310c438` - `Start push notifications structure refactor`
+
+Already completed and verified:
+
+- shared push contracts were introduced under [shared/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/shared/push-notifications)
+- a new public app barrel was introduced at [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/index.js)
+- the app-facing push facade now lives at [push-notifications.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/push-notifications.js)
+- compatibility shims remain in the old `src/notifications/*` paths
+- the first refactor slice was redeployed and manually tested successfully
+- targeted notification tests passed after that refactor slice
+
+Immediate next implementation slices:
+
+1. thin `src/sw.js` into composed internal modules
+2. split backend notification logic under `functions/push-notifications/`
+3. continue migrating app imports and responsibilities toward the new structure
+
 ## Stable Public API
 
 The stable app-facing boundary should be push-specific so it is never confused with in-app notifications.
@@ -223,11 +252,17 @@ The current implementation already works and should be preserved as a rollback p
 Refactor sequence:
 
 1. move shared contracts into `shared/push-notifications/`
+   - status: done
 2. create `src/push-notifications/` with a single public barrel
+   - status: done
 3. reduce `src/sw.js` to a thin composition entrypoint
+   - status: next
 4. split backend notification logic under `functions/push-notifications/`
+   - status: next
 5. update imports so app code depends only on the stable public barrel
+   - status: in progress
 6. remove or rename old paths only after the new structure is in place and tests are green
+   - status: pending
 
 ## Acceptance Criteria
 

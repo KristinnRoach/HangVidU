@@ -6,19 +6,49 @@ This is still a **verification-first implementation slice**, not the final notif
 
 The good news is that the active Web Push path is now working end-to-end on the deployed app, including iPhone Home Screen PWA behavior. The remaining work is mostly **cleanup, boundary clarification, and simplification**, not proving basic feasibility anymore.
 
-Current branch:
+Current implementation checkpoint branch:
 
 - `codex/notifications-phase-1`
+
+Current refactor branch:
+
+- `codex/push-notifications-refactor`
 
 Current PR:
 
 - [#409](https://github.com/KristinnRoach/HangVidU/pull/409)
 
+Latest refactor checkpoint on refactor branch:
+
+- `310c438` - `Start push notifications structure refactor`
+
+Latest checkpoint status:
+
+- the first structure-refactor slice has been deployed from `codex/push-notifications-refactor`
+- that deployed refactor slice was manually tested and confirmed working
+- current understanding is that the refactor branch remains functionally equivalent to the previously working notification flows for the covered scenarios
+
+## Fresh Context Start Here
+
+If starting from a fresh session, assume the following is already true:
+
+- `codex/notifications-phase-1` is the known-good rollback/checkpoint branch
+- `codex/push-notifications-refactor` is the active branch for continuing the structural cleanup
+- shared push schemas now exist under [shared/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/shared/push-notifications)
+- the app now has a public push barrel at [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/index.js)
+- legacy import paths still exist as compatibility shims so behavior remains stable while imports are migrated
+- the next major slices are still:
+  - thin `src/sw.js` into composed internal modules
+  - split `functions/index.js` into `functions/push-notifications/*`
+  - continue migrating from old notification paths to the new push-specific structure
+
 ## Current Implementation And Integration Status
 
 ### What is currently integrated
 
-- [push-notification-controller.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/push-notification-controller.js) is the active browser-side entry point for Web Push permission, subscription registration, unsubscribe, and direct call-push sends.
+- [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/index.js) is now the intended public app import boundary for push notifications on the refactor branch.
+- [push-notifications.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/push-notifications.js) is now the app-facing push facade on the refactor branch.
+- [push-notification-controller.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/push-notification-controller.js) still exists as a compatibility shim during the refactor.
 - [main.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/main.js) initializes the push controller at app startup.
 - on login / initial authenticated load, `enableIfGranted()` is called so existing permission can be activated without prompting automatically.
 - if permission has not yet been granted, the app shows the in-app enable prompt from [enable-notifications-prompt.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/ui/components/notifications/enable-notifications-prompt.js).
@@ -28,6 +58,7 @@ Current PR:
 - message push delivery is currently server-driven: the Firebase RTDB trigger `sendMessageNotification` sends Web Push when a new conversation message is created.
 - [sw.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/sw.js) owns system notification display and notification click handling.
 - when the app is already open, the service worker now posts a `NAVIGATE` message back into the app so notification taps still route into the intended room/contact.
+- canonical shared push contracts now exist in [shared/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/shared/push-notifications), with [schema.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/schema.js) currently acting as a compatibility re-export layer
 
 ### What is verified working
 
@@ -39,6 +70,7 @@ Verified manually on the deployed site:
 - manual debug call notification to a target contact
 - real incoming call notification at call start while the app/browser is closed or in background
 - tapping the real incoming call notification now opens/focuses the app and joins the intended call
+- the first refactor slice deployed from `codex/push-notifications-refactor` still works in manual post-deploy testing
 
 ### What is implemented but still provisional
 
@@ -63,7 +95,8 @@ Do **not** mix these two systems:
    - prompt/toast/list UX inside the app shell
 
 2. Web Push / system notifications:
-   - [push-notification-controller.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/push-notification-controller.js)
+   - [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/index.js)
+   - [push-notifications.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/push-notifications.js)
    - [sw.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/sw.js)
    - [functions/index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js)
    - push subscription storage under `users/{uid}/pushSubscriptions`
@@ -182,6 +215,7 @@ There were two real issues uncovered during debugging:
 
 Current automated coverage around this slice:
 
+- [schema.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/__tests__/schema.test.js): shared push-schema coverage, including canonical vs legacy-compatible payload handling
 - [push-notification-controller.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/__tests__/push-notification-controller.test.js): unit coverage for permission flow, register/unregister, direct call send, debug send, and dismiss behavior
 - [call-contact-push-notification.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/tests/integration/call-contact-push-notification.test.js): integration coverage proving `callContact()` attempts the push immediately on successful call start
 - [service-worker-sanity.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/tests/smoke/service-worker-sanity.test.js): environment/configuration sanity checks
@@ -197,12 +231,13 @@ Do not broaden the scope beyond clarifying API and ownership boundaries for noti
 
 Recommended next step now:
 
-1. refine the notification architecture and API boundaries now that the proof-of-functionality slice is complete
-2. make the push service API explicit enough that both call and message notifications can use the same clean interface
-3. decide whether `missed_call` is a first-class notification type with its own click behavior
-4. remove temporary debug hooks and logs or dev-gate them
-5. decide whether to keep the temporary legacy ownership-scan fallback until after a cleanup/migration pass
-6. add regression tests after the structure is settled enough that the tests will not churn with the refactor
+1. continue the refactor from `codex/push-notifications-refactor`, not from the checkpoint branch
+2. thin [sw.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/sw.js) into composed internal modules while preserving behavior
+3. split [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js) into `functions/push-notifications/*`
+4. continue migrating app imports and responsibilities toward the new push-specific structure
+5. remove temporary debug hooks and logs or dev-gate them
+6. decide whether to keep the temporary legacy ownership-scan fallback until after a cleanup/migration pass
+7. add regression tests after the structure is settled enough that the tests will not churn with the refactor
 
 Use [notifications-potential-cleanup-redundant-code-blocks-and-files.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/docs/notifications-potential-cleanup-redundant-code-blocks-and-files.md) as the source of truth for deferred cleanup items, temporary debug surface, and still-valid follow-up issues.
 
