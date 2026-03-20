@@ -27,6 +27,8 @@ Latest checkpoint status:
 - the first structure-refactor slice has been deployed from `codex/push-notifications-refactor`
 - that deployed refactor slice was manually tested and confirmed working
 - current understanding is that the refactor branch remains functionally equivalent to the previously working notification flows for the covered scenarios
+- the push-focused `src/sw.js` split has now been completed and manually verified after redeploy
+- missed-call notification tap routing was corrected so it no longer drops into the empty-room "Share this link" path
 
 ## Fresh Context Start Here
 
@@ -38,9 +40,9 @@ If starting from a fresh session, assume the following is already true:
 - the app now has a public push barrel at [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/index.js)
 - legacy import paths still exist as compatibility shims so behavior remains stable while imports are migrated
 - the next major slices are still:
-  - thin `src/sw.js` into composed internal modules
   - split `functions/index.js` into `functions/push-notifications/*`
   - continue migrating from old notification paths to the new push-specific structure
+  - remove remaining legacy `call` compatibility once the end-to-end backend/app boundary is ready to move together
 
 ## Current Implementation And Integration Status
 
@@ -56,8 +58,9 @@ If starting from a fresh session, assume the following is already true:
 - successful outgoing call start in [main.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/main.js) immediately sends a push through the backend `sendCallNotification` HTTP function.
 - missed calls are currently sent through that same backend call notification path during call cleanup.
 - message push delivery is currently server-driven: the Firebase RTDB trigger `sendMessageNotification` sends Web Push when a new conversation message is created.
-- [sw.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/sw.js) owns system notification display and notification click handling.
+- [sw.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/sw.js) is now a thin service-worker entrypoint that wires push handling into internal modules under [src/push-notifications/sw](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/sw).
 - when the app is already open, the service worker now posts a `NAVIGATE` message back into the app so notification taps still route into the intended room/contact.
+- missed-call notification taps now route to the caller contact first, with room fallback only if caller identity is unavailable.
 - canonical shared push contracts now exist in [shared/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/shared/push-notifications), with [schema.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/schema.js) currently acting as a compatibility re-export layer
 
 ### What is verified working
@@ -70,6 +73,7 @@ Verified manually on the deployed site:
 - manual debug call notification to a target contact
 - real incoming call notification at call start while the app/browser is closed or in background
 - tapping the real incoming call notification now opens/focuses the app and joins the intended call
+- tapping the missed-call notification now avoids the empty-room share-link path and routes into caller context correctly
 - the first refactor slice deployed from `codex/push-notifications-refactor` still works in manual post-deploy testing
 
 ### What is implemented but still provisional
@@ -82,9 +86,9 @@ Verified manually on the deployed site:
 ### What is still incomplete or uneven
 
 - [push-notification-controller.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/push-notification-controller.js) has no real client-side `sendMessageNotification()` implementation; message pushes currently bypass that controller and are sent only from the backend RTDB trigger
-- the service worker has explicit click-routing branches for `call` and `message`, but `missed_call` is not yet modeled as its own first-class click path
 - incoming call notifications no longer expose a `decline` action; tapping the notification opens the app into the answer/join path
 - the service worker reuse path currently focuses `clients[0]`, which is acceptable for verification but is not a strong multi-tab ownership model
+- the backend and shared schemas still carry legacy `call` compatibility that the new service-worker slice no longer needs, so that cleanup should happen as a deliberate end-to-end follow-up
 
 ## Very Important Separation
 
@@ -217,6 +221,8 @@ Current automated coverage around this slice:
 
 - [schema.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/__tests__/schema.test.js): shared push-schema coverage, including canonical vs legacy-compatible payload handling
 - [push-notification-controller.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/__tests__/push-notification-controller.test.js): unit coverage for permission flow, register/unregister, direct call send, debug send, and dismiss behavior
+- [notification-presentation.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/sw/__tests__/notification-presentation.test.js): focused service-worker push presentation coverage for tags, actions, and canonical call handling
+- [notification-click-handler.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/sw/__tests__/notification-click-handler.test.js): focused service-worker click-routing coverage for `incoming_call`, `missed_call`, and `message`
 - [call-contact-push-notification.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/tests/integration/call-contact-push-notification.test.js): integration coverage proving `callContact()` attempts the push immediately on successful call start
 - [service-worker-sanity.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/tests/smoke/service-worker-sanity.test.js): environment/configuration sanity checks
 - [service-worker-registration.spec.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/tests/e2e/service-worker-registration.spec.js): service worker registration/scope/control checks
@@ -232,12 +238,12 @@ Do not broaden the scope beyond clarifying API and ownership boundaries for noti
 Recommended next step now:
 
 1. continue the refactor from `codex/push-notifications-refactor`, not from the checkpoint branch
-2. thin [sw.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/sw.js) into composed internal modules while preserving behavior
-3. split [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js) into `functions/push-notifications/*`
+2. split [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js) into `functions/push-notifications/*`
+3. remove remaining legacy `call` compatibility across backend/shared runtime contracts once the backend split is in place
 4. continue migrating app imports and responsibilities toward the new push-specific structure
 5. remove temporary debug hooks and logs or dev-gate them
 6. decide whether to keep the temporary legacy ownership-scan fallback until after a cleanup/migration pass
-7. add regression tests after the structure is settled enough that the tests will not churn with the refactor
+7. add regression tests after the backend structure is settled enough that the tests will not churn with the refactor
 
 Use [notifications-potential-cleanup-redundant-code-blocks-and-files.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/docs/notifications-potential-cleanup-redundant-code-blocks-and-files.md) as the source of truth for deferred cleanup items, temporary debug surface, and still-valid follow-up issues.
 

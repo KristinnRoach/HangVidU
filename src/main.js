@@ -1614,7 +1614,19 @@ async function handleServiceWorkerNavigation(path) {
   });
 
   if (!roomId) {
-    return false;
+    if (!contactId) {
+      return false;
+    }
+
+    document.dispatchEvent(
+      new CustomEvent('messages:conversation:select', {
+        detail: {
+          contactId,
+          displayUI: true,
+        },
+      }),
+    );
+    return true;
   }
 
   if (isHandlingServiceWorkerNavigation) {

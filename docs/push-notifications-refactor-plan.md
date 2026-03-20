@@ -35,12 +35,16 @@ Already completed and verified:
 - compatibility shims remain in the old `src/notifications/*` paths
 - the first refactor slice was redeployed and manually tested successfully
 - targeted notification tests passed after that refactor slice
+- `src/sw.js` was reduced to a thin push wiring entrypoint
+- push-specific service-worker logic now lives under [src/push-notifications/sw](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/sw)
+- missed-call notification taps now route to caller context first instead of dropping into the empty-room share-link path
 
 Immediate next implementation slices:
 
-1. thin `src/sw.js` into composed internal modules
-2. split backend notification logic under `functions/push-notifications/`
+1. split backend notification logic under `functions/push-notifications/`
+2. remove remaining legacy `call` compatibility across backend/shared runtime paths
 3. continue migrating app imports and responsibilities toward the new structure
+4. remove or dev-gate temporary debug push hooks
 
 ## Stable Public API
 
@@ -109,6 +113,7 @@ src/
     push-event-handler.js
     notification-click-handler.js
     notification-presentation.js
+    push-debug-identity-store.js
     service-worker-message-handler.js
 
   pwa/sw/
@@ -256,8 +261,11 @@ Refactor sequence:
 2. create `src/push-notifications/` with a single public barrel
    - status: done
 3. reduce `src/sw.js` to a thin composition entrypoint
-   - status: next
+   - status: done
 4. split backend notification logic under `functions/push-notifications/`
+   - status: next
+5. remove remaining legacy `call` compatibility from backend/shared runtime paths
+   - status: after backend split
    - status: next
 5. update imports so app code depends only on the stable public barrel
    - status: in progress
