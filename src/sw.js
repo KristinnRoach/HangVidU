@@ -15,6 +15,10 @@ import {
 const PUSH_DEBUG_IDENTITY_CACHE = 'push-debug-identity-v1';
 const PUSH_DEBUG_IDENTITY_PATH = '/__push_debug_identity__';
 
+function isIncomingCallType(type) {
+  return type === 'incoming_call' || type === 'call';
+}
+
 // ============================================================================
 // WORKBOX PWA FUNCTIONALITY
 // ============================================================================
@@ -74,7 +78,7 @@ async function handlePushEvent(event) {
     badge: `${import.meta.env.BASE_URL}icons/play-arrows-v1/icon-192.png`,
     data,
     tag: notificationTag,
-    requireInteraction: data.type === 'call',
+    requireInteraction: isIncomingCallType(data.type),
     actions: notificationActions,
     vibrate: VIBRATION_PATTERNS[data.type] || VIBRATION_PATTERNS.default,
   };
@@ -109,7 +113,7 @@ async function handlePushEvent(event) {
       hasRoomId: Boolean(data.roomId),
       hasCallerId: Boolean(data.callerId),
       hasCallerName: Boolean(data.callerName),
-      typeIsCall: data.type === 'call',
+      typeIsCall: isIncomingCallType(data.type),
     },
   });
 
@@ -189,23 +193,17 @@ async function readPushDebugIdentity() {
 
 /**
  * Get notification actions based on type
- * @param {string} type - Notification type ('call' or 'message')
+ * @param {string} type - Notification type ('incoming_call', legacy 'call', or 'message')
  * @returns {Array} Notification actions
  */
 function getNotificationActions(type) {
-  if (type === 'call') {
+  if (isIncomingCallType(type)) {
     return [
       {
         action: 'accept',
         title: 'Accept',
         // TODO: Add icon assets
         // icon: '/icons/call-accept.png',
-      },
-      {
-        action: 'decline',
-        title: 'Decline',
-        // TODO: Add icon assets
-        // icon: '/icons/call-decline.png',
       },
     ];
   } else if (type === 'message') {
@@ -227,10 +225,14 @@ function getNotificationActions(type) {
  * @returns {string} Notification tag
  */
 function getNotificationTag(data) {
-  if (data?.type === 'call' && data?.notificationId) {
+  if (isIncomingCallType(data?.type) && data?.notificationId) {
     return `call_${data.notificationId}`;
-  } else if (data?.type === 'call' && data?.roomId) {
+  } else if (isIncomingCallType(data?.type) && data?.roomId) {
     return `call_${data.roomId}`;
+  } else if (data?.type === 'missed_call' && data?.notificationId) {
+    return `missed_call_${data.notificationId}`;
+  } else if (data?.type === 'missed_call' && data?.callerId) {
+    return `missed_call_${data.callerId}`;
   } else if (data?.type === 'message' && data?.senderId) {
     return `message_${data.senderId}`;
   }
@@ -275,8 +277,10 @@ async function handleNotificationClick(data, action) {
   const { type, roomId, senderId } = data || {};
 
   try {
-    if (type === 'call') {
+    if (isIncomingCallType(type)) {
       await handleCallNotificationClick(roomId, action);
+    } else if (type === 'missed_call') {
+      await handleMissedCallNotificationClick();
     } else if (type === 'message') {
       await handleMessageNotificationClick(senderId);
     } else {
@@ -312,6 +316,10 @@ async function handleCallNotificationClick(roomId, action) {
     // Main notification click - open app with call context
     await openApp(`/?room=${roomId}`);
   }
+}
+
+async function handleMissedCallNotificationClick() {
+  await openApp();
 }
 
 /**

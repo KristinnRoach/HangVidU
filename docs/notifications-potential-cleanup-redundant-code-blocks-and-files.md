@@ -94,19 +94,22 @@ Current examples that are intentionally still present for now:
 
 These are deferred cleanup items, not signals that they should become part of the long-term production surface.
 
-## 5. Subscription Ownership Enforcement Still Has One Major Scalability Risk
+## 5. Subscription Ownership Enforcement Is Better, But Legacy Fallback Still Exists
 
-The current exclusive-ownership hardening for push subscriptions is correct for the current verification slice, but the implementation still has one major cost profile issue: registration can scan the entire `users` tree to remove a duplicated subscription from other users.
+The previous major scalability issue was that registration could scan the entire `users` tree to remove a duplicated subscription from other users.
+
+That is no longer the primary path. The code now maintains a direct `pushSubscriptionOwners/{subscriptionId}` ownership index and uses that for normal re-assignment.
 
 Why it matters:
 
-- This is acceptable while validating the new Web Push path.
-- It should not be treated as the durable end-state if the user base grows.
-- This is the main still-valid major issue to carry into the next architecture/API pass.
+- This is a meaningful improvement and removes the full-tree scan from the normal path.
+- A legacy full-user scan still exists as a fallback for older subscriptions that do not yet have an ownership index entry.
+- The next pass should decide whether to keep that fallback temporarily, migrate old data, or remove it once the data model is fully settled.
 
 Likely cleanup direction:
 
-- replace full-tree scans with a more direct ownership/indexed model once the final notification structure is settled
+- keep the ownership index model
+- remove or retire the legacy full-scan fallback once the migration strategy is clear
 - revisit TTL policy only after the final notification shape / types / schema are defined and validated
 
 ## Recommended Cleanup Order
@@ -114,6 +117,6 @@ Likely cleanup direction:
 1. Decide the final production notification architecture for background notification vs foreground incoming-call UX.
 2. Remove temporary debug hooks and extra logging.
 3. Keep the subscription ownership hardening and unique per-attempt call notification identity.
-4. Replace the current full-tree subscription ownership scan with a more direct ownership/indexed approach.
+4. Decide how to retire the legacy full-tree ownership fallback once the migration path is clear.
 5. Add regression tests once the notification structure is stable enough that the tests will not churn with the refactor.
 6. Update docs so the repository has one clear notification story.

@@ -154,6 +154,12 @@ describe('PushNotificationController', () => {
         body: expect.stringContaining('"targetUserId":"target-user"'),
       }),
     );
+    expect(fetch).toHaveBeenLastCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        body: expect.stringContaining('"type":"incoming_call"'),
+      }),
+    );
   });
 
   it('sends debug call notifications through the debug endpoint', async () => {
@@ -199,16 +205,41 @@ describe('PushNotificationController', () => {
     );
   });
 
+  it('sends missed call notifications with explicit missed_call type', async () => {
+    await controller.initialize();
+
+    const result = await controller.sendMissedCallNotification('target-user', {
+      roomId: 'room-2',
+      callerId: 'caller-1',
+      callerName: 'Caller Name',
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        status: 200,
+        targetUserId: 'target-user',
+        roomId: 'room-2',
+      }),
+    );
+    expect(fetch).toHaveBeenLastCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        body: expect.stringContaining('"type":"missed_call"'),
+      }),
+    );
+  });
+
   it('dismisses call notifications by service worker tag', async () => {
     const close = vi.fn();
     registration.getNotifications.mockResolvedValue([
       {
         close,
-        data: { type: 'call', roomId: 'room-42' },
+        data: { type: 'incoming_call', roomId: 'room-42' },
       },
       {
         close: vi.fn(),
-        data: { type: 'call', roomId: 'room-other' },
+        data: { type: 'incoming_call', roomId: 'room-other' },
       },
     ]);
 

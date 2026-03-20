@@ -6,6 +6,17 @@ import { getLoggedInUserToken } from '../auth/index.js';
 
 const FUNCTION_REGION = 'europe-west1';
 
+function normalizeCallNotificationType(type) {
+  if (!type || type === 'call') {
+    return 'incoming_call';
+  }
+  return type;
+}
+
+function isIncomingCallType(type) {
+  return type === 'incoming_call' || type === 'call';
+}
+
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -207,14 +218,19 @@ export class PushNotificationController {
     try {
       await this.syncDebugIdentityToServiceWorker();
       const payload = await this.formatCallNotification(callData);
-      this.logPushSendDiagnostics('call', targetUserId, callData, payload);
+      this.logPushSendDiagnostics(
+        'incoming_call',
+        targetUserId,
+        callData,
+        payload,
+      );
       const response = await this.callFunction('sendCallNotification', {
         targetUserId,
         callData: payload,
       });
 
       this.trackNotification(`call_${payload.roomId}`, {
-        type: 'call',
+        type: 'incoming_call',
         roomId: payload.roomId,
         notificationId: payload.notificationId,
         targetUserId,
@@ -311,7 +327,7 @@ export class PushNotificationController {
         roomId: `debug-${Date.now()}`,
         callerId: getLoggedInUserId() || 'debug-caller',
         callerName: 'Debug Caller',
-        type: 'call',
+        type: 'incoming_call',
       };
       const payload = await this.formatCallNotification({
         ...defaults,
@@ -345,7 +361,7 @@ export class PushNotificationController {
       roomId: `debug-${Date.now()}`,
       callerId: uid || getLoggedInUserId() || 'debug-caller',
       callerName: displayName || 'Debug Caller',
-      type: 'call',
+      type: 'incoming_call',
     };
 
     return this.sendCallNotification(targetUserId, {
@@ -368,7 +384,7 @@ export class PushNotificationController {
     notifications
       .filter(
         (notification) =>
-          notification?.data?.type === 'call' &&
+          isIncomingCallType(notification?.data?.type) &&
           notification?.data?.roomId === roomId,
       )
       .forEach((notification) => notification.close());
@@ -463,7 +479,13 @@ export class PushNotificationController {
   }
 
   async formatCallNotification(callData) {
-    const { roomId, callerId, callerName, type = 'call' } = callData;
+    const {
+      roomId,
+      callerId,
+      callerName,
+      type: rawType = 'incoming_call',
+    } = callData;
+    const type = normalizeCallNotificationType(rawType);
 
     let displayName = callerName || callerId || 'Unknown caller';
 
@@ -578,7 +600,7 @@ export class PushNotificationController {
       formattedPayload: payload,
       payloadKeys: Object.keys(payload || {}),
       derivedNotificationTag:
-        payload?.type === 'call' && payload?.notificationId
+        isIncomingCallType(payload?.type) && payload?.notificationId
           ? `call_${payload.notificationId}`
           : null,
       payloadNotificationId: payload?.notificationId ?? null,

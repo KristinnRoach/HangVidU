@@ -70,14 +70,20 @@ function buildPushTopic(notificationId) {
     .slice(0, 32);
 }
 
-async function enforceExclusiveSubscriptionOwnership(
-  db,
-  currentUid,
-  subscriptionId,
-) {
+function normalizeCallNotificationType(type) {
+  if (!type || type === 'call') {
+    return 'incoming_call';
+  }
+  return type;
+}
+
+function isIncomingCallType(type) {
+  return type === 'incoming_call' || type === 'call';
+}
+
+async function findLegacySubscriptionOwners(db, currentUid, subscriptionId) {
   const usersSnapshot = await db.ref('users').once('value');
-  const updates = {};
-  const removedFromUserIds = [];
+  const ownerUserIds = [];
 
   usersSnapshot.forEach((userSnapshot) => {
     const uid = userSnapshot.key;
@@ -86,25 +92,48 @@ async function enforceExclusiveSubscriptionOwnership(
     }
 
     if (userSnapshot.child(`pushSubscriptions/${subscriptionId}`).exists()) {
-      updates[`users/${uid}/pushSubscriptions/${subscriptionId}`] = null;
-      removedFromUserIds.push(uid);
+      ownerUserIds.push(uid);
     }
   });
 
-  if (Object.keys(updates).length > 0) {
-    await db.ref().update(updates);
-    console.warn('[Push] Reassigned subscription ownership', {
-      subscriptionKey: maskSubscriptionKey(subscriptionId),
-      claimedByUserId: currentUid,
-      removedFromUserIds,
+  return ownerUserIds;
+}
+
+async function getExclusiveSubscriptionOwnershipUpdates(
+  db,
+  currentUid,
+  subscriptionId,
+) {
+  const indexedOwnerSnapshot = await db
+    .ref(`pushSubscriptionOwners/${subscriptionId}`)
+    .once('value');
+  const indexedOwnerUid = indexedOwnerSnapshot.val();
+  const updates = {
+    [`pushSubscriptionOwners/${subscriptionId}`]: currentUid,
+  };
+  const removedFromUserIds = [];
+
+  if (indexedOwnerUid && indexedOwnerUid !== currentUid) {
+    updates[`users/${indexedOwnerUid}/pushSubscriptions/${subscriptionId}`] =
+      null;
+    removedFromUserIds.push(indexedOwnerUid);
+  } else if (!indexedOwnerUid) {
+    const legacyOwnerUserIds = await findLegacySubscriptionOwners(
+      db,
+      currentUid,
+      subscriptionId,
+    );
+    legacyOwnerUserIds.forEach((uid) => {
+      updates[`users/${uid}/pushSubscriptions/${subscriptionId}`] = null;
+      removedFromUserIds.push(uid);
     });
   }
 
-  return removedFromUserIds;
+  return { updates, removedFromUserIds };
 }
 
 function buildCallPayload(callData = {}) {
-  const type = callData.type || 'call';
+  const type = normalizeCallNotificationType(callData.type);
   const notificationId =
     callData.notificationId ||
     `${callData.roomId || 'call'}-${Date.now()}-${Math.random()
@@ -114,8 +143,7 @@ function buildCallPayload(callData = {}) {
     type === 'missed_call'
       ? `Missed call from ${callData.callerName || 'Someone'}`
       : `Incoming call from ${callData.callerName || 'Someone'}`;
-  const body =
-    type === 'missed_call' ? 'Tap to call back' : 'Tap to answer or decline';
+  const body = type === 'missed_call' ? 'Tap to call back' : 'Tap to answer';
 
   return {
     title,
@@ -194,9 +222,10 @@ async function sendWebPushToUser(userId, payload) {
       try {
         await webpush.sendNotification(value.subscription, payloadJson, {
           TTL: 60,
-          urgency: payload.data?.type === 'call' ? 'high' : 'normal',
+          urgency: isIncomingCallType(payload.data?.type) ? 'high' : 'normal',
           topic:
-            payload.data?.type === 'call' && payload.data?.notificationId
+            isIncomingCallType(payload.data?.type) &&
+            payload.data?.notificationId
               ? buildPushTopic(payload.data.notificationId)
               : undefined,
         });
@@ -291,19 +320,27 @@ exports.registerPushSubscription = onRequest(
       const subscriptionId = getSubscriptionId(subscription.endpoint);
       const now = Date.now();
       const db = getDatabase();
+      const { updates, removedFromUserIds } =
+        await getExclusiveSubscriptionOwnershipUpdates(db, uid, subscriptionId);
 
-      await enforceExclusiveSubscriptionOwnership(db, uid, subscriptionId);
+      updates[`users/${uid}/pushSubscriptions/${subscriptionId}`] = {
+        subscription,
+        endpoint: subscription.endpoint,
+        keys: subscription.keys,
+        createdAt: now,
+        lastUsed: now,
+        deviceInfo,
+      };
 
-      await db
-        .ref(`users/${uid}/pushSubscriptions/${subscriptionId}`)
-        .set({
-          subscription,
-          endpoint: subscription.endpoint,
-          keys: subscription.keys,
-          createdAt: now,
-          lastUsed: now,
-          deviceInfo,
+      await db.ref().update(updates);
+
+      if (removedFromUserIds.length > 0) {
+        console.warn('[Push] Reassigned subscription ownership', {
+          subscriptionKey: maskSubscriptionKey(subscriptionId),
+          claimedByUserId: uid,
+          removedFromUserIds,
         });
+      }
 
       return res.json({ success: true, subscriptionId });
     } catch (error) {
@@ -333,9 +370,19 @@ exports.removePushSubscription = onRequest(
       }
 
       const subscriptionId = getSubscriptionId(endpoint);
-      await getDatabase()
-        .ref(`users/${uid}/pushSubscriptions/${subscriptionId}`)
-        .remove();
+      const db = getDatabase();
+      const indexedOwnerSnapshot = await db
+        .ref(`pushSubscriptionOwners/${subscriptionId}`)
+        .once('value');
+      const updates = {
+        [`users/${uid}/pushSubscriptions/${subscriptionId}`]: null,
+      };
+
+      if (indexedOwnerSnapshot.val() === uid) {
+        updates[`pushSubscriptionOwners/${subscriptionId}`] = null;
+      }
+
+      await db.ref().update(updates);
 
       return res.json({ success: true });
     } catch (error) {

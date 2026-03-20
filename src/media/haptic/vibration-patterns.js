@@ -15,7 +15,9 @@
  */
 
 export const VIBRATION_PATTERNS = {
+  incoming_call: [200, 100, 200, 100, 200], // Urgent: triple pulse for incoming calls
   call: [200, 100, 200, 100, 200], // Urgent: triple pulse for incoming calls
+  missed_call: [200, 100, 200], // Noticeable, but less urgent than an active incoming call
   message: [200], // Single short pulse for messages
   default: [200], // Single short pulse (fallback)
 };
