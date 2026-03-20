@@ -32,6 +32,8 @@ Latest checkpoint status:
 - backend push logic has now been split under `functions/push-notifications/*`
 - [functions/index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js) is now Firebase export wiring only
 - legacy `call` compatibility has now been removed from backend/shared runtime paths so canonical push payloads are `incoming_call`, `missed_call`, and `message`
+- when the app already has a visible focused window, the service worker now suppresses native push notification display instead of showing a system notification
+- temporary push payload / identity diagnostics have now been removed from production push paths so only failure-path logs remain
 
 ## Fresh Context Start Here
 
@@ -64,6 +66,7 @@ If starting from a fresh session, assume the following is already true:
 - backend push logic is now split under [functions/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/push-notifications), while [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js) only wires Firebase exports.
 - [sw.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/sw.js) is now a thin service-worker entrypoint that wires push handling into internal modules under [src/push-notifications/sw](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/sw).
 - when the app is already open, the service worker now posts a `NAVIGATE` message back into the app so notification taps still route into the intended room/contact.
+- when the app already has a visible focused window client, the service worker now ignores the incoming push for display purposes instead of showing a native notification.
 - missed-call notification taps now route to the caller contact first, with room fallback only if caller identity is unavailable.
 - canonical shared push contracts now exist in [shared/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/shared/push-notifications), with [schema.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/schema.js) currently acting as a compatibility re-export layer
 
@@ -83,7 +86,6 @@ Verified manually on the deployed site:
 ### What is implemented but still provisional
 
 - the contacts list still includes a temporary debug button for sending a targeted call push
-- temporary sender-side, backend, and service-worker diagnostics are still present
 - `window.pushNotificationController` is still exposed for manual testing
 - subscription ownership now uses a `pushSubscriptionOwners/{subscriptionId}` index, with a legacy full-user scan fallback only when an older subscription has not yet been indexed
 - the legacy ownership fallback was reviewed during the backend split and intentionally left in place for now because removing it cleanly likely needs a deliberate migration or data-state decision
@@ -93,6 +95,7 @@ Verified manually on the deployed site:
 - [push-notification-controller.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/push-notification-controller.js) has no real client-side `sendMessageNotification()` implementation; message pushes currently bypass that controller and are sent only from the backend RTDB trigger
 - incoming call notifications no longer expose a `decline` action; tapping the notification opens the app into the answer/join path
 - the service worker reuse path currently focuses `clients[0]`, which is acceptable for verification but is not a strong multi-tab ownership model
+- the current foreground behavior is intentionally simple: when a push arrives and the app already has a visible focused window, native notification display is skipped rather than being translated into a separate in-app foreground-notification UX
 
 ## Very Important Separation
 
@@ -193,18 +196,17 @@ The original “real incoming call notification does not display” problem is n
 Latest verified findings:
 
 - the real outgoing call flow in [main.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/main.js) does reach `sendCallNotification()` on call start
-- sender-side logs now include local user identity, target user identity, payload shape, and backend delivery result
-- receiver-side logs now include local service-worker identity and intended target user identity
 - a stale cross-user subscription bug was confirmed: one of user A's browser subscriptions was stored under user B's `pushSubscriptions`
 - backend registration has now been hardened so a subscription endpoint is removed from other users before being registered to the current authenticated user
 - after removing stale subscriptions and re-registering cleanly, cross-user delivery stopped reproducing
 - subscription registration now uses a direct ownership index for normal cleanup and only falls back to the old full-user scan for legacy unindexed subscriptions
-- on the receiving device, the service worker logs `Web push received` for the real incoming call
 - the debug button next to a contact reliably shows an incoming call notification on the target device
 - missed call notifications still appear reliably
 - the real incoming-call display failure was ultimately fixed by giving each call push a unique notification identity per attempt instead of reusing the stable room-based identity
 - the first topic-based version of that fix failed because Web Push topics must be at most 32 URL-safe characters; hashing the notification identity down to a valid topic resolved that
 - real incoming call pushes now succeed again with `successCount: 1` and `failureCount: 0` in the current clean test state
+- when the app is already visible and focused, message, incoming-call, and missed-call pushes are still received by the service worker but native notification display is intentionally suppressed
+- production push logs were reviewed and reduced so payload contents, user identity, room IDs, and notification metadata are no longer emitted on successful paths
 
 ## What Was Actually Wrong
 
@@ -226,8 +228,7 @@ Current automated coverage around this slice:
 
 - [schema.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/__tests__/schema.test.js): shared push-schema coverage, including canonical vs legacy-compatible payload handling
 - [push-notification-controller.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/__tests__/push-notification-controller.test.js): unit coverage for permission flow, register/unregister, direct call send, debug send, and dismiss behavior
-- [notification-presentation.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/sw/__tests__/notification-presentation.test.js): focused service-worker push presentation coverage for tags, actions, and canonical call handling
-- [notification-click-handler.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/sw/__tests__/notification-click-handler.test.js): focused service-worker click-routing coverage for `incoming_call`, `missed_call`, and `message`
+- [push-event-handler.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/__tests__/push-event-handler.test.js): service-worker push handling coverage for focused-foreground suppression vs native notification display
 - [call-contact-push-notification.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/tests/integration/call-contact-push-notification.test.js): integration coverage proving `callContact()` attempts the push immediately on successful call start
 - [service-worker-sanity.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/tests/smoke/service-worker-sanity.test.js): environment/configuration sanity checks
 - [service-worker-registration.spec.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/tests/e2e/service-worker-registration.spec.js): service worker registration/scope/control checks
@@ -244,7 +245,7 @@ Recommended next step now:
 
 1. continue the refactor from `codex/push-notifications-refactor`, not from the checkpoint branch
 2. continue migrating app imports and responsibilities toward the new push-specific structure
-3. remove temporary debug hooks and logs or dev-gate them
+3. remove temporary debug hooks that are still user-visible, such as the targeted debug call button, while keeping production push logging failure-only
 4. keep the legacy ownership fallback unchanged unless that work also includes an explicit migration or cleanup decision
 5. add regression tests after the backend structure is settled enough that the tests will not churn with the refactor
 

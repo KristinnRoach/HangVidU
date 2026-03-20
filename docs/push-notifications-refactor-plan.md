@@ -40,11 +40,13 @@ Already completed and verified:
 - missed-call notification taps now route to caller context first instead of dropping into the empty-room share-link path
 - backend push logic now lives under [functions/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/push-notifications), with [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js) reduced to export wiring
 - the backend push modules now have minimal inline JSDoc plus a minimal [README.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/README.md) for orientation
+- the service worker now suppresses native notification display when a push arrives while the app already has a visible focused window client
+- sender-side and service-worker push diagnostics were removed from production success paths so only failure-path logs remain
 
 Immediate next implementation slices:
 
 1. continue migrating app imports and responsibilities toward the new structure
-2. remove or dev-gate temporary debug push hooks
+2. remove or dev-gate the remaining temporary debug push hooks
 3. revisit the legacy ownership fallback only if that slice includes a deliberate migration or cleanup decision
 4. add regression coverage once the remaining structure churn settles
 
@@ -107,7 +109,6 @@ src/
     subscription-client.js
     delivery-client.js
     function-client.js
-    debug-identity-client.js
     navigation-message-client.js
     __tests__/
 
@@ -115,8 +116,6 @@ src/
     push-event-handler.js
     notification-click-handler.js
     notification-presentation.js
-    push-debug-identity-store.js
-    service-worker-message-handler.js
 
   pwa/sw/
     workbox-runtime.js
@@ -182,11 +181,6 @@ functions/
 
 - authenticated HTTP transport to backend functions only
 
-`src/push-notifications/debug-identity-client.js`
-
-- temporary debug identity sync only
-- should remain isolated so it can be removed easily later
-
 `src/push-notifications/navigation-message-client.js`
 
 - app-side handling of service worker navigation messages only
@@ -203,9 +197,9 @@ functions/
 
 - push-specific service worker behavior only
 - parsing incoming push payloads
+- suppression of native notification display when an app client is already visible and focused
 - notification presentation
 - notification click handling
-- push-related message handling
 
 `src/pwa/sw/*`
 
@@ -233,6 +227,7 @@ functions/
 - shared contracts may be imported by app internals, backend internals, and tests
 - message send ownership remains backend-driven unless intentionally changed later
 - call send ownership remains app-driven through the stable push facade
+- successful production push paths should not log payload contents, user identity, room IDs, or notification metadata
 - future APN/FCM support should arrive as additional delivery adapters behind the same canonical contracts, not as new public APIs
 
 ## Naming Rules

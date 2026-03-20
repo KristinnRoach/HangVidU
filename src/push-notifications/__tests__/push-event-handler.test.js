@@ -1,12 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../sw/push-debug-identity-store.js', () => ({
-  readPushDebugIdentity: vi.fn().mockResolvedValue({
-    userId: 'local-user',
-    displayName: 'Local User',
-  }),
-}));
-
 vi.mock('../sw/notification-presentation.js', () => ({
   buildNotificationPresentation: vi.fn(() => ({
     title: 'Incoming call',
@@ -30,18 +23,15 @@ import { handlePushEvent } from '../sw/push-event-handler.js';
 
 describe('handlePushEvent', () => {
   let showNotification;
-  let getNotifications;
   let matchAll;
 
   beforeEach(() => {
     showNotification = vi.fn().mockResolvedValue(undefined);
-    getNotifications = vi.fn().mockResolvedValue([]);
     matchAll = vi.fn().mockResolvedValue([]);
 
     globalThis.self = {
       registration: {
         showNotification,
-        getNotifications,
       },
       clients: {
         matchAll,
@@ -79,7 +69,6 @@ describe('handlePushEvent', () => {
       includeUncontrolled: true,
     });
     expect(showNotification).not.toHaveBeenCalled();
-    expect(getNotifications).not.toHaveBeenCalled();
   });
 
   it('shows the native notification when no focused visible app client exists', async () => {
@@ -113,8 +102,5 @@ describe('handlePushEvent', () => {
         tag: 'call_room-1',
       }),
     );
-    expect(getNotifications).toHaveBeenCalledWith({
-      tag: 'call_room-1',
-    });
   });
 });

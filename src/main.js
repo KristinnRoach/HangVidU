@@ -577,28 +577,14 @@ export async function callContact(contactId, contactName, roomId = null) {
     try {
       const me = getUser();
       const callerName = me?.displayName || me?.email || myUserId;
-      console.log('[CALL] Reached call-start push notification send', {
-        contactId,
-        roomId,
-      });
-
       const pushResult = await getPushNotifications().sendIncomingCall({
         targetUserId: contactId,
         roomId,
         callerId: myUserId,
         callerName,
       });
-      console.log('[CALL] Call-start push notification result', {
-        contactId,
-        roomId,
-        pushResult,
-      });
       if (!pushResult?.ok) {
-        console.warn('[CALL] Call-start push notification did not succeed', {
-          contactId,
-          roomId,
-          pushResult,
-        });
+        console.warn('[CALL] Call-start push notification did not succeed');
       }
     } catch (error) {
       console.warn('[CALL] Failed to send push notification:', error);

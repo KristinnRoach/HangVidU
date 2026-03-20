@@ -12,7 +12,6 @@ import {
 } from './file-transfer/sw-video-handler.js';
 import { handlePushEvent } from './push-notifications/sw/push-event-handler.js';
 import { handleNotificationClickEvent } from './push-notifications/sw/notification-click-handler.js';
-import { handlePushServiceWorkerMessage } from './push-notifications/sw/service-worker-message-handler.js';
 
 // ============================================================================
 // WORKBOX PWA FUNCTIONALITY
@@ -77,10 +76,6 @@ self.addEventListener('message', (event) => {
         version: '1.0.0',
         timestamp: Date.now(),
       });
-      break;
-
-    case 'SYNC_PUSH_DEBUG_IDENTITY':
-      handlePushServiceWorkerMessage(event);
       break;
 
     case 'REGISTER_VIDEO':

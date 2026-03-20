@@ -57,7 +57,6 @@ export class PushNotifications {
     }
 
     this.permissionState = this.getPermissionState();
-    await this.syncDebugIdentityToServiceWorker();
     console.log('[Push Notifications] Initialized');
     return true;
   }
@@ -190,7 +189,6 @@ export class PushNotifications {
     }
 
     try {
-      await this.syncDebugIdentityToServiceWorker();
       this.subscription = await this.ensureSubscription();
       this.isEnabled = true;
       this.notifyPermissionCallbacks('enabled');
@@ -265,14 +263,7 @@ export class PushNotifications {
     }
 
     try {
-      await this.syncDebugIdentityToServiceWorker();
       const payload = await this.formatCallNotification(notificationData);
-      this.logPushSendDiagnostics(
-        'incoming_call',
-        targetUserId,
-        notificationData,
-        payload,
-      );
       const response = await this.callFunction('sendCallNotification', {
         targetUserId,
         callData: payload,
@@ -284,11 +275,6 @@ export class PushNotifications {
         notificationId: payload.notificationId,
         targetUserId,
       });
-
-      console.log(
-        `[Push Notifications] Call notification sent to ${targetUserId}`,
-        response,
-      );
       return {
         ok: true,
         status: response.status,
@@ -329,26 +315,14 @@ export class PushNotifications {
     }
 
     try {
-      await this.syncDebugIdentityToServiceWorker();
       const payload = await this.formatCallNotification({
         ...notificationData,
         type: 'missed_call',
       });
-      this.logPushSendDiagnostics(
-        'missed_call',
-        targetUserId,
-        notificationData,
-        payload,
-      );
       const response = await this.callFunction('sendCallNotification', {
         targetUserId,
         callData: payload,
       });
-
-      console.log(
-        `[Push Notifications] Missed call notification sent to ${targetUserId}`,
-        response,
-      );
       return {
         ok: true,
         status: response.status,
@@ -641,73 +615,6 @@ export class PushNotifications {
     }
 
     return registration;
-  }
-
-  logPushSendDiagnostics(notificationKind, targetUserId, rawCallData, payload) {
-    console.log('[Push Notifications] Push send diagnostics', {
-      localUser: this.getLocalDebugIdentity(),
-      notificationKind,
-      targetUserId,
-      rawCallData,
-      formattedPayload: payload,
-      payloadKeys: Object.keys(payload || {}),
-      derivedNotificationTag:
-        isIncomingCallType(payload?.type) && payload?.notificationId
-          ? `call_${payload.notificationId}`
-          : null,
-      payloadNotificationId: payload?.notificationId ?? null,
-      hasRoomId: Boolean(payload?.roomId),
-      hasCallerId: Boolean(payload?.callerId),
-      hasCallerName: Boolean(payload?.callerName),
-      payloadType: payload?.type ?? null,
-      typeMatchesExpected: payload?.type === notificationKind,
-    });
-  }
-
-  getLocalDebugIdentity() {
-    const user = getUser?.() || {};
-    const userId = user.uid || getLoggedInUserId?.() || null;
-    return {
-      userId,
-      displayName: user.displayName || user.email || userId || 'unknown-user',
-    };
-  }
-
-  async syncDebugIdentityToServiceWorker() {
-    if (!('serviceWorker' in navigator)) {
-      return;
-    }
-
-    const identity = this.getLocalDebugIdentity();
-    if (!identity.userId && !identity.displayName) {
-      return;
-    }
-
-    try {
-      const registration = await navigator.serviceWorker.getRegistration();
-      const messenger =
-        registration?.active ||
-        registration?.waiting ||
-        registration?.installing ||
-        navigator.serviceWorker.controller;
-
-      if (!messenger?.postMessage) {
-        return;
-      }
-
-      messenger.postMessage({
-        type: 'SYNC_PUSH_DEBUG_IDENTITY',
-        data: {
-          ...identity,
-          syncedAt: Date.now(),
-        },
-      });
-    } catch (error) {
-      console.warn(
-        '[Push Notifications] Failed to sync debug identity to service worker:',
-        error,
-      );
-    }
   }
 
   trackNotification(tag, data) {
