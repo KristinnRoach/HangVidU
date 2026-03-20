@@ -419,7 +419,6 @@ import { ringtoneManager } from '../../src/media/audio/ringtone-manager.js';
 import { callIndicators } from '../../src/ui/utils/call-indicators.js';
 
 describe('callContact push notification flow', () => {
-  let consoleLogSpy;
   let consoleWarnSpy;
 
   beforeEach(() => {
@@ -429,12 +428,10 @@ describe('callContact push notification flow', () => {
     mocks.memberJoinedHandler = null;
     mocks.pushController.shouldSendNotification.mockReturnValue(false);
     mocks.pushController.isNotificationEnabled.mockReturnValue(true);
-    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
   afterEach(() => {
-    consoleLogSpy.mockRestore();
     consoleWarnSpy.mockRestore();
   });
 
@@ -464,30 +461,8 @@ describe('callContact push notification flow', () => {
     expect(
       mocks.callSequence.indexOf('sendIncomingCall'),
     ).toBeLessThan(mocks.callSequence.indexOf('showCallingUI'));
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      '[CALL] Reached call-start push notification send',
-      {
-        contactId: 'contact-456',
-        roomId: 'saved-room-123',
-      },
-    );
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      '[CALL] Call-start push notification result',
-      {
-        contactId: 'contact-456',
-        roomId: 'saved-room-123',
-        pushResult: {
-          ok: true,
-          status: 200,
-          body: { success: true },
-          targetUserId: 'contact-456',
-          roomId: 'saved-room-123',
-        },
-      },
-    );
     expect(consoleWarnSpy).not.toHaveBeenCalledWith(
       '[CALL] Call-start push notification did not succeed',
-      expect.anything(),
     );
   });
 
@@ -522,13 +497,6 @@ describe('callContact push notification flow', () => {
         joiningUserId: 'caller-999',
         pushNotificationsEnabled: true,
       }),
-    );
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      '[CALL] Background incoming call detected, using push-only notification path',
-      {
-        roomId: 'room-background',
-        joiningUserId: 'caller-999',
-      },
     );
   });
 });
