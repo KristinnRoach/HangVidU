@@ -1,8 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 
 // Mock dependencies so the module can load — only t() matters for getBlockedMessage
-vi.mock('../../../../notifications/push-notification-controller.js', () => ({
-  getPushNotificationController: vi.fn(() => ({})),
+vi.mock('../../../../push-notifications/index.js', () => ({
+  getPushNotifications: vi.fn(() => ({})),
+  pushNotifications: {},
 }));
 vi.mock('./notification.js', () => ({
   createNotification: vi.fn(),

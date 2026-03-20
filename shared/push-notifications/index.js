@@ -1,24 +1,21 @@
-export * from '../../shared/push-notifications/index.js';
-
-export {
-  PushNotificationPayloadSchema,
-  CanonicalPushNotificationDataSchema,
-  RuntimePushNotificationDataSchema,
-  RegisterPushSubscriptionRequestSchema,
-  SendCallNotificationRequestSchema,
-  PushSubscriptionRecordSchema,
-  ServiceWorkerNavigateMessageSchema,
-} from '../../shared/push-notifications/index.js';
+export * from './notification-types.js';
+export * from './notification-schemas.js';
+export * from './request-schemas.js';
+export * from './response-schemas.js';
+export * from './storage-schemas.js';
+export * from './service-worker-message-schemas.js';
 
 import {
   PushNotificationPayloadSchema,
   CanonicalPushNotificationDataSchema,
   RuntimePushNotificationDataSchema,
+} from './notification-schemas.js';
+import {
   RegisterPushSubscriptionRequestSchema,
   SendCallNotificationRequestSchema,
-  PushSubscriptionRecordSchema,
-  ServiceWorkerNavigateMessageSchema,
-} from '../../shared/push-notifications/index.js';
+} from './request-schemas.js';
+import { PushSubscriptionRecordSchema } from './storage-schemas.js';
+import { ServiceWorkerNavigateMessageSchema } from './service-worker-message-schemas.js';
 
 export const parsePushNotificationPayload = (data) =>
   PushNotificationPayloadSchema.parse(data);

@@ -134,8 +134,9 @@ vi.mock('../../src/ui/components/notifications/in-app-notification-manager.js', 
   },
 }));
 
-vi.mock('../../src/notifications/push-notification-controller.js', () => ({
-  getPushNotificationController: vi.fn(() => mocks.pushController),
+vi.mock('../../src/push-notifications/index.js', () => ({
+  getPushNotifications: vi.fn(() => mocks.pushController),
+  pushNotifications: mocks.pushController,
 }));
 
 vi.mock('../../src/webrtc/call-controller.js', () => ({

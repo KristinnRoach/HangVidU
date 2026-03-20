@@ -24,7 +24,7 @@ import {
 
 // TODO: inAppNotificationManager VS pushNotificationController - Compare and clarify distinction - separate concerns
 import { inAppNotificationManager } from './ui/components/notifications/in-app-notification-manager.js';
-import { getPushNotificationController } from './notifications/push-notification-controller.js';
+import { getPushNotifications } from './push-notifications/index.js';
 
 import CallController from './webrtc/call-controller.js';
 import { messagingController } from './messaging/messaging-controller.js';
@@ -294,10 +294,10 @@ async function init() {
 
     // Initialize push notifications
     try {
-      const pushController = getPushNotificationController();
+      const pushController = getPushNotifications();
 
       // ! TEMP DEBUG: Expose pushNotificationController to window for testing
-      window.pushNotificationController = getPushNotificationController();
+      window.pushNotificationController = getPushNotifications();
 
       const pushInitialized = await pushController.initialize();
       if (pushInitialized) {
@@ -311,7 +311,7 @@ async function init() {
       } else {
         console.warn('[MAIN] Push notifications failed to initialize');
 
-        if (!getPushNotificationController().isNotificationSupported()) {
+        if (!getPushNotifications().isNotificationSupported()) {
           const { showPushUnsupportedNotification } =
             await import('./ui/components/notifications/push-unsupported-notification.js');
           showPushUnsupportedNotification();
@@ -583,7 +583,7 @@ export async function callContact(contactId, contactName, roomId = null) {
       });
 
       const pushResult =
-        await getPushNotificationController().sendCallNotification(contactId, {
+        await getPushNotifications().sendCallNotification(contactId, {
           roomId,
           callerId: myUserId,
           callerName,
@@ -856,7 +856,7 @@ export function listenForIncomingOnRoom(roomId) {
           },
         );
 
-        const pushController = getPushNotificationController();
+        const pushController = getPushNotifications();
         const usePushOnlyForBackgroundCall =
           !!pushController?.isNotificationEnabled?.() &&
           !!pushController?.shouldSendNotification?.();
@@ -949,7 +949,7 @@ export function listenForIncomingOnRoom(roomId) {
           removeIncomingListenersForRoom(roomId);
 
           // Dismiss any call notifications for this room
-          const pushNotificationController = getPushNotificationController?.();
+          const pushNotificationController = getPushNotifications?.();
           if (pushNotificationController?.isNotificationEnabled()) {
             await pushNotificationController
               .dismissCallNotifications(roomId)
@@ -1014,7 +1014,7 @@ export function listenForIncomingOnRoom(roomId) {
           devDebug('Incoming call rejected by user');
 
           // Dismiss any call notifications for this room
-          const pushNotificationController = getPushNotificationController?.();
+          const pushNotificationController = getPushNotifications?.();
           if (pushNotificationController?.isNotificationEnabled()) {
             await pushNotificationController
               .dismissCallNotifications(roomId)
@@ -1083,8 +1083,8 @@ export function listenForIncomingOnRoom(roomId) {
 
     // ! Dismiss any call notifications for this room
     try {
-      const pushNotificationController = getPushNotificationController
-        ? getPushNotificationController()
+      const pushNotificationController = getPushNotifications
+        ? getPushNotifications()
         : null;
       if (pushNotificationController?.isNotificationEnabled()) {
         await pushNotificationController
@@ -1473,7 +1473,7 @@ if (isDev() && testNotificationsBtn) {
     try {
       console.log('[TEST] Testing notification permissions...');
 
-      const result = await getPushNotificationController()?.requestPermission({
+      const result = await getPushNotifications()?.requestPermission({
         onGranted: () => {
           console.log('[TEST] Notifications granted!');
           alert('✅ ' + t('status.push_enabled'));
@@ -1497,7 +1497,7 @@ if (isDev() && testNotificationsBtn) {
       console.log('[TEST] Permission result:', result);
 
       // If already enabled, show current status
-      if (getPushNotificationController()?.isNotificationEnabled()) {
+      if (getPushNotifications()?.isNotificationEnabled()) {
         alert('✅ ' + t('status.push_already'));
       }
     } catch (error) {
@@ -1868,7 +1868,7 @@ window.onload = async () => {
         // messagingController.closeAllSessions();
 
         // Disable notifications and unregister the current Web Push subscription
-        await getPushNotificationController()
+        await getPushNotifications()
           ?.disable?.()
           .catch((error) => {
             console.warn(
@@ -1899,7 +1899,7 @@ window.onload = async () => {
         setupInviteListener();
 
         // Enable push notifications if already granted (no prompt without user gesture)
-        const pushController = getPushNotificationController();
+        const pushController = getPushNotifications();
         let notifResult = { state: 'error' };
         if (pushController) {
           notifResult = await pushController.enableIfGranted().catch((e) => {
@@ -1928,7 +1928,7 @@ window.onload = async () => {
         setupInviteListener();
 
         // Enable push notifications if already granted (no prompt without user gesture)
-        const pushController = getPushNotificationController();
+        const pushController = getPushNotifications();
         if (pushController) {
           const notifResult = await pushController
             .enableIfGranted()
@@ -2065,7 +2065,7 @@ CallController.on(
           console.log(
             `[MAIN] Sending missed call push notification to ${contact.contactName} (${contact.contactId})`,
           );
-          await getPushNotificationController()?.sendMissedCallNotification(
+          await getPushNotifications()?.sendMissedCallNotification(
             contact.contactId,
             {
               roomId,
@@ -2105,8 +2105,8 @@ CallController.on(
     }
 
     // Clean up call notifications for this room
-    if (roomId && getPushNotificationController()?.isNotificationEnabled()) {
-      getPushNotificationController()
+    if (roomId && getPushNotifications()?.isNotificationEnabled()) {
+      getPushNotifications()
         .dismissCallNotifications(roomId)
         .catch((error) => {
           console.warn('[MAIN] Failed to dismiss call notifications:', error);

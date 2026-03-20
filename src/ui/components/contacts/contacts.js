@@ -9,7 +9,7 @@ import { escapeHtml } from '../../../ui/component-system/dom-utils.js';
 import { initIcons } from '../../icons.js';
 import { messagingController } from '../../../messaging/messaging-controller.js';
 import { contactsController } from '../../../contacts/contacts-controller.js';
-import { getPushNotificationController } from '../../../notifications/push-notification-controller.js';
+import { getPushNotifications } from '../../../push-notifications/index.js';
 
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
@@ -208,7 +208,7 @@ function attachContactListeners(container, lobbyElement) {
           const contactId = buttonEl.getAttribute('data-contact-id');
           if (!contactId) return;
 
-          const pushNotificationController = getPushNotificationController();
+          const pushNotificationController = getPushNotifications();
           await pushNotificationController.sendDebugCallNotificationToUser(
             contactId,
           );

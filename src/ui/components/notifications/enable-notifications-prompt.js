@@ -2,7 +2,7 @@
 
 import { createNotification, buildTemplate } from './notification.js';
 import { inAppNotificationManager } from './in-app-notification-manager.js';
-import { getPushNotificationController } from '../../../notifications/push-notification-controller.js';
+import { getPushNotifications } from '../../../push-notifications/index.js';
 import {
   showSuccessToast,
   showWarningToast,
@@ -81,7 +81,7 @@ export function showEnableNotificationsPrompt() {
         btn.textContent = t('notification.enable.enabling');
 
         try {
-          const pushController = getPushNotificationController();
+          const pushController = getPushNotifications();
           if (!pushController) {
             showErrorToast(t('notification.enable.unsupported'));
             inAppNotificationManager.remove(NOTIFICATION_ID);
