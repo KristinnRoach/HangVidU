@@ -20,7 +20,7 @@ Current PR:
 
 Latest refactor checkpoint on refactor branch:
 
-- `310c438` - `Start push notifications structure refactor`
+- `faedde6` - `Refactor backend push notification modules`
 
 Latest checkpoint status:
 
@@ -29,6 +29,9 @@ Latest checkpoint status:
 - current understanding is that the refactor branch remains functionally equivalent to the previously working notification flows for the covered scenarios
 - the push-focused `src/sw.js` split has now been completed and manually verified after redeploy
 - missed-call notification tap routing was corrected so it no longer drops into the empty-room "Share this link" path
+- backend push logic has now been split under `functions/push-notifications/*`
+- [functions/index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js) is now Firebase export wiring only
+- legacy `call` compatibility has now been removed from backend/shared runtime paths so canonical push payloads are `incoming_call`, `missed_call`, and `message`
 
 ## Fresh Context Start Here
 
@@ -42,7 +45,7 @@ If starting from a fresh session, assume the following is already true:
 - backend push modules now live under [functions/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/push-notifications), with [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js) reduced to Firebase export wiring
 - the next major slices are still:
   - continue migrating from old notification paths to the new push-specific structure
-  - remove remaining legacy `call` compatibility once the end-to-end backend/app boundary is ready to move together
+  - continue removing remaining legacy compatibility shims outside the backend/shared runtime boundary
 
 ## Current Implementation And Integration Status
 
@@ -83,13 +86,13 @@ Verified manually on the deployed site:
 - temporary sender-side, backend, and service-worker diagnostics are still present
 - `window.pushNotificationController` is still exposed for manual testing
 - subscription ownership now uses a `pushSubscriptionOwners/{subscriptionId}` index, with a legacy full-user scan fallback only when an older subscription has not yet been indexed
+- the legacy ownership fallback was reviewed during the backend split and intentionally left in place for now because removing it cleanly likely needs a deliberate migration or data-state decision
 
 ### What is still incomplete or uneven
 
 - [push-notification-controller.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/push-notification-controller.js) has no real client-side `sendMessageNotification()` implementation; message pushes currently bypass that controller and are sent only from the backend RTDB trigger
 - incoming call notifications no longer expose a `decline` action; tapping the notification opens the app into the answer/join path
 - the service worker reuse path currently focuses `clients[0]`, which is acceptable for verification but is not a strong multi-tab ownership model
-- the backend and shared schemas still carry legacy `call` compatibility that the new service-worker slice no longer needs, so that cleanup should happen as a deliberate end-to-end follow-up
 
 ## Very Important Separation
 
@@ -240,11 +243,16 @@ Do not broaden the scope beyond clarifying API and ownership boundaries for noti
 Recommended next step now:
 
 1. continue the refactor from `codex/push-notifications-refactor`, not from the checkpoint branch
-2. remove remaining legacy `call` compatibility across backend/shared runtime contracts now that the backend split is in place
-3. continue migrating app imports and responsibilities toward the new push-specific structure
-4. remove temporary debug hooks and logs or dev-gate them
-5. decide whether to keep the temporary legacy ownership-scan fallback until after a cleanup/migration pass
-6. add regression tests after the backend structure is settled enough that the tests will not churn with the refactor
+2. continue migrating app imports and responsibilities toward the new push-specific structure
+3. remove temporary debug hooks and logs or dev-gate them
+4. keep the legacy ownership fallback unchanged unless that work also includes an explicit migration or cleanup decision
+5. add regression tests after the backend structure is settled enough that the tests will not churn with the refactor
+
+This is now a clean session boundary:
+
+- the backend split is committed
+- the current shape is documented
+- the next slice can start from app/runtime cleanup without needing unstaged backend-structure context
 
 Use [notifications-potential-cleanup-redundant-code-blocks-and-files.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/docs/notifications-potential-cleanup-redundant-code-blocks-and-files.md) as the source of truth for deferred cleanup items, temporary debug surface, and still-valid follow-up issues.
 

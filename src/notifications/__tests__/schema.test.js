@@ -4,7 +4,6 @@ import {
   parseCanonicalPushNotificationData,
   parsePushNotificationPayload,
   parseRegisterPushSubscriptionRequest,
-  parseRuntimePushNotificationData,
   parseSendCallNotificationRequest,
   parseServiceWorkerNavigateMessage,
 } from '../schema.js';
@@ -29,21 +28,23 @@ describe('notification schemas', () => {
     expect(payload.data.roomId).toBe('room-123');
   });
 
-  it('accepts legacy call runtime payloads for compatibility', () => {
-    const data = parseRuntimePushNotificationData({
-      type: 'call',
-      roomId: 'room-legacy',
-      callerId: 'alice',
-      callerName: 'Alice',
-      targetUserId: 'bob',
-      notificationId: 'notif-legacy',
-      timestamp: '1774025000001',
-    });
+  it('rejects legacy call payloads', () => {
+    expect(() =>
+      parsePushNotificationPayload({
+        title: 'Incoming call from Alice',
+        body: 'Tap to answer',
+        data: {
+          type: 'call',
+          roomId: 'room-legacy',
+          callerId: 'alice',
+          callerName: 'Alice',
+          targetUserId: 'bob',
+          notificationId: 'notif-legacy',
+          timestamp: '1774025000001',
+        },
+      }),
+    ).toThrow();
 
-    expect(data.type).toBe('call');
-  });
-
-  it('rejects legacy call payloads in canonical parsing', () => {
     expect(() =>
       parseCanonicalPushNotificationData({
         type: 'call',

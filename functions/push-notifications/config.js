@@ -11,6 +11,9 @@ if (pushPublicKey && pushPrivateKey) {
   webpush.setVapidDetails(pushContactEmail, pushPublicKey, pushPrivateKey);
 }
 
+/**
+ * Fails fast when the deployed function environment is missing VAPID config.
+ */
 function ensureWebPushConfigured() {
   if (!pushPublicKey || !pushPrivateKey) {
     throw new Error(

@@ -1,5 +1,8 @@
 const crypto = require('node:crypto');
 
+/**
+ * Builds a Web Push-safe topic from a notification identity.
+ */
 function buildPushTopic(notificationId) {
   if (!notificationId) return undefined;
   return crypto
@@ -9,19 +12,29 @@ function buildPushTopic(notificationId) {
     .slice(0, 32);
 }
 
-function normalizeCallNotificationType(type) {
-  if (!type || type === 'call') {
+function resolveCallNotificationType(type) {
+  if (!type) {
     return 'incoming_call';
   }
-  return type;
+
+  if (type === 'incoming_call' || type === 'missed_call') {
+    return type;
+  }
+
+  const error = new Error(`Unsupported call notification type: ${type}`);
+  error.statusCode = 400;
+  throw error;
 }
 
 function isIncomingCallType(type) {
-  return type === 'incoming_call' || type === 'call';
+  return type === 'incoming_call';
 }
 
+/**
+ * Normalizes call-like input into the payload shape expected by the service worker.
+ */
 function buildCallPayload(callData = {}) {
-  const type = normalizeCallNotificationType(callData.type);
+  const type = resolveCallNotificationType(callData.type);
   const notificationId =
     callData.notificationId ||
     `${callData.roomId || 'call'}-${Date.now()}-${Math.random()
@@ -48,6 +61,9 @@ function buildCallPayload(callData = {}) {
   };
 }
 
+/**
+ * Builds the message notification payload sent from the RTDB trigger.
+ */
 function buildMessagePayload(messageData = {}) {
   return {
     title: messageData.senderName || 'Someone',

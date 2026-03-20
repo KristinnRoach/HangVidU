@@ -230,6 +230,26 @@ describe('PushNotificationController', () => {
     );
   });
 
+  it('rejects legacy call notification types', async () => {
+    await controller.initialize();
+
+    const result = await controller.sendCallNotification('target-user', {
+      roomId: 'room-legacy',
+      callerId: 'caller-1',
+      callerName: 'Caller Name',
+      type: 'call',
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: false,
+        error: 'Unsupported call notification type: call',
+        targetUserId: 'target-user',
+        roomId: 'room-legacy',
+      }),
+    );
+  });
+
   it('dismisses call notifications by service worker tag', async () => {
     const close = vi.fn();
     registration.getNotifications.mockResolvedValue([
@@ -286,7 +306,7 @@ describe('PushNotificationController', () => {
     controller.permissionState = 'granted';
     controller.isEnabled = true;
     controller.subscription = subscription;
-    controller.trackNotification('call_room-42', { type: 'call' });
+    controller.trackNotification('call_room-42', { type: 'incoming_call' });
 
     const callback = vi.fn();
     controller.onPermissionChange(callback);

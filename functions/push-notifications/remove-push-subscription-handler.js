@@ -3,6 +3,9 @@ const { getDatabase } = require('firebase-admin/database');
 const { verifyAuthHeader } = require('./auth');
 const { getSubscriptionId } = require('./subscription-ownership-store');
 
+/**
+ * Removes the current browser push subscription for the authenticated user.
+ */
 async function handleRemovePushSubscription(req, res) {
   try {
     if (req.method !== 'POST') {

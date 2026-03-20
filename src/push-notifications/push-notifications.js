@@ -6,15 +6,20 @@ import { getLoggedInUserToken } from '../auth/index.js';
 
 const FUNCTION_REGION = 'europe-west1';
 
-function normalizeCallNotificationType(type) {
-  if (!type || type === 'call') {
+function resolveCallNotificationType(type) {
+  if (!type) {
     return 'incoming_call';
   }
-  return type;
+
+  if (type === 'incoming_call' || type === 'missed_call') {
+    return type;
+  }
+
+  throw new Error(`Unsupported call notification type: ${type}`);
 }
 
 function isIncomingCallType(type) {
-  return type === 'incoming_call' || type === 'call';
+  return type === 'incoming_call';
 }
 
 function urlBase64ToUint8Array(base64String) {
@@ -507,7 +512,7 @@ export class PushNotifications {
       callerName,
       type: rawType = 'incoming_call',
     } = callData;
-    const type = normalizeCallNotificationType(rawType);
+    const type = resolveCallNotificationType(rawType);
 
     let displayName = callerName || callerId || 'Unknown caller';
 

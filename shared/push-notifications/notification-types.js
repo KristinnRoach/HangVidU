@@ -5,5 +5,3 @@ export const NotificationTypeSchema = z.enum([
   'missed_call',
   'message',
 ]);
-
-export const LegacyNotificationTypeSchema = z.literal('call');

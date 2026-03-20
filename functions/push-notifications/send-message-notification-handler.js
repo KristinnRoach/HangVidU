@@ -1,6 +1,9 @@
 const { buildMessagePayload } = require('./notification-payload-builder');
 const { sendWebPushToUser } = require('./web-push-delivery');
 
+/**
+ * RTDB trigger that fans out message push notifications to the other participant.
+ */
 async function handleSendMessageNotification(event) {
   const message = event.data.val();
   if (!message || !message.from) return;

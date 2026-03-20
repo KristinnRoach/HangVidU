@@ -2,6 +2,9 @@ const { verifyAuthHeader } = require('./auth');
 const { buildCallPayload } = require('./notification-payload-builder');
 const { sendWebPushToUser } = require('./web-push-delivery');
 
+/**
+ * Authenticated HTTP handler for direct call-related push sends.
+ */
 async function handleSendCallNotification(req, res) {
   try {
     if (req.method !== 'POST') {
@@ -72,6 +75,9 @@ async function handleSendCallNotification(req, res) {
   }
 }
 
+/**
+ * Temporary authenticated handler for self-targeted debug call pushes.
+ */
 async function handleSendDebugCallNotification(req, res) {
   try {
     if (req.method !== 'POST') {
@@ -85,7 +91,7 @@ async function handleSendDebugCallNotification(req, res) {
       callerId: callData.callerId || uid,
       callerName: callData.callerName || 'Debug Caller',
       targetUserId: uid,
-      type: callData.type || 'call',
+      type: callData.type || 'incoming_call',
     });
 
     const result = await sendWebPushToUser(uid, payload);

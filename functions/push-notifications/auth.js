@@ -1,5 +1,8 @@
 const { getAuth } = require('firebase-admin/auth');
 
+/**
+ * Verifies the Firebase ID token from an HTTP Authorization header.
+ */
 async function verifyAuthHeader(req) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {

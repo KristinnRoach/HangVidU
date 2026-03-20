@@ -25,7 +25,7 @@ Known-good checkpoint branch:
 
 Current refactor checkpoint:
 
-- `310c438` - `Start push notifications structure refactor`
+- `faedde6` - `Refactor backend push notification modules`
 
 Already completed and verified:
 
@@ -39,12 +39,14 @@ Already completed and verified:
 - push-specific service-worker logic now lives under [src/push-notifications/sw](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/sw)
 - missed-call notification taps now route to caller context first instead of dropping into the empty-room share-link path
 - backend push logic now lives under [functions/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/push-notifications), with [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js) reduced to export wiring
+- the backend push modules now have minimal inline JSDoc plus a minimal [README.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/README.md) for orientation
 
 Immediate next implementation slices:
 
-1. remove remaining legacy `call` compatibility across backend/shared runtime paths
-2. continue migrating app imports and responsibilities toward the new structure
-3. remove or dev-gate temporary debug push hooks
+1. continue migrating app imports and responsibilities toward the new structure
+2. remove or dev-gate temporary debug push hooks
+3. revisit the legacy ownership fallback only if that slice includes a deliberate migration or cleanup decision
+4. add regression coverage once the remaining structure churn settles
 
 ## Stable Public API
 
@@ -268,11 +270,13 @@ Refactor sequence:
 4. split backend notification logic under `functions/push-notifications/`
    - status: done
 5. remove remaining legacy `call` compatibility from backend/shared runtime paths
-   - status: next
+   - status: done
 6. update imports so app code depends only on the stable public barrel
    - status: in progress
 7. remove or rename old paths only after the new structure is in place and tests are green
    - status: pending
+
+The backend split is now a clean handoff boundary. The next slice can start in a fresh session from this plan plus the handoff doc without needing additional backend extraction context.
 
 ## Acceptance Criteria
 

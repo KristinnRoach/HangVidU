@@ -7,6 +7,9 @@ const {
   maskSubscriptionKey,
 } = require('./subscription-ownership-store');
 
+/**
+ * Registers the current browser push subscription for the authenticated user.
+ */
 async function handleRegisterPushSubscription(req, res) {
   try {
     if (req.method !== 'POST') {

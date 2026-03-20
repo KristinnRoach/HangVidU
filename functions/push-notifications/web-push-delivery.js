@@ -7,6 +7,9 @@ const {
 } = require('./notification-payload-builder');
 const { maskSubscriptionKey } = require('./subscription-ownership-store');
 
+/**
+ * Sends a normalized push payload to all stored subscriptions for one user.
+ */
 async function sendWebPushToUser(userId, payload) {
   ensureWebPushConfigured();
 

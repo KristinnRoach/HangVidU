@@ -1,5 +1,8 @@
 const crypto = require('node:crypto');
 
+/**
+ * Derives a stable storage key from a browser push endpoint.
+ */
 function getSubscriptionId(endpoint) {
   return crypto
     .createHash('sha256')
@@ -31,6 +34,9 @@ async function findLegacySubscriptionOwners(db, currentUid, subscriptionId) {
   return ownerUserIds;
 }
 
+/**
+ * Produces the RTDB update map needed to ensure a subscription belongs to one user.
+ */
 async function getExclusiveSubscriptionOwnershipUpdates(
   db,
   currentUid,

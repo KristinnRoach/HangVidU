@@ -8,7 +8,6 @@ export * from './service-worker-message-schemas.js';
 import {
   PushNotificationPayloadSchema,
   CanonicalPushNotificationDataSchema,
-  RuntimePushNotificationDataSchema,
 } from './notification-schemas.js';
 import {
   RegisterPushSubscriptionRequestSchema,
@@ -22,9 +21,6 @@ export const parsePushNotificationPayload = (data) =>
 
 export const parseCanonicalPushNotificationData = (data) =>
   CanonicalPushNotificationDataSchema.parse(data);
-
-export const parseRuntimePushNotificationData = (data) =>
-  RuntimePushNotificationDataSchema.parse(data);
 
 export const parseSendCallNotificationRequest = (data) =>
   SendCallNotificationRequestSchema.parse(data);

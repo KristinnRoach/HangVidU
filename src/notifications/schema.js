@@ -3,7 +3,6 @@ export * from '../../shared/push-notifications/index.js';
 export {
   PushNotificationPayloadSchema,
   CanonicalPushNotificationDataSchema,
-  RuntimePushNotificationDataSchema,
   RegisterPushSubscriptionRequestSchema,
   SendCallNotificationRequestSchema,
   PushSubscriptionRecordSchema,
@@ -13,7 +12,6 @@ export {
 import {
   PushNotificationPayloadSchema,
   CanonicalPushNotificationDataSchema,
-  RuntimePushNotificationDataSchema,
   RegisterPushSubscriptionRequestSchema,
   SendCallNotificationRequestSchema,
   PushSubscriptionRecordSchema,
@@ -25,9 +23,6 @@ export const parsePushNotificationPayload = (data) =>
 
 export const parseCanonicalPushNotificationData = (data) =>
   CanonicalPushNotificationDataSchema.parse(data);
-
-export const parseRuntimePushNotificationData = (data) =>
-  RuntimePushNotificationDataSchema.parse(data);
 
 export const parseSendCallNotificationRequest = (data) =>
   SendCallNotificationRequestSchema.parse(data);
