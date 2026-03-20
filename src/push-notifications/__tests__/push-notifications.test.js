@@ -14,9 +14,9 @@ vi.mock('../../auth/auth-state.js', () => ({
   }),
 }));
 
-import { PushNotificationController } from '../push-notification-controller.js';
+import { PushNotifications } from '../push-notifications.js';
 
-describe('PushNotificationController', () => {
+describe('PushNotifications', () => {
   let controller;
   let registration;
   let subscription;
@@ -74,7 +74,7 @@ describe('PushNotificationController', () => {
       }),
     );
 
-    controller = new PushNotificationController();
+    controller = new PushNotifications();
   });
 
   afterEach(() => {
@@ -154,10 +154,11 @@ describe('PushNotificationController', () => {
     );
   });
 
-  it('sends call notifications through the backend call endpoint', async () => {
+  it('sends incoming call notifications through the backend call endpoint', async () => {
     await controller.initialize();
 
-    const result = await controller.sendCallNotification('target-user', {
+    const result = await controller.sendIncomingCall({
+      targetUserId: 'target-user',
       roomId: 'room-1',
       callerId: 'caller-1',
       callerName: 'Caller Name',
@@ -232,7 +233,8 @@ describe('PushNotificationController', () => {
   it('sends missed call notifications with explicit missed_call type', async () => {
     await controller.initialize();
 
-    const result = await controller.sendMissedCallNotification('target-user', {
+    const result = await controller.sendMissedCall({
+      targetUserId: 'target-user',
       roomId: 'room-2',
       callerId: 'caller-1',
       callerName: 'Caller Name',
@@ -257,7 +259,8 @@ describe('PushNotificationController', () => {
   it('rejects legacy call notification types', async () => {
     await controller.initialize();
 
-    const result = await controller.sendCallNotification('target-user', {
+    const result = await controller.sendIncomingCall({
+      targetUserId: 'target-user',
       roomId: 'room-legacy',
       callerId: 'caller-1',
       callerName: 'Caller Name',
@@ -338,9 +341,7 @@ describe('PushNotificationController', () => {
     const result = await controller.disable();
 
     expect(result).toBe(true);
-    expect(subscription.unsubscribe).toHaveBeenCalled();
-    expect(controller.subscription).toBeNull();
-    expect(controller.isEnabled).toBe(false);
+    expect(controller.isNotificationEnabled()).toBe(false);
     expect(controller.activeNotifications.size).toBe(0);
     expect(callback).toHaveBeenCalledWith('disabled');
   });

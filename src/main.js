@@ -582,12 +582,12 @@ export async function callContact(contactId, contactName, roomId = null) {
         roomId,
       });
 
-      const pushResult =
-        await getPushNotifications().sendCallNotification(contactId, {
-          roomId,
-          callerId: myUserId,
-          callerName,
-        });
+      const pushResult = await getPushNotifications().sendIncomingCall({
+        targetUserId: contactId,
+        roomId,
+        callerId: myUserId,
+        callerName,
+      });
       console.log('[CALL] Call-start push notification result', {
         contactId,
         roomId,
@@ -1914,10 +1914,12 @@ window.onload = async () => {
         const pushController = getPushNotifications();
         let notifResult = { state: 'error' };
         if (pushController) {
-          notifResult = await pushController.enableIfGranted().catch((e) => {
-            console.warn('[AUTH] Push notification setup failed:', e);
-            return { state: 'error' };
-          });
+          notifResult = await pushController
+            .ensureEnabledIfGranted()
+            .catch((e) => {
+              console.warn('[AUTH] Push notification setup failed:', e);
+              return { state: 'error' };
+            });
         }
 
         if (notifResult.state === 'prompt-needed') {
@@ -1943,7 +1945,7 @@ window.onload = async () => {
         const pushController = getPushNotifications();
         if (pushController) {
           const notifResult = await pushController
-            .enableIfGranted()
+            .ensureEnabledIfGranted()
             .catch((e) => {
               console.warn('[AUTH] Push notification setup failed:', e);
               return { state: 'error' };
@@ -2077,14 +2079,12 @@ CallController.on(
           console.log(
             `[MAIN] Sending missed call push notification to ${contact.contactName} (${contact.contactId})`,
           );
-          await getPushNotifications()?.sendMissedCallNotification(
-            contact.contactId,
-            {
-              roomId,
-              callerId: getUserId(),
-              callerName,
-            },
-          );
+          await getPushNotifications()?.sendMissedCall({
+            targetUserId: contact.contactId,
+            roomId,
+            callerId: getUserId(),
+            callerName,
+          });
 
           // Write missed call message to chat history
           // The caller writes this - both parties will see it in their shared conversation

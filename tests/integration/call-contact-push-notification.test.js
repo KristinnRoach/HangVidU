@@ -8,13 +8,13 @@ const mocks = vi.hoisted(() => {
     isNotificationSupported: vi.fn().mockReturnValue(true),
     isNotificationEnabled: vi.fn().mockReturnValue(true),
     shouldSendNotification: vi.fn().mockReturnValue(false),
-    enableIfGranted: vi.fn().mockResolvedValue({ state: 'enabled' }),
+    ensureEnabledIfGranted: vi.fn().mockResolvedValue({ state: 'enabled' }),
     disable: vi.fn().mockResolvedValue(true),
     requestPermission: vi.fn(),
     dismissCallNotifications: vi.fn(),
-    sendMissedCallNotification: vi.fn(),
-    sendCallNotification: vi.fn(async (targetUserId, callData) => {
-      callSequence.push('sendCallNotification');
+    sendMissedCall: vi.fn(),
+    sendIncomingCall: vi.fn(async ({ targetUserId, ...callData }) => {
+      callSequence.push('sendIncomingCall');
       return {
         ok: true,
         status: 200,
@@ -453,20 +453,16 @@ describe('callContact push notification flow', () => {
         targetRoomId: 'saved-room-123',
       }),
     );
-    expect(mocks.pushController.sendCallNotification).toHaveBeenCalledWith(
-      'contact-456',
-      {
-        roomId: 'saved-room-123',
-        callerId: 'user-123',
-        callerName: 'Caller Example',
-      },
-    );
-    expect(
-      mocks.callSequence.indexOf('sendCallNotification'),
-    ).toBeGreaterThan(-1);
+    expect(mocks.pushController.sendIncomingCall).toHaveBeenCalledWith({
+      targetUserId: 'contact-456',
+      roomId: 'saved-room-123',
+      callerId: 'user-123',
+      callerName: 'Caller Example',
+    });
+    expect(mocks.callSequence.indexOf('sendIncomingCall')).toBeGreaterThan(-1);
     expect(mocks.callSequence.indexOf('showCallingUI')).toBeGreaterThan(-1);
     expect(
-      mocks.callSequence.indexOf('sendCallNotification'),
+      mocks.callSequence.indexOf('sendIncomingCall'),
     ).toBeLessThan(mocks.callSequence.indexOf('showCallingUI'));
     expect(consoleLogSpy).toHaveBeenCalledWith(
       '[CALL] Reached call-start push notification send',

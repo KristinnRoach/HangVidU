@@ -48,15 +48,17 @@ export class PushNotifications {
     this.vapidKey = import.meta.env.VITE_PUSH_VAPID_KEY;
   }
 
+  // Runtime setup used by app bootstrap. This is intentionally separate from
+  // the smaller public app-facing permission and send API.
   async initialize() {
     if (!this.isNotificationSupported()) {
-      console.warn('[PushNotificationController] Notifications not supported');
+      console.warn('[Push Notifications] Notifications not supported');
       return false;
     }
 
     this.permissionState = this.getPermissionState();
     await this.syncDebugIdentityToServiceWorker();
-    console.log('[PushNotificationController] Initialized');
+    console.log('[Push Notifications] Initialized');
     return true;
   }
 
@@ -64,7 +66,7 @@ export class PushNotifications {
     const { onGranted = null, onDenied = null, onDismissed = null } = options;
 
     if (!this.isNotificationSupported()) {
-      console.warn('[PushNotificationController] Notifications not supported');
+      console.warn('[Push Notifications] Notifications not supported');
       return { state: 'denied', reason: 'unsupported' };
     }
 
@@ -97,16 +99,13 @@ export class PushNotifications {
         }),
       ]);
     } catch (error) {
-      console.error(
-        '[PushNotificationController] Permission request failed:',
-        error,
-      );
+      console.error('[Push Notifications] Permission request failed:', error);
       permission = Notification.permission;
     }
 
     if (permission === '__timeout__') {
       console.warn(
-        '[PushNotificationController] Permission request timed out without a browser decision',
+        '[Push Notifications] Permission request timed out without a browser decision',
       );
       this.permissionState = Notification.permission;
       return { state: 'error', reason: 'permission-timeout', browser };
@@ -137,7 +136,7 @@ export class PushNotifications {
     return { state: 'denied', browser };
   }
 
-  async enableIfGranted() {
+  async ensureEnabledIfGranted() {
     if (!this.isNotificationSupported()) {
       return { state: 'unsupported' };
     }
@@ -158,20 +157,16 @@ export class PushNotifications {
     return { state: 'prompt-needed' };
   }
 
-  async ensureEnabledIfGranted() {
-    return this.enableIfGranted();
-  }
-
   async enable() {
     if (this.permissionState !== 'granted') {
       console.warn(
-        '[PushNotificationController] Cannot enable: permission not granted',
+        '[Push Notifications] Cannot enable: permission not granted',
       );
       return false;
     }
 
     if (!this.vapidKey) {
-      console.warn('[PushNotificationController] VAPID key is missing');
+      console.warn('[Push Notifications] VAPID key is missing');
       return false;
     }
 
@@ -180,11 +175,11 @@ export class PushNotifications {
       this.subscription = await this.ensureSubscription();
       this.isEnabled = true;
       this.notifyPermissionCallbacks('enabled');
-      console.info('[PushNotificationController] Notifications enabled');
+      console.info('[Push Notifications] Notifications enabled');
       return true;
     } catch (error) {
       console.error(
-        '[PushNotificationController] Failed to enable notifications:',
+        '[Push Notifications] Failed to enable notifications:',
         error,
       );
       return false;
@@ -204,7 +199,7 @@ export class PushNotifications {
           await subscription.unsubscribe();
         } catch (error) {
           console.warn(
-            '[PushNotificationController] Failed to unsubscribe from push manager:',
+            '[Push Notifications] Failed to unsubscribe from push manager:',
             error,
           );
         }
@@ -213,7 +208,7 @@ export class PushNotifications {
           await this.unregisterSubscription(subscription);
         } catch (error) {
           console.warn(
-            '[PushNotificationController] Failed to unregister subscription from backend:',
+            '[Push Notifications] Failed to unregister subscription from backend:',
             error,
           );
         }
@@ -223,7 +218,7 @@ export class PushNotifications {
       this.isEnabled = false;
       this.activeNotifications.clear();
       this.notifyPermissionCallbacks('disabled');
-      console.log('[PushNotificationController] Notifications disabled');
+      console.log('[Push Notifications] Notifications disabled');
     }
     return success;
   }
@@ -236,25 +231,27 @@ export class PushNotifications {
     return this.disable();
   }
 
-  async sendCallNotification(targetUserId, callData) {
+  async sendIncomingCall(callData) {
+    const { targetUserId, ...notificationData } = callData || {};
+
     if (!this.options.enableCallNotifications) {
-      console.log('[PushNotificationController] Call notifications disabled');
+      console.log('[Push Notifications] Call notifications disabled');
       return {
         ok: false,
         status: null,
         error: 'call-notifications-disabled',
         targetUserId,
-        roomId: callData?.roomId || null,
+        roomId: notificationData?.roomId || null,
       };
     }
 
     try {
       await this.syncDebugIdentityToServiceWorker();
-      const payload = await this.formatCallNotification(callData);
+      const payload = await this.formatCallNotification(notificationData);
       this.logPushSendDiagnostics(
         'incoming_call',
         targetUserId,
-        callData,
+        notificationData,
         payload,
       );
       const response = await this.callFunction('sendCallNotification', {
@@ -270,7 +267,7 @@ export class PushNotifications {
       });
 
       console.log(
-        `[PushNotificationController] Call notification sent to ${targetUserId}`,
+        `[Push Notifications] Call notification sent to ${targetUserId}`,
         response,
       );
       return {
@@ -282,7 +279,7 @@ export class PushNotifications {
       };
     } catch (error) {
       console.error(
-        '[PushNotificationController] Failed to send call notification:',
+        '[Push Notifications] Failed to send call notification:',
         error,
       );
       return {
@@ -291,40 +288,37 @@ export class PushNotifications {
         error: error.message,
         body: error.payload ?? null,
         targetUserId,
-        roomId: callData?.roomId || null,
+        roomId: notificationData?.roomId || null,
       };
     }
   }
 
-  async sendIncomingCall(callData) {
+  async sendMissedCall(callData) {
     const { targetUserId, ...notificationData } = callData || {};
-    return this.sendCallNotification(targetUserId, notificationData);
-  }
 
-  async sendMissedCallNotification(targetUserId, callData) {
     if (!this.options.enableCallNotifications) {
       console.log(
-        '[PushNotificationController] Call notifications disabled (missed call masked)',
+        '[Push Notifications] Call notifications disabled (missed call masked)',
       );
       return {
         ok: false,
         status: null,
         error: 'call-notifications-disabled',
         targetUserId,
-        roomId: callData?.roomId || null,
+        roomId: notificationData?.roomId || null,
       };
     }
 
     try {
       await this.syncDebugIdentityToServiceWorker();
       const payload = await this.formatCallNotification({
-        ...callData,
+        ...notificationData,
         type: 'missed_call',
       });
       this.logPushSendDiagnostics(
         'missed_call',
         targetUserId,
-        callData,
+        notificationData,
         payload,
       );
       const response = await this.callFunction('sendCallNotification', {
@@ -333,7 +327,7 @@ export class PushNotifications {
       });
 
       console.log(
-        `[PushNotificationController] Missed call notification sent to ${targetUserId}`,
+        `[Push Notifications] Missed call notification sent to ${targetUserId}`,
         response,
       );
       return {
@@ -345,7 +339,7 @@ export class PushNotifications {
       };
     } catch (error) {
       console.error(
-        '[PushNotificationController] Failed to send missed call notification:',
+        '[Push Notifications] Failed to send missed call notification:',
         error,
       );
       return {
@@ -354,14 +348,9 @@ export class PushNotifications {
         error: error.message,
         body: error.payload ?? null,
         targetUserId,
-        roomId: callData?.roomId || null,
+        roomId: notificationData?.roomId || null,
       };
     }
-  }
-
-  async sendMissedCall(callData) {
-    const { targetUserId, ...notificationData } = callData || {};
-    return this.sendMissedCallNotification(targetUserId, notificationData);
   }
 
   async sendDebugCallNotification(callData = {}) {
@@ -379,11 +368,11 @@ export class PushNotifications {
       const response = await this.callFunction('sendDebugCallNotification', {
         callData: payload,
       });
-      console.log('[PushNotificationController] Debug call notification sent');
+      console.log('[Push Notifications] Debug call notification sent');
       return response;
     } catch (error) {
       console.error(
-        '[PushNotificationController] Failed to send debug call notification:',
+        '[Push Notifications] Failed to send debug call notification:',
         error,
       );
       throw error;
@@ -393,7 +382,7 @@ export class PushNotifications {
   async sendDebugCallNotificationToUser(targetUserId, callData = {}) {
     if (!targetUserId) {
       console.warn(
-        '[PushNotificationController] Missing target user for debug call notification',
+        '[Push Notifications] Missing target user for debug call notification',
       );
       return false;
     }
@@ -407,7 +396,8 @@ export class PushNotifications {
       type: 'incoming_call',
     };
 
-    return this.sendCallNotification(targetUserId, {
+    return this.sendIncomingCall({
+      targetUserId,
       ...defaults,
       ...callData,
     });
@@ -415,7 +405,7 @@ export class PushNotifications {
 
   async sendMessageNotification(_targetUserId, _messageData) {
     console.warn(
-      '[PushNotificationController] Message notifications are not implemented in this phase',
+      '[Push Notifications] Message notifications are not implemented in this phase',
     );
     return false;
   }
@@ -460,7 +450,7 @@ export class PushNotifications {
         callback(payload);
       } catch (error) {
         console.error(
-          '[PushNotificationController] Error in notification callback:',
+          '[Push Notifications] Error in notification callback:',
           error,
         );
       }
@@ -490,7 +480,7 @@ export class PushNotifications {
 
   updateOptions(newOptions) {
     this.options = { ...this.options, ...newOptions };
-    console.log('[PushNotificationController] Options updated:', this.options);
+    console.log('[Push Notifications] Options updated:', this.options);
   }
 
   onPermissionChange(callback) {
@@ -539,7 +529,7 @@ export class PushNotifications {
         displayName = await resolveCallerName(roomId, callerId);
       } catch (error) {
         console.warn(
-          '[PushNotificationController] Failed to resolve caller name:',
+          '[Push Notifications] Failed to resolve caller name:',
           error,
         );
       }
@@ -635,7 +625,7 @@ export class PushNotifications {
   }
 
   logPushSendDiagnostics(notificationKind, targetUserId, rawCallData, payload) {
-    console.log('[PushNotificationController] Push send diagnostics', {
+    console.log('[Push Notifications] Push send diagnostics', {
       localUser: this.getLocalDebugIdentity(),
       notificationKind,
       targetUserId,
@@ -695,7 +685,7 @@ export class PushNotifications {
       });
     } catch (error) {
       console.warn(
-        '[PushNotificationController] Failed to sync debug identity to service worker:',
+        '[Push Notifications] Failed to sync debug identity to service worker:',
         error,
       );
     }
@@ -714,7 +704,7 @@ export class PushNotifications {
         callback(state);
       } catch (error) {
         console.error(
-          '[PushNotificationController] Error in permission callback:',
+          '[Push Notifications] Error in permission callback:',
           error,
         );
       }

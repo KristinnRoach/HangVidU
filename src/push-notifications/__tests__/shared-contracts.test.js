@@ -6,9 +6,9 @@ import {
   parseRegisterPushSubscriptionRequest,
   parseSendCallNotificationRequest,
   parseServiceWorkerNavigateMessage,
-} from '../schema.js';
+} from '../../../shared/push-notifications/index.js';
 
-describe('notification schemas', () => {
+describe('shared push notification contracts', () => {
   it('parses a canonical incoming call payload', () => {
     const payload = parsePushNotificationPayload({
       title: 'Incoming call from Alice',
