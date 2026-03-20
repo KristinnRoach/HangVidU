@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm kill:silent && concurrently \"vite\" \"pnpm ngrok\" \"sh scripts/show-ngrok-url.sh\"",
+    "debug:edge": "zsh scripts/debug/launch-pwa-edge.sh",
     "kill": "fkill :5173 :4040 --force",
     "kill:silent": "fkill :5173 :4040 --force --silent",
     "ngrok": "ngrok http https://localhost:5173 ${NGROK_DOMAIN:+--domain=$NGROK_DOMAIN}",
