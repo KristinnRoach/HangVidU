@@ -38,13 +38,13 @@ Already completed and verified:
 - `src/sw.js` was reduced to a thin push wiring entrypoint
 - push-specific service-worker logic now lives under [src/push-notifications/sw](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/sw)
 - missed-call notification taps now route to caller context first instead of dropping into the empty-room share-link path
+- backend push logic now lives under [functions/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/push-notifications), with [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js) reduced to export wiring
 
 Immediate next implementation slices:
 
-1. split backend notification logic under `functions/push-notifications/`
-2. remove remaining legacy `call` compatibility across backend/shared runtime paths
-3. continue migrating app imports and responsibilities toward the new structure
-4. remove or dev-gate temporary debug push hooks
+1. remove remaining legacy `call` compatibility across backend/shared runtime paths
+2. continue migrating app imports and responsibilities toward the new structure
+3. remove or dev-gate temporary debug push hooks
 
 ## Stable Public API
 
@@ -125,6 +125,9 @@ src/
 functions/
   index.js
   push-notifications/
+    auth.js
+    config.js
+    health-check-handler.js
     web-push-delivery.js
     subscription-ownership-store.js
     notification-payload-builder.js
@@ -263,13 +266,12 @@ Refactor sequence:
 3. reduce `src/sw.js` to a thin composition entrypoint
    - status: done
 4. split backend notification logic under `functions/push-notifications/`
-   - status: next
+   - status: done
 5. remove remaining legacy `call` compatibility from backend/shared runtime paths
-   - status: after backend split
    - status: next
-5. update imports so app code depends only on the stable public barrel
+6. update imports so app code depends only on the stable public barrel
    - status: in progress
-6. remove or rename old paths only after the new structure is in place and tests are green
+7. remove or rename old paths only after the new structure is in place and tests are green
    - status: pending
 
 ## Acceptance Criteria

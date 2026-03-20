@@ -39,8 +39,8 @@ If starting from a fresh session, assume the following is already true:
 - shared push schemas now exist under [shared/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/shared/push-notifications)
 - the app now has a public push barrel at [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/index.js)
 - legacy import paths still exist as compatibility shims so behavior remains stable while imports are migrated
+- backend push modules now live under [functions/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/push-notifications), with [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js) reduced to Firebase export wiring
 - the next major slices are still:
-  - split `functions/index.js` into `functions/push-notifications/*`
   - continue migrating from old notification paths to the new push-specific structure
   - remove remaining legacy `call` compatibility once the end-to-end backend/app boundary is ready to move together
 
@@ -58,6 +58,7 @@ If starting from a fresh session, assume the following is already true:
 - successful outgoing call start in [main.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/main.js) immediately sends a push through the backend `sendCallNotification` HTTP function.
 - missed calls are currently sent through that same backend call notification path during call cleanup.
 - message push delivery is currently server-driven: the Firebase RTDB trigger `sendMessageNotification` sends Web Push when a new conversation message is created.
+- backend push logic is now split under [functions/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/push-notifications), while [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js) only wires Firebase exports.
 - [sw.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/sw.js) is now a thin service-worker entrypoint that wires push handling into internal modules under [src/push-notifications/sw](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/sw).
 - when the app is already open, the service worker now posts a `NAVIGATE` message back into the app so notification taps still route into the intended room/contact.
 - missed-call notification taps now route to the caller contact first, with room fallback only if caller identity is unavailable.
@@ -103,6 +104,7 @@ Do **not** mix these two systems:
    - [push-notifications.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/push-notifications.js)
    - [sw.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/sw.js)
    - [functions/index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js)
+   - [functions/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/push-notifications)
    - push subscription storage under `users/{uid}/pushSubscriptions`
 
 These should stay separate so the system remains understandable and reusable.
@@ -238,12 +240,11 @@ Do not broaden the scope beyond clarifying API and ownership boundaries for noti
 Recommended next step now:
 
 1. continue the refactor from `codex/push-notifications-refactor`, not from the checkpoint branch
-2. split [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js) into `functions/push-notifications/*`
-3. remove remaining legacy `call` compatibility across backend/shared runtime contracts once the backend split is in place
-4. continue migrating app imports and responsibilities toward the new push-specific structure
-5. remove temporary debug hooks and logs or dev-gate them
-6. decide whether to keep the temporary legacy ownership-scan fallback until after a cleanup/migration pass
-7. add regression tests after the backend structure is settled enough that the tests will not churn with the refactor
+2. remove remaining legacy `call` compatibility across backend/shared runtime contracts now that the backend split is in place
+3. continue migrating app imports and responsibilities toward the new push-specific structure
+4. remove temporary debug hooks and logs or dev-gate them
+5. decide whether to keep the temporary legacy ownership-scan fallback until after a cleanup/migration pass
+6. add regression tests after the backend structure is settled enough that the tests will not churn with the refactor
 
 Use [notifications-potential-cleanup-redundant-code-blocks-and-files.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/docs/notifications-potential-cleanup-redundant-code-blocks-and-files.md) as the source of truth for deferred cleanup items, temporary debug surface, and still-valid follow-up issues.
 
