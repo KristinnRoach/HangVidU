@@ -9,6 +9,19 @@ function parsePushPayload(event) {
   }
 }
 
+async function findFocusedVisibleWindowClient() {
+  const clients = await self.clients.matchAll({
+    type: 'window',
+    includeUncontrolled: true,
+  });
+
+  return (
+    clients.find(
+      (client) => client?.focused && client?.visibilityState === 'visible',
+    ) || null
+  );
+}
+
 export async function handlePushEvent(event) {
   const payload = parsePushPayload(event);
   const localIdentity = await readPushDebugIdentity();
@@ -61,6 +74,19 @@ export async function handlePushEvent(event) {
     actions: presentation.actions,
     vibrate: presentation.options.vibrate,
   });
+
+  const focusedVisibleClient = await findFocusedVisibleWindowClient();
+  if (focusedVisibleClient) {
+    console.log('[SW] Suppressing notification for focused foreground client', {
+      localIdentity,
+      clientUrl: focusedVisibleClient.url || null,
+      type: data.type || 'unknown',
+      roomId: data.roomId || null,
+      targetUserId: data.targetUserId || null,
+      notificationId: data.notificationId || null,
+    });
+    return;
+  }
 
   try {
     await self.registration.showNotification(
