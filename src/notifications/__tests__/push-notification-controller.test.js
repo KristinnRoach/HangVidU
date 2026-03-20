@@ -130,6 +130,30 @@ describe('PushNotificationController', () => {
     );
   });
 
+  it('returns an error when permission request never resolves', async () => {
+    globalThis.Notification.permission = 'default';
+    globalThis.Notification.requestPermission = vi.fn(
+      () => new Promise(() => {}),
+    );
+
+    vi.useFakeTimers();
+    const resultPromise = controller.requestPermission();
+    await vi.advanceTimersByTimeAsync(8000);
+    const result = await resultPromise;
+    vi.useRealTimers();
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        state: 'error',
+        reason: 'permission-timeout',
+      }),
+    );
+    expect(fetch).not.toHaveBeenCalledWith(
+      expect.stringContaining('/registerPushSubscription'),
+      expect.anything(),
+    );
+  });
+
   it('sends call notifications through the backend call endpoint', async () => {
     await controller.initialize();
 

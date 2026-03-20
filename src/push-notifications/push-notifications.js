@@ -5,6 +5,7 @@ import { getLoggedInUserId, getUser } from '../auth/auth-state.js';
 import { getLoggedInUserToken } from '../auth/index.js';
 
 const FUNCTION_REGION = 'europe-west1';
+const PERMISSION_REQUEST_TIMEOUT_MS = 8000;
 
 function resolveCallNotificationType(type) {
   if (!type) {
@@ -87,13 +88,28 @@ export class PushNotifications {
 
     let permission;
     try {
-      permission = await Notification.requestPermission();
+      permission = await Promise.race([
+        Notification.requestPermission(),
+        new Promise((resolve) => {
+          window.setTimeout(() => {
+            resolve('__timeout__');
+          }, PERMISSION_REQUEST_TIMEOUT_MS);
+        }),
+      ]);
     } catch (error) {
       console.error(
         '[PushNotificationController] Permission request failed:',
         error,
       );
       permission = Notification.permission;
+    }
+
+    if (permission === '__timeout__') {
+      console.warn(
+        '[PushNotificationController] Permission request timed out without a browser decision',
+      );
+      this.permissionState = Notification.permission;
+      return { state: 'error', reason: 'permission-timeout', browser };
     }
 
     this.permissionState = permission;

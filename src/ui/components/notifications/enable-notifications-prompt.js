@@ -101,6 +101,13 @@ export function showEnableNotificationsPrompt() {
             showErrorToast(t('notification.enable.failed'));
             btn.disabled = false;
             btn.textContent = t('shared.enable');
+          } else if (
+            result.state === 'error' &&
+            result.reason === 'permission-timeout'
+          ) {
+            showErrorToast(t('notification.enable.timeout'));
+            btn.disabled = false;
+            btn.textContent = t('shared.enable');
           } else if (result.reason === 'unsupported') {
             // Defensive: shouldn't normally reach here, but handle gracefully
             import('./push-unsupported-notification.js')
