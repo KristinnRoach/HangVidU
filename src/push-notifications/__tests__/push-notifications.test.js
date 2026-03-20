@@ -63,6 +63,12 @@ describe('PushNotifications', () => {
         getRegistration: vi.fn().mockResolvedValue(registration),
       },
     });
+    Object.defineProperty(navigator, 'permissions', {
+      configurable: true,
+      value: {
+        query: vi.fn().mockResolvedValue({ state: 'prompt' }),
+      },
+    });
 
     vi.stubGlobal('PushManager', function PushManager() {});
     vi.stubGlobal(
@@ -152,6 +158,47 @@ describe('PushNotifications', () => {
       expect.stringContaining('/registerPushSubscription'),
       expect.anything(),
     );
+  });
+
+  it('treats a timed out permission request as denied when the browser ends up denying it', async () => {
+    globalThis.Notification.permission = 'default';
+    globalThis.Notification.requestPermission = vi.fn(
+      () =>
+        new Promise(() => {
+          setTimeout(() => {
+            globalThis.Notification.permission = 'denied';
+          }, 1000);
+        }),
+    );
+
+    vi.useFakeTimers();
+    const resultPromise = controller.requestPermission();
+    await vi.advanceTimersByTimeAsync(8000);
+    const result = await resultPromise;
+    vi.useRealTimers();
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        state: 'denied',
+        reason: 'silent-block',
+      }),
+    );
+  });
+
+  it('skips the permission request when the Permissions API already reports denied', async () => {
+    navigator.permissions.query.mockResolvedValueOnce({ state: 'denied' });
+    globalThis.Notification.permission = 'default';
+    globalThis.Notification.requestPermission = vi.fn();
+
+    const result = await controller.requestPermission();
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        state: 'denied',
+        reason: 'already-denied',
+      }),
+    );
+    expect(globalThis.Notification.requestPermission).not.toHaveBeenCalled();
   });
 
   it('sends incoming call notifications through the backend call endpoint', async () => {

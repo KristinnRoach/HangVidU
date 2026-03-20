@@ -88,6 +88,19 @@ export class PushNotifications {
       return { state: 'denied', reason: 'already-denied', browser };
     }
 
+    try {
+      const permissionStatus = await navigator.permissions?.query?.({
+        name: 'notifications',
+      });
+      if (permissionStatus?.state === 'denied') {
+        this.permissionState = 'denied';
+        onDenied?.('already-denied');
+        return { state: 'denied', reason: 'already-denied', browser };
+      }
+    } catch (_) {
+      // Best-effort hint only; browsers may not support querying notification permission.
+    }
+
     let permission;
     try {
       permission = await Promise.race([
@@ -104,10 +117,16 @@ export class PushNotifications {
     }
 
     if (permission === '__timeout__') {
+      const finalPermission = Notification.permission;
       console.warn(
-        '[Push Notifications] Permission request timed out without a browser decision',
+        '[Push Notifications] Permission request timed out; final permission state:',
+        finalPermission,
       );
-      this.permissionState = Notification.permission;
+      this.permissionState = finalPermission;
+      if (finalPermission === 'denied') {
+        onDenied?.('silent-block');
+        return { state: 'denied', reason: 'silent-block', browser };
+      }
       return { state: 'error', reason: 'permission-timeout', browser };
     }
 
