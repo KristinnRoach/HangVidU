@@ -10,7 +10,7 @@ This cleanup has now been done. The repository should treat `pushSubscriptions` 
 
 Why it matters:
 
-- The active implementation now uses `pushSubscriptions`, backend Web Push functions, the service worker, and [src/notifications/push-notification-controller.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/push-notification-controller.js).
+- The active implementation now uses `pushSubscriptions`, backend Web Push functions, the service worker, and [src/notifications/push-notification-controller.js](/src/notifications/push-notification-controller.js).
 - Parallel transport layers make the notification area harder to reason about.
 - Stale transport language in cleanup paths and docs increases the chance of future fixes touching the wrong system.
 
@@ -43,11 +43,11 @@ Incoming calls currently have two conceptually separate notification paths:
 
 Primary files:
 
-- [src/main.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/main.js)
-- [src/sw.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/sw.js)
-- [src/ui/components/calling/incoming-call.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/ui/components/calling/incoming-call.js)
-- [src/ui/utils/call-indicators.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/ui/utils/call-indicators.js)
-- [src/media/audio/ringtone-manager.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media/audio/ringtone-manager.js)
+- [src/main.js](/src/main.js)
+- [src/sw.js](/src/sw.js)
+- [src/ui/components/calling/incoming-call.js](/src/ui/components/calling/incoming-call.js)
+- [src/ui/utils/call-indicators.js](/src/ui/utils/call-indicators.js)
+- [src/media/audio/ringtone-manager.js](/src/media/audio/ringtone-manager.js)
 
 Why it matters:
 
@@ -70,9 +70,9 @@ Some current code exists only to speed up verification, not as a final product d
 
 Primary files:
 
-- [src/ui/components/contacts/contacts.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/ui/components/contacts/contacts.js)
-- [src/main.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/main.js)
-- [docs/notifications-web-push-handoff.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/docs/notifications-web-push-handoff.md)
+- [src/ui/components/contacts/contacts.js](/src/ui/components/contacts/contacts.js)
+- [src/main.js](/src/main.js)
+- [docs/notifications-web-push-handoff.md](/docs/notifications-web-push-handoff.md)
 
 Examples:
 

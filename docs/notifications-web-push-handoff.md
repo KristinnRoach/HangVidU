@@ -41,10 +41,10 @@ If starting from a fresh session, assume the following is already true:
 
 - `codex/notifications-phase-1` is the known-good rollback/checkpoint branch
 - `codex/push-notifications-refactor` is the active branch for continuing the structural cleanup
-- shared push schemas now exist under [shared/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/shared/push-notifications)
-- the app now has a public push barrel at [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/index.js)
+- shared push schemas now exist under [shared/push-notifications](/shared/push-notifications)
+- the app now has a public push barrel at [index.js](/src/push-notifications/index.js)
 - legacy import paths still exist as compatibility shims so behavior remains stable while imports are migrated
-- backend push modules now live under [functions/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/push-notifications), with [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js) reduced to Firebase export wiring
+- backend push modules now live under [functions/push-notifications](/functions/push-notifications), with [index.js](/functions/index.js) reduced to Firebase export wiring
 - the next major slices are still:
   - continue migrating from old notification paths to the new push-specific structure
   - continue removing remaining legacy compatibility shims outside the backend/shared runtime boundary
@@ -53,22 +53,22 @@ If starting from a fresh session, assume the following is already true:
 
 ### What is currently integrated
 
-- [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/index.js) is now the intended public app import boundary for push notifications on the refactor branch.
-- [push-notifications.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/push-notifications.js) is now the app-facing push facade on the refactor branch.
-- [push-notification-controller.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/push-notification-controller.js) still exists as a compatibility shim during the refactor.
-- [main.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/main.js) initializes the push controller at app startup.
+- [index.js](/src/push-notifications/index.js) is now the intended public app import boundary for push notifications on the refactor branch.
+- [push-notifications.js](/src/push-notifications/push-notifications.js) is now the app-facing push facade on the refactor branch.
+- [push-notification-controller.js](/src/notifications/push-notification-controller.js) still exists as a compatibility shim during the refactor.
+- [main.js](/src/main.js) initializes the push controller at app startup.
 - on login / initial authenticated load, `enableIfGranted()` is called so existing permission can be activated without prompting automatically.
-- if permission has not yet been granted, the app shows the in-app enable prompt from [enable-notifications-prompt.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/ui/components/notifications/enable-notifications-prompt.js).
+- if permission has not yet been granted, the app shows the in-app enable prompt from [enable-notifications-prompt.js](/src/ui/components/notifications/enable-notifications-prompt.js).
 - on logout, the current browser subscription is unsubscribed and removed from the backend.
-- successful outgoing call start in [main.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/main.js) immediately sends a push through the backend `sendCallNotification` HTTP function.
+- successful outgoing call start in [main.js](/src/main.js) immediately sends a push through the backend `sendCallNotification` HTTP function.
 - missed calls are currently sent through that same backend call notification path during call cleanup.
 - message push delivery is currently server-driven: the Firebase RTDB trigger `sendMessageNotification` sends Web Push when a new conversation message is created.
-- backend push logic is now split under [functions/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/push-notifications), while [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js) only wires Firebase exports.
-- [sw.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/sw.js) is now a thin service-worker entrypoint that wires push handling into internal modules under [src/push-notifications/sw](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/sw).
+- backend push logic is now split under [functions/push-notifications](/functions/push-notifications), while [index.js](/functions/index.js) only wires Firebase exports.
+- [sw.js](/src/sw.js) is now a thin service-worker entrypoint that wires push handling into internal modules under [src/push-notifications/sw](/src/push-notifications/sw).
 - when the app is already open, the service worker now posts a `NAVIGATE` message back into the app so notification taps still route into the intended room/contact.
 - when the app already has a visible focused window client, the service worker now ignores the incoming push for display purposes instead of showing a native notification.
 - missed-call notification taps now route to the caller contact first, with room fallback only if caller identity is unavailable.
-- canonical shared push contracts now exist in [shared/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/shared/push-notifications), with [schema.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/schema.js) currently acting as a compatibility re-export layer
+- canonical shared push contracts now exist in [shared/push-notifications](/shared/push-notifications), with [schema.js](/src/notifications/schema.js) currently acting as a compatibility re-export layer
 
 ### What is verified working
 
@@ -92,7 +92,7 @@ Verified manually on the deployed site:
 
 ### What is still incomplete or uneven
 
-- [push-notification-controller.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/push-notification-controller.js) has no real client-side `sendMessageNotification()` implementation; message pushes currently bypass that controller and are sent only from the backend RTDB trigger
+- [push-notification-controller.js](/src/notifications/push-notification-controller.js) has no real client-side `sendMessageNotification()` implementation; message pushes currently bypass that controller and are sent only from the backend RTDB trigger
 - incoming call notifications no longer expose a `decline` action; tapping the notification opens the app into the answer/join path
 - the service worker reuse path currently focuses `clients[0]`, which is acceptable for verification but is not a strong multi-tab ownership model
 - the current foreground behavior is intentionally simple: when a push arrives and the app already has a visible focused window, native notification display is skipped rather than being translated into a separate in-app foreground-notification UX
@@ -102,15 +102,15 @@ Verified manually on the deployed site:
 Do **not** mix these two systems:
 
 1. In-app UI notifications:
-   - [in-app-notification-manager.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/ui/components/notifications/in-app-notification-manager.js)
+   - [in-app-notification-manager.js](/src/ui/components/notifications/in-app-notification-manager.js)
    - prompt/toast/list UX inside the app shell
 
 2. Web Push / system notifications:
-   - [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/index.js)
-   - [push-notifications.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/push-notifications.js)
-   - [sw.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/sw.js)
-   - [functions/index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js)
-   - [functions/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/push-notifications)
+   - [index.js](/src/push-notifications/index.js)
+   - [push-notifications.js](/src/push-notifications/push-notifications.js)
+   - [sw.js](/src/sw.js)
+   - [functions/index.js](/functions/index.js)
+   - [functions/push-notifications](/functions/push-notifications)
    - push subscription storage under `users/{uid}/pushSubscriptions`
 
 These should stay separate so the system remains understandable and reusable.
@@ -195,7 +195,7 @@ The original “real incoming call notification does not display” problem is n
 
 Latest verified findings:
 
-- the real outgoing call flow in [main.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/main.js) does reach `sendCallNotification()` on call start
+- the real outgoing call flow in [main.js](/src/main.js) does reach `sendCallNotification()` on call start
 - a stale cross-user subscription bug was confirmed: one of user A's browser subscriptions was stored under user B's `pushSubscriptions`
 - backend registration has now been hardened so a subscription endpoint is removed from other users before being registered to the current authenticated user
 - after removing stale subscriptions and re-registering cleanly, cross-user delivery stopped reproducing
@@ -226,12 +226,12 @@ There were two real issues uncovered during debugging:
 
 Current automated coverage around this slice:
 
-- [schema.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/__tests__/schema.test.js): shared push-schema coverage, including canonical vs legacy-compatible payload handling
-- [push-notification-controller.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications/__tests__/push-notification-controller.test.js): unit coverage for permission flow, register/unregister, direct call send, debug send, and dismiss behavior
-- [push-event-handler.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/__tests__/push-event-handler.test.js): service-worker push handling coverage for focused-foreground suppression vs native notification display
-- [call-contact-push-notification.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/tests/integration/call-contact-push-notification.test.js): integration coverage proving `callContact()` attempts the push immediately on successful call start
-- [service-worker-sanity.test.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/tests/smoke/service-worker-sanity.test.js): environment/configuration sanity checks
-- [service-worker-registration.spec.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/tests/e2e/service-worker-registration.spec.js): service worker registration/scope/control checks
+- [schema.test.js](/src/notifications/__tests__/schema.test.js): shared push-schema coverage, including canonical vs legacy-compatible payload handling
+- [push-notification-controller.test.js](/src/notifications/__tests__/push-notification-controller.test.js): unit coverage for permission flow, register/unregister, direct call send, debug send, and dismiss behavior
+- [push-event-handler.test.js](/src/push-notifications/__tests__/push-event-handler.test.js): service-worker push handling coverage for focused-foreground suppression vs native notification display
+- [call-contact-push-notification.test.js](/tests/integration/call-contact-push-notification.test.js): integration coverage proving `callContact()` attempts the push immediately on successful call start
+- [service-worker-sanity.test.js](/tests/smoke/service-worker-sanity.test.js): environment/configuration sanity checks
+- [service-worker-registration.spec.js](/tests/e2e/service-worker-registration.spec.js): service worker registration/scope/control checks
 
 The largest remaining gap is not “does the pipeline exist?” but “is the final ownership model stable enough to justify more durable end-to-end regression tests?”
 
@@ -255,7 +255,7 @@ This is now a clean session boundary:
 - the current shape is documented
 - the next slice can start from app/runtime cleanup without needing unstaged backend-structure context
 
-Use [notifications-potential-cleanup-redundant-code-blocks-and-files.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/docs/notifications-potential-cleanup-redundant-code-blocks-and-files.md) as the source of truth for deferred cleanup items, temporary debug surface, and still-valid follow-up issues.
+Use [notifications-potential-cleanup-redundant-code-blocks-and-files.md](/docs/notifications-potential-cleanup-redundant-code-blocks-and-files.md) as the source of truth for deferred cleanup items, temporary debug surface, and still-valid follow-up issues.
 
 Before testing again:
 
