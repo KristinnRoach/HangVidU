@@ -30,7 +30,7 @@ Latest checkpoint status:
 - the push-focused `src/sw.js` split has now been completed and manually verified after redeploy
 - missed-call notification tap routing was corrected so it no longer drops into the empty-room "Share this link" path
 - backend push logic has now been split under `functions/push-notifications/*`
-- [functions/index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js) is now Firebase export wiring only
+- [functions/index.js](/functions/index.js) is now Firebase export wiring only
 - legacy `call` compatibility has now been removed from backend/shared runtime paths so canonical push payloads are `incoming_call`, `missed_call`, and `message`
 - when the app already has a visible focused window, the service worker now suppresses native push notification display instead of showing a system notification
 - temporary push payload / identity diagnostics have now been removed from production push paths so only failure-path logs remain

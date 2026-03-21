@@ -1,8 +1,8 @@
 # Functions
 
-Firebase Functions entrypoint: [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js)
+Firebase Functions entrypoint: [index.js](./index.js)
 
-Push backend internals live under [push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/push-notifications):
+Push backend internals live under [push-notifications](./push-notifications/):
 
 - `config.js`: region and Web Push setup
 - `auth.js`: request auth verification

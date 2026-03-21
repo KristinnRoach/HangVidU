@@ -29,17 +29,17 @@ Current refactor checkpoint:
 
 Already completed and verified:
 
-- shared push contracts were introduced under [shared/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/shared/push-notifications)
-- a new public app barrel was introduced at [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/index.js)
-- the app-facing push facade now lives at [push-notifications.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/push-notifications.js)
+- shared push contracts were introduced under [shared/push-notifications](/shared/push-notifications)
+- a new public app barrel was introduced at [index.js](/src/push-notifications/index.js)
+- the app-facing push facade now lives at [push-notifications.js](/src/push-notifications/push-notifications.js)
 - compatibility shims remain in the old `src/notifications/*` paths
 - the first refactor slice was redeployed and manually tested successfully
 - targeted notification tests passed after that refactor slice
 - `src/sw.js` was reduced to a thin push wiring entrypoint
-- push-specific service-worker logic now lives under [src/push-notifications/sw](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/sw)
+- push-specific service-worker logic now lives under [src/push-notifications/sw](/src/push-notifications/sw)
 - missed-call notification taps now route to caller context first instead of dropping into the empty-room share-link path
-- backend push logic now lives under [functions/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/push-notifications), with [index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/index.js) reduced to export wiring
-- the backend push modules now have minimal inline JSDoc plus a minimal [README.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/README.md) for orientation
+- backend push logic now lives under [functions/push-notifications](/functions/push-notifications), with [index.js](/functions/index.js) reduced to export wiring
+- the backend push modules now have minimal inline JSDoc plus a minimal [README.md](/functions/README.md) for orientation
 - the service worker now suppresses native notification display when a push arrives while the app already has a visible focused window client
 - sender-side and service-worker push diagnostics were removed from production success paths so only failure-path logs remain
 
