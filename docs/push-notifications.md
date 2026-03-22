@@ -20,10 +20,11 @@ Current behavior:
 - message notifications are backend-driven from the RTDB trigger
 - when the app already has a visible focused window, native notification display is suppressed
 - notification clicks reopen or focus the app and translate into app navigation
+- click routing now prefers a focused visible app window, then any visible app window, before falling back to the first matched window client
 - subscription ownership is resolved through `pushSubscriptionOwners/{subscriptionId}` only
+- subscription registration validates the push endpoint shape and sanitizes stored `deviceInfo`
 - Web Push delivery TTL is explicit by type: `incoming_call` `30s`, `missed_call` `300s`, `message` `3600s`, fallback `60s`
 
 Known follow-up:
 
-- notification click reuse still focuses the first matched window client in [src/push-notifications/sw/notification-click-handler.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/sw/notification-click-handler.js)
 - the foreground-focused behavior is intentionally minimal for V1: no separate in-app foreground notification UX is shown

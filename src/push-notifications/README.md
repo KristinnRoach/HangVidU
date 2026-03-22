@@ -16,7 +16,7 @@ Supported app-facing operations:
 Current ownership contract:
 
 - app code decides when a call event should trigger push
-- backend functions own subscription persistence and fan-out delivery
+- backend functions own subscription persistence, request validation, and fan-out delivery
 - service worker code under [sw](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/sw) owns native notification display and click routing
 - message push delivery is backend-driven in V1, not app-driven
 

@@ -37,9 +37,24 @@ export function getNotificationNavigationPath(data, action) {
   return '/';
 }
 
+export function selectWindowClient(clients) {
+  if (!Array.isArray(clients) || clients.length === 0) {
+    return null;
+  }
+
+  return (
+    clients.find(
+      (client) => client?.focused && client?.visibilityState === 'visible',
+    ) ||
+    clients.find((client) => client?.visibilityState === 'visible') ||
+    clients[0]
+  );
+}
+
 /**
  * Focuses an existing app window when possible, otherwise opens a new one.
- * Current V1 behavior reuses the first matched window client.
+ * Prefers a focused visible client, then any visible client, then falls back
+ * to the first matched window client.
  */
 export async function openApp(path = '/') {
   const clients = await self.clients.matchAll({
@@ -48,7 +63,7 @@ export async function openApp(path = '/') {
   });
 
   if (clients.length > 0) {
-    const client = clients[0];
+    const client = selectWindowClient(clients);
     await client.focus();
 
     if (path !== '/') {
