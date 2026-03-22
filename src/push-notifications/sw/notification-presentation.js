@@ -2,6 +2,9 @@ import { VIBRATION_PATTERNS } from '../../media/haptic/vibration-patterns.js';
 
 const NOTIFICATION_ICON_PATH = 'icons/play-arrows-v1/icon-192.png';
 
+/**
+ * Call pushes that should behave like active ringing notifications.
+ */
 export function isIncomingCallType(type) {
   return type === 'incoming_call';
 }
@@ -10,6 +13,9 @@ function isCallLifecycleType(type) {
   return type === 'incoming_call' || type === 'missed_call';
 }
 
+/**
+ * Returns the action buttons shown on the native notification.
+ */
 export function getNotificationActions(type) {
   if (isIncomingCallType(type)) {
     return [
@@ -32,6 +38,9 @@ export function getNotificationActions(type) {
   return [];
 }
 
+/**
+ * Stable notification tag used for replacement and deduplication.
+ */
 export function getNotificationTag(data) {
   if (isCallLifecycleType(data?.type) && data?.notificationId) {
     return `call_${data.notificationId}`;
@@ -48,10 +57,16 @@ export function getNotificationTag(data) {
   return 'default';
 }
 
+/**
+ * Maps notification kind to haptic behavior.
+ */
 export function getVibrationPattern(type) {
   return VIBRATION_PATTERNS[type] || VIBRATION_PATTERNS.default;
 }
 
+/**
+ * Converts a normalized push payload into Notification API presentation options.
+ */
 export function buildNotificationPresentation(payload, baseUrl) {
   const data = payload?.data || {};
   const title = payload?.title || 'Notification';

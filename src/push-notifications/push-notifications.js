@@ -260,6 +260,9 @@ export class PushNotifications {
     return this.disable();
   }
 
+  /**
+   * Sends an authenticated direct call push to one target user.
+   */
   async sendIncomingCall(callData) {
     const { targetUserId, ...notificationData } = callData || {};
 
@@ -314,6 +317,11 @@ export class PushNotifications {
     }
   }
 
+  /**
+   * Sends the missed-call follow-up for an existing call attempt.
+   * Reuses the tracked notification identity when available so the
+   * missed-call notification can replace the ringing notification.
+   */
   async sendMissedCall(callData) {
     const { targetUserId, ...notificationData } = callData || {};
 
@@ -372,6 +380,10 @@ export class PushNotifications {
     }
   }
 
+  /**
+   * Message push delivery remains backend-owned in V1.
+   * App code should not call this method as a real send path.
+   */
   async sendMessageNotification(_targetUserId, _messageData) {
     console.warn(
       '[Push Notifications] Message notifications are not implemented in this phase',
@@ -379,6 +391,9 @@ export class PushNotifications {
     return false;
   }
 
+  /**
+   * Closes visible incoming-call notifications for a room in the current client.
+   */
   async dismissCallNotifications(roomId) {
     if (!roomId) return;
     const registration = await this.getServiceWorkerRegistration();
@@ -393,11 +408,17 @@ export class PushNotifications {
     this.activeNotifications.delete(`call_${roomId}`);
   }
 
+  /**
+   * Closes visible message notifications associated with one sender.
+   */
   async dismissMessageNotifications(senderId) {
     if (!senderId) return;
     await this.closeNotificationsByTag(`message_${senderId}`);
   }
 
+  /**
+   * Removes locally tracked notification metadata after it becomes stale.
+   */
   async cleanupOldNotifications() {
     const now = Date.now();
     const maxAge = 24 * 60 * 60 * 1000;
@@ -425,6 +446,9 @@ export class PushNotifications {
     });
   }
 
+  /**
+   * Returns whether foreground app state should suppress native push UI.
+   */
   shouldSendNotification() {
     return document.hidden || !document.hasFocus();
   }
@@ -434,6 +458,9 @@ export class PushNotifications {
     return Notification.permission;
   }
 
+  /**
+   * True only when browser permission is granted and a subscription is active.
+   */
   isNotificationEnabled() {
     return this.isEnabled && this.permissionState === 'granted';
   }
@@ -665,6 +692,9 @@ export class PushNotifications {
 
 let instance = null;
 
+/**
+ * Returns the singleton push facade used by app code.
+ */
 export const getPushNotifications = () => {
   if (!instance) {
     instance = new PushNotifications();

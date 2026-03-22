@@ -1,5 +1,8 @@
 import { isIncomingCallType } from './notification-presentation.js';
 
+/**
+ * Maps normalized notification payload data to the app navigation path.
+ */
 export function getNotificationNavigationPath(data, action) {
   const { type, roomId, senderId, callerId } = data || {};
 
@@ -34,6 +37,10 @@ export function getNotificationNavigationPath(data, action) {
   return '/';
 }
 
+/**
+ * Focuses an existing app window when possible, otherwise opens a new one.
+ * Current V1 behavior reuses the first matched window client.
+ */
 export async function openApp(path = '/') {
   const clients = await self.clients.matchAll({
     type: 'window',
@@ -59,11 +66,17 @@ export async function openApp(path = '/') {
   return self.clients.openWindow(url);
 }
 
+/**
+ * Resolves the intended navigation target for a notification click.
+ */
 export async function handleNotificationClick(data, action) {
   const path = getNotificationNavigationPath(data, action);
   return openApp(path);
 }
 
+/**
+ * Service-worker notificationclick entrypoint.
+ */
 export function handleNotificationClickEvent(event) {
   console.log('[SW] Notification clicked:', event);
 
