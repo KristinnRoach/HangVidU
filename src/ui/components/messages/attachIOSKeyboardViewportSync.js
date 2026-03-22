@@ -47,8 +47,13 @@ export function attachIOSKeyboardViewportSync({
     const vv = window.visualViewport;
     if (!vv || !viewportSyncActive) return;
 
-    const width = Math.max(minWidth, vv.width - margin * 2);
-    const height = Math.max(minHeight, vv.height - margin * 2);
+    const availableWidth = Math.max(0, vv.width - margin * 2);
+    const availableHeight = Math.max(0, vv.height - margin * 2);
+    const width = Math.min(Math.max(minWidth, availableWidth), availableWidth);
+    const height = Math.min(
+      Math.max(minHeight, availableHeight),
+      availableHeight,
+    );
 
     panelEl.style.top = `${Math.round(vv.offsetTop + margin)}px`;
     panelEl.style.left = `${Math.round(vv.offsetLeft + margin)}px`;
