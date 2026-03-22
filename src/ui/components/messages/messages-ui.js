@@ -115,6 +115,7 @@ export function initMessagesUI() {
     messagesForm,
     messagesInput,
     resetInputHeight,
+    cleanupIOSKeyboardViewportSync,
   } = createMessageBox();
 
   const messageTopBar = createMessageTopBar();
@@ -1318,6 +1319,9 @@ export function initMessagesUI() {
    * Clears messages, session, and hides the UI without destroying DOM elements.
    */
   function reset() {
+    if (document.activeElement === messagesInput) messagesInput.blur();
+    if (cleanupIOSKeyboardViewportSync) cleanupIOSKeyboardViewportSync();
+
     clearMessages();
     clearTimeout(markAsReadTimeout);
     markAsReadTimeout = null;

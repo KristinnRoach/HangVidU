@@ -35,11 +35,13 @@ export function attachIOSKeyboardViewportSync({
   minWidth = 280,
   minHeight = 240,
 }) {
-  if (!isIOSDevice() || !inputEl || !panelEl) return;
+  if (!isIOSDevice() || !inputEl || !panelEl) return () => {};
 
   let lockedScrollY = 0;
   let viewportSyncActive = false;
   let viewportSyncFrame = 0;
+  let prevBodyOverflow = null;
+  let prevDocOverflow = null;
 
   const syncToVisualViewport = () => {
     const vv = window.visualViewport;
@@ -82,8 +84,14 @@ export function attachIOSKeyboardViewportSync({
       window.visualViewport.removeEventListener('scroll', scheduleViewportSync);
     }
 
-    document.body.style.overflow = '';
-    document.documentElement.style.overflow = '';
+    if (prevBodyOverflow !== null) {
+      document.body.style.overflow = prevBodyOverflow;
+      prevBodyOverflow = null;
+    }
+    if (prevDocOverflow !== null) {
+      document.documentElement.style.overflow = prevDocOverflow;
+      prevDocOverflow = null;
+    }
     panelEl.style.top = '';
     panelEl.style.left = '';
     panelEl.style.right = '';
@@ -98,6 +106,8 @@ export function attachIOSKeyboardViewportSync({
   inputEl.addEventListener('focus', () => {
     lockedScrollY = window.scrollY;
     viewportSyncActive = true;
+    prevBodyOverflow = document.body.style.overflow;
+    prevDocOverflow = document.documentElement.style.overflow;
     document.body.style.overflow = 'hidden';
     document.documentElement.style.overflow = 'hidden';
 
@@ -112,4 +122,6 @@ export function attachIOSKeyboardViewportSync({
   inputEl.addEventListener('blur', () => {
     requestAnimationFrame(stopViewportSync);
   });
+
+  return stopViewportSync;
 }

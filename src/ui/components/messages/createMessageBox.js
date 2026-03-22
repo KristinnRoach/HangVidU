@@ -92,7 +92,7 @@ export function createMessageBox() {
     });
   }
 
-  attachIOSKeyboardViewportSync({
+  const cleanupIOSKeyboardViewportSync = attachIOSKeyboardViewportSync({
     inputEl: messagesInput,
     panelEl: messagesBox,
   });
@@ -104,5 +104,6 @@ export function createMessageBox() {
     messagesForm,
     messagesInput,
     resetInputHeight,
+    cleanupIOSKeyboardViewportSync,
   };
 }
