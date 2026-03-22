@@ -16,24 +16,6 @@ function maskSubscriptionKey(key) {
   return `${key.slice(0, 8)}...${key.slice(-6)}`;
 }
 
-async function findLegacySubscriptionOwners(db, currentUid, subscriptionId) {
-  const usersSnapshot = await db.ref('users').once('value');
-  const ownerUserIds = [];
-
-  usersSnapshot.forEach((userSnapshot) => {
-    const uid = userSnapshot.key;
-    if (!uid || uid === currentUid) {
-      return;
-    }
-
-    if (userSnapshot.child(`pushSubscriptions/${subscriptionId}`).exists()) {
-      ownerUserIds.push(uid);
-    }
-  });
-
-  return ownerUserIds;
-}
-
 /**
  * Produces the RTDB update map needed to ensure a subscription belongs to one user.
  */
@@ -55,22 +37,6 @@ async function getExclusiveSubscriptionOwnershipUpdates(
     updates[`users/${indexedOwnerUid}/pushSubscriptions/${subscriptionId}`] =
       null;
     removedFromUserIds.push(indexedOwnerUid);
-  } else if (!indexedOwnerUid) {
-    const legacyOwnerUserIds = await findLegacySubscriptionOwners(
-      db,
-      currentUid,
-      subscriptionId,
-    );
-    console.warn('[Push] Legacy subscription ownership fallback used', {
-      subscriptionKey: maskSubscriptionKey(subscriptionId),
-      claimedByUserId: currentUid,
-      legacyOwnerCount: legacyOwnerUserIds.length,
-      legacyOwnerUserIds,
-    });
-    legacyOwnerUserIds.forEach((uid) => {
-      updates[`users/${uid}/pushSubscriptions/${subscriptionId}`] = null;
-      removedFromUserIds.push(uid);
-    });
   }
 
   return { updates, removedFromUserIds };
