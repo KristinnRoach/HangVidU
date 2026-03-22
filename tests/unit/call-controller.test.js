@@ -117,38 +117,42 @@ describe('CallController (unit)', () => {
     });
   });
 
-  it('hangUp emits cancel and performs cleanup when emitCancel=true', async () => {
-    // prepare controller state as if in a call
-    const pc = { close: vi.fn() };
-    CallController.pc = pc;
-    CallController.roomId = 'room-abc';
+  // TODO: Remove `.sequential` after cleanup refactor stabilizes hangUp timing in compat runs.
+  it.sequential(
+    'hangUp emits cancel and performs cleanup when emitCancel=true',
+    async () => {
+      // prepare controller state as if in a call
+      const pc = { close: vi.fn() };
+      CallController.pc = pc;
+      CallController.roomId = 'room-abc';
 
-    // Mocks
-    RoomService.cancelCall.mockResolvedValueOnce();
-    RoomService.leaveRoom.mockResolvedValueOnce();
+      // Mocks
+      RoomService.cancelCall.mockResolvedValueOnce();
+      RoomService.leaveRoom.mockResolvedValueOnce();
 
-    const hangupEvt = vi.fn();
-    const cleanupEvt = vi.fn();
-    CallController.on('hangup', hangupEvt);
-    CallController.on('cleanup', cleanupEvt);
+      const hangupEvt = vi.fn();
+      const cleanupEvt = vi.fn();
+      CallController.on('hangup', hangupEvt);
+      CallController.on('cleanup', cleanupEvt);
 
-    await CallController.hangUp({ emitCancel: true, reason: 'user_hung_up' });
+      await CallController.hangUp({ emitCancel: true, reason: 'user_hung_up' });
 
-    expect(RoomService.cancelCall).toHaveBeenCalledWith(
-      'room-abc',
-      'local-user-id',
-      'user_hung_up',
-    );
-    // leaveRoom called by cleanupCall
-    expect(RoomService.leaveRoom).toHaveBeenCalledWith(
-      'local-user-id',
-      'room-abc',
-    );
-    expect(pc.close).toHaveBeenCalled();
-    expect(hangupEvt).toHaveBeenCalled();
-    expect(cleanupEvt).toHaveBeenCalled();
-    expect(CallController.getState().state).toBe('idle');
-  });
+      expect(RoomService.cancelCall).toHaveBeenCalledWith(
+        'room-abc',
+        'local-user-id',
+        'user_hung_up',
+      );
+      // leaveRoom called by cleanupCall
+      expect(RoomService.leaveRoom).toHaveBeenCalledWith(
+        'local-user-id',
+        'room-abc',
+      );
+      expect(pc.close).toHaveBeenCalled();
+      expect(hangupEvt).toHaveBeenCalled();
+      expect(cleanupEvt).toHaveBeenCalled();
+      expect(CallController.getState().state).toBe('idle');
+    },
+  );
 
   it('cleanupCall does NOT emit cancel and resets state', async () => {
     const pc = { close: vi.fn() };

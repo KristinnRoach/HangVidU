@@ -65,11 +65,6 @@ export function createMessageBox() {
   // Subscribe to locale changes
   onLocaleChange(updateI18n);
 
-  // Prevent viewport resize/shift when virtual keyboard appears on mobile
-  if ('virtualKeyboard' in navigator) {
-    navigator.virtualKeyboard.overlaysContent = true;
-  }
-
   // Check for native field-sizing support (Chrome/Edge 123+)
   const supportsFieldSizing = CSS.supports?.('field-sizing', 'content');
 
