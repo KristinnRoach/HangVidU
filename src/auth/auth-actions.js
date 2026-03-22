@@ -14,6 +14,7 @@ import { showOneTapSignin } from './onetap.js';
 import { setOffline } from '../firebase/presence.js';
 import { t } from '../i18n/index.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
+import { getPushNotifications } from '../push-notifications/index.js';
 
 // iOS standalone PWA Safari fallback: armed after a failed attempt,
 // then the next Login tap opens the app URL in Safari (user gesture).
@@ -161,6 +162,16 @@ export async function signOutUser() {
   setState({ status: 'loading' });
 
   try {
+    // Disable notifications and unregister the current Web Push subscription
+    await getPushNotifications()
+      ?.disable?.()
+      .catch((error) => {
+        console.warn(
+          '[AUTH] Failed to disable notifications on logout:',
+          error,
+        );
+      });
+
     await setOffline();
     clearGISTokenCache();
     await signOut(auth);

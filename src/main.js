@@ -1856,25 +1856,7 @@ window.onload = async () => {
 
       // Only clean up on actual logout (not initial load)
       if (isActualLogout) {
-        devDebug(
-          '[AUTH] User logged out - cleaning up messaging and listeners',
-        );
-
-        // // Clear messages UI to prevent previous user's messages from being visible
-        // messagesUI.reset();
-        // // Close all messaging sessions (stops RTDB listeners for old user's conversations)
-        // messagingController.closeAllSessions();
-
-        // Disable notifications and unregister the current Web Push subscription
-        await getPushNotifications()
-          ?.disable?.()
-          .catch((error) => {
-            console.warn(
-              '[AUTH] Failed to disable notifications on logout:',
-              error,
-            );
-          });
-
+        devDebug('[AUTH] User logged out - cleaning up listeners');
         removeAllIncomingListeners();
         cleanupInviteListeners();
       } else if (isActualLogin) {

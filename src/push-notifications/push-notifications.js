@@ -462,7 +462,6 @@ export class PushNotifications {
     await Promise.all(toRemove.map((tag) => this.closeNotificationsByTag(tag)));
   }
 
-  // TODO: Foreground/focused suppression or in-app-only handling not currently implemented
   handleForegroundMessage(payload) {
     this.notificationCallbacks.forEach((callback) => {
       try {
