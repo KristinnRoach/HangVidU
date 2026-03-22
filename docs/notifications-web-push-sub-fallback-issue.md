@@ -86,13 +86,102 @@ The recommended path is:
 
 If there is already strong confidence that nearly all active clients have re-registered since the ownership index was introduced, then removing it now is also a reasonable choice.
 
+## Temporary Log Now Added
+
+A temporary structured production log has now been added on the legacy fallback path in [functions/push-notifications/subscription-ownership-store.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/push-notifications/subscription-ownership-store.js).
+
+It only fires when the direct ownership index lookup at `pushSubscriptionOwners/{subscriptionId}` is missing and the code falls back to scanning legacy user-owned subscription records.
+
+The log message is:
+
+- `[Push] Legacy subscription ownership fallback used`
+
+The structured fields emitted are:
+
+- `subscriptionKey`
+- `claimedByUserId`
+- `legacyOwnerCount`
+- `legacyOwnerUserIds`
+
+This is temporary instrumentation to answer one operational question after redeploy: is the legacy path still being exercised by real production registrations.
+
 ## Concise Task List To Resolve
 
-1. Add one temporary failure-only metric or counter for fallback usage so it is clear whether the legacy path still matters.
-2. Manually inspect production data or logs for recent fallback hits over a short observation window.
-3. If fallback usage is effectively zero, delete the fallback path and keep only direct ownership-index resolution.
-4. If fallback usage is non-zero but small, schedule a short cleanup window, then remove the fallback after that window.
-5. After removal, verify that registration, re-registration, stale subscription cleanup, and cross-user protection still behave correctly.
+1. Redeploy functions so the new fallback log is live in production.
+2. Inspect production logs for `[Push] Legacy subscription ownership fallback used` over a short observation window.
+3. Look at both frequency and shape of hits, not just whether any single hit exists.
+4. If fallback usage is effectively zero, delete the fallback path and keep only direct ownership-index resolution.
+5. If fallback usage is non-zero but small, allow a short cleanup window, then remove the fallback after that window.
+6. After removal, verify that registration, re-registration, stale subscription cleanup, and cross-user protection still behave correctly.
+
+## What To Look For In Prod Logs After Redeploy
+
+After the updated functions are deployed, inspect logs specifically for:
+
+- any occurrence of `[Push] Legacy subscription ownership fallback used`
+- how many total hits occur per day
+- whether the same `claimedByUserId` appears repeatedly
+- whether the same `subscriptionKey` appears repeatedly
+- whether `legacyOwnerCount` is usually `0`, `1`, or greater than `1`
+- whether `legacyOwnerUserIds` shows repeated stale ownership or widespread active churn
+
+Interpretation guidance:
+
+- `legacyOwnerCount: 0` means the fallback path was entered, but no old user-owned record was found. This still proves the legacy branch is being exercised because the ownership index entry was missing.
+- `legacyOwnerCount: 1` is the expected legacy-cleanup shape if an old owner record exists and is being cleaned up.
+- `legacyOwnerCount > 1` is more concerning because it suggests duplicated or ambiguous historical ownership state across multiple users.
+- repeated hits for brand-new traffic after several days suggest the system is still producing or depending on unindexed subscriptions, so removal should wait until that is explained.
+- no hits, or only isolated one-off hits that disappear after active users naturally re-register, is the shape that makes fallback removal reasonable.
+
+## Success Criteria For Safe Removal
+
+It is relatively safe to remove the fallback when all of the following are true:
+
+- after redeploy, the production log `[Push] Legacy subscription ownership fallback used` stays at zero for a full observation window, or is limited to a tiny one-off tail that then stops
+- there is no continuing stream of new fallback hits from normal active usage
+- no repeated `subscriptionKey` keeps appearing in fallback logs
+- no repeated `claimedByUserId` keeps appearing in fallback logs
+- there is no evidence of `legacyOwnerCount > 1` from active traffic
+- normal push registration and re-registration still succeed in production
+
+A practical default threshold is:
+
+- safe enough to remove if there are zero fallback hits for at least 7 consecutive days after production redeploy
+- also reasonable to remove if there are only a few isolated hits immediately after deploy, then zero hits for the following 7 consecutive days
+
+It is not relatively safe to remove yet if:
+
+- fallback hits continue appearing throughout the observation window
+- the same users or subscription keys keep triggering fallback
+- new hits keep appearing each day instead of decaying away
+- multiple-owner cases appear in a non-trivial way
+
+## Exact Code To Remove When Retiring The Fallback
+
+When it is time to remove the fallback, the canonical code change should be made in [functions/push-notifications/subscription-ownership-store.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/push-notifications/subscription-ownership-store.js).
+
+Delete the legacy scan helper entirely:
+
+- remove `findLegacySubscriptionOwners(...)`
+
+Then remove the `else if (!indexedOwnerUid)` branch from `getExclusiveSubscriptionOwnershipUpdates(...)`, including:
+
+- the call to `findLegacySubscriptionOwners(...)`
+- the temporary log `[Push] Legacy subscription ownership fallback used`
+- the loop that nulls `users/{uid}/pushSubscriptions/{subscriptionId}` for legacy owners discovered by the scan
+
+After removal, that function should only do two ownership actions:
+
+- write `pushSubscriptionOwners/{subscriptionId} = currentUid`
+- if an indexed owner exists and differs from `currentUid`, clear `users/{indexedOwnerUid}/pushSubscriptions/{subscriptionId}`
+
+In other words, `getExclusiveSubscriptionOwnershipUpdates(...)` should become direct-index-only logic with no full `users` tree scan.
+
+The expected cleanup impact is:
+
+- [functions/push-notifications/subscription-ownership-store.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/push-notifications/subscription-ownership-store.js): remove helper and fallback branch
+- keep [functions/push-notifications/register-push-subscription-handler.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/push-notifications/register-push-subscription-handler.js) unchanged unless you also want to remove any temporary wording in adjacent logs or comments
+- update this document afterward so it no longer describes the fallback as active behavior
 
 ## Recommended Success Criteria
 

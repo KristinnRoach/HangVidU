@@ -61,6 +61,12 @@ async function getExclusiveSubscriptionOwnershipUpdates(
       currentUid,
       subscriptionId,
     );
+    console.warn('[Push] Legacy subscription ownership fallback used', {
+      subscriptionKey: maskSubscriptionKey(subscriptionId),
+      claimedByUserId: currentUid,
+      legacyOwnerCount: legacyOwnerUserIds.length,
+      legacyOwnerUserIds,
+    });
     legacyOwnerUserIds.forEach((uid) => {
       updates[`users/${uid}/pushSubscriptions/${subscriptionId}`] = null;
       removedFromUserIds.push(uid);
