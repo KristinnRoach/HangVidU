@@ -7,6 +7,17 @@ const {
 } = require('./notification-payload-builder');
 const { maskSubscriptionKey } = require('./subscription-ownership-store');
 
+const PUSH_TTL_SECONDS = {
+  incoming_call: 30,
+  missed_call: 300,
+  message: 3600,
+  default: 60,
+};
+
+function getPushTtlSeconds(type) {
+  return PUSH_TTL_SECONDS[type] || PUSH_TTL_SECONDS.default;
+}
+
 /**
  * Sends a normalized push payload to all stored subscriptions for one user.
  */
@@ -56,7 +67,7 @@ async function sendWebPushToUser(userId, payload) {
     entries.map(async ([key, value]) => {
       try {
         await webpush.sendNotification(value.subscription, payloadJson, {
-          TTL: 60,
+          TTL: getPushTtlSeconds(payload.data?.type),
           urgency: isIncomingCallType(payload.data?.type) ? 'high' : 'normal',
           topic:
             isIncomingCallType(payload.data?.type) &&
@@ -133,5 +144,6 @@ async function sendWebPushToUser(userId, payload) {
 }
 
 module.exports = {
+  getPushTtlSeconds,
   sendWebPushToUser,
 };

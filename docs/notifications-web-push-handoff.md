@@ -34,7 +34,8 @@ Latest checkpoint status:
 - legacy `call` compatibility has now been removed from backend/shared runtime paths so canonical push payloads are `incoming_call`, `missed_call`, and `message`
 - when the app already has a visible focused window, the service worker now suppresses native push notification display instead of showing a system notification
 - sensitive push payload / identity diagnostics have now been removed from production push paths
-- backend Web Push delivery still uses a single hard-coded `TTL: 60` for all notification types, which remains an open prod-readiness decision
+- call notification replacement is now lifecycle-based: `incoming_call` and `missed_call` share the same call notification tag identity so missed-call can replace a still-visible ringing notification instead of stacking
+- backend Web Push delivery now uses an explicit minimal TTL policy by notification kind: `incoming_call` `30s`, `missed_call` `300s`, `message` `3600s`, fallback `60s`
 
 ## Fresh Context Start Here
 
@@ -69,6 +70,7 @@ If starting from a fresh session, assume the following is already true:
 - when the app is already open, the service worker now posts a `NAVIGATE` message back into the app so notification taps still route into the intended room/contact.
 - when the app already has a visible focused window client, the service worker now ignores the incoming push for display purposes instead of showing a native notification.
 - missed-call notification taps now route to the caller contact first, with room fallback only if caller identity is unavailable.
+- `incoming_call` and `missed_call` now intentionally share the same notification tag family so a missed call can replace the ringing notification for the same call attempt.
 - canonical shared push contracts now exist in [shared/push-notifications](/shared/push-notifications), with [schema.js](/src/notifications/schema.js) currently acting as a compatibility re-export layer
 
 ### What is verified working
@@ -210,7 +212,7 @@ Latest verified findings:
 - real incoming call pushes now succeed again with `successCount: 1` and `failureCount: 0` in the current clean test state
 - when the app is already visible and focused, message, incoming-call, and missed-call pushes are still received by the service worker but native notification display is intentionally suppressed
 - production push logs were reviewed and reduced so payload contents, user identity, room IDs, and notification metadata are no longer emitted on successful paths
-- the remaining TTL decision is now clearer: production likely needs per-notification-type TTL policy rather than the current one-size-fits-all value
+- the initial delivery policy is now explicit by notification kind: short-lived `incoming_call`, medium-lived `missed_call`, and longer-lived `message`
 
 ## What Was Actually Wrong
 
@@ -249,8 +251,8 @@ Recommended next step now:
 
 1. continue the refactor from `codex/push-notifications-refactor`, not from the checkpoint branch
 2. continue migrating app imports and responsibilities toward the new push-specific structure
-3. finalize production delivery policy for TTL by notification kind instead of keeping the current single hard-coded `TTL: 60`
-4. remove temporary debug hooks that are still user-visible, such as the targeted debug call button, and finish making production push logging failure-only everywhere
+3. remove temporary debug hooks that are still user-visible, such as the targeted debug call button, and finish making production push logging failure-only everywhere
+4. decide whether foreground-focused pushes should remain fully suppressed or be surfaced through a dedicated in-app notification UX later
 5. keep the legacy ownership fallback unchanged unless that work also includes an explicit migration or cleanup decision
 6. add regression tests after the backend structure is settled enough that the tests will not churn with the refactor
 
