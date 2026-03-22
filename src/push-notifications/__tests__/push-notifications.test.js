@@ -303,6 +303,36 @@ describe('PushNotifications', () => {
     );
   });
 
+  it('reuses the active call notification id when sending a missed call follow-up', async () => {
+    await controller.initialize();
+
+    const incomingResult = await controller.sendIncomingCall({
+      targetUserId: 'target-user',
+      roomId: 'room-shared',
+      callerId: 'caller-1',
+      callerName: 'Caller Name',
+    });
+
+    await controller.sendMissedCall({
+      targetUserId: 'target-user',
+      roomId: 'room-shared',
+      callerId: 'caller-1',
+      callerName: 'Caller Name',
+    });
+
+    const incomingRequest = JSON.parse(fetch.mock.calls[0][1].body);
+    const missedRequest = JSON.parse(fetch.mock.calls[1][1].body);
+
+    expect(incomingResult.notificationId).toBeTruthy();
+    expect(incomingRequest.callData.notificationId).toBe(
+      incomingResult.notificationId,
+    );
+    expect(missedRequest.callData.notificationId).toBe(
+      incomingResult.notificationId,
+    );
+    expect(missedRequest.callData.type).toBe('missed_call');
+  });
+
   it('rejects legacy call notification types', async () => {
     await controller.initialize();
 
@@ -380,7 +410,11 @@ describe('PushNotifications', () => {
     controller.permissionState = 'granted';
     controller.isEnabled = true;
     controller.subscription = subscription;
-    controller.trackNotification('call_room-42', { type: 'incoming_call' });
+    controller.trackNotification('call_room-42', {
+      type: 'incoming_call',
+      roomId: 'room-42',
+      notificationId: 'notif-42',
+    });
 
     const callback = vi.fn();
     controller.onPermissionChange(callback);

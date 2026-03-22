@@ -6,6 +6,10 @@ export function isIncomingCallType(type) {
   return type === 'incoming_call';
 }
 
+function isCallLifecycleType(type) {
+  return type === 'incoming_call' || type === 'missed_call';
+}
+
 export function getNotificationActions(type) {
   if (isIncomingCallType(type)) {
     return [
@@ -29,20 +33,12 @@ export function getNotificationActions(type) {
 }
 
 export function getNotificationTag(data) {
-  if (isIncomingCallType(data?.type) && data?.notificationId) {
+  if (isCallLifecycleType(data?.type) && data?.notificationId) {
     return `call_${data.notificationId}`;
   }
 
-  if (isIncomingCallType(data?.type) && data?.roomId) {
+  if (isCallLifecycleType(data?.type) && data?.roomId) {
     return `call_${data.roomId}`;
-  }
-
-  if (data?.type === 'missed_call' && data?.notificationId) {
-    return `missed_call_${data.notificationId}`;
-  }
-
-  if (data?.type === 'missed_call' && data?.callerId) {
-    return `missed_call_${data.callerId}`;
   }
 
   if (data?.type === 'message' && data?.senderId) {

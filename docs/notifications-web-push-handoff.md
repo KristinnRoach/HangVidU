@@ -33,7 +33,8 @@ Latest checkpoint status:
 - [functions/index.js](/functions/index.js) is now Firebase export wiring only
 - legacy `call` compatibility has now been removed from backend/shared runtime paths so canonical push payloads are `incoming_call`, `missed_call`, and `message`
 - when the app already has a visible focused window, the service worker now suppresses native push notification display instead of showing a system notification
-- temporary push payload / identity diagnostics have now been removed from production push paths so only failure-path logs remain
+- sensitive push payload / identity diagnostics have now been removed from production push paths
+- backend Web Push delivery still uses a single hard-coded `TTL: 60` for all notification types, which remains an open prod-readiness decision
 
 ## Fresh Context Start Here
 
@@ -89,6 +90,7 @@ Verified manually on the deployed site:
 - `window.pushNotificationController` is still exposed for manual testing
 - subscription ownership now uses a `pushSubscriptionOwners/{subscriptionId}` index, with a legacy full-user scan fallback only when an older subscription has not yet been indexed
 - the legacy ownership fallback was reviewed during the backend split and intentionally left in place for now because removing it cleanly likely needs a deliberate migration or data-state decision
+- one non-sensitive foreground deferral info log still exists in [main.js](/src/main.js) for the `background_push_only` path, so production push logging is not yet strictly failure-only everywhere
 
 ### What is still incomplete or uneven
 
@@ -96,6 +98,7 @@ Verified manually on the deployed site:
 - incoming call notifications no longer expose a `decline` action; tapping the notification opens the app into the answer/join path
 - the service worker reuse path currently focuses `clients[0]`, which is acceptable for verification but is not a strong multi-tab ownership model
 - the current foreground behavior is intentionally simple: when a push arrives and the app already has a visible focused window, native notification display is skipped rather than being translated into a separate in-app foreground-notification UX
+- delivery TTL handling is not production-final yet: [web-push-delivery.js](/functions/push-notifications/web-push-delivery.js) currently sends every notification with `TTL: 60`, regardless of whether the payload is `incoming_call`, `missed_call`, or `message`
 
 ## Very Important Separation
 
@@ -207,6 +210,7 @@ Latest verified findings:
 - real incoming call pushes now succeed again with `successCount: 1` and `failureCount: 0` in the current clean test state
 - when the app is already visible and focused, message, incoming-call, and missed-call pushes are still received by the service worker but native notification display is intentionally suppressed
 - production push logs were reviewed and reduced so payload contents, user identity, room IDs, and notification metadata are no longer emitted on successful paths
+- the remaining TTL decision is now clearer: production likely needs per-notification-type TTL policy rather than the current one-size-fits-all value
 
 ## What Was Actually Wrong
 
@@ -245,9 +249,10 @@ Recommended next step now:
 
 1. continue the refactor from `codex/push-notifications-refactor`, not from the checkpoint branch
 2. continue migrating app imports and responsibilities toward the new push-specific structure
-3. remove temporary debug hooks that are still user-visible, such as the targeted debug call button, while keeping production push logging failure-only
-4. keep the legacy ownership fallback unchanged unless that work also includes an explicit migration or cleanup decision
-5. add regression tests after the backend structure is settled enough that the tests will not churn with the refactor
+3. finalize production delivery policy for TTL by notification kind instead of keeping the current single hard-coded `TTL: 60`
+4. remove temporary debug hooks that are still user-visible, such as the targeted debug call button, and finish making production push logging failure-only everywhere
+5. keep the legacy ownership fallback unchanged unless that work also includes an explicit migration or cleanup decision
+6. add regression tests after the backend structure is settled enough that the tests will not churn with the refactor
 
 This is now a clean session boundary:
 

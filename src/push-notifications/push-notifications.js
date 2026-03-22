@@ -23,6 +23,18 @@ function isIncomingCallType(type) {
   return type === 'incoming_call';
 }
 
+function buildCallNotificationTag(notificationId, roomId) {
+  if (notificationId) {
+    return `call_${notificationId}`;
+  }
+
+  if (roomId) {
+    return `call_${roomId}`;
+  }
+
+  return 'default';
+}
+
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -269,18 +281,22 @@ export class PushNotifications {
         callData: payload,
       });
 
-      this.trackNotification(`call_${payload.roomId}`, {
-        type: 'incoming_call',
-        roomId: payload.roomId,
-        notificationId: payload.notificationId,
-        targetUserId,
-      });
+      this.trackNotification(
+        buildCallNotificationTag(payload.notificationId, payload.roomId),
+        {
+          type: 'incoming_call',
+          roomId: payload.roomId,
+          notificationId: payload.notificationId,
+          targetUserId,
+        },
+      );
       return {
         ok: true,
         status: response.status,
         body: response.payload,
         targetUserId,
         roomId: payload.roomId,
+        notificationId: payload.notificationId,
       };
     } catch (error) {
       console.error(
@@ -323,12 +339,22 @@ export class PushNotifications {
         targetUserId,
         callData: payload,
       });
+      this.trackNotification(
+        buildCallNotificationTag(payload.notificationId, payload.roomId),
+        {
+          type: 'missed_call',
+          roomId: payload.roomId,
+          notificationId: payload.notificationId,
+          targetUserId,
+        },
+      );
       return {
         ok: true,
         status: response.status,
         body: response.payload,
         targetUserId,
         roomId: payload.roomId,
+        notificationId: payload.notificationId,
       };
     } catch (error) {
       console.error(
@@ -512,6 +538,7 @@ export class PushNotifications {
       type: rawType = 'incoming_call',
     } = callData;
     const type = resolveCallNotificationType(rawType);
+    const trackedNotificationId = this.getTrackedCallNotificationId(roomId);
 
     let displayName = callerName || callerId || 'Unknown caller';
 
@@ -538,6 +565,7 @@ export class PushNotifications {
       callerName: displayName,
       notificationId:
         callData.notificationId ||
+        trackedNotificationId ||
         `${roomId || 'call'}-${Date.now()}-${Math.random()
           .toString(36)
           .slice(2, 8)}`,
@@ -622,6 +650,20 @@ export class PushNotifications {
       ...data,
       timestamp: Date.now(),
     });
+  }
+
+  getTrackedCallNotificationId(roomId) {
+    if (!roomId) {
+      return null;
+    }
+
+    for (const data of this.activeNotifications.values()) {
+      if (data?.roomId === roomId && data?.notificationId) {
+        return data.notificationId;
+      }
+    }
+
+    return null;
   }
 
   notifyPermissionCallbacks(state) {

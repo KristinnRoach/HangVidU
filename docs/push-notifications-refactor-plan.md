@@ -41,14 +41,16 @@ Already completed and verified:
 - backend push logic now lives under [functions/push-notifications](/functions/push-notifications), with [index.js](/functions/index.js) reduced to export wiring
 - the backend push modules now have minimal inline JSDoc plus a minimal [README.md](/functions/README.md) for orientation
 - the service worker now suppresses native notification display when a push arrives while the app already has a visible focused window client
-- sender-side and service-worker push diagnostics were removed from production success paths so only failure-path logs remain
+- sensitive sender-side and service-worker push diagnostics were removed from production success paths
+- backend delivery still uses one hard-coded `TTL: 60` across notification kinds, which remains a prod-readiness policy gap
 
 Immediate next implementation slices:
 
 1. continue migrating app imports and responsibilities toward the new structure
-2. remove or dev-gate the remaining temporary debug push hooks
-3. revisit the legacy ownership fallback only if that slice includes a deliberate migration or cleanup decision
-4. add regression coverage once the remaining structure churn settles
+2. decide the final TTL policy per notification kind
+3. remove or dev-gate the remaining temporary debug push hooks
+4. revisit the legacy ownership fallback only if that slice includes a deliberate migration or cleanup decision
+5. add regression coverage once the remaining structure churn settles
 
 ## Stable Public API
 
@@ -228,6 +230,7 @@ functions/
 - message send ownership remains backend-driven unless intentionally changed later
 - call send ownership remains app-driven through the stable push facade
 - successful production push paths should not log payload contents, user identity, room IDs, or notification metadata
+- delivery policy should be explicit per notification kind, including TTL and urgency, rather than relying on one shared default
 - future APN/FCM support should arrive as additional delivery adapters behind the same canonical contracts, not as new public APIs
 
 ## Naming Rules

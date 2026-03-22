@@ -847,7 +847,7 @@ export function listenForIncomingOnRoom(roomId) {
           !!pushController?.isNotificationEnabled?.() &&
           !!pushController?.shouldSendNotification?.();
 
-        if (usePushOnlyForBackgroundCall) {
+        if (import.meta.env.DEV && usePushOnlyForBackgroundCall) {
           getDiagnosticLogger().logNotificationDecision(
             'DEFER',
             'background_push_only',

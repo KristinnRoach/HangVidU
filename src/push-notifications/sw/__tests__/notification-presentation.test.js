@@ -26,7 +26,14 @@ describe('notification presentation', () => {
         type: 'missed_call',
         notificationId: 'missed-1',
       }),
-    ).toBe('missed_call_missed-1');
+    ).toBe('call_missed-1');
+
+    expect(
+      getNotificationTag({
+        type: 'missed_call',
+        roomId: 'room-2',
+      }),
+    ).toBe('call_room-2');
 
     expect(
       getNotificationTag({
