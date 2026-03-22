@@ -1,18 +1,17 @@
 // src/sw.js
-// Custom Service Worker with FCM support and Workbox integration
+// Custom Service Worker with Web Push support and Workbox integration
 
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
 import { NetworkFirst } from 'workbox-strategies';
-import { initializeApp } from 'firebase/app';
-import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
-import { VIBRATION_PATTERNS } from './media/haptic/vibration-patterns.js';
 import {
   registerVideo,
   unregisterVideo,
   isVideoServeRequest,
   handleVideoFetch,
 } from './file-transfer/sw-video-handler.js';
+import { handlePushEvent } from './push-notifications/sw/push-event-handler.js';
+import { handleNotificationClickEvent } from './push-notifications/sw/notification-click-handler.js';
 
 // ============================================================================
 // WORKBOX PWA FUNCTIONALITY
@@ -50,252 +49,10 @@ const navigationRoute = new NavigationRoute(
 );
 registerRoute(navigationRoute);
 
-// ============================================================================
-// FIREBASE FCM CONFIGURATION
-// ============================================================================
-
-// Initialize Firebase in service worker context
-// These values should match your main Firebase config
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-};
-
-// Initialize Firebase
-let messaging = null;
-
-// Validate config to prevent crashes if env vars are missing
-const isValidConfig = Object.values(firebaseConfig).every(
-  (val) => val && val.length > 0 && !val.includes('your-project'),
-);
-
-if (isValidConfig) {
-  try {
-    const app = initializeApp(firebaseConfig);
-    messaging = getMessaging(app);
-  } catch (error) {
-    console.error('[SW] Failed to initialize Firebase:', error);
-  }
-} else {
-  console.warn('[SW] Firebase config missing or invalid. FCM disabled.');
-}
-
-// ============================================================================
-// FCM BACKGROUND MESSAGE HANDLING
-// ============================================================================
-
-/**
- * Handle background messages when app is not in foreground
- * This is the core FCM functionality for push notifications
- */
-if (messaging) {
-  onBackgroundMessage(messaging, (payload) => {
-    console.log('[SW] Background message received:', payload);
-
-    const { notification, data } = payload;
-    const notificationTitle = notification?.title || 'New notification';
-    // Use fully qualified path for icons in SW
-    const baseUrl = self.registration.scope; // This is the robust way in SW: scope covers base path
-    // OR use import.meta.env.BASE_URL if we trust the build to replace it correctly.
-    // Given VitePWA injectManifest, import.meta.env.BASE_URL is reliable.
-    const iconBase = import.meta.env.BASE_URL;
-
-    const notificationOptions = {
-      body: notification?.body || 'You have a new message',
-      icon: `${iconBase}icons/play-arrows-v1/icon-192.png`,
-      badge: `${iconBase}icons/play-arrows-v1/icon-192.png`,
-      data: data || {},
-      tag: getNotificationTag(data),
-      requireInteraction: data?.type === 'call',
-      actions: getNotificationActions(data?.type),
-      silent: false,
-      vibrate: getVibrationPattern(data?.type),
-    };
-
-    // Show the notification
-    return self.registration.showNotification(
-      notificationTitle,
-      notificationOptions,
-    );
-  });
-}
-
-/**
- * Get notification actions based on type
- * @param {string} type - Notification type ('call' or 'message')
- * @returns {Array} Notification actions
- */
-function getNotificationActions(type) {
-  if (type === 'call') {
-    return [
-      {
-        action: 'accept',
-        title: 'Accept',
-        // TODO: Add icon assets
-        // icon: '/icons/call-accept.png',
-      },
-      {
-        action: 'decline',
-        title: 'Decline',
-        // TODO: Add icon assets
-        // icon: '/icons/call-decline.png',
-      },
-    ];
-  } else if (type === 'message') {
-    return [
-      {
-        action: 'view',
-        title: 'View',
-        // TODO: Add icon assets
-        // icon: '/icons/view.png',
-      },
-    ];
-  }
-  return [];
-}
-
-/**
- * Get notification tag for grouping
- * @param {Object} data - Notification data
- * @returns {string} Notification tag
- */
-function getNotificationTag(data) {
-  if (data?.type === 'call' && data?.roomId) {
-    return `call_${data.roomId}`;
-  } else if (data?.type === 'message' && data?.senderId) {
-    return `message_${data.senderId}`;
-  }
-  return 'default';
-}
-
-/**
- * Get vibration pattern based on notification type
- * @param {string} type - Notification type ('call', 'message', etc.)
- * @returns {Array<number>} Vibration pattern in milliseconds
- */
-function getVibrationPattern(type) {
-  return VIBRATION_PATTERNS[type] || VIBRATION_PATTERNS.default;
-}
-
-// ============================================================================
-// NOTIFICATION CLICK HANDLING
-// ============================================================================
-
-/**
- * Handle notification clicks and actions
- */
-self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notification clicked:', event);
-
-  const { notification, action } = event;
-  const { data } = notification;
-
-  // Close the notification
-  notification.close();
-
-  // Handle the click based on notification type and action
-  event.waitUntil(handleNotificationClick(data, action));
+self.addEventListener('push', (event) => {
+  event.waitUntil(handlePushEvent(event));
 });
-
-/**
- * Handle notification click logic
- * @param {Object} data - Notification data
- * @param {string} action - Action clicked (or undefined for main click)
- */
-async function handleNotificationClick(data, action) {
-  const { type, roomId, senderId } = data || {};
-
-  try {
-    if (type === 'call') {
-      await handleCallNotificationClick(roomId, action);
-    } else if (type === 'message') {
-      await handleMessageNotificationClick(senderId);
-    } else {
-      // Default: just open the app
-      await openApp();
-    }
-  } catch (error) {
-    console.error('[SW] Error handling notification click:', error);
-    // Fallback: just open the app
-    await openApp();
-  }
-}
-
-/**
- * Handle call notification clicks
- * @param {string} roomId - Room ID for the call
- * @param {string} action - Action clicked ('accept', 'decline', or undefined)
- */
-async function handleCallNotificationClick(roomId, action) {
-  // Guard against missing roomId
-  if (!roomId) {
-    return openApp();
-  }
-
-  if (action === 'accept') {
-    // Open app and auto-join the call
-    await openApp(`/?room=${roomId}&autoJoin=true`);
-  } else if (action === 'decline') {
-    // Send decline signal to RTDB (would need Firebase Admin SDK in production)
-    console.log('[SW] Call declined via notification');
-    // For now, just dismiss - the decline logic would be handled by Firebase Functions
-  } else {
-    // Main notification click - open app with call context
-    await openApp(`/?room=${roomId}`);
-  }
-}
-
-/**
- * Handle message notification clicks
- * @param {string} senderId - ID of message sender
- */
-async function handleMessageNotificationClick(senderId) {
-  // Guard against missing senderId
-  if (!senderId) {
-    return openApp();
-  }
-
-  // Open app and navigate to conversation
-  await openApp(`/?contact=${senderId}`);
-}
-
-/**
- * Open the app with optional path
- * @param {string} path - Optional path to navigate to
- */
-async function openApp(path = '/') {
-  const clients = await self.clients.matchAll({
-    type: 'window',
-    includeUncontrolled: true,
-  });
-
-  // If app is already open, focus it and navigate
-  if (clients.length > 0) {
-    const client = clients[0];
-    await client.focus();
-
-    // Navigate to specific path if provided
-    if (path !== '/') {
-      client.postMessage({
-        type: 'NAVIGATE',
-        path: path,
-      });
-    }
-
-    return client;
-  }
-
-  // Open new window relative to the service worker scope
-  // Ensure path is relative by removing any leading slash.
-  const relativePath = path.startsWith('/') ? path.slice(1) : path;
-  const url = new URL(relativePath, self.registration.scope).href;
-
-  return self.clients.openWindow(url);
-}
+self.addEventListener('notificationclick', handleNotificationClickEvent);
 
 // ============================================================================
 // MESSAGE HANDLING FROM MAIN THREAD
@@ -354,4 +111,4 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-console.log('[SW] HangVidU Service Worker with FCM support loaded');
+console.log('[SW] HangVidU Service Worker with Web Push support loaded');

@@ -2,7 +2,7 @@
 
 import { createNotification, buildTemplate } from './notification.js';
 import { inAppNotificationManager } from './in-app-notification-manager.js';
-import { pushNotificationController } from '../../../notifications/push-notification-controller.js';
+import { getPushNotifications } from '../../../push-notifications/index.js';
 import {
   showSuccessToast,
   showWarningToast,
@@ -81,7 +81,14 @@ export function showEnableNotificationsPrompt() {
         btn.textContent = t('notification.enable.enabling');
 
         try {
-          const result = await pushNotificationController.requestPermission();
+          const pushController = getPushNotifications();
+          if (!pushController) {
+            showErrorToast(t('notification.enable.unsupported'));
+            inAppNotificationManager.remove(NOTIFICATION_ID);
+            return;
+          }
+
+          const result = await pushController.requestPermission();
 
           if (result.state === 'granted') {
             showSuccessToast(t('notification.enable.success'));
@@ -90,8 +97,15 @@ export function showEnableNotificationsPrompt() {
             result.state === 'error' &&
             result.reason === 'enable-failed'
           ) {
-            // Permission granted but FCM token/setup failed
+            // Permission granted but Web Push setup failed
             showErrorToast(t('notification.enable.failed'));
+            btn.disabled = false;
+            btn.textContent = t('shared.enable');
+          } else if (
+            result.state === 'error' &&
+            result.reason === 'permission-timeout'
+          ) {
+            showErrorToast(t('notification.enable.timeout'));
             btn.disabled = false;
             btn.textContent = t('shared.enable');
           } else if (result.reason === 'unsupported') {

@@ -14,16 +14,16 @@ import {
   getUserRecentCallRef,
 } from './storage/fb-rtdb/rtdb.js';
 
-import { initAuth, getCurrentUserAsync } from './auth/index.js';
+import { initAuth } from './auth/index.js';
 import {
   getLoggedInUserId,
+  getUser,
   getUserId,
   subscribe as subscribeAuth,
 } from './auth/auth-state.js';
 
-// TODO: inAppNotificationManager VS pushNotificationController - Compare and clarify distinction - separate concerns
 import { inAppNotificationManager } from './ui/components/notifications/in-app-notification-manager.js';
-import { pushNotificationController } from './notifications/push-notification-controller.js';
+import { getPushNotifications } from './push-notifications/index.js';
 
 import CallController from './webrtc/call-controller.js';
 import { messagingController } from './messaging/messaging-controller.js';
@@ -188,6 +188,7 @@ let showDebugUIForNotifications = false;
 // to access pc, dataChannel, partnerId, role, messagesUI, roomId, roomLink
 
 let cleanupFunctions = [];
+let isHandlingServiceWorkerNavigation = false;
 
 // ============================================================================
 // INITIALIZATION & MEDIA SETUP
@@ -290,35 +291,31 @@ async function init() {
     appWrapper && appWrapper.appendChild(toggleLangBtn);
     // END TODO ________________________
 
-    // Initialize FCM push notifications
+    // Initialize push notifications
     try {
-      const fcmInitialized = await pushNotificationController.initialize();
-      if (fcmInitialized) {
-        console.log('[MAIN] FCM notifications initialized successfully');
+      const pushController = getPushNotifications();
+
+      const pushInitialized = await pushController.initialize();
+      if (pushInitialized) {
+        console.log('[MAIN] Push notifications initialized successfully');
 
         // Note: Permission requests are handled in onAuthChange after user logs in.
         // This ensures:
-        // 1. Auth is ready and user is logged in (FCM token can be stored)
+        // 1. Auth is ready and user is logged in before registering Web Push
         // 2. Permission request happens from user interaction context (better browser support)
         // 3. No permission requests for anonymous/logged-out users
       } else {
-        console.warn('[MAIN] FCM notifications failed to initialize');
+        console.warn('[MAIN] Push notifications failed to initialize');
 
-        if (!pushNotificationController.isNotificationSupported()) {
+        if (!getPushNotifications().isNotificationSupported()) {
           const { showPushUnsupportedNotification } =
             await import('./ui/components/notifications/push-unsupported-notification.js');
           showPushUnsupportedNotification();
         }
       }
     } catch (error) {
-      console.error('[MAIN] FCM initialization error:', error);
+      console.error('[MAIN] Push notifications initialization error:', error);
     }
-
-    // DEBUG: Expose pushNotificationController to window for testing
-    window.pushNotificationController = pushNotificationController;
-    // Backward compatibility
-    window.notificationController = pushNotificationController;
-    window.getLoggedInUserId = getLoggedInUserId;
 
     return true;
   } catch (error) {
@@ -420,6 +417,7 @@ function applyCallResult(result, showLinkModal = false) {
   return true;
 }
 
+// TODO: Remove the "create if empty" path, rename to explicit "joinRoomWithId" and "createRoom" functions
 export async function joinOrCreateRoomWithId(
   customRoomId,
   { forceInitiator = false } = {},
@@ -473,6 +471,7 @@ export async function joinOrCreateRoomWithId(
     }
   }
 
+  // TODO: Remove this for robust and explicit alternative (if needed, otherwise just remove)
   // Room doesn't exist OR is empty → create as initiator
   if (!status.exists || !status.hasMembers) {
     getDiagnosticLogger().logRoomCreation(
@@ -570,6 +569,23 @@ export async function callContact(contactId, contactName, roomId = null) {
     // Update metadata
     contactsController.updateLastInteraction(contactId).catch(() => {});
 
+    // Send push notification immediately from the successful call-start path.
+    try {
+      const me = getUser();
+      const callerName = me?.displayName || me?.email || myUserId;
+      const pushResult = await getPushNotifications().sendIncomingCall({
+        targetUserId: contactId,
+        roomId,
+        callerId: myUserId,
+        callerName,
+      });
+      if (!pushResult?.ok) {
+        console.warn('[CALL] Call-start push notification did not succeed');
+      }
+    } catch (error) {
+      console.warn('[CALL] Failed to send push notification:', error);
+    }
+
     // Trigger UI (Calling Modal)
     try {
       const [{ showCallingUI }, { onCallingStarted, onCallingEnded }] =
@@ -590,21 +606,6 @@ export async function callContact(contactId, contactName, roomId = null) {
       });
     } catch (e) {
       console.warn('[CALL] Failed to load calling UI:', e);
-    }
-
-    // Send push notification
-    try {
-      const currentUser = await getCurrentUserAsync();
-      const callerName =
-        currentUser?.displayName || currentUser?.email || myUserId;
-
-      await pushNotificationController.sendCallNotification(contactId, {
-        roomId,
-        callerId: myUserId,
-        callerName,
-      });
-    } catch (error) {
-      console.warn('[CALL] Failed to send push notification:', error);
     }
   }
 
@@ -837,6 +838,31 @@ export function listenForIncomingOnRoom(roomId) {
           },
         );
 
+        const pushController = getPushNotifications();
+        const usePushOnlyForBackgroundCall =
+          !!pushController?.isNotificationEnabled?.() &&
+          !!pushController?.shouldSendNotification?.();
+
+        if (import.meta.env.DEV && usePushOnlyForBackgroundCall) {
+          getDiagnosticLogger().logNotificationDecision(
+            'DEFER',
+            'background_push_only',
+            roomId,
+            {
+              joiningUserId,
+              pushNotificationsEnabled: true,
+            },
+          );
+          console.log(
+            '[CALL] Background incoming call detected, using push-only notification path',
+            {
+              roomId,
+              joiningUserId,
+            },
+          );
+          return;
+        }
+
         // Resolve caller name from contacts
         const callerName = await contactsController.resolveCallerName(
           roomId,
@@ -905,8 +931,11 @@ export function listenForIncomingOnRoom(roomId) {
           removeIncomingListenersForRoom(roomId);
 
           // Dismiss any call notifications for this room
-          if (pushNotificationController.isNotificationEnabled()) {
-            await pushNotificationController.dismissCallNotifications(roomId);
+          const pushNotificationController = getPushNotifications?.();
+          if (pushNotificationController?.isNotificationEnabled()) {
+            await pushNotificationController
+              .dismissCallNotifications(roomId)
+              .catch(() => {});
           }
 
           getDiagnosticLogger().logNotificationDecision(
@@ -967,8 +996,11 @@ export function listenForIncomingOnRoom(roomId) {
           devDebug('Incoming call rejected by user');
 
           // Dismiss any call notifications for this room
-          if (pushNotificationController.isNotificationEnabled()) {
-            await pushNotificationController.dismissCallNotifications(roomId);
+          const pushNotificationController = getPushNotifications?.();
+          if (pushNotificationController?.isNotificationEnabled()) {
+            await pushNotificationController
+              .dismissCallNotifications(roomId)
+              .catch(() => {});
           }
 
           getDiagnosticLogger().logNotificationDecision(
@@ -1031,11 +1063,18 @@ export function listenForIncomingOnRoom(roomId) {
     ringtoneManager.stop();
     callIndicators.stopCallIndicators();
 
-    // Dismiss any call notifications for this room
-    if (pushNotificationController.isNotificationEnabled()) {
-      await pushNotificationController
-        .dismissCallNotifications(roomId)
-        .catch(() => {});
+    // ! Dismiss any call notifications for this room
+    try {
+      const pushNotificationController = getPushNotifications
+        ? getPushNotifications()
+        : null;
+      if (pushNotificationController?.isNotificationEnabled()) {
+        await pushNotificationController
+          .dismissCallNotifications(roomId)
+          .catch(() => {});
+      }
+    } catch (_) {
+      // best-effort; do not block cancellation flow on notification errors
     }
 
     try {
@@ -1416,7 +1455,7 @@ if (isDev() && testNotificationsBtn) {
     try {
       console.log('[TEST] Testing notification permissions...');
 
-      const result = await pushNotificationController.requestPermission({
+      const result = await getPushNotifications()?.requestPermission({
         onGranted: () => {
           console.log('[TEST] Notifications granted!');
           alert('✅ ' + t('status.push_enabled'));
@@ -1440,7 +1479,7 @@ if (isDev() && testNotificationsBtn) {
       console.log('[TEST] Permission result:', result);
 
       // If already enabled, show current status
-      if (pushNotificationController.isNotificationEnabled()) {
+      if (getPushNotifications()?.isNotificationEnabled()) {
         alert('✅ ' + t('status.push_already'));
       }
     } catch (error) {
@@ -1532,6 +1571,79 @@ async function autoJoinFromUrl() {
 
   devDebug('Auto-joined room from URL');
   return success;
+}
+
+async function handleServiceWorkerNavigation(path) {
+  if (!path) return false;
+
+  let targetUrl;
+  try {
+    targetUrl = new URL(path, window.location.origin);
+  } catch (error) {
+    console.warn('[MAIN] Invalid service worker navigation path:', path, error);
+    return false;
+  }
+
+  const roomId = targetUrl.searchParams.get('room');
+  const contactId = targetUrl.searchParams.get('contact');
+
+  window.history.replaceState({}, '', targetUrl);
+
+  console.log('[MAIN] Handling service worker navigation', {
+    path,
+    roomId,
+    contactId,
+  });
+
+  if (!roomId) {
+    if (!contactId) {
+      return false;
+    }
+
+    document.dispatchEvent(
+      new CustomEvent('messages:conversation:select', {
+        detail: {
+          contactId,
+          displayUI: true,
+        },
+      }),
+    );
+    return true;
+  }
+
+  if (isHandlingServiceWorkerNavigation) {
+    console.log('[MAIN] Service worker navigation already in progress', {
+      roomId,
+    });
+    return false;
+  }
+
+  isHandlingServiceWorkerNavigation = true;
+
+  try {
+    const success = await joinOrCreateRoomWithId(roomId);
+
+    console.log('[MAIN] Service worker room navigation result', {
+      roomId,
+      success,
+    });
+
+    if (!success) {
+      clearUrlParam();
+      onCallDisconnected();
+    }
+
+    return success;
+  } catch (error) {
+    console.warn('[MAIN] Service worker room navigation failed:', error, {
+      roomId,
+    });
+    clearUrlParam();
+    onCallDisconnected();
+    return false;
+  } finally {
+    isHandlingServiceWorkerNavigation = false;
+  }
 }
 
 // ============================================================================
@@ -1740,25 +1852,7 @@ window.onload = async () => {
 
       // Only clean up on actual logout (not initial load)
       if (isActualLogout) {
-        devDebug(
-          '[AUTH] User logged out - cleaning up messaging and listeners',
-        );
-
-        // // Clear messages UI to prevent previous user's messages from being visible
-        // messagesUI.reset();
-        // // Close all messaging sessions (stops RTDB listeners for old user's conversations)
-        // messagingController.closeAllSessions();
-
-        // Disable notifications and clean up FCM tokens
-        if (pushNotificationController.isNotificationEnabled()) {
-          await pushNotificationController.disable().catch((error) => {
-            console.warn(
-              '[AUTH] Failed to disable notifications on logout:',
-              error,
-            );
-          });
-        }
-
+        devDebug('[AUTH] User logged out - cleaning up listeners');
         removeAllIncomingListeners();
         cleanupInviteListeners();
       } else if (isActualLogin) {
@@ -1781,12 +1875,16 @@ window.onload = async () => {
         setupInviteListener();
 
         // Enable push notifications if already granted (no prompt without user gesture)
-        const notifResult = await pushNotificationController
-          .enableIfGranted()
-          .catch((e) => {
-            console.warn('[AUTH] Push notification setup failed:', e);
-            return { state: 'error' };
-          });
+        const pushController = getPushNotifications();
+        let notifResult = { state: 'error' };
+        if (pushController) {
+          notifResult = await pushController
+            .ensureEnabledIfGranted()
+            .catch((e) => {
+              console.warn('[AUTH] Push notification setup failed:', e);
+              return { state: 'error' };
+            });
+        }
 
         if (notifResult.state === 'prompt-needed') {
           showEnableNotificationsPrompt();
@@ -1808,15 +1906,17 @@ window.onload = async () => {
         setupInviteListener();
 
         // Enable push notifications if already granted (no prompt without user gesture)
-        const notifResult = await pushNotificationController
-          .enableIfGranted()
-          .catch((e) => {
-            console.warn('[AUTH] Push notification setup failed:', e);
-            return { state: 'error' };
-          });
-
-        if (notifResult.state === 'prompt-needed') {
-          showEnableNotificationsPrompt();
+        const pushController = getPushNotifications();
+        if (pushController) {
+          const notifResult = await pushController
+            .ensureEnabledIfGranted()
+            .catch((e) => {
+              console.warn('[AUTH] Push notification setup failed:', e);
+              return { state: 'error' };
+            });
+          if (notifResult.state === 'prompt-needed') {
+            showEnableNotificationsPrompt();
+          }
         }
       }
     } catch (e) {
@@ -1829,6 +1929,33 @@ window.onload = async () => {
         unsubscribeAuthContacts();
     } catch (_) {}
   });
+
+  if ('serviceWorker' in navigator) {
+    const handleServiceWorkerMessage = (event) => {
+      const { type, path } = event.data || {};
+
+      if (type !== 'NAVIGATE') return;
+
+      console.log('[MAIN] Received service worker NAVIGATE message', {
+        path,
+      });
+
+      handleServiceWorkerNavigation(path).catch((error) => {
+        console.warn('[MAIN] Failed to handle service worker NAVIGATE:', error);
+      });
+    };
+
+    navigator.serviceWorker.addEventListener(
+      'message',
+      handleServiceWorkerMessage,
+    );
+    cleanupFunctions.push(() => {
+      navigator.serviceWorker.removeEventListener(
+        'message',
+        handleServiceWorkerMessage,
+      );
+    });
+  }
 
   // Auto-join if room parameter exists
   const autoJoinedSuccessfully = await autoJoinFromUrl();
@@ -1916,14 +2043,12 @@ CallController.on(
           console.log(
             `[MAIN] Sending missed call push notification to ${contact.contactName} (${contact.contactId})`,
           );
-          await pushNotificationController.sendMissedCallNotification(
-            contact.contactId,
-            {
-              roomId,
-              callerId: getUserId(),
-              callerName,
-            },
-          );
+          await getPushNotifications()?.sendMissedCall({
+            targetUserId: contact.contactId,
+            roomId,
+            callerId: getUserId(),
+            callerName,
+          });
 
           // Write missed call message to chat history
           // The caller writes this - both parties will see it in their shared conversation
@@ -1956,8 +2081,8 @@ CallController.on(
     }
 
     // Clean up call notifications for this room
-    if (roomId && pushNotificationController.isNotificationEnabled()) {
-      pushNotificationController
+    if (roomId && getPushNotifications()?.isNotificationEnabled()) {
+      getPushNotifications()
         .dismissCallNotifications(roomId)
         .catch((error) => {
           console.warn('[MAIN] Failed to dismiss call notifications:', error);

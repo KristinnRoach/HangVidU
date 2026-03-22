@@ -53,7 +53,7 @@
           ".read": true,
           ".write": "$userId === auth.uid"
         },
-        "fcmTokens": {
+        "pushSubscriptions": {
           ".read": "$userId === auth.uid",
           ".write": "$userId === auth.uid"
         }

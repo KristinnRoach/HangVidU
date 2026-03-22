@@ -1,5 +1,6 @@
 import { t, onLocaleChange } from '../../../i18n/index.js';
 import { initIcons } from '../../icons.js';
+import { isMobileDevice } from '../../../utils/env/isMobileDevice.js';
 
 /**
  * Creates the messages box DOM structure and initializes textarea auto-grow behavior.
@@ -96,20 +97,19 @@ export function createMessageBox() {
     });
   }
 
-  // TODO: Proper fix for autoscroll on mobile when THIS specific text input is focused (keyboard open)
-  // if (isMobileDevice()) {
-  //   messagesInput.addEventListener('focus', () => {
-  //     document.body.style.overflow = 'hidden';
-  //     document.body.style.position = 'fixed';
-  //     document.body.style.width = '100%';
-  //   });
+  if (isMobileDevice()) {
+    messagesInput.addEventListener('focus', () => {
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+    });
 
-  //   messagesInput.addEventListener('blur', () => {
-  //     document.body.style.overflow = '';
-  //     document.body.style.position = '';
-  //     document.body.style.width = '';
-  //   });
-  // }
+    messagesInput.addEventListener('blur', () => {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    });
+  }
 
   return {
     messagesBoxContainer,

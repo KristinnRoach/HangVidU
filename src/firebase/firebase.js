@@ -45,7 +45,6 @@ const firebaseConfig = {
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
@@ -53,13 +52,13 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 
 // ============================================================================
-// FCM CONFIGURATION
+// WEB PUSH CONFIGURATION
 // ============================================================================
 
-// FCM VAPID key for web push notifications
-export const fcmVapidKey = import.meta.env.VITE_FCM_VAPID_KEY;
-if (!fcmVapidKey) {
-  console.error('Missing VITE_FCM_VAPID_KEY: required for FCM web push');
+// VAPID key for browser Web Push notifications
+const webPushVapidKey = import.meta.env.VITE_PUSH_VAPID_KEY;
+if (!webPushVapidKey) {
+  console.error('Missing VITE_PUSH_VAPID_KEY');
 }
 
 // ============================================================================

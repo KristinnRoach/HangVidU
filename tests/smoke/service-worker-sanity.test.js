@@ -33,12 +33,11 @@ describe('Service Worker Environment Sanity Checks', () => {
   test('Firebase config is loaded', () => {
     expect(import.meta.env.VITE_FIREBASE_API_KEY).toBeDefined();
     expect(import.meta.env.VITE_FIREBASE_PROJECT_ID).toBeDefined();
-    expect(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID).toBeDefined();
   });
 
-  test('FCM VAPID key is configured', () => {
-    expect(import.meta.env.VITE_FCM_VAPID_KEY).toBeDefined();
-    expect(import.meta.env.VITE_FCM_VAPID_KEY).not.toBe('');
+  test('Web Push VAPID is configured', () => {
+    expect(import.meta.env.VITE_PUSH_VAPID_KEY).toBeDefined();
+    expect(import.meta.env.VITE_PUSH_VAPID_KEY).not.toBe('');
   });
 
   test('base URL is configured correctly', () => {
@@ -70,7 +69,7 @@ describe('Service Worker Configuration Validation', () => {
   });
 
   test('VAPID key is not placeholder value', () => {
-    const vapidKey = import.meta.env.VITE_FCM_VAPID_KEY;
+    const vapidKey = import.meta.env.VITE_PUSH_VAPID_KEY;
 
     expect(vapidKey).not.toContain('your_vapid_key');
     expect(vapidKey.length).toBeGreaterThan(50); // Real VAPID keys are long

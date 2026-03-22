@@ -9,7 +9,6 @@ import { escapeHtml } from '../../../ui/component-system/dom-utils.js';
 import { initIcons } from '../../icons.js';
 import { messagingController } from '../../../messaging/messaging-controller.js';
 import { contactsController } from '../../../contacts/contacts-controller.js';
-
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
 
@@ -20,7 +19,7 @@ const unreadListeners = new Map();
 let localeUnsubscribe = null;
 let lastRenderedLobby = null;
 
-// Limit displayed contact name length in the UI (keep full name in title)
+// Limit displayed contact name length in the UI  (keep full name in title)
 const MAX_CONTACT_NAME_CHARS = 18;
 
 /**

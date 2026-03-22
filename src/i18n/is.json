@@ -117,6 +117,7 @@
   "notification.enable.blocked.safari": "Tilkynningar blokkaðar. Farðu í Safari > Stillingar > Vefsíður > Tilkynningar.",
   "notification.enable.silent_block": "Tilkynningar voru sjálfkrafa blokkaðar af {browser}. Opnaðu vefstillingar í veffangastikunni til að leyfa.",
   "notification.enable.failed": "Heimild veitt en uppsetning mistókst. Reyndu að endurhlaða síðunni.",
+  "notification.enable.timeout": "Beiðni um tilkynningaheimild kláraðist ekki. Athugaðu vafragluggann eða reyndu aftur.",
   "notification.missed.title": "Missað símtal",
   "notification.missed.body": "{name} reyndi að hringja í þig",
   "notification.missed.suffix": "reyndi að hringja í þig",

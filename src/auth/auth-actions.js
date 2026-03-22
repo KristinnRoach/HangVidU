@@ -14,6 +14,7 @@ import { showOneTapSignin } from './onetap.js';
 import { setOffline } from '../firebase/presence.js';
 import { t } from '../i18n/index.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
+import { getPushNotifications } from '../push-notifications/index.js';
 
 // iOS standalone PWA Safari fallback: armed after a failed attempt,
 // then the next Login tap opens the app URL in Safari (user gesture).
@@ -161,6 +162,16 @@ export async function signOutUser() {
   setState({ status: 'loading' });
 
   try {
+    // Disable notifications and unregister the current Web Push subscription
+    await getPushNotifications()
+      ?.disable?.()
+      .catch((error) => {
+        console.warn(
+          '[AUTH] Failed to disable notifications on logout:',
+          error,
+        );
+      });
+
     await setOffline();
     clearGISTokenCache();
     await signOut(auth);
@@ -212,17 +223,7 @@ export async function deleteAccount() {
       console.warn('[AUTH] Failed to remove user node from RTDB:', err);
     }
 
-    // 3. Delete FCM token if available
-    try {
-      const { FCMTransport } =
-        await import('../notifications/transports/fcm-transport.js');
-      const fcmTransport = new FCMTransport();
-      await fcmTransport.deleteToken();
-    } catch (err) {
-      console.warn('[AUTH] Failed to delete FCM token:', err);
-    }
-
-    // 4. Remove user from discovery directory (so they don't show as "On HangVidU")
+    // 3. Remove user from discovery directory (so they don't show as "On HangVidU")
     if (user.email) {
       try {
         const { removeUserFromDirectory } =
@@ -236,7 +237,7 @@ export async function deleteAccount() {
       }
     }
 
-    // 5. Delete the Firebase Auth account (also signs out the user)
+    // 4. Delete the Firebase Auth account (also signs out the user)
     console.info('[AUTH] Deleting Firebase Auth account...');
     await deleteUser(user);
 
