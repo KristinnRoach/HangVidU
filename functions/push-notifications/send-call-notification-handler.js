@@ -75,52 +75,6 @@ async function handleSendCallNotification(req, res) {
   }
 }
 
-/**
- * Temporary authenticated handler for self-targeted debug call pushes.
- */
-async function handleSendDebugCallNotification(req, res) {
-  try {
-    if (req.method !== 'POST') {
-      return res.status(405).json({ error: 'Method not allowed' });
-    }
-
-    const uid = await verifyAuthHeader(req);
-    const callData = req.body?.callData || {};
-    const payload = buildCallPayload({
-      roomId: callData.roomId || `debug-${Date.now()}`,
-      callerId: callData.callerId || uid,
-      callerName: callData.callerName || 'Debug Caller',
-      targetUserId: uid,
-      type: callData.type || 'incoming_call',
-    });
-
-    const result = await sendWebPushToUser(uid, payload);
-    if (!result.sent) {
-      return res.status(404).json({
-        error: 'No push subscriptions found',
-        reason: result.reason,
-        totalSubscriptions: result.totalSubscriptions,
-        successCount: result.successCount,
-        failureCount: result.failureCount,
-        failures: result.failures,
-      });
-    }
-
-    return res.json({
-      success: true,
-      successCount: result.successCount,
-      failureCount: result.failureCount,
-      failures: result.failures,
-    });
-  } catch (error) {
-    console.error('[Push] Error sending debug notification:', error);
-    return res
-      .status(error.statusCode || 500)
-      .json({ error: error.message || 'Internal server error' });
-  }
-}
-
 module.exports = {
   handleSendCallNotification,
-  handleSendDebugCallNotification,
 };

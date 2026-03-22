@@ -9,8 +9,6 @@ import { escapeHtml } from '../../../ui/component-system/dom-utils.js';
 import { initIcons } from '../../icons.js';
 import { messagingController } from '../../../messaging/messaging-controller.js';
 import { contactsController } from '../../../contacts/contacts-controller.js';
-import { getPushNotifications } from '../../../push-notifications/index.js';
-
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
 
@@ -23,10 +21,6 @@ let lastRenderedLobby = null;
 
 // Limit displayed contact name length in the UI  (keep full name in title)
 const MAX_CONTACT_NAME_CHARS = 18;
-
-// Set to true to show a button for sending test push notifications to contacts
-// (for testing push notifications without needing an actual incoming call notification
-const SHOW_DEBUG_PUSH_NOTIFCATION_BUTTON = false;
 
 /**
  * Prompt user to save contact after hangup (and render contacts list in lobby)
@@ -125,22 +119,6 @@ export async function renderContactsList(lobbyElement) {
                 <i data-lucide="phone" fill="currentColor" stroke-width="0"></i>
               </button>
 
-              ${
-                SHOW_DEBUG_PUSH_NOTIFCATION_BUTTON
-                  ? `
-              <button
-                class="contact-debug-notify-btn"
-                data-contact-id="${escapeHtml(id)}"
-                data-contact-name="${escapedName}"
-                title="${escapeHtml(`Send debug call notification to ${rawName}`)}"
-                aria-label="${escapeHtml(`Send debug call notification to ${rawName}`)}"
-              >
-                <i data-lucide="bell" fill="none"></i>
-              </button>
-              `
-                  : ''
-              }
-
               <span class="presence-indicator" data-contact-id="${escapeHtml(id)}"></span>
 
               <span class="contact-name" data-contact-id="${escapeHtml(id)}" data-contact-name="${escapedName}">
@@ -202,22 +180,6 @@ function attachContactListeners(container, lobbyElement) {
       }
     };
   });
-
-  if (SHOW_DEBUG_PUSH_NOTIFCATION_BUTTON) {
-    container
-      .querySelectorAll('.contact-debug-notify-btn')
-      .forEach((buttonEl) => {
-        buttonEl.onclick = async () => {
-          const contactId = buttonEl.getAttribute('data-contact-id');
-          if (!contactId) return;
-
-          const pushNotificationController = getPushNotifications();
-          await pushNotificationController.sendDebugCallNotificationToUser(
-            contactId,
-          );
-        };
-      });
-  }
 
   // Contact name - click to open messages
   container.querySelectorAll('.contact-name[data-contact-id]').forEach((el) => {

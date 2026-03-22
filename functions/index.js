@@ -14,7 +14,6 @@ const {
 } = require('./push-notifications/remove-push-subscription-handler');
 const {
   handleSendCallNotification,
-  handleSendDebugCallNotification,
 } = require('./push-notifications/send-call-notification-handler');
 const {
   handleSendMessageNotification,
@@ -44,14 +43,6 @@ exports.sendCallNotification = onRequest(
     region: REGION,
   },
   handleSendCallNotification,
-);
-
-exports.sendDebugCallNotification = onRequest(
-  {
-    cors: true,
-    region: REGION,
-  },
-  handleSendDebugCallNotification,
 );
 
 exports.healthCheck = onRequest(handleHealthCheck);

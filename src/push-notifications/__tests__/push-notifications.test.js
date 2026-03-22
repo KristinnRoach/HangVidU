@@ -234,49 +234,6 @@ describe('PushNotifications', () => {
     );
   });
 
-  it('sends debug call notifications through the debug endpoint', async () => {
-    await controller.initialize();
-
-    await controller.sendDebugCallNotification({
-      roomId: 'debug-room',
-      callerName: 'Debug Caller',
-    });
-
-    expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/sendDebugCallNotification'),
-      expect.objectContaining({
-        method: 'POST',
-      }),
-    );
-  });
-
-  it('sends target debug call notifications through the call endpoint', async () => {
-    await controller.initialize();
-
-    const result = await controller.sendDebugCallNotificationToUser(
-      'target-user',
-      {
-        roomId: 'debug-room',
-      },
-    );
-
-    expect(result).toEqual(
-      expect.objectContaining({
-        ok: true,
-        status: 200,
-        targetUserId: 'target-user',
-        roomId: 'debug-room',
-      }),
-    );
-    expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/sendCallNotification'),
-      expect.objectContaining({
-        method: 'POST',
-        body: expect.stringContaining('"targetUserId":"target-user"'),
-      }),
-    );
-  });
-
   it('sends missed call notifications with explicit missed_call type', async () => {
     await controller.initialize();
 

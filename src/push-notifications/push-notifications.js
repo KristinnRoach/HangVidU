@@ -372,56 +372,6 @@ export class PushNotifications {
     }
   }
 
-  async sendDebugCallNotification(callData = {}) {
-    try {
-      const defaults = {
-        roomId: `debug-${Date.now()}`,
-        callerId: getLoggedInUserId() || 'debug-caller',
-        callerName: 'Debug Caller',
-        type: 'incoming_call',
-      };
-      const payload = await this.formatCallNotification({
-        ...defaults,
-        ...callData,
-      });
-      const response = await this.callFunction('sendDebugCallNotification', {
-        callData: payload,
-      });
-      console.log('[Push Notifications] Debug call notification sent');
-      return response;
-    } catch (error) {
-      console.error(
-        '[Push Notifications] Failed to send debug call notification:',
-        error,
-      );
-      throw error;
-    }
-  }
-
-  async sendDebugCallNotificationToUser(targetUserId, callData = {}) {
-    if (!targetUserId) {
-      console.warn(
-        '[Push Notifications] Missing target user for debug call notification',
-      );
-      return false;
-    }
-
-    const { uid, displayName } = getUser() || {};
-
-    const defaults = {
-      roomId: `debug-${Date.now()}`,
-      callerId: uid || getLoggedInUserId() || 'debug-caller',
-      callerName: displayName || 'Debug Caller',
-      type: 'incoming_call',
-    };
-
-    return this.sendIncomingCall({
-      targetUserId,
-      ...defaults,
-      ...callData,
-    });
-  }
-
   async sendMessageNotification(_targetUserId, _messageData) {
     console.warn(
       '[Push Notifications] Message notifications are not implemented in this phase',

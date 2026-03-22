@@ -22,7 +22,6 @@ import {
   subscribe as subscribeAuth,
 } from './auth/auth-state.js';
 
-// TODO: inAppNotificationManager VS pushNotificationController - Compare and clarify distinction - separate concerns
 import { inAppNotificationManager } from './ui/components/notifications/in-app-notification-manager.js';
 import { getPushNotifications } from './push-notifications/index.js';
 
@@ -295,9 +294,6 @@ async function init() {
     // Initialize push notifications
     try {
       const pushController = getPushNotifications();
-
-      // ! TEMP DEBUG: Expose pushNotificationController to window for testing
-      window.pushNotificationController = getPushNotifications();
 
       const pushInitialized = await pushController.initialize();
       if (pushInitialized) {

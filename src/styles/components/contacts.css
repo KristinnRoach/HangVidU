@@ -56,23 +56,6 @@
         }
       }
 
-      & .contact-debug-notify-btn {
-        background: none;
-        border: none;
-        box-shadow: none;
-        padding: 0.2rem;
-        cursor: pointer;
-        color: rgb(223, 194, 92);
-        opacity: 0.8;
-        flex-shrink: 0;
-
-        & .lucide-icon {
-          width: 18px;
-          height: 18px;
-          transition: all 0.2s ease;
-        }
-      }
-
       & .contact-call-btn:hover {
         opacity: 1;
 
@@ -80,15 +63,6 @@
           opacity: 1;
           rotate: 15deg;
           color: rgb(70, 200, 70);
-        }
-      }
-
-      & .contact-debug-notify-btn:hover {
-        opacity: 1;
-
-        & .lucide-icon {
-          color: rgb(241, 212, 109);
-          transform: scale(1.08);
         }
       }
 
