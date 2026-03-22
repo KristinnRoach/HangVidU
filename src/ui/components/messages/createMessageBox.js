@@ -1,5 +1,6 @@
 import { t, onLocaleChange } from '../../../i18n/index.js';
 import { initIcons } from '../../icons.js';
+import { attachIOSKeyboardViewportSync } from './attachIOSKeyboardViewportSync.js';
 
 /**
  * Creates the messages box DOM structure and initializes textarea auto-grow behavior.
@@ -15,16 +16,6 @@ import { initIcons } from '../../icons.js';
  * @returns {Function|null} .resetInputHeight - Function to reset textarea height, or null if not needed
  */
 export function createMessageBox() {
-  const ua =
-    typeof navigator === 'undefined'
-      ? ''
-      : navigator.userAgent || navigator.vendor || '';
-  const isIOS =
-    (/iPad|iPhone|iPod/.test(ua) ||
-      (/Macintosh/.test(ua) &&
-        typeof navigator.maxTouchPoints === 'number' &&
-        navigator.maxTouchPoints > 1)) &&
-    !window.MSStream;
   const messagesBoxContainer = document.createElement('div');
   messagesBoxContainer.innerHTML = `
     <div id="messages-box" class="messages-box hidden">
@@ -101,93 +92,10 @@ export function createMessageBox() {
     });
   }
 
-  if (isIOS) {
-    let lockedScrollY = 0;
-    let viewportSyncActive = false;
-    let viewportSyncFrame = 0;
-
-    const syncToVisualViewport = () => {
-      const vv = window.visualViewport;
-      if (!vv || !viewportSyncActive) return;
-
-      const margin = 16;
-      const width = Math.max(280, vv.width - margin * 2);
-      const height = Math.max(240, vv.height - margin * 2);
-
-      messagesBox.style.top = `${Math.round(vv.offsetTop + margin)}px`;
-      messagesBox.style.left = `${Math.round(vv.offsetLeft + margin)}px`;
-      messagesBox.style.right = 'auto';
-      messagesBox.style.bottom = 'auto';
-      messagesBox.style.width = `${Math.round(width)}px`;
-      messagesBox.style.maxWidth = `${Math.round(width)}px`;
-      messagesBox.style.height = `${Math.round(height)}px`;
-      messagesBox.style.maxHeight = `${Math.round(height)}px`;
-
-      if (Math.abs(window.scrollY - lockedScrollY) > 1) {
-        window.scrollTo(0, lockedScrollY);
-      }
-    };
-
-    const scheduleViewportSync = () => {
-      if (!viewportSyncActive || viewportSyncFrame) return;
-      viewportSyncFrame = requestAnimationFrame(() => {
-        viewportSyncFrame = 0;
-        syncToVisualViewport();
-      });
-    };
-
-    const stopViewportSync = () => {
-      viewportSyncActive = false;
-      if (viewportSyncFrame) {
-        cancelAnimationFrame(viewportSyncFrame);
-        viewportSyncFrame = 0;
-      }
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener(
-          'resize',
-          scheduleViewportSync,
-        );
-        window.visualViewport.removeEventListener(
-          'scroll',
-          scheduleViewportSync,
-        );
-      }
-      document.body.style.overflow = '';
-      document.documentElement.style.overflow = '';
-      messagesBox.style.top = '';
-      messagesBox.style.left = '';
-      messagesBox.style.right = '';
-      messagesBox.style.bottom = '';
-      messagesBox.style.width = '';
-      messagesBox.style.maxWidth = '';
-      messagesBox.style.height = '';
-      messagesBox.style.maxHeight = '';
-      window.scrollTo(0, lockedScrollY);
-    };
-
-    messagesInput.addEventListener('focus', () => {
-      lockedScrollY = window.scrollY;
-      viewportSyncActive = true;
-      document.body.style.overflow = 'hidden';
-      document.documentElement.style.overflow = 'hidden';
-
-      if (window.visualViewport) {
-        window.visualViewport.addEventListener(
-          'resize',
-          scheduleViewportSync,
-        );
-        window.visualViewport.addEventListener(
-          'scroll',
-          scheduleViewportSync,
-        );
-      }
-      scheduleViewportSync();
-    });
-
-    messagesInput.addEventListener('blur', () => {
-      requestAnimationFrame(stopViewportSync);
-    });
-  }
+  attachIOSKeyboardViewportSync({
+    inputEl: messagesInput,
+    panelEl: messagesBox,
+  });
 
   return {
     messagesBoxContainer,

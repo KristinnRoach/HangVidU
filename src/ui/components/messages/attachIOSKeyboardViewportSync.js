@@ -1,0 +1,115 @@
+function isIOSDevice() {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return false;
+  }
+
+  const ua = navigator.userAgent || navigator.vendor || '';
+  return (
+    (/iPad|iPhone|iPod/.test(ua) ||
+      (/Macintosh/.test(ua) &&
+        typeof navigator.maxTouchPoints === 'number' &&
+        navigator.maxTouchPoints > 1)) &&
+    !window.MSStream
+  );
+}
+
+/**
+ * Keep a fixed panel aligned to the visible viewport while the iOS keyboard is open.
+ *
+ * This is intentionally scoped to the messages UI shape:
+ * - one focusable input
+ * - one fixed panel that should stay inside the visual viewport
+ * - temporary inline style overrides while focused
+ *
+ * @param {Object} options
+ * @param {HTMLElement} options.inputEl
+ * @param {HTMLElement} options.panelEl
+ * @param {number} [options.margin=16]
+ * @param {number} [options.minWidth=280]
+ * @param {number} [options.minHeight=240]
+ */
+export function attachIOSKeyboardViewportSync({
+  inputEl,
+  panelEl,
+  margin = 16,
+  minWidth = 280,
+  minHeight = 240,
+}) {
+  if (!isIOSDevice() || !inputEl || !panelEl) return;
+
+  let lockedScrollY = 0;
+  let viewportSyncActive = false;
+  let viewportSyncFrame = 0;
+
+  const syncToVisualViewport = () => {
+    const vv = window.visualViewport;
+    if (!vv || !viewportSyncActive) return;
+
+    const width = Math.max(minWidth, vv.width - margin * 2);
+    const height = Math.max(minHeight, vv.height - margin * 2);
+
+    panelEl.style.top = `${Math.round(vv.offsetTop + margin)}px`;
+    panelEl.style.left = `${Math.round(vv.offsetLeft + margin)}px`;
+    panelEl.style.right = 'auto';
+    panelEl.style.bottom = 'auto';
+    panelEl.style.width = `${Math.round(width)}px`;
+    panelEl.style.maxWidth = `${Math.round(width)}px`;
+    panelEl.style.height = `${Math.round(height)}px`;
+    panelEl.style.maxHeight = `${Math.round(height)}px`;
+
+    if (Math.abs(window.scrollY - lockedScrollY) > 1) {
+      window.scrollTo(0, lockedScrollY);
+    }
+  };
+
+  const scheduleViewportSync = () => {
+    if (!viewportSyncActive || viewportSyncFrame) return;
+    viewportSyncFrame = requestAnimationFrame(() => {
+      viewportSyncFrame = 0;
+      syncToVisualViewport();
+    });
+  };
+
+  const stopViewportSync = () => {
+    viewportSyncActive = false;
+    if (viewportSyncFrame) {
+      cancelAnimationFrame(viewportSyncFrame);
+      viewportSyncFrame = 0;
+    }
+
+    if (window.visualViewport) {
+      window.visualViewport.removeEventListener('resize', scheduleViewportSync);
+      window.visualViewport.removeEventListener('scroll', scheduleViewportSync);
+    }
+
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+    panelEl.style.top = '';
+    panelEl.style.left = '';
+    panelEl.style.right = '';
+    panelEl.style.bottom = '';
+    panelEl.style.width = '';
+    panelEl.style.maxWidth = '';
+    panelEl.style.height = '';
+    panelEl.style.maxHeight = '';
+    window.scrollTo(0, lockedScrollY);
+  };
+
+  inputEl.addEventListener('focus', () => {
+    lockedScrollY = window.scrollY;
+    viewportSyncActive = true;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', scheduleViewportSync);
+      window.visualViewport.addEventListener('scroll', scheduleViewportSync);
+    }
+
+    scheduleViewportSync();
+  });
+
+  inputEl.addEventListener('blur', () => {
+    requestAnimationFrame(stopViewportSync);
+  });
+}
