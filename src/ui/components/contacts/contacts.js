@@ -23,7 +23,10 @@ let lastRenderedLobby = null;
 
 // Limit displayed contact name length in the UI  (keep full name in title)
 const MAX_CONTACT_NAME_CHARS = 18;
-const SHOW_DEBUG_NOTIFY_BUTTON = true;
+
+// Set to true to show a button for sending test push notifications to contacts
+// (for testing push notifications without needing an actual incoming call notification
+const SHOW_DEBUG_PUSH_NOTIFCATION_BUTTON = false;
 
 /**
  * Prompt user to save contact after hangup (and render contacts list in lobby)
@@ -123,7 +126,7 @@ export async function renderContactsList(lobbyElement) {
               </button>
 
               ${
-                SHOW_DEBUG_NOTIFY_BUTTON
+                SHOW_DEBUG_PUSH_NOTIFCATION_BUTTON
                   ? `
               <button
                 class="contact-debug-notify-btn"
@@ -200,7 +203,7 @@ function attachContactListeners(container, lobbyElement) {
     };
   });
 
-  if (SHOW_DEBUG_NOTIFY_BUTTON) {
+  if (SHOW_DEBUG_PUSH_NOTIFCATION_BUTTON) {
     container
       .querySelectorAll('.contact-debug-notify-btn')
       .forEach((buttonEl) => {
