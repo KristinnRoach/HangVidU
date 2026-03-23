@@ -116,10 +116,10 @@ export function createWatchFileHandler() {
    * `revokeDownloadUrl` callback that callers must invoke when the URL is
    * no longer needed to release the associated resources.
    *
-   * @param {{ fileId: string, file: File, name: string, mimeType: string }} params
-   * @returns {{ isVideo: true, fileId: string, name: string, file: File, mimeType: string, downloadUrl: string, revokeDownloadUrl: () => void } | { isVideo: false }}
+   * @param {{ fileId: string, file: File, name: string, mimeType: string, isOpfsBacked: boolean }} params
+   * @returns {{ isVideo: true, fileId: string, name: string, file: File, mimeType: string, isOpfsBacked: boolean, downloadUrl: string, revokeDownloadUrl: () => void } | { isVideo: false }}
    */
-  function checkReceivedFile({ fileId, file, name, mimeType }) {
+  function checkReceivedFile({ fileId, file, name, mimeType, isOpfsBacked }) {
     const effectiveMimeType = resolveEffectiveMime(mimeType, file, name);
     if (!isVideoMime(effectiveMimeType, file)) {
       devDebug('[WatchFileHandler] Not a video file:', {
@@ -138,6 +138,7 @@ export function createWatchFileHandler() {
       name,
       file,
       mimeType: effectiveMimeType,
+      isOpfsBacked,
       downloadUrl,
       revokeDownloadUrl: () => {
         const currentUrl = watchableFileObjectUrls.get(fileId);
@@ -157,10 +158,16 @@ export function createWatchFileHandler() {
    * Receiver requests watch-together for a received video file.
    * Converts MKV→MP4 on demand, loads the video, and sends a watch request.
    *
-   * @param {{ fileId: string, file: File, name: string, mimeType: string }} params
+   * @param {{ fileId: string, file: File, name: string, mimeType: string, isOpfsBacked?: boolean }} params
    * @returns {Promise<{ ok: true, noAudio: boolean } | { ok: false, reason: string }>}
    */
-  async function requestWatchTogether({ fileId, file, name, mimeType }) {
+  async function requestWatchTogether({
+    fileId,
+    file,
+    name,
+    mimeType,
+    isOpfsBacked = false,
+  }) {
     let effectiveFile = file;
     let effectiveMimeType = resolveEffectiveMime(mimeType, file, name);
     let noAudio = false;
@@ -184,6 +191,7 @@ export function createWatchFileHandler() {
     const wasConverted = effectiveFile !== file;
     if (
       fileId &&
+      isOpfsBacked &&
       !wasConverted &&
       !MKV_MIMES.has(effectiveMimeType) &&
       isSwServingSupported()

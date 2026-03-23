@@ -92,7 +92,13 @@ export async function convertToMp4(file, { onProgress, withAc3 = false } = {}) {
   const droppedAudio = conversion.discardedTracks.filter(
     (t) => t.track.type === 'audio',
   );
-  const droppedAudioCodecs = droppedAudio.map((t) => t.track.codec);
+  const droppedAudioCodecs = [
+    ...new Set(
+      (
+        await Promise.all(droppedAudio.map((t) => getTrackCodecCandidates(t.track)))
+      ).flatMap((trackCodecs) => [...trackCodecs]),
+    ),
+  ];
   const hasOutputAudio = conversion.utilizedTracks.some(
     (track) => track.type === 'audio',
   );

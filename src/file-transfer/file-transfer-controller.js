@@ -412,6 +412,7 @@ export class FileTransferController {
         fileId,
         name: meta.name,
         mimeType: meta.mimeType,
+        isOpfsBacked: true,
       });
     } catch (err) {
       console.error('[FileTransferController] OPFS finalize failed:', err);
@@ -464,6 +465,7 @@ export class FileTransferController {
       fileId,
       name: meta.name,
       mimeType: meta.mimeType,
+      isOpfsBacked: false,
     });
 
     this.receivedChunks.delete(fileId);
@@ -474,12 +476,13 @@ export class FileTransferController {
    * Emit a normalized file-received payload for all assembly paths.
    * @private
    */
-  _emitFileReceived({ file, fileId, name, mimeType }) {
+  _emitFileReceived({ file, fileId, name, mimeType, isOpfsBacked }) {
     this.onFileReceived?.({
       file,
       fileId,
       name,
       mimeType,
+      isOpfsBacked,
     });
   }
 

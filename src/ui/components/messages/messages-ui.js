@@ -1273,6 +1273,7 @@ export function initMessagesUI() {
                 file,
                 name,
                 mimeType,
+                isOpfsBacked: false,
               }),
           });
           return;
@@ -1284,12 +1285,13 @@ export function initMessagesUI() {
       };
 
       // Setup file received handler
-      // Receives { file, fileId, name, mimeType } from FileTransferController
+      // Receives { file, fileId, name, mimeType, isOpfsBacked } from FileTransferController
       fileTransferController.onFileReceived = async ({
         file,
         fileId,
         name,
         mimeType,
+        isOpfsBacked,
       }) => {
         devDebug('[MessagesUI] Received file:', { file, name, mimeType });
 
@@ -1298,6 +1300,7 @@ export function initMessagesUI() {
           file,
           name,
           mimeType,
+          isOpfsBacked,
         });
 
         if (result.isVideo && isSafeDownloadUrl(result.downloadUrl)) {
@@ -1311,6 +1314,7 @@ export function initMessagesUI() {
                 file,
                 name,
                 mimeType: result.mimeType,
+                isOpfsBacked: result.isOpfsBacked,
               }),
           });
         } else {
