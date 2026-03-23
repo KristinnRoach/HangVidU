@@ -17,8 +17,13 @@ import { handleNotificationClickEvent } from './push-notifications/sw/notificati
 // WORKBOX PWA FUNCTIONALITY
 // ============================================================================
 
+// Filter out large EAC3 WASM modules from precache manifest; they'll be loaded on demand when needed.
+const manifest = self.__WB_MANIFEST.filter(
+  (entry) => !/assets\/mediabunny-ac3-.*\.js$/.test(entry.url),
+);
+
 // Precache and route static assets
-precacheAndRoute(self.__WB_MANIFEST);
+precacheAndRoute(manifest);
 
 // Clean up outdated caches
 cleanupOutdatedCaches();

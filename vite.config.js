@@ -31,6 +31,10 @@ export default defineConfig(({ mode }) => {
         strategies: 'injectManifest',
         srcDir: 'src',
         filename: 'sw.js',
+        injectManifest: {
+          // Don't include the large EAC3 WASM modules in the precache manifest; they'll be loaded on demand.
+          globIgnores: ['**/assets/mediabunny-ac3-*.js'],
+        },
         devOptions: {
           enabled: false, // injectManifest with ES modules doesn't work in dev
           type: 'module',

@@ -1,0 +1,1 @@
+export const DEFAULT_AAC_BITRATE = 128_000;

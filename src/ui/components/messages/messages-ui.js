@@ -1133,6 +1133,13 @@ export function initMessagesUI() {
 
     if (result.ok) {
       showInfoToast(t('message.watch.request_sent', { name }));
+      if (result.noAudio) {
+        appendEphemeralMessage({
+          content: {
+            text: `⚠️ Audio codec not supported by browser — video will play without sound`,
+          },
+        });
+      }
     } else {
       appendEphemeralMessage({
         content: { text: `❌ ${t('message.watch.' + result.reason)}` },
@@ -1199,14 +1206,14 @@ export function initMessagesUI() {
    * @param {FileTransferController|null} controller - Controller instance (or null to clear)
    */
   function setFileTransferController(controller) {
-    if (!controller) {
-      console.warn(
-        '[MessagesUI] setFileTransferController(): Called with null (should NOT happen - investigate)',
-      );
+    if (controller === fileTransferController) return;
+
+    if (controller === null) {
       fileTransferController = null;
       inActiveCall = false;
       watchFileHandler.reset();
       refreshAttachButton();
+      devDebug('[MessagesUI] FileTransferController cleared');
       return;
     }
 
