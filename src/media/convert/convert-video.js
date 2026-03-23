@@ -17,7 +17,8 @@ import {
 /**
  * @typedef {Object} ConvertResult
  * @property {Blob} blob - The converted MP4 blob
- * @property {boolean} hasAudio - Whether audio was preserved
+ * @property {boolean} hadInputAudio - Whether the input file contained audio
+ * @property {boolean} hasOutputAudio - Whether the output file contains audio
  * @property {string[]} droppedAudioCodecs - Audio codecs that couldn't be converted
  */
 
@@ -76,10 +77,15 @@ export async function convertToMp4(file, { onProgress, withAc3 = false } = {}) {
     },
   });
 
+  const hadInputAudio = conversion.utilizedTracks.some((track) => track.type === 'audio')
+    || conversion.discardedTracks.some((t) => t.track.type === 'audio');
   const droppedAudio = conversion.discardedTracks.filter(
     (t) => t.track.type === 'audio',
   );
   const droppedAudioCodecs = droppedAudio.map((t) => t.track.codec);
+  const hasOutputAudio = conversion.utilizedTracks.some(
+    (track) => track.type === 'audio',
+  );
 
   if (conversion.discardedTracks.length > 0) {
     console.debug(
@@ -104,7 +110,8 @@ export async function convertToMp4(file, { onProgress, withAc3 = false } = {}) {
 
   return {
     blob: new Blob([output.target.buffer], { type: 'video/mp4' }),
-    hasAudio: droppedAudio.length === 0,
+    hadInputAudio,
+    hasOutputAudio,
     droppedAudioCodecs,
   };
 }

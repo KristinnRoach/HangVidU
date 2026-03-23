@@ -53,11 +53,11 @@ export function createWatchFileHandler() {
   async function convertMkvForPlayback(file) {
     const result = await convertToMp4(file);
 
-    if (result.hasAudio || result.droppedAudioCodecs.length === 0) {
+    if (result.hasOutputAudio || result.droppedAudioCodecs.length === 0) {
       return {
         file: result.blob,
         mimeType: 'video/mp4',
-        noAudio: !result.hasAudio,
+        noAudio: result.hadInputAudio && !result.hasOutputAudio,
       };
     }
 
@@ -70,14 +70,14 @@ export function createWatchFileHandler() {
       return {
         file: retryResult.blob,
         mimeType: 'video/mp4',
-        noAudio: !retryResult.hasAudio,
+        noAudio: retryResult.hadInputAudio && !retryResult.hasOutputAudio,
       };
     }
 
     return {
       file: result.blob,
       mimeType: 'video/mp4',
-      noAudio: true,
+      noAudio: result.hadInputAudio,
     };
   }
 
@@ -132,7 +132,7 @@ export function createWatchFileHandler() {
    */
   async function requestWatchTogether({ file, name, mimeType, opfsId }) {
     let effectiveFile = file;
-    let effectiveMimeType = mimeType || file.type;
+    let effectiveMimeType = resolveEffectiveMime(mimeType, file, name);
     let noAudio = false;
 
     // Convert MKV→MP4 on demand
@@ -151,7 +151,7 @@ export function createWatchFileHandler() {
 
     // Resolve video source (SW-served URL or raw blob)
     let videoSource;
-    if (opfsId && !MKV_MIMES.has(mimeType) && isSwServingSupported()) {
+    if (opfsId && !MKV_MIMES.has(effectiveMimeType) && isSwServingSupported()) {
       try {
         videoSource = await registerVideoForServing(opfsId, effectiveMimeType);
         devDebug('[WatchFileHandler] Serving video via SW at:', videoSource);
