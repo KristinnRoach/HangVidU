@@ -25,19 +25,16 @@ function isIOSDevice() {
  * @param {HTMLElement} options.inputEl
  * @param {HTMLElement} options.panelEl
  * @param {number} [options.margin=16]
- * @param {number} [options.minWidth=280]
- * @param {number} [options.minHeight=240]
  */
 export function attachIOSKeyboardViewportSync({
   inputEl,
   panelEl,
   margin = 16,
-  minWidth = 280,
-  minHeight = 240,
 }) {
   if (!isIOSDevice() || !inputEl || !panelEl) return () => {};
 
   let lockedScrollY = 0;
+  let didLockViewport = false;
   let viewportSyncActive = false;
   let viewportSyncFrame = 0;
   let prevBodyOverflow = null;
@@ -49,11 +46,8 @@ export function attachIOSKeyboardViewportSync({
 
     const availableWidth = Math.max(0, vv.width - margin * 2);
     const availableHeight = Math.max(0, vv.height - margin * 2);
-    const width = Math.min(Math.max(minWidth, availableWidth), availableWidth);
-    const height = Math.min(
-      Math.max(minHeight, availableHeight),
-      availableHeight,
-    );
+    const width = availableWidth;
+    const height = availableHeight;
 
     panelEl.style.top = `${Math.round(vv.offsetTop + margin)}px`;
     panelEl.style.left = `${Math.round(vv.offsetLeft + margin)}px`;
@@ -105,11 +99,15 @@ export function attachIOSKeyboardViewportSync({
     panelEl.style.maxWidth = '';
     panelEl.style.height = '';
     panelEl.style.maxHeight = '';
-    window.scrollTo(0, lockedScrollY);
+    if (didLockViewport) {
+      window.scrollTo(0, lockedScrollY);
+      didLockViewport = false;
+    }
   };
 
   inputEl.addEventListener('focus', () => {
     lockedScrollY = window.scrollY;
+    didLockViewport = true;
     viewportSyncActive = true;
     prevBodyOverflow = document.body.style.overflow;
     prevDocOverflow = document.documentElement.style.overflow;
