@@ -9,9 +9,11 @@ import {
   registerVideoForServing,
   isSwServingSupported,
 } from '../file-transfer/video-serving.js';
-import { convertToMp4 } from '../media/convert/convert-video.js';
-import { promptUserForEac3Support } from '../media/convert/eac3-lazy.js';
-import { trackNeedsAc3Decoder } from '../media/convert/codec-utils.js';
+import {
+  convertToMp4,
+  promptUserForEac3Support,
+  trackNeedsAc3Decoder,
+} from '../media/convert/index.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 
 const MKV_MIMES = new Set(['video/x-matroska', 'video/matroska']);

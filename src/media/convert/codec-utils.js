@@ -1,3 +1,8 @@
+/**
+ * Collect normalized codec identifiers from a MediaBunny audio track.
+ * @param {import('mediabunny').InputAudioTrack} track
+ * @returns {Promise<Set<string>>}
+ */
 export async function getTrackCodecCandidates(track) {
   const candidates = new Set();
 
@@ -15,6 +20,11 @@ export async function getTrackCodecCandidates(track) {
   return candidates;
 }
 
+/**
+ * Check if any codec in the set belongs to the AC-3/E-AC-3 family.
+ * @param {Set<string>} trackCodecs - Normalized codec identifiers
+ * @returns {boolean}
+ */
 export function trackNeedsAc3Decoder(trackCodecs) {
   for (const codec of trackCodecs) {
     if (isAc3FamilyCodec(codec)) return true;
