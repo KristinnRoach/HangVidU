@@ -159,16 +159,19 @@ function isLocalVideoUrl(url) {
 // -----------------------------------------------------------------------------
 
 /**
- * Create a watch request to notify the other user to join watching
+ * Create a watch request to notify the other user to join watching.
+ * The fileId is the strict transfer-local identifier used to look up
+ * the local playable file copy on each peer.
  */
-export async function createWatchRequest(fileName, file) {
+export async function createWatchRequest(fileId, fileName) {
   if (!currentRoomId || !currentUserId) return false;
 
-  currentFileRequest = { fileName, file };
+  currentFileRequest = { fileId, fileName };
 
   const watchRequestRef = getWatchRequestRef(currentRoomId);
   try {
     await set(watchRequestRef, {
+      fileId,
       fileName,
       requestedBy: currentUserId,
       timestamp: Date.now(),
@@ -257,7 +260,7 @@ function handleWatchRequestUpdate(snapshot) {
   // Notify the UI layer about the incoming request via CustomEvent
   document.dispatchEvent(
     new CustomEvent('watch:file-request', {
-      detail: { fileName: data.fileName },
+      detail: { fileId: data.fileId, fileName: data.fileName },
     }),
   );
 }

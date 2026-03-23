@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@mediabunny/ac3':
+        specifier: ^1.40.0
+        version: 1.40.0(mediabunny@1.40.0)
       '@sentry/browser':
         specifier: ^10.40.0
         version: 10.42.0
@@ -20,6 +23,9 @@ importers:
       lucide:
         specifier: ^0.575.0
         version: 0.575.0
+      mediabunny:
+        specifier: ^1.40.0
+        version: 1.40.0
       workbox-window:
         specifier: ^7.4.0
         version: 7.4.0
@@ -1224,6 +1230,11 @@ packages:
   '@js-sdsl/ordered-map@4.4.2':
     resolution: {integrity: sha512-iUKgm52T8HOE/makSxjqoWhe95ZJA1/G1sYsGev2JDKUSS14KAgg1LHb+Ba+IPow0xflbnSkOsZcO08C7w1gYw==}
 
+  '@mediabunny/ac3@1.40.0':
+    resolution: {integrity: sha512-sVbRoWkseLJjFWnVzqoVSI/a9KdnhAzlHCLQp0tTugwuQa6yqYlKeZkpBPKPDxkAmiH9FUmo5wUyynqgWhnwQQ==}
+    peerDependencies:
+      mediabunny: ^1.0.0
+
   '@opentelemetry/api@1.9.0':
     resolution: {integrity: sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg==}
     engines: {node: '>=8.0.0'}
@@ -1506,6 +1517,12 @@ packages:
 
   '@types/deep-eql@4.0.2':
     resolution: {integrity: sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==}
+
+  '@types/dom-mediacapture-transform@0.1.11':
+    resolution: {integrity: sha512-Y2p+nGf1bF2XMttBnsVPHUWzRRZzqUoJAKmiP10b5umnO6DDrWI0BrGDJy1pOHoOULVmGSfFNkQrAlC5dcj6nQ==}
+
+  '@types/dom-webcodecs@0.1.13':
+    resolution: {integrity: sha512-O5hkiFIcjjszPIYyUSyvScyvrBoV3NOEEZx/pMlsu44TKzWNkLVBBxnxJz42in5n3QIolYOcBYFCPZZ0h8SkwQ==}
 
   '@types/estree@0.0.39':
     resolution: {integrity: sha512-EYNwp3bU+98cpU4lAWYYL7Zz+2gryWH1qbdDTidVd6hkiR6weksdbMadyXKXNPEkQFhXM+hVO9ZygomHXp+AIw==}
@@ -2570,6 +2587,9 @@ packages:
 
   mdn-data@2.12.2:
     resolution: {integrity: sha512-IEn+pegP1aManZuckezWCO+XZQDplx1366JoVhTpMpBB1sPey/SbveZQUosKiKiGYjg1wH4pMlNgXbCiYgihQA==}
+
+  mediabunny@1.40.0:
+    resolution: {integrity: sha512-UztWnjkA15yYxqq7AC8MSsU4U6FIFIBHvHV94pouvjxQa0y2pGvi1HPmrFcaYrRZAuSKTrdw45VXUIe3gEEpsA==}
 
   meow@14.0.0:
     resolution: {integrity: sha512-JhC3R1f6dbspVtmF3vKjAWz1EVIvwFrGGPLSdU6rK79xBwHWTuHoLnRX/t1/zHS1Ch1Y2UtIrih7DAHuH9JFJA==}
@@ -4928,6 +4948,10 @@ snapshots:
   '@js-sdsl/ordered-map@4.4.2':
     optional: true
 
+  '@mediabunny/ac3@1.40.0(mediabunny@1.40.0)':
+    dependencies:
+      mediabunny: 1.40.0
+
   '@opentelemetry/api@1.9.0':
     optional: true
 
@@ -5139,6 +5163,12 @@ snapshots:
       assertion-error: 2.0.1
 
   '@types/deep-eql@4.0.2': {}
+
+  '@types/dom-mediacapture-transform@0.1.11':
+    dependencies:
+      '@types/dom-webcodecs': 0.1.13
+
+  '@types/dom-webcodecs@0.1.13': {}
 
   '@types/estree@0.0.39': {}
 
@@ -6498,6 +6528,11 @@ snapshots:
 
   mdn-data@2.12.2:
     optional: true
+
+  mediabunny@1.40.0:
+    dependencies:
+      '@types/dom-mediacapture-transform': 0.1.11
+      '@types/dom-webcodecs': 0.1.13
 
   meow@14.0.0: {}
 

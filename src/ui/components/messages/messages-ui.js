@@ -13,7 +13,7 @@ import {
   ReactionUI,
 } from '../../../messaging/reactions/index.js';
 import { REACTION_CONFIG } from '../../../messaging/reactions/ReactionConfig.js';
-import { getUserId, getIsLoggedIn } from '../../../auth/auth-state.js';
+import { getUserId } from '../../../auth/auth-state.js';
 import { messagingController } from '../../../messaging/messaging-controller.js';
 import { contactsController } from '../../../contacts/contacts-controller.js';
 import {
@@ -190,13 +190,21 @@ export function initMessagesUI() {
     if (!file) return;
 
     const originalText = getSendLabelText();
+    const sendLabelStartMs = performance.now();
     setSendLabelText(t('message.sending'));
+    devDebug('[MessagesUI][SendTrace] Sending label set', {
+      inActiveCall,
+      hasFileTransferController: !!fileTransferController,
+      fileName: file.name,
+      fileSize: file.size,
+    });
 
     try {
       if (inActiveCall) {
         // In an active call — must use fileTransferController
         if (!fileTransferController) {
           // Data channel is still connecting, wait briefly for it
+          const waitStartMs = performance.now();
           console.warn(
             '[MessagesUI] FileTransferController not ready, waiting...',
           );
@@ -204,6 +212,10 @@ export function initMessagesUI() {
             await new Promise((r) => setTimeout(r, 50));
             if (fileTransferController) break;
           }
+          devDebug('[MessagesUI][SendTrace] Controller wait finished', {
+            waitedMs: Math.round(performance.now() - waitStartMs),
+            hasFileTransferController: !!fileTransferController,
+          });
         }
 
         if (!fileTransferController) {
@@ -213,23 +225,17 @@ export function initMessagesUI() {
         }
 
         // WebRTC DataChannel transfer (active call, large files OK)
+        let loggedFirstProgress = false;
         await fileTransferController.sendFile(file, (progress) => {
+          if (!loggedFirstProgress) {
+            loggedFirstProgress = true;
+            devDebug('[MessagesUI][SendTrace] First progress update', {
+              elapsedMs: Math.round(performance.now() - sendLabelStartMs),
+              progress,
+            });
+          }
           setSendLabelText(`${Math.round(progress * 100)}%`);
         });
-
-        const sentVideo = watchFileHandler.trackSentFile(file);
-
-        if (sentVideo && isSafeDownloadUrl(sentVideo.downloadUrl)) {
-          appendEphemeralActionMessage({
-            text: t('message.sent'),
-            downloadUrl: sentVideo.downloadUrl,
-            downloadName: sentVideo.name,
-          });
-        } else {
-          appendEphemeralMessage({
-            content: { text: `📎 ${t('message.sent')}` },
-          });
-        }
       } else {
         // Persistent file message (no active call, small files only)
         const message = await messagingController.sendFile(
@@ -957,6 +963,29 @@ export function initMessagesUI() {
     return entry;
   }
 
+  function appendEphemeralWatchMessage({
+    text,
+    downloadUrl,
+    downloadName,
+    onWatchTogether,
+  }) {
+    return appendEphemeralActionMessage({
+      text,
+      downloadUrl,
+      downloadName,
+      actions: onWatchTogether
+        ? [
+            {
+              label: t('message.watch_together'),
+              icon: 'play',
+              primary: true,
+              onClick: onWatchTogether,
+            },
+          ]
+        : [],
+    });
+  }
+
   /**
    * Trigger download of a data URL
    */
@@ -1116,23 +1145,37 @@ export function initMessagesUI() {
   // ---------------------------------------------------------------------------
 
   /**
-   * Receiver clicked "Watch Together" on a received video message.
+   * User clicked "Watch Together" on a local video message.
    * Calls the handler and shows status via ephemeral messages.
    */
-  async function onRequestWatchTogether({ file, name, mimeType, opfsId }) {
+  async function onRequestWatchTogether({
+    fileId,
+    file,
+    name,
+    mimeType,
+    isOpfsBacked,
+  }) {
     appendEphemeralMessage({
       content: { text: `🎬 ${t('message.watch.request_sent')}` },
     });
 
     const result = await watchFileHandler.requestWatchTogether({
+      fileId,
       file,
       name,
       mimeType,
-      opfsId,
+      isOpfsBacked,
     });
 
     if (result.ok) {
       showInfoToast(t('message.watch.request_sent', { name }));
+      if (result.noAudio) {
+        appendEphemeralMessage({
+          content: {
+            text: `⚠️ ${t('message.watch.no_audio_warning')}`,
+          },
+        });
+      }
     } else {
       appendEphemeralMessage({
         content: { text: `❌ ${t('message.watch.' + result.reason)}` },
@@ -1142,12 +1185,12 @@ export function initMessagesUI() {
   }
 
   /**
-   * Remote peer requested watch-together for a file we sent.
+   * Remote peer requested watch-together for a local file copy.
    * Shows accept action in chat.
    */
   async function onWatchFileRequest(e) {
-    const { fileName } = e.detail;
-    const file = watchFileHandler.getSentFile(fileName);
+    const { fileId, fileName } = e.detail;
+    const file = watchFileHandler.getWatchableFile(fileId);
 
     if (!file) {
       appendEphemeralMessage({
@@ -1199,14 +1242,14 @@ export function initMessagesUI() {
    * @param {FileTransferController|null} controller - Controller instance (or null to clear)
    */
   function setFileTransferController(controller) {
-    if (!controller) {
-      console.warn(
-        '[MessagesUI] setFileTransferController(): Called with null (should NOT happen - investigate)',
-      );
+    if (controller === fileTransferController) return;
+
+    if (controller === null) {
       fileTransferController = null;
       inActiveCall = false;
       watchFileHandler.reset();
       refreshAttachButton();
+      devDebug('[MessagesUI] FileTransferController cleared');
       return;
     }
 
@@ -1218,41 +1261,68 @@ export function initMessagesUI() {
     refreshAttachButton(); // Show/hide attachment button based on file transfer availability
 
     if (fileTransferController) {
-      // Setup file received handler
-      // Receives { file, name, mimeType, opfsId } from FileTransferController
-      fileTransferController.onFileReceived = async ({
+      fileTransferController.onFileSent = ({
         file,
+        fileId,
         name,
         mimeType,
-        opfsId,
+      }) => {
+        const sentVideo = watchFileHandler.trackSentFile({ fileId, file });
+
+        if (sentVideo && isSafeDownloadUrl(sentVideo.downloadUrl)) {
+          appendEphemeralWatchMessage({
+            text: t('message.sent'),
+            downloadUrl: sentVideo.downloadUrl,
+            downloadName: sentVideo.name,
+            onWatchTogether: () =>
+              onRequestWatchTogether({
+                fileId,
+                file,
+                name,
+                mimeType,
+                isOpfsBacked: false,
+              }),
+          });
+          return;
+        }
+
+        appendEphemeralMessage({
+          content: { text: `📎 ${t('message.sent')}` },
+        });
+      };
+
+      // Setup file received handler
+      // Receives { file, fileId, name, mimeType, isOpfsBacked } from FileTransferController
+      fileTransferController.onFileReceived = async ({
+        file,
+        fileId,
+        name,
+        mimeType,
+        isOpfsBacked,
       }) => {
         devDebug('[MessagesUI] Received file:', { file, name, mimeType });
 
         const result = watchFileHandler.checkReceivedFile({
+          fileId,
           file,
           name,
           mimeType,
+          isOpfsBacked,
         });
 
         if (result.isVideo && isSafeDownloadUrl(result.downloadUrl)) {
-          appendEphemeralActionMessage({
+          appendEphemeralWatchMessage({
             text: t('message.received_video', { name }),
             downloadUrl: result.downloadUrl,
             downloadName: result.name,
-            actions: [
-              {
-                label: t('message.watch_together'),
-                icon: 'play',
-                primary: true,
-                onClick: () =>
-                  onRequestWatchTogether({
-                    file,
-                    name,
-                    mimeType: result.mimeType,
-                    opfsId,
-                  }),
-              },
-            ],
+            onWatchTogether: () =>
+              onRequestWatchTogether({
+                fileId: result.fileId,
+                file,
+                name,
+                mimeType: result.mimeType,
+                isOpfsBacked: result.isOpfsBacked,
+              }),
           });
         } else {
           // Non-video file — show download link
