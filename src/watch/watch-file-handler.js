@@ -81,7 +81,7 @@ export function createWatchFileHandler() {
     const hasAc3 = result.droppedAudioCodecs.some((codec) =>
       trackNeedsAc3Decoder(new Set([codec])),
     );
-    if (hasAc3 && promptUserForEac3Support()) {
+    if (hasAc3 && (await promptUserForEac3Support())) {
       try {
         const retryResult = await convertToMp4(file, { withAc3: true });
         return {
