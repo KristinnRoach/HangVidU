@@ -393,6 +393,8 @@ if (isFirefox) {
             );
             receiverController.onFileReceived = (result) => {
               clearTimeout(timeout);
+              expect(typeof result.fileId).toBe('string');
+              expect(result.fileId.length).toBeGreaterThan(0);
               receivedFile = result.file;
               resolve(result.file);
             };

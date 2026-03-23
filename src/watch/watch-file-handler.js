@@ -26,11 +26,27 @@ const MKV_MIMES = new Set(['video/x-matroska', 'video/matroska']);
  * @returns {Object} Handler API
  */
 export function createWatchFileHandler() {
-  /** @type {Map<string, File>} files sent by this user, keyed by name */
-  const sentFiles = new Map();
+  /** @type {Map<string, File>} local watchable files, keyed by fileId */
+  const watchableFiles = new Map();
 
-  /** @type {Map<string, string>} object URLs for sent files, keyed by name (for cleanup) */
-  const sentFileObjectUrls = new Map();
+  /** @type {Map<string, string>} object URLs for local watchable files, keyed by fileId (for cleanup) */
+  const watchableFileObjectUrls = new Map();
+
+  /**
+   * Register a local watchable video file under a strict fileId.
+   * @param {{ fileId: string, file: File, name: string }} params
+   * @returns {string} object URL
+   */
+  function registerWatchableFile({ fileId, file, name }) {
+    watchableFiles.set(fileId, file);
+
+    const existingUrl = watchableFileObjectUrls.get(fileId);
+    if (existingUrl) URL.revokeObjectURL(existingUrl);
+
+    const downloadUrl = URL.createObjectURL(file);
+    watchableFileObjectUrls.set(fileId, downloadUrl);
+    return downloadUrl;
+  }
 
   /**
    * Resolve the effective MIME type, falling back to extension-based detection.
@@ -93,10 +109,10 @@ export function createWatchFileHandler() {
    * `revokeDownloadUrl` callback that callers must invoke when the URL is
    * no longer needed to release the associated resources.
    *
-   * @param {{ file: File, name: string, mimeType: string }} params
-   * @returns {{ isVideo: true, name: string, file: File, mimeType: string, downloadUrl: string, revokeDownloadUrl: () => void } | { isVideo: false }}
+   * @param {{ fileId: string, file: File, name: string, mimeType: string }} params
+   * @returns {{ isVideo: true, fileId: string, name: string, file: File, mimeType: string, downloadUrl: string, revokeDownloadUrl: () => void } | { isVideo: false }}
    */
-  function checkReceivedFile({ file, name, mimeType }) {
+  function checkReceivedFile({ fileId, file, name, mimeType }) {
     const effectiveMimeType = resolveEffectiveMime(mimeType, file, name);
     if (!isVideoMime(effectiveMimeType, file)) {
       devDebug('[WatchFileHandler] Not a video file:', {
@@ -108,14 +124,21 @@ export function createWatchFileHandler() {
       return { isVideo: false };
     }
 
-    const downloadUrl = URL.createObjectURL(file);
+    const downloadUrl = registerWatchableFile({ fileId, file, name });
     return {
       isVideo: true,
+      fileId,
       name,
       file,
       mimeType: effectiveMimeType,
       downloadUrl,
-      revokeDownloadUrl: () => URL.revokeObjectURL(downloadUrl),
+      revokeDownloadUrl: () => {
+        const currentUrl = watchableFileObjectUrls.get(fileId);
+        if (currentUrl === downloadUrl) {
+          watchableFileObjectUrls.delete(fileId);
+        }
+        URL.revokeObjectURL(downloadUrl);
+      },
     };
   }
 
@@ -127,10 +150,10 @@ export function createWatchFileHandler() {
    * Receiver requests watch-together for a received video file.
    * Converts MKV→MP4 on demand, loads the video, and sends a watch request.
    *
-   * @param {{ file: File, name: string, mimeType: string, opfsId?: string }} params
+   * @param {{ fileId: string, file: File, name: string, mimeType: string }} params
    * @returns {Promise<{ ok: true, noAudio: boolean } | { ok: false, reason: string }>}
    */
-  async function requestWatchTogether({ file, name, mimeType, opfsId }) {
+  async function requestWatchTogether({ fileId, file, name, mimeType }) {
     let effectiveFile = file;
     let effectiveMimeType = resolveEffectiveMime(mimeType, file, name);
     let noAudio = false;
@@ -151,9 +174,9 @@ export function createWatchFileHandler() {
 
     // Resolve video source (SW-served URL or raw blob)
     let videoSource;
-    if (opfsId && !MKV_MIMES.has(effectiveMimeType) && isSwServingSupported()) {
+    if (fileId && !MKV_MIMES.has(effectiveMimeType) && isSwServingSupported()) {
       try {
-        videoSource = await registerVideoForServing(opfsId, effectiveMimeType);
+        videoSource = await registerVideoForServing(fileId, effectiveMimeType);
         devDebug('[WatchFileHandler] Serving video via SW at:', videoSource);
       } catch (err) {
         console.warn(
@@ -178,7 +201,7 @@ export function createWatchFileHandler() {
     }
 
     // Send watch request to remote peer
-    const requested = await createWatchRequest(name, file);
+    const requested = await createWatchRequest(fileId, name);
     if (!requested) return { ok: false, reason: 'request_failed' };
 
     return { ok: true, noAudio };
@@ -189,12 +212,12 @@ export function createWatchFileHandler() {
   // ---------------------------------------------------------------------------
 
   /**
-   * Look up a sent file by name. Returns the File if still in memory, null otherwise.
-   * @param {string} fileName
+   * Look up a local watchable file by fileId. Returns the File if still in memory, null otherwise.
+   * @param {string} fileId
    * @returns {File | null}
    */
-  function getSentFile(fileName) {
-    return sentFiles.get(fileName) ?? null;
+  function getWatchableFile(fileId) {
+    return watchableFiles.get(fileId) ?? null;
   }
 
   /**
@@ -231,10 +254,10 @@ export function createWatchFileHandler() {
    * Track a sent file. If it's a video, stores it for potential watch-together requests.
    * Returns info for the caller to render a sent-file message, or null if not a video.
    *
-   * @param {File} file
-   * @returns {{ isVideo: true, name: string, downloadUrl: string } | null}
+   * @param {{ fileId: string, file: File }} params
+   * @returns {{ isVideo: true, fileId: string, name: string, downloadUrl: string } | null}
    */
-  function trackSentFile(file) {
+  function trackSentFile({ fileId, file }) {
     const effectiveMimeType = resolveEffectiveMime(file.type, file, file.name);
     if (!isVideoMime(effectiveMimeType, file)) {
       devDebug('[WatchFileHandler] Sent file not a video:', {
@@ -245,14 +268,13 @@ export function createWatchFileHandler() {
       return null;
     }
 
-    const existingUrl = sentFileObjectUrls.get(file.name);
-    if (existingUrl) URL.revokeObjectURL(existingUrl);
+    const downloadUrl = registerWatchableFile({
+      fileId,
+      file,
+      name: file.name,
+    });
 
-    sentFiles.set(file.name, file);
-    const downloadUrl = URL.createObjectURL(file);
-    sentFileObjectUrls.set(file.name, downloadUrl);
-
-    return { isVideo: true, name: file.name, downloadUrl };
+    return { isVideo: true, fileId, name: file.name, downloadUrl };
   }
 
   // ---------------------------------------------------------------------------
@@ -260,17 +282,17 @@ export function createWatchFileHandler() {
   // ---------------------------------------------------------------------------
 
   function reset() {
-    for (const url of sentFileObjectUrls.values()) {
+    for (const url of watchableFileObjectUrls.values()) {
       URL.revokeObjectURL(url);
     }
-    sentFileObjectUrls.clear();
-    sentFiles.clear();
+    watchableFileObjectUrls.clear();
+    watchableFiles.clear();
   }
 
   return {
     checkReceivedFile,
     requestWatchTogether,
-    getSentFile,
+    getWatchableFile,
     acceptWatch,
     declineWatch,
     trackSentFile,

@@ -49,6 +49,7 @@ export class FileTransferController {
     this.writeChains = new Map(); // fileId -> Promise (serializes OPFS writes)
 
     // Public callbacks
+    this.onFileSent = null;
     this.onFileReceived = null;
     this.onFileMetaReceived = null;
     this.onFileError = null;
@@ -130,6 +131,13 @@ export class FileTransferController {
         await new Promise((r) => setTimeout(r, 0));
       }
     }
+
+    this.onFileSent?.({
+      file,
+      fileId,
+      name: file.name,
+      mimeType: file.type,
+    });
   }
 
   /**
@@ -144,6 +152,7 @@ export class FileTransferController {
    * Cleanup the controller and its transport
    */
   cleanup() {
+    this.onFileSent = null;
     this.onFileReceived = null;
     this.onFileMetaReceived = null;
     this.onFileError = null;
@@ -185,6 +194,14 @@ export class FileTransferController {
       }
 
       if (msg.type === 'FILE_META') {
+        if (!this._isValidFileMeta(msg)) {
+          console.warn(
+            '[FileTransferController] Ignoring invalid FILE_META payload',
+            msg,
+          );
+          return;
+        }
+
         this.fileMetadata.set(msg.fileId, msg);
         this.onFileMetaReceived?.(msg);
 
@@ -382,11 +399,11 @@ export class FileTransferController {
     try {
       const file = await writer.finalize();
 
-      this.onFileReceived?.({
+      this._emitFileReceived({
         file,
+        fileId,
         name: meta.name,
         mimeType: meta.mimeType,
-        opfsId: fileId,
       });
     } catch (err) {
       console.error('[FileTransferController] OPFS finalize failed:', err);
@@ -434,14 +451,46 @@ export class FileTransferController {
     const blob = new Blob(chunks, { type: meta.mimeType });
     const file = new File([blob], meta.name, { type: meta.mimeType });
 
-    this.onFileReceived?.({
+    this._emitFileReceived({
       file,
+      fileId,
       name: meta.name,
       mimeType: meta.mimeType,
-      opfsId: null,
     });
 
     this.receivedChunks.delete(fileId);
     this.fileMetadata.delete(fileId);
+  }
+
+  /**
+   * Emit a normalized file-received payload for all assembly paths.
+   * @private
+   */
+  _emitFileReceived({ file, fileId, name, mimeType }) {
+    this.onFileReceived?.({
+      file,
+      fileId,
+      name,
+      mimeType,
+    });
+  }
+
+  /**
+   * Validate the minimal FILE_META contract before mutating controller state.
+   * @private
+   */
+  _isValidFileMeta(msg) {
+    return (
+      !!msg &&
+      typeof msg.fileId === 'string' &&
+      msg.fileId.length > 0 &&
+      typeof msg.name === 'string' &&
+      msg.name.length > 0 &&
+      Number.isFinite(msg.size) &&
+      msg.size >= 0 &&
+      Number.isInteger(msg.totalChunks) &&
+      msg.totalChunks >= 0 &&
+      typeof msg.mimeType === 'string'
+    );
   }
 }
