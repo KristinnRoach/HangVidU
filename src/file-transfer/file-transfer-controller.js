@@ -8,7 +8,7 @@ import {
 import { validateAssembly } from './file-assembler.js';
 import { WebRTCFileTransport } from './transport/webrtc-file-transport.js';
 import { StreamingFileWriter } from './streaming-file-writer.js';
-
+import { devDebug } from '../utils/dev/dev-utils.js';
 
 const CHUNK_SIZE = TransferConfig.FILE_CONFIG.NETWORK_CHUNK_SIZE; // 64KB
 const CHUNK_YIELD_INTERVAL = TransferConfig.CHUNK_YIELD_INTERVAL; // null = disabled
@@ -81,6 +81,7 @@ export class FileTransferController {
     const fileId = `${file.name}-${file.size}-${Date.now()}`;
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
     const waitForDrain = this.transport.getWaitForDrain();
+    const sendStartMs = performance.now();
 
     if (!file.type) {
       console.warn(
@@ -106,6 +107,13 @@ export class FileTransferController {
       const start = i * CHUNK_SIZE;
       const end = Math.min(start + CHUNK_SIZE, file.size);
       const chunk = await file.slice(start, end).arrayBuffer();
+
+      if (i === 0) {
+        devDebug('[FileTransferController][SendTrace] First chunk ready', {
+          elapsedMs: Math.round(performance.now() - sendStartMs),
+          chunkBytes: chunk.byteLength,
+        });
+      }
 
       const packet = createEmbeddedChunkPacket(
         { type: 'FILE_CHUNK', fileId, chunkIndex: i, totalChunks },

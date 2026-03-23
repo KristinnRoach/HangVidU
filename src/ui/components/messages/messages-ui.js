@@ -190,13 +190,21 @@ export function initMessagesUI() {
     if (!file) return;
 
     const originalText = getSendLabelText();
+    const sendLabelStartMs = performance.now();
     setSendLabelText(t('message.sending'));
+    devDebug('[MessagesUI][SendTrace] Sending label set', {
+      inActiveCall,
+      hasFileTransferController: !!fileTransferController,
+      fileName: file.name,
+      fileSize: file.size,
+    });
 
     try {
       if (inActiveCall) {
         // In an active call — must use fileTransferController
         if (!fileTransferController) {
           // Data channel is still connecting, wait briefly for it
+          const waitStartMs = performance.now();
           console.warn(
             '[MessagesUI] FileTransferController not ready, waiting...',
           );
@@ -204,6 +212,10 @@ export function initMessagesUI() {
             await new Promise((r) => setTimeout(r, 50));
             if (fileTransferController) break;
           }
+          devDebug('[MessagesUI][SendTrace] Controller wait finished', {
+            waitedMs: Math.round(performance.now() - waitStartMs),
+            hasFileTransferController: !!fileTransferController,
+          });
         }
 
         if (!fileTransferController) {
@@ -213,7 +225,15 @@ export function initMessagesUI() {
         }
 
         // WebRTC DataChannel transfer (active call, large files OK)
+        let loggedFirstProgress = false;
         await fileTransferController.sendFile(file, (progress) => {
+          if (!loggedFirstProgress) {
+            loggedFirstProgress = true;
+            devDebug('[MessagesUI][SendTrace] First progress update', {
+              elapsedMs: Math.round(performance.now() - sendLabelStartMs),
+              progress,
+            });
+          }
           setSendLabelText(`${Math.round(progress * 100)}%`);
         });
       } else {
@@ -1234,7 +1254,12 @@ export function initMessagesUI() {
     refreshAttachButton(); // Show/hide attachment button based on file transfer availability
 
     if (fileTransferController) {
-      fileTransferController.onFileSent = ({ file, fileId, name, mimeType }) => {
+      fileTransferController.onFileSent = ({
+        file,
+        fileId,
+        name,
+        mimeType,
+      }) => {
         const sentVideo = watchFileHandler.trackSentFile({ fileId, file });
 
         if (sentVideo && isSafeDownloadUrl(sentVideo.downloadUrl)) {
