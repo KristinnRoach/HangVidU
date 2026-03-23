@@ -1136,7 +1136,7 @@ export function initMessagesUI() {
       if (result.noAudio) {
         appendEphemeralMessage({
           content: {
-            text: `⚠️ Audio codec not supported by browser — video will play without sound`,
+            text: `⚠️ ${t('message.watch.no_audio_warning')}`,
           },
         });
       }

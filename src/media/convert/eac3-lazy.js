@@ -1,4 +1,5 @@
 let eac3Support = null;
+let eac3SupportInit = null;
 
 /**
  * Lazy-load the AC3/EAC3 WASM decoder and register it with MediaBunny.
@@ -7,22 +8,31 @@ let eac3Support = null;
  */
 export async function ensureEac3Support() {
   if (eac3Support) return eac3Support;
+  if (eac3SupportInit) return eac3SupportInit;
 
-  const { registerAc3Decoder } = await import('@mediabunny/ac3');
-  registerAc3Decoder();
+  eac3SupportInit = (async () => {
+    const { registerAc3Decoder } = await import('@mediabunny/ac3');
+    registerAc3Decoder();
 
-  const { canEncodeAudio } = await import('mediabunny');
+    const { canEncodeAudio } = await import('mediabunny');
 
-  const canEncodeAac = async ({ sampleRate, numberOfChannels, bitrate }) => {
-    return canEncodeAudio('aac', {
-      sampleRate,
-      numberOfChannels,
-      bitrate,
-    });
-  };
+    const canEncodeAac = async ({ sampleRate, numberOfChannels, bitrate }) => {
+      return canEncodeAudio('aac', {
+        sampleRate,
+        numberOfChannels,
+        bitrate,
+      });
+    };
 
-  eac3Support = { canEncodeAac };
-  return eac3Support;
+    eac3Support = { canEncodeAac };
+    eac3SupportInit = null;
+    return eac3Support;
+  })().catch((err) => {
+    eac3SupportInit = null;
+    throw err;
+  });
+
+  return eac3SupportInit;
 }
 
 /**

@@ -11,6 +11,7 @@ import { ensureEac3Support } from './eac3-lazy.js';
 import { DEFAULT_AAC_BITRATE } from './config.js';
 import {
   getTrackCodecCandidates,
+  trackCanTranscodeToAac,
   trackNeedsAc3Decoder,
 } from './codec-utils.js';
 
@@ -52,6 +53,15 @@ export async function convertToMp4(file, { onProgress, withAc3 = false } = {}) {
 
       if (trackCodecs.has('aac') || trackCodecs.has('mp4a.40.2')) {
         return { codec: 'aac' };
+      }
+
+      if (trackCanTranscodeToAac(trackCodecs)) {
+        return {
+          codec: 'aac',
+          sampleRate: audioTrack.sampleRate,
+          numberOfChannels: audioTrack.numberOfChannels,
+          bitrate: DEFAULT_AAC_BITRATE,
+        };
       }
 
       if (trackNeedsAc3Decoder(trackCodecs)) {

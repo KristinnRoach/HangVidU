@@ -105,6 +105,7 @@
   "message.watch.request_received": "Viðmælandi vill horfa á þetta myndband saman",
   "message.watch.partner_wants": "Viðmælandi vill horfa á: {name}",
   "message.watch.joining": "Gengst inn í samáhorf...",
+  "message.watch.no_audio_warning": "Hljóðkóðun er ekki studd af vafranum, myndband verður spilað án hljóðs",
 
   "notification.enable.title": "Virkja tilkynningar",
   "notification.enable.body": "Fáðu tilkynningar þegar einhver hringir í þig, jafnvel þótt appið sé lokað.",

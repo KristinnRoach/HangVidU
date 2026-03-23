@@ -105,6 +105,7 @@
   "message.watch.request_received": "Partner wants to watch this video together",
   "message.watch.partner_wants": "Partner wants to watch: {name}",
   "message.watch.joining": "Joining watch together...",
+  "message.watch.no_audio_warning": "Audio codec not supported by browser, video will play without sound",
 
   "notification.enable.title": "Enable Notifications",
   "notification.enable.body": "Get notified when someone calls you, even when the app is closed.",

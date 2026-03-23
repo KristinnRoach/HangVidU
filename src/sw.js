@@ -18,9 +18,13 @@ import { handleNotificationClickEvent } from './push-notifications/sw/notificati
 // ============================================================================
 
 // Filter out large EAC3 WASM modules from precache manifest; they'll be loaded on demand when needed.
-const manifest = self.__WB_MANIFEST.filter(
-  (entry) => !/assets\/mediabunny-ac3-.*\.js$/.test(entry.url),
-);
+const injectedManifest = self.__WB_MANIFEST;
+const manifestEntries = Array.isArray(injectedManifest) ? injectedManifest : [];
+const manifest = manifestEntries.filter((entry) => {
+  const url = typeof entry === 'string' ? entry : entry?.url;
+  if (typeof url !== 'string') return true;
+  return !/assets\/mediabunny-ac3-.*$/.test(url);
+});
 
 // Precache and route static assets
 precacheAndRoute(manifest);

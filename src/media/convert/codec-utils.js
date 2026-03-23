@@ -26,8 +26,22 @@ export async function getTrackCodecCandidates(track) {
  * @returns {boolean}
  */
 export function trackNeedsAc3Decoder(trackCodecs) {
+  if (!trackCodecs) return false;
   for (const codec of trackCodecs) {
     if (isAc3FamilyCodec(codec)) return true;
+  }
+  return false;
+}
+
+/**
+ * Check if any codec in the set is typically browser-decodable and can be transcoded to AAC.
+ * @param {Set<string>} trackCodecs - Normalized codec identifiers
+ * @returns {boolean}
+ */
+export function trackCanTranscodeToAac(trackCodecs) {
+  if (!trackCodecs) return false;
+  for (const codec of trackCodecs) {
+    if (isBrowserDecodableAudioCodec(codec)) return true;
   }
   return false;
 }
@@ -45,5 +59,15 @@ function isAc3FamilyCodec(codec) {
     normalized === 'eac3' ||
     normalized === 'ac-3' ||
     normalized === 'ec-3'
+  );
+}
+
+function isBrowserDecodableAudioCodec(codec) {
+  const normalized = normalizeCodec(codec);
+  return (
+    normalized === 'mp3' ||
+    normalized === 'mp4a.69' ||
+    normalized === 'opus' ||
+    normalized === 'vorbis'
   );
 }
