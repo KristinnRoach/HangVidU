@@ -1148,7 +1148,13 @@ export function initMessagesUI() {
    * User clicked "Watch Together" on a local video message.
    * Calls the handler and shows status via ephemeral messages.
    */
-  async function onRequestWatchTogether({ fileId, file, name, mimeType }) {
+  async function onRequestWatchTogether({
+    fileId,
+    file,
+    name,
+    mimeType,
+    isOpfsBacked,
+  }) {
     appendEphemeralMessage({
       content: { text: `🎬 ${t('message.watch.request_sent')}` },
     });
@@ -1158,6 +1164,7 @@ export function initMessagesUI() {
       file,
       name,
       mimeType,
+      isOpfsBacked,
     });
 
     if (result.ok) {
