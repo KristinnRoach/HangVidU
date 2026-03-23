@@ -82,12 +82,19 @@ export function createWatchFileHandler() {
       trackNeedsAc3Decoder(new Set([codec])),
     );
     if (hasAc3 && promptUserForEac3Support()) {
-      const retryResult = await convertToMp4(file, { withAc3: true });
-      return {
-        file: retryResult.blob,
-        mimeType: 'video/mp4',
-        noAudio: retryResult.hadInputAudio && !retryResult.hasOutputAudio,
-      };
+      try {
+        const retryResult = await convertToMp4(file, { withAc3: true });
+        return {
+          file: retryResult.blob,
+          mimeType: 'video/mp4',
+          noAudio: retryResult.hadInputAudio && !retryResult.hasOutputAudio,
+        };
+      } catch (err) {
+        console.warn(
+          '[WatchFileHandler] AC3 retry failed, falling back to first-pass MP4:',
+          err,
+        );
+      }
     }
 
     return {
@@ -174,7 +181,13 @@ export function createWatchFileHandler() {
 
     // Resolve video source (SW-served URL or raw blob)
     let videoSource;
-    if (fileId && !MKV_MIMES.has(effectiveMimeType) && isSwServingSupported()) {
+    const wasConverted = effectiveFile !== file;
+    if (
+      fileId &&
+      !wasConverted &&
+      !MKV_MIMES.has(effectiveMimeType) &&
+      isSwServingSupported()
+    ) {
       try {
         videoSource = await registerVideoForServing(fileId, effectiveMimeType);
         devDebug('[WatchFileHandler] Serving video via SW at:', videoSource);
