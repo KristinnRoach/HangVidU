@@ -133,7 +133,8 @@ describe('CallController Smoke Tests', () => {
       });
     });
 
-    it('hangUp emits cancellation and cleanup events', async () => {
+    // TODO: Remove `.sequential` after cleanup refactor stabilizes hangUp timing in compat runs.
+    it.sequential('hangUp emits cancellation and cleanup events', async () => {
       // Setup: simulate active call
       CallController.pc = { close: vi.fn() };
       CallController.roomId = 'room-789';

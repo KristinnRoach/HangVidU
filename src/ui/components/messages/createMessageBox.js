@@ -1,6 +1,6 @@
 import { t, onLocaleChange } from '../../../i18n/index.js';
 import { initIcons } from '../../icons.js';
-import { isMobileDevice } from '../../../utils/env/isMobileDevice.js';
+import { attachIOSKeyboardViewportSync } from './attachIOSKeyboardViewportSync.js';
 
 /**
  * Creates the messages box DOM structure and initializes textarea auto-grow behavior.
@@ -65,11 +65,6 @@ export function createMessageBox() {
   // Subscribe to locale changes
   onLocaleChange(updateI18n);
 
-  // Prevent viewport resize/shift when virtual keyboard appears on mobile
-  if ('virtualKeyboard' in navigator) {
-    navigator.virtualKeyboard.overlaysContent = true;
-  }
-
   // Check for native field-sizing support (Chrome/Edge 123+)
   const supportsFieldSizing = CSS.supports?.('field-sizing', 'content');
 
@@ -97,19 +92,10 @@ export function createMessageBox() {
     });
   }
 
-  if (isMobileDevice()) {
-    messagesInput.addEventListener('focus', () => {
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
-    });
-
-    messagesInput.addEventListener('blur', () => {
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
-    });
-  }
+  const cleanupIOSKeyboardViewportSync = attachIOSKeyboardViewportSync({
+    inputEl: messagesInput,
+    panelEl: messagesBox,
+  });
 
   return {
     messagesBoxContainer,
@@ -118,5 +104,6 @@ export function createMessageBox() {
     messagesForm,
     messagesInput,
     resetInputHeight,
+    cleanupIOSKeyboardViewportSync,
   };
 }
