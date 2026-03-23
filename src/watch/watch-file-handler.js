@@ -100,7 +100,7 @@ export function createWatchFileHandler() {
     return {
       file: result.blob,
       mimeType: 'video/mp4',
-      noAudio: result.hadInputAudio,
+      noAudio: result.hadInputAudio && !result.hasOutputAudio,
     };
   }
 
@@ -254,7 +254,10 @@ export function createWatchFileHandler() {
         const converted = await convertMkvForPlayback(file);
         return acceptWatchRequest(converted.file);
       } catch (err) {
-        console.warn('[WatchFileHandler] MKV conversion failed on accept:', err);
+        console.warn(
+          '[WatchFileHandler] MKV conversion failed on accept:',
+          err,
+        );
       }
     }
     return acceptWatchRequest(file);
