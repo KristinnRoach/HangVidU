@@ -1,6 +1,8 @@
 export {
+  SourceSchema,
   PlayableSourceSchema,
   StreamSourceSchema,
+  parseSource,
   parsePlayableSource,
   parseStreamSource,
 } from './schemas/source-schema.js';

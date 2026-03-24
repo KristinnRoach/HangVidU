@@ -55,6 +55,7 @@ When a focused doc exists:
 ## Current linked docs
 
 - [SESSION_GUIDE.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/SESSION_GUIDE.md)
+- [SCHEMAS.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/SCHEMAS.md)
 - [WIP_DIAGRAM.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/WIP_DIAGRAM.md)
 
 ## Rules for this branch
