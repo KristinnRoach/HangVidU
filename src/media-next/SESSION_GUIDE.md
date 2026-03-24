@@ -47,13 +47,12 @@ If a session does not improve clarity, it is probably adding noise.
 
 ## GitHub workflow
 
-- Treat `codex/media-module-sketch` as the current integration branch for `media-next`.
-- For each new session, prefer creating a short-lived session branch from `codex/media-module-sketch`.
-- Use one session branch per coherent session goal, not per tiny commit.
-- Open a PR from the session branch back into `codex/media-module-sketch` when the session reaches a reviewable checkpoint.
-- After `codex/media-module-sketch` reaches a meaningful milestone, open a PR from it into the real target branch.
+- Prefer the simplest possible GitHub workflow.
+- Use one branch per coherent session goal, not per tiny commit.
+- Open PRs directly into `main` unless there is a concrete reason to stack branches.
+- Avoid maintaining an intermediate integration branch unless the work truly requires stacked PRs.
 - Keep the workflow simple:
-  session branch -> `codex/media-module-sketch` -> target branch
+  session branch -> `main`
 
 Suggested branch naming:
 
