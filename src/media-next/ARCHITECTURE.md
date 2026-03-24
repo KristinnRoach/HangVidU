@@ -1,6 +1,14 @@
-# Media Next WIP
+# Media Next Architecture
 
 This directory is an isolated design and prototyping area for a replacement media module.
+
+Start each session with [SESSION_GUIDE.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/SESSION_GUIDE.md).
+
+## Purpose
+
+- design and validate a replacement media module in isolation
+- avoid contaminating the production architecture while contracts are still unstable
+- establish clear boundaries before migration work begins
 
 ## Current decisions
 
@@ -20,6 +28,34 @@ This directory is an isolated design and prototyping area for a replacement medi
 - `storage/`: file, OPFS, blob, and persistence concerns
 - `sync/`: shared playback synchronization built on top of playback
 - `lab/`: minimal development-only harness
+
+## Documentation structure
+
+This file is the top-level architecture hub for `src/media-next/`.
+
+Focused docs should be created as concepts become concrete enough to deserve their own source of truth. Do not create them preemptively. Create them in the same session that introduces or substantially refines the relevant concept, and keep them updated alongside code changes.
+
+Likely focused docs include:
+
+- `SCHEMAS.md`
+- `PUBLIC_API.md`
+- `STATE.md`
+- `EVENTS.md`
+- `ADAPTERS.md`
+- `STORAGE.md`
+- `CONVERSION.md`
+- `MIGRATION.md`
+
+When a focused doc exists:
+
+- link it from this file
+- keep it internally consistent with the current implementation
+- update it in the same commit or session when the concept changes materially
+
+## Current linked docs
+
+- [SESSION_GUIDE.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/SESSION_GUIDE.md)
+- [WIP_DIAGRAM.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/WIP_DIAGRAM.md)
 
 ## Rules for this branch
 
