@@ -1,14 +1,13 @@
-import { parsePlaybackState } from '../schemas/state-schema.js';
+import { parsePlayerState } from '../schemas/state-schema.js';
 
 /**
  * Minimal placeholder controller for the new playback domain.
  * This is intentionally state-only scaffolding until the contract is finalized.
  */
 export function createPlaybackController() {
-  let state = parsePlaybackState({
+  let state = parsePlayerState({
     status: 'idle',
     currentSourceId: null,
-    isPlaying: false,
     currentTime: 0,
     duration: null,
     error: null,
@@ -29,10 +28,9 @@ export function createPlaybackController() {
       return () => listeners.delete(listener);
     },
     load(source) {
-      state = parsePlaybackState({
+      state = parsePlayerState({
         status: 'loading',
         currentSourceId: source?.id ?? null,
-        isPlaying: false,
         currentTime: 0,
         duration: null,
         error: null,
@@ -40,7 +38,7 @@ export function createPlaybackController() {
       emit();
     },
     syncMetrics({ currentTime = state.currentTime, duration = state.duration }) {
-      state = parsePlaybackState({
+      state = parsePlayerState({
         ...state,
         status: state.status === 'loading' ? 'ready' : state.status,
         currentTime,
@@ -49,35 +47,31 @@ export function createPlaybackController() {
       emit();
     },
     play() {
-      state = parsePlaybackState({
+      state = parsePlayerState({
         ...state,
         status: 'playing',
-        isPlaying: true,
       });
       emit();
     },
     pause() {
-      state = parsePlaybackState({
+      state = parsePlayerState({
         ...state,
         status: 'paused',
-        isPlaying: false,
       });
       emit();
     },
     fail(error) {
-      state = parsePlaybackState({
+      state = parsePlayerState({
         ...state,
         status: 'error',
-        isPlaying: false,
         error,
       });
       emit();
     },
     stop() {
-      state = parsePlaybackState({
+      state = parsePlayerState({
         status: 'idle',
         currentSourceId: null,
-        isPlaying: false,
         currentTime: 0,
         duration: null,
         error: null,

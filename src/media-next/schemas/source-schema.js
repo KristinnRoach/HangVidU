@@ -32,7 +32,7 @@ export const PlayableSourceSchema = SourceBaseSchema.extend({
 
   if (requiresUrl.has(value.playableType) && !value.handle.url) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: 'custom',
       path: ['handle', 'url'],
       message: `handle.url is required for playableType="${value.playableType}"`,
     });
@@ -44,7 +44,7 @@ export const PlayableSourceSchema = SourceBaseSchema.extend({
     !value.handle.fileName
   ) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: 'custom',
       path: ['handle'],
       message: 'file sources require handle.fileId or handle.fileName',
     });

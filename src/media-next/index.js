@@ -7,9 +7,9 @@ export {
   parseStreamSource,
 } from './schemas/source-schema.js';
 export {
-  PlaybackStateSchema,
+  PlayerStateSchema,
   LiveStreamStateSchema,
-  parsePlaybackState,
+  parsePlayerState,
   parseLiveStreamState,
 } from './schemas/state-schema.js';
 export { createPlaybackController } from './playback/index.js';
