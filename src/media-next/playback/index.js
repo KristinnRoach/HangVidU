@@ -47,6 +47,10 @@ export function createPlaybackController() {
       emit();
     },
     play() {
+      if (state.status !== 'ready' && state.status !== 'paused') {
+        return;
+      }
+
       state = parsePlayerState({
         ...state,
         status: 'playing',
@@ -54,6 +58,10 @@ export function createPlaybackController() {
       emit();
     },
     pause() {
+      if (state.status !== 'playing') {
+        return;
+      }
+
       state = parsePlayerState({
         ...state,
         status: 'paused',
@@ -69,6 +77,10 @@ export function createPlaybackController() {
       emit();
     },
     stop() {
+      if (state.status === 'idle') {
+        return;
+      }
+
       state = parsePlayerState({
         status: 'idle',
         currentSourceId: null,
