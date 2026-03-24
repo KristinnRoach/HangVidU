@@ -37,6 +37,7 @@ If a session does not improve clarity, it is probably adding noise.
 
 - Keep commits small, scoped, and explain intent clearly.
 - Commit when the branch reaches a coherent checkpoint, not only at the end of a large batch.
+- Propose a commit checkpoint after each distinct phase of work.
 - Do not mix architectural design changes with unrelated cleanup.
 - Do not rewrite or revert other work unless explicitly required.
 - If a design direction changes, update the docs in the same commit or immediately after.
@@ -78,8 +79,9 @@ If a session does not improve clarity, it is probably adding noise.
 1. Remove dead or abandoned code introduced during the session.
 2. Update docs if decisions or boundaries changed.
 3. Run the relevant validation for the session scope.
-4. Leave the branch in a coherent state.
-5. Write a handoff note in the final response:
+4. Propose or create a final coherent commit checkpoint for the session.
+5. Leave the branch in a coherent state.
+6. Write a handoff note in the final response:
    what changed, what remains unresolved, and what the next sensible step is.
 
 ## Handoff standard

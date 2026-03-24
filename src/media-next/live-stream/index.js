@@ -42,6 +42,14 @@ export function createLiveStreamController() {
       });
       emit();
     },
+    fail(error) {
+      state = parseLiveStreamState({
+        ...state,
+        status: 'error',
+        error,
+      });
+      emit();
+    },
     stop() {
       state = parseLiveStreamState({
         status: 'idle',

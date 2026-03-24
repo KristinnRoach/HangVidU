@@ -39,6 +39,14 @@ export function createPlaybackController() {
       });
       emit();
     },
+    syncMetrics({ currentTime = state.currentTime, duration = state.duration }) {
+      state = parsePlaybackState({
+        ...state,
+        currentTime,
+        duration,
+      });
+      emit();
+    },
     play() {
       state = parsePlaybackState({
         ...state,
@@ -52,6 +60,15 @@ export function createPlaybackController() {
         ...state,
         status: 'paused',
         isPlaying: false,
+      });
+      emit();
+    },
+    fail(error) {
+      state = parsePlaybackState({
+        ...state,
+        status: 'error',
+        isPlaying: false,
+        error,
       });
       emit();
     },
