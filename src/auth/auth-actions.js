@@ -11,7 +11,7 @@ import { auth, logAuthError } from './auth-setup.js';
 import { clearGISTokenCache } from './gis-tokens.js';
 import { setState } from './auth-state.js';
 import { showOneTapSignin } from './onetap.js';
-import { setOffline } from '../firebase/presence.js';
+import { setUserOffline } from '../firebase/presence.js';
 import { t } from '../i18n/index.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { getPushNotifications } from '../push-notifications/index.js';
@@ -172,7 +172,7 @@ export async function signOutUser() {
         );
       });
 
-    await setOffline();
+    await setUserOffline();
     clearGISTokenCache();
     await signOut(auth);
     console.info('User signed out');
@@ -209,7 +209,7 @@ export async function deleteAccount() {
     console.info('[AUTH] Starting account deletion');
 
     // 1. Set user offline and clear cached tokens
-    await setOffline();
+    await setUserOffline();
     clearGISTokenCache();
 
     // 2. Clean up user data while still authenticated (RTDB rules require auth)

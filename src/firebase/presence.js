@@ -61,7 +61,7 @@ async function initializePresence() {
 /**
  * Manually set user offline (e.g., on logout)
  */
-export async function setOffline() {
+export async function setUserOffline() {
   const userId = getLoggedInUserId();
   if (!userId) return;
 
