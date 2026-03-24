@@ -18,6 +18,7 @@ export default defineConfig(({ mode }) => {
           main: path.resolve(__dirname, 'index.html'),
           ...(mode === 'development' && {
             experiments: path.resolve(__dirname, 'experiments.html'),
+            mediaLab: path.resolve(__dirname, 'media-lab.html'),
           }),
         },
       },
