@@ -80,11 +80,17 @@ export function createHtmlVideoPlaybackRuntime({ controller, videoEl }) {
     }, { signal });
 
     videoEl.addEventListener('ended', () => {
-      controller.pause();
-      controller.syncMetrics({
-        currentTime: videoEl.currentTime,
-        duration: Number.isFinite(videoEl.duration) ? videoEl.duration : null,
-      });
+      try {
+        controller.pause();
+        controller.syncMetrics({
+          currentTime: videoEl.currentTime,
+          duration: Number.isFinite(videoEl.duration) ? videoEl.duration : null,
+        });
+      } catch (error) {
+        controller.fail(
+          getErrorMessage(error, 'Failed to handle video ended event'),
+        );
+      }
     }, { signal });
 
     videoEl.addEventListener('error', () => {
