@@ -1,5 +1,5 @@
-import { createLiveStreamController } from '../index.js';
-import { createCaptureRuntime } from '../live-stream/capture-runtime.js';
+import { createLiveStreamController } from '../../index.js';
+import { createCaptureRuntime } from '../../live-stream/capture-runtime.js';
 
 const app = document.getElementById('app');
 
@@ -231,13 +231,21 @@ function renderShell() {
 }
 
 function syncStatePanels() {
-  cameraStateEl.textContent = JSON.stringify(cameraController.getState(), null, 2);
+  cameraStateEl.textContent = JSON.stringify(
+    cameraController.getState(),
+    null,
+    2,
+  );
   microphoneStateEl.textContent = JSON.stringify(
     microphoneController.getState(),
     null,
     2,
   );
-  screenStateEl.textContent = JSON.stringify(screenController.getState(), null, 2);
+  screenStateEl.textContent = JSON.stringify(
+    screenController.getState(),
+    null,
+    2,
+  );
 }
 
 function renderDecisionsToReview() {
@@ -267,7 +275,14 @@ function createSampleStream({ id, label, mediaType, streamType }) {
   });
 }
 
-function createCaptureSource({ id, idPrefix, label, mediaType, streamType, stream }) {
+function createCaptureSource({
+  id,
+  idPrefix,
+  label,
+  mediaType,
+  streamType,
+  stream,
+}) {
   const sourceId = id || `${idPrefix}-${Date.now()}`;
 
   return {

@@ -9,7 +9,7 @@ Keep it concise. Update it only when priorities or the next recommended work cha
 1. Define stable core contracts
    - source schemas
    - runtime state
-   - focused lab structure
+   - focused ui test-page structure
 
 2. Formalize adapter boundaries
    - document playback DOM runtime expectations
@@ -17,7 +17,7 @@ Keep it concise. Update it only when priorities or the next recommended work cha
    - decide whether to create `ADAPTERS.md`
 
 3. Expand testable primitives
-   - add audio-only playback to the focused playback lab
+   - add audio-only playback to the focused playback test page
    - decide whether system-audio capture needs its own focused runtime/page
 
 4. Define composition/session layer
@@ -30,4 +30,4 @@ Keep it concise. Update it only when priorities or the next recommended work cha
 
 ## Current next recommended step
 
-Define the adapter layer more explicitly. The lab now has real playback and capture runtimes, but their contract is still implicit in code.
+Define the adapter layer more explicitly. The ui test pages now have real playback and capture runtimes, but their contract is still implicit in code.

@@ -8,7 +8,7 @@ This branch is for designing and validating a replacement media module without c
 
 ## Top-level rules
 
-- Keep all new work isolated under `src/media-next/` and the dedicated lab entrypoint unless a small integration change is explicitly required.
+- Keep all new work isolated under `src/media-next/` and the dedicated ui test pages unless a small integration change is explicitly required.
 - Do not patch legacy production code just to make the new module fit old assumptions.
 - Keep the core module UI-agnostic.
 - Keep public contracts explicit, minimal, and schema-first.
@@ -30,7 +30,7 @@ If a session does not improve clarity, it is probably adding noise.
 ## Start-of-session checklist
 
 1. Read [ARCHITECTURE.md](./ARCHITECTURE.md).
-2. Read [DIAGRAM.md](./DIAGRAM.md).
+2. Read [DIAGRAM_CURRENT.md](./DIAGRAM_CURRENT.md).
 3. Read this guide.
 4. Create or refresh [CURRENT_SESSION.md](../CURRENT_SESSION.md) for the current session goal, task list, and decisions to review.
 5. Check git status and understand any uncommitted work before editing.
@@ -68,7 +68,7 @@ Suggested rule of thumb:
 - Keep docs in sync with code and contracts.
 - Review all affected `src/media-next/` docs at the end of each session and update them if needed.
 - Update [ARCHITECTURE.md](./ARCHITECTURE.md) when a significant top-level decision, boundary, or naming rule changes.
-- Update [DIAGRAM.md](./DIAGRAM.md) when the high-level structure changes.
+- Update [DIAGRAM_CURRENT.md](./DIAGRAM_CURRENT.md) when the high-level structure changes.
 - Keep [CURRENT_SESSION.md](../CURRENT_SESSION.md) fresh for the active session only.
 - Create focused docs as concepts become concrete enough to need their own source of truth.
 - When a focused doc is created, link it from [ARCHITECTURE.md](./ARCHITECTURE.md) and keep it aligned with implementation and adjacent docs.
@@ -99,7 +99,7 @@ Suggested rule of thumb:
 ## Testing rules
 
 - Tests and harnesses must stay aligned with the current contracts.
-- Use the isolated lab entrypoint for interactive validation.
+- Use the isolated ui test pages for interactive validation.
 - Add or update automated tests when behavior or contracts become concrete enough to verify.
 - Do not leave stale tests, stale placeholders, or misleading demos behind.
 - If something is intentionally untested, state that clearly in docs or handoff.
@@ -113,7 +113,7 @@ Suggested rule of thumb:
 
 ## Boundaries and naming
 
-- Keep domain boundaries strict: `schemas`, `playback`, `live-stream`, `storage`, `convert`, `sync`, `lab`.
+- Keep domain boundaries strict: `schemas`, `playback`, `live-stream`, `storage`, `convert`, `sync`, `ui`.
 - Keep naming consistent across `state`, `events`, `actions`, `storage`, `schema`, and pure `utils`.
 - Do not leak implementation-specific shapes across module boundaries.
 - If two modules need the same shape, define it once in `schemas/`.

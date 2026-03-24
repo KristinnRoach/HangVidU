@@ -1,5 +1,5 @@
-import { PlayableSourceSchema, createPlaybackController } from '../index.js';
-import { createHtmlVideoPlaybackRuntime } from '../playback/html-video-playback.js';
+import { PlayableSourceSchema, createPlaybackController } from '../../index.js';
+import { createHtmlVideoPlaybackRuntime } from '../../playback/html-video-playback.js';
 
 const app = document.getElementById('app');
 

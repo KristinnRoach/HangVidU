@@ -13,7 +13,7 @@ Start each session with [SESSION_GUIDE.md](./SESSION_GUIDE.md).
 ## Current decisions
 
 - Keep the new work separate from active production code.
-- Use a separate lab entrypoint for interactive testing.
+- Use a separate UI entrypoint for interactive testing.
 - Keep the core module UI-agnostic.
 - Split source contracts into `PlayableSource` and `StreamSource`.
 - Keep playback and live stream as separate domains with similar app-facing shapes.
@@ -27,7 +27,7 @@ Start each session with [SESSION_GUIDE.md](./SESSION_GUIDE.md).
 - `convert/`: compatibility analysis and derivative generation
 - `storage/`: file, OPFS, blob, and persistence concerns
 - `sync/`: shared playback synchronization built on top of playback
-- `lab/`: minimal development-only harness
+- `ui/test-pages/`: focused test pages for interactive development and validation
 
 ## Documentation structure
 
@@ -66,7 +66,7 @@ Runtime and adapter rule:
 - [SCHEMAS.md](./SCHEMAS.md)
 - [STATE.md](./STATE.md)
 - [ROADMAP.md](./ROADMAP.md)
-- [DIAGRAM.md](./DIAGRAM.md)
+- [DIAGRAM_CURRENT.md](./DIAGRAM_CURRENT.md)
 
 ## Rules for this branch
 
