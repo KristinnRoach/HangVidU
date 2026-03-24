@@ -30,8 +30,9 @@ If a session does not improve clarity, it is probably adding noise.
 1. Read [ARCHITECTURE.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/ARCHITECTURE.md).
 2. Read [WIP_DIAGRAM.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/WIP_DIAGRAM.md).
 3. Read this guide.
-4. Check git status and understand any uncommitted work before editing.
-5. Decide whether the session is about design, scaffolding, implementation, testing, or cleanup.
+4. Create or refresh [CURRENT_SESSION.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/CURRENT_SESSION.md) for the current session goal, task list, and decisions to review.
+5. Check git status and understand any uncommitted work before editing.
+6. Decide whether the session is about design, scaffolding, implementation, testing, or cleanup.
 
 ## Git workflow
 
@@ -47,10 +48,22 @@ If a session does not improve clarity, it is probably adding noise.
 - Keep docs in sync with code and contracts.
 - Update [ARCHITECTURE.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/ARCHITECTURE.md) when a significant top-level decision, boundary, or naming rule changes.
 - Update [WIP_DIAGRAM.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/WIP_DIAGRAM.md) when the high-level structure changes.
+- Keep [CURRENT_SESSION.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/CURRENT_SESSION.md) fresh for the active session only.
 - Create focused docs as concepts become concrete enough to need their own source of truth.
 - When a focused doc is created, link it from [ARCHITECTURE.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/ARCHITECTURE.md) and keep it aligned with implementation and adjacent docs.
 - Add short rationale, not long essays.
 - Prefer explicit decisions and unresolved questions over vague commentary.
+
+## Current session file
+
+- `CURRENT_SESSION.md` is a temporary working document for the active session.
+- Create it fresh at the start of a session if it does not exist.
+- Refresh or replace it if it reflects stale goals from a previous session.
+- Keep goal, task list, validation notes, and decisions to review current as the session progresses.
+- Delete it at the end of the session when the work is fully resolved and handed off cleanly.
+- If the goal is not fully reached, use the final handoff to state what remains and decide whether to:
+  keep `CURRENT_SESSION.md` into the next session, or
+  roll the unresolved items into a more durable focused doc.
 
 ## Testing rules
 
@@ -79,9 +92,10 @@ If a session does not improve clarity, it is probably adding noise.
 1. Remove dead or abandoned code introduced during the session.
 2. Update docs if decisions or boundaries changed.
 3. Run the relevant validation for the session scope.
-4. Propose or create a final coherent commit checkpoint for the session.
-5. Leave the branch in a coherent state.
-6. Write a handoff note in the final response:
+4. Resolve or intentionally preserve [CURRENT_SESSION.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/CURRENT_SESSION.md) based on whether the session goal was actually completed.
+5. Propose or create a final coherent commit checkpoint for the session.
+6. Leave the branch in a coherent state.
+7. Write a handoff note in the final response:
    what changed, what remains unresolved, and what the next sensible step is.
 
 ## Handoff standard
