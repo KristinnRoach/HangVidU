@@ -41,6 +41,7 @@ Current fields:
 Current `status` variants:
 
 - `idle`
+- `loading`
 - `ready`
 - `playing`
 - `paused`
@@ -49,6 +50,7 @@ Current `status` variants:
 Rules:
 
 - `currentSourceId` is `null` when nothing is loaded
+- `loading` means a source has been accepted but playback metadata is not ready yet
 - `duration` is nullable because it may be unknown before metadata loads
 - `error` is nullable and should only contain user-relevant failure text
 - `isPlaying` is explicit instead of being derived only from `status`

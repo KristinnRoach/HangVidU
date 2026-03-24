@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 export const SourceIdSchema = z.string().min(1);
 
+export const MediaTypeSchema = z.enum(['video', 'audio', 'av']);
+
 export const MimeTypeSchema = z.string().min(1).nullable().default(null);
 
 export const SourceBaseSchema = z.object({
@@ -9,7 +11,9 @@ export const SourceBaseSchema = z.object({
   kind: z.enum(['playable', 'stream']),
   label: z.string().min(1),
   origin: z.enum(['local-file', 'received-file', 'url', 'capture']),
+  mediaType: MediaTypeSchema,
   mimeType: MimeTypeSchema,
+  codecHints: z.array(z.string().min(1)).default([]),
 });
 
 const PlayableHandleSchema = z.object({

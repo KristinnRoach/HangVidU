@@ -57,6 +57,7 @@ When a focused doc exists:
 - [SESSION_GUIDE.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/SESSION_GUIDE.md)
 - [SCHEMAS.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/SCHEMAS.md)
 - [STATE.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/STATE.md)
+- [ROADMAP.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/ROADMAP.md)
 - [WIP_DIAGRAM.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/WIP_DIAGRAM.md)
 
 ## Rules for this branch

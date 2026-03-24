@@ -1,5 +1,7 @@
 # Media Next Session Guide
 
+This is the canonical entry point for starting or resuming work on `src/media-next/` in a new context.
+
 Read this at the start and end of every session on `codex/media-module-sketch`.
 
 This branch is for designing and validating a replacement media module without contaminating the active production architecture.
@@ -43,9 +45,29 @@ If a session does not improve clarity, it is probably adding noise.
 - Do not rewrite or revert other work unless explicitly required.
 - If a design direction changes, update the docs in the same commit or immediately after.
 
+## GitHub workflow
+
+- Treat `codex/media-module-sketch` as the current integration branch for `media-next`.
+- For each new session, prefer creating a short-lived session branch from `codex/media-module-sketch`.
+- Use one session branch per coherent session goal, not per tiny commit.
+- Open a PR from the session branch back into `codex/media-module-sketch` when the session reaches a reviewable checkpoint.
+- After `codex/media-module-sketch` reaches a meaningful milestone, open a PR from it into the real target branch.
+- Keep the workflow simple:
+  session branch -> `codex/media-module-sketch` -> target branch
+
+Suggested branch naming:
+
+- `codex/media-next-<short-goal>`
+
+Suggested rule of thumb:
+
+- use a session PR when the session changed contracts, docs, or testable behavior
+- skip opening a PR only for truly trivial housekeeping
+
 ## Documentation rules
 
 - Keep docs in sync with code and contracts.
+- Review all affected `src/media-next/` docs at the end of each session and update them if needed.
 - Update [ARCHITECTURE.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/ARCHITECTURE.md) when a significant top-level decision, boundary, or naming rule changes.
 - Update [WIP_DIAGRAM.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/WIP_DIAGRAM.md) when the high-level structure changes.
 - Keep [CURRENT_SESSION.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/CURRENT_SESSION.md) fresh for the active session only.
@@ -60,10 +82,18 @@ If a session does not improve clarity, it is probably adding noise.
 - Create it fresh at the start of a session if it does not exist.
 - Refresh or replace it if it reflects stale goals from a previous session.
 - Keep goal, task list, validation notes, and decisions to review current as the session progresses.
-- Delete it at the end of the session when the work is fully resolved and handed off cleanly.
+- Archive it into `history/YYYY-MM-DD_SESSION.md` at the end of the session when the work is fully resolved and handed off cleanly.
+- Delete it only after the session has been archived.
 - If the goal is not fully reached, use the final handoff to state what remains and decide whether to:
   keep `CURRENT_SESSION.md` into the next session, or
   roll the unresolved items into a more durable focused doc.
+
+## Session archive and roadmap
+
+- Keep archived session summaries under `src/media-next/history/`.
+- Archive files should stay concise and outcome-focused.
+- Keep a durable [ROADMAP.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/ROADMAP.md) for current milestones and open tracks.
+- Update `ROADMAP.md` only when priorities, milestones, or the next recommended work materially changes.
 
 ## Testing rules
 
@@ -90,12 +120,14 @@ If a session does not improve clarity, it is probably adding noise.
 ## End-of-session checklist
 
 1. Remove dead or abandoned code introduced during the session.
-2. Update docs if decisions or boundaries changed.
+2. Review all affected `src/media-next/` docs and update them if needed.
 3. Run the relevant validation for the session scope.
-4. Resolve or intentionally preserve [CURRENT_SESSION.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/CURRENT_SESSION.md) based on whether the session goal was actually completed.
-5. Propose or create a final coherent commit checkpoint for the session.
-6. Leave the branch in a coherent state.
-7. Write a handoff note in the final response:
+4. Archive [CURRENT_SESSION.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/CURRENT_SESSION.md) into `history/YYYY-MM-DD_SESSION.md` if the session reached a clean checkpoint.
+5. Update [ROADMAP.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/ROADMAP.md) if the next recommended work changed materially.
+6. Resolve or intentionally preserve [CURRENT_SESSION.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/CURRENT_SESSION.md) based on whether the session goal was actually completed.
+7. Propose or create a final coherent commit checkpoint for the session.
+8. Leave the branch in a coherent state.
+9. Write a handoff note in the final response:
    what changed, what remains unresolved, and what the next sensible step is.
 
 ## Handoff standard

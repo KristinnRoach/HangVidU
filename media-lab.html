@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -14,7 +14,6 @@
         --muted: #5f665d;
         --accent: #2d6a4f;
         --accent-soft: #dcefe5;
-        --code: #f6f0e4;
       }
 
       * {
@@ -73,10 +72,25 @@
         color: var(--muted);
       }
 
+      .badge-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .badge {
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 0.88rem;
+      }
+
       .grid {
         display: grid;
         gap: 18px;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       }
 
       .panel {
@@ -93,86 +107,62 @@
         margin-top: 8px;
       }
 
-      .badge-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-top: 16px;
+      .link-card {
+        display: block;
+        color: inherit;
+        text-decoration: none;
       }
 
-      .badge {
-        padding: 8px 12px;
-        border-radius: 999px;
-        background: var(--accent-soft);
-        color: var(--accent);
-        font-size: 0.88rem;
-      }
-
-      pre {
-        margin: 12px 0 0;
-        padding: 14px;
-        overflow: auto;
-        border-radius: 14px;
-        border: 1px solid var(--line);
-        background: var(--code);
-        font-size: 0.88rem;
-        line-height: 1.45;
-      }
-
-      code {
-        font-family:
-          'SFMono-Regular', ui-monospace, Menlo, Consolas, monospace;
-      }
-
-      .control-stack {
-        display: grid;
-        gap: 12px;
-      }
-
-      .field-label {
-        font-size: 0.92rem;
-        color: var(--muted);
-      }
-
-      .text-input {
-        width: 100%;
-        padding: 11px 12px;
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        background: #fff;
-        color: var(--text);
-      }
-
-      .button-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-      }
-
-      button {
-        border: 1px solid var(--line);
-        border-radius: 999px;
-        padding: 10px 14px;
-        background: #fff;
-        color: var(--text);
-        cursor: pointer;
-      }
-
-      button:hover {
+      .link-card:hover {
         border-color: var(--accent);
-      }
-
-      .video-frame {
-        width: 100%;
-        min-height: 240px;
-        border: 1px solid var(--line);
-        border-radius: 16px;
-        background: #0d1110;
       }
     </style>
   </head>
   <body>
-    <main id="app"></main>
-    <script type="module" src="/src/media-next/lab/main.js"></script>
+    <main>
+      <section class="hero">
+        <p class="eyebrow">Media Lab</p>
+        <h1>Entry point for media-next test pages</h1>
+        <p>
+          This page stays intentionally small. Use it as the starting point for
+          focused lab pages that validate one concern at a time.
+        </p>
+        <div class="badge-row">
+          <span class="badge">Hub only</span>
+          <span class="badge">Focused pages</span>
+          <span class="badge">Minimal experiments</span>
+        </div>
+      </section>
+
+      <section class="grid">
+        <a class="panel link-card" href="/media-playback.html">
+          <p class="eyebrow">Playback</p>
+          <h2>Playable sources</h2>
+          <p>
+            Test remote playable sources, playback state transitions, and video
+            element integration.
+          </p>
+        </a>
+
+        <a class="panel link-card" href="/media-capture.html">
+          <p class="eyebrow">Capture</p>
+          <h2>Stream sources</h2>
+          <p>
+            Test camera, microphone, and screen-sharing capture variants with
+            focused live-stream state panels.
+          </p>
+        </a>
+
+        <section class="panel">
+          <p class="eyebrow">Notes</p>
+          <h2>Current rule</h2>
+          <ul class="list">
+            <li>Keep primitives and focused feature pages separate.</li>
+            <li>Do not pile unrelated experiments onto one lab page.</li>
+            <li>Add new pages when a concern becomes materially different.</li>
+          </ul>
+        </section>
+      </section>
+    </main>
   </body>
-  </html>
+</html>

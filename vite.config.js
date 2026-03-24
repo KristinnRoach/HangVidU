@@ -19,6 +19,8 @@ export default defineConfig(({ mode }) => {
           ...(mode === 'development' && {
             experiments: path.resolve(__dirname, 'experiments.html'),
             mediaLab: path.resolve(__dirname, 'media-lab.html'),
+            mediaPlayback: path.resolve(__dirname, 'media-playback.html'),
+            mediaCapture: path.resolve(__dirname, 'media-capture.html'),
           }),
         },
       },

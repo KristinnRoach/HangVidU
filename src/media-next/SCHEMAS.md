@@ -28,7 +28,9 @@ All source contracts should:
 - have a stable `id`
 - use a discriminant `kind`
 - use human-readable `label`
+- declare `mediaType`
 - carry `mimeType` only when known
+- carry `codecHints` only when known
 - use small, explicit enums for current supported variants
 
 ## PlayableSource
@@ -41,9 +43,17 @@ Current required fields:
 - `kind = "playable"`
 - `label`
 - `origin`
+- `mediaType`
 - `mimeType`
+- `codecHints`
 - `playableType`
 - `handle`
+
+Current `mediaType` variants:
+
+- `video`
+- `audio`
+- `av`
 
 Current `playableType` variants:
 
@@ -68,7 +78,9 @@ Current required fields:
 - `kind = "stream"`
 - `label`
 - `origin = "capture"`
+- `mediaType`
 - `mimeType`
+- `codecHints`
 - `streamType`
 - `handle`
 
@@ -83,6 +95,13 @@ Current handle rules:
 
 - `handle.trackIds` defaults to an empty array
 - `handle.streamId` is optional descriptive metadata for now
+
+Suggested current `mediaType` usage:
+
+- `camera` -> `video`
+- `microphone` -> `audio`
+- `screen` -> `video` or `av`
+- `system-audio` -> `audio`
 
 ## Extension policy
 

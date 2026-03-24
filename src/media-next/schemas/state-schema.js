@@ -3,6 +3,7 @@ import { SourceIdSchema } from './source-schema.js';
 
 export const PlaybackStatusSchema = z.enum([
   'idle',
+  'loading',
   'ready',
   'playing',
   'paused',

@@ -30,7 +30,7 @@ export function createPlaybackController() {
     },
     load(source) {
       state = parsePlaybackState({
-        status: 'ready',
+        status: 'loading',
         currentSourceId: source?.id ?? null,
         isPlaying: false,
         currentTime: 0,
@@ -42,6 +42,7 @@ export function createPlaybackController() {
     syncMetrics({ currentTime = state.currentTime, duration = state.duration }) {
       state = parsePlaybackState({
         ...state,
+        status: state.status === 'loading' ? 'ready' : state.status,
         currentTime,
         duration,
       });
