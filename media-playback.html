@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Media Lab Playback</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f3f1ea;
+        --panel: #fffdf8;
+        --line: #d6d0c2;
+        --text: #1f241f;
+        --muted: #5f665d;
+        --accent: #2d6a4f;
+        --accent-soft: #dcefe5;
+        --code: #f6f0e4;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Georgia, 'Times New Roman', serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, #f8efe1 0, transparent 32%),
+          linear-gradient(180deg, #efe7d8 0%, var(--bg) 100%);
+      }
+
+      main {
+        width: min(1080px, calc(100% - 32px));
+        margin: 32px auto 56px;
+      }
+
+      .hero,
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        box-shadow: 0 12px 30px rgba(31, 36, 31, 0.06);
+      }
+
+      .hero {
+        padding: 28px;
+        margin-bottom: 18px;
+      }
+
+      .eyebrow {
+        margin: 0 0 8px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+
+      h1,
+      h2 {
+        margin: 0 0 10px;
+        font-weight: 600;
+      }
+
+      p {
+        margin: 0;
+        line-height: 1.55;
+      }
+
+      .hero p {
+        max-width: 70ch;
+        color: var(--muted);
+      }
+
+      .grid {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      }
+
+      .panel {
+        padding: 20px;
+      }
+
+      .list {
+        margin: 12px 0 0;
+        padding-left: 18px;
+        color: var(--muted);
+      }
+
+      .list li + li {
+        margin-top: 8px;
+      }
+
+      .control-stack {
+        display: grid;
+        gap: 12px;
+      }
+
+      .field-label {
+        font-size: 0.92rem;
+        color: var(--muted);
+      }
+
+      .text-input {
+        width: 100%;
+        padding: 11px 12px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+        color: var(--text);
+      }
+
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      button,
+      .back-link {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 10px 14px;
+        background: #fff;
+        color: var(--text);
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+      }
+
+      button:hover,
+      .back-link:hover {
+        border-color: var(--accent);
+      }
+
+      .video-frame {
+        width: 100%;
+        min-height: 240px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: #0d1110;
+      }
+
+      pre {
+        margin: 12px 0 0;
+        padding: 14px;
+        overflow: auto;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        background: var(--code);
+        font-size: 0.88rem;
+        line-height: 1.45;
+      }
+
+      code {
+        font-family:
+          'SFMono-Regular', ui-monospace, Menlo, Consolas, monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="app"></main>
+    <script type="module" src="/src/media-next/lab/playback-page.js"></script>
+  </body>
+  </html>

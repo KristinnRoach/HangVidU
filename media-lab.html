@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Media Lab</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f3f1ea;
+        --panel: #fffdf8;
+        --line: #d6d0c2;
+        --text: #1f241f;
+        --muted: #5f665d;
+        --accent: #2d6a4f;
+        --accent-soft: #dcefe5;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Georgia, 'Times New Roman', serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, #f8efe1 0, transparent 32%),
+          linear-gradient(180deg, #efe7d8 0%, var(--bg) 100%);
+      }
+
+      main {
+        width: min(1080px, calc(100% - 32px));
+        margin: 32px auto 56px;
+      }
+
+      .hero,
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        box-shadow: 0 12px 30px rgba(31, 36, 31, 0.06);
+      }
+
+      .hero {
+        padding: 28px;
+        margin-bottom: 18px;
+      }
+
+      .eyebrow {
+        margin: 0 0 8px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+
+      h1,
+      h2 {
+        margin: 0 0 10px;
+        font-weight: 600;
+      }
+
+      p {
+        margin: 0;
+        line-height: 1.55;
+      }
+
+      .hero p {
+        max-width: 70ch;
+        color: var(--muted);
+      }
+
+      .badge-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .badge {
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 0.88rem;
+      }
+
+      .grid {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      }
+
+      .panel {
+        padding: 20px;
+      }
+
+      .list {
+        margin: 12px 0 0;
+        padding-left: 18px;
+        color: var(--muted);
+      }
+
+      .list li + li {
+        margin-top: 8px;
+      }
+
+      .link-card {
+        display: block;
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .link-card:hover {
+        border-color: var(--accent);
+      }
+
+      .link-card:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+        border-color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <p class="eyebrow">Media Lab</p>
+        <h1>Entry point for media-next test pages</h1>
+        <p>
+          This page stays intentionally small. Use it as the starting point for
+          focused lab pages that validate one concern at a time.
+        </p>
+        <div class="badge-row">
+          <span class="badge">Hub only</span>
+          <span class="badge">Focused pages</span>
+          <span class="badge">Minimal experiments</span>
+        </div>
+      </section>
+
+      <section class="grid">
+        <a class="panel link-card" href="/media-playback.html">
+          <p class="eyebrow">Playback</p>
+          <h2>Playable sources</h2>
+          <p>
+            Test remote playable sources, playback state transitions, and video
+            element integration.
+          </p>
+        </a>
+
+        <a class="panel link-card" href="/media-capture.html">
+          <p class="eyebrow">Capture</p>
+          <h2>Stream sources</h2>
+          <p>
+            Test camera, microphone, and screen-sharing capture variants with
+            focused live-stream state panels.
+          </p>
+        </a>
+
+        <section class="panel">
+          <p class="eyebrow">Notes</p>
+          <h2>Current rule</h2>
+          <ul class="list">
+            <li>Keep primitives and focused feature pages separate.</li>
+            <li>Do not pile unrelated experiments onto one lab page.</li>
+            <li>Add new pages when a concern becomes materially different.</li>
+          </ul>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>
