@@ -2,7 +2,7 @@
 
 This directory is an isolated design and prototyping area for a replacement media module.
 
-Start each session with [SESSION_GUIDE.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/SESSION_GUIDE.md).
+Start each session with [SESSION_GUIDE.md](./SESSION_GUIDE.md).
 
 ## Purpose
 
@@ -51,14 +51,19 @@ When a focused doc exists:
 - link it from this file
 - keep it internally consistent with the current implementation
 - update it in the same commit or session when the concept changes materially
+- use repo-relative Markdown links only
+
+Runtime and adapter rule:
+
+- if a runtime acquires browser resources, it must release them on both `destroy()` and startup-failure paths
 
 ## Current linked docs
 
-- [SESSION_GUIDE.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/SESSION_GUIDE.md)
-- [SCHEMAS.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/SCHEMAS.md)
-- [STATE.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/STATE.md)
-- [ROADMAP.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/ROADMAP.md)
-- [WIP_DIAGRAM.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/WIP_DIAGRAM.md)
+- [SESSION_GUIDE.md](./SESSION_GUIDE.md)
+- [SCHEMAS.md](./SCHEMAS.md)
+- [STATE.md](./STATE.md)
+- [ROADMAP.md](./ROADMAP.md)
+- [WIP_DIAGRAM.md](./WIP_DIAGRAM.md)
 
 ## Rules for this branch
 

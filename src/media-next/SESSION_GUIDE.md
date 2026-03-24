@@ -29,10 +29,10 @@ If a session does not improve clarity, it is probably adding noise.
 
 ## Start-of-session checklist
 
-1. Read [ARCHITECTURE.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/ARCHITECTURE.md).
-2. Read [WIP_DIAGRAM.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/WIP_DIAGRAM.md).
+1. Read [ARCHITECTURE.md](./ARCHITECTURE.md).
+2. Read [WIP_DIAGRAM.md](./WIP_DIAGRAM.md).
 3. Read this guide.
-4. Create or refresh [CURRENT_SESSION.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/CURRENT_SESSION.md) for the current session goal, task list, and decisions to review.
+4. Create or refresh [CURRENT_SESSION.md](./CURRENT_SESSION.md) for the current session goal, task list, and decisions to review.
 5. Check git status and understand any uncommitted work before editing.
 6. Decide whether the session is about design, scaffolding, implementation, testing, or cleanup.
 
@@ -67,11 +67,12 @@ Suggested rule of thumb:
 
 - Keep docs in sync with code and contracts.
 - Review all affected `src/media-next/` docs at the end of each session and update them if needed.
-- Update [ARCHITECTURE.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/ARCHITECTURE.md) when a significant top-level decision, boundary, or naming rule changes.
-- Update [WIP_DIAGRAM.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/WIP_DIAGRAM.md) when the high-level structure changes.
-- Keep [CURRENT_SESSION.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/CURRENT_SESSION.md) fresh for the active session only.
+- Update [ARCHITECTURE.md](./ARCHITECTURE.md) when a significant top-level decision, boundary, or naming rule changes.
+- Update [WIP_DIAGRAM.md](./WIP_DIAGRAM.md) when the high-level structure changes.
+- Keep [CURRENT_SESSION.md](./CURRENT_SESSION.md) fresh for the active session only.
 - Create focused docs as concepts become concrete enough to need their own source of truth.
-- When a focused doc is created, link it from [ARCHITECTURE.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/ARCHITECTURE.md) and keep it aligned with implementation and adjacent docs.
+- When a focused doc is created, link it from [ARCHITECTURE.md](./ARCHITECTURE.md) and keep it aligned with implementation and adjacent docs.
+- Use repo-relative Markdown links only in `src/media-next/` docs.
 - Add short rationale, not long essays.
 - Prefer explicit decisions and unresolved questions over vague commentary.
 
@@ -91,7 +92,7 @@ Suggested rule of thumb:
 
 - Keep archived session summaries under `src/media-next/history/`.
 - Archive files should stay concise and outcome-focused.
-- Keep a durable [ROADMAP.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/ROADMAP.md) for current milestones and open tracks.
+- Keep a durable [ROADMAP.md](./ROADMAP.md) for current milestones and open tracks.
 - Update `ROADMAP.md` only when priorities, milestones, or the next recommended work materially changes.
 
 ## Testing rules
@@ -121,9 +122,9 @@ Suggested rule of thumb:
 1. Remove dead or abandoned code introduced during the session.
 2. Review all affected `src/media-next/` docs and update them if needed.
 3. Run the relevant validation for the session scope.
-4. Archive [CURRENT_SESSION.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/CURRENT_SESSION.md) into `history/YYYY-MM-DD_SESSION.md` if the session reached a clean checkpoint.
-5. Update [ROADMAP.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/ROADMAP.md) if the next recommended work changed materially.
-6. Resolve or intentionally preserve [CURRENT_SESSION.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/CURRENT_SESSION.md) based on whether the session goal was actually completed.
+4. Archive [CURRENT_SESSION.md](./CURRENT_SESSION.md) into `history/YYYY-MM-DD_SESSION.md` if the session reached a clean checkpoint.
+5. Update [ROADMAP.md](./ROADMAP.md) if the next recommended work changed materially.
+6. Resolve or intentionally preserve [CURRENT_SESSION.md](./CURRENT_SESSION.md) based on whether the session goal was actually completed.
 7. Propose or create a final coherent commit checkpoint for the session.
 8. Leave the branch in a coherent state.
 9. Write a handoff note in the final response:

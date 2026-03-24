@@ -2,7 +2,7 @@
 
 This document defines the first contract layer for `src/media-next/`.
 
-Keep this doc aligned with [source-schema.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/schemas/source-schema.js). Update both in the same session when source contracts change.
+Keep this doc aligned with [source-schema.js](./schemas/source-schema.js). Update both in the same session when source contracts change.
 
 ## Scope
 

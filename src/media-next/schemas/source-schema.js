@@ -24,6 +24,7 @@ const PlayableHandleSchema = z.object({
 
 export const PlayableSourceSchema = SourceBaseSchema.extend({
   kind: z.literal('playable'),
+  origin: z.enum(['local-file', 'received-file', 'url']),
   playableType: z.enum(['file', 'blob-url', 'sw-url', 'remote-url']),
   handle: PlayableHandleSchema,
 }).superRefine((value, ctx) => {

@@ -10,14 +10,16 @@ import { parsePlayableSource } from '../schemas/source-schema.js';
  *     play: () => void,
  *     pause: () => void,
  *     stop: () => void,
+ *     fail: (error: string) => void,
+ *     syncMetrics: (metrics: { currentTime: number, duration: number | null }) => void,
  *     getState: () => unknown,
  *   },
  *   videoEl: HTMLVideoElement,
  * }} params
  */
 export function createHtmlVideoPlaybackRuntime({ controller, videoEl }) {
-  let currentUrl = null;
-  bindVideoElementEvents();
+  const eventController = new AbortController();
+  bindVideoElementEvents(eventController.signal);
 
   async function load(sourceInput) {
     const source = parsePlayableSource(sourceInput);
@@ -25,7 +27,6 @@ export function createHtmlVideoPlaybackRuntime({ controller, videoEl }) {
 
     clearVideo();
     videoEl.src = url;
-    currentUrl = url;
     controller.load(source);
     videoEl.load();
 
@@ -54,29 +55,29 @@ export function createHtmlVideoPlaybackRuntime({ controller, videoEl }) {
   }
 
   function destroy() {
+    eventController.abort();
     stop();
   }
 
   function clearVideo() {
     videoEl.removeAttribute('src');
     videoEl.load();
-    currentUrl = null;
   }
 
-  function bindVideoElementEvents() {
+  function bindVideoElementEvents(signal) {
     videoEl.addEventListener('loadedmetadata', () => {
       controller.syncMetrics({
         currentTime: videoEl.currentTime,
         duration: Number.isFinite(videoEl.duration) ? videoEl.duration : null,
       });
-    });
+    }, { signal });
 
     videoEl.addEventListener('timeupdate', () => {
       controller.syncMetrics({
         currentTime: videoEl.currentTime,
         duration: Number.isFinite(videoEl.duration) ? videoEl.duration : null,
       });
-    });
+    }, { signal });
 
     videoEl.addEventListener('ended', () => {
       controller.pause();
@@ -84,11 +85,11 @@ export function createHtmlVideoPlaybackRuntime({ controller, videoEl }) {
         currentTime: videoEl.currentTime,
         duration: Number.isFinite(videoEl.duration) ? videoEl.duration : null,
       });
-    });
+    }, { signal });
 
     videoEl.addEventListener('error', () => {
       controller.fail('Video element failed to load or play the current source');
-    });
+    }, { signal });
   }
 
   return {

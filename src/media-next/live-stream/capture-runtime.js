@@ -27,19 +27,29 @@ export function createCaptureRuntime({
   let currentStream = null;
 
   async function start() {
+    let nextStream = null;
+
     try {
-      const stream = await getStream();
-      const source = parseStreamSource(sourceFactory(stream));
+      nextStream = await getStream();
+      const source = parseStreamSource(sourceFactory(nextStream));
 
       stop();
 
-      currentStream = stream;
-      if (videoEl) videoEl.srcObject = stream;
-      if (audioEl) audioEl.srcObject = stream;
+      currentStream = nextStream;
+      if (videoEl) videoEl.srcObject = nextStream;
+      if (audioEl) audioEl.srcObject = nextStream;
       controller.attach(source);
       controller.activate();
       return source;
     } catch (error) {
+      if (nextStream && nextStream !== currentStream) {
+        releaseStream(nextStream);
+      } else if (currentStream === nextStream) {
+        releaseStream(currentStream);
+        if (videoEl) videoEl.srcObject = null;
+        if (audioEl) audioEl.srcObject = null;
+        currentStream = null;
+      }
       controller.fail(getErrorMessage(error, 'Media capture failed to start'));
       throw error;
     }
@@ -47,7 +57,7 @@ export function createCaptureRuntime({
 
   function stop() {
     if (currentStream) {
-      currentStream.getTracks().forEach((track) => track.stop());
+      releaseStream(currentStream);
       currentStream = null;
     }
     if (videoEl) videoEl.srcObject = null;
@@ -68,4 +78,8 @@ export function createCaptureRuntime({
 
 function getErrorMessage(error, fallback) {
   return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function releaseStream(stream) {
+  stream.getTracks().forEach((track) => track.stop());
 }

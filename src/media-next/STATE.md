@@ -4,9 +4,9 @@ This document defines the first runtime state layer for `src/media-next/`.
 
 Keep this doc aligned with:
 
-- [state-schema.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/schemas/state-schema.js)
-- [playback/index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/playback/index.js)
-- [live-stream/index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/media-next/live-stream/index.js)
+- [state-schema.js](./schemas/state-schema.js)
+- [playback/index.js](./playback/index.js)
+- [live-stream/index.js](./live-stream/index.js)
 
 ## Scope
 
