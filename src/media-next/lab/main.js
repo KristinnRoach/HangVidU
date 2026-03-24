@@ -37,7 +37,9 @@ const sampleStream = StreamSourceSchema.parse({
 });
 
 playbackController.load(samplePlayable);
+playbackController.play();
 liveStreamController.attach(sampleStream);
+liveStreamController.activate();
 
 render();
 

@@ -1,12 +1,18 @@
+import { parsePlaybackState } from '../schemas/state-schema.js';
+
 /**
  * Minimal placeholder controller for the new playback domain.
  * This is intentionally state-only scaffolding until the contract is finalized.
  */
 export function createPlaybackController() {
-  let state = {
+  let state = parsePlaybackState({
     status: 'idle',
     currentSourceId: null,
-  };
+    isPlaying: false,
+    currentTime: 0,
+    duration: null,
+    error: null,
+  });
 
   const listeners = new Set();
 
@@ -23,17 +29,41 @@ export function createPlaybackController() {
       return () => listeners.delete(listener);
     },
     load(source) {
-      state = {
+      state = parsePlaybackState({
         status: 'ready',
         currentSourceId: source?.id ?? null,
-      };
+        isPlaying: false,
+        currentTime: 0,
+        duration: null,
+        error: null,
+      });
+      emit();
+    },
+    play() {
+      state = parsePlaybackState({
+        ...state,
+        status: 'playing',
+        isPlaying: true,
+      });
+      emit();
+    },
+    pause() {
+      state = parsePlaybackState({
+        ...state,
+        status: 'paused',
+        isPlaying: false,
+      });
       emit();
     },
     stop() {
-      state = {
+      state = parsePlaybackState({
         status: 'idle',
         currentSourceId: null,
-      };
+        isPlaying: false,
+        currentTime: 0,
+        duration: null,
+        error: null,
+      });
       emit();
     },
   };

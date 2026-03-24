@@ -6,5 +6,11 @@ export {
   parsePlayableSource,
   parseStreamSource,
 } from './schemas/source-schema.js';
+export {
+  PlaybackStateSchema,
+  LiveStreamStateSchema,
+  parsePlaybackState,
+  parseLiveStreamState,
+} from './schemas/state-schema.js';
 export { createPlaybackController } from './playback/index.js';
 export { createLiveStreamController } from './live-stream/index.js';
