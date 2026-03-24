@@ -77,7 +77,7 @@
     "@mediabunny/ac3": "^1.40.0",
     "@sentry/browser": "^10.40.0",
     "dexie": "^4.3.0",
-    "firebase": "^12.10.0",
+    "firebase": "^12.11.0",
     "lucide": "^0.575.0",
     "mediabunny": "^1.40.0",
     "workbox-window": "^7.4.0",
