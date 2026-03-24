@@ -66,7 +66,7 @@ Runtime and adapter rule:
 - [SCHEMAS.md](./SCHEMAS.md)
 - [STATE.md](./STATE.md)
 - [ROADMAP.md](./ROADMAP.md)
-- [WIP_DIAGRAM.md](./WIP_DIAGRAM.md)
+- [DIAGRAM.md](./DIAGRAM.md)
 
 ## Rules for this branch
 

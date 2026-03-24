@@ -30,7 +30,7 @@ If a session does not improve clarity, it is probably adding noise.
 ## Start-of-session checklist
 
 1. Read [ARCHITECTURE.md](./ARCHITECTURE.md).
-2. Read [WIP_DIAGRAM.md](./WIP_DIAGRAM.md).
+2. Read [DIAGRAM.md](./DIAGRAM.md).
 3. Read this guide.
 4. Create or refresh [CURRENT_SESSION.md](../CURRENT_SESSION.md) for the current session goal, task list, and decisions to review.
 5. Check git status and understand any uncommitted work before editing.
@@ -68,7 +68,7 @@ Suggested rule of thumb:
 - Keep docs in sync with code and contracts.
 - Review all affected `src/media-next/` docs at the end of each session and update them if needed.
 - Update [ARCHITECTURE.md](./ARCHITECTURE.md) when a significant top-level decision, boundary, or naming rule changes.
-- Update [WIP_DIAGRAM.md](./WIP_DIAGRAM.md) when the high-level structure changes.
+- Update [DIAGRAM.md](./DIAGRAM.md) when the high-level structure changes.
 - Keep [CURRENT_SESSION.md](../CURRENT_SESSION.md) fresh for the active session only.
 - Create focused docs as concepts become concrete enough to need their own source of truth.
 - When a focused doc is created, link it from [ARCHITECTURE.md](./ARCHITECTURE.md) and keep it aligned with implementation and adjacent docs.
