@@ -54,6 +54,7 @@ When a focused doc exists:
 - update it in the same commit or session when the concept changes materially
 - use repo-relative Markdown links only
 - prefer topic-oriented solved-issue notes under `docs/solved-issues/` instead of one file per tiny incident
+- use semantically broad solved-issue topics when possible, for example `state.md` or `func-defs.md`
 
 Runtime and adapter rule:
 

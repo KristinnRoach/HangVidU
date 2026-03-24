@@ -21,7 +21,7 @@ export function createPlaybackController() {
 
   return {
     getState() {
-      return state;
+      return { ...state };
     },
     subscribe(listener) {
       listeners.add(listener);
@@ -37,7 +37,18 @@ export function createPlaybackController() {
       });
       emit();
     },
-    syncMetrics({ currentTime = state.currentTime, duration = state.duration }) {
+    /**
+     * @param {{
+     *   currentTime?: number,
+     *   duration?: number | null,
+     * }} [options]
+     */
+    syncMetrics(options = {}) {
+      const {
+        currentTime = state.currentTime,
+        duration = state.duration,
+      } = options;
+
       state = parsePlayerState({
         ...state,
         status: state.status === 'loading' ? 'ready' : state.status,

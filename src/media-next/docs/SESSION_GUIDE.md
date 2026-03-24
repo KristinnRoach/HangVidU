@@ -73,7 +73,7 @@ Suggested rule of thumb:
 - Create focused docs as concepts become concrete enough to need their own source of truth.
 - When a focused doc is created, link it from [ARCHITECTURE.md](./ARCHITECTURE.md) and keep it aligned with implementation and adjacent docs.
 - Use repo-relative Markdown links only in `src/media-next/` docs.
-- When an encountered issue or a syntax/style decision is likely to recur, add it to `src/media-next/docs/solved-issues/` in a topic-oriented file such as `zod.md`, `naming.md`, or `browser-runtime.md`.
+- When an encountered issue or a syntax/style decision is likely to recur, add it to `src/media-next/docs/solved-issues/` in a topic-oriented file such as `zod.md`, `state.md`, `func-defs.md`, `naming.md`, or `browser-runtime.md`.
 - Add short rationale, not long essays.
 - Prefer explicit decisions and unresolved questions over vague commentary.
 

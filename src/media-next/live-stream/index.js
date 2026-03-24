@@ -20,7 +20,7 @@ export function createLiveStreamController() {
 
   return {
     getState() {
-      return state;
+      return { ...state };
     },
     subscribe(listener) {
       listeners.add(listener);
