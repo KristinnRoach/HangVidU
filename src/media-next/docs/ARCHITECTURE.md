@@ -38,6 +38,7 @@ Focused docs should be created as concepts become concrete enough to deserve the
 Likely focused docs include:
 
 - `SCHEMAS.md`
+- `REQUIREMENTS.md`
 - `PUBLIC_API.md`
 - `STATE.md`
 - `EVENTS.md`
@@ -64,6 +65,8 @@ Runtime and adapter rule:
 
 - [SESSION_GUIDE.md](./SESSION_GUIDE.md)
 - [SCHEMAS.md](./SCHEMAS.md)
+- [REQUIREMENTS.md](./REQUIREMENTS.md)
+- [PUBLIC_API.md](./PUBLIC_API.md)
 - [STATE.md](./STATE.md)
 - [ROADMAP.md](./ROADMAP.md)
 - [DIAGRAM_CURRENT.md](./DIAGRAM_CURRENT.md)
@@ -78,8 +81,8 @@ Runtime and adapter rule:
 
 ## Immediate next steps
 
-1. Clarify the source, state, event, and action contracts.
-2. Decide which top-level facade, if any, the app should consume.
-3. Define compatibility and conversion policies.
-4. Decide the storage boundary and lifecycle rules.
-5. Only then implement real playback and live stream behavior.
+1. Finalize the minimal public API and HangVidU-first requirements.
+2. Define the adapter layer explicitly against that public contract.
+3. Decide the first legacy HangVidU integration seam.
+4. Expand primitives only where HangVidU requires them next.
+5. Keep conversion, storage, and session composition deferred until they have a concrete adopter.

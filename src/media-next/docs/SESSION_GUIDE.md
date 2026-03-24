@@ -67,15 +67,18 @@ Suggested rule of thumb:
 
 - Keep docs in sync with code and contracts.
 - Review all affected `src/media-next/` docs at the end of each session and update them if needed.
+- Use repo-relative Markdown links only in `src/media-next/` docs.
 - Update [ARCHITECTURE.md](./ARCHITECTURE.md) when a significant top-level decision, boundary, or naming rule changes.
 - Update [DIAGRAM_CURRENT.md](./DIAGRAM_CURRENT.md) when the high-level structure changes.
 - Keep [CURRENT_SESSION.md](../CURRENT_SESSION.md) fresh for the active session only.
 - Create focused docs as concepts become concrete enough to need their own source of truth.
 - When a focused doc is created, link it from [ARCHITECTURE.md](./ARCHITECTURE.md) and keep it aligned with implementation and adjacent docs.
-- Use repo-relative Markdown links only in `src/media-next/` docs.
+
+- Code conventions & consistency:
 - When an encountered issue or a syntax/style decision is likely to recur, add it to `src/media-next/docs/solved-issues/` in a topic-oriented file such as `zod.md`, `state.md`, `func-defs.md`, `naming.md`, or `browser-runtime.md`.
 - Add short rationale, not long essays.
-- Prefer explicit decisions and unresolved questions over vague commentary.
+- Prefer explicit decisions over vague commentary.
+- Keep source code updated to conform with these conventions
 
 ## Current session file
 

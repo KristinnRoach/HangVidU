@@ -30,4 +30,4 @@ Keep it concise. Update it only when priorities or the next recommended work cha
 
 ## Current next recommended step
 
-Define the adapter layer more explicitly. The ui test pages now have real playback and capture runtimes, but their contract is still implicit in code.
+Finalize the minimal public API and HangVidU-first requirements, then define the adapter layer explicitly against that contract.
