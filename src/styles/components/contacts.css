@@ -244,6 +244,13 @@
   color: #888;
 }
 
+.add-contact-modal .disclosure-note {
+  margin: 0 0 0.75rem;
+  color: #b9c1c8;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
 /* Contacts Container */
 .add-contact-modal .contacts-container-modal {
   min-height: 300px;
@@ -471,6 +478,10 @@
 /* Bulk Actions Container - outside scrollable area */
 .add-contact-modal .bulk-actions-container {
   margin-top: 1rem;
+}
+
+.add-contact-modal .bulk-action-disclosure {
+  margin-top: 0.75rem;
 }
 
 /* Bulk Actions */

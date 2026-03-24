@@ -54,6 +54,10 @@ export async function showAddContactModal() {
         />
       </div>
 
+      <p class="disclosure-note">
+        ${t('contact.disclosure.import')}
+      </p>
+
       <div id="contacts-container" class="contacts-container-modal">
         <p class="empty-state">${t('contact.import.select_platform')}</p>
       </div>
@@ -390,6 +394,9 @@ function renderImportResults(
         ${t('contact.invite.email', { count: 0 })}
       </button>
     </div>
+    <p class="disclosure-note bulk-action-disclosure">
+      ${t('contact.disclosure.gmail_send')}
+    </p>
   `;
 
   const inviteSelectedBtn = bulkActionsContainer.querySelector(
@@ -519,13 +526,12 @@ function renderImportResults(
     } catch (err) {
       console.error('[ADD CONTACT] Gmail send error:', err);
 
-      // Fallback to mailto: if Gmail API fails
+      // Fallback to Gmail compose URL, then mailto: as last resort
       if (err.message === 'Authorization cancelled') {
         shareLinkBtn.textContent = t('contact.invite.permission_denied');
 
-        // Wait a moment then open mailto: as fallback
         setTimeout(() => {
-          openMailtoFallback(notOnApp);
+          openGmailComposeFallback(notOnApp);
           shareLinkBtn.textContent = t('contact.invite.email', {
             count: notOnApp.length,
           });
@@ -539,8 +545,8 @@ function renderImportResults(
     }
   });
 
-  // Fallback function to open mailto: link
-  function openMailtoFallback(contacts) {
+  // Fallback: open Gmail compose in new tab (preferred), mailto: as last resort
+  function openGmailComposeFallback(contacts) {
     const myUserId = getLoggedInUserId();
     const referralLink = myUserId
       ? `${window.location.origin}/?ref=${myUserId}`
@@ -553,15 +559,18 @@ function renderImportResults(
     const body = encodeURIComponent(
       t('contact.invite.body', { name: senderName, link: referralLink }),
     );
+    const to = contacts.map((c) => c.email).join(',');
 
-    let mailtoLink;
-    if (contacts.length === 1) {
-      mailtoLink = `mailto:${contacts[0].email}?subject=${subject}&body=${body}`;
-    } else {
-      const emails = contacts.map((c) => c.email).join(',');
-      mailtoLink = `mailto:?bcc=${emails}&subject=${subject}&body=${body}`;
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${subject}&body=${body}`;
+    const opened = window.open(gmailUrl, '_blank');
+
+    // Last resort: mailto: if popup was blocked
+    if (!opened) {
+      const mailtoLink =
+        contacts.length === 1
+          ? `mailto:${contacts[0].email}?subject=${subject}&body=${body}`
+          : `mailto:?bcc=${to}&subject=${subject}&body=${body}`;
+      window.location.href = mailtoLink;
     }
-
-    window.location.href = mailtoLink;
   }
 }

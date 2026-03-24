@@ -52,6 +52,8 @@
   "contact.status.on_app": "Á HangVidU",
   "contact.status.not_on_app": "Ekki á appinu",
   "contact.select_all": "Velja allt ({count})",
+  "contact.disclosure.import": "Notar Google Contacts til að flytja inn tengiliðina þína og sýna hverjir eru þegar á HangVidU.",
+  "contact.disclosure.gmail_send": "Notar Gmail-leyfi til að senda boðstölvupóstana sem þú velur úr Gmail reikningnum þínum. HangVidU les ekki pósthólfið þitt.",
   "contact.invite": "Bjóða",
   "contact.invite.selected": "Bjóða völdum ({count})",
   "contact.invite.email": "Senda póst ({count})",

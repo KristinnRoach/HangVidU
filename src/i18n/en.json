@@ -52,6 +52,8 @@
   "contact.status.on_app": "On HangVidU",
   "contact.status.not_on_app": "Not on app",
   "contact.select_all": "Select All ({count})",
+  "contact.disclosure.import": "Uses Google Contacts to import your contacts and show which ones are already on HangVidU.",
+  "contact.disclosure.gmail_send": "Uses Gmail permission to send the invite emails you select from your Gmail account. HangVidU does not read your inbox.",
   "contact.invite": "Invite",
   "contact.invite.selected": "Invite Selected ({count})",
   "contact.invite.email": "Email Invite ({count})",
