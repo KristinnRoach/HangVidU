@@ -1,22 +1,20 @@
 import { getIsLoggedIn } from '../auth/auth-state.js';
-import { EventEmitter } from '../utils/event-emitter.js';
+import { appBus } from '../app/app-bus.js';
 import { contactsStore } from './contacts-store.js';
 
 /**
- * ContactsController
- *
- * - Pattern: extends EventEmitter (same pattern as MessagingController)
- * - Delegates to existing contact utilities for now (see notes below)
- * - Emits events: 'contact:saved', 'contact:updated', 'contact:deleted', ... TBD
+ * ContactsService
  *
  * Note: storage layer still WIP - currently using draft in ./contacts-store.js
- *
  * This is intentionally minimal; larger refactors (moving storage out of UI
  * module, removing DOM CustomEvents, etc.) will follow after design decisions.
  */
-export class ContactsController extends EventEmitter {
+export class ContactsService {
   constructor() {
-    super();
+    import.meta.env.DEV &&
+      console.log('[ContactsService] empty constructor run', {
+        contactsStore,
+      });
   }
 
   async handleHangUp(contactUserId, roomId) {
@@ -39,10 +37,10 @@ export class ContactsController extends EventEmitter {
   async saveContact(contactId, contactName, roomId) {
     await contactsStore.saveContact(contactId, contactName, roomId);
     try {
-      this.emit('contact:saved', { roomId });
-      this.emit('room:id:created', { roomId });
+      appBus.emit('contact:saved', { roomId });
+      appBus.emit('room:id:created', { roomId });
     } catch (e) {
-      console.warn('[ContactsController] emit contact:saved failed', e);
+      console.warn('[ContactsService] emit contact:saved failed', e);
     }
   }
 
@@ -57,21 +55,21 @@ export class ContactsController extends EventEmitter {
     );
     try {
       if (isRoomIdChange) {
-        this.emit('room:id:updated', { contactName, roomId });
+        appBus.emit('room:id:updated', { contactName, roomId });
       } else {
-        this.emit('contact:updated', { updatedContact });
+        appBus.emit('contact:updated', { updatedContact });
       }
     } catch (e) {
-      console.warn('[ContactsController] updateContact(): emit failed', e);
+      console.warn('[ContactsService] updateContact(): emit failed', e);
     }
   }
 
   async deleteContact(contactId) {
     await contactsStore.deleteContact(contactId);
     try {
-      this.emit('contact:deleted', { contactId });
+      appBus.emit('contact:deleted', { contactId });
     } catch (e) {
-      console.warn('[ContactsController] emit contact:deleted failed', e);
+      console.warn('[ContactsService] emit contact:deleted failed', e);
     }
   }
 
@@ -100,4 +98,4 @@ export class ContactsController extends EventEmitter {
   }
 }
 
-export const contactsController = new ContactsController();
+export const contactsService = new ContactsService();

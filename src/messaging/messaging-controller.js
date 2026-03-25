@@ -11,6 +11,7 @@ import {
   createTextMessage,
   createEventMessage,
 } from './message-factory.js';
+import { appBus } from '../app/app-bus.js';
 
 // Max file size for file messages (1MB before base64 encoding)
 const MAX_FILE_SIZE = 1 * 1024 * 1024;

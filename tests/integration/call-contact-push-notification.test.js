@@ -49,7 +49,7 @@ const mocks = vi.hoisted(() => {
     off: vi.fn(),
   };
 
-  const contactsController = {
+  const contactsService = {
     updateLastInteraction: vi.fn(() => {
       callSequence.push('updateLastInteraction');
       return Promise.resolve();
@@ -85,7 +85,7 @@ const mocks = vi.hoisted(() => {
     },
     pushController,
     callController,
-    contactsController,
+    contactsService,
     logger,
   };
 });
@@ -124,15 +124,18 @@ vi.mock('../../src/auth/auth-state.js', () => ({
   subscribe: vi.fn(() => () => {}),
 }));
 
-vi.mock('../../src/ui/components/notifications/in-app-notification-manager.js', () => ({
-  inAppNotificationManager: {
-    setToggle: vi.fn(),
-    add: vi.fn(),
-    remove: vi.fn(),
-    has: vi.fn(() => false),
-    notifications: new Map(),
-  },
-}));
+vi.mock(
+  '../../src/ui/components/notifications/in-app-notification-manager.js',
+  () => ({
+    inAppNotificationManager: {
+      setToggle: vi.fn(),
+      add: vi.fn(),
+      remove: vi.fn(),
+      has: vi.fn(() => false),
+      notifications: new Map(),
+    },
+  }),
+);
 
 vi.mock('../../src/push-notifications/index.js', () => ({
   getPushNotifications: vi.fn(() => mocks.pushController),
@@ -151,12 +154,8 @@ vi.mock('../../src/messaging/messaging-controller.js', () => ({
   },
 }));
 
-vi.mock('../../src/contacts/contacts-controller.js', () => ({
-  contactsController: mocks.contactsController,
-}));
-
-vi.mock('../../src/bootstrap/ui-to-controller-bridges.js', () => ({
-  teardownUiToControllerBridges: vi.fn(),
+vi.mock('../../src/contacts/contacts-service.js', () => ({
+  contactsService: mocks.contactsService,
 }));
 
 vi.mock('../../src/elements.js', () => {
@@ -225,11 +224,15 @@ vi.mock('../../src/media/state.js', () => ({
   cleanupLocalVideoOnlyStream: vi.fn(),
 }));
 
-vi.mock('../../src/utils/dev/dev-utils.js', () => ({
-  devDebug: vi.fn(),
-  isDev: vi.fn(() => false),
-  setDevDebugEnabled: vi.fn(),
-}));
+vi.mock('../../src/utils/dev/dev-utils.js', async () => {
+  const actual = await vi.importActual('../../src/utils/dev/dev-utils.js');
+  return {
+    ...actual,
+    devDebug: vi.fn(),
+    isDev: vi.fn(() => false),
+    setDevDebugEnabled: vi.fn(),
+  };
+});
 
 vi.mock('../../src/room.js', () => ({
   default: {
@@ -265,9 +268,12 @@ vi.mock('../../src/contacts/referral-handler.js', () => ({
   processReferral: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../../src/ui/components/notifications/enable-notifications-prompt.js', () => ({
-  showEnableNotificationsPrompt: vi.fn(),
-}));
+vi.mock(
+  '../../src/ui/components/notifications/enable-notifications-prompt.js',
+  () => ({
+    showEnableNotificationsPrompt: vi.fn(),
+  }),
+);
 
 vi.mock('../../src/utils/url.js', () => ({
   clearUrlParam: vi.fn(),
@@ -305,7 +311,6 @@ vi.mock('../../src/ui/components/contacts/contacts.js', () => ({
   renderContactsList: vi.fn(),
   cleanupContacts: vi.fn(),
   showSaveContactPrompt: vi.fn(),
-  autoInitMsgSessionIfNeeded: vi.fn(),
 }));
 
 vi.mock('../../src/media/youtube/youtube-player.js', () => ({
@@ -327,9 +332,12 @@ vi.mock('../../src/media/youtube/youtube-search.js', () => ({
   initializeSearchUI: vi.fn(),
 }));
 
-vi.mock('../../src/ui/components/notifications/notifications-toggle.js', () => ({
-  createNotificationsToggle: vi.fn(),
-}));
+vi.mock(
+  '../../src/ui/components/notifications/notifications-toggle.js',
+  () => ({
+    createNotificationsToggle: vi.fn(),
+  }),
+);
 
 vi.mock('../../src/ui/utils/toast.js', () => ({
   showSuccessToast: vi.fn(),
@@ -458,9 +466,9 @@ describe('callContact push notification flow', () => {
     });
     expect(mocks.callSequence.indexOf('sendIncomingCall')).toBeGreaterThan(-1);
     expect(mocks.callSequence.indexOf('showCallingUI')).toBeGreaterThan(-1);
-    expect(
-      mocks.callSequence.indexOf('sendIncomingCall'),
-    ).toBeLessThan(mocks.callSequence.indexOf('showCallingUI'));
+    expect(mocks.callSequence.indexOf('sendIncomingCall')).toBeLessThan(
+      mocks.callSequence.indexOf('showCallingUI'),
+    );
     expect(consoleWarnSpy).not.toHaveBeenCalledWith(
       '[CALL] Call-start push notification did not succeed',
     );
@@ -488,7 +496,7 @@ describe('callContact push notification flow', () => {
     expect(showIncomingCallUI).not.toHaveBeenCalled();
     expect(ringtoneManager.playIncoming).not.toHaveBeenCalled();
     expect(callIndicators.startCallIndicators).not.toHaveBeenCalled();
-    expect(mocks.contactsController.resolveCallerName).not.toHaveBeenCalled();
+    expect(mocks.contactsService.resolveCallerName).not.toHaveBeenCalled();
     expect(mocks.logger.logNotificationDecision).toHaveBeenCalledWith(
       'DEFER',
       'background_push_only',

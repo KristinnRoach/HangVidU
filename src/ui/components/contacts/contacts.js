@@ -7,8 +7,9 @@ import { hideElement, showElement } from '../../utils/ui-utils.js';
 import { t, onLocaleChange } from '../../../i18n/index.js';
 import { escapeHtml } from '../../../ui/component-system/dom-utils.js';
 import { initIcons } from '../../icons.js';
+import { appBus } from '../../../app/app-bus.js';
 import { messagingController } from '../../../messaging/messaging-controller.js';
-import { contactsController } from '../../../contacts/contacts-controller.js';
+import { contactsService } from '../../../contacts/contacts-service.js';
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
 
@@ -41,7 +42,7 @@ export async function showSaveContactPrompt(
   const name =
     window.prompt(t('contact.name.prompt'), contactUserId) || contactUserId;
 
-  await contactsController.saveContact(contactUserId, name, roomId);
+  await contactsService.saveContact(contactUserId, name, roomId);
   await renderContactsList(parentContainerEl);
 }
 
@@ -62,7 +63,7 @@ export async function renderContactsList(lobbyElement) {
   }
 
   // `getContactsSorted()` returns an array of contact objects (sorted by lastInteractionAt).
-  const contactsResult = await contactsController.getContactsSorted();
+  const contactsResult = await contactsService.getContactsSorted();
 
   let entries = [];
   if (Array.isArray(contactsResult)) {
@@ -172,7 +173,7 @@ function attachContactListeners(container, lobbyElement) {
       const contactId = nameEl.getAttribute('data-contact-id');
 
       if (roomId || contactId) {
-        contactsController.emit('contact:call', {
+        appBus.emit('call:init', {
           contactId,
           contactName,
           roomId,
@@ -183,15 +184,18 @@ function attachContactListeners(container, lobbyElement) {
 
   // Contact name - click to open messages
   container.querySelectorAll('.contact-name[data-contact-id]').forEach((el) => {
-    el.onclick = () => {
+    el.onclick = async () => {
       const contactId = el.getAttribute('data-contact-id');
       if (contactId) {
         clearUnreadBadge(contactId);
-        document.dispatchEvent(
-          new CustomEvent('messages:conversation:select', {
-            detail: { contactId, displayUI: true },
-          }),
-        );
+
+        const conversationId =
+          messagingController.resolveConversationIdFromContactId(contactId);
+
+        await messagingController.selectConversation(conversationId, {
+          remoteParticipantIds: [contactId],
+          displayUI: true,
+        });
       }
     };
   });
@@ -202,7 +206,7 @@ function attachContactListeners(container, lobbyElement) {
       const contactId = btn.getAttribute('data-contact-id');
       if (!contactId) return;
 
-      const contacts = await contactsController.getContacts();
+      const contacts = await contactsService.getContacts();
       const contact = contacts[contactId];
       if (!contact) return;
 
@@ -210,7 +214,7 @@ function attachContactListeners(container, lobbyElement) {
       if (!result) return;
 
       if (result.action === 'rename') {
-        await contactsController.updateContact(
+        await contactsService.updateContact(
           contactId,
           result.name,
           contact.roomId,
@@ -218,7 +222,7 @@ function attachContactListeners(container, lobbyElement) {
       } else if (result.action === 'delete') {
         const confirmed = await confirmDialog(t('contact.delete.confirm'));
         if (!confirmed) return;
-        await contactsController.deleteContact(contactId);
+        await contactsService.deleteContact(contactId);
       }
       await renderContactsList(lobbyElement);
     };
@@ -333,35 +337,4 @@ export function cleanupContacts() {
   }
 
   lastRenderedLobby = null;
-}
-
-/**
- * Auto-initialize messaging session with first saved contact on app bootstrap.
- * Runs once at startup if no session is already active and user has saved contacts.
- */
-export async function autoInitMsgSessionIfNeeded() {
-  // Don't override existing active conversation
-  if (messagingController.conversations.size > 0) return;
-
-  try {
-    const contacts = await contactsController.getContactsSorted();
-    if (!Array.isArray(contacts) || contacts.length === 0) return;
-
-    const firstContact = contacts[0];
-    if (!firstContact?.contactId) return;
-
-    // Pre select the conversation for the first contact
-    const conversationId =
-      messagingController.resolveConversationIdFromContactId(
-        firstContact.contactId,
-      );
-    await messagingController.selectConversation(conversationId, {
-      remoteParticipantIds: [firstContact.contactId],
-    });
-  } catch (error) {
-    console.warn(
-      '[Contacts] Failed to auto-init messaging conversation:',
-      error,
-    );
-  }
 }

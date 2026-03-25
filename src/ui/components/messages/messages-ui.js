@@ -15,7 +15,7 @@ import {
 import { REACTION_CONFIG } from '../../../messaging/reactions/ReactionConfig.js';
 import { getUserId } from '../../../auth/auth-state.js';
 import { messagingController } from '../../../messaging/messaging-controller.js';
-import { contactsController } from '../../../contacts/contacts-controller.js';
+import { contactsService } from '../../../contacts/contacts-service.js';
 import {
   showErrorToast,
   showInfoToast,
@@ -27,6 +27,7 @@ import { devDebug } from '../../../utils/dev/dev-utils.js';
 import { showImagePreview } from '../modal/imagePreview.js';
 import { onTapGesture } from '../../utils/detectDoubleClick.js';
 import { isSafeDownloadUrl } from '../../../utils/security/validate-url.js';
+import { appBus } from '../../../app/app-bus.js';
 
 // const MAX_MESSAGE_LENGTH = 3000; // Max characters allowed in a message
 
@@ -145,17 +146,17 @@ export function initMessagesUI() {
     messageTopBar.setCallHandler(() => {
       const state = messagingController.getSelectedConversationState();
       const conversationId = state?.conversationId;
-      messagesBox.dispatchEvent(
-        new CustomEvent('contact:call', {
-          bubbles: true,
-          detail: {
-            contactId: state.remoteParticipantIds[0] || null,
-            contactName:
-              messagingController.getConversationDisplayName(conversationId) ||
-              null,
-          },
-        }),
-      );
+
+      try {
+        appBus.emit('call:init', {
+          contactId: state.remoteParticipantIds[0] || null,
+          contactName:
+            messagingController.getConversationDisplayName(conversationId) ||
+            null,
+        });
+      } catch (err) {
+        console.warn('Failed to emit call:init in temp msg-ui code', err);
+      }
     });
   }
 
@@ -1568,7 +1569,7 @@ export function initMessagesUI() {
         ? state.remoteParticipantIds[0]
         : null;
     if (!contactId) return;
-    contactsController.updateLastInteraction(contactId).catch(() => {});
+    contactsService.updateLastInteraction(contactId).catch(() => {});
   }
 
   // --- Domain Event Listeners ---
