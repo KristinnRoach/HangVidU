@@ -36,16 +36,14 @@ Go to **APIs & Services > OAuth consent screen**:
 
 Go to **APIs & Services > Credentials**:
 
-1. Find your OAuth 2.0 Client ID: `765724787439-21p8n3e2tsfq2qk4oriq7ipp7m4o50ad`
+1. Find your OAuth 2.0 Client ID (visible in Google Cloud Console)
 2. Click to edit
 3. Under **Authorized JavaScript origins**, ensure these are added:
    - `https://localhost:5173` ⚠️ **IMPORTANT: Your actual dev server port**
    - `https://vidu-aae11.web.app` (production)
-   - `https://haunted-salley-cunningly.ngrok-free.dev` (ngrok domain)
 4. Under **Authorized redirect URIs**, ensure these are added:
    - `https://localhost:5173` ⚠️ **IMPORTANT: Your actual dev server port**
    - `https://vidu-aae11.web.app` (production)
-   - `https://haunted-salley-cunningly.ngrok-free.dev` (ngrok domain)
 5. Click **Save**
 6. **Wait 5-10 minutes** for changes to propagate
 

@@ -26,6 +26,7 @@
 @import './components/dialog/image-preview-dialog.css';
 @import './components/dialog/confirm-dialog.css';
 @import './components/dialog/edit-contact-dialog.css';
+@import './components/dialog/email-preview-dialog.css';
 
 /* Default visible state for elements that toggle visibility */
 .video-box,
