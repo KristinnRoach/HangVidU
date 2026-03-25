@@ -489,7 +489,23 @@ function renderImportResults(
         link: referralLink,
       });
 
-      // Step 5: Send emails via Gmail API
+      // Step 5: Show preview so the user can confirm content before sending
+      const confirmed = await showEmailPreviewDialog(notOnApp, subject, body);
+      if (!confirmed) {
+        shareLinkBtn.textContent = t('contact.invite.cancelled');
+        setTimeout(() => {
+          shareLinkBtn.textContent = t('contact.invite.email', {
+            count: notOnApp.length,
+          });
+          shareLinkBtn.disabled = false;
+        }, 1500);
+        return;
+      }
+
+      shareLinkBtn.disabled = true;
+      shareLinkBtn.textContent = t('contact.invite.sending_emails');
+
+      // Step 6: Send emails via Gmail API
       const results = await sendBulkEmailsViaGmail(
         accessToken,
         notOnApp,
@@ -497,7 +513,7 @@ function renderImportResults(
         body,
       );
 
-      // Step 6: Show results
+      // Step 7: Show results
       if (results.sent > 0) {
         shareLinkBtn.textContent = `✓ ${t('contact.invite.sent_emails', { count: results.sent })}`;
         shareLinkBtn.classList.add('success');
@@ -573,4 +589,89 @@ function renderImportResults(
       window.location.href = mailtoLink;
     }
   }
+}
+
+/**
+ * Show a preview dialog for the invite email so the user can confirm
+ * the content before it is sent via Gmail.
+ *
+ * @param {Array<{email: string, name: string}>} recipients
+ * @param {string} subject
+ * @param {string} body
+ * @returns {Promise<boolean>} - true if user confirmed, false if cancelled
+ */
+function showEmailPreviewDialog(recipients, subject, body) {
+  return new Promise((resolve) => {
+    const dialog = document.createElement('dialog');
+    dialog.classList.add('email-preview-dialog');
+
+    // Build recipient list safely with textContent
+    const recipientList = document.createElement('ul');
+    recipientList.className = 'email-preview-recipients';
+    for (const r of recipients) {
+      const li = document.createElement('li');
+      li.textContent = r.name ? `${r.name} <${r.email}>` : r.email;
+      recipientList.appendChild(li);
+    }
+
+    const subjectEl = document.createElement('p');
+    subjectEl.className = 'email-preview-subject';
+    subjectEl.textContent = subject;
+
+    const bodyEl = document.createElement('pre');
+    bodyEl.className = 'email-preview-body';
+    bodyEl.textContent = body;
+
+    const header = document.createElement('h3');
+    header.textContent = t('contact.invite.preview.title');
+
+    const toLabel = document.createElement('p');
+    toLabel.className = 'email-preview-label';
+    toLabel.textContent = t('contact.invite.preview.to');
+
+    const subjectLabel = document.createElement('p');
+    subjectLabel.className = 'email-preview-label';
+    subjectLabel.textContent = t('contact.invite.preview.subject');
+
+    const bodyLabel = document.createElement('p');
+    bodyLabel.className = 'email-preview-label';
+    bodyLabel.textContent = t('contact.invite.preview.body');
+
+    const actions = document.createElement('div');
+    actions.className = 'confirm-dialog-actions';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = t('shared.cancel');
+    cancelBtn.setAttribute('data-action', 'cancel');
+
+    const sendBtn = document.createElement('button');
+    sendBtn.textContent = t('contact.invite.preview.send');
+    sendBtn.setAttribute('data-action', 'confirm');
+    sendBtn.setAttribute('autofocus', '');
+
+    actions.appendChild(cancelBtn);
+    actions.appendChild(sendBtn);
+
+    dialog.appendChild(header);
+    dialog.appendChild(toLabel);
+    dialog.appendChild(recipientList);
+    dialog.appendChild(subjectLabel);
+    dialog.appendChild(subjectEl);
+    dialog.appendChild(bodyLabel);
+    dialog.appendChild(bodyEl);
+    dialog.appendChild(actions);
+
+    function cleanup(result) {
+      dialog.close();
+      dialog.remove();
+      resolve(result);
+    }
+
+    sendBtn.addEventListener('click', () => cleanup(true));
+    cancelBtn.addEventListener('click', () => cleanup(false));
+    dialog.addEventListener('cancel', () => cleanup(false));
+
+    document.body.appendChild(dialog);
+    dialog.showModal();
+  });
 }
