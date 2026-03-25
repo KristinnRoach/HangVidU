@@ -162,14 +162,11 @@ export async function signOutUser() {
   setState({ status: 'loading' });
 
   try {
-    // Disable notifications and unregister the current Web Push subscription
-    await getPushNotifications()
+    // Disable notifications and unregister the current Web Push subscription - Fire and forget
+    getPushNotifications()
       ?.disable?.()
-      .catch((error) => {
-        console.warn(
-          '[AUTH] Failed to disable notifications on logout:',
-          error,
-        );
+      .catch((err) => {
+        console.warn('[AUTH] Failed to disable notifications on logout:', err);
       });
 
     await setUserOffline();
