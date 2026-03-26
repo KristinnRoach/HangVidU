@@ -574,7 +574,7 @@ export async function callContact(contactId, contactName, roomId = null) {
 
   if (success) {
     // Update metadata
-    contactsService.updateLastInteraction(contactId).catch(() => {});
+    contactsService.updateLastInteraction(contactId).catch(() => {}); // TODO: unhandled rejection - deferred until pattern standardized
 
     // Send push notification immediately from the successful call-start path.
     try {
@@ -1609,6 +1609,16 @@ async function handleServiceWorkerNavigation(path) {
     const conversationId =
       messagingController.resolveConversationIdFromContactId(contactId);
 
+    if (!conversationId) {
+      console.warn(
+        '[MAIN] SW navigation -> Cannot open text chat UI because no conversation ID was found for user with id:',
+        {
+          contactId,
+        },
+      );
+      return false;
+    }
+
     await messagingController.selectConversation(conversationId, {
       remoteParticipantIds: [contactId],
       displayUI: true,
@@ -2146,6 +2156,9 @@ CallController.on(
               showSaveContactPrompt(partnerId, roomId, lobbyDiv).catch((e) => {
                 console.warn('Failed to show save contact prompt:', e);
               });
+
+              // TODO: How to handle re-rendering after saving completes?
+              // Needs standardized consistent pattern for signaling UI to render
             }
           })
           .catch((e) => {

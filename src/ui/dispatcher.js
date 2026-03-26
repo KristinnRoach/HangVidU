@@ -1,4 +1,4 @@
-import { appBus } from '../app/app-bus';
+import { appBus } from '../app/app-bus.js';
 
 export function dispatchUIEvent(eventName, data = {}) {
   try {

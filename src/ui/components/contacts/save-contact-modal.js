@@ -8,10 +8,9 @@ import confirmDialog from '../base/confirm-dialog';
 export async function showSaveContactPrompt(
   contactUserId,
   roomId, // TODO: Remove roomId dependency
-  parentContainerEl,
   autoRemoveSeconds = 25,
 ) {
-  if (!contactUserId || !roomId || !parentContainerEl) return;
+  if (!contactUserId || !roomId) return;
 
   const shouldSave = await confirmDialog(t('contact.save.confirm'), {
     autoRemoveSeconds,

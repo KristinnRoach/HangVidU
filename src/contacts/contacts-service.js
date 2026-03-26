@@ -23,7 +23,8 @@ export class ContactsService {
 
   async updateContact(contactId, contactName, roomId) {
     const existing = await contactsStore.getContact(contactId);
-    const isRoomIdChange = !!roomId && existing?.roomId !== roomId;
+    const previousRoomId = existing?.roomId ?? null;
+    const isRoomIdChange = !!roomId && previousRoomId !== roomId;
 
     const updatedContact = await contactsStore.saveContact(
       contactId,
@@ -38,7 +39,13 @@ export class ContactsService {
     try {
       appBus.emit('contact:updated', { roomId }); // TODO: decide how to notify UI to re-render (Should UI listen, or only dispatch events via appBus ?)
       if (isRoomIdChange) {
-        appBus.emit('room:id:updated', { contactName, roomId }); // TODO: decouple room:id:created from contacts service
+        // TODO: decouple room:id from contacts service
+        appBus.emit('room:id:updated', {
+          contactId,
+          contactName,
+          roomId,
+          previousRoomId,
+        });
       }
     } catch (e) {
       console.warn('[ContactsService] updateContact(): emit failed', e);
@@ -46,9 +53,14 @@ export class ContactsService {
   }
 
   async deleteContact(contactId) {
+    const existing = await contactsStore.getContact(contactId);
     await contactsStore.deleteContact(contactId);
     try {
-      appBus.emit('contact:deleted', { contactId });
+      appBus.emit('contact:deleted', {
+        // TODO: update along with save and update emitted events
+        contactId,
+        roomId: existing?.roomId ?? null,
+      });
     } catch (e) {
       console.warn('[ContactsService] emit contact:deleted failed', e);
     }
@@ -79,11 +91,14 @@ export class ContactsService {
   }
 
   async saveContact(contactId, contactName, roomId) {
+    // todo: define standardized return value and error handling strategy for service methods
+
     const contact = await contactsStore.saveContact(
       contactId,
       contactName,
       roomId,
     );
+
     if (!contact) {
       console.error('[ContactsService] Failed to save contact', {
         contactId,

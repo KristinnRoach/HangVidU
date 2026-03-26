@@ -144,16 +144,19 @@ export function initMessagesUI() {
     messageTopBar.setBackHandler(() => closeMessagesUI());
 
     messageTopBar.setCallHandler(() => {
-      const state = messagingController.getSelectedConversationState();
-      const conversationId = state?.conversationId;
-
       try {
+        const state = messagingController.getSelectedConversationState();
+        const conversationId = state?.conversationId;
+        const contactId = state?.remoteParticipantIds?.[0] ?? null;
+        const roomId = state?.roomId ?? null;
+        const contactName =
+          messagingController.getConversationDisplayName(conversationId) ||
+          null;
+
         dispatchUIEvent('call:init', {
-          contactId: state.remoteParticipantIds[0] || null,
-          contactName:
-            messagingController.getConversationDisplayName(conversationId) ||
-            null,
-          roomId: state.roomId || null,
+          contactId,
+          contactName,
+          roomId,
         });
       } catch (err) {
         console.warn('Failed to emit call:init in temp msg-ui code', err);
