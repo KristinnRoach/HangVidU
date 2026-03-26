@@ -6,22 +6,25 @@
  */
 export class ContactsStorageAdapter {
   /**
+   * Read one contact record by id.
    * @param {string} contactId
-   * @returns {Promise<Object|null>}
+   * @returns {Promise<import('./contact-schema.js').ContactRecord|null>}
    */
   async get(contactId) {
     throw new Error('Not implemented');
   }
 
   /**
-   * @returns {Promise<Object[]>}
+   * Read all contact records for the active owner.
+   * @returns {Promise<import('./contact-schema.js').ContactRecord[]>}
    */
   async list() {
     throw new Error('Not implemented');
   }
 
   /**
-   * @param {Object} contactRecord
+   * Persist one complete contact record.
+   * @param {import('./contact-schema.js').ContactRecord} contactRecord
    * @returns {Promise<void>}
    */
   async put(contactRecord) {
@@ -29,6 +32,7 @@ export class ContactsStorageAdapter {
   }
 
   /**
+   * Remove one contact record by id.
    * @param {string} contactId
    * @returns {Promise<void>}
    */

@@ -16,7 +16,16 @@ function assertStorageKey(storageKey) {
   return storageKey.trim();
 }
 
+/**
+ * localStorage adapter for contacts storage.
+ */
 export class ContactsLocalAdapter extends ContactsStorageAdapter {
+  /**
+   * @param {{
+   *   storage?: Pick<Storage, 'getItem' | 'setItem'>,
+   *   storageKey?: string
+   * }} [options]
+   */
   constructor({ storage = getDefaultStorage(), storageKey = 'contacts' } = {}) {
     super();
     this.storage = storage;
@@ -38,26 +47,45 @@ export class ContactsLocalAdapter extends ContactsStorageAdapter {
     return parsed;
   }
 
+  /**
+   * @param {Record<string, import('./contact-schema.js').ContactRecord>} map
+   * @returns {void}
+   */
   _writeMap(map) {
     this.storage.setItem(this.storageKey, JSON.stringify(map));
   }
 
+  /**
+   * @param {string} contactId
+   * @returns {Promise<import('./contact-schema.js').ContactRecord|null>}
+   */
   async get(contactId) {
     const map = this._readMap();
     return map[contactId] ?? null;
   }
 
+  /**
+   * @returns {Promise<import('./contact-schema.js').ContactRecord[]>}
+   */
   async list() {
     const map = this._readMap();
     return Object.values(map);
   }
 
+  /**
+   * @param {import('./contact-schema.js').ContactRecord} contactRecord
+   * @returns {Promise<void>}
+   */
   async put(contactRecord) {
     const map = this._readMap();
     map[contactRecord.contactId] = contactRecord;
     this._writeMap(map);
   }
 
+  /**
+   * @param {string} contactId
+   * @returns {Promise<void>}
+   */
   async remove(contactId) {
     const map = this._readMap();
 
@@ -70,6 +98,10 @@ export class ContactsLocalAdapter extends ContactsStorageAdapter {
   }
 }
 
+/**
+ * @param {ConstructorParameters<typeof ContactsLocalAdapter>[0]} [options]
+ * @returns {ContactsLocalAdapter}
+ */
 export function createContactsLocalAdapter(options) {
   return new ContactsLocalAdapter(options);
 }

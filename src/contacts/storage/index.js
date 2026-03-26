@@ -11,12 +11,30 @@ export {
   mergeContactRecord,
   normalizeContactPatch,
   normalizeContactRecord,
-} from './contact-record.js';
+} from './contact-transform.js';
+export {
+  ContactIdSchema,
+  ContactNameSchema,
+  ContactPatchSchema,
+  ContactRecordSchema,
+  ContactRoomIdSchema,
+  ContactTimestampSchema,
+} from './contact-schema.js';
 
+/**
+ * Create a contacts store backed by Firebase RTDB.
+ * @param {ConstructorParameters<typeof ContactsRTDBAdapter>[0]} options
+ * @returns {ContactsStore}
+ */
 export function createContactsRTDBStore(options) {
   return new ContactsStore(new ContactsRTDBAdapter(options));
 }
 
+/**
+ * Create a contacts store backed by localStorage.
+ * @param {ConstructorParameters<typeof ContactsLocalAdapter>[0]} [options]
+ * @returns {ContactsStore}
+ */
 export function createContactsLocalStore(options) {
   return new ContactsStore(new ContactsLocalAdapter(options));
 }

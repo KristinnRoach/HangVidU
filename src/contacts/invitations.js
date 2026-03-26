@@ -5,7 +5,7 @@ import { ref, set, remove, onChildAdded } from 'firebase/database';
 import { rtdb } from '../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, getUser } from '../auth/auth-state.js';
 import { getDeterministicRoomId } from '../utils/room-id.js';
-import { contactsService } from './OLD_contacts-service.js';
+import { contactsService } from './contacts-service.js';
 
 // Track invite listeners for cleanup
 let inviteListener = null;

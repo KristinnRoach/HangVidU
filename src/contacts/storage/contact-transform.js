@@ -1,20 +1,16 @@
-const MUTABLE_CONTACT_FIELDS = new Set([
-  'contactName',
-  'roomId',
-  'savedAt',
-  'lastInteractionAt',
-]);
+import {
+  ContactIdSchema,
+  ContactPatchSchema,
+  ContactRecordSchema,
+} from './contact-schema.js';
 
-function isFiniteTimestamp(value) {
-  return Number.isFinite(value) && value >= 0;
-}
-
+/**
+ * Validate and normalize a contact id.
+ * @param {unknown} contactId
+ * @returns {string}
+ */
 export function assertContactId(contactId) {
-  if (typeof contactId !== 'string' || !contactId.trim()) {
-    throw new TypeError('contactId must be a non-empty string');
-  }
-
-  return contactId.trim();
+  return ContactIdSchema.parse(contactId);
 }
 
 function normalizeContactName(contactName) {
@@ -43,13 +39,15 @@ function normalizeTimestamp(value, fieldName, fallbackValue) {
     return fallbackValue;
   }
 
-  if (!isFiniteTimestamp(value)) {
-    throw new TypeError(`${fieldName} must be a non-negative number`);
-  }
-
   return value;
 }
 
+/**
+ * Normalize a raw contact-like input into the canonical storage record shape.
+ * @param {unknown} input
+ * @param {{ now?: number }} [options]
+ * @returns {import('./contact-schema.js').ContactRecord}
+ */
 export function normalizeContactRecord(input, { now = Date.now() } = {}) {
   if (!input || typeof input !== 'object') {
     throw new TypeError('contact record must be an object');
@@ -58,7 +56,7 @@ export function normalizeContactRecord(input, { now = Date.now() } = {}) {
   const contactId = assertContactId(input.contactId);
   const savedAt = normalizeTimestamp(input.savedAt, 'savedAt', now);
 
-  return {
+  return ContactRecordSchema.parse({
     contactId,
     contactName: normalizeContactName(input.contactName),
     roomId: normalizeRoomId(input.roomId),
@@ -68,9 +66,14 @@ export function normalizeContactRecord(input, { now = Date.now() } = {}) {
       'lastInteractionAt',
       savedAt,
     ),
-  };
+  });
 }
 
+/**
+ * Normalize a partial contact update before persistence.
+ * @param {unknown} patch
+ * @returns {import('./contact-schema.js').ContactPatch}
+ */
 export function normalizeContactPatch(patch) {
   if (!patch || typeof patch !== 'object') {
     throw new TypeError('contact patch must be an object');
@@ -79,10 +82,6 @@ export function normalizeContactPatch(patch) {
   const next = {};
 
   for (const [key, value] of Object.entries(patch)) {
-    if (!MUTABLE_CONTACT_FIELDS.has(key)) {
-      throw new TypeError(`unsupported contact patch field: ${key}`);
-    }
-
     if (key === 'contactName') {
       next.contactName = normalizeContactName(value);
       continue;
@@ -96,9 +95,17 @@ export function normalizeContactPatch(patch) {
     next[key] = normalizeTimestamp(value, key, value);
   }
 
-  return next;
+  return ContactPatchSchema.parse(next);
 }
 
+/**
+ * Merge an existing contact record with a validated patch.
+ * Keeps `contactId` immutable.
+ *
+ * @param {unknown} existingRecord
+ * @param {unknown} patch
+ * @returns {import('./contact-schema.js').ContactRecord}
+ */
 export function mergeContactRecord(existingRecord, patch) {
   const existing = normalizeContactRecord(existingRecord);
   const nextPatch = normalizeContactPatch(patch);

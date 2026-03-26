@@ -3,7 +3,7 @@ import {
   mergeContactRecord,
   normalizeContactPatch,
   normalizeContactRecord,
-} from './contact-record.js';
+} from './contact-transform.js';
 
 function assertAdapter(adapter) {
   if (!adapter || typeof adapter !== 'object') {
@@ -32,32 +32,59 @@ function assertAdapter(adapter) {
  * - stays backend-agnostic
  */
 export class ContactsStore {
+  /**
+   * @param {import('./contacts-storage-adapter.js').ContactsStorageAdapter} adapter
+   */
   constructor(adapter) {
     this.adapter = assertAdapter(adapter);
   }
 
+  /**
+   * Read one contact from storage.
+   * @param {string} contactId
+   * @returns {Promise<import('./contact-schema.js').ContactRecord|null>}
+   */
   async get(contactId) {
     const normalizedContactId = assertContactId(contactId);
     const record = await this.adapter.get(normalizedContactId);
     return record ? normalizeContactRecord(record) : null;
   }
 
+  /**
+   * Read all contacts from storage.
+   * @returns {Promise<import('./contact-schema.js').ContactRecord[]>}
+   */
   async list() {
     const records = await this.adapter.list();
 
     if (!Array.isArray(records)) {
-      throw new TypeError('contacts storage adapter list() must return an array');
+      throw new TypeError(
+        'contacts storage adapter list() must return an array',
+      );
     }
 
     return records.map((record) => normalizeContactRecord(record));
   }
 
+  /**
+   * Persist one complete contact record.
+   * @param {unknown} contact
+   * @returns {Promise<import('./contact-schema.js').ContactRecord>}
+   */
   async put(contact) {
     const record = normalizeContactRecord(contact);
     await this.adapter.put(record);
     return record;
   }
 
+  /**
+   * Apply a partial update to an existing contact.
+   * Returns `null` when the contact does not exist.
+   *
+   * @param {string} contactId
+   * @param {unknown} patch
+   * @returns {Promise<import('./contact-schema.js').ContactRecord|null>}
+   */
   async patch(contactId, patch) {
     const normalizedContactId = assertContactId(contactId);
     normalizeContactPatch(patch);
@@ -72,6 +99,13 @@ export class ContactsStore {
     return nextRecord;
   }
 
+  /**
+   * Remove a contact from storage.
+   * Returns `false` when the contact does not exist.
+   *
+   * @param {string} contactId
+   * @returns {Promise<boolean>}
+   */
   async remove(contactId) {
     const normalizedContactId = assertContactId(contactId);
     const existing = await this.adapter.get(normalizedContactId);
@@ -85,6 +119,10 @@ export class ContactsStore {
   }
 }
 
+/**
+ * @param {import('./contacts-storage-adapter.js').ContactsStorageAdapter} adapter
+ * @returns {ContactsStore}
+ */
 export function createContactsStore(adapter) {
   return new ContactsStore(adapter);
 }

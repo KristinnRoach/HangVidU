@@ -9,7 +9,16 @@ function assertGetOwnerId(getOwnerId) {
   return getOwnerId;
 }
 
+/**
+ * RTDB adapter for contacts storage.
+ */
 export class ContactsRTDBAdapter extends ContactsStorageAdapter {
+  /**
+   * @param {{
+   *   database: import('firebase/database').Database,
+   *   getOwnerId: () => string
+   * }} options
+   */
   constructor({ database, getOwnerId }) {
     super();
 
@@ -39,11 +48,18 @@ export class ContactsRTDBAdapter extends ContactsStorageAdapter {
     return `users/${this._resolveOwnerId()}/contacts`;
   }
 
+  /**
+   * @param {string} contactId
+   * @returns {Promise<import('./contact-schema.js').ContactRecord|null>}
+   */
   async get(contactId) {
     const snapshot = await get(ref(this.database, this._contactPath(contactId)));
     return snapshot.exists() ? snapshot.val() : null;
   }
 
+  /**
+   * @returns {Promise<import('./contact-schema.js').ContactRecord[]>}
+   */
   async list() {
     const snapshot = await get(ref(this.database, this._contactsPath()));
     if (!snapshot.exists()) {
@@ -53,6 +69,10 @@ export class ContactsRTDBAdapter extends ContactsStorageAdapter {
     return Object.values(snapshot.val());
   }
 
+  /**
+   * @param {import('./contact-schema.js').ContactRecord} contactRecord
+   * @returns {Promise<void>}
+   */
   async put(contactRecord) {
     await set(
       ref(this.database, this._contactPath(contactRecord.contactId)),
@@ -60,11 +80,19 @@ export class ContactsRTDBAdapter extends ContactsStorageAdapter {
     );
   }
 
+  /**
+   * @param {string} contactId
+   * @returns {Promise<void>}
+   */
   async remove(contactId) {
     await remove(ref(this.database, this._contactPath(contactId)));
   }
 }
 
+/**
+ * @param {ConstructorParameters<typeof ContactsRTDBAdapter>[0]} options
+ * @returns {ContactsRTDBAdapter}
+ */
 export function createContactsRTDBAdapter(options) {
   return new ContactsRTDBAdapter(options);
 }
