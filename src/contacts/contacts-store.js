@@ -107,7 +107,7 @@ async function updateLastInteraction(contactId) {
   }
 }
 
-async function getContacts() {
+async function getAllContacts() {
   const loggedInUid = getLoggedInUserId();
 
   if (loggedInUid) {
@@ -131,14 +131,14 @@ async function getContacts() {
   }
 }
 
-async function getContactsSorted(sortedBy = 'lastInteractionAt') {
+async function getAllContactsSorted(sortedBy = 'lastInteractionAt') {
   if (sortedBy !== 'lastInteractionAt') {
     console.warn(
       `Unsupported sort field "${sortedBy}", defaulting to "lastInteractionAt"`,
     );
   }
 
-  const contacts = await getContacts();
+  const contacts = await getAllContacts();
   const sortedIds = sortContactIdsByLastInteraction(contacts);
   return sortedIds.map((id) => contacts[id]);
 }
@@ -171,7 +171,7 @@ async function getContact(contactId, loggedInUid = getLoggedInUserId()) {
 
 async function getContactByMostRecentInteraction() {
   try {
-    const contacts = await getContacts();
+    const contacts = await getAllContacts();
     const sortedIds = sortContactIdsByLastInteraction(contacts);
     const mostRecentId = sortedIds[0];
     return contacts[mostRecentId] || null;
@@ -185,7 +185,7 @@ async function getContactByRoomId(roomId) {
   if (!roomId) return null;
 
   try {
-    const contacts = await getContacts();
+    const contacts = await getAllContacts();
     for (const contact of Object.values(contacts || {})) {
       if (contact?.roomId === roomId) {
         return contact;
@@ -202,7 +202,7 @@ async function resolveCallerName(roomId, fallbackUserId) {
   if (!roomId) return fallbackUserId || t('shared.unknown');
 
   try {
-    const contacts = await getContacts();
+    const contacts = await getAllContacts();
     for (const contact of Object.values(contacts || {})) {
       if (contact?.roomId === roomId) {
         return contact.contactName || t('contact.no_name');
@@ -219,8 +219,8 @@ export const contactsStore = {
   saveContact,
   deleteContact,
   updateLastInteraction,
-  getContacts,
-  getContactsSorted,
+  getAllContacts,
+  getAllContactsSorted,
   getContact,
   getContactByMostRecentInteraction,
   getContactByRoomId,

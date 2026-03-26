@@ -73,18 +73,21 @@ export class EventEmitter {
 
   /**
    * Emit an event
-   * @param {string} event - Event name
+   * @param {string} eventName - Event name
    * @param {any} data - Data to pass to listeners
    */
-  emit(event, data) {
-    if (this._listeners.has(event)) {
+  emit(eventName, data) {
+    if (this._listeners.has(eventName)) {
       // Create a copy to avoid issues if listeners are removed during emission
-      const handlers = Array.from(this._listeners.get(event));
+      const handlers = Array.from(this._listeners.get(eventName));
       handlers.forEach((cb) => {
         try {
           cb(data);
         } catch (err) {
-          console.error(`EventEmitter: Error in listener for ${event}`, err);
+          console.error(
+            `EventEmitter: Error in listener for ${eventName}`,
+            err,
+          );
         }
       });
     }

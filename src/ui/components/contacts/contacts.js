@@ -7,9 +7,10 @@ import { hideElement, showElement } from '../../utils/ui-utils.js';
 import { t, onLocaleChange } from '../../../i18n/index.js';
 import { escapeHtml } from '../../../ui/component-system/dom-utils.js';
 import { initIcons } from '../../icons.js';
-import { appBus } from '../../../app/app-bus.js';
 import { messagingController } from '../../../messaging/messaging-controller.js';
 import { contactsService } from '../../../contacts/contacts-service.js';
+import { dispatchUIEvent } from '../../dispatcher.js';
+
 // Track presence listeners for cleanup
 const presenceListeners = new Map();
 
@@ -22,29 +23,6 @@ let lastRenderedLobby = null;
 
 // Limit displayed contact name length in the UI  (keep full name in title)
 const MAX_CONTACT_NAME_CHARS = 18;
-
-/**
- * Prompt user to save contact after hangup (and render contacts list in lobby)
- */
-export async function showSaveContactPrompt(
-  contactUserId,
-  roomId,
-  parentContainerEl,
-  autoRemoveSeconds = 25,
-) {
-  if (!contactUserId || !roomId || !parentContainerEl) return;
-
-  const shouldSave = await confirmDialog(t('contact.save.confirm'), {
-    autoRemoveSeconds,
-  });
-  if (!shouldSave) return;
-
-  const name =
-    window.prompt(t('contact.name.prompt'), contactUserId) || contactUserId;
-
-  await contactsService.saveContact(contactUserId, name, roomId);
-  await renderContactsList(parentContainerEl);
-}
 
 /**
  * Render the contacts list in the lobby element.
@@ -62,8 +40,8 @@ export async function renderContactsList(lobbyElement) {
     });
   }
 
-  // `getContactsSorted()` returns an array of contact objects (sorted by lastInteractionAt).
-  const contactsResult = await contactsService.getContactsSorted();
+  // `getAllContactsSorted()` returns an array of contact objects (sorted by lastInteractionAt).
+  const contactsResult = await contactsService.getAllContactsSorted();
 
   let entries = [];
   if (Array.isArray(contactsResult)) {
@@ -173,11 +151,7 @@ function attachContactListeners(container, lobbyElement) {
       const contactId = nameEl.getAttribute('data-contact-id');
 
       if (roomId || contactId) {
-        appBus.emit('call:init', {
-          contactId,
-          contactName,
-          roomId,
-        });
+        dispatchUIEvent('call:init', { contactId, contactName, roomId });
       }
     };
   });
@@ -206,7 +180,7 @@ function attachContactListeners(container, lobbyElement) {
       const contactId = btn.getAttribute('data-contact-id');
       if (!contactId) return;
 
-      const contacts = await contactsService.getContacts();
+      const contacts = await contactsService.getAllContacts();
       const contact = contacts[contactId];
       if (!contact) return;
 

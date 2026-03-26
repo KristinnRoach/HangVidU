@@ -12,36 +12,13 @@ import { contactsStore } from './contacts-store.js';
 export class ContactsService {
   constructor() {
     import.meta.env.DEV &&
-      console.log('[ContactsService] empty constructor run', {
+      console.log('[ContactsService] constructor', {
         contactsStore,
       });
   }
 
-  async handleHangUp(contactUserId, roomId) {
-    const existing = await this.getContacts();
-    const entry = existing?.[contactUserId];
-
-    if (entry) {
-      // Update roomId for existing contact if changed
-      if (entry.roomId !== roomId) {
-        await this.updateContact(contactUserId, entry.contactName, roomId);
-      }
-      return { action: 'existing' };
-    }
-
-    if (!getIsLoggedIn()) return { action: 'skip', reason: 'not-logged-in' };
-
-    return { action: 'prompt-save' };
-  }
-
-  async saveContact(contactId, contactName, roomId) {
-    await contactsStore.saveContact(contactId, contactName, roomId);
-    try {
-      appBus.emit('contact:saved', { roomId });
-      appBus.emit('room:id:created', { roomId });
-    } catch (e) {
-      console.warn('[ContactsService] emit contact:saved failed', e);
-    }
+  async getContact(contactId) {
+    return await contactsStore.getContact(contactId);
   }
 
   async updateContact(contactId, contactName, roomId) {
@@ -56,8 +33,6 @@ export class ContactsService {
     try {
       if (isRoomIdChange) {
         appBus.emit('room:id:updated', { contactName, roomId });
-      } else {
-        appBus.emit('contact:updated', { updatedContact });
       }
     } catch (e) {
       console.warn('[ContactsService] updateContact(): emit failed', e);
@@ -73,12 +48,12 @@ export class ContactsService {
     }
   }
 
-  async getContacts() {
-    return await contactsStore.getContacts();
+  async getAllContacts() {
+    return await contactsStore.getAllContacts();
   }
 
-  async getContactsSorted(sortedBy = 'lastInteractionAt') {
-    return await contactsStore.getContactsSorted(sortedBy);
+  async getAllContactsSorted(sortedBy = 'lastInteractionAt') {
+    return await contactsStore.getAllContactsSorted(sortedBy);
   }
 
   async getContactByMostRecentInteraction() {
@@ -95,6 +70,50 @@ export class ContactsService {
 
   async updateLastInteraction(contactId) {
     return await contactsStore.updateLastInteraction(contactId);
+  }
+
+  async saveContact(contactId, contactName, roomId) {
+    await contactsStore.saveContact(contactId, contactName, roomId);
+
+    // TODO: decouple room:id:created from saving
+    try {
+      appBus.emit('room:id:created', { roomId });
+    } catch (e) {
+      console.warn('[ContactsService] emit room:id:created failed', e);
+    }
+  }
+
+  // ? Below methods might not make sense here.. ?
+
+  async handleHangUp(contactUserId, roomId) {
+    const existing = await this.getAllContacts();
+    const entry = existing?.[contactUserId];
+
+    if (entry) {
+      // Update roomId for existing contact if changed
+      if (entry.roomId !== roomId) {
+        await this.updateContact(contactUserId, entry.contactName, roomId);
+      }
+      return { action: 'existing' };
+    }
+
+    if (!getIsLoggedIn()) return { action: 'skip', reason: 'not-logged-in' };
+
+    return { action: 'prompt-save' };
+  }
+
+  setupContactListeners() {
+    appBus.on('contact:save', async ({ contactUserId, name, roomId }) => {
+      await contactsService.saveContact(contactUserId, name, roomId);
+    });
+
+    appBus.on('contact:update', async ({ contactUserId, name, roomId }) => {
+      await contactsService.updateContact(contactUserId, name, roomId);
+    });
+
+    appBus.on('contact:delete', async ({ contactUserId }) => {
+      await contactsService.deleteContact(contactUserId);
+    });
   }
 }
 

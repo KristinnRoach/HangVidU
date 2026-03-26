@@ -117,7 +117,6 @@ import {
 import {
   renderContactsList,
   cleanupContacts,
-  showSaveContactPrompt,
 } from './ui/components/contacts/contacts.js';
 
 import {
@@ -176,6 +175,8 @@ import {
 
 import { addDebugUpdateButton } from './ui/components/notifications/debug-notifications.js';
 import { appBus } from './app/app-bus.js';
+import { showSaveContactPrompt } from './ui/components/contacts/save-contact-modal.js';
+import { setupContactListeners } from './contacts/listeners.js';
 // ____ UI END ____
 
 // Quick access to enable / disable dev debug logs
@@ -239,6 +240,9 @@ async function init() {
         // Silently fail if module not available
       });
     }
+
+    // Set up contact listeners for save/update/delete events
+    setupContactListeners();
 
     initializeSearchUI();
     addKeyListeners();
@@ -1197,7 +1201,7 @@ async function startListeningForSavedRooms() {
 
       // Also include saved contacts' roomIds (or deterministic room IDs)
       try {
-        const contacts = await contactsService.getContacts();
+        const contacts = await contactsService.getAllContacts();
         Object.entries(contacts || {}).forEach(([contactId, c]) => {
           if (c?.roomId) {
             toListen.add(c.roomId);
@@ -1257,7 +1261,7 @@ async function startListeningForSavedRooms() {
     }
     // Also include saved contacts' roomIds (or deterministic room IDs)
     try {
-      const contacts = await contactsService.getContacts();
+      const contacts = await contactsService.getAllContacts();
       const guestUserId = getUserId(); // Get guest user ID
       Object.entries(contacts || {}).forEach(([contactId, c]) => {
         if (c?.roomId) {
@@ -1760,7 +1764,7 @@ export async function autoInitMsgSessionIfNeeded() {
   if (messagingController.conversations.size > 0) return;
 
   try {
-    const contacts = await contactsService.getContactsSorted();
+    const contacts = await contactsService.getAllContactsSorted();
     if (!Array.isArray(contacts) || contacts.length === 0) return;
 
     const firstContact = contacts[0];
@@ -1816,14 +1820,6 @@ window.onload = async () => {
 
     callContact(contactId, contactName, roomId);
   });
-
-  appBus.on('contact:saved', (savedContact) =>
-    console.info('Contact saved: ', savedContact),
-  );
-
-  appBus.on('contact:updated', (updatedContact) =>
-    console.info('Contact updated: ', updatedContact),
-  );
 
   appBus.on('room:id:created', ({ roomId }) => {
     listenForIncomingOnRoom(roomId);

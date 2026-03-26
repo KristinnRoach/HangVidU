@@ -310,7 +310,6 @@ vi.mock('../../src/ui/core/watch-lifecycle-ui.js', () => ({
 vi.mock('../../src/ui/components/contacts/contacts.js', () => ({
   renderContactsList: vi.fn(),
   cleanupContacts: vi.fn(),
-  showSaveContactPrompt: vi.fn(),
 }));
 
 vi.mock('../../src/media/youtube/youtube-player.js', () => ({

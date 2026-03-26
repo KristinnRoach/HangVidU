@@ -166,7 +166,7 @@ export async function showAddContactModal() {
         });
 
         // Step 3: Get saved contacts to check if already connected
-        const savedContacts = await contactsService.getContacts();
+        const savedContacts = await contactsService.getAllContacts();
         const savedContactIds = new Set(Object.keys(savedContacts || {}));
 
         // Step 4: Cross-reference with HangVidU users

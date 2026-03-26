@@ -27,7 +27,7 @@ import { devDebug } from '../../../utils/dev/dev-utils.js';
 import { showImagePreview } from '../modal/imagePreview.js';
 import { onTapGesture } from '../../utils/detectDoubleClick.js';
 import { isSafeDownloadUrl } from '../../../utils/security/validate-url.js';
-import { appBus } from '../../../app/app-bus.js';
+import { dispatchUIEvent } from '../../dispatcher.js';
 
 // const MAX_MESSAGE_LENGTH = 3000; // Max characters allowed in a message
 
@@ -148,11 +148,12 @@ export function initMessagesUI() {
       const conversationId = state?.conversationId;
 
       try {
-        appBus.emit('call:init', {
+        dispatchUIEvent('call:init', {
           contactId: state.remoteParticipantIds[0] || null,
           contactName:
             messagingController.getConversationDisplayName(conversationId) ||
             null,
+          roomId: state.roomId || null,
         });
       } catch (err) {
         console.warn('Failed to emit call:init in temp msg-ui code', err);
