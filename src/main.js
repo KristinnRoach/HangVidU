@@ -2165,7 +2165,6 @@ async function cleanup() {
   await CallController.hangUp({ emitCancel: true, reason: 'page_unload' });
 
   // Global teardown: safe to remove all listeners on page unload
-  teardownUiToControllerBridges();
   cleanupMediaControls();
   removeAllRTDBListeners();
   cleanupContacts();

@@ -1,5 +1,7 @@
-import { appBus } from '../app/app-bus';
-import { contactsService } from './contacts-service';
+import { appBus } from '../app/app-bus.js';
+import { contactsService } from './contacts-service.js';
+
+// ! WIP - currently wired in main, review when looking at standardizing this pattern
 
 export function setupContactListeners() {
   appBus.on('contact:save', async ({ contactUserId, name, roomId }) => {

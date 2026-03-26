@@ -36,8 +36,9 @@ export class ContactsService {
     });
 
     try {
+      appBus.emit('contact:updated', { roomId }); // TODO: decide how to notify UI to re-render (Should UI listen, or only dispatch events via appBus ?)
       if (isRoomIdChange) {
-        appBus.emit('room:id:updated', { contactName, roomId });
+        appBus.emit('room:id:updated', { contactName, roomId }); // TODO: decouple room:id:created from contacts service
       }
     } catch (e) {
       console.warn('[ContactsService] updateContact(): emit failed', e);
@@ -97,10 +98,10 @@ export class ContactsService {
     });
 
     try {
-      appBus.emit('contact:save:complete', { roomId }); // TODO: decide how to notify UI to re-render (Should UI listen, or only dispatch events via appBus ?)
-      appBus.emit('room:id:created', { roomId }); // TODO: decouple room:id:created from saving
+      appBus.emit('contact:updated', { roomId }); // TODO: decide how to notify UI to re-render (Should UI listen, or only dispatch events via appBus ?)
+      appBus.emit('room:id:created', { roomId }); // TODO: decouple room:id:created from contacts service
     } catch (e) {
-      console.warn('[ContactsService] emit room:id:created failed', e);
+      console.warn('[ContactsService] saveContact() appBus emit failed', e);
     }
   }
 

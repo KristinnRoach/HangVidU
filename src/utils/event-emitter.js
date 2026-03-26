@@ -73,6 +73,8 @@ export class EventEmitter {
 
   /**
    * Emit an event
+   * TODO: Handle async listeners and errors robustly
+   *
    * @param {string} eventName - Event name
    * @param {any} data - Data to pass to listeners
    */
