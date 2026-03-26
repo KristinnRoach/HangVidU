@@ -1,156 +1,317 @@
-import { getIsLoggedIn } from '../auth/auth-state.js';
+import { getIsLoggedIn, getLoggedInUserId } from '../auth/auth-state.js';
 import { appBus } from '../app/app-bus.js';
-import { contactsStore } from './contacts-store.js';
+import { rtdb } from '../storage/fb-rtdb/rtdb.js';
+import { t } from '../i18n/index.js';
+import {
+  createContactsLocalStore,
+  createContactsRTDBStore,
+} from './storage/index.js';
 
-/**
- * ContactsService
- *
- * Note: storage layer still WIP - currently using draft in ./contacts-store.js
- * This is intentionally minimal; larger refactors (moving storage out of UI
- * module, removing DOM CustomEvents, etc.) will follow after design decisions.
- */
+function sortContactsByLastInteraction(contacts) {
+  return [...contacts].sort((a, b) => {
+    const aTime = a?.lastInteractionAt || a?.savedAt || 0;
+    const bTime = b?.lastInteractionAt || b?.savedAt || 0;
+
+    if (aTime !== bTime) {
+      return bTime - aTime;
+    }
+
+    const aName = (a?.contactName || '').toLowerCase();
+    const bName = (b?.contactName || '').toLowerCase();
+    return aName.localeCompare(bName);
+  });
+}
+
+function toContactMap(contacts) {
+  const map = {};
+
+  for (const contact of contacts) {
+    if (!contact?.contactId) {
+      continue;
+    }
+
+    map[contact.contactId] = contact;
+  }
+
+  return map;
+}
+
+function getContactsStorage() {
+  const ownerId = getLoggedInUserId();
+
+  if (ownerId) {
+    return createContactsRTDBStore({
+      database: rtdb,
+      getOwnerId: () => ownerId,
+    });
+  }
+
+  return createContactsLocalStore({
+    storageKey: 'contacts',
+  });
+}
+
+function emitContactSaved(contact) {
+  try {
+    appBus.emit('contact:updated', { roomId: contact.roomId ?? null });
+    appBus.emit('room:id:created', { roomId: contact.roomId ?? null });
+  } catch (e) {
+    console.warn('[ContactsService] saveContact() appBus emit failed', e);
+  }
+}
+
+function emitContactUpdated(contact, previousRoomId) {
+  const roomId = contact.roomId ?? null;
+  const isRoomIdChange = !!roomId && previousRoomId !== roomId;
+
+  try {
+    appBus.emit('contact:updated', { roomId });
+
+    if (isRoomIdChange) {
+      appBus.emit('room:id:updated', {
+        contactId: contact.contactId,
+        contactName: contact.contactName,
+        roomId,
+        previousRoomId,
+      });
+    }
+  } catch (e) {
+    console.warn('[ContactsService] updateContact(): emit failed', e);
+  }
+}
+
 export class ContactsService {
   constructor() {
     import.meta.env.DEV &&
       console.log('[ContactsService] constructor', {
-        contactsStore,
+        storage: 'src/contacts/storage',
       });
   }
 
   async getContact(contactId) {
-    return await contactsStore.getContact(contactId);
+    try {
+      return await getContactsStorage().get(contactId);
+    } catch (e) {
+      console.warn('[ContactsService] Failed to get contact', { contactId, e });
+      return null;
+    }
   }
 
   async updateContact(contactId, contactName, roomId) {
-    const existing = await contactsStore.getContact(contactId);
-    const previousRoomId = existing?.roomId ?? null;
-    const isRoomIdChange = !!roomId && previousRoomId !== roomId;
-
-    const updatedContact = await contactsStore.saveContact(
-      contactId,
-      contactName,
-      roomId,
-    );
-
-    console.info('[ContactsService] Contact updated: ', {
-      updatedContact,
-    });
-
     try {
-      appBus.emit('contact:updated', { roomId }); // TODO: decide how to notify UI to re-render (Should UI listen, or only dispatch events via appBus ?)
-      if (isRoomIdChange) {
-        // TODO: decouple room:id from contacts service
-        appBus.emit('room:id:updated', {
+      const storage = getContactsStorage();
+      const existing = await storage.get(contactId);
+      const previousRoomId = existing?.roomId ?? null;
+
+      let updatedContact = null;
+
+      if (existing) {
+        updatedContact = await storage.patch(contactId, {
+          contactName,
+          roomId,
+        });
+      } else {
+        const now = Date.now();
+        updatedContact = await storage.put({
           contactId,
           contactName,
           roomId,
-          previousRoomId,
+          savedAt: now,
+          lastInteractionAt: now,
         });
       }
+
+      if (!updatedContact) {
+        console.error('[ContactsService] Failed to update contact', {
+          contactId,
+          contactName,
+          roomId,
+        });
+        return null;
+      }
+
+      console.info('[ContactsService] Contact updated: ', {
+        updatedContact,
+      });
+
+      emitContactUpdated(updatedContact, previousRoomId);
+      return updatedContact;
     } catch (e) {
-      console.warn('[ContactsService] updateContact(): emit failed', e);
+      console.error('[ContactsService] Failed to update contact', {
+        contactId,
+        contactName,
+        roomId,
+        e,
+      });
+      return null;
     }
   }
 
   async deleteContact(contactId) {
-    const existing = await contactsStore.getContact(contactId);
-    await contactsStore.deleteContact(contactId);
     try {
-      appBus.emit('contact:deleted', {
-        // TODO: update along with save and update emitted events
-        contactId,
-        roomId: existing?.roomId ?? null,
-      });
+      const storage = getContactsStorage();
+      const existing = await storage.get(contactId);
+      const deleted = await storage.remove(contactId);
+
+      if (!deleted) {
+        return false;
+      }
+
+      try {
+        appBus.emit('contact:deleted', {
+          contactId,
+          roomId: existing?.roomId ?? null,
+        });
+      } catch (e) {
+        console.warn('[ContactsService] emit contact:deleted failed', e);
+      }
+
+      return true;
     } catch (e) {
-      console.warn('[ContactsService] emit contact:deleted failed', e);
+      console.warn('[ContactsService] Failed to delete contact', {
+        contactId,
+        e,
+      });
+      return false;
     }
   }
 
   async getAllContacts() {
-    return await contactsStore.getAllContacts();
+    try {
+      return toContactMap(await getContactsStorage().list());
+    } catch (e) {
+      console.warn('[ContactsService] Failed to get all contacts', e);
+      return {};
+    }
   }
 
   async getAllContactsSorted(sortedBy = 'lastInteractionAt') {
-    return await contactsStore.getAllContactsSorted(sortedBy);
+    if (sortedBy !== 'lastInteractionAt') {
+      console.warn(
+        `[ContactsService] Unsupported sort field "${sortedBy}", defaulting to "lastInteractionAt"`,
+      );
+    }
+
+    try {
+      return sortContactsByLastInteraction(await getContactsStorage().list());
+    } catch (e) {
+      console.warn('[ContactsService] Failed to get sorted contacts', e);
+      return [];
+    }
   }
 
   async getContactByMostRecentInteraction() {
-    return await contactsStore.getContactByMostRecentInteraction();
+    try {
+      const contacts = await getContactsStorage().list();
+      return sortContactsByLastInteraction(contacts)[0] || null;
+    } catch (e) {
+      console.warn(
+        '[ContactsService] Failed to get contact by most recent interaction',
+        e,
+      );
+      return null;
+    }
   }
 
   async getContactByRoomId(roomId) {
-    return await contactsStore.getContactByRoomId(roomId);
+    if (!roomId) {
+      return null;
+    }
+
+    try {
+      const contacts = await getContactsStorage().list();
+
+      for (const contact of contacts) {
+        if (contact?.roomId === roomId) {
+          return contact;
+        }
+      }
+    } catch (e) {
+      console.warn('[ContactsService] Failed to get contact by roomId', e);
+    }
+
+    return null;
   }
 
   async resolveCallerName(roomId, fallbackUserId) {
-    return await contactsStore.resolveCallerName(roomId, fallbackUserId);
+    if (!roomId) {
+      return fallbackUserId || t('shared.unknown');
+    }
+
+    try {
+      const contact = await this.getContactByRoomId(roomId);
+      if (contact) {
+        return contact.contactName || t('contact.no_name');
+      }
+    } catch (e) {
+      console.warn('[ContactsService] Failed to resolve caller name', e);
+    }
+
+    return fallbackUserId || t('shared.unknown');
   }
 
   async updateLastInteraction(contactId) {
-    return await contactsStore.updateLastInteraction(contactId);
+    if (!contactId) {
+      return null;
+    }
+
+    try {
+      return await getContactsStorage().patch(contactId, {
+        lastInteractionAt: Date.now(),
+      });
+    } catch (e) {
+      console.warn('[ContactsService] Failed to update lastInteractionAt', e);
+      return null;
+    }
   }
 
   async saveContact(contactId, contactName, roomId) {
-    // todo: define standardized return value and error handling strategy for service methods
+    try {
+      const storage = getContactsStorage();
+      const existing = await storage.get(contactId);
+      const now = Date.now();
 
-    const contact = await contactsStore.saveContact(
-      contactId,
-      contactName,
-      roomId,
-    );
+      const contact = await storage.put({
+        contactId,
+        contactName,
+        roomId,
+        savedAt: existing?.savedAt ?? now,
+        lastInteractionAt: existing?.lastInteractionAt ?? now,
+      });
 
-    if (!contact) {
+      console.info('[ContactsService] Contact saved: ', {
+        contact,
+      });
+
+      emitContactSaved(contact);
+      return contact;
+    } catch (e) {
       console.error('[ContactsService] Failed to save contact', {
         contactId,
         contactName,
         roomId,
+        e,
       });
-      return;
-    }
-
-    console.info('[ContactsService] Contact saved: ', {
-      contact,
-    });
-
-    try {
-      appBus.emit('contact:updated', { roomId }); // TODO: decide how to notify UI to re-render (Should UI listen, or only dispatch events via appBus ?)
-      appBus.emit('room:id:created', { roomId }); // TODO: decouple room:id:created from contacts service
-    } catch (e) {
-      console.warn('[ContactsService] saveContact() appBus emit failed', e);
+      return null;
     }
   }
-
-  // ? Below methods might not make sense here.. ?
 
   async handleHangUp(contactUserId, roomId) {
     const existing = await this.getAllContacts();
     const entry = existing?.[contactUserId];
 
     if (entry) {
-      // Update roomId for existing contact if changed
       if (entry.roomId !== roomId) {
         await this.updateContact(contactUserId, entry.contactName, roomId);
       }
       return { action: 'existing' };
     }
 
-    if (!getIsLoggedIn()) return { action: 'skip', reason: 'not-logged-in' };
+    if (!getIsLoggedIn()) {
+      return { action: 'skip', reason: 'not-logged-in' };
+    }
 
     return { action: 'prompt-save' };
-  }
-
-  setupContactListeners() {
-    appBus.on('contact:save', async ({ contactUserId, name, roomId }) => {
-      await contactsService.saveContact(contactUserId, name, roomId);
-    });
-
-    appBus.on('contact:update', async ({ contactUserId, name, roomId }) => {
-      await contactsService.updateContact(contactUserId, name, roomId);
-    });
-
-    appBus.on('contact:delete', async ({ contactUserId }) => {
-      await contactsService.deleteContact(contactUserId);
-    });
   }
 }
 

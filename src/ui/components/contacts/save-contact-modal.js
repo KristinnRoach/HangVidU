@@ -1,6 +1,6 @@
-import { t } from '../../../i18n';
-import { dispatchUIEvent } from '../../dispatcher';
-import confirmDialog from '../base/confirm-dialog';
+import { t } from '../../../i18n/index.js';
+import { dispatchUIEvent } from '../../dispatcher.js';
+import confirmDialog from '../base/confirm-dialog.js';
 
 /**
  * Prompt user to save contact after hangup (and render contacts list in lobby)

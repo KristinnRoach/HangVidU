@@ -5,6 +5,7 @@ import { ref, set, remove, onChildAdded } from 'firebase/database';
 import { rtdb } from '../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, getUser } from '../auth/auth-state.js';
 import { getDeterministicRoomId } from '../utils/room-id.js';
+import { contactsService } from './OLD_contacts-service.js';
 
 // Track invite listeners for cleanup
 let inviteListener = null;
@@ -131,13 +132,21 @@ export async function acceptInvite(fromUserId, inviteData) {
   }
 
   // Save contact for me (the accepter)
-  const myContactRef = ref(rtdb, `users/${myUserId}/contacts/${fromUserId}`);
-  await set(myContactRef, {
-    contactId: fromUserId,
-    contactName: inviteData.fromName || 'User',
-    roomId: inviteData.roomId,
-    savedAt: Date.now(),
-  });
+  // TODO: delete commented out code when ready + error handling and finalize pattern
+
+  // const myContactRef = ref(rtdb, `users/${myUserId}/contacts/${fromUserId}`);
+  // await set(myContactRef, {
+  //   contactId: fromUserId,
+  //   contactName: inviteData.fromName || 'User',
+  //   roomId: inviteData.roomId,
+  //   savedAt: Date.now(),
+  // });
+
+  await contactsService.saveContact(
+    fromUserId,
+    inviteData.fromName || 'User',
+    inviteData.roomId,
+  );
 
   // Notify the sender that invite was accepted
   // Write to sender's acceptedInvites path (they will auto-save the contact)
@@ -220,22 +229,28 @@ export function listenForAcceptedInvites(callback) {
 
     try {
       // Auto-save the contact
-      const contactRef = ref(
-        rtdb,
-        `users/${myUserId}/contacts/${acceptedByUserId}`,
+      // const contactRef = ref(
+      //   rtdb,
+      //   `users/${myUserId}/contacts/${acceptedByUserId}`,
+      // );
+      // await set(contactRef, {
+      //   contactId: acceptedByUserId,
+      //   contactName: acceptData.acceptedByName || 'User',
+      //   roomId: acceptData.roomId,
+      //   savedAt: Date.now(),
+      // });
+
+      await contactsService.saveContact(
+        acceptedByUserId,
+        acceptData.acceptedByName || 'User',
+        acceptData.roomId,
       );
-      await set(contactRef, {
-        contactId: acceptedByUserId,
-        contactName: acceptData.acceptedByName || 'User',
-        roomId: acceptData.roomId,
-        savedAt: Date.now(),
-      });
 
       console.log(
         `[INVITATIONS] Auto-saved contact: ${acceptData.acceptedByName} (invite accepted)`,
       );
 
-      // Remove the accepted notification
+      // !? Remove the accepted notification
       const acceptNotificationRef = ref(
         rtdb,
         `users/${myUserId}/acceptedInvites/${acceptedByUserId}`,
