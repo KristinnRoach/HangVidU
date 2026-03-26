@@ -30,6 +30,11 @@ export class ContactsService {
       contactName,
       roomId,
     );
+
+    console.info('[ContactsService] Contact updated: ', {
+      updatedContact,
+    });
+
     try {
       if (isRoomIdChange) {
         appBus.emit('room:id:updated', { contactName, roomId });
@@ -73,11 +78,27 @@ export class ContactsService {
   }
 
   async saveContact(contactId, contactName, roomId) {
-    await contactsStore.saveContact(contactId, contactName, roomId);
+    const contact = await contactsStore.saveContact(
+      contactId,
+      contactName,
+      roomId,
+    );
+    if (!contact) {
+      console.error('[ContactsService] Failed to save contact', {
+        contactId,
+        contactName,
+        roomId,
+      });
+      return;
+    }
 
-    // TODO: decouple room:id:created from saving
+    console.info('[ContactsService] Contact saved: ', {
+      contact,
+    });
+
     try {
-      appBus.emit('room:id:created', { roomId });
+      appBus.emit('contact:save:complete', { roomId }); // TODO: decide how to notify UI to re-render (Should UI listen, or only dispatch events via appBus ?)
+      appBus.emit('room:id:created', { roomId }); // TODO: decouple room:id:created from saving
     } catch (e) {
       console.warn('[ContactsService] emit room:id:created failed', e);
     }
