@@ -12,6 +12,8 @@ import {
   getContactByRoomId,
 } from './contact-query.js';
 
+// ! PAUSED: claude --resume edf6030f-72fb-4503-9175-bfc21d2d973c
+
 /**
  * @typedef {import('./storage/contact-schema.js').ContactRecord} ContactRecord
  */
@@ -62,7 +64,6 @@ function logServiceFailure(action, error, context = {}) {
  */
 async function emitContactSaved(contact) {
   const roomId = contact.roomId ?? null;
-  await appBus.emitAsync('contact:updated', { roomId });
   await appBus.emitAsync('room:id:created', { roomId });
 }
 
@@ -75,8 +76,6 @@ async function emitContactSaved(contact) {
 async function emitContactUpdated(contact, previousRoomId) {
   const roomId = contact.roomId ?? null;
   const isRoomIdChange = !!roomId && previousRoomId !== roomId;
-
-  await appBus.emitAsync('contact:updated', { roomId });
 
   if (isRoomIdChange) {
     await appBus.emitAsync('room:id:updated', {

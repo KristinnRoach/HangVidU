@@ -77,9 +77,7 @@ describe('contacts-service', () => {
       savedAt: expect.any(Number),
       lastInteractionAt: expect.any(Number),
     });
-    expect(mocks.appBus.emitAsync).toHaveBeenCalledWith('contact:updated', {
-      roomId: 'room-1',
-    });
+
     expect(mocks.appBus.emitAsync).toHaveBeenCalledWith('room:id:created', {
       roomId: 'room-1',
     });
@@ -141,9 +139,7 @@ describe('contacts-service', () => {
       contactName: 'Alice B',
       roomId: 'room-2',
     });
-    expect(mocks.appBus.emitAsync).toHaveBeenCalledWith('contact:updated', {
-      roomId: 'room-2',
-    });
+
     expect(mocks.appBus.emitAsync).toHaveBeenCalledWith('room:id:updated', {
       contactId: 'u1',
       contactName: 'Alice B',
