@@ -64,6 +64,7 @@ function logServiceFailure(action, error, context = {}) {
  */
 async function emitContactSaved(contact) {
   const roomId = contact.roomId ?? null;
+  // TODO: Emit richer contact lifecycle payloads after the bus contract settles.
   await appBus.emitAsync('room:id:created', { roomId });
 }
 

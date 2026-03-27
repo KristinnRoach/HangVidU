@@ -1605,25 +1605,36 @@ async function handleServiceWorkerNavigation(path) {
       return false;
     }
 
-    const conversationId =
-      messagingController.resolveConversationIdFromContactId(contactId);
+    try {
+      const conversationId =
+        messagingController.resolveConversationIdFromContactId(contactId);
 
-    if (!conversationId) {
+      if (!conversationId) {
+        console.warn(
+          '[MAIN] SW navigation -> Cannot open text chat UI because no conversation ID was found for user with id:',
+          {
+            contactId,
+          },
+        );
+        return false;
+      }
+
+      await messagingController.selectConversation(conversationId, {
+        remoteParticipantIds: [contactId],
+        displayUI: true,
+      });
+
+      return true;
+    } catch (error) {
       console.warn(
-        '[MAIN] SW navigation -> Cannot open text chat UI because no conversation ID was found for user with id:',
+        '[MAIN] SW navigation -> Failed to open text chat UI for contact ID:',
         {
           contactId,
+          error,
         },
       );
       return false;
     }
-
-    await messagingController.selectConversation(conversationId, {
-      remoteParticipantIds: [contactId],
-      displayUI: true,
-    });
-
-    return true;
   }
 
   if (isHandlingServiceWorkerNavigation) {

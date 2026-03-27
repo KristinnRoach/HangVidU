@@ -18,6 +18,7 @@ export async function showSaveContactPrompt(
 
   if (!shouldSave) return;
 
+  // TODO: Replace with an in-app name-entry dialog.
   const name =
     window.prompt(t('contact.name.prompt'), contactUserId) || contactUserId;
 

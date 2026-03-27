@@ -2,6 +2,7 @@ import { appBus } from '../app/app-bus.js';
 import { contactsService } from './contacts-service.js';
 
 // Wired in main.js. Async errors handled by contactsService (try/catch) and emitAsync (dispatch side).
+// TODO: Return teardown if this stops being one-time bootstrap wiring.
 
 export function setupContactListeners() {
   appBus.on('contact:save', ({ contactUserId, name, roomId }) =>

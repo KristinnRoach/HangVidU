@@ -30,6 +30,7 @@ function assertAdapter(adapter) {
  * - throws on invalid input and backend failures
  * - returns plain domain values for normal outcomes
  * - stays backend-agnostic
+ * TODO: Add direct contract tests for get/patch/remove semantics.
  */
 export class ContactsStore {
   /**
@@ -87,6 +88,7 @@ export class ContactsStore {
    */
   async patch(contactId, patch) {
     const normalizedContactId = assertContactId(contactId);
+    // TODO: Normalize the patch once after this merge path is finalized.
     const normalizedPatch = normalizeContactPatch(patch);
 
     const existing = await this.get(normalizedContactId);
