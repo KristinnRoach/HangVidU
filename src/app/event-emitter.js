@@ -72,8 +72,8 @@ export class EventEmitter {
   }
 
   /**
-   * Emit an event
-   * TODO: Handle async listeners and errors robustly
+   * Emit an event (fire-and-forget, sync errors only).
+   * Use emitAsync() when callers need to await listener completion.
    *
    * @param {string} eventName - Event name
    * @param {any} data - Data to pass to listeners
@@ -87,11 +87,43 @@ export class EventEmitter {
           cb(data);
         } catch (err) {
           console.error(
-            `EventEmitter: Error in listener for ${eventName}`,
+            `EventEmitter: Error in listener for "${eventName}"`,
             err,
           );
         }
       });
+    }
+  }
+
+  /**
+   * Emit an event and await all listeners (sync and async).
+   * Runs all listeners concurrently via Promise.allSettled —
+   * one failing listener does not block others.
+   *
+   * @param {string} eventName - Event name
+   * @param {any} data - Data to pass to listeners
+   */
+  async emitAsync(eventName, data) {
+    if (!this._listeners.has(eventName)) return;
+
+    const handlers = Array.from(this._listeners.get(eventName));
+    const results = await Promise.allSettled(
+      handlers.map((cb) => {
+        try {
+          return cb(data);
+        } catch (err) {
+          return Promise.reject(err);
+        }
+      }),
+    );
+
+    for (const r of results) {
+      if (r.status === 'rejected') {
+        console.error(
+          `EventEmitter: Async error in "${eventName}"`,
+          r.reason,
+        );
+      }
     }
   }
 

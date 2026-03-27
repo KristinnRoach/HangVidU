@@ -1,4 +1,4 @@
-## Rules To Consider
+## Decisions needed - Consider converting to clearly defined rules once answered (and remove from here if done)
 
 - Should `appBus` be reserved for cross-module coordination, not normal same-module control flow?
 - Should UI code emit through a single wrapper like `dispatchUIEvent()` instead of importing `appBus` directly?
