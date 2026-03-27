@@ -20,6 +20,10 @@ import { devDebug } from '../utils/dev/dev-utils.js';
 import { FileTransferController } from '../file-transfer/file-transfer-controller.js';
 import { StreamingFileWriter } from '../file-transfer/streaming-file-writer.js';
 import { cleanupWatchSync } from '../firebase/watch-sync.js';
+import { cleanupLocalStream } from '../media/state.js';
+import { setRemoteDescription } from './webrtc-utils.js';
+import { drainIceCandidateQueue } from './ice.js';
+import { resetLocalStreamInitFlag } from '../media/local-stream-init-state.js';
 
 export function createCallController() {
   return new CallController();
@@ -222,7 +226,6 @@ class CallController {
     const answerCallback = async (snapshot) => {
       const answer = snapshot.val();
       if (answer) {
-        const { setRemoteDescription } = await import('./webrtc-utils.js');
         await setRemoteDescription(pc, answer, drainIceCandidateQueue);
       }
     };
@@ -264,6 +267,7 @@ class CallController {
 
       devDebug('Call rejected by partner', { roomId, rej });
 
+      // TODO: Consider other options for this:
       // Import onCallRejected dynamically to avoid circular dependencies
       try {
         const { onCallRejected } =
@@ -467,8 +471,6 @@ class CallController {
       }
 
       // Setup answer listener (only for initiator) - must be set up before other listeners
-      // Import drainIceCandidateQueue dynamically
-      const { drainIceCandidateQueue } = await import('./ice.js');
       this.setupAnswerListener(this.roomId, this.pc, drainIceCandidateQueue);
 
       // Setup cancellation listener (centralized in CallController)
@@ -724,19 +726,13 @@ class CallController {
 
       // Stop local stream tracks
       try {
-        const { cleanupLocalStream } = await import('../media/state.js');
         cleanupLocalStream();
       } catch (e) {
         console.warn('CallController: failed to cleanup local stream', e);
       }
 
-      // Reset initialization flag to allow stream recreation on next call
-      try {
-        const { resetLocalStreamInitFlag } = await import('../main.js');
-        resetLocalStreamInitFlag();
-      } catch (e) {
-        // Non-fatal if main.js not available (e.g., in tests)
-      }
+      // Reset initialization flag to allow stream recreation on next call.
+      resetLocalStreamInitFlag();
 
       // Emit remoteHangup event if cleanup was triggered by remote party
       if (this.isRemoteHangup(reason)) {

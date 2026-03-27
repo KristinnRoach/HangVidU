@@ -74,6 +74,11 @@ import {
   cleanupRemoteStream,
   cleanupLocalVideoOnlyStream,
 } from './media/state.js';
+import {
+  hasInitializedLocalStreamAndMedia,
+  markLocalStreamAndMediaInitialized,
+  resetLocalStreamInitFlag,
+} from './media/local-stream-init-state.js';
 
 import {
   devDebug,
@@ -332,17 +337,12 @@ async function init() {
   }
 }
 
-// Todo: remove flag or finialize usage
-let hasInitLocalStreamAndMedia = false;
-
 // Reset flag to allow stream re-initialization after cleanup
-export function resetLocalStreamInitFlag() {
-  hasInitLocalStreamAndMedia = false;
-}
+export { resetLocalStreamInitFlag };
 
 async function initLocalStreamAndMedia() {
-  if (hasInitLocalStreamAndMedia) return;
-  hasInitLocalStreamAndMedia = true;
+  if (hasInitializedLocalStreamAndMedia()) return;
+  markLocalStreamAndMediaInitialized();
 
   await setUpLocalStream(localVideoEl);
 
