@@ -4,7 +4,7 @@ import { onClickOutside } from '../../utils/clickOutside.js';
 import { hideElement, isHidden, showElement } from '../../utils/ui-utils.js';
 import { renderAvatar } from '../../utils/avatar.js';
 import { createMessageToggle } from './createMessageToggle.js';
-import { isMobileDevice } from '../../../utils/env/isMobileDevice.js';
+import { isIOSOrAndroidDevice } from '../../../utils/detect-device.js';
 import { createWatchFileHandler } from '../../../watch/watch-file-handler.js';
 
 import { linkifyToFragment } from '../../../utils/linkify.js';
@@ -28,6 +28,10 @@ import { showImagePreview } from '../modal/imagePreview.js';
 import { onTapGesture } from '../../utils/detectDoubleClick.js';
 import { isSafeDownloadUrl } from '../../../utils/security/validate-url.js';
 import { dispatchUIEvent } from '../../dispatcher.js';
+import {
+  cancelScrollMessagesToEnd,
+  scrollMessagesToEnd,
+} from './utils/scrollMessagesToEnd.js';
 
 // const MAX_MESSAGE_LENGTH = 3000; // Max characters allowed in a message
 
@@ -116,7 +120,7 @@ export function initMessagesUI() {
     messagesForm,
     messagesInput,
     resetInputHeight,
-    cleanupIOSKeyboardViewportSync,
+    cleanupKeyboardViewportHandler,
   } = createMessageBox();
 
   const messageTopBar = createMessageTopBar();
@@ -442,8 +446,8 @@ export function initMessagesUI() {
     });
 
     openMessagesBox();
-    scrollMessagesToEnd();
-    if (!isMobileDevice()) messagesInput.focus();
+    scrollMessagesToEnd(messagesMessages);
+    if (!isIOSOrAndroidDevice()) messagesInput.focus();
 
     // Set up outside click handler
     removeMessagesBoxClickOutside = onClickOutside(
@@ -461,7 +465,7 @@ export function initMessagesUI() {
           return ignoreClickElementsArray;
         },
         esc: true,
-        ignoreInputBlur: isMobileDevice(), // Prevent accidental closes when dismissing keyboard on mobile
+        ignoreInputBlur: isIOSOrAndroidDevice(), // Prevent accidental closes when dismissing keyboard on mobile
       },
     );
   }
@@ -853,7 +857,7 @@ export function initMessagesUI() {
     });
 
     messagesMessages.appendChild(messageEntry);
-    scrollMessagesToEnd();
+    scrollMessagesToEnd(messagesMessages);
 
     // Increment unread if hidden and received from remote
     if (isLocal === false && !message.read && isHidden(messagesBox)) {
@@ -892,7 +896,7 @@ export function initMessagesUI() {
 
     entry.appendChild(p);
     messagesMessages.appendChild(entry);
-    scrollMessagesToEnd();
+    scrollMessagesToEnd(messagesMessages);
     return entry;
   }
 
@@ -964,7 +968,7 @@ export function initMessagesUI() {
     }
 
     messagesMessages.appendChild(entry);
-    scrollMessagesToEnd();
+    scrollMessagesToEnd(messagesMessages);
     return entry;
   }
 
@@ -1005,16 +1009,6 @@ export function initMessagesUI() {
     a.href = safeUrl;
     a.download = fileName;
     a.click();
-  }
-
-  let scrollRafId = null;
-  function scrollMessagesToEnd() {
-    if (!messagesMessages) return;
-    if (scrollRafId !== null) cancelAnimationFrame(scrollRafId);
-    scrollRafId = requestAnimationFrame(() => {
-      messagesMessages.scrollTop = messagesMessages.scrollHeight;
-      scrollRafId = null;
-    });
   }
 
   // Helper to send the current message
@@ -1097,10 +1091,7 @@ export function initMessagesUI() {
    * Clear all messages from the UI
    */
   function clearMessages() {
-    if (scrollRafId !== null) {
-      cancelAnimationFrame(scrollRafId);
-      scrollRafId = null;
-    }
+    cancelScrollMessagesToEnd(messagesMessages);
 
     cleanupReactionListeners();
     messagesMessages.innerHTML = '';
@@ -1395,7 +1386,7 @@ export function initMessagesUI() {
    */
   function reset() {
     if (document.activeElement === messagesInput) messagesInput.blur();
-    if (cleanupIOSKeyboardViewportSync) cleanupIOSKeyboardViewportSync();
+    if (cleanupKeyboardViewportHandler) cleanupKeyboardViewportHandler();
 
     clearMessages();
     clearTimeout(markAsReadTimeout);
