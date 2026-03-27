@@ -870,11 +870,10 @@ export function listenForIncomingOnRoom(roomId) {
           return;
         }
 
-        // Resolve caller name from contacts
-        const callerName = await contactsService.resolveCallerName(
-          roomId,
-          joiningUserId,
-        );
+        const callerContact = await contactsService.getContactByRoomId(roomId);
+        // TODO: Centralize caller display-name fallback policy once ownership is settled.
+        const callerName =
+          callerContact?.contactName || joiningUserId || 'Unknown';
 
         // Start incoming call ringtone and visual indicators
         ringtoneManager.playIncoming();

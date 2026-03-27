@@ -1,11 +1,16 @@
 import { getIsLoggedIn, getLoggedInUserId } from '../auth/auth-state.js';
 import { appBus } from '../app/app-bus.js';
 import { rtdb } from '../storage/fb-rtdb/rtdb.js';
-import { t } from '../i18n/index.js';
 import {
   createContactsLocalStore,
   createContactsRTDBStore,
 } from './storage/index.js';
+import {
+  getAllContacts,
+  getAllContactsSorted,
+  getContactByMostRecentInteraction,
+  getContactByRoomId,
+} from './contact-query.js';
 
 /**
  * @typedef {import('./storage/contact-schema.js').ContactRecord} ContactRecord
@@ -14,47 +19,6 @@ import {
 /**
  * @typedef {{ action: 'existing' | 'skip' | 'prompt-save', reason?: string }} HangUpResult
  */
-
-/**
- * Sort contacts by most recent interaction, then by name.
- *
- * @param {ContactRecord[]} contacts
- * @returns {ContactRecord[]}
- */
-function sortContactsByLastInteraction(contacts) {
-  return [...contacts].sort((a, b) => {
-    const aTime = a?.lastInteractionAt || a?.savedAt || 0;
-    const bTime = b?.lastInteractionAt || b?.savedAt || 0;
-
-    if (aTime !== bTime) {
-      return bTime - aTime;
-    }
-
-    const aName = (a?.contactName || '').toLowerCase();
-    const bName = (b?.contactName || '').toLowerCase();
-    return aName.localeCompare(bName);
-  });
-}
-
-/**
- * Convert a contact array into a contact-id keyed map.
- *
- * @param {ContactRecord[]} contacts
- * @returns {Record<string, ContactRecord>}
- */
-function toContactMap(contacts) {
-  const map = {};
-
-  for (const contact of contacts) {
-    if (!contact?.contactId) {
-      continue;
-    }
-
-    map[contact.contactId] = contact;
-  }
-
-  return map;
-}
 
 /**
  * Resolve the active storage backend for the current auth state.
@@ -243,7 +207,7 @@ export class ContactsService {
    */
   async getAllContacts() {
     try {
-      return toContactMap(await getContactsStorage().list());
+      return await getAllContacts(getContactsStorage());
     } catch (error) {
       logServiceFailure('getAllContacts', error);
       return {};
@@ -257,14 +221,8 @@ export class ContactsService {
    * @returns {Promise<ContactRecord[]>}
    */
   async getAllContactsSorted(sortedBy = 'lastInteractionAt') {
-    if (sortedBy !== 'lastInteractionAt') {
-      console.warn(
-        `[ContactsService] Unsupported sort field "${sortedBy}", defaulting to "lastInteractionAt"`,
-      );
-    }
-
     try {
-      return sortContactsByLastInteraction(await getContactsStorage().list());
+      return await getAllContactsSorted(getContactsStorage(), sortedBy);
     } catch (error) {
       logServiceFailure('getAllContactsSorted', error, { sortedBy });
       return [];
@@ -278,8 +236,7 @@ export class ContactsService {
    */
   async getContactByMostRecentInteraction() {
     try {
-      const contacts = await getContactsStorage().list();
-      return sortContactsByLastInteraction(contacts)[0] || null;
+      return await getContactByMostRecentInteraction(getContactsStorage());
     } catch (error) {
       logServiceFailure('getContactByMostRecentInteraction', error);
       return null;
@@ -293,47 +250,12 @@ export class ContactsService {
    * @returns {Promise<ContactRecord|null>}
    */
   async getContactByRoomId(roomId) {
-    if (!roomId) {
-      return null;
-    }
-
     try {
-      const contacts = await getContactsStorage().list();
-
-      for (const contact of contacts) {
-        if (contact?.roomId === roomId) {
-          return contact;
-        }
-      }
+      return await getContactByRoomId(getContactsStorage(), roomId);
     } catch (error) {
       logServiceFailure('getContactByRoomId', error, { roomId });
+      return null;
     }
-
-    return null;
-  }
-
-  /**
-   * Resolve a display name for an incoming caller.
-   *
-   * @param {string|null|undefined} roomId
-   * @param {string|null|undefined} fallbackUserId
-   * @returns {Promise<string>}
-   */
-  async resolveCallerName(roomId, fallbackUserId) {
-    if (!roomId) {
-      return fallbackUserId || t('shared.unknown');
-    }
-
-    try {
-      const contact = await this.getContactByRoomId(roomId);
-      if (contact) {
-        return contact.contactName || t('contact.no_name');
-      }
-    } catch (error) {
-      logServiceFailure('resolveCallerName', error, { roomId, fallbackUserId });
-    }
-
-    return fallbackUserId || t('shared.unknown');
   }
 
   /**

@@ -15,11 +15,6 @@ const mocks = vi.hoisted(() => ({
   appBus: {
     emit: vi.fn(),
   },
-  t: vi.fn((key) => {
-    if (key === 'shared.unknown') return 'Unknown';
-    if (key === 'contact.no_name') return 'No Name';
-    return key;
-  }),
 }));
 
 vi.mock('../auth/auth-state.js', () => ({
@@ -33,10 +28,6 @@ vi.mock('../app/app-bus.js', () => ({
 
 vi.mock('../storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
-}));
-
-vi.mock('../i18n/index.js', () => ({
-  t: mocks.t,
 }));
 
 vi.mock('./storage/index.js', () => ({
@@ -55,7 +46,6 @@ describe('contacts-service', () => {
     mocks.store.patch.mockReset();
     mocks.store.remove.mockReset();
     mocks.appBus.emit.mockReset();
-    mocks.t.mockClear();
 
     vi.restoreAllMocks();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -306,29 +296,6 @@ describe('contacts-service', () => {
       lastInteractionAt: 1,
     });
     await expect(service.getContactByRoomId('missing')).resolves.toBeNull();
-  });
-
-  it('resolveCallerName falls back to saved name, fallback user id, then unknown label', async () => {
-    const { ContactsService } = await import('./contacts-service.js');
-    const service = new ContactsService();
-
-    mocks.store.list.mockResolvedValue([
-      {
-        contactId: 'u1',
-        contactName: 'Alice',
-        roomId: 'room-1',
-        savedAt: 1,
-        lastInteractionAt: 1,
-      },
-    ]);
-
-    await expect(service.resolveCallerName('room-1', 'fallback')).resolves.toBe(
-      'Alice',
-    );
-    await expect(service.resolveCallerName('missing', 'fallback')).resolves.toBe(
-      'fallback',
-    );
-    await expect(service.resolveCallerName(null, null)).resolves.toBe('Unknown');
   });
 
   it('updateLastInteraction returns null for guest mode and does not patch', async () => {

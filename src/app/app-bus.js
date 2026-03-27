@@ -1,4 +1,4 @@
-import { EventEmitter } from '../utils/event-emitter.js';
+import { EventEmitter } from './event-emitter.js';
 
 /**
  * AppBus — shared event bus
