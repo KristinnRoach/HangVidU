@@ -59,18 +59,11 @@ function logServiceFailure(action, error, context = {}) {
  * Emit save compatibility events after a successful write.
  *
  * @param {ContactRecord} contact
- * @returns {void}
  */
-function emitContactSaved(contact) {
-  try {
-    appBus.emit('contact:updated', { roomId: contact.roomId ?? null });
-    appBus.emit('room:id:created', { roomId: contact.roomId ?? null });
-  } catch (error) {
-    logServiceFailure('saveContact emit', error, {
-      contactId: contact.contactId,
-      roomId: contact.roomId ?? null,
-    });
-  }
+async function emitContactSaved(contact) {
+  const roomId = contact.roomId ?? null;
+  await appBus.emitAsync('contact:updated', { roomId });
+  await appBus.emitAsync('room:id:created', { roomId });
 }
 
 /**
@@ -78,26 +71,17 @@ function emitContactSaved(contact) {
  *
  * @param {ContactRecord} contact
  * @param {string|null} previousRoomId
- * @returns {void}
  */
-function emitContactUpdated(contact, previousRoomId) {
+async function emitContactUpdated(contact, previousRoomId) {
   const roomId = contact.roomId ?? null;
   const isRoomIdChange = !!roomId && previousRoomId !== roomId;
 
-  try {
-    appBus.emit('contact:updated', { roomId });
+  await appBus.emitAsync('contact:updated', { roomId });
 
-    if (isRoomIdChange) {
-      appBus.emit('room:id:updated', {
-        contactId: contact.contactId,
-        contactName: contact.contactName,
-        roomId,
-        previousRoomId,
-      });
-    }
-  } catch (error) {
-    logServiceFailure('updateContact emit', error, {
+  if (isRoomIdChange) {
+    await appBus.emitAsync('room:id:updated', {
       contactId: contact.contactId,
+      contactName: contact.contactName,
       roomId,
       previousRoomId,
     });
@@ -154,7 +138,7 @@ export class ContactsService {
         return null;
       }
 
-      emitContactUpdated(updatedContact, previousRoomId);
+      await emitContactUpdated(updatedContact, previousRoomId);
       return updatedContact;
     } catch (error) {
       logServiceFailure('updateContact', error, {
@@ -181,17 +165,10 @@ export class ContactsService {
         return false;
       }
 
-      try {
-        appBus.emit('contact:deleted', {
-          contactId,
-          roomId: existing?.roomId ?? null,
-        });
-      } catch (error) {
-        logServiceFailure('deleteContact emit', error, {
-          contactId,
-          roomId: existing?.roomId ?? null,
-        });
-      }
+      await appBus.emitAsync('contact:deleted', {
+        contactId,
+        roomId: existing?.roomId ?? null,
+      });
 
       return true;
     } catch (error) {
@@ -303,7 +280,7 @@ export class ContactsService {
         lastInteractionAt: existing?.lastInteractionAt ?? now,
       });
 
-      emitContactSaved(contact);
+      await emitContactSaved(contact);
       return contact;
     } catch (error) {
       logServiceFailure('saveContact', error, {

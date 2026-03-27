@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   },
   appBus: {
     emit: vi.fn(),
+    emitAsync: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -46,6 +47,7 @@ describe('contacts-service', () => {
     mocks.store.patch.mockReset();
     mocks.store.remove.mockReset();
     mocks.appBus.emit.mockReset();
+    mocks.appBus.emitAsync.mockReset().mockResolvedValue(undefined);
 
     vi.restoreAllMocks();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -75,10 +77,10 @@ describe('contacts-service', () => {
       savedAt: expect.any(Number),
       lastInteractionAt: expect.any(Number),
     });
-    expect(mocks.appBus.emit).toHaveBeenCalledWith('contact:updated', {
+    expect(mocks.appBus.emitAsync).toHaveBeenCalledWith('contact:updated', {
       roomId: 'room-1',
     });
-    expect(mocks.appBus.emit).toHaveBeenCalledWith('room:id:created', {
+    expect(mocks.appBus.emitAsync).toHaveBeenCalledWith('room:id:created', {
       roomId: 'room-1',
     });
   });
@@ -139,10 +141,10 @@ describe('contacts-service', () => {
       contactName: 'Alice B',
       roomId: 'room-2',
     });
-    expect(mocks.appBus.emit).toHaveBeenCalledWith('contact:updated', {
+    expect(mocks.appBus.emitAsync).toHaveBeenCalledWith('contact:updated', {
       roomId: 'room-2',
     });
-    expect(mocks.appBus.emit).toHaveBeenCalledWith('room:id:updated', {
+    expect(mocks.appBus.emitAsync).toHaveBeenCalledWith('room:id:updated', {
       contactId: 'u1',
       contactName: 'Alice B',
       roomId: 'room-2',
@@ -161,7 +163,7 @@ describe('contacts-service', () => {
     expect(result).toBeNull();
     expect(mocks.store.patch).not.toHaveBeenCalled();
     expect(mocks.store.put).not.toHaveBeenCalled();
-    expect(mocks.appBus.emit).not.toHaveBeenCalled();
+    expect(mocks.appBus.emitAsync).not.toHaveBeenCalled();
   });
 
   it('deleteContact returns true when deleted and emits compatibility event', async () => {
@@ -181,7 +183,7 @@ describe('contacts-service', () => {
     const result = await service.deleteContact('u1');
 
     expect(result).toBe(true);
-    expect(mocks.appBus.emit).toHaveBeenCalledWith('contact:deleted', {
+    expect(mocks.appBus.emitAsync).toHaveBeenCalledWith('contact:deleted', {
       contactId: 'u1',
       roomId: 'room-1',
     });
@@ -197,7 +199,7 @@ describe('contacts-service', () => {
     const result = await service.deleteContact('missing');
 
     expect(result).toBe(false);
-    expect(mocks.appBus.emit).not.toHaveBeenCalled();
+    expect(mocks.appBus.emitAsync).not.toHaveBeenCalled();
   });
 
   it('getAllContacts returns a map keyed by contactId', async () => {

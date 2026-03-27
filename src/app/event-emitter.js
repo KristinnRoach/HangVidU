@@ -1,6 +1,10 @@
 /**
  * EventEmitter - A lightweight, framework-agnostic event emitter.
- * Provides a simple on/off/emit/once pattern for domain-driven events.
+ *
+ * Subscribe: on(), once()
+ * Dispatch:  emit() (fire-and-forget, sync errors only),
+ *            emitAsync() (await all listeners, logs async errors)
+ * Cleanup:   off(), removeAllListeners()
  */
 export class EventEmitter {
   constructor() {

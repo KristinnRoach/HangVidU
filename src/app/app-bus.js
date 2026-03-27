@@ -1,8 +1,9 @@
 import { EventEmitter } from './event-emitter.js';
 
 /**
- * AppBus — shared event bus
+ * AppBus — shared cross-module event bus.
  *
- * Naming convention: TBA ??
+ * Dispatch: emit() for fire-and-forget, emitAsync() to await listener completion.
+ * Subscribe: on() for all listeners (sync or async).
  */
 export const appBus = new EventEmitter();
