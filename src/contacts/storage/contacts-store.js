@@ -87,14 +87,14 @@ export class ContactsStore {
    */
   async patch(contactId, patch) {
     const normalizedContactId = assertContactId(contactId);
-    normalizeContactPatch(patch);
+    const normalizedPatch = normalizeContactPatch(patch);
 
     const existing = await this.get(normalizedContactId);
     if (!existing) {
       return null;
     }
 
-    const nextRecord = mergeContactRecord(existing, patch);
+    const nextRecord = mergeContactRecord(existing, normalizedPatch);
     await this.adapter.put(nextRecord);
     return nextRecord;
   }

@@ -34,7 +34,7 @@ function normalizeRoomId(roomId) {
   return normalized || null;
 }
 
-function normalizeTimestamp(value, fieldName, fallbackValue) {
+function normalizeTimestamp(value, fallbackValue) {
   if (value == null) {
     return fallbackValue;
   }
@@ -54,18 +54,14 @@ export function normalizeContactRecord(input, { now = Date.now() } = {}) {
   }
 
   const contactId = assertContactId(input.contactId);
-  const savedAt = normalizeTimestamp(input.savedAt, 'savedAt', now);
+  const savedAt = normalizeTimestamp(input.savedAt, now);
 
   return ContactRecordSchema.parse({
     contactId,
     contactName: normalizeContactName(input.contactName),
     roomId: normalizeRoomId(input.roomId),
     savedAt,
-    lastInteractionAt: normalizeTimestamp(
-      input.lastInteractionAt,
-      'lastInteractionAt',
-      savedAt,
-    ),
+    lastInteractionAt: normalizeTimestamp(input.lastInteractionAt, savedAt),
   });
 }
 
@@ -92,7 +88,7 @@ export function normalizeContactPatch(patch) {
       continue;
     }
 
-    next[key] = normalizeTimestamp(value, key, value);
+    next[key] = normalizeTimestamp(value, value);
   }
 
   return ContactPatchSchema.parse(next);

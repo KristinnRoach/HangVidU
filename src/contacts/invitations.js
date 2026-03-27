@@ -131,22 +131,19 @@ export async function acceptInvite(fromUserId, inviteData) {
     throw new Error('Must be logged in to accept invites');
   }
 
-  // Save contact for me (the accepter)
-  // TODO: delete commented out code when ready + error handling and finalize pattern
-
-  // const myContactRef = ref(rtdb, `users/${myUserId}/contacts/${fromUserId}`);
-  // await set(myContactRef, {
-  //   contactId: fromUserId,
-  //   contactName: inviteData.fromName || 'User',
-  //   roomId: inviteData.roomId,
-  //   savedAt: Date.now(),
-  // });
-
-  await contactsService.saveContact(
+  const savedContact = await contactsService.saveContact(
     fromUserId,
     inviteData.fromName || 'User',
     inviteData.roomId,
   );
+
+  if (!savedContact) {
+    console.error('[INVITATIONS] Failed to save accepted invite contact', {
+      fromUserId,
+      roomId: inviteData.roomId ?? null,
+    });
+    return;
+  }
 
   // Notify the sender that invite was accepted
   // Write to sender's acceptedInvites path (they will auto-save the contact)
@@ -228,29 +225,28 @@ export function listenForAcceptedInvites(callback) {
     if (!acceptData) return;
 
     try {
-      // Auto-save the contact
-      // const contactRef = ref(
-      //   rtdb,
-      //   `users/${myUserId}/contacts/${acceptedByUserId}`,
-      // );
-      // await set(contactRef, {
-      //   contactId: acceptedByUserId,
-      //   contactName: acceptData.acceptedByName || 'User',
-      //   roomId: acceptData.roomId,
-      //   savedAt: Date.now(),
-      // });
-
-      await contactsService.saveContact(
+      const savedContact = await contactsService.saveContact(
         acceptedByUserId,
         acceptData.acceptedByName || 'User',
         acceptData.roomId,
       );
 
+      if (!savedContact) {
+        console.error(
+          '[INVITATIONS] Failed to auto-save contact from accepted invite',
+          {
+            acceptedByUserId,
+            roomId: acceptData.roomId ?? null,
+          },
+        );
+        return;
+      }
+
       console.log(
         `[INVITATIONS] Auto-saved contact: ${acceptData.acceptedByName} (invite accepted)`,
       );
 
-      // !? Remove the accepted notification
+      // TODO: Confirm whether accepted invite notifications should always be removed after auto-save.
       const acceptNotificationRef = ref(
         rtdb,
         `users/${myUserId}/acceptedInvites/${acceptedByUserId}`,

@@ -74,6 +74,10 @@ export class ContactsRTDBAdapter extends ContactsStorageAdapter {
    * @returns {Promise<void>}
    */
   async put(contactRecord) {
+    if (!contactRecord?.contactId) {
+      throw new TypeError('contactRecord.contactId is required');
+    }
+
     await set(
       ref(this.database, this._contactPath(contactRecord.contactId)),
       contactRecord,

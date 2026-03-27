@@ -19,3 +19,6 @@ Updated: March 27th (v1)
 - Revisit whether adapter selection helpers belong in storage entrypoints or one level above.
 - Revisit storage-specific migration concerns only when guest/auth persistence rules are ready.
 - Revisit whether storage should stay per-module or consolidate under `src/storage/` only after `src/contacts/*` contracts are clearly defined and documented, and after event-driven fundamentals are documented for `appBus` / `EventEmitter` usage, boundaries, and when not to use them.
+- Consider whether `ContactsStore.patch()` needs an explicit atomic-update path for adapters that support transactions, or a documented non-atomic limitation if not.
+- Consider whether local adapter read/modify/write operations need explicit serialization, or a documented limitation around concurrent writes.
+- Consider whether the local adapter should recover safely from corrupted JSON in storage instead of throwing raw parse errors.
