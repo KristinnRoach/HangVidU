@@ -58,10 +58,8 @@ export function isValidSignalingState(pc, expectedType) {
     // Joiner: should be 'stable' when receiving offer
     return pc.signalingState === 'stable';
   } else {
-    // Initiator: should be 'have-local-offer' or 'stable' when receiving answer
-    return (
-      pc.signalingState === 'have-local-offer' || pc.signalingState === 'stable'
-    );
+    // Initiator: answer is only valid while we still have a local offer pending.
+    return pc.signalingState === 'have-local-offer';
   }
 }
 
@@ -80,7 +78,10 @@ export function addLocalTracks(pc, localStream) {
 
   localStream.getTracks().forEach((track) => {
     if (track.readyState !== 'live') {
-      console.warn(`[WebRTC] ${track.kind} track is not live at addLocalTracks:`, track.readyState);
+      console.warn(
+        `[WebRTC] ${track.kind} track is not live at addLocalTracks:`,
+        track.readyState,
+      );
       unhealthyKinds.push(track.kind);
       // Do not add a dead track to avoid permanently silent/black senders.
       return;
@@ -134,7 +135,7 @@ export async function setRemoteDescription(pc, sdp, drainQueue) {
   if (!isValidSignalingState(pc, sdp.type)) {
     console.warn(
       `Ignoring ${sdp.type} - unexpected signaling state:`,
-      pc.signalingState
+      pc.signalingState,
     );
     return false;
   }

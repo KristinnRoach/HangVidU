@@ -223,10 +223,24 @@ class CallController {
     if (!roomId || !pc) return;
 
     const answerRef = ref(rtdb, `rooms/${roomId}/answer`);
+    let answerApplied = false;
     const answerCallback = async (snapshot) => {
+      if (answerApplied) return;
+
       const answer = snapshot.val();
       if (answer) {
-        await setRemoteDescription(pc, answer, drainIceCandidateQueue);
+        const applied = await setRemoteDescription(
+          pc,
+          answer,
+          drainIceCandidateQueue,
+        );
+
+        // Detach after first successful answer apply to prevent re-processing
+        // if the room answer node changes again.
+        if (applied) {
+          answerApplied = true;
+          off(answerRef, 'value', answerCallback);
+        }
       }
     };
 
