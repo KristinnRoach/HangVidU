@@ -27,9 +27,7 @@ import { getPushNotifications } from './push-notifications/index.js';
 
 import CallController from './webrtc/call-controller.js';
 import { messagingController } from './messaging/messaging-controller.js';
-import { contactsController } from './contacts/contacts-controller.js';
-// UI → controller bridge (maps DOM CustomEvents to controller APIs)
-import { teardownUiToControllerBridges } from './bootstrap/ui-to-controller-bridges.js';
+import { contactsService } from './contacts/contacts-service.js';
 
 import {
   localVideoEl,
@@ -76,8 +74,18 @@ import {
   cleanupRemoteStream,
   cleanupLocalVideoOnlyStream,
 } from './media/state.js';
+import {
+  hasInitializedLocalStreamAndMedia,
+  markLocalStreamAndMediaInitialized,
+  resetLocalStreamInitFlag,
+} from './media/local-stream-init-state.js';
 
-import { devDebug, isDev, setDevDebugEnabled } from './utils/dev/dev-utils.js';
+import {
+  devDebug,
+  isDev,
+  setDevDebugEnabled,
+  tempWarn,
+} from './utils/dev/dev-utils.js';
 
 import RoomService from './room.js';
 import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
@@ -114,8 +122,6 @@ import {
 import {
   renderContactsList,
   cleanupContacts,
-  showSaveContactPrompt,
-  autoInitMsgSessionIfNeeded,
 } from './ui/components/contacts/contacts.js';
 
 import {
@@ -173,6 +179,9 @@ import {
 } from './i18n/index.js';
 
 import { addDebugUpdateButton } from './ui/components/notifications/debug-notifications.js';
+import { appBus } from './app/app-bus.js';
+import { showSaveContactPrompt } from './ui/components/contacts/save-contact-modal.js';
+import { setupContactListeners } from './contacts/listeners.js';
 // ____ UI END ____
 
 // Quick access to enable / disable dev debug logs
@@ -236,6 +245,9 @@ async function init() {
         // Silently fail if module not available
       });
     }
+
+    // Set up contact listeners for save/update/delete events
+    setupContactListeners();
 
     initializeSearchUI();
     addKeyListeners();
@@ -325,17 +337,12 @@ async function init() {
   }
 }
 
-// Todo: remove flag or finialize usage
-let hasInitLocalStreamAndMedia = false;
-
 // Reset flag to allow stream re-initialization after cleanup
-export function resetLocalStreamInitFlag() {
-  hasInitLocalStreamAndMedia = false;
-}
+export { resetLocalStreamInitFlag };
 
 async function initLocalStreamAndMedia() {
-  if (hasInitLocalStreamAndMedia) return;
-  hasInitLocalStreamAndMedia = true;
+  if (hasInitializedLocalStreamAndMedia()) return;
+  markLocalStreamAndMediaInitialized();
 
   await setUpLocalStream(localVideoEl);
 
@@ -542,7 +549,7 @@ export async function callContact(contactId, contactName, roomId = null) {
       // // The deterministic roomId is regenerated each time, so persistence may
       // // only help the OTHER user find the room. Investigate if this can be removed.
       // try {
-      //   await contactsController.saveContact(contactId, contactName, roomId);
+      //   await contactsService.saveContact(contactId, contactName, roomId);
       // } catch (e) {
       //   console.warn('[CALL] Failed to persist room ID (continuing):', e);
       // }
@@ -567,7 +574,7 @@ export async function callContact(contactId, contactName, roomId = null) {
 
   if (success) {
     // Update metadata
-    contactsController.updateLastInteraction(contactId).catch(() => {});
+    contactsService.updateLastInteraction(contactId).catch(() => {}); // TODO: unhandled rejection - deferred until pattern standardized
 
     // Send push notification immediately from the successful call-start path.
     try {
@@ -863,11 +870,10 @@ export function listenForIncomingOnRoom(roomId) {
           return;
         }
 
-        // Resolve caller name from contacts
-        const callerName = await contactsController.resolveCallerName(
-          roomId,
-          joiningUserId,
-        );
+        const callerContact = await contactsService.getContactByRoomId(roomId);
+        // TODO: Centralize caller display-name fallback policy once ownership is settled.
+        const callerName =
+          callerContact?.contactName || joiningUserId || 'Unknown';
 
         // Start incoming call ringtone and visual indicators
         ringtoneManager.playIncoming();
@@ -947,11 +953,11 @@ export function listenForIncomingOnRoom(roomId) {
             },
           );
           // Update lastInteractionAt for answered incoming call
-          contactsController
+          contactsService
             .getContactByRoomId(roomId)
             .then((c) => {
               if (c?.contactId)
-                contactsController.updateLastInteraction(c.contactId);
+                contactsService.updateLastInteraction(c.contactId);
             })
             .catch(() => {});
 
@@ -1095,7 +1101,7 @@ export function listenForIncomingOnRoom(roomId) {
     // UNLESS it is a saved contact - then we want to keep listening
     let savedContact = null;
     try {
-      savedContact = await contactsController.getContactByRoomId(roomId);
+      savedContact = await contactsService.getContactByRoomId(roomId);
     } catch (e) {
       console.warn('[LISTENER] Failed to check saved contact:', e);
     }
@@ -1127,8 +1133,7 @@ export function listenForIncomingOnRoom(roomId) {
       // If no members remain, remove the saved recent call for this client
       // and clean up the incoming listeners for this room (UNLESS saved contact)
       if (!status.hasMembers) {
-        const savedContact =
-          await contactsController.getContactByRoomId(roomId);
+        const savedContact = await contactsService.getContactByRoomId(roomId);
         if (!savedContact) {
           removeIncomingListenersForRoom(roomId);
           devDebug(
@@ -1195,7 +1200,7 @@ async function startListeningForSavedRooms() {
 
       // Also include saved contacts' roomIds (or deterministic room IDs)
       try {
-        const contacts = await contactsController.getContacts();
+        const contacts = await contactsService.getAllContacts();
         Object.entries(contacts || {}).forEach(([contactId, c]) => {
           if (c?.roomId) {
             toListen.add(c.roomId);
@@ -1255,7 +1260,7 @@ async function startListeningForSavedRooms() {
     }
     // Also include saved contacts' roomIds (or deterministic room IDs)
     try {
-      const contacts = await contactsController.getContacts();
+      const contacts = await contactsService.getAllContacts();
       const guestUserId = getUserId(); // Get guest user ID
       Object.entries(contacts || {}).forEach(([contactId, c]) => {
         if (c?.roomId) {
@@ -1600,15 +1605,36 @@ async function handleServiceWorkerNavigation(path) {
       return false;
     }
 
-    document.dispatchEvent(
-      new CustomEvent('messages:conversation:select', {
-        detail: {
+    try {
+      const conversationId =
+        messagingController.resolveConversationIdFromContactId(contactId);
+
+      if (!conversationId) {
+        console.warn(
+          '[MAIN] SW navigation -> Cannot open text chat UI because no conversation ID was found for user with id:',
+          {
+            contactId,
+          },
+        );
+        return false;
+      }
+
+      await messagingController.selectConversation(conversationId, {
+        remoteParticipantIds: [contactId],
+        displayUI: true,
+      });
+
+      return true;
+    } catch (error) {
+      console.warn(
+        '[MAIN] SW navigation -> Failed to open text chat UI for contact ID:',
+        {
           contactId,
-          displayUI: true,
+          error,
         },
-      }),
-    );
-    return true;
+      );
+      return false;
+    }
   }
 
   if (isHandlingServiceWorkerNavigation) {
@@ -1748,6 +1774,40 @@ function setupInviteListener() {
 // INITIALIZE ON PAGE LOAD
 // ============================================================================
 
+// ! TODO: REMOVE autoInitMsgSessionIfNeeded() when proper AppBus implemented
+/**
+ * Auto-initialize messaging session with first saved contact on app bootstrap.
+ * Runs once at startup if no session is already active and user has saved contacts.
+ */
+export async function autoInitMsgSessionIfNeeded() {
+  // Don't override existing active conversation
+  if (messagingController.conversations.size > 0) return;
+
+  try {
+    const contacts = await contactsService.getAllContactsSorted();
+    if (!Array.isArray(contacts) || contacts.length === 0) return;
+
+    const firstContact = contacts[0];
+    if (!firstContact?.contactId) return;
+
+    // Pre select the conversation for the first contact
+    const conversationId =
+      messagingController.resolveConversationIdFromContactId(
+        firstContact.contactId,
+      );
+    await messagingController.selectConversation(conversationId, {
+      remoteParticipantIds: [firstContact.contactId],
+      displayUI: false,
+    });
+  } catch (error) {
+    console.warn(
+      '[Contacts] Failed to auto-init messaging conversation:',
+      error,
+    );
+  }
+}
+// ! END OF TODO
+
 window.onload = async () => {
   // Capture referral link BEFORE auth (stores referrer ID in localStorage)
   await captureReferral();
@@ -1769,27 +1829,23 @@ window.onload = async () => {
   // UI handlers (business logic handlers registered separately below)
   bindCallUI(CallController);
 
-  // contactsController events
-  contactsController.on(
-    'contact:call',
-    ({ contactId, contactName, roomId }) => {
-      callContact(contactId, contactName, roomId);
-    },
-  );
+  // appBus events
+  appBus.on('call:init', ({ contactId, contactName, roomId }) => {
+    isDev() &&
+      tempWarn('[main.js] call:init event received with data: ', {
+        contactId,
+        contactName,
+        roomId,
+      });
 
-  contactsController.on('contact:saved', (savedContact) =>
-    console.info('Contact saved: ', savedContact),
-  );
+    callContact(contactId, contactName, roomId);
+  });
 
-  contactsController.on('contact:updated', (updatedContact) =>
-    console.info('Contact updated: ', updatedContact),
-  );
-
-  contactsController.on('room:id:created', ({ roomId }) => {
+  appBus.on('room:id:created', ({ roomId }) => {
     listenForIncomingOnRoom(roomId);
   });
 
-  contactsController.on('room:id:updated', ({ roomId }) => {
+  appBus.on('room:id:updated', ({ roomId }) => {
     listenForIncomingOnRoom(roomId);
   });
 
@@ -2033,7 +2089,7 @@ CallController.on(
     if (isMissedCall) {
       console.log('[MAIN] Potential missed call detected for room:', roomId);
       try {
-        const contact = await contactsController.getContactByRoomId(roomId);
+        const contact = await contactsService.getContactByRoomId(roomId);
         if (contact && contact.contactId) {
           const { getUser } = await import('./auth/auth-state.js');
           const me = getUser();
@@ -2103,13 +2159,16 @@ CallController.on(
     // Prompt to save contact after cleanup (if partner was present)
     if (partnerId && roomId) {
       setTimeout(() => {
-        contactsController
+        contactsService
           .handleHangUp(partnerId, roomId)
           .then((result) => {
             if (result.action === 'prompt-save') {
               showSaveContactPrompt(partnerId, roomId, lobbyDiv).catch((e) => {
                 console.warn('Failed to show save contact prompt:', e);
               });
+
+              // TODO: How to handle re-rendering after saving completes?
+              // Needs standardized consistent pattern for signaling UI to render
             }
           })
           .catch((e) => {
@@ -2129,7 +2188,6 @@ async function cleanup() {
   await CallController.hangUp({ emitCancel: true, reason: 'page_unload' });
 
   // Global teardown: safe to remove all listeners on page unload
-  teardownUiToControllerBridges();
   cleanupMediaControls();
   removeAllRTDBListeners();
   cleanupContacts();

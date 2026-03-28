@@ -1,12 +1,12 @@
 import { t, onLocaleChange } from '../../../i18n/index.js';
 import { initIcons } from '../../icons.js';
-import { attachIOSKeyboardViewportSync } from './attachIOSKeyboardViewportSync.js';
+import { attachKeyboardViewportHandler } from '../../utils/attachKeyboardViewportHandler.js';
+import { scrollMessagesToEnd } from './utils/scrollMessagesToEnd.js';
 
 /**
  * Creates the messages box DOM structure and initializes textarea auto-grow behavior.
  * Appends the box to document.body and returns references to key elements.
  * Handles virtual keyboard overlay and field-sizing CSS property support.
- *
  * @returns {Object} DOM element references
  * @returns {HTMLElement} .messagesBoxContainer - Root container div
  * @returns {HTMLElement} .messagesBox - The #messages-box main container
@@ -92,9 +92,12 @@ export function createMessageBox() {
     });
   }
 
-  const cleanupIOSKeyboardViewportSync = attachIOSKeyboardViewportSync({
-    inputEl: messagesInput,
-    panelEl: messagesBox,
+  const cleanupKeyboardViewportHandler = attachKeyboardViewportHandler({
+    focusEl: messagesInput,
+    targetEl: messagesBox,
+    enabled: typeof window !== 'undefined' && !!window.visualViewport,
+    lockPageScroll: true,
+    afterResize: () => scrollMessagesToEnd(messagesMessages),
   });
 
   return {
@@ -104,6 +107,6 @@ export function createMessageBox() {
     messagesForm,
     messagesInput,
     resetInputHeight,
-    cleanupIOSKeyboardViewportSync,
+    cleanupKeyboardViewportHandler,
   };
 }
