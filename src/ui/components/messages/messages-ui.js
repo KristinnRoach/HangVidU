@@ -15,7 +15,6 @@ import {
 import { REACTION_CONFIG } from '../../../messaging/reactions/ReactionConfig.js';
 import { getUserId } from '../../../auth/auth-state.js';
 import { messagingController } from '../../../messaging/messaging-controller.js';
-import { contactsService } from '../../../contacts/contacts-service.js';
 import {
   showErrorToast,
   showInfoToast,
@@ -1345,11 +1344,6 @@ export function initMessagesUI() {
           }
         }
 
-        // Update interaction timestamp for received files
-        updateLastInteractionForConversation(
-          messagingController.getSelectedConversationId(),
-        );
-
         // Increment unread count if messages box is hidden
         if (isHidden(messagesBox)) {
           const currentCount = messageToggle.element.unreadCount || 0;
@@ -1557,16 +1551,6 @@ export function initMessagesUI() {
     appendMessage(message);
   }
 
-  function updateLastInteractionForConversation(conversationId) {
-    const state = messagingController.getConversation(conversationId);
-    const contactId =
-      state?.remoteParticipantIds?.length === 1
-        ? state.remoteParticipantIds[0]
-        : null;
-    if (!contactId) return;
-    contactsService.updateLastInteraction(contactId).catch(() => {});
-  }
-
   // --- Domain Event Listeners ---
 
   // Data ready — prepare conversation UI
@@ -1638,8 +1622,6 @@ export function initMessagesUI() {
   messagingController.on(
     'message:received',
     ({ message, conversationId }) => {
-      updateLastInteractionForConversation(conversationId);
-
       const selectedConversationId =
         messagingController.getSelectedConversationId();
       if (conversationId !== selectedConversationId) {
@@ -1664,19 +1646,9 @@ export function initMessagesUI() {
   );
 
   messagingController.on(
-    'message:sent',
-    ({ message, conversationId }) => {
-      updateLastInteractionForConversation(conversationId);
-    },
-    { signal: ac.signal },
-  );
-
-  messagingController.on(
     'reaction:updated',
-    ({ conversationId, messageId, reactions }) => {
+    ({ messageId, reactions }) => {
       updateMessageReactions(messageId, reactions);
-
-      updateLastInteractionForConversation(conversationId);
     },
     { signal: ac.signal },
   );

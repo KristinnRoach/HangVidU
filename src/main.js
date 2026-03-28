@@ -180,8 +180,8 @@ import {
 
 import { addDebugUpdateButton } from './ui/components/notifications/debug-notifications.js';
 import { appBus } from './app/app-bus.js';
-import { showSaveContactPrompt } from './ui/components/contacts/save-contact-modal.js';
-import { setupContactListeners } from './contacts/listeners.js';
+import { setupMessagingContactsIntegration } from './app/messaging-contacts-integration.js';
+import { promptAndRefreshContactSave } from './app/contact-save-flow.js';
 // ____ UI END ____
 
 // Quick access to enable / disable dev debug logs
@@ -246,14 +246,12 @@ async function init() {
       });
     }
 
-    // Set up contact listeners for save/update/delete events
-    setupContactListeners();
-
     initializeSearchUI();
     addKeyListeners();
 
     // Initialize auth (persistence + redirect + onAuthStateChanged listener)
     await initAuth();
+    cleanupFunctions.push(setupMessagingContactsIntegration());
 
     const authComponent = initializeAuthUI(titleAuthBar);
     if (authComponent) cleanupFunctions.push(authComponent.dispose);
@@ -2163,12 +2161,11 @@ CallController.on(
           .handleHangUp(partnerId, roomId)
           .then((result) => {
             if (result.action === 'prompt-save') {
-              showSaveContactPrompt(partnerId, roomId, lobbyDiv).catch((e) => {
-                console.warn('Failed to show save contact prompt:', e);
-              });
-
-              // TODO: How to handle re-rendering after saving completes?
-              // Needs standardized consistent pattern for signaling UI to render
+              promptAndRefreshContactSave(partnerId, roomId, lobbyDiv).catch(
+                (e) => {
+                  console.warn('Failed to show save contact prompt:', e);
+                },
+              );
             }
           })
           .catch((e) => {

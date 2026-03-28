@@ -1,28 +1,33 @@
 import { t } from '../../../i18n/index.js';
-import { dispatchUIEvent } from '../../dispatcher.js';
+import { contactsService } from '../../../contacts/contacts-service.js';
 import confirmDialog from '../base/confirm-dialog.js';
 
 /**
- * Prompt user to save contact after hangup (and render contacts list in lobby)
+ * Prompt user to save a contact after hangup.
+ *
+ * Returns `true` only when the user confirms and the contact write succeeds.
  */
 export async function showSaveContactPrompt(
   contactUserId,
-  roomId, // TODO: Remove roomId dependency
+  roomId,
   autoRemoveSeconds = 25,
 ) {
-  if (!contactUserId || !roomId) return;
+  if (!contactUserId || !roomId) return false;
 
   const shouldSave = await confirmDialog(t('contact.save.confirm'), {
     autoRemoveSeconds,
   });
 
-  if (!shouldSave) return;
+  if (!shouldSave) return false;
 
   // TODO: Replace with an in-app name-entry dialog.
   const name =
     window.prompt(t('contact.name.prompt'), contactUserId) || contactUserId;
 
-  dispatchUIEvent('contact:save', { contactUserId, name, roomId });
-
-  // await renderContactsList(parentContainerEl); // TODO: emit event to refresh contact list or something
+  const savedContact = await contactsService.saveContact(
+    contactUserId,
+    name,
+    roomId,
+  );
+  return !!savedContact;
 }
