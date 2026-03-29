@@ -6,7 +6,7 @@
 
 import { initIcons } from './ui/icons.js';
 import './initSentry.js';
-import { set, get, remove } from 'firebase/database';
+import { get, remove } from 'firebase/database';
 import {
   removeAllRTDBListeners,
   removeRTDBListenersForRoom,
@@ -79,12 +79,7 @@ import {
   resetLocalStreamInitFlag,
 } from './media/local-stream-init-state.js';
 
-import {
-  devDebug,
-  isDev,
-  setDevDebugEnabled,
-  tempWarn,
-} from './utils/dev/dev-utils.js';
+import { devDebug, isDev, setDevDebugEnabled } from './utils/dev/dev-utils.js';
 
 import RoomService from './call/room.js';
 import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
@@ -162,10 +157,13 @@ import {
 
 import { isRoomCallFresh } from './ui/components/calling/calling-ui.js';
 import { isRemoteVideoVideoActive } from './ui/core/legacy/watch-mode.js';
+// ____ UI END ____
+
 import {
   onCallConnected,
   onCallDisconnected,
 } from './ui/core/call-lifecycle-ui.js';
+import { addDebugUpdateButton } from './ui/components/notifications/debug-notifications.js';
 import {
   initI18n,
   setLocale,
@@ -173,13 +171,11 @@ import {
   t,
   onLocaleChange,
 } from './i18n/index.js';
-
-import { addDebugUpdateButton } from './ui/components/notifications/debug-notifications.js';
 import { appBus } from './app/app-bus.js';
 import { setupMessagingContactsIntegration } from './app/messaging-contacts-integration.js';
 import { setupMessagingAppBusHandlers } from './messaging/handle-appbus-events.js';
 import { setupCallControllerEventWiring } from './call/call-event-wiring.js';
-// ____ UI END ____
+import { setupMainAppBusListeners } from './app/setupMainAppBusListeners.js';
 
 // Quick access to enable / disable dev debug logs
 setDevDebugEnabled(true);
@@ -1814,43 +1810,9 @@ window.onload = async () => {
   // UI handlers (business logic handlers registered separately below)
   bindCallUI(CallController);
 
-  // appBus events
-  appBus.on('call:outgoing:requested', ({ contactId, contactName, roomId }) => {
-    isDev() &&
-      tempWarn('[main.js] call:outgoing:requested event received with data: ', {
-        contactId,
-        contactName,
-        roomId,
-      });
-
-    try {
-      const conversationId =
-        messagingController.resolveConversationIdFromContactId(contactId);
-
-      messagingController
-        .selectConversation(conversationId, {
-          remoteParticipantIds: [contactId],
-          displayUI: false,
-        })
-        .catch((e) => {
-          console.warn(
-            'Failed to select conversation on call:outgoing:requested:',
-            e,
-          );
-        });
-    } catch (e) {
-      console.warn('Failed to select conversation after memberJoined:', e);
-    }
-
-    callContact(contactId, contactName, roomId);
-  });
-
-  appBus.on('room:id:created', ({ roomId }) => {
-    listenForIncomingOnRoom(roomId);
-  });
-
-  appBus.on('room:id:updated', ({ roomId }) => {
-    listenForIncomingOnRoom(roomId);
+  setupMainAppBusListeners({
+    callContact,
+    listenForIncomingOnRoom,
   });
 
   const onJoinRoomSubmit = async (roomInputString) => {

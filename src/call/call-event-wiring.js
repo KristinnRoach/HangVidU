@@ -31,9 +31,6 @@ export function setupCallControllerEventWiring(options = {}) {
 
     CallController.setPartnerId(memberId);
 
-    // TODO: Move this to clarify incoming vs outgoing call flow (this triggers on both?)
-    appBus.emit('call:incoming:accepted', { roomId, contactId: memberId });
-
     // below is cb from UI module - TODO: clarify / refactor
     onCallAnswered().catch((e) =>
       console.warn('Failed to clear calling state:', e),
