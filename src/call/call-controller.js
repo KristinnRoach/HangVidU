@@ -1,4 +1,4 @@
-// src/webrtc/call-controller.js
+// src/call/call-controller.js
 // Thin CallController wrapper: small public API that delegates to existing
 // `webrtc/call-flow.js` functions. Keeps a small in-memory call state and
 // exposes an event API for the UI.

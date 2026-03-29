@@ -1,4 +1,4 @@
-// src/webrtc/tests/member-listener-fresh-join.test.js
+// src/call/tests/member-listener-fresh-join.test.js
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Firebase RTDB mock with child_added propagation when setting a member node
@@ -86,7 +86,7 @@ vi.mock('../../utils/dev/diagnostic-logger.js', () => ({
 }));
 
 // Import the RoomService singleton under test
-import RoomService from '../../webrtc/room.js';
+import RoomService from '../../call/room.js';
 import {
   removeRTDBListenersForRoom,
   removeAllRTDBListeners,

@@ -25,7 +25,7 @@ import {
 import { inAppNotificationManager } from './ui/components/notifications/in-app-notification-manager.js';
 import { getPushNotifications } from './push-notifications/index.js';
 
-import CallController from './webrtc/call-controller.js';
+import CallController from './call/call-controller.js';
 import { messagingController } from './messaging/messaging-controller.js';
 import { contactsService } from './contacts/contacts-service.js';
 
@@ -86,7 +86,7 @@ import {
   tempWarn,
 } from './utils/dev/dev-utils.js';
 
-import RoomService from './webrtc/room.js';
+import RoomService from './call/room.js';
 import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
 
 import {
@@ -177,7 +177,7 @@ import {
 import { addDebugUpdateButton } from './ui/components/notifications/debug-notifications.js';
 import { appBus } from './app/app-bus.js';
 import { setupMessagingContactsIntegration } from './app/messaging-contacts-integration.js';
-import { setupCallEventWiring } from './app/call-event-wiring.js';
+import { setupCallControllerEventWiring } from './call/call-event-wiring.js';
 // ____ UI END ____
 
 // Quick access to enable / disable dev debug logs
@@ -1832,6 +1832,21 @@ window.onload = async () => {
         roomId,
       });
 
+    try {
+      const conversationId =
+        messagingController.resolveConversationIdFromContactId(memberId);
+
+      messagingController
+        .selectConversation(conversationId, {
+          remoteParticipantIds: [memberId],
+        })
+        .catch((e) => {
+          console.warn('Failed to select conversation on call:init:', e);
+        });
+    } catch (e) {
+      console.warn('Failed to select conversation after memberJoined:', e);
+    }
+
     callContact(contactId, contactName, roomId);
   });
 
@@ -2032,7 +2047,7 @@ window.addEventListener('pagehide', async () => {
 });
 
 // CallController business-logic handlers (memberJoined, memberLeft, cleanup)
-setupCallEventWiring({
+setupCallControllerEventWiring({
   lobbyElement: lobbyDiv,
   listenForIncomingOnRoom,
 });

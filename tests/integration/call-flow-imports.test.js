@@ -20,7 +20,7 @@ describe('Call-Flow Import Integration', () => {
 
     try {
       // Import call-flow - if imports like 'ref' are missing, this will throw ReferenceError
-      await import('../../src/webrtc/call-flow.js');
+      await import('../../src/call/call-flow.js');
     } catch (error) {
       importError = error;
     }
@@ -33,7 +33,7 @@ describe('Call-Flow Import Integration', () => {
   });
 
   it('createCall function exists and is callable', async () => {
-    const { createCall } = await import('../../src/webrtc/call-flow.js');
+    const { createCall } = await import('../../src/call/call-flow.js');
 
     expect(createCall).toBeDefined();
     expect(typeof createCall).toBe('function');
@@ -46,7 +46,7 @@ describe('Call-Flow Import Integration', () => {
   });
 
   it('answerCall function exists and is callable', async () => {
-    const { answerCall } = await import('../../src/webrtc/call-flow.js');
+    const { answerCall } = await import('../../src/call/call-flow.js');
 
     expect(answerCall).toBeDefined();
     expect(typeof answerCall).toBe('function');

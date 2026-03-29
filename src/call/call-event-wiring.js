@@ -1,4 +1,4 @@
-import CallController from '../webrtc/call-controller.js';
+import CallController from './call-controller.js';
 import { messagingController } from '../messaging/messaging-controller.js';
 import { contactsService } from '../contacts/contacts-service.js';
 import { getUserId } from '../auth/auth-state.js';
@@ -7,7 +7,7 @@ import { cleanupRemoteStream } from '../media/state.js';
 import { clearUrlParam } from '../utils/url.js';
 import { onCallAnswered } from '../ui/components/calling/calling-ui.js';
 import { renderContactsList } from '../ui/components/contacts/contacts.js';
-import { promptAndRefreshContactSave } from './contact-save-flow.js';
+import { promptAndRefreshContactSave } from '../app/contact-save-flow.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 
 /**
@@ -22,7 +22,7 @@ import { devDebug } from '../utils/dev/dev-utils.js';
  *   listenForIncomingOnRoom: (roomId: string) => void,
  * }} options
  */
-export function setupCallEventWiring(options = {}) {
+export function setupCallControllerEventWiring(options = {}) {
   const { lobbyElement, listenForIncomingOnRoom } = options;
 
   // Business logic for memberJoined (UI handled in bind-call-ui.js)
@@ -31,20 +31,9 @@ export function setupCallEventWiring(options = {}) {
 
     CallController.setPartnerId(memberId);
 
-    const conversationId =
-      messagingController.resolveConversationIdFromContactId(memberId);
-
-    try {
-      await messagingController.selectConversation(conversationId, {
-        remoteParticipantIds: [memberId],
-      });
-    } catch (e) {
-      console.warn('Failed to select conversation after memberJoined:', e);
-    } finally {
-      onCallAnswered().catch((e) =>
-        console.warn('Failed to clear calling state:', e),
-      );
-    }
+    onCallAnswered().catch((e) =>
+      console.warn('Failed to clear calling state:', e),
+    );
   });
 
   // Subscribe to CallController memberLeft event - handles partner leaving

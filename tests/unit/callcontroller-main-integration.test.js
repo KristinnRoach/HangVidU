@@ -10,7 +10,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock CallController
-vi.mock('../../src/webrtc/call-controller.js', () => {
+vi.mock('../../src/call/call-controller.js', () => {
   const mockEmitter = {
     listeners: new Map(),
     on(event, handler) {
@@ -44,7 +44,7 @@ vi.mock('../../src/webrtc/call-controller.js', () => {
   };
 });
 
-import CallController from '../../src/webrtc/call-controller.js';
+import CallController from '../../src/call/call-controller.js';
 
 describe('CallController Integration with main.js', () => {
   beforeEach(() => {

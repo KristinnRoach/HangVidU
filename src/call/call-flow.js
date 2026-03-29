@@ -1,4 +1,4 @@
-// src/webrtc/call-flow.js
+// src/call/call-flow.js
 
 /**
  * High-level call flow orchestration for WebRTC connections.
@@ -14,8 +14,8 @@ import { devDebug } from '../utils/dev/dev-utils.js';
 import { showErrorToast } from '../ui/utils/toast.js';
 import { t } from '../i18n/index.js';
 
-import { drainIceCandidateQueue, setupIceCandidates } from '../webrtc/ice.js';
-import { setupConnectionStateHandlers } from '../webrtc/webrtc.js';
+import { drainIceCandidateQueue, setupIceCandidates } from '../call/ice.js';
+import { setupConnectionStateHandlers } from '../call/webrtc.js';
 import {
   rtcConfig,
   addLocalTracks,
@@ -23,7 +23,7 @@ import {
   createAnswer,
   setRemoteDescription,
   generateRoomId,
-} from '../webrtc/webrtc-utils.js';
+} from '../call/webrtc-utils.js';
 
 import RoomService from './room.js';
 

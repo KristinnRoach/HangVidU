@@ -1,4 +1,4 @@
-// src/webrtc/ice.test.js
+// src/call/ice.test.js
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { setupIceCandidates, drainIceCandidateQueue } from '../ice.js';

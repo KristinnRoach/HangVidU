@@ -1,4 +1,4 @@
-// src/webrtc/data-connection.js
+// src/call/data-connection.js
 //
 // Dedicated data-only PeerConnection for file transfer.
 // Isolates DataChannel traffic from the media PeerConnection so large

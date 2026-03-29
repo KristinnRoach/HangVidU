@@ -1,4 +1,4 @@
-// src/webrtc/webrtc-utils.js
+// src/call/webrtc-utils.js
 
 /**
  * Utilities for WebRTC connection setup and SDP handling.

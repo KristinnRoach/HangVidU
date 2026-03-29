@@ -199,7 +199,7 @@ VITE_PORT=5173
 **STUN/TURN Servers:**
 - Uses Google's public STUN servers (default in browser)
 - ICE candidate exchange via Firebase RTDB
-- Implementation: `src/webrtc/ice.js`, `src/webrtc/call-flow.js`
+- Implementation: `src/call/ice.js`, `src/call/call-flow.js`
 
 **Signaling:**
 - Firebase RTDB for SDP offer/answer exchange

@@ -649,7 +649,7 @@ When you resume work on Phase 1, focus on these files:
 **Current flow** (broken across 3 layers):
 
 ```
-src/webrtc/call-controller.js
+src/call/call-controller.js
   → createSession() → { contactId, contactName }
 
 src/ui/components/messages/messages-ui.js
@@ -664,7 +664,7 @@ src/messaging/messaging-controller.js
 **Key files to modify**:
 
 - `src/messaging/messaging-controller.js` — add setCurrentSession() method
-- `src/webrtc/call-controller.js` — call new single entry point
+- `src/call/call-controller.js` — call new single entry point
 - `src/ui/components/messages/messages-ui.js` — remove setSession(), listen to events
 
 ### Issue 1.2: State Ownership Clarity

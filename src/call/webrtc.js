@@ -1,4 +1,4 @@
-// src/webrtc/webrtc.js
+// src/call/webrtc.js
 
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { clearUrlParam } from '../utils/url.js';

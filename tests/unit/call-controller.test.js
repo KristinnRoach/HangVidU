@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock dependencies
-vi.mock('../../src/webrtc/call-flow.js', () => {
+vi.mock('../../src/call/call-flow.js', () => {
   return {
     createCall: vi.fn(),
     answerCall: vi.fn(),
   };
 });
-vi.mock('../../src/webrtc/room.js', () => {
+vi.mock('../../src/call/room.js', () => {
   return {
     default: {
       cancelCall: vi.fn(),
@@ -54,12 +54,12 @@ vi.mock('firebase/database', () => {
     getDatabase: vi.fn(() => ({})),
   };
 });
-vi.mock('../../src/webrtc/ice.js', () => {
+vi.mock('../../src/call/ice.js', () => {
   return {
     drainIceCandidateQueue: vi.fn(),
   };
 });
-vi.mock('../../src/webrtc/data-connection.js', () => {
+vi.mock('../../src/call/data-connection.js', () => {
   return {
     createDataConnection: vi.fn(() =>
       Promise.resolve({
@@ -77,12 +77,12 @@ vi.mock('../../src/webrtc/data-connection.js', () => {
   };
 });
 
-import CallController from '../../src/webrtc/call-controller.js';
+import CallController from '../../src/call/call-controller.js';
 import {
   createCall as createCallFlow,
   answerCall as answerCallFlow,
-} from '../../src/webrtc/call-flow.js';
-import RoomService from '../../src/webrtc/room.js';
+} from '../../src/call/call-flow.js';
+import RoomService from '../../src/call/room.js';
 
 describe('CallController (unit)', () => {
   beforeEach(() => {

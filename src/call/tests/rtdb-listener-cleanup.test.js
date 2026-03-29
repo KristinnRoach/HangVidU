@@ -1,4 +1,4 @@
-// src/webrtc/tests/rtdb-listener-cleanup.test.js
+// src/call/tests/rtdb-listener-cleanup.test.js
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 

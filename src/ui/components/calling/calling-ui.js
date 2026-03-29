@@ -5,7 +5,7 @@ import { rtdb, getUserOutgoingCallRef } from '../../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, getUserId } from '../../../auth/auth-state.js';
 import { devDebug } from '../../../utils/dev/dev-utils.js';
 import { getDiagnosticLogger } from '../../../utils/dev/diagnostic-logger.js';
-import RoomService from '../../../webrtc/room.js';
+import RoomService from '../../../call/room.js';
 import { ringtoneManager } from '../../../media/audio/ringtone-manager.js';
 import { t } from '../../../i18n/index.js';
 
