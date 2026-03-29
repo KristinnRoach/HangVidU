@@ -151,7 +151,11 @@ function attachContactListeners(container, lobbyElement) {
       const contactId = nameEl.getAttribute('data-contact-id');
 
       if (roomId || contactId) {
-        dispatchUIEvent('call:init', { contactId, contactName, roomId });
+        dispatchUIEvent('call:outgoing:requested', {
+          contactId,
+          contactName,
+          roomId,
+        });
       }
     };
   });

@@ -1,5 +1,4 @@
 import CallController from './call-controller.js';
-import { messagingController } from '../messaging/messaging-controller.js';
 import { contactsService } from '../contacts/contacts-service.js';
 import { getUserId } from '../auth/auth-state.js';
 import { getPushNotifications } from '../push-notifications/index.js';
@@ -9,6 +8,7 @@ import { onCallAnswered } from '../ui/components/calling/calling-ui.js';
 import { renderContactsList } from '../ui/components/contacts/contacts.js';
 import { promptAndRefreshContactSave } from '../app/contact-save-flow.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
+import { appBus } from '../app/app-bus.js';
 
 /**
  * Wire CallController business-logic event handlers.
@@ -26,11 +26,15 @@ export function setupCallControllerEventWiring(options = {}) {
   const { lobbyElement, listenForIncomingOnRoom } = options;
 
   // Business logic for memberJoined (UI handled in bind-call-ui.js)
-  CallController.on('memberJoined', async ({ memberId, roomId }) => {
+  CallController.on('memberJoined', ({ memberId, roomId }) => {
     console.debug('CallController memberJoined event', { memberId, roomId });
 
     CallController.setPartnerId(memberId);
 
+    // TODO: Move this to clarify incoming vs outgoing call flow (this triggers on both?)
+    appBus.emit('call:incoming:accepted', { roomId, contactId: memberId });
+
+    // below is cb from UI module - TODO: clarify / refactor
     onCallAnswered().catch((e) =>
       console.warn('Failed to clear calling state:', e),
     );
@@ -79,26 +83,10 @@ export function setupCallControllerEventWiring(options = {}) {
               callerName,
             });
 
-            // Write missed call message to chat history
-            // The caller writes this - both parties will see it in their shared conversation
-            try {
-              const missedCallConvId =
-                messagingController.resolveConversationIdFromContactId(
-                  contact.contactId,
-                );
-              await messagingController.sendEventMessage(
-                missedCallConvId,
-                'missed_call',
-                {
-                  callId: roomId,
-                  callerId: getUserId(),
-                  callerName,
-                },
-              );
-              console.log('[MAIN] Missed call message written to chat history');
-            } catch (e) {
-              console.warn('[MAIN] Failed to write missed call message:', e);
-            }
+            appBus.emit('call:unanswered', {
+              roomId,
+              contactId: contact.contactId,
+            });
           } else {
             console.log(
               '[MAIN] No saved contact found for room, skipping missed call notification',

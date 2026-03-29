@@ -156,13 +156,16 @@ export function initMessagesUI() {
           messagingController.getConversationDisplayName(conversationId) ||
           null;
 
-        dispatchUIEvent('call:init', {
+        dispatchUIEvent('call:outgoing:requested', {
           contactId,
           contactName,
           roomId,
         });
       } catch (err) {
-        console.warn('Failed to emit call:init in temp msg-ui code', err);
+        console.warn(
+          'Failed to emit call:outgoing:requested in temp msg-ui code',
+          err,
+        );
       }
     });
   }
@@ -699,19 +702,13 @@ export function initMessagesUI() {
   /**
    * Build call event content span (missed/rejected call with callback button).
    */
-  function buildCallEventContent(message, { onCallBack }) {
+  function buildCallEventContent(_message, { onCallBack }) {
     const callEventBubble = document.createElement('span');
     callEventBubble.className = 'message-text call-event-content';
 
-    const details = message.details || {};
-    const currentUserId = getUserId();
-    const wasInitiatedByMe = details.callerId === currentUserId;
-
     const callStatusText = document.createElement('span');
     callStatusText.className = 'call-event-text';
-    callStatusText.textContent = wasInitiatedByMe
-      ? t('call.no_answer')
-      : t('call.missed');
+    callStatusText.textContent = t('call.unanswered');
 
     const callBackBtn = document.createElement('button');
     callBackBtn.className = 'call-back-btn';
@@ -722,35 +719,31 @@ export function initMessagesUI() {
     callBackIcon.setAttribute('data-lucide', 'phone');
     callBackIcon.setAttribute('aria-hidden', 'true');
     callBackBtn.appendChild(callBackIcon);
-    callBackBtn.appendChild(
-      document.createTextNode(
-        wasInitiatedByMe ? t('call.try_again') : t('call.callback'),
-      ),
-    );
+    callBackBtn.appendChild(document.createTextNode(t('call.call_back')));
 
-    callBackBtn.addEventListener('click', async () => {
+    callBackBtn.addEventListener('click', () => {
       if (onCallBack) {
-        await onCallBack();
-      } else {
-        try {
-          const { callContact } = await import('../../../main.js');
+        onCallBack();
+        return;
+      }
 
-          const state = messagingController.getSelectedConversationState();
-          const conversationId = state?.conversationId;
+      try {
+        const state = messagingController.getSelectedConversationState();
+        const conversationId = state?.conversationId;
+        const contactId = state?.remoteParticipantIds?.[0] ?? null;
+        const roomId = state?.roomId ?? null;
+        const contactName =
+          messagingController.getConversationDisplayName(conversationId) ||
+          null;
 
-          const contactId = wasInitiatedByMe
-            ? state.remoteParticipantIds[0]
-            : details.callerId;
-          const contactName = wasInitiatedByMe
-            ? messagingController.getConversationDisplayName(conversationId)
-            : details.callerName;
-          if (contactId && contactName) {
-            await callContact(contactId, contactName);
-          }
-        } catch (e) {
-          console.warn('[MessagesUI] Failed to initiate call back:', e);
-          showInfoToast(t('error.call_failed'));
-        }
+        dispatchUIEvent('call:outgoing:requested', {
+          contactId,
+          contactName,
+          roomId,
+        });
+      } catch (e) {
+        console.warn('[MessagesUI] Failed to initiate call back:', e);
+        showInfoToast(t('error.call_failed'));
       }
     });
 

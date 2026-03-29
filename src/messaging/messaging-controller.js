@@ -12,6 +12,8 @@ import {
   createEventMessage,
 } from './message-factory.js';
 
+import './handle-appbus-event.js'; // Ensure event handlers are registered
+
 // Max file size for file messages (1MB before base64 encoding)
 const MAX_FILE_SIZE = 1 * 1024 * 1024;
 
