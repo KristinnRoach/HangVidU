@@ -177,6 +177,7 @@ import {
 import { addDebugUpdateButton } from './ui/components/notifications/debug-notifications.js';
 import { appBus } from './app/app-bus.js';
 import { setupMessagingContactsIntegration } from './app/messaging-contacts-integration.js';
+import { setupMessagingAppBusHandlers } from './messaging/handle-appbus-events.js';
 import { setupCallControllerEventWiring } from './call/call-event-wiring.js';
 // ____ UI END ____
 
@@ -248,6 +249,9 @@ async function init() {
     // Initialize auth (persistence + redirect + onAuthStateChanged listener)
     await initAuth();
     cleanupFunctions.push(setupMessagingContactsIntegration());
+    cleanupFunctions.push(
+      setupMessagingAppBusHandlers({ messagingController }),
+    );
 
     const authComponent = initializeAuthUI(titleAuthBar);
     if (authComponent) cleanupFunctions.push(authComponent.dispose);
