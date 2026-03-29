@@ -24,7 +24,7 @@ vi.mock('../../src/webrtc/call-flow.js', () => {
   };
 });
 
-vi.mock('../../src/room.js', () => {
+vi.mock('../../src/webrtc/room.js', () => {
   return {
     default: {
       cancelCall: vi.fn(),
@@ -68,7 +68,7 @@ import {
   createCall as createCallFlow,
   answerCall as answerCallFlow,
 } from '../../src/webrtc/call-flow.js';
-import RoomService from '../../src/room.js';
+import RoomService from '../../src/webrtc/room.js';
 
 describe('CallController Smoke Tests', () => {
   beforeEach(() => {

@@ -234,7 +234,7 @@ vi.mock('../../src/utils/dev/dev-utils.js', async () => {
   };
 });
 
-vi.mock('../../src/room.js', () => ({
+vi.mock('../../src/webrtc/room.js', () => ({
   default: {
     checkRoomStatus: vi.fn(),
     getRoomData: vi.fn(),
@@ -420,7 +420,7 @@ vi.mock('../../src/ui/components/notifications/debug-notifications.js', () => ({
   addDebugUpdateButton: vi.fn(),
 }));
 
-import RoomService from '../../src/room.js';
+import RoomService from '../../src/webrtc/room.js';
 import { showIncomingCallUI } from '../../src/ui/components/calling/incoming-call.js';
 import { ringtoneManager } from '../../src/media/audio/ringtone-manager.js';
 import { callIndicators } from '../../src/ui/utils/call-indicators.js';

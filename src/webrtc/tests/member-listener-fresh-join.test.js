@@ -20,10 +20,10 @@ vi.mock('firebase/database', () => {
   }
 
   const onChildAdded = vi.fn((fbRef, cb) =>
-    addListener(childAddedListeners, fbRef.path, cb)
+    addListener(childAddedListeners, fbRef.path, cb),
   );
   const onChildRemoved = vi.fn((fbRef, cb) =>
-    addListener(childRemovedListeners, fbRef.path, cb)
+    addListener(childRemovedListeners, fbRef.path, cb),
   );
 
   const off = vi.fn((fbRef, type, cb) => {
@@ -86,7 +86,7 @@ vi.mock('../../utils/dev/diagnostic-logger.js', () => ({
 }));
 
 // Import the RoomService singleton under test
-import RoomService from '../../room.js';
+import RoomService from '../../webrtc/room.js';
 import {
   removeRTDBListenersForRoom,
   removeAllRTDBListeners,
@@ -111,7 +111,7 @@ describe('Incoming-call member listener fires once with fresh joinedAt', () => {
     const unsubscribeOld = RoomService.onIncomingCall(
       roomId,
       localUserId,
-      oldCb
+      oldCb,
     );
 
     // Simulate disposed PC by unsubscribing old listener
@@ -121,7 +121,7 @@ describe('Incoming-call member listener fires once with fresh joinedAt', () => {
     const unsubscribeNew = RoomService.onIncomingCall(
       roomId,
       localUserId,
-      newCb
+      newCb,
     );
 
     const t0 = Date.now();

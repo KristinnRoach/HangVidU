@@ -9,8 +9,8 @@ import {
   getRoomAnswerRef,
   removeRTDBListenersForRoom,
   removeRTDBListenersForUser,
-} from './storage/fb-rtdb/rtdb';
-import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
+} from '../storage/fb-rtdb/rtdb.js';
+import { getDiagnosticLogger } from '../utils/dev/diagnostic-logger.js';
 
 class RoomService {
   constructor() {
@@ -125,7 +125,7 @@ class RoomService {
     getDiagnosticLogger().logFirebaseOperation(
       'set',
       'joinRoom',
-      `rooms/${roomId}/members/${userId}`
+      `rooms/${roomId}/members/${userId}`,
     );
   }
 
@@ -149,7 +149,7 @@ class RoomService {
         'leave_room_remove_member',
         false,
         e,
-        { roomId: targetRoomId, userId }
+        { roomId: targetRoomId, userId },
       );
     }
 
@@ -166,7 +166,7 @@ class RoomService {
               'delete_empty_room',
               false,
               err,
-              { roomId: targetRoomId }
+              { roomId: targetRoomId },
             );
           });
         }
@@ -175,7 +175,7 @@ class RoomService {
           'check_members_after_leave',
           false,
           e,
-          { roomId: targetRoomId }
+          { roomId: targetRoomId },
         );
       }
     }
@@ -272,7 +272,7 @@ class RoomService {
       'on',
       'onCallCancelled',
       `rooms/${roomId}/cancellation`,
-      { event: 'value' }
+      { event: 'value' },
     );
   }
 
@@ -289,13 +289,13 @@ class RoomService {
           callback(snapshot);
         }
       },
-      roomId
+      roomId,
     );
     getDiagnosticLogger().logFirebaseOperation(
       'on',
       'onAnswerAdded',
       `rooms/${roomId}/answer`,
-      { event: 'value' }
+      { event: 'value' },
     );
   }
 
@@ -309,7 +309,7 @@ class RoomService {
       'on',
       'onMemberJoined',
       `rooms/${roomId}/members`,
-      { event: 'child_added' }
+      { event: 'child_added' },
     );
   }
 
@@ -323,7 +323,7 @@ class RoomService {
       'on',
       'onMemberLeft',
       `rooms/${roomId}/members`,
-      { event: 'child_removed' }
+      { event: 'child_removed' },
     );
   }
 

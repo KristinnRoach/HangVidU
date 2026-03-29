@@ -25,7 +25,7 @@ import {
   generateRoomId,
 } from '../webrtc/webrtc-utils.js';
 
-import RoomService from '../room.js';
+import RoomService from './room.js';
 
 // ============================================================================
 // INITIATOR FLOW: Create a new call and wait for partner to join

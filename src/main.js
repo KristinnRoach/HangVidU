@@ -86,7 +86,7 @@ import {
   tempWarn,
 } from './utils/dev/dev-utils.js';
 
-import RoomService from './room.js';
+import RoomService from './webrtc/room.js';
 import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
 
 import {
