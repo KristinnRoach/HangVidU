@@ -1,5 +1,4 @@
 import { appBus } from '../app/app-bus';
-import { getUserId } from '../auth';
 import { tempWarn } from '../utils/dev/dev-utils';
 import { messagingController } from './messaging-controller';
 

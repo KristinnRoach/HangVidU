@@ -70,7 +70,7 @@ Deferred issues identified during implementation. Mapped to phases for resolutio
 | Issue                   | Description                                                                             | Phase     | Notes                                                                        |
 | ----------------------- | --------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------- |
 | Reaction deletion guard | Last reaction removal not detected; RTDB deletes `reactions` key, stale chips rendered  | Phase 3.3 | Fix: track previous reaction state in `onReactionUpdate()` callback          |
-| Event ownership         | `rejected_call` `from` is callerId, not writer. Semantically odd but logically correct. | Phase 3   | Revisit if adding more event types                                           |
+| ~~Event ownership~~     | ~~`rejected_call` `from` is callerId, not writer.~~ Resolved: single `call:unanswered` event, `from` is always the writer (caller). | ✅ Done   |                                                                              |
 | History event path      | Cached history not yet routed through `message:received` events                         | Phase 2.3 | Phase 2.3 will emit cached messages through same event path as live messages |
 
 **Resolved**:
