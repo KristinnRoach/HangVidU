@@ -12,7 +12,6 @@ import { contactsService } from '../contacts/contacts-service.js';
 import { getDeterministicRoomId } from '../utils/room-id.js';
 import RoomService from './room.js';
 import CallController from './call-controller.js';
-import { joinOrCreateRoomWithId } from './WIP-start-call-refactor.js';
 import { getPushNotifications } from '../push-notifications/index.js';
 import { ringtoneManager } from '../media/audio/ringtone-manager.js';
 import { callIndicators } from '../ui/utils/call-indicators.js';
@@ -23,7 +22,8 @@ import {
 } from '../ui/components/calling/incoming-call.js';
 import { isRoomCallFresh } from './WIP-isRoomCallFresh.js';
 
-// STARTUP_ORDER_DEPENDANCY ?: main.js via setupWIPStartCallRefactor() before any incoming-room listener can use it.
+// STARTUP_ORDER_DEPENDANCY ? - main.js via setupWIPStartCallRefactor() before any incoming-room listener can use it.
+import { joinOrCreateRoomWithId } from './WIP-start-call-refactor.js';
 
 // TODO: WIP decoupling considerations:
 /*
