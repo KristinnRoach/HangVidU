@@ -38,6 +38,10 @@ function computeFitStyle({ visualViewport, margin }) {
  * @returns {{ refit: () => void, clear: () => void }}
  */
 export function createVisualViewportFit({ targetEl, margin = 16 }) {
+  const originalStyle = Object.fromEntries(
+    FIT_STYLE_KEYS.map((key) => [key, targetEl.style[key]]),
+  );
+
   const refit = () => {
     const visualViewport = window.visualViewport;
     if (!visualViewport) return;
@@ -50,7 +54,7 @@ export function createVisualViewportFit({ targetEl, margin = 16 }) {
 
   const clear = () => {
     for (const key of FIT_STYLE_KEYS) {
-      targetEl.style[key] = '';
+      targetEl.style[key] = originalStyle[key];
     }
   };
 

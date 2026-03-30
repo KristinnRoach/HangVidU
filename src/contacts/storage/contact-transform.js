@@ -14,10 +14,12 @@ export function assertContactId(contactId) {
 }
 
 function normalizeContactName(contactName) {
-  if (typeof contactName !== 'string') {
+  if (contactName == null) {
     return '';
   }
-
+  if (typeof contactName !== 'string') {
+    throw new TypeError('contactName must be a string');
+  }
   return contactName.trim();
 }
 

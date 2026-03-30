@@ -1,6 +1,6 @@
 import CallController from './call-controller.js';
 import { contactsService } from '../contacts/contacts-service.js';
-import { getUserId } from '../auth/auth-state.js';
+import { getUserId, getUser } from '../auth/auth-state.js';
 import { getPushNotifications } from '../push-notifications/index.js';
 import { cleanupRemoteStream } from '../media/state.js';
 import { clearUrlParam } from '../utils/url.js';
@@ -87,7 +87,6 @@ export function setupCallControllerEventWiring(options = {}) {
         try {
           const contact = await contactsService.getContactByRoomId(roomId);
           if (contact && contact.contactId) {
-            const { getUser } = await import('../auth/auth-state.js');
             const me = getUser();
             const callerName = me?.displayName || 'Friend';
 

@@ -280,7 +280,12 @@ export class ContactsService {
         lastInteractionAt: existing?.lastInteractionAt ?? now,
       });
 
-      await emitContactSaved(contact);
+      if (existing) {
+        await emitContactUpdated(contact, existing.roomId ?? null);
+      } else {
+        await emitContactSaved(contact);
+      }
+
       return contact;
     } catch (error) {
       logServiceFailure('saveContact', error, {
