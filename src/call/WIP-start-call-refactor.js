@@ -56,7 +56,7 @@ export function applyCallResult(result, showLinkModal = false) {
 
 export async function joinOrCreateRoomWithId(
   customRoomId,
-  { forceInitiator = false } = {},
+  { forceInitiator = false, allowCreate = forceInitiator } = {},
 ) {
   try {
     await initLocalStreamAndMedia();
@@ -103,6 +103,16 @@ export async function joinOrCreateRoomWithId(
   }
 
   if (!status.exists || !status.hasMembers) {
+    if (!allowCreate) {
+      devDebug('Target room is no longer active; aborting join flow.');
+      getDiagnosticLogger().log('ROOM', 'JOIN_ABORTED', {
+        roomId: customRoomId,
+        roomExists: status.exists,
+        memberCount: status.memberCount || 0,
+      });
+      return false;
+    }
+
     getDiagnosticLogger().logRoomCreation(
       customRoomId,
       true,
@@ -163,6 +173,11 @@ export async function callContact(contactId, contactName, roomId = null) {
     return false;
   }
 
+  const callingUiModulesPromise = Promise.all([
+    import('../ui/components/calling/calling-ui.js'),
+    import('../ui/core/call-lifecycle-ui.js'),
+  ]);
+
   listenForIncomingOnRoom(roomId);
 
   const success = await joinOrCreateRoomWithId(roomId, {
@@ -175,28 +190,22 @@ export async function callContact(contactId, contactName, roomId = null) {
   if (success) {
     contactsService.updateLastInteraction(contactId).catch(() => {});
 
+    let showCallingUI;
+    let onCallingStarted;
+    let onCallingEnded;
+
     try {
-      const me = getUser();
-      const callerName = me?.displayName || me?.email || myUserId;
-      const pushResult = await getPushNotifications().sendIncomingCall({
-        targetUserId: contactId,
-        roomId,
-        callerId: myUserId,
-        callerName,
-      });
-      if (!pushResult?.ok) {
-        console.warn('[CALL] Call-start push notification did not succeed');
-      }
+      [{ showCallingUI }, { onCallingStarted, onCallingEnded }] =
+        await callingUiModulesPromise;
     } catch (error) {
-      console.warn('[CALL] Failed to send push notification:', error);
+      console.warn('[CALL] Failed to load calling UI:', error);
+      await CallController.hangUp({ reason: 'calling_ui_load_failed' }).catch(
+        () => {},
+      );
+      return false;
     }
 
     try {
-      const [{ showCallingUI }, { onCallingStarted, onCallingEnded }] =
-        await Promise.all([
-          import('../ui/components/calling/calling-ui.js'),
-          import('../ui/core/call-lifecycle-ui.js'),
-        ]);
       onCallingStarted();
       await showCallingUI(roomId, contactName, {
         onCancel: (reason) => {
@@ -206,8 +215,31 @@ export async function callContact(contactId, contactName, roomId = null) {
         },
         onHide: onCallingEnded,
       });
-    } catch (e) {
-      console.warn('[CALL] Failed to load calling UI:', e);
+    } catch (error) {
+      console.warn('[CALL] Failed to show calling UI:', error);
+      await CallController.hangUp({ reason: 'calling_ui_show_failed' }).catch(
+        () => {},
+      );
+      return false;
+    }
+
+    const me = getUser();
+    const callerName = me?.displayName || me?.email || myUserId;
+    const pushCall = getPushNotifications()?.sendIncomingCall({
+      targetUserId: contactId,
+      roomId,
+      callerId: myUserId,
+      callerName,
+    });
+
+    if (pushCall) {
+      pushCall.then((pushResult) => {
+        if (!pushResult?.ok) {
+          console.warn('[CALL] Call-start push notification did not succeed');
+        }
+      }).catch((error) => {
+        console.warn('[CALL] Failed to send push notification:', error);
+      });
     }
   }
 

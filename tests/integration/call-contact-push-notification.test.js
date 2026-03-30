@@ -436,6 +436,7 @@ describe('callContact push notification flow', () => {
     vi.clearAllMocks();
     mocks.callSequence.length = 0;
     mocks.memberJoinedHandler = null;
+    mocks.pushController.dismissCallNotifications.mockResolvedValue(undefined);
     mocks.pushController.shouldSendNotification.mockReturnValue(false);
     mocks.pushController.isNotificationEnabled.mockReturnValue(true);
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -445,7 +446,7 @@ describe('callContact push notification flow', () => {
     consoleWarnSpy.mockRestore();
   });
 
-  it('attempts the push immediately after successful call start', async () => {
+  it('renders the calling UI before attempting the push notification', async () => {
     await import('../../src/main.js');
     const { callContact } =
       await import('../../src/call/WIP-start-call-refactor.js');
@@ -470,12 +471,29 @@ describe('callContact push notification flow', () => {
     });
     expect(mocks.callSequence.indexOf('sendIncomingCall')).toBeGreaterThan(-1);
     expect(mocks.callSequence.indexOf('showCallingUI')).toBeGreaterThan(-1);
-    expect(mocks.callSequence.indexOf('sendIncomingCall')).toBeLessThan(
-      mocks.callSequence.indexOf('showCallingUI'),
+    expect(mocks.callSequence.indexOf('showCallingUI')).toBeLessThan(
+      mocks.callSequence.indexOf('sendIncomingCall'),
     );
     expect(consoleWarnSpy).not.toHaveBeenCalledWith(
       '[CALL] Call-start push notification did not succeed',
     );
+  });
+
+  it('does not create a new outbound call when the incoming answer target room is gone', async () => {
+    const { joinOrCreateRoomWithId } =
+      await import('../../src/call/WIP-start-call-refactor.js');
+
+    RoomService.checkRoomStatus.mockResolvedValue({
+      exists: false,
+      hasMembers: false,
+      memberCount: 0,
+    });
+
+    const result = await joinOrCreateRoomWithId('stale-incoming-room');
+
+    expect(result).toBe(false);
+    expect(mocks.callController.createCall).not.toHaveBeenCalled();
+    expect(mocks.callController.answerCall).not.toHaveBeenCalled();
   });
 
   it('skips RTDB incoming-call UI when push notifications should handle a background call', async () => {
@@ -511,5 +529,39 @@ describe('callContact push notification flow', () => {
         pushNotificationsEnabled: true,
       }),
     );
+  });
+
+  it('settles a pending incoming-call wait when listeners are removed', async () => {
+    mocks.contactsService.getContactByRoomId.mockResolvedValue({
+      contactId: 'caller-999',
+      contactName: 'Resolved Caller',
+    });
+    RoomService.getRoomData.mockResolvedValue({
+      offer: { type: 'offer' },
+      answer: null,
+      createdBy: 'caller-999',
+    });
+
+    const { listenForIncomingOnRoom, removeIncomingListenersForRoom } =
+      await import('../../src/call/room-listeners.js');
+
+    listenForIncomingOnRoom('room-pending');
+
+    const pendingIncomingCall = mocks.memberJoinedHandler({
+      key: 'caller-999',
+      val: () => ({
+        joinedAt: Date.now(),
+      }),
+    });
+
+    await vi.waitFor(() => {
+      expect(showIncomingCallUI).toHaveBeenCalled();
+    });
+
+    removeIncomingListenersForRoom('room-pending');
+    await pendingIncomingCall;
+
+    expect(ringtoneManager.stop).toHaveBeenCalled();
+    expect(callIndicators.stopCallIndicators).toHaveBeenCalled();
   });
 });

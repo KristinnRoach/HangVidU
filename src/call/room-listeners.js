@@ -73,8 +73,19 @@ const listeningRoomIds = new Set();
 const incomingListenerCleanups = new Map();
 
 // Track RTDB listener cleanups for incoming call UI promise coordination
-// Map<roomId, { cancel: () => void, answer: () => void }>
+// Map<roomId, { cancel: () => void, answer: () => void, resolve: (result: boolean|string) => void }>
 const incomingCallPromiseCleanups = new Map();
+
+function settleIncomingCallWait(roomId, result = 'listener_removed') {
+  const pending = incomingCallPromiseCleanups.get(roomId);
+  if (!pending) return;
+
+  pending.cancel?.();
+  pending.answer?.();
+  resolveIncomingCallUI(roomId, result);
+  pending.resolve?.(result);
+  incomingCallPromiseCleanups.delete(roomId);
+}
 
 /**
  * Remove incoming call listeners for a specific room
@@ -84,6 +95,7 @@ export function removeIncomingListenersForRoom(roomId) {
   if (!roomId) return;
 
   devDebug(`[LISTENER] Removing incoming listeners for room: ${roomId}`);
+  settleIncomingCallWait(roomId);
 
   // Remove from RTDB listener tracking
   removeRTDBListenersForRoom(roomId);
@@ -105,6 +117,10 @@ export function removeAllIncomingListeners() {
   devDebug(
     `[LISTENER] Removing all incoming listeners (${listeningRoomIds.size} rooms)`,
   );
+
+  Array.from(incomingCallPromiseCleanups.keys()).forEach((roomId) => {
+    settleIncomingCallWait(roomId);
+  });
 
   // Get all room IDs before clearing
   const roomIds = Array.from(listeningRoomIds);
@@ -138,6 +154,7 @@ export function listenForIncomingOnRoom(roomId) {
   // Check if already listening, but allow re-attachment
   // Firebase RTDB handles duplicate listeners internally, so this is safe
   if (listeningRoomIds.has(roomId)) {
+    settleIncomingCallWait(roomId);
     devDebug(
       `[LISTENER] Listener already tracked for room: ${roomId}, re-attaching to ensure it's active`,
     );
@@ -369,6 +386,7 @@ export function listenForIncomingOnRoom(roomId) {
           incomingCallPromiseCleanups.set(roomId, {
             cancel: cancelCleanup,
             answer: answerCleanup,
+            resolve,
           });
         });
       } finally {
