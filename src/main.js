@@ -24,12 +24,6 @@ import {
   sharedVideoEl,
   callBtn,
   hangUpBtn,
-  mutePartnerBtn,
-  fullscreenPartnerBtn,
-  remotePipBtn,
-  micBtn,
-  cameraBtn,
-  switchCameraBtn,
   exitWatchModeBtn,
   chatControls,
   localBoxEl,
@@ -47,26 +41,16 @@ import {
 } from './elements.js';
 
 import {
-  setupWatchSync,
   isWatchModeActive,
   getLastWatched,
   setLastWatched,
 } from './firebase/watch-sync.js';
 
-import { setUpLocalStream, setupRemoteStream } from './media/stream.js';
-
 import {
   hasLocalStream,
-  getLocalStream,
-  setLocalStream,
   cleanupLocalStream,
   cleanupLocalVideoOnlyStream,
 } from './media/state.js';
-import {
-  hasInitializedLocalStreamAndMedia,
-  markLocalStreamAndMediaInitialized,
-  resetLocalStreamInitFlag,
-} from './media/local-stream-init-state.js';
 
 import { devDebug, isDev, setDevDebugEnabled } from './utils/dev/dev-utils.js';
 
@@ -108,10 +92,7 @@ import {
   setYouTubeReady,
 } from './media/youtube/youtube-player.js';
 
-import {
-  initializeMediaControls,
-  cleanupMediaControls,
-} from './media/media-controls.js';
+import { cleanupMediaControls } from './media/media-controls.js';
 import {
   cleanupSearchUI,
   initializeSearchUI,
@@ -123,12 +104,8 @@ import { showElement, hideElement, exitPiP } from './ui/utils/ui-utils.js';
 import { initializeAuthUI } from './ui/components/auth/AuthComponent.js';
 import { messagesUI } from './ui/components/messages/messages-ui.js';
 import { showAddContactModal } from './ui/components/contacts/add-contact-modal.js';
-import {
-  copyToClipboard,
-  showCopyLinkModal,
-} from './ui/components/modal/copyLinkModal.js';
+import { copyToClipboard } from './ui/components/modal/copyLinkModal.js';
 
-import { isRemoteVideoVideoActive } from './ui/core/legacy/watch-mode.js';
 // ____ UI END ____
 
 import {
@@ -148,13 +125,15 @@ import { setupMessagingAppBusHandlers } from './messaging/handle-appbus-events.j
 import { setupCallControllerEventWiring } from './call/call-event-wiring.js';
 import { setupMainAppBusListeners } from './app/setupMainAppBusListeners.js';
 import {
-  setupWIPStartCallRefactor,
   getCallOptions,
   applyCallResult,
   joinOrCreateRoomWithId,
 } from './call/WIP-start-call-refactor.js';
 import {
-  listenForIncomingOnRoom,
+  initLocalStreamAndMedia,
+  handleMediaPermissionError,
+} from './media/init-local-media.js';
+import {
   removeAllIncomingListeners,
   startListeningForSavedRooms,
 } from './call/room-listeners.js';
@@ -313,73 +292,6 @@ async function init() {
   }
 }
 
-// Reset flag to allow stream re-initialization after cleanup
-export { resetLocalStreamInitFlag };
-
-async function initLocalStreamAndMedia() {
-  if (hasInitializedLocalStreamAndMedia()) return;
-  markLocalStreamAndMediaInitialized();
-
-  await setUpLocalStream(localVideoEl);
-
-  initializeMediaControls({
-    getLocalStream,
-    getLocalVideo: () => localVideoEl,
-    getRemoteVideo: () => remoteVideoEl,
-    getPeerConnection: () => CallController.getPeerConnection(),
-    setLocalStream,
-
-    micBtn,
-    cameraBtn,
-    switchCameraBtn,
-    mutePartnerBtn,
-    fullscreenPartnerBtn,
-    remotePipBtn,
-  });
-
-  if (localVideoEl) {
-    localVideoEl.addEventListener(
-      'enterpictureinpicture',
-      () => localBoxEl && hideElement(localBoxEl),
-    );
-
-    localVideoEl.addEventListener('leavepictureinpicture', () => {
-      if (localBoxEl && !(isWatchModeActive() && isRemoteVideoVideoActive())) {
-        showElement(localBoxEl);
-      }
-    });
-  }
-}
-
-// ============================================================================
-// CALL SETUP HELPERS
-// ============================================================================
-
-function handleMediaPermissionError(error) {
-  if (
-    error?.name === 'NotAllowedError' ||
-    error?.name === 'PermissionDeniedError'
-  ) {
-    alert(t('error.media.permission'));
-  }
-  resetLocalStreamInitFlag();
-}
-
-// STARTUP_ORDER_DEPENDANCY: configure the WIP call module before any appBus
-// listeners or room listeners can call into its exported wrappers.
-setupWIPStartCallRefactor({
-  initLocalStreamAndMedia,
-  handleMediaPermissionError,
-  getLocalStream,
-  localVideoEl,
-  remoteVideoEl,
-  mutePartnerBtn,
-  setupRemoteStream,
-  setupWatchSync,
-  showCopyLinkModal,
-  devDebug,
-  listenForIncomingOnRoom,
-});
 
 // ============================================================================
 // YOUTUBE PLAYER INTEGRATION
@@ -810,7 +722,7 @@ window.onload = async () => {
   // UI handlers (business logic handlers registered separately below)
   bindCallUI(CallController);
 
-  setupMainAppBusListeners({ listenForIncomingOnRoom });
+  setupMainAppBusListeners();
 
   // const onJoinRoomSubmit = async (roomInputString) => {
   //   const inputRoomId = normalizeRoomInput(roomInputString || '');
@@ -1001,10 +913,7 @@ window.addEventListener('pagehide', async () => {
 });
 
 // CallController business-logic handlers (memberJoined, memberLeft, cleanup)
-setupCallControllerEventWiring({
-  lobbyElement: lobbyDiv,
-  listenForIncomingOnRoom,
-});
+setupCallControllerEventWiring({ lobbyElement: lobbyDiv });
 
 // ============================================================================
 // CLEANUP

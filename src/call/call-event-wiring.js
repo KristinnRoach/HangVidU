@@ -9,6 +9,7 @@ import { renderContactsList } from '../ui/components/contacts/contacts.js';
 import { promptAndRefreshContactSave } from '../app/contact-save-flow.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { appBus } from '../app/app-bus.js';
+import { listenForIncomingOnRoom } from './room-listeners.js';
 
 // TODO: WIP decoupling considerations:
 /*
@@ -41,13 +42,10 @@ import { appBus } from '../app/app-bus.js';
  * cross-domain side effects (messaging, contacts, push, media cleanup).
  */
 /**
- * @param {{
- *   lobbyElement: HTMLElement,
- *   listenForIncomingOnRoom: (roomId: string) => void,
- * }} options
+ * @param {{ lobbyElement: HTMLElement }} options
  */
 export function setupCallControllerEventWiring(options = {}) {
-  const { lobbyElement, listenForIncomingOnRoom } = options;
+  const { lobbyElement } = options;
 
   // Business logic for memberJoined (UI handled in bind-call-ui.js)
   CallController.on('memberJoined', ({ memberId, roomId }) => {

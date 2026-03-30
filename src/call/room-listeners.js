@@ -22,7 +22,6 @@ import {
 } from '../ui/components/calling/incoming-call.js';
 import { isRoomCallFresh } from './WIP-isRoomCallFresh.js';
 
-// STARTUP_ORDER_DEPENDANCY ? - main.js via setupWIPStartCallRefactor() before any incoming-room listener can use it.
 import { joinOrCreateRoomWithId } from './WIP-start-call-refactor.js';
 
 // TODO: WIP decoupling considerations:
@@ -55,10 +54,8 @@ import { joinOrCreateRoomWithId } from './WIP-start-call-refactor.js';
   Domain: messaging
   Issue: Cross-domain. Used to write missed/rejected call messages to chat.         
   ────────────────────────────────────────                       
-  Import: joinOrCreateRoomWithId                                                    
-  Domain: WIP call orchestration
-  Issue: Already flagged with a STARTUP_ORDER_DEPENDANCY comment — fragile import   
-    ordering.                                                    
+  Import: joinOrCreateRoomWithId
+  Domain: WIP call orchestration (now uses direct imports, no startup order issue)
 
   This file is really doing three things: (1) RTDB listener management, (2) incoming
    call UI orchestration, (3) cross-domain side effects (contacts lookup, messaging
