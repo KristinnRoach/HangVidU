@@ -1,9 +1,15 @@
+import { get, remove } from 'firebase/database';
 import { appBus } from '../app/app-bus.js';
-import { removeRTDBListenersForRoom } from '../storage/fb-rtdb/rtdb.js';
-import { getUserId } from '../auth/auth-state.js';
+import {
+  removeRTDBListenersForRoom,
+  getUserRecentCallsRef,
+  getUserRecentCallRef,
+} from '../storage/fb-rtdb/rtdb.js';
+import { getLoggedInUserId, getUserId } from '../auth/auth-state.js';
 import { getDiagnosticLogger } from '../utils/dev/diagnostic-logger.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { contactsService } from '../contacts/contacts-service.js';
+import { getDeterministicRoomId } from '../utils/room-id.js';
 import RoomService from './room.js';
 import CallController from './call-controller.js';
 // STARTUP_ORDER_DEPENDANCY: this import is configured by main.js via
@@ -549,4 +555,156 @@ export function listenForIncomingOnRoom(roomId) {
 
   cleanups.push(memberLeftCleanup);
   incomingListenerCleanups.set(roomId, cleanups);
+}
+
+/**
+ * Read saved recent calls (RTDB or localStorage), remove expired entries,
+ * and attach incoming listeners for each valid room id.
+ */
+export async function startListeningForSavedRooms() {
+  const startTime = Date.now();
+  getDiagnosticLogger().log('LISTENER', 'STARTUP_BEGIN', {
+    timestamp: startTime,
+    currentListenerCount: getIncomingListenerCount(),
+  });
+
+  // Ensure auth state is initialized before deciding storage location
+  // This prevents a race where we read localStorage as a guest before auth is ready
+  try {
+    if (typeof window !== 'undefined') {
+      const { getCurrentUserAsync } = await import('../auth/index.js');
+      await getCurrentUserAsync();
+    }
+  } catch (e) {
+    // non-fatal
+  }
+
+  const loggedInUid = getLoggedInUserId();
+  getDiagnosticLogger().log('LISTENER', 'AUTH_STATE_DETERMINED', {
+    isLoggedIn: !!loggedInUid,
+    userId: loggedInUid || 'guest',
+  });
+
+  if (loggedInUid) {
+    const userRecentRef = getUserRecentCallsRef(loggedInUid);
+    try {
+      const snap = await get(userRecentRef);
+      const val = snap.exists() ? snap.val() : null;
+      const toListen = new Set();
+
+      if (val) {
+        for (const [roomId, meta] of Object.entries(val)) {
+          if (!meta || (meta.expiresAt && meta.expiresAt < Date.now())) {
+            // remove expired
+            await remove(getUserRecentCallRef(loggedInUid, roomId)).catch(
+              () => {},
+            );
+            continue;
+          }
+          toListen.add(roomId);
+        }
+      }
+
+      // Also include saved contacts' roomIds (or deterministic room IDs)
+      try {
+        const contacts = await contactsService.getAllContacts();
+        Object.entries(contacts || {}).forEach(([contactId, c]) => {
+          if (c?.roomId) {
+            toListen.add(c.roomId);
+          } else if (contactId && loggedInUid) {
+            // Generate deterministic room ID for contacts without explicit roomId
+            try {
+              const deterministicRoomId = getDeterministicRoomId(
+                loggedInUid,
+                contactId,
+              );
+              toListen.add(deterministicRoomId);
+            } catch (e) {
+              // Skip if unable to generate
+            }
+          }
+        });
+      } catch (e) {
+        // ignore
+      }
+
+      toListen.forEach((roomId) => listenForIncomingOnRoom(roomId));
+
+      getDiagnosticLogger().log('LISTENER', 'STARTUP_COMPLETE', {
+        storage: 'rtdb',
+        roomsToListen: Array.from(toListen),
+        totalListeners: getIncomingListenerCount(),
+        duration: Date.now() - startTime,
+      });
+    } catch (e) {
+      console.warn('Failed to read recent calls from RTDB', e);
+      getDiagnosticLogger().logFirebaseOperation(
+        'read_recent_calls',
+        false,
+        e,
+        {
+          storage: 'rtdb',
+          userId: loggedInUid,
+        },
+      );
+    }
+    return;
+  }
+
+  // Guest: localStorage
+  try {
+    const raw = localStorage.getItem('recentCalls') || '{}';
+    const obj = JSON.parse(raw);
+    const cleaned = {};
+    const toListen = new Set();
+    for (const [roomId, meta] of Object.entries(obj || {})) {
+      if (!meta || (meta.expiresAt && meta.expiresAt < Date.now())) {
+        // skip expired
+        continue;
+      }
+      cleaned[roomId] = meta;
+      toListen.add(roomId);
+    }
+    // Also include saved contacts' roomIds (or deterministic room IDs)
+    try {
+      const contacts = await contactsService.getAllContacts();
+      const guestUserId = getUserId(); // Get guest user ID
+      Object.entries(contacts || {}).forEach(([contactId, c]) => {
+        if (c?.roomId) {
+          toListen.add(c.roomId);
+        } else if (contactId && guestUserId) {
+          // Generate deterministic room ID for contacts without explicit roomId
+          try {
+            const deterministicRoomId = getDeterministicRoomId(
+              guestUserId,
+              contactId,
+            );
+            toListen.add(deterministicRoomId);
+          } catch (e) {
+            // Skip if unable to generate
+          }
+        }
+      });
+    } catch (e) {
+      // ignore
+    }
+
+    toListen.forEach((roomId) => listenForIncomingOnRoom(roomId));
+
+    // overwrite with cleaned set (remove expired)
+    localStorage.setItem('recentCalls', JSON.stringify(cleaned));
+
+    getDiagnosticLogger().log('LISTENER', 'STARTUP_COMPLETE', {
+      storage: 'localStorage',
+      roomsToListen: Array.from(toListen),
+      totalListeners: getIncomingListenerCount(),
+      duration: Date.now() - startTime,
+      expiredRoomsRemoved: Object.keys(obj || {}).length - toListen.size,
+    });
+  } catch (e) {
+    console.warn('Failed to read recent calls from localStorage', e);
+    getDiagnosticLogger().logFirebaseOperation('read_recent_calls', false, e, {
+      storage: 'localStorage',
+    });
+  }
 }
