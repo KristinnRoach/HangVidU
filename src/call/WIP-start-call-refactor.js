@@ -15,7 +15,7 @@ import { listenForIncomingOnRoom } from './room-listeners.js';
 import {
   initLocalStreamAndMedia,
   handleMediaPermissionError,
-} from '../media/init-local-media.js';
+} from '../media/WIP-init-local-media.js';
 
 // TODO: WIP decoupling considerations:
 // - Circular import: this file imports listenForIncomingOnRoom from room-listeners.js,
@@ -96,9 +96,7 @@ export async function joinOrCreateRoomWithId(
     const maxRetries = 3;
     let attempt = 0;
     while (attempt < maxRetries && !status.hasMembers) {
-      await new Promise((resolve) =>
-        setTimeout(resolve, 250 * (attempt + 1)),
-      );
+      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
       status = await RoomService.checkRoomStatus(customRoomId);
       attempt++;
     }

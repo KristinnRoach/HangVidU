@@ -132,7 +132,7 @@ import {
 import {
   initLocalStreamAndMedia,
   handleMediaPermissionError,
-} from './media/init-local-media.js';
+} from './media/WIP-init-local-media.js';
 import {
   removeAllIncomingListeners,
   startListeningForSavedRooms,
@@ -263,9 +263,8 @@ async function init() {
       const pushController = getPushNotifications();
       const pushInitialized = await pushController.initialize();
       if (!pushInitialized && !pushController.isNotificationSupported()) {
-        const { showPushUnsupportedNotification } = await import(
-          './ui/components/notifications/push-unsupported-notification.js'
-        );
+        const { showPushUnsupportedNotification } =
+          await import('./ui/components/notifications/push-unsupported-notification.js');
         showPushUnsupportedNotification();
       }
     } catch (error) {
@@ -279,7 +278,6 @@ async function init() {
     return false;
   }
 }
-
 
 // ============================================================================
 // YOUTUBE PLAYER INTEGRATION

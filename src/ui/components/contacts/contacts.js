@@ -19,6 +19,8 @@ const unreadListeners = new Map();
 
 // Track locale change listener for cleanup
 let localeUnsubscribe = null;
+
+// Track last rendered lobby element for re-rendering on locale change
 let lastRenderedLobby = null;
 
 // Limit displayed contact name length in the UI  (keep full name in title)
@@ -133,7 +135,7 @@ export async function renderContactsList(lobbyElement) {
   attachContactListeners(contactsContainer, lobbyElement);
 
   // Setup presence indicators for each contact
-  setupPresenceIndicators(contactIds);
+  setupPresenceIndicators(contactIds, contactsContainer);
 
   // Setup unread message badges
   setupUnreadBadges(contactIds);
@@ -143,6 +145,12 @@ export async function renderContactsList(lobbyElement) {
  * Attach event listeners to contact list elements.
  */
 function attachContactListeners(container, lobbyElement) {
+  if (!container || !lobbyElement) {
+    console.error(
+      'attachContactListeners(): Container or lobbyElement missing!',
+    );
+    return;
+  }
   // Call buttons - click to call
   container.querySelectorAll('.contact-call-btn').forEach((nameEl) => {
     nameEl.onclick = async () => {
@@ -211,7 +219,14 @@ function attachContactListeners(container, lobbyElement) {
  * Setup presence indicators for contacts list.
  * Watches each contact's presence and updates indicator color.
  */
-function setupPresenceIndicators(contactIds) {
+function setupPresenceIndicators(contactIds, contactsContainer) {
+  if (!contactIds || !contactsContainer) {
+    console.error(
+      'setupPresenceIndicators(): contactIds or contactsContainer missing!',
+    );
+    return;
+  }
+
   // Clean up old listeners
   presenceListeners.forEach(({ ref: presenceRef, callback }) => {
     off(presenceRef, 'value', callback);
@@ -223,7 +238,7 @@ function setupPresenceIndicators(contactIds) {
 
   contactIds.forEach((contactId) => {
     const presenceRef = ref(rtdb, `users/${contactId}/presence`);
-    const indicatorEl = document.querySelector(
+    const indicatorEl = contactsContainer.querySelector(
       `.presence-indicator[data-contact-id="${contactId}"]`,
     );
 
@@ -293,7 +308,7 @@ function setupUnreadBadges(contactIds) {
 /**
  * Clear the unread badge for a specific contact (e.g. when messages are opened).
  */
-export function clearUnreadBadge(contactId) {
+function clearUnreadBadge(contactId) {
   const badgeEl = document.querySelector(
     `.unread-badge[data-contact-id="${contactId}"]`,
   );
