@@ -9,10 +9,7 @@ import './initSentry.js';
 import { removeAllRTDBListeners } from './storage/fb-rtdb/rtdb.js';
 
 import { initAuth } from './auth/index.js';
-import {
-  getUserId,
-  subscribe as subscribeAuth,
-} from './auth/auth-state.js';
+import { subscribe as subscribeAuth } from './auth/auth-state.js';
 
 import { inAppNotificationManager } from './ui/components/notifications/in-app-notification-manager.js';
 import { getPushNotifications } from './push-notifications/index.js';
@@ -75,13 +72,8 @@ import { devDebug, isDev, setDevDebugEnabled } from './utils/dev/dev-utils.js';
 
 import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
 
-import {
-  listenForInvites,
-  listenForAcceptedInvites,
-  acceptInvite,
-  declineInvite,
-  cleanupInviteListeners,
-} from './contacts/invitations.js';
+import { cleanupInviteListeners } from './contacts/invitations.js';
+import { setupInviteListener } from './contacts/invite-listener.js';
 
 import {
   captureReferral,
@@ -126,8 +118,6 @@ import {
 } from './media/youtube/youtube-search.js';
 
 import { createNotificationsToggle } from './ui/components/notifications/notifications-toggle.js';
-import { showSuccessToast, showErrorToast } from './ui/utils/toast.js';
-import { createInviteNotification } from './ui/components/notifications/invite-notification.js';
 
 import { showElement, hideElement, exitPiP } from './ui/utils/ui-utils.js';
 import { initializeAuthUI } from './ui/components/auth/AuthComponent.js';
@@ -153,7 +143,6 @@ import {
   t,
   onLocaleChange,
 } from './i18n/index.js';
-import { appBus } from './app/app-bus.js';
 import { setupMessagingContactsIntegration } from './app/messaging-contacts-integration.js';
 import { setupMessagingAppBusHandlers } from './messaging/handle-appbus-events.js';
 import { setupCallControllerEventWiring } from './call/call-event-wiring.js';
@@ -391,7 +380,6 @@ setupWIPStartCallRefactor({
   devDebug,
   listenForIncomingOnRoom,
 });
-
 
 // ============================================================================
 // YOUTUBE PLAYER INTEGRATION
@@ -764,104 +752,6 @@ async function handleServiceWorkerNavigation(path) {
 }
 
 // ============================================================================
-// CONTACT INVITATIONS
-// ============================================================================
-
-// Queue for incoming invites (can be used by notification system later)
-const pendingInvites = [];
-let isProcessingInvite = false;
-
-/**
- * Process the next invite in the queue.
- * Shows invite notification in the notification list.
- */
-async function processNextInvite() {
-  if (isProcessingInvite || pendingInvites.length === 0) return;
-
-  isProcessingInvite = true;
-  const { fromUserId, inviteData } = pendingInvites.shift();
-
-  try {
-    // Create invite notification
-    const inviteNotification = createInviteNotification({
-      fromUserId,
-      inviteData,
-      onAccept: async () => {
-        try {
-          await acceptInvite(fromUserId, inviteData);
-          console.log('[INVITATIONS] Contact added:', inviteData.fromName);
-          await renderContactsList(lobbyDiv).catch(() => {});
-          showSuccessToast(`✅ ${inviteData.fromName} added to contacts!`);
-
-          // Remove notification after successful accept
-          inAppNotificationManager.remove(`invite-${fromUserId}`);
-        } catch (e) {
-          console.error('[INVITATIONS] Failed to accept invite:', e);
-          showErrorToast('Failed to add contact. Please try again.');
-          // Keep notification visible on error
-        } finally {
-          isProcessingInvite = false;
-          processNextInvite();
-        }
-      },
-      onDecline: async () => {
-        try {
-          await declineInvite(fromUserId);
-          console.log('[INVITATIONS] Invite declined');
-
-          // Remove notification after decline
-          inAppNotificationManager.remove(`invite-${fromUserId}`);
-        } catch (e) {
-          console.error('[INVITATIONS] Failed to decline invite:', e);
-        } finally {
-          isProcessingInvite = false;
-          processNextInvite();
-        }
-      },
-    });
-
-    // Add to notification manager
-    inAppNotificationManager.add(`invite-${fromUserId}`, inviteNotification);
-
-    // Show the notification list if it's hidden
-    if (!inAppNotificationManager.isListVisible()) {
-      inAppNotificationManager.showList();
-    }
-  } catch (error) {
-    console.error('[INVITATIONS] Failed to process invite:', error);
-    isProcessingInvite = false;
-    processNextInvite();
-  }
-}
-
-/**
- * Set up listener for incoming contact invitations.
- * Queues invites and processes them one at a time.
- */
-function setupInviteListener() {
-  listenForInvites((fromUserId, inviteData) => {
-    pendingInvites.push({ fromUserId, inviteData });
-    processNextInvite();
-  });
-
-  // Listen for accepted invites (when someone accepts your invite)
-  listenForAcceptedInvites(async (acceptedByUserId, acceptData) => {
-    console.log(
-      '[INVITATIONS] Your invite was accepted by:',
-      acceptData.acceptedByName,
-    );
-
-    // Refresh contacts list to show new contact
-    await renderContactsList(lobbyDiv).catch(() => {});
-
-    // Show success toast
-    showSuccessToast(
-      `✅ ${acceptData.acceptedByName} is now in your contacts!`,
-    );
-  });
-}
-
-// ============================================================================
 // INITIALIZE ON PAGE LOAD
 // ============================================================================
 
@@ -922,27 +812,27 @@ window.onload = async () => {
 
   setupMainAppBusListeners({ listenForIncomingOnRoom });
 
-  const onJoinRoomSubmit = async (roomInputString) => {
-    const inputRoomId = normalizeRoomInput(roomInputString || '');
-    if (!inputRoomId) {
-      devDebug('Please enter a valid Room ID');
-      return false;
-    }
+  // const onJoinRoomSubmit = async (roomInputString) => {
+  //   const inputRoomId = normalizeRoomInput(roomInputString || '');
+  //   if (!inputRoomId) {
+  //     devDebug('Please enter a valid Room ID');
+  //     return false;
+  //   }
 
-    const mediaReady = await waitForLocalStream(5000);
-    if (!mediaReady) {
-      devDebug('Waiting for camera/mic to be ready...');
-      return false;
-    }
+  //   const mediaReady = await waitForLocalStream(5000);
+  //   if (!mediaReady) {
+  //     devDebug('Waiting for camera/mic to be ready...');
+  //     return false;
+  //   }
 
-    try {
-      return await joinOrCreateRoomWithId(inputRoomId);
-    } catch (error) {
-      console.error('Failed to join or create room:', error);
-      devDebug('Error joining room. Please try again.');
-      return false;
-    }
-  };
+  //   try {
+  //     return await joinOrCreateRoomWithId(inputRoomId);
+  //   } catch (error) {
+  //     console.error('Failed to join or create room:', error);
+  //     devDebug('Error joining room. Please try again.');
+  //     return false;
+  //   }
+  // };
 
   // Initialize join room form
   // const joinRoomContainer = document.getElementById('join-room-container');
@@ -1001,7 +891,7 @@ window.onload = async () => {
           console.warn('Failed to re-attach saved-room listeners on login', e),
         );
         // Start listening for contact invites
-        setupInviteListener();
+        setupInviteListener(lobbyDiv);
 
         // Enable push notifications if already granted (no prompt without user gesture)
         const pushController = getPushNotifications();
@@ -1032,7 +922,7 @@ window.onload = async () => {
 
         // Listeners already attached by startListeningForSavedRooms, no action needed
         // Start listening for contact invites
-        setupInviteListener();
+        setupInviteListener(lobbyDiv);
 
         // Enable push notifications if already granted (no prompt without user gesture)
         const pushController = getPushNotifications();

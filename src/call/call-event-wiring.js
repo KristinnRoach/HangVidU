@@ -10,6 +10,30 @@ import { promptAndRefreshContactSave } from '../app/contact-save-flow.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { appBus } from '../app/app-bus.js';
 
+// TODO: WIP decoupling considerations:
+/*
+  ┌──────────────────────┬────────────────────┬──────────────────────────────────┐
+  │        Import        │       Domain       │              Issue               │
+  ├──────────────────────┼────────────────────┼──────────────────────────────────┤
+  │                      │                    │ Cross-domain. Handles            │
+  │ contactsService      │ contacts           │ post-hangup contact save flow    │
+  │                      │                    │ and missed call lookup.          │  
+  ├──────────────────────┼────────────────────┼──────────────────────────────────┤
+  │ onCallAnswered       │ UI/calling         │ UI state transition from         │  
+  │                      │                    │ call-domain logic.               │
+  ├──────────────────────┼────────────────────┼──────────────────────────────────┤  
+  │ renderContactsList   │ UI/contacts        │ UI rendering triggered by call   │
+  │                      │                    │ events.                          │  
+  ├──────────────────────┼────────────────────┼──────────────────────────────────┤  
+  │ cleanupRemoteStream  │ media              │ Arguably same domain (call       │
+  │                      │                    │ cleanup)?                        │  
+  ├──────────────────────┼────────────────────┼──────────────────────────────────┤
+  │                      │                    │ Cross-domain, for missed call    │  
+  │ getPushNotifications │ push-notifications │ notifications and notification   │
+  │                      │                    │ dismissal.                       │  
+  └──────────────────────┴────────────────────┴──────────────────────────────────┘
+*/
+
 /**
  * Wire CallController business-logic event handlers.
  *

@@ -12,8 +12,6 @@ import { contactsService } from '../contacts/contacts-service.js';
 import { getDeterministicRoomId } from '../utils/room-id.js';
 import RoomService from './room.js';
 import CallController from './call-controller.js';
-// STARTUP_ORDER_DEPENDANCY: this import is configured by main.js via
-// setupWIPStartCallRefactor() before any incoming-room listener can use it.
 import { joinOrCreateRoomWithId } from './WIP-start-call-refactor.js';
 import { getPushNotifications } from '../push-notifications/index.js';
 import { ringtoneManager } from '../media/audio/ringtone-manager.js';
@@ -24,6 +22,51 @@ import {
   dismissActiveIncomingCallUI,
 } from '../ui/components/calling/incoming-call.js';
 import { isRoomCallFresh } from './WIP-isRoomCallFresh.js';
+
+// STARTUP_ORDER_DEPENDANCY ?: main.js via setupWIPStartCallRefactor() before any incoming-room listener can use it.
+
+// TODO: WIP decoupling considerations:
+/*
+  Import: contactsService                                                           
+  Domain: contacts                                                                  
+  Issue: Cross-domain. Used for getContactByRoomId to look up caller name and decide
+                                                                                  
+    whether to preserve listeners.                                                
+  ────────────────────────────────────────                                          
+  Import: showIncomingCallUI, resolveIncomingCallUI, dismissActiveIncomingCallUI  
+  Domain: UI/calling                                                                
+  Issue: Direct UI manipulation from call logic. This is the worst coupling —       
+    room-listeners.js orchestrates the incoming call dialog, ringtone, and call
+    indicators directly.                                                            
+  ────────────────────────────────────────                       
+  Import: ringtoneManager                                                           
+  Domain: media/audio
+  Issue: UI presentation concern, same issue as above.                              
+  ────────────────────────────────────────                       
+  Import: callIndicators
+  Domain: UI/utils
+  Issue: UI presentation concern.
+  ────────────────────────────────────────
+  Import: getPushNotifications                                                      
+  Domain: push-notifications
+  Issue: Cross-domain, but arguably part of the call notification flow.             
+  ────────────────────────────────────────                       
+  Import: messagingController (via sendEventMessage inside the listener)            
+  Domain: messaging
+  Issue: Cross-domain. Used to write missed/rejected call messages to chat.         
+  ────────────────────────────────────────                       
+  Import: joinOrCreateRoomWithId                                                    
+  Domain: WIP call orchestration
+  Issue: Already flagged with a STARTUP_ORDER_DEPENDANCY comment — fragile import   
+    ordering.                                                    
+
+  This file is really doing three things: (1) RTDB listener management, (2) incoming
+   call UI orchestration, (3) cross-domain side effects (contacts lookup, messaging
+  writes, push notifications). 
+
+  Appbus contract must be clarified and standardized first,
+  and the whole call module needs to clarify and separate concerns 
+*/
 
 // Track which roomIds we've already attached incoming listeners for
 const listeningRoomIds = new Set();

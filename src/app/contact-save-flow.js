@@ -1,6 +1,8 @@
 import { renderContactsList } from '../ui/components/contacts/contacts.js';
 import { showSaveContactPrompt } from '../ui/components/contacts/save-contact-modal.js';
 
+// TODO: Revisit once standardized pattern established
+
 /**
  * Prompt to save a contact, then refresh the contacts list only on success.
  */
