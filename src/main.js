@@ -81,7 +81,7 @@ import {
 import {
   renderContactsList,
   cleanupContacts,
-} from './ui/components/contacts/contacts.js';
+} from './contacts/components/contacts.js';
 
 import {
   destroyYouTubePlayer,
@@ -103,7 +103,7 @@ import { createNotificationsToggle } from './ui/components/notifications/notific
 import { showElement, hideElement, exitPiP } from './ui/utils/ui-utils.js';
 import { initializeAuthUI } from './ui/components/auth/AuthComponent.js';
 import { messagesUI } from './ui/components/messages/messages-ui.js';
-import { showAddContactModal } from './ui/components/contacts/add-contact-modal.js';
+import { showAddContactModal } from './contacts/components/add-contact-modal.js';
 import { copyToClipboard } from './ui/components/modal/copyLinkModal.js';
 
 // ____ UI END ____

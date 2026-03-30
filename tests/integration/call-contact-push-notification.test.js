@@ -310,7 +310,7 @@ vi.mock('../../src/ui/core/watch-lifecycle-ui.js', () => ({
   onWatchModeExited: vi.fn(),
 }));
 
-vi.mock('../../src/ui/components/contacts/contacts.js', () => ({
+vi.mock('../../src/contacts/components/contacts.js', () => ({
   renderContactsList: vi.fn(),
   cleanupContacts: vi.fn(),
 }));
@@ -372,7 +372,7 @@ vi.mock('../../src/ui/components/calling/incoming-call.js', () => ({
   dismissActiveIncomingCallUI: vi.fn(),
 }));
 
-vi.mock('../../src/ui/components/contacts/add-contact-modal.js', () => ({
+vi.mock('../../src/contacts/components/add-contact-modal.js', () => ({
   showAddContactModal: vi.fn(),
 }));
 

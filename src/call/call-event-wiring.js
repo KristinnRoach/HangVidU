@@ -5,7 +5,7 @@ import { getPushNotifications } from '../push-notifications/index.js';
 import { cleanupRemoteStream } from '../media/state.js';
 import { clearUrlParam } from '../utils/url.js';
 import { onCallAnswered } from '../ui/components/calling/calling-ui.js';
-import { renderContactsList } from '../ui/components/contacts/contacts.js';
+import { renderContactsList } from '../contacts/components/contacts.js';
 import { promptAndRefreshContactSave } from '../app/contact-save-flow.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { appBus } from '../app/app-bus.js';

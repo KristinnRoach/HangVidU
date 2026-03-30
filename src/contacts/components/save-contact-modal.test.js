@@ -5,17 +5,17 @@ const mocks = vi.hoisted(() => ({
   saveContact: vi.fn(),
 }));
 
-vi.mock('../../../i18n/index.js', () => ({
+vi.mock('../../i18n/index.js', () => ({
   t: (key) => key,
 }));
 
-vi.mock('../../../contacts/contacts-service.js', () => ({
+vi.mock('../contacts-service.js', () => ({
   contactsService: {
     saveContact: mocks.saveContact,
   },
 }));
 
-vi.mock('../base/confirm-dialog.js', () => ({
+vi.mock('../../ui/components/base/confirm-dialog.js', () => ({
   default: mocks.confirmDialog,
 }));
 

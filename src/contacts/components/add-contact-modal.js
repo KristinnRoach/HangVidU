@@ -1,20 +1,24 @@
-// src/ui/components/contacts/add-contact-modal.js
+// src/contacts/components/add-contact-modal.js
 
 // Modal for adding contacts by email or importing from Google
 
-import { contactsService } from '../../../contacts/contacts-service.js';
-import { findUsersByEmails } from '../../../contacts/user-discovery.js';
-import { sendInvite } from '../../../contacts/invitations.js';
-import { escapeHtml } from '../../../ui/component-system/dom-utils.js';
+import { contactsService } from '../contacts-service.js';
+import { findUsersByEmails } from '../user-discovery.js';
+import { sendInvite } from '../invitations.js';
+import { escapeHtml } from '../../ui/component-system/dom-utils.js';
 import {
   requestContactsAccess,
   requestGmailSendAccess,
-} from '../../../auth/index.js';
-import { getLoggedInUserId, getUser } from '../../../auth/auth-state.js';
-import { fetchGoogleContacts } from '../../../contacts/google-contacts.js';
-import { sendBulkEmailsViaGmail } from '../../../contacts/gmail-send.js';
-import { t } from '../../../i18n/index.js';
-import { initIcons } from '../../icons.js';
+} from '../../auth/index.js';
+import { getLoggedInUserId, getUser } from '../../auth/auth-state.js';
+import { fetchGoogleContacts } from '../google-contacts.js';
+import { sendBulkEmailsViaGmail } from '../gmail-send.js';
+import { t } from '../../i18n/index.js';
+import { initIcons } from '../../ui/icons.js';
+
+// TODO: WIP decoupling considerations:
+// This modal mixes feature UI with auth/OAuth and external contact-import side effects.
+// Keep the UI here, but push reusable import/auth orchestration down before standardizing the pattern.
 
 /**
  * Show a modal to add contacts with platform selection and search.
