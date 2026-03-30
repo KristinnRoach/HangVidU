@@ -258,27 +258,15 @@ async function init() {
     appWrapper && appWrapper.appendChild(toggleLangBtn);
     // END TODO ________________________
 
-    // Initialize push notifications
+    // Initialize push notifications (permission requests happen on auth change)
     try {
       const pushController = getPushNotifications();
-
       const pushInitialized = await pushController.initialize();
-      if (pushInitialized) {
-        console.log('[MAIN] Push notifications initialized successfully');
-
-        // Note: Permission requests are handled in onAuthChange after user logs in.
-        // This ensures:
-        // 1. Auth is ready and user is logged in before registering Web Push
-        // 2. Permission request happens from user interaction context (better browser support)
-        // 3. No permission requests for anonymous/logged-out users
-      } else {
-        console.warn('[MAIN] Push notifications failed to initialize');
-
-        if (!getPushNotifications().isNotificationSupported()) {
-          const { showPushUnsupportedNotification } =
-            await import('./ui/components/notifications/push-unsupported-notification.js');
-          showPushUnsupportedNotification();
-        }
+      if (!pushInitialized && !pushController.isNotificationSupported()) {
+        const { showPushUnsupportedNotification } = await import(
+          './ui/components/notifications/push-unsupported-notification.js'
+        );
+        showPushUnsupportedNotification();
       }
     } catch (error) {
       console.error('[MAIN] Push notifications initialization error:', error);
@@ -724,34 +712,6 @@ window.onload = async () => {
 
   setupMainAppBusListeners();
 
-  // const onJoinRoomSubmit = async (roomInputString) => {
-  //   const inputRoomId = normalizeRoomInput(roomInputString || '');
-  //   if (!inputRoomId) {
-  //     devDebug('Please enter a valid Room ID');
-  //     return false;
-  //   }
-
-  //   const mediaReady = await waitForLocalStream(5000);
-  //   if (!mediaReady) {
-  //     devDebug('Waiting for camera/mic to be ready...');
-  //     return false;
-  //   }
-
-  //   try {
-  //     return await joinOrCreateRoomWithId(inputRoomId);
-  //   } catch (error) {
-  //     console.error('Failed to join or create room:', error);
-  //     devDebug('Error joining room. Please try again.');
-  //     return false;
-  //   }
-  // };
-
-  // Initialize join room form
-  // const joinRoomContainer = document.getElementById('join-room-container');
-  // if (joinRoomContainer) {
-  //   initJoinRoomForm(joinRoomContainer, onJoinRoomSubmit);
-  // }
-
   // Start listening for incoming calls on any saved/recent room ids FIRST
   await startListeningForSavedRooms().catch((e) =>
     console.warn('Failed to start saved-room listeners', e),
@@ -767,73 +727,41 @@ window.onload = async () => {
     console.warn('Failed to auto-init messaging session:', e);
   });
 
-  // Re-render contacts on auth changes so private contacts are hidden on logout
-  // Also clean up incoming listeners on logout to prevent accumulation
+  // TODO: Replace this monolithic auth callback with per-module appBus subscribers
+  // reacting to auth:login / auth:logout events. Each module (contacts, call listeners,
+  // invites, push notifications) should own its own auth-change response.
   let previousAuthState = null;
   const unsubscribeAuthContacts = subscribeAuth(async ({ isLoggedIn }) => {
     try {
-      // Track state changes to differentiate initial load from actual logout
       const isInitialLoad = previousAuthState === null;
       const isActualLogout = previousAuthState === true && !isLoggedIn;
-      const isActualLogin = previousAuthState === false && isLoggedIn;
+      const isLoginOrInitialLogin =
+        (previousAuthState === false && isLoggedIn) ||
+        (isInitialLoad && isLoggedIn);
 
       previousAuthState = isLoggedIn;
 
       await renderContactsList(lobbyDiv);
 
-      // Only clean up on actual logout (not initial load)
       if (isActualLogout) {
         devDebug('[AUTH] User logged out - cleaning up listeners');
         removeAllIncomingListeners();
         cleanupInviteListeners();
-      } else if (isActualLogin) {
-        // On login, re-attach listeners for saved rooms FIRST (before notification setup)
-        // so incoming calls are detected immediately
-        devDebug('[AUTH] User logged in - re-attaching incoming listeners');
+      } else if (isLoginOrInitialLogin) {
+        devDebug('[AUTH] User logged in - setting up listeners');
 
-        // Process referral if user signed up via referral link
         await processReferral().catch((e) =>
-          console.warn('[REFERRAL] Failed to process referral on login:', e),
+          console.warn('[REFERRAL] Failed to process referral:', e),
         );
-
-        // Re-render contacts after referral processing (may have added a new contact)
         await renderContactsList(lobbyDiv).catch(() => {});
 
-        await startListeningForSavedRooms().catch((e) =>
-          console.warn('Failed to re-attach saved-room listeners on login', e),
-        );
-        // Start listening for contact invites
-        setupInviteListener(lobbyDiv);
-
-        // Enable push notifications if already granted (no prompt without user gesture)
-        const pushController = getPushNotifications();
-        let notifResult = { state: 'error' };
-        if (pushController) {
-          notifResult = await pushController
-            .ensureEnabledIfGranted()
-            .catch((e) => {
-              console.warn('[AUTH] Push notification setup failed:', e);
-              return { state: 'error' };
-            });
+        // Re-attach on actual login; already attached on initial load
+        if (!isInitialLoad) {
+          await startListeningForSavedRooms().catch((e) =>
+            console.warn('Failed to re-attach saved-room listeners', e),
+          );
         }
 
-        if (notifResult.state === 'prompt-needed') {
-          showEnableNotificationsPrompt();
-        }
-      } else if (isInitialLoad && isLoggedIn) {
-        // If user is already logged in on initial load (e.g., after redirect)
-        devDebug('[AUTH] Initial load with logged-in user');
-
-        // Process referral if user signed up via referral link
-        await processReferral().catch((e) =>
-          console.warn(
-            '[REFERRAL] Failed to process referral on initial load:',
-            e,
-          ),
-        );
-
-        // Listeners already attached by startListeningForSavedRooms, no action needed
-        // Start listening for contact invites
         setupInviteListener(lobbyDiv);
 
         // Enable push notifications if already granted (no prompt without user gesture)
