@@ -1,92 +1,21 @@
 // calling-ui.js - Calling modal with cancel and auto-timeout
 
-import { set, remove, get, ref } from 'firebase/database';
-import { rtdb, getUserOutgoingCallRef } from '../../../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId, getUserId } from '../../../auth/auth-state.js';
+import {
+  CALL_TIMEOUT_MS,
+  setOutgoingCallState,
+  clearOutgoingCallState,
+  // isOutgoingCallFresh,
+} from '../../../call/WIP-CallState-rtdb.js';
 import { devDebug } from '../../../utils/dev/dev-utils.js';
 import { getDiagnosticLogger } from '../../../utils/dev/diagnostic-logger.js';
 import RoomService from '../../../call/room.js';
 import { ringtoneManager } from '../../../media/audio/ringtone-manager.js';
 import { t } from '../../../i18n/index.js';
-
-const CALL_TIMEOUT_MS = 30000; // 30 seconds
+import { getUserId } from '../../../auth/auth-state.js';
 
 let activeCallingUI = null;
 let timeoutId = null;
 let storedOnHide = null;
-
-/**
- * Write outgoing call state to RTDB so we can verify call freshness
- */
-async function setOutgoingCallState(roomId, targetContactName = null) {
-  const userId = getUserId();
-  const loggedInUid = getLoggedInUserId();
-
-  // Only track for authenticated users (guests don't need cross-session freshness checks)
-  if (!loggedInUid) return;
-
-  const outgoingRef = getUserOutgoingCallRef(loggedInUid);
-  await set(outgoingRef, {
-    roomId,
-    targetContactName,
-    initiatedAt: Date.now(),
-    callerUserId: userId,
-  });
-}
-
-/**
- * Remove outgoing call state (on answer, cancel, or timeout)
- */
-async function clearOutgoingCallState() {
-  const loggedInUid = getLoggedInUserId();
-  if (!loggedInUid) return;
-
-  const outgoingRef = getUserOutgoingCallRef(loggedInUid);
-  await remove(outgoingRef).catch(() => {});
-}
-
-/**
- * Check if an outgoing call state exists and is fresh (< 20s old)
- */
-export async function isOutgoingCallFresh(callerUid, roomId) {
-  if (!callerUid) return false;
-
-  try {
-    const outgoingRef = getUserOutgoingCallRef(callerUid);
-    const snap = await get(outgoingRef);
-    if (!snap.exists()) return false;
-
-    const data = snap.val();
-    if (data.roomId !== roomId) return false;
-
-    const age = Date.now() - data.initiatedAt;
-    return age < CALL_TIMEOUT_MS;
-  } catch (e) {
-    console.warn('Failed to check outgoing call freshness', e);
-    return false;
-  }
-}
-
-/**
- * Fallback freshness check for guests (logged-out flows):
- * Use the room's createdAt timestamp to determine if the call is recent.
- * Works because initiator overwrites/creates the room node with a fresh createdAt.
- */
-export async function isRoomCallFresh(roomId) {
-  if (!roomId) return false;
-  try {
-    const createdAtRef = ref(rtdb, `rooms/${roomId}/createdAt`);
-    const snap = await get(createdAtRef);
-    if (!snap.exists()) return false;
-    const createdAt = snap.val();
-    if (typeof createdAt !== 'number') return false;
-    const age = Date.now() - createdAt;
-    return age < CALL_TIMEOUT_MS;
-  } catch (e) {
-    console.warn('Failed to check room freshness', e);
-    return false;
-  }
-}
 
 /**
  * Show "Calling..." modal with cancel button and auto-timeout

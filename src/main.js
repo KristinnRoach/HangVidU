@@ -16,7 +16,6 @@ import {
 import { initAuth } from './auth/index.js';
 import {
   getLoggedInUserId,
-  getUser,
   getUserId,
   subscribe as subscribeAuth,
 } from './auth/auth-state.js';
@@ -80,7 +79,6 @@ import {
 
 import { devDebug, isDev, setDevDebugEnabled } from './utils/dev/dev-utils.js';
 
-import RoomService from './call/room.js';
 import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
 
 import {
@@ -147,7 +145,6 @@ import {
   showCopyLinkModal,
 } from './ui/components/modal/copyLinkModal.js';
 
-import { isRoomCallFresh } from './ui/components/calling/calling-ui.js';
 import { isRemoteVideoVideoActive } from './ui/core/legacy/watch-mode.js';
 // ____ UI END ____
 
@@ -169,14 +166,15 @@ import { setupMessagingAppBusHandlers } from './messaging/handle-appbus-events.j
 import { setupCallControllerEventWiring } from './call/call-event-wiring.js';
 import { setupMainAppBusListeners } from './app/setupMainAppBusListeners.js';
 import {
-  setupRoomListeners,
+  setupWIPStartCallRefactor,
+  getCallOptions,
+  applyCallResult,
+  joinOrCreateRoomWithId,
+} from './call/WIP-start-call-refactor.js';
+import {
   listenForIncomingOnRoom,
   removeAllIncomingListeners,
   getIncomingListenerCount,
-} from './call/room-listeners.js';
-export {
-  listenForIncomingOnRoom,
-  removeAllIncomingListeners,
 } from './call/room-listeners.js';
 
 // Quick access to enable / disable dev debug logs
@@ -385,239 +383,20 @@ function handleMediaPermissionError(error) {
   resetLocalStreamInitFlag();
 }
 
-// Helper to build call options
-function getCallOptions(targetRoomId = null) {
-  return {
-    localStream: getLocalStream(),
-    localVideoEl,
-    remoteVideoEl,
-    mutePartnerBtn,
-    setupRemoteStream,
-    setupWatchSync,
-    targetRoomId,
-  };
-}
-
-/**
- * Helper to apply call result and update global state
- * Note: CallController also stores this state internally
- * TODO: Migrate remaining code to use CallController.getState() instead of globals
- */
-function applyCallResult(result, showLinkModal = false) {
-  if (!result.success) return false;
-
-  if (showLinkModal && result.roomLink) {
-    showCopyLinkModal(result.roomLink, {
-      onCopy: () => devDebug('Link ready! Share with your partner.'),
-      onCancel: () =>
-        devDebug(
-          'Link ready! Use the copy button to use it, or create a new one.',
-        ),
-    });
-  }
-
-  // copyLinkBtn.disabled = false;
-  return true;
-}
-
-// TODO: Remove the "create if empty" path, rename to explicit "joinRoomWithId" and "createRoom" functions
-export async function joinOrCreateRoomWithId(
-  customRoomId,
-  { forceInitiator = false } = {},
-) {
-  try {
-    await initLocalStreamAndMedia();
-  } catch (error) {
-    console.error('Failed to initialize local media stream:', error);
-    handleMediaPermissionError(error);
-    return false;
-  }
-
-  const startTime = Date.now();
-
-  // If caller explicitly wants to initiate (e.g., calling a saved contact),
-  // create a fresh offer in this room regardless of existing state.
-  if (forceInitiator) {
-    getDiagnosticLogger().logRoomCreation(
-      customRoomId,
-      true,
-      {
-        creationTime: startTime,
-        listenerAttachTime: startTime, // Will be updated when listener attaches
-        timeDiff: 0,
-      },
-      {
-        trigger: 'force_initiator',
-        reason: 'calling_saved_contact',
-      },
-    );
-
-    const result = await CallController.createCall(
-      getCallOptions(customRoomId),
-    );
-
-    return applyCallResult(result, false);
-  }
-
-  // Check room status with retry to handle race condition
-  let status = await RoomService.checkRoomStatus(customRoomId);
-
-  // If room exists but appears empty, wait briefly and check again
-  // to handle the race where User A just created room but member data isn't written yet
-  if (status.exists && !status.hasMembers) {
-    const maxRetries = 3;
-    let attempt = 0;
-    while (attempt < maxRetries && !status.hasMembers) {
-      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1))); // 250ms, 500ms, 750ms
-      status = await RoomService.checkRoomStatus(customRoomId);
-      attempt++;
-    }
-  }
-
-  // TODO: Remove this for robust and explicit alternative (if needed, otherwise just remove)
-  // Room doesn't exist OR is empty → create as initiator
-  if (!status.exists || !status.hasMembers) {
-    getDiagnosticLogger().logRoomCreation(
-      customRoomId,
-      true,
-      {
-        creationTime: startTime,
-        listenerAttachTime: startTime,
-        timeDiff: 0,
-      },
-      {
-        trigger: 'room_empty_or_nonexistent',
-        roomExists: status.exists,
-        memberCount: status.memberCount || 0,
-      },
-    );
-
-    const result = await CallController.createCall(
-      getCallOptions(customRoomId),
-    );
-
-    return applyCallResult(result, true); // Show modal when creating via join form
-  }
-
-  // Room exists with members → join as joiner
-  devDebug('Joining room...');
-  getDiagnosticLogger().log('ROOM', 'JOINING_EXISTING', {
-    roomId: customRoomId,
-    memberCount: status.memberCount,
-    roomExists: status.exists,
-  });
-
-  const result = await CallController.answerCall({
-    roomId: customRoomId,
-    ...getCallOptions(),
-  });
-  return applyCallResult(result, false);
-}
-
-/**
- * Unified function to initiate a call to a contact.
- * Handles room generation, RTDB updates, UI triggers, and push notifications.
- *
- * @param {string} contactId - The ID of the contact to call
- * @param {string} contactName - The name of the contact
- * @param {string} [roomId] - Existing room ID (generated if not provided)
- * @returns {Promise<boolean>} Success status
- */
-export async function callContact(contactId, contactName, roomId = null) {
-  // Prevent self-calls
-  const myUserId = getUserId();
-  if (contactId && myUserId === contactId) {
-    console.warn('[CALL] Cannot call yourself');
-    return false;
-  }
-
-  // If no roomId is provided, try to generate a deterministic one
-  if (!roomId && contactId) {
-    if (myUserId) {
-      try {
-        roomId = getDeterministicRoomId(myUserId, contactId);
-        console.log('[CALL] Generated deterministic room ID:', roomId);
-      } catch (e) {
-        console.error('[CALL] Failed to generate room ID:', e);
-        return false;
-      }
-      // // TODO: Clarify if saveData is required for subsequent calls.
-      // // The deterministic roomId is regenerated each time, so persistence may
-      // // only help the OTHER user find the room. Investigate if this can be removed.
-      // try {
-      //   await contactsService.saveContact(contactId, contactName, roomId);
-      // } catch (e) {
-      //   console.warn('[CALL] Failed to persist room ID (continuing):', e);
-      // }
-    }
-  }
-
-  if (!roomId) {
-    console.error('[CALL] Cannot initiate call: No Room ID available');
-    return false;
-  }
-
-  // Ensure listener is active for this room before calling
-  listenForIncomingOnRoom(roomId);
-
-  // Force initiator role to ensure fresh call nodes in RTDB
-  const success = await joinOrCreateRoomWithId(roomId, {
-    forceInitiator: true,
-  }).catch((e) => {
-    console.warn('[CALL] Failed to join or create room:', e);
-    return false;
-  });
-
-  if (success) {
-    // Update metadata
-    contactsService.updateLastInteraction(contactId).catch(() => {}); // TODO: unhandled rejection - deferred until pattern standardized
-
-    // Send push notification immediately from the successful call-start path.
-    try {
-      const me = getUser();
-      const callerName = me?.displayName || me?.email || myUserId;
-      const pushResult = await getPushNotifications().sendIncomingCall({
-        targetUserId: contactId,
-        roomId,
-        callerId: myUserId,
-        callerName,
-      });
-      if (!pushResult?.ok) {
-        console.warn('[CALL] Call-start push notification did not succeed');
-      }
-    } catch (error) {
-      console.warn('[CALL] Failed to send push notification:', error);
-    }
-
-    // Trigger UI (Calling Modal)
-    try {
-      const [{ showCallingUI }, { onCallingStarted, onCallingEnded }] =
-        await Promise.all([
-          import('./ui/components/calling/calling-ui.js'),
-          import('./ui/core/call-lifecycle-ui.js'),
-        ]);
-      onCallingStarted();
-      await showCallingUI(roomId, contactName, {
-        onCancel: (reason) => {
-          // Route cancel/timeout through CallController so cleanup event fires
-          // (triggers missed call message, push notification, etc.)
-          CallController.hangUp({ reason }).catch((e) => {
-            console.warn('[CALL] hangUp after cancel/timeout failed:', e);
-          });
-        },
-        onHide: onCallingEnded,
-      });
-    } catch (e) {
-      console.warn('[CALL] Failed to load calling UI:', e);
-    }
-  }
-
-  return success;
-}
-
-setupRoomListeners({
-  isRoomCallFresh,
-  joinOrCreateRoomWithId,
+// STARTUP_ORDER_DEPENDANCY: configure the WIP call module before any appBus
+// listeners or room listeners can call into its exported wrappers.
+setupWIPStartCallRefactor({
+  initLocalStreamAndMedia,
+  handleMediaPermissionError,
+  getLocalStream,
+  localVideoEl,
+  remoteVideoEl,
+  mutePartnerBtn,
+  setupRemoteStream,
+  setupWatchSync,
+  showCopyLinkModal,
+  devDebug,
+  listenForIncomingOnRoom,
 });
 
 /**
@@ -1299,10 +1078,7 @@ window.onload = async () => {
   // UI handlers (business logic handlers registered separately below)
   bindCallUI(CallController);
 
-  setupMainAppBusListeners({
-    callContact,
-    listenForIncomingOnRoom,
-  });
+  setupMainAppBusListeners({ listenForIncomingOnRoom });
 
   const onJoinRoomSubmit = async (roomInputString) => {
     const inputRoomId = normalizeRoomInput(roomInputString || '');

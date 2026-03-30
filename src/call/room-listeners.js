@@ -1,13 +1,14 @@
 import { appBus } from '../app/app-bus.js';
-import {
-  removeRTDBListenersForRoom,
-} from '../storage/fb-rtdb/rtdb.js';
+import { removeRTDBListenersForRoom } from '../storage/fb-rtdb/rtdb.js';
 import { getUserId } from '../auth/auth-state.js';
 import { getDiagnosticLogger } from '../utils/dev/diagnostic-logger.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { contactsService } from '../contacts/contacts-service.js';
 import RoomService from './room.js';
 import CallController from './call-controller.js';
+// STARTUP_ORDER_DEPENDANCY: this import is configured by main.js via
+// setupWIPStartCallRefactor() before any incoming-room listener can use it.
+import { joinOrCreateRoomWithId } from './WIP-start-call-refactor.js';
 import { getPushNotifications } from '../push-notifications/index.js';
 import { ringtoneManager } from '../media/audio/ringtone-manager.js';
 import { callIndicators } from '../ui/utils/call-indicators.js';
@@ -16,6 +17,7 @@ import {
   resolveIncomingCallUI,
   dismissActiveIncomingCallUI,
 } from '../ui/components/calling/incoming-call.js';
+import { isRoomCallFresh } from './WIP-isRoomCallFresh.js';
 
 // Track which roomIds we've already attached incoming listeners for
 const listeningRoomIds = new Set();
@@ -27,32 +29,6 @@ const incomingListenerCleanups = new Map();
 // Track RTDB listener cleanups for incoming call UI promise coordination
 // Map<roomId, { cancel: () => void, answer: () => void }>
 const incomingCallPromiseCleanups = new Map();
-
-let runtime = null;
-
-/**
- * @param {{
- *   isRoomCallFresh: (roomId: string) => Promise<boolean>,
- *   joinOrCreateRoomWithId: (roomId: string, options?: object) => Promise<boolean>,
- * }} config
- */
-export function setupRoomListeners(config) {
-  runtime = config;
-}
-
-function getRuntime() {
-  if (
-    !runtime ||
-    typeof runtime.isRoomCallFresh !== 'function' ||
-    typeof runtime.joinOrCreateRoomWithId !== 'function'
-  ) {
-    throw new Error(
-      'room listeners require setupRoomListeners({ isRoomCallFresh, joinOrCreateRoomWithId }) before use',
-    );
-  }
-
-  return runtime;
-}
 
 /**
  * Remove incoming call listeners for a specific room
@@ -110,8 +86,6 @@ export function getIncomingListenerCount() {
  */
 export function listenForIncomingOnRoom(roomId) {
   if (!roomId) return;
-
-  const { isRoomCallFresh, joinOrCreateRoomWithId } = getRuntime();
 
   devDebug(`[LISTENER] Attempting to attach listener for room: ${roomId}`);
 
@@ -541,34 +515,37 @@ export function listenForIncomingOnRoom(roomId) {
   // Listen for member leaves: if the room becomes empty after a leave,
   // remove this saved recent call for the current user so they don't keep
   // an incoming notification for a non-existent partner.
-  const memberLeftCleanup = RoomService.onMemberLeft(roomId, async (snapshot) => {
-    const leavingUserId = snapshot.key;
-    const currentUserId = getUserId();
+  const memberLeftCleanup = RoomService.onMemberLeft(
+    roomId,
+    async (snapshot) => {
+      const leavingUserId = snapshot.key;
+      const currentUserId = getUserId();
 
-    // Ignore our own leaves
-    if (!leavingUserId || leavingUserId === currentUserId) return;
+      // Ignore our own leaves
+      if (!leavingUserId || leavingUserId === currentUserId) return;
 
-    try {
-      const status = await RoomService.checkRoomStatus(roomId);
-      // If no members remain, remove the saved recent call for this client
-      // and clean up the incoming listeners for this room (UNLESS saved contact)
-      if (!status.hasMembers) {
-        const savedContact = await contactsService.getContactByRoomId(roomId);
-        if (!savedContact) {
-          removeIncomingListenersForRoom(roomId);
-          devDebug(
-            `Removed saved recent call and listeners for room ${roomId} because it is now empty`,
-          );
-        } else {
-          devDebug(
-            `Removed recent call but PRESERVED listeners for saved contact room ${roomId}`,
-          );
+      try {
+        const status = await RoomService.checkRoomStatus(roomId);
+        // If no members remain, remove the saved recent call for this client
+        // and clean up the incoming listeners for this room (UNLESS saved contact)
+        if (!status.hasMembers) {
+          const savedContact = await contactsService.getContactByRoomId(roomId);
+          if (!savedContact) {
+            removeIncomingListenersForRoom(roomId);
+            devDebug(
+              `Removed saved recent call and listeners for room ${roomId} because it is now empty`,
+            );
+          } else {
+            devDebug(
+              `Removed recent call but PRESERVED listeners for saved contact room ${roomId}`,
+            );
+          }
         }
+      } catch (e) {
+        console.warn('Failed to evaluate room status on member leave', e);
       }
-    } catch (e) {
-      console.warn('Failed to evaluate room status on member leave', e);
-    }
-  });
+    },
+  );
 
   cleanups.push(memberLeftCleanup);
   incomingListenerCleanups.set(roomId, cleanups);

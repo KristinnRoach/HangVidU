@@ -100,6 +100,7 @@ vi.mock('firebase/database', () => ({
   set: vi.fn(),
   get: vi.fn(),
   remove: vi.fn(),
+  ref: vi.fn(),
 }));
 
 vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => ({
@@ -107,6 +108,8 @@ vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => ({
   removeRTDBListenersForRoom: vi.fn(),
   getUserRecentCallsRef: vi.fn(),
   getUserRecentCallRef: vi.fn(),
+  getUserOutgoingCallRef: vi.fn(() => ({})),
+  rtdb: {},
 }));
 
 vi.mock('../../src/auth/index.js', () => ({
@@ -392,7 +395,7 @@ vi.mock('../../src/ui/components/calling/calling-ui.js', () => ({
     mocks.callSequence.push('showCallingUI');
   }),
   onCallAnswered: vi.fn(),
-  isRoomCallFresh: vi.fn(() => true),
+  // isRoomCallFresh: vi.fn(() => true),
 }));
 
 vi.mock('../../src/ui/core/legacy/watch-mode.js', () => ({
@@ -443,7 +446,9 @@ describe('callContact push notification flow', () => {
   });
 
   it('attempts the push immediately after successful call start', async () => {
-    const { callContact } = await import('../../src/main.js');
+    await import('../../src/main.js');
+    const { callContact } =
+      await import('../../src/call/WIP-start-call-refactor.js');
 
     const result = await callContact(
       'contact-456',
@@ -481,7 +486,8 @@ describe('callContact push notification flow', () => {
       createdBy: 'caller-999',
     });
 
-    const { listenForIncomingOnRoom } = await import('../../src/main.js');
+    const { listenForIncomingOnRoom } =
+      await import('../../src/call/room-listeners.js');
 
     listenForIncomingOnRoom('room-background');
 
