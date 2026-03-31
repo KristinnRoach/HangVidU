@@ -25,9 +25,6 @@ import {
   callBtn,
   hangUpBtn,
   exitWatchModeBtn,
-  chatControls,
-  localBoxEl,
-  remoteBoxEl,
   sharedBoxEl,
   lobbyDiv,
   lobbyCallBtn,
@@ -81,7 +78,7 @@ import {
 import {
   renderContactsList,
   cleanupContacts,
-} from './contacts/components/contacts.js';
+} from './contacts/components/contacts-list.js';
 
 import {
   destroyYouTubePlayer,
@@ -108,10 +105,7 @@ import { copyToClipboard } from './ui/components/modal/copyLinkModal.js';
 
 // ____ UI END ____
 
-import {
-  onCallConnected,
-  onCallDisconnected,
-} from './ui/core/call-lifecycle-ui.js';
+import { onCallDisconnected } from './ui/core/call-lifecycle-ui.js';
 import { addDebugUpdateButton } from './ui/components/notifications/debug-notifications.js';
 import {
   initI18n,
@@ -568,6 +562,8 @@ async function handleServiceWorkerNavigation(path) {
 
   const roomId = targetUrl.searchParams.get('room');
   const contactId = targetUrl.searchParams.get('contact');
+  const conversationIdFromUrl =
+    targetUrl.searchParams.get('conversationId')?.trim() || null;
 
   window.history.replaceState({}, '', targetUrl);
 
@@ -575,16 +571,18 @@ async function handleServiceWorkerNavigation(path) {
     path,
     roomId,
     contactId,
+    conversationIdFromUrl,
   });
 
   if (!roomId) {
-    if (!contactId) {
+    if (!contactId && !conversationIdFromUrl) {
       return false;
     }
 
     try {
       const conversationId =
-        messagingController.resolveConversationIdFromContactId(contactId);
+        conversationIdFromUrl ??
+        (contactId ? await contactsService.getConversationId(contactId) : null);
 
       if (!conversationId) {
         console.warn(
@@ -597,7 +595,7 @@ async function handleServiceWorkerNavigation(path) {
       }
 
       await messagingController.selectConversation(conversationId, {
-        remoteParticipantIds: [contactId],
+        remoteParticipantIds: contactId ? [contactId] : [],
         displayUI: true,
       });
 
@@ -607,6 +605,7 @@ async function handleServiceWorkerNavigation(path) {
         '[MAIN] SW navigation -> Failed to open text chat UI for contact ID:',
         {
           contactId,
+          conversationIdFromUrl,
           error,
         },
       );
@@ -670,10 +669,8 @@ export async function autoInitMsgSessionIfNeeded() {
     if (!firstContact?.contactId) return;
 
     // Pre select the conversation for the first contact
-    const conversationId =
-      messagingController.resolveConversationIdFromContactId(
-        firstContact.contactId,
-      );
+    const conversationId = firstContact.conversationId ?? null;
+    if (!conversationId) return;
     await messagingController.selectConversation(conversationId, {
       remoteParticipantIds: [firstContact.contactId],
       displayUI: false,

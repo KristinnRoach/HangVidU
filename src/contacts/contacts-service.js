@@ -11,6 +11,7 @@ import {
   getContactByMostRecentInteraction,
   getContactByRoomId,
 } from './contact-query.js';
+import { resolveDirectConversationId } from '../messaging/direct-conversation-id.js';
 
 // ! PAUSED: claude --resume edf6030f-72fb-4503-9175-bfc21d2d973c
 
@@ -25,11 +26,10 @@ import {
 /**
  * Resolve the active storage backend for the current auth state.
  *
+ * @param {string|null} [ownerId=getLoggedInUserId()]
  * @returns {import('./storage/contacts-store.js').ContactsStore}
  */
-function getContactsStorage() {
-  const ownerId = getLoggedInUserId();
-
+function getContactsStorage(ownerId = getLoggedInUserId()) {
   if (ownerId) {
     return createContactsRTDBStore({
       database: rtdb,
@@ -108,6 +108,17 @@ export class ContactsService {
       logServiceFailure('getContact', error, { contactId });
       return null;
     }
+  }
+
+  /**
+   * Resolve the stored conversation id for one saved contact.
+   *
+   * @param {string} contactId
+   * @returns {Promise<string|null>}
+   */
+  async getConversationId(contactId) {
+    const contact = await this.getContact(contactId);
+    return contact?.conversationId ?? null;
   }
 
   /**
@@ -268,14 +279,19 @@ export class ContactsService {
    */
   async saveContact(contactId, contactName, roomId) {
     try {
-      const storage = getContactsStorage();
+      const ownerId = getLoggedInUserId();
+      const storage = getContactsStorage(ownerId);
       const existing = await storage.get(contactId);
       const now = Date.now();
+      const conversationId =
+        existing?.conversationId ??
+        (ownerId ? resolveDirectConversationId(ownerId, contactId) : null);
 
       const contact = await storage.put({
         contactId,
         contactName,
         roomId,
+        conversationId,
         savedAt: existing?.savedAt ?? now,
         lastInteractionAt: existing?.lastInteractionAt ?? now,
       });

@@ -73,7 +73,7 @@ vi.mock('../ui/components/calling/calling-ui.js', () => ({
   onCallAnswered: mocks.onCallAnswered,
 }));
 
-vi.mock('../contacts/components/contacts.js', () => ({
+vi.mock('../contacts/components/contacts-list.js', () => ({
   renderContactsList: mocks.renderContactsList,
 }));
 
@@ -107,7 +107,8 @@ describe('setupCallControllerEventWiring', () => {
   });
 
   it('emits call:unanswered even when missed-call push delivery fails', async () => {
-    const { setupCallControllerEventWiring } = await import('./call-event-wiring.js');
+    const { setupCallControllerEventWiring } =
+      await import('./call-event-wiring.js');
 
     setupCallControllerEventWiring({
       lobbyElement: document.createElement('div'),

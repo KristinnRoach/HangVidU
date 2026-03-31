@@ -1,5 +1,7 @@
 // src/messaging/schema.js
 // Data shapes for conversations, messages, and reactions
+// TODO: Consolidate raw RTDB and canonical app message schema composition when
+// refactoring the messaging module under the standardized contract.
 
 import { z } from 'zod';
 
@@ -7,10 +9,10 @@ import { z } from 'zod';
 // CONVERSATION STRUCTURE
 // ============================================================================
 // Path: conversations/{conversationId}/
-// conversationId format: "{userId1}_{userId2}" where userId1 < userId2
 //
 // Example structure:
 // {
+//   members: { {uid}: true, ... },
 //   messages: {
 //     {messageId}: { type: 'text', text: '...', from: 'user-id', ... },
 //     {messageId}: { type: 'file', fileName: '...', from: 'user-id', ... },
@@ -22,9 +24,13 @@ import { z } from 'zod';
 // SHARED FIELDS
 // ============================================================================
 
-// Reactions: { emoji: [userId1, userId2] }
-// RTDB stores { emoji: { uid: true } } — parseMessage() normalizes to arrays.
+// Canonical app-level reactions: { emoji: [userId1, userId2] }
 const reactionsField = z.record(z.string(), z.array(z.string())).optional();
+
+// Raw RTDB reactions: { emoji: { uid: true } }
+const rawReactionsField = z
+  .record(z.string(), z.record(z.string(), z.literal(true)))
+  .optional();
 
 // ============================================================================
 // MESSAGE TYPES
@@ -96,13 +102,72 @@ export const MessageSchema = z.union([
   EventMessageSchema,
 ]);
 
+const RawTextMessageSchema = z.object({
+  type: z.literal('text'),
+  text: z.string(),
+  from: z.string().min(1, 'Sender UID required'),
+  fromName: z.string(),
+  sentAt: z.number(),
+  read: z.boolean().default(false),
+  reactions: rawReactionsField,
+});
+
+const RawFileMessageSchema = z.object({
+  type: z.literal('file'),
+  fileName: z.string(),
+  mimeType: z.string(),
+  fileSize: z.number(),
+  data: z.string(),
+  text: z.string().optional(),
+  from: z.string().min(1),
+  fromName: z.string(),
+  sentAt: z.number(),
+  read: z.boolean().default(false),
+  reactions: rawReactionsField,
+});
+
+const RawEventMessageSchema = z.object({
+  type: z.literal('event'),
+  eventType: z.enum(['call:unanswered']),
+  from: z.string().min(1),
+  sentAt: z.number(),
+  read: z.boolean().default(false),
+  details: z
+    .object({
+      callId: z.string().nullable().optional(),
+    })
+    .optional(),
+  reactions: rawReactionsField,
+});
+
+const RawRedactedMessageSchema = z.object({
+  type: z.string(),
+  redacted: z.literal(true),
+  from: z.string().min(1),
+  sentAt: z.number(),
+  read: z.boolean().default(false),
+  reactions: rawReactionsField,
+});
+
+export const RawConversationMessageSchema = z.union([
+  RawRedactedMessageSchema,
+  RawTextMessageSchema,
+  RawFileMessageSchema,
+  RawEventMessageSchema,
+]);
+
 // ============================================================================
 // CONVERSATION STRUCTURE
 // ============================================================================
 
-export const ConversationMessagesSchema = z.record(z.string(), MessageSchema);
+export const ConversationMessagesSchema = z.record(
+  z.string(),
+  RawConversationMessageSchema,
+);
+export const ConversationMembersSchema = z.record(z.string(), z.literal(true));
 
 export const ConversationSchema = z.object({
+  members: ConversationMembersSchema.optional(),
   messages: ConversationMessagesSchema.optional(),
 });
 

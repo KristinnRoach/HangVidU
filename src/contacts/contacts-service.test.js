@@ -74,6 +74,7 @@ describe('contacts-service', () => {
       contactId: 'u1',
       contactName: 'Alice',
       roomId: 'room-1',
+      conversationId: null,
       savedAt: expect.any(Number),
       lastInteractionAt: expect.any(Number),
     });
@@ -108,8 +109,36 @@ describe('contacts-service', () => {
       contactId: 'u1',
       contactName: 'After',
       roomId: 'room-1',
+      conversationId: null,
       savedAt: 100,
       lastInteractionAt: 200,
+    });
+  });
+
+  it('saveContact stores direct conversationId for authenticated users', async () => {
+    const { ContactsService } = await import('./contacts-service.js');
+    const service = new ContactsService();
+
+    mocks.auth.ownerId = 'me';
+    mocks.store.get.mockResolvedValue(null);
+    mocks.store.put.mockResolvedValue({
+      contactId: 'u1',
+      contactName: 'Alice',
+      roomId: 'room-1',
+      conversationId: 'me_u1',
+      savedAt: 1,
+      lastInteractionAt: 1,
+    });
+
+    await service.saveContact('u1', 'Alice', 'room-1');
+
+    expect(mocks.store.put).toHaveBeenCalledWith({
+      contactId: 'u1',
+      contactName: 'Alice',
+      roomId: 'room-1',
+      conversationId: 'me_u1',
+      savedAt: expect.any(Number),
+      lastInteractionAt: expect.any(Number),
     });
   });
 

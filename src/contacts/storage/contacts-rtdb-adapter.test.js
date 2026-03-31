@@ -56,6 +56,7 @@ describe('ContactsRTDBAdapter', () => {
     expect(result).toEqual({
       contactId: 'u1',
       contactName: 'Alice',
+      conversationId: null,
       roomId: 'room-2',
       savedAt: 10,
       lastInteractionAt: 30,

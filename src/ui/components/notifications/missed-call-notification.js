@@ -56,7 +56,7 @@ export function createMissedCallNotification({
         try {
           // TODO: Consider switching to event-driven architecture for ALL call flows
           // This should be done in a dedicated architectural session where we review
-          // ALL affected code (call-flow.js, main.js, contacts.js, etc.)
+          // ALL affected code (call-flow.js, main.js, contacts-list.js, etc.)
           if (onCallBack) await onCallBack();
           // Notification will be disposed after call is initiated
         } catch (error) {

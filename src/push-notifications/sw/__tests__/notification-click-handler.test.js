@@ -53,7 +53,7 @@ describe('notification click routing', () => {
         },
         'view',
       ),
-    ).toBe('/?contact=sender-1');
+    ).toBe('/?contact=sender-1&conversationId=conversation-1');
   });
 
   it('falls back to the app root when notification data is incomplete', () => {

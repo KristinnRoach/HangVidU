@@ -14,7 +14,7 @@
   },
   "functions": {
     "source": "functions",
-    "runtime": "nodejs20",
+    "runtime": "nodejs22",
     "region": "europe-west1"
   },
   "emulators": {
