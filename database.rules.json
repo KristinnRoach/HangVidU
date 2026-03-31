@@ -56,7 +56,7 @@
         "pushSubscriptions": {
           ".read": "$userId === auth.uid",
           ".write": "$userId === auth.uid"
-        },
+        }
       }
     },
     "notifications": {
