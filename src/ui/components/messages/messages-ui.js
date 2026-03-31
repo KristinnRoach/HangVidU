@@ -821,6 +821,7 @@ export function initMessagesUI() {
     if (message.redacted) {
       p.textContent = t('message.redacted');
       p.classList.add('message-redacted');
+      messageEntry.classList.remove('call-event');
     } else switch (type) {
       case 'file': {
         const file = buildFileContent(message);

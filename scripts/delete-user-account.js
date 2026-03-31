@@ -136,9 +136,8 @@ async function run() {
   const convoSnap = await db.ref('conversations').once('value');
   if (convoSnap.exists()) {
     for (const [convoId, convo] of Object.entries(convoSnap.val())) {
-      if (!convoId.includes(`${uid}_`) && !convoId.includes(`_${uid}`)) {
-        continue;
-      }
+      const parts = convoId.split('_');
+      if (!parts.includes(uid)) continue;
       if (!convo.messages) continue;
 
       for (const [msgId, msg] of Object.entries(convo.messages)) {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../auth/index.js', () => ({
   getLoggedInUserToken: vi.fn().mockResolvedValue('mock-token-123'),
@@ -10,6 +10,10 @@ const { callCloudFunction } = await import('./cloud-functions.js');
 describe('callCloudFunction', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('sends POST with Bearer token and JSON body', async () => {

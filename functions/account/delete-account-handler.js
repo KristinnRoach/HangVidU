@@ -3,6 +3,8 @@ const { getDatabase } = require('firebase-admin/database');
 
 const { verifyAuthHeader } = require('../push-notifications/auth');
 
+const MAX_AUTH_AGE_SECONDS = 5 * 60; // 5 minutes
+
 /**
  * Deletes the authenticated user's account and associated data.
  * Preserves conversations so other participants keep their message history.
@@ -35,6 +37,17 @@ async function handleDeleteAccount(req, res) {
     const { scrubMessages = true } = req.body || {};
     const db = getDatabase();
     const adminAuth = getAuth();
+
+    // Require recent sign-in for account deletion
+    const idToken = req.headers.authorization.split('Bearer ')[1];
+    const decoded = await adminAuth.verifyIdToken(idToken);
+    const authAge = Math.floor(Date.now() / 1000) - decoded.auth_time;
+    if (authAge > MAX_AUTH_AGE_SECONDS) {
+      return res.status(403).json({
+        error: 'Recent sign-in required. Please sign out and sign in again.',
+        code: 'auth/requires-recent-login',
+      });
+    }
 
     // Look up user email before deletion (needed for directory cleanup)
     let email = null;
@@ -80,12 +93,8 @@ async function handleDeleteAccount(req, res) {
         for (const [convoId, convo] of Object.entries(
           conversationsSnap.val(),
         )) {
-          if (
-            !convoId.includes(`${uid}_`) &&
-            !convoId.includes(`_${uid}`)
-          ) {
-            continue;
-          }
+          const parts = convoId.split('_');
+          if (!parts.includes(uid)) continue;
           if (!convo.messages) continue;
 
           for (const [msgId, msg] of Object.entries(convo.messages)) {
@@ -111,9 +120,17 @@ async function handleDeleteAccount(req, res) {
       `[Account] RTDB cleaned up for user: ${uid} (${scrubbed} messages redacted)`,
     );
 
-    // 6. Delete Firebase Auth account
-    await adminAuth.deleteUser(uid);
-    console.info('[Account] Auth account deleted:', uid);
+    // 7. Delete Firebase Auth account (idempotent — ignore if already deleted)
+    try {
+      await adminAuth.deleteUser(uid);
+      console.info('[Account] Auth account deleted:', uid);
+    } catch (err) {
+      if (err.code === 'auth/user-not-found') {
+        console.info('[Account] Auth account already deleted:', uid);
+      } else {
+        throw err;
+      }
+    }
 
     return res.json({ success: true });
   } catch (error) {

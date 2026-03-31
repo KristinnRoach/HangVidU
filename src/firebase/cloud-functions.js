@@ -20,6 +20,11 @@ function getFunctionUrl(functionName) {
  */
 export async function callCloudFunction(functionName, body) {
   const idToken = await getLoggedInUserToken();
+  if (!idToken) {
+    const error = new Error('User must be signed in');
+    error.status = 401;
+    throw error;
+  }
   const response = await fetch(getFunctionUrl(functionName), {
     method: 'POST',
     headers: {
