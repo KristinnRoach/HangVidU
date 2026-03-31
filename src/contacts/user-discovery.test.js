@@ -1,6 +1,6 @@
 // src/contacts/user-discovery.test.js
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { hashEmail, removeUserFromDirectory } from './user-discovery.js';
+import { hashEmail, removeFromUserByEmailDirectory } from './user-discovery.js';
 
 vi.mock('firebase/database', () => ({
   ref: vi.fn(),
@@ -38,20 +38,20 @@ describe('user-discovery', () => {
     });
   });
 
-  describe('removeUserFromDirectory', () => {
+  describe('removeFromUserByEmailDirectory', () => {
     it('should remove user from discovery directory', async () => {
       const { remove } = await import('firebase/database');
 
-      await removeUserFromDirectory('test@example.com');
+      await removeFromUserByEmailDirectory('test@example.com');
 
       expect(remove).toHaveBeenCalled();
     });
 
     it('should throw error for invalid email', async () => {
-      await expect(removeUserFromDirectory('')).rejects.toThrow(
+      await expect(removeFromUserByEmailDirectory('')).rejects.toThrow(
         'Invalid email',
       );
-      await expect(removeUserFromDirectory(null)).rejects.toThrow(
+      await expect(removeFromUserByEmailDirectory(null)).rejects.toThrow(
         'Invalid email',
       );
     });
