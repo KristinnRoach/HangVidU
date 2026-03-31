@@ -595,7 +595,7 @@ async function handleServiceWorkerNavigation(path) {
       }
 
       await messagingController.selectConversation(conversationId, {
-        remoteParticipantIds: [contactId],
+        remoteParticipantIds: contactId ? [contactId] : [],
         displayUI: true,
       });
 
