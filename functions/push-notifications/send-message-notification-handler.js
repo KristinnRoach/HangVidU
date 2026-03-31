@@ -1,8 +1,14 @@
 const { buildMessagePayload } = require('./notification-payload-builder');
 const { sendWebPushToUser } = require('./web-push-delivery');
+const { getDatabase } = require('firebase-admin/database');
 
 /**
- * RTDB trigger that fans out message push notifications to the other participant.
+ * RTDB trigger that fans out message push notifications to all conversation
+ * members except the sender.
+ *
+ * Recipients are read from conversations/{conversationId}/members — the
+ * authoritative membership collection — so this handler works for both
+ * legacy uid1_uid2 conversations and future opaque-ID conversations.
  */
 async function handleSendMessageNotification(event) {
   const message = event.data.val();
@@ -16,11 +22,26 @@ async function handleSendMessageNotification(event) {
     return;
   }
 
-  const userIds = conversationId.split('_');
-  const recipientId = userIds.find((id) => id !== senderId);
+  // Derive recipients from the membership collection — do NOT split the conversationId.
+  // Trade-off: this adds one DB read per message notification. Acceptable at the
+  // current scale; for high-volume messaging consider including recipient data in
+  // the message payload or using a dedicated Cloud Function trigger.
+  const db = getDatabase();
+  const membersSnap = await db
+    .ref(`conversations/${conversationId}/members`)
+    .once('value');
 
-  if (!recipientId) {
-    console.warn('[Push-msg] Could not determine recipient from', conversationId);
+  if (!membersSnap.exists()) {
+    console.warn('[Push-msg] No members found for conversation', conversationId);
+    return;
+  }
+
+  const recipientIds = Object.keys(membersSnap.val()).filter(
+    (uid) => uid !== senderId,
+  );
+
+  if (recipientIds.length === 0) {
+    console.warn('[Push-msg] No recipients after excluding sender in', conversationId);
     return;
   }
 
@@ -32,19 +53,24 @@ async function handleSendMessageNotification(event) {
       ? previewSource.substring(0, 47) + '...'
       : previewSource;
 
-  try {
-    await sendWebPushToUser(
-      recipientId,
-      buildMessagePayload({
-        conversationId,
-        senderId,
-        senderName,
-        messagePreview: preview,
+  const payload = buildMessagePayload({
+    conversationId,
+    senderId,
+    senderName,
+    messagePreview: preview,
+  });
+
+  await Promise.all(
+    recipientIds.map((recipientId) =>
+      sendWebPushToUser(recipientId, payload).catch((error) => {
+        console.error(
+          '[Push-msg] Error sending notification to',
+          recipientId,
+          error,
+        );
       }),
-    );
-  } catch (error) {
-    console.error('[Push-msg] Error sending message notification:', error);
-  }
+    ),
+  );
 }
 
 module.exports = {

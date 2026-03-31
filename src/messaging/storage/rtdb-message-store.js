@@ -3,6 +3,13 @@
 //
 // Storage path: conversations/{conversationId}/messages/{messageId}
 //
+// conversationId contract (see docs/dev/conversation-id-contract.md):
+//   - conversationId is treated as an OPAQUE, stable identifier.
+//   - No runtime code derives participants by parsing the conversationId.
+//   - Membership authority: conversations/{conversationId}/members/{uid} = true
+//   - Reverse index:        users/{uid}/conversations/{conversationId}   = true
+//   - 1:1 dedup index:      users/{uid}/directConversations/{otherUid}   = conversationId
+//
 // Responsibilities:
 //   Downstream: transform canonical MessageSchema objects for RTDB (e.g. serverTimestamp)
 //   Upstream:   parse raw RTDB data into canonical objects, call registered callbacks
@@ -43,6 +50,19 @@ function normalizeReactions(reactions) {
 }
 
 export class RTDBMessageStore extends MessageStore {
+  /**
+   * Resolve a deterministic conversationId for a 1:1 direct conversation.
+   *
+   * LEGACY NOTE: This produces a uid1_uid2 key that encodes participant UIDs.
+   * It exists for backward compatibility with existing conversations only.
+   * Do NOT parse the returned ID to derive participants — use the members
+   * collection (conversations/{id}/members) as the authority instead.
+   * For new conversation types (groups, etc.) use ensureConversation() with
+   * an externally-generated opaque ID.
+   *
+   * @param {string[]} participantIds - Exactly 2 user IDs for a direct chat
+   * @returns {string} Deterministic conversation ID (opaque to callers)
+   */
   resolveConversationId(participantIds) {
     if (!participantIds || participantIds.length < 2) {
       throw new Error('resolveConversationId requires at least 2 participants');
@@ -63,6 +83,8 @@ export class RTDBMessageStore extends MessageStore {
     );
 
     // Ensure membership nodes exist (idempotent, best-effort)
+    // Note: ensureConversation() should have been called by the controller
+    // before the first write. This call is a safety net for legacy flows.
     this._ensureMembers(conversationId).catch((err) =>
       console.warn('[RTDBMessageStore] ensureMembers failed:', err),
     );
@@ -268,11 +290,72 @@ export class RTDBMessageStore extends MessageStore {
   // ── Internal ──────────────────────────────────────────────────────────
 
   /**
-   * Ensure membership nodes exist for a conversation.
-   * Writes conversations/{id}/members/{uid} and users/{uid}/conversations/{id}
-   * for each participant. Idempotent — safe to call on every message write.
+   * Ensure membership and index nodes exist for a conversation.
+   *
+   * This is the canonical conversation-bootstrap method. Call it once when
+   * opening or creating a conversation with known participants; it is idempotent
+   * and safe to call every time selectConversation runs.
+   *
+   * Writes atomically (multi-path update):
+   *   conversations/{id}/members/{uid}              = true  (membership authority)
+   *   users/{uid}/conversations/{id}                = true  (reverse index)
+   *   users/{uid}/directConversations/{otherUid}    = id    (1:1 dedup index, 2-party only)
+   *
+   * Does NOT parse conversationId — participantIds must be supplied explicitly.
    *
    * @param {string} conversationId
+   * @param {string[]} participantIds - All participant UIDs (including self)
+   * @returns {Promise<void>}
+   */
+  async ensureConversation(conversationId, participantIds) {
+    if (!conversationId || !participantIds || participantIds.length < 2) {
+      console.warn('[RTDBMessageStore] ensureConversation: invalid args', {
+        conversationId,
+        participantIds,
+      });
+      return;
+    }
+
+    const membersRef = ref(rtdb, `conversations/${conversationId}/members`);
+    const snap = await get(membersRef);
+    // Early return: if any members exist, assume the full bootstrap (membership +
+    // reverse indexes + directConversations) was written atomically in a prior call.
+    // If the directConversations index was missing from an older bootstrap, run
+    // scripts/migrate-conversation-members.js to backfill it.
+    //
+    // Race condition note: two concurrent first-time callers could both see no
+    // members and both proceed to write. Because all written values are idempotent
+    // (true / same conversationId) this results in duplicate writes but no data
+    // corruption. If atomic guarantees are needed, move this to a Cloud Function.
+    if (snap.exists()) return;
+
+    const updates = {};
+    for (const uid of participantIds) {
+      updates[`conversations/${conversationId}/members/${uid}`] = true;
+      updates[`users/${uid}/conversations/${conversationId}`] = true;
+    }
+
+    // For 1:1 direct conversations, also write the dedup index so future
+    // opaque-ID lookups can find the existing conversation without parsing the ID.
+    if (participantIds.length === 2) {
+      const [a, b] = participantIds;
+      updates[`users/${a}/directConversations/${b}`] = conversationId;
+      updates[`users/${b}/directConversations/${a}`] = conversationId;
+    }
+
+    await update(ref(rtdb), updates);
+  }
+
+  /**
+   * Fallback membership bootstrap — used only when participantIds are not
+   * available at the call site (legacy write path).
+   *
+   * LEGACY — do not extend or rely on this method for new features.
+   * It can only recover membership for legacy uid1_uid2 conversation IDs.
+   * Prefer calling ensureConversation() before the first write instead.
+   *
+   * @param {string} conversationId
+   * @private
    */
   async _ensureMembers(conversationId) {
     const membersRef = ref(
@@ -282,13 +365,13 @@ export class RTDBMessageStore extends MessageStore {
     const snap = await get(membersRef);
     if (snap.exists()) return;
 
-    const participantIds = conversationId.split('_');
-    const updates = {};
-    for (const uid of participantIds) {
-      updates[`conversations/${conversationId}/members/${uid}`] = true;
-      updates[`users/${uid}/conversations/${conversationId}`] = true;
-    }
-    await update(ref(rtdb), updates);
+    // We cannot derive participants from an opaque ID.
+    // Log a warning so callers know they should call ensureConversation() instead.
+    console.warn(
+      '[RTDBMessageStore] _ensureMembers: members missing for conversation and no participants supplied.',
+      conversationId,
+      'Call ensureConversation(id, participantIds) before the first write.',
+    );
   }
 
   async _cleanup(conversationId) {

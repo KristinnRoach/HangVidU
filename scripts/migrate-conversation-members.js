@@ -1,15 +1,29 @@
 #!/usr/bin/env node
 
 /**
- * Migrate existing conversations to include membership nodes.
+ * Migrate existing conversations to include membership nodes and indexes.
  *
- * For each conversation keyed as uid1_uid2, writes:
- *   conversations/{uid1_uid2}/members/{uid1}: true
- *   conversations/{uid1_uid2}/members/{uid2}: true
- *   users/{uid1}/conversations/{uid1_uid2}: true
- *   users/{uid2}/conversations/{uid1_uid2}: true
+ * Pass 1 — Membership (original):
+ *   For each conversation without members, writes:
+ *     conversations/{id}/members/{uid1}: true
+ *     conversations/{id}/members/{uid2}: true
+ *     users/{uid1}/conversations/{id}: true
+ *     users/{uid2}/conversations/{id}: true
  *
- * Idempotent — safe to run multiple times.
+ *   NOTE: This pass reads participants from conversationId.split('_') because
+ *   it only runs on legacy uid1_uid2-format IDs that predate the members
+ *   collection. New conversations (with opaque IDs) will already have members
+ *   written by ensureConversation() and are not touched.
+ *
+ * Pass 2 — directConversations index (new):
+ *   For each conversation with exactly 2 members, writes:
+ *     users/{uid1}/directConversations/{uid2}: conversationId
+ *     users/{uid2}/directConversations/{uid1}: conversationId
+ *
+ *   This enables 1:1 deduplication lookups without parsing the conversationId.
+ *   It uses the members collection as the authority, so no ID parsing is needed.
+ *
+ * Both passes are idempotent — safe to run multiple times.
  *
  * Usage:
  *   node scripts/migrate-conversation-members.js            # dry run
@@ -76,21 +90,27 @@ async function run() {
   const conversations = snap.val();
   const conversationIds = Object.keys(conversations);
   const updates = {};
-  let alreadyMigrated = 0;
-  let toMigrate = 0;
+
+  // ── Pass 1: Membership bootstrap for legacy uid1_uid2 conversations ────────
+  let alreadyHasMembers = 0;
+  let membershipToMigrate = 0;
+  let skippedNonLegacy = 0;
 
   for (const convoId of conversationIds) {
     const convo = conversations[convoId];
 
-    // Skip if already has members
     if (convo.members) {
-      alreadyMigrated++;
+      alreadyHasMembers++;
       continue;
     }
 
+    // Only attempt to bootstrap membership from legacy uid1_uid2 IDs.
+    // Non-legacy (opaque) IDs without members are skipped with a warning —
+    // they should not exist in practice but we won't corrupt them.
     const parts = convoId.split('_');
     if (parts.length !== 2) {
-      console.warn(`  Skipping non-standard conversation ID: ${convoId}`);
+      console.warn(`  [Pass 1] Skipping non-legacy conversation without members: ${convoId}`);
+      skippedNonLegacy++;
       continue;
     }
 
@@ -99,15 +119,78 @@ async function run() {
     updates[`conversations/${convoId}/members/${uid2}`] = true;
     updates[`users/${uid1}/conversations/${convoId}`] = true;
     updates[`users/${uid2}/conversations/${convoId}`] = true;
-    toMigrate++;
+    membershipToMigrate++;
   }
 
-  console.log(`Total conversations: ${conversationIds.length}`);
-  console.log(`Already migrated:    ${alreadyMigrated}`);
-  console.log(`To migrate:          ${toMigrate}`);
-  console.log(`Updates to write:    ${Object.keys(updates).length}`);
+  // ── Pass 2: directConversations index from membership authority ───────────
+  // Reads members from the in-memory snapshot or from updates already queued
+  // in Pass 1. No live DB reads needed here; the per-conversation check for
+  // existing directConversations index below avoids overwriting existing data.
+  let directIndexToWrite = 0;
+  let directIndexAlreadySet = 0;
 
-  if (toMigrate === 0) {
+  // Collect all existing directConversations entries in one read to avoid
+  // per-conversation queries. This reads the full users tree; acceptable for
+  // small user bases. For large deployments, restrict to users involved in
+  // conversations being migrated.
+  const allDirectSnap = await db.ref('users').once('value');
+  const existingDirectIndex = new Set();
+  if (allDirectSnap.exists()) {
+    allDirectSnap.forEach((userSnap) => {
+      const uid = userSnap.key;
+      const directConvos = userSnap.child('directConversations').val();
+      if (directConvos) {
+        Object.keys(directConvos).forEach((otherUid) => {
+          existingDirectIndex.add(`${uid}/${otherUid}`);
+        });
+      }
+    });
+  }
+
+  for (const convoId of conversationIds) {
+    const convo = conversations[convoId];
+
+    // Resolve the effective member list: from existing data OR from Pass-1 updates.
+    let memberIds;
+    if (convo.members) {
+      memberIds = Object.keys(convo.members);
+    } else {
+      // Pass 1 may have queued membership updates — collect from the updates map.
+      const prefix = `conversations/${convoId}/members/`;
+      memberIds = Object.keys(updates)
+        .filter((k) => k.startsWith(prefix) && updates[k] === true)
+        .map((k) => k.slice(prefix.length));
+    }
+
+    if (memberIds.length !== 2) {
+      // Only index 1:1 direct conversations.
+      continue;
+    }
+
+    const [uid1, uid2] = memberIds;
+
+    if (existingDirectIndex.has(`${uid1}/${uid2}`)) {
+      directIndexAlreadySet++;
+      continue;
+    }
+
+    updates[`users/${uid1}/directConversations/${uid2}`] = convoId;
+    updates[`users/${uid2}/directConversations/${uid1}`] = convoId;
+    directIndexToWrite++;
+  }
+
+  // ── Summary ───────────────────────────────────────────────────────────────
+  console.log(`Total conversations:           ${conversationIds.length}`);
+  console.log(`  Pass 1 — membership:`);
+  console.log(`    Already have members:      ${alreadyHasMembers}`);
+  console.log(`    To migrate:                ${membershipToMigrate}`);
+  console.log(`    Skipped (non-legacy):      ${skippedNonLegacy}`);
+  console.log(`  Pass 2 — directConversations index:`);
+  console.log(`    Already indexed:           ${directIndexAlreadySet}`);
+  console.log(`    To index:                  ${directIndexToWrite}`);
+  console.log(`Total DB updates:              ${Object.keys(updates).length}`);
+
+  if (Object.keys(updates).length === 0) {
     console.log('\nNothing to migrate.');
     process.exit(0);
   }
@@ -127,7 +210,9 @@ async function run() {
   }
 
   await db.ref().update(updates);
-  console.log(`\nDone. Migrated ${toMigrate} conversations.`);
+  console.log(
+    `\nDone. ${membershipToMigrate} membership migrations, ${directIndexToWrite} directConversations indexes written.`,
+  );
 
   process.exit(0);
 }

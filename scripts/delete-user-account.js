@@ -131,24 +131,22 @@ async function run() {
     }
   }
 
-  // 4. Find user's conversations via reverse index (or fall back)
+  // 4. Find user's conversations via reverse index.
+  // The fallback that parsed uid1_uid2 IDs has been removed (safety period
+  // expired 2026-03-31). All conversations should have reverse indexes populated
+  // by migrate-conversation-members.js.
   const userConvosSnap = await db
     .ref(`users/${uid}/conversations`)
     .once('value');
-  let conversationIds;
-  if (userConvosSnap.exists()) {
-    conversationIds = Object.keys(userConvosSnap.val());
-  } else {
-    // TODO: remove fallback after safety period (now is 31 march 2026)
+  const conversationIds = userConvosSnap.exists()
+    ? Object.keys(userConvosSnap.val())
+    : [];
+
+  if (!userConvosSnap.exists()) {
     console.warn(
-      'Reverse index not found, fallback to full conversation scan.',
+      'No reverse index found — no conversation membership to clean up.',
+      'Run scripts/migrate-conversation-members.js if this is unexpected.',
     );
-    const allConvosSnap = await db.ref('conversations').once('value');
-    conversationIds = allConvosSnap.exists()
-      ? Object.keys(allConvosSnap.val()).filter((id) =>
-          id.split('_').includes(uid),
-        )
-      : [];
   }
 
   // Remove user from conversation members

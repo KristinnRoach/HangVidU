@@ -60,7 +60,17 @@
         "conversations": {
           ".read": "$userId === auth.uid",
           "$conversationId": {
+            // LEGACY: allows writing the reverse index for uid1_uid2-format conversations.
+            // Once all clients use ensureConversation() (which writes via members authority),
+            // this fallback can be replaced with a membership-only check.
             ".write": "auth != null && !data.exists() && newData.val() === true && (($conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid)) && ($conversationId.contains($userId + '_') || $conversationId.contains('_' + $userId)))"
+          }
+        },
+        "directConversations": {
+          ".read": "$userId === auth.uid",
+          "$otherUserId": {
+            // Allow a user to write their own directConversations index entry.
+            ".write": "$userId === auth.uid && auth != null && !data.exists() && newData.val() != null"
           }
         }
       }
@@ -73,16 +83,26 @@
     },
     "conversations": {
       "$conversationId": {
-        ".read": "auth != null && (data.child('members').child(auth.uid).exists() || $conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid))",
+        // Read is allowed if the authenticated user is an explicit member.
+        // The legacy uid1_uid2 contains() fallback has been removed — all
+        // conversations must have members written via ensureConversation().
+        ".read": "auth != null && data.child('members').child(auth.uid).exists()",
         "members": {
           "$uid": {
+            // LEGACY: allows bootstrapping membership for uid1_uid2-format conversations
+            // where the ID encodes the participant UIDs. This fallback is kept until all
+            // existing conversations have been migrated via migrate-conversation-members.js
+            // and the directConversations index is populated. After that, member creation
+            // should move to a trusted server path and this rule can be tightened.
             ".write": "auth != null && !data.exists() && newData.val() === true && (($conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid)) && ($conversationId.contains($uid + '_') || $conversationId.contains('_' + $uid)))"
           }
         },
         "messages": {
           ".indexOn": ["from"],
           "$messageId": {
-            ".write": "auth != null && (root.child('conversations').child($conversationId).child('members').child(auth.uid).exists() || $conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid))"
+            // Write is allowed only if the authenticated user is an explicit member.
+            // The legacy uid1_uid2 contains() fallback has been removed.
+            ".write": "auth != null && root.child('conversations').child($conversationId).child('members').child(auth.uid).exists()"
           }
         }
       }

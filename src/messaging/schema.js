@@ -4,17 +4,33 @@
 import { z } from 'zod';
 
 // ============================================================================
+// CONVERSATION ID CONTRACT
+// ============================================================================
+// conversationId is an OPAQUE, stable identifier for a conversation.
+//
+// No runtime code should infer participants by parsing the conversationId.
+// Membership is the authoritative source:
+//
+//   conversations/{conversationId}/members/{uid} = true   (membership authority)
+//   users/{uid}/conversations/{conversationId}   = true   (reverse index)
+//   users/{uid}/directConversations/{otherUid}   = conversationId  (1:1 dedup index)
+//
+// Legacy format (existing 1:1 conversations):
+//   "{userId1}_{userId2}" where userId1 < userId2 (lexicographic sort)
+//   This format is kept for backward compatibility only. Do NOT split or
+//   pattern-match it in new code — read membership from the members collection.
+//
+// See docs/dev/conversation-id-contract.md for the full contract.
+
+// ============================================================================
 // CONVERSATION STRUCTURE
 // ============================================================================
 // Path: conversations/{conversationId}/
-// conversationId format: "{userId1}_{userId2}" where userId1 < userId2
 //
-// Example structure:
 // {
+//   members: { {uid}: true, ... }                  ← membership authority
 //   messages: {
-//     {messageId}: { type: 'text', text: '...', from: 'user-id', ... },
-//     {messageId}: { type: 'file', fileName: '...', from: 'user-id', ... },
-//     {messageId}: { type: 'event', eventType: 'call:unanswered', from: 'caller-uid', ... }
+//     {messageId}: { type, text/fileName/..., from, sentAt, read, reactions }
 //   }
 // }
 

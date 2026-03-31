@@ -234,6 +234,22 @@ export class MessagingController extends EventEmitter {
     // Add conversation to map before async work — removed on failure below
     this.conversations.set(conversationId, conversationState);
 
+    // Ensure membership + indexes exist before any message is sent.
+    // This is idempotent — safe to call on every selectConversation.
+    if (remoteParticipantIds.length > 0 && this.store.ensureConversation) {
+      const myUid = getUserId();
+      if (myUid) {
+        this.store
+          .ensureConversation(conversationId, [myUid, ...remoteParticipantIds])
+          .catch((err) =>
+            console.warn(
+              '[MessagingController] ensureConversation failed:',
+              err,
+            ),
+          );
+      }
+    }
+
     const subscriptions = [];
     try {
       // 1. Fetch full history (all messages, local + remote)

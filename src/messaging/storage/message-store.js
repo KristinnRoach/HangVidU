@@ -17,11 +17,31 @@
 export class MessageStore {
   /**
    * Resolve a deterministic conversation ID for the given participants.
+   * LEGACY: Only valid for 1:1 direct conversations. Do not parse the returned
+   * ID — use ensureConversation() + the members collection as the authority.
    * @param {string[]} participantIds
    * @returns {string}
    */
   resolveConversationId(participantIds) {
     throw new Error('Not implemented');
+  }
+
+  /**
+   * Ensure membership and index nodes exist for a conversation.
+   * Idempotent — safe to call every time a conversation is opened.
+   * Must be called before the first message write when participants are known.
+   *
+   * Writes (atomically):
+   *   conversations/{id}/members/{uid}           = true  (membership authority)
+   *   users/{uid}/conversations/{id}             = true  (reverse index)
+   *   users/{uid}/directConversations/{otherUid} = id    (1:1 dedup; 2-party only)
+   *
+   * @param {string} conversationId
+   * @param {string[]} participantIds - All participant UIDs (including self)
+   * @returns {Promise<void>}
+   */
+  async ensureConversation(conversationId, participantIds) {
+    // Default no-op; implementations should override.
   }
 
   // ── Downstream (commands) ─────────────────────────────────────────────

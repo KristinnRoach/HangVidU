@@ -33,10 +33,15 @@ class MockStore {
     this.messageListeners = new Map();
     this.reactionListeners = new Map();
     this.unreadListeners = new Map();
+    this.ensureConversationCalls = [];
   }
 
   resolveConversationId(participantIds) {
     return participantIds.sort().join('_');
+  }
+
+  async ensureConversation(conversationId, participantIds) {
+    this.ensureConversationCalls.push({ conversationId, participantIds });
   }
 
   async write(conversationId, message) {
@@ -156,6 +161,29 @@ describe('MessagingController', () => {
       }),
     );
     expect(controller.conversations.size).toBe(1);
+  });
+
+  it('should call ensureConversation when remoteParticipantIds are provided', async () => {
+    await controller.selectConversation('contactA_me', {
+      remoteParticipantIds: ['contactA'],
+    });
+
+    // ensureConversation should be called with all participants (self + remote)
+    await vi.waitFor(() => {
+      expect(mockStore.ensureConversationCalls).toHaveLength(1);
+    });
+    const call = mockStore.ensureConversationCalls[0];
+    expect(call.conversationId).toBe('contactA_me');
+    expect(call.participantIds).toContain('contactA');
+    expect(call.participantIds).toContain('me'); // self (mocked getUserId)
+  });
+
+  it('should not call ensureConversation when no remoteParticipantIds are given', async () => {
+    await controller.selectConversation('some_conversation');
+    // Allow any pending microtasks to flush
+    await vi.waitFor(() => {
+      expect(mockStore.ensureConversationCalls).toHaveLength(0);
+    });
   });
 
   it('should emit conversation:ready on resume', async () => {
