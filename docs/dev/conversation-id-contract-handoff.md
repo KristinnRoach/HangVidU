@@ -195,14 +195,16 @@ The next session should not proceed without deciding these:
 4. Decide the legacy compatibility model.
 5. Implement only the foundation needed for the contract, not group chat UI.
 
-## Paste into the next Codex session
+## Starting prompt:
 
 ```text
 Use branch `codex/conversation-id-contract` as the starting point.
 
-Read `/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/docs/dev/conversation-id-contract-handoff.md` first and treat it as the source of truth for scope and context.
+Read `docs/dev/conversation-id-contract-handoff.md` first and treat it as the source of truth for scope and context.
 
 Goal: make `conversationId` a clearly documented, consistent contract across the app so future group chat support is not blocked by legacy `uid1_uid2` assumptions. Focus on ID creation, membership authority, reverse indexes, notification/deletion/rules decoupling, and legacy compatibility. Do not implement full group chat UI in this branch.
+
+Keep it as simple and minimal as possible - this is only to AVOID being locked into 1:1 conversations for the future, so avoid locking us into anything specific that is likely to change. Preserve existing functionality - prefer migrating existing db entries over keeping legacy fallbacks in production code. Notify me if needed to migrate before deploying, there are only a few users so tiny disruption is ok, but loosing full conversation history is not ok.
 
 Before coding, inventory all `conversationId` creation/parsing callsites and propose the concrete contract plus migration/compat approach.
 ```
