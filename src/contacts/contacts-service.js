@@ -70,6 +70,7 @@ async function emitContactSaved(contact) {
   await appBus.emitAsync('room:id:created', { roomId });
 }
 
+// TODO: Refactor cross-module storage pattern when standardized pattern established.
 async function ensureDirectConversationForContact(ownerId, contactId, conversationId) {
   const membersRef = ref(rtdb, `conversations/${conversationId}/members`);
   const userConversationRef = ref(
