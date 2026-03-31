@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   showSaveContactPrompt: vi.fn(),
 }));
 
-vi.mock('../contacts/components/contacts.js', () => ({
+vi.mock('../contacts/components/contacts-list.js', () => ({
   renderContactsList: mocks.renderContactsList,
 }));
 
@@ -22,7 +22,8 @@ describe('promptAndRefreshContactSave', () => {
   it('rerenders contacts after a successful save', async () => {
     mocks.showSaveContactPrompt.mockResolvedValue(true);
 
-    const { promptAndRefreshContactSave } = await import('./contact-save-flow.js');
+    const { promptAndRefreshContactSave } =
+      await import('./contact-save-flow.js');
     const lobbyElement = document.createElement('div');
 
     await expect(
@@ -34,7 +35,8 @@ describe('promptAndRefreshContactSave', () => {
   it('does not rerender contacts after a canceled or failed save', async () => {
     mocks.showSaveContactPrompt.mockResolvedValue(false);
 
-    const { promptAndRefreshContactSave } = await import('./contact-save-flow.js');
+    const { promptAndRefreshContactSave } =
+      await import('./contact-save-flow.js');
     const lobbyElement = document.createElement('div');
 
     await expect(

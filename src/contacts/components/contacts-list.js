@@ -185,8 +185,7 @@ function attachContactListeners(container, lobbyElement) {
   container.querySelectorAll('.contact-name[data-contact-id]').forEach((el) => {
     el.onclick = async () => {
       const contactId = el.getAttribute('data-contact-id');
-      const conversationId =
-        el.getAttribute('data-conversation-id') || null;
+      const conversationId = el.getAttribute('data-conversation-id') || null;
       if (contactId) {
         try {
           if (!conversationId) {

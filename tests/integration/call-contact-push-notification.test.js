@@ -76,29 +76,29 @@ const mocks = vi.hoisted(() => {
     getLogs: vi.fn(() => []),
   };
 
-    return {
-      callSequence,
-      get memberJoinedHandler() {
-        return memberJoinedHandler;
-      },
-      set memberJoinedHandler(handler) {
-        memberJoinedHandler = handler;
-      },
-      get memberLeftHandler() {
-        return memberLeftHandler;
-      },
-      set memberLeftHandler(handler) {
-        memberLeftHandler = handler;
-      },
-      pushController,
-      callController,
-      contactsService,
-      logger,
-      firebase: {
-        remove: vi.fn(),
-      },
-      getUserRecentCallRef: vi.fn((_userId, roomId) => ({ roomId })),
-    };
+  return {
+    callSequence,
+    get memberJoinedHandler() {
+      return memberJoinedHandler;
+    },
+    set memberJoinedHandler(handler) {
+      memberJoinedHandler = handler;
+    },
+    get memberLeftHandler() {
+      return memberLeftHandler;
+    },
+    set memberLeftHandler(handler) {
+      memberLeftHandler = handler;
+    },
+    pushController,
+    callController,
+    contactsService,
+    logger,
+    firebase: {
+      remove: vi.fn(),
+    },
+    getUserRecentCallRef: vi.fn((_userId, roomId) => ({ roomId })),
+  };
 });
 
 vi.mock('../../src/ui/icons.js', () => ({
@@ -324,7 +324,7 @@ vi.mock('../../src/ui/core/watch-lifecycle-ui.js', () => ({
   onWatchModeExited: vi.fn(),
 }));
 
-vi.mock('../../src/contacts/components/contacts.js', () => ({
+vi.mock('../../src/contacts/components/contacts-list.js', () => ({
   renderContactsList: vi.fn(),
   cleanupContacts: vi.fn(),
 }));
@@ -603,6 +603,8 @@ describe('callContact push notification flow', () => {
       'user-123',
       'room-empty',
     );
-    expect(mocks.firebase.remove).toHaveBeenCalledWith({ roomId: 'room-empty' });
+    expect(mocks.firebase.remove).toHaveBeenCalledWith({
+      roomId: 'room-empty',
+    });
   });
 });

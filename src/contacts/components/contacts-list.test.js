@@ -99,7 +99,7 @@ describe('contacts component', () => {
     ]);
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const { renderContactsList } = await import('./contacts.js');
+    const { renderContactsList } = await import('./contacts-list.js');
 
     const lobbyElement = document.createElement('div');
     await renderContactsList(lobbyElement);
@@ -116,7 +116,7 @@ describe('contacts component', () => {
   });
 
   it('tears down previous presence listeners when rerendered with no contacts', async () => {
-    const { renderContactsList } = await import('./contacts.js');
+    const { renderContactsList } = await import('./contacts-list.js');
 
     const lobbyElement = document.createElement('div');
     await renderContactsList(lobbyElement);
@@ -127,6 +127,8 @@ describe('contacts component', () => {
     mocks.getAllContactsSorted.mockResolvedValue([]);
     await renderContactsList(lobbyElement);
 
-    expect(mocks.off.mock.calls.length).toBeGreaterThan(offCallsBeforeEmptyRender);
+    expect(mocks.off.mock.calls.length).toBeGreaterThan(
+      offCallsBeforeEmptyRender,
+    );
   });
 });

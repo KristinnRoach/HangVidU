@@ -78,7 +78,7 @@ import {
 import {
   renderContactsList,
   cleanupContacts,
-} from './contacts/components/contacts.js';
+} from './contacts/components/contacts-list.js';
 
 import {
   destroyYouTubePlayer,
