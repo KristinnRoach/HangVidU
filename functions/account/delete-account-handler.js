@@ -4,14 +4,18 @@ const { getDatabase } = require('firebase-admin/database');
 const { verifyAuthHeader } = require('../push-notifications/auth');
 
 /**
- * Deletes the authenticated user's account and all associated data.
+ * Deletes the authenticated user's account and associated data.
+ * Preserves conversations so other participants keep their message history.
  *
  * Cleans up:
- * - users/{uid} (profile, contacts, presence, pushSubscriptions, etc.)
+ * - users/{uid}/* (contacts, presence, pushSubscriptions, etc.)
  * - usersByEmail/{emailHash} (discovery directory entry)
- * - conversations where the uid appears in the conversation ID
  * - notifications/{uid}
  * - Firebase Auth user record
+ *
+ * Preserves:
+ * - conversations (other participants keep message history)
+ * - users/{uid}/profile as a tombstone ({ deleted: true, deletedAt })
  *
  * @param {import('firebase-functions/v2/https').Request} req
  * @param {import('firebase-functions/v2/https').Response} res
@@ -38,31 +42,34 @@ async function handleDeleteAccount(req, res) {
 
     const updates = {};
 
-    // 1. Remove user node (profile, contacts, presence, pushSubscriptions, etc.)
-    updates[`users/${uid}`] = null;
+    // 1. Remove user sub-nodes but leave profile as tombstone
+    const userSnap = await db.ref(`users/${uid}`).once('value');
+    if (userSnap.exists()) {
+      for (const key of Object.keys(userSnap.val())) {
+        if (key !== 'profile') {
+          updates[`users/${uid}/${key}`] = null;
+        }
+      }
+    }
 
-    // 2. Remove notifications
+    // 2. Replace profile with tombstone so other users see "Deleted Account"
+    updates[`users/${uid}/profile`] = {
+      deleted: true,
+      deletedAt: Date.now(),
+    };
+
+    // 3. Remove notifications
     updates[`notifications/${uid}`] = null;
 
-    // 3. Remove discovery directory entry
+    // 4. Remove discovery directory entry
     if (email) {
       const emailHash = hashEmail(email);
       updates[`usersByEmail/${emailHash}`] = null;
     }
 
-    // 4. Find and remove conversations involving this user
-    const conversationsSnap = await db.ref('conversations').once('value');
-    if (conversationsSnap.exists()) {
-      for (const key of Object.keys(conversationsSnap.val())) {
-        if (key.includes(`${uid}_`) || key.includes(`_${uid}`)) {
-          updates[`conversations/${key}`] = null;
-        }
-      }
-    }
-
-    // 5. Apply all RTDB deletions atomically
+    // 5. Apply all RTDB updates atomically
     await db.ref().update(updates);
-    console.info('[Account] RTDB data removed for user:', uid);
+    console.info('[Account] RTDB data cleaned up for user:', uid);
 
     // 6. Delete Firebase Auth account
     await adminAuth.deleteUser(uid);

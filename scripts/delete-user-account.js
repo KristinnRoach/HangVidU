@@ -99,12 +99,19 @@ async function run() {
   const updates = {};
   const summary = [];
 
-  // 1. User node
+  // 1. User sub-nodes (preserve profile as tombstone)
   const userSnap = await db.ref(`users/${uid}`).once('value');
   if (userSnap.exists()) {
-    const keys = Object.keys(userSnap.val());
-    summary.push(`users/${uid} (${keys.join(', ')})`);
-    updates[`users/${uid}`] = null;
+    const keys = Object.keys(userSnap.val()).filter((k) => k !== 'profile');
+    for (const key of keys) {
+      summary.push(`users/${uid}/${key}`);
+      updates[`users/${uid}/${key}`] = null;
+    }
+    summary.push(`users/${uid}/profile -> tombstone`);
+    updates[`users/${uid}/profile`] = {
+      deleted: true,
+      deletedAt: Date.now(),
+    };
   }
 
   // 2. Notifications
@@ -124,25 +131,17 @@ async function run() {
     }
   }
 
-  // 4. Conversations
-  const convoSnap = await db.ref('conversations').once('value');
-  if (convoSnap.exists()) {
-    for (const key of Object.keys(convoSnap.val())) {
-      if (key.includes(`${uid}_`) || key.includes(`_${uid}`)) {
-        summary.push(`conversations/${key}`);
-        updates[`conversations/${key}`] = null;
-      }
-    }
-  }
+  // 4. Conversations preserved (other participants keep history)
 
   if (summary.length === 0) {
     console.log('No RTDB data found for this user.');
   } else {
-    console.log('RTDB paths to delete:');
+    console.log('RTDB changes:');
     summary.forEach((p) => console.log(`  - ${p}`));
+    console.log('\nConversations: preserved (other participants keep history)');
   }
 
-  console.log(`\nFirebase Auth record: will be deleted`);
+  console.log(`Firebase Auth record: will be deleted`);
 
   if (!shouldDelete) {
     console.log('\nDry run complete. Re-run with --confirm to delete.');
