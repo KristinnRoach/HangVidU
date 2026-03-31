@@ -27,11 +27,10 @@ import { resolveDirectConversationId } from '../messaging/direct-conversation-id
 /**
  * Resolve the active storage backend for the current auth state.
  *
+ * @param {string|null} [ownerId=getLoggedInUserId()]
  * @returns {import('./storage/contacts-store.js').ContactsStore}
  */
-function getContactsStorage() {
-  const ownerId = getLoggedInUserId();
-
+function getContactsStorage(ownerId = getLoggedInUserId()) {
   if (ownerId) {
     return createContactsRTDBStore({
       database: rtdb,
@@ -71,7 +70,13 @@ async function emitContactSaved(contact) {
 }
 
 // TODO: Refactor cross-module storage pattern when standardized pattern established.
-async function ensureDirectConversationForContact(ownerId, contactId, conversationId) {
+// TODO: Remove the direct-id member bootstrap path and corresponding RTDB rule
+// once canonical conversation creation is handled outside this client-side flow.
+async function ensureDirectConversationForContact(
+  ownerId,
+  contactId,
+  conversationId,
+) {
   const membersRef = ref(rtdb, `conversations/${conversationId}/members`);
   const userConversationRef = ref(
     rtdb,
@@ -306,10 +311,10 @@ export class ContactsService {
    */
   async saveContact(contactId, contactName, roomId) {
     try {
-      const storage = getContactsStorage();
+      const ownerId = getLoggedInUserId();
+      const storage = getContactsStorage(ownerId);
       const existing = await storage.get(contactId);
       const now = Date.now();
-      const ownerId = getLoggedInUserId();
       const conversationId =
         existing?.conversationId ??
         (ownerId ? resolveDirectConversationId(ownerId, contactId) : null);

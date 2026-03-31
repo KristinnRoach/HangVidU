@@ -562,6 +562,8 @@ async function handleServiceWorkerNavigation(path) {
 
   const roomId = targetUrl.searchParams.get('room');
   const contactId = targetUrl.searchParams.get('contact');
+  const conversationIdFromUrl =
+    targetUrl.searchParams.get('conversationId')?.trim() || null;
 
   window.history.replaceState({}, '', targetUrl);
 
@@ -569,15 +571,18 @@ async function handleServiceWorkerNavigation(path) {
     path,
     roomId,
     contactId,
+    conversationIdFromUrl,
   });
 
   if (!roomId) {
-    if (!contactId) {
+    if (!contactId && !conversationIdFromUrl) {
       return false;
     }
 
     try {
-      const conversationId = await contactsService.getConversationId(contactId);
+      const conversationId =
+        conversationIdFromUrl ??
+        (contactId ? await contactsService.getConversationId(contactId) : null);
 
       if (!conversationId) {
         console.warn(
@@ -600,6 +605,7 @@ async function handleServiceWorkerNavigation(path) {
         '[MAIN] SW navigation -> Failed to open text chat UI for contact ID:',
         {
           contactId,
+          conversationIdFromUrl,
           error,
         },
       );

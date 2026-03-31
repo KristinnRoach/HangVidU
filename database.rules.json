@@ -76,7 +76,7 @@
         ".read": "auth != null && data.child('members').child(auth.uid).exists()",
         "members": {
           "$uid": {
-            ".write": "auth != null && !data.exists() && newData.val() === true && !root.child('conversations').child($conversationId).child('members').exists() && (($conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid)) && ($conversationId.contains($uid + '_') || $conversationId.contains('_' + $uid)))"
+            ".write": "auth != null && !data.exists() && newData.val() === true && !root.child('conversations').child($conversationId).child('members').exists() && ($conversationId === auth.uid + '_' + $uid || $conversationId === $uid + '_' + auth.uid)"
           }
         },
         "messages": {

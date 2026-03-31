@@ -4,7 +4,7 @@ import { isIncomingCallType } from './notification-presentation.js';
  * Maps normalized notification payload data to the app navigation path.
  */
 export function getNotificationNavigationPath(data, action) {
-  const { type, roomId, senderId, callerId } = data || {};
+  const { type, roomId, senderId, callerId, conversationId } = data || {};
 
   if (isIncomingCallType(type)) {
     return roomId ? `/?room=${encodeURIComponent(roomId)}` : '/';
@@ -24,7 +24,15 @@ export function getNotificationNavigationPath(data, action) {
 
   if (type === 'message') {
     if (senderId) {
-      return `/?contact=${encodeURIComponent(senderId)}`;
+      const params = new URLSearchParams({
+        contact: senderId,
+      });
+
+      if (conversationId) {
+        params.set('conversationId', conversationId);
+      }
+
+      return `/?${params.toString()}`;
     }
 
     return '/';
