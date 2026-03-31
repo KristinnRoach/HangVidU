@@ -77,8 +77,20 @@ const EventMessageSchema = z.object({
   // _reactionUpdate: z.boolean().optional(),
 });
 
+// Redacted Message (content scrubbed after account deletion)
+const RedactedMessageSchema = z.object({
+  messageId: z.string(),
+  type: z.string(),
+  redacted: z.literal(true),
+  from: z.string().min(1),
+  sentAt: z.number(),
+  read: z.boolean().default(false),
+  reactions: reactionsField,
+});
+
 // Union of all message types — single schema for both read and write paths
 export const MessageSchema = z.union([
+  RedactedMessageSchema,
   TextMessageSchema,
   FileMessageSchema,
   EventMessageSchema,

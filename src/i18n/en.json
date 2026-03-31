@@ -158,6 +158,7 @@
   "auth.delete_confirm": "Are you sure you want to delete your account?\n\nThis will permanently delete:\n• Your account\n• All contacts\n• Call history\n• All associated data\n\nThis action cannot be undone.",
   "auth.delete_success": "Your account has been deleted successfully.",
   "auth.delete_failed": "Failed to delete account. Please try again.",
+  "message.redacted": "Message from deleted account",
   "auth.login_failed": "Login failed. Please refresh the page, check your connection and try again.",
   "auth.ios_blocked": "Sign-in is blocked in the installed app on iOS.\n\nTap the Login button again to open in Safari and complete sign-in.",
   "auth.popup_blocked": "Pop-up blocked. Please enable pop-ups for this site in your browser settings, or try signing in from a desktop browser.",

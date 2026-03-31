@@ -1,11 +1,6 @@
 // src/auth/auth-actions.js — sign-in, sign-out, delete + iOS Safari workarounds
 
-import {
-  GoogleAuthProvider,
-  signInWithPopup,
-  signOut,
-  deleteUser,
-} from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 
 import { auth, logAuthError } from './auth-setup.js';
 import { clearGISTokenCache } from './gis-tokens.js';
@@ -15,6 +10,7 @@ import { setUserOffline } from '../firebase/presence.js';
 import { t } from '../i18n/index.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { getPushNotifications } from '../push-notifications/index.js';
+import { callCloudFunction } from '../firebase/cloud-functions.js';
 
 // iOS standalone PWA Safari fallback: armed after a failed attempt,
 // then the next Login tap opens the app URL in Safari (user gesture).
@@ -184,72 +180,36 @@ export async function signOutUser() {
 
 /**
  * Delete the current user's account and all associated data.
- * Cleanup runs before deleteUser() because RTDB security rules require
- * an authenticated session (auth.uid). If deleteUser() subsequently fails
- * (e.g. auth/requires-recent-login), the data is already gone but the
- * auth account remains — the user can simply retry.
+ * Delegates to the deleteAccount Cloud Function which handles all cleanup
+ * server-side with Admin SDK (RTDB data, discovery directory, Auth record).
  *
  * @throws {Error} If user is not logged in or deletion fails
  */
-export async function deleteAccount() {
+export async function deleteAccount({ scrubMessages = true } = {}) {
   const user = auth.currentUser;
   if (!user) {
     throw new Error('No user logged in');
   }
 
-  const userId = user.uid;
-
-  // Signal account deletion is in progress (will be cleared by onAuthStateChanged)
   setState({ status: 'loading' });
 
   try {
     console.info('[AUTH] Starting account deletion');
 
-    // 1. Set user offline and clear cached tokens
     await setUserOffline();
     clearGISTokenCache();
 
-    // 2. Clean up user data while still authenticated (RTDB rules require auth)
-    const { ref, remove } = await import('firebase/database');
-    const { rtdb } = await import('../storage/fb-rtdb/rtdb.js');
+    await callCloudFunction('deleteAccount', { scrubMessages });
 
-    console.info('[AUTH] Cleaning up user data from RTDB...');
-    try {
-      await remove(ref(rtdb, `users/${userId}`));
-    } catch (err) {
-      console.warn('[AUTH] Failed to remove user node from RTDB:', err);
-    }
-
-    // 3. Remove user from discovery directory (so they don't show as "On HangVidU")
-    if (user.email) {
-      try {
-        const { removeUserFromDirectory } =
-          await import('../contacts/user-discovery.js');
-        await removeUserFromDirectory(user.email);
-      } catch (err) {
-        console.warn(
-          '[AUTH] Failed to remove user from discovery directory:',
-          err,
-        );
-      }
-    }
-
-    // 4. Delete the Firebase Auth account (also signs out the user)
-    console.info('[AUTH] Deleting Firebase Auth account...');
-    await deleteUser(user);
+    // Sign out locally — the server deleted the Auth record but the
+    // client's cached token would remain valid until it expires.
+    await signOut(auth);
 
     console.info('[AUTH] Account deleted successfully');
     setTimeout(() => showOneTapSignin(), 1500);
   } catch (error) {
     logAuthError('Delete account', error);
     setState({ status: 'idle' });
-
-    if (error.code === 'auth/requires-recent-login') {
-      throw new Error(
-        'For security, please sign out and sign in again before deleting your account.',
-      );
-    }
-
     throw error;
   }
 }

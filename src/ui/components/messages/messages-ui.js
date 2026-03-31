@@ -818,7 +818,11 @@ export function initMessagesUI() {
 
     // Type-specific content
     let onSingleTap;
-    switch (type) {
+    if (message.redacted) {
+      p.textContent = t('message.redacted');
+      p.classList.add('message-redacted');
+      messageEntry.classList.remove('call-event');
+    } else switch (type) {
       case 'file': {
         const file = buildFileContent(message);
         p.appendChild(file.element);

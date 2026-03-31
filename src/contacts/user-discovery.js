@@ -121,12 +121,12 @@ export async function findUsersByEmails(emails) {
 }
 
 /**
- * Remove a user from the discovery directory.
- * Called when a user deletes their account.
+ * Remove a user from the 'usersByEmail' discovery directory.
+ *
  * @param {string} email - Email address to remove
  * @returns {Promise<void>}
  */
-export async function removeUserFromDirectory(email) {
+export async function removeFromUserByEmailDirectory(email) {
   if (!email || typeof email !== 'string') {
     throw new Error('Invalid email: must be a non-empty string');
   }

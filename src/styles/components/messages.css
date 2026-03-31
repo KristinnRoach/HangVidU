@@ -291,6 +291,11 @@
   border: 1px solid rgba(255, 255, 255, 0.274);
 }
 
+#messages .message-redacted {
+  font-style: italic;
+  opacity: 0.5;
+}
+
 /* Sender avatar (single-letter placeholder) */
 #messages .sender-avatar {
   display: inline-flex;

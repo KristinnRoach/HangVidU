@@ -2,9 +2,7 @@
 // Public app-facing push notifications facade.
 
 import { getLoggedInUserId, getUser } from '../auth/auth-state.js';
-import { getLoggedInUserToken } from '../auth/index.js';
-
-const FUNCTION_REGION = 'europe-west1';
+import { callCloudFunction } from '../firebase/cloud-functions.js';
 const PERMISSION_REQUEST_TIMEOUT_MS = 8000;
 
 function resolveCallNotificationType(type) {
@@ -279,7 +277,7 @@ export class PushNotifications {
 
     try {
       const payload = await this.formatCallNotification(notificationData);
-      const response = await this.callFunction('sendCallNotification', {
+      const response = await callCloudFunction('sendCallNotification', {
         targetUserId,
         callData: payload,
       });
@@ -343,7 +341,7 @@ export class PushNotifications {
         ...notificationData,
         type: 'missed_call',
       });
-      const response = await this.callFunction('sendCallNotification', {
+      const response = await callCloudFunction('sendCallNotification', {
         targetUserId,
         callData: payload,
       });
@@ -586,7 +584,7 @@ export class PushNotifications {
   }
 
   async registerSubscription(subscription) {
-    return this.callFunction('registerPushSubscription', {
+    return callCloudFunction('registerPushSubscription', {
       subscription: subscription.toJSON(),
       deviceInfo: {
         platform: navigator.platform || 'unknown',
@@ -597,7 +595,7 @@ export class PushNotifications {
   }
 
   async unregisterSubscription(subscription) {
-    return this.callFunction('removePushSubscription', {
+    return callCloudFunction('removePushSubscription', {
       endpoint: subscription.endpoint,
     });
   }
@@ -656,39 +654,6 @@ export class PushNotifications {
     });
   }
 
-  getFunctionUrl(functionName) {
-    const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
-    return `https://${FUNCTION_REGION}-${projectId}.cloudfunctions.net/${functionName}`;
-  }
-
-  async callFunction(functionName, body) {
-    const idToken = await getLoggedInUserToken();
-    const response = await fetch(this.getFunctionUrl(functionName), {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${idToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const error = new Error(
-        payload?.message ||
-          payload?.error ||
-          `Function ${functionName} failed with status ${response.status}`,
-      );
-      error.status = response.status;
-      error.payload = payload;
-      throw error;
-    }
-
-    return {
-      status: response.status,
-      payload,
-    };
-  }
 }
 
 let instance = null;

@@ -17,7 +17,7 @@ import createComponent from '../../../ui/component-system/component.js';
 
 let authComponent = null;
 
-const SHOW_DEBUG_DELETE_BTN = false; // Set to true to show delete account button in dev mode
+const SHOW_DEBUG_DELETE_BTN_IN_DEV = true; // Set to true to show delete account button in dev mode
 
 /**
  * Smart truncation that tries to show first name
@@ -79,7 +79,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
     template: `
       <button style="margin-right: [[loginBtnMarginRightPx]]px; display: [[loginBtnDisplay]]" id="goog-login-btn" class="login-btn" onclick="handleLogin">[[t:auth.login]]</button>
       <button style="display: [[logoutBtnDisplay]]" id="goog-logout-btn" class="logout-btn" onclick="handleLogout">[[t:auth.logout]]</button>
-      ${isDev() && SHOW_DEBUG_DELETE_BTN ? `<button id="delete-account-btn" class="delete-account-btn" onclick="handleDeleteAccount">[[t:auth.delete_account]]</button>` : ''}
+      ${isDev() && SHOW_DEBUG_DELETE_BTN_IN_DEV ? `<button id="delete-account-btn" class="delete-account-btn" onclick="handleDeleteAccount">[[t:auth.delete_account]]</button>` : ''}
       <span class="signing-in-indicator" style="display: [[signingInDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">[[t:auth.signing_in]]</span>
       <span class="signing-in-indicator" style="display: [[signingOutDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">[[t:auth.signing_out]]</span>
       <div class="user-info" style="display: [[userInfoDisplay]]">
@@ -114,8 +114,10 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
 
         if (!confirmed) return;
 
+        const scrubMessages = confirm('Also delete all your messages from conversations?');
+
         try {
-          await deleteAccount();
+          await deleteAccount({ scrubMessages });
           alert(t('auth.delete_success'));
         } catch (error) {
           console.error('[AuthComponent] Delete account error:', error);
