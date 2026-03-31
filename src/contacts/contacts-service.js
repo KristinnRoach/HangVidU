@@ -1,7 +1,6 @@
 import { getIsLoggedIn, getLoggedInUserId } from '../auth/auth-state.js';
 import { appBus } from '../app/app-bus.js';
 import { rtdb } from '../storage/fb-rtdb/rtdb.js';
-import { get, ref, update } from 'firebase/database';
 import {
   createContactsLocalStore,
   createContactsRTDBStore,
@@ -67,37 +66,6 @@ async function emitContactSaved(contact) {
   const roomId = contact.roomId ?? null;
   // TODO: Emit richer contact lifecycle payloads after the bus contract settles.
   await appBus.emitAsync('room:id:created', { roomId });
-}
-
-// TODO: Refactor cross-module storage pattern when standardized pattern established.
-// TODO: Remove the direct-id member bootstrap path and corresponding RTDB rule
-// once canonical conversation creation is handled outside this client-side flow.
-async function ensureDirectConversationForContact(
-  ownerId,
-  contactId,
-  conversationId,
-) {
-  const membersRef = ref(rtdb, `conversations/${conversationId}/members`);
-  const userConversationRef = ref(
-    rtdb,
-    `users/${ownerId}/conversations/${conversationId}`,
-  );
-  const membersSnap = await get(membersRef);
-  const userConversationSnap = await get(userConversationRef);
-  const updates = {};
-
-  if (!userConversationSnap.exists()) {
-    updates[`users/${ownerId}/conversations/${conversationId}`] = true;
-  }
-
-  if (!membersSnap.exists()) {
-    updates[`conversations/${conversationId}/members/${ownerId}`] = true;
-    updates[`conversations/${conversationId}/members/${contactId}`] = true;
-  }
-
-  if (Object.keys(updates).length > 0) {
-    await update(ref(rtdb), updates);
-  }
 }
 
 /**
@@ -318,14 +286,6 @@ export class ContactsService {
       const conversationId =
         existing?.conversationId ??
         (ownerId ? resolveDirectConversationId(ownerId, contactId) : null);
-
-      if (ownerId && conversationId) {
-        await ensureDirectConversationForContact(
-          ownerId,
-          contactId,
-          conversationId,
-        );
-      }
 
       const contact = await storage.put({
         contactId,
