@@ -32,6 +32,7 @@ async function handleDeleteAccount(req, res) {
     }
 
     const uid = await verifyAuthHeader(req);
+    const { scrubMessages = true } = req.body || {};
     const db = getDatabase();
     const adminAuth = getAuth();
 
@@ -71,28 +72,35 @@ async function handleDeleteAccount(req, res) {
       updates[`usersByEmail/${emailHash}`] = null;
     }
 
-    // 5. Scrub message content from conversations involving this user
-    const conversationsSnap = await db.ref('conversations').once('value');
+    // 5. Optionally scrub message content from conversations
     let scrubbed = 0;
-    if (conversationsSnap.exists()) {
-      for (const [convoId, convo] of Object.entries(conversationsSnap.val())) {
-        if (!convoId.includes(`${uid}_`) && !convoId.includes(`_${uid}`)) {
-          continue;
-        }
-        if (!convo.messages) continue;
+    if (scrubMessages) {
+      const conversationsSnap = await db.ref('conversations').once('value');
+      if (conversationsSnap.exists()) {
+        for (const [convoId, convo] of Object.entries(
+          conversationsSnap.val(),
+        )) {
+          if (
+            !convoId.includes(`${uid}_`) &&
+            !convoId.includes(`_${uid}`)
+          ) {
+            continue;
+          }
+          if (!convo.messages) continue;
 
-        for (const [msgId, msg] of Object.entries(convo.messages)) {
-          if (msg.from !== uid) continue;
-          const path = `conversations/${convoId}/messages/${msgId}`;
-          updates[`${path}/text`] = null;
-          updates[`${path}/fromName`] = null;
-          updates[`${path}/fileName`] = null;
-          updates[`${path}/mimeType`] = null;
-          updates[`${path}/fileSize`] = null;
-          updates[`${path}/data`] = null;
-          updates[`${path}/details`] = null;
-          updates[`${path}/redacted`] = true;
-          scrubbed++;
+          for (const [msgId, msg] of Object.entries(convo.messages)) {
+            if (msg.from !== uid) continue;
+            const path = `conversations/${convoId}/messages/${msgId}`;
+            updates[`${path}/text`] = null;
+            updates[`${path}/fromName`] = null;
+            updates[`${path}/fileName`] = null;
+            updates[`${path}/mimeType`] = null;
+            updates[`${path}/fileSize`] = null;
+            updates[`${path}/data`] = null;
+            updates[`${path}/details`] = null;
+            updates[`${path}/redacted`] = true;
+            scrubbed++;
+          }
         }
       }
     }

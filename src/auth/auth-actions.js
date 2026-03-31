@@ -185,7 +185,7 @@ export async function signOutUser() {
  *
  * @throws {Error} If user is not logged in or deletion fails
  */
-export async function deleteAccount() {
+export async function deleteAccount({ scrubMessages = true } = {}) {
   const user = auth.currentUser;
   if (!user) {
     throw new Error('No user logged in');
@@ -199,7 +199,7 @@ export async function deleteAccount() {
     await setUserOffline();
     clearGISTokenCache();
 
-    await callCloudFunction('deleteAccount');
+    await callCloudFunction('deleteAccount', { scrubMessages });
 
     // Sign out locally — the server deleted the Auth record but the
     // client's cached token would remain valid until it expires.
