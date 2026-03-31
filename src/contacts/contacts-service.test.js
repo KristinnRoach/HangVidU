@@ -135,9 +135,13 @@ describe('contacts-service', () => {
 
     mocks.auth.ownerId = 'me';
     mocks.store.get.mockResolvedValue(null);
-    mocks.firebase.get.mockResolvedValue({
-      exists: () => false,
-    });
+    mocks.firebase.get
+      .mockResolvedValueOnce({
+        exists: () => false,
+      })
+      .mockResolvedValueOnce({
+        exists: () => false,
+      });
     mocks.store.put.mockResolvedValue({
       contactId: 'u1',
       contactName: 'Alice',
@@ -165,6 +169,48 @@ describe('contacts-service', () => {
         'conversations/me_u1/members/u1': true,
       },
     );
+  });
+
+  it('saveContact skips redundant RTDB bootstrap writes when metadata already exists', async () => {
+    const { ContactsService } = await import('./contacts-service.js');
+    const service = new ContactsService();
+
+    mocks.auth.ownerId = 'me';
+    mocks.store.get.mockResolvedValue({
+      contactId: 'u1',
+      contactName: 'Alice',
+      roomId: 'room-1',
+      conversationId: 'me_u1',
+      savedAt: 1,
+      lastInteractionAt: 1,
+    });
+    mocks.firebase.get
+      .mockResolvedValueOnce({
+        exists: () => true,
+      })
+      .mockResolvedValueOnce({
+        exists: () => true,
+      });
+    mocks.store.put.mockResolvedValue({
+      contactId: 'u1',
+      contactName: 'Alice Updated',
+      roomId: 'room-1',
+      conversationId: 'me_u1',
+      savedAt: 1,
+      lastInteractionAt: 1,
+    });
+
+    await service.saveContact('u1', 'Alice Updated', 'room-1');
+
+    expect(mocks.firebase.update).not.toHaveBeenCalled();
+    expect(mocks.store.put).toHaveBeenCalledWith({
+      contactId: 'u1',
+      contactName: 'Alice Updated',
+      roomId: 'room-1',
+      conversationId: 'me_u1',
+      savedAt: 1,
+      lastInteractionAt: 1,
+    });
   });
 
   it('updateContact updates an existing contact and returns the updated record', async () => {

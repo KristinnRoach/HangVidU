@@ -72,17 +72,26 @@ async function emitContactSaved(contact) {
 
 async function ensureDirectConversationForContact(ownerId, contactId, conversationId) {
   const membersRef = ref(rtdb, `conversations/${conversationId}/members`);
+  const userConversationRef = ref(
+    rtdb,
+    `users/${ownerId}/conversations/${conversationId}`,
+  );
   const membersSnap = await get(membersRef);
-  const updates = {
-    [`users/${ownerId}/conversations/${conversationId}`]: true,
-  };
+  const userConversationSnap = await get(userConversationRef);
+  const updates = {};
+
+  if (!userConversationSnap.exists()) {
+    updates[`users/${ownerId}/conversations/${conversationId}`] = true;
+  }
 
   if (!membersSnap.exists()) {
     updates[`conversations/${conversationId}/members/${ownerId}`] = true;
     updates[`conversations/${conversationId}/members/${contactId}`] = true;
   }
 
-  await update(ref(rtdb), updates);
+  if (Object.keys(updates).length > 0) {
+    await update(ref(rtdb), updates);
+  }
 }
 
 /**
