@@ -8,17 +8,7 @@ import { z } from 'zod';
 // ============================================================================
 // CONVERSATION STRUCTURE
 // ============================================================================
-// Path: conversations/{conversationId}/
-//
-// Example structure:
-// {
-//   members: { {uid}: true, ... },
-//   messages: {
-//     {messageId}: { type: 'text', text: '...', from: 'user-id', ... },
-//     {messageId}: { type: 'file', fileName: '...', from: 'user-id', ... },
-//     {messageId}: { type: 'event', eventType: 'call:unanswered', from: 'caller-uid', ... }
-//   }
-// }
+// Path: conversations/{conversationId}/messages/{messageId}
 
 // ============================================================================
 // SHARED FIELDS
@@ -164,12 +154,6 @@ export const ConversationMessagesSchema = z.record(
   z.string(),
   RawConversationMessageSchema,
 );
-export const ConversationMembersSchema = z.record(z.string(), z.literal(true));
-
-export const ConversationSchema = z.object({
-  members: ConversationMembersSchema.optional(),
-  messages: ConversationMessagesSchema.optional(),
-});
 
 // ============================================================================
 // REACTIONS STRUCTURE (RTDB storage format)
@@ -222,5 +206,4 @@ export const parseMessage = (data, messageId) => {
   return MessageSchema.parse(parsed);
 };
 
-export const parseConversation = (data) => ConversationSchema.parse(data);
 export const parseReactions = (data) => ReactionsSchema.parse(data);

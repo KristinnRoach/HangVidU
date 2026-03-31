@@ -131,25 +131,15 @@ async function run() {
     }
   }
 
-  // 4. Find user's conversations via reverse index (or fall back)
-  const userConvosSnap = await db
-    .ref(`users/${uid}/conversations`)
-    .once('value');
-  let conversationIds;
-  if (userConvosSnap.exists()) {
-    conversationIds = Object.keys(userConvosSnap.val());
-  } else {
-    // TODO: remove fallback after safety period (now is 31 march 2026)
-    console.warn(
-      'Reverse index not found, fallback to full conversation scan.',
-    );
-    const allConvosSnap = await db.ref('conversations').once('value');
-    conversationIds = allConvosSnap.exists()
-      ? Object.keys(allConvosSnap.val()).filter((id) =>
-          id.split('_').includes(uid),
-        )
-      : [];
-  }
+  // Direct conversations are still keyed deterministically as uid1_uid2, so
+  // cleanup can resolve them without relying on the abandoned reverse index
+  // rollout under users/{uid}/conversations.
+  const allConvosSnap = await db.ref('conversations').once('value');
+  const conversationIds = allConvosSnap.exists()
+    ? Object.keys(allConvosSnap.val()).filter((id) =>
+        id.split('_').includes(uid),
+      )
+    : [];
 
   // Remove user from conversation members
   for (const convoId of conversationIds) {

@@ -57,12 +57,6 @@
           ".read": "$userId === auth.uid",
           ".write": "$userId === auth.uid"
         },
-        "conversations": {
-          ".read": "$userId === auth.uid",
-          "$conversationId": {
-            ".write": "auth != null && $userId === auth.uid && !data.exists() && newData.val() === true"
-          }
-        }
       }
     },
     "notifications": {
