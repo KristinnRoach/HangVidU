@@ -1,5 +1,6 @@
 import { appBus } from '../app/app-bus.js';
 import { tempWarn } from '../utils/dev/dev-utils.js';
+import { contactsService } from '../contacts/contacts-service.js';
 
 let cleanupMessagingAppBusHandlers = null;
 
@@ -26,13 +27,21 @@ export function setupMessagingAppBusHandlers({ messagingController }) {
   const unsubscribers = [];
 
   unsubscribers.push(
-    appBus.on('call:incoming:accepted', ({ contactId }) => {
+    appBus.on('call:incoming:accepted', async ({ contactId }) => {
       tempWarn(
         `[APPBUS] Handling call answered event from contact ${contactId}`,
       );
 
       const conversationId =
-        messagingController.resolveConversationIdFromContactId(contactId);
+        await contactsService.getConversationId(contactId);
+
+      if (!conversationId) {
+        console.warn(
+          '[APPBUS] Missing conversationId for accepted call contact:',
+          contactId,
+        );
+        return;
+      }
 
       messagingController
         .selectConversation(conversationId, {
@@ -56,7 +65,15 @@ export function setupMessagingAppBusHandlers({ messagingController }) {
 
       try {
         const conversationId =
-          messagingController.resolveConversationIdFromContactId(contactId);
+          await contactsService.getConversationId(contactId);
+
+        if (!conversationId) {
+          console.warn(
+            '[APPBUS] Missing conversationId for unanswered call contact:',
+            contactId,
+          );
+          return;
+        }
 
         await messagingController.sendEventMessage(
           conversationId,

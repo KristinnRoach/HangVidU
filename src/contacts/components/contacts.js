@@ -85,7 +85,7 @@ export async function renderContactsList(lobbyElement) {
   contactsContainer.innerHTML = `
     <div class="contacts-list">
       ${entries
-        .map(({ id, contactId, contactName, roomId }) => {
+        .map(({ id, contactId, contactName, roomId, conversationId }) => {
           const rawName = contactName || t('contact.no_name');
           const escapedName = escapeHtml(rawName);
           const shortName =
@@ -99,6 +99,7 @@ export async function renderContactsList(lobbyElement) {
                 data-room-id="${escapeHtml(roomId || '')}"
                 data-contact-name="${escapedName}"
                 data-contact-id="${escapeHtml(id)}"
+                data-conversation-id="${escapeHtml(conversationId || '')}"
                 title="${escapeHtml(t('contact.action.call', { name: escapedName }))}"
               >
                 <i data-lucide="phone" fill="currentColor" stroke-width="0"></i>
@@ -106,7 +107,12 @@ export async function renderContactsList(lobbyElement) {
 
               <span class="presence-indicator" data-contact-id="${escapeHtml(id)}"></span>
 
-              <span class="contact-name" data-contact-id="${escapeHtml(id)}" data-contact-name="${escapedName}">
+              <span
+                class="contact-name"
+                data-contact-id="${escapeHtml(id)}"
+                data-contact-name="${escapedName}"
+                data-conversation-id="${escapeHtml(conversationId || '')}"
+              >
                 ${shortName}
               </span>
 
@@ -142,7 +148,7 @@ export async function renderContactsList(lobbyElement) {
   setupPresenceIndicators(contactIds, contactsContainer);
 
   // Setup unread message badges
-  setupUnreadBadges(contactIds);
+  setupUnreadBadges(entries);
 }
 
 /**
@@ -161,11 +167,14 @@ function attachContactListeners(container, lobbyElement) {
       let roomId = nameEl.getAttribute('data-room-id');
       const contactName = nameEl.getAttribute('data-contact-name');
       const contactId = nameEl.getAttribute('data-contact-id');
+      const conversationId =
+        nameEl.getAttribute('data-conversation-id') || null;
 
       if (roomId || contactId) {
         dispatchUIEvent('call:outgoing:requested', {
           contactId,
           contactName,
+          conversationId,
           roomId,
         });
       }
@@ -176,11 +185,10 @@ function attachContactListeners(container, lobbyElement) {
   container.querySelectorAll('.contact-name[data-contact-id]').forEach((el) => {
     el.onclick = async () => {
       const contactId = el.getAttribute('data-contact-id');
+      const conversationId =
+        el.getAttribute('data-conversation-id') || null;
       if (contactId) {
         try {
-          const conversationId =
-            messagingController.resolveConversationIdFromContactId(contactId);
-
           if (!conversationId) {
             console.warn('[contacts] No conversation id for contact', {
               contactId,
@@ -279,24 +287,21 @@ function setupPresenceIndicators(contactIds, contactsContainer) {
  * Setup unread message badges for contacts list.
  * Listens to each contact's conversation for unread count changes.
  */
-function setupUnreadBadges(contactIds) {
+function setupUnreadBadges(entries) {
   // Clean up old listeners
   unreadListeners.forEach((unsub) => unsub());
   unreadListeners.clear();
 
   if (!getLoggedInUserId()) return;
 
-  contactIds.forEach((contactId) => {
+  entries.forEach(({ contactId, conversationId }) => {
     const badgeEl = document.querySelector(
       `.unread-badge[data-contact-id="${contactId}"]`,
     );
-    if (!badgeEl) return;
+    if (!badgeEl || !conversationId) return;
 
     // Debounce rapid-fire callbacks during initial onChildAdded replay
     let debounceTimer = null;
-
-    const conversationId =
-      messagingController.resolveConversationIdFromContactId(contactId);
 
     const unsub = messagingController.listenToUnreadCount(
       conversationId,

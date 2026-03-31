@@ -16,6 +16,11 @@ const mocks = vi.hoisted(() => ({
     emit: vi.fn(),
     emitAsync: vi.fn().mockResolvedValue(undefined),
   },
+  firebase: {
+    get: vi.fn(),
+    ref: vi.fn((_db, path) => ({ path })),
+    update: vi.fn().mockResolvedValue(undefined),
+  },
 }));
 
 vi.mock('../auth/auth-state.js', () => ({
@@ -29,6 +34,12 @@ vi.mock('../app/app-bus.js', () => ({
 
 vi.mock('../storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
+}));
+
+vi.mock('firebase/database', () => ({
+  get: mocks.firebase.get,
+  ref: mocks.firebase.ref,
+  update: mocks.firebase.update,
 }));
 
 vi.mock('./storage/index.js', () => ({
@@ -48,6 +59,9 @@ describe('contacts-service', () => {
     mocks.store.remove.mockReset();
     mocks.appBus.emit.mockReset();
     mocks.appBus.emitAsync.mockReset().mockResolvedValue(undefined);
+    mocks.firebase.get.mockReset();
+    mocks.firebase.ref.mockClear();
+    mocks.firebase.update.mockReset().mockResolvedValue(undefined);
 
     vi.restoreAllMocks();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -74,6 +88,7 @@ describe('contacts-service', () => {
       contactId: 'u1',
       contactName: 'Alice',
       roomId: 'room-1',
+      conversationId: null,
       savedAt: expect.any(Number),
       lastInteractionAt: expect.any(Number),
     });
@@ -108,9 +123,48 @@ describe('contacts-service', () => {
       contactId: 'u1',
       contactName: 'After',
       roomId: 'room-1',
+      conversationId: null,
       savedAt: 100,
       lastInteractionAt: 200,
     });
+  });
+
+  it('saveContact populates direct conversation metadata for authenticated users', async () => {
+    const { ContactsService } = await import('./contacts-service.js');
+    const service = new ContactsService();
+
+    mocks.auth.ownerId = 'me';
+    mocks.store.get.mockResolvedValue(null);
+    mocks.firebase.get.mockResolvedValue({
+      exists: () => false,
+    });
+    mocks.store.put.mockResolvedValue({
+      contactId: 'u1',
+      contactName: 'Alice',
+      roomId: 'room-1',
+      conversationId: 'me_u1',
+      savedAt: 1,
+      lastInteractionAt: 1,
+    });
+
+    await service.saveContact('u1', 'Alice', 'room-1');
+
+    expect(mocks.store.put).toHaveBeenCalledWith({
+      contactId: 'u1',
+      contactName: 'Alice',
+      roomId: 'room-1',
+      conversationId: 'me_u1',
+      savedAt: expect.any(Number),
+      lastInteractionAt: expect.any(Number),
+    });
+    expect(mocks.firebase.update).toHaveBeenCalledWith(
+      { path: undefined },
+      {
+        'users/me/conversations/me_u1': true,
+        'conversations/me_u1/members/me': true,
+        'conversations/me_u1/members/u1': true,
+      },
+    );
   });
 
   it('updateContact updates an existing contact and returns the updated record', async () => {

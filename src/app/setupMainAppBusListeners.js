@@ -2,45 +2,54 @@ import { appBus } from './app-bus.js';
 import { messagingController } from '../messaging/messaging-controller.js';
 import { isDev, tempWarn } from '../utils/dev/dev-utils.js';
 import { callContact } from '../call/WIP-start-call-refactor.js';
+import { contactsService } from '../contacts/contacts-service.js';
 import {
   listenForIncomingOnRoom,
   removeIncomingListenersForRoom,
 } from '../call/room-listeners.js';
 
 export function setupMainAppBusListeners() {
-  appBus.on('call:outgoing:requested', ({ contactId, contactName, roomId }) => {
-    isDev() &&
-      tempWarn('[main.js] call:outgoing:requested event received with data: ', {
-        contactId,
-        contactName,
-        roomId,
-      });
+  appBus.on(
+    'call:outgoing:requested',
+    async ({ contactId, contactName, conversationId, roomId }) => {
+      isDev() &&
+        tempWarn(
+          '[main.js] call:outgoing:requested event received with data: ',
+          {
+            contactId,
+            contactName,
+            conversationId,
+            roomId,
+          },
+        );
 
-    if (contactId) {
-      try {
-        const conversationId =
-          messagingController.resolveConversationIdFromContactId(contactId);
+      if (contactId) {
+        try {
+          const resolvedConversationId =
+            conversationId ??
+            (await contactsService.getConversationId(contactId));
 
-        if (conversationId) {
-          messagingController
-            .selectConversation(conversationId, {
-              remoteParticipantIds: [contactId],
-              displayUI: false,
-            })
-            .catch((e) => {
-              console.warn(
-                'Failed to select conversation on call:outgoing:requested:',
-                e,
-              );
-            });
+          if (resolvedConversationId) {
+            messagingController
+              .selectConversation(resolvedConversationId, {
+                remoteParticipantIds: [contactId],
+                displayUI: false,
+              })
+              .catch((e) => {
+                console.warn(
+                  'Failed to select conversation on call:outgoing:requested:',
+                  e,
+                );
+              });
+          }
+        } catch (e) {
+          console.warn('Failed to select conversation after memberJoined:', e);
         }
-      } catch (e) {
-        console.warn('Failed to select conversation after memberJoined:', e);
       }
-    }
 
-    callContact(contactId, contactName, roomId);
-  });
+      callContact(contactId, contactName, roomId);
+    },
+  );
 
   appBus.on('room:id:created', ({ roomId }) => {
     listenForIncomingOnRoom(roomId);

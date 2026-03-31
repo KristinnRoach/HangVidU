@@ -60,7 +60,7 @@
         "conversations": {
           ".read": "$userId === auth.uid",
           "$conversationId": {
-            ".write": "auth != null && !data.exists() && newData.val() === true && (($conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid)) && ($conversationId.contains($userId + '_') || $conversationId.contains('_' + $userId)))"
+            ".write": "$userId === auth.uid && auth != null && !data.exists() && newData.val() === true"
           }
         }
       }
@@ -73,16 +73,16 @@
     },
     "conversations": {
       "$conversationId": {
-        ".read": "auth != null && (data.child('members').child(auth.uid).exists() || $conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid))",
+        ".read": "auth != null && data.child('members').child(auth.uid).exists()",
         "members": {
           "$uid": {
-            ".write": "auth != null && !data.exists() && newData.val() === true && (($conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid)) && ($conversationId.contains($uid + '_') || $conversationId.contains('_' + $uid)))"
+            ".write": "auth != null && !data.exists() && newData.val() === true && !root.child('conversations').child($conversationId).child('members').exists() && (($conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid)) && ($conversationId.contains($uid + '_') || $conversationId.contains('_' + $uid)))"
           }
         },
         "messages": {
           ".indexOn": ["from"],
           "$messageId": {
-            ".write": "auth != null && (root.child('conversations').child($conversationId).child('members').child(auth.uid).exists() || $conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid))"
+            ".write": "auth != null && root.child('conversations').child($conversationId).child('members').child(auth.uid).exists()"
           }
         }
       }

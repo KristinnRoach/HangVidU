@@ -25,9 +25,6 @@ import {
   callBtn,
   hangUpBtn,
   exitWatchModeBtn,
-  chatControls,
-  localBoxEl,
-  remoteBoxEl,
   sharedBoxEl,
   lobbyDiv,
   lobbyCallBtn,
@@ -108,10 +105,7 @@ import { copyToClipboard } from './ui/components/modal/copyLinkModal.js';
 
 // ____ UI END ____
 
-import {
-  onCallConnected,
-  onCallDisconnected,
-} from './ui/core/call-lifecycle-ui.js';
+import { onCallDisconnected } from './ui/core/call-lifecycle-ui.js';
 import { addDebugUpdateButton } from './ui/components/notifications/debug-notifications.js';
 import {
   initI18n,
@@ -583,8 +577,7 @@ async function handleServiceWorkerNavigation(path) {
     }
 
     try {
-      const conversationId =
-        messagingController.resolveConversationIdFromContactId(contactId);
+      const conversationId = await contactsService.getConversationId(contactId);
 
       if (!conversationId) {
         console.warn(
@@ -670,10 +663,8 @@ export async function autoInitMsgSessionIfNeeded() {
     if (!firstContact?.contactId) return;
 
     // Pre select the conversation for the first contact
-    const conversationId =
-      messagingController.resolveConversationIdFromContactId(
-        firstContact.contactId,
-      );
+    const conversationId = firstContact.conversationId ?? null;
+    if (!conversationId) return;
     await messagingController.selectConversation(conversationId, {
       remoteParticipantIds: [firstContact.contactId],
       displayUI: false,

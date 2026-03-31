@@ -38,6 +38,7 @@ describe('ContactsLocalAdapter', () => {
     expect(result).toEqual({
       contactId: 'u1',
       contactName: 'Alice',
+      conversationId: null,
       roomId: 'room-1',
       savedAt: 10,
       lastInteractionAt: 30,

@@ -1,6 +1,7 @@
 import { getIsLoggedIn, getLoggedInUserId } from '../auth/auth-state.js';
 import { appBus } from '../app/app-bus.js';
 import { rtdb } from '../storage/fb-rtdb/rtdb.js';
+import { get, ref, update } from 'firebase/database';
 import {
   createContactsLocalStore,
   createContactsRTDBStore,
@@ -11,6 +12,7 @@ import {
   getContactByMostRecentInteraction,
   getContactByRoomId,
 } from './contact-query.js';
+import { resolveDirectConversationId } from '../messaging/direct-conversation-id.js';
 
 // ! PAUSED: claude --resume edf6030f-72fb-4503-9175-bfc21d2d973c
 
@@ -68,6 +70,21 @@ async function emitContactSaved(contact) {
   await appBus.emitAsync('room:id:created', { roomId });
 }
 
+async function ensureDirectConversationForContact(ownerId, contactId, conversationId) {
+  const membersRef = ref(rtdb, `conversations/${conversationId}/members`);
+  const membersSnap = await get(membersRef);
+  const updates = {
+    [`users/${ownerId}/conversations/${conversationId}`]: true,
+  };
+
+  if (!membersSnap.exists()) {
+    updates[`conversations/${conversationId}/members/${ownerId}`] = true;
+    updates[`conversations/${conversationId}/members/${contactId}`] = true;
+  }
+
+  await update(ref(rtdb), updates);
+}
+
 /**
  * Emit update compatibility events after a successful write.
  *
@@ -108,6 +125,17 @@ export class ContactsService {
       logServiceFailure('getContact', error, { contactId });
       return null;
     }
+  }
+
+  /**
+   * Resolve the stored conversation id for one saved contact.
+   *
+   * @param {string} contactId
+   * @returns {Promise<string|null>}
+   */
+  async getConversationId(contactId) {
+    const contact = await this.getContact(contactId);
+    return contact?.conversationId ?? null;
   }
 
   /**
@@ -271,11 +299,24 @@ export class ContactsService {
       const storage = getContactsStorage();
       const existing = await storage.get(contactId);
       const now = Date.now();
+      const ownerId = getLoggedInUserId();
+      const conversationId =
+        existing?.conversationId ??
+        (ownerId ? resolveDirectConversationId(ownerId, contactId) : null);
+
+      if (ownerId && conversationId) {
+        await ensureDirectConversationForContact(
+          ownerId,
+          contactId,
+          conversationId,
+        );
+      }
 
       const contact = await storage.put({
         contactId,
         contactName,
         roomId,
+        conversationId,
         savedAt: existing?.savedAt ?? now,
         lastInteractionAt: existing?.lastInteractionAt ?? now,
       });

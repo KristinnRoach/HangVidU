@@ -7,10 +7,10 @@ import { z } from 'zod';
 // CONVERSATION STRUCTURE
 // ============================================================================
 // Path: conversations/{conversationId}/
-// conversationId format: "{userId1}_{userId2}" where userId1 < userId2
 //
 // Example structure:
 // {
+//   members: { {uid}: true, ... },
 //   messages: {
 //     {messageId}: { type: 'text', text: '...', from: 'user-id', ... },
 //     {messageId}: { type: 'file', fileName: '...', from: 'user-id', ... },

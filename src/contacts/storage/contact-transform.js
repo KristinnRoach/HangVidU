@@ -36,6 +36,19 @@ function normalizeRoomId(roomId) {
   return normalized || null;
 }
 
+function normalizeConversationId(conversationId) {
+  if (conversationId == null) {
+    return null;
+  }
+
+  if (typeof conversationId !== 'string') {
+    throw new TypeError('conversationId must be a string or null');
+  }
+
+  const normalized = conversationId.trim();
+  return normalized || null;
+}
+
 function normalizeTimestamp(value, fallbackValue) {
   if (value == null) {
     return fallbackValue;
@@ -62,6 +75,10 @@ export function normalizeContactRecord(input, { now = Date.now() } = {}) {
     contactId,
     contactName: normalizeContactName(input.contactName),
     roomId: normalizeRoomId(input.roomId),
+    conversationId:
+      'conversationId' in input
+        ? normalizeConversationId(input.conversationId)
+        : undefined,
     savedAt,
     lastInteractionAt: normalizeTimestamp(input.lastInteractionAt, savedAt),
   });
@@ -87,6 +104,11 @@ export function normalizeContactPatch(patch) {
 
     if (key === 'roomId') {
       next.roomId = normalizeRoomId(value);
+      continue;
+    }
+
+    if (key === 'conversationId') {
+      next.conversationId = normalizeConversationId(value);
       continue;
     }
 

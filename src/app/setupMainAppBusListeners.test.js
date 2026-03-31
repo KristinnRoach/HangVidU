@@ -11,8 +11,10 @@ const mocks = vi.hoisted(() => {
       }),
     },
     messagingController: {
-      resolveConversationIdFromContactId: vi.fn(),
       selectConversation: vi.fn(() => Promise.resolve()),
+    },
+    contactsService: {
+      getConversationId: vi.fn(),
     },
     callContact: vi.fn(),
     listenForIncomingOnRoom: vi.fn(),
@@ -28,6 +30,10 @@ vi.mock('./app-bus.js', () => ({
 
 vi.mock('../messaging/messaging-controller.js', () => ({
   messagingController: mocks.messagingController,
+}));
+
+vi.mock('../contacts/contacts-service.js', () => ({
+  contactsService: mocks.contactsService,
 }));
 
 vi.mock('../utils/dev/dev-utils.js', () => ({
@@ -62,7 +68,7 @@ describe('setupMainAppBusListeners', () => {
       roomId: 'room-123',
     });
 
-    expect(mocks.messagingController.resolveConversationIdFromContactId).not.toHaveBeenCalled();
+    expect(mocks.contactsService.getConversationId).not.toHaveBeenCalled();
     expect(mocks.messagingController.selectConversation).not.toHaveBeenCalled();
     expect(mocks.callContact).toHaveBeenCalledWith(null, 'Unknown Caller', 'room-123');
   });

@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  resolveConversationIdFromContactId: vi.fn(),
   selectConversation: vi.fn(),
   getAllContactsSorted: vi.fn(),
   onLocaleChange: vi.fn(() => () => {}),
@@ -55,7 +54,6 @@ vi.mock('../../ui/icons.js', () => ({
 
 vi.mock('../../messaging/messaging-controller.js', () => ({
   messagingController: {
-    resolveConversationIdFromContactId: mocks.resolveConversationIdFromContactId,
     selectConversation: mocks.selectConversation,
     listenToUnreadCount: vi.fn(() => () => {}),
   },
@@ -84,13 +82,21 @@ describe('contacts component', () => {
       {
         contactId: 'contact-1',
         contactName: 'Alice',
+        conversationId: 'contact-1_user-123',
         roomId: 'room-1',
       },
     ]);
   });
 
   it('does not attempt to open a conversation when no conversation id exists', async () => {
-    mocks.resolveConversationIdFromContactId.mockReturnValue(null);
+    mocks.getAllContactsSorted.mockResolvedValue([
+      {
+        contactId: 'contact-1',
+        contactName: 'Alice',
+        conversationId: null,
+        roomId: 'room-1',
+      },
+    ]);
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { renderContactsList } = await import('./contacts.js');
