@@ -12,6 +12,10 @@ const { verifyAuthHeader } = require('../push-notifications/auth');
  * - conversations where the uid appears in the conversation ID
  * - notifications/{uid}
  * - Firebase Auth user record
+ *
+ * @param {import('firebase-functions/v2/https').Request} req
+ * @param {import('firebase-functions/v2/https').Response} res
+ * @returns {Promise<void>}
  */
 async function handleDeleteAccount(req, res) {
   try {
@@ -76,6 +80,9 @@ async function handleDeleteAccount(req, res) {
 /**
  * Produces a Firebase-safe base64 hash from an email address.
  * Must match the client-side hashEmail in src/contacts/user-discovery.js.
+ *
+ * @param {string} email
+ * @returns {string} Firebase-safe base64 key
  */
 function hashEmail(email) {
   const normalized = email.toLowerCase().trim();

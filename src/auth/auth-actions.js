@@ -1,10 +1,6 @@
 // src/auth/auth-actions.js — sign-in, sign-out, delete + iOS Safari workarounds
 
-import {
-  GoogleAuthProvider,
-  signInWithPopup,
-  signOut,
-} from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 
 import { auth, logAuthError } from './auth-setup.js';
 import { clearGISTokenCache } from './gis-tokens.js';
@@ -14,6 +10,7 @@ import { setUserOffline } from '../firebase/presence.js';
 import { t } from '../i18n/index.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { getPushNotifications } from '../push-notifications/index.js';
+import { callCloudFunction } from '../firebase/cloud-functions.js';
 
 // iOS standalone PWA Safari fallback: armed after a failed attempt,
 // then the next Login tap opens the app URL in Safari (user gesture).
@@ -202,9 +199,6 @@ export async function deleteAccount() {
     await setUserOffline();
     clearGISTokenCache();
 
-    const { callCloudFunction } = await import(
-      '../firebase/cloud-functions.js'
-    );
     await callCloudFunction('deleteAccount');
 
     // Sign out locally — the server deleted the Auth record but the
