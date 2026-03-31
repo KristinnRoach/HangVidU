@@ -48,21 +48,21 @@ const serviceAccountPath = path.join(
   '../functions/service-account-key.json',
 );
 
-if (!fs.existsSync(serviceAccountPath)) {
-  console.error(
-    'Error: service-account-key.json not found at',
-    serviceAccountPath,
+const appOptions = {
+  databaseURL: RTDB_URL,
+};
+
+if (fs.existsSync(serviceAccountPath)) {
+  const serviceAccount = JSON.parse(
+    fs.readFileSync(serviceAccountPath, 'utf-8'),
   );
-  process.exit(1);
+  appOptions.credential = admin.credential.cert(serviceAccount);
+} else {
+  // No local service account file; rely on Application Default Credentials
+  // (including GOOGLE_APPLICATION_CREDENTIALS if set).
 }
 
-const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf-8'));
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: RTDB_URL,
-});
-
+admin.initializeApp(appOptions);
 const db = admin.database();
 
 const LEGACY_EVENT_TYPES = new Set([
