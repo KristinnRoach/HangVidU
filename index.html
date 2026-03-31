@@ -30,7 +30,11 @@
                 id="searchQuery"
                 placeholder="Search YouTube videos..."
               />
-              <button id="searchBtn" title="Search YouTube">
+              <button
+                id="searchBtn"
+                title="Search YouTube videos"
+                aria-label="Search YouTube videos"
+              >
                 <i data-lucide="search"></i>
               </button>
             </div>
@@ -72,21 +76,33 @@
 
         <div id="lobby" class="lobby">
           <div id="lobby-buttons-container" class="lobby-buttons-container">
-            <button title="Start Call" class="lobby-btn" id="lobby-call-btn">
+            <button
+              title="Start call"
+              aria-label="Start call"
+              class="lobby-btn"
+              id="lobby-call-btn"
+            >
               <i data-lucide="phone"></i>
             </button>
             <button
-              title="Paste invite link and join call (needs an invite link in clipboard)"
+              title="Paste invite link to join call"
+              aria-label="Paste invite link to join call"
               class="lobby-btn"
               id="paste-join-btn"
             >
               <i data-lucide="clipboard-paste"></i>
             </button>
-            <button title="Add contacts" class="lobby-btn" id="add-contact-btn">
+            <button
+              title="Add contact"
+              aria-label="Add contact"
+              class="lobby-btn"
+              id="add-contact-btn"
+            >
               <i data-lucide="user-plus"></i>
             </button>
             <button
               title="Test push notifications"
+              aria-label="Test push notifications"
               class="lobby-btn hidden"
               id="test-notifications-btn"
               style="background-color: #ff6b6b"
@@ -102,34 +118,48 @@
           class="chat-btn hidden"
           id="exit-watch-mode-btn"
           title="Exit watch mode"
+          aria-label="Exit watch mode"
         >
           <i data-lucide="x"></i>
         </button>
-        <button class="chat-btn" id="call-btn">
+        <button
+          class="chat-btn"
+          id="call-btn"
+          title="Start call"
+          aria-label="Start call"
+        >
           <i data-lucide="phone"></i>
         </button>
         <button
           class="chat-btn"
           id="camera-btn"
-          aria-label="Turn camera on/off"
+          title="Toggle camera"
+          aria-label="Toggle camera"
         >
           <i data-lucide="video"></i>
         </button>
         <button
           class="chat-btn"
           id="switch-camera-btn"
+          title="Switch camera"
           aria-label="Switch camera"
         >
           <i data-lucide="refresh-cw"></i>
         </button>
 
-        <button class="chat-btn" id="mic-btn" aria-label="Mute/unmute mic">
+        <button
+          class="chat-btn"
+          id="mic-btn"
+          title="Toggle microphone"
+          aria-label="Toggle microphone"
+        >
           <i data-lucide="mic"></i>
         </button>
         <button
           class="chat-btn"
           id="mute-btn"
-          aria-label="Mute/unmute"
+          title="Toggle remote audio"
+          aria-label="Toggle remote audio"
           disabled
         >
           <i data-lucide="volume-2"></i>
@@ -139,7 +169,8 @@
           style="display: none"
           class="chat-btn"
           id="fullscreen-partner-btn"
-          aria-label="Fullscreen"
+          title="Fullscreen partner video"
+          aria-label="Fullscreen partner video"
         >
           <i data-lucide="maximize"></i>
         </button>
@@ -147,13 +178,20 @@
         <button
           class="chat-btn hidden"
           id="remote-pip-btn"
-          aria-label="Picture in Picture"
+          title="Open partner video in picture-in-picture"
+          aria-label="Open partner video in picture-in-picture"
           disabled
         >
           <i data-lucide="copy"></i>
         </button>
 
-        <button class="chat-btn" id="hang-up-btn" disabled>
+        <button
+          class="chat-btn"
+          id="hang-up-btn"
+          title="Hang up"
+          aria-label="Hang up"
+          disabled
+        >
           <i data-lucide="phone-off"></i>
         </button>
       </div>
@@ -161,49 +199,30 @@
       <button
         id="app-pip-btn"
         style="display: none"
+        title="Open app in floating window"
         aria-label="Open app in floating window"
       >
         <i data-lucide="monitor"></i>
       </button>
 
-      <div
-        id="legal-footer"
-        style="
-          position: fixed;
-          bottom: 4px;
-          right: 8px;
-
-          gap: 6px;
-          align-items: center;
-          justify-content: center;
-
-          padding: 5px 10px;
-          border-radius: 10px;
-          z-index: 0;
-          font-size: 12px;
-          font-weight: 325;
-          opacity: 0.65;
-          font-family: sans-serif;
-          pointer-events: none;
-
-          background-color: rgb(0, 0, 0);
-        "
-      >
+      <div id="legal-footer" class="legal-footer">
         <a
+          class="legal-footer-link"
           href="/privacy-policy.html"
           target="_blank"
           rel="noopener noreferrer"
-          style="color: #cdcdcd; pointer-events: auto"
           title="View Privacy Policy"
+          aria-label="View Privacy Policy"
           >Privacy</a
         >
-        <span style="color: #888">&bull;</span>
+        <span class="legal-footer-separator">&bull;</span>
         <a
+          class="legal-footer-link"
           href="/terms-of-service.html"
           target="_blank"
           rel="noopener noreferrer"
-          style="color: #cdcdcd; pointer-events: auto"
           title="View Terms of Service"
+          aria-label="View Terms of Service"
           >Terms</a
         >
       </div>
