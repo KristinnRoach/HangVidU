@@ -43,7 +43,7 @@ export function setupMainAppBusListeners() {
               });
           }
         } catch (e) {
-          console.warn('Failed to select conversation after memberJoined:', e);
+          console.warn('Failed to select conversation on call:outgoing:requested:', e);
         }
       }
 
