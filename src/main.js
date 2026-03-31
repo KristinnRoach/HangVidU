@@ -6,30 +6,17 @@
 
 import { initIcons } from './ui/icons.js';
 import './initSentry.js';
-import { set, get, remove } from 'firebase/database';
-import {
-  removeAllRTDBListeners,
-  removeRTDBListenersForRoom,
-  getUserRecentCallsRef,
-  getUserRecentCallRef,
-} from './storage/fb-rtdb/rtdb.js';
+import { removeAllRTDBListeners } from './storage/fb-rtdb/rtdb.js';
 
 import { initAuth } from './auth/index.js';
-import {
-  getLoggedInUserId,
-  getUser,
-  getUserId,
-  subscribe as subscribeAuth,
-} from './auth/auth-state.js';
+import { subscribe as subscribeAuth } from './auth/auth-state.js';
 
 import { inAppNotificationManager } from './ui/components/notifications/in-app-notification-manager.js';
 import { getPushNotifications } from './push-notifications/index.js';
 
-import CallController from './webrtc/call-controller.js';
+import CallController from './call/call-controller.js';
 import { messagingController } from './messaging/messaging-controller.js';
-import { contactsController } from './contacts/contacts-controller.js';
-// UI → controller bridge (maps DOM CustomEvents to controller APIs)
-import { teardownUiToControllerBridges } from './bootstrap/ui-to-controller-bridges.js';
+import { contactsService } from './contacts/contacts-service.js';
 
 import {
   localVideoEl,
@@ -37,12 +24,6 @@ import {
   sharedVideoEl,
   callBtn,
   hangUpBtn,
-  mutePartnerBtn,
-  fullscreenPartnerBtn,
-  remotePipBtn,
-  micBtn,
-  cameraBtn,
-  switchCameraBtn,
   exitWatchModeBtn,
   chatControls,
   localBoxEl,
@@ -60,35 +41,23 @@ import {
 } from './elements.js';
 
 import {
-  setupWatchSync,
   isWatchModeActive,
   getLastWatched,
   setLastWatched,
 } from './firebase/watch-sync.js';
 
-import { setUpLocalStream, setupRemoteStream } from './media/stream.js';
-
 import {
   hasLocalStream,
-  getLocalStream,
-  setLocalStream,
   cleanupLocalStream,
-  cleanupRemoteStream,
   cleanupLocalVideoOnlyStream,
 } from './media/state.js';
 
 import { devDebug, isDev, setDevDebugEnabled } from './utils/dev/dev-utils.js';
 
-import RoomService from './room.js';
 import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
 
-import {
-  listenForInvites,
-  listenForAcceptedInvites,
-  acceptInvite,
-  declineInvite,
-  cleanupInviteListeners,
-} from './contacts/invitations.js';
+import { cleanupInviteListeners } from './contacts/invitations.js';
+import { setupInviteListener } from './contacts/invite-listener.js';
 
 import {
   captureReferral,
@@ -98,8 +67,6 @@ import {
 import { showEnableNotificationsPrompt } from './ui/components/notifications/enable-notifications-prompt.js';
 
 import { clearUrlParam } from './utils/url.js';
-import { ringtoneManager } from './media/audio/ringtone-manager.js';
-import { getDeterministicRoomId } from './utils/room-id.js';
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
 import './ui/core/ui-state.js'; // Initialize UI state (sets body data-view attribute)
@@ -114,9 +81,7 @@ import {
 import {
   renderContactsList,
   cleanupContacts,
-  showSaveContactPrompt,
-  autoInitMsgSessionIfNeeded,
-} from './ui/components/contacts/contacts.js';
+} from './contacts/components/contacts.js';
 
 import {
   destroyYouTubePlayer,
@@ -127,43 +92,27 @@ import {
   setYouTubeReady,
 } from './media/youtube/youtube-player.js';
 
-import {
-  initializeMediaControls,
-  cleanupMediaControls,
-} from './media/media-controls.js';
+import { cleanupMediaControls } from './media/media-controls.js';
 import {
   cleanupSearchUI,
   initializeSearchUI,
 } from './media/youtube/youtube-search.js';
 
 import { createNotificationsToggle } from './ui/components/notifications/notifications-toggle.js';
-import { showSuccessToast, showErrorToast } from './ui/utils/toast.js';
-import { createInviteNotification } from './ui/components/notifications/invite-notification.js';
 
 import { showElement, hideElement, exitPiP } from './ui/utils/ui-utils.js';
 import { initializeAuthUI } from './ui/components/auth/AuthComponent.js';
 import { messagesUI } from './ui/components/messages/messages-ui.js';
-import {
-  showIncomingCallUI,
-  resolveIncomingCallUI,
-  dismissActiveIncomingCallUI,
-} from './ui/components/calling/incoming-call.js';
-import { showAddContactModal } from './ui/components/contacts/add-contact-modal.js';
-import { callIndicators } from './ui/utils/call-indicators.js';
-import {
-  copyToClipboard,
-  showCopyLinkModal,
-} from './ui/components/modal/copyLinkModal.js';
+import { showAddContactModal } from './contacts/components/add-contact-modal.js';
+import { copyToClipboard } from './ui/components/modal/copyLinkModal.js';
 
-import {
-  onCallAnswered,
-  isRoomCallFresh,
-} from './ui/components/calling/calling-ui.js';
-import { isRemoteVideoVideoActive } from './ui/core/legacy/watch-mode.js';
+// ____ UI END ____
+
 import {
   onCallConnected,
   onCallDisconnected,
 } from './ui/core/call-lifecycle-ui.js';
+import { addDebugUpdateButton } from './ui/components/notifications/debug-notifications.js';
 import {
   initI18n,
   setLocale,
@@ -171,9 +120,23 @@ import {
   t,
   onLocaleChange,
 } from './i18n/index.js';
-
-import { addDebugUpdateButton } from './ui/components/notifications/debug-notifications.js';
-// ____ UI END ____
+import { setupMessagingContactsIntegration } from './app/messaging-contacts-integration.js';
+import { setupMessagingAppBusHandlers } from './messaging/handle-appbus-events.js';
+import { setupCallControllerEventWiring } from './call/call-event-wiring.js';
+import { setupMainAppBusListeners } from './app/setupMainAppBusListeners.js';
+import {
+  getCallOptions,
+  applyCallResult,
+  joinOrCreateRoomWithId,
+} from './call/WIP-start-call-refactor.js';
+import {
+  initLocalStreamAndMedia,
+  handleMediaPermissionError,
+} from './media/WIP-init-local-media.js';
+import {
+  removeAllIncomingListeners,
+  startListeningForSavedRooms,
+} from './call/room-listeners.js';
 
 // Quick access to enable / disable dev debug logs
 setDevDebugEnabled(true);
@@ -242,6 +205,10 @@ async function init() {
 
     // Initialize auth (persistence + redirect + onAuthStateChanged listener)
     await initAuth();
+    cleanupFunctions.push(setupMessagingContactsIntegration());
+    cleanupFunctions.push(
+      setupMessagingAppBusHandlers({ messagingController }),
+    );
 
     const authComponent = initializeAuthUI(titleAuthBar);
     if (authComponent) cleanupFunctions.push(authComponent.dispose);
@@ -291,27 +258,14 @@ async function init() {
     appWrapper && appWrapper.appendChild(toggleLangBtn);
     // END TODO ________________________
 
-    // Initialize push notifications
+    // Initialize push notifications (permission requests happen on auth change)
     try {
       const pushController = getPushNotifications();
-
       const pushInitialized = await pushController.initialize();
-      if (pushInitialized) {
-        console.log('[MAIN] Push notifications initialized successfully');
-
-        // Note: Permission requests are handled in onAuthChange after user logs in.
-        // This ensures:
-        // 1. Auth is ready and user is logged in before registering Web Push
-        // 2. Permission request happens from user interaction context (better browser support)
-        // 3. No permission requests for anonymous/logged-out users
-      } else {
-        console.warn('[MAIN] Push notifications failed to initialize');
-
-        if (!getPushNotifications().isNotificationSupported()) {
-          const { showPushUnsupportedNotification } =
-            await import('./ui/components/notifications/push-unsupported-notification.js');
-          showPushUnsupportedNotification();
-        }
+      if (!pushInitialized && !pushController.isNotificationSupported()) {
+        const { showPushUnsupportedNotification } =
+          await import('./ui/components/notifications/push-unsupported-notification.js');
+        showPushUnsupportedNotification();
       }
     } catch (error) {
       console.error('[MAIN] Push notifications initialization error:', error);
@@ -322,978 +276,6 @@ async function init() {
     console.error('Initialization error:', error, error && error.stack);
     devDebug('Error: Failed to initialize application.');
     return false;
-  }
-}
-
-// Todo: remove flag or finialize usage
-let hasInitLocalStreamAndMedia = false;
-
-// Reset flag to allow stream re-initialization after cleanup
-export function resetLocalStreamInitFlag() {
-  hasInitLocalStreamAndMedia = false;
-}
-
-async function initLocalStreamAndMedia() {
-  if (hasInitLocalStreamAndMedia) return;
-  hasInitLocalStreamAndMedia = true;
-
-  await setUpLocalStream(localVideoEl);
-
-  initializeMediaControls({
-    getLocalStream,
-    getLocalVideo: () => localVideoEl,
-    getRemoteVideo: () => remoteVideoEl,
-    getPeerConnection: () => CallController.getPeerConnection(),
-    setLocalStream,
-
-    micBtn,
-    cameraBtn,
-    switchCameraBtn,
-    mutePartnerBtn,
-    fullscreenPartnerBtn,
-    remotePipBtn,
-  });
-
-  if (localVideoEl) {
-    localVideoEl.addEventListener(
-      'enterpictureinpicture',
-      () => localBoxEl && hideElement(localBoxEl),
-    );
-
-    localVideoEl.addEventListener('leavepictureinpicture', () => {
-      if (localBoxEl && !(isWatchModeActive() && isRemoteVideoVideoActive())) {
-        showElement(localBoxEl);
-      }
-    });
-  }
-}
-
-// ============================================================================
-// CALL SETUP HELPERS
-// ============================================================================
-
-function handleMediaPermissionError(error) {
-  if (
-    error?.name === 'NotAllowedError' ||
-    error?.name === 'PermissionDeniedError'
-  ) {
-    alert(t('error.media.permission'));
-  }
-  resetLocalStreamInitFlag();
-}
-
-// Helper to build call options
-function getCallOptions(targetRoomId = null) {
-  return {
-    localStream: getLocalStream(),
-    localVideoEl,
-    remoteVideoEl,
-    mutePartnerBtn,
-    setupRemoteStream,
-    setupWatchSync,
-    targetRoomId,
-  };
-}
-
-/**
- * Helper to apply call result and update global state
- * Note: CallController also stores this state internally
- * TODO: Migrate remaining code to use CallController.getState() instead of globals
- */
-function applyCallResult(result, showLinkModal = false) {
-  if (!result.success) return false;
-
-  if (showLinkModal && result.roomLink) {
-    showCopyLinkModal(result.roomLink, {
-      onCopy: () => devDebug('Link ready! Share with your partner.'),
-      onCancel: () =>
-        devDebug(
-          'Link ready! Use the copy button to use it, or create a new one.',
-        ),
-    });
-  }
-
-  // copyLinkBtn.disabled = false;
-  return true;
-}
-
-// TODO: Remove the "create if empty" path, rename to explicit "joinRoomWithId" and "createRoom" functions
-export async function joinOrCreateRoomWithId(
-  customRoomId,
-  { forceInitiator = false } = {},
-) {
-  try {
-    await initLocalStreamAndMedia();
-  } catch (error) {
-    console.error('Failed to initialize local media stream:', error);
-    handleMediaPermissionError(error);
-    return false;
-  }
-
-  const startTime = Date.now();
-
-  // If caller explicitly wants to initiate (e.g., calling a saved contact),
-  // create a fresh offer in this room regardless of existing state.
-  if (forceInitiator) {
-    getDiagnosticLogger().logRoomCreation(
-      customRoomId,
-      true,
-      {
-        creationTime: startTime,
-        listenerAttachTime: startTime, // Will be updated when listener attaches
-        timeDiff: 0,
-      },
-      {
-        trigger: 'force_initiator',
-        reason: 'calling_saved_contact',
-      },
-    );
-
-    const result = await CallController.createCall(
-      getCallOptions(customRoomId),
-    );
-
-    return applyCallResult(result, false);
-  }
-
-  // Check room status with retry to handle race condition
-  let status = await RoomService.checkRoomStatus(customRoomId);
-
-  // If room exists but appears empty, wait briefly and check again
-  // to handle the race where User A just created room but member data isn't written yet
-  if (status.exists && !status.hasMembers) {
-    const maxRetries = 3;
-    let attempt = 0;
-    while (attempt < maxRetries && !status.hasMembers) {
-      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1))); // 250ms, 500ms, 750ms
-      status = await RoomService.checkRoomStatus(customRoomId);
-      attempt++;
-    }
-  }
-
-  // TODO: Remove this for robust and explicit alternative (if needed, otherwise just remove)
-  // Room doesn't exist OR is empty → create as initiator
-  if (!status.exists || !status.hasMembers) {
-    getDiagnosticLogger().logRoomCreation(
-      customRoomId,
-      true,
-      {
-        creationTime: startTime,
-        listenerAttachTime: startTime,
-        timeDiff: 0,
-      },
-      {
-        trigger: 'room_empty_or_nonexistent',
-        roomExists: status.exists,
-        memberCount: status.memberCount || 0,
-      },
-    );
-
-    const result = await CallController.createCall(
-      getCallOptions(customRoomId),
-    );
-
-    return applyCallResult(result, true); // Show modal when creating via join form
-  }
-
-  // Room exists with members → join as joiner
-  devDebug('Joining room...');
-  getDiagnosticLogger().log('ROOM', 'JOINING_EXISTING', {
-    roomId: customRoomId,
-    memberCount: status.memberCount,
-    roomExists: status.exists,
-  });
-
-  const result = await CallController.answerCall({
-    roomId: customRoomId,
-    ...getCallOptions(),
-  });
-  return applyCallResult(result, false);
-}
-
-/**
- * Unified function to initiate a call to a contact.
- * Handles room generation, RTDB updates, UI triggers, and push notifications.
- *
- * @param {string} contactId - The ID of the contact to call
- * @param {string} contactName - The name of the contact
- * @param {string} [roomId] - Existing room ID (generated if not provided)
- * @returns {Promise<boolean>} Success status
- */
-export async function callContact(contactId, contactName, roomId = null) {
-  // Prevent self-calls
-  const myUserId = getUserId();
-  if (contactId && myUserId === contactId) {
-    console.warn('[CALL] Cannot call yourself');
-    return false;
-  }
-
-  // If no roomId is provided, try to generate a deterministic one
-  if (!roomId && contactId) {
-    if (myUserId) {
-      try {
-        roomId = getDeterministicRoomId(myUserId, contactId);
-        console.log('[CALL] Generated deterministic room ID:', roomId);
-      } catch (e) {
-        console.error('[CALL] Failed to generate room ID:', e);
-        return false;
-      }
-      // // TODO: Clarify if saveData is required for subsequent calls.
-      // // The deterministic roomId is regenerated each time, so persistence may
-      // // only help the OTHER user find the room. Investigate if this can be removed.
-      // try {
-      //   await contactsController.saveContact(contactId, contactName, roomId);
-      // } catch (e) {
-      //   console.warn('[CALL] Failed to persist room ID (continuing):', e);
-      // }
-    }
-  }
-
-  if (!roomId) {
-    console.error('[CALL] Cannot initiate call: No Room ID available');
-    return false;
-  }
-
-  // Ensure listener is active for this room before calling
-  listenForIncomingOnRoom(roomId);
-
-  // Force initiator role to ensure fresh call nodes in RTDB
-  const success = await joinOrCreateRoomWithId(roomId, {
-    forceInitiator: true,
-  }).catch((e) => {
-    console.warn('[CALL] Failed to join or create room:', e);
-    return false;
-  });
-
-  if (success) {
-    // Update metadata
-    contactsController.updateLastInteraction(contactId).catch(() => {});
-
-    // Send push notification immediately from the successful call-start path.
-    try {
-      const me = getUser();
-      const callerName = me?.displayName || me?.email || myUserId;
-      const pushResult = await getPushNotifications().sendIncomingCall({
-        targetUserId: contactId,
-        roomId,
-        callerId: myUserId,
-        callerName,
-      });
-      if (!pushResult?.ok) {
-        console.warn('[CALL] Call-start push notification did not succeed');
-      }
-    } catch (error) {
-      console.warn('[CALL] Failed to send push notification:', error);
-    }
-
-    // Trigger UI (Calling Modal)
-    try {
-      const [{ showCallingUI }, { onCallingStarted, onCallingEnded }] =
-        await Promise.all([
-          import('./ui/components/calling/calling-ui.js'),
-          import('./ui/core/call-lifecycle-ui.js'),
-        ]);
-      onCallingStarted();
-      await showCallingUI(roomId, contactName, {
-        onCancel: (reason) => {
-          // Route cancel/timeout through CallController so cleanup event fires
-          // (triggers missed call message, push notification, etc.)
-          CallController.hangUp({ reason }).catch((e) => {
-            console.warn('[CALL] hangUp after cancel/timeout failed:', e);
-          });
-        },
-        onHide: onCallingEnded,
-      });
-    } catch (e) {
-      console.warn('[CALL] Failed to load calling UI:', e);
-    }
-  }
-
-  return success;
-}
-
-// ============================================================================
-// RECENT CALLS (24h TTL) + INCOMING CALL LISTENERS
-// ============================================================================
-
-// Track which roomIds we've already attached incoming listeners for
-const listeningRoomIds = new Set();
-
-// Track incoming call listener cleanup functions for each room
-// Map<roomId, Array<() => void>>
-const incomingListenerCleanups = new Map();
-
-// Track RTDB listener cleanups for incoming call UI promise coordination
-// Map<roomId, { cancel: () => void, answer: () => void }>
-const incomingCallPromiseCleanups = new Map();
-
-/**
- * Remove incoming call listeners for a specific room
- * @param {string} roomId - Room ID to clean up listeners for
- */
-function removeIncomingListenersForRoom(roomId) {
-  if (!roomId) return;
-
-  devDebug(`[LISTENER] Removing incoming listeners for room: ${roomId}`);
-
-  // Remove from RTDB listener tracking
-  removeRTDBListenersForRoom(roomId);
-
-  // Remove from our tracking sets
-  listeningRoomIds.delete(roomId);
-  incomingListenerCleanups.delete(roomId);
-
-  getDiagnosticLogger().log('LISTENER', 'INCOMING_CLEANUP', {
-    roomId,
-    remainingListeners: listeningRoomIds.size,
-  });
-}
-
-/**
- * Remove all incoming call listeners (e.g., on logout)
- */
-function removeAllIncomingListeners() {
-  devDebug(
-    `[LISTENER] Removing all incoming listeners (${listeningRoomIds.size} rooms)`,
-  );
-
-  // Get all room IDs before clearing
-  const roomIds = Array.from(listeningRoomIds);
-
-  // Clean up each room's listeners
-  roomIds.forEach((roomId) => {
-    removeRTDBListenersForRoom(roomId);
-  });
-
-  // Clear tracking
-  listeningRoomIds.clear();
-  incomingListenerCleanups.clear();
-
-  getDiagnosticLogger().log('LISTENER', 'ALL_INCOMING_CLEANUP', {
-    roomsCleared: roomIds.length,
-  });
-}
-
-/**
- * Listen for incoming member joins on a given roomId and log them.
- */
-export function listenForIncomingOnRoom(roomId) {
-  if (!roomId) return;
-
-  devDebug(`[LISTENER] Attempting to attach listener for room: ${roomId}`);
-
-  // Check if already listening, but allow re-attachment
-  // Firebase RTDB handles duplicate listeners internally, so this is safe
-  if (listeningRoomIds.has(roomId)) {
-    devDebug(
-      `[LISTENER] Listener already tracked for room: ${roomId}, re-attaching to ensure it's active`,
-    );
-    // Remove from tracking so we can re-attach
-    listeningRoomIds.delete(roomId);
-    // Also remove any existing RTDB listeners for this room
-    removeRTDBListenersForRoom(roomId);
-  }
-
-  devDebug(
-    `[LISTENER] Attaching listener for room: ${roomId} (total: ${
-      listeningRoomIds.size + 1
-    })`,
-  );
-
-  listeningRoomIds.add(roomId);
-
-  // Track cleanup functions for this room
-  const cleanups = [];
-
-  getDiagnosticLogger().logListenerAttachment(
-    roomId,
-    'member_join',
-    listeningRoomIds.size,
-    {
-      action: 'incoming_call_listener_attached',
-    },
-  );
-
-  // Use RoomService's member listener helper
-  const memberJoinedCleanup = RoomService.onMemberJoined(
-    roomId,
-    async (snapshot) => {
-      const joiningUserId = snapshot.key;
-      const memberData = snapshot.val ? snapshot.val() : null;
-      const currentUserId = getUserId();
-      if (joiningUserId && joiningUserId !== currentUserId) {
-        devDebug(`incoming call from ${joiningUserId} for room ${roomId}`);
-
-        getDiagnosticLogger().logMemberJoinEvent(
-          roomId,
-          joiningUserId,
-          memberData || {},
-          {
-            detectedBy: 'incoming_call_listener',
-            currentUserId,
-          },
-        );
-
-        // Prefer the member's joinedAt as the primary freshness signal (real-time join)
-        const joinedAt =
-          memberData && typeof memberData.joinedAt === 'number'
-            ? memberData.joinedAt
-            : null;
-        const CALL_FRESH_MS = 20000;
-
-        let isFresh = false;
-        let validationMethod = 'none';
-        let age = 0;
-
-        if (joinedAt) {
-          age = Date.now() - joinedAt;
-          isFresh = age < CALL_FRESH_MS;
-          validationMethod = 'joinedAt';
-        }
-
-        // If joinedAt isn't present or seems old (e.g., listener attached late),
-        // fall back to room-scoped createdAt (publicly readable)
-        if (!isFresh) {
-          const roomFresh = await isRoomCallFresh(roomId);
-          isFresh = roomFresh;
-          validationMethod = roomFresh ? 'roomCreatedAt' : 'failed';
-          age = null; // joinedAt-based age not applicable for this fallback
-        }
-
-        const freshnessResult = {
-          isFresh,
-          method: validationMethod,
-          age,
-          reason: isFresh ? 'call_is_fresh' : 'call_is_stale',
-        };
-
-        getDiagnosticLogger().logIncomingCallEvent(
-          joiningUserId,
-          roomId,
-          freshnessResult,
-          {
-            memberData,
-            joinedAt,
-            CALL_FRESH_MS,
-          },
-        );
-
-        if (!isFresh) {
-          devDebug(
-            `Ignoring stale incoming call from ${joiningUserId} for room ${roomId}`,
-          );
-          getDiagnosticLogger().logNotificationDecision(
-            'REJECT',
-            'stale_call',
-            roomId,
-            {
-              age,
-              validationMethod,
-              joiningUserId,
-            },
-          );
-          return;
-        }
-
-        // Minimal prompt to accept or reject the incoming call.
-        // Only prompt if we're not already in an active call and the room is in a valid offer state.
-        // Check offer/answer state before showing dialog
-        let roomData;
-        try {
-          roomData = await RoomService.getRoomData(roomId);
-        } catch (e) {
-          return; // Room may have been deleted
-        }
-
-        if (!roomData || typeof roomData !== 'object') return;
-
-        const hasOffer = !!roomData.offer;
-        const hasAnswer = !!roomData.answer;
-        const offerCreator = roomData.createdBy;
-        if (!hasOffer || hasAnswer || offerCreator === currentUserId) return;
-
-        const state = CallController.getState();
-        const inActiveCall =
-          !!state.pc && state.pc.connectionState === 'connected';
-        if (inActiveCall) {
-          getDiagnosticLogger().logNotificationDecision(
-            'REJECT',
-            'already_in_call',
-            roomId,
-            {
-              joiningUserId,
-              currentCallState: state.pc?.connectionState,
-            },
-          );
-          return;
-        }
-
-        getDiagnosticLogger().logNotificationDecision(
-          'SHOW',
-          'fresh_call_detected',
-          roomId,
-          {
-            joiningUserId,
-            freshnessResult,
-          },
-        );
-
-        const pushController = getPushNotifications();
-        const usePushOnlyForBackgroundCall =
-          !!pushController?.isNotificationEnabled?.() &&
-          !!pushController?.shouldSendNotification?.();
-
-        if (import.meta.env.DEV && usePushOnlyForBackgroundCall) {
-          getDiagnosticLogger().logNotificationDecision(
-            'DEFER',
-            'background_push_only',
-            roomId,
-            {
-              joiningUserId,
-              pushNotificationsEnabled: true,
-            },
-          );
-          console.log(
-            '[CALL] Background incoming call detected, using push-only notification path',
-            {
-              roomId,
-              joiningUserId,
-            },
-          );
-          return;
-        }
-
-        // Resolve caller name from contacts
-        const callerName = await contactsController.resolveCallerName(
-          roomId,
-          joiningUserId,
-        );
-
-        // Start incoming call ringtone and visual indicators
-        ringtoneManager.playIncoming();
-        callIndicators.startCallIndicators(callerName);
-
-        let accept = false;
-        try {
-          // Show incoming call UI and await user action OR external state changes
-          accept = await new Promise((resolve) => {
-            // Set up listener for caller cancellation
-            const cancelCleanup = RoomService.onCallCancelled(
-              roomId,
-              (snap) => {
-                if (snap.exists()) {
-                  devDebug(
-                    `[LISTENER] Caller cancelled call for room ${roomId}`,
-                  );
-                  resolveIncomingCallUI(roomId, 'caller_cancelled');
-                  resolve('caller_cancelled');
-                }
-              },
-            );
-
-            // Set up listener for answer (call answered elsewhere)
-            const answerCleanup = RoomService.onAnswerAdded(roomId, () => {
-              devDebug(`[LISTENER] Call answered elsewhere for room ${roomId}`);
-              resolveIncomingCallUI(roomId, 'answered_elsewhere');
-              resolve('answered_elsewhere');
-            });
-
-            // Show UI with callbacks for accept/reject
-            showIncomingCallUI(
-              { roomId, from: callerName },
-              () => resolve(true), // onAccept
-              () => resolve(false), // onReject
-            );
-
-            // Store listener cleanups for later removal
-            incomingCallPromiseCleanups.set(roomId, {
-              cancel: cancelCleanup,
-              answer: answerCleanup,
-            });
-          });
-        } finally {
-          // Clean up RTDB listeners for this incoming call
-          if (incomingCallPromiseCleanups.has(roomId)) {
-            const cleanups = incomingCallPromiseCleanups.get(roomId);
-            if (cleanups.cancel) cleanups.cancel();
-            if (cleanups.answer) cleanups.answer();
-            incomingCallPromiseCleanups.delete(roomId);
-          }
-
-          // Stop ringtone and visual indicators after user responds (or on error)
-          ringtoneManager.stop();
-          callIndicators.stopCallIndicators();
-        }
-
-        if (accept === true) {
-          // Remove incoming call listeners before starting active call
-          // This prevents duplicate listener firing (incoming vs active call listeners)
-          removeIncomingListenersForRoom(roomId);
-
-          // Dismiss any call notifications for this room
-          const pushNotificationController = getPushNotifications?.();
-          if (pushNotificationController?.isNotificationEnabled()) {
-            await pushNotificationController
-              .dismissCallNotifications(roomId)
-              .catch(() => {});
-          }
-
-          getDiagnosticLogger().logNotificationDecision(
-            'ACCEPT',
-            'user_accepted',
-            roomId,
-            {
-              joiningUserId,
-            },
-          );
-          // Update lastInteractionAt for answered incoming call
-          contactsController
-            .getContactByRoomId(roomId)
-            .then((c) => {
-              if (c?.contactId)
-                contactsController.updateLastInteraction(c.contactId);
-            })
-            .catch(() => {});
-
-          joinOrCreateRoomWithId(roomId).catch((e) => {
-            console.warn('Failed to answer incoming call:', e);
-            devDebug('Failed to answer incoming call.');
-            getDiagnosticLogger().logFirebaseOperation(
-              'join_room_on_accept',
-              false,
-              e,
-              {
-                roomId,
-                joiningUserId,
-              },
-            );
-          });
-        } else if (accept === 'caller_cancelled') {
-          devDebug('Incoming call cancelled by caller');
-          // UI is already dismissed by cancellation handler
-          // No rejection message needed, just log it
-          getDiagnosticLogger().logNotificationDecision(
-            'DISMISS',
-            'caller_cancelled',
-            roomId,
-            {
-              joiningUserId,
-            },
-          );
-        } else if (accept === 'answered_elsewhere') {
-          devDebug('Incoming call answered elsewhere');
-          // Call was accepted in another instance
-          getDiagnosticLogger().logNotificationDecision(
-            'DISMISS',
-            'answered_elsewhere',
-            roomId,
-            {
-              joiningUserId,
-            },
-          );
-        } else {
-          // User rejected the call
-          devDebug('Incoming call rejected by user');
-
-          // Dismiss any call notifications for this room
-          const pushNotificationController = getPushNotifications?.();
-          if (pushNotificationController?.isNotificationEnabled()) {
-            await pushNotificationController
-              .dismissCallNotifications(roomId)
-              .catch(() => {});
-          }
-
-          getDiagnosticLogger().logNotificationDecision(
-            'REJECT',
-            'user_rejected',
-            roomId,
-            {
-              joiningUserId,
-            },
-          );
-
-          // Send a direct rejection signal so the caller gets immediate feedback (no 30s timeout)
-          try {
-            await RoomService.rejectCall(roomId, getUserId(), 'user_rejected');
-          } catch (e) {
-            console.warn('Failed to signal rejection via RTDB:', e);
-          }
-
-          // Write rejected call message to chat history
-          // The callee (who rejected) writes this - both parties will see it
-          try {
-            const conversationId =
-              messagingController.resolveConversationIdFromContactId(
-                joiningUserId,
-              );
-            if (!conversationId) {
-              console.warn('[MAIN] No conversation ID found for user:', {
-                joiningUserId,
-              });
-              return;
-            }
-            await messagingController.sendEventMessage(
-              conversationId,
-              'rejected_call',
-              {
-                callId: roomId,
-                callerId: joiningUserId,
-                callerName,
-              },
-              { from: joiningUserId }, // TODO: Why is this needed?? (MULTIPLE joiningUserId sent!)
-            );
-            console.log('[MAIN] Rejected call message written to chat history');
-          } catch (e) {
-            console.warn('[MAIN] Failed to write rejected call message:', e);
-          }
-        }
-      }
-    },
-  );
-
-  // INCOMING CALL cancellation listener
-  // Fires when caller cancels BEFORE callee accepts
-  // Dismisses incoming dialog and removes recent call entry
-  RoomService.onCallCancelled(roomId, async (snapshot) => {
-    const data =
-      snapshot && typeof snapshot.val === 'function' ? snapshot.val() : null;
-    if (!data) return;
-
-    // Stop ringtone and visual indicators when call is cancelled
-    ringtoneManager.stop();
-    callIndicators.stopCallIndicators();
-
-    // ! Dismiss any call notifications for this room
-    try {
-      const pushNotificationController = getPushNotifications
-        ? getPushNotifications()
-        : null;
-      if (pushNotificationController?.isNotificationEnabled()) {
-        await pushNotificationController
-          .dismissCallNotifications(roomId)
-          .catch(() => {});
-      }
-    } catch (_) {
-      // best-effort; do not block cancellation flow on notification errors
-    }
-
-    try {
-      // Dismiss incoming call UI for this room
-      dismissActiveIncomingCallUI(roomId);
-
-      // Dismiss legacy confirmDialog (for testing/rollback)
-      const { dismissActiveConfirmDialog } =
-        await import('./ui/components/base/confirm-dialog.js');
-      if (typeof dismissActiveConfirmDialog === 'function') {
-        dismissActiveConfirmDialog();
-      }
-    } catch (_) {
-      // best-effort
-    }
-
-    // Clean up incoming listeners for this room to prevent stale listener firing
-    // UNLESS it is a saved contact - then we want to keep listening
-    let savedContact = null;
-    try {
-      savedContact = await contactsController.getContactByRoomId(roomId);
-    } catch (e) {
-      console.warn('[LISTENER] Failed to check saved contact:', e);
-    }
-    if (!savedContact) {
-      removeIncomingListenersForRoom(roomId);
-    } else {
-      devDebug(
-        `[LISTENER] Preserving listener for saved contact room: ${roomId} after cancellation`,
-      );
-    }
-
-    devDebug(
-      `[LISTENER] Incoming call cancelled by caller for room: ${roomId}`,
-    );
-  });
-
-  // Listen for member leaves: if the room becomes empty after a leave,
-  // remove this saved recent call for the current user so they don't keep
-  // an incoming notification for a non-existent partner.
-  RoomService.onMemberLeft(roomId, async (snapshot) => {
-    const leavingUserId = snapshot.key;
-    const currentUserId = getUserId();
-
-    // Ignore our own leaves
-    if (!leavingUserId || leavingUserId === currentUserId) return;
-
-    try {
-      const status = await RoomService.checkRoomStatus(roomId);
-      // If no members remain, remove the saved recent call for this client
-      // and clean up the incoming listeners for this room (UNLESS saved contact)
-      if (!status.hasMembers) {
-        const savedContact =
-          await contactsController.getContactByRoomId(roomId);
-        if (!savedContact) {
-          removeIncomingListenersForRoom(roomId);
-          devDebug(
-            `Removed saved recent call and listeners for room ${roomId} because it is now empty`,
-          );
-        } else {
-          devDebug(
-            `Removed recent call but PRESERVED listeners for saved contact room ${roomId}`,
-          );
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to evaluate room status on member leave', e);
-    }
-  });
-}
-/**
- * Read saved recent calls (RTDB or localStorage), remove expired entries,
- * and attach incoming listeners for each valid room id.
- */
-async function startListeningForSavedRooms() {
-  const startTime = Date.now();
-  getDiagnosticLogger().log('LISTENER', 'STARTUP_BEGIN', {
-    timestamp: startTime,
-    currentListenerCount: listeningRoomIds.size,
-  });
-
-  // Ensure auth state is initialized before deciding storage location
-  // This prevents a race where we read localStorage as a guest before auth is ready
-  try {
-    if (typeof window !== 'undefined') {
-      const { getCurrentUserAsync } = await import('./auth/index.js');
-      await getCurrentUserAsync();
-    }
-  } catch (e) {
-    // non-fatal
-  }
-
-  const loggedInUid = getLoggedInUserId();
-  getDiagnosticLogger().log('LISTENER', 'AUTH_STATE_DETERMINED', {
-    isLoggedIn: !!loggedInUid,
-    userId: loggedInUid || 'guest',
-  });
-
-  if (loggedInUid) {
-    const userRecentRef = getUserRecentCallsRef(loggedInUid);
-    try {
-      const snap = await get(userRecentRef);
-      const val = snap.exists() ? snap.val() : null;
-      const toListen = new Set();
-
-      if (val) {
-        for (const [roomId, meta] of Object.entries(val)) {
-          if (!meta || (meta.expiresAt && meta.expiresAt < Date.now())) {
-            // remove expired
-            await remove(getUserRecentCallRef(loggedInUid, roomId)).catch(
-              () => {},
-            );
-            continue;
-          }
-          toListen.add(roomId);
-        }
-      }
-
-      // Also include saved contacts' roomIds (or deterministic room IDs)
-      try {
-        const contacts = await contactsController.getContacts();
-        Object.entries(contacts || {}).forEach(([contactId, c]) => {
-          if (c?.roomId) {
-            toListen.add(c.roomId);
-          } else if (contactId && loggedInUid) {
-            // Generate deterministic room ID for contacts without explicit roomId
-            try {
-              const deterministicRoomId = getDeterministicRoomId(
-                loggedInUid,
-                contactId,
-              );
-              toListen.add(deterministicRoomId);
-            } catch (e) {
-              // Skip if unable to generate
-            }
-          }
-        });
-      } catch (e) {
-        // ignore
-      }
-
-      toListen.forEach((roomId) => listenForIncomingOnRoom(roomId));
-
-      getDiagnosticLogger().log('LISTENER', 'STARTUP_COMPLETE', {
-        storage: 'rtdb',
-        roomsToListen: Array.from(toListen),
-        totalListeners: listeningRoomIds.size,
-        duration: Date.now() - startTime,
-      });
-    } catch (e) {
-      console.warn('Failed to read recent calls from RTDB', e);
-      getDiagnosticLogger().logFirebaseOperation(
-        'read_recent_calls',
-        false,
-        e,
-        {
-          storage: 'rtdb',
-          userId: loggedInUid,
-        },
-      );
-    }
-    return;
-  }
-
-  // Guest: localStorage
-  try {
-    const raw = localStorage.getItem('recentCalls') || '{}';
-    const obj = JSON.parse(raw);
-    const cleaned = {};
-    const toListen = new Set();
-    for (const [roomId, meta] of Object.entries(obj || {})) {
-      if (!meta || (meta.expiresAt && meta.expiresAt < Date.now())) {
-        // skip expired
-        continue;
-      }
-      cleaned[roomId] = meta;
-      toListen.add(roomId);
-    }
-    // Also include saved contacts' roomIds (or deterministic room IDs)
-    try {
-      const contacts = await contactsController.getContacts();
-      const guestUserId = getUserId(); // Get guest user ID
-      Object.entries(contacts || {}).forEach(([contactId, c]) => {
-        if (c?.roomId) {
-          toListen.add(c.roomId);
-        } else if (contactId && guestUserId) {
-          // Generate deterministic room ID for contacts without explicit roomId
-          try {
-            const deterministicRoomId = getDeterministicRoomId(
-              guestUserId,
-              contactId,
-            );
-            toListen.add(deterministicRoomId);
-          } catch (e) {
-            // Skip if unable to generate
-          }
-        }
-      });
-    } catch (e) {
-      // ignore
-    }
-
-    toListen.forEach((roomId) => listenForIncomingOnRoom(roomId));
-
-    // overwrite with cleaned set (remove expired)
-    localStorage.setItem('recentCalls', JSON.stringify(cleaned));
-
-    getDiagnosticLogger().log('LISTENER', 'STARTUP_COMPLETE', {
-      storage: 'localStorage',
-      roomsToListen: Array.from(toListen),
-      totalListeners: listeningRoomIds.size,
-      duration: Date.now() - startTime,
-      expiredRoomsRemoved: Object.keys(obj || {}).length - toListen.size,
-    });
-  } catch (e) {
-    console.warn('Failed to read recent calls from localStorage', e);
-    getDiagnosticLogger().logFirebaseOperation('read_recent_calls', false, e, {
-      storage: 'localStorage',
-    });
   }
 }
 
@@ -1600,15 +582,36 @@ async function handleServiceWorkerNavigation(path) {
       return false;
     }
 
-    document.dispatchEvent(
-      new CustomEvent('messages:conversation:select', {
-        detail: {
+    try {
+      const conversationId =
+        messagingController.resolveConversationIdFromContactId(contactId);
+
+      if (!conversationId) {
+        console.warn(
+          '[MAIN] SW navigation -> Cannot open text chat UI because no conversation ID was found for user with id:',
+          {
+            contactId,
+          },
+        );
+        return false;
+      }
+
+      await messagingController.selectConversation(conversationId, {
+        remoteParticipantIds: [contactId],
+        displayUI: true,
+      });
+
+      return true;
+    } catch (error) {
+      console.warn(
+        '[MAIN] SW navigation -> Failed to open text chat UI for contact ID:',
+        {
           contactId,
-          displayUI: true,
+          error,
         },
-      }),
-    );
-    return true;
+      );
+      return false;
+    }
   }
 
   if (isHandlingServiceWorkerNavigation) {
@@ -1647,106 +650,42 @@ async function handleServiceWorkerNavigation(path) {
 }
 
 // ============================================================================
-// CONTACT INVITATIONS
-// ============================================================================
-
-// Queue for incoming invites (can be used by notification system later)
-const pendingInvites = [];
-let isProcessingInvite = false;
-
-/**
- * Process the next invite in the queue.
- * Shows invite notification in the notification list.
- */
-async function processNextInvite() {
-  if (isProcessingInvite || pendingInvites.length === 0) return;
-
-  isProcessingInvite = true;
-  const { fromUserId, inviteData } = pendingInvites.shift();
-
-  try {
-    // Create invite notification
-    const inviteNotification = createInviteNotification({
-      fromUserId,
-      inviteData,
-      onAccept: async () => {
-        try {
-          await acceptInvite(fromUserId, inviteData);
-          console.log('[INVITATIONS] Contact added:', inviteData.fromName);
-          await renderContactsList(lobbyDiv).catch(() => {});
-          showSuccessToast(`✅ ${inviteData.fromName} added to contacts!`);
-
-          // Remove notification after successful accept
-          inAppNotificationManager.remove(`invite-${fromUserId}`);
-        } catch (e) {
-          console.error('[INVITATIONS] Failed to accept invite:', e);
-          showErrorToast('Failed to add contact. Please try again.');
-          // Keep notification visible on error
-        } finally {
-          isProcessingInvite = false;
-          processNextInvite();
-        }
-      },
-      onDecline: async () => {
-        try {
-          await declineInvite(fromUserId);
-          console.log('[INVITATIONS] Invite declined');
-
-          // Remove notification after decline
-          inAppNotificationManager.remove(`invite-${fromUserId}`);
-        } catch (e) {
-          console.error('[INVITATIONS] Failed to decline invite:', e);
-        } finally {
-          isProcessingInvite = false;
-          processNextInvite();
-        }
-      },
-    });
-
-    // Add to notification manager
-    inAppNotificationManager.add(`invite-${fromUserId}`, inviteNotification);
-
-    // Show the notification list if it's hidden
-    if (!inAppNotificationManager.isListVisible()) {
-      inAppNotificationManager.showList();
-    }
-  } catch (error) {
-    console.error('[INVITATIONS] Failed to process invite:', error);
-    isProcessingInvite = false;
-    processNextInvite();
-  }
-}
-
-/**
- * Set up listener for incoming contact invitations.
- * Queues invites and processes them one at a time.
- */
-function setupInviteListener() {
-  listenForInvites((fromUserId, inviteData) => {
-    pendingInvites.push({ fromUserId, inviteData });
-    processNextInvite();
-  });
-
-  // Listen for accepted invites (when someone accepts your invite)
-  listenForAcceptedInvites(async (acceptedByUserId, acceptData) => {
-    console.log(
-      '[INVITATIONS] Your invite was accepted by:',
-      acceptData.acceptedByName,
-    );
-
-    // Refresh contacts list to show new contact
-    await renderContactsList(lobbyDiv).catch(() => {});
-
-    // Show success toast
-    showSuccessToast(
-      `✅ ${acceptData.acceptedByName} is now in your contacts!`,
-    );
-  });
-}
-
-// ============================================================================
 // INITIALIZE ON PAGE LOAD
 // ============================================================================
+
+// ! TODO: REMOVE autoInitMsgSessionIfNeeded() when proper AppBus implemented
+/**
+ * Auto-initialize messaging session with first saved contact on app bootstrap.
+ * Runs once at startup if no session is already active and user has saved contacts.
+ */
+export async function autoInitMsgSessionIfNeeded() {
+  // Don't override existing active conversation
+  if (messagingController.conversations.size > 0) return;
+
+  try {
+    const contacts = await contactsService.getAllContactsSorted();
+    if (!Array.isArray(contacts) || contacts.length === 0) return;
+
+    const firstContact = contacts[0];
+    if (!firstContact?.contactId) return;
+
+    // Pre select the conversation for the first contact
+    const conversationId =
+      messagingController.resolveConversationIdFromContactId(
+        firstContact.contactId,
+      );
+    await messagingController.selectConversation(conversationId, {
+      remoteParticipantIds: [firstContact.contactId],
+      displayUI: false,
+    });
+  } catch (error) {
+    console.warn(
+      '[Contacts] Failed to auto-init messaging conversation:',
+      error,
+    );
+  }
+}
+// ! END OF TODO
 
 window.onload = async () => {
   // Capture referral link BEFORE auth (stores referrer ID in localStorage)
@@ -1769,57 +708,7 @@ window.onload = async () => {
   // UI handlers (business logic handlers registered separately below)
   bindCallUI(CallController);
 
-  // contactsController events
-  contactsController.on(
-    'contact:call',
-    ({ contactId, contactName, roomId }) => {
-      callContact(contactId, contactName, roomId);
-    },
-  );
-
-  contactsController.on('contact:saved', (savedContact) =>
-    console.info('Contact saved: ', savedContact),
-  );
-
-  contactsController.on('contact:updated', (updatedContact) =>
-    console.info('Contact updated: ', updatedContact),
-  );
-
-  contactsController.on('room:id:created', ({ roomId }) => {
-    listenForIncomingOnRoom(roomId);
-  });
-
-  contactsController.on('room:id:updated', ({ roomId }) => {
-    listenForIncomingOnRoom(roomId);
-  });
-
-  const onJoinRoomSubmit = async (roomInputString) => {
-    const inputRoomId = normalizeRoomInput(roomInputString || '');
-    if (!inputRoomId) {
-      devDebug('Please enter a valid Room ID');
-      return false;
-    }
-
-    const mediaReady = await waitForLocalStream(5000);
-    if (!mediaReady) {
-      devDebug('Waiting for camera/mic to be ready...');
-      return false;
-    }
-
-    try {
-      return await joinOrCreateRoomWithId(inputRoomId);
-    } catch (error) {
-      console.error('Failed to join or create room:', error);
-      devDebug('Error joining room. Please try again.');
-      return false;
-    }
-  };
-
-  // Initialize join room form
-  // const joinRoomContainer = document.getElementById('join-room-container');
-  // if (joinRoomContainer) {
-  //   initJoinRoomForm(joinRoomContainer, onJoinRoomSubmit);
-  // }
+  setupMainAppBusListeners();
 
   // Start listening for incoming calls on any saved/recent room ids FIRST
   await startListeningForSavedRooms().catch((e) =>
@@ -1836,74 +725,42 @@ window.onload = async () => {
     console.warn('Failed to auto-init messaging session:', e);
   });
 
-  // Re-render contacts on auth changes so private contacts are hidden on logout
-  // Also clean up incoming listeners on logout to prevent accumulation
+  // TODO: Replace this monolithic auth callback with per-module appBus subscribers
+  // reacting to auth:login / auth:logout events. Each module (contacts, call listeners,
+  // invites, push notifications) should own its own auth-change response.
   let previousAuthState = null;
   const unsubscribeAuthContacts = subscribeAuth(async ({ isLoggedIn }) => {
     try {
-      // Track state changes to differentiate initial load from actual logout
       const isInitialLoad = previousAuthState === null;
       const isActualLogout = previousAuthState === true && !isLoggedIn;
-      const isActualLogin = previousAuthState === false && isLoggedIn;
+      const isLoginOrInitialLogin =
+        (previousAuthState === false && isLoggedIn) ||
+        (isInitialLoad && isLoggedIn);
 
       previousAuthState = isLoggedIn;
 
       await renderContactsList(lobbyDiv);
 
-      // Only clean up on actual logout (not initial load)
       if (isActualLogout) {
         devDebug('[AUTH] User logged out - cleaning up listeners');
         removeAllIncomingListeners();
         cleanupInviteListeners();
-      } else if (isActualLogin) {
-        // On login, re-attach listeners for saved rooms FIRST (before notification setup)
-        // so incoming calls are detected immediately
-        devDebug('[AUTH] User logged in - re-attaching incoming listeners');
+      } else if (isLoginOrInitialLogin) {
+        devDebug('[AUTH] User logged in - setting up listeners');
 
-        // Process referral if user signed up via referral link
         await processReferral().catch((e) =>
-          console.warn('[REFERRAL] Failed to process referral on login:', e),
+          console.warn('[REFERRAL] Failed to process referral:', e),
         );
-
-        // Re-render contacts after referral processing (may have added a new contact)
         await renderContactsList(lobbyDiv).catch(() => {});
 
-        await startListeningForSavedRooms().catch((e) =>
-          console.warn('Failed to re-attach saved-room listeners on login', e),
-        );
-        // Start listening for contact invites
-        setupInviteListener();
-
-        // Enable push notifications if already granted (no prompt without user gesture)
-        const pushController = getPushNotifications();
-        let notifResult = { state: 'error' };
-        if (pushController) {
-          notifResult = await pushController
-            .ensureEnabledIfGranted()
-            .catch((e) => {
-              console.warn('[AUTH] Push notification setup failed:', e);
-              return { state: 'error' };
-            });
+        // Re-attach on actual login; already attached on initial load
+        if (!isInitialLoad) {
+          await startListeningForSavedRooms().catch((e) =>
+            console.warn('Failed to re-attach saved-room listeners', e),
+          );
         }
 
-        if (notifResult.state === 'prompt-needed') {
-          showEnableNotificationsPrompt();
-        }
-      } else if (isInitialLoad && isLoggedIn) {
-        // If user is already logged in on initial load (e.g., after redirect)
-        devDebug('[AUTH] Initial load with logged-in user');
-
-        // Process referral if user signed up via referral link
-        await processReferral().catch((e) =>
-          console.warn(
-            '[REFERRAL] Failed to process referral on initial load:',
-            e,
-          ),
-        );
-
-        // Listeners already attached by startListeningForSavedRooms, no action needed
-        // Start listening for contact invites
-        setupInviteListener();
+        setupInviteListener(lobbyDiv);
 
         // Enable push notifications if already granted (no prompt without user gesture)
         const pushController = getPushNotifications();
@@ -1981,144 +838,8 @@ window.addEventListener('pagehide', async () => {
   await cleanup();
 });
 
-// ============================================================================
-// CALLCONTROLLER EVENT SUBSCRIPTIONS
-// ============================================================================
-
-// Business logic for memberJoined (UI handled in bind-call-ui.js)
-CallController.on('memberJoined', async ({ memberId, roomId }) => {
-  console.debug('CallController memberJoined event', { memberId, roomId });
-
-  CallController.setPartnerId(memberId);
-
-  const conversationId =
-    messagingController.resolveConversationIdFromContactId(memberId);
-
-  try {
-    await messagingController.selectConversation(conversationId, {
-      remoteParticipantIds: [memberId],
-    });
-  } catch (e) {
-    console.warn('Failed to select conversation after memberJoined:', e);
-  } finally {
-    onCallAnswered().catch((e) =>
-      console.warn('Failed to clear calling state:', e),
-    );
-  }
-});
-
-// Subscribe to CallController memberLeft event - handles partner leaving
-CallController.on('memberLeft', ({ memberId }) => {
-  devDebug('CallController memberLeft event', { memberId });
-  console.info('Partner has left the call');
-});
-
-// Business logic for cleanup (UI handled in bind-call-ui.js)
-CallController.on(
-  'cleanup',
-  async ({ roomId, partnerId, reason, role, wasConnected }) => {
-    devDebug('CallController cleanup event', {
-      roomId,
-      partnerId,
-      reason,
-      role,
-      wasConnected,
-    });
-
-    // Handle Missed Call - Push notification and chat message
-    // Trigger if: initiator, no partner joined, never established connection, and valid room
-    const isMissedCall =
-      role === 'initiator' && !partnerId && !wasConnected && roomId;
-
-    if (isMissedCall) {
-      console.log('[MAIN] Potential missed call detected for room:', roomId);
-      try {
-        const contact = await contactsController.getContactByRoomId(roomId);
-        if (contact && contact.contactId) {
-          const { getUser } = await import('./auth/auth-state.js');
-          const me = getUser();
-          const callerName = me?.displayName || 'Friend';
-
-          // Send push notification to the contact (callee)
-          console.log(
-            `[MAIN] Sending missed call push notification to ${contact.contactName} (${contact.contactId})`,
-          );
-          await getPushNotifications()?.sendMissedCall({
-            targetUserId: contact.contactId,
-            roomId,
-            callerId: getUserId(),
-            callerName,
-          });
-
-          // Write missed call message to chat history
-          // The caller writes this - both parties will see it in their shared conversation
-          try {
-            const missedCallConvId =
-              messagingController.resolveConversationIdFromContactId(
-                contact.contactId,
-              );
-            await messagingController.sendEventMessage(
-              missedCallConvId,
-              'missed_call',
-              {
-                callId: roomId,
-                callerId: getUserId(),
-                callerName,
-              },
-            );
-            console.log('[MAIN] Missed call message written to chat history');
-          } catch (e) {
-            console.warn('[MAIN] Failed to write missed call message:', e);
-          }
-        } else {
-          console.log(
-            '[MAIN] No saved contact found for room, skipping missed call notification',
-          );
-        }
-      } catch (e) {
-        console.warn('[MAIN] Failed to handle missed call:', e);
-      }
-    }
-
-    // Clean up call notifications for this room
-    if (roomId && getPushNotifications()?.isNotificationEnabled()) {
-      getPushNotifications()
-        .dismissCallNotifications(roomId)
-        .catch((error) => {
-          console.warn('[MAIN] Failed to dismiss call notifications:', error);
-        });
-    }
-
-    cleanupRemoteStream();
-    clearUrlParam();
-
-    // Re-render contacts list so sort order reflects updated lastInteractionAt
-    renderContactsList(lobbyDiv).catch(() => {});
-
-    // Re-attach incoming listener so the next call on this room is detected
-    if (roomId && reason !== 'page_unload') {
-      listenForIncomingOnRoom(roomId);
-    }
-
-    // Prompt to save contact after cleanup (if partner was present)
-    if (partnerId && roomId) {
-      setTimeout(() => {
-        contactsController
-          .handleHangUp(partnerId, roomId)
-          .then((result) => {
-            if (result.action === 'prompt-save') {
-              showSaveContactPrompt(partnerId, roomId, lobbyDiv).catch((e) => {
-                console.warn('Failed to show save contact prompt:', e);
-              });
-            }
-          })
-          .catch((e) => {
-            console.warn('Failed to handle hang-up contact flow:', e);
-          });
-      }, 500);
-    }
-  },
-);
+// CallController business-logic handlers (memberJoined, memberLeft, cleanup)
+setupCallControllerEventWiring({ lobbyElement: lobbyDiv });
 
 // ============================================================================
 // CLEANUP
@@ -2129,7 +850,6 @@ async function cleanup() {
   await CallController.hangUp({ emitCancel: true, reason: 'page_unload' });
 
   // Global teardown: safe to remove all listeners on page unload
-  teardownUiToControllerBridges();
   cleanupMediaControls();
   removeAllRTDBListeners();
   cleanupContacts();

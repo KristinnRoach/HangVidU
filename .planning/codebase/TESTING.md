@@ -125,7 +125,7 @@ describe('CallController (unit)', () => {
 **Module Mocking Pattern:**
 ```javascript
 // Mock at top of file, before imports
-vi.mock('../../src/webrtc/call-flow.js', () => ({
+vi.mock('../../src/call/call-flow.js', () => ({
   createCall: vi.fn(),
   answerCall: vi.fn(),
 }));

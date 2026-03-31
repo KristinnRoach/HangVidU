@@ -14,7 +14,7 @@
 **Singleton vs Factory ambiguity in CallController:**
 
 - Issue: TODO comment on line 712 indicates undecided architecture pattern; currently exports both class and default singleton
-- Files: `src/webrtc/call-controller.js`
+- Files: `src/call/call-controller.js`
 - Impact: Inconsistent usage patterns, testing difficulties, potential for state leakage
 - Fix approach: Decide on pattern, use factory if multiple instances needed, or enforce singleton with explicit getInstance()
 
@@ -119,7 +119,7 @@
 
 **Listener tracking and cleanup system:**
 
-- Files: `src/storage/fb-rtdb/rtdb.js`, `src/main.js:429-480`, `src/webrtc/call-controller.js:325-356`
+- Files: `src/storage/fb-rtdb/rtdb.js`, `src/main.js:429-480`, `src/call/call-controller.js:325-356`
 - Why fragile: Three separate listener tracking mechanisms (RTDB module array, main.js Sets/Maps, CallController internal Map); easy to miss cleanup
 - Safe modification: Always use the centralized `addRTDBListener` and `removeRTDBListenersForRoom` functions
 - Test coverage: Tests exist but focus on specific scenarios; integration tests for listener lifecycle recommended
@@ -180,7 +180,7 @@ Notable observations:
 
 - Problem: If DataChannel closes unexpectedly, no automatic reconnection
 - Blocks: Reliable file transfer during connection hiccups
-- Files: `src/webrtc/call-controller.js:513-539`
+- Files: `src/call/call-controller.js:513-539`
 
 **Error boundaries for UI components:**
 

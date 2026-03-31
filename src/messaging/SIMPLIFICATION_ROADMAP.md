@@ -70,7 +70,7 @@ Deferred issues identified during implementation. Mapped to phases for resolutio
 | Issue                   | Description                                                                             | Phase     | Notes                                                                        |
 | ----------------------- | --------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------- |
 | Reaction deletion guard | Last reaction removal not detected; RTDB deletes `reactions` key, stale chips rendered  | Phase 3.3 | Fix: track previous reaction state in `onReactionUpdate()` callback          |
-| Event ownership         | `rejected_call` `from` is callerId, not writer. Semantically odd but logically correct. | Phase 3   | Revisit if adding more event types                                           |
+| ~~Event ownership~~     | ~~`rejected_call` `from` is callerId, not writer.~~ Resolved: single `call:unanswered` event, `from` is always the writer (caller). | ✅ Done   |                                                                              |
 | History event path      | Cached history not yet routed through `message:received` events                         | Phase 2.3 | Phase 2.3 will emit cached messages through same event path as live messages |
 
 **Resolved**:
@@ -649,7 +649,7 @@ When you resume work on Phase 1, focus on these files:
 **Current flow** (broken across 3 layers):
 
 ```
-src/webrtc/call-controller.js
+src/call/call-controller.js
   → createSession() → { contactId, contactName }
 
 src/ui/components/messages/messages-ui.js
@@ -664,7 +664,7 @@ src/messaging/messaging-controller.js
 **Key files to modify**:
 
 - `src/messaging/messaging-controller.js` — add setCurrentSession() method
-- `src/webrtc/call-controller.js` — call new single entry point
+- `src/call/call-controller.js` — call new single entry point
 - `src/ui/components/messages/messages-ui.js` — remove setSession(), listen to events
 
 ### Issue 1.2: State Ownership Clarity

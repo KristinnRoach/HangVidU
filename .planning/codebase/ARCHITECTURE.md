@@ -25,14 +25,14 @@
 
 **Controller Layer:**
 - Purpose: Business logic and state coordination for calls and messaging
-- Location: `src/webrtc/call-controller.js`, `src/messaging/messaging-controller.js`
+- Location: `src/call/call-controller.js`, `src/messaging/messaging-controller.js`
 - Contains: Call lifecycle management, event emission, listener tracking, messaging session management
 - Depends on: WebRTC layer, Room service, Firebase layer
 - Used by: Main orchestration, UI components
 
 **WebRTC Layer:**
 - Purpose: Peer connection establishment and media handling
-- Location: `src/webrtc/`
+- Location: `src/call/`
 - Contains: Call flow orchestration (`call-flow.js`), ICE handling (`ice.js`), connection utilities (`webrtc-utils.js`, `webrtc.js`)
 - Depends on: Room service, Media layer
 - Used by: Controller layer
@@ -108,7 +108,7 @@
 
 ## Key Abstractions
 
-**CallController (`src/webrtc/call-controller.js`):**
+**CallController (`src/call/call-controller.js`):**
 - Purpose: Thin wrapper over call-flow with event-based API
 - Pattern: Singleton with SimpleEmitter for events
 - Events: `created`, `answered`, `memberJoined`, `memberLeft`, `cleanup`, `error`, `hangup`, `remoteHangup`, `callFailed`

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => {
   const callSequence = [];
   let memberJoinedHandler = null;
+  let memberLeftHandler = null;
   const pushController = {
     initialize: vi.fn().mockResolvedValue(true),
     isNotificationSupported: vi.fn().mockReturnValue(true),
@@ -49,7 +50,7 @@ const mocks = vi.hoisted(() => {
     off: vi.fn(),
   };
 
-  const contactsController = {
+  const contactsService = {
     updateLastInteraction: vi.fn(() => {
       callSequence.push('updateLastInteraction');
       return Promise.resolve();
@@ -75,19 +76,29 @@ const mocks = vi.hoisted(() => {
     getLogs: vi.fn(() => []),
   };
 
-  return {
-    callSequence,
-    get memberJoinedHandler() {
-      return memberJoinedHandler;
-    },
-    set memberJoinedHandler(handler) {
-      memberJoinedHandler = handler;
-    },
-    pushController,
-    callController,
-    contactsController,
-    logger,
-  };
+    return {
+      callSequence,
+      get memberJoinedHandler() {
+        return memberJoinedHandler;
+      },
+      set memberJoinedHandler(handler) {
+        memberJoinedHandler = handler;
+      },
+      get memberLeftHandler() {
+        return memberLeftHandler;
+      },
+      set memberLeftHandler(handler) {
+        memberLeftHandler = handler;
+      },
+      pushController,
+      callController,
+      contactsService,
+      logger,
+      firebase: {
+        remove: vi.fn(),
+      },
+      getUserRecentCallRef: vi.fn((_userId, roomId) => ({ roomId })),
+    };
 });
 
 vi.mock('../../src/ui/icons.js', () => ({
@@ -99,14 +110,17 @@ vi.mock('../../src/initSentry.js', () => ({}));
 vi.mock('firebase/database', () => ({
   set: vi.fn(),
   get: vi.fn(),
-  remove: vi.fn(),
+  remove: mocks.firebase.remove,
+  ref: vi.fn(),
 }));
 
 vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => ({
   removeAllRTDBListeners: vi.fn(),
   removeRTDBListenersForRoom: vi.fn(),
   getUserRecentCallsRef: vi.fn(),
-  getUserRecentCallRef: vi.fn(),
+  getUserRecentCallRef: mocks.getUserRecentCallRef,
+  getUserOutgoingCallRef: vi.fn(() => ({})),
+  rtdb: {},
 }));
 
 vi.mock('../../src/auth/index.js', () => ({
@@ -124,22 +138,25 @@ vi.mock('../../src/auth/auth-state.js', () => ({
   subscribe: vi.fn(() => () => {}),
 }));
 
-vi.mock('../../src/ui/components/notifications/in-app-notification-manager.js', () => ({
-  inAppNotificationManager: {
-    setToggle: vi.fn(),
-    add: vi.fn(),
-    remove: vi.fn(),
-    has: vi.fn(() => false),
-    notifications: new Map(),
-  },
-}));
+vi.mock(
+  '../../src/ui/components/notifications/in-app-notification-manager.js',
+  () => ({
+    inAppNotificationManager: {
+      setToggle: vi.fn(),
+      add: vi.fn(),
+      remove: vi.fn(),
+      has: vi.fn(() => false),
+      notifications: new Map(),
+    },
+  }),
+);
 
 vi.mock('../../src/push-notifications/index.js', () => ({
   getPushNotifications: vi.fn(() => mocks.pushController),
   pushNotifications: mocks.pushController,
 }));
 
-vi.mock('../../src/webrtc/call-controller.js', () => ({
+vi.mock('../../src/call/call-controller.js', () => ({
   default: mocks.callController,
 }));
 
@@ -151,12 +168,8 @@ vi.mock('../../src/messaging/messaging-controller.js', () => ({
   },
 }));
 
-vi.mock('../../src/contacts/contacts-controller.js', () => ({
-  contactsController: mocks.contactsController,
-}));
-
-vi.mock('../../src/bootstrap/ui-to-controller-bridges.js', () => ({
-  teardownUiToControllerBridges: vi.fn(),
+vi.mock('../../src/contacts/contacts-service.js', () => ({
+  contactsService: mocks.contactsService,
 }));
 
 vi.mock('../../src/elements.js', () => {
@@ -225,13 +238,17 @@ vi.mock('../../src/media/state.js', () => ({
   cleanupLocalVideoOnlyStream: vi.fn(),
 }));
 
-vi.mock('../../src/utils/dev/dev-utils.js', () => ({
-  devDebug: vi.fn(),
-  isDev: vi.fn(() => false),
-  setDevDebugEnabled: vi.fn(),
-}));
+vi.mock('../../src/utils/dev/dev-utils.js', async () => {
+  const actual = await vi.importActual('../../src/utils/dev/dev-utils.js');
+  return {
+    ...actual,
+    devDebug: vi.fn(),
+    isDev: vi.fn(() => false),
+    setDevDebugEnabled: vi.fn(),
+  };
+});
 
-vi.mock('../../src/room.js', () => ({
+vi.mock('../../src/call/room.js', () => ({
   default: {
     checkRoomStatus: vi.fn(),
     getRoomData: vi.fn(),
@@ -243,7 +260,10 @@ vi.mock('../../src/room.js', () => ({
     }),
     onCallCancelled: vi.fn(() => () => {}),
     onAnswerAdded: vi.fn(() => () => {}),
-    onMemberLeft: vi.fn(() => () => {}),
+    onMemberLeft: vi.fn((_roomId, callback) => {
+      mocks.memberLeftHandler = callback;
+      return () => {};
+    }),
     rejectCall: vi.fn(),
   },
 }));
@@ -265,9 +285,12 @@ vi.mock('../../src/contacts/referral-handler.js', () => ({
   processReferral: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../../src/ui/components/notifications/enable-notifications-prompt.js', () => ({
-  showEnableNotificationsPrompt: vi.fn(),
-}));
+vi.mock(
+  '../../src/ui/components/notifications/enable-notifications-prompt.js',
+  () => ({
+    showEnableNotificationsPrompt: vi.fn(),
+  }),
+);
 
 vi.mock('../../src/utils/url.js', () => ({
   clearUrlParam: vi.fn(),
@@ -301,11 +324,9 @@ vi.mock('../../src/ui/core/watch-lifecycle-ui.js', () => ({
   onWatchModeExited: vi.fn(),
 }));
 
-vi.mock('../../src/ui/components/contacts/contacts.js', () => ({
+vi.mock('../../src/contacts/components/contacts.js', () => ({
   renderContactsList: vi.fn(),
   cleanupContacts: vi.fn(),
-  showSaveContactPrompt: vi.fn(),
-  autoInitMsgSessionIfNeeded: vi.fn(),
 }));
 
 vi.mock('../../src/media/youtube/youtube-player.js', () => ({
@@ -327,9 +348,12 @@ vi.mock('../../src/media/youtube/youtube-search.js', () => ({
   initializeSearchUI: vi.fn(),
 }));
 
-vi.mock('../../src/ui/components/notifications/notifications-toggle.js', () => ({
-  createNotificationsToggle: vi.fn(),
-}));
+vi.mock(
+  '../../src/ui/components/notifications/notifications-toggle.js',
+  () => ({
+    createNotificationsToggle: vi.fn(),
+  }),
+);
 
 vi.mock('../../src/ui/utils/toast.js', () => ({
   showSuccessToast: vi.fn(),
@@ -362,7 +386,7 @@ vi.mock('../../src/ui/components/calling/incoming-call.js', () => ({
   dismissActiveIncomingCallUI: vi.fn(),
 }));
 
-vi.mock('../../src/ui/components/contacts/add-contact-modal.js', () => ({
+vi.mock('../../src/contacts/components/add-contact-modal.js', () => ({
   showAddContactModal: vi.fn(),
 }));
 
@@ -385,7 +409,7 @@ vi.mock('../../src/ui/components/calling/calling-ui.js', () => ({
     mocks.callSequence.push('showCallingUI');
   }),
   onCallAnswered: vi.fn(),
-  isRoomCallFresh: vi.fn(() => true),
+  // isRoomCallFresh: vi.fn(() => true),
 }));
 
 vi.mock('../../src/ui/core/legacy/watch-mode.js', () => ({
@@ -413,7 +437,7 @@ vi.mock('../../src/ui/components/notifications/debug-notifications.js', () => ({
   addDebugUpdateButton: vi.fn(),
 }));
 
-import RoomService from '../../src/room.js';
+import RoomService from '../../src/call/room.js';
 import { showIncomingCallUI } from '../../src/ui/components/calling/incoming-call.js';
 import { ringtoneManager } from '../../src/media/audio/ringtone-manager.js';
 import { callIndicators } from '../../src/ui/utils/call-indicators.js';
@@ -426,8 +450,12 @@ describe('callContact push notification flow', () => {
     vi.clearAllMocks();
     mocks.callSequence.length = 0;
     mocks.memberJoinedHandler = null;
+    mocks.memberLeftHandler = null;
+    mocks.pushController.dismissCallNotifications.mockResolvedValue(undefined);
     mocks.pushController.shouldSendNotification.mockReturnValue(false);
     mocks.pushController.isNotificationEnabled.mockReturnValue(true);
+    mocks.firebase.remove.mockReset();
+    mocks.getUserRecentCallRef.mockClear();
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
@@ -435,8 +463,10 @@ describe('callContact push notification flow', () => {
     consoleWarnSpy.mockRestore();
   });
 
-  it('attempts the push immediately after successful call start', async () => {
-    const { callContact } = await import('../../src/main.js');
+  it('renders the calling UI before attempting the push notification', async () => {
+    await import('../../src/main.js');
+    const { callContact } =
+      await import('../../src/call/WIP-start-call-refactor.js');
 
     const result = await callContact(
       'contact-456',
@@ -458,12 +488,29 @@ describe('callContact push notification flow', () => {
     });
     expect(mocks.callSequence.indexOf('sendIncomingCall')).toBeGreaterThan(-1);
     expect(mocks.callSequence.indexOf('showCallingUI')).toBeGreaterThan(-1);
-    expect(
+    expect(mocks.callSequence.indexOf('showCallingUI')).toBeLessThan(
       mocks.callSequence.indexOf('sendIncomingCall'),
-    ).toBeLessThan(mocks.callSequence.indexOf('showCallingUI'));
+    );
     expect(consoleWarnSpy).not.toHaveBeenCalledWith(
       '[CALL] Call-start push notification did not succeed',
     );
+  });
+
+  it('does not create a new outbound call when the incoming answer target room is gone', async () => {
+    const { joinOrCreateRoomWithId } =
+      await import('../../src/call/WIP-start-call-refactor.js');
+
+    RoomService.checkRoomStatus.mockResolvedValue({
+      exists: false,
+      hasMembers: false,
+      memberCount: 0,
+    });
+
+    const result = await joinOrCreateRoomWithId('stale-incoming-room');
+
+    expect(result).toBe(false);
+    expect(mocks.callController.createCall).not.toHaveBeenCalled();
+    expect(mocks.callController.answerCall).not.toHaveBeenCalled();
   });
 
   it('skips RTDB incoming-call UI when push notifications should handle a background call', async () => {
@@ -474,7 +521,8 @@ describe('callContact push notification flow', () => {
       createdBy: 'caller-999',
     });
 
-    const { listenForIncomingOnRoom } = await import('../../src/main.js');
+    const { listenForIncomingOnRoom } =
+      await import('../../src/call/room-listeners.js');
 
     listenForIncomingOnRoom('room-background');
 
@@ -488,7 +536,7 @@ describe('callContact push notification flow', () => {
     expect(showIncomingCallUI).not.toHaveBeenCalled();
     expect(ringtoneManager.playIncoming).not.toHaveBeenCalled();
     expect(callIndicators.startCallIndicators).not.toHaveBeenCalled();
-    expect(mocks.contactsController.resolveCallerName).not.toHaveBeenCalled();
+    expect(mocks.contactsService.resolveCallerName).not.toHaveBeenCalled();
     expect(mocks.logger.logNotificationDecision).toHaveBeenCalledWith(
       'DEFER',
       'background_push_only',
@@ -498,5 +546,63 @@ describe('callContact push notification flow', () => {
         pushNotificationsEnabled: true,
       }),
     );
+  });
+
+  it('settles a pending incoming-call wait when listeners are removed', async () => {
+    mocks.contactsService.getContactByRoomId.mockResolvedValue({
+      contactId: 'caller-999',
+      contactName: 'Resolved Caller',
+    });
+    RoomService.getRoomData.mockResolvedValue({
+      offer: { type: 'offer' },
+      answer: null,
+      createdBy: 'caller-999',
+    });
+
+    const { listenForIncomingOnRoom, removeIncomingListenersForRoom } =
+      await import('../../src/call/room-listeners.js');
+
+    listenForIncomingOnRoom('room-pending');
+
+    const pendingIncomingCall = mocks.memberJoinedHandler({
+      key: 'caller-999',
+      val: () => ({
+        joinedAt: Date.now(),
+      }),
+    });
+
+    await vi.waitFor(() => {
+      expect(showIncomingCallUI).toHaveBeenCalled();
+    });
+
+    removeIncomingListenersForRoom('room-pending');
+    await pendingIncomingCall;
+
+    expect(ringtoneManager.stop).toHaveBeenCalled();
+    expect(callIndicators.stopCallIndicators).toHaveBeenCalled();
+  });
+
+  it('removes the saved recent-call record when a room becomes empty', async () => {
+    mocks.contactsService.getContactByRoomId.mockResolvedValue(null);
+    RoomService.checkRoomStatus.mockResolvedValue({
+      exists: true,
+      hasMembers: false,
+      memberCount: 0,
+    });
+
+    const { listenForIncomingOnRoom } =
+      await import('../../src/call/room-listeners.js');
+
+    listenForIncomingOnRoom('room-empty');
+
+    await mocks.memberLeftHandler?.({
+      key: 'other-user',
+    });
+
+    expect(mocks.getUserRecentCallRef).toHaveBeenCalledWith(
+      'user-123',
+      'room-empty',
+    );
+    expect(mocks.firebase.remove).toHaveBeenCalledWith({ roomId: 'room-empty' });
   });
 });

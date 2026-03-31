@@ -56,7 +56,7 @@ import { set, get, remove } from 'firebase/database';
 // Internal modules
 import { removeAllRTDBListeners } from './storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, getUserId } from './firebase/auth.js';
-import CallController from './webrtc/call-controller.js';
+import CallController from './call/call-controller.js';
 
 // Components
 import { showElement, hideElement } from './utils/ui/ui-utils.js';

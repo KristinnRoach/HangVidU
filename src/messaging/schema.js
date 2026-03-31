@@ -14,7 +14,7 @@ import { z } from 'zod';
 //   messages: {
 //     {messageId}: { type: 'text', text: '...', from: 'user-id', ... },
 //     {messageId}: { type: 'file', fileName: '...', from: 'user-id', ... },
-//     {messageId}: { type: 'event', eventType: 'missed_call', from: 'caller-uid', ... }
+//     {messageId}: { type: 'event', eventType: 'call:unanswered', from: 'caller-uid', ... }
 //   }
 // }
 
@@ -64,14 +64,12 @@ const FileMessageSchema = z.object({
 const EventMessageSchema = z.object({
   messageId: z.string(),
   type: z.literal('event'),
-  eventType: z.enum(['missed_call', 'rejected_call']),
+  eventType: z.enum(['call:unanswered']),
   from: z.string().min(1),
   sentAt: z.number(),
   read: z.boolean().default(false),
   details: z
     .object({
-      callerId: z.string().optional(),
-      callerName: z.string().optional(),
       callId: z.string().nullable().optional(),
     })
     .optional(),

@@ -1,5 +1,5 @@
 // import { showUpdateNotification } from '../ui/components/notifications/update-notification.js';
-import CallController from '../webrtc/call-controller.js';
+import CallController from '../call/call-controller.js';
 import { showInfoToast, showErrorToast } from '../ui/utils/toast.js';
 
 // Check for updates every 30 minutes (in milliseconds)

@@ -520,9 +520,10 @@ export class PushNotifications {
 
     if (!callerName) {
       try {
-        const { resolveCallerName } =
-          await import('../ui/components/contacts/contacts.js');
-        displayName = await resolveCallerName(roomId, callerId);
+        const { contactsService } = await import('../contacts/contacts-service.js');
+        const contact = await contactsService.getContactByRoomId(roomId);
+        // TODO: Centralize caller display-name fallback policy once ownership is settled.
+        displayName = contact?.contactName || callerId || 'Unknown caller';
       } catch (error) {
         console.warn(
           '[Push Notifications] Failed to resolve caller name:',
