@@ -56,6 +56,12 @@
         "pushSubscriptions": {
           ".read": "$userId === auth.uid",
           ".write": "$userId === auth.uid"
+        },
+        "conversations": {
+          ".read": "$userId === auth.uid",
+          "$conversationId": {
+            ".write": "auth != null && ($conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid) || root.child('conversations').child($conversationId).child('members').child(auth.uid).exists())"
+          }
         }
       }
     },
@@ -67,10 +73,16 @@
     },
     "conversations": {
       "$conversationId": {
-        ".read": "auth != null && ($conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid))",
+        ".read": "auth != null && (data.child('members').child(auth.uid).exists() || $conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid))",
+        "members": {
+          "$uid": {
+            ".write": "auth != null && (root.child('conversations').child($conversationId).child('members').child(auth.uid).exists() || $conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid))"
+          }
+        },
         "messages": {
+          ".indexOn": ["from"],
           "$messageId": {
-            ".write": "auth != null && ($conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid))"
+            ".write": "auth != null && (root.child('conversations').child($conversationId).child('members').child(auth.uid).exists() || $conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid))"
           }
         }
       }

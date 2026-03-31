@@ -62,6 +62,11 @@ export class RTDBMessageStore extends MessageStore {
       `conversations/${conversationId}/messages/${messageId}`,
     );
 
+    // Ensure membership nodes exist (idempotent, best-effort)
+    this._ensureMembers(conversationId).catch((err) =>
+      console.warn('[RTDBMessageStore] ensureMembers failed:', err),
+    );
+
     // Storage transform: replace client timestamp with server timestamp
     await set(messageRef, { ...fields, sentAt: serverTimestamp() });
 
@@ -261,6 +266,30 @@ export class RTDBMessageStore extends MessageStore {
   }
 
   // ── Internal ──────────────────────────────────────────────────────────
+
+  /**
+   * Ensure membership nodes exist for a conversation.
+   * Writes conversations/{id}/members/{uid} and users/{uid}/conversations/{id}
+   * for each participant. Idempotent — safe to call on every message write.
+   *
+   * @param {string} conversationId
+   */
+  async _ensureMembers(conversationId) {
+    const membersRef = ref(
+      rtdb,
+      `conversations/${conversationId}/members`,
+    );
+    const snap = await get(membersRef);
+    if (snap.exists()) return;
+
+    const participantIds = conversationId.split('_');
+    const updates = {};
+    for (const uid of participantIds) {
+      updates[`conversations/${conversationId}/members/${uid}`] = true;
+      updates[`users/${uid}/conversations/${conversationId}`] = true;
+    }
+    await update(ref(rtdb), updates);
+  }
 
   async _cleanup(conversationId) {
     const messagesRef = ref(rtdb, `conversations/${conversationId}/messages`);

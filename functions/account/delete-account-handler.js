@@ -85,32 +85,51 @@ async function handleDeleteAccount(req, res) {
       updates[`usersByEmail/${emailHash}`] = null;
     }
 
-    // 5. Optionally scrub message content from conversations
+    // 5. Find user's conversations via reverse index (or fall back to full scan)
+    const userConvosSnap = await db
+      .ref(`users/${uid}/conversations`)
+      .once('value');
+    let conversationIds;
+    if (userConvosSnap.exists()) {
+      conversationIds = Object.keys(userConvosSnap.val());
+    } else {
+      // Fallback for pre-migration conversations without reverse index
+      const allConvosSnap = await db.ref('conversations').once('value');
+      conversationIds = allConvosSnap.exists()
+        ? Object.keys(allConvosSnap.val()).filter((id) =>
+            id.split('_').includes(uid),
+          )
+        : [];
+    }
+
+    // Remove user from each conversation's members list
+    for (const convoId of conversationIds) {
+      updates[`conversations/${convoId}/members/${uid}`] = null;
+    }
+
+    // 6. Optionally scrub message content
     let scrubbed = 0;
     if (scrubMessages) {
-      const conversationsSnap = await db.ref('conversations').once('value');
-      if (conversationsSnap.exists()) {
-        for (const [convoId, convo] of Object.entries(
-          conversationsSnap.val(),
-        )) {
-          const parts = convoId.split('_');
-          if (!parts.includes(uid)) continue;
-          if (!convo.messages) continue;
+      for (const convoId of conversationIds) {
+        const messagesSnap = await db
+          .ref(`conversations/${convoId}/messages`)
+          .orderByChild('from')
+          .equalTo(uid)
+          .once('value');
+        if (!messagesSnap.exists()) continue;
 
-          for (const [msgId, msg] of Object.entries(convo.messages)) {
-            if (msg.from !== uid) continue;
-            const path = `conversations/${convoId}/messages/${msgId}`;
-            updates[`${path}/text`] = null;
-            updates[`${path}/fromName`] = null;
-            updates[`${path}/fileName`] = null;
-            updates[`${path}/mimeType`] = null;
-            updates[`${path}/fileSize`] = null;
-            updates[`${path}/data`] = null;
-            updates[`${path}/details`] = null;
-            updates[`${path}/redacted`] = true;
-            scrubbed++;
-          }
-        }
+        messagesSnap.forEach((msgSnap) => {
+          const path = `conversations/${convoId}/messages/${msgSnap.key}`;
+          updates[`${path}/text`] = null;
+          updates[`${path}/fromName`] = null;
+          updates[`${path}/fileName`] = null;
+          updates[`${path}/mimeType`] = null;
+          updates[`${path}/fileSize`] = null;
+          updates[`${path}/data`] = null;
+          updates[`${path}/details`] = null;
+          updates[`${path}/redacted`] = true;
+          scrubbed++;
+        });
       }
     }
 
