@@ -48,7 +48,9 @@ const identifier = process.argv[2];
 const shouldDelete = process.argv.includes('--confirm');
 
 if (!identifier) {
-  console.error('Usage: node scripts/delete-user-account.js <uid-or-email> [--confirm]');
+  console.error(
+    'Usage: node scripts/delete-user-account.js <uid-or-email> [--confirm]',
+  );
   process.exit(1);
 }
 
@@ -65,9 +67,7 @@ function promptConfirmation(message) {
     });
     rl.question(message, (answer) => {
       rl.close();
-      resolve(
-        answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes',
-      );
+      resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
     });
   });
 }
@@ -132,12 +132,17 @@ async function run() {
   }
 
   // 4. Find user's conversations via reverse index (or fall back)
-  const userConvosSnap = await db.ref(`users/${uid}/conversations`).once('value');
+  const userConvosSnap = await db
+    .ref(`users/${uid}/conversations`)
+    .once('value');
   let conversationIds;
   if (userConvosSnap.exists()) {
     conversationIds = Object.keys(userConvosSnap.val());
   } else {
     // TODO: remove fallback after safety period (now is 31 march 2026)
+    console.warn(
+      'Reverse index not found, fallback to full conversation scan.',
+    );
     const allConvosSnap = await db.ref('conversations').once('value');
     conversationIds = allConvosSnap.exists()
       ? Object.keys(allConvosSnap.val()).filter((id) =>

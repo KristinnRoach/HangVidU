@@ -95,6 +95,9 @@ async function handleDeleteAccount(req, res) {
     } else {
       // TODO: remove fallback after safety period (now is 31 march 2026)
       // Fallback for pre-migration conversations without reverse index
+      console.warn(
+        'Reverse index not found, fallback to full conversation scan.',
+      );
       const allConvosSnap = await db.ref('conversations').once('value');
       conversationIds = allConvosSnap.exists()
         ? Object.keys(allConvosSnap.val()).filter((id) =>
