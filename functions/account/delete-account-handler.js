@@ -134,13 +134,13 @@ async function handleDeleteAccount(req, res) {
       }
     }
 
-    // 6. Apply all RTDB updates atomically
+    // 7. Apply all RTDB updates atomically
     await db.ref().update(updates);
     console.info(
       `[Account] RTDB cleaned up for user: ${uid} (${scrubbed} messages redacted)`,
     );
 
-    // 7. Delete Firebase Auth account (idempotent — ignore if already deleted)
+    // 8. Delete Firebase Auth account (idempotent — ignore if already deleted)
     try {
       await adminAuth.deleteUser(uid);
       console.info('[Account] Auth account deleted:', uid);
