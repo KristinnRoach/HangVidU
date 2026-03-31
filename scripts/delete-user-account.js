@@ -48,7 +48,9 @@ const identifier = process.argv[2];
 const shouldDelete = process.argv.includes('--confirm');
 
 if (!identifier) {
-  console.error('Usage: node scripts/delete-user-account.js <uid-or-email> [--confirm]');
+  console.error(
+    'Usage: node scripts/delete-user-account.js <uid-or-email> [--confirm]',
+  );
   process.exit(1);
 }
 
@@ -65,9 +67,7 @@ function promptConfirmation(message) {
     });
     rl.question(message, (answer) => {
       rl.close();
-      resolve(
-        answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes',
-      );
+      resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
     });
   });
 }
@@ -131,29 +131,54 @@ async function run() {
     }
   }
 
-  // 4. Scrub message content from conversations
-  let scrubCount = 0;
-  const convoSnap = await db.ref('conversations').once('value');
-  if (convoSnap.exists()) {
-    for (const [convoId, convo] of Object.entries(convoSnap.val())) {
-      const parts = convoId.split('_');
-      if (!parts.includes(uid)) continue;
-      if (!convo.messages) continue;
+  // 4. Find user's conversations via reverse index (or fall back)
+  const userConvosSnap = await db
+    .ref(`users/${uid}/conversations`)
+    .once('value');
+  let conversationIds;
+  if (userConvosSnap.exists()) {
+    conversationIds = Object.keys(userConvosSnap.val());
+  } else {
+    // TODO: remove fallback after safety period (now is 31 march 2026)
+    console.warn(
+      'Reverse index not found, fallback to full conversation scan.',
+    );
+    const allConvosSnap = await db.ref('conversations').once('value');
+    conversationIds = allConvosSnap.exists()
+      ? Object.keys(allConvosSnap.val()).filter((id) =>
+          id.split('_').includes(uid),
+        )
+      : [];
+  }
 
-      for (const [msgId, msg] of Object.entries(convo.messages)) {
-        if (msg.from !== uid) continue;
-        const path = `conversations/${convoId}/messages/${msgId}`;
-        updates[`${path}/text`] = null;
-        updates[`${path}/fromName`] = null;
-        updates[`${path}/fileName`] = null;
-        updates[`${path}/mimeType`] = null;
-        updates[`${path}/fileSize`] = null;
-        updates[`${path}/data`] = null;
-        updates[`${path}/details`] = null;
-        updates[`${path}/redacted`] = true;
-        scrubCount++;
-      }
-    }
+  // Remove user from conversation members
+  for (const convoId of conversationIds) {
+    summary.push(`conversations/${convoId}/members/${uid} -> null`);
+    updates[`conversations/${convoId}/members/${uid}`] = null;
+  }
+
+  // 5. Scrub message content
+  let scrubCount = 0;
+  for (const convoId of conversationIds) {
+    const messagesSnap = await db
+      .ref(`conversations/${convoId}/messages`)
+      .orderByChild('from')
+      .equalTo(uid)
+      .once('value');
+    if (!messagesSnap.exists()) continue;
+
+    messagesSnap.forEach((msgSnap) => {
+      const path = `conversations/${convoId}/messages/${msgSnap.key}`;
+      updates[`${path}/text`] = null;
+      updates[`${path}/fromName`] = null;
+      updates[`${path}/fileName`] = null;
+      updates[`${path}/mimeType`] = null;
+      updates[`${path}/fileSize`] = null;
+      updates[`${path}/data`] = null;
+      updates[`${path}/details`] = null;
+      updates[`${path}/redacted`] = true;
+      scrubCount++;
+    });
   }
 
   if (scrubCount > 0) {
