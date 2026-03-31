@@ -1,6 +1,5 @@
 import {
   assertContactId,
-  mergeContactRecord,
   normalizeContactPatch,
   normalizeContactRecord,
 } from './contact-transform.js';
@@ -10,7 +9,7 @@ function assertAdapter(adapter) {
     throw new TypeError('contacts storage adapter is required');
   }
 
-  const requiredMethods = ['get', 'list', 'put', 'remove'];
+  const requiredMethods = ['get', 'list', 'put', 'patch', 'remove'];
 
   for (const methodName of requiredMethods) {
     if (typeof adapter[methodName] !== 'function') {
@@ -88,17 +87,12 @@ export class ContactsStore {
    */
   async patch(contactId, patch) {
     const normalizedContactId = assertContactId(contactId);
-    // TODO: Normalize the patch once after this merge path is finalized.
     const normalizedPatch = normalizeContactPatch(patch);
-
-    const existing = await this.get(normalizedContactId);
-    if (!existing) {
-      return null;
-    }
-
-    const nextRecord = mergeContactRecord(existing, normalizedPatch);
-    await this.adapter.put(nextRecord);
-    return nextRecord;
+    const nextRecord = await this.adapter.patch(
+      normalizedContactId,
+      normalizedPatch,
+    );
+    return nextRecord ? normalizeContactRecord(nextRecord) : null;
   }
 
   /**

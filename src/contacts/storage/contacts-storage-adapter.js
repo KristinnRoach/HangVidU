@@ -32,6 +32,18 @@ export class ContactsStorageAdapter {
   }
 
   /**
+   * Apply a partial update to one contact record.
+   * Returns the updated record, or `null` when the contact does not exist.
+   *
+   * @param {string} contactId
+   * @param {import('./contact-schema.js').ContactPatch} patch
+   * @returns {Promise<import('./contact-schema.js').ContactRecord|null>}
+   */
+  async patch(contactId, patch) {
+    throw new Error('Not implemented');
+  }
+
+  /**
    * Remove one contact record by id.
    * @param {string} contactId
    * @returns {Promise<void>}

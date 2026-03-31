@@ -177,15 +177,29 @@ function attachContactListeners(container, lobbyElement) {
     el.onclick = async () => {
       const contactId = el.getAttribute('data-contact-id');
       if (contactId) {
-        clearUnreadBadge(contactId);
-
         const conversationId =
           messagingController.resolveConversationIdFromContactId(contactId);
 
-        await messagingController.selectConversation(conversationId, {
-          remoteParticipantIds: [contactId],
-          displayUI: true,
-        });
+        if (!conversationId) {
+          console.warn('[contacts] No conversation id for contact', {
+            contactId,
+          });
+          return;
+        }
+
+        try {
+          await messagingController.selectConversation(conversationId, {
+            remoteParticipantIds: [contactId],
+            displayUI: true,
+          });
+
+          clearUnreadBadge(contactId);
+        } catch (error) {
+          console.warn('[contacts] Failed to open conversation', {
+            contactId,
+            error,
+          });
+        }
       }
     };
   });
@@ -224,18 +238,15 @@ function attachContactListeners(container, lobbyElement) {
  * Watches each contact's presence and updates indicator color.
  */
 function setupPresenceIndicators(contactIds, contactsContainer) {
-  if (!contactIds || !contactsContainer) {
-    console.error(
-      'setupPresenceIndicators(): contactIds or contactsContainer missing!',
-    );
-    return;
-  }
-
   // Clean up old listeners
   presenceListeners.forEach(({ ref: presenceRef, callback }) => {
     off(presenceRef, 'value', callback);
   });
   presenceListeners.clear();
+
+  if (!contactIds || !contactsContainer) {
+    return;
+  }
 
   // Only set up presence for logged-in users (guests don't have RTDB presence)
   if (!getLoggedInUserId()) return;

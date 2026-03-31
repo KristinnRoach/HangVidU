@@ -1,5 +1,6 @@
-import { get, ref, remove, set } from 'firebase/database';
+import { get, ref, remove, runTransaction, set } from 'firebase/database';
 import { ContactsStorageAdapter } from './contacts-storage-adapter.js';
+import { mergeContactRecord } from './contact-transform.js';
 
 function assertGetOwnerId(getOwnerId) {
   if (typeof getOwnerId !== 'function') {
@@ -82,6 +83,32 @@ export class ContactsRTDBAdapter extends ContactsStorageAdapter {
       ref(this.database, this._contactPath(contactRecord.contactId)),
       contactRecord,
     );
+  }
+
+  /**
+   * @param {string} contactId
+   * @param {import('./contact-schema.js').ContactPatch} patch
+   * @returns {Promise<import('./contact-schema.js').ContactRecord|null>}
+   */
+  async patch(contactId, patch) {
+    let didExist = true;
+    const result = await runTransaction(
+      ref(this.database, this._contactPath(contactId)),
+      (current) => {
+        if (current == null) {
+          didExist = false;
+          return;
+        }
+
+        return mergeContactRecord(current, patch);
+      },
+    );
+
+    if (!didExist || !result.committed) {
+      return null;
+    }
+
+    return result.snapshot.val();
   }
 
   /**

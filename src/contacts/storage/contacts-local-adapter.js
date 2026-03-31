@@ -1,4 +1,5 @@
 import { ContactsStorageAdapter } from './contacts-storage-adapter.js';
+import { mergeContactRecord } from './contact-transform.js';
 
 function getDefaultStorage() {
   if (!globalThis.localStorage) {
@@ -80,6 +81,25 @@ export class ContactsLocalAdapter extends ContactsStorageAdapter {
     const map = this._readMap();
     map[contactRecord.contactId] = contactRecord;
     this._writeMap(map);
+  }
+
+  /**
+   * @param {string} contactId
+   * @param {import('./contact-schema.js').ContactPatch} patch
+   * @returns {Promise<import('./contact-schema.js').ContactRecord|null>}
+   */
+  async patch(contactId, patch) {
+    const map = this._readMap();
+    const existing = map[contactId] ?? null;
+
+    if (!existing) {
+      return null;
+    }
+
+    const nextRecord = mergeContactRecord(existing, patch);
+    map[contactId] = nextRecord;
+    this._writeMap(map);
+    return nextRecord;
   }
 
   /**
