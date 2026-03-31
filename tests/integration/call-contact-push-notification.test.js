@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => {
   const callSequence = [];
   let memberJoinedHandler = null;
+  let memberLeftHandler = null;
   const pushController = {
     initialize: vi.fn().mockResolvedValue(true),
     isNotificationSupported: vi.fn().mockReturnValue(true),
@@ -75,19 +76,29 @@ const mocks = vi.hoisted(() => {
     getLogs: vi.fn(() => []),
   };
 
-  return {
-    callSequence,
-    get memberJoinedHandler() {
-      return memberJoinedHandler;
-    },
-    set memberJoinedHandler(handler) {
-      memberJoinedHandler = handler;
-    },
-    pushController,
-    callController,
-    contactsService,
-    logger,
-  };
+    return {
+      callSequence,
+      get memberJoinedHandler() {
+        return memberJoinedHandler;
+      },
+      set memberJoinedHandler(handler) {
+        memberJoinedHandler = handler;
+      },
+      get memberLeftHandler() {
+        return memberLeftHandler;
+      },
+      set memberLeftHandler(handler) {
+        memberLeftHandler = handler;
+      },
+      pushController,
+      callController,
+      contactsService,
+      logger,
+      firebase: {
+        remove: vi.fn(),
+      },
+      getUserRecentCallRef: vi.fn((_userId, roomId) => ({ roomId })),
+    };
 });
 
 vi.mock('../../src/ui/icons.js', () => ({
@@ -99,7 +110,7 @@ vi.mock('../../src/initSentry.js', () => ({}));
 vi.mock('firebase/database', () => ({
   set: vi.fn(),
   get: vi.fn(),
-  remove: vi.fn(),
+  remove: mocks.firebase.remove,
   ref: vi.fn(),
 }));
 
@@ -107,7 +118,7 @@ vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => ({
   removeAllRTDBListeners: vi.fn(),
   removeRTDBListenersForRoom: vi.fn(),
   getUserRecentCallsRef: vi.fn(),
-  getUserRecentCallRef: vi.fn(),
+  getUserRecentCallRef: mocks.getUserRecentCallRef,
   getUserOutgoingCallRef: vi.fn(() => ({})),
   rtdb: {},
 }));
@@ -249,7 +260,10 @@ vi.mock('../../src/call/room.js', () => ({
     }),
     onCallCancelled: vi.fn(() => () => {}),
     onAnswerAdded: vi.fn(() => () => {}),
-    onMemberLeft: vi.fn(() => () => {}),
+    onMemberLeft: vi.fn((_roomId, callback) => {
+      mocks.memberLeftHandler = callback;
+      return () => {};
+    }),
     rejectCall: vi.fn(),
   },
 }));
@@ -436,9 +450,12 @@ describe('callContact push notification flow', () => {
     vi.clearAllMocks();
     mocks.callSequence.length = 0;
     mocks.memberJoinedHandler = null;
+    mocks.memberLeftHandler = null;
     mocks.pushController.dismissCallNotifications.mockResolvedValue(undefined);
     mocks.pushController.shouldSendNotification.mockReturnValue(false);
     mocks.pushController.isNotificationEnabled.mockReturnValue(true);
+    mocks.firebase.remove.mockReset();
+    mocks.getUserRecentCallRef.mockClear();
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
@@ -563,5 +580,29 @@ describe('callContact push notification flow', () => {
 
     expect(ringtoneManager.stop).toHaveBeenCalled();
     expect(callIndicators.stopCallIndicators).toHaveBeenCalled();
+  });
+
+  it('removes the saved recent-call record when a room becomes empty', async () => {
+    mocks.contactsService.getContactByRoomId.mockResolvedValue(null);
+    RoomService.checkRoomStatus.mockResolvedValue({
+      exists: true,
+      hasMembers: false,
+      memberCount: 0,
+    });
+
+    const { listenForIncomingOnRoom } =
+      await import('../../src/call/room-listeners.js');
+
+    listenForIncomingOnRoom('room-empty');
+
+    await mocks.memberLeftHandler?.({
+      key: 'other-user',
+    });
+
+    expect(mocks.getUserRecentCallRef).toHaveBeenCalledWith(
+      'user-123',
+      'room-empty',
+    );
+    expect(mocks.firebase.remove).toHaveBeenCalledWith({ roomId: 'room-empty' });
   });
 });

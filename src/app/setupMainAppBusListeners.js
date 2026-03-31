@@ -2,7 +2,10 @@ import { appBus } from './app-bus.js';
 import { messagingController } from '../messaging/messaging-controller.js';
 import { isDev, tempWarn } from '../utils/dev/dev-utils.js';
 import { callContact } from '../call/WIP-start-call-refactor.js';
-import { listenForIncomingOnRoom } from '../call/room-listeners.js';
+import {
+  listenForIncomingOnRoom,
+  removeIncomingListenersForRoom,
+} from '../call/room-listeners.js';
 
 export function setupMainAppBusListeners() {
   appBus.on('call:outgoing:requested', ({ contactId, contactName, roomId }) => {
@@ -13,23 +16,27 @@ export function setupMainAppBusListeners() {
         roomId,
       });
 
-    try {
-      const conversationId =
-        messagingController.resolveConversationIdFromContactId(contactId);
+    if (contactId) {
+      try {
+        const conversationId =
+          messagingController.resolveConversationIdFromContactId(contactId);
 
-      messagingController
-        .selectConversation(conversationId, {
-          remoteParticipantIds: [contactId],
-          displayUI: false,
-        })
-        .catch((e) => {
-          console.warn(
-            'Failed to select conversation on call:outgoing:requested:',
-            e,
-          );
-        });
-    } catch (e) {
-      console.warn('Failed to select conversation after memberJoined:', e);
+        if (conversationId) {
+          messagingController
+            .selectConversation(conversationId, {
+              remoteParticipantIds: [contactId],
+              displayUI: false,
+            })
+            .catch((e) => {
+              console.warn(
+                'Failed to select conversation on call:outgoing:requested:',
+                e,
+              );
+            });
+        }
+      } catch (e) {
+        console.warn('Failed to select conversation after memberJoined:', e);
+      }
     }
 
     callContact(contactId, contactName, roomId);
@@ -39,7 +46,10 @@ export function setupMainAppBusListeners() {
     listenForIncomingOnRoom(roomId);
   });
 
-  appBus.on('room:id:updated', ({ roomId }) => {
+  appBus.on('room:id:updated', ({ roomId, previousRoomId }) => {
+    if (previousRoomId && previousRoomId !== roomId) {
+      removeIncomingListenersForRoom(previousRoomId);
+    }
     listenForIncomingOnRoom(roomId);
   });
 }

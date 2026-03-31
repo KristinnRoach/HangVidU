@@ -177,17 +177,17 @@ function attachContactListeners(container, lobbyElement) {
     el.onclick = async () => {
       const contactId = el.getAttribute('data-contact-id');
       if (contactId) {
-        const conversationId =
-          messagingController.resolveConversationIdFromContactId(contactId);
-
-        if (!conversationId) {
-          console.warn('[contacts] No conversation id for contact', {
-            contactId,
-          });
-          return;
-        }
-
         try {
+          const conversationId =
+            messagingController.resolveConversationIdFromContactId(contactId);
+
+          if (!conversationId) {
+            console.warn('[contacts] No conversation id for contact', {
+              contactId,
+            });
+            return;
+          }
+
           await messagingController.selectConversation(conversationId, {
             remoteParticipantIds: [contactId],
             displayUI: true,

@@ -87,6 +87,34 @@ function settleIncomingCallWait(roomId, result = 'listener_removed') {
   incomingCallPromiseCleanups.delete(roomId);
 }
 
+async function removeRecentCallRecordForCurrentUser(roomId) {
+  if (!roomId) return;
+
+  const loggedInUid = getLoggedInUserId();
+  if (loggedInUid) {
+    await remove(getUserRecentCallRef(loggedInUid, roomId)).catch(() => {});
+    return;
+  }
+
+  try {
+    const raw = localStorage.getItem('recentCalls') || '{}';
+    const recentCalls = JSON.parse(raw);
+
+    if (!recentCalls || typeof recentCalls !== 'object') {
+      return;
+    }
+
+    if (!(roomId in recentCalls)) {
+      return;
+    }
+
+    delete recentCalls[roomId];
+    localStorage.setItem('recentCalls', JSON.stringify(recentCalls));
+  } catch (_) {
+    // best-effort; do not block listener cleanup on local storage issues
+  }
+}
+
 /**
  * Remove incoming call listeners for a specific room
  * @param {string} roomId - Room ID to clean up listeners for
@@ -326,7 +354,7 @@ export function listenForIncomingOnRoom(roomId) {
         !!pushController?.isNotificationEnabled?.() &&
         !!pushController?.shouldSendNotification?.();
 
-      if (import.meta.env.DEV && usePushOnlyForBackgroundCall) {
+      if (usePushOnlyForBackgroundCall) {
         getDiagnosticLogger().logNotificationDecision(
           'DEFER',
           'background_push_only',
@@ -561,6 +589,7 @@ export function listenForIncomingOnRoom(roomId) {
         console.warn('[LISTENER] Failed to check saved contact:', e);
       }
       if (!savedContact) {
+        await removeRecentCallRecordForCurrentUser(roomId);
         removeIncomingListenersForRoom(roomId);
       } else {
         devDebug(
@@ -594,6 +623,7 @@ export function listenForIncomingOnRoom(roomId) {
         // and clean up the incoming listeners for this room (UNLESS saved contact)
         if (!status.hasMembers) {
           const savedContact = await contactsService.getContactByRoomId(roomId);
+          await removeRecentCallRecordForCurrentUser(roomId);
           if (!savedContact) {
             removeIncomingListenersForRoom(roomId);
             devDebug(

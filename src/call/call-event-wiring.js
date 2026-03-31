@@ -90,28 +90,35 @@ export function setupCallControllerEventWiring(options = {}) {
             const me = getUser();
             const callerName = me?.displayName || 'Friend';
 
-            // Send push notification to the contact (callee)
-            console.log(
-              `[MAIN] Sending missed call push notification to ${contact.contactName} (${contact.contactId})`,
-            );
-            await getPushNotifications()?.sendMissedCall({
-              targetUserId: contact.contactId,
-              roomId,
-              callerId: getUserId(),
-              callerName,
-            });
-
             appBus.emit('call:unanswered', {
               roomId,
               contactId: contact.contactId,
             });
+
+            // Send push notification to the contact (callee)
+            console.log(
+              `[MAIN] Sending missed call push notification to ${contact.contactName} (${contact.contactId})`,
+            );
+            try {
+              await getPushNotifications()?.sendMissedCall({
+                targetUserId: contact.contactId,
+                roomId,
+                callerId: getUserId(),
+                callerName,
+              });
+            } catch (pushError) {
+              console.warn(
+                '[MAIN] Failed to send missed call push notification:',
+                pushError,
+              );
+            }
           } else {
             console.log(
               '[MAIN] No saved contact found for room, skipping missed call notification',
             );
           }
         } catch (e) {
-          console.warn('[MAIN] Failed to handle missed call:', e);
+        console.warn('[MAIN] Failed to handle missed call:', e);
         }
       }
 
