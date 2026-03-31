@@ -60,7 +60,7 @@
         "conversations": {
           ".read": "$userId === auth.uid",
           "$conversationId": {
-            ".write": "auth != null && !data.exists() && newData.val() === true && (($conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid)) && ($conversationId.contains($userId + '_') || $conversationId.contains('_' + $userId)))"
+            ".write": "auth != null && $userId === auth.uid && !data.exists() && newData.val() === true"
           }
         }
       }
