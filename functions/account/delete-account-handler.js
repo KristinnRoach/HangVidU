@@ -13,8 +13,12 @@ const { verifyAuthHeader } = require('../push-notifications/auth');
  * - notifications/{uid}
  * - Firebase Auth user record
  *
+ * Redacts:
+ * - message content authored by this user (text, files, details)
+ *   replaced with { redacted: true }, preserving conversation structure
+ *
  * Preserves:
- * - conversations (other participants keep message history)
+ * - conversations (other participants keep message history structure)
  * - users/{uid}/profile as a tombstone ({ deleted: true, deletedAt })
  *
  * @param {import('firebase-functions/v2/https').Request} req
@@ -67,9 +71,37 @@ async function handleDeleteAccount(req, res) {
       updates[`usersByEmail/${emailHash}`] = null;
     }
 
-    // 5. Apply all RTDB updates atomically
+    // 5. Scrub message content from conversations involving this user
+    const conversationsSnap = await db.ref('conversations').once('value');
+    let scrubbed = 0;
+    if (conversationsSnap.exists()) {
+      for (const [convoId, convo] of Object.entries(conversationsSnap.val())) {
+        if (!convoId.includes(`${uid}_`) && !convoId.includes(`_${uid}`)) {
+          continue;
+        }
+        if (!convo.messages) continue;
+
+        for (const [msgId, msg] of Object.entries(convo.messages)) {
+          if (msg.from !== uid) continue;
+          const path = `conversations/${convoId}/messages/${msgId}`;
+          updates[`${path}/text`] = null;
+          updates[`${path}/fromName`] = null;
+          updates[`${path}/fileName`] = null;
+          updates[`${path}/mimeType`] = null;
+          updates[`${path}/fileSize`] = null;
+          updates[`${path}/data`] = null;
+          updates[`${path}/details`] = null;
+          updates[`${path}/redacted`] = true;
+          scrubbed++;
+        }
+      }
+    }
+
+    // 6. Apply all RTDB updates atomically
     await db.ref().update(updates);
-    console.info('[Account] RTDB data cleaned up for user:', uid);
+    console.info(
+      `[Account] RTDB cleaned up for user: ${uid} (${scrubbed} messages redacted)`,
+    );
 
     // 6. Delete Firebase Auth account
     await adminAuth.deleteUser(uid);

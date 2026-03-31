@@ -158,6 +158,7 @@
   "auth.delete_confirm": "Ertu viss um að þú viljir eyða reikningnum þínum?\n\nÞetta mun eyða varanlega:\n• Reikningnum þínum\n• Öllum tengiliðum\n• Símtalsögu\n• Öllum tengdum gögnum\n\nÞetta er ekki hægt að afturkalla.",
   "auth.delete_success": "Reikningnum þínum hefur verið eytt.",
   "auth.delete_failed": "Tókst ekki að eyða reikningi. Reyndu aftur.",
+  "message.redacted": "Skilaboð frá eyddum reikningi",
   "auth.login_failed": "Skráning mistókst. Endurhlaðið síðu, athugið nettenginguna og reyndu aftur.",
   "auth.ios_blocked": "Skráning er blokkuð í uppsettri app á iOS.\n\nSmelltu á Login hnappinn aftur til að opna í Safari og klára skráningu.",
   "auth.popup_blocked": "Popup blokkaður. Vinsamlegast virkjaðu popups fyrir síðuna í vafrastillingum, eða reyndu að skrá þig inn frá borðtölvu.",

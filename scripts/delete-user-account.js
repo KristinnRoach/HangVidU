@@ -131,17 +131,44 @@ async function run() {
     }
   }
 
-  // 4. Conversations preserved (other participants keep history)
+  // 4. Scrub message content from conversations
+  let scrubCount = 0;
+  const convoSnap = await db.ref('conversations').once('value');
+  if (convoSnap.exists()) {
+    for (const [convoId, convo] of Object.entries(convoSnap.val())) {
+      if (!convoId.includes(`${uid}_`) && !convoId.includes(`_${uid}`)) {
+        continue;
+      }
+      if (!convo.messages) continue;
+
+      for (const [msgId, msg] of Object.entries(convo.messages)) {
+        if (msg.from !== uid) continue;
+        const path = `conversations/${convoId}/messages/${msgId}`;
+        updates[`${path}/text`] = null;
+        updates[`${path}/fromName`] = null;
+        updates[`${path}/fileName`] = null;
+        updates[`${path}/mimeType`] = null;
+        updates[`${path}/fileSize`] = null;
+        updates[`${path}/data`] = null;
+        updates[`${path}/details`] = null;
+        updates[`${path}/redacted`] = true;
+        scrubCount++;
+      }
+    }
+  }
+
+  if (scrubCount > 0) {
+    summary.push(`${scrubCount} messages redacted across conversations`);
+  }
 
   if (summary.length === 0) {
     console.log('No RTDB data found for this user.');
   } else {
     console.log('RTDB changes:');
     summary.forEach((p) => console.log(`  - ${p}`));
-    console.log('\nConversations: preserved (other participants keep history)');
   }
 
-  console.log(`Firebase Auth record: will be deleted`);
+  console.log(`\nFirebase Auth record: will be deleted`);
 
   if (!shouldDelete) {
     console.log('\nDry run complete. Re-run with --confirm to delete.');
