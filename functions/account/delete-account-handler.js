@@ -93,6 +93,7 @@ async function handleDeleteAccount(req, res) {
     if (userConvosSnap.exists()) {
       conversationIds = Object.keys(userConvosSnap.val());
     } else {
+      // TODO: remove fallback after safety period (now is 31 march 2026)
       // Fallback for pre-migration conversations without reverse index
       const allConvosSnap = await db.ref('conversations').once('value');
       conversationIds = allConvosSnap.exists()

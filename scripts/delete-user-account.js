@@ -137,6 +137,7 @@ async function run() {
   if (userConvosSnap.exists()) {
     conversationIds = Object.keys(userConvosSnap.val());
   } else {
+    // TODO: remove fallback after safety period (now is 31 march 2026)
     const allConvosSnap = await db.ref('conversations').once('value');
     conversationIds = allConvosSnap.exists()
       ? Object.keys(allConvosSnap.val()).filter((id) =>
