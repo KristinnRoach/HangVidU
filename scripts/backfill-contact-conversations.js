@@ -71,13 +71,20 @@ async function run() {
   console.log('\n=== Contact Conversation Backfill ===\n');
   console.log(`Mode: ${shouldApply ? 'APPLY' : 'DRY RUN'}\n`);
 
-  const usersSnap = await db.ref('users').once('value');
-  if (!usersSnap.exists()) {
+  const rootSnap = await db.ref().once('value');
+  if (!rootSnap.exists()) {
     console.log('No users found.');
+    await admin.app().delete();
     process.exit(0);
   }
 
-  const users = usersSnap.val();
+  const root = rootSnap.val();
+  const users = root?.users;
+  if (!users || typeof users !== 'object') {
+    console.log('No users found.');
+    await admin.app().delete();
+    process.exit(0);
+  }
   const updates = {};
   let contactCount = 0;
   let alreadyCorrectCount = 0;
@@ -89,7 +96,7 @@ async function run() {
     }
 
     const segments = path.split('/');
-    let current = users;
+    let current = root;
 
     for (const segment of segments) {
       if (
@@ -137,17 +144,20 @@ async function run() {
 
   if (Object.keys(updates).length === 0) {
     console.log('\nNothing to backfill.');
+    await admin.app().delete();
     process.exit(0);
   }
 
   if (!shouldApply) {
     console.log('\nDry run complete. Re-run with --confirm to apply.');
+    await admin.app().delete();
     process.exit(0);
   }
 
   const confirmed = await promptConfirmation('\nApply backfill? (y/N): ');
   if (!confirmed) {
     console.log('Cancelled.');
+    await admin.app().delete();
     process.exit(0);
   }
 
