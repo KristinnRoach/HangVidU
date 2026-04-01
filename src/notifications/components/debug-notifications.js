@@ -1,5 +1,5 @@
-import { inAppNotificationManager } from './in-app-notification-manager.js';
-import { isDev } from '../../../utils/dev/dev-utils.js';
+import { inAppNotificationManager } from '../index.js';
+import { isDev } from '../../utils/dev/dev-utils.js';
 
 /**
  * Debug utility to manually trigger notifications for testing.

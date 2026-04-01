@@ -21,7 +21,7 @@ vi.mock('../messaging/messaging-controller.js', () => ({
   },
 }));
 
-vi.mock('../contacts/contacts-service.js', () => ({
+vi.mock('../contacts/index.js', () => ({
   contactsService: {
     updateLastInteraction: mocks.updateLastInteraction,
   },

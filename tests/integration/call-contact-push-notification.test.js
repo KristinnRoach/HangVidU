@@ -125,6 +125,13 @@ vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => ({
 
 vi.mock('../../src/auth/index.js', () => ({
   initAuth: vi.fn().mockResolvedValue(undefined),
+  getLoggedInUserId: vi.fn(() => 'user-123'),
+  getUserId: vi.fn(() => 'user-123'),
+  getUser: vi.fn(() => ({
+    uid: 'user-123',
+    displayName: 'Caller Example',
+    email: 'caller@example.com',
+  })),
 }));
 
 vi.mock('../../src/auth/auth-state.js', () => ({
@@ -138,18 +145,27 @@ vi.mock('../../src/auth/auth-state.js', () => ({
   subscribe: vi.fn(() => () => {}),
 }));
 
-vi.mock(
-  '../../src/ui/components/notifications/in-app-notification-manager.js',
-  () => ({
-    inAppNotificationManager: {
-      setToggle: vi.fn(),
-      add: vi.fn(),
-      remove: vi.fn(),
-      has: vi.fn(() => false),
-      notifications: new Map(),
-    },
-  }),
-);
+vi.mock('../../src/notifications/index.js', () => ({
+  inAppNotificationManager: {
+    setToggle: vi.fn(),
+    add: vi.fn(),
+    remove: vi.fn(),
+    has: vi.fn(() => false),
+    notifications: new Map(),
+    isListVisible: vi.fn(() => false),
+    hideList: vi.fn(),
+  },
+  showEnableNotificationsPrompt: vi.fn(),
+  createNotificationsToggle: vi.fn(),
+  addDebugUpdateButton: vi.fn(),
+  showPushUnsupportedNotification: vi.fn(),
+  showUpdateNotification: vi.fn(),
+  createInviteNotification: vi.fn(),
+  createMissedCallNotification: vi.fn(),
+  createReferralNotification: vi.fn(),
+  buildTemplate: vi.fn(),
+  createNotification: vi.fn(),
+}));
 
 vi.mock('../../src/push-notifications/index.js', () => ({
   getPushNotifications: vi.fn(() => mocks.pushController),
@@ -169,7 +185,21 @@ vi.mock('../../src/messaging/messaging-controller.js', () => ({
 }));
 
 vi.mock('../../src/contacts/contacts-service.js', () => ({
+  ContactsService: class ContactsService {},
   contactsService: mocks.contactsService,
+}));
+
+vi.mock('../../src/contacts/index.js', () => ({
+  contactsService: mocks.contactsService,
+  cleanupInviteListeners: vi.fn(),
+  setupInviteListener: vi.fn(),
+  captureReferral: vi.fn(),
+  processReferral: vi.fn().mockResolvedValue(undefined),
+  renderContactsList: vi.fn(),
+  cleanupContacts: vi.fn(),
+  showSaveContactPrompt: vi.fn(),
+  showAddContactModal: vi.fn(),
+  setupContactsAppBusBridge: vi.fn(),
 }));
 
 vi.mock('../../src/elements.js', () => {
@@ -285,12 +315,9 @@ vi.mock('../../src/contacts/referral-handler.js', () => ({
   processReferral: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock(
-  '../../src/ui/components/notifications/enable-notifications-prompt.js',
-  () => ({
-    showEnableNotificationsPrompt: vi.fn(),
-  }),
-);
+vi.mock('../../src/notifications/enable-notifications-prompt.js', () => ({
+  showEnableNotificationsPrompt: vi.fn(),
+}));
 
 vi.mock('../../src/utils/url.js', () => ({
   clearUrlParam: vi.fn(),
@@ -348,19 +375,16 @@ vi.mock('../../src/media/youtube/youtube-search.js', () => ({
   initializeSearchUI: vi.fn(),
 }));
 
-vi.mock(
-  '../../src/ui/components/notifications/notifications-toggle.js',
-  () => ({
-    createNotificationsToggle: vi.fn(),
-  }),
-);
+vi.mock('../../src/notifications/notifications-toggle.js', () => ({
+  createNotificationsToggle: vi.fn(),
+}));
 
 vi.mock('../../src/ui/utils/toast.js', () => ({
   showSuccessToast: vi.fn(),
   showErrorToast: vi.fn(),
 }));
 
-vi.mock('../../src/ui/components/notifications/invite-notification.js', () => ({
+vi.mock('../../src/notifications/invite-notification.js', () => ({
   createInviteNotification: vi.fn(),
 }));
 
@@ -370,8 +394,33 @@ vi.mock('../../src/ui/utils/ui-utils.js', () => ({
   exitPiP: vi.fn(),
 }));
 
-vi.mock('../../src/ui/components/auth/AuthComponent.js', () => ({
+vi.mock('../../src/auth/index.js', () => ({
+  signInWithAccountSelection: vi.fn(),
+  signOutUser: vi.fn(),
+  deleteAccount: vi.fn(),
+  isSafariExternalOpenArmed: vi.fn(),
+  setSafariExternalOpenArmed: vi.fn(),
+  requestContactsAccess: vi.fn(),
+  requestGmailSendAccess: vi.fn(),
+  clearGISTokenCache: vi.fn(),
+  getAuthState: vi.fn(),
+  getIsLoggedIn: vi.fn(() => false),
+  getUser: vi.fn(() => ({
+    uid: 'user-123',
+    displayName: 'Caller Example',
+    email: 'caller@example.com',
+  })),
+  getUserId: vi.fn(() => 'user-123'),
+  getLoggedInUserId: vi.fn(() => 'user-123'),
+  getUserName: vi.fn(),
+  subscribe: vi.fn(() => () => {}),
+  setState: vi.fn(),
+  waitForAuthReady: vi.fn(),
   initializeAuthUI: vi.fn(),
+  auth: vi.fn(),
+  initAuth: vi.fn().mockResolvedValue(undefined),
+  getCurrentUserAsync: vi.fn(),
+  getLoggedInUserToken: vi.fn(),
 }));
 
 vi.mock('../../src/ui/components/messages/messages-ui.js', () => ({
@@ -433,7 +482,7 @@ vi.mock('../../src/i18n/index.js', () => ({
   onLocaleChange: vi.fn(() => () => {}),
 }));
 
-vi.mock('../../src/ui/components/notifications/debug-notifications.js', () => ({
+vi.mock('../../src/notifications/debug-notifications.js', () => ({
   addDebugUpdateButton: vi.fn(),
 }));
 

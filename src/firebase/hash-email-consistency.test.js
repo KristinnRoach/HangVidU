@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hashEmail as clientHashEmail } from '../contacts/user-discovery.js';
+import { hashEmail as clientHashEmail } from '../contacts/index.js';
 
 /**
  * Server-side hashEmail from functions/account/delete-account-handler.js

@@ -1,8 +1,11 @@
 // referral-notification.js - Referral landing notification for logged-out users
 
-import { createNotification, buildTemplate } from './notification.js';
-import { escapeHtml } from '../../../ui/component-system/dom-utils.js';
-import { t, onLocaleChange } from '../../../i18n/index.js';
+import {
+  createNotification,
+  buildTemplate,
+} from '../../components/notification.js';
+import { escapeHtml } from '../../ui/component-system/dom-utils.js';
+import { t, onLocaleChange } from '../../i18n/index.js';
 
 /**
  * Create a referral notification prompting sign-in.

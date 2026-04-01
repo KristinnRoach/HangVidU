@@ -1,6 +1,6 @@
-import createComponent from '../../../ui/component-system/component.js';
-import { t, onLocaleChange } from '../../../i18n/index.js';
-import { initIcons } from '../../icons.js';
+import createComponent from '../../ui/component-system/component.js';
+import { t, onLocaleChange } from '../../i18n/index.js';
+import { initIcons } from '../../ui/icons.js';
 
 /**
  * Creates a notifications toggle button that shows/hides based on notification count.

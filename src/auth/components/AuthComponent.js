@@ -6,14 +6,14 @@ import {
   signInWithAccountSelection,
   signOutUser,
   deleteAccount,
-} from '../../../auth/index.js';
-import { getIsLoggedIn, subscribe } from '../../../auth/auth-state.js';
+} from '../index.js';
+import { getIsLoggedIn, subscribe } from '../auth-state.js';
 
-import { onOneTapStatusChange, cancelOneTap } from '../../../auth/onetap.js';
-import { isDev, devDebug } from '../../../utils/dev/dev-utils.js';
-import { t, onLocaleChange } from '../../../i18n/index.js';
+import { onOneTapStatusChange, cancelOneTap } from '../onetap.js';
+import { isDev, devDebug } from '../../utils/dev/dev-utils.js';
+import { t, onLocaleChange } from '../../i18n/index.js';
 
-import createComponent from '../../../ui/component-system/component.js';
+import createComponent from '../../ui/component-system/component.js';
 
 let authComponent = null;
 
@@ -114,7 +114,9 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
 
         if (!confirmed) return;
 
-        const scrubMessages = confirm('Also delete all your messages from conversations?');
+        const scrubMessages = confirm(
+          'Also delete all your messages from conversations?',
+        );
 
         try {
           await deleteAccount({ scrubMessages });

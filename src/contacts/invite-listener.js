@@ -4,9 +4,11 @@ import {
   acceptInvite,
   declineInvite,
 } from './invitations.js';
-import { createInviteNotification } from '../ui/components/notifications/invite-notification.js';
-import { inAppNotificationManager } from '../ui/components/notifications/in-app-notification-manager.js';
-import { showSuccessToast, showErrorToast } from '../ui/utils/toast.js';
+import {
+  createInviteNotification,
+  inAppNotificationManager,
+} from '../notifications/index.js';
+import { showSuccessToast, showErrorToast } from '../components/toast.js';
 import { renderContactsList } from './components/contacts-list.js';
 
 // TODO: WIP decoupling considerations:

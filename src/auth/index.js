@@ -1,6 +1,11 @@
 // src/auth/index.js — barrel re-exports (public API)
 
-export { auth, initAuth, getCurrentUserAsync, getLoggedInUserToken } from './auth-setup.js';
+export {
+  auth,
+  initAuth,
+  getCurrentUserAsync,
+  getLoggedInUserToken,
+} from './auth-setup.js';
 
 export {
   signInWithAccountSelection,
@@ -10,7 +15,11 @@ export {
   setSafariExternalOpenArmed,
 } from './auth-actions.js';
 
-export { requestContactsAccess, requestGmailSendAccess, clearGISTokenCache } from './gis-tokens.js';
+export {
+  requestContactsAccess,
+  requestGmailSendAccess,
+  clearGISTokenCache,
+} from './gis-tokens.js';
 
 export {
   getAuthState,
@@ -23,3 +32,5 @@ export {
   setState,
   waitForAuthReady,
 } from './auth-state.js';
+
+export { initializeAuthUI } from './components/AuthComponent.js';

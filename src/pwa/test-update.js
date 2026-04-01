@@ -9,7 +9,7 @@
  *   window.testPWAUpdate(3000)  // Show after 3 seconds
  */
 
-import { showUpdateNotification } from '../ui/components/notifications/update-notification.js';
+import { showUpdateNotification } from '../notifications/index.js';
 
 /**
  * Simulates a PWA update by triggering the update notification
@@ -27,7 +27,7 @@ export function simulatePWAUpdate(delay = 0) {
       console.info(
         '%c[PWA Test] Update Applied!',
         'color: #4CAF50; font-weight: bold',
-        '\nIn production, the page would reload with the new version.'
+        '\nIn production, the page would reload with the new version.',
       );
     }
   };
@@ -48,14 +48,18 @@ if (typeof window !== 'undefined') {
     '\n  • window.testPWAUpdate()     - Show update notification',
     '\n  • window.testPWAUpdate(3000)  - Show after 3 seconds',
     '\n  • Cmd+Shift+P (Mac) / Ctrl+Shift+P (Win/Linux) - Keyboard shortcut',
-    '\n'
+    '\n',
   );
 
   // Add keyboard shortcut for quick testing (Ctrl/Cmd + Shift + P for "PWA")
   window.addEventListener('keydown', (e) => {
     // Use e.code instead of e.key for better cross-platform compatibility
     // KeyP works regardless of keyboard layout
-    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'P' || e.code === 'KeyP')) {
+    if (
+      (e.ctrlKey || e.metaKey) &&
+      e.shiftKey &&
+      (e.key === 'P' || e.code === 'KeyP')
+    ) {
       e.preventDefault();
       console.info('[PWA Test] Keyboard shortcut triggered!');
       simulatePWAUpdate();

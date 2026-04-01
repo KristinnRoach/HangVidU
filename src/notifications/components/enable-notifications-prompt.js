@@ -1,14 +1,17 @@
 // enable-notifications-prompt.js - Prompt user to enable push notifications
 
-import { createNotification, buildTemplate } from './notification.js';
-import { inAppNotificationManager } from './in-app-notification-manager.js';
-import { getPushNotifications } from '../../../push-notifications/index.js';
+import {
+  createNotification,
+  buildTemplate,
+} from '../../components/notification.js';
+import { inAppNotificationManager } from '../index.js';
+import { getPushNotifications } from '../../push-notifications/index.js';
 import {
   showSuccessToast,
   showWarningToast,
   showErrorToast,
-} from '../../utils/toast.js';
-import { t, onLocaleChange } from '../../../i18n/index.js';
+} from '../../components/toast.js';
+import { t, onLocaleChange } from '../../i18n/index.js';
 
 const NOTIFICATION_ID = 'enable-notifications';
 

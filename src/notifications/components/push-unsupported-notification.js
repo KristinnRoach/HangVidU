@@ -1,8 +1,11 @@
 // push-unsupported-notification.js - Notification for browsers without Web Push support
 
-import { createNotification, buildTemplate } from './notification.js';
-import { inAppNotificationManager } from './in-app-notification-manager.js';
-import { t, onLocaleChange } from '../../../i18n/index.js';
+import {
+  createNotification,
+  buildTemplate,
+} from '../../components/notification.js';
+import { inAppNotificationManager } from '../index.js';
+import { t, onLocaleChange } from '../../i18n/index.js';
 
 const NOTIFICATION_ID = 'push-unsupported';
 

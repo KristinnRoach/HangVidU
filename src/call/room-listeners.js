@@ -5,10 +5,10 @@ import {
   getUserRecentCallsRef,
   getUserRecentCallRef,
 } from '../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId, getUserId } from '../auth/auth-state.js';
+import { getLoggedInUserId, getUserId } from '../auth';
 import { getDiagnosticLogger } from '../utils/dev/diagnostic-logger.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
-import { contactsService } from '../contacts/contacts-service.js';
+import { contactsService } from '../contacts/index.js';
 import { getDeterministicRoomId } from '../utils/room-id.js';
 import RoomService from './room.js';
 import CallController from './call-controller.js';

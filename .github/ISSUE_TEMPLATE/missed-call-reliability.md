@@ -62,7 +62,7 @@ For incoming call issue:
 
 - `src/main.js` - Missed call detection (line ~1700)
 - `src/main.js` - Incoming call listener setup (line ~730)
-- `src/components/notifications/missed-call-notification.js` - Notification component
+- `src/notifications/missed-call-notification.js` - Notification component
 - `src/media/audio/ringtone-manager.js` - Ringtone playback
 - `src/storage/fb-rtdb/rtdb.js` - RTDB listener management
 
