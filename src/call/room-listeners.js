@@ -293,6 +293,12 @@ export function listenForIncomingOnRoom(roomId) {
         devDebug(
           `Ignoring stale incoming call from ${joinedContactId} for room ${roomId}`,
         );
+        console.warn('[CALL][INCOMING] skip: stale call', {
+          roomId,
+          joiningUserId: joinedContactId,
+          validationMethod,
+          age,
+        });
         getDiagnosticLogger().logNotificationDecision(
           'REJECT',
           'stale_call',
@@ -313,20 +319,46 @@ export function listenForIncomingOnRoom(roomId) {
       try {
         roomData = await RoomService.getRoomData(roomId);
       } catch (e) {
+        console.warn('[CALL][INCOMING] skip: room read failed', {
+          roomId,
+          joiningUserId: joinedContactId,
+          error: e,
+        });
         return; // Room may have been deleted
       }
 
-      if (!roomData || typeof roomData !== 'object') return;
+      if (!roomData || typeof roomData !== 'object') {
+        console.warn('[CALL][INCOMING] skip: invalid room state', {
+          roomId,
+          joiningUserId: joinedContactId,
+        });
+        return;
+      }
 
       const hasOffer = !!roomData.offer;
       const hasAnswer = !!roomData.answer;
       const offerCreator = roomData.createdBy;
-      if (!hasOffer || hasAnswer || offerCreator === currentUserId) return;
+      if (!hasOffer || hasAnswer || offerCreator === currentUserId) {
+        console.warn('[CALL][INCOMING] skip: not answerable offer state', {
+          roomId,
+          joiningUserId: joinedContactId,
+          hasOffer,
+          hasAnswer,
+          offerCreator,
+          currentUserId,
+        });
+        return;
+      }
 
       const state = CallController.getState();
       const inActiveCall =
         !!state.pc && state.pc.connectionState === 'connected';
       if (inActiveCall) {
+        console.warn('[CALL][INCOMING] skip: already in active call', {
+          roomId,
+          joiningUserId: joinedContactId,
+          currentCallState: state.pc?.connectionState,
+        });
         getDiagnosticLogger().logNotificationDecision(
           'REJECT',
           'already_in_call',
@@ -365,13 +397,12 @@ export function listenForIncomingOnRoom(roomId) {
           },
         );
         console.log(
-          '[CALL] Background incoming call detected, using push-only notification path',
+          '[CALL] Background incoming call detected, triggering push and continuing in-app incoming UI path',
           {
             roomId,
             joiningUserId: joinedContactId,
           },
         );
-        return;
       }
 
       const callerContact = await contactsService.getContactByRoomId(roomId);
@@ -446,7 +477,15 @@ export function listenForIncomingOnRoom(roomId) {
         if (pushNotificationController?.isNotificationEnabled()) {
           await pushNotificationController
             .dismissCallNotifications(roomId)
-            .catch(() => {});
+            .catch((error) => {
+              console.warn(
+                '[CALL][INCOMING] warn: notification dismiss failed',
+                {
+                  roomId,
+                  error,
+                },
+              );
+            });
         }
 
         getDiagnosticLogger().logNotificationDecision(
@@ -511,7 +550,15 @@ export function listenForIncomingOnRoom(roomId) {
         if (pushNotificationController?.isNotificationEnabled()) {
           await pushNotificationController
             .dismissCallNotifications(roomId)
-            .catch(() => {});
+            .catch((error) => {
+              console.warn(
+                '[CALL][INCOMING] warn: notification dismiss failed',
+                {
+                  roomId,
+                  error,
+                },
+              );
+            });
         }
 
         getDiagnosticLogger().logNotificationDecision(
@@ -560,7 +607,15 @@ export function listenForIncomingOnRoom(roomId) {
         if (pushNotificationController?.isNotificationEnabled()) {
           await pushNotificationController
             .dismissCallNotifications(roomId)
-            .catch(() => {});
+            .catch((error) => {
+              console.warn(
+                '[CALL][INCOMING] warn: notification dismiss failed',
+                {
+                  roomId,
+                  error,
+                },
+              );
+            });
         }
       } catch (_) {
         // best-effort; do not block cancellation flow on notification errors

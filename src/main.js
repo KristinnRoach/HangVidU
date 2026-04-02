@@ -98,6 +98,10 @@ import { showElement, hideElement, exitPiP } from './ui/utils/ui-utils.js';
 import { initializeAuthUI } from './auth/index.js';
 import { messagesUI } from './ui/components/messages/messages-ui.js';
 import { copyToClipboard } from './ui/components/modal/copyLinkModal.js';
+import {
+  dismissActiveIncomingCallUI,
+  resolveIncomingCallUI,
+} from './ui/components/calling/incoming-call.js';
 
 // ____ UI END ____
 
@@ -628,6 +632,11 @@ async function handleServiceWorkerNavigation(path) {
   isHandlingServiceWorkerNavigation = true;
 
   try {
+    // Notification clicks can race with an existing incoming-call dialog in this client.
+    // These calls are idempotent and no-op when no pending UI exists for the room.
+    dismissActiveIncomingCallUI(roomId);
+    resolveIncomingCallUI(roomId, 'notification_click_answer');
+
     const success = await joinOrCreateRoomWithId(roomId);
 
     console.log('[MAIN] Service worker room navigation result', {
