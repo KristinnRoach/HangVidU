@@ -9,7 +9,7 @@ Your environment variables are managed in separate files for each environment:
 - ` .env.development` for local/dev settings
 - ` .env.production` for production deploys (do not commit real secrets)
 
-Do NOT commit a real ` .env.production` file.
+Do NOT commit a real `.env.production` file.
 
 To help local testing you can copy the template:
 
