@@ -393,7 +393,7 @@ vi.mock('../../src/auth/index.js', () => ({
   requestGmailSendAccess: vi.fn(),
   clearGISTokenCache: vi.fn(),
   getAuthState: vi.fn(),
-  getIsLoggedIn: vi.fn(() => false),
+  getIsLoggedIn: vi.fn(() => true),
   getUser: vi.fn(() => ({
     uid: 'user-123',
     displayName: 'Caller Example',
