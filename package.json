@@ -13,7 +13,7 @@
     "kill:silent": "fkill :5173 :4040 --force --silent",
     "ngrok": "ngrok http https://localhost:5173 ${NGROK_DOMAIN:+--domain=$NGROK_DOMAIN}",
     "build": "vite build",
-    "deploy:fb": "pnpm build && test:compat && firebase deploy --only hosting",
+    "deploy:fb": "pnpm build && pnpm test:compat && firebase deploy --only hosting",
     "deploy:fb:skip-tests": "pnpm build && firebase deploy --only hosting",
     "deploy:fb:db": "firebase deploy --only database",
     "deploy:fb:functions": "firebase deploy --only functions",
