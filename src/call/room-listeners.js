@@ -325,7 +325,7 @@ async function handleIncomingCallAccepted({ roomId, joinedContactId }) {
   // TODO: On join failure, clearUrlParam() and onCallDisconnected() should run
   // to reset call UI state. Both live outside call/ (utils/url.js, ui/core/),
   // so this needs an event or callback approach to avoid cross-domain imports.
-  joinOrCreateRoomWithId(roomId).catch((e) => {
+  const success = await joinOrCreateRoomWithId(roomId).catch((e) => {
     console.warn('Failed to answer incoming call:', e);
     devDebug('Failed to answer incoming call.');
     getDiagnosticLogger().logFirebaseOperation(
@@ -337,7 +337,12 @@ async function handleIncomingCallAccepted({ roomId, joinedContactId }) {
         joiningUserId: joinedContactId,
       },
     );
+    return false;
   });
+
+  if (!success) {
+    console.warn('[CALL] Join failed after accepting incoming call', { roomId });
+  }
 }
 
 async function removeRecentCallRecordForCurrentUser(roomId) {
