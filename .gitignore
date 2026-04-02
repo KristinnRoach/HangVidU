@@ -95,7 +95,7 @@ functions/service-account-key.json
 
 # Misc / Recently added
 TODO.md
-experiments.html
+components-lab.html
 ./tests/e2e/OUTDATED_IGNORE/
 kill-hanging-dev-processes.sh
 sync-gh-secrets.sh

@@ -17,8 +17,8 @@ export default defineConfig(({ mode }) => {
         input: {
           main: path.resolve(__dirname, 'index.html'),
           ...(mode === 'development' && {
-            experiments: path.resolve(__dirname, 'experiments.html'),
-            mediaLab: path.resolve(__dirname, 'media-lab.html'),
+            components: path.resolve(__dirname, 'components-lab.html'),
+            media: path.resolve(__dirname, 'media-lab.html'),
             mediaPlayback: path.resolve(__dirname, 'media-playback.html'),
             mediaCapture: path.resolve(__dirname, 'media-capture.html'),
           }),
