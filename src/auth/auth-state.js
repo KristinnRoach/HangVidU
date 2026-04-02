@@ -42,13 +42,19 @@ export function setState(next) {
   const isStableStatus =
     snap.status === 'authenticated' || snap.status === 'unauthenticated';
 
+function emitAuthEvent(eventName, payload) {
+  void authBus.emitAsync(eventName, payload).catch((error) => {
+    console.error(`[auth-state] failed to emit ${eventName}`, error);
+  });
+}
+
   if (isStableStatus && !hasResolvedReady) {
     hasResolvedReady = true;
-    void authBus.emitAsync(AUTH_EVENTS.READY, { state: snap });
+    emitAuthEvent(AUTH_EVENTS.READY, { state: snap });
   }
 
   if (!previousSnapshot.isLoggedIn && snap.isLoggedIn) {
-    void authBus.emitAsync(AUTH_EVENTS.LOGGED_IN, {
+    emitAuthEvent(AUTH_EVENTS.LOGGED_IN, {
       state: snap,
       previousState: previousSnapshot,
       isInitialResolution: !wasReadyResolved,
@@ -56,11 +62,12 @@ export function setState(next) {
   }
 
   if (previousSnapshot.isLoggedIn && !snap.isLoggedIn) {
-    void authBus.emitAsync(AUTH_EVENTS.LOGGED_OUT, {
+    emitAuthEvent(AUTH_EVENTS.LOGGED_OUT, {
       state: snap,
       previousState: previousSnapshot,
       isInitialResolution: false,
     });
+  }
   }
 }
 
