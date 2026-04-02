@@ -1,10 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({
-  authBus: {
-    emitAsync: vi.fn().mockResolvedValue(undefined),
-  },
-}));
+const mocks = vi.hoisted(() => {
+  const emitAsync = vi.fn().mockResolvedValue(undefined);
+  return {
+    authBus: {
+      emitAsync,
+      emitAsyncSequential: vi.fn(async (events) => {
+        for (const [eventName, data] of events) {
+          await emitAsync(eventName, data);
+        }
+      }),
+    },
+  };
+});
 
 vi.mock('../auth-bus.js', () => ({
   AUTH_EVENTS: {
@@ -18,6 +26,11 @@ vi.mock('../auth-bus.js', () => ({
 beforeEach(() => {
   vi.resetModules();
   mocks.authBus.emitAsync.mockReset().mockResolvedValue(undefined);
+  mocks.authBus.emitAsyncSequential.mockReset().mockImplementation(async (events) => {
+    for (const [eventName, data] of events) {
+      await mocks.authBus.emitAsync(eventName, data);
+    }
+  });
 });
 
 describe('auth-state authBus events', () => {
@@ -29,6 +42,8 @@ describe('auth-state authBus events', () => {
       isLoggedIn: true,
       user: { uid: 'u1', displayName: 'User 1' },
     });
+    // Flush the void async emission chain
+    await new Promise((r) => setTimeout(r, 0));
 
     expect(mocks.authBus.emitAsync).toHaveBeenNthCalledWith(1, 'auth:ready', {
       state: expect.objectContaining({
@@ -61,6 +76,7 @@ describe('auth-state authBus events', () => {
       isLoggedIn: true,
       user: { uid: 'u1', displayName: 'User 1' },
     });
+    await new Promise((r) => setTimeout(r, 0));
     mocks.authBus.emitAsync.mockClear();
 
     setState({
@@ -68,6 +84,7 @@ describe('auth-state authBus events', () => {
       isLoggedIn: false,
       user: null,
     });
+    await new Promise((r) => setTimeout(r, 0));
 
     expect(mocks.authBus.emitAsync).toHaveBeenCalledWith(
       'auth:logged-out',

@@ -9,7 +9,7 @@ Current production notification kinds:
 Current ownership:
 
 - app code imports push functionality from [src/push-notifications/index.js](../src/push-notifications/index.js)
-- backend delivery logic lives under [functions/push-notifications](/functions/push-notifications)
+- backend delivery logic lives under [functions/push-notifications](../functions/push-notifications)
 - service worker push handling lives under [src/push-notifications/sw](../src/push-notifications/sw)
 - in-app UI notifications remain separate under [src/notifications](../src/notifications)
 

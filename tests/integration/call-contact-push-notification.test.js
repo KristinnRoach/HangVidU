@@ -304,9 +304,7 @@ vi.mock('../../src/contacts/referral-handler.js', () => ({
   processReferral: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../../src/notifications/enable-notifications-prompt.js', () => ({
-  showEnableNotificationsPrompt: vi.fn(),
-}));
+// enable-notifications-prompt is covered by the ../../src/notifications/index.js barrel mock
 
 vi.mock('../../src/utils/url.js', () => ({
   clearUrlParam: vi.fn(),
@@ -364,18 +362,14 @@ vi.mock('../../src/media/youtube/youtube-search.js', () => ({
   initializeSearchUI: vi.fn(),
 }));
 
-vi.mock('../../src/notifications/notifications-toggle.js', () => ({
-  createNotificationsToggle: vi.fn(),
-}));
+// notifications-toggle is covered by the ../../src/notifications/index.js barrel mock
 
 vi.mock('../../src/ui/utils/toast.js', () => ({
   showSuccessToast: vi.fn(),
   showErrorToast: vi.fn(),
 }));
 
-vi.mock('../../src/notifications/invite-notification.js', () => ({
-  createInviteNotification: vi.fn(),
-}));
+// invite-notification is covered by the ../../src/notifications/index.js barrel mock
 
 vi.mock('../../src/ui/utils/ui-utils.js', () => ({
   showElement: vi.fn(),
@@ -471,9 +465,7 @@ vi.mock('../../src/i18n/index.js', () => ({
   onLocaleChange: vi.fn(() => () => {}),
 }));
 
-vi.mock('../../src/notifications/debug-notifications.js', () => ({
-  addDebugUpdateButton: vi.fn(),
-}));
+// debug-notifications is covered by the ../../src/notifications/index.js barrel mock
 
 import RoomService from '../../src/call/room.js';
 import { showIncomingCallUI } from '../../src/ui/components/calling/incoming-call.js';

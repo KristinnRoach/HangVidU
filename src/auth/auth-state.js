@@ -21,12 +21,6 @@ const snapshot = () => ({
   user: state.user ? { ...state.user } : null,
 });
 
-function emitAuthEvent(eventName, payload) {
-  void authBus.emitAsync(eventName, payload).catch((error) => {
-    console.error(`[auth-state] failed to emit ${eventName}`, error);
-  });
-}
-
 /**
  * Update auth state and notify subscribers.
  * Called by auth.js when Firebase auth state changes — not part of the public API.
@@ -45,27 +39,43 @@ export function setState(next) {
     }
   }
 
+  // Build ordered list of auth events to emit.
+  // Order matters: READY must complete before LOGGED_IN/LOGGED_OUT.
+  const events = [];
+
   const isStableStatus =
     snap.status === 'authenticated' || snap.status === 'unauthenticated';
 
   if (isStableStatus && !hasResolvedReady) {
     hasResolvedReady = true;
-    emitAuthEvent(AUTH_EVENTS.READY, { state: snap });
+    events.push([AUTH_EVENTS.READY, { state: snap }]);
   }
 
   if (!previousSnapshot.isLoggedIn && snap.isLoggedIn) {
-    emitAuthEvent(AUTH_EVENTS.LOGGED_IN, {
-      state: snap,
-      previousState: previousSnapshot,
-      isInitialResolution: !wasReadyResolved,
-    });
+    events.push([
+      AUTH_EVENTS.LOGGED_IN,
+      {
+        state: snap,
+        previousState: previousSnapshot,
+        isInitialResolution: !wasReadyResolved,
+      },
+    ]);
   }
 
   if (previousSnapshot.isLoggedIn && !snap.isLoggedIn) {
-    emitAuthEvent(AUTH_EVENTS.LOGGED_OUT, {
-      state: snap,
-      previousState: previousSnapshot,
-      isInitialResolution: false,
+    events.push([
+      AUTH_EVENTS.LOGGED_OUT,
+      {
+        state: snap,
+        previousState: previousSnapshot,
+        isInitialResolution: false,
+      },
+    ]);
+  }
+
+  if (events.length > 0) {
+    void authBus.emitAsyncSequential(events).catch((error) => {
+      console.error('[auth-state] failed to emit auth events', error);
     });
   }
 }

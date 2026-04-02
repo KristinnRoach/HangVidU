@@ -5,7 +5,7 @@ import {
   getUserRecentCallsRef,
   getUserRecentCallRef,
 } from '../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId, getUserId } from '../auth';
+import { getLoggedInUserId, getUserId } from '../auth/index.js';
 import { getDiagnosticLogger } from '../utils/dev/diagnostic-logger.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { contactsService } from '../contacts/index.js';
