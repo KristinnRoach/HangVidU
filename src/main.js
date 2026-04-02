@@ -98,10 +98,6 @@ import { showElement, hideElement, exitPiP } from './ui/utils/ui-utils.js';
 import { initializeAuthUI } from './auth/index.js';
 import { messagesUI } from './ui/components/messages/messages-ui.js';
 import { copyToClipboard } from './ui/components/modal/copyLinkModal.js';
-import {
-  dismissActiveIncomingCallUI,
-  resolveIncomingCallUI,
-} from './ui/components/calling/incoming-call.js';
 
 // ____ UI END ____
 
@@ -130,6 +126,7 @@ import {
 } from './media/WIP-init-local-media.js';
 import {
   removeAllIncomingListeners,
+  settleIncomingCallWaitForRoom,
   startListeningForSavedRooms,
 } from './call/room-listeners.js';
 
@@ -632,10 +629,16 @@ async function handleServiceWorkerNavigation(path) {
   isHandlingServiceWorkerNavigation = true;
 
   try {
-    // Notification clicks can race with an existing incoming-call dialog in this client.
-    // These calls are idempotent and no-op when no pending UI exists for the room.
-    dismissActiveIncomingCallUI(roomId);
-    resolveIncomingCallUI(roomId, 'notification_click_answer');
+    // Settle the pending incoming-call wait so the listener's accept branch
+    // runs the same way as the dialog accept path.
+    const settledPendingIncomingCall = settleIncomingCallWaitForRoom(
+      roomId,
+      'notification_click_answer',
+    );
+
+    if (settledPendingIncomingCall) {
+      return true;
+    }
 
     const success = await joinOrCreateRoomWithId(roomId);
 

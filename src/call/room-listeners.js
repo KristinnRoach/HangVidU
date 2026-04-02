@@ -78,13 +78,18 @@ const incomingCallPromiseCleanups = new Map();
 
 function settleIncomingCallWait(roomId, result = 'listener_removed') {
   const pending = incomingCallPromiseCleanups.get(roomId);
-  if (!pending) return;
+  if (!pending) return false;
 
   pending.cancel?.();
   pending.answer?.();
   resolveIncomingCallUI(roomId, result);
   pending.resolve?.(result);
   incomingCallPromiseCleanups.delete(roomId);
+  return true;
+}
+
+export function settleIncomingCallWaitForRoom(roomId, result) {
+  return settleIncomingCallWait(roomId, result);
 }
 
 async function removeRecentCallRecordForCurrentUser(roomId) {
@@ -382,14 +387,14 @@ export function listenForIncomingOnRoom(roomId) {
       );
 
       const pushController = getPushNotifications();
-      const usePushOnlyForBackgroundCall =
+      const usePushForBackgroundCall =
         !!pushController?.isNotificationEnabled?.() &&
         !!pushController?.shouldSendNotification?.();
 
-      if (usePushOnlyForBackgroundCall) {
+      if (usePushForBackgroundCall) {
         getDiagnosticLogger().logNotificationDecision(
           'DEFER',
-          'background_push_only',
+          'background_push_and_inapp',
           roomId,
           {
             joiningUserId: joinedContactId,
@@ -462,7 +467,7 @@ export function listenForIncomingOnRoom(roomId) {
         callIndicators.stopCallIndicators();
       }
 
-      if (accept === true) {
+      if (accept === true || accept === 'notification_click_answer') {
         appBus.emit('call:incoming:accepted', {
           roomId,
           contactId: joinedContactId,
