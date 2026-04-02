@@ -21,6 +21,12 @@ const snapshot = () => ({
   user: state.user ? { ...state.user } : null,
 });
 
+function emitAuthEvent(eventName, payload) {
+  void authBus.emitAsync(eventName, payload).catch((error) => {
+    console.error(`[auth-state] failed to emit ${eventName}`, error);
+  });
+}
+
 /**
  * Update auth state and notify subscribers.
  * Called by auth.js when Firebase auth state changes — not part of the public API.
@@ -42,12 +48,6 @@ export function setState(next) {
   const isStableStatus =
     snap.status === 'authenticated' || snap.status === 'unauthenticated';
 
-function emitAuthEvent(eventName, payload) {
-  void authBus.emitAsync(eventName, payload).catch((error) => {
-    console.error(`[auth-state] failed to emit ${eventName}`, error);
-  });
-}
-
   if (isStableStatus && !hasResolvedReady) {
     hasResolvedReady = true;
     emitAuthEvent(AUTH_EVENTS.READY, { state: snap });
@@ -67,7 +67,6 @@ function emitAuthEvent(eventName, payload) {
       previousState: previousSnapshot,
       isInitialResolution: false,
     });
-  }
   }
 }
 

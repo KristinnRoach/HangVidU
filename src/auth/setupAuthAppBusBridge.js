@@ -48,10 +48,13 @@ export function setupAuthAppBusBridge() {
     { signal: ac.signal },
   );
 
-  cleanupAuthAppBusBridge = () => {
+  const cleanup = () => {
     ac.abort();
-    cleanupAuthAppBusBridge = null;
+    if (cleanupAuthAppBusBridge === cleanup) {
+      cleanupAuthAppBusBridge = null;
+    }
   };
 
-  return cleanupAuthAppBusBridge;
+  cleanupAuthAppBusBridge = cleanup;
+  return cleanup;
 }
