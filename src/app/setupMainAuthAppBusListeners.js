@@ -69,7 +69,10 @@ export function setupMainAuthAppBusListeners(options = {}) {
         await processReferral().catch((e) =>
           console.warn('[REFERRAL] Failed to process referral:', e),
         );
-        await renderContactsList(lobbyElement).catch(() => {});
+
+        await renderContactsList(lobbyElement).catch((e) =>
+          console.warn('[AUTH] Failed to render contacts list on login:', e),
+        );
 
         if (!isInitialResolution) {
           await startListeningForSavedRooms().catch((e) =>
