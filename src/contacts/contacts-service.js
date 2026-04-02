@@ -1,5 +1,4 @@
 import { getIsLoggedIn, getLoggedInUserId } from '../auth/auth-state.js';
-import { appBus } from '../app/app-bus.js';
 import { rtdb } from '../storage/fb-rtdb/rtdb.js';
 import {
   createContactsLocalStore,
@@ -12,6 +11,7 @@ import {
   getContactByRoomId,
 } from './contact-query.js';
 import { resolveDirectConversationId } from '../messaging/direct-conversation-id.js';
+import { CONTACTS_EVENTS, contactsBus } from './contacts-bus.js';
 
 // ! PAUSED: claude --resume edf6030f-72fb-4503-9175-bfc21d2d973c
 
@@ -58,40 +58,31 @@ function logServiceFailure(action, error, context = {}) {
 }
 
 /**
- * Emit save compatibility events after a successful write.
+ * Emit a contact-domain save event after a successful write.
  *
  * @param {ContactRecord} contact
  */
 async function emitContactSaved(contact) {
-  const roomId = contact.roomId ?? null;
-  // TODO: Emit richer contact lifecycle payloads after the bus contract settles.
-  await appBus.emitAsync('room:id:created', { roomId });
+  await contactsBus.emitAsync(CONTACTS_EVENTS.SAVED, { contact });
 }
 
 /**
- * Emit update compatibility events after a successful write.
+ * Emit a contact-domain update event after a successful write.
  *
  * @param {ContactRecord} contact
  * @param {string|null} previousRoomId
  */
 async function emitContactUpdated(contact, previousRoomId) {
-  const roomId = contact.roomId ?? null;
-  const isRoomIdChange = !!roomId && previousRoomId !== roomId;
-
-  if (isRoomIdChange) {
-    await appBus.emitAsync('room:id:updated', {
-      contactId: contact.contactId,
-      contactName: contact.contactName,
-      roomId,
-      previousRoomId,
-    });
-  }
+  await contactsBus.emitAsync(CONTACTS_EVENTS.UPDATED, {
+    contact,
+    previousRoomId,
+  });
 }
 
 /**
  * Contacts application service built on top of the storage-layer contract.
  *
- * The service owns backend selection, appBus compatibility events, and
+ * The service owns backend selection, contact-domain events, and
  * contact-specific query helpers that should not live in storage.
  */
 export class ContactsService {
@@ -176,7 +167,7 @@ export class ContactsService {
         return false;
       }
 
-      await appBus.emitAsync('contact:deleted', {
+      await contactsBus.emitAsync(CONTACTS_EVENTS.DELETED, {
         contactId,
         roomId: existing?.roomId ?? null,
       });

@@ -1,6 +1,7 @@
 // src/auth/auth-state.js — pure auth state, no Firebase imports
 
 import { getOrCreateGuestId } from './guest-user.js';
+import { AUTH_EVENTS, authBus } from './auth-bus.js';
 
 let state = {
   status: 'idle', // 'idle' | 'loading' | 'authenticated' | 'unauthenticated'
@@ -12,6 +13,8 @@ let state = {
 };
 
 const listeners = new Set();
+let hasResolvedReady = false;
+let emitChain = Promise.resolve();
 
 // Ensure immutable snapshot for subscribers
 const snapshot = () => ({
@@ -24,6 +27,9 @@ const snapshot = () => ({
  * Called by auth.js when Firebase auth state changes — not part of the public API.
  */
 export function setState(next) {
+  const previousSnapshot = snapshot();
+  const wasReadyResolved = hasResolvedReady;
+
   state = { ...state, ...next };
   const snap = snapshot();
   for (const fn of listeners) {
@@ -32,6 +38,48 @@ export function setState(next) {
     } catch (e) {
       console.error('[auth-state] subscriber error:', e);
     }
+  }
+
+  // Build ordered list of auth events to emit.
+  // Order matters: READY must complete before LOGGED_IN/LOGGED_OUT.
+  const events = [];
+
+  const isStableStatus =
+    snap.status === 'authenticated' || snap.status === 'unauthenticated';
+
+  if (isStableStatus && !hasResolvedReady) {
+    hasResolvedReady = true;
+    events.push([AUTH_EVENTS.READY, { state: snap }]);
+  }
+
+  if (!previousSnapshot.isLoggedIn && snap.isLoggedIn) {
+    events.push([
+      AUTH_EVENTS.LOGGED_IN,
+      {
+        state: snap,
+        previousState: previousSnapshot,
+        isInitialResolution: !wasReadyResolved,
+      },
+    ]);
+  }
+
+  if (previousSnapshot.isLoggedIn && !snap.isLoggedIn) {
+    events.push([
+      AUTH_EVENTS.LOGGED_OUT,
+      {
+        state: snap,
+        previousState: previousSnapshot,
+        isInitialResolution: false,
+      },
+    ]);
+  }
+
+  if (events.length > 0) {
+    emitChain = emitChain
+      .then(() => authBus.emitAsyncSequential(events))
+      .catch((error) => {
+        console.error('[auth-state] failed to emit auth events', error);
+      });
   }
 }
 

@@ -1,6 +1,6 @@
 import { appBus } from '../app/app-bus.js';
 import { tempWarn } from '../utils/dev/dev-utils.js';
-import { contactsService } from '../contacts/contacts-service.js';
+import { contactsService } from '../contacts/index.js';
 
 let cleanupMessagingAppBusHandlers = null;
 

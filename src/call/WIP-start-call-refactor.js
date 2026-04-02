@@ -1,7 +1,7 @@
 import { getUser, getUserId } from '../auth/auth-state.js';
 import { getPushNotifications } from '../push-notifications/index.js';
 import CallController from './call-controller.js';
-import { contactsService } from '../contacts/contacts-service.js';
+import { contactsService } from '../contacts/index.js';
 import RoomService from './room.js';
 import { getDiagnosticLogger } from '../utils/dev/diagnostic-logger.js';
 import { getDeterministicRoomId } from '../utils/room-id.js';

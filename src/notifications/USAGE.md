@@ -2,19 +2,22 @@
 
 ## Overview
 
-### NOTE: NotificationManager was renamed to InAppNotificationManager (./in-app-notification-manager.js). TODO: Rename references here.
-
 The notification system consists of three main parts:
 
-1. **NotificationManager** - Centralized manager for all notifications
+1. **InAppNotificationManager** - Centralized manager for all notifications
 2. **NotificationsToggle** - Bell icon with badge count
 3. **Individual Notifications** - Specific notification components
+
+Notification UI components live in `./components/*`.
+Public imports should use the notifications barrel: `./index.js`.
 
 ## Setup (One-time)
 
 ```javascript
-import { createNotificationsToggle } from './components/notifications/notifications-toggle.js';
-import { notificationManager } from './components/notifications/notification-manager.js';
+import {
+  createNotificationsToggle,
+  inAppNotificationManager,
+} from './index.js';
 
 // Create toggle (usually in top-right menu)
 const notificationsToggle = createNotificationsToggle({
@@ -26,21 +29,20 @@ const notificationsToggle = createNotificationsToggle({
 });
 
 // Register toggle with manager
-notificationManager.setToggle(notificationsToggle);
+inAppNotificationManager.setToggle(notificationsToggle);
 ```
 
 ## Creating a New Notification Type
 
 ```javascript
-import { createNotification } from './notification.js';
-import { notificationManager } from './notification-manager.js';
+import { createNotification, inAppNotificationManager } from './index.js';
 
 const NOTIFICATION_ID = 'my-feature-notification';
 
 export function showMyNotification(data) {
   // Prevent duplicates
-  if (notificationManager.has(NOTIFICATION_ID)) {
-    return notificationManager.notifications.get(NOTIFICATION_ID);
+  if (inAppNotificationManager.has(NOTIFICATION_ID)) {
+    return inAppNotificationManager.notifications.get(NOTIFICATION_ID);
   }
 
   const notification = createNotification({
@@ -54,10 +56,10 @@ export function showMyNotification(data) {
     handlers: {
       handleAction: () => {
         // Do something
-        notificationManager.remove(NOTIFICATION_ID);
+        inAppNotificationManager.remove(NOTIFICATION_ID);
       },
       handleDismiss: () => {
-        notificationManager.remove(NOTIFICATION_ID);
+        inAppNotificationManager.remove(NOTIFICATION_ID);
       },
     },
     initialProps: { message: data.message },
@@ -66,7 +68,7 @@ export function showMyNotification(data) {
   });
 
   // Register with manager (auto-updates badge count)
-  notificationManager.add(NOTIFICATION_ID, notification);
+  inAppNotificationManager.add(NOTIFICATION_ID, notification);
 
   return notification;
 }
@@ -95,7 +97,7 @@ Notifications automatically anchor to the toggle using CSS:
 
 ## API Reference
 
-### NotificationManager
+### InAppNotificationManager
 
 - `setToggle(toggleComponent)` - Register the toggle component
 - `add(id, notificationElement)` - Add a notification

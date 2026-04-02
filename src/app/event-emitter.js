@@ -132,9 +132,38 @@ export class EventEmitter {
   }
 
   /**
+   * Emit multiple events in strict order, awaiting all listeners for each
+   * event before moving to the next. Use when event ordering matters
+   * (e.g. auth:ready must complete before auth:logged-in).
+   *
+   * @param {Array<[string, any]>} events - Array of [eventName, data] tuples
+   */
+  async emitAsyncSequential(events) {
+    for (const [eventName, data] of events) {
+      await this.emitAsync(eventName, data);
+    }
+  }
+
+  /**
    * Remove all listeners
    */
   removeAllListeners() {
     this._listeners.clear();
   }
 }
+
+/**
+ * Usage:
+ *
+ *   // emit — fire-and-forget, sync listeners only
+ *   bus.emit('ui:click', { id });
+ *
+ *   // emitAsync — await all listeners (concurrent), catch errors
+ *   await bus.emitAsync('data:loaded', payload);
+ *
+ *   // emitAsyncSequential — ordered: each event fully completes before the next
+ *   await bus.emitAsyncSequential([
+ *     ['auth:ready', { state }],
+ *     ['auth:logged-in', { state, previousState }],
+ *   ]);
+ */

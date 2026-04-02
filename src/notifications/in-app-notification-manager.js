@@ -1,4 +1,4 @@
-import { onClickOutside } from '../../utils/clickOutside.js';
+import { onClickOutside } from '../ui/utils/clickOutside.js';
 
 /**
  * Centralized in-app notification manager.
@@ -245,7 +245,7 @@ class InAppNotificationManager {
    */
   addDummy() {
     // Lazy import to avoid bundling in production
-    import('./notification.js').then(
+    import('../components/notification.js').then(
       ({ createNotification, buildTemplate }) => {
         const notificationNumber = this.getCount() + 1;
         const id = `dummy-notification-${Date.now()}`;

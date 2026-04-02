@@ -9,14 +9,28 @@ import './initSentry.js';
 import { removeAllRTDBListeners } from './storage/fb-rtdb/rtdb.js';
 
 import { initAuth } from './auth/index.js';
-import { subscribe as subscribeAuth } from './auth/auth-state.js';
 
-import { inAppNotificationManager } from './ui/components/notifications/in-app-notification-manager.js';
+import {
+  inAppNotificationManager,
+  showEnableNotificationsPrompt,
+  createNotificationsToggle,
+  addDebugUpdateButton,
+} from './notifications/index.js';
 import { getPushNotifications } from './push-notifications/index.js';
 
 import CallController from './call/call-controller.js';
 import { messagingController } from './messaging/messaging-controller.js';
-import { contactsService } from './contacts/contacts-service.js';
+import {
+  contactsService,
+  cleanupInviteListeners,
+  setupInviteListener,
+  captureReferral,
+  processReferral,
+  renderContactsList,
+  cleanupContacts,
+  showAddContactModal,
+  setupContactsAppBusBridge,
+} from './contacts/index.js';
 
 import {
   localVideoEl,
@@ -53,16 +67,6 @@ import { devDebug, isDev, setDevDebugEnabled } from './utils/dev/dev-utils.js';
 
 import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
 
-import { cleanupInviteListeners } from './contacts/invitations.js';
-import { setupInviteListener } from './contacts/invite-listener.js';
-
-import {
-  captureReferral,
-  processReferral,
-} from './contacts/referral-handler.js';
-
-import { showEnableNotificationsPrompt } from './ui/components/notifications/enable-notifications-prompt.js';
-
 import { clearUrlParam } from './utils/url.js';
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
@@ -74,11 +78,6 @@ import {
   onWatchModeEntered,
   onWatchModeExited,
 } from './ui/core/watch-lifecycle-ui.js';
-
-import {
-  renderContactsList,
-  cleanupContacts,
-} from './contacts/components/contacts-list.js';
 
 import {
   destroyYouTubePlayer,
@@ -95,18 +94,14 @@ import {
   initializeSearchUI,
 } from './media/youtube/youtube-search.js';
 
-import { createNotificationsToggle } from './ui/components/notifications/notifications-toggle.js';
-
 import { showElement, hideElement, exitPiP } from './ui/utils/ui-utils.js';
-import { initializeAuthUI } from './ui/components/auth/AuthComponent.js';
+import { initializeAuthUI } from './auth/index.js';
 import { messagesUI } from './ui/components/messages/messages-ui.js';
-import { showAddContactModal } from './contacts/components/add-contact-modal.js';
 import { copyToClipboard } from './ui/components/modal/copyLinkModal.js';
 
 // ____ UI END ____
 
 import { onCallDisconnected } from './ui/core/call-lifecycle-ui.js';
-import { addDebugUpdateButton } from './ui/components/notifications/debug-notifications.js';
 import {
   initI18n,
   setLocale,
@@ -118,6 +113,8 @@ import { setupMessagingContactsIntegration } from './app/messaging-contacts-inte
 import { setupMessagingAppBusHandlers } from './messaging/handle-appbus-events.js';
 import { setupCallControllerEventWiring } from './call/call-event-wiring.js';
 import { setupMainAppBusListeners } from './app/setupMainAppBusListeners.js';
+import { setupMainAuthAppBusListeners } from './app/setupMainAuthAppBusListeners.js';
+import { setupAuthAppBusBridge } from './auth/setupAuthAppBusBridge.js';
 import {
   getCallOptions,
   applyCallResult,
@@ -197,8 +194,16 @@ async function init() {
     initializeSearchUI();
     addKeyListeners();
 
+    // Register auth event bridging/listeners before initAuth() so initial
+    // stable auth events are observed through the same appBus path.
+    cleanupFunctions.push(setupAuthAppBusBridge());
+    cleanupFunctions.push(
+      setupMainAuthAppBusListeners({ lobbyElement: lobbyDiv }),
+    );
+
     // Initialize auth (persistence + redirect + onAuthStateChanged listener)
     await initAuth();
+    cleanupFunctions.push(setupContactsAppBusBridge());
     cleanupFunctions.push(setupMessagingContactsIntegration());
     cleanupFunctions.push(
       setupMessagingAppBusHandlers({ messagingController }),
@@ -258,7 +263,7 @@ async function init() {
       const pushInitialized = await pushController.initialize();
       if (!pushInitialized && !pushController.isNotificationSupported()) {
         const { showPushUnsupportedNotification } =
-          await import('./ui/components/notifications/push-unsupported-notification.js');
+          await import('./notifications/index.js');
         showPushUnsupportedNotification();
       }
     } catch (error) {
@@ -720,68 +725,6 @@ window.onload = async () => {
   // Auto-open first contact session if user has saved contacts
   await autoInitMsgSessionIfNeeded().catch((e) => {
     console.warn('Failed to auto-init messaging session:', e);
-  });
-
-  // TODO: Replace this monolithic auth callback with per-module appBus subscribers
-  // reacting to auth:login / auth:logout events. Each module (contacts, call listeners,
-  // invites, push notifications) should own its own auth-change response.
-  let previousAuthState = null;
-  const unsubscribeAuthContacts = subscribeAuth(async ({ isLoggedIn }) => {
-    try {
-      const isInitialLoad = previousAuthState === null;
-      const isActualLogout = previousAuthState === true && !isLoggedIn;
-      const isLoginOrInitialLogin =
-        (previousAuthState === false && isLoggedIn) ||
-        (isInitialLoad && isLoggedIn);
-
-      previousAuthState = isLoggedIn;
-
-      await renderContactsList(lobbyDiv);
-
-      if (isActualLogout) {
-        devDebug('[AUTH] User logged out - cleaning up listeners');
-        removeAllIncomingListeners();
-        cleanupInviteListeners();
-      } else if (isLoginOrInitialLogin) {
-        devDebug('[AUTH] User logged in - setting up listeners');
-
-        await processReferral().catch((e) =>
-          console.warn('[REFERRAL] Failed to process referral:', e),
-        );
-        await renderContactsList(lobbyDiv).catch(() => {});
-
-        // Re-attach on actual login; already attached on initial load
-        if (!isInitialLoad) {
-          await startListeningForSavedRooms().catch((e) =>
-            console.warn('Failed to re-attach saved-room listeners', e),
-          );
-        }
-
-        setupInviteListener(lobbyDiv);
-
-        // Enable push notifications if already granted (no prompt without user gesture)
-        const pushController = getPushNotifications();
-        if (pushController) {
-          const notifResult = await pushController
-            .ensureEnabledIfGranted()
-            .catch((e) => {
-              console.warn('[AUTH] Push notification setup failed:', e);
-              return { state: 'error' };
-            });
-          if (notifResult.state === 'prompt-needed') {
-            showEnableNotificationsPrompt();
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to handle auth change:', e);
-    }
-  });
-  cleanupFunctions.push(() => {
-    try {
-      if (typeof unsubscribeAuthContacts === 'function')
-        unsubscribeAuthContacts();
-    } catch (_) {}
   });
 
   if ('serviceWorker' in navigator) {

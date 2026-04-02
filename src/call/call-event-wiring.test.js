@@ -48,11 +48,13 @@ vi.mock('./call-controller.js', () => ({
   default: mocks.CallController,
 }));
 
-vi.mock('../contacts/contacts-service.js', () => ({
+vi.mock('../contacts/index.js', () => ({
   contactsService: mocks.contactsService,
+  renderContactsList: mocks.renderContactsList,
 }));
 
 vi.mock('../auth/auth-state.js', () => ({
+  getLoggedInUserId: mocks.auth.getUserId,
   getUserId: mocks.auth.getUserId,
   getUser: mocks.auth.getUser,
 }));
@@ -71,10 +73,6 @@ vi.mock('../utils/url.js', () => ({
 
 vi.mock('../ui/components/calling/calling-ui.js', () => ({
   onCallAnswered: mocks.onCallAnswered,
-}));
-
-vi.mock('../contacts/components/contacts-list.js', () => ({
-  renderContactsList: mocks.renderContactsList,
 }));
 
 vi.mock('../app/contact-save-flow.js', () => ({

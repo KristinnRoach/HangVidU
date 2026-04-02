@@ -1,18 +1,18 @@
 import { describe, it, expect, vi } from 'vitest';
 
 // Mock dependencies so the module can load — only t() matters for getBlockedMessage
-vi.mock('../../../../push-notifications/index.js', () => ({
+vi.mock('../../push-notifications/index.js', () => ({
   getPushNotifications: vi.fn(() => ({})),
   pushNotifications: {},
 }));
-vi.mock('./notification.js', () => ({
+vi.mock('../../components/notification.js', () => ({
   createNotification: vi.fn(),
   buildTemplate: vi.fn(),
 }));
-vi.mock('./in-app-notification-manager.js', () => ({
+vi.mock('../index.js', () => ({
   inAppNotificationManager: { has: vi.fn(), add: vi.fn(), remove: vi.fn() },
 }));
-vi.mock('../../../utils/toast.js', () => ({
+vi.mock('../../components/toast.js', () => ({
   showSuccessToast: vi.fn(),
   showWarningToast: vi.fn(),
   showErrorToast: vi.fn(),
@@ -30,7 +30,7 @@ const fakeTranslations = {
     'Notifications were automatically blocked by {browser}. Open site settings in the address bar to allow.',
 };
 
-vi.mock('../../../i18n/index.js', () => ({
+vi.mock('../../i18n/index.js', () => ({
   t: (key, params) => {
     const str = fakeTranslations[key] || key;
     if (!params) return str;
@@ -39,7 +39,8 @@ vi.mock('../../../i18n/index.js', () => ({
   onLocaleChange: vi.fn(),
 }));
 
-const { getBlockedMessage } = await import('../enable-notifications-prompt.js');
+const { getBlockedMessage } =
+  await import('../components/enable-notifications-prompt.js');
 
 describe('getBlockedMessage', () => {
   it('should return Chrome-specific message for Chrome', () => {

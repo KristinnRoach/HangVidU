@@ -19,7 +19,7 @@ import {
   showErrorToast,
   showInfoToast,
   showSuccessToast,
-} from '../../utils/toast.js';
+} from '../../../components/toast.js';
 import { createMessageBox } from './createMessageBox.js';
 import { createMessageTopBar } from './createMessageTopBar.js';
 import { devDebug } from '../../../utils/dev/dev-utils.js';
@@ -822,21 +822,22 @@ export function initMessagesUI() {
       p.textContent = t('message.redacted');
       p.classList.add('message-redacted');
       messageEntry.classList.remove('call-event');
-    } else switch (type) {
-      case 'file': {
-        const file = buildFileContent(message);
-        p.appendChild(file.element);
-        onSingleTap = file.onSingleTap;
-        break;
+    } else
+      switch (type) {
+        case 'file': {
+          const file = buildFileContent(message);
+          p.appendChild(file.element);
+          onSingleTap = file.onSingleTap;
+          break;
+        }
+        case 'event':
+          p.appendChild(buildCallEventContent(message, { onCallBack }));
+          initIcons(p);
+          break;
+        default: // 'text'
+          p.appendChild(buildTextContent(message.text));
+          break;
       }
-      case 'event':
-        p.appendChild(buildCallEventContent(message, { onCallBack }));
-        initIcons(p);
-        break;
-      default: // 'text'
-        p.appendChild(buildTextContent(message.text));
-        break;
-    }
 
     // Build hierarchy: messageBubble → p, then messageEntry → (avatar + messageBubble)
     messageBubble.appendChild(p);

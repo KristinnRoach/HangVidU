@@ -11,6 +11,8 @@ import { contactsService } from './contacts-service.js';
 let inviteListener = null;
 let acceptedInviteListener = null;
 
+// ? ==== ACTIONS ======
+
 /**
  * Send a contact invitation to another user.
  * @param {string} toUserId - Recipient's user ID
@@ -81,39 +83,6 @@ export async function sendInvites(recipients) {
     `[INVITATIONS] Batch complete: ${results.sent} sent, ${results.failed} failed`,
   );
   return results;
-}
-
-/**
- * Listen for incoming contact invitations.
- * Calls the callback when a new invite is received.
- * @param {Function} callback - Called with (fromUserId, inviteData)
- * @returns {Function} - Cleanup function to stop listening
- */
-export function listenForInvites(callback) {
-  const myUserId = getLoggedInUserId();
-
-  if (!myUserId) {
-    console.warn('[INVITATIONS] Cannot listen for invites - not logged in');
-    return () => {};
-  }
-
-  // Clean up any existing listener
-  cleanupInviteListeners();
-
-  const invitesRef = ref(rtdb, `users/${myUserId}/incomingInvites`);
-
-  inviteListener = onChildAdded(invitesRef, (snapshot) => {
-    const fromUserId = snapshot.key;
-    const inviteData = snapshot.val();
-    if (inviteData && inviteData.status === 'pending') {
-      console.log(`[INVITATIONS] New invite from ${inviteData.fromName}`);
-      callback(fromUserId, inviteData);
-    }
-  });
-
-  console.log('[INVITATIONS] Listening for incoming invites');
-
-  return cleanupInviteListeners;
 }
 
 /**
@@ -195,6 +164,8 @@ export async function declineInvite(fromUserId) {
   console.log(`[INVITATIONS] Declined invite from ${fromUserId}`);
 }
 
+// ? ==== LISTEN (ACTION?) ======
+
 /**
  * Listen for accepted invitations (when someone accepts your invite).
  * Auto-saves the contact when an invite is accepted.
@@ -273,6 +244,41 @@ export function listenForAcceptedInvites(callback) {
       acceptedInviteListener = null;
     }
   };
+}
+
+// ? ==== LISTENERS ======
+
+/**
+ * Listen for incoming contact invitations.
+ * Calls the callback when a new invite is received.
+ * @param {Function} callback - Called with (fromUserId, inviteData)
+ * @returns {Function} - Cleanup function to stop listening
+ */
+export function listenForInvites(callback) {
+  const myUserId = getLoggedInUserId();
+
+  if (!myUserId) {
+    console.warn('[INVITATIONS] Cannot listen for invites - not logged in');
+    return () => {};
+  }
+
+  // Clean up any existing listener
+  cleanupInviteListeners();
+
+  const invitesRef = ref(rtdb, `users/${myUserId}/incomingInvites`);
+
+  inviteListener = onChildAdded(invitesRef, (snapshot) => {
+    const fromUserId = snapshot.key;
+    const inviteData = snapshot.val();
+    if (inviteData && inviteData.status === 'pending') {
+      console.log(`[INVITATIONS] New invite from ${inviteData.fromName}`);
+      callback(fromUserId, inviteData);
+    }
+  });
+
+  console.log('[INVITATIONS] Listening for incoming invites');
+
+  return cleanupInviteListeners;
 }
 
 /**

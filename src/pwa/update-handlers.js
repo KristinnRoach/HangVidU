@@ -1,6 +1,6 @@
-// import { showUpdateNotification } from '../ui/components/notifications/update-notification.js';
+// import { showUpdateNotification } from '../notifications/update-notification.js';
 import CallController from '../call/call-controller.js';
-import { showInfoToast, showErrorToast } from '../ui/utils/toast.js';
+import { showInfoToast, showErrorToast } from '../components/toast.js';
 
 // Check for updates every 30 minutes (in milliseconds)
 const UPDATE_CHECK_INTERVAL = 30 * 60 * 1000;

@@ -1,5 +1,7 @@
-import { renderContactsList } from '../contacts/components/contacts-list.js';
-import { showSaveContactPrompt } from '../contacts/components/save-contact-modal.js';
+import {
+  renderContactsList,
+  showSaveContactPrompt,
+} from '../contacts/index.js';
 
 // TODO: Revisit once standardized pattern established
 

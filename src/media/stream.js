@@ -17,7 +17,7 @@ import {
   getVideoConstraints,
 } from './constraints.js';
 import { devDebug, isDev } from '../utils/dev/dev-utils.js';
-import { showErrorToast } from '../ui/utils/toast.js';
+import { showErrorToast } from '../components/toast.js';
 import { t } from '../i18n/index.js';
 
 import { initIcons } from '../ui/icons.js';
@@ -28,9 +28,13 @@ export function attachAudioMonitor(stream) {
   if (!audioTrack) return;
   const controller = new AbortController();
   setAudioEndedController(controller);
-  audioTrack.addEventListener('ended', () => {
-    showErrorToast(t('media.audio_disconnected'));
-  }, { signal: controller.signal });
+  audioTrack.addEventListener(
+    'ended',
+    () => {
+      showErrorToast(t('media.audio_disconnected'));
+    },
+    { signal: controller.signal },
+  );
 }
 
 export const createLocalStream = async () => {
