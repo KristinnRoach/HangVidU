@@ -5,14 +5,14 @@ vi.mock('../../push-notifications/index.js', () => ({
   getPushNotifications: vi.fn(() => ({})),
   pushNotifications: {},
 }));
-vi.mock('../components/notification.js', () => ({
+vi.mock('../../components/notification.js', () => ({
   createNotification: vi.fn(),
   buildTemplate: vi.fn(),
 }));
 vi.mock('../index.js', () => ({
   inAppNotificationManager: { has: vi.fn(), add: vi.fn(), remove: vi.fn() },
 }));
-vi.mock('../../ui/utils/toast.js', () => ({
+vi.mock('../../components/toast.js', () => ({
   showSuccessToast: vi.fn(),
   showWarningToast: vi.fn(),
   showErrorToast: vi.fn(),

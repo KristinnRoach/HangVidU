@@ -364,7 +364,7 @@ vi.mock('../../src/media/youtube/youtube-search.js', () => ({
 
 // notifications-toggle is covered by the ../../src/notifications/index.js barrel mock
 
-vi.mock('../../src/ui/utils/toast.js', () => ({
+vi.mock('../../src/components/toast.js', () => ({
   showSuccessToast: vi.fn(),
   showErrorToast: vi.fn(),
 }));
