@@ -62,10 +62,13 @@ export function setupContactsAppBusBridge() {
     { signal: ac.signal },
   );
 
-  cleanupContactsAppBusBridge = () => {
+  const cleanup = () => {
     ac.abort();
-    cleanupContactsAppBusBridge = null;
+    if (cleanupContactsAppBusBridge === cleanup) {
+      cleanupContactsAppBusBridge = null;
+    }
   };
 
-  return cleanupContactsAppBusBridge;
+  cleanupContactsAppBusBridge = cleanup;
+  return cleanup;
 }
