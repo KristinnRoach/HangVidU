@@ -8,10 +8,10 @@ Current production notification kinds:
 
 Current ownership:
 
-- app code imports push functionality from [src/push-notifications/index.js](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/index.js)
-- backend delivery logic lives under [functions/push-notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/functions/push-notifications)
-- service worker push handling lives under [src/push-notifications/sw](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/push-notifications/sw)
-- in-app UI notifications remain separate under [src/notifications](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/notifications)
+- app code imports push functionality from [src/push-notifications/index.js](/src/push-notifications/index.js)
+- backend delivery logic lives under [functions/push-notifications](/functions/push-notifications)
+- service worker push handling lives under [src/push-notifications/sw](/src/push-notifications/sw)
+- in-app UI notifications remain separate under [src/notifications](/src/notifications)
 
 Current behavior:
 

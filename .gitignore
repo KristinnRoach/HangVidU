@@ -28,9 +28,6 @@ DRAFTS/
 **/*.DRAFT.txt
 **/*.DRAFT.md
 
-# Temp refactoring files
-./src/refactor/
-./src/refactor/**/*
 
 # Trash / old files to be deleted
 trash/
@@ -45,30 +42,24 @@ temp/
 # Build exectuables to run local server (possibly add later)
 go-server/executables/
 
-# Below are default gitignore entries from Vite template
-
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# Package manager lockfiles (pnpm only)
-package-lock.json
-yarn.lock
+# Below are some default gitignore entries from Vite template that might be unecessary (TODO in a cleanup session)
 
 node_modules
 dist
 dev-dist
-/dev-dist/
-dist-ssr
 *.local
 
+# Logs
+logs
+*.log
+pnpm-debug.log*
+
+# Package manager
+package-lock.json
+.pnpm-store/
+
 # Editor directories and files
-.vscode/*
+.vscode/
 !.vscode/extensions.json
 .idea
 .DS_Store
@@ -95,11 +86,10 @@ functions/service-account-key.json
 
 # Misc / Recently added
 TODO.md
-components-lab.html
-./tests/e2e/OUTDATED_IGNORE/
+.planning/codebase/potentially_stale
+/tests/e2e/OUTDATED_IGNORE/
 kill-hanging-dev-processes.sh
-sync-gh-secrets.sh
-.vscode/
+/scripts/sync-gh-secrets.sh
 PWA-TESTING-GUIDE.md
 coverage/
 *.lcov
@@ -110,6 +100,18 @@ test-reactions.html
 debug-discovery.html
 src/media/test-images/
 backups/
+​.playwright-mcp/
+.mcp.json
 
+# WIP experiment pages
+components-lab.html
+media-capture.html
+media-lab.html
+media-playback.html
 
+# WIP docs
 docs/metrics/
+docs/WIP_Architecture/
+docs/maybe/
+docs/ui-audit-wip/
+docs/misc/
