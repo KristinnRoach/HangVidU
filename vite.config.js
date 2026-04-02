@@ -17,6 +17,7 @@ export default defineConfig(({ mode }) => {
         input: {
           main: path.resolve(__dirname, 'index.html'),
           ...(mode === 'development' && {
+            // These are currently only local:
             components: path.resolve(__dirname, 'components-lab.html'),
             media: path.resolve(__dirname, 'media-lab.html'),
             mediaPlayback: path.resolve(__dirname, 'media-playback.html'),

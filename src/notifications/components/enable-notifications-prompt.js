@@ -4,7 +4,7 @@ import {
   createNotification,
   buildTemplate,
 } from '../../components/notification.js';
-import { inAppNotificationManager } from '../index.js';
+import { inAppNotificationManager } from '../in-app-notification-manager.js';
 import { getPushNotifications } from '../../push-notifications/index.js';
 import {
   showSuccessToast,
