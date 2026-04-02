@@ -123,17 +123,6 @@ vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
 }));
 
-vi.mock('../../src/auth/index.js', () => ({
-  initAuth: vi.fn().mockResolvedValue(undefined),
-  getLoggedInUserId: vi.fn(() => 'user-123'),
-  getUserId: vi.fn(() => 'user-123'),
-  getUser: vi.fn(() => ({
-    uid: 'user-123',
-    displayName: 'Caller Example',
-    email: 'caller@example.com',
-  })),
-}));
-
 vi.mock('../../src/auth/auth-state.js', () => ({
   getLoggedInUserId: vi.fn(() => 'user-123'),
   getUserId: vi.fn(() => 'user-123'),
