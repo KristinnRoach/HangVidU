@@ -14,6 +14,7 @@ let state = {
 
 const listeners = new Set();
 let hasResolvedReady = false;
+let emitChain = Promise.resolve();
 
 // Ensure immutable snapshot for subscribers
 const snapshot = () => ({
@@ -74,9 +75,11 @@ export function setState(next) {
   }
 
   if (events.length > 0) {
-    void authBus.emitAsyncSequential(events).catch((error) => {
-      console.error('[auth-state] failed to emit auth events', error);
-    });
+    emitChain = emitChain
+      .then(() => authBus.emitAsyncSequential(events))
+      .catch((error) => {
+        console.error('[auth-state] failed to emit auth events', error);
+      });
   }
 }
 
