@@ -78,13 +78,234 @@ const incomingCallPromiseCleanups = new Map();
 
 function settleIncomingCallWait(roomId, result = 'listener_removed') {
   const pending = incomingCallPromiseCleanups.get(roomId);
-  if (!pending) return;
+  if (!pending) return false;
 
   pending.cancel?.();
   pending.answer?.();
   resolveIncomingCallUI(roomId, result);
   pending.resolve?.(result);
   incomingCallPromiseCleanups.delete(roomId);
+  return true;
+}
+
+/**
+ * Settle the pending incoming-call wait for a room.
+ * Returns true if a pending wait was found and resolved.
+ */
+export function settleIncomingCallWaitForRoom(roomId, result) {
+  return settleIncomingCallWait(roomId, result);
+}
+
+async function evaluateIncomingCallPreconditions({
+  roomId,
+  joinedContactId,
+  currentUserId,
+  memberData,
+}) {
+  const joinedAt =
+    memberData && typeof memberData.joinedAt === 'number'
+      ? memberData.joinedAt
+      : null;
+  const CALL_FRESH_MS = 20000;
+
+  let isFresh = false;
+  let validationMethod = 'none';
+  let age = 0;
+
+  if (joinedAt) {
+    age = Date.now() - joinedAt;
+    isFresh = age < CALL_FRESH_MS;
+    validationMethod = 'joinedAt';
+  }
+
+  if (!isFresh) {
+    const roomFresh = await isRoomCallFresh(roomId);
+    isFresh = roomFresh;
+    validationMethod = roomFresh ? 'roomCreatedAt' : 'failed';
+    age = null;
+  }
+
+  const freshnessResult = {
+    isFresh,
+    method: validationMethod,
+    age,
+    reason: isFresh ? 'call_is_fresh' : 'call_is_stale',
+  };
+
+  getDiagnosticLogger().logIncomingCallEvent(
+    joinedContactId,
+    roomId,
+    freshnessResult,
+    {
+      memberData,
+      joinedAt,
+      CALL_FRESH_MS,
+    },
+  );
+
+  if (!isFresh) {
+    console.warn('[CALL][INCOMING] skip: stale call', {
+      roomId,
+      joiningUserId: joinedContactId,
+      validationMethod,
+      age,
+    });
+    getDiagnosticLogger().logNotificationDecision(
+      'REJECT',
+      'stale_call',
+      roomId,
+      {
+        age,
+        validationMethod,
+        joiningUserId: joinedContactId,
+      },
+    );
+    return { canProceed: false };
+  }
+
+  let roomData;
+  try {
+    roomData = await RoomService.getRoomData(roomId);
+  } catch (e) {
+    console.warn('[CALL][INCOMING] skip: room read failed', {
+      roomId,
+      joiningUserId: joinedContactId,
+      error: e,
+    });
+    return { canProceed: false };
+  }
+
+  if (!roomData || typeof roomData !== 'object') {
+    console.warn('[CALL][INCOMING] skip: invalid room state', {
+      roomId,
+      joiningUserId: joinedContactId,
+    });
+    return { canProceed: false };
+  }
+
+  const hasOffer = !!roomData.offer;
+  const hasAnswer = !!roomData.answer;
+  const offerCreator = roomData.createdBy;
+  if (!hasOffer || hasAnswer || offerCreator === currentUserId) {
+    console.warn('[CALL][INCOMING] skip: not answerable offer state', {
+      roomId,
+      joiningUserId: joinedContactId,
+      hasOffer,
+      hasAnswer,
+      offerCreator,
+      currentUserId,
+    });
+    return { canProceed: false };
+  }
+
+  const state = CallController.getState();
+  const inActiveCall = !!state.pc && state.pc.connectionState === 'connected';
+  if (inActiveCall) {
+    console.warn('[CALL][INCOMING] skip: already in active call', {
+      roomId,
+      joiningUserId: joinedContactId,
+      currentCallState: state.pc?.connectionState,
+    });
+    getDiagnosticLogger().logNotificationDecision(
+      'REJECT',
+      'already_in_call',
+      roomId,
+      {
+        joiningUserId: joinedContactId,
+        currentCallState: state.pc?.connectionState,
+      },
+    );
+    return { canProceed: false };
+  }
+
+  return {
+    canProceed: true,
+    freshnessResult,
+  };
+}
+
+function decideIncomingNotificationStrategy({
+  pushController,
+  roomId,
+  joinedContactId,
+}) {
+  const usePushForBackgroundCall =
+    !!pushController?.isNotificationEnabled?.() &&
+    !!pushController?.shouldSendNotification?.();
+
+  if (usePushForBackgroundCall) {
+    getDiagnosticLogger().logNotificationDecision(
+      'DEFER',
+      'background_push_and_inapp',
+      roomId,
+      {
+        joiningUserId: joinedContactId,
+        pushNotificationsEnabled: true,
+      },
+    );
+    console.log(
+      '[CALL] Background incoming call detected, triggering push and continuing in-app incoming UI path',
+      {
+        roomId,
+        joiningUserId: joinedContactId,
+      },
+    );
+  }
+}
+
+async function handleIncomingCallAccepted({ roomId, joinedContactId }) {
+  appBus.emit('call:incoming:accepted', {
+    roomId,
+    contactId: joinedContactId,
+  });
+
+  // Remove incoming call listeners before starting active call
+  // This prevents duplicate listener firing (incoming vs active call listeners)
+  removeIncomingListenersForRoom(roomId);
+
+  // Dismiss any call notifications for this room
+  const pushNotificationController = getPushNotifications?.();
+  if (pushNotificationController?.isNotificationEnabled()) {
+    await pushNotificationController
+      .dismissCallNotifications(roomId)
+      .catch((error) => {
+        console.warn('[CALL][INCOMING] warn: notification dismiss failed', {
+          roomId,
+          error,
+        });
+      });
+  }
+
+  getDiagnosticLogger().logNotificationDecision(
+    'ACCEPT',
+    'user_accepted',
+    roomId,
+    {
+      joiningUserId: joinedContactId,
+    },
+  );
+
+  // Update lastInteractionAt for answered incoming call
+  contactsService
+    .getContactByRoomId(roomId)
+    .then((c) => {
+      if (c?.contactId) contactsService.updateLastInteraction(c.contactId);
+    })
+    .catch(() => {});
+
+  joinOrCreateRoomWithId(roomId).catch((e) => {
+    console.warn('Failed to answer incoming call:', e);
+    devDebug('Failed to answer incoming call.');
+    getDiagnosticLogger().logFirebaseOperation(
+      'join_room_on_accept',
+      false,
+      e,
+      {
+        roomId,
+        joiningUserId: joinedContactId,
+      },
+    );
+  });
 }
 
 async function removeRecentCallRecordForCurrentUser(roomId) {
@@ -245,96 +466,16 @@ export function listenForIncomingOnRoom(roomId) {
         },
       );
 
-      // Prefer the member's joinedAt as the primary freshness signal (real-time join)
-      const joinedAt =
-        memberData && typeof memberData.joinedAt === 'number'
-          ? memberData.joinedAt
-          : null;
-      const CALL_FRESH_MS = 20000;
-
-      let isFresh = false;
-      let validationMethod = 'none';
-      let age = 0;
-
-      if (joinedAt) {
-        age = Date.now() - joinedAt;
-        isFresh = age < CALL_FRESH_MS;
-        validationMethod = 'joinedAt';
-      }
-
-      // If joinedAt isn't present or seems old (e.g., listener attached late),
-      // fall back to room-scoped createdAt (publicly readable)
-      if (!isFresh) {
-        const roomFresh = await isRoomCallFresh(roomId);
-        isFresh = roomFresh;
-        validationMethod = roomFresh ? 'roomCreatedAt' : 'failed';
-        age = null; // joinedAt-based age not applicable for this fallback
-      }
-
-      const freshnessResult = {
-        isFresh,
-        method: validationMethod,
-        age,
-        reason: isFresh ? 'call_is_fresh' : 'call_is_stale',
-      };
-
-      getDiagnosticLogger().logIncomingCallEvent(
-        joinedContactId,
+      const preconditions = await evaluateIncomingCallPreconditions({
         roomId,
-        freshnessResult,
-        {
-          memberData,
-          joinedAt,
-          CALL_FRESH_MS,
-        },
-      );
+        joinedContactId,
+        currentUserId,
+        memberData,
+      });
 
-      if (!isFresh) {
+      if (!preconditions.canProceed) {
         devDebug(
-          `Ignoring stale incoming call from ${joinedContactId} for room ${roomId}`,
-        );
-        getDiagnosticLogger().logNotificationDecision(
-          'REJECT',
-          'stale_call',
-          roomId,
-          {
-            age,
-            validationMethod,
-            joiningUserId: joinedContactId,
-          },
-        );
-        return;
-      }
-
-      // Minimal prompt to accept or reject the incoming call.
-      // Only prompt if we're not already in an active call and the room is in a valid offer state.
-      // Check offer/answer state before showing dialog
-      let roomData;
-      try {
-        roomData = await RoomService.getRoomData(roomId);
-      } catch (e) {
-        return; // Room may have been deleted
-      }
-
-      if (!roomData || typeof roomData !== 'object') return;
-
-      const hasOffer = !!roomData.offer;
-      const hasAnswer = !!roomData.answer;
-      const offerCreator = roomData.createdBy;
-      if (!hasOffer || hasAnswer || offerCreator === currentUserId) return;
-
-      const state = CallController.getState();
-      const inActiveCall =
-        !!state.pc && state.pc.connectionState === 'connected';
-      if (inActiveCall) {
-        getDiagnosticLogger().logNotificationDecision(
-          'REJECT',
-          'already_in_call',
-          roomId,
-          {
-            joiningUserId: joinedContactId,
-            currentCallState: state.pc?.connectionState,
-          },
+          `Ignoring incoming call from ${joinedContactId} for room ${roomId}`,
         );
         return;
       }
@@ -345,34 +486,16 @@ export function listenForIncomingOnRoom(roomId) {
         roomId,
         {
           joiningUserId: joinedContactId,
-          freshnessResult,
+          freshnessResult: preconditions.freshnessResult,
         },
       );
 
       const pushController = getPushNotifications();
-      const usePushOnlyForBackgroundCall =
-        !!pushController?.isNotificationEnabled?.() &&
-        !!pushController?.shouldSendNotification?.();
-
-      if (usePushOnlyForBackgroundCall) {
-        getDiagnosticLogger().logNotificationDecision(
-          'DEFER',
-          'background_push_only',
-          roomId,
-          {
-            joiningUserId: joinedContactId,
-            pushNotificationsEnabled: true,
-          },
-        );
-        console.log(
-          '[CALL] Background incoming call detected, using push-only notification path',
-          {
-            roomId,
-            joiningUserId: joinedContactId,
-          },
-        );
-        return;
-      }
+      decideIncomingNotificationStrategy({
+        pushController,
+        roomId,
+        joinedContactId,
+      });
 
       const callerContact = await contactsService.getContactByRoomId(roomId);
       // TODO: Centralize caller display-name fallback policy once ownership is settled.
@@ -431,53 +554,10 @@ export function listenForIncomingOnRoom(roomId) {
         callIndicators.stopCallIndicators();
       }
 
-      if (accept === true) {
-        appBus.emit('call:incoming:accepted', {
+      if (accept === true || accept === 'notification_click_answer') {
+        await handleIncomingCallAccepted({
           roomId,
-          contactId: joinedContactId,
-        });
-
-        // Remove incoming call listeners before starting active call
-        // This prevents duplicate listener firing (incoming vs active call listeners)
-        removeIncomingListenersForRoom(roomId);
-
-        // Dismiss any call notifications for this room
-        const pushNotificationController = getPushNotifications?.();
-        if (pushNotificationController?.isNotificationEnabled()) {
-          await pushNotificationController
-            .dismissCallNotifications(roomId)
-            .catch(() => {});
-        }
-
-        getDiagnosticLogger().logNotificationDecision(
-          'ACCEPT',
-          'user_accepted',
-          roomId,
-          {
-            joiningUserId: joinedContactId,
-          },
-        );
-        // Update lastInteractionAt for answered incoming call
-        contactsService
-          .getContactByRoomId(roomId)
-          .then((c) => {
-            if (c?.contactId)
-              contactsService.updateLastInteraction(c.contactId);
-          })
-          .catch(() => {});
-
-        joinOrCreateRoomWithId(roomId).catch((e) => {
-          console.warn('Failed to answer incoming call:', e);
-          devDebug('Failed to answer incoming call.');
-          getDiagnosticLogger().logFirebaseOperation(
-            'join_room_on_accept',
-            false,
-            e,
-            {
-              roomId,
-              joiningUserId: joinedContactId,
-            },
-          );
+          joinedContactId,
         });
       } else if (accept === 'caller_cancelled') {
         devDebug('Incoming call cancelled by caller');
@@ -511,7 +591,15 @@ export function listenForIncomingOnRoom(roomId) {
         if (pushNotificationController?.isNotificationEnabled()) {
           await pushNotificationController
             .dismissCallNotifications(roomId)
-            .catch(() => {});
+            .catch((error) => {
+              console.warn(
+                '[CALL][INCOMING] warn: notification dismiss failed',
+                {
+                  roomId,
+                  error,
+                },
+              );
+            });
         }
 
         getDiagnosticLogger().logNotificationDecision(
@@ -560,7 +648,15 @@ export function listenForIncomingOnRoom(roomId) {
         if (pushNotificationController?.isNotificationEnabled()) {
           await pushNotificationController
             .dismissCallNotifications(roomId)
-            .catch(() => {});
+            .catch((error) => {
+              console.warn(
+                '[CALL][INCOMING] warn: notification dismiss failed',
+                {
+                  roomId,
+                  error,
+                },
+              );
+            });
         }
       } catch (_) {
         // best-effort; do not block cancellation flow on notification errors

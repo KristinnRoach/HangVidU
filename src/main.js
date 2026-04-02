@@ -126,6 +126,7 @@ import {
 } from './media/WIP-init-local-media.js';
 import {
   removeAllIncomingListeners,
+  settleIncomingCallWaitForRoom,
   startListeningForSavedRooms,
 } from './call/room-listeners.js';
 
@@ -628,6 +629,17 @@ async function handleServiceWorkerNavigation(path) {
   isHandlingServiceWorkerNavigation = true;
 
   try {
+    // Settle the pending incoming-call wait so the listener's accept branch
+    // runs the same way as the dialog accept path.
+    const settledPendingIncomingCall = settleIncomingCallWaitForRoom(
+      roomId,
+      'notification_click_answer',
+    );
+
+    if (settledPendingIncomingCall) {
+      return true;
+    }
+
     const success = await joinOrCreateRoomWithId(roomId);
 
     console.log('[MAIN] Service worker room navigation result', {

@@ -543,7 +543,7 @@ describe('callContact push notification flow', () => {
     expect(mocks.callController.answerCall).not.toHaveBeenCalled();
   });
 
-  it('skips RTDB incoming-call UI when push notifications should handle a background call', async () => {
+  it('continues RTDB incoming-call UI when push notifications handle a background call', async () => {
     mocks.pushController.shouldSendNotification.mockReturnValue(true);
     RoomService.getRoomData.mockResolvedValue({
       offer: { type: 'offer' },
@@ -551,31 +551,39 @@ describe('callContact push notification flow', () => {
       createdBy: 'caller-999',
     });
 
-    const { listenForIncomingOnRoom } =
+    const { listenForIncomingOnRoom, removeIncomingListenersForRoom } =
       await import('../../src/call/room-listeners.js');
 
     listenForIncomingOnRoom('room-background');
 
-    await mocks.memberJoinedHandler({
+    const pendingIncomingCall = mocks.memberJoinedHandler({
       key: 'caller-999',
       val: () => ({
         joinedAt: Date.now(),
       }),
     });
 
-    expect(showIncomingCallUI).not.toHaveBeenCalled();
-    expect(ringtoneManager.playIncoming).not.toHaveBeenCalled();
-    expect(callIndicators.startCallIndicators).not.toHaveBeenCalled();
-    expect(mocks.contactsService.resolveCallerName).not.toHaveBeenCalled();
+    await vi.waitFor(() => {
+      expect(showIncomingCallUI).toHaveBeenCalled();
+    });
+
+    expect(ringtoneManager.playIncoming).toHaveBeenCalled();
+    expect(callIndicators.startCallIndicators).toHaveBeenCalled();
+    expect(mocks.contactsService.getContactByRoomId).toHaveBeenCalledWith(
+      'room-background',
+    );
     expect(mocks.logger.logNotificationDecision).toHaveBeenCalledWith(
       'DEFER',
-      'background_push_only',
+      'background_push_and_inapp',
       'room-background',
       expect.objectContaining({
         joiningUserId: 'caller-999',
         pushNotificationsEnabled: true,
       }),
     );
+
+    removeIncomingListenersForRoom('room-background');
+    await pendingIncomingCall;
   });
 
   it('settles a pending incoming-call wait when listeners are removed', async () => {
