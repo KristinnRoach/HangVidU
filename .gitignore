@@ -100,7 +100,7 @@ test-reactions.html
 debug-discovery.html
 src/media/test-images/
 backups/
-​.playwright-mcp/
+.playwright-mcp/
 .mcp.json
 
 # WIP experiment pages
