@@ -6,7 +6,7 @@ import { isDev } from '../utils/dev/dev-utils.js';
  * Show a toast notification message.
  * @param {string} message - The message to display
  * @param {Object} options - Toast options
- * @param {number} options.duration - Duration in ms (default: 3000)
+ * @param {number} options.duration - Duration in ms (default: 6000)
  * @param {string} options.type - Toast type: 'success', 'info', 'warning', 'error' (default: 'info')
  * @param {string} options.position - Position: 'top', 'bottom' (default: 'bottom')
  * @param {Function} options.onClick - Click handler. When set, toast becomes clickable and dismisses on click.
