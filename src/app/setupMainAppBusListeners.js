@@ -1,12 +1,12 @@
 import { appBus } from './app-bus.js';
-import { messagingController } from '../messaging/messaging-controller.js';
+import { messagingController } from '../features/messaging/messaging-controller.js';
 import { isDev, tempWarn } from '../utils/dev/dev-utils.js';
-import { callContact } from '../call/WIP-start-call-refactor.js';
-import { contactsService } from '../contacts/index.js';
+import { callContact } from '../features/call/WIP-start-call-refactor.js';
+import { contactsService } from '../features/contacts/index.js';
 import {
   listenForIncomingOnRoom,
   removeIncomingListenersForRoom,
-} from '../call/room-listeners.js';
+} from '../features/call/room-listeners.js';
 import { clearUrlParam } from '../utils/url.js';
 import { onCallDisconnected } from '../components/ui/core/call-lifecycle-ui.js';
 

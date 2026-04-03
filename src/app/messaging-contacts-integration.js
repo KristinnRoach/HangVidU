@@ -1,5 +1,5 @@
-import { contactsService } from '../contacts/index.js';
-import { messagingController } from '../messaging/messaging-controller.js';
+import { contactsService } from '../features/contacts/index.js';
+import { messagingController } from '../features/messaging/messaging-controller.js';
 
 // TODO: Fit into standardized pattern - Use appBus for this, or standardize on this pattern with domain event busses
 

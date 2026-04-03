@@ -31,12 +31,12 @@ vi.mock('../utils/dev/dev-utils.js', () => ({
   devDebug: mocks.devDebug,
 }));
 
-vi.mock('../call/room-listeners.js', () => ({
+vi.mock('../features/call/room-listeners.js', () => ({
   removeAllIncomingListeners: mocks.removeAllIncomingListeners,
   startListeningForSavedRooms: mocks.startListeningForSavedRooms,
 }));
 
-vi.mock('../contacts/index.js', () => ({
+vi.mock('../features/contacts/index.js', () => ({
   cleanupInviteListeners: mocks.cleanupInviteListeners,
   setupInviteListener: mocks.setupInviteListener,
   processReferral: mocks.processReferral,
@@ -47,7 +47,7 @@ vi.mock('../push-notifications/index.js', () => ({
   getPushNotifications: mocks.getPushNotifications,
 }));
 
-vi.mock('../notifications/index.js', () => ({
+vi.mock('../features/notifications/index.js', () => ({
   showEnableNotificationsPrompt: mocks.showEnableNotificationsPrompt,
 }));
 

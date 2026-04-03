@@ -28,11 +28,11 @@ vi.mock('./app-bus.js', () => ({
   appBus: mocks.appBus,
 }));
 
-vi.mock('../messaging/messaging-controller.js', () => ({
+vi.mock('../features/messaging/messaging-controller.js', () => ({
   messagingController: mocks.messagingController,
 }));
 
-vi.mock('../contacts/index.js', () => ({
+vi.mock('../features/contacts/index.js', () => ({
   contactsService: mocks.contactsService,
 }));
 
@@ -41,11 +41,11 @@ vi.mock('../utils/dev/dev-utils.js', () => ({
   tempWarn: mocks.tempWarn,
 }));
 
-vi.mock('../call/WIP-start-call-refactor.js', () => ({
+vi.mock('../features/call/WIP-start-call-refactor.js', () => ({
   callContact: mocks.callContact,
 }));
 
-vi.mock('../call/room-listeners.js', () => ({
+vi.mock('../features/call/room-listeners.js', () => ({
   listenForIncomingOnRoom: mocks.listenForIncomingOnRoom,
   removeIncomingListenersForRoom: mocks.removeIncomingListenersForRoom,
 }));

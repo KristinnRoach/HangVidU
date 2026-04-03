@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../auth/index.js', () => ({
+vi.mock('../../features/auth/index.js', () => ({
   getLoggedInUserToken: vi.fn().mockResolvedValue('test-id-token'),
 }));
 
-vi.mock('../../auth/auth-state.js', () => ({
+vi.mock('../../features/auth/auth-state.js', () => ({
   getLoggedInUserId: vi.fn().mockReturnValue('user-123'),
   getUser: vi.fn().mockReturnValue({
     uid: 'user-123',

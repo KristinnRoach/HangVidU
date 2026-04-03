@@ -17,14 +17,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock dependencies
-vi.mock('../../src/call/call-flow.js', () => {
+vi.mock('../../src/features/call/call-flow.js', () => {
   return {
     createCall: vi.fn(),
     answerCall: vi.fn(),
   };
 });
 
-vi.mock('../../src/call/room.js', () => {
+vi.mock('../../src/features/call/room.js', () => {
   return {
     default: {
       cancelCall: vi.fn(),
@@ -35,7 +35,7 @@ vi.mock('../../src/call/room.js', () => {
   };
 });
 
-vi.mock('../../src/auth/auth-state.js', () => {
+vi.mock('../../src/features/auth/auth-state.js', () => {
   return {
     getUserId: () => 'test-user-id',
     getUser: () => ({ uid: 'test-user-id' }),
@@ -45,7 +45,7 @@ vi.mock('../../src/auth/auth-state.js', () => {
   };
 });
 
-vi.mock('../../src/call/data-connection.js', () => {
+vi.mock('../../src/features/call/data-connection.js', () => {
   return {
     createDataConnection: vi.fn(() =>
       Promise.resolve({
@@ -63,12 +63,12 @@ vi.mock('../../src/call/data-connection.js', () => {
   };
 });
 
-import CallController from '../../src/call/call-controller.js';
+import CallController from '../../src/features/call/call-controller.js';
 import {
   createCall as createCallFlow,
   answerCall as answerCallFlow,
-} from '../../src/call/call-flow.js';
-import RoomService from '../../src/call/room.js';
+} from '../../src/features/call/call-flow.js';
+import RoomService from '../../src/features/call/room.js';
 
 describe('CallController Smoke Tests', () => {
   beforeEach(() => {
