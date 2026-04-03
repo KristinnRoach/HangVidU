@@ -17,13 +17,20 @@ vi.mock('../../src/features/call/room.js', () => {
     },
   };
 });
-vi.mock('../../src/auth/auth-state.js', () => {
+vi.mock('../../src/auth/index.js', () => {
   return {
     getUserId: () => 'local-user-id',
     getUser: () => ({ uid: 'local-user-id' }),
     getIsLoggedIn: () => true,
     getLoggedInUserId: () => 'local-user-id',
+    getAuthState: () => ({ isLoggedIn: true, user: { uid: 'local-user-id' } }),
+    getUserName: () => 'Local User',
     subscribe: vi.fn(() => () => {}),
+    onAuthStateChange: vi.fn(() => () => {}),
+    setState: vi.fn(),
+    waitForAuthReady: vi.fn(() =>
+      Promise.resolve({ isLoggedIn: true, user: { uid: 'local-user-id' } }),
+    ),
   };
 });
 vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => {
@@ -42,6 +49,7 @@ vi.mock('firebase/database', () => {
     off: vi.fn(),
     get: vi.fn(),
     set: vi.fn(),
+    onDisconnect: vi.fn(() => ({ set: vi.fn().mockResolvedValue(undefined) })),
     update: vi.fn(),
     remove: vi.fn(),
     onValue: vi.fn(),

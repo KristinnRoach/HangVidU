@@ -35,13 +35,20 @@ vi.mock('../../src/features/call/room.js', () => {
   };
 });
 
-vi.mock('../../src/auth/auth-state.js', () => {
+vi.mock('../../src/auth/index.js', () => {
   return {
     getUserId: () => 'test-user-id',
     getUser: () => ({ uid: 'test-user-id' }),
     getIsLoggedIn: () => true,
     getLoggedInUserId: () => 'test-user-id',
+    getAuthState: () => ({ isLoggedIn: true, user: { uid: 'test-user-id' } }),
+    getUserName: () => 'Test User',
     subscribe: vi.fn(() => () => {}),
+    onAuthStateChange: vi.fn(() => () => {}),
+    setState: vi.fn(),
+    waitForAuthReady: vi.fn(() =>
+      Promise.resolve({ isLoggedIn: true, user: { uid: 'test-user-id' } }),
+    ),
   };
 });
 
