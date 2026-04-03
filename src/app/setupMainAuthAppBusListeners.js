@@ -9,9 +9,9 @@ import {
   setupInviteListener,
   processReferral,
   renderContactsList,
-} from '../contacts/index.js';
+} from '../features/contacts/index.js';
 import { getPushNotifications } from '../push-notifications/index.js';
-import { showEnableNotificationsPrompt } from '../notifications/index.js';
+import { showEnableNotificationsPrompt } from '../features/notifications/index.js';
 
 let cleanupMainAuthAppBusListeners = null;
 

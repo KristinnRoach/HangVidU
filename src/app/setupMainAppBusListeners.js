@@ -1,8 +1,8 @@
 import { appBus } from './app-bus.js';
-import { messagingController } from '../messaging/messaging-controller.js';
+import { messagingController } from '../features/messaging/messaging-controller.js';
 import { isDev, tempWarn } from '../utils/dev/dev-utils.js';
 import { callContact } from '../call/WIP-start-call-refactor.js';
-import { contactsService } from '../contacts/index.js';
+import { contactsService } from '../features/contacts/index.js';
 import {
   listenForIncomingOnRoom,
   removeIncomingListenersForRoom,

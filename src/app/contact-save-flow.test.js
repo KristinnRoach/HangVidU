@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   showSaveContactPrompt: vi.fn(),
 }));
 
-vi.mock('../contacts/index.js', () => ({
+vi.mock('../features/contacts/index.js', () => ({
   renderContactsList: mocks.renderContactsList,
   showSaveContactPrompt: mocks.showSaveContactPrompt,
 }));

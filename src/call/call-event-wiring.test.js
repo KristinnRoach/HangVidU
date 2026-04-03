@@ -48,12 +48,12 @@ vi.mock('./call-controller.js', () => ({
   default: mocks.CallController,
 }));
 
-vi.mock('../contacts/index.js', () => ({
+vi.mock('../features/contacts/index.js', () => ({
   contactsService: mocks.contactsService,
   renderContactsList: mocks.renderContactsList,
 }));
 
-vi.mock('../auth/auth-state.js', () => ({
+vi.mock('../features/auth/auth-state.js', () => ({
   getLoggedInUserId: mocks.auth.getUserId,
   getUserId: mocks.auth.getUserId,
   getUser: mocks.auth.getUser,

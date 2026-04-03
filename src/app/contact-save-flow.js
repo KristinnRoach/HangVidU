@@ -1,7 +1,7 @@
 import {
   renderContactsList,
   showSaveContactPrompt,
-} from '../contacts/index.js';
+} from '../features/contacts/index.js';
 
 // TODO: Revisit once standardized pattern established
 

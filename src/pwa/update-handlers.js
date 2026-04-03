@@ -1,4 +1,4 @@
-// import { showUpdateNotification } from '../notifications/update-notification.js';
+// import { showUpdateNotification } from '../features/notifications/update-notification.js';
 import CallController from '../call/call-controller.js';
 import { showInfoToast, showErrorToast } from '../components/toast.js';
 

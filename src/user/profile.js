@@ -3,7 +3,7 @@
 
 import { ref, set, get } from 'firebase/database';
 import { rtdb } from '../storage/fb-rtdb/rtdb.js';
-import { subscribe } from '../auth/auth-state.js';
+import { subscribe } from '../features/auth/auth-state.js';
 
 // Auto-save profile when user logs in
 subscribe((state) => {

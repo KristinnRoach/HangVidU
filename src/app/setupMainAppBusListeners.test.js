@@ -28,11 +28,11 @@ vi.mock('./app-bus.js', () => ({
   appBus: mocks.appBus,
 }));
 
-vi.mock('../messaging/messaging-controller.js', () => ({
+vi.mock('../features/messaging/messaging-controller.js', () => ({
   messagingController: mocks.messagingController,
 }));
 
-vi.mock('../contacts/index.js', () => ({
+vi.mock('../features/contacts/index.js', () => ({
   contactsService: mocks.contactsService,
 }));
 

@@ -123,7 +123,7 @@ vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
 }));
 
-vi.mock('../../src/auth/auth-state.js', () => ({
+vi.mock('../../src/features/auth/auth-state.js', () => ({
   getLoggedInUserId: vi.fn(() => 'user-123'),
   getUserId: vi.fn(() => 'user-123'),
   getUser: vi.fn(() => ({
@@ -134,7 +134,7 @@ vi.mock('../../src/auth/auth-state.js', () => ({
   subscribe: vi.fn(() => () => {}),
 }));
 
-vi.mock('../../src/notifications/index.js', () => ({
+vi.mock('../../src/features/notifications/index.js', () => ({
   inAppNotificationManager: {
     setToggle: vi.fn(),
     add: vi.fn(),
@@ -165,7 +165,7 @@ vi.mock('../../src/call/call-controller.js', () => ({
   default: mocks.callController,
 }));
 
-vi.mock('../../src/messaging/messaging-controller.js', () => ({
+vi.mock('../../src/features/messaging/messaging-controller.js', () => ({
   messagingController: {
     resolveConversationIdFromContactId: vi.fn(),
     sendEventMessage: vi.fn(),
@@ -173,12 +173,12 @@ vi.mock('../../src/messaging/messaging-controller.js', () => ({
   },
 }));
 
-vi.mock('../../src/contacts/contacts-service.js', () => ({
+vi.mock('../../src/features/contacts/contacts-service.js', () => ({
   ContactsService: class ContactsService {},
   contactsService: mocks.contactsService,
 }));
 
-vi.mock('../../src/contacts/index.js', () => ({
+vi.mock('../../src/features/contacts/index.js', () => ({
   contactsService: mocks.contactsService,
   cleanupInviteListeners: vi.fn(),
   setupInviteListener: vi.fn(),
@@ -291,7 +291,7 @@ vi.mock('../../src/utils/dev/diagnostic-logger.js', () => ({
   getDiagnosticLogger: vi.fn(() => mocks.logger),
 }));
 
-vi.mock('../../src/contacts/invitations.js', () => ({
+vi.mock('../../src/features/contacts/invitations.js', () => ({
   listenForInvites: vi.fn(),
   listenForAcceptedInvites: vi.fn(),
   acceptInvite: vi.fn(),
@@ -299,12 +299,12 @@ vi.mock('../../src/contacts/invitations.js', () => ({
   cleanupInviteListeners: vi.fn(),
 }));
 
-vi.mock('../../src/contacts/referral-handler.js', () => ({
+vi.mock('../../src/features/contacts/referral-handler.js', () => ({
   captureReferral: vi.fn(),
   processReferral: vi.fn().mockResolvedValue(undefined),
 }));
 
-// enable-notifications-prompt is covered by the ../../src/notifications/index.js barrel mock
+// enable-notifications-prompt is covered by the ../../src/features/notifications/index.js barrel mock
 
 vi.mock('../../src/utils/url.js', () => ({
   clearUrlParam: vi.fn(),
@@ -338,7 +338,7 @@ vi.mock('../../src/components/ui/core/watch-lifecycle-ui.js', () => ({
   onWatchModeExited: vi.fn(),
 }));
 
-vi.mock('../../src/contacts/components/contacts-list.js', () => ({
+vi.mock('../../src/features/contacts/components/contacts-list.js', () => ({
   renderContactsList: vi.fn(),
   cleanupContacts: vi.fn(),
 }));
@@ -362,14 +362,14 @@ vi.mock('../../src/media/youtube/youtube-search.js', () => ({
   initializeSearchUI: vi.fn(),
 }));
 
-// notifications-toggle is covered by the ../../src/notifications/index.js barrel mock
+// notifications-toggle is covered by the ../../src/features/notifications/index.js barrel mock
 
 vi.mock('../../src/components/toast.js', () => ({
   showSuccessToast: vi.fn(),
   showErrorToast: vi.fn(),
 }));
 
-// invite-notification is covered by the ../../src/notifications/index.js barrel mock
+// invite-notification is covered by the ../../src/features/notifications/index.js barrel mock
 
 vi.mock('../../src/components/ui/utils/ui-utils.js', () => ({
   showElement: vi.fn(),
@@ -377,7 +377,7 @@ vi.mock('../../src/components/ui/utils/ui-utils.js', () => ({
   exitPiP: vi.fn(),
 }));
 
-vi.mock('../../src/auth/index.js', () => ({
+vi.mock('../../src/features/auth/index.js', () => ({
   signInWithAccountSelection: vi.fn(),
   signOutUser: vi.fn(),
   deleteAccount: vi.fn(),
@@ -406,7 +406,7 @@ vi.mock('../../src/auth/index.js', () => ({
   getLoggedInUserToken: vi.fn(),
 }));
 
-vi.mock('../../src/messaging/components/messages-ui.js', () => ({
+vi.mock('../../src/features/messaging/components/messages-ui.js', () => ({
   messagesUI: {
     reset: vi.fn(),
   },
@@ -418,7 +418,7 @@ vi.mock('../../src/call/components/incoming-call.js', () => ({
   dismissActiveIncomingCallUI: vi.fn(),
 }));
 
-vi.mock('../../src/contacts/components/add-contact-modal.js', () => ({
+vi.mock('../../src/features/contacts/components/add-contact-modal.js', () => ({
   showAddContactModal: vi.fn(),
 }));
 
@@ -467,7 +467,7 @@ vi.mock('../../src/i18n/index.js', () => ({
   onLocaleChange: vi.fn(() => () => {}),
 }));
 
-// debug-notifications is covered by the ../../src/notifications/index.js barrel mock
+// debug-notifications is covered by the ../../src/features/notifications/index.js barrel mock
 
 import RoomService from '../../src/call/room.js';
 import { showIncomingCallUI } from '../../src/call/components/incoming-call.js';

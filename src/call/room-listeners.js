@@ -5,10 +5,10 @@ import {
   getUserRecentCallsRef,
   getUserRecentCallRef,
 } from '../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId, getUserId } from '../auth/index.js';
+import { getLoggedInUserId, getUserId } from '../features/auth/index.js';
 import { getDiagnosticLogger } from '../utils/dev/diagnostic-logger.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
-import { contactsService } from '../contacts/index.js';
+import { contactsService } from '../features/contacts/index.js';
 import { getDeterministicRoomId } from '../utils/room-id.js';
 import RoomService from './room.js';
 import CallController from './call-controller.js';
@@ -792,7 +792,7 @@ export async function startListeningForSavedRooms() {
   // This prevents a race where we read localStorage as a guest before auth is ready
   try {
     if (typeof window !== 'undefined') {
-      const { getCurrentUserAsync } = await import('../auth/index.js');
+      const { getCurrentUserAsync } = await import('../features/auth/index.js');
       await getCurrentUserAsync();
     }
   } catch (e) {

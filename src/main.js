@@ -8,17 +8,17 @@ import { initIcons } from './components/ui/icons.js';
 import './initSentry.js';
 import { removeAllRTDBListeners } from './storage/fb-rtdb/rtdb.js';
 
-import { initAuth } from './auth/index.js';
+import { initAuth } from './features/auth/index.js';
 
 import {
   inAppNotificationManager,
   createNotificationsToggle,
   addDebugUpdateButton,
-} from './notifications/index.js';
+} from './features/notifications/index.js';
 import { getPushNotifications } from './push-notifications/index.js';
 
 import CallController from './call/call-controller.js';
-import { messagingController } from './messaging/messaging-controller.js';
+import { messagingController } from './features/messaging/messaging-controller.js';
 import {
   contactsService,
   captureReferral,
@@ -26,7 +26,7 @@ import {
   cleanupContacts,
   showAddContactModal,
   setupContactsAppBusBridge,
-} from './contacts/index.js';
+} from './features/contacts/index.js';
 
 import {
   localVideoEl,
@@ -95,8 +95,8 @@ import {
   hideElement,
   exitPiP,
 } from './components/ui/utils/ui-utils.js';
-import { initializeAuthUI } from './auth/index.js';
-import { messagesUI } from './messaging/components/messages-ui.js';
+import { initializeAuthUI } from './features/auth/index.js';
+import { messagesUI } from './features/messaging/components/messages-ui.js';
 import { copyToClipboard } from './components/modal/copyLinkModal.js';
 
 // ____ UI END ____
@@ -110,11 +110,11 @@ import {
   onLocaleChange,
 } from './i18n/index.js';
 import { setupMessagingContactsIntegration } from './app/messaging-contacts-integration.js';
-import { setupMessagingAppBusHandlers } from './messaging/handle-appbus-events.js';
+import { setupMessagingAppBusHandlers } from './features/messaging/handle-appbus-events.js';
 import { setupCallControllerEventWiring } from './call/call-event-wiring.js';
 import { setupMainAppBusListeners } from './app/setupMainAppBusListeners.js';
 import { setupMainAuthAppBusListeners } from './app/setupMainAuthAppBusListeners.js';
-import { setupAuthAppBusBridge } from './auth/setupAuthAppBusBridge.js';
+import { setupAuthAppBusBridge } from './features/auth/setupAuthAppBusBridge.js';
 import {
   getCallOptions,
   applyCallResult,
@@ -263,7 +263,7 @@ async function init() {
       const pushInitialized = await pushController.initialize();
       if (!pushInitialized && !pushController.isNotificationSupported()) {
         const { showPushUnsupportedNotification } =
-          await import('./notifications/index.js');
+          await import('./features/notifications/index.js');
         showPushUnsupportedNotification();
       }
     } catch (error) {

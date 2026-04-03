@@ -1,6 +1,6 @@
 import CallController from './call-controller.js';
-import { contactsService, renderContactsList } from '../contacts/index.js';
-import { getUserId, getUser } from '../auth/auth-state.js';
+import { contactsService, renderContactsList } from '../features/contacts/index.js';
+import { getUserId, getUser } from '../features/auth/auth-state.js';
 import { getPushNotifications } from '../push-notifications/index.js';
 import { cleanupRemoteStream } from '../media/state.js';
 import { clearUrlParam } from '../utils/url.js';
