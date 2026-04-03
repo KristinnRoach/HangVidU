@@ -5,7 +5,7 @@
 import { contactsService } from '../contacts-service.js';
 import { findUsersByEmails } from '../user-discovery.js';
 import { sendInvite } from '../invitations.js';
-import { escapeHtml } from '../../ui/component-system/dom-utils.js';
+import { escapeHtml } from '../../components/ui/component-system/dom-utils.js';
 import {
   requestContactsAccess,
   requestGmailSendAccess,
@@ -14,7 +14,7 @@ import { getLoggedInUserId, getUser } from '../../auth/auth-state.js';
 import { fetchGoogleContacts } from '../google-contacts.js';
 import { sendBulkEmailsViaGmail } from '../gmail-send.js';
 import { t } from '../../i18n/index.js';
-import { initIcons } from '../../ui/icons.js';
+import { initIcons } from '../../components/ui/icons.js';
 
 // TODO: WIP decoupling considerations:
 // This modal mixes feature UI with auth/OAuth and external contact-import side effects.

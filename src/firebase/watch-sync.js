@@ -24,9 +24,9 @@ import {
 } from '../media/youtube/youtube-player.js';
 
 import { sharedVideoEl, sharedBoxEl } from '../elements.js'; // TODO: refactor?
-import { hideElement, showElement } from '../ui/utils/ui-utils.js';
+import { hideElement, showElement } from '../components/ui/utils/ui-utils.js';
 
-import { onWatchModeEntered } from '../ui/core/watch-lifecycle-ui.js';
+import { onWatchModeEntered } from '../components/ui/core/watch-lifecycle-ui.js';
 
 // ============================================================================
 // WATCH-TOGETHER SYNC (Firebase-based)

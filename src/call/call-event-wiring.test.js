@@ -33,7 +33,7 @@ const mocks = vi.hoisted(() => {
     },
     cleanupRemoteStream: vi.fn(),
     clearUrlParam: vi.fn(),
-    onCallAnswered: vi.fn(() => Promise.resolve()),
+    onOutgoingCallAnswered: vi.fn(() => Promise.resolve()),
     renderContactsList: vi.fn(() => Promise.resolve()),
     promptAndRefreshContactSave: vi.fn(() => Promise.resolve()),
     devDebug: vi.fn(),
@@ -71,8 +71,8 @@ vi.mock('../utils/url.js', () => ({
   clearUrlParam: mocks.clearUrlParam,
 }));
 
-vi.mock('../ui/components/calling/calling-ui.js', () => ({
-  onCallAnswered: mocks.onCallAnswered,
+vi.mock('./components/outgoing-call.js', () => ({
+  onOutgoingCallAnswered: mocks.onOutgoingCallAnswered,
 }));
 
 vi.mock('../app/contact-save-flow.js', () => ({

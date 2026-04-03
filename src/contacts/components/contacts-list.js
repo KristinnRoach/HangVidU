@@ -1,15 +1,18 @@
 import { ref, onValue, off } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId } from '../../auth/auth-state.js';
-import confirmDialog from '../../ui/components/base/confirm-dialog.js';
+import confirmDialog from '../../components/base/confirm-dialog.js';
 import editContactModal from './edit-contact-modal.js';
-import { hideElement, showElement } from '../../ui/utils/ui-utils.js';
+import {
+  hideElement,
+  showElement,
+} from '../../components/ui/utils/ui-utils.js';
 import { t, onLocaleChange } from '../../i18n/index.js';
-import { escapeHtml } from '../../ui/component-system/dom-utils.js';
-import { initIcons } from '../../ui/icons.js';
+import { escapeHtml } from '../../components/ui/component-system/dom-utils.js';
+import { initIcons } from '../../components/ui/icons.js';
 import { messagingController } from '../../messaging/messaging-controller.js';
 import { contactsService } from '../contacts-service.js';
-import { dispatchUIEvent } from '../../ui/dispatcher.js';
+import { dispatchUIEvent } from '../../components/ui/dispatcher.js';
 
 // TODO: WIP decoupling considerations:
 // This feature-owned UI still composes shared UI primitives and messaging side effects.

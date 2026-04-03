@@ -1,32 +1,36 @@
-import { t } from '../../../i18n/index.js';
-import { initIcons } from '../../icons.js';
-import { onClickOutside } from '../../utils/clickOutside.js';
-import { hideElement, isHidden, showElement } from '../../utils/ui-utils.js';
-import { renderAvatar } from '../../utils/avatar.js';
+import { t } from '../../i18n/index.js';
+import { initIcons } from '../../components/ui/icons.js';
+import { onClickOutside } from '../../components/ui/utils/clickOutside.js';
+import {
+  hideElement,
+  isHidden,
+  showElement,
+} from '../../components/ui/utils/ui-utils.js';
+import { renderAvatar } from '../../components/ui/utils/avatar.js';
 import { createMessageToggle } from './createMessageToggle.js';
-import { isIOSOrAndroidDevice } from '../../../utils/detect-device.js';
-import { createWatchFileHandler } from '../../../watch/watch-file-handler.js';
+import { isIOSOrAndroidDevice } from '../../utils/detect-device.js';
+import { createWatchFileHandler } from '../../watch/watch-file-handler.js';
 
-import { linkifyToFragment } from '../../../utils/linkify.js';
+import { linkifyToFragment } from '../../utils/linkify.js';
 import {
   ReactionManager,
   ReactionUI,
-} from '../../../messaging/reactions/index.js';
-import { REACTION_CONFIG } from '../../../messaging/reactions/ReactionConfig.js';
-import { getUserId } from '../../../auth/auth-state.js';
-import { messagingController } from '../../../messaging/messaging-controller.js';
+} from '../reactions/index.js';
+import { REACTION_CONFIG } from '../reactions/ReactionConfig.js';
+import { getUserId } from '../../auth/auth-state.js';
+import { messagingController } from '../messaging-controller.js';
 import {
   showErrorToast,
   showInfoToast,
   showSuccessToast,
-} from '../../../components/toast.js';
+} from '../../components/toast.js';
 import { createMessageBox } from './createMessageBox.js';
 import { createMessageTopBar } from './createMessageTopBar.js';
-import { devDebug } from '../../../utils/dev/dev-utils.js';
-import { showImagePreview } from '../modal/imagePreview.js';
-import { onTapGesture } from '../../utils/detectDoubleClick.js';
-import { isSafeDownloadUrl } from '../../../utils/security/validate-url.js';
-import { dispatchUIEvent } from '../../dispatcher.js';
+import { devDebug } from '../../utils/dev/dev-utils.js';
+import { showImagePreview } from '../../components/modal/imagePreview.js';
+import { onTapGesture } from '../../components/ui/utils/detectDoubleClick.js';
+import { isSafeDownloadUrl } from '../../utils/security/validate-url.js';
+import { dispatchUIEvent } from '../../components/ui/dispatcher.js';
 import {
   cancelScrollMessagesToEnd,
   scrollMessagesToEnd,

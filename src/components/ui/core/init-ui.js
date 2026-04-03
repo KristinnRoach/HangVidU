@@ -3,7 +3,7 @@ import {
   localBoxEl,
   sharedBoxEl,
   chatControls,
-} from '../../elements.js';
+} from '../../../elements.js';
 
 import { hideElement } from '../utils/ui-utils.js';
 

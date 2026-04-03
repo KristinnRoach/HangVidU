@@ -5,13 +5,13 @@ import {
   setOutgoingCallState,
   clearOutgoingCallState,
   // isOutgoingCallFresh,
-} from '../../../call/WIP-CallState-rtdb.js';
-import { devDebug } from '../../../utils/dev/dev-utils.js';
-import { getDiagnosticLogger } from '../../../utils/dev/diagnostic-logger.js';
-import RoomService from '../../../call/room.js';
-import { ringtoneManager } from '../../../media/audio/ringtone-manager.js';
-import { t } from '../../../i18n/index.js';
-import { getUserId } from '../../../auth/auth-state.js';
+} from '../WIP-CallState-rtdb.js';
+import { devDebug } from '../../utils/dev/dev-utils.js';
+import { getDiagnosticLogger } from '../../utils/dev/diagnostic-logger.js';
+import RoomService from '../room.js';
+import { ringtoneManager } from '../../media/audio/ringtone-manager.js';
+import { t } from '../../i18n/index.js';
+import { getUserId } from '../../auth/auth-state.js';
 
 let activeCallingUI = null;
 let timeoutId = null;
@@ -20,7 +20,7 @@ let storedOnHide = null;
 /**
  * Show "Calling..." modal with cancel button and auto-timeout
  */
-export async function showCallingUI(
+export async function showOutgoingCallUI(
   roomId,
   contactName,
   { onCancel, onHide } = {},
@@ -29,7 +29,7 @@ export async function showCallingUI(
   const showTime = Date.now();
 
   // Remove any existing calling UI first
-  hideCallingUI();
+  hideOutgoingCallingUI();
 
   // Store onHide callback for hideCallingUI to call
   storedOnHide = onHide || null;
@@ -103,7 +103,7 @@ export async function showCallingUI(
 
     // Dismiss UI immediately for responsiveness
     ringtoneManager.stop();
-    hideCallingUI();
+    hideOutgoingCallingUI();
     clearOutgoingCallState().catch(() => {});
 
     if (onCancel) {
@@ -152,7 +152,7 @@ export async function showCallingUI(
 
     // Dismiss UI immediately for responsiveness
     ringtoneManager.stop();
-    hideCallingUI();
+    hideOutgoingCallingUI();
     clearOutgoingCallState().catch(() => {});
 
     if (onCancel) {
@@ -179,7 +179,7 @@ export async function showCallingUI(
 /**
  * Hide and clean up calling UI
  */
-export function hideCallingUI() {
+export function hideOutgoingCallingUI() {
   // Stop ringtone when hiding UI
   ringtoneManager.stop();
 
@@ -218,7 +218,7 @@ export function hideCallingUI() {
 /**
  * Hide calling UI and clear outgoing state when call is answered
  */
-export async function onCallAnswered() {
+export async function onOutgoingCallAnswered() {
   if (activeCallingUI) {
     const roomId = activeCallingUI.dataset?.roomId || 'unknown';
     getDiagnosticLogger().logCallingUILifecycle('ANSWERED', roomId, {
@@ -228,13 +228,13 @@ export async function onCallAnswered() {
   }
 
   await clearOutgoingCallState();
-  hideCallingUI();
+  hideOutgoingCallingUI();
 }
 
 /**
  * Hide calling UI and clear outgoing state when call is rejected by callee
  */
-export async function onCallRejected(reason = 'user_rejected') {
+export async function onOutgoingCallRejected(reason = 'user_rejected') {
   const diag = getDiagnosticLogger();
   const roomId = activeCallingUI?.dataset?.roomId || 'unknown';
 
@@ -244,6 +244,6 @@ export async function onCallRejected(reason = 'user_rejected') {
   });
 
   await clearOutgoingCallState();
-  hideCallingUI();
+  hideOutgoingCallingUI();
   devDebug('Call declined');
 }

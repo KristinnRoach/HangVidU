@@ -9,7 +9,7 @@ import { getElements } from '../elements.js';
 import { getLocalStream } from '../media/state.js';
 import { setupRemoteStream } from '../media/stream.js';
 import { setupWatchSync } from '../firebase/watch-sync.js';
-import { showCopyLinkModal } from '../ui/components/modal/copyLinkModal.js';
+import { showCopyLinkModal } from '../components/modal/copyLinkModal.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { listenForIncomingOnRoom } from './room-listeners.js';
 import {
@@ -174,8 +174,8 @@ export async function callContact(contactId, contactName, roomId = null) {
   }
 
   const callingUiModulesPromise = Promise.all([
-    import('../ui/components/calling/calling-ui.js'),
-    import('../ui/core/call-lifecycle-ui.js'),
+    import('./components/outgoing-call.js'),
+    import('../components/ui/core/call-lifecycle-ui.js'),
   ]);
 
   listenForIncomingOnRoom(roomId);
@@ -190,12 +190,12 @@ export async function callContact(contactId, contactName, roomId = null) {
   if (success) {
     contactsService.updateLastInteraction(contactId).catch(() => {});
 
-    let showCallingUI;
+    let showOutgoingCallUI;
     let onCallingStarted;
     let onCallingEnded;
 
     try {
-      [{ showCallingUI }, { onCallingStarted, onCallingEnded }] =
+      [{ showOutgoingCallUI }, { onCallingStarted, onCallingEnded }] =
         await callingUiModulesPromise;
     } catch (error) {
       console.warn('[CALL] Failed to load calling UI:', error);
@@ -207,7 +207,7 @@ export async function callContact(contactId, contactName, roomId = null) {
 
     try {
       onCallingStarted();
-      await showCallingUI(roomId, contactName, {
+      await showOutgoingCallUI(roomId, contactName, {
         onCancel: (reason) => {
           CallController.hangUp({ reason }).catch((e) => {
             console.warn('[CALL] hangUp after cancel/timeout failed:', e);
@@ -233,13 +233,15 @@ export async function callContact(contactId, contactName, roomId = null) {
     });
 
     if (pushCall) {
-      pushCall.then((pushResult) => {
-        if (!pushResult?.ok) {
-          console.warn('[CALL] Call-start push notification did not succeed');
-        }
-      }).catch((error) => {
-        console.warn('[CALL] Failed to send push notification:', error);
-      });
+      pushCall
+        .then((pushResult) => {
+          if (!pushResult?.ok) {
+            console.warn('[CALL] Call-start push notification did not succeed');
+          }
+        })
+        .catch((error) => {
+          console.warn('[CALL] Failed to send push notification:', error);
+        });
     }
   }
 

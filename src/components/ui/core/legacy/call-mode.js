@@ -10,7 +10,7 @@ import {
   hangUpBtn,
   mutePartnerBtn,
   remotePipBtn,
-} from '../../../elements.js';
+} from '../../../../elements.js';
 
 import {
   showElement,
@@ -21,8 +21,8 @@ import {
 } from '../../utils/ui-utils.js';
 
 import { setupShowHideOnInactivity } from '../../utils/showHideOnInactivity.js';
-import { hasRemoteStream } from '../../../media/state.js';
-import { isWatchModeActive } from '../../../firebase/watch-sync.js'; // Import from watch-sync.js (should probably be from watch-mode.js)
+import { hasRemoteStream } from '../../../../media/state.js';
+import { isWatchModeActive } from '../../../../firebase/watch-sync.js'; // Import from watch-sync.js (should probably be from watch-mode.js)
 
 let isInCallMode = false; // Call mode state
 let enterCallModeWaitingForVideo = false;

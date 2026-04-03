@@ -101,7 +101,7 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../src/ui/icons.js', () => ({
+vi.mock('../../src/components/ui/icons.js', () => ({
   initIcons: vi.fn(),
 }));
 
@@ -323,17 +323,17 @@ vi.mock('../../src/utils/room-id.js', () => ({
   getDeterministicRoomId: vi.fn(() => 'deterministic-room'),
 }));
 
-vi.mock('../../src/ui/core/ui-state.js', () => ({}));
+vi.mock('../../src/components/ui/core/ui-state.js', () => ({}));
 
-vi.mock('../../src/ui/core/init-ui.js', () => ({
+vi.mock('../../src/components/ui/core/init-ui.js', () => ({
   initUI: vi.fn(),
 }));
 
-vi.mock('../../src/ui/core/bind-call-ui.js', () => ({
+vi.mock('../../src/components/ui/core/bind-call-ui.js', () => ({
   bindCallUI: vi.fn(),
 }));
 
-vi.mock('../../src/ui/core/watch-lifecycle-ui.js', () => ({
+vi.mock('../../src/components/ui/core/watch-lifecycle-ui.js', () => ({
   onWatchModeEntered: vi.fn(),
   onWatchModeExited: vi.fn(),
 }));
@@ -371,7 +371,7 @@ vi.mock('../../src/components/toast.js', () => ({
 
 // invite-notification is covered by the ../../src/notifications/index.js barrel mock
 
-vi.mock('../../src/ui/utils/ui-utils.js', () => ({
+vi.mock('../../src/components/ui/utils/ui-utils.js', () => ({
   showElement: vi.fn(),
   hideElement: vi.fn(),
   exitPiP: vi.fn(),
@@ -406,13 +406,13 @@ vi.mock('../../src/auth/index.js', () => ({
   getLoggedInUserToken: vi.fn(),
 }));
 
-vi.mock('../../src/ui/components/messages/messages-ui.js', () => ({
+vi.mock('../../src/messaging/components/messages-ui.js', () => ({
   messagesUI: {
     reset: vi.fn(),
   },
 }));
 
-vi.mock('../../src/ui/components/calling/incoming-call.js', () => ({
+vi.mock('../../src/call/components/incoming-call.js', () => ({
   showIncomingCallUI: vi.fn(),
   resolveIncomingCallUI: vi.fn(),
   dismissActiveIncomingCallUI: vi.fn(),
@@ -422,7 +422,7 @@ vi.mock('../../src/contacts/components/add-contact-modal.js', () => ({
   showAddContactModal: vi.fn(),
 }));
 
-vi.mock('../../src/ui/utils/call-indicators.js', () => ({
+vi.mock('../../src/components/ui/utils/call-indicators.js', () => ({
   callIndicators: {
     startIncoming: vi.fn(),
     stopIncoming: vi.fn(),
@@ -431,24 +431,26 @@ vi.mock('../../src/ui/utils/call-indicators.js', () => ({
   },
 }));
 
-vi.mock('../../src/ui/components/modal/copyLinkModal.js', () => ({
+vi.mock('../../src/components/modal/copyLinkModal.js', () => ({
   copyToClipboard: vi.fn(),
   showCopyLinkModal: vi.fn(),
 }));
 
-vi.mock('../../src/ui/components/calling/calling-ui.js', () => ({
-  showCallingUI: vi.fn(async () => {
-    mocks.callSequence.push('showCallingUI');
+vi.mock('../../src/call/components/outgoing-call.js', () => ({
+  showOutgoingCallUI: vi.fn(async () => {
+    mocks.callSequence.push('showOutgoingCallUI');
   }),
-  onCallAnswered: vi.fn(),
+  onOutgoingCallAnswered: vi.fn(),
+  onOutgoingCallRejected: vi.fn(),
+  hideOutgoingCallingUI: vi.fn(),
   // isRoomCallFresh: vi.fn(() => true),
 }));
 
-vi.mock('../../src/ui/core/legacy/watch-mode.js', () => ({
+vi.mock('../../src/components/ui/core/legacy/watch-mode.js', () => ({
   isRemoteVideoVideoActive: vi.fn(() => false),
 }));
 
-vi.mock('../../src/ui/core/call-lifecycle-ui.js', () => ({
+vi.mock('../../src/components/ui/core/call-lifecycle-ui.js', () => ({
   onCallConnected: vi.fn(),
   onCallDisconnected: vi.fn(),
   onCallingStarted: vi.fn(() => {
@@ -468,9 +470,9 @@ vi.mock('../../src/i18n/index.js', () => ({
 // debug-notifications is covered by the ../../src/notifications/index.js barrel mock
 
 import RoomService from '../../src/call/room.js';
-import { showIncomingCallUI } from '../../src/ui/components/calling/incoming-call.js';
+import { showIncomingCallUI } from '../../src/call/components/incoming-call.js';
 import { ringtoneManager } from '../../src/media/audio/ringtone-manager.js';
-import { callIndicators } from '../../src/ui/utils/call-indicators.js';
+import { callIndicators } from '../../src/components/ui/utils/call-indicators.js';
 
 describe('callContact push notification flow', () => {
   let consoleWarnSpy;
@@ -517,8 +519,10 @@ describe('callContact push notification flow', () => {
       callerName: 'Caller Example',
     });
     expect(mocks.callSequence.indexOf('sendIncomingCall')).toBeGreaterThan(-1);
-    expect(mocks.callSequence.indexOf('showCallingUI')).toBeGreaterThan(-1);
-    expect(mocks.callSequence.indexOf('showCallingUI')).toBeLessThan(
+    expect(mocks.callSequence.indexOf('showOutgoingCallUI')).toBeGreaterThan(
+      -1,
+    );
+    expect(mocks.callSequence.indexOf('showOutgoingCallUI')).toBeLessThan(
       mocks.callSequence.indexOf('sendIncomingCall'),
     );
     expect(consoleWarnSpy).not.toHaveBeenCalledWith(

@@ -14,12 +14,12 @@ import RoomService from './room.js';
 import CallController from './call-controller.js';
 import { getPushNotifications } from '../push-notifications/index.js';
 import { ringtoneManager } from '../media/audio/ringtone-manager.js';
-import { callIndicators } from '../ui/utils/call-indicators.js';
+import { callIndicators } from '../components/ui/utils/call-indicators.js';
 import {
   showIncomingCallUI,
   resolveIncomingCallUI,
   dismissActiveIncomingCallUI,
-} from '../ui/components/calling/incoming-call.js';
+} from './components/incoming-call.js';
 import { isRoomCallFresh } from './WIP-isRoomCallFresh.js';
 
 import { joinOrCreateRoomWithId } from './WIP-start-call-refactor.js';
@@ -704,7 +704,7 @@ export function listenForIncomingOnRoom(roomId) {
 
         // Dismiss legacy confirmDialog (for testing/rollback)
         const { dismissActiveConfirmDialog } =
-          await import('../ui/components/base/confirm-dialog.js');
+          await import('../components/base/confirm-dialog.js');
         if (typeof dismissActiveConfirmDialog === 'function') {
           dismissActiveConfirmDialog();
         }

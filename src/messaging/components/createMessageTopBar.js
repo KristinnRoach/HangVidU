@@ -1,6 +1,6 @@
-import { renderAvatar } from '../../utils/avatar.js';
-import { t } from '../../../i18n/index.js';
-import { initIcons } from '../../icons.js';
+import { renderAvatar } from '../../components/ui/utils/avatar.js';
+import { t } from '../../i18n/index.js';
+import { initIcons } from '../../components/ui/icons.js';
 
 export function createMessageTopBar() {
   const root = document.createElement('div');

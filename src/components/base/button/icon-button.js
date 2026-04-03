@@ -1,7 +1,7 @@
 // src/ui/components/base/button/icon-button.js
 
-import createComponent from '../../../../ui/component-system/component.js';
-import { initIcons } from '../../../icons.js';
+import createComponent from '../../ui/component-system/component.js';
+import { initIcons } from '../../ui/icons.js';
 
 /**
  * Creates a reactive icon button using createComponent.
@@ -28,12 +28,12 @@ export function createIconButton({
   parent = null,
 } = {}) {
   const component = createComponent({
-    initialProps: { 
-      title, 
-      iconHtml: lucideIcon ? `<i data-lucide="${lucideIcon}"></i>` : iconHtml, 
-      disabledAttr, 
+    initialProps: {
+      title,
+      iconHtml: lucideIcon ? `<i data-lucide="${lucideIcon}"></i>` : iconHtml,
+      disabledAttr,
       id,
-      lucideIcon
+      lucideIcon,
     },
     template: `
       <button id="[[id]]" title="[[title]]" [[disabledAttr]] onclick="handleClick">
@@ -54,7 +54,9 @@ export function createIconButton({
   // Sync lucideIcon update to iconHtml for template re-render
   component.onAnyPropUpdated(({ changedKeys }) => {
     if (changedKeys.includes('lucideIcon')) {
-      component.iconHtml = component.lucideIcon ? `<i data-lucide="${component.lucideIcon}"></i>` : '';
+      component.iconHtml = component.lucideIcon
+        ? `<i data-lucide="${component.lucideIcon}"></i>`
+        : '';
     }
   });
 

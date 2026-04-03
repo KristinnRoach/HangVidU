@@ -285,7 +285,7 @@ class CallController {
       // Import onCallRejected dynamically to avoid circular dependencies
       try {
         const { onCallRejected } =
-          await import('../ui/components/calling/calling-ui.js');
+          await import('./components/outgoing-call.js');
         await onCallRejected(rej.reason || 'user_rejected');
       } catch (_) {
         devDebug('Call declined');

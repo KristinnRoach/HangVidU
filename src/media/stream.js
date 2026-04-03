@@ -20,7 +20,7 @@ import { devDebug, isDev } from '../utils/dev/dev-utils.js';
 import { showErrorToast } from '../components/toast.js';
 import { t } from '../i18n/index.js';
 
-import { initIcons } from '../ui/icons.js';
+import { initIcons } from '../components/ui/icons.js';
 
 export function attachAudioMonitor(stream) {
   abortAudioEndedController(); // Cancel any previous listener first

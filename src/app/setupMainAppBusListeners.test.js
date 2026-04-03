@@ -54,7 +54,7 @@ vi.mock('../utils/url.js', () => ({
   clearUrlParam: vi.fn(),
 }));
 
-vi.mock('../ui/core/call-lifecycle-ui.js', () => ({
+vi.mock('../components/ui/core/call-lifecycle-ui.js', () => ({
   onCallDisconnected: vi.fn(),
 }));
 

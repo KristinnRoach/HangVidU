@@ -4,7 +4,7 @@
 // HANGVIDU - P2P VIDEO CHAT WITH WATCH-TOGETHER MODE
 // ============================================================================
 
-import { initIcons } from './ui/icons.js';
+import { initIcons } from './components/ui/icons.js';
 import './initSentry.js';
 import { removeAllRTDBListeners } from './storage/fb-rtdb/rtdb.js';
 
@@ -12,7 +12,6 @@ import { initAuth } from './auth/index.js';
 
 import {
   inAppNotificationManager,
-  showEnableNotificationsPrompt,
   createNotificationsToggle,
   addDebugUpdateButton,
 } from './notifications/index.js';
@@ -22,10 +21,7 @@ import CallController from './call/call-controller.js';
 import { messagingController } from './messaging/messaging-controller.js';
 import {
   contactsService,
-  cleanupInviteListeners,
-  setupInviteListener,
   captureReferral,
-  processReferral,
   renderContactsList,
   cleanupContacts,
   showAddContactModal,
@@ -70,14 +66,14 @@ import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
 import { clearUrlParam } from './utils/url.js';
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
-import './ui/core/ui-state.js'; // Initialize UI state (sets body data-view attribute)
-import { initUI } from './ui/core/init-ui.js';
-import { bindCallUI } from './ui/core/bind-call-ui.js';
+import './components/ui/core/ui-state.js'; // Initialize UI state (sets body data-view attribute)
+import { initUI } from './components/ui/core/init-ui.js';
+import { bindCallUI } from './components/ui/core/bind-call-ui.js';
 
 import {
   onWatchModeEntered,
   onWatchModeExited,
-} from './ui/core/watch-lifecycle-ui.js';
+} from './components/ui/core/watch-lifecycle-ui.js';
 
 import {
   destroyYouTubePlayer,
@@ -94,14 +90,18 @@ import {
   initializeSearchUI,
 } from './media/youtube/youtube-search.js';
 
-import { showElement, hideElement, exitPiP } from './ui/utils/ui-utils.js';
+import {
+  showElement,
+  hideElement,
+  exitPiP,
+} from './components/ui/utils/ui-utils.js';
 import { initializeAuthUI } from './auth/index.js';
-import { messagesUI } from './ui/components/messages/messages-ui.js';
-import { copyToClipboard } from './ui/components/modal/copyLinkModal.js';
+import { messagesUI } from './messaging/components/messages-ui.js';
+import { copyToClipboard } from './components/modal/copyLinkModal.js';
 
 // ____ UI END ____
 
-import { onCallDisconnected } from './ui/core/call-lifecycle-ui.js';
+import { onCallDisconnected } from './components/ui/core/call-lifecycle-ui.js';
 import {
   initI18n,
   setLocale,
@@ -125,7 +125,6 @@ import {
   handleMediaPermissionError,
 } from './media/WIP-init-local-media.js';
 import {
-  removeAllIncomingListeners,
   settleIncomingCallWaitForRoom,
   startListeningForSavedRooms,
 } from './call/room-listeners.js';
