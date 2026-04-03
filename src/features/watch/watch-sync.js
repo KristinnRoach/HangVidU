@@ -1,4 +1,4 @@
-import { isVideoMime } from '../utils/is-video-mime.js';
+import { isVideoMime } from '../../utils/is-video-mime.js';
 import { isSwVideoUrl } from '../file-transfer/video-serving.js';
 import { set, update, remove } from 'firebase/database';
 import {
@@ -6,7 +6,7 @@ import {
   getWatchRef,
   getWatchRequestRef,
   removeRTDBListenersForRoom,
-} from '../storage/fb-rtdb/rtdb.js';
+} from '../../storage/fb-rtdb/rtdb.js';
 import {
   isYouTubeUrl,
   getYouTubePlayer,
@@ -21,12 +21,12 @@ import {
   extractYouTubeId,
   loadYouTubeVideo,
   setYouTubeReady,
-} from '../media/youtube/youtube-player.js';
+} from '../../media/youtube/youtube-player.js';
 
-import { sharedVideoEl, sharedBoxEl } from '../elements.js'; // TODO: refactor?
-import { hideElement, showElement } from '../components/ui/utils/ui-utils.js';
+import { sharedVideoEl, sharedBoxEl } from '../../elements.js'; // TODO: refactor?
+import { hideElement, showElement } from '../../components/ui/utils/ui-utils.js';
 
-import { onWatchModeEntered } from '../components/ui/core/watch-lifecycle-ui.js';
+import { onWatchModeEntered } from '../../components/ui/core/watch-lifecycle-ui.js';
 
 // ============================================================================
 // WATCH-TOGETHER SYNC (Firebase-based)

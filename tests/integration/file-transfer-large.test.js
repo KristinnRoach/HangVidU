@@ -12,11 +12,11 @@
  * Test files are generated programmatically using pattern-based generation to avoid
  * actual disk usage.
  *
- * Reference: src/file-transfer/refactor.md section "File Size Limit Testing & Validation"
+ * Reference: src/features/file-transfer/refactor.md section "File Size Limit Testing & Validation"
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { FileTransferController } from '../../src/file-transfer/file-transfer-controller.js';
+import { FileTransferController } from '../../src/features/file-transfer/file-transfer-controller.js';
 
 const isFirefox =
   typeof navigator !== 'undefined' && navigator.userAgent.includes('Firefox');

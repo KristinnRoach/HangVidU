@@ -51,7 +51,7 @@ import {
   isWatchModeActive,
   getLastWatched,
   setLastWatched,
-} from './firebase/watch-sync.js';
+} from './features/watch/watch-sync.js';
 
 import {
   hasLocalStream,
