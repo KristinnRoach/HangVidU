@@ -13,7 +13,7 @@ vi.mock('../auth/auth-state.js', () => ({
 
 // Mock profile
 const mockGetUserProfile = vi.fn(() => Promise.resolve(null));
-vi.mock('../account/profile.js', () => ({
+vi.mock('../account/index.js', () => ({
   getUserProfile: (...args) => mockGetUserProfile(...args),
 }));
 
