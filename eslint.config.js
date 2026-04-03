@@ -41,6 +41,11 @@ export default [
           capture: ['featureName'],
         },
         {
+          type: 'sibling-feature',
+          mode: 'full',
+          pattern: 'src/features/*/**/*.js',
+        },
+        {
           type: 'shared',
           mode: 'full',
           pattern: [
@@ -70,15 +75,8 @@ export default [
           rules: [
             {
               from: { type: 'contacts' },
-              allow: {
-                to: [
-                  { type: 'shared' },
-                  { type: 'auth' },
-                  { type: 'contacts-public' },
-                  {
-                    type: 'contacts',
-                  },
-                ],
+              disallow: {
+                to: [{ type: 'sibling-feature' }],
               },
               message:
                 'Contacts modules cannot import directly from sibling features.',
@@ -113,6 +111,57 @@ export default [
                 to: [{ type: 'auth' }],
               },
               message: 'Import auth only through src/auth/index.js.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/features/contacts/*.js'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '../account/**',
+                '../messaging/**',
+                '../notifications/**',
+                '../call/**',
+                '../watch/**',
+                '../push-notifications/**',
+                '../file-transfer/**',
+              ],
+              message:
+                'Contacts modules cannot import directly from sibling features.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/features/contacts/**/*.js'],
+    ignores: ['src/features/contacts/*.js'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '../../account/**',
+                '../../messaging/**',
+                '../../notifications/**',
+                '../../call/**',
+                '../../watch/**',
+                '../../push-notifications/**',
+                '../../file-transfer/**',
+              ],
+              message:
+                'Contacts modules cannot import directly from sibling features.',
             },
           ],
         },

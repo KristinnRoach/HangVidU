@@ -22,6 +22,9 @@ Verified at this checkpoint:
 - `pnpm test`
 
 Next goal:
+- start by simplifying and clarifying how these ESLint boundary rules are defined
+- reassess whether `eslint-plugin-boundaries` is actually helping enough to justify the current complexity
+- the current rule setup appears more convoluted than the intended architectural rule, so simplify the rule expression before expanding enforcement further
 - satisfy the existing `contacts` rule: no direct imports from sibling features
 - keep the rollout incremental so one module can be completed, merged, and stabilized before moving to the next
 
