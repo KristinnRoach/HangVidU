@@ -6,7 +6,7 @@ import { getLoggedInUserId } from '../auth/auth-state.js';
 import { acceptInvite } from './invitations.js';
 import { getDeterministicRoomId } from '../../utils/room-id.js';
 import { showInfoToast, showSuccessToast } from '../../components/toast.js';
-import { getUserProfile } from '../../user/profile.js';
+import { getUserProfile } from '../account/index.js';
 import {
   createReferralNotification,
   inAppNotificationManager,

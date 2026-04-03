@@ -2,8 +2,8 @@
 // Separate from presence so profile data isn't overwritten by connect/disconnect cycles.
 
 import { ref, set, get } from 'firebase/database';
-import { rtdb } from '../storage/fb-rtdb/rtdb.js';
-import { subscribe } from '../features/auth/auth-state.js';
+import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
+import { subscribe } from '../auth/auth-state.js';
 
 // Auto-save profile when user logs in
 subscribe((state) => {
