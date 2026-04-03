@@ -66,7 +66,7 @@ export async function getAllContactsSorted(
 ) {
   if (sortedBy !== 'lastInteractionAt') {
     console.warn(
-      `[contact-query] Unsupported sort field "${sortedBy}", defaulting to "lastInteractionAt"`,
+      `[contacts-query] Unsupported sort field "${sortedBy}", defaulting to "lastInteractionAt"`,
     );
   }
 

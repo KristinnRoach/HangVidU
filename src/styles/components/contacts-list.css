@@ -19,7 +19,7 @@
 
   overflow-y: auto;
   max-width: 95vw;
-  max-height: min(95vh, 100%);
+  max-height: 95dvh;
 
   & h3 {
     margin: 0 auto 0.75rem auto;

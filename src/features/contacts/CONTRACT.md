@@ -15,7 +15,7 @@
   - decides which contact-domain events get forwarded to `appBus`
   - owns app-level compatibility mapping for contacts
 
-- `contact-query.js`
+- `contacts-query.js`
   - owns read/query helpers built on storage
   - no writes
   - no appBus
