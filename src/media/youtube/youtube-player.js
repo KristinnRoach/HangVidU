@@ -70,7 +70,12 @@ export function isYTVisible() {
 
 export function isYouTubeUrl(url) {
   if (!url) return false;
-  return url.includes('youtube.com') || url.includes('youtu.be');
+  try {
+    const { hostname } = new URL(url);
+    return hostname === 'www.youtube.com' || hostname === 'youtube.com' || hostname === 'youtu.be';
+  } catch {
+    return false;
+  }
 }
 
 export function extractYouTubeId(url) {

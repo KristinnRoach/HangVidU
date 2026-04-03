@@ -427,9 +427,7 @@ class DiagnosticLogger {
    * Utility Methods
    */
   generateSessionId() {
-    return `session_${performance.now()}_${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
+    return `session_${performance.now()}_${crypto.randomUUID().slice(0, 9)}`;
   }
 
   generateLogId() {

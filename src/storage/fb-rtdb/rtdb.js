@@ -82,7 +82,7 @@ export function removeRTDBListenersForRoom(roomId) {
     try {
       off(fbRef, type, callback);
     } catch (err) {
-      console.warn(`Failed to remove listener for room ${roomId}`, err);
+      console.warn('Failed to remove listener for room', roomId, err);
     }
   });
 
