@@ -50,6 +50,14 @@ vi.mock('../call/room-listeners.js', () => ({
   removeIncomingListenersForRoom: mocks.removeIncomingListenersForRoom,
 }));
 
+vi.mock('../utils/url.js', () => ({
+  clearUrlParam: vi.fn(),
+}));
+
+vi.mock('../ui/core/call-lifecycle-ui.js', () => ({
+  onCallDisconnected: vi.fn(),
+}));
+
 describe('setupMainAppBusListeners', () => {
   beforeEach(() => {
     vi.clearAllMocks();
