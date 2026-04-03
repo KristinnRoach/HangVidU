@@ -138,6 +138,7 @@ export async function showAddContactModal() {
         bulkActionsContainer,
         filteredContacts,
         selectedContacts,
+        dialog,
       );
     });
 
@@ -233,6 +234,7 @@ export async function showAddContactModal() {
           bulkActionsContainer,
           filteredContacts,
           selectedContacts,
+          dialog,
         );
       } catch (error) {
         console.error('[ADD CONTACT] Import error:', error);
@@ -266,6 +268,7 @@ function renderImportResults(
   bulkActionsContainer,
   allContacts,
   selectedContacts,
+  toastContainerEl,
 ) {
   container.innerHTML = '';
 
@@ -510,6 +513,7 @@ function renderImportResults(
         // TODO: Separate UI concern (emit event)
         showSuccessToast(
           t('contact.invite.sent_emails', { count: results.sent }),
+          { containerEl: toastContainerEl },
         );
 
         // Clear selection after success
@@ -527,7 +531,9 @@ function renderImportResults(
         shareLinkBtn.disabled = false;
 
         // TODO: Separate UI concern (emit event)
-        showErrorToast(t('contact.invite.failed_emails'));
+        showErrorToast(t('contact.invite.failed_emails'), {
+          containerEl: toastContainerEl,
+        });
 
         console.warn(
           `[ADD CONTACT] ${results.failed} emails failed:`,
@@ -542,7 +548,9 @@ function renderImportResults(
         shareLinkBtn.textContent = t('contact.invite.permission_denied');
 
         // TODO: Separate UI concern (emit event)
-        showErrorToast(t('contact.invite.permission_denied'));
+        showErrorToast(t('contact.invite.permission_denied'), {
+          containerEl: toastContainerEl,
+        });
 
         setTimeout(() => {
           openGmailComposeFallback(notOnApp);
@@ -559,6 +567,7 @@ function renderImportResults(
         // TODO: Separate UI concern (emit event)
         showErrorToast(
           t('contact.invite.failed_detail', { error: err.message }),
+          { containerEl: toastContainerEl },
         );
       }
     }

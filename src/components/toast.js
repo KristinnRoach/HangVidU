@@ -10,6 +10,7 @@ import { isDev } from '../utils/dev/dev-utils.js';
  * @param {string} options.type - Toast type: 'success', 'info', 'warning', 'error' (default: 'info')
  * @param {string} options.position - Position: 'top', 'bottom' (default: 'bottom')
  * @param {Function} options.onClick - Click handler. When set, toast becomes clickable and dismisses on click.
+ * @param {HTMLElement} options.containerEl - Container element for the toast (default: document.body)
  */
 export function showToast(message, options = {}) {
   const {
@@ -17,6 +18,7 @@ export function showToast(message, options = {}) {
     type = 'info',
     position = 'bottom',
     onClick,
+    containerEl,
   } = options;
 
   // Create toast element
@@ -32,8 +34,12 @@ export function showToast(message, options = {}) {
     });
   }
 
-  // Add to DOM
-  document.body.appendChild(toast);
+  // Add to DOM. Allow rendering inside a modal/top-layer container when provided.
+  const host =
+    containerEl instanceof HTMLElement && containerEl.isConnected
+      ? containerEl
+      : document.body;
+  host.appendChild(toast);
 
   // Trigger animation
   requestAnimationFrame(() => {
