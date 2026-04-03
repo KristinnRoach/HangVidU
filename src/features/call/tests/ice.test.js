@@ -2,7 +2,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { setupIceCandidates, drainIceCandidateQueue } from '../ice.js';
-import { addRTDBListener } from '../../../storage/fb-rtdb/rtdb';
+import { addRTDBListener } from '../../../storage/fb-rtdb/rtdb.js';
 
 // Mock Firebase database functions
 vi.mock('firebase/database', () => ({
@@ -39,6 +39,8 @@ describe('ICE Candidate Queuing', () => {
   let addIceCandidateSpy;
 
   beforeEach(() => {
+    onChildAddedCallback = undefined;
+
     // Mock RTCPeerConnection
     mockPc = {
       signalingState: 'stable',
