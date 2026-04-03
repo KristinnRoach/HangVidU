@@ -4,7 +4,7 @@
 
 **Entry point**:
 
-1. Phase 3.2 ✅ COMPLETE (PR #401) — watch-together extracted to src/watch/watch-file-handler.js
+1. Phase 3.2 ✅ COMPLETE (PR #401) — watch-together extracted to src/features/watch/watch-file-handler.js
 2. Next: Phase 2.2b (optimistic render + error) or Phase 3.1 (file state consolidation)
 3. Deferred: Phase 2.3 (route appendCachedHistory)
 
@@ -43,7 +43,7 @@ The goal: reduce complexity, clarify ownership, improve testability and reusabil
 │ Phase 3: DECOUPLE DOMAINS (separate concerns)               │
 ├─────────────────────────────────────────────────────────────┤
 │ • [x] 3.2 Extract Watch-Together from UI ✅ (PR #401)       │
-│       Moves ~370 LoC to src/watch/watch-file-handler.js     │
+│       Moves ~370 LoC to src/features/watch/watch-file-handler.js     │
 │ • [ ] 3.1 Consolidate File State (deferred)                 │
 │ • [ ] 3.3 Fix Reactions Deletion (independent)              │
 │ • [ ] 3.4 Move inActiveCall to callController (independent) │
@@ -67,11 +67,11 @@ The goal: reduce complexity, clarify ownership, improve testability and reusabil
 
 Deferred issues identified during implementation. Mapped to phases for resolution.
 
-| Issue                   | Description                                                                             | Phase     | Notes                                                                        |
-| ----------------------- | --------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------- |
-| Reaction deletion guard | Last reaction removal not detected; RTDB deletes `reactions` key, stale chips rendered  | Phase 3.3 | Fix: track previous reaction state in `onReactionUpdate()` callback          |
+| Issue                   | Description                                                                                                                         | Phase     | Notes                                                                        |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------- |
+| Reaction deletion guard | Last reaction removal not detected; RTDB deletes `reactions` key, stale chips rendered                                              | Phase 3.3 | Fix: track previous reaction state in `onReactionUpdate()` callback          |
 | ~~Event ownership~~     | ~~`rejected_call` `from` is callerId, not writer.~~ Resolved: single `call:unanswered` event, `from` is always the writer (caller). | ✅ Done   |                                                                              |
-| History event path      | Cached history not yet routed through `message:received` events                         | Phase 2.3 | Phase 2.3 will emit cached messages through same event path as live messages |
+| History event path      | Cached history not yet routed through `message:received` events                                                                     | Phase 2.3 | Phase 2.3 will emit cached messages through same event path as live messages |
 
 **Resolved**:
 
@@ -417,7 +417,8 @@ file tracking state, event handlers, and OPFS/SW integration that has nothing to
 
 **Solution Implemented (commit 1ea3706)**:
 
-Created `src/watch/watch-file-handler.js` with:
+Created `src/features/watch/watch-file-handler.js` with:
+
 - `createWatchFileHandler()` factory
 - internal tracking for sent/received files, keeping watch-together logic out of messages-ui
 - `checkReceivedFile()` — evaluates newly received files for potential watch-together flows
@@ -425,16 +426,19 @@ Created `src/watch/watch-file-handler.js` with:
 - `reset()` — clears internal state between sessions
 
 messages-ui.js now calls handler via:
+
 - `watchFileHandler.checkReceivedFile()` when a file is received
 - `watchFileHandler.requestWatchTogether()` when the user initiates a watch-together session
 - `watchFileHandler.reset()` in its overall reset flow
 
 **Removed from messages-ui.js**:
+
 - Imports: watch-sync, video-serving, isVideoMime
 - ~370 LoC (2 modals, 1 event handler, inline video handling)
 - sentFiles, receivedFile state variables
 
 **Testing**: ✅ Manual verified
+
 - Build passes
 - 299 tests pass (1 skipped)
 - Video send/receive with Download/Watch prompt works
@@ -470,7 +474,6 @@ Cleanup:
   - sentFiles.clear(), receivedFile = null in reset()
   - removeEventListener('watch:file-request') in cleanup()
 ```
-
 
 ---
 
