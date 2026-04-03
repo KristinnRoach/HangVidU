@@ -15,6 +15,7 @@ import { fetchGoogleContacts } from '../google-contacts.js';
 import { sendBulkEmailsViaGmail } from '../gmail-send.js';
 import { t } from '../../../i18n/index.js';
 import { initIcons } from '../../../components/ui/icons.js';
+import { showErrorToast, showSuccessToast } from '../../../components/toast.js';
 
 // TODO: WIP decoupling considerations:
 // This modal mixes feature UI with auth/OAuth and external contact-import side effects.
@@ -506,6 +507,11 @@ function renderImportResults(
         shareLinkBtn.textContent = `✓ ${t('contact.invite.sent_emails', { count: results.sent })}`;
         shareLinkBtn.classList.add('success');
 
+        // TODO: Separate UI concern (emit event)
+        showSuccessToast(
+          t('contact.invite.sent_emails', { count: results.sent }),
+        );
+
         // Clear selection after success
         setTimeout(() => {
           selectedContacts.clear();
@@ -516,12 +522,13 @@ function renderImportResults(
           selectAllCheckbox.checked = false;
           shareLinkBtn.classList.remove('success');
         }, 3000);
-      } else {
+      } else if (results.failed > 0) {
         shareLinkBtn.textContent = t('contact.invite.failed_emails');
         shareLinkBtn.disabled = false;
-      }
 
-      if (results.failed > 0) {
+        // TODO: Separate UI concern (emit event)
+        showErrorToast(t('contact.invite.failed_emails'));
+
         console.warn(
           `[ADD CONTACT] ${results.failed} emails failed:`,
           results.errors,
@@ -534,6 +541,9 @@ function renderImportResults(
       if (err.message === 'Authorization cancelled') {
         shareLinkBtn.textContent = t('contact.invite.permission_denied');
 
+        // TODO: Separate UI concern (emit event)
+        showErrorToast(t('contact.invite.permission_denied'));
+
         setTimeout(() => {
           openGmailComposeFallback(notOnApp);
           shareLinkBtn.textContent = t('contact.invite.email', {
@@ -545,6 +555,11 @@ function renderImportResults(
         shareLinkBtn.textContent = t('contact.invite.error_retry');
         shareLinkBtn.disabled = false;
         alert(t('contact.invite.failed_detail', { error: err.message }));
+
+        // TODO: Separate UI concern (emit event)
+        showErrorToast(
+          t('contact.invite.failed_detail', { error: err.message }),
+        );
       }
     }
   });
