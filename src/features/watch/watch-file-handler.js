@@ -1,10 +1,10 @@
-import { isVideoMime, mimeFromExtension } from '../utils/is-video-mime.js';
+import { isVideoMime, mimeFromExtension } from '../../utils/is-video-mime.js';
 import {
   handleVideoSelection,
   createWatchRequest,
   acceptWatchRequest,
   cancelWatchRequest,
-} from '../firebase/watch-sync.js';
+} from './watch-sync.js';
 import {
   registerVideoForServing,
   isSwServingSupported,
@@ -13,8 +13,8 @@ import {
   convertToMp4,
   promptUserForEac3Support,
   trackNeedsAc3Decoder,
-} from '../media/convert/index.js';
-import { devDebug } from '../utils/dev/dev-utils.js';
+} from '../../media/convert/index.js';
+import { devDebug } from '../../utils/dev/dev-utils.js';
 
 const MKV_MIMES = new Set(['video/x-matroska', 'video/matroska']);
 

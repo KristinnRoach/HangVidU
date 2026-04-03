@@ -22,7 +22,7 @@ import {
 
 import { setupShowHideOnInactivity } from '../../utils/showHideOnInactivity.js';
 import { hasRemoteStream } from '../../../../media/state.js';
-import { isWatchModeActive } from '../../../../firebase/watch-sync.js'; // Import from watch-sync.js (should probably be from watch-mode.js)
+import { isWatchModeActive } from '../../../../features/watch/watch-sync.js'; // Import from watch-sync.js (should probably be from watch-mode.js)
 
 let isInCallMode = false; // Call mode state
 let enterCallModeWaitingForVideo = false;

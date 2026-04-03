@@ -9,7 +9,7 @@ import {
   showElement,
   hideElement,
 } from '../../components/ui/utils/ui-utils.js';
-import { handleVideoSelection } from '../../firebase/watch-sync.js';
+import { handleVideoSelection } from '../../features/watch/watch-sync.js';
 
 // ===== ELEMENTS =====
 

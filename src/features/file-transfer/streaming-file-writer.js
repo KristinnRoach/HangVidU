@@ -1,4 +1,4 @@
-import { devDebug } from '../utils/dev/dev-utils';
+import { devDebug } from '../../utils/dev/dev-utils';
 
 const OPFS_DIR_NAME = 'file-transfers';
 const PROBE_FILE_NAME = '__quota_probe__';

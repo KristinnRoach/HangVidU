@@ -1,4 +1,4 @@
-// src/file-transfer/transport/file-transport.js
+// src/features/file-transfer/transport/file-transport.js
 // Base class defining the raw file transport I/O interface
 
 /**

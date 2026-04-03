@@ -17,9 +17,9 @@ import {
   removeRTDBListenersForRoom,
 } from '../../storage/fb-rtdb/rtdb.js';
 import { devDebug } from '../../utils/dev/dev-utils.js';
-import { FileTransferController } from '../../file-transfer/file-transfer-controller.js';
-import { StreamingFileWriter } from '../../file-transfer/streaming-file-writer.js';
-import { cleanupWatchSync } from '../../firebase/watch-sync.js';
+import { FileTransferController } from '../file-transfer/file-transfer-controller.js';
+import { StreamingFileWriter } from '../file-transfer/streaming-file-writer.js';
+import { cleanupWatchSync } from '../watch/watch-sync.js';
 import { cleanupLocalStream } from '../../media/state.js';
 import { setRemoteDescription } from './webrtc-utils.js';
 import { drainIceCandidateQueue } from './ice.js';

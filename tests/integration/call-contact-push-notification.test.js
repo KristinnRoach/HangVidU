@@ -235,7 +235,7 @@ vi.mock('../../src/elements.js', () => {
   };
 });
 
-vi.mock('../../src/firebase/watch-sync.js', () => ({
+vi.mock('../../src/features/watch/watch-sync.js', () => ({
   setupWatchSync: vi.fn(),
   isWatchModeActive: vi.fn(() => false),
   getLastWatched: vi.fn(),
