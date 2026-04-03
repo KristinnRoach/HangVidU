@@ -13,7 +13,7 @@ import { onOneTapStatusChange, cancelOneTap } from '../onetap.js';
 import { isDev, devDebug } from '../../utils/dev/dev-utils.js';
 import { t, onLocaleChange } from '../../i18n/index.js';
 
-import createComponent from '../../ui/component-system/component.js';
+import createComponent from '../../components/ui/component-system/component.js';
 
 let authComponent = null;
 

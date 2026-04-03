@@ -1,6 +1,6 @@
 import { devDebug, isDev, tempInfo } from '../utils/dev/dev-utils';
-import { hideElement, showElement } from '../ui/utils/ui-utils';
-import createIconButton from '../ui/components/base/button/icon-button.js';
+import { hideElement, showElement } from '../components/ui/utils/ui-utils.js';
+import createIconButton from '../components/base/button/icon-button.js';
 import { debugPWAInstall } from './debug-pwa.js';
 
 let beforeInstallEvent = null;
@@ -80,7 +80,7 @@ async function setupPWA() {
 
     installBtn.onclick = () => {
       alert(
-        "Tap the Share icon and choose 'Add to Home Screen' to install this app."
+        "Tap the Share icon and choose 'Add to Home Screen' to install this app.",
       );
     };
     return;
@@ -93,7 +93,7 @@ async function setupPWA() {
 
       if (!beforeInstallEvent) {
         console.warn(
-          '[PWA]: beforeInstallEvent is null - beforeinstallprompt may not have fired'
+          '[PWA]: beforeInstallEvent is null - beforeinstallprompt may not have fired',
         );
 
         // Show PWA install diagnostics (dev-only by default)

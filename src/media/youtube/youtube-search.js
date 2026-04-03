@@ -3,8 +3,12 @@ import { devDebug } from '../../utils/dev/dev-utils.js';
 // YOUTUBE SEARCH MODULE
 // ============================================================================
 
-import { onClickOutside } from '../../ui/utils/clickOutside.js';
-import { isHidden, showElement, hideElement } from '../../ui/utils/ui-utils.js';
+import { onClickOutside } from '../../components/ui/utils/clickOutside.js';
+import {
+  isHidden,
+  showElement,
+  hideElement,
+} from '../../components/ui/utils/ui-utils.js';
 import { handleVideoSelection } from '../../firebase/watch-sync.js';
 
 // ===== ELEMENTS =====

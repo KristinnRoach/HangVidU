@@ -1,4 +1,4 @@
-import { t } from '../../../i18n/index.js';
+import { t } from '../../i18n/index.js';
 
 // Map of roomId → resolver function for promise-based UI coordination
 const activeIncomingCallResolvers = new Map();

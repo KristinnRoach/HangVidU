@@ -1,6 +1,6 @@
 import { t } from '../../i18n/index.js';
 import { contactsService } from '../contacts-service.js';
-import confirmDialog from '../../ui/components/base/confirm-dialog.js';
+import confirmDialog from '../../components/base/confirm-dialog.js';
 
 /**
  * Prompt user to save a contact after hangup.

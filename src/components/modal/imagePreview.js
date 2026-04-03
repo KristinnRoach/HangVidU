@@ -1,7 +1,5 @@
-// src/ui/components/modal/imagePreview.js
-
-import { onSwipe } from '../../utils/swipe-interactions.js';
-import { initIcons } from '../../icons.js';
+import { onSwipe } from '../ui/utils/swipe-interactions.js';
+import { initIcons } from '../ui/icons.js';
 
 /**
  * Opens a full-screen preview modal for an image using the native <dialog> element.

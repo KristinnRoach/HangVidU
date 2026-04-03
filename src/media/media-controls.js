@@ -1,6 +1,6 @@
 // media-controls.js
 // Handles all media control button functionality (mute, video, camera, fullscreen)
-import { initIcons } from '../ui/icons.js';
+import { initIcons } from '../components/ui/icons.js';
 
 import {
   switchVideoStreamFacingMode,
@@ -13,7 +13,7 @@ import {
   requestPiP,
   isPiPSupported,
   showElement,
-} from '../ui/utils/ui-utils.js';
+} from '../components/ui/utils/ui-utils.js';
 import { devDebug, isDev, isProd } from '../utils/dev/dev-utils.js';
 
 // ============================================================================

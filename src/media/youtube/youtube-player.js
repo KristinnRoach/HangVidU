@@ -2,7 +2,10 @@
 // YOUTUBE PLAYER MODULE
 // ============================================================================
 
-import { showElement, hideElement } from '../../ui/utils/ui-utils.js';
+import {
+  showElement,
+  hideElement,
+} from '../../components/ui/utils/ui-utils.js';
 
 const YT_CONTAINER_ID = 'yt-video-box';
 const YT_PLAYER_ROOT_ID = 'yt-player-root';

@@ -26,7 +26,7 @@ vi.mock('../../auth/auth-state.js', () => ({
   getLoggedInUserId: vi.fn(() => 'user-123'),
 }));
 
-vi.mock('../../ui/components/base/confirm-dialog.js', () => ({
+vi.mock('../../components/base/confirm-dialog.js', () => ({
   default: vi.fn(),
 }));
 
@@ -34,7 +34,7 @@ vi.mock('./edit-contact-modal.js', () => ({
   default: vi.fn(),
 }));
 
-vi.mock('../../ui/utils/ui-utils.js', () => ({
+vi.mock('../../components/ui/utils/ui-utils.js', () => ({
   hideElement: mocks.hideElement,
   showElement: mocks.showElement,
 }));
@@ -44,11 +44,11 @@ vi.mock('../../i18n/index.js', () => ({
   onLocaleChange: mocks.onLocaleChange,
 }));
 
-vi.mock('../../ui/component-system/dom-utils.js', () => ({
+vi.mock('../../components/ui/component-system/dom-utils.js', () => ({
   escapeHtml: vi.fn((value) => String(value)),
 }));
 
-vi.mock('../../ui/icons.js', () => ({
+vi.mock('../../components/ui/icons.js', () => ({
   initIcons: mocks.initIcons,
 }));
 
@@ -68,7 +68,7 @@ vi.mock('../contacts-service.js', () => ({
   },
 }));
 
-vi.mock('../../ui/dispatcher.js', () => ({
+vi.mock('../../components/ui/dispatcher.js', () => ({
   dispatchUIEvent: mocks.dispatchUIEvent,
 }));
 

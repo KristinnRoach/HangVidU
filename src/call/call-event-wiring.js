@@ -4,7 +4,7 @@ import { getUserId, getUser } from '../auth/auth-state.js';
 import { getPushNotifications } from '../push-notifications/index.js';
 import { cleanupRemoteStream } from '../media/state.js';
 import { clearUrlParam } from '../utils/url.js';
-import { onCallAnswered } from '../ui/components/calling/calling-ui.js';
+import { onOutgoingCallAnswered } from './components/outgoing-call.js';
 import { promptAndRefreshContactSave } from '../app/contact-save-flow.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { appBus } from '../app/app-bus.js';
@@ -53,7 +53,7 @@ export function setupCallControllerEventWiring(options = {}) {
     CallController.setPartnerId(memberId);
 
     // below is cb from UI module - TODO: clarify / refactor
-    onCallAnswered().catch((e) =>
+    onOutgoingCallAnswered().catch((e) =>
       console.warn('Failed to clear calling state:', e),
     );
   });

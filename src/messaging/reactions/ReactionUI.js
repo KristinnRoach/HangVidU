@@ -6,7 +6,7 @@ import {
   getReactionEmoji,
   getAvailableReactions,
 } from './ReactionConfig.js';
-import { onClickOutside } from '../../ui/utils/clickOutside.js';
+import { onClickOutside } from '../../components/ui/utils/clickOutside.js';
 
 /**
  * ReactionUI - Handles reaction UI rendering and interactions

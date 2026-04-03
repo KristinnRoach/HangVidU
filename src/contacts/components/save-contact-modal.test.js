@@ -15,7 +15,7 @@ vi.mock('../contacts-service.js', () => ({
   },
 }));
 
-vi.mock('../../ui/components/base/confirm-dialog.js', () => ({
+vi.mock('../../components/base/confirm-dialog.js', () => ({
   default: mocks.confirmDialog,
 }));
 

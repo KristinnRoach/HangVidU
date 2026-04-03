@@ -1,4 +1,4 @@
-import { t } from '../../../i18n/index.js';
+import { t } from '../../i18n/index.js';
 
 export function initJoinRoomForm(container, onSubmit) {
   if (!container) return;

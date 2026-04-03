@@ -8,7 +8,7 @@ import {
   removeIncomingListenersForRoom,
 } from '../call/room-listeners.js';
 import { clearUrlParam } from '../utils/url.js';
-import { onCallDisconnected } from '../ui/core/call-lifecycle-ui.js';
+import { onCallDisconnected } from '../components/ui/core/call-lifecycle-ui.js';
 
 export function setupMainAppBusListeners() {
   appBus.on(

@@ -14,7 +14,7 @@ import {
   exitWatchModeBtn,
   localBoxEl,
   remoteBoxEl,
-} from '../../../elements.js';
+} from '../../../../elements.js';
 
 import {
   showElement,
@@ -28,14 +28,14 @@ import {
 import {
   isWatchModeActive,
   setWatchMode,
-} from '../../../firebase/watch-sync.js';
+} from '../../../../firebase/watch-sync.js';
 
 // Import from call-mode
 import { getIsInCallMode } from './call-mode.js';
 
 // Import media state
-import { hasRemoteStream, getRemoteStream } from '../../../media/state.js';
-import { devDebug } from '../../../utils/dev/dev-utils.js';
+import { hasRemoteStream, getRemoteStream } from '../../../../media/state.js';
+import { devDebug } from '../../../../utils/dev/dev-utils.js';
 
 // TODO: check if setupShowHideOnInactivity needs integrating here.
 
