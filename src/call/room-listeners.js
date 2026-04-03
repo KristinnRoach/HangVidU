@@ -324,7 +324,6 @@ async function handleIncomingCallAccepted({ roomId, joinedContactId }) {
 
   const success = await joinOrCreateRoomWithId(roomId).catch((e) => {
     console.warn('Failed to answer incoming call:', e);
-    devDebug('Failed to answer incoming call.');
     getDiagnosticLogger().logFirebaseOperation(
       'join_room_on_accept',
       false,

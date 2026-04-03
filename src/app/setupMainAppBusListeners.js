@@ -7,6 +7,8 @@ import {
   listenForIncomingOnRoom,
   removeIncomingListenersForRoom,
 } from '../call/room-listeners.js';
+import { clearUrlParam } from '../utils/url.js';
+import { onCallDisconnected } from '../ui/core/call-lifecycle-ui.js';
 
 export function setupMainAppBusListeners() {
   appBus.on(
@@ -43,7 +45,10 @@ export function setupMainAppBusListeners() {
               });
           }
         } catch (e) {
-          console.warn('Failed to select conversation on call:outgoing:requested:', e);
+          console.warn(
+            'Failed to select conversation on call:outgoing:requested:',
+            e,
+          );
         }
       }
 
@@ -60,5 +65,14 @@ export function setupMainAppBusListeners() {
       removeIncomingListenersForRoom(previousRoomId);
     }
     listenForIncomingOnRoom(roomId);
+  });
+
+  appBus.on('room:joinOrCreate:failed', ({ roomId }) => {
+    console.warn(
+      `[AppBus] room:joinOrCreate:failed 
+      Failed to join or create room with id: ${roomId}`,
+    );
+    clearUrlParam();
+    onCallDisconnected();
   });
 }
