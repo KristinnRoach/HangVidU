@@ -4,7 +4,6 @@
 
 #main-messages-toggle-btn {
   position: relative;
-  anchor-name: --msg-toggle;
 }
 
 #main-messages-toggle-btn button {
@@ -240,8 +239,8 @@
   border-radius: 16px;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
 
-  user-select: none;
   -webkit-user-select: none;
+  user-select: none;
   cursor: pointer;
 
   & p {
@@ -367,9 +366,12 @@
   font-size: 16px;
   line-height: 1.4;
   -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 
   /* Auto-grow textarea sizing */
-  field-sizing: content; /* Native auto-grow (Chrome/Edge 123+) */
+  @supports (field-sizing: content) {
+    field-sizing: content; /* Native auto-grow (Chrome/Edge 123+) */
+  }
   height: auto; /* Initial height - let field-sizing or JS handle it */
   min-height: calc(1.5em + 12px); /* line-height + (padding * 2) */
   max-height: calc(7.5em + 12px); /* ~5 lines + padding */
@@ -546,7 +548,11 @@
 
 /* ===== CSS ANCHOR POSITIONING ===== */
 
-@supports (position-anchor: --msg-toggle) {
+@supports (anchor-name: --msg-toggle) and (position-anchor: --msg-toggle) {
+  #main-messages-toggle-btn {
+    anchor-name: --msg-toggle;
+  }
+
   /* Toggle is in top bar → anchor messages box below it */
   .messages-box {
     position-anchor: --msg-toggle;

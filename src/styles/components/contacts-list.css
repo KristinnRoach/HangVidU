@@ -81,6 +81,7 @@
       }
 
       & .contact-name {
+        -webkit-user-select: none;
         user-select: none;
         padding: 4px;
         border-radius: 6px;
@@ -334,6 +335,7 @@
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
+  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -383,6 +385,7 @@
   gap: 0.75rem;
   flex: 1;
   cursor: pointer;
+  -webkit-user-select: none;
   user-select: none;
   min-width: 0;
 }

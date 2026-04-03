@@ -3,7 +3,6 @@
 .notifications-toggle-container {
   position: relative;
   display: block;
-  anchor-name: --notifications-toggle;
 }
 
 .notifications-toggle-btn {
@@ -63,22 +62,23 @@
 
   padding: 8px;
   background: transparent;
+
+  /* Fallback position for browsers without CSS anchor positioning */
+  top: 80px;
+  right: 20px;
 }
 
-/* CSS Anchor Positioning - anchor to notifications toggle */
-@supports (anchor-name: --notifications-toggle) {
+/* CSS Anchor Positioning - progressive enhancement */
+@supports (anchor-name: --notifications-toggle) and
+  (position-anchor: --notifications-toggle) {
+  .notifications-toggle-container {
+    anchor-name: --notifications-toggle;
+  }
+
   .notifications-list-container {
     position-anchor: --notifications-toggle;
     top: anchor(bottom);
     right: anchor(right);
-  }
-}
-
-/* Fallback for browsers without anchor positioning */
-@supports not (anchor-name: --notifications-toggle) {
-  .notifications-list-container {
-    top: 80px;
-    right: 20px;
   }
 }
 
