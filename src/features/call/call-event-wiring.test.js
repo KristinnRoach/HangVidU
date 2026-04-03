@@ -59,7 +59,7 @@ vi.mock('../auth/auth-state.js', () => ({
   getUser: mocks.auth.getUser,
 }));
 
-vi.mock('../../push-notifications/index.js', () => ({
+vi.mock('../push-notifications/index.js', () => ({
   getPushNotifications: vi.fn(() => mocks.pushController),
 }));
 

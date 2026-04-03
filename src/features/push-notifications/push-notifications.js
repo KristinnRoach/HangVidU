@@ -1,8 +1,7 @@
-// src/push-notifications/push-notifications.js
 // Public app-facing push notifications facade.
 
-import { getLoggedInUserId, getUser } from '../features/auth/auth-state.js';
-import { callCloudFunction } from '../firebase/cloud-functions.js';
+import { callCloudFunction } from '../../firebase/cloud-functions.js';
+
 const PERMISSION_REQUEST_TIMEOUT_MS = 8000;
 
 function resolveCallNotificationType(type) {
@@ -518,7 +517,8 @@ export class PushNotifications {
 
     if (!callerName) {
       try {
-        const { contactsService } = await import('../features/contacts/contacts-service.js');
+        const { contactsService } =
+          await import('../contacts/contacts-service.js');
         const contact = await contactsService.getContactByRoomId(roomId);
         // TODO: Centralize caller display-name fallback policy once ownership is settled.
         displayName = contact?.contactName || callerId || 'Unknown caller';
@@ -653,7 +653,6 @@ export class PushNotifications {
       }
     });
   }
-
 }
 
 let instance = null;
@@ -667,5 +666,3 @@ export const getPushNotifications = () => {
   }
   return instance;
 };
-
-export const pushNotifications = getPushNotifications();

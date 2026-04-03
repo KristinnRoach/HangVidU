@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../features/auth/index.js', () => ({
+vi.mock('../../auth/index.js', () => ({
   getLoggedInUserToken: vi.fn().mockResolvedValue('test-id-token'),
 }));
 
-vi.mock('../../features/auth/auth-state.js', () => ({
+vi.mock('../../auth/auth-state.js', () => ({
   getLoggedInUserId: vi.fn().mockReturnValue('user-123'),
   getUser: vi.fn().mockReturnValue({
     uid: 'user-123',
@@ -333,9 +333,9 @@ describe('PushNotifications', () => {
   it('fails fast when no active service worker registration exists', async () => {
     navigator.serviceWorker.getRegistration.mockResolvedValue(null);
 
-    await expect(controller.dismissCallNotifications('room-42')).rejects.toThrow(
-      'No active service worker registration',
-    );
+    await expect(
+      controller.dismissCallNotifications('room-42'),
+    ).rejects.toThrow('No active service worker registration');
   });
 
   it('disables notifications by removing the subscription and unsubscribing', async () => {

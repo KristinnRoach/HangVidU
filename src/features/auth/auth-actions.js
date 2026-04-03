@@ -9,7 +9,7 @@ import { showOneTapSignin } from './onetap.js';
 import { setUserOffline } from '../../firebase/presence.js';
 import { t } from '../../i18n/index.js';
 import { devDebug } from '../../utils/dev/dev-utils.js';
-import { getPushNotifications } from '../../push-notifications/index.js';
+import { getPushNotifications } from '../push-notifications/index.js';
 import { callCloudFunction } from '../../firebase/cloud-functions.js';
 
 // iOS standalone PWA Safari fallback: armed after a failed attempt,

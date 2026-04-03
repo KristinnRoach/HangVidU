@@ -12,7 +12,7 @@ import { contactsService } from '../contacts/index.js';
 import { getDeterministicRoomId } from '../../utils/room-id.js';
 import RoomService from './room.js';
 import CallController from './call-controller.js';
-import { getPushNotifications } from '../../push-notifications/index.js';
+import { getPushNotifications } from '../push-notifications/index.js';
 import { ringtoneManager } from '../../media/audio/ringtone-manager.js';
 import { callIndicators } from '../../components/ui/utils/call-indicators.js';
 import {

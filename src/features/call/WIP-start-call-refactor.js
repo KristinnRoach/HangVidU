@@ -1,5 +1,5 @@
 import { getUser, getUserId } from '../auth/auth-state.js';
-import { getPushNotifications } from '../../push-notifications/index.js';
+import { getPushNotifications } from '../push-notifications/index.js';
 import CallController from './call-controller.js';
 import { contactsService } from '../contacts/index.js';
 import RoomService from './room.js';
