@@ -1,5 +1,3 @@
-// src/ui/components/modal/imagePreview.js
-
 import { onSwipe } from '../ui/utils/swipe-interactions.js';
 import { initIcons } from '../ui/icons.js';
 

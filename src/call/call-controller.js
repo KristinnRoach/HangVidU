@@ -282,11 +282,11 @@ class CallController {
       devDebug('Call rejected by partner', { roomId, rej });
 
       // TODO: Consider other options for this:
-      // Import onCallRejected dynamically to avoid circular dependencies
+      // Import onOutgoingCallRejected dynamically to avoid circular dependencies
       try {
-        const { onCallRejected } =
+        const { onOutgoingCallRejected } =
           await import('./components/outgoing-call.js');
-        await onCallRejected(rej.reason || 'user_rejected');
+        await onOutgoingCallRejected(rej.reason || 'user_rejected');
       } catch (_) {
         devDebug('Call declined');
       }
