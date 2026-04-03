@@ -9,7 +9,7 @@ import {
 } from './call-flow.js';
 import { createDataConnection, joinDataConnection } from './data-connection.js';
 import RoomService from './room.js';
-import { getUserId } from '../../auth/auth-state.js';
+import { getUserId } from '../../auth/index.js';
 import { ref, off } from 'firebase/database';
 import {
   onDataChange,

@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MessagingController } from './messaging-controller.js';
 
 // Mock auth state
-vi.mock('../../auth/auth-state.js', () => ({
+vi.mock('../../auth/index.js', () => ({
   getLoggedInUserId: vi.fn(() => 'me'),
   getUserId: vi.fn(() => 'me'),
   getUser: vi.fn(() => ({ uid: 'me', displayName: 'Test User' })),

@@ -3,7 +3,7 @@
 // The controller uses this to produce canonical messages before passing to any store.
 
 import { MessageSchema } from './schema.js';
-import { getUserId, getUser } from '../../auth/auth-state.js';
+import { getUserId, getUser } from '../../auth/index.js';
 
 /**
  * Generate a unique, time-sortable ID.

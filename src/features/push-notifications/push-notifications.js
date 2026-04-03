@@ -517,8 +517,7 @@ export class PushNotifications {
 
     if (!callerName) {
       try {
-        const { contactsService } =
-          await import('../contacts/contacts-service.js');
+        const { contactsService } = await import('../contacts/index.js');
         const contact = await contactsService.getContactByRoomId(roomId);
         // TODO: Centralize caller display-name fallback policy once ownership is settled.
         displayName = contact?.contactName || callerId || 'Unknown caller';

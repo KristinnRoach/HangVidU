@@ -53,7 +53,7 @@ vi.mock('../contacts/index.js', () => ({
   renderContactsList: mocks.renderContactsList,
 }));
 
-vi.mock('../auth/auth-state.js', () => ({
+vi.mock('../auth/index.js', () => ({
   getLoggedInUserId: mocks.auth.getUserId,
   getUserId: mocks.auth.getUserId,
   getUser: mocks.auth.getUser,
@@ -81,6 +81,7 @@ vi.mock('../../app/contact-save-flow.js', () => ({
 
 vi.mock('../../utils/dev/dev-utils.js', () => ({
   devDebug: mocks.devDebug,
+  isDev: vi.fn(() => false),
 }));
 
 vi.mock('../../app/app-bus.js', () => ({

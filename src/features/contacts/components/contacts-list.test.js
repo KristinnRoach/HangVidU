@@ -22,7 +22,7 @@ vi.mock('../../../storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
 }));
 
-vi.mock('../../../auth/auth-state.js', () => ({
+vi.mock('../../../auth/index.js', () => ({
   getLoggedInUserId: vi.fn(() => 'user-123'),
 }));
 

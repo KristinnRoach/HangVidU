@@ -9,7 +9,7 @@
  * Each flow is self-contained and easy to follow from top to bottom.
  */
 
-import { getUserId } from '../../auth/auth-state.js';
+import { getUserId } from '../../auth/index.js';
 import { devDebug } from '../../utils/dev/dev-utils.js';
 import { showErrorToast } from '../../components/toast.js';
 import { t } from '../../i18n/index.js';

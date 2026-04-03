@@ -14,7 +14,7 @@ import { createWatchFileHandler } from '../../watch/watch-file-handler.js';
 import { linkifyToFragment } from '../../../utils/linkify.js';
 import { ReactionManager, ReactionUI } from '../reactions/index.js';
 import { REACTION_CONFIG } from '../reactions/ReactionConfig.js';
-import { getUserId } from '../../../auth/auth-state.js';
+import { getUserId } from '../../../auth/index.js';
 import { messagingController } from '../messaging-controller.js';
 import {
   showErrorToast,

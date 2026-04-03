@@ -3,10 +3,10 @@
 
 import { ref, set, get } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
-import { subscribe } from '../../auth/auth-state.js';
+import { onAuthStateChange } from '../../auth/index.js';
 
 // Auto-save profile when user logs in
-subscribe((state) => {
+onAuthStateChange((state) => {
   if (state.isLoggedIn && state.user) {
     saveUserProfile(state.user).catch((err) => {
       console.warn('Failed to save user profile:', err);

@@ -6,13 +6,13 @@ import {
   onValue,
 } from 'firebase/database';
 import { rtdb } from '../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId, subscribe } from '../auth/auth-state.js';
+import { getLoggedInUserId, onAuthStateChange } from '../auth/index.js';
 
 let presenceInitializedForUserId = null;
 let lastSeenUserId = null;
 
 // Auto-initialize when user logs in
-subscribe((state) => {
+onAuthStateChange((state) => {
   if (state.isLoggedIn) {
     const userId = getLoggedInUserId();
     if (userId && userId !== lastSeenUserId) {
