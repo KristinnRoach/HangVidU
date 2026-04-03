@@ -28,7 +28,7 @@ import {
 import {
   isWatchModeActive,
   setWatchMode,
-} from '../../../../firebase/watch-sync.js';
+} from '../../../../features/watch/watch-sync.js';
 
 // Import from call-mode
 import { getIsInCallMode } from './call-mode.js';

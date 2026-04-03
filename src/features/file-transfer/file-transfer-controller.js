@@ -8,7 +8,7 @@ import {
 import { validateAssembly } from './file-assembler.js';
 import { WebRTCFileTransport } from './transport/webrtc-file-transport.js';
 import { StreamingFileWriter } from './streaming-file-writer.js';
-import { devDebug } from '../utils/dev/dev-utils.js';
+import { devDebug } from '../../utils/dev/dev-utils.js';
 
 const CHUNK_SIZE = TransferConfig.FILE_CONFIG.NETWORK_CHUNK_SIZE; // 64KB
 const CHUNK_YIELD_INTERVAL = TransferConfig.CHUNK_YIELD_INTERVAL; // null = disabled

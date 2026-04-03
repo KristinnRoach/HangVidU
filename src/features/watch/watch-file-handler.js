@@ -4,11 +4,11 @@ import {
   createWatchRequest,
   acceptWatchRequest,
   cancelWatchRequest,
-} from '../../firebase/watch-sync.js';
+} from './watch-sync.js';
 import {
   registerVideoForServing,
   isSwServingSupported,
-} from '../../file-transfer/video-serving.js';
+} from '../file-transfer/video-serving.js';
 import {
   convertToMp4,
   promptUserForEac3Support,

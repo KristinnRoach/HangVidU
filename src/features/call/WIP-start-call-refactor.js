@@ -8,7 +8,7 @@ import { getDeterministicRoomId } from '../../utils/room-id.js';
 import { getElements } from '../../elements.js';
 import { getLocalStream } from '../../media/state.js';
 import { setupRemoteStream } from '../../media/stream.js';
-import { setupWatchSync } from '../../firebase/watch-sync.js';
+import { setupWatchSync } from '../watch/watch-sync.js';
 import { showCopyLinkModal } from '../../components/modal/copyLinkModal.js';
 import { devDebug } from '../../utils/dev/dev-utils.js';
 import { listenForIncomingOnRoom } from './room-listeners.js';

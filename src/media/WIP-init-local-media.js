@@ -9,7 +9,7 @@ import {
 import { initializeMediaControls } from './media-controls.js';
 import CallController from '../features/call/call-controller.js';
 import { showElement, hideElement } from '../components/ui/utils/ui-utils.js';
-import { isWatchModeActive } from '../firebase/watch-sync.js';
+import { isWatchModeActive } from '../features/watch/watch-sync.js';
 import { isRemoteVideoVideoActive } from '../components/ui/core/legacy/watch-mode.js';
 import { t } from '../i18n/index.js';
 
