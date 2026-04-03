@@ -88,6 +88,10 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild"
-    ]
+    ],
+    "overrides": {
+      "fast-xml-parser": "5.5.7",
+      "node-forge": "1.4.0"
+    }
   }
 }
