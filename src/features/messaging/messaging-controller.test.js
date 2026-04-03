@@ -1,4 +1,4 @@
-// src/messaging/messaging-controller.test.js
+// src/features/messaging/messaging-controller.test.js
 // Tests for MessagingController refactor (EventEmitter + Conversation-centric)
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -13,7 +13,7 @@ vi.mock('../auth/auth-state.js', () => ({
 
 // Mock profile
 const mockGetUserProfile = vi.fn(() => Promise.resolve(null));
-vi.mock('../../user/profile.js', () => ({
+vi.mock('../account/profile.js', () => ({
   getUserProfile: (...args) => mockGetUserProfile(...args),
 }));
 
