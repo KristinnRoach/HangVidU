@@ -22,6 +22,7 @@
     "preview": "vite preview",
     "preview:https": "PREVIEW_HTTPS=1 vite preview",
     "preview:pwa": "pnpm build && pnpm preview:https",
+    "lint:boundaries": "eslint \"src/**/*.js\"",
     "test": "vitest --run",
     "test:all": "pnpm test:compat && pnpm test:e2e",
     "test:watch": "vitest",
@@ -62,6 +63,8 @@
     "@vitest/coverage-v8": "^4.1.2",
     "baseline-browser-mapping": "^2.10.14",
     "concurrently": "^9.2.1",
+    "eslint": "^10.1.0",
+    "eslint-plugin-boundaries": "^6.0.2",
     "fast-check": "^4.6.0",
     "firebase-admin": "^13.7.0",
     "fkill-cli": "~9.0.0",
@@ -90,7 +93,8 @@
       "esbuild"
     ],
     "overrides": {
-      "ajv": "8.18.0",
+      "ajv@>=8": "8.18.0",
+      "eslint>ajv": "6.12.6",
       "fast-xml-parser": "5.5.7",
       "lodash": "4.18.1",
       "minimatch@>=5 <5.1.7": "5.1.9",
