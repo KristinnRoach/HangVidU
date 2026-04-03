@@ -322,9 +322,6 @@ async function handleIncomingCallAccepted({ roomId, joinedContactId }) {
     })
     .catch(() => {});
 
-  // TODO: On join failure, clearUrlParam() and onCallDisconnected() should run
-  // to reset call UI state. Both live outside call/ (utils/url.js, ui/core/),
-  // so this needs an event or callback approach to avoid cross-domain imports.
   const success = await joinOrCreateRoomWithId(roomId).catch((e) => {
     console.warn('Failed to answer incoming call:', e);
     devDebug('Failed to answer incoming call.');
@@ -341,7 +338,10 @@ async function handleIncomingCallAccepted({ roomId, joinedContactId }) {
   });
 
   if (!success) {
-    console.warn('[CALL] Join failed after accepting incoming call', { roomId });
+    console.warn('[CALL] Join failed after accepting incoming call', {
+      roomId,
+    });
+    appBus.emit('room:joinOrCreate:failed', { roomId });
   }
 }
 
