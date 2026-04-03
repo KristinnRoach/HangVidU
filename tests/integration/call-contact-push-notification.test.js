@@ -440,8 +440,8 @@ vi.mock('../../src/call/components/outgoing-call.js', () => ({
   showOutgoingCallUI: vi.fn(async () => {
     mocks.callSequence.push('showOutgoingCallUI');
   }),
-  onOutgoingCallAnswered: vi.fn(),
-  onOutgoingCallRejected: vi.fn(),
+  onOutgoingCallAnswered: vi.fn(() => Promise.resolve()),
+  onOutgoingCallRejected: vi.fn(() => Promise.resolve()),
   hideOutgoingCallingUI: vi.fn(),
   // isRoomCallFresh: vi.fn(() => true),
 }));
