@@ -516,6 +516,17 @@ function renderImportResults(
           { containerEl: toastContainerEl },
         );
 
+        // Potential partial failures - some sent, some failed
+        if (results.failed > 0) {
+          showErrorToast(t('contact.invite.failed_emails'), {
+            containerEl: toastContainerEl,
+          });
+          console.warn(
+            `[ADD CONTACT] Partial failure - ${results.failed} emails failed:`,
+            results.errors,
+          );
+        }
+
         // Clear selection after success
         setTimeout(() => {
           selectedContacts.clear();
@@ -527,6 +538,7 @@ function renderImportResults(
           shareLinkBtn.classList.remove('success');
         }, 3000);
       } else if (results.failed > 0) {
+        // All failed, none sent
         shareLinkBtn.textContent = t('contact.invite.failed_emails');
         shareLinkBtn.disabled = false;
 
@@ -562,7 +574,6 @@ function renderImportResults(
       } else {
         shareLinkBtn.textContent = t('contact.invite.error_retry');
         shareLinkBtn.disabled = false;
-        alert(t('contact.invite.failed_detail', { error: err.message }));
 
         // TODO: Separate UI concern (emit event)
         showErrorToast(
