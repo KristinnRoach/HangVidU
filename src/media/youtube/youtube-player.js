@@ -71,7 +71,7 @@ export function isYTVisible() {
 export function isYouTubeUrl(url) {
   if (!url) return false;
   try {
-    const { hostname } = new URL(url);
+    const { hostname } = new URL(url, 'https://placeholder.invalid');
     return hostname === 'www.youtube.com' || hostname === 'youtube.com' || hostname === 'youtu.be';
   } catch {
     return false;
