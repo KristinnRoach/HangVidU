@@ -1,5 +1,3 @@
-// src/call/ice.test.js
-
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { setupIceCandidates, drainIceCandidateQueue } from '../ice.js';
 import { addRTDBListener } from '../../../storage/fb-rtdb/rtdb.js';
@@ -72,11 +70,13 @@ describe('ICE Candidate Queuing', () => {
       },
     ];
 
-    vi.mocked(addRTDBListener).mockImplementation((ref, eventType, callback) => {
-      if (eventType === 'child_added') {
-        onChildAddedCallback = callback;
-      }
-    });
+    vi.mocked(addRTDBListener).mockImplementation(
+      (ref, eventType, callback) => {
+        if (eventType === 'child_added') {
+          onChildAddedCallback = callback;
+        }
+      },
+    );
   });
 
   afterEach(() => {
@@ -99,15 +99,15 @@ describe('ICE Candidate Queuing', () => {
       expect(addIceCandidateSpy).toHaveBeenCalledTimes(3);
       expect(addIceCandidateSpy).toHaveBeenNthCalledWith(
         1,
-        expect.objectContaining(mockCandidates[0])
+        expect.objectContaining(mockCandidates[0]),
       );
       expect(addIceCandidateSpy).toHaveBeenNthCalledWith(
         2,
-        expect.objectContaining(mockCandidates[1])
+        expect.objectContaining(mockCandidates[1]),
       );
       expect(addIceCandidateSpy).toHaveBeenNthCalledWith(
         3,
-        expect.objectContaining(mockCandidates[2])
+        expect.objectContaining(mockCandidates[2]),
       );
     });
   });
@@ -129,7 +129,7 @@ describe('ICE Candidate Queuing', () => {
       // Verify that signalingstatechange listener was attached for auto-drain
       expect(mockPc.addEventListener).toHaveBeenCalledWith(
         'signalingstatechange',
-        expect.any(Function)
+        expect.any(Function),
       );
     });
 
@@ -155,15 +155,15 @@ describe('ICE Candidate Queuing', () => {
       expect(addIceCandidateSpy).toHaveBeenCalledTimes(3);
       expect(addIceCandidateSpy).toHaveBeenNthCalledWith(
         1,
-        expect.objectContaining(mockCandidates[0])
+        expect.objectContaining(mockCandidates[0]),
       );
       expect(addIceCandidateSpy).toHaveBeenNthCalledWith(
         2,
-        expect.objectContaining(mockCandidates[1])
+        expect.objectContaining(mockCandidates[1]),
       );
       expect(addIceCandidateSpy).toHaveBeenNthCalledWith(
         3,
-        expect.objectContaining(mockCandidates[2])
+        expect.objectContaining(mockCandidates[2]),
       );
     });
 
@@ -180,7 +180,7 @@ describe('ICE Candidate Queuing', () => {
 
       // Capture the auto-drain listener
       const autoDrainListener = mockPc.addEventListener.mock.calls.find(
-        (call) => call[0] === 'signalingstatechange'
+        (call) => call[0] === 'signalingstatechange',
       )?.[1];
 
       expect(autoDrainListener).toBeDefined();
@@ -195,7 +195,7 @@ describe('ICE Candidate Queuing', () => {
       expect(addIceCandidateSpy).toHaveBeenCalledTimes(2);
       expect(mockPc.removeEventListener).toHaveBeenCalledWith(
         'signalingstatechange',
-        autoDrainListener
+        autoDrainListener,
       );
     });
 
