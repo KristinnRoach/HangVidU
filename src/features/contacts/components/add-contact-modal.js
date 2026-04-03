@@ -40,10 +40,10 @@ export async function showAddContactModal() {
           <i data-lucide="mail"></i>
         </button>
         <button type="button" class="platform-btn" data-platform="facebook" title="${t('contact.import.facebook')}" disabled>
-          <i data-lucide="facebook"></i>
+          <i data-lucide="monitor"></i>
         </button>
         <button type="button" class="platform-btn" data-platform="instagram" title="${t('contact.import.instagram')}" disabled>
-          <i data-lucide="instagram"></i>
+          <i data-lucide="monitor"></i>
         </button>
         <button type="button" class="platform-btn" data-platform="tiktok" title="${t('contact.import.tiktok')}" disabled>
           <i data-lucide="layout-grid"></i>
