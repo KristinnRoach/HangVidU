@@ -172,6 +172,15 @@ async function evaluateIncomingCallPreconditions({
       joiningUserId: joinedContactId,
       error: e,
     });
+    getDiagnosticLogger().logNotificationDecision(
+      'REJECT',
+      'room_read_failed',
+      roomId,
+      {
+        joiningUserId: joinedContactId,
+        error: e,
+      },
+    );
     return { canProceed: false };
   }
 
@@ -180,6 +189,14 @@ async function evaluateIncomingCallPreconditions({
       roomId,
       joiningUserId: joinedContactId,
     });
+    getDiagnosticLogger().logNotificationDecision(
+      'REJECT',
+      'invalid_room_state',
+      roomId,
+      {
+        joiningUserId: joinedContactId,
+      },
+    );
     return { canProceed: false };
   }
 
@@ -195,6 +212,18 @@ async function evaluateIncomingCallPreconditions({
       offerCreator,
       currentUserId,
     });
+    getDiagnosticLogger().logNotificationDecision(
+      'REJECT',
+      'not_answerable_offer_state',
+      roomId,
+      {
+        joiningUserId: joinedContactId,
+        hasOffer,
+        hasAnswer,
+        offerCreator,
+        currentUserId,
+      },
+    );
     return { canProceed: false };
   }
 
@@ -244,7 +273,7 @@ function decideIncomingNotificationStrategy({
       },
     );
     console.log(
-      '[CALL] Background incoming call detected, triggering push and continuing in-app incoming UI path',
+      '[CALL] Background incoming call detected, push notification expected, continuing in-app incoming UI path',
       {
         roomId,
         joiningUserId: joinedContactId,
@@ -293,9 +322,8 @@ async function handleIncomingCallAccepted({ roomId, joinedContactId }) {
     })
     .catch(() => {});
 
-  joinOrCreateRoomWithId(roomId).catch((e) => {
+  const success = await joinOrCreateRoomWithId(roomId).catch((e) => {
     console.warn('Failed to answer incoming call:', e);
-    devDebug('Failed to answer incoming call.');
     getDiagnosticLogger().logFirebaseOperation(
       'join_room_on_accept',
       false,
@@ -305,7 +333,15 @@ async function handleIncomingCallAccepted({ roomId, joinedContactId }) {
         joiningUserId: joinedContactId,
       },
     );
+    return false;
   });
+
+  if (!success) {
+    console.warn('[CALL] Join failed after accepting incoming call', {
+      roomId,
+    });
+    appBus.emit('room:joinOrCreate:failed', { roomId });
+  }
 }
 
 async function removeRecentCallRecordForCurrentUser(roomId) {
