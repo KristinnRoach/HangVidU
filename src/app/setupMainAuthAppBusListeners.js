@@ -10,7 +10,7 @@ import {
   processReferral,
   renderContactsList,
 } from '../features/contacts/index.js';
-import { getPushNotifications } from '../push-notifications/index.js';
+import { getPushNotifications } from '../features/push-notifications/index.js';
 import { showEnableNotificationsPrompt } from '../features/notifications/index.js';
 
 let cleanupMainAuthAppBusListeners = null;

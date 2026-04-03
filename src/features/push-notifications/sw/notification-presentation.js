@@ -1,4 +1,4 @@
-import { VIBRATION_PATTERNS } from '../../media/haptic/vibration-patterns.js';
+import { VIBRATION_PATTERNS } from '../../../media/haptic/vibration-patterns.js';
 
 const NOTIFICATION_ICON_PATH = 'icons/play-arrows-v1/icon-192.png';
 

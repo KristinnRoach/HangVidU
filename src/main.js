@@ -15,7 +15,7 @@ import {
   createNotificationsToggle,
   addDebugUpdateButton,
 } from './features/notifications/index.js';
-import { getPushNotifications } from './push-notifications/index.js';
+import { getPushNotifications } from './features/push-notifications/index.js';
 
 import CallController from './features/call/call-controller.js';
 import { messagingController } from './features/messaging/messaging-controller.js';

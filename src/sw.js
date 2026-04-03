@@ -10,8 +10,8 @@ import {
   isVideoServeRequest,
   handleVideoFetch,
 } from './file-transfer/sw-video-handler.js';
-import { handlePushEvent } from './push-notifications/sw/push-event-handler.js';
-import { handleNotificationClickEvent } from './push-notifications/sw/notification-click-handler.js';
+import { handlePushEvent } from './features/push-notifications/sw/push-event-handler.js';
+import { handleNotificationClickEvent } from './features/push-notifications/sw/notification-click-handler.js';
 
 // ============================================================================
 // WORKBOX PWA FUNCTIONALITY

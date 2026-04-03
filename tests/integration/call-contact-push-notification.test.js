@@ -156,7 +156,7 @@ vi.mock('../../src/features/notifications/index.js', () => ({
   createNotification: vi.fn(),
 }));
 
-vi.mock('../../src/push-notifications/index.js', () => ({
+vi.mock('../../src/features/push-notifications/index.js', () => ({
   getPushNotifications: vi.fn(() => mocks.pushController),
   pushNotifications: mocks.pushController,
 }));

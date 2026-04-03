@@ -43,7 +43,7 @@ vi.mock('../features/contacts/index.js', () => ({
   renderContactsList: mocks.renderContactsList,
 }));
 
-vi.mock('../push-notifications/index.js', () => ({
+vi.mock('../features/push-notifications/index.js', () => ({
   getPushNotifications: mocks.getPushNotifications,
 }));
 
