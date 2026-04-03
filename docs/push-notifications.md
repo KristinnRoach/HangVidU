@@ -11,7 +11,7 @@ Current ownership:
 - app code imports push functionality from [src/features/push-notifications/index.js](../src/features/push-notifications/index.js)
 - backend delivery logic lives under [functions/push-notifications](../functions/push-notifications)
 - service worker push handling lives under [src/features/push-notifications/sw](../src/features/push-notifications/sw)
-- in-app UI notifications remain separate under [src/notifications](../src/notifications)
+- in-app UI notifications remain separate under [src/features/notifications](../src/features/notifications)
 
 Current behavior:
 
