@@ -1,8 +1,7 @@
-// src/features/push-notifications/push-notifications.js
 // Public app-facing push notifications facade.
 
-import { getLoggedInUserId, getUser } from '../auth/auth-state.js';
 import { callCloudFunction } from '../../firebase/cloud-functions.js';
+
 const PERMISSION_REQUEST_TIMEOUT_MS = 8000;
 
 function resolveCallNotificationType(type) {

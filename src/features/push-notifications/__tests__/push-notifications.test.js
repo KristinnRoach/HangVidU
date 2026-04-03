@@ -333,9 +333,9 @@ describe('PushNotifications', () => {
   it('fails fast when no active service worker registration exists', async () => {
     navigator.serviceWorker.getRegistration.mockResolvedValue(null);
 
-    await expect(controller.dismissCallNotifications('room-42')).rejects.toThrow(
-      'No active service worker registration',
-    );
+    await expect(
+      controller.dismissCallNotifications('room-42'),
+    ).rejects.toThrow('No active service worker registration');
   });
 
   it('disables notifications by removing the subscription and unsubscribing', async () => {
