@@ -3,7 +3,7 @@
 
 import { ref, set, get } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
-import { subscribe } from '../auth/auth-state.js';
+import { subscribe } from '../../auth/auth-state.js';
 
 // Auto-register user in directory when they log in
 subscribe((state) => {

@@ -1,7 +1,7 @@
 // src/firebase/cloud-functions.js
 // Shared helper for calling Firebase Cloud Functions (onRequest endpoints).
 
-import { getLoggedInUserToken } from '../features/auth/index.js';
+import { getLoggedInUserToken } from '../auth/index.js';
 
 const FUNCTION_REGION = 'europe-west1';
 

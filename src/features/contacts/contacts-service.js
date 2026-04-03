@@ -1,4 +1,4 @@
-import { getIsLoggedIn, getLoggedInUserId } from '../auth/auth-state.js';
+import { getIsLoggedIn, getLoggedInUserId } from '../../auth/auth-state.js';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import {
   createContactsLocalStore,

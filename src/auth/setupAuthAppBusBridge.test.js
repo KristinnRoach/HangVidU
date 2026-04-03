@@ -26,7 +26,7 @@ vi.mock('./auth-bus.js', () => ({
   authBus: mocks.authBus,
 }));
 
-vi.mock('../../app/app-bus.js', () => ({
+vi.mock('../app/app-bus.js', () => ({
   appBus: mocks.appBus,
 }));
 

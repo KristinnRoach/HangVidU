@@ -1,4 +1,4 @@
-import { appBus } from '../../app/app-bus.js';
+import { appBus } from '../app/app-bus.js';
 import { AUTH_EVENTS, authBus } from './auth-bus.js';
 
 let cleanupAuthAppBusBridge = null;

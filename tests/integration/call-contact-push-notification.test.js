@@ -123,7 +123,7 @@ vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
 }));
 
-vi.mock('../../src/features/auth/auth-state.js', () => ({
+vi.mock('../../src/auth/auth-state.js', () => ({
   getLoggedInUserId: vi.fn(() => 'user-123'),
   getUserId: vi.fn(() => 'user-123'),
   getUser: vi.fn(() => ({
@@ -376,7 +376,7 @@ vi.mock('../../src/components/ui/utils/ui-utils.js', () => ({
   exitPiP: vi.fn(),
 }));
 
-vi.mock('../../src/features/auth/index.js', () => ({
+vi.mock('../../src/auth/index.js', () => ({
   signInWithAccountSelection: vi.fn(),
   signOutUser: vi.fn(),
   deleteAccount: vi.fn(),

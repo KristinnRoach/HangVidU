@@ -21,12 +21,12 @@ vi.mock('firebase/auth', () => ({
   inMemoryPersistence: {},
 }));
 
-vi.mock('../../../firebase/firebase.js', () => ({
+vi.mock('../../firebase/firebase.js', () => ({
   app: {},
   fcmVapidKey: 'test-vapid-key',
 }));
 
-vi.mock('../../../firebase/presence.js', () => ({
+vi.mock('../../firebase/presence.js', () => ({
   setOffline: vi.fn(() => Promise.resolve()),
 }));
 
@@ -42,7 +42,7 @@ vi.mock('../auth-state.js', () => ({
   getLoggedInUserId: vi.fn(() => null),
 }));
 
-vi.mock('../../ui/ui-state.js', () => ({
+vi.mock('../../components/ui/core/ui-state.js', () => ({
   uiState: { view: 'lobby:guest', setView: vi.fn() },
 }));
 
@@ -60,7 +60,7 @@ vi.mock('firebase/database', () => ({
   serverTimestamp: vi.fn(() => ({ '.sv': 'timestamp' })),
 }));
 
-vi.mock('../../../storage/fb-rtdb/rtdb.js', () => ({
+vi.mock('../../storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
 }));
 

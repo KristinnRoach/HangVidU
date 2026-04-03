@@ -11,7 +11,7 @@ import { getDiagnosticLogger } from '../../../utils/dev/diagnostic-logger.js';
 import RoomService from '../room.js';
 import { ringtoneManager } from '../../../media/audio/ringtone-manager.js';
 import { t } from '../../../i18n/index.js';
-import { getUserId } from '../../auth/auth-state.js';
+import { getUserId } from '../../../auth/auth-state.js';
 
 let activeCallingUI = null;
 let timeoutId = null;

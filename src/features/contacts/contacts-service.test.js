@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('../auth/auth-state.js', () => ({
+vi.mock('../../auth/auth-state.js', () => ({
   getIsLoggedIn: () => mocks.auth.loggedIn,
   getLoggedInUserId: () => mocks.auth.ownerId,
 }));

@@ -35,7 +35,7 @@ vi.mock('../../src/features/call/room.js', () => {
   };
 });
 
-vi.mock('../../src/features/auth/auth-state.js', () => {
+vi.mock('../../src/auth/auth-state.js', () => {
   return {
     getUserId: () => 'test-user-id',
     getUser: () => ({ uid: 'test-user-id' }),

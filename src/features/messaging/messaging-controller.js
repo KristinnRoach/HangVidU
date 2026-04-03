@@ -2,7 +2,7 @@ import { RTDBMessageStore } from './storage/rtdb-message-store.js';
 import { fileToBase64 } from '../../utils/file-to-base64.js';
 import { compressImage } from '../../media/image-compress.js';
 import { EventEmitter } from '../../app/event-emitter.js';
-import { getUserId } from '../auth/auth-state.js';
+import { getUserId } from '../../auth/auth-state.js';
 import { getUserProfile } from '../account/index.js';
 import {
   createFileMessage,

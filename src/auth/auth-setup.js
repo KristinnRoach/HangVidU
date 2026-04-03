@@ -1,6 +1,10 @@
 // src/auth/auth-setup.js — auth instance, initialization, persistence, onAuthStateChanged
 
-import { setState, subscribe, waitForAuthReady } from './auth-state.js';
+import {
+  setState,
+  subscribe,
+  waitForAuthReady,
+} from './auth-state.js';
 
 import {
   getAuth,
@@ -12,12 +16,13 @@ import {
   inMemoryPersistence,
 } from 'firebase/auth';
 
-import { app } from '../../firebase/firebase.js';
-import { devDebug } from '../../utils/dev/dev-utils.js';
+import { app } from '../firebase/firebase.js';
+import { devDebug } from '../utils/dev/dev-utils.js';
 import { initOneTap, showOneTapSignin } from './onetap.js';
 import { clearGISTokenCache } from './gis-tokens.js';
-import { getLocale, onLocaleChange } from '../../i18n/index.js';
-import { uiState } from '../../components/ui/core/ui-state.js';
+import { setupAuthIntentListeners } from './auth-intent-listeners.js';
+import { getLocale, onLocaleChange } from '../i18n/index.js';
+import { uiState } from '../components/ui/core/ui-state.js';
 
 export const auth = getAuth(app);
 
@@ -73,6 +78,8 @@ export function initAuth() {
 }
 
 async function _initAuthInternal() {
+  setupAuthIntentListeners();
+
   // Signal that auth initialization is in progress
   setState({ status: 'loading' });
 

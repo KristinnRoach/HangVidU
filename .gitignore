@@ -12,6 +12,9 @@ test-results/
 playwright-report/
 playwright/.cache/
 
+# Vitest
+.vitest-attachments/
+
 # Go executables draft
 go-server/
 

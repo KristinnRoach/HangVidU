@@ -1,6 +1,6 @@
 import { ref, onValue, off } from 'firebase/database';
 import { rtdb } from '../../../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId } from '../../auth/auth-state.js';
+import { getLoggedInUserId } from '../../../auth/auth-state.js';
 import confirmDialog from '../../../components/base/confirm-dialog.js';
 import editContactModal from './edit-contact-modal.js';
 import {

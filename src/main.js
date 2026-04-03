@@ -8,7 +8,7 @@ import { initIcons } from './components/ui/icons.js';
 import './initSentry.js';
 import { removeAllRTDBListeners } from './storage/fb-rtdb/rtdb.js';
 
-import { initAuth } from './features/auth/index.js';
+import { initAuth } from './auth/index.js';
 
 import {
   inAppNotificationManager,
@@ -95,7 +95,7 @@ import {
   hideElement,
   exitPiP,
 } from './components/ui/utils/ui-utils.js';
-import { initializeAuthUI } from './features/auth/index.js';
+import { initializeAuthUI } from './auth/index.js';
 import { messagesUI } from './features/messaging/components/messages-ui.js';
 import { copyToClipboard } from './components/modal/copyLinkModal.js';
 
@@ -114,7 +114,7 @@ import { setupMessagingAppBusHandlers } from './features/messaging/handle-appbus
 import { setupCallControllerEventWiring } from './features/call/call-event-wiring.js';
 import { setupMainAppBusListeners } from './app/setupMainAppBusListeners.js';
 import { setupMainAuthAppBusListeners } from './app/setupMainAuthAppBusListeners.js';
-import { setupAuthAppBusBridge } from './features/auth/setupAuthAppBusBridge.js';
+import { setupAuthAppBusBridge } from './auth/setupAuthAppBusBridge.js';
 import {
   getCallOptions,
   applyCallResult,

@@ -2,18 +2,20 @@
 // AUTH COMPONENT
 // ================================================
 
-import {
-  signInWithAccountSelection,
-  signOutUser,
-  deleteAccount,
-} from '../index.js';
 import { getIsLoggedIn, subscribe } from '../auth-state.js';
+import { authBus } from '../auth-bus.js';
+import {
+  AUTH_INTENT_EVENTS,
+  parseAuthDeleteAccountRequested,
+  parseAuthLoginRequested,
+  parseAuthLogoutRequested,
+} from '../auth-events-schema.js';
 
 import { onOneTapStatusChange, cancelOneTap } from '../onetap.js';
-import { isDev, devDebug } from '../../../utils/dev/dev-utils.js';
-import { t, onLocaleChange } from '../../../i18n/index.js';
+import { isDev, devDebug } from '../../utils/dev/dev-utils.js';
+import { t, onLocaleChange } from '../../i18n/index.js';
 
-import createComponent from '../../../components/ui/component-system/component.js';
+import createComponent from '../../components/ui/component-system/component.js';
 
 let authComponent = null;
 
@@ -102,14 +104,22 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       // handleLogin: signInWithGoogle, // TODO: remove or use
       handleLogin: async (e) => {
         try {
-          await signInWithAccountSelection(e);
+          authBus.emit(
+            AUTH_INTENT_EVENTS.LOGIN_REQUESTED,
+            parseAuthLoginRequested({ source: 'auth-ui' }),
+          );
         } catch (error) {
           console.error('[AuthComponent] Handle login error:', error);
           alert(t('auth.login_failed'));
         }
       },
-      handleLogout: signOutUser,
-      handleDeleteAccount: async () => {
+      handleLogout: () => {
+        authBus.emit(
+          AUTH_INTENT_EVENTS.LOGOUT_REQUESTED,
+          parseAuthLogoutRequested({ source: 'auth-ui' }),
+        );
+      },
+      handleDeleteAccount: () => {
         const confirmed = confirm(t('auth.delete_confirm'));
 
         if (!confirmed) return;
@@ -118,13 +128,13 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           'Also delete all your messages from conversations?',
         );
 
-        try {
-          await deleteAccount({ scrubMessages });
-          alert(t('auth.delete_success'));
-        } catch (error) {
-          console.error('[AuthComponent] Delete account error:', error);
-          alert(error.message || t('auth.delete_failed'));
-        }
+        authBus.emit(
+          AUTH_INTENT_EVENTS.DELETE_ACCOUNT_REQUESTED,
+          parseAuthDeleteAccountRequested({
+            source: 'auth-ui',
+            scrubMessages,
+          }),
+        );
       },
     },
     onMount: (el) => {
