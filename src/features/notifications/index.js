@@ -1,5 +1,3 @@
-// src/notifications/index.js — barrel re-exports (public API)
-
 export { inAppNotificationManager } from './in-app-notification-manager.js';
 
 export {

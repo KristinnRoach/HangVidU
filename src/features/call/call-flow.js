@@ -9,13 +9,13 @@
  * Each flow is self-contained and easy to follow from top to bottom.
  */
 
-import { getUserId } from '../features/auth/auth-state.js';
-import { devDebug } from '../utils/dev/dev-utils.js';
-import { showErrorToast } from '../components/toast.js';
-import { t } from '../i18n/index.js';
+import { getUserId } from '../auth/auth-state.js';
+import { devDebug } from '../../utils/dev/dev-utils.js';
+import { showErrorToast } from '../../components/toast.js';
+import { t } from '../../i18n/index.js';
 
-import { drainIceCandidateQueue, setupIceCandidates } from '../call/ice.js';
-import { setupConnectionStateHandlers } from '../call/webrtc.js';
+import { drainIceCandidateQueue, setupIceCandidates } from './ice.js';
+import { setupConnectionStateHandlers } from './webrtc.js';
 import {
   rtcConfig,
   addLocalTracks,
@@ -23,7 +23,7 @@ import {
   createAnswer,
   setRemoteDescription,
   generateRoomId,
-} from '../call/webrtc-utils.js';
+} from './webrtc-utils.js';
 
 import RoomService from './room.js';
 

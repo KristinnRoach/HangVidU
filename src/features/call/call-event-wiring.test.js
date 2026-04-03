@@ -48,26 +48,26 @@ vi.mock('./call-controller.js', () => ({
   default: mocks.CallController,
 }));
 
-vi.mock('../features/contacts/index.js', () => ({
+vi.mock('../contacts/index.js', () => ({
   contactsService: mocks.contactsService,
   renderContactsList: mocks.renderContactsList,
 }));
 
-vi.mock('../features/auth/auth-state.js', () => ({
+vi.mock('../auth/auth-state.js', () => ({
   getLoggedInUserId: mocks.auth.getUserId,
   getUserId: mocks.auth.getUserId,
   getUser: mocks.auth.getUser,
 }));
 
-vi.mock('../push-notifications/index.js', () => ({
+vi.mock('../../push-notifications/index.js', () => ({
   getPushNotifications: vi.fn(() => mocks.pushController),
 }));
 
-vi.mock('../media/state.js', () => ({
+vi.mock('../../media/state.js', () => ({
   cleanupRemoteStream: mocks.cleanupRemoteStream,
 }));
 
-vi.mock('../utils/url.js', () => ({
+vi.mock('../../utils/url.js', () => ({
   clearUrlParam: mocks.clearUrlParam,
 }));
 
@@ -75,15 +75,15 @@ vi.mock('./components/outgoing-call.js', () => ({
   onOutgoingCallAnswered: mocks.onOutgoingCallAnswered,
 }));
 
-vi.mock('../app/contact-save-flow.js', () => ({
+vi.mock('../../app/contact-save-flow.js', () => ({
   promptAndRefreshContactSave: mocks.promptAndRefreshContactSave,
 }));
 
-vi.mock('../utils/dev/dev-utils.js', () => ({
+vi.mock('../../utils/dev/dev-utils.js', () => ({
   devDebug: mocks.devDebug,
 }));
 
-vi.mock('../app/app-bus.js', () => ({
+vi.mock('../../app/app-bus.js', () => ({
   appBus: mocks.appBus,
 }));
 

@@ -41,11 +41,11 @@ vi.mock('../utils/dev/dev-utils.js', () => ({
   tempWarn: mocks.tempWarn,
 }));
 
-vi.mock('../call/WIP-start-call-refactor.js', () => ({
+vi.mock('../features/call/WIP-start-call-refactor.js', () => ({
   callContact: mocks.callContact,
 }));
 
-vi.mock('../call/room-listeners.js', () => ({
+vi.mock('../features/call/room-listeners.js', () => ({
   listenForIncomingOnRoom: mocks.listenForIncomingOnRoom,
   removeIncomingListenersForRoom: mocks.removeIncomingListenersForRoom,
 }));

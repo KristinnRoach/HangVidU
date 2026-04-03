@@ -1,4 +1,3 @@
-// src/contacts/invitations.js
 // In-app contact invitation system
 
 import { ref, set, remove, onChildAdded } from 'firebase/database';

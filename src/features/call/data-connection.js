@@ -11,7 +11,7 @@ import {
   getDataOfferCandidatesRef,
   getDataAnswerCandidatesRef,
   onDataChange,
-} from '../storage/fb-rtdb/rtdb.js';
+} from '../../storage/fb-rtdb/rtdb.js';
 import {
   rtcConfig,
   createOffer,
@@ -20,7 +20,7 @@ import {
 } from './webrtc-utils.js';
 import { setupIceCandidates, drainIceCandidateQueue } from './ice.js';
 import { checkAndWarnRTT } from './rtt-monitor.js';
-import { devDebug } from '../utils/dev/dev-utils.js';
+import { devDebug } from '../../utils/dev/dev-utils.js';
 
 const DATA_CHANNEL_LABEL = 'files';
 

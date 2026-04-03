@@ -1,13 +1,13 @@
 import CallController from './call-controller.js';
-import { contactsService, renderContactsList } from '../features/contacts/index.js';
-import { getUserId, getUser } from '../features/auth/auth-state.js';
-import { getPushNotifications } from '../push-notifications/index.js';
-import { cleanupRemoteStream } from '../media/state.js';
-import { clearUrlParam } from '../utils/url.js';
+import { contactsService, renderContactsList } from '../contacts/index.js';
+import { getUserId, getUser } from '../auth/auth-state.js';
+import { getPushNotifications } from '../../push-notifications/index.js';
+import { cleanupRemoteStream } from '../../media/state.js';
+import { clearUrlParam } from '../../utils/url.js';
 import { onOutgoingCallAnswered } from './components/outgoing-call.js';
-import { promptAndRefreshContactSave } from '../app/contact-save-flow.js';
-import { devDebug } from '../utils/dev/dev-utils.js';
-import { appBus } from '../app/app-bus.js';
+import { promptAndRefreshContactSave } from '../../app/contact-save-flow.js';
+import { devDebug } from '../../utils/dev/dev-utils.js';
+import { appBus } from '../../app/app-bus.js';
 import { listenForIncomingOnRoom } from './room-listeners.js';
 
 // TODO: WIP decoupling considerations:

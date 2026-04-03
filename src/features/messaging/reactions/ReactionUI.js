@@ -1,4 +1,3 @@
-// src/messaging/reactions/ReactionUI.js
 // UI rendering and interaction handling for reactions
 
 import {

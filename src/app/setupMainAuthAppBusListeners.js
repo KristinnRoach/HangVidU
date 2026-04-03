@@ -3,7 +3,7 @@ import { devDebug } from '../utils/dev/dev-utils.js';
 import {
   removeAllIncomingListeners,
   startListeningForSavedRooms,
-} from '../call/room-listeners.js';
+} from '../features/call/room-listeners.js';
 import {
   cleanupInviteListeners,
   setupInviteListener,

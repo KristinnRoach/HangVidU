@@ -1,10 +1,10 @@
 // src/call/webrtc.js
 
-import { devDebug } from '../utils/dev/dev-utils.js';
-import { clearUrlParam } from '../utils/url.js';
+import { devDebug } from '../../utils/dev/dev-utils.js';
+import { clearUrlParam } from '../../utils/url.js';
 import { onOutgoingCallAnswered } from './components/outgoing-call.js';
 import CallController from './call-controller.js';
-import { onCallConnected } from '../components/ui/core/call-lifecycle-ui.js'; // onCallDisconnected not used here so onCallConnected should possibly also be moved
+import { onCallConnected } from '../../components/ui/core/call-lifecycle-ui.js'; // onCallDisconnected not used here so onCallConnected should possibly also be moved
 
 let disconnectTimeoutId = null;
 let activePC = null; // connection reference

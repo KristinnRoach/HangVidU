@@ -7,7 +7,7 @@ import {
   resetLocalStreamInitFlag,
 } from './local-stream-init-state.js';
 import { initializeMediaControls } from './media-controls.js';
-import CallController from '../call/call-controller.js';
+import CallController from '../features/call/call-controller.js';
 import { showElement, hideElement } from '../components/ui/utils/ui-utils.js';
 import { isWatchModeActive } from '../firebase/watch-sync.js';
 import { isRemoteVideoVideoActive } from '../components/ui/core/legacy/watch-mode.js';

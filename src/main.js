@@ -17,7 +17,7 @@ import {
 } from './features/notifications/index.js';
 import { getPushNotifications } from './push-notifications/index.js';
 
-import CallController from './call/call-controller.js';
+import CallController from './features/call/call-controller.js';
 import { messagingController } from './features/messaging/messaging-controller.js';
 import {
   contactsService,
@@ -111,7 +111,7 @@ import {
 } from './i18n/index.js';
 import { setupMessagingContactsIntegration } from './app/messaging-contacts-integration.js';
 import { setupMessagingAppBusHandlers } from './features/messaging/handle-appbus-events.js';
-import { setupCallControllerEventWiring } from './call/call-event-wiring.js';
+import { setupCallControllerEventWiring } from './features/call/call-event-wiring.js';
 import { setupMainAppBusListeners } from './app/setupMainAppBusListeners.js';
 import { setupMainAuthAppBusListeners } from './app/setupMainAuthAppBusListeners.js';
 import { setupAuthAppBusBridge } from './features/auth/setupAuthAppBusBridge.js';
@@ -119,7 +119,7 @@ import {
   getCallOptions,
   applyCallResult,
   joinOrCreateRoomWithId,
-} from './call/WIP-start-call-refactor.js';
+} from './features/call/WIP-start-call-refactor.js';
 import {
   initLocalStreamAndMedia,
   handleMediaPermissionError,
@@ -127,7 +127,7 @@ import {
 import {
   settleIncomingCallWaitForRoom,
   startListeningForSavedRooms,
-} from './call/room-listeners.js';
+} from './features/call/room-listeners.js';
 
 // Quick access to enable / disable dev debug logs
 setDevDebugEnabled(true);

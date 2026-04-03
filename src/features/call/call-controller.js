@@ -9,21 +9,21 @@ import {
 } from './call-flow.js';
 import { createDataConnection, joinDataConnection } from './data-connection.js';
 import RoomService from './room.js';
-import { getUserId } from '../features/auth/auth-state.js';
+import { getUserId } from '../auth/auth-state.js';
 import { ref, off } from 'firebase/database';
 import {
   onDataChange,
   rtdb,
   removeRTDBListenersForRoom,
-} from '../storage/fb-rtdb/rtdb.js';
-import { devDebug } from '../utils/dev/dev-utils.js';
-import { FileTransferController } from '../file-transfer/file-transfer-controller.js';
-import { StreamingFileWriter } from '../file-transfer/streaming-file-writer.js';
-import { cleanupWatchSync } from '../firebase/watch-sync.js';
-import { cleanupLocalStream } from '../media/state.js';
+} from '../../storage/fb-rtdb/rtdb.js';
+import { devDebug } from '../../utils/dev/dev-utils.js';
+import { FileTransferController } from '../../file-transfer/file-transfer-controller.js';
+import { StreamingFileWriter } from '../../file-transfer/streaming-file-writer.js';
+import { cleanupWatchSync } from '../../firebase/watch-sync.js';
+import { cleanupLocalStream } from '../../media/state.js';
 import { setRemoteDescription } from './webrtc-utils.js';
 import { drainIceCandidateQueue } from './ice.js';
-import { resetLocalStreamInitFlag } from '../media/local-stream-init-state.js';
+import { resetLocalStreamInitFlag } from '../../media/local-stream-init-state.js';
 
 export function createCallController() {
   return new CallController();

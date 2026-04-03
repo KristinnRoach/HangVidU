@@ -1,4 +1,3 @@
-// src/components/messages/createMessageToggle.js
 // Reusable message toggle button with unread badge
 
 import createComponent from '../../../components/ui/component-system/component.js';

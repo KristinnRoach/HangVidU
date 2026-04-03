@@ -1,5 +1,3 @@
-// src/messaging/messaging-controller.js
-
 import { RTDBMessageStore } from './storage/rtdb-message-store.js';
 import { fileToBase64 } from '../../utils/file-to-base64.js';
 import { compressImage } from '../../media/image-compress.js';

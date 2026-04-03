@@ -31,7 +31,7 @@ vi.mock('../utils/dev/dev-utils.js', () => ({
   devDebug: mocks.devDebug,
 }));
 
-vi.mock('../call/room-listeners.js', () => ({
+vi.mock('../features/call/room-listeners.js', () => ({
   removeAllIncomingListeners: mocks.removeAllIncomingListeners,
   startListeningForSavedRooms: mocks.startListeningForSavedRooms,
 }));

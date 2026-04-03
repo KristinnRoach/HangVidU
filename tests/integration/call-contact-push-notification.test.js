@@ -161,7 +161,7 @@ vi.mock('../../src/push-notifications/index.js', () => ({
   pushNotifications: mocks.pushController,
 }));
 
-vi.mock('../../src/call/call-controller.js', () => ({
+vi.mock('../../src/features/call/call-controller.js', () => ({
   default: mocks.callController,
 }));
 
@@ -267,7 +267,7 @@ vi.mock('../../src/utils/dev/dev-utils.js', async () => {
   };
 });
 
-vi.mock('../../src/call/room.js', () => ({
+vi.mock('../../src/features/call/room.js', () => ({
   default: {
     checkRoomStatus: vi.fn(),
     getRoomData: vi.fn(),
@@ -412,7 +412,7 @@ vi.mock('../../src/features/messaging/components/messages-ui.js', () => ({
   },
 }));
 
-vi.mock('../../src/call/components/incoming-call.js', () => ({
+vi.mock('../../src/features/call/components/incoming-call.js', () => ({
   showIncomingCallUI: vi.fn(),
   resolveIncomingCallUI: vi.fn(),
   dismissActiveIncomingCallUI: vi.fn(),
@@ -436,7 +436,7 @@ vi.mock('../../src/components/modal/copyLinkModal.js', () => ({
   showCopyLinkModal: vi.fn(),
 }));
 
-vi.mock('../../src/call/components/outgoing-call.js', () => ({
+vi.mock('../../src/features/call/components/outgoing-call.js', () => ({
   showOutgoingCallUI: vi.fn(async () => {
     mocks.callSequence.push('showOutgoingCallUI');
   }),
@@ -469,8 +469,8 @@ vi.mock('../../src/i18n/index.js', () => ({
 
 // debug-notifications is covered by the ../../src/features/notifications/index.js barrel mock
 
-import RoomService from '../../src/call/room.js';
-import { showIncomingCallUI } from '../../src/call/components/incoming-call.js';
+import RoomService from '../../src/features/call/room.js';
+import { showIncomingCallUI } from '../../src/features/call/components/incoming-call.js';
 import { ringtoneManager } from '../../src/media/audio/ringtone-manager.js';
 import { callIndicators } from '../../src/components/ui/utils/call-indicators.js';
 
@@ -498,7 +498,7 @@ describe('callContact push notification flow', () => {
   it('renders the calling UI before attempting the push notification', async () => {
     await import('../../src/main.js');
     const { callContact } =
-      await import('../../src/call/WIP-start-call-refactor.js');
+      await import('../../src/features/call/WIP-start-call-refactor.js');
 
     const result = await callContact(
       'contact-456',
@@ -532,7 +532,7 @@ describe('callContact push notification flow', () => {
 
   it('does not create a new outbound call when the incoming answer target room is gone', async () => {
     const { joinOrCreateRoomWithId } =
-      await import('../../src/call/WIP-start-call-refactor.js');
+      await import('../../src/features/call/WIP-start-call-refactor.js');
 
     RoomService.checkRoomStatus.mockResolvedValue({
       exists: false,
@@ -556,7 +556,7 @@ describe('callContact push notification flow', () => {
     });
 
     const { listenForIncomingOnRoom, removeIncomingListenersForRoom } =
-      await import('../../src/call/room-listeners.js');
+      await import('../../src/features/call/room-listeners.js');
 
     listenForIncomingOnRoom('room-background');
 
@@ -602,7 +602,7 @@ describe('callContact push notification flow', () => {
     });
 
     const { listenForIncomingOnRoom, removeIncomingListenersForRoom } =
-      await import('../../src/call/room-listeners.js');
+      await import('../../src/features/call/room-listeners.js');
 
     listenForIncomingOnRoom('room-pending');
 
@@ -633,7 +633,7 @@ describe('callContact push notification flow', () => {
     });
 
     const { listenForIncomingOnRoom } =
-      await import('../../src/call/room-listeners.js');
+      await import('../../src/features/call/room-listeners.js');
 
     listenForIncomingOnRoom('room-empty');
 

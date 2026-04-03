@@ -75,10 +75,10 @@ vi.mock('firebase/database', () => {
 });
 
 // Provide a minimal app export for rtdb initialization
-vi.mock('../../firebase/firebase', () => ({ app: {} }));
+vi.mock('../../../firebase/firebase', () => ({ app: {} }));
 
 // Mock the diagnostic logger
-vi.mock('../../utils/dev/diagnostic-logger.js', () => ({
+vi.mock('../../../utils/dev/diagnostic-logger.js', () => ({
   getDiagnosticLogger: () => ({
     logFirebaseOperation: vi.fn(),
     log: vi.fn(),
@@ -86,11 +86,11 @@ vi.mock('../../utils/dev/diagnostic-logger.js', () => ({
 }));
 
 // Import the RoomService singleton under test
-import RoomService from '../../call/room.js';
+import RoomService from '../room.js';
 import {
   removeRTDBListenersForRoom,
   removeAllRTDBListeners,
-} from '../../storage/fb-rtdb/rtdb.js';
+} from '../../../storage/fb-rtdb/rtdb.js';
 
 describe('Incoming-call member listener fires once with fresh joinedAt', () => {
   const roomId = 'room-test-1';

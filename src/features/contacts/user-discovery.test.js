@@ -1,4 +1,3 @@
-// src/contacts/user-discovery.test.js
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { hashEmail, removeFromUserByEmailDirectory } from './user-discovery.js';
 

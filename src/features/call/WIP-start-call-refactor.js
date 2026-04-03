@@ -1,21 +1,21 @@
-import { getUser, getUserId } from '../features/auth/auth-state.js';
-import { getPushNotifications } from '../push-notifications/index.js';
+import { getUser, getUserId } from '../auth/auth-state.js';
+import { getPushNotifications } from '../../push-notifications/index.js';
 import CallController from './call-controller.js';
-import { contactsService } from '../features/contacts/index.js';
+import { contactsService } from '../contacts/index.js';
 import RoomService from './room.js';
-import { getDiagnosticLogger } from '../utils/dev/diagnostic-logger.js';
-import { getDeterministicRoomId } from '../utils/room-id.js';
-import { getElements } from '../elements.js';
-import { getLocalStream } from '../media/state.js';
-import { setupRemoteStream } from '../media/stream.js';
-import { setupWatchSync } from '../firebase/watch-sync.js';
-import { showCopyLinkModal } from '../components/modal/copyLinkModal.js';
-import { devDebug } from '../utils/dev/dev-utils.js';
+import { getDiagnosticLogger } from '../../utils/dev/diagnostic-logger.js';
+import { getDeterministicRoomId } from '../../utils/room-id.js';
+import { getElements } from '../../elements.js';
+import { getLocalStream } from '../../media/state.js';
+import { setupRemoteStream } from '../../media/stream.js';
+import { setupWatchSync } from '../../firebase/watch-sync.js';
+import { showCopyLinkModal } from '../../components/modal/copyLinkModal.js';
+import { devDebug } from '../../utils/dev/dev-utils.js';
 import { listenForIncomingOnRoom } from './room-listeners.js';
 import {
   initLocalStreamAndMedia,
   handleMediaPermissionError,
-} from '../media/WIP-init-local-media.js';
+} from '../../media/WIP-init-local-media.js';
 
 // TODO: WIP decoupling considerations:
 // - Circular import: this file imports listenForIncomingOnRoom from room-listeners.js,
@@ -175,7 +175,7 @@ export async function callContact(contactId, contactName, roomId = null) {
 
   const callingUiModulesPromise = Promise.all([
     import('./components/outgoing-call.js'),
-    import('../components/ui/core/call-lifecycle-ui.js'),
+    import('../../components/ui/core/call-lifecycle-ui.js'),
   ]);
 
   listenForIncomingOnRoom(roomId);

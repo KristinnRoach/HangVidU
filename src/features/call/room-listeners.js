@@ -1,20 +1,20 @@
 import { get, remove } from 'firebase/database';
-import { appBus } from '../app/app-bus.js';
+import { appBus } from '../../app/app-bus.js';
 import {
   removeRTDBListenersForRoom,
   getUserRecentCallsRef,
   getUserRecentCallRef,
-} from '../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId, getUserId } from '../features/auth/index.js';
-import { getDiagnosticLogger } from '../utils/dev/diagnostic-logger.js';
-import { devDebug } from '../utils/dev/dev-utils.js';
-import { contactsService } from '../features/contacts/index.js';
-import { getDeterministicRoomId } from '../utils/room-id.js';
+} from '../../storage/fb-rtdb/rtdb.js';
+import { getLoggedInUserId, getUserId } from '../auth/index.js';
+import { getDiagnosticLogger } from '../../utils/dev/diagnostic-logger.js';
+import { devDebug } from '../../utils/dev/dev-utils.js';
+import { contactsService } from '../contacts/index.js';
+import { getDeterministicRoomId } from '../../utils/room-id.js';
 import RoomService from './room.js';
 import CallController from './call-controller.js';
-import { getPushNotifications } from '../push-notifications/index.js';
-import { ringtoneManager } from '../media/audio/ringtone-manager.js';
-import { callIndicators } from '../components/ui/utils/call-indicators.js';
+import { getPushNotifications } from '../../push-notifications/index.js';
+import { ringtoneManager } from '../../media/audio/ringtone-manager.js';
+import { callIndicators } from '../../components/ui/utils/call-indicators.js';
 import {
   showIncomingCallUI,
   resolveIncomingCallUI,
@@ -704,7 +704,7 @@ export function listenForIncomingOnRoom(roomId) {
 
         // Dismiss legacy confirmDialog (for testing/rollback)
         const { dismissActiveConfirmDialog } =
-          await import('../components/base/confirm-dialog.js');
+          await import('../../components/base/confirm-dialog.js');
         if (typeof dismissActiveConfirmDialog === 'function') {
           dismissActiveConfirmDialog();
         }
@@ -792,7 +792,7 @@ export async function startListeningForSavedRooms() {
   // This prevents a race where we read localStorage as a guest before auth is ready
   try {
     if (typeof window !== 'undefined') {
-      const { getCurrentUserAsync } = await import('../features/auth/index.js');
+      const { getCurrentUserAsync } = await import('../auth/index.js');
       await getCurrentUserAsync();
     }
   } catch (e) {

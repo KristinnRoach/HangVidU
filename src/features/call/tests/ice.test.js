@@ -2,6 +2,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { setupIceCandidates, drainIceCandidateQueue } from '../ice.js';
+import { addRTDBListener } from '../../../storage/fb-rtdb/rtdb';
 
 // Mock Firebase database functions
 vi.mock('firebase/database', () => ({
@@ -16,18 +17,18 @@ vi.mock('firebase/database', () => ({
   off: vi.fn(),
 }));
 
-vi.mock('../../firebase/firebase', () => ({
+vi.mock('../../../firebase/firebase.js', () => ({
   app: {},
 }));
 
-vi.mock('../storage/fb-rtdb/rtdb', () => ({
+vi.mock('../../../storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
   addRTDBListener: vi.fn(),
   getOfferCandidatesRef: vi.fn(() => ({ _path: 'offerCandidates' })),
   getAnswerCandidatesRef: vi.fn(() => ({ _path: 'answerCandidates' })),
 }));
 
-vi.mock('../../utils/dev-utils.js', () => ({
+vi.mock('../../../utils/dev/dev-utils.js', () => ({
   devDebug: vi.fn(),
 }));
 
@@ -37,10 +38,7 @@ describe('ICE Candidate Queuing', () => {
   let onChildAddedCallback;
   let addIceCandidateSpy;
 
-  beforeEach(async () => {
-    // Import after mocks are set up
-    const { onChildAdded } = await import('firebase/database');
-
+  beforeEach(() => {
     // Mock RTCPeerConnection
     mockPc = {
       signalingState: 'stable',
@@ -72,12 +70,11 @@ describe('ICE Candidate Queuing', () => {
       },
     ];
 
-    // Capture the onChildAdded callback so we can simulate Firebase events
-    onChildAdded.mockImplementation((ref, callback) => {
-      onChildAddedCallback = callback;
+    vi.mocked(addRTDBListener).mockImplementation((ref, eventType, callback) => {
+      if (eventType === 'child_added') {
+        onChildAddedCallback = callback;
+      }
     });
-
-    // Browser mode provides native RTCIceCandidate - no mocking needed
   });
 
   afterEach(() => {

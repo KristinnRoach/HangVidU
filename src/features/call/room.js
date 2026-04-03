@@ -9,8 +9,8 @@ import {
   getRoomAnswerRef,
   removeRTDBListenersForRoom,
   removeRTDBListenersForUser,
-} from '../storage/fb-rtdb/rtdb.js';
-import { getDiagnosticLogger } from '../utils/dev/diagnostic-logger.js';
+} from '../../storage/fb-rtdb/rtdb.js';
+import { getDiagnosticLogger } from '../../utils/dev/diagnostic-logger.js';
 
 class RoomService {
   constructor() {
