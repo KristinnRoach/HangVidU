@@ -13,13 +13,13 @@ function presenceRef(userId) {
 
 export async function writeOnline(userId) {
   const pRef = presenceRef(userId);
-  await set(pRef, {
-    state: 'online',
-    lastChanged: serverTimestamp(),
-  });
   await onDisconnect(pRef).set({
     state: 'offline',
     lastSeen: serverTimestamp(),
+    lastChanged: serverTimestamp(),
+  });
+  await set(pRef, {
+    state: 'online',
     lastChanged: serverTimestamp(),
   });
 }
