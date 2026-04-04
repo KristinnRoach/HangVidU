@@ -88,12 +88,13 @@ export default [
               from: { type: 'feature', captured: { featureName: 'contacts' } },
               allow: {
                 to: [
+                  { type: 'auth' },
                   { type: 'shared' },
                   { type: 'feature', captured: { featureName: 'contacts' } },
                 ],
               },
               message:
-                'Contacts may only import from shared code or from within the contacts feature.',
+                'Contacts may only import from auth, shared code, or from within the contacts feature.',
             },
           ],
         },
