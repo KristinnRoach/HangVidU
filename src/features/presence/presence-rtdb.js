@@ -5,7 +5,7 @@ import {
   serverTimestamp,
   onValue,
 } from 'firebase/database';
-import { rtdb } from '../storage/fb-rtdb/rtdb.js';
+import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 
 function presenceRef(userId) {
   return ref(rtdb, `users/${userId}/presence`);

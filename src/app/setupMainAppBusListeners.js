@@ -7,7 +7,7 @@ import {
   listenForIncomingOnRoom,
   removeIncomingListenersForRoom,
 } from '../features/call/room-listeners.js';
-import { setUserOffline } from '../presence/index.js';
+import { setUserOffline } from '../features/presence/index.js';
 import { clearUrlParam } from '../utils/url.js';
 import { onCallDisconnected } from '../components/ui/core/call-lifecycle-ui.js';
 

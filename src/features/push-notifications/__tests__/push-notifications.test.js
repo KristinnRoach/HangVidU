@@ -1,14 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../../auth/index.js', () => ({
+vi.mock('../../../auth/auth-setup.js', () => ({
+  auth: {},
+  initAuth: vi.fn(),
+  getCurrentUserAsync: vi.fn(),
   getLoggedInUserToken: vi.fn().mockResolvedValue('test-id-token'),
-  getLoggedInUserId: vi.fn().mockReturnValue('user-123'),
-  getUser: vi.fn().mockReturnValue({
-    uid: 'user-123',
-    displayName: 'Test User',
-    email: 'test@example.com',
-    photoURL: null,
-  }),
+  logAuthError: vi.fn(),
 }));
 
 import { PushNotifications } from '../push-notifications.js';

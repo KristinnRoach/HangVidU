@@ -1,4 +1,8 @@
 import { onClickOutside } from '../../components/ui/utils/clickOutside.js';
+import {
+  createNotification,
+  buildTemplate,
+} from '../../components/notification.js';
 
 /**
  * Centralized in-app notification manager.
@@ -244,29 +248,24 @@ class InAppNotificationManager {
    * @private
    */
   addDummy() {
-    // Lazy import to avoid bundling in production
-    import('../../components/notification.js').then(
-      ({ createNotification, buildTemplate }) => {
-        const notificationNumber = this.getCount() + 1;
-        const id = `dummy-notification-${Date.now()}`;
+    const notificationNumber = this.getCount() + 1;
+    const id = `dummy-notification-${Date.now()}`;
 
-        const notification = createNotification({
-          template: buildTemplate({
-            body: `<p class="notification-message">Dummy Notification #[[number]]</p>`,
-            actions: `<button class="notification-btn notification-btn-secondary" onclick="handleDismiss">Dismiss</button>`,
-          }),
-          handlers: {
-            handleDismiss: () => {
-              this.remove(id);
-            },
-          },
-          initialProps: { number: notificationNumber },
-          className: 'notification',
-        });
-
-        this.add(id, notification);
+    const notification = createNotification({
+      template: buildTemplate({
+        body: `<p class="notification-message">Dummy Notification #[[number]]</p>`,
+        actions: `<button class="notification-btn notification-btn-secondary" onclick="handleDismiss">Dismiss</button>`,
+      }),
+      handlers: {
+        handleDismiss: () => {
+          this.remove(id);
+        },
       },
-    );
+      initialProps: { number: notificationNumber },
+      className: 'notification',
+    });
+
+    this.add(id, notification);
   }
 }
 

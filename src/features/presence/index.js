@@ -1,4 +1,4 @@
-import { getLoggedInUserId, onAuthStateChange } from '../auth/index.js';
+import { getLoggedInUserId, onAuthStateChange } from '../../auth/index.js';
 import { writeOnline, writeOffline, observePresence } from './presence-rtdb.js';
 
 let initializedForUserId = null;

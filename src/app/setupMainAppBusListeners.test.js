@@ -57,7 +57,7 @@ vi.mock('../features/call/room-listeners.js', () => ({
   removeIncomingListenersForRoom: mocks.removeIncomingListenersForRoom,
 }));
 
-vi.mock('../presence/index.js', () => ({
+vi.mock('../features/presence/index.js', () => ({
   setUserOffline: mocks.setUserOffline,
 }));
 
