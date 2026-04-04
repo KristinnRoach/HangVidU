@@ -165,7 +165,7 @@ export async function signOutUser() {
         console.warn('[AUTH] Failed to disable notifications on logout:', err);
       });
 
-    dispatchCommand('user:presence:set-offline');
+    dispatchCommand('user:presence:set-offline', { userId: auth.currentUser?.uid });
     clearGISTokenCache();
     await signOut(auth);
     console.info('User signed out');

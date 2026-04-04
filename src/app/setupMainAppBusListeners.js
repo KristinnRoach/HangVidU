@@ -15,9 +15,9 @@ import { clearUrlParam } from '../utils/url.js';
 import { onCallDisconnected } from '../components/ui/core/call-lifecycle-ui.js';
 
 export function setupMainAppBusListeners() {
-  handleCommand('user:presence:set-offline', async () => {
+  handleCommand('user:presence:set-offline', async ({ userId } = {}) => {
     try {
-      await setUserOffline();
+      await setUserOffline(userId);
     } catch (e) {
       console.warn('Failed to set user presence offline:', e);
     }

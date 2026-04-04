@@ -32,8 +32,7 @@ async function initializePresence() {
   }
 }
 
-export async function setUserOffline() {
-  const userId = getLoggedInUserId();
+export async function setUserOffline(userId = getLoggedInUserId()) {
   if (!userId) return;
 
   try {
