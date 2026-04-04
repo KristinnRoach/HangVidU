@@ -15,9 +15,10 @@ const dispatchCommand = (commandName, payload = {}) => {
  *
  * @param {string} commandName - Command name
  * @param {Function} handler - (payload) => void
+ * @param {Object} [options]
  */
-const handleCommand = (commandName, handler) => {
-  appBus.on(commandName, handler);
+const handleCommand = (commandName, handler, options = {}) => {
+  return appBus.on(commandName, handler, options);
 };
 
 /**
@@ -32,13 +33,26 @@ const publish = (eventName, payload = {}) => {
 };
 
 /**
+ * Publish/broadcast/announce an event that already happened,
+ * and wait for current subscribers to finish.
+ *
+ * @param {string} eventName - Message name, e.g. "draftSaved".
+ * @param {Object} [payload={}] - Message data.
+ * @returns {Promise<void>}
+ */
+const publishAndAwait = async (eventName, payload = {}) => {
+  await appBus.emitAsync(eventName, payload);
+};
+
+/**
  * Get notified when an event with 'eventName' is published (by anyone)
  *
  * @param {string} eventName - Message name to listen to.
  * @param {Function} handler - (payload) => void.
+ * @param {Object} [options]
  */
-const subscribe = (eventName, handler) => {
-  appBus.on(eventName, handler);
+const subscribe = (eventName, handler, options = {}) => {
+  return appBus.on(eventName, handler, options);
 };
 
-export { dispatchCommand, handleCommand, publish, subscribe };
+export { dispatchCommand, handleCommand, publish, publishAndAwait, subscribe };

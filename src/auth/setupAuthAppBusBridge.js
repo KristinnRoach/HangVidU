@@ -1,10 +1,10 @@
-import { appBus } from '../events/app-bus.js';
+import { publishAndAwait } from '../events/index.js';
 import { AUTH_EVENTS, authBus } from './auth-bus.js';
 
 let cleanupAuthAppBusBridge = null;
 
 /**
- * Forward selected auth-domain events to appBus compatibility events.
+ * Forward selected auth-domain events to shared published facts.
  *
  * This bridge decides which auth lifecycle facts the app should react to
  * without forcing auth-state to know about app-level event names.
@@ -19,7 +19,7 @@ export function setupAuthAppBusBridge() {
   authBus.on(
     AUTH_EVENTS.READY,
     async ({ state }) => {
-      await appBus.emitAsync('auth:ready', { state });
+      await publishAndAwait('auth:ready', { state });
     },
     { signal: ac.signal },
   );
@@ -27,7 +27,7 @@ export function setupAuthAppBusBridge() {
   authBus.on(
     AUTH_EVENTS.LOGGED_IN,
     async ({ state, previousState, isInitialResolution }) => {
-      await appBus.emitAsync('auth:login', {
+      await publishAndAwait('auth:login', {
         state,
         previousState,
         isInitialResolution,
@@ -39,7 +39,7 @@ export function setupAuthAppBusBridge() {
   authBus.on(
     AUTH_EVENTS.LOGGED_OUT,
     async ({ state, previousState, isInitialResolution }) => {
-      await appBus.emitAsync('auth:logout', {
+      await publishAndAwait('auth:logout', {
         state,
         previousState,
         isInitialResolution,

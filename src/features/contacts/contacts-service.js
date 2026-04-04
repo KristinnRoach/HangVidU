@@ -11,7 +11,7 @@ import {
   getContactByRoomId,
 } from './contacts-query.js';
 import { resolveDirectConversationId } from '../messaging/index.js';
-import { CONTACTS_EVENTS, contactsBus } from './contacts-bus.js';
+import { publish } from '../../events/index.js';
 // PAUSED: claude --resume edf6030f-72fb-4503-9175-bfc21d2d973c
 
 /**
@@ -57,24 +57,46 @@ function logServiceFailure(action, error, context = {}) {
 }
 
 /**
- * Emit a contact-domain save event after a successful write.
+ * Publish room creation when a saved contact has a room id.
  *
  * @param {ContactRecord} contact
  */
 async function emitContactSaved(contact) {
-  await contactsBus.emitAsync(CONTACTS_EVENTS.SAVED, { contact });
+  const roomId = contact?.roomId ?? null;
+
+  if (!roomId) {
+    return;
+  }
+
+  publish('room:id:created', { roomId });
 }
 
 /**
- * Emit a contact-domain update event after a successful write.
+ * Publish room updates when a contact's room id changes.
  *
  * @param {ContactRecord} contact
  * @param {string|null} previousRoomId
  */
 async function emitContactUpdated(contact, previousRoomId) {
-  await contactsBus.emitAsync(CONTACTS_EVENTS.UPDATED, {
-    contact,
+  const roomId = contact?.roomId ?? null;
+  const isRoomIdChange = !!roomId && previousRoomId !== roomId;
+
+  if (!isRoomIdChange) {
+    return;
+  }
+
+  publish('room:id:updated', {
+    contactId: contact.contactId,
+    contactName: contact.contactName,
+    roomId,
     previousRoomId,
+  });
+}
+
+async function emitContactDeleted(contactId, roomId) {
+  publish('contact:deleted', {
+    contactId,
+    roomId: roomId ?? null,
   });
 }
 
@@ -166,10 +188,7 @@ export class ContactsService {
         return false;
       }
 
-      await contactsBus.emitAsync(CONTACTS_EVENTS.DELETED, {
-        contactId,
-        roomId: existing?.roomId ?? null,
-      });
+      await emitContactDeleted(contactId, existing?.roomId ?? null);
 
       return true;
     } catch (error) {

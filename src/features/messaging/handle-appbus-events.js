@@ -1,6 +1,7 @@
 import {
   dispatchCommand,
   handleCommand,
+  subscribe,
 } from '../../events/index.js';
 import { tempWarn } from '../../utils/dev/dev-utils.js';
 import { contactsService } from '../contacts/index.js';
@@ -36,8 +37,7 @@ export function setupMessagingAppBusHandlers({ messagingController }) {
         `[APPBUS] Handling call answered event from contact ${contactId}`,
       );
 
-      const conversationId =
-        await contactsService.getConversationId(contactId);
+      const conversationId = await contactsService.getConversationId(contactId);
 
       if (!conversationId) {
         console.warn(
@@ -62,7 +62,7 @@ export function setupMessagingAppBusHandlers({ messagingController }) {
   );
 
   unsubscribers.push(
-    handleCommand('call:unanswered', async ({ roomId, contactId }) => {
+    subscribe('call:unanswered', async ({ roomId, contactId }) => {
       tempWarn(
         `[APPBUS] Handling unanswered call for room ${roomId}, contact ${contactId}`,
       );
@@ -98,9 +98,8 @@ export function setupMessagingAppBusHandlers({ messagingController }) {
           return;
         }
 
-        const unsubscribe = messagingController.listenToUnreadCount(
-          conversationId,
-        );
+        const unsubscribe =
+          messagingController.listenToUnreadCount(conversationId);
 
         unreadSubscriptions.set(conversationId, unsubscribe);
       },

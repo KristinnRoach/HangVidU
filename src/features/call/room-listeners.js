@@ -1,5 +1,5 @@
 import { get, remove } from 'firebase/database';
-import { appBus } from '../../events/app-bus.js';
+import { publish } from '../../events/index.js';
 import {
   removeRTDBListenersForRoom,
   getUserRecentCallsRef,
@@ -287,7 +287,7 @@ function decideIncomingNotificationStrategy({
 }
 
 async function handleIncomingCallAccepted({ roomId, joinedContactId }) {
-  appBus.emit('call:incoming:accepted', {
+  publish('call:incoming:accepted', {
     roomId,
     contactId: joinedContactId,
   });
@@ -344,7 +344,7 @@ async function handleIncomingCallAccepted({ roomId, joinedContactId }) {
     console.warn('[CALL] Join failed after accepting incoming call', {
       roomId,
     });
-    appBus.emit('room:joinOrCreate:failed', { roomId });
+    publish('room:joinOrCreate:failed', { roomId });
   }
 }
 

@@ -11,8 +11,8 @@ const mocks = vi.hoisted(() => {
         return () => listeners.delete(eventName);
       }),
     },
-    appBus: {
-      emitAsync: vi.fn().mockResolvedValue(undefined),
+    events: {
+      publishAndAwait: vi.fn().mockResolvedValue(undefined),
     },
   };
 });
@@ -26,18 +26,18 @@ vi.mock('./auth-bus.js', () => ({
   authBus: mocks.authBus,
 }));
 
-vi.mock('../events/app-bus.js', () => ({
-  appBus: mocks.appBus,
+vi.mock('../events/index.js', () => ({
+  publishAndAwait: mocks.events.publishAndAwait,
 }));
 
 describe('setupAuthAppBusBridge', () => {
   beforeEach(() => {
     mocks.listeners.clear();
     mocks.authBus.on.mockClear();
-    mocks.appBus.emitAsync.mockReset().mockResolvedValue(undefined);
+    mocks.events.publishAndAwait.mockReset().mockResolvedValue(undefined);
   });
 
-  it('forwards auth ready events to appBus', async () => {
+  it('forwards auth ready events to shared published facts', async () => {
     const { setupAuthAppBusBridge } = await import('./setupAuthAppBusBridge.js');
 
     const teardown = setupAuthAppBusBridge();
@@ -46,14 +46,14 @@ describe('setupAuthAppBusBridge', () => {
       state: { status: 'authenticated', isLoggedIn: true },
     });
 
-    expect(mocks.appBus.emitAsync).toHaveBeenCalledWith('auth:ready', {
+    expect(mocks.events.publishAndAwait).toHaveBeenCalledWith('auth:ready', {
       state: { status: 'authenticated', isLoggedIn: true },
     });
 
     teardown();
   });
 
-  it('forwards auth login events to appBus', async () => {
+  it('forwards auth login events to shared published facts', async () => {
     const { setupAuthAppBusBridge } = await import('./setupAuthAppBusBridge.js');
 
     const teardown = setupAuthAppBusBridge();
@@ -64,7 +64,7 @@ describe('setupAuthAppBusBridge', () => {
       isInitialResolution: true,
     });
 
-    expect(mocks.appBus.emitAsync).toHaveBeenCalledWith('auth:login', {
+    expect(mocks.events.publishAndAwait).toHaveBeenCalledWith('auth:login', {
       state: { isLoggedIn: true },
       previousState: { isLoggedIn: false },
       isInitialResolution: true,
@@ -73,7 +73,7 @@ describe('setupAuthAppBusBridge', () => {
     teardown();
   });
 
-  it('forwards auth logout events to appBus', async () => {
+  it('forwards auth logout events to shared published facts', async () => {
     const { setupAuthAppBusBridge } = await import('./setupAuthAppBusBridge.js');
 
     const teardown = setupAuthAppBusBridge();
@@ -84,7 +84,7 @@ describe('setupAuthAppBusBridge', () => {
       isInitialResolution: false,
     });
 
-    expect(mocks.appBus.emitAsync).toHaveBeenCalledWith('auth:logout', {
+    expect(mocks.events.publishAndAwait).toHaveBeenCalledWith('auth:logout', {
       state: { isLoggedIn: false },
       previousState: { isLoggedIn: true },
       isInitialResolution: false,

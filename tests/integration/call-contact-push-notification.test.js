@@ -187,7 +187,6 @@ vi.mock('../../src/features/contacts/index.js', () => ({
   cleanupContacts: vi.fn(),
   showSaveContactPrompt: vi.fn(),
   showAddContactModal: vi.fn(),
-  setupContactsAppBusBridge: vi.fn(),
 }));
 
 vi.mock('../../src/elements.js', () => {

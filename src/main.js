@@ -29,7 +29,6 @@ import {
   renderContactsList,
   cleanupContacts,
   showAddContactModal,
-  setupContactsAppBusBridge,
 } from './features/contacts/index.js';
 
 import {
@@ -205,7 +204,6 @@ async function init() {
 
     // Initialize auth (persistence + redirect + onAuthStateChanged listener)
     await initAuth();
-    cleanupFunctions.push(setupContactsAppBusBridge());
     cleanupFunctions.push(setupMessagingContactsIntegration());
     cleanupFunctions.push(
       setupMessagingAppBusHandlers({ messagingController }),

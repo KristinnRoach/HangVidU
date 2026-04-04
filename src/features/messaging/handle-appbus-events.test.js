@@ -10,6 +10,10 @@ const mocks = vi.hoisted(() => {
         handlers.set(eventName, handler);
         return () => handlers.delete(eventName);
       }),
+      subscribe: vi.fn((eventName, handler) => {
+        handlers.set(eventName, handler);
+        return () => handlers.delete(eventName);
+      }),
     },
     messagingController: {
       selectConversation: vi.fn(() => Promise.resolve()),
@@ -26,6 +30,7 @@ const mocks = vi.hoisted(() => {
 vi.mock('../../events/index.js', () => ({
   dispatchCommand: vi.fn(),
   handleCommand: mocks.events.handleCommand,
+  subscribe: mocks.events.subscribe,
 }));
 
 vi.mock('../../utils/dev/dev-utils.js', () => ({

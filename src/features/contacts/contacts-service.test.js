@@ -12,8 +12,8 @@ const mocks = vi.hoisted(() => ({
     patch: vi.fn(),
     remove: vi.fn(),
   },
-  contactsBus: {
-    emitAsync: vi.fn().mockResolvedValue(undefined),
+  events: {
+    publish: vi.fn(),
   },
 }));
 
@@ -22,13 +22,8 @@ vi.mock('../../auth/index.js', () => ({
   getLoggedInUserId: () => mocks.auth.ownerId,
 }));
 
-vi.mock('./contacts-bus.js', () => ({
-  CONTACTS_EVENTS: {
-    SAVED: 'contact:saved',
-    UPDATED: 'contact:updated',
-    DELETED: 'contact:deleted',
-  },
-  contactsBus: mocks.contactsBus,
+vi.mock('../../events/index.js', () => ({
+  publish: mocks.events.publish,
 }));
 
 vi.mock('../../storage/fb-rtdb/rtdb.js', () => ({
@@ -54,7 +49,7 @@ describe('contacts-service', () => {
     mocks.store.put.mockReset();
     mocks.store.patch.mockReset();
     mocks.store.remove.mockReset();
-    mocks.contactsBus.emitAsync.mockReset().mockResolvedValue(undefined);
+    mocks.events.publish.mockReset();
 
     vi.restoreAllMocks();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -86,9 +81,10 @@ describe('contacts-service', () => {
       lastInteractionAt: expect.any(Number),
     });
 
-    expect(mocks.contactsBus.emitAsync).toHaveBeenCalledWith('contact:saved', {
-      contact,
-    });
+    expect(mocks.events.publish).toHaveBeenCalledWith(
+      'room:id:created',
+      { roomId: 'room-1' },
+    );
   });
 
   it('saveContact preserves timestamps for an existing contact', async () => {
@@ -176,10 +172,15 @@ describe('contacts-service', () => {
       roomId: 'room-2',
     });
 
-    expect(mocks.contactsBus.emitAsync).toHaveBeenCalledWith('contact:updated', {
-      contact: updated,
-      previousRoomId: 'room-1',
-    });
+    expect(mocks.events.publish).toHaveBeenCalledWith(
+      'room:id:updated',
+      {
+        contactId: 'u1',
+        contactName: 'Alice B',
+        roomId: 'room-2',
+        previousRoomId: 'room-1',
+      },
+    );
   });
 
   it('updateContact returns null when the contact does not exist', async () => {
@@ -193,10 +194,10 @@ describe('contacts-service', () => {
     expect(result).toBeNull();
     expect(mocks.store.patch).not.toHaveBeenCalled();
     expect(mocks.store.put).not.toHaveBeenCalled();
-    expect(mocks.contactsBus.emitAsync).not.toHaveBeenCalled();
+    expect(mocks.events.publish).not.toHaveBeenCalled();
   });
 
-  it('deleteContact returns true when deleted and emits contact-domain event', async () => {
+  it('deleteContact returns true when deleted and publishes contact deletion', async () => {
     const { ContactsService } = await import('./contacts-service.js');
     const service = new ContactsService();
     const existing = {
@@ -213,10 +214,13 @@ describe('contacts-service', () => {
     const result = await service.deleteContact('u1');
 
     expect(result).toBe(true);
-    expect(mocks.contactsBus.emitAsync).toHaveBeenCalledWith('contact:deleted', {
-      contactId: 'u1',
-      roomId: 'room-1',
-    });
+    expect(mocks.events.publish).toHaveBeenCalledWith(
+      'contact:deleted',
+      {
+        contactId: 'u1',
+        roomId: 'room-1',
+      },
+    );
   });
 
   it('deleteContact returns false when missing', async () => {
@@ -229,7 +233,7 @@ describe('contacts-service', () => {
     const result = await service.deleteContact('missing');
 
     expect(result).toBe(false);
-    expect(mocks.contactsBus.emitAsync).not.toHaveBeenCalled();
+    expect(mocks.events.publish).not.toHaveBeenCalled();
   });
 
   it('getAllContacts returns a map keyed by contactId', async () => {

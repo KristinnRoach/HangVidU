@@ -5,8 +5,8 @@ const mocks = vi.hoisted(() => {
 
   return {
     handlers,
-    appBus: {
-      on: vi.fn((eventName, handler) => {
+    events: {
+      subscribe: vi.fn((eventName, handler) => {
         handlers.set(eventName, handler);
         return () => handlers.delete(eventName);
       }),
@@ -23,8 +23,8 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('../events/app-bus.js', () => ({
-  appBus: mocks.appBus,
+vi.mock('../events/index.js', () => ({
+  subscribe: mocks.events.subscribe,
 }));
 
 vi.mock('../utils/dev/dev-utils.js', () => ({
@@ -72,7 +72,7 @@ describe('setupMainAuthAppBusListeners', () => {
     teardown();
   });
 
-  it('handles login through appBus without re-attaching saved room listeners on initial resolution', async () => {
+  it('handles login through shared auth facts without re-attaching saved room listeners on initial resolution', async () => {
     const { setupMainAuthAppBusListeners } =
       await import('./setupMainAuthAppBusListeners.js');
     const lobbyElement = { id: 'lobby' };
@@ -98,7 +98,7 @@ describe('setupMainAuthAppBusListeners', () => {
     teardown();
   });
 
-  it('handles logout through appBus', async () => {
+  it('handles logout through shared auth facts', async () => {
     const { setupMainAuthAppBusListeners } =
       await import('./setupMainAuthAppBusListeners.js');
     const lobbyElement = { id: 'lobby' };

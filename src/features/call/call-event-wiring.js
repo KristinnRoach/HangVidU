@@ -7,7 +7,7 @@ import { clearUrlParam } from '../../utils/url.js';
 import { onOutgoingCallAnswered } from './components/outgoing-call.js';
 import { promptAndRefreshContactSave } from '../../app/contact-save-flow.js';
 import { devDebug } from '../../utils/dev/dev-utils.js';
-import { appBus } from '../../events/app-bus.js';
+import { publish } from '../../events/index.js';
 import { listenForIncomingOnRoom } from './room-listeners.js';
 
 // TODO: WIP decoupling considerations:
@@ -89,7 +89,7 @@ export function setupCallControllerEventWiring(options = {}) {
             const me = getUser();
             const callerName = me?.displayName || 'Friend';
 
-            appBus.emit('call:unanswered', {
+            publish('call:unanswered', {
               roomId,
               contactId: contact.contactId,
             });
