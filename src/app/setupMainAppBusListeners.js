@@ -10,10 +10,19 @@ import {
   listenForIncomingOnRoom,
   removeIncomingListenersForRoom,
 } from '../features/call/room-listeners.js';
+import { setUserOffline } from '../firebase/presence.js';
 import { clearUrlParam } from '../utils/url.js';
 import { onCallDisconnected } from '../components/ui/core/call-lifecycle-ui.js';
 
 export function setupMainAppBusListeners() {
+  handleCommand('user:presence:set-offline', async () => {
+    try {
+      await setUserOffline();
+    } catch (e) {
+      console.warn('Failed to set user presence offline:', e);
+    }
+  });
+
   handleCommand(
     'messaging:conversation:select',
     async ({ conversationId, remoteParticipantIds = [], displayUI = true }) => {

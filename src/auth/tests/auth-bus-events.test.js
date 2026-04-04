@@ -1,40 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
-  const emitAsync = vi.fn().mockResolvedValue(undefined);
   return {
-    authBus: {
-      emitAsync,
-      emitAsyncSequential: vi.fn(async (events) => {
-        for (const [eventName, data] of events) {
-          await emitAsync(eventName, data);
-        }
-      }),
+    events: {
+      publishAndAwait: vi.fn().mockResolvedValue(undefined),
     },
   };
 });
 
-vi.mock('../auth-bus.js', () => ({
-  AUTH_EVENTS: {
-    READY: 'auth:ready',
-    LOGGED_IN: 'auth:logged-in',
-    LOGGED_OUT: 'auth:logged-out',
+vi.mock('../../events/index.js', () => ({
+  publishAndAwait: mocks.events.publishAndAwait,
+}));
+
+vi.mock('../../events/app-bus.js', () => ({
+  appBus: {
+    emitAsync: mocks.events.publishAndAwait,
   },
-  authBus: mocks.authBus,
 }));
 
 beforeEach(() => {
   vi.resetModules();
-  mocks.authBus.emitAsync.mockReset().mockResolvedValue(undefined);
-  mocks.authBus.emitAsyncSequential.mockReset().mockImplementation(async (events) => {
-    for (const [eventName, data] of events) {
-      await mocks.authBus.emitAsync(eventName, data);
-    }
-  });
+  mocks.events.publishAndAwait.mockReset().mockResolvedValue(undefined);
 });
 
-describe('auth-state authBus events', () => {
-  it('emits auth:ready and auth:logged-in on first stable authenticated state', async () => {
+describe('auth-state shared auth events', () => {
+  it('emits auth:ready and auth:login on first stable authenticated state', async () => {
     const { setState } = await import('../auth-state.js');
 
     setState({
@@ -45,15 +35,19 @@ describe('auth-state authBus events', () => {
     // Flush the void async emission chain
     await new Promise((r) => setTimeout(r, 0));
 
-    expect(mocks.authBus.emitAsync).toHaveBeenNthCalledWith(1, 'auth:ready', {
-      state: expect.objectContaining({
-        status: 'authenticated',
-        isLoggedIn: true,
-      }),
-    });
-    expect(mocks.authBus.emitAsync).toHaveBeenNthCalledWith(
+    expect(mocks.events.publishAndAwait).toHaveBeenNthCalledWith(
+      1,
+      'auth:ready',
+      {
+        state: expect.objectContaining({
+          status: 'authenticated',
+          isLoggedIn: true,
+        }),
+      },
+    );
+    expect(mocks.events.publishAndAwait).toHaveBeenNthCalledWith(
       2,
-      'auth:logged-in',
+      'auth:login',
       expect.objectContaining({
         state: expect.objectContaining({
           status: 'authenticated',
@@ -68,7 +62,7 @@ describe('auth-state authBus events', () => {
     );
   });
 
-  it('emits auth:logged-out on authenticated to unauthenticated transition', async () => {
+  it('emits auth:logout on authenticated to unauthenticated transition', async () => {
     const { setState } = await import('../auth-state.js');
 
     setState({
@@ -77,7 +71,7 @@ describe('auth-state authBus events', () => {
       user: { uid: 'u1', displayName: 'User 1' },
     });
     await new Promise((r) => setTimeout(r, 0));
-    mocks.authBus.emitAsync.mockClear();
+    mocks.events.publishAndAwait.mockClear();
 
     setState({
       status: 'unauthenticated',
@@ -86,8 +80,8 @@ describe('auth-state authBus events', () => {
     });
     await new Promise((r) => setTimeout(r, 0));
 
-    expect(mocks.authBus.emitAsync).toHaveBeenCalledWith(
-      'auth:logged-out',
+    expect(mocks.events.publishAndAwait).toHaveBeenCalledWith(
+      'auth:logout',
       expect.objectContaining({
         state: expect.objectContaining({
           status: 'unauthenticated',

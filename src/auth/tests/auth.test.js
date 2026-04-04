@@ -26,8 +26,8 @@ vi.mock('../../firebase/firebase.js', () => ({
   fcmVapidKey: 'test-vapid-key',
 }));
 
-vi.mock('../../firebase/presence.js', () => ({
-  setOffline: vi.fn(() => Promise.resolve()),
+vi.mock('../../events/index.js', () => ({
+  dispatchCommand: vi.fn(),
 }));
 
 vi.mock('../onetap.js', () => ({

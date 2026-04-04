@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => {
     callContact: vi.fn(),
     listenForIncomingOnRoom: vi.fn(),
     removeIncomingListenersForRoom: vi.fn(),
+    setUserOffline: vi.fn(() => Promise.resolve()),
     isDev: vi.fn(() => false),
     tempWarn: vi.fn(),
   };
@@ -54,6 +55,10 @@ vi.mock('../features/call/WIP-start-call-refactor.js', () => ({
 vi.mock('../features/call/room-listeners.js', () => ({
   listenForIncomingOnRoom: mocks.listenForIncomingOnRoom,
   removeIncomingListenersForRoom: mocks.removeIncomingListenersForRoom,
+}));
+
+vi.mock('../firebase/presence.js', () => ({
+  setUserOffline: mocks.setUserOffline,
 }));
 
 vi.mock('../utils/url.js', () => ({
@@ -121,5 +126,16 @@ describe('setupMainAppBusListeners', () => {
 
     expect(mocks.removeIncomingListenersForRoom).toHaveBeenCalledWith('room-old');
     expect(mocks.listenForIncomingOnRoom).toHaveBeenCalledWith('room-new');
+  });
+
+  it('handles the presence offline command through the app layer', async () => {
+    const { setupMainAppBusListeners } = await import('./setupMainAppBusListeners.js');
+
+    setupMainAppBusListeners();
+    const handler = mocks.handlers.get('user:presence:set-offline');
+
+    await handler?.();
+
+    expect(mocks.setUserOffline).toHaveBeenCalled();
   });
 });

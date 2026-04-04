@@ -110,8 +110,11 @@ vi.mock('../../src/initSentry.js', () => ({}));
 vi.mock('firebase/database', () => ({
   set: vi.fn(),
   get: vi.fn(),
+  onDisconnect: vi.fn(() => ({ set: vi.fn(() => Promise.resolve()) })),
+  onValue: vi.fn(),
   remove: mocks.firebase.remove,
   ref: vi.fn(),
+  serverTimestamp: vi.fn(() => ({ '.sv': 'timestamp' })),
 }));
 
 vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => ({
@@ -123,7 +126,7 @@ vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
 }));
 
-vi.mock('../../src/auth/auth-state.js', () => ({
+vi.mock('../../src/auth/index.js', () => ({
   getLoggedInUserId: vi.fn(() => 'user-123'),
   getUserId: vi.fn(() => 'user-123'),
   getUser: vi.fn(() => ({

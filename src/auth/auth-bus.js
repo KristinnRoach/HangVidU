@@ -1,16 +1,10 @@
 import { EventEmitter } from '../events/event-emitter.js';
 
-export const AUTH_EVENTS = {
-  READY: 'auth:ready',
-  LOGGED_IN: 'auth:logged-in',
-  LOGGED_OUT: 'auth:logged-out',
-};
-
 /**
- * AuthBus - module-local event bus for auth lifecycle events.
+ * AuthBus - module-local event bus for auth intents.
  *
- * The auth module emits stable auth facts here first. Cross-module forwarding
- * is handled by an explicit bridge so auth code stays unaware of app-level
- * compatibility contracts.
+ * UI-owned auth requests flow through this bus before they are translated into
+ * auth actions. Auth lifecycle facts are published directly to the shared
+ * events layer from auth-state.
  */
 export const authBus = new EventEmitter();

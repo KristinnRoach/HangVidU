@@ -18,9 +18,8 @@ let cleanupMainAuthAppBusListeners = null;
 /**
  * Register main event listeners for auth-driven cross-module side effects.
  *
- * Auth emits module-local events on authBus, the bridge forwards selected
- * compatibility events to shared events, and this app-level listener layer decides
- * how the rest of the app reacts.
+ * Auth publishes shared lifecycle facts directly, and this app-level listener
+ * layer decides how the rest of the app reacts.
  *
  * @param {{ lobbyElement: HTMLElement }} options
  * @returns {() => void}

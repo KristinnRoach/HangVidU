@@ -1,7 +1,7 @@
 // src/auth/auth-state.js — pure auth state, no Firebase imports
 
 import { getOrCreateGuestId } from './guest-user.js';
-import { AUTH_EVENTS, authBus } from './auth-bus.js';
+import { appBus } from '../events/app-bus.js';
 
 let state = {
   status: 'idle', // 'idle' | 'loading' | 'authenticated' | 'unauthenticated'
@@ -49,12 +49,12 @@ export function setState(next) {
 
   if (isStableStatus && !hasResolvedReady) {
     hasResolvedReady = true;
-    events.push([AUTH_EVENTS.READY, { state: snap }]);
+    events.push(['auth:ready', { state: snap }]);
   }
 
   if (!previousSnapshot.isLoggedIn && snap.isLoggedIn) {
     events.push([
-      AUTH_EVENTS.LOGGED_IN,
+      'auth:login',
       {
         state: snap,
         previousState: previousSnapshot,
@@ -65,7 +65,7 @@ export function setState(next) {
 
   if (previousSnapshot.isLoggedIn && !snap.isLoggedIn) {
     events.push([
-      AUTH_EVENTS.LOGGED_OUT,
+      'auth:logout',
       {
         state: snap,
         previousState: previousSnapshot,
@@ -76,7 +76,11 @@ export function setState(next) {
 
   if (events.length > 0) {
     emitChain = emitChain
-      .then(() => authBus.emitAsyncSequential(events))
+      .then(async () => {
+        for (const [eventName, payload] of events) {
+          await appBus.emitAsync(eventName, payload);
+        }
+      })
       .catch((error) => {
         console.error('[auth-state] failed to emit auth events', error);
       });

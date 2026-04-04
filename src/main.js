@@ -11,7 +11,6 @@ import { removeAllRTDBListeners } from './storage/fb-rtdb/rtdb.js';
 import {
   initAuth,
   initializeAuthUI,
-  setupAuthAppBusBridge,
 } from './auth/index.js';
 
 import {
@@ -195,9 +194,8 @@ async function init() {
     initializeSearchUI();
     addKeyListeners();
 
-    // Register auth event bridging/listeners before initAuth() so initial
-    // stable auth events are observed through the same appBus path.
-    cleanupFunctions.push(setupAuthAppBusBridge());
+    // Register auth listeners before initAuth() so initial stable auth
+    // events are observed by the app layer.
     cleanupFunctions.push(
       setupMainAuthAppBusListeners({ lobbyElement: lobbyDiv }),
     );

@@ -6,7 +6,7 @@ import { auth, logAuthError } from './auth-setup.js';
 import { clearGISTokenCache } from './gis-tokens.js';
 import { setState } from './auth-state.js';
 import { showOneTapSignin } from './onetap.js';
-import { setUserOffline } from '../firebase/presence.js';
+import { dispatchCommand } from '../events/index.js';
 import { t } from '../i18n/index.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { getPushNotifications } from '../features/push-notifications/index.js';
@@ -165,7 +165,7 @@ export async function signOutUser() {
         console.warn('[AUTH] Failed to disable notifications on logout:', err);
       });
 
-    await setUserOffline();
+    dispatchCommand('user:presence:set-offline');
     clearGISTokenCache();
     await signOut(auth);
     console.info('User signed out');
@@ -196,7 +196,7 @@ export async function deleteAccount({ scrubMessages = true } = {}) {
   try {
     console.info('[AUTH] Starting account deletion');
 
-    await setUserOffline();
+    dispatchCommand('user:presence:set-offline');
     clearGISTokenCache();
 
     await callCloudFunction('deleteAccount', { scrubMessages });
