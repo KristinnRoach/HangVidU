@@ -98,7 +98,7 @@ describe('setupMainAppBusListeners', () => {
     );
   });
 
-  it('selects a conversation when the messaging selection intent is emitted', async () => {
+  it('selects a conversation when the messaging selection command is emitted', async () => {
     const { setupMainAppBusListeners } =
       await import('./setupMainAppBusListeners.js');
 

@@ -1,6 +1,6 @@
-import { authBus } from './auth-bus.js';
+import { handleCommand } from '../events/index.js';
 import {
-  AUTH_INTENT_EVENTS,
+  AUTH_COMMANDS,
   parseAuthDeleteAccountRequested,
   parseAuthLoginRequested,
   parseAuthLogoutRequested,
@@ -11,49 +11,49 @@ import {
   signOutUser,
 } from './auth-actions.js';
 
-let cleanupAuthIntentListeners = null;
+let cleanupAuthCommandListeners = null;
 
-export function setupAuthIntentListeners() {
-  if (cleanupAuthIntentListeners) {
-    return cleanupAuthIntentListeners;
+export function setupAuthCommandListeners() {
+  if (cleanupAuthCommandListeners) {
+    return cleanupAuthCommandListeners;
   }
 
   const ac = new AbortController();
 
-  authBus.on(
-    AUTH_INTENT_EVENTS.LOGIN_REQUESTED,
+  handleCommand(
+    AUTH_COMMANDS.LOGIN_REQUESTED,
     async (payload) => {
       try {
         const request = parseAuthLoginRequested(payload);
         await signInWithAccountSelection(request);
       } catch (e) {
-        console.warn('[auth] login intent failed:', e);
+        console.warn('[auth] login command failed:', e);
       }
     },
     { signal: ac.signal },
   );
 
-  authBus.on(
-    AUTH_INTENT_EVENTS.LOGOUT_REQUESTED,
+  handleCommand(
+    AUTH_COMMANDS.LOGOUT_REQUESTED,
     async (payload) => {
       try {
         parseAuthLogoutRequested(payload);
         await signOutUser();
       } catch (e) {
-        console.warn('[auth] logout intent failed:', e);
+        console.warn('[auth] logout command failed:', e);
       }
     },
     { signal: ac.signal },
   );
 
-  authBus.on(
-    AUTH_INTENT_EVENTS.DELETE_ACCOUNT_REQUESTED,
+  handleCommand(
+    AUTH_COMMANDS.DELETE_ACCOUNT_REQUESTED,
     async (payload) => {
       try {
         const request = parseAuthDeleteAccountRequested(payload);
         await deleteAccount({ scrubMessages: request.scrubMessages });
       } catch (e) {
-        console.warn('[auth] delete-account intent failed:', e);
+        console.warn('[auth] delete-account command failed:', e);
       }
     },
     { signal: ac.signal },
@@ -61,11 +61,11 @@ export function setupAuthIntentListeners() {
 
   const cleanup = () => {
     ac.abort();
-    if (cleanupAuthIntentListeners === cleanup) {
-      cleanupAuthIntentListeners = null;
+    if (cleanupAuthCommandListeners === cleanup) {
+      cleanupAuthCommandListeners = null;
     }
   };
 
-  cleanupAuthIntentListeners = cleanup;
+  cleanupAuthCommandListeners = cleanup;
   return cleanup;
 }

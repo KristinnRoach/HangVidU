@@ -1,7 +1,7 @@
 // src/auth/auth-state.js — pure auth state, no Firebase imports
 
 import { getOrCreateGuestId } from './guest-user.js';
-import { appBus } from '../events/app-bus.js';
+import { publishAndAwait } from '../events/index.js';
 
 let state = {
   status: 'idle', // 'idle' | 'loading' | 'authenticated' | 'unauthenticated'
@@ -78,7 +78,7 @@ export function setState(next) {
     emitChain = emitChain
       .then(async () => {
         for (const [eventName, payload] of events) {
-          await appBus.emitAsync(eventName, payload);
+          await publishAndAwait(eventName, payload);
         }
       })
       .catch((error) => {

@@ -12,12 +12,6 @@ vi.mock('../../events/index.js', () => ({
   publishAndAwait: mocks.events.publishAndAwait,
 }));
 
-vi.mock('../../events/app-bus.js', () => ({
-  appBus: {
-    emitAsync: mocks.events.publishAndAwait,
-  },
-}));
-
 beforeEach(() => {
   vi.resetModules();
   mocks.events.publishAndAwait.mockReset().mockResolvedValue(undefined);

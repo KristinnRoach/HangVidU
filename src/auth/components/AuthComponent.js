@@ -3,9 +3,9 @@
 // ================================================
 
 import { getIsLoggedIn, subscribe } from '../auth-state.js';
-import { authBus } from '../auth-bus.js';
+import { dispatchCommand } from '../../events/index.js';
 import {
-  AUTH_INTENT_EVENTS,
+  AUTH_COMMANDS,
   parseAuthDeleteAccountRequested,
   parseAuthLoginRequested,
   parseAuthLogoutRequested,
@@ -104,8 +104,8 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       // handleLogin: signInWithGoogle, // TODO: remove or use
       handleLogin: async (e) => {
         try {
-          authBus.emit(
-            AUTH_INTENT_EVENTS.LOGIN_REQUESTED,
+          dispatchCommand(
+            AUTH_COMMANDS.LOGIN_REQUESTED,
             parseAuthLoginRequested({ source: 'auth-ui' }),
           );
         } catch (error) {
@@ -114,8 +114,8 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         }
       },
       handleLogout: () => {
-        authBus.emit(
-          AUTH_INTENT_EVENTS.LOGOUT_REQUESTED,
+        dispatchCommand(
+          AUTH_COMMANDS.LOGOUT_REQUESTED,
           parseAuthLogoutRequested({ source: 'auth-ui' }),
         );
       },
@@ -128,8 +128,8 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           'Also delete all your messages from conversations?',
         );
 
-        authBus.emit(
-          AUTH_INTENT_EVENTS.DELETE_ACCOUNT_REQUESTED,
+        dispatchCommand(
+          AUTH_COMMANDS.DELETE_ACCOUNT_REQUESTED,
           parseAuthDeleteAccountRequested({
             source: 'auth-ui',
             scrubMessages,

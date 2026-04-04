@@ -1,23 +1,23 @@
 import { z } from 'zod';
 
-export const AUTH_INTENT_EVENTS = {
+export const AUTH_COMMANDS = {
   LOGIN_REQUESTED: 'auth:login-requested',
   LOGOUT_REQUESTED: 'auth:logout-requested',
   DELETE_ACCOUNT_REQUESTED: 'auth:delete-account-requested',
 };
 
-const AuthIntentSourceSchema = z.literal('auth-ui');
+const AuthCommandSourceSchema = z.literal('auth-ui');
 
 export const AuthLoginRequestedSchema = z.object({
-  source: AuthIntentSourceSchema,
+  source: AuthCommandSourceSchema,
 });
 
 export const AuthLogoutRequestedSchema = z.object({
-  source: AuthIntentSourceSchema,
+  source: AuthCommandSourceSchema,
 });
 
 export const AuthDeleteAccountRequestedSchema = z.object({
-  source: AuthIntentSourceSchema,
+  source: AuthCommandSourceSchema,
   scrubMessages: z.boolean(),
 });
 
