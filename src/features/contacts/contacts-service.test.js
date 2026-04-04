@@ -40,6 +40,10 @@ vi.mock('./storage/index.js', () => ({
   createContactsLocalStore: vi.fn(() => mocks.store),
 }));
 
+vi.mock('../messaging/index.js', () => ({
+  resolveDirectConversationId: (userA, userB) => [userA, userB].sort().join('_'),
+}));
+
 describe('contacts-service', () => {
   beforeEach(() => {
     mocks.auth.loggedIn = false;

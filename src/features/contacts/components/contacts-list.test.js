@@ -52,7 +52,7 @@ vi.mock('../../../components/ui/icons.js', () => ({
   initIcons: mocks.initIcons,
 }));
 
-vi.mock('../../messaging/messaging-controller.js', () => ({
+vi.mock('../../messaging/index.js', () => ({
   messagingController: {
     selectConversation: mocks.selectConversation,
     listenToUnreadCount: vi.fn(() => () => {}),

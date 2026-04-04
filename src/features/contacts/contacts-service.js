@@ -10,7 +10,7 @@ import {
   getContactByMostRecentInteraction,
   getContactByRoomId,
 } from './contacts-query.js';
-import { resolveDirectConversationId } from '../messaging/direct-conversation-id.js';
+import { resolveDirectConversationId } from '../messaging/index.js';
 import { CONTACTS_EVENTS, contactsBus } from './contacts-bus.js';
 // PAUSED: claude --resume edf6030f-72fb-4503-9175-bfc21d2d973c
 

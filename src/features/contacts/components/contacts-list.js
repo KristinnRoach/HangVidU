@@ -10,7 +10,7 @@ import {
 import { t, onLocaleChange } from '../../../i18n/index.js';
 import { escapeHtml } from '../../../components/ui/component-system/dom-utils.js';
 import { initIcons } from '../../../components/ui/icons.js';
-import { messagingController } from '../../messaging/messaging-controller.js';
+import { messagingController } from '../../messaging/index.js';
 import { contactsService } from '../contacts-service.js';
 import { dispatchUIEvent } from '../../../components/ui/dispatcher.js';
 
