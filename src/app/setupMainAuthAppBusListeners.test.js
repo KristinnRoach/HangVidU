@@ -23,7 +23,7 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('./app-bus.js', () => ({
+vi.mock('../events/app-bus.js', () => ({
   appBus: mocks.appBus,
 }));
 

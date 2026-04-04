@@ -107,6 +107,10 @@ describe('contacts component', () => {
     lobbyElement.querySelector('.contact-name')?.click();
 
     expect(mocks.selectConversation).not.toHaveBeenCalled();
+    expect(mocks.dispatchUIEvent).not.toHaveBeenCalledWith(
+      'messaging:conversation:selected:requested',
+      expect.anything(),
+    );
     expect(warnSpy).toHaveBeenCalledWith(
       '[contacts] No conversation id for contact',
       expect.objectContaining({ contactId: 'contact-1' }),

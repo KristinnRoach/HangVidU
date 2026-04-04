@@ -1,4 +1,4 @@
-import { appBus } from '../../app/app-bus.js';
+import { appBus } from '../../events/app-bus.js';
 import { tempWarn } from '../../utils/dev/dev-utils.js';
 import { contactsService } from '../contacts/index.js';
 

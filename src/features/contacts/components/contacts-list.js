@@ -198,7 +198,8 @@ function attachContactListeners(container, lobbyElement) {
             return;
           }
 
-          await messagingController.selectConversation(conversationId, {
+          dispatchUIEvent('messaging:conversation:selected:requested', {
+            conversationId,
             remoteParticipantIds: [contactId],
             displayUI: true,
           });

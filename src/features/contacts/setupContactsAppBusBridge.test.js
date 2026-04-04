@@ -26,7 +26,7 @@ vi.mock('./contacts-bus.js', () => ({
   contactsBus: mocks.contactsBus,
 }));
 
-vi.mock('../../app/app-bus.js', () => ({
+vi.mock('../../events/app-bus.js', () => ({
   appBus: mocks.appBus,
 }));
 

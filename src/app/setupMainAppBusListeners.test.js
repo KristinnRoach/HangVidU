@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('./app-bus.js', () => ({
+vi.mock('../events/app-bus.js', () => ({
   appBus: mocks.appBus,
 }));
 
@@ -79,6 +79,27 @@ describe('setupMainAppBusListeners', () => {
     expect(mocks.contactsService.getConversationId).not.toHaveBeenCalled();
     expect(mocks.messagingController.selectConversation).not.toHaveBeenCalled();
     expect(mocks.callContact).toHaveBeenCalledWith(null, 'Unknown Caller', 'room-123');
+  });
+
+  it('selects a conversation when the messaging selection intent is emitted', async () => {
+    const { setupMainAppBusListeners } = await import('./setupMainAppBusListeners.js');
+
+    setupMainAppBusListeners();
+    const handler = mocks.handlers.get('messaging:conversation:selected:requested');
+
+    await handler?.({
+      conversationId: 'conv-123',
+      remoteParticipantIds: ['contact-1'],
+      displayUI: true,
+    });
+
+    expect(mocks.messagingController.selectConversation).toHaveBeenCalledWith(
+      'conv-123',
+      {
+        remoteParticipantIds: ['contact-1'],
+        displayUI: true,
+      },
+    );
   });
 
   it('removes the previous room listener before listening on an updated room', async () => {

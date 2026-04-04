@@ -1,4 +1,4 @@
-import { EventEmitter } from '../../app/event-emitter.js';
+import { EventEmitter } from '../../events/event-emitter.js';
 
 export const CONTACTS_EVENTS = {
   SAVED: 'contact:saved',

@@ -1,4 +1,4 @@
-import { appBus } from './app-bus.js';
+import { appBus } from '../events/app-bus.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import {
   removeAllIncomingListeners,

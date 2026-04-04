@@ -84,7 +84,7 @@ vi.mock('../../utils/dev/dev-utils.js', () => ({
   isDev: vi.fn(() => false),
 }));
 
-vi.mock('../../app/app-bus.js', () => ({
+vi.mock('../../events/app-bus.js', () => ({
   appBus: mocks.appBus,
 }));
 

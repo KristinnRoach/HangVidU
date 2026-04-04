@@ -1,5 +1,5 @@
 import { get, remove } from 'firebase/database';
-import { appBus } from '../../app/app-bus.js';
+import { appBus } from '../../events/app-bus.js';
 import {
   removeRTDBListenersForRoom,
   getUserRecentCallsRef,

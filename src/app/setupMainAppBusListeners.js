@@ -1,4 +1,4 @@
-import { appBus } from './app-bus.js';
+import { appBus } from '../events/app-bus.js';
 import { messagingController } from '../features/messaging/messaging-controller.js';
 import { isDev, tempWarn } from '../utils/dev/dev-utils.js';
 import { callContact } from '../features/call/WIP-start-call-refactor.js';
@@ -11,6 +11,23 @@ import { clearUrlParam } from '../utils/url.js';
 import { onCallDisconnected } from '../components/ui/core/call-lifecycle-ui.js';
 
 export function setupMainAppBusListeners() {
+  appBus.on(
+    'messaging:conversation:selected:requested',
+    async ({ conversationId, remoteParticipantIds = [], displayUI = true }) => {
+      try {
+        await messagingController.selectConversation(conversationId, {
+          remoteParticipantIds,
+          displayUI,
+        });
+      } catch (e) {
+        console.warn(
+          'Failed to select conversation on messaging:conversation:selected:requested:',
+          e,
+        );
+      }
+    },
+  );
+
   appBus.on(
     'call:outgoing:requested',
     async ({ contactId, contactName, conversationId, roomId }) => {
