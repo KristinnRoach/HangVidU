@@ -9,8 +9,9 @@ import { escapeHtml } from '../../../components/ui/component-system/dom-utils.js
 import {
   requestContactsAccess,
   requestGmailSendAccess,
+  getLoggedInUserId,
+  getUser,
 } from '../../../auth/index.js';
-import { getLoggedInUserId, getUser } from '../../../auth/index.js';
 import { fetchGoogleContacts } from '../google-contacts.js';
 import { sendBulkEmailsViaGmail } from '../gmail-send.js';
 import { t } from '../../../i18n/index.js';

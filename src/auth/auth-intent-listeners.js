@@ -23,8 +23,12 @@ export function setupAuthIntentListeners() {
   authBus.on(
     AUTH_INTENT_EVENTS.LOGIN_REQUESTED,
     async (payload) => {
-      const request = parseAuthLoginRequested(payload);
-      await signInWithAccountSelection(request);
+      try {
+        const request = parseAuthLoginRequested(payload);
+        await signInWithAccountSelection(request);
+      } catch (e) {
+        console.warn('[auth] login intent failed:', e);
+      }
     },
     { signal: ac.signal },
   );
@@ -32,8 +36,12 @@ export function setupAuthIntentListeners() {
   authBus.on(
     AUTH_INTENT_EVENTS.LOGOUT_REQUESTED,
     async (payload) => {
-      parseAuthLogoutRequested(payload);
-      await signOutUser();
+      try {
+        parseAuthLogoutRequested(payload);
+        await signOutUser();
+      } catch (e) {
+        console.warn('[auth] logout intent failed:', e);
+      }
     },
     { signal: ac.signal },
   );
@@ -41,8 +49,12 @@ export function setupAuthIntentListeners() {
   authBus.on(
     AUTH_INTENT_EVENTS.DELETE_ACCOUNT_REQUESTED,
     async (payload) => {
-      const request = parseAuthDeleteAccountRequested(payload);
-      await deleteAccount({ scrubMessages: request.scrubMessages });
+      try {
+        const request = parseAuthDeleteAccountRequested(payload);
+        await deleteAccount({ scrubMessages: request.scrubMessages });
+      } catch (e) {
+        console.warn('[auth] delete-account intent failed:', e);
+      }
     },
     { signal: ac.signal },
   );

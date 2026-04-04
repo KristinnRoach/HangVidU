@@ -57,7 +57,7 @@ vi.mock('../contacts/index.js', () => ({
   renderContactsList: mocks.renderContactsList,
 }));
 
-vi.mock('../auth/index.js', () => ({
+vi.mock('../../auth/index.js', () => ({
   getLoggedInUserId: mocks.auth.getUserId,
   getUserId: mocks.auth.getUserId,
   getUser: mocks.auth.getUser,

@@ -1,4 +1,4 @@
-import { appBus } from './app-bus';
+import { appBus } from './app-bus.js';
 
 /**
  * Send a command to the responsible handler
