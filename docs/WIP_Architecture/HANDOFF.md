@@ -72,7 +72,7 @@ Notes:
   - handling lives in app composition
   - unread-count facts are published by `messaging`
 - auth area follow-up:
-  - `authBus` still has current value because it carries both internal auth intents and auth lifecycle facts
+  - `authBus` carries auth intents only (login/logout/delete requests); lifecycle facts are published from `auth-state` via shared events
   - `setupMainAuthAppBusListeners.js` is not redundant; it owns real app reactions
   - likely redundancy review targets:
     - `auth-intent-listeners.js`
