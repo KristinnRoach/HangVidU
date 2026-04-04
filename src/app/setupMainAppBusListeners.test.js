@@ -76,7 +76,8 @@ describe('setupMainAppBusListeners', () => {
   });
 
   it('does not attempt conversation selection when no contactId is provided', async () => {
-    const { setupMainAppBusListeners } = await import('./setupMainAppBusListeners.js');
+    const { setupMainAppBusListeners } =
+      await import('./setupMainAppBusListeners.js');
 
     setupMainAppBusListeners();
     const handler = mocks.handlers.get('call:outgoing:requested');
@@ -84,16 +85,22 @@ describe('setupMainAppBusListeners', () => {
     handler?.({
       contactId: null,
       contactName: 'Unknown Caller',
+      conversationId: null,
       roomId: 'room-123',
     });
 
     expect(mocks.contactsService.getConversationId).not.toHaveBeenCalled();
     expect(mocks.messagingController.selectConversation).not.toHaveBeenCalled();
-    expect(mocks.callContact).toHaveBeenCalledWith(null, 'Unknown Caller', 'room-123');
+    expect(mocks.callContact).toHaveBeenCalledWith(
+      null,
+      'Unknown Caller',
+      'room-123',
+    );
   });
 
   it('selects a conversation when the messaging selection intent is emitted', async () => {
-    const { setupMainAppBusListeners } = await import('./setupMainAppBusListeners.js');
+    const { setupMainAppBusListeners } =
+      await import('./setupMainAppBusListeners.js');
 
     setupMainAppBusListeners();
     const handler = mocks.handlers.get('messaging:conversation:select');
@@ -114,7 +121,8 @@ describe('setupMainAppBusListeners', () => {
   });
 
   it('removes the previous room listener before listening on an updated room', async () => {
-    const { setupMainAppBusListeners } = await import('./setupMainAppBusListeners.js');
+    const { setupMainAppBusListeners } =
+      await import('./setupMainAppBusListeners.js');
 
     setupMainAppBusListeners();
     const handler = mocks.handlers.get('room:id:updated');
@@ -124,12 +132,15 @@ describe('setupMainAppBusListeners', () => {
       previousRoomId: 'room-old',
     });
 
-    expect(mocks.removeIncomingListenersForRoom).toHaveBeenCalledWith('room-old');
+    expect(mocks.removeIncomingListenersForRoom).toHaveBeenCalledWith(
+      'room-old',
+    );
     expect(mocks.listenForIncomingOnRoom).toHaveBeenCalledWith('room-new');
   });
 
   it('handles the presence offline command through the app layer', async () => {
-    const { setupMainAppBusListeners } = await import('./setupMainAppBusListeners.js');
+    const { setupMainAppBusListeners } =
+      await import('./setupMainAppBusListeners.js');
 
     setupMainAppBusListeners();
     const handler = mocks.handlers.get('user:presence:set-offline');

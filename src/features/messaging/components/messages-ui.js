@@ -160,6 +160,7 @@ export function initMessagesUI() {
         dispatchCommand('call:outgoing:requested', {
           contactId,
           contactName,
+          conversationId,
           roomId,
         });
       } catch (err) {
@@ -740,6 +741,7 @@ export function initMessagesUI() {
         dispatchCommand('call:outgoing:requested', {
           contactId,
           contactName,
+          conversationId,
           roomId,
         });
       } catch (e) {

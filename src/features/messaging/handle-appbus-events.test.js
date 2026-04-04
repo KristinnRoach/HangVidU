@@ -52,7 +52,8 @@ describe('setupMessagingAppBusHandlers', () => {
     const unsubscribe = vi.fn();
     mocks.messagingController.listenToUnreadCount.mockReturnValue(unsubscribe);
 
-    const { setupMessagingAppBusHandlers } = await import('./handle-appbus-events.js');
+    const { setupMessagingAppBusHandlers } =
+      await import('./handle-appbus-events.js');
 
     setupMessagingAppBusHandlers({
       messagingController: mocks.messagingController,
@@ -74,6 +75,9 @@ describe('setupMessagingAppBusHandlers', () => {
     expect(mocks.messagingController.listenToUnreadCount).toHaveBeenCalledWith(
       'conv-123',
     );
+
+    unlistenHandler?.({ conversationId: 'conv-123' });
+    expect(unsubscribe).not.toHaveBeenCalled();
 
     unlistenHandler?.({ conversationId: 'conv-123' });
 
