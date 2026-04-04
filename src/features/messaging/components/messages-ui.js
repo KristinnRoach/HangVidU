@@ -157,7 +157,7 @@ export function initMessagesUI() {
           messagingController.getConversationDisplayName(conversationId) ||
           null;
 
-        dispatchCommand('call:outgoing:requested', {
+        dispatchCommand('call:outgoing:initiate', {
           contactId,
           contactName,
           conversationId,
@@ -165,7 +165,7 @@ export function initMessagesUI() {
         });
       } catch (err) {
         console.warn(
-          'Failed to emit call:outgoing:requested in temp msg-ui code',
+          'Failed to emit call:outgoing:initiate in temp msg-ui code',
           err,
         );
       }
@@ -738,7 +738,7 @@ export function initMessagesUI() {
           messagingController.getConversationDisplayName(conversationId) ||
           null;
 
-        dispatchCommand('call:outgoing:requested', {
+        dispatchCommand('call:outgoing:initiate', {
           contactId,
           contactName,
           conversationId,

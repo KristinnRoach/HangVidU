@@ -1,7 +1,4 @@
-import {
-  handleCommand,
-  subscribe,
-} from '../events/index.js';
+import { handleCommand, subscribe } from '../events/index.js';
 import { messagingController } from '../features/messaging/messaging-controller.js';
 import { isDev, tempWarn } from '../utils/dev/dev-utils.js';
 import { callContact } from '../features/call/WIP-start-call-refactor.js';
@@ -41,11 +38,11 @@ export function setupMainAppBusListeners() {
   );
 
   handleCommand(
-    'call:outgoing:requested',
+    'call:outgoing:initiate',
     async ({ contactId, contactName, conversationId, roomId }) => {
       isDev() &&
         tempWarn(
-          '[main.js] call:outgoing:requested event received with data: ',
+          '[main.js] call:outgoing:initiate event received with data: ',
           {
             contactId,
             contactName,
@@ -68,14 +65,14 @@ export function setupMainAppBusListeners() {
               })
               .catch((e) => {
                 console.warn(
-                  'Failed to select conversation on call:outgoing:requested:',
+                  'Failed to select conversation on call:outgoing:initiate',
                   e,
                 );
               });
           }
         } catch (e) {
           console.warn(
-            'Failed to select conversation on call:outgoing:requested:',
+            'Failed to select conversation on call:outgoing:initiate',
             e,
           );
         }

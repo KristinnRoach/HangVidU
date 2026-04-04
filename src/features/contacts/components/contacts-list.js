@@ -10,10 +10,7 @@ import {
 import { t, onLocaleChange } from '../../../i18n/index.js';
 import { escapeHtml } from '../../../components/ui/component-system/dom-utils.js';
 import { initIcons } from '../../../components/ui/icons.js';
-import {
-  dispatchCommand,
-  subscribe,
-} from '../../../events/index.js';
+import { dispatchCommand, subscribe } from '../../../events/index.js';
 import { contactsService } from '../contacts-service.js';
 
 // TODO: WIP decoupling considerations:
@@ -176,7 +173,7 @@ function attachContactListeners(container, lobbyElement) {
         nameEl.getAttribute('data-conversation-id') || null;
 
       if (roomId || contactId) {
-        dispatchCommand('call:outgoing:requested', {
+        dispatchCommand('call:outgoing:initiate', {
           contactId,
           contactName,
           conversationId,

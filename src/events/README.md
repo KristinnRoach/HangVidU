@@ -26,7 +26,6 @@ Use:
 Rules:
 
 - Do not import `appBus` outside `src/events/`
-- Do not use `:requested` in event names
 - Commands ask for work; published events announce facts
 - Prefer one clear command handler per command name
 - If async bus behavior is needed, add it to `src/events/index.js` instead of importing `appBus` directly

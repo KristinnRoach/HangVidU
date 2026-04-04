@@ -80,7 +80,7 @@ describe('setupMainAppBusListeners', () => {
       await import('./setupMainAppBusListeners.js');
 
     setupMainAppBusListeners();
-    const handler = mocks.handlers.get('call:outgoing:requested');
+    const handler = mocks.handlers.get('call:outgoing:initiate');
 
     handler?.({
       contactId: null,
