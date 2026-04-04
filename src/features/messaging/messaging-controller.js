@@ -9,6 +9,7 @@ import {
   createTextMessage,
   createEventMessage,
 } from './message-factory.js';
+import { publish } from '../../events/index.js';
 
 // Max file size for file messages (1MB before base64 encoding)
 const MAX_FILE_SIZE = 1 * 1024 * 1024;
@@ -620,8 +621,21 @@ export class MessagingController extends EventEmitter {
   listenToUnreadCount(conversationId, onCountChange, onMessageRead) {
     return this.store.onUnreadChange(
       conversationId,
-      onCountChange,
-      onMessageRead,
+      (unreadCount, newlyReadMsgIds = []) => {
+        if (typeof onCountChange === 'function') {
+          onCountChange(unreadCount, newlyReadMsgIds);
+        }
+
+        if (typeof onMessageRead === 'function' && newlyReadMsgIds.length > 0) {
+          onMessageRead(newlyReadMsgIds);
+        }
+
+        publish('messaging:conversation:unread-count:changed', {
+          conversationId,
+          unreadCount,
+          newlyReadMsgIds,
+        });
+      },
     );
   }
 

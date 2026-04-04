@@ -1,11 +1,14 @@
-import { appBus } from '../../events/app-bus.js';
+import {
+  dispatchCommand,
+  handleCommand,
+} from '../../events/index.js';
 import { tempWarn } from '../../utils/dev/dev-utils.js';
 import { contactsService } from '../contacts/index.js';
 
 let cleanupMessagingAppBusHandlers = null;
 
 /**
- * Register AppBus listeners for messaging side effects.
+ * Register cross-module messaging command handlers.
  * Idempotent: repeated calls return the same cleanup function
  * without registering duplicate listeners.
  *
@@ -25,9 +28,10 @@ export function setupMessagingAppBusHandlers({ messagingController }) {
   }
 
   const unsubscribers = [];
+  const unreadSubscriptions = new Map();
 
   unsubscribers.push(
-    appBus.on('call:incoming:accepted', async ({ contactId }) => {
+    handleCommand('call:incoming:accepted', async ({ contactId }) => {
       tempWarn(
         `[APPBUS] Handling call answered event from contact ${contactId}`,
       );
@@ -58,7 +62,7 @@ export function setupMessagingAppBusHandlers({ messagingController }) {
   );
 
   unsubscribers.push(
-    appBus.on('call:unanswered', async ({ roomId, contactId }) => {
+    handleCommand('call:unanswered', async ({ roomId, contactId }) => {
       tempWarn(
         `[APPBUS] Handling unanswered call for room ${roomId}, contact ${contactId}`,
       );
@@ -86,7 +90,51 @@ export function setupMessagingAppBusHandlers({ messagingController }) {
     }),
   );
 
+  unsubscribers.push(
+    handleCommand(
+      'messaging:conversation:unread-count:listen',
+      ({ conversationId }) => {
+        if (!conversationId || unreadSubscriptions.has(conversationId)) {
+          return;
+        }
+
+        const unsubscribe = messagingController.listenToUnreadCount(
+          conversationId,
+        );
+
+        unreadSubscriptions.set(conversationId, unsubscribe);
+      },
+    ),
+  );
+
+  unsubscribers.push(
+    handleCommand(
+      'messaging:conversation:unread-count:unlisten',
+      ({ conversationId }) => {
+        const unsubscribe = unreadSubscriptions.get(conversationId);
+        if (!unsubscribe) {
+          return;
+        }
+
+        unreadSubscriptions.delete(conversationId);
+        unsubscribe();
+      },
+    ),
+  );
+
   cleanupMessagingAppBusHandlers = () => {
+    unreadSubscriptions.forEach((unsubscribe) => {
+      try {
+        unsubscribe();
+      } catch (e) {
+        console.warn(
+          '[APPBUS] Failed to unsubscribe unread-count listener:',
+          e,
+        );
+      }
+    });
+    unreadSubscriptions.clear();
+
     while (unsubscribers.length > 0) {
       const unsubscribe = unsubscribers.pop();
       try {

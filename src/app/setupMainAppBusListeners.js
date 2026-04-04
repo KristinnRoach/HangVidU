@@ -1,4 +1,7 @@
-import { appBus } from '../events/app-bus.js';
+import {
+  handleCommand,
+  subscribe,
+} from '../events/index.js';
 import { messagingController } from '../features/messaging/messaging-controller.js';
 import { isDev, tempWarn } from '../utils/dev/dev-utils.js';
 import { callContact } from '../features/call/WIP-start-call-refactor.js';
@@ -11,8 +14,8 @@ import { clearUrlParam } from '../utils/url.js';
 import { onCallDisconnected } from '../components/ui/core/call-lifecycle-ui.js';
 
 export function setupMainAppBusListeners() {
-  appBus.on(
-    'messaging:conversation:selected:requested',
+  handleCommand(
+    'messaging:conversation:select',
     async ({ conversationId, remoteParticipantIds = [], displayUI = true }) => {
       try {
         await messagingController.selectConversation(conversationId, {
@@ -21,14 +24,14 @@ export function setupMainAppBusListeners() {
         });
       } catch (e) {
         console.warn(
-          'Failed to select conversation on messaging:conversation:selected:requested:',
+          'Failed to select conversation on messaging:conversation:select:',
           e,
         );
       }
     },
   );
 
-  appBus.on(
+  handleCommand(
     'call:outgoing:requested',
     async ({ contactId, contactName, conversationId, roomId }) => {
       isDev() &&
@@ -73,18 +76,18 @@ export function setupMainAppBusListeners() {
     },
   );
 
-  appBus.on('room:id:created', ({ roomId }) => {
+  subscribe('room:id:created', ({ roomId }) => {
     listenForIncomingOnRoom(roomId);
   });
 
-  appBus.on('room:id:updated', ({ roomId, previousRoomId }) => {
+  subscribe('room:id:updated', ({ roomId, previousRoomId }) => {
     if (previousRoomId && previousRoomId !== roomId) {
       removeIncomingListenersForRoom(previousRoomId);
     }
     listenForIncomingOnRoom(roomId);
   });
 
-  appBus.on('room:joinOrCreate:failed', ({ roomId }) => {
+  subscribe('room:joinOrCreate:failed', ({ roomId }) => {
     console.warn(
       `[AppBus] room:joinOrCreate:failed 
       Failed to join or create room with id: ${roomId}`,

@@ -13,6 +13,7 @@ export default [
           mode: 'full',
           pattern: [
             'src/components/**/*',
+            'src/events/**/*',
             'src/firebase/**/*',
             'src/i18n/**/*',
             'src/media/**/*',
@@ -45,6 +46,7 @@ export default [
   {
     files: [
       'src/components/**/*.js',
+      'src/events/**/*.js',
       'src/firebase/**/*.js',
       'src/i18n/**/*.js',
       'src/media/**/*.js',

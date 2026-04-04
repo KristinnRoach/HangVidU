@@ -5,9 +5,14 @@ const mocks = vi.hoisted(() => {
 
   return {
     handlers,
-    appBus: {
-      on: vi.fn((eventName, handler) => {
+    events: {
+      handleCommand: vi.fn((eventName, handler) => {
         handlers.set(eventName, handler);
+        return () => handlers.delete(eventName);
+      }),
+      subscribe: vi.fn((eventName, handler) => {
+        handlers.set(eventName, handler);
+        return () => handlers.delete(eventName);
       }),
     },
     messagingController: {
@@ -24,8 +29,9 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('../events/app-bus.js', () => ({
-  appBus: mocks.appBus,
+vi.mock('../events/index.js', () => ({
+  handleCommand: mocks.events.handleCommand,
+  subscribe: mocks.events.subscribe,
 }));
 
 vi.mock('../features/messaging/messaging-controller.js', () => ({
@@ -85,7 +91,7 @@ describe('setupMainAppBusListeners', () => {
     const { setupMainAppBusListeners } = await import('./setupMainAppBusListeners.js');
 
     setupMainAppBusListeners();
-    const handler = mocks.handlers.get('messaging:conversation:selected:requested');
+    const handler = mocks.handlers.get('messaging:conversation:select');
 
     await handler?.({
       conversationId: 'conv-123',

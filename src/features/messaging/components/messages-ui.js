@@ -27,7 +27,6 @@ import { devDebug } from '../../../utils/dev/dev-utils.js';
 import { showImagePreview } from '../../../components/modal/imagePreview.js';
 import { onTapGesture } from '../../../components/ui/utils/detectDoubleClick.js';
 import { isSafeDownloadUrl } from '../../../utils/security/validate-url.js';
-import { dispatchUIEvent } from '../../../components/ui/dispatcher.js';
 import {
   cancelScrollMessagesToEnd,
   scrollMessagesToEnd,
@@ -157,7 +156,7 @@ export function initMessagesUI() {
           messagingController.getConversationDisplayName(conversationId) ||
           null;
 
-        dispatchUIEvent('call:outgoing:requested', {
+        appBus.emit('call:outgoing:requested', {
           contactId,
           contactName,
           roomId,
@@ -737,7 +736,7 @@ export function initMessagesUI() {
           messagingController.getConversationDisplayName(conversationId) ||
           null;
 
-        dispatchUIEvent('call:outgoing:requested', {
+        appBus.emit('call:outgoing:requested', {
           contactId,
           contactName,
           roomId,
