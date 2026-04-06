@@ -18,7 +18,6 @@ export default [
             'src/i18n/**/*',
             'src/media/**/*',
             'src/media-next/**/*',
-            'src/presence/**/*',
             'src/pwa/**/*',
             'src/storage/**/*',
             'src/styles/**/*',
