@@ -51,7 +51,6 @@ export default [
       'src/i18n/**/*.js',
       'src/media/**/*.js',
       'src/media-next/**/*.js',
-      'src/presence/**/*.js',
       'src/pwa/**/*.js',
       'src/storage/**/*.js',
       'src/styles/**/*.js',
