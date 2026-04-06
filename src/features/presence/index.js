@@ -3,6 +3,13 @@ import { writeOnline, writeOffline, observePresence } from './presence-rtdb.js';
 
 let initializedForUserId = null;
 let lastSeenUserId = null;
+let presenceWriteChain = Promise.resolve();
+
+function enqueuePresenceWrite(task) {
+  const run = presenceWriteChain.then(task, task);
+  presenceWriteChain = run.catch(() => {});
+  return run;
+}
 
 onAuthStateChange((state) => {
   if (state.isLoggedIn) {
@@ -11,7 +18,7 @@ onAuthStateChange((state) => {
       initializedForUserId = null;
       lastSeenUserId = userId;
     }
-    initializePresence().catch((err) => {
+    enqueuePresenceWrite(() => initializePresence()).catch((err) => {
       console.warn('Failed to initialize presence:', err);
     });
   } else {
@@ -35,12 +42,12 @@ async function initializePresence() {
 export async function setUserOffline(userId = getLoggedInUserId()) {
   if (!userId) return;
 
-  try {
+  return enqueuePresenceWrite(async () => {
     await writeOffline(userId);
     initializedForUserId = null;
-  } catch (error) {
+  }).catch((error) => {
     console.error('Failed to set offline:', error);
-  }
+  });
 }
 
 export function watchUserPresence(userId, callback) {
