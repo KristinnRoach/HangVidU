@@ -101,4 +101,10 @@ export function setupMainAppBusListeners() {
     clearUrlParam();
     onCallDisconnected();
   });
+
+  subscribe('contact:deleted', ({ roomId }) => {
+    if (roomId) {
+      removeIncomingListenersForRoom(roomId);
+    }
+  });
 }
