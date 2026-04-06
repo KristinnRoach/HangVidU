@@ -15,6 +15,7 @@ Completed in this branch:
 - added `src/events/index.js` as the intended public cross-module event entrypoint
 - standardized the basic event API around:
   - `dispatchCommand()`
+  - `dispatchCommandAndAwait()`
   - `handleCommand()`
   - `publish()`
   - `publishAndAwait()`
@@ -40,17 +41,18 @@ Current intended standards:
 - `src/events/` is shared event infrastructure, not part of the `app` layer
 - `src/events/index.js` is the intended public cross-module event API
 - `dispatchCommand()` asks another module to do work
+- `dispatchCommandAndAwait()` asks another module to do work and waits for completion
 - `publish()` announces a fact that already happened
 - `publishAndAwait()` should be reserved for cases where the publisher truly needs listener completion
 - cross-module state observation should prefer producer-owned published facts over direct sibling-feature imports
 - direct `appBus` imports outside `src/events/` should be treated as migration leftovers unless there is a strong reason
 
-Verified at this checkpoint:
+Verified on `main` (April 6, 2026):
 
-- focused vitest suites around contacts/messaging/call/auth event migration
-- `pnpm build`
-- `pnpm test`
-- `pnpm lint:boundaries` currently fails only on the remaining real boundary violations
+- `pnpm lint:boundaries` fails with 13 known boundary violations across:
+  - `shared -> feature` imports in legacy UI/media/PWA files (`src/components/`, `src/media/`, `src/pwa/`)
+  - `contacts -> sibling feature` imports to `messaging`, `notifications`, and `account`
+- no direct `appBus` imports were found outside `src/events/` in runtime source files
 
 Next goal:
 
@@ -70,12 +72,12 @@ Notes:
 - `src/auth/auth-state.js` still owns the canonical auth snapshot and the internal `subscribe()` implementation
 - `src/auth/index.js` is now the intended public auth surface for external consumers
 - `contacts` is the only feature currently under active feature-boundary enforcement
-- `shared → auth` violation existed in `src/firebase/cloud-functions.js` - NOTE: was temporarily moved to src/auth/cloud-functions.js
+- the prior `shared -> auth` violation in `src/firebase/cloud-functions.js` is resolved; cloud-functions auth code now lives in `src/auth/cloud-functions.js`
 - `shared → feature` violations exist in legacy UI files (`src/components/`, `src/media/`, `src/pwa/`)
 - current `contacts` violation categories are:
   - messaging dependency
   - notifications dependency
-  - account/profile dependency
+  - account dependency
 - current `contacts` messaging change:
   - `contacts` no longer imports `messagingController`
   - `contacts` dispatches `messaging:conversation:select`
