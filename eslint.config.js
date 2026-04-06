@@ -79,15 +79,16 @@ export default [
               allow: {
                 to: [
                   { type: 'shared' },
+
                   // TODO: Remove / disallow temporary shared -> feature exceptions.
                   // Keep these explicit so we can remove them one-by-one during migration.
-                  { type: 'feature', captured: { featureName: 'call' } },
                   { type: 'feature', captured: { featureName: 'messaging' } },
                   { type: 'feature', captured: { featureName: 'watch' } },
                   {
                     type: 'feature',
                     captured: { featureName: 'notifications' },
                   },
+                  { type: 'feature', captured: { featureName: 'call' } },
                 ],
               },
               message:
@@ -121,7 +122,7 @@ export default [
 
                   // TODO: Remove / disallow temporary contacts -> feature exceptions.
                   // Remove one by one as each dependency is migrated.
-                  { type: 'feature', captured: { featureName: 'messaging' } },
+                  // { type: 'feature', captured: { featureName: 'messaging' } },
                   {
                     type: 'feature',
                     captured: { featureName: 'notifications' },

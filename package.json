@@ -23,6 +23,7 @@
     "preview": "vite preview",
     "preview:https": "PREVIEW_HTTPS=1 vite preview",
     "preview:pwa": "pnpm build && pnpm preview:https",
+    "lint": "pnpm lint:boundaries",
     "lint:boundaries": "eslint \"src/**/*.js\"",
     "test": "vitest --run",
     "test:all": "pnpm test:compat && pnpm test:e2e",
