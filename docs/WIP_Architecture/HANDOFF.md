@@ -49,9 +49,11 @@ Current intended standards:
 
 Verified on `main` (April 6, 2026):
 
-- `pnpm lint:boundaries` fails with 13 known boundary violations across:
-  - `shared -> feature` imports in legacy UI/media/PWA files (`src/components/`, `src/media/`, `src/pwa/`)
-  - `contacts -> sibling feature` imports to `messaging`, `notifications`, and `account`
+- temporary `shared -> feature` allowlist is active for: `call`, `messaging`, `watch`, `notifications`
+- `pnpm lint:boundaries` currently fails on 4 known `contacts -> sibling feature` violations:
+  - `messaging`
+  - `notifications`
+  - `account`
 - no direct `appBus` imports were found outside `src/events/` in runtime source files
 
 Next goal:
@@ -73,7 +75,11 @@ Notes:
 - `src/auth/index.js` is now the intended public auth surface for external consumers
 - `contacts` is the only feature currently under active feature-boundary enforcement
 - the prior `shared -> auth` violation in `src/firebase/cloud-functions.js` is resolved; cloud-functions auth code now lives in `src/auth/cloud-functions.js`
-- `shared → feature` violations exist in legacy UI files (`src/components/`, `src/media/`, `src/pwa/`)
+- temporary `shared -> feature` allowlist is active in `eslint.config.js` for:
+  - `call`
+  - `messaging`
+  - `watch`
+  - `notifications`
 - current `contacts` violation categories are:
   - messaging dependency
   - notifications dependency
