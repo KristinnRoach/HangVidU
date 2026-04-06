@@ -31,6 +31,17 @@ Completed in this branch:
   - `room:id:updated`
   - `contact:deleted`
 - migrated remaining touched feature/app/auth listeners away from direct `appBus` usage where already adjusted in this branch
+- moved `resolveDirectConversationId` out of `messaging` into shared `src/utils/direct-conversation-id.js`
+- removed direct `contacts -> messaging` import for conversation id helpers
+- added app-level notification projection in `src/app/setupNotificationsHandlers.js`
+- changed `contacts` invite/referral flows to publish notification facts instead of importing notifications directly
+- replaced `setupMainAuthAppBusListeners` with `setupAuth` in `src/app/setupAuth.js`:
+  - setup is app-owned and idempotent
+  - auth listeners are registered before `initAuth()` runs
+- documented setup direction in `src/app/SETUP<MODULE>.md`
+- added WIP docs:
+  - [LINKS_TO_DOCS.md](./LINKS_TO_DOCS.md)
+  - [WIP_TEST_MOCKS_SPY.md](../WIP_TEST_MOCKS_SPY.md)
 
 Current intended standards:
 
@@ -46,12 +57,15 @@ Current intended standards:
 - `publishAndAwait()` should be reserved for cases where the publisher truly needs listener completion
 - cross-module state observation should prefer producer-owned published facts over direct sibling-feature imports
 - direct `appBus` imports outside `src/events/` should be treated as migration leftovers unless there is a strong reason
+- app composition should prefer `src/app/setup<Module>.js` entrypoints that own ordering for listener registration vs initialization
+- when practical, setup entrypoints should be idempotent
 
-Verified on `main` (April 6, 2026):
+Verified on this branch (April 6, 2026):
 
 - temporary `shared -> feature` allowlist is active for: `call`, `messaging`, `watch`, `notifications`
-- `pnpm lint:boundaries` currently fails on 4 known `contacts -> sibling feature` violations:
-  - `messaging`
+- `pnpm lint:boundaries` passes
+- `contacts -> messaging` boundary dependency is removed by moving the helper to shared utils
+- temporary `contacts -> feature` exceptions still active in `eslint.config.js` for:
   - `notifications`
   - `account`
 - no direct `appBus` imports were found outside `src/events/` in runtime source files
@@ -68,6 +82,7 @@ Next goal:
 - use [ADD_NEXT_FEATURE.md](./ADD_NEXT_FEATURE.md) when turning on enforcement for another feature
 - keep `contacts` as the reference implementation for the rollout pattern
 - continue migrating remaining direct `appBus` usage onto `src/events/index.js`
+- continue moving app bootstrap to `setup<Module>()` entrypoints where it simplifies sequencing and idempotent setup
 
 Notes:
 
@@ -80,17 +95,17 @@ Notes:
   - `messaging`
   - `watch`
   - `notifications`
-- current `contacts` violation categories are:
-  - messaging dependency
+- remaining `contacts` exception categories are:
   - notifications dependency
   - account dependency
-- current `contacts` messaging change:
+- current `contacts` messaging status:
   - `contacts` no longer imports `messagingController`
   - `contacts` dispatches `messaging:conversation:select`
   - handling lives in app composition
   - unread-count facts are published by `messaging`
+  - direct conversation id helper is now shared (`src/utils/direct-conversation-id.js`)
 - auth status:
   - auth commands are now wired through the shared `events` API
   - auth lifecycle facts are published from `auth-state` via shared events
-  - `setupMainAuthAppBusListeners.js` is not redundant; it owns real app reactions
+  - `setupAuth.js` is the app-owned auth setup entrypoint and owns auth listener/init ordering
   - no auth-local bus remains
