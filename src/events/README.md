@@ -20,6 +20,11 @@ Use:
     - `messaging:conversation:unread-count:changed`
     - `room:joinOrCreate:failed`
 
+- `publishAndAwait(name, payload)`
+  - publish an event and wait for all subscribers to complete
+  - use only when the publisher truly needs confirmation that listeners completed
+  - reserved for side effects that must happen before the caller proceeds
+
 - `subscribe(name, handler)`
   - react to events published/broadcasted/announced from other modules
 

@@ -3,6 +3,7 @@
 Current checkpoint is focused on incremental architecture enforcement without blocking unrelated work.
 
 Completed in this branch:
+
 - moved auth from `src/features/auth/` to `src/auth/`
 - removed the auth-local bus and standardized auth commands on the shared events API
 - made `AuthComponent` dispatch auth commands instead of calling auth actions directly
@@ -22,7 +23,7 @@ Completed in this branch:
 - updated unread-count flow so `messaging` owns unread subscriptions and publishes unread facts for `contacts`
 - removed `src/components/ui/dispatcher.js`
 - made `src/events/` explicitly part of shared code in `eslint.config.js`
-- moved `src/firebase/presence.js` to `src/presence/` with abstracted RTDB layer, added to shared boundary patterns
+- moved `src/firebase/presence.js` to `src/features/presence/` with abstracted RTDB layer, added to shared boundary patterns
 - removed `contacts-bus` and `setupContactsAppBusBridge`
 - changed `contacts-service` to publish cross-module facts directly:
   - `room:id:created`
@@ -31,6 +32,7 @@ Completed in this branch:
 - migrated remaining touched feature/app/auth listeners away from direct `appBus` usage where already adjusted in this branch
 
 Current intended standards:
+
 - `shared` may import only `shared`
 - an enforced feature module may import `shared`, itself, and intentional upstream modules like `auth`
 - an enforced feature module may not import `app` or sibling features unless explicitly allowed
@@ -44,12 +46,14 @@ Current intended standards:
 - direct `appBus` imports outside `src/events/` should be treated as migration leftovers unless there is a strong reason
 
 Verified at this checkpoint:
+
 - focused vitest suites around contacts/messaging/call/auth event migration
 - `pnpm build`
 - `pnpm test`
 - `pnpm lint:boundaries` currently fails only on the remaining real boundary violations
 
 Next goal:
+
 - keep boundary rollout incremental
 - fix the remaining boundary failures in order:
   - first identify code that is simply in the wrong layer/folder
@@ -62,10 +66,11 @@ Next goal:
 - continue migrating remaining direct `appBus` usage onto `src/events/index.js`
 
 Notes:
+
 - `src/auth/auth-state.js` still owns the canonical auth snapshot and the internal `subscribe()` implementation
 - `src/auth/index.js` is now the intended public auth surface for external consumers
 - `contacts` is the only feature currently under active feature-boundary enforcement
-- `shared → auth` violations exist in `src/presence/index.js` and `src/firebase/cloud-functions.js`
+- `shared → auth` violation existed in `src/firebase/cloud-functions.js` - NOTE: was temporarily moved to src/auth/cloud-functions.js
 - `shared → feature` violations exist in legacy UI files (`src/components/`, `src/media/`, `src/pwa/`)
 - current `contacts` violation categories are:
   - messaging dependency

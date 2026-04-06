@@ -114,27 +114,37 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         }
       },
       handleLogout: () => {
-        dispatchCommand(
-          AUTH_COMMANDS.LOGOUT_REQUESTED,
-          parseAuthLogoutRequested({ source: 'auth-ui' }),
-        );
+        try {
+          dispatchCommand(
+            AUTH_COMMANDS.LOGOUT_REQUESTED,
+            parseAuthLogoutRequested({ source: 'auth-ui' }),
+          );
+        } catch (error) {
+          console.error('[AuthComponent] Handle logout error:', error);
+          alert(t('auth.logout_failed'));
+        }
       },
       handleDeleteAccount: () => {
-        const confirmed = confirm(t('auth.delete_confirm'));
+        try {
+          const confirmed = confirm(t('auth.delete_confirm'));
 
-        if (!confirmed) return;
+          if (!confirmed) return;
 
-        const scrubMessages = confirm(
-          'Also delete all your messages from conversations?',
-        );
+          const scrubMessages = confirm(
+            'Also delete all your messages from conversations?',
+          );
 
-        dispatchCommand(
-          AUTH_COMMANDS.DELETE_ACCOUNT_REQUESTED,
-          parseAuthDeleteAccountRequested({
-            source: 'auth-ui',
-            scrubMessages,
-          }),
-        );
+          dispatchCommand(
+            AUTH_COMMANDS.DELETE_ACCOUNT_REQUESTED,
+            parseAuthDeleteAccountRequested({
+              source: 'auth-ui',
+              scrubMessages,
+            }),
+          );
+        } catch (error) {
+          console.error('[AuthComponent] Handle delete account error:', error);
+          alert(t('auth.delete_failed'));
+        }
       },
     },
     onMount: (el) => {
