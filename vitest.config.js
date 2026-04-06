@@ -28,6 +28,12 @@ export default defineConfig({
     }),
   ],
   test: {
+    // Suppress known birpc teardown race in browser mode (vitest #7560)
+    // The RPC channel closes before pending mock resolutions complete — harmless but causes exit code 1
+    onUnhandledError(error) {
+      if (error?.cause?.message?.includes('rpc is closed')) return;
+      throw error;
+    },
     // testTimeout: 60000, // Uncomment if getting timeout errors
     browser: {
       enabled: true,
