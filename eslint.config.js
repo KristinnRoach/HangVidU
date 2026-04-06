@@ -77,9 +77,21 @@ export default [
             {
               from: { type: 'shared' },
               allow: {
-                to: [{ type: 'shared' }],
+                to: [
+                  { type: 'shared' },
+                  // TODO: Remove / disallow temporary shared -> feature exceptions.
+                  // Keep these explicit so we can remove them one-by-one during migration.
+                  { type: 'feature', captured: { featureName: 'call' } },
+                  { type: 'feature', captured: { featureName: 'messaging' } },
+                  { type: 'feature', captured: { featureName: 'watch' } },
+                  {
+                    type: 'feature',
+                    captured: { featureName: 'notifications' },
+                  },
+                ],
               },
-              message: 'Shared code may only import from shared code.',
+              message:
+                'Shared code may only import shared code (plus temporary, explicitly-listed feature exceptions).',
             },
           ],
         },
@@ -106,10 +118,19 @@ export default [
                   { type: 'auth' },
                   { type: 'shared' },
                   { type: 'feature', captured: { featureName: 'contacts' } },
+
+                  // TODO: Remove / disallow temporary contacts -> feature exceptions.
+                  // Remove one by one as each dependency is migrated.
+                  { type: 'feature', captured: { featureName: 'messaging' } },
+                  {
+                    type: 'feature',
+                    captured: { featureName: 'notifications' },
+                  },
+                  { type: 'feature', captured: { featureName: 'account' } },
                 ],
               },
               message:
-                'Contacts may only import from auth, shared code, or from within the contacts feature.',
+                'Contacts may only import from auth/shared/contacts (plus temporary, explicitly-listed feature exceptions).',
             },
           ],
         },
