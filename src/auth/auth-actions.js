@@ -6,7 +6,7 @@ import { auth, logAuthError } from './auth-setup.js';
 import { clearGISTokenCache } from './gis-tokens.js';
 import { setState } from './auth-state.js';
 import { showOneTapSignin } from './onetap.js';
-import { dispatchCommand } from '../events/index.js';
+import { dispatchCommand, dispatchCommandAndAwait } from '../events/index.js';
 import { t } from '../i18n/index.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { getPushNotifications } from '../features/push-notifications/index.js';
@@ -165,7 +165,9 @@ export async function signOutUser() {
         console.warn('[AUTH] Failed to disable notifications on logout:', err);
       });
 
-    dispatchCommand('user:presence:set-offline', { userId: auth.currentUser?.uid });
+    await dispatchCommandAndAwait('user:presence:set-offline', {
+      userId: auth.currentUser?.uid,
+    });
     clearGISTokenCache();
     await signOut(auth);
     console.info('User signed out');
@@ -187,8 +189,8 @@ export async function signOutUser() {
  */
 export async function deleteAccount({ scrubMessages = true } = {}) {
   const user = auth.currentUser;
-  if (!user) {
-    throw new Error('No user logged in');
+  if (!user || !user.uid) {
+    throw new Error('No user logged in, user: ' + user);
   }
 
   setState({ status: 'loading' });
@@ -196,7 +198,9 @@ export async function deleteAccount({ scrubMessages = true } = {}) {
   try {
     console.info('[AUTH] Starting account deletion');
 
-    dispatchCommand('user:presence:set-offline');
+    await dispatchCommandAndAwait('user:presence:set-offline', {
+      userId: user.uid,
+    });
     clearGISTokenCache();
 
     await callCloudFunction('deleteAccount', { scrubMessages });

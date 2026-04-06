@@ -9,6 +9,10 @@ Use:
   - command names should use imperative verbs
   - example: `messaging:conversation:select`
 
+- `dispatchCommandAndAwait(name, payload)`
+  - same as `dispatchCommand`, but waits for the handler to complete
+  - use when the caller must know the command finished before proceeding
+
 - `handleCommand(name, handler)`
   - register the single responsible handler for a command
 

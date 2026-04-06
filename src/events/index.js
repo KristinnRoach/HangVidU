@@ -11,6 +11,18 @@ const dispatchCommand = (commandName, payload = {}) => {
 };
 
 /**
+ * Send a command and wait for the handler to complete.
+ * Use when the caller must know the command finished before proceeding.
+ *
+ * @param {string} commandName - Command name
+ * @param {Object} [payload={}] - Command data
+ * @returns {Promise<void>}
+ */
+const dispatchCommandAndAwait = async (commandName, payload = {}) => {
+  await appBus.emitAsync(commandName, payload);
+};
+
+/**
  * Register the handler for a command
  *
  * @param {string} commandName - Command name
@@ -55,4 +67,11 @@ const subscribe = (eventName, handler, options = {}) => {
   return appBus.on(eventName, handler, options);
 };
 
-export { dispatchCommand, handleCommand, publish, publishAndAwait, subscribe };
+export {
+  dispatchCommand,
+  dispatchCommandAndAwait,
+  handleCommand,
+  publish,
+  publishAndAwait,
+  subscribe,
+};
