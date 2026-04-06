@@ -31,12 +31,8 @@ async function initializePresence() {
   const userId = getLoggedInUserId();
   if (!userId || initializedForUserId === userId) return;
 
-  try {
-    await writeOnline(userId);
-    initializedForUserId = userId;
-  } catch (error) {
-    console.error('Failed to initialize presence:', error);
-  }
+  await writeOnline(userId);
+  initializedForUserId = userId;
 }
 
 export async function setUserOffline(userId = getLoggedInUserId()) {
