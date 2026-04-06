@@ -8,10 +8,7 @@ import { initIcons } from './components/ui/icons.js';
 import './initSentry.js';
 import { removeAllRTDBListeners } from './storage/fb-rtdb/rtdb.js';
 
-import {
-  initAuth,
-  initializeAuthUI,
-} from './auth/index.js';
+import { initializeAuthUI } from './auth/index.js';
 
 import {
   inAppNotificationManager,
@@ -114,7 +111,8 @@ import { setupMessagingContactsIntegration } from './app/messaging-contacts-inte
 import { setupMessagingAppBusHandlers } from './features/messaging/handle-appbus-events.js';
 import { setupCallControllerEventWiring } from './features/call/call-event-wiring.js';
 import { setupMainAppBusListeners } from './app/setupMainAppBusListeners.js';
-import { setupMainAuthAppBusListeners } from './app/setupMainAuthAppBusListeners.js';
+import { setupAuth } from './app/setupAuth.js';
+import { setupNotificationsHandlers } from './app/setupNotificationsHandlers.js';
 import {
   getCallOptions,
   applyCallResult,
@@ -128,6 +126,7 @@ import {
   settleIncomingCallWaitForRoom,
   startListeningForSavedRooms,
 } from './features/call/room-listeners.js';
+import { initAccount } from './features/account/index.js';
 
 // Quick access to enable / disable dev debug logs
 setDevDebugEnabled(true);
@@ -191,17 +190,9 @@ async function init() {
       });
     }
 
-    initializeSearchUI();
-    addKeyListeners();
-
-    // Register auth listeners before initAuth() so initial stable auth
-    // events are observed by the app layer.
-    cleanupFunctions.push(
-      setupMainAuthAppBusListeners({ lobbyElement: lobbyDiv }),
-    );
-
-    // Initialize auth (persistence + redirect + onAuthStateChanged listener)
-    await initAuth();
+    cleanupFunctions.push(await setupAuth({ lobbyElement: lobbyDiv }));
+    initAccount();
+    cleanupFunctions.push(setupNotificationsHandlers());
     cleanupFunctions.push(setupMessagingContactsIntegration());
     cleanupFunctions.push(
       setupMessagingAppBusHandlers({ messagingController }),
@@ -209,6 +200,9 @@ async function init() {
 
     const authComponent = initializeAuthUI(titleAuthBar);
     if (authComponent) cleanupFunctions.push(authComponent.dispose);
+
+    initializeSearchUI();
+    addKeyListeners();
 
     // Stream is now lazily initialized when user starts/joins a call
     // This prevents Bluetooth headphones from entering "call mode" on page load

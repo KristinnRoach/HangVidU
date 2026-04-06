@@ -122,11 +122,10 @@ export default [
 
                   // TODO: Remove / disallow temporary contacts -> feature exceptions.
                   // Remove one by one as each dependency is migrated.
-                  // { type: 'feature', captured: { featureName: 'messaging' } },
-                  {
-                    type: 'feature',
-                    captured: { featureName: 'notifications' },
-                  },
+                  // {
+                  //   type: 'feature',
+                  //   captured: { featureName: 'notifications' },
+                  // },
                   { type: 'feature', captured: { featureName: 'account' } },
                 ],
               },

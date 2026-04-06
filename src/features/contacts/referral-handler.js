@@ -6,10 +6,7 @@ import { acceptInvite } from './invitations.js';
 import { getDeterministicRoomId } from '../../utils/room-id.js';
 import { showInfoToast, showSuccessToast } from '../../components/toast.js';
 import { getUserProfile } from '../account/index.js';
-import {
-  createReferralNotification,
-  inAppNotificationManager,
-} from '../notifications/index.js';
+import { publish } from '../../events/index.js';
 import { t } from '../../i18n/index.js';
 
 /**
@@ -45,14 +42,12 @@ export async function captureReferral() {
       onClick: () => signInWithAccountSelection(),
     });
 
-    // Persistent notification in panel (in case user misses the toast)
-    const notification = createReferralNotification({
+    publish('contacts:referral:notification:add', {
+      notificationId: `referral-${referrerId}`,
       referrerName: name,
       referrerPhotoURL: photoURL,
       onSignIn: () => signInWithAccountSelection(),
     });
-
-    inAppNotificationManager.add(`referral-${referrerId}`, notification);
   }
 }
 
@@ -111,8 +106,9 @@ export async function processReferral() {
     // Show success toast
     showSuccessToast(t('referral.connected', { name: referrerName }));
 
-    // Clean up referral notification if still showing
-    inAppNotificationManager.remove(`referral-${referrerId}`);
+    publish('contacts:referral:notification:remove', {
+      notificationId: `referral-${referrerId}`,
+    });
 
     // Clean up
     localStorage.removeItem('referredBy');

@@ -5,14 +5,16 @@ import { ref, set, get } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import { onAuthStateChange } from '../../auth/index.js';
 
-// Auto-save profile when user logs in
-onAuthStateChange((state) => {
-  if (state.isLoggedIn && state.user) {
-    saveUserProfile(state.user).catch((err) => {
-      console.warn('Failed to save user profile:', err);
-    });
-  }
-});
+export function initProfile() {
+  // Auto-save profile when user logs in
+  onAuthStateChange((state) => {
+    if (state.isLoggedIn && state.user) {
+      saveUserProfile(state.user).catch((err) => {
+        console.warn('Failed to save user profile:', err);
+      });
+    }
+  });
+}
 
 /**
  * Save user profile (displayName, photoURL) to a world-readable node.
