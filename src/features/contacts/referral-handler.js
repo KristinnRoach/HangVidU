@@ -1,11 +1,14 @@
 // referral-handler.js - Handle referral links and auto-add contacts
 // Reuses the existing invitation system for consistency
 
-import { signInWithAccountSelection, getLoggedInUserId } from '../../auth/index.js';
+import {
+  signInWithAccountSelection,
+  getLoggedInUserId,
+} from '../../auth/index.js';
 import { acceptInvite } from './invitations.js';
 import { getDeterministicRoomId } from '../../utils/room-id.js';
 import { showInfoToast, showSuccessToast } from '../../components/toast.js';
-import { getUserProfile } from '../account/index.js';
+import { getUserProfile } from '../../storage/user/index.js';
 import { publish } from '../../events/index.js';
 import { t } from '../../i18n/index.js';
 

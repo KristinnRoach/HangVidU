@@ -3,7 +3,7 @@ import { fileToBase64 } from '../../utils/file-to-base64.js';
 import { compressImage } from '../../media/image-compress.js';
 import { EventEmitter } from '../../events/event-emitter.js';
 import { getUserId } from '../../auth/index.js';
-import { getUserProfile } from '../account/index.js';
+import { getUserProfile } from '../../storage/user/index.js';
 import {
   createFileMessage,
   createTextMessage,

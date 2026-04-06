@@ -113,6 +113,7 @@ import { setupCallControllerEventWiring } from './features/call/call-event-wirin
 import { setupMainAppBusListeners } from './app/setupMainAppBusListeners.js';
 import { setupAuth } from './app/setupAuth.js';
 import { setupNotificationsHandlers } from './app/setupNotificationsHandlers.js';
+import { setupUserAccount } from './app/setupUserAccount.js';
 import {
   getCallOptions,
   applyCallResult,
@@ -126,7 +127,6 @@ import {
   settleIncomingCallWaitForRoom,
   startListeningForSavedRooms,
 } from './features/call/room-listeners.js';
-import { initAccount } from './features/account/index.js';
 
 // Quick access to enable / disable dev debug logs
 setDevDebugEnabled(true);
@@ -191,7 +191,7 @@ async function init() {
     }
 
     cleanupFunctions.push(await setupAuth({ lobbyElement: lobbyDiv }));
-    initAccount();
+    cleanupFunctions.push(setupUserAccount());
     cleanupFunctions.push(setupNotificationsHandlers());
     cleanupFunctions.push(setupMessagingContactsIntegration());
     cleanupFunctions.push(

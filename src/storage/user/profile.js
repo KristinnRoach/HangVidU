@@ -2,26 +2,14 @@
 // Separate from presence so profile data isn't overwritten by connect/disconnect cycles.
 
 import { ref, set, get } from 'firebase/database';
-import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
-import { onAuthStateChange } from '../../auth/index.js';
-
-export function initProfile() {
-  // Auto-save profile when user logs in
-  onAuthStateChange((state) => {
-    if (state.isLoggedIn && state.user) {
-      saveUserProfile(state.user).catch((err) => {
-        console.warn('Failed to save user profile:', err);
-      });
-    }
-  });
-}
+import { rtdb } from '../fb-rtdb/rtdb.js';
 
 /**
  * Save user profile (displayName, photoURL) to a world-readable node.
  * Idempotent — safe to call on every login.
  * @param {{ uid: string, displayName?: string, photoURL?: string }} user
  */
-async function saveUserProfile(user) {
+export async function saveUserProfile(user) {
   if (!user?.uid) return;
 
   const profileRef = ref(rtdb, `users/${user.uid}/profile`);

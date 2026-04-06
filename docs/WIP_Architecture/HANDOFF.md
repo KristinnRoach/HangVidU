@@ -38,6 +38,8 @@ Completed in this branch:
 - replaced `setupMainAuthAppBusListeners` with `setupAuth` in `src/app/setupAuth.js`:
   - setup is app-owned and idempotent
   - auth listeners are registered before `initAuth()` runs
+- moved account profile storage under `src/storage/user/`
+- added `src/app/setupUserAccount.js` for auth-driven profile sync (listener wiring moved out of shared storage)
 - documented setup direction in `src/app/SETUP<MODULE>.md`
 - added WIP docs:
   - [LINKS_TO_DOCS.md](./LINKS_TO_DOCS.md)
@@ -67,7 +69,6 @@ Verified on this branch (April 6, 2026):
 - `contacts -> messaging` boundary dependency is removed by moving the helper to shared utils
 - temporary `contacts -> feature` exceptions still active in `eslint.config.js` for:
   - `notifications`
-  - `account`
 - no direct `appBus` imports were found outside `src/events/` in runtime source files
 
 Next goal:
@@ -97,7 +98,9 @@ Notes:
   - `notifications`
 - remaining `contacts` exception categories are:
   - notifications dependency
-  - account dependency
+- storage status:
+  - `src/storage/user/` is shared and auth-agnostic
+  - auth-driven profile persistence is now handled in app composition via `setupUserAccount.js`
 - current `contacts` messaging status:
   - `contacts` no longer imports `messagingController`
   - `contacts` dispatches `messaging:conversation:select`
