@@ -1,4 +1,4 @@
-import { getUser, getUserId } from '../auth/auth-state.js';
+import { getUser, getUserId } from '../../auth/index.js';
 import { getPushNotifications } from '../push-notifications/index.js';
 import CallController from './call-controller.js';
 import { contactsService } from '../contacts/index.js';

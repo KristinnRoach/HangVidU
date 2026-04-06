@@ -5,9 +5,14 @@ const mocks = vi.hoisted(() => {
 
   return {
     handlers,
-    appBus: {
-      on: vi.fn((eventName, handler) => {
+    events: {
+      handleCommand: vi.fn((eventName, handler) => {
         handlers.set(eventName, handler);
+        return () => handlers.delete(eventName);
+      }),
+      subscribe: vi.fn((eventName, handler) => {
+        handlers.set(eventName, handler);
+        return () => handlers.delete(eventName);
       }),
     },
     messagingController: {
@@ -19,13 +24,15 @@ const mocks = vi.hoisted(() => {
     callContact: vi.fn(),
     listenForIncomingOnRoom: vi.fn(),
     removeIncomingListenersForRoom: vi.fn(),
+    setUserOffline: vi.fn(() => Promise.resolve()),
     isDev: vi.fn(() => false),
     tempWarn: vi.fn(),
   };
 });
 
-vi.mock('./app-bus.js', () => ({
-  appBus: mocks.appBus,
+vi.mock('../events/index.js', () => ({
+  handleCommand: mocks.events.handleCommand,
+  subscribe: mocks.events.subscribe,
 }));
 
 vi.mock('../features/messaging/messaging-controller.js', () => ({
@@ -50,6 +57,10 @@ vi.mock('../features/call/room-listeners.js', () => ({
   removeIncomingListenersForRoom: mocks.removeIncomingListenersForRoom,
 }));
 
+vi.mock('../features/presence/index.js', () => ({
+  setUserOffline: mocks.setUserOffline,
+}));
+
 vi.mock('../utils/url.js', () => ({
   clearUrlParam: vi.fn(),
 }));
@@ -65,24 +76,53 @@ describe('setupMainAppBusListeners', () => {
   });
 
   it('does not attempt conversation selection when no contactId is provided', async () => {
-    const { setupMainAppBusListeners } = await import('./setupMainAppBusListeners.js');
+    const { setupMainAppBusListeners } =
+      await import('./setupMainAppBusListeners.js');
 
     setupMainAppBusListeners();
-    const handler = mocks.handlers.get('call:outgoing:requested');
+    const handler = mocks.handlers.get('call:outgoing:initiate');
 
     handler?.({
       contactId: null,
       contactName: 'Unknown Caller',
+      conversationId: null,
       roomId: 'room-123',
     });
 
     expect(mocks.contactsService.getConversationId).not.toHaveBeenCalled();
     expect(mocks.messagingController.selectConversation).not.toHaveBeenCalled();
-    expect(mocks.callContact).toHaveBeenCalledWith(null, 'Unknown Caller', 'room-123');
+    expect(mocks.callContact).toHaveBeenCalledWith(
+      null,
+      'Unknown Caller',
+      'room-123',
+    );
+  });
+
+  it('selects a conversation when the messaging selection command is emitted', async () => {
+    const { setupMainAppBusListeners } =
+      await import('./setupMainAppBusListeners.js');
+
+    setupMainAppBusListeners();
+    const handler = mocks.handlers.get('messaging:conversation:select');
+
+    await handler?.({
+      conversationId: 'conv-123',
+      remoteParticipantIds: ['contact-1'],
+      displayUI: true,
+    });
+
+    expect(mocks.messagingController.selectConversation).toHaveBeenCalledWith(
+      'conv-123',
+      {
+        remoteParticipantIds: ['contact-1'],
+        displayUI: true,
+      },
+    );
   });
 
   it('removes the previous room listener before listening on an updated room', async () => {
-    const { setupMainAppBusListeners } = await import('./setupMainAppBusListeners.js');
+    const { setupMainAppBusListeners } =
+      await import('./setupMainAppBusListeners.js');
 
     setupMainAppBusListeners();
     const handler = mocks.handlers.get('room:id:updated');
@@ -92,7 +132,21 @@ describe('setupMainAppBusListeners', () => {
       previousRoomId: 'room-old',
     });
 
-    expect(mocks.removeIncomingListenersForRoom).toHaveBeenCalledWith('room-old');
+    expect(mocks.removeIncomingListenersForRoom).toHaveBeenCalledWith(
+      'room-old',
+    );
     expect(mocks.listenForIncomingOnRoom).toHaveBeenCalledWith('room-new');
+  });
+
+  it('handles the presence offline command through the app layer', async () => {
+    const { setupMainAppBusListeners } =
+      await import('./setupMainAppBusListeners.js');
+
+    setupMainAppBusListeners();
+    const handler = mocks.handlers.get('user:presence:set-offline');
+
+    await handler?.();
+
+    expect(mocks.setUserOffline).toHaveBeenCalled();
   });
 });

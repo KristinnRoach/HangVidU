@@ -25,7 +25,7 @@ import {
   serverTimestamp,
 } from 'firebase/database';
 import { rtdb } from '../../../storage/fb-rtdb/rtdb.js';
-import { getUserId } from '../../auth/auth-state.js';
+import { getUserId } from '../../../auth/index.js';
 
 const MAX_MESSAGES = 100;
 

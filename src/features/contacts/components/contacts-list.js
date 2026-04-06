@@ -1,6 +1,6 @@
 import { ref, onValue, off } from 'firebase/database';
 import { rtdb } from '../../../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId } from '../../auth/auth-state.js';
+import { getLoggedInUserId } from '../../../auth/index.js';
 import confirmDialog from '../../../components/base/confirm-dialog.js';
 import editContactModal from './edit-contact-modal.js';
 import {
@@ -10,9 +10,8 @@ import {
 import { t, onLocaleChange } from '../../../i18n/index.js';
 import { escapeHtml } from '../../../components/ui/component-system/dom-utils.js';
 import { initIcons } from '../../../components/ui/icons.js';
-import { messagingController } from '../../messaging/messaging-controller.js';
+import { dispatchCommand, subscribe } from '../../../events/index.js';
 import { contactsService } from '../contacts-service.js';
-import { dispatchUIEvent } from '../../../components/ui/dispatcher.js';
 
 // TODO: WIP decoupling considerations:
 // This feature-owned UI still composes shared UI primitives and messaging side effects.
@@ -174,7 +173,7 @@ function attachContactListeners(container, lobbyElement) {
         nameEl.getAttribute('data-conversation-id') || null;
 
       if (roomId || contactId) {
-        dispatchUIEvent('call:outgoing:requested', {
+        dispatchCommand('call:outgoing:initiate', {
           contactId,
           contactName,
           conversationId,
@@ -198,7 +197,8 @@ function attachContactListeners(container, lobbyElement) {
             return;
           }
 
-          await messagingController.selectConversation(conversationId, {
+          dispatchCommand('messaging:conversation:select', {
+            conversationId,
             remoteParticipantIds: [contactId],
             displayUI: true,
           });
@@ -305,13 +305,18 @@ function setupUnreadBadges(entries) {
     // Debounce rapid-fire callbacks during initial onChildAdded replay
     let debounceTimer = null;
 
-    const unsub = messagingController.listenToUnreadCount(
-      conversationId,
-      (count) => {
+    const offUnreadChanged = subscribe(
+      'messaging:conversation:unread-count:changed',
+      ({ conversationId: updatedConversationId, unreadCount }) => {
+        if (updatedConversationId !== conversationId) {
+          return;
+        }
+
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
-          if (count > 0) {
-            badgeEl.textContent = count > 99 ? '99+' : String(count);
+          if (unreadCount > 0) {
+            badgeEl.textContent =
+              unreadCount > 99 ? '99+' : String(unreadCount);
             badgeEl.hidden = false;
           } else {
             badgeEl.hidden = true;
@@ -320,9 +325,16 @@ function setupUnreadBadges(entries) {
       },
     );
 
+    dispatchCommand('messaging:conversation:unread-count:listen', {
+      conversationId,
+    });
+
     unreadListeners.set(contactId, () => {
       clearTimeout(debounceTimer);
-      unsub();
+      offUnreadChanged();
+      dispatchCommand('messaging:conversation:unread-count:unlisten', {
+        conversationId,
+      });
     });
   });
 }

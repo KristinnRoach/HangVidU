@@ -1,6 +1,7 @@
 // Public app-facing push notifications facade.
 
-import { callCloudFunction } from '../../firebase/cloud-functions.js';
+import { callCloudFunction } from '../../auth/cloud-functions.js';
+import { contactsService } from '../contacts/index.js'; // TODO: move? Check boundries
 
 const PERMISSION_REQUEST_TIMEOUT_MS = 8000;
 
@@ -517,8 +518,6 @@ export class PushNotifications {
 
     if (!callerName) {
       try {
-        const { contactsService } =
-          await import('../contacts/contacts-service.js');
         const contact = await contactsService.getContactByRoomId(roomId);
         // TODO: Centralize caller display-name fallback policy once ownership is settled.
         displayName = contact?.contactName || callerId || 'Unknown caller';

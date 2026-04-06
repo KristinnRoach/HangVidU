@@ -2,9 +2,6 @@
 
 export { contactsService, ContactsService } from './contacts-service.js';
 
-export { CONTACTS_EVENTS, contactsBus } from './contacts-bus.js';
-export { setupContactsAppBusBridge } from './setupContactsAppBusBridge.js';
-
 export { cleanupInviteListeners } from './invitations.js';
 export { setupInviteListener } from './invite-listener.js';
 

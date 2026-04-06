@@ -28,6 +28,13 @@ export default defineConfig({
     }),
   ],
   test: {
+    // Suppress known birpc teardown race in browser mode (vitest #7560)
+    // The RPC channel closes before pending mock resolutions complete — harmless but causes exit code 1
+    onUnhandledError(error) {
+      if (error?.cause?.message?.includes('rpc is closed')) return;
+      throw error;
+    },
+    // testTimeout: 60000, // Uncomment if getting timeout errors
     browser: {
       enabled: true,
       provider: playwright(),
@@ -49,7 +56,14 @@ export default defineConfig({
       'tests/integration/**/*.test.js',
       'tests/investigation/**/*.test.js',
     ],
-    exclude: ['tests/e2e/**/*', 'tests/**/*.spec.js', 'node_modules/**/*'],
+    exclude: [
+      // Uncomment below as needed to isolate or speed up while debugging
+      // 'tests/e2e/**/*',
+      // 'tests/**/*.spec.js',
+      // 'tests/integration/chunk-yield-impact.test.js',
+      // 'tests/integration/file-transfer-large.test.js',
+      // 'node_modules/**/*',
+    ],
     coverage: {
       reporter: ['text', 'html', 'lcov'],
       exclude: [

@@ -37,8 +37,12 @@ const mocks = vi.hoisted(() => {
     renderContactsList: vi.fn(() => Promise.resolve()),
     promptAndRefreshContactSave: vi.fn(() => Promise.resolve()),
     devDebug: vi.fn(),
-    appBus: {
-      emit: vi.fn(),
+    events: {
+      publish: vi.fn(),
+      publishAndAwait: vi.fn().mockResolvedValue(undefined),
+      subscribe: vi.fn(),
+      handleCommand: vi.fn(),
+      dispatchCommand: vi.fn(),
     },
     listenForIncomingOnRoom: vi.fn(),
   };
@@ -53,7 +57,7 @@ vi.mock('../contacts/index.js', () => ({
   renderContactsList: mocks.renderContactsList,
 }));
 
-vi.mock('../auth/auth-state.js', () => ({
+vi.mock('../../auth/index.js', () => ({
   getLoggedInUserId: mocks.auth.getUserId,
   getUserId: mocks.auth.getUserId,
   getUser: mocks.auth.getUser,
@@ -81,10 +85,15 @@ vi.mock('../../app/contact-save-flow.js', () => ({
 
 vi.mock('../../utils/dev/dev-utils.js', () => ({
   devDebug: mocks.devDebug,
+  isDev: vi.fn(() => false),
 }));
 
-vi.mock('../../app/app-bus.js', () => ({
-  appBus: mocks.appBus,
+vi.mock('../../events/index.js', () => ({
+  publish: mocks.events.publish,
+  publishAndAwait: mocks.events.publishAndAwait,
+  subscribe: mocks.events.subscribe,
+  handleCommand: mocks.events.handleCommand,
+  dispatchCommand: mocks.events.dispatchCommand,
 }));
 
 vi.mock('./room-listeners.js', () => ({
@@ -120,7 +129,7 @@ describe('setupCallControllerEventWiring', () => {
       wasConnected: false,
     });
 
-    expect(mocks.appBus.emit).toHaveBeenCalledWith('call:unanswered', {
+    expect(mocks.events.publish).toHaveBeenCalledWith('call:unanswered', {
       roomId: 'room-123',
       contactId: 'contact-456',
     });

@@ -12,7 +12,7 @@ export default defineConfig({
     ...(process.env.CI ? [['github']] : []),
   ],
   use: {
-    baseURL: 'https://localhost:5173/HangVidU',
+    baseURL: 'http://localhost:4173',
     trace: 'on-first-retry',
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',
@@ -53,9 +53,9 @@ export default defineConfig({
     // },
   ],
   webServer: {
-    command: 'pnpm dev',
-    port: 5173,
+    command: 'pnpm build && pnpm preview',
+    port: 4173,
     reuseExistingServer: !process.env.CI,
-    timeout: 30000,
+    timeout: 120000,
   },
 });

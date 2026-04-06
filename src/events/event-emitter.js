@@ -22,7 +22,6 @@ export class EventEmitter {
   on(event, callback, options = {}) {
     const { signal } = options;
 
-    // If the signal is already aborted, do not subscribe.
     if (signal && signal.aborted) {
       return () => {};
     }
@@ -84,7 +83,6 @@ export class EventEmitter {
    */
   emit(eventName, data) {
     if (this._listeners.has(eventName)) {
-      // Create a copy to avoid issues if listeners are removed during emission
       const handlers = Array.from(this._listeners.get(eventName));
       handlers.forEach((cb) => {
         try {
@@ -133,8 +131,7 @@ export class EventEmitter {
 
   /**
    * Emit multiple events in strict order, awaiting all listeners for each
-   * event before moving to the next. Use when event ordering matters
-   * (e.g. auth:ready must complete before auth:logged-in).
+   * event before moving to the next.
    *
    * @param {Array<[string, any]>} events - Array of [eventName, data] tuples
    */
@@ -151,19 +148,3 @@ export class EventEmitter {
     this._listeners.clear();
   }
 }
-
-/**
- * Usage:
- *
- *   // emit — fire-and-forget, sync listeners only
- *   bus.emit('ui:click', { id });
- *
- *   // emitAsync — await all listeners (concurrent), catch errors
- *   await bus.emitAsync('data:loaded', payload);
- *
- *   // emitAsyncSequential — ordered: each event fully completes before the next
- *   await bus.emitAsyncSequential([
- *     ['auth:ready', { state }],
- *     ['auth:logged-in', { state, previousState }],
- *   ]);
- */

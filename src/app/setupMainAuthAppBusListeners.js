@@ -1,4 +1,4 @@
-import { appBus } from './app-bus.js';
+import { subscribe } from '../events/index.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import {
   removeAllIncomingListeners,
@@ -16,11 +16,10 @@ import { showEnableNotificationsPrompt } from '../features/notifications/index.j
 let cleanupMainAuthAppBusListeners = null;
 
 /**
- * Register main appBus listeners for auth-driven cross-module side effects.
+ * Register main event listeners for auth-driven cross-module side effects.
  *
- * Auth emits module-local events on authBus, the bridge forwards selected
- * compatibility events to appBus, and this app-level listener layer decides
- * how the rest of the app reacts.
+ * Auth publishes shared lifecycle facts directly, and this app-level listener
+ * layer decides how the rest of the app reacts.
  *
  * @param {{ lobbyElement: HTMLElement }} options
  * @returns {() => void}
@@ -33,7 +32,7 @@ export function setupMainAuthAppBusListeners(options = {}) {
   const { lobbyElement } = options;
   const ac = new AbortController();
 
-  appBus.on(
+  subscribe(
     'auth:ready',
     async () => {
       try {
@@ -45,7 +44,7 @@ export function setupMainAuthAppBusListeners(options = {}) {
     { signal: ac.signal },
   );
 
-  appBus.on(
+  subscribe(
     'auth:logout',
     async () => {
       try {
@@ -60,7 +59,7 @@ export function setupMainAuthAppBusListeners(options = {}) {
     { signal: ac.signal },
   );
 
-  appBus.on(
+  subscribe(
     'auth:login',
     async ({ isInitialResolution }) => {
       try {

@@ -110,8 +110,11 @@ vi.mock('../../src/initSentry.js', () => ({}));
 vi.mock('firebase/database', () => ({
   set: vi.fn(),
   get: vi.fn(),
+  onDisconnect: vi.fn(() => ({ set: vi.fn(() => Promise.resolve()) })),
+  onValue: vi.fn(),
   remove: mocks.firebase.remove,
   ref: vi.fn(),
+  serverTimestamp: vi.fn(() => ({ '.sv': 'timestamp' })),
 }));
 
 vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => ({
@@ -123,7 +126,7 @@ vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
 }));
 
-vi.mock('../../src/features/auth/auth-state.js', () => ({
+vi.mock('../../src/auth/index.js', () => ({
   getLoggedInUserId: vi.fn(() => 'user-123'),
   getUserId: vi.fn(() => 'user-123'),
   getUser: vi.fn(() => ({
@@ -187,7 +190,6 @@ vi.mock('../../src/features/contacts/index.js', () => ({
   cleanupContacts: vi.fn(),
   showSaveContactPrompt: vi.fn(),
   showAddContactModal: vi.fn(),
-  setupContactsAppBusBridge: vi.fn(),
 }));
 
 vi.mock('../../src/elements.js', () => {
@@ -376,7 +378,7 @@ vi.mock('../../src/components/ui/utils/ui-utils.js', () => ({
   exitPiP: vi.fn(),
 }));
 
-vi.mock('../../src/features/auth/index.js', () => ({
+vi.mock('../../src/auth/index.js', () => ({
   signInWithAccountSelection: vi.fn(),
   signOutUser: vi.fn(),
   deleteAccount: vi.fn(),
@@ -396,9 +398,11 @@ vi.mock('../../src/features/auth/index.js', () => ({
   getLoggedInUserId: vi.fn(() => 'user-123'),
   getUserName: vi.fn(),
   subscribe: vi.fn(() => () => {}),
+  onAuthStateChange: vi.fn(() => () => {}),
   setState: vi.fn(),
   waitForAuthReady: vi.fn(),
   initializeAuthUI: vi.fn(),
+  setupAuthAppBusBridge: vi.fn(),
   auth: vi.fn(),
   initAuth: vi.fn().mockResolvedValue(undefined),
   getCurrentUserAsync: vi.fn(),

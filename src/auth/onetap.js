@@ -2,8 +2,8 @@ import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { auth } from './auth-setup.js';
 import { setSafariExternalOpenArmed } from './auth-actions.js';
 import { getIsLoggedIn, setState } from './auth-state.js';
-import { devDebug } from '../../utils/dev/dev-utils.js';
-import { t, getLocale, onLocaleChange } from '../../i18n/index.js';
+import { devDebug } from '../utils/dev/dev-utils.js';
+import { t, getLocale, onLocaleChange } from '../i18n/index.js';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_APP_GOOGLE_CLIENT_ID;
 const GIS_SCRIPT_BASE = 'https://accounts.google.com/gsi/client';

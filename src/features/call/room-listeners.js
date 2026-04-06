@@ -1,11 +1,15 @@
 import { get, remove } from 'firebase/database';
-import { appBus } from '../../app/app-bus.js';
+import { publish } from '../../events/index.js';
 import {
   removeRTDBListenersForRoom,
   getUserRecentCallsRef,
   getUserRecentCallRef,
 } from '../../storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId, getUserId } from '../auth/index.js';
+import {
+  getCurrentUserAsync,
+  getLoggedInUserId,
+  getUserId,
+} from '../../auth/index.js';
 import { getDiagnosticLogger } from '../../utils/dev/diagnostic-logger.js';
 import { devDebug } from '../../utils/dev/dev-utils.js';
 import { contactsService } from '../contacts/index.js';
@@ -283,7 +287,7 @@ function decideIncomingNotificationStrategy({
 }
 
 async function handleIncomingCallAccepted({ roomId, joinedContactId }) {
-  appBus.emit('call:incoming:accepted', {
+  publish('call:incoming:accepted', {
     roomId,
     contactId: joinedContactId,
   });
@@ -340,7 +344,7 @@ async function handleIncomingCallAccepted({ roomId, joinedContactId }) {
     console.warn('[CALL] Join failed after accepting incoming call', {
       roomId,
     });
-    appBus.emit('room:joinOrCreate:failed', { roomId });
+    publish('room:joinOrCreate:failed', { roomId });
   }
 }
 
@@ -791,10 +795,7 @@ export async function startListeningForSavedRooms() {
   // Ensure auth state is initialized before deciding storage location
   // This prevents a race where we read localStorage as a guest before auth is ready
   try {
-    if (typeof window !== 'undefined') {
-      const { getCurrentUserAsync } = await import('../auth/index.js');
-      await getCurrentUserAsync();
-    }
+    await getCurrentUserAsync();
   } catch (e) {
     // non-fatal
   }

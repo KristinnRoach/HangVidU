@@ -12,6 +12,10 @@ vi.mock('../../storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
 }));
 
+vi.mock('../../auth/index.js', () => ({
+  onAuthStateChange: vi.fn(() => () => {}),
+}));
+
 describe('user-discovery', () => {
   beforeEach(() => {
     vi.clearAllMocks();

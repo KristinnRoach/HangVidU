@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  selectConversation: vi.fn(),
   getAllContactsSorted: vi.fn(),
   onLocaleChange: vi.fn(() => () => {}),
   hideElement: vi.fn(),
   showElement: vi.fn(),
   initIcons: vi.fn(),
-  dispatchUIEvent: vi.fn(),
+  dispatchCommand: vi.fn(),
   onValue: vi.fn(),
   off: vi.fn(),
+  subscriptions: new Map(),
 }));
 
 vi.mock('firebase/database', () => ({
@@ -22,7 +22,7 @@ vi.mock('../../../storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
 }));
 
-vi.mock('../../auth/auth-state.js', () => ({
+vi.mock('../../../auth/index.js', () => ({
   getLoggedInUserId: vi.fn(() => 'user-123'),
 }));
 
@@ -52,11 +52,12 @@ vi.mock('../../../components/ui/icons.js', () => ({
   initIcons: mocks.initIcons,
 }));
 
-vi.mock('../../messaging/messaging-controller.js', () => ({
-  messagingController: {
-    selectConversation: mocks.selectConversation,
-    listenToUnreadCount: vi.fn(() => () => {}),
-  },
+vi.mock('../../../events/index.js', () => ({
+  dispatchCommand: mocks.dispatchCommand,
+  subscribe: vi.fn((eventName, handler) => {
+    mocks.subscriptions.set(eventName, handler);
+    return () => mocks.subscriptions.delete(eventName);
+  }),
 }));
 
 vi.mock('../contacts-service.js', () => ({
@@ -68,15 +69,12 @@ vi.mock('../contacts-service.js', () => ({
   },
 }));
 
-vi.mock('../../../components/ui/dispatcher.js', () => ({
-  dispatchUIEvent: mocks.dispatchUIEvent,
-}));
-
 describe('contacts component', () => {
   beforeEach(() => {
     vi.resetModules();
     document.body.innerHTML = '';
     vi.clearAllMocks();
+    mocks.subscriptions.clear();
     mocks.onLocaleChange.mockReturnValue(() => {});
     mocks.getAllContactsSorted.mockResolvedValue([
       {
@@ -106,7 +104,10 @@ describe('contacts component', () => {
 
     lobbyElement.querySelector('.contact-name')?.click();
 
-    expect(mocks.selectConversation).not.toHaveBeenCalled();
+    expect(mocks.dispatchCommand).not.toHaveBeenCalledWith(
+      'messaging:conversation:select',
+      expect.anything(),
+    );
     expect(warnSpy).toHaveBeenCalledWith(
       '[contacts] No conversation id for contact',
       expect.objectContaining({ contactId: 'contact-1' }),
@@ -130,5 +131,39 @@ describe('contacts component', () => {
     expect(mocks.off.mock.calls.length).toBeGreaterThan(
       offCallsBeforeEmptyRender,
     );
+  });
+
+  it('subscribes to unread counts through appBus requests and updates the badge', async () => {
+    const { renderContactsList } = await import('./contacts-list.js');
+
+    const lobbyElement = document.createElement('div');
+    document.body.appendChild(lobbyElement);
+
+    await renderContactsList(lobbyElement);
+
+    expect(mocks.dispatchCommand).toHaveBeenCalledWith(
+      'messaging:conversation:unread-count:listen',
+      {
+        conversationId: 'contact-1_user-123',
+      },
+    );
+
+    const unreadHandler = mocks.subscriptions.get(
+      'messaging:conversation:unread-count:changed',
+    );
+
+    unreadHandler?.({
+      conversationId: 'contact-1_user-123',
+      unreadCount: 4,
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 60));
+
+    const badge = lobbyElement.querySelector(
+      '.unread-badge[data-contact-id="contact-1"]',
+    );
+
+    expect(badge?.textContent).toBe('4');
+    expect(badge?.hidden).toBe(false);
   });
 });

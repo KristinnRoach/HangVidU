@@ -1,4 +1,4 @@
-import { appBus } from './app-bus.js';
+import { handleCommand, subscribe } from '../events/index.js';
 import { messagingController } from '../features/messaging/messaging-controller.js';
 import { isDev, tempWarn } from '../utils/dev/dev-utils.js';
 import { callContact } from '../features/call/WIP-start-call-refactor.js';
@@ -7,16 +7,42 @@ import {
   listenForIncomingOnRoom,
   removeIncomingListenersForRoom,
 } from '../features/call/room-listeners.js';
+import { setUserOffline } from '../features/presence/index.js';
 import { clearUrlParam } from '../utils/url.js';
 import { onCallDisconnected } from '../components/ui/core/call-lifecycle-ui.js';
 
 export function setupMainAppBusListeners() {
-  appBus.on(
-    'call:outgoing:requested',
+  handleCommand('user:presence:set-offline', async ({ userId } = {}) => {
+    try {
+      await setUserOffline(userId);
+    } catch (e) {
+      console.warn('Failed to set user presence offline:', e);
+    }
+  });
+
+  handleCommand(
+    'messaging:conversation:select',
+    async ({ conversationId, remoteParticipantIds = [], displayUI = true }) => {
+      try {
+        await messagingController.selectConversation(conversationId, {
+          remoteParticipantIds,
+          displayUI,
+        });
+      } catch (e) {
+        console.warn(
+          'Failed to select conversation on messaging:conversation:select:',
+          e,
+        );
+      }
+    },
+  );
+
+  handleCommand(
+    'call:outgoing:initiate',
     async ({ contactId, contactName, conversationId, roomId }) => {
       isDev() &&
         tempWarn(
-          '[main.js] call:outgoing:requested event received with data: ',
+          '[main.js] call:outgoing:initiate event received with data: ',
           {
             contactId,
             contactName,
@@ -39,14 +65,14 @@ export function setupMainAppBusListeners() {
               })
               .catch((e) => {
                 console.warn(
-                  'Failed to select conversation on call:outgoing:requested:',
+                  'Failed to select conversation on call:outgoing:initiate',
                   e,
                 );
               });
           }
         } catch (e) {
           console.warn(
-            'Failed to select conversation on call:outgoing:requested:',
+            'Failed to select conversation on call:outgoing:initiate',
             e,
           );
         }
@@ -56,23 +82,29 @@ export function setupMainAppBusListeners() {
     },
   );
 
-  appBus.on('room:id:created', ({ roomId }) => {
+  subscribe('room:id:created', ({ roomId }) => {
     listenForIncomingOnRoom(roomId);
   });
 
-  appBus.on('room:id:updated', ({ roomId, previousRoomId }) => {
+  subscribe('room:id:updated', ({ roomId, previousRoomId }) => {
     if (previousRoomId && previousRoomId !== roomId) {
       removeIncomingListenersForRoom(previousRoomId);
     }
     listenForIncomingOnRoom(roomId);
   });
 
-  appBus.on('room:joinOrCreate:failed', ({ roomId }) => {
+  subscribe('room:joinOrCreate:failed', ({ roomId }) => {
     console.warn(
       `[AppBus] room:joinOrCreate:failed 
       Failed to join or create room with id: ${roomId}`,
     );
     clearUrlParam();
     onCallDisconnected();
+  });
+
+  subscribe('contact:deleted', ({ roomId }) => {
+    if (roomId) {
+      removeIncomingListenersForRoom(roomId);
+    }
   });
 }

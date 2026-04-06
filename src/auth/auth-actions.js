@@ -6,11 +6,11 @@ import { auth, logAuthError } from './auth-setup.js';
 import { clearGISTokenCache } from './gis-tokens.js';
 import { setState } from './auth-state.js';
 import { showOneTapSignin } from './onetap.js';
-import { setUserOffline } from '../../firebase/presence.js';
-import { t } from '../../i18n/index.js';
-import { devDebug } from '../../utils/dev/dev-utils.js';
-import { getPushNotifications } from '../push-notifications/index.js';
-import { callCloudFunction } from '../../firebase/cloud-functions.js';
+import { dispatchCommand, dispatchCommandAndAwait } from '../events/index.js';
+import { t } from '../i18n/index.js';
+import { devDebug } from '../utils/dev/dev-utils.js';
+import { getPushNotifications } from '../features/push-notifications/index.js';
+import { callCloudFunction } from './cloud-functions.js';
 
 // iOS standalone PWA Safari fallback: armed after a failed attempt,
 // then the next Login tap opens the app URL in Safari (user gesture).
@@ -165,7 +165,9 @@ export async function signOutUser() {
         console.warn('[AUTH] Failed to disable notifications on logout:', err);
       });
 
-    await setUserOffline();
+    await dispatchCommandAndAwait('user:presence:set-offline', {
+      userId: auth.currentUser?.uid,
+    });
     clearGISTokenCache();
     await signOut(auth);
     console.info('User signed out');
@@ -187,8 +189,8 @@ export async function signOutUser() {
  */
 export async function deleteAccount({ scrubMessages = true } = {}) {
   const user = auth.currentUser;
-  if (!user) {
-    throw new Error('No user logged in');
+  if (!user || !user.uid) {
+    throw new Error('No user logged in, user: ' + user);
   }
 
   setState({ status: 'loading' });
@@ -196,7 +198,9 @@ export async function deleteAccount({ scrubMessages = true } = {}) {
   try {
     console.info('[AUTH] Starting account deletion');
 
-    await setUserOffline();
+    await dispatchCommandAndAwait('user:presence:set-offline', {
+      userId: user.uid,
+    });
     clearGISTokenCache();
 
     await callCloudFunction('deleteAccount', { scrubMessages });

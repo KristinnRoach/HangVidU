@@ -28,9 +28,11 @@ export {
   getUserId,
   getLoggedInUserId,
   getUserName,
-  subscribe,
   setState,
   waitForAuthReady,
 } from './auth-state.js';
+
+export { subscribe as onAuthStateChange } from './auth-state.js';
+export { subscribe } from './auth-state.js';
 
 export { initializeAuthUI } from './components/AuthComponent.js';
