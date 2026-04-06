@@ -207,21 +207,40 @@ async function evaluateIncomingCallPreconditions({
   const hasOffer = !!roomData.offer;
   const hasAnswer = !!roomData.answer;
   const offerCreator = roomData.createdBy;
+  const isOutgoingForCurrentUser = offerCreator === currentUserId;
+  const callDirection = isOutgoingForCurrentUser ? 'OUTGOING' : 'INCOMING';
+  let skipReason = 'not_answerable_offer_state';
+  if (!hasOffer) {
+    skipReason = 'missing_offer';
+  } else if (hasAnswer) {
+    skipReason = isOutgoingForCurrentUser
+      ? 'outgoing_call_already_answered'
+      : 'incoming_offer_already_answered_elsewhere';
+  } else if (isOutgoingForCurrentUser) {
+    skipReason = 'outgoing_offer_created_by_current_user';
+  }
   if (!hasOffer || hasAnswer || offerCreator === currentUserId) {
-    console.warn('[CALL][INCOMING] skip: not answerable offer state', {
-      roomId,
-      joiningUserId: joinedContactId,
-      hasOffer,
-      hasAnswer,
-      offerCreator,
-      currentUserId,
-    });
+    console.info(
+      `[CALL][${callDirection}] skip: ${skipReason} (offer not answerable as incoming)`,
+      {
+        roomId,
+        joiningUserId: joinedContactId,
+        callDirection,
+        skipReason,
+        hasOffer,
+        hasAnswer,
+        offerCreator,
+        currentUserId,
+      },
+    );
     getDiagnosticLogger().logNotificationDecision(
       'REJECT',
       'not_answerable_offer_state',
       roomId,
       {
         joiningUserId: joinedContactId,
+        callDirection,
+        skipReason,
         hasOffer,
         hasAnswer,
         offerCreator,
