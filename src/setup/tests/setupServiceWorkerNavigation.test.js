@@ -38,7 +38,7 @@ describe('setupServiceWorkerNavigation', () => {
     const handleServiceWorkerNavigation = vi.fn(async () => true);
 
     const { setupServiceWorkerNavigation } = await import(
-      './setupServiceWorkerNavigation.js'
+      '../setupServiceWorkerNavigation.js'
     );
     const cleanup = await setupServiceWorkerNavigation({
       handleServiceWorkerNavigation,

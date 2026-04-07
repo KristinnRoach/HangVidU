@@ -1,12 +1,200 @@
 import boundaries from 'eslint-plugin-boundaries';
+import fs from 'node:fs';
 
-// Boundary model (at a glance):
-// 1) Classify files into element types via `settings.boundaries/elements`.
-// 2) Enforce import rules with `boundaries/dependencies`.
-// 3) Use `default: 'disallow'` and then explicitly list allowed targets.
+function envEnabled(name, defaultValue) {
+  const value = process.env[name];
+  if (value == null) return defaultValue;
+  return value === '1' || value.toLowerCase() === 'true';
+}
+
+function discoverFeatures() {
+  const root = 'src/features';
+  if (!fs.existsSync(root)) return [];
+
+  return fs
+    .readdirSync(root, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+}
+
+const ENFORCE_ALL = envEnabled('BOUNDARIES_ENFORCE_ALL', false);
+const ALL_FEATURES = discoverFeatures();
+
+// Boundary rollout (keep this short and practical):
+// - normal incremental mode: `pnpm lint:boundaries`
+// - hotspot scan (all rules + all features): `BOUNDARIES_ENFORCE_ALL=1 pnpm lint:boundaries`
+// - single-rule drill-down examples:
+//   - `BOUNDARIES_AUTH=1 pnpm lint:boundaries`
+//   - `BOUNDARIES_APP=1 pnpm lint:boundaries`
+//   - `BOUNDARIES_SETUP=1 pnpm lint:boundaries`
+// - specific feature set: `BOUNDARIES_ENFORCED_FEATURES=contacts,messaging pnpm lint:boundaries`
+const ENABLE_RULE = {
+  shared: envEnabled('BOUNDARIES_SHARED', true),
+  auth: envEnabled('BOUNDARIES_AUTH', ENFORCE_ALL),
+  app: envEnabled('BOUNDARIES_APP', ENFORCE_ALL),
+  setup: envEnabled('BOUNDARIES_SETUP', ENFORCE_ALL),
+};
+
+// Incremental feature rollout:
+// - default: only what is already enforced + current WIP
+// - BOUNDARIES_ENFORCE_ALL=1: all discovered features
+// - BOUNDARIES_ENFORCED_FEATURES=a,b,c: explicit list
+const ENFORCED_FEATURES = process.env.BOUNDARIES_ENFORCED_FEATURES
+  ? process.env.BOUNDARIES_ENFORCED_FEATURES.split(',')
+      .map((name) => name.trim())
+      .filter(Boolean)
+  : ENFORCE_ALL
+    ? ALL_FEATURES
+    : ['contacts'];
+const SHARED_TEMP_FEATURE_EXCEPTIONS = [
+  'call',
+  'messaging',
+  'watch',
+  'notifications',
+];
+
+const SHARED_GLOBS = [
+  'src/components/**/*.js',
+  'src/events/**/*.js',
+  'src/firebase/**/*.js',
+  'src/i18n/**/*.js',
+  'src/media/**/*.js',
+  'src/media-next/**/*.js',
+  'src/pwa/**/*.js',
+  'src/storage/**/*.js',
+  'src/styles/**/*.js',
+  'src/utils/**/*.js',
+];
+
+function dependencyRule(files, rules) {
+  return {
+    files,
+    ignores: ['src/**/*.test.js', 'src/**/*.browser.test.js'],
+    rules: {
+      'boundaries/dependencies': [
+        'error',
+        {
+          default: 'disallow',
+          rules,
+        },
+      ],
+    },
+  };
+}
+
+const overrides = [];
+
+if (ENABLE_RULE.shared) {
+  overrides.push(
+    dependencyRule(SHARED_GLOBS, [
+      {
+        from: { type: 'shared' },
+        allow: {
+          to: [
+            { type: 'shared' },
+            ...SHARED_TEMP_FEATURE_EXCEPTIONS.map((featureName) => ({
+              type: 'feature',
+              captured: { featureName },
+            })),
+          ],
+        },
+        message:
+          'Shared code may only import shared code (plus explicit temporary feature exceptions).',
+      },
+    ]),
+  );
+}
+
+for (const featureName of ENFORCED_FEATURES) {
+  overrides.push(
+    dependencyRule(
+      [
+        `src/features/${featureName}/*.js`,
+        `src/features/${featureName}/**/*.js`,
+      ],
+      [
+        {
+          from: { type: 'feature', captured: { featureName } },
+          allow: {
+            to: [
+              { type: 'auth' },
+              { type: 'shared' },
+              { type: 'feature', captured: { featureName } },
+            ],
+          },
+          message: `${featureName} may only import from auth, shared, or itself.`,
+        },
+      ],
+    ),
+  );
+}
+
+if (ENABLE_RULE.auth) {
+  overrides.push(
+    dependencyRule(
+      ['src/auth/*.js', 'src/auth/**/*.js'],
+      [
+        {
+          from: { type: 'auth' },
+          allow: {
+            to: [{ type: 'auth' }, { type: 'shared' }],
+          },
+          message: 'Auth may only import from auth and shared.',
+        },
+      ],
+    ),
+  );
+}
+
+if (ENABLE_RULE.app) {
+  overrides.push(
+    dependencyRule(
+      ['src/app/*.js', 'src/app/**/*.js'],
+      [
+        {
+          from: { type: 'app' },
+          allow: {
+            to: [
+              { type: 'app' },
+              { type: 'auth' },
+              { type: 'feature' },
+              { type: 'shared' },
+            ],
+          },
+          message: 'App may only import from app, auth, feature, and shared.',
+        },
+      ],
+    ),
+  );
+}
+
+if (ENABLE_RULE.setup) {
+  overrides.push(
+    dependencyRule(
+      ['src/setup/*.js', 'src/setup/**/*.js'],
+      [
+        {
+          from: { type: 'setup' },
+          allow: {
+            to: [
+              { type: 'setup' },
+              { type: 'app' },
+              { type: 'auth' },
+              { type: 'feature' },
+              { type: 'shared' },
+            ],
+          },
+          message:
+            'Setup may only import from setup, app, auth, feature, and shared.',
+        },
+      ],
+    ),
+  );
+}
+
 export default [
   {
-    // Register element types for all source files.
     files: ['src/**/*.js'],
     plugins: {
       boundaries,
@@ -14,118 +202,33 @@ export default [
     settings: {
       'boundaries/elements': [
         {
-          // "shared" is framework/infrastructure code reused across modules.
           type: 'shared',
           mode: 'full',
-          pattern: [
-            'src/components/**/*',
-            'src/events/**/*',
-            'src/firebase/**/*',
-            'src/i18n/**/*',
-            'src/media/**/*',
-            'src/media-next/**/*',
-            'src/pwa/**/*',
-            'src/storage/**/*',
-            'src/styles/**/*',
-            'src/utils/**/*',
-          ],
+          pattern: SHARED_GLOBS,
         },
         {
-          // Every file under `src/features/<name>/...` is a `feature`.
-          // `capture.featureName` stores `<name>` so rules can target one feature.
           type: 'feature',
           mode: 'full',
           pattern: ['src/features/*/*.js', 'src/features/*/**/*.js'],
           capture: ['featureName'],
         },
         {
-          // Auth is intentionally modeled as its own upstream module.
           type: 'auth',
           mode: 'full',
           pattern: ['src/auth/*.js', 'src/auth/**/*.js'],
         },
         {
-          // App composition/wiring layer.
           type: 'app',
           mode: 'full',
           pattern: ['src/app/*.js', 'src/app/**/*.js'],
         },
-      ],
-    },
-  },
-  {
-    // Shared-layer enforcement:
-    // shared -> shared only (no imports into features/auth/app).
-    files: [
-      'src/components/**/*.js',
-      'src/events/**/*.js',
-      'src/firebase/**/*.js',
-      'src/i18n/**/*.js',
-      'src/media/**/*.js',
-      'src/media-next/**/*.js',
-      'src/pwa/**/*.js',
-      'src/storage/**/*.js',
-      'src/styles/**/*.js',
-      'src/utils/**/*.js',
-    ],
-    rules: {
-      'boundaries/dependencies': [
-        'error',
         {
-          default: 'disallow',
-          rules: [
-            {
-              from: { type: 'shared' },
-              allow: {
-                to: [
-                  { type: 'shared' },
-
-                  // TODO: Remove / disallow temporary shared -> feature exceptions.
-                  // Keep these explicit so we can remove them one-by-one during migration.
-                  { type: 'feature', captured: { featureName: 'messaging' } },
-                  { type: 'feature', captured: { featureName: 'watch' } },
-                  {
-                    type: 'feature',
-                    captured: { featureName: 'notifications' },
-                  },
-                  { type: 'feature', captured: { featureName: 'call' } },
-                ],
-              },
-              message:
-                'Shared code may only import shared code (plus temporary, explicitly-listed feature exceptions).',
-            },
-          ],
+          type: 'setup',
+          mode: 'full',
+          pattern: ['src/setup/*.js', 'src/setup/**/*.js'],
         },
       ],
     },
   },
-  {
-    // Incremental feature rollout:
-    // add feature modules one at a time to "from" and "allow.to" lists.
-    files: ['src/features/contacts/*.js', 'src/features/contacts/**/*.js'],
-    rules: {
-      'boundaries/dependencies': [
-        'error',
-        {
-          default: 'disallow',
-          rules: [
-            {
-              // Syntax note:
-              // `from.captured.featureName` matches the importing feature name.
-              // `to.captured.featureName` lets us allow "same-feature only" imports.
-              from: { type: 'feature', captured: { featureName: 'contacts' } },
-              allow: {
-                to: [
-                  { type: 'auth' },
-                  { type: 'shared' },
-                  { type: 'feature', captured: { featureName: 'contacts' } },
-                ],
-              },
-              message: 'Contacts may only import from auth/shared/contacts.',
-            },
-          ],
-        },
-      ],
-    },
-  },
+  ...overrides,
 ];

@@ -15,11 +15,11 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('../auth/index.js', () => ({
+vi.mock('../../auth/index.js', () => ({
   onAuthStateChange: mocks.onAuthStateChange,
 }));
 
-vi.mock('../storage/user/index.js', () => ({
+vi.mock('../../storage/user/index.js', () => ({
   saveUserProfile: mocks.saveUserProfile,
 }));
 
@@ -36,7 +36,7 @@ describe('setupUserAccount', () => {
   });
 
   it('registers one auth listener and is idempotent', async () => {
-    const { setupUserAccount } = await import('./setupUserAccount.js');
+    const { setupUserAccount } = await import('../setupUserAccount.js');
 
     const teardownA = await setupUserAccount();
     const teardownB = await setupUserAccount();
@@ -49,7 +49,7 @@ describe('setupUserAccount', () => {
   });
 
   it('saves profile only for logged-in users with user data', async () => {
-    const { setupUserAccount } = await import('./setupUserAccount.js');
+    const { setupUserAccount } = await import('../setupUserAccount.js');
     const teardown = await setupUserAccount();
 
     const callback = mocks.authCallbacks[0];
@@ -71,7 +71,7 @@ describe('setupUserAccount', () => {
   });
 
   it('teardown unsubscribes and allows re-setup', async () => {
-    const { setupUserAccount } = await import('./setupUserAccount.js');
+    const { setupUserAccount } = await import('../setupUserAccount.js');
 
     const teardownA = await setupUserAccount();
     teardownA();

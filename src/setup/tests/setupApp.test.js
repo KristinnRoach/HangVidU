@@ -6,15 +6,15 @@ const mocks = vi.hoisted(() => ({
   setupServiceWorkerNavigation: vi.fn(),
 }));
 
-vi.mock('./setupNotificationsHandlers.js', () => ({
+vi.mock('../setupNotificationsHandlers.js', () => ({
   setupNotificationsHandlers: mocks.setupNotificationsHandlers,
 }));
 
-vi.mock('./setupContacts.js', () => ({
+vi.mock('../setupContacts.js', () => ({
   setupContacts: mocks.setupContacts,
 }));
 
-vi.mock('./setupServiceWorkerNavigation.js', () => ({
+vi.mock('../setupServiceWorkerNavigation.js', () => ({
   setupServiceWorkerNavigation: mocks.setupServiceWorkerNavigation,
 }));
 
@@ -77,7 +77,7 @@ describe('setupApp', () => {
       onReady: vi.fn(() => trace.push('onReady')),
     };
 
-    const { setupApp } = await import('./setupApp.js');
+    const { setupApp } = await import('../setupApp.js');
     const cleanup = await setupApp(options);
 
     const orderedSteps = [
@@ -147,7 +147,7 @@ describe('setupApp', () => {
       onReady: vi.fn(),
     };
 
-    const { setupApp } = await import('./setupApp.js');
+    const { setupApp } = await import('../setupApp.js');
     const p1 = setupApp(options);
     const p2 = setupApp(options);
 
@@ -185,7 +185,7 @@ describe('setupApp', () => {
       onReady: vi.fn(),
     };
 
-    const { setupApp } = await import('./setupApp.js');
+    const { setupApp } = await import('../setupApp.js');
     await setupApp(options);
 
     expect(options.onInitFailed).toHaveBeenCalledTimes(1);
@@ -222,7 +222,7 @@ describe('setupApp', () => {
       onReady: vi.fn(),
     };
 
-    const { setupApp } = await import('./setupApp.js');
+    const { setupApp } = await import('../setupApp.js');
 
     await expect(setupApp(options)).rejects.toThrow('init failed');
     await expect(setupApp(options)).resolves.toEqual(expect.any(Function));
@@ -255,7 +255,7 @@ describe('setupApp', () => {
       onReady: vi.fn(),
     };
 
-    const { setupApp } = await import('./setupApp.js');
+    const { setupApp } = await import('../setupApp.js');
     await expect(setupApp(options)).resolves.toEqual(expect.any(Function));
 
     expect(options.onInitFailed).not.toHaveBeenCalled();

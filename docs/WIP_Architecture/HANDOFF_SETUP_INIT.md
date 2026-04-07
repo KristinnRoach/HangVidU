@@ -22,18 +22,18 @@ Completed:
   - `setupNotificationsHandlers.js`
 - changed startup ordering so `setupNotificationsHandlers()` runs before `setupContacts()` to avoid dropping referral notification events
 - replaced `window.onload` bootstrap with guarded `bootstrapApp()` triggered by `DOMContentLoaded`/readyState
-- routed `main.js` bootstrap through callback-driven `src/app/setupApp.js` (Phase 1 behavior-preserving consolidation)
-- extracted top-bar/locale setup from `init()` into `src/app/setupTopBarAndLocale.js` (notification toggle, debug update button, locale toggle) without changing startup order
-- extracted `init()` preflight (UI/i18n hydration + critical element validation) into `src/app/setupInitPreflight.js` without changing startup order
+- routed `main.js` bootstrap through callback-driven `src/setup/setupApp.js` (Phase 1 behavior-preserving consolidation)
+- extracted top-bar/locale setup from `init()` into `src/setup/setupTopBarAndLocale.js` (notification toggle, debug update button, locale toggle) without changing startup order
+- extracted `init()` preflight (UI/i18n hydration + critical element validation) into `src/setup/setupInitPreflight.js` without changing startup order
 - made bootstrap retry-safe via `setupApp` single-flight (`initPromise`) with explicit `isReady`/`cleanup` lifecycle state
 - register service-worker NAVIGATE listener early and queue messages until bootstrap readiness to avoid cold-start drops
 - aligned preflight contract with startup UI bindings (`callBtn`, `lobbyCallBtn`, `hangUpBtn`) and guarded early handler assignment
-- documented setup direction in [`src/app/SETUP_MODULE.md`](../../src/app/SETUP_MODULE.md)
+- documented setup direction in [`src/setup/SETUP_MODULE.md`](../../src/setup/SETUP_MODULE.md)
 
 Current intended standards:
 
 - Phase 1 rule: preserve behavior, centralize startup order, defer internal cleanup/refactor details
-- app composition owns sequencing in `src/app/setup<Module>.js`
+- setup composition owns sequencing in `src/setup/setup<Module>.js`
 - module internals own domain logic (`init<Module>()`, module-local handlers)
 - register required listeners before init when init may emit/publish/dispatch events
 - keep setup entrypoints idempotent when practical

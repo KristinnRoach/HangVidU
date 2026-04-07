@@ -30,42 +30,42 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('../events/index.js', () => ({
+vi.mock('../../events/index.js', () => ({
   handleCommand: mocks.events.handleCommand,
   subscribe: mocks.events.subscribe,
 }));
 
-vi.mock('../features/messaging/messaging-controller.js', () => ({
+vi.mock('../../features/messaging/messaging-controller.js', () => ({
   messagingController: mocks.messagingController,
 }));
 
-vi.mock('../features/contacts/index.js', () => ({
+vi.mock('../../features/contacts/index.js', () => ({
   contactsService: mocks.contactsService,
 }));
 
-vi.mock('../utils/dev/dev-utils.js', () => ({
+vi.mock('../../utils/dev/dev-utils.js', () => ({
   isDev: mocks.isDev,
   tempWarn: mocks.tempWarn,
 }));
 
-vi.mock('../features/call/WIP-start-call-refactor.js', () => ({
+vi.mock('../../features/call/WIP-start-call-refactor.js', () => ({
   callContact: mocks.callContact,
 }));
 
-vi.mock('../features/call/room-listeners.js', () => ({
+vi.mock('../../features/call/room-listeners.js', () => ({
   listenForIncomingOnRoom: mocks.listenForIncomingOnRoom,
   removeIncomingListenersForRoom: mocks.removeIncomingListenersForRoom,
 }));
 
-vi.mock('../features/presence/index.js', () => ({
+vi.mock('../../features/presence/index.js', () => ({
   setUserOffline: mocks.setUserOffline,
 }));
 
-vi.mock('../utils/url.js', () => ({
+vi.mock('../../utils/url.js', () => ({
   clearUrlParam: vi.fn(),
 }));
 
-vi.mock('../components/ui/core/call-lifecycle-ui.js', () => ({
+vi.mock('../../components/ui/core/call-lifecycle-ui.js', () => ({
   onCallDisconnected: vi.fn(),
 }));
 
@@ -78,7 +78,7 @@ describe('setupMainAppBusListeners', () => {
 
   it('does not attempt conversation selection when no contactId is provided', async () => {
     const { setupMainAppBusListeners } =
-      await import('./setupMainAppBusListeners.js');
+      await import('../setupMainAppBusListeners.js');
 
     await setupMainAppBusListeners();
     const handler = mocks.handlers.get('call:outgoing:initiate');
@@ -101,7 +101,7 @@ describe('setupMainAppBusListeners', () => {
 
   it('selects a conversation when the messaging selection command is emitted', async () => {
     const { setupMainAppBusListeners } =
-      await import('./setupMainAppBusListeners.js');
+      await import('../setupMainAppBusListeners.js');
 
     await setupMainAppBusListeners();
     const handler = mocks.handlers.get('messaging:conversation:select');
@@ -123,7 +123,7 @@ describe('setupMainAppBusListeners', () => {
 
   it('removes the previous room listener before listening on an updated room', async () => {
     const { setupMainAppBusListeners } =
-      await import('./setupMainAppBusListeners.js');
+      await import('../setupMainAppBusListeners.js');
 
     await setupMainAppBusListeners();
     const handler = mocks.handlers.get('room:id:updated');
@@ -141,7 +141,7 @@ describe('setupMainAppBusListeners', () => {
 
   it('handles the presence offline command through the app layer', async () => {
     const { setupMainAppBusListeners } =
-      await import('./setupMainAppBusListeners.js');
+      await import('../setupMainAppBusListeners.js');
 
     await setupMainAppBusListeners();
     const handler = mocks.handlers.get('user:presence:set-offline');
