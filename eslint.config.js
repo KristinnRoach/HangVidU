@@ -119,13 +119,6 @@ export default [
                   { type: 'auth' },
                   { type: 'shared' },
                   { type: 'feature', captured: { featureName: 'contacts' } },
-
-                  // TODO: Remove / disallow temporary contacts -> feature exceptions.
-                  // Remove one by one as each dependency is migrated.
-                  {
-                    type: 'feature',
-                    captured: { featureName: 'notifications' },
-                  },
                 ],
               },
               message:
