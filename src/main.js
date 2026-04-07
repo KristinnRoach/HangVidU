@@ -107,12 +107,11 @@ import {
   onLocaleChange,
 } from './i18n/index.js';
 import { setupMessagingContactsIntegration } from './app/messaging-contacts-integration.js';
+import { setupApp } from './app/setupApp.js';
 import { setupMessagingAppBusHandlers } from './features/messaging/handle-appbus-events.js';
 import { setupCallControllerEventWiring } from './features/call/call-event-wiring.js';
 import { setupMainAppBusListeners } from './app/setupMainAppBusListeners.js';
 import { setupAuth } from './app/setupAuth.js';
-import { setupNotificationsHandlers } from './app/setupNotificationsHandlers.js';
-import { setupContacts } from './app/setupContacts.js';
 import { setupUserAccount } from './app/setupUserAccount.js';
 import {
   getCallOptions,
@@ -142,6 +141,94 @@ let showDebugUIForNotifications = false;
 
 let cleanupFunctions = [];
 let isHandlingServiceWorkerNavigation = false;
+
+// ============================================================================
+// APP STARTUP
+// ============================================================================
+
+let hasBootstrapped = false;
+
+function handleInitFailure(error) {
+  if (error) {
+    return;
+  }
+
+  if (callBtn) {
+    callBtn.disabled = true;
+    callBtn.title = t('error.init.button_title');
+  }
+  console.error(
+    'Initialization failed. Call functionality disabled. Please reload the page.',
+  );
+  alert(t('error.init.alert'));
+}
+
+function registerServiceWorkerNavigation() {
+  if (!('serviceWorker' in navigator)) {
+    return undefined;
+  }
+
+  const handleServiceWorkerMessage = (event) => {
+    const { type, path } = event.data || {};
+
+    if (type !== 'NAVIGATE') return;
+
+    console.log('[MAIN] Received service worker NAVIGATE message', {
+      path,
+    });
+
+    handleServiceWorkerNavigation(path).catch((error) => {
+      console.warn('[MAIN] Failed to handle service worker NAVIGATE:', error);
+    });
+  };
+
+  navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
+
+  return () => {
+    navigator.serviceWorker.removeEventListener(
+      'message',
+      handleServiceWorkerMessage,
+    );
+  };
+}
+
+async function bootstrapApp() {
+  if (hasBootstrapped) {
+    return;
+  }
+  hasBootstrapped = true;
+
+  const appCleanup = await setupApp({
+    runInit: init,
+    bindCallUI: () => bindCallUI(CallController),
+    setupMainAppBusListeners,
+    startListeningForSavedRooms,
+    renderContactsList: () => renderContactsList(lobbyDiv),
+    autoInitMsgSessionIfNeeded,
+    registerServiceWorkerNavigation,
+    autoJoinFromUrl,
+    onInitFailed: handleInitFailure,
+    onReady: () => devDebug('Ready. Click "Start New Chat" to begin.'),
+  });
+
+  cleanupFunctions.push(appCleanup);
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener(
+    'DOMContentLoaded',
+    () => {
+      bootstrapApp().catch((error) => {
+        console.error('[MAIN] bootstrap failed:', error);
+      });
+    },
+    { once: true },
+  );
+} else {
+  bootstrapApp().catch((error) => {
+    console.error('[MAIN] bootstrap failed:', error);
+  });
+}
 
 // ============================================================================
 // INITIALIZATION & MEDIA SETUP
@@ -690,101 +777,6 @@ export async function autoInitMsgSessionIfNeeded() {
   }
 }
 // ! END OF TODO
-
-let hasBootstrapped = false;
-
-async function bootstrapApp() {
-  if (hasBootstrapped) {
-    return;
-  }
-  hasBootstrapped = true;
-
-  cleanupFunctions.push(await setupNotificationsHandlers());
-  cleanupFunctions.push(await setupContacts());
-
-  const initSuccess = await init();
-
-  if (!initSuccess) {
-    if (callBtn) {
-      callBtn.disabled = true;
-      callBtn.title = t('error.init.button_title');
-    }
-    console.error(
-      'Initialization failed. Call functionality disabled. Please reload the page.',
-    );
-    alert(t('error.init.alert'));
-    return;
-  }
-
-  // UI handlers (business logic handlers registered separately below)
-  bindCallUI(CallController);
-
-  setupMainAppBusListeners();
-
-  // Start listening for incoming calls on any saved/recent room ids FIRST
-  await startListeningForSavedRooms().catch((e) =>
-    console.warn('Failed to start saved-room listeners', e),
-  );
-
-  // Then render saved contacts list in lobby (now listeners are ready)
-  await renderContactsList(lobbyDiv).catch((e) => {
-    console.warn('Failed to render contacts list:', e);
-  });
-
-  // Auto-open first contact session if user has saved contacts
-  await autoInitMsgSessionIfNeeded().catch((e) => {
-    console.warn('Failed to auto-init messaging session:', e);
-  });
-
-  if ('serviceWorker' in navigator) {
-    const handleServiceWorkerMessage = (event) => {
-      const { type, path } = event.data || {};
-
-      if (type !== 'NAVIGATE') return;
-
-      console.log('[MAIN] Received service worker NAVIGATE message', {
-        path,
-      });
-
-      handleServiceWorkerNavigation(path).catch((error) => {
-        console.warn('[MAIN] Failed to handle service worker NAVIGATE:', error);
-      });
-    };
-
-    navigator.serviceWorker.addEventListener(
-      'message',
-      handleServiceWorkerMessage,
-    );
-    cleanupFunctions.push(() => {
-      navigator.serviceWorker.removeEventListener(
-        'message',
-        handleServiceWorkerMessage,
-      );
-    });
-  }
-
-  // Auto-join if room parameter exists
-  const autoJoinedSuccessfully = await autoJoinFromUrl();
-  if (autoJoinedSuccessfully) return;
-
-  devDebug('Ready. Click "Start New Chat" to begin.');
-}
-
-if (document.readyState === 'loading') {
-  window.addEventListener(
-    'DOMContentLoaded',
-    () => {
-      bootstrapApp().catch((error) => {
-        console.error('[MAIN] bootstrap failed:', error);
-      });
-    },
-    { once: true },
-  );
-} else {
-  bootstrapApp().catch((error) => {
-    console.error('[MAIN] bootstrap failed:', error);
-  });
-}
 
 // Handle page leave, beforeunload is cancellable
 window.addEventListener('beforeunload', async (e) => {

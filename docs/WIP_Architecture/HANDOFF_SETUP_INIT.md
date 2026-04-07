@@ -27,6 +27,7 @@ Completed:
 
 Current intended standards:
 
+- Phase 1 rule: preserve behavior, centralize startup order, defer internal cleanup/refactor details
 - app composition owns sequencing in `src/app/setup<Module>.js`
 - module internals own domain logic (`init<Module>()`, module-local handlers)
 - register required listeners before init when init may emit/publish/dispatch events
