@@ -3,7 +3,7 @@ import {
   createNotificationsToggle,
   inAppNotificationManager,
 } from '../features/notifications/index.js';
-import { getLocale, setLocale } from '../i18n/index.js';
+import { getLocale, setLocale, onLocaleChange } from '../i18n/index.js';
 
 /**
  * Setup lightweight app chrome controls that do not require call/session state.
@@ -29,7 +29,15 @@ export function setupTopBarAndLocale(options) {
   // TODO: integrate into template (and settings menu once implemented)
   const toggleLangBtn = document.createElement('button');
   toggleLangBtn.id = 'toggle-lang-btn';
-  toggleLangBtn.textContent = `🌐 ${getLocale().toUpperCase()}`;
+
+  const renderLocaleLabel = () => {
+    const localeUpperCase = getLocale().toUpperCase();
+    if (toggleLangBtn.textContent !== `🌐 ${localeUpperCase}`) {
+      toggleLangBtn.textContent = `🌐 ${localeUpperCase}`;
+    }
+  };
+  renderLocaleLabel();
+
   toggleLangBtn.style.cssText = `
       position: fixed;
       bottom: 2px;
@@ -50,7 +58,9 @@ export function setupTopBarAndLocale(options) {
   toggleLangBtn.onclick = async () => {
     const newLocale = getLocale() === 'en' ? 'is' : 'en';
     await setLocale(newLocale);
-    toggleLangBtn.textContent = `🌐 ${newLocale.toUpperCase()}`;
+    renderLocaleLabel();
   };
+
+  onLocaleChange(renderLocaleLabel);
   appWrapper && appWrapper.appendChild(toggleLangBtn);
 }
