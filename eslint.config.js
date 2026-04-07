@@ -55,6 +55,7 @@ const SHARED_TEMP_FEATURE_EXCEPTIONS = [
 ];
 
 const SHARED_GLOBS = [
+  'src/elements.js',
   'src/components/**/*.js',
   'src/events/**/*.js',
   'src/firebase/**/*.js',
