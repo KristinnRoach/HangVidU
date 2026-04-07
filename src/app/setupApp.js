@@ -119,7 +119,12 @@ export function setupApp(options) {
         console.warn('Failed to auto-init messaging session:', e);
       });
 
-      const autoJoinedSuccessfully = await options.autoJoinFromUrl();
+      let autoJoinedSuccessfully = false;
+      try {
+        autoJoinedSuccessfully = await options.autoJoinFromUrl();
+      } catch (error) {
+        console.warn('Failed to auto-join from URL:', error);
+      }
       if (!autoJoinedSuccessfully) {
         options.onReady?.();
       }

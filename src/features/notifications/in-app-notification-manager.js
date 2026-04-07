@@ -21,7 +21,20 @@ class InAppNotificationManager {
    * @param {HTMLElement} toggleComponent - The toggle component
    */
   setToggle(toggleComponent) {
+    if (this.toggle?.setManager) {
+      this.toggle.setManager(null);
+    }
     this.toggle = toggleComponent;
+
+    if (!this.toggle) {
+      this.hideList();
+      if (this.container && this.notifications.size === 0) {
+        this.container.remove();
+        this.container = null;
+      }
+      return;
+    }
+
     // Wire up the toggle to use this manager for default behavior
     if (this.toggle.setManager) {
       this.toggle.setManager(this);

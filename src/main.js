@@ -136,10 +136,19 @@ let appSetupCleanup = () => {};
 // ============================================================================
 
 function handleInitFailure(error) {
+  const buttonTitle = t('error.init.button_title');
+  const toastMessageKey = 'error.init.toast';
+  const toastMessage = t(toastMessageKey);
+  const fallbackToastMessage =
+    'An error occurred. Please reload and check cam/mic permissions.';
+
   for (const button of [callBtn, lobbyCallBtn]) {
     if (!button) continue;
     button.disabled = true;
-    button.title = t('error.init.button_title');
+    button.title =
+      buttonTitle === 'error.init.button_title'
+        ? 'Initialization failed'
+        : buttonTitle;
   }
 
   if (error) {
@@ -149,7 +158,16 @@ function handleInitFailure(error) {
       'Initialization failed. Call functionality disabled. Please reload the page.',
     );
   }
-  showErrorToast(t('error.init.toast'));
+  const finalToastMessage =
+    toastMessage === toastMessageKey ? fallbackToastMessage : toastMessage;
+  try {
+    showErrorToast(finalToastMessage);
+  } catch (toastError) {
+    console.warn('[MAIN] Failed to render init error toast:', toastError);
+    if (typeof globalThis.alert === 'function') {
+      globalThis.alert(finalToastMessage);
+    }
+  }
 }
 
 async function bootstrapApp() {
@@ -746,6 +764,8 @@ async function cleanup() {
   } finally {
     try {
       appSetupCleanup?.();
+    } catch (error) {
+      console.warn('[MAIN] appSetupCleanup failed:', error);
     } finally {
       appSetupCleanup = () => {};
     }

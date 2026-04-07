@@ -224,4 +224,33 @@ describe('setupApp', () => {
     expect(mocks.setupContacts).toHaveBeenCalledTimes(2);
     expect(options.bindCallUI).toHaveBeenCalledTimes(1);
   });
+
+  it('continues startup and calls onReady when autoJoinFromUrl throws', async () => {
+    mocks.setupNotificationsHandlers.mockResolvedValue(() => {});
+    mocks.setupContacts.mockResolvedValue(() => {});
+    mocks.setupServiceWorkerNavigation.mockResolvedValue(() => {});
+
+    const options = {
+      runPreflight: vi.fn(async () => () => {}),
+      runInit: vi.fn(async () => true),
+      setupTopBarAndLocale: vi.fn(async () => () => {}),
+      bindCallUI: vi.fn(),
+      setupMainAppBusListeners: vi.fn(),
+      startListeningForSavedRooms: vi.fn(async () => {}),
+      renderContactsList: vi.fn(async () => {}),
+      autoInitMsgSessionIfNeeded: vi.fn(async () => {}),
+      handleServiceWorkerNavigation: vi.fn(async () => true),
+      autoJoinFromUrl: vi.fn(async () => {
+        throw new Error('join failed');
+      }),
+      onInitFailed: vi.fn(),
+      onReady: vi.fn(),
+    };
+
+    const { setupApp } = await import('./setupApp.js');
+    await expect(setupApp(options)).resolves.toEqual(expect.any(Function));
+
+    expect(options.onInitFailed).not.toHaveBeenCalled();
+    expect(options.onReady).toHaveBeenCalledTimes(1);
+  });
 });

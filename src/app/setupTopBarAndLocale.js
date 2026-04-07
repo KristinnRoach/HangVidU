@@ -33,13 +33,15 @@ export function setupTopBarAndLocale(options) {
   const { appWrapper, showDebugUIForNotifications = false } = options;
 
   initPromise = Promise.resolve().then(() => {
+    let notificationsToggle = null;
+
     // Add debug button for testing update notification (dev only)
     showDebugUIForNotifications && addDebugUpdateButton();
 
     // Initialize notification system for production (PWA updates, etc.)
     const topRightMenu = document.querySelector('.top-right-menu');
     if (topRightMenu) {
-      const notificationsToggle = createNotificationsToggle({
+      notificationsToggle = createNotificationsToggle({
         parent: topRightMenu,
         hideWhenAllRead: false,
       });
@@ -106,6 +108,14 @@ export function setupTopBarAndLocale(options) {
       } catch (error) {
         console.warn(
           '[setupTopBarAndLocale] cleanup failed to clear notification toggle:',
+          error,
+        );
+      }
+      try {
+        notificationsToggle?.remove();
+      } catch (error) {
+        console.warn(
+          '[setupTopBarAndLocale] cleanup failed to remove notification toggle:',
           error,
         );
       } finally {
