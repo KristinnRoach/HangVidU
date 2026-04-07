@@ -89,7 +89,6 @@ export function setupApp(options) {
 
       const initSuccess = await options.runInit();
       if (!initSuccess) {
-        markServiceWorkerNavigationReady();
         options.onInitFailed?.();
         drainCleanupFns(cleanupFns);
 
@@ -138,7 +137,6 @@ export function setupApp(options) {
       isReady = true;
       return cleanup;
     } catch (error) {
-      markServiceWorkerNavigationReady();
       drainCleanupFns(cleanupFns);
       cleanup = () => {
         isReady = false;

@@ -26,6 +26,9 @@ describe('setupApp', () => {
 
   it('runs phase-1 startup order with setup modules before init and init before post-init wiring', async () => {
     const trace = [];
+    const appBusCleanup = vi.fn(() => {
+      trace.push('cleanupMainAppBusListeners');
+    });
 
     mocks.setupNotificationsHandlers.mockImplementation(async () => {
       trace.push('setupNotificationsHandlers');
@@ -54,9 +57,10 @@ describe('setupApp', () => {
         return () => {};
       }),
       bindCallUI: vi.fn(() => trace.push('bindCallUI')),
-      setupMainAppBusListeners: vi.fn(() =>
-        trace.push('setupMainAppBusListeners'),
-      ),
+      setupMainAppBusListeners: vi.fn(async () => {
+        trace.push('setupMainAppBusListeners');
+        return appBusCleanup;
+      }),
       startListeningForSavedRooms: vi.fn(async () =>
         trace.push('startListeningForSavedRooms'),
       ),
@@ -74,7 +78,7 @@ describe('setupApp', () => {
     };
 
     const { setupApp } = await import('./setupApp.js');
-    await setupApp(options);
+    const cleanup = await setupApp(options);
 
     const orderedSteps = [
       'setupServiceWorkerNavigation',
@@ -111,6 +115,8 @@ describe('setupApp', () => {
     expect(trace.indexOf('runInit')).toBeLessThan(
       trace.indexOf('setupMainAppBusListeners'),
     );
+    cleanup();
+    expect(appBusCleanup).toHaveBeenCalledTimes(1);
   });
 
   it('uses single-flight initialization for concurrent setupApp calls', async () => {
@@ -156,6 +162,7 @@ describe('setupApp', () => {
   });
 
   it('drains pre-init cleanup immediately when runInit returns false', async () => {
+    const preflightCleanup = vi.fn();
     const notificationsCleanup = vi.fn();
     const contactsCleanup = vi.fn();
 
@@ -164,7 +171,7 @@ describe('setupApp', () => {
     mocks.setupServiceWorkerNavigation.mockResolvedValue(() => {});
 
     const options = {
-      runPreflight: vi.fn(async () => () => {}),
+      runPreflight: vi.fn(async () => preflightCleanup),
       runInit: vi.fn(async () => false),
       setupTopBarAndLocale: vi.fn(async () => () => {}),
       bindCallUI: vi.fn(),
@@ -182,6 +189,7 @@ describe('setupApp', () => {
     await setupApp(options);
 
     expect(options.onInitFailed).toHaveBeenCalledTimes(1);
+    expect(preflightCleanup).toHaveBeenCalledTimes(1);
     expect(notificationsCleanup).toHaveBeenCalledTimes(1);
     expect(contactsCleanup).toHaveBeenCalledTimes(1);
     expect(options.bindCallUI).not.toHaveBeenCalled();

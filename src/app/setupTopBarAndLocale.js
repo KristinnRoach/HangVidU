@@ -15,7 +15,7 @@ let cleanup = () => {
  * Setup contract:
  * - idempotent: returns existing cleanup when already ready
  * - single-flight: concurrent callers share one init promise
- * - teardown: cleanup removes DOM injection and locale listener
+ * - teardown: cleanup removes DOM injection/listeners
  *
  * Setup lightweight app chrome controls that do not require call/session state.
  *
@@ -86,7 +86,15 @@ export function setupTopBarAndLocale(options) {
     const unsubscribeLocaleChange = onLocaleChange(renderLocaleLabel);
     appWrapper && appWrapper.appendChild(toggleLangBtn);
 
-    cleanup = () => {
+    // Special-case stale cleanup guard: this setup owns shared singleton UI
+    // state (`inAppNotificationManager`), so an old cleanup must never tear
+    // down a newer initialized generation.
+    let isCleanedUp = false;
+    const activeCleanup = () => {
+      if (cleanup !== activeCleanup || isCleanedUp) {
+        return;
+      }
+      isCleanedUp = true;
       try {
         unsubscribeLocaleChange?.();
       } catch (error) {
@@ -119,9 +127,13 @@ export function setupTopBarAndLocale(options) {
           error,
         );
       } finally {
+        cleanup = () => {
+          isReady = false;
+        };
         isReady = false;
       }
     };
+    cleanup = activeCleanup;
     isReady = true;
     return cleanup;
   }).finally(() => {
