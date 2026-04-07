@@ -8,7 +8,7 @@ const isCompatMode = process.env.COMPAT === 'true';
 // Shared test options
 const sharedTestConfig = {
   globals: true,
-  setupFiles: ['./tests/setup.js'],
+  setupFiles: ['./tests/env-setup.js'],
 };
 
 // Shared include patterns (both projects use the same directories)
@@ -62,7 +62,7 @@ export default defineConfig({
         test: {
           ...sharedTestConfig,
           name: 'browser',
-          globalSetup: ['./tests/global-setup.js'],
+          globalSetup: ['./tests/process-setup.js'],
           browser: {
             enabled: true,
             provider: playwright(),

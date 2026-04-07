@@ -37,8 +37,8 @@ tests/
 ├── smoke/          # Quick smoke tests
 ├── integration/    # Integration tests
 ├── e2e/            # Playwright end-to-end (separate runner)
-├── setup.js        # Shared setup (env stubs, runs in both projects)
-└── global-setup.js # Node-process setup (birpc teardown suppression, browser project only)
+├── env-setup.js     # Runs inside each test environment before every file (env stubs)
+└── process-setup.js # Runs once in the Node orchestrator process (birpc suppression)
 
 src/**/*.test.js    # Co-located component/module tests
 ```
