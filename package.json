@@ -26,15 +26,13 @@
     "lint": "pnpm lint:boundaries",
     "lint:boundaries": "eslint \"src/**/*.js\"",
     "test": "vitest --run",
+    "test:node": "vitest --run --project node",
+    "test:browser": "vitest --run --project browser",
     "test:all": "pnpm test:compat && pnpm test:e2e",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --run --coverage",
-    "test:compat": "COMPAT=true vitest --run",
-    "test:create-component": "vitest --run src/utils/dom/**/*.test.js",
-    "test:smoke": "vitest --run tests/smoke/ src/**/*.test.js",
-    "test:unit": "vitest --run tests/unit/ src/**/*.test.js",
-    "test:integration": "vitest --run tests/integration/ src/**/*.test.js",
+    "test:compat": "vitest --run --project node && COMPAT=true vitest --run --project browser",
     "test:file-transfer": "node tests/integration/run-file-transfer.js",
     "test:file-transfer:full": "node tests/integration/run-file-transfer.js --sizes 100,250,500,750,900,1024",
     "test:e2e": "playwright test",
@@ -57,7 +55,7 @@
   "author": "",
   "license": "MIT",
   "engines": {
-    "node": "^20.19.0 || >=22.12.0"
+    "node": "^20.19.0 || >=22.13.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
@@ -70,6 +68,7 @@
     "fast-check": "^4.6.0",
     "firebase-admin": "^13.7.0",
     "fkill-cli": "~9.0.0",
+    "jsdom": "^29.0.1",
     "playwright": "^1.59.1",
     "vite": "^7.3.1",
     "vite-plugin-mkcert": "^1.17.10",

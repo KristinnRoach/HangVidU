@@ -5,6 +5,21 @@ import { VitePWA } from 'vite-plugin-pwa';
 // Enable multi-browser testing with COMPAT=true
 const isCompatMode = process.env.COMPAT === 'true';
 
+// Shared test options
+const sharedTestConfig = {
+  globals: true,
+  setupFiles: ['./tests/env-setup.js'],
+};
+
+// Shared include patterns (both projects use the same directories)
+const testDirs = [
+  'src/**/',
+  'tests/unit/**/',
+  'tests/smoke/**/',
+  'tests/integration/**/',
+  'tests/investigation/**/',
+];
+
 export default defineConfig({
   plugins: [
     VitePWA({
@@ -28,38 +43,41 @@ export default defineConfig({
     }),
   ],
   test: {
-    // Suppress birpc teardown race — handled in tests/global-setup.js (runs in
-    // the main Node process where the rejection actually originates)
-    globalSetup: ['./tests/global-setup.js'],
-    // testTimeout: 60000, // Uncomment if getting timeout errors
-    browser: {
-      enabled: true,
-      provider: playwright(),
-      headless: true,
-      instances: isCompatMode
-        ? [
-            { browser: 'chromium' },
-            { browser: 'firefox' },
-            { browser: 'webkit' },
-          ]
-        : [{ browser: 'chromium' }],
-    },
-    globals: true,
-    setupFiles: ['./tests/setup.js'],
-    include: [
-      'src/**/*.test.js',
-      'tests/unit/**/*.test.js',
-      'tests/smoke/**/*.test.js',
-      'tests/integration/**/*.test.js',
-      'tests/investigation/**/*.test.js',
-    ],
-    exclude: [
-      // Uncomment below as needed to isolate or speed up while debugging
-      // 'tests/e2e/**/*',
-      // 'tests/**/*.spec.js',
-      // 'tests/integration/chunk-yield-impact.test.js',
-      // 'tests/integration/file-transfer-large.test.js',
-      // 'node_modules/**/*',
+    projects: [
+      // Default: runs in Node with jsdom (no Playwright RPC overhead)
+      // Convention: *.test.js
+      {
+        test: {
+          ...sharedTestConfig,
+          name: 'node',
+          environment: 'jsdom',
+          include: testDirs.map((d) => `${d}*.test.js`),
+          exclude: testDirs.map((d) => `${d}*.browser.test.js`),
+        },
+      },
+      // Browser: runs in real Chromium via Playwright
+      // Convention: *.browser.test.js — use for tests needing real
+      // WebRTC, OPFS, ServiceWorker, or other APIs jsdom can't provide
+      {
+        test: {
+          ...sharedTestConfig,
+          name: 'browser',
+          globalSetup: ['./tests/process-setup.js'],
+          browser: {
+            enabled: true,
+            provider: playwright(),
+            headless: true,
+            instances: isCompatMode
+              ? [
+                  { browser: 'chromium' },
+                  { browser: 'firefox' },
+                  { browser: 'webkit' },
+                ]
+              : [{ browser: 'chromium' }],
+          },
+          include: testDirs.map((d) => `${d}*.browser.test.js`),
+        },
+      },
     ],
     coverage: {
       reporter: ['text', 'html', 'lcov'],

@@ -49,7 +49,6 @@ Completed in this branch:
 - documented setup direction in `src/app/SETUP<MODULE>.md`
 - added WIP docs:
   - [LINKS_TO_DOCS.md](./LINKS_TO_DOCS.md)
-  - [WIP_TEST_MOCKS_SPY.md](../WIP_TEST_MOCKS_SPY.md)
 
 Current intended standards:
 
