@@ -121,8 +121,7 @@ export default [
                   { type: 'feature', captured: { featureName: 'contacts' } },
                 ],
               },
-              message:
-                'Contacts may only import from auth/shared/contacts (plus temporary, explicitly-listed feature exceptions).',
+              message: 'Contacts may only import from auth/shared/contacts.',
             },
           ],
         },
