@@ -8,8 +8,12 @@ We are moving toward a consistent app-composition pattern:
 
 Current example:
 
-- [`setupAuth.js`](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/app/setupAuth.js)
+- [`setupAuth.js`](./setupAuth.js)
 
 Guideline:
 
 - when it is not problematic, setup functions should always be idempotent
+- default setup state naming:
+  - `isReady` (`boolean`)
+  - `initializationPromise` (`Promise|null`)
+  - `cleanup` (`function`)

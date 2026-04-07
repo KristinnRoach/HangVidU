@@ -1,32 +1,45 @@
 import { onAuthStateChange } from '../auth/index.js';
 import { saveUserProfile } from '../storage/user/index.js';
 
-let cleanupUserAccount = null;
+let isReady = false;
+let initializationPromise = null;
+let cleanup = () => {
+  isReady = false;
+};
 
 /**
  * Setup user-account sync concerns at app composition level.
  *
- * @returns {() => void}
+ * @returns {Promise<() => void>}
  */
 export function setupUserAccount() {
-  if (cleanupUserAccount) {
-    return cleanupUserAccount;
+  if (isReady) {
+    return Promise.resolve(cleanup);
+  }
+  if (initializationPromise) {
+    return initializationPromise;
   }
 
-  const unsubscribe = onAuthStateChange((state) => {
-    if (!state?.isLoggedIn || !state.user) {
-      return;
-    }
+  initializationPromise = Promise.resolve().then(() => {
+    const unsubscribe = onAuthStateChange((state) => {
+      if (!state?.isLoggedIn || !state.user) {
+        return;
+      }
 
-    saveUserProfile(state.user).catch((err) => {
-      console.warn('Failed to save user profile:', err);
+      saveUserProfile(state.user).catch((err) => {
+        console.warn('Failed to save user profile:', err);
+      });
     });
+
+    cleanup = () => {
+      unsubscribe();
+      isReady = false;
+    };
+    isReady = true;
+    return cleanup;
+  }).finally(() => {
+    initializationPromise = null;
   });
 
-  cleanupUserAccount = () => {
-    unsubscribe();
-    cleanupUserAccount = null;
-  };
-
-  return cleanupUserAccount;
+  return initializationPromise;
 }

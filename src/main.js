@@ -21,7 +21,6 @@ import CallController from './features/call/call-controller.js';
 import { messagingController } from './features/messaging/messaging-controller.js';
 import {
   contactsService,
-  captureReferral,
   renderContactsList,
   cleanupContacts,
   showAddContactModal,
@@ -113,6 +112,7 @@ import { setupCallControllerEventWiring } from './features/call/call-event-wirin
 import { setupMainAppBusListeners } from './app/setupMainAppBusListeners.js';
 import { setupAuth } from './app/setupAuth.js';
 import { setupNotificationsHandlers } from './app/setupNotificationsHandlers.js';
+import { setupContacts } from './app/setupContacts.js';
 import { setupUserAccount } from './app/setupUserAccount.js';
 import {
   getCallOptions,
@@ -191,8 +191,7 @@ async function init() {
     }
 
     cleanupFunctions.push(await setupAuth({ lobbyElement: lobbyDiv }));
-    cleanupFunctions.push(setupUserAccount());
-    cleanupFunctions.push(setupNotificationsHandlers());
+    cleanupFunctions.push(await setupUserAccount());
     cleanupFunctions.push(setupMessagingContactsIntegration());
     cleanupFunctions.push(
       setupMessagingAppBusHandlers({ messagingController }),
@@ -693,8 +692,8 @@ export async function autoInitMsgSessionIfNeeded() {
 // ! END OF TODO
 
 window.onload = async () => {
-  // Capture referral link BEFORE auth (stores referrer ID in localStorage)
-  await captureReferral();
+  cleanupFunctions.push(await setupNotificationsHandlers());
+  cleanupFunctions.push(await setupContacts());
 
   const initSuccess = await init();
 

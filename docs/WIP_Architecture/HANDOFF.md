@@ -40,6 +40,12 @@ Completed in this branch:
   - auth listeners are registered before `initAuth()` runs
 - moved account profile storage under `src/storage/user/`
 - added `src/app/setupUserAccount.js` for auth-driven profile sync (listener wiring moved out of shared storage)
+- split `src/storage/user/` profile access into:
+  - `user-profile-store.js` (backend-agnostic store facade)
+  - `user-profile-rtdb-adapter.js` (RTDB implementation)
+- added `src/app/setupContacts.js` for contacts pre-init concerns (`captureReferral`)
+- changed startup ordering so `setupNotificationsHandlers()` is registered before `setupContacts()` to avoid dropped referral notification events on load
+- standardized setup module state naming (`isReady`, `initializationPromise`, `cleanup`) across active `setup<Module>` files
 - documented setup direction in `src/app/SETUP<MODULE>.md`
 - added WIP docs:
   - [LINKS_TO_DOCS.md](./LINKS_TO_DOCS.md)
@@ -61,6 +67,10 @@ Current intended standards:
 - direct `appBus` imports outside `src/events/` should be treated as migration leftovers unless there is a strong reason
 - app composition should prefer `src/app/setup<Module>.js` entrypoints that own ordering for listener registration vs initialization
 - when practical, setup entrypoints should be idempotent
+- setup entrypoints should prefer the standard state naming:
+  - `isReady`
+  - `initializationPromise`
+  - `cleanup`
 
 Verified on this branch (April 6, 2026):
 

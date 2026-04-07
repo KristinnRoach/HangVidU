@@ -38,8 +38,8 @@ describe('setupUserAccount', () => {
   it('registers one auth listener and is idempotent', async () => {
     const { setupUserAccount } = await import('./setupUserAccount.js');
 
-    const teardownA = setupUserAccount();
-    const teardownB = setupUserAccount();
+    const teardownA = await setupUserAccount();
+    const teardownB = await setupUserAccount();
 
     expect(mocks.onAuthStateChange).toHaveBeenCalledTimes(1);
     expect(teardownA).toBeTypeOf('function');
@@ -50,7 +50,7 @@ describe('setupUserAccount', () => {
 
   it('saves profile only for logged-in users with user data', async () => {
     const { setupUserAccount } = await import('./setupUserAccount.js');
-    const teardown = setupUserAccount();
+    const teardown = await setupUserAccount();
 
     const callback = mocks.authCallbacks[0];
     callback?.({ isLoggedIn: false, user: null });
@@ -73,12 +73,12 @@ describe('setupUserAccount', () => {
   it('teardown unsubscribes and allows re-setup', async () => {
     const { setupUserAccount } = await import('./setupUserAccount.js');
 
-    const teardownA = setupUserAccount();
+    const teardownA = await setupUserAccount();
     teardownA();
 
     expect(mocks.unsubscribe).toHaveBeenCalledTimes(1);
 
-    const teardownB = setupUserAccount();
+    const teardownB = await setupUserAccount();
     expect(mocks.onAuthStateChange).toHaveBeenCalledTimes(2);
     expect(teardownB).not.toBe(teardownA);
   });

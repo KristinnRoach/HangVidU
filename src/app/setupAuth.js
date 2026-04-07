@@ -14,8 +14,11 @@ import {
 import { getPushNotifications } from '../features/push-notifications/index.js';
 import { showEnableNotificationsPrompt } from '../features/notifications/index.js';
 
-let setupAuthPromise = null;
-let cleanupAuth = null;
+let isReady = false;
+let initializationPromise = null;
+let cleanup = () => {
+  isReady = false;
+};
 
 /**
  * Setup auth at app-composition level:
@@ -25,15 +28,15 @@ let cleanupAuth = null;
  * @param {{ lobbyElement: HTMLElement }} options
  * @returns {Promise<() => void>}
  */
-export async function setupAuth(options = {}) {
-  if (cleanupAuth) {
-    return cleanupAuth;
+export function setupAuth(options = {}) {
+  if (isReady) {
+    return Promise.resolve(cleanup);
   }
-  if (setupAuthPromise) {
-    return setupAuthPromise;
+  if (initializationPromise) {
+    return initializationPromise;
   }
 
-  setupAuthPromise = (async () => {
+  initializationPromise = (async () => {
     const { lobbyElement } = options;
     const ac = new AbortController();
 
@@ -107,17 +110,19 @@ export async function setupAuth(options = {}) {
 
     await initAuth();
 
-    cleanupAuth = () => {
+    cleanup = () => {
       ac.abort();
-      cleanupAuth = null;
-      setupAuthPromise = null;
+      isReady = false;
     };
+    isReady = true;
 
-    return cleanupAuth;
+    return cleanup;
   })().catch((error) => {
-    setupAuthPromise = null;
+    isReady = false;
     throw error;
+  }).finally(() => {
+    initializationPromise = null;
   });
 
-  return setupAuthPromise;
+  return initializationPromise;
 }
