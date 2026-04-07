@@ -2,6 +2,12 @@
 
 Current checkpoint is focused on incremental architecture enforcement without blocking unrelated work.
 
+Scope of this doc:
+
+- boundary architecture and dependency enforcement only
+- setup/init sequencing belongs in [HANDOFF_SETUP_INIT.md](./HANDOFF_SETUP_INIT.md)
+- when updating one doc, update the cross-reference note in both docs if scope changes
+
 Completed in this branch:
 
 - moved auth from `src/features/auth/` to `src/auth/`
@@ -44,9 +50,7 @@ Completed in this branch:
   - `user-profile-store.js` (backend-agnostic store facade)
   - `user-profile-rtdb-adapter.js` (RTDB implementation)
 - added `src/app/setupContacts.js` for contacts pre-init concerns (`captureReferral`)
-- changed startup ordering so `setupNotificationsHandlers()` is registered before `setupContacts()` to avoid dropped referral notification events on load
-- standardized setup module state naming (`isReady`, `initializationPromise`, `cleanup`) across active `setup<Module>` files
-- documented setup direction in `src/app/SETUP<MODULE>.md`
+- app setup/init migration details are tracked in [HANDOFF_SETUP_INIT.md](./HANDOFF_SETUP_INIT.md)
 - added WIP docs:
   - [LINKS_TO_DOCS.md](./LINKS_TO_DOCS.md)
 
@@ -64,12 +68,7 @@ Current intended standards:
 - `publishAndAwait()` should be reserved for cases where the publisher truly needs listener completion
 - cross-module state observation should prefer producer-owned published facts over direct sibling-feature imports
 - direct `appBus` imports outside `src/events/` should be treated as migration leftovers unless there is a strong reason
-- app composition should prefer `src/app/setup<Module>.js` entrypoints that own ordering for listener registration vs initialization
-- when practical, setup entrypoints should be idempotent
-- setup entrypoints should prefer the standard state naming:
-  - `isReady`
-  - `initializationPromise`
-  - `cleanup`
+- app setup/init standards are tracked in [HANDOFF_SETUP_INIT.md](./HANDOFF_SETUP_INIT.md)
 
 Verified on this branch (April 6, 2026):
 
@@ -90,7 +89,7 @@ Next goal:
 - use [ADD_NEXT_FEATURE.md](./ADD_NEXT_FEATURE.md) when turning on enforcement for another feature
 - keep `contacts` as the reference implementation for the rollout pattern
 - continue migrating remaining direct `appBus` usage onto `src/events/index.js`
-- continue moving app bootstrap to `setup<Module>()` entrypoints where it simplifies sequencing and idempotent setup
+- continue setup/init migration based on [HANDOFF_SETUP_INIT.md](./HANDOFF_SETUP_INIT.md)
 
 Notes:
 
@@ -115,5 +114,5 @@ Notes:
 - auth status:
   - auth commands are now wired through the shared `events` API
   - auth lifecycle facts are published from `auth-state` via shared events
-  - `setupAuth.js` is the app-owned auth setup entrypoint and owns auth listener/init ordering
+  - `setupAuth.js` remains the app-owned auth setup entrypoint
   - no auth-local bus remains
