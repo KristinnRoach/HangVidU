@@ -22,7 +22,8 @@ Completed:
   - `setupNotificationsHandlers.js`
 - changed startup ordering so `setupNotificationsHandlers()` runs before `setupContacts()` to avoid dropping referral notification events
 - replaced `window.onload` bootstrap with guarded `bootstrapApp()` triggered by `DOMContentLoaded`/readyState
-- drafted `src/app/setupApp.js` as callback-driven app composition entrypoint (not yet wired into `main.js`)
+- routed `main.js` bootstrap through callback-driven `src/app/setupApp.js` (Phase 1 behavior-preserving consolidation)
+- extracted top-bar/locale setup from `init()` into `src/app/setupTopBarAndLocale.js` (notification toggle, debug update button, locale toggle) without changing startup order
 - documented setup direction in [`src/app/SETUP<MODULE>.md`](../../src/app/SETUP%3CMODULE%3E.md)
 
 Current intended standards:

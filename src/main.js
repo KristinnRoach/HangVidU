@@ -10,11 +10,6 @@ import { removeAllRTDBListeners } from './storage/fb-rtdb/rtdb.js';
 
 import { initializeAuthUI } from './auth/index.js';
 
-import {
-  inAppNotificationManager,
-  createNotificationsToggle,
-  addDebugUpdateButton,
-} from './features/notifications/index.js';
 import { getPushNotifications } from './features/push-notifications/index.js';
 
 import CallController from './features/call/call-controller.js';
@@ -101,13 +96,12 @@ import { copyToClipboard } from './components/modal/copyLinkModal.js';
 import { onCallDisconnected } from './components/ui/core/call-lifecycle-ui.js';
 import {
   initI18n,
-  setLocale,
-  getLocale,
   t,
   onLocaleChange,
 } from './i18n/index.js';
 import { setupMessagingContactsIntegration } from './app/messaging-contacts-integration.js';
 import { setupApp } from './app/setupApp.js';
+import { setupTopBarAndLocale } from './app/setupTopBarAndLocale.js';
 import { setupMessagingAppBusHandlers } from './features/messaging/handle-appbus-events.js';
 import { setupCallControllerEventWiring } from './features/call/call-event-wiring.js';
 import { setupMainAppBusListeners } from './app/setupMainAppBusListeners.js';
@@ -293,47 +287,10 @@ async function init() {
     // Stream is now lazily initialized when user starts/joins a call
     // This prevents Bluetooth headphones from entering "call mode" on page load
 
-    // Add debug button for testing update notification (dev only)
-    showDebugUIForNotifications && addDebugUpdateButton();
-
-    // Initialize notification system for production (PWA updates, etc.)
-    const topRightMenu = document.querySelector('.top-right-menu');
-    if (topRightMenu) {
-      const notificationsToggle = createNotificationsToggle({
-        parent: topRightMenu,
-        hideWhenAllRead: false,
-      });
-      inAppNotificationManager.setToggle(notificationsToggle);
-    }
-
-    // TODO: integrate into template (and settings menu once implemented) ____
-    const toggleLangBtn = document.createElement('button');
-    toggleLangBtn.id = 'toggle-lang-btn';
-    toggleLangBtn.textContent = `🌐 ${getLocale().toUpperCase()}`;
-    toggleLangBtn.style.cssText = `
-      position: fixed;
-      bottom: 2px;
-      left: 2px;
-
-      z-index: 0;
-      padding: 8px 12px;
-      background: transparent;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: bold;
-      white-space: nowrap;
-      cursor: pointer;
-      box-shadow: none; 
-    `;
-    toggleLangBtn.onclick = async () => {
-      const newLocale = getLocale() === 'en' ? 'is' : 'en';
-      await setLocale(newLocale);
-      toggleLangBtn.textContent = `🌐 ${newLocale.toUpperCase()}`;
-    };
-    appWrapper && appWrapper.appendChild(toggleLangBtn);
-    // END TODO ________________________
+    setupTopBarAndLocale({
+      appWrapper,
+      showDebugUIForNotifications,
+    });
 
     // Initialize push notifications (permission requests happen on auth change)
     try {
