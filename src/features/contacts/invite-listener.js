@@ -4,7 +4,7 @@ import {
   acceptInvite,
   declineInvite,
 } from './invitations.js';
-import { publish } from '../../events/index.js';
+import { dispatchCommand } from '../../events/index.js';
 import { showSuccessToast, showErrorToast } from '../../components/toast.js';
 import { renderContactsList } from './components/contacts-list.js';
 
@@ -32,7 +32,7 @@ async function processNextInvite(lobbyElement) {
   try {
     const notificationId = `invite-${fromUserId}`;
 
-    publish('contacts:invite:notification:add', {
+    dispatchCommand('contacts:invite:notification:add', {
       notificationId,
       fromUserId,
       inviteData,
@@ -44,7 +44,7 @@ async function processNextInvite(lobbyElement) {
           showSuccessToast(`✅ ${inviteData.fromName} added to contacts!`);
 
           // Remove notification after successful accept
-          publish('contacts:invite:notification:remove', {
+          dispatchCommand('contacts:invite:notification:remove', {
             notificationId,
           });
         } catch (e) {
@@ -62,7 +62,7 @@ async function processNextInvite(lobbyElement) {
           console.log('[INVITATIONS] Invite declined');
 
           // Remove notification after decline
-          publish('contacts:invite:notification:remove', {
+          dispatchCommand('contacts:invite:notification:remove', {
             notificationId,
           });
         } catch (e) {

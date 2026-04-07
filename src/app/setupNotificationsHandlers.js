@@ -1,4 +1,4 @@
-import { subscribe } from '../events/index.js';
+import { handleCommand } from '../events/index.js';
 import {
   createInviteNotification,
   createReferralNotification,
@@ -12,7 +12,7 @@ let cleanup = () => {
 };
 
 /**
- * Register app-level handlers that project feature facts into notification UI.
+ * Register app-level command handlers that project notifications into UI.
  *
  * @returns {Promise<() => void>}
  */
@@ -27,7 +27,7 @@ export function setupNotificationsHandlers() {
   initializationPromise = Promise.resolve().then(() => {
     const ac = new AbortController();
 
-    subscribe(
+    handleCommand(
       'contacts:invite:notification:add',
       ({ notificationId, fromUserId, inviteData, onAccept, onDecline }) => {
         if (!notificationId || !fromUserId || !inviteData) {
@@ -50,7 +50,7 @@ export function setupNotificationsHandlers() {
       { signal: ac.signal },
     );
 
-    subscribe(
+    handleCommand(
       'contacts:invite:notification:remove',
       ({ notificationId }) => {
         if (!notificationId) {
@@ -61,7 +61,7 @@ export function setupNotificationsHandlers() {
       { signal: ac.signal },
     );
 
-    subscribe(
+    handleCommand(
       'contacts:referral:notification:add',
       ({ notificationId, referrerName, referrerPhotoURL, onSignIn }) => {
         if (!notificationId) {
@@ -79,7 +79,7 @@ export function setupNotificationsHandlers() {
       { signal: ac.signal },
     );
 
-    subscribe(
+    handleCommand(
       'contacts:referral:notification:remove',
       ({ notificationId }) => {
         if (!notificationId) {

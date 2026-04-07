@@ -9,7 +9,7 @@ import { acceptInvite } from './invitations.js';
 import { getDeterministicRoomId } from '../../utils/room-id.js';
 import { showInfoToast, showSuccessToast } from '../../components/toast.js';
 import { getUserProfile } from '../../storage/user/index.js';
-import { publish } from '../../events/index.js';
+import { dispatchCommand } from '../../events/index.js';
 import { t } from '../../i18n/index.js';
 
 /**
@@ -45,7 +45,7 @@ export async function captureReferral() {
       onClick: () => signInWithAccountSelection(),
     });
 
-    publish('contacts:referral:notification:add', {
+    dispatchCommand('contacts:referral:notification:add', {
       notificationId: `referral-${referrerId}`,
       referrerName: name,
       referrerPhotoURL: photoURL,
@@ -109,7 +109,7 @@ export async function processReferral() {
     // Show success toast
     showSuccessToast(t('referral.connected', { name: referrerName }));
 
-    publish('contacts:referral:notification:remove', {
+    dispatchCommand('contacts:referral:notification:remove', {
       notificationId: `referral-${referrerId}`,
     });
 
