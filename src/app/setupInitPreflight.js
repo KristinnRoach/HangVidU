@@ -12,16 +12,6 @@ let unsubscribeLocaleChange = null;
  * @returns {Promise<boolean>} false when critical UI elements are missing
  */
 export async function setupInitPreflight() {
-  initUI();
-  initIcons();
-
-  await initI18n();
-
-  // Hydrate i18n attributes in index.html and re-hydrate on locale change
-  updateI18nElements();
-  unsubscribeLocaleChange?.();
-  unsubscribeLocaleChange = onLocaleChange(() => updateI18nElements());
-
   // Validate critical elements first
   const elements = getElements();
   const criticalElements = [
@@ -43,6 +33,16 @@ export async function setupInitPreflight() {
     devDebug('Error: Required UI elements not found.');
     return false;
   }
+
+  initUI();
+  initIcons();
+
+  await initI18n();
+
+  // Hydrate i18n attributes in index.html and re-hydrate on locale change
+  updateI18nElements();
+  unsubscribeLocaleChange?.();
+  unsubscribeLocaleChange = onLocaleChange(() => updateI18nElements());
 
   return true;
 }
