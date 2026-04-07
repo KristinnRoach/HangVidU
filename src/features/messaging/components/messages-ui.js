@@ -1647,6 +1647,24 @@ export function initMessagesUI() {
   );
 
   messagingController.on(
+    'message:send-failed',
+    ({ conversationId }) => {
+      const selectedConversationId =
+        messagingController.getSelectedConversationId();
+      if (conversationId !== selectedConversationId) {
+        return;
+      }
+
+      appendEphemeralMessage({
+        content: {
+          text: `❌ ${t('message.send_failed')}`,
+        },
+      });
+    },
+    { signal: ac.signal },
+  );
+
+  messagingController.on(
     'reaction:updated',
     ({ messageId, reactions }) => {
       updateMessageReactions(messageId, reactions);

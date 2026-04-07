@@ -253,6 +253,34 @@ describe('MessagingController', () => {
     );
   });
 
+  it('should resolve send before store write settles (optimistic text send)', async () => {
+    await controller.selectConversation('contactA_me');
+
+    let resolveWrite;
+    const writePromise = new Promise((resolve) => {
+      resolveWrite = resolve;
+    });
+    const writeSpy = vi
+      .spyOn(mockStore, 'write')
+      .mockImplementationOnce(async (conversationId, message) => {
+        mockStore.writtenMessages.push({ conversationId, message });
+        return writePromise;
+      });
+
+    let sendResolved = false;
+    const sendPromise = controller.send('contactA_me', 'Hello optimistic');
+    sendPromise.then(() => {
+      sendResolved = true;
+    });
+
+    await Promise.resolve();
+    expect(sendResolved).toBe(true);
+    expect(writeSpy).toHaveBeenCalledTimes(1);
+
+    resolveWrite();
+    await sendPromise;
+  });
+
   it('should emit message:received when message received via store', async () => {
     const spy = vi.fn();
     controller.on('message:received', spy);

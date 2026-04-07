@@ -458,6 +458,20 @@ export class MessagingController extends EventEmitter {
   }
 
   /**
+   * Persist a message in the background without blocking UI rendering.
+   * Emits a failure event if the write rejects.
+   * @param {string} conversationId
+   * @param {Object} message
+   * @private
+   */
+  _writeInBackground(conversationId, message) {
+    this.store.write(conversationId, message).catch((error) => {
+      console.warn('[MessagingController] Background send failed:', error);
+      this.emit('message:send-failed', { conversationId, message, error });
+    });
+  }
+
+  /**
    * Send a text message to an open conversation.
    * Returns the message so the caller can render it immediately
    * (sender doesn't wait for store echo).
@@ -475,7 +489,12 @@ export class MessagingController extends EventEmitter {
     }
 
     const message = createTextMessage(text);
-    await this._writeAndCache(conversationId, message);
+    const conversationState = this.conversations.get(conversationId);
+    this.cacheHistory(conversationState, {
+      conversationId,
+      message,
+    });
+    this._writeInBackground(conversationId, message);
     this._touchConversation(conversationId);
     this.emit('message:sent', { conversationId, message });
     return message;
