@@ -134,6 +134,7 @@ let isHandlingServiceWorkerNavigation = false;
 // ============================================================================
 
 let hasBootstrapped = false;
+let bootstrapPromise = null;
 
 function handleInitFailure(error) {
   if (error) {
@@ -183,26 +184,35 @@ async function bootstrapApp() {
   if (hasBootstrapped) {
     return;
   }
-  hasBootstrapped = true;
+  if (bootstrapPromise) {
+    return bootstrapPromise;
+  }
 
-  const appCleanup = await setupApp({
-    runInit: init,
-    bindCallUI: () => bindCallUI(CallController),
-    setupMainAppBusListeners,
-    startListeningForSavedRooms,
-    renderContactsList: () => renderContactsList(lobbyDiv),
-    autoInitMsgSessionIfNeeded,
-    registerServiceWorkerNavigation,
-    autoJoinFromUrl,
-    onInitFailed: handleInitFailure,
-    onReady: () => devDebug('Ready. Click "Start New Chat" to begin.'),
+  bootstrapPromise = (async () => {
+    const appCleanup = await setupApp({
+      runInit: init,
+      bindCallUI: () => bindCallUI(CallController),
+      setupMainAppBusListeners,
+      startListeningForSavedRooms,
+      renderContactsList: () => renderContactsList(lobbyDiv),
+      autoInitMsgSessionIfNeeded,
+      registerServiceWorkerNavigation,
+      autoJoinFromUrl,
+      onInitFailed: handleInitFailure,
+      onReady: () => devDebug('Ready. Click "Start New Chat" to begin.'),
+    });
+
+    cleanupFunctions.push(appCleanup);
+    hasBootstrapped = true;
+  })().finally(() => {
+    bootstrapPromise = null;
   });
 
-  cleanupFunctions.push(appCleanup);
+  return bootstrapPromise;
 }
 
 if (document.readyState === 'loading') {
-  window.addEventListener(
+  document.addEventListener(
     'DOMContentLoaded',
     () => {
       bootstrapApp().catch((error) => {

@@ -1,4 +1,3 @@
-import { devDebug } from '../utils/dev/dev-utils.js';
 import { setupNotificationsHandlers } from './setupNotificationsHandlers.js';
 import { setupContacts } from './setupContacts.js';
 
@@ -61,25 +60,27 @@ export function setupApp(options) {
       const initSuccess = await options.runInit();
       if (!initSuccess) {
         options.onInitFailed?.();
-        return () => {
-          while (cleanupFns.length) {
-            const fn = cleanupFns.pop();
-            try {
-              fn?.();
-            } catch (e) {
-              console.warn('[setupApp] cleanup failed:', e);
-            }
+        while (cleanupFns.length) {
+          const fn = cleanupFns.pop();
+          try {
+            fn?.();
+          } catch (e) {
+            console.warn('[setupApp] cleanup failed:', e);
           }
+        }
+        isReady = false;
+        cleanup = () => {
           isReady = false;
         };
+        return cleanup;
       }
 
       options.bindCallUI();
       options.setupMainAppBusListeners();
 
-      await options.startListeningForSavedRooms().catch((e) =>
-        console.warn('Failed to start saved-room listeners', e),
-      );
+      await options
+        .startListeningForSavedRooms()
+        .catch((e) => console.warn('Failed to start saved-room listeners', e));
 
       await options.renderContactsList().catch((e) => {
         console.warn('Failed to render contacts list:', e);
@@ -97,7 +98,6 @@ export function setupApp(options) {
       const autoJoinedSuccessfully = await options.autoJoinFromUrl();
       if (!autoJoinedSuccessfully) {
         options.onReady?.();
-        devDebug('Ready. Click "Start New Chat" to begin.');
       }
 
       cleanup = () => {
