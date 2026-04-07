@@ -113,6 +113,7 @@ import {
   settleIncomingCallWaitForRoom,
   startListeningForSavedRooms,
 } from './features/call/room-listeners.js';
+import { showErrorToast } from './components/toast.js';
 
 // Quick access to enable / disable dev debug logs
 setDevDebugEnabled(true);
@@ -137,18 +138,18 @@ let hasBootstrapped = false;
 let bootstrapPromise = null;
 
 function handleInitFailure(error) {
-  if (error) {
-    return;
-  }
-
   if (callBtn) {
     callBtn.disabled = true;
     callBtn.title = t('error.init.button_title');
   }
-  console.error(
-    'Initialization failed. Call functionality disabled. Please reload the page.',
-  );
-  alert(t('error.init.alert'));
+  if (error) {
+    console.error('[MAIN] bootstrap failed:', error);
+  } else {
+    console.error(
+      'Initialization failed. Call functionality disabled. Please reload the page.',
+    );
+  }
+  showErrorToast(t('error.init.toast'));
 }
 
 function registerServiceWorkerNavigation() {
@@ -170,7 +171,10 @@ function registerServiceWorkerNavigation() {
     });
   };
 
-  navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
+  navigator.serviceWorker.addEventListener(
+    'message',
+    handleServiceWorkerMessage,
+  );
 
   return () => {
     navigator.serviceWorker.removeEventListener(

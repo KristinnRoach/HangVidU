@@ -187,6 +187,7 @@
   "error.push.test": "Error testing notifications: ",
   "error.init.button_title": "Initialization failed. Please reload the page or check your camera/microphone permissions.",
   "error.init.alert": "HangVidU could not initialize properly.\n\nPlease check your camera/microphone permissions and reload the page.",
+  "error.init.toast": "An error occurred.\n\nPlease reload and check cam/mic permissions.",
 
   "a11y.camera_toggle": "Turn camera on/off",
   "a11y.camera_switch": "Switch camera",
