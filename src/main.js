@@ -691,7 +691,14 @@ export async function autoInitMsgSessionIfNeeded() {
 }
 // ! END OF TODO
 
-window.onload = async () => {
+let hasBootstrapped = false;
+
+async function bootstrapApp() {
+  if (hasBootstrapped) {
+    return;
+  }
+  hasBootstrapped = true;
+
   cleanupFunctions.push(await setupNotificationsHandlers());
   cleanupFunctions.push(await setupContacts());
 
@@ -761,7 +768,23 @@ window.onload = async () => {
   if (autoJoinedSuccessfully) return;
 
   devDebug('Ready. Click "Start New Chat" to begin.');
-};
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener(
+    'DOMContentLoaded',
+    () => {
+      bootstrapApp().catch((error) => {
+        console.error('[MAIN] bootstrap failed:', error);
+      });
+    },
+    { once: true },
+  );
+} else {
+  bootstrapApp().catch((error) => {
+    console.error('[MAIN] bootstrap failed:', error);
+  });
+}
 
 // Handle page leave, beforeunload is cancellable
 window.addEventListener('beforeunload', async (e) => {
