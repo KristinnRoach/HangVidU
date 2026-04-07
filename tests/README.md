@@ -31,7 +31,7 @@ Use `.browser.test.js` only when the test needs real browser APIs that jsdom can
 
 ## Structure
 
-```
+```text
 tests/
 ├── unit/           # Unit tests
 ├── smoke/          # Quick smoke tests

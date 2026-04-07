@@ -24,7 +24,7 @@ if (sizes) {
 }
 
 try {
-  execSync('vitest --run tests/integration/file-transfer-large.test.js', {
+  execSync('vitest --run --project browser tests/integration/file-transfer-large.browser.test.js', {
     stdio: 'inherit',
     env,
   });
