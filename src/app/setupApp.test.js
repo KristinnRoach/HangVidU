@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   setupNotificationsHandlers: vi.fn(),
   setupContacts: vi.fn(),
+  setupServiceWorkerNavigation: vi.fn(),
 }));
 
 vi.mock('./setupNotificationsHandlers.js', () => ({
@@ -11,6 +12,10 @@ vi.mock('./setupNotificationsHandlers.js', () => ({
 
 vi.mock('./setupContacts.js', () => ({
   setupContacts: mocks.setupContacts,
+}));
+
+vi.mock('./setupServiceWorkerNavigation.js', () => ({
+  setupServiceWorkerNavigation: mocks.setupServiceWorkerNavigation,
 }));
 
 describe('setupApp', () => {
@@ -28,6 +33,10 @@ describe('setupApp', () => {
     });
     mocks.setupContacts.mockImplementation(async () => {
       trace.push('setupContacts');
+      return () => {};
+    });
+    mocks.setupServiceWorkerNavigation.mockImplementation(async () => {
+      trace.push('setupServiceWorkerNavigation');
       return () => {};
     });
 
@@ -67,8 +76,24 @@ describe('setupApp', () => {
     const { setupApp } = await import('./setupApp.js');
     await setupApp(options);
 
+    const orderedSteps = [
+      'setupServiceWorkerNavigation',
+      'runPreflight',
+      'setupNotificationsHandlers',
+      'setupContacts',
+      'runInit',
+      'bindCallUI',
+      'setupMainAppBusListeners',
+    ];
+    for (const step of orderedSteps) {
+      expect(trace, `expected "${step}" to have been traced`).toContain(step);
+    }
+
     expect(trace.indexOf('runPreflight')).toBeLessThan(
       trace.indexOf('setupNotificationsHandlers'),
+    );
+    expect(trace.indexOf('setupServiceWorkerNavigation')).toBeLessThan(
+      trace.indexOf('runPreflight'),
     );
     expect(trace.indexOf('setupNotificationsHandlers')).toBeLessThan(
       trace.indexOf('setupContacts'),
@@ -90,6 +115,7 @@ describe('setupApp', () => {
 
     mocks.setupNotificationsHandlers.mockResolvedValue(() => {});
     mocks.setupContacts.mockResolvedValue(() => {});
+    mocks.setupServiceWorkerNavigation.mockResolvedValue(() => {});
 
     const options = {
       runPreflight: vi.fn(async () => () => {}),
@@ -117,6 +143,7 @@ describe('setupApp', () => {
     const [cleanup1, cleanup2] = await Promise.all([p1, p2]);
 
     expect(options.runInit).toHaveBeenCalledTimes(1);
+    expect(mocks.setupServiceWorkerNavigation).toHaveBeenCalledTimes(1);
     expect(mocks.setupNotificationsHandlers).toHaveBeenCalledTimes(1);
     expect(mocks.setupContacts).toHaveBeenCalledTimes(1);
     expect(cleanup1).toBe(cleanup2);
@@ -128,6 +155,7 @@ describe('setupApp', () => {
 
     mocks.setupNotificationsHandlers.mockResolvedValue(notificationsCleanup);
     mocks.setupContacts.mockResolvedValue(contactsCleanup);
+    mocks.setupServiceWorkerNavigation.mockResolvedValue(() => {});
 
     const options = {
       runPreflight: vi.fn(async () => () => {}),
@@ -160,6 +188,7 @@ describe('setupApp', () => {
 
     mocks.setupNotificationsHandlers.mockResolvedValue(notificationsCleanup);
     mocks.setupContacts.mockResolvedValue(contactsCleanup);
+    mocks.setupServiceWorkerNavigation.mockResolvedValue(() => {});
 
     const options = {
       runPreflight: vi.fn(async () => () => {}),

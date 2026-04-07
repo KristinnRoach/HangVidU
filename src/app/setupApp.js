@@ -1,5 +1,6 @@
 import { setupNotificationsHandlers } from './setupNotificationsHandlers.js';
 import { setupContacts } from './setupContacts.js';
+import { setupServiceWorkerNavigation } from './setupServiceWorkerNavigation.js';
 
 let isReady = false;
 let initPromise = null;
@@ -69,82 +70,33 @@ export function setupApp(options) {
 
   initPromise = (async () => {
     const cleanupFns = [];
-    const pendingServiceWorkerNavigationPaths = [];
-    const serviceWorkerQueueLimit = options.serviceWorkerQueueLimit ?? 20;
-    let isReadyForServiceWorkerNavigation = false;
-
-    const clearServiceWorkerQueue = () => {
-      pendingServiceWorkerNavigationPaths.length = 0;
-    };
-
-    const flushQueuedServiceWorkerNavigation = async () => {
-      while (pendingServiceWorkerNavigationPaths.length > 0) {
-        const path = pendingServiceWorkerNavigationPaths.shift();
-        await options.handleServiceWorkerNavigation(path).catch((error) => {
-          console.warn('[setupApp] Failed queued SW NAVIGATE:', {
-            path,
-            error,
-          });
-        });
-      }
-    };
-
-    const registerServiceWorkerNavigation = () => {
-      if (!('serviceWorker' in navigator)) {
-        return;
-      }
-
-      navigator.serviceWorker.startMessages?.();
-      const handleServiceWorkerMessage = (event) => {
-        const { type, path } = event.data || {};
-        if (type !== 'NAVIGATE' || !path) {
-          return;
-        }
-
-        if (!isReadyForServiceWorkerNavigation) {
-          pendingServiceWorkerNavigationPaths.push(path);
-          if (
-            pendingServiceWorkerNavigationPaths.length > serviceWorkerQueueLimit
-          ) {
-            pendingServiceWorkerNavigationPaths.shift();
-          }
-          return;
-        }
-
-        options.handleServiceWorkerNavigation(path).catch((error) => {
-          console.warn('[setupApp] Failed SW NAVIGATE:', { path, error });
-        });
-      };
-
-      navigator.serviceWorker.addEventListener(
-        'message',
-        handleServiceWorkerMessage,
-      );
-      cleanupFns.push(() => {
-        navigator.serviceWorker.removeEventListener(
-          'message',
-          handleServiceWorkerMessage,
-        );
-      });
-    };
+    let markServiceWorkerNavigationReady = () => {};
+    const serviceWorkerNavigationReady = new Promise((resolve) => {
+      markServiceWorkerNavigationReady = resolve;
+    });
 
     try {
-      registerServiceWorkerNavigation();
+      cleanupFns.push(
+        await setupServiceWorkerNavigation({
+          handleServiceWorkerNavigation: options.handleServiceWorkerNavigation,
+          waitUntilReady: serviceWorkerNavigationReady,
+          queueLimit: options.serviceWorkerQueueLimit,
+        }),
+      );
       cleanupFns.push(await options.runPreflight());
       cleanupFns.push(await setupNotificationsHandlers());
       cleanupFns.push(await setupContacts());
 
       const initSuccess = await options.runInit();
       if (!initSuccess) {
+        markServiceWorkerNavigationReady();
         options.onInitFailed?.();
-        clearServiceWorkerQueue();
         drainCleanupFns(cleanupFns);
 
         isReady = false;
         cleanup = () => {
           isReady = false;
         };
-        isReadyForServiceWorkerNavigation = false;
         return cleanup;
       }
 
@@ -169,20 +121,16 @@ export function setupApp(options) {
         options.onReady?.();
       }
 
-      isReadyForServiceWorkerNavigation = true;
-      await flushQueuedServiceWorkerNavigation();
+      markServiceWorkerNavigationReady();
 
       cleanup = () => {
-        clearServiceWorkerQueue();
-        isReadyForServiceWorkerNavigation = false;
         drainCleanupFns(cleanupFns);
         isReady = false;
       };
       isReady = true;
       return cleanup;
     } catch (error) {
-      clearServiceWorkerQueue();
-      isReadyForServiceWorkerNavigation = false;
+      markServiceWorkerNavigationReady();
       drainCleanupFns(cleanupFns);
       cleanup = () => {
         isReady = false;
