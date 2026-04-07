@@ -25,6 +25,9 @@ Completed:
 - routed `main.js` bootstrap through callback-driven `src/app/setupApp.js` (Phase 1 behavior-preserving consolidation)
 - extracted top-bar/locale setup from `init()` into `src/app/setupTopBarAndLocale.js` (notification toggle, debug update button, locale toggle) without changing startup order
 - extracted `init()` preflight (UI/i18n hydration + critical element validation) into `src/app/setupInitPreflight.js` without changing startup order
+- made bootstrap retry-safe: `bootstrapPromise` single-flight + success-only `hasBootstrapped` latch
+- register service-worker NAVIGATE listener early and queue messages until bootstrap readiness to avoid cold-start drops
+- aligned preflight contract with startup UI bindings (`callBtn`, `lobbyCallBtn`, `hangUpBtn`) and guarded early handler assignment
 - documented setup direction in [`src/app/SETUP<MODULE>.md`](../../src/app/SETUP%3CMODULE%3E.md)
 
 Current intended standards:
@@ -46,14 +49,16 @@ Current open questions:
   - module-owned inbound API listeners
   - app-owned cross-module orchestration/projections
 - exact return contract for every `setup<Module>()` (cleanup-only vs richer state object)
-- failure semantics for setup retries (how `initializationPromise` and `isReady` reset on failure)
+- whether bootstrap/preflight/UI event binding should be collapsed into fewer orchestration layers for lower cognitive overhead
 
 Next goal:
 
 - keep migration incremental and low-risk
-- wire `setupApp.js` from `main.js` without changing startup behavior
-- move `bootstrapApp()` definition closer to top-level startup section in `main.js`
-- then consolidate `bootstrapApp()` + most of `init()` into `setupApp` in small slices
+- reduce startup indirection while preserving current behavior and retry safety
+- decide the target split between:
+  - `main.js` top-level lifecycle wiring
+  - `setupApp` orchestration
+  - module-level `setup<Module>()` responsibilities
 - add focused tests for startup ordering and idempotency
 
 Notes:

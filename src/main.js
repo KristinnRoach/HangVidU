@@ -129,6 +129,8 @@ let showDebugUIForNotifications = false;
 
 let cleanupFunctions = [];
 let isHandlingServiceWorkerNavigation = false;
+let isBootstrapReadyForServiceWorkerMessages = false;
+const pendingServiceWorkerNavigationPaths = [];
 
 // ============================================================================
 // APP STARTUP
@@ -159,6 +161,8 @@ function registerServiceWorkerNavigation() {
     return undefined;
   }
 
+  navigator.serviceWorker.startMessages?.();
+
   const handleServiceWorkerMessage = (event) => {
     const { type, path } = event.data || {};
 
@@ -168,9 +172,14 @@ function registerServiceWorkerNavigation() {
       path,
     });
 
-    handleServiceWorkerNavigation(path).catch((error) => {
-      console.warn('[MAIN] Failed to handle service worker NAVIGATE:', error);
-    });
+    if (!isBootstrapReadyForServiceWorkerMessages) {
+      pendingServiceWorkerNavigationPaths.push(path);
+      return;
+    }
+
+    handleServiceWorkerNavigation(path).catch((error) =>
+      console.warn('[MAIN] Failed to handle service worker NAVIGATE:', error),
+    );
   };
 
   navigator.serviceWorker.addEventListener(
@@ -186,6 +195,23 @@ function registerServiceWorkerNavigation() {
   };
 }
 
+function flushQueuedServiceWorkerNavigation() {
+  while (pendingServiceWorkerNavigationPaths.length) {
+    const path = pendingServiceWorkerNavigationPaths.shift();
+    handleServiceWorkerNavigation(path).catch((error) =>
+      console.warn('[MAIN] Failed to handle queued service worker NAVIGATE:', {
+        path,
+        error,
+      }),
+    );
+  }
+}
+
+const serviceWorkerNavigationCleanup = registerServiceWorkerNavigation();
+if (typeof serviceWorkerNavigationCleanup === 'function') {
+  cleanupFunctions.push(serviceWorkerNavigationCleanup);
+}
+
 async function bootstrapApp() {
   if (hasBootstrapped) {
     return;
@@ -195,6 +221,8 @@ async function bootstrapApp() {
   }
 
   bootstrapPromise = (async () => {
+    let initFailed = false;
+
     const appCleanup = await setupApp({
       runInit: init,
       bindCallUI: () => bindCallUI(CallController),
@@ -202,12 +230,20 @@ async function bootstrapApp() {
       startListeningForSavedRooms,
       renderContactsList: () => renderContactsList(lobbyDiv),
       autoInitMsgSessionIfNeeded,
-      registerServiceWorkerNavigation,
       autoJoinFromUrl,
-      onInitFailed: handleInitFailure,
+      onInitFailed: (error) => {
+        initFailed = true;
+        handleInitFailure(error);
+      },
       onReady: () => devDebug('Ready. Click "Start New Chat" to begin.'),
     });
 
+    if (initFailed) {
+      return;
+    }
+
+    isBootstrapReadyForServiceWorkerMessages = true;
+    flushQueuedServiceWorkerNavigation();
     cleanupFunctions.push(appCleanup);
     hasBootstrapped = true;
   })().finally(() => {
