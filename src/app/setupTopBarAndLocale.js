@@ -26,7 +26,7 @@ export function setupTopBarAndLocale(options) {
     inAppNotificationManager.setToggle(notificationsToggle);
   }
 
-  // TODO: integrate into template (and settings menu once implemented) ____
+  // TODO: integrate into template (and settings menu once implemented)
   const toggleLangBtn = document.createElement('button');
   toggleLangBtn.id = 'toggle-lang-btn';
   toggleLangBtn.textContent = `🌐 ${getLocale().toUpperCase()}`;
@@ -53,5 +53,4 @@ export function setupTopBarAndLocale(options) {
     toggleLangBtn.textContent = `🌐 ${newLocale.toUpperCase()}`;
   };
   appWrapper && appWrapper.appendChild(toggleLangBtn);
-  // END TODO ________________________
 }
