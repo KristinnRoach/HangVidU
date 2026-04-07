@@ -138,10 +138,12 @@ let hasBootstrapped = false;
 let bootstrapPromise = null;
 
 function handleInitFailure(error) {
-  if (callBtn) {
-    callBtn.disabled = true;
-    callBtn.title = t('error.init.button_title');
+  for (const button of [callBtn, lobbyCallBtn]) {
+    if (!button) continue;
+    button.disabled = true;
+    button.title = t('error.init.button_title');
   }
+
   if (error) {
     console.error('[MAIN] bootstrap failed:', error);
   } else {
