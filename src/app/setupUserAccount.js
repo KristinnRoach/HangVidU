@@ -2,12 +2,17 @@ import { onAuthStateChange } from '../auth/index.js';
 import { saveUserProfile } from '../storage/user/index.js';
 
 let isReady = false;
-let initializationPromise = null;
+let initPromise = null;
 let cleanup = () => {
   isReady = false;
 };
 
 /**
+ * Setup contract:
+ * - idempotent: returns existing cleanup when already ready
+ * - single-flight: concurrent callers share one init promise
+ * - teardown: cleanup unsubscribes auth listener
+ *
  * Setup user-account sync concerns at app composition level.
  *
  * @returns {Promise<() => void>}
@@ -16,11 +21,11 @@ export function setupUserAccount() {
   if (isReady) {
     return Promise.resolve(cleanup);
   }
-  if (initializationPromise) {
-    return initializationPromise;
+  if (initPromise) {
+    return initPromise;
   }
 
-  initializationPromise = Promise.resolve().then(() => {
+  initPromise = Promise.resolve().then(() => {
     const unsubscribe = onAuthStateChange((state) => {
       if (!state?.isLoggedIn || !state.user) {
         return;
@@ -32,14 +37,22 @@ export function setupUserAccount() {
     });
 
     cleanup = () => {
-      unsubscribe();
-      isReady = false;
+      try {
+        unsubscribe();
+      } catch (error) {
+        console.warn(
+          '[setupUserAccount] cleanup failed to unsubscribe auth listener:',
+          error,
+        );
+      } finally {
+        isReady = false;
+      }
     };
     isReady = true;
     return cleanup;
   }).finally(() => {
-    initializationPromise = null;
+    initPromise = null;
   });
 
-  return initializationPromise;
+  return initPromise;
 }

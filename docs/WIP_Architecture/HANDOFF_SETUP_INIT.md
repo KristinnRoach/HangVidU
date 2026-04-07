@@ -13,7 +13,7 @@ Completed:
 
 - standardized active setup module state naming to:
   - `isReady`
-  - `initializationPromise`
+  - `initPromise`
   - `cleanup`
 - added app-owned setup entrypoints:
   - `setupAuth.js`
@@ -25,10 +25,10 @@ Completed:
 - routed `main.js` bootstrap through callback-driven `src/app/setupApp.js` (Phase 1 behavior-preserving consolidation)
 - extracted top-bar/locale setup from `init()` into `src/app/setupTopBarAndLocale.js` (notification toggle, debug update button, locale toggle) without changing startup order
 - extracted `init()` preflight (UI/i18n hydration + critical element validation) into `src/app/setupInitPreflight.js` without changing startup order
-- made bootstrap retry-safe: `bootstrapPromise` single-flight + success-only `hasBootstrapped` latch
+- made bootstrap retry-safe via `setupApp` single-flight (`initPromise`) with explicit `isReady`/`cleanup` lifecycle state
 - register service-worker NAVIGATE listener early and queue messages until bootstrap readiness to avoid cold-start drops
 - aligned preflight contract with startup UI bindings (`callBtn`, `lobbyCallBtn`, `hangUpBtn`) and guarded early handler assignment
-- documented setup direction in [`src/app/SETUP<MODULE>.md`](../../src/app/SETUP%3CMODULE%3E.md)
+- documented setup direction in [`src/app/SETUP_MODULE.md`](../../src/app/SETUP_MODULE.md)
 
 Current intended standards:
 
@@ -39,7 +39,7 @@ Current intended standards:
 - keep setup entrypoints idempotent when practical
 - use consistent setup state naming:
   - `isReady`
-  - `initializationPromise`
+  - `initPromise`
   - `cleanup`
 - keep `main.js` as thin orchestration surface; move startup sequencing into app setup modules incrementally
 

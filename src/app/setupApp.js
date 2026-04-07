@@ -1,8 +1,9 @@
 import { setupNotificationsHandlers } from './setupNotificationsHandlers.js';
 import { setupContacts } from './setupContacts.js';
+import { setupServiceWorkerNavigation } from './setupServiceWorkerNavigation.js';
 
 let isReady = false;
-let initializationPromise = null;
+let initPromise = null;
 let cleanup = () => {
   isReady = false;
 };
@@ -19,36 +20,43 @@ function drainCleanupFns(cleanupFns) {
 }
 
 /**
- * App-composition setup draft.
+ * Setup contract:
+ * - idempotent: returns existing cleanup when already ready
+ * - single-flight: concurrent callers share one init promise
+ * - teardown: one reverse-order cleanup stack for full app lifecycle
  *
- * This is intentionally callback-driven for now so we can consolidate existing
- * main.js bootstrap/init behavior incrementally without forcing a large move.
+ * App bootstrap orchestrator.
  *
  * Required callbacks:
- * - runInit: runs the existing init phase and resolves to boolean success
+ * - runPreflight: runs UI/i18n preflight and resolves to cleanup function
+ * - runInit: runs module init and resolves to boolean success
+ * - setupTopBarAndLocale: resolves to cleanup function
  * - bindCallUI: binds call UI handlers
  * - setupMainAppBusListeners: registers app-level command/fact handlers
  * - startListeningForSavedRooms
  * - renderContactsList
  * - autoInitMsgSessionIfNeeded
  * - autoJoinFromUrl
+ * - handleServiceWorkerNavigation
  *
  * Optional callbacks:
- * - registerServiceWorkerNavigation: returns optional cleanup function
  * - onInitFailed
  * - onReady
  *
  * @param {{
+ *   runPreflight: () => Promise<() => void>,
  *   runInit: () => Promise<boolean>,
+ *   setupTopBarAndLocale: () => Promise<() => void>,
  *   bindCallUI: () => void,
- *   setupMainAppBusListeners: () => void,
+ *   setupMainAppBusListeners: () => Promise<(() => void)|void>|(() => void)|void,
  *   startListeningForSavedRooms: () => Promise<void>,
  *   renderContactsList: () => Promise<void>,
  *   autoInitMsgSessionIfNeeded: () => Promise<void>,
  *   autoJoinFromUrl: () => Promise<boolean>,
- *   registerServiceWorkerNavigation?: () => (() => void)|void,
+ *   handleServiceWorkerNavigation: (path: string) => Promise<boolean>,
  *   onInitFailed?: (error?: unknown) => void,
  *   onReady?: () => void,
+ *   serviceWorkerQueueLimit?: number,
  * }} options
  * @returns {Promise<() => void>}
  */
@@ -56,15 +64,26 @@ export function setupApp(options) {
   if (isReady) {
     return Promise.resolve(cleanup);
   }
-  if (initializationPromise) {
-    return initializationPromise;
+  if (initPromise) {
+    return initPromise;
   }
 
-  initializationPromise = (async () => {
+  initPromise = (async () => {
     const cleanupFns = [];
-    let initialized = false;
+    let markServiceWorkerNavigationReady = () => {};
+    const serviceWorkerNavigationReady = new Promise((resolve) => {
+      markServiceWorkerNavigationReady = resolve;
+    });
 
     try {
+      cleanupFns.push(
+        await setupServiceWorkerNavigation({
+          handleServiceWorkerNavigation: options.handleServiceWorkerNavigation,
+          waitUntilReady: serviceWorkerNavigationReady,
+          queueLimit: options.serviceWorkerQueueLimit,
+        }),
+      );
+      cleanupFns.push(await options.runPreflight());
       cleanupFns.push(await setupNotificationsHandlers());
       cleanupFns.push(await setupContacts());
 
@@ -80,8 +99,12 @@ export function setupApp(options) {
         return cleanup;
       }
 
+      cleanupFns.push(await options.setupTopBarAndLocale());
       options.bindCallUI();
-      options.setupMainAppBusListeners();
+      const appBusCleanup = await options.setupMainAppBusListeners();
+      if (typeof appBusCleanup === 'function') {
+        cleanupFns.push(appBusCleanup);
+      }
 
       await options
         .startListeningForSavedRooms()
@@ -95,27 +118,26 @@ export function setupApp(options) {
         console.warn('Failed to auto-init messaging session:', e);
       });
 
-      const swCleanup = options.registerServiceWorkerNavigation?.();
-      if (typeof swCleanup === 'function') {
-        cleanupFns.push(swCleanup);
+      let autoJoinedSuccessfully = false;
+      try {
+        autoJoinedSuccessfully = await options.autoJoinFromUrl();
+      } catch (error) {
+        console.warn('Failed to auto-join from URL:', error);
       }
-
-      const autoJoinedSuccessfully = await options.autoJoinFromUrl();
       if (!autoJoinedSuccessfully) {
         options.onReady?.();
       }
+
+      markServiceWorkerNavigationReady();
 
       cleanup = () => {
         drainCleanupFns(cleanupFns);
         isReady = false;
       };
       isReady = true;
-      initialized = true;
       return cleanup;
     } catch (error) {
-      if (!initialized) {
-        drainCleanupFns(cleanupFns);
-      }
+      drainCleanupFns(cleanupFns);
       cleanup = () => {
         isReady = false;
       };
@@ -124,9 +146,9 @@ export function setupApp(options) {
       options.onInitFailed?.(error);
       throw error;
     } finally {
-      initializationPromise = null;
+      initPromise = null;
     }
   })();
 
-  return initializationPromise;
+  return initPromise;
 }

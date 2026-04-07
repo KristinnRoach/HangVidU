@@ -6,13 +6,18 @@ import {
 } from '../features/notifications/index.js';
 
 let isReady = false;
-let initializationPromise = null;
+let initPromise = null;
 let cleanup = () => {
   isReady = false;
 };
 
 /**
- * Register app-level command handlers that project notifications into UI.
+ * Setup contract:
+ * - idempotent: returns existing cleanup when already ready
+ * - single-flight: concurrent callers share one init promise
+ * - teardown: cleanup aborts registered app-bus handlers
+ *
+ * Registers app-level command handlers that project notifications into UI.
  *
  * @returns {Promise<() => void>}
  */
@@ -20,11 +25,11 @@ export function setupNotificationsHandlers() {
   if (isReady) {
     return Promise.resolve(cleanup);
   }
-  if (initializationPromise) {
-    return initializationPromise;
+  if (initPromise) {
+    return initPromise;
   }
 
-  initializationPromise = Promise.resolve().then(() => {
+  initPromise = Promise.resolve().then(() => {
     const ac = new AbortController();
 
     handleCommand(
@@ -91,14 +96,22 @@ export function setupNotificationsHandlers() {
     );
 
     cleanup = () => {
-      ac.abort();
-      isReady = false;
+      try {
+        ac.abort();
+      } catch (error) {
+        console.warn(
+          '[setupNotificationsHandlers] cleanup failed to abort handlers:',
+          error,
+        );
+      } finally {
+        isReady = false;
+      }
     };
     isReady = true;
     return cleanup;
   }).finally(() => {
-    initializationPromise = null;
+    initPromise = null;
   });
 
-  return initializationPromise;
+  return initPromise;
 }
