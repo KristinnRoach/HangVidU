@@ -24,6 +24,7 @@ Completed:
 - replaced `window.onload` bootstrap with guarded `bootstrapApp()` triggered by `DOMContentLoaded`/readyState
 - routed `main.js` bootstrap through callback-driven `src/app/setupApp.js` (Phase 1 behavior-preserving consolidation)
 - extracted top-bar/locale setup from `init()` into `src/app/setupTopBarAndLocale.js` (notification toggle, debug update button, locale toggle) without changing startup order
+- extracted `init()` preflight (UI/i18n hydration + critical element validation) into `src/app/setupInitPreflight.js` without changing startup order
 - documented setup direction in [`src/app/SETUP<MODULE>.md`](../../src/app/SETUP%3CMODULE%3E.md)
 
 Current intended standards:

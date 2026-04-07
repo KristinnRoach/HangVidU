@@ -4,7 +4,6 @@
 // HANGVIDU - P2P VIDEO CHAT WITH WATCH-TOGETHER MODE
 // ============================================================================
 
-import { initIcons } from './components/ui/icons.js';
 import './initSentry.js';
 import { removeAllRTDBListeners } from './storage/fb-rtdb/rtdb.js';
 
@@ -35,8 +34,6 @@ import {
   pasteJoinBtn,
   addContactBtn,
   testNotificationsBtn,
-  getElements,
-  updateI18nElements,
   appWrapper,
 } from './elements.js';
 
@@ -60,7 +57,6 @@ import { clearUrlParam } from './utils/url.js';
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
 import './components/ui/core/ui-state.js'; // Initialize UI state (sets body data-view attribute)
-import { initUI } from './components/ui/core/init-ui.js';
 import { bindCallUI } from './components/ui/core/bind-call-ui.js';
 
 import {
@@ -94,13 +90,10 @@ import { copyToClipboard } from './components/modal/copyLinkModal.js';
 // ____ UI END ____
 
 import { onCallDisconnected } from './components/ui/core/call-lifecycle-ui.js';
-import {
-  initI18n,
-  t,
-  onLocaleChange,
-} from './i18n/index.js';
+import { t } from './i18n/index.js';
 import { setupMessagingContactsIntegration } from './app/messaging-contacts-integration.js';
 import { setupApp } from './app/setupApp.js';
+import { setupInitPreflight } from './app/setupInitPreflight.js';
 import { setupTopBarAndLocale } from './app/setupTopBarAndLocale.js';
 import { setupMessagingAppBusHandlers } from './features/messaging/handle-appbus-events.js';
 import { setupCallControllerEventWiring } from './features/call/call-event-wiring.js';
@@ -229,31 +222,8 @@ if (document.readyState === 'loading') {
 // ============================================================================
 
 async function init() {
-  initUI();
-  initIcons(); // Initialize icons from index.html
-
-  await initI18n();
-
-  // Hydrate i18n attributes in index.html and re-hydrate on locale change
-  updateI18nElements();
-  onLocaleChange(() => updateI18nElements());
-
-  // Validate critical elements first
-  const elements = getElements();
-  const criticalElements = [
-    'localVideoEl',
-    'remoteVideoEl',
-    'localBoxEl',
-    'remoteBoxEl',
-    'chatControls',
-    'lobbyDiv',
-    'titleAuthBar',
-  ];
-
-  const missingCritical = criticalElements.filter((name) => !elements[name]);
-  if (missingCritical.length > 0) {
-    console.error('Critical elements missing:', missingCritical);
-    devDebug('Error: Required UI elements not found.');
+  const preflightPassed = await setupInitPreflight();
+  if (!preflightPassed) {
     return false;
   }
 
