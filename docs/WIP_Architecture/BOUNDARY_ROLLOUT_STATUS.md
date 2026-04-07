@@ -40,7 +40,7 @@ TODO Add:
 
 TODO REMOVE:
 
-- `shared -> `feature(call|messaging|watch|notifications)`
+- `shared -> feature(call|messaging|watch|notifications)`
 
 #### Features:
 
@@ -48,7 +48,7 @@ TODO REMOVE:
 
 TODO Add:
 
-- For each feature(x): feature(x) -> feature(x) | auth | shared`
+- `For each feature(x): feature(x) -> feature(x) | auth | shared`
 
 ## Full hotspot scan
 

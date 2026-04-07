@@ -15,7 +15,7 @@ Completed:
   - `isReady`
   - `initPromise`
   - `cleanup`
-- added app-owned setup entrypoints:
+- added setup-layer entrypoints:
   - `setupAuth.js`
   - `setupUserAccount.js`
   - `setupContacts.js`

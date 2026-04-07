@@ -9,4 +9,4 @@
 # External references
 
 - [Boundaries plugin docs](https://www.jsboundaries.dev/docs/overview/)
-- [Reference repo that uses Boundries along with other potentially useful tools](https://github.com/WebDevSimplified/parity-deals-clone/tree/feature-folder-structure/src)
+- [Reference repo that uses Boundaries along with other potentially useful tools](https://github.com/WebDevSimplified/parity-deals-clone/tree/feature-folder-structure/src)

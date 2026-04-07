@@ -1,4 +1,4 @@
-Setup layer migration checklist
+# Setup layer migration checklist
 
 - Keep bootstrap orchestration in `src/setup/` only.
 - Keep `src/app/` for runtime helpers/adapters (not startup sequencing).

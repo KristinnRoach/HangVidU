@@ -42,7 +42,7 @@ Completed in this branch:
 - added app-level notification projection in `src/setup/setupNotificationsHandlers.js`
 - changed `contacts` invite/referral flows to publish notification facts instead of importing notifications directly
 - replaced `setupMainAuthAppBusListeners` with `setupAuth` in `src/setup/setupAuth.js`:
-  - setup is app-owned and idempotent
+  - setup is setup-layer-owned and idempotent
   - auth listeners are registered before `initAuth()` runs
 - moved account profile storage under `src/storage/user/`
 - added `src/setup/setupUserAccount.js` for auth-driven profile sync (listener wiring moved out of shared storage)
@@ -108,7 +108,7 @@ Notes:
 - current `contacts` messaging status:
   - `contacts` no longer imports `messagingController`
   - `contacts` dispatches `messaging:conversation:select`
-  - handling lives in app composition
+  - handling lives in setup composition
   - unread-count facts are published by `messaging`
   - direct conversation id helper is now shared (`src/utils/direct-conversation-id.js`)
 - auth status:
@@ -116,3 +116,6 @@ Notes:
   - auth lifecycle facts are published from `auth-state` via shared events
 - `setupAuth.js` remains the setup-layer auth entrypoint
   - no auth-local bus remains
+- deferred structure note:
+  - moving shared folders under `src/shared/` is under consideration
+  - defer until boundary rollout stabilizes and temporary shared-to-feature exceptions are removed
