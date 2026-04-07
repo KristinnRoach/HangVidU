@@ -62,6 +62,17 @@ describe('setupApp', () => {
     const { setupApp } = await import('./setupApp.js');
     await setupApp(options);
 
+    const orderedSteps = [
+      'setupNotificationsHandlers',
+      'setupContacts',
+      'runInit',
+      'bindCallUI',
+      'setupMainAppBusListeners',
+    ];
+    for (const step of orderedSteps) {
+      expect(trace, `expected "${step}" to have been traced`).toContain(step);
+    }
+
     expect(trace.indexOf('setupNotificationsHandlers')).toBeLessThan(
       trace.indexOf('setupContacts'),
     );
