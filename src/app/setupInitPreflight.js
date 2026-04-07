@@ -4,6 +4,8 @@ import { initI18n, onLocaleChange } from '../i18n/index.js';
 import { updateI18nElements, getElements } from '../elements.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 
+let unsubscribeLocaleChange = null;
+
 /**
  * Run minimal UI/i18n preflight before app feature setup.
  *
@@ -17,7 +19,8 @@ export async function setupInitPreflight() {
 
   // Hydrate i18n attributes in index.html and re-hydrate on locale change
   updateI18nElements();
-  onLocaleChange(() => updateI18nElements());
+  unsubscribeLocaleChange?.();
+  unsubscribeLocaleChange = onLocaleChange(() => updateI18nElements());
 
   // Validate critical elements first
   const elements = getElements();
