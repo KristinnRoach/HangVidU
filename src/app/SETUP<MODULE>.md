@@ -1,19 +1,12 @@
 # `setup<Module>` Direction
 
-We are moving toward a consistent app-composition pattern:
+Canonical docs:
 
-- each module/feature exposes a single `setup<Module>()` entrypoint from `src/app/`
-- `setup<Module>()` owns orchestration order (initialization vs listeners) for that module
-- module internals can still stay split (`init*`, `setup*Listeners`, etc.), but app bootstrap calls one setup API
+- current contract: [SETUP_CONTRACT_CURRENT.md](./SETUP_CONTRACT_CURRENT.md)
+- EventEmitter contract target (stub): [SETUP_CONTRACT_EVENT_EMITTER.md](./SETUP_CONTRACT_EVENT_EMITTER.md)
+- migration plan (stub): [SETUP_MIGRATION_EVENT_EMITTER.md](./SETUP_MIGRATION_EVENT_EMITTER.md)
 
-Current example:
+High-level intent:
 
-- [`setupAuth.js`](./setupAuth.js)
-
-Guideline:
-
-- when it is not problematic, setup functions should always be idempotent
-- default setup state naming:
-  - `isReady` (`boolean`)
-  - `initializationPromise` (`Promise|null`)
-  - `cleanup` (`function`)
+- each module/feature exposes one `setup<Module>()` entrypoint from `src/app/`
+- `setup<Module>()` owns its listener/init ordering and teardown ownership

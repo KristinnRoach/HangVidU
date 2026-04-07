@@ -48,7 +48,7 @@ function drainCleanupFns(cleanupFns) {
  *   runInit: () => Promise<boolean>,
  *   setupTopBarAndLocale: () => Promise<() => void>,
  *   bindCallUI: () => void,
- *   setupMainAppBusListeners: () => void,
+ *   setupMainAppBusListeners: () => Promise<(() => void)|void>|(() => void)|void,
  *   startListeningForSavedRooms: () => Promise<void>,
  *   renderContactsList: () => Promise<void>,
  *   autoInitMsgSessionIfNeeded: () => Promise<void>,
@@ -102,7 +102,10 @@ export function setupApp(options) {
 
       cleanupFns.push(await options.setupTopBarAndLocale());
       options.bindCallUI();
-      options.setupMainAppBusListeners();
+      const appBusCleanup = await options.setupMainAppBusListeners();
+      if (typeof appBusCleanup === 'function') {
+        cleanupFns.push(appBusCleanup);
+      }
 
       await options
         .startListeningForSavedRooms()

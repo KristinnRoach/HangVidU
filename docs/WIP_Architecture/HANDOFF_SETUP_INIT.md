@@ -13,7 +13,7 @@ Completed:
 
 - standardized active setup module state naming to:
   - `isReady`
-  - `initializationPromise`
+  - `initPromise`
   - `cleanup`
 - added app-owned setup entrypoints:
   - `setupAuth.js`
@@ -39,7 +39,7 @@ Current intended standards:
 - keep setup entrypoints idempotent when practical
 - use consistent setup state naming:
   - `isReady`
-  - `initializationPromise`
+  - `initPromise`
   - `cleanup`
 - keep `main.js` as thin orchestration surface; move startup sequencing into app setup modules incrementally
 

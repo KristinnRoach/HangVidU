@@ -71,6 +71,7 @@ vi.mock('../components/ui/core/call-lifecycle-ui.js', () => ({
 
 describe('setupMainAppBusListeners', () => {
   beforeEach(() => {
+    vi.resetModules();
     vi.clearAllMocks();
     mocks.handlers.clear();
   });
@@ -79,7 +80,7 @@ describe('setupMainAppBusListeners', () => {
     const { setupMainAppBusListeners } =
       await import('./setupMainAppBusListeners.js');
 
-    setupMainAppBusListeners();
+    await setupMainAppBusListeners();
     const handler = mocks.handlers.get('call:outgoing:initiate');
 
     handler?.({
@@ -102,7 +103,7 @@ describe('setupMainAppBusListeners', () => {
     const { setupMainAppBusListeners } =
       await import('./setupMainAppBusListeners.js');
 
-    setupMainAppBusListeners();
+    await setupMainAppBusListeners();
     const handler = mocks.handlers.get('messaging:conversation:select');
 
     await handler?.({
@@ -124,7 +125,7 @@ describe('setupMainAppBusListeners', () => {
     const { setupMainAppBusListeners } =
       await import('./setupMainAppBusListeners.js');
 
-    setupMainAppBusListeners();
+    await setupMainAppBusListeners();
     const handler = mocks.handlers.get('room:id:updated');
 
     handler?.({
@@ -142,7 +143,7 @@ describe('setupMainAppBusListeners', () => {
     const { setupMainAppBusListeners } =
       await import('./setupMainAppBusListeners.js');
 
-    setupMainAppBusListeners();
+    await setupMainAppBusListeners();
     const handler = mocks.handlers.get('user:presence:set-offline');
 
     await handler?.();

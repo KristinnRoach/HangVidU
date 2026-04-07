@@ -85,10 +85,32 @@ export function setupTopBarAndLocale(options) {
     appWrapper && appWrapper.appendChild(toggleLangBtn);
 
     cleanup = () => {
-      unsubscribeLocaleChange?.();
-      toggleLangBtn.remove();
-      inAppNotificationManager.setToggle(null);
-      isReady = false;
+      try {
+        unsubscribeLocaleChange?.();
+      } catch (error) {
+        console.warn(
+          '[setupTopBarAndLocale] cleanup failed to unsubscribe locale listener:',
+          error,
+        );
+      }
+      try {
+        toggleLangBtn?.remove();
+      } catch (error) {
+        console.warn(
+          '[setupTopBarAndLocale] cleanup failed to remove locale toggle:',
+          error,
+        );
+      }
+      try {
+        inAppNotificationManager.setToggle(null);
+      } catch (error) {
+        console.warn(
+          '[setupTopBarAndLocale] cleanup failed to clear notification toggle:',
+          error,
+        );
+      } finally {
+        isReady = false;
+      }
     };
     isReady = true;
     return cleanup;

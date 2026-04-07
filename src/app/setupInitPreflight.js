@@ -73,8 +73,16 @@ export function setupInitPreflight(options = {}) {
     const unsubscribeLocaleChange = onLocaleChange(() => updateI18nElements());
 
     cleanup = () => {
-      unsubscribeLocaleChange?.();
-      isReady = false;
+      try {
+        unsubscribeLocaleChange?.();
+      } catch (error) {
+        console.warn(
+          '[setupInitPreflight] cleanup failed to unsubscribe locale listener:',
+          error,
+        );
+      } finally {
+        isReady = false;
+      }
     };
     isReady = true;
     return cleanup;

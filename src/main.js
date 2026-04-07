@@ -735,7 +735,19 @@ async function cleanup() {
   clearUrlParam();
   setYouTubeReady(false);
 
-  cleanupFunctions.forEach((cleanupFn) => cleanupFn());
-  appSetupCleanup?.();
-  appSetupCleanup = () => {};
+  try {
+    for (const cleanupFn of cleanupFunctions) {
+      try {
+        cleanupFn?.();
+      } catch (error) {
+        console.warn('[MAIN] Cleanup step failed:', error);
+      }
+    }
+  } finally {
+    try {
+      appSetupCleanup?.();
+    } finally {
+      appSetupCleanup = () => {};
+    }
+  }
 }

@@ -37,8 +37,16 @@ export function setupUserAccount() {
     });
 
     cleanup = () => {
-      unsubscribe();
-      isReady = false;
+      try {
+        unsubscribe();
+      } catch (error) {
+        console.warn(
+          '[setupUserAccount] cleanup failed to unsubscribe auth listener:',
+          error,
+        );
+      } finally {
+        isReady = false;
+      }
     };
     isReady = true;
     return cleanup;

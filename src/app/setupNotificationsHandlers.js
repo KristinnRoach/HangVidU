@@ -96,8 +96,16 @@ export function setupNotificationsHandlers() {
     );
 
     cleanup = () => {
-      ac.abort();
-      isReady = false;
+      try {
+        ac.abort();
+      } catch (error) {
+        console.warn(
+          '[setupNotificationsHandlers] cleanup failed to abort handlers:',
+          error,
+        );
+      } finally {
+        isReady = false;
+      }
     };
     isReady = true;
     return cleanup;

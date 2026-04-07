@@ -101,6 +101,12 @@ describe('setupApp', () => {
     expect(trace.indexOf('setupContacts')).toBeLessThan(
       trace.indexOf('runInit'),
     );
+    expect(trace.indexOf('runInit')).toBeLessThan(
+      trace.indexOf('setupTopBarAndLocale'),
+    );
+    expect(trace.indexOf('setupTopBarAndLocale')).toBeLessThan(
+      trace.indexOf('bindCallUI'),
+    );
     expect(trace.indexOf('runInit')).toBeLessThan(trace.indexOf('bindCallUI'));
     expect(trace.indexOf('runInit')).toBeLessThan(
       trace.indexOf('setupMainAppBusListeners'),

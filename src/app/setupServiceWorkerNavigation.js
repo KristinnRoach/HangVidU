@@ -72,10 +72,18 @@ export function setupServiceWorkerNavigation(options) {
 
     if (!('serviceWorker' in navigator)) {
       cleanup = () => {
-        clearQueue();
-        isNavigationReady = false;
-        isCleanedUp = true;
-        isReady = false;
+        try {
+          clearQueue();
+          isNavigationReady = false;
+          isCleanedUp = true;
+        } catch (error) {
+          console.warn(
+            '[setupServiceWorkerNavigation] cleanup failed (no serviceWorker):',
+            error,
+          );
+        } finally {
+          isReady = false;
+        }
       };
       isReady = true;
       return cleanup;
@@ -103,14 +111,22 @@ export function setupServiceWorkerNavigation(options) {
     navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
 
     cleanup = () => {
-      navigator.serviceWorker.removeEventListener(
-        'message',
-        handleServiceWorkerMessage,
-      );
-      clearQueue();
-      isNavigationReady = false;
-      isCleanedUp = true;
-      isReady = false;
+      try {
+        navigator.serviceWorker.removeEventListener(
+          'message',
+          handleServiceWorkerMessage,
+        );
+        clearQueue();
+        isNavigationReady = false;
+        isCleanedUp = true;
+      } catch (error) {
+        console.warn(
+          '[setupServiceWorkerNavigation] cleanup failed to remove listener:',
+          error,
+        );
+      } finally {
+        isReady = false;
+      }
     };
 
     // Keep promise referenced so unhandled rejections are consumed through this chain.

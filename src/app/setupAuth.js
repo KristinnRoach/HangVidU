@@ -20,6 +20,14 @@ let cleanup = () => {
   isReady = false;
 };
 
+function runSafe(fn, label) {
+  try {
+    fn?.();
+  } catch (error) {
+    console.warn(`[setupAuth] ${label} failed:`, error);
+  }
+}
+
 /**
  * Setup contract:
  * - idempotent: returns existing cleanup when already ready
@@ -45,6 +53,23 @@ export function setupAuth(options = {}) {
     const { lobbyElement } = options;
     const ac = new AbortController();
     let initialized = false;
+    let savedRoomsCleanup = () => {
+      runSafe(removeAllIncomingListeners, 'removeAllIncomingListeners');
+    };
+    let inviteCleanup = () => {
+      runSafe(cleanupInviteListeners, 'cleanupInviteListeners');
+    };
+
+    const cleanupLoginScopedListeners = () => {
+      runSafe(savedRoomsCleanup, 'savedRooms cleanup');
+      runSafe(inviteCleanup, 'invite cleanup');
+      savedRoomsCleanup = () => {
+        runSafe(removeAllIncomingListeners, 'removeAllIncomingListeners');
+      };
+      inviteCleanup = () => {
+        runSafe(cleanupInviteListeners, 'cleanupInviteListeners');
+      };
+    };
 
     try {
       subscribe(
@@ -65,8 +90,7 @@ export function setupAuth(options = {}) {
           try {
             await renderContactsList(lobbyElement);
             devDebug('[AUTH] User logged out - cleaning up listeners');
-            removeAllIncomingListeners();
-            cleanupInviteListeners();
+            cleanupLoginScopedListeners();
           } catch (e) {
             console.warn('[AUTH] Failed to handle auth:logout:', e);
           }
@@ -88,13 +112,22 @@ export function setupAuth(options = {}) {
               console.warn('[AUTH] Failed to render contacts list on login:', e),
             );
 
+            cleanupLoginScopedListeners();
             if (!isInitialResolution) {
-              await startListeningForSavedRooms().catch((e) =>
-                console.warn('Failed to re-attach saved-room listeners', e),
-              );
+              const maybeSavedRoomsCleanup = await startListeningForSavedRooms()
+                .catch((e) => {
+                  console.warn('Failed to re-attach saved-room listeners', e);
+                  return undefined;
+                });
+              if (typeof maybeSavedRoomsCleanup === 'function') {
+                savedRoomsCleanup = maybeSavedRoomsCleanup;
+              }
             }
 
-            setupInviteListener(lobbyElement);
+            const maybeInviteCleanup = setupInviteListener(lobbyElement);
+            if (typeof maybeInviteCleanup === 'function') {
+              inviteCleanup = maybeInviteCleanup;
+            }
 
             const pushController = getPushNotifications();
             if (pushController) {
@@ -118,7 +151,8 @@ export function setupAuth(options = {}) {
       await initAuth();
 
       cleanup = () => {
-        ac.abort();
+        cleanupLoginScopedListeners();
+        runSafe(() => ac.abort(), 'abort auth subscriptions');
         isReady = false;
       };
       isReady = true;
@@ -127,9 +161,11 @@ export function setupAuth(options = {}) {
       return cleanup;
     } catch (error) {
       if (!initialized) {
-        ac.abort();
+        cleanupLoginScopedListeners();
+        runSafe(() => ac.abort(), 'abort auth subscriptions');
       }
       cleanup = () => {
+        cleanupLoginScopedListeners();
         isReady = false;
       };
       isReady = false;
