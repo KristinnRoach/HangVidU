@@ -7,6 +7,17 @@ let cleanup = () => {
   isReady = false;
 };
 
+function drainCleanupFns(cleanupFns) {
+  while (cleanupFns.length) {
+    const fn = cleanupFns.pop();
+    try {
+      fn?.();
+    } catch (e) {
+      console.warn('[setupApp] cleanup failed:', e);
+    }
+  }
+}
+
 /**
  * App-composition setup draft.
  *
@@ -60,14 +71,8 @@ export function setupApp(options) {
       const initSuccess = await options.runInit();
       if (!initSuccess) {
         options.onInitFailed?.();
-        while (cleanupFns.length) {
-          const fn = cleanupFns.pop();
-          try {
-            fn?.();
-          } catch (e) {
-            console.warn('[setupApp] cleanup failed:', e);
-          }
-        }
+        drainCleanupFns(cleanupFns);
+
         isReady = false;
         cleanup = () => {
           isReady = false;
@@ -101,14 +106,7 @@ export function setupApp(options) {
       }
 
       cleanup = () => {
-        while (cleanupFns.length) {
-          const fn = cleanupFns.pop();
-          try {
-            fn?.();
-          } catch (e) {
-            console.warn('[setupApp] cleanup failed:', e);
-          }
-        }
+        drainCleanupFns(cleanupFns);
         isReady = false;
       };
       isReady = true;
@@ -116,14 +114,7 @@ export function setupApp(options) {
       return cleanup;
     } catch (error) {
       if (!initialized) {
-        while (cleanupFns.length) {
-          const fn = cleanupFns.pop();
-          try {
-            fn?.();
-          } catch (e) {
-            console.warn('[setupApp] cleanup failed:', e);
-          }
-        }
+        drainCleanupFns(cleanupFns);
       }
       cleanup = () => {
         isReady = false;
