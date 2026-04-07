@@ -406,8 +406,12 @@ const handleCall = async () => {
   }
 };
 
-callBtn.onclick = handleCall;
-lobbyCallBtn.onclick = handleCall;
+if (callBtn) {
+  callBtn.onclick = handleCall;
+}
+if (lobbyCallBtn) {
+  lobbyCallBtn.onclick = handleCall;
+}
 
 // Paste & Join: read clipboard, extract room ID, and join
 if (pasteJoinBtn) {
@@ -512,13 +516,15 @@ if (exitWatchModeBtn) {
 }
 
 // TODO: refactor UI (actions?)
-hangUpBtn.onclick = async () => {
-  console.debug('Hanging up...');
+if (hangUpBtn) {
+  hangUpBtn.onclick = async () => {
+    console.debug('Hanging up...');
 
-  // Call CallController.hangUp (emits cancellation and performs cleanup)
-  // The 'cleanup' event handler will handle all UI updates including contact save prompt
-  await CallController.hangUp({ emitCancel: true, reason: 'user_hung_up' });
-};
+    // Call CallController.hangUp (emits cancellation and performs cleanup)
+    // The 'cleanup' event handler will handle all UI updates including contact save prompt
+    await CallController.hangUp({ emitCancel: true, reason: 'user_hung_up' });
+  };
+}
 
 // ============================================================================
 // TEST: JOIN ROOM BUTTON (TEMPORARY - FOR TESTING)

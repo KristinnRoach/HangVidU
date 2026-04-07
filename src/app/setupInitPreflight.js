@@ -32,6 +32,9 @@ export async function setupInitPreflight() {
     'chatControls',
     'lobbyDiv',
     'titleAuthBar',
+    'callBtn',
+    'lobbyCallBtn',
+    'hangUpBtn',
   ];
 
   const missingCritical = criticalElements.filter((name) => !elements[name]);
