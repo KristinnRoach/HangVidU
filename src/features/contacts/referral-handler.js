@@ -1,15 +1,15 @@
 // referral-handler.js - Handle referral links and auto-add contacts
 // Reuses the existing invitation system for consistency
 
-import { signInWithAccountSelection, getLoggedInUserId } from '../../auth/index.js';
+import {
+  signInWithAccountSelection,
+  getLoggedInUserId,
+} from '../../auth/index.js';
 import { acceptInvite } from './invitations.js';
 import { getDeterministicRoomId } from '../../utils/room-id.js';
 import { showInfoToast, showSuccessToast } from '../../components/toast.js';
-import { getUserProfile } from '../account/index.js';
-import {
-  createReferralNotification,
-  inAppNotificationManager,
-} from '../notifications/index.js';
+import { getUserProfile } from '../../storage/user/index.js';
+import { dispatchCommand } from '../../events/index.js';
 import { t } from '../../i18n/index.js';
 
 /**
@@ -45,14 +45,12 @@ export async function captureReferral() {
       onClick: () => signInWithAccountSelection(),
     });
 
-    // Persistent notification in panel (in case user misses the toast)
-    const notification = createReferralNotification({
+    dispatchCommand('contacts:referral:notification:add', {
+      notificationId: `referral-${referrerId}`,
       referrerName: name,
       referrerPhotoURL: photoURL,
       onSignIn: () => signInWithAccountSelection(),
     });
-
-    inAppNotificationManager.add(`referral-${referrerId}`, notification);
   }
 }
 
@@ -111,8 +109,9 @@ export async function processReferral() {
     // Show success toast
     showSuccessToast(t('referral.connected', { name: referrerName }));
 
-    // Clean up referral notification if still showing
-    inAppNotificationManager.remove(`referral-${referrerId}`);
+    dispatchCommand('contacts:referral:notification:remove', {
+      notificationId: `referral-${referrerId}`,
+    });
 
     // Clean up
     localStorage.removeItem('referredBy');

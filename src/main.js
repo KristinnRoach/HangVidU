@@ -8,10 +8,7 @@ import { initIcons } from './components/ui/icons.js';
 import './initSentry.js';
 import { removeAllRTDBListeners } from './storage/fb-rtdb/rtdb.js';
 
-import {
-  initAuth,
-  initializeAuthUI,
-} from './auth/index.js';
+import { initializeAuthUI } from './auth/index.js';
 
 import {
   inAppNotificationManager,
@@ -24,7 +21,6 @@ import CallController from './features/call/call-controller.js';
 import { messagingController } from './features/messaging/messaging-controller.js';
 import {
   contactsService,
-  captureReferral,
   renderContactsList,
   cleanupContacts,
   showAddContactModal,
@@ -114,7 +110,10 @@ import { setupMessagingContactsIntegration } from './app/messaging-contacts-inte
 import { setupMessagingAppBusHandlers } from './features/messaging/handle-appbus-events.js';
 import { setupCallControllerEventWiring } from './features/call/call-event-wiring.js';
 import { setupMainAppBusListeners } from './app/setupMainAppBusListeners.js';
-import { setupMainAuthAppBusListeners } from './app/setupMainAuthAppBusListeners.js';
+import { setupAuth } from './app/setupAuth.js';
+import { setupNotificationsHandlers } from './app/setupNotificationsHandlers.js';
+import { setupContacts } from './app/setupContacts.js';
+import { setupUserAccount } from './app/setupUserAccount.js';
 import {
   getCallOptions,
   applyCallResult,
@@ -191,17 +190,8 @@ async function init() {
       });
     }
 
-    initializeSearchUI();
-    addKeyListeners();
-
-    // Register auth listeners before initAuth() so initial stable auth
-    // events are observed by the app layer.
-    cleanupFunctions.push(
-      setupMainAuthAppBusListeners({ lobbyElement: lobbyDiv }),
-    );
-
-    // Initialize auth (persistence + redirect + onAuthStateChanged listener)
-    await initAuth();
+    cleanupFunctions.push(await setupAuth({ lobbyElement: lobbyDiv }));
+    cleanupFunctions.push(await setupUserAccount());
     cleanupFunctions.push(setupMessagingContactsIntegration());
     cleanupFunctions.push(
       setupMessagingAppBusHandlers({ messagingController }),
@@ -209,6 +199,9 @@ async function init() {
 
     const authComponent = initializeAuthUI(titleAuthBar);
     if (authComponent) cleanupFunctions.push(authComponent.dispose);
+
+    initializeSearchUI();
+    addKeyListeners();
 
     // Stream is now lazily initialized when user starts/joins a call
     // This prevents Bluetooth headphones from entering "call mode" on page load
@@ -699,8 +692,8 @@ export async function autoInitMsgSessionIfNeeded() {
 // ! END OF TODO
 
 window.onload = async () => {
-  // Capture referral link BEFORE auth (stores referrer ID in localStorage)
-  await captureReferral();
+  cleanupFunctions.push(await setupNotificationsHandlers());
+  cleanupFunctions.push(await setupContacts());
 
   const initSuccess = await init();
 

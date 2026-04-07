@@ -1,4 +1,4 @@
-// src/features/account/schema.js
+// src/storage/user/schema.js
 // Data shapes for user profiles, presence, and discovery
 
 import { z } from 'zod';

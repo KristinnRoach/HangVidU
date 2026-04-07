@@ -4,10 +4,7 @@ import {
   acceptInvite,
   declineInvite,
 } from './invitations.js';
-import {
-  createInviteNotification,
-  inAppNotificationManager,
-} from '../notifications/index.js';
+import { dispatchCommand } from '../../events/index.js';
 import { showSuccessToast, showErrorToast } from '../../components/toast.js';
 import { renderContactsList } from './components/contacts-list.js';
 
@@ -33,8 +30,10 @@ async function processNextInvite(lobbyElement) {
   const { fromUserId, inviteData } = pendingInvites.shift();
 
   try {
-    // Create invite notification
-    const inviteNotification = createInviteNotification({
+    const notificationId = `invite-${fromUserId}`;
+
+    dispatchCommand('contacts:invite:notification:add', {
+      notificationId,
       fromUserId,
       inviteData,
       onAccept: async () => {
@@ -45,7 +44,9 @@ async function processNextInvite(lobbyElement) {
           showSuccessToast(`✅ ${inviteData.fromName} added to contacts!`);
 
           // Remove notification after successful accept
-          inAppNotificationManager.remove(`invite-${fromUserId}`);
+          dispatchCommand('contacts:invite:notification:remove', {
+            notificationId,
+          });
         } catch (e) {
           console.error('[INVITATIONS] Failed to accept invite:', e);
           showErrorToast('Failed to add contact. Please try again.');
@@ -61,7 +62,9 @@ async function processNextInvite(lobbyElement) {
           console.log('[INVITATIONS] Invite declined');
 
           // Remove notification after decline
-          inAppNotificationManager.remove(`invite-${fromUserId}`);
+          dispatchCommand('contacts:invite:notification:remove', {
+            notificationId,
+          });
         } catch (e) {
           console.error('[INVITATIONS] Failed to decline invite:', e);
         } finally {
@@ -70,14 +73,6 @@ async function processNextInvite(lobbyElement) {
         }
       },
     });
-
-    // Add to notification manager
-    inAppNotificationManager.add(`invite-${fromUserId}`, inviteNotification);
-
-    // Show the notification list if it's hidden
-    if (!inAppNotificationManager.isListVisible()) {
-      inAppNotificationManager.showList();
-    }
   } catch (error) {
     console.error('[INVITATIONS] Failed to process invite:', error);
     isProcessingInvite = false;

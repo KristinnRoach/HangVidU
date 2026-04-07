@@ -10,7 +10,7 @@
 
 import { MessageStore } from './message-store.js';
 import { parseMessage } from '../schema.js';
-import { resolveDirectConversationId } from '../direct-conversation-id.js';
+import { resolveDirectConversationId } from '../../../utils/direct-conversation-id.js';
 import {
   ref,
   set,

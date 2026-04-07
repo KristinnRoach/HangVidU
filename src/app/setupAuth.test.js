@@ -27,6 +27,10 @@ vi.mock('../events/index.js', () => ({
   subscribe: mocks.events.subscribe,
 }));
 
+vi.mock('../auth/index.js', () => ({
+  initAuth: vi.fn(() => Promise.resolve()),
+}));
+
 vi.mock('../utils/dev/dev-utils.js', () => ({
   devDebug: mocks.devDebug,
 }));
@@ -51,7 +55,7 @@ vi.mock('../features/notifications/index.js', () => ({
   showEnableNotificationsPrompt: mocks.showEnableNotificationsPrompt,
 }));
 
-describe('setupMainAuthAppBusListeners', () => {
+describe('setupAuth', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
@@ -59,11 +63,10 @@ describe('setupMainAuthAppBusListeners', () => {
   });
 
   it('renders contacts when auth becomes ready', async () => {
-    const { setupMainAuthAppBusListeners } =
-      await import('./setupMainAuthAppBusListeners.js');
+    const { setupAuth } = await import('./setupAuth.js');
     const lobbyElement = { id: 'lobby' };
 
-    const teardown = setupMainAuthAppBusListeners({ lobbyElement });
+    const teardown = await setupAuth({ lobbyElement });
 
     await mocks.handlers.get('auth:ready')({});
 
@@ -73,8 +76,7 @@ describe('setupMainAuthAppBusListeners', () => {
   });
 
   it('handles login through shared auth facts without re-attaching saved room listeners on initial resolution', async () => {
-    const { setupMainAuthAppBusListeners } =
-      await import('./setupMainAuthAppBusListeners.js');
+    const { setupAuth } = await import('./setupAuth.js');
     const lobbyElement = { id: 'lobby' };
 
     mocks.getPushNotifications.mockReturnValue({
@@ -83,7 +85,7 @@ describe('setupMainAuthAppBusListeners', () => {
       ),
     });
 
-    const teardown = setupMainAuthAppBusListeners({ lobbyElement });
+    const teardown = await setupAuth({ lobbyElement });
 
     await mocks.handlers.get('auth:login')({
       isInitialResolution: true,
@@ -99,11 +101,10 @@ describe('setupMainAuthAppBusListeners', () => {
   });
 
   it('handles logout through shared auth facts', async () => {
-    const { setupMainAuthAppBusListeners } =
-      await import('./setupMainAuthAppBusListeners.js');
+    const { setupAuth } = await import('./setupAuth.js');
     const lobbyElement = { id: 'lobby' };
 
-    const teardown = setupMainAuthAppBusListeners({ lobbyElement });
+    const teardown = await setupAuth({ lobbyElement });
 
     await mocks.handlers.get('auth:logout')({});
 

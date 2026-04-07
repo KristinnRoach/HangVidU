@@ -25,7 +25,7 @@ In Vitest browser mode (Playwright), `vi.mock('module', () => ({...}))` factory 
 
 ## Known prerequisite (done)
 
-`src/features/account/profile.js` previously called `onAuthStateChange()` at module init time, creating a circular dependency: `auth/index.js` → `auth-actions.js` → `push-notifications` → `contacts/index.js` → `referral-handler.js` → `account/profile.js` → back to `auth/index.js`. This caused TDZ errors when `{ spy: true }` loaded the real `auth/index.js`. Fixed by wrapping in `initProfile()` / `initAccount()`.
+The old `src/storage/user/profile.js` module previously called `onAuthStateChange()` at module init time, creating a circular dependency: `auth/index.js` → `auth-actions.js` → `push-notifications` → `contacts/index.js` → `referral-handler.js` → `storage/user/profile.js` → back to `auth/index.js`. In this branch, that user profile logic is split across `src/storage/user/user-profile-*.js` and the auth subscription wiring was moved into `src/app/setupUserAccount.js`. That change removed the module-init auth subscription and avoided the TDZ errors that occurred when `{ spy: true }` loaded the real `auth/index.js`.
 
 ## Verification per file
 

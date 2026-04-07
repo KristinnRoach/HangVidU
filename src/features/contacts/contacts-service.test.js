@@ -35,8 +35,9 @@ vi.mock('./storage/index.js', () => ({
   createContactsLocalStore: vi.fn(() => mocks.store),
 }));
 
-vi.mock('../messaging/index.js', () => ({
-  resolveDirectConversationId: (userA, userB) => [userA, userB].sort().join('_'),
+vi.mock('../../utils/direct-conversation-id.js', () => ({
+  resolveDirectConversationId: (userA, userB) =>
+    [userA, userB].sort().join('_'),
 }));
 
 describe('contacts-service', () => {
@@ -81,10 +82,9 @@ describe('contacts-service', () => {
       lastInteractionAt: expect.any(Number),
     });
 
-    expect(mocks.events.publish).toHaveBeenCalledWith(
-      'room:id:created',
-      { roomId: 'room-1' },
-    );
+    expect(mocks.events.publish).toHaveBeenCalledWith('room:id:created', {
+      roomId: 'room-1',
+    });
   });
 
   it('saveContact preserves timestamps for an existing contact', async () => {
@@ -172,15 +172,12 @@ describe('contacts-service', () => {
       roomId: 'room-2',
     });
 
-    expect(mocks.events.publish).toHaveBeenCalledWith(
-      'room:id:updated',
-      {
-        contactId: 'u1',
-        contactName: 'Alice B',
-        roomId: 'room-2',
-        previousRoomId: 'room-1',
-      },
-    );
+    expect(mocks.events.publish).toHaveBeenCalledWith('room:id:updated', {
+      contactId: 'u1',
+      contactName: 'Alice B',
+      roomId: 'room-2',
+      previousRoomId: 'room-1',
+    });
   });
 
   it('updateContact returns null when the contact does not exist', async () => {
@@ -214,13 +211,10 @@ describe('contacts-service', () => {
     const result = await service.deleteContact('u1');
 
     expect(result).toBe(true);
-    expect(mocks.events.publish).toHaveBeenCalledWith(
-      'contact:deleted',
-      {
-        contactId: 'u1',
-        roomId: 'room-1',
-      },
-    );
+    expect(mocks.events.publish).toHaveBeenCalledWith('contact:deleted', {
+      contactId: 'u1',
+      roomId: 'room-1',
+    });
   });
 
   it('deleteContact returns false when missing', async () => {

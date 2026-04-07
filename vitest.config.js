@@ -28,12 +28,9 @@ export default defineConfig({
     }),
   ],
   test: {
-    // Suppress known birpc teardown race in browser mode (vitest #7560)
-    // The RPC channel closes before pending mock resolutions complete — harmless but causes exit code 1
-    onUnhandledError(error) {
-      if (error?.cause?.message?.includes('rpc is closed')) return;
-      throw error;
-    },
+    // Suppress birpc teardown race — handled in tests/global-setup.js (runs in
+    // the main Node process where the rejection actually originates)
+    globalSetup: ['./tests/global-setup.js'],
     // testTimeout: 60000, // Uncomment if getting timeout errors
     browser: {
       enabled: true,
