@@ -39,17 +39,17 @@ Completed in this branch:
 - migrated remaining touched feature/app/auth listeners away from direct `appBus` usage where already adjusted in this branch
 - moved `resolveDirectConversationId` out of `messaging` into shared `src/utils/direct-conversation-id.js`
 - removed direct `contacts -> messaging` import for conversation id helpers
-- added app-level notification projection in `src/app/setupNotificationsHandlers.js`
+- added app-level notification projection in `src/setup/setupNotificationsHandlers.js`
 - changed `contacts` invite/referral flows to publish notification facts instead of importing notifications directly
-- replaced `setupMainAuthAppBusListeners` with `setupAuth` in `src/app/setupAuth.js`:
-  - setup is app-owned and idempotent
+- replaced `setupMainAuthAppBusListeners` with `setupAuth` in `src/setup/setupAuth.js`:
+  - setup is setup-layer-owned and idempotent
   - auth listeners are registered before `initAuth()` runs
 - moved account profile storage under `src/storage/user/`
-- added `src/app/setupUserAccount.js` for auth-driven profile sync (listener wiring moved out of shared storage)
+- added `src/setup/setupUserAccount.js` for auth-driven profile sync (listener wiring moved out of shared storage)
 - split `src/storage/user/` profile access into:
   - `user-profile-store.js` (backend-agnostic store facade)
   - `user-profile-rtdb-adapter.js` (RTDB implementation)
-- added `src/app/setupContacts.js` for contacts pre-init concerns (`captureReferral`)
+- added `src/setup/setupContacts.js` for contacts pre-init concerns (`captureReferral`)
 - app setup/init migration details are tracked in [HANDOFF_SETUP_INIT.md](./HANDOFF_SETUP_INIT.md)
 - added WIP docs:
   - [LINKS_TO_DOCS.md](./LINKS_TO_DOCS.md)
@@ -104,15 +104,18 @@ Notes:
   - `notifications`
 - storage status:
   - `src/storage/user/` is shared and auth-agnostic
-  - auth-driven profile persistence is now handled in app composition via `setupUserAccount.js`
+  - auth-driven profile persistence is now handled in setup composition via `setupUserAccount.js`
 - current `contacts` messaging status:
   - `contacts` no longer imports `messagingController`
   - `contacts` dispatches `messaging:conversation:select`
-  - handling lives in app composition
+  - handling lives in setup composition
   - unread-count facts are published by `messaging`
   - direct conversation id helper is now shared (`src/utils/direct-conversation-id.js`)
 - auth status:
   - auth commands are now wired through the shared `events` API
   - auth lifecycle facts are published from `auth-state` via shared events
-  - `setupAuth.js` remains the app-owned auth setup entrypoint
+- `setupAuth.js` remains the setup-layer auth entrypoint
   - no auth-local bus remains
+- deferred structure note:
+  - moving shared folders under `src/shared/` is under consideration
+  - defer until boundary rollout stabilizes and temporary shared-to-feature exceptions are removed

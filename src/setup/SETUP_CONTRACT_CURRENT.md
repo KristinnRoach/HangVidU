@@ -4,7 +4,7 @@ This is the contract for current `setupX()` modules.
 
 Scope:
 
-- applies to setup modules in `src/app/` that own app bootstrap/runtime wiring
+- applies to setup modules in `src/setup/` that own app bootstrap/runtime wiring
 - does not yet require EventEmitter-only listener wiring (that is tracked separately)
 
 ## Required Contract

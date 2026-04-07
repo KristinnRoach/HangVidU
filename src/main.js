@@ -92,14 +92,14 @@ import { copyToClipboard } from './components/modal/copyLinkModal.js';
 import { onCallDisconnected } from './components/ui/core/call-lifecycle-ui.js';
 import { t } from './i18n/index.js';
 import { setupMessagingContactsIntegration } from './app/messaging-contacts-integration.js';
-import { setupApp } from './app/setupApp.js';
-import { setupInitPreflight } from './app/setupInitPreflight.js';
-import { setupTopBarAndLocale } from './app/setupTopBarAndLocale.js';
+import { setupApp } from './setup/setupApp.js';
+import { setupInitPreflight } from './setup/setupInitPreflight.js';
+import { setupTopBarAndLocale } from './setup/setupTopBarAndLocale.js';
 import { setupMessagingAppBusHandlers } from './features/messaging/handle-appbus-events.js';
 import { setupCallControllerEventWiring } from './features/call/call-event-wiring.js';
-import { setupMainAppBusListeners } from './app/setupMainAppBusListeners.js';
-import { setupAuth } from './app/setupAuth.js';
-import { setupUserAccount } from './app/setupUserAccount.js';
+import { setupMainAppBusListeners } from './setup/setupMainAppBusListeners.js';
+import { setupAuth } from './setup/setupAuth.js';
+import { setupUserAccount } from './setup/setupUserAccount.js';
 import {
   getCallOptions,
   applyCallResult,

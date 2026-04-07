@@ -13,7 +13,7 @@ let cleanup = () => {
  * - single-flight: concurrent callers share one init promise
  * - teardown: cleanup unsubscribes auth listener
  *
- * Setup user-account sync concerns at app composition level.
+ * Setup user-account sync concerns at setup composition level.
  *
  * @returns {Promise<() => void>}
  */

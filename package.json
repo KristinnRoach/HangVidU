@@ -25,6 +25,7 @@
     "preview:pwa": "pnpm build && pnpm preview:https",
     "lint": "pnpm lint:boundaries",
     "lint:boundaries": "eslint \"src/**/*.js\"",
+    "lint:b:all": "BOUNDARIES_ENFORCE_ALL=1 pnpm lint:boundaries",
     "test": "vitest --run",
     "test:node": "vitest --run --project node",
     "test:browser": "vitest --run --project browser",

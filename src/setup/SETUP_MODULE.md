@@ -8,5 +8,5 @@ Canonical docs:
 
 High-level intent:
 
-- each module/feature exposes one `setup<Module>()` entrypoint from `src/app/`
+- each module/feature exposes one `setup<Module>()` entrypoint from `src/setup/`
 - `setup<Module>()` owns its listener/init ordering and teardown ownership
