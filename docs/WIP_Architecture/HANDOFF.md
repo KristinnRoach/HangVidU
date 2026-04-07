@@ -76,8 +76,6 @@ Verified on this branch (April 6, 2026):
 - temporary `shared -> feature` allowlist is active for: `call`, `messaging`, `watch`, `notifications`
 - `pnpm lint:boundaries` passes
 - `contacts -> messaging` boundary dependency is removed by moving the helper to shared utils
-- temporary `contacts -> feature` exceptions still active in `eslint.config.js` for:
-  - `notifications`
 - no direct `appBus` imports were found outside `src/events/` in runtime source files
 
 Next goal:
@@ -105,8 +103,6 @@ Notes:
   - `messaging`
   - `watch`
   - `notifications`
-- remaining `contacts` exception categories are:
-  - notifications dependency
 - storage status:
   - `src/storage/user/` is shared and auth-agnostic
   - auth-driven profile persistence is now handled in app composition via `setupUserAccount.js`
