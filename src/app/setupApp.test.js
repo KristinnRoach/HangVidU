@@ -32,9 +32,17 @@ describe('setupApp', () => {
     });
 
     const options = {
+      runPreflight: vi.fn(async () => {
+        trace.push('runPreflight');
+        return () => {};
+      }),
       runInit: vi.fn(async () => {
         trace.push('runInit');
         return true;
+      }),
+      setupTopBarAndLocale: vi.fn(async () => {
+        trace.push('setupTopBarAndLocale');
+        return () => {};
       }),
       bindCallUI: vi.fn(() => trace.push('bindCallUI')),
       setupMainAppBusListeners: vi.fn(() =>
@@ -47,10 +55,7 @@ describe('setupApp', () => {
       autoInitMsgSessionIfNeeded: vi.fn(async () =>
         trace.push('autoInitMsgSessionIfNeeded'),
       ),
-      registerServiceWorkerNavigation: vi.fn(() => {
-        trace.push('registerServiceWorkerNavigation');
-        return () => {};
-      }),
+      handleServiceWorkerNavigation: vi.fn(async () => true),
       autoJoinFromUrl: vi.fn(async () => {
         trace.push('autoJoinFromUrl');
         return false;
@@ -62,6 +67,9 @@ describe('setupApp', () => {
     const { setupApp } = await import('./setupApp.js');
     await setupApp(options);
 
+    expect(trace.indexOf('runPreflight')).toBeLessThan(
+      trace.indexOf('setupNotificationsHandlers'),
+    );
     expect(trace.indexOf('setupNotificationsHandlers')).toBeLessThan(
       trace.indexOf('setupContacts'),
     );
@@ -84,16 +92,18 @@ describe('setupApp', () => {
     mocks.setupContacts.mockResolvedValue(() => {});
 
     const options = {
+      runPreflight: vi.fn(async () => () => {}),
       runInit: vi.fn(async () => {
         await initGate;
         return true;
       }),
+      setupTopBarAndLocale: vi.fn(async () => () => {}),
       bindCallUI: vi.fn(),
       setupMainAppBusListeners: vi.fn(),
       startListeningForSavedRooms: vi.fn(async () => {}),
       renderContactsList: vi.fn(async () => {}),
       autoInitMsgSessionIfNeeded: vi.fn(async () => {}),
-      registerServiceWorkerNavigation: vi.fn(),
+      handleServiceWorkerNavigation: vi.fn(async () => true),
       autoJoinFromUrl: vi.fn(async () => true),
       onInitFailed: vi.fn(),
       onReady: vi.fn(),
@@ -120,13 +130,15 @@ describe('setupApp', () => {
     mocks.setupContacts.mockResolvedValue(contactsCleanup);
 
     const options = {
+      runPreflight: vi.fn(async () => () => {}),
       runInit: vi.fn(async () => false),
+      setupTopBarAndLocale: vi.fn(async () => () => {}),
       bindCallUI: vi.fn(),
       setupMainAppBusListeners: vi.fn(),
       startListeningForSavedRooms: vi.fn(async () => {}),
       renderContactsList: vi.fn(async () => {}),
       autoInitMsgSessionIfNeeded: vi.fn(async () => {}),
-      registerServiceWorkerNavigation: vi.fn(),
+      handleServiceWorkerNavigation: vi.fn(async () => true),
       autoJoinFromUrl: vi.fn(async () => true),
       onInitFailed: vi.fn(),
       onReady: vi.fn(),
@@ -150,16 +162,18 @@ describe('setupApp', () => {
     mocks.setupContacts.mockResolvedValue(contactsCleanup);
 
     const options = {
+      runPreflight: vi.fn(async () => () => {}),
       runInit: vi
         .fn()
         .mockRejectedValueOnce(new Error('init failed'))
         .mockResolvedValueOnce(true),
+      setupTopBarAndLocale: vi.fn(async () => () => {}),
       bindCallUI: vi.fn(),
       setupMainAppBusListeners: vi.fn(),
       startListeningForSavedRooms: vi.fn(async () => {}),
       renderContactsList: vi.fn(async () => {}),
       autoInitMsgSessionIfNeeded: vi.fn(async () => {}),
-      registerServiceWorkerNavigation: vi.fn(),
+      handleServiceWorkerNavigation: vi.fn(async () => true),
       autoJoinFromUrl: vi.fn(async () => true),
       onInitFailed: vi.fn(),
       onReady: vi.fn(),

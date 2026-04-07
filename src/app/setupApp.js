@@ -2,7 +2,7 @@ import { setupNotificationsHandlers } from './setupNotificationsHandlers.js';
 import { setupContacts } from './setupContacts.js';
 
 let isReady = false;
-let initializationPromise = null;
+let initPromise = null;
 let cleanup = () => {
   isReady = false;
 };
@@ -19,36 +19,43 @@ function drainCleanupFns(cleanupFns) {
 }
 
 /**
- * App-composition setup draft.
+ * Setup contract:
+ * - idempotent: returns existing cleanup when already ready
+ * - single-flight: concurrent callers share one init promise
+ * - teardown: one reverse-order cleanup stack for full app lifecycle
  *
- * This is intentionally callback-driven for now so we can consolidate existing
- * main.js bootstrap/init behavior incrementally without forcing a large move.
+ * App bootstrap orchestrator.
  *
  * Required callbacks:
- * - runInit: runs the existing init phase and resolves to boolean success
+ * - runPreflight: runs UI/i18n preflight and resolves to cleanup function
+ * - runInit: runs module init and resolves to boolean success
+ * - setupTopBarAndLocale: resolves to cleanup function
  * - bindCallUI: binds call UI handlers
  * - setupMainAppBusListeners: registers app-level command/fact handlers
  * - startListeningForSavedRooms
  * - renderContactsList
  * - autoInitMsgSessionIfNeeded
  * - autoJoinFromUrl
+ * - handleServiceWorkerNavigation
  *
  * Optional callbacks:
- * - registerServiceWorkerNavigation: returns optional cleanup function
  * - onInitFailed
  * - onReady
  *
  * @param {{
+ *   runPreflight: () => Promise<() => void>,
  *   runInit: () => Promise<boolean>,
+ *   setupTopBarAndLocale: () => Promise<() => void>,
  *   bindCallUI: () => void,
  *   setupMainAppBusListeners: () => void,
  *   startListeningForSavedRooms: () => Promise<void>,
  *   renderContactsList: () => Promise<void>,
  *   autoInitMsgSessionIfNeeded: () => Promise<void>,
  *   autoJoinFromUrl: () => Promise<boolean>,
- *   registerServiceWorkerNavigation?: () => (() => void)|void,
+ *   handleServiceWorkerNavigation: (path: string) => Promise<boolean>,
  *   onInitFailed?: (error?: unknown) => void,
  *   onReady?: () => void,
+ *   serviceWorkerQueueLimit?: number,
  * }} options
  * @returns {Promise<() => void>}
  */
@@ -56,30 +63,92 @@ export function setupApp(options) {
   if (isReady) {
     return Promise.resolve(cleanup);
   }
-  if (initializationPromise) {
-    return initializationPromise;
+  if (initPromise) {
+    return initPromise;
   }
 
-  initializationPromise = (async () => {
+  initPromise = (async () => {
     const cleanupFns = [];
-    let initialized = false;
+    const pendingServiceWorkerNavigationPaths = [];
+    const serviceWorkerQueueLimit = options.serviceWorkerQueueLimit ?? 20;
+    let isReadyForServiceWorkerNavigation = false;
+
+    const clearServiceWorkerQueue = () => {
+      pendingServiceWorkerNavigationPaths.length = 0;
+    };
+
+    const flushQueuedServiceWorkerNavigation = async () => {
+      while (pendingServiceWorkerNavigationPaths.length > 0) {
+        const path = pendingServiceWorkerNavigationPaths.shift();
+        await options.handleServiceWorkerNavigation(path).catch((error) => {
+          console.warn('[setupApp] Failed queued SW NAVIGATE:', {
+            path,
+            error,
+          });
+        });
+      }
+    };
+
+    const registerServiceWorkerNavigation = () => {
+      if (!('serviceWorker' in navigator)) {
+        return;
+      }
+
+      navigator.serviceWorker.startMessages?.();
+      const handleServiceWorkerMessage = (event) => {
+        const { type, path } = event.data || {};
+        if (type !== 'NAVIGATE' || !path) {
+          return;
+        }
+
+        if (!isReadyForServiceWorkerNavigation) {
+          pendingServiceWorkerNavigationPaths.push(path);
+          if (
+            pendingServiceWorkerNavigationPaths.length > serviceWorkerQueueLimit
+          ) {
+            pendingServiceWorkerNavigationPaths.shift();
+          }
+          return;
+        }
+
+        options.handleServiceWorkerNavigation(path).catch((error) => {
+          console.warn('[setupApp] Failed SW NAVIGATE:', { path, error });
+        });
+      };
+
+      navigator.serviceWorker.addEventListener(
+        'message',
+        handleServiceWorkerMessage,
+      );
+      cleanupFns.push(() => {
+        navigator.serviceWorker.removeEventListener(
+          'message',
+          handleServiceWorkerMessage,
+        );
+      });
+    };
 
     try {
+      registerServiceWorkerNavigation();
+      cleanupFns.push(await options.runPreflight());
       cleanupFns.push(await setupNotificationsHandlers());
       cleanupFns.push(await setupContacts());
 
       const initSuccess = await options.runInit();
       if (!initSuccess) {
         options.onInitFailed?.();
+        clearServiceWorkerQueue();
         drainCleanupFns(cleanupFns);
 
         isReady = false;
         cleanup = () => {
           isReady = false;
         };
+        isReadyForServiceWorkerNavigation = false;
         return cleanup;
       }
 
+      cleanupFns.push(await options.setupTopBarAndLocale());
       options.bindCallUI();
       options.setupMainAppBusListeners();
 
@@ -95,27 +164,26 @@ export function setupApp(options) {
         console.warn('Failed to auto-init messaging session:', e);
       });
 
-      const swCleanup = options.registerServiceWorkerNavigation?.();
-      if (typeof swCleanup === 'function') {
-        cleanupFns.push(swCleanup);
-      }
-
       const autoJoinedSuccessfully = await options.autoJoinFromUrl();
       if (!autoJoinedSuccessfully) {
         options.onReady?.();
       }
 
+      isReadyForServiceWorkerNavigation = true;
+      await flushQueuedServiceWorkerNavigation();
+
       cleanup = () => {
+        clearServiceWorkerQueue();
+        isReadyForServiceWorkerNavigation = false;
         drainCleanupFns(cleanupFns);
         isReady = false;
       };
       isReady = true;
-      initialized = true;
       return cleanup;
     } catch (error) {
-      if (!initialized) {
-        drainCleanupFns(cleanupFns);
-      }
+      clearServiceWorkerQueue();
+      isReadyForServiceWorkerNavigation = false;
+      drainCleanupFns(cleanupFns);
       cleanup = () => {
         isReady = false;
       };
@@ -124,9 +192,9 @@ export function setupApp(options) {
       options.onInitFailed?.(error);
       throw error;
     } finally {
-      initializationPromise = null;
+      initPromise = null;
     }
   })();
 
-  return initializationPromise;
+  return initPromise;
 }

@@ -1,12 +1,17 @@
 import { captureReferral } from '../features/contacts/index.js';
 
 let isReady = false;
-let initializationPromise = null;
+let initPromise = null;
 let cleanup = () => {
   isReady = false;
 };
 
 /**
+ * Setup contract:
+ * - idempotent: returns existing cleanup when already ready
+ * - single-flight: concurrent callers share one init promise
+ * - teardown: cleanup resets readiness for retry
+ *
  * Setup contacts-related app concerns that must run before full app init.
  *
  * @returns {Promise<() => void>}
@@ -16,18 +21,18 @@ export function setupContacts() {
     return Promise.resolve(cleanup);
   }
 
-  if (initializationPromise) {
-    return initializationPromise;
+  if (initPromise) {
+    return initPromise;
   }
 
-  initializationPromise = captureReferral()
+  initPromise = captureReferral()
     .then(() => {
       isReady = true;
       return cleanup;
     })
     .finally(() => {
-      initializationPromise = null;
+      initPromise = null;
     });
 
-  return initializationPromise;
+  return initPromise;
 }

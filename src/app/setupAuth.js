@@ -15,12 +15,17 @@ import { getPushNotifications } from '../features/push-notifications/index.js';
 import { showEnableNotificationsPrompt } from '../features/notifications/index.js';
 
 let isReady = false;
-let initializationPromise = null;
+let initPromise = null;
 let cleanup = () => {
   isReady = false;
 };
 
 /**
+ * Setup contract:
+ * - idempotent: returns existing cleanup when already ready
+ * - single-flight: concurrent callers share one init promise
+ * - teardown: cleanup aborts all auth-bound subscriptions
+ *
  * Setup auth at app-composition level:
  * - register auth-driven listeners first
  * - initialize auth second (so initial auth lifecycle facts are observed)
@@ -32,11 +37,11 @@ export function setupAuth(options = {}) {
   if (isReady) {
     return Promise.resolve(cleanup);
   }
-  if (initializationPromise) {
-    return initializationPromise;
+  if (initPromise) {
+    return initPromise;
   }
 
-  initializationPromise = (async () => {
+  initPromise = (async () => {
     const { lobbyElement } = options;
     const ac = new AbortController();
     let initialized = false;
@@ -131,8 +136,8 @@ export function setupAuth(options = {}) {
       throw error;
     }
   })().finally(() => {
-    initializationPromise = null;
+    initPromise = null;
   });
 
-  return initializationPromise;
+  return initPromise;
 }

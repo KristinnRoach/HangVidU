@@ -4,45 +4,83 @@ import { initI18n, onLocaleChange } from '../i18n/index.js';
 import { updateI18nElements, getElements } from '../elements.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 
-let unsubscribeLocaleChange = null;
+let isReady = false;
+let initPromise = null;
+let cleanup = () => {
+  isReady = false;
+};
+
+const DEFAULT_CRITICAL_ELEMENTS = [
+  'localVideoEl',
+  'remoteVideoEl',
+  'localBoxEl',
+  'remoteBoxEl',
+  'chatControls',
+  'lobbyDiv',
+  'titleAuthBar',
+];
+
+const DEFAULT_INTERACTIVE_ELEMENTS = ['callBtn', 'lobbyCallBtn', 'hangUpBtn'];
 
 /**
+ * Setup contract:
+ * - idempotent: returns existing cleanup when already ready
+ * - single-flight: concurrent callers share one init promise
+ * - teardown: cleanup unsubscribes locale hydration listener
+ *
  * Run minimal UI/i18n preflight before app feature setup.
  *
- * @returns {Promise<boolean>} false when critical UI elements are missing
+ * @param {{ criticalElements?: string[], interactiveElements?: string[] }} [options]
+ * @returns {Promise<() => void>}
  */
-export async function setupInitPreflight() {
-  // Validate critical elements first
-  const elements = getElements();
-  const criticalElements = [
-    'localVideoEl',
-    'remoteVideoEl',
-    'localBoxEl',
-    'remoteBoxEl',
-    'chatControls',
-    'lobbyDiv',
-    'titleAuthBar',
-    'callBtn',
-    'lobbyCallBtn',
-    'hangUpBtn',
-  ];
-
-  const missingCritical = criticalElements.filter((name) => !elements[name]);
-  if (missingCritical.length > 0) {
-    console.error('Critical elements missing:', missingCritical);
-    devDebug('Error: Required UI elements not found.');
-    return false;
+export function setupInitPreflight(options = {}) {
+  if (isReady) {
+    return Promise.resolve(cleanup);
+  }
+  if (initPromise) {
+    return initPromise;
   }
 
-  initUI();
-  initIcons();
+  initPromise = (async () => {
+    const criticalElements =
+      options.criticalElements ?? DEFAULT_CRITICAL_ELEMENTS;
+    const interactiveElements =
+      options.interactiveElements ?? DEFAULT_INTERACTIVE_ELEMENTS;
 
-  await initI18n();
+    // Validate critical elements first
+    const elements = getElements();
+    const missingCritical = criticalElements.filter((name) => !elements[name]);
+    if (missingCritical.length > 0) {
+      console.error('Critical elements missing:', missingCritical);
+      devDebug('Error: Required UI elements not found.');
+      throw new Error('setupInitPreflight failed: required UI missing');
+    }
 
-  // Hydrate i18n attributes in index.html and re-hydrate on locale change
-  updateI18nElements();
-  unsubscribeLocaleChange?.();
-  unsubscribeLocaleChange = onLocaleChange(() => updateI18nElements());
+    const missingInteractive = interactiveElements.filter(
+      (name) => !elements[name],
+    );
+    if (missingInteractive.length > 0) {
+      console.warn('Optional interactive controls missing:', missingInteractive);
+    }
 
-  return true;
+    initUI();
+    initIcons();
+
+    await initI18n();
+
+    // Hydrate i18n attributes in index.html and re-hydrate on locale change
+    updateI18nElements();
+    const unsubscribeLocaleChange = onLocaleChange(() => updateI18nElements());
+
+    cleanup = () => {
+      unsubscribeLocaleChange?.();
+      isReady = false;
+    };
+    isReady = true;
+    return cleanup;
+  })().finally(() => {
+    initPromise = null;
+  });
+
+  return initPromise;
 }

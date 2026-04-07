@@ -129,15 +129,11 @@ let showDebugUIForNotifications = false;
 
 let cleanupFunctions = [];
 let isHandlingServiceWorkerNavigation = false;
-let isBootstrapReadyForServiceWorkerMessages = false;
-const pendingServiceWorkerNavigationPaths = [];
+let appSetupCleanup = () => {};
 
 // ============================================================================
 // APP STARTUP
 // ============================================================================
-
-let hasBootstrapped = false;
-let bootstrapPromise = null;
 
 function handleInitFailure(error) {
   for (const button of [callBtn, lobbyCallBtn]) {
@@ -156,101 +152,27 @@ function handleInitFailure(error) {
   showErrorToast(t('error.init.toast'));
 }
 
-function registerServiceWorkerNavigation() {
-  if (!('serviceWorker' in navigator)) {
-    return undefined;
-  }
-
-  navigator.serviceWorker.startMessages?.();
-
-  const handleServiceWorkerMessage = (event) => {
-    const { type, path } = event.data || {};
-
-    if (type !== 'NAVIGATE') return;
-
-    console.log('[MAIN] Received service worker NAVIGATE message', {
-      path,
-    });
-
-    if (!isBootstrapReadyForServiceWorkerMessages) {
-      pendingServiceWorkerNavigationPaths.push(path);
-      return;
-    }
-
-    handleServiceWorkerNavigation(path).catch((error) =>
-      console.warn('[MAIN] Failed to handle service worker NAVIGATE:', error),
-    );
-  };
-
-  navigator.serviceWorker.addEventListener(
-    'message',
-    handleServiceWorkerMessage,
-  );
-
-  return () => {
-    navigator.serviceWorker.removeEventListener(
-      'message',
-      handleServiceWorkerMessage,
-    );
-  };
-}
-
-function flushQueuedServiceWorkerNavigation() {
-  while (pendingServiceWorkerNavigationPaths.length) {
-    const path = pendingServiceWorkerNavigationPaths.shift();
-    handleServiceWorkerNavigation(path).catch((error) =>
-      console.warn('[MAIN] Failed to handle queued service worker NAVIGATE:', {
-        path,
-        error,
-      }),
-    );
-  }
-}
-
-const serviceWorkerNavigationCleanup = registerServiceWorkerNavigation();
-if (typeof serviceWorkerNavigationCleanup === 'function') {
-  cleanupFunctions.push(serviceWorkerNavigationCleanup);
-}
-
 async function bootstrapApp() {
-  if (hasBootstrapped) {
-    return;
-  }
-  if (bootstrapPromise) {
-    return bootstrapPromise;
-  }
-
-  bootstrapPromise = (async () => {
-    let initFailed = false;
-
-    const appCleanup = await setupApp({
-      runInit: init,
-      bindCallUI: () => bindCallUI(CallController),
-      setupMainAppBusListeners,
-      startListeningForSavedRooms,
-      renderContactsList: () => renderContactsList(lobbyDiv),
-      autoInitMsgSessionIfNeeded,
-      autoJoinFromUrl,
-      onInitFailed: (error) => {
-        initFailed = true;
-        handleInitFailure(error);
-      },
-      onReady: () => devDebug('Ready. Click "Start New Chat" to begin.'),
-    });
-
-    if (initFailed) {
-      return;
-    }
-
-    isBootstrapReadyForServiceWorkerMessages = true;
-    flushQueuedServiceWorkerNavigation();
-    cleanupFunctions.push(appCleanup);
-    hasBootstrapped = true;
-  })().finally(() => {
-    bootstrapPromise = null;
+  appSetupCleanup = await setupApp({
+    runPreflight: () => setupInitPreflight(),
+    runInit: init,
+    setupTopBarAndLocale: () =>
+      setupTopBarAndLocale({
+        appWrapper,
+        showDebugUIForNotifications,
+      }),
+    bindCallUI: () => bindCallUI(CallController),
+    setupMainAppBusListeners,
+    startListeningForSavedRooms,
+    renderContactsList: () => renderContactsList(lobbyDiv),
+    autoInitMsgSessionIfNeeded,
+    autoJoinFromUrl,
+    handleServiceWorkerNavigation,
+    onInitFailed: (error) => {
+      handleInitFailure(error);
+    },
+    onReady: () => devDebug('Ready. Click "Start New Chat" to begin.'),
   });
-
-  return bootstrapPromise;
 }
 
 if (document.readyState === 'loading') {
@@ -274,11 +196,6 @@ if (document.readyState === 'loading') {
 // ============================================================================
 
 async function init() {
-  const preflightPassed = await setupInitPreflight();
-  if (!preflightPassed) {
-    return false;
-  }
-
   try {
     const isPWAEnabled = import.meta.env.VITE_ENABLE_PWA !== '0';
     if (isPWAEnabled) {
@@ -308,11 +225,6 @@ async function init() {
 
     // Stream is now lazily initialized when user starts/joins a call
     // This prevents Bluetooth headphones from entering "call mode" on page load
-
-    setupTopBarAndLocale({
-      appWrapper,
-      showDebugUIForNotifications,
-    });
 
     // Initialize push notifications (permission requests happen on auth change)
     try {
@@ -824,4 +736,6 @@ async function cleanup() {
   setYouTubeReady(false);
 
   cleanupFunctions.forEach((cleanupFn) => cleanupFn());
+  appSetupCleanup?.();
+  appSetupCleanup = () => {};
 }
