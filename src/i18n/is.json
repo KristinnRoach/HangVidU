@@ -187,6 +187,7 @@
   "error.push.test": "Villa við prófun tilkynninga: ",
   "error.init.button_title": "Frumstilling mistókst. Endurhlaðið síðuna eða athugið leyfi myndavélar/mikrafóns.",
   "error.init.alert": "HangVidU gat ekki frumstillt rétt.\n\nAthugaðu leyfi myndavélar/mikrafóns og endurhlaðið síðuna.",
+  "error.init.toast": "Tækni vesen! Prófaðu að loka og opna aftur og athuga leyfi.",
 
   "a11y.camera_toggle": "Kveikja/slökkva á myndavél",
   "a11y.camera_switch": "Skipta um myndavél",

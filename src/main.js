@@ -4,17 +4,11 @@
 // HANGVIDU - P2P VIDEO CHAT WITH WATCH-TOGETHER MODE
 // ============================================================================
 
-import { initIcons } from './components/ui/icons.js';
 import './initSentry.js';
 import { removeAllRTDBListeners } from './storage/fb-rtdb/rtdb.js';
 
 import { initializeAuthUI } from './auth/index.js';
 
-import {
-  inAppNotificationManager,
-  createNotificationsToggle,
-  addDebugUpdateButton,
-} from './features/notifications/index.js';
 import { getPushNotifications } from './features/push-notifications/index.js';
 
 import CallController from './features/call/call-controller.js';
@@ -40,8 +34,6 @@ import {
   pasteJoinBtn,
   addContactBtn,
   testNotificationsBtn,
-  getElements,
-  updateI18nElements,
   appWrapper,
 } from './elements.js';
 
@@ -65,7 +57,6 @@ import { clearUrlParam } from './utils/url.js';
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
 import './components/ui/core/ui-state.js'; // Initialize UI state (sets body data-view attribute)
-import { initUI } from './components/ui/core/init-ui.js';
 import { bindCallUI } from './components/ui/core/bind-call-ui.js';
 
 import {
@@ -99,20 +90,15 @@ import { copyToClipboard } from './components/modal/copyLinkModal.js';
 // ____ UI END ____
 
 import { onCallDisconnected } from './components/ui/core/call-lifecycle-ui.js';
-import {
-  initI18n,
-  setLocale,
-  getLocale,
-  t,
-  onLocaleChange,
-} from './i18n/index.js';
+import { t } from './i18n/index.js';
 import { setupMessagingContactsIntegration } from './app/messaging-contacts-integration.js';
+import { setupApp } from './app/setupApp.js';
+import { setupInitPreflight } from './app/setupInitPreflight.js';
+import { setupTopBarAndLocale } from './app/setupTopBarAndLocale.js';
 import { setupMessagingAppBusHandlers } from './features/messaging/handle-appbus-events.js';
 import { setupCallControllerEventWiring } from './features/call/call-event-wiring.js';
 import { setupMainAppBusListeners } from './app/setupMainAppBusListeners.js';
 import { setupAuth } from './app/setupAuth.js';
-import { setupNotificationsHandlers } from './app/setupNotificationsHandlers.js';
-import { setupContacts } from './app/setupContacts.js';
 import { setupUserAccount } from './app/setupUserAccount.js';
 import {
   getCallOptions,
@@ -127,6 +113,7 @@ import {
   settleIncomingCallWaitForRoom,
   startListeningForSavedRooms,
 } from './features/call/room-listeners.js';
+import { showErrorToast } from './components/toast.js';
 
 // Quick access to enable / disable dev debug logs
 setDevDebugEnabled(true);
@@ -142,37 +129,153 @@ let showDebugUIForNotifications = false;
 
 let cleanupFunctions = [];
 let isHandlingServiceWorkerNavigation = false;
+let isBootstrapReadyForServiceWorkerMessages = false;
+const pendingServiceWorkerNavigationPaths = [];
+
+// ============================================================================
+// APP STARTUP
+// ============================================================================
+
+let hasBootstrapped = false;
+let bootstrapPromise = null;
+
+function handleInitFailure(error) {
+  for (const button of [callBtn, lobbyCallBtn]) {
+    if (!button) continue;
+    button.disabled = true;
+    button.title = t('error.init.button_title');
+  }
+
+  if (error) {
+    console.error('[MAIN] bootstrap failed:', error);
+  } else {
+    console.error(
+      'Initialization failed. Call functionality disabled. Please reload the page.',
+    );
+  }
+  showErrorToast(t('error.init.toast'));
+}
+
+function registerServiceWorkerNavigation() {
+  if (!('serviceWorker' in navigator)) {
+    return undefined;
+  }
+
+  navigator.serviceWorker.startMessages?.();
+
+  const handleServiceWorkerMessage = (event) => {
+    const { type, path } = event.data || {};
+
+    if (type !== 'NAVIGATE') return;
+
+    console.log('[MAIN] Received service worker NAVIGATE message', {
+      path,
+    });
+
+    if (!isBootstrapReadyForServiceWorkerMessages) {
+      pendingServiceWorkerNavigationPaths.push(path);
+      return;
+    }
+
+    handleServiceWorkerNavigation(path).catch((error) =>
+      console.warn('[MAIN] Failed to handle service worker NAVIGATE:', error),
+    );
+  };
+
+  navigator.serviceWorker.addEventListener(
+    'message',
+    handleServiceWorkerMessage,
+  );
+
+  return () => {
+    navigator.serviceWorker.removeEventListener(
+      'message',
+      handleServiceWorkerMessage,
+    );
+  };
+}
+
+function flushQueuedServiceWorkerNavigation() {
+  while (pendingServiceWorkerNavigationPaths.length) {
+    const path = pendingServiceWorkerNavigationPaths.shift();
+    handleServiceWorkerNavigation(path).catch((error) =>
+      console.warn('[MAIN] Failed to handle queued service worker NAVIGATE:', {
+        path,
+        error,
+      }),
+    );
+  }
+}
+
+const serviceWorkerNavigationCleanup = registerServiceWorkerNavigation();
+if (typeof serviceWorkerNavigationCleanup === 'function') {
+  cleanupFunctions.push(serviceWorkerNavigationCleanup);
+}
+
+async function bootstrapApp() {
+  if (hasBootstrapped) {
+    return;
+  }
+  if (bootstrapPromise) {
+    return bootstrapPromise;
+  }
+
+  bootstrapPromise = (async () => {
+    let initFailed = false;
+
+    const appCleanup = await setupApp({
+      runInit: init,
+      bindCallUI: () => bindCallUI(CallController),
+      setupMainAppBusListeners,
+      startListeningForSavedRooms,
+      renderContactsList: () => renderContactsList(lobbyDiv),
+      autoInitMsgSessionIfNeeded,
+      autoJoinFromUrl,
+      onInitFailed: (error) => {
+        initFailed = true;
+        handleInitFailure(error);
+      },
+      onReady: () => devDebug('Ready. Click "Start New Chat" to begin.'),
+    });
+
+    if (initFailed) {
+      return;
+    }
+
+    isBootstrapReadyForServiceWorkerMessages = true;
+    flushQueuedServiceWorkerNavigation();
+    cleanupFunctions.push(appCleanup);
+    hasBootstrapped = true;
+  })().finally(() => {
+    bootstrapPromise = null;
+  });
+
+  return bootstrapPromise;
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener(
+    'DOMContentLoaded',
+    () => {
+      bootstrapApp().catch((error) => {
+        console.error('[MAIN] bootstrap failed:', error);
+      });
+    },
+    { once: true },
+  );
+} else {
+  bootstrapApp().catch((error) => {
+    console.error('[MAIN] bootstrap failed:', error);
+  });
+}
 
 // ============================================================================
 // INITIALIZATION & MEDIA SETUP
 // ============================================================================
 
 async function init() {
-  initUI();
-  initIcons(); // Initialize icons from index.html
-
-  await initI18n();
-
-  // Hydrate i18n attributes in index.html and re-hydrate on locale change
-  updateI18nElements();
-  onLocaleChange(() => updateI18nElements());
-
-  // Validate critical elements first
-  const elements = getElements();
-  const criticalElements = [
-    'localVideoEl',
-    'remoteVideoEl',
-    'localBoxEl',
-    'remoteBoxEl',
-    'chatControls',
-    'lobbyDiv',
-    'titleAuthBar',
-  ];
-
-  const missingCritical = criticalElements.filter((name) => !elements[name]);
-  if (missingCritical.length > 0) {
-    console.error('Critical elements missing:', missingCritical);
-    devDebug('Error: Required UI elements not found.');
+  const preflightPassed = await setupInitPreflight();
+  if (!preflightPassed) {
     return false;
   }
 
@@ -206,47 +309,10 @@ async function init() {
     // Stream is now lazily initialized when user starts/joins a call
     // This prevents Bluetooth headphones from entering "call mode" on page load
 
-    // Add debug button for testing update notification (dev only)
-    showDebugUIForNotifications && addDebugUpdateButton();
-
-    // Initialize notification system for production (PWA updates, etc.)
-    const topRightMenu = document.querySelector('.top-right-menu');
-    if (topRightMenu) {
-      const notificationsToggle = createNotificationsToggle({
-        parent: topRightMenu,
-        hideWhenAllRead: false,
-      });
-      inAppNotificationManager.setToggle(notificationsToggle);
-    }
-
-    // TODO: integrate into template (and settings menu once implemented) ____
-    const toggleLangBtn = document.createElement('button');
-    toggleLangBtn.id = 'toggle-lang-btn';
-    toggleLangBtn.textContent = `🌐 ${getLocale().toUpperCase()}`;
-    toggleLangBtn.style.cssText = `
-      position: fixed;
-      bottom: 2px;
-      left: 2px;
-
-      z-index: 0;
-      padding: 8px 12px;
-      background: transparent;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: bold;
-      white-space: nowrap;
-      cursor: pointer;
-      box-shadow: none; 
-    `;
-    toggleLangBtn.onclick = async () => {
-      const newLocale = getLocale() === 'en' ? 'is' : 'en';
-      await setLocale(newLocale);
-      toggleLangBtn.textContent = `🌐 ${newLocale.toUpperCase()}`;
-    };
-    appWrapper && appWrapper.appendChild(toggleLangBtn);
-    // END TODO ________________________
+    setupTopBarAndLocale({
+      appWrapper,
+      showDebugUIForNotifications,
+    });
 
     // Initialize push notifications (permission requests happen on auth change)
     try {
@@ -378,8 +444,12 @@ const handleCall = async () => {
   }
 };
 
-callBtn.onclick = handleCall;
-lobbyCallBtn.onclick = handleCall;
+if (callBtn) {
+  callBtn.onclick = handleCall;
+}
+if (lobbyCallBtn) {
+  lobbyCallBtn.onclick = handleCall;
+}
 
 // Paste & Join: read clipboard, extract room ID, and join
 if (pasteJoinBtn) {
@@ -484,13 +554,15 @@ if (exitWatchModeBtn) {
 }
 
 // TODO: refactor UI (actions?)
-hangUpBtn.onclick = async () => {
-  console.debug('Hanging up...');
+if (hangUpBtn) {
+  hangUpBtn.onclick = async () => {
+    console.debug('Hanging up...');
 
-  // Call CallController.hangUp (emits cancellation and performs cleanup)
-  // The 'cleanup' event handler will handle all UI updates including contact save prompt
-  await CallController.hangUp({ emitCancel: true, reason: 'user_hung_up' });
-};
+    // Call CallController.hangUp (emits cancellation and performs cleanup)
+    // The 'cleanup' event handler will handle all UI updates including contact save prompt
+    await CallController.hangUp({ emitCancel: true, reason: 'user_hung_up' });
+  };
+}
 
 // ============================================================================
 // TEST: JOIN ROOM BUTTON (TEMPORARY - FOR TESTING)
@@ -690,78 +762,6 @@ export async function autoInitMsgSessionIfNeeded() {
   }
 }
 // ! END OF TODO
-
-window.onload = async () => {
-  cleanupFunctions.push(await setupNotificationsHandlers());
-  cleanupFunctions.push(await setupContacts());
-
-  const initSuccess = await init();
-
-  if (!initSuccess) {
-    if (callBtn) {
-      callBtn.disabled = true;
-      callBtn.title = t('error.init.button_title');
-    }
-    console.error(
-      'Initialization failed. Call functionality disabled. Please reload the page.',
-    );
-    alert(t('error.init.alert'));
-    return;
-  }
-
-  // UI handlers (business logic handlers registered separately below)
-  bindCallUI(CallController);
-
-  setupMainAppBusListeners();
-
-  // Start listening for incoming calls on any saved/recent room ids FIRST
-  await startListeningForSavedRooms().catch((e) =>
-    console.warn('Failed to start saved-room listeners', e),
-  );
-
-  // Then render saved contacts list in lobby (now listeners are ready)
-  await renderContactsList(lobbyDiv).catch((e) => {
-    console.warn('Failed to render contacts list:', e);
-  });
-
-  // Auto-open first contact session if user has saved contacts
-  await autoInitMsgSessionIfNeeded().catch((e) => {
-    console.warn('Failed to auto-init messaging session:', e);
-  });
-
-  if ('serviceWorker' in navigator) {
-    const handleServiceWorkerMessage = (event) => {
-      const { type, path } = event.data || {};
-
-      if (type !== 'NAVIGATE') return;
-
-      console.log('[MAIN] Received service worker NAVIGATE message', {
-        path,
-      });
-
-      handleServiceWorkerNavigation(path).catch((error) => {
-        console.warn('[MAIN] Failed to handle service worker NAVIGATE:', error);
-      });
-    };
-
-    navigator.serviceWorker.addEventListener(
-      'message',
-      handleServiceWorkerMessage,
-    );
-    cleanupFunctions.push(() => {
-      navigator.serviceWorker.removeEventListener(
-        'message',
-        handleServiceWorkerMessage,
-      );
-    });
-  }
-
-  // Auto-join if room parameter exists
-  const autoJoinedSuccessfully = await autoJoinFromUrl();
-  if (autoJoinedSuccessfully) return;
-
-  devDebug('Ready. Click "Start New Chat" to begin.');
-};
 
 // Handle page leave, beforeunload is cancellable
 window.addEventListener('beforeunload', async (e) => {
