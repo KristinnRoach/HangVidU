@@ -91,24 +91,35 @@ export class ContactsRTDBAdapter extends ContactsStorageAdapter {
    * @returns {Promise<import('./contact-schema.js').ContactRecord|null>}
    */
   async patch(contactId, patch) {
-    let didExist = true;
+    const contactRef = ref(this.database, this._contactPath(contactId));
+
     const result = await runTransaction(
-      ref(this.database, this._contactPath(contactId)),
+      contactRef,
       (current) => {
         if (current == null) {
-          didExist = false;
+          // Intentionally abort this transaction attempt on null current state.
+          // The fallback get->merge->set path below handles the write when data exists.
           return;
         }
 
         return mergeContactRecord(current, patch);
       },
+      { applyLocally: false },
     );
 
-    if (!didExist || !result.committed) {
-      return null;
+    if (!result.committed) {
+      const latestSnapshot = await get(contactRef);
+      if (!latestSnapshot.exists()) {
+        return null;
+      }
+
+      const mergedRecord = mergeContactRecord(latestSnapshot.val(), patch);
+      await set(contactRef, mergedRecord);
+      return mergedRecord;
     }
 
-    return result.snapshot.val();
+    const nextRecord = result.snapshot.val();
+    return nextRecord == null ? null : nextRecord;
   }
 
   /**
