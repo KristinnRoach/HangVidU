@@ -97,12 +97,17 @@ export function setupMainAppBusListeners() {
       handleCommand(
         'call:outgoing:initiate',
         async ({ contactId, contactNickName, conversationId, roomId }) => {
+          const resolvedContactNickName =
+            typeof contactNickName === 'string' && contactNickName.trim()
+              ? contactNickName.trim()
+              : null;
+
           isDev() &&
             tempWarn(
               '[main.js] call:outgoing:initiate event received with data: ',
               {
                 contactId,
-                contactNickName,
+                contactNickName: resolvedContactNickName,
                 conversationId,
                 roomId,
               },
@@ -119,11 +124,7 @@ export function setupMainAppBusListeners() {
                   .selectConversation(resolvedConversationId, {
                     remoteParticipantIds: [contactId],
                     displayUI: false,
-                    contactNickName:
-                      typeof contactNickName === 'string' &&
-                      contactNickName.trim()
-                        ? contactNickName.trim()
-                        : null,
+                    contactNickName: resolvedContactNickName,
                   })
                   .catch((e) => {
                     console.warn(
@@ -140,7 +141,7 @@ export function setupMainAppBusListeners() {
             }
           }
 
-          callContact(contactId, contactNickName, roomId);
+          callContact(contactId, resolvedContactNickName, roomId);
         },
         { signal: ac.signal },
       );
