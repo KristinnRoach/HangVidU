@@ -128,7 +128,7 @@
     border-radius: 50%;
     background: #3757c1;
     color: #ffffff;
-    font-size: 0.8125em;
+    font-size: 13px;
     font-weight: 600;
     display: inline-flex;
     align-items: center;
@@ -138,7 +138,7 @@
   }
 
   & .messages-topbar-name {
-    font-size: 0.875em;
+    font-size: 14px;
     font-weight: 600;
     color: var(--text-primary);
     white-space: nowrap;
