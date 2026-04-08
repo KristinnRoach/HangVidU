@@ -4,6 +4,7 @@ import { compressImage } from '../../media/image-compress.js';
 import { EventEmitter } from '../../events/event-emitter.js';
 import { getUserId } from '../../auth/index.js';
 import { getUserProfile } from '../../storage/user/index.js';
+import { contactsService } from '../contacts/index.js';
 import {
   createFileMessage,
   createTextMessage,
@@ -21,7 +22,10 @@ const MAX_FILE_SIZE = 1 * 1024 * 1024;
  */
 
 /**
- * @typedef {{ displayName: string|null, photoURL: string|null }} ParticipantProfile
+ * @typedef {{
+ *   userName: string|null,
+ *   photoURL: string|null
+ * }} ParticipantProfile
  */
 
 /**
@@ -29,6 +33,7 @@ const MAX_FILE_SIZE = 1 * 1024 * 1024;
  * @property {string} conversationId
  * @property {string[]} remoteParticipantIds
  * @property {Object<string, ParticipantProfile>} participants - keyed by userId
+ * @property {Object<string, string>} localContactNickNames - keyed by userId
  * @property {MessageEvent[]} history
  * @property {(() => void)|null} _unsubscribe
  */
@@ -181,10 +186,11 @@ export class MessagingController extends EventEmitter {
    * @param {Object} [options]
    * @param {string[]} [options.remoteParticipantIds] - User IDs of other participants (excludes self)
    * @param {boolean} [options.displayUI] - Whether to open the conversation panel
+   * @param {string|null} [options.contactNickName] - Optional local contact nickname hint
    */
   async selectConversation(
     conversationId,
-    { remoteParticipantIds = [], displayUI = false } = {},
+    { remoteParticipantIds = [], displayUI = false, contactNickName = null } = {},
   ) {
     if (!conversationId || typeof conversationId !== 'string') {
       throw new Error('conversationId must be a non-empty string');
@@ -226,9 +232,19 @@ export class MessagingController extends EventEmitter {
       conversationId,
       remoteParticipantIds,
       participants: {},
+      localContactNickNames: {},
       history: [],
       _unsubscribe: null,
     };
+
+    if (
+      remoteParticipantIds.length === 1 &&
+      typeof contactNickName === 'string' &&
+      contactNickName.trim()
+    ) {
+      conversationState.localContactNickNames[remoteParticipantIds[0]] =
+        contactNickName.trim();
+    }
 
     // Add conversation to map before async work — removed on failure below
     this.conversations.set(conversationId, conversationState);
@@ -315,6 +331,13 @@ export class MessagingController extends EventEmitter {
       this._fetchParticipantProfile(participantId).then((profile) => {
         this._updateParticipantMeta(conversationId, participantId, profile);
       });
+      this._fetchLocalContactNickName(participantId).then((contactNickName) => {
+        this._updateLocalContactNickName(
+          conversationId,
+          participantId,
+          contactNickName,
+        );
+      });
     }
   }
 
@@ -330,6 +353,17 @@ export class MessagingController extends EventEmitter {
     if (!state || !profile) return;
 
     state.participants[participantId] = profile;
+    this.emit('conversation:meta-updated', {
+      conversationId,
+      participants: { ...state.participants },
+    });
+  }
+
+  _updateLocalContactNickName(conversationId, participantId, contactNickName) {
+    const state = this.conversations.get(conversationId);
+    if (!state || !contactNickName) return;
+
+    state.localContactNickNames[participantId] = contactNickName;
     this.emit('conversation:meta-updated', {
       conversationId,
       participants: { ...state.participants },
@@ -360,10 +394,19 @@ export class MessagingController extends EventEmitter {
     if (!state) return null;
     const ids = state.remoteParticipantIds;
     if (ids.length === 1) {
-      return state.participants[ids[0]]?.displayName || null;
+      return (
+        state.localContactNickNames[ids[0]] ||
+        state.participants[ids[0]]?.userName ||
+        null
+      );
     }
     const names = ids
-      .map((id) => state.participants[id]?.displayName || '?')
+      .map(
+        (id) =>
+          state.localContactNickNames[id] ||
+          state.participants[id]?.userName ||
+          '?',
+      )
       .filter(Boolean);
     return names.length > 0 ? names.join(', ') : null;
   }
@@ -436,6 +479,20 @@ export class MessagingController extends EventEmitter {
         participantId,
         e,
       );
+    }
+  }
+
+  async _fetchLocalContactNickName(participantId) {
+    try {
+      const contact = await contactsService.getContact(participantId);
+      return contact?.contactNickName?.trim() || null;
+    } catch (e) {
+      console.warn(
+        '[MessagingController] Failed to fetch local contact nickname for participant:',
+        participantId,
+        e,
+      );
+      return null;
     }
   }
 

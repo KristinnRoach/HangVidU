@@ -33,7 +33,7 @@ describe('ContactsRTDBAdapter', () => {
     mocks.runTransaction.mockImplementation(async (_refArg, updateFn) => {
       const nextValue = updateFn({
         contactId: 'u1',
-        contactName: 'Alice',
+        contactNickName: 'Alice',
         roomId: 'room-1',
         savedAt: 10,
         lastInteractionAt: 20,
@@ -60,7 +60,7 @@ describe('ContactsRTDBAdapter', () => {
     );
     expect(result).toEqual({
       contactId: 'u1',
-      contactName: 'Alice',
+      contactNickName: 'Alice',
       conversationId: null,
       roomId: 'room-2',
       savedAt: 10,
@@ -87,6 +87,71 @@ describe('ContactsRTDBAdapter', () => {
     expect(mocks.set).not.toHaveBeenCalled();
   });
 
+  it('promotes legacy contactName to contactNickName on get and persists it', async () => {
+    mocks.get.mockResolvedValue({
+      exists: () => true,
+      val: () => ({
+        contactId: 'u1',
+        contactName: ' Legacy Alice ',
+        roomId: 'room-1',
+        savedAt: 10,
+        lastInteractionAt: 20,
+      }),
+    });
+
+    const result = await adapter.get('u1');
+
+    expect(result).toEqual({
+      contactId: 'u1',
+      contactNickName: 'Legacy Alice',
+      roomId: 'room-1',
+      savedAt: 10,
+      lastInteractionAt: 20,
+    });
+    expect(mocks.set).toHaveBeenCalledWith(
+      { path: 'users/owner-1/contacts/u1' },
+      {
+        contactId: 'u1',
+        contactNickName: 'Legacy Alice',
+        roomId: 'room-1',
+        savedAt: 10,
+        lastInteractionAt: 20,
+      },
+    );
+  });
+
+  it('uses contact path key as contactId fallback for legacy record missing contactId', async () => {
+    mocks.get.mockResolvedValue({
+      exists: () => true,
+      val: () => ({
+        contactName: ' Legacy No Id ',
+        roomId: 'room-1',
+        savedAt: 10,
+        lastInteractionAt: 20,
+      }),
+    });
+
+    const result = await adapter.get('u1');
+
+    expect(result).toEqual({
+      contactId: 'u1',
+      contactNickName: 'Legacy No Id',
+      roomId: 'room-1',
+      savedAt: 10,
+      lastInteractionAt: 20,
+    });
+    expect(mocks.set).toHaveBeenCalledWith(
+      { path: 'users/owner-1/contacts/u1' },
+      {
+        contactId: 'u1',
+        contactNickName: 'Legacy No Id',
+        roomId: 'room-1',
+        savedAt: 10,
+        lastInteractionAt: 20,
+      },
+    );
+  });
+
   it('falls back to get+set when transaction is not committed but record exists', async () => {
     mocks.runTransaction.mockResolvedValue({
       committed: false,
@@ -98,7 +163,7 @@ describe('ContactsRTDBAdapter', () => {
       exists: () => true,
       val: () => ({
         contactId: 'u1',
-        contactName: 'Alice',
+        contactNickName: 'Alice',
         roomId: 'room-1',
         savedAt: 10,
         lastInteractionAt: 20,
@@ -115,7 +180,7 @@ describe('ContactsRTDBAdapter', () => {
       { path: 'users/owner-1/contacts/u1' },
       {
         contactId: 'u1',
-        contactName: 'Alice',
+        contactNickName: 'Alice',
         conversationId: null,
         roomId: 'room-2',
         savedAt: 10,
@@ -124,7 +189,7 @@ describe('ContactsRTDBAdapter', () => {
     );
     expect(result).toEqual({
       contactId: 'u1',
-      contactName: 'Alice',
+      contactNickName: 'Alice',
       conversationId: null,
       roomId: 'room-2',
       savedAt: 10,
@@ -137,7 +202,7 @@ describe('ContactsRTDBAdapter', () => {
       updateFn(null);
       const nextValue = updateFn({
         contactId: 'u1',
-        contactName: 'Alice',
+        contactNickName: 'Alice',
         roomId: 'room-1',
         savedAt: 10,
         lastInteractionAt: 20,
@@ -158,7 +223,7 @@ describe('ContactsRTDBAdapter', () => {
 
     expect(result).toEqual({
       contactId: 'u1',
-      contactName: 'Alice',
+      contactNickName: 'Alice',
       conversationId: null,
       roomId: 'room-2',
       savedAt: 10,

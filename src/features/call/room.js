@@ -116,10 +116,10 @@ class RoomService {
   /**
    * Join a room as a member (typically a peer joining an existing room)
    */
-  async joinRoom(roomId, userId, displayName = 'Guest User') {
+  async joinRoom(roomId, userId, userName = 'Guest User') {
     const memberRef = getRoomMemberRef(roomId, userId);
     await set(memberRef, {
-      displayName,
+      userName,
       joinedAt: Date.now(),
     });
     getDiagnosticLogger().logFirebaseOperation(

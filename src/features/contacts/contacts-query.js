@@ -17,8 +17,8 @@ export function sortContactsByLastInteraction(contacts) {
       return bTime - aTime;
     }
 
-    const aName = (a?.contactName || '').toLowerCase();
-    const bName = (b?.contactName || '').toLowerCase();
+    const aName = (a?.contactNickName || '').toLowerCase();
+    const bName = (b?.contactNickName || '').toLowerCase();
     return aName.localeCompare(bName);
   });
 }

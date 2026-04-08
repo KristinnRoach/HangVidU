@@ -22,7 +22,7 @@ let storedOnHide = null;
  */
 export async function showOutgoingCallUI(
   roomId,
-  contactName,
+  contactNickName,
   { onCancel, onHide } = {},
 ) {
   const diag = getDiagnosticLogger();
@@ -35,7 +35,7 @@ export async function showOutgoingCallUI(
   storedOnHide = onHide || null;
 
   // Track outgoing call state in RTDB
-  await setOutgoingCallState(roomId, contactName);
+  await setOutgoingCallState(roomId, contactNickName);
 
   // Create modal overlay
   const overlay = document.createElement('div');
@@ -65,7 +65,7 @@ export async function showOutgoingCallUI(
 
   const title = document.createElement('h2');
   title.textContent = t('call.calling', {
-    name: contactName || t('shared.contact'),
+    name: contactNickName || t('shared.contact'),
   });
   title.style.cssText = `
     margin: 0 0 10px 0;
@@ -96,7 +96,7 @@ export async function showOutgoingCallUI(
 
   const handleCancel = async () => {
     diag.logCallingUILifecycle('CANCEL', roomId, {
-      contactName,
+      contactNickName,
       reason: 'user_cancelled',
       duration: Date.now() - showTime,
     });
@@ -144,7 +144,7 @@ export async function showOutgoingCallUI(
   // Auto-timeout after 30 seconds
   timeoutId = setTimeout(async () => {
     diag.logCallingUILifecycle('TIMEOUT', roomId, {
-      contactName,
+      contactNickName,
       reason: 'auto_timeout',
       duration: Date.now() - showTime,
       timeoutMs: CALL_TIMEOUT_MS,

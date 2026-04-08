@@ -87,8 +87,8 @@ export async function renderContactsList(lobbyElement) {
   contactsContainer.innerHTML = `
     <div class="contacts-list">
       ${entries
-        .map(({ id, contactId, contactName, roomId, conversationId }) => {
-          const rawName = contactName || t('contact.no_name');
+        .map(({ id, contactId, contactNickName, roomId, conversationId }) => {
+          const rawName = contactNickName || t('contact.no_name');
           const escapedName = escapeHtml(rawName);
           const shortName =
             escapedName.length > MAX_CONTACT_NAME_CHARS
@@ -167,7 +167,7 @@ function attachContactListeners(container, lobbyElement) {
   container.querySelectorAll('.contact-call-btn').forEach((nameEl) => {
     nameEl.onclick = async () => {
       let roomId = nameEl.getAttribute('data-room-id');
-      const contactName = nameEl.getAttribute('data-contact-name');
+      const contactNickName = nameEl.getAttribute('data-contact-name');
       const contactId = nameEl.getAttribute('data-contact-id');
       const conversationId =
         nameEl.getAttribute('data-conversation-id') || null;
@@ -175,7 +175,7 @@ function attachContactListeners(container, lobbyElement) {
       if (roomId || contactId) {
         dispatchCommand('call:outgoing:initiate', {
           contactId,
-          contactName,
+          contactNickName,
           conversationId,
           roomId,
         });
@@ -201,6 +201,7 @@ function attachContactListeners(container, lobbyElement) {
             conversationId,
             remoteParticipantIds: [contactId],
             displayUI: true,
+            contactNickName: el.getAttribute('data-contact-name') || null,
           });
 
           clearUnreadBadge(contactId);
@@ -224,7 +225,9 @@ function attachContactListeners(container, lobbyElement) {
       const contact = contacts[contactId];
       if (!contact) return;
 
-      const result = await editContactModal(contact.contactName || '');
+      const result = await editContactModal(
+        contact.contactNickName ?? '',
+      );
       if (!result) return;
 
       if (result.action === 'rename') {

@@ -29,7 +29,7 @@ function _createMessageId() {
 function _baseFields() {
   const from = getUserId();
   if (!from) throw new Error('Cannot create message: no active user id');
-  const fromName = getUser()?.displayName || 'Guest User';
+  const fromName = getUser()?.userName || 'Guest User';
   return {
     messageId: _createMessageId(),
     from,

@@ -21,20 +21,28 @@ export class UserProfileRTDBAdapter {
 
   /**
    * @param {string} userId
-   * @returns {Promise<{ displayName?: string|null, photoURL?: string|null }|null>}
+   * @returns {Promise<{ userName?: string|null, photoURL?: string|null }|null>}
    */
   async get(userId) {
     const snapshot = await get(ref(this.database, this._profilePath(userId)));
-    return snapshot.exists() ? snapshot.val() : null;
+    if (!snapshot.exists()) {
+      return null;
+    }
+
+    const profile = snapshot.val() || {};
+    return {
+      ...profile,
+      userName: profile.userName ?? null,
+    };
   }
 
   /**
-   * @param {{ uid: string, displayName?: string|null, photoURL?: string|null }} user
+   * @param {{ uid: string, userName?: string|null, photoURL?: string|null }} user
    * @returns {Promise<void>}
    */
   async save(user) {
     await set(ref(this.database, this._profilePath(user.uid)), {
-      displayName: user.displayName || null,
+      userName: user.userName ?? null,
       photoURL: user.photoURL || null,
     });
   }

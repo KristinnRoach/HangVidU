@@ -24,7 +24,7 @@ describe('auth-state shared auth events', () => {
     setState({
       status: 'authenticated',
       isLoggedIn: true,
-      user: { uid: 'u1', displayName: 'User 1' },
+      user: { uid: 'u1', userName: 'User 1' },
     });
     // Flush the void async emission chain
     await new Promise((r) => setTimeout(r, 0));
@@ -62,7 +62,7 @@ describe('auth-state shared auth events', () => {
     setState({
       status: 'authenticated',
       isLoggedIn: true,
-      user: { uid: 'u1', displayName: 'User 1' },
+      user: { uid: 'u1', userName: 'User 1' },
     });
     await new Promise((r) => setTimeout(r, 0));
     mocks.events.publishAndAwait.mockClear();

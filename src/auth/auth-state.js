@@ -8,7 +8,7 @@ let state = {
   // 'idle' = before initAuth() completes
   // 'loading' = auth operation in flight (sign-in/out/delete)
   // 'authenticated' | 'unauthenticated' = stable login state
-  user: null, // { uid, displayName, email, photoURL } | null
+  user: null, // { uid, userName, email, photoURL } | null
   isLoggedIn: false,
 };
 
@@ -100,7 +100,7 @@ export function getIsLoggedIn() {
 /**
  * Get a defensive copy of the current authenticated user.
  *
- * @returns {{ uid: string, displayName: string | null, email: string | null, photoURL: string | null } | null}
+ * @returns {{ uid: string, userName: string | null, email: string | null, photoURL: string | null } | null}
  */
 export function getUser() {
   return state.user ? { ...state.user } : null;
@@ -121,7 +121,7 @@ export function getLoggedInUserId() {
 }
 
 export function getUserName() {
-  return state.user?.displayName ?? null;
+  return state.user?.userName ?? null;
 }
 
 // --- Subscribe to state changes ---

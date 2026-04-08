@@ -10,7 +10,7 @@ describe('ContactsLocalAdapter', () => {
     let raw = JSON.stringify({
       u1: {
         contactId: 'u1',
-        contactName: 'Alice',
+        contactNickName: 'Alice',
         roomId: 'room-1',
         savedAt: 10,
         lastInteractionAt: 20,
@@ -37,7 +37,7 @@ describe('ContactsLocalAdapter', () => {
 
     expect(result).toEqual({
       contactId: 'u1',
-      contactName: 'Alice',
+      contactNickName: 'Alice',
       conversationId: null,
       roomId: 'room-1',
       savedAt: 10,
@@ -49,5 +49,73 @@ describe('ContactsLocalAdapter', () => {
 
   it('returns null when patching a missing record', async () => {
     await expect(adapter.patch('missing', { roomId: 'room-2' })).resolves.toBeNull();
+  });
+
+  it('promotes legacy contactName to contactNickName on get and persists it', async () => {
+    let raw = JSON.stringify({
+      u2: {
+        contactId: 'u2',
+        contactName: ' Legacy Bob ',
+        roomId: 'room-2',
+        savedAt: 11,
+        lastInteractionAt: 22,
+      },
+    });
+
+    const writes = [];
+    const legacyAdapter = new ContactsLocalAdapter({
+      storage: {
+        getItem: () => raw,
+        setItem: (_key, value) => {
+          writes.push(value);
+          raw = value;
+        },
+      },
+      storageKey: 'contacts',
+    });
+
+    const result = await legacyAdapter.get('u2');
+
+    expect(result).toEqual({
+      contactId: 'u2',
+      contactNickName: 'Legacy Bob',
+      roomId: 'room-2',
+      savedAt: 11,
+      lastInteractionAt: 22,
+    });
+    expect(writes.length).toBe(1);
+    expect(JSON.parse(raw).u2.contactNickName).toBe('Legacy Bob');
+  });
+
+  it('uses map key as contactId fallback for legacy records missing contactId', async () => {
+    let raw = JSON.stringify({
+      u3: {
+        contactName: 'Legacy No Id',
+        roomId: 'room-3',
+        savedAt: 13,
+        lastInteractionAt: 23,
+      },
+    });
+
+    const legacyAdapter = new ContactsLocalAdapter({
+      storage: {
+        getItem: () => raw,
+        setItem: (_key, value) => {
+          raw = value;
+        },
+      },
+      storageKey: 'contacts',
+    });
+
+    const result = await legacyAdapter.get('u3');
+
+    expect(result).toEqual({
+      contactId: 'u3',
+      contactNickName: 'Legacy No Id',
+      roomId: 'room-3',
+      savedAt: 13,
+      lastInteractionAt: 23,
+    });
+    expect(JSON.parse(raw).u3.contactId).toBe('u3');
   });
 });

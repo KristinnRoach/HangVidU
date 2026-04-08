@@ -8,13 +8,20 @@ import { MessagingController } from './messaging-controller.js';
 vi.mock('../../auth/index.js', () => ({
   getLoggedInUserId: vi.fn(() => 'me'),
   getUserId: vi.fn(() => 'me'),
-  getUser: vi.fn(() => ({ uid: 'me', displayName: 'Test User' })),
+  getUser: vi.fn(() => ({ uid: 'me', userName: 'Test User' })),
 }));
 
 // Mock profile
 const mockGetUserProfile = vi.fn(() => Promise.resolve(null));
 vi.mock('../../storage/user/index.js', () => ({
   getUserProfile: (...args) => mockGetUserProfile(...args),
+}));
+
+const mockGetContact = vi.fn(() => Promise.resolve(null));
+vi.mock('../contacts/index.js', () => ({
+  contactsService: {
+    getContact: (...args) => mockGetContact(...args),
+  },
 }));
 
 // Mock file processing (no-op in tests)
@@ -119,6 +126,10 @@ describe('MessagingController', () => {
   let mockStore;
 
   beforeEach(() => {
+    mockGetUserProfile.mockReset();
+    mockGetUserProfile.mockResolvedValue(null);
+    mockGetContact.mockReset();
+    mockGetContact.mockResolvedValue(null);
     mockStore = new MockStore();
     controller = new MessagingController(mockStore);
   });
@@ -188,7 +199,7 @@ describe('MessagingController', () => {
 
   it('should fetch participant profile and emit conversation:meta-updated', async () => {
     const profile = {
-      displayName: 'Alice',
+      userName: 'Alice',
       photoURL: 'https://example.com/alice.jpg',
     };
     mockGetUserProfile.mockResolvedValueOnce(profile);
@@ -215,6 +226,67 @@ describe('MessagingController', () => {
     expect(controller.getConversationPhotoURL('contactA_me')).toBe(
       'https://example.com/alice.jpg',
     );
+  });
+
+  it('should prefer local contactNickName over participant userName', async () => {
+    mockGetUserProfile.mockResolvedValueOnce({
+      userName: 'Google Name',
+      photoURL: null,
+    });
+    mockGetContact.mockResolvedValueOnce({
+      contactId: 'contactA',
+      contactNickName: 'App Name',
+      roomId: null,
+      conversationId: 'contactA_me',
+      savedAt: Date.now(),
+      lastInteractionAt: Date.now(),
+    });
+
+    await controller.selectConversation('contactA_me', {
+      remoteParticipantIds: ['contactA'],
+    });
+
+    await vi.waitFor(() => {
+      expect(controller.getConversationDisplayName('contactA_me')).toBe(
+        'App Name',
+      );
+    });
+  });
+
+  it('should fall back to participant userName when local contactNickName is missing', async () => {
+    mockGetUserProfile.mockResolvedValueOnce({
+      userName: 'Google Name',
+      photoURL: null,
+    });
+    mockGetContact.mockResolvedValueOnce(null);
+
+    await controller.selectConversation('contactA_me', {
+      remoteParticipantIds: ['contactA'],
+    });
+
+    await vi.waitFor(() => {
+      expect(controller.getConversationDisplayName('contactA_me')).toBe(
+        'Google Name',
+      );
+    });
+  });
+
+  it('should resolve participant userName from profile', async () => {
+    mockGetUserProfile.mockResolvedValueOnce({
+      userName: 'Google Name',
+      photoURL: null,
+    });
+    mockGetContact.mockResolvedValueOnce(null);
+
+    await controller.selectConversation('contactA_me', {
+      remoteParticipantIds: ['contactA'],
+    });
+
+    await vi.waitFor(() => {
+      expect(controller.getConversationDisplayName('contactA_me')).toBe(
+        'Google Name',
+      );
+    });
   });
 
   it('should send message through store and return message', async () => {

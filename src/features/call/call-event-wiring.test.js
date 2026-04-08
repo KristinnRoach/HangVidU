@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => {
     },
     auth: {
       getUserId: vi.fn(() => 'user-123'),
-      getUser: vi.fn(() => ({ displayName: 'Caller Example' })),
+      getUser: vi.fn(() => ({ userName: 'Caller Example' })),
     },
     pushController: {
       sendMissedCall: vi.fn(),
@@ -106,7 +106,7 @@ describe('setupCallControllerEventWiring', () => {
     mocks.cleanupHandler = null;
     mocks.contactsService.getContactByRoomId.mockResolvedValue({
       contactId: 'contact-456',
-      contactName: 'Saved Contact',
+      contactNickName: 'Saved Contact',
     });
     mocks.pushController.sendMissedCall.mockRejectedValue(
       new Error('push backend unavailable'),

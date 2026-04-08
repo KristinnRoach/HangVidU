@@ -114,6 +114,7 @@ import {
   startListeningForSavedRooms,
 } from './features/call/room-listeners.js';
 import { showErrorToast } from './components/toast.js';
+import { dispatchCommandAndAwait } from './events/index.js';
 
 // Quick access to enable / disable dev debug logs
 setDevDebugEnabled(true);
@@ -578,9 +579,29 @@ async function handleServiceWorkerNavigation(path) {
     }
 
     try {
-      const conversationId =
-        conversationIdFromUrl ??
-        (contactId ? await contactsService.getConversationId(contactId) : null);
+      let conversationId = conversationIdFromUrl ?? null;
+
+      if (contactId) {
+        const contactConversationId =
+          await contactsService.getConversationId(contactId);
+
+        if (contactConversationId) {
+          if (
+            conversationIdFromUrl &&
+            conversationIdFromUrl !== contactConversationId
+          ) {
+            console.warn(
+              '[MAIN] SW navigation -> conversationId mismatch; preferring saved contact conversation',
+              {
+                contactId,
+                conversationIdFromUrl,
+                contactConversationId,
+              },
+            );
+          }
+          conversationId = contactConversationId;
+        }
+      }
 
       if (!conversationId) {
         console.warn(
@@ -592,7 +613,8 @@ async function handleServiceWorkerNavigation(path) {
         return false;
       }
 
-      await messagingController.selectConversation(conversationId, {
+      await dispatchCommandAndAwait('messaging:conversation:select', {
+        conversationId,
         remoteParticipantIds: contactId ? [contactId] : [],
         displayUI: true,
       });
@@ -680,9 +702,11 @@ export async function autoInitMsgSessionIfNeeded() {
     // Pre select the conversation for the first contact
     const conversationId = firstContact.conversationId ?? null;
     if (!conversationId) return;
-    await messagingController.selectConversation(conversationId, {
+    await dispatchCommandAndAwait('messaging:conversation:select', {
       remoteParticipantIds: [firstContact.contactId],
+      conversationId,
       displayUI: false,
+      contactNickName: firstContact.contactNickName ?? null,
     });
   } catch (error) {
     console.warn(

@@ -20,24 +20,24 @@ describe('ContactsStore', () => {
   it('delegates patch() to the adapter with a normalized patch', async () => {
     adapter.patch.mockResolvedValue({
       contactId: 'u1',
-      contactName: 'Alice',
+      contactNickName: 'Alice',
       roomId: 'room-2',
       savedAt: 10,
       lastInteractionAt: 20,
     });
 
     const result = await store.patch('u1', {
-      contactName: '  Alice  ',
+      contactNickName: '  Alice  ',
       roomId: ' room-2 ',
     });
 
     expect(adapter.patch).toHaveBeenCalledWith('u1', {
-      contactName: 'Alice',
+      contactNickName: 'Alice',
       roomId: 'room-2',
     });
     expect(result).toEqual({
       contactId: 'u1',
-      contactName: 'Alice',
+      contactNickName: 'Alice',
       roomId: 'room-2',
       savedAt: 10,
       lastInteractionAt: 20,

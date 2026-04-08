@@ -7,7 +7,7 @@ export const CALL_TIMEOUT_MS = import.meta.env.DEV ? 15000 : 60000; // 60 second
 /**
  * Write outgoing call state to RTDB so we can verify call freshness
  */
-export async function setOutgoingCallState(roomId, targetContactName = null) {
+export async function setOutgoingCallState(roomId, targetContactNickName = null) {
   const userId = getUserId();
   const loggedInUid = getLoggedInUserId();
 
@@ -17,7 +17,7 @@ export async function setOutgoingCallState(roomId, targetContactName = null) {
   const outgoingRef = getUserOutgoingCallRef(loggedInUid);
   await set(outgoingRef, {
     roomId,
-    targetContactName,
+    targetContactNickName,
     initiatedAt: Date.now(),
     callerUserId: userId,
   });

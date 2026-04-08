@@ -26,7 +26,7 @@ export function createMissedCallNotification({
   onCallBack,
   onDismiss,
 }) {
-  const displayName = callerName || 'Someone';
+  const callerLabel = callerName || 'Someone';
 
   // TODO: Add reactive time display (e.g., "2m ago", updates every minute)
 
@@ -39,7 +39,7 @@ export function createMissedCallNotification({
       `,
       body: `
         <p class="notification-message">
-          <strong>${escapeHtml(displayName)}</strong> [[t:notification.missed.suffix]]
+          <strong>${escapeHtml(callerLabel)}</strong> [[t:notification.missed.suffix]]
         </p>
       `,
       actions: `

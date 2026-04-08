@@ -38,7 +38,7 @@ export async function sendInvite(toUserId, toName = 'User') {
 
   const inviteData = {
     fromUserId: myUserId,
-    fromName: currentUser.displayName || 'Anonymous',
+    fromName: currentUser.userName || 'Anonymous',
     fromEmail: currentUser.email || '',
     fromPhotoURL: currentUser.photoURL || null,
     roomId: roomId,
@@ -121,7 +121,7 @@ export async function acceptInvite(fromUserId, inviteData) {
   );
   await set(acceptNotificationRef, {
     acceptedByUserId: myUserId,
-    acceptedByName: currentUser.displayName || 'User',
+    acceptedByName: currentUser.userName || 'User',
     acceptedByEmail: currentUser.email || '',
     acceptedByPhotoURL: currentUser.photoURL || null,
     roomId: inviteData.roomId,

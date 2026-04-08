@@ -13,14 +13,46 @@ export function assertContactId(contactId) {
   return ContactIdSchema.parse(contactId);
 }
 
-function normalizeContactName(contactName) {
-  if (contactName == null) {
+function getTrimmedString(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+/**
+ * Build a canonical contact record from potentially-legacy input.
+ * If `contactNickName` is missing but legacy `contactName` exists, it is promoted.
+ *
+ * @param {unknown} input
+ * @param {{ now?: number }} [options]
+ * @returns {{ record: import('./contact-schema.js').ContactRecord, didPromoteLegacyContactName: boolean }}
+ */
+export function canonicalizeContactRecord(input, { now = Date.now() } = {}) {
+  if (!input || typeof input !== 'object') {
+    throw new TypeError('contact record must be an object');
+  }
+
+  const nextInput = { ...input };
+  const nickName = getTrimmedString(nextInput.contactNickName);
+  const legacyName = getTrimmedString(nextInput.contactName);
+  const didPromoteLegacyContactName = !nickName && !!legacyName;
+
+  if (didPromoteLegacyContactName) {
+    nextInput.contactNickName = legacyName;
+  }
+
+  return {
+    record: normalizeContactRecord(nextInput, { now }),
+    didPromoteLegacyContactName,
+  };
+}
+
+function normalizeContactNickName(contactNickName) {
+  if (contactNickName == null) {
     return '';
   }
-  if (typeof contactName !== 'string') {
-    throw new TypeError('contactName must be a string');
+  if (typeof contactNickName !== 'string') {
+    throw new TypeError('contactNickName must be a string');
   }
-  return contactName.trim();
+  return contactNickName.trim();
 }
 
 function normalizeRoomId(roomId) {
@@ -70,10 +102,11 @@ export function normalizeContactRecord(input, { now = Date.now() } = {}) {
 
   const contactId = assertContactId(input.contactId);
   const savedAt = normalizeTimestamp(input.savedAt, now);
+  const contactNickName = normalizeContactNickName(input.contactNickName);
 
   return ContactRecordSchema.parse({
     contactId,
-    contactName: normalizeContactName(input.contactName),
+    contactNickName,
     roomId: normalizeRoomId(input.roomId),
     conversationId:
       'conversationId' in input
@@ -97,8 +130,8 @@ export function normalizeContactPatch(patch) {
   const next = {};
 
   for (const [key, value] of Object.entries(patch)) {
-    if (key === 'contactName') {
-      next.contactName = normalizeContactName(value);
+    if (key === 'contactNickName') {
+      next.contactNickName = normalizeContactNickName(value);
       continue;
     }
 

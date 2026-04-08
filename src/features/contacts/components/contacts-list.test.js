@@ -79,7 +79,7 @@ describe('contacts component', () => {
     mocks.getAllContactsSorted.mockResolvedValue([
       {
         contactId: 'contact-1',
-        contactName: 'Alice',
+        contactNickName: 'Alice',
         conversationId: 'contact-1_user-123',
         roomId: 'room-1',
       },
@@ -90,7 +90,7 @@ describe('contacts component', () => {
     mocks.getAllContactsSorted.mockResolvedValue([
       {
         contactId: 'contact-1',
-        contactName: 'Alice',
+        contactNickName: 'Alice',
         conversationId: null,
         roomId: 'room-1',
       },

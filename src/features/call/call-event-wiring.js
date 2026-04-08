@@ -87,7 +87,7 @@ export function setupCallControllerEventWiring(options = {}) {
           const contact = await contactsService.getContactByRoomId(roomId);
           if (contact && contact.contactId) {
             const me = getUser();
-            const callerName = me?.displayName || 'Friend';
+            const callerName = me?.userName || 'Friend';
 
             publish('call:unanswered', {
               roomId,
@@ -96,7 +96,7 @@ export function setupCallControllerEventWiring(options = {}) {
 
             // Send push notification to the contact (callee)
             console.log(
-              `[MAIN] Sending missed call push notification to ${contact.contactName} (${contact.contactId})`,
+              `[MAIN] Sending missed call push notification to ${contact.contactNickName} (${contact.contactId})`,
             );
             try {
               await getPushNotifications()?.sendMissedCall({

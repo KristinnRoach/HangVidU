@@ -55,11 +55,34 @@ export function setupMainAppBusListeners() {
           conversationId,
           remoteParticipantIds = [],
           displayUI = true,
+          contactNickName,
         }) => {
           try {
+            const contactId =
+              remoteParticipantIds.length === 1 ? remoteParticipantIds[0] : null;
+            const providedContactNickName =
+              typeof contactNickName === 'string' && contactNickName.trim()
+                ? contactNickName.trim()
+                : null;
+            let localContact = null;
+            if (!providedContactNickName && contactId) {
+              try {
+                localContact = await contactsService.getContact(contactId);
+              } catch (contactError) {
+                console.warn(
+                  'Failed to resolve local contact nickname on messaging:conversation:select:',
+                  contactError,
+                );
+              }
+            }
+            const resolvedContactNickName = providedContactNickName
+              ? providedContactNickName
+              : localContact?.contactNickName || null;
+
             await messagingController.selectConversation(conversationId, {
               remoteParticipantIds,
               displayUI,
+              contactNickName: resolvedContactNickName,
             });
           } catch (e) {
             console.warn(
@@ -73,13 +96,18 @@ export function setupMainAppBusListeners() {
 
       handleCommand(
         'call:outgoing:initiate',
-        async ({ contactId, contactName, conversationId, roomId }) => {
+        async ({ contactId, contactNickName, conversationId, roomId }) => {
+          const resolvedContactNickName =
+            typeof contactNickName === 'string' && contactNickName.trim()
+              ? contactNickName.trim()
+              : null;
+
           isDev() &&
             tempWarn(
               '[main.js] call:outgoing:initiate event received with data: ',
               {
                 contactId,
-                contactName,
+                contactNickName: resolvedContactNickName,
                 conversationId,
                 roomId,
               },
@@ -96,6 +124,7 @@ export function setupMainAppBusListeners() {
                   .selectConversation(resolvedConversationId, {
                     remoteParticipantIds: [contactId],
                     displayUI: false,
+                    contactNickName: resolvedContactNickName,
                   })
                   .catch((e) => {
                     console.warn(
@@ -112,7 +141,7 @@ export function setupMainAppBusListeners() {
             }
           }
 
-          callContact(contactId, contactName, roomId);
+          callContact(contactId, resolvedContactNickName, roomId);
         },
         { signal: ac.signal },
       );

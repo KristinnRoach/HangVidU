@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => {
     },
     contactsService: {
       getConversationId: vi.fn(),
+      getContact: vi.fn(async () => null),
     },
     callContact: vi.fn(),
     listenForIncomingOnRoom: vi.fn(),
@@ -85,7 +86,7 @@ describe('setupMainAppBusListeners', () => {
 
     handler?.({
       contactId: null,
-      contactName: 'Unknown Caller',
+      contactNickName: 'Unknown Caller',
       conversationId: null,
       roomId: 'room-123',
     });
@@ -112,11 +113,64 @@ describe('setupMainAppBusListeners', () => {
       displayUI: true,
     });
 
+    expect(mocks.contactsService.getContact).toHaveBeenCalledWith('contact-1');
     expect(mocks.messagingController.selectConversation).toHaveBeenCalledWith(
       'conv-123',
       {
         remoteParticipantIds: ['contact-1'],
         displayUI: true,
+        contactNickName: null,
+      },
+    );
+  });
+
+  it('uses provided contactNickName without loading local contact record', async () => {
+    const { setupMainAppBusListeners } =
+      await import('../setupMainAppBusListeners.js');
+
+    await setupMainAppBusListeners();
+    const handler = mocks.handlers.get('messaging:conversation:select');
+
+    await handler?.({
+      conversationId: 'conv-123',
+      remoteParticipantIds: ['contact-1'],
+      displayUI: true,
+      contactNickName: 'Provided Nick',
+    });
+
+    expect(mocks.contactsService.getContact).not.toHaveBeenCalled();
+    expect(mocks.messagingController.selectConversation).toHaveBeenCalledWith(
+      'conv-123',
+      {
+        remoteParticipantIds: ['contact-1'],
+        displayUI: true,
+        contactNickName: 'Provided Nick',
+      },
+    );
+  });
+
+  it('passes contactNickName to preselected outgoing-call conversation', async () => {
+    mocks.contactsService.getConversationId.mockResolvedValue('conv-xyz');
+
+    const { setupMainAppBusListeners } =
+      await import('../setupMainAppBusListeners.js');
+
+    await setupMainAppBusListeners();
+    const handler = mocks.handlers.get('call:outgoing:initiate');
+
+    await handler?.({
+      contactId: 'contact-1',
+      contactNickName: 'Dial Nick',
+      conversationId: null,
+      roomId: 'room-123',
+    });
+
+    expect(mocks.messagingController.selectConversation).toHaveBeenCalledWith(
+      'conv-xyz',
+      {
+        remoteParticipantIds: ['contact-1'],
+        displayUI: false,
+        contactNickName: 'Dial Nick',
       },
     );
   });

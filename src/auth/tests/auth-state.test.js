@@ -12,7 +12,7 @@ describe('waitForAuthReady', () => {
     setState({
       status: 'authenticated',
       isLoggedIn: true,
-      user: { uid: 'user-1', displayName: 'Test' },
+      user: { uid: 'user-1', userName: 'Test' },
     });
 
     const snapshot = await waitForAuthReady();
@@ -55,7 +55,7 @@ describe('subscribe', () => {
     setState({
       status: 'authenticated',
       isLoggedIn: true,
-      user: { uid: 'user-2', displayName: 'Tester' },
+      user: { uid: 'user-2', userName: 'Tester' },
     });
 
     const calls = [];

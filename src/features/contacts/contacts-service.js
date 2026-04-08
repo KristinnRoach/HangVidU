@@ -87,7 +87,7 @@ async function emitContactUpdated(contact, previousRoomId) {
 
   publish('room:id:updated', {
     contactId: contact.contactId,
-    contactName: contact.contactName,
+    contactNickName: contact.contactNickName,
     roomId,
     previousRoomId,
   });
@@ -138,11 +138,11 @@ export class ContactsService {
    * Returns `null` when the contact does not exist.
    *
    * @param {string} contactId
-   * @param {string} contactName
+   * @param {string} contactNickName
    * @param {string|null|undefined} roomId
    * @returns {Promise<ContactRecord|null>}
    */
-  async updateContact(contactId, contactName, roomId) {
+  async updateContact(contactId, contactNickName, roomId) {
     try {
       const storage = getContactsStorage();
       const existing = await storage.get(contactId);
@@ -153,7 +153,7 @@ export class ContactsService {
 
       const previousRoomId = existing.roomId ?? null;
       const updatedContact = await storage.patch(contactId, {
-        contactName,
+        contactNickName,
         roomId,
       });
 
@@ -282,11 +282,11 @@ export class ContactsService {
    * Preserves timestamps for existing contacts in this first pass.
    *
    * @param {string} contactId
-   * @param {string} contactName
+   * @param {string} contactNickName
    * @param {string|null|undefined} roomId
    * @returns {Promise<ContactRecord|null>}
    */
-  async saveContact(contactId, contactName, roomId) {
+  async saveContact(contactId, contactNickName, roomId) {
     try {
       const ownerId = getLoggedInUserId();
       const storage = getContactsStorage(ownerId);
@@ -298,7 +298,7 @@ export class ContactsService {
 
       const contact = await storage.put({
         contactId,
-        contactName,
+        contactNickName,
         roomId,
         conversationId,
         savedAt: existing?.savedAt ?? now,
@@ -330,11 +330,15 @@ export class ContactsService {
    */
   async handleHangUp(contactUserId, roomId) {
     const existing = await this.getAllContacts();
-    const entry = existing?.[contactUserId];
+      const entry = existing?.[contactUserId];
 
     if (entry) {
       if (entry.roomId !== roomId) {
-        await this.updateContact(contactUserId, entry.contactName, roomId);
+        await this.updateContact(
+          contactUserId,
+          entry.contactNickName,
+          roomId,
+        );
       }
       return { action: 'existing' };
     }

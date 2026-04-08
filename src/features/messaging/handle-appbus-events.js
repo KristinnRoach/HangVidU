@@ -43,10 +43,14 @@ export function setupMessagingAppBusHandlers({ messagingController }) {
         return;
       }
 
+      const contact = await contactsService.getContact(contactId);
+      const contactNickName = contact?.contactNickName || null;
+
       messagingController
         .selectConversation(conversationId, {
           remoteParticipantIds: [contactId],
           displayUI: false,
+          contactNickName,
         })
         .catch((e) => {
           console.warn(

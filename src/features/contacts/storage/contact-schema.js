@@ -4,7 +4,7 @@ import { z } from 'zod';
  * Canonical contact record shape for the storage layer.
  * @typedef {Object} ContactRecord
  * @property {string} contactId
- * @property {string} contactName
+ * @property {string} contactNickName
  * @property {string|null} roomId
  * @property {string|null|undefined} [conversationId]
  * @property {number} savedAt
@@ -14,7 +14,7 @@ import { z } from 'zod';
 /**
  * Partial update shape for persisted contacts.
  * @typedef {Object} ContactPatch
- * @property {string} [contactName]
+ * @property {string} [contactNickName]
  * @property {string|null} [roomId]
  * @property {string|null} [conversationId]
  * @property {number} [savedAt]
@@ -32,7 +32,7 @@ export const ContactIdSchema = z.preprocess(
 );
 
 /** @type {import('zod').ZodType<string>} */
-export const ContactNameSchema = z.preprocess(
+export const ContactNickNameSchema = z.preprocess(
   (value) => (typeof value === 'string' ? value.trim() : ''),
   z.string(),
 );
@@ -74,7 +74,7 @@ export const ContactTimestampSchema = z
 /** @type {import('zod').ZodType<ContactRecord>} */
 export const ContactRecordSchema = z.object({
   contactId: ContactIdSchema,
-  contactName: ContactNameSchema,
+  contactNickName: ContactNickNameSchema,
   roomId: ContactRoomIdSchema,
   conversationId: ContactConversationIdSchema.optional(),
   savedAt: ContactTimestampSchema,
@@ -84,7 +84,7 @@ export const ContactRecordSchema = z.object({
 /** @type {import('zod').ZodType<ContactPatch>} */
 export const ContactPatchSchema = z
   .object({
-    contactName: ContactNameSchema.optional(),
+    contactNickName: ContactNickNameSchema.optional(),
     roomId: ContactRoomIdSchema.optional(),
     conversationId: ContactConversationIdSchema.optional(),
     savedAt: ContactTimestampSchema.optional(),

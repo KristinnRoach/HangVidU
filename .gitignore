@@ -118,3 +118,6 @@ docs/maybe/
 docs/ui-audit-wip/
 docs/misc/
 docs/WIP_Architecture/REFERENCE_WebDevSimplified.md
+
+
+scripts/migrate-usersbyemail-display-name-to-user-name.js

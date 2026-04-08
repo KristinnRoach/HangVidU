@@ -1,6 +1,6 @@
 import { get, ref, remove, runTransaction, set } from 'firebase/database';
 import { ContactsStorageAdapter } from './contacts-storage-adapter.js';
-import { mergeContactRecord } from './contact-transform.js';
+import { canonicalizeContactRecord, mergeContactRecord } from './contact-transform.js';
 
 function assertGetOwnerId(getOwnerId) {
   if (typeof getOwnerId !== 'function') {
@@ -54,8 +54,22 @@ export class ContactsRTDBAdapter extends ContactsStorageAdapter {
    * @returns {Promise<import('./contact-schema.js').ContactRecord|null>}
    */
   async get(contactId) {
-    const snapshot = await get(ref(this.database, this._contactPath(contactId)));
-    return snapshot.exists() ? snapshot.val() : null;
+    const contactRef = ref(this.database, this._contactPath(contactId));
+    const snapshot = await get(contactRef);
+    if (!snapshot.exists()) {
+      return null;
+    }
+
+    // TODO(2026-04-08): Remove this legacy key-as-id fallback after the contactId backfill window ends.
+    const { record, didPromoteLegacyContactName } = canonicalizeContactRecord({
+      ...snapshot.val(),
+      contactId: snapshot.val()?.contactId ?? contactId,
+    });
+    if (didPromoteLegacyContactName) {
+      await set(contactRef, record);
+    }
+
+    return record;
   }
 
   /**
@@ -67,7 +81,25 @@ export class ContactsRTDBAdapter extends ContactsStorageAdapter {
       return [];
     }
 
-    return Object.values(snapshot.val());
+    const entries = Object.entries(snapshot.val());
+    /** @type {import('./contact-schema.js').ContactRecord[]} */
+    const records = [];
+
+    for (const [contactId, value] of entries) {
+      // TODO(2026-04-08): Remove this legacy key-as-id fallback after the contactId backfill window ends.
+      const { record, didPromoteLegacyContactName } =
+        canonicalizeContactRecord({
+          ...value,
+          contactId: value.contactId ?? contactId,
+        });
+      records.push(record);
+
+      if (didPromoteLegacyContactName) {
+        await set(ref(this.database, this._contactPath(contactId)), record);
+      }
+    }
+
+    return records;
   }
 
   /**
