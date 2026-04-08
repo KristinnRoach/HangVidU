@@ -189,7 +189,7 @@
   text-align: center;
   color: var(--text-secondary);
   font-size: 12px;
-  margin: 12px 0 4px;
+  margin: 0.25em 0 0;
 }
 
 #messages .message-entry {
@@ -319,13 +319,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.15em 0.25em;
+  margin: 0.25em 0 0;
   gap: 2px;
 }
 
 #messages .message-bubble .message-text.file-message .file-message-meta > a {
   display: flex;
   flex: 1;
-  max-width: max-content;
+  max-width: 88%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -346,24 +347,12 @@
   padding: 0;
   width: fit-content;
   overflow: visible;
-  margin-bottom: 30px;
 }
 
 #messages .message-bubble:has(.file-preview-img) .message-text.file-message {
   display: block;
   padding: 0;
-  position: relative;
   line-height: normal;
-}
-
-#messages
-  .message-bubble:has(.file-preview-img)
-  .message-text.file-message
-  .file-message-meta {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
 }
 
 #messages .message-entry.local .message-bubble {
@@ -468,8 +457,8 @@
   font-family: inherit;
   font-size: 16px;
   line-height: 1.4;
-  /* -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%; */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 
   /* Auto-grow textarea sizing */
   @supports (field-sizing: content) {

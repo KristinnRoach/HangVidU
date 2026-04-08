@@ -24,16 +24,20 @@ import {
 import { createMessageBox } from './createMessageBox.js';
 import { createMessageTopBar } from './createMessageTopBar.js';
 import { devDebug } from '../../../utils/dev/dev-utils.js';
-import { showImagePreview } from '../../../components/modal/imagePreview.js';
 import { onTapGesture } from '../../../components/ui/utils/detectDoubleClick.js';
 import { isSafeDownloadUrl } from '../../../utils/security/validate-url.js';
 import { dispatchCommand } from '../../../events/index.js';
+import { createImagePreviewNode } from './file-preview-renderer.js';
 import {
   cancelScrollMessagesToEnd,
   scrollMessagesToEnd,
 } from './utils/scrollMessagesToEnd.js';
 
 // const MAX_MESSAGE_LENGTH = 3000; // Max characters allowed in a message
+
+const isImageFile = (mimeType) => {
+  return mimeType && mimeType.startsWith('image/');
+};
 
 const supportsCssAnchors =
   CSS.supports?.('position-anchor: --msg-toggle') &&
@@ -69,6 +73,7 @@ export function initMessagesUI() {
   let inActiveCall = false; // Track if we're currently in an active call
   let isReceivingFile = false; // Track if currently receiving a file
   let markAsReadTimeout = null; // Debounce markAsRead calls on incoming messages
+  const activeCallBlobUrls = new Set(); // blob: URLs created for ephemeral in-call file previews/downloads
 
   const MARK_AS_READ_DEBOUNCE_MS = 100;
 
@@ -655,7 +660,6 @@ export function initMessagesUI() {
     const textSpan = document.createElement('span');
     textSpan.className = 'message-text file-message';
 
-    const isImage = mimeType && mimeType.startsWith('image/');
     const sizeLabel =
       fileSize < 1024
         ? `${fileSize} B`
@@ -666,19 +670,10 @@ export function initMessagesUI() {
     const isSafeUrl = dataUrl && dataUrl.startsWith('data:');
     let onSingleTap;
 
-    if (isImage && isSafeUrl) {
-      const img = document.createElement('img');
-      img.className = 'file-preview-img';
-      img.src = dataUrl;
-      img.alt = fileName;
-      textSpan.appendChild(img);
-
-      // Open preview on single tap (double-tap handled by reaction system)
-      onSingleTap = (e) => {
-        if (e.target === img || img.contains(e.target)) {
-          showImagePreview(dataUrl, fileName);
-        }
-      };
+    if (isImageFile(mimeType) && isSafeUrl) {
+      const preview = createImagePreviewNode({ fileName, previewUrl: dataUrl });
+      textSpan.appendChild(preview.element);
+      onSingleTap = preview.onSingleTap;
     }
 
     const meta = document.createElement('span');
@@ -702,6 +697,47 @@ export function initMessagesUI() {
     textSpan.appendChild(meta);
 
     return { element: textSpan, onSingleTap };
+  }
+
+  function trackActiveCallBlobUrl(url) {
+    if (!url || !url.startsWith('blob:')) return;
+    activeCallBlobUrls.add(url);
+  }
+
+  function appendEphemeralImageMessage({ text, fileName, previewUrl }) {
+    const entry = document.createElement('div');
+    entry.className = 'message-entry ephemeral';
+
+    const p = document.createElement('p');
+    p.className = 'message-text file-message';
+
+    if (text) {
+      p.appendChild(document.createTextNode(text));
+      p.appendChild(document.createTextNode(' '));
+    }
+
+    const preview = createImagePreviewNode({ fileName, previewUrl });
+    p.appendChild(preview.element);
+    preview.element.addEventListener('click', preview.openPreview);
+
+    const meta = document.createElement('span');
+    meta.className = 'file-message-meta';
+
+    const link = document.createElement('a');
+    link.textContent = fileName;
+    if (isSafeDownloadUrl(previewUrl)) {
+      const safeUrl = previewUrl;
+      link.href = safeUrl;
+      link.download = fileName;
+    }
+    link.style.cssText = 'cursor: pointer; text-decoration: underline;';
+    meta.appendChild(link);
+    p.appendChild(meta);
+
+    entry.appendChild(p);
+    messagesMessages.appendChild(entry);
+    scrollMessagesToEnd(messagesMessages);
+    return entry;
   }
 
   /**
@@ -1285,6 +1321,17 @@ export function initMessagesUI() {
           return;
         }
 
+        if (mimeType?.startsWith('image/')) {
+          const url = URL.createObjectURL(file);
+          trackActiveCallBlobUrl(url);
+          appendEphemeralImageMessage({
+            text: `📎 ${t('message.sent')}`,
+            fileName: name,
+            previewUrl: url,
+          });
+          return;
+        }
+
         appendEphemeralMessage({
           content: { text: `📎 ${t('message.sent')}` },
         });
@@ -1322,6 +1369,14 @@ export function initMessagesUI() {
                 mimeType: result.mimeType,
                 isOpfsBacked: result.isOpfsBacked,
               }),
+          });
+        } else if (mimeType?.startsWith('image/')) {
+          const url = URL.createObjectURL(file);
+          trackActiveCallBlobUrl(url);
+          appendEphemeralImageMessage({
+            text: `📎 ${t('message.received', { name })}`,
+            fileName: name,
+            previewUrl: url,
           });
         } else {
           // Non-video file — show download link
@@ -1392,6 +1447,10 @@ export function initMessagesUI() {
     fileTransferController = null;
     inActiveCall = false;
     isReceivingFile = false;
+    for (const url of activeCallBlobUrls) {
+      URL.revokeObjectURL(url);
+    }
+    activeCallBlobUrls.clear();
     watchFileHandler.reset();
     if (removeMessagesBoxClickOutside) {
       removeMessagesBoxClickOutside();
