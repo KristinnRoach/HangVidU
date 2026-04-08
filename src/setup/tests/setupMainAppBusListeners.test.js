@@ -119,7 +119,7 @@ describe('setupMainAppBusListeners', () => {
       {
         remoteParticipantIds: ['contact-1'],
         displayUI: true,
-        contactName: null,
+        contactNickName: null,
       },
     );
   });

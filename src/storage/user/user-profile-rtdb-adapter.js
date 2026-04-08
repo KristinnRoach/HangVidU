@@ -21,20 +21,44 @@ export class UserProfileRTDBAdapter {
 
   /**
    * @param {string} userId
-   * @returns {Promise<{ displayName?: string|null, photoURL?: string|null }|null>}
+   * @returns {Promise<{ userName?: string|null, displayName?: string|null, photoURL?: string|null }|null>}
    */
   async get(userId) {
     const snapshot = await get(ref(this.database, this._profilePath(userId)));
-    return snapshot.exists() ? snapshot.val() : null;
+    if (!snapshot.exists()) {
+      return null;
+    }
+
+    const profile = snapshot.val() || {};
+    const userName =
+      profile.userName ??
+      // TODO(2026-04-08): Remove legacy fallback once profile.displayName migration window ends.
+      profile.displayName ??
+      null;
+
+    return {
+      ...profile,
+      userName,
+      // TODO(2026-04-08): Remove legacy mirror once profile.displayName migration window ends.
+      displayName: profile.displayName ?? userName,
+    };
   }
 
   /**
-   * @param {{ uid: string, displayName?: string|null, photoURL?: string|null }} user
+   * @param {{ uid: string, userName?: string|null, displayName?: string|null, photoURL?: string|null }} user
    * @returns {Promise<void>}
    */
   async save(user) {
+    const userName =
+      user.userName ??
+      // TODO(2026-04-08): Remove legacy fallback once profile.displayName migration window ends.
+      user.displayName ??
+      null;
+
     await set(ref(this.database, this._profilePath(user.uid)), {
-      displayName: user.displayName || null,
+      userName,
+      // TODO(2026-04-08): Remove legacy mirror once profile.displayName migration window ends.
+      displayName: userName,
       photoURL: user.photoURL || null,
     });
   }

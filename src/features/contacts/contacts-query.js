@@ -17,8 +17,18 @@ export function sortContactsByLastInteraction(contacts) {
       return bTime - aTime;
     }
 
-    const aName = (a?.contactName || '').toLowerCase();
-    const bName = (b?.contactName || '').toLowerCase();
+    const aName = (
+      a?.contactNickName ||
+      // TODO(2026-04-08): Remove legacy alias fallback once migration is complete and old clients are retired.
+      a?.contactName ||
+      ''
+    ).toLowerCase();
+    const bName = (
+      b?.contactNickName ||
+      // TODO(2026-04-08): Remove legacy alias fallback once migration is complete and old clients are retired.
+      b?.contactName ||
+      ''
+    ).toLowerCase();
     return aName.localeCompare(bName);
   });
 }

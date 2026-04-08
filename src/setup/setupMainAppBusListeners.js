@@ -55,24 +55,32 @@ export function setupMainAppBusListeners() {
           conversationId,
           remoteParticipantIds = [],
           displayUI = true,
+          contactNickName,
           contactName,
         }) => {
           try {
             const contactId =
               remoteParticipantIds.length === 1 ? remoteParticipantIds[0] : null;
-            const hasProvidedContactName =
-              typeof contactName === 'string' && contactName.trim().length > 0;
-            const resolvedContactName = hasProvidedContactName
-              ? contactName
-              : contactId
-                ? (await contactsService.getContact(contactId))?.contactName ||
-                  null
-                : null;
+            const providedContactNickName =
+              typeof contactNickName === 'string' && contactNickName.trim()
+                ? contactNickName.trim()
+                : typeof contactName === 'string' && contactName.trim()
+                  ? contactName.trim()
+                  : null;
+            const localContact = contactId
+              ? await contactsService.getContact(contactId)
+              : null;
+            const resolvedContactNickName = providedContactNickName
+              ? providedContactNickName
+              : localContact?.contactNickName ||
+                // TODO(2026-04-08): Remove legacy alias fallback once migration is complete and old clients are retired.
+                localContact?.contactName ||
+                null;
 
             await messagingController.selectConversation(conversationId, {
               remoteParticipantIds,
               displayUI,
-              contactName: resolvedContactName,
+              contactNickName: resolvedContactNickName,
             });
           } catch (e) {
             console.warn(

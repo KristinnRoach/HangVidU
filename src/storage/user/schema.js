@@ -4,6 +4,8 @@
 import { z } from 'zod';
 
 export const UserProfileSchema = z.object({
+  userName: z.string().nullable().optional(),
+  // TODO(2026-04-08): Remove legacy fallback once profile.displayName migration window ends.
   displayName: z.string().nullable().optional(),
   photoURL: z.string().nullable().optional(),
 });
@@ -16,6 +18,8 @@ export const PresenceStateSchema = z.object({
 
 export const DirectoryEntrySchema = z.object({
   uid: z.string().min(1),
+  userName: z.string().optional(),
+  // TODO(2026-04-08): Remove legacy fallback once profile.displayName migration window ends.
   displayName: z.string(),
   photoURL: z.string().nullable().optional(),
   registeredAt: z.number(),

@@ -75,7 +75,7 @@ describe('contacts-service', () => {
     expect(result).toEqual(contact);
     expect(mocks.store.put).toHaveBeenCalledWith({
       contactId: 'u1',
-      contactName: 'Alice',
+      contactNickName: 'Alice',
       roomId: 'room-1',
       conversationId: null,
       savedAt: expect.any(Number),
@@ -110,7 +110,7 @@ describe('contacts-service', () => {
     expect(result).toEqual(updated);
     expect(mocks.store.put).toHaveBeenCalledWith({
       contactId: 'u1',
-      contactName: 'After',
+      contactNickName: 'After',
       roomId: 'room-1',
       conversationId: null,
       savedAt: 100,
@@ -137,7 +137,7 @@ describe('contacts-service', () => {
 
     expect(mocks.store.put).toHaveBeenCalledWith({
       contactId: 'u1',
-      contactName: 'Alice',
+      contactNickName: 'Alice',
       roomId: 'room-1',
       conversationId: 'me_u1',
       savedAt: expect.any(Number),
@@ -168,13 +168,13 @@ describe('contacts-service', () => {
 
     expect(result).toEqual(updated);
     expect(mocks.store.patch).toHaveBeenCalledWith('u1', {
-      contactName: 'Alice B',
+      contactNickName: 'Alice B',
       roomId: 'room-2',
     });
 
     expect(mocks.events.publish).toHaveBeenCalledWith('room:id:updated', {
       contactId: 'u1',
-      contactName: 'Alice B',
+      contactNickName: 'Alice B',
       roomId: 'room-2',
       previousRoomId: 'room-1',
     });

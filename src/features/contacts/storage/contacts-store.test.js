@@ -32,11 +32,13 @@ describe('ContactsStore', () => {
     });
 
     expect(adapter.patch).toHaveBeenCalledWith('u1', {
+      contactNickName: 'Alice',
       contactName: 'Alice',
       roomId: 'room-2',
     });
     expect(result).toEqual({
       contactId: 'u1',
+      contactNickName: 'Alice',
       contactName: 'Alice',
       roomId: 'room-2',
       savedAt: 10,

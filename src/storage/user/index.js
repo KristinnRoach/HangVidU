@@ -28,14 +28,14 @@ const userProfileStore = createUserProfileStore(
 
 /**
  * @param {string} userId
- * @returns {Promise<{ displayName?: string|null, photoURL?: string|null }|null>}
+ * @returns {Promise<{ userName?: string|null, displayName?: string|null, photoURL?: string|null }|null>}
  */
 export function getUserProfile(userId) {
   return userProfileStore.getUserProfile(userId);
 }
 
 /**
- * @param {{ uid: string, displayName?: string|null, photoURL?: string|null }} user
+ * @param {{ uid: string, userName?: string|null, displayName?: string|null, photoURL?: string|null }} user
  * @returns {Promise<void>}
  */
 export function saveUserProfile(user) {

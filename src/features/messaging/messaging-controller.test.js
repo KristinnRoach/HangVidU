@@ -199,7 +199,7 @@ describe('MessagingController', () => {
 
   it('should fetch participant profile and emit conversation:meta-updated', async () => {
     const profile = {
-      displayName: 'Alice',
+      userName: 'Alice',
       photoURL: 'https://example.com/alice.jpg',
     };
     mockGetUserProfile.mockResolvedValueOnce(profile);
@@ -228,14 +228,14 @@ describe('MessagingController', () => {
     );
   });
 
-  it('should prefer local contactName over participant displayName', async () => {
+  it('should prefer local contactNickName over participant userName', async () => {
     mockGetUserProfile.mockResolvedValueOnce({
-      displayName: 'Google Name',
+      userName: 'Google Name',
       photoURL: null,
     });
     mockGetContact.mockResolvedValueOnce({
       contactId: 'contactA',
-      contactName: 'App Name',
+      contactNickName: 'App Name',
       roomId: null,
       conversationId: 'contactA_me',
       savedAt: Date.now(),
@@ -253,9 +253,9 @@ describe('MessagingController', () => {
     });
   });
 
-  it('should fall back to participant displayName when local contactName is missing', async () => {
+  it('should fall back to participant userName when local contactNickName is missing', async () => {
     mockGetUserProfile.mockResolvedValueOnce({
-      displayName: 'Google Name',
+      userName: 'Google Name',
       photoURL: null,
     });
     mockGetContact.mockResolvedValueOnce(null);
@@ -267,6 +267,25 @@ describe('MessagingController', () => {
     await vi.waitFor(() => {
       expect(controller.getConversationDisplayName('contactA_me')).toBe(
         'Google Name',
+      );
+    });
+  });
+
+  it('should still fall back to legacy participant displayName during migration window', async () => {
+    mockGetUserProfile.mockResolvedValueOnce({
+      // Legacy shape
+      displayName: 'Legacy Google Name',
+      photoURL: null,
+    });
+    mockGetContact.mockResolvedValueOnce(null);
+
+    await controller.selectConversation('contactA_me', {
+      remoteParticipantIds: ['contactA'],
+    });
+
+    await vi.waitFor(() => {
+      expect(controller.getConversationDisplayName('contactA_me')).toBe(
+        'Legacy Google Name',
       );
     });
   });

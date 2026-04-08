@@ -60,6 +60,7 @@ describe('ContactsRTDBAdapter', () => {
     );
     expect(result).toEqual({
       contactId: 'u1',
+      contactNickName: 'Alice',
       contactName: 'Alice',
       conversationId: null,
       roomId: 'room-2',
@@ -115,6 +116,7 @@ describe('ContactsRTDBAdapter', () => {
       { path: 'users/owner-1/contacts/u1' },
       {
         contactId: 'u1',
+        contactNickName: 'Alice',
         contactName: 'Alice',
         conversationId: null,
         roomId: 'room-2',
@@ -124,6 +126,7 @@ describe('ContactsRTDBAdapter', () => {
     );
     expect(result).toEqual({
       contactId: 'u1',
+      contactNickName: 'Alice',
       contactName: 'Alice',
       conversationId: null,
       roomId: 'room-2',
@@ -158,6 +161,7 @@ describe('ContactsRTDBAdapter', () => {
 
     expect(result).toEqual({
       contactId: 'u1',
+      contactNickName: 'Alice',
       contactName: 'Alice',
       conversationId: null,
       roomId: 'room-2',

@@ -28,7 +28,7 @@ export class UserProfileStore {
 
   /**
    * @param {string} userId
-   * @returns {Promise<{ displayName?: string|null, photoURL?: string|null }|null>}
+   * @returns {Promise<{ userName?: string|null, displayName?: string|null, photoURL?: string|null }|null>}
    */
   async getUserProfile(userId) {
     if (!userId) return null;
@@ -42,7 +42,7 @@ export class UserProfileStore {
   }
 
   /**
-   * @param {{ uid: string, displayName?: string|null, photoURL?: string|null }} user
+   * @param {{ uid: string, userName?: string|null, displayName?: string|null, photoURL?: string|null }} user
    * @returns {Promise<void>}
    */
   async saveUserProfile(user) {

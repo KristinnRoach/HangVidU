@@ -87,8 +87,12 @@ export async function renderContactsList(lobbyElement) {
   contactsContainer.innerHTML = `
     <div class="contacts-list">
       ${entries
-        .map(({ id, contactId, contactName, roomId, conversationId }) => {
-          const rawName = contactName || t('contact.no_name');
+        .map(({ id, contactId, contactNickName, contactName, roomId, conversationId }) => {
+          const rawName =
+            contactNickName ||
+            // TODO(2026-04-08): Remove legacy alias fallback once migration is complete and old clients are retired.
+            contactName ||
+            t('contact.no_name');
           const escapedName = escapeHtml(rawName);
           const shortName =
             escapedName.length > MAX_CONTACT_NAME_CHARS
@@ -201,7 +205,7 @@ function attachContactListeners(container, lobbyElement) {
             conversationId,
             remoteParticipantIds: [contactId],
             displayUI: true,
-            contactName: el.getAttribute('data-contact-name') || null,
+            contactNickName: el.getAttribute('data-contact-name') || null,
           });
 
           clearUnreadBadge(contactId);
@@ -225,7 +229,12 @@ function attachContactListeners(container, lobbyElement) {
       const contact = contacts[contactId];
       if (!contact) return;
 
-      const result = await editContactModal(contact.contactName || '');
+      const result = await editContactModal(
+        contact.contactNickName ??
+          // TODO(2026-04-08): Remove legacy alias fallback once migration is complete and old clients are retired.
+          contact.contactName ??
+          '',
+      );
       if (!result) return;
 
       if (result.action === 'rename') {

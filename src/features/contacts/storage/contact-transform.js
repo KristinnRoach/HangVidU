@@ -13,14 +13,14 @@ export function assertContactId(contactId) {
   return ContactIdSchema.parse(contactId);
 }
 
-function normalizeContactName(contactName) {
-  if (contactName == null) {
+function normalizeContactNickName(contactNickName) {
+  if (contactNickName == null) {
     return '';
   }
-  if (typeof contactName !== 'string') {
-    throw new TypeError('contactName must be a string');
+  if (typeof contactNickName !== 'string') {
+    throw new TypeError('contactNickName must be a string');
   }
-  return contactName.trim();
+  return contactNickName.trim();
 }
 
 function normalizeRoomId(roomId) {
@@ -70,10 +70,17 @@ export function normalizeContactRecord(input, { now = Date.now() } = {}) {
 
   const contactId = assertContactId(input.contactId);
   const savedAt = normalizeTimestamp(input.savedAt, now);
+  const contactNickName = normalizeContactNickName(
+    input.contactNickName ??
+      // TODO(2026-04-08): Remove legacy alias fallback once migration is complete and old clients are retired.
+      input.contactName,
+  );
 
   return ContactRecordSchema.parse({
     contactId,
-    contactName: normalizeContactName(input.contactName),
+    contactNickName,
+    // TODO(2026-04-08): Remove legacy mirror once migration is complete and old clients are retired.
+    contactName: contactNickName,
     roomId: normalizeRoomId(input.roomId),
     conversationId:
       'conversationId' in input
@@ -97,8 +104,11 @@ export function normalizeContactPatch(patch) {
   const next = {};
 
   for (const [key, value] of Object.entries(patch)) {
-    if (key === 'contactName') {
-      next.contactName = normalizeContactName(value);
+    if (key === 'contactNickName' || key === 'contactName') {
+      const contactNickName = normalizeContactNickName(value);
+      next.contactNickName = contactNickName;
+      // TODO(2026-04-08): Remove legacy mirror once migration is complete and old clients are retired.
+      next.contactName = contactNickName;
       continue;
     }
 

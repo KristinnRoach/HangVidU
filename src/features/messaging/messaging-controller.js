@@ -22,7 +22,11 @@ const MAX_FILE_SIZE = 1 * 1024 * 1024;
  */
 
 /**
- * @typedef {{ displayName: string|null, photoURL: string|null }} ParticipantProfile
+ * @typedef {{
+ *   userName: string|null,
+ *   displayName?: string|null,
+ *   photoURL: string|null
+ * }} ParticipantProfile
  */
 
 /**
@@ -30,7 +34,7 @@ const MAX_FILE_SIZE = 1 * 1024 * 1024;
  * @property {string} conversationId
  * @property {string[]} remoteParticipantIds
  * @property {Object<string, ParticipantProfile>} participants - keyed by userId
- * @property {Object<string, string>} localContactNames - keyed by userId
+ * @property {Object<string, string>} localContactNickNames - keyed by userId
  * @property {MessageEvent[]} history
  * @property {(() => void)|null} _unsubscribe
  */
@@ -183,10 +187,11 @@ export class MessagingController extends EventEmitter {
    * @param {Object} [options]
    * @param {string[]} [options.remoteParticipantIds] - User IDs of other participants (excludes self)
    * @param {boolean} [options.displayUI] - Whether to open the conversation panel
+   * @param {string|null} [options.contactNickName] - Optional local contact nickname hint
    */
   async selectConversation(
     conversationId,
-    { remoteParticipantIds = [], displayUI = false } = {},
+    { remoteParticipantIds = [], displayUI = false, contactNickName = null } = {},
   ) {
     if (!conversationId || typeof conversationId !== 'string') {
       throw new Error('conversationId must be a non-empty string');
@@ -228,10 +233,19 @@ export class MessagingController extends EventEmitter {
       conversationId,
       remoteParticipantIds,
       participants: {},
-      localContactNames: {},
+      localContactNickNames: {},
       history: [],
       _unsubscribe: null,
     };
+
+    if (
+      remoteParticipantIds.length === 1 &&
+      typeof contactNickName === 'string' &&
+      contactNickName.trim()
+    ) {
+      conversationState.localContactNickNames[remoteParticipantIds[0]] =
+        contactNickName.trim();
+    }
 
     // Add conversation to map before async work — removed on failure below
     this.conversations.set(conversationId, conversationState);
@@ -318,8 +332,12 @@ export class MessagingController extends EventEmitter {
       this._fetchParticipantProfile(participantId).then((profile) => {
         this._updateParticipantMeta(conversationId, participantId, profile);
       });
-      this._fetchLocalContactName(participantId).then((contactName) => {
-        this._updateLocalContactName(conversationId, participantId, contactName);
+      this._fetchLocalContactNickName(participantId).then((contactNickName) => {
+        this._updateLocalContactNickName(
+          conversationId,
+          participantId,
+          contactNickName,
+        );
       });
     }
   }
@@ -342,11 +360,11 @@ export class MessagingController extends EventEmitter {
     });
   }
 
-  _updateLocalContactName(conversationId, participantId, contactName) {
+  _updateLocalContactNickName(conversationId, participantId, contactNickName) {
     const state = this.conversations.get(conversationId);
-    if (!state || !contactName) return;
+    if (!state || !contactNickName) return;
 
-    state.localContactNames[participantId] = contactName;
+    state.localContactNickNames[participantId] = contactNickName;
     this.emit('conversation:meta-updated', {
       conversationId,
       participants: { ...state.participants },
@@ -378,7 +396,9 @@ export class MessagingController extends EventEmitter {
     const ids = state.remoteParticipantIds;
     if (ids.length === 1) {
       return (
-        state.localContactNames[ids[0]] ||
+        state.localContactNickNames[ids[0]] ||
+        state.participants[ids[0]]?.userName ||
+        // TODO(2026-04-08): Remove legacy fallback once profile.displayName migration window ends.
         state.participants[ids[0]]?.displayName ||
         null
       );
@@ -386,7 +406,11 @@ export class MessagingController extends EventEmitter {
     const names = ids
       .map(
         (id) =>
-          state.localContactNames[id] || state.participants[id]?.displayName || '?',
+          state.localContactNickNames[id] ||
+          state.participants[id]?.userName ||
+          // TODO(2026-04-08): Remove legacy fallback once profile.displayName migration window ends.
+          state.participants[id]?.displayName ||
+          '?',
       )
       .filter(Boolean);
     return names.length > 0 ? names.join(', ') : null;
@@ -463,13 +487,18 @@ export class MessagingController extends EventEmitter {
     }
   }
 
-  async _fetchLocalContactName(participantId) {
+  async _fetchLocalContactNickName(participantId) {
     try {
       const contact = await contactsService.getContact(participantId);
-      return contact?.contactName?.trim() || null;
+      return (
+        contact?.contactNickName?.trim() ||
+        // TODO(2026-04-08): Remove legacy alias fallback once migration is complete and old clients are retired.
+        contact?.contactName?.trim() ||
+        null
+      );
     } catch (e) {
       console.warn(
-        '[MessagingController] Failed to fetch local contact for participant:',
+        '[MessagingController] Failed to fetch local contact nickname for participant:',
         participantId,
         e,
       );

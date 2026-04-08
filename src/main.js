@@ -706,7 +706,11 @@ export async function autoInitMsgSessionIfNeeded() {
       remoteParticipantIds: [firstContact.contactId],
       conversationId,
       displayUI: false,
-      contactName: firstContact.contactName ?? null,
+      contactNickName:
+        firstContact.contactNickName ??
+        // TODO(2026-04-08): Remove legacy alias fallback once migration is complete and old clients are retired.
+        firstContact.contactName ??
+        null,
     });
   } catch (error) {
     console.warn(
