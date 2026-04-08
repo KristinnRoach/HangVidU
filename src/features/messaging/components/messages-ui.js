@@ -668,10 +668,9 @@ export function initMessagesUI() {
 
     if (isImage && isSafeUrl) {
       const img = document.createElement('img');
+      img.className = 'file-preview-img';
       img.src = dataUrl;
       img.alt = fileName;
-      img.style.cssText =
-        'max-width: 200px; max-height: 200px; border-radius: 8px; cursor: pointer; display: block; margin-bottom: 4px;';
       textSpan.appendChild(img);
 
       // Open preview on single tap (double-tap handled by reaction system)
@@ -682,6 +681,9 @@ export function initMessagesUI() {
       };
     }
 
+    const meta = document.createElement('span');
+    meta.className = 'file-message-meta';
+
     const link = document.createElement('a');
     link.textContent = fileName;
     if (isSafeUrl) {
@@ -690,13 +692,14 @@ export function initMessagesUI() {
       link.download = fileName;
     }
     link.style.cssText = 'cursor: pointer; text-decoration: underline;';
-    textSpan.appendChild(link);
+    meta.appendChild(link);
 
     const sizeSpan = document.createElement('span');
-    sizeSpan.textContent = ` (${sizeLabel})`;
-    sizeSpan.style.cssText =
-      'color: var(--text-secondary, #aaa); font-size: 12px;';
-    textSpan.appendChild(sizeSpan);
+    sizeSpan.className = 'file-message-size';
+    sizeSpan.textContent = `(${sizeLabel})`;
+    meta.appendChild(sizeSpan);
+
+    textSpan.appendChild(meta);
 
     return { element: textSpan, onSingleTap };
   }
