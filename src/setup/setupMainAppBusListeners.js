@@ -55,11 +55,24 @@ export function setupMainAppBusListeners() {
           conversationId,
           remoteParticipantIds = [],
           displayUI = true,
+          contactName,
         }) => {
           try {
+            const contactId =
+              remoteParticipantIds.length === 1 ? remoteParticipantIds[0] : null;
+            const hasProvidedContactName =
+              typeof contactName === 'string' && contactName.trim().length > 0;
+            const resolvedContactName = hasProvidedContactName
+              ? contactName
+              : contactId
+                ? (await contactsService.getContact(contactId))?.contactName ||
+                  null
+                : null;
+
             await messagingController.selectConversation(conversationId, {
               remoteParticipantIds,
               displayUI,
+              contactName: resolvedContactName,
             });
           } catch (e) {
             console.warn(

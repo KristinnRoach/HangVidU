@@ -201,6 +201,7 @@ function attachContactListeners(container, lobbyElement) {
             conversationId,
             remoteParticipantIds: [contactId],
             displayUI: true,
+            contactName: el.getAttribute('data-contact-name') || null,
           });
 
           clearUnreadBadge(contactId);

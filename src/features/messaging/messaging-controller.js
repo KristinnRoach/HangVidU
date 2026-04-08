@@ -4,6 +4,7 @@ import { compressImage } from '../../media/image-compress.js';
 import { EventEmitter } from '../../events/event-emitter.js';
 import { getUserId } from '../../auth/index.js';
 import { getUserProfile } from '../../storage/user/index.js';
+import { contactsService } from '../contacts/index.js';
 import {
   createFileMessage,
   createTextMessage,
@@ -29,6 +30,7 @@ const MAX_FILE_SIZE = 1 * 1024 * 1024;
  * @property {string} conversationId
  * @property {string[]} remoteParticipantIds
  * @property {Object<string, ParticipantProfile>} participants - keyed by userId
+ * @property {Object<string, string>} localContactNames - keyed by userId
  * @property {MessageEvent[]} history
  * @property {(() => void)|null} _unsubscribe
  */
@@ -226,6 +228,7 @@ export class MessagingController extends EventEmitter {
       conversationId,
       remoteParticipantIds,
       participants: {},
+      localContactNames: {},
       history: [],
       _unsubscribe: null,
     };
@@ -315,6 +318,9 @@ export class MessagingController extends EventEmitter {
       this._fetchParticipantProfile(participantId).then((profile) => {
         this._updateParticipantMeta(conversationId, participantId, profile);
       });
+      this._fetchLocalContactName(participantId).then((contactName) => {
+        this._updateLocalContactName(conversationId, participantId, contactName);
+      });
     }
   }
 
@@ -330,6 +336,17 @@ export class MessagingController extends EventEmitter {
     if (!state || !profile) return;
 
     state.participants[participantId] = profile;
+    this.emit('conversation:meta-updated', {
+      conversationId,
+      participants: { ...state.participants },
+    });
+  }
+
+  _updateLocalContactName(conversationId, participantId, contactName) {
+    const state = this.conversations.get(conversationId);
+    if (!state || !contactName) return;
+
+    state.localContactNames[participantId] = contactName;
     this.emit('conversation:meta-updated', {
       conversationId,
       participants: { ...state.participants },
@@ -360,10 +377,17 @@ export class MessagingController extends EventEmitter {
     if (!state) return null;
     const ids = state.remoteParticipantIds;
     if (ids.length === 1) {
-      return state.participants[ids[0]]?.displayName || null;
+      return (
+        state.localContactNames[ids[0]] ||
+        state.participants[ids[0]]?.displayName ||
+        null
+      );
     }
     const names = ids
-      .map((id) => state.participants[id]?.displayName || '?')
+      .map(
+        (id) =>
+          state.localContactNames[id] || state.participants[id]?.displayName || '?',
+      )
       .filter(Boolean);
     return names.length > 0 ? names.join(', ') : null;
   }
@@ -436,6 +460,20 @@ export class MessagingController extends EventEmitter {
         participantId,
         e,
       );
+    }
+  }
+
+  async _fetchLocalContactName(participantId) {
+    try {
+      const contact = await contactsService.getContact(participantId);
+      return contact?.contactName?.trim() || null;
+    } catch (e) {
+      console.warn(
+        '[MessagingController] Failed to fetch local contact for participant:',
+        participantId,
+        e,
+      );
+      return null;
     }
   }
 

@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => {
     },
     contactsService: {
       getConversationId: vi.fn(),
+      getContact: vi.fn(async () => null),
     },
     callContact: vi.fn(),
     listenForIncomingOnRoom: vi.fn(),
@@ -112,11 +113,13 @@ describe('setupMainAppBusListeners', () => {
       displayUI: true,
     });
 
+    expect(mocks.contactsService.getContact).toHaveBeenCalledWith('contact-1');
     expect(mocks.messagingController.selectConversation).toHaveBeenCalledWith(
       'conv-123',
       {
         remoteParticipantIds: ['contact-1'],
         displayUI: true,
+        contactName: null,
       },
     );
   });
