@@ -86,7 +86,7 @@ describe('setupMainAppBusListeners', () => {
 
     handler?.({
       contactId: null,
-      contactName: 'Unknown Caller',
+      contactNickName: 'Unknown Caller',
       conversationId: null,
       roomId: 'room-123',
     });

@@ -87,12 +87,8 @@ export async function renderContactsList(lobbyElement) {
   contactsContainer.innerHTML = `
     <div class="contacts-list">
       ${entries
-        .map(({ id, contactId, contactNickName, contactName, roomId, conversationId }) => {
-          const rawName =
-            contactNickName ||
-            // TODO(2026-04-08): Remove legacy alias fallback once migration is complete and old clients are retired.
-            contactName ||
-            t('contact.no_name');
+        .map(({ id, contactId, contactNickName, roomId, conversationId }) => {
+          const rawName = contactNickName || t('contact.no_name');
           const escapedName = escapeHtml(rawName);
           const shortName =
             escapedName.length > MAX_CONTACT_NAME_CHARS
@@ -171,7 +167,7 @@ function attachContactListeners(container, lobbyElement) {
   container.querySelectorAll('.contact-call-btn').forEach((nameEl) => {
     nameEl.onclick = async () => {
       let roomId = nameEl.getAttribute('data-room-id');
-      const contactName = nameEl.getAttribute('data-contact-name');
+      const contactNickName = nameEl.getAttribute('data-contact-name');
       const contactId = nameEl.getAttribute('data-contact-id');
       const conversationId =
         nameEl.getAttribute('data-conversation-id') || null;
@@ -179,7 +175,7 @@ function attachContactListeners(container, lobbyElement) {
       if (roomId || contactId) {
         dispatchCommand('call:outgoing:initiate', {
           contactId,
-          contactName,
+          contactNickName,
           conversationId,
           roomId,
         });
@@ -230,10 +226,7 @@ function attachContactListeners(container, lobbyElement) {
       if (!contact) return;
 
       const result = await editContactModal(
-        contact.contactNickName ??
-          // TODO(2026-04-08): Remove legacy alias fallback once migration is complete and old clients are retired.
-          contact.contactName ??
-          '',
+        contact.contactNickName ?? '',
       );
       if (!result) return;
 

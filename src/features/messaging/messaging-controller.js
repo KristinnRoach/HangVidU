@@ -24,7 +24,6 @@ const MAX_FILE_SIZE = 1 * 1024 * 1024;
 /**
  * @typedef {{
  *   userName: string|null,
- *   displayName?: string|null,
  *   photoURL: string|null
  * }} ParticipantProfile
  */
@@ -398,8 +397,6 @@ export class MessagingController extends EventEmitter {
       return (
         state.localContactNickNames[ids[0]] ||
         state.participants[ids[0]]?.userName ||
-        // TODO(2026-04-08): Remove legacy fallback once profile.displayName migration window ends.
-        state.participants[ids[0]]?.displayName ||
         null
       );
     }
@@ -408,8 +405,6 @@ export class MessagingController extends EventEmitter {
         (id) =>
           state.localContactNickNames[id] ||
           state.participants[id]?.userName ||
-          // TODO(2026-04-08): Remove legacy fallback once profile.displayName migration window ends.
-          state.participants[id]?.displayName ||
           '?',
       )
       .filter(Boolean);
@@ -490,12 +485,7 @@ export class MessagingController extends EventEmitter {
   async _fetchLocalContactNickName(participantId) {
     try {
       const contact = await contactsService.getContact(participantId);
-      return (
-        contact?.contactNickName?.trim() ||
-        // TODO(2026-04-08): Remove legacy alias fallback once migration is complete and old clients are retired.
-        contact?.contactName?.trim() ||
-        null
-      );
+      return contact?.contactNickName?.trim() || null;
     } catch (e) {
       console.warn(
         '[MessagingController] Failed to fetch local contact nickname for participant:',

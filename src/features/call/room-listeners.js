@@ -557,9 +557,8 @@ export function listenForIncomingOnRoom(roomId) {
       });
 
       const callerContact = await contactsService.getContactByRoomId(roomId);
-      // TODO: Centralize caller display-name fallback policy once ownership is settled.
       const callerName =
-        callerContact?.contactName || joinedContactId || 'Unknown';
+        callerContact?.contactNickName || joinedContactId || 'Unknown';
 
       // Start incoming call ringtone and visual indicators
       ringtoneManager.playIncoming();

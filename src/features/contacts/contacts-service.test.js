@@ -61,7 +61,7 @@ describe('contacts-service', () => {
     const service = new ContactsService();
     const contact = {
       contactId: 'u1',
-      contactName: 'Alice',
+      contactNickName: 'Alice',
       roomId: 'room-1',
       savedAt: 10,
       lastInteractionAt: 10,
@@ -92,14 +92,14 @@ describe('contacts-service', () => {
     const service = new ContactsService();
     const existing = {
       contactId: 'u1',
-      contactName: 'Before',
+      contactNickName: 'Before',
       roomId: 'room-1',
       savedAt: 100,
       lastInteractionAt: 200,
     };
     const updated = {
       ...existing,
-      contactName: 'After',
+      contactNickName: 'After',
     };
 
     mocks.store.get.mockResolvedValue(existing);
@@ -126,7 +126,7 @@ describe('contacts-service', () => {
     mocks.store.get.mockResolvedValue(null);
     mocks.store.put.mockResolvedValue({
       contactId: 'u1',
-      contactName: 'Alice',
+      contactNickName: 'Alice',
       roomId: 'room-1',
       conversationId: 'me_u1',
       savedAt: 1,
@@ -150,14 +150,14 @@ describe('contacts-service', () => {
     const service = new ContactsService();
     const existing = {
       contactId: 'u1',
-      contactName: 'Alice',
+      contactNickName: 'Alice',
       roomId: 'room-1',
       savedAt: 100,
       lastInteractionAt: 200,
     };
     const updated = {
       ...existing,
-      contactName: 'Alice B',
+      contactNickName: 'Alice B',
       roomId: 'room-2',
     };
 
@@ -199,7 +199,7 @@ describe('contacts-service', () => {
     const service = new ContactsService();
     const existing = {
       contactId: 'u1',
-      contactName: 'Alice',
+      contactNickName: 'Alice',
       roomId: 'room-1',
       savedAt: 1,
       lastInteractionAt: 1,
@@ -237,14 +237,14 @@ describe('contacts-service', () => {
     mocks.store.list.mockResolvedValue([
       {
         contactId: 'b',
-        contactName: 'Bob',
+        contactNickName: 'Bob',
         roomId: 'r2',
         savedAt: 1,
         lastInteractionAt: 2,
       },
       {
         contactId: 'a',
-        contactName: 'Alice',
+        contactNickName: 'Alice',
         roomId: 'r1',
         savedAt: 3,
         lastInteractionAt: 4,
@@ -256,14 +256,14 @@ describe('contacts-service', () => {
     expect(result).toEqual({
       a: {
         contactId: 'a',
-        contactName: 'Alice',
+        contactNickName: 'Alice',
         roomId: 'r1',
         savedAt: 3,
         lastInteractionAt: 4,
       },
       b: {
         contactId: 'b',
-        contactName: 'Bob',
+        contactNickName: 'Bob',
         roomId: 'r2',
         savedAt: 1,
         lastInteractionAt: 2,
@@ -278,21 +278,21 @@ describe('contacts-service', () => {
     mocks.store.list.mockResolvedValue([
       {
         contactId: 'b',
-        contactName: 'Bob',
+        contactNickName: 'Bob',
         roomId: 'r2',
         savedAt: 1,
         lastInteractionAt: 5,
       },
       {
         contactId: 'a',
-        contactName: 'Alice',
+        contactNickName: 'Alice',
         roomId: 'r1',
         savedAt: 1,
         lastInteractionAt: 5,
       },
       {
         contactId: 'c',
-        contactName: 'Cara',
+        contactNickName: 'Cara',
         roomId: 'r3',
         savedAt: 1,
         lastInteractionAt: 1,
@@ -311,7 +311,7 @@ describe('contacts-service', () => {
     mocks.store.list.mockResolvedValue([
       {
         contactId: 'u1',
-        contactName: 'Alice',
+        contactNickName: 'Alice',
         roomId: 'room-1',
         savedAt: 1,
         lastInteractionAt: 1,
@@ -320,7 +320,7 @@ describe('contacts-service', () => {
 
     await expect(service.getContactByRoomId('room-1')).resolves.toEqual({
       contactId: 'u1',
-      contactName: 'Alice',
+      contactNickName: 'Alice',
       roomId: 'room-1',
       savedAt: 1,
       lastInteractionAt: 1,
@@ -346,7 +346,7 @@ describe('contacts-service', () => {
     const service = new ContactsService();
     const updated = {
       contactId: 'u1',
-      contactName: 'Alice',
+      contactNickName: 'Alice',
       roomId: 'room-1',
       savedAt: 1,
       lastInteractionAt: 99,
@@ -371,7 +371,7 @@ describe('contacts-service', () => {
     mocks.store.list.mockResolvedValue([
       {
         contactId: 'u1',
-        contactName: 'Alice',
+        contactNickName: 'Alice',
         roomId: 'room-1',
         savedAt: 1,
         lastInteractionAt: 1,

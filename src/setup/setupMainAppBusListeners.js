@@ -56,7 +56,6 @@ export function setupMainAppBusListeners() {
           remoteParticipantIds = [],
           displayUI = true,
           contactNickName,
-          contactName,
         }) => {
           try {
             const contactId =
@@ -64,18 +63,13 @@ export function setupMainAppBusListeners() {
             const providedContactNickName =
               typeof contactNickName === 'string' && contactNickName.trim()
                 ? contactNickName.trim()
-                : typeof contactName === 'string' && contactName.trim()
-                  ? contactName.trim()
-                  : null;
+                : null;
             const localContact = contactId
               ? await contactsService.getContact(contactId)
               : null;
             const resolvedContactNickName = providedContactNickName
               ? providedContactNickName
-              : localContact?.contactNickName ||
-                // TODO(2026-04-08): Remove legacy alias fallback once migration is complete and old clients are retired.
-                localContact?.contactName ||
-                null;
+              : localContact?.contactNickName || null;
 
             await messagingController.selectConversation(conversationId, {
               remoteParticipantIds,
@@ -94,13 +88,13 @@ export function setupMainAppBusListeners() {
 
       handleCommand(
         'call:outgoing:initiate',
-        async ({ contactId, contactName, conversationId, roomId }) => {
+        async ({ contactId, contactNickName, conversationId, roomId }) => {
           isDev() &&
             tempWarn(
               '[main.js] call:outgoing:initiate event received with data: ',
               {
                 contactId,
-                contactName,
+                contactNickName,
                 conversationId,
                 roomId,
               },
@@ -133,7 +127,7 @@ export function setupMainAppBusListeners() {
             }
           }
 
-          callContact(contactId, contactName, roomId);
+          callContact(contactId, contactNickName, roomId);
         },
         { signal: ac.signal },
       );

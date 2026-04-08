@@ -145,7 +145,7 @@ function normalizeUser(firebaseUser) {
   if (!firebaseUser) return null;
   return {
     uid: firebaseUser.uid,
-    displayName: firebaseUser.displayName,
+    userName: firebaseUser.displayName,
     email: firebaseUser.email,
     photoURL: firebaseUser.photoURL,
   };

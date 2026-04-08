@@ -7,7 +7,7 @@
 export const TEST_USERS = {
   ALICE: {
     uid: 'user_alice_123',
-    displayName: 'Alice Johnson',
+    userName: 'Alice Johnson',
     email: 'alice@example.com',
     isAuthenticated: true,
     timezone: 'America/New_York'
@@ -15,7 +15,7 @@ export const TEST_USERS = {
 
   BOB: {
     uid: 'user_bob_456',
-    displayName: 'Bob Smith',
+    userName: 'Bob Smith',
     email: 'bob@example.com',
     isAuthenticated: true,
     timezone: 'America/Los_Angeles'
@@ -23,7 +23,7 @@ export const TEST_USERS = {
 
   CHARLIE: {
     uid: 'user_charlie_789',
-    displayName: 'Charlie Brown',
+    userName: 'Charlie Brown',
     email: 'charlie@example.com',
     isAuthenticated: false, // Guest user
     timezone: 'Europe/London'
@@ -31,7 +31,7 @@ export const TEST_USERS = {
 
   DIANA: {
     uid: 'user_diana_101',
-    displayName: 'Diana Prince',
+    userName: 'Diana Prince',
     email: 'diana@example.com',
     isAuthenticated: true,
     timezone: 'Asia/Tokyo'
@@ -219,7 +219,7 @@ export const CONTACT_DATA = {
   ALICE_CONTACTS: {
     [TEST_USERS.BOB.uid]: {
       uid: TEST_USERS.BOB.uid,
-      displayName: TEST_USERS.BOB.displayName,
+      contactNickName: TEST_USERS.BOB.userName,
       roomId: TEST_ROOMS.ROOM_1.id,
       savedAt: Date.now() - 30000,
       callCount: 3
@@ -229,7 +229,7 @@ export const CONTACT_DATA = {
   BOB_CONTACTS: {
     [TEST_USERS.ALICE.uid]: {
       uid: TEST_USERS.ALICE.uid,
-      displayName: TEST_USERS.ALICE.displayName,
+      contactNickName: TEST_USERS.ALICE.userName,
       roomId: TEST_ROOMS.ROOM_1.id,
       savedAt: Date.now() - 30000,
       callCount: 2
@@ -301,7 +301,7 @@ export const TIMING_SCENARIOS = {
 export function createTestUser(overrides = {}) {
   return {
     uid: `test_user_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-    displayName: `Test User ${Math.floor(Math.random() * 1000)}`,
+    userName: `Test User ${Math.floor(Math.random() * 1000)}`,
     email: `test${Math.floor(Math.random() * 1000)}@example.com`,
     isAuthenticated: true,
     ...overrides

@@ -149,7 +149,7 @@ export async function joinOrCreateRoomWithId(
   return applyCallResult(result, false);
 }
 
-export async function callContact(contactId, contactName, roomId = null) {
+export async function callContact(contactId, contactNickName, roomId = null) {
   const myUserId = getUserId();
   if (contactId && myUserId === contactId) {
     console.warn('[CALL] Cannot call yourself');
@@ -207,7 +207,7 @@ export async function callContact(contactId, contactName, roomId = null) {
 
     try {
       onCallingStarted();
-      await showOutgoingCallUI(roomId, contactName, {
+      await showOutgoingCallUI(roomId, contactNickName, {
         onCancel: (reason) => {
           CallController.hangUp({ reason }).catch((e) => {
             console.warn('[CALL] hangUp after cancel/timeout failed:', e);
@@ -224,7 +224,7 @@ export async function callContact(contactId, contactName, roomId = null) {
     }
 
     const me = getUser();
-    const callerName = me?.displayName || me?.email || myUserId;
+    const callerName = me?.userName || me?.email || myUserId;
     const pushCall = getPushNotifications()?.sendIncomingCall({
       targetUserId: contactId,
       roomId,

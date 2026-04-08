@@ -87,10 +87,7 @@ async function emitContactUpdated(contact, previousRoomId) {
 
   publish('room:id:updated', {
     contactId: contact.contactId,
-    contactNickName:
-      contact.contactNickName ??
-      // TODO(2026-04-08): Remove legacy alias fallback once migration is complete and old clients are retired.
-      contact.contactName,
+    contactNickName: contact.contactNickName,
     roomId,
     previousRoomId,
   });
@@ -339,9 +336,7 @@ export class ContactsService {
       if (entry.roomId !== roomId) {
         await this.updateContact(
           contactUserId,
-          entry.contactNickName ??
-            // TODO(2026-04-08): Remove legacy alias fallback once migration is complete and old clients are retired.
-            entry.contactName,
+          entry.contactNickName,
           roomId,
         );
       }

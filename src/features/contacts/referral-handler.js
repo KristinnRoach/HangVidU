@@ -32,7 +32,7 @@ export async function captureReferral() {
 
     // Fetch referrer profile (world-readable, no auth needed)
     const profile = await getUserProfile(referrerId);
-    const name = profile?.displayName || null;
+    const name = profile?.userName || null;
     const photoURL = profile?.photoURL || null;
 
     // Clickable toast (ephemeral)
@@ -79,7 +79,7 @@ export async function processReferral() {
 
     // Fetch referrer profile (may not exist yet for older users)
     const profile = await getUserProfile(referrerId);
-    const referrerName = profile?.displayName?.trim() || t('contact.no_name');
+    const referrerName = profile?.userName?.trim() || t('contact.no_name');
     const referrerPhotoURL = profile?.photoURL || null;
 
     // Generate deterministic room ID

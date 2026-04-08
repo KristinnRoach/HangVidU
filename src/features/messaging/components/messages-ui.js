@@ -158,13 +158,13 @@ export function initMessagesUI() {
         const conversationId = state?.conversationId;
         const contactId = state?.remoteParticipantIds?.[0] ?? null;
         const roomId = state?.roomId ?? null;
-        const contactName =
+        const contactNickName =
           messagingController.getConversationDisplayName(conversationId) ||
           null;
 
         dispatchCommand('call:outgoing:initiate', {
           contactId,
-          contactName,
+          contactNickName,
           conversationId,
           roomId,
         });
@@ -631,11 +631,11 @@ export function initMessagesUI() {
       renderAvatar(avatarSpan, { customFallbackText: t('shared.me') });
     } else {
       const conversationId = messagingController.getSelectedConversationId();
-      const displayName =
+      const participantName =
         messagingController.getConversationDisplayName(conversationId) || 'U';
       const photoURL =
         messagingController.getConversationPhotoURL(conversationId) || '';
-      renderAvatar(avatarSpan, { name: displayName, photoURL });
+      renderAvatar(avatarSpan, { name: participantName, photoURL });
     }
 
     return avatarSpan;
@@ -773,13 +773,13 @@ export function initMessagesUI() {
         const conversationId = state?.conversationId;
         const contactId = state?.remoteParticipantIds?.[0] ?? null;
         const roomId = state?.roomId ?? null;
-        const contactName =
+        const contactNickName =
           messagingController.getConversationDisplayName(conversationId) ||
           null;
 
         dispatchCommand('call:outgoing:initiate', {
           contactId,
-          contactName,
+          contactNickName,
           conversationId,
           roomId,
         });

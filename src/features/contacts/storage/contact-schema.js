@@ -5,7 +5,6 @@ import { z } from 'zod';
  * @typedef {Object} ContactRecord
  * @property {string} contactId
  * @property {string} contactNickName
- * @property {string} [contactName] Legacy mirror field.
  * @property {string|null} roomId
  * @property {string|null|undefined} [conversationId]
  * @property {number} savedAt
@@ -16,7 +15,6 @@ import { z } from 'zod';
  * Partial update shape for persisted contacts.
  * @typedef {Object} ContactPatch
  * @property {string} [contactNickName]
- * @property {string} [contactName] Legacy input alias.
  * @property {string|null} [roomId]
  * @property {string|null} [conversationId]
  * @property {number} [savedAt]
@@ -77,8 +75,6 @@ export const ContactTimestampSchema = z
 export const ContactRecordSchema = z.object({
   contactId: ContactIdSchema,
   contactNickName: ContactNickNameSchema,
-  // TODO(2026-04-08): Remove legacy alias once migration is complete and old clients are retired.
-  contactName: ContactNickNameSchema.optional(),
   roomId: ContactRoomIdSchema,
   conversationId: ContactConversationIdSchema.optional(),
   savedAt: ContactTimestampSchema,
@@ -89,8 +85,6 @@ export const ContactRecordSchema = z.object({
 export const ContactPatchSchema = z
   .object({
     contactNickName: ContactNickNameSchema.optional(),
-    // TODO(2026-04-08): Remove legacy alias once migration is complete and old clients are retired.
-    contactName: ContactNickNameSchema.optional(),
     roomId: ContactRoomIdSchema.optional(),
     conversationId: ContactConversationIdSchema.optional(),
     savedAt: ContactTimestampSchema.optional(),

@@ -44,11 +44,7 @@ export function setupMessagingAppBusHandlers({ messagingController }) {
       }
 
       const contact = await contactsService.getContact(contactId);
-      const contactNickName =
-        contact?.contactNickName ||
-        // TODO(2026-04-08): Remove legacy alias fallback once migration is complete and old clients are retired.
-        contact?.contactName ||
-        null;
+      const contactNickName = contact?.contactNickName || null;
 
       messagingController
         .selectConversation(conversationId, {

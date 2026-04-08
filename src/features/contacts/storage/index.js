@@ -14,7 +14,7 @@ export {
 } from './contact-transform.js';
 export {
   ContactIdSchema,
-  ContactNameSchema,
+  ContactNickNameSchema,
   ContactPatchSchema,
   ContactRecordSchema,
   ContactRoomIdSchema,

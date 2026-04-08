@@ -22,7 +22,7 @@ export class CallFlowSimulator {
   createUser(userId, userData = {}) {
     const user = {
       uid: userId,
-      displayName: userData.displayName || `User ${userId}`,
+      userName: userData.userName || `User ${userId}`,
       isAuthenticated: userData.isAuthenticated !== false,
       listeningRoomIds: new Set(),
       contacts: new Map(),
@@ -88,7 +88,7 @@ export class CallFlowSimulator {
 
     const contact = {
       uid: contactUserId,
-      displayName: contactData.displayName || contactUser.displayName,
+      userName: contactData.userName || contactUser.userName,
       roomId: roomId,
       savedAt: Date.now(),
       ...contactData

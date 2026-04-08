@@ -40,7 +40,7 @@ This keeps normal control flow simple while still making real failures visible.
 ```js
 {
   contactId: string,
-  contactName: string,
+  contactNickName: string,
   roomId: string | null,
   savedAt: number,
   lastInteractionAt: number

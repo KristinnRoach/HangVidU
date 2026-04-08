@@ -121,7 +121,7 @@ No enforced contract. `currentSession` state crosses layers.
 **Steps**:
 
 1. [x] Add `messagingController.setCurrentSession(sessionData)` method
-   - Validates: `{ contactId, contactName }`
+   - Validates: `{ contactId, contactNickName }`
    - Manages: all initialization in one place
    - Returns: clean session object
 2. [x] Remove `messagesUI.setSession()` (consolidate into middleware)
@@ -653,7 +653,7 @@ When you resume work on Phase 1, focus on these files:
 
 ```
 src/features/call/call-controller.js
-  → createSession() → { contactId, contactName }
+  → createSession() → { contactId, contactNickName }
 
 src/ui/components/messages/messages-ui.js
   → messagesUI.setSession(session) → stores in currentSession

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
 /**
- * Rename legacy profile field `displayName` -> `userName` in RTDB.
+ * Rename legacy usersByEmail field `displayName` -> `userName` in RTDB.
  *
  * Usage:
- *   node scripts/migrate-profile-display-name-to-user-name.js           # dry run
- *   RTDB_URL="https://..." node scripts/migrate-profile-display-name-to-user-name.js --apply
+ *   node scripts/migrate-usersbyemail-display-name-to-user-name.js           # dry run
+ *   RTDB_URL="https://..." node scripts/migrate-usersbyemail-display-name-to-user-name.js --apply
  *
  * Requires GOOGLE_APPLICATION_CREDENTIALS or firebase-admin default credentials.
  */
@@ -47,35 +47,32 @@ async function migrate() {
   console.log(`Mode: ${DRY_RUN ? 'DRY RUN (pass --apply to write)' : 'APPLY'}`);
   console.log('');
 
-  const usersSnap = await db.ref('users').once('value');
-  if (!usersSnap.exists()) {
-    console.log('No users found.');
+  const directorySnap = await db.ref('usersByEmail').once('value');
+  if (!directorySnap.exists()) {
+    console.log('No usersByEmail entries found.');
     process.exit(0);
   }
 
-  const users = usersSnap.val();
+  const entries = directorySnap.val();
   const updates = {};
   const stats = {
-    usersScanned: 0,
-    profilesScanned: 0,
+    entriesScanned: 0,
     migrated: 0,
     removedLegacyOnly: 0,
     mismatched: 0,
   };
 
-  for (const [userId, userData] of Object.entries(users)) {
-    stats.usersScanned++;
-    const profile = userData?.profile;
-    if (!profile || typeof profile !== 'object') {
+  for (const [emailHash, entry] of Object.entries(entries)) {
+    stats.entriesScanned++;
+    if (!entry || typeof entry !== 'object') {
       continue;
     }
-    stats.profilesScanned++;
 
     const legacyDisplayName =
-      typeof profile.displayName === 'string' ? profile.displayName.trim() : '';
+      typeof entry.displayName === 'string' ? entry.displayName.trim() : '';
     const nextUserName =
-      typeof profile.userName === 'string' ? profile.userName.trim() : '';
-    const basePath = `users/${userId}/profile`;
+      typeof entry.userName === 'string' ? entry.userName.trim() : '';
+    const basePath = `usersByEmail/${emailHash}`;
 
     if (!nextUserName && legacyDisplayName) {
       updates[`${basePath}/userName`] = legacyDisplayName;
@@ -103,9 +100,8 @@ async function migrate() {
 
   console.log('');
   console.log('--- Summary ---');
-  console.log(`Users scanned:            ${stats.usersScanned}`);
-  console.log(`Profiles scanned:         ${stats.profilesScanned}`);
-  console.log(`Profiles migrated:        ${stats.migrated}`);
+  console.log(`Entries scanned:          ${stats.entriesScanned}`);
+  console.log(`Entries migrated:         ${stats.migrated}`);
   console.log(`Legacy fields removed:    ${stats.removedLegacyOnly}`);
   console.log(`User/legacy mismatches:   ${stats.mismatched}`);
   console.log(`Total RTDB updates:       ${Object.keys(updates).length}`);

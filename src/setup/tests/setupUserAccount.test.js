@@ -57,13 +57,13 @@ describe('setupUserAccount', () => {
     callback?.({ isLoggedIn: true, user: null });
     callback?.({
       isLoggedIn: true,
-      user: { uid: 'u1', displayName: 'Alice', photoURL: null },
+      user: { uid: 'u1', userName: 'Alice', photoURL: null },
     });
 
     expect(mocks.saveUserProfile).toHaveBeenCalledTimes(1);
     expect(mocks.saveUserProfile).toHaveBeenCalledWith({
       uid: 'u1',
-      displayName: 'Alice',
+      userName: 'Alice',
       photoURL: null,
     });
 

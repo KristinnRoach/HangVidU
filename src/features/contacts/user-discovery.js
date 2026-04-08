@@ -5,6 +5,30 @@ import { ref, set, get } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
 import { onAuthStateChange } from '../../auth/index.js';
 
+function canonicalizeDirectoryUser(userData) {
+  if (!userData || typeof userData !== 'object') {
+    return { user: null, didPromoteLegacyDisplayName: false };
+  }
+
+  const userName =
+    typeof userData.userName === 'string' && userData.userName.trim()
+      ? userData.userName.trim()
+      : typeof userData.displayName === 'string' && userData.displayName.trim()
+        ? userData.displayName.trim()
+        : 'Anonymous';
+
+  return {
+    user: {
+      ...userData,
+      userName,
+    },
+    didPromoteLegacyDisplayName:
+      !userData.userName &&
+      typeof userData.displayName === 'string' &&
+      !!userData.displayName.trim(),
+  };
+}
+
 // Auto-register user in directory when they log in
 onAuthStateChange((state) => {
   if (state.isLoggedIn && state.user) {
@@ -43,7 +67,7 @@ export function hashEmail(email) {
  * @param {Object} user - Firebase user object
  * @param {string} user.uid - User ID
  * @param {string} user.email - User email
- * @param {string} user.displayName - User display name
+ * @param {string} user.userName - User display name
  * @param {string} [user.photoURL] - User photo URL
  * @returns {Promise<void>}
  */
@@ -57,7 +81,7 @@ export async function registerUserInDirectory(user) {
 
   const userData = {
     uid: user.uid,
-    displayName: user.displayName || 'Anonymous',
+    userName: user.userName || 'Anonymous',
     photoURL: user.photoURL || null,
     registeredAt: Date.now(),
   };
@@ -87,7 +111,16 @@ export async function findUserByEmail(email) {
     const snapshot = await get(userRef);
 
     if (snapshot.exists()) {
-      return snapshot.val();
+      const { user, didPromoteLegacyDisplayName } = canonicalizeDirectoryUser(
+        snapshot.val(),
+      );
+      if (!user) {
+        return null;
+      }
+      if (didPromoteLegacyDisplayName) {
+        await set(userRef, user);
+      }
+      return user;
     }
 
     return null;

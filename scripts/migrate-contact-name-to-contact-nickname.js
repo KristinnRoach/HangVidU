@@ -18,20 +18,12 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DRY_RUN = !process.argv.includes('--apply');
 
-const RTDB_URL_FROM_ENV = process.env.RTDB_URL;
 const RTDB_URL =
-  RTDB_URL_FROM_ENV ||
+  process.env.RTDB_URL ||
   'https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app';
 
 if (!RTDB_URL) {
   console.error('Error: RTDB_URL is not set. Aborting.');
-  process.exit(1);
-}
-
-if (!DRY_RUN && !RTDB_URL_FROM_ENV) {
-  console.error(
-    'Refusing to run with --apply without explicit RTDB_URL environment variable set.',
-  );
   process.exit(1);
 }
 

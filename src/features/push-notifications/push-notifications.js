@@ -514,13 +514,12 @@ export class PushNotifications {
     const type = resolveCallNotificationType(rawType);
     const trackedNotificationId = this.getTrackedCallNotificationId(roomId);
 
-    let displayName = callerName || callerId || 'Unknown caller';
+    let callerLabel = callerName || callerId || 'Unknown caller';
 
     if (!callerName) {
       try {
         const contact = await contactsService.getContactByRoomId(roomId);
-        // TODO: Centralize caller display-name fallback policy once ownership is settled.
-        displayName = contact?.contactName || callerId || 'Unknown caller';
+        callerLabel = contact?.contactNickName || callerId || 'Unknown caller';
       } catch (error) {
         console.warn(
           '[Push Notifications] Failed to resolve caller name:',
@@ -530,13 +529,13 @@ export class PushNotifications {
     }
 
     if (this.options.privacyMode) {
-      displayName = 'Someone';
+      callerLabel = 'Someone';
     }
 
     return {
       roomId,
       callerId,
-      callerName: displayName,
+      callerName: callerLabel,
       notificationId:
         callData.notificationId ||
         trackedNotificationId ||
@@ -550,11 +549,11 @@ export class PushNotifications {
   async formatMessageNotification(messageData) {
     const { senderId, senderName, messageText } = messageData;
 
-    let displayName = senderName || senderId || 'Unknown sender';
+    let senderLabel = senderName || senderId || 'Unknown sender';
     let displayText = messageText;
 
     if (this.options.privacyMode) {
-      displayName = 'Someone';
+      senderLabel = 'Someone';
       displayText = 'New message';
     } else if (displayText && displayText.length > 50) {
       displayText = displayText.substring(0, 47) + '...';
@@ -562,7 +561,7 @@ export class PushNotifications {
 
     return {
       ...messageData,
-      senderName: displayName,
+      senderName: senderLabel,
       messageText: displayText,
     };
   }

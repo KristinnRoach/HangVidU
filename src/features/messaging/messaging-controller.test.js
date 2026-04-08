@@ -8,7 +8,7 @@ import { MessagingController } from './messaging-controller.js';
 vi.mock('../../auth/index.js', () => ({
   getLoggedInUserId: vi.fn(() => 'me'),
   getUserId: vi.fn(() => 'me'),
-  getUser: vi.fn(() => ({ uid: 'me', displayName: 'Test User' })),
+  getUser: vi.fn(() => ({ uid: 'me', userName: 'Test User' })),
 }));
 
 // Mock profile
@@ -271,10 +271,9 @@ describe('MessagingController', () => {
     });
   });
 
-  it('should still fall back to legacy participant displayName during migration window', async () => {
+  it('should resolve participant userName from profile', async () => {
     mockGetUserProfile.mockResolvedValueOnce({
-      // Legacy shape
-      displayName: 'Legacy Google Name',
+      userName: 'Google Name',
       photoURL: null,
     });
     mockGetContact.mockResolvedValueOnce(null);
@@ -285,7 +284,7 @@ describe('MessagingController', () => {
 
     await vi.waitFor(() => {
       expect(controller.getConversationDisplayName('contactA_me')).toBe(
-        'Legacy Google Name',
+        'Google Name',
       );
     });
   });

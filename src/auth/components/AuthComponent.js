@@ -165,13 +165,13 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       updateButtons(initialLoggedIn);
 
       unsubscribe = subscribe(({ isLoggedIn, user, status }) => {
-        const rawName = user?.displayName || user?.email || 'User';
-        const displayName = smartTruncateName(rawName);
+        const rawName = user?.userName || user?.email || 'User';
+        const userName = smartTruncateName(rawName);
         const photoURL = user?.photoURL || '';
 
         devDebug('[AuthComponent] Auth state changed:', {
           isLoggedIn,
-          userName: displayName,
+          userName,
           photoURL,
           status,
         });
@@ -194,7 +194,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
 
         el.update({
           isLoggedIn,
-          userName: displayName,
+          userName,
           userPhotoURL: photoURL,
           userPhotoDisplay: photoURL ? 'block' : 'none',
           userInfoDisplay: isLoggedIn ? 'flex' : 'none',

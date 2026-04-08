@@ -131,7 +131,7 @@ vi.mock('../../src/auth/index.js', () => ({
   getUserId: vi.fn(() => 'user-123'),
   getUser: vi.fn(() => ({
     uid: 'user-123',
-    displayName: 'Caller Example',
+    userName: 'Caller Example',
     email: 'caller@example.com',
   })),
   subscribe: vi.fn(() => () => {}),
@@ -391,7 +391,7 @@ vi.mock('../../src/auth/index.js', () => ({
   getIsLoggedIn: vi.fn(() => true),
   getUser: vi.fn(() => ({
     uid: 'user-123',
-    displayName: 'Caller Example',
+    userName: 'Caller Example',
     email: 'caller@example.com',
   })),
   getUserId: vi.fn(() => 'user-123'),
@@ -596,7 +596,7 @@ describe('callContact push notification flow', () => {
   it('settles a pending incoming-call wait when listeners are removed', async () => {
     mocks.contactsService.getContactByRoomId.mockResolvedValue({
       contactId: 'caller-999',
-      contactName: 'Resolved Caller',
+      contactNickName: 'Resolved Caller',
     });
     RoomService.getRoomData.mockResolvedValue({
       offer: { type: 'offer' },

@@ -312,7 +312,7 @@ function renderImportResults(
     } else if (user) {
       statusBadge = `<span class="status-badge on-app">${t('contact.status.on_app')}</span>`;
       actionButton = `
-        <button type="button" class="invite-btn" data-uid="${escapeHtml(user.uid)}" data-name="${escapeHtml(user.displayName)}">
+        <button type="button" class="invite-btn" data-uid="${escapeHtml(user.uid)}" data-name="${escapeHtml(user.userName)}">
           ${t('contact.invite')}
         </button>
       `;
@@ -341,7 +341,7 @@ function renderImportResults(
         btn.textContent = t('shared.sending');
 
         try {
-          await sendInvite(user.uid, user.displayName);
+          await sendInvite(user.uid, user.userName);
           btn.textContent = `✓ ${t('contact.invite.sent_one')}`;
           btn.classList.add('sent');
         } catch (err) {
@@ -446,7 +446,7 @@ function renderImportResults(
     let successCount = 0;
     for (const contact of toInvite) {
       try {
-        await sendInvite(contact.user.uid, contact.user.displayName);
+        await sendInvite(contact.user.uid, contact.user.userName);
         successCount++;
       } catch (err) {
         console.error('[ADD CONTACT] Failed to invite:', contact.name, err);
@@ -489,7 +489,7 @@ function renderImportResults(
 
       // Step 3: Get current user's name for personalization
       const currentUser = getUser();
-      const senderName = currentUser?.displayName || 'A friend';
+      const senderName = currentUser?.userName || 'A friend';
 
       // Step 4: Prepare email content
       const subject = t('contact.invite.subject');
@@ -593,7 +593,7 @@ function renderImportResults(
       : window.location.origin;
 
     const currentUser = getUser();
-    const senderName = currentUser?.displayName || 'A friend';
+    const senderName = currentUser?.userName || 'A friend';
 
     const subject = encodeURIComponent(t('contact.invite.subject'));
     const body = encodeURIComponent(
