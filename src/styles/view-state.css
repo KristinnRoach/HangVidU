@@ -4,10 +4,18 @@
 body[data-view='lobby:user'] {
   & #lobby-buttons-container {
     display: flex;
-  }
 
-  & #add-contact-btn {
-    display: flex;
+    & #lobby-call-btn {
+      display: none;
+    }
+
+    & #paste-join-btn {
+      display: none;
+    }
+
+    & #add-contact-btn {
+      display: none;
+    }
   }
 
   & #toggle-lang-btn {
@@ -43,10 +51,18 @@ body[data-view='connected:user'] {
 body[data-view='lobby:guest'] {
   & #lobby-buttons-container {
     display: flex;
-  }
 
-  & #add-contact-btn {
-    display: none;
+    & #lobby-call-btn {
+      display: none;
+    }
+
+    & #paste-join-btn {
+      display: none;
+    }
+
+    & #add-contact-btn {
+      display: none;
+    }
   }
 
   & #toggle-lang-btn {

@@ -294,26 +294,6 @@
   margin-right: 0.5rem;
 }
 
-/* ===== CONTAINER QUERIES ===== */
-/* 
-@container main (max-width: 800px) {
-  .top-bar {
-    background-color: transparent;
-    box-shadow: none;
-  }
-
-  .top-bar .top-right-menu {
-    background-color: transparent;
-    box-shadow: none;
-  }
-}
-
-@container main (max-width: 650px) {
-  #app-title-h1 {
-    font-size: 1.5rem;
-  }
-} */
-
 /* ===== ACCESSIBILITY ===== */
 
 /* Respect reduced motion preference */

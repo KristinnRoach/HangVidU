@@ -139,6 +139,7 @@ export async function initOneTap() {
 
 function initializeGIS() {
   google.accounts.id.initialize({
+    prompt_parent_id: 'onetap-container', // UI will be rendered inside this element
     client_id: GOOGLE_CLIENT_ID,
     callback: handleOneTapCredential,
     auto_select: false,
@@ -237,6 +238,30 @@ async function handleOneTapCredential(response) {
       alert(t('auth.onetap_failed', { error: errorMessage }));
     }
   }
+}
+
+/**
+ * Render the branded "Sign in with Google" button into a container element.
+ * Must be called after GIS script is loaded (i.e. after initOneTap()).
+ * @param {HTMLElement} containerEl - DOM element to render the button into
+ * @param {Object} [options] - GsiButtonConfiguration overrides
+ */
+export function renderGoogleSignInButton(containerEl, options = {}) {
+  if (!window.google?.accounts?.id) {
+    devDebug('[ONE TAP] Cannot render button: GIS not loaded yet');
+    return;
+  }
+
+  google.accounts.id.renderButton(containerEl, {
+    type: 'standard',
+    theme: 'filled_black',
+    size: 'large',
+    shape: 'pill',
+    text: 'signin_with',
+    width: '250',
+    locale: getLocale(),
+    ...options,
+  });
 }
 
 /**
