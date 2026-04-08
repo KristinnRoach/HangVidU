@@ -33,7 +33,6 @@ import {
   titleAuthBar,
   pasteJoinBtn,
   addContactBtn,
-  testNotificationsBtn,
   appWrapper,
 } from './elements.js';
 
@@ -418,47 +417,6 @@ if (pasteJoinBtn) {
 if (addContactBtn) {
   addContactBtn.onclick = async () => {
     await showAddContactModal();
-  };
-}
-
-// Test Notifications button (development/testing only)
-if (isDev() && testNotificationsBtn) {
-  showElement(testNotificationsBtn);
-  testNotificationsBtn.onclick = async () => {
-    try {
-      console.log('[TEST] Testing notification permissions...');
-
-      const result = await getPushNotifications()?.requestPermission({
-        onGranted: () => {
-          console.log('[TEST] Notifications granted!');
-          alert('✅ ' + t('status.push_enabled'));
-        },
-        onDenied: (reason) => {
-          console.log('[TEST] Notifications denied:', reason);
-          if (reason === 'silent-block') {
-            alert('❌ ' + t('error.push.blocked'));
-          } else if (reason === 'already-denied') {
-            alert('❌ ' + t('error.push.denied_prev'));
-          } else {
-            alert('❌ ' + t('error.push.denied'));
-          }
-        },
-        onDismissed: () => {
-          console.log('[TEST] Notification prompt dismissed');
-          alert('⚠️ ' + t('error.push.dismissed'));
-        },
-      });
-
-      console.log('[TEST] Permission result:', result);
-
-      // If already enabled, show current status
-      if (getPushNotifications()?.isNotificationEnabled()) {
-        alert('✅ ' + t('status.push_already'));
-      }
-    } catch (error) {
-      console.error('[TEST] Error testing notifications:', error);
-      alert('❌ ' + t('error.push.test') + error.message);
-    }
   };
 }
 

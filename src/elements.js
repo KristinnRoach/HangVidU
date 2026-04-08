@@ -41,7 +41,6 @@ let appTitleA = null;
 let appTitleSpan = null;
 let pasteJoinBtn = null;
 let addContactBtn = null;
-let testNotificationsBtn = null;
 
 // i18n attributes configuration: { elementId: { attrs: ['attr1', 'attr2'], key: 'translation.key' } }
 const i18nElements = {
@@ -49,10 +48,6 @@ const i18nElements = {
   'lobby-call-btn': { attrs: ['title'], key: 'call.start' },
   'paste-join-btn': { attrs: ['title'], key: 'a11y.paste_join' },
   'add-contact-btn': { attrs: ['title'], key: 'a11y.add_contact' },
-  'test-notifications-btn': {
-    attrs: ['title'],
-    key: 'a11y.test_notifications',
-  },
   'exit-watch-mode-btn': { attrs: ['title'], key: 'media.exit_watch' },
   searchBtn: { attrs: ['title'], key: 'media.youtube.search' },
   searchQuery: { attrs: ['placeholder'], key: 'media.youtube.placeholder' },
@@ -113,7 +108,6 @@ function initializeElements() {
   appTitleSpan = getElement('app-title-span');
   pasteJoinBtn = getElement('paste-join-btn');
   addContactBtn = getElement('add-contact-btn');
-  testNotificationsBtn = getElement('test-notifications-btn');
 }
 
 // Initialize elements when DOM is ready
@@ -153,7 +147,6 @@ export const getElements = () => ({
   appTitleSpan,
   pasteJoinBtn,
   addContactBtn,
-  testNotificationsBtn,
 });
 
 // Export individual elements
@@ -186,7 +179,6 @@ export {
   appTitleSpan,
   pasteJoinBtn,
   addContactBtn,
-  testNotificationsBtn,
 };
 
 /**

@@ -222,7 +222,6 @@ vi.mock('../../src/elements.js', () => {
     titleAuthBar,
     pasteJoinBtn: document.createElement('button'),
     addContactBtn: document.createElement('button'),
-    testNotificationsBtn: document.createElement('button'),
     getElements: vi.fn(() => ({
       localVideoEl,
       remoteVideoEl,
