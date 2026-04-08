@@ -128,7 +128,7 @@
     border-radius: 50%;
     background: #3757c1;
     color: #ffffff;
-    font-size: 13px;
+    font-size: 0.8125em;
     font-weight: 600;
     display: inline-flex;
     align-items: center;
@@ -138,7 +138,7 @@
   }
 
   & .messages-topbar-name {
-    font-size: 14px;
+    font-size: 0.875em;
     font-weight: 600;
     color: var(--text-primary);
     white-space: nowrap;
@@ -468,8 +468,8 @@
   font-family: inherit;
   font-size: 16px;
   line-height: 1.4;
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
+  /* -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%; */
 
   /* Auto-grow textarea sizing */
   @supports (field-sizing: content) {
@@ -536,7 +536,7 @@
 @media (max-width: 600px) {
   .messages-box {
     position: fixed;
-    position-anchor: unset;
+    /* position-anchor: unset; */
 
     margin: 0 auto;
     inset: var(--spacing-lg);
