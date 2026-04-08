@@ -60,9 +60,11 @@ export class ContactsRTDBAdapter extends ContactsStorageAdapter {
       return null;
     }
 
-    const { record, didPromoteLegacyContactName } = canonicalizeContactRecord(
-      snapshot.val(),
-    );
+    // TODO(2026-04-08): Remove this legacy key-as-id fallback after the contactId backfill window ends.
+    const { record, didPromoteLegacyContactName } = canonicalizeContactRecord({
+      ...snapshot.val(),
+      contactId: snapshot.val()?.contactId ?? contactId,
+    });
     if (didPromoteLegacyContactName) {
       await set(contactRef, record);
     }
@@ -84,8 +86,12 @@ export class ContactsRTDBAdapter extends ContactsStorageAdapter {
     const records = [];
 
     for (const [contactId, value] of entries) {
+      // TODO(2026-04-08): Remove this legacy key-as-id fallback after the contactId backfill window ends.
       const { record, didPromoteLegacyContactName } =
-        canonicalizeContactRecord(value);
+        canonicalizeContactRecord({
+          ...value,
+          contactId: value.contactId ?? contactId,
+        });
       records.push(record);
 
       if (didPromoteLegacyContactName) {

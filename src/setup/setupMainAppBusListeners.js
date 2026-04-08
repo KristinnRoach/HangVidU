@@ -64,9 +64,17 @@ export function setupMainAppBusListeners() {
               typeof contactNickName === 'string' && contactNickName.trim()
                 ? contactNickName.trim()
                 : null;
-            const localContact = contactId
-              ? await contactsService.getContact(contactId)
-              : null;
+            let localContact = null;
+            if (!providedContactNickName && contactId) {
+              try {
+                localContact = await contactsService.getContact(contactId);
+              } catch (contactError) {
+                console.warn(
+                  'Failed to resolve local contact nickname on messaging:conversation:select:',
+                  contactError,
+                );
+              }
+            }
             const resolvedContactNickName = providedContactNickName
               ? providedContactNickName
               : localContact?.contactNickName || null;
@@ -111,6 +119,11 @@ export function setupMainAppBusListeners() {
                   .selectConversation(resolvedConversationId, {
                     remoteParticipantIds: [contactId],
                     displayUI: false,
+                    contactNickName:
+                      typeof contactNickName === 'string' &&
+                      contactNickName.trim()
+                        ? contactNickName.trim()
+                        : null,
                   })
                   .catch((e) => {
                     console.warn(

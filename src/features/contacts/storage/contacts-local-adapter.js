@@ -67,8 +67,12 @@ export class ContactsLocalAdapter extends ContactsStorageAdapter {
       return null;
     }
 
+    // TODO(2026-04-08): Remove this legacy key-as-id fallback after the contactId backfill window ends.
     const { record, didPromoteLegacyContactName } =
-      canonicalizeContactRecord(existing);
+      canonicalizeContactRecord({
+        ...existing,
+        contactId: existing.contactId ?? contactId,
+      });
     if (didPromoteLegacyContactName) {
       map[contactId] = record;
       this._writeMap(map);
@@ -86,8 +90,12 @@ export class ContactsLocalAdapter extends ContactsStorageAdapter {
     let didMigrateAny = false;
 
     for (const [contactId, value] of Object.entries(map)) {
+      // TODO(2026-04-08): Remove this legacy key-as-id fallback after the contactId backfill window ends.
       const { record, didPromoteLegacyContactName } =
-        canonicalizeContactRecord(value);
+        canonicalizeContactRecord({
+          ...value,
+          contactId: value.contactId ?? contactId,
+        });
       records.push(record);
 
       if (didPromoteLegacyContactName) {

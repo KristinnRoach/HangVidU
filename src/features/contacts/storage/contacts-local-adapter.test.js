@@ -86,4 +86,36 @@ describe('ContactsLocalAdapter', () => {
     expect(writes.length).toBe(1);
     expect(JSON.parse(raw).u2.contactNickName).toBe('Legacy Bob');
   });
+
+  it('uses map key as contactId fallback for legacy records missing contactId', async () => {
+    let raw = JSON.stringify({
+      u3: {
+        contactName: 'Legacy No Id',
+        roomId: 'room-3',
+        savedAt: 13,
+        lastInteractionAt: 23,
+      },
+    });
+
+    const legacyAdapter = new ContactsLocalAdapter({
+      storage: {
+        getItem: () => raw,
+        setItem: (_key, value) => {
+          raw = value;
+        },
+      },
+      storageKey: 'contacts',
+    });
+
+    const result = await legacyAdapter.get('u3');
+
+    expect(result).toEqual({
+      contactId: 'u3',
+      contactNickName: 'Legacy No Id',
+      roomId: 'room-3',
+      savedAt: 13,
+      lastInteractionAt: 23,
+    });
+    expect(JSON.parse(raw).u3.contactId).toBe('u3');
+  });
 });

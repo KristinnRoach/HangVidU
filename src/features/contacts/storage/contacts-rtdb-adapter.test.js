@@ -120,6 +120,38 @@ describe('ContactsRTDBAdapter', () => {
     );
   });
 
+  it('uses contact path key as contactId fallback for legacy record missing contactId', async () => {
+    mocks.get.mockResolvedValue({
+      exists: () => true,
+      val: () => ({
+        contactName: ' Legacy No Id ',
+        roomId: 'room-1',
+        savedAt: 10,
+        lastInteractionAt: 20,
+      }),
+    });
+
+    const result = await adapter.get('u1');
+
+    expect(result).toEqual({
+      contactId: 'u1',
+      contactNickName: 'Legacy No Id',
+      roomId: 'room-1',
+      savedAt: 10,
+      lastInteractionAt: 20,
+    });
+    expect(mocks.set).toHaveBeenCalledWith(
+      { path: 'users/owner-1/contacts/u1' },
+      {
+        contactId: 'u1',
+        contactNickName: 'Legacy No Id',
+        roomId: 'room-1',
+        savedAt: 10,
+        lastInteractionAt: 20,
+      },
+    );
+  });
+
   it('falls back to get+set when transaction is not committed but record exists', async () => {
     mocks.runTransaction.mockResolvedValue({
       committed: false,
