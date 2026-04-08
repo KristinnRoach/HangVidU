@@ -131,6 +131,11 @@
 
 /* Mobile responsive adjustments */
 @media (max-width: 768px) {
+  /* ! TEMP REMOVE SEARCH ON MOBILE  - TODO: REWORK FOR MOBILE */
+  .search-section {
+    display: none;
+  }
+
   .search-result-item {
     flex-direction: column;
     gap: 10px;
