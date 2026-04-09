@@ -81,6 +81,17 @@ describe('ListenerRegistry', () => {
       registry.off('foo', cb1);
       expect(registry.getListeners('foo')).toEqual([cb2]);
     });
+
+    it('detaches AbortSignal listener when removed via off()', () => {
+      const controller = new AbortController();
+      const removeEventListener = vi.spyOn(controller.signal, 'removeEventListener');
+      const cb = vi.fn();
+
+      registry.on('foo', cb, { signal: controller.signal });
+      registry.off('foo', cb);
+
+      expect(removeEventListener).toHaveBeenCalled();
+    });
   });
 
   describe('getListeners()', () => {
@@ -106,6 +117,22 @@ describe('ListenerRegistry', () => {
 
       registry.removeAllListeners();
       expect(registry.listenerCount('bar')).toBe(0);
+    });
+
+    it('detaches AbortSignal listeners when clearing listeners', () => {
+      const a = new AbortController();
+      const b = new AbortController();
+      const aRemove = vi.spyOn(a.signal, 'removeEventListener');
+      const bRemove = vi.spyOn(b.signal, 'removeEventListener');
+
+      registry.on('foo', vi.fn(), { signal: a.signal });
+      registry.on('bar', vi.fn(), { signal: b.signal });
+
+      registry.removeAllListeners('foo');
+      expect(aRemove).toHaveBeenCalled();
+
+      registry.removeAllListeners();
+      expect(bRemove).toHaveBeenCalled();
     });
   });
 

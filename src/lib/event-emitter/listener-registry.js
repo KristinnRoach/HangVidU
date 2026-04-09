@@ -10,6 +10,8 @@ export class ListenerRegistry {
   constructor() {
     /** @type {Map<string | symbol, Set<Function>>} */
     this._listeners = new Map();
+    /** @type {Map<string | symbol, Map<Function, { signal: AbortSignal, onAbort: Function }>>} */
+    this._abortHandlers = new Map();
   }
 
   /**
@@ -41,15 +43,12 @@ export class ListenerRegistry {
     if (signal) {
       onAbort = () => {
         this.off(event, callback);
-        signal.removeEventListener('abort', onAbort);
       };
+      this._trackAbortHandler(event, callback, signal, onAbort);
       signal.addEventListener('abort', onAbort, { once: true });
     }
 
     return () => {
-      if (signal && onAbort) {
-        signal.removeEventListener('abort', onAbort);
-      }
       this.off(event, callback);
     };
   }
@@ -83,6 +82,8 @@ export class ListenerRegistry {
    * @param {Function} callback Listener function to remove.
    */
   off(event, callback) {
+    this._detachAbortHandler(event, callback);
+
     const listeners = this._listeners.get(event);
     if (!listeners) return;
 
@@ -108,9 +109,12 @@ export class ListenerRegistry {
    */
   removeAllListeners(event) {
     if (arguments.length === 1) {
+      this._detachAbortHandlersForEvent(event);
       this._listeners.delete(event);
       return;
     }
+
+    this._detachAllAbortHandlers();
     this._listeners.clear();
   }
 
@@ -121,5 +125,65 @@ export class ListenerRegistry {
    */
   listenerCount(event) {
     return this._listeners.get(event)?.size ?? 0;
+  }
+
+  /**
+   * Track AbortSignal listener for later cleanup via off/removeAllListeners.
+   * @param {string | symbol} event
+   * @param {Function} callback
+   * @param {AbortSignal} signal
+   * @param {Function} onAbort
+   */
+  _trackAbortHandler(event, callback, signal, onAbort) {
+    if (!this._abortHandlers.has(event)) {
+      this._abortHandlers.set(event, new Map());
+    }
+    this._abortHandlers.get(event).set(callback, { signal, onAbort });
+  }
+
+  /**
+   * Detach one tracked AbortSignal listener.
+   * @param {string | symbol} event
+   * @param {Function} callback
+   */
+  _detachAbortHandler(event, callback) {
+    const handlersForEvent = this._abortHandlers.get(event);
+    if (!handlersForEvent) return;
+
+    const tracked = handlersForEvent.get(callback);
+    if (!tracked) return;
+
+    tracked.signal.removeEventListener('abort', tracked.onAbort);
+    handlersForEvent.delete(callback);
+
+    if (handlersForEvent.size === 0) {
+      this._abortHandlers.delete(event);
+    }
+  }
+
+  /**
+   * Detach all tracked AbortSignal listeners for a specific event.
+   * @param {string | symbol} event
+   */
+  _detachAbortHandlersForEvent(event) {
+    const handlersForEvent = this._abortHandlers.get(event);
+    if (!handlersForEvent) return;
+
+    for (const tracked of handlersForEvent.values()) {
+      tracked.signal.removeEventListener('abort', tracked.onAbort);
+    }
+    this._abortHandlers.delete(event);
+  }
+
+  /**
+   * Detach all tracked AbortSignal listeners across all events.
+   */
+  _detachAllAbortHandlers() {
+    for (const handlersForEvent of this._abortHandlers.values()) {
+      for (const tracked of handlersForEvent.values()) {
+        tracked.signal.removeEventListener('abort', tracked.onAbort);
+      }
+    }
+    this._abortHandlers.clear();
   }
 }
