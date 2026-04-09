@@ -49,6 +49,9 @@ function smartTruncateName(fullName, maxLength = 20) {
   return firstName.slice(0, maxLength - 3) + '...';
 }
 
+// TODO: Consider adding this back as fallback - e.g. if VITE_APP_GOOGLE_CLIENT_ID is missing or the GIS script fails/gets blocked (initOneTap() returns early)
+// <button style="margin-right: [[loginBtnMarginRightPx]]px; display: [[loginBtnDisplay]]" id="goog-login-btn" class="login-btn" onclick="handleLogin">[[t:auth.login]]</button>
+
 export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
   if (authComponent) return authComponent;
 
@@ -174,6 +177,12 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         if (container) renderGoogleSignInButton(container);
       });
 
+      // Initial render of branded Google button into container
+      if (!getIsLoggedIn()) {
+        const container = el.querySelector('#gsi-button-container');
+        if (container) renderGoogleSignInButton(container);
+      }
+
       // Set initial button states
       updateButtons(initialLoggedIn);
 
@@ -263,5 +272,3 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
 // Clear One Tap suppression to ensure it shows
 // document.cookie =
 //   'g_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-
-//       <!-- <button style="margin-right: [[loginBtnMarginRightPx]]px; display: [[loginBtnDisplay]]" id="goog-login-btn" class="login-btn" onclick="handleLogin">[[t:auth.login]]</button> -->

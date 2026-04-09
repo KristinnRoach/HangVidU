@@ -252,6 +252,11 @@ export function renderGoogleSignInButton(containerEl, options = {}) {
     return;
   }
 
+  // Using locale as idempotency guard
+  const locale = getLocale();
+  if (containerEl.dataset.gsiRendered === locale) return;
+  containerEl.textContent = '';
+
   google.accounts.id.renderButton(containerEl, {
     type: 'standard',
     theme: 'filled_black',
@@ -259,9 +264,11 @@ export function renderGoogleSignInButton(containerEl, options = {}) {
     shape: 'pill',
     text: 'signin_with',
     width: '250',
-    locale: getLocale(),
+    locale,
     ...options,
   });
+
+  containerEl.dataset.gsiRendered = locale;
 }
 
 /**
