@@ -204,9 +204,6 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           cancelOneTap();
         }
 
-        // Update button states with new auth state
-        renderButtons(isLoggedIn);
-
         // Shared loading state is used for sign-in and sign-out.
         // While still logged in during loading, the action is sign-out.
         const isLoading = status === 'loading';
