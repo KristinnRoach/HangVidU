@@ -61,6 +61,27 @@ describe('Emitter', () => {
         expect.objectContaining({ eventName: 'evt', phase: 'emit' }),
       );
     });
+
+    it('handles thenables without a .catch method', async () => {
+      const hook = vi.fn();
+      const thenableReject = {
+        then(_resolve, reject) {
+          reject(new Error('thenable fail'));
+        },
+      };
+      const listener = () => thenableReject;
+      const emitter = new Emitter(makeRegistryWith('evt', listener), {
+        onListenerError: hook,
+      });
+
+      emitter.emit('evt', {});
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(hook).toHaveBeenCalledWith(
+        expect.objectContaining({ eventName: 'evt', phase: 'emit' }),
+      );
+    });
   });
 
   describe('emitAsync()', () => {

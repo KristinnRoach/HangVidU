@@ -83,7 +83,7 @@ export class Emitter {
       try {
         const result = cb(data);
         if (this._isPromiseLike(result)) {
-          result.catch((err) => {
+          Promise.resolve(result).catch((err) => {
             this._reportListenerError(eventName, err, 'emit');
           });
         }
@@ -156,4 +156,3 @@ export class Emitter {
     return returnSettled ? settledByEvent : undefined;
   }
 }
-

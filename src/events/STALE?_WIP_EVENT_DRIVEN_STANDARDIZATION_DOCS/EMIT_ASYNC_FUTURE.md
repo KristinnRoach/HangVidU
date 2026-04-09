@@ -19,7 +19,7 @@ Collect all rejections into an `AggregateError` and throw instead of logging.
 
 Return `PromiseSettledResult[]` so callers can inspect individual outcomes.
 
-Note: we need to clarify naming convention here: Settle/settled vs resolve vs results with regards to promise
+Note: we need to clarify promise terminology here: settled vs resolved vs results.
 
 **When to consider**: If a caller needs to know which specific listener failed or extract return values. Creates a contract to maintain — don't add speculatively.
 

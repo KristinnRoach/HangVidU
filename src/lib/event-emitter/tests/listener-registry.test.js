@@ -44,6 +44,19 @@ describe('ListenerRegistry', () => {
       expect(removeEventListener).toHaveBeenCalled();
     });
 
+    it('detaches previous AbortSignal handler when same callback is re-registered', () => {
+      const first = new AbortController();
+      const second = new AbortController();
+      const firstRemove = vi.spyOn(first.signal, 'removeEventListener');
+      const cb = vi.fn();
+
+      registry.on('foo', cb, { signal: first.signal });
+      registry.on('foo', cb, { signal: second.signal });
+
+      expect(firstRemove).toHaveBeenCalled();
+      expect(registry.listenerCount('foo')).toBe(1);
+    });
+
     it('returns noop unsubscribe when signal is already aborted', () => {
       const controller = new AbortController();
       controller.abort();

@@ -97,9 +97,15 @@ describe('src/events/index.js', () => {
     it('resolves even when handler throws (error logged, not rethrown)', async () => {
       const name = uniqueName('dispatch-await-error');
       const ac = new AbortController();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       handleCommand(name, async () => { throw new Error('handler error'); }, { signal: ac.signal });
-      await expect(dispatchCommandAndAwait(name, {})).resolves.toBeUndefined();
-      ac.abort();
+      try {
+        await expect(dispatchCommandAndAwait(name, {})).resolves.toBeUndefined();
+        expect(consoleSpy).toHaveBeenCalled();
+      } finally {
+        consoleSpy.mockRestore();
+        ac.abort();
+      }
     });
   });
 

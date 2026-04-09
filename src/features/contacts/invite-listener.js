@@ -11,8 +11,8 @@ import { renderContactsList } from './components/contacts-list.js';
 // TODO: WIP decoupling considerations:
 // createInviteNotification, inAppNotificationManager, showSuccessToast/showErrorToast
 // — these are all notification/UI presentation concerns.
-// Consider emitting events (emit('contact:invite:received', ...),
-// emit('contact:invite:accepted', ...)) and let a notification-side listener
+// Consider publishing events (publish('contact:invite:received', ...),
+// publish('contact:invite:accepted', ...)) and let a notification-side listener
 // handle the presentation.
 
 // Queue for incoming invites (can be used by notification system later)

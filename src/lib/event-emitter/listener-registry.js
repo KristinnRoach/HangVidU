@@ -138,7 +138,12 @@ export class ListenerRegistry {
     if (!this._abortHandlers.has(event)) {
       this._abortHandlers.set(event, new Map());
     }
-    this._abortHandlers.get(event).set(callback, { signal, onAbort });
+    const handlersForEvent = this._abortHandlers.get(event);
+    const existing = handlersForEvent.get(callback);
+    if (existing) {
+      existing.signal.removeEventListener('abort', existing.onAbort);
+    }
+    handlersForEvent.set(callback, { signal, onAbort });
   }
 
   /**

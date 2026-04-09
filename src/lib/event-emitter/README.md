@@ -9,15 +9,17 @@ Generic event primitives for JavaScript apps.
 ## Install In Project
 
 ```js
-import { EventEmitter, ListenerRegistry, Emitter } from './index.js';
+import { EventEmitter, ListenerRegistry, Emitter } from '../lib/event-emitter/index.js';
 ```
+
+If you are importing from inside this folder, use `./index.js` instead.
 
 Use `EventEmitter` for most cases. Use `ListenerRegistry + Emitter` when you want stricter separation (for example separate subscriber/publisher interfaces).
 
 ## Quick Start
 
 ```js
-import { EventEmitter } from './index.js';
+import { EventEmitter } from '../lib/event-emitter/index.js';
 
 const bus = new EventEmitter();
 
@@ -64,7 +66,7 @@ controller.abort(); // listener removed automatically
 ## Advanced: Split Subscriber/Publisher Facade
 
 ```js
-import { ListenerRegistry, Emitter } from './index.js';
+import { ListenerRegistry, Emitter } from '../lib/event-emitter/index.js';
 
 const registry = new ListenerRegistry();
 const emitter = new Emitter(registry);
@@ -80,4 +82,3 @@ export const publisher = {
   emitAsync: emitter.emitAsync.bind(emitter),
 };
 ```
-
