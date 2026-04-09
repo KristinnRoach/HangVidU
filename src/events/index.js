@@ -1,4 +1,4 @@
-import { EventEmitter } from './event-emitter.js';
+import { EventEmitter } from '../lib/event-emitter/event-emitter.js';
 
 /**
  * AppBus — shared cross-module EventEmitter instance.
