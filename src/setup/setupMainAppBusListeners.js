@@ -21,7 +21,7 @@ let cleanup = () => {
  * Setup contract:
  * - idempotent: returns existing cleanup when already ready
  * - single-flight: concurrent callers share one init promise
- * - teardown: cleanup aborts registered app-bus handlers/subscriptions
+ * - teardown: cleanup aborts registered event handlers/subscriptions
  *
  * @returns {Promise<() => void>}
  */
@@ -59,7 +59,9 @@ export function setupMainAppBusListeners() {
         }) => {
           try {
             const contactId =
-              remoteParticipantIds.length === 1 ? remoteParticipantIds[0] : null;
+              remoteParticipantIds.length === 1
+                ? remoteParticipantIds[0]
+                : null;
             const providedContactNickName =
               typeof contactNickName === 'string' && contactNickName.trim()
                 ? contactNickName.trim()

@@ -1,4 +1,12 @@
-import { appBus } from './app-bus.js';
+import { EventEmitter } from './event-emitter.js';
+
+/**
+ * AppBus — shared cross-module event bus.
+ *
+ * Dispatch: emit() for fire-and-forget, emitAsync() to await listener completion.
+ * Subscribe: on() for all listeners (sync or async).
+ */
+const appBus = new EventEmitter();
 
 /**
  * Send a command to the responsible handler
