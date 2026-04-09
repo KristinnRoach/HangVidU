@@ -153,22 +153,23 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
     },
     onMount: (el) => {
       const renderButtons = (loggedIn) => {
+        const isGisLoaded =
+          typeof window !== 'undefined' && !!window.google?.accounts?.id;
+
         const logoutBtn = el.querySelector('#goog-logout-btn');
         if (logoutBtn) {
           logoutBtn.style.display = loggedIn ? 'inline-block' : 'none';
         }
         const gsiBtn = el.querySelector('#gsi-button-container');
         if (gsiBtn) {
-          gsiBtn.style.display = loggedIn ? 'none' : 'block';
-          if (!loggedIn) {
+          gsiBtn.style.display = !loggedIn && isGisLoaded ? 'block' : 'none';
+          if (!loggedIn && isGisLoaded) {
             renderGoogleSignInButton(gsiBtn);
           }
         }
         const loginBtn = el.querySelector('#goog-login-btn');
         if (loginBtn) {
           // Show fallback only if logged out AND the Google Identity Services library isn't loaded
-          const isGisLoaded =
-            typeof window !== 'undefined' && !!window.google?.accounts?.id;
           loginBtn.style.display =
             !loggedIn && !isGisLoaded ? 'inline-block' : 'none';
         }
@@ -234,6 +235,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         // GIS just loaded — render the branded button into the (possibly fresh) container
         const container = el.querySelector('#gsi-button-container');
         if (container && !getIsLoggedIn()) {
+          container.style.display = 'block';
           renderGoogleSignInButton(container);
 
           // Hide the fallback legacy button since GIS has successfully loaded
