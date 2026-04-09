@@ -49,9 +49,6 @@ function smartTruncateName(fullName, maxLength = 20) {
   return firstName.slice(0, maxLength - 3) + '...';
 }
 
-// TODO: Consider adding this back as fallback - e.g. if VITE_APP_GOOGLE_CLIENT_ID is missing or the GIS script fails/gets blocked (initOneTap() returns early)
-// <button style="margin-right: [[loginBtnMarginRightPx]]px; display: [[loginBtnDisplay]]" id="goog-login-btn" class="login-btn" onclick="handleLogin">[[t:auth.login]]</button>
-
 export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
   if (authComponent) return authComponent;
 
@@ -87,6 +84,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
     },
     template: `
       <div id="gsi-button-container" style="display: [[loginBtnDisplay]]"></div>
+      <button style="margin-right: [[loginBtnMarginRightPx]]px; display: [[loginBtnDisplay]]" id="goog-login-btn" class="login-btn" onclick="handleLogin">[[t:auth.login]]</button>
       <button style="display: [[logoutBtnDisplay]]" id="goog-logout-btn" class="logout-btn" onclick="handleLogout">[[t:auth.logout]]</button>
       ${isDev() && SHOW_DEBUG_DELETE_BTN_IN_DEV ? `<button id="delete-account-btn" class="delete-account-btn" onclick="handleDeleteAccount">[[t:auth.delete_account]]</button>` : ''}
       <span class="signing-in-indicator" style="display: [[signingInDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">[[t:auth.signing_in]]</span>
@@ -108,7 +106,6 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           avatarDisplay: 'flex',
         });
       },
-      // handleLogin: signInWithGoogle, // TODO: remove or use
       handleLogin: async (e) => {
         try {
           dispatchCommand(
@@ -155,7 +152,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       },
     },
     onMount: (el) => {
-      const updateButtons = (loggedIn) => {
+      const renderButtons = (loggedIn) => {
         const logoutBtn = el.querySelector('#goog-logout-btn');
         if (logoutBtn) {
           logoutBtn.style.display = loggedIn ? 'inline-block' : 'none';
@@ -163,6 +160,13 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         const gsiBtn = el.querySelector('#gsi-button-container');
         if (gsiBtn) {
           gsiBtn.style.display = loggedIn ? 'none' : 'block';
+          if (!loggedIn) {
+            renderGoogleSignInButton(gsiBtn);
+          }
+        }
+        const loginBtn = el.querySelector('#goog-login-btn');
+        if (loginBtn) {
+          loginBtn.style.display = loggedIn ? 'none' : 'inline-block';
         }
         const deleteBtn = el.querySelector('#delete-account-btn');
         if (deleteBtn) {
@@ -170,21 +174,13 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         }
       };
 
-      // Re-render branded Google button after each template re-render (DOM gets wiped)
+      // Re-render buttons after each template re-render (DOM gets wiped)
       el.onRender(() => {
-        if (getIsLoggedIn()) return;
-        const container = el.querySelector('#gsi-button-container');
-        if (container) renderGoogleSignInButton(container);
+        renderButtons(getIsLoggedIn());
       });
 
-      // Initial render of branded Google button into container
-      if (!getIsLoggedIn()) {
-        const container = el.querySelector('#gsi-button-container');
-        if (container) renderGoogleSignInButton(container);
-      }
-
-      // Set initial button states
-      updateButtons(initialLoggedIn);
+      // Set initial button states and render the Google button
+      renderButtons(initialLoggedIn);
 
       unsubscribe = subscribe(({ isLoggedIn, user, status }) => {
         const rawName = user?.userName || user?.email || 'User';
@@ -204,7 +200,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         }
 
         // Update button states with new auth state
-        updateButtons(isLoggedIn);
+        renderButtons(isLoggedIn);
 
         // Shared loading state is used for sign-in and sign-out.
         // While still logged in during loading, the action is sign-out.
