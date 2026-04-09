@@ -1,4 +1,4 @@
-## Events Contract
+## App-wide EDA Contract
 
 `src/events/index.js` is the public cross-module event API.
 
@@ -13,8 +13,14 @@ Use:
   - same as `dispatchCommand`, but waits for the handler to complete
   - use when the caller must know the command finished before proceeding
 
-- `handleCommand(name, handler)`
+- `dispatchCommandAndAwaitSequential(commands)`
+  - send multiple commands in strict order, awaiting each handler to complete before moving to the next
+  - `commands` is an array of `[commandName, payload]` tuples
+
+- `handleCommand(name, handler, options?)`
   - register the single responsible handler for a command
+  - returns an `unsubscribe` function to manually clean up the listener
+  - accepts an optional `options.signal` (`AbortSignal`) to auto-unsubscribe
 
 - `publish(name, payload)`
   - announce a fact, outcome, or state change that already happened
@@ -29,8 +35,14 @@ Use:
   - use only when the publisher truly needs confirmation that listeners completed
   - reserved for side effects that must happen before the caller proceeds
 
-- `subscribe(name, handler)`
+- `publishAndAwaitSequential(events)`
+  - publish multiple events in strict order, awaiting all listeners for each event before moving to the next
+  - `events` is an array of `[eventName, payload]` tuples
+
+- `subscribe(name, handler, options?)`
   - react to events published/broadcasted/announced from other modules
+  - returns an `unsubscribe` function to manually clean up the listener
+  - accepts an optional `options.signal` (`AbortSignal`) to auto-unsubscribe
 
 Rules:
 

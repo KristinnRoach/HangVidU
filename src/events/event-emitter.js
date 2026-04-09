@@ -3,7 +3,8 @@
  *
  * Subscribe: on(), once()
  * Dispatch:  emit() (fire-and-forget, sync errors only),
- *            emitAsync() (await all listeners, logs async errors)
+ *            emitAsync() (await all listeners, logs async errors),
+ *            emitAsyncSequential() (strict order, awaits each event)
  * Cleanup:   off(), removeAllListeners()
  */
 export class EventEmitter {
@@ -121,10 +122,7 @@ export class EventEmitter {
 
     for (const r of results) {
       if (r.status === 'rejected') {
-        console.error(
-          `EventEmitter: Async error in "${eventName}"`,
-          r.reason,
-        );
+        console.error(`EventEmitter: Async error in "${eventName}"`, r.reason);
       }
     }
   }
