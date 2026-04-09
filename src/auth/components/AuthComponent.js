@@ -11,7 +11,11 @@ import {
   parseAuthLogoutRequested,
 } from '../auth-events-schema.js';
 
-import { onOneTapStatusChange, cancelOneTap } from '../onetap.js';
+import {
+  onOneTapStatusChange,
+  cancelOneTap,
+  renderGoogleSignInButton,
+} from '../onetap.js';
 import { isDev, devDebug } from '../../utils/dev/dev-utils.js';
 import { t, onLocaleChange } from '../../i18n/index.js';
 
@@ -19,7 +23,7 @@ import createComponent from '../../components/ui/component-system/component.js';
 
 let authComponent = null;
 
-const SHOW_DEBUG_DELETE_BTN_IN_DEV = true; // Set to true to show delete account button in dev mode
+const SHOW_DEBUG_DELETE_BTN_IN_DEV = false; // Set to true to show delete account button in dev mode
 
 /**
  * Smart truncation that tries to show first name
@@ -55,6 +59,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
 
   let unsubscribe = null; // tied to component lifecycle via onMount/onCleanup
   let unsubscribeOneTap = null;
+  let fallbackTimeout = null;
 
   let loginBtnMarginRightPx = 10;
   if (typeof gapBetweenBtns === 'number') {
@@ -75,12 +80,11 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       signingInDisplay: 'none',
       signingOutDisplay: 'none',
       loginBtnMarginRightPx,
-      loginBtnDisplay: initialLoggedIn ? 'none' : 'inline-block',
-      logoutBtnDisplay: initialLoggedIn ? 'inline-block' : 'none',
     },
     template: `
-      <button style="margin-right: [[loginBtnMarginRightPx]]px; display: [[loginBtnDisplay]]" id="goog-login-btn" class="login-btn" onclick="handleLogin">[[t:auth.login]]</button>
-      <button style="display: [[logoutBtnDisplay]]" id="goog-logout-btn" class="logout-btn" onclick="handleLogout">[[t:auth.logout]]</button>
+      <div id="gsi-button-container" style="display: none"></div>
+      <button id="goog-login-btn" class="login-btn" style="margin-right: [[loginBtnMarginRightPx]]px; display: none" onclick="handleLogin">[[t:auth.login]]</button>
+      <button id="goog-logout-btn" class="logout-btn" style="display: none" onclick="handleLogout">[[t:auth.logout]]</button>
       ${isDev() && SHOW_DEBUG_DELETE_BTN_IN_DEV ? `<button id="delete-account-btn" class="delete-account-btn" onclick="handleDeleteAccount">[[t:auth.delete_account]]</button>` : ''}
       <span class="signing-in-indicator" style="display: [[signingInDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">[[t:auth.signing_in]]</span>
       <span class="signing-in-indicator" style="display: [[signingOutDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">[[t:auth.signing_out]]</span>
@@ -101,7 +105,6 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           avatarDisplay: 'flex',
         });
       },
-      // handleLogin: signInWithGoogle, // TODO: remove or use
       handleLogin: async (e) => {
         try {
           dispatchCommand(
@@ -148,12 +151,38 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       },
     },
     onMount: (el) => {
-      const updateButtons = (loggedIn) => {
-        const loginBtn = el.querySelector('#goog-login-btn');
+      const renderButtons = (loggedIn) => {
+        const isGisLoaded =
+          typeof window !== 'undefined' && !!window.google?.accounts?.id;
+
         const logoutBtn = el.querySelector('#goog-logout-btn');
-        if (loginBtn && logoutBtn) {
-          loginBtn.style.display = loggedIn ? 'none' : 'inline-block';
+        if (logoutBtn) {
           logoutBtn.style.display = loggedIn ? 'inline-block' : 'none';
+        }
+        const gsiBtn = el.querySelector('#gsi-button-container');
+        if (gsiBtn) {
+          gsiBtn.style.display = !loggedIn && isGisLoaded ? 'block' : 'none';
+          if (!loggedIn && isGisLoaded) {
+            renderGoogleSignInButton(gsiBtn);
+          }
+        }
+        const loginBtn = el.querySelector('#goog-login-btn');
+        if (loginBtn) {
+          if (fallbackTimeout) clearTimeout(fallbackTimeout);
+
+          if (loggedIn || isGisLoaded) {
+            loginBtn.style.display = 'none';
+          } else {
+            // Delay showing fallback by 500ms to prevent visual flash while GIS script loads
+            fallbackTimeout = setTimeout(() => {
+              const currentBtn = el.querySelector('#goog-login-btn');
+              const currentlyLoaded =
+                typeof window !== 'undefined' && !!window.google?.accounts?.id;
+              if (currentBtn && !currentlyLoaded && !getIsLoggedIn()) {
+                currentBtn.style.display = 'inline-block';
+              }
+            }, 500);
+          }
         }
         const deleteBtn = el.querySelector('#delete-account-btn');
         if (deleteBtn) {
@@ -161,8 +190,13 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         }
       };
 
-      // Set initial button states
-      updateButtons(initialLoggedIn);
+      // Re-render buttons after each template re-render (DOM gets wiped)
+      el.onRender(() => {
+        renderButtons(getIsLoggedIn());
+      });
+
+      // Set initial button states and render the Google button
+      renderButtons(initialLoggedIn);
 
       unsubscribe = subscribe(({ isLoggedIn, user, status }) => {
         const rawName = user?.userName || user?.email || 'User';
@@ -181,9 +215,6 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           cancelOneTap();
         }
 
-        // Update button states with new auth state
-        updateButtons(isLoggedIn);
-
         // Shared loading state is used for sign-in and sign-out.
         // While still logged in during loading, the action is sign-out.
         const isLoading = status === 'loading';
@@ -201,14 +232,29 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           avatarDisplay: photoURL ? 'none' : 'flex',
           signingInDisplay,
           signingOutDisplay,
-          loginBtnDisplay: isLoggedIn ? 'none' : 'inline-block',
-          logoutBtnDisplay: isLoggedIn ? 'inline-block' : 'none',
         });
       });
 
       // Subscribe to One Tap status
       unsubscribeOneTap = onOneTapStatusChange((status) => {
         devDebug('[AuthComponent] One Tap status:', status);
+
+        // !__ DELETE if not needed
+        // GIS just loaded — render the branded button into the (possibly fresh) container
+        // const container = el.querySelector('#gsi-button-container');
+        // if (container && !getIsLoggedIn()) {
+        //   container.style.display = 'block';
+        //   renderGoogleSignInButton(container);
+        //   // Hide the fallback legacy button since GIS has successfully loaded
+        //   const loginBtn = el.querySelector('#goog-login-btn');
+        //   if (loginBtn) loginBtn.style.display = 'none';
+        // }
+        // ! END of DELETE if not needed
+
+        if (!getIsLoggedIn()) {
+          // Keep a single source of truth for GIS/fallback visibility.
+          renderButtons(false);
+        }
         if (status === 'signing_in') {
           // Show loading indicator while signing in
           el.update({
@@ -225,6 +271,10 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       });
     },
     onCleanup: () => {
+      if (fallbackTimeout) {
+        clearTimeout(fallbackTimeout);
+        fallbackTimeout = null;
+      }
       if (unsubscribe) {
         unsubscribe();
         unsubscribe = null;

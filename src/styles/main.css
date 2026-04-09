@@ -1,6 +1,5 @@
 /* src/style.css */
 
-@import './view-state.css'; /* Declarative view-based visibility */
 @import './init/reset-normalize.css';
 @import './init/typography.css';
 @import './init/scrollbar.css';
@@ -12,6 +11,7 @@
 @import './layout/wrappers.css';
 @import './layout/grid.css';
 
+@import './components/onetap.css';
 @import './components/top-bar.css';
 @import './components/lobby.css';
 @import './components/contacts-list.css';
@@ -27,6 +27,8 @@
 @import './components/dialog/confirm-dialog.css';
 @import './components/dialog/edit-contact-dialog.css';
 @import './components/legal-footer.css';
+
+@import './view-state.css'; /* Declarative view-based visibility */
 
 /* Default visible state for elements that toggle visibility */
 .video-box,
