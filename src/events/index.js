@@ -1,4 +1,15 @@
-import { appBus } from './app-bus.js';
+import { EventEmitter } from '../lib/event-emitter/event-emitter.js';
+
+/**
+ * AppBus — shared cross-module EventEmitter instance.
+ *
+ * Subscribe: on(), once()
+ * Dispatch:  emit() (fire-and-forget, logs sync throws and async rejections),
+ *            emitAsync() (await all listeners, logs async errors),
+ *            emitAsyncSequential() (strict order, awaits each event)
+ * Cleanup:   off(), removeAllListeners()
+ */
+const appBus = new EventEmitter();
 
 /**
  * Send a command to the responsible handler
@@ -20,6 +31,17 @@ const dispatchCommand = (commandName, payload = {}) => {
  */
 const dispatchCommandAndAwait = async (commandName, payload = {}) => {
   await appBus.emitAsync(commandName, payload);
+};
+
+/**
+ * Send multiple commands in strict order, awaiting each handler to complete
+ * before moving to the next.
+ *
+ * @param {Array<[string, any]>} commands - Array of [commandName, payload] tuples
+ * @returns {Promise<void>}
+ */
+const dispatchCommandAndAwaitSequential = async (commands) => {
+  await appBus.emitAsyncSequential(commands);
 };
 
 /**
@@ -57,6 +79,17 @@ const publishAndAwait = async (eventName, payload = {}) => {
 };
 
 /**
+ * Publish/broadcast multiple events in strict order, awaiting all listeners
+ * for each event before moving to the next.
+ *
+ * @param {Array<[string, any]>} events - Array of [eventName, payload] tuples
+ * @returns {Promise<void>}
+ */
+const publishAndAwaitSequential = async (events) => {
+  await appBus.emitAsyncSequential(events);
+};
+
+/**
  * Get notified when an event with 'eventName' is published (by anyone)
  *
  * @param {string} eventName - Message name to listen to.
@@ -68,10 +101,14 @@ const subscribe = (eventName, handler, options = {}) => {
 };
 
 export {
-  dispatchCommand,
-  dispatchCommandAndAwait,
-  handleCommand,
+  // Events / Facts
   publish,
   publishAndAwait,
+  publishAndAwaitSequential,
   subscribe,
+  // Commands / Actions
+  dispatchCommand,
+  dispatchCommandAndAwait,
+  dispatchCommandAndAwaitSequential,
+  handleCommand,
 };

@@ -20,7 +20,7 @@ import {
 // TODO: WIP decoupling considerations:
 // - Circular import: this file imports listenForIncomingOnRoom from room-listeners.js,
 //   which imports joinOrCreateRoomWithId from this file. Works at runtime (lazy calls)
-//   but signals these two are tightly coupled — consider merging or routing through appBus.
+//   but signals these two are tightly coupled — consider merging or routing through app bus.
 // - Cross-domain: contactsService (contacts), getPushNotifications (push),
 //   showCopyLinkModal (UI), showCallingUI (UI) — all cross-domain orchestration.
 // - This file is a candidate for renaming to call-orchestration.js once stable.

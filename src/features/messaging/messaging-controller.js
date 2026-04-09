@@ -1,7 +1,7 @@
 import { RTDBMessageStore } from './storage/rtdb-message-store.js';
 import { fileToBase64 } from '../../utils/file-to-base64.js';
 import { compressImage } from '../../media/image-compress.js';
-import { EventEmitter } from '../../events/event-emitter.js';
+import { EventEmitter } from '../../lib/event-emitter/index.js';
 import { getUserId } from '../../auth/index.js';
 import { getUserProfile } from '../../storage/user/index.js';
 import { contactsService } from '../contacts/index.js';
@@ -190,7 +190,11 @@ export class MessagingController extends EventEmitter {
    */
   async selectConversation(
     conversationId,
-    { remoteParticipantIds = [], displayUI = false, contactNickName = null } = {},
+    {
+      remoteParticipantIds = [],
+      displayUI = false,
+      contactNickName = null,
+    } = {},
   ) {
     if (!conversationId || typeof conversationId !== 'string') {
       throw new Error('conversationId must be a non-empty string');
