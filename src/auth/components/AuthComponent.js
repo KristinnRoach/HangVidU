@@ -79,12 +79,11 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       signingInDisplay: 'none',
       signingOutDisplay: 'none',
       loginBtnMarginRightPx,
-      loginBtnDisplay: initialLoggedIn ? 'none' : 'inline-block',
       logoutBtnDisplay: initialLoggedIn ? 'inline-block' : 'none',
     },
     template: `
-      <div id="gsi-button-container" style="display: [[loginBtnDisplay]]"></div>
-      <button style="margin-right: [[loginBtnMarginRightPx]]px; display: [[loginBtnDisplay]]" id="goog-login-btn" class="login-btn" onclick="handleLogin">[[t:auth.login]]</button>
+      <div id="gsi-button-container" style="display: none"></div>
+      <button style="margin-right: [[loginBtnMarginRightPx]]px; display: none" id="goog-login-btn" class="login-btn" onclick="handleLogin">[[t:auth.login]]</button>
       <button style="display: [[logoutBtnDisplay]]" id="goog-logout-btn" class="logout-btn" onclick="handleLogout">[[t:auth.logout]]</button>
       ${isDev() && SHOW_DEBUG_DELETE_BTN_IN_DEV ? `<button id="delete-account-btn" class="delete-account-btn" onclick="handleDeleteAccount">[[t:auth.delete_account]]</button>` : ''}
       <span class="signing-in-indicator" style="display: [[signingInDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">[[t:auth.signing_in]]</span>
@@ -221,7 +220,6 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           avatarDisplay: photoURL ? 'none' : 'flex',
           signingInDisplay,
           signingOutDisplay,
-          loginBtnDisplay: isLoggedIn ? 'none' : 'inline-block',
           logoutBtnDisplay: isLoggedIn ? 'inline-block' : 'none',
         });
       });
