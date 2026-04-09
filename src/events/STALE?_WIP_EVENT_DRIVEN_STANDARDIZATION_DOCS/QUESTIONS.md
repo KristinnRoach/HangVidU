@@ -1,5 +1,6 @@
 ## Decisions needed - Consider converting to clearly defined rules once answered (and remove from here if done)
 
+- Should appBus be exported, or just the public API functions in index.js? If not, best way to enforce?
 - Should `appBus` be reserved for cross-module coordination, not normal same-module control flow?
 - When should code call a service directly instead of emitting an event?
 - Should write-success compatibility events remain module-owned, or move to a more centralized pattern later?
