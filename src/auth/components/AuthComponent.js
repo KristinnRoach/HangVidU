@@ -59,6 +59,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
 
   let unsubscribe = null; // tied to component lifecycle via onMount/onCleanup
   let unsubscribeOneTap = null;
+  let fallbackTimeout = null;
 
   let loginBtnMarginRightPx = 10;
   if (typeof gapBetweenBtns === 'number') {
@@ -79,12 +80,11 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       signingInDisplay: 'none',
       signingOutDisplay: 'none',
       loginBtnMarginRightPx,
-      logoutBtnDisplay: initialLoggedIn ? 'inline-block' : 'none',
     },
     template: `
       <div id="gsi-button-container" style="display: none"></div>
-      <button style="margin-right: [[loginBtnMarginRightPx]]px; display: none" id="goog-login-btn" class="login-btn" onclick="handleLogin">[[t:auth.login]]</button>
-      <button style="display: [[logoutBtnDisplay]]" id="goog-logout-btn" class="logout-btn" onclick="handleLogout">[[t:auth.logout]]</button>
+      <button id="goog-login-btn" class="login-btn" style="margin-right: [[loginBtnMarginRightPx]]px; display: none" onclick="handleLogin">[[t:auth.login]]</button>
+      <button id="goog-logout-btn" class="logout-btn" style="display: none" onclick="handleLogout">[[t:auth.logout]]</button>
       ${isDev() && SHOW_DEBUG_DELETE_BTN_IN_DEV ? `<button id="delete-account-btn" class="delete-account-btn" onclick="handleDeleteAccount">[[t:auth.delete_account]]</button>` : ''}
       <span class="signing-in-indicator" style="display: [[signingInDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">[[t:auth.signing_in]]</span>
       <span class="signing-in-indicator" style="display: [[signingOutDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">[[t:auth.signing_out]]</span>
@@ -168,9 +168,21 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         }
         const loginBtn = el.querySelector('#goog-login-btn');
         if (loginBtn) {
-          // Show fallback only if logged out AND the Google Identity Services library isn't loaded
-          loginBtn.style.display =
-            !loggedIn && !isGisLoaded ? 'inline-block' : 'none';
+          if (fallbackTimeout) clearTimeout(fallbackTimeout);
+
+          if (loggedIn || isGisLoaded) {
+            loginBtn.style.display = 'none';
+          } else {
+            // Delay showing fallback by 500ms to prevent visual flash while GIS script loads
+            fallbackTimeout = setTimeout(() => {
+              const currentBtn = el.querySelector('#goog-login-btn');
+              const currentlyLoaded =
+                typeof window !== 'undefined' && !!window.google?.accounts?.id;
+              if (currentBtn && !currentlyLoaded && !getIsLoggedIn()) {
+                currentBtn.style.display = 'inline-block';
+              }
+            }, 500);
+          }
         }
         const deleteBtn = el.querySelector('#delete-account-btn');
         if (deleteBtn) {
@@ -220,7 +232,6 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           avatarDisplay: photoURL ? 'none' : 'flex',
           signingInDisplay,
           signingOutDisplay,
-          logoutBtnDisplay: isLoggedIn ? 'inline-block' : 'none',
         });
       });
 
@@ -260,6 +271,10 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       });
     },
     onCleanup: () => {
+      if (fallbackTimeout) {
+        clearTimeout(fallbackTimeout);
+        fallbackTimeout = null;
+      }
       if (unsubscribe) {
         unsubscribe();
         unsubscribe = null;
