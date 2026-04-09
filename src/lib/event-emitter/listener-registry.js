@@ -62,6 +62,10 @@ export class ListenerRegistry {
    * @returns {Function} Unsubscribe function.
    */
   once(event, callback, options = {}) {
+    if (typeof callback !== 'function') {
+      throw new TypeError('ListenerRegistry.once: callback must be a function');
+    }
+
     let unsubscribe = () => {};
 
     const wrapper = (data) => {

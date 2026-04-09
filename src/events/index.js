@@ -4,7 +4,7 @@ import { EventEmitter } from '../lib/event-emitter/event-emitter.js';
  * AppBus — shared cross-module EventEmitter instance.
  *
  * Subscribe: on(), once()
- * Dispatch:  emit() (fire-and-forget, sync errors only),
+ * Dispatch:  emit() (fire-and-forget, logs sync throws and async rejections),
  *            emitAsync() (await all listeners, logs async errors),
  *            emitAsyncSequential() (strict order, awaits each event)
  * Cleanup:   off(), removeAllListeners()

@@ -70,6 +70,10 @@ export class EventEmitter {
    * @param {string | symbol} [event]
    */
   removeAllListeners(event) {
+    if (arguments.length === 0) {
+      this._registry.removeAllListeners();
+      return;
+    }
     this._registry.removeAllListeners(event);
   }
 
