@@ -229,15 +229,22 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       // Subscribe to One Tap status
       unsubscribeOneTap = onOneTapStatusChange((status) => {
         devDebug('[AuthComponent] One Tap status:', status);
-        // GIS just loaded — render the branded button into the (possibly fresh) container
-        const container = el.querySelector('#gsi-button-container');
-        if (container && !getIsLoggedIn()) {
-          container.style.display = 'block';
-          renderGoogleSignInButton(container);
 
-          // Hide the fallback legacy button since GIS has successfully loaded
-          const loginBtn = el.querySelector('#goog-login-btn');
-          if (loginBtn) loginBtn.style.display = 'none';
+        // !__ DELETE if not needed
+        // GIS just loaded — render the branded button into the (possibly fresh) container
+        // const container = el.querySelector('#gsi-button-container');
+        // if (container && !getIsLoggedIn()) {
+        //   container.style.display = 'block';
+        //   renderGoogleSignInButton(container);
+        //   // Hide the fallback legacy button since GIS has successfully loaded
+        //   const loginBtn = el.querySelector('#goog-login-btn');
+        //   if (loginBtn) loginBtn.style.display = 'none';
+        // }
+        // ! END of DELETE if not needed
+
+        if (!getIsLoggedIn()) {
+          // Keep a single source of truth for GIS/fallback visibility.
+          renderButtons(false);
         }
         if (status === 'signing_in') {
           // Show loading indicator while signing in
