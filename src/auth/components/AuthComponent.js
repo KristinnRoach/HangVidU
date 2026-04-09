@@ -166,7 +166,11 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         }
         const loginBtn = el.querySelector('#goog-login-btn');
         if (loginBtn) {
-          loginBtn.style.display = loggedIn ? 'none' : 'inline-block';
+          // Show fallback only if logged out AND the Google Identity Services library isn't loaded
+          const isGisLoaded =
+            typeof window !== 'undefined' && !!window.google?.accounts?.id;
+          loginBtn.style.display =
+            !loggedIn && !isGisLoaded ? 'inline-block' : 'none';
         }
         const deleteBtn = el.querySelector('#delete-account-btn');
         if (deleteBtn) {
@@ -231,6 +235,10 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         const container = el.querySelector('#gsi-button-container');
         if (container && !getIsLoggedIn()) {
           renderGoogleSignInButton(container);
+
+          // Hide the fallback legacy button since GIS has successfully loaded
+          const loginBtn = el.querySelector('#goog-login-btn');
+          if (loginBtn) loginBtn.style.display = 'none';
         }
         if (status === 'signing_in') {
           // Show loading indicator while signing in
