@@ -1,7 +1,6 @@
 import { setSafariExternalOpenArmed } from './auth-actions.js';
 import { getIsLoggedIn, setState } from './auth-state.js';
 import {
-  auth,
   createGoogleCredential,
   signInWithGoogleCredential,
 } from './adapters/firebase-auth-adapter.js';

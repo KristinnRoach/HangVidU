@@ -1,10 +1,11 @@
 // src/auth/auth-actions.js — sign-in, sign-out, delete + iOS Safari workarounds
 
-import { auth, logAuthError } from './auth-setup.js';
+import { logAuthError } from './auth-setup.js';
 import { clearGISTokenCache } from './gis-tokens.js';
 import { setState } from './auth-state.js';
 import { showOneTapSignin } from './onetap.js';
 import {
+  auth,
   createGoogleAuthProvider,
   signInWithGooglePopup,
   signOutFirebaseUser,

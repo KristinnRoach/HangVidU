@@ -1,7 +1,6 @@
 // src/auth/index.js — barrel re-exports (public API)
 
 export {
-  auth,
   initAuth,
   getCurrentUserAsync,
   getLoggedInUserToken,

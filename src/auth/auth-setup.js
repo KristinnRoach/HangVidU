@@ -20,8 +20,6 @@ import { setupAuthCommandListeners } from './auth-command-listeners.js';
 import { getLocale, onLocaleChange } from '../i18n/index.js';
 import { uiState } from '../components/ui/core/ui-state.js';
 
-export { auth };
-
 // Sync Firebase Auth popup language with app locale
 auth.languageCode = getLocale();
 onLocaleChange((locale) => {
