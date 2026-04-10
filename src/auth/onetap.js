@@ -139,14 +139,24 @@ export async function initOneTap() {
 
 function initializeGIS() {
   google.accounts.id.initialize({
-    prompt_parent_id: 'onetap-container', // UI will be rendered inside this element
     client_id: GOOGLE_CLIENT_ID,
-    callback: handleOneTapCredential,
-    auto_select: false,
-    cancel_on_tap_outside: true,
-    context: 'signin',
-    use_fedcm_for_prompt: true,
-    itp_support: true,
+    ux_mode: 'popup', // popup or redirect
+    context: 'signin', // Sets text content. "signin": Sign in to, "singup": Sign up to, "use": Use
+    itp_support: true, // Enable the upgraded One Tap UX on browsers that support Intelligent Tracking Prevention (ITP)
+    cancel_on_tap_outside: false,
+    auto_select: true, // Todo: Verify behaviour. Does it automatically select the account if the user is logged in in the browser?
+    prompt_parent_id: 'onetap-container', // Position prompt in container
+    callback: handleOneTapCredential, // Required for popup UX mode
+
+    // TODO: Research and optimize:
+    // Docs: https://developers.google.com/identity/gsi/web/reference/js-reference
+    // native_callback: // Optional
+    // nonce: // Optional random string used by the ID token to prevent replay attacks
+    // login_hint: // Optional pre-fill
+    /* use_fedcm_for_prompt - NOTE: This attribute is deprecated:
+       - Research use_fedcm_for_button + button_auto_select and the link below: 
+       https://developers.google.com/identity/gsi/web/guides/fedcm-migration
+    */
   });
 }
 
