@@ -2,7 +2,7 @@
 // AUTH COMPONENT
 // ================================================
 
-import { getIsLoggedIn, subscribe } from '../auth-state.js';
+import { getIsLoggedIn, onAuthStateChanged } from '../auth-state.js';
 import { dispatchCommand } from '../../events/index.js';
 import {
   AUTH_COMMANDS,
@@ -15,6 +15,7 @@ import {
   onOneTapStatusChange,
   cancelOneTap,
   renderGoogleSignInButton,
+  isOneTapAvailable,
 } from '../onetap.js';
 
 import { getAuthState } from '../auth-state.js';
@@ -154,8 +155,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
     },
     onMount: (el) => {
       const renderButtons = (loggedIn) => {
-        const isGisLoaded =
-          typeof window !== 'undefined' && !!window.google?.accounts?.id;
+        const isGisLoaded = isOneTapAvailable();
         const isAuthReady =
           getAuthState()?.status === 'authenticated' ||
           getAuthState()?.status === 'unauthenticated';
@@ -187,8 +187,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
             // Delay showing fallback by 500ms to prevent visual flash while GIS script loads
             fallbackTimeout = setTimeout(() => {
               const currentBtn = el.querySelector('#goog-login-btn');
-              const currentlyLoaded =
-                typeof window !== 'undefined' && !!window.google?.accounts?.id;
+              const currentlyLoaded = isOneTapAvailable();
               if (currentBtn && !currentlyLoaded && !getIsLoggedIn()) {
                 currentBtn.style.display = 'inline-block';
               }
@@ -206,7 +205,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         renderButtons(getIsLoggedIn());
       });
 
-      unsubscribe = subscribe(({ isLoggedIn, user, status }) => {
+      unsubscribe = onAuthStateChanged(({ isLoggedIn, user, status }) => {
         const rawName = user?.userName || user?.email || 'User';
         const userName = smartTruncateName(rawName);
         const photoURL = user?.photoURL || '';

@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => {
   return {
     authCallbacks,
     unsubscribe,
-    onAuthStateChange: vi.fn((callback) => {
+    onAuthStateChanged: vi.fn((callback) => {
       authCallbacks.push(callback);
       return unsubscribe;
     }),
@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock('../../auth/index.js', () => ({
-  onAuthStateChange: mocks.onAuthStateChange,
+  onAuthStateChanged: mocks.onAuthStateChanged,
 }));
 
 vi.mock('../../storage/user/index.js', () => ({
@@ -28,7 +28,7 @@ describe('setupUserAccount', () => {
     vi.resetModules();
     vi.clearAllMocks();
     mocks.authCallbacks.length = 0;
-    mocks.onAuthStateChange.mockImplementation((callback) => {
+    mocks.onAuthStateChanged.mockImplementation((callback) => {
       mocks.authCallbacks.push(callback);
       return mocks.unsubscribe;
     });
@@ -41,7 +41,7 @@ describe('setupUserAccount', () => {
     const teardownA = await setupUserAccount();
     const teardownB = await setupUserAccount();
 
-    expect(mocks.onAuthStateChange).toHaveBeenCalledTimes(1);
+    expect(mocks.onAuthStateChanged).toHaveBeenCalledTimes(1);
     expect(teardownA).toBeTypeOf('function');
     expect(teardownB).toBe(teardownA);
 
@@ -79,7 +79,7 @@ describe('setupUserAccount', () => {
     expect(mocks.unsubscribe).toHaveBeenCalledTimes(1);
 
     const teardownB = await setupUserAccount();
-    expect(mocks.onAuthStateChange).toHaveBeenCalledTimes(2);
+    expect(mocks.onAuthStateChanged).toHaveBeenCalledTimes(2);
     expect(teardownB).not.toBe(teardownA);
   });
 });

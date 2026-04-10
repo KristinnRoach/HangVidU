@@ -1,16 +1,24 @@
 // src/auth/auth-actions.js — sign-in, sign-out, delete + iOS Safari workarounds
 
-import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-
-import { auth, logAuthError } from './auth-setup.js';
+import { logAuthError } from './auth-setup.js';
 import { clearGISTokenCache } from './gis-tokens.js';
 import { setState } from './auth-state.js';
 import { showOneTapSignin } from './onetap.js';
+import {
+  auth,
+  createGoogleAuthProvider,
+  signInWithGooglePopup,
+  signOutFirebaseUser,
+} from './adapters/firebase-auth-adapter.js';
 import { dispatchCommand, dispatchCommandAndAwait } from '../events/index.js';
 import { t } from '../i18n/index.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { getPushNotifications } from '../features/push-notifications/index.js';
 import { callCloudFunction } from './cloud-functions.js';
+import {
+  detectIOSStandalone,
+  openInSafariExternal,
+} from './auth-platform-utils.js';
 
 // iOS standalone PWA Safari fallback: armed after a failed attempt,
 // then the next Login tap opens the app URL in Safari (user gesture).
@@ -30,37 +38,6 @@ export function isSafariExternalOpenArmed() {
  */
 export function setSafariExternalOpenArmed(value) {
   safariExternalOpenArmed = value;
-}
-
-function openInSafariExternal() {
-  try {
-    const a = document.createElement('a');
-    a.href = window.location.href;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer external';
-    // Append to DOM to ensure iOS respects the gesture-triggered click
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  } catch (_) {}
-}
-
-/**
- * Detect if running in iOS standalone PWA mode.
- * @returns {{ isStandalonePWA: boolean, isIOS: boolean, isIOSStandalone: boolean }}
- */
-function detectIOSStandalone() {
-  const displayModeStandalone =
-    typeof window !== 'undefined' &&
-    window.matchMedia?.('(display-mode: standalone)').matches;
-  const navigatorStandalone =
-    typeof navigator !== 'undefined' && navigator.standalone === true;
-  const isStandalonePWA = displayModeStandalone || navigatorStandalone;
-  const isIOS =
-    typeof navigator !== 'undefined' &&
-    /iphone|ipad|ipod/i.test(navigator.userAgent || '');
-  const isIOSStandalone = isStandalonePWA && isIOS;
-  return { isStandalonePWA, isIOS, isIOSStandalone };
 }
 
 /**
@@ -117,7 +94,7 @@ function handleSignInError(error) {
 }
 
 export const signInWithAccountSelection = async () => {
-  const provider = new GoogleAuthProvider();
+  const provider = createGoogleAuthProvider();
   // Force account selection
   provider.setCustomParameters({
     prompt: 'select_account',
@@ -142,7 +119,7 @@ export const signInWithAccountSelection = async () => {
     // ALWAYS use popup flow (even for iOS standalone PWAs)
     // If popup is blocked, we'll catch the error and fallback to Safari external
     devDebug('[AUTH] Starting popup sign-in flow...');
-    const result = await signInWithPopup(auth, provider);
+    const result = await signInWithGooglePopup(provider);
     devDebug('[AUTH] Popup sign-in successful');
     setSafariExternalOpenArmed(false); // clear on success
     return result;
@@ -169,7 +146,7 @@ export async function signOutUser() {
       userId: auth.currentUser?.uid,
     });
     clearGISTokenCache();
-    await signOut(auth);
+    await signOutFirebaseUser();
     console.info('User signed out');
     setTimeout(() => showOneTapSignin(), 1500); // TODO: decide whether this is annoying
   } catch (error) {
@@ -207,7 +184,7 @@ export async function deleteAccount({ scrubMessages = true } = {}) {
 
     // Sign out locally — the server deleted the Auth record but the
     // client's cached token would remain valid until it expires.
-    await signOut(auth);
+    await signOutFirebaseUser();
 
     console.info('[AUTH] Account deleted successfully');
     setTimeout(() => showOneTapSignin(), 1500);

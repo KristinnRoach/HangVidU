@@ -1,7 +1,6 @@
 // src/auth/index.js — barrel re-exports (public API)
 
 export {
-  auth,
   initAuth,
   getCurrentUserAsync,
   getLoggedInUserToken,
@@ -32,7 +31,6 @@ export {
   waitForAuthReady,
 } from './auth-state.js';
 
-export { subscribe as onAuthStateChange } from './auth-state.js';
-export { subscribe } from './auth-state.js';
+export { onAuthStateChanged } from './auth-state.js';
 
 export { initializeAuthUI } from './components/AuthComponent.js';

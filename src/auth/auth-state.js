@@ -130,7 +130,7 @@ export function getUserName() {
  * Subscribe to auth state changes. Called with the full state object.
  * Returns an unsubscribe function.
  */
-export function subscribe(fn) {
+export function onAuthStateChanged(fn) {
   listeners.add(fn);
 
   // Call the subscriber immediately with the current state
@@ -154,7 +154,7 @@ export function waitForAuthReady() {
   }
 
   return new Promise((resolve) => {
-    const unsubscribe = subscribe((current) => {
+    const unsubscribe = onAuthStateChanged((current) => {
       if (
         current.status !== 'authenticated' &&
         current.status !== 'unauthenticated'

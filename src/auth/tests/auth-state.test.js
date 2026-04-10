@@ -48,9 +48,9 @@ describe('waitForAuthReady', () => {
   });
 });
 
-describe('subscribe', () => {
+describe('onAuthStateChanged', () => {
   it('invokes the callback immediately with a snapshot', async () => {
-    const { setState, subscribe } = await import('../auth-state.js');
+    const { setState, onAuthStateChanged } = await import('../auth-state.js');
 
     setState({
       status: 'authenticated',
@@ -59,7 +59,7 @@ describe('subscribe', () => {
     });
 
     const calls = [];
-    const unsubscribe = subscribe((state) => calls.push(state));
+    const unsubscribe = onAuthStateChanged((state) => calls.push(state));
     unsubscribe();
 
     expect(calls.length).toBe(1);

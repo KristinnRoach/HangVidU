@@ -2,29 +2,23 @@
 
 import {
   setState,
-  subscribe,
+  onAuthStateChanged,
   waitForAuthReady,
 } from './auth-state.js';
 
 import {
-  getAuth,
-  getRedirectResult,
-  onAuthStateChanged,
-  setPersistence,
-  indexedDBLocalPersistence,
-  browserLocalPersistence,
-  inMemoryPersistence,
-} from 'firebase/auth';
-
-import { app } from '../firebase/firebase.js';
+  auth,
+  getFirebaseRedirectResult,
+  onFirebaseAuthStateChanged,
+  persistenceBackends,
+  setFirebaseAuthPersistence,
+} from './adapters/firebase-auth-adapter.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { initOneTap, showOneTapSignin } from './onetap.js';
 import { clearGISTokenCache } from './gis-tokens.js';
 import { setupAuthCommandListeners } from './auth-command-listeners.js';
 import { getLocale, onLocaleChange } from '../i18n/index.js';
 import { uiState } from '../components/ui/core/ui-state.js';
-
-export const auth = getAuth(app);
 
 // Sync Firebase Auth popup language with app locale
 auth.languageCode = getLocale();
@@ -65,7 +59,7 @@ let _initPromise = null;
 
 /**
  * Initialize auth: set persistence, process redirects, then register
- * onAuthStateChanged. This ensures Firebase has restored any persisted
+ * onFirebaseAuthStateChanged. This ensures Firebase has restored any persisted
  * session before we publish the first auth state — avoiding a false
  * 'unauthenticated' flash and premature side-effects.
  *
@@ -85,18 +79,22 @@ async function _initAuthInternal() {
 
   // 1. Set persistence with graceful fallback for Safari/iOS/private mode
   try {
-    await setPersistence(auth, indexedDBLocalPersistence);
+    await setFirebaseAuthPersistence(
+      persistenceBackends.indexedDBLocalPersistence,
+    );
   } catch (_) {
     try {
-      await setPersistence(auth, browserLocalPersistence);
+      await setFirebaseAuthPersistence(
+        persistenceBackends.browserLocalPersistence,
+      );
     } catch {
-      await setPersistence(auth, inMemoryPersistence);
+      await setFirebaseAuthPersistence(persistenceBackends.inMemoryPersistence);
     }
   }
 
   // 2. Process redirect results (Safari external fallback)
   try {
-    const result = await getRedirectResult(auth);
+    const result = await getFirebaseRedirectResult();
     if (result?.user) {
       devDebug('[AUTH] Sign-in completed (via Safari fallback)');
     }
@@ -105,7 +103,7 @@ async function _initAuthInternal() {
   }
 
   // 3. NOW safe to listen — persistence is set, redirects processed
-  onAuthStateChanged(auth, (firebaseUser) => {
+  onFirebaseAuthStateChanged((firebaseUser) => {
     const loggedIn = !!firebaseUser;
     setState(
       loggedIn
@@ -120,7 +118,7 @@ async function _initAuthInternal() {
   });
 
   // 4. DOM/UI sync subscriber
-  subscribe((state) => {
+  onAuthStateChanged((state) => {
     document.body.dataset.loggedIn = state.isLoggedIn ? 'true' : 'false';
     uiState.setView(uiState.view);
     devDebug(
@@ -153,12 +151,12 @@ function normalizeUser(firebaseUser) {
 
 /**
  * Wait for auth state to be initialized and return the current user.
- * Note: onAuthStateChanged fires once after initialization, so this always resolves.
- * @returns {Promise<import('firebase/auth').User | null>}
+ * Note: onFirebaseAuthStateChanged fires once after initialization, so this always resolves.
+ * @returns {Promise<object | null>}
  */
 export function getCurrentUserAsync() {
   return new Promise((resolve) => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onFirebaseAuthStateChanged((user) => {
       unsubscribe();
       resolve(user);
     });

@@ -9,7 +9,7 @@ import {
   onChildRemoved,
   off,
 } from 'firebase/database';
-import { app } from '../../firebase/firebase';
+import { app } from '../../vendors/firebase.js';
 
 export const rtdb = getDatabase(app);
 

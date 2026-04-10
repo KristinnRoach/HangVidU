@@ -15,7 +15,7 @@ vi.mock('firebase/database', () => ({
   off: vi.fn(),
 }));
 
-vi.mock('../../../firebase/firebase.js', () => ({
+vi.mock('../../../vendors/firebase.js', () => ({
   app: {},
 }));
 

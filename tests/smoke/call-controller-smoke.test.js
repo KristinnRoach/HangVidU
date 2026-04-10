@@ -43,8 +43,7 @@ vi.mock('../../src/auth/index.js', () => {
     getLoggedInUserId: () => 'test-user-id',
     getAuthState: () => ({ isLoggedIn: true, user: { uid: 'test-user-id' } }),
     getUserName: () => 'Test User',
-    subscribe: vi.fn(() => () => {}),
-    onAuthStateChange: vi.fn(() => () => {}),
+    onAuthStateChanged: vi.fn(() => () => {}),
     setState: vi.fn(),
     waitForAuthReady: vi.fn(() =>
       Promise.resolve({ isLoggedIn: true, user: { uid: 'test-user-id' } }),

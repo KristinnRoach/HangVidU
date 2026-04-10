@@ -13,7 +13,7 @@ vi.mock('../../storage/fb-rtdb/rtdb.js', () => ({
 }));
 
 vi.mock('../../auth/index.js', () => ({
-  onAuthStateChange: vi.fn(() => () => {}),
+  onAuthStateChanged: vi.fn(() => () => {}),
 }));
 
 describe('user-discovery', () => {
