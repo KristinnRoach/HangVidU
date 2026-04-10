@@ -26,6 +26,8 @@
     "lint": "pnpm lint:boundaries && eslint \"src/**/*.js\"",
     "lint:boundaries": "eslint --config eslint.boundaries.config.js \"src/**/*.js\"",
     "lint:b:all": "BOUNDARIES_ENFORCE_ALL=1 pnpm lint:boundaries",
+    "lint:b:auth": "BOUNDARIES_AUTH=1 pnpm lint:boundaries",
+    "lint:b:feature": "sh -c 'test -n \"$1\" || { echo \"Usage: pnpm lint:b:feature <name>\"; exit 1; }; BOUNDARIES_ENFORCED_FEATURES=\"$1\" pnpm lint:boundaries' --",
     "test": "vitest --run",
     "test:node": "vitest --run --project node",
     "test:browser": "vitest --run --project browser",
