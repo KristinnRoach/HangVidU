@@ -6,7 +6,7 @@
 - `src/app/**` -> `app`
 - `src/auth/**` -> `auth`
 - `src/features/<name>/**` -> `feature(<name>)`
-- `src/components/**`, `src/events/**`, `src/firebase/**`, `src/i18n/**`, `src/media/**`, `src/media-next/**`, `src/pwa/**`, `src/storage/**`, `src/styles/**`, `src/utils/**` -> `shared`
+- `src/components/**`, `src/events/**`, `src/vendors/**`, `src/i18n/**`, `src/media/**`, `src/media-next/**`, `src/pwa/**`, `src/storage/**`, `src/styles/**`, `src/utils/**` -> `shared`
 
 ## Allowed imports matrix
 

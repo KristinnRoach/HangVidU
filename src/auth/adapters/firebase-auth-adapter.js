@@ -1,4 +1,4 @@
-// src/auth/firebase-auth-adapter.js
+// src/auth/adapters/firebase-auth-adapter.js
 // Thin adapter around Firebase Auth so the rest of src/auth can stay provider-agnostic.
 
 import {
@@ -14,7 +14,7 @@ import {
   signInWithPopup,
   signOut,
 } from 'firebase/auth';
-import { app } from '../firebase/firebase.js';
+import { app } from '../../vendors/firebase.js';
 
 export const auth = getAuth(app);
 

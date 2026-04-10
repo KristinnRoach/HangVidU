@@ -4,7 +4,7 @@ import {
   auth,
   createGoogleCredential,
   signInWithGoogleCredential,
-} from './firebase-auth-adapter.js';
+} from './adapters/firebase-auth-adapter.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { t, getLocale, onLocaleChange } from '../i18n/index.js';
 

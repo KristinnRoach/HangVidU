@@ -8,7 +8,7 @@ import {
   createGoogleAuthProvider,
   signInWithGooglePopup,
   signOutFirebaseUser,
-} from './firebase-auth-adapter.js';
+} from './adapters/firebase-auth-adapter.js';
 import { dispatchCommand, dispatchCommandAndAwait } from '../events/index.js';
 import { t } from '../i18n/index.js';
 import { devDebug } from '../utils/dev/dev-utils.js';

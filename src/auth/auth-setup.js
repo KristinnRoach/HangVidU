@@ -12,7 +12,7 @@ import {
   onFirebaseAuthStateChanged,
   persistenceBackends,
   setFirebaseAuthPersistence,
-} from './firebase-auth-adapter.js';
+} from './adapters/firebase-auth-adapter.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { initOneTap, showOneTapSignin } from './onetap.js';
 import { clearGISTokenCache } from './gis-tokens.js';
@@ -81,10 +81,14 @@ async function _initAuthInternal() {
 
   // 1. Set persistence with graceful fallback for Safari/iOS/private mode
   try {
-    await setFirebaseAuthPersistence(persistenceBackends.indexedDBLocalPersistence);
+    await setFirebaseAuthPersistence(
+      persistenceBackends.indexedDBLocalPersistence,
+    );
   } catch (_) {
     try {
-      await setFirebaseAuthPersistence(persistenceBackends.browserLocalPersistence);
+      await setFirebaseAuthPersistence(
+        persistenceBackends.browserLocalPersistence,
+      );
     } catch {
       await setFirebaseAuthPersistence(persistenceBackends.inMemoryPersistence);
     }

@@ -30,7 +30,7 @@ Completed in this branch:
 - updated unread-count flow so `messaging` owns unread subscriptions and publishes unread facts for `contacts`
 - removed `src/components/ui/dispatcher.js`
 - made `src/events/` explicitly part of shared code in `eslint.config.js`
-- moved `src/firebase/presence.js` to `src/features/presence/` with abstracted RTDB layer, added to shared boundary patterns
+- moved `src/vendors/presence.js` to `src/features/presence/` with abstracted RTDB layer, added to shared boundary patterns
 - removed `contacts-bus` and `setupContactsAppBusBridge`
 - changed `contacts-service` to publish cross-module facts directly:
   - `room:id:created`
@@ -96,7 +96,7 @@ Notes:
 - `src/auth/auth-state.js` still owns the canonical auth snapshot and the internal `subscribe()` implementation
 - `src/auth/index.js` is now the intended public auth surface for external consumers
 - `contacts` is the only feature currently under active feature-boundary enforcement
-- the prior `shared -> auth` violation in `src/firebase/cloud-functions.js` is resolved; cloud-functions auth code now lives in `src/auth/cloud-functions.js`
+- the prior `shared -> auth` violation in `src/vendors/cloud-functions.js` is resolved; cloud-functions auth code now lives in `src/auth/cloud-functions.js`
 - temporary `shared -> feature` allowlist is active in `eslint.config.js` for:
   - `call`
   - `messaging`

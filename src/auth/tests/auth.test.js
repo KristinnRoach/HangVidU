@@ -21,7 +21,7 @@ vi.mock('firebase/auth', () => ({
   inMemoryPersistence: {},
 }));
 
-vi.mock('../../firebase/firebase.js', () => ({
+vi.mock('../../vendors/firebase.js', () => ({
   app: {},
   fcmVapidKey: 'test-vapid-key',
 }));
