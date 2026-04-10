@@ -13,11 +13,26 @@ import {
 } from './auth-actions.js';
 import { callCloudFunction } from './cloud-functions.js';
 
-let cleanupAuthCommandListeners = null;
+/**
+ * TODO(auth command handlers)
+ *
+ * Findings from architecture/boundary review:
+ * 1) Failure handling consistency:
+ *    - LOGIN/LOGOUT/DELETE_ACCOUNT handlers currently catch and only warn.
+ *    - CLOUD_FUNCTION_CALL handler rethrows.
+ *    - Improvement direction: pick one command failure contract and apply it consistently.
+ *
+ * 2) Command schema reusability:
+ *    - auth command schemas currently enforce source: 'auth-ui'.
+ *    - This is narrow for non-UI callers.
+ *    - Improvement direction: either widen source semantics for reusable module commands
+ *      or explicitly document these as UI-only commands.
+ */
+let cleanupAuthCommandHandlers = null;
 
-export function setupAuthCommandListeners() {
-  if (cleanupAuthCommandListeners) {
-    return cleanupAuthCommandListeners;
+export function setupAuthCommandHandlers() {
+  if (cleanupAuthCommandHandlers) {
+    return cleanupAuthCommandHandlers;
   }
 
   const ac = new AbortController();
@@ -77,11 +92,11 @@ export function setupAuthCommandListeners() {
 
   const cleanup = () => {
     ac.abort();
-    if (cleanupAuthCommandListeners === cleanup) {
-      cleanupAuthCommandListeners = null;
+    if (cleanupAuthCommandHandlers === cleanup) {
+      cleanupAuthCommandHandlers = null;
     }
   };
 
-  cleanupAuthCommandListeners = cleanup;
+  cleanupAuthCommandHandlers = cleanup;
   return cleanup;
 }
