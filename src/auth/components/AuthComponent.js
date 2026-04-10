@@ -15,6 +15,7 @@ import {
   onOneTapStatusChange,
   cancelOneTap,
   renderGoogleSignInButton,
+  isOneTapAvailable,
 } from '../onetap.js';
 
 import { getAuthState } from '../auth-state.js';
@@ -154,8 +155,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
     },
     onMount: (el) => {
       const renderButtons = (loggedIn) => {
-        const isGisLoaded =
-          typeof window !== 'undefined' && !!window.google?.accounts?.id;
+        const isGisLoaded = isOneTapAvailable();
         const isAuthReady =
           getAuthState()?.status === 'authenticated' ||
           getAuthState()?.status === 'unauthenticated';
@@ -187,8 +187,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
             // Delay showing fallback by 500ms to prevent visual flash while GIS script loads
             fallbackTimeout = setTimeout(() => {
               const currentBtn = el.querySelector('#goog-login-btn');
-              const currentlyLoaded =
-                typeof window !== 'undefined' && !!window.google?.accounts?.id;
+              const currentlyLoaded = isOneTapAvailable();
               if (currentBtn && !currentlyLoaded && !getIsLoggedIn()) {
                 currentBtn.style.display = 'inline-block';
               }
