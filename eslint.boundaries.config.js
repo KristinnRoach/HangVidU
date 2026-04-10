@@ -22,21 +22,6 @@ const ENFORCE_ALL = envEnabled('BOUNDARIES_ENFORCE_ALL', false);
 const ALL_FEATURES = discoverFeatures();
 const ALL_FEATURES_SET = new Set(ALL_FEATURES);
 
-// Boundary rollout (keep this short and practical):
-// - normal incremental mode: `pnpm lint:boundaries`
-// - hotspot scan (all rules + all features): `BOUNDARIES_ENFORCE_ALL=1 pnpm lint:boundaries`
-// - single-rule drill-down examples:
-//   - `BOUNDARIES_AUTH=1 pnpm lint:boundaries`
-//   - `BOUNDARIES_APP=1 pnpm lint:boundaries`
-//   - `BOUNDARIES_SETUP=1 pnpm lint:boundaries`
-// - specific feature set: `BOUNDARIES_ENFORCED_FEATURES=contacts,messaging pnpm lint:boundaries`
-const ENABLE_RULE = {
-  shared: envEnabled('BOUNDARIES_SHARED', true),
-  auth: envEnabled('BOUNDARIES_AUTH', true),
-  app: envEnabled('BOUNDARIES_APP', ENFORCE_ALL),
-  setup: envEnabled('BOUNDARIES_SETUP', ENFORCE_ALL),
-};
-
 // Incremental feature rollout:
 // - default: only what is already enforced + current WIP
 // - BOUNDARIES_ENFORCE_ALL=1: all discovered features
@@ -58,11 +43,30 @@ if (requestedFeatures) {
   }
 }
 
+// ____________________________________
+
+// Boundary rollout (incremental rules — modify freely):
+// - normal incremental mode: `pnpm lint:boundaries`
+// - hotspot scan (all rules + all features): `BOUNDARIES_ENFORCE_ALL=1 pnpm lint:boundaries`
+// - single-rule drill-down examples:
+//   - `BOUNDARIES_AUTH=1 pnpm lint:boundaries`
+//   - `BOUNDARIES_APP=1 pnpm lint:boundaries`
+//   - `BOUNDARIES_SETUP=1 pnpm lint:boundaries`
+// - specific feature set: `BOUNDARIES_ENFORCED_FEATURES=contacts,messaging pnpm lint:boundaries`
+
+const ENABLE_RULE = {
+  shared: envEnabled('BOUNDARIES_SHARED', true),
+  auth: envEnabled('BOUNDARIES_AUTH', true),
+  app: envEnabled('BOUNDARIES_APP', ENFORCE_ALL),
+  setup: envEnabled('BOUNDARIES_SETUP', ENFORCE_ALL),
+};
+
 const ENFORCED_FEATURES = requestedFeatures
   ? requestedFeatures
   : ENFORCE_ALL
     ? ALL_FEATURES
-    : ['contacts'];
+    : ['contacts', 'push-notifications'];
+
 const SHARED_TEMP_FEATURE_EXCEPTIONS = [
   'call',
   'messaging',
