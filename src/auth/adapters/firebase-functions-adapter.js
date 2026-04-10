@@ -41,6 +41,12 @@ export async function callFirebaseCloudFunction(
   functionName,
   { body, idToken } = {},
 ) {
+  if (!idToken || typeof idToken !== 'string' || !idToken.trim()) {
+    throw new Error(
+      'Missing idToken in callFirebaseCloudFunction: cannot call Firebase Cloud Function',
+    );
+  }
+
   const response = await fetch(getFirebaseFunctionUrl(functionName), {
     method: 'POST',
     headers: {

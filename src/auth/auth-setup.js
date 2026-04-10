@@ -152,7 +152,7 @@ function normalizeUser(firebaseUser) {
 /**
  * Wait for auth state to be initialized and return the current user.
  * Note: onFirebaseAuthStateChanged fires once after initialization, so this always resolves.
- * @returns {Promise<import('firebase/auth').User | null>}
+ * @returns {Promise<object | null>}
  */
 export function getCurrentUserAsync() {
   return new Promise((resolve) => {

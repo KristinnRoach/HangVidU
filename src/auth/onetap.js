@@ -18,6 +18,7 @@ import { getLocale, onLocaleChange, t } from '../i18n/index.js';
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_APP_GOOGLE_CLIENT_ID;
 const oneTapCallbacks = new Set();
 let oneTapInitialized = false;
+let initOneTapPromise = null;
 let unsubscribeLocaleChange = null;
 
 function notifyOneTapStatus(status) {
@@ -56,32 +57,39 @@ export function onOneTapStatusChange(callback) {
 
 export async function initOneTap() {
   if (oneTapInitialized) return;
+  if (initOneTapPromise) return initOneTapPromise;
 
-  if (!GOOGLE_CLIENT_ID) {
-    console.error(
-      '[ONE TAP] Cannot initialize: VITE_APP_GOOGLE_CLIENT_ID is not configured',
-    );
-    return;
-  }
+  initOneTapPromise = (async () => {
+    if (!GOOGLE_CLIENT_ID) {
+      console.error(
+        '[ONE TAP] Cannot initialize: VITE_APP_GOOGLE_CLIENT_ID is not configured',
+      );
+      return;
+    }
 
-  try {
-    await loadAndInitializeOneTap(getLocale());
-  } catch (e) {
-    devDebug('[ONE TAP] Failed to initialize GIS:', e);
-    return;
-  }
+    try {
+      await loadAndInitializeOneTap(getLocale());
+    } catch (e) {
+      devDebug('[ONE TAP] Failed to initialize GIS:', e);
+      return;
+    }
 
-  if (!unsubscribeLocaleChange) {
-    unsubscribeLocaleChange = onLocaleChange(async (locale) => {
-      try {
-        await loadAndInitializeOneTap(locale);
-      } catch (e) {
-        devDebug('[ONE TAP] Failed to reload GIS for locale:', e);
-      }
-    });
-  }
+    if (!unsubscribeLocaleChange) {
+      unsubscribeLocaleChange = onLocaleChange(async (locale) => {
+        try {
+          await loadAndInitializeOneTap(locale);
+        } catch (e) {
+          devDebug('[ONE TAP] Failed to reload GIS for locale:', e);
+        }
+      });
+    }
 
-  oneTapInitialized = true;
+    oneTapInitialized = true;
+  })().finally(() => {
+    initOneTapPromise = null;
+  });
+
+  return initOneTapPromise;
 }
 
 export function showOneTapSignin() {
@@ -126,6 +134,10 @@ async function handleOneTapCredential(response) {
   } catch (error) {
     const errorCode = error?.code || 'unknown';
     const errorMessage = error?.message || String(error);
+
+    setState({ status: 'unauthenticated', isLoggedIn: false, user: null });
+    setSafariExternalOpenArmed(false);
+    notifyOneTapStatus('failed');
 
     if (errorCode === 'auth/account-exists-with-different-credential') {
       alert(t('auth.account_exists'));

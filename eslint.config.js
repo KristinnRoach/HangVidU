@@ -12,6 +12,13 @@ export default [
                 'Import from src/auth/adapters/firebase-auth-adapter.js instead of firebase/auth directly.',
             },
           ],
+          patterns: [
+            {
+              group: ['firebase/auth/*'],
+              message:
+                'Import from src/auth/adapters/firebase-auth-adapter.js instead of firebase/auth directly.',
+            },
+          ],
         },
       ],
     },

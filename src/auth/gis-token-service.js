@@ -9,6 +9,7 @@ import {
 
 const TOKEN_EXPIRY_BUFFER_MS = 60_000;
 const tokenCache = new Map();
+const inFlightRequests = new Map();
 
 function getCachedToken(cacheKey) {
   const entry = tokenCache.get(cacheKey);
@@ -109,44 +110,54 @@ export async function requestGisToken({
   const cached = getCachedToken(cacheKey);
   if (cached) return cached;
 
-  if (!clientId) {
-    throw new Error('Google Client ID not configured');
-  }
+  const inFlightRequest = inFlightRequests.get(cacheKey);
+  if (inFlightRequest) return inFlightRequest;
 
-  if (!isGoogleOAuthLoaded()) {
-    throw new Error('Google Identity Services not loaded');
-  }
-
-  if (interactive) {
-    const interactiveResult = await requestTokenFromGIS({
-      clientId,
-      scope,
-      hint,
-    });
-    setCachedToken(cacheKey, interactiveResult.token, interactiveResult.expiresIn);
-    return interactiveResult.token;
-  }
-
-  try {
-    const silentResult = await requestTokenFromGIS({
-      clientId,
-      scope,
-      hint,
-      prompt: 'none',
-    });
-    setCachedToken(cacheKey, silentResult.token, silentResult.expiresIn);
-    return silentResult.token;
-  } catch (error) {
-    const recoverableCodes = new Set(['access_denied', 'interaction_required']);
-    if (!recoverableCodes.has(error?.code)) {
-      throw error;
+  const requestPromise = (async () => {
+    if (!clientId) {
+      throw new Error('Google Client ID not configured');
     }
-    const interactiveResult = await requestTokenFromGIS({
-      clientId,
-      scope,
-      hint,
-    });
-    setCachedToken(cacheKey, interactiveResult.token, interactiveResult.expiresIn);
-    return interactiveResult.token;
-  }
+
+    if (!isGoogleOAuthLoaded()) {
+      throw new Error('Google Identity Services not loaded');
+    }
+
+    if (interactive) {
+      const interactiveResult = await requestTokenFromGIS({
+        clientId,
+        scope,
+        hint,
+      });
+      setCachedToken(cacheKey, interactiveResult.token, interactiveResult.expiresIn);
+      return interactiveResult.token;
+    }
+
+    try {
+      const silentResult = await requestTokenFromGIS({
+        clientId,
+        scope,
+        hint,
+        prompt: 'none',
+      });
+      setCachedToken(cacheKey, silentResult.token, silentResult.expiresIn);
+      return silentResult.token;
+    } catch (error) {
+      const recoverableCodes = new Set(['access_denied', 'interaction_required']);
+      if (!recoverableCodes.has(error?.code)) {
+        throw error;
+      }
+      const interactiveResult = await requestTokenFromGIS({
+        clientId,
+        scope,
+        hint,
+      });
+      setCachedToken(cacheKey, interactiveResult.token, interactiveResult.expiresIn);
+      return interactiveResult.token;
+    }
+  })().finally(() => {
+    inFlightRequests.delete(cacheKey);
+  });
+
+  inFlightRequests.set(cacheKey, requestPromise);
+  return requestPromise;
 }

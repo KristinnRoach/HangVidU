@@ -15,7 +15,9 @@ export function loadGoogleIdentityScript(locale) {
   if (inFlightLoadPromise) return inFlightLoadPromise;
 
   inFlightLoadPromise = new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src^="${GIS_SCRIPT_BASE}"]`);
+    const existing = document.querySelector(
+      `script[src^="${GIS_SCRIPT_BASE}"]`,
+    );
     if (existing) existing.remove();
 
     const script = document.createElement('script');
@@ -48,7 +50,15 @@ export function isGoogleOneTapLoaded() {
  * @returns {boolean} Whether GIS OAuth2 token API is available.
  */
 export function isGoogleOAuthLoaded() {
-  return typeof google !== 'undefined' && !!google.accounts?.oauth2;
+  return !!globalThis?.google?.accounts?.oauth2;
+}
+
+function getGoogleAccountsOrThrow() {
+  const accounts = globalThis?.google?.accounts;
+  if (!accounts) {
+    throw new Error('Google Identity Services is not loaded');
+  }
+  return accounts;
 }
 
 /**
@@ -57,7 +67,7 @@ export function isGoogleOAuthLoaded() {
  * @param {object} config - GIS initialize configuration.
  */
 export function initializeGoogleOneTap(config) {
-  google.accounts.id.initialize(config);
+  getGoogleAccountsOrThrow().id.initialize(config);
 }
 
 /**
@@ -66,7 +76,7 @@ export function initializeGoogleOneTap(config) {
  * @param {(notification: object) => void} callback
  */
 export function promptGoogleOneTap(callback) {
-  google.accounts.id.prompt(callback);
+  getGoogleAccountsOrThrow().id.prompt(callback);
 }
 
 /**
@@ -85,7 +95,7 @@ export function cancelGoogleOneTap() {
  * @param {object} options
  */
 export function renderGoogleSignInButton(containerEl, options) {
-  google.accounts.id.renderButton(containerEl, options);
+  getGoogleAccountsOrThrow().id.renderButton(containerEl, options);
 }
 
 /**
@@ -95,7 +105,7 @@ export function renderGoogleSignInButton(containerEl, options) {
  * @returns {object}
  */
 export function createGoogleOAuthTokenClient(config) {
-  return google.accounts.oauth2.initTokenClient(config);
+  return getGoogleAccountsOrThrow().oauth2.initTokenClient(config);
 }
 
 /**

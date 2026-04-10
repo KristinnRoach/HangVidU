@@ -20,6 +20,7 @@ function discoverFeatures() {
 
 const ENFORCE_ALL = envEnabled('BOUNDARIES_ENFORCE_ALL', false);
 const ALL_FEATURES = discoverFeatures();
+const ALL_FEATURES_SET = new Set(ALL_FEATURES);
 
 // Boundary rollout (keep this short and practical):
 // - normal incremental mode: `pnpm lint:boundaries`
@@ -40,10 +41,25 @@ const ENABLE_RULE = {
 // - default: only what is already enforced + current WIP
 // - BOUNDARIES_ENFORCE_ALL=1: all discovered features
 // - BOUNDARIES_ENFORCED_FEATURES=a,b,c: explicit list
-const ENFORCED_FEATURES = process.env.BOUNDARIES_ENFORCED_FEATURES
+const requestedFeatures = process.env.BOUNDARIES_ENFORCED_FEATURES
   ? process.env.BOUNDARIES_ENFORCED_FEATURES.split(',')
       .map((name) => name.trim())
       .filter(Boolean)
+  : null;
+
+if (requestedFeatures) {
+  const unknownFeatures = requestedFeatures.filter(
+    (featureName) => !ALL_FEATURES_SET.has(featureName),
+  );
+  if (unknownFeatures.length > 0) {
+    throw new Error(
+      `Unknown BOUNDARIES_ENFORCED_FEATURES: ${unknownFeatures.join(', ')}`,
+    );
+  }
+}
+
+const ENFORCED_FEATURES = requestedFeatures
+  ? requestedFeatures
   : ENFORCE_ALL
     ? ALL_FEATURES
     : ['contacts'];
