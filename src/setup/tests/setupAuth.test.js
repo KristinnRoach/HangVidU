@@ -107,7 +107,6 @@ describe('setupAuth', () => {
     const teardown = await setupAuth({ lobbyElement });
 
     await mocks.handlers.get('auth:logout')({});
-    await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(mocks.renderContactsList).toHaveBeenCalledWith(lobbyElement);
     expect(mocks.removeAllIncomingListeners).toHaveBeenCalled();

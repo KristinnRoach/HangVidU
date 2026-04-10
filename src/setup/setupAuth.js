@@ -88,20 +88,10 @@ export function setupAuth(options = {}) {
         'auth:logout',
         async () => {
           try {
-            // Disable notifications and unregister the current Web Push subscription - Fire and forget
-            getPushNotifications()
-              ?.disable?.()
-              .catch((err) => {
-                console.warn(
-                  '[AUTH] Failed to disable notifications on logout:',
-                  err,
-                );
-              });
-
             devDebug('[AUTH] User logged out - cleaning up listeners');
             cleanupLoginScopedListeners();
 
-            setTimeout(async () => await renderContactsList(lobbyElement), 5); // Temp fix, rendering will be moved anyways
+            await renderContactsList(lobbyElement);
           } catch (e) {
             console.warn('[AUTH] Failed to handle auth:logout:', e);
           }
