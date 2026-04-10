@@ -9,7 +9,6 @@ import {
 import { renderAvatar } from '../../../components/ui/utils/avatar.js';
 import { createMessageToggle } from './createMessageToggle.js';
 import { isIOSOrAndroidDevice } from '../../../utils/detect-device.js';
-import { createWatchFileHandler } from '../../watch/watch-file-handler.js';
 
 import { linkifyToFragment } from '../../../utils/linkify.js';
 import { ReactionManager, ReactionUI } from '../reactions/index.js';
@@ -62,6 +61,20 @@ function refreshRemoteAvatars(container, { name, photoURL }) {
   avatars.forEach((avatar) => renderAvatar(avatar, { name, photoURL }));
 }
 
+function createNoopWatchFileHandler() {
+  return {
+    requestWatchTogether: async () => ({ ok: false, reason: 'request_failed' }),
+    getWatchableFile: () => null,
+    declineWatch: async () => {},
+    acceptWatch: async () => false,
+    reset: () => {},
+    trackSentFile: () => null,
+    checkReceivedFile: () => ({ isVideo: false }),
+    cleanup: () => {},
+    __isNoopWatchHandler: true,
+  };
+}
+
 /**
  * Creates the messages UI component with chat functionality
  * Designed to be a singleton - one instance that displays the active session
@@ -80,7 +93,29 @@ export function initMessagesUI() {
   const reactionManager = new ReactionManager();
   const reactionUI = new ReactionUI(reactionManager);
   const ac = new AbortController();
-  let watchFileHandler; // Initialized after DOM guards pass
+  let watchFileHandlerFactory = null;
+  let watchFileHandler;
+
+  function ensureWatchFileHandler() {
+    if (watchFileHandler) {
+      return watchFileHandler;
+    }
+
+    if (typeof watchFileHandlerFactory === 'function') {
+      watchFileHandler = watchFileHandlerFactory();
+      return watchFileHandler;
+    }
+
+    watchFileHandler = createNoopWatchFileHandler();
+    return watchFileHandler;
+  }
+
+  function setWatchFileHandlerFactory(factory) {
+    watchFileHandlerFactory = typeof factory === 'function' ? factory : null;
+    if (watchFileHandler?.__isNoopWatchHandler && watchFileHandlerFactory) {
+      watchFileHandler = watchFileHandlerFactory();
+    }
+  }
 
   const shouldShowAttachButton = () =>
     !!fileTransferController ||
@@ -140,9 +175,6 @@ export function initMessagesUI() {
     console.error('Messages UI elements not found.');
     return null;
   }
-
-  // Initialize watchFileHandler after DOM guards pass (messagesMessages is now safe to use)
-  watchFileHandler = createWatchFileHandler();
 
   // Listen for incoming watch-together requests from remote peer (sender side)
   document.addEventListener('watch:file-request', onWatchFileRequest);
@@ -1194,7 +1226,7 @@ export function initMessagesUI() {
       content: { text: `🎬 ${t('message.watch.request_sent')}` },
     });
 
-    const result = await watchFileHandler.requestWatchTogether({
+    const result = await ensureWatchFileHandler().requestWatchTogether({
       fileId,
       file,
       name,
@@ -1225,7 +1257,7 @@ export function initMessagesUI() {
    */
   async function onWatchFileRequest(e) {
     const { fileId, fileName } = e.detail;
-    const file = watchFileHandler.getWatchableFile(fileId);
+    const file = ensureWatchFileHandler().getWatchableFile(fileId);
 
     if (!file) {
       appendEphemeralMessage({
@@ -1235,7 +1267,7 @@ export function initMessagesUI() {
       });
       showErrorToast(t('message.watch.file_unavailable', { name: fileName }));
 
-      await watchFileHandler.declineWatch();
+      await ensureWatchFileHandler().declineWatch();
       return;
     }
 
@@ -1252,7 +1284,7 @@ export function initMessagesUI() {
             appendEphemeralMessage({
               content: { text: `${t('message.watch.joining')}` },
             });
-            const success = await watchFileHandler.acceptWatch(file);
+            const success = await ensureWatchFileHandler().acceptWatch(file);
             if (success) {
               appendEphemeralMessage({
                 content: { text: `✅ ${t('message.watch.synced')}` },
@@ -1282,7 +1314,7 @@ export function initMessagesUI() {
     if (controller === null) {
       fileTransferController = null;
       inActiveCall = false;
-      watchFileHandler.reset();
+      ensureWatchFileHandler().reset();
       refreshAttachButton();
       devDebug('[MessagesUI] FileTransferController cleared');
       return;
@@ -1291,7 +1323,7 @@ export function initMessagesUI() {
     fileTransferController = controller;
     inActiveCall = !!controller; // TODO: Use canonical call state (see CallController)
 
-    watchFileHandler.reset();
+    ensureWatchFileHandler().reset();
 
     refreshAttachButton(); // Show/hide attachment button based on file transfer availability
 
@@ -1302,7 +1334,7 @@ export function initMessagesUI() {
         name,
         mimeType,
       }) => {
-        const sentVideo = watchFileHandler.trackSentFile({ fileId, file });
+        const sentVideo = ensureWatchFileHandler().trackSentFile({ fileId, file });
 
         if (sentVideo && isSafeDownloadUrl(sentVideo.downloadUrl)) {
           appendEphemeralWatchMessage({
@@ -1348,7 +1380,7 @@ export function initMessagesUI() {
       }) => {
         devDebug('[MessagesUI] Received file:', { file, name, mimeType });
 
-        const result = watchFileHandler.checkReceivedFile({
+        const result = ensureWatchFileHandler().checkReceivedFile({
           fileId,
           file,
           name,
@@ -1451,7 +1483,7 @@ export function initMessagesUI() {
       URL.revokeObjectURL(url);
     }
     activeCallBlobUrls.clear();
-    watchFileHandler.reset();
+    ensureWatchFileHandler().reset();
     if (removeMessagesBoxClickOutside) {
       removeMessagesBoxClickOutside();
       removeMessagesBoxClickOutside = null;
@@ -1747,6 +1779,7 @@ export function initMessagesUI() {
     focusMessageInput,
     unfocusMessageInput,
     clearMessages,
+    setWatchFileHandlerFactory,
     setFileTransferController,
     reset,
     cleanup,

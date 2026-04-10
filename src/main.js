@@ -84,6 +84,7 @@ import {
   exitPiP,
 } from './components/ui/utils/ui-utils.js';
 import { messagesUI } from './features/messaging/components/messages-ui.js';
+import { createWatchFileHandler } from './features/watch/watch-file-handler.js';
 import { copyToClipboard } from './components/modal/copyLinkModal.js';
 
 // ____ UI END ____
@@ -108,6 +109,8 @@ import {
   initLocalStreamAndMedia,
   handleMediaPermissionError,
 } from './media/WIP-init-local-media.js';
+
+messagesUI?.setWatchFileHandlerFactory?.(createWatchFileHandler);
 import {
   settleIncomingCallWaitForRoom,
   startListeningForSavedRooms,
