@@ -33,7 +33,7 @@ vi.mock('firebase/database', () => {
   };
 });
 
-vi.mock('../../../vendors/firebase', () => ({
+vi.mock('../../../vendors/firebase.js', () => ({
   app: {},
 }));
 

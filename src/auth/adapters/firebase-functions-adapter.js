@@ -12,13 +12,18 @@ const FUNCTION_REGION = 'europe-west1';
  * @param {string} [options.projectId] - Firebase project id (defaults to env).
  * @returns {string} Fully-qualified Cloud Function URL.
  */
-export function getFirebaseFunctionUrl(
+function getFirebaseFunctionUrl(
   functionName,
   {
     region = FUNCTION_REGION,
     projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID,
   } = {},
 ) {
+  if (!projectId) {
+    throw new Error(
+      'Missing VITE_FIREBASE_PROJECT_ID: cannot build Firebase Function URL',
+    );
+  }
   return `https://${region}-${projectId}.cloudfunctions.net/${functionName}`;
 }
 
@@ -32,7 +37,7 @@ export function getFirebaseFunctionUrl(
  * @returns {Promise<{status: number, payload: object}>} HTTP status and parsed JSON payload.
  * @throws {Error & {status?: number, payload?: object}} On non-2xx responses.
  */
-export async function invokeFirebaseFunction(
+export async function callFirebaseCloudFunction(
   functionName,
   { body, idToken } = {},
 ) {

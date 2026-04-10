@@ -1,7 +1,7 @@
 // Helper for calling Firebase Cloud Functions (onRequest endpoints).
 
 import { getLoggedInUserToken } from './auth-setup.js';
-import { invokeFirebaseFunction } from './adapters/firebase-functions-adapter.js';
+import { callFirebaseCloudFunction } from './adapters/firebase-functions-adapter.js';
 
 /**
  * Calls a Firebase Cloud Function with Bearer token auth.
@@ -18,5 +18,5 @@ export async function callCloudFunction(functionName, body) {
     error.status = 401;
     throw error;
   }
-  return invokeFirebaseFunction(functionName, { body, idToken });
+  return callFirebaseCloudFunction(functionName, { body, idToken });
 }

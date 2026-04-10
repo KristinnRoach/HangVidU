@@ -16,7 +16,8 @@ export function loadGoogleIdentityScript(locale) {
     if (existing) existing.remove();
 
     const script = document.createElement('script');
-    script.src = `${GIS_SCRIPT_BASE}?hl=${locale}`;
+    const safeLocale = encodeURIComponent(locale || 'en');
+    script.src = `${GIS_SCRIPT_BASE}?hl=${safeLocale}`;
     script.async = true;
     script.defer = true;
     script.onload = () => resolve();

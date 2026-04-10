@@ -75,7 +75,7 @@ vi.mock('firebase/database', () => {
 });
 
 // Provide a minimal app export for rtdb initialization
-vi.mock('../../../vendors/firebase', () => ({ app: {} }));
+vi.mock('../../../vendors/firebase.js', () => ({ app: {} }));
 
 // Mock the diagnostic logger
 vi.mock('../../../utils/dev/diagnostic-logger.js', () => ({

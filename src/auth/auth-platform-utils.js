@@ -9,7 +9,7 @@
 export function detectIOSStandalone() {
   const displayModeStandalone =
     typeof window !== 'undefined' &&
-    window.matchMedia?.('(display-mode: standalone)').matches;
+    window.matchMedia?.('(display-mode: standalone)')?.matches === true;
   const navigatorStandalone =
     typeof navigator !== 'undefined' && navigator.standalone === true;
   const isStandalonePWA = displayModeStandalone || navigatorStandalone;
