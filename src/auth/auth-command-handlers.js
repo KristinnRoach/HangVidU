@@ -10,7 +10,7 @@ import {
   deleteAccount,
   signInWithAccountSelection,
   signOutUser,
-} from './auth-actions.js';
+} from './auth-commands.js';
 import { callCloudFunction } from './cloud-functions.js';
 
 /**
