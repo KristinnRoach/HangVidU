@@ -15,6 +15,10 @@ import { t } from '../i18n/index.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { getPushNotifications } from '../features/push-notifications/index.js';
 import { callCloudFunction } from './cloud-functions.js';
+import {
+  detectIOSStandalone,
+  openInSafariExternal,
+} from './auth-platform-utils.js';
 
 // iOS standalone PWA Safari fallback: armed after a failed attempt,
 // then the next Login tap opens the app URL in Safari (user gesture).
@@ -34,37 +38,6 @@ export function isSafariExternalOpenArmed() {
  */
 export function setSafariExternalOpenArmed(value) {
   safariExternalOpenArmed = value;
-}
-
-function openInSafariExternal() {
-  try {
-    const a = document.createElement('a');
-    a.href = window.location.href;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer external';
-    // Append to DOM to ensure iOS respects the gesture-triggered click
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  } catch (_) {}
-}
-
-/**
- * Detect if running in iOS standalone PWA mode.
- * @returns {{ isStandalonePWA: boolean, isIOS: boolean, isIOSStandalone: boolean }}
- */
-function detectIOSStandalone() {
-  const displayModeStandalone =
-    typeof window !== 'undefined' &&
-    window.matchMedia?.('(display-mode: standalone)').matches;
-  const navigatorStandalone =
-    typeof navigator !== 'undefined' && navigator.standalone === true;
-  const isStandalonePWA = displayModeStandalone || navigatorStandalone;
-  const isIOS =
-    typeof navigator !== 'undefined' &&
-    /iphone|ipad|ipod/i.test(navigator.userAgent || '');
-  const isIOSStandalone = isStandalonePWA && isIOS;
-  return { isStandalonePWA, isIOS, isIOSStandalone };
 }
 
 /**
