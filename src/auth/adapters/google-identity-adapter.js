@@ -2,6 +2,7 @@
 // Thin adapter around Google Identity Services browser APIs.
 
 const GIS_SCRIPT_BASE = 'https://accounts.google.com/gsi/client';
+let inFlightLoadPromise = null;
 
 /**
  * Load Google Identity Services script for a locale.
@@ -11,7 +12,9 @@ const GIS_SCRIPT_BASE = 'https://accounts.google.com/gsi/client';
  * @returns {Promise<void>}
  */
 export function loadGoogleIdentityScript(locale) {
-  return new Promise((resolve, reject) => {
+  if (inFlightLoadPromise) return inFlightLoadPromise;
+
+  inFlightLoadPromise = new Promise((resolve, reject) => {
     const existing = document.querySelector(`script[src^="${GIS_SCRIPT_BASE}"]`);
     if (existing) existing.remove();
 
@@ -20,10 +23,18 @@ export function loadGoogleIdentityScript(locale) {
     script.src = `${GIS_SCRIPT_BASE}?hl=${safeLocale}`;
     script.async = true;
     script.defer = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load GIS script'));
+    script.onload = () => {
+      inFlightLoadPromise = null;
+      resolve();
+    };
+    script.onerror = () => {
+      inFlightLoadPromise = null;
+      reject(new Error('Failed to load GIS script'));
+    };
     document.head.appendChild(script);
   });
+
+  return inFlightLoadPromise;
 }
 
 /**
