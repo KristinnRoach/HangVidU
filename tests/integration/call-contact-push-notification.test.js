@@ -76,6 +76,34 @@ const mocks = vi.hoisted(() => {
     getLogs: vi.fn(() => []),
   };
 
+  const authIndex = {
+    signInWithAccountSelection: vi.fn(),
+    signOutUser: vi.fn(),
+    deleteAccount: vi.fn(),
+    isSafariExternalOpenArmed: vi.fn(),
+    setSafariExternalOpenArmed: vi.fn(),
+    requestContactsAccess: vi.fn(),
+    requestGmailSendAccess: vi.fn(),
+    clearGISTokenCache: vi.fn(),
+    getAuthState: vi.fn(),
+    getIsLoggedIn: vi.fn(() => true),
+    getUser: vi.fn(() => ({
+      uid: 'user-123',
+      userName: 'Caller Example',
+      email: 'caller@example.com',
+    })),
+    getUserId: vi.fn(() => 'user-123'),
+    getLoggedInUserId: vi.fn(() => 'user-123'),
+    getUserName: vi.fn(),
+    onAuthStateChanged: vi.fn(() => () => {}),
+    setState: vi.fn(),
+    waitForAuthReady: vi.fn(),
+    initializeAuthUI: vi.fn(),
+    initAuth: vi.fn().mockResolvedValue(undefined),
+    getCurrentUserAsync: vi.fn(),
+    getLoggedInUserToken: vi.fn(),
+  };
+
   return {
     callSequence,
     get memberJoinedHandler() {
@@ -94,6 +122,7 @@ const mocks = vi.hoisted(() => {
     callController,
     contactsService,
     logger,
+    authIndex,
     firebase: {
       remove: vi.fn(),
     },
@@ -367,33 +396,7 @@ vi.mock('../../src/components/ui/utils/ui-utils.js', () => ({
 }));
 
 vi.mock('../../src/auth/index.js', () => ({
-  signInWithAccountSelection: vi.fn(),
-  signOutUser: vi.fn(),
-  deleteAccount: vi.fn(),
-  isSafariExternalOpenArmed: vi.fn(),
-  setSafariExternalOpenArmed: vi.fn(),
-  requestContactsAccess: vi.fn(),
-  requestGmailSendAccess: vi.fn(),
-  clearGISTokenCache: vi.fn(),
-  getAuthState: vi.fn(),
-  getIsLoggedIn: vi.fn(() => true),
-  getUser: vi.fn(() => ({
-    uid: 'user-123',
-    userName: 'Caller Example',
-    email: 'caller@example.com',
-  })),
-  getUserId: vi.fn(() => 'user-123'),
-  getLoggedInUserId: vi.fn(() => 'user-123'),
-  getUserName: vi.fn(),
-  onAuthStateChanged: vi.fn(() => () => {}),
-  setState: vi.fn(),
-  waitForAuthReady: vi.fn(),
-  initializeAuthUI: vi.fn(),
-  setupAuthAppBusBridge: vi.fn(),
-  auth: vi.fn(),
-  initAuth: vi.fn().mockResolvedValue(undefined),
-  getCurrentUserAsync: vi.fn(),
-  getLoggedInUserToken: vi.fn(),
+  ...mocks.authIndex,
 }));
 
 vi.mock('../../src/features/messaging/components/messages-ui.js', () => ({
