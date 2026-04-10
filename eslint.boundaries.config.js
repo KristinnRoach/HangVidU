@@ -32,7 +32,7 @@ const ALL_FEATURES_SET = new Set(ALL_FEATURES);
 // - specific feature set: `BOUNDARIES_ENFORCED_FEATURES=contacts,messaging pnpm lint:boundaries`
 const ENABLE_RULE = {
   shared: envEnabled('BOUNDARIES_SHARED', true),
-  auth: envEnabled('BOUNDARIES_AUTH', ENFORCE_ALL),
+  auth: envEnabled('BOUNDARIES_AUTH', true),
   app: envEnabled('BOUNDARIES_APP', ENFORCE_ALL),
   setup: envEnabled('BOUNDARIES_SETUP', ENFORCE_ALL),
 };
