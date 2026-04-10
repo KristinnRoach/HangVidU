@@ -257,14 +257,21 @@ async function handleOneTapCredential(response) {
  * @param {Object} [options] - GsiButtonConfiguration overrides
  */
 export function renderGoogleSignInButton(containerEl, options = {}) {
-  if (!window.google?.accounts?.id) {
+  if (typeof window !== 'undefined' && !window.google?.accounts?.id) {
     devDebug('[ONE TAP] Cannot render button: GIS not loaded yet');
-    return;
+    return false;
   }
+
+  // Start hidden to avoid flash of default content
+  containerEl.style.visibility = 'hidden';
 
   // Using locale as idempotency guard
   const locale = getLocale();
-  if (containerEl.dataset.gsiRendered === locale) return;
+  if (containerEl.dataset.gsiRendered === locale) {
+    containerEl.style.visibility = 'visible';
+    return;
+  }
+
   containerEl.textContent = '';
 
   google.accounts.id.renderButton(containerEl, {
@@ -279,6 +286,13 @@ export function renderGoogleSignInButton(containerEl, options = {}) {
   });
 
   containerEl.dataset.gsiRendered = locale;
+
+  // Reveal button after GIS has rendered and initialized it
+  requestAnimationFrame(() => {
+    containerEl.style.visibility = 'visible';
+  });
+
+  return true;
 }
 
 /**

@@ -16,6 +16,8 @@ import {
   cancelOneTap,
   renderGoogleSignInButton,
 } from '../onetap.js';
+
+import { getAuthState } from '../auth-state.js';
 import { isDev, devDebug } from '../../utils/dev/dev-utils.js';
 import { t, onLocaleChange } from '../../i18n/index.js';
 
@@ -82,7 +84,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       loginBtnMarginRightPx,
     },
     template: `
-      <div id="gsi-button-container" style="display: none"></div>
+      <div id="gsi-button-container"></div>
       <button id="goog-login-btn" class="login-btn" style="margin-right: [[loginBtnMarginRightPx]]px; display: none" onclick="handleLogin">[[t:auth.login]]</button>
       <button id="goog-logout-btn" class="logout-btn" style="display: none" onclick="handleLogout">[[t:auth.logout]]</button>
       ${isDev() && SHOW_DEBUG_DELETE_BTN_IN_DEV ? `<button id="delete-account-btn" class="delete-account-btn" onclick="handleDeleteAccount">[[t:auth.delete_account]]</button>` : ''}
@@ -154,17 +156,26 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       const renderButtons = (loggedIn) => {
         const isGisLoaded =
           typeof window !== 'undefined' && !!window.google?.accounts?.id;
+        const isAuthReady =
+          getAuthState()?.status === 'authenticated' ||
+          getAuthState()?.status === 'unauthenticated';
+
+        if (!isAuthReady) {
+          devDebug('[AuthComponent] renderButtons: Auth state not ready');
+          return;
+        }
 
         const logoutBtn = el.querySelector('#goog-logout-btn');
         if (logoutBtn) {
           logoutBtn.style.display = loggedIn ? 'inline-block' : 'none';
         }
         const gsiBtn = el.querySelector('#gsi-button-container');
-        if (gsiBtn) {
-          gsiBtn.style.display = !loggedIn && isGisLoaded ? 'block' : 'none';
-          if (!loggedIn && isGisLoaded) {
+        if (gsiBtn && isGisLoaded) {
+          if (!loggedIn) {
             renderGoogleSignInButton(gsiBtn);
           }
+          gsiBtn.style.visibility =
+            !loggedIn && isGisLoaded ? 'visible' : 'hidden';
         }
         const loginBtn = el.querySelector('#goog-login-btn');
         if (loginBtn) {
@@ -194,9 +205,6 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       el.onRender(() => {
         renderButtons(getIsLoggedIn());
       });
-
-      // Set initial button states and render the Google button
-      renderButtons(initialLoggedIn);
 
       unsubscribe = subscribe(({ isLoggedIn, user, status }) => {
         const rawName = user?.userName || user?.email || 'User';
@@ -233,23 +241,14 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           signingInDisplay,
           signingOutDisplay,
         });
+
+        // Render button visibility based on real auth state (not stale initial state)
+        renderButtons(isLoggedIn); // ? needed ?
       });
 
       // Subscribe to One Tap status
       unsubscribeOneTap = onOneTapStatusChange((status) => {
         devDebug('[AuthComponent] One Tap status:', status);
-
-        // !__ DELETE if not needed
-        // GIS just loaded — render the branded button into the (possibly fresh) container
-        // const container = el.querySelector('#gsi-button-container');
-        // if (container && !getIsLoggedIn()) {
-        //   container.style.display = 'block';
-        //   renderGoogleSignInButton(container);
-        //   // Hide the fallback legacy button since GIS has successfully loaded
-        //   const loginBtn = el.querySelector('#goog-login-btn');
-        //   if (loginBtn) loginBtn.style.display = 'none';
-        // }
-        // ! END of DELETE if not needed
 
         if (!getIsLoggedIn()) {
           // Keep a single source of truth for GIS/fallback visibility.
