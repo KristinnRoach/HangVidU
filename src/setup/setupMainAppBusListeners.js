@@ -7,6 +7,7 @@ import {
   listenForIncomingOnRoom,
   removeIncomingListenersForRoom,
 } from '../features/call/room-listeners.js';
+import { getPushNotifications } from '../features/push-notifications/index.js';
 import { setUserOffline } from '../features/presence/index.js';
 import { clearUrlParam } from '../utils/url.js';
 import { onCallDisconnected } from '../components/ui/core/call-lifecycle-ui.js';
@@ -44,6 +45,38 @@ export function setupMainAppBusListeners() {
             await setUserOffline(userId);
           } catch (e) {
             console.warn('Failed to set user presence offline:', e);
+          }
+        },
+        { signal: ac.signal },
+      );
+
+      handleCommand(
+        'push:disable',
+        async () => {
+          try {
+            await getPushNotifications()?.disable?.();
+          } catch (e) {
+            console.warn('[push] Failed to disable notifications:', e);
+          }
+        },
+        { signal: ac.signal },
+      );
+
+      handleCommand(
+        'contacts:get-by-room-id',
+        async ({ roomId } = {}) => {
+          if (!roomId) {
+            return null;
+          }
+
+          try {
+            return await contactsService.getContactByRoomId(roomId);
+          } catch (e) {
+            console.warn(
+              'Failed to resolve contact on contacts:get-by-room-id:',
+              e,
+            );
+            return null;
           }
         },
         { signal: ac.signal },

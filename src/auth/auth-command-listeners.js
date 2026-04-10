@@ -1,6 +1,7 @@
 import { handleCommand } from '../events/index.js';
 import {
   AUTH_COMMANDS,
+  parseAuthCloudFunctionCall,
   parseAuthDeleteAccountRequested,
   parseAuthLoginRequested,
   parseAuthLogoutRequested,
@@ -10,6 +11,7 @@ import {
   signInWithAccountSelection,
   signOutUser,
 } from './auth-actions.js';
+import { callCloudFunction } from './cloud-functions.js';
 
 let cleanupAuthCommandListeners = null;
 
@@ -54,6 +56,20 @@ export function setupAuthCommandListeners() {
         await deleteAccount({ scrubMessages: request.scrubMessages });
       } catch (e) {
         console.warn('[auth] delete-account command failed:', e);
+      }
+    },
+    { signal: ac.signal },
+  );
+
+  handleCommand(
+    AUTH_COMMANDS.CLOUD_FUNCTION_CALL,
+    async (payload) => {
+      try {
+        const request = parseAuthCloudFunctionCall(payload);
+        return await callCloudFunction(request.functionName, request.body);
+      } catch (e) {
+        console.warn('[auth] cloud-function command failed:', e);
+        throw e;
       }
     },
     { signal: ac.signal },

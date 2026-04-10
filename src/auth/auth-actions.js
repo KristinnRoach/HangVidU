@@ -10,7 +10,7 @@ import {
   signInWithGooglePopup,
   signOutFirebaseUser,
 } from './adapters/firebase-auth-adapter.js';
-import { dispatchCommandAndAwait } from '../events/index.js';
+import { dispatchCommand, dispatchCommandAndAwait } from '../events/index.js';
 import { t } from '../i18n/index.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { callCloudFunction } from './cloud-functions.js';
@@ -135,11 +135,7 @@ export async function signOutUser() {
 
   try {
     // Disable notifications and unregister the current Web Push subscription - Fire and forget
-    getPushNotifications()
-      ?.disable?.()
-      .catch((err) => {
-        console.warn('[AUTH] Failed to disable notifications on logout:', err);
-      });
+    dispatchCommand('push:disable', { reason: 'auth:signout' });
 
     await dispatchCommandAndAwait('user:presence:set-offline', {
       userId: auth.currentUser?.uid,
