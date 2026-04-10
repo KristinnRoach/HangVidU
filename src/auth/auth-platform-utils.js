@@ -26,10 +26,10 @@ export function detectIOSStandalone() {
   const navigatorStandalone =
     typeof navigator !== 'undefined' && navigator.standalone === true;
   const isStandalonePWA = displayModeStandalone || navigatorStandalone;
-  const isIOS = isIOS();
-  const isIOSStandalone = isStandalonePWA && isIOS;
+  const ios = isIOS();
+  const isIOSStandalone = isStandalonePWA && ios;
 
-  return { isStandalonePWA, isIOS, isIOSStandalone };
+  return { isStandalonePWA, isIOS: ios, isIOSStandalone };
 }
 
 /**

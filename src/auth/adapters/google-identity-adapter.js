@@ -3,6 +3,7 @@
 
 const GIS_SCRIPT_BASE = 'https://accounts.google.com/gsi/client';
 let inFlightLoadPromise = null;
+let inFlightLocale = null;
 
 /**
  * Load Google Identity Services script for a locale.
@@ -12,7 +13,17 @@ let inFlightLoadPromise = null;
  * @returns {Promise<void>}
  */
 export function loadGoogleIdentityScript(locale) {
-  if (inFlightLoadPromise) return inFlightLoadPromise;
+  const requestedLocale = locale || 'en';
+
+  if (inFlightLoadPromise) {
+    if (inFlightLocale === requestedLocale) return inFlightLoadPromise;
+
+    return inFlightLoadPromise
+      .catch(() => undefined)
+      .then(() => loadGoogleIdentityScript(requestedLocale));
+  }
+
+  inFlightLocale = requestedLocale;
 
   inFlightLoadPromise = new Promise((resolve, reject) => {
     const existing = document.querySelector(
@@ -21,16 +32,18 @@ export function loadGoogleIdentityScript(locale) {
     if (existing) existing.remove();
 
     const script = document.createElement('script');
-    const safeLocale = encodeURIComponent(locale || 'en');
+    const safeLocale = encodeURIComponent(requestedLocale);
     script.src = `${GIS_SCRIPT_BASE}?hl=${safeLocale}`;
     script.async = true;
     script.defer = true;
     script.onload = () => {
       inFlightLoadPromise = null;
+      inFlightLocale = null;
       resolve();
     };
     script.onerror = () => {
       inFlightLoadPromise = null;
+      inFlightLocale = null;
       reject(new Error('Failed to load GIS script'));
     };
     document.head.appendChild(script);
