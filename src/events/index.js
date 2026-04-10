@@ -11,6 +11,8 @@ import { EventEmitter } from '../lib/event-emitter/event-emitter.js';
  */
 const appBus = new EventEmitter();
 
+// TODO(events): Isolate command listeners from event subscribers (e.g. namespaced topic or dedicated bus).
+
 function getCommandHandlerCount(commandName) {
   return appBus.listenerCount(commandName);
 }
