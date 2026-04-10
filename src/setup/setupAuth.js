@@ -88,9 +88,20 @@ export function setupAuth(options = {}) {
         'auth:logout',
         async () => {
           try {
-            await renderContactsList(lobbyElement);
+            // Disable notifications and unregister the current Web Push subscription - Fire and forget
+            getPushNotifications()
+              ?.disable?.()
+              .catch((err) => {
+                console.warn(
+                  '[AUTH] Failed to disable notifications on logout:',
+                  err,
+                );
+              });
+
             devDebug('[AUTH] User logged out - cleaning up listeners');
             cleanupLoginScopedListeners();
+
+            setTimeout(async () => await renderContactsList(lobbyElement), 5); // Temp fix, rendering will be moved anyways
           } catch (e) {
             console.warn('[AUTH] Failed to handle auth:logout:', e);
           }
@@ -109,13 +120,16 @@ export function setupAuth(options = {}) {
             );
 
             await renderContactsList(lobbyElement).catch((e) =>
-              console.warn('[AUTH] Failed to render contacts list on login:', e),
+              console.warn(
+                '[AUTH] Failed to render contacts list on login:',
+                e,
+              ),
             );
 
             cleanupLoginScopedListeners();
             if (!isInitialResolution) {
-              const maybeSavedRoomsCleanup = await startListeningForSavedRooms()
-                .catch((e) => {
+              const maybeSavedRoomsCleanup =
+                await startListeningForSavedRooms().catch((e) => {
                   console.warn('Failed to re-attach saved-room listeners', e);
                   return undefined;
                 });

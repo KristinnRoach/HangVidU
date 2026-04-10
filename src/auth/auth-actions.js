@@ -10,10 +10,9 @@ import {
   signInWithGooglePopup,
   signOutFirebaseUser,
 } from './adapters/firebase-auth-adapter.js';
-import { dispatchCommand, dispatchCommandAndAwait } from '../events/index.js';
+import { dispatchCommandAndAwait } from '../events/index.js';
 import { t } from '../i18n/index.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
-import { getPushNotifications } from '../features/push-notifications/index.js';
 import { callCloudFunction } from './cloud-functions.js';
 import {
   detectIOSStandalone,
