@@ -41,6 +41,10 @@ Completed in this branch:
 - removed direct `contacts -> messaging` import for conversation id helpers
 - added app-level notification projection in `src/setup/setupNotificationsHandlers.js`
 - changed `contacts` invite/referral flows to publish notification facts instead of importing notifications directly
+- decoupled push notifications from direct `auth`/`contacts` imports by routing through shared commands:
+  - `auth:cloud-function:call`
+  - `contacts:get-by-room-id`
+  - `push:disable`
 - replaced `setupMainAuthAppBusListeners` with `setupAuth` in `src/setup/setupAuth.js`:
   - setup is setup-layer-owned and idempotent
   - auth listeners are registered before `initAuth()` runs

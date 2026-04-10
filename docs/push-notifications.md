@@ -12,10 +12,12 @@ Current ownership:
 - backend delivery logic lives under [functions/push-notifications](../functions/push-notifications)
 - service worker push handling lives under [src/features/push-notifications/sw](../src/features/push-notifications/sw)
 - in-app UI notifications remain separate under [src/features/notifications](../src/features/notifications)
+- cross-module lookups/calls are routed through shared commands instead of direct feature/auth imports
 
 Current behavior:
 
 - outgoing calls send push through the authenticated `sendCallNotification` function
+- runtime cloud-function transport is requested through auth-owned command handling (`auth:cloud-function:call`)
 - missed calls reuse the same call notification identity so the missed-call notification can replace the ringing notification for the same call attempt
 - message notifications are backend-driven from the RTDB trigger
 - when the app already has a visible focused window, native notification display is suppressed

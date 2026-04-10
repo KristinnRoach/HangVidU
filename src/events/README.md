@@ -24,7 +24,12 @@ Use this `src/events/` layer to define app semantics (`command` vs `event`) and 
 
 - Do not import `appBus` outside `src/events/`.
 - Commands ask for work; published events announce facts.
-- Prefer one clear command handler per command name.
+- Commands must have exactly one handler per command name.
+- `dispatchCommandAndAwait()` is command-RPC:
+  - throws when there is no handler
+  - throws when there is more than one handler
+  - throws when the handler throws/rejects
+  - returns the single handler result
 - If async bus behavior is needed, add it to `src/events/index.js` instead of importing `appBus` directly.
 
 ## Naming Guidance

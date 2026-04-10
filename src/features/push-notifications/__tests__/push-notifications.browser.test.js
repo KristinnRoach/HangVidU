@@ -1,5 +1,40 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('../../../events/index.js', () => ({
+  dispatchCommandAndAwait: vi.fn(async (commandName, payload = {}) => {
+    if (commandName === 'auth:cloud-function:call') {
+      const response = await fetch(
+        `https://example.com/${payload.functionName ?? ''}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload.body),
+        },
+      );
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = new Error(
+          body?.message ||
+            body?.error ||
+            `Function ${payload.functionName} failed with status ${response.status}`,
+        );
+        error.status = response.status;
+        error.payload = body;
+        throw error;
+      }
+      return { status: response.status, payload: body };
+    }
+
+    if (commandName === 'contacts:get-by-room-id') {
+      return null;
+    }
+
+    return undefined;
+  }),
+}));
+
 vi.mock('../../../auth/auth-setup.js', () => ({
   auth: {},
   initAuth: vi.fn(),

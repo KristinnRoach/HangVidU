@@ -1,9 +1,16 @@
 // Public app-facing push notifications facade.
 
-import { callCloudFunction } from '../../auth/cloud-functions.js';
-import { contactsService } from '../contacts/index.js'; // TODO: move? Check boundries
+import { dispatchCommandAndAwait } from '../../events/index.js';
 
 const PERMISSION_REQUEST_TIMEOUT_MS = 8000;
+const AUTH_CLOUD_FUNCTION_COMMAND = 'auth:cloud-function:call';
+
+async function callCloudFunction(functionName, body) {
+  return dispatchCommandAndAwait(AUTH_CLOUD_FUNCTION_COMMAND, {
+    functionName,
+    body,
+  });
+}
 
 function resolveCallNotificationType(type) {
   if (!type) {
@@ -518,7 +525,9 @@ export class PushNotifications {
 
     if (!callerName) {
       try {
-        const contact = await contactsService.getContactByRoomId(roomId);
+        const contact = await dispatchCommandAndAwait('contacts:get-by-room-id', {
+          roomId,
+        });
         callerLabel = contact?.contactNickName || callerId || 'Unknown caller';
       } catch (error) {
         console.warn(
