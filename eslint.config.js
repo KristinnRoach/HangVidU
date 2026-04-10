@@ -1,4 +1,6 @@
-export default [
+import boundariesConfig from './eslint.boundaries.config.js';
+
+const appConfig = [
   {
     files: ['src/**/*.js'],
     rules: {
@@ -30,3 +32,5 @@ export default [
     },
   },
 ];
+
+export default [...boundariesConfig, ...appConfig];
