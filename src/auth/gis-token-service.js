@@ -136,7 +136,11 @@ export async function requestGisToken({
     });
     setCachedToken(cacheKey, silentResult.token, silentResult.expiresIn);
     return silentResult.token;
-  } catch (_) {
+  } catch (error) {
+    const recoverableCodes = new Set(['access_denied', 'interaction_required']);
+    if (!recoverableCodes.has(error?.code)) {
+      throw error;
+    }
     const interactiveResult = await requestTokenFromGIS({
       clientId,
       scope,
