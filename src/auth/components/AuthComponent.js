@@ -86,8 +86,8 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       <button id="goog-login-btn" class="login-btn" style="margin-right: [[loginBtnMarginRightPx]]px; display: none" onclick="handleLogin">[[t:auth.login]]</button>
       <button id="goog-logout-btn" class="logout-btn" style="display: none" onclick="handleLogout">[[t:auth.logout]]</button>
       ${isDev() && SHOW_DEBUG_DELETE_BTN_IN_DEV ? `<button id="delete-account-btn" class="delete-account-btn" onclick="handleDeleteAccount">[[t:auth.delete_account]]</button>` : ''}
-      <span class="signing-in-indicator" style="display: [[signingInDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">[[t:auth.signing_in]]</span>
-      <span class="signing-in-indicator" style="display: [[signingOutDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">[[t:auth.signing_out]]</span>
+      <span class="signing-in-indicator" style="display: [[signingInDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">...</span>
+      <span class="signing-in-indicator" style="display: [[signingOutDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">...</span>
       <div class="user-info" style="display: [[userInfoDisplay]]">
         <img src="[[userPhotoURL]]" alt="[[userName]]" class="user-avatar" style="display: [[userPhotoDisplay]]" onerror="handleAvatarError" />
         <span class="user-avatar-placeholder" style="display: [[avatarDisplay]]">👤</span>
@@ -256,6 +256,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
           renderButtons(false);
         }
         if (status === 'signing_in') {
+          // TODO: replace with proper loading state + animation
           // Show loading indicator while signing in
           el.update({
             signingInDisplay: 'inline-block',
