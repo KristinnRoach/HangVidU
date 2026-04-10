@@ -19,4 +19,4 @@ Goal: keep cross-module patterns easy to reason about and easy to extend.
 ## Notes
 
 - This is intentionally minimal for incremental boundary rollout.
-- Expand only when a new rule is proven reusable across modules.
+- When a new rule is considered, verify whether we are happy to use it across modules - if so, add it here.
