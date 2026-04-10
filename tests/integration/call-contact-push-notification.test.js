@@ -134,7 +134,7 @@ vi.mock('../../src/auth/index.js', () => ({
     userName: 'Caller Example',
     email: 'caller@example.com',
   })),
-  subscribe: vi.fn(() => () => {}),
+  onAuthStateChanged: vi.fn(() => () => {}),
 }));
 
 vi.mock('../../src/features/notifications/index.js', () => ({
@@ -396,8 +396,7 @@ vi.mock('../../src/auth/index.js', () => ({
   getUserId: vi.fn(() => 'user-123'),
   getLoggedInUserId: vi.fn(() => 'user-123'),
   getUserName: vi.fn(),
-  subscribe: vi.fn(() => () => {}),
-  onAuthStateChange: vi.fn(() => () => {}),
+  onAuthStateChanged: vi.fn(() => () => {}),
   setState: vi.fn(),
   waitForAuthReady: vi.fn(),
   initializeAuthUI: vi.fn(),

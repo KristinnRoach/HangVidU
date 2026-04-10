@@ -3,7 +3,7 @@
 
 import { ref, set, get } from 'firebase/database';
 import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
-import { onAuthStateChange } from '../../auth/index.js';
+import { onAuthStateChanged } from '../../auth/index.js';
 
 function canonicalizeDirectoryUser(userData) {
   if (!userData || typeof userData !== 'object') {
@@ -30,7 +30,7 @@ function canonicalizeDirectoryUser(userData) {
 }
 
 // Auto-register user in directory when they log in
-onAuthStateChange((state) => {
+onAuthStateChanged((state) => {
   if (state.isLoggedIn && state.user) {
     registerUserInDirectory(state.user).catch((err) => {
       console.warn('Failed to register user in directory:', err);

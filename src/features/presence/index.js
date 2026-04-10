@@ -1,4 +1,4 @@
-import { getLoggedInUserId, onAuthStateChange } from '../../auth/index.js';
+import { getLoggedInUserId, onAuthStateChanged } from '../../auth/index.js';
 import { writeOnline, writeOffline, observePresence } from './presence-rtdb.js';
 
 let initializedForUserId = null;
@@ -11,7 +11,7 @@ function enqueuePresenceWrite(task) {
   return run;
 }
 
-onAuthStateChange((state) => {
+onAuthStateChanged((state) => {
   if (state.isLoggedIn) {
     const userId = getLoggedInUserId();
     if (userId && userId !== lastSeenUserId) {

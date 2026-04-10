@@ -1,7 +1,10 @@
-import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
-import { auth } from './auth-setup.js';
 import { setSafariExternalOpenArmed } from './auth-actions.js';
 import { getIsLoggedIn, setState } from './auth-state.js';
+import {
+  auth,
+  createGoogleCredential,
+  signInWithGoogleCredential,
+} from './firebase-auth-adapter.js';
 import { devDebug } from '../utils/dev/dev-utils.js';
 import { t, getLocale, onLocaleChange } from '../i18n/index.js';
 
@@ -226,10 +229,10 @@ async function handleOneTapCredential(response) {
     setState({ status: 'loading' });
 
     // Create a Google credential from the One Tap JWT
-    const credential = GoogleAuthProvider.credential(response.credential);
+    const credential = createGoogleCredential(response.credential);
 
     // Sign in to Firebase with the credential
-    const result = await signInWithCredential(auth, credential);
+    const result = await signInWithGoogleCredential(credential);
 
     devDebug('[ONE TAP] ✅ Successfully signed in:', result.user.email);
 

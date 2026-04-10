@@ -1,4 +1,4 @@
-import { onAuthStateChange } from '../auth/index.js';
+import { onAuthStateChanged } from '../auth/index.js';
 import { saveUserProfile } from '../storage/user/index.js';
 
 let isReady = false;
@@ -25,34 +25,36 @@ export function setupUserAccount() {
     return initPromise;
   }
 
-  initPromise = Promise.resolve().then(() => {
-    const unsubscribe = onAuthStateChange((state) => {
-      if (!state?.isLoggedIn || !state.user) {
-        return;
-      }
+  initPromise = Promise.resolve()
+    .then(() => {
+      const unsubscribe = onAuthStateChanged((state) => {
+        if (!state?.isLoggedIn || !state.user) {
+          return;
+        }
 
-      saveUserProfile(state.user).catch((err) => {
-        console.warn('Failed to save user profile:', err);
+        saveUserProfile(state.user).catch((err) => {
+          console.warn('Failed to save user profile:', err);
+        });
       });
-    });
 
-    cleanup = () => {
-      try {
-        unsubscribe();
-      } catch (error) {
-        console.warn(
-          '[setupUserAccount] cleanup failed to unsubscribe auth listener:',
-          error,
-        );
-      } finally {
-        isReady = false;
-      }
-    };
-    isReady = true;
-    return cleanup;
-  }).finally(() => {
-    initPromise = null;
-  });
+      cleanup = () => {
+        try {
+          unsubscribe();
+        } catch (error) {
+          console.warn(
+            '[setupUserAccount] cleanup failed to unsubscribe auth listener:',
+            error,
+          );
+        } finally {
+          isReady = false;
+        }
+      };
+      isReady = true;
+      return cleanup;
+    })
+    .finally(() => {
+      initPromise = null;
+    });
 
   return initPromise;
 }

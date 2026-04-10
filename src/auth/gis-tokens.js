@@ -1,6 +1,6 @@
 // src/auth/gis-tokens.js — GIS token cache and OAuth scope requests
 
-import { auth } from './auth-setup.js';
+import { auth } from './firebase-auth-adapter.js';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_APP_GOOGLE_CLIENT_ID;
 

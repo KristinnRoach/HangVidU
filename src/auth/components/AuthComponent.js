@@ -2,7 +2,7 @@
 // AUTH COMPONENT
 // ================================================
 
-import { getIsLoggedIn, subscribe } from '../auth-state.js';
+import { getIsLoggedIn, onAuthStateChanged } from '../auth-state.js';
 import { dispatchCommand } from '../../events/index.js';
 import {
   AUTH_COMMANDS,
@@ -206,7 +206,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
         renderButtons(getIsLoggedIn());
       });
 
-      unsubscribe = subscribe(({ isLoggedIn, user, status }) => {
+      unsubscribe = onAuthStateChanged(({ isLoggedIn, user, status }) => {
         const rawName = user?.userName || user?.email || 'User';
         const userName = smartTruncateName(rawName);
         const photoURL = user?.photoURL || '';
