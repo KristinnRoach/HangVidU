@@ -49,7 +49,9 @@ describe('src/events/index.js', () => {
       const handler = vi.fn();
       const unsub = handleCommand(name, handler);
       unsub();
-      dispatchCommand(name, {});
+      expect(() => dispatchCommand(name, {})).toThrow(
+        `Command "${name}" has no registered handler`,
+      );
       expect(handler).not.toHaveBeenCalled();
     });
 
@@ -59,8 +61,28 @@ describe('src/events/index.js', () => {
       const handler = vi.fn();
       handleCommand(name, handler, { signal: ac.signal });
       ac.abort();
-      dispatchCommand(name, {});
+      expect(() => dispatchCommand(name, {})).toThrow(
+        `Command "${name}" has no registered handler`,
+      );
       expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('throws when no command handler is registered', () => {
+      const name = uniqueName('dispatch-no-handler');
+      expect(() => dispatchCommand(name, {})).toThrow(
+        `Command "${name}" has no registered handler`,
+      );
+    });
+
+    it('throws when more than one command handler is registered', () => {
+      const name = uniqueName('dispatch-multi-handler');
+      const ac = new AbortController();
+      handleCommand(name, () => {}, { signal: ac.signal });
+      handleCommand(name, () => {}, { signal: ac.signal });
+      expect(() => dispatchCommand(name, {})).toThrow(
+        `Command "${name}" has 2 handlers`,
+      );
+      ac.abort();
     });
   });
 
@@ -76,10 +98,12 @@ describe('src/events/index.js', () => {
         async () => {
           await new Promise((res) => setTimeout(res, 5));
           resolved = true;
+          return 'ok';
         },
         { signal: ac.signal },
       );
-      await dispatchCommandAndAwait(name, {});
+      const result = await dispatchCommandAndAwait(name, {});
+      expect(result).toBe('ok');
       expect(resolved).toBe(true);
       ac.abort();
     });
@@ -94,18 +118,39 @@ describe('src/events/index.js', () => {
       ac.abort();
     });
 
-    it('resolves even when handler throws (error logged, not rethrown)', async () => {
+    it('rejects when handler throws', async () => {
       const name = uniqueName('dispatch-await-error');
       const ac = new AbortController();
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      handleCommand(name, async () => { throw new Error('handler error'); }, { signal: ac.signal });
-      try {
-        await expect(dispatchCommandAndAwait(name, {})).resolves.toBeUndefined();
-        expect(consoleSpy).toHaveBeenCalled();
-      } finally {
-        consoleSpy.mockRestore();
-        ac.abort();
-      }
+      handleCommand(
+        name,
+        async () => {
+          throw new Error('handler error');
+        },
+        { signal: ac.signal },
+      );
+      await expect(dispatchCommandAndAwait(name, {})).rejects.toThrow(
+        'handler error',
+      );
+      ac.abort();
+    });
+
+    it('rejects when no command handler is registered', async () => {
+      const name = uniqueName('dispatch-await-no-handler');
+      await expect(dispatchCommandAndAwait(name, {})).rejects.toThrow(
+        `Command "${name}" has no registered handler`,
+      );
+    });
+
+    it('rejects when more than one command handler is registered', async () => {
+      const name = uniqueName('dispatch-await-multi-handler');
+      const ac = new AbortController();
+      handleCommand(name, async () => 'first', { signal: ac.signal });
+      handleCommand(name, async () => 'second', { signal: ac.signal });
+
+      await expect(dispatchCommandAndAwait(name, {})).rejects.toThrow(
+        `Command "${name}" has 2 handlers`,
+      );
+      ac.abort();
     });
   });
 
@@ -157,15 +202,15 @@ describe('src/events/index.js', () => {
       ac.abort();
     });
 
-    it('resolves with undefined when no handlers registered', async () => {
+    it('rejects when a command has no registered handler', async () => {
       const name = uniqueName('seq-no-handler');
-      await expect(
-        dispatchCommandAndAwaitSequential([[name, {}]]),
-      ).resolves.toBeUndefined();
+      await expect(dispatchCommandAndAwaitSequential([[name, {}]])).rejects.toThrow(
+        `Command "${name}" has no registered handler`,
+      );
     });
 
-    it('resolves for an empty commands array', async () => {
-      await expect(dispatchCommandAndAwaitSequential([])).resolves.toBeUndefined();
+    it('resolves for an empty commands array with empty results', async () => {
+      await expect(dispatchCommandAndAwaitSequential([])).resolves.toEqual([]);
     });
   });
 

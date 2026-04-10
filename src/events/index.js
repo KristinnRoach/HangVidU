@@ -11,6 +11,28 @@ import { EventEmitter } from '../lib/event-emitter/event-emitter.js';
  */
 const appBus = new EventEmitter();
 
+function getCommandHandlerCount(commandName) {
+  return appBus.listenerCount(commandName);
+}
+
+function assertExactlyOneCommandHandler(commandName) {
+  const handlerCount = getCommandHandlerCount(commandName);
+
+  if (handlerCount === 1) {
+    return;
+  }
+
+  if (handlerCount === 0) {
+    throw new Error(
+      `[events] Command "${commandName}" has no registered handler`,
+    );
+  }
+
+  throw new Error(
+    `[events] Command "${commandName}" has ${handlerCount} handlers (expected exactly 1)`,
+  );
+}
+
 /**
  * Send a command to the responsible handler
  *
@@ -18,6 +40,7 @@ const appBus = new EventEmitter();
  * @param {Object} [payload={}] - Command data
  */
 const dispatchCommand = (commandName, payload = {}) => {
+  assertExactlyOneCommandHandler(commandName);
   appBus.emit(commandName, payload);
 };
 
@@ -27,10 +50,31 @@ const dispatchCommand = (commandName, payload = {}) => {
  *
  * @param {string} commandName - Command name
  * @param {Object} [payload={}] - Command data
- * @returns {Promise<void>}
+ * Enforced semantics:
+ * - exactly one handler must be registered for this command
+ * - rejects if handler throws/rejects
+ * - resolves with the single handler's return value
+ *
+ * @returns {Promise<unknown>}
  */
 const dispatchCommandAndAwait = async (commandName, payload = {}) => {
-  await appBus.emitAsync(commandName, payload);
+  assertExactlyOneCommandHandler(commandName);
+
+  const settled = await appBus.emitAsync(commandName, payload, {
+    returnSettled: true,
+  });
+
+  const first = settled?.[0];
+  if (!first) {
+    throw new Error(
+      `[events] Command "${commandName}" did not produce a handler result`,
+    );
+  }
+  if (first.status === 'rejected') {
+    throw first.reason;
+  }
+
+  return first.value;
 };
 
 /**
@@ -38,10 +82,16 @@ const dispatchCommandAndAwait = async (commandName, payload = {}) => {
  * before moving to the next.
  *
  * @param {Array<[string, any]>} commands - Array of [commandName, payload] tuples
- * @returns {Promise<void>}
+ * @returns {Promise<unknown[]>}
  */
 const dispatchCommandAndAwaitSequential = async (commands) => {
-  await appBus.emitAsyncSequential(commands);
+  const results = [];
+
+  for (const [commandName, payload] of commands) {
+    results.push(await dispatchCommandAndAwait(commandName, payload));
+  }
+
+  return results;
 };
 
 /**
