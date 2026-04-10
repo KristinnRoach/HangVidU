@@ -126,17 +126,6 @@ vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
 }));
 
-vi.mock('../../src/auth/index.js', () => ({
-  getLoggedInUserId: vi.fn(() => 'user-123'),
-  getUserId: vi.fn(() => 'user-123'),
-  getUser: vi.fn(() => ({
-    uid: 'user-123',
-    userName: 'Caller Example',
-    email: 'caller@example.com',
-  })),
-  onAuthStateChanged: vi.fn(() => () => {}),
-}));
-
 vi.mock('../../src/features/notifications/index.js', () => ({
   inAppNotificationManager: {
     setToggle: vi.fn(),

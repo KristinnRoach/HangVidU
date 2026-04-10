@@ -18,11 +18,11 @@ import { app } from '../../vendors/firebase.js';
 
 export const auth = getAuth(app);
 
-export const persistenceBackends = {
+export const persistenceBackends = Object.freeze({
   indexedDBLocalPersistence,
   browserLocalPersistence,
   inMemoryPersistence,
-};
+});
 
 export function onFirebaseAuthStateChanged(callback) {
   return firebaseOnAuthStateChanged(auth, callback);

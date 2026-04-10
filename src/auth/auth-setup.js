@@ -61,7 +61,7 @@ let _initPromise = null;
 
 /**
  * Initialize auth: set persistence, process redirects, then register
- * firebaseOnAuthStateChanged. This ensures Firebase has restored any persisted
+ * onFirebaseAuthStateChanged. This ensures Firebase has restored any persisted
  * session before we publish the first auth state — avoiding a false
  * 'unauthenticated' flash and premature side-effects.
  *
@@ -153,7 +153,7 @@ function normalizeUser(firebaseUser) {
 
 /**
  * Wait for auth state to be initialized and return the current user.
- * Note: firebaseOnAuthStateChanged fires once after initialization, so this always resolves.
+ * Note: onFirebaseAuthStateChanged fires once after initialization, so this always resolves.
  * @returns {Promise<import('firebase/auth').User | null>}
  */
 export function getCurrentUserAsync() {
