@@ -61,11 +61,12 @@ const ENABLE_RULE = {
   setup: envEnabled('BOUNDARIES_SETUP', ENFORCE_ALL),
 };
 
+// enforced features - add one at a time until all are included
 const ENFORCED_FEATURES = requestedFeatures
   ? requestedFeatures
   : ENFORCE_ALL
     ? ALL_FEATURES
-    : ['contacts', 'push-notifications'];
+    : ['contacts', 'push-notifications', 'messaging'];
 
 const SHARED_TEMP_FEATURE_EXCEPTIONS = [
   'call',

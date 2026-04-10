@@ -79,7 +79,7 @@ Total failures: `17`
 - `src/features/call/call-event-wiring.js` (3)
 - `src/features/call/room-listeners.js` (2)
 - `src/features/messaging/components/messages-ui.js` (1)
-- `src/features/messaging/handle-appbus-events.js` (1)
+- `src/features/messaging/messaging-command-handlers.js` (1)
 - `src/features/messaging/messaging-controller.js` (1)
 - `src/features/notifications/components/enable-notifications-prompt.js` (1)
 - `src/features/watch/watch-file-handler.js` (1)

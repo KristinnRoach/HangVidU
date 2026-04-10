@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => {
   return {
     handlers,
     events: {
+      dispatchCommandAndAwait: vi.fn(),
       handleCommand: vi.fn((eventName, handler) => {
         handlers.set(eventName, handler);
         return () => handlers.delete(eventName);
@@ -20,25 +21,18 @@ const mocks = vi.hoisted(() => {
       sendEventMessage: vi.fn(() => Promise.resolve()),
       listenToUnreadCount: vi.fn(() => vi.fn()),
     },
-    contactsService: {
-      getConversationId: vi.fn(),
-    },
     tempWarn: vi.fn(),
   };
 });
 
 vi.mock('../../events/index.js', () => ({
-  dispatchCommand: vi.fn(),
+  dispatchCommandAndAwait: mocks.events.dispatchCommandAndAwait,
   handleCommand: mocks.events.handleCommand,
   subscribe: mocks.events.subscribe,
 }));
 
 vi.mock('../../utils/dev/dev-utils.js', () => ({
   tempWarn: mocks.tempWarn,
-}));
-
-vi.mock('../contacts/index.js', () => ({
-  contactsService: mocks.contactsService,
 }));
 
 describe('setupMessagingAppBusHandlers', () => {
@@ -52,8 +46,9 @@ describe('setupMessagingAppBusHandlers', () => {
     const unsubscribe = vi.fn();
     mocks.messagingController.listenToUnreadCount.mockReturnValue(unsubscribe);
 
-    const { setupMessagingAppBusHandlers } =
-      await import('./handle-appbus-events.js');
+    const { setupMessagingAppBusHandlers } = await import(
+      './messaging-command-handlers.js'
+    );
 
     setupMessagingAppBusHandlers({
       messagingController: mocks.messagingController,

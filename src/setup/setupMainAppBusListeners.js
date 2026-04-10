@@ -182,6 +182,83 @@ export function setupMainAppBusListeners() {
       );
 
       subscribe(
+        'call:incoming:accepted',
+        async ({ contactId }) => {
+          tempWarn(
+            `[APPBUS] Handling call answered event from contact ${contactId}`,
+          );
+
+          try {
+            const conversationId = await contactsService.getConversationId(
+              contactId,
+            );
+
+            if (!conversationId) {
+              console.warn(
+                '[APPBUS] Missing conversationId for accepted call contact:',
+                contactId,
+              );
+              return;
+            }
+
+            const contact = await contactsService.getContact(contactId);
+            const contactNickName = contact?.contactNickName || null;
+
+            messagingController
+              .selectConversation(conversationId, {
+                remoteParticipantIds: [contactId],
+                displayUI: false,
+                contactNickName,
+              })
+              .catch((e) => {
+                console.warn(
+                  'Failed to select conversation on call:incoming:accepted:',
+                  e,
+                );
+              });
+          } catch (e) {
+            console.warn(
+              '[APPBUS] Failed handling call:incoming:accepted conversation selection:',
+              e,
+            );
+          }
+        },
+        { signal: ac.signal },
+      );
+
+      subscribe(
+        'call:unanswered',
+        async ({ roomId, contactId }) => {
+          tempWarn(
+            `[APPBUS] Handling unanswered call for room ${roomId}, contact ${contactId}`,
+          );
+
+          try {
+            const conversationId = await contactsService.getConversationId(
+              contactId,
+            );
+
+            if (!conversationId) {
+              console.warn(
+                '[APPBUS] Missing conversationId for unanswered call contact:',
+                contactId,
+              );
+              return;
+            }
+
+            await messagingController.sendEventMessage(
+              conversationId,
+              'call:unanswered',
+              { callId: roomId },
+            );
+          } catch (e) {
+            console.warn('[APPBUS] Failed to write unanswered call message:', e);
+          }
+        },
+        { signal: ac.signal },
+      );
+
+      subscribe(
         'room:id:created',
         ({ roomId }) => {
           listenForIncomingOnRoom(roomId);
