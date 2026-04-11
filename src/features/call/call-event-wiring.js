@@ -45,9 +45,12 @@ import { listenForIncomingOnRoom } from './room-listeners.js';
 export function setupCallControllerEventWiring(options = {}) {
   const { lobbyElement } = options;
 
-  // Business logic for memberJoined (UI handled in bind-call-ui.js)
+  // Business logic for evt:call:participant:joined (UI handled in bind-call-ui.js)
   CallController.on('evt:call:participant:joined', ({ memberId, roomId }) => {
-    console.debug('CallController memberJoined event', { memberId, roomId });
+    console.debug('CallController evt:call:participant:joined', {
+      memberId,
+      roomId,
+    });
 
     CallController.setPartnerId(memberId);
 
@@ -57,13 +60,13 @@ export function setupCallControllerEventWiring(options = {}) {
     );
   });
 
-  // Subscribe to CallController memberLeft event - handles partner leaving
+  // Subscribe to evt:call:participant:left - handles partner leaving
   CallController.on('evt:call:participant:left', ({ memberId }) => {
-    devDebug('CallController memberLeft event', { memberId });
+    devDebug('CallController evt:call:participant:left', { memberId });
     console.info('Partner has left the call');
   });
 
-  // Business logic for cleanup (UI handled in bind-call-ui.js)
+  // Business logic for evt:call:session:cleanup (UI handled in bind-call-ui.js)
   CallController.on(
     'evt:call:session:cleanup',
     async ({ roomId, partnerId, reason, role, wasConnected }) => {

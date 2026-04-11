@@ -506,7 +506,7 @@ export function listenForIncomingOnRoom(roomId) {
       }
       if (joinedContactId === getUserId()) {
         devDebug(
-          `[LISTENER] Ignoring memberJoined event for self (${joinedContactId}) in room ${roomId}`,
+          `[LISTENER] Ignoring participant-joined snapshot for self (${joinedContactId}) in room ${roomId}`,
         );
         return;
       }

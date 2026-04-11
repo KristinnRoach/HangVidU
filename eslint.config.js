@@ -1,8 +1,5 @@
 import boundariesConfig from './eslint.boundaries.config.js';
-import {
-  EVENT_NAME_REGEX,
-  isAllowedEventNameDuringMigration,
-} from './src/events/naming.js';
+import { EVENT_NAME_REGEX, isCanonicalEventName } from './src/events/naming.js';
 
 const EVENT_API_CALLS = new Set([
   'dispatchCommand',
@@ -63,13 +60,13 @@ const appConfig = [
                     return;
                   }
 
-                  if (isAllowedEventNameDuringMigration(name)) {
+                  if (isCanonicalEventName(name)) {
                     return;
                   }
 
                   context.report({
                     node: firstArg,
-                    message: `Event/command name "${name}" must match canonical regex ${EVENT_NAME_REGEX} or be listed in the legacy migration aliases.`,
+                    message: `Event/command name "${name}" must match canonical regex ${EVENT_NAME_REGEX}.`,
                   });
                 },
               };

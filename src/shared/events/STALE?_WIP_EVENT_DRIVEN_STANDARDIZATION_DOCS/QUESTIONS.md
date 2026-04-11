@@ -10,8 +10,8 @@
 
 ## Context Notes
 
-- `appBus` is currently used for both user-intent events like `call:init` and compatibility/state events like `evt:room:id:created` and `contact:updated`.
+- `appBus` is currently used for both user-intent events like `cmd:call:session:init` and compatibility/state events like `evt:room:id:created` and `evt:contacts:contact:updated`.
 - `emit()` catches sync listener errors. `emitAsync()` catches both sync and async errors via `Promise.allSettled`.
-- `contacts-service.js` uses `emitAsync()` for post-write events (`contact:updated`, `evt:room:id:created`, etc.).
+- `contacts-service.js` uses `emitAsync()` for post-write events (`evt:contacts:contact:updated`, `evt:room:id:created`, etc.).
 - `contacts/listeners.js` subscribes via `on()` — async errors from service methods are handled by the service's own try/catch; listener-side errors are handled by `emitAsync`.
 - The storage-layer placement decision should wait until these boundaries are clearer.

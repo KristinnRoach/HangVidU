@@ -1,5 +1,5 @@
 import { EventEmitter } from '../../lib/event-emitter/event-emitter.js';
-import { isCanonicalEventName, resolveEventName } from './naming.js';
+import { assertCanonicalEventName } from './naming.js';
 
 /**
  * AppBus — shared cross-module EventEmitter instance.
@@ -11,34 +11,16 @@ import { isCanonicalEventName, resolveEventName } from './naming.js';
  * Cleanup:   off(), removeAllListeners()
  */
 const appBus = new EventEmitter();
-const COMMAND_PREFIX = 'cmd:';
-const EVENT_PREFIX = 'evt:';
-
 // TODO(events): Isolate command listeners from event subscribers (e.g. namespaced topic or dedicated bus).
 
-function warnIfUnexpectedPrefix(kind, rawName, canonicalName) {
-  if (!isCanonicalEventName(canonicalName)) {
-    return;
-  }
-
-  const expectedPrefix = kind === 'command' ? COMMAND_PREFIX : EVENT_PREFIX;
-  if (!canonicalName.startsWith(expectedPrefix)) {
-    console.warn(
-      `[events] ${kind} "${rawName}" resolved to "${canonicalName}" with unexpected prefix (expected "${expectedPrefix}")`,
-    );
-  }
-}
-
 function normalizeCommandName(commandName) {
-  const canonicalName = resolveEventName(commandName);
-  warnIfUnexpectedPrefix('command', commandName, canonicalName);
-  return canonicalName;
+  assertCanonicalEventName(commandName, 'command');
+  return commandName;
 }
 
 function normalizeEventName(eventName) {
-  const canonicalName = resolveEventName(eventName);
-  warnIfUnexpectedPrefix('event', eventName, canonicalName);
-  return canonicalName;
+  assertCanonicalEventName(eventName, 'event');
+  return eventName;
 }
 
 function getCommandHandlerCount(commandName) {

@@ -26,32 +26,6 @@ import { drainIceCandidateQueue } from './ice.js';
 import { resetLocalStreamInitFlag } from '../../shared/media/local-stream-init-state.js';
 import { publish, subscribe } from '../../shared/events/index.js';
 
-const CALL_CONTROLLER_EVENT_ALIASES = Object.freeze({
-  memberJoined: 'evt:call:participant:joined',
-  memberLeft: 'evt:call:participant:left',
-  cleanup: 'evt:call:session:cleanup',
-  fileTransportReady: 'evt:call:file-transport:ready',
-  created: 'evt:call:session:created',
-  answered: 'evt:call:session:answered',
-  hangup: 'evt:call:session:hangup',
-  callFailed: 'evt:call:session:failed',
-  remoteHangup: 'evt:call:session:remote-hangup',
-  error: 'evt:call:session:error',
-});
-
-const warnedLegacyCallControllerEvents = new Set();
-
-function normalizeCallControllerEventName(name) {
-  const canonical = CALL_CONTROLLER_EVENT_ALIASES[name] ?? name;
-  if (canonical !== name && !warnedLegacyCallControllerEvents.has(name)) {
-    warnedLegacyCallControllerEvents.add(name);
-    console.warn(
-      `[call-controller] Legacy event "${name}" -> "${canonical}"`,
-    );
-  }
-  return canonical;
-}
-
 export function createCallController() {
   return new CallController();
 }
@@ -129,7 +103,7 @@ class CallController {
   }
 
   on(name, fn) {
-    const eventName = normalizeCallControllerEventName(name);
+    const eventName = name;
     if (!this.controllerEventUnsubscribers.has(eventName)) {
       this.controllerEventUnsubscribers.set(eventName, new Map());
     }
@@ -144,7 +118,7 @@ class CallController {
     return unsubscribe;
   }
   off(name, fn) {
-    const eventName = normalizeCallControllerEventName(name);
+    const eventName = name;
     const eventHandlers = this.controllerEventUnsubscribers.get(eventName);
     if (!eventHandlers) return;
 
@@ -162,7 +136,7 @@ class CallController {
   }
 
   emit(name, payload) {
-    publish(normalizeCallControllerEventName(name), payload);
+    publish(name, payload);
   }
 
   /**
@@ -354,7 +328,7 @@ class CallController {
 
   /**
    * Setup member-joined listener for the call.
-   * Tracks listener for cleanup and emits memberJoined event.
+   * Tracks listener for cleanup and emits evt:call:participant:joined.
    * @param {string} roomId - Room ID to listen for member joins
    */
   setupMemberJoinedListener(roomId) {
@@ -366,7 +340,7 @@ class CallController {
         // Store partner ID when they join
         this.setPartnerId(snapshot.key);
 
-        // Emit memberJoined event
+        // Emit evt:call:participant:joined
         this.emit('evt:call:participant:joined', {
           memberId: snapshot.key,
           roomId,
@@ -389,7 +363,7 @@ class CallController {
 
   /**
    * Setup member-left listener for the call.
-   * Tracks listener for cleanup and emits memberLeft event.
+   * Tracks listener for cleanup and emits evt:call:participant:left.
    * @param {string} roomId - Room ID to listen for member departures
    */
   setupMemberLeftListener(roomId) {
@@ -398,7 +372,7 @@ class CallController {
     const userId = getUserId();
     const onMemberLeftCallback = (snapshot) => {
       if (snapshot.key !== userId && this.pc?.connectionState === 'connected') {
-        // Emit memberLeft event
+        // Emit evt:call:participant:left
         this.emit('evt:call:participant:left', {
           memberId: snapshot.key,
           roomId,
@@ -621,8 +595,8 @@ class CallController {
   }
 
   /**
-   * Setup file transfer when DataChannel is ready
-   * Creates FileTransferController and emits fileTransportReady
+   * Setup file transfer when DataChannel is ready.
+   * Creates FileTransferController and emits evt:call:file-transport:ready.
    * @param {RTCPeerConnection} pc - The PeerConnection associated with the call
    * @param {RTCDataChannel} dataChannel - The WebRTC DataChannel
    * @private
@@ -703,7 +677,7 @@ class CallController {
   }
 
   /**
-   * Emit callFailed event with standardized payload
+   * Emit evt:call:session:failed with standardized payload.
    * @param {string} phase - Phase where failure occurred ('createCall' or 'answerCall')
    * @param {*} error - Error object or message
    */
@@ -781,7 +755,7 @@ class CallController {
       // Reset initialization flag to allow stream recreation on next call.
       resetLocalStreamInitFlag();
 
-      // Emit remoteHangup event if cleanup was triggered by remote party
+      // Emit evt:call:session:remote-hangup when cleanup is remote-triggered
       if (this.isRemoteHangup(reason)) {
         this.emit('evt:call:session:remote-hangup', {
           roomId: prevRoom,

@@ -695,7 +695,7 @@ window.addEventListener('pagehide', async () => {
   await cleanup();
 });
 
-// CallController business-logic handlers (memberJoined, memberLeft, cleanup)
+// CallController business-logic handlers (evt:call:* lifecycle)
 setupCallControllerEventWiring({ lobbyElement: lobbyDiv });
 
 // ============================================================================

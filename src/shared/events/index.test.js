@@ -17,7 +17,7 @@ import {
 
 let testId = 0;
 function uniqueName(label) {
-  return `test:${label}:${++testId}`;
+  return `cmd:test:${label}:n${++testId}`;
 }
 
 describe('src/shared/events/index.js', () => {

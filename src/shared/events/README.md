@@ -37,7 +37,6 @@ Use this `src/shared/events/` layer to define app semantics (`command` vs `event
 - Canonical format (4-part): `<kind>:<domain>:<entity>:<action>`
 - `kind` is `cmd` or `evt`
 - Recommended regex: `^(cmd|evt):[a-z][a-z0-9-]*:[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$`
-- During migration, legacy names are aliased in `src/events/naming.js` (`LEGACY_EVENT_NAME_ALIASES`).
 - Command names: imperative verb phrases.
 - Event names: facts/outcomes (typically past tense).
 
