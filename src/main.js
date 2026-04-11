@@ -84,6 +84,7 @@ import {
   exitPiP,
 } from './components/ui/utils/ui-utils.js';
 import { messagesUI } from './features/messaging/components/messages-ui.js';
+import { createWatchFileHandler } from './features/watch/watch-file-handler.js';
 import { copyToClipboard } from './components/modal/copyLinkModal.js';
 
 // ____ UI END ____
@@ -94,7 +95,7 @@ import { setupMessagingContactsIntegration } from './app/messaging-contacts-inte
 import { setupApp } from './setup/setupApp.js';
 import { setupInitPreflight } from './setup/setupInitPreflight.js';
 import { setupTopBarAndLocale } from './setup/setupTopBarAndLocale.js';
-import { setupMessagingAppBusHandlers } from './features/messaging/handle-appbus-events.js';
+import { setupMessagingAppBusHandlers } from './features/messaging/messaging-command-handlers.js';
 import { setupCallControllerEventWiring } from './features/call/call-event-wiring.js';
 import { setupMainAppBusListeners } from './setup/setupMainAppBusListeners.js';
 import { setupAuth } from './setup/setupAuth.js';
@@ -108,6 +109,8 @@ import {
   initLocalStreamAndMedia,
   handleMediaPermissionError,
 } from './media/WIP-init-local-media.js';
+
+messagesUI?.setWatchFileHandler?.(createWatchFileHandler());
 import {
   settleIncomingCallWaitForRoom,
   startListeningForSavedRooms,

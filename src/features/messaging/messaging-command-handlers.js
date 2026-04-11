@@ -1,6 +1,4 @@
-import { handleCommand, subscribe } from '../../events/index.js';
-import { tempWarn } from '../../utils/dev/dev-utils.js';
-import { contactsService } from '../contacts/index.js';
+import { handleCommand } from '../../events/index.js';
 
 let cleanupMessagingAppBusHandlers = null;
 
@@ -26,69 +24,6 @@ export function setupMessagingAppBusHandlers({ messagingController }) {
 
   const unsubscribers = [];
   const unreadSubscriptions = new Map(); // { conversationId: { unsubscribe, refCount } }
-
-  unsubscribers.push(
-    subscribe('call:incoming:accepted', async ({ contactId }) => {
-      tempWarn(
-        `[APPBUS] Handling call answered event from contact ${contactId}`,
-      );
-
-      const conversationId = await contactsService.getConversationId(contactId);
-
-      if (!conversationId) {
-        console.warn(
-          '[APPBUS] Missing conversationId for accepted call contact:',
-          contactId,
-        );
-        return;
-      }
-
-      const contact = await contactsService.getContact(contactId);
-      const contactNickName = contact?.contactNickName || null;
-
-      messagingController
-        .selectConversation(conversationId, {
-          remoteParticipantIds: [contactId],
-          displayUI: false,
-          contactNickName,
-        })
-        .catch((e) => {
-          console.warn(
-            'Failed to select conversation on call:incoming:accepted:',
-            e,
-          );
-        });
-    }),
-  );
-
-  unsubscribers.push(
-    subscribe('call:unanswered', async ({ roomId, contactId }) => {
-      tempWarn(
-        `[APPBUS] Handling unanswered call for room ${roomId}, contact ${contactId}`,
-      );
-
-      try {
-        const conversationId =
-          await contactsService.getConversationId(contactId);
-
-        if (!conversationId) {
-          console.warn(
-            '[APPBUS] Missing conversationId for unanswered call contact:',
-            contactId,
-          );
-          return;
-        }
-
-        await messagingController.sendEventMessage(
-          conversationId,
-          'call:unanswered',
-          { callId: roomId },
-        );
-      } catch (e) {
-        console.warn('[APPBUS] Failed to write unanswered call message:', e);
-      }
-    }),
-  );
 
   unsubscribers.push(
     handleCommand(

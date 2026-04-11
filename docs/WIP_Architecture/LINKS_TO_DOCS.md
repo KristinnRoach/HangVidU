@@ -5,6 +5,7 @@
 - [Enable next feature boundary template](./ADD_NEXT_FEATURE.md)
 - [Boundary map (target)](./BOUNDARY_MAP.md)
 - [Boundary rollout status](./BOUNDARY_ROLLOUT_STATUS.md)
+- [Semantics and naming (WIP)](./SEMANTICS_NAMING.md)
 
 # External references
 

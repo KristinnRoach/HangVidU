@@ -12,7 +12,7 @@ export {
   deleteAccount,
   isSafariExternalOpenArmed,
   setSafariExternalOpenArmed,
-} from './auth-actions.js';
+} from './auth-commands.js';
 
 export {
   requestContactsAccess,

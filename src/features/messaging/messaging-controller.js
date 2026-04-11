@@ -4,7 +4,6 @@ import { compressImage } from '../../media/image-compress.js';
 import { EventEmitter } from '../../lib/event-emitter/index.js';
 import { getUserId } from '../../auth/index.js';
 import { getUserProfile } from '../../storage/user/index.js';
-import { contactsService } from '../contacts/index.js';
 import {
   createFileMessage,
   createTextMessage,
@@ -335,13 +334,6 @@ export class MessagingController extends EventEmitter {
       this._fetchParticipantProfile(participantId).then((profile) => {
         this._updateParticipantMeta(conversationId, participantId, profile);
       });
-      this._fetchLocalContactNickName(participantId).then((contactNickName) => {
-        this._updateLocalContactNickName(
-          conversationId,
-          participantId,
-          contactNickName,
-        );
-      });
     }
   }
 
@@ -357,17 +349,6 @@ export class MessagingController extends EventEmitter {
     if (!state || !profile) return;
 
     state.participants[participantId] = profile;
-    this.emit('conversation:meta-updated', {
-      conversationId,
-      participants: { ...state.participants },
-    });
-  }
-
-  _updateLocalContactNickName(conversationId, participantId, contactNickName) {
-    const state = this.conversations.get(conversationId);
-    if (!state || !contactNickName) return;
-
-    state.localContactNickNames[participantId] = contactNickName;
     this.emit('conversation:meta-updated', {
       conversationId,
       participants: { ...state.participants },
@@ -483,20 +464,6 @@ export class MessagingController extends EventEmitter {
         participantId,
         e,
       );
-    }
-  }
-
-  async _fetchLocalContactNickName(participantId) {
-    try {
-      const contact = await contactsService.getContact(participantId);
-      return contact?.contactNickName?.trim() || null;
-    } catch (e) {
-      console.warn(
-        '[MessagingController] Failed to fetch local contact nickname for participant:',
-        participantId,
-        e,
-      );
-      return null;
     }
   }
 

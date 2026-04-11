@@ -17,13 +17,6 @@ vi.mock('../../storage/user/index.js', () => ({
   getUserProfile: (...args) => mockGetUserProfile(...args),
 }));
 
-const mockGetContact = vi.fn(() => Promise.resolve(null));
-vi.mock('../contacts/index.js', () => ({
-  contactsService: {
-    getContact: (...args) => mockGetContact(...args),
-  },
-}));
-
 // Mock file processing (no-op in tests)
 vi.mock('../../media/image-compress.js', () => ({
   compressImage: vi.fn(() => null),
@@ -128,8 +121,6 @@ describe('MessagingController', () => {
   beforeEach(() => {
     mockGetUserProfile.mockReset();
     mockGetUserProfile.mockResolvedValue(null);
-    mockGetContact.mockReset();
-    mockGetContact.mockResolvedValue(null);
     mockStore = new MockStore();
     controller = new MessagingController(mockStore);
   });
@@ -228,22 +219,15 @@ describe('MessagingController', () => {
     );
   });
 
-  it('should prefer local contactNickName over participant userName', async () => {
+  it('should prefer provided contactNickName over participant userName', async () => {
     mockGetUserProfile.mockResolvedValueOnce({
       userName: 'Google Name',
       photoURL: null,
     });
-    mockGetContact.mockResolvedValueOnce({
-      contactId: 'contactA',
-      contactNickName: 'App Name',
-      roomId: null,
-      conversationId: 'contactA_me',
-      savedAt: Date.now(),
-      lastInteractionAt: Date.now(),
-    });
 
     await controller.selectConversation('contactA_me', {
       remoteParticipantIds: ['contactA'],
+      contactNickName: 'App Name',
     });
 
     await vi.waitFor(() => {
@@ -258,7 +242,6 @@ describe('MessagingController', () => {
       userName: 'Google Name',
       photoURL: null,
     });
-    mockGetContact.mockResolvedValueOnce(null);
 
     await controller.selectConversation('contactA_me', {
       remoteParticipantIds: ['contactA'],
@@ -276,7 +259,6 @@ describe('MessagingController', () => {
       userName: 'Google Name',
       photoURL: null,
     });
-    mockGetContact.mockResolvedValueOnce(null);
 
     await controller.selectConversation('contactA_me', {
       remoteParticipantIds: ['contactA'],

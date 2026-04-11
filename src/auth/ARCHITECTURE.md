@@ -14,6 +14,6 @@
 - Provider callbacks normalize data and feed state through `setState`.
 
 ## Conventions
-- Keep auth actions (`auth-actions.js`) focused on user-intent flows.
+- Keep auth commands (`auth-commands.js`) focused on user-intent flows.
 - Keep setup/bootstrap (`auth-setup.js`) focused on initialization and lifecycle.
 - Put provider-specific integration logic in `src/auth/adapters/`.

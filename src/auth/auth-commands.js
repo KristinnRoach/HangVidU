@@ -1,4 +1,12 @@
-// src/auth/auth-actions.js — sign-in, sign-out, delete + iOS Safari workarounds
+// src/auth/auth-commands.js — sign-in, sign-out, delete + iOS Safari workarounds
+
+/**
+ * TODO(auth commands)
+ * This module still includes non-command concerns.
+ * - Extract Safari fallback flag helpers (`isSafariExternalOpenArmed`,
+ *   `setSafariExternalOpenArmed`) to a dedicated auth session/platform state
+ *   module once command and state responsibilities are separated further.
+ */
 
 import { logAuthError } from './auth-setup.js';
 import { clearGISTokenCache } from './gis-tokens.js';
