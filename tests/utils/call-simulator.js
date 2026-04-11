@@ -4,7 +4,7 @@
  * contact saving, and subsequent contact calls for testing reliability.
  */
 
-import { getDiagnosticLogger } from '../../src/shared/utils/diagnostic-logger.js';
+import { getDiagnosticLogger } from '../../src/shared/utils/dev/diagnostic-logger.js';
 
 export class CallFlowSimulator {
   constructor(firebaseMock) {
