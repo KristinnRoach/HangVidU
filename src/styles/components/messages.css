@@ -443,7 +443,7 @@
 }
 
 /* Order rules: remote avatar on the left */
-#messages .message-entry .avatar.remote {
+#messages .message-entry .sender-avatar {
   order: 0;
 }
 #messages .message-entry.local .message-bubble {

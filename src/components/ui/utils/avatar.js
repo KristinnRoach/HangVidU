@@ -57,10 +57,11 @@ export function renderAvatar(
       img.remove();
       element.textContent = fallbackText;
     };
-    img.src = photoURL;
     // Animate only the first time we see this URL this session. Re-renders into
     // new <img> elements (e.g. switching conversations) are served from cache
     // and should appear instantly without a fade-in.
+    // Attach the listener before setting src so a synchronous cached load
+    // still fires it.
     if (!loadedPhotoURLs.has(photoURL)) {
       img.addEventListener(
         'load',
@@ -74,11 +75,11 @@ export function renderAvatar(
         { once: true },
       );
     }
+    img.src = photoURL;
     if (!img.parentNode) element.appendChild(img);
     return;
   }
 
-  if (prevImg) prevImg.remove();
   element.textContent = '';
 
   if (pending) return;
