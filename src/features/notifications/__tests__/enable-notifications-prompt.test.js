@@ -40,7 +40,7 @@ vi.mock('../../../shared/i18n/index.js', () => ({
 }));
 
 const { getBlockedMessage } =
-  await import('../shared/components/enable-notifications-prompt.js');
+  await import('../components/enable-notifications-prompt.js');
 
 describe('getBlockedMessage', () => {
   it('should return Chrome-specific message for Chrome', () => {
