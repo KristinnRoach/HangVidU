@@ -29,6 +29,7 @@ export const getYTBox = () => {
 // ============================================================================
 
 let ytApiLoadingPromise = null;
+const YT_API_LOAD_TIMEOUT = 15000; // 15 seconds
 
 // Dynamically load YouTube IFrame API if not already loaded
 export function ensureYouTubeAPILoaded() {
@@ -43,17 +44,45 @@ export function ensureYouTubeAPILoaded() {
   }
 
   // Start loading
-  ytApiLoadingPromise = new Promise((resolve) => {
+  ytApiLoadingPromise = new Promise((resolve, reject) => {
+    const previousReadyHandler = window.onYouTubeIframeAPIReady;
     const script = document.createElement('script');
     script.src = 'https://www.youtube.com/iframe_api';
     script.async = true;
 
+    const timeoutId = window.setTimeout(() => {
+      ytApiLoadingPromise = null;
+      reject(new Error('Timed out loading YouTube IFrame API'));
+    }, YT_API_LOAD_TIMEOUT);
+
     // Set up callback for when API is ready
     window.onYouTubeIframeAPIReady = () => {
+      window.clearTimeout(timeoutId);
+      if (typeof previousReadyHandler === 'function') {
+        previousReadyHandler();
+      }
       resolve();
     };
 
-    document.body.appendChild(script);
+    script.onerror = () => {
+      window.clearTimeout(timeoutId);
+      ytApiLoadingPromise = null;
+      // Restore previous handler to avoid breaking other listeners
+      window.onYouTubeIframeAPIReady = previousReadyHandler;
+      reject(new Error('Failed to load YouTube IFrame API script'));
+    };
+
+    script.onabort = () => {
+      window.clearTimeout(timeoutId);
+      ytApiLoadingPromise = null;
+      window.onYouTubeIframeAPIReady = previousReadyHandler;
+      reject(new Error('Aborted loading YouTube IFrame API script'));
+    };
+
+    (document.head || document.body).appendChild(script);
+  }).catch((error) => {
+    ytApiLoadingPromise = null;
+    throw error;
   });
 
   return ytApiLoadingPromise;

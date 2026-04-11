@@ -77,165 +77,170 @@ export async function initializeSearchUI() {
   if (isInitialized || _initializing) return false;
   _initializing = true;
 
-  // Load YouTube API lazily on demand
-  await ensureYouTubeAPILoaded();
+  try {
+    // Load YouTube API lazily on demand
+    await ensureYouTubeAPILoaded();
 
-  // Use robust access for dynamically loaded search elements
-  const { initializeYouTubeElements } = await import('../../elements.js');
-  const elements = await initializeYouTubeElements();
+    // Use robust access for dynamically loaded search elements
+    const { initializeYouTubeElements } = await import('../../elements.js');
+    const elements = await initializeYouTubeElements();
 
-  searchContainer = elements.searchContainer;
-  searchBtn = elements.searchBtn;
-  searchQuery = elements.searchQuery;
-  searchResults = elements.searchResults;
+    searchContainer = elements.searchContainer;
+    searchBtn = elements.searchBtn;
+    searchQuery = elements.searchQuery;
+    searchResults = elements.searchResults;
 
-  if (!searchContainer || !searchBtn || !searchQuery || !searchResults) {
-    console.error('YouTube search elements not found in DOM');
-    _initializing = false;
-    return false;
-  }
-
-  const isDirectUrl = (str) => {
-    return /^https?:\/\//i.test(str);
-  };
-
-  const focusResult = (index) => {
-    const items = searchResults?.querySelectorAll('.search-result-item') || [];
-    items.forEach((item, i) => {
-      if (i === index) {
-        item.classList.add('focused');
-        item.scrollIntoView({ block: 'nearest' });
-      } else {
-        item.classList.remove('focused');
-      }
-    });
-    focusedResultIndex = index ?? -1;
-  };
-
-  // Unified search handler
-  async function handleSearchQuery(query) {
-    if (!query) {
-      clearSearchResults();
-      hideElement(searchQuery);
-      return;
+    if (!searchContainer || !searchBtn || !searchQuery || !searchResults) {
+      console.error('YouTube search elements not found in DOM');
+      return false;
     }
 
-    if (hasLoadedSearchResults() && query === lastSearchQuery) {
-      displaySearchResults(searchResultsCache);
-    } else if (!isDirectUrl(query) && !isGoogleDriveUrl(query)) {
-      await searchYouTube(query);
-    } else {
-      // Treat as direct video link (with Google Drive support)
-      let url = query;
-      devDebug('Direct URL entered:', url);
-      if (isGoogleDriveUrl(query)) {
-        // Extract direct link from gdrive "View" link
-        url = toGoogleDriveDirectLink(query);
-        devDebug('Extracted Google Drive direct link:', url);
-      }
+    const isDirectUrl = (str) => {
+      return /^https?:\/\//i.test(str);
+    };
 
-      await handleVideoSelection({
-        url: url,
-        title: query,
-        channel: '',
-        thumbnail: '',
-        id: query,
+    const focusResult = (index) => {
+      const items = searchResults?.querySelectorAll('.search-result-item') || [];
+      items.forEach((item, i) => {
+        if (i === index) {
+          item.classList.add('focused');
+          item.scrollIntoView({ block: 'nearest' });
+        } else {
+          item.classList.remove('focused');
+        }
       });
+      focusedResultIndex = index ?? -1;
+    };
 
-      hideElement(searchResults);
-      searchQuery.value = '';
-      hideElement(searchQuery);
-      focusedResultIndex = -1;
-      return;
-    }
-  }
-
-  // Add search button event listener
-  searchBtn.onclick = async () => {
-    const query = searchQuery.value.trim();
-    if (isHidden(searchQuery)) {
-      showElement(searchQuery);
-      searchQuery.focus();
-      return;
-    }
-    await handleSearchQuery(query);
-  };
-
-  searchContainer.addEventListener('keydown', async (e) => {
-    const items = searchResults.querySelectorAll('.search-result-item');
-    if (items.length > 0 && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-      // Navigate results
-      if (e.key === 'ArrowDown') {
-        let next = focusedResultIndex + 1;
-        if (next >= items.length) next = 0;
-        focusResult(next);
-      } else if (e.key === 'ArrowUp') {
-        let prev = focusedResultIndex - 1;
-        if (prev < 0) prev = focusedResultIndex === -1 ? 0 : items.length - 1;
-        focusResult(prev);
-      }
-      return;
-    }
-
-    if (e.key === 'Enter') {
-      // If a result is focused, select it
-      if (items.length > 0 && focusedResultIndex >= 0) {
-        items[focusedResultIndex].click();
+    // Unified search handler
+    async function handleSearchQuery(query) {
+      if (!query) {
+        clearSearchResults();
         hideElement(searchQuery);
+        return;
+      }
+
+      if (hasLoadedSearchResults() && query === lastSearchQuery) {
+        displaySearchResults(searchResultsCache);
+      } else if (!isDirectUrl(query) && !isGoogleDriveUrl(query)) {
+        await searchYouTube(query);
+      } else {
+        // Treat as direct video link (with Google Drive support)
+        let url = query;
+        devDebug('Direct URL entered:', url);
+        if (isGoogleDriveUrl(query)) {
+          // Extract direct link from gdrive "View" link
+          url = toGoogleDriveDirectLink(query);
+          devDebug('Extracted Google Drive direct link:', url);
+        }
+
+        await handleVideoSelection({
+          url: url,
+          title: query,
+          channel: '',
+          thumbnail: '',
+          id: query,
+        });
+
         hideElement(searchResults);
+        searchQuery.value = '';
+        hideElement(searchQuery);
         focusedResultIndex = -1;
         return;
       }
+    }
+
+    // Add search button event listener
+    searchBtn.onclick = async () => {
       const query = searchQuery.value.trim();
+      if (isHidden(searchQuery)) {
+        showElement(searchQuery);
+        searchQuery.focus();
+        return;
+      }
       await handleSearchQuery(query);
-    } else if (e.key === 'Escape') {
-      if (isSearchResultsElVisible()) clearSearchResults();
-      else if (searchQuery.value) searchQuery.value = '';
-      else hideElement(searchQuery);
+    };
+
+    searchContainer.addEventListener('keydown', async (e) => {
+      const items = searchResults.querySelectorAll('.search-result-item');
+      if (items.length > 0 && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+        // Navigate results
+        if (e.key === 'ArrowDown') {
+          let next = focusedResultIndex + 1;
+          if (next >= items.length) next = 0;
+          focusResult(next);
+        } else if (e.key === 'ArrowUp') {
+          let prev = focusedResultIndex - 1;
+          if (prev < 0) prev = focusedResultIndex === -1 ? 0 : items.length - 1;
+          focusResult(prev);
+        }
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        // If a result is focused, select it
+        if (items.length > 0 && focusedResultIndex >= 0) {
+          items[focusedResultIndex].click();
+          hideElement(searchQuery);
+          hideElement(searchResults);
+          focusedResultIndex = -1;
+          return;
+        }
+        const query = searchQuery.value.trim();
+        await handleSearchQuery(query);
+      } else if (e.key === 'Escape') {
+        if (isSearchResultsElVisible()) clearSearchResults();
+        else if (searchQuery.value) searchQuery.value = '';
+        else hideElement(searchQuery);
+      }
+    });
+
+    searchQuery.addEventListener('input', () => {
+      if (searchQuery.value.trim() === '') {
+        clearSearchResults();
+      }
+      focusedResultIndex = -1;
+    });
+
+    const closeQueryCleanup = onClickOutside(
+      searchQuery,
+      () => hideElement(searchQuery),
+      {
+        ignore: [searchBtn],
+        esc: false, // already handled
+      },
+    );
+
+    cleanupFunctions.push(closeQueryCleanup);
+
+    const closeSearchResultsCleanup = onClickOutside(
+      searchResults,
+      () => hideElement(searchResults),
+      {
+        ignore: [searchBtn],
+        esc: false, // already handled
+      },
+    );
+
+    cleanupFunctions.push(closeSearchResultsCleanup);
+
+    // Check API availability
+    if (!YOUTUBE_API_KEY) {
+      searchBtn.disabled = true;
+      searchBtn.title = 'YouTube API key not configured';
+      console.warn('YouTube API key not found. Search will not be available.');
     }
-  });
 
-  searchQuery.addEventListener('input', () => {
-    if (searchQuery.value.trim() === '') {
-      clearSearchResults();
-    }
-    focusedResultIndex = -1;
-  });
+    devDebug('YouTube search UI initialized');
 
-  const closeQueryCleanup = onClickOutside(
-    searchQuery,
-    () => hideElement(searchQuery),
-    {
-      ignore: [searchBtn],
-      esc: false, // already handled
-    },
-  );
-
-  cleanupFunctions.push(closeQueryCleanup);
-
-  const closeSearchResultsCleanup = onClickOutside(
-    searchResults,
-    () => hideElement(searchResults),
-    {
-      ignore: [searchBtn],
-      esc: false, // already handled
-    },
-  );
-
-  cleanupFunctions.push(closeSearchResultsCleanup);
-
-  // Check API availability
-  if (!YOUTUBE_API_KEY) {
-    searchBtn.disabled = true;
-    searchBtn.title = 'YouTube API key not configured';
-    console.warn('YouTube API key not found. Search will not be available.');
+    isInitialized = true;
+    return true;
+  } catch (error) {
+    console.error('Failed to initialize YouTube search UI:', error);
+    return false;
+  } finally {
+    _initializing = false;
   }
-
-  devDebug('YouTube search UI initialized');
-
-  _initializing = false;
-  isInitialized = true;
-  return true;
 }
 
 /**
