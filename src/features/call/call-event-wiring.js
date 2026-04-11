@@ -151,6 +151,8 @@ export function setupCallControllerEventWiring(options = {}) {
                   contactUserId: partnerId,
                   roomId,
                   lobbyElement,
+                }).catch((e) => {
+                  console.warn('Failed to save contact prompt:', e);
                 });
               }
             })

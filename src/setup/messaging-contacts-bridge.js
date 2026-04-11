@@ -1,5 +1,5 @@
-import { contactsService } from '../contacts/index.js';
-import { messagingController } from './messaging-controller.js';
+import { contactsService } from '../features/contacts/index.js';
+import { messagingController } from '../features/messaging/messaging-controller.js';
 
 let teardownMessagingContactsIntegration = null;
 
