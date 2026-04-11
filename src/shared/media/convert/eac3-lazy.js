@@ -12,8 +12,8 @@ export async function ensureEac3Support() {
 
   eac3SupportInit = (async () => {
     // Temporary disable: @mediabunny/ac3 is unavailable in this environment.
-    // const { registerAc3Decoder } = await import('@mediabunny/ac3');
-    // registerAc3Decoder();
+    const { registerAc3Decoder } = await import('@mediabunny/ac3');
+    registerAc3Decoder();
 
     const { canEncodeAudio } = await import('mediabunny');
 
