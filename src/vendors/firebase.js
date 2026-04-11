@@ -137,8 +137,10 @@ function initializeAppCheckDeferred() {
   }
 }
 
-// Defer by one microtask to avoid sync startup cost but initialize as early
-// as possible during app boot, minimizing race windows for first API calls.
+// Defer by one microtask to avoid synchronous startup work while still
+// initializing App Check as early as possible in app boot.
+// Note: microtasks usually run before first paint; this is intentional to
+// minimize the race window before first Firebase API calls.
 Promise.resolve().then(initializeAppCheckDeferred);
 
 export { initializeAppCheckDeferred };
