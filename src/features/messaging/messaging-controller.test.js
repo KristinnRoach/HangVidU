@@ -219,6 +219,28 @@ describe('MessagingController', () => {
     );
   });
 
+  it('should still emit conversation:meta-updated when participant profile fetch fails', async () => {
+    mockGetUserProfile.mockRejectedValueOnce(new Error('network down'));
+
+    const spy = vi.fn();
+    controller.on('conversation:meta-updated', spy);
+
+    await controller.selectConversation('contactA_me', {
+      remoteParticipantIds: ['contactA'],
+    });
+
+    await vi.waitFor(() => {
+      expect(spy).toHaveBeenCalledWith({
+        conversationId: 'contactA_me',
+        participants: {},
+      });
+    });
+
+    expect(controller.getParticipantProfile('contactA_me', 'contactA')).toBe(
+      null,
+    );
+  });
+
   it('should prefer provided contactNickName over participant userName', async () => {
     mockGetUserProfile.mockResolvedValueOnce({
       userName: 'Google Name',

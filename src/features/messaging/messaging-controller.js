@@ -339,6 +339,7 @@ export class MessagingController extends EventEmitter {
 
   /**
    * Update a participant's cached profile and emit meta update event.
+   * Emits even when profile is missing/fetch failed so UI can clear loading states.
    * @param {string} conversationId
    * @param {string} participantId
    * @param {ParticipantProfile|null} profile
@@ -346,9 +347,11 @@ export class MessagingController extends EventEmitter {
    */
   _updateParticipantMeta(conversationId, participantId, profile) {
     const state = this.conversations.get(conversationId);
-    if (!state || !profile) return;
+    if (!state) return;
 
-    state.participants[participantId] = profile;
+    if (profile) {
+      state.participants[participantId] = profile;
+    }
     this.emit('conversation:meta-updated', {
       conversationId,
       participants: { ...state.participants },
