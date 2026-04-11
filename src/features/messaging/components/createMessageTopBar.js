@@ -10,7 +10,7 @@ export function createMessageTopBar() {
       <i data-lucide="chevron-left" aria-hidden="true"></i>
     </button>
     <div class="messages-topbar-contact">
-      <span class="messages-topbar-avatar" aria-hidden="true"></span>
+      <span class="avatar" aria-hidden="true"></span>
       <span class="messages-topbar-name"></span>
     </div>
     <button type="button" class="messages-topbar-call" aria-label="${t('message.call')}">
@@ -20,17 +20,12 @@ export function createMessageTopBar() {
 
   const backBtn = root.querySelector('.messages-topbar-back');
   const callBtn = root.querySelector('.messages-topbar-call');
-  const avatar = root.querySelector('.messages-topbar-avatar');
+  const avatarSpan = root.querySelector('.avatar');
   const nameEl = root.querySelector('.messages-topbar-name');
 
   const setContact = ({ name = '', photoURL = '', pending = false } = {}) => {
     nameEl.textContent = name || t('shared.unknown');
-    renderAvatar(avatar, {
-      name,
-      photoURL,
-      pending,
-      imageClass: 'has-image',
-    });
+    renderAvatar(avatarSpan, { name, photoURL, pending });
   };
 
   const setBackHandler = (fn) => {

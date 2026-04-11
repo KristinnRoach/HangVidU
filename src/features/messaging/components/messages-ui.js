@@ -6,7 +6,10 @@ import {
   isHidden,
   showElement,
 } from '../../../components/ui/utils/ui-utils.js';
-import { renderAvatar } from '../../../components/ui/utils/avatar.js';
+import {
+  renderAvatar,
+  createAvatar,
+} from '../../../components/ui/utils/avatar.js';
 import { createMessageToggle } from './createMessageToggle.js';
 import { isIOSOrAndroidDevice } from '../../../utils/detect-device.js';
 
@@ -625,30 +628,6 @@ export function initMessagesUI() {
     p._reactionCleanup = () => gesture.destroy();
   }
 
-  /**
-   * Create an avatar span for a message.
-   * @param {boolean} isLocal - true for local user, false for remote
-   */
-  function createAvatar(isLocal) {
-    const avatarSpan = document.createElement('span');
-    avatarSpan.className =
-      'sender-avatar' + (isLocal ? ' sender-avatar--me' : '');
-    avatarSpan.setAttribute('aria-hidden', 'true');
-
-    if (isLocal) {
-      renderAvatar(avatarSpan, { customFallbackText: t('shared.me') });
-    } else {
-      const conversationId = messagingController.getSelectedConversationId();
-      const participantName =
-        messagingController.getConversationDisplayName(conversationId) || 'U';
-      const photoURL =
-        messagingController.getConversationPhotoURL(conversationId) || '';
-      renderAvatar(avatarSpan, { name: participantName, photoURL });
-    }
-
-    return avatarSpan;
-  }
-
   // --- Content builders ---
 
   function buildTextContent(text) {
@@ -856,14 +835,32 @@ export function initMessagesUI() {
 
     // Avatar (sibling to message-bubble) - only for remote messages
     if (isLocal === false) {
-      messageEntry.appendChild(createAvatar(false));
+      const conversationId = messagingController.getSelectedConversationId();
+      const participantName =
+        messagingController.getConversationDisplayName(conversationId) || 'U';
+      const photoURL =
+        messagingController.getConversationPhotoURL(conversationId) || '';
+      // If the sender's profile isn't loaded yet, render blank —
+      // conversation:meta-updated will refresh all avatars once it arrives.
+      const senderId = message.from;
+      const pending =
+        !photoURL &&
+        !!senderId &&
+        messagingController.getParticipantProfile(conversationId, senderId) ===
+          null;
+
+      const avatarSpan = createAvatar({
+        name: participantName,
+        photoURL,
+        pending,
+        classList: ['sender-avatar'],
+      });
+      messageEntry.appendChild(avatarSpan);
     }
 
     // message-bubble: container for content + reactions
     const messageBubble = document.createElement('div');
     messageBubble.className = 'message-bubble';
-
-    // p element inside message-bubble
     const p = document.createElement('p');
 
     // Type-specific content

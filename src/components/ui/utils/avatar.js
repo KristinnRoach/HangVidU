@@ -1,45 +1,57 @@
 /**
- * Apply avatar styling to an element: background image if available, otherwise fallback text
- * @param {HTMLElement} element - Avatar element to style
+ * Create a new avatar element and apply styling.
+ * @param {Object} options - See renderAvatar for options, plus:
+ * @param {string[]} [options.classList=['avatar']] - Classes to apply to the new element
+ * @returns {HTMLElement}
+ */
+export function createAvatar(options = {}) {
+  const element = document.createElement('span');
+  const { classList = ['avatar'] } = options;
+  classList.forEach((cls) => element.classList.add(cls));
+  renderAvatar(element, options);
+  return element;
+}
+
+/**
+ * Render an avatar into an element: <img> child if photoURL, else letter fallback.
+ * Idempotent per URL — safe to call repeatedly with the same photoURL.
+ * @param {HTMLElement} element
  * @param {Object} options
- * @param {string} [options.name] - Display name for deriving initial letter
- * @param {string} [options.photoURL] - Profile photo URL
- * @param {string} [options.customFallbackText] - Custom text to display instead of initial (e.g., 'Me')
- * @param {string} [options.imageClass='sender-avatar--image'] - Class to add when image is present
- * @param {boolean} [options.pending=false] - Photo state unknown (not yet fetched); render blank instead of letter fallback to avoid flicker
+ * @param {string} [options.name]
+ * @param {string} [options.photoURL]
+ * @param {boolean} [options.pending=false] - Photo unknown yet; render blank to avoid letter flicker
  */
 export function renderAvatar(
   element,
-  {
-    name = '',
-    photoURL = '',
-    customFallbackText = null,
-    imageClass = 'sender-avatar--image',
-    pending = false,
-  } = {},
+  { name = '', photoURL = '', pending = false } = {},
 ) {
   if (!element) return;
+  const stateKey = photoURL || (pending ? 'pending' : `letter:${name}`);
+  if (element.dataset.avatarState === stateKey) return;
+
+  element.dataset.avatarState = stateKey;
+  element.textContent = '';
+  const prevImg = element.querySelector(':scope > img');
+  if (prevImg) prevImg.remove();
 
   if (photoURL) {
-    element.style.backgroundImage = `url("${photoURL}")`;
-    element.style.backgroundSize = 'cover';
-    element.style.backgroundPosition = 'center';
-    element.classList.add(imageClass);
-    element.textContent = '';
+    const img = document.createElement('img');
+    img.alt = '';
+    img.decoding = 'async';
+    // Strip Referer — Google's lh3.googleusercontent.com 403s cross-origin
+    // requests that carry a referrer header.
+    img.referrerPolicy = 'no-referrer';
+    img.onerror = () => {
+      element.dataset.avatarState = `letter:${name}`;
+      img.remove();
+      element.textContent = name ? name[0].toUpperCase() : 'U';
+    };
+    img.src = photoURL;
+    element.appendChild(img);
     return;
   }
 
-  element.style.backgroundImage = '';
-  element.style.backgroundSize = '';
-  element.style.backgroundPosition = '';
-  element.classList.remove(imageClass);
+  if (pending) return;
 
-  if (pending) {
-    element.textContent = '';
-    return;
-  }
-
-  const fallbackText =
-    customFallbackText || (name ? name[0].toUpperCase() : 'U');
-  element.textContent = fallbackText;
+  element.textContent = name ? name[0].toUpperCase() : 'U';
 }
