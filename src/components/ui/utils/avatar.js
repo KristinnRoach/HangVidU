@@ -1,3 +1,5 @@
+const loadedPhotoURLs = new Set();
+
 /**
  * Create a new avatar element and apply styling.
  * @param {Object} options - See renderAvatar for options, plus:
@@ -47,12 +49,16 @@ export function renderAvatar(
       element.textContent = name ? name[0].toUpperCase() : 'U';
     };
     img.src = photoURL;
-    // Only animate slow loads — cached images are .complete synchronously
+    // Animate only the first time we see this URL this session. Re-renders into
+    // new <img> elements (e.g. switching conversations) are served from cache
     // and should appear instantly without a fade-in.
-    if (!img.complete) {
+    if (!loadedPhotoURLs.has(photoURL)) {
       img.addEventListener(
         'load',
-        () => img.classList.add('avatar-entry-animation'),
+        () => {
+          loadedPhotoURLs.add(photoURL);
+          img.classList.add('avatar-entry-animation');
+        },
         { once: true },
       );
     }
