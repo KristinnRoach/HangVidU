@@ -2,7 +2,11 @@ import { handleCommand, subscribe } from '../events/index.js';
 import { messagingController } from '../features/messaging/messaging-controller.js';
 import { isDev, tempWarn } from '../utils/dev/dev-utils.js';
 import { callContact } from '../features/call/WIP-start-call-refactor.js';
-import { contactsService } from '../features/contacts/index.js';
+import {
+  contactsService,
+  renderContactsList,
+  showSaveContactPrompt,
+} from '../features/contacts/index.js';
 import {
   listenForIncomingOnRoom,
   removeIncomingListenersForRoom,
@@ -60,6 +64,21 @@ export function setupMainAppBusListeners() {
           }
         },
         { signal: ac.signal },
+      );
+
+      handleCommand(
+        'contact:save:prompt',
+        async ({ contactUserId, roomId, lobbyElement }) => {
+          const didSave = await showSaveContactPrompt(contactUserId, roomId);
+          if (!didSave) {
+            return false;
+          }
+
+          // Todo: get rid of lobbyElement dependency
+          await renderContactsList(lobbyElement);
+
+          return true;
+        },
       );
 
       handleCommand(
@@ -190,9 +209,8 @@ export function setupMainAppBusListeners() {
             );
 
           try {
-            const conversationId = await contactsService.getConversationId(
-              contactId,
-            );
+            const conversationId =
+              await contactsService.getConversationId(contactId);
 
             if (!conversationId) {
               console.warn(
@@ -244,9 +262,8 @@ export function setupMainAppBusListeners() {
             );
 
           try {
-            const conversationId = await contactsService.getConversationId(
-              contactId,
-            );
+            const conversationId =
+              await contactsService.getConversationId(contactId);
 
             if (!conversationId) {
               console.warn(
@@ -262,7 +279,10 @@ export function setupMainAppBusListeners() {
               { callId: roomId },
             );
           } catch (e) {
-            console.warn('[APPBUS] Failed to write unanswered call message:', e);
+            console.warn(
+              '[APPBUS] Failed to write unanswered call message:',
+              e,
+            );
           }
         },
         { signal: ac.signal },

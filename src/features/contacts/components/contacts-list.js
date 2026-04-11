@@ -12,6 +12,7 @@ import { escapeHtml } from '../../../components/ui/component-system/dom-utils.js
 import { initIcons } from '../../../components/ui/icons.js';
 import { dispatchCommand, subscribe } from '../../../events/index.js';
 import { contactsService } from '../contacts-service.js';
+import { devDebug } from '../../../utils/dev/dev-utils.js';
 
 // TODO: WIP decoupling considerations:
 // This feature-owned UI still composes shared UI primitives and messaging side effects.
@@ -34,12 +35,21 @@ const MAX_CONTACT_NAME_CHARS = 18;
 
 /**
  * Render the contacts list in the lobby element.
+ *
+ * Todo: get rid of lobbyElement dependency for re-rendering
  */
 export async function renderContactsList(lobbyElement) {
-  if (!lobbyElement) return;
+  if (!lobbyElement) {
+    devDebug('renderContactsList called without lobbyElement!');
+  }
 
   // Update lobby reference on every render
-  lastRenderedLobby = lobbyElement;
+  lastRenderedLobby = lobbyElement ? lobbyElement : lastRenderedLobby;
+
+  if (!lastRenderedLobby) {
+    console.error('No lobby element available to render contacts list!');
+    return;
+  }
 
   // Set up locale change listener on first render
   if (!localeUnsubscribe) {
@@ -225,9 +235,7 @@ function attachContactListeners(container, lobbyElement) {
       const contact = contacts[contactId];
       if (!contact) return;
 
-      const result = await editContactModal(
-        contact.contactNickName ?? '',
-      );
+      const result = await editContactModal(contact.contactNickName ?? '');
       if (!result) return;
 
       if (result.action === 'rename') {
