@@ -11,6 +11,7 @@ export function createAvatar(options = {}) {
   const element = document.createElement('span');
   const { classList = ['avatar'] } = options;
   classList.forEach((cls) => element.classList.add(cls));
+  element.setAttribute('aria-hidden', 'true');
   renderAvatar(element, options);
   return element;
 }
@@ -45,10 +46,16 @@ export function renderAvatar(
     // requests that carry a referrer header.
     img.referrerPolicy = 'no-referrer';
     img.classList.remove('avatar-entry-animation');
+    // Guard onerror so stale image failures don't clobber newer avatars.
+    // Capture the current stateKey so the handler ignores superseded requests.
+    const fallbackText = name ? name[0].toUpperCase() : 'U';
+    const fallbackState = `letter:${name}`;
+    const requestedState = stateKey;
     img.onerror = () => {
-      element.dataset.avatarState = `letter:${name}`;
+      if (element.dataset.avatarState !== requestedState) return;
+      element.dataset.avatarState = fallbackState;
       img.remove();
-      element.textContent = name ? name[0].toUpperCase() : 'U';
+      element.textContent = fallbackText;
     };
     img.src = photoURL;
     // Animate only the first time we see this URL this session. Re-renders into
