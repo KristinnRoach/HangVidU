@@ -1,4 +1,5 @@
 const loadedPhotoURLs = new Set();
+const failedPhotoURLs = new Set();
 const maxCachedPhotoURLs = 100;
 
 /**
@@ -30,13 +31,18 @@ export function renderAvatar(
   { name = '', photoURL = '', pending = false } = {},
 ) {
   if (!element) return;
-  const stateKey = photoURL || (pending ? 'pending' : `letter:${name}`);
+  const usablePhoto = photoURL && !failedPhotoURLs.has(photoURL);
+  const stateKey = usablePhoto
+    ? photoURL
+    : pending && !photoURL
+      ? 'pending'
+      : `letter:${name}`;
   if (element.dataset.avatarState === stateKey) return;
 
   element.dataset.avatarState = stateKey;
   const prevImg = element.querySelector(':scope > img');
 
-  if (photoURL) {
+  if (usablePhoto) {
     // Reuse existing <img> so the previous frame keeps painting until the new
     // src decodes — avoids a background flash during conversation switches.
     const img = prevImg || document.createElement('img');
@@ -52,6 +58,7 @@ export function renderAvatar(
     const fallbackState = `letter:${name}`;
     const requestedState = stateKey;
     img.onerror = () => {
+      failedPhotoURLs.add(photoURL);
       if (element.dataset.avatarState !== requestedState) return;
       element.dataset.avatarState = fallbackState;
       img.remove();

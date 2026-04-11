@@ -814,7 +814,7 @@ export function initMessagesUI() {
    * @param {Function} [uiOpts.onCallBack] - Callback for event "call back" button
    */
   function appendMessage(message, uiOpts = {}) {
-    const { onCallBack } = uiOpts;
+    const { onCallBack, conversationId: uiConversationId } = uiOpts;
     const type = message.type || 'text';
     const isLocal = isLocalMessage(message);
     const reactions = message.reactions;
@@ -835,7 +835,8 @@ export function initMessagesUI() {
 
     // Avatar (sibling to message-bubble) - only for remote messages
     if (isLocal === false) {
-      const conversationId = messagingController.getSelectedConversationId();
+      const conversationId =
+        uiConversationId ?? messagingController.getSelectedConversationId();
       const participantName =
         messagingController.getConversationDisplayName(conversationId) || 'U';
       const photoURL =
@@ -1180,7 +1181,7 @@ export function initMessagesUI() {
     // Render cached history
     const history = messagingController.getHistory(conversationId);
     if (history?.length > 0) {
-      appendCachedHistory({ history });
+      appendCachedHistory({ history }, conversationId);
     }
   }
 
@@ -1607,9 +1608,11 @@ export function initMessagesUI() {
    * Helper: Render messages from a session's cached history.
    * This provides the "instant" feel when switching back to a recent chat.
    */
-  function appendCachedHistory(session) {
+  function appendCachedHistory(session, conversationId) {
     if (!session || !session.history) return;
-    session.history.forEach((event) => renderMessage(event.message));
+    session.history.forEach((event) =>
+      renderMessage(event.message, conversationId),
+    );
   }
 
   let lastTimestamp = 0;
@@ -1618,7 +1621,7 @@ export function initMessagesUI() {
   /**
    * Core logic to process and render a message or reaction update.
    */
-  function renderMessage(message) {
+  function renderMessage(message, conversationId) {
     const timestamp = message.sentAt || Date.now();
 
     if (timestamp - lastTimestamp > TIMESTAMP_THRESHOLD) {
@@ -1630,7 +1633,7 @@ export function initMessagesUI() {
     }
     lastTimestamp = timestamp;
 
-    appendMessage(message);
+    appendMessage(message, { conversationId });
   }
 
   // --- Domain Event Listeners ---
@@ -1707,7 +1710,7 @@ export function initMessagesUI() {
         return;
       }
 
-      renderMessage(message);
+      renderMessage(message, conversationId);
 
       // Mark as read if UI is open and message is not from me
       if (isMessagesUIOpen() && !isLocalMessage(message)) {
