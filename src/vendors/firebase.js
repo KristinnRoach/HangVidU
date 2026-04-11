@@ -115,14 +115,32 @@ else {
   }
 }
 
-// Initialize App Check if a provider was successfully determined
-if (appCheckProvider) {
+// ============================================================================
+// DEFERRED APP CHECK INITIALIZATION
+// ============================================================================
+// Initialize App Check via microtask to avoid synchronous startup cost
+// ReCaptcha Enterprise script will be loaded on-demand by Firebase's internal logic
+let appCheckInitialized = false;
+
+function initializeAppCheckDeferred() {
+  if (appCheckInitialized) return;
+  if (!appCheckProvider) return;
+
   try {
     initializeAppCheck(app, {
       provider: appCheckProvider,
-      isTokenAutoRefreshEnabled: true, // Recommended for a smooth user experience
+      isTokenAutoRefreshEnabled: true,
     });
+    appCheckInitialized = true;
   } catch (err) {
     console.error('[Firebase App Check] initializeAppCheck call failed:', err);
   }
 }
+
+// Defer by one microtask to avoid synchronous startup work while still
+// initializing App Check as early as possible in app boot.
+// Note: microtasks usually run before first paint; this is intentional to
+// minimize the race window before first Firebase API calls.
+Promise.resolve().then(initializeAppCheckDeferred);
+
+export { initializeAppCheckDeferred };
