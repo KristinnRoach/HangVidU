@@ -118,7 +118,7 @@ else {
 // ============================================================================
 // DEFERRED APP CHECK INITIALIZATION
 // ============================================================================
-// Initialize App Check after the main render to avoid blocking initial load
+// Initialize App Check via microtask to avoid synchronous startup cost
 // ReCaptcha Enterprise script will be loaded on-demand by Firebase's internal logic
 let appCheckInitialized = false;
 
