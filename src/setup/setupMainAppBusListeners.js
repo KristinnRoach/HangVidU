@@ -184,9 +184,10 @@ export function setupMainAppBusListeners() {
       subscribe(
         'call:incoming:accepted',
         async ({ contactId }) => {
-          tempWarn(
-            `[APPBUS] Handling call answered event from contact ${contactId}`,
-          );
+          isDev() &&
+            tempWarn(
+              `[APPBUS] Handling call answered event from contact ${contactId}`,
+            );
 
           try {
             const conversationId = await contactsService.getConversationId(
@@ -201,8 +202,16 @@ export function setupMainAppBusListeners() {
               return;
             }
 
-            const contact = await contactsService.getContact(contactId);
-            const contactNickName = contact?.contactNickName || null;
+            let contactNickName = null;
+            try {
+              const contact = await contactsService.getContact(contactId);
+              contactNickName = contact?.contactNickName || null;
+            } catch (contactError) {
+              console.warn(
+                '[APPBUS] Failed to resolve contact nickname for accepted call:',
+                contactError,
+              );
+            }
 
             messagingController
               .selectConversation(conversationId, {
@@ -229,9 +238,10 @@ export function setupMainAppBusListeners() {
       subscribe(
         'call:unanswered',
         async ({ roomId, contactId }) => {
-          tempWarn(
-            `[APPBUS] Handling unanswered call for room ${roomId}, contact ${contactId}`,
-          );
+          isDev() &&
+            tempWarn(
+              `[APPBUS] Handling unanswered call for room ${roomId}, contact ${contactId}`,
+            );
 
           try {
             const conversationId = await contactsService.getConversationId(

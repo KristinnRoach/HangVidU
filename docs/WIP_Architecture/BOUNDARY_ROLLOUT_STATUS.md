@@ -54,21 +54,20 @@ TODO Add:
 
 Command: `BOUNDARIES_ENFORCE_ALL=1 pnpm lint:boundaries`
 
-Snapshot: 2026-04-10
+Snapshot: 2026-04-11
 
-Total failures: `17`
+Total failures: `14`
 
 ### Failure categories
 
-- `feature -> feature`: `16`
+- `feature -> feature`: `13`
 - `feature -> app`: `1`
 - `auth -> feature`: `0`
 - `setup/*` failures: `0`
 
 ### `feature -> feature` by importing feature
 
-- `call`: `10`
-- `messaging`: `2`
+- `call`: `11`
 - `watch`: `2`
 - `notifications`: `1`
 
@@ -78,9 +77,6 @@ Total failures: `17`
 - `src/features/call/call-controller.js` (3)
 - `src/features/call/call-event-wiring.js` (3)
 - `src/features/call/room-listeners.js` (2)
-- `src/features/messaging/components/messages-ui.js` (1)
-- `src/features/messaging/messaging-command-handlers.js` (1)
-- `src/features/messaging/messaging-controller.js` (1)
 - `src/features/notifications/components/enable-notifications-prompt.js` (1)
 - `src/features/watch/watch-file-handler.js` (1)
 - `src/features/watch/watch-sync.js` (1)
