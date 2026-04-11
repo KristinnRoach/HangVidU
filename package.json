@@ -19,7 +19,7 @@
     "deploy:fb:functions": "firebase deploy --only functions",
     "deploy:all": "pnpm build && pnpm test:compat && firebase deploy",
     "deploy:all:skip-tests": "pnpm build  && firebase deploy",
-    "check:deployment": "curl -s -o /dev/null -w '%{http_code}' -X POST https://europe-west1-vidu-aae11.cloudfunctions.net/sendCallNotification | grep -E '400|401|405' -q && echo '\u2705 Cloud Function is ready' || echo '\u274c Cloud Function not ready'",
+    "check:deployment": "if curl -s -o /dev/null -w '%{http_code}' -X POST https://europe-west1-vidu-aae11.cloudfunctions.net/sendCallNotification | grep -E '400|401|405' -q; then echo '\u2705 Cloud Function is ready'; else echo '\u274c Cloud Function not ready'; exit 1; fi",
     "preview": "vite preview",
     "preview:https": "PREVIEW_HTTPS=1 vite preview",
     "preview:pwa": "pnpm build && pnpm preview:https",
