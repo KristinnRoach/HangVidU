@@ -6,7 +6,10 @@ import {
   isHidden,
   showElement,
 } from '../../../components/ui/utils/ui-utils.js';
-import { renderAvatar } from '../../../components/ui/utils/avatar.js';
+import {
+  renderAvatar,
+  createAvatar,
+} from '../../../components/ui/utils/avatar.js';
 import { createMessageToggle } from './createMessageToggle.js';
 import { isIOSOrAndroidDevice } from '../../../utils/detect-device.js';
 
@@ -625,30 +628,6 @@ export function initMessagesUI() {
     p._reactionCleanup = () => gesture.destroy();
   }
 
-  /**
-   * Create an avatar span for a message.
-   * @param {boolean} isLocal - true for local user, false for remote
-   */
-  function createAvatar(isLocal) {
-    const avatarSpan = document.createElement('span');
-    avatarSpan.className =
-      'sender-avatar' + (isLocal ? ' sender-avatar--me' : '');
-    avatarSpan.setAttribute('aria-hidden', 'true');
-
-    if (isLocal) {
-      renderAvatar(avatarSpan, { customFallbackText: t('shared.me') });
-    } else {
-      const conversationId = messagingController.getSelectedConversationId();
-      const participantName =
-        messagingController.getConversationDisplayName(conversationId) || 'U';
-      const photoURL =
-        messagingController.getConversationPhotoURL(conversationId) || '';
-      renderAvatar(avatarSpan, { name: participantName, photoURL });
-    }
-
-    return avatarSpan;
-  }
-
   // --- Content builders ---
 
   function buildTextContent(text) {
@@ -835,7 +814,7 @@ export function initMessagesUI() {
    * @param {Function} [uiOpts.onCallBack] - Callback for event "call back" button
    */
   function appendMessage(message, uiOpts = {}) {
-    const { onCallBack } = uiOpts;
+    const { onCallBack, conversationId: uiConversationId } = uiOpts;
     const type = message.type || 'text';
     const isLocal = isLocalMessage(message);
     const reactions = message.reactions;
@@ -856,14 +835,33 @@ export function initMessagesUI() {
 
     // Avatar (sibling to message-bubble) - only for remote messages
     if (isLocal === false) {
-      messageEntry.appendChild(createAvatar(false));
+      const conversationId =
+        uiConversationId ?? messagingController.getSelectedConversationId();
+      const participantName =
+        messagingController.getConversationDisplayName(conversationId) || 'U';
+      const photoURL =
+        messagingController.getConversationPhotoURL(conversationId) || '';
+      // If the sender's profile isn't fetched yet, render blank —
+      // conversation:meta-updated will refresh all avatars once it resolves.
+      // A failed fetch counts as fetched, so we fall back to the letter instead.
+      const senderId = message.from;
+      const pending =
+        !photoURL &&
+        !!senderId &&
+        !messagingController.isParticipantFetched(conversationId, senderId);
+
+      const avatarSpan = createAvatar({
+        name: participantName,
+        photoURL,
+        pending,
+        classList: ['sender-avatar'],
+      });
+      messageEntry.appendChild(avatarSpan);
     }
 
     // message-bubble: container for content + reactions
     const messageBubble = document.createElement('div');
     messageBubble.className = 'message-bubble';
-
-    // p element inside message-bubble
     const p = document.createElement('p');
 
     // Type-specific content
@@ -1157,6 +1155,8 @@ export function initMessagesUI() {
    */
   function prepareConversation(conversationId, contactId) {
     if (!conversationId) return;
+    if (shownConversationId === conversationId) return;
+    shownConversationId = conversationId;
 
     if (markAsReadTimeout !== null) {
       clearTimeout(markAsReadTimeout);
@@ -1173,8 +1173,7 @@ export function initMessagesUI() {
     // Profile not yet fetched — render blank avatar to avoid letter-fallback flicker
     const photoPending =
       !!contactId &&
-      messagingController.getParticipantProfile(conversationId, contactId) ===
-        null;
+      !messagingController.isParticipantFetched(conversationId, contactId);
 
     if (messageTopBar) {
       messageTopBar.setContact({ name, photoURL, pending: photoPending });
@@ -1184,7 +1183,7 @@ export function initMessagesUI() {
     // Render cached history
     const history = messagingController.getHistory(conversationId);
     if (history?.length > 0) {
-      appendCachedHistory({ history });
+      appendCachedHistory({ history }, conversationId);
     }
   }
 
@@ -1611,18 +1610,21 @@ export function initMessagesUI() {
    * Helper: Render messages from a session's cached history.
    * This provides the "instant" feel when switching back to a recent chat.
    */
-  function appendCachedHistory(session) {
+  function appendCachedHistory(session, conversationId) {
     if (!session || !session.history) return;
-    session.history.forEach((event) => renderMessage(event.message));
+    session.history.forEach((event) =>
+      renderMessage(event.message, conversationId),
+    );
   }
 
   let lastTimestamp = 0;
+  let shownConversationId = null;
   const TIMESTAMP_THRESHOLD = 5 * 60 * 1000; // 5 minutes
 
   /**
    * Core logic to process and render a message or reaction update.
    */
-  function renderMessage(message) {
+  function renderMessage(message, conversationId) {
     const timestamp = message.sentAt || Date.now();
 
     if (timestamp - lastTimestamp > TIMESTAMP_THRESHOLD) {
@@ -1634,7 +1636,7 @@ export function initMessagesUI() {
     }
     lastTimestamp = timestamp;
 
-    appendMessage(message);
+    appendMessage(message, { conversationId });
   }
 
   // --- Domain Event Listeners ---
@@ -1673,11 +1675,11 @@ export function initMessagesUI() {
   messagingController.on(
     'conversation:closed',
     ({ conversationId }) => {
+      if (shownConversationId === conversationId) {
+        shownConversationId = null;
+      }
       clearMessages();
       refreshAttachButton();
-      if (messageTopBar) {
-        messageTopBar.setContact({ name: '', photoURL: '' });
-      }
     },
     { signal: ac.signal },
   );
@@ -1714,7 +1716,7 @@ export function initMessagesUI() {
         return;
       }
 
-      renderMessage(message);
+      renderMessage(message, conversationId);
 
       // Mark as read if UI is open and message is not from me
       if (isMessagesUIOpen() && !isLocalMessage(message)) {

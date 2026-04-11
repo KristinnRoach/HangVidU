@@ -92,7 +92,7 @@ export const initializeAuthUI = (parentElement, gapBetweenBtns = null) => {
       <span class="signing-in-indicator" style="display: [[signingInDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">...</span>
       <span class="signing-in-indicator" style="display: [[signingOutDisplay]]; color: var(--text-secondary, #888); font-size: 0.9rem;">...</span>
       <div class="user-info" style="display: [[userInfoDisplay]]">
-        <img src="[[userPhotoURL]]" alt="[[userName]]" class="user-avatar" style="display: [[userPhotoDisplay]]" onerror="handleAvatarError" />
+        <img src="[[userPhotoURL]]" alt="[[userName]]" class="user-avatar" style="display: [[userPhotoDisplay]]" referrerpolicy="no-referrer" onerror="handleAvatarError" />
         <span class="user-avatar-placeholder" style="display: [[avatarDisplay]]">👤</span>
         <span class="user-name">[[userName]]</span>
       </div>
