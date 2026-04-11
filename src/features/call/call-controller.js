@@ -24,6 +24,7 @@ import { cleanupLocalStream } from '../../shared/media/state.js';
 import { setRemoteDescription } from './webrtc-utils.js';
 import { drainIceCandidateQueue } from './ice.js';
 import { resetLocalStreamInitFlag } from '../../shared/media/local-stream-init-state.js';
+import { publish, subscribe } from '../../shared/events/index.js';
 
 const CALL_CONTROLLER_EVENT_ALIASES = Object.freeze({
   memberJoined: 'evt:call:participant:joined',
@@ -55,33 +56,9 @@ export function createCallController() {
   return new CallController();
 }
 
-class SimpleEmitter {
-  constructor() {
-    this.listeners = new Map();
-  }
-  on(name, fn) {
-    if (!this.listeners.has(name)) this.listeners.set(name, new Set());
-    this.listeners.get(name).add(fn);
-  }
-  off(name, fn) {
-    if (!this.listeners.has(name)) return;
-    this.listeners.get(name).delete(fn);
-  }
-  emit(name, payload) {
-    if (!this.listeners.has(name)) return;
-    for (const fn of Array.from(this.listeners.get(name))) {
-      try {
-        fn(payload);
-      } catch (e) {
-        console.warn('CallController listener error', e);
-      }
-    }
-  }
-}
-
 class CallController {
   constructor() {
-    this.emitter = new SimpleEmitter();
+    this.controllerEventUnsubscribers = new Map();
     this.resetState();
   }
 
@@ -152,14 +129,40 @@ class CallController {
   }
 
   on(name, fn) {
-    this.emitter.on(normalizeCallControllerEventName(name), fn);
+    const eventName = normalizeCallControllerEventName(name);
+    if (!this.controllerEventUnsubscribers.has(eventName)) {
+      this.controllerEventUnsubscribers.set(eventName, new Map());
+    }
+
+    const eventHandlers = this.controllerEventUnsubscribers.get(eventName);
+    if (eventHandlers.has(fn)) {
+      return eventHandlers.get(fn);
+    }
+
+    const unsubscribe = subscribe(eventName, fn);
+    eventHandlers.set(fn, unsubscribe);
+    return unsubscribe;
   }
   off(name, fn) {
-    this.emitter.off(normalizeCallControllerEventName(name), fn);
+    const eventName = normalizeCallControllerEventName(name);
+    const eventHandlers = this.controllerEventUnsubscribers.get(eventName);
+    if (!eventHandlers) return;
+
+    const unsubscribe = eventHandlers.get(fn);
+    if (!unsubscribe) return;
+
+    try {
+      unsubscribe();
+    } finally {
+      eventHandlers.delete(fn);
+      if (eventHandlers.size === 0) {
+        this.controllerEventUnsubscribers.delete(eventName);
+      }
+    }
   }
 
   emit(name, payload) {
-    this.emitter.emit(normalizeCallControllerEventName(name), payload);
+    publish(normalizeCallControllerEventName(name), payload);
   }
 
   /**
