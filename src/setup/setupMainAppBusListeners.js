@@ -79,6 +79,7 @@ export function setupMainAppBusListeners() {
 
           return true;
         },
+        { signal: ac.signal },
       );
 
       handleCommand(
