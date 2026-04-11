@@ -1,4 +1,5 @@
 const loadedPhotoURLs = new Set();
+const maxCachedPhotoURLs = 100;
 
 /**
  * Create a new avatar element and apply styling.
@@ -32,17 +33,18 @@ export function renderAvatar(
   if (element.dataset.avatarState === stateKey) return;
 
   element.dataset.avatarState = stateKey;
-  element.textContent = '';
   const prevImg = element.querySelector(':scope > img');
-  if (prevImg) prevImg.remove();
 
   if (photoURL) {
-    const img = document.createElement('img');
+    // Reuse existing <img> so the previous frame keeps painting until the new
+    // src decodes — avoids a background flash during conversation switches.
+    const img = prevImg || document.createElement('img');
     img.alt = '';
     img.decoding = 'async';
     // Strip Referer — Google's lh3.googleusercontent.com 403s cross-origin
     // requests that carry a referrer header.
     img.referrerPolicy = 'no-referrer';
+    img.classList.remove('avatar-entry-animation');
     img.onerror = () => {
       element.dataset.avatarState = `letter:${name}`;
       img.remove();
@@ -56,15 +58,21 @@ export function renderAvatar(
       img.addEventListener(
         'load',
         () => {
+          if (loadedPhotoURLs.size >= maxCachedPhotoURLs) {
+            loadedPhotoURLs.clear();
+          }
           loadedPhotoURLs.add(photoURL);
           img.classList.add('avatar-entry-animation');
         },
         { once: true },
       );
     }
-    element.appendChild(img);
+    if (!img.parentNode) element.appendChild(img);
     return;
   }
+
+  if (prevImg) prevImg.remove();
+  element.textContent = '';
 
   if (pending) return;
 
