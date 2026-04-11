@@ -110,7 +110,7 @@ import {
   handleMediaPermissionError,
 } from './media/WIP-init-local-media.js';
 
-messagesUI?.setWatchFileHandlerFactory?.(createWatchFileHandler);
+messagesUI?.setWatchFileHandler?.(createWatchFileHandler());
 import {
   settleIncomingCallWaitForRoom,
   startListeningForSavedRooms,
