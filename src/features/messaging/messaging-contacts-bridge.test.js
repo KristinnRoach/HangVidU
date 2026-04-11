@@ -14,14 +14,14 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('../features/messaging/messaging-controller.js', () => ({
+vi.mock('./messaging-controller.js', () => ({
   messagingController: {
     getConversation: mocks.getConversation,
     on: mocks.on,
   },
 }));
 
-vi.mock('../features/contacts/index.js', () => ({
+vi.mock('../contacts/index.js', () => ({
   contactsService: {
     updateLastInteraction: mocks.updateLastInteraction,
   },
@@ -37,7 +37,7 @@ describe('setupMessagingContactsIntegration', () => {
 
   it('updates the matching contact when messaging events arrive', async () => {
     const { setupMessagingContactsIntegration } = await import(
-      './messaging-contacts-integration.js'
+      './messaging-contacts-bridge.js'
     );
     const teardown = setupMessagingContactsIntegration();
 
@@ -53,7 +53,7 @@ describe('setupMessagingContactsIntegration', () => {
 
   it('ignores non-1:1 conversations', async () => {
     const { setupMessagingContactsIntegration } = await import(
-      './messaging-contacts-integration.js'
+      './messaging-contacts-bridge.js'
     );
     const teardown = setupMessagingContactsIntegration();
 

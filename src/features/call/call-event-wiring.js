@@ -5,7 +5,6 @@ import { getPushNotifications } from '../push-notifications/index.js';
 import { cleanupRemoteStream } from '../../media/state.js';
 import { clearUrlParam } from '../../utils/url.js';
 import { onOutgoingCallAnswered } from './components/outgoing-call.js';
-import { promptAndRefreshContactSave } from '../../app/contact-save-flow.js';
 import { devDebug } from '../../utils/dev/dev-utils.js';
 import { dispatchCommand, publish } from '../../events/index.js';
 import { listenForIncomingOnRoom } from './room-listeners.js';

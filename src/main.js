@@ -91,7 +91,7 @@ import { copyToClipboard } from './components/modal/copyLinkModal.js';
 
 import { onCallDisconnected } from './components/ui/core/call-lifecycle-ui.js';
 import { t } from './i18n/index.js';
-import { setupMessagingContactsIntegration } from './app/messaging-contacts-integration.js';
+import { setupMessagingContactsIntegration } from './features/messaging/messaging-contacts-bridge.js';
 import { setupApp } from './setup/setupApp.js';
 import { setupInitPreflight } from './setup/setupInitPreflight.js';
 import { setupTopBarAndLocale } from './setup/setupTopBarAndLocale.js';
