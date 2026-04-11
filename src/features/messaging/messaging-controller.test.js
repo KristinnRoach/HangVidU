@@ -232,13 +232,16 @@ describe('MessagingController', () => {
     await vi.waitFor(() => {
       expect(spy).toHaveBeenCalledWith({
         conversationId: 'contactA_me',
-        participants: {},
+        participants: { contactA: null },
       });
     });
 
     expect(controller.getParticipantProfile('contactA_me', 'contactA')).toBe(
       null,
     );
+    expect(
+      controller.isParticipantFetched('contactA_me', 'contactA'),
+    ).toBe(true);
   });
 
   it('should prefer provided contactNickName over participant userName', async () => {

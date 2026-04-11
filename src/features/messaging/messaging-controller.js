@@ -220,12 +220,10 @@ export class MessagingController extends EventEmitter {
       });
 
       // Re-emit cached participants so UI can update after conversation switch
-      if (Object.keys(conversationState.participants).length > 0) {
-        this.emit('conversation:meta-updated', {
-          conversationId,
-          participants: { ...conversationState.participants },
-        });
-      }
+      this.emit('conversation:meta-updated', {
+        conversationId,
+        participants: { ...conversationState.participants },
+      });
 
       return;
     }
@@ -349,13 +347,30 @@ export class MessagingController extends EventEmitter {
     const state = this.conversations.get(conversationId);
     if (!state) return;
 
-    if (profile) {
-      state.participants[participantId] = profile;
-    }
+    // Always record the attempt — null means "fetched, no profile available".
+    // Lets callers distinguish "never fetched" (key absent) from "fetch resolved null".
+    state.participants[participantId] = profile || null;
     this.emit('conversation:meta-updated', {
       conversationId,
       participants: { ...state.participants },
     });
+  }
+
+  /**
+   * Returns true once a profile fetch has resolved (success or failure).
+   * Used to decide whether an avatar should render "pending" (blank) or
+   * fall back to a letter when no photoURL is available.
+   * @param {string} conversationId
+   * @param {string} participantId
+   * @returns {boolean}
+   */
+  isParticipantFetched(conversationId, participantId) {
+    const state = this.conversations.get(conversationId);
+    if (!state) return false;
+    return Object.prototype.hasOwnProperty.call(
+      state.participants,
+      participantId,
+    );
   }
 
   getSelectedConversationState() {

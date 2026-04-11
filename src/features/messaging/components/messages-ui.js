@@ -840,14 +840,14 @@ export function initMessagesUI() {
         messagingController.getConversationDisplayName(conversationId) || 'U';
       const photoURL =
         messagingController.getConversationPhotoURL(conversationId) || '';
-      // If the sender's profile isn't loaded yet, render blank —
-      // conversation:meta-updated will refresh all avatars once it arrives.
+      // If the sender's profile isn't fetched yet, render blank —
+      // conversation:meta-updated will refresh all avatars once it resolves.
+      // A failed fetch counts as fetched, so we fall back to the letter instead.
       const senderId = message.from;
       const pending =
         !photoURL &&
         !!senderId &&
-        messagingController.getParticipantProfile(conversationId, senderId) ===
-          null;
+        !messagingController.isParticipantFetched(conversationId, senderId);
 
       const avatarSpan = createAvatar({
         name: participantName,
@@ -1170,8 +1170,7 @@ export function initMessagesUI() {
     // Profile not yet fetched — render blank avatar to avoid letter-fallback flicker
     const photoPending =
       !!contactId &&
-      messagingController.getParticipantProfile(conversationId, contactId) ===
-        null;
+      !messagingController.isParticipantFetched(conversationId, contactId);
 
     if (messageTopBar) {
       messageTopBar.setContact({ name, photoURL, pending: photoPending });
