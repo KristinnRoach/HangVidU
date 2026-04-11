@@ -34,21 +34,25 @@ Use this `src/shared/events/` layer to define app semantics (`command` vs `event
 
 ## Naming Guidance
 
+- Canonical format (4-part): `<kind>:<domain>:<entity>:<action>`
+- `kind` is `cmd` or `evt`
+- Recommended regex: `^(cmd|evt):[a-z][a-z0-9-]*:[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$`
+- During migration, legacy names are aliased in `src/events/naming.js` (`LEGACY_EVENT_NAME_ALIASES`).
 - Command names: imperative verb phrases.
 - Event names: facts/outcomes (typically past tense).
 
 Examples:
 
-- Command: `messaging:conversation:select`
+- Command: `cmd:messaging:conversation:select`
 - Events:
-  - `messaging:conversation:selected`
-  - `messaging:conversation:unread-count:changed`
-  - `room:joinOrCreate:failed`
+  - `evt:messaging:conversation:selected`
+  - `evt:messaging:conversation:unread-count-changed`
+  - `evt:room:lifecycle:join-or-create-failed`
 
 ## Example (Contacts -> Messaging)
 
 ```js
-dispatchCommand('messaging:conversation:select', {
+dispatchCommand('cmd:messaging:conversation:select', {
   conversationId,
   remoteParticipantIds: [contactId],
   displayUI: true,
@@ -56,7 +60,7 @@ dispatchCommand('messaging:conversation:select', {
 ```
 
 ```js
-handleCommand('messaging:conversation:select', async (payload) => {
+handleCommand('cmd:messaging:conversation:select', async (payload) => {
   await messagingController.selectConversation(payload.conversationId, {
     remoteParticipantIds: payload.remoteParticipantIds,
     displayUI: payload.displayUI,
@@ -65,7 +69,7 @@ handleCommand('messaging:conversation:select', async (payload) => {
 ```
 
 ```js
-publish('messaging:conversation:unread-count:changed', {
+publish('evt:messaging:conversation:unread-count-changed', {
   conversationId,
   unreadCount,
   newlyReadMsgIds,
@@ -74,7 +78,7 @@ publish('messaging:conversation:unread-count:changed', {
 
 ```js
 subscribe(
-  'messaging:conversation:unread-count:changed',
+  'evt:messaging:conversation:unread-count-changed',
   ({ conversationId }) => {
     // update badge
   },

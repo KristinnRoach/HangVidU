@@ -32,7 +32,7 @@ async function processNextInvite(lobbyElement) {
   try {
     const notificationId = `invite-${fromUserId}`;
 
-    dispatchCommand('contacts:invite:notification:add', {
+    dispatchCommand('cmd:contacts:invite-notification:add', {
       notificationId,
       fromUserId,
       inviteData,
@@ -44,7 +44,7 @@ async function processNextInvite(lobbyElement) {
           showSuccessToast(`✅ ${inviteData.fromName} added to contacts!`);
 
           // Remove notification after successful accept
-          dispatchCommand('contacts:invite:notification:remove', {
+          dispatchCommand('cmd:contacts:invite-notification:remove', {
             notificationId,
           });
         } catch (e) {
@@ -62,7 +62,7 @@ async function processNextInvite(lobbyElement) {
           console.log('[INVITATIONS] Invite declined');
 
           // Remove notification after decline
-          dispatchCommand('contacts:invite:notification:remove', {
+          dispatchCommand('cmd:contacts:invite-notification:remove', {
             notificationId,
           });
         } catch (e) {

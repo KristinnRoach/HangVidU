@@ -143,9 +143,9 @@ export async function signOutUser() {
 
   try {
     // Disable notifications and unregister the current Web Push subscription - Fire and forget
-    dispatchCommand('push:disable', { reason: 'auth:signout' });
+    dispatchCommand('cmd:push:subscription:disable', { reason: 'auth:signout' });
 
-    await dispatchCommandAndAwait('user:presence:set-offline', {
+    await dispatchCommandAndAwait('cmd:user:presence:set-offline', {
       userId: auth.currentUser?.uid,
     });
     clearGISTokenCache();
@@ -178,7 +178,7 @@ export async function deleteAccount({ scrubMessages = true } = {}) {
   try {
     console.info('[AUTH] Starting account deletion');
 
-    await dispatchCommandAndAwait('user:presence:set-offline', {
+    await dispatchCommandAndAwait('cmd:user:presence:set-offline', {
       userId: user.uid,
     });
     clearGISTokenCache();

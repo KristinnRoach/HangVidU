@@ -60,7 +60,7 @@ const FileMessageSchema = z.object({
 const EventMessageSchema = z.object({
   messageId: z.string(),
   type: z.literal('event'),
-  eventType: z.enum(['call:unanswered']),
+  eventType: z.enum(['evt:call:session:unanswered']),
   from: z.string().min(1),
   sentAt: z.number(),
   read: z.boolean().default(false),
@@ -118,7 +118,7 @@ const RawFileMessageSchema = z.object({
 
 const RawEventMessageSchema = z.object({
   type: z.literal('event'),
-  eventType: z.enum(['call:unanswered']),
+  eventType: z.enum(['evt:call:session:unanswered']),
   from: z.string().min(1),
   sentAt: z.number(),
   read: z.boolean().default(false),

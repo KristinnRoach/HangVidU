@@ -68,7 +68,7 @@ describe('setupAuth', () => {
 
     const teardown = await setupAuth({ lobbyElement });
 
-    await mocks.handlers.get('auth:ready')({});
+    await mocks.handlers.get('evt:auth:session:ready')({});
 
     expect(mocks.renderContactsList).toHaveBeenCalledWith(lobbyElement);
 
@@ -87,7 +87,7 @@ describe('setupAuth', () => {
 
     const teardown = await setupAuth({ lobbyElement });
 
-    await mocks.handlers.get('auth:login')({
+    await mocks.handlers.get('evt:auth:session:login')({
       isInitialResolution: true,
     });
 
@@ -106,7 +106,7 @@ describe('setupAuth', () => {
 
     const teardown = await setupAuth({ lobbyElement });
 
-    await mocks.handlers.get('auth:logout')({});
+    await mocks.handlers.get('evt:auth:session:logout')({});
 
     expect(mocks.renderContactsList).toHaveBeenCalledWith(lobbyElement);
     expect(mocks.removeAllIncomingListeners).toHaveBeenCalled();

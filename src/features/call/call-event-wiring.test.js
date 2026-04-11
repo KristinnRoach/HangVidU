@@ -113,7 +113,7 @@ describe('setupCallControllerEventWiring', () => {
     );
   });
 
-  it('emits call:unanswered even when missed-call push delivery fails', async () => {
+  it('emits evt:call:session:unanswered even when missed-call push delivery fails', async () => {
     const { setupCallControllerEventWiring } =
       await import('./call-event-wiring.js');
 
@@ -129,7 +129,7 @@ describe('setupCallControllerEventWiring', () => {
       wasConnected: false,
     });
 
-    expect(mocks.events.publish).toHaveBeenCalledWith('call:unanswered', {
+    expect(mocks.events.publish).toHaveBeenCalledWith('evt:call:session:unanswered', {
       roomId: 'room-123',
       contactId: 'contact-456',
     });

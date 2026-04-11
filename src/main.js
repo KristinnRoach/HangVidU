@@ -574,7 +574,7 @@ async function handleServiceWorkerNavigation(path) {
         return false;
       }
 
-      await dispatchCommandAndAwait('messaging:conversation:select', {
+      await dispatchCommandAndAwait('cmd:messaging:conversation:select', {
         conversationId,
         remoteParticipantIds: contactId ? [contactId] : [],
         displayUI: true,
@@ -663,7 +663,7 @@ export async function autoInitMsgSessionIfNeeded() {
     // Pre select the conversation for the first contact
     const conversationId = firstContact.conversationId ?? null;
     if (!conversationId) return;
-    await dispatchCommandAndAwait('messaging:conversation:select', {
+    await dispatchCommandAndAwait('cmd:messaging:conversation:select', {
       remoteParticipantIds: [firstContact.contactId],
       conversationId,
       displayUI: false,

@@ -17,9 +17,9 @@
   - query: `getAllContacts`, `getAllContactsSorted`, `getContactByMostRecentInteraction`, `getContactByRoomId`
 
 - Published facts
-  - `room:id:created`
-  - `room:id:updated`
-  - `contact:deleted`
+  - `evt:room:id:created`
+  - `evt:room:id:updated`
+  - `evt:contacts:contact:deleted`
 
 - Storage boundary
   - both depend on `contacts/storage/*`

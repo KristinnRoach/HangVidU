@@ -1,4 +1,5 @@
 import { EventEmitter } from '../../lib/event-emitter/event-emitter.js';
+import { isCanonicalEventName, resolveEventName } from './naming.js';
 
 /**
  * AppBus — shared cross-module EventEmitter instance.
@@ -10,8 +11,35 @@ import { EventEmitter } from '../../lib/event-emitter/event-emitter.js';
  * Cleanup:   off(), removeAllListeners()
  */
 const appBus = new EventEmitter();
+const COMMAND_PREFIX = 'cmd:';
+const EVENT_PREFIX = 'evt:';
 
 // TODO(events): Isolate command listeners from event subscribers (e.g. namespaced topic or dedicated bus).
+
+function warnIfUnexpectedPrefix(kind, rawName, canonicalName) {
+  if (!isCanonicalEventName(canonicalName)) {
+    return;
+  }
+
+  const expectedPrefix = kind === 'command' ? COMMAND_PREFIX : EVENT_PREFIX;
+  if (!canonicalName.startsWith(expectedPrefix)) {
+    console.warn(
+      `[events] ${kind} "${rawName}" resolved to "${canonicalName}" with unexpected prefix (expected "${expectedPrefix}")`,
+    );
+  }
+}
+
+function normalizeCommandName(commandName) {
+  const canonicalName = resolveEventName(commandName);
+  warnIfUnexpectedPrefix('command', commandName, canonicalName);
+  return canonicalName;
+}
+
+function normalizeEventName(eventName) {
+  const canonicalName = resolveEventName(eventName);
+  warnIfUnexpectedPrefix('event', eventName, canonicalName);
+  return canonicalName;
+}
 
 function getCommandHandlerCount(commandName) {
   return appBus.listenerCount(commandName);
@@ -42,8 +70,9 @@ function assertExactlyOneCommandHandler(commandName) {
  * @param {Object} [payload={}] - Command data
  */
 const dispatchCommand = (commandName, payload = {}) => {
-  assertExactlyOneCommandHandler(commandName);
-  appBus.emit(commandName, payload);
+  const canonicalCommandName = normalizeCommandName(commandName);
+  assertExactlyOneCommandHandler(canonicalCommandName);
+  appBus.emit(canonicalCommandName, payload);
 };
 
 /**
@@ -60,9 +89,10 @@ const dispatchCommand = (commandName, payload = {}) => {
  * @returns {Promise<unknown>}
  */
 const dispatchCommandAndAwait = async (commandName, payload = {}) => {
-  assertExactlyOneCommandHandler(commandName);
+  const canonicalCommandName = normalizeCommandName(commandName);
+  assertExactlyOneCommandHandler(canonicalCommandName);
 
-  const settled = await appBus.emitAsync(commandName, payload, {
+  const settled = await appBus.emitAsync(canonicalCommandName, payload, {
     returnSettled: true,
   });
 
@@ -104,7 +134,7 @@ const dispatchCommandAndAwaitSequential = async (commands) => {
  * @param {Object} [options]
  */
 const handleCommand = (commandName, handler, options = {}) => {
-  return appBus.on(commandName, handler, options);
+  return appBus.on(normalizeCommandName(commandName), handler, options);
 };
 
 /**
@@ -115,7 +145,7 @@ const handleCommand = (commandName, handler, options = {}) => {
  * @param {Object} [payload={}] - Message data.
  */
 const publish = (eventName, payload = {}) => {
-  appBus.emit(eventName, payload);
+  appBus.emit(normalizeEventName(eventName), payload);
 };
 
 /**
@@ -127,7 +157,7 @@ const publish = (eventName, payload = {}) => {
  * @returns {Promise<void>}
  */
 const publishAndAwait = async (eventName, payload = {}) => {
-  await appBus.emitAsync(eventName, payload);
+  await appBus.emitAsync(normalizeEventName(eventName), payload);
 };
 
 /**
@@ -138,7 +168,11 @@ const publishAndAwait = async (eventName, payload = {}) => {
  * @returns {Promise<void>}
  */
 const publishAndAwaitSequential = async (events) => {
-  await appBus.emitAsyncSequential(events);
+  const normalizedEvents = events.map(([eventName, payload]) => [
+    normalizeEventName(eventName),
+    payload,
+  ]);
+  await appBus.emitAsyncSequential(normalizedEvents);
 };
 
 /**
@@ -149,7 +183,7 @@ const publishAndAwaitSequential = async (events) => {
  * @param {Object} [options]
  */
 const subscribe = (eventName, handler, options = {}) => {
-  return appBus.on(eventName, handler, options);
+  return appBus.on(normalizeEventName(eventName), handler, options);
 };
 
 export {

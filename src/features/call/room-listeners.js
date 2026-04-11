@@ -306,7 +306,7 @@ function decideIncomingNotificationStrategy({
 }
 
 async function handleIncomingCallAccepted({ roomId, joinedContactId }) {
-  publish('call:incoming:accepted', {
+  publish('evt:call:incoming:accepted', {
     roomId,
     contactId: joinedContactId,
   });
@@ -363,7 +363,7 @@ async function handleIncomingCallAccepted({ roomId, joinedContactId }) {
     console.warn('[CALL] Join failed after accepting incoming call', {
       roomId,
     });
-    publish('room:joinOrCreate:failed', { roomId });
+    publish('evt:room:lifecycle:join-or-create-failed', { roomId });
   }
 }
 
@@ -676,7 +676,7 @@ export function listenForIncomingOnRoom(roomId) {
           console.warn('Failed to signal rejection via RTDB:', e);
         }
 
-        // Caller writes the unanswered call message to chat via call:unanswered event.
+        // Caller writes the unanswered call message to chat via evt:call:session:unanswered event.
         // No message written from the callee side.
       }
     },

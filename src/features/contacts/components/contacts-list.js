@@ -183,7 +183,7 @@ function attachContactListeners(container, lobbyElement) {
         nameEl.getAttribute('data-conversation-id') || null;
 
       if (roomId || contactId) {
-        dispatchCommand('call:outgoing:initiate', {
+        dispatchCommand('cmd:call:outgoing:initiate', {
           contactId,
           contactNickName,
           conversationId,
@@ -207,7 +207,7 @@ function attachContactListeners(container, lobbyElement) {
             return;
           }
 
-          dispatchCommand('messaging:conversation:select', {
+          dispatchCommand('cmd:messaging:conversation:select', {
             conversationId,
             remoteParticipantIds: [contactId],
             displayUI: true,
@@ -317,7 +317,7 @@ function setupUnreadBadges(entries) {
     let debounceTimer = null;
 
     const offUnreadChanged = subscribe(
-      'messaging:conversation:unread-count:changed',
+      'evt:messaging:conversation:unread-count-changed',
       ({ conversationId: updatedConversationId, unreadCount }) => {
         if (updatedConversationId !== conversationId) {
           return;
@@ -336,14 +336,14 @@ function setupUnreadBadges(entries) {
       },
     );
 
-    dispatchCommand('messaging:conversation:unread-count:listen', {
+    dispatchCommand('cmd:messaging:conversation:unread-count-listen', {
       conversationId,
     });
 
     unreadListeners.set(contactId, () => {
       clearTimeout(debounceTimer);
       offUnreadChanged();
-      dispatchCommand('messaging:conversation:unread-count:unlisten', {
+      dispatchCommand('cmd:messaging:conversation:unread-count-unlisten', {
         conversationId,
       });
     });

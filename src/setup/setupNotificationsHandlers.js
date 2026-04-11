@@ -34,7 +34,7 @@ export function setupNotificationsHandlers() {
       const ac = new AbortController();
 
       handleCommand(
-        'contacts:invite:notification:add',
+        'cmd:contacts:invite-notification:add',
         ({ notificationId, fromUserId, inviteData, onAccept, onDecline }) => {
           if (!notificationId || !fromUserId || !inviteData) {
             return;
@@ -57,7 +57,7 @@ export function setupNotificationsHandlers() {
       );
 
       handleCommand(
-        'contacts:invite:notification:remove',
+        'cmd:contacts:invite-notification:remove',
         ({ notificationId }) => {
           if (!notificationId) {
             return;
@@ -68,7 +68,7 @@ export function setupNotificationsHandlers() {
       );
 
       handleCommand(
-        'contacts:referral:notification:add',
+        'cmd:contacts:referral-notification:add',
         ({ notificationId, referrerName, referrerPhotoURL, onSignIn }) => {
           if (!notificationId) {
             return;
@@ -86,7 +86,7 @@ export function setupNotificationsHandlers() {
       );
 
       handleCommand(
-        'contacts:referral:notification:remove',
+        'cmd:contacts:referral-notification:remove',
         ({ notificationId }) => {
           if (!notificationId) {
             return;

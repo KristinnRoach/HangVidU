@@ -695,7 +695,7 @@ export class MessagingController extends EventEmitter {
           onMessageRead(newlyReadMsgIds);
         }
 
-        publish('messaging:conversation:unread-count:changed', {
+        publish('evt:messaging:conversation:unread-count-changed', {
           conversationId,
           unreadCount,
           newlyReadMsgIds,

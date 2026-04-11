@@ -68,7 +68,7 @@ async function emitContactSaved(contact) {
     return;
   }
 
-  publish('room:id:created', { roomId });
+  publish('evt:room:id:created', { roomId });
 }
 
 /**
@@ -85,7 +85,7 @@ async function emitContactUpdated(contact, previousRoomId) {
     return;
   }
 
-  publish('room:id:updated', {
+  publish('evt:room:id:updated', {
     contactId: contact.contactId,
     contactNickName: contact.contactNickName,
     roomId,
@@ -94,7 +94,7 @@ async function emitContactUpdated(contact, previousRoomId) {
 }
 
 async function emitContactDeleted(contactId, roomId) {
-  publish('contact:deleted', {
+  publish('evt:contacts:contact:deleted', {
     contactId,
     roomId: roomId ?? null,
   });

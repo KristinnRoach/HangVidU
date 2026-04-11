@@ -73,19 +73,19 @@ export function setupAuth(options = {}) {
 
     try {
       subscribe(
-        'auth:ready',
+        'evt:auth:session:ready',
         async () => {
           try {
             await renderContactsList(lobbyElement);
           } catch (e) {
-            console.warn('[AUTH] Failed to handle auth:ready:', e);
+            console.warn('[AUTH] Failed to handle evt:auth:session:ready:', e);
           }
         },
         { signal: ac.signal },
       );
 
       subscribe(
-        'auth:logout',
+        'evt:auth:session:logout',
         async () => {
           try {
             devDebug('[AUTH] User logged out - cleaning up listeners');
@@ -93,14 +93,14 @@ export function setupAuth(options = {}) {
 
             await renderContactsList(lobbyElement);
           } catch (e) {
-            console.warn('[AUTH] Failed to handle auth:logout:', e);
+            console.warn('[AUTH] Failed to handle evt:auth:session:logout:', e);
           }
         },
         { signal: ac.signal },
       );
 
       subscribe(
-        'auth:login',
+        'evt:auth:session:login',
         async ({ isInitialResolution }) => {
           try {
             devDebug('[AUTH] User logged in - setting up listeners');
@@ -146,7 +146,7 @@ export function setupAuth(options = {}) {
               }
             }
           } catch (e) {
-            console.warn('[AUTH] Failed to handle auth:login:', e);
+            console.warn('[AUTH] Failed to handle evt:auth:session:login:', e);
           }
         },
         { signal: ac.signal },

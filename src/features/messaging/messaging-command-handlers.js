@@ -27,7 +27,7 @@ export function setupMessagingAppBusHandlers({ messagingController }) {
 
   unsubscribers.push(
     handleCommand(
-      'messaging:conversation:unread-count:listen',
+      'cmd:messaging:conversation:unread-count-listen',
       ({ conversationId }) => {
         if (!conversationId) return;
 
@@ -47,7 +47,7 @@ export function setupMessagingAppBusHandlers({ messagingController }) {
 
   unsubscribers.push(
     handleCommand(
-      'messaging:conversation:unread-count:unlisten',
+      'cmd:messaging:conversation:unread-count-unlisten',
       ({ conversationId }) => {
         const entry = unreadSubscriptions.get(conversationId);
         if (!entry) return;

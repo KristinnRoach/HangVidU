@@ -43,7 +43,7 @@ export function setupMainAppBusListeners() {
       const ac = new AbortController();
 
       handleCommand(
-        'user:presence:set-offline',
+        'cmd:user:presence:set-offline',
         async ({ userId } = {}) => {
           try {
             await setUserOffline(userId);
@@ -55,7 +55,7 @@ export function setupMainAppBusListeners() {
       );
 
       handleCommand(
-        'push:disable',
+        'cmd:push:subscription:disable',
         async () => {
           try {
             await getPushNotifications()?.disable?.();
@@ -67,7 +67,7 @@ export function setupMainAppBusListeners() {
       );
 
       handleCommand(
-        'contact:save:prompt',
+        'cmd:contacts:contact:save-prompt',
         async ({ contactUserId, roomId, lobbyElement }) => {
           const didSave = await showSaveContactPrompt(contactUserId, roomId);
           if (!didSave) {
@@ -83,7 +83,7 @@ export function setupMainAppBusListeners() {
       );
 
       handleCommand(
-        'contacts:get-by-room-id',
+        'cmd:contacts:contact:get-by-room-id',
         async ({ roomId } = {}) => {
           if (!roomId) {
             return null;
@@ -93,7 +93,7 @@ export function setupMainAppBusListeners() {
             return await contactsService.getContactByRoomId(roomId);
           } catch (e) {
             console.warn(
-              'Failed to resolve contact on contacts:get-by-room-id:',
+              'Failed to resolve contact on cmd:contacts:contact:get-by-room-id:',
               e,
             );
             return null;
@@ -103,7 +103,7 @@ export function setupMainAppBusListeners() {
       );
 
       handleCommand(
-        'messaging:conversation:select',
+        'cmd:messaging:conversation:select',
         async ({
           conversationId,
           remoteParticipantIds = [],
@@ -125,7 +125,7 @@ export function setupMainAppBusListeners() {
                 localContact = await contactsService.getContact(contactId);
               } catch (contactError) {
                 console.warn(
-                  'Failed to resolve local contact nickname on messaging:conversation:select:',
+                  'Failed to resolve local contact nickname on cmd:messaging:conversation:select:',
                   contactError,
                 );
               }
@@ -141,7 +141,7 @@ export function setupMainAppBusListeners() {
             });
           } catch (e) {
             console.warn(
-              'Failed to select conversation on messaging:conversation:select:',
+              'Failed to select conversation on cmd:messaging:conversation:select:',
               e,
             );
           }
@@ -150,7 +150,7 @@ export function setupMainAppBusListeners() {
       );
 
       handleCommand(
-        'call:outgoing:initiate',
+        'cmd:call:outgoing:initiate',
         async ({ contactId, contactNickName, conversationId, roomId }) => {
           const resolvedContactNickName =
             typeof contactNickName === 'string' && contactNickName.trim()
@@ -159,7 +159,7 @@ export function setupMainAppBusListeners() {
 
           isDev() &&
             tempWarn(
-              '[main.js] call:outgoing:initiate event received with data: ',
+              '[main.js] cmd:call:outgoing:initiate event received with data: ',
               {
                 contactId,
                 contactNickName: resolvedContactNickName,
@@ -183,14 +183,14 @@ export function setupMainAppBusListeners() {
                   })
                   .catch((e) => {
                     console.warn(
-                      'Failed to select conversation on call:outgoing:initiate',
+                      'Failed to select conversation on cmd:call:outgoing:initiate',
                       e,
                     );
                   });
               }
             } catch (e) {
               console.warn(
-                'Failed to select conversation on call:outgoing:initiate',
+                'Failed to select conversation on cmd:call:outgoing:initiate',
                 e,
               );
             }
@@ -202,7 +202,7 @@ export function setupMainAppBusListeners() {
       );
 
       subscribe(
-        'call:incoming:accepted',
+        'evt:call:incoming:accepted',
         async ({ contactId }) => {
           isDev() &&
             tempWarn(
@@ -240,13 +240,13 @@ export function setupMainAppBusListeners() {
               })
               .catch((e) => {
                 console.warn(
-                  'Failed to select conversation on call:incoming:accepted:',
+                  'Failed to select conversation on evt:call:incoming:accepted:',
                   e,
                 );
               });
           } catch (e) {
             console.warn(
-              '[APPBUS] Failed handling call:incoming:accepted conversation selection:',
+              '[APPBUS] Failed handling evt:call:incoming:accepted conversation selection:',
               e,
             );
           }
@@ -255,7 +255,7 @@ export function setupMainAppBusListeners() {
       );
 
       subscribe(
-        'call:unanswered',
+        'evt:call:session:unanswered',
         async ({ roomId, contactId }) => {
           isDev() &&
             tempWarn(
@@ -276,7 +276,7 @@ export function setupMainAppBusListeners() {
 
             await messagingController.sendEventMessage(
               conversationId,
-              'call:unanswered',
+              'evt:call:session:unanswered',
               { callId: roomId },
             );
           } catch (e) {
@@ -290,7 +290,7 @@ export function setupMainAppBusListeners() {
       );
 
       subscribe(
-        'room:id:created',
+        'evt:room:id:created',
         ({ roomId }) => {
           listenForIncomingOnRoom(roomId);
         },
@@ -298,7 +298,7 @@ export function setupMainAppBusListeners() {
       );
 
       subscribe(
-        'room:id:updated',
+        'evt:room:id:updated',
         ({ roomId, previousRoomId }) => {
           if (previousRoomId && previousRoomId !== roomId) {
             removeIncomingListenersForRoom(previousRoomId);
@@ -309,10 +309,10 @@ export function setupMainAppBusListeners() {
       );
 
       subscribe(
-        'room:joinOrCreate:failed',
+        'evt:room:lifecycle:join-or-create-failed',
         ({ roomId }) => {
           console.warn(
-            `[AppBus] room:joinOrCreate:failed 
+            `[AppBus] evt:room:lifecycle:join-or-create-failed 
       Failed to join or create room with id: ${roomId}`,
           );
           clearUrlParam();
@@ -322,7 +322,7 @@ export function setupMainAppBusListeners() {
       );
 
       subscribe(
-        'contact:deleted',
+        'evt:contacts:contact:deleted',
         ({ roomId }) => {
           if (roomId) {
             removeIncomingListenersForRoom(roomId);

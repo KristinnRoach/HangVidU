@@ -88,7 +88,7 @@ export function setupCallControllerEventWiring(options = {}) {
             const me = getUser();
             const callerName = me?.userName || 'Friend';
 
-            publish('call:unanswered', {
+            publish('evt:call:session:unanswered', {
               roomId,
               contactId: contact.contactId,
             });
@@ -147,7 +147,7 @@ export function setupCallControllerEventWiring(options = {}) {
             .handleHangUp(partnerId, roomId)
             .then((result) => {
               if (result.action === 'prompt-save') {
-                dispatchCommand('contact:save:prompt', {
+                dispatchCommand('cmd:contacts:contact:save-prompt', {
                   contactUserId: partnerId,
                   roomId,
                   lobbyElement,
