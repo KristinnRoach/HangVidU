@@ -1,4 +1,4 @@
-import { handleCommand } from '../../events/index.js';
+import { handleCommand } from '../../shared/events/index.js';
 
 let cleanupMessagingAppBusHandlers = null;
 

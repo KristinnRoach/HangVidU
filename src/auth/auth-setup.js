@@ -13,12 +13,12 @@ import {
   persistenceBackends,
   setFirebaseAuthPersistence,
 } from './adapters/firebase-auth-adapter.js';
-import { devDebug } from '../utils/dev/dev-utils.js';
+import { devDebug } from '../shared/utils/dev/dev-utils.js';
 import { initOneTap, showOneTapSignin } from './onetap.js';
 import { clearGISTokenCache } from './gis-tokens.js';
 import { setupAuthCommandHandlers } from './auth-command-handlers.js';
-import { getLocale, onLocaleChange } from '../i18n/index.js';
-import { uiState } from '../components/ui/core/ui-state.js';
+import { getLocale, onLocaleChange } from '../shared/i18n/index.js';
+import { uiState } from '../shared/components/ui/core/ui-state.js';
 
 // Sync Firebase Auth popup language with app locale
 auth.languageCode = getLocale();

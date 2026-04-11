@@ -3,19 +3,19 @@ import { getPushNotifications } from '../push-notifications/index.js';
 import CallController from './call-controller.js';
 import { contactsService } from '../contacts/index.js';
 import RoomService from './room.js';
-import { getDiagnosticLogger } from '../../utils/dev/diagnostic-logger.js';
-import { getDeterministicRoomId } from '../../utils/room-id.js';
+import { getDiagnosticLogger } from '../../shared/utils/dev/diagnostic-logger.js';
+import { getDeterministicRoomId } from '../../shared/utils/room-id.js';
 import { getElements } from '../../elements.js';
-import { getLocalStream } from '../../media/state.js';
-import { setupRemoteStream } from '../../media/stream.js';
+import { getLocalStream } from '../../shared/media/state.js';
+import { setupRemoteStream } from '../../shared/media/stream.js';
 import { setupWatchSync } from '../watch/watch-sync.js';
-import { showCopyLinkModal } from '../../components/modal/copyLinkModal.js';
-import { devDebug } from '../../utils/dev/dev-utils.js';
+import { showCopyLinkModal } from '../../shared/components/modal/copyLinkModal.js';
+import { devDebug } from '../../shared/utils/dev/dev-utils.js';
 import { listenForIncomingOnRoom } from './room-listeners.js';
 import {
   initLocalStreamAndMedia,
   handleMediaPermissionError,
-} from '../../media/WIP-init-local-media.js';
+} from '../../shared/media/WIP-init-local-media.js';
 
 // TODO: WIP decoupling considerations:
 // - Circular import: this file imports listenForIncomingOnRoom from room-listeners.js,
@@ -175,7 +175,7 @@ export async function callContact(contactId, contactNickName, roomId = null) {
 
   const callingUiModulesPromise = Promise.all([
     import('./components/outgoing-call.js'),
-    import('../../components/ui/core/call-lifecycle-ui.js'),
+    import('../../shared/components/ui/core/call-lifecycle-ui.js'),
   ]);
 
   listenForIncomingOnRoom(roomId);

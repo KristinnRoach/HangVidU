@@ -1,6 +1,6 @@
 // elements.js - Centralized DOM element exports
-import { devDebug } from './utils/dev/dev-utils.js';
-import { t } from './i18n/index.js';
+import { devDebug } from './shared/utils/dev/dev-utils.js';
+import { t } from './shared/i18n/index.js';
 
 const getElement = (id) => {
   const el = document.getElementById(id);

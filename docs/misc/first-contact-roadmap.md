@@ -99,7 +99,7 @@ Make initial contact frictionless by:
 
 **Files:**
 
-- `src/utils/room-id.js` - Room ID generation
+- `src/shared/utils/room-id.js` - Room ID generation
 - `src/contacts/components/contacts-list.js` - Integration
 
 **Function:**

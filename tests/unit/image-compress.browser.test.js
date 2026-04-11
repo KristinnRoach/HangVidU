@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { compressImage } from '../../src/media/image-compress.js';
+import { compressImage } from '../../src/shared/media/image-compress.js';
 
 /**
  * Create a test image File of the given format using a canvas.

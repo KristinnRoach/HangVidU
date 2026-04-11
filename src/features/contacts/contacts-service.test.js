@@ -22,11 +22,11 @@ vi.mock('../../auth/index.js', () => ({
   getLoggedInUserId: () => mocks.auth.ownerId,
 }));
 
-vi.mock('../../events/index.js', () => ({
+vi.mock('../../shared/events/index.js', () => ({
   publish: mocks.events.publish,
 }));
 
-vi.mock('../../storage/fb-rtdb/rtdb.js', () => ({
+vi.mock('../../shared/storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
 }));
 
@@ -35,7 +35,7 @@ vi.mock('./storage/index.js', () => ({
   createContactsLocalStore: vi.fn(() => mocks.store),
 }));
 
-vi.mock('../../utils/direct-conversation-id.js', () => ({
+vi.mock('../../shared/utils/direct-conversation-id.js', () => ({
   resolveDirectConversationId: (userA, userB) =>
     [userA, userB].sort().join('_'),
 }));

@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { compressImage } from '../../src/media/image-compress.js';
+import { compressImage } from '../../src/shared/media/image-compress.js';
 
 // Vite ?url imports — resolved to servable asset URLs at build time
-import img0164 from '../../src/media/test-images/IMG_0164.heic?url';
-import img0169 from '../../src/media/test-images/IMG_0169.heic?url';
-import img1339 from '../../src/media/test-images/IMG_1339.HEIC?url';
-import img1503 from '../../src/media/test-images/IMG_1503.heic?url';
-import img1632 from '../../src/media/test-images/IMG_1632.heic?url';
-import img7566 from '../../src/media/test-images/IMG_7566.HEIC?url';
+import img0164 from '../../src/shared/media/test-images/IMG_0164.heic?url';
+import img0169 from '../../src/shared/media/test-images/IMG_0169.heic?url';
+import img1339 from '../../src/shared/media/test-images/IMG_1339.HEIC?url';
+import img1503 from '../../src/shared/media/test-images/IMG_1503.heic?url';
+import img1632 from '../../src/shared/media/test-images/IMG_1632.heic?url';
+import img7566 from '../../src/shared/media/test-images/IMG_7566.HEIC?url';
 
 const heicFiles = [
   { name: 'IMG_0164.heic', url: img0164 },

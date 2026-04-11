@@ -4,8 +4,8 @@ import {
   acceptInvite,
   declineInvite,
 } from './invitations.js';
-import { dispatchCommand } from '../../events/index.js';
-import { showSuccessToast, showErrorToast } from '../../components/toast.js';
+import { dispatchCommand } from '../../shared/events/index.js';
+import { showSuccessToast, showErrorToast } from '../../shared/components/toast.js';
 import { renderContactsList } from './components/contacts-list.js';
 
 // TODO: WIP decoupling considerations:

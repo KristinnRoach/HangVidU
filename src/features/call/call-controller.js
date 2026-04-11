@@ -15,15 +15,15 @@ import {
   onDataChange,
   rtdb,
   removeRTDBListenersForRoom,
-} from '../../storage/fb-rtdb/rtdb.js';
-import { devDebug } from '../../utils/dev/dev-utils.js';
+} from '../../shared/storage/fb-rtdb/rtdb.js';
+import { devDebug } from '../../shared/utils/dev/dev-utils.js';
 import { FileTransferController } from '../file-transfer/file-transfer-controller.js';
 import { StreamingFileWriter } from '../file-transfer/streaming-file-writer.js';
 import { cleanupWatchSync } from '../watch/watch-sync.js';
-import { cleanupLocalStream } from '../../media/state.js';
+import { cleanupLocalStream } from '../../shared/media/state.js';
 import { setRemoteDescription } from './webrtc-utils.js';
 import { drainIceCandidateQueue } from './ice.js';
-import { resetLocalStreamInitFlag } from '../../media/local-stream-init-state.js';
+import { resetLocalStreamInitFlag } from '../../shared/media/local-stream-init-state.js';
 
 export function createCallController() {
   return new CallController();

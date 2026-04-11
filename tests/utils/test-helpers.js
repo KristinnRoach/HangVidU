@@ -5,7 +5,7 @@
 
 import { createFirebaseMock } from './firebase-mock.js';
 import { createCallFlowSimulator } from './call-simulator.js';
-import { getDiagnosticLogger } from '../../src/utils/diagnostic-logger.js';
+import { getDiagnosticLogger } from '../../src/shared/utils/diagnostic-logger.js';
 import {
   TEST_USERS,
   TEST_ROOMS,

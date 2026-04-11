@@ -5,7 +5,7 @@
 // ============================================================================
 
 import './initSentry.js';
-import { removeAllRTDBListeners } from './storage/fb-rtdb/rtdb.js';
+import { removeAllRTDBListeners } from './shared/storage/fb-rtdb/rtdb.js';
 
 import { initializeAuthUI } from './auth/index.js';
 
@@ -46,22 +46,22 @@ import {
   hasLocalStream,
   cleanupLocalStream,
   cleanupLocalVideoOnlyStream,
-} from './media/state.js';
+} from './shared/media/state.js';
 
-import { devDebug, isDev, setDevDebugEnabled } from './utils/dev/dev-utils.js';
+import { devDebug, isDev, setDevDebugEnabled } from './shared/utils/dev/dev-utils.js';
 
-import { getDiagnosticLogger } from './utils/dev/diagnostic-logger.js';
+import { getDiagnosticLogger } from './shared/utils/dev/diagnostic-logger.js';
 
-import { clearUrlParam } from './utils/url.js';
+import { clearUrlParam } from './shared/utils/url.js';
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
-import './components/ui/core/ui-state.js'; // Initialize UI state (sets body data-view attribute)
-import { bindCallUI } from './components/ui/core/bind-call-ui.js';
+import './shared/components/ui/core/ui-state.js'; // Initialize UI state (sets body data-view attribute)
+import { bindCallUI } from './shared/components/ui/core/bind-call-ui.js';
 
 import {
   onWatchModeEntered,
   onWatchModeExited,
-} from './components/ui/core/watch-lifecycle-ui.js';
+} from './shared/components/ui/core/watch-lifecycle-ui.js';
 
 import {
   destroyYouTubePlayer,
@@ -70,27 +70,27 @@ import {
   showYouTubePlayer,
   hideYouTubePlayer,
   setYouTubeReady,
-} from './media/youtube/youtube-player.js';
+} from './shared/media/youtube/youtube-player.js';
 
-import { cleanupMediaControls } from './media/media-controls.js';
+import { cleanupMediaControls } from './shared/media/media-controls.js';
 import {
   cleanupSearchUI,
   initializeSearchUI,
-} from './media/youtube/youtube-search.js';
+} from './shared/media/youtube/youtube-search.js';
 
 import {
   showElement,
   hideElement,
   exitPiP,
-} from './components/ui/utils/ui-utils.js';
+} from './shared/components/ui/utils/ui-utils.js';
 import { messagesUI } from './features/messaging/components/messages-ui.js';
 import { createWatchFileHandler } from './features/watch/watch-file-handler.js';
-import { copyToClipboard } from './components/modal/copyLinkModal.js';
+import { copyToClipboard } from './shared/components/modal/copyLinkModal.js';
 
 // ____ UI END ____
 
-import { onCallDisconnected } from './components/ui/core/call-lifecycle-ui.js';
-import { t } from './i18n/index.js';
+import { onCallDisconnected } from './shared/components/ui/core/call-lifecycle-ui.js';
+import { t } from './shared/i18n/index.js';
 import { setupMessagingContactsIntegration } from './setup/messaging-contacts-bridge.js';
 import { setupApp } from './setup/setupApp.js';
 import { setupInitPreflight } from './setup/setupInitPreflight.js';
@@ -108,15 +108,15 @@ import {
 import {
   initLocalStreamAndMedia,
   handleMediaPermissionError,
-} from './media/WIP-init-local-media.js';
+} from './shared/media/WIP-init-local-media.js';
 
 messagesUI?.setWatchFileHandler?.(createWatchFileHandler());
 import {
   settleIncomingCallWaitForRoom,
   startListeningForSavedRooms,
 } from './features/call/room-listeners.js';
-import { showErrorToast } from './components/toast.js';
-import { dispatchCommandAndAwait } from './events/index.js';
+import { showErrorToast } from './shared/components/toast.js';
+import { dispatchCommandAndAwait } from './shared/events/index.js';
 
 // Quick access to enable / disable dev debug logs
 setDevDebugEnabled(true);
@@ -220,13 +220,13 @@ async function init() {
   try {
     const isPWAEnabled = import.meta.env.VITE_ENABLE_PWA !== '0';
     if (isPWAEnabled) {
-      const { setupPWA } = await import('./pwa/PWA.js');
+      const { setupPWA } = await import('./shared/pwa/PWA.js');
       await setupPWA();
     }
 
     // Load PWA update testing utility in development
     if (import.meta.env.DEV) {
-      import('./pwa/test-update.js').catch(() => {
+      import('./shared/pwa/test-update.js').catch(() => {
         // Silently fail if module not available
       });
     }

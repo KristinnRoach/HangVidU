@@ -1,6 +1,6 @@
-import { t, onLocaleChange } from '../../../i18n/index.js';
-import { initIcons } from '../../../components/ui/icons.js';
-import { attachKeyboardViewportHandler } from '../../../components/ui/utils/attachKeyboardViewportHandler.js';
+import { t, onLocaleChange } from '../../../shared/i18n/index.js';
+import { initIcons } from '../../../shared/components/ui/icons.js';
+import { attachKeyboardViewportHandler } from '../../../shared/components/ui/utils/attachKeyboardViewportHandler.js';
 import { scrollMessagesToEnd } from './utils/scrollMessagesToEnd.js';
 
 /**

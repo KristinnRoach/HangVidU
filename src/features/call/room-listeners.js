@@ -1,24 +1,24 @@
 import { get, remove } from 'firebase/database';
-import { publish } from '../../events/index.js';
+import { publish } from '../../shared/events/index.js';
 import {
   removeRTDBListenersForRoom,
   getUserRecentCallsRef,
   getUserRecentCallRef,
-} from '../../storage/fb-rtdb/rtdb.js';
+} from '../../shared/storage/fb-rtdb/rtdb.js';
 import {
   getCurrentUserAsync,
   getLoggedInUserId,
   getUserId,
 } from '../../auth/index.js';
-import { getDiagnosticLogger } from '../../utils/dev/diagnostic-logger.js';
-import { devDebug } from '../../utils/dev/dev-utils.js';
+import { getDiagnosticLogger } from '../../shared/utils/dev/diagnostic-logger.js';
+import { devDebug } from '../../shared/utils/dev/dev-utils.js';
 import { contactsService } from '../contacts/index.js';
-import { getDeterministicRoomId } from '../../utils/room-id.js';
+import { getDeterministicRoomId } from '../../shared/utils/room-id.js';
 import RoomService from './room.js';
 import CallController from './call-controller.js';
 import { getPushNotifications } from '../push-notifications/index.js';
-import { ringtoneManager } from '../../media/audio/ringtone-manager.js';
-import { callIndicators } from '../../components/ui/utils/call-indicators.js';
+import { ringtoneManager } from '../../shared/media/audio/ringtone-manager.js';
+import { callIndicators } from '../../shared/components/ui/utils/call-indicators.js';
 import {
   showIncomingCallUI,
   resolveIncomingCallUI,
@@ -726,7 +726,7 @@ export function listenForIncomingOnRoom(roomId) {
 
         // Dismiss legacy confirmDialog (for testing/rollback)
         const { dismissActiveConfirmDialog } =
-          await import('../../components/base/confirm-dialog.js');
+          await import('../../shared/components/base/confirm-dialog.js');
         if (typeof dismissActiveConfirmDialog === 'function') {
           dismissActiveConfirmDialog();
         }

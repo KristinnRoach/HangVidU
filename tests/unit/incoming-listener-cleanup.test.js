@@ -8,15 +8,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock the RTDB module
-vi.mock('../../src/storage/fb-rtdb/rtdb.js', async () => {
-  const actual = await vi.importActual('../../src/storage/fb-rtdb/rtdb.js');
+vi.mock('../../src/shared/storage/fb-rtdb/rtdb.js', async () => {
+  const actual = await vi.importActual('../../src/shared/storage/fb-rtdb/rtdb.js');
   return {
     ...actual,
     removeRTDBListenersForRoom: vi.fn(),
   };
 });
 
-import { removeRTDBListenersForRoom } from '../../src/storage/fb-rtdb/rtdb.js';
+import { removeRTDBListenersForRoom } from '../../src/shared/storage/fb-rtdb/rtdb.js';
 
 describe('Incoming Listener Cleanup', () => {
   beforeEach(() => {

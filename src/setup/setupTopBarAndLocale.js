@@ -3,7 +3,7 @@ import {
   createNotificationsToggle,
   inAppNotificationManager,
 } from '../features/notifications/index.js';
-import { getLocale, setLocale, onLocaleChange } from '../i18n/index.js';
+import { getLocale, setLocale, onLocaleChange } from '../shared/i18n/index.js';
 
 let isReady = false;
 let initPromise = null;

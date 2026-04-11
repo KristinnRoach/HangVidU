@@ -1,8 +1,8 @@
-import { onClickOutside } from '../../components/ui/utils/clickOutside.js';
+import { onClickOutside } from '../../shared/components/ui/utils/clickOutside.js';
 import {
   createNotification,
   buildTemplate,
-} from '../../components/notification.js';
+} from '../../shared/components/notification.js';
 
 /**
  * Centralized in-app notification manager.

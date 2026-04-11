@@ -1,5 +1,5 @@
 import { set, remove, get } from 'firebase/database';
-import { getUserOutgoingCallRef } from '../../storage/fb-rtdb/rtdb.js';
+import { getUserOutgoingCallRef } from '../../shared/storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, getUserId } from '../../auth/index.js';
 
 export const CALL_TIMEOUT_MS = import.meta.env.DEV ? 15000 : 60000; // 60 seconds (in prod)

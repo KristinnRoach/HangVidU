@@ -32,7 +32,7 @@ vi.mock('../../src/auth/index.js', () => {
     ),
   };
 });
-vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => {
+vi.mock('../../src/shared/storage/fb-rtdb/rtdb.js', () => {
   return {
     rtdb: {},
     onDataChange: vi.fn(),

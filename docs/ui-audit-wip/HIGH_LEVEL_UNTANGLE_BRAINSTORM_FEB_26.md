@@ -178,7 +178,7 @@ let isProcessingInvite = false;
 These issues must be resolved first; they will break any state extraction attempt.
 
 1. **Extract `resetLocalStreamInitFlag()` from main.js**
-   - Create `src/media/local-stream-state.js`
+   - Create `src/shared/media/local-stream-state.js`
    - Move the flag and function there
    - Update call-controller import
    - Eliminates circular dependency ✓

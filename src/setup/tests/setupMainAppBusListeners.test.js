@@ -31,7 +31,7 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../events/index.js', () => ({
+vi.mock('../../shared/events/index.js', () => ({
   handleCommand: mocks.events.handleCommand,
   subscribe: mocks.events.subscribe,
 }));
@@ -44,7 +44,7 @@ vi.mock('../../features/contacts/index.js', () => ({
   contactsService: mocks.contactsService,
 }));
 
-vi.mock('../../utils/dev/dev-utils.js', () => ({
+vi.mock('../../shared/utils/dev/dev-utils.js', () => ({
   isDev: mocks.isDev,
   tempWarn: mocks.tempWarn,
 }));
@@ -62,11 +62,11 @@ vi.mock('../../features/presence/index.js', () => ({
   setUserOffline: mocks.setUserOffline,
 }));
 
-vi.mock('../../utils/url.js', () => ({
+vi.mock('../../shared/utils/url.js', () => ({
   clearUrlParam: vi.fn(),
 }));
 
-vi.mock('../../components/ui/core/call-lifecycle-ui.js', () => ({
+vi.mock('../../shared/components/ui/core/call-lifecycle-ui.js', () => ({
   onCallDisconnected: vi.fn(),
 }));
 

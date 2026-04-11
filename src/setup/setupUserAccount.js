@@ -1,5 +1,5 @@
 import { onAuthStateChanged } from '../auth/index.js';
-import { saveUserProfile } from '../storage/user/index.js';
+import { saveUserProfile } from '../shared/storage/user/index.js';
 
 let isReady = false;
 let initPromise = null;

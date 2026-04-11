@@ -3,9 +3,9 @@
 import {
   createNotification,
   buildTemplate,
-} from '../../../components/notification.js';
-import { escapeHtml } from '../../../components/ui/component-system/dom-utils.js';
-import { t, onLocaleChange } from '../../../i18n/index.js';
+} from '../../../shared/components/notification.js';
+import { escapeHtml } from '../../../shared/components/ui/component-system/dom-utils.js';
+import { t, onLocaleChange } from '../../../shared/i18n/index.js';
 
 /**
  * Create an invite notification component.

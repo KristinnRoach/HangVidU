@@ -8,7 +8,7 @@ vi.mock('firebase/database', () => ({
   remove: vi.fn(() => Promise.resolve()),
 }));
 
-vi.mock('../../storage/fb-rtdb/rtdb.js', () => ({
+vi.mock('../../shared/storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
 }));
 

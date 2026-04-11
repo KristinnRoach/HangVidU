@@ -149,4 +149,4 @@ Show referral stats in user profile:
 ### Existing Files (Reused):
 
 - `src/contacts/invitations.js` - Mutual contact-add system
-- `src/utils/room-id.js` - Deterministic room ID generation
+- `src/shared/utils/room-id.js` - Deterministic room ID generation

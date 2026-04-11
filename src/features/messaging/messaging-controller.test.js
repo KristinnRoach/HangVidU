@@ -13,15 +13,15 @@ vi.mock('../../auth/index.js', () => ({
 
 // Mock profile
 const mockGetUserProfile = vi.fn(() => Promise.resolve(null));
-vi.mock('../../storage/user/index.js', () => ({
+vi.mock('../../shared/storage/user/index.js', () => ({
   getUserProfile: (...args) => mockGetUserProfile(...args),
 }));
 
 // Mock file processing (no-op in tests)
-vi.mock('../../media/image-compress.js', () => ({
+vi.mock('../../shared/media/image-compress.js', () => ({
   compressImage: vi.fn(() => null),
 }));
-vi.mock('../../utils/file-to-base64.js', () => ({
+vi.mock('../../shared/utils/file-to-base64.js', () => ({
   fileToBase64: vi.fn(() => 'data:text/plain;base64,Y29udGVudA=='),
 }));
 

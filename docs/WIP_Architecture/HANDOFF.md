@@ -17,8 +17,8 @@ Completed in this branch:
 - added generic feature typing with captured `featureName` values in `eslint.config.js`
 - limited active feature enforcement to `contacts`
 - added [ADD_NEXT_FEATURE.md](./ADD_NEXT_FEATURE.md) with the exact template for turning on the next feature
-- moved `appBus` and `EventEmitter` from `src/app/` to `src/events/`
-- added `src/events/index.js` as the intended public cross-module event entrypoint
+- moved `appBus` and `EventEmitter` from `src/app/` to `src/shared/events/`
+- added `src/shared/events/index.js` as the intended public cross-module event entrypoint
 - standardized the basic event API around:
   - `dispatchCommand()`
   - `dispatchCommandAndAwait()`
@@ -28,8 +28,8 @@ Completed in this branch:
   - `subscribe()`
 - updated `contacts` -> `messaging` conversation selection to use `dispatchCommand('messaging:conversation:select', ...)`
 - updated unread-count flow so `messaging` owns unread subscriptions and publishes unread facts for `contacts`
-- removed `src/components/ui/dispatcher.js`
-- made `src/events/` explicitly part of shared code in `eslint.config.js`
+- removed `src/shared/components/ui/dispatcher.js`
+- made `src/shared/events/` explicitly part of shared code in `eslint.config.js`
 - moved legacy shared presence logic into `src/features/presence/` with abstracted RTDB layer, added to shared boundary patterns
 - removed `contacts-bus` and `setupContactsAppBusBridge`
 - changed `contacts-service` to publish cross-module facts directly:
@@ -37,7 +37,7 @@ Completed in this branch:
   - `room:id:updated`
   - `contact:deleted`
 - migrated remaining touched feature/app/auth listeners away from direct `appBus` usage where already adjusted in this branch
-- moved `resolveDirectConversationId` out of `messaging` into shared `src/utils/direct-conversation-id.js`
+- moved `resolveDirectConversationId` out of `messaging` into shared `src/shared/utils/direct-conversation-id.js`
 - removed direct `contacts -> messaging` import for conversation id helpers
 - added app-level notification projection in `src/setup/setupNotificationsHandlers.js`
 - changed `contacts` invite/referral flows to publish notification facts instead of importing notifications directly
@@ -48,9 +48,9 @@ Completed in this branch:
 - replaced `setupMainAuthAppBusListeners` with `setupAuth` in `src/setup/setupAuth.js`:
   - setup is setup-layer-owned and idempotent
   - auth listeners are registered before `initAuth()` runs
-- moved account profile storage under `src/storage/user/`
+- moved account profile storage under `src/shared/storage/user/`
 - added `src/setup/setupUserAccount.js` for auth-driven profile sync (listener wiring moved out of shared storage)
-- split `src/storage/user/` profile access into:
+- split `src/shared/storage/user/` profile access into:
   - `user-profile-store.js` (backend-agnostic store facade)
   - `user-profile-rtdb-adapter.js` (RTDB implementation)
 - added `src/setup/setupContacts.js` for contacts pre-init concerns (`captureReferral`)
@@ -64,14 +64,14 @@ Current intended standards:
 - an enforced feature module may import `shared`, itself, and intentional upstream modules like `auth`
 - an enforced feature module may not import `app` or sibling features unless explicitly allowed
 - feature typing is generic, but enforcement is added one feature at a time
-- `src/events/` is shared event infrastructure, not part of the `app` layer
-- `src/events/index.js` is the intended public cross-module event API
+- `src/shared/events/` is shared event infrastructure, not part of the `app` layer
+- `src/shared/events/index.js` is the intended public cross-module event API
 - `dispatchCommand()` asks another module to do work
 - `dispatchCommandAndAwait()` asks another module to do work and waits for completion
 - `publish()` announces a fact that already happened
 - `publishAndAwait()` should be reserved for cases where the publisher truly needs listener completion
 - cross-module state observation should prefer producer-owned published facts over direct sibling-feature imports
-- direct `appBus` imports outside `src/events/` should be treated as migration leftovers unless there is a strong reason
+- direct `appBus` imports outside `src/shared/events/` should be treated as migration leftovers unless there is a strong reason
 - app setup/init standards are tracked in [HANDOFF_SETUP_INIT.md](./HANDOFF_SETUP_INIT.md)
 
 Verified on this branch (April 6, 2026):
@@ -79,7 +79,7 @@ Verified on this branch (April 6, 2026):
 - temporary `shared -> feature` allowlist is active for: `call`, `messaging`, `watch`, `notifications`
 - `pnpm lint:boundaries` passes
 - `contacts -> messaging` boundary dependency is removed by moving the helper to shared utils
-- no direct `appBus` imports were found outside `src/events/` in runtime source files
+- no direct `appBus` imports were found outside `src/shared/events/` in runtime source files
 
 Next goal:
 
@@ -92,7 +92,7 @@ Next goal:
 - remove one remaining `contacts` sibling-feature dependency category at a time
 - use [ADD_NEXT_FEATURE.md](./ADD_NEXT_FEATURE.md) when turning on enforcement for another feature
 - keep `contacts` as the reference implementation for the rollout pattern
-- continue migrating remaining direct `appBus` usage onto `src/events/index.js`
+- continue migrating remaining direct `appBus` usage onto `src/shared/events/index.js`
 - continue setup/init migration based on [HANDOFF_SETUP_INIT.md](./HANDOFF_SETUP_INIT.md)
 
 Notes:
@@ -107,14 +107,14 @@ Notes:
   - `watch`
   - `notifications`
 - storage status:
-  - `src/storage/user/` is shared and auth-agnostic
+  - `src/shared/storage/user/` is shared and auth-agnostic
   - auth-driven profile persistence is now handled in setup composition via `setupUserAccount.js`
 - current `contacts` messaging status:
   - `contacts` no longer imports `messagingController`
   - `contacts` dispatches `messaging:conversation:select`
   - handling lives in setup composition
   - unread-count facts are published by `messaging`
-  - direct conversation id helper is now shared (`src/utils/direct-conversation-id.js`)
+  - direct conversation id helper is now shared (`src/shared/utils/direct-conversation-id.js`)
 - auth status:
   - auth commands are now wired through the shared `events` API
   - auth lifecycle facts are published from `auth-state` via shared events

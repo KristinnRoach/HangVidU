@@ -25,13 +25,13 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../events/index.js', () => ({
+vi.mock('../../shared/events/index.js', () => ({
   dispatchCommandAndAwait: mocks.events.dispatchCommandAndAwait,
   handleCommand: mocks.events.handleCommand,
   subscribe: mocks.events.subscribe,
 }));
 
-vi.mock('../../utils/dev/dev-utils.js', () => ({
+vi.mock('../../shared/utils/dev/dev-utils.js', () => ({
   tempWarn: mocks.tempWarn,
 }));
 

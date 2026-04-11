@@ -67,11 +67,11 @@ vi.mock('../push-notifications/index.js', () => ({
   getPushNotifications: vi.fn(() => mocks.pushController),
 }));
 
-vi.mock('../../media/state.js', () => ({
+vi.mock('../../shared/media/state.js', () => ({
   cleanupRemoteStream: mocks.cleanupRemoteStream,
 }));
 
-vi.mock('../../utils/url.js', () => ({
+vi.mock('../../shared/utils/url.js', () => ({
   clearUrlParam: mocks.clearUrlParam,
 }));
 
@@ -83,12 +83,12 @@ vi.mock('../../app/contact-save-flow.js', () => ({
   promptAndRefreshContactSave: mocks.promptAndRefreshContactSave,
 }));
 
-vi.mock('../../utils/dev/dev-utils.js', () => ({
+vi.mock('../../shared/utils/dev/dev-utils.js', () => ({
   devDebug: mocks.devDebug,
   isDev: vi.fn(() => false),
 }));
 
-vi.mock('../../events/index.js', () => ({
+vi.mock('../../shared/events/index.js', () => ({
   publish: mocks.events.publish,
   publishAndAwait: mocks.events.publishAndAwait,
   subscribe: mocks.events.subscribe,
