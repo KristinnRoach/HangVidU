@@ -50,14 +50,12 @@ if (requestedFeatures) {
 // - hotspot scan (all rules + all features): `BOUNDARIES_ENFORCE_ALL=1 pnpm lint:boundaries`
 // - single-rule drill-down examples:
 //   - `BOUNDARIES_AUTH=1 pnpm lint:boundaries`
-//   - `BOUNDARIES_APP=1 pnpm lint:boundaries`
 //   - `BOUNDARIES_SETUP=1 pnpm lint:boundaries`
 // - specific feature set: `BOUNDARIES_ENFORCED_FEATURES=contacts,messaging pnpm lint:boundaries`
 
 const ENABLE_RULE = {
   shared: envEnabled('BOUNDARIES_SHARED', true),
   auth: envEnabled('BOUNDARIES_AUTH', true),
-  app: envEnabled('BOUNDARIES_APP', ENFORCE_ALL),
   setup: envEnabled('BOUNDARIES_SETUP', ENFORCE_ALL),
 };
 
@@ -169,27 +167,6 @@ if (ENABLE_RULE.auth) {
   );
 }
 
-if (ENABLE_RULE.app) {
-  overrides.push(
-    dependencyRule(
-      ['src/app/*.js', 'src/app/**/*.js'],
-      [
-        {
-          from: { type: 'app' },
-          allow: {
-            to: [
-              { type: 'app' },
-              { type: 'auth' },
-              { type: 'feature' },
-              { type: 'shared' },
-            ],
-          },
-          message: 'App may only import from app, auth, feature, and shared.',
-        },
-      ],
-    ),
-  );
-}
 
 if (ENABLE_RULE.setup) {
   overrides.push(
@@ -201,14 +178,13 @@ if (ENABLE_RULE.setup) {
           allow: {
             to: [
               { type: 'setup' },
-              { type: 'app' },
               { type: 'auth' },
               { type: 'feature' },
               { type: 'shared' },
             ],
           },
           message:
-            'Setup may only import from setup, app, auth, feature, and shared.',
+            'Setup may only import from setup, auth, feature, and shared.',
         },
       ],
     ),
@@ -238,11 +214,6 @@ export default [
           type: 'auth',
           mode: 'full',
           pattern: ['src/auth/*.js', 'src/auth/**/*.js'],
-        },
-        {
-          type: 'app',
-          mode: 'full',
-          pattern: ['src/app/*.js', 'src/app/**/*.js'],
         },
         {
           type: 'setup',

@@ -5,9 +5,8 @@ import { getPushNotifications } from '../push-notifications/index.js';
 import { cleanupRemoteStream } from '../../media/state.js';
 import { clearUrlParam } from '../../utils/url.js';
 import { onOutgoingCallAnswered } from './components/outgoing-call.js';
-import { promptAndRefreshContactSave } from '../../app/contact-save-flow.js';
 import { devDebug } from '../../utils/dev/dev-utils.js';
-import { publish } from '../../events/index.js';
+import { dispatchCommand, publish } from '../../events/index.js';
 import { listenForIncomingOnRoom } from './room-listeners.js';
 
 // TODO: WIP decoupling considerations:
@@ -148,12 +147,12 @@ export function setupCallControllerEventWiring(options = {}) {
             .handleHangUp(partnerId, roomId)
             .then((result) => {
               if (result.action === 'prompt-save') {
-                promptAndRefreshContactSave(
-                  partnerId,
+                dispatchCommand('contact:save:prompt', {
+                  contactUserId: partnerId,
                   roomId,
                   lobbyElement,
-                ).catch((e) => {
-                  console.warn('Failed to show save contact prompt:', e);
+                }).catch((e) => {
+                  console.warn('Failed to save contact prompt:', e);
                 });
               }
             })
