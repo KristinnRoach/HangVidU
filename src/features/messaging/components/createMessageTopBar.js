@@ -23,9 +23,14 @@ export function createMessageTopBar() {
   const avatar = root.querySelector('.messages-topbar-avatar');
   const nameEl = root.querySelector('.messages-topbar-name');
 
-  const setContact = ({ name = '', photoURL = '' } = {}) => {
+  const setContact = ({ name = '', photoURL = '', pending = false } = {}) => {
     nameEl.textContent = name || t('shared.unknown');
-    renderAvatar(avatar, { name, photoURL, imageClass: 'has-image' });
+    renderAvatar(avatar, {
+      name,
+      photoURL,
+      pending,
+      imageClass: 'has-image',
+    });
   };
 
   const setBackHandler = (fn) => {

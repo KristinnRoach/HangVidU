@@ -6,6 +6,7 @@
  * @param {string} [options.photoURL] - Profile photo URL
  * @param {string} [options.customFallbackText] - Custom text to display instead of initial (e.g., 'Me')
  * @param {string} [options.imageClass='sender-avatar--image'] - Class to add when image is present
+ * @param {boolean} [options.pending=false] - Photo state unknown (not yet fetched); render blank instead of letter fallback to avoid flicker
  */
 export function renderAvatar(
   element,
@@ -14,25 +15,31 @@ export function renderAvatar(
     photoURL = '',
     customFallbackText = null,
     imageClass = 'sender-avatar--image',
+    pending = false,
   } = {},
 ) {
   if (!element) return;
-
-  // Determine fallback text: custom text, or first letter of name, or 'U'
-  const fallbackText =
-    customFallbackText || (name ? name[0].toUpperCase() : 'U');
 
   if (photoURL) {
     element.style.backgroundImage = `url("${photoURL}")`;
     element.style.backgroundSize = 'cover';
     element.style.backgroundPosition = 'center';
     element.classList.add(imageClass);
-    element.textContent = ''; // Hide text when showing image
-  } else {
-    element.style.backgroundImage = '';
-    element.style.backgroundSize = '';
-    element.style.backgroundPosition = '';
-    element.classList.remove(imageClass);
-    element.textContent = fallbackText;
+    element.textContent = '';
+    return;
   }
+
+  element.style.backgroundImage = '';
+  element.style.backgroundSize = '';
+  element.style.backgroundPosition = '';
+  element.classList.remove(imageClass);
+
+  if (pending) {
+    element.textContent = '';
+    return;
+  }
+
+  const fallbackText =
+    customFallbackText || (name ? name[0].toUpperCase() : 'U');
+  element.textContent = fallbackText;
 }
