@@ -115,14 +115,38 @@ else {
   }
 }
 
-// Initialize App Check if a provider was successfully determined
-if (appCheckProvider) {
+// ============================================================================
+// DEFERRED APP CHECK INITIALIZATION
+// ============================================================================
+// Initialize App Check after the main render to avoid blocking initial load
+// ReCaptcha Enterprise script will be loaded on-demand by Firebase's internal logic
+let appCheckInitialized = false;
+
+function initializeAppCheckDeferred() {
+  if (appCheckInitialized) return;
+  if (!appCheckProvider) return;
+
   try {
     initializeAppCheck(app, {
       provider: appCheckProvider,
-      isTokenAutoRefreshEnabled: true, // Recommended for a smooth user experience
+      isTokenAutoRefreshEnabled: true,
     });
+    appCheckInitialized = true;
   } catch (err) {
     console.error('[Firebase App Check] initializeAppCheck call failed:', err);
   }
 }
+
+// Schedule initialization after rendering is complete
+if (document.readyState === 'loading') {
+  document.addEventListener(
+    'DOMContentLoaded',
+    initializeAppCheckDeferred,
+    { once: true },
+  );
+} else {
+  // Page already loaded, schedule for next microtask
+  Promise.resolve().then(initializeAppCheckDeferred);
+}
+
+export { initializeAppCheckDeferred };
