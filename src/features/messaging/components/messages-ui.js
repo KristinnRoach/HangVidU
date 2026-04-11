@@ -1170,9 +1170,14 @@ export function initMessagesUI() {
       messagingController.getConversationDisplayName(conversationId) || '';
     const photoURL =
       messagingController.getConversationPhotoURL(conversationId) || '';
+    // Profile not yet fetched — render blank avatar to avoid letter-fallback flicker
+    const photoPending =
+      !!contactId &&
+      messagingController.getParticipantProfile(conversationId, contactId) ===
+        null;
 
     if (messageTopBar) {
-      messageTopBar.setContact({ name, photoURL });
+      messageTopBar.setContact({ name, photoURL, pending: photoPending });
     }
     refreshAttachButton();
 
