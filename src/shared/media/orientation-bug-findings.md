@@ -26,4 +26,4 @@ Mobile camera streams often **report orientation relative to the sensor**, not t
 
 ## Current code location
 
-- Mobile constraint simplification is implemented in [src/shared/media/constraints.js](src/shared/media/constraints.js).
+- Mobile constraint simplification is implemented in [src/shared/media/constraints.js](./constraints.js).
