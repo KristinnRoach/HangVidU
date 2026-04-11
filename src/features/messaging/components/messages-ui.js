@@ -1155,6 +1155,8 @@ export function initMessagesUI() {
    */
   function prepareConversation(conversationId, contactId) {
     if (!conversationId) return;
+    if (shownConversationId === conversationId) return;
+    shownConversationId = conversationId;
 
     if (markAsReadTimeout !== null) {
       clearTimeout(markAsReadTimeout);
@@ -1616,6 +1618,7 @@ export function initMessagesUI() {
   }
 
   let lastTimestamp = 0;
+  let shownConversationId = null;
   const TIMESTAMP_THRESHOLD = 5 * 60 * 1000; // 5 minutes
 
   /**
@@ -1672,6 +1675,9 @@ export function initMessagesUI() {
   messagingController.on(
     'conversation:closed',
     ({ conversationId }) => {
+      if (shownConversationId === conversationId) {
+        shownConversationId = null;
+      }
       clearMessages();
       refreshAttachButton();
     },
