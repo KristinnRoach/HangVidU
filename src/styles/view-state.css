@@ -14,7 +14,7 @@ body[data-view='lobby:user'] {
     }
 
     & #add-contact-btn {
-      display: none;
+      display: flex;
     }
   }
 
