@@ -28,18 +28,40 @@ export const getYTBox = () => {
 // YOUTUBE API INITIALIZATION
 // ============================================================================
 
+let ytApiLoadingPromise = null;
+
+// Dynamically load YouTube IFrame API if not already loaded
+export function ensureYouTubeAPILoaded() {
+  // Already loaded
+  if (window.YT && window.YT.Player) {
+    return Promise.resolve();
+  }
+
+  // Already loading, return existing promise
+  if (ytApiLoadingPromise) {
+    return ytApiLoadingPromise;
+  }
+
+  // Start loading
+  ytApiLoadingPromise = new Promise((resolve) => {
+    const script = document.createElement('script');
+    script.src = 'https://www.youtube.com/iframe_api';
+    script.async = true;
+
+    // Set up callback for when API is ready
+    window.onYouTubeIframeAPIReady = () => {
+      resolve();
+    };
+
+    document.body.appendChild(script);
+  });
+
+  return ytApiLoadingPromise;
+}
+
 // Wait for YouTube IFrame API to be ready
 export function waitForYouTubeAPI() {
-  return new Promise((resolve) => {
-    if (window.YT && window.YT.Player) {
-      resolve();
-    } else {
-      // YouTube API calls this when ready
-      window.onYouTubeIframeAPIReady = () => {
-        resolve();
-      };
-    }
-  });
+  return ensureYouTubeAPILoaded();
 }
 
 // ============================================================================

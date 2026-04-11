@@ -10,6 +10,7 @@ import {
   hideElement,
 } from '../../components/ui/utils/ui-utils.js';
 import { handleVideoSelection } from '../../features/watch/watch-sync.js';
+import { ensureYouTubeAPILoaded } from './youtube-player.js';
 
 // ===== ELEMENTS =====
 
@@ -75,6 +76,9 @@ export function toGoogleDriveDirectLink(url) {
 export async function initializeSearchUI() {
   if (isInitialized || _initializing) return false;
   _initializing = true;
+
+  // Load YouTube API lazily on demand
+  await ensureYouTubeAPILoaded();
 
   // Use robust access for dynamically loaded search elements
   const { initializeYouTubeElements } = await import('../../elements.js');
