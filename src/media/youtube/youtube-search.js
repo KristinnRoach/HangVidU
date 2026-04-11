@@ -78,9 +78,6 @@ export async function initializeSearchUI() {
   _initializing = true;
 
   try {
-    // Load YouTube API lazily on demand
-    await ensureYouTubeAPILoaded();
-
     // Use robust access for dynamically loaded search elements
     const { initializeYouTubeElements } = await import('../../elements.js');
     const elements = await initializeYouTubeElements();
@@ -94,6 +91,14 @@ export async function initializeSearchUI() {
       console.error('YouTube search elements not found in DOM');
       return false;
     }
+
+    // Warm up iframe API in the background, but do not block search UI wiring.
+    ensureYouTubeAPILoaded().catch((error) => {
+      console.warn(
+        'YouTube IFrame API preload failed; it will retry on video playback:',
+        error,
+      );
+    });
 
     const isDirectUrl = (str) => {
       return /^https?:\/\//i.test(str);

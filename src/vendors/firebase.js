@@ -137,16 +137,8 @@ function initializeAppCheckDeferred() {
   }
 }
 
-// Schedule initialization after rendering is complete
-if (document.readyState === 'loading') {
-  document.addEventListener(
-    'DOMContentLoaded',
-    initializeAppCheckDeferred,
-    { once: true },
-  );
-} else {
-  // Page already loaded, schedule for next microtask
-  Promise.resolve().then(initializeAppCheckDeferred);
-}
+// Defer by one microtask to avoid sync startup cost but initialize as early
+// as possible during app boot, minimizing race windows for first API calls.
+Promise.resolve().then(initializeAppCheckDeferred);
 
 export { initializeAppCheckDeferred };
