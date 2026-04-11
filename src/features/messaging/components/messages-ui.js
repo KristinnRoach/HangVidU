@@ -1671,9 +1671,6 @@ export function initMessagesUI() {
     ({ conversationId }) => {
       clearMessages();
       refreshAttachButton();
-      if (messageTopBar) {
-        messageTopBar.setContact({ name: '', photoURL: '' });
-      }
     },
     { signal: ac.signal },
   );

@@ -154,6 +154,9 @@
       height: 100%;
       object-fit: cover;
       border-radius: 50%;
+    }
+
+    & > img.avatar-entry-animation {
       animation: scale-in 220ms ease-out both;
     }
   }
@@ -437,7 +440,6 @@
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
-  animation: scale-in 220ms ease-out both;
 }
 
 /* Order rules: remote avatar on the left */

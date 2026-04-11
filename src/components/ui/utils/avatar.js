@@ -47,6 +47,15 @@ export function renderAvatar(
       element.textContent = name ? name[0].toUpperCase() : 'U';
     };
     img.src = photoURL;
+    // Only animate slow loads — cached images are .complete synchronously
+    // and should appear instantly without a fade-in.
+    if (!img.complete) {
+      img.addEventListener(
+        'load',
+        () => img.classList.add('avatar-entry-animation'),
+        { once: true },
+      );
+    }
     element.appendChild(img);
     return;
   }
