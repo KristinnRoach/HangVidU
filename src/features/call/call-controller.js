@@ -25,6 +25,32 @@ import { setRemoteDescription } from './webrtc-utils.js';
 import { drainIceCandidateQueue } from './ice.js';
 import { resetLocalStreamInitFlag } from '../../shared/media/local-stream-init-state.js';
 
+const CALL_CONTROLLER_EVENT_ALIASES = Object.freeze({
+  memberJoined: 'evt:call:participant:joined',
+  memberLeft: 'evt:call:participant:left',
+  cleanup: 'evt:call:session:cleanup',
+  fileTransportReady: 'evt:call:file-transport:ready',
+  created: 'evt:call:session:created',
+  answered: 'evt:call:session:answered',
+  hangup: 'evt:call:session:hangup',
+  callFailed: 'evt:call:session:failed',
+  remoteHangup: 'evt:call:session:remote-hangup',
+  error: 'evt:call:session:error',
+});
+
+const warnedLegacyCallControllerEvents = new Set();
+
+function normalizeCallControllerEventName(name) {
+  const canonical = CALL_CONTROLLER_EVENT_ALIASES[name] ?? name;
+  if (canonical !== name && !warnedLegacyCallControllerEvents.has(name)) {
+    warnedLegacyCallControllerEvents.add(name);
+    console.warn(
+      `[call-controller] Legacy event "${name}" -> "${canonical}"`,
+    );
+  }
+  return canonical;
+}
+
 export function createCallController() {
   return new CallController();
 }
@@ -126,10 +152,14 @@ class CallController {
   }
 
   on(name, fn) {
-    this.emitter.on(name, fn);
+    this.emitter.on(normalizeCallControllerEventName(name), fn);
   }
   off(name, fn) {
-    this.emitter.off(name, fn);
+    this.emitter.off(normalizeCallControllerEventName(name), fn);
+  }
+
+  emit(name, payload) {
+    this.emitter.emit(normalizeCallControllerEventName(name), payload);
   }
 
   /**
@@ -334,7 +364,7 @@ class CallController {
         this.setPartnerId(snapshot.key);
 
         // Emit memberJoined event
-        this.emitter.emit('memberJoined', {
+        this.emit('evt:call:participant:joined', {
           memberId: snapshot.key,
           roomId,
         });
@@ -366,7 +396,7 @@ class CallController {
     const onMemberLeftCallback = (snapshot) => {
       if (snapshot.key !== userId && this.pc?.connectionState === 'connected') {
         // Emit memberLeft event
-        this.emitter.emit('memberLeft', {
+        this.emit('evt:call:participant:left', {
           memberId: snapshot.key,
           roomId,
         });
@@ -442,7 +472,7 @@ class CallController {
       const result = await createCallFlow(options);
       if (!result || !result.success) {
         this.state = 'idle';
-        this.emitter.emit('error', { phase: 'createCall', detail: result });
+        this.emit('evt:call:session:error', { phase: 'createCall', detail: result });
         this.emitCallFailed('createCall', result);
         return result;
       }
@@ -506,7 +536,7 @@ class CallController {
       //   );
       // } catch (_) {}
 
-      this.emitter.emit('created', {
+      this.emit('evt:call:session:created', {
         roomId: this.roomId,
         roomLink: this.roomLink,
         role: this.role,
@@ -514,7 +544,7 @@ class CallController {
       return result;
     } catch (err) {
       this.state = 'idle';
-      this.emitter.emit('error', { phase: 'createCall', error: err });
+      this.emit('evt:call:session:error', { phase: 'createCall', error: err });
       this.emitCallFailed('createCall', err);
       throw err;
     }
@@ -541,7 +571,7 @@ class CallController {
       });
       if (!result || !result.success) {
         this.state = 'idle';
-        this.emitter.emit('error', { phase: 'answerCall', detail: result });
+        this.emit('evt:call:session:error', { phase: 'answerCall', detail: result });
         this.emitCallFailed('answerCall', result);
         return result;
       }
@@ -577,11 +607,11 @@ class CallController {
       this.setupMemberJoinedListener(this.roomId);
       this.setupMemberLeftListener(this.roomId);
 
-      this.emitter.emit('answered', { roomId: this.roomId, role: this.role });
+      this.emit('evt:call:session:answered', { roomId: this.roomId, role: this.role });
       return result;
     } catch (err) {
       this.state = 'idle';
-      this.emitter.emit('error', { phase: 'answerCall', error: err });
+      this.emit('evt:call:session:error', { phase: 'answerCall', error: err });
       this.emitCallFailed('answerCall', err);
       throw err;
     }
@@ -607,7 +637,7 @@ class CallController {
         this.fileTransferController = new FileTransferController({
           webrtc: { pc, dataChannel },
         });
-        this.emitter.emit('fileTransportReady', {
+        this.emit('evt:call:file-transport:ready', {
           controller: this.fileTransferController,
         });
         devDebug('[CallController] File transfer initialized');
@@ -644,9 +674,9 @@ class CallController {
       // leave and cleanup locally
       await this.cleanupCall({ reason });
 
-      this.emitter.emit('hangup', { roomId: this.roomId, reason });
+      this.emit('evt:call:session:hangup', { roomId: this.roomId, reason });
     } catch (e) {
-      this.emitter.emit('error', { phase: 'hangUp', error: e });
+      this.emit('evt:call:session:error', { phase: 'hangUp', error: e });
       throw e;
     } finally {
       this.isHangingUp = false;
@@ -675,7 +705,7 @@ class CallController {
    * @param {*} error - Error object or message
    */
   emitCallFailed(phase, error) {
-    this.emitter.emit('callFailed', {
+    this.emit('evt:call:session:failed', {
       phase,
       error: error?.message || error?.error || error || 'Unknown error',
     });
@@ -750,7 +780,7 @@ class CallController {
 
       // Emit remoteHangup event if cleanup was triggered by remote party
       if (this.isRemoteHangup(reason)) {
-        this.emitter.emit('remoteHangup', {
+        this.emit('evt:call:session:remote-hangup', {
           roomId: prevRoom,
           partnerId: prevPartnerId,
           reason,
@@ -773,7 +803,7 @@ class CallController {
 
       // Reset state
       this.resetState();
-      this.emitter.emit('cleanup', {
+      this.emit('evt:call:session:cleanup', {
         roomId: prevRoom,
         role: prevRole,
         wasConnected: prevWasConnected,
@@ -781,7 +811,7 @@ class CallController {
         reason,
       });
     } catch (e) {
-      this.emitter.emit('error', { phase: 'cleanupCall', error: e });
+      this.emit('evt:call:session:error', { phase: 'cleanupCall', error: e });
       throw e;
     } finally {
       this.isCleaningUp = false;

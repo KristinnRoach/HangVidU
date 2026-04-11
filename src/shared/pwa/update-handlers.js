@@ -86,13 +86,13 @@ function deferUpdate(updateSW) {
   });
 
   const onCallEnd = () => {
-    CallController.off('cleanup', onCallEnd);
+    CallController.off('evt:call:session:cleanup', onCallEnd);
     const sw = pendingUpdateSW;
     pendingUpdateSW = null;
     if (sw) attemptAutoUpdate(sw);
   };
 
-  CallController.on('cleanup', onCallEnd);
+  CallController.on('evt:call:session:cleanup', onCallEnd);
 }
 
 /**

@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => {
     },
     CallController: {
       on: vi.fn((eventName, handler) => {
-        if (eventName === 'cleanup') {
+        if (eventName === 'evt:call:session:cleanup') {
           cleanupHandler = handler;
         }
       }),
