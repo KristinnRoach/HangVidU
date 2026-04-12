@@ -20,7 +20,9 @@ export function onFileDrop(element, onDrop, options = {}) {
   let dragCounter = 0;
 
   function hasFiles(e) {
-    return [...e.dataTransfer.items].some((i) => i.kind === 'file');
+    const items = e && e.dataTransfer && e.dataTransfer.items;
+    if (!items || typeof items.length !== 'number') return false;
+    return Array.from(items).some((i) => i.kind === 'file');
   }
 
   function handleDragEnter(e) {
@@ -48,8 +50,8 @@ export function onFileDrop(element, onDrop, options = {}) {
     dragCounter = 0;
     element.removeAttribute('dragover');
 
-    const files = e.dataTransfer.files;
-    if (!files.length) return;
+    const files = e.dataTransfer && e.dataTransfer.files;
+    if (!files || !files.length) return;
 
     if (accept) {
       const dt = new DataTransfer();
