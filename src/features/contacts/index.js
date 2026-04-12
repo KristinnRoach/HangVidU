@@ -19,3 +19,8 @@ export { showSaveContactPrompt } from './components/save-contact-modal.js';
 export { showAddContactModal } from './components/add-contact-modal.js';
 
 export { hashEmail } from './user-discovery.js';
+export {
+  buildReferralLink,
+  buildMessengerInviteText,
+  shareMessengerInvite,
+} from './messenger-invite.js';

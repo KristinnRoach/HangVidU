@@ -14,9 +14,13 @@ import {
 } from '../../../auth/index.js';
 import { fetchGoogleContacts } from '../google-contacts.js';
 import { sendBulkEmailsViaGmail } from '../gmail-send.js';
+import { shareMessengerInvite } from '../messenger-invite.js';
 import { t } from '../../../shared/i18n/index.js';
 import { initIcons } from '../../../shared/components/ui/icons.js';
-import { showErrorToast, showSuccessToast } from '../../../shared/components/toast.js';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../shared/components/toast.js';
 
 // TODO: WIP decoupling considerations:
 // This modal mixes feature UI with auth/OAuth and external contact-import side effects.
@@ -40,14 +44,14 @@ export async function showAddContactModal() {
         <button type="button" class="platform-btn active" data-platform="google" title="${t('contact.import.google')}">
           <i data-lucide="mail"></i>
         </button>
+        <button type="button" class="platform-btn" data-platform="share" title="${t('contact.import.share')}">
+          <i data-lucide="share"></i>
+        </button>
         <button type="button" class="platform-btn" data-platform="facebook" title="${t('contact.import.facebook')}" disabled>
           <i data-lucide="monitor"></i>
         </button>
         <button type="button" class="platform-btn" data-platform="instagram" title="${t('contact.import.instagram')}" disabled>
           <i data-lucide="monitor"></i>
-        </button>
-        <button type="button" class="platform-btn" data-platform="tiktok" title="${t('contact.import.tiktok')}" disabled>
-          <i data-lucide="layout-grid"></i>
         </button>
       </div>
 
@@ -113,6 +117,8 @@ export async function showAddContactModal() {
         // Import contacts for selected platform
         if (platform === 'google') {
           await importGoogleContacts();
+        } else if (platform === 'share') {
+          await openGenericShare();
         }
         // Future: Add handlers for other platforms
       });
@@ -142,6 +148,57 @@ export async function showAddContactModal() {
         dialog,
       );
     });
+
+    async function openGenericShare() {
+      importStatus.textContent = t('contact.invite.share.opening');
+      importStatus.className = 'import-status loading';
+      try {
+        const currentUser = getUser();
+        const senderName = currentUser?.userName || t('shared.unknown');
+
+        const result = await shareMessengerInvite({
+          senderName,
+          userId: getLoggedInUserId(),
+        });
+
+        if (result.status === 'shared') {
+          showSuccessToast(t('contact.invite.share.shared'), {
+            containerEl: dialog,
+          });
+          importStatus.textContent = t('contact.invite.share.shared');
+          importStatus.className = 'import-status success';
+          return;
+        }
+
+        if (result.status === 'copied') {
+          showSuccessToast(t('contact.invite.share.copied'), {
+            containerEl: dialog,
+          });
+          importStatus.textContent = t('contact.invite.share.copied');
+          importStatus.className = 'import-status success';
+          return;
+        }
+
+        if (result.status === 'cancelled') {
+          importStatus.textContent = t('contact.invite.share.cancelled');
+          importStatus.className = 'import-status cancelled';
+          return;
+        }
+
+        showErrorToast(t('contact.invite.share.copy_failed'), {
+          containerEl: dialog,
+        });
+        importStatus.textContent = t('contact.invite.share.copy_failed');
+        importStatus.className = 'import-status error';
+      } catch (error) {
+        console.error('[ADD CONTACT] Messenger invite error:', error);
+        showErrorToast(t('contact.invite.share.copy_failed'), {
+          containerEl: dialog,
+        });
+        importStatus.textContent = t('contact.invite.share.copy_failed');
+        importStatus.className = 'import-status error';
+      }
+    }
 
     // Import Google Contacts function — must be called from a user click
     // so the browser allows the OAuth popup on mobile.
