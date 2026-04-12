@@ -47,12 +47,16 @@ export async function showAddContactModal() {
         <button type="button" class="platform-btn" data-platform="share" title="${t('contact.import.share')}">
           <i data-lucide="share"></i>
         </button>
+
+        <!-- Future platform buttons - disabled for now 
         <button type="button" class="platform-btn" data-platform="facebook" title="${t('contact.import.facebook')}" disabled>
           <i data-lucide="monitor"></i>
         </button>
         <button type="button" class="platform-btn" data-platform="instagram" title="${t('contact.import.instagram')}" disabled>
           <i data-lucide="monitor"></i>
         </button>
+        -->
+        
       </div>
 
       <div class="search-section">
