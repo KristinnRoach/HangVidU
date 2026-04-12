@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
 export const AUTH_COMMANDS = {
-  LOGIN_REQUESTED: 'auth:login-requested',
-  LOGOUT_REQUESTED: 'auth:logout-requested',
-  DELETE_ACCOUNT_REQUESTED: 'auth:delete-account-requested',
-  CLOUD_FUNCTION_CALL: 'auth:cloud-function:call',
+  LOGIN_REQUESTED: 'cmd:auth:session:login-requested',
+  LOGOUT_REQUESTED: 'cmd:auth:session:logout-requested',
+  DELETE_ACCOUNT_REQUESTED: 'cmd:auth:account:delete-requested',
+  CLOUD_FUNCTION_CALL: 'cmd:auth:cloud-function:call',
 };
 
 const AuthCommandSourceSchema = z.literal('auth-ui');

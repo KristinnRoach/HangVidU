@@ -105,7 +105,7 @@ describe('contacts component', () => {
     lobbyElement.querySelector('.contact-name')?.click();
 
     expect(mocks.dispatchCommand).not.toHaveBeenCalledWith(
-      'messaging:conversation:select',
+      'cmd:messaging:conversation:select',
       expect.anything(),
     );
     expect(warnSpy).toHaveBeenCalledWith(
@@ -142,14 +142,14 @@ describe('contacts component', () => {
     await renderContactsList(lobbyElement);
 
     expect(mocks.dispatchCommand).toHaveBeenCalledWith(
-      'messaging:conversation:unread-count:listen',
+      'cmd:messaging:conversation:unread-count-listen',
       {
         conversationId: 'contact-1_user-123',
       },
     );
 
     const unreadHandler = mocks.subscriptions.get(
-      'messaging:conversation:unread-count:changed',
+      'evt:messaging:conversation:unread-count-changed',
     );
 
     unreadHandler?.({

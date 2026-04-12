@@ -49,12 +49,12 @@ export function setState(next) {
 
   if (isStableStatus && !hasResolvedReady) {
     hasResolvedReady = true;
-    events.push(['auth:ready', { state: snap }]);
+    events.push(['evt:auth:session:ready', { state: snap }]);
   }
 
   if (!previousSnapshot.isLoggedIn && snap.isLoggedIn) {
     events.push([
-      'auth:login',
+      'evt:auth:session:login',
       {
         state: snap,
         previousState: previousSnapshot,
@@ -65,7 +65,7 @@ export function setState(next) {
 
   if (previousSnapshot.isLoggedIn && !snap.isLoggedIn) {
     events.push([
-      'auth:logout',
+      'evt:auth:session:logout',
       {
         state: snap,
         previousState: previousSnapshot,

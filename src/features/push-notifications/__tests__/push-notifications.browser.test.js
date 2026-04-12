@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../shared/events/index.js', () => ({
   dispatchCommandAndAwait: vi.fn(async (commandName, payload = {}) => {
-    if (commandName === 'auth:cloud-function:call') {
+    if (commandName === 'cmd:auth:cloud-function:call') {
       const response = await fetch(
         `https://example.com/${payload.functionName ?? ''}`,
         {
@@ -27,7 +27,7 @@ vi.mock('../../../shared/events/index.js', () => ({
       return { status: response.status, payload: body };
     }
 
-    if (commandName === 'contacts:get-by-room-id') {
+    if (commandName === 'cmd:contacts:contact:get-by-room-id') {
       return null;
     }
 

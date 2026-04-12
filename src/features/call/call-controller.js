@@ -24,38 +24,15 @@ import { cleanupLocalStream } from '../../shared/media/state.js';
 import { setRemoteDescription } from './webrtc-utils.js';
 import { drainIceCandidateQueue } from './ice.js';
 import { resetLocalStreamInitFlag } from '../../shared/media/local-stream-init-state.js';
+import { publish, subscribe } from '../../shared/events/index.js';
 
 export function createCallController() {
   return new CallController();
 }
 
-class SimpleEmitter {
-  constructor() {
-    this.listeners = new Map();
-  }
-  on(name, fn) {
-    if (!this.listeners.has(name)) this.listeners.set(name, new Set());
-    this.listeners.get(name).add(fn);
-  }
-  off(name, fn) {
-    if (!this.listeners.has(name)) return;
-    this.listeners.get(name).delete(fn);
-  }
-  emit(name, payload) {
-    if (!this.listeners.has(name)) return;
-    for (const fn of Array.from(this.listeners.get(name))) {
-      try {
-        fn(payload);
-      } catch (e) {
-        console.warn('CallController listener error', e);
-      }
-    }
-  }
-}
-
 class CallController {
   constructor() {
-    this.emitter = new SimpleEmitter();
+    this.controllerEventUnsubscribers = new Map();
     this.resetState();
   }
 
@@ -126,10 +103,40 @@ class CallController {
   }
 
   on(name, fn) {
-    this.emitter.on(name, fn);
+    const eventName = name;
+    if (!this.controllerEventUnsubscribers.has(eventName)) {
+      this.controllerEventUnsubscribers.set(eventName, new Map());
+    }
+
+    const eventHandlers = this.controllerEventUnsubscribers.get(eventName);
+    if (eventHandlers.has(fn)) {
+      return eventHandlers.get(fn);
+    }
+
+    const unsubscribe = subscribe(eventName, fn);
+    eventHandlers.set(fn, unsubscribe);
+    return unsubscribe;
   }
   off(name, fn) {
-    this.emitter.off(name, fn);
+    const eventName = name;
+    const eventHandlers = this.controllerEventUnsubscribers.get(eventName);
+    if (!eventHandlers) return;
+
+    const unsubscribe = eventHandlers.get(fn);
+    if (!unsubscribe) return;
+
+    try {
+      unsubscribe();
+    } finally {
+      eventHandlers.delete(fn);
+      if (eventHandlers.size === 0) {
+        this.controllerEventUnsubscribers.delete(eventName);
+      }
+    }
+  }
+
+  emit(name, payload) {
+    publish(name, payload);
   }
 
   /**
@@ -321,7 +328,7 @@ class CallController {
 
   /**
    * Setup member-joined listener for the call.
-   * Tracks listener for cleanup and emits memberJoined event.
+   * Tracks listener for cleanup and emits evt:call:participant:joined.
    * @param {string} roomId - Room ID to listen for member joins
    */
   setupMemberJoinedListener(roomId) {
@@ -333,8 +340,8 @@ class CallController {
         // Store partner ID when they join
         this.setPartnerId(snapshot.key);
 
-        // Emit memberJoined event
-        this.emitter.emit('memberJoined', {
+        // Emit evt:call:participant:joined
+        this.emit('evt:call:participant:joined', {
           memberId: snapshot.key,
           roomId,
         });
@@ -356,7 +363,7 @@ class CallController {
 
   /**
    * Setup member-left listener for the call.
-   * Tracks listener for cleanup and emits memberLeft event.
+   * Tracks listener for cleanup and emits evt:call:participant:left.
    * @param {string} roomId - Room ID to listen for member departures
    */
   setupMemberLeftListener(roomId) {
@@ -365,8 +372,8 @@ class CallController {
     const userId = getUserId();
     const onMemberLeftCallback = (snapshot) => {
       if (snapshot.key !== userId && this.pc?.connectionState === 'connected') {
-        // Emit memberLeft event
-        this.emitter.emit('memberLeft', {
+        // Emit evt:call:participant:left
+        this.emit('evt:call:participant:left', {
           memberId: snapshot.key,
           roomId,
         });
@@ -442,7 +449,7 @@ class CallController {
       const result = await createCallFlow(options);
       if (!result || !result.success) {
         this.state = 'idle';
-        this.emitter.emit('error', { phase: 'createCall', detail: result });
+        this.emit('evt:call:session:error', { phase: 'createCall', detail: result });
         this.emitCallFailed('createCall', result);
         return result;
       }
@@ -506,7 +513,7 @@ class CallController {
       //   );
       // } catch (_) {}
 
-      this.emitter.emit('created', {
+      this.emit('evt:call:session:created', {
         roomId: this.roomId,
         roomLink: this.roomLink,
         role: this.role,
@@ -514,7 +521,7 @@ class CallController {
       return result;
     } catch (err) {
       this.state = 'idle';
-      this.emitter.emit('error', { phase: 'createCall', error: err });
+      this.emit('evt:call:session:error', { phase: 'createCall', error: err });
       this.emitCallFailed('createCall', err);
       throw err;
     }
@@ -541,7 +548,7 @@ class CallController {
       });
       if (!result || !result.success) {
         this.state = 'idle';
-        this.emitter.emit('error', { phase: 'answerCall', detail: result });
+        this.emit('evt:call:session:error', { phase: 'answerCall', detail: result });
         this.emitCallFailed('answerCall', result);
         return result;
       }
@@ -577,19 +584,19 @@ class CallController {
       this.setupMemberJoinedListener(this.roomId);
       this.setupMemberLeftListener(this.roomId);
 
-      this.emitter.emit('answered', { roomId: this.roomId, role: this.role });
+      this.emit('evt:call:session:answered', { roomId: this.roomId, role: this.role });
       return result;
     } catch (err) {
       this.state = 'idle';
-      this.emitter.emit('error', { phase: 'answerCall', error: err });
+      this.emit('evt:call:session:error', { phase: 'answerCall', error: err });
       this.emitCallFailed('answerCall', err);
       throw err;
     }
   }
 
   /**
-   * Setup file transfer when DataChannel is ready
-   * Creates FileTransferController and emits fileTransportReady
+   * Setup file transfer when DataChannel is ready.
+   * Creates FileTransferController and emits evt:call:file-transport:ready.
    * @param {RTCPeerConnection} pc - The PeerConnection associated with the call
    * @param {RTCDataChannel} dataChannel - The WebRTC DataChannel
    * @private
@@ -607,7 +614,7 @@ class CallController {
         this.fileTransferController = new FileTransferController({
           webrtc: { pc, dataChannel },
         });
-        this.emitter.emit('fileTransportReady', {
+        this.emit('evt:call:file-transport:ready', {
           controller: this.fileTransferController,
         });
         devDebug('[CallController] File transfer initialized');
@@ -633,6 +640,7 @@ class CallController {
     this.isHangingUp = true;
 
     try {
+      const roomId = this.roomId;
       if (emitCancel && this.roomId) {
         try {
           await RoomService.cancelCall(this.roomId, getUserId(), reason);
@@ -644,9 +652,9 @@ class CallController {
       // leave and cleanup locally
       await this.cleanupCall({ reason });
 
-      this.emitter.emit('hangup', { roomId: this.roomId, reason });
+      this.emit('evt:call:session:hangup', { roomId, reason });
     } catch (e) {
-      this.emitter.emit('error', { phase: 'hangUp', error: e });
+      this.emit('evt:call:session:error', { phase: 'hangUp', error: e });
       throw e;
     } finally {
       this.isHangingUp = false;
@@ -670,12 +678,12 @@ class CallController {
   }
 
   /**
-   * Emit callFailed event with standardized payload
+   * Emit evt:call:session:failed with standardized payload.
    * @param {string} phase - Phase where failure occurred ('createCall' or 'answerCall')
    * @param {*} error - Error object or message
    */
   emitCallFailed(phase, error) {
-    this.emitter.emit('callFailed', {
+    this.emit('evt:call:session:failed', {
       phase,
       error: error?.message || error?.error || error || 'Unknown error',
     });
@@ -748,9 +756,9 @@ class CallController {
       // Reset initialization flag to allow stream recreation on next call.
       resetLocalStreamInitFlag();
 
-      // Emit remoteHangup event if cleanup was triggered by remote party
+      // Emit evt:call:session:remote-hangup when cleanup is remote-triggered
       if (this.isRemoteHangup(reason)) {
-        this.emitter.emit('remoteHangup', {
+        this.emit('evt:call:session:remote-hangup', {
           roomId: prevRoom,
           partnerId: prevPartnerId,
           reason,
@@ -773,7 +781,7 @@ class CallController {
 
       // Reset state
       this.resetState();
-      this.emitter.emit('cleanup', {
+      this.emit('evt:call:session:cleanup', {
         roomId: prevRoom,
         role: prevRole,
         wasConnected: prevWasConnected,
@@ -781,7 +789,7 @@ class CallController {
         reason,
       });
     } catch (e) {
-      this.emitter.emit('error', { phase: 'cleanupCall', error: e });
+      this.emit('evt:call:session:error', { phase: 'cleanupCall', error: e });
       throw e;
     } finally {
       this.isCleaningUp = false;

@@ -82,7 +82,7 @@ describe('contacts-service', () => {
       lastInteractionAt: expect.any(Number),
     });
 
-    expect(mocks.events.publish).toHaveBeenCalledWith('room:id:created', {
+    expect(mocks.events.publish).toHaveBeenCalledWith('evt:room:id:created', {
       roomId: 'room-1',
     });
   });
@@ -172,7 +172,7 @@ describe('contacts-service', () => {
       roomId: 'room-2',
     });
 
-    expect(mocks.events.publish).toHaveBeenCalledWith('room:id:updated', {
+    expect(mocks.events.publish).toHaveBeenCalledWith('evt:room:id:updated', {
       contactId: 'u1',
       contactNickName: 'Alice B',
       roomId: 'room-2',
@@ -211,7 +211,7 @@ describe('contacts-service', () => {
     const result = await service.deleteContact('u1');
 
     expect(result).toBe(true);
-    expect(mocks.events.publish).toHaveBeenCalledWith('contact:deleted', {
+    expect(mocks.events.publish).toHaveBeenCalledWith('evt:contacts:contact:deleted', {
       contactId: 'u1',
       roomId: 'room-1',
     });

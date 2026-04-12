@@ -173,7 +173,7 @@ export function initMessagesUI() {
           messagingController.getConversationDisplayName(conversationId) ||
           null;
 
-        dispatchCommand('call:outgoing:initiate', {
+        dispatchCommand('cmd:call:outgoing:initiate', {
           contactId,
           contactNickName,
           conversationId,
@@ -181,7 +181,7 @@ export function initMessagesUI() {
         });
       } catch (err) {
         console.warn(
-          'Failed to emit call:outgoing:initiate in temp msg-ui code',
+          'Failed to emit cmd:call:outgoing:initiate in temp msg-ui code',
           err,
         );
       }
@@ -764,7 +764,7 @@ export function initMessagesUI() {
           messagingController.getConversationDisplayName(conversationId) ||
           null;
 
-        dispatchCommand('call:outgoing:initiate', {
+        dispatchCommand('cmd:call:outgoing:initiate', {
           contactId,
           contactNickName,
           conversationId,

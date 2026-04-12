@@ -82,7 +82,7 @@ describe('setupMainAppBusListeners', () => {
       await import('../setupMainAppBusListeners.js');
 
     await setupMainAppBusListeners();
-    const handler = mocks.handlers.get('call:outgoing:initiate');
+    const handler = mocks.handlers.get('cmd:call:outgoing:initiate');
 
     handler?.({
       contactId: null,
@@ -105,7 +105,7 @@ describe('setupMainAppBusListeners', () => {
       await import('../setupMainAppBusListeners.js');
 
     await setupMainAppBusListeners();
-    const handler = mocks.handlers.get('messaging:conversation:select');
+    const handler = mocks.handlers.get('cmd:messaging:conversation:select');
 
     await handler?.({
       conversationId: 'conv-123',
@@ -129,7 +129,7 @@ describe('setupMainAppBusListeners', () => {
       await import('../setupMainAppBusListeners.js');
 
     await setupMainAppBusListeners();
-    const handler = mocks.handlers.get('messaging:conversation:select');
+    const handler = mocks.handlers.get('cmd:messaging:conversation:select');
 
     await handler?.({
       conversationId: 'conv-123',
@@ -156,7 +156,7 @@ describe('setupMainAppBusListeners', () => {
       await import('../setupMainAppBusListeners.js');
 
     await setupMainAppBusListeners();
-    const handler = mocks.handlers.get('call:outgoing:initiate');
+    const handler = mocks.handlers.get('cmd:call:outgoing:initiate');
 
     await handler?.({
       contactId: 'contact-1',
@@ -180,7 +180,7 @@ describe('setupMainAppBusListeners', () => {
       await import('../setupMainAppBusListeners.js');
 
     await setupMainAppBusListeners();
-    const handler = mocks.handlers.get('room:id:updated');
+    const handler = mocks.handlers.get('evt:room:id:updated');
 
     handler?.({
       roomId: 'room-new',
@@ -198,7 +198,7 @@ describe('setupMainAppBusListeners', () => {
       await import('../setupMainAppBusListeners.js');
 
     await setupMainAppBusListeners();
-    const handler = mocks.handlers.get('user:presence:set-offline');
+    const handler = mocks.handlers.get('cmd:user:presence:set-offline');
 
     await handler?.();
 

@@ -45,9 +45,12 @@ import { listenForIncomingOnRoom } from './room-listeners.js';
 export function setupCallControllerEventWiring(options = {}) {
   const { lobbyElement } = options;
 
-  // Business logic for memberJoined (UI handled in bind-call-ui.js)
-  CallController.on('memberJoined', ({ memberId, roomId }) => {
-    console.debug('CallController memberJoined event', { memberId, roomId });
+  // Business logic for evt:call:participant:joined (UI handled in bind-call-ui.js)
+  CallController.on('evt:call:participant:joined', ({ memberId, roomId }) => {
+    console.debug('CallController evt:call:participant:joined', {
+      memberId,
+      roomId,
+    });
 
     CallController.setPartnerId(memberId);
 
@@ -57,15 +60,15 @@ export function setupCallControllerEventWiring(options = {}) {
     );
   });
 
-  // Subscribe to CallController memberLeft event - handles partner leaving
-  CallController.on('memberLeft', ({ memberId }) => {
-    devDebug('CallController memberLeft event', { memberId });
+  // Subscribe to evt:call:participant:left - handles partner leaving
+  CallController.on('evt:call:participant:left', ({ memberId }) => {
+    devDebug('CallController evt:call:participant:left', { memberId });
     console.info('Partner has left the call');
   });
 
-  // Business logic for cleanup (UI handled in bind-call-ui.js)
+  // Business logic for evt:call:session:cleanup (UI handled in bind-call-ui.js)
   CallController.on(
-    'cleanup',
+    'evt:call:session:cleanup',
     async ({ roomId, partnerId, reason, role, wasConnected }) => {
       devDebug('CallController cleanup event', {
         roomId,
@@ -88,7 +91,7 @@ export function setupCallControllerEventWiring(options = {}) {
             const me = getUser();
             const callerName = me?.userName || 'Friend';
 
-            publish('call:unanswered', {
+            publish('evt:call:session:unanswered', {
               roomId,
               contactId: contact.contactId,
             });
@@ -147,7 +150,7 @@ export function setupCallControllerEventWiring(options = {}) {
             .handleHangUp(partnerId, roomId)
             .then((result) => {
               if (result.action === 'prompt-save') {
-                dispatchCommand('contact:save:prompt', {
+                dispatchCommand('cmd:contacts:contact:save-prompt', {
                   contactUserId: partnerId,
                   roomId,
                   lobbyElement,

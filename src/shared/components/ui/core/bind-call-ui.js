@@ -6,16 +6,16 @@ import { messagesUI } from '../../../../features/messaging/components/messages-u
 
 /** Wires UI-only handlers to CallController. Business logic handlers are in main.js. */
 export function bindCallUI(CallController) {
-  CallController.on('memberJoined', () => {
+  CallController.on('evt:call:participant:joined', () => {
     onCallConnected();
     messagesUI.closeMessages();
   });
 
-  CallController.on('fileTransportReady', ({ controller }) => {
+  CallController.on('evt:call:file-transport:ready', ({ controller }) => {
     messagesUI.setFileTransferController(controller);
   });
 
-  CallController.on('cleanup', () => {
+  CallController.on('evt:call:session:cleanup', () => {
     hideOutgoingCallingUI();
     messagesUI.setFileTransferController(null);
     messagesUI.reset();

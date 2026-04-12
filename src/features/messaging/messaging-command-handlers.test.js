@@ -55,10 +55,10 @@ describe('setupMessagingAppBusHandlers', () => {
     });
 
     const listenHandler = mocks.handlers.get(
-      'messaging:conversation:unread-count:listen',
+      'cmd:messaging:conversation:unread-count-listen',
     );
     const unlistenHandler = mocks.handlers.get(
-      'messaging:conversation:unread-count:unlisten',
+      'cmd:messaging:conversation:unread-count-unlisten',
     );
 
     listenHandler?.({ conversationId: 'conv-123' });

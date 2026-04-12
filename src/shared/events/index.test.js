@@ -17,7 +17,10 @@ import {
 
 let testId = 0;
 function uniqueName(label) {
-  return `test:${label}:${++testId}`;
+  return `cmd:test:${label}:n${++testId}`;
+}
+function uniqueEventName(label) {
+  return `evt:test:${label}:n${++testId}`;
 }
 
 describe('src/shared/events/index.js', () => {
@@ -218,7 +221,7 @@ describe('src/shared/events/index.js', () => {
 
   describe('publish() + subscribe()', () => {
     it('delivers payload to a subscriber', () => {
-      const name = uniqueName('pub-basic');
+      const name = uniqueEventName('pub-basic');
       const ac = new AbortController();
       const handler = vi.fn();
       subscribe(name, handler, { signal: ac.signal });
@@ -228,7 +231,7 @@ describe('src/shared/events/index.js', () => {
     });
 
     it('uses empty object as default payload', () => {
-      const name = uniqueName('pub-default');
+      const name = uniqueEventName('pub-default');
       const ac = new AbortController();
       const handler = vi.fn();
       subscribe(name, handler, { signal: ac.signal });
@@ -238,12 +241,18 @@ describe('src/shared/events/index.js', () => {
     });
 
     it('returns unsubscribe from subscribe()', () => {
-      const name = uniqueName('sub-unsub');
+      const name = uniqueEventName('sub-unsub');
       const handler = vi.fn();
       const unsub = subscribe(name, handler);
       unsub();
       publish(name, {});
       expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('rejects command names when publishing', () => {
+      expect(() => publish(uniqueName('invalid-publish'))).toThrow(
+        'Invalid event name',
+      );
     });
   });
 
@@ -251,7 +260,7 @@ describe('src/shared/events/index.js', () => {
 
   describe('publishAndAwait()', () => {
     it('awaits async subscriber', async () => {
-      const name = uniqueName('pub-await');
+      const name = uniqueEventName('pub-await');
       const ac = new AbortController();
       let done = false;
       subscribe(name, async () => { await new Promise((res) => setTimeout(res, 5)); done = true; }, { signal: ac.signal });
@@ -261,7 +270,7 @@ describe('src/shared/events/index.js', () => {
     });
 
     it('uses empty object as default payload', async () => {
-      const name = uniqueName('pub-await-default');
+      const name = uniqueEventName('pub-await-default');
       const ac = new AbortController();
       const handler = vi.fn().mockResolvedValue(undefined);
       subscribe(name, handler, { signal: ac.signal });
@@ -275,8 +284,8 @@ describe('src/shared/events/index.js', () => {
 
   describe('publishAndAwaitSequential()', () => {
     it('notifies subscribers for each event in order', async () => {
-      const name1 = uniqueName('seq-evt-1');
-      const name2 = uniqueName('seq-evt-2');
+      const name1 = uniqueEventName('seq-evt-1');
+      const name2 = uniqueEventName('seq-evt-2');
       const ac = new AbortController();
       const order = [];
       subscribe(name1, async () => { order.push('evt1'); }, { signal: ac.signal });
@@ -287,8 +296,8 @@ describe('src/shared/events/index.js', () => {
     });
 
     it('awaits first event subscribers before processing second event', async () => {
-      const name1 = uniqueName('seq-evt-order-1');
-      const name2 = uniqueName('seq-evt-order-2');
+      const name1 = uniqueEventName('seq-evt-order-1');
+      const name2 = uniqueEventName('seq-evt-order-2');
       const ac = new AbortController();
       const log = [];
       subscribe(
@@ -303,8 +312,8 @@ describe('src/shared/events/index.js', () => {
     });
 
     it('passes payloads to each subscriber', async () => {
-      const name1 = uniqueName('seq-evt-payload-1');
-      const name2 = uniqueName('seq-evt-payload-2');
+      const name1 = uniqueEventName('seq-evt-payload-1');
+      const name2 = uniqueEventName('seq-evt-payload-2');
       const ac = new AbortController();
       const handler1 = vi.fn();
       const handler2 = vi.fn();
@@ -324,14 +333,14 @@ describe('src/shared/events/index.js', () => {
     });
 
     it('resolves with undefined when no subscribers for event', async () => {
-      const name = uniqueName('seq-evt-no-sub');
+      const name = uniqueEventName('seq-evt-no-sub');
       await expect(
         publishAndAwaitSequential([[name, {}]]),
       ).resolves.toBeUndefined();
     });
 
     it('multiple subscribers for same event all receive the payload', async () => {
-      const name = uniqueName('seq-multi-sub');
+      const name = uniqueEventName('seq-multi-sub');
       const ac = new AbortController();
       const sub1 = vi.fn();
       const sub2 = vi.fn();
@@ -341,6 +350,12 @@ describe('src/shared/events/index.js', () => {
       expect(sub1).toHaveBeenCalledWith({ msg: 'hi' });
       expect(sub2).toHaveBeenCalledWith({ msg: 'hi' });
       ac.abort();
+    });
+
+    it('rejects event names when dispatching a command', () => {
+      expect(() => dispatchCommand(uniqueEventName('invalid-dispatch'))).toThrow(
+        'Invalid command name',
+      );
     });
   });
 });

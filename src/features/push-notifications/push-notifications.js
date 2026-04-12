@@ -3,7 +3,7 @@
 import { dispatchCommandAndAwait } from '../../shared/events/index.js';
 
 const PERMISSION_REQUEST_TIMEOUT_MS = 8000;
-const AUTH_CLOUD_FUNCTION_COMMAND = 'auth:cloud-function:call';
+const AUTH_CLOUD_FUNCTION_COMMAND = 'cmd:auth:cloud-function:call';
 
 async function callCloudFunction(functionName, body) {
   return dispatchCommandAndAwait(AUTH_CLOUD_FUNCTION_COMMAND, {
@@ -525,7 +525,7 @@ export class PushNotifications {
 
     if (!callerName) {
       try {
-        const contact = await dispatchCommandAndAwait('contacts:get-by-room-id', {
+        const contact = await dispatchCommandAndAwait('cmd:contacts:contact:get-by-room-id', {
           roomId,
         });
         callerLabel = contact?.contactNickName || callerId || 'Unknown caller';

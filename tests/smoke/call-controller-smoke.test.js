@@ -103,7 +103,7 @@ describe('CallController Smoke Tests', () => {
       createCallFlow.mockResolvedValueOnce(mockResult);
 
       const createdListener = vi.fn();
-      CallController.on('created', createdListener);
+      CallController.on('evt:call:session:created', createdListener);
 
       const result = await CallController.createCall({ localStream: {} });
 
@@ -127,7 +127,7 @@ describe('CallController Smoke Tests', () => {
       answerCallFlow.mockResolvedValueOnce(mockResult);
 
       const answeredListener = vi.fn();
-      CallController.on('answered', answeredListener);
+      CallController.on('evt:call:session:answered', answeredListener);
 
       const result = await CallController.answerCall({ roomId: 'room-456' });
 
@@ -150,8 +150,8 @@ describe('CallController Smoke Tests', () => {
 
       const hangupListener = vi.fn();
       const cleanupListener = vi.fn();
-      CallController.on('hangup', hangupListener);
-      CallController.on('cleanup', cleanupListener);
+      CallController.on('evt:call:session:hangup', hangupListener);
+      CallController.on('evt:call:session:cleanup', cleanupListener);
 
       await CallController.hangUp({ emitCancel: true, reason: 'user_hung_up' });
 
@@ -172,7 +172,7 @@ describe('CallController Smoke Tests', () => {
       RoomService.leaveRoom.mockResolvedValueOnce();
 
       const cleanupListener = vi.fn();
-      CallController.on('cleanup', cleanupListener);
+      CallController.on('evt:call:session:cleanup', cleanupListener);
 
       await CallController.cleanupCall({ reason: 'remote_hangup' });
 
