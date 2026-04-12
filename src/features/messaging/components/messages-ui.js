@@ -27,6 +27,7 @@ import { createMessageBox } from './createMessageBox.js';
 import { createMessageTopBar } from './createMessageTopBar.js';
 import { devDebug } from '../../../shared/utils/dev/dev-utils.js';
 import { onTapGesture } from '../../../shared/components/ui/utils/detectDoubleClick.js';
+import { onFileDrop } from '../../../shared/components/ui/utils/onFileDrop.js';
 import { isSafeDownloadUrl } from '../../../shared/utils/security/validate-url.js';
 import { dispatchCommand } from '../../../shared/events/index.js';
 import { createImagePreviewNode } from './file-preview-renderer.js';
@@ -289,6 +290,12 @@ export function initMessagesUI() {
       setSendLabelText(originalText);
       fileInput.value = '';
     }
+  });
+
+  // Enable drag-and-drop file sending on the messages area
+  const cleanupFileDrop = onFileDrop(messagesBox, (files) => {
+    fileInput.files = files;
+    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
   });
 
   // Position the messages box relative to toggle
@@ -1575,6 +1582,7 @@ export function initMessagesUI() {
     }
 
     detachRepositionHandlers();
+    cleanupFileDrop();
     // Remove document click/escape listeners created by onClickOutside
     if (typeof removeMessagesBoxClickOutside === 'function') {
       try {
