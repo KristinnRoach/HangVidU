@@ -28,7 +28,7 @@ export function createMessageBox() {
         <textarea id="messages-input" placeholder="" rows="1"></textarea>
 
         <div class="message-attachments">
-          <input type="file" id="file-input" style="display: none" />
+          <input type="file" id="file-input" multiple style="display: none" />
           <button type="button" id="attach-file-btn" title="">
             <i data-lucide="paperclip" aria-hidden="true"></i>
           </button>

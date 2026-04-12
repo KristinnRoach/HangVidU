@@ -214,11 +214,8 @@ export function initMessagesUI() {
     fileInput.click();
   });
 
-  // Handle file selection for sending
-  fileInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
+  // Send a single file through the appropriate channel
+  async function sendFile(file) {
     const originalText = getSendLabelText();
     const sendLabelStartMs = performance.now();
     setSendLabelText(t('message.sending'));
@@ -288,14 +285,20 @@ export function initMessagesUI() {
       });
     } finally {
       setSendLabelText(originalText);
-      fileInput.value = '';
     }
+  }
+
+  // Handle file selection for sending (supports multiple files)
+  fileInput.addEventListener('change', async (e) => {
+    const files = [...e.target.files];
+    if (!files.length) return;
+    for (const file of files) await sendFile(file);
+    fileInput.value = '';
   });
 
   // Enable drag-and-drop file sending on the messages area
-  const cleanupFileDrop = onFileDrop(messagesBox, (files) => {
-    fileInput.files = files;
-    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+  const cleanupFileDrop = onFileDrop(messagesBox, async (files) => {
+    for (const file of files) await sendFile(file);
   });
 
   // Position the messages box relative to toggle
