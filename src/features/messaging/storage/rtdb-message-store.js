@@ -10,7 +10,7 @@
 
 import { MessageStore } from './message-store.js';
 import { parseMessage } from '../schema.js';
-import { resolveDirectConversationId } from '../../../utils/direct-conversation-id.js';
+import { resolveDirectConversationId } from '../../../shared/utils/direct-conversation-id.js';
 import {
   ref,
   set,
@@ -24,7 +24,7 @@ import {
   off,
   serverTimestamp,
 } from 'firebase/database';
-import { rtdb } from '../../../storage/fb-rtdb/rtdb.js';
+import { rtdb } from '../../../shared/storage/fb-rtdb/rtdb.js';
 import { getUserId } from '../../../auth/index.js';
 
 const MAX_MESSAGES = 100;

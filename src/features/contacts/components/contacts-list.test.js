@@ -18,7 +18,7 @@ vi.mock('firebase/database', () => ({
   off: mocks.off,
 }));
 
-vi.mock('../../../storage/fb-rtdb/rtdb.js', () => ({
+vi.mock('../../../shared/storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
 }));
 
@@ -26,7 +26,7 @@ vi.mock('../../../auth/index.js', () => ({
   getLoggedInUserId: vi.fn(() => 'user-123'),
 }));
 
-vi.mock('../../../components/base/confirm-dialog.js', () => ({
+vi.mock('../../../shared/components/base/confirm-dialog.js', () => ({
   default: vi.fn(),
 }));
 
@@ -34,25 +34,25 @@ vi.mock('./edit-contact-modal.js', () => ({
   default: vi.fn(),
 }));
 
-vi.mock('../../../components/ui/utils/ui-utils.js', () => ({
+vi.mock('../../../shared/components/ui/utils/ui-utils.js', () => ({
   hideElement: mocks.hideElement,
   showElement: mocks.showElement,
 }));
 
-vi.mock('../../../i18n/index.js', () => ({
+vi.mock('../../../shared/i18n/index.js', () => ({
   t: vi.fn((key) => key),
   onLocaleChange: mocks.onLocaleChange,
 }));
 
-vi.mock('../../../components/ui/component-system/dom-utils.js', () => ({
+vi.mock('../../../shared/components/ui/component-system/dom-utils.js', () => ({
   escapeHtml: vi.fn((value) => String(value)),
 }));
 
-vi.mock('../../../components/ui/icons.js', () => ({
+vi.mock('../../../shared/components/ui/icons.js', () => ({
   initIcons: mocks.initIcons,
 }));
 
-vi.mock('../../../events/index.js', () => ({
+vi.mock('../../../shared/events/index.js', () => ({
   dispatchCommand: mocks.dispatchCommand,
   subscribe: vi.fn((eventName, handler) => {
     mocks.subscriptions.set(eventName, handler);

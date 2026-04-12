@@ -1,5 +1,5 @@
 import { get, ref } from 'firebase/database';
-import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
+import { rtdb } from '../../shared/storage/fb-rtdb/rtdb.js';
 import { CALL_TIMEOUT_MS } from './WIP-CallState-rtdb.js';
 
 /**

@@ -6,11 +6,11 @@ import {
   clearOutgoingCallState,
   // isOutgoingCallFresh,
 } from '../WIP-CallState-rtdb.js';
-import { devDebug } from '../../../utils/dev/dev-utils.js';
-import { getDiagnosticLogger } from '../../../utils/dev/diagnostic-logger.js';
+import { devDebug } from '../../../shared/utils/dev/dev-utils.js';
+import { getDiagnosticLogger } from '../../../shared/utils/dev/diagnostic-logger.js';
 import RoomService from '../room.js';
-import { ringtoneManager } from '../../../media/audio/ringtone-manager.js';
-import { t } from '../../../i18n/index.js';
+import { ringtoneManager } from '../../../shared/media/audio/ringtone-manager.js';
+import { t } from '../../../shared/i18n/index.js';
 import { getUserId } from '../../../auth/index.js';
 
 let activeCallingUI = null;

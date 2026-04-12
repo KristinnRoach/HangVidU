@@ -3,9 +3,9 @@
 import {
   createNotification,
   buildTemplate,
-} from '../../../components/notification.js';
+} from '../../../shared/components/notification.js';
 import { inAppNotificationManager } from '../in-app-notification-manager.js';
-import { t, onLocaleChange } from '../../../i18n/index.js';
+import { t, onLocaleChange } from '../../../shared/i18n/index.js';
 
 const NOTIFICATION_ID = 'push-unsupported';
 

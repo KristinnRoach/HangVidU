@@ -1,6 +1,6 @@
-import { subscribe } from '../events/index.js';
+import { subscribe } from '../shared/events/index.js';
 import { initAuth } from '../auth/index.js';
-import { devDebug } from '../utils/dev/dev-utils.js';
+import { devDebug } from '../shared/utils/dev/dev-utils.js';
 import {
   removeAllIncomingListeners,
   startListeningForSavedRooms,

@@ -1,18 +1,18 @@
 import { ref, onValue, off } from 'firebase/database';
-import { rtdb } from '../../../storage/fb-rtdb/rtdb.js';
+import { rtdb } from '../../../shared/storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId } from '../../../auth/index.js';
-import confirmDialog from '../../../components/base/confirm-dialog.js';
+import confirmDialog from '../../../shared/components/base/confirm-dialog.js';
 import editContactModal from './edit-contact-modal.js';
 import {
   hideElement,
   showElement,
-} from '../../../components/ui/utils/ui-utils.js';
-import { t, onLocaleChange } from '../../../i18n/index.js';
-import { escapeHtml } from '../../../components/ui/component-system/dom-utils.js';
-import { initIcons } from '../../../components/ui/icons.js';
-import { dispatchCommand, subscribe } from '../../../events/index.js';
+} from '../../../shared/components/ui/utils/ui-utils.js';
+import { t, onLocaleChange } from '../../../shared/i18n/index.js';
+import { escapeHtml } from '../../../shared/components/ui/component-system/dom-utils.js';
+import { initIcons } from '../../../shared/components/ui/icons.js';
+import { dispatchCommand, subscribe } from '../../../shared/events/index.js';
 import { contactsService } from '../contacts-service.js';
-import { devDebug } from '../../../utils/dev/dev-utils.js';
+import { devDebug } from '../../../shared/utils/dev/dev-utils.js';
 
 // TODO: WIP decoupling considerations:
 // This feature-owned UI still composes shared UI primitives and messaging side effects.

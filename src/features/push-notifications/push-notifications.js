@@ -1,6 +1,6 @@
 // Public app-facing push notifications facade.
 
-import { dispatchCommandAndAwait } from '../../events/index.js';
+import { dispatchCommandAndAwait } from '../../shared/events/index.js';
 
 const PERMISSION_REQUEST_TIMEOUT_MS = 8000;
 const AUTH_CLOUD_FUNCTION_COMMAND = 'auth:cloud-function:call';

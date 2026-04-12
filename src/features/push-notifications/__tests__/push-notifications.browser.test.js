@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../../events/index.js', () => ({
+vi.mock('../../../shared/events/index.js', () => ({
   dispatchCommandAndAwait: vi.fn(async (commandName, payload = {}) => {
     if (commandName === 'auth:cloud-function:call') {
       const response = await fetch(

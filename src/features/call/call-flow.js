@@ -10,9 +10,9 @@
  */
 
 import { getUserId } from '../../auth/index.js';
-import { devDebug } from '../../utils/dev/dev-utils.js';
-import { showErrorToast } from '../../components/toast.js';
-import { t } from '../../i18n/index.js';
+import { devDebug } from '../../shared/utils/dev/dev-utils.js';
+import { showErrorToast } from '../../shared/components/toast.js';
+import { t } from '../../shared/i18n/index.js';
 
 import { drainIceCandidateQueue, setupIceCandidates } from './ice.js';
 import { setupConnectionStateHandlers } from './webrtc.js';

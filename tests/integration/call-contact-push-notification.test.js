@@ -130,7 +130,7 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../src/components/ui/icons.js', () => ({
+vi.mock('../../src/shared/components/ui/icons.js', () => ({
   initIcons: vi.fn(),
 }));
 
@@ -146,7 +146,7 @@ vi.mock('firebase/database', () => ({
   serverTimestamp: vi.fn(() => ({ '.sv': 'timestamp' })),
 }));
 
-vi.mock('../../src/storage/fb-rtdb/rtdb.js', () => ({
+vi.mock('../../src/shared/storage/fb-rtdb/rtdb.js', () => ({
   removeAllRTDBListeners: vi.fn(),
   removeRTDBListenersForRoom: vi.fn(),
   getUserRecentCallsRef: vi.fn(),
@@ -261,12 +261,12 @@ vi.mock('../../src/features/watch/watch-sync.js', () => ({
   setLastWatched: vi.fn(),
 }));
 
-vi.mock('../../src/media/stream.js', () => ({
+vi.mock('../../src/shared/media/stream.js', () => ({
   setUpLocalStream: vi.fn().mockResolvedValue(undefined),
   setupRemoteStream: vi.fn(() => true),
 }));
 
-vi.mock('../../src/media/state.js', () => ({
+vi.mock('../../src/shared/media/state.js', () => ({
   hasLocalStream: vi.fn(() => true),
   getLocalStream: vi.fn(() => ({ id: 'local-stream' })),
   setLocalStream: vi.fn(),
@@ -275,8 +275,8 @@ vi.mock('../../src/media/state.js', () => ({
   cleanupLocalVideoOnlyStream: vi.fn(),
 }));
 
-vi.mock('../../src/utils/dev/dev-utils.js', async () => {
-  const actual = await vi.importActual('../../src/utils/dev/dev-utils.js');
+vi.mock('../../src/shared/utils/dev/dev-utils.js', async () => {
+  const actual = await vi.importActual('../../src/shared/utils/dev/dev-utils.js');
   return {
     ...actual,
     devDebug: vi.fn(),
@@ -305,7 +305,7 @@ vi.mock('../../src/features/call/room.js', () => ({
   },
 }));
 
-vi.mock('../../src/utils/dev/diagnostic-logger.js', () => ({
+vi.mock('../../src/shared/utils/dev/diagnostic-logger.js', () => ({
   getDiagnosticLogger: vi.fn(() => mocks.logger),
 }));
 
@@ -324,11 +324,11 @@ vi.mock('../../src/features/contacts/referral-handler.js', () => ({
 
 // enable-notifications-prompt is covered by the ../../src/features/notifications/index.js barrel mock
 
-vi.mock('../../src/utils/url.js', () => ({
+vi.mock('../../src/shared/utils/url.js', () => ({
   clearUrlParam: vi.fn(),
 }));
 
-vi.mock('../../src/media/audio/ringtone-manager.js', () => ({
+vi.mock('../../src/shared/media/audio/ringtone-manager.js', () => ({
   ringtoneManager: {
     playIncoming: vi.fn(),
     startIncoming: vi.fn(),
@@ -337,21 +337,21 @@ vi.mock('../../src/media/audio/ringtone-manager.js', () => ({
   },
 }));
 
-vi.mock('../../src/utils/room-id.js', () => ({
+vi.mock('../../src/shared/utils/room-id.js', () => ({
   getDeterministicRoomId: vi.fn(() => 'deterministic-room'),
 }));
 
-vi.mock('../../src/components/ui/core/ui-state.js', () => ({}));
+vi.mock('../../src/shared/components/ui/core/ui-state.js', () => ({}));
 
-vi.mock('../../src/components/ui/core/init-ui.js', () => ({
+vi.mock('../../src/shared/components/ui/core/init-ui.js', () => ({
   initUI: vi.fn(),
 }));
 
-vi.mock('../../src/components/ui/core/bind-call-ui.js', () => ({
+vi.mock('../../src/shared/components/ui/core/bind-call-ui.js', () => ({
   bindCallUI: vi.fn(),
 }));
 
-vi.mock('../../src/components/ui/core/watch-lifecycle-ui.js', () => ({
+vi.mock('../../src/shared/components/ui/core/watch-lifecycle-ui.js', () => ({
   onWatchModeEntered: vi.fn(),
   onWatchModeExited: vi.fn(),
 }));
@@ -361,7 +361,7 @@ vi.mock('../../src/features/contacts/components/contacts-list.js', () => ({
   cleanupContacts: vi.fn(),
 }));
 
-vi.mock('../../src/media/youtube/youtube-player.js', () => ({
+vi.mock('../../src/shared/media/youtube/youtube-player.js', () => ({
   destroyYouTubePlayer: vi.fn(),
   pauseYouTubeVideo: vi.fn(),
   isYTVisible: vi.fn(() => false),
@@ -370,26 +370,26 @@ vi.mock('../../src/media/youtube/youtube-player.js', () => ({
   setYouTubeReady: vi.fn(),
 }));
 
-vi.mock('../../src/media/media-controls.js', () => ({
+vi.mock('../../src/shared/media/media-controls.js', () => ({
   initializeMediaControls: vi.fn(),
   cleanupMediaControls: vi.fn(),
 }));
 
-vi.mock('../../src/media/youtube/youtube-search.js', () => ({
+vi.mock('../../src/shared/media/youtube/youtube-search.js', () => ({
   cleanupSearchUI: vi.fn(),
   initializeSearchUI: vi.fn(),
 }));
 
 // notifications-toggle is covered by the ../../src/features/notifications/index.js barrel mock
 
-vi.mock('../../src/components/toast.js', () => ({
+vi.mock('../../src/shared/components/toast.js', () => ({
   showSuccessToast: vi.fn(),
   showErrorToast: vi.fn(),
 }));
 
 // invite-notification is covered by the ../../src/features/notifications/index.js barrel mock
 
-vi.mock('../../src/components/ui/utils/ui-utils.js', () => ({
+vi.mock('../../src/shared/components/ui/utils/ui-utils.js', () => ({
   showElement: vi.fn(),
   hideElement: vi.fn(),
   exitPiP: vi.fn(),
@@ -415,7 +415,7 @@ vi.mock('../../src/features/contacts/components/add-contact-modal.js', () => ({
   showAddContactModal: vi.fn(),
 }));
 
-vi.mock('../../src/components/ui/utils/call-indicators.js', () => ({
+vi.mock('../../src/shared/components/ui/utils/call-indicators.js', () => ({
   callIndicators: {
     startIncoming: vi.fn(),
     stopIncoming: vi.fn(),
@@ -424,7 +424,7 @@ vi.mock('../../src/components/ui/utils/call-indicators.js', () => ({
   },
 }));
 
-vi.mock('../../src/components/modal/copyLinkModal.js', () => ({
+vi.mock('../../src/shared/components/modal/copyLinkModal.js', () => ({
   copyToClipboard: vi.fn(),
   showCopyLinkModal: vi.fn(),
 }));
@@ -439,11 +439,11 @@ vi.mock('../../src/features/call/components/outgoing-call.js', () => ({
   // isRoomCallFresh: vi.fn(() => true),
 }));
 
-vi.mock('../../src/components/ui/core/legacy/watch-mode.js', () => ({
+vi.mock('../../src/shared/components/ui/core/legacy/watch-mode.js', () => ({
   isRemoteVideoVideoActive: vi.fn(() => false),
 }));
 
-vi.mock('../../src/components/ui/core/call-lifecycle-ui.js', () => ({
+vi.mock('../../src/shared/components/ui/core/call-lifecycle-ui.js', () => ({
   onCallConnected: vi.fn(),
   onCallDisconnected: vi.fn(),
   onCallingStarted: vi.fn(() => {
@@ -452,7 +452,7 @@ vi.mock('../../src/components/ui/core/call-lifecycle-ui.js', () => ({
   onCallingEnded: vi.fn(),
 }));
 
-vi.mock('../../src/i18n/index.js', () => ({
+vi.mock('../../src/shared/i18n/index.js', () => ({
   initI18n: vi.fn().mockResolvedValue(undefined),
   setLocale: vi.fn().mockResolvedValue(undefined),
   getLocale: vi.fn(() => 'en'),
@@ -464,8 +464,8 @@ vi.mock('../../src/i18n/index.js', () => ({
 
 import RoomService from '../../src/features/call/room.js';
 import { showIncomingCallUI } from '../../src/features/call/components/incoming-call.js';
-import { ringtoneManager } from '../../src/media/audio/ringtone-manager.js';
-import { callIndicators } from '../../src/components/ui/utils/call-indicators.js';
+import { ringtoneManager } from '../../src/shared/media/audio/ringtone-manager.js';
+import { callIndicators } from '../../src/shared/components/ui/utils/call-indicators.js';
 
 describe('callContact push notification flow', () => {
   let consoleWarnSpy;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { linkifyToFragment, extractLinks } from '../../src/utils/linkify.js';
+import { linkifyToFragment, extractLinks } from '../../src/shared/utils/linkify.js';
 
 describe('linkify utility', () => {
   it('extracts multiple links and normalizes protocol-less URLs', () => {

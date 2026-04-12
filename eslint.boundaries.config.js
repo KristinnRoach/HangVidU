@@ -75,16 +75,16 @@ const SHARED_TEMP_FEATURE_EXCEPTIONS = [
 
 const SHARED_GLOBS = [
   'src/elements.js',
-  'src/components/**/*.js',
-  'src/events/**/*.js',
-  'src/vendors/**/*.js',
-  'src/i18n/**/*.js',
-  'src/media/**/*.js',
-  'src/media-next/**/*.js',
-  'src/pwa/**/*.js',
-  'src/storage/**/*.js',
-  'src/styles/**/*.js',
-  'src/utils/**/*.js',
+  'src/shared/components/**/*.js',
+  'src/shared/events/**/*.js',
+  'src/shared/vendors/**/*.js',
+  'src/shared/i18n/**/*.js',
+  'src/shared/media/**/*.js',
+  'src/shared/media-next/**/*.js',
+  'src/shared/pwa/**/*.js',
+  'src/shared/storage/**/*.js',
+  'src/shared/styles/**/*.js',
+  'src/shared/utils/**/*.js',
 ];
 
 function dependencyRule(files, rules) {

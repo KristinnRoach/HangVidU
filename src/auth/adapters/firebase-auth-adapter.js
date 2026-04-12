@@ -14,7 +14,7 @@ import {
   signInWithPopup,
   signOut,
 } from 'firebase/auth';
-import { app } from '../../vendors/firebase.js';
+import { app } from '../../shared/vendors/firebase.js';
 
 export const auth = getAuth(app);
 

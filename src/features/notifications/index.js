@@ -3,7 +3,7 @@ export { inAppNotificationManager } from './in-app-notification-manager.js';
 export {
   buildTemplate,
   createNotification,
-} from '../../components/notification.js';
+} from '../../shared/components/notification.js';
 
 export { showEnableNotificationsPrompt } from './components/enable-notifications-prompt.js';
 

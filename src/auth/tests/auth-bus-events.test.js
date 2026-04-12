@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../events/index.js', () => ({
+vi.mock('../../shared/events/index.js', () => ({
   publishAndAwait: mocks.events.publishAndAwait,
 }));
 

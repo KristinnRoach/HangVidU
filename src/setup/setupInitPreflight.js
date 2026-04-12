@@ -1,8 +1,8 @@
-import { initIcons } from '../components/ui/icons.js';
-import { initUI } from '../components/ui/core/init-ui.js';
-import { initI18n, onLocaleChange } from '../i18n/index.js';
+import { initIcons } from '../shared/components/ui/icons.js';
+import { initUI } from '../shared/components/ui/core/init-ui.js';
+import { initI18n, onLocaleChange } from '../shared/i18n/index.js';
 import { updateI18nElements, getElements } from '../elements.js';
-import { devDebug } from '../utils/dev/dev-utils.js';
+import { devDebug } from '../shared/utils/dev/dev-utils.js';
 
 let isReady = false;
 let initPromise = null;

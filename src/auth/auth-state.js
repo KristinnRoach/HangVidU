@@ -1,7 +1,7 @@
 // src/auth/auth-state.js — pure auth state, no Firebase imports
 
 import { getOrCreateGuestId } from './guest-user.js';
-import { publishAndAwait } from '../events/index.js';
+import { publishAndAwait } from '../shared/events/index.js';
 
 let state = {
   status: 'idle', // 'idle' | 'loading' | 'authenticated' | 'unauthenticated'

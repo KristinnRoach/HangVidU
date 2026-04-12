@@ -3,7 +3,7 @@
 // ================================================
 
 import { getIsLoggedIn, onAuthStateChanged } from '../auth-state.js';
-import { dispatchCommand } from '../../events/index.js';
+import { dispatchCommand } from '../../shared/events/index.js';
 import {
   AUTH_COMMANDS,
   parseAuthDeleteAccountRequested,
@@ -19,10 +19,10 @@ import {
 } from '../onetap.js';
 
 import { getAuthState } from '../auth-state.js';
-import { isDev, devDebug } from '../../utils/dev/dev-utils.js';
-import { t, onLocaleChange } from '../../i18n/index.js';
+import { isDev, devDebug } from '../../shared/utils/dev/dev-utils.js';
+import { t, onLocaleChange } from '../../shared/i18n/index.js';
 
-import createComponent from '../../components/ui/component-system/component.js';
+import createComponent from '../../shared/components/ui/component-system/component.js';
 
 let authComponent = null;
 

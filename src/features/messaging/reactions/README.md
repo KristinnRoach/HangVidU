@@ -84,7 +84,7 @@ The reactions feature is integrated into `messages-ui.js`:
 
 ## Styling
 
-Styles are defined in `src/styles/components/reactions.css`:
+Styles are defined in `src/shared/styles/components/reactions.css`:
 - `.reaction-badge` - Individual reaction display
 - `.message-reactions` - Container for reactions
 - `.reaction-animation` - Floating emoji animation

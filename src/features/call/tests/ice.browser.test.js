@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { setupIceCandidates, drainIceCandidateQueue } from '../ice.js';
-import { addRTDBListener } from '../../../storage/fb-rtdb/rtdb.js';
+import { addRTDBListener } from '../../../shared/storage/fb-rtdb/rtdb.js';
 
 // Mock Firebase database functions
 vi.mock('firebase/database', () => ({
@@ -15,18 +15,18 @@ vi.mock('firebase/database', () => ({
   off: vi.fn(),
 }));
 
-vi.mock('../../../vendors/firebase.js', () => ({
+vi.mock('../../../shared/vendors/firebase.js', () => ({
   app: {},
 }));
 
-vi.mock('../../../storage/fb-rtdb/rtdb.js', () => ({
+vi.mock('../../../shared/storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
   addRTDBListener: vi.fn(),
   getOfferCandidatesRef: vi.fn(() => ({ _path: 'offerCandidates' })),
   getAnswerCandidatesRef: vi.fn(() => ({ _path: 'answerCandidates' })),
 }));
 
-vi.mock('../../../utils/dev/dev-utils.js', () => ({
+vi.mock('../../../shared/utils/dev/dev-utils.js', () => ({
   devDebug: vi.fn(),
 }));
 

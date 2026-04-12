@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { compressImage } from '../../src/media/image-compress.js';
+import { compressImage } from '../../src/shared/media/image-compress.js';
 
 // Vite ?url imports — resolved to servable asset URLs at build time
 import img0164 from '../../src/media/test-images/IMG_0164.heic?url';

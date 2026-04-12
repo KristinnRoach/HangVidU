@@ -1,6 +1,6 @@
-import { handleCommand, subscribe } from '../events/index.js';
+import { handleCommand, subscribe } from '../shared/events/index.js';
 import { messagingController } from '../features/messaging/messaging-controller.js';
-import { isDev, tempWarn } from '../utils/dev/dev-utils.js';
+import { isDev, tempWarn } from '../shared/utils/dev/dev-utils.js';
 import { callContact } from '../features/call/WIP-start-call-refactor.js';
 import {
   contactsService,
@@ -13,8 +13,8 @@ import {
 } from '../features/call/room-listeners.js';
 import { getPushNotifications } from '../features/push-notifications/index.js';
 import { setUserOffline } from '../features/presence/index.js';
-import { clearUrlParam } from '../utils/url.js';
-import { onCallDisconnected } from '../components/ui/core/call-lifecycle-ui.js';
+import { clearUrlParam } from '../shared/utils/url.js';
+import { onCallDisconnected } from '../shared/components/ui/core/call-lifecycle-ui.js';
 
 let isReady = false;
 let initPromise = null;

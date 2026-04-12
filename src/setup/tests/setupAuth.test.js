@@ -23,7 +23,7 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../events/index.js', () => ({
+vi.mock('../../shared/events/index.js', () => ({
   subscribe: mocks.events.subscribe,
 }));
 
@@ -31,7 +31,7 @@ vi.mock('../../auth/index.js', () => ({
   initAuth: vi.fn(() => Promise.resolve()),
 }));
 
-vi.mock('../../utils/dev/dev-utils.js', () => ({
+vi.mock('../../shared/utils/dev/dev-utils.js', () => ({
   devDebug: mocks.devDebug,
 }));
 

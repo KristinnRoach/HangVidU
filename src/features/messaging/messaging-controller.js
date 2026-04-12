@@ -1,15 +1,15 @@
 import { RTDBMessageStore } from './storage/rtdb-message-store.js';
-import { fileToBase64 } from '../../utils/file-to-base64.js';
-import { compressImage } from '../../media/image-compress.js';
+import { fileToBase64 } from '../../shared/utils/file-to-base64.js';
+import { compressImage } from '../../shared/media/image-compress.js';
 import { EventEmitter } from '../../lib/event-emitter/index.js';
 import { getUserId } from '../../auth/index.js';
-import { getUserProfile } from '../../storage/user/index.js';
+import { getUserProfile } from '../../shared/storage/user/index.js';
 import {
   createFileMessage,
   createTextMessage,
   createEventMessage,
 } from './message-factory.js';
-import { publish } from '../../events/index.js';
+import { publish } from '../../shared/events/index.js';
 
 // Max file size for file messages (1MB before base64 encoding)
 const MAX_FILE_SIZE = 1 * 1024 * 1024;

@@ -1,5 +1,5 @@
 import { getIsLoggedIn, getLoggedInUserId } from '../../auth/index.js';
-import { rtdb } from '../../storage/fb-rtdb/rtdb.js';
+import { rtdb } from '../../shared/storage/fb-rtdb/rtdb.js';
 import {
   createContactsLocalStore,
   createContactsRTDBStore,
@@ -10,8 +10,8 @@ import {
   getContactByMostRecentInteraction,
   getContactByRoomId,
 } from './contacts-query.js';
-import { resolveDirectConversationId } from '../../utils/direct-conversation-id.js';
-import { publish } from '../../events/index.js';
+import { resolveDirectConversationId } from '../../shared/utils/direct-conversation-id.js';
+import { publish } from '../../shared/events/index.js';
 // PAUSED: claude --resume edf6030f-72fb-4503-9175-bfc21d2d973c
 
 /**

@@ -33,11 +33,11 @@ vi.mock('firebase/database', () => {
   };
 });
 
-vi.mock('../../../vendors/firebase.js', () => ({
+vi.mock('../../../shared/vendors/firebase.js', () => ({
   app: {},
 }));
 
-vi.mock('../../../utils/dev-utils.js', () => ({
+vi.mock('../../../shared/utils/dev/dev-utils.js', () => ({
   devDebug: vi.fn(),
 }));
 
@@ -47,7 +47,7 @@ import {
   onDataChange,
   removeAllRTDBListeners,
   rtdb,
-} from '../../../storage/fb-rtdb/rtdb.js';
+} from '../../../shared/storage/fb-rtdb/rtdb.js';
 
 import { off, onChildAdded, onValue } from 'firebase/database';
 

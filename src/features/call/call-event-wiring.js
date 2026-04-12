@@ -2,11 +2,11 @@ import CallController from './call-controller.js';
 import { contactsService, renderContactsList } from '../contacts/index.js';
 import { getUserId, getUser } from '../../auth/index.js';
 import { getPushNotifications } from '../push-notifications/index.js';
-import { cleanupRemoteStream } from '../../media/state.js';
-import { clearUrlParam } from '../../utils/url.js';
+import { cleanupRemoteStream } from '../../shared/media/state.js';
+import { clearUrlParam } from '../../shared/utils/url.js';
 import { onOutgoingCallAnswered } from './components/outgoing-call.js';
-import { devDebug } from '../../utils/dev/dev-utils.js';
-import { dispatchCommand, publish } from '../../events/index.js';
+import { devDebug } from '../../shared/utils/dev/dev-utils.js';
+import { dispatchCommand, publish } from '../../shared/events/index.js';
 import { listenForIncomingOnRoom } from './room-listeners.js';
 
 // TODO: WIP decoupling considerations:

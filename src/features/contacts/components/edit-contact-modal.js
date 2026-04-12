@@ -1,4 +1,4 @@
-import { t } from '../../../i18n/index.js';
+import { t } from '../../../shared/i18n/index.js';
 
 /**
  * Opens a modal to edit a contact. Returns { action, name } or null if cancelled.

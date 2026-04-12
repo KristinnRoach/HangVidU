@@ -1,19 +1,19 @@
-import { t } from '../../../i18n/index.js';
-import { initIcons } from '../../../components/ui/icons.js';
-import { onClickOutside } from '../../../components/ui/utils/clickOutside.js';
+import { t } from '../../../shared/i18n/index.js';
+import { initIcons } from '../../../shared/components/ui/icons.js';
+import { onClickOutside } from '../../../shared/components/ui/utils/clickOutside.js';
 import {
   hideElement,
   isHidden,
   showElement,
-} from '../../../components/ui/utils/ui-utils.js';
+} from '../../../shared/components/ui/utils/ui-utils.js';
 import {
   renderAvatar,
   createAvatar,
-} from '../../../components/ui/utils/avatar.js';
+} from '../../../shared/components/ui/utils/avatar.js';
 import { createMessageToggle } from './createMessageToggle.js';
-import { isIOSOrAndroidDevice } from '../../../utils/detect-device.js';
+import { isIOSOrAndroidDevice } from '../../../shared/utils/detect-device.js';
 
-import { linkifyToFragment } from '../../../utils/linkify.js';
+import { linkifyToFragment } from '../../../shared/utils/linkify.js';
 import { ReactionManager, ReactionUI } from '../reactions/index.js';
 import { REACTION_CONFIG } from '../reactions/ReactionConfig.js';
 import { getUserId } from '../../../auth/index.js';
@@ -22,13 +22,13 @@ import {
   showErrorToast,
   showInfoToast,
   showSuccessToast,
-} from '../../../components/toast.js';
+} from '../../../shared/components/toast.js';
 import { createMessageBox } from './createMessageBox.js';
 import { createMessageTopBar } from './createMessageTopBar.js';
-import { devDebug } from '../../../utils/dev/dev-utils.js';
-import { onTapGesture } from '../../../components/ui/utils/detectDoubleClick.js';
-import { isSafeDownloadUrl } from '../../../utils/security/validate-url.js';
-import { dispatchCommand } from '../../../events/index.js';
+import { devDebug } from '../../../shared/utils/dev/dev-utils.js';
+import { onTapGesture } from '../../../shared/components/ui/utils/detectDoubleClick.js';
+import { isSafeDownloadUrl } from '../../../shared/utils/security/validate-url.js';
+import { dispatchCommand } from '../../../shared/events/index.js';
 import { createImagePreviewNode } from './file-preview-renderer.js';
 import {
   cancelScrollMessagesToEnd,

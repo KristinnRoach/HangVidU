@@ -5,8 +5,8 @@ import {
   addRTDBListener,
   getOfferCandidatesRef,
   getAnswerCandidatesRef,
-} from '../../storage/fb-rtdb/rtdb';
-import { devDebug } from '../../utils/dev/dev-utils.js';
+} from '../../shared/storage/fb-rtdb/rtdb';
+import { devDebug } from '../../shared/utils/dev/dev-utils.js';
 
 // WeakMap to store queued candidates per peer connection
 const pendingRemoteCandidates = new WeakMap();

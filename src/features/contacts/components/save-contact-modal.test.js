@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   saveContact: vi.fn(),
 }));
 
-vi.mock('../../../i18n/index.js', () => ({
+vi.mock('../../../shared/i18n/index.js', () => ({
   t: (key) => key,
 }));
 
@@ -15,7 +15,7 @@ vi.mock('../contacts-service.js', () => ({
   },
 }));
 
-vi.mock('../../../components/base/confirm-dialog.js', () => ({
+vi.mock('../../../shared/components/base/confirm-dialog.js', () => ({
   default: mocks.confirmDialog,
 }));
 
