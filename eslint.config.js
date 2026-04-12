@@ -1,5 +1,5 @@
 import boundariesConfig from './eslint.boundaries.config.js';
-import { EVENT_NAME_REGEX, isCanonicalEventName } from './src/events/naming.js';
+import { EVENT_NAME_REGEX, isCanonicalEventName } from './src/shared/events/naming.js';
 
 const EVENT_API_CALLS = new Set([
   'dispatchCommand',
