@@ -9,11 +9,12 @@ export function isCanonicalEventName(name) {
 }
 
 export function assertCanonicalEventName(name, kind = 'event') {
-  if (isCanonicalEventName(name)) {
-    return;
-  }
+  const expectedPrefix = kind === 'command' ? 'cmd:' : 'evt:';
+  const hasExpectedPrefix = typeof name === 'string' && name.startsWith(expectedPrefix);
+
+  if (hasExpectedPrefix && isCanonicalEventName(name)) return;
 
   throw new Error(
-    `[events] Invalid ${kind} name "${name}". Expected <kind>:<domain>:<entity>:<action> matching ${EVENT_NAME_REGEX}`,
+    `[events] Invalid ${kind} name "${name}". Expected prefix "${expectedPrefix}" and <kind>:<domain>:<entity>:<action> matching ${EVENT_NAME_REGEX}`,
   );
 }

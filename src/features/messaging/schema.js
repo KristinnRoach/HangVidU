@@ -118,7 +118,7 @@ const RawFileMessageSchema = z.object({
 
 const RawEventMessageSchema = z.object({
   type: z.literal('event'),
-  eventType: z.enum(['evt:call:session:unanswered']),
+  eventType: z.enum(['call:unanswered', 'evt:call:session:unanswered']),
   from: z.string().min(1),
   sentAt: z.number(),
   read: z.boolean().default(false),
@@ -200,6 +200,9 @@ export const parseMessage = (data, messageId) => {
   const parsed = {
     ...data,
     ...(messageId && { messageId }),
+    ...(data.type === 'event' && data.eventType === 'call:unanswered'
+      ? { eventType: 'evt:call:session:unanswered' }
+      : {}),
     reactions,
   };
 

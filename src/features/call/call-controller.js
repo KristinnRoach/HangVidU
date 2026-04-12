@@ -640,6 +640,7 @@ class CallController {
     this.isHangingUp = true;
 
     try {
+      const roomId = this.roomId;
       if (emitCancel && this.roomId) {
         try {
           await RoomService.cancelCall(this.roomId, getUserId(), reason);
@@ -651,7 +652,7 @@ class CallController {
       // leave and cleanup locally
       await this.cleanupCall({ reason });
 
-      this.emit('evt:call:session:hangup', { roomId: this.roomId, reason });
+      this.emit('evt:call:session:hangup', { roomId, reason });
     } catch (e) {
       this.emit('evt:call:session:error', { phase: 'hangUp', error: e });
       throw e;
