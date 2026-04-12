@@ -333,7 +333,7 @@ export default createComponent;
 /**
  * Usage example:
  *
- * import createComponent from './src/shared/utils/createComponent.js';
+ * import createComponent from './src/shared/components/ui/component-system/component.js';
  *
  * const userCard = createComponent({
  *   initialProps: { name: 'Ada', email: 'ada@example.com' },
