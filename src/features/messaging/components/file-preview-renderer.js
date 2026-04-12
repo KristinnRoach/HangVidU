@@ -10,7 +10,41 @@ export function createImagePreviewNode({ fileName, previewUrl }) {
   img.src = previewUrl;
   img.alt = fileName;
 
-  const openPreview = () => {
+  let startX = 0;
+  let startY = 0;
+  let hasMoved = false;
+
+  img.addEventListener(
+    'touchstart',
+    (e) => {
+      if (e.touches.length > 0) {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+      }
+      hasMoved = false;
+    },
+    { passive: true },
+  );
+
+  img.addEventListener(
+    'touchmove',
+    (e) => {
+      if (e.touches.length > 0) {
+        const moveX = e.touches[0].clientX;
+        const moveY = e.touches[0].clientY;
+        if (Math.abs(moveX - startX) > 10 || Math.abs(moveY - startY) > 10) {
+          hasMoved = true;
+        }
+      }
+    },
+    { passive: true },
+  );
+
+  const openPreview = (e) => {
+    if (hasMoved) {
+      hasMoved = false; // Prevent preview for the drag/scroll interaction, but reset for future pointer events
+      return;
+    }
     showImagePreview(previewUrl, fileName);
   };
 
