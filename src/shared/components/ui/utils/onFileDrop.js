@@ -46,6 +46,8 @@ export function onFileDrop(element, onDrop, options = {}) {
   }
 
   function handleDrop(e) {
+    if (!hasFiles(e)) return;
+
     e.preventDefault();
     dragCounter = 0;
     element.removeAttribute('dragover');
