@@ -110,7 +110,7 @@ describe('CallController (unit)', () => {
     createCallFlow.mockResolvedValueOnce(fakeResult);
 
     const created = vi.fn();
-    CallController.on('created', created);
+    CallController.on('evt:call:session:created', created);
 
     const res = await CallController.createCall({ localStream: {} });
 
@@ -139,8 +139,8 @@ describe('CallController (unit)', () => {
 
       const hangupEvt = vi.fn();
       const cleanupEvt = vi.fn();
-      CallController.on('hangup', hangupEvt);
-      CallController.on('cleanup', cleanupEvt);
+      CallController.on('evt:call:session:hangup', hangupEvt);
+      CallController.on('evt:call:session:cleanup', cleanupEvt);
 
       await CallController.hangUp({ emitCancel: true, reason: 'user_hung_up' });
 
@@ -171,7 +171,7 @@ describe('CallController (unit)', () => {
     RoomService.cancelCall.mockResolvedValueOnce();
 
     const cleanupEvt = vi.fn();
-    CallController.on('cleanup', cleanupEvt);
+    CallController.on('evt:call:session:cleanup', cleanupEvt);
 
     await CallController.cleanupCall({ reason: 'remote_hangup' });
 
@@ -273,7 +273,7 @@ it('emits remoteHangup event when cleanup is triggered by remote party', async (
   RoomService.leaveRoom.mockResolvedValueOnce();
 
   const remoteHangupListener = vi.fn();
-  CallController.on('remoteHangup', remoteHangupListener);
+  CallController.on('evt:call:session:remote-hangup', remoteHangupListener);
 
   // Act: cleanup with remote reason
   await CallController.cleanupCall({ reason: 'remote_cancelled' });
@@ -294,7 +294,7 @@ it('does NOT emit remoteHangup event when cleanup is user-initiated', async () =
   RoomService.leaveRoom.mockResolvedValueOnce();
 
   const remoteHangupListener = vi.fn();
-  CallController.on('remoteHangup', remoteHangupListener);
+  CallController.on('evt:call:session:remote-hangup', remoteHangupListener);
 
   // Act: cleanup with user reason
   await CallController.cleanupCall({ reason: 'user_hung_up' });
@@ -311,7 +311,7 @@ it('emits callFailed event when createCall fails', async () => {
   createCallFlow.mockResolvedValueOnce(failureResult);
 
   const callFailedListener = vi.fn();
-  CallController.on('callFailed', callFailedListener);
+  CallController.on('evt:call:session:failed', callFailedListener);
 
   const result = await CallController.createCall({ localStream: null });
 
@@ -330,7 +330,7 @@ it('emits callFailed event when answerCall fails', async () => {
   answerCallFlow.mockResolvedValueOnce(failureResult);
 
   const callFailedListener = vi.fn();
-  CallController.on('callFailed', callFailedListener);
+  CallController.on('evt:call:session:failed', callFailedListener);
 
   const result = await CallController.answerCall({ roomId: 'invalid' });
 
@@ -521,7 +521,7 @@ it('cleanup event includes partnerId for contact save prompt (user-initiated han
   RoomService.leaveRoom.mockResolvedValueOnce();
 
   const cleanupListener = vi.fn();
-  CallController.on('cleanup', cleanupListener);
+  CallController.on('evt:call:session:cleanup', cleanupListener);
 
   // Act: User A hangs up
   await CallController.hangUp({ emitCancel: true, reason: 'user_hung_up' });
@@ -546,7 +546,7 @@ it('cleanup event includes partnerId for contact save prompt (remote hangup)', a
   RoomService.leaveRoom.mockResolvedValueOnce();
 
   const cleanupListener = vi.fn();
-  CallController.on('cleanup', cleanupListener);
+  CallController.on('evt:call:session:cleanup', cleanupListener);
 
   // Act: Remote party hangs up (triggered by cancellation listener)
   await CallController.cleanupCall({ reason: 'remote_cancelled' });

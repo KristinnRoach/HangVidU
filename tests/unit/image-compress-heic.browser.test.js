@@ -1,22 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import { compressImage } from '../../src/shared/media/image-compress.js';
 
-// Vite ?url imports — resolved to servable asset URLs at build time
-import img0164 from '../../src/media/test-images/IMG_0164.heic?url';
-import img0169 from '../../src/media/test-images/IMG_0169.heic?url';
-import img1339 from '../../src/media/test-images/IMG_1339.HEIC?url';
-import img1503 from '../../src/media/test-images/IMG_1503.heic?url';
-import img1632 from '../../src/media/test-images/IMG_1632.heic?url';
-import img7566 from '../../src/media/test-images/IMG_7566.HEIC?url';
-
-const heicFiles = [
-  { name: 'IMG_0164.heic', url: img0164 },
-  { name: 'IMG_0169.heic', url: img0169 },
-  { name: 'IMG_1339.HEIC', url: img1339 },
-  { name: 'IMG_1503.heic', url: img1503 },
-  { name: 'IMG_1632.heic', url: img1632 },
-  { name: 'IMG_7566.HEIC', url: img7566 },
-];
+// Resolve optional HEIC fixtures without hard-failing when they are absent.
+const heicFileUrls = import.meta.glob('../../src/media/test-images/*.{heic,HEIC}', {
+  query: '?url',
+  import: 'default',
+  eager: true,
+});
+const heicFiles = Object.entries(heicFileUrls).map(([path, url]) => ({
+  name: path.split('/').pop(),
+  url,
+}));
 
 async function loadTestFile({ name, url }) {
   const res = await fetch(url);
@@ -24,7 +18,9 @@ async function loadTestFile({ name, url }) {
   return new File([blob], name, { type: 'image/heic' });
 }
 
-describe('compressImage — real HEIC files', () => {
+const suite = heicFiles.length > 0 ? describe : describe.skip;
+
+suite('compressImage — real HEIC files', () => {
   for (const entry of heicFiles) {
     it(`compresses ${entry.name}`, async () => {
       const file = await loadTestFile(entry);
