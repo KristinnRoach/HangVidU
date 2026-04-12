@@ -37,7 +37,7 @@ vi.mock('../../../shared/vendors/firebase.js', () => ({
   app: {},
 }));
 
-vi.mock('../../../shared/utils/dev-utils.js', () => ({
+vi.mock('../../../shared/utils/dev/dev-utils.js', () => ({
   devDebug: vi.fn(),
 }));
 
