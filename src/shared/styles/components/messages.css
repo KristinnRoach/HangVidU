@@ -95,6 +95,16 @@
   z-index: var(--z-mid);
 }
 
+.messages-box[dragover] {
+  outline: 2px dashed var(--border-accent, #666);
+  outline-offset: -4px;
+  background: color-mix(
+    in srgb,
+    var(--bg-secondary) 92%,
+    var(--border-accent, #666)
+  );
+}
+
 /* Slide / fade animation for show/hide
    - default state: hidden (out of view, non-interactive)
    - `.messages-box--open` toggles the visible state and drives transitions
