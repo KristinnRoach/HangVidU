@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 /**
  * Canonical contact record shape for the storage layer.
+ * `contactId` is the remote user's UID and must match the storage key for the record.
  * @typedef {Object} ContactRecord
  * @property {string} contactId
  * @property {string} contactNickName
