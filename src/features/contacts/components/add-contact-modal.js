@@ -87,12 +87,11 @@ export async function showAddContactModal() {
             ${t('contact.invite')}
           </button>
         </div>
-        <div id="manual-email-status" class="import-status"></div>
 
         <button type="button" id="share-invite-btn" class="action-btn secondary share-invite-btn">
           <i data-lucide="share"></i>
-          ${t('contact.import.share')}
         </button>
+
       </div>
 
       <hr class="divider" />
@@ -131,6 +130,8 @@ export async function showAddContactModal() {
 
         <div id="bulk-actions-container" class="bulk-actions-container"></div>
       </div>
+
+      <div id="manual-email-status" class="import-status"></div>
     `;
 
     const cancelBtn = dialog.querySelector('[data-action="cancel"]');
@@ -225,8 +226,7 @@ export async function showAddContactModal() {
       if (e.key === 'Enter') handleManualEmailInvite();
     });
 
-    // --- Share invite link ---
-
+    // --- Generic Web Share button ---
     shareInviteBtn.addEventListener('click', async () => {
       manualEmailStatus.textContent = t('contact.invite.share.opening');
       manualEmailStatus.className = 'import-status loading';
