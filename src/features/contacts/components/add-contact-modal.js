@@ -44,15 +44,15 @@ function openEmailComposeFallback(contacts) {
   const body = encodeURIComponent(
     t('contact.invite.body', { name: senderName, link: referralLink }),
   );
-  const to = contacts.map((c) => c.email).join(',');
+  const to = contacts.map((c) => encodeURIComponent(c.email)).join(',');
 
-  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${subject}&body=${body}`;
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${body}`;
   const opened = window.open(gmailUrl, '_blank');
 
   if (!opened) {
     const mailtoLink =
       contacts.length === 1
-        ? `mailto:${contacts[0].email}?subject=${subject}&body=${body}`
+        ? `mailto:${to}?subject=${subject}&body=${body}`
         : `mailto:?bcc=${to}&subject=${subject}&body=${body}`;
     window.location.href = mailtoLink;
   }
