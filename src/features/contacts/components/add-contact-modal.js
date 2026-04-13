@@ -2,8 +2,6 @@
 
 // Modal for adding contacts by email or importing from Google
 
-import { contactsService } from '../contacts-service.js';
-import { findUserByEmail } from '../user-discovery.js';
 import { sendInvite } from '../invitations.js';
 import {
   requestGmailSendAccess,
@@ -24,6 +22,8 @@ import {
 } from '../import-contacts-utils.js';
 import { createImportContactsComponent } from './import-contacts-component.js';
 import { importGoogleContacts as importGoogleContactsFlow } from '../google-import.js';
+import { getReferralLink } from '../contact-invite-utils.js';
+import { inviteContactByEmail } from '../manual-contact-invite.js';
 
 // TODO: WIP decoupling considerations:
 // This modal mixes feature UI with auth/OAuth and external contact-import side effects.
@@ -35,9 +35,7 @@ const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
  * Open Gmail compose (preferred) or mailto: as fallback for emailing invite links.
  */
 function openEmailComposeFallback(contacts) {
-  const myUserId = getLoggedInUserId();
-
-  const referralLink = myUserId ? `${APP_ORIGIN}/?ref=${myUserId}` : APP_ORIGIN;
+  const referralLink = getReferralLink(APP_ORIGIN, getLoggedInUserId());
 
   const currentUser = getUser();
   const senderName = currentUser?.userName || 'A friend';
@@ -130,26 +128,23 @@ export async function showAddContactModal() {
         await sendInvite(contact.user.uid, contact.user.userName);
       },
       onInviteSelected: async (contacts) => {
-        let successCount = 0;
+        let count = 0;
 
         for (const contact of contacts) {
           try {
             await sendInvite(contact.user.uid, contact.user.userName);
-            successCount++;
+            count++;
           } catch (err) {
             console.error('[ADD CONTACT] Failed to invite:', contact.name, err);
           }
         }
 
-        return { successCount };
+        return { ok: true, status: 'sent', count };
       },
       onEmailSelected: async (contacts) => {
         try {
           const accessToken = await requestGmailSendAccess();
-          const myUserId = getLoggedInUserId();
-          const referralLink = myUserId
-            ? `${APP_ORIGIN}/?ref=${myUserId}`
-            : APP_ORIGIN;
+          const referralLink = getReferralLink(APP_ORIGIN, getLoggedInUserId());
           const currentUser = getUser();
           const senderName = currentUser?.userName || 'A friend';
           const subject = t('contact.invite.subject');
@@ -182,10 +177,10 @@ export async function showAddContactModal() {
           }
 
           if (results.sent > 0) {
-            return { status: 'sent', sent: results.sent };
+            return { ok: true, status: 'sent', count: results.sent };
           }
 
-          return { status: 'failed' };
+          return { ok: false, status: 'failed' };
         } catch (err) {
           console.error('[ADD CONTACT] Gmail send error:', err);
 
@@ -194,14 +189,14 @@ export async function showAddContactModal() {
               containerEl: dialog,
             });
             openEmailComposeFallback(contacts);
-            return { status: 'permission_denied' };
+            return { ok: false, status: 'permission_denied' };
           }
 
           showErrorToast(
             t('contact.invite.failed_detail', { error: err.message }),
             { containerEl: dialog },
           );
-          return { status: 'error' };
+          return { ok: false, status: 'error' };
         }
       },
     });
@@ -236,51 +231,41 @@ export async function showAddContactModal() {
       manualEmailStatus.textContent = '';
       manualEmailStatus.className = 'import-status';
 
-      try {
-        const user = await findUserByEmail(email);
-
-        if (user) {
-          const currentUser = getUser();
-          if (user.uid === currentUser?.uid) {
-            manualEmailStatus.textContent = t('contact.add.self_error');
-            manualEmailStatus.className = 'import-status error';
-            return;
-          }
-
-          const savedContacts = await contactsService.getAllContacts();
-          if (savedContacts && savedContacts[user.uid]) {
-            manualEmailStatus.textContent = t('contact.add.already_saved');
-            manualEmailStatus.className = 'import-status info';
-            return;
-          }
-
-          await sendInvite(user.uid, user.userName);
-          manualEmailStatus.textContent = `✓ ${t('contact.invite.sent_one')}`;
-          manualEmailStatus.className = 'import-status success';
-          showSuccessToast(t('contact.invite.sent_one'), {
-            containerEl: dialog,
-          });
-        } else {
+      const result = await inviteContactByEmail(email, {
+        onNotFound: async () => {
           openEmailComposeFallback([{ email }]);
-          manualEmailStatus.textContent = t('contact.add.not_found_emailing');
-          manualEmailStatus.className = 'import-status info';
-        }
-      } catch (err) {
-        // TODO: Pre-check whether an invite already exists instead of relying on PERMISSION_DENIED.
-        // The RTDB rule blocks duplicate writes (!data.exists()), so this works, but a read-first
-        // approach would be cleaner and let us distinguish "already sent" from real errors.
-        if (err?.message?.includes('PERMISSION_DENIED')) {
-          manualEmailStatus.textContent = t('contact.add.already_invited');
-          manualEmailStatus.className = 'import-status info';
-        } else {
-          console.error('[ADD CONTACT] Manual email invite error:', err);
-          manualEmailStatus.textContent = t('contact.add.email_error');
-          manualEmailStatus.className = 'import-status error';
-        }
-      } finally {
-        manualEmailSendBtn.disabled = false;
-        manualEmailSendBtn.textContent = t('contact.invite');
+        },
+      });
+
+      if (result.status === 'sent') {
+        manualEmailStatus.textContent = `✓ ${t('contact.invite.sent_one')}`;
+        manualEmailStatus.className = 'import-status success';
+        showSuccessToast(t('contact.invite.sent_one'), {
+          containerEl: dialog,
+        });
+      } else if (result.status === 'not_found') {
+        manualEmailStatus.textContent = t('contact.add.not_found_emailing');
+        manualEmailStatus.className = 'import-status info';
+      } else if (result.status === 'self') {
+        manualEmailStatus.textContent = t('contact.add.self_error');
+        manualEmailStatus.className = 'import-status error';
+      } else if (result.status === 'already_saved') {
+        manualEmailStatus.textContent = t('contact.add.already_saved');
+        manualEmailStatus.className = 'import-status info';
+      } else if (result.status === 'already_invited') {
+        manualEmailStatus.textContent = t('contact.add.already_invited');
+        manualEmailStatus.className = 'import-status info';
+      } else {
+        console.error('[ADD CONTACT] Manual email invite error:', result.error);
+        manualEmailStatus.textContent = t('contact.add.email_error');
+        manualEmailStatus.className = 'import-status error';
       }
+
+      // TODO: Pre-check whether an invite already exists instead of relying on PERMISSION_DENIED.
+      // The RTDB rule blocks duplicate writes (!data.exists()), so this works, but a read-first
+      // approach would be cleaner and let us distinguish "already sent" from real errors.
+      manualEmailSendBtn.disabled = false;
+      manualEmailSendBtn.textContent = t('contact.invite');
     }
 
     manualEmailSendBtn.addEventListener('click', handleManualEmailInvite);

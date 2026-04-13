@@ -255,8 +255,8 @@ export function createImportContactsComponent({
       inviteSelectedBtn.disabled = true;
       inviteSelectedBtn.textContent = t('contact.invite.sending');
 
-      const { successCount = 0 } = await onInviteSelected(toInvite);
-      inviteSelectedBtn.textContent = `✓ ${t('contact.invite.sent', { count: successCount })}`;
+      const result = await onInviteSelected(toInvite);
+      inviteSelectedBtn.textContent = `✓ ${t('contact.invite.sent', { count: result.count ?? 0 })}`;
 
       window.setTimeout(() => {
         clearSelection(list, selectAllCheckbox);
@@ -277,7 +277,7 @@ export function createImportContactsComponent({
       const result = await onEmailSelected(notOnApp);
 
       if (result.status === 'sent') {
-        shareLinkBtn.textContent = `✓ ${t('contact.invite.sent_emails', { count: result.sent })}`;
+        shareLinkBtn.textContent = `✓ ${t('contact.invite.sent_emails', { count: result.count ?? 0 })}`;
         shareLinkBtn.classList.add('success');
 
         window.setTimeout(() => {
