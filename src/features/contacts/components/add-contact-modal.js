@@ -94,7 +94,7 @@ export async function showAddContactModal() {
           </button>
         </div>
 
-        <button type="button" id="share-invite-btn" class="action-btn secondary share-invite-btn">
+        <button type="button" id="share-invite-btn" class="action-btn secondary share-invite-btn" aria-label="${t('contact.invite.share.label')}">
           <i data-lucide="share"></i>
         </button>
 
@@ -182,7 +182,7 @@ export async function showAddContactModal() {
       }
 
       manualEmailSendBtn.disabled = true;
-      manualEmailSendBtn.textContent = t('contact.import.fetching');
+      manualEmailSendBtn.textContent = t('shared.sending');
       manualEmailStatus.textContent = '';
       manualEmailStatus.className = 'import-status';
 

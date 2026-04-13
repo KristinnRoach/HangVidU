@@ -80,6 +80,7 @@
   "contact.invite.share.copied": "Invite link copied.",
   "contact.invite.share.cancelled": "Share cancelled.",
   "contact.invite.share.copy_failed": "Couldn't share or copy invite link.",
+  "contact.invite.share.label": "Share invite link",
   "contact.invite.subject": "Join me on HangVidU!",
   "contact.invite.body": "Hi!\n\n{name} invited you to join HangVidU - an app for text messaging, video calls and video sharing.\n\nClick here to get started:\n{link}\n\nSee you there!",
   "contact.name.prompt": "Enter a name for this contact:",
