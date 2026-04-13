@@ -41,6 +41,51 @@
   text-align: center;
 }
 
+/* Direct Actions (email input + share) */
+.add-contact-modal .direct-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0;
+}
+
+.add-contact-modal .manual-email-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.add-contact-modal .manual-email-row input {
+  flex: 1;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background-color: #444;
+  color: white;
+  box-sizing: border-box;
+}
+
+.add-contact-modal .manual-email-row input:focus {
+  outline: none;
+  border-color: rgb(74, 172, 74);
+}
+
+.add-contact-modal .manual-email-row input::placeholder {
+  color: #888;
+}
+
+.add-contact-modal .share-invite-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+/* Import Section */
+.add-contact-modal .import-section {
+  margin-bottom: 0;
+}
+
 /* Platform Selector */
 .add-contact-modal .platform-selector {
   display: flex;
@@ -164,6 +209,10 @@
 
 .add-contact-modal .import-status.success {
   color: rgb(70, 200, 70);
+}
+
+.add-contact-modal .import-status.info {
+  color: #aaa;
 }
 
 .add-contact-modal .import-status.not-found {

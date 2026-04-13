@@ -32,6 +32,12 @@
 
   "contact.add.title": "Add Contacts",
   "contact.add.login_required": "Please sign in to add contacts",
+  "contact.add.enter_email": "Enter email address",
+  "contact.add.self_error": "That's your own email",
+  "contact.add.already_saved": "Already in your contacts",
+  "contact.add.not_found_emailing": "Not on HangVidU yet — opening email to invite",
+  "contact.add.already_invited": "Invite already sent",
+  "contact.add.email_error": "Something went wrong, try again",
   "contact.import.google": "Import from Google Contacts",
   "contact.import.share": "Share invite link",
   "contact.import.facebook": "Import from Facebook (Coming soon)",

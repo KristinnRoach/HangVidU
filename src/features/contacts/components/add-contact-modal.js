@@ -3,7 +3,7 @@
 // Modal for adding contacts by email or importing from Google
 
 import { contactsService } from '../contacts-service.js';
-import { findUsersByEmails } from '../user-discovery.js';
+import { findUserByEmail, findUsersByEmails } from '../user-discovery.js';
 import { sendInvite } from '../invitations.js';
 import { escapeHtml } from '../../../shared/components/ui/component-system/dom-utils.js';
 import {
@@ -28,6 +28,36 @@ import {
 // Keep the UI here, but push reusable import/auth orchestration down before standardizing the pattern.
 
 /**
+ * Open Gmail compose (preferred) or mailto: as fallback for emailing invite links.
+ */
+function openEmailComposeFallback(contacts) {
+  const myUserId = getLoggedInUserId();
+  const referralLink = myUserId
+    ? `${window.location.origin}/?ref=${myUserId}`
+    : window.location.origin;
+
+  const currentUser = getUser();
+  const senderName = currentUser?.userName || 'A friend';
+
+  const subject = encodeURIComponent(t('contact.invite.subject'));
+  const body = encodeURIComponent(
+    t('contact.invite.body', { name: senderName, link: referralLink }),
+  );
+  const to = contacts.map((c) => c.email).join(',');
+
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${subject}&body=${body}`;
+  const opened = window.open(gmailUrl, '_blank');
+
+  if (!opened) {
+    const mailtoLink =
+      contacts.length === 1
+        ? `mailto:${contacts[0].email}?subject=${subject}&body=${body}`
+        : `mailto:?bcc=${to}&subject=${subject}&body=${body}`;
+    window.location.href = mailtoLink;
+  }
+}
+
+/**
  * Show a modal to add contacts with platform selection and search.
  * @returns {Promise<void>}
  */
@@ -47,52 +77,69 @@ export async function showAddContactModal() {
 
       <h2>${t('contact.add.title')}</h2>
 
-      <div class="platform-selector">
-        <button type="button" class="platform-btn active" data-platform="google" title="${t('contact.import.google')}">
-          <i data-lucide="mail"></i>
-        </button>
-        <button type="button" class="platform-btn active" data-platform="share" title="${t('contact.import.share')}">
+      <div class="direct-actions">
+        <div class="manual-email-row">
+          <input type="email" id="manual-email-input"
+                 placeholder="${t('contact.add.enter_email')}"
+                 autocomplete="email" />
+          <button type="button" id="manual-email-send" class="action-btn">
+            ${t('contact.invite')}
+          </button>
+        </div>
+        <div id="manual-email-status" class="import-status"></div>
+
+        <button type="button" id="share-invite-btn" class="action-btn secondary share-invite-btn">
           <i data-lucide="share"></i>
+          ${t('contact.import.share')}
         </button>
-
-        <!-- Future platform buttons - disabled for now 
-        <button type="button" class="platform-btn" data-platform="facebook" title="${t('contact.import.facebook')}" disabled>
-          <i data-lucide="monitor"></i>
-        </button>
-        <button type="button" class="platform-btn" data-platform="instagram" title="${t('contact.import.instagram')}" disabled>
-          <i data-lucide="monitor"></i>
-        </button>
-        -->
-        
       </div>
 
-      <div class="search-section">
-        <input
-          type="text"
-          id="contact-search-input"
-          class="contact-search-input"
-          placeholder="${t('contact.search')}"
-        />
+      <hr class="divider" />
+
+      <div class="import-section">
+        <div class="platform-selector">
+          <button type="button" class="platform-btn" data-platform="google" title="${t('contact.import.google')}">
+            <i data-lucide="mail"></i>
+          </button>
+
+          <!-- Future platform buttons
+          <button type="button" class="platform-btn" data-platform="facebook" title="${t('contact.import.facebook')}" disabled>
+            <i data-lucide="monitor"></i>
+          </button>
+          -->
+        </div>
       </div>
 
-      <p class="disclosure-note">
-        ${t('contact.disclosure.import')}
-      </p>
+      <div id="import-results-section" class="import-results-section" hidden>
+        <div class="search-section">
+          <input
+            type="text"
+            id="contact-search-input"
+            class="contact-search-input"
+            placeholder="${t('contact.search')}"
+          />
+        </div>
 
-      <div id="contacts-container" class="contacts-container-modal">
-        <p class="empty-state">${t('contact.import.select_platform')}</p>
+        <p class="disclosure-note">
+          ${t('contact.disclosure.import')}
+        </p>
+
+        <div id="contacts-container" class="contacts-container-modal"></div>
+
+        <div id="import-status" class="import-status"></div>
+
+        <div id="bulk-actions-container" class="bulk-actions-container"></div>
       </div>
-
-      <div id="import-status" class="import-status"></div>
-
-      <div id="bulk-actions-container" class="bulk-actions-container"></div>
-
-      <!-- <div class="modal-footer">
-        <button type="button" data-action="cancel" class="cancel-btn">Close</button>
-      </div> -->
     `;
 
     const cancelBtn = dialog.querySelector('[data-action="cancel"]');
+    const manualEmailInput = dialog.querySelector('#manual-email-input');
+    const manualEmailSendBtn = dialog.querySelector('#manual-email-send');
+    const manualEmailStatus = dialog.querySelector('#manual-email-status');
+    const shareInviteBtn = dialog.querySelector('#share-invite-btn');
+    const importResultsSection = dialog.querySelector(
+      '#import-results-section',
+    );
     const searchInput = dialog.querySelector('#contact-search-input');
     const importStatus = dialog.querySelector('#import-status');
     const contactsContainer = dialog.querySelector('#contacts-container');
@@ -114,55 +161,74 @@ export async function showAddContactModal() {
     cancelBtn.addEventListener('click', cleanup);
     dialog.addEventListener('cancel', cleanup);
 
-    // Platform selection handler
-    platformBtns.forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        if (btn.disabled) return;
+    // --- Manual email invite ---
 
-        const platform = btn.getAttribute('data-platform');
+    async function handleManualEmailInvite() {
+      const email = manualEmailInput.value.trim().toLowerCase();
+      if (!email) return;
 
-        // Update active state
-        platformBtns.forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
+      manualEmailSendBtn.disabled = true;
+      manualEmailSendBtn.textContent = t('contact.import.fetching');
+      manualEmailStatus.textContent = '';
+      manualEmailStatus.className = 'import-status';
 
-        // Import contacts for selected platform
-        if (platform === 'google') {
-          await importGoogleContacts();
-        } else if (platform === 'share') {
-          await openGenericShare();
+      try {
+        const user = await findUserByEmail(email);
+
+        if (user) {
+          const currentUser = getUser();
+          if (user.uid === currentUser?.uid) {
+            manualEmailStatus.textContent = t('contact.add.self_error');
+            manualEmailStatus.className = 'import-status error';
+            return;
+          }
+
+          const savedContacts = await contactsService.getAllContacts();
+          if (savedContacts && savedContacts[user.uid]) {
+            manualEmailStatus.textContent = t('contact.add.already_saved');
+            manualEmailStatus.className = 'import-status info';
+            return;
+          }
+
+          await sendInvite(user.uid, user.userName);
+          manualEmailStatus.textContent = `✓ ${t('contact.invite.sent_one')}`;
+          manualEmailStatus.className = 'import-status success';
+          showSuccessToast(t('contact.invite.sent_one'), {
+            containerEl: dialog,
+          });
+        } else {
+          openEmailComposeFallback([{ email }]);
+          manualEmailStatus.textContent = t('contact.add.not_found_emailing');
+          manualEmailStatus.className = 'import-status info';
         }
-        // Future: Add handlers for other platforms
-      });
-    });
-
-    // Search input handler - filters displayed contacts
-    searchInput.addEventListener('input', () => {
-      const query = searchInput.value.trim().toLowerCase();
-
-      if (!query) {
-        filteredContacts = allContacts;
-      } else {
-        filteredContacts = allContacts.filter((contact) => {
-          const nameMatch = (contact.name || '').toLowerCase().includes(query);
-          const emailMatch = (contact.email || '')
-            .toLowerCase()
-            .includes(query);
-          return nameMatch || emailMatch;
-        });
+      } catch (err) {
+        // TODO: Pre-check whether an invite already exists instead of relying on PERMISSION_DENIED.
+        // The RTDB rule blocks duplicate writes (!data.exists()), so this works, but a read-first
+        // approach would be cleaner and let us distinguish "already sent" from real errors.
+        if (err?.message?.includes('PERMISSION_DENIED')) {
+          manualEmailStatus.textContent = t('contact.add.already_invited');
+          manualEmailStatus.className = 'import-status info';
+        } else {
+          console.error('[ADD CONTACT] Manual email invite error:', err);
+          manualEmailStatus.textContent = t('contact.add.email_error');
+          manualEmailStatus.className = 'import-status error';
+        }
+      } finally {
+        manualEmailSendBtn.disabled = false;
+        manualEmailSendBtn.textContent = t('contact.invite');
       }
+    }
 
-      renderImportResults(
-        contactsContainer,
-        bulkActionsContainer,
-        filteredContacts,
-        selectedContacts,
-        dialog,
-      );
+    manualEmailSendBtn.addEventListener('click', handleManualEmailInvite);
+    manualEmailInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleManualEmailInvite();
     });
 
-    async function openGenericShare() {
-      importStatus.textContent = t('contact.invite.share.opening');
-      importStatus.className = 'import-status loading';
+    // --- Share invite link ---
+
+    shareInviteBtn.addEventListener('click', async () => {
+      manualEmailStatus.textContent = t('contact.invite.share.opening');
+      manualEmailStatus.className = 'import-status loading';
       try {
         const currentUser = getUser();
 
@@ -190,21 +256,66 @@ export async function showAddContactModal() {
         if (config.toast) {
           config.toast(t(key), { containerEl: dialog });
         }
-        importStatus.textContent = t(key);
-        importStatus.className = `import-status ${config.className}`;
+        manualEmailStatus.textContent = t(key);
+        manualEmailStatus.className = `import-status ${config.className}`;
       } catch (error) {
         console.error('[ADD CONTACT] Web Share invite error:', error);
         showErrorToast(t('contact.invite.share.copy_failed'), {
           containerEl: dialog,
         });
-        importStatus.textContent = t('contact.invite.share.copy_failed');
-        importStatus.className = 'import-status error';
+        manualEmailStatus.textContent = t('contact.invite.share.copy_failed');
+        manualEmailStatus.className = 'import-status error';
       }
-    }
+    });
 
-    // Import Google Contacts function — must be called from a user click
-    // so the browser allows the OAuth popup on mobile.
+    // --- Platform import ---
+
+    platformBtns.forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (btn.disabled) return;
+
+        const platform = btn.getAttribute('data-platform');
+
+        platformBtns.forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        if (platform === 'google') {
+          await importGoogleContacts();
+        }
+      });
+    });
+
+    // --- Import results search filter ---
+
+    searchInput.addEventListener('input', () => {
+      const query = searchInput.value.trim().toLowerCase();
+
+      if (!query) {
+        filteredContacts = allContacts;
+      } else {
+        filteredContacts = allContacts.filter((contact) => {
+          const nameMatch = (contact.name || '').toLowerCase().includes(query);
+          const emailMatch = (contact.email || '')
+            .toLowerCase()
+            .includes(query);
+          return nameMatch || emailMatch;
+        });
+      }
+
+      renderImportResults(
+        contactsContainer,
+        bulkActionsContainer,
+        filteredContacts,
+        selectedContacts,
+        dialog,
+      );
+    });
+
+    // --- Google Contacts import ---
+    // Must be called from a user click so the browser allows the OAuth popup.
+
     async function importGoogleContacts() {
+      importResultsSection.hidden = false;
       importStatus.textContent = t('contact.import.requesting');
       importStatus.className = 'import-status loading';
       contactsContainer.innerHTML = '';
@@ -212,12 +323,10 @@ export async function showAddContactModal() {
       filteredContacts = [];
 
       try {
-        // Step 1: Get access token (interactive to preserve user gesture)
         const accessToken = await requestContactsAccess({ interactive: true });
 
         importStatus.textContent = t('contact.import.fetching');
 
-        // Step 2: Fetch Google Contacts
         const contacts = await fetchGoogleContacts(accessToken);
 
         if (contacts.length === 0) {
@@ -231,15 +340,12 @@ export async function showAddContactModal() {
           count: contacts.length,
         });
 
-        // Step 3: Get saved contacts to check if already connected
         const savedContacts = await contactsService.getAllContacts();
         const savedContactIds = new Set(Object.keys(savedContacts || {}));
 
-        // Step 4: Cross-reference with HangVidU users
         const emails = contacts.map((c) => c.email);
         const registeredUsers = await findUsersByEmails(emails);
 
-        // Build results - now including ALL contacts
         const currentUser = getUser();
         allContacts = [];
 
@@ -257,32 +363,24 @@ export async function showAddContactModal() {
           }
         }
 
-        // Sort contacts by priority:
-        // 1. On HangVidU but not saved (highest priority)
-        // 2. Not on HangVidU or already saved
-        // Within each group, sort alphabetically by name
         allContacts.sort((a, b) => {
-          // Determine priority groups
           const getPriority = (contact) => {
-            if (contact.user && !contact.isAlreadySaved) return 1; // On app, not saved
-            return 2; // Not on app or already saved
+            if (contact.user && !contact.isAlreadySaved) return 1;
+            return 2;
           };
 
           const priorityA = getPriority(a);
           const priorityB = getPriority(b);
 
-          // Sort by priority first
           if (priorityA !== priorityB) {
             return priorityA - priorityB;
           }
 
-          // Within same priority, sort alphabetically by name
           return (a.name || '').localeCompare(b.name || '', undefined, {
             sensitivity: 'base',
           });
         });
 
-        // Display results
         filteredContacts = allContacts;
         importStatus.textContent = t('contact.import.found', {
           count: allContacts.length,
@@ -625,7 +723,7 @@ function renderImportResults(
         });
 
         setTimeout(() => {
-          openGmailComposeFallback(notOnApp);
+          openEmailComposeFallback(notOnApp);
           shareLinkBtn.textContent = t('contact.invite.email', {
             count: notOnApp.length,
           });
@@ -644,32 +742,4 @@ function renderImportResults(
     }
   });
 
-  // Fallback: open Gmail compose in new tab (preferred), mailto: as last resort
-  function openGmailComposeFallback(contacts) {
-    const myUserId = getLoggedInUserId();
-    const referralLink = myUserId
-      ? `${window.location.origin}/?ref=${myUserId}`
-      : window.location.origin;
-
-    const currentUser = getUser();
-    const senderName = currentUser?.userName || 'A friend';
-
-    const subject = encodeURIComponent(t('contact.invite.subject'));
-    const body = encodeURIComponent(
-      t('contact.invite.body', { name: senderName, link: referralLink }),
-    );
-    const to = contacts.map((c) => c.email).join(',');
-
-    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${subject}&body=${body}`;
-    const opened = window.open(gmailUrl, '_blank');
-
-    // Last resort: mailto: if popup was blocked
-    if (!opened) {
-      const mailtoLink =
-        contacts.length === 1
-          ? `mailto:${contacts[0].email}?subject=${subject}&body=${body}`
-          : `mailto:?bcc=${to}&subject=${subject}&body=${body}`;
-      window.location.href = mailtoLink;
-    }
-  }
 }

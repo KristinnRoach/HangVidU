@@ -32,6 +32,12 @@
 
   "contact.add.title": "Bæta við tengiliðum",
   "contact.add.login_required": "Vinsamlegast skráðu þig inn til að bæta við tengiliðum",
+  "contact.add.enter_email": "Sláðu inn netfang",
+  "contact.add.self_error": "Þetta er þitt eigið netfang",
+  "contact.add.already_saved": "Þegar í tengiliðum þínum",
+  "contact.add.not_found_emailing": "Ekki á HangVidU ennþá — opna tölvupóst til að bjóða",
+  "contact.add.already_invited": "Boð þegar sent",
+  "contact.add.email_error": "Eitthvað fór úrskeiðis, reyndu aftur",
   "contact.import.google": "Flytja inn frá Google Tengiliðum",
   "contact.import.share": "Deila boðstengli",
   "contact.import.facebook": "Flytja inn frá Facebook (Kemur bráðlega)",
