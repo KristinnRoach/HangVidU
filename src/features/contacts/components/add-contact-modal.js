@@ -9,7 +9,7 @@ import {
   getUser,
   getIsLoggedIn,
 } from '../../../auth/index.js';
-import { shareInvite } from '../share-invite.js';
+import { buildReferralLink, shareInvite } from '../share-invite.js';
 import { t } from '../../../shared/i18n/index.js';
 import { initIcons } from '../../../shared/components/ui/icons.js';
 import {
@@ -22,7 +22,6 @@ import {
 } from '../import-contacts-utils.js';
 import { createImportContactsComponent } from './import-contacts-component.js';
 import { importGoogleContacts as importGoogleContactsFlow } from '../google-import.js';
-import { getReferralLink } from '../contact-invite-utils.js';
 import { inviteContactByEmail } from '../manual-contact-invite.js';
 
 // TODO: WIP decoupling considerations:
@@ -35,7 +34,7 @@ const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
  * Open Gmail compose (preferred) or mailto: as fallback for emailing invite links.
  */
 function openEmailComposeFallback(contacts) {
-  const referralLink = getReferralLink(APP_ORIGIN, getLoggedInUserId());
+  const referralLink = buildReferralLink(getLoggedInUserId(), APP_ORIGIN);
 
   const currentUser = getUser();
   const senderName = currentUser?.userName || 'A friend';
@@ -152,7 +151,10 @@ export async function showAddContactModal() {
       onEmailSelected: async (contacts) => {
         try {
           const accessToken = await requestGmailSendAccess();
-          const referralLink = getReferralLink(APP_ORIGIN, getLoggedInUserId());
+          const referralLink = buildReferralLink(
+            getLoggedInUserId(),
+            APP_ORIGIN,
+          );
           const currentUser = getUser();
           const senderName = currentUser?.userName || 'A friend';
           const subject = t('contact.invite.subject');

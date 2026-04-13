@@ -12,7 +12,7 @@ export function createImportContactsComponent({
   element.innerHTML = `
     <div class="import-section">
       <div class="platform-selector">
-        <button type="button" class="platform-btn" data-platform="google" title="${t('contact.import.google')}">
+        <button type="button" class="platform-btn" data-platform="google" title="${t('contact.import.google')}" aria-label="${t('contact.import.google')}">
           <i data-lucide="mail"></i>
         </button>
 
@@ -31,6 +31,7 @@ export function createImportContactsComponent({
           id="contact-search-input"
           class="contact-search-input"
           placeholder="${t('contact.search')}"
+          aria-label="${t('contact.search')}"
         />
       </div>
 
@@ -55,11 +56,16 @@ export function createImportContactsComponent({
 
   const selectedContacts = new Set();
   let visibleContacts = [];
+  let isPlatformLoading = false;
 
   platformBtns.forEach((btn) => {
     btn.addEventListener('click', async () => {
-      if (btn.disabled) return;
+      if (btn.disabled || isPlatformLoading) return;
       const platform = btn.getAttribute('data-platform');
+      isPlatformLoading = true;
+      platformBtns.forEach((platformBtn) => {
+        platformBtn.disabled = true;
+      });
       setActivePlatform(platform);
       try {
         await onPlatformSelect(platform);
@@ -70,6 +76,11 @@ export function createImportContactsComponent({
           t('contact.import.error', { error: error.message }),
           'error',
         );
+      } finally {
+        isPlatformLoading = false;
+        platformBtns.forEach((platformBtn) => {
+          platformBtn.disabled = false;
+        });
       }
     });
   });
@@ -145,6 +156,9 @@ export function createImportContactsComponent({
 
     const list = document.createElement('ul');
     list.className = 'contact-list';
+    const visibleContactsByEmail = new Map(
+      visibleContacts.map((contact) => [contact.email, contact]),
+    );
 
     for (const contact of visibleContacts) {
       const { name, email, user, isAlreadySaved } = contact;
@@ -188,8 +202,15 @@ export function createImportContactsComponent({
 
           try {
             await onInviteContact(contact);
+            if (checkbox) {
+              checkbox.checked = false;
+              checkbox.disabled = true;
+            }
+            selectedContacts.delete(contact);
             btn.textContent = `✓ ${t('contact.invite.sent_one')}`;
             btn.classList.add('sent');
+            syncSelectAllCheckbox(list, selectAllCheckbox, visibleContactsByEmail);
+            updateActionButtons();
           } catch {
             btn.textContent = t('shared.error');
             btn.disabled = false;
@@ -206,6 +227,7 @@ export function createImportContactsComponent({
           } else {
             selectedContacts.delete(contact);
           }
+          syncSelectAllCheckbox(list, selectAllCheckbox, visibleContactsByEmail);
           updateActionButtons();
         });
       }
@@ -243,7 +265,7 @@ export function createImportContactsComponent({
       checkboxes.forEach((cb) => {
         cb.checked = selectAllCheckbox.checked;
         const email = cb.getAttribute('data-email');
-        const contact = visibleContacts.find((entry) => entry.email === email);
+        const contact = visibleContactsByEmail.get(email);
         if (!contact) return;
         if (selectAllCheckbox.checked) {
           selectedContacts.add(contact);
@@ -283,10 +305,21 @@ export function createImportContactsComponent({
         return;
       }
 
+      if (result.status === 'partial') {
+        inviteSelectedBtn.textContent = t('contact.invite.sent', {
+          count: result.count ?? 0,
+        });
+        inviteSelectedBtn.disabled = false;
+        window.setTimeout(() => {
+          updateActionButtons();
+        }, 1500);
+        return;
+      }
+
       inviteSelectedBtn.textContent = `✓ ${t('contact.invite.sent', { count: result.count ?? 0 })}`;
 
       window.setTimeout(() => {
-        clearSelection(list, selectAllCheckbox);
+        clearSelection(list, selectAllCheckbox, visibleContactsByEmail);
         updateActionButtons();
       }, 2000);
     });
@@ -319,7 +352,7 @@ export function createImportContactsComponent({
         shareLinkBtn.classList.add('success');
 
         window.setTimeout(() => {
-          clearSelection(list, selectAllCheckbox);
+          clearSelection(list, selectAllCheckbox, visibleContactsByEmail);
           updateActionButtons();
           shareLinkBtn.classList.remove('success');
         }, 3000);
@@ -341,18 +374,19 @@ export function createImportContactsComponent({
     });
 
     updateActionButtons();
-    syncSelectAllCheckbox(list, selectAllCheckbox);
+    syncSelectAllCheckbox(list, selectAllCheckbox, visibleContactsByEmail);
   }
 
-  function clearSelection(list, selectAllCheckbox) {
+  function clearSelection(list, selectAllCheckbox, visibleContactsByEmail) {
     selectedContacts.clear();
     list
       .querySelectorAll('.contact-checkbox')
       .forEach((cb) => (cb.checked = false));
     selectAllCheckbox.checked = false;
+    syncSelectAllCheckbox(list, selectAllCheckbox, visibleContactsByEmail);
   }
 
-  function syncSelectAllCheckbox(list, selectAllCheckbox) {
+  function syncSelectAllCheckbox(list, selectAllCheckbox, visibleContactsByEmail) {
     const selectableCheckboxes = Array.from(
       list.querySelectorAll('.contact-checkbox:not([disabled])'),
     );
@@ -364,9 +398,8 @@ export function createImportContactsComponent({
 
     selectAllCheckbox.checked = selectableCheckboxes.every((checkbox) => {
       const email = checkbox.getAttribute('data-email');
-      return visibleContacts.some(
-        (contact) => contact.email === email && selectedContacts.has(contact),
-      );
+      const contact = visibleContactsByEmail.get(email);
+      return contact ? selectedContacts.has(contact) : false;
     });
   }
 
