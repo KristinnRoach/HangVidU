@@ -50,7 +50,9 @@ body[data-view='connected:user'] {
 
 body[data-view='lobby:guest'] {
   & #lobby-buttons-container {
-    display: flex;
+    display: none;
+
+    /* TODO: Refactor / remove if lobby-buttons are not needed in guest mode */
 
     & #lobby-call-btn {
       display: none;

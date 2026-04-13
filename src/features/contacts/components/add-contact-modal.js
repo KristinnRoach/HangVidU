@@ -158,10 +158,9 @@ export async function showAddContactModal() {
       importStatus.className = 'import-status loading';
       try {
         const currentUser = getUser();
-        const senderName = currentUser?.userName || t('shared.unknown');
 
         const result = await shareMessengerInvite({
-          senderName,
+          senderName: currentUser?.userName,
           userId: getLoggedInUserId(),
         });
 
