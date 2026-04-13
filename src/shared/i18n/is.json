@@ -67,6 +67,7 @@
   "contact.invite.sending": "Sendi...",
   "contact.invite.sent_one": "Sent",
   "contact.invite.sent": "Sent {count} boð",
+  "contact.invite.partial_with_already_invited": "Sent {sent} boð, {alreadyInvited} þegar boðið",
   "contact.invite.sent_emails": "{count} tölvupóstar sendir!",
   "contact.invite.requesting_permission": "Beðið um leyfi...",
   "contact.invite.sending_emails": "Sendi netpóst...",

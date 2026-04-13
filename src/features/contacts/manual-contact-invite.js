@@ -1,7 +1,7 @@
 import { contactsService } from './contacts-service.js';
 import { findUserByEmail } from './user-discovery.js';
-import { sendInvite } from './invitations.js';
 import { getUser } from '../../auth/index.js';
+import { sendContactInvite } from './send-contact-invite.js';
 
 export async function inviteContactByEmail(email, { onNotFound } = {}) {
   try {
@@ -22,13 +22,8 @@ export async function inviteContactByEmail(email, { onNotFound } = {}) {
       return { ok: false, status: 'already_saved' };
     }
 
-    await sendInvite(user.uid, user.userName);
-    return { ok: true, status: 'sent' };
+    return await sendContactInvite(user.uid, user.userName);
   } catch (error) {
-    if (error?.message?.includes('PERMISSION_DENIED')) {
-      return { ok: false, status: 'already_invited' };
-    }
-
     return { ok: false, status: 'error', error };
   }
 }

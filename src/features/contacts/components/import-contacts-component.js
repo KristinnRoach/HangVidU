@@ -166,7 +166,9 @@ export function createImportContactsComponent({
     );
 
     for (const contact of visibleContacts) {
-      const { name, email, user, isAlreadySaved, isInvited } = contact;
+      const { name, email, user, isAlreadySaved, inviteStatus } = contact;
+      const isAlreadyInvited = inviteStatus === 'already_invited';
+      const isSentInvite = inviteStatus === 'sent';
 
       const li = document.createElement('li');
       li.className = 'contact-item';
@@ -174,8 +176,18 @@ export function createImportContactsComponent({
       let statusBadge = '';
       let actionButton = '';
 
-      if (isAlreadySaved || isInvited) {
+      if (isAlreadySaved) {
         statusBadge = `<span class="status-badge saved">✓ ${t('contact.status.saved')}</span>`;
+      } else if (user && (isAlreadyInvited || isSentInvite)) {
+        const inviteLabel = isAlreadyInvited
+          ? t('contact.add.already_invited')
+          : `✓ ${t('contact.invite.sent_one')}`;
+        actionButton = `
+          <button type="button" class="invite-btn${isSentInvite ? ' sent' : ''}" disabled>
+            ${escapeHtml(inviteLabel)}
+          </button>
+        `;
+        statusBadge = `<span class="status-badge on-app">${t('contact.status.on_app')}</span>`;
       } else if (user) {
         statusBadge = `<span class="status-badge on-app">${t('contact.status.on_app')}</span>`;
         actionButton = `
@@ -189,7 +201,7 @@ export function createImportContactsComponent({
 
       li.innerHTML = `
         <label class="contact-item-label">
-          <input type="checkbox" class="contact-checkbox" data-email="${escapeHtml(email)}" ${isAlreadySaved || isInvited ? 'disabled' : ''} />
+          <input type="checkbox" class="contact-checkbox" data-email="${escapeHtml(email)}" ${isAlreadySaved || isAlreadyInvited || isSentInvite ? 'disabled' : ''} />
           <span class="contact-info">
             <strong class="contact-name">${escapeHtml(name)}</strong>
             <small class="contact-email">${escapeHtml(email)}</small>
@@ -202,14 +214,37 @@ export function createImportContactsComponent({
       const inviteBtn = li.querySelector('.invite-btn');
       const checkbox = li.querySelector('.contact-checkbox');
 
-      if (user && !isAlreadySaved && !isInvited) {
+      if (user && !isAlreadySaved && !isAlreadyInvited && !isSentInvite) {
         inviteBtn.addEventListener('click', async () => {
           inviteBtn.disabled = true;
           inviteBtn.textContent = t('shared.sending');
 
           try {
-            await onInviteContact(contact);
-            contact.isInvited = true;
+            const result = await onInviteContact(contact);
+            if (result.status === 'already_invited') {
+              contact.inviteStatus = 'already_invited';
+              if (checkbox) {
+                checkbox.checked = false;
+                checkbox.disabled = true;
+              }
+              selectedContacts.delete(contact);
+              inviteBtn.textContent = t('contact.add.already_invited');
+              syncSelectAllCheckbox(
+                list,
+                selectAllCheckbox,
+                visibleContactsByEmail,
+              );
+              updateActionButtons();
+              return;
+            }
+
+            if (result.status !== 'sent') {
+              inviteBtn.textContent = t('shared.error');
+              inviteBtn.disabled = false;
+              return;
+            }
+
+            contact.inviteStatus = 'sent';
             if (checkbox) {
               checkbox.checked = false;
               checkbox.disabled = true;
@@ -230,7 +265,7 @@ export function createImportContactsComponent({
         });
       }
 
-      if (checkbox && !isAlreadySaved && !isInvited) {
+      if (checkbox && !isAlreadySaved && !isAlreadyInvited && !isSentInvite) {
         checkbox.checked = selectedContacts.has(contact);
         checkbox.addEventListener('change', () => {
           if (checkbox.checked) {
@@ -325,10 +360,25 @@ export function createImportContactsComponent({
         return;
       }
 
+      if (result.status === 'already_invited') {
+        inviteSelectedBtn.textContent = t('contact.add.already_invited');
+        inviteSelectedBtn.disabled = false;
+        window.setTimeout(() => {
+          updateActionButtons();
+        }, 1500);
+        return;
+      }
+
       if (result.status === 'partial') {
-        inviteSelectedBtn.textContent = t('contact.invite.sent', {
-          count: result.count ?? 0,
-        });
+        inviteSelectedBtn.textContent =
+          result.alreadyInvitedCount > 0
+            ? t('contact.invite.partial_with_already_invited', {
+                sent: result.count ?? 0,
+                alreadyInvited: result.alreadyInvitedCount,
+              })
+            : t('contact.invite.sent', {
+                count: result.count ?? 0,
+              });
         inviteSelectedBtn.disabled = false;
         window.setTimeout(() => {
           updateActionButtons();

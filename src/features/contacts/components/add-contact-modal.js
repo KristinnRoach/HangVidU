@@ -2,7 +2,6 @@
 
 // Modal for adding contacts by email or importing from Google
 
-import { sendInvite } from '../invitations.js';
 import {
   requestGmailSendAccess,
   getLoggedInUserId,
@@ -23,6 +22,7 @@ import {
 import { createImportContactsComponent } from './import-contacts-component.js';
 import { importGoogleContacts as importGoogleContactsFlow } from '../google-import.js';
 import { inviteContactByEmail } from '../manual-contact-invite.js';
+import { sendContactInvite } from '../send-contact-invite.js';
 
 // TODO: WIP decoupling considerations:
 // This modal mixes feature UI with auth/OAuth and external contact-import side effects.
@@ -124,26 +124,51 @@ export async function showAddContactModal() {
         );
       },
       onInviteContact: async (contact) => {
-        await sendInvite(contact.user.uid, contact.user.userName);
+        return await sendContactInvite(contact.user.uid, contact.user.userName);
       },
       onInviteSelected: async (contacts) => {
         let count = 0;
+        let alreadyInvitedCount = 0;
 
         for (const contact of contacts) {
-          try {
-            await sendInvite(contact.user.uid, contact.user.userName);
+          const result = await sendContactInvite(
+            contact.user.uid,
+            contact.user.userName,
+          );
+
+          if (result.status === 'sent') {
             count++;
-          } catch (err) {
-            console.error('[ADD CONTACT] Failed to invite:', contact.name, err);
+            continue;
           }
+
+          if (result.status === 'already_invited') {
+            alreadyInvitedCount++;
+            continue;
+          }
+
+          console.error(
+            '[ADD CONTACT] Failed to invite:',
+            contact.name,
+            result.error,
+          );
         }
 
         if (count === 0) {
-          return { ok: false, status: 'failed', count };
+          return {
+            ok: false,
+            status: alreadyInvitedCount > 0 ? 'already_invited' : 'failed',
+            count,
+            alreadyInvitedCount,
+          };
         }
 
         if (count < contacts.length) {
-          return { ok: true, status: 'partial', count };
+          return {
+            ok: true,
+            status: 'partial',
+            count,
+            alreadyInvitedCount,
+          };
         }
 
         return { ok: true, status: 'sent', count };
