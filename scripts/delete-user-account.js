@@ -99,7 +99,7 @@ async function run() {
   const updates = {};
   const summary = [];
 
-  // 1. User sub-nodes (preserve profile as tombstone)
+  // 1. User sub-nodes
   const userSnap = await db.ref(`users/${uid}`).once('value');
   if (userSnap.exists()) {
     const keys = Object.keys(userSnap.val()).filter((k) => k !== 'profile');
@@ -107,21 +107,24 @@ async function run() {
       summary.push(`users/${uid}/${key}`);
       updates[`users/${uid}/${key}`] = null;
     }
-    summary.push(`users/${uid}/profile -> tombstone`);
-    updates[`users/${uid}/profile`] = {
-      deleted: true,
-      deletedAt: Date.now(),
-    };
   }
 
-  // 2. Notifications
+  // 2. Always replace profile with a tombstone
+  summary.push(`users/${uid}/profile -> tombstone`);
+  updates[`users/${uid}/profile`] = {
+    deleted: true,
+    deletedAt: Date.now(),
+  };
+
+  // 3. Notifications
   const notifSnap = await db.ref(`notifications/${uid}`).once('value');
   if (notifSnap.exists()) {
     summary.push(`notifications/${uid}`);
-    updates[`notifications/${uid}`] = null;
   }
+  // Even if snap doesn't exist locally at read time, ensure it's wiped
+  updates[`notifications/${uid}`] = null;
 
-  // 3. Discovery directory
+  // 4. Discovery directory
   if (email) {
     const emailHash = hashEmail(email);
     const dirSnap = await db.ref(`usersByEmail/${emailHash}`).once('value');

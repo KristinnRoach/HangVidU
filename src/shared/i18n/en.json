@@ -1,4 +1,6 @@
 {
+  "share": "Share",
+
   "shared.cancel": "Cancel",
   "shared.confirm": "Confirm",
   "shared.close": "Close",
@@ -32,6 +34,12 @@
 
   "contact.add.title": "Add Contacts",
   "contact.add.login_required": "Please sign in to add contacts",
+  "contact.add.enter_email": "Enter email address",
+  "contact.add.self_error": "That's your own email",
+  "contact.add.already_saved": "Already in your contacts",
+  "contact.add.not_found_emailing": "Not on HangVidU yet — opening email to invite",
+  "contact.add.already_invited": "Invite already sent",
+  "contact.add.email_error": "Something went wrong, try again",
   "contact.import.google": "Import from Google Contacts",
   "contact.import.share": "Share invite link",
   "contact.import.facebook": "Import from Facebook (Coming soon)",
@@ -72,6 +80,7 @@
   "contact.invite.share.copied": "Invite link copied.",
   "contact.invite.share.cancelled": "Share cancelled.",
   "contact.invite.share.copy_failed": "Couldn't share or copy invite link.",
+  "contact.invite.share.label": "Share invite link",
   "contact.invite.subject": "Join me on HangVidU!",
   "contact.invite.body": "Hi!\n\n{name} invited you to join HangVidU - an app for text messaging, video calls and video sharing.\n\nClick here to get started:\n{link}\n\nSee you there!",
   "contact.name.prompt": "Enter a name for this contact:",

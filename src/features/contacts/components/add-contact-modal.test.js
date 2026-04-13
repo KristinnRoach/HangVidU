@@ -83,7 +83,7 @@ describe('showAddContactModal - share invite platform action', () => {
     const { showAddContactModal } = await import('./add-contact-modal.js');
     const modalPromise = showAddContactModal();
 
-    const btn = document.querySelector('[data-platform="share"]');
+    const btn = document.querySelector('#share-invite-btn');
     expect(btn).toBeTruthy();
 
     btn.click();
@@ -91,7 +91,7 @@ describe('showAddContactModal - share invite platform action', () => {
 
     expect(mocks.shareInvite).toHaveBeenCalledTimes(1);
     expect(mocks.showSuccessToast).not.toHaveBeenCalled();
-    expect(document.querySelector('.import-status').textContent).toBe(
+    expect(document.querySelector('#manual-email-status').textContent).toBe(
       'contact.invite.share.opened_elsewhere',
     );
 
@@ -108,8 +108,8 @@ describe('showAddContactModal - share invite platform action', () => {
     const { showAddContactModal } = await import('./add-contact-modal.js');
     const modalPromise = showAddContactModal();
 
-    const btn = document.querySelector('[data-platform="share"]');
-    const status = document.querySelector('#import-status');
+    const btn = document.querySelector('#share-invite-btn');
+    const status = document.querySelector('#manual-email-status');
     btn.click();
 
     expect(status.textContent).toBe('contact.invite.share.opening');
