@@ -1,0 +1,370 @@
+import { escapeHtml } from '../../../shared/components/ui/component-system/dom-utils.js';
+import { t } from '../../../shared/i18n/index.js';
+
+export function createImportContactsComponent({
+  onPlatformSelect,
+  onSearchChange,
+  onInviteContact,
+  onInviteSelected,
+  onEmailSelected,
+}) {
+  const element = document.createElement('div');
+  element.innerHTML = `
+    <div class="import-section">
+      <div class="platform-selector">
+        <button type="button" class="platform-btn" data-platform="google" title="${t('contact.import.google')}">
+          <i data-lucide="mail"></i>
+        </button>
+
+        <!-- Future platform buttons
+        <button type="button" class="platform-btn" data-platform="facebook" title="${t('contact.import.facebook')}" disabled>
+          <i data-lucide="monitor"></i>
+        </button>
+        -->
+      </div>
+    </div>
+
+    <div id="import-results-section" class="import-results-section" hidden>
+      <div class="search-section">
+        <input
+          type="text"
+          id="contact-search-input"
+          class="contact-search-input"
+          placeholder="${t('contact.search')}"
+        />
+      </div>
+
+      <p class="disclosure-note">
+        ${t('contact.disclosure.import')}
+      </p>
+
+      <div id="contacts-container" class="contacts-container-modal"></div>
+
+      <div id="import-status" class="import-status" role="status" aria-live="polite"></div>
+
+      <div id="bulk-actions-container" class="bulk-actions-container"></div>
+    </div>
+  `;
+
+  const importResultsSection = element.querySelector('#import-results-section');
+  const searchInput = element.querySelector('#contact-search-input');
+  const importStatus = element.querySelector('#import-status');
+  const contactsContainer = element.querySelector('#contacts-container');
+  const bulkActionsContainer = element.querySelector('#bulk-actions-container');
+  const platformBtns = element.querySelectorAll('.platform-btn');
+
+  const selectedContacts = new Set();
+  let visibleContacts = [];
+
+  platformBtns.forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (btn.disabled) return;
+      const platform = btn.getAttribute('data-platform');
+      setActivePlatform(platform);
+      await onPlatformSelect(platform);
+    });
+  });
+
+  searchInput.addEventListener('input', () => {
+    onSearchChange(searchInput.value);
+  });
+
+  function setActivePlatform(platform) {
+    platformBtns.forEach((btn) => {
+      const isActive = btn.getAttribute('data-platform') === platform;
+      btn.classList.toggle('active', isActive);
+    });
+  }
+
+  function setStatus(message, statusClass = '') {
+    importStatus.textContent = message;
+    importStatus.className = ['import-status', statusClass].filter(Boolean).join(
+      ' ',
+    );
+  }
+
+  function reset() {
+    importResultsSection.hidden = true;
+    searchInput.value = '';
+    contactsContainer.innerHTML = '';
+    bulkActionsContainer.innerHTML = '';
+    setStatus('');
+    visibleContacts = [];
+    selectedContacts.clear();
+    platformBtns.forEach((btn) => btn.classList.remove('active'));
+  }
+
+  function prepareForImport() {
+    importResultsSection.hidden = false;
+    searchInput.value = '';
+    contactsContainer.innerHTML = '';
+    bulkActionsContainer.innerHTML = '';
+    visibleContacts = [];
+    selectedContacts.clear();
+  }
+
+  function renderContacts(contacts) {
+    visibleContacts = contacts;
+    renderImportResults();
+  }
+
+  function renderEmptyState(message = t('contact.import.none')) {
+    contactsContainer.innerHTML = `<p class="empty-state">${message}</p>`;
+    bulkActionsContainer.innerHTML = '';
+  }
+
+  function renderImportResults() {
+    contactsContainer.innerHTML = '';
+
+    if (visibleContacts.length === 0) {
+      renderEmptyState();
+      return;
+    }
+
+    const header = document.createElement('div');
+    header.className = 'results-header';
+    header.innerHTML = `
+      <label class="select-all-label">
+        <input type="checkbox" id="select-all-checkbox" />
+        <span>${t('contact.select_all', { count: visibleContacts.length })}</span>
+      </label>
+    `;
+    contactsContainer.appendChild(header);
+
+    const listContainer = document.createElement('div');
+    listContainer.className = 'contacts-scroll-list';
+
+    const list = document.createElement('ul');
+    list.className = 'contact-list';
+
+    for (const contact of visibleContacts) {
+      const { name, email, user, isAlreadySaved } = contact;
+
+      const li = document.createElement('li');
+      li.className = 'contact-item';
+
+      let statusBadge = '';
+      let actionButton = '';
+
+      if (isAlreadySaved) {
+        statusBadge = `<span class="status-badge saved">✓ ${t('contact.status.saved')}</span>`;
+      } else if (user) {
+        statusBadge = `<span class="status-badge on-app">${t('contact.status.on_app')}</span>`;
+        actionButton = `
+          <button type="button" class="invite-btn" data-uid="${escapeHtml(user.uid)}" data-name="${escapeHtml(user.userName)}">
+            ${t('contact.invite')}
+          </button>
+        `;
+      } else {
+        statusBadge = `<span class="status-badge not-on-app">${t('contact.status.not_on_app')}</span>`;
+      }
+
+      li.innerHTML = `
+        <label class="contact-item-label">
+          <input type="checkbox" class="contact-checkbox" data-email="${escapeHtml(email)}" ${isAlreadySaved ? 'disabled' : ''} />
+          <span class="contact-info">
+            <strong class="contact-name">${escapeHtml(name)}</strong>
+            <small class="contact-email">${escapeHtml(email)}</small>
+          </span>
+          ${statusBadge}
+        </label>
+        ${actionButton}
+      `;
+
+      if (user && !isAlreadySaved) {
+        const btn = li.querySelector('.invite-btn');
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          btn.textContent = t('shared.sending');
+
+          try {
+            await onInviteContact(contact);
+            btn.textContent = `✓ ${t('contact.invite.sent_one')}`;
+            btn.classList.add('sent');
+          } catch {
+            btn.textContent = t('shared.error');
+            btn.disabled = false;
+          }
+        });
+      }
+
+      const checkbox = li.querySelector('.contact-checkbox');
+      if (checkbox && !isAlreadySaved) {
+        checkbox.checked = selectedContacts.has(contact);
+        checkbox.addEventListener('change', () => {
+          if (checkbox.checked) {
+            selectedContacts.add(contact);
+          } else {
+            selectedContacts.delete(contact);
+          }
+          updateActionButtons();
+        });
+      }
+
+      list.appendChild(li);
+    }
+
+    listContainer.appendChild(list);
+    contactsContainer.appendChild(listContainer);
+
+    bulkActionsContainer.innerHTML = `
+      <div class="bulk-actions">
+        <button type="button" id="invite-selected-btn" class="action-btn" disabled>
+          ${t('contact.invite.selected', { count: 0 })}
+        </button>
+        <button type="button" id="share-link-btn" class="action-btn secondary" disabled>
+          ${t('contact.invite.email', { count: 0 })}
+        </button>
+      </div>
+      <p class="disclosure-note bulk-action-disclosure">
+        ${t('contact.disclosure.gmail_send')}
+      </p>
+    `;
+
+    const selectAllCheckbox = header.querySelector('#select-all-checkbox');
+    const inviteSelectedBtn = bulkActionsContainer.querySelector(
+      '#invite-selected-btn',
+    );
+    const shareLinkBtn = bulkActionsContainer.querySelector('#share-link-btn');
+
+    selectAllCheckbox.addEventListener('change', () => {
+      const checkboxes = list.querySelectorAll(
+        '.contact-checkbox:not([disabled])',
+      );
+      checkboxes.forEach((cb) => {
+        cb.checked = selectAllCheckbox.checked;
+        const email = cb.getAttribute('data-email');
+        const contact = visibleContacts.find((entry) => entry.email === email);
+        if (!contact) return;
+        if (selectAllCheckbox.checked) {
+          selectedContacts.add(contact);
+        } else {
+          selectedContacts.delete(contact);
+        }
+      });
+      updateActionButtons();
+    });
+
+    inviteSelectedBtn.addEventListener('click', async () => {
+      const toInvite = Array.from(selectedContacts).filter(
+        (contact) => contact.user && !contact.isAlreadySaved,
+      );
+
+      if (toInvite.length === 0) return;
+
+      inviteSelectedBtn.disabled = true;
+      inviteSelectedBtn.textContent = t('contact.invite.sending');
+
+      const { successCount = 0 } = await onInviteSelected(toInvite);
+      inviteSelectedBtn.textContent = `✓ ${t('contact.invite.sent', { count: successCount })}`;
+
+      window.setTimeout(() => {
+        clearSelection(list, selectAllCheckbox);
+        updateActionButtons();
+      }, 2000);
+    });
+
+    shareLinkBtn.addEventListener('click', async () => {
+      const notOnApp = Array.from(selectedContacts).filter(
+        (contact) => !contact.user,
+      );
+
+      if (notOnApp.length === 0) return;
+
+      shareLinkBtn.disabled = true;
+      shareLinkBtn.textContent = t('contact.invite.requesting_permission');
+
+      const result = await onEmailSelected(notOnApp);
+
+      if (result.status === 'sent') {
+        shareLinkBtn.textContent = `✓ ${t('contact.invite.sent_emails', { count: result.sent })}`;
+        shareLinkBtn.classList.add('success');
+
+        window.setTimeout(() => {
+          clearSelection(list, selectAllCheckbox);
+          updateActionButtons();
+          shareLinkBtn.classList.remove('success');
+        }, 3000);
+        return;
+      }
+
+      if (result.status === 'permission_denied') {
+        shareLinkBtn.textContent = t('contact.invite.permission_denied');
+      } else if (result.status === 'failed') {
+        shareLinkBtn.textContent = t('contact.invite.failed_emails');
+      } else {
+        shareLinkBtn.textContent = t('contact.invite.error_retry');
+      }
+
+      shareLinkBtn.disabled = false;
+      window.setTimeout(() => {
+        updateActionButtons();
+      }, 1500);
+    });
+
+    updateActionButtons();
+    syncSelectAllCheckbox(list, selectAllCheckbox);
+  }
+
+  function clearSelection(list, selectAllCheckbox) {
+    selectedContacts.clear();
+    list
+      .querySelectorAll('.contact-checkbox')
+      .forEach((cb) => (cb.checked = false));
+    selectAllCheckbox.checked = false;
+  }
+
+  function syncSelectAllCheckbox(list, selectAllCheckbox) {
+    const selectableCheckboxes = Array.from(
+      list.querySelectorAll('.contact-checkbox:not([disabled])'),
+    );
+
+    if (selectableCheckboxes.length === 0) {
+      selectAllCheckbox.checked = false;
+      return;
+    }
+
+    selectAllCheckbox.checked = selectableCheckboxes.every((checkbox) => {
+      const email = checkbox.getAttribute('data-email');
+      return visibleContacts.some(
+        (contact) => contact.email === email && selectedContacts.has(contact),
+      );
+    });
+  }
+
+  function updateActionButtons() {
+    const inviteSelectedBtn = bulkActionsContainer.querySelector(
+      '#invite-selected-btn',
+    );
+    const shareLinkBtn = bulkActionsContainer.querySelector('#share-link-btn');
+
+    if (!inviteSelectedBtn || !shareLinkBtn) return;
+
+    const selectedArray = Array.from(selectedContacts);
+    const onAppCount = selectedArray.filter(
+      (contact) => contact.user && !contact.isAlreadySaved,
+    ).length;
+    const notOnAppCount = selectedArray.filter((contact) => !contact.user)
+      .length;
+
+    inviteSelectedBtn.disabled = onAppCount === 0;
+    inviteSelectedBtn.textContent = t('contact.invite.selected', {
+      count: onAppCount,
+    });
+
+    shareLinkBtn.disabled = notOnAppCount === 0;
+    shareLinkBtn.textContent = t('contact.invite.email', {
+      count: notOnAppCount,
+    });
+  }
+
+  return {
+    element,
+    prepareForImport,
+    renderContacts,
+    renderEmptyState,
+    reset,
+    setActivePlatform,
+    setStatus,
+  };
+}
