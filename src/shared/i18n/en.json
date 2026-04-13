@@ -31,6 +31,7 @@
   "call.rejoin": "Rejoin {id}",
 
   "contact.add.title": "Add Contacts",
+  "contact.add.login_required": "Please sign in to add contacts",
   "contact.import.google": "Import from Google Contacts",
   "contact.import.share": "Share invite link",
   "contact.import.facebook": "Import from Facebook (Coming soon)",

@@ -11,6 +11,7 @@ import {
   requestGmailSendAccess,
   getLoggedInUserId,
   getUser,
+  getIsLoggedIn,
 } from '../../../auth/index.js';
 import { fetchGoogleContacts } from '../google-contacts.js';
 import { sendBulkEmailsViaGmail } from '../gmail-send.js';
@@ -31,6 +32,12 @@ import {
  * @returns {Promise<void>}
  */
 export async function showAddContactModal() {
+  // For now, only available for logged-in users
+  if (!getIsLoggedIn()) {
+    showErrorToast(t('contact.add.login_required'));
+    return;
+  }
+
   return new Promise((resolve) => {
     const dialog = document.createElement('dialog');
     dialog.classList.add('add-contact-modal');
@@ -164,35 +171,21 @@ export async function showAddContactModal() {
           userId: getLoggedInUserId(),
         });
 
-        if (result.status === 'shared') {
-          showSuccessToast(t('contact.invite.share.shared'), {
-            containerEl: dialog,
-          });
-          importStatus.textContent = t('contact.invite.share.shared');
-          importStatus.className = 'import-status success';
-          return;
-        }
+        const statusConfig = {
+          shared: { toast: showSuccessToast, className: 'success' },
+          copied: { toast: showSuccessToast, className: 'success' },
+          cancelled: { toast: null, className: 'cancelled' },
+          copy_failed: { toast: showErrorToast, className: 'error' },
+        };
 
-        if (result.status === 'copied') {
-          showSuccessToast(t('contact.invite.share.copied'), {
-            containerEl: dialog,
-          });
-          importStatus.textContent = t('contact.invite.share.copied');
-          importStatus.className = 'import-status success';
-          return;
-        }
+        const config = statusConfig[result.status] ?? statusConfig.copy_failed;
+        const key = `contact.invite.share.${result.status}`;
 
-        if (result.status === 'cancelled') {
-          importStatus.textContent = t('contact.invite.share.cancelled');
-          importStatus.className = 'import-status cancelled';
-          return;
+        if (config.toast) {
+          config.toast(t(key), { containerEl: dialog });
         }
-
-        showErrorToast(t('contact.invite.share.copy_failed'), {
-          containerEl: dialog,
-        });
-        importStatus.textContent = t('contact.invite.share.copy_failed');
-        importStatus.className = 'import-status error';
+        importStatus.textContent = t(key);
+        importStatus.className = `import-status ${config.className}`;
       } catch (error) {
         console.error('[ADD CONTACT] Web Share invite error:', error);
         showErrorToast(t('contact.invite.share.copy_failed'), {

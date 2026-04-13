@@ -24,6 +24,14 @@ describe('share-invite', () => {
       const result = buildReferralLink('', 'https://hangvidu.com');
       expect(result).toBe('https://hangvidu.com');
     });
+
+    it('encodes special characters in user id', () => {
+      const id = 'user 123+&';
+      const result = buildReferralLink(id, 'https://hangvidu.com');
+      expect(result).toBe(
+        `https://hangvidu.com/?ref=${encodeURIComponent(id)}`,
+      );
+    });
   });
 
   describe('buildInviteText', () => {
@@ -93,6 +101,25 @@ describe('share-invite', () => {
         expect.objectContaining({ ok: false, status: 'copy_failed' }),
       );
       expect(copyImpl).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns cancelled when share is aborted', async () => {
+      const abortError = new DOMException('Share aborted', 'AbortError');
+      const shareImpl = vi.fn().mockRejectedValue(abortError);
+      const copyImpl = vi.fn().mockResolvedValue(true);
+
+      const result = await shareInvite({
+        senderName: 'Alice',
+        userId: 'user-123',
+        origin: 'https://hangvidu.com',
+        shareImpl,
+        copyImpl,
+      });
+
+      expect(result).toEqual(
+        expect.objectContaining({ ok: false, status: 'cancelled' }),
+      );
+      expect(copyImpl).not.toHaveBeenCalled();
     });
   });
 });
