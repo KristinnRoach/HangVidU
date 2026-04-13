@@ -44,12 +44,13 @@ function openEmailComposeFallback(contacts) {
   const body = encodeURIComponent(
     t('contact.invite.body', { name: senderName, link: referralLink }),
   );
-  const to = contacts.map((c) => encodeURIComponent(c.email)).join(',');
+  const rawTo = contacts.map((c) => c.email).join(',');
+  const encodedTo = contacts.map((c) => encodeURIComponent(c.email)).join(',');
 
   const recipientParam =
     contacts.length === 1
       ? `to=${encodeURIComponent(contacts[0].email)}`
-      : `bcc=${to}`;
+      : `bcc=${encodedTo}`;
 
   const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&${recipientParam}&su=${subject}&body=${body}`;
   const opened = window.open(gmailUrl, '_blank', 'noopener,noreferrer');
@@ -57,8 +58,8 @@ function openEmailComposeFallback(contacts) {
   if (!opened) {
     const mailtoLink =
       contacts.length === 1
-        ? `mailto:${to}?subject=${subject}&body=${body}`
-        : `mailto:?bcc=${to}&subject=${subject}&body=${body}`;
+        ? `mailto:${contacts[0].email}?subject=${subject}&body=${body}`
+        : `mailto:?bcc=${rawTo}&subject=${subject}&body=${body}`;
     window.location.href = mailtoLink;
   }
 }
