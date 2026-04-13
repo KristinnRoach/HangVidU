@@ -71,7 +71,7 @@ export async function shareInvite({
   if (typeof shareImpl === 'function') {
     try {
       await shareImpl({
-        title: 'HangVidU',
+        title: t('contact.invite.subject'),
         text,
         url: link,
       });

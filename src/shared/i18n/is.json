@@ -70,7 +70,7 @@
   "contact.invite.share.copied": "Boðstengill afritaður.",
   "contact.invite.share.cancelled": "Hætt við deilingu.",
   "contact.invite.share.copy_failed": "Tókst ekki að deila eða afrita boðstengil.",
-  "contact.invite.subject": "Vertu með mér á HangVidU!",
+  "contact.invite.subject": "Vertu með á HangVidU!",
   "contact.invite.body": "Halló!\n\n{name} býður þér að ganga inn í HangVidU - app fyrir textaskilaboð, myndbands símtöl og myndbandadeilingu.\n\nSmelltu hér til að byrja:\n{link}\n\nSé þig þar!",
   "contact.name.prompt": "Sláðu inn nafn fyrir þennan tengilið:",
   "contact.name.edit": "Sláðu inn nýtt nafn fyrir þennan tengilið:",
