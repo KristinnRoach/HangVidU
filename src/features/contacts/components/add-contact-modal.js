@@ -178,8 +178,12 @@ export async function showAddContactModal() {
           copy_failed: { toast: showErrorToast, className: 'error' },
         };
 
-        const config = statusConfig[result.status] ?? statusConfig.copy_failed;
-        const key = `contact.invite.share.${result.status}`;
+        const safeStatus =
+          Object.prototype.hasOwnProperty.call(statusConfig, result.status)
+            ? result.status
+            : 'copy_failed';
+        const config = statusConfig[safeStatus];
+        const key = `contact.invite.share.${safeStatus}`;
 
         if (config.toast) {
           config.toast(t(key), { containerEl: dialog });
