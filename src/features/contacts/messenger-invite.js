@@ -32,11 +32,10 @@ export function buildMessengerInviteText({ senderName, link }) {
       ? senderName.trim()
       : DEFAULT_SENDER_NAME;
 
-  return (
-    `Hi!\n\n${safeSender} invited you to join HangVidU - ` +
-    `an app for text messaging, video calls and video sharing.\n\n` +
-    `Click here to get started:\n${link}\n\nSee you there!`
-  );
+  return t('contact.invite.body', {
+    name: safeSender,
+    link,
+  });
 }
 
 /**
