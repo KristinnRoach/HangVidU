@@ -3,16 +3,14 @@
 // Modal for adding contacts by email or importing from Google
 
 import { contactsService } from '../contacts-service.js';
-import { findUserByEmail, findUsersByEmails } from '../user-discovery.js';
+import { findUserByEmail } from '../user-discovery.js';
 import { sendInvite } from '../invitations.js';
 import {
-  requestContactsAccess,
   requestGmailSendAccess,
   getLoggedInUserId,
   getUser,
   getIsLoggedIn,
 } from '../../../auth/index.js';
-import { fetchGoogleContacts } from '../google-contacts.js';
 import { shareInvite } from '../share-invite.js';
 import { t } from '../../../shared/i18n/index.js';
 import { initIcons } from '../../../shared/components/ui/icons.js';
@@ -22,10 +20,10 @@ import {
 } from '../../../shared/components/toast.js';
 import { sendBulkEmailsViaGmail } from '../gmail-send.js';
 import {
-  buildImportableContacts,
   filterImportableContacts,
 } from '../import-contacts-utils.js';
 import { createImportContactsComponent } from './import-contacts-component.js';
+import { importGoogleContacts as importGoogleContactsFlow } from '../google-import.js';
 
 // TODO: WIP decoupling considerations:
 // This modal mixes feature UI with auth/OAuth and external contact-import side effects.
@@ -120,7 +118,7 @@ export async function showAddContactModal() {
     const importContactsComponent = createImportContactsComponent({
       onPlatformSelect: async (platform) => {
         if (platform === 'google') {
-          await importGoogleContacts();
+          await handleGoogleContactsImport();
         }
       },
       onSearchChange: (query) => {
@@ -338,48 +336,41 @@ export async function showAddContactModal() {
     // --- Google Contacts import ---
     // Must be called from a user click so the browser allows the OAuth popup.
 
-    async function importGoogleContacts() {
+    async function handleGoogleContactsImport() {
       importContactsComponent.prepareForImport();
-      importContactsComponent.setStatus(t('contact.import.requesting'), 'loading');
       allContacts = [];
 
-      try {
-        const accessToken = await requestContactsAccess({ interactive: true });
+      const result = await importGoogleContactsFlow({
+        onProgress: ({ step, count }) => {
+          if (step === 'requesting') {
+            importContactsComponent.setStatus(
+              t('contact.import.requesting'),
+              'loading',
+            );
+            return;
+          }
 
-        importContactsComponent.setStatus(t('contact.import.fetching'), 'loading');
+          if (step === 'fetching') {
+            importContactsComponent.setStatus(
+              t('contact.import.fetching'),
+              'loading',
+            );
+            return;
+          }
 
-        const contacts = await fetchGoogleContacts(accessToken);
+          if (step === 'checking') {
+            importContactsComponent.setStatus(
+              t('contact.import.found_checking', {
+                count,
+              }),
+              'loading',
+            );
+          }
+        },
+      });
 
-        if (contacts.length === 0) {
-          importContactsComponent.setStatus(
-            t('contact.import.no_email'),
-            'not-found',
-          );
-          importContactsComponent.renderEmptyState(t('contact.import.none'));
-          return;
-        }
-
-        importContactsComponent.setStatus(
-          t('contact.import.found_checking', {
-            count: contacts.length,
-          }),
-          'loading',
-        );
-
-        const savedContacts = await contactsService.getAllContacts();
-        const savedContactIds = new Set(Object.keys(savedContacts || {}));
-
-        const emails = contacts.map((c) => c.email);
-        const registeredUsers = await findUsersByEmails(emails);
-
-        const currentUser = getUser();
-        allContacts = buildImportableContacts({
-          contacts,
-          registeredUsers,
-          savedContactIds,
-          currentUserId: currentUser?.uid,
-        });
-
+      if (result.status === 'success') {
+        allContacts = result.contacts;
         importContactsComponent.setStatus(
           t('contact.import.found', {
             count: allContacts.length,
@@ -387,25 +378,35 @@ export async function showAddContactModal() {
           'success',
         );
         importContactsComponent.renderContacts(allContacts);
-      } catch (error) {
-        console.error('[ADD CONTACT] Import error:', error);
-
-        if (error.message === 'Authorization cancelled') {
-          importContactsComponent.setStatus(
-            t('contact.import.cancelled'),
-            'cancelled',
-          );
-        } else {
-          importContactsComponent.setStatus(
-            t('contact.import.error', {
-              error: error.message,
-            }),
-            'error',
-          );
-        }
-
-        importContactsComponent.renderEmptyState(t('contact.import.failed'));
+        return;
       }
+
+      if (result.status === 'no_email') {
+        importContactsComponent.setStatus(
+          t('contact.import.no_email'),
+          'not-found',
+        );
+        importContactsComponent.renderEmptyState(t('contact.import.none'));
+        return;
+      }
+
+      if (result.status === 'cancelled') {
+        importContactsComponent.setStatus(
+          t('contact.import.cancelled'),
+          'cancelled',
+        );
+        importContactsComponent.renderEmptyState(t('contact.import.failed'));
+        return;
+      }
+
+      console.error('[ADD CONTACT] Import error:', result.error);
+      importContactsComponent.setStatus(
+        t('contact.import.error', {
+          error: result.error?.message,
+        }),
+        'error',
+      );
+      importContactsComponent.renderEmptyState(t('contact.import.failed'));
     }
 
     document.body.appendChild(dialog);
