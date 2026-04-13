@@ -5,10 +5,7 @@ export { contactsService, ContactsService } from './contacts-service.js';
 export { cleanupInviteListeners } from './invitations.js';
 export { setupInviteListener } from './invite-listener.js';
 
-export {
-  captureReferral,
-  processReferral,
-} from './referral-handler.js';
+export { captureReferral, processReferral } from './referral-handler.js';
 
 export {
   renderContactsList,
@@ -21,6 +18,6 @@ export { showAddContactModal } from './components/add-contact-modal.js';
 export { hashEmail } from './user-discovery.js';
 export {
   buildReferralLink,
-  buildMessengerInviteText,
-  shareMessengerInvite,
-} from './messenger-invite.js';
+  buildInviteText,
+  shareInvite,
+} from './share-invite.js';

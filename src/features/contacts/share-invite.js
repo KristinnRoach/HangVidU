@@ -1,4 +1,9 @@
 import { copyToClipboard } from '../../shared/components/modal/copyLinkModal.js';
+import { t } from '../../shared/i18n/index.js';
+
+/*
+ * Invite sharing via the Web Share API, with clipboard-copy fallback.
+ */
 
 const DEFAULT_SENDER_NAME = 'A friend';
 
@@ -26,7 +31,7 @@ export function buildReferralLink(userId, origin = window.location.origin) {
  * @param {{ senderName?: string | null, link: string }} params
  * @returns {string}
  */
-export function buildMessengerInviteText({ senderName, link }) {
+export function buildInviteText({ senderName, link }) {
   const safeSender =
     typeof senderName === 'string' && senderName.trim()
       ? senderName.trim()
@@ -50,7 +55,7 @@ export function buildMessengerInviteText({ senderName, link }) {
  * }} params
  * @returns {Promise<{ ok: boolean, status: 'shared' | 'copied' | 'cancelled' | 'copy_failed', link: string, text: string }>}
  */
-export async function shareMessengerInvite({
+export async function shareInvite({
   senderName,
   userId,
   origin = window.location.origin,
@@ -61,7 +66,7 @@ export async function shareMessengerInvite({
   copyImpl = copyToClipboard,
 } = {}) {
   const link = buildReferralLink(userId, origin);
-  const text = buildMessengerInviteText({ senderName, link });
+  const text = buildInviteText({ senderName, link });
 
   if (typeof shareImpl === 'function') {
     try {

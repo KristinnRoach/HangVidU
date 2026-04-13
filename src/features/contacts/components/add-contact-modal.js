@@ -14,7 +14,7 @@ import {
 } from '../../../auth/index.js';
 import { fetchGoogleContacts } from '../google-contacts.js';
 import { sendBulkEmailsViaGmail } from '../gmail-send.js';
-import { shareMessengerInvite } from '../messenger-invite.js';
+import { shareInvite } from '../share-invite.js';
 import { t } from '../../../shared/i18n/index.js';
 import { initIcons } from '../../../shared/components/ui/icons.js';
 import {
@@ -159,7 +159,7 @@ export async function showAddContactModal() {
       try {
         const currentUser = getUser();
 
-        const result = await shareMessengerInvite({
+        const result = await shareInvite({
           senderName: currentUser?.userName,
           userId: getLoggedInUserId(),
         });
@@ -194,7 +194,7 @@ export async function showAddContactModal() {
         importStatus.textContent = t('contact.invite.share.copy_failed');
         importStatus.className = 'import-status error';
       } catch (error) {
-        console.error('[ADD CONTACT] Messenger invite error:', error);
+        console.error('[ADD CONTACT] Web Share invite error:', error);
         showErrorToast(t('contact.invite.share.copy_failed'), {
           containerEl: dialog,
         });

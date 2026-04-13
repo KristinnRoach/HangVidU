@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  shareMessengerInvite: vi.fn(),
+  shareInvite: vi.fn(),
   showSuccessToast: vi.fn(),
   showErrorToast: vi.fn(),
   initIcons: vi.fn(),
@@ -49,8 +49,8 @@ vi.mock('../../../shared/components/toast.js', () => ({
   showErrorToast: mocks.showErrorToast,
 }));
 
-vi.mock('../messenger-invite.js', () => ({
-  shareMessengerInvite: mocks.shareMessengerInvite,
+vi.mock('../share-invite.js', () => ({
+  shareInvite: mocks.shareInvite,
 }));
 
 describe('showAddContactModal - share invite platform action', () => {
@@ -74,7 +74,7 @@ describe('showAddContactModal - share invite platform action', () => {
   });
 
   it('renders share platform button and triggers share helper on click', async () => {
-    mocks.shareMessengerInvite.mockResolvedValue({
+    mocks.shareInvite.mockResolvedValue({
       ok: true,
       status: 'shared',
     });
@@ -88,7 +88,7 @@ describe('showAddContactModal - share invite platform action', () => {
     btn.click();
     await Promise.resolve();
 
-    expect(mocks.shareMessengerInvite).toHaveBeenCalledTimes(1);
+    expect(mocks.shareInvite).toHaveBeenCalledTimes(1);
     expect(mocks.showSuccessToast).toHaveBeenCalledWith(
       'contact.invite.share.shared',
       expect.objectContaining({ containerEl: expect.any(HTMLDialogElement) }),
@@ -99,7 +99,7 @@ describe('showAddContactModal - share invite platform action', () => {
   });
 
   it('shows opening state and success status text after copy fallback success', async () => {
-    mocks.shareMessengerInvite.mockResolvedValue({
+    mocks.shareInvite.mockResolvedValue({
       ok: true,
       status: 'copied',
     });

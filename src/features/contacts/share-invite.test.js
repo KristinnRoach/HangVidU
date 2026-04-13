@@ -1,11 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('../../shared/i18n/index.js', () => ({
+  t: (key, params) => {
+    if (!params) return key;
+    return `${key} ${Object.values(params).join(' ')}`;
+  },
+}));
+
 import {
   buildReferralLink,
-  buildMessengerInviteText,
-  shareMessengerInvite,
-} from './messenger-invite.js';
+  buildInviteText,
+  shareInvite,
+} from './share-invite.js';
 
-describe('messenger-invite', () => {
+describe('share-invite', () => {
   describe('buildReferralLink', () => {
     it('returns origin link with ref query when user id exists', () => {
       const result = buildReferralLink('user-123', 'https://hangvidu.com');
@@ -18,22 +26,22 @@ describe('messenger-invite', () => {
     });
   });
 
-  describe('buildMessengerInviteText', () => {
+  describe('buildInviteText', () => {
     it('includes sender name and invite link', () => {
       const link = 'https://hangvidu.com/?ref=user-123';
-      const text = buildMessengerInviteText({ senderName: 'Alice', link });
+      const text = buildInviteText({ senderName: 'Alice', link });
 
       expect(text).toContain('Alice');
       expect(text).toContain(link);
     });
   });
 
-  describe('shareMessengerInvite', () => {
+  describe('shareInvite', () => {
     it('uses native share when available', async () => {
       const shareImpl = vi.fn().mockResolvedValue(undefined);
       const copyImpl = vi.fn().mockResolvedValue(false);
 
-      const result = await shareMessengerInvite({
+      const result = await shareInvite({
         senderName: 'Alice',
         userId: 'user-123',
         origin: 'https://hangvidu.com',
@@ -51,7 +59,7 @@ describe('messenger-invite', () => {
     it('falls back to copy when share is unavailable', async () => {
       const copyImpl = vi.fn().mockResolvedValue(true);
 
-      const result = await shareMessengerInvite({
+      const result = await shareInvite({
         senderName: 'Alice',
         userId: 'user-123',
         origin: 'https://hangvidu.com',
@@ -73,7 +81,7 @@ describe('messenger-invite', () => {
         .mockRejectedValue(new Error('Share failed unexpectedly'));
       const copyImpl = vi.fn().mockResolvedValue(false);
 
-      const result = await shareMessengerInvite({
+      const result = await shareInvite({
         senderName: 'Alice',
         userId: 'user-123',
         origin: 'https://hangvidu.com',
