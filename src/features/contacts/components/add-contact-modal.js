@@ -16,9 +16,7 @@ import {
   showSuccessToast,
 } from '../../../shared/components/toast.js';
 import { sendBulkEmailsViaGmail } from '../gmail-send.js';
-import {
-  filterImportableContacts,
-} from '../import-contacts-utils.js';
+import { filterImportableContacts } from '../import-contacts-utils.js';
 import { createImportContactsComponent } from './import-contacts-component.js';
 import { importGoogleContacts as importGoogleContactsFlow } from '../google-import.js';
 import { inviteContactByEmail } from '../manual-contact-invite.js';
@@ -94,7 +92,7 @@ export async function showAddContactModal() {
           </button>
         </div>
 
-        <button type="button" id="share-invite-btn" class="action-btn secondary share-invite-btn" aria-label="${t('contact.invite.share.label')}">
+        <button type="button" id="share-btn" class="action-btn secondary share-btn" aria-label="${t('contact.invite.share.label')}">
           <i data-lucide="share"></i>
         </button>
 
@@ -109,7 +107,7 @@ export async function showAddContactModal() {
     const manualEmailInput = dialog.querySelector('#manual-email-input');
     const manualEmailSendBtn = dialog.querySelector('#manual-email-send');
     const manualEmailStatus = dialog.querySelector('#manual-email-status');
-    const shareInviteBtn = dialog.querySelector('#share-invite-btn');
+    const shareBtn = dialog.querySelector('#share-btn');
 
     let allContacts = [];
     const importContactsComponent = createImportContactsComponent({
@@ -235,10 +233,7 @@ export async function showAddContactModal() {
         }
       },
     });
-    dialog.insertBefore(
-      importContactsComponent.element,
-      manualEmailStatus,
-    );
+    dialog.insertBefore(importContactsComponent.element, manualEmailStatus);
 
     function cleanup() {
       dialog.close();
@@ -311,7 +306,7 @@ export async function showAddContactModal() {
     });
 
     // --- Generic Web Share button ---
-    shareInviteBtn.addEventListener('click', async () => {
+    shareBtn.addEventListener('click', async () => {
       manualEmailStatus.textContent = t('contact.invite.share.opening');
       manualEmailStatus.className = 'import-status loading';
       try {

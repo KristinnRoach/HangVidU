@@ -44,14 +44,18 @@
 /* Direct Actions (email input + share) */
 .add-contact-modal .direct-actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  justify-self: center;
   gap: 0.75rem;
   margin-bottom: 0;
+
+  width: clamp(220px, 95%, 600px);
 }
 
 .add-contact-modal .manual-email-row {
   display: flex;
   gap: 0.5rem;
+  flex: 1;
 }
 
 .add-contact-modal .manual-email-row input {
@@ -74,13 +78,6 @@
   color: #888;
 }
 
-.add-contact-modal .share-invite-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
 /* Import Section */
 .add-contact-modal .import-section {
   margin-bottom: 0;
@@ -97,7 +94,9 @@
 .add-contact-modal .platform-btn {
   display: flex;
   flex-direction: row;
-  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
   padding: 0.75rem 1rem;
   /* width: 60px;
   height: 60px; */
@@ -106,23 +105,33 @@
   background-color: #444;
   color: #aaa;
   font-size: 1.5rem;
+  text-shadow: var(--text-shadow-subtle);
   cursor: pointer;
   transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+}
+
+.add-contact-modal .platform-btn svg {
+  width: 24px;
+  height: 24px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+
+  /* Temp fix for contrast against current bg color: */
+  background: rgb(0, 0, 0);
+  border-radius: 50%;
+  padding: 4px;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.159);
 }
 
 .add-contact-modal .platform-btn:hover:not(:disabled) {
   background-color: #555;
-  border-color: rgb(74, 172, 74);
+  border-color: rgb(74, 172, 74, 0.6);
   color: white;
-  transform: scale(1.05);
+  transform: scale(1.025);
 }
 
 .add-contact-modal .platform-btn.active {
-  background-color: rgb(74, 172, 74);
-  border-color: rgb(70, 200, 70);
+  background-color: rgba(74, 172, 74, 0.6);
+  border-color: rgb(70, 200, 70, 0.6);
   color: white;
 }
 
@@ -376,12 +385,19 @@
   color: white;
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
+  border: none;
+  cursor: pointer;
   border-radius: 6px;
   flex-shrink: 0;
+  transform: scale(1);
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
 }
 
-.add-contact-modal .invite-btn:hover {
+.add-contact-modal .invite-btn:hover:not(:disabled) {
   background-color: rgb(70, 200, 70);
+  transform: scale(1.025);
 }
 
 .add-contact-modal .invite-btn.sent {
@@ -411,16 +427,22 @@
 }
 
 .add-contact-modal .action-btn {
-  flex: 1;
   padding: 0.75rem 1rem;
   font-size: 1rem;
   border-radius: 6px;
   background-color: rgb(74, 172, 74);
   color: white;
+  text-shadow: var(--text-shadow-subtle);
+
+  transform: scale(1);
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .add-contact-modal .action-btn:hover:not(:disabled) {
   background-color: rgb(70, 200, 70);
+  transform: scale(1.025);
 }
 
 .add-contact-modal .action-btn.secondary {
@@ -440,7 +462,8 @@
 .add-contact-modal .divider {
   border: none;
   border-top: 1px solid #555;
-  margin: 1.5rem 0;
+  margin: 1.5rem auto;
+  width: 88%;
 }
 
 /* Empty State */
