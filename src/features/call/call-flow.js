@@ -129,7 +129,8 @@ export async function createCall({
   // ─────────────────────────────────────────────────────────────────────────
   // 7. RETURN SUCCESS WITH CONNECTION ARTIFACTS
   // ─────────────────────────────────────────────────────────────────────────
-  const roomLink = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+  const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
+  const roomLink = `${APP_ORIGIN}${window.location.pathname}?room=${roomId}`;
 
   devDebug('Waiting for partner to join...');
 

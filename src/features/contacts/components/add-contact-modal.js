@@ -27,14 +27,15 @@ import {
 // This modal mixes feature UI with auth/OAuth and external contact-import side effects.
 // Keep the UI here, but push reusable import/auth orchestration down before standardizing the pattern.
 
+const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
+
 /**
  * Open Gmail compose (preferred) or mailto: as fallback for emailing invite links.
  */
 function openEmailComposeFallback(contacts) {
   const myUserId = getLoggedInUserId();
-  const referralLink = myUserId
-    ? `${window.location.origin}/?ref=${myUserId}`
-    : window.location.origin;
+
+  const referralLink = myUserId ? `${APP_ORIGIN}/?ref=${myUserId}` : APP_ORIGIN;
 
   const currentUser = getUser();
   const senderName = currentUser?.userName || 'A friend';
@@ -641,8 +642,8 @@ function renderImportResults(
       // Step 2: Generate referral link
       const myUserId = getLoggedInUserId();
       const referralLink = myUserId
-        ? `${window.location.origin}/?ref=${myUserId}`
-        : window.location.origin;
+        ? `${APP_ORIGIN}/?ref=${myUserId}`
+        : APP_ORIGIN;
 
       // Step 3: Get current user's name for personalization
       const currentUser = getUser();
@@ -741,5 +742,4 @@ function renderImportResults(
       }
     }
   });
-
 }

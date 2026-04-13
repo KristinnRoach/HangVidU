@@ -7,6 +7,8 @@ import { t } from '../../shared/i18n/index.js';
 
 const DEFAULT_SENDER_NAME = 'A friend';
 
+const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
+
 /**
  * Build HangVidU referral link for invites.
  * Falls back to origin-only when user id is missing.
@@ -15,7 +17,7 @@ const DEFAULT_SENDER_NAME = 'A friend';
  * @param {string} [origin]
  * @returns {string}
  */
-export function buildReferralLink(userId, origin = window.location.origin) {
+export function buildReferralLink(userId, origin = APP_ORIGIN) {
   const base = typeof origin === 'string' && origin.trim() ? origin.trim() : '';
   if (!userId || typeof userId !== 'string' || !userId.trim()) {
     return base;
@@ -58,7 +60,7 @@ export function buildInviteText({ senderName, link }) {
 export async function shareInvite({
   senderName,
   userId,
-  origin = window.location.origin,
+  origin = APP_ORIGIN,
   shareImpl = typeof navigator !== 'undefined' &&
   typeof navigator.share === 'function'
     ? navigator.share.bind(navigator)
