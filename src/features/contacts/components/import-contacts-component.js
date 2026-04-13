@@ -199,13 +199,13 @@ export function createImportContactsComponent({
         ${actionButton}
       `;
 
-      if (user && !isAlreadySaved && !isInvited) {
-        const btn = li.querySelector('.invite-btn');
+      const inviteBtn = li.querySelector('.invite-btn');
+      const checkbox = li.querySelector('.contact-checkbox');
 
-        btn.addEventListener('click', async () => {
-          const checkbox = li.querySelector('.contact-checkbox');
-          btn.disabled = true;
-          btn.textContent = t('shared.sending');
+      if (user && !isAlreadySaved && !isInvited) {
+        inviteBtn.addEventListener('click', async () => {
+          inviteBtn.disabled = true;
+          inviteBtn.textContent = t('shared.sending');
 
           try {
             await onInviteContact(contact);
@@ -215,8 +215,8 @@ export function createImportContactsComponent({
               checkbox.disabled = true;
             }
             selectedContacts.delete(contact);
-            btn.textContent = `✓ ${t('contact.invite.sent_one')}`;
-            btn.classList.add('sent');
+            inviteBtn.textContent = `✓ ${t('contact.invite.sent_one')}`;
+            inviteBtn.classList.add('sent');
             syncSelectAllCheckbox(
               list,
               selectAllCheckbox,
@@ -224,8 +224,8 @@ export function createImportContactsComponent({
             );
             updateActionButtons();
           } catch {
-            btn.textContent = t('shared.error');
-            btn.disabled = false;
+            inviteBtn.textContent = t('shared.error');
+            inviteBtn.disabled = false;
           }
         });
       }

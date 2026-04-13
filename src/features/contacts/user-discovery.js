@@ -7,7 +7,7 @@ import { onAuthStateChanged } from '../../auth/index.js';
 
 function canonicalizeDirectoryUser(userData) {
   if (!userData || typeof userData !== 'object') {
-    return { user: null, didPromoteLegacyDisplayName: false };
+    return null;
   }
 
   const userName =
@@ -18,14 +18,8 @@ function canonicalizeDirectoryUser(userData) {
         : 'Anonymous';
 
   return {
-    user: {
-      ...userData,
-      userName,
-    },
-    didPromoteLegacyDisplayName:
-      !userData.userName &&
-      typeof userData.displayName === 'string' &&
-      !!userData.displayName.trim(),
+    ...userData,
+    userName,
   };
 }
 
@@ -111,14 +105,9 @@ export async function findUserByEmail(email) {
     const snapshot = await get(userRef);
 
     if (snapshot.exists()) {
-      const { user, didPromoteLegacyDisplayName } = canonicalizeDirectoryUser(
-        snapshot.val(),
-      );
+      const user = canonicalizeDirectoryUser(snapshot.val());
       if (!user) {
         return null;
-      }
-      if (didPromoteLegacyDisplayName) {
-        await set(userRef, user);
       }
       return user;
     }

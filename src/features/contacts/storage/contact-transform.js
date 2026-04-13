@@ -17,34 +17,6 @@ function getTrimmedString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-/**
- * Build a canonical contact record from potentially-legacy input.
- * If `contactNickName` is missing but legacy `contactName` exists, it is promoted.
- *
- * @param {unknown} input
- * @param {{ now?: number }} [options]
- * @returns {{ record: import('./contact-schema.js').ContactRecord, didPromoteLegacyContactName: boolean }}
- */
-export function canonicalizeContactRecord(input, { now = Date.now() } = {}) {
-  if (!input || typeof input !== 'object') {
-    throw new TypeError('contact record must be an object');
-  }
-
-  const nextInput = { ...input };
-  const nickName = getTrimmedString(nextInput.contactNickName);
-  const legacyName = getTrimmedString(nextInput.contactName);
-  const didPromoteLegacyContactName = !nickName && !!legacyName;
-
-  if (didPromoteLegacyContactName) {
-    nextInput.contactNickName = legacyName;
-  }
-
-  return {
-    record: normalizeContactRecord(nextInput, { now }),
-    didPromoteLegacyContactName,
-  };
-}
-
 function normalizeContactNickName(contactNickName) {
   if (contactNickName == null) {
     return '';

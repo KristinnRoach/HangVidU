@@ -1,6 +1,6 @@
 import { get, ref, remove, runTransaction, set } from 'firebase/database';
 import { ContactsStorageAdapter } from './contacts-storage-adapter.js';
-import { canonicalizeContactRecord, mergeContactRecord } from './contact-transform.js';
+import { mergeContactRecord, normalizeContactRecord } from './contact-transform.js';
 
 function assertGetOwnerId(getOwnerId) {
   if (typeof getOwnerId !== 'function') {
@@ -60,16 +60,7 @@ export class ContactsRTDBAdapter extends ContactsStorageAdapter {
       return null;
     }
 
-    // TODO(2026-04-08): Remove this legacy key-as-id fallback after the contactId backfill window ends.
-    const { record, didPromoteLegacyContactName } = canonicalizeContactRecord({
-      ...snapshot.val(),
-      contactId: snapshot.val()?.contactId ?? contactId,
-    });
-    if (didPromoteLegacyContactName) {
-      await set(contactRef, record);
-    }
-
-    return record;
+    return normalizeContactRecord(snapshot.val());
   }
 
   /**
@@ -81,25 +72,9 @@ export class ContactsRTDBAdapter extends ContactsStorageAdapter {
       return [];
     }
 
-    const entries = Object.entries(snapshot.val());
-    /** @type {import('./contact-schema.js').ContactRecord[]} */
-    const records = [];
-
-    for (const [contactId, value] of entries) {
-      // TODO(2026-04-08): Remove this legacy key-as-id fallback after the contactId backfill window ends.
-      const { record, didPromoteLegacyContactName } =
-        canonicalizeContactRecord({
-          ...value,
-          contactId: value.contactId ?? contactId,
-        });
-      records.push(record);
-
-      if (didPromoteLegacyContactName) {
-        await set(ref(this.database, this._contactPath(contactId)), record);
-      }
-    }
-
-    return records;
+    return Object.values(snapshot.val()).map((record) =>
+      normalizeContactRecord(record),
+    );
   }
 
   /**

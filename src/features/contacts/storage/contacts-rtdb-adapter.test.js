@@ -87,7 +87,7 @@ describe('ContactsRTDBAdapter', () => {
     expect(mocks.set).not.toHaveBeenCalled();
   });
 
-  it('promotes legacy contactName to contactNickName on get and persists it', async () => {
+  it('does not promote legacy contactName on get', async () => {
     mocks.get.mockResolvedValue({
       exists: () => true,
       val: () => ({
@@ -99,57 +99,30 @@ describe('ContactsRTDBAdapter', () => {
       }),
     });
 
-    const result = await adapter.get('u1');
-
-    expect(result).toEqual({
+    await expect(adapter.get('u1')).resolves.toEqual({
       contactId: 'u1',
-      contactNickName: 'Legacy Alice',
+      contactNickName: '',
+      conversationId: undefined,
       roomId: 'room-1',
       savedAt: 10,
       lastInteractionAt: 20,
     });
-    expect(mocks.set).toHaveBeenCalledWith(
-      { path: 'users/owner-1/contacts/u1' },
-      {
-        contactId: 'u1',
-        contactNickName: 'Legacy Alice',
-        roomId: 'room-1',
-        savedAt: 10,
-        lastInteractionAt: 20,
-      },
-    );
+    expect(mocks.set).not.toHaveBeenCalled();
   });
 
-  it('uses contact path key as contactId fallback for legacy record missing contactId', async () => {
+  it('throws when contactId is missing from an RTDB record', async () => {
     mocks.get.mockResolvedValue({
       exists: () => true,
       val: () => ({
-        contactName: ' Legacy No Id ',
+        contactNickName: 'Legacy No Id',
         roomId: 'room-1',
         savedAt: 10,
         lastInteractionAt: 20,
       }),
     });
 
-    const result = await adapter.get('u1');
-
-    expect(result).toEqual({
-      contactId: 'u1',
-      contactNickName: 'Legacy No Id',
-      roomId: 'room-1',
-      savedAt: 10,
-      lastInteractionAt: 20,
-    });
-    expect(mocks.set).toHaveBeenCalledWith(
-      { path: 'users/owner-1/contacts/u1' },
-      {
-        contactId: 'u1',
-        contactNickName: 'Legacy No Id',
-        roomId: 'room-1',
-        savedAt: 10,
-        lastInteractionAt: 20,
-      },
-    );
+    await expect(adapter.get('u1')).rejects.toThrow();
+    expect(mocks.set).not.toHaveBeenCalled();
   });
 
   it('falls back to get+set when transaction is not committed but record exists', async () => {
