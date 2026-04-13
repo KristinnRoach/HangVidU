@@ -8,11 +8,15 @@ export function createImportContactsComponent({
   onInviteSelected,
   onEmailSelected,
 }) {
+  const googleImportLabel = t('contact.import.google');
+  const searchLabel = t('contact.search');
+  const importDisclosure = t('contact.disclosure.import');
+  const gmailDisclosure = t('contact.disclosure.gmail_send');
   const element = document.createElement('div');
   element.innerHTML = `
     <div class="import-section">
       <div class="platform-selector">
-        <button type="button" class="platform-btn" data-platform="google" title="${t('contact.import.google')}" aria-label="${t('contact.import.google')}">
+        <button type="button" class="platform-btn" data-platform="google">
           <i data-lucide="mail"></i>
         </button>
 
@@ -30,13 +34,11 @@ export function createImportContactsComponent({
           type="text"
           id="contact-search-input"
           class="contact-search-input"
-          placeholder="${t('contact.search')}"
-          aria-label="${t('contact.search')}"
         />
       </div>
 
       <p class="disclosure-note">
-        ${t('contact.disclosure.import')}
+        ${escapeHtml(importDisclosure)}
       </p>
 
       <div id="contacts-container" class="contacts-container-modal"></div>
@@ -48,6 +50,7 @@ export function createImportContactsComponent({
   `;
 
   const importResultsSection = element.querySelector('#import-results-section');
+  const googlePlatformBtn = element.querySelector('[data-platform="google"]');
   const searchInput = element.querySelector('#contact-search-input');
   const importStatus = element.querySelector('#import-status');
   const contactsContainer = element.querySelector('#contacts-container');
@@ -57,6 +60,11 @@ export function createImportContactsComponent({
   const selectedContacts = new Set();
   let visibleContacts = [];
   let isPlatformLoading = false;
+
+  googlePlatformBtn?.setAttribute('title', googleImportLabel);
+  googlePlatformBtn?.setAttribute('aria-label', googleImportLabel);
+  searchInput?.setAttribute('placeholder', searchLabel);
+  searchInput?.setAttribute('aria-label', searchLabel);
 
   platformBtns.forEach((btn) => {
     btn.addEventListener('click', async () => {
@@ -161,7 +169,7 @@ export function createImportContactsComponent({
     );
 
     for (const contact of visibleContacts) {
-      const { name, email, user, isAlreadySaved } = contact;
+      const { name, email, user, isAlreadySaved, isInvited } = contact;
 
       const li = document.createElement('li');
       li.className = 'contact-item';
@@ -169,7 +177,7 @@ export function createImportContactsComponent({
       let statusBadge = '';
       let actionButton = '';
 
-      if (isAlreadySaved) {
+      if (isAlreadySaved || isInvited) {
         statusBadge = `<span class="status-badge saved">✓ ${t('contact.status.saved')}</span>`;
       } else if (user) {
         statusBadge = `<span class="status-badge on-app">${t('contact.status.on_app')}</span>`;
@@ -184,7 +192,7 @@ export function createImportContactsComponent({
 
       li.innerHTML = `
         <label class="contact-item-label">
-          <input type="checkbox" class="contact-checkbox" data-email="${escapeHtml(email)}" ${isAlreadySaved ? 'disabled' : ''} />
+          <input type="checkbox" class="contact-checkbox" data-email="${escapeHtml(email)}" ${(isAlreadySaved || isInvited) ? 'disabled' : ''} />
           <span class="contact-info">
             <strong class="contact-name">${escapeHtml(name)}</strong>
             <small class="contact-email">${escapeHtml(email)}</small>
@@ -194,7 +202,7 @@ export function createImportContactsComponent({
         ${actionButton}
       `;
 
-      if (user && !isAlreadySaved) {
+      if (user && !isAlreadySaved && !isInvited) {
         const btn = li.querySelector('.invite-btn');
         btn.addEventListener('click', async () => {
           btn.disabled = true;
@@ -202,6 +210,7 @@ export function createImportContactsComponent({
 
           try {
             await onInviteContact(contact);
+            contact.isInvited = true;
             if (checkbox) {
               checkbox.checked = false;
               checkbox.disabled = true;
@@ -219,7 +228,7 @@ export function createImportContactsComponent({
       }
 
       const checkbox = li.querySelector('.contact-checkbox');
-      if (checkbox && !isAlreadySaved) {
+      if (checkbox && !isAlreadySaved && !isInvited) {
         checkbox.checked = selectedContacts.has(contact);
         checkbox.addEventListener('change', () => {
           if (checkbox.checked) {
@@ -248,7 +257,7 @@ export function createImportContactsComponent({
         </button>
       </div>
       <p class="disclosure-note bulk-action-disclosure">
-        ${t('contact.disclosure.gmail_send')}
+        ${escapeHtml(gmailDisclosure)}
       </p>
     `;
 
@@ -259,6 +268,11 @@ export function createImportContactsComponent({
     const shareLinkBtn = bulkActionsContainer.querySelector('#share-link-btn');
 
     selectAllCheckbox.addEventListener('change', () => {
+      if (selectAllCheckbox.disabled) {
+        selectAllCheckbox.checked = false;
+        return;
+      }
+
       const checkboxes = list.querySelectorAll(
         '.contact-checkbox:not([disabled])',
       );
@@ -393,8 +407,20 @@ export function createImportContactsComponent({
 
     if (selectableCheckboxes.length === 0) {
       selectAllCheckbox.checked = false;
+      selectAllCheckbox.disabled = true;
+      selectAllCheckbox.indeterminate = false;
       return;
     }
+
+    selectAllCheckbox.disabled = false;
+    const selectedCount = selectableCheckboxes.filter((checkbox) => {
+      const email = checkbox.getAttribute('data-email');
+      const contact = visibleContactsByEmail.get(email);
+      return contact ? selectedContacts.has(contact) : false;
+    }).length;
+
+    selectAllCheckbox.indeterminate =
+      selectedCount > 0 && selectedCount < selectableCheckboxes.length;
 
     selectAllCheckbox.checked = selectableCheckboxes.every((checkbox) => {
       const email = checkbox.getAttribute('data-email');
