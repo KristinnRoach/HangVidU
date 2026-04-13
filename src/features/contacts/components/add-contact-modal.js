@@ -51,7 +51,7 @@ export async function showAddContactModal() {
         <button type="button" class="platform-btn active" data-platform="google" title="${t('contact.import.google')}">
           <i data-lucide="mail"></i>
         </button>
-        <button type="button" class="platform-btn" data-platform="share" title="${t('contact.import.share')}">
+        <button type="button" class="platform-btn active" data-platform="share" title="${t('contact.import.share')}">
           <i data-lucide="share"></i>
         </button>
 
@@ -178,10 +178,12 @@ export async function showAddContactModal() {
           copy_failed: { toast: showErrorToast, className: 'error' },
         };
 
-        const safeStatus =
-          Object.prototype.hasOwnProperty.call(statusConfig, result.status)
-            ? result.status
-            : 'copy_failed';
+        const safeStatus = Object.prototype.hasOwnProperty.call(
+          statusConfig,
+          result.status,
+        )
+          ? result.status
+          : 'copy_failed';
         const config = statusConfig[safeStatus];
         const key = `contact.invite.share.${safeStatus}`;
 

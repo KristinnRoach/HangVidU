@@ -15,6 +15,7 @@
 @import './components/top-bar.css';
 @import './components/lobby.css';
 @import './components/contacts-list.css';
+@import './components/add-contact-modal.css';
 @import './components/videos.css';
 @import './components/chat-controls.css';
 @import './components/messages.css';
