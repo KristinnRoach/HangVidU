@@ -28,6 +28,8 @@ import {
   MoreHorizontal,
   Mail,
   LayoutGrid,
+  Share,
+  Share2,
 } from 'lucide';
 
 // Mapping and exporting only used icons for tree-shaking
@@ -60,6 +62,8 @@ export const icons = {
   MoreHorizontal,
   Mail,
   LayoutGrid,
+  Share,
+  Share2,
 };
 
 /**

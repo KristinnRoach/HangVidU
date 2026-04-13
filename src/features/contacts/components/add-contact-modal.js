@@ -11,12 +11,17 @@ import {
   requestGmailSendAccess,
   getLoggedInUserId,
   getUser,
+  getIsLoggedIn,
 } from '../../../auth/index.js';
 import { fetchGoogleContacts } from '../google-contacts.js';
 import { sendBulkEmailsViaGmail } from '../gmail-send.js';
+import { shareInvite } from '../share-invite.js';
 import { t } from '../../../shared/i18n/index.js';
 import { initIcons } from '../../../shared/components/ui/icons.js';
-import { showErrorToast, showSuccessToast } from '../../../shared/components/toast.js';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../shared/components/toast.js';
 
 // TODO: WIP decoupling considerations:
 // This modal mixes feature UI with auth/OAuth and external contact-import side effects.
@@ -27,6 +32,12 @@ import { showErrorToast, showSuccessToast } from '../../../shared/components/toa
  * @returns {Promise<void>}
  */
 export async function showAddContactModal() {
+  // For now, only available for logged-in users
+  if (!getIsLoggedIn()) {
+    showErrorToast(t('contact.add.login_required'));
+    return;
+  }
+
   return new Promise((resolve) => {
     const dialog = document.createElement('dialog');
     dialog.classList.add('add-contact-modal');
@@ -40,15 +51,19 @@ export async function showAddContactModal() {
         <button type="button" class="platform-btn active" data-platform="google" title="${t('contact.import.google')}">
           <i data-lucide="mail"></i>
         </button>
+        <button type="button" class="platform-btn" data-platform="share" title="${t('contact.import.share')}">
+          <i data-lucide="share"></i>
+        </button>
+
+        <!-- Future platform buttons - disabled for now 
         <button type="button" class="platform-btn" data-platform="facebook" title="${t('contact.import.facebook')}" disabled>
           <i data-lucide="monitor"></i>
         </button>
         <button type="button" class="platform-btn" data-platform="instagram" title="${t('contact.import.instagram')}" disabled>
           <i data-lucide="monitor"></i>
         </button>
-        <button type="button" class="platform-btn" data-platform="tiktok" title="${t('contact.import.tiktok')}" disabled>
-          <i data-lucide="layout-grid"></i>
-        </button>
+        -->
+        
       </div>
 
       <div class="search-section">
@@ -113,6 +128,8 @@ export async function showAddContactModal() {
         // Import contacts for selected platform
         if (platform === 'google') {
           await importGoogleContacts();
+        } else if (platform === 'share') {
+          await openGenericShare();
         }
         // Future: Add handlers for other platforms
       });
@@ -142,6 +159,46 @@ export async function showAddContactModal() {
         dialog,
       );
     });
+
+    async function openGenericShare() {
+      importStatus.textContent = t('contact.invite.share.opening');
+      importStatus.className = 'import-status loading';
+      try {
+        const currentUser = getUser();
+
+        const result = await shareInvite({
+          senderName: currentUser?.userName,
+          userId: getLoggedInUserId(),
+        });
+
+        const statusConfig = {
+          shared: { toast: showSuccessToast, className: 'success' },
+          copied: { toast: showSuccessToast, className: 'success' },
+          cancelled: { toast: null, className: 'cancelled' },
+          copy_failed: { toast: showErrorToast, className: 'error' },
+        };
+
+        const safeStatus =
+          Object.prototype.hasOwnProperty.call(statusConfig, result.status)
+            ? result.status
+            : 'copy_failed';
+        const config = statusConfig[safeStatus];
+        const key = `contact.invite.share.${safeStatus}`;
+
+        if (config.toast) {
+          config.toast(t(key), { containerEl: dialog });
+        }
+        importStatus.textContent = t(key);
+        importStatus.className = `import-status ${config.className}`;
+      } catch (error) {
+        console.error('[ADD CONTACT] Web Share invite error:', error);
+        showErrorToast(t('contact.invite.share.copy_failed'), {
+          containerEl: dialog,
+        });
+        importStatus.textContent = t('contact.invite.share.copy_failed');
+        importStatus.className = 'import-status error';
+      }
+    }
 
     // Import Google Contacts function — must be called from a user click
     // so the browser allows the OAuth popup on mobile.
