@@ -58,7 +58,7 @@ describe('share-invite', () => {
       });
 
       expect(result).toEqual(
-        expect.objectContaining({ ok: true, status: 'shared' }),
+        expect.objectContaining({ ok: true, status: 'opened_elsewhere' }),
       );
       expect(shareImpl).toHaveBeenCalledTimes(1);
       expect(copyImpl).not.toHaveBeenCalled();

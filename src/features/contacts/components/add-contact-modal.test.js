@@ -77,7 +77,7 @@ describe('showAddContactModal - share invite platform action', () => {
   it('renders share platform button and triggers share helper on click', async () => {
     mocks.shareInvite.mockResolvedValue({
       ok: true,
-      status: 'shared',
+      status: 'opened_elsewhere',
     });
 
     const { showAddContactModal } = await import('./add-contact-modal.js');
@@ -90,9 +90,9 @@ describe('showAddContactModal - share invite platform action', () => {
     await Promise.resolve();
 
     expect(mocks.shareInvite).toHaveBeenCalledTimes(1);
-    expect(mocks.showSuccessToast).toHaveBeenCalledWith(
-      'contact.invite.share.shared',
-      expect.objectContaining({ containerEl: expect.any(HTMLDialogElement) }),
+    expect(mocks.showSuccessToast).not.toHaveBeenCalled();
+    expect(document.querySelector('.import-status').textContent).toBe(
+      'contact.invite.share.opened_elsewhere',
     );
 
     document.querySelector('[data-action="cancel"]')?.click();

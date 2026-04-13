@@ -75,7 +75,7 @@ export async function shareInvite({
         text,
         url: link,
       });
-      return { ok: true, status: 'shared', link, text };
+      return { ok: true, status: 'opened_elsewhere', link, text };
     } catch (error) {
       if (error?.name === 'AbortError') {
         return { ok: false, status: 'cancelled', link, text };

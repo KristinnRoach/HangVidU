@@ -68,6 +68,7 @@
   "contact.invite.failed_detail": "Failed to send emails: {error}\n\nPlease try again or use your email client.",
   "contact.invite.share.opening": "Opening share...",
   "contact.invite.share.shared": "Invite shared",
+  "contact.invite.share.opened_elsewhere": "Share opened in another window",
   "contact.invite.share.copied": "Invite link copied.",
   "contact.invite.share.cancelled": "Share cancelled.",
   "contact.invite.share.copy_failed": "Couldn't share or copy invite link.",

@@ -68,6 +68,7 @@
   "contact.invite.failed_detail": "Tókst ekki að senda netpóst: {error}\n\nReyndu aftur eða notaðu netpóstforritið þitt.",
   "contact.invite.share.opening": "Opna deilingu...",
   "contact.invite.share.shared": "Boð deilt",
+  "contact.invite.share.opened_elsewhere": "Opnað í öðrum glugga",
   "contact.invite.share.copied": "Boðstengill afritaður.",
   "contact.invite.share.cancelled": "Hætt við deilingu.",
   "contact.invite.share.copy_failed": "Tókst ekki að deila eða afrita boðstengil.",

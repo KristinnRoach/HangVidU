@@ -172,7 +172,7 @@ export async function showAddContactModal() {
         });
 
         const statusConfig = {
-          shared: { toast: showSuccessToast, className: 'success' },
+          opened_elsewhere: { toast: null, className: 'info' },
           copied: { toast: showSuccessToast, className: 'success' },
           cancelled: { toast: null, className: 'cancelled' },
           copy_failed: { toast: showErrorToast, className: 'error' },
