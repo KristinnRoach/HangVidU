@@ -11,13 +11,13 @@ const DEFAULT_SENDER_NAME = 'A friend';
  * @returns {string}
  */
 export function buildReferralLink(userId, origin = window.location.origin) {
-  const base = typeof origin === 'string' && origin.trim() ? origin : '';
+  const base = typeof origin === 'string' && origin.trim() ? origin.trim() : '';
   if (!userId || typeof userId !== 'string' || !userId.trim()) {
     return base;
   }
-
+  const normalizedBase = base.replace(/\/+$/, '');
   const encodedRef = encodeURIComponent(userId.trim());
-  return `${base}/?ref=${encodedRef}`;
+  return `${normalizedBase}/?ref=${encodedRef}`;
 }
 
 /**
