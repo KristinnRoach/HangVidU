@@ -80,10 +80,7 @@ export function createImportContactsComponent({
       } catch (error) {
         console.error('[ImportContacts] Platform select error:', error);
         setActivePlatform(null);
-        setStatus(
-          t('contact.import.error', { error: error.message }),
-          'error',
-        );
+        setStatus(t('contact.import.error', { error: error.message }), 'error');
       } finally {
         isPlatformLoading = false;
         platformBtns.forEach((platformBtn) => {
@@ -106,9 +103,9 @@ export function createImportContactsComponent({
 
   function setStatus(message, statusClass = '') {
     importStatus.textContent = message;
-    importStatus.className = ['import-status', statusClass].filter(Boolean).join(
-      ' ',
-    );
+    importStatus.className = ['import-status', statusClass]
+      .filter(Boolean)
+      .join(' ');
   }
 
   function reset() {
@@ -137,7 +134,7 @@ export function createImportContactsComponent({
   }
 
   function renderEmptyState(message = t('contact.import.none')) {
-    contactsContainer.innerHTML = `<p class="empty-state">${message}</p>`;
+    contactsContainer.innerHTML = `<p class="empty-state">${escapeHtml(message)}</p>`;
     bulkActionsContainer.innerHTML = '';
   }
 
@@ -192,7 +189,7 @@ export function createImportContactsComponent({
 
       li.innerHTML = `
         <label class="contact-item-label">
-          <input type="checkbox" class="contact-checkbox" data-email="${escapeHtml(email)}" ${(isAlreadySaved || isInvited) ? 'disabled' : ''} />
+          <input type="checkbox" class="contact-checkbox" data-email="${escapeHtml(email)}" ${isAlreadySaved || isInvited ? 'disabled' : ''} />
           <span class="contact-info">
             <strong class="contact-name">${escapeHtml(name)}</strong>
             <small class="contact-email">${escapeHtml(email)}</small>
@@ -204,7 +201,9 @@ export function createImportContactsComponent({
 
       if (user && !isAlreadySaved && !isInvited) {
         const btn = li.querySelector('.invite-btn');
+
         btn.addEventListener('click', async () => {
+          const checkbox = li.querySelector('.contact-checkbox');
           btn.disabled = true;
           btn.textContent = t('shared.sending');
 
@@ -218,7 +217,11 @@ export function createImportContactsComponent({
             selectedContacts.delete(contact);
             btn.textContent = `✓ ${t('contact.invite.sent_one')}`;
             btn.classList.add('sent');
-            syncSelectAllCheckbox(list, selectAllCheckbox, visibleContactsByEmail);
+            syncSelectAllCheckbox(
+              list,
+              selectAllCheckbox,
+              visibleContactsByEmail,
+            );
             updateActionButtons();
           } catch {
             btn.textContent = t('shared.error');
@@ -227,7 +230,6 @@ export function createImportContactsComponent({
         });
       }
 
-      const checkbox = li.querySelector('.contact-checkbox');
       if (checkbox && !isAlreadySaved && !isInvited) {
         checkbox.checked = selectedContacts.has(contact);
         checkbox.addEventListener('change', () => {
@@ -236,7 +238,11 @@ export function createImportContactsComponent({
           } else {
             selectedContacts.delete(contact);
           }
-          syncSelectAllCheckbox(list, selectAllCheckbox, visibleContactsByEmail);
+          syncSelectAllCheckbox(
+            list,
+            selectAllCheckbox,
+            visibleContactsByEmail,
+          );
           updateActionButtons();
         });
       }
@@ -400,7 +406,11 @@ export function createImportContactsComponent({
     syncSelectAllCheckbox(list, selectAllCheckbox, visibleContactsByEmail);
   }
 
-  function syncSelectAllCheckbox(list, selectAllCheckbox, visibleContactsByEmail) {
+  function syncSelectAllCheckbox(
+    list,
+    selectAllCheckbox,
+    visibleContactsByEmail,
+  ) {
     const selectableCheckboxes = Array.from(
       list.querySelectorAll('.contact-checkbox:not([disabled])'),
     );
@@ -441,8 +451,9 @@ export function createImportContactsComponent({
     const onAppCount = selectedArray.filter(
       (contact) => contact.user && !contact.isAlreadySaved,
     ).length;
-    const notOnAppCount = selectedArray.filter((contact) => !contact.user)
-      .length;
+    const notOnAppCount = selectedArray.filter(
+      (contact) => !contact.user,
+    ).length;
 
     inviteSelectedBtn.disabled = onAppCount === 0;
     inviteSelectedBtn.textContent = t('contact.invite.selected', {
