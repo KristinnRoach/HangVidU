@@ -46,8 +46,13 @@ function openEmailComposeFallback(contacts) {
   );
   const to = contacts.map((c) => encodeURIComponent(c.email)).join(',');
 
-  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${body}`;
-  const opened = window.open(gmailUrl, '_blank');
+  const recipientParam =
+    contacts.length === 1
+      ? `to=${encodeURIComponent(contacts[0].email)}`
+      : `bcc=${to}`;
+
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&${recipientParam}&su=${subject}&body=${body}`;
+  const opened = window.open(gmailUrl, '_blank', 'noopener,noreferrer');
 
   if (!opened) {
     const mailtoLink =
@@ -82,6 +87,7 @@ export async function showAddContactModal() {
         <div class="manual-email-row">
           <input type="email" id="manual-email-input"
                  placeholder="${t('contact.add.enter_email')}"
+                 aria-label="${t('contact.add.enter_email')}"
                  autocomplete="email" />
           <button type="button" id="manual-email-send" class="action-btn">
             ${t('contact.invite')}
@@ -126,12 +132,12 @@ export async function showAddContactModal() {
 
         <div id="contacts-container" class="contacts-container-modal"></div>
 
-        <div id="import-status" class="import-status"></div>
+        <div id="import-status" class="import-status" role="status" aria-live="polite"></div>
 
         <div id="bulk-actions-container" class="bulk-actions-container"></div>
       </div>
 
-      <div id="manual-email-status" class="import-status"></div>
+      <div id="manual-email-status" class="import-status" role="status" aria-live="polite"></div>
     `;
 
     const cancelBtn = dialog.querySelector('[data-action="cancel"]');
@@ -168,6 +174,12 @@ export async function showAddContactModal() {
     async function handleManualEmailInvite() {
       const email = manualEmailInput.value.trim().toLowerCase();
       if (!email) return;
+
+      manualEmailInput.value = email;
+      if (!manualEmailInput.checkValidity()) {
+        manualEmailInput.reportValidity();
+        return;
+      }
 
       manualEmailSendBtn.disabled = true;
       manualEmailSendBtn.textContent = t('contact.import.fetching');
@@ -223,7 +235,9 @@ export async function showAddContactModal() {
 
     manualEmailSendBtn.addEventListener('click', handleManualEmailInvite);
     manualEmailInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') handleManualEmailInvite();
+      if (e.key === 'Enter' && !manualEmailSendBtn.disabled) {
+        handleManualEmailInvite();
+      }
     });
 
     // --- Generic Web Share button ---
@@ -322,6 +336,8 @@ export async function showAddContactModal() {
       contactsContainer.innerHTML = '';
       allContacts = [];
       filteredContacts = [];
+      selectedContacts.clear();
+      bulkActionsContainer.innerHTML = '';
 
       try {
         const accessToken = await requestContactsAccess({ interactive: true });
