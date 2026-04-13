@@ -61,7 +61,16 @@ export function createImportContactsComponent({
       if (btn.disabled) return;
       const platform = btn.getAttribute('data-platform');
       setActivePlatform(platform);
-      await onPlatformSelect(platform);
+      try {
+        await onPlatformSelect(platform);
+      } catch (error) {
+        console.error('[ImportContacts] Platform select error:', error);
+        setActivePlatform(null);
+        setStatus(
+          t('contact.import.error', { error: error.message }),
+          'error',
+        );
+      }
     });
   });
 
@@ -255,7 +264,25 @@ export function createImportContactsComponent({
       inviteSelectedBtn.disabled = true;
       inviteSelectedBtn.textContent = t('contact.invite.sending');
 
-      const result = await onInviteSelected(toInvite);
+      let result;
+      try {
+        result = await onInviteSelected(toInvite);
+      } catch (error) {
+        console.error('[ImportContacts] Invite error:', error);
+        inviteSelectedBtn.textContent = t('shared.error');
+        inviteSelectedBtn.disabled = false;
+        return;
+      }
+
+      if (result.status === 'failed') {
+        inviteSelectedBtn.textContent = t('shared.error');
+        inviteSelectedBtn.disabled = false;
+        window.setTimeout(() => {
+          updateActionButtons();
+        }, 1500);
+        return;
+      }
+
       inviteSelectedBtn.textContent = `✓ ${t('contact.invite.sent', { count: result.count ?? 0 })}`;
 
       window.setTimeout(() => {
@@ -274,7 +301,18 @@ export function createImportContactsComponent({
       shareLinkBtn.disabled = true;
       shareLinkBtn.textContent = t('contact.invite.requesting_permission');
 
-      const result = await onEmailSelected(notOnApp);
+      let result;
+      try {
+        result = await onEmailSelected(notOnApp);
+      } catch (error) {
+        console.error('[ImportContacts] Email send error:', error);
+        shareLinkBtn.textContent = t('contact.invite.error_retry');
+        shareLinkBtn.disabled = false;
+        window.setTimeout(() => {
+          updateActionButtons();
+        }, 1500);
+        return;
+      }
 
       if (result.status === 'sent') {
         shareLinkBtn.textContent = `✓ ${t('contact.invite.sent_emails', { count: result.count ?? 0 })}`;

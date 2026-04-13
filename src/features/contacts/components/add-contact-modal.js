@@ -139,6 +139,14 @@ export async function showAddContactModal() {
           }
         }
 
+        if (count === 0) {
+          return { ok: false, status: 'failed', count };
+        }
+
+        if (count < contacts.length) {
+          return { ok: true, status: 'partial', count };
+        }
+
         return { ok: true, status: 'sent', count };
       },
       onEmailSelected: async (contacts) => {
