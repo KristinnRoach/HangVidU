@@ -213,17 +213,22 @@
     box-shadow var(--duration-default, 200ms) var(--easing-default, ease);
 }
 
-/* Control element order: search → messages → notifications */
+/* Left to right element order of top-right-menu */
+
 .top-right-menu .search-section {
   order: 1;
 }
 
-.top-right-menu #main-messages-toggle-btn {
+.top-right-menu #add-contact-btn {
   order: 2;
 }
 
-.top-right-menu .notifications-toggle-container {
+.top-right-menu #main-messages-toggle-btn {
   order: 3;
+}
+
+.top-right-menu .notifications-toggle-container {
+  order: 4;
 }
 
 /* Consistent button sizing for all top-right-menu items */

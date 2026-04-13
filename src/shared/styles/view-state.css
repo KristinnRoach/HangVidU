@@ -2,6 +2,12 @@
 /* Usage: <body data-view="lobby|calling|connected"> */
 
 body[data-view='lobby:user'] {
+  & #top-bar {
+    & #add-contact-btn {
+      display: flex;
+    }
+  }
+
   & #lobby-buttons-container {
     display: flex;
 
@@ -11,10 +17,6 @@ body[data-view='lobby:user'] {
 
     & #paste-join-btn {
       display: none;
-    }
-
-    & #add-contact-btn {
-      display: flex;
     }
   }
 
@@ -49,6 +51,12 @@ body[data-view='connected:user'] {
  ============================================================================ */
 
 body[data-view='lobby:guest'] {
+  & #top-bar {
+    & #add-contact-btn {
+      display: none;
+    }
+  }
+
   & #lobby-buttons-container {
     display: none;
 
@@ -59,10 +67,6 @@ body[data-view='lobby:guest'] {
     }
 
     & #paste-join-btn {
-      display: none;
-    }
-
-    & #add-contact-btn {
       display: none;
     }
   }
