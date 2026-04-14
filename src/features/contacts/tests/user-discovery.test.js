@@ -1,16 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  hashEmail,
-  lookupUserByEmail,
-  removeFromUserByEmailDirectory,
-} from '../user-discovery.js';
 
-vi.mock('firebase/database', () => ({
+const mocks = vi.hoisted(() => ({
   ref: vi.fn(),
   set: vi.fn(),
   get: vi.fn(),
   remove: vi.fn(() => Promise.resolve()),
 }));
+
+vi.mock('firebase/database', () => mocks);
+
+import {
+  hashEmail,
+  lookupUserByEmail,
+  removeFromUserByEmailDirectory,
+} from '../user-discovery.js';
 
 vi.mock('../../../shared/storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
@@ -47,11 +50,9 @@ describe('user-discovery', () => {
 
   describe('removeFromUserByEmailDirectory', () => {
     it('should remove user from discovery directory', async () => {
-      const { remove } = await import('firebase/database');
-
       await removeFromUserByEmailDirectory('test@example.com');
 
-      expect(remove).toHaveBeenCalled();
+      expect(mocks.remove).toHaveBeenCalled();
     });
 
     it('should throw error for invalid email', async () => {
@@ -66,8 +67,7 @@ describe('user-discovery', () => {
 
   describe('lookupUserByEmail', () => {
     it('returns found when user exists', async () => {
-      const { get } = await import('firebase/database');
-      get.mockResolvedValue({
+      mocks.get.mockResolvedValue({
         exists: () => true,
         val: () => ({ uid: 'u1', userName: 'Alice' }),
       });
@@ -81,8 +81,7 @@ describe('user-discovery', () => {
     });
 
     it('returns not_found when user does not exist', async () => {
-      const { get } = await import('firebase/database');
-      get.mockResolvedValue({
+      mocks.get.mockResolvedValue({
         exists: () => false,
         val: () => null,
       });
@@ -96,20 +95,18 @@ describe('user-discovery', () => {
     });
 
     it('returns not_found for whitespace-only email without lookup', async () => {
-      const { get } = await import('firebase/database');
       const result = await lookupUserByEmail('   ');
 
       expect(result).toEqual({
         status: 'not_found',
         user: null,
       });
-      expect(get).not.toHaveBeenCalled();
+      expect(mocks.get).not.toHaveBeenCalled();
     });
 
     it('returns lookup_error when lookup throws', async () => {
-      const { get } = await import('firebase/database');
       const error = new Error('database unavailable');
-      get.mockRejectedValue(error);
+      mocks.get.mockRejectedValue(error);
 
       const result = await lookupUserByEmail('error@example.com');
 

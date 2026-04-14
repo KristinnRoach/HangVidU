@@ -1,7 +1,7 @@
 // src/contacts/user-discovery.js
 // User discovery system - allows users to find each other by email
 
-import { ref, set, get } from 'firebase/database';
+import { ref, set, get, remove } from 'firebase/database';
 import { rtdb } from '../../shared/storage/fb-rtdb/rtdb.js';
 import { onAuthStateChanged } from '../../auth/index.js';
 
@@ -175,8 +175,6 @@ export async function removeFromUserByEmailDirectory(email) {
   try {
     const emailHash = hashEmail(email);
     const userRef = ref(rtdb, `usersByEmail/${emailHash}`);
-    const { remove } = await import('firebase/database');
-
     await remove(userRef);
     console.log('[USER DISCOVERY] Removed user from directory:', email);
   } catch (error) {

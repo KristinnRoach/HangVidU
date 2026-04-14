@@ -59,7 +59,7 @@ export function buildProviderShareUrl(providerId, { text, link }) {
  *   openImpl?: ((url: string) => any) | null,
  *   copyImpl?: ((text: string) => Promise<boolean>) | null,
  * }} params
- * @returns {Promise<{ok: boolean, status: 'opened' | 'copied' | 'copy_failed' | 'cancelled', link: string, text: string, url: string, providerId: 'whatsapp' | 'telegram'}>}
+ * @returns {Promise<{ok: boolean, status: 'opened' | 'copied' | 'copy_failed', link: string, text: string, url: string, providerId: 'whatsapp' | 'telegram'}>}
  */
 export async function shareInviteViaProvider({
   providerId,
@@ -86,9 +86,6 @@ export async function shareInviteViaProvider({
         return { ok: true, status: 'opened', link, text, url, providerId };
       }
     } catch (error) {
-      if (error?.name === 'AbortError') {
-        return { ok: false, status: 'cancelled', link, text, url, providerId };
-      }
       console.error(
         `[CONTACTS INVITE] Failed to open ${providerId} share URL:`,
         error,
