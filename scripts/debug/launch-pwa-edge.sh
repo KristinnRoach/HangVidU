@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-APP_URL="${PWA_URL:-https://vidu-aae11.web.app/}"
+APP_URL="${PWA_URL:-https://hangvidu.com/}"
 DEBUG_PORT="${EDGE_DEBUG_PORT:-9222}"
 USER_DATA_DIR="${EDGE_DEBUG_USER_DATA_DIR:-/tmp/edge-codex-debug}"
 EDGE_APP="${EDGE_APP_PATH:-Microsoft Edge}"

@@ -4,7 +4,7 @@ A simple peer-to-peer video chat app with a watch-together mode.
 
 ## Try it now
 
-**Live demo**: [https://vidu-aae11.web.app/](https://vidu-aae11.web.app/)
+**Live demo**: [https://hangvidu.com/](https://hangvidu.com/)
 
 ## Usage
 
