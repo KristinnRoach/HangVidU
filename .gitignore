@@ -121,3 +121,6 @@ docs/WIP_Architecture/REFERENCE_WebDevSimplified.md
 
 
 scripts/migrate-usersbyemail-display-name-to-user-name.js
+
+
+.worktrees/
