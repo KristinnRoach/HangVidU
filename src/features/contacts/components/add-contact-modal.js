@@ -115,7 +115,7 @@ export async function showAddContactModal() {
                  placeholder="${t('contact.add.enter_email')}"
                  aria-label="${t('contact.add.enter_email')}"
                  autocomplete="email" />
-          <button type="button" id="manual-email-send" class="action-btn">
+          <button type="button" id="manual-email-send" class="action-btn manual-email-send">
             ${t('contact.invite')}
           </button>
         </div>
