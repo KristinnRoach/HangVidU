@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => {
         return () => handlers.delete(eventName);
       }),
     },
+    closeAllConversations: vi.fn(),
+    resetMessagesUI: vi.fn(),
     renderContactsList: vi.fn(() => Promise.resolve()),
     removeAllIncomingListeners: vi.fn(),
     startListeningForSavedRooms: vi.fn(() => Promise.resolve()),
@@ -40,6 +42,18 @@ vi.mock('../../features/call/room-listeners.js', () => ({
   startListeningForSavedRooms: mocks.startListeningForSavedRooms,
 }));
 
+vi.mock('../../features/messaging/messaging-controller.js', () => ({
+  messagingController: {
+    closeAllConversations: mocks.closeAllConversations,
+  },
+}));
+
+vi.mock('../../features/messaging/components/messages-ui.js', () => ({
+  messagesUI: {
+    reset: mocks.resetMessagesUI,
+  },
+}));
+
 vi.mock('../../features/contacts/index.js', () => ({
   cleanupInviteListeners: mocks.cleanupInviteListeners,
   setupInviteListener: mocks.setupInviteListener,
@@ -56,10 +70,17 @@ vi.mock('../../features/notifications/index.js', () => ({
 }));
 
 describe('setupAuth', () => {
+  let localStorageClearSpy;
+
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
     mocks.handlers.clear();
+    localStorageClearSpy = vi.spyOn(Storage.prototype, 'clear');
+  });
+
+  afterEach(() => {
+    localStorageClearSpy?.mockRestore();
   });
 
   it('renders contacts when auth becomes ready', async () => {
@@ -111,6 +132,9 @@ describe('setupAuth', () => {
     expect(mocks.renderContactsList).toHaveBeenCalledWith(lobbyElement);
     expect(mocks.removeAllIncomingListeners).toHaveBeenCalled();
     expect(mocks.cleanupInviteListeners).toHaveBeenCalled();
+    expect(mocks.closeAllConversations).toHaveBeenCalled();
+    expect(mocks.resetMessagesUI).toHaveBeenCalled();
+    expect(localStorageClearSpy).toHaveBeenCalled();
 
     teardown();
   });

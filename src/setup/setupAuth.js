@@ -5,6 +5,8 @@ import {
   removeAllIncomingListeners,
   startListeningForSavedRooms,
 } from '../features/call/room-listeners.js';
+import { messagingController } from '../features/messaging/messaging-controller.js';
+import { messagesUI } from '../features/messaging/components/messages-ui.js';
 import {
   cleanupInviteListeners,
   setupInviteListener,
@@ -25,6 +27,16 @@ function runSafe(fn, label) {
     fn?.();
   } catch (error) {
     console.warn(`[setupAuth] ${label} failed:`, error);
+  }
+}
+
+function clearLocalStorageOnLogout() {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.clear();
+    }
+  } catch (error) {
+    console.warn('[setupAuth] Failed to clear localStorage on logout:', error);
   }
 }
 
@@ -71,6 +83,14 @@ export function setupAuth(options = {}) {
       };
     };
 
+    const runMainLogoutCleanup = () => {
+      cleanupLoginScopedListeners();
+      messagingController.closeAllConversations();
+      messagesUI.reset();
+      // NOTE: Local storage is cleared on log out.
+      clearLocalStorageOnLogout();
+    };
+
     try {
       subscribe(
         'evt:auth:session:ready',
@@ -89,7 +109,7 @@ export function setupAuth(options = {}) {
         async () => {
           try {
             devDebug('[AUTH] User logged out - cleaning up listeners');
-            cleanupLoginScopedListeners();
+            runMainLogoutCleanup();
 
             await renderContactsList(lobbyElement);
           } catch (e) {
