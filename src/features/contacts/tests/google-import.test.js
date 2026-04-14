@@ -9,30 +9,30 @@ const mocks = vi.hoisted(() => ({
   buildImportableContacts: vi.fn(),
 }));
 
-vi.mock('../../auth/index.js', () => ({
+vi.mock('../../../auth/index.js', () => ({
   requestContactsAccess: mocks.requestContactsAccess,
   getUser: mocks.getUser,
 }));
 
-vi.mock('./contacts-service.js', () => ({
+vi.mock('../contacts-service.js', () => ({
   contactsService: {
     getAllContacts: mocks.getAllContacts,
   },
 }));
 
-vi.mock('./user-discovery.js', () => ({
+vi.mock('../user-discovery.js', () => ({
   findUsersByEmails: mocks.findUsersByEmails,
 }));
 
-vi.mock('./google-contacts.js', () => ({
+vi.mock('../google-contacts.js', () => ({
   fetchGoogleContacts: mocks.fetchGoogleContacts,
 }));
 
-vi.mock('./import-contacts-utils.js', () => ({
+vi.mock('../import-contacts-utils.js', () => ({
   buildImportableContacts: mocks.buildImportableContacts,
 }));
 
-import { importGoogleContacts } from './google-import.js';
+import { importGoogleContacts } from '../google-import.js';
 
 describe('importGoogleContacts', () => {
   beforeEach(() => {
@@ -44,7 +44,9 @@ describe('importGoogleContacts', () => {
     const googleContacts = [{ email: 'alice@example.com', name: 'Alice' }];
     const savedContacts = { user_1: { contactId: 'user_1' } };
     const registeredUsers = [{ uid: 'user_1', email: 'alice@example.com' }];
-    const importableContacts = [{ email: 'alice@example.com', user: registeredUsers[0] }];
+    const importableContacts = [
+      { email: 'alice@example.com', user: registeredUsers[0] },
+    ];
 
     mocks.requestContactsAccess.mockResolvedValue('token-123');
     mocks.fetchGoogleContacts.mockResolvedValue(googleContacts);

@@ -17,25 +17,25 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('../../auth/index.js', () => ({
+vi.mock('../../../auth/index.js', () => ({
   getIsLoggedIn: () => mocks.auth.loggedIn,
   getLoggedInUserId: () => mocks.auth.ownerId,
 }));
 
-vi.mock('../../shared/events/index.js', () => ({
+vi.mock('../../../shared/events/index.js', () => ({
   publish: mocks.events.publish,
 }));
 
-vi.mock('../../shared/storage/fb-rtdb/rtdb.js', () => ({
+vi.mock('../../../shared/storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
 }));
 
-vi.mock('./storage/index.js', () => ({
+vi.mock('../storage/index.js', () => ({
   createContactsRTDBStore: vi.fn(() => mocks.store),
   createContactsLocalStore: vi.fn(() => mocks.store),
 }));
 
-vi.mock('../../shared/utils/direct-conversation-id.js', () => ({
+vi.mock('../../../shared/utils/direct-conversation-id.js', () => ({
   resolveDirectConversationId: (userA, userB) =>
     [userA, userB].sort().join('_'),
 }));
@@ -57,7 +57,7 @@ describe('contacts-service', () => {
   });
 
   it('saveContact creates and returns a canonical contact record', async () => {
-    const { ContactsService } = await import('./contacts-service.js');
+    const { ContactsService } = await import('../contacts-service.js');
     const service = new ContactsService();
     const contact = {
       contactId: 'u1',
@@ -88,7 +88,7 @@ describe('contacts-service', () => {
   });
 
   it('saveContact preserves timestamps for an existing contact', async () => {
-    const { ContactsService } = await import('./contacts-service.js');
+    const { ContactsService } = await import('../contacts-service.js');
     const service = new ContactsService();
     const existing = {
       contactId: 'u1',
@@ -119,7 +119,7 @@ describe('contacts-service', () => {
   });
 
   it('saveContact stores direct conversationId for authenticated users', async () => {
-    const { ContactsService } = await import('./contacts-service.js');
+    const { ContactsService } = await import('../contacts-service.js');
     const service = new ContactsService();
 
     mocks.auth.ownerId = 'me';
@@ -146,7 +146,7 @@ describe('contacts-service', () => {
   });
 
   it('updateContact updates an existing contact and returns the updated record', async () => {
-    const { ContactsService } = await import('./contacts-service.js');
+    const { ContactsService } = await import('../contacts-service.js');
     const service = new ContactsService();
     const existing = {
       contactId: 'u1',
@@ -181,7 +181,7 @@ describe('contacts-service', () => {
   });
 
   it('updateContact returns null when the contact does not exist', async () => {
-    const { ContactsService } = await import('./contacts-service.js');
+    const { ContactsService } = await import('../contacts-service.js');
     const service = new ContactsService();
 
     mocks.store.get.mockResolvedValue(null);
@@ -195,7 +195,7 @@ describe('contacts-service', () => {
   });
 
   it('deleteContact returns true when deleted and publishes contact deletion', async () => {
-    const { ContactsService } = await import('./contacts-service.js');
+    const { ContactsService } = await import('../contacts-service.js');
     const service = new ContactsService();
     const existing = {
       contactId: 'u1',
@@ -211,14 +211,17 @@ describe('contacts-service', () => {
     const result = await service.deleteContact('u1');
 
     expect(result).toBe(true);
-    expect(mocks.events.publish).toHaveBeenCalledWith('evt:contacts:contact:deleted', {
-      contactId: 'u1',
-      roomId: 'room-1',
-    });
+    expect(mocks.events.publish).toHaveBeenCalledWith(
+      'evt:contacts:contact:deleted',
+      {
+        contactId: 'u1',
+        roomId: 'room-1',
+      },
+    );
   });
 
   it('deleteContact returns false when missing', async () => {
-    const { ContactsService } = await import('./contacts-service.js');
+    const { ContactsService } = await import('../contacts-service.js');
     const service = new ContactsService();
 
     mocks.store.get.mockResolvedValue(null);
@@ -231,7 +234,7 @@ describe('contacts-service', () => {
   });
 
   it('getAllContacts returns a map keyed by contactId', async () => {
-    const { ContactsService } = await import('./contacts-service.js');
+    const { ContactsService } = await import('../contacts-service.js');
     const service = new ContactsService();
 
     mocks.store.list.mockResolvedValue([
@@ -272,7 +275,7 @@ describe('contacts-service', () => {
   });
 
   it('getAllContactsSorted returns contacts sorted by lastInteractionAt then name', async () => {
-    const { ContactsService } = await import('./contacts-service.js');
+    const { ContactsService } = await import('../contacts-service.js');
     const service = new ContactsService();
 
     mocks.store.list.mockResolvedValue([
@@ -305,7 +308,7 @@ describe('contacts-service', () => {
   });
 
   it('getContactByRoomId returns the matching record or null', async () => {
-    const { ContactsService } = await import('./contacts-service.js');
+    const { ContactsService } = await import('../contacts-service.js');
     const service = new ContactsService();
 
     mocks.store.list.mockResolvedValue([
@@ -329,7 +332,7 @@ describe('contacts-service', () => {
   });
 
   it('updateLastInteraction returns null for guest mode and does not patch', async () => {
-    const { ContactsService } = await import('./contacts-service.js');
+    const { ContactsService } = await import('../contacts-service.js');
     const service = new ContactsService();
 
     mocks.auth.loggedIn = false;
@@ -342,7 +345,7 @@ describe('contacts-service', () => {
   });
 
   it('updateLastInteraction patches existing authenticated contacts', async () => {
-    const { ContactsService } = await import('./contacts-service.js');
+    const { ContactsService } = await import('../contacts-service.js');
     const service = new ContactsService();
     const updated = {
       contactId: 'u1',
@@ -365,7 +368,7 @@ describe('contacts-service', () => {
   });
 
   it('handleHangUp returns existing, skip, or prompt-save decisions', async () => {
-    const { ContactsService } = await import('./contacts-service.js');
+    const { ContactsService } = await import('../contacts-service.js');
     const service = new ContactsService();
 
     mocks.store.list.mockResolvedValue([

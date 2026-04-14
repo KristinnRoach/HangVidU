@@ -1,7 +1,7 @@
 // src/contacts/user-discovery.js
 // User discovery system - allows users to find each other by email
 
-import { ref, set, get } from 'firebase/database';
+import { ref, set, get, remove } from 'firebase/database';
 import { rtdb } from '../../shared/storage/fb-rtdb/rtdb.js';
 import { onAuthStateChanged } from '../../auth/index.js';
 
@@ -90,33 +90,52 @@ export async function registerUserInDirectory(user) {
 }
 
 /**
+ * Lookup a user by email address with explicit outcome typing.
+ * @param {string} email - Email address to search for
+ * @returns {Promise<{status: 'found' | 'not_found' | 'lookup_error', user: Object | null, error?: unknown}>}
+ */
+export async function lookupUserByEmail(email) {
+  if (!email || typeof email !== 'string') {
+    return { status: 'not_found', user: null };
+  }
+
+  const trimmedEmail = email.trim();
+  if (!trimmedEmail) {
+    return { status: 'not_found', user: null };
+  }
+
+  try {
+    const emailHash = hashEmail(trimmedEmail);
+    const userRef = ref(rtdb, `usersByEmail/${emailHash}`);
+    const snapshot = await get(userRef);
+
+    if (!snapshot.exists()) {
+      return { status: 'not_found', user: null };
+    }
+
+    const user = canonicalizeDirectoryUser(snapshot.val());
+    if (!user) {
+      return { status: 'not_found', user: null };
+    }
+
+    return { status: 'found', user };
+  } catch (error) {
+    console.error('[USER DISCOVERY] Failed to find user by email:', error);
+    return { status: 'lookup_error', user: null, error };
+  }
+}
+
+/**
  * Find a user by email address.
  * @param {string} email - Email address to search for
  * @returns {Promise<Object|null>} - User data if found, null otherwise
  */
 export async function findUserByEmail(email) {
-  if (!email || typeof email !== 'string') {
+  const result = await lookupUserByEmail(email);
+  if (result.status !== 'found') {
     return null;
   }
-
-  try {
-    const emailHash = hashEmail(email);
-    const userRef = ref(rtdb, `usersByEmail/${emailHash}`);
-    const snapshot = await get(userRef);
-
-    if (snapshot.exists()) {
-      const user = canonicalizeDirectoryUser(snapshot.val());
-      if (!user) {
-        return null;
-      }
-      return user;
-    }
-
-    return null;
-  } catch (error) {
-    console.error('[USER DISCOVERY] Failed to find user by email:', error);
-    return null;
-  }
+  return result.user;
 }
 
 /**
@@ -156,8 +175,6 @@ export async function removeFromUserByEmailDirectory(email) {
   try {
     const emailHash = hashEmail(email);
     const userRef = ref(rtdb, `usersByEmail/${emailHash}`);
-    const { remove } = await import('firebase/database');
-
     await remove(userRef);
     console.log('[USER DISCOVERY] Removed user from directory:', email);
   } catch (error) {

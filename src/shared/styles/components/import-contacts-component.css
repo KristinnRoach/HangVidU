@@ -1,6 +1,8 @@
 /* Import Contacts Component */
 
 .add-contact-modal .import-section {
+  width: var(--add-contact-content-width);
+  margin: 0 auto;
   margin-bottom: 0;
 }
 
@@ -13,29 +15,29 @@
 
 .add-contact-modal .platform-btn {
   display: flex;
+  /* flex: 1 1 0; */
   flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 12px;
   border: 2px solid #555;
   background-color: #444;
   color: #aaa;
-  font-size: 1.5rem;
   text-shadow: var(--text-shadow-subtle);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .add-contact-modal .platform-btn svg {
-  width: 24px;
-  height: 24px;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
-  background: rgb(0, 0, 0);
-  border-radius: 50%;
-  padding: 4px;
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.159);
+  width: 20px;
+  height: 20px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  /* background: rgb(0, 0, 0); */
+  /* box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.159); */
+  /* padding: 4px; */
+  /* border-radius: 50%; */
 }
 
 .add-contact-modal .platform-btn:hover:not(:disabled) {

@@ -15,9 +15,16 @@ export {
 export { showSaveContactPrompt } from './components/save-contact-modal.js';
 export { showAddContactModal } from './components/add-contact-modal.js';
 
-export { hashEmail } from './user-discovery.js';
+export { hashEmail, lookupUserByEmail } from './user-discovery.js';
 export {
   buildReferralLink,
   buildInviteText,
+  copyInviteLink,
   shareInvite,
 } from './share-invite.js';
+export {
+  getInviteShareProviders,
+  buildProviderShareUrl,
+  shareInviteViaProvider,
+} from './share-invite-presets.js';
+export { createDebouncedAsyncAction } from './debounce.js';

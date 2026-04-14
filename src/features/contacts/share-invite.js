@@ -86,9 +86,45 @@ export async function shareInvite({
     }
   }
 
-  const copied = typeof copyImpl === 'function' ? await copyImpl(link) : false;
+  let copied = false;
+  try {
+    copied = typeof copyImpl === 'function' ? await copyImpl(link) : false;
+  } catch {
+    return { ok: false, status: 'copy_failed', link, text };
+  }
+
   if (copied) {
     return { ok: true, status: 'copied', link, text };
   }
   return { ok: false, status: 'copy_failed', link, text };
+}
+
+/**
+ * Copy HangVidU invite link to clipboard.
+ *
+ * @param {{
+ *   userId?: string | null,
+ *   origin?: string,
+ *   copyImpl?: ((text: string) => Promise<boolean>) | null,
+ * }} params
+ * @returns {Promise<{ ok: boolean, status: 'copied' | 'copy_failed', link: string }>}
+ */
+export async function copyInviteLink({
+  userId,
+  origin = APP_ORIGIN,
+  copyImpl = copyToClipboard,
+} = {}) {
+  const link = buildReferralLink(userId, origin);
+  let copied = false;
+  try {
+    copied = typeof copyImpl === 'function' ? await copyImpl(link) : false;
+  } catch {
+    return { ok: false, status: 'copy_failed', link };
+  }
+
+  if (copied) {
+    return { ok: true, status: 'copied', link };
+  }
+
+  return { ok: false, status: 'copy_failed', link };
 }

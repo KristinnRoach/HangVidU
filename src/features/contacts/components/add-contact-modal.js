@@ -8,9 +8,18 @@ import {
   getUser,
   getIsLoggedIn,
 } from '../../../auth/index.js';
-import { buildReferralLink, shareInvite } from '../share-invite.js';
+import {
+  buildReferralLink,
+  copyInviteLink,
+  shareInvite,
+} from '../share-invite.js';
+import {
+  getInviteShareProviders,
+  shareInviteViaProvider,
+} from '../share-invite-presets.js';
 import { t } from '../../../shared/i18n/index.js';
 import { initIcons } from '../../../shared/components/ui/icons.js';
+import { escapeHtml } from '../../../shared/components/ui/component-system/dom-utils.js';
 import {
   showErrorToast,
   showSuccessToast,
@@ -21,6 +30,7 @@ import { createImportContactsComponent } from './import-contacts-component.js';
 import { importGoogleContacts as importGoogleContactsFlow } from '../google-import.js';
 import { inviteContactByEmail } from '../manual-contact-invite.js';
 import { sendContactInvite } from '../send-contact-invite.js';
+import { createDebouncedAsyncAction } from '../debounce.js';
 
 // TODO: WIP decoupling considerations:
 // This modal mixes feature UI with auth/OAuth and external contact-import side effects.
@@ -75,6 +85,24 @@ export async function showAddContactModal() {
   return new Promise((resolve) => {
     const dialog = document.createElement('dialog');
     dialog.classList.add('add-contact-modal');
+    const shareProviders = getInviteShareProviders();
+    const providerButtons = shareProviders
+      .map((provider) => {
+        const label = t(provider.labelKey);
+        return `
+        <button
+          type="button"
+          class="share-preset-btn"
+          data-provider-id="${provider.id}"
+          aria-label="${escapeHtml(label)}"
+          title="${escapeHtml(label)}"
+        >
+          ${provider.iconSvg}
+          <span>${escapeHtml(label)}</span>
+        </button>
+      `;
+      })
+      .join('');
 
     dialog.innerHTML = `
       <button type="button" data-action="cancel" class="close-btn" aria-label="Close">×</button>
@@ -84,18 +112,23 @@ export async function showAddContactModal() {
       <div class="direct-actions">
         <div class="manual-email-row">
           <input type="email" id="manual-email-input"
-                 placeholder="${t('contact.add.enter_email')}"
-                 aria-label="${t('contact.add.enter_email')}"
+                 placeholder="${escapeHtml(t('contact.add.enter_email'))}"
+                 aria-label="${escapeHtml(t('contact.add.enter_email'))}"
                  autocomplete="email" />
-          <button type="button" id="manual-email-send" class="action-btn">
-            ${t('contact.invite')}
+          <button type="button" id="manual-email-send" class="action-btn manual-email-send">
+            ${escapeHtml(t('contact.invite'))}
           </button>
         </div>
 
-        <button type="button" id="share-btn" class="action-btn secondary share-btn" aria-label="${t('contact.invite.share.label')}">
-          <i data-lucide="share"></i>
-        </button>
-
+        <div class="share-presets-row" role="group" aria-label="${escapeHtml(t('contact.invite.share.presets_label'))}">
+          ${providerButtons}
+          <button type="button" id="share-btn" class="share-preset-btn share-btn" aria-label="${escapeHtml(t('contact.invite.share.label'))}">
+            <i data-lucide="share"></i>
+          </button>
+          <button type="button" id="copy-link-btn" class="share-preset-btn copy-link-btn" aria-label="${escapeHtml(t('contact.invite.copy.label'))}">
+            <i data-lucide="copy"></i>
+          </button>
+        </div>
       </div>
 
       <hr class="divider" />
@@ -108,6 +141,13 @@ export async function showAddContactModal() {
     const manualEmailSendBtn = dialog.querySelector('#manual-email-send');
     const manualEmailStatus = dialog.querySelector('#manual-email-status');
     const shareBtn = dialog.querySelector('#share-btn');
+    const copyLinkBtn = dialog.querySelector('#copy-link-btn');
+    const providerPresetButtons = Array.from(
+      dialog.querySelectorAll('.share-preset-btn[data-provider-id]'),
+    );
+    const providerById = new Map(
+      shareProviders.map((provider) => [provider.id, provider]),
+    );
 
     let allContacts = [];
     const importContactsComponent = createImportContactsComponent({
@@ -236,6 +276,7 @@ export async function showAddContactModal() {
     dialog.insertBefore(importContactsComponent.element, manualEmailStatus);
 
     function cleanup() {
+      runDebouncedShareAction?.cancel();
       dialog.close();
       dialog.remove();
       resolve();
@@ -285,15 +326,18 @@ export async function showAddContactModal() {
       } else if (result.status === 'already_invited') {
         manualEmailStatus.textContent = t('contact.add.already_invited');
         manualEmailStatus.className = 'import-status info';
+      } else if (result.status === 'permission_denied') {
+        manualEmailStatus.textContent = t('contact.invite.permission_denied');
+        manualEmailStatus.className = 'import-status error';
+      } else if (result.status === 'lookup_error') {
+        manualEmailStatus.textContent = t('contact.add.lookup_error');
+        manualEmailStatus.className = 'import-status error';
       } else {
         console.error('[ADD CONTACT] Manual email invite error:', result.error);
         manualEmailStatus.textContent = t('contact.add.email_error');
         manualEmailStatus.className = 'import-status error';
       }
 
-      // TODO: Pre-check whether an invite already exists instead of relying on PERMISSION_DENIED.
-      // The RTDB rule blocks duplicate writes (!data.exists()), so this works, but a read-first
-      // approach would be cleaner and let us distinguish "already sent" from real errors.
       manualEmailSendBtn.disabled = false;
       manualEmailSendBtn.textContent = t('contact.invite');
     }
@@ -305,39 +349,147 @@ export async function showAddContactModal() {
       }
     });
 
-    // --- Generic Web Share button ---
-    shareBtn.addEventListener('click', async () => {
+    function setShareButtonsDisabled(isDisabled) {
+      shareBtn.disabled = isDisabled;
+      copyLinkBtn.disabled = isDisabled;
+      providerPresetButtons.forEach((btn) => {
+        btn.disabled = isDisabled;
+      });
+    }
+
+    async function runGenericShare() {
       manualEmailStatus.textContent = t('contact.invite.share.opening');
       manualEmailStatus.className = 'import-status loading';
-      try {
-        const currentUser = getUser();
+      const currentUser = getUser();
 
-        const result = await shareInvite({
-          senderName: currentUser?.userName,
-          userId: getLoggedInUserId(),
+      const result = await shareInvite({
+        senderName: currentUser?.userName,
+        userId: getLoggedInUserId(),
+      });
+
+      const statusConfig = {
+        opened_elsewhere: { toast: null, className: 'info' },
+        copied: { toast: showSuccessToast, className: 'success' },
+        cancelled: { toast: null, className: 'cancelled' },
+        copy_failed: { toast: showErrorToast, className: 'error' },
+      };
+
+      const safeStatus = Object.hasOwn(statusConfig, result.status)
+        ? result.status
+        : 'copy_failed';
+      const config = statusConfig[safeStatus];
+      const key = `contact.invite.share.${safeStatus}`;
+
+      if (config.toast) {
+        config.toast(t(key), { containerEl: dialog });
+      }
+      manualEmailStatus.textContent = t(key);
+      manualEmailStatus.className = `import-status ${config.className}`;
+      return result;
+    }
+
+    async function runPresetShare(providerId) {
+      const provider = providerById.get(providerId);
+      if (!provider) {
+        throw new Error(`Unsupported provider: ${providerId}`);
+      }
+
+      const providerLabel = t(provider.labelKey);
+      manualEmailStatus.textContent = t(
+        'contact.invite.share.provider_opening',
+        {
+          provider: providerLabel,
+        },
+      );
+      manualEmailStatus.className = 'import-status loading';
+
+      const currentUser = getUser();
+      const result = await shareInviteViaProvider({
+        providerId,
+        senderName: currentUser?.userName,
+        userId: getLoggedInUserId(),
+      });
+
+      if (result.status === 'opened') {
+        manualEmailStatus.textContent = t(
+          'contact.invite.share.provider_opened',
+          {
+            provider: providerLabel,
+          },
+        );
+        manualEmailStatus.className = 'import-status info';
+        return result;
+      }
+
+      if (result.status === 'copied') {
+        const message = t('contact.invite.share.provider_copied', {
+          provider: providerLabel,
         });
+        showSuccessToast(message, { containerEl: dialog });
+        manualEmailStatus.textContent = message;
+        manualEmailStatus.className = 'import-status success';
+        return result;
+      }
 
-        const statusConfig = {
-          opened_elsewhere: { toast: null, className: 'info' },
-          copied: { toast: showSuccessToast, className: 'success' },
-          cancelled: { toast: null, className: 'cancelled' },
-          copy_failed: { toast: showErrorToast, className: 'error' },
-        };
+      if (result.status === 'cancelled') {
+        manualEmailStatus.textContent = t('contact.invite.share.cancelled');
+        manualEmailStatus.className = 'import-status cancelled';
+        return result;
+      }
 
-        const safeStatus = Object.prototype.hasOwnProperty.call(
-          statusConfig,
-          result.status,
-        )
-          ? result.status
-          : 'copy_failed';
-        const config = statusConfig[safeStatus];
-        const key = `contact.invite.share.${safeStatus}`;
+      showErrorToast(t('contact.invite.share.copy_failed'), {
+        containerEl: dialog,
+      });
+      manualEmailStatus.textContent = t('contact.invite.share.copy_failed');
+      manualEmailStatus.className = 'import-status error';
+      return result;
+    }
 
-        if (config.toast) {
-          config.toast(t(key), { containerEl: dialog });
+    async function runCopyLink() {
+      manualEmailStatus.textContent = t('contact.invite.copying');
+      manualEmailStatus.className = 'import-status loading';
+
+      const result = await copyInviteLink({
+        userId: getLoggedInUserId(),
+      });
+
+      if (result.status === 'copied') {
+        showSuccessToast(t('contact.invite.share.copied'), {
+          containerEl: dialog,
+        });
+        manualEmailStatus.textContent = t('contact.invite.share.copied');
+        manualEmailStatus.className = 'import-status success';
+        return result;
+      }
+
+      showErrorToast(t('contact.invite.share.copy_failed'), {
+        containerEl: dialog,
+      });
+      manualEmailStatus.textContent = t('contact.invite.share.copy_failed');
+      manualEmailStatus.className = 'import-status error';
+      return result;
+    }
+
+    const runDebouncedShareAction = createDebouncedAsyncAction(
+      async ({ type, providerId }) => {
+        if (type === 'generic') {
+          return runGenericShare();
         }
-        manualEmailStatus.textContent = t(key);
-        manualEmailStatus.className = `import-status ${config.className}`;
+        if (type === 'copy') {
+          return runCopyLink();
+        }
+        return runPresetShare(providerId);
+      },
+      {
+        waitMs: 600,
+        onPendingChange: setShareButtonsDisabled,
+      },
+    );
+
+    // --- Share actions (generic + provider presets) ---
+    shareBtn.addEventListener('click', async () => {
+      try {
+        await runDebouncedShareAction({ type: 'generic' });
       } catch (error) {
         console.error('[ADD CONTACT] Web Share invite error:', error);
         showErrorToast(t('contact.invite.share.copy_failed'), {
@@ -346,6 +498,38 @@ export async function showAddContactModal() {
         manualEmailStatus.textContent = t('contact.invite.share.copy_failed');
         manualEmailStatus.className = 'import-status error';
       }
+    });
+
+    copyLinkBtn.addEventListener('click', async () => {
+      try {
+        await runDebouncedShareAction({ type: 'copy' });
+      } catch (error) {
+        console.error('[ADD CONTACT] Copy invite link error:', error);
+        showErrorToast(t('contact.invite.share.copy_failed'), {
+          containerEl: dialog,
+        });
+        manualEmailStatus.textContent = t('contact.invite.share.copy_failed');
+        manualEmailStatus.className = 'import-status error';
+      }
+    });
+
+    providerPresetButtons.forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const providerId = btn.getAttribute('data-provider-id');
+        try {
+          await runDebouncedShareAction({
+            type: 'provider',
+            providerId,
+          });
+        } catch (error) {
+          console.error('[ADD CONTACT] Preset share invite error:', error);
+          showErrorToast(t('contact.invite.share.copy_failed'), {
+            containerEl: dialog,
+          });
+          manualEmailStatus.textContent = t('contact.invite.share.copy_failed');
+          manualEmailStatus.className = 'import-status error';
+        }
+      });
     });
 
     // --- Google Contacts import ---
