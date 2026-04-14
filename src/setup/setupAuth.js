@@ -5,6 +5,8 @@ import {
   removeAllIncomingListeners,
   startListeningForSavedRooms,
 } from '../features/call/room-listeners.js';
+import { messagingController } from '../features/messaging/messaging-controller.js';
+import { messagesUI } from '../features/messaging/components/messages-ui.js';
 import {
   cleanupInviteListeners,
   setupInviteListener,
@@ -25,6 +27,49 @@ function runSafe(fn, label) {
     fn?.();
   } catch (error) {
     console.warn(`[setupAuth] ${label} failed:`, error);
+  }
+}
+
+const LOCAL_STORAGE_KEYS_TO_PRESERVE_ON_LOGOUT = [
+  'locale',
+  // Only keeping safe non-user scoped keys (keeping these comments for now while testing)
+  // 'recentCalls',
+  // 'referredBy',
+];
+const LOCAL_STORAGE_PREFIXES_TO_PRESERVE_ON_LOGOUT = ['debug:']; // 'referral'
+
+function clearLocalStorageOnLogout() {
+  try {
+    const storage = globalThis.localStorage;
+    if (!storage) {
+      return;
+    }
+
+    const preservedEntries = [];
+
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = storage.key(index);
+
+      if (
+        key &&
+        (LOCAL_STORAGE_KEYS_TO_PRESERVE_ON_LOGOUT.includes(key) ||
+          LOCAL_STORAGE_PREFIXES_TO_PRESERVE_ON_LOGOUT.some((prefix) =>
+            key.startsWith(prefix),
+          ))
+      ) {
+        preservedEntries.push([key, storage.getItem(key)]);
+      }
+    }
+
+    storage.clear();
+
+    preservedEntries.forEach(([key, value]) => {
+      if (value !== null) {
+        storage.setItem(key, value);
+      }
+    });
+  } catch (error) {
+    console.warn('[setupAuth] Failed to clear localStorage on logout:', error);
   }
 }
 
@@ -71,6 +116,17 @@ export function setupAuth(options = {}) {
       };
     };
 
+    const runMainLogoutCleanup = () => {
+      runSafe(cleanupLoginScopedListeners, 'cleanupLoginScopedListeners');
+      runSafe(
+        () => messagingController.closeAllConversations(),
+        'messagingController.closeAllConversations',
+      );
+      runSafe(() => messagesUI?.reset?.(), 'messagesUI.reset');
+      // NOTE: Local storage is cleared on log out, while selected keys are preserved.
+      clearLocalStorageOnLogout();
+    };
+
     try {
       subscribe(
         'evt:auth:session:ready',
@@ -89,7 +145,7 @@ export function setupAuth(options = {}) {
         async () => {
           try {
             devDebug('[AUTH] User logged out - cleaning up listeners');
-            cleanupLoginScopedListeners();
+            runMainLogoutCleanup();
 
             await renderContactsList(lobbyElement);
           } catch (e) {
