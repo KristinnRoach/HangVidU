@@ -1,6 +1,7 @@
 import { t, onLocaleChange } from '../../../shared/i18n/index.js';
 import { initIcons } from '../../../shared/components/ui/icons.js';
 import { attachKeyboardViewportHandler } from '../../../shared/components/ui/utils/attachKeyboardViewportHandler.js';
+import { keepVirtualKeyboardOpenOnTap } from '../../../shared/components/ui/utils/keepVirtualKeyboardOpenOnTap.js';
 import { scrollMessagesToEnd } from './utils/scrollMessagesToEnd.js';
 
 /**
@@ -52,20 +53,7 @@ export function createMessageBox() {
   const attachFileBtn = messagesBoxContainer.querySelector('#attach-file-btn');
   const submitBtn = messagesBoxContainer.querySelector('.send-button');
 
-  // Keep the textarea focused (and the iOS virtual keyboard open) when
-  // tapping Send. Tapping a button blurs the active input by default; we
-  // preventDefault on pointerdown to suppress that, then trigger submit
-  // manually since preventDefault also cancels the synthetic click.
-  if (submitBtn) {
-    submitBtn.addEventListener(
-      'pointerdown',
-      (e) => {
-        e.preventDefault();
-        messagesForm.requestSubmit();
-      },
-      { passive: false },
-    );
-  }
+  keepVirtualKeyboardOpenOnTap(submitBtn, () => messagesForm.requestSubmit());
 
   // Update i18n attributes on locale change
   const updateI18n = () => {
