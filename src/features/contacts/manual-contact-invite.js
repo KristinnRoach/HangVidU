@@ -1,16 +1,25 @@
 import { contactsService } from './contacts-service.js';
-import { findUserByEmail } from './user-discovery.js';
+import { lookupUserByEmail } from './user-discovery.js';
 import { getUser } from '../../auth/index.js';
 import { sendContactInvite } from './send-contact-invite.js';
 
 export async function inviteContactByEmail(email, { onNotFound } = {}) {
   try {
-    const user = await findUserByEmail(email);
+    const lookupResult = await lookupUserByEmail(email);
 
-    if (!user) {
+    if (lookupResult.status === 'lookup_error') {
+      return {
+        ok: false,
+        status: 'lookup_error',
+        error: lookupResult.error,
+      };
+    }
+
+    if (lookupResult.status === 'not_found') {
       await onNotFound?.();
       return { ok: true, status: 'not_found' };
     }
+    const user = lookupResult.user;
 
     const currentUser = getUser();
     if (user.uid === currentUser?.uid) {

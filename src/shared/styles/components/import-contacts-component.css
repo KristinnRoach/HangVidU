@@ -1,6 +1,8 @@
 /* Import Contacts Component */
 
 .add-contact-modal .import-section {
+  width: var(--add-contact-content-width);
+  margin: 0 auto;
   margin-bottom: 0;
 }
 
@@ -13,6 +15,7 @@
 
 .add-contact-modal .platform-btn {
   display: flex;
+  flex: 1 1 0;
   flex-direction: row;
   align-items: center;
   justify-content: center;

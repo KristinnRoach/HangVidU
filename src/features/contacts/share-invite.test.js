@@ -10,6 +10,7 @@ vi.mock('../../shared/i18n/index.js', () => ({
 import {
   buildReferralLink,
   buildInviteText,
+  copyInviteLink,
   shareInvite,
 } from './share-invite.js';
 
@@ -120,6 +121,39 @@ describe('share-invite', () => {
         expect.objectContaining({ ok: false, status: 'cancelled' }),
       );
       expect(copyImpl).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('copyInviteLink', () => {
+    it('returns copied when clipboard copy succeeds', async () => {
+      const copyImpl = vi.fn().mockResolvedValue(true);
+
+      const result = await copyInviteLink({
+        userId: 'user-123',
+        origin: 'https://hangvidu.com',
+        copyImpl,
+      });
+
+      expect(result).toEqual(
+        expect.objectContaining({ ok: true, status: 'copied' }),
+      );
+      expect(copyImpl).toHaveBeenCalledWith(
+        'https://hangvidu.com/?ref=user-123',
+      );
+    });
+
+    it('returns copy_failed when clipboard copy fails', async () => {
+      const copyImpl = vi.fn().mockResolvedValue(false);
+
+      const result = await copyInviteLink({
+        userId: 'user-123',
+        origin: 'https://hangvidu.com',
+        copyImpl,
+      });
+
+      expect(result).toEqual(
+        expect.objectContaining({ ok: false, status: 'copy_failed' }),
+      );
     });
   });
 });

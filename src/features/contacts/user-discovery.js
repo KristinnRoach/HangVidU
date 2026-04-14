@@ -90,13 +90,13 @@ export async function registerUserInDirectory(user) {
 }
 
 /**
- * Find a user by email address.
+ * Lookup a user by email address with explicit outcome typing.
  * @param {string} email - Email address to search for
- * @returns {Promise<Object|null>} - User data if found, null otherwise
+ * @returns {Promise<{status: 'found' | 'not_found' | 'lookup_error', user: Object | null, error?: unknown}>}
  */
-export async function findUserByEmail(email) {
+export async function lookupUserByEmail(email) {
   if (!email || typeof email !== 'string') {
-    return null;
+    return { status: 'not_found', user: null };
   }
 
   try {
@@ -104,19 +104,33 @@ export async function findUserByEmail(email) {
     const userRef = ref(rtdb, `usersByEmail/${emailHash}`);
     const snapshot = await get(userRef);
 
-    if (snapshot.exists()) {
-      const user = canonicalizeDirectoryUser(snapshot.val());
-      if (!user) {
-        return null;
-      }
-      return user;
+    if (!snapshot.exists()) {
+      return { status: 'not_found', user: null };
     }
 
-    return null;
+    const user = canonicalizeDirectoryUser(snapshot.val());
+    if (!user) {
+      return { status: 'not_found', user: null };
+    }
+
+    return { status: 'found', user };
   } catch (error) {
     console.error('[USER DISCOVERY] Failed to find user by email:', error);
+    return { status: 'lookup_error', user: null, error };
+  }
+}
+
+/**
+ * Find a user by email address.
+ * @param {string} email - Email address to search for
+ * @returns {Promise<Object|null>} - User data if found, null otherwise
+ */
+export async function findUserByEmail(email) {
+  const result = await lookupUserByEmail(email);
+  if (result.status !== 'found') {
     return null;
   }
+  return result.user;
 }
 
 /**

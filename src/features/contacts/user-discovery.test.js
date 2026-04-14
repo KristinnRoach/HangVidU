@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { hashEmail, removeFromUserByEmailDirectory } from './user-discovery.js';
+import {
+  hashEmail,
+  lookupUserByEmail,
+  removeFromUserByEmailDirectory,
+} from './user-discovery.js';
 
 vi.mock('firebase/database', () => ({
   ref: vi.fn(),
@@ -57,6 +61,52 @@ describe('user-discovery', () => {
       await expect(removeFromUserByEmailDirectory(null)).rejects.toThrow(
         'Invalid email',
       );
+    });
+  });
+
+  describe('lookupUserByEmail', () => {
+    it('returns found when user exists', async () => {
+      const { get } = await import('firebase/database');
+      get.mockResolvedValue({
+        exists: () => true,
+        val: () => ({ uid: 'u1', userName: 'Alice' }),
+      });
+
+      const result = await lookupUserByEmail('alice@example.com');
+
+      expect(result).toEqual({
+        status: 'found',
+        user: { uid: 'u1', userName: 'Alice' },
+      });
+    });
+
+    it('returns not_found when user does not exist', async () => {
+      const { get } = await import('firebase/database');
+      get.mockResolvedValue({
+        exists: () => false,
+        val: () => null,
+      });
+
+      const result = await lookupUserByEmail('missing@example.com');
+
+      expect(result).toEqual({
+        status: 'not_found',
+        user: null,
+      });
+    });
+
+    it('returns lookup_error when lookup throws', async () => {
+      const { get } = await import('firebase/database');
+      const error = new Error('database unavailable');
+      get.mockRejectedValue(error);
+
+      const result = await lookupUserByEmail('error@example.com');
+
+      expect(result).toEqual({
+        status: 'lookup_error',
+        user: null,
+        error,
+      });
     });
   });
 });

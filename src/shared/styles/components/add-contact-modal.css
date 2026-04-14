@@ -4,10 +4,12 @@
   background-color: rgb(63, 63, 63);
   border: 2px solid #444;
   border-radius: 12px;
-  padding: 1rem;
-  width: clamp(220px, 80vw, 600px);
+  padding: 1rem 1.5rem;
   color: white;
   position: relative;
+
+  width: clamp(220px, 100vw, 440px);
+  --add-contact-content-width: min(100%, 32rem);
 }
 
 .add-contact-modal .close-btn {
@@ -44,61 +46,45 @@
 /* Direct Actions (email input + share) */
 .add-contact-modal .direct-actions {
   display: flex;
-  flex-direction: row;
-  justify-self: center;
-  gap: 0.75rem;
-  margin-bottom: 0;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 1.5rem;
 
-  width: clamp(220px, 95%, 600px);
+  margin: 0 auto;
+  width: 100%;
+  max-width: 350px;
 }
 
-.add-contact-modal .manual-email-row {
+.add-contact-modal .manual-email-row,
+.add-contact-modal .share-presets-row {
   display: flex;
+  gap: 0.75rem;
+}
+
+.add-contact-modal .share-presets-row {
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 0.5rem;
-  flex: 1;
 }
 
 .add-contact-modal .manual-email-row input {
   flex: 1;
-  padding: 0.75rem;
+  min-width: 0;
+  padding: 0.25rem 0.5rem;
   font-size: 1rem;
   border: 1px solid #555;
   border-radius: 6px;
   background-color: #444;
   color: white;
-  box-sizing: border-box;
 }
 
 .add-contact-modal .manual-email-row input:focus {
   outline: none;
-  border-color: rgb(74, 172, 74);
+  border-color: rgba(74, 172, 74, 0.527);
 }
 
 .add-contact-modal .manual-email-row input::placeholder {
   color: #888;
-}
-
-/* Modal Footer */
-.add-contact-modal .modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 1rem;
-  border-top: 1px solid #555;
-}
-
-.add-contact-modal .cancel-btn {
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  background-color: #555;
-  color: white;
-  transition: background-color 0.2s ease;
-}
-
-.add-contact-modal .cancel-btn:hover {
-  background-color: #666;
 }
 
 /* Import Status */
@@ -167,10 +153,44 @@
   cursor: not-allowed;
 }
 
+.add-contact-modal .share-preset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid #555;
+  border-radius: 999px;
+  background-color: #444;
+  color: #cfd6dd;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.add-contact-modal .share-preset-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.add-contact-modal .share-preset-btn:hover:not(:disabled) {
+  background-color: #555;
+  border-color: rgb(74, 172, 74, 0.6);
+  color: white;
+  transform: scale(1.025);
+}
+
+.add-contact-modal .share-preset-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* Divider */
 .add-contact-modal .divider {
   border: none;
   border-top: 1px solid #555;
   margin: 1.5rem auto;
-  width: 88%;
+  width: var(--add-contact-content-width);
 }

@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   shareInvite: vi.fn(),
+  copyInviteLink: vi.fn(),
+  shareInviteViaProvider: vi.fn(),
   showSuccessToast: vi.fn(),
   showErrorToast: vi.fn(),
   initIcons: vi.fn(),
@@ -19,6 +21,7 @@ vi.mock('../contacts-service.js', () => ({
 
 vi.mock('../user-discovery.js', () => ({
   findUsersByEmails: vi.fn().mockResolvedValue({}),
+  lookupUserByEmail: vi.fn().mockResolvedValue({ status: 'not_found' }),
 }));
 
 vi.mock('../invitations.js', () => ({
@@ -52,7 +55,24 @@ vi.mock('../../../shared/components/toast.js', () => ({
 
 vi.mock('../share-invite.js', () => ({
   shareInvite: mocks.shareInvite,
+  copyInviteLink: mocks.copyInviteLink,
   buildReferralLink: vi.fn(() => 'https://hangvidu.com/?ref=user-123'),
+}));
+
+vi.mock('../share-invite-presets.js', () => ({
+  shareInviteViaProvider: mocks.shareInviteViaProvider,
+  getInviteShareProviders: vi.fn(() => [
+    {
+      id: 'whatsapp',
+      labelKey: 'contact.invite.provider.whatsapp',
+      iconSvg: '<svg></svg>',
+    },
+    {
+      id: 'telegram',
+      labelKey: 'contact.invite.provider.telegram',
+      iconSvg: '<svg></svg>',
+    },
+  ]),
 }));
 
 describe('showAddContactModal - share invite platform action', () => {
@@ -120,6 +140,82 @@ describe('showAddContactModal - share invite platform action', () => {
 
     expect(status.textContent).toBe('contact.invite.share.copied');
     expect(status.className).toContain('success');
+
+    document.querySelector('[data-action="cancel"]')?.click();
+    await modalPromise;
+  });
+
+  it('renders provider preset buttons and triggers provider helper on click', async () => {
+    mocks.shareInviteViaProvider.mockResolvedValue({
+      ok: true,
+      status: 'opened',
+      providerId: 'whatsapp',
+    });
+
+    const { showAddContactModal } = await import('./add-contact-modal.js');
+    const modalPromise = showAddContactModal();
+
+    const btn = document.querySelector('.share-preset-btn[data-provider-id="whatsapp"]');
+    expect(btn).toBeTruthy();
+
+    btn.click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(mocks.shareInviteViaProvider).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('#manual-email-status').textContent).toBe(
+      'contact.invite.share.provider_opened',
+    );
+
+    document.querySelector('[data-action="cancel"]')?.click();
+    await modalPromise;
+  });
+
+  it('debounces repeated share button clicks', async () => {
+    mocks.shareInvite.mockResolvedValue({
+      ok: true,
+      status: 'opened_elsewhere',
+    });
+
+    const { showAddContactModal } = await import('./add-contact-modal.js');
+    const modalPromise = showAddContactModal();
+    const btn = document.querySelector('#share-btn');
+
+    btn.click();
+    btn.click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(mocks.shareInvite).toHaveBeenCalledTimes(1);
+    expect(btn.disabled).toBe(true);
+
+    await new Promise((resolve) => setTimeout(resolve, 650));
+    expect(btn.disabled).toBe(false);
+
+    document.querySelector('[data-action="cancel"]')?.click();
+    await modalPromise;
+  });
+
+  it('copies invite link via dedicated copy button', async () => {
+    mocks.copyInviteLink.mockResolvedValue({
+      ok: true,
+      status: 'copied',
+    });
+
+    const { showAddContactModal } = await import('./add-contact-modal.js');
+    const modalPromise = showAddContactModal();
+
+    const copyBtn = document.querySelector('#copy-link-btn');
+    expect(copyBtn).toBeTruthy();
+    copyBtn.click();
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(mocks.copyInviteLink).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('#manual-email-status').textContent).toBe(
+      'contact.invite.share.copied',
+    );
 
     document.querySelector('[data-action="cancel"]')?.click();
     await modalPromise;
