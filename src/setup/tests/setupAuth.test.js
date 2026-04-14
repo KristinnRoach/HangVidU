@@ -138,4 +138,28 @@ describe('setupAuth', () => {
 
     teardown();
   });
+
+  it('continues logout cleanup when conversation close throws', async () => {
+    const { setupAuth } = await import('../setupAuth.js');
+    const lobbyElement = { id: 'lobby' };
+
+    mocks.closeAllConversations.mockImplementationOnce(() => {
+      throw new Error('close failed');
+    });
+
+    const teardown = await setupAuth({ lobbyElement });
+
+    await expect(
+      mocks.handlers.get('evt:auth:session:logout')({}),
+    ).resolves.toBeUndefined();
+
+    expect(mocks.renderContactsList).toHaveBeenCalledWith(lobbyElement);
+    expect(mocks.removeAllIncomingListeners).toHaveBeenCalled();
+    expect(mocks.cleanupInviteListeners).toHaveBeenCalled();
+    expect(mocks.closeAllConversations).toHaveBeenCalled();
+    expect(mocks.resetMessagesUI).toHaveBeenCalled();
+    expect(localStorageClearSpy).toHaveBeenCalled();
+
+    teardown();
+  });
 });

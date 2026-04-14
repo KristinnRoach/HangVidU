@@ -84,11 +84,14 @@ export function setupAuth(options = {}) {
     };
 
     const runMainLogoutCleanup = () => {
-      cleanupLoginScopedListeners();
-      messagingController.closeAllConversations();
-      messagesUI.reset();
+      runSafe(cleanupLoginScopedListeners, 'cleanupLoginScopedListeners');
+      runSafe(
+        () => messagingController.closeAllConversations(),
+        'messagingController.closeAllConversations',
+      );
+      runSafe(() => messagesUI?.reset?.(), 'messagesUI.reset');
       // NOTE: Local storage is cleared on log out.
-      clearLocalStorageOnLogout();
+      runSafe(clearLocalStorageOnLogout, 'clearLocalStorageOnLogout');
     };
 
     try {
