@@ -192,7 +192,7 @@ export function initMessagesUI() {
   // Get file input elements after messageBox is created
   const attachBtn = document.getElementById('attach-file-btn');
   const fileInput = document.getElementById('file-input');
-  const sendBtn = messagesForm.querySelector('button[type="submit"]');
+  const sendBtn = messagesForm.querySelector('.send-button');
 
   // Helpers to read/update the send button label without touching the icon
   const getSendLabelEl = () => sendBtn?.querySelector?.('.send-button__label');

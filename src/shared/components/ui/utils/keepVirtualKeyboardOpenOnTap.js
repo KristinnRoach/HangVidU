@@ -1,0 +1,42 @@
+/**
+ * Stop iOS Safari from dismissing the virtual keyboard when the user taps
+ * a button while a textarea/input is focused.
+ *
+ * Background: tapping any element in iOS Safari blurs the currently focused
+ * input, which closes the virtual keyboard. Calling preventDefault() on the
+ * `pointerdown` event suppresses that blur. Because preventDefault on
+ * pointerdown also cancels the synthetic click, the caller passes an
+ * `onTap` callback to perform whatever the click would have done.
+ *
+ * Typical use: a Send button next to a chat composer textarea, where the
+ * keyboard must stay open across consecutive sends.
+ *
+ * @param {HTMLElement} buttonEl - The button element.
+ * @param {(event: PointerEvent) => void} onTap - Action to run on tap.
+ * @returns {() => void} Cleanup function that removes the listener.
+ */
+export function keepVirtualKeyboardOpenOnTap(buttonEl, onTap) {
+  if (!buttonEl) return () => {};
+
+  const handler = (event) => {
+    if (event.button !== 0) return; // primary (left/touch/pen) only
+    event.preventDefault();
+    onTap(event);
+  };
+
+  buttonEl.addEventListener('pointerdown', handler, { passive: false });
+  return () => buttonEl.removeEventListener('pointerdown', handler);
+}
+
+// NOTE: keyboard / assistive-tech activation
+// Verified manually: Enter in the textarea and mouse-click on the Send
+// button both trigger send on macOS, so no extra `click` listener is
+// needed for the current call site. If a future call site reports that
+// Space/Enter on the button itself does nothing for keyboard or AT users,
+// the activation gap can be closed by adding inside the function above:
+//
+//   buttonEl.addEventListener('click', (e) => {
+//     if (e.detail === 0) onTap(e); // detail===0 => keyboard/AT, not pointer
+//   });
+//
+// Delete this note if it has not been needed for a while.

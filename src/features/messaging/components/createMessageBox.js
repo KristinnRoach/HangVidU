@@ -1,6 +1,7 @@
 import { t, onLocaleChange } from '../../../shared/i18n/index.js';
 import { initIcons } from '../../../shared/components/ui/icons.js';
 import { attachKeyboardViewportHandler } from '../../../shared/components/ui/utils/attachKeyboardViewportHandler.js';
+import { keepVirtualKeyboardOpenOnTap } from '../../../shared/components/ui/utils/keepVirtualKeyboardOpenOnTap.js';
 import { scrollMessagesToEnd } from './utils/scrollMessagesToEnd.js';
 
 /**
@@ -34,7 +35,7 @@ export function createMessageBox() {
           </button>
         </div>
         
-        <button type="submit" class="send-button" aria-label="${t('shared.send')}">
+        <button type="button" class="send-button" aria-label="${t('shared.send')}">
           <i data-lucide="send" aria-hidden="true"></i>
           <span class="send-button__label"></span>
         </button>
@@ -51,6 +52,8 @@ export function createMessageBox() {
   const messagesInput = messagesBoxContainer.querySelector('#messages-input');
   const attachFileBtn = messagesBoxContainer.querySelector('#attach-file-btn');
   const submitBtn = messagesBoxContainer.querySelector('.send-button');
+
+  keepVirtualKeyboardOpenOnTap(submitBtn, () => messagesForm.requestSubmit());
 
   // Update i18n attributes on locale change
   const updateI18n = () => {
