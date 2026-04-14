@@ -23,6 +23,7 @@ describe('ContactsRTDBAdapter', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     adapter = new ContactsRTDBAdapter({
       database: {},
       getOwnerId: () => 'owner-1',
@@ -110,7 +111,7 @@ describe('ContactsRTDBAdapter', () => {
     expect(mocks.set).not.toHaveBeenCalled();
   });
 
-  it('throws when contactId is missing from an RTDB record', async () => {
+  it('returns null when contactId is missing from an RTDB record', async () => {
     mocks.get.mockResolvedValue({
       exists: () => true,
       val: () => ({
@@ -121,8 +122,42 @@ describe('ContactsRTDBAdapter', () => {
       }),
     });
 
-    await expect(adapter.get('u1')).rejects.toThrow();
+    await expect(adapter.get('u1')).resolves.toBeNull();
     expect(mocks.set).not.toHaveBeenCalled();
+    expect(console.warn).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips invalid records during list', async () => {
+    mocks.get.mockResolvedValue({
+      exists: () => true,
+      val: () => ({
+        u1: {
+          contactId: 'u1',
+          contactNickName: 'Alice',
+          roomId: 'room-1',
+          savedAt: 10,
+          lastInteractionAt: 20,
+        },
+        broken: {
+          contactNickName: 'Missing Id',
+          roomId: 'room-2',
+          savedAt: 11,
+          lastInteractionAt: 21,
+        },
+      }),
+    });
+
+    await expect(adapter.list()).resolves.toEqual([
+      {
+        contactId: 'u1',
+        contactNickName: 'Alice',
+        conversationId: undefined,
+        roomId: 'room-1',
+        savedAt: 10,
+        lastInteractionAt: 20,
+      },
+    ]);
+    expect(console.warn).toHaveBeenCalledTimes(1);
   });
 
   it('falls back to get+set when transaction is not committed but record exists', async () => {

@@ -52,6 +52,7 @@ vi.mock('../../../shared/components/toast.js', () => ({
 
 vi.mock('../share-invite.js', () => ({
   shareInvite: mocks.shareInvite,
+  buildReferralLink: vi.fn(() => 'https://hangvidu.com/?ref=user-123'),
 }));
 
 describe('showAddContactModal - share invite platform action', () => {
@@ -83,7 +84,7 @@ describe('showAddContactModal - share invite platform action', () => {
     const { showAddContactModal } = await import('./add-contact-modal.js');
     const modalPromise = showAddContactModal();
 
-    const btn = document.querySelector('#share-invite-btn');
+    const btn = document.querySelector('#share-btn');
     expect(btn).toBeTruthy();
 
     btn.click();
@@ -108,7 +109,7 @@ describe('showAddContactModal - share invite platform action', () => {
     const { showAddContactModal } = await import('./add-contact-modal.js');
     const modalPromise = showAddContactModal();
 
-    const btn = document.querySelector('#share-invite-btn');
+    const btn = document.querySelector('#share-btn');
     const status = document.querySelector('#manual-email-status');
     btn.click();
 

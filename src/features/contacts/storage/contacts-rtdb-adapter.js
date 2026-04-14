@@ -10,6 +10,15 @@ function assertGetOwnerId(getOwnerId) {
   return getOwnerId;
 }
 
+function safelyNormalizeContactRecord(record, context) {
+  try {
+    return normalizeContactRecord(record);
+  } catch (error) {
+    console.warn(`[ContactsRTDBAdapter] Skipping invalid contact record (${context})`, error);
+    return null;
+  }
+}
+
 /**
  * RTDB adapter for contacts storage.
  */
@@ -60,7 +69,7 @@ export class ContactsRTDBAdapter extends ContactsStorageAdapter {
       return null;
     }
 
-    return normalizeContactRecord(snapshot.val());
+    return safelyNormalizeContactRecord(snapshot.val(), `get:${contactId}`);
   }
 
   /**
@@ -72,9 +81,10 @@ export class ContactsRTDBAdapter extends ContactsStorageAdapter {
       return [];
     }
 
-    return Object.values(snapshot.val()).map((record) =>
-      normalizeContactRecord(record),
-    );
+    return Object.entries(snapshot.val()).flatMap(([contactId, record]) => {
+      const normalized = safelyNormalizeContactRecord(record, `list:${contactId}`);
+      return normalized ? [normalized] : [];
+    });
   }
 
   /**
