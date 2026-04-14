@@ -32,7 +32,7 @@ function getErrorParts(error) {
 }
 
 function isPermissionDeniedError(error) {
-  const { code, normalizedCode } = getErrorParts(error);
+  const { code, normalizedCode, normalizedMessage } = getErrorParts(error);
 
   if (error?.name === 'PermissionDenied') {
     return true;
@@ -44,7 +44,10 @@ function isPermissionDeniedError(error) {
 
   return (
     normalizedCode.includes('permission_denied') ||
-    normalizedCode.includes('permission-denied')
+    normalizedCode.includes('permission-denied') ||
+    normalizedMessage.includes('permission_denied') ||
+    normalizedMessage.includes('permission-denied') ||
+    normalizedMessage.includes('permission denied')
   );
 }
 

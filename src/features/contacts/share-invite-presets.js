@@ -135,7 +135,17 @@ export async function shareInviteViaProvider({
     }
   }
 
-  const copied = typeof copyImpl === 'function' ? await copyImpl(link) : false;
+  let copied = false;
+  try {
+    copied = typeof copyImpl === 'function' ? await copyImpl(link) : false;
+  } catch {
+    emitShareResult({
+      channel: 'copy',
+      sourceChannel: providerId,
+      status: 'copy_failed',
+    });
+    return { ok: false, status: 'copy_failed', link, text, url, providerId };
+  }
   if (copied) {
     emitShareResult({
       channel: 'copy',
