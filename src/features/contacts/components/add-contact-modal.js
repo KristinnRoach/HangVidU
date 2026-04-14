@@ -112,20 +112,20 @@ export async function showAddContactModal() {
       <div class="direct-actions">
         <div class="manual-email-row">
           <input type="email" id="manual-email-input"
-                 placeholder="${t('contact.add.enter_email')}"
-                 aria-label="${t('contact.add.enter_email')}"
+                 placeholder="${escapeHtml(t('contact.add.enter_email'))}"
+                 aria-label="${escapeHtml(t('contact.add.enter_email'))}"
                  autocomplete="email" />
           <button type="button" id="manual-email-send" class="action-btn manual-email-send">
-            ${t('contact.invite')}
+            ${escapeHtml(t('contact.invite'))}
           </button>
         </div>
 
-        <div class="share-presets-row" role="group" aria-label="${t('contact.invite.share.presets_label')}">
+        <div class="share-presets-row" role="group" aria-label="${escapeHtml(t('contact.invite.share.presets_label'))}">
           ${providerButtons}
-          <button type="button" id="share-btn" class="share-preset-btn share-btn" aria-label="${t('contact.invite.share.label')}">
+          <button type="button" id="share-btn" class="share-preset-btn share-btn" aria-label="${escapeHtml(t('contact.invite.share.label'))}">
             <i data-lucide="share"></i>
           </button>
-          <button type="button" id="copy-link-btn" class="share-preset-btn copy-link-btn" aria-label="${t('contact.invite.copy.label')}">
+          <button type="button" id="copy-link-btn" class="share-preset-btn copy-link-btn" aria-label="${escapeHtml(t('contact.invite.copy.label'))}">
             <i data-lucide="copy"></i>
             <!-- <span>${t('contact.invite.copy.label')}</span> -->
           </button>
