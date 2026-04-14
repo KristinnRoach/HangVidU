@@ -116,7 +116,7 @@ export function setupAuth(options = {}) {
       );
       runSafe(() => messagesUI?.reset?.(), 'messagesUI.reset');
       // NOTE: Local storage is cleared on log out.
-      runSafe(clearLocalStorageOnLogout, 'clearLocalStorageOnLogout');
+      clearLocalStorageOnLogout();
     };
 
     try {
