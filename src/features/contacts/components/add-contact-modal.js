@@ -143,8 +143,8 @@ export async function showAddContactModal() {
     const manualEmailStatus = dialog.querySelector('#manual-email-status');
     const shareBtn = dialog.querySelector('#share-btn');
     const copyLinkBtn = dialog.querySelector('#copy-link-btn');
-    const presetShareButtons = Array.from(
-      dialog.querySelectorAll('.share-preset-btn'),
+    const providerPresetButtons = Array.from(
+      dialog.querySelectorAll('.share-preset-btn[data-provider-id]'),
     );
     const providerById = new Map(
       shareProviders.map((provider) => [provider.id, provider]),
@@ -352,7 +352,7 @@ export async function showAddContactModal() {
     function setShareButtonsDisabled(isDisabled) {
       shareBtn.disabled = isDisabled;
       copyLinkBtn.disabled = isDisabled;
-      presetShareButtons.forEach((btn) => {
+      providerPresetButtons.forEach((btn) => {
         btn.disabled = isDisabled;
       });
     }
@@ -513,7 +513,7 @@ export async function showAddContactModal() {
       }
     });
 
-    presetShareButtons.forEach((btn) => {
+    providerPresetButtons.forEach((btn) => {
       btn.addEventListener('click', async () => {
         const providerId = btn.getAttribute('data-provider-id');
         try {
