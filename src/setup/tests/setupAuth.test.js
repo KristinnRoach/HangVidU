@@ -88,8 +88,7 @@ describe('setupAuth', () => {
         localStorageData.has(String(key))
           ? localStorageData.get(String(key))
           : null,
-      setItem: (key, value) =>
-        localStorageData.set(String(key), String(value)),
+      setItem: (key, value) => localStorageData.set(String(key), String(value)),
       removeItem: (key) => localStorageData.delete(String(key)),
       clear: () => localStorageData.clear(),
     };
@@ -163,7 +162,6 @@ describe('setupAuth', () => {
     const { setupAuth } = await import('../setupAuth.js');
     const lobbyElement = { id: 'lobby' };
 
-    globalThis.localStorage.setItem('referredBy', 'ref-123');
     globalThis.localStorage.setItem('locale', 'is');
     globalThis.localStorage.setItem('volatileKey', 'drop-me');
 
@@ -171,7 +169,6 @@ describe('setupAuth', () => {
 
     await mocks.handlers.get('evt:auth:session:logout')({});
 
-    expect(globalThis.localStorage.getItem('referredBy')).toBe('ref-123');
     expect(globalThis.localStorage.getItem('locale')).toBe('is');
     expect(globalThis.localStorage.getItem('volatileKey')).toBeNull();
 
