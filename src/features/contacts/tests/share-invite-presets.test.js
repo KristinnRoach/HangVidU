@@ -2,15 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   copyToClipboard: vi.fn(),
-  publish: vi.fn(),
 }));
 
 vi.mock('../../../shared/components/modal/copyLinkModal.js', () => ({
   copyToClipboard: mocks.copyToClipboard,
-}));
-
-vi.mock('../../../shared/events/index.js', () => ({
-  publish: mocks.publish,
 }));
 
 vi.mock('../share-invite.js', () => ({
@@ -88,11 +83,10 @@ describe('share-invite-presets', () => {
     expect(result.ok).toBe(false);
   });
 
-  it('logs and emits provider error before fallback when open throws', async () => {
-    const openError = new Error('popup blocked');
+  it('falls back to copy when open throws', async () => {
     mocks.copyToClipboard.mockResolvedValue(true);
     const openImpl = vi.fn(() => {
-      throw openError;
+      throw new Error('popup blocked');
     });
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -103,38 +97,20 @@ describe('share-invite-presets', () => {
 
     expect(result.status).toBe('copied');
     expect(consoleSpy).toHaveBeenCalled();
-    expect(mocks.publish).toHaveBeenCalledWith(
-      'evt:contacts:invite:share-result',
-      expect.objectContaining({
-        channel: 'telegram',
-        status: 'error',
-        error: expect.objectContaining({ message: 'popup blocked' }),
-      }),
-    );
 
     consoleSpy.mockRestore();
   });
 
-  it('publishes attempt and result events', async () => {
-    mocks.copyToClipboard.mockResolvedValue(true);
+  it('returns copy_failed when copy fallback throws', async () => {
+    mocks.copyToClipboard.mockRejectedValue(new Error('clipboard denied'));
     const openImpl = vi.fn(() => null);
 
-    await shareInviteViaProvider({
-      providerId: 'whatsapp',
+    const result = await shareInviteViaProvider({
+      providerId: 'telegram',
       openImpl,
     });
 
-    expect(mocks.publish).toHaveBeenCalledWith(
-      'evt:contacts:invite:share-attempted',
-      expect.objectContaining({ channel: 'whatsapp' }),
-    );
-    expect(mocks.publish).toHaveBeenCalledWith(
-      'evt:contacts:invite:share-result',
-      expect.objectContaining({
-        channel: 'copy',
-        sourceChannel: 'whatsapp',
-        status: 'copied',
-      }),
-    );
+    expect(result.status).toBe('copy_failed');
+    expect(result.ok).toBe(false);
   });
 });

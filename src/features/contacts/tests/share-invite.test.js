@@ -1,13 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({
-  publish: vi.fn(),
-}));
-
-vi.mock('../../../shared/events/index.js', () => ({
-  publish: mocks.publish,
-}));
-
 vi.mock('../../../shared/i18n/index.js', () => ({
   t: (key, params) => {
     if (!params) return key;
@@ -198,26 +190,6 @@ describe('share-invite', () => {
 
       expect(result).toEqual(
         expect.objectContaining({ ok: false, status: 'copy_failed' }),
-      );
-    });
-  });
-
-  describe('telemetry safety', () => {
-    it('does not throw when publish handlers fail', async () => {
-      mocks.publish.mockImplementation(() => {
-        throw new Error('telemetry failed');
-      });
-      const copyImpl = vi.fn().mockResolvedValue(true);
-
-      const result = await shareInvite({
-        userId: 'user-123',
-        origin: 'https://hangvidu.com',
-        shareImpl: null,
-        copyImpl,
-      });
-
-      expect(result).toEqual(
-        expect.objectContaining({ ok: true, status: 'copied' }),
       );
     });
   });

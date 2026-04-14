@@ -1,11 +1,7 @@
 import { copyToClipboard } from '../../shared/components/modal/copyLinkModal.js';
-import { publish } from '../../shared/events/index.js';
 import { buildInviteText, buildReferralLink } from './share-invite.js';
 
 const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
-
-const SHARE_ATTEMPTED_EVENT = 'evt:contacts:invite:share-attempted';
-const SHARE_RESULT_EVENT = 'evt:contacts:invite:share-result';
 
 /**
  * Icon paths sourced from Simple Icons:
@@ -28,31 +24,6 @@ const PROVIDERS = Object.freeze({
     iconSvg: `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="${TELEGRAM_ICON_PATH}" /></svg>`,
   },
 });
-
-function emitShareAttempt(channel) {
-  publish(SHARE_ATTEMPTED_EVENT, { channel, timestamp: Date.now() });
-}
-
-function emitShareResult({ channel, status, sourceChannel, error }) {
-  publish(SHARE_RESULT_EVENT, {
-    channel,
-    status,
-    sourceChannel,
-    error,
-    timestamp: Date.now(),
-  });
-}
-
-function serializeShareError(error) {
-  if (!error) {
-    return undefined;
-  }
-  return {
-    name: typeof error?.name === 'string' ? error.name : undefined,
-    code: typeof error?.code === 'string' ? error.code : undefined,
-    message: typeof error?.message === 'string' ? error.message : String(error),
-  };
-}
 
 export function getInviteShareProviders() {
   return Object.values(PROVIDERS).map((provider) => ({ ...provider }));
@@ -104,8 +75,6 @@ export async function shareInviteViaProvider({
     throw new Error(`Unsupported share provider: ${providerId}`);
   }
 
-  emitShareAttempt(providerId);
-
   const link = buildReferralLink(userId, origin);
   const text = buildInviteText({ senderName, link });
   const url = buildProviderShareUrl(providerId, { text, link });
@@ -114,24 +83,16 @@ export async function shareInviteViaProvider({
     try {
       const opened = openImpl(url);
       if (opened) {
-        emitShareResult({ channel: providerId, status: 'opened' });
         return { ok: true, status: 'opened', link, text, url, providerId };
       }
     } catch (error) {
       if (error?.name === 'AbortError') {
-        emitShareResult({ channel: providerId, status: 'cancelled' });
         return { ok: false, status: 'cancelled', link, text, url, providerId };
       }
-      const normalizedError = serializeShareError(error);
       console.error(
         `[CONTACTS INVITE] Failed to open ${providerId} share URL:`,
         error,
       );
-      emitShareResult({
-        channel: providerId,
-        status: 'error',
-        error: normalizedError,
-      });
     }
   }
 
@@ -139,26 +100,11 @@ export async function shareInviteViaProvider({
   try {
     copied = typeof copyImpl === 'function' ? await copyImpl(link) : false;
   } catch {
-    emitShareResult({
-      channel: 'copy',
-      sourceChannel: providerId,
-      status: 'copy_failed',
-    });
     return { ok: false, status: 'copy_failed', link, text, url, providerId };
   }
   if (copied) {
-    emitShareResult({
-      channel: 'copy',
-      sourceChannel: providerId,
-      status: 'copied',
-    });
     return { ok: true, status: 'copied', link, text, url, providerId };
   }
 
-  emitShareResult({
-    channel: 'copy',
-    sourceChannel: providerId,
-    status: 'copy_failed',
-  });
   return { ok: false, status: 'copy_failed', link, text, url, providerId };
 }

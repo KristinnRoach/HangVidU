@@ -1,5 +1,4 @@
 import { copyToClipboard } from '../../shared/components/modal/copyLinkModal.js';
-import { publish } from '../../shared/events/index.js';
 import { t } from '../../shared/i18n/index.js';
 
 /*
@@ -9,29 +8,6 @@ import { t } from '../../shared/i18n/index.js';
 const DEFAULT_SENDER_NAME = 'A friend';
 
 const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
-const SHARE_ATTEMPTED_EVENT = 'evt:contacts:invite:share-attempted';
-const SHARE_RESULT_EVENT = 'evt:contacts:invite:share-result';
-
-function safePublish(eventName, payload) {
-  try {
-    publish(eventName, payload);
-  } catch (error) {
-    console.warn('[CONTACTS INVITE] Failed to publish telemetry event:', error);
-  }
-}
-
-function emitShareAttempt(channel) {
-  safePublish(SHARE_ATTEMPTED_EVENT, { channel, timestamp: Date.now() });
-}
-
-function emitShareResult({ channel, status, sourceChannel }) {
-  safePublish(SHARE_RESULT_EVENT, {
-    channel,
-    status,
-    sourceChannel,
-    timestamp: Date.now(),
-  });
-}
 
 /**
  * Build HangVidU referral link for invites.
@@ -91,8 +67,6 @@ export async function shareInvite({
     : null,
   copyImpl = copyToClipboard,
 } = {}) {
-  emitShareAttempt('generic');
-
   const link = buildReferralLink(userId, origin);
   const text = buildInviteText({ senderName, link });
 
@@ -103,11 +77,9 @@ export async function shareInvite({
         text,
         url: link,
       });
-      emitShareResult({ channel: 'generic', status: 'opened' });
       return { ok: true, status: 'opened_elsewhere', link, text };
     } catch (error) {
       if (error?.name === 'AbortError') {
-        emitShareResult({ channel: 'generic', status: 'cancelled' });
         return { ok: false, status: 'cancelled', link, text };
       }
       // Continue to copy fallback for non-cancel failures.
@@ -118,27 +90,12 @@ export async function shareInvite({
   try {
     copied = typeof copyImpl === 'function' ? await copyImpl(link) : false;
   } catch {
-    emitShareResult({
-      channel: 'copy',
-      sourceChannel: 'generic',
-      status: 'copy_failed',
-    });
     return { ok: false, status: 'copy_failed', link, text };
   }
 
   if (copied) {
-    emitShareResult({
-      channel: 'copy',
-      sourceChannel: 'generic',
-      status: 'copied',
-    });
     return { ok: true, status: 'copied', link, text };
   }
-  emitShareResult({
-    channel: 'copy',
-    sourceChannel: 'generic',
-    status: 'copy_failed',
-  });
   return { ok: false, status: 'copy_failed', link, text };
 }
 
@@ -157,22 +114,17 @@ export async function copyInviteLink({
   origin = APP_ORIGIN,
   copyImpl = copyToClipboard,
 } = {}) {
-  emitShareAttempt('copy');
-
   const link = buildReferralLink(userId, origin);
   let copied = false;
   try {
     copied = typeof copyImpl === 'function' ? await copyImpl(link) : false;
   } catch {
-    emitShareResult({ channel: 'copy', status: 'copy_failed' });
     return { ok: false, status: 'copy_failed', link };
   }
 
   if (copied) {
-    emitShareResult({ channel: 'copy', status: 'copied' });
     return { ok: true, status: 'copied', link };
   }
 
-  emitShareResult({ channel: 'copy', status: 'copy_failed' });
   return { ok: false, status: 'copy_failed', link };
 }
