@@ -15,4 +15,4 @@ Follow-up cleanup:
 
 Worktree note:
 
-- If env setup changes, keep [scripts/setup-worktree.sh](/Users/kristinnroachgunnarsson/.codex/worktrees/9981/HangVidU/scripts/setup-worktree.sh:1) in sync so new worktrees keep working without manual fixes.
+- If env setup changes, keep [scripts/setup-worktree.sh](../scripts/setup-worktree.sh) in sync so new worktrees keep working without manual fixes.
