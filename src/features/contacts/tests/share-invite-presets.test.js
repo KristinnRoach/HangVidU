@@ -36,8 +36,9 @@ describe('share-invite-presets', () => {
     const telegramUrl = buildProviderShareUrl('telegram', { text, link });
 
     expect(whatsappUrl).toBe(`https://wa.me/?text=${encodeURIComponent(text)}`);
+    const textWithoutLink = text.replace(link, '').trim();
     expect(telegramUrl).toBe(
-      `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`,
+      `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(textWithoutLink)}`,
     );
   });
 

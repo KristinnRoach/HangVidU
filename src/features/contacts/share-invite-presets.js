@@ -42,7 +42,8 @@ export function buildProviderShareUrl(providerId, { text, link }) {
   }
 
   if (providerId === 'telegram') {
-    return `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+    const textWithoutLink = text.replace(link, '').trim();
+    return `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(textWithoutLink)}`;
   }
 
   throw new Error(`Unsupported share provider: ${providerId}`);

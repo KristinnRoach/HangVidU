@@ -127,7 +127,6 @@ export async function showAddContactModal() {
           </button>
           <button type="button" id="copy-link-btn" class="share-preset-btn copy-link-btn" aria-label="${escapeHtml(t('contact.invite.copy.label'))}">
             <i data-lucide="copy"></i>
-            <!-- <span>${t('contact.invite.copy.label')}</span> -->
           </button>
         </div>
       </div>
@@ -277,6 +276,7 @@ export async function showAddContactModal() {
     dialog.insertBefore(importContactsComponent.element, manualEmailStatus);
 
     function cleanup() {
+      runDebouncedShareAction?.cancel();
       dialog.close();
       dialog.remove();
       resolve();
