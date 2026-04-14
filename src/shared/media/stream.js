@@ -23,13 +23,13 @@ export function attachAudioMonitor(stream) {
   attachAudioInputRecovery(stream);
 }
 
-export const createLocalStream = async () => {
+export const createLocalStream = async ({ audioOnly = false } = {}) => {
   if (hasLocalStream()) {
     console.debug('Reusing existing local MediaStream.');
     return getLocalStream();
   }
 
-  const videoConstraints = getVideoConstraints('user');
+  const videoConstraints = audioOnly ? false : getVideoConstraints('user');
   const audioConstraints = getAudioConstraints();
 
   try {
@@ -51,7 +51,7 @@ export const createLocalStream = async () => {
       // Fallback to absolute minimum (avoid Over Constrained error)
       const fallbackAudioConstraints = getFallbackAudioConstraints();
       const basicStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
+        video: audioOnly ? false : true,
         audio: fallbackAudioConstraints,
       });
       setLocalStream(basicStream);
@@ -62,8 +62,12 @@ export const createLocalStream = async () => {
   }
 };
 
-export async function setUpLocalStream(localVideoEl) {
-  const localStream = await createLocalStream();
+export async function setUpLocalStream(localVideoEl, { audioOnly = false } = {}) {
+  const localStream = await createLocalStream({ audioOnly });
+
+  if (audioOnly) {
+    return true;
+  }
 
   // Workaround for mobile browser echo (don't respect "videoEl.volume"):
   // Create a new stream with only the video track for local preview

@@ -151,7 +151,13 @@ export function setupMainAppBusListeners() {
 
       handleCommand(
         'cmd:call:outgoing:initiate',
-        async ({ contactId, contactNickName, conversationId, roomId }) => {
+        async ({
+          contactId,
+          contactNickName,
+          conversationId,
+          roomId,
+          audioOnly = false,
+        }) => {
           const resolvedContactNickName =
             typeof contactNickName === 'string' && contactNickName.trim()
               ? contactNickName.trim()
@@ -165,6 +171,7 @@ export function setupMainAppBusListeners() {
                 contactNickName: resolvedContactNickName,
                 conversationId,
                 roomId,
+                audioOnly,
               },
             );
 
@@ -196,7 +203,7 @@ export function setupMainAppBusListeners() {
             }
           }
 
-          callContact(contactId, resolvedContactNickName, roomId);
+          callContact(contactId, resolvedContactNickName, roomId, { audioOnly });
         },
         { signal: ac.signal },
       );

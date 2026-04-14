@@ -20,7 +20,7 @@ class RoomService {
   /**
    * Create a new room with an offer
    */
-  async createNewRoom(offer, userId, roomId = null) {
+  async createNewRoom(offer, userId, roomId = null, { audioOnly = false } = {}) {
     const startTime = Date.now();
     if (!roomId) roomId = Math.random().toString(36).substring(2, 15);
 
@@ -28,6 +28,7 @@ class RoomService {
       roomId,
       userId,
       hasOffer: !!offer,
+      audioOnly,
       timestamp: startTime,
     });
 
@@ -41,6 +42,7 @@ class RoomService {
         },
         createdAt: Date.now(),
         createdBy: userId,
+        audioOnly,
       });
 
       getDiagnosticLogger().logFirebaseOperation('create_room', true, null, {

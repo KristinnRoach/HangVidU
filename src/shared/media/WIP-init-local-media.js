@@ -16,7 +16,7 @@ import { t } from '../i18n/index.js';
 // TODO: This is a temp WIP extraction - decoupling considerations:
 // imports CallController for getPeerConnection(), media/ → call/ dependency.
 
-export async function initLocalStreamAndMedia() {
+export async function initLocalStreamAndMedia({ audioOnly = false } = {}) {
   if (hasInitializedLocalStreamAndMedia()) return;
   markLocalStreamAndMediaInitialized();
 
@@ -32,7 +32,7 @@ export async function initLocalStreamAndMedia() {
     remotePipBtn,
   } = getElements();
 
-  await setUpLocalStream(localVideoEl);
+  await setUpLocalStream(localVideoEl, { audioOnly });
 
   initializeMediaControls({
     getLocalStream,

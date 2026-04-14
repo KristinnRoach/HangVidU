@@ -25,7 +25,7 @@ import {
 //   showCopyLinkModal (UI), showCallingUI (UI) — all cross-domain orchestration.
 // - This file is a candidate for renaming to call-orchestration.js once stable.
 
-export function getCallOptions(targetRoomId = null) {
+export function getCallOptions(targetRoomId = null, { audioOnly = false } = {}) {
   const { localVideoEl, remoteVideoEl, mutePartnerBtn } = getElements();
   return {
     localStream: getLocalStream(),
@@ -35,6 +35,7 @@ export function getCallOptions(targetRoomId = null) {
     setupRemoteStream,
     setupWatchSync,
     targetRoomId,
+    audioOnly,
   };
 }
 
@@ -56,10 +57,10 @@ export function applyCallResult(result, showLinkModal = false) {
 
 export async function joinOrCreateRoomWithId(
   customRoomId,
-  { forceInitiator = false, allowCreate = forceInitiator } = {},
+  { forceInitiator = false, allowCreate = forceInitiator, audioOnly = false } = {},
 ) {
   try {
-    await initLocalStreamAndMedia();
+    await initLocalStreamAndMedia({ audioOnly });
   } catch (error) {
     console.error('Failed to initialize local media stream:', error);
     handleMediaPermissionError(error);
@@ -84,7 +85,7 @@ export async function joinOrCreateRoomWithId(
     );
 
     const result = await CallController.createCall(
-      getCallOptions(customRoomId),
+      getCallOptions(customRoomId, { audioOnly }),
     );
 
     return applyCallResult(result, false);
@@ -129,7 +130,7 @@ export async function joinOrCreateRoomWithId(
     );
 
     const result = await CallController.createCall(
-      getCallOptions(customRoomId),
+      getCallOptions(customRoomId, { audioOnly }),
     );
 
     return applyCallResult(result, true);
@@ -144,12 +145,17 @@ export async function joinOrCreateRoomWithId(
 
   const result = await CallController.answerCall({
     roomId: customRoomId,
-    ...getCallOptions(),
+    ...getCallOptions(null, { audioOnly }),
   });
   return applyCallResult(result, false);
 }
 
-export async function callContact(contactId, contactNickName, roomId = null) {
+export async function callContact(
+  contactId,
+  contactNickName,
+  roomId = null,
+  { audioOnly = false } = {},
+) {
   const myUserId = getUserId();
   if (contactId && myUserId === contactId) {
     console.warn('[CALL] Cannot call yourself');
@@ -182,6 +188,7 @@ export async function callContact(contactId, contactNickName, roomId = null) {
 
   const success = await joinOrCreateRoomWithId(roomId, {
     forceInitiator: true,
+    audioOnly,
   }).catch((e) => {
     console.warn('[CALL] Failed to join or create room:', e);
     return false;

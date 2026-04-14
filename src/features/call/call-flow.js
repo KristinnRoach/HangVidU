@@ -59,6 +59,7 @@ export async function createCall({
   setupRemoteStream,
   setupWatchSync,
   targetRoomId = null,
+  audioOnly = false,
 }) {
   // ─────────────────────────────────────────────────────────────────────────
   // 1. VALIDATE PREREQUISITES
@@ -81,7 +82,7 @@ export async function createCall({
   // ─────────────────────────────────────────────────────────────────────────
 
   // 3a. Add local media tracks
-  const trackHealth = addLocalTracks(pc, localStream);
+  const trackHealth = addLocalTracks(pc, localStream, { audioOnly });
   if (trackHealth.unhealthyKinds.includes('audio')) {
     showErrorToast(t('media.audio_disconnected'));
   }
@@ -109,7 +110,7 @@ export async function createCall({
   // 4. CREATE AND SAVE OFFER
   // ─────────────────────────────────────────────────────────────────────────
   const offer = await createOffer(pc);
-  await RoomService.createNewRoom(offer, userId, roomId);
+  await RoomService.createNewRoom(offer, userId, roomId, { audioOnly });
 
   devDebug('Peer connection created as initiator', { roomId, userId });
 
@@ -174,6 +175,7 @@ export async function answerCall({
   mutePartnerBtn,
   setupRemoteStream,
   setupWatchSync,
+  audioOnly = false,
 }) {
   // ─────────────────────────────────────────────────────────────────────────
   // 1. VALIDATE PREREQUISITES
@@ -229,7 +231,7 @@ export async function answerCall({
   // ─────────────────────────────────────────────────────────────────────────
 
   // 3a. Add local media tracks
-  const trackHealth = addLocalTracks(pc, localStream);
+  const trackHealth = addLocalTracks(pc, localStream, { audioOnly });
   if (trackHealth.unhealthyKinds.includes('audio')) {
     showErrorToast(t('media.audio_disconnected'));
   }
