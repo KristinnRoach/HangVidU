@@ -34,7 +34,7 @@ export function createMessageBox() {
           </button>
         </div>
         
-        <button type="submit" class="send-button" aria-label="${t('shared.send')}">
+        <button type="button" class="send-button" aria-label="${t('shared.send')}">
           <i data-lucide="send" aria-hidden="true"></i>
           <span class="send-button__label"></span>
         </button>
@@ -51,6 +51,21 @@ export function createMessageBox() {
   const messagesInput = messagesBoxContainer.querySelector('#messages-input');
   const attachFileBtn = messagesBoxContainer.querySelector('#attach-file-btn');
   const submitBtn = messagesBoxContainer.querySelector('.send-button');
+
+  // Keep the textarea focused (and the iOS virtual keyboard open) when
+  // tapping Send. Tapping a button blurs the active input by default; we
+  // preventDefault on pointerdown to suppress that, then trigger submit
+  // manually since preventDefault also cancels the synthetic click.
+  if (submitBtn) {
+    submitBtn.addEventListener(
+      'pointerdown',
+      (e) => {
+        e.preventDefault();
+        messagesForm.requestSubmit();
+      },
+      { passive: false },
+    );
+  }
 
   // Update i18n attributes on locale change
   const updateI18n = () => {
