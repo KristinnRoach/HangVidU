@@ -19,6 +19,7 @@ export function keepVirtualKeyboardOpenOnTap(buttonEl, onTap) {
   if (!buttonEl) return () => {};
 
   const handler = (event) => {
+    if (event.button !== 0) return; // primary (left/touch/pen) only
     event.preventDefault();
     onTap(event);
   };
