@@ -51,7 +51,7 @@ describe('ContactsLocalAdapter', () => {
     await expect(adapter.patch('missing', { roomId: 'room-2' })).resolves.toBeNull();
   });
 
-  it('promotes legacy contactName to contactNickName on get and persists it', async () => {
+  it('does not promote legacy contactName on get', async () => {
     let raw = JSON.stringify({
       u2: {
         contactId: 'u2',
@@ -60,37 +60,8 @@ describe('ContactsLocalAdapter', () => {
         savedAt: 11,
         lastInteractionAt: 22,
       },
-    });
-
-    const writes = [];
-    const legacyAdapter = new ContactsLocalAdapter({
-      storage: {
-        getItem: () => raw,
-        setItem: (_key, value) => {
-          writes.push(value);
-          raw = value;
-        },
-      },
-      storageKey: 'contacts',
-    });
-
-    const result = await legacyAdapter.get('u2');
-
-    expect(result).toEqual({
-      contactId: 'u2',
-      contactNickName: 'Legacy Bob',
-      roomId: 'room-2',
-      savedAt: 11,
-      lastInteractionAt: 22,
-    });
-    expect(writes.length).toBe(1);
-    expect(JSON.parse(raw).u2.contactNickName).toBe('Legacy Bob');
-  });
-
-  it('uses map key as contactId fallback for legacy records missing contactId', async () => {
-    let raw = JSON.stringify({
       u3: {
-        contactName: 'Legacy No Id',
+        contactNickName: 'Legacy No Id',
         roomId: 'room-3',
         savedAt: 13,
         lastInteractionAt: 23,
@@ -107,15 +78,14 @@ describe('ContactsLocalAdapter', () => {
       storageKey: 'contacts',
     });
 
-    const result = await legacyAdapter.get('u3');
-
-    expect(result).toEqual({
-      contactId: 'u3',
-      contactNickName: 'Legacy No Id',
-      roomId: 'room-3',
-      savedAt: 13,
-      lastInteractionAt: 23,
+    await expect(legacyAdapter.get('u2')).resolves.toEqual({
+      contactId: 'u2',
+      contactNickName: '',
+      conversationId: undefined,
+      roomId: 'room-2',
+      savedAt: 11,
+      lastInteractionAt: 22,
     });
-    expect(JSON.parse(raw).u3.contactId).toBe('u3');
+    await expect(legacyAdapter.get('u3')).rejects.toThrow();
   });
 });

@@ -1,5 +1,5 @@
 import { ContactsStorageAdapter } from './contacts-storage-adapter.js';
-import { canonicalizeContactRecord, mergeContactRecord } from './contact-transform.js';
+import { mergeContactRecord, normalizeContactRecord } from './contact-transform.js';
 
 function getDefaultStorage() {
   if (!globalThis.localStorage) {
@@ -67,18 +67,7 @@ export class ContactsLocalAdapter extends ContactsStorageAdapter {
       return null;
     }
 
-    // TODO(2026-04-08): Remove this legacy key-as-id fallback after the contactId backfill window ends.
-    const { record, didPromoteLegacyContactName } =
-      canonicalizeContactRecord({
-        ...existing,
-        contactId: existing.contactId ?? contactId,
-      });
-    if (didPromoteLegacyContactName) {
-      map[contactId] = record;
-      this._writeMap(map);
-    }
-
-    return record;
+    return normalizeContactRecord(existing);
   }
 
   /**
@@ -86,29 +75,7 @@ export class ContactsLocalAdapter extends ContactsStorageAdapter {
    */
   async list() {
     const map = this._readMap();
-    const records = [];
-    let didMigrateAny = false;
-
-    for (const [contactId, value] of Object.entries(map)) {
-      // TODO(2026-04-08): Remove this legacy key-as-id fallback after the contactId backfill window ends.
-      const { record, didPromoteLegacyContactName } =
-        canonicalizeContactRecord({
-          ...value,
-          contactId: value.contactId ?? contactId,
-        });
-      records.push(record);
-
-      if (didPromoteLegacyContactName) {
-        didMigrateAny = true;
-        map[contactId] = record;
-      }
-    }
-
-    if (didMigrateAny) {
-      this._writeMap(map);
-    }
-
-    return records;
+    return Object.values(map).map((record) => normalizeContactRecord(record));
   }
 
   /**

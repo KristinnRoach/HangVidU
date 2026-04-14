@@ -23,6 +23,7 @@ describe('ContactsRTDBAdapter', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     adapter = new ContactsRTDBAdapter({
       database: {},
       getOwnerId: () => 'owner-1',
@@ -87,7 +88,7 @@ describe('ContactsRTDBAdapter', () => {
     expect(mocks.set).not.toHaveBeenCalled();
   });
 
-  it('promotes legacy contactName to contactNickName on get and persists it', async () => {
+  it('does not promote legacy contactName on get', async () => {
     mocks.get.mockResolvedValue({
       exists: () => true,
       val: () => ({
@@ -99,57 +100,64 @@ describe('ContactsRTDBAdapter', () => {
       }),
     });
 
-    const result = await adapter.get('u1');
-
-    expect(result).toEqual({
+    await expect(adapter.get('u1')).resolves.toEqual({
       contactId: 'u1',
-      contactNickName: 'Legacy Alice',
+      contactNickName: '',
+      conversationId: undefined,
       roomId: 'room-1',
       savedAt: 10,
       lastInteractionAt: 20,
     });
-    expect(mocks.set).toHaveBeenCalledWith(
-      { path: 'users/owner-1/contacts/u1' },
-      {
-        contactId: 'u1',
-        contactNickName: 'Legacy Alice',
-        roomId: 'room-1',
-        savedAt: 10,
-        lastInteractionAt: 20,
-      },
-    );
+    expect(mocks.set).not.toHaveBeenCalled();
   });
 
-  it('uses contact path key as contactId fallback for legacy record missing contactId', async () => {
+  it('returns null when contactId is missing from an RTDB record', async () => {
     mocks.get.mockResolvedValue({
       exists: () => true,
       val: () => ({
-        contactName: ' Legacy No Id ',
+        contactNickName: 'Legacy No Id',
         roomId: 'room-1',
         savedAt: 10,
         lastInteractionAt: 20,
       }),
     });
 
-    const result = await adapter.get('u1');
+    await expect(adapter.get('u1')).resolves.toBeNull();
+    expect(mocks.set).not.toHaveBeenCalled();
+    expect(console.warn).toHaveBeenCalledTimes(1);
+  });
 
-    expect(result).toEqual({
-      contactId: 'u1',
-      contactNickName: 'Legacy No Id',
-      roomId: 'room-1',
-      savedAt: 10,
-      lastInteractionAt: 20,
+  it('skips invalid records during list', async () => {
+    mocks.get.mockResolvedValue({
+      exists: () => true,
+      val: () => ({
+        u1: {
+          contactId: 'u1',
+          contactNickName: 'Alice',
+          roomId: 'room-1',
+          savedAt: 10,
+          lastInteractionAt: 20,
+        },
+        broken: {
+          contactNickName: 'Missing Id',
+          roomId: 'room-2',
+          savedAt: 11,
+          lastInteractionAt: 21,
+        },
+      }),
     });
-    expect(mocks.set).toHaveBeenCalledWith(
-      { path: 'users/owner-1/contacts/u1' },
+
+    await expect(adapter.list()).resolves.toEqual([
       {
         contactId: 'u1',
-        contactNickName: 'Legacy No Id',
+        contactNickName: 'Alice',
+        conversationId: undefined,
         roomId: 'room-1',
         savedAt: 10,
         lastInteractionAt: 20,
       },
-    );
+    ]);
+    expect(console.warn).toHaveBeenCalledTimes(1);
   });
 
   it('falls back to get+set when transaction is not committed but record exists', async () => {
