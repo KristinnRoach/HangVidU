@@ -55,7 +55,7 @@ export function buildInviteText({ senderName, link }) {
  *   shareImpl?: ((data: ShareData) => Promise<void>) | null,
  *   copyImpl?: ((text: string) => Promise<boolean>) | null
  * }} params
- * @returns {Promise<{ ok: boolean, status: 'shared' | 'copied' | 'cancelled' | 'copy_failed', link: string, text: string }>}
+ * @returns {Promise<{ ok: boolean, status: 'opened_elsewhere' | 'copied' | 'cancelled' | 'copy_failed', link: string, text: string }>}
  */
 export async function shareInvite({
   senderName,
