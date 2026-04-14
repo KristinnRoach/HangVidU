@@ -1,6 +1,14 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../shared/i18n/index.js', () => ({
+const mocks = vi.hoisted(() => ({
+  publish: vi.fn(),
+}));
+
+vi.mock('../../../shared/events/index.js', () => ({
+  publish: mocks.publish,
+}));
+
+vi.mock('../../../shared/i18n/index.js', () => ({
   t: (key, params) => {
     if (!params) return key;
     return `${key} ${Object.values(params).join(' ')}`;
@@ -12,9 +20,13 @@ import {
   buildInviteText,
   copyInviteLink,
   shareInvite,
-} from './share-invite.js';
+} from '../share-invite.js';
 
 describe('share-invite', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('buildReferralLink', () => {
     it('returns origin link with ref query when user id exists', () => {
       const result = buildReferralLink('user-123', 'https://hangvidu.com');
@@ -104,6 +116,25 @@ describe('share-invite', () => {
       expect(copyImpl).toHaveBeenCalledTimes(1);
     });
 
+    it('returns copy_failed when copy fallback throws', async () => {
+      const shareImpl = vi
+        .fn()
+        .mockRejectedValue(new Error('Share failed unexpectedly'));
+      const copyImpl = vi.fn().mockRejectedValue(new Error('clipboard denied'));
+
+      const result = await shareInvite({
+        senderName: 'Alice',
+        userId: 'user-123',
+        origin: 'https://hangvidu.com',
+        shareImpl,
+        copyImpl,
+      });
+
+      expect(result).toEqual(
+        expect.objectContaining({ ok: false, status: 'copy_failed' }),
+      );
+    });
+
     it('returns cancelled when share is aborted', async () => {
       const abortError = new DOMException('Share aborted', 'AbortError');
       const shareImpl = vi.fn().mockRejectedValue(abortError);
@@ -153,6 +184,40 @@ describe('share-invite', () => {
 
       expect(result).toEqual(
         expect.objectContaining({ ok: false, status: 'copy_failed' }),
+      );
+    });
+
+    it('returns copy_failed when clipboard copy throws', async () => {
+      const copyImpl = vi.fn().mockRejectedValue(new Error('clipboard error'));
+
+      const result = await copyInviteLink({
+        userId: 'user-123',
+        origin: 'https://hangvidu.com',
+        copyImpl,
+      });
+
+      expect(result).toEqual(
+        expect.objectContaining({ ok: false, status: 'copy_failed' }),
+      );
+    });
+  });
+
+  describe('telemetry safety', () => {
+    it('does not throw when publish handlers fail', async () => {
+      mocks.publish.mockImplementation(() => {
+        throw new Error('telemetry failed');
+      });
+      const copyImpl = vi.fn().mockResolvedValue(true);
+
+      const result = await shareInvite({
+        userId: 'user-123',
+        origin: 'https://hangvidu.com',
+        shareImpl: null,
+        copyImpl,
+      });
+
+      expect(result).toEqual(
+        expect.objectContaining({ ok: true, status: 'copied' }),
       );
     });
   });

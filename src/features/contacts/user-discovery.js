@@ -99,8 +99,13 @@ export async function lookupUserByEmail(email) {
     return { status: 'not_found', user: null };
   }
 
+  const trimmedEmail = email.trim();
+  if (!trimmedEmail) {
+    return { status: 'not_found', user: null };
+  }
+
   try {
-    const emailHash = hashEmail(email);
+    const emailHash = hashEmail(trimmedEmail);
     const userRef = ref(rtdb, `usersByEmail/${emailHash}`);
     const snapshot = await get(userRef);
 

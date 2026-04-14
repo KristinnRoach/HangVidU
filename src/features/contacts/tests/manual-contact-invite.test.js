@@ -6,25 +6,25 @@ const mocks = vi.hoisted(() => ({
   getAllContacts: vi.fn(),
 }));
 
-vi.mock('./user-discovery.js', () => ({
+vi.mock('../user-discovery.js', () => ({
   lookupUserByEmail: mocks.lookupUserByEmail,
 }));
 
-vi.mock('./send-contact-invite.js', () => ({
+vi.mock('../send-contact-invite.js', () => ({
   sendContactInvite: mocks.sendContactInvite,
 }));
 
-vi.mock('./contacts-service.js', () => ({
+vi.mock('../contacts-service.js', () => ({
   contactsService: {
     getAllContacts: mocks.getAllContacts,
   },
 }));
 
-vi.mock('../../auth/index.js', () => ({
+vi.mock('../../../auth/index.js', () => ({
   getUser: vi.fn(() => ({ uid: 'me' })),
 }));
 
-import { inviteContactByEmail } from './manual-contact-invite.js';
+import { inviteContactByEmail } from '../manual-contact-invite.js';
 
 describe('inviteContactByEmail', () => {
   beforeEach(() => {
@@ -33,7 +33,10 @@ describe('inviteContactByEmail', () => {
 
   it('invokes not-found fallback only when lookup returns not_found', async () => {
     const onNotFound = vi.fn().mockResolvedValue(undefined);
-    mocks.lookupUserByEmail.mockResolvedValue({ status: 'not_found', user: null });
+    mocks.lookupUserByEmail.mockResolvedValue({
+      status: 'not_found',
+      user: null,
+    });
 
     const result = await inviteContactByEmail('missing@example.com', {
       onNotFound,

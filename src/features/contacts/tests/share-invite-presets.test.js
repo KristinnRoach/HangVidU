@@ -5,15 +5,15 @@ const mocks = vi.hoisted(() => ({
   publish: vi.fn(),
 }));
 
-vi.mock('../../shared/components/modal/copyLinkModal.js', () => ({
+vi.mock('../../../shared/components/modal/copyLinkModal.js', () => ({
   copyToClipboard: mocks.copyToClipboard,
 }));
 
-vi.mock('../../shared/events/index.js', () => ({
+vi.mock('../../../shared/events/index.js', () => ({
   publish: mocks.publish,
 }));
 
-vi.mock('./share-invite.js', () => ({
+vi.mock('../share-invite.js', () => ({
   buildReferralLink: vi.fn(() => 'https://hangvidu.com/?ref=user-123'),
   buildInviteText: vi.fn(
     () => 'Alice invited you to HangVidU: https://hangvidu.com/?ref=user-123',
@@ -24,7 +24,7 @@ import {
   buildProviderShareUrl,
   getInviteShareProviders,
   shareInviteViaProvider,
-} from './share-invite-presets.js';
+} from '../share-invite-presets.js';
 
 describe('share-invite-presets', () => {
   it('exposes WhatsApp and Telegram providers', () => {
@@ -86,6 +86,33 @@ describe('share-invite-presets', () => {
 
     expect(result.status).toBe('copy_failed');
     expect(result.ok).toBe(false);
+  });
+
+  it('logs and emits provider error before fallback when open throws', async () => {
+    const openError = new Error('popup blocked');
+    mocks.copyToClipboard.mockResolvedValue(true);
+    const openImpl = vi.fn(() => {
+      throw openError;
+    });
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await shareInviteViaProvider({
+      providerId: 'telegram',
+      openImpl,
+    });
+
+    expect(result.status).toBe('copied');
+    expect(consoleSpy).toHaveBeenCalled();
+    expect(mocks.publish).toHaveBeenCalledWith(
+      'evt:contacts:invite:share-result',
+      expect.objectContaining({
+        channel: 'telegram',
+        status: 'error',
+        error: expect.objectContaining({ message: 'popup blocked' }),
+      }),
+    );
+
+    consoleSpy.mockRestore();
   });
 
   it('publishes attempt and result events', async () => {

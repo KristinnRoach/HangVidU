@@ -33,13 +33,25 @@ function emitShareAttempt(channel) {
   publish(SHARE_ATTEMPTED_EVENT, { channel, timestamp: Date.now() });
 }
 
-function emitShareResult({ channel, status, sourceChannel }) {
+function emitShareResult({ channel, status, sourceChannel, error }) {
   publish(SHARE_RESULT_EVENT, {
     channel,
     status,
     sourceChannel,
+    error,
     timestamp: Date.now(),
   });
+}
+
+function serializeShareError(error) {
+  if (!error) {
+    return undefined;
+  }
+  return {
+    name: typeof error?.name === 'string' ? error.name : undefined,
+    code: typeof error?.code === 'string' ? error.code : undefined,
+    message: typeof error?.message === 'string' ? error.message : String(error),
+  };
 }
 
 export function getInviteShareProviders() {
@@ -110,6 +122,16 @@ export async function shareInviteViaProvider({
         emitShareResult({ channel: providerId, status: 'cancelled' });
         return { ok: false, status: 'cancelled', link, text, url, providerId };
       }
+      const normalizedError = serializeShareError(error);
+      console.error(
+        `[CONTACTS INVITE] Failed to open ${providerId} share URL:`,
+        error,
+      );
+      emitShareResult({
+        channel: providerId,
+        status: 'error',
+        error: normalizedError,
+      });
     }
   }
 

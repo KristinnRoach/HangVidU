@@ -326,6 +326,9 @@ export async function showAddContactModal() {
       } else if (result.status === 'already_invited') {
         manualEmailStatus.textContent = t('contact.add.already_invited');
         manualEmailStatus.className = 'import-status info';
+      } else if (result.status === 'permission_denied') {
+        manualEmailStatus.textContent = t('contact.invite.permission_denied');
+        manualEmailStatus.className = 'import-status error';
       } else if (result.status === 'lookup_error') {
         manualEmailStatus.textContent = t('contact.add.lookup_error');
         manualEmailStatus.className = 'import-status error';
@@ -371,10 +374,7 @@ export async function showAddContactModal() {
         copy_failed: { toast: showErrorToast, className: 'error' },
       };
 
-      const safeStatus = Object.prototype.hasOwnProperty.call(
-        statusConfig,
-        result.status,
-      )
+      const safeStatus = Object.hasOwn(statusConfig, result.status)
         ? result.status
         : 'copy_failed';
       const config = statusConfig[safeStatus];

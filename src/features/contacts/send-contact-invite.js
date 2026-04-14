@@ -1,8 +1,15 @@
 import { sendInvite } from './invitations.js';
 
-const DUPLICATE_ERROR_TOKENS = ['PERMISSION_DENIED', 'permission_denied'];
+const DUPLICATE_ERROR_TOKENS = [
+  'already_invited',
+  'already invited',
+  'already exists',
+  'invite exists',
+  'duplicate_invite',
+  'duplicate',
+];
 
-function isAlreadyInvitedError(error) {
+function getErrorParts(error) {
   const code =
     typeof error?.code === 'string'
       ? error.code
@@ -16,8 +23,38 @@ function isAlreadyInvitedError(error) {
         ? error
         : '';
 
+  return {
+    code,
+    message,
+    normalizedCode: code.toLowerCase(),
+    normalizedMessage: message.toLowerCase(),
+  };
+}
+
+function isPermissionDeniedError(error) {
+  const { code, normalizedCode } = getErrorParts(error);
+
+  if (error?.name === 'PermissionDenied') {
+    return true;
+  }
+
+  if (code === 'PERMISSION_DENIED') {
+    return true;
+  }
+
+  return (
+    normalizedCode.includes('permission_denied') ||
+    normalizedCode.includes('permission-denied')
+  );
+}
+
+function isAlreadyInvitedError(error) {
+  const { normalizedCode, normalizedMessage } = getErrorParts(error);
+
   return DUPLICATE_ERROR_TOKENS.some((token) => {
-    return code.includes(token) || message.includes(token);
+    return (
+      normalizedCode.includes(token) || normalizedMessage.includes(token)
+    );
   });
 }
 
@@ -26,6 +63,10 @@ export async function sendContactInvite(toUserId, toName = 'User') {
     await sendInvite(toUserId, toName);
     return { ok: true, status: 'sent' };
   } catch (error) {
+    if (isPermissionDeniedError(error)) {
+      return { ok: false, status: 'permission_denied', error };
+    }
+
     if (isAlreadyInvitedError(error)) {
       return { ok: false, status: 'already_invited' };
     }

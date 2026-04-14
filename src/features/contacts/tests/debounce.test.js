@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createDebouncedAsyncAction } from './debounce.js';
+import { createDebouncedAsyncAction } from '../debounce.js';
 
 describe('createDebouncedAsyncAction', () => {
   it('runs immediately and suppresses repeated calls while pending', async () => {

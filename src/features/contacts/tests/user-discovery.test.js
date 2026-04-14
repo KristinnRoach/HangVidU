@@ -3,7 +3,7 @@ import {
   hashEmail,
   lookupUserByEmail,
   removeFromUserByEmailDirectory,
-} from './user-discovery.js';
+} from '../user-discovery.js';
 
 vi.mock('firebase/database', () => ({
   ref: vi.fn(),
@@ -12,11 +12,11 @@ vi.mock('firebase/database', () => ({
   remove: vi.fn(() => Promise.resolve()),
 }));
 
-vi.mock('../../shared/storage/fb-rtdb/rtdb.js', () => ({
+vi.mock('../../../shared/storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},
 }));
 
-vi.mock('../../auth/index.js', () => ({
+vi.mock('../../../auth/index.js', () => ({
   onAuthStateChanged: vi.fn(() => () => {}),
 }));
 
@@ -93,6 +93,17 @@ describe('user-discovery', () => {
         status: 'not_found',
         user: null,
       });
+    });
+
+    it('returns not_found for whitespace-only email without lookup', async () => {
+      const { get } = await import('firebase/database');
+      const result = await lookupUserByEmail('   ');
+
+      expect(result).toEqual({
+        status: 'not_found',
+        user: null,
+      });
+      expect(get).not.toHaveBeenCalled();
     });
 
     it('returns lookup_error when lookup throws', async () => {

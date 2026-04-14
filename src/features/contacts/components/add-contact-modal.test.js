@@ -172,28 +172,34 @@ describe('showAddContactModal - share invite platform action', () => {
   });
 
   it('debounces repeated share button clicks', async () => {
+    vi.useFakeTimers();
     mocks.shareInvite.mockResolvedValue({
       ok: true,
       status: 'opened_elsewhere',
     });
 
-    const { showAddContactModal } = await import('./add-contact-modal.js');
-    const modalPromise = showAddContactModal();
-    const btn = document.querySelector('#share-btn');
+    try {
+      const { showAddContactModal } = await import('./add-contact-modal.js');
+      const modalPromise = showAddContactModal();
+      const btn = document.querySelector('#share-btn');
 
-    btn.click();
-    btn.click();
-    await Promise.resolve();
-    await Promise.resolve();
+      btn.click();
+      btn.click();
+      await Promise.resolve();
+      await Promise.resolve();
 
-    expect(mocks.shareInvite).toHaveBeenCalledTimes(1);
-    expect(btn.disabled).toBe(true);
+      expect(mocks.shareInvite).toHaveBeenCalledTimes(1);
+      expect(btn.disabled).toBe(true);
 
-    await new Promise((resolve) => setTimeout(resolve, 650));
-    expect(btn.disabled).toBe(false);
+      await vi.advanceTimersByTimeAsync(650);
+      await Promise.resolve();
+      expect(btn.disabled).toBe(false);
 
-    document.querySelector('[data-action="cancel"]')?.click();
-    await modalPromise;
+      document.querySelector('[data-action="cancel"]')?.click();
+      await modalPromise;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('copies invite link via dedicated copy button', async () => {
