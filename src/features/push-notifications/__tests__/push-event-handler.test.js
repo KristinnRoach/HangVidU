@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const TEST_APP_URL = import.meta.env.VITE_APP_URL || 'https://hangvidu.com/';
+
 vi.mock('../sw/notification-presentation.js', () => ({
   buildNotificationPresentation: vi.fn(() => ({
     title: 'Incoming call',
@@ -44,7 +46,7 @@ describe('handlePushEvent', () => {
       {
         focused: true,
         visibilityState: 'visible',
-        url: 'https://vidu-aae11.web.app/',
+        url: TEST_APP_URL,
       },
     ]);
 
@@ -76,7 +78,7 @@ describe('handlePushEvent', () => {
       {
         focused: false,
         visibilityState: 'hidden',
-        url: 'https://vidu-aae11.web.app/',
+        url: TEST_APP_URL,
       },
     ]);
 
