@@ -32,10 +32,11 @@ function runSafe(fn, label) {
 
 const LOCAL_STORAGE_KEYS_TO_PRESERVE_ON_LOGOUT = [
   'locale',
-  'recentCalls',
-  'referredBy',
+  // Only keeping safe non-user scoped keys (keeping these comments for now while testing)
+  // 'recentCalls',
+  // 'referredBy',
 ];
-const LOCAL_STORAGE_PREFIXES_TO_PRESERVE_ON_LOGOUT = ['debug:', 'referral'];
+const LOCAL_STORAGE_PREFIXES_TO_PRESERVE_ON_LOGOUT = ['debug:']; // 'referral'
 
 function clearLocalStorageOnLogout() {
   try {
@@ -53,7 +54,7 @@ function clearLocalStorageOnLogout() {
         key &&
         (LOCAL_STORAGE_KEYS_TO_PRESERVE_ON_LOGOUT.includes(key) ||
           LOCAL_STORAGE_PREFIXES_TO_PRESERVE_ON_LOGOUT.some((prefix) =>
-            key.startsWith(prefix)
+            key.startsWith(prefix),
           ))
       ) {
         preservedEntries.push([key, storage.getItem(key)]);
