@@ -182,7 +182,7 @@
 
 .add-contact-modal .share-preset-btn:hover:not(:disabled) {
   background-color: #555;
-  border-color: rgb(74, 172, 74, 0.6);
+  border-color: rgba(74, 172, 74, 0.6);
   color: white;
   transform: scale(1.025);
 }
