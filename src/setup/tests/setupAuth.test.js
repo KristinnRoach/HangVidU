@@ -71,16 +71,36 @@ vi.mock('../../features/notifications/index.js', () => ({
 
 describe('setupAuth', () => {
   let localStorageClearSpy;
+  let localStorageRef;
+  let localStorageData;
 
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
     mocks.handlers.clear();
-    localStorageClearSpy = vi.spyOn(Storage.prototype, 'clear');
+    localStorageData = new Map();
+    localStorageRef = {
+      get length() {
+        return localStorageData.size;
+      },
+      key: (index) => Array.from(localStorageData.keys())[index] ?? null,
+      getItem: (key) =>
+        localStorageData.has(String(key))
+          ? localStorageData.get(String(key))
+          : null,
+      setItem: (key, value) =>
+        localStorageData.set(String(key), String(value)),
+      removeItem: (key) => localStorageData.delete(String(key)),
+      clear: () => localStorageData.clear(),
+    };
+
+    vi.stubGlobal('localStorage', localStorageRef);
+    localStorageClearSpy = vi.spyOn(globalThis.localStorage, 'clear');
   });
 
   afterEach(() => {
     localStorageClearSpy?.mockRestore();
+    vi.unstubAllGlobals();
   });
 
   it('renders contacts when auth becomes ready', async () => {
@@ -135,6 +155,25 @@ describe('setupAuth', () => {
     expect(mocks.closeAllConversations).toHaveBeenCalled();
     expect(mocks.resetMessagesUI).toHaveBeenCalled();
     expect(localStorageClearSpy).toHaveBeenCalled();
+
+    teardown();
+  });
+
+  it('preserves selected localStorage keys on logout', async () => {
+    const { setupAuth } = await import('../setupAuth.js');
+    const lobbyElement = { id: 'lobby' };
+
+    globalThis.localStorage.setItem('referredBy', 'ref-123');
+    globalThis.localStorage.setItem('locale', 'is');
+    globalThis.localStorage.setItem('volatileKey', 'drop-me');
+
+    const teardown = await setupAuth({ lobbyElement });
+
+    await mocks.handlers.get('evt:auth:session:logout')({});
+
+    expect(globalThis.localStorage.getItem('referredBy')).toBe('ref-123');
+    expect(globalThis.localStorage.getItem('locale')).toBe('is');
+    expect(globalThis.localStorage.getItem('volatileKey')).toBeNull();
 
     teardown();
   });

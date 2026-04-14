@@ -30,36 +30,43 @@ function runSafe(fn, label) {
   }
 }
 
-const LOCAL_STORAGE_KEYS_TO_PRESERVE_ON_LOGOUT = ['locale', 'recentCalls'];
+const LOCAL_STORAGE_KEYS_TO_PRESERVE_ON_LOGOUT = [
+  'locale',
+  'recentCalls',
+  'referredBy',
+];
 const LOCAL_STORAGE_PREFIXES_TO_PRESERVE_ON_LOGOUT = ['debug:', 'referral'];
 
 function clearLocalStorageOnLogout() {
   try {
-    if (typeof localStorage !== 'undefined') {
-      const preservedEntries = [];
-
-      for (let index = 0; index < localStorage.length; index += 1) {
-        const key = localStorage.key(index);
-
-        if (
-          key &&
-          (LOCAL_STORAGE_KEYS_TO_PRESERVE_ON_LOGOUT.includes(key) ||
-            LOCAL_STORAGE_PREFIXES_TO_PRESERVE_ON_LOGOUT.some((prefix) =>
-              key.startsWith(prefix)
-            ))
-        ) {
-          preservedEntries.push([key, localStorage.getItem(key)]);
-        }
-      }
-
-      localStorage.clear();
-
-      preservedEntries.forEach(([key, value]) => {
-        if (value !== null) {
-          localStorage.setItem(key, value);
-        }
-      });
+    const storage = globalThis.localStorage;
+    if (!storage) {
+      return;
     }
+
+    const preservedEntries = [];
+
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = storage.key(index);
+
+      if (
+        key &&
+        (LOCAL_STORAGE_KEYS_TO_PRESERVE_ON_LOGOUT.includes(key) ||
+          LOCAL_STORAGE_PREFIXES_TO_PRESERVE_ON_LOGOUT.some((prefix) =>
+            key.startsWith(prefix)
+          ))
+      ) {
+        preservedEntries.push([key, storage.getItem(key)]);
+      }
+    }
+
+    storage.clear();
+
+    preservedEntries.forEach(([key, value]) => {
+      if (value !== null) {
+        storage.setItem(key, value);
+      }
+    });
   } catch (error) {
     console.warn('[setupAuth] Failed to clear localStorage on logout:', error);
   }
@@ -115,7 +122,7 @@ export function setupAuth(options = {}) {
         'messagingController.closeAllConversations',
       );
       runSafe(() => messagesUI?.reset?.(), 'messagesUI.reset');
-      // NOTE: Local storage is cleared on log out.
+      // NOTE: Local storage is cleared on log out, while selected keys are preserved.
       clearLocalStorageOnLogout();
     };
 
