@@ -1,4 +1,4 @@
-Getting rid of all unecessary dynamic imports.
+Removing unnecessary dynamic imports; this document lists retained, intentional dynamic imports.
 
 Here are remaining runtime import() calls (in src/) and why they stay dynamic:
 
