@@ -13,6 +13,9 @@ export default defineConfig(({ mode }) => {
     base: basePath,
 
     build: {
+      // AC3 support is intentionally emitted as a large, on-demand chunk.
+      // Keep warnings focused on regressions beyond the current expected ceiling.
+      chunkSizeWarningLimit: 1200,
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
@@ -86,16 +89,16 @@ export default defineConfig(({ mode }) => {
           ],
           screenshots: [
             {
-              src: `${basePath}screenshot-wide.png`,
-              sizes: '1280x720',
+              src: `${basePath}screenshot-1280x800.webp`,
+              sizes: '1280x800',
               form_factor: 'wide',
-              type: 'image/png',
+              type: 'image/webp',
             },
             {
-              src: `${basePath}screenshot-narrow.png`,
-              sizes: '540x720',
+              src: `${basePath}screenshot-720x1444.webp`,
+              sizes: '720x1444',
               form_factor: 'narrow',
-              type: 'image/png',
+              type: 'image/webp',
             },
           ],
         },

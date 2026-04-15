@@ -1,10 +1,11 @@
 import { showErrorToast } from '../components/toast.js';
 import { t } from '../i18n/index.js';
-import { getAudioConstraints, getFallbackAudioConstraints } from './constraints.js';
 import {
-  abortAudioEndedController,
-  setAudioEndedController,
-} from './state.js';
+  getAudioConstraints,
+  getFallbackAudioConstraints,
+} from './constraints.js';
+import CallController from '../../features/call/call-controller.js';
+import { abortAudioEndedController, setAudioEndedController } from './state.js';
 
 /**
  * Attach explicit audio-input monitoring and auto-recovery to a local stream.
@@ -158,24 +159,12 @@ function replaceAudioTrackInLocalStream({
 async function replaceAudioTrackInActivePeerConnection({
   replacementAudioTrack,
 }) {
-  const callControllerModule = await import(
-    '../../features/call/call-controller.js'
-  );
-  const callController = callControllerModule?.default;
-  if (
-    !callController ||
-    typeof callController.getPeerConnection !== 'function' ||
-    typeof callController.getState !== 'function'
-  ) {
-    return;
-  }
-
-  const callState = callController.getState();
+  const callState = CallController.getState();
   if (!callState?.hasPc) {
     return;
   }
 
-  const pc = callController.getPeerConnection();
+  const pc = CallController.getPeerConnection();
   if (!pc || typeof pc.getSenders !== 'function') return;
 
   const audioSender = pc

@@ -12,6 +12,11 @@ import { setupWatchSync } from '../watch/watch-sync.js';
 import { showCopyLinkModal } from '../../shared/components/modal/copyLinkModal.js';
 import { devDebug } from '../../shared/utils/dev/dev-utils.js';
 import { listenForIncomingOnRoom } from './room-listeners.js';
+import { showOutgoingCallUI } from './components/outgoing-call.js';
+import {
+  onCallingStarted,
+  onCallingEnded,
+} from '../../shared/components/ui/core/call-lifecycle-ui.js';
 import {
   initLocalStreamAndMedia,
   handleMediaPermissionError,
@@ -186,11 +191,6 @@ export async function callContact(
     return false;
   }
 
-  const callingUiModulesPromise = Promise.all([
-    import('./components/outgoing-call.js'),
-    import('../../shared/components/ui/core/call-lifecycle-ui.js'),
-  ]);
-
   listenForIncomingOnRoom(roomId);
 
   const success = await joinOrCreateRoomWithId(roomId, {
@@ -203,21 +203,6 @@ export async function callContact(
 
   if (success) {
     contactsService.updateLastInteraction(contactId).catch(() => {});
-
-    let showOutgoingCallUI;
-    let onCallingStarted;
-    let onCallingEnded;
-
-    try {
-      [{ showOutgoingCallUI }, { onCallingStarted, onCallingEnded }] =
-        await callingUiModulesPromise;
-    } catch (error) {
-      console.warn('[CALL] Failed to load calling UI:', error);
-      await CallController.hangUp({ reason: 'calling_ui_load_failed' }).catch(
-        () => {},
-      );
-      return false;
-    }
 
     try {
       onCallingStarted();

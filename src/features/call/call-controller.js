@@ -25,6 +25,7 @@ import { setRemoteDescription } from './webrtc-utils.js';
 import { drainIceCandidateQueue } from './ice.js';
 import { resetLocalStreamInitFlag } from '../../shared/media/local-stream-init-state.js';
 import { publish, subscribe } from '../../shared/events/index.js';
+import { onOutgoingCallRejected } from './components/outgoing-call.js';
 
 export function createCallController() {
   return new CallController();
@@ -288,11 +289,7 @@ class CallController {
 
       devDebug('Call rejected by partner', { roomId, rej });
 
-      // TODO: Consider other options for this:
-      // Import onOutgoingCallRejected dynamically to avoid circular dependencies
       try {
-        const { onOutgoingCallRejected } =
-          await import('./components/outgoing-call.js');
         await onOutgoingCallRejected(rej.reason || 'user_rejected');
       } catch (_) {
         devDebug('Call declined');
