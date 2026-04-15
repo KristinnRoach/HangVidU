@@ -65,7 +65,7 @@ function openEmailComposeFallback(contacts) {
   if (!opened) {
     const mailtoLink =
       contacts.length === 1
-        ? `mailto:${contacts[0].email}?subject=${subject}&body=${body}`
+        ? `mailto:${encodeURIComponent(contacts[0].email)}?subject=${subject}&body=${body}`
         : `mailto:?bcc=${rawTo}&subject=${subject}&body=${body}`;
     window.location.href = mailtoLink;
   }
