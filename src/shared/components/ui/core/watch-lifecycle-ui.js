@@ -1,13 +1,13 @@
 // src/ui/core/watch-lifecycle-ui.js
 import { uiState } from './ui-state.js';
-import { enterWatchMode, exitWatchMode } from './legacy/watch-mode.js';
+import { enterWatchModeUI, exitWatchModeUI } from './legacy/watch-mode.js';
 
 export function onWatchModeEntered() {
   uiState.setMainContent('ytVideo');
-  enterWatchMode(); // legacy - remove after migration
+  enterWatchModeUI(); // legacy - remove after migration
 }
 
 export function onWatchModeExited() {
   uiState.setMainContent('remoteStream');
-  exitWatchMode(); // legacy - remove after migration
+  exitWatchModeUI(); // legacy - remove after migration
 }

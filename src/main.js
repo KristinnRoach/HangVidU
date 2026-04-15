@@ -48,7 +48,11 @@ import {
   cleanupLocalVideoOnlyStream,
 } from './shared/media/state.js';
 
-import { devDebug, isDev, setDevDebugEnabled } from './shared/utils/dev/dev-utils.js';
+import {
+  devDebug,
+  isDev,
+  setDevDebugEnabled,
+} from './shared/utils/dev/dev-utils.js';
 
 import { getDiagnosticLogger } from './shared/utils/dev/diagnostic-logger.js';
 
@@ -56,7 +60,7 @@ import { clearUrlParam } from './shared/utils/url.js';
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
 import './shared/components/ui/core/ui-state.js'; // Initialize UI state (sets body data-view attribute)
-import { bindCallUI } from './shared/components/ui/core/bind-call-ui.js';
+import { bindCallUI } from './setup/bind-call-ui.js';
 
 import {
   onWatchModeEntered,

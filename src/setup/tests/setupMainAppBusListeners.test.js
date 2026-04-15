@@ -194,7 +194,7 @@ describe('setupMainAppBusListeners', () => {
     expect(mocks.listenForIncomingOnRoom).toHaveBeenCalledWith('room-new');
   });
 
-  it('handles the presence offline command through the app layer', async () => {
+  it('handles the presence offline command through setup wiring', async () => {
     const { setupMainAppBusListeners } =
       await import('../setupMainAppBusListeners.js');
 
