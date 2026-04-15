@@ -89,16 +89,16 @@ export default defineConfig(({ mode }) => {
           ],
           screenshots: [
             {
-              src: `${basePath}screenshot-wide.png`,
-              sizes: '1280x720',
+              src: `${basePath}screenshot-1280x800.webp`,
+              sizes: '1280x800',
               form_factor: 'wide',
-              type: 'image/png',
+              type: 'image/webp',
             },
             {
-              src: `${basePath}screenshot-narrow.png`,
-              sizes: '540x720',
+              src: `${basePath}screenshot-720x1444.webp`,
+              sizes: '720x1444',
               form_factor: 'narrow',
-              type: 'image/png',
+              type: 'image/webp',
             },
           ],
         },
