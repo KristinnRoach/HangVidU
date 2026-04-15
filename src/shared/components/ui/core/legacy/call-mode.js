@@ -34,7 +34,7 @@ let cleanupFunctions = [];
 // Export state getter
 export const getIsInCallMode = () => isInCallMode;
 
-export const enterCallMode = () => {
+export const enterCallModeUI = () => {
   if (isInCallMode) return;
 
   // Check if remote video is ready and playing
@@ -51,7 +51,7 @@ export const enterCallMode = () => {
         'playing',
         () => {
           enterCallModeWaitingForVideo = false;
-          enterCallMode();
+          enterCallModeUI();
         },
         { once: true },
       );
@@ -138,7 +138,7 @@ export const enterCallMode = () => {
   }
 };
 
-export const exitCallMode = () => {
+export const exitCallModeUI = () => {
   if (!isInCallMode) return;
   isInCallMode = false;
 

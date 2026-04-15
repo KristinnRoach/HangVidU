@@ -52,7 +52,7 @@ export const isRemoteVideoVideoActive = () => {
   );
 };
 
-export function enterWatchMode() {
+export function enterWatchModeUI() {
   if (isWatchModeActive()) return;
   setWatchMode(true);
 
@@ -96,7 +96,7 @@ export function enterWatchMode() {
   }
 }
 
-export function exitWatchMode() {
+export function exitWatchModeUI() {
   if (!isWatchModeActive()) return;
 
   // Hide exit watch mode button

@@ -56,7 +56,7 @@ if (requestedFeatures) {
 const ENABLE_RULE = {
   shared: envEnabled('BOUNDARIES_SHARED', true),
   auth: envEnabled('BOUNDARIES_AUTH', true),
-  setup: envEnabled('BOUNDARIES_SETUP', ENFORCE_ALL),
+  setup: envEnabled('BOUNDARIES_SETUP', true),
 };
 
 // enforced features - add one at a time until all are included
@@ -68,7 +68,7 @@ const ENFORCED_FEATURES = requestedFeatures
 
 const SHARED_TEMP_FEATURE_EXCEPTIONS = [
   'call',
-  'messaging',
+  // 'messaging',
   'watch',
   'notifications',
 ];
@@ -166,7 +166,6 @@ if (ENABLE_RULE.auth) {
     ),
   );
 }
-
 
 if (ENABLE_RULE.setup) {
   overrides.push(
