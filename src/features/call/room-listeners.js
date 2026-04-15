@@ -307,7 +307,11 @@ function decideIncomingNotificationStrategy({
   }
 }
 
-async function handleIncomingCallAccepted({ roomId, joinedContactId, audioOnly = false }) {
+async function handleIncomingCallAccepted({
+  roomId,
+  joinedContactId,
+  audioOnly = false,
+}) {
   publish('evt:call:incoming:accepted', {
     roomId,
     contactId: joinedContactId,
@@ -347,19 +351,21 @@ async function handleIncomingCallAccepted({ roomId, joinedContactId, audioOnly =
     })
     .catch(() => {});
 
-  const success = await joinOrCreateRoomWithId(roomId, { audioOnly }).catch((e) => {
-    console.warn('Failed to answer incoming call:', e);
-    getDiagnosticLogger().logFirebaseOperation(
-      'join_room_on_accept',
-      false,
-      e,
-      {
-        roomId,
-        joiningUserId: joinedContactId,
-      },
-    );
-    return false;
-  });
+  const success = await joinOrCreateRoomWithId(roomId, { audioOnly }).catch(
+    (e) => {
+      console.warn('Failed to answer incoming call:', e);
+      getDiagnosticLogger().logFirebaseOperation(
+        'join_room_on_accept',
+        false,
+        e,
+        {
+          roomId,
+          joiningUserId: joinedContactId,
+        },
+      );
+      return false;
+    },
+  );
 
   if (!success) {
     console.warn('[CALL] Join failed after accepting incoming call', {
@@ -728,9 +734,7 @@ export function listenForIncomingOnRoom(roomId) {
         dismissActiveIncomingCallUI(roomId);
 
         // Dismiss legacy confirmDialog (for testing/rollback)
-        if (typeof dismissActiveConfirmDialog === 'function') {
-          dismissActiveConfirmDialog();
-        }
+        dismissActiveConfirmDialog();
       } catch (_) {
         // best-effort
       }

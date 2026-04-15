@@ -15,7 +15,7 @@ Remaining runtime import() calls (in src/) and why they stay dynamic
    ▪ Should stay dynamic: locale bundles loaded on demand.
 4. shared/media/convert/eac3-lazy.js
    ◦ import('@mediabunny/ac3'), import('mediabunny')  
-   ▪ Must stay dynamic for your intended behavior: load only on AC3/EAC3 retry path.
+   ▪ Large, intentionally lazy loaded only on AC3/EAC3 retry path.
 5. shared/pwa/PWA.js
    ◦ import('./update-handlers.js')  
    ▪ Should stay dynamic: only when PWA enabled.
