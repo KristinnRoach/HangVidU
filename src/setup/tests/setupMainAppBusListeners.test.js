@@ -97,6 +97,7 @@ describe('setupMainAppBusListeners', () => {
       null,
       'Unknown Caller',
       'room-123',
+      { audioOnly: false },
     );
   });
 

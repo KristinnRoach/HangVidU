@@ -181,17 +181,20 @@
   }
 
   & .messages-topbar-back,
-  & .messages-topbar-call {
+  & .messages-topbar-call,
+  & .messages-topbar-audio-call {
     padding: 0 var(--spacing-xs);
     width: 32px;
   }
 
-  & .messages-topbar-call {
+  & .messages-topbar-call,
+  & .messages-topbar-audio-call {
     color: rgba(25, 204, 46, 0.855);
   }
 
   & .messages-topbar-back:hover,
-  & .messages-topbar-call:hover {
+  & .messages-topbar-call:hover,
+  & .messages-topbar-audio-call:hover {
     opacity: 0.85;
     background: rgba(255, 255, 255, 0.1);
   }

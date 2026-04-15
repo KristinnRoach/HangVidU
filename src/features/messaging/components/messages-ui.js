@@ -164,25 +164,36 @@ export function initMessagesUI() {
 
     messageTopBar.setBackHandler(() => closeMessagesUI());
 
+    const buildCallPayload = () => {
+      const state = messagingController.getSelectedConversationState();
+      const conversationId = state?.conversationId;
+      const contactId = state?.remoteParticipantIds?.[0] ?? null;
+      const roomId = state?.roomId ?? null;
+      const contactNickName =
+        messagingController.getConversationDisplayName(conversationId) || null;
+      return { contactId, contactNickName, conversationId, roomId };
+    };
+
     messageTopBar.setCallHandler(() => {
       try {
-        const state = messagingController.getSelectedConversationState();
-        const conversationId = state?.conversationId;
-        const contactId = state?.remoteParticipantIds?.[0] ?? null;
-        const roomId = state?.roomId ?? null;
-        const contactNickName =
-          messagingController.getConversationDisplayName(conversationId) ||
-          null;
-
-        dispatchCommand('cmd:call:outgoing:initiate', {
-          contactId,
-          contactNickName,
-          conversationId,
-          roomId,
-        });
+        dispatchCommand('cmd:call:outgoing:initiate', buildCallPayload());
       } catch (err) {
         console.warn(
           'Failed to emit cmd:call:outgoing:initiate in temp msg-ui code',
+          err,
+        );
+      }
+    });
+
+    messageTopBar.setAudioCallHandler(() => {
+      try {
+        dispatchCommand('cmd:call:outgoing:initiate', {
+          ...buildCallPayload(),
+          audioOnly: true,
+        });
+      } catch (err) {
+        console.warn(
+          'Failed to emit cmd:call:outgoing:initiate (audioOnly) in temp msg-ui code',
           err,
         );
       }

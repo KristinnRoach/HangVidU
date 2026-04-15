@@ -73,10 +73,14 @@ export function isValidSignalingState(pc, expectedType) {
  * @returns {boolean} .allHealthy - True if all tracks are live and added, false if any were skipped
  * @returns {string[]} .unhealthyKinds - Array of track kinds that were dead/skipped (e.g. ['audio'])
  */
-export function addLocalTracks(pc, localStream) {
+export function addLocalTracks(pc, localStream, { audioOnly = false } = {}) {
   const unhealthyKinds = [];
 
-  localStream.getTracks().forEach((track) => {
+  const tracks = audioOnly
+    ? localStream.getAudioTracks()
+    : localStream.getTracks();
+
+  tracks.forEach((track) => {
     if (track.readyState !== 'live') {
       console.warn(
         `[WebRTC] ${track.kind} track is not live at addLocalTracks:`,

@@ -120,6 +120,8 @@
   "message.downloaded_label": "Sótt:",
   "message.sign_in_required": "Skráðu þig inn til að senda skilaboð",
   "message.call": "Hringja",
+  "message.audioCall": "Símtal",
+  "message.videoCall": "Myndsímtal",
 
   "message.watch.synced": "Myndband samstillt - tilbúið að horfa",
   "message.watch.failed_load": "Tókst ekki að hlaða myndbandi",

@@ -23,7 +23,7 @@ let storedOnHide = null;
 export async function showOutgoingCallUI(
   roomId,
   contactNickName,
-  { onCancel, onHide } = {},
+  { onCancel, onHide, audioOnly } = {},
 ) {
   const diag = getDiagnosticLogger();
   const showTime = Date.now();
@@ -139,7 +139,7 @@ export async function showOutgoingCallUI(
   activeCallingUI = overlay;
 
   // Start outgoing call ringtone
-  ringtoneManager.playOutgoing();
+  ringtoneManager.playOutgoing({ audioOnly });
 
   // Auto-timeout after 30 seconds
   timeoutId = setTimeout(async () => {

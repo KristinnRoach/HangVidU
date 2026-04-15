@@ -120,6 +120,8 @@
   "message.downloaded_label": "Downloaded:",
   "message.sign_in_required": "Please sign in to send messages",
   "message.call": "Call",
+  "message.audioCall": "Audio call",
+  "message.videoCall": "Video call",
 
   "message.watch.synced": "Video synced - Ready to watch together",
   "message.watch.failed_load": "Failed to load video",

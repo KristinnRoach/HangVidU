@@ -273,6 +273,7 @@ async function evaluateIncomingCallPreconditions({
   return {
     canProceed: true,
     freshnessResult,
+    audioOnly: !!roomData.audioOnly,
   };
 }
 
@@ -305,7 +306,7 @@ function decideIncomingNotificationStrategy({
   }
 }
 
-async function handleIncomingCallAccepted({ roomId, joinedContactId }) {
+async function handleIncomingCallAccepted({ roomId, joinedContactId, audioOnly = false }) {
   publish('evt:call:incoming:accepted', {
     roomId,
     contactId: joinedContactId,
@@ -345,7 +346,7 @@ async function handleIncomingCallAccepted({ roomId, joinedContactId }) {
     })
     .catch(() => {});
 
-  const success = await joinOrCreateRoomWithId(roomId).catch((e) => {
+  const success = await joinOrCreateRoomWithId(roomId, { audioOnly }).catch((e) => {
     console.warn('Failed to answer incoming call:', e);
     getDiagnosticLogger().logFirebaseOperation(
       'join_room_on_accept',
@@ -616,6 +617,7 @@ export function listenForIncomingOnRoom(roomId) {
         await handleIncomingCallAccepted({
           roomId,
           joinedContactId,
+          audioOnly: preconditions.audioOnly,
         });
       } else if (accept === 'caller_cancelled') {
         devDebug('Incoming call cancelled by caller');
