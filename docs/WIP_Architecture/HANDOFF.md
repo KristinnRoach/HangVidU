@@ -17,7 +17,7 @@ Completed in this branch:
 - added generic feature typing with captured `featureName` values in `eslint.boundaries.config.js`
 - expanded active feature enforcement beyond `contacts`
 - added [ADD_NEXT_FEATURE.md](./ADD_NEXT_FEATURE.md) with the exact template for turning on the next feature
-- moved `appBus` and `EventEmitter` from `src/app/` to `src/shared/events/`
+- moved the shared event bus infrastructure into `src/shared/events/`
 - added `src/shared/events/index.js` as the intended public cross-module event entrypoint
 - standardized the basic event API around:
   - `dispatchCommand()`
