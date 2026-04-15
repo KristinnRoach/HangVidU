@@ -104,6 +104,45 @@ const appConfig = [
       'no-restricted-imports': 'off',
     },
   },
+
+  // STATE_RULES.md: *-state.js modules are module-private.
+  // External consumers must go through the module barrel and subscribe to
+  // `evt:<module>:state:changed`. Listed per-module as we adopt the pattern.
+  {
+    files: ['src/**/*.js'],
+    ignores: [
+      'src/auth/**',
+      'src/**/*.test.js',
+      'src/**/__tests__/**',
+      'src/**/tests/**',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'firebase/auth',
+              message:
+                'Import from src/auth/adapters/firebase-auth-adapter.js instead of firebase/auth directly.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['firebase/auth/*'],
+              message:
+                'Import from src/auth/adapters/firebase-auth-adapter.js instead of firebase/auth directly.',
+            },
+            {
+              group: ['**/auth-state', '**/auth-state.js'],
+              message:
+                'auth-state.js is private to src/auth/. Import read-only getters from src/auth/index.js and subscribe to evt:auth:state:changed. See docs/WIP_Architecture/STATE_RULES.md.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];
 
 export default [...boundariesConfig, ...appConfig];

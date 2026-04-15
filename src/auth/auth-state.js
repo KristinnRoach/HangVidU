@@ -1,7 +1,7 @@
 // src/auth/auth-state.js — pure auth state, no Firebase imports
 
 import { getOrCreateGuestId } from './guest-user.js';
-import { publishAndAwait } from '../shared/events/index.js';
+import { publish, publishAndAwait } from '../shared/events/index.js';
 
 let state = {
   status: 'idle', // 'idle' | 'loading' | 'authenticated' | 'unauthenticated'
@@ -39,6 +39,10 @@ export function setState(next) {
       console.error('[auth-state] subscriber error:', e);
     }
   }
+
+  // Canonical state-change event (STATE_RULES.md pattern).
+  // Fire-and-forget: does not participate in the ordered emit chain below.
+  publish('evt:auth:state:changed', { state: snap, prev: previousSnapshot });
 
   // Build ordered list of auth events to emit.
   // Order matters: READY must complete before LOGGED_IN/LOGGED_OUT.
