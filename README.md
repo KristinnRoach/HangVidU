@@ -17,12 +17,6 @@ Peer-to-peer video chat app with text messaging and synced media sharing capabil
 
 - WebRTC for P2P connection, Firebase for signaling
 
-## Deployment
-
-- Deployment target: Firebase Hosting.
-- Deploy (with compatibility tests): `pnpm deploy:fb`
-- PWA updates are user-controlled (in-app prompt) before activation.
-
 ## Limitations
 
-- Currently only supports 1-to-1 chats and calls
+- Currently only supports 1-to-1 chats and calls (no groups)
