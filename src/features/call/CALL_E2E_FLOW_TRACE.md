@@ -1,6 +1,6 @@
 # Call E2E Flow Trace
 
-Reference snapshot of the current call code path, captured while threading the `audioOnly` flag end-to-end. Intended as input to the upcoming refactor that simplifies/decouples this trace via the new `src/events/` shared API.
+Reference snapshot of the current call code path, captured while threading the `audioOnly` flag end-to-end. Intended as input to the upcoming refactor that simplifies/decouples this trace via the planned `src/events/` shared API (today located at `src/shared/events/`).
 
 Both paths are listed in execution order. Each step links a function with its file and the line where the function definition starts.
 
@@ -76,7 +76,7 @@ The joiner has previously called `listenForIncomingOnRoom(roomId)` (either from 
 5. **`ringtoneManager.playIncoming()` + `callIndicators.startCallIndicators(callerName)`** — invoked from `room-listeners.js:564`
    Audible + visual ringing.
 
-6. **`showIncomingCallUI({ roomId, from }, onAccept, onReject)`** — `src/features/call/components/incoming-call.js`
+6. **`showIncomingCallUI({ roomId, from }, onAccept, onReject)`** — `src/features/call/components/incoming-call.js:6`
    Renders the accept/reject UI and resolves a promise based on user input or external events (`onCallCancelled`, `onAnswerAdded`).
 
 7. **`handleIncomingCallAccepted({ roomId, joinedContactId, audioOnly })`** — `src/features/call/room-listeners.js:309`

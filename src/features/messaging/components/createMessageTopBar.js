@@ -13,10 +13,10 @@ export function createMessageTopBar() {
       <span class="avatar" aria-hidden="true"></span>
       <span class="messages-topbar-name"></span>
     </div>
-    <button type="button" class="messages-topbar-audio-call" aria-label="${t('message.call')}">
+    <button type="button" class="messages-topbar-audio-call" aria-label="${t('message.audioCall')}">
       <i data-lucide="phone" aria-hidden="true"></i>
     </button>
-    <button type="button" class="messages-topbar-call" aria-label="${t('message.call')}">
+    <button type="button" class="messages-topbar-call" aria-label="${t('message.videoCall')}">
       <i data-lucide="video" aria-hidden="true"></i>
     </button>
   `;
