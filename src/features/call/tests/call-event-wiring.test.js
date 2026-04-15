@@ -48,47 +48,47 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('./call-controller.js', () => ({
+vi.mock('../call-controller.js', () => ({
   default: mocks.CallController,
 }));
 
-vi.mock('../contacts/index.js', () => ({
+vi.mock('../../contacts/index.js', () => ({
   contactsService: mocks.contactsService,
   renderContactsList: mocks.renderContactsList,
 }));
 
-vi.mock('../../auth/index.js', () => ({
+vi.mock('../../../auth/index.js', () => ({
   getLoggedInUserId: mocks.auth.getUserId,
   getUserId: mocks.auth.getUserId,
   getUser: mocks.auth.getUser,
 }));
 
-vi.mock('../push-notifications/index.js', () => ({
+vi.mock('../../push-notifications/index.js', () => ({
   getPushNotifications: vi.fn(() => mocks.pushController),
 }));
 
-vi.mock('../../shared/media/state.js', () => ({
+vi.mock('../../../shared/media/state.js', () => ({
   cleanupRemoteStream: mocks.cleanupRemoteStream,
 }));
 
-vi.mock('../../shared/utils/url.js', () => ({
+vi.mock('../../../shared/utils/url.js', () => ({
   clearUrlParam: mocks.clearUrlParam,
 }));
 
-vi.mock('./components/outgoing-call.js', () => ({
+vi.mock('./../components/outgoing-call.js', () => ({
   onOutgoingCallAnswered: mocks.onOutgoingCallAnswered,
 }));
 
-vi.mock('../../app/contact-save-flow.js', () => ({
+vi.mock('../../../app/contact-save-flow.js', () => ({
   promptAndRefreshContactSave: mocks.promptAndRefreshContactSave,
 }));
 
-vi.mock('../../shared/utils/dev/dev-utils.js', () => ({
+vi.mock('../../../shared/utils/dev/dev-utils.js', () => ({
   devDebug: mocks.devDebug,
   isDev: vi.fn(() => false),
 }));
 
-vi.mock('../../shared/events/index.js', () => ({
+vi.mock('../../../shared/events/index.js', () => ({
   publish: mocks.events.publish,
   publishAndAwait: mocks.events.publishAndAwait,
   subscribe: mocks.events.subscribe,
@@ -96,7 +96,7 @@ vi.mock('../../shared/events/index.js', () => ({
   dispatchCommand: mocks.events.dispatchCommand,
 }));
 
-vi.mock('./room-listeners.js', () => ({
+vi.mock('../room-listeners.js', () => ({
   listenForIncomingOnRoom: mocks.listenForIncomingOnRoom,
 }));
 
@@ -115,7 +115,7 @@ describe('setupCallControllerEventWiring', () => {
 
   it('emits evt:call:session:unanswered even when missed-call push delivery fails', async () => {
     const { setupCallControllerEventWiring } =
-      await import('./call-event-wiring.js');
+      await import('../call-event-wiring.js');
 
     setupCallControllerEventWiring({
       lobbyElement: document.createElement('div'),
@@ -129,9 +129,12 @@ describe('setupCallControllerEventWiring', () => {
       wasConnected: false,
     });
 
-    expect(mocks.events.publish).toHaveBeenCalledWith('evt:call:session:unanswered', {
-      roomId: 'room-123',
-      contactId: 'contact-456',
-    });
+    expect(mocks.events.publish).toHaveBeenCalledWith(
+      'evt:call:session:unanswered',
+      {
+        roomId: 'room-123',
+        contactId: 'contact-456',
+      },
+    );
   });
 });
