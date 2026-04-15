@@ -1,83 +1,66 @@
 # State Rules
 
-Pattern for module state that other modules need to observe (e.g. `isLoggedIn`, `isInCall`, current conversation list).
+Pattern for module state that other modules observe (`isLoggedIn`, `isInCall`, `contactsById`, …).
 
-**Goal:** one pattern, one event per domain, one writer, one read path. No hidden mirrors, no per-module bespoke pub/sub.
+Do not call state a **store**. `store` = persistence only.
 
-Not to be confused with `store` — that word is reserved for persistence layers (`contacts-store`, `message-store`). In-memory state lives in `<module>-state.js`.
-
----
-
-## The Pattern
-
-Each module that owns cross-module state exposes **one** file:
-
-```
-src/<module>/<module>-state.js
-```
-
-That file holds:
-
-1. A single `state` object (module-private).
-2. A single `setState(patch)` writer (module-private — not re-exported from the barrel).
-3. Synchronous getters: `getX()`, `getY()`.
-4. One canonical change event: `evt:<module>:state:changed` with payload `{ state, prev }`.
-
-Every mutation goes through `setState`, which applies the patch and publishes the event on the shared app bus (`src/shared/events/`).
-
-### Consumer contract
-
-- **Read now:** call a getter from the module barrel (`import { getIsLoggedIn } from '../auth'`).
-- **React to changes:** `subscribe('evt:<module>:state:changed', ({ state, prev }) => …)`.
-- That's it. No other read or subscribe path is allowed.
-
-### Producer contract
-
-- Only files inside the owning module import `<module>-state.js` directly.
-- Only the owning module calls `setState`.
-- `setState` is not re-exported from the module barrel.
+See also: [`NAMING.md`](./NAMING.md), [`STRUCTURE.md`](./STRUCTURE.md), [`EVENTS.md`](./EVENTS.md), [`LINT_ENFORCEMENT.md`](./LINT_ENFORCEMENT.md).
 
 ---
 
-## Rules
+## Shape
 
-1. **One state file per module.** Named `<module>-state.js`. No `state/` folder, no split files.
-2. **One event per state file.** Canonical name `evt:<module>:state:changed`. Additional events are allowed only when they carry information **not derivable** from `state`/`prev`.
-3. **One writer.** `setState` (or equivalent) is module-private. It must not be re-exported from the barrel. External writes happen via commands (`cmd:*`) handled inside the owning module.
-4. **Sync getters only.** Getters never await, never touch Firebase. If the truth lives remotely, the state file mirrors it.
-5. **No parallel subscription mechanisms.** No local listener sets, no per-module `EventEmitter`. Subscribers use the shared app bus.
-6. **No derived state stored elsewhere.** Consumers may cache values for rendering, not for re-publishing. If two modules need the same derived value, derive it once inside the owning module's state file.
-7. **Boundary:** `<module>-state.js` is importable only from within its own module directory. Cross-module access goes through the barrel. Enforced incrementally via ESLint `no-restricted-imports` (see `eslint.config.js`).
+Each module owning cross-module state has one file: `src/<module>/<module>-state.js`.
 
----
+It exposes:
 
-## Event name
+- One module-private `state` object.
+- One module-private `setState(patch)` writer.
+- Sync getters: `getX()`, `getY()`.
+- One canonical event: `evt:<module>:state:changed` with `{ state, prev }`.
 
-`evt:<module>:state:changed` matches the 4-part canonical regex enforced by the `local/event-name-format` rule: `<kind>:<domain>:<entity>:<action>` → `evt:auth:state:changed`, `evt:contacts:state:changed`, `evt:call:state:changed`, etc.
+## Writer rules
 
-Payload shape:
+- One writer: `setState` in the state file.
+- `setState` is **not** re-exported from the barrel.
+- Every mutation flows through `setState`.
+- `setState` publishes `evt:<module>:state:changed` on every call.
 
-```js
-{
-  state: { /* full current snapshot, immutable */ },
-  prev:  { /* full previous snapshot, immutable */ },
-}
-```
+## Reader rules
 
-Consumers diff `state` vs `prev` if they care about specific transitions.
+- Sync getters only. No `await`, no Firebase, no remote reads.
+- Getters return immutable snapshots (defensive copies).
+- If the truth lives remotely, the state file mirrors it on change.
 
----
+## Consumer rules
+
+- External reads: import getters from the module barrel.
+- External reactions: `subscribe('evt:<module>:state:changed', …)`.
+- External writes: `dispatchCommand('cmd:<module>:*', …)`.
+- No other read, subscribe, or write path.
+
+## Derived state
+
+- No derived state cached across modules.
+- If two modules need the same derived value, derive it once inside the owning state file and expose a getter.
+- Consumers may cache for rendering only, never for re-publishing.
 
 ## Adoption status
 
-| Module     | State file        | `evt:<module>:state:changed` | `setState` private | Boundary enforced |
-| ---------- | ----------------- | ---------------------------- | ------------------ | ----------------- |
-| auth       | `auth-state.js`   | yes                          | yes                | yes               |
-| contacts   | —                 | —                            | —                  | —                 |
-| messaging  | —                 | —                            | —                  | —                 |
+| Module    | State file      | `evt:<module>:state:changed` | `setState` private | Boundary enforced |
+| --------- | --------------- | ---------------------------- | ------------------ | ----------------- |
+| auth      | `auth-state.js` | yes                          | yes                | yes               |
+| contacts  | —               | —                            | —                  | —                 |
+| messaging | —               | —                            | —                  | —                 |
+| call      | —               | —                            | —                  | —                 |
 
-Contacts and messaging will follow. Call module rebuild adopts the pattern from day one.
+## Migration notes
 
-### Notes during migration
+- Legacy surfaces stay during migration, get removed when zero callers remain.
+- `auth/` still exposes `onAuthStateChanged` and `evt:auth:session:ready|login|logout` alongside the canonical event.
 
-- `auth/` retains the legacy `onAuthStateChanged(fn)` subscribe API and the `evt:auth:session:ready|login|logout` events alongside `evt:auth:state:changed`. Callers migrate incrementally; once zero callers remain, the legacy API is deleted.
+---
+
+## Under Consideration
+
+- None.
