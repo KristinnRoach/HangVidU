@@ -18,6 +18,7 @@ class RingtoneManager {
     this.defaultVolume = volume ?? 0.4; // 0.0 to 1.0;
     this.currentPlayer = null;
     this.currentType = null; // 'incoming', 'outgoing', or null
+    this.previousAudioSessionType = null;
   }
 
   /**
@@ -69,8 +70,47 @@ class RingtoneManager {
    * Play outgoing call ringtone (looped)
    * @returns {Promise<boolean>} True if playback started successfully
    */
-  async playOutgoing() {
-    return this._play('outgoing', this.outgoingSrc);
+  async playOutgoing({ audioOnly } = {}) {
+    return this._play('outgoing', this.outgoingSrc, {
+      beforePlayback: () => this._setOutgoingAudioSession({ audioOnly }),
+    });
+  }
+
+  /**
+   * Prefer the handset/voice-call audio route for audio-only outgoing ringing
+   * when the browser exposes Audio Session controls.
+   */
+  _setOutgoingAudioSession({ audioOnly } = {}) {
+    const audioSession = globalThis.navigator?.audioSession;
+    if (!audioSession || !audioOnly) {
+      this.previousAudioSessionType = null;
+      return;
+    }
+
+    this.previousAudioSessionType = audioSession.type ?? null;
+
+    try {
+      audioSession.type = 'play-and-record';
+    } catch (err) {
+      console.warn('[Ringtone] Failed to set audio session for audio-only call', err);
+      this.previousAudioSessionType = null;
+    }
+  }
+
+  _restoreAudioSession() {
+    const audioSession = globalThis.navigator?.audioSession;
+    if (!audioSession || this.previousAudioSessionType == null) {
+      this.previousAudioSessionType = null;
+      return;
+    }
+
+    try {
+      audioSession.type = this.previousAudioSessionType;
+    } catch (err) {
+      console.warn('[Ringtone] Failed to restore audio session type', err);
+    } finally {
+      this.previousAudioSessionType = null;
+    }
   }
 
   /**
@@ -80,9 +120,10 @@ class RingtoneManager {
    * @param {string} src - Path to audio file
    * @returns {Promise<boolean>}
    */
-  async _play(type, src) {
+  async _play(type, src, { beforePlayback } = {}) {
     // Stop any currently playing ringtone first
     this.stop();
+    beforePlayback?.();
 
     try {
       // Create new player with looping enabled
@@ -122,6 +163,8 @@ class RingtoneManager {
    * Stop the currently playing ringtone
    */
   stop() {
+    this._restoreAudioSession();
+
     if (this.currentPlayer) {
       console.log(`[Ringtone] Stopping ${this.currentType} ringtone`);
       this.currentPlayer.stop();

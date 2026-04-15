@@ -25,7 +25,10 @@ import {
 //   showCopyLinkModal (UI), showCallingUI (UI) — all cross-domain orchestration.
 // - This file is a candidate for renaming to call-orchestration.js once stable.
 
-export function getCallOptions(targetRoomId = null, { audioOnly = false } = {}) {
+export function getCallOptions(
+  targetRoomId = null,
+  { audioOnly = false } = {},
+) {
   const { localVideoEl, remoteVideoEl, mutePartnerBtn } = getElements();
   return {
     localStream: getLocalStream(),
@@ -57,7 +60,11 @@ export function applyCallResult(result, showLinkModal = false) {
 
 export async function joinOrCreateRoomWithId(
   customRoomId,
-  { forceInitiator = false, allowCreate = forceInitiator, audioOnly = false } = {},
+  {
+    forceInitiator = false,
+    allowCreate = forceInitiator,
+    audioOnly = false,
+  } = {},
 ) {
   try {
     await initLocalStreamAndMedia({ audioOnly });
@@ -215,6 +222,7 @@ export async function callContact(
     try {
       onCallingStarted();
       await showOutgoingCallUI(roomId, contactNickName, {
+        audioOnly,
         onCancel: (reason) => {
           CallController.hangUp({ reason }).catch((e) => {
             console.warn('[CALL] hangUp after cancel/timeout failed:', e);
