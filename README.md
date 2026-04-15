@@ -1,6 +1,6 @@
 # HangVidU
 
-A simple peer-to-peer video chat app with a watch-together mode.
+Peer-to-peer video chat app with text messaging and synced media sharing capabilities.
 
 ## Try it now
 
@@ -8,11 +8,10 @@ A simple peer-to-peer video chat app with a watch-together mode.
 
 ## Usage
 
-1. Click the "Call" button to generate a one-time video chat link
-2. Share the link with a partner
-3. Partner opens the link in a browser to start video chat
-4. Search youtube videos or paste direct url to hosted video in search bar
-5. Watch in sync with your partner
+1. Login via Google
+2. Click "Add Contacts" button in top bar
+3. Send invite link to add contacts and/or import your Google contacts and select bulk invite
+4. Video call, send messages and watch videos with your contacts
 
 ## Stack
 
