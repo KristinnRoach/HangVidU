@@ -24,6 +24,7 @@ import {
   resolveIncomingCallUI,
   dismissActiveIncomingCallUI,
 } from './components/incoming-call.js';
+import { dismissActiveConfirmDialog } from '../../shared/components/base/confirm-dialog.js';
 import { isRoomCallFresh } from './WIP-isRoomCallFresh.js';
 
 import { joinOrCreateRoomWithId } from './WIP-start-call-refactor.js';
@@ -727,8 +728,6 @@ export function listenForIncomingOnRoom(roomId) {
         dismissActiveIncomingCallUI(roomId);
 
         // Dismiss legacy confirmDialog (for testing/rollback)
-        const { dismissActiveConfirmDialog } =
-          await import('../../shared/components/base/confirm-dialog.js');
         if (typeof dismissActiveConfirmDialog === 'function') {
           dismissActiveConfirmDialog();
         }

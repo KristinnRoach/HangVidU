@@ -13,6 +13,9 @@ export default defineConfig(({ mode }) => {
     base: basePath,
 
     build: {
+      // AC3 support is intentionally emitted as a large, on-demand chunk.
+      // Keep warnings focused on regressions beyond the current expected ceiling.
+      chunkSizeWarningLimit: 1200,
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),

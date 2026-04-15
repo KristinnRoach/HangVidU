@@ -11,6 +11,7 @@ import {
 } from '../../components/ui/utils/ui-utils.js';
 import { handleVideoSelection } from '../../../features/watch/watch-sync.js';
 import { ensureYouTubeAPILoaded } from './youtube-player.js';
+import { initializeYouTubeElements } from '../../../elements.js';
 
 // ===== ELEMENTS =====
 
@@ -79,7 +80,6 @@ export async function initializeSearchUI() {
 
   try {
     // Use robust access for dynamically loaded search elements
-    const { initializeYouTubeElements } = await import('../../../elements.js');
     const elements = await initializeYouTubeElements();
 
     searchContainer = elements.searchContainer;
