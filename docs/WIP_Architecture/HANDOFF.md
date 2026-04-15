@@ -14,8 +14,8 @@ Completed in this branch:
 - removed the auth-local bus and standardized auth commands on the shared events API
 - made `AuthComponent` dispatch auth commands instead of calling auth actions directly
 - simplified ESLint boundary rules to a generic module model with incremental enforcement
-- added generic feature typing with captured `featureName` values in `eslint.config.js`
-- limited active feature enforcement to `contacts`
+- added generic feature typing with captured `featureName` values in `eslint.boundaries.config.js`
+- expanded active feature enforcement beyond `contacts`
 - added [ADD_NEXT_FEATURE.md](./ADD_NEXT_FEATURE.md) with the exact template for turning on the next feature
 - moved `appBus` and `EventEmitter` from `src/app/` to `src/shared/events/`
 - added `src/shared/events/index.js` as the intended public cross-module event entrypoint
@@ -29,7 +29,7 @@ Completed in this branch:
 - updated `contacts` -> `messaging` conversation selection to use `dispatchCommand('messaging:conversation:select', ...)`
 - updated unread-count flow so `messaging` owns unread subscriptions and publishes unread facts for `contacts`
 - removed `src/shared/components/ui/dispatcher.js`
-- made `src/shared/events/` explicitly part of shared code in `eslint.config.js`
+- made `src/shared/events/` explicitly part of shared code in `eslint.boundaries.config.js`
 - moved legacy shared presence logic into `src/features/presence/` with abstracted RTDB layer, added to shared boundary patterns
 - removed `contacts-bus` and `setupContactsAppBusBridge`
 - changed `contacts-service` to publish cross-module facts directly:
@@ -74,10 +74,11 @@ Current intended standards:
 - direct `appBus` imports outside `src/shared/events/` should be treated as migration leftovers unless there is a strong reason
 - app setup/init standards are tracked in [HANDOFF_SETUP_INIT.md](./HANDOFF_SETUP_INIT.md)
 
-Verified on this branch (April 6, 2026):
+Current boundary snapshot (April 15, 2026):
 
-- temporary `shared -> feature` allowlist is active for: `call`, `messaging`, `watch`, `notifications`
-- `pnpm lint:boundaries` passes
+- enforced features in default mode: `contacts`, `push-notifications`, `messaging`, `call`
+- temporary `shared -> feature` allowlist is active for: `watch`, `notifications`
+- `pnpm lint:boundaries` currently fails with `13` errors
 - `contacts -> messaging` boundary dependency is removed by moving the helper to shared utils
 - no direct `appBus` imports were found outside `src/shared/events/` in runtime source files
 
@@ -99,11 +100,13 @@ Notes:
 
 - `src/auth/auth-state.js` still owns the canonical auth snapshot and the internal `subscribe()` implementation
 - `src/auth/index.js` is now the intended public auth surface for external consumers
-- `contacts` is the only feature currently under active feature-boundary enforcement
+- active feature-boundary enforcement is currently enabled for:
+  - `contacts`
+  - `push-notifications`
+  - `messaging`
+  - `call`
 - the prior `shared -> auth` cloud-functions violation is resolved; auth-bound cloud-functions code now lives in `src/auth/cloud-functions.js`
 - temporary `shared -> feature` allowlist is active in `eslint.boundaries.config.js` for:
-  - `call`
-  - `messaging`
   - `watch`
   - `notifications`
 - storage status:

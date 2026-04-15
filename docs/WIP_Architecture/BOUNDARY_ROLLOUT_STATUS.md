@@ -4,35 +4,23 @@
 
 Command: `pnpm lint:boundaries`
 
-Status: passing
+Snapshot: `2026-04-15`
+
+Status: failing (`13` errors)
 
 ### Currently active rules (in default mode)
 
-#### Auth: Off
+#### Auth
 
-TODO Add:
+- `auth -> auth | shared`
 
-- auth -> auth
-- auth -> shared
+#### App
 
-#### App: Off
+- no `app` boundary rule is currently configured
 
-TODO Add:
+#### Setup
 
-- app -> app
-- app -> auth
-- app -> shared
-- app -> feature(\*)
-
-#### Setup: Off
-
-TODO Add:
-
-- setup -> setup
-- setup -> app
-- setup -> auth
-- setup -> shared
-- setup -> feature(\*)
+- `setup -> setup | auth | feature(*) | shared`
 
 #### Shared:
 
@@ -40,11 +28,14 @@ TODO Add:
 
 TODO REMOVE:
 
-- `shared -> feature(call|messaging|watch|notifications)`
+- `shared -> feature(watch|notifications)`
 
 #### Features:
 
 - `feature(contacts) -> feature(contacts) | auth | shared`
+- `feature(push-notifications) -> feature(push-notifications) | auth | shared`
+- `feature(messaging) -> feature(messaging) | auth | shared`
+- `feature(call) -> feature(call) | auth | shared`
 
 TODO Add:
 
@@ -54,22 +45,22 @@ TODO Add:
 
 Command: `BOUNDARIES_ENFORCE_ALL=1 pnpm lint:boundaries`
 
-Snapshot: 2026-04-11
+Snapshot: `2026-04-15`
 
-Total failures: `14`
+Total failures: `16`
 
 ### Failure categories
 
 - `feature -> feature`: `13`
-- `feature -> app`: `1`
+- `shared -> feature`: `3`
 - `auth -> feature`: `0`
 - `setup/*` failures: `0`
 
 ### `feature -> feature` by importing feature
 
-- `call`: `11`
-- `watch`: `2`
+- `call`: `10`
 - `notifications`: `1`
+- `watch`: `2`
 
 ### Current failing files
 
@@ -80,3 +71,6 @@ Total failures: `14`
 - `src/features/notifications/components/enable-notifications-prompt.js` (1)
 - `src/features/watch/watch-file-handler.js` (1)
 - `src/features/watch/watch-sync.js` (1)
+- `src/shared/media/WIP-init-local-media.js` (1)
+- `src/shared/media/audio-input-recovery.js` (1)
+- `src/shared/pwa/update-handlers.js` (1)

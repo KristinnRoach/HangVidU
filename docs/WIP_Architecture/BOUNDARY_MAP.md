@@ -8,6 +8,10 @@
 - `src/features/<name>/**` -> `feature(<name>)`
 - `src/shared/components/**`, `src/shared/events/**`, `src/shared/vendors/**`, `src/shared/i18n/**`, `src/shared/media/**`, `src/shared/media-next/**`, `src/shared/pwa/**`, `src/shared/storage/**`, `src/shared/styles/**`, `src/shared/utils/**` -> `shared`
 
+Current code note:
+
+- `src/app/**` is part of the target map, but there is no active `src/app/` tree or `app` boundary element configured in `eslint.boundaries.config.js` right now.
+
 ## Allowed imports matrix
 
 Rows = importer, columns = allowed target.

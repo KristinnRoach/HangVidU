@@ -1,7 +1,7 @@
 # Add Next Feature
 
 When enforcing boundaries for the next feature, add one new ESLint block to
-`eslint.config.js`.
+`eslint.boundaries.config.js`.
 
 Rule intent:
 
@@ -73,7 +73,7 @@ Example for `messaging`:
 
 Current reminder:
 
-- feature typing is already generic in `eslint.config.js`
+- feature typing is already generic in `eslint.boundaries.config.js`
 - adding a block like the above turns enforcement on for one feature
 - no other feature needs to change at the same time
 - when boundary lint fails, prefer first moving code to the right layer/folder before weakening the rule
