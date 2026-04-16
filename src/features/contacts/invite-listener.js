@@ -6,7 +6,6 @@ import {
 } from './invitations.js';
 import { dispatchCommand } from '../../shared/events/index.js';
 import { showSuccessToast, showErrorToast } from '../../shared/components/toast.js';
-import { renderContactsList } from './components/contacts-list.js';
 
 // TODO: WIP decoupling considerations:
 // createInviteNotification, inAppNotificationManager, showSuccessToast/showErrorToast
@@ -23,7 +22,7 @@ let isProcessingInvite = false;
  * Process the next invite in the queue.
  * Shows invite notification in the notification list.
  */
-async function processNextInvite(lobbyElement) {
+async function processNextInvite() {
   if (isProcessingInvite || pendingInvites.length === 0) return;
 
   isProcessingInvite = true;
@@ -40,7 +39,6 @@ async function processNextInvite(lobbyElement) {
         try {
           await acceptInvite(fromUserId, inviteData);
           console.log('[INVITATIONS] Contact added:', inviteData.fromName);
-          await renderContactsList(lobbyElement).catch(() => {});
           showSuccessToast(`✅ ${inviteData.fromName} added to contacts!`);
 
           // Remove notification after successful accept
@@ -53,7 +51,7 @@ async function processNextInvite(lobbyElement) {
           // Keep notification visible on error
         } finally {
           isProcessingInvite = false;
-          processNextInvite(lobbyElement);
+          processNextInvite();
         }
       },
       onDecline: async () => {
@@ -69,14 +67,14 @@ async function processNextInvite(lobbyElement) {
           console.error('[INVITATIONS] Failed to decline invite:', e);
         } finally {
           isProcessingInvite = false;
-          processNextInvite(lobbyElement);
+          processNextInvite();
         }
       },
     });
   } catch (error) {
     console.error('[INVITATIONS] Failed to process invite:', error);
     isProcessingInvite = false;
-    processNextInvite(lobbyElement);
+    processNextInvite();
   }
 }
 
@@ -84,10 +82,10 @@ async function processNextInvite(lobbyElement) {
  * Set up listener for incoming contact invitations.
  * Queues invites and processes them one at a time.
  */
-export function setupInviteListener(lobbyElement) {
+export function setupInviteListener() {
   listenForInvites((fromUserId, inviteData) => {
     pendingInvites.push({ fromUserId, inviteData });
-    processNextInvite(lobbyElement);
+    processNextInvite();
   });
 
   // Listen for accepted invites (when someone accepts your invite)
@@ -96,9 +94,6 @@ export function setupInviteListener(lobbyElement) {
       '[INVITATIONS] Your invite was accepted by:',
       acceptData.acceptedByName,
     );
-
-    // Refresh contacts list to show new contact
-    await renderContactsList(lobbyElement).catch(() => {});
 
     // Show success toast
     showSuccessToast(

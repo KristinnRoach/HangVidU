@@ -14,10 +14,11 @@ import { getPushNotifications } from './features/push-notifications/index.js';
 import CallController from './features/call/call-controller.js';
 import { messagingController } from './features/messaging/messaging-controller.js';
 import {
-  contactsService,
-  renderContactsList,
+  mountContactsList,
   cleanupContacts,
   showAddContactModal,
+  getContactConversationId,
+  getContactsSorted,
 } from './features/contacts/index.js';
 
 import {
@@ -187,9 +188,9 @@ async function bootstrapApp() {
         showDebugUIForNotifications,
       }),
     bindCallUI: () => bindCallUI(CallController),
+    mountContactsList: () => mountContactsList(lobbyDiv),
     setupMainAppBusListeners,
     startListeningForSavedRooms,
-    renderContactsList: () => renderContactsList(lobbyDiv),
     autoInitMsgSessionIfNeeded,
     autoJoinFromUrl,
     handleServiceWorkerNavigation,
@@ -547,8 +548,7 @@ async function handleServiceWorkerNavigation(path) {
       let conversationId = conversationIdFromUrl ?? null;
 
       if (contactId) {
-        const contactConversationId =
-          await contactsService.getConversationId(contactId);
+        const contactConversationId = getContactConversationId(contactId);
 
         if (contactConversationId) {
           if (
@@ -658,7 +658,7 @@ export async function autoInitMsgSessionIfNeeded() {
   if (messagingController.conversations.size > 0) return;
 
   try {
-    const contacts = await contactsService.getAllContactsSorted();
+    const contacts = getContactsSorted();
     if (!Array.isArray(contacts) || contacts.length === 0) return;
 
     const firstContact = contacts[0];

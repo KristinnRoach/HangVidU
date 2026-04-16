@@ -18,10 +18,9 @@ const mocks = vi.hoisted(() => {
     messagingController: {
       selectConversation: vi.fn(() => Promise.resolve()),
     },
-    contactsService: {
-      getConversationId: vi.fn(),
-      getContact: vi.fn(async () => null),
-    },
+    getContactById: vi.fn(() => null),
+    getContactByRoomId: vi.fn(() => null),
+    getContactConversationId: vi.fn(() => null),
     callContact: vi.fn(),
     listenForIncomingOnRoom: vi.fn(),
     removeIncomingListenersForRoom: vi.fn(),
@@ -41,7 +40,9 @@ vi.mock('../../features/messaging/messaging-controller.js', () => ({
 }));
 
 vi.mock('../../features/contacts/index.js', () => ({
-  contactsService: mocks.contactsService,
+  getContactById: mocks.getContactById,
+  getContactByRoomId: mocks.getContactByRoomId,
+  getContactConversationId: mocks.getContactConversationId,
 }));
 
 vi.mock('../../shared/utils/dev/dev-utils.js', () => ({
@@ -91,7 +92,7 @@ describe('setupMainAppBusListeners', () => {
       roomId: 'room-123',
     });
 
-    expect(mocks.contactsService.getConversationId).not.toHaveBeenCalled();
+    expect(mocks.getContactConversationId).not.toHaveBeenCalled();
     expect(mocks.messagingController.selectConversation).not.toHaveBeenCalled();
     expect(mocks.callContact).toHaveBeenCalledWith(
       null,
@@ -114,7 +115,7 @@ describe('setupMainAppBusListeners', () => {
       displayUI: true,
     });
 
-    expect(mocks.contactsService.getContact).toHaveBeenCalledWith('contact-1');
+    expect(mocks.getContactById).toHaveBeenCalledWith('contact-1');
     expect(mocks.messagingController.selectConversation).toHaveBeenCalledWith(
       'conv-123',
       {
@@ -139,7 +140,7 @@ describe('setupMainAppBusListeners', () => {
       contactNickName: 'Provided Nick',
     });
 
-    expect(mocks.contactsService.getContact).not.toHaveBeenCalled();
+    expect(mocks.getContactById).not.toHaveBeenCalled();
     expect(mocks.messagingController.selectConversation).toHaveBeenCalledWith(
       'conv-123',
       {
@@ -151,7 +152,7 @@ describe('setupMainAppBusListeners', () => {
   });
 
   it('passes contactNickName to preselected outgoing-call conversation', async () => {
-    mocks.contactsService.getConversationId.mockResolvedValue('conv-xyz');
+    mocks.getContactConversationId.mockReturnValue('conv-xyz');
 
     const { setupMainAppBusListeners } =
       await import('../setupMainAppBusListeners.js');
@@ -181,7 +182,7 @@ describe('setupMainAppBusListeners', () => {
       await import('../setupMainAppBusListeners.js');
 
     await setupMainAppBusListeners();
-    const handler = mocks.handlers.get('evt:room:id:updated');
+    const handler = mocks.handlers.get('evt:contacts:room:updated');
 
     handler?.({
       roomId: 'room-new',

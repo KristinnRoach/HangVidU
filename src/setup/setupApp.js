@@ -32,9 +32,9 @@ function drainCleanupFns(cleanupFns) {
  * - runInit: runs module init and resolves to boolean success
  * - setupTopBarAndLocale: resolves to cleanup function
  * - bindCallUI: binds call UI handlers
+ * - mountContactsList: mounts contacts UI and keeps it in sync
  * - setupMainAppBusListeners: registers app-level command/fact handlers
  * - startListeningForSavedRooms
- * - renderContactsList
  * - autoInitMsgSessionIfNeeded
  * - autoJoinFromUrl
  * - handleServiceWorkerNavigation
@@ -48,9 +48,9 @@ function drainCleanupFns(cleanupFns) {
  *   runInit: () => Promise<boolean>,
  *   setupTopBarAndLocale: () => Promise<() => void>,
  *   bindCallUI: () => void,
+ *   mountContactsList: () => Promise<void>,
  *   setupMainAppBusListeners: () => Promise<(() => void)|void>|(() => void)|void,
  *   startListeningForSavedRooms: () => Promise<void>,
- *   renderContactsList: () => Promise<void>,
  *   autoInitMsgSessionIfNeeded: () => Promise<void>,
  *   autoJoinFromUrl: () => Promise<boolean>,
  *   handleServiceWorkerNavigation: (path: string) => Promise<boolean>,
@@ -101,6 +101,7 @@ export function setupApp(options) {
 
       cleanupFns.push(await options.setupTopBarAndLocale());
       options.bindCallUI();
+      await options.mountContactsList();
       const appBusCleanup = await options.setupMainAppBusListeners();
       if (typeof appBusCleanup === 'function') {
         cleanupFns.push(appBusCleanup);
@@ -109,10 +110,6 @@ export function setupApp(options) {
       await options
         .startListeningForSavedRooms()
         .catch((e) => console.warn('Failed to start saved-room listeners', e));
-
-      await options.renderContactsList().catch((e) => {
-        console.warn('Failed to render contacts list:', e);
-      });
 
       await options.autoInitMsgSessionIfNeeded().catch((e) => {
         console.warn('Failed to auto-init messaging session:', e);

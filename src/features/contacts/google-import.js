@@ -2,7 +2,7 @@ import {
   requestContactsAccess,
   getUser,
 } from '../../auth/index.js';
-import { contactsService } from './contacts-service.js';
+import { getAllContacts } from './contacts-state.js';
 import { findUsersByEmails } from './user-discovery.js';
 import { fetchGoogleContacts } from './google-contacts.js';
 import { buildImportableContacts } from './import-contacts-utils.js';
@@ -29,7 +29,7 @@ export async function importGoogleContacts({
       count: contacts.length,
     });
 
-    const savedContacts = await contactsService.getAllContacts();
+    const savedContacts = getAllContacts();
     const savedContactIds = new Set(Object.keys(savedContacts || {}));
     const registeredUsers = await findUsersByEmails(
       contacts.map((contact) => contact.email),

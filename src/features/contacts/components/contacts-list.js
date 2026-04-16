@@ -12,7 +12,7 @@ import { escapeHtml } from '../../../shared/components/ui/component-system/dom-u
 import { initIcons } from '../../../shared/components/ui/icons.js';
 import { dispatchCommand, subscribe } from '../../../shared/events/index.js';
 import { contactsService } from '../contacts-service.js';
-import { devDebug } from '../../../shared/utils/dev/dev-utils.js';
+import { getAllContacts, getAllContactsSorted } from '../contacts-state.js';
 
 // TODO: WIP decoupling considerations:
 // This feature-owned UI still composes shared UI primitives and messaging side effects.
@@ -27,39 +27,25 @@ const unreadListeners = new Map();
 // Track locale change listener for cleanup
 let localeUnsubscribe = null;
 
-// Track last rendered lobby element for re-rendering on locale change
-let lastRenderedLobby = null;
+// Track state change listener for cleanup
+let stateUnsubscribe = null;
+
+// Track mounted lobby element for rerendering
+let mountedLobbyElement = null;
 
 // Limit displayed contact name length in the UI  (keep full name in title)
 const MAX_CONTACT_NAME_CHARS = 18;
 
 /**
- * Render the contacts list in the lobby element.
- *
- * Todo: get rid of lobbyElement dependency for re-rendering
+ * Render the contacts list into the mounted lobby element.
  */
-export async function renderContactsList(lobbyElement) {
-  if (!lobbyElement) {
-    devDebug('renderContactsList called without lobbyElement!');
-  }
-
-  // Update lobby reference on every render
-  lastRenderedLobby = lobbyElement ? lobbyElement : lastRenderedLobby;
-
-  if (!lastRenderedLobby) {
-    console.error('No lobby element available to render contacts list!');
+async function renderContactsList() {
+  if (!mountedLobbyElement) {
     return;
   }
 
-  // Set up locale change listener on first render
-  if (!localeUnsubscribe) {
-    localeUnsubscribe = onLocaleChange(() => {
-      if (lastRenderedLobby) renderContactsList(lastRenderedLobby);
-    });
-  }
-
   // `getAllContactsSorted()` returns an array of contact objects (sorted by lastInteractionAt).
-  const contactsResult = await contactsService.getAllContactsSorted();
+  const contactsResult = getAllContactsSorted();
 
   let entries = [];
   if (Array.isArray(contactsResult)) {
@@ -74,11 +60,11 @@ export async function renderContactsList(lobbyElement) {
   const contactIds = entries.map((e) => e.id);
 
   // Find or create contacts container
-  let contactsContainer = lobbyElement.querySelector('.contacts-container');
+  let contactsContainer = mountedLobbyElement.querySelector('.contacts-container');
   if (!contactsContainer) {
     contactsContainer = document.createElement('div');
     contactsContainer.className = 'contacts-container';
-    lobbyElement.appendChild(contactsContainer);
+    mountedLobbyElement.appendChild(contactsContainer);
   }
 
   if (contactIds.length === 0) {
@@ -154,7 +140,7 @@ export async function renderContactsList(lobbyElement) {
   initIcons(contactsContainer);
 
   // Attach event listeners for call/delete buttons
-  attachContactListeners(contactsContainer, lobbyElement);
+  attachContactListeners(contactsContainer);
 
   // Setup presence indicators for each contact
   setupPresenceIndicators(contactIds, contactsContainer);
@@ -164,12 +150,40 @@ export async function renderContactsList(lobbyElement) {
 }
 
 /**
+ * Mount the contacts list once and keep it in sync with contacts state.
+ *
+ * @param {HTMLElement} lobbyElement
+ * @returns {Promise<void>}
+ */
+export async function mountContactsList(lobbyElement) {
+  mountedLobbyElement = lobbyElement ?? null;
+
+  if (!localeUnsubscribe) {
+    localeUnsubscribe = onLocaleChange(() => {
+      renderContactsList().catch((error) => {
+          console.warn('[contacts] Failed to rerender on locale change:', error);
+      });
+    });
+  }
+
+  if (!stateUnsubscribe) {
+    stateUnsubscribe = subscribe('evt:contacts:state:changed', () => {
+      renderContactsList().catch((error) => {
+          console.warn('[contacts] Failed to rerender on state change:', error);
+      });
+    });
+  }
+
+  await renderContactsList();
+}
+
+/**
  * Attach event listeners to contact list elements.
  */
-function attachContactListeners(container, lobbyElement) {
-  if (!container || !lobbyElement) {
+function attachContactListeners(container) {
+  if (!container || !mountedLobbyElement) {
     console.error(
-      'attachContactListeners(): Container or lobbyElement missing!',
+      'attachContactListeners(): Container or mountedLobbyElement missing!',
     );
     return;
   }
@@ -231,7 +245,7 @@ function attachContactListeners(container, lobbyElement) {
       const contactId = btn.getAttribute('data-contact-id');
       if (!contactId) return;
 
-      const contacts = await contactsService.getAllContacts();
+      const contacts = getAllContacts();
       const contact = contacts[contactId];
       if (!contact) return;
 
@@ -249,7 +263,7 @@ function attachContactListeners(container, lobbyElement) {
         if (!confirmed) return;
         await contactsService.deleteContact(contactId);
       }
-      await renderContactsList(lobbyElement);
+      await renderContactsList();
     };
   });
 }
@@ -374,5 +388,10 @@ export function cleanupContacts() {
     localeUnsubscribe = null;
   }
 
-  lastRenderedLobby = null;
+  if (stateUnsubscribe) {
+    stateUnsubscribe();
+    stateUnsubscribe = null;
+  }
+
+  mountedLobbyElement = null;
 }

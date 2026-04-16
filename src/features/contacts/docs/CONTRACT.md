@@ -3,25 +3,25 @@
 - `contacts-service.js`
   - owns writes
   - owns backend selection
+  - hydrates contacts state from storage
   - publishes cross-module contact facts when writes succeed
   - owns contact-module policy helpers
 
-- `contacts-query.js`
-  - owns read/query helpers built on storage
-  - no writes
-  - no appBus
-  - no backend selection
+- `contacts-state.js`
+  - owns synchronous read getters
+  - publishes `evt:contacts:state:changed`
+  - mirrors the current contacts snapshot for cross-module reads
 
 - Current split
-  - service: `saveContact`, `updateContact`, `deleteContact`, `updateLastInteraction`, `handleHangUp`
-  - query: `getAllContacts`, `getAllContactsSorted`, `getContactByMostRecentInteraction`, `getContactByRoomId`
+  - service: `saveContact`, `updateContact`, `deleteContact`, `updateLastInteraction`, `handleHangUp`, `hydrateContactsState`
+  - state: `getAllContacts`, `getContactById`, `getContactByRoomId`, `getConversationId`, `getAllContactsSorted`, `getContactByMostRecentInteraction`, `getIsHydrated`
 
 - Published facts
-  - `evt:room:id:created`
-  - `evt:room:id:updated`
+  - `evt:contacts:room:created`
+  - `evt:contacts:room:updated`
   - `evt:contacts:contact:deleted`
 
 - Storage boundary
-  - both depend on `contacts/storage/*`
+  - service depends on `contacts/storage/*`
   - storage stays generic
-  - contact-specific read helpers stay above storage
+  - external reads go through contacts state, not storage

@@ -54,6 +54,7 @@ vi.mock('../call-controller.js', () => ({
 
 vi.mock('../../contacts/index.js', () => ({
   contactsService: mocks.contactsService,
+  getContactByRoomId: mocks.contactsService.getContactByRoomId,
   renderContactsList: mocks.renderContactsList,
 }));
 
@@ -104,7 +105,7 @@ describe('setupCallControllerEventWiring', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.cleanupHandler = null;
-    mocks.contactsService.getContactByRoomId.mockResolvedValue({
+    mocks.contactsService.getContactByRoomId.mockReturnValue({
       contactId: 'contact-456',
       contactNickName: 'Saved Contact',
     });

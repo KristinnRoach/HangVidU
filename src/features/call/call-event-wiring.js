@@ -1,5 +1,5 @@
 import CallController from './call-controller.js';
-import { contactsService, renderContactsList } from '../contacts/index.js';
+import { getContactByRoomId } from '../contacts/index.js';
 import { getUserId, getUser } from '../../auth/index.js';
 import { getPushNotifications } from '../push-notifications/index.js';
 import { cleanupRemoteStream } from '../../shared/media/state.js';
@@ -86,7 +86,7 @@ export function setupCallControllerEventWiring(options = {}) {
       if (isMissedCall) {
         console.log('[MAIN] Potential missed call detected for room:', roomId);
         try {
-          const contact = await contactsService.getContactByRoomId(roomId);
+          const contact = getContactByRoomId(roomId);
           if (contact && contact.contactId) {
             const me = getUser();
             const callerName = me?.userName || 'Friend';
@@ -135,8 +135,9 @@ export function setupCallControllerEventWiring(options = {}) {
       cleanupRemoteStream();
       clearUrlParam();
 
+      // TODO: render contacts list in reaction to interaction update via events
       // Re-render contacts list so sort order reflects updated lastInteractionAt
-      renderContactsList(lobbyElement).catch(() => {});
+      // renderContactsList(lobbyElement).catch(() => {});
 
       // Re-attach incoming listener so the next call on this room is detected
       if (roomId && reason !== 'page_unload') {

@@ -14,10 +14,8 @@ vi.mock('../../../auth/index.js', () => ({
   getUser: mocks.getUser,
 }));
 
-vi.mock('../contacts-service.js', () => ({
-  contactsService: {
-    getAllContacts: mocks.getAllContacts,
-  },
+vi.mock('../contacts-state.js', () => ({
+  getAllContacts: mocks.getAllContacts,
 }));
 
 vi.mock('../user-discovery.js', () => ({
@@ -50,7 +48,7 @@ describe('importGoogleContacts', () => {
 
     mocks.requestContactsAccess.mockResolvedValue('token-123');
     mocks.fetchGoogleContacts.mockResolvedValue(googleContacts);
-    mocks.getAllContacts.mockResolvedValue(savedContacts);
+    mocks.getAllContacts.mockReturnValue(savedContacts);
     mocks.findUsersByEmails.mockResolvedValue(registeredUsers);
     mocks.getUser.mockReturnValue({ uid: 'me' });
     mocks.buildImportableContacts.mockReturnValue(importableContacts);

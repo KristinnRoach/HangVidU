@@ -1,4 +1,4 @@
-import { captureReferral } from '../features/contacts/index.js';
+import { captureReferral, hydrateContactsState } from '../features/contacts/index.js';
 
 let isReady = false;
 let initPromise = null;
@@ -26,6 +26,7 @@ export function setupContacts() {
   }
 
   initPromise = captureReferral()
+    .then(() => hydrateContactsState())
     .then(() => {
       isReady = true;
       return cleanup;

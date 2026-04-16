@@ -4,14 +4,9 @@ import {
   createContactsLocalStore,
   createContactsRTDBStore,
 } from './storage/index.js';
-import {
-  getAllContacts,
-  getAllContactsSorted,
-  getContactByMostRecentInteraction,
-  getContactByRoomId,
-} from './contacts-query.js';
 import { resolveDirectConversationId } from '../../shared/utils/direct-conversation-id.js';
 import { publish } from '../../shared/events/index.js';
+import { setState, getAllContacts } from './contacts-state.js';
 // PAUSED: claude --resume edf6030f-72fb-4503-9175-bfc21d2d973c
 
 /**
@@ -57,6 +52,27 @@ function logServiceFailure(action, error, context = {}) {
 }
 
 /**
+ * Read all contacts from storage and key them by contact id.
+ *
+ * @param {import('./storage/contacts-store.js').ContactsStore} storage
+ * @returns {Promise<Record<string, ContactRecord>>}
+ */
+async function loadContactsById(storage) {
+  const contacts = await storage.list();
+  const byId = {};
+
+  for (const contact of contacts) {
+    if (!contact?.contactId) {
+      continue;
+    }
+
+    byId[contact.contactId] = contact;
+  }
+
+  return byId;
+}
+
+/**
  * Publish room creation when a saved contact has a room id.
  *
  * @param {ContactRecord} contact
@@ -68,7 +84,7 @@ async function emitContactSaved(contact) {
     return;
   }
 
-  publish('evt:room:id:created', { roomId });
+  publish('evt:contacts:room:created', { roomId });
 }
 
 /**
@@ -85,7 +101,7 @@ async function emitContactUpdated(contact, previousRoomId) {
     return;
   }
 
-  publish('evt:room:id:updated', {
+  publish('evt:contacts:room:updated', {
     contactId: contact.contactId,
     contactNickName: contact.contactNickName,
     roomId,
@@ -107,32 +123,6 @@ async function emitContactDeleted(contactId, roomId) {
  * contact-specific query helpers that should not live in storage.
  */
 export class ContactsService {
-  /**
-   * Read one contact.
-   *
-   * @param {string} contactId
-   * @returns {Promise<ContactRecord|null>}
-   */
-  async getContact(contactId) {
-    try {
-      return await getContactsStorage().get(contactId);
-    } catch (error) {
-      logServiceFailure('getContact', error, { contactId });
-      return null;
-    }
-  }
-
-  /**
-   * Resolve the stored conversation id for one saved contact.
-   *
-   * @param {string} contactId
-   * @returns {Promise<string|null>}
-   */
-  async getConversationId(contactId) {
-    const contact = await this.getContact(contactId);
-    return contact?.conversationId ?? null;
-  }
-
   /**
    * Update an existing contact.
    * Returns `null` when the contact does not exist.
@@ -161,6 +151,11 @@ export class ContactsService {
         return null;
       }
 
+      // Sync in-memory state mirror
+      const byId = getAllContacts();
+      byId[contactId] = updatedContact;
+      setState({ byId });
+
       await emitContactUpdated(updatedContact, previousRoomId);
       return updatedContact;
     } catch (error) {
@@ -188,70 +183,17 @@ export class ContactsService {
         return false;
       }
 
+      // Sync in-memory state mirror
+      const byId = getAllContacts();
+      delete byId[contactId];
+      setState({ byId });
+
       await emitContactDeleted(contactId, existing?.roomId ?? null);
 
       return true;
     } catch (error) {
       logServiceFailure('deleteContact', error, { contactId });
       return false;
-    }
-  }
-
-  /**
-   * Read all contacts as a map keyed by `contactId`.
-   *
-   * @returns {Promise<Record<string, ContactRecord>>}
-   */
-  async getAllContacts() {
-    try {
-      return await getAllContacts(getContactsStorage());
-    } catch (error) {
-      logServiceFailure('getAllContacts', error);
-      return {};
-    }
-  }
-
-  /**
-   * Read all contacts sorted by last interaction time.
-   *
-   * @param {string} [sortedBy='lastInteractionAt']
-   * @returns {Promise<ContactRecord[]>}
-   */
-  async getAllContactsSorted(sortedBy = 'lastInteractionAt') {
-    try {
-      return await getAllContactsSorted(getContactsStorage(), sortedBy);
-    } catch (error) {
-      logServiceFailure('getAllContactsSorted', error, { sortedBy });
-      return [];
-    }
-  }
-
-  /**
-   * Read the most recently interacted contact.
-   *
-   * @returns {Promise<ContactRecord|null>}
-   */
-  async getContactByMostRecentInteraction() {
-    try {
-      return await getContactByMostRecentInteraction(getContactsStorage());
-    } catch (error) {
-      logServiceFailure('getContactByMostRecentInteraction', error);
-      return null;
-    }
-  }
-
-  /**
-   * Find a contact by room id.
-   *
-   * @param {string|null|undefined} roomId
-   * @returns {Promise<ContactRecord|null>}
-   */
-  async getContactByRoomId(roomId) {
-    try {
-      return await getContactByRoomId(getContactsStorage(), roomId);
-    } catch (error) {
-      logServiceFailure('getContactByRoomId', error, { roomId });
-      return null;
     }
   }
 
@@ -268,9 +210,17 @@ export class ContactsService {
     }
 
     try {
-      return await getContactsStorage().patch(contactId, {
+      const updated = await getContactsStorage().patch(contactId, {
         lastInteractionAt: Date.now(),
       });
+
+      if (updated) {
+        const byId = getAllContacts();
+        byId[contactId] = updated;
+        setState({ byId });
+      }
+
+      return updated;
     } catch (error) {
       logServiceFailure('updateLastInteraction', error, { contactId });
       return null;
@@ -305,6 +255,11 @@ export class ContactsService {
         lastInteractionAt: existing?.lastInteractionAt ?? now,
       });
 
+      // Sync in-memory state mirror
+      const byId = getAllContacts();
+      byId[contactId] = contact;
+      setState({ byId });
+
       if (existing) {
         await emitContactUpdated(contact, existing.roomId ?? null);
       } else {
@@ -329,16 +284,12 @@ export class ContactsService {
    * @returns {Promise<HangUpResult>}
    */
   async handleHangUp(contactUserId, roomId) {
-    const existing = await this.getAllContacts();
-      const entry = existing?.[contactUserId];
+    const existing = getAllContacts();
+    const entry = existing?.[contactUserId];
 
     if (entry) {
       if (entry.roomId !== roomId) {
-        await this.updateContact(
-          contactUserId,
-          entry.contactNickName,
-          roomId,
-        );
+        await this.updateContact(contactUserId, entry.contactNickName, roomId);
       }
       return { action: 'existing' };
     }
@@ -349,6 +300,23 @@ export class ContactsService {
 
     return { action: 'prompt-save' };
   }
+}
+
+/**
+ * Load all contacts from storage into in-memory state.
+ * Call once after auth state confirms a logged-in user.
+ */
+export async function hydrateContactsState() {
+  try {
+    const allContacts = await loadContactsById(getContactsStorage());
+    setState({ byId: allContacts, isHydrated: true });
+  } catch (error) {
+    logServiceFailure('hydrateContactsState', error);
+  }
+}
+
+export function resetContactsState() {
+  setState({ byId: {}, isHydrated: false });
 }
 
 export const contactsService = new ContactsService();

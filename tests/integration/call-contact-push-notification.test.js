@@ -196,10 +196,18 @@ vi.mock('../../src/features/messaging/messaging-controller.js', () => ({
 vi.mock('../../src/features/contacts/contacts-service.js', () => ({
   ContactsService: class ContactsService {},
   contactsService: mocks.contactsService,
+  hydrateContactsState: vi.fn(),
 }));
 
 vi.mock('../../src/features/contacts/index.js', () => ({
   contactsService: mocks.contactsService,
+  getContactByRoomId: mocks.contactsService.getContactByRoomId,
+  getContactsAll: mocks.contactsService.getContacts,
+  getContactConversationId: vi.fn(() => null),
+  getContactById: vi.fn(() => null),
+  getContactsSorted: vi.fn(() => []),
+  getContactsIsHydrated: vi.fn(() => true),
+  hydrateContactsState: vi.fn(),
   cleanupInviteListeners: vi.fn(),
   setupInviteListener: vi.fn(),
   captureReferral: vi.fn(),
@@ -584,7 +592,7 @@ describe('callContact push notification flow', () => {
   });
 
   it('settles a pending incoming-call wait when listeners are removed', async () => {
-    mocks.contactsService.getContactByRoomId.mockResolvedValue({
+    mocks.contactsService.getContactByRoomId.mockReturnValue({
       contactId: 'caller-999',
       contactNickName: 'Resolved Caller',
     });
@@ -618,7 +626,7 @@ describe('callContact push notification flow', () => {
   });
 
   it('removes the saved recent-call record when a room becomes empty', async () => {
-    mocks.contactsService.getContactByRoomId.mockResolvedValue(null);
+    mocks.contactsService.getContactByRoomId.mockReturnValue(null);
     RoomService.checkRoomStatus.mockResolvedValue({
       exists: true,
       hasMembers: false,

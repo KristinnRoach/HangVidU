@@ -33,4 +33,4 @@
 
 ## Under Consideration
 
-- None.
+- Whether service-level writers exported from barrels (e.g., `contactsService.saveContact`) should eventually migrate to `cmd:*` commands, reserving barrel exports for read-only APIs only.

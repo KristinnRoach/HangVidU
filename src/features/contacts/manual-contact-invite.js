@@ -1,4 +1,4 @@
-import { contactsService } from './contacts-service.js';
+import { getAllContacts } from './contacts-state.js';
 import { lookupUserByEmail } from './user-discovery.js';
 import { getUser } from '../../auth/index.js';
 import { sendContactInvite } from './send-contact-invite.js';
@@ -26,7 +26,7 @@ export async function inviteContactByEmail(email, { onNotFound } = {}) {
       return { ok: false, status: 'self' };
     }
 
-    const savedContacts = await contactsService.getAllContacts();
+    const savedContacts = getAllContacts();
     if (savedContacts && savedContacts[user.uid]) {
       return { ok: false, status: 'already_saved' };
     }

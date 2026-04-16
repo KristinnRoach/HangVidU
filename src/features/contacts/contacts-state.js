@@ -74,6 +74,36 @@ export function getContactByRoomId(roomId) {
   return null;
 }
 
+/**
+ * @param {string} contactId
+ * @returns {string|null}
+ */
+export function getConversationId(contactId) {
+  return state.byId[contactId]?.conversationId ?? null;
+}
+
+/**
+ * @param {string} [_sortedBy='lastInteractionAt']
+ * @returns {ContactRecord[]}
+ */
+export function getAllContactsSorted(_sortedBy = 'lastInteractionAt') {
+  return [...Object.values(state.byId)].sort((a, b) => {
+    const aTime = a?.lastInteractionAt || a?.savedAt || 0;
+    const bTime = b?.lastInteractionAt || b?.savedAt || 0;
+    if (aTime !== bTime) return bTime - aTime;
+    const aName = (a?.contactNickName || '').toLowerCase();
+    const bName = (b?.contactNickName || '').toLowerCase();
+    return aName.localeCompare(bName);
+  });
+}
+
+/**
+ * @returns {ContactRecord|null}
+ */
+export function getContactByMostRecentInteraction() {
+  return getAllContactsSorted()[0] ?? null;
+}
+
 /** @returns {boolean} */
 export function getIsHydrated() {
   return state.isHydrated;
