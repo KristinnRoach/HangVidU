@@ -1,4 +1,4 @@
-import createComponent from './ui/component-system/component.js';
+import createComponent from '@kidlib/create-component';
 
 /**
  * Template builder for notifications with optional header.

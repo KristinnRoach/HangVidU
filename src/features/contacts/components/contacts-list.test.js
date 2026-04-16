@@ -44,7 +44,7 @@ vi.mock('../../../shared/i18n/index.js', () => ({
   onLocaleChange: mocks.onLocaleChange,
 }));
 
-vi.mock('../../../shared/components/ui/component-system/dom-utils.js', () => ({
+vi.mock('../../../shared/components/ui/utils/dom-utils.js', () => ({
   escapeHtml: vi.fn((value) => String(value)),
 }));
 

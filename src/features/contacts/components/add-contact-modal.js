@@ -19,7 +19,7 @@ import {
 } from '../share-invite-presets.js';
 import { t } from '../../../shared/i18n/index.js';
 import { initIcons } from '../../../shared/components/ui/icons.js';
-import { escapeHtml } from '../../../shared/components/ui/component-system/dom-utils.js';
+import { escapeHtml } from '../../../shared/components/ui/utils/dom-utils.js';
 import {
   showErrorToast,
   showSuccessToast,

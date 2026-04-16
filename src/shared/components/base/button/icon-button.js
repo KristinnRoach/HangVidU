@@ -1,4 +1,4 @@
-import createComponent from '../../ui/component-system/component.js';
+import createComponent from '@kidlib/create-component';
 import { initIcons } from '../../ui/icons.js';
 
 /**

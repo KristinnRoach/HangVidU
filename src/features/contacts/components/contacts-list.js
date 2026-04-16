@@ -8,7 +8,7 @@ import {
   showElement,
 } from '../../../shared/components/ui/utils/ui-utils.js';
 import { t, onLocaleChange } from '../../../shared/i18n/index.js';
-import { escapeHtml } from '../../../shared/components/ui/component-system/dom-utils.js';
+import { escapeHtml } from '../../../shared/components/ui/utils/dom-utils.js';
 import { initIcons } from '../../../shared/components/ui/icons.js';
 import { dispatchCommand, subscribe } from '../../../shared/events/index.js';
 import { contactsService } from '../contacts-service.js';
