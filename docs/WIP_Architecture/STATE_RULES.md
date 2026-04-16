@@ -50,7 +50,7 @@ It exposes:
 | Module    | State file      | `evt:<module>:state:changed` | `setState` private | Boundary enforced |
 | --------- | --------------- | ---------------------------- | ------------------ | ----------------- |
 | auth      | `auth-state.js` | yes                          | yes                | yes               |
-| contacts  | —               | —                            | —                  | —                 |
+| contacts  | `contacts-state.js` (scaffold) | yes (skeleton emits) | yes      | yes               |
 | messaging | —               | —                            | —                  | —                 |
 | call      | —               | —                            | —                  | —                 |
 
