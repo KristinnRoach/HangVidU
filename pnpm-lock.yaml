@@ -22,8 +22,8 @@ importers:
   .:
     dependencies:
       '@kidlib/create-component':
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.1.4
+        version: 0.1.4
       '@mediabunny/ac3':
         specifier: ^1.40.1
         version: 1.40.1(mediabunny@1.40.1)
@@ -1297,8 +1297,8 @@ packages:
   '@js-sdsl/ordered-map@4.4.2':
     resolution: {integrity: sha512-iUKgm52T8HOE/makSxjqoWhe95ZJA1/G1sYsGev2JDKUSS14KAgg1LHb+Ba+IPow0xflbnSkOsZcO08C7w1gYw==}
 
-  '@kidlib/create-component@0.1.0':
-    resolution: {integrity: sha512-VWLmNW+2pcxaWOhn4JS6ZBM+SaccOMK29aZq7jRIHZLmZ3+MEKnkq4Wabgz83F37B86abuv7uj/i4Ipa8IYnVA==}
+  '@kidlib/create-component@0.1.4':
+    resolution: {integrity: sha512-ttN/lLxPb7WSkEQe797SknTcN0UF7XuisTrsEwJx9NAt+8LOXACZ43JgO14ulBl1WINAPmupc5s0lpTTRtRXgQ==}
 
   '@mediabunny/ac3@1.40.1':
     resolution: {integrity: sha512-A9aUZnQ1tNia2i9TZjOzAPVi4sOXRsnozXtq3WMsoGbco6yBPgIZLOWPVugwpJMQglVSAPARlgH+chpzNAkHOg==}
@@ -5271,7 +5271,7 @@ snapshots:
   '@js-sdsl/ordered-map@4.4.2':
     optional: true
 
-  '@kidlib/create-component@0.1.0': {}
+  '@kidlib/create-component@0.1.4': {}
 
   '@mediabunny/ac3@1.40.1(mediabunny@1.40.1)':
     dependencies:
