@@ -84,7 +84,7 @@
     "workbox-strategies": "^7.4.0"
   },
   "dependencies": {
-    "@kidlib/create-component": "^0.1.4",
+    "@kidlib/create-component": "^0.1.5",
     "@mediabunny/ac3": "^1.40.1",
     "@sentry/browser": "^10.48.0",
     "dexie": "^4.4.2",
