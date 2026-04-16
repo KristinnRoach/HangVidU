@@ -10,6 +10,12 @@ What is automatically enforced today. Source of truth: `eslint.config.js`, `esli
   - Block `**/auth-state`, `**/auth-state.js` imports outside `src/auth/`.
 - `boundaries/dependencies` — per-module import boundaries (incremental rollout).
 
+## Current status (April 15, 2026)
+
+- Enforced features (default mode): `contacts`, `push-notifications`, `messaging`, `call`.
+- Temporary `shared -> feature` allowlist: `watch`, `notifications`.
+- `pnpm lint:boundaries` currently fails with 13 errors (pre-existing, in `call/`).
+
 ## Run
 
 - `pnpm lint` — ESLint first, then boundary rules.

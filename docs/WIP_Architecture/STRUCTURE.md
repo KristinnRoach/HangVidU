@@ -23,6 +23,12 @@
 - `<module>-state.js` is importable only from files inside its own module directory.
 - `<module>-state.js` must not import Firebase, RTDB, or storage layers. State mirrors what the persistence layer feeds it.
 
+## Setup vs main
+
+- `setup/*` is the composition root: startup/lifecycle wiring and cross-feature command/event wiring.
+- `main.js` is app-runtime orchestration only, not initialization sequencing.
+- Thin out `main.js` opportunistically as setup modules absorb sequencing.
+
 ---
 
 ## Under Consideration

@@ -12,4 +12,13 @@ Where to find each rule category. All docs use bullet lists, no long prose.
 
 Each doc ends with an **Under Consideration** section for open questions. Nothing there is binding yet.
 
+## Supporting material
+
+| Folder              | Contains                                       |
+| ------------------- | ---------------------------------------------- |
+| `handoffs/`         | Narrative logs of in-flight rollouts           |
+| `audit/`            | Point-in-time codebase audits                  |
+| `lint/`             | Generated boundary reports                     |
+| `references/`       | External docs and inspirations                 |
+
 Legacy WIP docs (`WIP_HANGVIDU_ARCHITECTURE.md`, `WIP_HANGVIDU_REFERENCE_ARCHITECTURE.md`) will be updated to align with these files.
