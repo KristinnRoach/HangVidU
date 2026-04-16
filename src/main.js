@@ -17,8 +17,8 @@ import {
   mountContactsList,
   cleanupContacts,
   showAddContactModal,
-  getContactConversationId,
-  getContactsSorted,
+  getConversationId,
+  getAllContactsSorted,
 } from './features/contacts/index.js';
 
 import {

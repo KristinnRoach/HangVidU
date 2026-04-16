@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => {
     },
     getContactById: vi.fn(() => null),
     getContactByRoomId: vi.fn(() => null),
-    getContactConversationId: vi.fn(() => null),
+    getConversationId: vi.fn(() => null),
     callContact: vi.fn(),
     listenForIncomingOnRoom: vi.fn(),
     removeIncomingListenersForRoom: vi.fn(),
@@ -42,7 +42,7 @@ vi.mock('../../features/messaging/messaging-controller.js', () => ({
 vi.mock('../../features/contacts/index.js', () => ({
   getContactById: mocks.getContactById,
   getContactByRoomId: mocks.getContactByRoomId,
-  getContactConversationId: mocks.getContactConversationId,
+  getConversationId: mocks.getConversationId,
 }));
 
 vi.mock('../../shared/utils/dev/dev-utils.js', () => ({
@@ -92,7 +92,7 @@ describe('setupMainAppBusListeners', () => {
       roomId: 'room-123',
     });
 
-    expect(mocks.getContactConversationId).not.toHaveBeenCalled();
+    expect(mocks.getConversationId).not.toHaveBeenCalled();
     expect(mocks.messagingController.selectConversation).not.toHaveBeenCalled();
     expect(mocks.callContact).toHaveBeenCalledWith(
       null,
@@ -152,7 +152,7 @@ describe('setupMainAppBusListeners', () => {
   });
 
   it('passes contactNickName to preselected outgoing-call conversation', async () => {
-    mocks.getContactConversationId.mockReturnValue('conv-xyz');
+    mocks.getConversationId.mockReturnValue('conv-xyz');
 
     const { setupMainAppBusListeners } =
       await import('../setupMainAppBusListeners.js');

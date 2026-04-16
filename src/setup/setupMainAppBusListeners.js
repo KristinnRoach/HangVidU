@@ -6,7 +6,7 @@ import {
   showSaveContactPrompt,
   getContactById,
   getContactByRoomId,
-  getContactConversationId,
+  getConversationId,
 } from '../features/contacts/index.js';
 import {
   listenForIncomingOnRoom,
@@ -159,7 +159,7 @@ export function setupMainAppBusListeners() {
 
           if (contactId) {
             const resolvedConversationId =
-              conversationId ?? getContactConversationId(contactId);
+              conversationId ?? getConversationId(contactId);
 
             if (resolvedConversationId) {
               messagingController
@@ -177,7 +177,9 @@ export function setupMainAppBusListeners() {
             }
           }
 
-          callContact(contactId, resolvedContactNickName, roomId, { audioOnly });
+          callContact(contactId, resolvedContactNickName, roomId, {
+            audioOnly,
+          });
         },
         { signal: ac.signal },
       );
@@ -190,7 +192,7 @@ export function setupMainAppBusListeners() {
               `[APPBUS] Handling call answered event from contact ${contactId}`,
             );
 
-          const conversationId = getContactConversationId(contactId);
+          const conversationId = getConversationId(contactId);
 
           if (!conversationId) {
             console.warn(
@@ -227,7 +229,7 @@ export function setupMainAppBusListeners() {
               `[APPBUS] Handling unanswered call for room ${roomId}, contact ${contactId}`,
             );
 
-          const conversationId = getContactConversationId(contactId);
+          const conversationId = getConversationId(contactId);
 
           if (!conversationId) {
             console.warn(
