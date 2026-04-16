@@ -4,7 +4,7 @@ import {
   createNotification,
   buildTemplate,
 } from '../../../shared/components/notification.js';
-import { escapeHtml } from '../../../shared/components/ui/component-system/dom-utils.js';
+import { escapeHtml } from '../../../shared/components/ui/utils/dom-utils.js';
 import { t, onLocaleChange } from '../../../shared/i18n/index.js';
 
 /**

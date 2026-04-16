@@ -22,7 +22,7 @@ import { getAuthState } from '../auth-state.js';
 import { isDev, devDebug } from '../../shared/utils/dev/dev-utils.js';
 import { t, onLocaleChange } from '../../shared/i18n/index.js';
 
-import createComponent from '../../shared/components/ui/component-system/component.js';
+import createComponent from '@kidlib/create-component';
 
 let authComponent = null;
 

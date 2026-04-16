@@ -1,4 +1,4 @@
-import createComponent from '../../../shared/components/ui/component-system/component.js';
+import createComponent from '@kidlib/create-component';
 import { t, onLocaleChange } from '../../../shared/i18n/index.js';
 import { initIcons } from '../../../shared/components/ui/icons.js';
 
