@@ -374,6 +374,11 @@ function clearUnreadBadge(contactId) {
   if (badgeEl) badgeEl.hidden = true;
 }
 
+/**
+ * Remove contacts-list subscriptions and per-contact listeners created by `mountContactsList()`.
+ *
+ * @returns {void}
+ */
 export function cleanupContacts() {
   presenceListeners.forEach(({ ref: presenceRef, callback }) => {
     off(presenceRef, 'value', callback);

@@ -3,6 +3,17 @@ import { lookupUserByEmail } from './user-discovery.js';
 import { getUser } from '../../auth/index.js';
 import { sendContactInvite } from './send-contact-invite.js';
 
+/**
+ * Invite one contact by email unless it resolves to the current user or an already-saved contact.
+ *
+ * @param {string} email
+ * @param {{ onNotFound?: () => void | Promise<void> }} [options]
+ * @returns {Promise<
+ *   | { ok: true, status: 'not_found' }
+ *   | { ok: false, status: 'lookup_error' | 'self' | 'already_saved' | 'error', error?: unknown }
+ *   | Awaited<ReturnType<typeof sendContactInvite>>
+ * >}
+ */
 export async function inviteContactByEmail(email, { onNotFound } = {}) {
   try {
     const lookupResult = await lookupUserByEmail(email);

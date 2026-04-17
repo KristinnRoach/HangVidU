@@ -34,13 +34,13 @@ import { listenForIncomingOnRoom } from './room-listeners.js';
 */
 
 /**
- * Wire CallController business-logic event handlers.
+ * Wire call-domain events to cross-feature side effects after the controller is created.
  *
- * UI-side handlers live in bind-call-ui.js; these handle
- * cross-domain side effects (messaging, contacts, push, media cleanup).
- */
-/**
- * @param {{ lobbyElement: HTMLElement }} options
+ * UI event handling stays in `bind-call-ui.js`; this module handles contacts,
+ * messaging, push notifications, and room listener re-attachment.
+ *
+ * @param {{ lobbyElement?: HTMLElement|null }} [options]
+ * @returns {void}
  */
 export function setupCallControllerEventWiring(options = {}) {
   const { lobbyElement } = options;

@@ -6,7 +6,7 @@ import {
 } from './storage/index.js';
 import { resolveDirectConversationId } from '../../shared/utils/direct-conversation-id.js';
 import { publish } from '../../shared/events/index.js';
-import { setState, getAllContacts } from './contacts-state.js';
+import { setState, getAllContacts, getIsHydrated } from './contacts-state.js';
 // PAUSED: claude --resume edf6030f-72fb-4503-9175-bfc21d2d973c
 
 /**
@@ -16,6 +16,27 @@ import { setState, getAllContacts } from './contacts-state.js';
 /**
  * @typedef {{ action: 'existing' | 'skip' | 'prompt-save', reason?: string }} HangUpResult
  */
+
+/** @type {Promise<void>|null} */
+let hydrationPromise = null;
+/** @type {string|null} */
+let hydrationPromiseScopeKey = null;
+/** @type {string|null} */
+let hydratedScopeKey = null;
+let hydrationRequestId = 0;
+
+/**
+ * Resolve the current hydration scope.
+ *
+ * Contacts state is scoped to the logged-in user when authenticated,
+ * otherwise it is scoped to guest storage.
+ *
+ * @param {string|null} [ownerId=getLoggedInUserId()]
+ * @returns {string}
+ */
+function getHydrationScopeKey(ownerId = getLoggedInUserId()) {
+  return ownerId ? `user:${ownerId}` : 'guest';
+}
 
 /**
  * Resolve the active storage backend for the current auth state.
@@ -76,6 +97,7 @@ async function loadContactsById(storage) {
  * Publish room creation when a saved contact has a room id.
  *
  * @param {ContactRecord} contact
+ * @returns {Promise<void>}
  */
 async function emitContactSaved(contact) {
   const roomId = contact?.roomId ?? null;
@@ -92,6 +114,7 @@ async function emitContactSaved(contact) {
  *
  * @param {ContactRecord} contact
  * @param {string|null} previousRoomId
+ * @returns {Promise<void>}
  */
 async function emitContactUpdated(contact, previousRoomId) {
   const roomId = contact?.roomId ?? null;
@@ -109,6 +132,13 @@ async function emitContactUpdated(contact, previousRoomId) {
   });
 }
 
+/**
+ * Publish contact deletion for listeners keyed by room id.
+ *
+ * @param {string} contactId
+ * @param {string|null|undefined} roomId
+ * @returns {Promise<void>}
+ */
 async function emitContactDeleted(contactId, roomId) {
   publish('evt:contacts:contact:deleted', {
     contactId,
@@ -303,19 +333,68 @@ export class ContactsService {
 }
 
 /**
- * Load all contacts from storage into in-memory state.
- * Call once after auth state confirms a logged-in user.
+ * Hydrate contacts state once until the state is reset.
+ * Concurrent callers share the same in-flight storage read.
+ *
+ * @returns {Promise<void>}
  */
-export async function hydrateContactsState() {
-  try {
-    const allContacts = await loadContactsById(getContactsStorage());
-    setState({ byId: allContacts, isHydrated: true });
-  } catch (error) {
-    logServiceFailure('hydrateContactsState', error);
+export async function ensureContactsHydrated() {
+  const ownerId = getLoggedInUserId();
+  const scopeKey = getHydrationScopeKey(ownerId);
+
+  if (getIsHydrated() && hydratedScopeKey === scopeKey) {
+    return;
   }
+
+  if (hydrationPromise && hydrationPromiseScopeKey === scopeKey) {
+    return hydrationPromise;
+  }
+
+  const requestId = ++hydrationRequestId;
+  hydrationPromiseScopeKey = scopeKey;
+  hydrationPromise = (async () => {
+    try {
+      const allContacts = await loadContactsById(getContactsStorage(ownerId));
+
+      if (requestId !== hydrationRequestId) {
+        return;
+      }
+
+      hydratedScopeKey = scopeKey;
+      setState({ byId: allContacts, isHydrated: true });
+    } catch (error) {
+      logServiceFailure('ensureContactsHydrated', error);
+      throw error;
+    } finally {
+      if (requestId === hydrationRequestId) {
+        hydrationPromise = null;
+        hydrationPromiseScopeKey = null;
+      }
+    }
+  })();
+
+  return hydrationPromise;
 }
 
+/**
+ * Backward-compatible alias for contacts hydration.
+ *
+ * @returns {Promise<void>}
+ */
+export async function hydrateContactsState() {
+  return ensureContactsHydrated();
+}
+
+/**
+ * Clear in-memory contacts state and drop any cached hydration promise.
+ *
+ * @returns {void}
+ */
 export function resetContactsState() {
+  hydrationPromise = null;
+  hydrationPromiseScopeKey = null;
+  hydratedScopeKey = null;
+  hydrationRequestId += 1;
   setState({ byId: {}, isHydrated: false });
 }
 

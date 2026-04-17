@@ -3,6 +3,7 @@
 export {
   contactsService,
   ContactsService,
+  ensureContactsHydrated,
   hydrateContactsState,
   resetContactsState,
 } from './contacts-service.js';

@@ -11,7 +11,7 @@ import {
   cleanupInviteListeners,
   setupInviteListener,
   processReferral,
-  hydrateContactsState,
+  ensureContactsHydrated,
   resetContactsState,
 } from '../features/contacts/index.js';
 import { getPushNotifications } from '../features/push-notifications/index.js';
@@ -39,6 +39,11 @@ const LOCAL_STORAGE_KEYS_TO_PRESERVE_ON_LOGOUT = [
 ];
 const LOCAL_STORAGE_PREFIXES_TO_PRESERVE_ON_LOGOUT = ['debug:']; // 'referral'
 
+/**
+ * Clear user-scoped local storage while preserving app-wide keys.
+ *
+ * @returns {void}
+ */
 function clearLocalStorageOnLogout() {
   try {
     const storage = globalThis.localStorage;
@@ -133,7 +138,7 @@ export function setupAuth(options = {}) {
         'evt:auth:session:ready',
         async () => {
           try {
-            await hydrateContactsState();
+            await ensureContactsHydrated();
           } catch (e) {
             console.warn('[AUTH] Failed to handle evt:auth:session:ready:', e);
           }
@@ -165,7 +170,7 @@ export function setupAuth(options = {}) {
             await processReferral().catch((e) =>
               console.warn('[REFERRAL] Failed to process referral:', e),
             );
-            await hydrateContactsState().catch((e) =>
+            await ensureContactsHydrated().catch((e) =>
               console.warn('[AUTH] Failed to hydrate contacts state on login:', e),
             );
 

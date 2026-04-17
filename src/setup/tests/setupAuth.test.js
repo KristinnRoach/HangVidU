@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => {
     cleanupInviteListeners: vi.fn(),
     setupInviteListener: vi.fn(),
     processReferral: vi.fn(() => Promise.resolve()),
-    hydrateContactsState: vi.fn(() => Promise.resolve()),
+    ensureContactsHydrated: vi.fn(() => Promise.resolve()),
     resetContactsState: vi.fn(),
     getPushNotifications: vi.fn(),
     showEnableNotificationsPrompt: vi.fn(),
@@ -59,7 +59,7 @@ vi.mock('../../features/contacts/index.js', () => ({
   cleanupInviteListeners: mocks.cleanupInviteListeners,
   setupInviteListener: mocks.setupInviteListener,
   processReferral: mocks.processReferral,
-  hydrateContactsState: mocks.hydrateContactsState,
+  ensureContactsHydrated: mocks.ensureContactsHydrated,
   resetContactsState: mocks.resetContactsState,
 }));
 
@@ -80,7 +80,7 @@ describe('setupAuth', () => {
     vi.resetModules();
     vi.clearAllMocks();
     mocks.handlers.clear();
-    mocks.hydrateContactsState.mockResolvedValue();
+    mocks.ensureContactsHydrated.mockResolvedValue();
     localStorageData = new Map();
     localStorageRef = {
       get length() {
@@ -113,7 +113,7 @@ describe('setupAuth', () => {
 
     await mocks.handlers.get('evt:auth:session:ready')({});
 
-    expect(mocks.hydrateContactsState).toHaveBeenCalled();
+    expect(mocks.ensureContactsHydrated).toHaveBeenCalled();
 
     teardown();
   });
@@ -135,7 +135,7 @@ describe('setupAuth', () => {
     });
 
     expect(mocks.processReferral).toHaveBeenCalled();
-    expect(mocks.hydrateContactsState).toHaveBeenCalled();
+    expect(mocks.ensureContactsHydrated).toHaveBeenCalled();
     expect(mocks.startListeningForSavedRooms).not.toHaveBeenCalled();
     expect(mocks.setupInviteListener).toHaveBeenCalledWith();
     expect(mocks.showEnableNotificationsPrompt).toHaveBeenCalled();

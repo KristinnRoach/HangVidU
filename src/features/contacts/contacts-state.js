@@ -59,6 +59,7 @@ function snapshot() {
  * Every mutation flows through here. Publishes the canonical state-change event.
  *
  * @param {Partial<ContactsStateSnapshot>} patch
+ * @returns {void}
  */
 export function setState(patch) {
   const prev = snapshot();
@@ -123,7 +124,11 @@ export function getContactByMostRecentInteraction() {
   return getAllContactsSorted()[0] ?? null;
 }
 
-/** @returns {boolean} */
+/**
+ * Return whether contacts state has completed its initial hydration.
+ *
+ * @returns {boolean}
+ */
 export function getIsHydrated() {
   return state.isHydrated;
 }

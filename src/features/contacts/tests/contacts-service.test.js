@@ -18,12 +18,14 @@ const mocks = vi.hoisted(() => ({
   state: {
     setState: vi.fn(),
     getAllContacts: vi.fn(() => ({})),
+    getIsHydrated: vi.fn(() => false),
   },
 }));
 
 vi.mock('../contacts-state.js', () => ({
   setState: mocks.state.setState,
   getAllContacts: mocks.state.getAllContacts,
+  getIsHydrated: mocks.state.getIsHydrated,
 }));
 
 vi.mock('../../../auth/index.js', () => ({
@@ -62,6 +64,7 @@ describe('contacts-service', () => {
     mocks.events.publish.mockReset();
     mocks.state.setState.mockReset();
     mocks.state.getAllContacts.mockReset().mockReturnValue({});
+    mocks.state.getIsHydrated.mockReset().mockReturnValue(false);
 
     vi.restoreAllMocks();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -309,5 +312,46 @@ describe('contacts-service', () => {
     await expect(service.handleHangUp('u2', 'room-2')).resolves.toEqual({
       action: 'prompt-save',
     });
+  });
+
+  it('rehydrates when auth scope changes after an earlier guest hydration', async () => {
+    const { ensureContactsHydrated } = await import('../contacts-service.js');
+
+    mocks.store.list
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          contactId: 'u1',
+          contactNickName: 'Alice',
+          roomId: 'room-1',
+          savedAt: 1,
+          lastInteractionAt: 1,
+        },
+      ]);
+
+    await ensureContactsHydrated();
+    expect(mocks.state.setState).toHaveBeenLastCalledWith({
+      byId: {},
+      isHydrated: true,
+    });
+
+    mocks.state.getIsHydrated.mockReturnValue(true);
+    mocks.auth.ownerId = 'me';
+
+    await ensureContactsHydrated();
+
+    expect(mocks.state.setState).toHaveBeenLastCalledWith({
+      byId: {
+        u1: {
+          contactId: 'u1',
+          contactNickName: 'Alice',
+          roomId: 'room-1',
+          savedAt: 1,
+          lastInteractionAt: 1,
+        },
+      },
+      isHydrated: true,
+    });
+    expect(mocks.store.list).toHaveBeenCalledTimes(2);
   });
 });

@@ -7,6 +7,16 @@ import { findUsersByEmails } from './user-discovery.js';
 import { fetchGoogleContacts } from './google-contacts.js';
 import { buildImportableContacts } from './import-contacts-utils.js';
 
+/**
+ * Import Google contacts and annotate each result against saved contacts and registered users.
+ *
+ * @param {{ onProgress?: (update: { step: string, count?: number }) => void }} [options]
+ * @returns {Promise<
+ *   | { status: 'success', contacts: unknown[] }
+ *   | { status: 'no_email' | 'cancelled', contacts: [] }
+ *   | { status: 'error', error: unknown, contacts: [] }
+ * >}
+ */
 export async function importGoogleContacts({
   onProgress = () => {},
 } = {}) {
