@@ -57,6 +57,7 @@ describe('setupApp', () => {
         return () => {};
       }),
       bindCallUI: vi.fn(() => trace.push('bindCallUI')),
+      mountContactsList: vi.fn(async () => trace.push('mountContactsList')),
       setupMainAppBusListeners: vi.fn(async () => {
         trace.push('setupMainAppBusListeners');
         return appBusCleanup;
@@ -64,7 +65,6 @@ describe('setupApp', () => {
       startListeningForSavedRooms: vi.fn(async () =>
         trace.push('startListeningForSavedRooms'),
       ),
-      renderContactsList: vi.fn(async () => trace.push('renderContactsList')),
       autoInitMsgSessionIfNeeded: vi.fn(async () =>
         trace.push('autoInitMsgSessionIfNeeded'),
       ),
@@ -112,7 +112,10 @@ describe('setupApp', () => {
       trace.indexOf('bindCallUI'),
     );
     expect(trace.indexOf('runInit')).toBeLessThan(trace.indexOf('bindCallUI'));
-    expect(trace.indexOf('runInit')).toBeLessThan(
+    expect(trace.indexOf('bindCallUI')).toBeLessThan(
+      trace.indexOf('mountContactsList'),
+    );
+    expect(trace.indexOf('mountContactsList')).toBeLessThan(
       trace.indexOf('setupMainAppBusListeners'),
     );
     cleanup();
@@ -137,9 +140,9 @@ describe('setupApp', () => {
       }),
       setupTopBarAndLocale: vi.fn(async () => () => {}),
       bindCallUI: vi.fn(),
+      mountContactsList: vi.fn(async () => {}),
       setupMainAppBusListeners: vi.fn(),
       startListeningForSavedRooms: vi.fn(async () => {}),
-      renderContactsList: vi.fn(async () => {}),
       autoInitMsgSessionIfNeeded: vi.fn(async () => {}),
       handleServiceWorkerNavigation: vi.fn(async () => true),
       autoJoinFromUrl: vi.fn(async () => true),
@@ -175,9 +178,9 @@ describe('setupApp', () => {
       runInit: vi.fn(async () => false),
       setupTopBarAndLocale: vi.fn(async () => () => {}),
       bindCallUI: vi.fn(),
+      mountContactsList: vi.fn(async () => {}),
       setupMainAppBusListeners: vi.fn(),
       startListeningForSavedRooms: vi.fn(async () => {}),
-      renderContactsList: vi.fn(async () => {}),
       autoInitMsgSessionIfNeeded: vi.fn(async () => {}),
       handleServiceWorkerNavigation: vi.fn(async () => true),
       autoJoinFromUrl: vi.fn(async () => true),
@@ -212,9 +215,9 @@ describe('setupApp', () => {
         .mockResolvedValueOnce(true),
       setupTopBarAndLocale: vi.fn(async () => () => {}),
       bindCallUI: vi.fn(),
+      mountContactsList: vi.fn(async () => {}),
       setupMainAppBusListeners: vi.fn(),
       startListeningForSavedRooms: vi.fn(async () => {}),
-      renderContactsList: vi.fn(async () => {}),
       autoInitMsgSessionIfNeeded: vi.fn(async () => {}),
       handleServiceWorkerNavigation: vi.fn(async () => true),
       autoJoinFromUrl: vi.fn(async () => true),
@@ -243,9 +246,9 @@ describe('setupApp', () => {
       runInit: vi.fn(async () => true),
       setupTopBarAndLocale: vi.fn(async () => () => {}),
       bindCallUI: vi.fn(),
+      mountContactsList: vi.fn(async () => {}),
       setupMainAppBusListeners: vi.fn(),
       startListeningForSavedRooms: vi.fn(async () => {}),
-      renderContactsList: vi.fn(async () => {}),
       autoInitMsgSessionIfNeeded: vi.fn(async () => {}),
       handleServiceWorkerNavigation: vi.fn(async () => true),
       autoJoinFromUrl: vi.fn(async () => {

@@ -60,10 +60,13 @@ vi.mock('../../../shared/events/index.js', () => ({
   }),
 }));
 
+vi.mock('../contacts-state.js', () => ({
+  getAllContacts: vi.fn(() => ({})),
+  getAllContactsSorted: mocks.getAllContactsSorted,
+}));
+
 vi.mock('../contacts-service.js', () => ({
   contactsService: {
-    getAllContactsSorted: mocks.getAllContactsSorted,
-    getAllContacts: vi.fn(),
     updateContact: vi.fn(),
     deleteContact: vi.fn(),
   },
@@ -76,7 +79,7 @@ describe('contacts component', () => {
     vi.clearAllMocks();
     mocks.subscriptions.clear();
     mocks.onLocaleChange.mockReturnValue(() => {});
-    mocks.getAllContactsSorted.mockResolvedValue([
+    mocks.getAllContactsSorted.mockReturnValue([
       {
         contactId: 'contact-1',
         contactNickName: 'Alice',
@@ -87,7 +90,7 @@ describe('contacts component', () => {
   });
 
   it('does not attempt to open a conversation when no conversation id exists', async () => {
-    mocks.getAllContactsSorted.mockResolvedValue([
+    mocks.getAllContactsSorted.mockReturnValue([
       {
         contactId: 'contact-1',
         contactNickName: 'Alice',
@@ -97,10 +100,10 @@ describe('contacts component', () => {
     ]);
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const { renderContactsList } = await import('./contacts-list.js');
+    const { mountContactsList } = await import('./contacts-list.js');
 
     const lobbyElement = document.createElement('div');
-    await renderContactsList(lobbyElement);
+    await mountContactsList(lobbyElement);
 
     lobbyElement.querySelector('.contact-name')?.click();
 
@@ -117,16 +120,16 @@ describe('contacts component', () => {
   });
 
   it('tears down previous presence listeners when rerendered with no contacts', async () => {
-    const { renderContactsList } = await import('./contacts-list.js');
+    const { mountContactsList } = await import('./contacts-list.js');
 
     const lobbyElement = document.createElement('div');
-    await renderContactsList(lobbyElement);
+    await mountContactsList(lobbyElement);
 
     expect(mocks.onValue).toHaveBeenCalledTimes(1);
     const offCallsBeforeEmptyRender = mocks.off.mock.calls.length;
 
-    mocks.getAllContactsSorted.mockResolvedValue([]);
-    await renderContactsList(lobbyElement);
+    mocks.getAllContactsSorted.mockReturnValue([]);
+    mocks.subscriptions.get('evt:contacts:state:changed')?.({});
 
     expect(mocks.off.mock.calls.length).toBeGreaterThan(
       offCallsBeforeEmptyRender,
@@ -134,12 +137,12 @@ describe('contacts component', () => {
   });
 
   it('subscribes to unread counts through appBus requests and updates the badge', async () => {
-    const { renderContactsList } = await import('./contacts-list.js');
+    const { mountContactsList } = await import('./contacts-list.js');
 
     const lobbyElement = document.createElement('div');
     document.body.appendChild(lobbyElement);
 
-    await renderContactsList(lobbyElement);
+    await mountContactsList(lobbyElement);
 
     expect(mocks.dispatchCommand).toHaveBeenCalledWith(
       'cmd:messaging:conversation:unread-count-listen',

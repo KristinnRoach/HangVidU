@@ -1,8 +1,20 @@
-import { contactsService } from './contacts-service.js';
+import { getAllContacts } from './contacts-state.js';
+import { ensureContactsHydrated } from './contacts-service.js';
 import { lookupUserByEmail } from './user-discovery.js';
 import { getUser } from '../../auth/index.js';
 import { sendContactInvite } from './send-contact-invite.js';
 
+/**
+ * Invite one contact by email unless it resolves to the current user or an already-saved contact.
+ *
+ * @param {string} email
+ * @param {{ onNotFound?: () => void | Promise<void> }} [options]
+ * @returns {Promise<
+ *   | { ok: true, status: 'not_found' }
+ *   | { ok: false, status: 'lookup_error' | 'self' | 'already_saved' | 'error', error?: unknown }
+ *   | Awaited<ReturnType<typeof sendContactInvite>>
+ * >}
+ */
 export async function inviteContactByEmail(email, { onNotFound } = {}) {
   try {
     const lookupResult = await lookupUserByEmail(email);
@@ -26,7 +38,8 @@ export async function inviteContactByEmail(email, { onNotFound } = {}) {
       return { ok: false, status: 'self' };
     }
 
-    const savedContacts = await contactsService.getAllContacts();
+    await ensureContactsHydrated();
+    const savedContacts = getAllContacts();
     if (savedContacts && savedContacts[user.uid]) {
       return { ok: false, status: 'already_saved' };
     }

@@ -1,5 +1,5 @@
 import CallController from './call-controller.js';
-import { contactsService, renderContactsList } from '../contacts/index.js';
+import { contactsService, getContactByRoomId } from '../contacts/index.js';
 import { getUserId, getUser } from '../../auth/index.js';
 import { getPushNotifications } from '../push-notifications/index.js';
 import { cleanupRemoteStream } from '../../shared/media/state.js';
@@ -21,7 +21,7 @@ import { listenForIncomingOnRoom } from './room-listeners.js';
   │ onCallAnswered       │ UI/calling         │ UI state transition from         │  
   │                      │                    │ call-domain logic.               │
   ├──────────────────────┼────────────────────┼──────────────────────────────────┤  
-  │ renderContactsList   │ UI/contacts        │ UI rendering triggered by call   │
+  │ mountContactsList    │ UI/contacts        │ UI rendering triggered by call   │
   │                      │                    │ events.                          │  
   ├──────────────────────┼────────────────────┼──────────────────────────────────┤  
   │ cleanupRemoteStream  │ media              │ Arguably same domain (call       │
@@ -34,13 +34,13 @@ import { listenForIncomingOnRoom } from './room-listeners.js';
 */
 
 /**
- * Wire CallController business-logic event handlers.
+ * Wire call-domain events to cross-feature side effects after the controller is created.
  *
- * UI-side handlers live in bind-call-ui.js; these handle
- * cross-domain side effects (messaging, contacts, push, media cleanup).
- */
-/**
- * @param {{ lobbyElement: HTMLElement }} options
+ * UI event handling stays in `bind-call-ui.js`; this module handles contacts,
+ * messaging, push notifications, and room listener re-attachment.
+ *
+ * @param {{ lobbyElement?: HTMLElement|null }} [options]
+ * @returns {void}
  */
 export function setupCallControllerEventWiring(options = {}) {
   const { lobbyElement } = options;
@@ -86,7 +86,7 @@ export function setupCallControllerEventWiring(options = {}) {
       if (isMissedCall) {
         console.log('[MAIN] Potential missed call detected for room:', roomId);
         try {
-          const contact = await contactsService.getContactByRoomId(roomId);
+          const contact = getContactByRoomId(roomId);
           if (contact && contact.contactId) {
             const me = getUser();
             const callerName = me?.userName || 'Friend';
@@ -135,8 +135,9 @@ export function setupCallControllerEventWiring(options = {}) {
       cleanupRemoteStream();
       clearUrlParam();
 
+      // TODO: render contacts list in reaction to interaction update via events
       // Re-render contacts list so sort order reflects updated lastInteractionAt
-      renderContactsList(lobbyElement).catch(() => {});
+      // mountContactsList(lobbyElement).catch(() => {});
 
       // Re-attach incoming listener so the next call on this room is detected
       if (roomId && reason !== 'page_unload') {

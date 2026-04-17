@@ -34,7 +34,7 @@ const mocks = vi.hoisted(() => {
     cleanupRemoteStream: vi.fn(),
     clearUrlParam: vi.fn(),
     onOutgoingCallAnswered: vi.fn(() => Promise.resolve()),
-    renderContactsList: vi.fn(() => Promise.resolve()),
+    mountContactsList: vi.fn(() => Promise.resolve()),
     promptAndRefreshContactSave: vi.fn(() => Promise.resolve()),
     devDebug: vi.fn(),
     events: {
@@ -54,7 +54,8 @@ vi.mock('../call-controller.js', () => ({
 
 vi.mock('../../contacts/index.js', () => ({
   contactsService: mocks.contactsService,
-  renderContactsList: mocks.renderContactsList,
+  getContactByRoomId: mocks.contactsService.getContactByRoomId,
+  mountContactsList: mocks.mountContactsList,
 }));
 
 vi.mock('../../../auth/index.js', () => ({
@@ -104,7 +105,7 @@ describe('setupCallControllerEventWiring', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.cleanupHandler = null;
-    mocks.contactsService.getContactByRoomId.mockResolvedValue({
+    mocks.contactsService.getContactByRoomId.mockReturnValue({
       contactId: 'contact-456',
       contactNickName: 'Saved Contact',
     });

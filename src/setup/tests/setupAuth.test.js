@@ -13,12 +13,13 @@ const mocks = vi.hoisted(() => {
     },
     closeAllConversations: vi.fn(),
     resetMessagesUI: vi.fn(),
-    renderContactsList: vi.fn(() => Promise.resolve()),
     removeAllIncomingListeners: vi.fn(),
     startListeningForSavedRooms: vi.fn(() => Promise.resolve()),
     cleanupInviteListeners: vi.fn(),
     setupInviteListener: vi.fn(),
     processReferral: vi.fn(() => Promise.resolve()),
+    ensureContactsHydrated: vi.fn(() => Promise.resolve()),
+    resetContactsState: vi.fn(),
     getPushNotifications: vi.fn(),
     showEnableNotificationsPrompt: vi.fn(),
     devDebug: vi.fn(),
@@ -58,7 +59,8 @@ vi.mock('../../features/contacts/index.js', () => ({
   cleanupInviteListeners: mocks.cleanupInviteListeners,
   setupInviteListener: mocks.setupInviteListener,
   processReferral: mocks.processReferral,
-  renderContactsList: mocks.renderContactsList,
+  ensureContactsHydrated: mocks.ensureContactsHydrated,
+  resetContactsState: mocks.resetContactsState,
 }));
 
 vi.mock('../../features/push-notifications/index.js', () => ({
@@ -78,6 +80,7 @@ describe('setupAuth', () => {
     vi.resetModules();
     vi.clearAllMocks();
     mocks.handlers.clear();
+    mocks.ensureContactsHydrated.mockResolvedValue();
     localStorageData = new Map();
     localStorageRef = {
       get length() {
@@ -110,7 +113,7 @@ describe('setupAuth', () => {
 
     await mocks.handlers.get('evt:auth:session:ready')({});
 
-    expect(mocks.renderContactsList).toHaveBeenCalledWith(lobbyElement);
+    expect(mocks.ensureContactsHydrated).toHaveBeenCalled();
 
     teardown();
   });
@@ -132,9 +135,9 @@ describe('setupAuth', () => {
     });
 
     expect(mocks.processReferral).toHaveBeenCalled();
-    expect(mocks.renderContactsList).toHaveBeenCalledWith(lobbyElement);
+    expect(mocks.ensureContactsHydrated).toHaveBeenCalled();
     expect(mocks.startListeningForSavedRooms).not.toHaveBeenCalled();
-    expect(mocks.setupInviteListener).toHaveBeenCalledWith(lobbyElement);
+    expect(mocks.setupInviteListener).toHaveBeenCalledWith();
     expect(mocks.showEnableNotificationsPrompt).toHaveBeenCalled();
 
     teardown();
@@ -148,7 +151,7 @@ describe('setupAuth', () => {
 
     await mocks.handlers.get('evt:auth:session:logout')({});
 
-    expect(mocks.renderContactsList).toHaveBeenCalledWith(lobbyElement);
+    expect(mocks.resetContactsState).toHaveBeenCalled();
     expect(mocks.removeAllIncomingListeners).toHaveBeenCalled();
     expect(mocks.cleanupInviteListeners).toHaveBeenCalled();
     expect(mocks.closeAllConversations).toHaveBeenCalled();
@@ -189,7 +192,6 @@ describe('setupAuth', () => {
       mocks.handlers.get('evt:auth:session:logout')({}),
     ).resolves.toBeUndefined();
 
-    expect(mocks.renderContactsList).toHaveBeenCalledWith(lobbyElement);
     expect(mocks.removeAllIncomingListeners).toHaveBeenCalled();
     expect(mocks.cleanupInviteListeners).toHaveBeenCalled();
     expect(mocks.closeAllConversations).toHaveBeenCalled();

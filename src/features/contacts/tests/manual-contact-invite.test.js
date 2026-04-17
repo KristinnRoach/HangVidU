@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   lookupUserByEmail: vi.fn(),
   sendContactInvite: vi.fn(),
   getAllContacts: vi.fn(),
+  ensureContactsHydrated: vi.fn(),
 }));
 
 vi.mock('../user-discovery.js', () => ({
@@ -15,9 +16,11 @@ vi.mock('../send-contact-invite.js', () => ({
 }));
 
 vi.mock('../contacts-service.js', () => ({
-  contactsService: {
-    getAllContacts: mocks.getAllContacts,
-  },
+  ensureContactsHydrated: mocks.ensureContactsHydrated,
+}));
+
+vi.mock('../contacts-state.js', () => ({
+  getAllContacts: mocks.getAllContacts,
 }));
 
 vi.mock('../../../auth/index.js', () => ({
@@ -29,6 +32,8 @@ import { inviteContactByEmail } from '../manual-contact-invite.js';
 describe('inviteContactByEmail', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.ensureContactsHydrated.mockResolvedValue();
+    mocks.getAllContacts.mockReturnValue({});
   });
 
   it('invokes not-found fallback only when lookup returns not_found', async () => {
@@ -67,5 +72,21 @@ describe('inviteContactByEmail', () => {
         error,
       }),
     );
+  });
+
+  it('checks duplicates after contacts hydration', async () => {
+    mocks.lookupUserByEmail.mockResolvedValue({
+      status: 'found',
+      user: { uid: 'user-1', userName: 'Alice' },
+    });
+    mocks.getAllContacts.mockReturnValue({
+      'user-1': { contactId: 'user-1' },
+    });
+
+    const result = await inviteContactByEmail('alice@example.com');
+
+    expect(mocks.ensureContactsHydrated).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ ok: false, status: 'already_saved' });
+    expect(mocks.sendContactInvite).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,7 @@
 // src/auth/auth-state.js — pure auth state, no Firebase imports
 
 import { getOrCreateGuestId } from './guest-user.js';
-import { publishAndAwait } from '../shared/events/index.js';
+import { publish, publishAndAwait } from '../shared/events/index.js';
 
 let state = {
   status: 'idle', // 'idle' | 'loading' | 'authenticated' | 'unauthenticated'
@@ -16,7 +16,11 @@ const listeners = new Set();
 let hasResolvedReady = false;
 let emitChain = Promise.resolve();
 
-// Ensure immutable snapshot for subscribers
+/**
+ * Build the public auth snapshot without leaking private object references.
+ *
+ * @returns {{ status: string, user: { uid: string, userName: string | null, email: string | null, photoURL: string | null } | null, isLoggedIn: boolean }}
+ */
 const snapshot = () => ({
   ...state,
   user: state.user ? { ...state.user } : null,
@@ -25,6 +29,9 @@ const snapshot = () => ({
 /**
  * Update auth state and notify subscribers.
  * Called by auth.js when Firebase auth state changes — not part of the public API.
+ *
+ * @param {Partial<typeof state>} next
+ * @returns {void}
  */
 export function setState(next) {
   const previousSnapshot = snapshot();
@@ -39,6 +46,10 @@ export function setState(next) {
       console.error('[auth-state] subscriber error:', e);
     }
   }
+
+  // Canonical state-change event (STATE_RULES.md pattern).
+  // Fire-and-forget: does not participate in the ordered emit chain below.
+  publish('evt:auth:state:changed', { state: snap, prev: previousSnapshot });
 
   // Build ordered list of auth events to emit.
   // Order matters: READY must complete before LOGGED_IN/LOGGED_OUT.
@@ -89,10 +100,16 @@ export function setState(next) {
 
 // --- Public accessors ---
 
+/**
+ * Return the current auth snapshot.
+ *
+ * @returns {ReturnType<typeof snapshot>}
+ */
 export function getAuthState() {
   return snapshot();
 }
 
+/** @returns {boolean} */
 export function getIsLoggedIn() {
   return state.isLoggedIn;
 }
@@ -108,6 +125,8 @@ export function getUser() {
 
 /**
  * Returns the authenticated user's UID, or a persistent guest ID as fallback.
+ *
+ * @returns {string}
  */
 export function getUserId() {
   return state.user?.uid ?? getOrCreateGuestId();
@@ -115,11 +134,14 @@ export function getUserId() {
 
 /**
  * Returns the authenticated user's UID, or null if not logged in.
+ *
+ * @returns {string|null}
  */
 export function getLoggedInUserId() {
   return state.user?.uid ?? null;
 }
 
+/** @returns {string|null} */
 export function getUserName() {
   return state.user?.userName ?? null;
 }
@@ -129,6 +151,9 @@ export function getUserName() {
 /**
  * Subscribe to auth state changes. Called with the full state object.
  * Returns an unsubscribe function.
+ *
+ * @param {(state: ReturnType<typeof snapshot>) => void} fn
+ * @returns {() => boolean}
  */
 export function onAuthStateChanged(fn) {
   listeners.add(fn);
@@ -147,6 +172,8 @@ export function onAuthStateChanged(fn) {
  * Resolve when auth state has reached a stable value
  * ('authenticated' or 'unauthenticated').
  * Useful for flows that must wait for the first auth resolution.
+ *
+ * @returns {Promise<ReturnType<typeof snapshot>>}
  */
 export function waitForAuthReady() {
   if (state.status === 'authenticated' || state.status === 'unauthenticated') {

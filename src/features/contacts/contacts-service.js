@@ -4,14 +4,9 @@ import {
   createContactsLocalStore,
   createContactsRTDBStore,
 } from './storage/index.js';
-import {
-  getAllContacts,
-  getAllContactsSorted,
-  getContactByMostRecentInteraction,
-  getContactByRoomId,
-} from './contacts-query.js';
 import { resolveDirectConversationId } from '../../shared/utils/direct-conversation-id.js';
 import { publish } from '../../shared/events/index.js';
+import { setState, getAllContacts, getIsHydrated } from './contacts-state.js';
 // PAUSED: claude --resume edf6030f-72fb-4503-9175-bfc21d2d973c
 
 /**
@@ -21,6 +16,27 @@ import { publish } from '../../shared/events/index.js';
 /**
  * @typedef {{ action: 'existing' | 'skip' | 'prompt-save', reason?: string }} HangUpResult
  */
+
+/** @type {Promise<void>|null} */
+let hydrationPromise = null;
+/** @type {string|null} */
+let hydrationPromiseScopeKey = null;
+/** @type {string|null} */
+let hydratedScopeKey = null;
+let hydrationRequestId = 0;
+
+/**
+ * Resolve the current hydration scope.
+ *
+ * Contacts state is scoped to the logged-in user when authenticated,
+ * otherwise it is scoped to guest storage.
+ *
+ * @param {string|null} [ownerId=getLoggedInUserId()]
+ * @returns {string}
+ */
+function getHydrationScopeKey(ownerId = getLoggedInUserId()) {
+  return ownerId ? `user:${ownerId}` : 'guest';
+}
 
 /**
  * Resolve the active storage backend for the current auth state.
@@ -57,9 +73,31 @@ function logServiceFailure(action, error, context = {}) {
 }
 
 /**
+ * Read all contacts from storage and key them by contact id.
+ *
+ * @param {import('./storage/contacts-store.js').ContactsStore} storage
+ * @returns {Promise<Record<string, ContactRecord>>}
+ */
+async function loadContactsById(storage) {
+  const contacts = await storage.list();
+  const byId = {};
+
+  for (const contact of contacts) {
+    if (!contact?.contactId) {
+      continue;
+    }
+
+    byId[contact.contactId] = contact;
+  }
+
+  return byId;
+}
+
+/**
  * Publish room creation when a saved contact has a room id.
  *
  * @param {ContactRecord} contact
+ * @returns {Promise<void>}
  */
 async function emitContactSaved(contact) {
   const roomId = contact?.roomId ?? null;
@@ -68,7 +106,7 @@ async function emitContactSaved(contact) {
     return;
   }
 
-  publish('evt:room:id:created', { roomId });
+  publish('evt:contacts:room:created', { roomId });
 }
 
 /**
@@ -76,6 +114,7 @@ async function emitContactSaved(contact) {
  *
  * @param {ContactRecord} contact
  * @param {string|null} previousRoomId
+ * @returns {Promise<void>}
  */
 async function emitContactUpdated(contact, previousRoomId) {
   const roomId = contact?.roomId ?? null;
@@ -85,7 +124,7 @@ async function emitContactUpdated(contact, previousRoomId) {
     return;
   }
 
-  publish('evt:room:id:updated', {
+  publish('evt:contacts:room:updated', {
     contactId: contact.contactId,
     contactNickName: contact.contactNickName,
     roomId,
@@ -93,6 +132,13 @@ async function emitContactUpdated(contact, previousRoomId) {
   });
 }
 
+/**
+ * Publish contact deletion for listeners keyed by room id.
+ *
+ * @param {string} contactId
+ * @param {string|null|undefined} roomId
+ * @returns {Promise<void>}
+ */
 async function emitContactDeleted(contactId, roomId) {
   publish('evt:contacts:contact:deleted', {
     contactId,
@@ -107,32 +153,6 @@ async function emitContactDeleted(contactId, roomId) {
  * contact-specific query helpers that should not live in storage.
  */
 export class ContactsService {
-  /**
-   * Read one contact.
-   *
-   * @param {string} contactId
-   * @returns {Promise<ContactRecord|null>}
-   */
-  async getContact(contactId) {
-    try {
-      return await getContactsStorage().get(contactId);
-    } catch (error) {
-      logServiceFailure('getContact', error, { contactId });
-      return null;
-    }
-  }
-
-  /**
-   * Resolve the stored conversation id for one saved contact.
-   *
-   * @param {string} contactId
-   * @returns {Promise<string|null>}
-   */
-  async getConversationId(contactId) {
-    const contact = await this.getContact(contactId);
-    return contact?.conversationId ?? null;
-  }
-
   /**
    * Update an existing contact.
    * Returns `null` when the contact does not exist.
@@ -161,6 +181,11 @@ export class ContactsService {
         return null;
       }
 
+      // Sync in-memory state mirror
+      const byId = getAllContacts();
+      byId[contactId] = updatedContact;
+      setState({ byId });
+
       await emitContactUpdated(updatedContact, previousRoomId);
       return updatedContact;
     } catch (error) {
@@ -188,70 +213,17 @@ export class ContactsService {
         return false;
       }
 
+      // Sync in-memory state mirror
+      const byId = getAllContacts();
+      delete byId[contactId];
+      setState({ byId });
+
       await emitContactDeleted(contactId, existing?.roomId ?? null);
 
       return true;
     } catch (error) {
       logServiceFailure('deleteContact', error, { contactId });
       return false;
-    }
-  }
-
-  /**
-   * Read all contacts as a map keyed by `contactId`.
-   *
-   * @returns {Promise<Record<string, ContactRecord>>}
-   */
-  async getAllContacts() {
-    try {
-      return await getAllContacts(getContactsStorage());
-    } catch (error) {
-      logServiceFailure('getAllContacts', error);
-      return {};
-    }
-  }
-
-  /**
-   * Read all contacts sorted by last interaction time.
-   *
-   * @param {string} [sortedBy='lastInteractionAt']
-   * @returns {Promise<ContactRecord[]>}
-   */
-  async getAllContactsSorted(sortedBy = 'lastInteractionAt') {
-    try {
-      return await getAllContactsSorted(getContactsStorage(), sortedBy);
-    } catch (error) {
-      logServiceFailure('getAllContactsSorted', error, { sortedBy });
-      return [];
-    }
-  }
-
-  /**
-   * Read the most recently interacted contact.
-   *
-   * @returns {Promise<ContactRecord|null>}
-   */
-  async getContactByMostRecentInteraction() {
-    try {
-      return await getContactByMostRecentInteraction(getContactsStorage());
-    } catch (error) {
-      logServiceFailure('getContactByMostRecentInteraction', error);
-      return null;
-    }
-  }
-
-  /**
-   * Find a contact by room id.
-   *
-   * @param {string|null|undefined} roomId
-   * @returns {Promise<ContactRecord|null>}
-   */
-  async getContactByRoomId(roomId) {
-    try {
-      return await getContactByRoomId(getContactsStorage(), roomId);
-    } catch (error) {
-      logServiceFailure('getContactByRoomId', error, { roomId });
-      return null;
     }
   }
 
@@ -268,9 +240,17 @@ export class ContactsService {
     }
 
     try {
-      return await getContactsStorage().patch(contactId, {
+      const updated = await getContactsStorage().patch(contactId, {
         lastInteractionAt: Date.now(),
       });
+
+      if (updated) {
+        const byId = getAllContacts();
+        byId[contactId] = updated;
+        setState({ byId });
+      }
+
+      return updated;
     } catch (error) {
       logServiceFailure('updateLastInteraction', error, { contactId });
       return null;
@@ -305,6 +285,11 @@ export class ContactsService {
         lastInteractionAt: existing?.lastInteractionAt ?? now,
       });
 
+      // Sync in-memory state mirror
+      const byId = getAllContacts();
+      byId[contactId] = contact;
+      setState({ byId });
+
       if (existing) {
         await emitContactUpdated(contact, existing.roomId ?? null);
       } else {
@@ -329,16 +314,24 @@ export class ContactsService {
    * @returns {Promise<HangUpResult>}
    */
   async handleHangUp(contactUserId, roomId) {
-    const existing = await this.getAllContacts();
-      const entry = existing?.[contactUserId];
+    if (getIsLoggedIn() && !getIsHydrated()) {
+      try {
+        await ensureContactsHydrated();
+      } catch (error) {
+        logServiceFailure('handleHangUp.ensureContactsHydrated', error, {
+          contactUserId,
+          roomId,
+        });
+        return { action: 'skip', reason: 'contacts-not-ready' };
+      }
+    }
+
+    const existing = getAllContacts();
+    const entry = existing?.[contactUserId];
 
     if (entry) {
       if (entry.roomId !== roomId) {
-        await this.updateContact(
-          contactUserId,
-          entry.contactNickName,
-          roomId,
-        );
+        await this.updateContact(contactUserId, entry.contactNickName, roomId);
       }
       return { action: 'existing' };
     }
@@ -349,6 +342,72 @@ export class ContactsService {
 
     return { action: 'prompt-save' };
   }
+}
+
+/**
+ * Hydrate contacts state once until the state is reset.
+ * Concurrent callers share the same in-flight storage read.
+ *
+ * @returns {Promise<void>}
+ */
+export async function ensureContactsHydrated() {
+  const ownerId = getLoggedInUserId();
+  const scopeKey = getHydrationScopeKey(ownerId);
+
+  if (getIsHydrated() && hydratedScopeKey === scopeKey) {
+    return;
+  }
+
+  if (hydrationPromise && hydrationPromiseScopeKey === scopeKey) {
+    return hydrationPromise;
+  }
+
+  const requestId = ++hydrationRequestId;
+  hydrationPromiseScopeKey = scopeKey;
+  hydrationPromise = (async () => {
+    try {
+      const allContacts = await loadContactsById(getContactsStorage(ownerId));
+
+      if (requestId !== hydrationRequestId) {
+        return;
+      }
+
+      hydratedScopeKey = scopeKey;
+      setState({ byId: allContacts, isHydrated: true });
+    } catch (error) {
+      logServiceFailure('ensureContactsHydrated', error);
+      throw error;
+    } finally {
+      if (requestId === hydrationRequestId) {
+        hydrationPromise = null;
+        hydrationPromiseScopeKey = null;
+      }
+    }
+  })();
+
+  return hydrationPromise;
+}
+
+/**
+ * Backward-compatible alias for contacts hydration.
+ *
+ * @returns {Promise<void>}
+ */
+export async function hydrateContactsState() {
+  return ensureContactsHydrated();
+}
+
+/**
+ * Clear in-memory contacts state and drop any cached hydration promise.
+ *
+ * @returns {void}
+ */
+export function resetContactsState() {
+  hydrationPromise = null;
+  hydrationPromiseScopeKey = null;
+  hydratedScopeKey = null;
+  hydrationRequestId += 1;
+  setState({ byId: {}, isHydrated: false });
 }
 
 export const contactsService = new ContactsService();

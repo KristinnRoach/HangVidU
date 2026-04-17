@@ -12,7 +12,11 @@ import {
 } from '../../auth/index.js';
 import { getDiagnosticLogger } from '../../shared/utils/dev/diagnostic-logger.js';
 import { devDebug } from '../../shared/utils/dev/dev-utils.js';
-import { contactsService } from '../contacts/index.js';
+import {
+  contactsService,
+  getContactByRoomId,
+  getAllContacts,
+} from '../contacts/index.js';
 import { getDeterministicRoomId } from '../../shared/utils/room-id.js';
 import RoomService from './room.js';
 import CallController from './call-controller.js';
@@ -344,12 +348,10 @@ async function handleIncomingCallAccepted({
   );
 
   // Update lastInteractionAt for answered incoming call
-  contactsService
-    .getContactByRoomId(roomId)
-    .then((c) => {
-      if (c?.contactId) contactsService.updateLastInteraction(c.contactId);
-    })
-    .catch(() => {});
+  const contact = getContactByRoomId(roomId);
+  if (contact?.contactId) {
+    contactsService.updateLastInteraction(contact.contactId).catch(() => {});
+  }
 
   const success = await joinOrCreateRoomWithId(roomId, { audioOnly }).catch(
     (e) => {
@@ -564,7 +566,7 @@ export function listenForIncomingOnRoom(roomId) {
         joinedContactId,
       });
 
-      const callerContact = await contactsService.getContactByRoomId(roomId);
+      const callerContact = getContactByRoomId(roomId);
       const callerName =
         callerContact?.contactNickName || joinedContactId || 'Unknown';
 
@@ -743,7 +745,7 @@ export function listenForIncomingOnRoom(roomId) {
       // UNLESS it is a saved contact - then we want to keep listening
       let savedContact = null;
       try {
-        savedContact = await contactsService.getContactByRoomId(roomId);
+        savedContact = getContactByRoomId(roomId);
       } catch (e) {
         console.warn('[LISTENER] Failed to check saved contact:', e);
       }
@@ -781,7 +783,7 @@ export function listenForIncomingOnRoom(roomId) {
         // If no members remain, remove the saved recent call for this client
         // and clean up the incoming listeners for this room (UNLESS saved contact)
         if (!status.hasMembers) {
-          const savedContact = await contactsService.getContactByRoomId(roomId);
+          const savedContact = getContactByRoomId(roomId);
           await removeRecentCallRecordForCurrentUser(roomId);
           if (!savedContact) {
             removeIncomingListenersForRoom(roomId);
@@ -851,7 +853,7 @@ export async function startListeningForSavedRooms() {
 
       // Also include saved contacts' roomIds (or deterministic room IDs)
       try {
-        const contacts = await contactsService.getAllContacts();
+        const contacts = getAllContacts();
         Object.entries(contacts || {}).forEach(([contactId, c]) => {
           if (c?.roomId) {
             toListen.add(c.roomId);
@@ -911,7 +913,7 @@ export async function startListeningForSavedRooms() {
     }
     // Also include saved contacts' roomIds (or deterministic room IDs)
     try {
-      const contacts = await contactsService.getAllContacts();
+      const contacts = getAllContacts();
       const guestUserId = getUserId(); // Get guest user ID
       Object.entries(contacts || {}).forEach(([contactId, c]) => {
         if (c?.roomId) {

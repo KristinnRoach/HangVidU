@@ -11,7 +11,8 @@ import {
   cleanupInviteListeners,
   setupInviteListener,
   processReferral,
-  renderContactsList,
+  ensureContactsHydrated,
+  resetContactsState,
 } from '../features/contacts/index.js';
 import { getPushNotifications } from '../features/push-notifications/index.js';
 import { showEnableNotificationsPrompt } from '../features/notifications/index.js';
@@ -38,6 +39,11 @@ const LOCAL_STORAGE_KEYS_TO_PRESERVE_ON_LOGOUT = [
 ];
 const LOCAL_STORAGE_PREFIXES_TO_PRESERVE_ON_LOGOUT = ['debug:']; // 'referral'
 
+/**
+ * Clear user-scoped local storage while preserving app-wide keys.
+ *
+ * @returns {void}
+ */
 function clearLocalStorageOnLogout() {
   try {
     const storage = globalThis.localStorage;
@@ -132,7 +138,7 @@ export function setupAuth(options = {}) {
         'evt:auth:session:ready',
         async () => {
           try {
-            await renderContactsList(lobbyElement);
+            await ensureContactsHydrated();
           } catch (e) {
             console.warn('[AUTH] Failed to handle evt:auth:session:ready:', e);
           }
@@ -147,7 +153,7 @@ export function setupAuth(options = {}) {
             devDebug('[AUTH] User logged out - cleaning up listeners');
             runMainLogoutCleanup();
 
-            await renderContactsList(lobbyElement);
+            resetContactsState();
           } catch (e) {
             console.warn('[AUTH] Failed to handle evt:auth:session:logout:', e);
           }
@@ -164,12 +170,8 @@ export function setupAuth(options = {}) {
             await processReferral().catch((e) =>
               console.warn('[REFERRAL] Failed to process referral:', e),
             );
-
-            await renderContactsList(lobbyElement).catch((e) =>
-              console.warn(
-                '[AUTH] Failed to render contacts list on login:',
-                e,
-              ),
+            await ensureContactsHydrated().catch((e) =>
+              console.warn('[AUTH] Failed to hydrate contacts state on login:', e),
             );
 
             cleanupLoginScopedListeners();
@@ -184,7 +186,7 @@ export function setupAuth(options = {}) {
               }
             }
 
-            const maybeInviteCleanup = setupInviteListener(lobbyElement);
+            const maybeInviteCleanup = setupInviteListener();
             if (typeof maybeInviteCleanup === 'function') {
               inviteCleanup = maybeInviteCleanup;
             }

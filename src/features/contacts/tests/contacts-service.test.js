@@ -15,6 +15,17 @@ const mocks = vi.hoisted(() => ({
   events: {
     publish: vi.fn(),
   },
+  state: {
+    setState: vi.fn(),
+    getAllContacts: vi.fn(() => ({})),
+    getIsHydrated: vi.fn(() => false),
+  },
+}));
+
+vi.mock('../contacts-state.js', () => ({
+  setState: mocks.state.setState,
+  getAllContacts: mocks.state.getAllContacts,
+  getIsHydrated: mocks.state.getIsHydrated,
 }));
 
 vi.mock('../../../auth/index.js', () => ({
@@ -51,6 +62,9 @@ describe('contacts-service', () => {
     mocks.store.patch.mockReset();
     mocks.store.remove.mockReset();
     mocks.events.publish.mockReset();
+    mocks.state.setState.mockReset();
+    mocks.state.getAllContacts.mockReset().mockReturnValue({});
+    mocks.state.getIsHydrated.mockReset().mockReturnValue(false);
 
     vi.restoreAllMocks();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -82,7 +96,7 @@ describe('contacts-service', () => {
       lastInteractionAt: expect.any(Number),
     });
 
-    expect(mocks.events.publish).toHaveBeenCalledWith('evt:room:id:created', {
+    expect(mocks.events.publish).toHaveBeenCalledWith('evt:contacts:room:created', {
       roomId: 'room-1',
     });
   });
@@ -172,7 +186,7 @@ describe('contacts-service', () => {
       roomId: 'room-2',
     });
 
-    expect(mocks.events.publish).toHaveBeenCalledWith('evt:room:id:updated', {
+    expect(mocks.events.publish).toHaveBeenCalledWith('evt:contacts:room:updated', {
       contactId: 'u1',
       contactNickName: 'Alice B',
       roomId: 'room-2',
@@ -233,104 +247,6 @@ describe('contacts-service', () => {
     expect(mocks.events.publish).not.toHaveBeenCalled();
   });
 
-  it('getAllContacts returns a map keyed by contactId', async () => {
-    const { ContactsService } = await import('../contacts-service.js');
-    const service = new ContactsService();
-
-    mocks.store.list.mockResolvedValue([
-      {
-        contactId: 'b',
-        contactNickName: 'Bob',
-        roomId: 'r2',
-        savedAt: 1,
-        lastInteractionAt: 2,
-      },
-      {
-        contactId: 'a',
-        contactNickName: 'Alice',
-        roomId: 'r1',
-        savedAt: 3,
-        lastInteractionAt: 4,
-      },
-    ]);
-
-    const result = await service.getAllContacts();
-
-    expect(result).toEqual({
-      a: {
-        contactId: 'a',
-        contactNickName: 'Alice',
-        roomId: 'r1',
-        savedAt: 3,
-        lastInteractionAt: 4,
-      },
-      b: {
-        contactId: 'b',
-        contactNickName: 'Bob',
-        roomId: 'r2',
-        savedAt: 1,
-        lastInteractionAt: 2,
-      },
-    });
-  });
-
-  it('getAllContactsSorted returns contacts sorted by lastInteractionAt then name', async () => {
-    const { ContactsService } = await import('../contacts-service.js');
-    const service = new ContactsService();
-
-    mocks.store.list.mockResolvedValue([
-      {
-        contactId: 'b',
-        contactNickName: 'Bob',
-        roomId: 'r2',
-        savedAt: 1,
-        lastInteractionAt: 5,
-      },
-      {
-        contactId: 'a',
-        contactNickName: 'Alice',
-        roomId: 'r1',
-        savedAt: 1,
-        lastInteractionAt: 5,
-      },
-      {
-        contactId: 'c',
-        contactNickName: 'Cara',
-        roomId: 'r3',
-        savedAt: 1,
-        lastInteractionAt: 1,
-      },
-    ]);
-
-    const result = await service.getAllContactsSorted();
-
-    expect(result.map((contact) => contact.contactId)).toEqual(['a', 'b', 'c']);
-  });
-
-  it('getContactByRoomId returns the matching record or null', async () => {
-    const { ContactsService } = await import('../contacts-service.js');
-    const service = new ContactsService();
-
-    mocks.store.list.mockResolvedValue([
-      {
-        contactId: 'u1',
-        contactNickName: 'Alice',
-        roomId: 'room-1',
-        savedAt: 1,
-        lastInteractionAt: 1,
-      },
-    ]);
-
-    await expect(service.getContactByRoomId('room-1')).resolves.toEqual({
-      contactId: 'u1',
-      contactNickName: 'Alice',
-      roomId: 'room-1',
-      savedAt: 1,
-      lastInteractionAt: 1,
-    });
-    await expect(service.getContactByRoomId('missing')).resolves.toBeNull();
-  });
-
   it('updateLastInteraction returns null for guest mode and does not patch', async () => {
     const { ContactsService } = await import('../contacts-service.js');
     const service = new ContactsService();
@@ -371,21 +287,21 @@ describe('contacts-service', () => {
     const { ContactsService } = await import('../contacts-service.js');
     const service = new ContactsService();
 
-    mocks.store.list.mockResolvedValue([
-      {
+    mocks.state.getAllContacts.mockReturnValue({
+      u1: {
         contactId: 'u1',
         contactNickName: 'Alice',
         roomId: 'room-1',
         savedAt: 1,
         lastInteractionAt: 1,
       },
-    ]);
+    });
 
     await expect(service.handleHangUp('u1', 'room-1')).resolves.toEqual({
       action: 'existing',
     });
 
-    mocks.store.list.mockResolvedValue([]);
+    mocks.state.getAllContacts.mockReturnValue({});
     mocks.auth.loggedIn = false;
     await expect(service.handleHangUp('u2', 'room-2')).resolves.toEqual({
       action: 'skip',
@@ -396,5 +312,46 @@ describe('contacts-service', () => {
     await expect(service.handleHangUp('u2', 'room-2')).resolves.toEqual({
       action: 'prompt-save',
     });
+  });
+
+  it('rehydrates when auth scope changes after an earlier guest hydration', async () => {
+    const { ensureContactsHydrated } = await import('../contacts-service.js');
+
+    mocks.store.list
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          contactId: 'u1',
+          contactNickName: 'Alice',
+          roomId: 'room-1',
+          savedAt: 1,
+          lastInteractionAt: 1,
+        },
+      ]);
+
+    await ensureContactsHydrated();
+    expect(mocks.state.setState).toHaveBeenLastCalledWith({
+      byId: {},
+      isHydrated: true,
+    });
+
+    mocks.state.getIsHydrated.mockReturnValue(true);
+    mocks.auth.ownerId = 'me';
+
+    await ensureContactsHydrated();
+
+    expect(mocks.state.setState).toHaveBeenLastCalledWith({
+      byId: {
+        u1: {
+          contactId: 'u1',
+          contactNickName: 'Alice',
+          roomId: 'room-1',
+          savedAt: 1,
+          lastInteractionAt: 1,
+        },
+      },
+      isHydrated: true,
+    });
+    expect(mocks.store.list).toHaveBeenCalledTimes(2);
   });
 });

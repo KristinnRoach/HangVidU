@@ -24,7 +24,7 @@
     "preview": "vite preview",
     "preview:https": "PREVIEW_HTTPS=1 vite preview",
     "preview:pwa": "pnpm build && pnpm preview:https",
-    "lint": "pnpm lint:boundaries && eslint \"src/**/*.js\"",
+    "lint": "eslint \"src/**/*.js\" && pnpm lint:boundaries",
     "lint:boundaries": "eslint --config eslint.boundaries.config.js \"src/**/*.js\"",
     "lint:b:all": "BOUNDARIES_ENFORCE_ALL=1 pnpm lint:boundaries",
     "lint:b:auth": "BOUNDARIES_AUTH=1 pnpm lint:boundaries",

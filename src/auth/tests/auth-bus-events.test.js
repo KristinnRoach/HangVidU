@@ -3,17 +3,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => {
   return {
     events: {
+      publish: vi.fn(),
       publishAndAwait: vi.fn().mockResolvedValue(undefined),
     },
   };
 });
 
 vi.mock('../../shared/events/index.js', () => ({
+  publish: mocks.events.publish,
   publishAndAwait: mocks.events.publishAndAwait,
 }));
 
 beforeEach(() => {
   vi.resetModules();
+  mocks.events.publish.mockReset();
   mocks.events.publishAndAwait.mockReset().mockResolvedValue(undefined);
 });
 

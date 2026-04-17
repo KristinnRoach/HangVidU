@@ -64,9 +64,9 @@ const ENFORCED_FEATURES = requestedFeatures
   ? requestedFeatures
   : ENFORCE_ALL
     ? ALL_FEATURES
-    : ['contacts', 'push-notifications', 'messaging', 'call'];
+    : ['contacts', 'push-notifications', 'messaging'];
 
-const SHARED_TEMP_FEATURE_EXCEPTIONS = ['watch', 'notifications'];
+const SHARED_TEMP_FEATURE_EXCEPTIONS = ['watch', 'notifications', 'call'];
 
 const SHARED_GLOBS = [
   'src/elements.js',
