@@ -18,7 +18,7 @@ vi.mock('../../features/contacts/index.js', () => ({
   getAllContactsSorted: mocks.getAllContactsSorted,
 }));
 
-vi.mock('../../features/contacts/contacts-command-handlers.js', () => ({
+vi.mock('../contacts/contacts-command-handlers.js', () => ({
   setupContactsAppBusHandlers: vi.fn(() => () => {}),
 }));
 

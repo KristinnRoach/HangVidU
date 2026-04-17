@@ -5,7 +5,7 @@
 import { produce } from 'solid-js/store';
 import { subscribe, dispatchCommand } from '../shared/events/index.js';
 import { getAllContactsSorted } from '../features/contacts/index.js';
-import { setupContactsAppBusHandlers } from '../features/contacts/contacts-command-handlers.js';
+import { setupContactsAppBusHandlers } from './contacts/contacts-command-handlers.js';
 import { setContacts } from './components/ContactsList.jsx';
 
 /**

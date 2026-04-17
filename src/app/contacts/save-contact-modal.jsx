@@ -1,7 +1,7 @@
-import { t } from '../../../shared/i18n/index.js';
-import { contactsService } from '../contacts-service.js';
-import confirmDialog from '../../../shared/components/base/confirm-dialog.js';
-import { openSolidDialog } from '../../../shared/components/base/solid-dialog.js';
+import { t } from '../../shared/i18n/index.js';
+import { contactsService } from '../../features/contacts/contacts-service.js';
+import confirmDialog from '../../shared/components/base/confirm-dialog.js';
+import { openSolidDialog } from '../../shared/components/base/solid-dialog.js';
 import SaveContactNameDialog from './SaveContactNameDialog.jsx';
 
 export function promptSaveContactName(initialName) {

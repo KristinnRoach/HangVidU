@@ -1,5 +1,5 @@
 import { createSignal, onCleanup, onMount } from 'solid-js';
-import { t } from '../../../shared/i18n/index.js';
+import { t } from '../../shared/i18n/index.js';
 
 export default function SaveContactNameDialog(props) {
   const [name, setName] = createSignal(props.initialName);

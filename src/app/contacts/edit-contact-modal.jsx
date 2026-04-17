@@ -1,4 +1,4 @@
-import { openSolidDialog } from '../../../shared/components/base/solid-dialog.js';
+import { openSolidDialog } from '../../shared/components/base/solid-dialog.js';
 import EditContactDialog from './EditContactDialog.jsx';
 
 /**

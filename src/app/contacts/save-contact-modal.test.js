@@ -6,21 +6,21 @@ const mocks = vi.hoisted(() => ({
   openSolidDialog: vi.fn(),
 }));
 
-vi.mock('../../../shared/i18n/index.js', () => ({
+vi.mock('../../shared/i18n/index.js', () => ({
   t: (key) => key,
 }));
 
-vi.mock('../contacts-service.js', () => ({
+vi.mock('../../features/contacts/contacts-service.js', () => ({
   contactsService: {
     saveContact: mocks.saveContact,
   },
 }));
 
-vi.mock('../../../shared/components/base/confirm-dialog.js', () => ({
+vi.mock('../../shared/components/base/confirm-dialog.js', () => ({
   default: mocks.confirmDialog,
 }));
 
-vi.mock('../../../shared/components/base/solid-dialog.js', () => ({
+vi.mock('../../shared/components/base/solid-dialog.js', () => ({
   openSolidDialog: mocks.openSolidDialog,
 }));
 

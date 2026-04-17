@@ -139,7 +139,7 @@ One file: `src/app/setupAppRoot.js`
 2. **`main.js:241` — `setupMessagingContactsIntegration()` return value not pushed into cleanup stack.** Pre-existing leak of a teardown handle. Not introduced here.
 3. **No `evt:contacts:hydrated` event.** The new `setupAppRoot` reads `getAllContactsSorted()` on every `evt:contacts:state:changed`, which covers initial hydration in practice. If multiple UI surfaces need "contacts are ready" as a first-class signal, promote this to an event.
 4. **`contactsService.updateContact(contactId, name, roomId)` signature.** Takes `roomId` as a third arg purely to preserve it through the update. Awkward; don't touch in PoC.
-5. **Old DOM `src/features/contacts/components/contacts-list.js`** still exists with its tests — retained only as legacy fallback/reference. Delete when no longer needed.
+5. **Legacy DOM contacts list removed.** The Solid app path is now the only contacts-list path in active use.
 6. **Locale reactivity** (see Findings above) — needs a project-wide pattern before more JSX UI is written.
 
 ---

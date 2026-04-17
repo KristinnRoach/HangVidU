@@ -1,27 +1,23 @@
-// src/features/contacts/contacts-command-handlers.js
 //
-// Owns cross-module contact commands. External surfaces (UI components, other
-// features) dispatch these; the handlers here orchestrate modals + service
-// writes inside the contacts module. Mirrors messaging-command-handlers.js.
+// Owns app-level contact command handlers that orchestrate app UI (modals)
+// around contacts-domain service writes.
 
 import { handleCommand } from '../../shared/events/index.js';
 import { t } from '../../shared/i18n/index.js';
 import confirmDialog from '../../shared/components/base/confirm-dialog.js';
-import editContactModal from './components/edit-contact-modal.jsx';
-import { contactsService } from './contacts-service.js';
-import { getContactById } from './contacts-state.js';
+import editContactModal from './edit-contact-modal.jsx';
+import { contactsService, getContactById } from '../../features/contacts/index.js';
 
 let cleanupContactsAppBusHandlers = null;
 
 /**
- * Register cross-module contacts command handlers.
+ * Register app-level contact command handlers.
  * Idempotent: repeated calls return the same cleanup function.
  *
  * Commands handled:
  *   - cmd:contacts:contact:edit     { contactId }
- *     Opens the edit modal; routes to rename or delete based on result.
  *
- * @returns {() => void} Cleanup function that unregisters handlers.
+ * @returns {() => void}
  */
 export function setupContactsAppBusHandlers() {
   if (cleanupContactsAppBusHandlers) {

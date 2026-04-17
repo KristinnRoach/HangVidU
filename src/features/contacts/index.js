@@ -26,11 +26,9 @@ export { setupInviteListener } from './invite-listener.js';
 
 export { captureReferral, processReferral } from './referral-handler.js';
 
-// Contacts list UI moved to src/app/ (SolidJS). The legacy DOM component at
-// ./components/contacts-list.js is retained only until the SolidJS PoC is
-// accepted; it is not re-exported from the barrel.
+// Contacts list UI now lives in src/app/ (SolidJS). It is not re-exported
+// from the contacts barrel.
 
-export { showSaveContactPrompt } from './components/save-contact-modal.jsx';
 export { showAddContactModal } from './components/add-contact-modal.js';
 
 export { hashEmail, lookupUserByEmail } from './user-discovery.js';
