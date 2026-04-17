@@ -287,6 +287,7 @@ describe('contacts-service', () => {
     const { ContactsService } = await import('../contacts-service.js');
     const service = new ContactsService();
 
+    mocks.state.getIsHydrated.mockReturnValue(true);
     mocks.state.getAllContacts.mockReturnValue({
       u1: {
         contactId: 'u1',
