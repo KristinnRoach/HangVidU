@@ -202,7 +202,7 @@ vi.mock('../../src/features/contacts/contacts-service.js', () => ({
 vi.mock('../../src/features/contacts/index.js', () => ({
   contactsService: mocks.contactsService,
   getContactByRoomId: mocks.contactsService.getContactByRoomId,
-  getContactsAll: mocks.contactsService.getContacts,
+  getContactsAll: vi.fn(() => ({})),
   getContactConversationId: vi.fn(() => null),
   getContactById: vi.fn(() => null),
   getContactsSorted: vi.fn(() => []),
