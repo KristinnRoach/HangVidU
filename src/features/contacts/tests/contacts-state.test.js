@@ -26,7 +26,8 @@ describe('contacts-state', () => {
     const expected = structuredClone(contact);
 
     stateModule.setState({
-      byId: { [contact.contactId]: structuredClone(contact) },
+      byId: { [contact.contactId]: contact },
+      byRoomId: { [contact.roomId]: contact },
       isHydrated: true,
     });
 
@@ -38,7 +39,6 @@ describe('contacts-state', () => {
 
     const roomContact = stateModule.getContactByRoomId('room-1');
     roomContact.contactNickName = 'Mutated via getContactByRoomId';
-
     const sortedContact = stateModule.getAllContactsSorted()[0];
     sortedContact.contactNickName = 'Mutated via getAllContactsSorted';
 
