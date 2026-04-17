@@ -1,5 +1,5 @@
 import CallController from './call-controller.js';
-import { getContactByRoomId } from '../contacts/index.js';
+import { contactsService, getContactByRoomId } from '../contacts/index.js';
 import { getUserId, getUser } from '../../auth/index.js';
 import { getPushNotifications } from '../push-notifications/index.js';
 import { cleanupRemoteStream } from '../../shared/media/state.js';
