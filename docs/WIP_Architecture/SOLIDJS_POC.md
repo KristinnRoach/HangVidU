@@ -71,7 +71,7 @@ One file: `src/setup/setupContactsList.js`
 - [x] Run `pnpm lint` + `pnpm test:node` (all pass; 1 test skipped)
 - [x] Run `pnpm build` — passes
 - [x] Finalize findings section of this file
-- [ ] Commit + push PR
+- [x] Commit + push PR — #477
 
 ---
 
