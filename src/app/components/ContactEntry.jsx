@@ -30,7 +30,8 @@ export default function ContactEntry(props) {
   onMount(() => initIcons(rootEl));
 
   const displayName = () => props.name || t('contact.no_name');
-
+  const callLabel = () => t('contact.action.call', { name: displayName() });
+  const editLabel = () => t('contact.action.edit');
   const onCall = () => {
     if (!props.roomId && !props.id) return;
     dispatchCommand('cmd:call:outgoing:initiate', {
@@ -66,21 +67,25 @@ export default function ContactEntry(props) {
     <div class='contact-entry' ref={rootEl}>
       <button
         class='contact-call-btn'
+        type='button'
         onClick={onCall}
-        title={t('contact.action.call', { name: displayName() })}
+        title={callLabel()}
+        aria-label={callLabel()}
       >
         <i data-lucide='phone' fill='currentColor' stroke-width='0' />
       </button>
 
       <PresenceIndicator userId={props.id} />
 
-      <span
+      <button
+        type='button'
         class='contact-name'
         data-contact-id={props.id}
         onClick={onOpenConversation}
+        aria-label={displayName()}
       >
         {shortName(displayName())}
-      </span>
+      </button>
 
       <Show when={props.unreadCount > 0}>
         <span class='unread-badge' aria-live='polite' aria-atomic='true'>
@@ -90,8 +95,10 @@ export default function ContactEntry(props) {
 
       <button
         class='contact-edit-btn'
+        type='button'
         onClick={onEdit}
-        title={t('contact.action.edit')}
+        title={editLabel()}
+        aria-label={editLabel()}
       >
         ⋮
       </button>

@@ -1,4 +1,4 @@
-import { createSignal, onCleanup, onMount } from 'solid-js';
+import { createEffect, createSignal, onCleanup } from 'solid-js';
 import { watchUserPresence } from '../../features/presence/index.js';
 
 /**
@@ -13,8 +13,17 @@ export default function PresenceIndicator(props) {
   const [isOnline, setIsOnline] = createSignal(false);
   let unsubscribe = null;
 
-  onMount(() => {
-    if (!props.userId) return;
+  createEffect(() => {
+    if (unsubscribe) {
+      unsubscribe();
+      unsubscribe = null;
+    }
+
+    if (!props.userId) {
+      setIsOnline(false);
+      return;
+    }
+
     unsubscribe = watchUserPresence(props.userId, (presence) => {
       setIsOnline(presence?.state === 'online');
     });

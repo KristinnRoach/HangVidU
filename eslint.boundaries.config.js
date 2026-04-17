@@ -90,6 +90,7 @@ function dependencyRule(files, rules) {
       'src/**/*.test.js',
       'src/**/*.test.jsx',
       'src/**/*.browser.test.js',
+      'src/**/*.browser.test.jsx',
     ],
     rules: {
       'boundaries/dependencies': [
