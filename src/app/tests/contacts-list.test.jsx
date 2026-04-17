@@ -67,11 +67,9 @@ describe('SolidJS ContactsList PoC', () => {
     const ContactsListModule = await import(
       '../components/ContactsList.jsx'
     );
-    const { setupContactsList } = await import(
-      '../../setup/setupContactsList.js'
-    );
+    const { setupAppRoot } = await import('../setupAppRoot.js');
 
-    const teardown = setupContactsList();
+    const teardown = setupAppRoot();
     const { container, unmount } = render(() => (
       <ContactsListModule.default />
     ));
@@ -93,11 +91,9 @@ describe('SolidJS ContactsList PoC', () => {
     const ContactsListModule = await import(
       '../components/ContactsList.jsx'
     );
-    const { setupContactsList } = await import(
-      '../../setup/setupContactsList.js'
-    );
+    const { setupAppRoot } = await import('../setupAppRoot.js');
 
-    const teardown = setupContactsList();
+    const teardown = setupAppRoot();
     const { container, unmount } = render(() => (
       <ContactsListModule.default />
     ));
@@ -132,11 +128,9 @@ describe('SolidJS ContactsList PoC', () => {
     const ContactsListModule = await import(
       '../components/ContactsList.jsx'
     );
-    const { setupContactsList } = await import(
-      '../../setup/setupContactsList.js'
-    );
+    const { setupAppRoot } = await import('../setupAppRoot.js');
 
-    const teardown = setupContactsList();
+    const teardown = setupAppRoot();
     const { container, unmount } = render(() => (
       <ContactsListModule.default />
     ));

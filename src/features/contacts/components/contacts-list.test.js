@@ -30,7 +30,7 @@ vi.mock('../../../shared/components/base/confirm-dialog.js', () => ({
   default: vi.fn(),
 }));
 
-vi.mock('./edit-contact-modal.js', () => ({
+vi.mock('./edit-contact-modal.jsx', () => ({
   default: vi.fn(),
 }));
 

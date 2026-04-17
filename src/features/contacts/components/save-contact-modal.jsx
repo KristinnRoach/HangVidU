@@ -1,6 +1,17 @@
 import { t } from '../../../shared/i18n/index.js';
 import { contactsService } from '../contacts-service.js';
 import confirmDialog from '../../../shared/components/base/confirm-dialog.js';
+import { openSolidDialog } from '../../../shared/components/base/solid-dialog.js';
+import SaveContactNameDialog from './SaveContactNameDialog.jsx';
+
+export function promptSaveContactName(initialName) {
+  return openSolidDialog((controls) => (
+    <SaveContactNameDialog
+      initialName={initialName}
+      onClose={controls.close}
+    />
+  ));
+}
 
 /**
  * Prompt user to save a contact after hangup.
@@ -20,9 +31,7 @@ export async function showSaveContactPrompt(
 
   if (!shouldSave) return false;
 
-  // TODO: Replace with an in-app name-entry dialog.
-  const name =
-    window.prompt(t('contact.name.prompt'), contactUserId) || contactUserId;
+  const name = (await promptSaveContactName(contactUserId)) || contactUserId;
 
   const savedContact = await contactsService.saveContact(
     contactUserId,

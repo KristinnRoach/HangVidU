@@ -2,7 +2,7 @@ import { ref, onValue, off } from 'firebase/database';
 import { rtdb } from '../../../shared/storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId } from '../../../auth/index.js';
 import confirmDialog from '../../../shared/components/base/confirm-dialog.js';
-import editContactModal from './edit-contact-modal.js';
+import editContactModal from './edit-contact-modal.jsx';
 import {
   hideElement,
   showElement,

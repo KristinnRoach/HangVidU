@@ -19,9 +19,9 @@ import {
   getAllContactsSorted,
 } from './features/contacts/index.js';
 import {
-  mountContactsList,
-  cleanupContactsList,
-} from './app/contacts-list-mount.jsx';
+  mountApp,
+  cleanupApp,
+} from './app/mount-app.jsx';
 
 import {
   localVideoEl,
@@ -190,7 +190,7 @@ async function bootstrapApp() {
         showDebugUIForNotifications,
       }),
     bindCallUI: () => bindCallUI(CallController),
-    mountContactsList: () => mountContactsList(lobbyDiv),
+    mountApp: () => mountApp(lobbyDiv),
     setupMainAppBusListeners,
     startListeningForSavedRooms,
     autoInitMsgSessionIfNeeded,
@@ -715,7 +715,7 @@ async function cleanup() {
   // Global teardown: safe to remove all listeners on page unload
   cleanupMediaControls();
   removeAllRTDBListeners();
-  cleanupContactsList();
+  cleanupApp();
 
   exitPiP();
   messagesUI.cleanup();

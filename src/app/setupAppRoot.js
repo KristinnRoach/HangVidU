@@ -1,17 +1,12 @@
-// setup/setupContactsList.js
 //
-// Bridges imperative domain state into the reactive contacts-list store.
-// - contacts state -> contacts store rows (rebuild on every evt:contacts:state:changed)
-// - per-row unread -> cmd:messaging:conversation:unread-count-listen + evt listen
-//
-// Presence is watched self-sufficiently inside <PresenceIndicator/> per row.
-// All bridges teardown via the returned cleanup function.
+// Bridges imperative domain state into the Solid app root's UI state.
+// Start narrow with contacts; expand this file as more UI surfaces migrate.
 
 import { produce } from 'solid-js/store';
 import { subscribe, dispatchCommand } from '../shared/events/index.js';
 import { getAllContactsSorted } from '../features/contacts/index.js';
 import { setupContactsAppBusHandlers } from '../features/contacts/contacts-command-handlers.js';
-import { setContacts } from '../app/components/ContactsList.jsx';
+import { setContacts } from './components/ContactsList.jsx';
 
 /**
  * @typedef {Object} ContactRow
@@ -34,14 +29,14 @@ function readContactsFromState() {
 }
 
 /**
- * Wire the reactive contacts store to domain events. Returns a teardown fn.
+ * Wire app-root UI state to domain events. Returns a teardown fn.
  *
  * @returns {() => void}
  */
-export function setupContactsList() {
-  /** @type {Map<string, () => void>} unreadTeardowns per-conversation */
+export function setupAppRoot() {
+  /** @type {Map<string, () => void>} */
   const unreadTeardowns = new Map();
-  /** @type {Map<string, number>} lastSeenUnreadByConversation */
+  /** @type {Map<string, number>} */
   const lastUnreadByConv = new Map();
 
   function addUnreadListener(conversationId) {
@@ -84,13 +79,12 @@ export function setupContactsList() {
     lastUnreadByConv.delete(conversationId);
   }
 
-  function reconcile() {
+  function reconcileContacts() {
     const rows = readContactsFromState();
     const freshConvIds = new Set(
       rows.map((r) => r.conversationId).filter(Boolean),
     );
 
-    // Preserve last-known unread counts across rebuilds.
     for (const row of rows) {
       if (row.conversationId && lastUnreadByConv.has(row.conversationId)) {
         row.unreadCount = lastUnreadByConv.get(row.conversationId);
@@ -104,14 +98,12 @@ export function setupContactsList() {
       }),
     );
 
-    // Add listeners for new conversations
     for (const row of rows) {
       if (row.conversationId && !unreadTeardowns.has(row.conversationId)) {
         addUnreadListener(row.conversationId);
       }
     }
 
-    // Remove listeners for conversations no longer present
     for (const conversationId of [...unreadTeardowns.keys()]) {
       if (!freshConvIds.has(conversationId)) {
         removeUnreadListener(conversationId);
@@ -119,24 +111,21 @@ export function setupContactsList() {
     }
   }
 
-  // Register contacts-owned command handlers (cmd:contacts:contact:edit).
-  // Idempotent — safe if setup is called multiple times.
   const teardownContactsHandlers = setupContactsAppBusHandlers();
 
-  // Initial hydration + subscribe to future state changes.
-  reconcile();
-  const offState = subscribe('evt:contacts:state:changed', () => {
-    reconcile();
+  reconcileContacts();
+  const offContactsState = subscribe('evt:contacts:state:changed', () => {
+    reconcileContacts();
   });
 
   return () => {
-    offState();
+    offContactsState();
     teardownContactsHandlers();
     for (const teardown of unreadTeardowns.values()) {
       try {
         teardown();
       } catch (e) {
-        console.warn('[setupContactsList] teardown failed:', e);
+        console.warn('[setupAppRoot] teardown failed:', e);
       }
     }
     unreadTeardowns.clear();

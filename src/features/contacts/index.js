@@ -30,7 +30,7 @@ export { captureReferral, processReferral } from './referral-handler.js';
 // ./components/contacts-list.js is retained only until the SolidJS PoC is
 // accepted; it is not re-exported from the barrel.
 
-export { showSaveContactPrompt } from './components/save-contact-modal.js';
+export { showSaveContactPrompt } from './components/save-contact-modal.jsx';
 export { showAddContactModal } from './components/add-contact-modal.js';
 
 export { hashEmail, lookupUserByEmail } from './user-discovery.js';

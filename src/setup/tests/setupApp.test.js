@@ -57,7 +57,7 @@ describe('setupApp', () => {
         return () => {};
       }),
       bindCallUI: vi.fn(() => trace.push('bindCallUI')),
-      mountContactsList: vi.fn(async () => trace.push('mountContactsList')),
+      mountApp: vi.fn(async () => trace.push('mountApp')),
       setupMainAppBusListeners: vi.fn(async () => {
         trace.push('setupMainAppBusListeners');
         return appBusCleanup;
@@ -113,9 +113,9 @@ describe('setupApp', () => {
     );
     expect(trace.indexOf('runInit')).toBeLessThan(trace.indexOf('bindCallUI'));
     expect(trace.indexOf('bindCallUI')).toBeLessThan(
-      trace.indexOf('mountContactsList'),
+      trace.indexOf('mountApp'),
     );
-    expect(trace.indexOf('mountContactsList')).toBeLessThan(
+    expect(trace.indexOf('mountApp')).toBeLessThan(
       trace.indexOf('setupMainAppBusListeners'),
     );
     cleanup();
@@ -140,7 +140,7 @@ describe('setupApp', () => {
       }),
       setupTopBarAndLocale: vi.fn(async () => () => {}),
       bindCallUI: vi.fn(),
-      mountContactsList: vi.fn(async () => {}),
+      mountApp: vi.fn(async () => {}),
       setupMainAppBusListeners: vi.fn(),
       startListeningForSavedRooms: vi.fn(async () => {}),
       autoInitMsgSessionIfNeeded: vi.fn(async () => {}),
@@ -178,7 +178,7 @@ describe('setupApp', () => {
       runInit: vi.fn(async () => false),
       setupTopBarAndLocale: vi.fn(async () => () => {}),
       bindCallUI: vi.fn(),
-      mountContactsList: vi.fn(async () => {}),
+      mountApp: vi.fn(async () => {}),
       setupMainAppBusListeners: vi.fn(),
       startListeningForSavedRooms: vi.fn(async () => {}),
       autoInitMsgSessionIfNeeded: vi.fn(async () => {}),
@@ -215,7 +215,7 @@ describe('setupApp', () => {
         .mockResolvedValueOnce(true),
       setupTopBarAndLocale: vi.fn(async () => () => {}),
       bindCallUI: vi.fn(),
-      mountContactsList: vi.fn(async () => {}),
+      mountApp: vi.fn(async () => {}),
       setupMainAppBusListeners: vi.fn(),
       startListeningForSavedRooms: vi.fn(async () => {}),
       autoInitMsgSessionIfNeeded: vi.fn(async () => {}),
@@ -246,7 +246,7 @@ describe('setupApp', () => {
       runInit: vi.fn(async () => true),
       setupTopBarAndLocale: vi.fn(async () => () => {}),
       bindCallUI: vi.fn(),
-      mountContactsList: vi.fn(async () => {}),
+      mountApp: vi.fn(async () => {}),
       setupMainAppBusListeners: vi.fn(),
       startListeningForSavedRooms: vi.fn(async () => {}),
       autoInitMsgSessionIfNeeded: vi.fn(async () => {}),

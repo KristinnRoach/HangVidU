@@ -14,7 +14,7 @@ import ContactEntry from './ContactEntry.jsx';
 
 /**
  * Module-level reactive store for the contacts list.
- * Written to by `setup/setupContactsList.js`.
+ * Written to by `app/setupAppRoot.js`.
  * Read by the `<ContactsList />` component below.
  *
  * Exposed as a store tuple: `[contacts, setContacts]`.
@@ -25,7 +25,7 @@ export const [contacts, setContacts] = createStore(/** @type {ContactRow[]} */ (
 
 /**
  * Contacts list view. Pure — reads the store, renders rows or empty state.
- * All side effects live in `setup/setupContactsList.js`.
+ * All side effects live in `app/setupAppRoot.js`.
  */
 export default function ContactsList() {
   return (

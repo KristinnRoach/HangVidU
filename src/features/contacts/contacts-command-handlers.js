@@ -7,7 +7,7 @@
 import { handleCommand } from '../../shared/events/index.js';
 import { t } from '../../shared/i18n/index.js';
 import confirmDialog from '../../shared/components/base/confirm-dialog.js';
-import editContactModal from './components/edit-contact-modal.js';
+import editContactModal from './components/edit-contact-modal.jsx';
 import { contactsService } from './contacts-service.js';
 import { getContactById } from './contacts-state.js';
 
