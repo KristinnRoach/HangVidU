@@ -23,9 +23,10 @@ describe('contacts-state', () => {
       savedAt: 100,
       lastInteractionAt: 200,
     };
+    const expected = structuredClone(contact);
 
     stateModule.setState({
-      byId: { [contact.contactId]: contact },
+      byId: { [contact.contactId]: structuredClone(contact) },
       isHydrated: true,
     });
 
@@ -41,7 +42,7 @@ describe('contacts-state', () => {
     const sortedContact = stateModule.getAllContactsSorted()[0];
     sortedContact.contactNickName = 'Mutated via getAllContactsSorted';
 
-    expect(stateModule.getContactById('u1')).toEqual(contact);
+    expect(stateModule.getContactById('u1')).toEqual(expected);
   });
 
   it('publishes cloned state and prev snapshots', async () => {
@@ -60,22 +61,23 @@ describe('contacts-state', () => {
       savedAt: 100,
       lastInteractionAt: 300,
     };
+    const expectedSecond = structuredClone(second);
 
     stateModule.setState({
-      byId: { [first.contactId]: first },
+      byId: { [first.contactId]: structuredClone(first) },
       isHydrated: true,
     });
     mocks.publish.mockClear();
 
     stateModule.setState({
-      byId: { [second.contactId]: second },
+      byId: { [second.contactId]: structuredClone(second) },
     });
 
     const [, payload] = mocks.publish.mock.calls[0];
     payload.state.byId.u1.contactNickName = 'Mutated new snapshot';
     payload.prev.byId.u1.contactNickName = 'Mutated prev snapshot';
 
-    expect(stateModule.getContactById('u1')).toEqual(second);
+    expect(stateModule.getContactById('u1')).toEqual(expectedSecond);
     expect(payload.prev.byId.u1).toEqual({
       ...first,
       contactNickName: 'Mutated prev snapshot',

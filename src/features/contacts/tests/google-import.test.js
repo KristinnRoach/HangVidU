@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   requestContactsAccess: vi.fn(),
   getUser: vi.fn(),
   getAllContacts: vi.fn(),
+  ensureContactsHydrated: vi.fn(),
   findUsersByEmails: vi.fn(),
   fetchGoogleContacts: vi.fn(),
   buildImportableContacts: vi.fn(),
@@ -16,6 +17,10 @@ vi.mock('../../../auth/index.js', () => ({
 
 vi.mock('../contacts-state.js', () => ({
   getAllContacts: mocks.getAllContacts,
+}));
+
+vi.mock('../contacts-service.js', () => ({
+  ensureContactsHydrated: mocks.ensureContactsHydrated,
 }));
 
 vi.mock('../user-discovery.js', () => ({
@@ -35,6 +40,7 @@ import { importGoogleContacts } from '../google-import.js';
 describe('importGoogleContacts', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.ensureContactsHydrated.mockResolvedValue();
   });
 
   it('returns importable contacts and reports progress through the import stages', async () => {
@@ -63,6 +69,7 @@ describe('importGoogleContacts', () => {
       [{ step: 'fetching' }],
       [{ step: 'checking', count: 1 }],
     ]);
+    expect(mocks.ensureContactsHydrated).toHaveBeenCalled();
     expect(mocks.buildImportableContacts).toHaveBeenCalledWith({
       contacts: googleContacts,
       registeredUsers,

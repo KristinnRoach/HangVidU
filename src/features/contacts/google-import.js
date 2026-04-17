@@ -3,6 +3,7 @@ import {
   getUser,
 } from '../../auth/index.js';
 import { getAllContacts } from './contacts-state.js';
+import { ensureContactsHydrated } from './contacts-service.js';
 import { findUsersByEmails } from './user-discovery.js';
 import { fetchGoogleContacts } from './google-contacts.js';
 import { buildImportableContacts } from './import-contacts-utils.js';
@@ -39,6 +40,7 @@ export async function importGoogleContacts({
       count: contacts.length,
     });
 
+    await ensureContactsHydrated();
     const savedContacts = getAllContacts();
     const savedContactIds = new Set(Object.keys(savedContacts || {}));
     const registeredUsers = await findUsersByEmails(
