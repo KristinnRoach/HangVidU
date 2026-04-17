@@ -63,19 +63,19 @@ export default function ContactEntry(props) {
   };
 
   return (
-    <div class="contact-entry" ref={rootEl}>
+    <div class='contact-entry' ref={rootEl}>
       <button
-        class="contact-call-btn"
+        class='contact-call-btn'
         onClick={onCall}
         title={t('contact.action.call', { name: displayName() })}
       >
-        <i data-lucide="phone" fill="currentColor" stroke-width="0" />
+        <i data-lucide='phone' fill='currentColor' stroke-width='0' />
       </button>
 
       <PresenceIndicator userId={props.id} />
 
       <span
-        class="contact-name"
+        class='contact-name'
         data-contact-id={props.id}
         onClick={onOpenConversation}
       >
@@ -83,13 +83,13 @@ export default function ContactEntry(props) {
       </span>
 
       <Show when={props.unreadCount > 0}>
-        <span class="unread-badge" aria-live="polite" aria-atomic="true">
+        <span class='unread-badge' aria-live='polite' aria-atomic='true'>
           {props.unreadCount > 99 ? '99+' : props.unreadCount}
         </span>
       </Show>
 
       <button
-        class="contact-edit-btn"
+        class='contact-edit-btn'
         onClick={onEdit}
         title={t('contact.action.edit')}
       >

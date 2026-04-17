@@ -19,31 +19,38 @@ The contacts list was chosen as the PoC because it's the hardest shape in the ap
 
 ---
 
-## Architecture decisions (final)
+## Architecture decisions
 
 ### `src/app/` is the composition-root home for JSX
-- CLAUDE.md named `src/app/` as the composition root; this PoC creates it.
+
+- `src/app/` as the composition root; this PoC creates it.
 - Boundary lint allows `app → feature + auth + shared + setup` (mirrors `setup/` and adds `setup` as a dep for mount entry points).
 - `setup/` also now allows importing `app/` so bridges can write to app-layer stores.
 - Contacts barrel is now data-only (no UI exports).
 
 ### Signals
+
 - One `createStore<ContactRow[]>` at the module level in `ContactsList.jsx`.
 - Per-row fields: `{ id, name, roomId, conversationId, unreadCount }` — `isOnline` deliberately lives **inside** `<PresenceIndicator>`, not in the row store. Each indicator self-subscribes via `watchUserPresence`.
 - Updates use `produce` for clarity. The predicate-form `setContacts(row => ..., field, value)` is also valid but harder to reason about.
 
 ### Wiring (imperative bridges → reactive store)
+
 One file: `src/setup/setupContactsList.js`
+
 - Subscribes `evt:contacts:state:changed` → rebuilds store from `getAllContactsSorted()`.
 - Per row with a `conversationId`: subscribes `evt:messaging:conversation:unread-count-changed` + dispatches `cmd:messaging:conversation:unread-count-listen` / `unlisten` → writes `unreadCount` through `produce`.
 - Presence watching happens **inside `<PresenceIndicator>`**, not here — the component is self-sufficient.
 
 ### Command handlers
+
 `src/features/contacts/contacts-command-handlers.js`
+
 - One command: `cmd:contacts:contact:edit` → opens edit modal, routes to rename or delete based on result.
 - The dumb UI only dispatches; modal flow + `contactsService.updateContact` / `deleteContact` live inside contacts module.
 
 ### Reused existing code — no duplication
+
 - `src/features/presence/index.js` → `watchUserPresence`
 - `src/shared/events/index.js` → `dispatchCommand`, `subscribe`, `handleCommand`
 - `src/shared/i18n/index.js` → `t`
@@ -91,7 +98,7 @@ One file: `src/setup/setupContactsList.js`
    - `resolve.conditions: ['solid', 'development', 'browser']` on the test project
    - `server.deps.inline: [/solid-js/, /@solidjs\/testing-library/]`
    - `plugins: [solid()]` at the project level (not just at the root)
-   Documented inline in `vitest.config.js`.
+     Documented inline in `vitest.config.js`.
 2. **ESLint parser for JSX.** ESLint 9 flat config doesn't parse JSX out of the box — needed an explicit `languageOptions.parserOptions.ecmaFeatures.jsx = true` block scoped to `.jsx` files. Added in both `eslint.config.js` and `eslint.boundaries.config.js`.
 3. **Lint globs** had to be widened everywhere: `package.json` scripts, eslint file globs, state-restriction rules, boundary config ignore lists. Pattern: `src/**/*.js` → `src/**/*.{js,jsx}` (listed both patterns explicitly since eslint flat-config globs don't support braces).
 4. **Vitest test file pattern** needed `.jsx` added to include/exclude in both `node` and `browser` projects.
@@ -102,7 +109,7 @@ One file: `src/setup/setupContactsList.js`
 1. **Locale change doesn't auto-rerender JSX.** `t()` is a plain function — its result is captured at render time. To get live locale updates, either:
    - Wrap a locale signal around `t` and use `locale()` inside JSX expressions, or
    - Subscribe to `onLocaleChange` and force a rerender by bumping a signal.
-   The old `createComponent`-based `templateFns: { t: { resolve, onChange } }` did this implicitly. **This is a convention we need to adopt project-wide if Solid standardizes.**
+     The old `createComponent`-based `templateFns: { t: { resolve, onChange } }` did this implicitly. **This is a convention we need to adopt project-wide if Solid standardizes.**
 2. **One test is skipped.** `reflects unread count via the messaging event bridge` verifies the store update (passes when asserted directly) but the DOM badge query returns undefined inside the same microtask. Likely a scheduler/jsdom interaction. Production code path is fine — manual testing planned. Marked `it.skip` with a TODO pointing here.
 
 ### Conventions to adopt if Solid standardizes
@@ -140,6 +147,7 @@ One file: `src/setup/setupContactsList.js`
 ## Files changed
 
 ### New
+
 - `src/app/components/ContactsList.jsx`
 - `src/app/components/ContactEntry.jsx`
 - `src/app/components/PresenceIndicator.jsx`
@@ -151,6 +159,7 @@ One file: `src/setup/setupContactsList.js`
 - `docs/WIP_Architecture/SOLIDJS_POC.md`
 
 ### Modified
+
 - `package.json` — dev deps + lint globs
 - `vite.config.js` — add `solid()` plugin
 - `vitest.config.js` — add `solid()` per project + resolve conditions + test includes
