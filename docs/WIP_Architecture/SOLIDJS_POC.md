@@ -1,6 +1,6 @@
 # SolidJS PoC — Contacts List
 
-**Status:** Functional PoC. Awaiting review before deciding standardization.
+**Status:** Functional PoC. Superseded in part by current `src/app/` bootstrap and docs.
 **Branch:** `solidjs-poc`
 **Scope:** Rebuild contacts list with Solid. One UI surface. No broader migration in this PR.
 
@@ -36,7 +36,7 @@ The contacts list was chosen as the PoC because it's the hardest shape in the ap
 
 ### Wiring (imperative bridges → reactive store)
 
-One file: `src/setup/setupContactsList.js`
+One file: `src/app/setupAppRoot.js`
 
 - Subscribes `evt:contacts:state:changed` → rebuilds store from `getAllContactsSorted()`.
 - Per row with a `conversationId`: subscribes `evt:messaging:conversation:unread-count-changed` + dispatches `cmd:messaging:conversation:unread-count-listen` / `unlisten` → writes `unreadCount` through `produce`.
@@ -55,7 +55,7 @@ One file: `src/setup/setupContactsList.js`
 - `src/shared/events/index.js` → `dispatchCommand`, `subscribe`, `handleCommand`
 - `src/shared/i18n/index.js` → `t`
 - `src/features/contacts/index.js` → `getAllContactsSorted`, `contactsService`
-- `src/features/contacts/components/edit-contact-modal.js`, `shared/components/base/confirm-dialog.js`, `shared/components/ui/icons.js` — unchanged
+- `src/shared/components/base/confirm-dialog.js`, `shared/components/ui/icons.js` — unchanged
 
 ---
 
@@ -69,9 +69,9 @@ One file: `src/setup/setupContactsList.js`
 - [x] Create `src/app/components/PresenceIndicator.jsx`
 - [x] Create `src/app/components/ContactEntry.jsx`
 - [x] Create `src/app/components/ContactsList.jsx`
-- [x] Create `src/setup/setupContactsList.js`
+- [x] Create `src/app/setupAppRoot.js`
 - [x] Create `src/features/contacts/contacts-command-handlers.js`
-- [x] Create `src/app/contacts-list-mount.jsx`
+- [x] Create `src/app/mount-app.jsx`
 - [x] Swap imports in `src/main.js`
 - [x] Remove UI exports from `src/features/contacts/index.js`
 - [x] Write Solid test (`src/app/tests/contacts-list.test.jsx`) — 2 passing, 1 skipped
@@ -100,7 +100,7 @@ One file: `src/setup/setupContactsList.js`
    - `plugins: [solid()]` at the project level (not just at the root)
      Documented inline in `vitest.config.js`.
 2. **ESLint parser for JSX.** ESLint 9 flat config doesn't parse JSX out of the box — needed an explicit `languageOptions.parserOptions.ecmaFeatures.jsx = true` block scoped to `.jsx` files. Added in both `eslint.config.js` and `eslint.boundaries.config.js`.
-3. **Lint globs** had to be widened everywhere: `package.json` scripts, eslint file globs, state-restriction rules, boundary config ignore lists. Pattern: `src/**/*.js` → `src/**/*.{js,jsx}` (listed both patterns explicitly since eslint flat-config globs don't support braces).
+3. **Lint globs** had to be widened everywhere: `package.json` scripts, eslint file globs, state-restriction rules, boundary config ignore lists.
 4. **Vitest test file pattern** needed `.jsx` added to include/exclude in both `node` and `browser` projects.
 5. **Icons.** `initIcons` from `shared/components/ui/icons.js` works per-row via `onMount`, but each row mount re-runs `createIcons` against its own subtree. Fine for small lists; if the list grows large, consider a list-level initIcons pass.
 
@@ -115,9 +115,9 @@ One file: `src/setup/setupContactsList.js`
 ### Conventions to adopt if Solid standardizes
 
 1. **File extensions**: `.jsx` for anything that emits JSX. Plain `.js` for bridges / setup / stores without JSX.
-2. **Component file location**: `src/app/components/*.jsx` for composition-level UI. Feature-internal UI (e.g., modal flows) stays in the feature.
+2. **Component file location**: `src/app/components/*.jsx` for composition-level UI. Feature-internal UI may stay in the feature until there is a deliberate move to `src/app/<feature>/`.
 3. **Store location**: co-located with the component that reads it — module-level `export const [state, setState] = createStore(...)` at the top of the `.jsx` file. Setup bridges import the setter.
-4. **Reactivity boundary**: setup/bridge files are plain `.js` with no reactive imports beyond `solid-js/store`'s `produce`. Components receive props; bridges write store fields.
+4. **Reactivity boundary**: bridge files are plain `.js` with no reactive imports beyond `solid-js/store`'s `produce`. Components receive props; bridges write store fields.
 5. **Presence / self-subscribing components**: OK to import `features/*` APIs directly in app-layer components as long as the app boundary rule allows it (it does). This keeps individual pieces droppable anywhere without extra glue.
 6. **Event/command names**: unchanged — existing `cmd:*` / `evt:*` canonical regex applies to JSX files now that lint globs are widened.
 7. **Tests**: `*.test.jsx` in any directory, uses `@solidjs/testing-library`'s `render`. Mocks via `vi.mock` work the same as before.
@@ -135,11 +135,11 @@ One file: `src/setup/setupContactsList.js`
 
 ## Refactors flagged — NOT fixed in this PoC
 
-1. **`main.js` cleanup-ownership split.** `mountContactsList` is called from `setupApp` but `cleanupContactsList` from `main.js`. Right model: mount functions return a cleanup fn that `setupApp` pushes into its cleanup stack. Preserved current split to keep diff minimal.
+1. **`main.js` cleanup-ownership split.** `mountApp` is called from `setupApp` but `cleanupApp` from `main.js`. Right model: mount functions return a cleanup fn that `setupApp` pushes into its cleanup stack. Preserved current split to keep diff minimal.
 2. **`main.js:241` — `setupMessagingContactsIntegration()` return value not pushed into cleanup stack.** Pre-existing leak of a teardown handle. Not introduced here.
-3. **No `evt:contacts:hydrated` event.** The new `setupContactsList` reads `getAllContactsSorted()` on every `evt:contacts:state:changed`, which covers initial hydration in practice. If multiple UI surfaces need "contacts are ready" as a first-class signal, promote this to an event.
+3. **No `evt:contacts:hydrated` event.** The new `setupAppRoot` reads `getAllContactsSorted()` on every `evt:contacts:state:changed`, which covers initial hydration in practice. If multiple UI surfaces need "contacts are ready" as a first-class signal, promote this to an event.
 4. **`contactsService.updateContact(contactId, name, roomId)` signature.** Takes `roomId` as a third arg purely to preserve it through the update. Awkward; don't touch in PoC.
-5. **Old DOM `src/features/contacts/components/contacts-list.js`** still exists with its tests — retained until the Solid version is accepted. After sign-off, delete along with `contacts-list.test.js`.
+5. **Old DOM `src/features/contacts/components/contacts-list.js`** still exists with its tests — retained only as legacy fallback/reference. Delete when no longer needed.
 6. **Locale reactivity** (see Findings above) — needs a project-wide pattern before more JSX UI is written.
 
 ---
@@ -151,8 +151,8 @@ One file: `src/setup/setupContactsList.js`
 - `src/app/components/ContactsList.jsx`
 - `src/app/components/ContactEntry.jsx`
 - `src/app/components/PresenceIndicator.jsx`
-- `src/app/contacts-list-mount.jsx`
-- `src/setup/setupContactsList.js`
+- `src/app/mount-app.jsx`
+- `src/app/setupAppRoot.js`
 - `src/features/contacts/contacts-command-handlers.js`
 - `src/app/tests/contacts-list.test.jsx`
 - `tsconfig.json`
@@ -165,5 +165,5 @@ One file: `src/setup/setupContactsList.js`
 - `vitest.config.js` — add `solid()` per project + resolve conditions + test includes
 - `eslint.config.js` — JSX parser + widened globs
 - `eslint.boundaries.config.js` — JSX parser + `app` element type + `setup → app` import allowance
-- `src/main.js` — import swap for `mountContactsList` / `cleanupContactsList`
+- `src/main.js` — import swap for `mountApp` / `cleanupApp`
 - `src/features/contacts/index.js` — removed UI re-exports

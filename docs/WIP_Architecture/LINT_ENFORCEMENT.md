@@ -9,6 +9,8 @@ What is automatically enforced today. Source of truth: `eslint.config.js`, `esli
   - Block direct `firebase/auth` imports (route through adapter).
   - Block `**/auth-state`, `**/auth-state.js` imports outside `src/auth/`.
 - `boundaries/dependencies` — per-module import boundaries (incremental rollout).
+- JSX parsing is enabled for `src/**/*.jsx`.
+- Boundary lint includes the `app` layer in addition to `setup`, `auth`, `feature`, and `shared`.
 
 ## Current status (April 15, 2026)
 
@@ -25,6 +27,12 @@ What is automatically enforced today. Source of truth: `eslint.config.js`, `esli
 ## Adding a new state file to the privacy rule
 
 When `contacts-state.js`, `messaging-state.js`, or `call-state.js` lands, extend the `no-restricted-imports` patterns block in `eslint.config.js` with the same shape used for `auth-state`.
+
+## Current Solid coverage
+
+- `src/app/**` is linted as the `app` layer.
+- `app` may import `app`, `auth`, `feature`, `shared`, and `setup`.
+- `setup` may import `app` so bootstrap code can mount and bridge Solid UI.
 
 ---
 

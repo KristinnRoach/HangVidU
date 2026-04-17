@@ -4,6 +4,9 @@ Pattern for module state that other modules observe (`isLoggedIn`, `isInCall`, `
 
 Do not call state a **store**. `store` = persistence only.
 
+This file is for domain/module state only.
+Solid UI-only reactive state in `src/app/` is covered by [`SOLID_UI_STATE_RULES.md`](./SOLID_UI_STATE_RULES.md).
+
 See also: [`NAMING.md`](./NAMING.md), [`STRUCTURE.md`](./STRUCTURE.md), [`EVENTS.md`](./EVENTS.md), [`LINT_ENFORCEMENT.md`](./LINT_ENFORCEMENT.md).
 
 ---

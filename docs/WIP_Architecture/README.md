@@ -7,6 +7,7 @@ Where to find each rule category. All docs use bullet lists, no long prose.
 | [`NAMING.md`](./NAMING.md)             | File names, event names, payload shapes                  |
 | [`STRUCTURE.md`](./STRUCTURE.md)       | Folder layout, where files live, barrel exports          |
 | [`STATE_RULES.md`](./STATE_RULES.md)   | In-memory state pattern (`*-state.js`)                   |
+| [`SOLID_UI_STATE_RULES.md`](./SOLID_UI_STATE_RULES.md) | Solid UI-only reactive state in `src/app/` |
 | [`EVENTS.md`](./EVENTS.md)             | Event bus usage, single-bus rule                         |
 | [`LINT_ENFORCEMENT.md`](./LINT_ENFORCEMENT.md) | What is enforced in lint today                   |
 
