@@ -658,7 +658,7 @@ export async function autoInitMsgSessionIfNeeded() {
   if (messagingController.conversations.size > 0) return;
 
   try {
-    const contacts = getContactsSorted();
+    const contacts = getAllContactsSorted();
     if (!Array.isArray(contacts) || contacts.length === 0) return;
 
     const firstContact = contacts[0];
