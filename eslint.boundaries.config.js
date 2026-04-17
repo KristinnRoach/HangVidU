@@ -57,6 +57,7 @@ const ENABLE_RULE = {
   shared: envEnabled('BOUNDARIES_SHARED', true),
   auth: envEnabled('BOUNDARIES_AUTH', true),
   setup: envEnabled('BOUNDARIES_SETUP', true),
+  app: envEnabled('BOUNDARIES_APP', true),
 };
 
 // enforced features - add one at a time until all are included
@@ -85,7 +86,11 @@ const SHARED_GLOBS = [
 function dependencyRule(files, rules) {
   return {
     files,
-    ignores: ['src/**/*.test.js', 'src/**/*.browser.test.js'],
+    ignores: [
+      'src/**/*.test.js',
+      'src/**/*.test.jsx',
+      'src/**/*.browser.test.js',
+    ],
     rules: {
       'boundaries/dependencies': [
         'error',
@@ -175,10 +180,40 @@ if (ENABLE_RULE.setup) {
               { type: 'auth' },
               { type: 'feature' },
               { type: 'shared' },
+              { type: 'app' },
             ],
           },
           message:
-            'Setup may only import from setup, auth, feature, and shared.',
+            'Setup may only import from setup, auth, feature, shared, and app.',
+        },
+      ],
+    ),
+  );
+}
+
+if (ENABLE_RULE.app) {
+  overrides.push(
+    dependencyRule(
+      [
+        'src/app/*.js',
+        'src/app/**/*.js',
+        'src/app/*.jsx',
+        'src/app/**/*.jsx',
+      ],
+      [
+        {
+          from: { type: 'app' },
+          allow: {
+            to: [
+              { type: 'app' },
+              { type: 'auth' },
+              { type: 'feature' },
+              { type: 'shared' },
+              { type: 'setup' },
+            ],
+          },
+          message:
+            'App may only import from app, auth, feature, shared, and setup.',
         },
       ],
     ),
@@ -187,7 +222,17 @@ if (ENABLE_RULE.setup) {
 
 export default [
   {
-    files: ['src/**/*.js'],
+    files: ['src/**/*.jsx'],
+    languageOptions: {
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        ecmaFeatures: { jsx: true },
+      },
+    },
+  },
+  {
+    files: ['src/**/*.js', 'src/**/*.jsx'],
     plugins: {
       boundaries,
     },
@@ -201,7 +246,12 @@ export default [
         {
           type: 'feature',
           mode: 'full',
-          pattern: ['src/features/*/*.js', 'src/features/*/**/*.js'],
+          pattern: [
+            'src/features/*/*.js',
+            'src/features/*/**/*.js',
+            'src/features/*/*.jsx',
+            'src/features/*/**/*.jsx',
+          ],
           capture: ['featureName'],
         },
         {
@@ -213,6 +263,16 @@ export default [
           type: 'setup',
           mode: 'full',
           pattern: ['src/setup/*.js', 'src/setup/**/*.js'],
+        },
+        {
+          type: 'app',
+          mode: 'full',
+          pattern: [
+            'src/app/*.js',
+            'src/app/**/*.js',
+            'src/app/*.jsx',
+            'src/app/**/*.jsx',
+          ],
         },
       ],
     },
