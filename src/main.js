@@ -548,7 +548,7 @@ async function handleServiceWorkerNavigation(path) {
       let conversationId = conversationIdFromUrl ?? null;
 
       if (contactId) {
-        const contactConversationId = getContactConversationId(contactId);
+        const contactConversationId = getConversationId(contactId);
 
         if (contactConversationId) {
           if (
