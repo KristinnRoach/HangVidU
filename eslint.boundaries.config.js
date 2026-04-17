@@ -132,6 +132,8 @@ for (const featureName of ENFORCED_FEATURES) {
       [
         `src/features/${featureName}/*.js`,
         `src/features/${featureName}/**/*.js`,
+        `src/features/${featureName}/*.jsx`,
+        `src/features/${featureName}/**/*.jsx`,
       ],
       [
         {
@@ -194,12 +196,7 @@ if (ENABLE_RULE.setup) {
 if (ENABLE_RULE.app) {
   overrides.push(
     dependencyRule(
-      [
-        'src/app/*.js',
-        'src/app/**/*.js',
-        'src/app/*.jsx',
-        'src/app/**/*.jsx',
-      ],
+      ['src/app/*.js', 'src/app/**/*.js', 'src/app/*.jsx', 'src/app/**/*.jsx'],
       [
         {
           from: { type: 'app' },
