@@ -212,7 +212,7 @@ vi.mock('../../src/features/contacts/index.js', () => ({
   setupInviteListener: vi.fn(),
   captureReferral: vi.fn(),
   processReferral: vi.fn().mockResolvedValue(undefined),
-  renderContactsList: vi.fn(),
+  mountContactsList: vi.fn(),
   cleanupContacts: vi.fn(),
   showSaveContactPrompt: vi.fn(),
   showAddContactModal: vi.fn(),
@@ -365,7 +365,7 @@ vi.mock('../../src/shared/components/ui/core/watch-lifecycle-ui.js', () => ({
 }));
 
 vi.mock('../../src/features/contacts/components/contacts-list.js', () => ({
-  renderContactsList: vi.fn(),
+  mountContactsList: vi.fn(),
   cleanupContacts: vi.fn(),
 }));
 

@@ -21,7 +21,7 @@ import { listenForIncomingOnRoom } from './room-listeners.js';
   │ onCallAnswered       │ UI/calling         │ UI state transition from         │  
   │                      │                    │ call-domain logic.               │
   ├──────────────────────┼────────────────────┼──────────────────────────────────┤  
-  │ renderContactsList   │ UI/contacts        │ UI rendering triggered by call   │
+  │ mountContactsList    │ UI/contacts        │ UI rendering triggered by call   │
   │                      │                    │ events.                          │  
   ├──────────────────────┼────────────────────┼──────────────────────────────────┤  
   │ cleanupRemoteStream  │ media              │ Arguably same domain (call       │
@@ -137,7 +137,7 @@ export function setupCallControllerEventWiring(options = {}) {
 
       // TODO: render contacts list in reaction to interaction update via events
       // Re-render contacts list so sort order reflects updated lastInteractionAt
-      // renderContactsList(lobbyElement).catch(() => {});
+      // mountContactsList(lobbyElement).catch(() => {});
 
       // Re-attach incoming listener so the next call on this room is detected
       if (roomId && reason !== 'page_unload') {

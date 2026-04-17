@@ -37,9 +37,9 @@ let mountedLobbyElement = null;
 const MAX_CONTACT_NAME_CHARS = 18;
 
 /**
- * Render the contacts list into the mounted lobby element.
+ * Mount or rerender the contacts list into the mounted lobby element.
  */
-async function renderContactsList() {
+async function mountContactsListInternal() {
   if (!mountedLobbyElement) {
     return;
   }
@@ -156,25 +156,27 @@ async function renderContactsList() {
  * @returns {Promise<void>}
  */
 export async function mountContactsList(lobbyElement) {
-  mountedLobbyElement = lobbyElement ?? null;
+  if (lobbyElement !== undefined) {
+    mountedLobbyElement = lobbyElement ?? null;
+  }
 
   if (!localeUnsubscribe) {
     localeUnsubscribe = onLocaleChange(() => {
-      renderContactsList().catch((error) => {
-          console.warn('[contacts] Failed to rerender on locale change:', error);
+      mountContactsList().catch((error) => {
+        console.warn('[contacts] Failed to rerender on locale change:', error);
       });
     });
   }
 
   if (!stateUnsubscribe) {
     stateUnsubscribe = subscribe('evt:contacts:state:changed', () => {
-      renderContactsList().catch((error) => {
-          console.warn('[contacts] Failed to rerender on state change:', error);
+      mountContactsList().catch((error) => {
+        console.warn('[contacts] Failed to rerender on state change:', error);
       });
     });
   }
 
-  await renderContactsList();
+  await mountContactsListInternal();
 }
 
 /**
@@ -263,7 +265,7 @@ function attachContactListeners(container) {
         if (!confirmed) return;
         await contactsService.deleteContact(contactId);
       }
-      await renderContactsList();
+      await mountContactsList();
     };
   });
 }
