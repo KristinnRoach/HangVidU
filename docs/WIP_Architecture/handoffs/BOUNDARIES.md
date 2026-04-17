@@ -14,18 +14,18 @@ Narrative log of the boundary/dependency enforcement rollout. Rules and current 
 - moved the shared event bus infrastructure into `src/shared/events/`
 - added `src/shared/events/index.js` as the intended public cross-module event entrypoint
 - standardized the basic event API (`dispatchCommand`, `dispatchCommandAndAwait`, `handleCommand`, `publish`, `publishAndAwait`, `subscribe`)
-- updated `contacts` -> `messaging` conversation selection to use `dispatchCommand('messaging:conversation:select', ...)`
+- updated `contacts` -> `messaging` conversation selection to use `dispatchCommand('cmd:messaging:conversation:select', ...)`
 - updated unread-count flow so `messaging` owns unread subscriptions and publishes unread facts for `contacts`
 - removed `src/shared/components/ui/dispatcher.js`
 - made `src/shared/events/` explicitly part of shared code in `eslint.boundaries.config.js`
 - moved legacy shared presence logic into `src/features/presence/` with abstracted RTDB layer
 - removed `contacts-bus` and `setupContactsAppBusBridge`
-- changed `contacts-service` to publish cross-module facts directly (`room:id:created`, `room:id:updated`, `contact:deleted`)
+- changed `contacts-service` to publish cross-module facts directly (`evt:contacts:room:created`, `evt:contacts:room:updated`, `evt:contacts:contact:deleted`)
 - migrated remaining touched feature/app/auth listeners away from direct `appBus` usage
 - moved `resolveDirectConversationId` out of `messaging` into `src/shared/utils/direct-conversation-id.js`
 - added app-level notification projection in `src/setup/setupNotificationsHandlers.js`
 - changed `contacts` invite/referral flows to publish notification facts instead of importing notifications directly
-- decoupled push notifications from direct `auth`/`contacts` imports via shared commands (`auth:cloud-function:call`, `contacts:get-by-room-id`, `push:disable`)
+- decoupled push notifications from direct `auth`/`contacts` imports via shared commands (`cmd:auth:cloud-function:call`, `cmd:contacts:contact:get-by-room-id`, `cmd:push:subscription:disable`)
 - replaced `setupMainAuthAppBusListeners` with `setupAuth` in `src/setup/setupAuth.js`
 - moved account profile storage under `src/shared/storage/user/`
 - added `src/setup/setupUserAccount.js` for auth-driven profile sync
@@ -54,7 +54,7 @@ Narrative log of the boundary/dependency enforcement rollout. Rules and current 
   - auth-driven profile persistence is handled in setup composition via `setupUserAccount.js`
 - contacts/messaging:
   - `contacts` no longer imports `messagingController`
-  - `contacts` dispatches `messaging:conversation:select`
+  - `contacts` dispatches `cmd:messaging:conversation:select`
   - unread-count facts are published by `messaging`
   - direct conversation id helper is shared
 - deferred:
