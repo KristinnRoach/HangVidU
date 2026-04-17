@@ -8,6 +8,7 @@
 // - Single private `setState` writer (NOT exported from index.js).
 // - Sync getters only — no Firebase, no storage, no awaits.
 // - One canonical event: `evt:contacts:state:changed` with `{ state, prev }`.
+// - One snapshot boundary: never return references from private `state`.
 //
 // Hydration: contacts-service writes through here after every storage mutation.
 // Initial bulk hydration from RTDB is wired in setup (see HANDOFF: contacts state).
@@ -28,9 +29,27 @@ let state = {
   isHydrated: false,
 };
 
+/**
+ * @param {ContactRecord|null|undefined} contact
+ * @returns {ContactRecord|null}
+ */
+function cloneContact(contact) {
+  return contact ? { ...contact } : null;
+}
+
+/**
+ * @param {Record<string, ContactRecord>} byId
+ * @returns {Record<string, ContactRecord>}
+ */
+function cloneContactsById(byId) {
+  return Object.fromEntries(
+    Object.entries(byId).map(([id, contact]) => [id, { ...contact }]),
+  );
+}
+
 function snapshot() {
   return {
-    byId: { ...state.byId },
+    byId: cloneContactsById(state.byId),
     isHydrated: state.isHydrated,
   };
 }
@@ -51,7 +70,7 @@ export function setState(patch) {
 
 /** @returns {Record<string, ContactRecord>} */
 export function getAllContacts() {
-  return { ...state.byId };
+  return cloneContactsById(state.byId);
 }
 
 /**
@@ -59,7 +78,7 @@ export function getAllContacts() {
  * @returns {ContactRecord|null}
  */
 export function getContactById(contactId) {
-  return state.byId[contactId] ?? null;
+  return cloneContact(state.byId[contactId] ?? null);
 }
 
 /**
@@ -69,7 +88,7 @@ export function getContactById(contactId) {
 export function getContactByRoomId(roomId) {
   if (!roomId) return null;
   for (const contact of Object.values(state.byId)) {
-    if (contact.roomId === roomId) return contact;
+    if (contact.roomId === roomId) return cloneContact(contact);
   }
   return null;
 }
@@ -94,7 +113,7 @@ export function getAllContactsSorted(_sortedBy = 'lastInteractionAt') {
     const aName = (a?.contactNickName || '').toLowerCase();
     const bName = (b?.contactNickName || '').toLowerCase();
     return aName.localeCompare(bName);
-  });
+  }).map((contact) => ({ ...contact }));
 }
 
 /**

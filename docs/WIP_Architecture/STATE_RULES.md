@@ -30,7 +30,36 @@ It exposes:
 
 - Sync getters only. No `await`, no Firebase, no remote reads.
 - Getters return immutable snapshots (defensive copies).
+- Each state file owns one outward snapshot boundary:
+  `snapshot()` returns a fully detached copy of every mutable value exposed outside the module.
+- Public getters either return primitives or derive their results from that same clone pattern.
+- Never return references from private `state`, even for nested records inside maps/arrays.
 - If the truth lives remotely, the state file mirrors it on change.
+
+Example:
+
+```js
+function cloneItem(item) {
+  return item ? { ...item } : null;
+}
+
+function cloneById(byId) {
+  return Object.fromEntries(
+    Object.entries(byId).map(([id, item]) => [id, cloneItem(item)]),
+  );
+}
+
+function snapshot() {
+  return {
+    byId: cloneById(state.byId),
+    isHydrated: state.isHydrated,
+  };
+}
+
+export function getItemById(id) {
+  return cloneItem(state.byId[id] ?? null);
+}
+```
 
 ## Consumer rules
 
