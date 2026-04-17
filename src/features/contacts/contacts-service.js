@@ -314,7 +314,6 @@ export class ContactsService {
    * @returns {Promise<HangUpResult>}
    */
   async handleHangUp(contactUserId, roomId) {
-  async handleHangUp(contactUserId, roomId) {
     if (getIsLoggedIn() && !getIsHydrated()) {
       try {
         await ensureContactsHydrated();
@@ -329,6 +328,7 @@ export class ContactsService {
 
     const existing = getAllContacts();
     const entry = existing?.[contactUserId];
+
     if (entry) {
       if (entry.roomId !== roomId) {
         await this.updateContact(contactUserId, entry.contactNickName, roomId);
