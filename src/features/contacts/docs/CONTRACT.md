@@ -13,7 +13,7 @@
   - mirrors the current contacts snapshot for cross-module reads
 
 - Current split
-  - service: `saveContact`, `updateContact`, `deleteContact`, `updateLastInteraction`, `handleHangUp`, `hydrateContactsState`
+  - service: `saveContact`, `updateContact`, `deleteContact`, `updateLastInteraction`, `handleHangUp`, `ensureContactsHydrated`, `hydrateContactsState`
   - state: `getAllContacts`, `getContactById`, `getContactByRoomId`, `getConversationId`, `getAllContactsSorted`, `getContactByMostRecentInteraction`, `getIsHydrated`
 
 - Published facts

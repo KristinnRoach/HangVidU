@@ -30,7 +30,7 @@ Narrative log of the boundary/dependency enforcement rollout. Rules and current 
 - moved account profile storage under `src/shared/storage/user/`
 - added `src/setup/setupUserAccount.js` for auth-driven profile sync
 - split `src/shared/storage/user/` profile access into `user-profile-store.js` + `user-profile-rtdb-adapter.js`
-- added `src/setup/setupContacts.js` for contacts pre-init concerns (`captureReferral`)
+- added `src/setup/setupContacts.js` for contacts pre-init concerns (`captureReferral`, contacts hydration bootstrap)
 
 ## Next goal
 
