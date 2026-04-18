@@ -26,7 +26,7 @@ See also: [`STRUCTURE.md`](./STRUCTURE.md), [`SOLID_UI_STATE_RULES.md`](./SOLID_
 - Use `PascalCase.jsx` for JSX components.
 - Use `kebab-case.js` or `kebab-case.jsx` for imperative bridges such as modal openers.
 - `XyzDialog.jsx` is the component. `xyz-modal.jsx` is the imperative promise wrapper if one is needed.
-- Add UI tests next to the migrated component with `*.test.jsx`.
+- Do NOT add tests prematurely for migrated components, only AFTER I have manually tested and verified the implementation (and only valuable tests that are flexible and unlikely to become redundant maintenance burden).
 
 ## i18n
 
