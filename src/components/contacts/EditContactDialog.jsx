@@ -1,7 +1,8 @@
 import { createSignal, onCleanup, onMount } from 'solid-js';
-import { t } from '../../shared/i18n/index.js';
+import { useI18n } from '../../shared/i18n/index.js';
 
 export default function EditContactDialog(props) {
+  const { t } = useI18n();
   const [name, setName] = createSignal(props.currentName);
   let dialogEl;
   let inputEl;

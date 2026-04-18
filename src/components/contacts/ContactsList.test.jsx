@@ -35,6 +35,13 @@ vi.mock('../../shared/i18n/index.js', () => ({
     if (params?.name) return `${key}:${params.name}`;
     return key;
   }),
+  useI18n: () => ({
+    t: (key, params) => {
+      if (params?.name) return `${key}:${params.name}`;
+      return key;
+    },
+    locale: () => 'en',
+  }),
   onLocaleChange: vi.fn(() => () => {}),
 }));
 

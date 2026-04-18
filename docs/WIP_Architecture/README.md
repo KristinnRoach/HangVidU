@@ -8,6 +8,7 @@ Where to find each rule category. All docs use bullet lists, no long prose.
 | [`STRUCTURE.md`](./STRUCTURE.md)       | Folder layout, where files live, barrel exports          |
 | [`STATE_RULES.md`](./STATE_RULES.md)   | In-memory state pattern (`*-state.js`)                   |
 | [`SOLID_UI_STATE_RULES.md`](./SOLID_UI_STATE_RULES.md) | Solid UI-only reactive state in `src/components/` |
+| [`MIGRATE_COMPONENT_TO_SOLIDJS.md`](./MIGRATE_COMPONENT_TO_SOLIDJS.md) | Minimal checklist for migrating one UI surface to Solid |
 | [`EVENTS.md`](./EVENTS.md)             | Event bus usage, single-bus rule                         |
 | [`LINT_ENFORCEMENT.md`](./LINT_ENFORCEMENT.md) | What is enforced in lint today                   |
 

@@ -1,6 +1,6 @@
 import { For, Show } from 'solid-js';
 import { createStore } from 'solid-js/store';
-import { t } from '../../shared/i18n/index.js';
+import { useI18n } from '../../shared/i18n/index.js';
 import ContactEntry from './ContactEntry.jsx';
 
 /**
@@ -28,6 +28,8 @@ export const [contacts, setContacts] = createStore(/** @type {ContactRow[]} */ (
  * All side effects live in `setup/setupAppRoot.js`.
  */
 export default function ContactsList() {
+  const { t } = useI18n();
+
   return (
     <div class="contacts-container">
       <Show

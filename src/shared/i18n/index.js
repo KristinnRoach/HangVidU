@@ -1,3 +1,5 @@
+import { batch, createSignal } from 'solid-js';
+
 const STORAGE_KEY = 'locale';
 
 const messages = {
@@ -5,9 +7,14 @@ const messages = {
   is: () => import('./is.json'),
 };
 
-let currentLocale = 'en';
-let dict = {};
+const [currentLocale, setCurrentLocale] = createSignal('en');
+const [dict, setDict] = createSignal({});
 const listeners = new Set();
+
+function formatMessage(str, params) {
+  if (!params) return str;
+  return str.replace(/{(\w+)}/g, (_, k) => params[k] ?? `{${k}}`);
+}
 
 /**
  * Subscribe to locale changes.
@@ -20,7 +27,7 @@ export function onLocaleChange(cb) {
 function notify() {
   for (const cb of listeners) {
     try {
-      cb(currentLocale);
+      cb(currentLocale());
     } catch (e) {
       console.error('[i18n]: Error in locale change listener:', e);
     }
@@ -35,12 +42,11 @@ export async function initI18n() {
     console.warn('Failed to read saved locale from localStorage:', e);
   }
   // Default to 'en' until Icelandic translations are complete
-  currentLocale = saved || 'en';
-  await setLocale(currentLocale);
+  await setLocale(saved || 'en');
 }
 
 export function getLocale() {
-  return currentLocale;
+  return currentLocale();
 }
 
 export async function setLocale(locale) {
@@ -55,8 +61,10 @@ export async function setLocale(locale) {
   try {
     // Load first, update state only if successful
     const newDict = await messages[locale]().then((m) => m.default || m);
-    dict = newDict;
-    currentLocale = locale;
+    batch(() => {
+      setDict(newDict);
+      setCurrentLocale(locale);
+    });
     try {
       localStorage.setItem(STORAGE_KEY, locale);
     } catch (e) {
@@ -73,7 +81,18 @@ export async function setLocale(locale) {
 }
 
 export function t(key, params) {
-  const str = dict[key] || key;
-  if (!params) return str;
-  return str.replace(/{(\w+)}/g, (_, k) => params[k] ?? `{${k}}`);
+  const str = dict()[key] || key;
+  return formatMessage(str, params);
+}
+
+/**
+ * Solid-facing i18n helpers.
+ * These are simple wrappers over the shared module state so migrated
+ * components can use a stable API while imperative code keeps using `t()`.
+ */
+export function useI18n() {
+  return {
+    locale: currentLocale,
+    t,
+  };
 }

@@ -1,6 +1,6 @@
 import { Show, onMount } from 'solid-js';
 import { dispatchCommand } from '../../shared/events/index.js';
-import { t } from '../../shared/i18n/index.js';
+import { useI18n } from '../../shared/i18n/index.js';
 import { initIcons } from '../../shared/components/ui/icons.js';
 import PresenceIndicator from '../presence/PresenceIndicator.jsx';
 
@@ -25,6 +25,7 @@ function shortName(name) {
  *   unreadCount: number
  */
 export default function ContactEntry(props) {
+  const { t } = useI18n();
   let rootEl;
 
   onMount(() => initIcons(rootEl));

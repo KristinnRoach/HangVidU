@@ -35,6 +35,6 @@ See also: [`STRUCTURE.md`](./STRUCTURE.md), [`STATE_RULES.md`](./STATE_RULES.md)
 ## Open questions
 
 - Whether UI state should stay co-located in component files or move to dedicated `*-ui-state.js` files next to their component.
-- How locale reactivity should be standardized for Solid surfaces.
 
 Resolved: feature-scoped UI lives in `src/components/<name>/` (see STRUCTURE.md).
+Resolved: Solid components use the shared i18n seam in `src/shared/i18n/index.js`; prefer `useI18n()` in Solid and keep `t()` compatibility for imperative surfaces during migration.
