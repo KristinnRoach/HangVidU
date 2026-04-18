@@ -8,6 +8,10 @@ body[data-view='lobby:user'] {
     }
   }
 
+  & .contacts-container {
+    display: flex;
+  }
+
   & #lobby-buttons-container {
     display: flex;
 
@@ -55,6 +59,10 @@ body[data-view='lobby:guest'] {
     & #add-contact-btn {
       display: none;
     }
+  }
+
+  & .contacts-container {
+    display: none;
   }
 
   & #lobby-buttons-container {
