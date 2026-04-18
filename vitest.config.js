@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import { VitePWA } from 'vite-plugin-pwa';
+import solid from 'vite-plugin-solid';
 
 // Enable multi-browser testing with COMPAT=true
 const isCompatMode = process.env.COMPAT === 'true';
@@ -21,7 +22,15 @@ const testDirs = [
 ];
 
 export default defineConfig({
+  // Solid-js exposes both server + client entrypoints via package exports.
+  // Node default-resolves the server build; force client conditions so
+  // render() in tests hits the DOM path. `development` is also required —
+  // without it `solid-js/web`'s hot-reload shim throws.
+  resolve: {
+    conditions: ['development', 'browser'],
+  },
   plugins: [
+    solid(),
     VitePWA({
       includeAssets: ['index.html', 'favicon.ico'],
       registerType: 'prompt',
@@ -45,19 +54,38 @@ export default defineConfig({
   test: {
     projects: [
       // Default: runs in Node with jsdom (no Playwright RPC overhead)
-      // Convention: *.test.js
+      // Convention: *.test.js / *.test.jsx
       {
+        plugins: [solid()],
+        resolve: {
+          conditions: ['solid', 'development', 'browser'],
+        },
         test: {
           ...sharedTestConfig,
           name: 'node',
           environment: 'jsdom',
-          include: testDirs.map((d) => `${d}*.test.js`),
-          exclude: testDirs.map((d) => `${d}*.browser.test.js`),
+          // Solid ships a DOM and a Node (server) build behind package
+          // conditions. Jsdom tests need the DOM build — force inline so
+          // the conditions config applies even for hoisted modules.
+          server: {
+            deps: {
+              inline: [/solid-js/, /@solidjs\/testing-library/],
+            },
+          },
+          include: testDirs.flatMap((d) => [
+            `${d}*.test.js`,
+            `${d}*.test.jsx`,
+          ]),
+          exclude: testDirs.flatMap((d) => [
+            `${d}*.browser.test.js`,
+            `${d}*.browser.test.jsx`,
+          ]),
         },
       },
       // Browser: runs in real Chromium via Playwright
-      // Convention: *.browser.test.js — use for tests needing real
-      // WebRTC, OPFS, ServiceWorker, or other APIs jsdom can't provide
+      // Convention: *.browser.test.js / *.browser.test.jsx — use for tests
+      // needing real WebRTC, OPFS, ServiceWorker, or other APIs jsdom can't
+      // provide
       {
         test: {
           ...sharedTestConfig,
@@ -75,7 +103,10 @@ export default defineConfig({
                 ]
               : [{ browser: 'chromium' }],
           },
-          include: testDirs.map((d) => `${d}*.browser.test.js`),
+          include: testDirs.flatMap((d) => [
+            `${d}*.browser.test.js`,
+            `${d}*.browser.test.jsx`,
+          ]),
         },
       },
     ],

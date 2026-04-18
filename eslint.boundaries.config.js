@@ -57,6 +57,7 @@ const ENABLE_RULE = {
   shared: envEnabled('BOUNDARIES_SHARED', true),
   auth: envEnabled('BOUNDARIES_AUTH', true),
   setup: envEnabled('BOUNDARIES_SETUP', true),
+  components: envEnabled('BOUNDARIES_COMPONENTS', true),
 };
 
 // enforced features - add one at a time until all are included
@@ -85,7 +86,12 @@ const SHARED_GLOBS = [
 function dependencyRule(files, rules) {
   return {
     files,
-    ignores: ['src/**/*.test.js', 'src/**/*.browser.test.js'],
+    ignores: [
+      'src/**/*.test.js',
+      'src/**/*.test.jsx',
+      'src/**/*.browser.test.js',
+      'src/**/*.browser.test.jsx',
+    ],
     rules: {
       'boundaries/dependencies': [
         'error',
@@ -127,6 +133,8 @@ for (const featureName of ENFORCED_FEATURES) {
       [
         `src/features/${featureName}/*.js`,
         `src/features/${featureName}/**/*.js`,
+        `src/features/${featureName}/*.jsx`,
+        `src/features/${featureName}/**/*.jsx`,
       ],
       [
         {
@@ -165,7 +173,7 @@ if (ENABLE_RULE.auth) {
 if (ENABLE_RULE.setup) {
   overrides.push(
     dependencyRule(
-      ['src/setup/*.js', 'src/setup/**/*.js'],
+      ['src/setup/*.js', 'src/setup/**/*.js', 'src/setup/*.jsx', 'src/setup/**/*.jsx'],
       [
         {
           from: { type: 'setup' },
@@ -175,10 +183,39 @@ if (ENABLE_RULE.setup) {
               { type: 'auth' },
               { type: 'feature' },
               { type: 'shared' },
+              { type: 'components' },
             ],
           },
           message:
-            'Setup may only import from setup, auth, feature, and shared.',
+            'Setup may only import from setup, auth, feature, shared, and components.',
+        },
+      ],
+    ),
+  );
+}
+
+if (ENABLE_RULE.components) {
+  overrides.push(
+    dependencyRule(
+      [
+        'src/components/*.js',
+        'src/components/**/*.js',
+        'src/components/*.jsx',
+        'src/components/**/*.jsx',
+      ],
+      [
+        {
+          from: { type: 'components' },
+          allow: {
+            to: [
+              { type: 'components' },
+              { type: 'auth' },
+              { type: 'feature' },
+              { type: 'shared' },
+            ],
+          },
+          message:
+            'Components may only import from components, auth, feature, and shared.',
         },
       ],
     ),
@@ -187,7 +224,17 @@ if (ENABLE_RULE.setup) {
 
 export default [
   {
-    files: ['src/**/*.js'],
+    files: ['src/**/*.jsx'],
+    languageOptions: {
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        ecmaFeatures: { jsx: true },
+      },
+    },
+  },
+  {
+    files: ['src/**/*.js', 'src/**/*.jsx'],
     plugins: {
       boundaries,
     },
@@ -201,7 +248,12 @@ export default [
         {
           type: 'feature',
           mode: 'full',
-          pattern: ['src/features/*/*.js', 'src/features/*/**/*.js'],
+          pattern: [
+            'src/features/*/*.js',
+            'src/features/*/**/*.js',
+            'src/features/*/*.jsx',
+            'src/features/*/**/*.jsx',
+          ],
           capture: ['featureName'],
         },
         {
@@ -213,6 +265,16 @@ export default [
           type: 'setup',
           mode: 'full',
           pattern: ['src/setup/*.js', 'src/setup/**/*.js'],
+        },
+        {
+          type: 'components',
+          mode: 'full',
+          pattern: [
+            'src/components/*.js',
+            'src/components/**/*.js',
+            'src/components/*.jsx',
+            'src/components/**/*.jsx',
+          ],
         },
       ],
     },

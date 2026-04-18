@@ -14,12 +14,14 @@ import { getPushNotifications } from './features/push-notifications/index.js';
 import CallController from './features/call/call-controller.js';
 import { messagingController } from './features/messaging/messaging-controller.js';
 import {
-  mountContactsList,
-  cleanupContacts,
   showAddContactModal,
   getConversationId,
   getAllContactsSorted,
 } from './features/contacts/index.js';
+import {
+  mountApp,
+  cleanupApp,
+} from './mount-app.jsx';
 
 import {
   localVideoEl,
@@ -188,7 +190,7 @@ async function bootstrapApp() {
         showDebugUIForNotifications,
       }),
     bindCallUI: () => bindCallUI(CallController),
-    mountContactsList: () => mountContactsList(lobbyDiv),
+    mountApp: () => mountApp(lobbyDiv),
     setupMainAppBusListeners,
     startListeningForSavedRooms,
     autoInitMsgSessionIfNeeded,
@@ -713,7 +715,7 @@ async function cleanup() {
   // Global teardown: safe to remove all listeners on page unload
   cleanupMediaControls();
   removeAllRTDBListeners();
-  cleanupContacts();
+  cleanupApp();
 
   exitPiP();
   messagesUI.cleanup();

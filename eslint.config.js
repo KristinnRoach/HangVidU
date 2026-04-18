@@ -11,10 +11,23 @@ const EVENT_API_CALLS = new Set([
 ]);
 
 const appConfig = [
+  // JSX parser support for *.jsx files. Solid JSX uses standard ECMA JSX
+  // grammar — no plugin required for lint-level parsing.
   {
-    files: ['src/**/*.js'],
+    files: ['src/**/*.jsx'],
+    languageOptions: {
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        ecmaFeatures: { jsx: true },
+      },
+    },
+  },
+  {
+    files: ['src/**/*.js', 'src/**/*.jsx'],
     ignores: [
       'src/**/*.test.js',
+      'src/**/*.test.jsx',
       'src/**/__tests__/**',
       'src/**/tests/**',
       'src/**/wip-*/**',
@@ -109,11 +122,12 @@ const appConfig = [
   // External consumers must go through the module barrel and subscribe to
   // `evt:<module>:state:changed`. Listed per-module as we adopt the pattern.
   {
-    files: ['src/**/*.js'],
+    files: ['src/**/*.js', 'src/**/*.jsx'],
     ignores: [
       'src/auth/**',
       'src/features/contacts/**',
       'src/**/*.test.js',
+      'src/**/*.test.jsx',
       'src/**/__tests__/**',
       'src/**/tests/**',
     ],

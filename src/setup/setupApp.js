@@ -32,7 +32,7 @@ function drainCleanupFns(cleanupFns) {
  * - runInit: runs module init and resolves to boolean success
  * - setupTopBarAndLocale: resolves to cleanup function
  * - bindCallUI: binds call UI handlers
- * - mountContactsList: mounts contacts UI and keeps it in sync
+ * - mountApp: mounts the Solid app root and keeps it in sync
  * - setupMainAppBusListeners: registers app-level command/fact handlers
  * - startListeningForSavedRooms
  * - autoInitMsgSessionIfNeeded
@@ -48,7 +48,7 @@ function drainCleanupFns(cleanupFns) {
  *   runInit: () => Promise<boolean>,
  *   setupTopBarAndLocale: () => Promise<() => void>,
  *   bindCallUI: () => void,
- *   mountContactsList: () => Promise<void>,
+ *   mountApp: () => Promise<void>,
  *   setupMainAppBusListeners: () => Promise<(() => void)|void>|(() => void)|void,
  *   startListeningForSavedRooms: () => Promise<void>,
  *   autoInitMsgSessionIfNeeded: () => Promise<void>,
@@ -101,7 +101,7 @@ export function setupApp(options) {
 
       cleanupFns.push(await options.setupTopBarAndLocale());
       options.bindCallUI();
-      await options.mountContactsList();
+      await options.mountApp();
       const appBusCleanup = await options.setupMainAppBusListeners();
       if (typeof appBusCleanup === 'function') {
         cleanupFns.push(appBusCleanup);

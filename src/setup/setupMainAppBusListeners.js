@@ -2,8 +2,8 @@ import { handleCommand, subscribe } from '../shared/events/index.js';
 import { messagingController } from '../features/messaging/messaging-controller.js';
 import { isDev, tempWarn } from '../shared/utils/dev/dev-utils.js';
 import { callContact } from '../features/call/WIP-start-call-refactor.js';
+import { showSaveContactPrompt } from '../components/contacts/save-contact-modal.jsx';
 import {
-  showSaveContactPrompt,
   getContactById,
   getContactByRoomId,
   getConversationId,
