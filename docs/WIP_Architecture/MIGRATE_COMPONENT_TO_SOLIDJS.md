@@ -1,21 +1,8 @@
 # Migrate Component To SolidJS
 
-Minimal checklist for migrating one UI surface at a time into `src/components/`.
+Notes on migrating one UI surface at a time into `src/components/`.
 
 See also: [`STRUCTURE.md`](./STRUCTURE.md), [`SOLID_UI_STATE_RULES.md`](./SOLID_UI_STATE_RULES.md), [`STATE_RULES.md`](./STATE_RULES.md), [`EVENTS.md`](./EVENTS.md).
-
-## Template
-
-- Surface:
-- Existing file(s):
-- New Solid component(s):
-- Bridge file(s) needed in `src/setup/`:
-- Domain module(s) read from:
-- Commands/events touched:
-- i18n keys added or reused:
-- Tests added or updated:
-
-## Already decided
 
 - Put Solid UI in `src/components/`.
 - Keep imperative bootstrap, app-bus wiring, and other bridges in `src/setup/`.
