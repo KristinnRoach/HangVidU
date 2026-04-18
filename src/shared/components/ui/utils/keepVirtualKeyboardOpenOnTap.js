@@ -18,14 +18,28 @@
 export function keepVirtualKeyboardOpenOnTap(buttonEl, onTap) {
   if (!buttonEl) return () => {};
 
-  const handler = (event) => {
-    if (event.button !== 0) return; // primary (left/touch/pen) only
+  const pointerDownHandler = (event) => {
+    // Only reject non-primary mouse buttons. Touch/pen pointer events on iOS
+    // can report unexpected `button` values, and strict filtering breaks the
+    // keyboard-retention path entirely.
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
     event.preventDefault();
     onTap(event);
   };
 
-  buttonEl.addEventListener('pointerdown', handler, { passive: false });
-  return () => buttonEl.removeEventListener('pointerdown', handler);
+  const clickHandler = (event) => {
+    if (event.detail !== 0) return; // pointer activation already handled above
+    onTap(event);
+  };
+
+  buttonEl.addEventListener('pointerdown', pointerDownHandler, {
+    passive: false,
+  });
+  buttonEl.addEventListener('click', clickHandler);
+  return () => {
+    buttonEl.removeEventListener('pointerdown', pointerDownHandler);
+    buttonEl.removeEventListener('click', clickHandler);
+  };
 }
 
 // NOTE: keyboard / assistive-tech activation
