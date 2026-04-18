@@ -2,7 +2,7 @@ import { Show, onMount } from 'solid-js';
 import { dispatchCommand } from '../../shared/events/index.js';
 import { t } from '../../shared/i18n/index.js';
 import { initIcons } from '../../shared/components/ui/icons.js';
-import PresenceIndicator from './PresenceIndicator.jsx';
+import PresenceIndicator from '../presence/PresenceIndicator.jsx';
 
 const MAX_CONTACT_NAME_CHARS = 18;
 

@@ -66,15 +66,15 @@ One file: `src/app/setupAppRoot.js`
 - [x] Add `tsconfig.json` for Solid JSX (`jsx: preserve`, `jsxImportSource: solid-js`)
 - [x] Wire `vite-plugin-solid` into `vite.config.js` + `vitest.config.js`
 - [x] Extend ESLint for `.jsx` (lint globs + JSX parserOptions) + add `app` boundary element
-- [x] Create `src/app/components/PresenceIndicator.jsx`
-- [x] Create `src/app/components/ContactEntry.jsx`
-- [x] Create `src/app/components/ContactsList.jsx`
+- [x] Create `src/app/presence/PresenceIndicator.jsx`
+- [x] Create `src/app/contacts/ContactEntry.jsx`
+- [x] Create `src/app/contacts/ContactsList.jsx`
 - [x] Create `src/app/setupAppRoot.js`
 - [x] Create `src/features/contacts/contacts-command-handlers.js`
 - [x] Create `src/app/mount-app.jsx`
 - [x] Swap imports in `src/main.js`
 - [x] Remove UI exports from `src/features/contacts/index.js`
-- [x] Write Solid test (`src/app/tests/contacts-list.test.jsx`) — 2 passing, 1 skipped
+- [x] Write Solid test (`src/app/contacts/ContactsList.test.jsx`) — 2 passing, 1 skipped
 - [x] Run `pnpm lint` + `pnpm test:node` (all pass; 1 test skipped)
 - [x] Run `pnpm build` — passes
 - [x] Finalize findings section of this file
@@ -148,13 +148,13 @@ One file: `src/app/setupAppRoot.js`
 
 ### New
 
-- `src/app/components/ContactsList.jsx`
-- `src/app/components/ContactEntry.jsx`
-- `src/app/components/PresenceIndicator.jsx`
+- `src/app/contacts/ContactsList.jsx`
+- `src/app/contacts/ContactEntry.jsx`
+- `src/app/presence/PresenceIndicator.jsx`
 - `src/app/mount-app.jsx`
 - `src/app/setupAppRoot.js`
 - `src/features/contacts/contacts-command-handlers.js`
-- `src/app/tests/contacts-list.test.jsx`
+- `src/app/contacts/ContactsList.test.jsx`
 - `tsconfig.json`
 - `docs/WIP_Architecture/SOLIDJS_POC.md`
 

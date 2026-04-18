@@ -18,7 +18,7 @@ vi.mock('../../features/contacts/index.js', () => ({
   getAllContactsSorted: mocks.getAllContactsSorted,
 }));
 
-vi.mock('../contacts/contacts-command-handlers.js', () => ({
+vi.mock('./contacts-command-handlers.js', () => ({
   setupContactsAppBusHandlers: vi.fn(() => () => {}),
 }));
 
@@ -65,7 +65,7 @@ describe('SolidJS ContactsList PoC', () => {
 
   it('renders a row per contact from hydrated state', async () => {
     const ContactsListModule = await import(
-      '../components/ContactsList.jsx'
+      './ContactsList.jsx'
     );
     const { setupAppRoot } = await import('../setupAppRoot.js');
 
@@ -89,7 +89,7 @@ describe('SolidJS ContactsList PoC', () => {
   // interaction with Solid's scheduler — not a regression in production code.
   it.skip('reflects unread count via the messaging event bridge', async () => {
     const ContactsListModule = await import(
-      '../components/ContactsList.jsx'
+      './ContactsList.jsx'
     );
     const { setupAppRoot } = await import('../setupAppRoot.js');
 
@@ -103,7 +103,7 @@ describe('SolidJS ContactsList PoC', () => {
       { conversationId: 'conv-1' },
     );
 
-    const { contacts } = await import('../components/ContactsList.jsx');
+    const { contacts } = await import('./ContactsList.jsx');
 
     const unreadHandler = mocks.subscriptions.get(
       'evt:messaging:conversation:unread-count-changed',
@@ -126,7 +126,7 @@ describe('SolidJS ContactsList PoC', () => {
 
   it('dispatches cmd:call:outgoing:initiate on call button click', async () => {
     const ContactsListModule = await import(
-      '../components/ContactsList.jsx'
+      './ContactsList.jsx'
     );
     const { setupAppRoot } = await import('../setupAppRoot.js');
 

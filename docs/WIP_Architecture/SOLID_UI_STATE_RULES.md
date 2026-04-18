@@ -19,7 +19,7 @@ See also: [`STRUCTURE.md`](./STRUCTURE.md), [`STATE_RULES.md`](./STATE_RULES.md)
 - UI state may live in a `.jsx` component file when the surface is still small.
 - Bridge/wiring files in `src/app/` may write UI state.
 - Current example:
-  - `src/app/components/ContactsList.jsx` owns the contacts row store.
+  - `src/app/contacts/ContactsList.jsx` owns the contacts row store.
   - `src/app/setupAppRoot.js` bridges domain events into that store.
 
 ## Current rules
@@ -35,5 +35,6 @@ See also: [`STRUCTURE.md`](./STRUCTURE.md), [`STATE_RULES.md`](./STATE_RULES.md)
 ## Open questions
 
 - Whether UI state should stay co-located in component files or move to dedicated `*-ui-state.js` files in `src/app/`.
-- Whether app-specific UI for a feature should live in `src/features/<name>/components/` or `src/app/<name>/`.
 - How locale reactivity should be standardized for Solid surfaces.
+
+Resolved: app-specific UI for a feature lives in `src/app/<name>/` (see STRUCTURE.md three-bucket rule).

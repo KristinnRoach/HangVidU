@@ -1,4 +1,4 @@
-import ContactsList from './components/ContactsList.jsx';
+import ContactsList from './contacts/ContactsList.jsx';
 
 /**
  * Minimal SolidJS root. Start with contacts so the existing PoC keeps working,
