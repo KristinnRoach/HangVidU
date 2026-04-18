@@ -137,11 +137,10 @@ One file: `src/setup/setupAppRoot.js`
 ## Refactors flagged — NOT fixed in this PoC
 
 1. **`main.js` cleanup-ownership split.** `mountApp` is called from `setupApp` but `cleanupApp` from `main.js`. Right model: mount functions return a cleanup fn that `setupApp` pushes into its cleanup stack. Preserved current split to keep diff minimal.
-2. **`main.js:241` — `setupMessagingContactsIntegration()` return value not pushed into cleanup stack.** Pre-existing leak of a teardown handle. Not introduced here.
-3. **No `evt:contacts:hydrated` event.** The new `setupAppRoot` reads `getAllContactsSorted()` on every `evt:contacts:state:changed`, which covers initial hydration in practice. If multiple UI surfaces need "contacts are ready" as a first-class signal, promote this to an event.
-4. **`contactsService.updateContact(contactId, name, roomId)` signature.** Takes `roomId` as a third arg purely to preserve it through the update. Awkward; don't touch in PoC.
-5. **Legacy DOM contacts list removed.** The Solid path is now the only contacts-list path in active use.
-6. **Locale reactivity** (see Findings above) — needs a project-wide pattern before more JSX UI is written.
+2. **No `evt:contacts:hydrated` event.** The new `setupAppRoot` reads `getAllContactsSorted()` on every `evt:contacts:state:changed`, which covers initial hydration in practice. If multiple UI surfaces need "contacts are ready" as a first-class signal, promote this to an event.
+3. **`contactsService.updateContact(contactId, name, roomId)` signature.** Takes `roomId` as a third arg purely to preserve it through the update. Awkward; don't touch in PoC.
+4. **Legacy DOM contacts list removed.** The Solid path is now the only contacts-list path in active use.
+5. **Locale reactivity** (see Findings above) — needs a project-wide pattern before more JSX UI is written.
 
 ---
 

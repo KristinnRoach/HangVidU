@@ -35,7 +35,6 @@ const mocks = vi.hoisted(() => {
     clearUrlParam: vi.fn(),
     onOutgoingCallAnswered: vi.fn(() => Promise.resolve()),
     mountContactsList: vi.fn(() => Promise.resolve()),
-    promptAndRefreshContactSave: vi.fn(() => Promise.resolve()),
     devDebug: vi.fn(),
     events: {
       publish: vi.fn(),
@@ -78,10 +77,6 @@ vi.mock('../../../shared/utils/url.js', () => ({
 
 vi.mock('./../components/outgoing-call.js', () => ({
   onOutgoingCallAnswered: mocks.onOutgoingCallAnswered,
-}));
-
-vi.mock('../../../app/contact-save-flow.js', () => ({
-  promptAndRefreshContactSave: mocks.promptAndRefreshContactSave,
 }));
 
 vi.mock('../../../shared/utils/dev/dev-utils.js', () => ({
