@@ -2,10 +2,6 @@ import { renderAvatar } from '../../../shared/components/ui/utils/avatar.js';
 import { t } from '../../../shared/i18n/index.js';
 import { initIcons } from '../../../shared/components/ui/icons.js';
 
-// TEMP BLOCK AUDIO ONLY CALL FEATURE:
-const AUDIO_ONLY_CALL_ENABLED = false;
-const AUDIO_CALL_DISPLAY = AUDIO_ONLY_CALL_ENABLED ? 'block' : 'none';
-
 export function createMessageTopBar() {
   const root = document.createElement('div');
   root.className = 'messages-top-bar';
@@ -17,7 +13,7 @@ export function createMessageTopBar() {
       <span class="avatar" aria-hidden="true"></span>
       <span class="messages-topbar-name"></span>
     </div>
-    <button type="button" style="display: ${AUDIO_CALL_DISPLAY}" class="messages-topbar-audio-call" aria-label="${t('message.audioCall')}">
+    <button type="button" class="messages-topbar-audio-call" aria-label="${t('message.audioCall')}">
       <i data-lucide="phone" aria-hidden="true"></i>
     </button>
     <button type="button" class="messages-topbar-call" aria-label="${t('message.videoCall')}">
