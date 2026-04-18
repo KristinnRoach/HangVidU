@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanup, render, waitFor } from '@solidjs/testing-library';
-import { setLocale, useI18n } from './index.js';
+import { setLocale, useI18n } from '../index.js';
 
 function TestLabel() {
   const { t } = useI18n();
