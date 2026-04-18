@@ -68,7 +68,10 @@ export function handleMediaPermissionError(error) {
     error?.name === 'NotAllowedError' ||
     error?.name === 'PermissionDeniedError'
   ) {
-    alert(t('error.media.permission'));
+    // confirm() so PWA users (no easy reload) can recover in one tap.
+    if (confirm(t('error.media.permission'))) {
+      window.location.reload();
+    }
   }
   resetLocalStreamInitFlag();
 }

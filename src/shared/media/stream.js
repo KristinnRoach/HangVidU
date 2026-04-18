@@ -23,6 +23,27 @@ export function attachAudioMonitor(stream) {
   attachAudioInputRecovery(stream);
 }
 
+// Retry once on NotAllowedError if the browser still considers permission
+// grantable. Covers the case where the prompt was dismissed by accident or
+// not properly visible (focus/PWA quirks). User just clicked "call" — try
+// one more time before failing.
+async function getUserMediaWithRetry(constraints) {
+  try {
+    return await navigator.mediaDevices.getUserMedia(constraints);
+  } catch (err) {
+    if (err?.name !== 'NotAllowedError' && err?.name !== 'PermissionDeniedError') throw err;
+    let promptable = true;
+    try {
+      const probeName = constraints?.audio ? 'microphone' : 'camera';
+      const s = await navigator.permissions?.query?.({ name: probeName });
+      promptable = !s || s.state === 'prompt';
+    } catch {}
+    if (!promptable) throw err;
+    await new Promise((r) => setTimeout(r, 250));
+    return navigator.mediaDevices.getUserMedia(constraints);
+  }
+}
+
 export const createLocalStream = async ({ audioOnly = false } = {}) => {
   if (hasLocalStream()) {
     console.debug('Reusing existing local MediaStream.');
@@ -33,7 +54,7 @@ export const createLocalStream = async ({ audioOnly = false } = {}) => {
   const audioConstraints = getAudioConstraints();
 
   try {
-    const newStream = await navigator.mediaDevices.getUserMedia({
+    const newStream = await getUserMediaWithRetry({
       video: videoConstraints,
       audio: audioConstraints,
     });
@@ -50,7 +71,7 @@ export const createLocalStream = async ({ audioOnly = false } = {}) => {
       devDebug('Full error:', error);
       // Fallback to absolute minimum (avoid Over Constrained error)
       const fallbackAudioConstraints = getFallbackAudioConstraints();
-      const basicStream = await navigator.mediaDevices.getUserMedia({
+      const basicStream = await getUserMediaWithRetry({
         video: audioOnly ? false : true,
         audio: fallbackAudioConstraints,
       });
