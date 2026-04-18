@@ -42,6 +42,7 @@ class CallController {
     this.roomId = null;
     this.roomLink = null;
     this.role = null; // initiator | joiner
+    this.audioOnly = false;
     this.partnerId = null;
     this.pc = null;
 
@@ -60,6 +61,7 @@ class CallController {
       roomId: this.roomId,
       roomLink: this.roomLink,
       role: this.role,
+      audioOnly: this.audioOnly,
       partnerId: this.partnerId,
       hasPc: !!this.pc,
       isHangingUp: this.isHangingUp,
@@ -434,6 +436,7 @@ class CallController {
    */
   async createCall(options = {}) {
     this.state = 'creating';
+    this.audioOnly = options.audioOnly === true;
     try {
       // Store video element references if provided
       if (options.localVideoEl) {
@@ -531,6 +534,7 @@ class CallController {
    */
   async answerCall(options = {}) {
     this.state = 'joining';
+    this.audioOnly = options.audioOnly === true;
     try {
       // Store video element references if provided
       if (options.localVideoEl) {

@@ -8,7 +8,7 @@ import { messagesUI } from '../features/messaging/components/messages-ui.js';
 /** Wires UI-only handlers to CallController. Business logic handlers are in main.js. */
 export function bindCallUI(CallController) {
   CallController.on('evt:call:participant:joined', () => {
-    onCallConnected();
+    onCallConnected({ audioOnly: CallController.getState().audioOnly });
     messagesUI.closeMessages();
   });
 

@@ -12,9 +12,9 @@ export function onCallingEnded() {
   }
 }
 
-export function onCallConnected() {
+export function onCallConnected({ audioOnly = false } = {}) {
   uiState.setView('connected');
-  enterCallModeUI(); // legacy - remove after migration
+  enterCallModeUI(audioOnly); // legacy - remove after migration
 }
 
 export function onCallDisconnected() {

@@ -34,15 +34,16 @@ let cleanupFunctions = [];
 // Export state getter
 export const getIsInCallMode = () => isInCallMode;
 
-export const enterCallModeUI = () => {
+export const enterCallModeUI = (audioOnly = false) => {
   if (isInCallMode) return;
 
   // Check if remote video is ready and playing
   if (
-    !remoteVideoEl ||
-    !hasRemoteStream() ||
-    remoteVideoEl.paused ||
-    remoteVideoEl.readyState < 2
+    !audioOnly &&
+    (!remoteVideoEl ||
+      !hasRemoteStream() ||
+      remoteVideoEl.paused ||
+      remoteVideoEl.readyState < 2)
   ) {
     // Video not ready yet - set up listener if we haven't already
     if (!enterCallModeWaitingForVideo) {
@@ -64,9 +65,11 @@ export const enterCallModeUI = () => {
 
   isInCallMode = true;
 
-  showElement(remoteBoxEl);
-  showElement(localBoxEl);
-  placeInSmallFrame(localBoxEl);
+  if (!audioOnly) {
+    showElement(remoteBoxEl);
+    showElement(localBoxEl);
+    placeInSmallFrame(localBoxEl);
+  }
 
   hideElement(lobbyDiv);
 

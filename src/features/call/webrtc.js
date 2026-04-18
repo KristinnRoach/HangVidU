@@ -17,7 +17,7 @@ export function setupConnectionStateHandlers(pc) {
 
     if (pc.connectionState === 'connected') {
       devDebug('Connected!');
-      onCallConnected();
+      onCallConnected({ audioOnly: CallController.getState().audioOnly });
       // Ensure any calling overlay is dismissed once connected
       onOutgoingCallAnswered().catch((e) =>
         console.warn('Failed to clear calling state on connect:', e),
