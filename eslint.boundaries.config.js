@@ -57,7 +57,7 @@ const ENABLE_RULE = {
   shared: envEnabled('BOUNDARIES_SHARED', true),
   auth: envEnabled('BOUNDARIES_AUTH', true),
   setup: envEnabled('BOUNDARIES_SETUP', true),
-  app: envEnabled('BOUNDARIES_APP', true),
+  components: envEnabled('BOUNDARIES_COMPONENTS', true),
 };
 
 // enforced features - add one at a time until all are included
@@ -173,7 +173,7 @@ if (ENABLE_RULE.auth) {
 if (ENABLE_RULE.setup) {
   overrides.push(
     dependencyRule(
-      ['src/setup/*.js', 'src/setup/**/*.js'],
+      ['src/setup/*.js', 'src/setup/**/*.js', 'src/setup/*.jsx', 'src/setup/**/*.jsx'],
       [
         {
           from: { type: 'setup' },
@@ -183,35 +183,39 @@ if (ENABLE_RULE.setup) {
               { type: 'auth' },
               { type: 'feature' },
               { type: 'shared' },
-              { type: 'app' },
+              { type: 'components' },
             ],
           },
           message:
-            'Setup may only import from setup, auth, feature, shared, and app.',
+            'Setup may only import from setup, auth, feature, shared, and components.',
         },
       ],
     ),
   );
 }
 
-if (ENABLE_RULE.app) {
+if (ENABLE_RULE.components) {
   overrides.push(
     dependencyRule(
-      ['src/app/*.js', 'src/app/**/*.js', 'src/app/*.jsx', 'src/app/**/*.jsx'],
+      [
+        'src/components/*.js',
+        'src/components/**/*.js',
+        'src/components/*.jsx',
+        'src/components/**/*.jsx',
+      ],
       [
         {
-          from: { type: 'app' },
+          from: { type: 'components' },
           allow: {
             to: [
-              { type: 'app' },
+              { type: 'components' },
               { type: 'auth' },
               { type: 'feature' },
               { type: 'shared' },
-              { type: 'setup' },
             ],
           },
           message:
-            'App may only import from app, auth, feature, shared, and setup.',
+            'Components may only import from components, auth, feature, and shared.',
         },
       ],
     ),
@@ -263,13 +267,13 @@ export default [
           pattern: ['src/setup/*.js', 'src/setup/**/*.js'],
         },
         {
-          type: 'app',
+          type: 'components',
           mode: 'full',
           pattern: [
-            'src/app/*.js',
-            'src/app/**/*.js',
-            'src/app/*.jsx',
-            'src/app/**/*.jsx',
+            'src/components/*.js',
+            'src/components/**/*.js',
+            'src/components/*.jsx',
+            'src/components/**/*.jsx',
           ],
         },
       ],

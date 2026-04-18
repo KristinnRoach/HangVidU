@@ -1,11 +1,11 @@
-// src/app/mount-app.jsx
+// src/mount-app.jsx
 //
 // Imperative mount surface for the SolidJS app root. This preserves a simple
 // mount/cleanup API while the rest of the app still boots through setup/main.
 
 import { render } from 'solid-js/web';
 import App from './App.jsx';
-import { setupAppRoot } from './setupAppRoot.js';
+import { setupAppRoot } from './setup/setupAppRoot.js';
 
 let disposeRender = null;
 let teardownAppRoot = null;

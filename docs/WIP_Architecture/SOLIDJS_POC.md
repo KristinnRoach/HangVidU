@@ -1,6 +1,6 @@
 # SolidJS PoC — Contacts List
 
-**Status:** Functional PoC. Superseded in part by current `src/app/` bootstrap and docs.
+**Status:** Functional PoC. Layout revised post-merge: Solid UI lives at `src/App.jsx` + `src/components/`; bridges live in `src/setup/`. See STRUCTURE.md for the canonical rule.
 **Branch:** `solidjs-poc`
 **Scope:** Rebuild contacts list with Solid. One UI surface. No broader migration in this PR.
 
@@ -21,11 +21,11 @@ The contacts list was chosen as the PoC because it's the hardest shape in the ap
 
 ## Architecture decisions
 
-### `src/app/` is the composition-root home for JSX
+### `src/components/` is the composition-root home for JSX
 
-- `src/app/` as the composition root; this PoC creates it.
-- Boundary lint allows `app → feature + auth + shared + setup` (mirrors `setup/` and adds `setup` as a dep for mount entry points).
-- `setup/` also now allows importing `app/` so bridges can write to app-layer stores.
+- `src/App.jsx` + `src/mount-app.jsx` sit at `src/` root. All Solid UI lives under `src/components/`.
+- Boundary lint allows `components → auth + feature + shared` (components never import `setup`).
+- `setup/` may import `components/` so bridges can write to UI stores.
 - Contacts barrel is now data-only (no UI exports).
 
 ### Signals
@@ -36,7 +36,7 @@ The contacts list was chosen as the PoC because it's the hardest shape in the ap
 
 ### Wiring (imperative bridges → reactive store)
 
-One file: `src/app/setupAppRoot.js`
+One file: `src/setup/setupAppRoot.js`
 
 - Subscribes `evt:contacts:state:changed` → rebuilds store from `getAllContactsSorted()`.
 - Per row with a `conversationId`: subscribes `evt:messaging:conversation:unread-count-changed` + dispatches `cmd:messaging:conversation:unread-count-listen` / `unlisten` → writes `unreadCount` through `produce`.
@@ -44,10 +44,11 @@ One file: `src/app/setupAppRoot.js`
 
 ### Command handlers
 
-`src/features/contacts/contacts-command-handlers.js`
+`src/setup/setupContactsAppBusHandlers.js`
 
 - One command: `cmd:contacts:contact:edit` → opens edit modal, routes to rename or delete based on result.
-- The dumb UI only dispatches; modal flow + `contactsService.updateContact` / `deleteContact` live inside contacts module.
+- The dumb UI only dispatches; modal flow + `contactsService.updateContact` / `deleteContact` run inside the handler.
+- Lives in `setup/` because it's UI wiring (imports modal bridges + service writers), not a component.
 
 ### Reused existing code — no duplication
 
@@ -65,16 +66,16 @@ One file: `src/app/setupAppRoot.js`
 - [x] Install deps (`solid-js`, `vite-plugin-solid`, `@solidjs/testing-library`)
 - [x] Add `tsconfig.json` for Solid JSX (`jsx: preserve`, `jsxImportSource: solid-js`)
 - [x] Wire `vite-plugin-solid` into `vite.config.js` + `vitest.config.js`
-- [x] Extend ESLint for `.jsx` (lint globs + JSX parserOptions) + add `app` boundary element
-- [x] Create `src/app/presence/PresenceIndicator.jsx`
-- [x] Create `src/app/contacts/ContactEntry.jsx`
-- [x] Create `src/app/contacts/ContactsList.jsx`
-- [x] Create `src/app/setupAppRoot.js`
-- [x] Create `src/features/contacts/contacts-command-handlers.js`
-- [x] Create `src/app/mount-app.jsx`
+- [x] Extend ESLint for `.jsx` (lint globs + JSX parserOptions) + add `components` boundary element
+- [x] Create `src/components/presence/PresenceIndicator.jsx`
+- [x] Create `src/components/contacts/ContactEntry.jsx`
+- [x] Create `src/components/contacts/ContactsList.jsx`
+- [x] Create `src/setup/setupAppRoot.js`
+- [x] Create `src/setup/setupContactsAppBusHandlers.js`
+- [x] Create `src/mount-app.jsx` + `src/App.jsx`
 - [x] Swap imports in `src/main.js`
 - [x] Remove UI exports from `src/features/contacts/index.js`
-- [x] Write Solid test (`src/app/contacts/ContactsList.test.jsx`) — 2 passing, 1 skipped
+- [x] Write Solid test (`src/components/contacts/ContactsList.test.jsx`) — 2 passing, 1 skipped
 - [x] Run `pnpm lint` + `pnpm test:node` (all pass; 1 test skipped)
 - [x] Run `pnpm build` — passes
 - [x] Finalize findings section of this file
@@ -115,10 +116,10 @@ One file: `src/app/setupAppRoot.js`
 ### Conventions to adopt if Solid standardizes
 
 1. **File extensions**: `.jsx` for anything that emits JSX. Plain `.js` for bridges / setup / stores without JSX.
-2. **Component file location**: `src/app/components/*.jsx` for composition-level UI. Feature-internal UI may stay in the feature until there is a deliberate move to `src/app/<feature>/`.
+2. **Component file location**: `src/components/*.jsx` for generic primitives; `src/components/<feature>/*.jsx` for feature-scoped UI. Legacy `src/features/<x>/components/` drains into `src/components/<x>/` over time.
 3. **Store location**: co-located with the component that reads it — module-level `export const [state, setState] = createStore(...)` at the top of the `.jsx` file. Setup bridges import the setter.
 4. **Reactivity boundary**: bridge files are plain `.js` with no reactive imports beyond `solid-js/store`'s `produce`. Components receive props; bridges write store fields.
-5. **Presence / self-subscribing components**: OK to import `features/*` APIs directly in app-layer components as long as the app boundary rule allows it (it does). This keeps individual pieces droppable anywhere without extra glue.
+5. **Presence / self-subscribing components**: OK to import `features/*` APIs directly from `src/components/<feature>/` as long as the components boundary rule allows it (it does). This keeps individual pieces droppable anywhere without extra glue.
 6. **Event/command names**: unchanged — existing `cmd:*` / `evt:*` canonical regex applies to JSX files now that lint globs are widened.
 7. **Tests**: `*.test.jsx` in any directory, uses `@solidjs/testing-library`'s `render`. Mocks via `vi.mock` work the same as before.
 
@@ -126,10 +127,10 @@ One file: `src/app/setupAppRoot.js`
 
 ## Known contradictions with WIP rules (to resolve as conventions)
 
-- **STATE_RULES.md talks about `<module>-state.js` per module.** The module-level Solid store in `ContactsList.jsx` isn't a `*-state.js` file — it's a UI-layer reactive store, not a domain state mirror. These are different concerns; the rule as written applies to domain modules. Proposed clarification: "feature/module state = `-state.js`; UI-layer reactive stores live in `app/` co-located with the component and are not subject to the module-state rule."
+- **STATE_RULES.md talks about `<module>-state.js` per module.** The module-level Solid store in `ContactsList.jsx` isn't a `*-state.js` file — it's a UI-layer reactive store, not a domain state mirror. Different concerns; domain-state rule applies to feature modules, UI-state rules live in SOLID_UI_STATE_RULES.md.
 - **EVENTS.md** rules still apply verbatim — no new events introduced. New command `cmd:contacts:contact:edit` follows the canonical regex.
 - **STRUCTURE.md barrels** rule: contacts barrel is now closer to the "Under Consideration" direction (read-only + service writers). UI exports are gone.
-- **LINT_ENFORCEMENT.md**: needs an update to document the JSX parserOptions and the new `app` element type. PoC has implemented; docs should mirror.
+- **LINT_ENFORCEMENT.md**: documents the JSX parserOptions and the `components` element type.
 
 ---
 
@@ -139,7 +140,7 @@ One file: `src/app/setupAppRoot.js`
 2. **`main.js:241` — `setupMessagingContactsIntegration()` return value not pushed into cleanup stack.** Pre-existing leak of a teardown handle. Not introduced here.
 3. **No `evt:contacts:hydrated` event.** The new `setupAppRoot` reads `getAllContactsSorted()` on every `evt:contacts:state:changed`, which covers initial hydration in practice. If multiple UI surfaces need "contacts are ready" as a first-class signal, promote this to an event.
 4. **`contactsService.updateContact(contactId, name, roomId)` signature.** Takes `roomId` as a third arg purely to preserve it through the update. Awkward; don't touch in PoC.
-5. **Legacy DOM contacts list removed.** The Solid app path is now the only contacts-list path in active use.
+5. **Legacy DOM contacts list removed.** The Solid path is now the only contacts-list path in active use.
 6. **Locale reactivity** (see Findings above) — needs a project-wide pattern before more JSX UI is written.
 
 ---
@@ -148,13 +149,18 @@ One file: `src/app/setupAppRoot.js`
 
 ### New
 
-- `src/app/contacts/ContactsList.jsx`
-- `src/app/contacts/ContactEntry.jsx`
-- `src/app/presence/PresenceIndicator.jsx`
-- `src/app/mount-app.jsx`
-- `src/app/setupAppRoot.js`
-- `src/features/contacts/contacts-command-handlers.js`
-- `src/app/contacts/ContactsList.test.jsx`
+- `src/App.jsx`
+- `src/mount-app.jsx`
+- `src/components/contacts/ContactsList.jsx`
+- `src/components/contacts/ContactEntry.jsx`
+- `src/components/contacts/EditContactDialog.jsx`
+- `src/components/contacts/SaveContactNameDialog.jsx`
+- `src/components/contacts/edit-contact-modal.jsx`
+- `src/components/contacts/save-contact-modal.jsx`
+- `src/components/presence/PresenceIndicator.jsx`
+- `src/setup/setupAppRoot.js`
+- `src/setup/setupContactsAppBusHandlers.js`
+- `src/components/contacts/ContactsList.test.jsx`
 - `tsconfig.json`
 - `docs/WIP_Architecture/SOLIDJS_POC.md`
 
@@ -164,6 +170,6 @@ One file: `src/app/setupAppRoot.js`
 - `vite.config.js` — add `solid()` plugin
 - `vitest.config.js` — add `solid()` per project + resolve conditions + test includes
 - `eslint.config.js` — JSX parser + widened globs
-- `eslint.boundaries.config.js` — JSX parser + `app` element type + `setup → app` import allowance
+- `eslint.boundaries.config.js` — JSX parser + `components` element type + `setup → components` import allowance
 - `src/main.js` — import swap for `mountApp` / `cleanupApp`
 - `src/features/contacts/index.js` — removed UI re-exports

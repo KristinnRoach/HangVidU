@@ -26,7 +26,7 @@ export { setupInviteListener } from './invite-listener.js';
 
 export { captureReferral, processReferral } from './referral-handler.js';
 
-// Contacts list UI now lives in src/app/ (SolidJS). It is not re-exported
+// Contacts list UI now lives in src/components/ (SolidJS). It is not re-exported
 // from the contacts barrel.
 
 export { showAddContactModal } from './components/add-contact-modal.js';

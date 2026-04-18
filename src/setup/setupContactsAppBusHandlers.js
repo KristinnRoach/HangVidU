@@ -2,11 +2,11 @@
 // Owns app-level contact command handlers that orchestrate app UI (modals)
 // around contacts-domain service writes.
 
-import { handleCommand } from '../../shared/events/index.js';
-import { t } from '../../shared/i18n/index.js';
-import confirmDialog from '../../shared/components/base/confirm-dialog.js';
-import editContactModal from './edit-contact-modal.jsx';
-import { contactsService, getContactById } from '../../features/contacts/index.js';
+import { handleCommand } from '../shared/events/index.js';
+import { t } from '../shared/i18n/index.js';
+import confirmDialog from '../shared/components/base/confirm-dialog.js';
+import editContactModal from '../components/contacts/edit-contact-modal.jsx';
+import { contactsService, getContactById } from '../features/contacts/index.js';
 
 let cleanupContactsAppBusHandlers = null;
 

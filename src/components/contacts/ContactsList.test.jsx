@@ -18,7 +18,7 @@ vi.mock('../../features/contacts/index.js', () => ({
   getAllContactsSorted: mocks.getAllContactsSorted,
 }));
 
-vi.mock('./contacts-command-handlers.js', () => ({
+vi.mock('../../setup/setupContactsAppBusHandlers.js', () => ({
   setupContactsAppBusHandlers: vi.fn(() => () => {}),
 }));
 
@@ -67,7 +67,7 @@ describe('SolidJS ContactsList PoC', () => {
     const ContactsListModule = await import(
       './ContactsList.jsx'
     );
-    const { setupAppRoot } = await import('../setupAppRoot.js');
+    const { setupAppRoot } = await import('../../setup/setupAppRoot.js');
 
     const teardown = setupAppRoot();
     const { container, unmount } = render(() => (
@@ -91,7 +91,7 @@ describe('SolidJS ContactsList PoC', () => {
     const ContactsListModule = await import(
       './ContactsList.jsx'
     );
-    const { setupAppRoot } = await import('../setupAppRoot.js');
+    const { setupAppRoot } = await import('../../setup/setupAppRoot.js');
 
     const teardown = setupAppRoot();
     const { container, unmount } = render(() => (
@@ -128,7 +128,7 @@ describe('SolidJS ContactsList PoC', () => {
     const ContactsListModule = await import(
       './ContactsList.jsx'
     );
-    const { setupAppRoot } = await import('../setupAppRoot.js');
+    const { setupAppRoot } = await import('../../setup/setupAppRoot.js');
 
     const teardown = setupAppRoot();
     const { container, unmount } = render(() => (

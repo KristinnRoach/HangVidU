@@ -21,7 +21,7 @@ import {
 import {
   mountApp,
   cleanupApp,
-} from './app/mount-app.jsx';
+} from './mount-app.jsx';
 
 import {
   localVideoEl,
