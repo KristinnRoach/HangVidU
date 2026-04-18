@@ -34,17 +34,16 @@ let cleanupFunctions = [];
 // Export state getter
 export const getIsInCallMode = () => isInCallMode;
 
+const isVideoReady = () =>
+  remoteVideoEl &&
+  hasRemoteStream() &&
+  !remoteVideoEl.paused &&
+  remoteVideoEl.readyState >= 2;
+
 export const enterCallModeUI = (audioOnly = false) => {
   if (isInCallMode) return;
 
-  // Check if remote video is ready and playing
-  if (
-    !audioOnly &&
-    (!remoteVideoEl ||
-      !hasRemoteStream() ||
-      remoteVideoEl.paused ||
-      remoteVideoEl.readyState < 2)
-  ) {
+  if (!audioOnly && !isVideoReady()) {
     // Video not ready yet - set up listener if we haven't already
     if (!enterCallModeWaitingForVideo) {
       enterCallModeWaitingForVideo = true;
@@ -65,13 +64,13 @@ export const enterCallModeUI = (audioOnly = false) => {
 
   isInCallMode = true;
 
-  if (!audioOnly) {
+  if (!audioOnly && isVideoReady()) {
     showElement(remoteBoxEl);
     showElement(localBoxEl);
     placeInSmallFrame(localBoxEl);
-  }
 
-  hideElement(lobbyDiv);
+    hideElement(lobbyDiv);
+  }
 
   callBtn.disabled = true;
   callBtn.classList.add('disabled');
@@ -173,7 +172,7 @@ export const exitCallModeUI = () => {
   remotePipBtn.classList.add('disabled');
 };
 
-// TODO: Where is this called? Cleanup function for call mode UI
+// TODO: Call this
 export function cleanupCallModeUI() {
   // Run all cleanup functions
   cleanupFunctions.forEach((fn) => fn());
