@@ -88,7 +88,7 @@
   "dependencies": {
     "@kidlib/create-component": "^0.1.5",
     "@mediabunny/ac3": "^1.40.1",
-    "@sentry/browser": "^10.48.0",
+    "@sentry/browser": "^10.49.0",
     "dexie": "^4.4.2",
     "firebase": "^12.11.0",
     "lucide": "^1.7.0",
