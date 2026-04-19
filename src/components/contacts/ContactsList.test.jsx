@@ -18,10 +18,6 @@ vi.mock('../../features/contacts/index.js', () => ({
   getAllContactsSorted: mocks.getAllContactsSorted,
 }));
 
-vi.mock('../../setup/setupContactsAppBusHandlers.js', () => ({
-  setupContactsAppBusHandlers: vi.fn(() => () => {}),
-}));
-
 vi.mock('../../shared/events/index.js', () => ({
   dispatchCommand: mocks.dispatchCommand,
   subscribe: (eventName, handler) => {

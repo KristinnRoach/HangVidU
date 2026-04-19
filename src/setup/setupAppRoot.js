@@ -5,7 +5,6 @@
 import { produce } from 'solid-js/store';
 import { subscribe, dispatchCommand } from '../shared/events/index.js';
 import { getAllContactsSorted } from '../features/contacts/index.js';
-import { setupContactsAppBusHandlers } from './setupContactsAppBusHandlers.js';
 import { setContacts } from '../components/contacts/ContactsList.jsx';
 
 /**
@@ -111,8 +110,6 @@ export function setupAppRoot() {
     }
   }
 
-  const teardownContactsHandlers = setupContactsAppBusHandlers();
-
   reconcileContacts();
   const offContactsState = subscribe('evt:contacts:state:changed', () => {
     reconcileContacts();
@@ -120,7 +117,6 @@ export function setupAppRoot() {
 
   return () => {
     offContactsState();
-    teardownContactsHandlers();
     for (const teardown of unreadTeardowns.values()) {
       try {
         teardown();

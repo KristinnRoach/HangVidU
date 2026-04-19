@@ -2,19 +2,16 @@ import { createSignal, onCleanup, onMount } from 'solid-js';
 import { useI18n } from '../../shared/i18n/index.js';
 import { contactsService } from '../../features/contacts/index.js';
 
-export default function EditContactDialog(props) {
+export default function SaveContactDialog(props) {
   const { t } = useI18n();
-  const [name, setName] = createSignal(
-    typeof props.currentName === 'string' ? props.currentName : '',
-  );
+  const [name, setName] = createSignal('');
   const [isSubmitting, setIsSubmitting] = createSignal(false);
+  const [error, setError] = createSignal(null);
+
   let dialogEl;
   let inputEl;
 
   const trimmedName = () => name().trim();
-  const normalizedCurrentName =
-    typeof props.currentName === 'string' ? props.currentName : '';
-  const hasUnsavedChanges = () => trimmedName() !== normalizedCurrentName;
 
   const close = (value) => {
     props.onClose(value);
@@ -24,46 +21,24 @@ export default function EditContactDialog(props) {
     event.preventDefault();
     if (isSubmitting()) return;
 
-    const nextName = trimmedName();
-
-    if (!nextName || nextName === normalizedCurrentName) {
-      close();
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      const updated = await contactsService.updateContact(
+      setError(null);
+      const nextName = trimmedName() || props.contactId;
+      const savedContact = await contactsService.saveContact(
         props.contactId,
         nextName,
         props.roomId,
       );
 
-      if (updated) {
-        close();
+      if (savedContact) {
+        close(true);
+      } else {
+        setError(t('contact.save.error'));
       }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const onBackdropClick = (event) => {
-    if (event.target === dialogEl && !hasUnsavedChanges() && !isSubmitting()) {
-      close();
-    }
-  };
-
-  const onDelete = async () => {
-    if (isSubmitting()) return;
-
-    setIsSubmitting(true);
-
-    try {
-      const deleted = await contactsService.deleteContact(props.contactId);
-      if (deleted) {
-        close();
-      }
+    } catch (_error) {
+      setError(t('contact.save.error'));
     } finally {
       setIsSubmitting(false);
     }
@@ -88,14 +63,18 @@ export default function EditContactDialog(props) {
       onCancel={(event) => {
         event.preventDefault();
         if (!isSubmitting()) {
-          close();
+          close(false);
         }
       }}
-      onClick={onBackdropClick}
+      onClick={(event) => {
+        if (event.target === dialogEl && !isSubmitting()) {
+          close(false);
+        }
+      }}
     >
       <form onSubmit={onSave}>
         <label>
-          {t('contact.name.edit')}
+          {t('contact.save.confirm')}
           <input
             ref={inputEl}
             type='text'
@@ -104,26 +83,19 @@ export default function EditContactDialog(props) {
             onInput={(event) => setName(event.currentTarget.value)}
           />
         </label>
+        {
+          error() && <div class='error-message'>{error()}</div> // TODO: use toast
+        }
         <div class='edit-contact-actions'>
-          <button
-            type='button'
-            data-action='delete'
-            class='danger'
-            onClick={onDelete}
-            disabled={isSubmitting()}
-          >
-            {t('contact.action.delete')}
-          </button>
           <span class='spacer' />
           <button
             type='button'
-            data-action='cancel'
-            onClick={() => close()}
+            onClick={() => close(false)}
             disabled={isSubmitting()}
           >
             {t('shared.cancel')}
           </button>
-          <button type='submit' data-action='save' disabled={isSubmitting()}>
+          <button type='submit' disabled={isSubmitting()}>
             {t('shared.save')}
           </button>
         </div>
