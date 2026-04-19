@@ -37,6 +37,8 @@ export default function SaveContactDialog(props) {
       } else {
         setError(t('contact.save.error'));
       }
+    } catch (_error) {
+      setError(t('contact.save.error'));
     } finally {
       setIsSubmitting(false);
     }
