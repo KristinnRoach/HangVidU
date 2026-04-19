@@ -91,7 +91,7 @@
     "@sentry/browser": "^10.48.0",
     "dexie": "^4.4.2",
     "firebase": "^12.11.0",
-    "lucide": "^1.7.0",
+    "lucide": "^1.8.0",
     "mediabunny": "^1.40.1",
     "solid-js": "^1.9.12",
     "workbox-window": "^7.4.0",
