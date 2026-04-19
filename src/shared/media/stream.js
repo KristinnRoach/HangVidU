@@ -34,9 +34,21 @@ async function getUserMediaWithRetry(constraints) {
     if (err?.name !== 'NotAllowedError' && err?.name !== 'PermissionDeniedError') throw err;
     let promptable = true;
     try {
-      const probeName = constraints?.audio ? 'microphone' : 'camera';
-      const s = await navigator.permissions?.query?.({ name: probeName });
-      promptable = !s || s.state === 'prompt';
+      const probeNames = [];
+      if (constraints?.audio) probeNames.push('microphone');
+      if (constraints?.video) probeNames.push('camera');
+
+      const states = await Promise.all(
+        probeNames.map(async (name) => {
+          try {
+            return await navigator.permissions?.query?.({ name });
+          } catch {
+            return undefined;
+          }
+        }),
+      );
+
+      promptable = states.some((s) => !s || s.state === 'prompt');
     } catch {}
     if (!promptable) throw err;
     await new Promise((r) => setTimeout(r, 250));
