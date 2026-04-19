@@ -1,7 +1,7 @@
 import { Match, Show, Switch, createSignal } from 'solid-js';
 import { Portal } from 'solid-js/web';
 import EditContactDialog from './contacts/EditContactDialog.jsx';
-import SaveContactNameDialog from './contacts/SaveContactNameDialog.jsx';
+import SaveContactDialog from './contacts/SaveContactDialog.jsx';
 
 const [activeDialog, setActiveDialog] = createSignal(null);
 
@@ -61,9 +61,9 @@ export function resolveSaveContactDialog(result) {
     } catch (error) {
       console.warn('[app-dialog-host] resolve handler failed:', error);
     }
-  }
 
-  setActiveDialog(null);
+    setActiveDialog(null);
+  }
 }
 
 export default function AppDialogHost() {
@@ -82,7 +82,7 @@ export default function AppDialogHost() {
             </Match>
 
             <Match when={dialog().type === 'save-contact'}>
-              <SaveContactNameDialog
+              <SaveContactDialog
                 contactId={dialog().contactId}
                 roomId={dialog().roomId}
                 onClose={resolveSaveContactDialog}

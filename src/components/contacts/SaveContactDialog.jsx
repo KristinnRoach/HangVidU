@@ -2,10 +2,12 @@ import { createSignal, onCleanup, onMount } from 'solid-js';
 import { useI18n } from '../../shared/i18n/index.js';
 import { contactsService } from '../../features/contacts/index.js';
 
-export default function SaveContactNameDialog(props) {
+export default function SaveContactDialog(props) {
   const { t } = useI18n();
   const [name, setName] = createSignal('');
   const [isSubmitting, setIsSubmitting] = createSignal(false);
+  const [error, setError] = createSignal(null);
+
   let dialogEl;
   let inputEl;
 
@@ -22,6 +24,7 @@ export default function SaveContactNameDialog(props) {
     setIsSubmitting(true);
 
     try {
+      setError(null);
       const nextName = trimmedName() || props.contactId;
       const savedContact = await contactsService.saveContact(
         props.contactId,
@@ -31,6 +34,8 @@ export default function SaveContactNameDialog(props) {
 
       if (savedContact) {
         close(true);
+      } else {
+        setError(t('contact.save.error'));
       }
     } finally {
       setIsSubmitting(false);
@@ -76,9 +81,16 @@ export default function SaveContactNameDialog(props) {
             onInput={(event) => setName(event.currentTarget.value)}
           />
         </label>
+        {
+          error() && <div class='error-message'>{error()}</div> // TODO: use toast
+        }
         <div class='edit-contact-actions'>
           <span class='spacer' />
-          <button type='button' onClick={() => close(false)} disabled={isSubmitting()}>
+          <button
+            type='button'
+            onClick={() => close(false)}
+            disabled={isSubmitting()}
+          >
             {t('shared.cancel')}
           </button>
           <button type='submit' disabled={isSubmitting()}>
