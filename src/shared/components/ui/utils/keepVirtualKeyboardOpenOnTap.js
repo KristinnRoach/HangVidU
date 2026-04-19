@@ -41,16 +41,3 @@ export function keepVirtualKeyboardOpenOnTap(buttonEl, onTap) {
     buttonEl.removeEventListener('click', clickHandler);
   };
 }
-
-// NOTE: keyboard / assistive-tech activation
-// Verified manually: Enter in the textarea and mouse-click on the Send
-// button both trigger send on macOS, so no extra `click` listener is
-// needed for the current call site. If a future call site reports that
-// Space/Enter on the button itself does nothing for keyboard or AT users,
-// the activation gap can be closed by adding inside the function above:
-//
-//   buttonEl.addEventListener('click', (e) => {
-//     if (e.detail === 0) onTap(e); // detail===0 => keyboard/AT, not pointer
-//   });
-//
-// Delete this note if it has not been needed for a while.

@@ -58,4 +58,22 @@ describe('keepVirtualKeyboardOpenOnTap', () => {
 
     expect(onTap).toHaveBeenCalledTimes(1);
   });
+
+  it('does not double-trigger onTap for pointer-driven clicks', () => {
+    const button = document.createElement('button');
+    document.body.appendChild(button);
+    const onTap = vi.fn();
+
+    keepVirtualKeyboardOpenOnTap(button, onTap);
+
+    const event = new MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      detail: 1,
+    });
+
+    button.dispatchEvent(event);
+
+    expect(onTap).not.toHaveBeenCalled();
+  });
 });
