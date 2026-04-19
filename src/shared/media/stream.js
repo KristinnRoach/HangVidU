@@ -31,7 +31,11 @@ async function getUserMediaWithRetry(constraints) {
   try {
     return await navigator.mediaDevices.getUserMedia(constraints);
   } catch (err) {
-    if (err?.name !== 'NotAllowedError' && err?.name !== 'PermissionDeniedError') throw err;
+    if (
+      err?.name !== 'NotAllowedError' &&
+      err?.name !== 'PermissionDeniedError'
+    )
+      throw err;
     let promptable = true;
     try {
       const probeNames = [];
@@ -49,7 +53,13 @@ async function getUserMediaWithRetry(constraints) {
       );
 
       promptable = states.some((s) => !s || s.state === 'prompt');
-    } catch {}
+    } catch {
+      import.meta.env.DEV &&
+        console.warn(
+          'Permissions API not available, cannot check if permission is promptable',
+        );
+      promptable = true; // Assume promptable if we can't check
+    }
     if (!promptable) throw err;
     await new Promise((r) => setTimeout(r, 250));
     return navigator.mediaDevices.getUserMedia(constraints);
@@ -95,7 +105,10 @@ export const createLocalStream = async ({ audioOnly = false } = {}) => {
   }
 };
 
-export async function setUpLocalStream(localVideoEl, { audioOnly = false } = {}) {
+export async function setUpLocalStream(
+  localVideoEl,
+  { audioOnly = false } = {},
+) {
   const localStream = await createLocalStream({ audioOnly });
 
   if (audioOnly) {
