@@ -1,9 +1,11 @@
 import { createSignal, onCleanup, onMount } from 'solid-js';
 import { useI18n } from '../../shared/i18n/index.js';
+import { contactsService } from '../../features/contacts/index.js';
 
 export default function SaveContactNameDialog(props) {
   const { t } = useI18n();
-  const [name, setName] = createSignal(props.initialName);
+  const [name, setName] = createSignal('');
+  const [isSubmitting, setIsSubmitting] = createSignal(false);
   let dialogEl;
   let inputEl;
 
@@ -13,10 +15,26 @@ export default function SaveContactNameDialog(props) {
     props.onClose(value);
   };
 
-  const onSave = (event) => {
+  const onSave = async (event) => {
     event.preventDefault();
-    const nextName = trimmedName();
-    close(nextName || null);
+    if (isSubmitting()) return;
+
+    setIsSubmitting(true);
+
+    try {
+      const nextName = trimmedName() || props.contactId;
+      const savedContact = await contactsService.saveContact(
+        props.contactId,
+        nextName,
+        props.roomId,
+      );
+
+      if (savedContact) {
+        close(true);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   onMount(() => {
@@ -37,17 +55,19 @@ export default function SaveContactNameDialog(props) {
       class='edit-contact-dialog'
       onCancel={(event) => {
         event.preventDefault();
-        close(null);
+        if (!isSubmitting()) {
+          close(false);
+        }
       }}
       onClick={(event) => {
-        if (event.target === dialogEl) {
-          close(null);
+        if (event.target === dialogEl && !isSubmitting()) {
+          close(false);
         }
       }}
     >
       <form onSubmit={onSave}>
         <label>
-          {t('contact.name.prompt')}
+          {t('contact.save.confirm')}
           <input
             ref={inputEl}
             type='text'
@@ -58,10 +78,12 @@ export default function SaveContactNameDialog(props) {
         </label>
         <div class='edit-contact-actions'>
           <span class='spacer' />
-          <button type='button' onClick={() => close(null)}>
+          <button type='button' onClick={() => close(false)} disabled={isSubmitting()}>
             {t('shared.cancel')}
           </button>
-          <button type='submit'>{t('shared.save')}</button>
+          <button type='submit' disabled={isSubmitting()}>
+            {t('shared.save')}
+          </button>
         </div>
       </form>
     </dialog>
