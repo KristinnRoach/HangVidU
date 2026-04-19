@@ -90,7 +90,7 @@
     "@mediabunny/ac3": "^1.40.1",
     "@sentry/browser": "^10.48.0",
     "dexie": "^4.4.2",
-    "firebase": "^12.11.0",
+    "firebase": "^12.12.0",
     "lucide": "^1.7.0",
     "mediabunny": "^1.40.1",
     "solid-js": "^1.9.12",
