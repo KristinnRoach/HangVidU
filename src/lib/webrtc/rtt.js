@@ -1,16 +1,13 @@
-/**
- * RTT Monitoring for WebRTC connections
- *
- * Detects high-latency connections and logs warnings.
- * Useful for diagnosing slow file transfers and call quality issues.
- */
+// src/lib/webrtc/rtt.js
+//
+// Round-trip-time diagnostics for WebRTC peer connections.
 
-const RTT_WARNING_THRESHOLD = 250; // 250ms
+const RTT_WARNING_THRESHOLD_MS = 250;
 
 /**
- * Get the current round-trip time for a WebRTC peer connection
+ * Get the current round-trip time for a WebRTC peer connection.
  * @param {RTCPeerConnection} pc
- * @returns {Promise<number|null>} RTT in milliseconds, or null if unavailable
+ * @returns {Promise<number|null>} RTT in milliseconds, or null if unavailable.
  */
 export async function getRTT(pc) {
   if (!pc) return null;
@@ -19,7 +16,7 @@ export async function getRTT(pc) {
     const stats = await pc.getStats();
     for (const report of stats.values()) {
       if (report.type === 'candidate-pair' && report.state === 'succeeded') {
-        return Math.round(report.currentRoundTripTime * 1000); // convert to ms
+        return Math.round(report.currentRoundTripTime * 1000);
       }
     }
   } catch (e) {
@@ -29,22 +26,21 @@ export async function getRTT(pc) {
 }
 
 /**
- * Check RTT and warn if it exceeds threshold
+ * Check RTT and warn if it exceeds {@link RTT_WARNING_THRESHOLD_MS}.
  * @param {RTCPeerConnection} pc
- * @param {string} env - 'DEV_ONLY' to log only in development, 'DEV_AND_PROD' to log in all environments
- * @param {string} [label] - Optional label for logging
+ * @param {string} [label='WebRTC Connection']
+ * @param {number} [thresholdMs]
+ * @returns {Promise<number|null>} Measured RTT, or null if unavailable.
  */
 export async function checkAndWarnRTT(
   pc,
   label = 'WebRTC Connection',
-  env = 'DEV_AND_PROD', // 'DEV_ONLY' or 'DEV_AND_PROD''
+  thresholdMs = RTT_WARNING_THRESHOLD_MS,
 ) {
-  if (env === 'DEV_ONLY' && !import.meta.env.DEV) return;
-
   const rtt = await getRTT(pc);
-  if (rtt === null) return;
+  if (rtt === null) return null;
 
-  if (rtt > RTT_WARNING_THRESHOLD) {
+  if (rtt > thresholdMs) {
     console.warn(
       `[RTTMonitor] ⚠️ ${label} has high latency. WebRTC peerConnection round trip time (RTT): ${rtt}ms. File transfers may be slow.`,
     );
@@ -53,4 +49,5 @@ export async function checkAndWarnRTT(
       `[RTTMonitor] ${label} WebRTC peerConnection round trip time (RTT): ${rtt}ms (OK)`,
     );
   }
+  return rtt;
 }

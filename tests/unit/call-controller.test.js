@@ -61,12 +61,27 @@ vi.mock('firebase/database', () => {
     getDatabase: vi.fn(() => ({})),
   };
 });
-vi.mock('../../src/features/call/ice.js', () => {
+vi.mock('../../src/lib/webrtc/index.js', () => {
   return {
     drainIceCandidateQueue: vi.fn(),
+    setRemoteDescription: vi.fn(() => Promise.resolve(true)),
+    setupIceCandidates: vi.fn(),
+    createOffer: vi.fn(() => Promise.resolve({ type: 'offer', sdp: '' })),
+    createAnswer: vi.fn(() => Promise.resolve({ type: 'answer', sdp: '' })),
+    addLocalTracks: vi.fn(() => ({ allHealthy: true, unhealthyKinds: [] })),
+    rtcConfig: { iceServers: [] },
+    generateRoomId: vi.fn(() => 'test-room'),
+    isDuplicateSdp: vi.fn(() => false),
+    isValidSignalingState: vi.fn(() => true),
+    createDataChannel: vi.fn(),
+    joinDataChannel: vi.fn(),
+    closeDataConnection: vi.fn(),
+    getRTT: vi.fn(),
+    checkAndWarnRTT: vi.fn(),
+    setLogger: vi.fn(),
   };
 });
-vi.mock('../../src/features/call/data-connection.js', () => {
+vi.mock('../../src/features/call/signaling/index.js', () => {
   return {
     createDataConnection: vi.fn(() =>
       Promise.resolve({
@@ -81,6 +96,18 @@ vi.mock('../../src/features/call/data-connection.js', () => {
       }),
     ),
     closeDataConnection: vi.fn(),
+    createFirebaseIceTransport: vi.fn(() => ({
+      sendCandidate: vi.fn(),
+      onRemoteCandidate: vi.fn(),
+    })),
+    createFirebaseDataSignaling: vi.fn(() => ({
+      sendOffer: vi.fn(),
+      sendAnswer: vi.fn(),
+      onOffer: vi.fn(),
+      onAnswer: vi.fn(),
+      sendCandidate: vi.fn(),
+      onRemoteCandidate: vi.fn(),
+    })),
   };
 });
 

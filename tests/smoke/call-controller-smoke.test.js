@@ -51,7 +51,7 @@ vi.mock('../../src/auth/index.js', () => {
   };
 });
 
-vi.mock('../../src/features/call/data-connection.js', () => {
+vi.mock('../../src/features/call/signaling/index.js', () => {
   return {
     createDataConnection: vi.fn(() =>
       Promise.resolve({
@@ -66,6 +66,18 @@ vi.mock('../../src/features/call/data-connection.js', () => {
       }),
     ),
     closeDataConnection: vi.fn(),
+    createFirebaseIceTransport: vi.fn(() => ({
+      sendCandidate: vi.fn(),
+      onRemoteCandidate: vi.fn(),
+    })),
+    createFirebaseDataSignaling: vi.fn(() => ({
+      sendOffer: vi.fn(),
+      sendAnswer: vi.fn(),
+      onOffer: vi.fn(),
+      onAnswer: vi.fn(),
+      sendCandidate: vi.fn(),
+      onRemoteCandidate: vi.fn(),
+    })),
   };
 });
 
