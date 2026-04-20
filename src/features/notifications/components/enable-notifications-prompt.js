@@ -96,22 +96,33 @@ export function showEnableNotificationsPrompt() {
           if (result.state === 'granted') {
             showSuccessToast(t('notification.enable.success'));
             inAppNotificationManager.remove(NOTIFICATION_ID);
-          } else if (
-            result.state === 'error' &&
-            result.reason === 'enable-failed'
-          ) {
-            // Permission granted but Web Push setup failed
-            showErrorToast(t('notification.enable.failed'));
-            btn.disabled = false;
-            btn.textContent = t('shared.enable');
-          } else if (
-            result.state === 'error' &&
-            result.reason === 'permission-timeout'
-          ) {
-            showErrorToast(t('notification.enable.timeout'));
-            btn.disabled = false;
-            btn.textContent = t('shared.enable');
-          } else if (result.reason === 'unsupported') {
+            return;
+          }
+
+          if (result.state === 'error') {
+            if (result.reason === 'enable-failed') {
+              // Permission granted but push setup failed (e.g. service worker, subscription)
+              console.error(
+                '[ENABLE NOTIFICATIONS] Push setup failed:',
+                result.error || result,
+              );
+              showErrorToast(
+                t('notification.enable.failed_push_setup') ||
+                  'Notifications allowed, but push setup failed. Try reloading or check browser support.',
+              );
+              btn.disabled = false;
+              btn.textContent = t('shared.enable');
+              return;
+            }
+            if (result.reason === 'permission-timeout') {
+              showErrorToast(t('notification.enable.timeout'));
+              btn.disabled = false;
+              btn.textContent = t('shared.enable');
+              return;
+            }
+          }
+
+          if (result.reason === 'unsupported') {
             // Defensive: shouldn't normally reach here, but handle gracefully
             import('./push-unsupported-notification.js')
               .then(({ showPushUnsupportedNotification }) => {
@@ -124,14 +135,18 @@ export function showEnableNotificationsPrompt() {
                 );
               });
             inAppNotificationManager.remove(NOTIFICATION_ID);
-          } else if (result.state === 'denied') {
+            return;
+          }
+
+          if (result.state === 'denied') {
             showWarningToast(getBlockedMessage(result.browser, result.reason));
             inAppNotificationManager.remove(NOTIFICATION_ID);
-          } else {
-            // Dismissed or other state - keep notification for retry
-            btn.disabled = false;
-            btn.textContent = t('shared.enable');
+            return;
           }
+
+          // Dismissed or unknown state - keep notification for retry
+          btn.disabled = false;
+          btn.textContent = t('shared.enable');
         } catch (error) {
           console.error('[ENABLE NOTIFICATIONS] Failed:', error);
           btn.disabled = false;
