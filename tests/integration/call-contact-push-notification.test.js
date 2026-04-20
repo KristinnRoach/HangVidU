@@ -413,12 +413,6 @@ vi.mock('../../src/features/messaging/components/messages-ui.js', () => ({
   },
 }));
 
-vi.mock('../../src/features/call/components/incoming-call.js', () => ({
-  showIncomingCallUI: vi.fn(),
-  resolveIncomingCallUI: vi.fn(),
-  dismissActiveIncomingCallUI: vi.fn(),
-}));
-
 vi.mock('../../src/features/contacts/components/add-contact-modal.js', () => ({
   showAddContactModal: vi.fn(),
 }));
@@ -437,7 +431,7 @@ vi.mock('../../src/shared/components/modal/copyLinkModal.js', () => ({
   showCopyLinkModal: vi.fn(),
 }));
 
-vi.mock('../../src/features/call/components/outgoing-call.js', () => ({
+vi.mock('../../src/features/call/outgoing-call-session.js', () => ({
   showOutgoingCallUI: vi.fn(async () => {
     mocks.callSequence.push('showOutgoingCallUI');
   }),
@@ -471,7 +465,6 @@ vi.mock('../../src/shared/i18n/index.js', () => ({
 // debug-notifications is covered by the ../../src/features/notifications/index.js barrel mock
 
 import RoomService from '../../src/features/call/room.js';
-import { showIncomingCallUI } from '../../src/features/call/components/incoming-call.js';
 import { ringtoneManager } from '../../src/shared/media/audio/ringtone-manager.js';
 import { callIndicators } from '../../src/shared/components/ui/utils/call-indicators.js';
 
@@ -569,7 +562,7 @@ describe('callContact push notification flow', () => {
     });
 
     await vi.waitFor(() => {
-      expect(showIncomingCallUI).toHaveBeenCalled();
+      expect(ringtoneManager.playIncoming).toHaveBeenCalled();
     });
 
     expect(ringtoneManager.playIncoming).toHaveBeenCalled();
@@ -615,7 +608,7 @@ describe('callContact push notification flow', () => {
     });
 
     await vi.waitFor(() => {
-      expect(showIncomingCallUI).toHaveBeenCalled();
+      expect(ringtoneManager.playIncoming).toHaveBeenCalled();
     });
 
     removeIncomingListenersForRoom('room-pending');

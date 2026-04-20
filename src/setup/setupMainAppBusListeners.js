@@ -2,7 +2,6 @@ import { handleCommand, subscribe } from '../shared/events/index.js';
 import { messagingController } from '../features/messaging/messaging-controller.js';
 import { isDev, tempWarn } from '../shared/utils/dev/dev-utils.js';
 import { callContact } from '../features/call/WIP-start-call-refactor.js';
-import { showSaveContactPrompt } from '../components/AppDialogHost.jsx';
 import {
   getContactById,
   getContactByRoomId,
@@ -63,19 +62,6 @@ export function setupMainAppBusListeners() {
           } catch (e) {
             console.warn('[push] Failed to disable notifications:', e);
           }
-        },
-        { signal: ac.signal },
-      );
-
-      handleCommand(
-        'cmd:contacts:contact:save-prompt',
-        async ({ contactUserId, roomId }) => {
-          const didSave = await showSaveContactPrompt(contactUserId, roomId);
-          if (!didSave) {
-            return false;
-          }
-
-          return true;
         },
         { signal: ac.signal },
       );

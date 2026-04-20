@@ -25,7 +25,7 @@ import { setRemoteDescription } from './webrtc-utils.js';
 import { drainIceCandidateQueue } from './ice.js';
 import { resetLocalStreamInitFlag } from '../../shared/media/local-stream-init-state.js';
 import { publish, subscribe } from '../../shared/events/index.js';
-import { onOutgoingCallRejected } from './components/outgoing-call.js';
+import { onOutgoingCallRejected } from './outgoing-call-session.js';
 
 export function createCallController() {
   return new CallController();

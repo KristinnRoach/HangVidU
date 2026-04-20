@@ -3,7 +3,6 @@ import { dispatchCommand } from '../../shared/events/index.js';
 import { useI18n } from '../../shared/i18n/index.js';
 import { initIcons } from '../../shared/components/ui/icons.js';
 import PresenceIndicator from '../presence/PresenceIndicator.jsx';
-import { openEditContactDialog } from '../AppDialogHost.jsx';
 
 const MAX_CONTACT_NAME_CHARS = 18;
 
@@ -62,7 +61,7 @@ export default function ContactEntry(props) {
 
   const onEdit = () => {
     if (!props.id) return;
-    openEditContactDialog({
+    dispatchCommand('cmd:dialog:contact-edit:open', {
       contactId: props.id,
       currentName: props.name ?? '',
       roomId: props.roomId,

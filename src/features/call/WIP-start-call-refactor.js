@@ -12,7 +12,7 @@ import { setupWatchSync } from '../watch/watch-sync.js';
 import { showCopyLinkModal } from '../../shared/components/modal/copyLinkModal.js';
 import { devDebug } from '../../shared/utils/dev/dev-utils.js';
 import { listenForIncomingOnRoom } from './room-listeners.js';
-import { showOutgoingCallUI } from './components/outgoing-call.js';
+import { showOutgoingCallUI } from './outgoing-call-session.js';
 import {
   onCallingStarted,
   onCallingEnded,

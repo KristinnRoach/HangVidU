@@ -76,8 +76,8 @@ The joiner has previously called `listenForIncomingOnRoom(roomId)` (either from 
 5. **`ringtoneManager.playIncoming()` + `callIndicators.startCallIndicators(callerName)`** — invoked from `room-listeners.js:564`
    Audible + visual ringing.
 
-6. **`showIncomingCallUI({ roomId, from }, onAccept, onReject)`** — `src/features/call/components/incoming-call.js:6`
-   Renders the accept/reject UI and resolves a promise based on user input or external events (`onCallCancelled`, `onAnswerAdded`).
+6. **Dialog command bridge inside `listenForIncomingOnRoom(...)`** — `src/features/call/room-listeners.js`
+   Dispatches `cmd:dialog:incoming-call:open`, wires accept/reject callbacks, and resolves the pending promise based on user input or external events (`onCallCancelled`, `onAnswerAdded`).
 
 7. **`handleIncomingCallAccepted({ roomId, joinedContactId, audioOnly })`** — `src/features/call/room-listeners.js:309`
    Publishes `evt:call:incoming:accepted`, removes the room's incoming listeners, dismisses push notifications, updates contact `lastInteractionAt`, then calls `joinOrCreateRoomWithId(roomId, { audioOnly })`.

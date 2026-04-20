@@ -45,7 +45,7 @@ export async function captureReferral() {
       onClick: () => signInWithAccountSelection(),
     });
 
-    dispatchCommand('cmd:contacts:referral-notification:add', {
+    dispatchCommand('cmd:notifications:referral:add', {
       notificationId: `referral-${referrerId}`,
       referrerName: name,
       referrerPhotoURL: photoURL,
@@ -109,7 +109,7 @@ export async function processReferral() {
     // Show success toast
     showSuccessToast(t('referral.connected', { name: referrerName }));
 
-    dispatchCommand('cmd:contacts:referral-notification:remove', {
+    dispatchCommand('cmd:notifications:referral:remove', {
       notificationId: `referral-${referrerId}`,
     });
 

@@ -2,7 +2,7 @@ import {
   onCallConnected,
   onCallDisconnected,
 } from '../shared/components/ui/core/call-lifecycle-ui.js';
-import { hideOutgoingCallingUI } from '../features/call/components/outgoing-call.js';
+import { hideOutgoingCallingUI } from '../features/call/outgoing-call-session.js';
 import { messagesUI } from '../features/messaging/components/messages-ui.js';
 
 /** Wires UI-only handlers to CallController. Business logic handlers are in main.js. */
