@@ -1,5 +1,5 @@
 import ContactsList from './components/contacts/ContactsList.jsx';
-import AppDialogHost from './components/AppDialogHost.jsx';
+import DialogProvider from './components/DialogProvider.jsx';
 
 /**
  * SolidJS root.
@@ -7,9 +7,8 @@ import AppDialogHost from './components/AppDialogHost.jsx';
  */
 export default function App() {
   return (
-    <>
+    <DialogProvider>
       <ContactsList />
-      <AppDialogHost />
-    </>
+    </DialogProvider>
   );
 }

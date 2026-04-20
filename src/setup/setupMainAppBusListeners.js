@@ -1,8 +1,11 @@
-import { handleCommand, subscribe } from '../shared/events/index.js';
+import {
+  dispatchCommandAndAwait,
+  handleCommand,
+  subscribe,
+} from '../shared/events/index.js';
 import { messagingController } from '../features/messaging/messaging-controller.js';
 import { isDev, tempWarn } from '../shared/utils/dev/dev-utils.js';
 import { callContact } from '../features/call/WIP-start-call-refactor.js';
-import { showSaveContactPrompt } from '../components/AppDialogHost.jsx';
 import {
   getContactById,
   getContactByRoomId,
@@ -70,7 +73,13 @@ export function setupMainAppBusListeners() {
       handleCommand(
         'cmd:contacts:contact:save-prompt',
         async ({ contactUserId, roomId }) => {
-          const didSave = await showSaveContactPrompt(contactUserId, roomId);
+          const didSave = await dispatchCommandAndAwait(
+            'cmd:dialog:contact-save:prompt',
+            {
+              contactUserId,
+              roomId,
+            },
+          );
           if (!didSave) {
             return false;
           }

@@ -1,7 +1,7 @@
 import {
-  dismissIncomingCallDialog,
-  showIncomingCallDialog,
-} from '../../../components/AppDialogHost.jsx';
+  dispatchCommand,
+  dispatchCommandAndAwait,
+} from '../../../shared/events/index.js';
 
 // Map of roomId → resolver function for promise-based UI coordination
 const activeIncomingCallResolvers = new Map();
@@ -11,7 +11,7 @@ export function showIncomingCallUI(call, onAccept, onReject) {
 
   const cleanup = () => {
     activeIncomingCallResolvers.delete(call.roomId);
-    dismissIncomingCallDialog(call.roomId);
+    dispatchCommand('cmd:dialog:incoming-call:close', { roomId: call.roomId });
   };
 
   // Store resolver function for promise-based coordination via resolveIncomingCallUI()
@@ -24,7 +24,7 @@ export function showIncomingCallUI(call, onAccept, onReject) {
 
   activeIncomingCallResolvers.set(call.roomId, resolver);
 
-  showIncomingCallDialog({
+  dispatchCommandAndAwait('cmd:dialog:incoming-call:open', {
     roomId: call.roomId,
     callerName: call.from,
     onAccept: async () => {
@@ -41,6 +41,8 @@ export function showIncomingCallUI(call, onAccept, onReject) {
         cleanup();
       }
     },
+  }).catch((error) => {
+    console.warn('[incoming-call] failed to open incoming call dialog:', error);
   });
 }
 
@@ -65,7 +67,7 @@ export function resolveIncomingCallUI(roomId, result) {
 export function dismissActiveIncomingCallUI(roomId) {
   if (roomId && activeIncomingCallResolvers.has(roomId)) {
     activeIncomingCallResolvers.delete(roomId);
-    dismissIncomingCallDialog(roomId);
+    dispatchCommand('cmd:dialog:incoming-call:close', { roomId });
     return true;
   }
   return false;

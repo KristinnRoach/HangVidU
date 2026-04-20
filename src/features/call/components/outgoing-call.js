@@ -6,15 +6,12 @@ import {
   clearOutgoingCallState,
   // isOutgoingCallFresh,
 } from '../WIP-CallState-rtdb.js';
-import {
-  dismissOutgoingCallDialog,
-  showOutgoingCallDialog,
-} from '../../../components/AppDialogHost.jsx';
 import { devDebug } from '../../../shared/utils/dev/dev-utils.js';
 import { getDiagnosticLogger } from '../../../shared/utils/dev/diagnostic-logger.js';
 import RoomService from '../room.js';
 import { ringtoneManager } from '../../../shared/media/audio/ringtone-manager.js';
 import { getUserId } from '../../../auth/index.js';
+import { dispatchCommand } from '../../../shared/events/index.js';
 
 let activeCallingUI = null;
 let timeoutId = null;
@@ -72,7 +69,7 @@ export async function showOutgoingCallUI(
     devDebug('Call cancelled');
   };
 
-  showOutgoingCallDialog({
+  dispatchCommand('cmd:dialog:outgoing-call:open', {
     roomId,
     calleeName: contactNickName,
     audioOnly,
@@ -152,7 +149,9 @@ export function hideOutgoingCallingUI() {
   }
 
   if (activeCallingUI) {
-    dismissOutgoingCallDialog(activeCallingUI.roomId);
+    dispatchCommand('cmd:dialog:outgoing-call:close', {
+      roomId: activeCallingUI.roomId,
+    });
     activeCallingUI = null;
   }
 }
