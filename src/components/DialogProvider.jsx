@@ -129,9 +129,11 @@ function createDialogApi() {
       });
     },
     showOutgoingCallDialog(props = {}) {
+      const { onCancel, ...rest } = props;
       return replaceDialog({
         type: 'outgoing-call',
-        props,
+        onCancel,
+        props: rest,
       });
     },
     showSaveContactPrompt(contactUserId, roomId) {

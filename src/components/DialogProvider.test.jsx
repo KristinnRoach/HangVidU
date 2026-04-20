@@ -133,4 +133,21 @@ describe('DialogProvider', () => {
     expect(onDecline).toHaveBeenCalledTimes(1);
     expect(document.body.textContent).not.toContain('Incoming Call Dialog:Alice');
   });
+
+  it('routes generic close through outgoing-call cancel', async () => {
+    render(() => <DialogProvider />);
+
+    const onCancel = vi.fn();
+
+    await dispatchCommandAndAwait('cmd:dialog:outgoing-call:open', {
+      roomId: 'room-1',
+      calleeName: 'Bob',
+      onCancel,
+    });
+
+    dispatchCommand('cmd:dialog:modal:close');
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(document.body.textContent).not.toContain('Outgoing Call Dialog:Bob');
+  });
 });
