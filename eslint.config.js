@@ -165,4 +165,28 @@ const appConfig = [
   },
 ];
 
-export default [...boundariesConfig, ...appConfig];
+// Solid components must use `useI18n()` as the i18n seam so the impl stays swappable.
+// See docs/WIP_Architecture/MIGRATE_COMPONENT_TO_SOLIDJS.md.
+const solidComponentsI18nConfig = [
+  {
+    files: ['src/components/**/*.js', 'src/components/**/*.jsx'],
+    ignores: ['src/**/*.test.js', 'src/**/*.test.jsx'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/shared/i18n', '**/shared/i18n/index.js'],
+              importNames: ['t', 'getLocale', 'setLocale', 'onLocaleChange'],
+              message:
+                'In Solid components use `useI18n()` from src/shared/i18n/. Bare t/getLocale/setLocale/onLocaleChange imports couple components to the current impl.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+];
+
+export default [...boundariesConfig, ...appConfig, ...solidComponentsI18nConfig];

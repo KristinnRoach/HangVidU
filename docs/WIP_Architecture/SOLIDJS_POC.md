@@ -107,10 +107,7 @@ One file: `src/setup/setupAppRoot.js`
 
 ### What doesn't yet work
 
-1. **Locale change doesn't auto-rerender JSX.** `t()` is a plain function — its result is captured at render time. To get live locale updates, either:
-   - Wrap a locale signal around `t` and use `locale()` inside JSX expressions, or
-   - Subscribe to `onLocaleChange` and force a rerender by bumping a signal.
-     The old `createComponent`-based `templateFns: { t: { resolve, onChange } }` did this implicitly. **This is a convention we need to adopt project-wide if Solid standardizes.**
+1. ~~**Locale change doesn't auto-rerender JSX.**~~ **Resolved** (commit d3a37cd): `src/shared/i18n/index.js` now backs `dict` and `currentLocale` with Solid signals; `useI18n()` returns `{ locale, t }` and JSX calls re-run automatically on `setLocale(...)`. Verified by `src/shared/i18n/tests/index.test.jsx`. Convention: in Solid components, always `const { t } = useI18n()` inside the component body — do not import the top-level `t` into `.jsx` (enforced by lint).
 2. **One test is skipped.** `reflects unread count via the messaging event bridge` verifies the store update (passes when asserted directly) but the DOM badge query returns undefined inside the same microtask. Likely a scheduler/jsdom interaction. Production code path is fine — manual testing planned. Marked `it.skip` with a TODO pointing here.
 
 ### Conventions to adopt if Solid standardizes
@@ -140,7 +137,7 @@ One file: `src/setup/setupAppRoot.js`
 2. **No `evt:contacts:hydrated` event.** The new `setupAppRoot` reads `getAllContactsSorted()` on every `evt:contacts:state:changed`, which covers initial hydration in practice. If multiple UI surfaces need "contacts are ready" as a first-class signal, promote this to an event.
 3. **`contactsService.updateContact(contactId, name, roomId)` signature.** Takes `roomId` as a third arg purely to preserve it through the update. Awkward; don't touch in PoC.
 4. **Legacy DOM contacts list removed.** The Solid path is now the only contacts-list path in active use.
-5. **Locale reactivity** (see Findings above) — needs a project-wide pattern before more JSX UI is written.
+5. ~~**Locale reactivity**~~ — resolved post-merge (commit d3a37cd). Convention is now `useI18n()` + lint-enforced ban on bare `t`/`getLocale`/`setLocale`/`onLocaleChange` imports inside `src/components/**`.
 
 ---
 

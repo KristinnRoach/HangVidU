@@ -20,9 +20,10 @@ See also: [`STRUCTURE.md`](./STRUCTURE.md), [`SOLID_UI_STATE_RULES.md`](./SOLID_
 - During migration, keep one shared i18n entrypoint: `src/shared/i18n/index.js`.
 - Keep dictionaries in `src/shared/i18n/en.json` and `src/shared/i18n/is.json`.
 - Do not introduce a second component-local or feature-local i18n system.
-- In Solid components, prefer `useI18n()` from the shared i18n module.
+- In Solid components, **must** use `useI18n()` from the shared i18n module. Call `const { t } = useI18n()` inside the component body. Do not import the top-level `t`, `getLocale`, `setLocale`, or `onLocaleChange` into `.jsx` files — lint enforces this.
 - In imperative or legacy code, keep using `t(...)`, `getLocale()`, `setLocale()`, and `onLocaleChange(...)` from the same shared module.
 - Locale updates must go through the shared i18n seam. Do not add per-component locale workarounds.
+- JSX expressions like `{t('key')}` re-render automatically when locale changes — `dict` and `currentLocale` are Solid signals internally.
 
 ## Example
 

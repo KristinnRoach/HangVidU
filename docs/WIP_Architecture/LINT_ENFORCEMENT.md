@@ -8,6 +8,7 @@ What is automatically enforced today. Source of truth: `eslint.config.js`, `esli
 - `no-restricted-imports`
   - Block direct `firebase/auth` imports (route through adapter).
   - Block `**/auth-state`, `**/auth-state.js` imports outside `src/auth/`.
+  - Block bare `t`, `getLocale`, `setLocale`, `onLocaleChange` imports from `shared/i18n` inside `src/components/**` — Solid components must use `useI18n()`.
 - `boundaries/dependencies` — per-module import boundaries (incremental rollout).
 - JSX parsing is enabled for `src/**/*.jsx`.
 - Boundary lint includes the `components` layer in addition to `setup`, `auth`, `feature`, and `shared`.

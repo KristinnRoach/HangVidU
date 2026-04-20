@@ -16,4 +16,3 @@ Link: https://github.com/KristinnRoach/HangVidU/pull/477
 - **Skipped unread-badge DOM test.** `reflects unread count via the messaging event bridge` — store update passes in isolation but DOM badge query returns undefined in same microtask. Likely jsdom scheduler interaction. Marked `it.skip`.
 - **Defensive payload destructuring.** `src/setup/setupContactsAppBusHandlers.js:31` — `handleCommand('cmd:contacts:contact:edit', async ({ contactId }) => …)` throws if payload is undefined. Default to `{}`.
 - **`initialName` normalization.** `src/components/contacts/SaveContactNameDialog.jsx:9` calls `.trim()` on a signal whose initial value comes from props — throws if non-string. Coerce to string before use.
-- **Locale reactivity.** `t()` is captured at render time; locale change doesn't re-render JSX. Needs a project-wide pattern (signal-wrapped `t` or `onLocaleChange` bump) before more JSX UI is written.
