@@ -39,7 +39,7 @@
   align-items: center;
   margin-bottom: var(--spacing-lg);
   padding: 0.35rem 0.7rem;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-sm);
   background: rgb(255 255 255 / 0.06);
   color: var(--text-secondary);
   font-size: var(--font-size-xs);
