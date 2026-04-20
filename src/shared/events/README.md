@@ -39,7 +39,7 @@ Use this `src/shared/events/` layer to define app semantics (`command` vs `event
 - Recommended regex: `^(cmd|evt):[a-z][a-z0-9-]*:[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$`
 - For commands, `domain` is the target domain that owns the handler.
 - For events, `domain` is the domain the fact is about, not the module that published it.
-- See [DOMAINS.md](/Users/kristinnroachgunnarsson/Desktop/Dev/HangVidU/src/shared/events/DOMAINS.md) for the current domain inventory.
+- See [DOMAINS.md](./DOMAINS.md) for the current domain inventory.
 - Command names: imperative verb phrases.
 - Event names: facts/outcomes (typically past tense).
 
