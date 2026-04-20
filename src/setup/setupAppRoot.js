@@ -5,7 +5,7 @@
 import { produce } from 'solid-js/store';
 import { subscribe, dispatchCommand } from '../shared/events/index.js';
 import { getAllContactsSorted } from '../features/contacts/index.js';
-import { setContacts } from '../components/contacts/ContactsList.jsx';
+import { setContactsUI } from '../components/contacts/ContactsList.jsx';
 
 /**
  * @typedef {Object} ContactRow
@@ -46,7 +46,7 @@ export function setupAppRoot() {
       ({ conversationId: updatedConversationId, unreadCount }) => {
         if (updatedConversationId !== conversationId) return;
         lastUnreadByConv.set(conversationId, unreadCount);
-        setContacts(
+        setContactsUI(
           produce((arr) => {
             for (const row of arr) {
               if (row.conversationId === conversationId) {
@@ -57,6 +57,20 @@ export function setupAppRoot() {
         );
       },
     );
+
+    // Seed unreadCount from lastUnreadByConv if available
+    if (lastUnreadByConv.has(conversationId)) {
+      const unreadCount = lastUnreadByConv.get(conversationId);
+      setContactsUI(
+        produce((arr) => {
+          for (const row of arr) {
+            if (row.conversationId === conversationId) {
+              row.unreadCount = unreadCount;
+            }
+          }
+        }),
+      );
+    }
 
     dispatchCommand('cmd:messaging:conversation:unread-count-listen', {
       conversationId,
@@ -90,7 +104,7 @@ export function setupAppRoot() {
       }
     }
 
-    setContacts(
+    setContactsUI(
       produce((arr) => {
         arr.length = 0;
         for (const row of rows) arr.push(row);
@@ -126,7 +140,7 @@ export function setupAppRoot() {
     }
     unreadTeardowns.clear();
     lastUnreadByConv.clear();
-    setContacts(
+    setContactsUI(
       produce((arr) => {
         arr.length = 0;
       }),

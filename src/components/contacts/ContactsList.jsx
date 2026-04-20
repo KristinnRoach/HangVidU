@@ -21,7 +21,9 @@ import ContactEntry from './ContactEntry.jsx';
  *
  * @type {[ContactRow[], import('solid-js/store').SetStoreFunction<ContactRow[]>]}
  */
-export const [contacts, setContacts] = createStore(/** @type {ContactRow[]} */ ([]));
+export const [contacts, setContactsUI] = createStore(
+  /** @type {ContactRow[]} */ ([]),
+);
 
 /**
  * Contacts list view. Pure — reads the store, renders rows or empty state.
@@ -31,12 +33,9 @@ export default function ContactsList() {
   const { t } = useI18n();
 
   return (
-    <div class="contacts-container">
-      <Show
-        when={contacts.length > 0}
-        fallback={<p>{t('contact.none')}</p>}
-      >
-        <div class="contacts-list">
+    <div class='contacts-container'>
+      <Show when={contacts.length > 0} fallback={<p>{t('contact.none')}</p>}>
+        <div class='contacts-list'>
           <For each={contacts}>
             {(row) => (
               <ContactEntry
