@@ -13,7 +13,7 @@ export default function CallDialogFrame(props) {
         role='dialog'
         aria-modal='true'
         aria-labelledby={props.titleId}
-        aria-describedby={props.descriptionId}
+        aria-describedby={props.subtitle ? props.descriptionId : undefined}
         data-tone={props.tone || 'neutral'}
       >
         {props.badge ? <div class='call-dialog-badge'>{props.badge}</div> : null}
