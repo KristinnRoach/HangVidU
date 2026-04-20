@@ -83,4 +83,37 @@ describe('DialogProvider', () => {
 
     expect(document.body.textContent).toContain('Edit');
   });
+
+  it('resolves save-contact prompts as false on generic modal close', async () => {
+    render(() => <DialogProvider />);
+
+    const pending = dispatchCommandAndAwait('cmd:dialog:contact-save:prompt', {
+      contactUserId: 'contact-1',
+      roomId: 'room-1',
+    });
+
+    expect(document.body.textContent).toContain('Save Contact Dialog');
+
+    dispatchCommand('cmd:dialog:modal:close');
+
+    await expect(pending).resolves.toBe(false);
+  });
+
+  it('does not replace an active call dialog with a non-call dialog', async () => {
+    render(() => <DialogProvider />);
+
+    await dispatchCommandAndAwait('cmd:dialog:incoming-call:open', {
+      roomId: 'room-1',
+      callerName: 'Alice',
+    });
+
+    dispatchCommand('cmd:dialog:contact-edit:open', {
+      contactId: 'contact-1',
+      currentName: 'Alice',
+      roomId: 'room-1',
+    });
+
+    expect(document.body.textContent).toContain('Incoming Call Dialog:Alice');
+    expect(document.body.textContent).not.toContain('Edit Contact Dialog');
+  });
 });

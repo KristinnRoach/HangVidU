@@ -22,23 +22,44 @@ const DialogContext = createContext();
 
 function createDialogApi() {
   const [activeDialog, setActiveDialog] = createSignal(null);
+  const isCallDialogType = (type) =>
+    type === 'incoming-call' || type === 'outgoing-call';
+
+  function invokeCancel(dialog, context = 'cancel handler') {
+    if (!dialog?.onCancel) return false;
+
+    try {
+      dialog.onCancel();
+      return true;
+    } catch (error) {
+      console.warn(`[dialog-provider] ${context} failed:`, error);
+      return false;
+    }
+  }
 
   function closeDialog() {
+    const dialog = activeDialog();
+    invokeCancel(dialog, 'cancel handler');
     setActiveDialog(null);
   }
 
   function replaceDialog(nextDialog) {
     const currentDialog = activeDialog();
+    const currentType = currentDialog?.type;
+    const nextType = nextDialog?.type;
 
-    if (currentDialog?.onCancel) {
-      try {
-        currentDialog.onCancel();
-      } catch (error) {
-        console.warn('[dialog-provider] cancel handler failed:', error);
-      }
+    if (
+      isCallDialogType(currentType) &&
+      nextType &&
+      !isCallDialogType(nextType)
+    ) {
+      return false;
     }
 
+    invokeCancel(currentDialog, 'cancel handler');
+
     setActiveDialog(nextDialog);
+    return true;
   }
 
   function dismissIncomingCallDialog(roomId) {
@@ -93,7 +114,7 @@ function createDialogApi() {
         return;
       }
 
-      replaceDialog({
+      return replaceDialog({
         type: 'edit-contact',
         contactId,
         currentName: typeof currentName === 'string' ? currentName : '',
@@ -101,13 +122,13 @@ function createDialogApi() {
       });
     },
     showIncomingCallDialog(props = {}) {
-      replaceDialog({
+      return replaceDialog({
         type: 'incoming-call',
         props,
       });
     },
     showOutgoingCallDialog(props = {}) {
-      replaceDialog({
+      return replaceDialog({
         type: 'outgoing-call',
         props,
       });
@@ -118,13 +139,17 @@ function createDialogApi() {
       }
 
       return new Promise((resolve) => {
-        replaceDialog({
+        const didReplace = replaceDialog({
           type: 'save-contact',
           contactId: contactUserId,
           roomId,
           resolve,
           onCancel: () => resolve(false),
         });
+
+        if (didReplace === false) {
+          resolve(false);
+        }
       });
     },
     resolveSaveContactDialog,

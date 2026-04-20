@@ -92,7 +92,14 @@ function showIncomingCallDialog(roomId, callerName, onAccept, onReject) {
 
   const cleanup = () => {
     activeIncomingCallResolvers.delete(roomId);
-    dispatchCommand('cmd:dialog:incoming-call:close', { roomId });
+    try {
+      dispatchCommand('cmd:dialog:incoming-call:close', { roomId });
+    } catch (error) {
+      console.warn(
+        '[room-listeners] failed to close incoming call dialog:',
+        error,
+      );
+    }
   };
 
   const resolver = (result) => {
@@ -122,6 +129,15 @@ function showIncomingCallDialog(roomId, callerName, onAccept, onReject) {
       }
     },
   }).catch((error) => {
+    cleanup();
+    try {
+      if (onReject) onReject();
+    } catch (rejectError) {
+      console.warn(
+        '[room-listeners] failed to settle incoming call after dialog-open failure:',
+        rejectError,
+      );
+    }
     console.warn(
       '[room-listeners] failed to open incoming call dialog:',
       error,
@@ -139,7 +155,14 @@ function resolveIncomingCallDialog(roomId, result) {
 function dismissIncomingCallDialog(roomId) {
   if (roomId && activeIncomingCallResolvers.has(roomId)) {
     activeIncomingCallResolvers.delete(roomId);
-    dispatchCommand('cmd:dialog:incoming-call:close', { roomId });
+    try {
+      dispatchCommand('cmd:dialog:incoming-call:close', { roomId });
+    } catch (error) {
+      console.warn(
+        '[room-listeners] failed to close incoming call dialog:',
+        error,
+      );
+    }
     return true;
   }
   return false;

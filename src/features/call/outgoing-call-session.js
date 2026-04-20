@@ -56,12 +56,19 @@ export async function showOutgoingCallUI(
     devDebug('Call cancelled');
   };
 
-  dispatchCommand('cmd:dialog:outgoing-call:open', {
-    roomId,
-    calleeName: contactNickName,
-    audioOnly,
-    onCancel: handleCancel,
-  });
+  try {
+    dispatchCommand('cmd:dialog:outgoing-call:open', {
+      roomId,
+      calleeName: contactNickName,
+      audioOnly,
+      onCancel: handleCancel,
+    });
+  } catch (error) {
+    console.warn(
+      '[outgoing-call-session] failed to open outgoing call dialog:',
+      error,
+    );
+  }
   activeCallingUI = { roomId };
 
   ringtoneManager.playOutgoing({ audioOnly });
@@ -125,9 +132,16 @@ export function hideOutgoingCallingUI() {
   }
 
   if (activeCallingUI) {
-    dispatchCommand('cmd:dialog:outgoing-call:close', {
-      roomId: activeCallingUI.roomId,
-    });
+    try {
+      dispatchCommand('cmd:dialog:outgoing-call:close', {
+        roomId: activeCallingUI.roomId,
+      });
+    } catch (error) {
+      console.warn(
+        '[outgoing-call-session] failed to close outgoing call dialog:',
+        error,
+      );
+    }
     activeCallingUI = null;
   }
 }
