@@ -28,6 +28,7 @@ import { rtdb } from '../../../shared/storage/fb-rtdb/rtdb.js';
 import { getUserId } from '../../../auth/index.js';
 
 const MAX_MESSAGES = 100;
+const MESSAGE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days (set to null to disable TTL-based cleanup)
 
 /**
  * Normalize reactions from RTDB format { emoji: { uid: true } } to { emoji: [uid] }
@@ -266,17 +267,32 @@ export class RTDBMessageStore extends MessageStore {
     if (!snapshot.exists()) return;
 
     const messages = snapshot.val();
-    const keys = Object.keys(messages);
-    if (keys.length <= MAX_MESSAGES) return;
-
-    const sorted = Object.entries(messages).sort(
-      (a, b) => (a[1].sentAt || 0) - (b[1].sentAt || 0),
-    );
+    const now = Date.now();
     const updates = {};
-    for (let i = 0; i < keys.length - MAX_MESSAGES; i++) {
-      updates[`conversations/${conversationId}/messages/${sorted[i][0]}`] =
-        null;
+    const survivors = [];
+
+    for (const [id, msg] of Object.entries(messages)) {
+      if (
+        MESSAGE_TTL_MS != null &&
+        typeof msg.sentAt === 'number' &&
+        now - msg.sentAt > MESSAGE_TTL_MS
+      ) {
+        updates[`conversations/${conversationId}/messages/${id}`] = null;
+      } else {
+        survivors.push([id, msg]);
+      }
     }
-    await update(ref(rtdb), updates);
+
+    if (survivors.length > MAX_MESSAGES) {
+      survivors.sort((a, b) => (a[1].sentAt || 0) - (b[1].sentAt || 0));
+      for (let i = 0; i < survivors.length - MAX_MESSAGES; i++) {
+        updates[`conversations/${conversationId}/messages/${survivors[i][0]}`] =
+          null;
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await update(ref(rtdb), updates);
+    }
   }
 }
