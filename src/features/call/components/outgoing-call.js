@@ -6,11 +6,14 @@ import {
   clearOutgoingCallState,
   // isOutgoingCallFresh,
 } from '../WIP-CallState-rtdb.js';
+import {
+  dismissOutgoingCallDialog,
+  showOutgoingCallDialog,
+} from '../../../components/AppDialogHost.jsx';
 import { devDebug } from '../../../shared/utils/dev/dev-utils.js';
 import { getDiagnosticLogger } from '../../../shared/utils/dev/diagnostic-logger.js';
 import RoomService from '../room.js';
 import { ringtoneManager } from '../../../shared/media/audio/ringtone-manager.js';
-import { t } from '../../../shared/i18n/index.js';
 import { getUserId } from '../../../auth/index.js';
 
 let activeCallingUI = null;
@@ -36,63 +39,6 @@ export async function showOutgoingCallUI(
 
   // Track outgoing call state in RTDB
   await setOutgoingCallState(roomId, contactNickName);
-
-  // Create modal overlay
-  const overlay = document.createElement('div');
-  overlay.id = 'calling-modal';
-  overlay.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-  `;
-
-  const modal = document.createElement('div');
-  modal.style.cssText = `
-    background: #4d4e54ff;
-    padding: 30px;
-    border-radius: 12px;
-    text-align: center;
-    min-width: 300px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  `;
-
-  const title = document.createElement('h2');
-  title.textContent = t('call.calling', {
-    name: contactNickName || t('shared.contact'),
-  });
-  title.style.cssText = `
-    margin: 0 0 10px 0;
-    font-size: 20px;
-    color: #d0d7dbff;
-  `;
-
-  const subtitle = document.createElement('p');
-  subtitle.textContent = t('call.waiting');
-  subtitle.style.cssText = `
-    margin: 0 0 20px 0;
-    color: #bbb;
-    font-size: 14px;
-  `;
-
-  const cancelBtn = document.createElement('button');
-  cancelBtn.textContent = t('shared.cancel');
-  cancelBtn.style.cssText = `
-    padding: 10px 24px;
-    background: #c34949ff;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: 500;
-  `;
 
   const handleCancel = async () => {
     diag.logCallingUILifecycle('CANCEL', roomId, {
@@ -126,17 +72,13 @@ export async function showOutgoingCallUI(
     devDebug('Call cancelled');
   };
 
-  cancelBtn.onclick = handleCancel;
-
-  modal.appendChild(title);
-  modal.appendChild(subtitle);
-  modal.appendChild(cancelBtn);
-  overlay.appendChild(modal);
-  document.body.appendChild(overlay);
-
-  // Store roomId for logging purposes
-  overlay.dataset.roomId = roomId;
-  activeCallingUI = overlay;
+  showOutgoingCallDialog({
+    roomId,
+    calleeName: contactNickName,
+    audioOnly,
+    onCancel: handleCancel,
+  });
+  activeCallingUI = { roomId };
 
   // Start outgoing call ringtone
   ringtoneManager.playOutgoing({ audioOnly });
@@ -210,7 +152,7 @@ export function hideOutgoingCallingUI() {
   }
 
   if (activeCallingUI) {
-    activeCallingUI.remove();
+    dismissOutgoingCallDialog(activeCallingUI.roomId);
     activeCallingUI = null;
   }
 }

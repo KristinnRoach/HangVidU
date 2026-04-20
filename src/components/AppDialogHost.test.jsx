@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AppDialogHost, {
   closeAppDialog,
   dismissIncomingCallDialog,
+  dismissOutgoingCallDialog,
   showIncomingCallDialog,
   showOutgoingCallDialog,
 } from './AppDialogHost.jsx';
@@ -33,10 +34,10 @@ vi.mock('./call/IncomingCallDialog.jsx', () => ({
   ),
 }));
 
-vi.mock('./call/OutgoingCall.jsx', () => ({
+vi.mock('./call/OutgoingCallDialog.jsx', () => ({
   default: (props) => (
     <div>
-      Outgoing Call:
+      Outgoing Call Dialog:
       {props.calleeName}
     </div>
   ),
@@ -65,7 +66,7 @@ describe('AppDialogHost', () => {
 
     render(() => <AppDialogHost />);
 
-    expect(document.body.textContent).toContain('Outgoing Call:Bob');
+    expect(document.body.textContent).toContain('Outgoing Call Dialog:Bob');
   });
 
   it('dismisses only the matching incoming-call dialog', () => {
@@ -78,6 +79,19 @@ describe('AppDialogHost', () => {
     expect(dismissIncomingCallDialog('room-1')).toBe(true);
     expect(document.body.textContent).not.toContain(
       'Incoming Call Dialog:Alice',
+    );
+  });
+
+  it('dismisses only the matching outgoing-call dialog', () => {
+    showOutgoingCallDialog({ roomId: 'room-1', calleeName: 'Bob' });
+    render(() => <AppDialogHost />);
+
+    expect(dismissOutgoingCallDialog('room-2')).toBe(false);
+    expect(document.body.textContent).toContain('Outgoing Call Dialog:Bob');
+
+    expect(dismissOutgoingCallDialog('room-1')).toBe(true);
+    expect(document.body.textContent).not.toContain(
+      'Outgoing Call Dialog:Bob',
     );
   });
 });
