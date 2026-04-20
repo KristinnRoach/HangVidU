@@ -1,6 +1,6 @@
 import { Match, Show, Switch, createSignal } from 'solid-js';
 import { Portal } from 'solid-js/web';
-import IncomingCall from './call/IncomingCall.jsx';
+import IncomingCallDialog from './call/IncomingCallDialog.jsx';
 import OutgoingCall from './call/OutgoingCall.jsx';
 import EditContactDialog from './contacts/EditContactDialog.jsx';
 import SaveContactDialog from './contacts/SaveContactDialog.jsx';
@@ -23,6 +23,20 @@ function replaceActiveDialog(nextDialog) {
 
 export function closeAppDialog() {
   setActiveDialog(null);
+}
+
+export function dismissIncomingCallDialog(roomId) {
+  const dialog = activeDialog();
+  if (dialog?.type !== 'incoming-call') {
+    return false;
+  }
+
+  if (roomId && dialog.props?.roomId !== roomId) {
+    return false;
+  }
+
+  setActiveDialog(null);
+  return true;
 }
 
 export function showIncomingCallDialog(props = {}) {
@@ -106,7 +120,7 @@ export default function AppDialogHost() {
             </Match>
 
             <Match when={dialog().type === 'incoming-call'}>
-              <IncomingCall {...dialog().props} />
+              <IncomingCallDialog {...dialog().props} />
             </Match>
 
             <Match when={dialog().type === 'outgoing-call'}>
