@@ -1,5 +1,7 @@
 import { Match, Show, Switch, createSignal } from 'solid-js';
 import { Portal } from 'solid-js/web';
+import IncomingCallDialog from './call/IncomingCallDialog.jsx';
+import OutgoingCallDialog from './call/OutgoingCallDialog.jsx';
 import EditContactDialog from './contacts/EditContactDialog.jsx';
 import SaveContactDialog from './contacts/SaveContactDialog.jsx';
 
@@ -21,6 +23,48 @@ function replaceActiveDialog(nextDialog) {
 
 export function closeAppDialog() {
   setActiveDialog(null);
+}
+
+export function dismissIncomingCallDialog(roomId) {
+  const dialog = activeDialog();
+  if (dialog?.type !== 'incoming-call') {
+    return false;
+  }
+
+  if (roomId && dialog.props?.roomId !== roomId) {
+    return false;
+  }
+
+  setActiveDialog(null);
+  return true;
+}
+
+export function dismissOutgoingCallDialog(roomId) {
+  const dialog = activeDialog();
+  if (dialog?.type !== 'outgoing-call') {
+    return false;
+  }
+
+  if (roomId && dialog.props?.roomId !== roomId) {
+    return false;
+  }
+
+  setActiveDialog(null);
+  return true;
+}
+
+export function showIncomingCallDialog(props = {}) {
+  replaceActiveDialog({
+    type: 'incoming-call',
+    props,
+  });
+}
+
+export function showOutgoingCallDialog(props = {}) {
+  replaceActiveDialog({
+    type: 'outgoing-call',
+    props,
+  });
 }
 
 export function openEditContactDialog({ contactId, currentName, roomId }) {
@@ -87,6 +131,14 @@ export default function AppDialogHost() {
                 roomId={dialog().roomId}
                 onClose={resolveSaveContactDialog}
               />
+            </Match>
+
+            <Match when={dialog().type === 'incoming-call'}>
+              <IncomingCallDialog {...dialog().props} />
+            </Match>
+
+            <Match when={dialog().type === 'outgoing-call'}>
+              <OutgoingCallDialog {...dialog().props} />
             </Match>
           </Switch>
         </Portal>

@@ -1,59 +1,18 @@
-import { t } from '../../../shared/i18n/index.js';
+import {
+  dismissIncomingCallDialog,
+  showIncomingCallDialog,
+} from '../../../components/AppDialogHost.jsx';
 
 // Map of roomId → resolver function for promise-based UI coordination
 const activeIncomingCallResolvers = new Map();
 
 export function showIncomingCallUI(call, onAccept, onReject) {
-  const id = `incoming-call-${call.roomId}`;
-  if (document.getElementById(id)) return; // avoid duplicates
-
-  const container = document.createElement('dialog');
-  container.id = id;
-  container.className = 'incoming-call-dialog';
-
-  // Prevent ESC key from closing the dialog
-  container.addEventListener('cancel', (e) => {
-    e.preventDefault();
-  });
-
-  const msg = document.createElement('div');
-  msg.textContent = t('call.incoming', { name: call.from });
+  if (!call?.roomId || activeIncomingCallResolvers.has(call.roomId)) return;
 
   const cleanup = () => {
-    container.close();
-    container.remove();
     activeIncomingCallResolvers.delete(call.roomId);
+    dismissIncomingCallDialog(call.roomId);
   };
-
-  const acceptBtn = document.createElement('button');
-  acceptBtn.textContent = t('call.accept');
-  acceptBtn.onclick = async () => {
-    acceptBtn.disabled = true;
-    try {
-      if (onAccept) await onAccept();
-    } finally {
-      cleanup();
-    }
-  };
-
-  const rejectBtn = document.createElement('button');
-  rejectBtn.textContent = t('call.decline');
-  rejectBtn.onclick = async () => {
-    rejectBtn.disabled = true;
-    try {
-      if (onReject) await onReject();
-    } finally {
-      cleanup();
-    }
-  };
-
-  container.appendChild(msg);
-  container.appendChild(acceptBtn);
-  container.appendChild(rejectBtn);
-  document.body.appendChild(container);
-
-  // Show as modal dialog (blocks interaction with page)
-  container.showModal();
 
   // Store resolver function for promise-based coordination via resolveIncomingCallUI()
   const resolver = (result) => {
@@ -64,6 +23,25 @@ export function showIncomingCallUI(call, onAccept, onReject) {
   };
 
   activeIncomingCallResolvers.set(call.roomId, resolver);
+
+  showIncomingCallDialog({
+    roomId: call.roomId,
+    callerName: call.from,
+    onAccept: async () => {
+      try {
+        if (onAccept) await onAccept();
+      } finally {
+        cleanup();
+      }
+    },
+    onDecline: async () => {
+      try {
+        if (onReject) await onReject();
+      } finally {
+        cleanup();
+      }
+    },
+  });
 }
 
 /**
@@ -85,15 +63,9 @@ export function resolveIncomingCallUI(roomId, result) {
  * @param {string} roomId - The room ID to dismiss
  */
 export function dismissActiveIncomingCallUI(roomId) {
-  const container = roomId
-    ? document.getElementById(`incoming-call-${roomId}`)
-    : null;
-  if (container) {
-    try {
-      if (container.open) container.close();
-      container.remove();
-    } catch (_) {}
+  if (roomId && activeIncomingCallResolvers.has(roomId)) {
     activeIncomingCallResolvers.delete(roomId);
+    dismissIncomingCallDialog(roomId);
     return true;
   }
   return false;
