@@ -20,16 +20,24 @@ import SaveContactDialog from './contacts/SaveContactDialog.jsx';
 
 const DialogContext = createContext();
 
+function createDialogRecord(type, { props = {}, controls = {} } = {}) {
+  return {
+    type,
+    props,
+    controls,
+  };
+}
+
 function createDialogApi() {
   const [activeDialog, setActiveDialog] = createSignal(null);
   const isCallDialogType = (type) =>
     type === 'incoming-call' || type === 'outgoing-call';
 
   function invokeCancel(dialog, context = 'cancel handler') {
-    if (!dialog?.onCancel) return false;
+    if (!dialog?.controls?.onCancel) return false;
 
     try {
-      dialog.onCancel();
+      dialog.controls.onCancel();
       return true;
     } catch (error) {
       console.warn(`[dialog-provider] ${context} failed:`, error);
@@ -95,7 +103,7 @@ function createDialogApi() {
 
     if (dialog?.type === 'save-contact') {
       try {
-        dialog.resolve(!!result);
+        dialog.controls?.resolve?.(!!result);
       } catch (error) {
         console.warn('[dialog-provider] resolve handler failed:', error);
       }
@@ -114,27 +122,40 @@ function createDialogApi() {
         return;
       }
 
-      return replaceDialog({
-        type: 'edit-contact',
-        contactId,
-        currentName: typeof currentName === 'string' ? currentName : '',
-        roomId: roomId ?? null,
-      });
+      return replaceDialog(
+        createDialogRecord('edit-contact', {
+          props: {
+          contactId,
+          currentName: typeof currentName === 'string' ? currentName : '',
+          roomId: roomId ?? null,
+          },
+        }),
+      );
     },
     showIncomingCallDialog(props = {}) {
-      return replaceDialog({
-        type: 'incoming-call',
-        onCancel: props.onDecline,
-        props,
-      });
+      const { onAccept, onDecline, ...rest } = props;
+      return replaceDialog(
+        createDialogRecord('incoming-call', {
+          controls: {
+            onCancel: onDecline,
+          },
+          props: {
+            ...rest,
+            onAccept,
+          },
+        }),
+      );
     },
     showOutgoingCallDialog(props = {}) {
       const { onCancel, ...rest } = props;
-      return replaceDialog({
-        type: 'outgoing-call',
-        onCancel,
-        props: rest,
-      });
+      return replaceDialog(
+        createDialogRecord('outgoing-call', {
+          controls: {
+            onCancel,
+          },
+          props: rest,
+        }),
+      );
     },
     showSaveContactPrompt(contactUserId, roomId) {
       if (!contactUserId || !roomId) {
@@ -142,13 +163,18 @@ function createDialogApi() {
       }
 
       return new Promise((resolve) => {
-        const didReplace = replaceDialog({
-          type: 'save-contact',
-          contactId: contactUserId,
-          roomId,
-          resolve,
-          onCancel: () => resolve(false),
-        });
+        const didReplace = replaceDialog(
+          createDialogRecord('save-contact', {
+            controls: {
+              resolve,
+              onCancel: () => resolve(false),
+            },
+            props: {
+              contactId: contactUserId,
+              roomId,
+            },
+          }),
+        );
 
         if (didReplace === false) {
           resolve(false);
@@ -169,27 +195,33 @@ function DialogRenderer() {
           <Switch>
             <Match when={dialog().type === 'edit-contact'}>
               <EditContactDialog
-                contactId={dialog().contactId}
-                currentName={dialog().currentName}
-                roomId={dialog().roomId}
+                contactId={dialog().props.contactId}
+                currentName={dialog().props.currentName}
+                roomId={dialog().props.roomId}
                 onClose={dialogs.closeDialog}
               />
             </Match>
 
             <Match when={dialog().type === 'save-contact'}>
               <SaveContactDialog
-                contactId={dialog().contactId}
-                roomId={dialog().roomId}
+                contactId={dialog().props.contactId}
+                roomId={dialog().props.roomId}
                 onClose={dialogs.resolveSaveContactDialog}
               />
             </Match>
 
             <Match when={dialog().type === 'incoming-call'}>
-              <IncomingCallDialog {...dialog().props} />
+              <IncomingCallDialog
+                {...dialog().props}
+                onDecline={dialog().controls?.onCancel}
+              />
             </Match>
 
             <Match when={dialog().type === 'outgoing-call'}>
-              <OutgoingCallDialog {...dialog().props} />
+              <OutgoingCallDialog
+                {...dialog().props}
+                onCancel={dialog().controls?.onCancel}
+              />
             </Match>
           </Switch>
         </Portal>

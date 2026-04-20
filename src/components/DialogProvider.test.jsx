@@ -1,4 +1,4 @@
-import { cleanup, render } from '@solidjs/testing-library';
+import { cleanup, fireEvent, render } from '@solidjs/testing-library';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   dispatchCommand,
@@ -19,6 +19,9 @@ vi.mock('./call/IncomingCallDialog.jsx', () => ({
     <div>
       Incoming Call Dialog:
       {props.callerName}
+      <button type='button' onClick={() => props.onDecline?.()}>
+        Decline
+      </button>
     </div>
   ),
 }));
@@ -28,6 +31,9 @@ vi.mock('./call/OutgoingCallDialog.jsx', () => ({
     <div>
       Outgoing Call Dialog:
       {props.calleeName}
+      <button type='button' onClick={() => props.onCancel?.()}>
+        Cancel
+      </button>
     </div>
   ),
 }));
@@ -134,6 +140,22 @@ describe('DialogProvider', () => {
     expect(document.body.textContent).not.toContain('Incoming Call Dialog:Alice');
   });
 
+  it('wires the incoming-call decline button to the session decline handler', async () => {
+    render(() => <DialogProvider />);
+
+    const onDecline = vi.fn();
+
+    await dispatchCommandAndAwait('cmd:dialog:incoming-call:open', {
+      roomId: 'room-1',
+      callerName: 'Alice',
+      onDecline,
+    });
+
+    await fireEvent.click(document.body.querySelector('button'));
+
+    expect(onDecline).toHaveBeenCalledTimes(1);
+  });
+
   it('routes generic close through outgoing-call cancel', async () => {
     render(() => <DialogProvider />);
 
@@ -149,5 +171,21 @@ describe('DialogProvider', () => {
 
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(document.body.textContent).not.toContain('Outgoing Call Dialog:Bob');
+  });
+
+  it('wires the outgoing-call cancel button to the session cancel handler', async () => {
+    render(() => <DialogProvider />);
+
+    const onCancel = vi.fn();
+
+    await dispatchCommandAndAwait('cmd:dialog:outgoing-call:open', {
+      roomId: 'room-1',
+      calleeName: 'Bob',
+      onCancel,
+    });
+
+    await fireEvent.click(document.body.querySelector('button'));
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
   });
 });
