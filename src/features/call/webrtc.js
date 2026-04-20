@@ -2,7 +2,7 @@
 
 import { devDebug } from '../../shared/utils/dev/dev-utils.js';
 import { clearUrlParam } from '../../shared/utils/url.js';
-import { onOutgoingCallAnswered } from './components/outgoing-call.js';
+import { onOutgoingCallAnswered } from './outgoing-call-session.js';
 import CallController from './call-controller.js';
 import { onCallConnected } from '../../shared/components/ui/core/call-lifecycle-ui.js'; // onCallDisconnected not used here so onCallConnected should possibly also be moved
 

@@ -75,7 +75,7 @@ vi.mock('../../../shared/utils/url.js', () => ({
   clearUrlParam: mocks.clearUrlParam,
 }));
 
-vi.mock('./../components/outgoing-call.js', () => ({
+vi.mock('../outgoing-call-session.js', () => ({
   onOutgoingCallAnswered: mocks.onOutgoingCallAnswered,
 }));
 

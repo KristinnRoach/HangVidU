@@ -1,5 +1,9 @@
 import { get, remove } from 'firebase/database';
-import { publish } from '../../shared/events/index.js';
+import {
+  dispatchCommand,
+  dispatchCommandAndAwait,
+  publish,
+} from '../../shared/events/index.js';
 import {
   removeRTDBListenersForRoom,
   getUserRecentCallsRef,
@@ -23,11 +27,6 @@ import CallController from './call-controller.js';
 import { getPushNotifications } from '../push-notifications/index.js';
 import { ringtoneManager } from '../../shared/media/audio/ringtone-manager.js';
 import { callIndicators } from '../../shared/components/ui/utils/call-indicators.js';
-import {
-  showIncomingCallUI,
-  resolveIncomingCallUI,
-  dismissActiveIncomingCallUI,
-} from './components/incoming-call.js';
 import { dismissActiveConfirmDialog } from '../../shared/components/base/confirm-dialog.js';
 import { isRoomCallFresh } from './WIP-isRoomCallFresh.js';
 
@@ -85,13 +84,74 @@ const incomingListenerCleanups = new Map();
 // Map<roomId, { cancel: () => void, answer: () => void, resolve: (result: boolean|string) => void }>
 const incomingCallPromiseCleanups = new Map();
 
+// Map of roomId -> resolver used to dismiss/settle the active dialog
+const activeIncomingCallResolvers = new Map();
+
+function showIncomingCallDialog(roomId, callerName, onAccept, onReject) {
+  if (!roomId || activeIncomingCallResolvers.has(roomId)) return;
+
+  const cleanup = () => {
+    activeIncomingCallResolvers.delete(roomId);
+    dispatchCommand('cmd:dialog:incoming-call:close', { roomId });
+  };
+
+  const resolver = (result) => {
+    try {
+      cleanup();
+    } catch (_) {}
+    return result;
+  };
+
+  activeIncomingCallResolvers.set(roomId, resolver);
+
+  dispatchCommandAndAwait('cmd:dialog:incoming-call:open', {
+    roomId,
+    callerName,
+    onAccept: async () => {
+      try {
+        if (onAccept) await onAccept();
+      } finally {
+        cleanup();
+      }
+    },
+    onDecline: async () => {
+      try {
+        if (onReject) await onReject();
+      } finally {
+        cleanup();
+      }
+    },
+  }).catch((error) => {
+    console.warn(
+      '[room-listeners] failed to open incoming call dialog:',
+      error,
+    );
+  });
+}
+
+function resolveIncomingCallDialog(roomId, result) {
+  const resolver = activeIncomingCallResolvers.get(roomId);
+  if (resolver) {
+    resolver(result);
+  }
+}
+
+function dismissIncomingCallDialog(roomId) {
+  if (roomId && activeIncomingCallResolvers.has(roomId)) {
+    activeIncomingCallResolvers.delete(roomId);
+    dispatchCommand('cmd:dialog:incoming-call:close', { roomId });
+    return true;
+  }
+  return false;
+}
+
 function settleIncomingCallWait(roomId, result = 'listener_removed') {
   const pending = incomingCallPromiseCleanups.get(roomId);
   if (!pending) return false;
 
   pending.cancel?.();
   pending.answer?.();
-  resolveIncomingCallUI(roomId, result);
+  resolveIncomingCallDialog(roomId, result);
   pending.resolve?.(result);
   incomingCallPromiseCleanups.delete(roomId);
   return true;
@@ -582,7 +642,7 @@ export function listenForIncomingOnRoom(roomId) {
           const cancelCleanup = RoomService.onCallCancelled(roomId, (snap) => {
             if (snap.exists()) {
               devDebug(`[LISTENER] Caller cancelled call for room ${roomId}`);
-              resolveIncomingCallUI(roomId, 'caller_cancelled');
+              resolveIncomingCallDialog(roomId, 'caller_cancelled');
               resolve('caller_cancelled');
             }
           });
@@ -590,13 +650,14 @@ export function listenForIncomingOnRoom(roomId) {
           // Set up listener for answer (call answered elsewhere)
           const answerCleanup = RoomService.onAnswerAdded(roomId, () => {
             devDebug(`[LISTENER] Call answered elsewhere for room ${roomId}`);
-            resolveIncomingCallUI(roomId, 'answered_elsewhere');
+            resolveIncomingCallDialog(roomId, 'answered_elsewhere');
             resolve('answered_elsewhere');
           });
 
           // Show UI with callbacks for accept/reject
-          showIncomingCallUI(
-            { roomId, from: callerName },
+          showIncomingCallDialog(
+            roomId,
+            callerName,
             () => resolve(true), // onAccept
             () => resolve(false), // onReject
           );
@@ -733,7 +794,7 @@ export function listenForIncomingOnRoom(roomId) {
 
       try {
         // Dismiss incoming call UI for this room
-        dismissActiveIncomingCallUI(roomId);
+        dismissIncomingCallDialog(roomId);
 
         // Dismiss legacy confirmDialog (for testing/rollback)
         dismissActiveConfirmDialog();

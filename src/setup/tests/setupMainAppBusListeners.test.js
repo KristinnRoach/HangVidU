@@ -6,7 +6,6 @@ const mocks = vi.hoisted(() => {
   return {
     handlers,
     events: {
-      dispatchCommandAndAwait: vi.fn(() => Promise.resolve(true)),
       handleCommand: vi.fn((eventName, handler) => {
         handlers.set(eventName, handler);
         return () => handlers.delete(eventName);
@@ -32,7 +31,6 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock('../../shared/events/index.js', () => ({
-  dispatchCommandAndAwait: mocks.events.dispatchCommandAndAwait,
   handleCommand: mocks.events.handleCommand,
   subscribe: mocks.events.subscribe,
 }));
@@ -207,25 +205,5 @@ describe('setupMainAppBusListeners', () => {
     await handler?.();
 
     expect(mocks.setUserOffline).toHaveBeenCalled();
-  });
-
-  it('routes save contact prompts through the dialog command bus', async () => {
-    const { setupMainAppBusListeners } =
-      await import('../setupMainAppBusListeners.js');
-
-    await setupMainAppBusListeners();
-    const handler = mocks.handlers.get('cmd:contacts:contact:save-prompt');
-
-    await expect(
-      handler?.({ contactUserId: 'contact-1', roomId: 'room-123' }),
-    ).resolves.toBe(true);
-
-    expect(mocks.events.dispatchCommandAndAwait).toHaveBeenCalledWith(
-      'cmd:dialog:contact-save:prompt',
-      {
-        contactUserId: 'contact-1',
-        roomId: 'room-123',
-      },
-    );
   });
 });

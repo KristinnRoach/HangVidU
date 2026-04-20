@@ -4,7 +4,7 @@ import { getUserId, getUser } from '../../auth/index.js';
 import { getPushNotifications } from '../push-notifications/index.js';
 import { cleanupRemoteStream } from '../../shared/media/state.js';
 import { clearUrlParam } from '../../shared/utils/url.js';
-import { onOutgoingCallAnswered } from './components/outgoing-call.js';
+import { onOutgoingCallAnswered } from './outgoing-call-session.js';
 import { devDebug } from '../../shared/utils/dev/dev-utils.js';
 import { dispatchCommand, publish } from '../../shared/events/index.js';
 import { listenForIncomingOnRoom } from './room-listeners.js';
@@ -151,7 +151,7 @@ export function setupCallControllerEventWiring(options = {}) {
             .handleHangUp(partnerId, roomId)
             .then((result) => {
               if (result.action === 'prompt-save') {
-                dispatchCommand('cmd:contacts:contact:save-prompt', {
+                dispatchCommand('cmd:dialog:contact-save:prompt', {
                   contactUserId: partnerId,
                   roomId,
                   lobbyElement,

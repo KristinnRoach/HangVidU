@@ -1,25 +1,19 @@
-// calling-ui.js - Calling modal with cancel and auto-timeout
-
 import {
   CALL_TIMEOUT_MS,
   setOutgoingCallState,
   clearOutgoingCallState,
-  // isOutgoingCallFresh,
-} from '../WIP-CallState-rtdb.js';
-import { devDebug } from '../../../shared/utils/dev/dev-utils.js';
-import { getDiagnosticLogger } from '../../../shared/utils/dev/diagnostic-logger.js';
-import RoomService from '../room.js';
-import { ringtoneManager } from '../../../shared/media/audio/ringtone-manager.js';
-import { getUserId } from '../../../auth/index.js';
-import { dispatchCommand } from '../../../shared/events/index.js';
+} from './WIP-CallState-rtdb.js';
+import { devDebug } from '../../shared/utils/dev/dev-utils.js';
+import { getDiagnosticLogger } from '../../shared/utils/dev/diagnostic-logger.js';
+import RoomService from './room.js';
+import { ringtoneManager } from '../../shared/media/audio/ringtone-manager.js';
+import { getUserId } from '../../auth/index.js';
+import { dispatchCommand } from '../../shared/events/index.js';
 
 let activeCallingUI = null;
 let timeoutId = null;
 let storedOnHide = null;
 
-/**
- * Show "Calling..." modal with cancel button and auto-timeout
- */
 export async function showOutgoingCallUI(
   roomId,
   contactNickName,
@@ -28,13 +22,9 @@ export async function showOutgoingCallUI(
   const diag = getDiagnosticLogger();
   const showTime = Date.now();
 
-  // Remove any existing calling UI first
   hideOutgoingCallingUI();
-
-  // Store onHide callback for hideCallingUI to call
   storedOnHide = onHide || null;
 
-  // Track outgoing call state in RTDB
   await setOutgoingCallState(roomId, contactNickName);
 
   const handleCancel = async () => {
@@ -44,16 +34,13 @@ export async function showOutgoingCallUI(
       duration: Date.now() - showTime,
     });
 
-    // Dismiss UI immediately for responsiveness
     ringtoneManager.stop();
     hideOutgoingCallingUI();
     clearOutgoingCallState().catch(() => {});
 
     if (onCancel) {
-      // Delegate call lifecycle cleanup to caller (CallController.hangUp)
       onCancel('caller_cancelled');
     } else {
-      // Fallback: direct cleanup when no callback provided
       try {
         await Promise.all([
           RoomService.cancelCall(roomId, getUserId(), 'caller_cancelled'),
@@ -77,10 +64,8 @@ export async function showOutgoingCallUI(
   });
   activeCallingUI = { roomId };
 
-  // Start outgoing call ringtone
   ringtoneManager.playOutgoing({ audioOnly });
 
-  // Auto-timeout after 30 seconds
   timeoutId = setTimeout(async () => {
     diag.logCallingUILifecycle('TIMEOUT', roomId, {
       contactNickName,
@@ -89,16 +74,13 @@ export async function showOutgoingCallUI(
       timeoutMs: CALL_TIMEOUT_MS,
     });
 
-    // Dismiss UI immediately for responsiveness
     ringtoneManager.stop();
     hideOutgoingCallingUI();
     clearOutgoingCallState().catch(() => {});
 
     if (onCancel) {
-      // Delegate call lifecycle cleanup to caller (CallController.hangUp)
       onCancel('auto_timeout');
     } else {
-      // Fallback: direct cleanup when no callback provided
       try {
         await Promise.all([
           RoomService.cancelCall(roomId, getUserId(), 'auto_timeout'),
@@ -115,25 +97,19 @@ export async function showOutgoingCallUI(
   }, CALL_TIMEOUT_MS);
 }
 
-/**
- * Hide and clean up calling UI
- */
 export function hideOutgoingCallingUI() {
-  // Stop ringtone when hiding UI
   ringtoneManager.stop();
 
-  // Let the lifecycle layer handle view state reset
   if (storedOnHide) {
     try {
       storedOnHide();
     } catch (e) {
-      console.warn('[calling-ui] onHide callback threw:', e);
+      console.warn('[outgoing-call-session] onHide callback threw:', e);
     }
     storedOnHide = null;
   }
 
   if (activeCallingUI) {
-    // Try to extract roomId from the UI for logging
     const roomId = activeCallingUI.roomId || 'unknown';
 
     getDiagnosticLogger().logCallingUILifecycle('HIDE', roomId, {
@@ -156,9 +132,6 @@ export function hideOutgoingCallingUI() {
   }
 }
 
-/**
- * Hide calling UI and clear outgoing state when call is answered
- */
 export async function onOutgoingCallAnswered() {
   if (activeCallingUI) {
     const roomId = activeCallingUI.roomId || 'unknown';
@@ -172,9 +145,6 @@ export async function onOutgoingCallAnswered() {
   hideOutgoingCallingUI();
 }
 
-/**
- * Hide calling UI and clear outgoing state when call is rejected by callee
- */
 export async function onOutgoingCallRejected(reason = 'user_rejected') {
   const diag = getDiagnosticLogger();
   const roomId = activeCallingUI?.roomId || 'unknown';

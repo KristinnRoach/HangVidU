@@ -1,6 +1,9 @@
 // Canonical 4-part event name contract:
 // <kind>:<domain>:<entity>:<action>
 // kind: cmd | evt
+// domain semantics:
+// - cmd: target domain that owns the handler
+// - evt: domain the fact is about (not necessarily the publisher)
 export const EVENT_NAME_REGEX =
   /^(cmd|evt):[a-z][a-z0-9-]*:[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/;
 
