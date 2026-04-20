@@ -137,7 +137,7 @@ export function hideOutgoingCallingUI() {
 
   if (activeCallingUI) {
     // Try to extract roomId from the UI for logging
-    const roomId = activeCallingUI.dataset?.roomId || 'unknown';
+    const roomId = activeCallingUI.roomId || 'unknown';
 
     getDiagnosticLogger().logCallingUILifecycle('HIDE', roomId, {
       reason: 'hide_called',
@@ -162,7 +162,7 @@ export function hideOutgoingCallingUI() {
  */
 export async function onOutgoingCallAnswered() {
   if (activeCallingUI) {
-    const roomId = activeCallingUI.dataset?.roomId || 'unknown';
+    const roomId = activeCallingUI.roomId || 'unknown';
     getDiagnosticLogger().logCallingUILifecycle('ANSWERED', roomId, {
       reason: 'call_answered',
       timestamp: Date.now(),
@@ -178,7 +178,7 @@ export async function onOutgoingCallAnswered() {
  */
 export async function onOutgoingCallRejected(reason = 'user_rejected') {
   const diag = getDiagnosticLogger();
-  const roomId = activeCallingUI?.dataset?.roomId || 'unknown';
+  const roomId = activeCallingUI?.roomId || 'unknown';
 
   diag.logCallingUILifecycle('REJECTED', roomId, {
     reason,
