@@ -39,12 +39,9 @@ import { listenForIncomingOnRoom } from './room-listeners.js';
  * UI event handling stays in `bind-call-ui.js`; this module handles contacts,
  * messaging, push notifications, and room listener re-attachment.
  *
- * @param {{ lobbyElement?: HTMLElement|null }} [options]
  * @returns {void}
  */
 export function setupCallControllerEventWiring(options = {}) {
-  const { lobbyElement } = options;
-
   // Business logic for evt:call:participant:joined (UI handled in bind-call-ui.js)
   CallController.on('evt:call:participant:joined', ({ memberId, roomId }) => {
     console.debug('CallController evt:call:participant:joined', {
@@ -135,9 +132,8 @@ export function setupCallControllerEventWiring(options = {}) {
       cleanupRemoteStream();
       clearUrlParam();
 
-      // TODO: render contacts list in reaction to interaction update via events
+      // TODO: Check: do we need to render contacts list in reaction to interaction update via events ?
       // Re-render contacts list so sort order reflects updated lastInteractionAt
-      // mountContactsList(lobbyElement).catch(() => {});
 
       // Re-attach incoming listener so the next call on this room is detected
       if (roomId && reason !== 'page_unload') {
@@ -154,7 +150,6 @@ export function setupCallControllerEventWiring(options = {}) {
                 dispatchCommand('cmd:dialog:contact-save:prompt', {
                   contactUserId: partnerId,
                   roomId,
-                  lobbyElement,
                 }).catch((e) => {
                   console.warn('Failed to save contact prompt:', e);
                 });

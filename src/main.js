@@ -18,10 +18,7 @@ import {
   getConversationId,
   getAllContactsSorted,
 } from './features/contacts/index.js';
-import {
-  mountApp,
-  cleanupApp,
-} from './mount-app.jsx';
+import { mountApp, cleanupApp } from './mount-app.jsx';
 
 import {
   localVideoEl,
@@ -702,7 +699,7 @@ window.addEventListener('pagehide', async () => {
 });
 
 // CallController business-logic handlers (evt:call:* lifecycle)
-setupCallControllerEventWiring({ lobbyElement: lobbyDiv });
+setupCallControllerEventWiring({});
 
 // ============================================================================
 // CLEANUP
