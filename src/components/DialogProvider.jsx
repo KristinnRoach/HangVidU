@@ -124,6 +124,7 @@ function createDialogApi() {
     showIncomingCallDialog(props = {}) {
       return replaceDialog({
         type: 'incoming-call',
+        onCancel: props.onDecline,
         props,
       });
     },

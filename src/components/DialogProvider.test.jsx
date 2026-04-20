@@ -116,4 +116,21 @@ describe('DialogProvider', () => {
     expect(document.body.textContent).toContain('Incoming Call Dialog:Alice');
     expect(document.body.textContent).not.toContain('Edit Contact Dialog');
   });
+
+  it('routes generic close through incoming-call decline', async () => {
+    render(() => <DialogProvider />);
+
+    const onDecline = vi.fn();
+
+    await dispatchCommandAndAwait('cmd:dialog:incoming-call:open', {
+      roomId: 'room-1',
+      callerName: 'Alice',
+      onDecline,
+    });
+
+    dispatchCommand('cmd:dialog:modal:close');
+
+    expect(onDecline).toHaveBeenCalledTimes(1);
+    expect(document.body.textContent).not.toContain('Incoming Call Dialog:Alice');
+  });
 });
