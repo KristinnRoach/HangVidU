@@ -154,7 +154,8 @@ export function showEnableNotificationsPrompt() {
         }
       },
       handleDismiss: () => {
-        inAppNotificationManager.remove(NOTIFICATION_ID);
+        inAppNotificationManager.toggleList();
+        // inAppNotificationManager.remove(NOTIFICATION_ID);
       },
     },
   });
