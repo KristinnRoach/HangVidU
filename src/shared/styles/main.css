@@ -25,6 +25,7 @@
 @import './components/notifications.css';
 @import './components/toast.css';
 @import './components/dialog/incoming-call.css';
+@import './components/dialog/call-ui.css';
 @import './components/dialog/image-preview-dialog.css';
 @import './components/dialog/confirm-dialog.css';
 @import './components/dialog/edit-contact-dialog.css';
