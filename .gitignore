@@ -123,3 +123,6 @@ scripts/migrate-usersbyemail-display-name-to-user-name.js
 
 
 .worktrees/
+
+
+docs/WIP_Architecture/references/solidjs.llms.txt
