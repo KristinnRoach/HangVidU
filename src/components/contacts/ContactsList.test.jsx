@@ -21,8 +21,19 @@ vi.mock('../../features/contacts/index.js', () => ({
 vi.mock('../../shared/events/index.js', () => ({
   dispatchCommand: mocks.dispatchCommand,
   subscribe: (eventName, handler) => {
-    mocks.subscriptions.set(eventName, handler);
-    return () => mocks.subscriptions.delete(eventName);
+    if (!mocks.subscriptions.has(eventName)) {
+      mocks.subscriptions.set(eventName, []);
+    }
+    const handlers = mocks.subscriptions.get(eventName);
+    handlers.push(handler);
+    return () => {
+      const arr = mocks.subscriptions.get(eventName);
+      if (arr) {
+        const idx = arr.indexOf(handler);
+        if (idx !== -1) arr.splice(idx, 1);
+        if (arr.length === 0) mocks.subscriptions.delete(eventName);
+      }
+    };
   },
 }));
 
@@ -67,15 +78,11 @@ describe('SolidJS ContactsList PoC', () => {
   });
 
   it('renders a row per contact from hydrated state', async () => {
-    const ContactsListModule = await import(
-      './ContactsList.jsx'
-    );
+    const ContactsListModule = await import('./ContactsList.jsx');
     const { setupAppRoot } = await import('../../setup/setupAppRoot.js');
 
     const teardown = setupAppRoot();
-    const { container, unmount } = render(() => (
-      <ContactsListModule.default />
-    ));
+    const { container, unmount } = render(() => <ContactsListModule.default />);
 
     const rows = container.querySelectorAll('.contact-entry');
     expect(rows.length).toBe(2);
@@ -91,15 +98,11 @@ describe('SolidJS ContactsList PoC', () => {
   // `expect(contacts[0].unreadCount).toBe(3)`). Likely a test-environment
   // interaction with Solid's scheduler — not a regression in production code.
   it.skip('reflects unread count via the messaging event bridge', async () => {
-    const ContactsListModule = await import(
-      './ContactsList.jsx'
-    );
+    const ContactsListModule = await import('./ContactsList.jsx');
     const { setupAppRoot } = await import('../../setup/setupAppRoot.js');
 
     const teardown = setupAppRoot();
-    const { container, unmount } = render(() => (
-      <ContactsListModule.default />
-    ));
+    const { container, unmount } = render(() => <ContactsListModule.default />);
 
     expect(mocks.dispatchCommand).toHaveBeenCalledWith(
       'cmd:messaging:conversation:unread-count-listen',
@@ -128,15 +131,11 @@ describe('SolidJS ContactsList PoC', () => {
   });
 
   it('dispatches cmd:call:outgoing:initiate on call button click', async () => {
-    const ContactsListModule = await import(
-      './ContactsList.jsx'
-    );
+    const ContactsListModule = await import('./ContactsList.jsx');
     const { setupAppRoot } = await import('../../setup/setupAppRoot.js');
 
     const teardown = setupAppRoot();
-    const { container, unmount } = render(() => (
-      <ContactsListModule.default />
-    ));
+    const { container, unmount } = render(() => <ContactsListModule.default />);
 
     const firstCall = container.querySelector('.contact-call-btn');
     firstCall?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
