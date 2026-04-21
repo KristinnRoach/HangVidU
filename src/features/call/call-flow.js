@@ -14,18 +14,9 @@ import { devDebug } from '../../shared/utils/dev/dev-utils.js';
 import { showErrorToast } from '../../shared/components/toast.js';
 import { t } from '../../shared/i18n/index.js';
 
-import {
-  drainIceCandidateQueue,
-  setupIceCandidates,
-  rtcConfig,
-  addLocalTracks,
-  createOffer,
-  createAnswer,
-  setRemoteDescription,
-  generateRoomId,
-} from '../../lib/webrtc/index.js';
+import { Peer, generateRoomId } from '../../lib/webrtc/index.js';
 import { setupConnectionStateHandlers } from './webrtc.js';
-import { createFirebaseIceTransport } from './signaling/index.js';
+import { createFirebaseCallSignaling } from './signaling/index.js';
 
 import RoomService from './room.js';
 
@@ -63,33 +54,34 @@ export async function createCall({
   targetRoomId = null,
   audioOnly = false,
 }) {
-  // ─────────────────────────────────────────────────────────────────────────
-  // 1. VALIDATE PREREQUISITES
-  // ─────────────────────────────────────────────────────────────────────────
   if (!localStream) {
     devDebug('Error: Camera not initialized');
     return { success: false };
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // 2. CREATE PEER CONNECTION
-  // ─────────────────────────────────────────────────────────────────────────
-  const pc = new RTCPeerConnection(rtcConfig);
   const role = 'initiator';
   const roomId = targetRoomId || generateRoomId();
   const userId = getUserId();
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // 3. SETUP CONNECTION COMPONENTS
-  // ─────────────────────────────────────────────────────────────────────────
+  // Write room metadata first; Peer will write the offer SDP via the adapter.
+  await RoomService.createRoomMetadata(userId, roomId, { audioOnly });
 
-  // 3a. Add local media tracks
-  const trackHealth = addLocalTracks(pc, localStream, { audioOnly });
-  if (trackHealth.unhealthyKinds.includes('audio')) {
-    showErrorToast(t('media.audio_disconnected'));
-  }
+  const signaling = createFirebaseCallSignaling(roomId, role);
+  const peer = new Peer({ role, signaling, localStream, audioOnly });
 
-  // 3b. Setup remote stream handler
+  // Attach before start(): Peer emits 'tracks' errors synchronously inside
+  // _initPc, so the listener must be live before the connection spins up.
+  peer.on('error', ({ error, phase }) => {
+    if (phase === 'tracks' && /audio/.test(String(error?.message))) {
+      showErrorToast(t('media.audio_disconnected'));
+    }
+  });
+
+  // peer.start() creates the RTCPeerConnection synchronously (in _initPc)
+  // before any await, so peer.pc is available immediately after the call.
+  const startPromise = peer.start();
+  const pc = peer.pc;
+
   const remoteStreamSuccess = setupRemoteStream(
     pc,
     remoteVideoEl,
@@ -98,40 +90,24 @@ export async function createCall({
   if (!remoteStreamSuccess) {
     devDebug('Error setting up remote stream');
     console.error('Error setting up remote stream');
-    pc.close();
+    peer.close();
     return { success: false };
   }
 
-  // 3c. Setup ICE candidate gathering and exchange
-  setupIceCandidates(pc, createFirebaseIceTransport(roomId, role));
-
-  // 3d. Setup connection state monitoring
   setupConnectionStateHandlers(pc);
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // 4. CREATE AND SAVE OFFER
-  // ─────────────────────────────────────────────────────────────────────────
-  const offer = await createOffer(pc);
-  await RoomService.createNewRoom(offer, userId, roomId, { audioOnly });
+  try {
+    await startPromise;
+  } catch (error) {
+    console.error('Failed to start peer as initiator:', error);
+    peer.close();
+    return { success: false };
+  }
 
   devDebug('Peer connection created as initiator', { roomId, userId });
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // 5. LISTEN FOR ANSWER FROM JOINER
-  // ─────────────────────────────────────────────────────────────────────────
-  // OLD: Moved to CallController.setupAnswerListener()
-  // Answer listener is now set up in CallController for proper tracking and cleanup
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // 6. SETUP ROOM AND SYNC
-  // ─────────────────────────────────────────────────────────────────────────
-
-  // Setup watch-together sync
   setupWatchSync(roomId, role, userId);
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // 7. RETURN SUCCESS WITH CONNECTION ARTIFACTS
-  // ─────────────────────────────────────────────────────────────────────────
   const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
   const roomLink = `${APP_ORIGIN}${window.location.pathname}?room=${roomId}`;
 
@@ -140,6 +116,7 @@ export async function createCall({
   return {
     success: true,
     pc,
+    peer,
     roomId,
     roomLink,
     role,
@@ -179,10 +156,6 @@ export async function answerCall({
   setupWatchSync,
   audioOnly = false,
 }) {
-  // ─────────────────────────────────────────────────────────────────────────
-  // 1. VALIDATE PREREQUISITES
-  // ─────────────────────────────────────────────────────────────────────────
-
   devDebug('answerCall', { roomId });
 
   if (!localStream) {
@@ -195,7 +168,6 @@ export async function answerCall({
     return { success: false };
   }
 
-  // Check room status
   const roomStatus = await RoomService.checkRoomStatus(roomId);
   if (!roomStatus.exists) {
     devDebug('Error: Invalid room link');
@@ -206,39 +178,24 @@ export async function answerCall({
     return { success: false };
   }
 
-  // Get offer from room
-  let roomData;
-  try {
-    roomData = await RoomService.getRoomData(roomId);
-  } catch (error) {
-    devDebug('Error: ' + error.message);
-    return { success: false };
-  }
-
-  const offer = roomData.offer;
-  if (!offer) {
-    devDebug('Error: No offer found');
-    return { success: false };
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // 2. CREATE PEER CONNECTION
-  // ─────────────────────────────────────────────────────────────────────────
-  const pc = new RTCPeerConnection(rtcConfig);
   const role = 'joiner';
   const userId = getUserId();
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // 3. SETUP CONNECTION COMPONENTS
-  // ─────────────────────────────────────────────────────────────────────────
+  const signaling = createFirebaseCallSignaling(roomId, role);
+  const peer = new Peer({ role, signaling, localStream, audioOnly });
 
-  // 3a. Add local media tracks
-  const trackHealth = addLocalTracks(pc, localStream, { audioOnly });
-  if (trackHealth.unhealthyKinds.includes('audio')) {
-    showErrorToast(t('media.audio_disconnected'));
-  }
+  peer.on('error', ({ error, phase }) => {
+    if (phase === 'tracks' && /audio/.test(String(error?.message))) {
+      showErrorToast(t('media.audio_disconnected'));
+    }
+  });
 
-  // 3b. Setup remote stream handler
+  // peer.start() creates the RTCPeerConnection synchronously (in _initPc)
+  // before any await; the offer already in RTDB fires immediately via the
+  // adapter's value listener.
+  const startPromise = peer.start();
+  const pc = peer.pc;
+
   const remoteStreamSuccess = setupRemoteStream(
     pc,
     remoteVideoEl,
@@ -247,68 +204,31 @@ export async function answerCall({
   if (!remoteStreamSuccess) {
     devDebug('Error setting up remote stream');
     console.error('Error setting up remote stream for joiner');
-    pc.close();
+    peer.close();
     return { success: false };
   }
 
-  // 3c. Setup ICE candidate gathering and exchange
-  setupIceCandidates(pc, createFirebaseIceTransport(roomId, role));
-
-  // 3d. Setup connection state monitoring
   setupConnectionStateHandlers(pc);
 
   devDebug('Peer connection created as joiner', { roomId });
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // 4. EXCHANGE SDP: SET OFFER, CREATE ANSWER
-  // ─────────────────────────────────────────────────────────────────────────
-
-  // 4a. Set remote offer
-  await setRemoteDescription(pc, offer, drainIceCandidateQueue);
-
-  // 4b. Create and save answer
-  const answer = await createAnswer(pc);
   try {
-    await RoomService.saveAnswer(roomId, answer);
-  } catch (err) {
-    console.error('Failed to save answer to Firebase:', err);
-    devDebug('Failed to send answer to partner.');
-    pc.close();
+    await startPromise;
+  } catch (error) {
+    console.error('Failed to start peer as joiner:', error);
+    peer.close();
     return { success: false };
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // 5. JOIN ROOM AND SETUP SYNC
-  // ─────────────────────────────────────────────────────────────────────────
-
-  // 5a. Setup watch-together sync
   setupWatchSync(roomId, role, userId);
-
-  // 5b. Join as member
   await RoomService.joinRoom(roomId, userId);
 
-  // OLD: Moved to CallController
-  // 5c. Setup member join/leave listeners
-  // RoomService.onMemberJoined(roomId, (snapshot) => {
-  //   if (snapshot.key !== userId) {
-  //     onMemberJoined(snapshot.key, roomId);
-  //   }
-  // });
-
-  // RoomService.onMemberLeft(roomId, (snapshot) => {
-  //   if (snapshot.key !== userId && pc?.connectionState === 'connected') {
-  //     onMemberLeft(snapshot.key);
-  //   }
-  // });
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // 6. RETURN SUCCESS WITH CONNECTION ARTIFACTS
-  // ─────────────────────────────────────────────────────────────────────────
   devDebug('Connecting...');
 
   return {
     success: true,
     pc,
+    peer,
     roomId,
     role,
   };

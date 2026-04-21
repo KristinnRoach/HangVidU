@@ -24,10 +24,6 @@ import { FileTransferController } from '../file-transfer/file-transfer-controlle
 import { StreamingFileWriter } from '../file-transfer/streaming-file-writer.js';
 import { cleanupWatchSync } from '../watch/watch-sync.js';
 import { cleanupLocalStream } from '../../shared/media/state.js';
-import {
-  setRemoteDescription,
-  drainIceCandidateQueue,
-} from '../../lib/webrtc/index.js';
 import { resetLocalStreamInitFlag } from '../../shared/media/local-stream-init-state.js';
 import { publish, subscribe } from '../../shared/events/index.js';
 import { onOutgoingCallRejected } from './outgoing-call-session.js';
@@ -223,52 +219,6 @@ class CallController {
     this.listeners.get('cancellation').push({
       ref: cancellationRef,
       callback: onCancellation,
-      roomId,
-    });
-  }
-
-  /**
-   * Setup answer listener for call initiation.
-   * Tracks listener for cleanup and handles SDP answer from joiner.
-   * @param {string} roomId - Room ID to listen for answer
-   * @param {RTCPeerConnection} pc - Peer connection to set remote description on
-   * @param {Function} drainIceCandidateQueue - Function to drain queued ICE candidates
-   */
-  setupAnswerListener(roomId, pc, drainIceCandidateQueue) {
-    if (!roomId || !pc) return;
-
-    const answerRef = ref(rtdb, `rooms/${roomId}/answer`);
-    let answerApplied = false;
-    const answerCallback = async (snapshot) => {
-      if (answerApplied) return;
-
-      const answer = snapshot.val();
-      if (answer) {
-        const applied = await setRemoteDescription(
-          pc,
-          answer,
-          drainIceCandidateQueue,
-        );
-
-        // Detach after first successful answer apply to prevent re-processing
-        // if the room answer node changes again.
-        if (applied) {
-          answerApplied = true;
-          off(answerRef, 'value', answerCallback);
-        }
-      }
-    };
-
-    // Attach listener
-    onDataChange(answerRef, answerCallback, roomId);
-
-    // Track listener for cleanup
-    if (!this.listeners.has('answer')) {
-      this.listeners.set('answer', []);
-    }
-    this.listeners.get('answer').push({
-      ref: answerRef,
-      callback: answerCallback,
       roomId,
     });
   }
@@ -495,9 +445,6 @@ class CallController {
           }
         });
       }
-
-      // Setup answer listener (only for initiator) - must be set up before other listeners
-      this.setupAnswerListener(this.roomId, this.pc, drainIceCandidateQueue);
 
       // Setup cancellation listener (centralized in CallController)
       this.setupCancellationListener(this.roomId);

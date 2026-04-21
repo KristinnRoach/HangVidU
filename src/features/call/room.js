@@ -71,6 +71,50 @@ class RoomService {
   }
 
   /**
+   * Create an empty room with metadata but no offer SDP. Used when the
+   * offer will be written separately by the signaling adapter (Peer flow).
+   */
+  async createRoomMetadata(userId, roomId, { audioOnly = false } = {}) {
+    const startTime = Date.now();
+
+    getDiagnosticLogger().log('ROOM', 'CREATE_METADATA_START', {
+      roomId,
+      userId,
+      audioOnly,
+      timestamp: startTime,
+    });
+
+    const roomRef = getRoomRef(roomId);
+
+    try {
+      await set(roomRef, {
+        createdAt: Date.now(),
+        createdBy: userId,
+        audioOnly,
+      });
+
+      getDiagnosticLogger().logFirebaseOperation(
+        'create_room_metadata',
+        true,
+        null,
+        { roomId, userId, duration: Date.now() - startTime },
+      );
+
+      await this.joinRoom(roomId, userId);
+
+      return roomId;
+    } catch (error) {
+      getDiagnosticLogger().logFirebaseOperation(
+        'create_room_metadata',
+        false,
+        error,
+        { roomId, userId, duration: Date.now() - startTime },
+      );
+      throw error;
+    }
+  }
+
+  /**
    * Check if room exists and has active members
    */
   async checkRoomStatus(roomId) {
