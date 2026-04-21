@@ -117,13 +117,16 @@ export function joinDataChannel(signaling, options = {}) {
       };
     });
 
-    dataChannelTimer = setTimeout(() => {
-      rejectDataChannel(
-        new Error(
-          `DataChannel: ondatachannel did not fire within ${dataChannelTimeoutMs}ms`,
-        ),
-      );
-    }, dataChannelTimeoutMs);
+    const armDataChannelTimeout = () => {
+      if (dataChannelTimer || dataChannelSettled) return;
+      dataChannelTimer = setTimeout(() => {
+        rejectDataChannel(
+          new Error(
+            `DataChannel: ondatachannel did not fire within ${dataChannelTimeoutMs}ms`,
+          ),
+        );
+      }, dataChannelTimeoutMs);
+    };
 
     pc.ondatachannel = (event) => {
       log('[DataChannel] DataChannel received (joiner)', {
@@ -148,6 +151,7 @@ export function joinDataChannel(signaling, options = {}) {
         await signaling.sendAnswer({ type: answer.type, sdp: answer.sdp });
         log('[DataChannel] Joined (joiner)');
 
+        armDataChannelTimeout();
         const dataChannel = await dataChannelReady;
 
         if (monitorRtt) {

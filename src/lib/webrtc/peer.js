@@ -84,6 +84,7 @@ export class Peer extends EventTarget {
     this._started = false;
     this._startPromise = null;
     this._closed = false;
+    this._listenerMap = new Map();
   }
 
   // ─── Public API ───────────────────────────────────────────────────────
@@ -157,7 +158,7 @@ export class Peer extends EventTarget {
     try {
       this._pc?.close();
     } catch (err) {
-      console.error('[Peer] Error closing peer connection:', err);
+      log('[Peer] Error closing peer connection:', err);
     }
 
     this._setState(PEER_STATES.CLOSED);
@@ -172,8 +173,23 @@ export class Peer extends EventTarget {
    */
   on(type, callback) {
     const handler = (event) => callback(event.detail, event);
+    if (!this._listenerMap.has(type)) {
+      this._listenerMap.set(type, new Map());
+    }
+    const callbacks = this._listenerMap.get(type);
+    if (!callbacks.has(callback)) {
+      callbacks.set(callback, new Set());
+    }
+    callbacks.get(callback).add(handler);
     this.addEventListener(type, handler);
-    return () => this.removeEventListener(type, handler);
+    return () => {
+      this.removeEventListener(type, handler);
+      const handlers = this._listenerMap.get(type)?.get(callback);
+      handlers?.delete(handler);
+      if (handlers?.size === 0) {
+        this._listenerMap.get(type)?.delete(callback);
+      }
+    };
   }
 
   /**
@@ -198,6 +214,14 @@ export class Peer extends EventTarget {
    * @param {Function} callback
    */
   off(type, callback) {
+    const handlers = this._listenerMap.get(type)?.get(callback);
+    if (handlers) {
+      for (const handler of handlers) {
+        this.removeEventListener(type, handler);
+      }
+      this._listenerMap.get(type)?.delete(callback);
+      return;
+    }
     this.removeEventListener(type, callback);
   }
 

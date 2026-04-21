@@ -9,11 +9,19 @@ const ROOM_ID_LENGTH = 7;
  * @returns {string} 7-char lowercase base36 ID.
  */
 export function generateRoomId() {
-  const bytes = new Uint8Array(ROOM_ID_LENGTH);
-  globalThis.crypto.getRandomValues(bytes);
   let out = '';
-  for (let i = 0; i < ROOM_ID_LENGTH; i++) {
-    out += ROOM_ID_ALPHABET[bytes[i] % ROOM_ID_ALPHABET.length];
+  const alphabetLen = ROOM_ID_ALPHABET.length;
+  const maxUnbiased = Math.floor(256 / alphabetLen) * alphabetLen;
+  const bytes = new Uint8Array(ROOM_ID_LENGTH * 2);
+
+  while (out.length < ROOM_ID_LENGTH) {
+    globalThis.crypto.getRandomValues(bytes);
+    for (let i = 0; i < bytes.length && out.length < ROOM_ID_LENGTH; i++) {
+      const byte = bytes[i];
+      if (byte < maxUnbiased) {
+        out += ROOM_ID_ALPHABET[byte % alphabetLen];
+      }
+    }
   }
   return out;
 }

@@ -279,6 +279,19 @@ describe('Peer', () => {
       expect(handler).not.toHaveBeenCalled();
     });
 
+    it('off() removes a listener added with on()', () => {
+      const { a } = createLoopbackPair();
+      const peer = new Peer({ role: 'initiator', signaling: a });
+      peers = [peer];
+
+      const handler = vi.fn();
+      peer.on('statechange', handler);
+      peer.off('statechange', handler);
+
+      peer.dispatchEvent(new CustomEvent('statechange', { detail: {} }));
+      expect(handler).not.toHaveBeenCalled();
+    });
+
     it('once() auto-unsubscribes after the first fire', () => {
       const { a } = createLoopbackPair();
       const peer = new Peer({ role: 'initiator', signaling: a });

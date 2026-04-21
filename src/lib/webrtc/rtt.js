@@ -22,7 +22,11 @@ export async function getRTT(pc) {
       }
     }
   } catch (e) {
-    log('[RTTMonitor] Failed to get RTT:', e.message);
+    log(
+      '[RTTMonitor] Failed to get RTT:',
+      e instanceof Error ? e.message : String(e),
+      e,
+    );
   }
   return null;
 }
