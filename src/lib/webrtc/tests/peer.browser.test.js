@@ -214,12 +214,37 @@ describe('Peer', () => {
 
       const startPromise = peer.start();
       peer.close();
-      await expect(startPromise).rejects.toThrow(startError);
+      await expect(startPromise).rejects.toThrow(/closed before start/);
 
       expect(onError).toHaveBeenCalledWith(
-        { error: startError, phase: 'start' },
+        { error: expect.any(Error), phase: 'start' },
         expect.any(CustomEvent),
       );
+      expect(onError.mock.calls[0][0].error.message).toMatch(
+        /closed before start/,
+      );
+      expect(peer.state).toBe(PEER_STATES.CLOSED);
+    });
+
+    it('rejects and skips startup when close() runs during connecting statechange', async () => {
+      const { a } = createLoopbackPair();
+      const peer = new Peer({
+        role: 'initiator',
+        signaling: a,
+        dataChannel: true,
+      });
+      peers = [peer];
+      peer._startInitiator = vi.fn();
+      peer.on('statechange', ({ state }) => {
+        if (state === PEER_STATES.CONNECTING) {
+          peer.close();
+        }
+      });
+
+      await expect(peer.start()).rejects.toThrow(/closed before start/);
+
+      expect(peer._startInitiator).not.toHaveBeenCalled();
+      expect(peer._pendingStartReject).toBeNull();
       expect(peer.state).toBe(PEER_STATES.CLOSED);
     });
   });
@@ -333,6 +358,91 @@ describe('Peer', () => {
 
       await expect(startPromise).rejects.toThrow(/closed before start/);
       expect(joiner.state).toBe(PEER_STATES.CLOSED);
+    });
+
+    it('latches the first incoming offer before async answer work finishes', async () => {
+      const OriginalRTCPeerConnection = globalThis.RTCPeerConnection;
+      const OriginalRTCSessionDescription = globalThis.RTCSessionDescription;
+      const remoteDescriptionResolvers = [];
+      let remoteDescriptionCount = 0;
+      let offerHandler;
+
+      class FakePeerConnection extends EventTarget {
+        constructor() {
+          super();
+          this.signalingState = 'stable';
+          this.remoteDescription = null;
+          this.localDescription = null;
+        }
+
+        setRemoteDescription(description) {
+          remoteDescriptionCount += 1;
+          return new Promise((resolve) => {
+            remoteDescriptionResolvers.push(() => {
+              this.remoteDescription = description;
+              this.signalingState = 'have-remote-offer';
+              resolve();
+            });
+          });
+        }
+
+        createAnswer() {
+          return Promise.resolve({ type: 'answer', sdp: 'answer-sdp' });
+        }
+
+        setLocalDescription(description) {
+          this.localDescription = description;
+          this.signalingState = 'stable';
+          return Promise.resolve();
+        }
+
+        addIceCandidate() {
+          return Promise.resolve();
+        }
+
+        close() {
+          this.signalingState = 'closed';
+        }
+      }
+
+      globalThis.RTCPeerConnection = FakePeerConnection;
+      globalThis.RTCSessionDescription = function RTCSessionDescription(init) {
+        return init;
+      };
+
+      try {
+        const sendAnswer = vi.fn(() => Promise.resolve());
+        const joiner = new Peer({
+          role: 'joiner',
+          signaling: {
+            sendOffer: vi.fn(),
+            sendAnswer,
+            onOffer: (callback) => {
+              offerHandler = callback;
+            },
+            onAnswer: vi.fn(),
+            sendCandidate: vi.fn(),
+            onRemoteCandidate: vi.fn(),
+          },
+        });
+        peers = [joiner];
+
+        const startPromise = joiner.start();
+        await Promise.resolve();
+
+        offerHandler({ type: 'offer', sdp: 'first-offer' });
+        offerHandler({ type: 'offer', sdp: 'second-offer' });
+        await Promise.resolve();
+
+        expect(remoteDescriptionCount).toBe(1);
+
+        remoteDescriptionResolvers[0]();
+        await expect(startPromise).resolves.toBeUndefined();
+        expect(sendAnswer).toHaveBeenCalledTimes(1);
+      } finally {
+        globalThis.RTCPeerConnection = OriginalRTCPeerConnection;
+        globalThis.RTCSessionDescription = OriginalRTCSessionDescription;
+      }
     });
   });
 });

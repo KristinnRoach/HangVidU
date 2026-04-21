@@ -24,6 +24,7 @@ const PEER_STATES = Object.freeze({
   FAILED: 'failed',
   CLOSED: 'closed',
 });
+const START_CLOSED_ERROR = 'Peer: closed before start completed';
 
 /**
  * Events dispatched on Peer (via EventTarget):
@@ -112,10 +113,30 @@ export class Peer extends EventTarget {
     if (this._state === PEER_STATES.CLOSED) return Promise.resolve();
     if (this._started) return this._startPromise;
     this._started = true;
-    this._setState(PEER_STATES.CONNECTING);
 
-    this._startPromise =
-      this._role === 'initiator' ? this._startInitiator() : this._startJoiner();
+    this._startPromise = new Promise((resolve, reject) => {
+      this._pendingStartReject = reject;
+      const rejectStart = reject;
+      const settle = (fn, value) => {
+        if (this._pendingStartReject === rejectStart) {
+          this._pendingStartReject = null;
+        }
+        fn(value);
+      };
+
+      (async () => {
+        this._setState(PEER_STATES.CONNECTING);
+        this._throwIfClosedDuringStart();
+        if (this._role === 'initiator') {
+          await this._startInitiator();
+        } else {
+          await this._startJoiner();
+        }
+      })().then(
+        (value) => settle(resolve, value),
+        (error) => settle(reject, error),
+      );
+    });
 
     // Don't leak rejections — caller can still await start() to see them.
     this._startPromise.catch((error) => {
@@ -167,7 +188,7 @@ export class Peer extends EventTarget {
     if (this._pendingStartReject) {
       const reject = this._pendingStartReject;
       this._pendingStartReject = null;
-      reject(new Error('Peer: closed before start completed'));
+      reject(new Error(START_CLOSED_ERROR));
     }
   }
 
@@ -255,11 +276,13 @@ export class Peer extends EventTarget {
 
   async _startInitiator() {
     this._initPc();
+    this._throwIfClosedDuringStart();
 
     if (this._wantsDataChannel) {
       const channel = this._pc.createDataChannel(this._dataChannelLabel);
       this._bindDataChannel(channel);
     }
+    this._throwIfClosedDuringStart();
 
     this._signaling.onAnswer(async (answer) => {
       if (!answer || this._closed) return;
@@ -277,28 +300,25 @@ export class Peer extends EventTarget {
     });
 
     const offer = await createOffer(this._pc);
+    this._throwIfClosedDuringStart();
     await this._signaling.sendOffer({ type: offer.type, sdp: offer.sdp });
+    this._throwIfClosedDuringStart();
     log('[Peer] Offer sent (initiator)');
   }
 
   async _startJoiner() {
     this._initPc();
 
-    if (this._closed) {
-      throw new Error('Peer: closed before start completed');
-    }
+    this._throwIfClosedDuringStart();
 
     let offerHandled = false;
     await new Promise((resolve, reject) => {
-      this._pendingStartReject = reject;
       const settle = (fn, value) => {
-        if (this._pendingStartReject === reject) {
-          this._pendingStartReject = null;
-        }
         fn(value);
       };
       this._signaling.onOffer(async (offer) => {
         if (offerHandled || !offer || this._closed) return;
+        offerHandled = true;
         try {
           const applied = await setRemoteDescription(
             this._pc,
@@ -313,7 +333,6 @@ export class Peer extends EventTarget {
             sdp: answer.sdp,
           });
           log('[Peer] Answer sent (joiner)');
-          offerHandled = true;
           settle(resolve);
         } catch (err) {
           this._emit('error', { error: err, phase: 'offer' });
@@ -321,6 +340,12 @@ export class Peer extends EventTarget {
         }
       });
     });
+  }
+
+  _throwIfClosedDuringStart() {
+    if (this._closed || this._state === PEER_STATES.CLOSED) {
+      throw new Error(START_CLOSED_ERROR);
+    }
   }
 
   // ─── Private: PC setup + event wiring ─────────────────────────────────
