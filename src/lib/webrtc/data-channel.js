@@ -50,7 +50,12 @@ export async function createDataChannel(signaling, options = {}) {
   signaling.onAnswer(async (answer) => {
     if (!answer) return;
     try {
-      await setRemoteDescription(pc, answer, drainIceCandidateQueue);
+      const applied = await setRemoteDescription(
+        pc,
+        answer,
+        drainIceCandidateQueue,
+      );
+      if (!applied) return;
       if (monitorRtt) {
         setTimeout(
           () => checkAndWarnRTT(pc, rttLabel),
@@ -85,14 +90,18 @@ export function joinDataChannel(signaling, options = {}) {
 
   return new Promise((resolve, reject) => {
     const pc = new RTCPeerConnection(rtcConfig);
-    let dataChannel = null;
     let resolved = false;
 
+    let resolveDataChannel;
+    const dataChannelReady = new Promise((r) => {
+      resolveDataChannel = r;
+    });
+
     pc.ondatachannel = (event) => {
-      dataChannel = event.channel;
       log('[DataChannel] DataChannel received (joiner)', {
-        label: dataChannel.label,
+        label: event.channel.label,
       });
+      resolveDataChannel(event.channel);
     };
 
     setupIceCandidates(pc, signaling);
@@ -110,6 +119,8 @@ export function joinDataChannel(signaling, options = {}) {
         const answer = await createAnswer(pc);
         await signaling.sendAnswer({ type: answer.type, sdp: answer.sdp });
         log('[DataChannel] Joined (joiner)');
+
+        const dataChannel = await dataChannelReady;
 
         if (monitorRtt) {
           setTimeout(

@@ -92,7 +92,9 @@ function setupRemoteCandidateListener(pc, transport) {
 
     if (pc.remoteDescription) {
       try {
-        pc.addIceCandidate(new RTCIceCandidate(candidate));
+        pc.addIceCandidate(new RTCIceCandidate(candidate)).catch((error) => {
+          log('Error adding ICE candidate:', error);
+        });
       } catch (error) {
         log('Error adding ICE candidate:', error);
       }

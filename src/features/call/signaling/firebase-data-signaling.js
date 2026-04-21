@@ -29,9 +29,14 @@ export function createFirebaseDataSignaling(roomId, role) {
     throw new Error('createFirebaseDataSignaling: roomId is required');
   }
 
+  const isInitiator = role === 'initiator';
   const ice = createFirebaseIceTransport(roomId, role, {
-    getLocalCandidatesRef: getDataOfferCandidatesRef,
-    getRemoteCandidatesRef: getDataAnswerCandidatesRef,
+    getLocalCandidatesRef: isInitiator
+      ? getDataOfferCandidatesRef
+      : getDataAnswerCandidatesRef,
+    getRemoteCandidatesRef: isInitiator
+      ? getDataAnswerCandidatesRef
+      : getDataOfferCandidatesRef,
   });
 
   return {
