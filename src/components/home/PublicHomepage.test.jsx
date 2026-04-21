@@ -24,16 +24,9 @@ vi.mock('../../shared/i18n/index.js', () => ({
     t: (key) =>
       ({
         'home.eyebrow': 'Public homepage',
-        'home.title': 'HangVidU keeps calls and shared watching simple',
-        'home.lede':
-          'HangVidU is a web app for peer-to-peer video calls, chat, and shared video watching with people you choose.',
-        'home.features': 'Features',
-        'home.feature.video': 'Start direct video calls with saved contacts.',
-        'home.feature.watch': 'Watch YouTube or shared videos together.',
-        'home.feature.contacts':
-          'Import Google Contacts to find people already on HangVidU.',
-        'home.google_use':
-          'Google access is requested only when you sign in, import contacts, or send selected Gmail invites.',
+        'home.title': 'HangVidU',
+        'home.description':
+          'HangVidU is a web app for peer-to-peer video calls, chat, and shared video watching. Google access is requested only for sign-in, contact import, and selected Gmail invites.',
         'home.links': 'Legal links',
         'nav.privacy': 'Privacy',
         'nav.terms': 'Terms',
@@ -58,10 +51,14 @@ describe('PublicHomepage', () => {
 
     expect(
       getByRole('heading', {
-        name: 'HangVidU keeps calls and shared watching simple',
+        name: 'HangVidU',
       }),
     ).toBeTruthy();
-    expect(getByText('Start direct video calls with saved contacts.')).toBeTruthy();
+    expect(
+      getByText(
+        'HangVidU is a web app for peer-to-peer video calls, chat, and shared video watching. Google access is requested only for sign-in, contact import, and selected Gmail invites.',
+      ),
+    ).toBeTruthy();
     expect(getByText('Privacy').getAttribute('href')).toBe(
       '/privacy-policy.html',
     );
@@ -80,7 +77,7 @@ describe('PublicHomepage', () => {
 
     expect(
       queryByRole('heading', {
-        name: 'HangVidU keeps calls and shared watching simple',
+        name: 'HangVidU',
       }),
     ).toBeNull();
   });

@@ -32,14 +32,8 @@
   "call.recent": "Recent Calls",
   "call.rejoin": "Rejoin {id}",
 
-  "home.eyebrow": "Public homepage",
-  "home.title": "HangVidU keeps calls and shared watching simple",
-  "home.lede": "HangVidU is a web app for peer-to-peer video calls, chat, shared video watching, and inviting people you choose.",
-  "home.features": "Features",
-  "home.feature.video": "Start direct video calls with saved contacts.",
-  "home.feature.watch": "Watch YouTube or shared videos together.",
-  "home.feature.contacts": "Import Google Contacts to find people who are already on HangVidU.",
-  "home.google_use": "Google access is requested only when you sign in, import contacts, or send selected Gmail invites. HangVidU does not read your inbox.",
+  "home.title": "HangVidU",
+  "home.description": "HangVidU is a web app for peer-to-peer video calls, chat, and shared video watching. Google access is requested only for sign-in, contact import, and selected Gmail invites.",
   "home.links": "Legal links",
 
   "contact.add.title": "Add Contacts",

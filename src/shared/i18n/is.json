@@ -32,14 +32,8 @@
   "call.recent": "Nýleg símtöl",
   "call.rejoin": "Gangast inn aftur í {id}",
 
-  "home.eyebrow": "Opin heimasíða",
-  "home.title": "HangVidU einfaldar símtöl og sameiginlegt áhorf",
-  "home.lede": "HangVidU er vefforrit fyrir jafningjamyndsímtöl, spjall, sameiginlegt myndbandsáhorf og boð til fólks sem þú velur.",
-  "home.features": "Eiginleikar",
-  "home.feature.video": "Hefja bein myndsímtöl við vistaða tengiliði.",
-  "home.feature.watch": "Horfa saman á YouTube eða deild myndbönd.",
-  "home.feature.contacts": "Flytja inn Google tengiliði til að finna fólk sem er þegar á HangVidU.",
-  "home.google_use": "Beðið er um Google aðgang aðeins þegar þú skráir þig inn, flytur inn tengiliði eða sendir valin Gmail boð. HangVidU les ekki pósthólfið þitt.",
+  "home.title": "HangVidU",
+  "home.description": "HangVidU er vefforrit fyrir jafningjamyndsímtöl, spjall og sameiginlegt myndbandsáhorf. Google aðgangur er aðeins notaður fyrir innskráningu, tengiliðainnflutning og valin Gmail boð.",
   "home.links": "Lagalegir tenglar",
 
   "contact.add.title": "Bæta við tengiliðum",
