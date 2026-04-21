@@ -2,6 +2,8 @@
 //
 // Round-trip-time diagnostics for WebRTC peer connections.
 
+import { log } from './logger.js';
+
 const RTT_WARNING_THRESHOLD_MS = 250;
 
 /**
@@ -20,7 +22,7 @@ export async function getRTT(pc) {
       }
     }
   } catch (e) {
-    console.warn('[RTTMonitor] Failed to get RTT:', e.message);
+    log('[RTTMonitor] Failed to get RTT:', e.message);
   }
   return null;
 }
@@ -41,11 +43,11 @@ export async function checkAndWarnRTT(
   if (rtt === null) return null;
 
   if (rtt > thresholdMs) {
-    console.warn(
+    log(
       `[RTTMonitor] ⚠️ ${label} has high latency. WebRTC peerConnection round trip time (RTT): ${rtt}ms. File transfers may be slow.`,
     );
   } else {
-    console.info(
+    log(
       `[RTTMonitor] ${label} WebRTC peerConnection round trip time (RTT): ${rtt}ms (OK)`,
     );
   }
