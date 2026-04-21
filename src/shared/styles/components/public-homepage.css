@@ -15,6 +15,9 @@
   margin: 0;
   font-size: 2rem;
   line-height: 1.1;
+
+  color: var(--color-primary);
+  text-decoration: underline var(--color-primary-subtle);
 }
 
 .public-homepage p {
@@ -32,8 +35,14 @@
 }
 
 .public-homepage__links a {
-  color: var(--color-accent-blue);
+  color: var(--color-primary);
   font-weight: 700;
+}
+
+.public-homepage__links a:hover {
+  text-decoration: underline var(--color-primary-hover);
+  text-shadow: none;
+  cursor: pointer;
 }
 
 @media (max-width: 720px) {
