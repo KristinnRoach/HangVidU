@@ -91,6 +91,9 @@ export async function createCall({
     devDebug('Error setting up remote stream');
     console.error('Error setting up remote stream');
     peer.close();
+    await RoomService.leaveRoom(userId, roomId).catch((cleanupError) => {
+      console.warn('Failed to rollback room creation', cleanupError);
+    });
     return { success: false };
   }
 
@@ -101,6 +104,9 @@ export async function createCall({
   } catch (error) {
     console.error('Failed to start peer as initiator:', error);
     peer.close();
+    await RoomService.leaveRoom(userId, roomId).catch((cleanupError) => {
+      console.warn('Failed to rollback room creation', cleanupError);
+    });
     return { success: false };
   }
 
