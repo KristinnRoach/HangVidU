@@ -93,35 +93,6 @@ export function removeRTDBListenersForRoom(roomId) {
 }
 
 /**
- * Remove all tracked listeners for a specific user in a room.
- * Use this to dispose a specific user's listeners (e.g., when disposing an old PeerConnection).
- * @param {string} userId - User ID whose listeners should be removed
- * @param {string} roomId - Room ID to scope removal
- */
-export function removeRTDBListenersForUser(userId, roomId) {
-  if (!userId || !roomId) return;
-
-  const shouldRemove = (l) => l.userId === userId && l.roomId === roomId;
-
-  const toRemove = listeners.filter(shouldRemove);
-  toRemove.forEach(({ ref: fbRef, type, callback }) => {
-    try {
-      off(fbRef, type, callback);
-    } catch (err) {
-      console.warn(
-        `Failed to remove listener for user ${userId} in room ${roomId}`,
-        err,
-      );
-    }
-  });
-
-  // Prune removed from tracking array
-  const remaining = listeners.filter((l) => !shouldRemove(l));
-  listeners.length = 0;
-  listeners.push(...remaining);
-}
-
-/**
  * Attach a listener for data changes and track it for cleanup.
  * @param {DatabaseReference} fbRef - Firebase database reference
  * @param {Function} callback - Listener callback

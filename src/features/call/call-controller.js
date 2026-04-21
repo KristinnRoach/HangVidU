@@ -28,10 +28,6 @@ import { resetLocalStreamInitFlag } from '../../shared/media/local-stream-init-s
 import { publish, subscribe } from '../../shared/events/index.js';
 import { onOutgoingCallRejected } from './outgoing-call-session.js';
 
-export function createCallController() {
-  return new CallController();
-}
-
 class CallController {
   constructor() {
     this.controllerEventUnsubscribers = new Map();

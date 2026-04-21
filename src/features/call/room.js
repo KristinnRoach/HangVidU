@@ -8,73 +8,12 @@ import {
   getRoomCancellationRef,
   getRoomAnswerRef,
   removeRTDBListenersForRoom,
-  removeRTDBListenersForUser,
 } from '../../shared/storage/fb-rtdb/rtdb.js';
 import { getDiagnosticLogger } from '../../shared/utils/dev/diagnostic-logger.js';
 
 class RoomService {
   constructor() {
     this.currentRoomId = null;
-  }
-
-  /**
-   * Create a new room with an offer
-   */
-  async createNewRoom(
-    offer,
-    userId,
-    roomId = null,
-    { audioOnly = false } = {},
-  ) {
-    const startTime = Date.now();
-    if (!roomId) roomId = Math.random().toString(36).substring(2, 15);
-
-    getDiagnosticLogger().log('ROOM', 'CREATE_START', {
-      roomId,
-      userId,
-      hasOffer: !!offer,
-      audioOnly,
-      timestamp: startTime,
-    });
-
-    const roomRef = getRoomRef(roomId);
-
-    try {
-      await this.createRoomAtomically(
-        roomRef,
-        {
-          offer: {
-            type: offer.type,
-            sdp: offer.sdp,
-          },
-          createdAt: Date.now(),
-          createdBy: userId,
-          audioOnly,
-        },
-        userId,
-      );
-
-      getDiagnosticLogger().logFirebaseOperation('create_room', true, null, {
-        roomId,
-        userId,
-        duration: Date.now() - startTime,
-      });
-
-      getDiagnosticLogger().log('ROOM', 'CREATE_COMPLETE', {
-        roomId,
-        userId,
-        totalDuration: Date.now() - startTime,
-      });
-
-      return roomId;
-    } catch (error) {
-      getDiagnosticLogger().logFirebaseOperation('create_room', false, error, {
-        roomId,
-        userId,
-        duration: Date.now() - startTime,
-      });
-      throw error;
-    }
   }
 
   /**
@@ -184,14 +123,6 @@ class RoomService {
     }
 
     return snapshot.val();
-  }
-
-  /**
-   * Save the WebRTC answer to the room
-   */
-  async saveAnswer(roomId, answer) {
-    const roomRef = getRoomRef(roomId);
-    await update(roomRef, { answer });
   }
 
   /**
@@ -406,31 +337,6 @@ class RoomService {
       `rooms/${roomId}/members`,
       { event: 'child_removed' },
     );
-  }
-
-  /**
-   * High-level incoming-call listener: callback(eventType, userId, memberData)
-   * eventType: 'join' | 'leave'
-   * Returns an unsubscribe function.
-   * @param {string} roomId - Room ID to listen to
-   * @param {string} userId - User ID of the local user attaching this listener
-   * @param {Function} callback - Callback function (eventType, memberId, memberData)
-   */
-  onIncomingCall(roomId, userId, callback) {
-    const membersRef = getRoomMembersRef(roomId);
-
-    const joinCb = (snap) => {
-      callback('join', snap.key, snap.val());
-    };
-    const leaveCb = (snap) => {
-      callback('leave', snap.key, snap.val());
-    };
-
-    addRTDBListener(membersRef, 'child_added', joinCb, roomId, userId);
-    addRTDBListener(membersRef, 'child_removed', leaveCb, roomId, userId);
-
-    // Unsubscribe only this user's listeners in this room
-    return () => removeRTDBListenersForUser(userId, roomId);
   }
 
   /**
