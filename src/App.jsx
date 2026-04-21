@@ -1,5 +1,6 @@
 import ContactsList from './components/contacts/ContactsList.jsx';
 import DialogProvider from './components/DialogProvider.jsx';
+import PublicHomepage from './components/home/PublicHomepage.jsx';
 
 /**
  * SolidJS root.
@@ -8,6 +9,7 @@ import DialogProvider from './components/DialogProvider.jsx';
 export default function App() {
   return (
     <DialogProvider>
+      <PublicHomepage />
       <ContactsList />
     </DialogProvider>
   );
