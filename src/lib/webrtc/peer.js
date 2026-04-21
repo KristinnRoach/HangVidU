@@ -84,6 +84,7 @@ export class Peer extends EventTarget {
     this._started = false;
     this._startPromise = null;
     this._closed = false;
+    this._pendingStartReject = null;
     this._listenerMap = new Map();
   }
 
@@ -162,6 +163,12 @@ export class Peer extends EventTarget {
     }
 
     this._setState(PEER_STATES.CLOSED);
+
+    if (this._pendingStartReject) {
+      const reject = this._pendingStartReject;
+      this._pendingStartReject = null;
+      reject(new Error('Peer: closed before start completed'));
+    }
   }
 
   // ─── on/off/once sugar (thin wrappers over EventTarget) ───────────────
@@ -198,12 +205,31 @@ export class Peer extends EventTarget {
    * @param {(detail: any, event: CustomEvent) => void} callback
    */
   once(type, callback) {
+    if (!this._listenerMap.has(type)) {
+      this._listenerMap.set(type, new Map());
+    }
+    const callbacks = this._listenerMap.get(type);
+    if (!callbacks.has(callback)) {
+      callbacks.set(callback, new Set());
+    }
+    const handlers = callbacks.get(callback);
+
+    const forget = () => {
+      handlers.delete(handler);
+      if (handlers.size === 0) callbacks.delete(callback);
+    };
     const handler = (event) => {
       this.removeEventListener(type, handler);
+      forget();
       callback(event.detail, event);
     };
+    handlers.add(handler);
     this.addEventListener(type, handler);
-    return () => this.removeEventListener(type, handler);
+
+    return () => {
+      this.removeEventListener(type, handler);
+      forget();
+    };
   }
 
   /**
@@ -258,8 +284,19 @@ export class Peer extends EventTarget {
   async _startJoiner() {
     this._initPc();
 
+    if (this._closed) {
+      throw new Error('Peer: closed before start completed');
+    }
+
     let offerHandled = false;
     await new Promise((resolve, reject) => {
+      this._pendingStartReject = reject;
+      const settle = (fn, value) => {
+        if (this._pendingStartReject === reject) {
+          this._pendingStartReject = null;
+        }
+        fn(value);
+      };
       this._signaling.onOffer(async (offer) => {
         if (offerHandled || !offer || this._closed) return;
         try {
@@ -277,10 +314,10 @@ export class Peer extends EventTarget {
           });
           log('[Peer] Answer sent (joiner)');
           offerHandled = true;
-          resolve();
+          settle(resolve);
         } catch (err) {
           this._emit('error', { error: err, phase: 'offer' });
-          reject(err);
+          settle(reject, err);
         }
       });
     });

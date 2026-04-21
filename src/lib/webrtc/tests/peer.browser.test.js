@@ -305,5 +305,34 @@ describe('Peer', () => {
 
       expect(handler).toHaveBeenCalledTimes(1);
     });
+
+    it('off() removes a listener added with once() before it fires', () => {
+      const { a } = createLoopbackPair();
+      const peer = new Peer({ role: 'initiator', signaling: a });
+      peers = [peer];
+
+      const handler = vi.fn();
+      peer.once('statechange', handler);
+      peer.off('statechange', handler);
+
+      peer.dispatchEvent(new CustomEvent('statechange', { detail: {} }));
+      expect(handler).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('joiner lifecycle', () => {
+    it('rejects start() when close() happens before the offer arrives', async () => {
+      const { b } = createLoopbackPair();
+      const joiner = new Peer({ role: 'joiner', signaling: b });
+      peers = [joiner];
+
+      const startPromise = joiner.start();
+      // Let _startJoiner install the onOffer listener + _pendingStartReject.
+      await Promise.resolve();
+      joiner.close();
+
+      await expect(startPromise).rejects.toThrow(/closed before start/);
+      expect(joiner.state).toBe(PEER_STATES.CLOSED);
+    });
   });
 });

@@ -16,13 +16,20 @@ export function addLocalTracks(pc, localStream, { audioOnly = false } = {}) {
       'addLocalTracks: pc must be an RTCPeerConnection-like object with addTrack()',
     );
   }
-  if (
-    !localStream ||
-    typeof localStream.getTracks !== 'function' ||
-    typeof localStream.getAudioTracks !== 'function'
-  ) {
+  if (!localStream) {
     throw new TypeError(
-      'addLocalTracks: localStream must be a MediaStream-like object with getTracks() and getAudioTracks()',
+      'addLocalTracks: localStream must be a MediaStream-like object',
+    );
+  }
+  if (audioOnly) {
+    if (typeof localStream.getAudioTracks !== 'function') {
+      throw new TypeError(
+        'addLocalTracks: localStream must implement getAudioTracks() when audioOnly=true',
+      );
+    }
+  } else if (typeof localStream.getTracks !== 'function') {
+    throw new TypeError(
+      'addLocalTracks: localStream must implement getTracks()',
     );
   }
 
