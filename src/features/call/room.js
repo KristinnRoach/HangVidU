@@ -1,5 +1,5 @@
 // room.js - Room management module
-import { set, get, update, remove } from 'firebase/database';
+import { set, get, update, remove, runTransaction } from 'firebase/database';
 import {
   getRoomRef,
   getRoomMembersRef,
@@ -20,7 +20,12 @@ class RoomService {
   /**
    * Create a new room with an offer
    */
-  async createNewRoom(offer, userId, roomId = null, { audioOnly = false } = {}) {
+  async createNewRoom(
+    offer,
+    userId,
+    roomId = null,
+    { audioOnly = false } = {},
+  ) {
     const startTime = Date.now();
     if (!roomId) roomId = Math.random().toString(36).substring(2, 15);
 
@@ -35,23 +40,25 @@ class RoomService {
     const roomRef = getRoomRef(roomId);
 
     try {
-      await set(roomRef, {
-        offer: {
-          type: offer.type,
-          sdp: offer.sdp,
+      await this.createRoomAtomically(
+        roomRef,
+        {
+          offer: {
+            type: offer.type,
+            sdp: offer.sdp,
+          },
+          createdAt: Date.now(),
+          createdBy: userId,
+          audioOnly,
         },
-        createdAt: Date.now(),
-        createdBy: userId,
-        audioOnly,
-      });
+        userId,
+      );
 
       getDiagnosticLogger().logFirebaseOperation('create_room', true, null, {
         roomId,
         userId,
         duration: Date.now() - startTime,
       });
-
-      await this.joinRoom(roomId, userId);
 
       getDiagnosticLogger().log('ROOM', 'CREATE_COMPLETE', {
         roomId,
@@ -87,11 +94,15 @@ class RoomService {
     const roomRef = getRoomRef(roomId);
 
     try {
-      await set(roomRef, {
-        createdAt: Date.now(),
-        createdBy: userId,
-        audioOnly,
-      });
+      await this.createRoomAtomically(
+        roomRef,
+        {
+          createdAt: Date.now(),
+          createdBy: userId,
+          audioOnly,
+        },
+        userId,
+      );
 
       getDiagnosticLogger().logFirebaseOperation(
         'create_room_metadata',
@@ -99,8 +110,6 @@ class RoomService {
         null,
         { roomId, userId, duration: Date.now() - startTime },
       );
-
-      await this.joinRoom(roomId, userId);
 
       return roomId;
     } catch (error) {
@@ -111,6 +120,32 @@ class RoomService {
         { roomId, userId, duration: Date.now() - startTime },
       );
       throw error;
+    }
+  }
+
+  async createRoomAtomically(
+    roomRef,
+    roomData,
+    userId,
+    userName = 'Guest User',
+  ) {
+    const joinedAt = Date.now();
+    const result = await runTransaction(roomRef, (currentRoom) => {
+      if (currentRoom !== null) return;
+
+      return {
+        ...roomData,
+        members: {
+          [userId]: {
+            userName,
+            joinedAt,
+          },
+        },
+      };
+    });
+
+    if (!result.committed) {
+      throw new Error('Room already exists');
     }
   }
 

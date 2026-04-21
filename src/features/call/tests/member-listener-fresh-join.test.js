@@ -36,6 +36,15 @@ vi.mock('firebase/database', () => {
   const get = vi.fn();
   const update = vi.fn();
   const remove = vi.fn();
+  const runTransaction = vi.fn(async (_fbRef, updateFn) => {
+    const value = updateFn(null);
+    return {
+      committed: value !== undefined,
+      snapshot: {
+        val: () => value,
+      },
+    };
+  });
 
   const set = vi.fn((fbRef, value) => {
     // If setting a member path rooms/<roomId>/members/<userId>, fire child_added on parent members path
@@ -67,6 +76,7 @@ vi.mock('firebase/database', () => {
     get,
     update,
     remove,
+    runTransaction,
     onChildAdded,
     onChildRemoved,
     onValue,
@@ -87,6 +97,7 @@ vi.mock('../../../shared/utils/dev/diagnostic-logger.js', () => ({
 
 // Import the RoomService singleton under test
 import RoomService from '../room.js';
+import { set, runTransaction } from 'firebase/database';
 import {
   removeRTDBListenersForRoom,
   removeAllRTDBListeners,
@@ -148,5 +159,66 @@ describe('Incoming-call member listener fires once with fresh joinedAt', () => {
     unsubscribeNew();
     await RoomService.joinRoom(roomId, 'another-user');
     expect(newCb).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Room creation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('creates offer rooms and creator membership in a single transaction', async () => {
+    const t0 = Date.now();
+
+    await RoomService.createNewRoom(
+      { type: 'offer', sdp: 'test-sdp' },
+      'creator-user',
+      'custom-room',
+      { audioOnly: true },
+    );
+
+    expect(set).not.toHaveBeenCalled();
+    expect(runTransaction).toHaveBeenCalledTimes(1);
+
+    const [roomRef, updateFn] = runTransaction.mock.calls[0];
+    expect(roomRef.path).toBe('rooms/custom-room');
+
+    const roomData = updateFn(null);
+    expect(roomData).toMatchObject({
+      offer: {
+        type: 'offer',
+        sdp: 'test-sdp',
+      },
+      createdBy: 'creator-user',
+      audioOnly: true,
+      members: {
+        'creator-user': {
+          userName: 'Guest User',
+        },
+      },
+    });
+    expect(roomData.members['creator-user'].joinedAt).toBeGreaterThanOrEqual(
+      t0,
+    );
+    expect(updateFn({ createdBy: 'other-user' })).toBeUndefined();
+  });
+
+  it('creates metadata-only rooms and creator membership in a single transaction', async () => {
+    await RoomService.createRoomMetadata('creator-user', 'metadata-room');
+
+    expect(set).not.toHaveBeenCalled();
+    expect(runTransaction).toHaveBeenCalledTimes(1);
+
+    const [roomRef, updateFn] = runTransaction.mock.calls[0];
+    expect(roomRef.path).toBe('rooms/metadata-room');
+    expect(updateFn(null)).toMatchObject({
+      createdBy: 'creator-user',
+      audioOnly: false,
+      members: {
+        'creator-user': {
+          userName: 'Guest User',
+        },
+      },
+    });
   });
 });
