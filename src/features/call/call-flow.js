@@ -14,16 +14,18 @@ import { devDebug } from '../../shared/utils/dev/dev-utils.js';
 import { showErrorToast } from '../../shared/components/toast.js';
 import { t } from '../../shared/i18n/index.js';
 
-import { drainIceCandidateQueue, setupIceCandidates } from './ice.js';
-import { setupConnectionStateHandlers } from './webrtc.js';
 import {
+  drainIceCandidateQueue,
+  setupIceCandidates,
   rtcConfig,
   addLocalTracks,
   createOffer,
   createAnswer,
   setRemoteDescription,
   generateRoomId,
-} from './webrtc-utils.js';
+} from '../../lib/webrtc/index.js';
+import { setupConnectionStateHandlers } from './webrtc.js';
+import { createFirebaseIceTransport } from './signaling/index.js';
 
 import RoomService from './room.js';
 
@@ -101,7 +103,7 @@ export async function createCall({
   }
 
   // 3c. Setup ICE candidate gathering and exchange
-  setupIceCandidates(pc, role, roomId);
+  setupIceCandidates(pc, createFirebaseIceTransport(roomId, role));
 
   // 3d. Setup connection state monitoring
   setupConnectionStateHandlers(pc);
@@ -250,7 +252,7 @@ export async function answerCall({
   }
 
   // 3c. Setup ICE candidate gathering and exchange
-  setupIceCandidates(pc, role, roomId);
+  setupIceCandidates(pc, createFirebaseIceTransport(roomId, role));
 
   // 3d. Setup connection state monitoring
   setupConnectionStateHandlers(pc);

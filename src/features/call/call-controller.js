@@ -7,7 +7,10 @@ import {
   createCall as createCallFlow,
   answerCall as answerCallFlow,
 } from './call-flow.js';
-import { createDataConnection, joinDataConnection } from './data-connection.js';
+import {
+  createDataConnection,
+  joinDataConnection,
+} from './signaling/index.js';
 import RoomService from './room.js';
 import { getUserId } from '../../auth/index.js';
 import { ref, off } from 'firebase/database';
@@ -21,8 +24,10 @@ import { FileTransferController } from '../file-transfer/file-transfer-controlle
 import { StreamingFileWriter } from '../file-transfer/streaming-file-writer.js';
 import { cleanupWatchSync } from '../watch/watch-sync.js';
 import { cleanupLocalStream } from '../../shared/media/state.js';
-import { setRemoteDescription } from './webrtc-utils.js';
-import { drainIceCandidateQueue } from './ice.js';
+import {
+  setRemoteDescription,
+  drainIceCandidateQueue,
+} from '../../lib/webrtc/index.js';
 import { resetLocalStreamInitFlag } from '../../shared/media/local-stream-init-state.js';
 import { publish, subscribe } from '../../shared/events/index.js';
 import { onOutgoingCallRejected } from './outgoing-call-session.js';
