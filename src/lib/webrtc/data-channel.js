@@ -16,6 +16,7 @@ import { log } from './logger.js';
 
 const DEFAULT_LABEL = 'data';
 const DEFAULT_RTT_CHECK_DELAY_MS = 1000;
+const DEFAULT_DATA_CHANNEL_READY_TIMEOUT_MS = 10000;
 
 /**
  * Initiator side: create a data-only PeerConnection and DataChannel, send
@@ -44,9 +45,6 @@ export async function createDataChannel(signaling, options = {}) {
 
   setupIceCandidates(pc, signaling);
 
-  const offer = await createOffer(pc);
-  await signaling.sendOffer({ type: offer.type, sdp: offer.sdp });
-
   signaling.onAnswer(async (answer) => {
     if (!answer) return;
     try {
@@ -67,6 +65,9 @@ export async function createDataChannel(signaling, options = {}) {
     }
   });
 
+  const offer = await createOffer(pc);
+  await signaling.sendOffer({ type: offer.type, sdp: offer.sdp });
+
   log('[DataChannel] Created (initiator)');
   return { pc, dataChannel };
 }
@@ -77,6 +78,9 @@ export async function createDataChannel(signaling, options = {}) {
  *
  * @param {DataSignalingChannel} signaling
  * @param {Object} [options] - See {@link createDataChannel}.
+ * @param {number} [options.dataChannelTimeoutMs=10000] - Reject if
+ *   `ondatachannel` has not fired within this many ms after the answer is
+ *   sent (prevents the promise from hanging indefinitely).
  * @returns {Promise<{ pc: RTCPeerConnection, dataChannel: RTCDataChannel }>}
  */
 export function joinDataChannel(signaling, options = {}) {
@@ -84,6 +88,7 @@ export function joinDataChannel(signaling, options = {}) {
     rtcConfig = defaultRtcConfig,
     monitorRtt = true,
     rttLabel = 'Data Connection',
+    dataChannelTimeoutMs = DEFAULT_DATA_CHANNEL_READY_TIMEOUT_MS,
   } = options;
 
   assertSignaling(signaling);
@@ -93,9 +98,35 @@ export function joinDataChannel(signaling, options = {}) {
     let resolved = false;
 
     let resolveDataChannel;
-    const dataChannelReady = new Promise((r) => {
-      resolveDataChannel = r;
+    let rejectDataChannel;
+    let dataChannelTimer = null;
+    let dataChannelSettled = false;
+
+    const dataChannelReady = new Promise((res, rej) => {
+      resolveDataChannel = (channel) => {
+        if (dataChannelSettled) return;
+        dataChannelSettled = true;
+        clearTimeout(dataChannelTimer);
+        res(channel);
+      };
+      rejectDataChannel = (err) => {
+        if (dataChannelSettled) return;
+        dataChannelSettled = true;
+        clearTimeout(dataChannelTimer);
+        rej(err);
+      };
     });
+
+    const armDataChannelTimeout = () => {
+      if (dataChannelTimer || dataChannelSettled) return;
+      dataChannelTimer = setTimeout(() => {
+        rejectDataChannel(
+          new Error(
+            `DataChannel: ondatachannel did not fire within ${dataChannelTimeoutMs}ms`,
+          ),
+        );
+      }, dataChannelTimeoutMs);
+    };
 
     pc.ondatachannel = (event) => {
       log('[DataChannel] DataChannel received (joiner)', {
@@ -120,6 +151,7 @@ export function joinDataChannel(signaling, options = {}) {
         await signaling.sendAnswer({ type: answer.type, sdp: answer.sdp });
         log('[DataChannel] Joined (joiner)');
 
+        armDataChannelTimeout();
         const dataChannel = await dataChannelReady;
 
         if (monitorRtt) {
@@ -133,6 +165,7 @@ export function joinDataChannel(signaling, options = {}) {
         resolve({ pc, dataChannel });
       } catch (err) {
         console.warn('[DataChannel] Failed to complete data join:', err);
+        rejectDataChannel(err);
         try {
           pc.close();
         } catch (_) {}

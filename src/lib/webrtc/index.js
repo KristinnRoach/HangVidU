@@ -33,3 +33,5 @@ export {
 } from './data-channel.js';
 
 export { getRTT, checkAndWarnRTT } from './rtt.js';
+
+export { Peer, PEER_STATES } from './peer.js';
