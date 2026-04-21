@@ -11,6 +11,21 @@
  * @returns {{ allHealthy: boolean, unhealthyKinds: string[] }}
  */
 export function addLocalTracks(pc, localStream, { audioOnly = false } = {}) {
+  if (!pc || typeof pc.addTrack !== 'function') {
+    throw new TypeError(
+      'addLocalTracks: pc must be an RTCPeerConnection-like object with addTrack()',
+    );
+  }
+  if (
+    !localStream ||
+    typeof localStream.getTracks !== 'function' ||
+    typeof localStream.getAudioTracks !== 'function'
+  ) {
+    throw new TypeError(
+      'addLocalTracks: localStream must be a MediaStream-like object with getTracks() and getAudioTracks()',
+    );
+  }
+
   const unhealthyKinds = [];
 
   const tracks = audioOnly
