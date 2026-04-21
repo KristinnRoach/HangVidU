@@ -4,9 +4,9 @@ Items raised in PR #471 review (Copilot + CodeRabbit) that were intentionally no
 
 ## Behavior / Correctness
 
-- **Stop local video tracks during audio-only mode** — `src/features/call/webrtc-utils.js:76` `addLocalTracks` currently filters `getAudioTracks()` when `audioOnly` is true, but does not call `track.stop()` / `removeTrack()` on existing video tracks. If a video stream is reused (`createLocalStream` reuses via `hasLocalStream()`), the camera capture continues even though no video is sent. Fix: stop and remove video tracks from the reused stream before adding to the peer connection.
+- **Stop local video tracks during audio-only mode** — `src/lib/webrtc/tracks.js` `addLocalTracks` filters `getAudioTracks()` when `audioOnly` is true but does not call `track.stop()` / `removeTrack()` on existing video tracks. If a video stream is reused (`createLocalStream` reuses via `hasLocalStream()`), the camera capture continues even though no video is sent. Fix: stop and remove video tracks from the reused stream before adding to the peer connection.
 
-- **Joiner mode drift** — `src/features/call/call-flow.js:171` `answerCall` reads the `audioOnly` flag from its options bag, not from the room state it already fetches at line 209. If an upstream caller forgets to thread the flag, joiner can negotiate video while initiator is audio-only. Fix: derive an `effectiveAudioOnly = roomData.audioOnly === true || audioOnly === true` after `getRoomData` and use it for `addLocalTracks`.
+- **Joiner mode drift** — `src/features/call/call-flow.js` `answerCall` reads `audioOnly` from its options bag and hands it straight to `new Peer({ audioOnly })`. The room record already carries `audioOnly` (fetched via `RoomService.checkRoomStatus` → `roomData.audioOnly`), so if an upstream caller forgets to thread the flag, the joiner can negotiate video while the initiator is audio-only. Fix: derive `effectiveAudioOnly = roomStatus.roomData?.audioOnly === true || audioOnly === true` and pass that into `Peer`.
 
 ## UI / Styling
 
