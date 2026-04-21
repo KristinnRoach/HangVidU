@@ -13,13 +13,12 @@ import {
   renderGoogleSignInButton as renderAdapterGoogleSignInButton,
 } from './adapters/google-identity-adapter.js';
 import { devDebug } from '../shared/utils/dev/dev-utils.js';
-import { getLocale, onLocaleChange, t } from '../shared/i18n/index.js';
+import { getLocale, t } from '../shared/i18n/index.js';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_APP_GOOGLE_CLIENT_ID;
 const oneTapCallbacks = new Set();
 let oneTapInitialized = false;
 let initOneTapPromise = null;
-let unsubscribeLocaleChange = null;
 
 function notifyOneTapStatus(status) {
   devDebug('[ONE TAP] Notifying status:', status, 'to', oneTapCallbacks.size);
@@ -72,16 +71,6 @@ export async function initOneTap() {
     } catch (e) {
       devDebug('[ONE TAP] Failed to initialize GIS:', e);
       return;
-    }
-
-    if (!unsubscribeLocaleChange) {
-      unsubscribeLocaleChange = onLocaleChange(async (locale) => {
-        try {
-          await loadAndInitializeOneTap(locale);
-        } catch (e) {
-          devDebug('[ONE TAP] Failed to reload GIS for locale:', e);
-        }
-      });
     }
 
     oneTapInitialized = true;
@@ -168,7 +157,7 @@ export function renderGoogleSignInButton(containerEl, options = {}) {
     return;
   }
 
-  containerEl.textContent = '';
+  containerEl.replaceChildren();
 
   renderAdapterGoogleSignInButton(containerEl, {
     type: 'standard',
