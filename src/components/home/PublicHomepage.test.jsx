@@ -19,6 +19,21 @@ vi.mock('../../auth/auth-state.js', () => ({
   },
 }));
 
+vi.mock('../../auth/solid-auth.js', async () => {
+  const { createSignal } = await import('solid-js');
+  const [authState, setAuthState] = createSignal({ ...mocks.authState });
+
+  return {
+    useAuth: () => ({
+      authState,
+      isLoggedIn: () => authState().isLoggedIn,
+      status: () => authState().status,
+      user: () => authState().user,
+    }),
+    setTestAuthState: (nextState) => setAuthState({ ...nextState }),
+  };
+});
+
 vi.mock('../../shared/i18n/index.js', () => ({
   useI18n: () => ({
     t: (key) =>
@@ -46,6 +61,8 @@ describe('PublicHomepage', () => {
   });
 
   it('renders public app purpose before sign-in', async () => {
+    const { setTestAuthState } = await import('../../auth/solid-auth.js');
+    setTestAuthState(mocks.authState);
     const { default: PublicHomepage } = await import('./PublicHomepage.jsx');
     const { getByRole, getByText } = render(() => <PublicHomepage />);
 
@@ -65,15 +82,16 @@ describe('PublicHomepage', () => {
   });
 
   it('hides after the user is signed in', async () => {
+    const { setTestAuthState } = await import('../../auth/solid-auth.js');
+    setTestAuthState(mocks.authState);
     const { default: PublicHomepage } = await import('./PublicHomepage.jsx');
     const { queryByRole } = render(() => <PublicHomepage />);
 
-    mocks.authState = {
+    setTestAuthState({
       status: 'authenticated',
       user: { uid: 'u1', userName: 'User', email: 'user@example.com' },
       isLoggedIn: true,
-    };
-    for (const listener of mocks.listeners) listener({ ...mocks.authState });
+    });
 
     expect(
       queryByRole('heading', {

@@ -1,20 +1,13 @@
-import { Show, createSignal, onCleanup } from 'solid-js';
-import { getAuthState, onAuthStateChanged } from '../../auth/auth-state.js';
+import { Show } from 'solid-js';
+import { useAuth } from '../../auth/solid-auth.js';
 import { useI18n } from '../../shared/i18n/index.js';
-
-function createAuthSnapshot() {
-  const [authSnapshot, setAuthSnapshot] = createSignal(getAuthState());
-  const unsubscribe = onAuthStateChanged(setAuthSnapshot);
-  onCleanup(unsubscribe);
-  return authSnapshot;
-}
 
 export default function PublicHomepage() {
   const { t } = useI18n();
-  const authSnapshot = createAuthSnapshot();
+  const { isLoggedIn } = useAuth();
 
   return (
-    <Show when={!authSnapshot().isLoggedIn}>
+    <Show when={!isLoggedIn()}>
       <section
         class='public-homepage'
         aria-labelledby='public-homepage-title'
