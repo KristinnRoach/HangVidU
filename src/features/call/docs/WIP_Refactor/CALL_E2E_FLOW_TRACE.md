@@ -95,7 +95,7 @@ The joiner has previously called `listenForIncomingOnRoom(roomId)` (either from 
     Wrapper that delegates to `answerCallFlow` and emits lifecycle events.
 
 12. **`answerCall({ roomId, ..., audioOnly })`** — `src/features/call/call-flow.js:150`
-    Re-validates the room via `RoomService.checkRoomStatus`, constructs the joiner `Peer`, attaches the `error` listener, and `await`s `start()`. Remote stream + connection-state handlers are attached against `peer.pc` immediately after `start()`.
+    Re-validates the room via `RoomService.checkRoomStatus`, constructs the joiner `Peer`, attaches the `error` listener, and awaits `start()`. Remote stream + connection-state handlers are attached against `peer.pc` immediately after `start()`.
 
 13. **`new Peer({ role: 'joiner', signaling, localStream, audioOnly })` + `peer.start()`** — `src/lib/webrtc/peer.js`
     The injected signaling adapter's `onOffer` fires immediately (the offer already lives in RTDB from the initiator). `Peer` sets the remote description, adds local tracks (audio-only filters in `addLocalTracks`), creates the answer, and dispatches it via `sendAnswer`.
