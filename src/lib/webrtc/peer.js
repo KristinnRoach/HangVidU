@@ -107,6 +107,7 @@ export class Peer extends EventTarget {
    * negotiating ICE; listen for 'connected' to know when media is flowing).
    */
   start() {
+    if (this._state === PEER_STATES.CLOSED) return Promise.resolve();
     if (this._started) return this._startPromise;
     this._started = true;
     this._setState(PEER_STATES.CONNECTING);
@@ -117,7 +118,9 @@ export class Peer extends EventTarget {
     // Don't leak rejections — caller can still await start() to see them.
     this._startPromise.catch((error) => {
       this._emit('error', { error, phase: 'start' });
-      this._setState(PEER_STATES.FAILED);
+      if (this._state !== PEER_STATES.CLOSED) {
+        this._setState(PEER_STATES.FAILED);
+      }
     });
 
     return this._startPromise;

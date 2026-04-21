@@ -176,6 +176,52 @@ describe('Peer', () => {
       const p2 = peer.start();
       expect(p1).toBe(p2);
     });
+
+    it('start() resolves without starting after close()', async () => {
+      const { a } = createLoopbackPair();
+      const peer = new Peer({
+        role: 'initiator',
+        signaling: a,
+        dataChannel: true,
+      });
+      peers = [peer];
+      peer._startInitiator = vi.fn();
+
+      peer.close();
+      await expect(peer.start()).resolves.toBeUndefined();
+
+      expect(peer._startInitiator).not.toHaveBeenCalled();
+      expect(peer.state).toBe(PEER_STATES.CLOSED);
+    });
+
+    it('keeps closed state when start() fails after close()', async () => {
+      const { a } = createLoopbackPair();
+      const peer = new Peer({
+        role: 'initiator',
+        signaling: a,
+        dataChannel: true,
+      });
+      peers = [peer];
+      const startError = new Error('start failed');
+      const onError = vi.fn();
+      peer._startInitiator = vi.fn(
+        () =>
+          new Promise((_, reject) => {
+            setTimeout(() => reject(startError), 0);
+          }),
+      );
+      peer.on('error', onError);
+
+      const startPromise = peer.start();
+      peer.close();
+      await expect(startPromise).rejects.toThrow(startError);
+
+      expect(onError).toHaveBeenCalledWith(
+        { error: startError, phase: 'start' },
+        expect.any(CustomEvent),
+      );
+      expect(peer.state).toBe(PEER_STATES.CLOSED);
+    });
   });
 
   describe('send()', () => {
