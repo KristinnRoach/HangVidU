@@ -75,4 +75,54 @@ describe('Room creation', () => {
       },
     });
   });
+
+  it('reclaims stale empty room nodes when creating metadata', async () => {
+    runTransaction.mockImplementationOnce(async (_fbRef, updateFn) => {
+      const value = updateFn({
+        cancellation: { by: 'creator-user', reason: 'auto_timeout' },
+        answer: { type: 'answer', sdp: 'stale' },
+      });
+      return {
+        committed: value !== undefined,
+        snapshot: {
+          val: () => value,
+        },
+      };
+    });
+
+    await RoomService.createRoomMetadata('creator-user', 'metadata-room');
+
+    const [, updateFn] = runTransaction.mock.calls[0];
+    expect(updateFn({ cancellation: { reason: 'stale' } })).toMatchObject({
+      createdBy: 'creator-user',
+      members: {
+        'creator-user': {
+          userName: 'Guest User',
+        },
+      },
+    });
+  });
+
+  it('still rejects metadata creation when the room has active members', async () => {
+    runTransaction.mockImplementationOnce(async (_fbRef, updateFn) => {
+      const value = updateFn({
+        members: {
+          'other-user': {
+            userName: 'Other User',
+            joinedAt: 123,
+          },
+        },
+      });
+      return {
+        committed: value !== undefined,
+        snapshot: {
+          val: () => value,
+        },
+      };
+    });
+
+    await expect(
+      RoomService.createRoomMetadata('creator-user', 'metadata-room'),
+    ).rejects.toThrow('Room already exists');
+  });
 });
