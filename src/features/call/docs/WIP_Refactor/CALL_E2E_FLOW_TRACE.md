@@ -37,20 +37,20 @@ User taps the call button in the message top bar. The flow ends with the initiat
 9. **`getCallOptions(roomId, { audioOnly })`** — `src/features/call/WIP-start-call-refactor.js:28`
    Bundles the local stream + UI element refs + helpers (`setupRemoteStream`, `setupWatchSync`) + `audioOnly` into the options object passed to `CallController.createCall`.
 
-10. **`CallController.createCall(options)`** — `src/features/call/call-controller.js:438`
+10. **`CallController.createCall(options)`** — `src/features/call/call-controller.js:392`
     Thin wrapper that delegates to `createCallFlow` and emits lifecycle events on success/failure.
 
-11. **`createCall({ ..., audioOnly })`** — `src/features/call/call-flow.js:55`
-    Constructs the `RTCPeerConnection`, adds local tracks, sets up remote stream + ICE + connection-state handlers, creates the SDP offer, persists it to RTDB, and starts watch-sync.
+11. **`createCall({ ..., audioOnly })`** — `src/features/call/call-flow.js:48`
+    Writes room metadata, constructs the `Peer` (initiator role), wires the `error` listener before `start()` so the synchronous `tracks` error is caught, then `await`s the start. Remote stream + connection-state handlers are attached immediately after `start()` using `peer.pc` (the RTCPeerConnection is created synchronously inside `Peer._initPc`).
 
-12. **`addLocalTracks(pc, localStream, { audioOnly })`** — `src/features/call/webrtc-utils.js:76`
-    Adds tracks to the peer connection. When `audioOnly`, filters to `getAudioTracks()` only so video isn't sent even if an existing video-capable stream is being reused.
+12. **`RoomService.createRoomMetadata(userId, roomId, { audioOnly })`** — `src/features/call/room.js:77`
+    Writes `{ createdAt, createdBy, audioOnly }` to `rooms/{roomId}` and joins the creator as a member. The offer SDP is written separately by the signaling adapter.
 
-13. **`createOffer(pc)`** — `src/features/call/webrtc-utils.js:107`
-    Calls `pc.createOffer()` and `setLocalDescription`. Resulting SDP carries only audio m-lines when no video tracks were added.
+13. **`new Peer({ role: 'initiator', signaling, localStream, audioOnly })` + `peer.start()`** — `src/lib/webrtc/peer.js`
+    Creates the `RTCPeerConnection`, adds local tracks (audio-only filters in `addLocalTracks`), attaches ICE candidate handling, generates the SDP offer, and dispatches it through the injected `SignalingChannel`.
 
-14. **`RoomService.createNewRoom(offer, userId, roomId, { audioOnly })`** — `src/features/call/room.js:23`
-    Writes `{ offer, createdAt, createdBy, audioOnly }` to `rooms/{roomId}` in RTDB so the joiner can read the call mode before negotiating.
+14. **`createFirebaseCallSignaling(roomId, 'initiator').sendOffer(offer)`** — `src/features/call/signaling/firebase-call-signaling.js`
+    Writes the offer SDP to `rooms/{roomId}/offer` in RTDB. The joiner reads this via the same adapter's `onOffer` listener.
 
 15. **Initiator-side post-success — `callContact`** — `src/features/call/WIP-start-call-refactor.js:153`
     After `joinOrCreateRoomWithId` resolves true, updates `lastInteractionAt` on the contact, shows the outgoing call UI (with cancel/timeout handlers), and fires `getPushNotifications().sendIncomingCall(...)` so the joiner receives an OS-level call notification.
@@ -91,17 +91,17 @@ The joiner has previously called `listenForIncomingOnRoom(roomId)` (either from 
 10. **`getCallOptions(null, { audioOnly })`** — `src/features/call/WIP-start-call-refactor.js:28`
     Bundles the same options for the answer branch.
 
-11. **`CallController.answerCall({ roomId, ...callOptions })`** — `src/features/call/call-controller.js:535`
+11. **`CallController.answerCall({ roomId, ...callOptions })`** — `src/features/call/call-controller.js:487`
     Wrapper that delegates to `answerCallFlow` and emits lifecycle events.
 
-12. **`answerCall({ roomId, ..., audioOnly })`** — `src/features/call/call-flow.js:171`
-    Re-validates the room, fetches the offer, builds the joiner peer connection, adds local tracks, sets the remote offer, creates and writes the SDP answer, joins the room as a member, and starts watch-sync.
+12. **`answerCall({ roomId, ..., audioOnly })`** — `src/features/call/call-flow.js:150`
+    Re-validates the room via `RoomService.checkRoomStatus`, constructs the joiner `Peer`, attaches the `error` listener, and awaits `start()`. Remote stream + connection-state handlers are attached against `peer.pc` immediately after `start()`.
 
-13. **`addLocalTracks(pc, localStream, { audioOnly })`** — `src/features/call/webrtc-utils.js:76`
-    Same filtering rule as the initiator side — answer-side only sends audio when `audioOnly`.
+13. **`new Peer({ role: 'joiner', signaling, localStream, audioOnly })` + `peer.start()`** — `src/lib/webrtc/peer.js`
+    The injected signaling adapter's `onOffer` fires immediately (the offer already lives in RTDB from the initiator). `Peer` sets the remote description, adds local tracks (audio-only filters in `addLocalTracks`), creates the answer, and dispatches it via `sendAnswer`.
 
-14. **`createAnswer(pc)`** — `src/features/call/webrtc-utils.js:118`
-    Calls `pc.createAnswer()` + `setLocalDescription`. Negotiation completes with audio-only m-lines on both sides.
+14. **`createFirebaseCallSignaling(roomId, 'joiner').sendAnswer(answer)`** — `src/features/call/signaling/firebase-call-signaling.js`
+    Writes the answer SDP to `rooms/{roomId}/answer`. The initiator's `Peer` applies it via the same adapter's `onAnswer` listener (no more `CallController.setupAnswerListener`).
 
 15. **`RoomService.joinRoom(roomId, userId)`** — `src/features/call/room.js`
     Adds the joiner to `rooms/{roomId}/members` with `joinedAt`, which the initiator's `onMemberJoined` listener uses to start the active call setup.
@@ -112,9 +112,9 @@ The joiner has previously called `listenForIncomingOnRoom(roomId)` (either from 
 
 These are observations made while threading `audioOnly`. They are pre-decisional — flag for discussion before acting.
 
-1. **Two parallel orchestrators.** `src/features/call/call-flow.js:329` exports its own `joinOrCreateRoom` while `src/features/call/WIP-start-call-refactor.js:58` exports `joinOrCreateRoomWithId`. They overlap. Consolidating to one entry point (and renaming the WIP file) would remove a class of "which path is canonical?" questions.
+1. **Two parallel orchestrators.** `src/features/call/call-flow.js:251` exports its own `joinOrCreateRoom` while `src/features/call/WIP-start-call-refactor.js:58` exports `joinOrCreateRoomWithId`. They overlap. Consolidating to one entry point (and renaming the WIP file) would remove a class of "which path is canonical?" questions.
 
-2. **Options-bag drift.** `getCallOptions` (`WIP-start-call-refactor.js:28`) and the `createCall` / `answerCall` parameter lists (`call-flow.js:55`, `call-flow.js:171`) duplicate the same shape. Threading `audioOnly` required edits in 4 call sites just to forward one flag. A single typed `CallOptions` object passed through unchanged would collapse this.
+2. **Options-bag drift.** `getCallOptions` (`WIP-start-call-refactor.js:28`) and the `createCall` / `answerCall` parameter lists (`call-flow.js:48`, `call-flow.js:150`) duplicate the same shape. Threading `audioOnly` required edits in 4 call sites just to forward one flag. A single typed `CallOptions` object passed through unchanged would collapse this.
 
 3. **Receiver mode discovery is implicit.** The joiner only learns `audioOnly` by reading `rooms/{roomId}` *after* the member-join listener fires, inside `evaluateIncomingCallPreconditions` (`room-listeners.js:103`). For push-initiated cold starts the push payload could also carry `audioOnly`, so the OS notification can label "Audio call" vs "Video call" before any RTDB read.
 
@@ -122,6 +122,6 @@ These are observations made while threading `audioOnly`. They are pre-decisional
 
 5. **Circular import noted by existing TODO.** `room-listeners.js` ↔ `WIP-start-call-refactor.js`. Routing `joinOrCreateRoomWithId` invocations through the app bus (e.g. `cmd:call:join-or-create`) would break this without a runtime change.
 
-6. **Local stream reuse semantics.** `createLocalStream` (`stream.js:26`) reuses an existing stream regardless of mode. After this PR, an audio-only call that follows a video call will inherit the video-bearing stream; the audio-only behavior is preserved only because `addLocalTracks` filters tracks. A clearer model: track-set reconciliation per call mode at the media layer, so downstream code never has to know about it.
+6. **Local stream reuse semantics.** `createLocalStream` (`stream.js:26`) reuses an existing stream regardless of mode. An audio-only call that follows a video call inherits the video-bearing stream; the audio-only behavior is preserved only because `addLocalTracks` in `src/lib/webrtc/tracks.js` filters tracks. A clearer model: track-set reconciliation per call mode at the media layer, so downstream code never has to know about it.
 
 7. **UI is unchanged for audio-only.** The video panes still mount with empty video tracks. Acceptable for the MVP; the proper solution (avatar + audio-only top bar) belongs to the call-UI refactor.

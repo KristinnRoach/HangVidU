@@ -63,6 +63,40 @@ export function applyCallResult(result, showLinkModal = false) {
   return true;
 }
 
+function isRoomAlreadyExistsError(error) {
+  return String(error?.message || error).includes('Room already exists');
+}
+
+async function answerExistingRoom(customRoomId, audioOnly) {
+  devDebug('Room was created concurrently; retrying as joiner...');
+  getDiagnosticLogger().log('ROOM', 'CREATE_RACE_RETRY_JOIN', {
+    roomId: customRoomId,
+  });
+
+  const result = await CallController.answerCall({
+    roomId: customRoomId,
+    ...getCallOptions(null, { audioOnly }),
+  });
+
+  return applyCallResult(result, false);
+}
+
+async function createOrAnswerExistingRoom(
+  customRoomId,
+  { audioOnly = false, showLinkModal = false } = {},
+) {
+  try {
+    const result = await CallController.createCall(
+      getCallOptions(customRoomId, { audioOnly }),
+    );
+
+    return applyCallResult(result, showLinkModal);
+  } catch (error) {
+    if (!isRoomAlreadyExistsError(error)) throw error;
+    return answerExistingRoom(customRoomId, audioOnly);
+  }
+}
+
 export async function joinOrCreateRoomWithId(
   customRoomId,
   {
@@ -96,11 +130,10 @@ export async function joinOrCreateRoomWithId(
       },
     );
 
-    const result = await CallController.createCall(
-      getCallOptions(customRoomId, { audioOnly }),
-    );
-
-    return applyCallResult(result, false);
+    return createOrAnswerExistingRoom(customRoomId, {
+      audioOnly,
+      showLinkModal: false,
+    });
   }
 
   let status = await RoomService.checkRoomStatus(customRoomId);
@@ -141,11 +174,10 @@ export async function joinOrCreateRoomWithId(
       },
     );
 
-    const result = await CallController.createCall(
-      getCallOptions(customRoomId, { audioOnly }),
-    );
-
-    return applyCallResult(result, true);
+    return createOrAnswerExistingRoom(customRoomId, {
+      audioOnly,
+      showLinkModal: true,
+    });
   }
 
   devDebug('Joining room...');

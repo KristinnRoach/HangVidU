@@ -49,8 +49,6 @@ export function setupCallControllerEventWiring(options = {}) {
       roomId,
     });
 
-    CallController.setPartnerId(memberId);
-
     // below is cb from UI module - TODO: clarify / refactor
     onOutgoingCallAnswered().catch((e) =>
       console.warn('Failed to clear calling state:', e),

@@ -24,17 +24,16 @@ import { FileTransferController } from '../file-transfer/file-transfer-controlle
 import { StreamingFileWriter } from '../file-transfer/streaming-file-writer.js';
 import { cleanupWatchSync } from '../watch/watch-sync.js';
 import { cleanupLocalStream } from '../../shared/media/state.js';
-import {
-  setRemoteDescription,
-  drainIceCandidateQueue,
-} from '../../lib/webrtc/index.js';
 import { resetLocalStreamInitFlag } from '../../shared/media/local-stream-init-state.js';
 import { publish, subscribe } from '../../shared/events/index.js';
-import { onOutgoingCallRejected } from './outgoing-call-session.js';
+import {
+  onOutgoingCallAnswered,
+  onOutgoingCallRejected,
+} from './outgoing-call-session.js';
+import { onCallConnected } from '../../shared/components/ui/core/call-lifecycle-ui.js';
+import { clearUrlParam } from '../../shared/utils/url.js';
 
-export function createCallController() {
-  return new CallController();
-}
+const DISCONNECT_GRACE_MS = 3000;
 
 class CallController {
   constructor() {
@@ -50,6 +49,7 @@ class CallController {
     this.audioOnly = false;
     this.partnerId = null;
     this.pc = null;
+    this.peer = null;
 
     this.fileTransferController = null;
     this.localVideoEl = null;
@@ -58,6 +58,7 @@ class CallController {
     this.isCleaningUp = false;
     this.listeners = new Map(); // Track RTDB listeners for cleanup
     this.wasConnected = false;
+    this.disconnectTimeoutId = null;
   }
 
   getState() {
@@ -223,52 +224,6 @@ class CallController {
     this.listeners.get('cancellation').push({
       ref: cancellationRef,
       callback: onCancellation,
-      roomId,
-    });
-  }
-
-  /**
-   * Setup answer listener for call initiation.
-   * Tracks listener for cleanup and handles SDP answer from joiner.
-   * @param {string} roomId - Room ID to listen for answer
-   * @param {RTCPeerConnection} pc - Peer connection to set remote description on
-   * @param {Function} drainIceCandidateQueue - Function to drain queued ICE candidates
-   */
-  setupAnswerListener(roomId, pc, drainIceCandidateQueue) {
-    if (!roomId || !pc) return;
-
-    const answerRef = ref(rtdb, `rooms/${roomId}/answer`);
-    let answerApplied = false;
-    const answerCallback = async (snapshot) => {
-      if (answerApplied) return;
-
-      const answer = snapshot.val();
-      if (answer) {
-        const applied = await setRemoteDescription(
-          pc,
-          answer,
-          drainIceCandidateQueue,
-        );
-
-        // Detach after first successful answer apply to prevent re-processing
-        // if the room answer node changes again.
-        if (applied) {
-          answerApplied = true;
-          off(answerRef, 'value', answerCallback);
-        }
-      }
-    };
-
-    // Attach listener
-    onDataChange(answerRef, answerCallback, roomId);
-
-    // Track listener for cleanup
-    if (!this.listeners.has('answer')) {
-      this.listeners.set('answer', []);
-    }
-    this.listeners.get('answer').push({
-      ref: answerRef,
-      callback: answerCallback,
       roomId,
     });
   }
@@ -461,43 +416,13 @@ class CallController {
 
       // Store artifacts
       this.pc = result.pc;
+      this.peer = result.peer || null;
       this.roomId = result.roomId;
       this.roomLink = result.roomLink || null;
       this.role = result.role || 'initiator';
       this.state = 'waiting';
 
-      // Track connection state and create data connection once connected
-      if (this.pc && typeof this.pc.addEventListener === 'function') {
-        const pc = this.pc; // Capture current PC to guard against stale references
-        pc.addEventListener('connectionstatechange', async () => {
-          // Ignore events from stale PeerConnection
-          if (this.pc !== pc) return;
-
-          if (pc.connectionState === 'connected') {
-            this.wasConnected = true;
-            if (this.state !== 'connected') this.state = 'connected';
-
-            // Create data connection only after media connection is established
-            // (prevents orphaned data signaling if call is cancelled before partner joins)
-            if (!this.fileTransferController && this.role === 'initiator') {
-              try {
-                const { pc, dataChannel } = await createDataConnection(
-                  this.roomId,
-                );
-                this.setupFileTransport(pc, dataChannel);
-              } catch (err) {
-                console.warn(
-                  '[CallController] Failed to create data connection:',
-                  err,
-                );
-              }
-            }
-          }
-        });
-      }
-
-      // Setup answer listener (only for initiator) - must be set up before other listeners
-      this.setupAnswerListener(this.roomId, this.pc, drainIceCandidateQueue);
+      this.wirePeerConnectionEvents(this.peer);
 
       // Setup cancellation listener (centralized in CallController)
       this.setupCancellationListener(this.roomId);
@@ -561,10 +486,13 @@ class CallController {
 
       // Store artifacts
       this.pc = result.pc;
+      this.peer = result.peer || null;
       this.roomId = result.roomId;
       this.role = result.role || 'joiner';
       this.state = 'connected';
       this.wasConnected = true;
+
+      this.wirePeerConnectionEvents(this.peer);
 
       // Join dedicated data connection for file transfer
       try {
@@ -598,6 +526,88 @@ class CallController {
       this.emitCallFailed('answerCall', err);
       throw err;
     }
+  }
+
+  /**
+   * Wire Peer lifecycle events to controller-level reactions:
+   * - 'connected': dismiss outgoing-call UI, signal connected state,
+   *   (initiator only) spin up the data-connection for file transfer.
+   * - 'disconnected' ('failed'): clear URL, cleanup immediately.
+   * - 'disconnected' ('disconnected'): 3s grace period, then cleanup if
+   *   the peer hasn't recovered. Guards against races with a newer call.
+   * Also attaches a native iceconnectionstatechange listener to trigger
+   * ICE restart on transient ICE failures (not exposed via Peer events).
+   * @param {import('../../lib/webrtc/index.js').Peer} peer
+   * @private
+   */
+  wirePeerConnectionEvents(peer) {
+    if (!peer) return;
+
+    peer.on('connected', async () => {
+      if (this.peer !== peer) return;
+
+      this.wasConnected = true;
+      if (this.state !== 'connected') this.state = 'connected';
+
+      if (this.disconnectTimeoutId) {
+        clearTimeout(this.disconnectTimeoutId);
+        this.disconnectTimeoutId = null;
+      }
+
+      onCallConnected({ audioOnly: this.audioOnly });
+      onOutgoingCallAnswered().catch((e) =>
+        console.warn('Failed to clear calling state on connect:', e),
+      );
+
+      // Initiator spins up the data connection once media is established
+      // (prevents orphaned data signaling if call is cancelled pre-join).
+      if (!this.fileTransferController && this.role === 'initiator') {
+        try {
+          const { pc, dataChannel } = await createDataConnection(this.roomId);
+          this.setupFileTransport(pc, dataChannel);
+        } catch (err) {
+          console.warn(
+            '[CallController] Failed to create data connection:',
+            err,
+          );
+        }
+      }
+    });
+
+    peer.on('disconnected', ({ reason }) => {
+      if (this.peer !== peer) return;
+
+      if (reason === 'failed') {
+        devDebug('Connection failed');
+        clearUrlParam();
+        if (this.disconnectTimeoutId) {
+          clearTimeout(this.disconnectTimeoutId);
+          this.disconnectTimeoutId = null;
+        }
+        this.cleanupCall({ reason: 'connection_failed' }).catch(() => {});
+        return;
+      }
+
+      // 'disconnected': allow transient drops to recover before cleanup.
+      devDebug('Partner disconnected (reconnecting...)');
+      if (this.disconnectTimeoutId) clearTimeout(this.disconnectTimeoutId);
+      this.disconnectTimeoutId = setTimeout(() => {
+        this.disconnectTimeoutId = null;
+        if (this.peer === peer && peer.state === 'disconnected') {
+          devDebug('Partner disconnected');
+          this.cleanupCall({ reason: 'connection_lost' }).catch(() => {});
+        }
+      }, DISCONNECT_GRACE_MS);
+    });
+
+    peer.pc?.addEventListener('iceconnectionstatechange', () => {
+      const pc = peer.pc;
+      if (!pc) return;
+      if (pc.iceConnectionState === 'failed') {
+        console.warn('ICE connection failed, restarting ICE...');
+        pc.restartIce();
+      }
+    });
   }
 
   /**
@@ -716,6 +726,12 @@ class CallController {
       // Remove tracked listeners
       this.removeTrackedListeners();
 
+      // Cancel any pending disconnect grace-period timer
+      if (this.disconnectTimeoutId) {
+        clearTimeout(this.disconnectTimeoutId);
+        this.disconnectTimeoutId = null;
+      }
+
       // leave room (best-effort)
       try {
         await RoomService.leaveRoom(getUserId(), this.roomId);
@@ -723,17 +739,19 @@ class CallController {
         // non-fatal
       }
 
-      // Close media peer connection
+      // Close peer (handles pc + data channel + state transition).
+      // Fall back to closing pc directly if peer wasn't stored (legacy path).
       try {
-        if (this.pc) {
-          try {
-            this.pc.close();
-          } catch (e) {}
-          this.pc = null;
+        if (this.peer) {
+          this.peer.close();
+        } else {
+          this.pc?.close();
         }
       } catch (e) {
         // ignore
       }
+      this.peer = null;
+      this.pc = null;
 
       // Clear video elements to prevent frozen frames
       try {

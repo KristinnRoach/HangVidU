@@ -1,5 +1,5 @@
 // room.js - Room management module
-import { set, get, update, remove } from 'firebase/database';
+import { set, get, update, remove, runTransaction } from 'firebase/database';
 import {
   getRoomRef,
   getRoomMembersRef,
@@ -8,7 +8,6 @@ import {
   getRoomCancellationRef,
   getRoomAnswerRef,
   removeRTDBListenersForRoom,
-  removeRTDBListenersForUser,
 } from '../../shared/storage/fb-rtdb/rtdb.js';
 import { getDiagnosticLogger } from '../../shared/utils/dev/diagnostic-logger.js';
 
@@ -18,16 +17,15 @@ class RoomService {
   }
 
   /**
-   * Create a new room with an offer
+   * Create an empty room with metadata but no offer SDP. Used when the
+   * offer will be written separately by the signaling adapter (Peer flow).
    */
-  async createNewRoom(offer, userId, roomId = null, { audioOnly = false } = {}) {
+  async createRoomMetadata(userId, roomId, { audioOnly = false } = {}) {
     const startTime = Date.now();
-    if (!roomId) roomId = Math.random().toString(36).substring(2, 15);
 
-    getDiagnosticLogger().log('ROOM', 'CREATE_START', {
+    getDiagnosticLogger().log('ROOM', 'CREATE_METADATA_START', {
       roomId,
       userId,
-      hasOffer: !!offer,
       audioOnly,
       timestamp: startTime,
     });
@@ -35,38 +33,58 @@ class RoomService {
     const roomRef = getRoomRef(roomId);
 
     try {
-      await set(roomRef, {
-        offer: {
-          type: offer.type,
-          sdp: offer.sdp,
+      await this.createRoomAtomically(
+        roomRef,
+        {
+          createdAt: Date.now(),
+          createdBy: userId,
+          audioOnly,
         },
-        createdAt: Date.now(),
-        createdBy: userId,
-        audioOnly,
-      });
-
-      getDiagnosticLogger().logFirebaseOperation('create_room', true, null, {
-        roomId,
         userId,
-        duration: Date.now() - startTime,
-      });
+      );
 
-      await this.joinRoom(roomId, userId);
-
-      getDiagnosticLogger().log('ROOM', 'CREATE_COMPLETE', {
-        roomId,
-        userId,
-        totalDuration: Date.now() - startTime,
-      });
+      getDiagnosticLogger().logFirebaseOperation(
+        'create_room_metadata',
+        true,
+        null,
+        { roomId, userId, duration: Date.now() - startTime },
+      );
 
       return roomId;
     } catch (error) {
-      getDiagnosticLogger().logFirebaseOperation('create_room', false, error, {
-        roomId,
-        userId,
-        duration: Date.now() - startTime,
-      });
+      getDiagnosticLogger().logFirebaseOperation(
+        'create_room_metadata',
+        false,
+        error,
+        { roomId, userId, duration: Date.now() - startTime },
+      );
       throw error;
+    }
+  }
+
+  async createRoomAtomically(
+    roomRef,
+    roomData,
+    userId,
+    userName = 'Guest User',
+  ) {
+    const joinedAt = Date.now();
+    const result = await runTransaction(roomRef, (currentRoom) => {
+      if (currentRoom !== null) return;
+
+      return {
+        ...roomData,
+        members: {
+          [userId]: {
+            userName,
+            joinedAt,
+          },
+        },
+      };
+    });
+
+    if (!result.committed) {
+      throw new Error('Room already exists');
     }
   }
 
@@ -105,14 +123,6 @@ class RoomService {
     }
 
     return snapshot.val();
-  }
-
-  /**
-   * Save the WebRTC answer to the room
-   */
-  async saveAnswer(roomId, answer) {
-    const roomRef = getRoomRef(roomId);
-    await update(roomRef, { answer });
   }
 
   /**
@@ -327,31 +337,6 @@ class RoomService {
       `rooms/${roomId}/members`,
       { event: 'child_removed' },
     );
-  }
-
-  /**
-   * High-level incoming-call listener: callback(eventType, userId, memberData)
-   * eventType: 'join' | 'leave'
-   * Returns an unsubscribe function.
-   * @param {string} roomId - Room ID to listen to
-   * @param {string} userId - User ID of the local user attaching this listener
-   * @param {Function} callback - Callback function (eventType, memberId, memberData)
-   */
-  onIncomingCall(roomId, userId, callback) {
-    const membersRef = getRoomMembersRef(roomId);
-
-    const joinCb = (snap) => {
-      callback('join', snap.key, snap.val());
-    };
-    const leaveCb = (snap) => {
-      callback('leave', snap.key, snap.val());
-    };
-
-    addRTDBListener(membersRef, 'child_added', joinCb, roomId, userId);
-    addRTDBListener(membersRef, 'child_removed', leaveCb, roomId, userId);
-
-    // Unsubscribe only this user's listeners in this room
-    return () => removeRTDBListenersForUser(userId, roomId);
   }
 
   /**

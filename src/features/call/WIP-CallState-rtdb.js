@@ -1,4 +1,4 @@
-import { set, remove, get } from 'firebase/database';
+import { set, remove } from 'firebase/database';
 import { getUserOutgoingCallRef } from '../../shared/storage/fb-rtdb/rtdb.js';
 import { getLoggedInUserId, getUserId } from '../../auth/index.js';
 
@@ -32,26 +32,4 @@ export async function clearOutgoingCallState() {
 
   const outgoingRef = getUserOutgoingCallRef(loggedInUid);
   await remove(outgoingRef).catch(() => {});
-}
-
-/**
- * Check if an outgoing call state exists and is fresh (< 30s old)
- */
-export async function isOutgoingCallFresh(callerUid, roomId) {
-  if (!callerUid) return false;
-
-  try {
-    const outgoingRef = getUserOutgoingCallRef(callerUid);
-    const snap = await get(outgoingRef);
-    if (!snap.exists()) return false;
-
-    const data = snap.val();
-    if (data.roomId !== roomId) return false;
-
-    const age = Date.now() - data.initiatedAt;
-    return age < CALL_TIMEOUT_MS;
-  } catch (e) {
-    console.warn('Failed to check outgoing call freshness', e);
-    return false;
-  }
 }

@@ -10,9 +10,9 @@ import { devDebug } from '../../../shared/utils/dev/dev-utils.js';
 setLogger(devDebug);
 
 export { createFirebaseIceTransport } from './firebase-ice-transport.js';
+export { createFirebaseCallSignaling } from './firebase-call-signaling.js';
 export { createFirebaseDataSignaling } from './firebase-data-signaling.js';
 export {
   createDataConnection,
   joinDataConnection,
-  closeDataConnection,
 } from './data-connection.js';
