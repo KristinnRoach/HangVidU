@@ -32,6 +32,10 @@
   "call.recent": "Recent Calls",
   "call.rejoin": "Rejoin {id}",
 
+  "home.title": "HangVidU",
+  "home.description": "Instant messaging, peer-to-peer video calls, and media sharing.",
+  "home.links": "Legal links",
+
   "contact.add.title": "Add Contacts",
   "contact.add.login_required": "Please sign in to add contacts",
   "contact.add.enter_email": "Enter email address",

@@ -3,6 +3,7 @@
 // Start narrow with contacts; expand this file as more UI surfaces migrate.
 
 import { produce } from 'solid-js/store';
+import { setupSolidAuthState } from '../auth/solid-auth.js';
 import { subscribe, dispatchCommand } from '../shared/events/index.js';
 import { getAllContactsSorted } from '../features/contacts/index.js';
 import { setContactsUI } from '../components/contacts/ContactsList.jsx';
@@ -33,6 +34,7 @@ function readContactsFromState() {
  * @returns {() => void}
  */
 export function setupAppRoot() {
+  const teardownSolidAuthState = setupSolidAuthState();
   /** @type {Map<string, () => void>} */
   const unreadTeardowns = new Map();
   /** @type {Map<string, number>} */
@@ -130,6 +132,7 @@ export function setupAppRoot() {
   });
 
   return () => {
+    teardownSolidAuthState();
     offContactsState();
     for (const teardown of unreadTeardowns.values()) {
       try {

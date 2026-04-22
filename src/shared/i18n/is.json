@@ -32,6 +32,10 @@
   "call.recent": "Nýleg símtöl",
   "call.rejoin": "Gangast inn aftur í {id}",
 
+  "home.title": "HangVidU",
+  "home.description": "Samskiptaforrit með spjall, myndsímtöl og samáhorf.",
+  "home.links": "Lagalegir tenglar",
+
   "contact.add.title": "Bæta við tengiliðum",
   "contact.add.login_required": "Vinsamlegast skráðu þig inn til að bæta við tengiliðum",
   "contact.add.enter_email": "Sláðu inn netfang",

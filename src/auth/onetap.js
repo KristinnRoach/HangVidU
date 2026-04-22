@@ -19,7 +19,6 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_APP_GOOGLE_CLIENT_ID;
 const oneTapCallbacks = new Set();
 let oneTapInitialized = false;
 let initOneTapPromise = null;
-let unsubscribeLocaleChange = null;
 
 function notifyOneTapStatus(status) {
   devDebug('[ONE TAP] Notifying status:', status, 'to', oneTapCallbacks.size);
@@ -74,16 +73,6 @@ export async function initOneTap() {
       return;
     }
 
-    if (!unsubscribeLocaleChange) {
-      unsubscribeLocaleChange = onLocaleChange(async (locale) => {
-        try {
-          await loadAndInitializeOneTap(locale);
-        } catch (e) {
-          devDebug('[ONE TAP] Failed to reload GIS for locale:', e);
-        }
-      });
-    }
-
     oneTapInitialized = true;
   })().finally(() => {
     initOneTapPromise = null;
@@ -104,7 +93,8 @@ export function showOneTapSignin() {
   }
 
   if (import.meta.env.DEV) {
-    document.cookie = 'g_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie =
+      'g_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
   }
 
   notifyOneTapStatus('prompting');
@@ -168,15 +158,15 @@ export function renderGoogleSignInButton(containerEl, options = {}) {
     return;
   }
 
-  containerEl.textContent = '';
+  containerEl.replaceChildren();
 
   renderAdapterGoogleSignInButton(containerEl, {
     type: 'standard',
     theme: 'filled_black',
-    size: 'large',
+    size: 'medium',
     shape: 'pill',
     text: 'signin_with',
-    width: '250',
+    width: '240',
     locale,
     ...options,
   });
