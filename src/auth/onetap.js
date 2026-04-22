@@ -13,7 +13,7 @@ import {
   renderGoogleSignInButton as renderAdapterGoogleSignInButton,
 } from './adapters/google-identity-adapter.js';
 import { devDebug } from '../shared/utils/dev/dev-utils.js';
-import { getLocale, t } from '../shared/i18n/index.js';
+import { getLocale, onLocaleChange, t } from '../shared/i18n/index.js';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_APP_GOOGLE_CLIENT_ID;
 const oneTapCallbacks = new Set();
@@ -166,7 +166,7 @@ export function renderGoogleSignInButton(containerEl, options = {}) {
     size: 'medium',
     shape: 'pill',
     text: 'signin_with',
-    maxWidth: '200',
+    width: '240',
     locale,
     ...options,
   });
