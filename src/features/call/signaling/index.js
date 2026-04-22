@@ -15,5 +15,4 @@ export { createFirebaseDataSignaling } from './firebase-data-signaling.js';
 export {
   createDataConnection,
   joinDataConnection,
-  closeDataConnection,
 } from './data-connection.js';

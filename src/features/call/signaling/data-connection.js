@@ -7,7 +7,6 @@
 import {
   createDataChannel,
   joinDataChannel,
-  closeDataConnection,
 } from '../../../lib/webrtc/index.js';
 import { createFirebaseDataSignaling } from './firebase-data-signaling.js';
 
@@ -30,5 +29,3 @@ export function joinDataConnection(roomId) {
   const signaling = createFirebaseDataSignaling(roomId, 'joiner');
   return joinDataChannel(signaling);
 }
-
-export { closeDataConnection };

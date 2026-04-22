@@ -15,10 +15,19 @@ import { showErrorToast } from '../../shared/components/toast.js';
 import { t } from '../../shared/i18n/index.js';
 
 import { Peer, generateRoomId } from '../../lib/webrtc/index.js';
-import { setupConnectionStateHandlers } from './webrtc.js';
 import { createFirebaseCallSignaling } from './signaling/index.js';
 
 import RoomService from './room.js';
+
+// Peer emits `error` events synchronously inside `_initPc` for track health
+// issues; surface audio-track failures as a toast on both create and answer paths.
+function wirePeerAudioErrorToast(peer) {
+  peer.on('error', ({ error, phase }) => {
+    if (phase === 'tracks' && /audio/.test(String(error?.message))) {
+      showErrorToast(t('media.audio_disconnected'));
+    }
+  });
+}
 
 // ============================================================================
 // INITIATOR FLOW: Create a new call and wait for partner to join
@@ -69,13 +78,8 @@ export async function createCall({
   const signaling = createFirebaseCallSignaling(roomId, role);
   const peer = new Peer({ role, signaling, localStream, audioOnly });
 
-  // Attach before start(): Peer emits 'tracks' errors synchronously inside
-  // _initPc, so the listener must be live before the connection spins up.
-  peer.on('error', ({ error, phase }) => {
-    if (phase === 'tracks' && /audio/.test(String(error?.message))) {
-      showErrorToast(t('media.audio_disconnected'));
-    }
-  });
+  // Must wire before start(): Peer may emit 'tracks' errors synchronously in _initPc.
+  wirePeerAudioErrorToast(peer);
 
   // peer.start() creates the RTCPeerConnection synchronously (in _initPc)
   // before any await, so peer.pc is available immediately after the call.
@@ -96,8 +100,6 @@ export async function createCall({
     });
     return { success: false };
   }
-
-  setupConnectionStateHandlers(pc);
 
   try {
     await startPromise;
@@ -190,11 +192,7 @@ export async function answerCall({
   const signaling = createFirebaseCallSignaling(roomId, role);
   const peer = new Peer({ role, signaling, localStream, audioOnly });
 
-  peer.on('error', ({ error, phase }) => {
-    if (phase === 'tracks' && /audio/.test(String(error?.message))) {
-      showErrorToast(t('media.audio_disconnected'));
-    }
-  });
+  wirePeerAudioErrorToast(peer);
 
   // peer.start() creates the RTCPeerConnection synchronously (in _initPc)
   // before any await; the offer already in RTDB fires immediately via the
@@ -213,8 +211,6 @@ export async function answerCall({
     peer.close();
     return { success: false };
   }
-
-  setupConnectionStateHandlers(pc);
 
   devDebug('Peer connection created as joiner', { roomId });
 

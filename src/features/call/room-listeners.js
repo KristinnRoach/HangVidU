@@ -1,4 +1,4 @@
-import { get, remove } from 'firebase/database';
+import { get, onValue, remove } from 'firebase/database';
 import {
   dispatchCommand,
   dispatchCommandAndAwait,
@@ -6,6 +6,7 @@ import {
 } from '../../shared/events/index.js';
 import {
   removeRTDBListenersForRoom,
+  getRoomOfferRef,
   getUserRecentCallsRef,
   getUserRecentCallRef,
 } from '../../shared/storage/fb-rtdb/rtdb.js';
@@ -188,6 +189,35 @@ export function settleIncomingCallWaitForRoom(roomId, result) {
   return settleIncomingCallWait(roomId, result);
 }
 
+const MISSING_OFFER_WAIT_MS = 5000;
+
+/**
+ * Post Phase 1.6, `createRoomMetadata` commits members atomically before
+ * `peer.start()` writes the offer SDP, so `member-joined` can fire before
+ * the offer lands in RTDB. Give the offer a short window to arrive before
+ * skipping. See DEFERRED_ISSUES.md ("Offer-write timing race").
+ * @returns {Promise<object|null>} the offer value, or null on timeout.
+ */
+function waitForRoomOffer(roomId, timeoutMs = MISSING_OFFER_WAIT_MS) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try {
+        unsubscribe();
+      } catch (_) {}
+      resolve(value);
+    };
+    const unsubscribe = onValue(getRoomOfferRef(roomId), (snapshot) => {
+      const val = snapshot.val();
+      if (val) finish(val);
+    });
+    const timer = setTimeout(() => finish(null), timeoutMs);
+  });
+}
+
 async function evaluateIncomingCallPreconditions({
   roomId,
   joinedContactId,
@@ -292,11 +322,22 @@ async function evaluateIncomingCallPreconditions({
     return { canProceed: false };
   }
 
-  const hasOffer = !!roomData.offer;
+  let hasOffer = !!roomData.offer;
   const hasAnswer = !!roomData.answer;
   const offerCreator = roomData.createdBy;
   const isOutgoingForCurrentUser = offerCreator === currentUserId;
   const callDirection = isOutgoingForCurrentUser ? 'OUTGOING' : 'INCOMING';
+
+  // Tolerate the Phase 1.6 offer-write race: when members arrive before the
+  // offer, briefly wait for the initiator's offer to land before skipping.
+  if (!hasOffer && !hasAnswer && !isOutgoingForCurrentUser) {
+    const lateOffer = await waitForRoomOffer(roomId);
+    if (lateOffer) {
+      roomData.offer = lateOffer;
+      hasOffer = true;
+    }
+  }
+
   let skipReason = 'not_answerable_offer_state';
   if (!hasOffer) {
     skipReason = 'missing_offer';
