@@ -70,7 +70,10 @@ class RoomService {
   ) {
     const joinedAt = Date.now();
     const result = await runTransaction(roomRef, (currentRoom) => {
-      if (currentRoom !== null) return;
+      const existingMembers = currentRoom?.members || {};
+      const hasExistingMembers = Object.keys(existingMembers).length > 0;
+      // BANDAID: saved-contact calls reuse stable room IDs, so reclaim stale empty room nodes left with cancellation/signaling data.
+      if (currentRoom !== null && hasExistingMembers) return;
 
       return {
         ...roomData,
