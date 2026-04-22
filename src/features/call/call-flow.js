@@ -14,7 +14,7 @@ import { devDebug } from '../../shared/utils/dev/dev-utils.js';
 import { showErrorToast } from '../../shared/components/toast.js';
 import { t } from '../../shared/i18n/index.js';
 
-import { Peer, generateRoomId } from '../../lib/webrtc/index.js';
+import { Peer, generateRoomId } from '@kidlib/p2p';
 import { createFirebaseCallSignaling } from './signaling/index.js';
 
 import RoomService from './room.js';

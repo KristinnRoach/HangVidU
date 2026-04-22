@@ -15,7 +15,7 @@ import {
 } from '../../../shared/storage/fb-rtdb/rtdb.js';
 import { createFirebaseIceTransport } from './firebase-ice-transport.js';
 
-/** @typedef {import('../../../lib/webrtc/signaling-transport.js').DataSignalingChannel} DataSignalingChannel */
+/** @typedef {import('@kidlib/p2p/signaling-transport').DataSignalingChannel} DataSignalingChannel */
 
 /**
  * Build a SignalingChannel bound to the main-call RTDB paths of a room.

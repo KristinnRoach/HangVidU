@@ -1,7 +1,7 @@
 // src/features/call/signaling/firebase-ice-transport.js
 //
 // Firebase RTDB implementation of the IceTransport contract defined in
-// src/lib/webrtc/signaling-transport.js. Lets the signaling-agnostic ICE
+// @kidlib/p2p/signaling-transport. Lets the signaling-agnostic ICE
 // helper exchange candidates through RTDB candidate ref buckets.
 
 import { push, set } from 'firebase/database';
@@ -11,7 +11,7 @@ import {
   getAnswerCandidatesRef,
 } from '../../../shared/storage/fb-rtdb/rtdb.js';
 
-/** @typedef {import('../../../lib/webrtc/signaling-transport.js').IceTransport} IceTransport */
+/** @typedef {import('@kidlib/p2p/signaling-transport').IceTransport} IceTransport */
 
 /**
  * Build an IceTransport bound to a room's RTDB candidate buckets.
