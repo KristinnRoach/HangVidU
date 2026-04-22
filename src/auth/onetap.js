@@ -93,7 +93,8 @@ export function showOneTapSignin() {
   }
 
   if (import.meta.env.DEV) {
-    document.cookie = 'g_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie =
+      'g_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
   }
 
   notifyOneTapStatus('prompting');
@@ -162,10 +163,10 @@ export function renderGoogleSignInButton(containerEl, options = {}) {
   renderAdapterGoogleSignInButton(containerEl, {
     type: 'standard',
     theme: 'filled_black',
-    size: 'large',
+    size: 'medium',
     shape: 'pill',
     text: 'signin_with',
-    width: '250',
+    maxWidth: '200',
     locale,
     ...options,
   });

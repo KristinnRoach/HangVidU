@@ -8,10 +8,7 @@ export default function PublicHomepage() {
 
   return (
     <Show when={!isLoggedIn()}>
-      <section
-        class='public-homepage'
-        aria-labelledby='public-homepage-title'
-      >
+      <section class='public-homepage' aria-labelledby='public-homepage-title'>
         <div class='public-homepage__content'>
           <h2 id='public-homepage-title'>{t('home.title')}</h2>
           <p>{t('home.description')}</p>

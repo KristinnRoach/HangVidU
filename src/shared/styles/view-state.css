@@ -59,6 +59,11 @@ body[data-view='lobby:guest'] {
     & #add-contact-btn {
       display: none;
     }
+
+    /* Hidden until guest calls are supported */
+    & #main-messages-toggle-btn {
+      display: none;
+    }
   }
 
   & .contacts-container {
