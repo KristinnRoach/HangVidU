@@ -1,5 +1,7 @@
 // media/stream.js
 
+import { attachRemoteStream } from '@kidlib/p2p';
+
 import {
   hasLocalStream,
   getLocalStream,
@@ -125,91 +127,72 @@ export async function setUpLocalStream(
 }
 
 export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
-  pc.ontrack = (event) => {
-    devDebug(`REMOTE TRACK RECEIVED: ${event.track.kind}`);
+  attachRemoteStream(pc, {
+    onTrack({ stream, track }) {
+      devDebug(`REMOTE TRACK RECEIVED: ${track.kind}`);
 
-    const currentRemoteStream = hasRemoteStream() ? getRemoteStream() : null;
+      const currentRemoteStream = hasRemoteStream() ? getRemoteStream() : null;
 
-    // Try to use stream from event, fallback to creating one from track
-    let newRemoteStream;
-    if (
-      event.streams &&
-      event.streams[0] &&
-      event.streams[0] instanceof MediaStream
-    ) {
-      newRemoteStream = event.streams[0];
-    } else {
-      // Fallback: add track to existing stream or create new one
-      console.warn('No stream in track event, using fallback track handling');
-      if (currentRemoteStream) {
-        // Add track to existing stream
-        currentRemoteStream.addTrack(event.track);
-        newRemoteStream = currentRemoteStream;
+      // Always update stream and video element (handles both new streams and track replacements)
+      setRemoteStream(stream);
+      remoteVideoEl.srcObject = stream;
+      // Hide video while loading new metadata to prevent flicker/cropping
+      if (track.kind === 'video') {
+        if (remoteVideoEl.readyState >= 1) {
+          remoteVideoEl.style.opacity = '1';
+        } else {
+          remoteVideoEl.style.opacity = '0';
+          remoteVideoEl.addEventListener(
+            'loadedmetadata',
+            () => {
+              remoteVideoEl.style.opacity = '1';
+            },
+            { once: true },
+          );
+        }
+      }
+
+      // Auto-mute partner in dev to avoid feedback
+      if (isDev() && !remoteVideoEl.muted) {
+        remoteVideoEl.muted = true;
+        const icon = mutePartnerBtn?.querySelector('i, svg');
+        if (icon) {
+          icon.setAttribute('data-lucide', 'volume-x');
+          initIcons(mutePartnerBtn);
+        }
+      }
+
+      // Log connection status
+      if (currentRemoteStream !== stream) {
+        devDebug('Connected!');
       } else {
-        // Create new stream with this track
-        newRemoteStream = new MediaStream([event.track]);
+        devDebug(`Added ${track.kind} track to existing remote stream`);
       }
-    }
 
-    // Always update stream and video element (handles both new streams and track replacements)
-    setRemoteStream(newRemoteStream);
-    remoteVideoEl.srcObject = newRemoteStream;
-    // Hide video while loading new metadata to prevent flicker/cropping
-    if (event.track.kind === 'video') {
-      if (remoteVideoEl.readyState >= 1) {
-        remoteVideoEl.style.opacity = '1';
-      } else {
-        remoteVideoEl.style.opacity = '0';
-        remoteVideoEl.addEventListener(
-          'loadedmetadata',
-          () => {
-            remoteVideoEl.style.opacity = '1';
-          },
-          { once: true },
-        );
+      // Ensure the remote video and its container are visible (fix mobile Safari cases)
+      try {
+        const container =
+          document.getElementById('remote-video-box') ||
+          remoteVideoEl.parentElement;
+        if (container) {
+          // Remove any utility hidden class from container or element
+          container.classList?.remove('hidden');
+          remoteVideoEl.classList?.remove('hidden');
+
+          // Force visibility in case a parent applied visibility:hidden via inheritance
+          container.style.visibility = 'visible';
+          container.style.opacity = '1';
+          container.style.position = '';
+          container.style.left = '';
+          container.style.top = '';
+          remoteVideoEl.style.visibility = 'visible';
+          // Note: don't set remoteVideoEl.style.opacity here - controlled by onloadedmetadata for flicker prevention
+        }
+      } catch (e) {
+        console.warn('Visibility override failed:', e);
       }
-    }
-
-    // Auto-mute partner in dev to avoid feedback
-    if (isDev() && !remoteVideoEl.muted) {
-      remoteVideoEl.muted = true;
-      const icon = mutePartnerBtn?.querySelector('i, svg');
-      if (icon) {
-        icon.setAttribute('data-lucide', 'volume-x');
-        initIcons(mutePartnerBtn);
-      }
-    }
-
-    // Log connection status
-    if (currentRemoteStream !== newRemoteStream) {
-      devDebug('Connected!');
-    } else {
-      devDebug(`Added ${event.track.kind} track to existing remote stream`);
-    }
-
-    // Ensure the remote video and its container are visible (fix mobile Safari cases)
-    try {
-      const container =
-        document.getElementById('remote-video-box') ||
-        remoteVideoEl.parentElement;
-      if (container) {
-        // Remove any utility hidden class from container or element
-        container.classList?.remove('hidden');
-        remoteVideoEl.classList?.remove('hidden');
-
-        // Force visibility in case a parent applied visibility:hidden via inheritance
-        container.style.visibility = 'visible';
-        container.style.opacity = '1';
-        container.style.position = '';
-        container.style.left = '';
-        container.style.top = '';
-        remoteVideoEl.style.visibility = 'visible';
-        // Note: don't set remoteVideoEl.style.opacity here - controlled by onloadedmetadata for flicker prevention
-      }
-    } catch (e) {
-      console.warn('Visibility override failed:', e);
-    }
-  };
+    },
+  });
   return true;
 }
 
