@@ -88,7 +88,13 @@ const incomingCallPromiseCleanups = new Map();
 // Map of roomId -> resolver used to dismiss/settle the active dialog
 const activeIncomingCallResolvers = new Map();
 
-function showIncomingCallDialog(roomId, callerName, onAccept, onReject) {
+function showIncomingCallDialog(
+  roomId,
+  callerName,
+  onAccept,
+  onReject,
+  { audioOnly = false } = {},
+) {
   if (!roomId || activeIncomingCallResolvers.has(roomId)) return;
 
   const cleanup = () => {
@@ -115,6 +121,7 @@ function showIncomingCallDialog(roomId, callerName, onAccept, onReject) {
   dispatchCommandAndAwait('cmd:dialog:incoming-call:open', {
     roomId,
     callerName,
+    audioOnly,
     onAccept: async () => {
       try {
         if (onAccept) await onAccept();
@@ -724,6 +731,7 @@ export function listenForIncomingOnRoom(roomId) {
             callerName,
             () => resolve(true), // onAccept
             () => resolve(false), // onReject
+            { audioOnly: preconditions.audioOnly },
           );
 
           // Store listener cleanups for later removal
