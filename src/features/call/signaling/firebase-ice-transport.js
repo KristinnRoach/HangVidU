@@ -37,14 +37,13 @@ export function createFirebaseIceTransport(roomId, role, overrides = {}) {
   let remoteRefGetter;
   if (role === 'initiator') {
     localRefGetter = overrides.getLocalCandidatesRef ?? getOfferCandidatesRef;
-    remoteRefGetter = overrides.getRemoteCandidatesRef ?? getAnswerCandidatesRef;
+    remoteRefGetter =
+      overrides.getRemoteCandidatesRef ?? getAnswerCandidatesRef;
   } else if (role === 'joiner') {
     localRefGetter = overrides.getLocalCandidatesRef ?? getAnswerCandidatesRef;
     remoteRefGetter = overrides.getRemoteCandidatesRef ?? getOfferCandidatesRef;
   } else {
-    throw new Error(
-      `createFirebaseIceTransport: invalid role: ${role}`,
-    );
+    throw new Error(`createFirebaseIceTransport: invalid role: ${role}`);
   }
 
   return {

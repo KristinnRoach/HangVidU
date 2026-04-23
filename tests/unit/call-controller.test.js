@@ -63,22 +63,11 @@ vi.mock('firebase/database', () => {
 });
 vi.mock('@kidlib/p2p', () => {
   return {
-    drainIceCandidateQueue: vi.fn(),
-    setRemoteDescription: vi.fn(() => Promise.resolve(true)),
-    setupIceCandidates: vi.fn(),
-    createOffer: vi.fn(() => Promise.resolve({ type: 'offer', sdp: '' })),
-    createAnswer: vi.fn(() => Promise.resolve({ type: 'answer', sdp: '' })),
-    addLocalTracks: vi.fn(() => ({ allHealthy: true, unhealthyKinds: [] })),
-    rtcConfig: { iceServers: [] },
-    generateRoomId: vi.fn(() => 'test-room'),
-    isDuplicateSdp: vi.fn(() => false),
-    isValidSignalingState: vi.fn(() => true),
+    Peer: vi.fn(),
     createDataChannel: vi.fn(),
     joinDataChannel: vi.fn(),
-    closeDataConnection: vi.fn(),
-    getRTT: vi.fn(),
-    checkAndWarnRTT: vi.fn(),
     setLogger: vi.fn(),
+    attachRemoteStream: vi.fn(),
   };
 });
 vi.mock('../../src/features/call/signaling/index.js', () => {

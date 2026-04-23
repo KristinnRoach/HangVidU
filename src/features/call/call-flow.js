@@ -14,9 +14,9 @@ import { devDebug } from '../../shared/utils/dev/dev-utils.js';
 import { showErrorToast } from '../../shared/components/toast.js';
 import { t } from '../../shared/i18n/index.js';
 
-import { Peer, generateRoomId } from '@kidlib/p2p';
+import { Peer } from '@kidlib/p2p';
 import { createFirebaseCallSignaling } from './signaling/index.js';
-
+import { generateRandomId } from '../../shared/utils/gen-random-id.js';
 import RoomService from './room.js';
 
 // Peer emits `error` events synchronously inside `_initPc` for track health
@@ -69,7 +69,7 @@ export async function createCall({
   }
 
   const role = 'initiator';
-  const roomId = targetRoomId || generateRoomId();
+  const roomId = targetRoomId || generateRandomId();
   const userId = getUserId();
 
   // Write room metadata first; Peer will write the offer SDP via the adapter.
