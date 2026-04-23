@@ -127,73 +127,81 @@ export async function setUpLocalStream(
 }
 
 export function setupRemoteStream(pc, remoteVideoEl, mutePartnerBtn) {
-  attachRemoteStream(pc, {
-    onTrack({ stream, track }) {
-      devDebug(`REMOTE TRACK RECEIVED: ${track.kind}`);
+  try {
+    attachRemoteStream(pc, {
+      onTrack({ stream, track }) {
+        devDebug(`REMOTE TRACK RECEIVED: ${track.kind}`);
 
-      const currentRemoteStream = hasRemoteStream() ? getRemoteStream() : null;
+        const currentRemoteStream = hasRemoteStream()
+          ? getRemoteStream()
+          : null;
 
-      // Always update stream and video element (handles both new streams and track replacements)
-      setRemoteStream(stream);
-      remoteVideoEl.srcObject = stream;
-      // Hide video while loading new metadata to prevent flicker/cropping
-      if (track.kind === 'video') {
-        if (remoteVideoEl.readyState >= 1) {
-          remoteVideoEl.style.opacity = '1';
+        // Always update stream and video element (handles both new streams and track replacements)
+        setRemoteStream(stream);
+        remoteVideoEl.srcObject = stream;
+        // Hide video while loading new metadata to prevent flicker/cropping
+        if (track.kind === 'video') {
+          if (remoteVideoEl.readyState >= 1) {
+            remoteVideoEl.style.opacity = '1';
+          } else {
+            remoteVideoEl.style.opacity = '0';
+            remoteVideoEl.addEventListener(
+              'loadedmetadata',
+              () => {
+                remoteVideoEl.style.opacity = '1';
+              },
+              { once: true },
+            );
+          }
+        }
+
+        // Auto-mute partner in dev to avoid feedback
+        if (isDev() && !remoteVideoEl.muted) {
+          remoteVideoEl.muted = true;
+          const icon = mutePartnerBtn?.querySelector('i, svg');
+          if (icon) {
+            icon.setAttribute('data-lucide', 'volume-x');
+            initIcons(mutePartnerBtn);
+          }
+        }
+
+        // Log connection status
+        if (currentRemoteStream !== stream) {
+          devDebug('Connected!');
         } else {
-          remoteVideoEl.style.opacity = '0';
-          remoteVideoEl.addEventListener(
-            'loadedmetadata',
-            () => {
-              remoteVideoEl.style.opacity = '1';
-            },
-            { once: true },
-          );
+          devDebug(`Added ${track.kind} track to existing remote stream`);
         }
-      }
 
-      // Auto-mute partner in dev to avoid feedback
-      if (isDev() && !remoteVideoEl.muted) {
-        remoteVideoEl.muted = true;
-        const icon = mutePartnerBtn?.querySelector('i, svg');
-        if (icon) {
-          icon.setAttribute('data-lucide', 'volume-x');
-          initIcons(mutePartnerBtn);
+        // Ensure the remote video and its container are visible (fix mobile Safari cases)
+        try {
+          const container =
+            document.getElementById('remote-video-box') ||
+            remoteVideoEl.parentElement;
+          if (container) {
+            // Remove any utility hidden class from container or element
+            container.classList?.remove('hidden');
+            remoteVideoEl.classList?.remove('hidden');
+
+            // Force visibility in case a parent applied visibility:hidden via inheritance
+            container.style.visibility = 'visible';
+            container.style.opacity = '1';
+            container.style.position = '';
+            container.style.left = '';
+            container.style.top = '';
+            remoteVideoEl.style.visibility = 'visible';
+            // Note: don't set remoteVideoEl.style.opacity here - controlled by onloadedmetadata for flicker prevention
+          }
+        } catch (e) {
+          console.warn('Visibility override failed:', e);
         }
-      }
-
-      // Log connection status
-      if (currentRemoteStream !== stream) {
-        devDebug('Connected!');
-      } else {
-        devDebug(`Added ${track.kind} track to existing remote stream`);
-      }
-
-      // Ensure the remote video and its container are visible (fix mobile Safari cases)
-      try {
-        const container =
-          document.getElementById('remote-video-box') ||
-          remoteVideoEl.parentElement;
-        if (container) {
-          // Remove any utility hidden class from container or element
-          container.classList?.remove('hidden');
-          remoteVideoEl.classList?.remove('hidden');
-
-          // Force visibility in case a parent applied visibility:hidden via inheritance
-          container.style.visibility = 'visible';
-          container.style.opacity = '1';
-          container.style.position = '';
-          container.style.left = '';
-          container.style.top = '';
-          remoteVideoEl.style.visibility = 'visible';
-          // Note: don't set remoteVideoEl.style.opacity here - controlled by onloadedmetadata for flicker prevention
-        }
-      } catch (e) {
-        console.warn('Visibility override failed:', e);
-      }
-    },
-  });
-  return true;
+      },
+    });
+    return true;
+  } catch (error) {
+    devDebug('setupRemoteStream failed', error);
+    console.error('setupRemoteStream failed', error);
+    return false;
+  }
 }
 
 // // ======= DEVICES DRAFT BELOW (IGNORE)  ==========
