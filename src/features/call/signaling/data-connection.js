@@ -1,13 +1,13 @@
 // src/features/call/signaling/data-connection.js
 //
-// App-specific facade around src/lib/webrtc's data-channel helpers bound
+// App-specific facade around @kidlib/p2p's data-channel helpers bound
 // to the Firebase RTDB data-* paths. Call-controller talks to this rather
 // than poking the lib + signaling adapter by hand.
 
 import {
   createDataChannel,
   joinDataChannel,
-} from '../../../lib/webrtc/index.js';
+} from '@kidlib/p2p';
 import { createFirebaseDataSignaling } from './firebase-data-signaling.js';
 
 /**

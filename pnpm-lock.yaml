@@ -24,6 +24,9 @@ importers:
       '@kidlib/create-component':
         specifier: ^0.1.5
         version: 0.1.5
+      '@kidlib/p2p':
+        specifier: ^0.1.3
+        version: 0.1.3
       '@mediabunny/ac3':
         specifier: ^1.40.1
         version: 1.40.1(mediabunny@1.40.1)
@@ -1328,6 +1331,9 @@ packages:
 
   '@kidlib/create-component@0.1.5':
     resolution: {integrity: sha512-viom5Q6hIMz13plwb6665OT+2N3OBLs+8T7dNT5G9+0UQFcCtOI0iFE0tq0PNf5nnkNsrhS/NkhkyFvclTbMKA==}
+
+  '@kidlib/p2p@0.1.3':
+    resolution: {integrity: sha512-/48k0VaShB7KvvdFSO4Ig0rZfS0i9ITPumIfmCzHyJt31D8jGxA7yCQIy/Ab3LD5Tbd2Rofv+u3oVRPlHexPGQ==}
 
   '@mediabunny/ac3@1.40.1':
     resolution: {integrity: sha512-A9aUZnQ1tNia2i9TZjOzAPVi4sOXRsnozXtq3WMsoGbco6yBPgIZLOWPVugwpJMQglVSAPARlgH+chpzNAkHOg==}
@@ -5445,6 +5451,8 @@ snapshots:
     optional: true
 
   '@kidlib/create-component@0.1.5': {}
+
+  '@kidlib/p2p@0.1.3': {}
 
   '@mediabunny/ac3@1.40.1(mediabunny@1.40.1)':
     dependencies:

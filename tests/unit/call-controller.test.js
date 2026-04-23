@@ -61,7 +61,7 @@ vi.mock('firebase/database', () => {
     getDatabase: vi.fn(() => ({})),
   };
 });
-vi.mock('../../src/lib/webrtc/index.js', () => {
+vi.mock('@kidlib/p2p', () => {
   return {
     drainIceCandidateQueue: vi.fn(),
     setRemoteDescription: vi.fn(() => Promise.resolve(true)),

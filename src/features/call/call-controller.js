@@ -537,7 +537,7 @@ class CallController {
    *   the peer hasn't recovered. Guards against races with a newer call.
    * Also attaches a native iceconnectionstatechange listener to trigger
    * ICE restart on transient ICE failures (not exposed via Peer events).
-   * @param {import('../../lib/webrtc/index.js').Peer} peer
+   * @param {import('@kidlib/p2p').Peer} peer
    * @private
    */
   wirePeerConnectionEvents(peer) {
