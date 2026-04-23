@@ -17,16 +17,16 @@ export function generateRandomId(options = {}) {
   const length = id_length || DEFAULT_ID_LENGTH;
 
   let out = '';
-  const alphabetLen = DEFAULT_ID_ALPHABET.length;
+  const alphabetLen = alphabet.length;
   const maxUnbiased = Math.floor(256 / alphabetLen) * alphabetLen;
-  const bytes = new Uint8Array(DEFAULT_ID_LENGTH * 2);
+  const bytes = new Uint8Array(length * 2);
 
-  while (out.length < DEFAULT_ID_LENGTH) {
+  while (out.length < length) {
     globalThis.crypto.getRandomValues(bytes);
-    for (let i = 0; i < bytes.length && out.length < DEFAULT_ID_LENGTH; i++) {
+    for (let i = 0; i < bytes.length && out.length < length; i++) {
       const byte = bytes[i];
       if (byte < maxUnbiased) {
-        out += DEFAULT_ID_ALPHABET[byte % alphabetLen];
+        out += alphabet[byte % alphabetLen];
       }
     }
   }
