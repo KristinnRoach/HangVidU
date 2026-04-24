@@ -41,7 +41,7 @@
 #yt-video-box iframe,
 #main-messages-toggle-btn,
 .messages-box,
-.top-right-menu {
+.top-bar-right {
   opacity: 1;
   pointer-events: auto;
 }

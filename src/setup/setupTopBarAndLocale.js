@@ -32,35 +32,36 @@ export function setupTopBarAndLocale(options) {
 
   const { appWrapper, showDebugUIForNotifications = false } = options;
 
-  initPromise = Promise.resolve().then(() => {
-    let notificationsToggle = null;
+  initPromise = Promise.resolve()
+    .then(() => {
+      let notificationsToggle = null;
 
-    // Add debug button for testing update notification (dev only)
-    showDebugUIForNotifications && addDebugUpdateButton();
+      // Add debug button for testing update notification (dev only)
+      showDebugUIForNotifications && addDebugUpdateButton();
 
-    // Initialize notification system for production (PWA updates, etc.)
-    const topRightMenu = document.querySelector('.top-right-menu');
-    if (topRightMenu) {
-      notificationsToggle = createNotificationsToggle({
-        parent: topRightMenu,
-        hideWhenAllRead: false,
-      });
-      inAppNotificationManager.setToggle(notificationsToggle);
-    }
-
-    // TODO: integrate into template (and settings menu once implemented)
-    const toggleLangBtn = document.createElement('button');
-    toggleLangBtn.id = 'toggle-lang-btn';
-
-    const renderLocaleLabel = () => {
-      const localeUpperCase = getLocale().toUpperCase();
-      if (toggleLangBtn.textContent !== `🌐 ${localeUpperCase}`) {
-        toggleLangBtn.textContent = `🌐 ${localeUpperCase}`;
+      // Initialize notification system for production (PWA updates, etc.)
+      const topRightMenu = document.querySelector('.top-bar-right');
+      if (topRightMenu) {
+        notificationsToggle = createNotificationsToggle({
+          parent: topRightMenu,
+          hideWhenAllRead: false,
+        });
+        inAppNotificationManager.setToggle(notificationsToggle);
       }
-    };
-    renderLocaleLabel();
 
-    toggleLangBtn.style.cssText = `
+      // TODO: integrate into template (and settings menu once implemented)
+      const toggleLangBtn = document.createElement('button');
+      toggleLangBtn.id = 'toggle-lang-btn';
+
+      const renderLocaleLabel = () => {
+        const localeUpperCase = getLocale().toUpperCase();
+        if (toggleLangBtn.textContent !== `🌐 ${localeUpperCase}`) {
+          toggleLangBtn.textContent = `🌐 ${localeUpperCase}`;
+        }
+      };
+      renderLocaleLabel();
+
+      toggleLangBtn.style.cssText = `
       position: fixed;
       bottom: 2px;
       left: 2px;
@@ -77,68 +78,69 @@ export function setupTopBarAndLocale(options) {
       cursor: pointer;
       box-shadow: none; 
     `;
-    toggleLangBtn.onclick = async () => {
-      const newLocale = getLocale() === 'en' ? 'is' : 'en';
-      await setLocale(newLocale);
-      renderLocaleLabel();
-    };
+      toggleLangBtn.onclick = async () => {
+        const newLocale = getLocale() === 'en' ? 'is' : 'en';
+        await setLocale(newLocale);
+        renderLocaleLabel();
+      };
 
-    const unsubscribeLocaleChange = onLocaleChange(renderLocaleLabel);
-    appWrapper && appWrapper.appendChild(toggleLangBtn);
+      const unsubscribeLocaleChange = onLocaleChange(renderLocaleLabel);
+      appWrapper && appWrapper.appendChild(toggleLangBtn);
 
-    // Special-case stale cleanup guard: this setup owns shared singleton UI
-    // state (`inAppNotificationManager`), so an old cleanup must never tear
-    // down a newer initialized generation.
-    let isCleanedUp = false;
-    const activeCleanup = () => {
-      if (cleanup !== activeCleanup || isCleanedUp) {
-        return;
-      }
-      isCleanedUp = true;
-      try {
-        unsubscribeLocaleChange?.();
-      } catch (error) {
-        console.warn(
-          '[setupTopBarAndLocale] cleanup failed to unsubscribe locale listener:',
-          error,
-        );
-      }
-      try {
-        toggleLangBtn?.remove();
-      } catch (error) {
-        console.warn(
-          '[setupTopBarAndLocale] cleanup failed to remove locale toggle:',
-          error,
-        );
-      }
-      try {
-        inAppNotificationManager.setToggle(null);
-      } catch (error) {
-        console.warn(
-          '[setupTopBarAndLocale] cleanup failed to clear notification toggle:',
-          error,
-        );
-      }
-      try {
-        notificationsToggle?.remove();
-      } catch (error) {
-        console.warn(
-          '[setupTopBarAndLocale] cleanup failed to remove notification toggle:',
-          error,
-        );
-      } finally {
-        cleanup = () => {
+      // Special-case stale cleanup guard: this setup owns shared singleton UI
+      // state (`inAppNotificationManager`), so an old cleanup must never tear
+      // down a newer initialized generation.
+      let isCleanedUp = false;
+      const activeCleanup = () => {
+        if (cleanup !== activeCleanup || isCleanedUp) {
+          return;
+        }
+        isCleanedUp = true;
+        try {
+          unsubscribeLocaleChange?.();
+        } catch (error) {
+          console.warn(
+            '[setupTopBarAndLocale] cleanup failed to unsubscribe locale listener:',
+            error,
+          );
+        }
+        try {
+          toggleLangBtn?.remove();
+        } catch (error) {
+          console.warn(
+            '[setupTopBarAndLocale] cleanup failed to remove locale toggle:',
+            error,
+          );
+        }
+        try {
+          inAppNotificationManager.setToggle(null);
+        } catch (error) {
+          console.warn(
+            '[setupTopBarAndLocale] cleanup failed to clear notification toggle:',
+            error,
+          );
+        }
+        try {
+          notificationsToggle?.remove();
+        } catch (error) {
+          console.warn(
+            '[setupTopBarAndLocale] cleanup failed to remove notification toggle:',
+            error,
+          );
+        } finally {
+          cleanup = () => {
+            isReady = false;
+          };
           isReady = false;
-        };
-        isReady = false;
-      }
-    };
-    cleanup = activeCleanup;
-    isReady = true;
-    return cleanup;
-  }).finally(() => {
-    initPromise = null;
-  });
+        }
+      };
+      cleanup = activeCleanup;
+      isReady = true;
+      return cleanup;
+    })
+    .finally(() => {
+      initPromise = null;
+    });
 
   return initPromise;
 }

@@ -1,4 +1,5 @@
 import LegalFooter from './components/app/LegalFooter.jsx';
+import AppTitle from './components/auth/AppTitle.jsx';
 import AuthControls from './components/auth/AuthControls.jsx';
 import ContactsList from './components/contacts/ContactsList.jsx';
 import DialogProvider from './components/DialogProvider.jsx';
@@ -15,16 +16,12 @@ export default function App() {
     <DialogProvider>
       <div id='app' class='main-wrapper'>
         <header id='top-bar' class='top-bar'>
-          <div id='title-auth-bar' class='title-auth-bar animated-flex'>
-            <h1 id='app-title-h1' class='app-title'>
-              <a id='app-title-a'>
-                <span id='app-title-span'>HangVidU</span>
-              </a>
-            </h1>
+          <div id='top-bar-left' class='top-bar-left animated-flex'>
+            <AppTitle />
             <AuthControls />
           </div>
 
-          <div class='top-right-menu'>
+          <div class='top-bar-right'>
             <button
               type='button'
               title='Add contact'
@@ -66,7 +63,10 @@ export default function App() {
 
         <main class='relative-wrapper'>
           <div id='videos'>
-            <div id='local-video-box' class='hidden box video-box local-video-box'>
+            <div
+              id='local-video-box'
+              class='hidden box video-box local-video-box'
+            >
               <video id='local-video-el' autoplay playsinline muted />
             </div>
 
