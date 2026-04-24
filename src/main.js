@@ -185,7 +185,7 @@ async function bootstrapApp() {
         showDebugUIForNotifications,
       }),
     bindCallUI: () => bindCallUI(CallController),
-    mountApp: () => mountApp(lobbyDiv),
+    mountApp,
     setupMainAppBusListeners,
     startListeningForSavedRooms,
     autoInitMsgSessionIfNeeded,
