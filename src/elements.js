@@ -60,7 +60,11 @@ export function updateI18nElements() {
   });
 }
 
+let elementsInitialized = false;
+
 export function initializeElements() {
+  if (elementsInitialized) return;
+
   lobbyDiv = getElement('lobby');
 
   videosWrapper = getElement('videos');
@@ -88,7 +92,10 @@ export function initializeElements() {
 
 // Export getters to ensure we always return current references
 export const getElements = () => {
-  initializeElements();
+  if (!elementsInitialized) {
+    initializeElements();
+    elementsInitialized = true;
+  }
 
   return {
     lobbyDiv,
