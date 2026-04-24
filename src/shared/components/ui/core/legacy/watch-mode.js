@@ -4,7 +4,6 @@ import {
   localVideoEl,
   remoteVideoEl,
   lobbyDiv,
-  lobbyCallBtn,
   chatControls,
   callBtn,
   hangUpBtn,
@@ -58,7 +57,6 @@ export function enterWatchModeUI() {
 
   // Hide lobby if visible
   hideElement(lobbyDiv);
-  hideElement(lobbyCallBtn);
 
   // Chat controls adjustments (minimal UI)
   chatControls.classList.remove('bottom');
@@ -124,7 +122,6 @@ export function exitWatchModeUI() {
     showElement(localBoxEl);
   } else {
     showElement(lobbyDiv);
-    showElement(lobbyCallBtn);
 
     removeFromSmallFrame(localBoxEl);
     hideElement(localBoxEl);
