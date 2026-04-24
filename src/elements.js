@@ -22,7 +22,6 @@ let sharedBoxEl = null;
 let chatControls = null;
 let callBtn = null;
 let hangUpBtn = null;
-let installBtn = null;
 let switchCameraBtn = null;
 
 let mutePartnerBtn = null;
@@ -103,7 +102,6 @@ export const getElements = () => {
     chatControls,
     callBtn,
     hangUpBtn,
-    installBtn,
     switchCameraBtn,
     mutePartnerBtn,
     fullscreenPartnerBtn,
@@ -128,7 +126,6 @@ export {
   chatControls,
   callBtn,
   hangUpBtn,
-  installBtn,
   switchCameraBtn,
   mutePartnerBtn,
   fullscreenPartnerBtn,
