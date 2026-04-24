@@ -15,6 +15,10 @@ import {
   showElement,
 } from '../components/ui/utils/ui-utils.js';
 import { devDebug, isDev, isProd } from '../utils/dev/dev-utils.js';
+import {
+  runAppUiAction,
+  setAppUiAction,
+} from '../components/ui/app-actions.js';
 
 // ============================================================================
 // STATE
@@ -70,7 +74,7 @@ export function initializeMediaControls({
 }) {
   // ===== TOGGLE MIC =====
   if (micBtn) {
-    micBtn.onclick = () => {
+    cleanupFunctions.push(setAppUiAction('toggleMic', () => {
       const localStream = getLocalStream();
       if (!localStream) return;
 
@@ -79,13 +83,17 @@ export function initializeMediaControls({
 
       audioTrack.enabled = !audioTrack.enabled;
       updateMuteMicIcon(!audioTrack.enabled, micBtn);
-    };
-    import.meta.env.DEV && micBtn.click(); // Auto-mute mic in dev to avoid feedback
+    }));
+    if (import.meta.env.DEV) {
+      runAppUiAction('toggleMic').catch((error) => {
+        console.warn('[media-controls] auto-mute failed:', error);
+      });
+    }
   }
 
   // ===== TOGGLE CAMERA ON/OFF =====
   if (cameraBtn) {
-    cameraBtn.onclick = () => {
+    cleanupFunctions.push(setAppUiAction('toggleCamera', () => {
       const localStream = getLocalStream();
       if (!localStream) return;
 
@@ -101,12 +109,12 @@ export function initializeMediaControls({
           initIcons(cameraBtn);
         }
       }
-    };
+    }));
   }
 
   // ===== SWITCH VIDEO STREAM SOURCE (FRONT/BACK CAMERA) =====
   if (switchCameraBtn) {
-    switchCameraBtn.onclick = async () => {
+    cleanupFunctions.push(setAppUiAction('switchCamera', async () => {
       const localStream = getLocalStream();
       const result = await switchVideoStreamFacingMode(
         getPeerConnection(),
@@ -134,7 +142,7 @@ export function initializeMediaControls({
       } else {
         console.error('Failed to switch video stream source');
       }
-    };
+    }));
 
     // Show button only if device has multiple cameras
     (async () => {
@@ -150,7 +158,7 @@ export function initializeMediaControls({
 
   // ===== MUTE/UNMUTE PARTNER =====
   if (mutePartnerBtn) {
-    mutePartnerBtn.onclick = () => {
+    cleanupFunctions.push(setAppUiAction('toggleRemoteMute', () => {
       const remoteVideo = getRemoteVideo();
       if (!remoteVideo) return;
 
@@ -165,19 +173,19 @@ export function initializeMediaControls({
         );
         initIcons(mutePartnerBtn);
       }
-    };
+    }));
   }
 
   // ===== FULLSCREEN FOR REMOTE VIDEO =====
   if (fullscreenPartnerBtn) {
-    fullscreenPartnerBtn.onclick = () => {
+    cleanupFunctions.push(setAppUiAction('fullscreenRemote', () => {
       const remoteVideo = getRemoteVideo();
       if (remoteVideo.requestFullscreen) {
         remoteVideo.requestFullscreen();
       } else if (remoteVideo.webkitRequestFullscreen) {
         remoteVideo.webkitRequestFullscreen();
       }
-    };
+    }));
   }
 
   // ===== PICTURE-IN-PICTURE FOR REMOTE VIDEO =====
@@ -187,7 +195,7 @@ export function initializeMediaControls({
   const TEMP_DISABL_PIP = !isDev();
 
   if (!TEMP_DISABL_PIP && remotePipBtn && isPiPSupported()) {
-    remotePipBtn.onclick = async () => {
+    cleanupFunctions.push(setAppUiAction('toggleRemotePip', async () => {
       const remoteVideo = getRemoteVideo();
       if (!remoteVideo) return;
 
@@ -200,7 +208,7 @@ export function initializeMediaControls({
         );
         devDebug('Picture-in-Picture result:', pipResult);
       }
-    };
+    }));
 
     showElement(remotePipBtn);
   }

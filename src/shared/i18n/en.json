@@ -25,6 +25,7 @@
   "call.waiting": "Waiting for answer...",
   "call.start": "Start Call",
   "call.calling_short": "Calling...",
+  "call.hang_up": "Hang up",
   "call.join.placeholder": "Enter Room ID",
   "call.join.title": "Join existing room",
   "call.unanswered": "Missed Call",

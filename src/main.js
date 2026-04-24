@@ -109,6 +109,7 @@ import {
 } from './features/call/room-listeners.js';
 import { showErrorToast } from './shared/components/toast.js';
 import { dispatchCommandAndAwait } from './shared/events/index.js';
+import { setAppUiAction } from './shared/components/ui/app-actions.js';
 
 // Quick access to enable / disable dev debug logs
 setDevDebugEnabled(true);
@@ -367,7 +368,7 @@ const handleCall = async () => {
 };
 
 if (callBtn) {
-  callBtn.onclick = handleCall;
+  cleanupFunctions.push(setAppUiAction('startCall', handleCall));
 }
 
 // Paste & Join: read clipboard, extract room ID, and join
@@ -403,8 +404,7 @@ if (callBtn) {
 // }
 
 if (exitWatchModeBtn) {
-  // TODO: refactor UI
-  exitWatchModeBtn.onclick = () => {
+  cleanupFunctions.push(setAppUiAction('exitWatchMode', () => {
     if (getLastWatched() === 'yt') {
       pauseYouTubeVideo();
       hideYouTubePlayer();
@@ -421,18 +421,18 @@ if (exitWatchModeBtn) {
       hideElement(sharedBoxEl);
     }
     onWatchModeExited();
-  };
+  }));
 }
 
 // TODO: refactor UI (actions?)
 if (hangUpBtn) {
-  hangUpBtn.onclick = async () => {
+  cleanupFunctions.push(setAppUiAction('hangUp', async () => {
     console.debug('Hanging up...');
 
     // Call CallController.hangUp (emits cancellation and performs cleanup)
     // The 'cleanup' event handler will handle all UI updates including contact save prompt
     await CallController.hangUp({ emitCancel: true, reason: 'user_hung_up' });
-  };
+  }));
 }
 
 // ============================================================================
