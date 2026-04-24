@@ -17,7 +17,6 @@ const DEFAULT_CRITICAL_ELEMENTS = [
   'remoteBoxEl',
   'chatControls',
   'lobbyDiv',
-  'titleAuthBar',
 ];
 
 const DEFAULT_INTERACTIVE_ELEMENTS = ['callBtn', 'hangUpBtn'];

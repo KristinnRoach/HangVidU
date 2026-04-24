@@ -223,7 +223,6 @@ vi.mock('../../src/elements.js', () => {
   const remoteVideoEl = document.createElement('video');
   const sharedVideoEl = document.createElement('video');
   const lobbyDiv = document.createElement('div');
-  const titleAuthBar = document.createElement('div');
   const appWrapper = document.createElement('div');
 
   return {
@@ -244,7 +243,6 @@ vi.mock('../../src/elements.js', () => {
     remoteBoxEl: document.createElement('div'),
     sharedBoxEl: document.createElement('div'),
     lobbyDiv,
-    titleAuthBar,
     addContactBtn: document.createElement('button'),
     getElements: vi.fn(() => ({
       localVideoEl,
@@ -253,7 +251,6 @@ vi.mock('../../src/elements.js', () => {
       remoteBoxEl: document.createElement('div'),
       chatControls: document.createElement('div'),
       lobbyDiv,
-      titleAuthBar,
     })),
     updateI18nElements: vi.fn(),
     appWrapper,

@@ -14,7 +14,6 @@ const getElement = (id) => {
 // Element references - initialized after DOM is ready
 let appWrapper = null;
 let lobbyDiv = null;
-let titleAuthBar = null;
 let videosWrapper = null;
 let localVideoEl = null;
 let localBoxEl = null;
@@ -76,8 +75,6 @@ function initializeElements() {
   appWrapper = getElement('app');
   lobbyDiv = getElement('lobby');
 
-  titleAuthBar = getElement('title-auth-bar');
-
   videosWrapper = getElement('videos');
   localVideoEl = getElement('local-video-el');
   localBoxEl = getElement('local-video-box');
@@ -117,7 +114,6 @@ if (document.readyState === 'loading') {
 export const getElements = () => ({
   appWrapper,
   lobbyDiv,
-  titleAuthBar,
   videosWrapper,
   localVideoEl,
   localBoxEl,
@@ -147,7 +143,6 @@ export const getElements = () => ({
 export {
   appWrapper,
   lobbyDiv,
-  titleAuthBar,
   videosWrapper,
   localVideoEl,
   localBoxEl,

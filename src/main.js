@@ -7,8 +7,6 @@
 import './initSentry.js';
 import { removeAllRTDBListeners } from './shared/storage/fb-rtdb/rtdb.js';
 
-import { initializeAuthUI } from './auth/index.js';
-
 import { getPushNotifications } from './features/push-notifications/index.js';
 
 import CallController from './features/call/call-controller.js';
@@ -29,7 +27,6 @@ import {
   exitWatchModeBtn,
   sharedBoxEl,
   lobbyDiv,
-  titleAuthBar,
   addContactBtn,
   appWrapper,
 } from './elements.js';
@@ -239,9 +236,6 @@ async function init() {
     cleanupFunctions.push(
       setupMessagingAppBusHandlers({ messagingController }),
     );
-
-    const authComponent = initializeAuthUI(titleAuthBar);
-    if (authComponent) cleanupFunctions.push(authComponent.dispose);
 
     initializeSearchUI();
     addKeyListeners();

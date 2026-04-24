@@ -1,4 +1,5 @@
 import LegalFooter from './components/app/LegalFooter.jsx';
+import AuthControls from './components/auth/AuthControls.jsx';
 import ContactsList from './components/contacts/ContactsList.jsx';
 import DialogProvider from './components/DialogProvider.jsx';
 import PublicHomepage from './components/home/PublicHomepage.jsx';
@@ -20,6 +21,7 @@ export default function App() {
                 <span id='app-title-span'>HangVidU</span>
               </a>
             </h1>
+            <AuthControls />
           </div>
 
           <div class='top-right-menu'>
