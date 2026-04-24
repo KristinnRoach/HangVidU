@@ -1,3 +1,4 @@
+import LegalFooter from './components/app/LegalFooter.jsx';
 import ContactsList from './components/contacts/ContactsList.jsx';
 import DialogProvider from './components/DialogProvider.jsx';
 import PublicHomepage from './components/home/PublicHomepage.jsx';
@@ -192,29 +193,7 @@ export default function App() {
           <i data-lucide='monitor' />
         </button>
 
-        <footer id='legal-footer' class='legal-footer'>
-          <a
-            class='legal-footer-link'
-            href='/privacy-policy.html'
-            target='_blank'
-            rel='noopener noreferrer'
-            title='View Privacy Policy'
-            aria-label='View Privacy Policy'
-          >
-            Privacy
-          </a>
-          <span class='legal-footer-separator'>&bull;</span>
-          <a
-            class='legal-footer-link'
-            href='/terms-of-service.html'
-            target='_blank'
-            rel='noopener noreferrer'
-            title='View Terms of Service'
-            aria-label='View Terms of Service'
-          >
-            Terms
-          </a>
-        </footer>
+        <LegalFooter />
       </div>
     </DialogProvider>
   );

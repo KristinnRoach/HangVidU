@@ -235,7 +235,9 @@
 
   "nav.app_title": "HangVidU",
   "nav.privacy": "Skoða persónuverndarstefnu",
+  "nav.privacy.short": "Persónuvernd",
   "nav.terms": "Skoða skilmála",
+  "nav.terms.short": "Skilmálar",
 
   "media.youtube.search": "Leita á YouTube",
   "media.youtube.placeholder": "Leita að YouTube myndböndum...",

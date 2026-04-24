@@ -235,7 +235,9 @@
 
   "nav.app_title": "HangVidU",
   "nav.privacy": "View Privacy Policy",
+  "nav.privacy.short": "Privacy",
   "nav.terms": "View Terms of Service",
+  "nav.terms.short": "Terms",
 
   "media.youtube.search": "Search YouTube",
   "media.youtube.placeholder": "Search YouTube videos...",
