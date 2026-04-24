@@ -12,7 +12,6 @@ import { getPushNotifications } from './features/push-notifications/index.js';
 import CallController from './features/call/call-controller.js';
 import { messagingController } from './features/messaging/messaging-controller.js';
 import {
-  showAddContactModal,
   getConversationId,
   getAllContactsSorted,
 } from './features/contacts/index.js';
@@ -27,8 +26,6 @@ import {
   exitWatchModeBtn,
   sharedBoxEl,
   lobbyDiv,
-  addContactBtn,
-  appWrapper,
 } from './elements.js';
 
 import {
@@ -72,11 +69,6 @@ import {
 } from './shared/media/youtube/youtube-player.js';
 
 import { cleanupMediaControls } from './shared/media/media-controls.js';
-import {
-  cleanupSearchUI,
-  initializeSearchUI,
-} from './shared/media/youtube/youtube-search.js';
-
 import {
   showElement,
   hideElement,
@@ -178,7 +170,6 @@ async function bootstrapApp() {
     runInit: init,
     setupTopBarAndLocale: () =>
       setupTopBarAndLocale({
-        appWrapper,
         showDebugUIForNotifications,
       }),
     bindCallUI: () => bindCallUI(CallController),
@@ -237,7 +228,6 @@ async function init() {
       setupMessagingAppBusHandlers({ messagingController }),
     );
 
-    initializeSearchUI();
     addKeyListeners();
 
     // Stream is now lazily initialized when user starts/joins a call
@@ -408,13 +398,6 @@ if (callBtn) {
 //     );
 //   }
 // }
-
-// Add Contact button
-if (addContactBtn) {
-  addContactBtn.onclick = async () => {
-    await showAddContactModal();
-  };
-}
 
 if (exitWatchModeBtn) {
   // TODO: refactor UI
@@ -725,8 +708,6 @@ async function cleanup() {
   onWatchModeExited();
   setLastWatched('none');
   destroyYouTubePlayer();
-  cleanupSearchUI();
-
   clearUrlParam();
   setYouTubeReady(false);
 

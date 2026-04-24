@@ -93,6 +93,7 @@ export function t(key, params) {
 export function useI18n() {
   return {
     locale: currentLocale,
+    setLocale,
     t,
   };
 }

@@ -4,6 +4,10 @@ import AuthControls from './components/auth/AuthControls.jsx';
 import ContactsList from './components/contacts/ContactsList.jsx';
 import DialogProvider from './components/DialogProvider.jsx';
 import PublicHomepage from './components/home/PublicHomepage.jsx';
+import AddContactButton from './components/top-bar/AddContactButton.jsx';
+import LocaleToggle from './components/top-bar/LocaleToggle.jsx';
+import NotificationsToggle from './components/top-bar/NotificationsToggle.jsx';
+import YouTubeSearchControls from './components/top-bar/YouTubeSearchControls.jsx';
 
 /**
  * SolidJS app shell.
@@ -22,40 +26,9 @@ export default function App() {
           </div>
 
           <div class='top-bar-right'>
-            <button
-              type='button'
-              title='Add contact'
-              aria-label='Add contact'
-              id='add-contact-btn'
-            >
-              <i data-lucide='user-plus' />
-            </button>
-
-            <div class='search-section'>
-              <div class='search-controls'>
-                <input
-                  class='hidden'
-                  type='search'
-                  id='searchQuery'
-                  placeholder='Search YouTube videos...'
-                  autocomplete='off'
-                  spellcheck={false}
-                />
-                <button
-                  type='button'
-                  id='searchBtn'
-                  title='Search YouTube videos'
-                  aria-label='Search YouTube videos'
-                >
-                  <i data-lucide='search' />
-                </button>
-              </div>
-              <div
-                id='searchResults'
-                class='search-results hidden'
-                aria-live='polite'
-              />
-            </div>
+            <AddContactButton />
+            <NotificationsToggle />
+            <YouTubeSearchControls />
           </div>
         </header>
 
@@ -196,6 +169,7 @@ export default function App() {
         </button>
 
         <LegalFooter />
+        <LocaleToggle />
       </div>
     </DialogProvider>
   );

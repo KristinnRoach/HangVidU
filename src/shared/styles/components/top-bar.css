@@ -241,6 +241,23 @@
   order: 4;
 }
 
+#toggle-lang-btn {
+  position: fixed;
+  bottom: 2px;
+  left: 2px;
+  z-index: 0;
+  padding: 8px 12px;
+  background: transparent;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: none;
+}
+
 /* Consistent button sizing for all top-bar-right items */
 .top-bar-right button,
 .top-bar-right .notifications-toggle-btn {

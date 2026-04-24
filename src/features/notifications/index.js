@@ -7,7 +7,6 @@ export {
 
 export { showEnableNotificationsPrompt } from './components/enable-notifications-prompt.js';
 
-export { createNotificationsToggle } from './components/notifications-toggle.js';
 export { addDebugUpdateButton } from './components/debug-notifications.js';
 export { showPushUnsupportedNotification } from './components/push-unsupported-notification.js';
 export { showUpdateNotification } from './components/update-notification.js';

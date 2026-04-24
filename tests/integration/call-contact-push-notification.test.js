@@ -98,7 +98,6 @@ const mocks = vi.hoisted(() => {
     onAuthStateChanged: vi.fn(() => () => {}),
     setState: vi.fn(),
     waitForAuthReady: vi.fn(),
-    initializeAuthUI: vi.fn(),
     initAuth: vi.fn().mockResolvedValue(undefined),
     getCurrentUserAsync: vi.fn(),
     getLoggedInUserToken: vi.fn(),
@@ -166,7 +165,6 @@ vi.mock('../../src/features/notifications/index.js', () => ({
     hideList: vi.fn(),
   },
   showEnableNotificationsPrompt: vi.fn(),
-  createNotificationsToggle: vi.fn(),
   addDebugUpdateButton: vi.fn(),
   showPushUnsupportedNotification: vi.fn(),
   showUpdateNotification: vi.fn(),
@@ -223,7 +221,6 @@ vi.mock('../../src/elements.js', () => {
   const remoteVideoEl = document.createElement('video');
   const sharedVideoEl = document.createElement('video');
   const lobbyDiv = document.createElement('div');
-  const appWrapper = document.createElement('div');
 
   return {
     localVideoEl,
@@ -243,7 +240,6 @@ vi.mock('../../src/elements.js', () => {
     remoteBoxEl: document.createElement('div'),
     sharedBoxEl: document.createElement('div'),
     lobbyDiv,
-    addContactBtn: document.createElement('button'),
     getElements: vi.fn(() => ({
       localVideoEl,
       remoteVideoEl,
@@ -253,7 +249,6 @@ vi.mock('../../src/elements.js', () => {
       lobbyDiv,
     })),
     updateI18nElements: vi.fn(),
-    appWrapper,
   };
 });
 
@@ -379,13 +374,6 @@ vi.mock('../../src/shared/media/media-controls.js', () => ({
   initializeMediaControls: vi.fn(),
   cleanupMediaControls: vi.fn(),
 }));
-
-vi.mock('../../src/shared/media/youtube/youtube-search.js', () => ({
-  cleanupSearchUI: vi.fn(),
-  initializeSearchUI: vi.fn(),
-}));
-
-// notifications-toggle is covered by the ../../src/features/notifications/index.js barrel mock
 
 vi.mock('../../src/shared/components/toast.js', () => ({
   showSuccessToast: vi.fn(),
