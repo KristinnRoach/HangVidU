@@ -244,9 +244,7 @@ vi.mock('../../src/elements.js', () => {
     remoteBoxEl: document.createElement('div'),
     sharedBoxEl: document.createElement('div'),
     lobbyDiv,
-    lobbyCallBtn: document.createElement('button'),
     titleAuthBar,
-    pasteJoinBtn: document.createElement('button'),
     addContactBtn: document.createElement('button'),
     getElements: vi.fn(() => ({
       localVideoEl,
@@ -284,7 +282,9 @@ vi.mock('../../src/shared/media/state.js', () => ({
 }));
 
 vi.mock('../../src/shared/utils/dev/dev-utils.js', async () => {
-  const actual = await vi.importActual('../../src/shared/utils/dev/dev-utils.js');
+  const actual = await vi.importActual(
+    '../../src/shared/utils/dev/dev-utils.js',
+  );
   return {
     ...actual,
     devDebug: vi.fn(),

@@ -14,7 +14,6 @@ const getElement = (id) => {
 // Element references - initialized after DOM is ready
 let appWrapper = null;
 let lobbyDiv = null;
-let lobbyCallBtn = null;
 let titleAuthBar = null;
 let videosWrapper = null;
 let localVideoEl = null;
@@ -39,7 +38,6 @@ let appPipBtn = null;
 let appTitleH1 = null;
 let appTitleA = null;
 let appTitleSpan = null;
-let pasteJoinBtn = null;
 let addContactBtn = null;
 
 // i18n attributes configuration: { elementId: { attrs: ['attr1', 'attr2'], key: 'translation.key' } }
@@ -77,7 +75,6 @@ export function updateI18nElements() {
 function initializeElements() {
   appWrapper = getElement('app');
   lobbyDiv = getElement('lobby');
-  lobbyCallBtn = getElement('lobby-call-btn');
 
   titleAuthBar = getElement('title-auth-bar');
 
@@ -106,7 +103,6 @@ function initializeElements() {
   appTitleH1 = getElement('app-title-h1');
   appTitleA = getElement('app-title-a');
   appTitleSpan = getElement('app-title-span');
-  pasteJoinBtn = getElement('paste-join-btn');
   addContactBtn = getElement('add-contact-btn');
 }
 
@@ -121,7 +117,6 @@ if (document.readyState === 'loading') {
 export const getElements = () => ({
   appWrapper,
   lobbyDiv,
-  lobbyCallBtn,
   titleAuthBar,
   videosWrapper,
   localVideoEl,
@@ -145,7 +140,6 @@ export const getElements = () => ({
   appTitleH1,
   appTitleA,
   appTitleSpan,
-  pasteJoinBtn,
   addContactBtn,
 });
 
@@ -153,7 +147,6 @@ export const getElements = () => ({
 export {
   appWrapper,
   lobbyDiv,
-  lobbyCallBtn,
   titleAuthBar,
   videosWrapper,
   localVideoEl,
@@ -177,7 +170,6 @@ export {
   appTitleH1,
   appTitleA,
   appTitleSpan,
-  pasteJoinBtn,
   addContactBtn,
 };
 

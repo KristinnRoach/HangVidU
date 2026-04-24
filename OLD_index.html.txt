@@ -91,7 +91,28 @@
           ></div>
         </div>
 
-        <div id="lobby" class="lobby"></div>
+        <div id="lobby" class="lobby">
+          <div id="lobby-buttons-container" class="lobby-buttons-container">
+            <button
+              type="button"
+              title="Start call"
+              aria-label="Start call"
+              class="lobby-btn"
+              id="lobby-call-btn"
+            >
+              <i data-lucide="phone"></i>
+            </button>
+            <button
+              type="button"
+              title="Paste invite link to join call"
+              aria-label="Paste invite link to join call"
+              class="lobby-btn"
+              id="paste-join-btn"
+            >
+              <i data-lucide="clipboard-paste"></i>
+            </button>
+          </div>
+        </div>
       </main>
 
       <div id="chat-controls" class="hidden chat-controls bottom">

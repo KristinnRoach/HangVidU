@@ -20,7 +20,7 @@ const DEFAULT_CRITICAL_ELEMENTS = [
   'titleAuthBar',
 ];
 
-const DEFAULT_INTERACTIVE_ELEMENTS = ['callBtn', 'lobbyCallBtn', 'hangUpBtn'];
+const DEFAULT_INTERACTIVE_ELEMENTS = ['callBtn', 'hangUpBtn'];
 
 /**
  * Setup contract:
@@ -60,7 +60,10 @@ export function setupInitPreflight(options = {}) {
       (name) => !elements[name],
     );
     if (missingInteractive.length > 0) {
-      console.warn('Optional interactive controls missing:', missingInteractive);
+      console.warn(
+        'Optional interactive controls missing:',
+        missingInteractive,
+      );
     }
 
     initUI();

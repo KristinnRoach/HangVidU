@@ -12,18 +12,6 @@ body[data-view='lobby:user'] {
     display: flex;
   }
 
-  & #lobby-buttons-container {
-    display: flex;
-
-    & #lobby-call-btn {
-      display: none;
-    }
-
-    & #paste-join-btn {
-      display: none;
-    }
-  }
-
   & #toggle-lang-btn {
     display: block;
   }
@@ -68,20 +56,6 @@ body[data-view='lobby:guest'] {
 
   & .contacts-container {
     display: none;
-  }
-
-  & #lobby-buttons-container {
-    display: none;
-
-    /* TODO: Refactor / remove if lobby-buttons are not needed in guest mode */
-
-    & #lobby-call-btn {
-      display: none;
-    }
-
-    & #paste-join-btn {
-      display: none;
-    }
   }
 
   & #toggle-lang-btn {

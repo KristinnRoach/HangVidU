@@ -29,9 +29,7 @@ import {
   exitWatchModeBtn,
   sharedBoxEl,
   lobbyDiv,
-  lobbyCallBtn,
   titleAuthBar,
-  pasteJoinBtn,
   addContactBtn,
   appWrapper,
 } from './elements.js';
@@ -149,7 +147,7 @@ function handleInitFailure(error) {
   const fallbackToastMessage =
     'An error occurred. Please reload and check cam/mic permissions.';
 
-  for (const button of [callBtn, lobbyCallBtn]) {
+  for (const button of [callBtn]) {
     if (!button) continue;
     button.disabled = true;
     button.title =
@@ -384,41 +382,38 @@ const handleCall = async () => {
 if (callBtn) {
   callBtn.onclick = handleCall;
 }
-if (lobbyCallBtn) {
-  lobbyCallBtn.onclick = handleCall;
-}
 
 // Paste & Join: read clipboard, extract room ID, and join
-if (pasteJoinBtn) {
-  if (navigator.clipboard && navigator.clipboard.readText) {
-    pasteJoinBtn.onclick = async () => {
-      try {
-        const clipboardText = await navigator.clipboard.readText();
-        const roomId = normalizeRoomInput(clipboardText);
+// if (pasteJoinBtn) {
+//   if (navigator.clipboard && navigator.clipboard.readText) {
+//     pasteJoinBtn.onclick = async () => {
+//       try {
+//         const clipboardText = await navigator.clipboard.readText();
+//         const roomId = normalizeRoomInput(clipboardText);
 
-        if (!roomId) {
-          alert(t('error.clipboard.no_link'));
-          return;
-        }
+//         if (!roomId) {
+//           alert(t('error.clipboard.no_link'));
+//           return;
+//         }
 
-        await joinOrCreateRoomWithId(roomId);
-      } catch (error) {
-        // Clipboard access denied or other error
-        if (error.name === 'NotAllowedError') {
-          alert(t('error.clipboard.denied'));
-        } else {
-          console.error('Paste & Join failed:', error);
-          alert(t('error.clipboard.failed'));
-        }
-      }
-    };
-  } else {
-    pasteJoinBtn.style.display = 'none';
-    console.warn(
-      'Paste & Join button hidden: Clipboard API not available in this context (requires HTTPS).',
-    );
-  }
-}
+//         await joinOrCreateRoomWithId(roomId);
+//       } catch (error) {
+//         // Clipboard access denied or other error
+//         if (error.name === 'NotAllowedError') {
+//           alert(t('error.clipboard.denied'));
+//         } else {
+//           console.error('Paste & Join failed:', error);
+//           alert(t('error.clipboard.failed'));
+//         }
+//       }
+//     };
+//   } else {
+//     pasteJoinBtn.style.display = 'none';
+//     console.warn(
+//       'Paste & Join button hidden: Clipboard API not available in this context (requires HTTPS).',
+//     );
+//   }
+// }
 
 // Add Contact button
 if (addContactBtn) {
