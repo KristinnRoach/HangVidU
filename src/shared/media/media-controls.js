@@ -74,16 +74,18 @@ export function initializeMediaControls({
 }) {
   // ===== TOGGLE MIC =====
   if (micBtn) {
-    cleanupFunctions.push(setAppUiAction('toggleMic', () => {
-      const localStream = getLocalStream();
-      if (!localStream) return;
+    cleanupFunctions.push(
+      setAppUiAction('toggleMic', () => {
+        const localStream = getLocalStream();
+        if (!localStream) return;
 
-      const audioTrack = localStream.getAudioTracks()[0];
-      if (!audioTrack) return;
+        const audioTrack = localStream.getAudioTracks()[0];
+        if (!audioTrack) return;
 
-      audioTrack.enabled = !audioTrack.enabled;
-      updateMuteMicIcon(!audioTrack.enabled, micBtn);
-    }));
+        audioTrack.enabled = !audioTrack.enabled;
+        updateMuteMicIcon(!audioTrack.enabled, micBtn);
+      }),
+    );
     if (import.meta.env.DEV) {
       runAppUiAction('toggleMic').catch((error) => {
         console.warn('[media-controls] auto-mute failed:', error);
@@ -93,56 +95,62 @@ export function initializeMediaControls({
 
   // ===== TOGGLE CAMERA ON/OFF =====
   if (cameraBtn) {
-    cleanupFunctions.push(setAppUiAction('toggleCamera', () => {
-      const localStream = getLocalStream();
-      if (!localStream) return;
+    cleanupFunctions.push(
+      setAppUiAction('toggleCamera', () => {
+        const localStream = getLocalStream();
+        if (!localStream) return;
 
-      const videoTrack = localStream.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        const icon = cameraBtn.querySelector('i, svg');
-        if (icon) {
-          icon.setAttribute(
-            'data-lucide',
-            videoTrack.enabled ? 'video' : 'video-off',
-          );
-          initIcons(cameraBtn);
+        const videoTrack = localStream.getVideoTracks()[0];
+        if (videoTrack) {
+          videoTrack.enabled = !videoTrack.enabled;
+          const icon = cameraBtn.querySelector('i, svg');
+          if (icon) {
+            icon.setAttribute(
+              'data-lucide',
+              videoTrack.enabled ? 'video' : 'video-off',
+            );
+            initIcons(cameraBtn);
+          }
         }
-      }
-    }));
+      }),
+    );
   }
 
   // ===== SWITCH VIDEO STREAM SOURCE (FRONT/BACK CAMERA) =====
   if (switchCameraBtn) {
-    cleanupFunctions.push(setAppUiAction('switchCamera', async () => {
-      const localStream = getLocalStream();
-      const result = await switchVideoStreamFacingMode(
-        getPeerConnection(),
-        localStream,
-        getFacingMode(),
-      );
+    cleanupFunctions.push(
+      setAppUiAction('switchCamera', async () => {
+        const localStream = getLocalStream();
+        if (!localStream) return;
 
-      if (result) {
-        // Explicitly swap video tracks in localStream
-        const oldVideoTrack = localStream.getVideoTracks()[0];
-        if (oldVideoTrack) {
-          localStream.removeTrack(oldVideoTrack);
-          oldVideoTrack.stop();
+        const result = await switchVideoStreamFacingMode(
+          getPeerConnection(),
+          localStream,
+          getFacingMode(),
+        );
+
+        if (result) {
+          // Explicitly swap video tracks in localStream
+          const oldVideoTrack = localStream.getVideoTracks()[0];
+          if (oldVideoTrack) {
+            localStream.removeTrack(oldVideoTrack);
+            oldVideoTrack.stop();
+          }
+          localStream.addTrack(result.newVideoTrack);
+
+          // Update facing mode state
+          setFacingMode(result.facingMode);
+
+          // Update UI (local video element shows video track)
+          const localVideo = getLocalVideo();
+          if (localVideo) {
+            localVideo.srcObject = new MediaStream([result.newVideoTrack]);
+          }
+        } else {
+          console.error('Failed to switch video stream source');
         }
-        localStream.addTrack(result.newVideoTrack);
-
-        // Update facing mode state
-        setFacingMode(result.facingMode);
-
-        // Update UI (local video element shows video track)
-        const localVideo = getLocalVideo();
-        if (localVideo) {
-          localVideo.srcObject = new MediaStream([result.newVideoTrack]);
-        }
-      } else {
-        console.error('Failed to switch video stream source');
-      }
-    }));
+      }),
+    );
 
     // Show button only if device has multiple cameras
     (async () => {
@@ -158,34 +166,40 @@ export function initializeMediaControls({
 
   // ===== MUTE/UNMUTE PARTNER =====
   if (mutePartnerBtn) {
-    cleanupFunctions.push(setAppUiAction('toggleRemoteMute', () => {
-      const remoteVideo = getRemoteVideo();
-      if (!remoteVideo) return;
+    cleanupFunctions.push(
+      setAppUiAction('toggleRemoteMute', () => {
+        const remoteVideo = getRemoteVideo();
+        if (!remoteVideo) return;
 
-      remoteVideo.muted = !remoteVideo.muted;
+        remoteVideo.muted = !remoteVideo.muted;
 
-      // Update icon inline
-      const icon = mutePartnerBtn.querySelector('i, svg');
-      if (icon) {
-        icon.setAttribute(
-          'data-lucide',
-          remoteVideo.muted ? 'volume-x' : 'volume-2',
-        );
-        initIcons(mutePartnerBtn);
-      }
-    }));
+        // Update icon inline
+        const icon = mutePartnerBtn.querySelector('i, svg');
+        if (icon) {
+          icon.setAttribute(
+            'data-lucide',
+            remoteVideo.muted ? 'volume-x' : 'volume-2',
+          );
+          initIcons(mutePartnerBtn);
+        }
+      }),
+    );
   }
 
   // ===== FULLSCREEN FOR REMOTE VIDEO =====
   if (fullscreenPartnerBtn) {
-    cleanupFunctions.push(setAppUiAction('fullscreenRemote', () => {
-      const remoteVideo = getRemoteVideo();
-      if (remoteVideo.requestFullscreen) {
-        remoteVideo.requestFullscreen();
-      } else if (remoteVideo.webkitRequestFullscreen) {
-        remoteVideo.webkitRequestFullscreen();
-      }
-    }));
+    cleanupFunctions.push(
+      setAppUiAction('fullscreenRemote', () => {
+        const remoteVideo = getRemoteVideo();
+        if (!remoteVideo) return;
+
+        if (remoteVideo.requestFullscreen) {
+          remoteVideo.requestFullscreen();
+        } else if (remoteVideo.webkitRequestFullscreen) {
+          remoteVideo.webkitRequestFullscreen();
+        }
+      }),
+    );
   }
 
   // ===== PICTURE-IN-PICTURE FOR REMOTE VIDEO =====
@@ -195,20 +209,22 @@ export function initializeMediaControls({
   const TEMP_DISABL_PIP = !isDev();
 
   if (!TEMP_DISABL_PIP && remotePipBtn && isPiPSupported()) {
-    cleanupFunctions.push(setAppUiAction('toggleRemotePip', async () => {
-      const remoteVideo = getRemoteVideo();
-      if (!remoteVideo) return;
+    cleanupFunctions.push(
+      setAppUiAction('toggleRemotePip', async () => {
+        const remoteVideo = getRemoteVideo();
+        if (!remoteVideo) return;
 
-      if (isElementInPictureInPicture(remoteVideo)) {
-        await exitPiP(remoteVideo);
-      } else {
-        const pipResult = await requestPiP(
-          remoteVideo,
-          remoteVideo.parentElement,
-        );
-        devDebug('Picture-in-Picture result:', pipResult);
-      }
-    }));
+        if (isElementInPictureInPicture(remoteVideo)) {
+          await exitPiP(remoteVideo);
+        } else {
+          const pipResult = await requestPiP(
+            remoteVideo,
+            remoteVideo.parentElement,
+          );
+          devDebug('Picture-in-Picture result:', pipResult);
+        }
+      }),
+    );
 
     showElement(remotePipBtn);
   }

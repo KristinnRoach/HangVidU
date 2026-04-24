@@ -86,7 +86,15 @@ export default function ChatControls() {
             aria-label={t(control.labelKey)}
             disabled={control.disabled}
             style={control.style}
-            onClick={(event) => runAppUiAction(control.action, event)}
+            onClick={(event) => {
+              void runAppUiAction(control.action, event).catch((error) => {
+                console.error(
+                  '[ChatControls] action failed:',
+                  control.action,
+                  error,
+                );
+              });
+            }}
           >
             <i data-lucide={control.icon} />
           </button>
@@ -95,4 +103,3 @@ export default function ChatControls() {
     </div>
   );
 }
-
