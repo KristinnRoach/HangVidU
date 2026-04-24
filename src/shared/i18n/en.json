@@ -241,6 +241,13 @@
 
   "media.youtube.search": "Search YouTube",
   "media.youtube.placeholder": "Search YouTube videos...",
+  "media.youtube.searching": "Searching YouTube...",
+  "media.youtube.api_key_missing": "YouTube API key not configured",
+  "media.youtube.quota_exceeded": "YouTube API quota exceeded. Please try again later.",
+  "media.youtube.invalid_request": "Invalid API key or request.",
+  "media.youtube.api_error": "YouTube API error: {status}",
+  "media.youtube.no_results": "No videos found",
+  "media.youtube.search_failed": "Search failed. Please try again.",
   "media.exit_watch": "Exit watch mode",
   "media.audio_disconnected": "Microphone disconnected. Try reloading the page.",
 

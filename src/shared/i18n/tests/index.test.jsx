@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanup, render, waitFor } from '@solidjs/testing-library';
-import { setLocale, useI18n } from '../index.js';
+import { initI18n, setLocale, useI18n } from '../index.js';
 
 function TestLabel() {
   const { t } = useI18n();
@@ -27,5 +27,14 @@ describe('shared i18n', () => {
     await waitFor(() => {
       expect(getByText('Vista')).toBeTruthy();
     });
+  });
+
+  it('initializes before first render so keys are not shown', async () => {
+    await initI18n();
+
+    const { getByText, queryByText } = render(() => <TestLabel />);
+
+    getByText('Save');
+    expect(queryByText('shared.save')).toBeNull();
   });
 });

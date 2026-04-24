@@ -60,7 +60,8 @@
   pointer-events: auto;
 }
 
-.search-result-item:hover {
+.search-result-item:hover,
+.search-result-item.focused {
   background-color: #777;
 }
 

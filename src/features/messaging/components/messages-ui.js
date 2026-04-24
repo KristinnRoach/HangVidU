@@ -110,8 +110,8 @@ export function initMessagesUI() {
   };
 
   const topRightMenu =
-    document.querySelector('.top-bar .top-right-menu') ||
-    document.querySelector('.top-right-menu');
+    document.querySelector('.top-bar .top-bar-right') ||
+    document.querySelector('.top-bar-right');
 
   const messageToggle = createMessageToggle({
     parent: topRightMenu,

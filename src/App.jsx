@@ -1,7 +1,13 @@
 import LegalFooter from './components/app/LegalFooter.jsx';
+import AppTitle from './components/auth/AppTitle.jsx';
+import AuthControls from './components/auth/AuthControls.jsx';
 import ContactsList from './components/contacts/ContactsList.jsx';
 import DialogProvider from './components/DialogProvider.jsx';
 import PublicHomepage from './components/home/PublicHomepage.jsx';
+import AddContactButton from './components/top-bar/AddContactButton.jsx';
+import LocaleToggle from './components/top-bar/LocaleToggle.jsx';
+import NotificationsToggle from './components/top-bar/NotificationsToggle.jsx';
+import YouTubeSearchControls from './components/top-bar/YouTubeSearchControls.jsx';
 
 /**
  * SolidJS app shell.
@@ -14,49 +20,15 @@ export default function App() {
     <DialogProvider>
       <div id='app' class='main-wrapper'>
         <header id='top-bar' class='top-bar'>
-          <div id='title-auth-bar' class='title-auth-bar animated-flex'>
-            <h1 id='app-title-h1' class='app-title'>
-              <a id='app-title-a'>
-                <span id='app-title-span'>HangVidU</span>
-              </a>
-            </h1>
+          <div id='top-bar-left' class='top-bar-left animated-flex'>
+            <AppTitle />
+            <AuthControls />
           </div>
 
-          <div class='top-right-menu'>
-            <button
-              type='button'
-              title='Add contact'
-              aria-label='Add contact'
-              id='add-contact-btn'
-            >
-              <i data-lucide='user-plus' />
-            </button>
-
-            <div class='search-section'>
-              <div class='search-controls'>
-                <input
-                  class='hidden'
-                  type='search'
-                  id='searchQuery'
-                  placeholder='Search YouTube videos...'
-                  autocomplete='off'
-                  spellcheck={false}
-                />
-                <button
-                  type='button'
-                  id='searchBtn'
-                  title='Search YouTube videos'
-                  aria-label='Search YouTube videos'
-                >
-                  <i data-lucide='search' />
-                </button>
-              </div>
-              <div
-                id='searchResults'
-                class='search-results hidden'
-                aria-live='polite'
-              />
-            </div>
+          <div class='top-bar-right'>
+            <AddContactButton />
+            <NotificationsToggle />
+            <YouTubeSearchControls />
           </div>
         </header>
 
@@ -64,7 +36,10 @@ export default function App() {
 
         <main class='relative-wrapper'>
           <div id='videos'>
-            <div id='local-video-box' class='hidden box video-box local-video-box'>
+            <div
+              id='local-video-box'
+              class='hidden box video-box local-video-box'
+            >
               <video id='local-video-el' autoplay playsinline muted />
             </div>
 
@@ -194,6 +169,7 @@ export default function App() {
         </button>
 
         <LegalFooter />
+        <LocaleToggle />
       </div>
     </DialogProvider>
   );

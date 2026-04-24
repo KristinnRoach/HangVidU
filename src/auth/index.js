@@ -36,5 +36,3 @@ export {
 // Legacy subscribe API — prefer `subscribe('evt:auth:state:changed', ...)` from
 // shared/events. Kept for existing callers; to be migrated incrementally.
 export { onAuthStateChanged } from './auth-state.js';
-
-export { initializeAuthUI } from './components/AuthComponent.js';

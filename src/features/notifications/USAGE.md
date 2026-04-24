@@ -21,7 +21,7 @@ import {
 
 // Create toggle (usually in top-right menu)
 const notificationsToggle = createNotificationsToggle({
-  parent: document.querySelector('.top-right-menu'),
+  parent: document.querySelector('.top-bar-right'),
   hideWhenAllRead: true, // Hide toggle when no notifications
   onClick: () => {
     // Optional: handle toggle click (e.g., show notification panel)

@@ -10,6 +10,8 @@ const messages = {
 const [currentLocale, setCurrentLocale] = createSignal('en');
 const [dict, setDict] = createSignal({});
 const listeners = new Set();
+let initPromise = null;
+let initialized = false;
 
 function formatMessage(str, params) {
   if (!params) return str;
@@ -35,14 +37,24 @@ function notify() {
 }
 
 export async function initI18n() {
-  let saved;
-  try {
-    saved = localStorage.getItem(STORAGE_KEY);
-  } catch (e) {
-    console.warn('Failed to read saved locale from localStorage:', e);
-  }
-  // Default to 'en' until Icelandic translations are complete
-  await setLocale(saved || 'en');
+  if (initialized) return;
+  if (initPromise) return initPromise;
+
+  initPromise = (async () => {
+    let saved;
+    try {
+      saved = localStorage.getItem(STORAGE_KEY);
+    } catch (e) {
+      console.warn('Failed to read saved locale from localStorage:', e);
+    }
+    // Default to 'en' until Icelandic translations are complete
+    await setLocale(saved || 'en');
+    initialized = true;
+  })().finally(() => {
+    initPromise = null;
+  });
+
+  return initPromise;
 }
 
 export function getLocale() {
@@ -93,6 +105,7 @@ export function t(key, params) {
 export function useI18n() {
   return {
     locale: currentLocale,
+    setLocale,
     t,
   };
 }

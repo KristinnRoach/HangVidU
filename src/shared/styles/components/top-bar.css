@@ -30,9 +30,9 @@
   height: 35px;
 }
 
-/* Title and Auth Bar */
+/* Top Bar - Left Side Section (title and auth) */
 
-.title-auth-bar {
+.top-bar-left {
   display: flex;
   flex-direction: row;
   gap: 1rem;
@@ -206,9 +206,9 @@
   }
 }
 
-/* Top Right Menu */
+/* Top Bar - Right Side Section */
 
-.top-right-menu {
+.top-bar-right {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -223,27 +223,51 @@
     box-shadow var(--duration-default, 200ms) var(--easing-default, ease);
 }
 
-/* Left to right element order of top-right-menu */
+/* Left to right element order of top-bar-right */
 
-.top-right-menu .search-section {
+.top-bar-right .search-section {
   order: 1;
 }
 
-.top-right-menu #add-contact-btn {
+.top-bar-right #add-contact-btn {
   order: 2;
 }
 
-.top-right-menu #main-messages-toggle-btn {
+.top-bar-right #main-messages-toggle-btn {
   order: 3;
 }
 
-.top-right-menu .notifications-toggle-container {
+.top-bar-right .notifications-toggle-container {
   order: 4;
 }
 
-/* Consistent button sizing for all top-right-menu items */
-.top-right-menu button,
-.top-right-menu .notifications-toggle-btn {
+#toggle-lang-btn {
+  position: fixed;
+  bottom: 2px;
+  left: 2px;
+  z-index: var(--z-high);
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-secondary);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
+}
+
+#toggle-lang-btn:hover,
+#toggle-lang-btn:focus-visible {
+  border-color: var(--color-primary);
+  outline: 2px solid var(--color-primary-subtle);
+  outline-offset: 2px;
+}
+
+/* Consistent button sizing for all top-bar-right items */
+.top-bar-right button,
+.top-bar-right .notifications-toggle-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -263,8 +287,8 @@
     color 0.2s ease;
 }
 
-.top-right-menu button:hover,
-.top-right-menu .notifications-toggle-btn:hover {
+.top-bar-right button:hover,
+.top-bar-right .notifications-toggle-btn:hover {
   background: rgba(255, 255, 255, 0.1);
 }
 
@@ -319,7 +343,7 @@
   }
 
   .top-bar,
-  .top-right-menu,
+  .top-bar-right,
   #app-title-h1 {
     transition: none;
   }

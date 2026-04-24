@@ -38,9 +38,9 @@ async function setupPWA() {
 
   // Create install button component if not already created
   if (!installBtnComponent) {
-    const topRightMenu = document.querySelector('.top-right-menu');
+    const topRightMenu = document.querySelector('.top-bar-right');
     if (!topRightMenu) {
-      console.warn('[PWA]: .top-right-menu container not found');
+      console.warn('[PWA]: .top-bar-right container not found');
       return;
     }
 
