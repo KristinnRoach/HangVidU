@@ -61,7 +61,7 @@ export function updateI18nElements() {
   });
 }
 
-function initializeElements() {
+export function initializeElements() {
   lobbyDiv = getElement('lobby');
 
   videosWrapper = getElement('videos');
@@ -87,36 +87,33 @@ function initializeElements() {
   appPipBtn = getElement('app-pip-btn');
 }
 
-// Initialize elements when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeElements);
-} else {
-  initializeElements();
-}
-
 // Export getters to ensure we always return current references
-export const getElements = () => ({
-  lobbyDiv,
-  videosWrapper,
-  localVideoEl,
-  localBoxEl,
-  remoteVideoEl,
-  remoteBoxEl,
-  sharedVideoEl,
-  sharedBoxEl,
-  chatControls,
-  callBtn,
-  hangUpBtn,
-  installBtn,
-  switchCameraBtn,
-  mutePartnerBtn,
-  fullscreenPartnerBtn,
-  remotePipBtn,
-  micBtn,
-  cameraBtn,
-  exitWatchModeBtn,
-  appPipBtn,
-});
+export const getElements = () => {
+  initializeElements();
+
+  return {
+    lobbyDiv,
+    videosWrapper,
+    localVideoEl,
+    localBoxEl,
+    remoteVideoEl,
+    remoteBoxEl,
+    sharedVideoEl,
+    sharedBoxEl,
+    chatControls,
+    callBtn,
+    hangUpBtn,
+    installBtn,
+    switchCameraBtn,
+    mutePartnerBtn,
+    fullscreenPartnerBtn,
+    remotePipBtn,
+    micBtn,
+    cameraBtn,
+    exitWatchModeBtn,
+    appPipBtn,
+  };
+};
 
 // Export individual elements
 export {

@@ -249,6 +249,7 @@ vi.mock('../../src/elements.js', () => {
       lobbyDiv,
     })),
     updateI18nElements: vi.fn(),
+    initializeElements: vi.fn(),
   };
 });
 

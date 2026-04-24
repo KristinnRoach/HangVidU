@@ -1,5 +1,4 @@
 import { onMount } from 'solid-js';
-import { showAddContactModal } from '../../features/contacts/index.js';
 import { useI18n } from '../../shared/i18n/index.js';
 import { initIcons } from '../../shared/components/ui/icons.js';
 
@@ -12,6 +11,9 @@ export default function AddContactButton() {
   });
 
   async function handleClick() {
+    const { showAddContactModal } = await import(
+      '../../features/contacts/index.js'
+    );
     await showAddContactModal();
   }
 

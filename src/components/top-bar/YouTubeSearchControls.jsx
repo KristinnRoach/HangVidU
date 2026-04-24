@@ -1,5 +1,4 @@
 import { For, Show, createSignal, onCleanup, onMount } from 'solid-js';
-import { handleVideoSelection } from '../../features/watch/watch-sync.js';
 import { onClickOutside } from '../../shared/components/ui/utils/clickOutside.js';
 import { useI18n } from '../../shared/i18n/index.js';
 import { initIcons } from '../../shared/components/ui/icons.js';
@@ -76,6 +75,9 @@ export default function YouTubeSearchControls() {
   }
 
   async function selectVideo(video) {
+    const { handleVideoSelection } = await import(
+      '../../features/watch/watch-sync.js'
+    );
     await handleVideoSelection(video);
     hideResults();
     setFocusedResultIndex(-1);

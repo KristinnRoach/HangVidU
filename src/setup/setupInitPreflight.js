@@ -1,7 +1,11 @@
 import { initIcons } from '../shared/components/ui/icons.js';
 import { initUI } from '../shared/components/ui/core/init-ui.js';
 import { initI18n, onLocaleChange } from '../shared/i18n/index.js';
-import { updateI18nElements, getElements } from '../elements.js';
+import {
+  updateI18nElements,
+  getElements,
+  initializeElements,
+} from '../elements.js';
 import { devDebug } from '../shared/utils/dev/dev-utils.js';
 
 let isReady = false;
@@ -45,6 +49,8 @@ export function setupInitPreflight(options = {}) {
       options.criticalElements ?? DEFAULT_CRITICAL_ELEMENTS;
     const interactiveElements =
       options.interactiveElements ?? DEFAULT_INTERACTIVE_ELEMENTS;
+
+    initializeElements();
 
     // Validate critical elements first
     const elements = getElements();

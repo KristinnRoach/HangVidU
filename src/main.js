@@ -26,6 +26,7 @@ import {
   exitWatchModeBtn,
   sharedBoxEl,
   lobbyDiv,
+  initializeElements,
 } from './elements.js';
 
 import {
@@ -124,6 +125,8 @@ let showDebugUIForNotifications = false;
 let cleanupFunctions = [];
 let isHandlingServiceWorkerNavigation = false;
 let appSetupCleanup = () => {};
+
+initializeElements();
 
 // ============================================================================
 // APP STARTUP
