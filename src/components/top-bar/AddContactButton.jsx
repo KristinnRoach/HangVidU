@@ -11,10 +11,14 @@ export default function AddContactButton() {
   });
 
   async function handleClick() {
-    const { showAddContactModal } = await import(
-      '../../features/contacts/index.js'
-    );
-    await showAddContactModal();
+    try {
+      const { showAddContactModal } = await import(
+        '../../features/contacts/index.js'
+      );
+      await showAddContactModal();
+    } catch (error) {
+      console.error('[AddContactButton] failed to open modal:', error);
+    }
   }
 
   return (

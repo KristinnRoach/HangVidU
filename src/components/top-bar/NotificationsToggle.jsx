@@ -44,6 +44,7 @@ export default function NotificationsToggle() {
       <button
         class='notifications-toggle-btn'
         title={t('notification.toggle')}
+        aria-label={t('notification.toggle')}
         data-count={count()}
         disabled={count() === 0}
         onClick={toggleList}

@@ -241,6 +241,13 @@
 
   "media.youtube.search": "Leita á YouTube",
   "media.youtube.placeholder": "Leita að YouTube myndböndum...",
+  "media.youtube.searching": "Leita á YouTube...",
+  "media.youtube.api_key_missing": "YouTube API lykil vantar",
+  "media.youtube.quota_exceeded": "YouTube API kvóti er uppurinn. Reyndu aftur síðar.",
+  "media.youtube.invalid_request": "Ógildur API lykill eða beiðni.",
+  "media.youtube.api_error": "YouTube API villa: {status}",
+  "media.youtube.no_results": "Engin myndbönd fundust",
+  "media.youtube.search_failed": "Leit mistókst. Reyndu aftur.",
   "media.exit_watch": "Hætta áhorfi",
 
   "referral.sign_in_banner": "Smelltu hér til að skrá þig inn og tengjast boðanda þínum",

@@ -7,6 +7,11 @@ import { devDebug } from '../../shared/utils/dev/dev-utils.js';
 
 const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
 const YOUTUBE_API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
+const YOUTUBE_SEARCH_CACHE_KEY = 'youtube-search-results-cache-v1';
+const YOUTUBE_SEARCH_CACHE_LIMIT = 10;
+
+let hasLoadedSearchCache = false;
+const youtubeSearchResultsCache = new Map();
 
 function isDirectUrl(str) {
   return /^https?:\/\//i.test(str);
@@ -32,6 +37,83 @@ function toGoogleDriveDirectLink(url) {
     : null;
 }
 
+function normalizeSearchQuery(searchQuery) {
+  return searchQuery.trim().toLowerCase();
+}
+
+function cloneResults(searchResults) {
+  return searchResults.map((item) => ({ ...item }));
+}
+
+function loadSearchCache() {
+  if (hasLoadedSearchCache) return;
+  hasLoadedSearchCache = true;
+
+  try {
+    const rawCache = sessionStorage.getItem(YOUTUBE_SEARCH_CACHE_KEY);
+    if (!rawCache) return;
+
+    const parsedCache = JSON.parse(rawCache);
+    if (!Array.isArray(parsedCache)) return;
+
+    for (const entry of parsedCache) {
+      if (
+        typeof entry?.query === 'string' &&
+        Array.isArray(entry.results)
+      ) {
+        youtubeSearchResultsCache.set(entry.query, entry.results);
+      }
+    }
+  } catch (error) {
+    console.warn('[YouTubeSearchControls] failed to read search cache:', error);
+  }
+}
+
+function persistSearchCache() {
+  try {
+    sessionStorage.setItem(
+      YOUTUBE_SEARCH_CACHE_KEY,
+      JSON.stringify(
+        [...youtubeSearchResultsCache.entries()].map(([query, results]) => ({
+          query,
+          results,
+        })),
+      ),
+    );
+  } catch (error) {
+    console.warn('[YouTubeSearchControls] failed to persist search cache:', error);
+  }
+}
+
+function getCachedSearchResults(searchQuery) {
+  loadSearchCache();
+
+  const cacheKey = normalizeSearchQuery(searchQuery);
+  if (!youtubeSearchResultsCache.has(cacheKey)) return null;
+
+  const cachedResults = youtubeSearchResultsCache.get(cacheKey);
+  youtubeSearchResultsCache.delete(cacheKey);
+  youtubeSearchResultsCache.set(cacheKey, cachedResults);
+  persistSearchCache();
+
+  return cloneResults(cachedResults);
+}
+
+function cacheSearchResults(searchQuery, searchResults) {
+  loadSearchCache();
+
+  const cacheKey = normalizeSearchQuery(searchQuery);
+  youtubeSearchResultsCache.delete(cacheKey);
+  youtubeSearchResultsCache.set(cacheKey, cloneResults(searchResults));
+
+  while (youtubeSearchResultsCache.size > YOUTUBE_SEARCH_CACHE_LIMIT) {
+    const oldestCacheKey = youtubeSearchResultsCache.keys().next().value;
+    youtubeSearchResultsCache.delete(oldestCacheKey);
+  }
+
+  persistSearchCache();
+}
+
 export default function YouTubeSearchControls() {
   const { t } = useI18n();
   const [isInputVisible, setIsInputVisible] = createSignal(false);
@@ -41,8 +123,8 @@ export default function YouTubeSearchControls() {
   const [status, setStatus] = createSignal('idle');
   const [statusMessage, setStatusMessage] = createSignal('');
   const [focusedResultIndex, setFocusedResultIndex] = createSignal(-1);
-  let lastSearchQuery = '';
   let searchResultsCache = [];
+  let activeSearchRequestId = 0;
   let rootEl;
   let inputEl;
   let resultsEl;
@@ -57,6 +139,7 @@ export default function YouTubeSearchControls() {
   }
 
   function clearSearchResults() {
+    activeSearchRequestId += 1;
     searchResultsCache = [];
     setResults([]);
     setStatus('idle');
@@ -78,7 +161,9 @@ export default function YouTubeSearchControls() {
     const { handleVideoSelection } = await import(
       '../../features/watch/watch-sync.js'
     );
-    await handleVideoSelection(video);
+    const didLoad = await handleVideoSelection(video);
+    if (!didLoad) return;
+
     hideResults();
     setFocusedResultIndex(-1);
     setQuery('');
@@ -86,16 +171,16 @@ export default function YouTubeSearchControls() {
   }
 
   async function searchYouTube(nextQuery) {
+    const searchRequestId = ++activeSearchRequestId;
     searchResultsCache = [];
-    lastSearchQuery = nextQuery;
     setResults([]);
     setStatus('loading');
-    setStatusMessage('Searching YouTube...');
+    setStatusMessage(t('media.youtube.searching'));
     showResults();
 
     if (!YOUTUBE_API_KEY) {
       setStatus('error');
-      setStatusMessage('YouTube API key not configured');
+      setStatusMessage(t('media.youtube.api_key_missing'));
       return;
     }
 
@@ -108,19 +193,24 @@ export default function YouTubeSearchControls() {
 
       if (!response.ok) {
         if (response.status === 403) {
-          throw new Error('YouTube API quota exceeded. Please try again later.');
+          throw new Error(t('media.youtube.quota_exceeded'));
         }
         if (response.status === 400) {
-          throw new Error('Invalid API key or request.');
+          throw new Error(t('media.youtube.invalid_request'));
         }
-        throw new Error(`YouTube API error: ${response.status}`);
+        throw new Error(
+          t('media.youtube.api_error', { status: response.status }),
+        );
       }
 
       const data = await response.json();
+      if (searchRequestId !== activeSearchRequestId) return;
+
       if (!data.items || data.items.length === 0) {
         setStatus('empty');
-        setStatusMessage('No videos found');
+        setStatusMessage(t('media.youtube.no_results'));
         searchResultsCache = [];
+        cacheSearchResults(nextQuery, searchResultsCache);
         setFocusedResultIndex(-1);
         return;
       }
@@ -132,6 +222,7 @@ export default function YouTubeSearchControls() {
         channel: item.snippet.channelTitle,
         url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
       }));
+      cacheSearchResults(nextQuery, searchResultsCache);
 
       setResults(searchResultsCache);
       setStatus('idle');
@@ -139,12 +230,14 @@ export default function YouTubeSearchControls() {
       showResults();
       focusResult(0);
     } catch (error) {
+      if (searchRequestId !== activeSearchRequestId) return;
+
       console.error('YouTube search failed:', error);
       searchResultsCache = [];
       setResults([]);
       setFocusedResultIndex(-1);
       setStatus('error');
-      setStatusMessage(error.message || 'Search failed. Please try again.');
+      setStatusMessage(error.message || t('media.youtube.search_failed'));
       showResults();
     }
   }
@@ -156,20 +249,27 @@ export default function YouTubeSearchControls() {
       return;
     }
 
-    if (searchResultsCache.length > 0 && nextQuery === lastSearchQuery) {
-      setResults(searchResultsCache);
-      setStatus('idle');
-      setStatusMessage('');
-      showResults();
-      focusResult(0);
-      return;
-    }
-
     if (!isDirectUrl(nextQuery) && !isGoogleDriveUrl(nextQuery)) {
+      const cachedResults = getCachedSearchResults(nextQuery);
+      if (cachedResults) {
+        searchResultsCache = cachedResults;
+        setResults(searchResultsCache);
+        setStatus(searchResultsCache.length > 0 ? 'idle' : 'empty');
+        setStatusMessage(
+          searchResultsCache.length > 0 ? '' : t('media.youtube.no_results'),
+        );
+        showResults();
+        if (searchResultsCache.length > 0) focusResult(0);
+        else setFocusedResultIndex(-1);
+        devDebug('Using cached YouTube search results:', nextQuery);
+        return;
+      }
+
       await searchYouTube(nextQuery);
       return;
     }
 
+    activeSearchRequestId += 1;
     let url = nextQuery;
     devDebug('Direct URL entered:', url);
     if (isGoogleDriveUrl(nextQuery)) {
@@ -242,15 +342,18 @@ export default function YouTubeSearchControls() {
       );
     });
 
-    const cleanupInputOutside = onClickOutside(
-      inputEl,
-      () => setIsInputVisible(false),
-      { ignore: [searchBtnEl], esc: false },
-    );
-    const cleanupResultsOutside = onClickOutside(resultsEl, hideResults, {
-      ignore: [searchBtnEl],
-      esc: false,
-    });
+    const cleanupInputOutside = inputEl
+      ? onClickOutside(inputEl, () => setIsInputVisible(false), {
+          ignore: [searchBtnEl],
+          esc: false,
+        })
+      : () => {};
+    const cleanupResultsOutside = resultsEl
+      ? onClickOutside(resultsEl, hideResults, {
+          ignore: [searchBtnEl],
+          esc: false,
+        })
+      : () => {};
 
     onCleanup(() => {
       cleanupInputOutside();
@@ -286,10 +389,10 @@ export default function YouTubeSearchControls() {
           title={
             YOUTUBE_API_KEY
               ? t('media.youtube.search')
-              : 'YouTube API key not configured'
+              : t('media.youtube.api_key_missing')
           }
           aria-label={t('media.youtube.search')}
-          disabled={!YOUTUBE_API_KEY || status() === 'loading'}
+          disabled={status() === 'loading'}
           onClick={handleSearchClick}
         >
           <i data-lucide='search' />
