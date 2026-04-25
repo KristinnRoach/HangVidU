@@ -22,8 +22,6 @@ import {
   remoteVideoEl,
   sharedVideoEl,
   callBtn,
-  hangUpBtn,
-  exitWatchModeBtn,
   sharedBoxEl,
   lobbyDiv,
   initializeElements,
@@ -92,15 +90,7 @@ import { setupCallControllerEventWiring } from './features/call/call-event-wirin
 import { setupMainAppBusListeners } from './setup/setupMainAppBusListeners.js';
 import { setupAuth } from './setup/setupAuth.js';
 import { setupUserAccount } from './setup/setupUserAccount.js';
-import {
-  getCallOptions,
-  applyCallResult,
-  joinOrCreateRoomWithId,
-} from './features/call/WIP-start-call-refactor.js';
-import {
-  initLocalStreamAndMedia,
-  handleMediaPermissionError,
-} from './shared/media/WIP-init-local-media.js';
+import { joinOrCreateRoomWithId } from './features/call/WIP-start-call-refactor.js';
 
 messagesUI?.setWatchFileHandler?.(createWatchFileHandler());
 import {
@@ -109,7 +99,6 @@ import {
 } from './features/call/room-listeners.js';
 import { showErrorToast } from './shared/components/toast.js';
 import { dispatchCommandAndAwait } from './shared/events/index.js';
-import { setAppAction } from './shared/components/ui/app-actions.js';
 
 // Quick access to enable / disable dev debug logs
 setDevDebugEnabled(true);
@@ -354,85 +343,6 @@ async function handleCopyLink() {
       devDebug('Failed to copy link to clipboard.');
     }
   }
-}
-
-const handleCall = async () => {
-  try {
-    await initLocalStreamAndMedia();
-    const result = await CallController.createCall(getCallOptions());
-    applyCallResult(result, true);
-  } catch (error) {
-    console.error('Failed to start call:', error);
-    handleMediaPermissionError(error);
-  }
-};
-
-if (callBtn) {
-  cleanupFunctions.push(setAppAction('startCall', handleCall));
-}
-
-// Paste & Join: read clipboard, extract room ID, and join
-// if (pasteJoinBtn) {
-//   if (navigator.clipboard && navigator.clipboard.readText) {
-//     pasteJoinBtn.onclick = async () => {
-//       try {
-//         const clipboardText = await navigator.clipboard.readText();
-//         const roomId = normalizeRoomInput(clipboardText);
-
-//         if (!roomId) {
-//           alert(t('error.clipboard.no_link'));
-//           return;
-//         }
-
-//         await joinOrCreateRoomWithId(roomId);
-//       } catch (error) {
-//         // Clipboard access denied or other error
-//         if (error.name === 'NotAllowedError') {
-//           alert(t('error.clipboard.denied'));
-//         } else {
-//           console.error('Paste & Join failed:', error);
-//           alert(t('error.clipboard.failed'));
-//         }
-//       }
-//     };
-//   } else {
-//     pasteJoinBtn.style.display = 'none';
-//     console.warn(
-//       'Paste & Join button hidden: Clipboard API not available in this context (requires HTTPS).',
-//     );
-//   }
-// }
-
-if (exitWatchModeBtn) {
-  cleanupFunctions.push(setAppAction('exitWatchMode', () => {
-    if (getLastWatched() === 'yt') {
-      pauseYouTubeVideo();
-      hideYouTubePlayer();
-    } else if (getLastWatched() === 'url' || getLastWatched() === 'file') {
-      sharedVideoEl.pause();
-
-      // Revoke blob URL to free memory (only if it's a blob)
-      if (sharedVideoEl.src.startsWith('blob:')) {
-        URL.revokeObjectURL(sharedVideoEl.src);
-        // sharedVideoEl.removeAttribute('src');
-        // sharedVideoEl.load();
-      }
-
-      hideElement(sharedBoxEl);
-    }
-    onWatchModeExited();
-  }));
-}
-
-// TODO: refactor UI (actions?)
-if (hangUpBtn) {
-  cleanupFunctions.push(setAppAction('hangUp', async () => {
-    console.debug('Hanging up...');
-
-    // Call CallController.hangUp (emits cancellation and performs cleanup)
-    // The 'cleanup' event handler will handle all UI updates including contact save prompt
-    await CallController.hangUp({ emitCancel: true, reason: 'user_hung_up' });
-  }));
 }
 
 // ============================================================================

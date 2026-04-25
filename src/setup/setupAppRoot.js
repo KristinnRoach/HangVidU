@@ -7,6 +7,12 @@ import { setupSolidAuthState } from '../auth/solid-auth.js';
 import { subscribe, dispatchCommand } from '../shared/events/index.js';
 import { getAllContactsSorted } from '../features/contacts/index.js';
 import { setContactsUI } from '../components/contacts/ContactsList.jsx';
+import { setAppAction } from '../shared/components/ui/app-actions.js';
+import {
+  startCallCommand,
+  exitWatchModeCommand,
+  hangUpCommand,
+} from '../features/call/call-ui-commands.js';
 
 /**
  * @typedef {Object} ContactRow
@@ -131,7 +137,14 @@ export function setupAppRoot() {
     reconcileContacts();
   });
 
+  const cleanupStartCall = setAppAction('startCall', startCallCommand);
+  const cleanupExitWatch = setAppAction('exitWatchMode', exitWatchModeCommand);
+  const cleanupHangUp = setAppAction('hangUp', hangUpCommand);
+
   return () => {
+    cleanupStartCall();
+    cleanupExitWatch();
+    cleanupHangUp();
     teardownSolidAuthState();
     offContactsState();
     for (const teardown of unreadTeardowns.values()) {
