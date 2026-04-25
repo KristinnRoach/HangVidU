@@ -26,7 +26,6 @@ let switchCameraBtn = null;
 
 let mutePartnerBtn = null;
 let fullscreenPartnerBtn = null;
-let remotePipBtn = null;
 let micBtn = null;
 let cameraBtn = null;
 let exitWatchModeBtn = null;
@@ -42,7 +41,6 @@ const i18nElements = {
   'mic-btn': { attrs: ['aria-label'], key: 'a11y.mic_toggle' },
   'mute-btn': { attrs: ['aria-label'], key: 'a11y.partner_mute' },
   'fullscreen-partner-btn': { attrs: ['aria-label'], key: 'a11y.fullscreen' },
-  'remote-pip-btn': { attrs: ['aria-label'], key: 'a11y.pip' },
   'app-pip-btn': { attrs: ['aria-label'], key: 'a11y.popup' },
 };
 
@@ -82,7 +80,6 @@ export function initializeElements() {
 
   mutePartnerBtn = getElement('mute-btn');
   fullscreenPartnerBtn = getElement('fullscreen-partner-btn');
-  remotePipBtn = getElement('remote-pip-btn');
   micBtn = getElement('mic-btn');
   cameraBtn = getElement('camera-btn');
   exitWatchModeBtn = getElement('exit-watch-mode-btn');
@@ -112,7 +109,6 @@ export const getElements = () => {
     switchCameraBtn,
     mutePartnerBtn,
     fullscreenPartnerBtn,
-    remotePipBtn,
     micBtn,
     cameraBtn,
     exitWatchModeBtn,
@@ -136,7 +132,6 @@ export {
   switchCameraBtn,
   mutePartnerBtn,
   fullscreenPartnerBtn,
-  remotePipBtn,
   micBtn,
   cameraBtn,
   exitWatchModeBtn,

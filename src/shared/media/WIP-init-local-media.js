@@ -1,52 +1,27 @@
 import { getElements } from '../../elements.js';
 import { setUpLocalStream } from './stream.js';
-import { getLocalStream, setLocalStream } from './state.js';
+import { getLocalStream } from './state.js';
 import {
   hasInitializedLocalStreamAndMedia,
   markLocalStreamAndMediaInitialized,
   resetLocalStreamInitFlag,
 } from './local-stream-init-state.js';
-import { initializeMediaControls } from './media-controls.js';
-import CallController from '../../features/call/call-controller.js';
 import { showElement, hideElement } from '../components/ui/utils/ui-utils.js';
 import { isWatchModeActive } from '../../features/watch/watch-sync.js';
 import { isRemoteVideoVideoActive } from '../components/ui/core/legacy/watch-mode.js';
 import { t } from '../i18n/index.js';
-
-// TODO: This is a temp WIP extraction - decoupling considerations:
-// imports CallController for getPeerConnection(), media/ → call/ dependency.
+import { publish } from '../events/index.js';
 
 export async function initLocalStreamAndMedia({ audioOnly = false } = {}) {
   if (hasInitializedLocalStreamAndMedia()) return;
   markLocalStreamAndMediaInitialized();
 
-  const {
-    localVideoEl,
-    remoteVideoEl,
-    localBoxEl,
-    micBtn,
-    cameraBtn,
-    switchCameraBtn,
-    mutePartnerBtn,
-    fullscreenPartnerBtn,
-    remotePipBtn,
-  } = getElements();
+  const { localVideoEl, localBoxEl } = getElements();
 
   await setUpLocalStream(localVideoEl, { audioOnly });
-
-  initializeMediaControls({
-    getLocalStream,
-    getLocalVideo: () => localVideoEl,
-    getRemoteVideo: () => remoteVideoEl,
-    getPeerConnection: () => CallController.getPeerConnection(),
-    setLocalStream,
-
-    micBtn,
-    cameraBtn,
-    switchCameraBtn,
-    mutePartnerBtn,
-    fullscreenPartnerBtn,
-    remotePipBtn,
+  publish('evt:media:local-stream:ready', {
+    audioOnly,
+    localStream: getLocalStream(),
   });
 
   if (localVideoEl) {

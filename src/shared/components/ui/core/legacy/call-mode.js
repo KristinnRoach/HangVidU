@@ -6,10 +6,6 @@ import {
   remoteVideoEl,
   lobbyDiv,
   chatControls,
-  callBtn,
-  hangUpBtn,
-  mutePartnerBtn,
-  remotePipBtn,
 } from '../../../../../elements.js';
 
 import {
@@ -71,16 +67,6 @@ export const enterCallModeUI = (audioOnly = false) => {
 
     hideElement(lobbyDiv);
   }
-
-  callBtn.disabled = true;
-  callBtn.classList.add('disabled');
-
-  hangUpBtn.disabled = false;
-  hangUpBtn.classList.remove('disabled');
-  mutePartnerBtn.disabled = false;
-  mutePartnerBtn.classList.remove('disabled');
-  remotePipBtn.disabled = false;
-  remotePipBtn.classList.remove('disabled');
 
   if (!cleanupChatControlAutoHide) {
     // Start hidden, show on activity and auto-hide after inactivity
@@ -162,14 +148,6 @@ export const exitCallModeUI = () => {
     showElement(lobbyDiv);
   }
 
-  callBtn.disabled = false;
-  callBtn.classList.remove('disabled');
-  hangUpBtn.disabled = true;
-  hangUpBtn.classList.add('disabled');
-  mutePartnerBtn.disabled = true;
-  mutePartnerBtn.classList.add('disabled');
-  remotePipBtn.disabled = true;
-  remotePipBtn.classList.add('disabled');
 };
 
 // TODO: Call this

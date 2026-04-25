@@ -67,7 +67,6 @@ import {
   setYouTubeReady,
 } from './shared/media/youtube/youtube-player.js';
 
-import { cleanupMediaControls } from './shared/media/media-controls.js';
 import {
   showElement,
   hideElement,
@@ -595,7 +594,6 @@ async function cleanup() {
   await CallController.hangUp({ emitCancel: true, reason: 'page_unload' });
 
   // Global teardown: safe to remove all listeners on page unload
-  cleanupMediaControls();
   removeAllRTDBListeners();
   cleanupApp();
 

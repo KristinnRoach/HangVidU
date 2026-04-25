@@ -1,5 +1,5 @@
 import AppPipButton from './components/app/AppPipButton.jsx';
-import ChatControls from './components/app/ChatControls.jsx';
+import ChatControlsContainer from './components/app/ChatControlsContainer.jsx';
 import LegalFooter from './components/app/LegalFooter.jsx';
 import VideoStage from './components/app/VideoStage.jsx';
 import AppTitle from './components/auth/AppTitle.jsx';
@@ -46,7 +46,7 @@ export default function App() {
           </div>
         </main>
 
-        <ChatControls />
+        <ChatControlsContainer />
         <AppPipButton />
 
         <LegalFooter />

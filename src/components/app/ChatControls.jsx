@@ -1,77 +1,74 @@
-import { For, onMount } from 'solid-js';
+import { For, createEffect, onMount } from 'solid-js';
 import { useI18n } from '../../shared/i18n/index.js';
 import { initIcons } from '../../shared/components/ui/icons.js';
-import { callAppAction } from '../../shared/components/ui/app-actions.js';
-import {
-  exitWatchModeCommand,
-  startCallCommand,
-  hangUpCommand,
-} from '../../features/call/call-ui-commands.js';
 
 const controls = [
   {
     id: 'exit-watch-mode-btn',
     icon: 'x',
     labelKey: 'media.exit_watch',
-    handler: exitWatchModeCommand,
+    handlerKey: 'onExitWatchMode',
     class: 'hidden',
   },
   {
     id: 'call-btn',
     icon: 'phone',
     labelKey: 'call.start',
-    handler: startCallCommand,
+    handlerKey: 'onStartCall',
   },
   {
     id: 'camera-btn',
-    icon: 'video',
     labelKey: 'a11y.camera_toggle',
-    action: 'toggleCamera',
+    handlerKey: 'onToggleCamera',
+    icon: (mediaState) =>
+      mediaState.cameraEnabled() ? 'video' : 'video-off',
+    disabled: (mediaState) => !mediaState.hasLocalMedia(),
   },
   {
     id: 'switch-camera-btn',
     icon: 'refresh-cw',
     labelKey: 'a11y.camera_switch',
-    action: 'switchCamera',
+    handlerKey: 'onSwitchCamera',
+    visible: (mediaState) => mediaState.canSwitchCamera(),
+    disabled: (mediaState) => !mediaState.hasLocalMedia(),
   },
   {
     id: 'mic-btn',
-    icon: 'mic',
     labelKey: 'a11y.mic_toggle',
-    action: 'toggleMic',
+    handlerKey: 'onToggleMic',
+    icon: (mediaState) => (mediaState.micMuted() ? 'mic-off' : 'mic'),
+    disabled: (mediaState) => !mediaState.hasLocalMedia(),
   },
   {
     id: 'mute-btn',
-    icon: 'volume-2',
     labelKey: 'a11y.partner_mute',
-    action: 'toggleRemoteMute',
-    disabled: true,
+    handlerKey: 'onToggleRemoteMute',
+    icon: (mediaState) =>
+      mediaState.remoteMuted() ? 'volume-x' : 'volume-2',
+    disabled: (mediaState) => !mediaState.remoteControlsEnabled(),
   },
   {
     id: 'fullscreen-partner-btn',
     icon: 'maximize',
     labelKey: 'a11y.fullscreen',
-    action: 'fullscreenRemote',
-    style: 'display: none',
-  },
-  {
-    id: 'remote-pip-btn',
-    icon: 'copy',
-    labelKey: 'a11y.pip',
-    action: 'toggleRemotePip',
-    class: 'hidden',
-    disabled: true,
+    handlerKey: 'onFullscreenRemote',
+    visible: () => false,
   },
   {
     id: 'hang-up-btn',
     icon: 'phone-off',
     labelKey: 'call.hang_up',
-    handler: hangUpCommand,
-    disabled: true,
+    handlerKey: 'onHangUp',
+    disabled: (mediaState) => !mediaState.remoteControlsEnabled(),
   },
 ];
 
-export default function ChatControls() {
+function readControlValue(value, mediaState, fallback) {
+  if (typeof value === 'function') return value(mediaState);
+  return value ?? fallback;
+}
+
+export default function ChatControls(props) {
   const { t } = useI18n();
   let rootEl;
 
@@ -79,30 +76,54 @@ export default function ChatControls() {
     initIcons(rootEl);
   });
 
+  createEffect(() => {
+    props.mediaState?.micMuted();
+    props.mediaState?.cameraEnabled();
+    props.mediaState?.remoteMuted();
+    queueMicrotask(() => rootEl && initIcons(rootEl));
+  });
+
   return (
     <div ref={rootEl} id='chat-controls' class='hidden chat-controls bottom'>
       <For each={controls}>
-        {(control) => (
-          <button
-            type='button'
-            class={`chat-btn${control.class ? ` ${control.class}` : ''}`}
-            id={control.id}
-            title={t(control.labelKey)}
-            aria-label={t(control.labelKey)}
-            disabled={control.disabled}
-            style={control.style}
-            onClick={(event) => {
-              const p = control.handler
-                ? Promise.resolve(control.handler(event))
-                : callAppAction(control.action, event);
-              void p.catch((error) => {
-                console.error('[ChatControls] action failed:', control.id, error);
-              });
-            }}
-          >
-            <i data-lucide={control.icon} />
-          </button>
-        )}
+        {(control) => {
+          const label = () => t(control.labelKey);
+          const icon = () =>
+            readControlValue(control.icon, props.mediaState, control.icon);
+          const isVisible = () =>
+            readControlValue(control.visible, props.mediaState, true);
+          const isDisabled = () =>
+            readControlValue(control.disabled, props.mediaState, false);
+          const className = () =>
+            `chat-btn${control.class ? ` ${control.class}` : ''}${
+              isVisible() ? '' : ' hidden'
+            }`;
+
+          return (
+            <button
+              type='button'
+              class={className()}
+              id={control.id}
+              title={label()}
+              aria-label={label()}
+              disabled={isDisabled()}
+              onClick={(event) => {
+                const handler = props[control.handlerKey];
+                if (!handler) return;
+
+                void Promise.resolve(handler(event)).catch((error) => {
+                  console.error(
+                    '[ChatControls] action failed:',
+                    control.id,
+                    error,
+                  );
+                });
+              }}
+            >
+              <i data-lucide={icon()} />
+            </button>
+          );
+        }}
       </For>
     </div>
   );
