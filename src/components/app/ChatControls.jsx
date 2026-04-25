@@ -2,20 +2,25 @@ import { For, onMount } from 'solid-js';
 import { useI18n } from '../../shared/i18n/index.js';
 import { initIcons } from '../../shared/components/ui/icons.js';
 import { callAppAction } from '../../shared/components/ui/app-actions.js';
+import {
+  exitWatchModeCommand,
+  startCallCommand,
+  hangUpCommand,
+} from '../../features/call/call-ui-commands.js';
 
 const controls = [
   {
     id: 'exit-watch-mode-btn',
     icon: 'x',
     labelKey: 'media.exit_watch',
-    action: 'exitWatchMode',
+    handler: exitWatchModeCommand,
     class: 'hidden',
   },
   {
     id: 'call-btn',
     icon: 'phone',
     labelKey: 'call.start',
-    action: 'startCall',
+    handler: startCallCommand,
   },
   {
     id: 'camera-btn',
@@ -61,7 +66,7 @@ const controls = [
     id: 'hang-up-btn',
     icon: 'phone-off',
     labelKey: 'call.hang_up',
-    action: 'hangUp',
+    handler: hangUpCommand,
     disabled: true,
   },
 ];
@@ -87,12 +92,11 @@ export default function ChatControls() {
             disabled={control.disabled}
             style={control.style}
             onClick={(event) => {
-              void callAppAction(control.action, event).catch((error) => {
-                console.error(
-                  '[ChatControls] action failed:',
-                  control.action,
-                  error,
-                );
+              const p = control.handler
+                ? Promise.resolve(control.handler(event))
+                : callAppAction(control.action, event);
+              void p.catch((error) => {
+                console.error('[ChatControls] action failed:', control.id, error);
               });
             }}
           >
