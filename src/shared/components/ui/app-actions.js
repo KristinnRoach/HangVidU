@@ -1,37 +1,22 @@
-const actionHandlers = new Map();
+import { createStore } from 'solid-js/store';
 
-/**
- * Register a UI action handler invoked by Solid controls.
- *
- * @param {string} actionName
- * @param {(event?: Event) => unknown} handler
- * @returns {() => void}
- */
-export function setAppUiAction(actionName, handler) {
-  if (typeof handler !== 'function') {
-    actionHandlers.delete(actionName);
+// Handlers are wrapped in objects so Solid doesn't treat function values as
+// store updaters when setting top-level keys.
+const [store, _set] = createStore({});
+
+export const appActions = store;
+
+export function setAppAction(name, fn) {
+  if (typeof fn !== 'function') {
+    _set(name, undefined);
     return () => {};
   }
-
-  actionHandlers.set(actionName, handler);
+  _set(name, { fn });
   return () => {
-    if (actionHandlers.get(actionName) === handler) {
-      actionHandlers.delete(actionName);
-    }
+    if (store[name]?.fn === fn) _set(name, undefined);
   };
 }
 
-/**
- * Run a registered UI action.
- *
- * @param {string} actionName
- * @param {Event} [event]
- * @returns {Promise<void>}
- */
-export async function runAppUiAction(actionName, event) {
-  const handler = actionHandlers.get(actionName);
-  if (!handler) return;
-
-  await handler(event);
+export async function callAppAction(name, event) {
+  await store[name]?.fn?.(event);
 }
-

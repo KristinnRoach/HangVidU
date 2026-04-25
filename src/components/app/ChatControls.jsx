@@ -1,7 +1,7 @@
 import { For, onMount } from 'solid-js';
 import { useI18n } from '../../shared/i18n/index.js';
 import { initIcons } from '../../shared/components/ui/icons.js';
-import { runAppUiAction } from '../../shared/components/ui/app-actions.js';
+import { callAppAction } from '../../shared/components/ui/app-actions.js';
 
 const controls = [
   {
@@ -87,7 +87,7 @@ export default function ChatControls() {
             disabled={control.disabled}
             style={control.style}
             onClick={(event) => {
-              void runAppUiAction(control.action, event).catch((error) => {
+              void callAppAction(control.action, event).catch((error) => {
                 console.error(
                   '[ChatControls] action failed:',
                   control.action,

@@ -109,7 +109,7 @@ import {
 } from './features/call/room-listeners.js';
 import { showErrorToast } from './shared/components/toast.js';
 import { dispatchCommandAndAwait } from './shared/events/index.js';
-import { setAppUiAction } from './shared/components/ui/app-actions.js';
+import { setAppAction } from './shared/components/ui/app-actions.js';
 
 // Quick access to enable / disable dev debug logs
 setDevDebugEnabled(true);
@@ -368,7 +368,7 @@ const handleCall = async () => {
 };
 
 if (callBtn) {
-  cleanupFunctions.push(setAppUiAction('startCall', handleCall));
+  cleanupFunctions.push(setAppAction('startCall', handleCall));
 }
 
 // Paste & Join: read clipboard, extract room ID, and join
@@ -404,7 +404,7 @@ if (callBtn) {
 // }
 
 if (exitWatchModeBtn) {
-  cleanupFunctions.push(setAppUiAction('exitWatchMode', () => {
+  cleanupFunctions.push(setAppAction('exitWatchMode', () => {
     if (getLastWatched() === 'yt') {
       pauseYouTubeVideo();
       hideYouTubePlayer();
@@ -426,7 +426,7 @@ if (exitWatchModeBtn) {
 
 // TODO: refactor UI (actions?)
 if (hangUpBtn) {
-  cleanupFunctions.push(setAppUiAction('hangUp', async () => {
+  cleanupFunctions.push(setAppAction('hangUp', async () => {
     console.debug('Hanging up...');
 
     // Call CallController.hangUp (emits cancellation and performs cleanup)

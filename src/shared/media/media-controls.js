@@ -16,8 +16,8 @@ import {
 } from '../components/ui/utils/ui-utils.js';
 import { devDebug, isDev, isProd } from '../utils/dev/dev-utils.js';
 import {
-  runAppUiAction,
-  setAppUiAction,
+  callAppAction,
+  setAppAction,
 } from '../components/ui/app-actions.js';
 
 // ============================================================================
@@ -75,7 +75,7 @@ export function initializeMediaControls({
   // ===== TOGGLE MIC =====
   if (micBtn) {
     cleanupFunctions.push(
-      setAppUiAction('toggleMic', () => {
+      setAppAction('toggleMic', () => {
         const localStream = getLocalStream();
         if (!localStream) return;
 
@@ -87,7 +87,7 @@ export function initializeMediaControls({
       }),
     );
     if (import.meta.env.DEV) {
-      runAppUiAction('toggleMic').catch((error) => {
+      callAppAction('toggleMic').catch((error) => {
         console.warn('[media-controls] auto-mute failed:', error);
       });
     }
@@ -96,7 +96,7 @@ export function initializeMediaControls({
   // ===== TOGGLE CAMERA ON/OFF =====
   if (cameraBtn) {
     cleanupFunctions.push(
-      setAppUiAction('toggleCamera', () => {
+      setAppAction('toggleCamera', () => {
         const localStream = getLocalStream();
         if (!localStream) return;
 
@@ -119,7 +119,7 @@ export function initializeMediaControls({
   // ===== SWITCH VIDEO STREAM SOURCE (FRONT/BACK CAMERA) =====
   if (switchCameraBtn) {
     cleanupFunctions.push(
-      setAppUiAction('switchCamera', async () => {
+      setAppAction('switchCamera', async () => {
         const localStream = getLocalStream();
         if (!localStream) return;
 
@@ -167,7 +167,7 @@ export function initializeMediaControls({
   // ===== MUTE/UNMUTE PARTNER =====
   if (mutePartnerBtn) {
     cleanupFunctions.push(
-      setAppUiAction('toggleRemoteMute', () => {
+      setAppAction('toggleRemoteMute', () => {
         const remoteVideo = getRemoteVideo();
         if (!remoteVideo) return;
 
@@ -189,7 +189,7 @@ export function initializeMediaControls({
   // ===== FULLSCREEN FOR REMOTE VIDEO =====
   if (fullscreenPartnerBtn) {
     cleanupFunctions.push(
-      setAppUiAction('fullscreenRemote', () => {
+      setAppAction('fullscreenRemote', () => {
         const remoteVideo = getRemoteVideo();
         if (!remoteVideo) return;
 
@@ -210,7 +210,7 @@ export function initializeMediaControls({
 
   if (!TEMP_DISABL_PIP && remotePipBtn && isPiPSupported()) {
     cleanupFunctions.push(
-      setAppUiAction('toggleRemotePip', async () => {
+      setAppAction('toggleRemotePip', async () => {
         const remoteVideo = getRemoteVideo();
         if (!remoteVideo) return;
 
