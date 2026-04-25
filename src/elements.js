@@ -20,7 +20,6 @@ let remoteBoxEl = null;
 let sharedVideoEl = null;
 let sharedBoxEl = null;
 let chatControls = null;
-let callBtn = null;
 let hangUpBtn = null;
 let switchCameraBtn = null;
 
@@ -33,15 +32,16 @@ let appPipBtn = null;
 
 // i18n attributes configuration: { elementId: { attrs: ['attr1', 'attr2'], key: 'translation.key' } }
 const i18nElements = {
-  'lobby-call-btn': { attrs: ['title'], key: 'call.start' },
-  'paste-join-btn': { attrs: ['title'], key: 'a11y.paste_join' },
   'exit-watch-mode-btn': { attrs: ['title'], key: 'media.exit_watch' },
   'camera-btn': { attrs: ['aria-label'], key: 'a11y.camera_toggle' },
   'switch-camera-btn': { attrs: ['aria-label'], key: 'a11y.camera_switch' },
   'mic-btn': { attrs: ['aria-label'], key: 'a11y.mic_toggle' },
   'mute-btn': { attrs: ['aria-label'], key: 'a11y.partner_mute' },
   'fullscreen-partner-btn': { attrs: ['aria-label'], key: 'a11y.fullscreen' },
-  'app-pip-btn': { attrs: ['aria-label'], key: 'a11y.popup' },
+
+  // 'lobby-call-btn': { attrs: ['title'], key: 'call.start' },
+  // 'paste-join-btn': { attrs: ['title'], key: 'a11y.paste_join' },
+  // 'app-pip-btn': { attrs: ['aria-label'], key: 'a11y.popup' },
 };
 
 /**
@@ -74,7 +74,6 @@ export function initializeElements() {
   sharedBoxEl = getElement('shared-video-box');
 
   chatControls = getElement('chat-controls');
-  callBtn = getElement('call-btn');
   hangUpBtn = getElement('hang-up-btn');
   switchCameraBtn = getElement('switch-camera-btn');
 
@@ -104,7 +103,6 @@ export const getElements = () => {
     sharedVideoEl,
     sharedBoxEl,
     chatControls,
-    callBtn,
     hangUpBtn,
     switchCameraBtn,
     mutePartnerBtn,
@@ -127,7 +125,6 @@ export {
   sharedVideoEl,
   sharedBoxEl,
   chatControls,
-  callBtn,
   hangUpBtn,
   switchCameraBtn,
   mutePartnerBtn,

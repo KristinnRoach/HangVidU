@@ -15,37 +15,42 @@ const controls = [
     icon: 'phone',
     labelKey: 'call.start',
     handlerKey: 'onStartCall',
+    visible: ({ callState }) => !callState.isInCall(),
   },
   {
     id: 'camera-btn',
     labelKey: 'a11y.camera_toggle',
     handlerKey: 'onToggleCamera',
-    icon: (mediaState) =>
+    icon: ({ mediaState }) =>
       mediaState.cameraEnabled() ? 'video' : 'video-off',
-    disabled: (mediaState) => !mediaState.hasLocalMedia(),
+    visible: ({ callState }) => callState.isInCall(),
+    disabled: ({ mediaState }) => !mediaState.hasLocalMedia(),
   },
   {
     id: 'switch-camera-btn',
     icon: 'refresh-cw',
     labelKey: 'a11y.camera_switch',
     handlerKey: 'onSwitchCamera',
-    visible: (mediaState) => mediaState.canSwitchCamera(),
-    disabled: (mediaState) => !mediaState.hasLocalMedia(),
+    visible: ({ callState, mediaState }) =>
+      callState.isInCall() && mediaState.canSwitchCamera(),
+    disabled: ({ mediaState }) => !mediaState.hasLocalMedia(),
   },
   {
     id: 'mic-btn',
     labelKey: 'a11y.mic_toggle',
     handlerKey: 'onToggleMic',
-    icon: (mediaState) => (mediaState.micMuted() ? 'mic-off' : 'mic'),
-    disabled: (mediaState) => !mediaState.hasLocalMedia(),
+    icon: ({ mediaState }) => (mediaState.micMuted() ? 'mic-off' : 'mic'),
+    visible: ({ callState }) => callState.isInCall(),
+    disabled: ({ mediaState }) => !mediaState.hasLocalMedia(),
   },
   {
     id: 'mute-btn',
     labelKey: 'a11y.partner_mute',
     handlerKey: 'onToggleRemoteMute',
-    icon: (mediaState) =>
+    icon: ({ mediaState }) =>
       mediaState.remoteMuted() ? 'volume-x' : 'volume-2',
-    disabled: (mediaState) => !mediaState.remoteControlsEnabled(),
+    visible: ({ callState }) => callState.isInCall(),
+    disabled: ({ mediaState }) => !mediaState.remoteControlsEnabled(),
   },
   {
     id: 'fullscreen-partner-btn',
@@ -59,12 +64,16 @@ const controls = [
     icon: 'phone-off',
     labelKey: 'call.hang_up',
     handlerKey: 'onHangUp',
-    disabled: (mediaState) => !mediaState.remoteControlsEnabled(),
+    visible: ({ callState }) => callState.isInCall(),
   },
 ];
 
-function readControlValue(value, mediaState, fallback) {
-  if (typeof value === 'function') return value(mediaState);
+const defaultCallState = {
+  isInCall: () => false,
+};
+
+function readControlValue(value, controlState, fallback) {
+  if (typeof value === 'function') return value(controlState);
   return value ?? fallback;
 }
 
@@ -77,6 +86,7 @@ export default function ChatControls(props) {
   });
 
   createEffect(() => {
+    props.callState?.isInCall();
     props.mediaState?.micMuted();
     props.mediaState?.cameraEnabled();
     props.mediaState?.remoteMuted();
@@ -87,13 +97,17 @@ export default function ChatControls(props) {
     <div ref={rootEl} id='chat-controls' class='hidden chat-controls bottom'>
       <For each={controls}>
         {(control) => {
+          const controlState = () => ({
+            callState: props.callState ?? defaultCallState,
+            mediaState: props.mediaState,
+          });
           const label = () => t(control.labelKey);
           const icon = () =>
-            readControlValue(control.icon, props.mediaState, control.icon);
+            readControlValue(control.icon, controlState(), control.icon);
           const isVisible = () =>
-            readControlValue(control.visible, props.mediaState, true);
+            readControlValue(control.visible, controlState(), true);
           const isDisabled = () =>
-            readControlValue(control.disabled, props.mediaState, false);
+            readControlValue(control.disabled, controlState(), false);
           const className = () =>
             `chat-btn${control.class ? ` ${control.class}` : ''}${
               isVisible() ? '' : ' hidden'

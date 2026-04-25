@@ -141,11 +141,14 @@ export function useMediaControls() {
         toggleMic();
       }
     });
-    const offCallJoined = CallController.on('evt:call:participant:joined', () => {
-      const { remoteVideoEl } = readMediaElements();
-      setRemoteMuted(!!remoteVideoEl?.muted);
-      setRemoteControlsEnabled(true);
-    });
+    const offCallJoined = CallController.on(
+      'evt:call:participant:joined',
+      () => {
+        const { remoteVideoEl } = readMediaElements();
+        setRemoteMuted(!!remoteVideoEl?.muted);
+        setRemoteControlsEnabled(true);
+      },
+    );
     const offCallCleanup = CallController.on('evt:call:session:cleanup', () => {
       setRemoteControlsEnabled(false);
       setRemoteMuted(false);
@@ -176,4 +179,3 @@ export function useMediaControls() {
     },
   };
 }
-

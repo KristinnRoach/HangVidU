@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render } from '@solidjs/testing-library';
+import { createSignal } from 'solid-js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { initI18n, setLocale } from '../../shared/i18n/index.js';
 import ChatControls from './ChatControls.jsx';
@@ -11,6 +12,13 @@ function createMediaState(overrides = {}) {
     canSwitchCamera: () => true,
     remoteMuted: () => false,
     remoteControlsEnabled: () => true,
+    ...overrides,
+  };
+}
+
+function createCallState(overrides = {}) {
+  return {
+    isInCall: () => true,
     ...overrides,
   };
 }
@@ -31,7 +39,9 @@ describe('ChatControls', () => {
     const onHangUp = vi.fn();
     const { container } = render(() => (
       <ChatControls
+        callState={createCallState()}
         mediaState={createMediaState()}
+        onStartCall={vi.fn()}
         onToggleMic={onToggleMic}
         onHangUp={onHangUp}
       />
@@ -46,7 +56,10 @@ describe('ChatControls', () => {
 
   it('omits the remote PiP control from the core controls', () => {
     const { container } = render(() => (
-      <ChatControls mediaState={createMediaState()} />
+      <ChatControls
+        callState={createCallState()}
+        mediaState={createMediaState()}
+      />
     ));
 
     expect(container.querySelector('#remote-pip-btn')).toBeNull();
@@ -55,6 +68,7 @@ describe('ChatControls', () => {
   it('drives media button disabled and hidden state from Solid state', () => {
     const { container } = render(() => (
       <ChatControls
+        callState={createCallState()}
         mediaState={createMediaState({
           hasLocalMedia: () => false,
           canSwitchCamera: () => false,
@@ -69,7 +83,33 @@ describe('ChatControls', () => {
       'hidden',
     );
     expect(container.querySelector('#mute-btn').disabled).toBe(true);
-    expect(container.querySelector('#hang-up-btn').disabled).toBe(true);
+  });
+
+  it('drives call button visibility from Solid call state', () => {
+    const [isInCall, setIsInCall] = createSignal(false);
+    const { container } = render(() => (
+      <ChatControls
+        callState={createCallState({ isInCall })}
+        mediaState={createMediaState()}
+      />
+    ));
+
+    expect(container.querySelector('#call-btn').classList).not.toContain(
+      'hidden',
+    );
+    expect(container.querySelector('#hang-up-btn').classList).toContain(
+      'hidden',
+    );
+    expect(container.querySelector('#mic-btn').classList).toContain('hidden');
+
+    setIsInCall(true);
+
+    expect(container.querySelector('#call-btn').classList).toContain('hidden');
+    expect(container.querySelector('#hang-up-btn').classList).not.toContain(
+      'hidden',
+    );
+    expect(container.querySelector('#mic-btn').classList).not.toContain(
+      'hidden',
+    );
   });
 });
-

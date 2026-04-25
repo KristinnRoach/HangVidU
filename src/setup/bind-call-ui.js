@@ -8,7 +8,7 @@ import { messagesUI } from '../features/messaging/components/messages-ui.js';
 /** Wires UI-only handlers to CallController. Business logic handlers are in main.js. */
 export function bindCallUI(CallController) {
   CallController.on('evt:call:participant:joined', () => {
-    onCallConnected({ audioOnly: CallController.getState().audioOnly });
+    onCallConnected({ audioOnly: CallController.getState().audioOnly }); // TODO: Get rid of this legacy path
     messagesUI.closeMessages();
   });
 
@@ -20,6 +20,6 @@ export function bindCallUI(CallController) {
     hideOutgoingCallingUI();
     messagesUI.setFileTransferController(null);
     messagesUI.reset();
-    onCallDisconnected();
+    onCallDisconnected(); // TODO: Get rid of this legacy path, onCallConnected and onCallDisconnected
   });
 }

@@ -1,4 +1,5 @@
 import ChatControls from './ChatControls.jsx';
+import { useCallControls } from './useCallControls.js';
 import { useMediaControls } from './useMediaControls.js';
 import {
   exitWatchModeCommand,
@@ -7,10 +8,12 @@ import {
 } from '../../features/call/call-ui-commands.js';
 
 export default function ChatControlsContainer() {
+  const callControls = useCallControls();
   const mediaControls = useMediaControls();
 
   return (
     <ChatControls
+      callState={callControls.state}
       mediaState={mediaControls.state}
       onStartCall={startCallCommand}
       onExitWatchMode={exitWatchModeCommand}
@@ -23,4 +26,3 @@ export default function ChatControlsContainer() {
     />
   );
 }
-

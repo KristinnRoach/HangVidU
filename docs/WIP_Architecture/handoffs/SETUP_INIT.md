@@ -13,7 +13,7 @@ Narrative log of the setup/init standardization. Setup vs main rules live in [`.
 - extracted `init()` preflight (UI/i18n hydration + critical element validation) into `src/setup/setupInitPreflight.js`
 - made bootstrap retry-safe via `setupApp` single-flight (`initPromise`) with explicit `isReady`/`cleanup` lifecycle
 - registered service-worker NAVIGATE listener early and queued messages until bootstrap readiness
-- aligned preflight contract with startup UI bindings (`callBtn`, `hangUpBtn`)
+- aligned preflight contract with startup UI bindings (`hangUpBtn`)
 - documented setup direction in [`src/setup/SETUP_MODULE.md`](../../../src/setup/SETUP_MODULE.md)
 
 ## Open questions

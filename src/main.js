@@ -21,7 +21,6 @@ import {
   localVideoEl,
   remoteVideoEl,
   sharedVideoEl,
-  callBtn,
   sharedBoxEl,
   lobbyDiv,
   initializeElements,
@@ -127,15 +126,6 @@ function handleInitFailure(error) {
   const toastMessage = t(toastMessageKey);
   const fallbackToastMessage =
     'An error occurred. Please reload and check cam/mic permissions.';
-
-  for (const button of [callBtn]) {
-    if (!button) continue;
-    button.disabled = true;
-    button.title =
-      buttonTitle === 'error.init.button_title'
-        ? 'Initialization failed'
-        : buttonTitle;
-  }
 
   if (error) {
     console.error('[MAIN] bootstrap failed:', error);

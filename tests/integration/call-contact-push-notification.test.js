@@ -226,7 +226,6 @@ vi.mock('../../src/elements.js', () => {
     localVideoEl,
     remoteVideoEl,
     sharedVideoEl,
-    callBtn: document.createElement('button'),
     hangUpBtn: document.createElement('button'),
     mutePartnerBtn: document.createElement('button'),
     fullscreenPartnerBtn: document.createElement('button'),

@@ -51,8 +51,11 @@ export function hasLocalStream() {
 
 export function getLocalStream() {
   if (!localStream || !(localStream instanceof MediaStream)) {
-    console.error('Invalid local MediaStream accessed:', localStream);
-    console.error('Call createLocalStream() before accessing local stream.');
+    console.warn(
+      '[MEDIA] state.js - Invalid local MediaStream accessed:',
+      localStream,
+      '. Call createLocalStream() before accessing local stream.',
+    );
     return null;
   }
   return localStream;

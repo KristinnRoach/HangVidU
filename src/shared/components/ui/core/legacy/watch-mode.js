@@ -5,10 +5,6 @@ import {
   remoteVideoEl,
   lobbyDiv,
   chatControls,
-  callBtn,
-  hangUpBtn,
-  micBtn,
-  mutePartnerBtn,
   cameraBtn,
   exitWatchModeBtn,
   localBoxEl,
@@ -29,7 +25,6 @@ import {
   setWatchMode,
 } from '../../../../../features/watch/watch-sync.js';
 
-// Import from call-mode
 import { getIsInCallMode } from './call-mode.js';
 
 // Import media state
@@ -62,17 +57,7 @@ export function enterWatchModeUI() {
   chatControls.classList.remove('bottom');
   chatControls.classList.add('watch-mode');
 
-  devDebug('Entered watch mode UI, isInCallMode:', getIsInCallMode());
-
-  if (getIsInCallMode()) {
-    hideElement(callBtn);
-    showElement(hangUpBtn);
-  } else {
-    hideElement(hangUpBtn);
-    hideElement(micBtn);
-    hideElement(mutePartnerBtn);
-    showElement(callBtn);
-  }
+  devDebug('Entered watch mode UI');
 
   // Minimize further
   hideElement(cameraBtn);
@@ -100,10 +85,6 @@ export function exitWatchModeUI() {
   // Hide exit watch mode button
   hideElement(exitWatchModeBtn);
 
-  showElement(callBtn);
-  showElement(hangUpBtn);
-  showElement(micBtn);
-  showElement(mutePartnerBtn);
   showElement(cameraBtn);
 
   chatControls.classList.remove('watch-mode');
