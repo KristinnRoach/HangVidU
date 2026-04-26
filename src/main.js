@@ -50,7 +50,7 @@ import { clearUrlParam } from './shared/utils/url.js';
 
 // ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
 import './shared/components/ui/core/ui-state.js'; // Initialize UI state (sets body data-view attribute)
-import { bindCallUI } from './setup/bind-call-ui.js';
+import { tempBindMsgUiToCall } from './setup/call-msg-bind-ui-temp.js';
 
 import {
   onWatchModeEntered,
@@ -154,7 +154,7 @@ async function bootstrapApp() {
       setupTopBarAndLocale({
         showDebugUIForNotifications,
       }),
-    bindCallUI: () => bindCallUI(CallController),
+    bindCallUI: () => tempBindMsgUiToCall(CallController),
     mountApp,
     setupMainAppBusListeners,
     startListeningForSavedRooms,

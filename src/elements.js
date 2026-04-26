@@ -28,7 +28,6 @@ let fullscreenPartnerBtn = null;
 let micBtn = null;
 let cameraBtn = null;
 let exitWatchModeBtn = null;
-let appPipBtn = null;
 
 // i18n attributes configuration: { elementId: { attrs: ['attr1', 'attr2'], key: 'translation.key' } }
 const i18nElements = {
@@ -38,10 +37,6 @@ const i18nElements = {
   'mic-btn': { attrs: ['aria-label'], key: 'a11y.mic_toggle' },
   'mute-btn': { attrs: ['aria-label'], key: 'a11y.partner_mute' },
   'fullscreen-partner-btn': { attrs: ['aria-label'], key: 'a11y.fullscreen' },
-
-  // 'lobby-call-btn': { attrs: ['title'], key: 'call.start' },
-  // 'paste-join-btn': { attrs: ['title'], key: 'a11y.paste_join' },
-  // 'app-pip-btn': { attrs: ['aria-label'], key: 'a11y.popup' },
 };
 
 /**
@@ -82,8 +77,6 @@ export function initializeElements() {
   micBtn = getElement('mic-btn');
   cameraBtn = getElement('camera-btn');
   exitWatchModeBtn = getElement('exit-watch-mode-btn');
-
-  appPipBtn = getElement('app-pip-btn');
 }
 
 // Export getters to ensure we always return current references
@@ -110,7 +103,6 @@ export const getElements = () => {
     micBtn,
     cameraBtn,
     exitWatchModeBtn,
-    appPipBtn,
   };
 };
 
@@ -132,5 +124,4 @@ export {
   micBtn,
   cameraBtn,
   exitWatchModeBtn,
-  appPipBtn,
 };

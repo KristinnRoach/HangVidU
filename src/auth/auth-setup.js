@@ -37,7 +37,6 @@ export async function getLoggedInUserToken() {
   return user.getIdToken(false);
 }
 
-// Production-aware auth logger: avoid printing PII in production builds
 const isProd =
   typeof import.meta !== 'undefined' && Boolean(import.meta.env?.PROD);
 
@@ -117,7 +116,7 @@ async function _initAuthInternal() {
     if (!loggedIn) clearGISTokenCache();
   });
 
-  // 4. DOM/UI sync subscriber
+  // 4. DOM/UI sync subscriber // TODO: Delete once migrated to solid
   onAuthStateChanged((state) => {
     document.body.dataset.loggedIn = state.isLoggedIn ? 'true' : 'false';
     uiState.setView(uiState.view);

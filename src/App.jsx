@@ -1,4 +1,3 @@
-import AppPipButton from './components/app/AppPipButton.jsx';
 import ChatControlsContainer from './components/app/ChatControlsContainer.jsx';
 import LegalFooter from './components/app/LegalFooter.jsx';
 import VideoStage from './components/app/VideoStage.jsx';
@@ -15,7 +14,7 @@ import YouTubeSearchControls from './components/top-bar/YouTubeSearchControls.js
 /**
  * SolidJS app shell.
  *
- * Preserve legacy ids/classes while the remaining imperative UI modules migrate
+ * WIP - Migrating imperative UI modules
  * behind this root one surface at a time.
  */
 export default function App() {
@@ -47,7 +46,6 @@ export default function App() {
         </main>
 
         <ChatControlsContainer />
-        <AppPipButton />
 
         <LegalFooter />
         <LocaleToggle />

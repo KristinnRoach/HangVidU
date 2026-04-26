@@ -14,10 +14,6 @@ import { devDebug } from '../../shared/utils/dev/dev-utils.js';
 import { listenForIncomingOnRoom } from './room-listeners.js';
 import { showOutgoingCallUI } from './outgoing-call-session.js';
 import {
-  onCallingStarted,
-  onCallingEnded,
-} from '../../shared/components/ui/core/call-lifecycle-ui.js';
-import {
   initLocalStreamAndMedia,
   handleMediaPermissionError,
 } from '../../shared/media/WIP-init-local-media.js';
@@ -237,7 +233,6 @@ export async function callContact(
     contactsService.updateLastInteraction(contactId).catch(() => {});
 
     try {
-      onCallingStarted();
       await showOutgoingCallUI(roomId, contactNickName, {
         audioOnly,
         onCancel: (reason) => {
@@ -245,7 +240,7 @@ export async function callContact(
             console.warn('[CALL] hangUp after cancel/timeout failed:', e);
           });
         },
-        onHide: onCallingEnded,
+        onHide: () => {}, // onCallingEnded,
       });
     } catch (error) {
       console.warn('[CALL] Failed to show calling UI:', error);

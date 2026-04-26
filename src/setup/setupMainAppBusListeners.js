@@ -14,7 +14,6 @@ import {
 import { getPushNotifications } from '../features/push-notifications/index.js';
 import { setUserOffline } from '../features/presence/index.js';
 import { clearUrlParam } from '../shared/utils/url.js';
-import { onCallDisconnected } from '../shared/components/ui/core/call-lifecycle-ui.js';
 
 let isReady = false;
 let initPromise = null;
@@ -268,7 +267,7 @@ export function setupMainAppBusListeners() {
       Failed to join or create room with id: ${roomId}`,
           );
           clearUrlParam();
-          onCallDisconnected();
+          // ! onCallDisconnected();
         },
         { signal: ac.signal },
       );

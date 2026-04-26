@@ -1,11 +1,14 @@
 import { createSignal, onCleanup, onMount } from 'solid-js';
 import CallController from '../../features/call/call-controller.js';
+import { tempInfo } from '../../shared/utils/dev/dev-utils.js';
 
 export function useCallControls() {
   const [isInCall, setIsInCall] = createSignal(false);
 
   const syncCallState = () => {
     setIsInCall(CallController.isInCall());
+    import.meta.env.DEV &&
+      tempInfo('[CALL_SYNC] call state, isInCall:', CallController.isInCall());
   };
 
   onMount(() => {

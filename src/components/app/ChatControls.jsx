@@ -11,13 +11,6 @@ const controls = [
     class: 'hidden',
   },
   {
-    id: 'call-btn',
-    icon: 'phone',
-    labelKey: 'call.start',
-    handlerKey: 'onStartCall',
-    visible: ({ callState }) => !callState.isInCall(),
-  },
-  {
     id: 'camera-btn',
     labelKey: 'a11y.camera_toggle',
     handlerKey: 'onToggleCamera',

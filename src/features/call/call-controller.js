@@ -7,10 +7,7 @@ import {
   createCall as createCallFlow,
   answerCall as answerCallFlow,
 } from './call-flow.js';
-import {
-  createDataConnection,
-  joinDataConnection,
-} from './signaling/index.js';
+import { createDataConnection, joinDataConnection } from './signaling/index.js';
 import RoomService from './room.js';
 import { getUserId } from '../../auth/index.js';
 import { ref, off } from 'firebase/database';
@@ -30,7 +27,6 @@ import {
   onOutgoingCallAnswered,
   onOutgoingCallRejected,
 } from './outgoing-call-session.js';
-import { onCallConnected } from '../../shared/components/ui/core/call-lifecycle-ui.js';
 import { clearUrlParam } from '../../shared/utils/url.js';
 
 const DISCONNECT_GRACE_MS = 3000;
@@ -409,7 +405,10 @@ class CallController {
       const result = await createCallFlow(options);
       if (!result || !result.success) {
         this.state = 'idle';
-        this.emit('evt:call:session:error', { phase: 'createCall', detail: result });
+        this.emit('evt:call:session:error', {
+          phase: 'createCall',
+          detail: result,
+        });
         this.emitCallFailed('createCall', result);
         return result;
       }
@@ -479,7 +478,10 @@ class CallController {
       });
       if (!result || !result.success) {
         this.state = 'idle';
-        this.emit('evt:call:session:error', { phase: 'answerCall', detail: result });
+        this.emit('evt:call:session:error', {
+          phase: 'answerCall',
+          detail: result,
+        });
         this.emitCallFailed('answerCall', result);
         return result;
       }
@@ -518,7 +520,10 @@ class CallController {
       this.setupMemberJoinedListener(this.roomId);
       this.setupMemberLeftListener(this.roomId);
 
-      this.emit('evt:call:session:answered', { roomId: this.roomId, role: this.role });
+      this.emit('evt:call:session:answered', {
+        roomId: this.roomId,
+        role: this.role,
+      });
       return result;
     } catch (err) {
       this.state = 'idle';
@@ -554,7 +559,7 @@ class CallController {
         this.disconnectTimeoutId = null;
       }
 
-      onCallConnected({ audioOnly: this.audioOnly });
+      // ! onCallConnected({ audioOnly: this.audioOnly });
       onOutgoingCallAnswered().catch((e) =>
         console.warn('Failed to clear calling state on connect:', e),
       );

@@ -145,6 +145,9 @@ export function useMediaControls() {
       'evt:call:participant:joined',
       () => {
         const { remoteVideoEl } = readMediaElements();
+
+        // ! onCallConnected({ audioOnly: CallController.getState().audioOnly }); // TODO: Get rid of this legacy path
+
         setRemoteMuted(!!remoteVideoEl?.muted);
         setRemoteControlsEnabled(true);
       },
@@ -152,6 +155,8 @@ export function useMediaControls() {
     const offCallCleanup = CallController.on('evt:call:session:cleanup', () => {
       setRemoteControlsEnabled(false);
       setRemoteMuted(false);
+
+      // ! onCallDisconnected(); // TODO: Get rid of this legacy path, onCallConnected and onCallDisconnected
     });
 
     onCleanup(() => {

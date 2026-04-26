@@ -14,8 +14,7 @@ export default function AppPipButton() {
     <button
       ref={rootEl}
       type='button'
-      id='app-pip-btn'
-      style='display: none'
+      class='pip-btn'
       title={t('a11y.popup')}
       aria-label={t('a11y.popup')}
     >
@@ -23,4 +22,3 @@ export default function AppPipButton() {
     </button>
   );
 }
-

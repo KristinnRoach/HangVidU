@@ -1,6 +1,7 @@
 // src/ui/core/ui-state.js
 
-// Simple UI state - single source of truth for app view
+// Legacy source of truth for app view
+// migration to SolidJS is WIP
 
 const isLoggedIn = () => document.body.dataset.loggedIn === 'true';
 
@@ -53,48 +54,3 @@ function isValidBaseView(view) {
   const validViews = ['lobby', 'calling', 'connected'];
   return validViews.includes(view);
 }
-
-// export function onViewChange(callback) {
-//   // Call callback immediately with current view
-//   callback(uiState.view);
-
-//   // Set up a MutationObserver to watch for changes to the data-view attribute on the body element
-//   const observer = new MutationObserver((mutations) => {
-//     mutations.forEach((mutation) => {
-//       if (
-//         mutation.type === 'attributes' &&
-//         mutation.attributeName === 'data-view'
-//       ) {
-//         const newView = document.body.dataset.view;
-//         if (isValidView(newView)) {
-//           callback(newView);
-//         } else {
-//           console.warn(
-//             `[UI State] Invalid view detected: ${newView}. Ignoring.`
-//           );
-//         }
-//       }
-//     });
-//   });
-
-//   observer.observe(document.body, { attributes: true });
-
-//   // Return a function to allow unsubscribing
-//   return () => observer.disconnect();
-
-/* Drafts & Notes below while brainstorming UI state management patterns
-
-WIP draft of for mutually exclusive content state management
-export const currentMutExContent = {
-  containerContent: {
-    main: 'lobby', // 'lobby' | 'remoteStream' | 'ytVideo' | 'sharedVideo'
-    smallFrame: 'none',
-    PiP: 'none', // 'none' | 'localStream' | 'remoteStream' | 'watchVideo'
-  },
-
-  // Called by event handlers, (not directly by UI modules?)
-  setContainerContent(container, content) {
-    // ? No listeners needed - UI modules check state when their events fire
-  },
-};
-*/
