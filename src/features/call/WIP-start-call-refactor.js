@@ -14,7 +14,7 @@ import { devDebug } from '../../shared/utils/dev/dev-utils.js';
 import { listenForIncomingOnRoom } from './room-listeners.js';
 import { showOutgoingCallUI } from './outgoing-call-session.js';
 import {
-  initLocalStreamAndMedia,
+  initLocalStream,
   handleMediaPermissionError,
 } from '../../shared/media/WIP-init-local-media.js';
 
@@ -44,7 +44,9 @@ export function getCallOptions(
 }
 
 export function applyCallResult(result, showLinkModal = false) {
-  if (!result.success) return false;
+  if (!result?.success) {
+    return { success: false, role: result?.role || null, result };
+  }
 
   if (showLinkModal && result.roomLink) {
     showCopyLinkModal(result.roomLink, {
@@ -56,7 +58,7 @@ export function applyCallResult(result, showLinkModal = false) {
     });
   }
 
-  return true;
+  return { success: true, role: result.role || null, result };
 }
 
 function isRoomAlreadyExistsError(error) {
@@ -102,11 +104,11 @@ export async function joinOrCreateRoomWithId(
   } = {},
 ) {
   try {
-    await initLocalStreamAndMedia({ audioOnly });
+    await initLocalStream({ audioOnly });
   } catch (error) {
     console.error('Failed to initialize local media stream:', error);
     handleMediaPermissionError(error);
-    return false;
+    return { success: false, role: null };
   }
 
   const startTime = Date.now();
@@ -221,33 +223,35 @@ export async function callContact(
 
   listenForIncomingOnRoom(roomId);
 
-  const success = await joinOrCreateRoomWithId(roomId, {
+  const callStart = await joinOrCreateRoomWithId(roomId, {
     forceInitiator: true,
     audioOnly,
   }).catch((e) => {
     console.warn('[CALL] Failed to join or create room:', e);
-    return false;
+    return { success: false, role: null };
   });
 
-  if (success) {
+  if (callStart.success) {
     contactsService.updateLastInteraction(contactId).catch(() => {});
 
-    try {
-      await showOutgoingCallUI(roomId, contactNickName, {
-        audioOnly,
-        onCancel: (reason) => {
-          CallController.hangUp({ reason }).catch((e) => {
-            console.warn('[CALL] hangUp after cancel/timeout failed:', e);
-          });
-        },
-        onHide: () => {}, // onCallingEnded,
-      });
-    } catch (error) {
-      console.warn('[CALL] Failed to show calling UI:', error);
-      await CallController.hangUp({ reason: 'calling_ui_show_failed' }).catch(
-        () => {},
-      );
-      return false;
+    if (callStart.role === 'initiator') {
+      try {
+        await showOutgoingCallUI(roomId, contactNickName, {
+          audioOnly,
+          onCancel: (reason) => {
+            CallController.hangUp({ reason }).catch((e) => {
+              console.warn('[CALL] hangUp after cancel/timeout failed:', e);
+            });
+          },
+          onHide: () => {}, // onCallingEnded,
+        });
+      } catch (error) {
+        console.warn('[CALL] Failed to show calling UI:', error);
+        await CallController.hangUp({ reason: 'calling_ui_show_failed' }).catch(
+          () => {},
+        );
+        return { success: false, role: callStart.role };
+      }
     }
 
     const me = getUser();
@@ -272,5 +276,5 @@ export async function callContact(
     }
   }
 
-  return success;
+  return callStart;
 }

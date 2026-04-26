@@ -2,8 +2,8 @@ import { getElements } from '../../elements.js';
 import { setUpLocalStream } from './stream.js';
 import { getLocalStream } from './state.js';
 import {
-  hasInitializedLocalStreamAndMedia,
-  markLocalStreamAndMediaInitialized,
+  hasInitializedLocalStream,
+  markLocalStreamInitialized,
   resetLocalStreamInitFlag,
 } from './local-stream-init-state.js';
 import { showElement, hideElement } from '../components/ui/utils/ui-utils.js';
@@ -12,9 +12,9 @@ import { isRemoteVideoVideoActive } from '../components/ui/core/legacy/watch-mod
 import { t } from '../i18n/index.js';
 import { publish } from '../events/index.js';
 
-export async function initLocalStreamAndMedia({ audioOnly = false } = {}) {
-  if (hasInitializedLocalStreamAndMedia()) return;
-  markLocalStreamAndMediaInitialized();
+export async function initLocalStream({ audioOnly = false } = {}) {
+  if (hasInitializedLocalStream()) return;
+  markLocalStreamInitialized();
 
   const { localVideoEl, localBoxEl } = getElements();
 

@@ -31,12 +31,7 @@ function runSafe(fn, label) {
   }
 }
 
-const LOCAL_STORAGE_KEYS_TO_PRESERVE_ON_LOGOUT = [
-  'locale',
-  // Only keeping safe non-user scoped keys (keeping these comments for now while testing)
-  // 'recentCalls',
-  // 'referredBy',
-];
+const LOCAL_STORAGE_KEYS_TO_PRESERVE_ON_LOGOUT = ['locale'];
 const LOCAL_STORAGE_PREFIXES_TO_PRESERVE_ON_LOGOUT = ['debug:']; // 'referral'
 
 /**
@@ -171,7 +166,10 @@ export function setupAuth(options = {}) {
               console.warn('[REFERRAL] Failed to process referral:', e),
             );
             await ensureContactsHydrated().catch((e) =>
-              console.warn('[AUTH] Failed to hydrate contacts state on login:', e),
+              console.warn(
+                '[AUTH] Failed to hydrate contacts state on login:',
+                e,
+              ),
             );
 
             cleanupLoginScopedListeners();

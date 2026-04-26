@@ -130,10 +130,6 @@ export const getWatchRequestRef = (roomId) =>
 export const getUserRef = (userId) => ref(rtdb, `users/${userId}`);
 export const getUserContactsRef = (userId) =>
   ref(rtdb, `users/${userId}/contacts`);
-export const getUserRecentCallsRef = (userId) =>
-  ref(rtdb, `users/${userId}/recentCalls`);
-export const getUserRecentCallRef = (userId, roomId) =>
-  ref(rtdb, `users/${userId}/recentCalls/${roomId}`);
 export const getUserOutgoingCallRef = (userId) =>
   ref(rtdb, `users/${userId}/outgoingCall`);
 

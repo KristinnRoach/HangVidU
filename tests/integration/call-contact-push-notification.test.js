@@ -125,7 +125,6 @@ const mocks = vi.hoisted(() => {
     firebase: {
       remove: vi.fn(),
     },
-    getUserRecentCallRef: vi.fn((_userId, roomId) => ({ roomId })),
   };
 });
 
@@ -148,8 +147,6 @@ vi.mock('firebase/database', () => ({
 vi.mock('../../src/shared/storage/fb-rtdb/rtdb.js', () => ({
   removeAllRTDBListeners: vi.fn(),
   removeRTDBListenersForRoom: vi.fn(),
-  getUserRecentCallsRef: vi.fn(),
-  getUserRecentCallRef: mocks.getUserRecentCallRef,
   getUserOutgoingCallRef: vi.fn(() => ({})),
   rtdb: {},
 }));
@@ -466,7 +463,6 @@ describe('callContact push notification flow', () => {
     mocks.pushController.shouldSendNotification.mockReturnValue(false);
     mocks.pushController.isNotificationEnabled.mockReturnValue(true);
     mocks.firebase.remove.mockReset();
-    mocks.getUserRecentCallRef.mockClear();
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
@@ -601,31 +597,5 @@ describe('callContact push notification flow', () => {
 
     expect(ringtoneManager.stop).toHaveBeenCalled();
     expect(callIndicators.stopCallIndicators).toHaveBeenCalled();
-  });
-
-  it('removes the saved recent-call record when a room becomes empty', async () => {
-    mocks.contactsService.getContactByRoomId.mockReturnValue(null);
-    RoomService.checkRoomStatus.mockResolvedValue({
-      exists: true,
-      hasMembers: false,
-      memberCount: 0,
-    });
-
-    const { listenForIncomingOnRoom } =
-      await import('../../src/features/call/room-listeners.js');
-
-    listenForIncomingOnRoom('room-empty');
-
-    await mocks.memberLeftHandler?.({
-      key: 'other-user',
-    });
-
-    expect(mocks.getUserRecentCallRef).toHaveBeenCalledWith(
-      'user-123',
-      'room-empty',
-    );
-    expect(mocks.firebase.remove).toHaveBeenCalledWith({
-      roomId: 'room-empty',
-    });
   });
 });

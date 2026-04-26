@@ -1,7 +1,7 @@
 import CallController from './call-controller.js';
 import { getCallOptions, applyCallResult } from './WIP-start-call-refactor.js';
 import {
-  initLocalStreamAndMedia,
+  initLocalStream,
   handleMediaPermissionError,
 } from '../../shared/media/WIP-init-local-media.js';
 import { getLastWatched } from '../watch/watch-sync.js';
@@ -15,7 +15,7 @@ import { onWatchModeExited } from '../../shared/components/ui/core/watch-lifecyc
 
 export async function startCallCommand() {
   try {
-    await initLocalStreamAndMedia();
+    await initLocalStream();
     const result = await CallController.createCall(getCallOptions());
     applyCallResult(result, true);
   } catch (error) {

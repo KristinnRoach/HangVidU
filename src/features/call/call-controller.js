@@ -498,6 +498,8 @@ class CallController {
 
       // Join dedicated data connection for file transfer
       try {
+        this.startJoinerDataConnection(this.roomId);
+
         const { pc, dataChannel } = await joinDataConnection(this.roomId);
 
         if (pc && dataChannel) {
@@ -513,7 +515,7 @@ class CallController {
         console.warn('[CallController] Failed to join data connection:', err);
       }
 
-      // Setup cancellation listener (centralized in CallController)
+      // Setup cancellation listener
       this.setupCancellationListener(this.roomId);
 
       // Setup member listeners
@@ -613,6 +615,35 @@ class CallController {
         pc.restartIce();
       }
     });
+  }
+
+  /**
+   * Fire and forget - consider handling in p2p package
+   * @param {string} roomId
+   * @private
+   */
+  startJoinerDataConnection(roomId) {
+    if (!roomId) return;
+
+    joinDataConnection(roomId)
+      .then(({ pc, dataChannel }) => {
+        if (this.roomId !== roomId || this.role !== 'joiner') {
+          try {
+            pc?.close?.();
+          } catch (_) {}
+          return;
+        }
+
+        if (pc && dataChannel) {
+          this.setupFileTransport(pc, dataChannel);
+        }
+      })
+      .catch((err) => {
+        console.warn(
+          '[CallController] Data connection unavailable; continuing media call:',
+          err,
+        );
+      });
   }
 
   /**

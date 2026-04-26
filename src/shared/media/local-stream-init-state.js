@@ -1,10 +1,10 @@
 let hasInitLocalStreamAndMedia = false;
 
-export function hasInitializedLocalStreamAndMedia() {
+export function hasInitializedLocalStream() {
   return hasInitLocalStreamAndMedia;
 }
 
-export function markLocalStreamAndMediaInitialized() {
+export function markLocalStreamInitialized() {
   hasInitLocalStreamAndMedia = true;
 }
 
