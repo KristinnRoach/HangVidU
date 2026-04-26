@@ -125,7 +125,7 @@ export function useMediaControls() {
   }
 
   onMount(() => {
-    syncLocalTrackState();
+    // syncLocalTrackState(); // Silence or skip
 
     hasFrontAndBackCameras()
       .then(setCanSwitchCamera)

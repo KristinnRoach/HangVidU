@@ -173,15 +173,13 @@ export function setupAuth(options = {}) {
             );
 
             cleanupLoginScopedListeners();
-            if (!isInitialResolution) {
-              const maybeSavedRoomsCleanup =
-                await startListeningForSavedRooms().catch((e) => {
-                  console.warn('Failed to re-attach saved-room listeners', e);
-                  return undefined;
-                });
-              if (typeof maybeSavedRoomsCleanup === 'function') {
-                savedRoomsCleanup = maybeSavedRoomsCleanup;
-              }
+            const maybeSavedRoomsCleanup =
+              await startListeningForSavedRooms().catch((e) => {
+                console.warn('Failed to re-attach saved-room listeners', e);
+                return undefined;
+              });
+            if (typeof maybeSavedRoomsCleanup === 'function') {
+              savedRoomsCleanup = maybeSavedRoomsCleanup;
             }
 
             const maybeInviteCleanup = setupInviteListener();

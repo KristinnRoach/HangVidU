@@ -12,7 +12,7 @@
   position: absolute;
   top: 0;
   left: 0;
-  z-index: var(--z-low);
+  z-index: var(--z-mid);
 
   /* 
   display: grid; // grid removed for better stream positioning consistency for now

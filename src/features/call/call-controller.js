@@ -44,6 +44,7 @@ class CallController {
     this.role = null; // initiator | joiner
     this.audioOnly = false;
     this.partnerId = null;
+    this.session = null;
     this.pc = null;
     this.peer = null;
 
@@ -65,6 +66,7 @@ class CallController {
       role: this.role,
       audioOnly: this.audioOnly,
       partnerId: this.partnerId,
+      hasSession: !!this.session,
       hasPc: !!this.pc,
       isHangingUp: this.isHangingUp,
       isCleaningUp: this.isCleaningUp,
@@ -414,6 +416,7 @@ class CallController {
       }
 
       // Store artifacts
+      this.session = result.session || null;
       this.pc = result.pc;
       this.peer = result.peer || null;
       this.roomId = result.roomId;
@@ -487,6 +490,7 @@ class CallController {
       }
 
       // Store artifacts
+      this.session = result.session || null;
       this.pc = result.pc;
       this.peer = result.peer || null;
       this.roomId = result.roomId;
@@ -497,23 +501,7 @@ class CallController {
       this.wirePeerConnectionEvents(this.peer);
 
       // Join dedicated data connection for file transfer
-      try {
-        this.startJoinerDataConnection(this.roomId);
-
-        const { pc, dataChannel } = await joinDataConnection(this.roomId);
-
-        if (pc && dataChannel) {
-          this.setupFileTransport(pc, dataChannel);
-        } else {
-          // DataChannel not yet received via ondatachannel — wait for it
-          pc.ondatachannel = (event) => {
-            let dc = event.channel;
-            this.setupFileTransport(pc, dc);
-          };
-        }
-      } catch (err) {
-        console.warn('[CallController] Failed to join data connection:', err);
-      }
+      this.startJoinerDataConnection(this.roomId);
 
       // Setup cancellation listener
       this.setupCancellationListener(this.roomId);
@@ -775,10 +763,12 @@ class CallController {
         // non-fatal
       }
 
-      // Close peer (handles pc + data channel + state transition).
-      // Fall back to closing pc directly if peer wasn't stored (legacy path).
+      // Close session/peer (handles pc + data channel + state transition).
+      // Fall back to closing pc directly if neither session nor peer was stored.
       try {
-        if (this.peer) {
+        if (this.session) {
+          this.session.close();
+        } else if (this.peer) {
           this.peer.close();
         } else {
           this.pc?.close();
@@ -786,6 +776,7 @@ class CallController {
       } catch (e) {
         // ignore
       }
+      this.session = null;
       this.peer = null;
       this.pc = null;
 

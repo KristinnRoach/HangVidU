@@ -29,7 +29,7 @@ import { callIndicators } from '../../shared/components/ui/utils/call-indicators
 import { dismissActiveConfirmDialog } from '../../shared/components/base/confirm-dialog.js';
 import { isRoomCallFresh } from './WIP-isRoomCallFresh.js';
 
-import { joinOrCreateRoomWithId } from './WIP-start-call-refactor.js';
+import { answerIncomingCallInRoom } from './WIP-start-call-refactor.js';
 
 // TODO: WIP decoupling considerations:
 /*
@@ -61,7 +61,7 @@ import { joinOrCreateRoomWithId } from './WIP-start-call-refactor.js';
   Domain: messaging
   Issue: Cross-domain. Used to write missed/rejected call messages to chat.         
   ────────────────────────────────────────                       
-  Import: joinOrCreateRoomWithId
+  Import: answerIncomingCallInRoom
   Domain: WIP call orchestration (now uses direct imports, no startup order issue)
 
   This file is really doing three things: (1) RTDB listener management, (2) incoming
@@ -482,23 +482,23 @@ async function handleIncomingCallAccepted({
     contactsService.updateLastInteraction(contact.contactId).catch(() => {});
   }
 
-  const success = await joinOrCreateRoomWithId(roomId, { audioOnly }).catch(
-    (e) => {
-      console.warn('Failed to answer incoming call:', e);
-      getDiagnosticLogger().logFirebaseOperation(
-        'join_room_on_accept',
-        false,
-        e,
-        {
-          roomId,
-          joiningUserId: joinedContactId,
-        },
-      );
-      return false;
-    },
-  );
+  const callStart = await answerIncomingCallInRoom(roomId, {
+    audioOnly,
+  }).catch((e) => {
+    console.warn('Failed to answer incoming call:', e);
+    getDiagnosticLogger().logFirebaseOperation(
+      'join_room_on_accept',
+      false,
+      e,
+      {
+        roomId,
+        joiningUserId: joinedContactId,
+      },
+    );
+    return { success: false, role: null };
+  });
 
-  if (!success) {
+  if (!callStart.success) {
     console.warn('[CALL] Join failed after accepting incoming call', {
       roomId,
     });
@@ -913,6 +913,7 @@ export function listenForIncomingOnRoom(roomId) {
  */
 export async function startListeningForSavedRooms() {
   const startTime = Date.now();
+  const toListen = new Set();
   getDiagnosticLogger().log('LISTENER', 'STARTUP_BEGIN', {
     timestamp: startTime,
     currentListenerCount: getIncomingListenerCount(),
@@ -997,6 +998,5 @@ export async function startListeningForSavedRooms() {
     roomsToListen: Array.from(toListen),
     totalListeners: getIncomingListenerCount(),
     duration: Date.now() - startTime,
-    expiredRoomsRemoved: Object.keys(obj || {}).length - toListen.size,
   });
 }

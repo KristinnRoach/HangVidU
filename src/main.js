@@ -88,7 +88,6 @@ import { setupCallControllerEventWiring } from './features/call/call-event-wirin
 import { setupMainAppBusListeners } from './setup/setupMainAppBusListeners.js';
 import { setupAuth } from './setup/setupAuth.js';
 import { setupUserAccount } from './setup/setupUserAccount.js';
-import { joinOrCreateRoomWithId } from './features/call/WIP-start-call-refactor.js';
 
 messagesUI?.setWatchFileHandler?.(createWatchFileHandler());
 import {
@@ -164,7 +163,7 @@ async function bootstrapApp() {
     onInitFailed: (error) => {
       handleInitFailure(error);
     },
-    onReady: () => devDebug('Ready. Click "Start New Chat" to begin.'),
+    onReady: () => devDebug('[MAIN] onReady() fired'),
   });
 }
 
@@ -376,15 +375,10 @@ async function autoJoinFromUrl() {
 
   if (!urlRoomId) return false;
 
-  const success = await joinOrCreateRoomWithId(urlRoomId);
-
-  if (!success) {
-    clearUrlParam();
-    onCallDisconnected(); // reset UI state
-  }
-
-  devDebug('Auto-joined room from URL');
-  return success;
+  devDebug('Ignoring room URL auto-join while call flow is contact-only');
+  clearUrlParam();
+  onCallDisconnected();
+  return false;
 }
 
 async function handleServiceWorkerNavigation(path) {
@@ -492,19 +486,13 @@ async function handleServiceWorkerNavigation(path) {
       return true;
     }
 
-    const success = await joinOrCreateRoomWithId(roomId);
-
-    console.log('[MAIN] Service worker room navigation result', {
-      roomId,
-      success,
-    });
-
-    if (!success) {
-      clearUrlParam();
-      onCallDisconnected();
-    }
-
-    return success;
+    console.log(
+      '[MAIN] Ignoring service worker room navigation while call flow is contact-only',
+      { roomId },
+    );
+    clearUrlParam();
+    onCallDisconnected();
+    return false;
   } catch (error) {
     console.warn('[MAIN] Service worker room navigation failed:', error, {
       roomId,

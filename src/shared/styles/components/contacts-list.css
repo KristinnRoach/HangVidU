@@ -118,7 +118,6 @@
         background: transparent;
         box-shadow: none;
         font-size: 0.85rem;
-        z-index: var(--z-mid);
         padding: 2px 4px;
         margin: 0;
         flex-shrink: 0;

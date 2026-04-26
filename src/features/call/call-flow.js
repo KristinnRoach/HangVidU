@@ -10,23 +10,98 @@
  */
 
 import { getUserId } from '../../auth/index.js';
-import { devDebug } from '../../shared/utils/dev/dev-utils.js';
+import { devDebug, isDev } from '../../shared/utils/dev/dev-utils.js';
 import { showErrorToast } from '../../shared/components/toast.js';
 import { t } from '../../shared/i18n/index.js';
 
-import { Peer } from '@kidlib/p2p';
+import { startP2PSession, joinP2PSession } from '@kidlib/p2p';
 import { createFirebaseCallSignaling } from './signaling/index.js';
 import { generateRandomId } from '../../shared/utils/gen-random-id.js';
 import RoomService from './room.js';
+import {
+  hasRemoteStream,
+  setRemoteStream,
+  getRemoteStream,
+} from '../../shared/media/state.js';
+import { initIcons } from '../../shared/components/ui/icons.js';
 
-// Peer emits `error` events synchronously inside `_initPc` for track health
-// issues; surface audio-track failures as a toast on both create and answer paths.
-function wirePeerAudioErrorToast(peer) {
-  peer.on('error', ({ error, phase }) => {
+function wireSessionAudioErrorToast(session) {
+  session.on('error', ({ error, phase }) => {
     if (phase === 'tracks' && /audio/.test(String(error?.message))) {
       showErrorToast(t('media.audio_disconnected'));
     }
   });
+}
+
+function bindSessionRemoteStream(session, remoteVideoEl, mutePartnerBtn) {
+  if (!session || !remoteVideoEl) return false;
+
+  const handleRemoteStream = ({ stream, track }) => {
+    if (!stream) return;
+
+    if (track) {
+      devDebug(`REMOTE TRACK RECEIVED: ${track.kind}`);
+    }
+
+    const currentRemoteStream = hasRemoteStream() ? getRemoteStream() : null;
+    setRemoteStream(stream);
+    remoteVideoEl.srcObject = stream;
+
+    if (!track || track.kind === 'video') {
+      if (remoteVideoEl.readyState >= 1) {
+        remoteVideoEl.style.opacity = '1';
+      } else {
+        remoteVideoEl.style.opacity = '0';
+        remoteVideoEl.addEventListener(
+          'loadedmetadata',
+          () => {
+            remoteVideoEl.style.opacity = '1';
+          },
+          { once: true },
+        );
+      }
+    }
+
+    if (isDev() && !remoteVideoEl.muted) {
+      remoteVideoEl.muted = true;
+      const icon = mutePartnerBtn?.querySelector?.('i, svg');
+      if (icon) {
+        icon.setAttribute('data-lucide', 'volume-x');
+        initIcons(mutePartnerBtn);
+      }
+    }
+
+    if (currentRemoteStream !== stream) {
+      devDebug('Connected!');
+    } else if (track) {
+      devDebug(`Added ${track.kind} track to existing remote stream`);
+    }
+
+    try {
+      const container =
+        document.getElementById('remote-video-box') ||
+        remoteVideoEl.parentElement;
+      if (container) {
+        container.classList?.remove('hidden');
+        remoteVideoEl.classList?.remove('hidden');
+        container.style.visibility = 'visible';
+        container.style.opacity = '1';
+        container.style.position = '';
+        container.style.left = '';
+        container.style.top = '';
+        remoteVideoEl.style.visibility = 'visible';
+      }
+    } catch (e) {
+      console.warn('Visibility override failed:', e);
+    }
+  };
+
+  session.on('remoteStream', handleRemoteStream);
+  if (session.remoteStream) {
+    handleRemoteStream({ stream: session.remoteStream });
+  }
+
+  return true;
 }
 
 // ============================================================================
@@ -58,7 +133,6 @@ export async function createCall({
   localStream,
   remoteVideoEl,
   mutePartnerBtn,
-  setupRemoteStream,
   setupWatchSync,
   targetRoomId = null,
   audioOnly = false,
@@ -76,41 +150,42 @@ export async function createCall({
   await RoomService.createRoomMetadata(userId, roomId, { audioOnly });
 
   const signaling = createFirebaseCallSignaling(roomId, role);
-  const peer = new Peer({ role, signaling, localStream, audioOnly });
+  let session;
 
-  // Must wire before start(): Peer may emit 'tracks' errors synchronously in _initPc.
-  wirePeerAudioErrorToast(peer);
+  try {
+    session = await startP2PSession({
+      signaling,
+      localStream,
+      audioOnly,
+      dataChannel: false,
+    });
+  } catch (error) {
+    console.error('Failed to start P2P session as initiator:', error);
+    await RoomService.leaveRoom(userId, roomId).catch((cleanupError) => {
+      console.warn('Failed to rollback room creation', cleanupError);
+    });
+    return { success: false };
+  }
 
-  // peer.start() creates the RTCPeerConnection synchronously (in _initPc)
-  // before any await, so peer.pc is available immediately after the call.
-  const startPromise = peer.start();
-  const pc = peer.pc;
+  wireSessionAudioErrorToast(session);
 
-  const remoteStreamSuccess = setupRemoteStream(
-    pc,
+  const remoteStreamSuccess = bindSessionRemoteStream(
+    session,
     remoteVideoEl,
     mutePartnerBtn,
   );
   if (!remoteStreamSuccess) {
     devDebug('Error setting up remote stream');
     console.error('Error setting up remote stream');
-    peer.close();
+    session.close();
     await RoomService.leaveRoom(userId, roomId).catch((cleanupError) => {
       console.warn('Failed to rollback room creation', cleanupError);
     });
     return { success: false };
   }
 
-  try {
-    await startPromise;
-  } catch (error) {
-    console.error('Failed to start peer as initiator:', error);
-    peer.close();
-    await RoomService.leaveRoom(userId, roomId).catch((cleanupError) => {
-      console.warn('Failed to rollback room creation', cleanupError);
-    });
-    return { success: false };
-  }
+  const peer = session.peer;
+  const pc = peer.pc;
 
   devDebug('Peer connection created as initiator', { roomId, userId });
 
@@ -123,6 +198,7 @@ export async function createCall({
 
   return {
     success: true,
+    session,
     pc,
     peer,
     roomId,
@@ -160,7 +236,6 @@ export async function answerCall({
   localStream,
   remoteVideoEl,
   mutePartnerBtn,
-  setupRemoteStream,
   setupWatchSync,
   audioOnly = false,
 }) {
@@ -190,45 +265,53 @@ export async function answerCall({
   const userId = getUserId();
 
   const signaling = createFirebaseCallSignaling(roomId, role);
-  const peer = new Peer({ role, signaling, localStream, audioOnly });
+  let session;
 
-  wirePeerAudioErrorToast(peer);
+  try {
+    session = await joinP2PSession({
+      signaling,
+      localStream,
+      audioOnly,
+      dataChannel: false,
+    });
+  } catch (error) {
+    console.error('Failed to start P2P session as joiner:', error);
+    return { success: false };
+  }
 
-  // peer.start() creates the RTCPeerConnection synchronously (in _initPc)
-  // before any await; the offer already in RTDB fires immediately via the
-  // adapter's value listener.
-  const startPromise = peer.start();
-  const pc = peer.pc;
+  wireSessionAudioErrorToast(session);
 
-  const remoteStreamSuccess = setupRemoteStream(
-    pc,
+  const remoteStreamSuccess = bindSessionRemoteStream(
+    session,
     remoteVideoEl,
     mutePartnerBtn,
   );
   if (!remoteStreamSuccess) {
     devDebug('Error setting up remote stream');
     console.error('Error setting up remote stream for joiner');
-    peer.close();
+    session.close();
     return { success: false };
   }
 
-  devDebug('Peer connection created as joiner', { roomId });
+  const peer = session.peer;
+  const pc = peer.pc;
 
+  devDebug('Peer connection created as joiner', { roomId });
   try {
-    await startPromise;
+    await RoomService.joinRoom(roomId, userId);
   } catch (error) {
-    console.error('Failed to start peer as joiner:', error);
-    peer.close();
+    console.error('Failed to join room as member:', error);
+    session.close();
     return { success: false };
   }
 
   setupWatchSync(roomId, role, userId);
-  await RoomService.joinRoom(roomId, userId);
 
   devDebug('Connecting...');
 
   return {
     success: true,
+    session,
     pc,
     peer,
     roomId,
