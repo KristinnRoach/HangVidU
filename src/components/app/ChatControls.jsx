@@ -87,7 +87,7 @@ export default function ChatControls(props) {
   });
 
   return (
-    <div ref={rootEl} id='chat-controls' class='hidden chat-controls bottom'>
+    <div ref={rootEl} id='chat-controls' class='chat-controls bottom'>
       <For each={controls}>
         {(control) => {
           const controlState = () => ({
