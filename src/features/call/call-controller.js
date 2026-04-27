@@ -28,6 +28,7 @@ import {
   onOutgoingCallRejected,
 } from './outgoing-call-session.js';
 import { clearUrlParam } from '../../shared/utils/url.js';
+import setupCallCommandHandlers from './call-command-handlers.js';
 
 const DISCONNECT_GRACE_MS = 3000;
 
@@ -56,6 +57,8 @@ class CallController {
     this.listeners = new Map(); // Track RTDB listeners for cleanup
     this.wasConnected = false;
     this.disconnectTimeoutId = null;
+
+    setupCallCommandHandlers();
   }
 
   getState() {

@@ -48,8 +48,6 @@ import { getDiagnosticLogger } from './shared/utils/dev/diagnostic-logger.js';
 
 import { clearUrlParam } from './shared/utils/url.js';
 
-// ____ UI RELATED IMPORTS - REFACTOR IN PROGRESS ____
-import './shared/components/ui/core/ui-state.js'; // Initialize UI state (sets body data-view attribute)
 import { tempBindMsgUiToCall } from './setup/call-msg-bind-ui-temp.js';
 
 import {
@@ -75,9 +73,6 @@ import { messagesUI } from './features/messaging/components/messages-ui.js';
 import { createWatchFileHandler } from './features/watch/watch-file-handler.js';
 import { copyToClipboard } from './shared/components/modal/copyLinkModal.js';
 
-// ____ UI END ____
-
-import { onCallDisconnected } from './shared/components/ui/core/call-lifecycle-ui.js';
 import { t } from './shared/i18n/index.js';
 import { setupMessagingContactsIntegration } from './setup/messaging-contacts-bridge.js';
 import { setupApp } from './setup/setupApp.js';
@@ -89,13 +84,14 @@ import { setupMainAppBusListeners } from './setup/setupMainAppBusListeners.js';
 import { setupAuth } from './setup/setupAuth.js';
 import { setupUserAccount } from './setup/setupUserAccount.js';
 
-messagesUI?.setWatchFileHandler?.(createWatchFileHandler());
 import {
   settleIncomingCallWaitForRoom,
   startListeningForSavedRooms,
 } from './features/call/room-listeners.js';
 import { showErrorToast } from './shared/components/toast.js';
 import { dispatchCommandAndAwait } from './shared/events/index.js';
+
+messagesUI?.setWatchFileHandler?.(createWatchFileHandler());
 
 // Quick access to enable / disable dev debug logs
 setDevDebugEnabled(true);
@@ -377,7 +373,7 @@ async function autoJoinFromUrl() {
 
   devDebug('Ignoring room URL auto-join while call flow is contact-only');
   clearUrlParam();
-  onCallDisconnected();
+  // ! onCallDisconnected();
   return false;
 }
 
@@ -491,14 +487,14 @@ async function handleServiceWorkerNavigation(path) {
       { roomId },
     );
     clearUrlParam();
-    onCallDisconnected();
+    // ! onCallDisconnected();
     return false;
   } catch (error) {
     console.warn('[MAIN] Service worker room navigation failed:', error, {
       roomId,
     });
     clearUrlParam();
-    onCallDisconnected();
+    // ! onCallDisconnected();
     return false;
   } finally {
     isHandlingServiceWorkerNavigation = false;
