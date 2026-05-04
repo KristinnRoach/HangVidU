@@ -9,6 +9,7 @@
     "dev:media": "vite --open /media-lab.html",
     "dev:components": "VITE_ENABLE_PWA=0 vite --open components-lab.html",
     "debug:edge": "zsh scripts/debug/launch-pwa-edge.sh",
+    "worktree": "scripts/git-worktree.sh",
     "delete:user": "node scripts/delete-user-account.js",
     "kill": "fkill :5173 :4040 --force",
     "kill:silent": "fkill :5173 :4040 --force --silent",
@@ -87,7 +88,7 @@
   },
   "dependencies": {
     "@kidlib/create-component": "^0.1.5",
-    "@kidlib/p2p": "^0.1.4",
+    "@kidlib/p2p": "^0.1.6",
     "@mediabunny/ac3": "^1.40.1",
     "@sentry/browser": "^10.49.0",
     "dexie": "^4.4.2",
