@@ -1,7 +1,6 @@
 import { Show } from 'solid-js';
 
-import type { P2PRoom } from '@kidlib/p2p';
-import type { RoomStatusType } from './RoomStatus';
+import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import RoomStatus from './RoomStatus';
 import RoomMembers from './RoomMembers';
 import ChatControls from '../app/ChatControls';
@@ -9,30 +8,19 @@ import ChatControls from '../app/ChatControls';
 import './RoomExample.css';
 
 type Props = {
-  room: P2PRoom;
-  status?: RoomStatusType;
-  error?: string;
+  p2p: SolidP2PRoom;
 };
 
 export default function Room(props: Props) {
-  if (!props.room) {
-    console.debug('Room component rendered without a room prop');
-    return null;
-  }
-
   return (
     <div class='room'>
-      <Show when={props.status}>
-        <RoomStatus
-          room={props.room}
-          status={props.status!}
-          error={props.error}
-        />
+      <RoomStatus p2p={props.p2p} />
+
+      <RoomMembers p2p={props.p2p} />
+
+      <Show when={props.p2p.state() === 'joined'}>
+        <ChatControls />
       </Show>
-
-      <RoomMembers room={props.room} />
-
-      <ChatControls />
     </div>
   );
 }

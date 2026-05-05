@@ -1,55 +1,29 @@
-import { createEffect, createSignal, onCleanup, Show } from 'solid-js';
-import type { P2PRoom, P2PRoomState } from '@kidlib/p2p';
+import { Show } from 'solid-js';
+import type {
+  SolidP2PRoom,
+  SolidP2PRoomState,
+} from '@kidlib/p2p/solid';
 
 type Props = {
-  room?: P2PRoom;
-  status: RoomStatusType;
-  error?: string;
+  p2p: SolidP2PRoom;
 };
 
-export type RoomStatusType = P2PRoomState | 'idle' | 'full' | 'error';
+export type RoomStatusType = SolidP2PRoomState;
 
 export default function RoomStatus(props: Props) {
-  const [memberCount, setMemberCount] = createSignal(0);
-  const [memberCapacity, setMemberCapacity] = createSignal<number>();
-  const [roomId, setRoomId] = createSignal<string>();
-
-  createEffect(() => {
-    const room = props.room;
-    if (!room || !room.roomId) {
-      setMemberCount(0);
-      setMemberCapacity(undefined);
-      setRoomId(undefined);
-      return;
-    }
-
-    setRoomId(room.roomId);
-    setMemberCount(room.memberCount);
-    setMemberCapacity(room.memberCapacity);
-
-    const cleanups = [
-      room.on('membersChanged', ({ memberCount, memberCapacity }) => {
-        setMemberCount(memberCount);
-        setMemberCapacity(memberCapacity);
-      }),
-    ];
-
-    onCleanup(() => cleanups.forEach((cleanup) => cleanup()));
-  });
-
   return (
     <div class='room-status'>
-      <Show when={memberCount()}>
+      <Show when={props.p2p.memberCount()}>
         <p>
-          Members: {memberCount()} / {memberCapacity()}
+          Members: {props.p2p.memberCount()} / {props.p2p.memberCapacity()}
         </p>
       </Show>
-      <Show when={roomId()}>
-        <p>Room ID: {roomId()}</p>
-        <p>Room status: {props.status} </p>
+      <Show when={props.p2p.room()?.roomId}>
+        {(roomId) => <p>Room ID: {roomId()}</p>}
       </Show>
-      <Show when={props.error}>
-        <p>{props.error}</p>
+      <p>Room status: {props.p2p.state()}</p>
+      <Show when={props.p2p.errorKind()}>
+        {(kind) => <p>Room error: {kind()}</p>}
       </Show>
     </div>
   );

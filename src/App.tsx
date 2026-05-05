@@ -1,4 +1,4 @@
-import { createSignal, onMount } from 'solid-js';
+import { onMount } from 'solid-js';
 
 import { rtdb } from './shared/storage/fb-rtdb/rtdb.js';
 import { devDebug } from './shared/utils/dev/dev-utils.js';
@@ -12,17 +12,8 @@ import { setupMainAppBusListeners } from './setup/setupMainAppBusListeners.js';
 import { messagingController } from './features/messaging/messaging-controller.js';
 import { initCallService, getCallService } from './call-service.js';
 
-import {
-  isLocalStreamError,
-  isRoomFullError,
-  P2PRoom,
-  setLogger,
-  watchP2PRoom,
-  type P2PRoomOptions,
-  type P2PRoomState,
-  type CreateRoomSignalingOptions,
-  joinP2PRoom,
-} from '@kidlib/p2p';
+import { setLogger } from '@kidlib/p2p';
+import { useP2PRoom } from '@kidlib/p2p/solid';
 import { createFirebaseRoomSignaling } from './features/call/signaling/firebase-room-signaling';
 
 import { getUser, getUserId } from './auth/auth-state.js';
@@ -33,47 +24,10 @@ import { showPushUnsupportedNotification } from './features/notifications/index.
 import MainLayout from './components/MainLayout.jsx';
 import { setupMessagingAppBusHandlers } from './features/messaging/messaging-command-handlers.js';
 
-const MAX_MEMBERS = 6;
-
-const [activeRoom, setActiveRoom] = createSignal<P2PRoom | null>(null);
-
 function initP2P() {
   setLogger((...args) => {
     console.info('[P2P]', ...args);
   });
-}
-
-async function enterRoom(roomId: string, localUserId: string) {
-  const room = await joinP2PRoom({
-    roomId,
-    peerId: localUserId,
-    createSignaling: createFirebaseRoomSignaling,
-    getLocalStream: () =>
-      navigator.mediaDevices.getUserMedia({ video: true, audio: true }),
-    memberCapacity: MAX_MEMBERS,
-  });
-
-  import.meta.env.DEV &&
-    console.debug(
-      `Active room: ${room.roomId}, members: ${room.members.join(', ')}`,
-    );
-
-  setActiveRoom(room);
-  return room;
-}
-
-async function exitActiveRoom() {
-  const room = activeRoom();
-  if (room) {
-    room.close();
-    setActiveRoom(null);
-  } else {
-    console.debug('No active room to exit');
-  }
-  const svc = getCallService();
-  if (svc) {
-    await Promise.all([svc.endActiveCall(), svc.clearOutgoingCallResponse()]);
-  }
 }
 
 /**
@@ -81,6 +35,41 @@ async function exitActiveRoom() {
  * WIP - Migrating imperative UI modules behind this root
  */
 export default function App() {
+  const p2p = useP2PRoom();
+
+  async function enterRoom(
+    roomId: string,
+    localUserId: string,
+    getLocalStream: () => Promise<MediaStream> = () =>
+      navigator.mediaDevices.getUserMedia({ video: true, audio: false }),
+    memberCapacity = 2,
+  ) {
+    const room = await p2p.join({
+      roomId,
+      peerId: localUserId,
+      createSignaling: createFirebaseRoomSignaling,
+      getLocalStream,
+      memberCapacity, // 2 for 1:1 calls, can increase for group calls
+    });
+
+    import.meta.env.DEV &&
+      room &&
+      console.debug(
+        `Active room: ${room.roomId}, members: ${room.members.join(', ')}`,
+      );
+
+    return room;
+  }
+
+  async function exitActiveRoom() {
+    p2p.close();
+
+    const svc = getCallService();
+    if (svc) {
+      await Promise.all([svc.endActiveCall(), svc.clearOutgoingCallResponse()]);
+    }
+  }
+
   onMount(async () => {
     // Remove most of these when Solid-ified:
     console.info('Mounting app.. rtdb:', rtdb);
@@ -203,7 +192,7 @@ export default function App() {
 
   return (
     <div>
-      <MainLayout activeRoom={activeRoom()} />
+      <MainLayout p2p={p2p} />
     </div>
   );
 }
