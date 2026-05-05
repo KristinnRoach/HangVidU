@@ -34,7 +34,6 @@ function drainCleanupFns(cleanupFns) {
  * - bindCallUI: binds call UI handlers
  * - mountApp: mounts the Solid app root and keeps it in sync
  * - setupMainAppBusListeners: registers app-level command/fact handlers
- * - startListeningForSavedRooms
  * - autoInitMsgSessionIfNeeded
  * - autoJoinFromUrl
  * - handleServiceWorkerNavigation
@@ -50,7 +49,6 @@ function drainCleanupFns(cleanupFns) {
  *   bindCallUI: () => void,
  *   mountApp: () => Promise<void>,
  *   setupMainAppBusListeners: () => Promise<(() => void)|void>|(() => void)|void,
- *   startListeningForSavedRooms: () => Promise<void>,
  *   autoInitMsgSessionIfNeeded: () => Promise<void>,
  *   autoJoinFromUrl: () => Promise<boolean>,
  *   handleServiceWorkerNavigation: (path: string) => Promise<boolean>,
@@ -106,10 +104,6 @@ export function setupApp(options) {
       if (typeof appBusCleanup === 'function') {
         cleanupFns.push(appBusCleanup);
       }
-
-      await options
-        .startListeningForSavedRooms()
-        .catch((e) => console.warn('Failed to start saved-room listeners', e));
 
       await options.autoInitMsgSessionIfNeeded().catch((e) => {
         console.warn('Failed to auto-init messaging session:', e);

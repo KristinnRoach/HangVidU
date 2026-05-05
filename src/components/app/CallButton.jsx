@@ -1,29 +1,23 @@
 /*
 type Props = {
-    onCall: ({ roomId: string }) => void;
-    roomId: string;
+    contactId: string;
     title: string;
     class: string;
 } 
 */
 
+import { getCallService } from '../../call-service';
 import { dispatchCommand } from '../../shared/events';
+import { devDebug } from '../../shared/utils/dev/dev-utils';
 
 export default function CallButton(props) {
   function onCall() {
-    if (!props.roomId) {
-      console.warn('[app] No room id for contact', {
-        contactId: props.id,
-      });
-      return;
-    }
+    devDebug('[CallButton] clicked', props.title);
 
     dispatchCommand('cmd:room:initiate:call', {
-      roomId: props.roomId,
+      contactId: props.contactId,
     });
   }
-
-  // console.warn('CallButton roomId: ', props.roomId);
 
   return (
     <button

@@ -74,15 +74,8 @@ export function setupAppRoot() {
       );
     }
 
-    dispatchCommand('cmd:messaging:conversation:unread-count-listen', {
-      conversationId,
-    });
-
     unreadTeardowns.set(conversationId, () => {
       offEvt();
-      dispatchCommand('cmd:messaging:conversation:unread-count-unlisten', {
-        conversationId,
-      });
     });
   }
 

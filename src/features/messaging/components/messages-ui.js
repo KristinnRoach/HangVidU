@@ -109,9 +109,7 @@ export function initMessagesUI() {
     }
   };
 
-  const topRightMenu =
-    document.querySelector('.top-bar .top-bar-right') ||
-    document.querySelector('.top-bar-right');
+  const topRightMenu = document.querySelector('.top-bar-right');
 
   const messageToggle = createMessageToggle({
     parent: topRightMenu,
@@ -1805,4 +1803,11 @@ export function initMessagesUI() {
  * Singleton MessagesUI instance
  * Initialized on first import
  */
-export const messagesUI = initMessagesUI();
+let messagesUIInstance = null;
+
+export function getMessagesUI() {
+  if (!messagesUIInstance) {
+    messagesUIInstance = initMessagesUI();
+  }
+  return messagesUIInstance;
+}

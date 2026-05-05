@@ -1,9 +1,16 @@
 import { rtdb } from '../fb-rtdb/rtdb.js';
+
+import {
+  UserProfileRepository,
+  createUserProfileRepository,
+} from './user-profile-repository.js';
 import {
   UserProfileRTDBAdapter,
   createUserProfileRTDBAdapter,
 } from './user-profile-rtdb-adapter.js';
-import { UserProfileStore, createUserProfileStore } from './user-profile-store.js';
+
+import { CallRepository, createCallRepository } from './call-repository.js';
+import { CallRTDBAdapter, createCallRTDBAdapter } from './call-rtdb-adapter.js';
 
 export {
   UserProfileSchema,
@@ -13,16 +20,10 @@ export {
   parsePresenceState,
   parseDirectoryEntry,
 } from './schema.js';
-export {
-  UserProfileStore,
-  createUserProfileStore,
-} from './user-profile-store.js';
-export {
-  UserProfileRTDBAdapter,
-  createUserProfileRTDBAdapter,
-} from './user-profile-rtdb-adapter.js';
 
-const userProfileStore = createUserProfileStore(
+// TODO: possibly move the below into services
+
+const userProfileRepo = createUserProfileRepository(
   createUserProfileRTDBAdapter({ database: rtdb }),
 );
 
@@ -31,7 +32,7 @@ const userProfileStore = createUserProfileStore(
  * @returns {Promise<{ userName?: string|null, photoURL?: string|null }|null>}
  */
 export function getUserProfile(userId) {
-  return userProfileStore.getUserProfile(userId);
+  return userProfileRepo.getUserProfile(userId);
 }
 
 /**
@@ -39,5 +40,5 @@ export function getUserProfile(userId) {
  * @returns {Promise<void>}
  */
 export function saveUserProfile(user) {
-  return userProfileStore.saveUserProfile(user);
+  return userProfileRepo.saveUserProfile(user);
 }

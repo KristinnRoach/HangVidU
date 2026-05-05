@@ -60,13 +60,13 @@ export function initializeElements() {
 
   lobbyDiv = getElement('lobby');
 
-  videosWrapper = getElement('videos');
-  localVideoEl = getElement('local-video-el');
-  localBoxEl = getElement('local-video-box');
-  remoteVideoEl = getElement('remote-video-el');
-  remoteBoxEl = getElement('remote-video-box');
-  sharedVideoEl = getElement('shared-video-el');
-  sharedBoxEl = getElement('shared-video-box');
+  // videosWrapper = getElement('videos');
+  // localVideoEl = getElement('local-video-el');
+  // localBoxEl = getElement('local-video-box');
+  // remoteVideoEl = getElement('remote-video-el');
+  // remoteBoxEl = getElement('remote-video-box');
+  // sharedVideoEl = getElement('shared-video-el');
+  // sharedBoxEl = getElement('shared-video-box');
 
   chatControls = getElement('chat-controls');
   hangUpBtn = getElement('hang-up-btn');

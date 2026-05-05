@@ -2,7 +2,7 @@ import VideoStream from './VideoStream';
 
 type Props = {
   stream: MediaStream;
-  memberId?: string; // TODO: use as id? Why is this required in p2p RemoteMemberStream type?
+  memberId?: string; // use as key / id if needed
   class?: string;
 };
 

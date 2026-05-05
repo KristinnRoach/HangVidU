@@ -16,9 +16,10 @@ function assertAdapter(adapter) {
 }
 
 /**
- * Backend-agnostic facade for user-profile storage.
+ * Backend-agnostic user-profile storage.
+ * Implementation delegates to adapter.
  */
-export class UserProfileStore {
+export class UserProfileRepository {
   /**
    * @param {{ get: (userId: string) => Promise<unknown>, save: (user: unknown) => Promise<void> }} adapter
    */
@@ -57,9 +58,9 @@ export class UserProfileStore {
 }
 
 /**
- * @param {ConstructorParameters<typeof UserProfileStore>[0]} adapter
- * @returns {UserProfileStore}
+ * @param {ConstructorParameters<typeof UserProfileRepository>[0]} adapter
+ * @returns {UserProfileRepository}
  */
-export function createUserProfileStore(adapter) {
-  return new UserProfileStore(adapter);
+export function createUserProfileRepository(adapter) {
+  return new UserProfileRepository(adapter);
 }

@@ -76,6 +76,7 @@ package-lock.json
 **/OLD_*.js
 
 # Notes / Instructions / AI
+.codex/
 Instructions.md
 Warp.md
 CLAUDE.md

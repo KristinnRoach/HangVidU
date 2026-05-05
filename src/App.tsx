@@ -1,22 +1,80 @@
-import { onMount } from 'solid-js';
+import { createSignal, onMount } from 'solid-js';
 
 import { rtdb } from './shared/storage/fb-rtdb/rtdb.js';
+import { devDebug } from './shared/utils/dev/dev-utils.js';
 import { initializeAppCheckDeferred } from './shared/vendors/firebase.js';
-import { initI18n, useI18n } from './shared/i18n/index.js';
+import { initI18n } from './shared/i18n/index.js';
 import { setupContacts } from './setup/setupContacts.js';
-import { initAuth } from './auth/auth-setup.js';
-import { useAuth } from './auth/solid-auth.js';
 import { setupAuth } from './setup/setupAuth.js';
-import { useRooms } from './components/useRooms.js';
 import { setupInitPreflight } from './setup/setupInitPreflight.js';
 import { setupAppRoot } from './setup/setupAppRoot.js';
 import { setupMainAppBusListeners } from './setup/setupMainAppBusListeners.js';
+import { messagingController } from './features/messaging/messaging-controller.js';
+import { initCallService, getCallService } from './call-service.js';
 
-// import { handleCommand } from './shared/events/index.js';
-// import { setupUserAccount } from './setup/setupUserAccount.js';
-// import { setUserOffline } from './features/presence/index.js';
+import {
+  isLocalStreamError,
+  isRoomFullError,
+  P2PRoom,
+  setLogger,
+  watchP2PRoom,
+  type P2PRoomOptions,
+  type P2PRoomState,
+  type CreateRoomSignalingOptions,
+  joinP2PRoom,
+} from '@kidlib/p2p';
+import { createFirebaseRoomSignaling } from './features/call/signaling/firebase-room-signaling';
+
+import { getUser, getUserId } from './auth/auth-state.js';
+import { handleCommand } from './shared/events/index.js';
+import { getPushNotifications } from './features/push-notifications/push-notifications.js';
+import { showPushUnsupportedNotification } from './features/notifications/index.js';
 
 import MainLayout from './components/MainLayout.jsx';
+import { setupMessagingAppBusHandlers } from './features/messaging/messaging-command-handlers.js';
+
+const MAX_MEMBERS = 6;
+
+const [activeRoom, setActiveRoom] = createSignal<P2PRoom | null>(null);
+
+function initP2P() {
+  setLogger((...args) => {
+    console.info('[P2P]', ...args);
+  });
+}
+
+async function enterRoom(roomId: string, localUserId: string) {
+  const room = await joinP2PRoom({
+    roomId,
+    peerId: localUserId,
+    createSignaling: createFirebaseRoomSignaling,
+    getLocalStream: () =>
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true }),
+    memberCapacity: MAX_MEMBERS,
+  });
+
+  import.meta.env.DEV &&
+    console.debug(
+      `Active room: ${room.roomId}, members: ${room.members.join(', ')}`,
+    );
+
+  setActiveRoom(room);
+  return room;
+}
+
+async function exitActiveRoom() {
+  const room = activeRoom();
+  if (room) {
+    room.close();
+    setActiveRoom(null);
+  } else {
+    console.debug('No active room to exit');
+  }
+  const svc = getCallService();
+  if (svc) {
+    await Promise.all([svc.endActiveCall(), svc.clearOutgoingCallResponse()]);
+  }
+}
 
 /**
  * SolidJS app shell.
@@ -33,8 +91,119 @@ export default function App() {
     setupAppRoot();
     setupMainAppBusListeners();
     await setupContacts();
-    useRooms().init();
+    setupMessagingAppBusHandlers({ messagingController });
+
+    // Initialize push notifications (permission requests happen on auth change)
+    const pushController = getPushNotifications();
+    try {
+      const pushInitialized = await pushController.initialize();
+      if (!pushInitialized && !pushController.isNotificationSupported()) {
+        showPushUnsupportedNotification();
+      }
+    } catch (error) {
+      console.error('[APP.onMount()] Push notifications init:', error);
+    }
+
+    const localUID = getUserId();
+    const callService = initCallService({ localUID, rtdb });
+    initP2P();
+
+    handleCommand('cmd:room:initiate:call', async ({ contactId }) => {
+      const outgoingRoomId = callService.sendOutgoingCallInvite({
+        recipientUID: contactId,
+      });
+
+      // todo: Send push notification
+      // todo: Show outgoing call UI + start audio + indicators
+
+      const me = getUser();
+      const callerName = me?.userName || me?.email || localUID;
+      const pushCall = getPushNotifications()?.sendIncomingCall({
+        targetUserId: contactId,
+        roomId: outgoingRoomId,
+        callerId: localUID,
+        callerName,
+      });
+
+      if (pushCall) {
+        pushCall
+          .then((pushResult) => {
+            if (!pushResult?.ok) {
+              console.warn(
+                '[CALL] Call-start push notification did not succeed',
+              );
+            }
+          })
+          .catch((error) => {
+            console.warn('[CALL] Failed to send push notification:', error);
+          });
+      }
+
+      console.debug('Initiated outgoing call invite:', {
+        contactId,
+        outgoingRoomId,
+      });
+    });
+
+    handleCommand('cmd:room:exit:call', () => {
+      exitActiveRoom().catch((err) => {
+        console.error('Error exiting room:', err);
+      });
+    });
+
+    callService.onIncomingCall((call) => {
+      if (!call) return;
+      console.debug('Received incoming call invite:', { call });
+      if (call) {
+        const shouldAccept = window.confirm(
+          `Incoming call from ${call.from}. Accept?`,
+        );
+        if (shouldAccept) {
+          callService
+            .acceptIncomingCall({ fromUID: call.from, roomId: call.roomId })
+            .then(() => {
+              enterRoom(call.roomId, localUID).catch((err) => {
+                console.error('Error entering room after accepting call:', err);
+              });
+            })
+            .catch((err) => {
+              console.error('Error accepting incoming call:', err);
+              exitActiveRoom();
+            });
+        } else {
+          console.debug('User declined incoming call invite');
+        }
+      }
+    });
+
+    callService.onOutgoingCallResponse((response) => {
+      if (!response) return;
+      console.debug('Received outgoing call response:', { response });
+
+      // todo: Hide outgoing call UI + stop audio + indicators
+      if (response) {
+        // Clear immediately so stale data doesn't re-trigger on next page load
+        callService.clearOutgoingCallResponse();
+        if (response.responseType === 'accepted') {
+          enterRoom(response.roomId, localUID).catch((err) => {
+            console.error(
+              'Error entering room after outgoing call accepted:',
+              err,
+            );
+            exitActiveRoom();
+          });
+        } else if (response.responseType === 'rejected') {
+          window.alert(`Your call  was rejected.`);
+        }
+      }
+    });
+
+    devDebug('End of onMount');
   });
 
-  return <MainLayout />;
+  return (
+    <div>
+      <MainLayout activeRoom={activeRoom()} />
+    </div>
+  );
 }

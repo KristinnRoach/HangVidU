@@ -1,12 +1,12 @@
 import { subscribe } from '../shared/events/index.js';
 import { initAuth } from '../auth/index.js';
 import { devDebug } from '../shared/utils/dev/dev-utils.js';
-import {
-  removeAllIncomingListeners,
-  startListeningForSavedRooms,
-} from '../features/call/room-listeners.js';
+// import {
+//   removeAllIncomingListeners,
+//   startListeningForSavedRooms,
+// } from '../features/call/room-listeners.js';
 import { messagingController } from '../features/messaging/messaging-controller.js';
-import { messagesUI } from '../features/messaging/components/messages-ui.js';
+import { getMessagesUI } from '../features/messaging/components/messages-ui.js';
 import {
   cleanupInviteListeners,
   setupInviteListener,
@@ -99,19 +99,19 @@ export function setupAuth(options = {}) {
     const { lobbyElement } = options;
     const ac = new AbortController();
     let initialized = false;
-    let savedRoomsCleanup = () => {
-      runSafe(removeAllIncomingListeners, 'removeAllIncomingListeners');
-    };
+    // let savedRoomsCleanup = () => {
+    //   runSafe(removeAllIncomingListeners, 'removeAllIncomingListeners');
+    // };
     let inviteCleanup = () => {
       runSafe(cleanupInviteListeners, 'cleanupInviteListeners');
     };
 
     const cleanupLoginScopedListeners = () => {
-      runSafe(savedRoomsCleanup, 'savedRooms cleanup');
+      // runSafe(savedRoomsCleanup, 'savedRooms cleanup');
       runSafe(inviteCleanup, 'invite cleanup');
-      savedRoomsCleanup = () => {
-        runSafe(removeAllIncomingListeners, 'removeAllIncomingListeners');
-      };
+      // savedRoomsCleanup = () => {
+      //   runSafe(removeAllIncomingListeners, 'removeAllIncomingListeners');
+      // };
       inviteCleanup = () => {
         runSafe(cleanupInviteListeners, 'cleanupInviteListeners');
       };
@@ -123,7 +123,7 @@ export function setupAuth(options = {}) {
         () => messagingController.closeAllConversations(),
         'messagingController.closeAllConversations',
       );
-      runSafe(() => messagesUI?.reset?.(), 'messagesUI.reset');
+      runSafe(() => getMessagesUI()?.reset?.(), 'getMessagesUI().reset');
       // NOTE: Local storage is cleared on log out, while selected keys are preserved.
       clearLocalStorageOnLogout();
     };
@@ -173,11 +173,11 @@ export function setupAuth(options = {}) {
             );
 
             cleanupLoginScopedListeners();
-            const maybeSavedRoomsCleanup =
-              await startListeningForSavedRooms().catch((e) => {
-                console.warn('Failed to re-attach saved-room listeners', e);
-                return undefined;
-              });
+            // const maybeSavedRoomsCleanup =
+            //   await startListeningForSavedRooms().catch((e) => {
+            //     console.warn('Failed to re-attach saved-room listeners', e);
+            //     return undefined;
+            //   });
             if (typeof maybeSavedRoomsCleanup === 'function') {
               savedRoomsCleanup = maybeSavedRoomsCleanup;
             }

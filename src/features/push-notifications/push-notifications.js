@@ -63,6 +63,9 @@ export class PushNotifications {
       ...options,
     };
     this.vapidKey = import.meta.env.VITE_PUSH_VAPID_KEY;
+    if (!this.vapidKey.length) {
+      console.error('[Push Notifications] VAPID key is not set');
+    }
   }
 
   // Runtime setup used by app bootstrap. This is intentionally separate from
@@ -525,9 +528,12 @@ export class PushNotifications {
 
     if (!callerName) {
       try {
-        const contact = await dispatchCommandAndAwait('cmd:contacts:contact:get-by-room-id', {
-          roomId,
-        });
+        const contact = await dispatchCommandAndAwait(
+          'cmd:contacts:contact:get-by-room-id',
+          {
+            roomId,
+          },
+        );
         callerLabel = contact?.contactNickName || callerId || 'Unknown caller';
       } catch (error) {
         console.warn(

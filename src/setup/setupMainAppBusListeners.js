@@ -116,58 +116,58 @@ export function setupMainAppBusListeners() {
         { signal: ac.signal },
       );
 
-      handleCommand(
-        'cmd:call:outgoing:initiate',
-        async ({
-          contactId,
-          contactNickName,
-          conversationId,
-          roomId,
-          audioOnly = false,
-        }) => {
-          const resolvedContactNickName =
-            typeof contactNickName === 'string' && contactNickName.trim()
-              ? contactNickName.trim()
-              : null;
+      // handleCommand(
+      //   'cmd:call:outgoing:initiate',
+      //   async ({
+      //     contactId,
+      //     contactNickName,
+      //     conversationId,
+      //     roomId,
+      //     audioOnly = false,
+      //   }) => {
+      //     const resolvedContactNickName =
+      //       typeof contactNickName === 'string' && contactNickName.trim()
+      //         ? contactNickName.trim()
+      //         : null;
 
-          isDev() &&
-            tempWarn(
-              '[main.js] cmd:call:outgoing:initiate event received with data: ',
-              {
-                contactId,
-                contactNickName: resolvedContactNickName,
-                conversationId,
-                roomId,
-                audioOnly,
-              },
-            );
+      //     isDev() &&
+      //       tempWarn(
+      //         '[main.js] cmd:call:outgoing:initiate event received with data: ',
+      //         {
+      //           contactId,
+      //           contactNickName: resolvedContactNickName,
+      //           conversationId,
+      //           roomId,
+      //           audioOnly,
+      //         },
+      //       );
 
-          if (contactId) {
-            const resolvedConversationId =
-              conversationId ?? getConversationId(contactId);
+      //     if (contactId) {
+      //       const resolvedConversationId =
+      //         conversationId ?? getConversationId(contactId);
 
-            if (resolvedConversationId) {
-              messagingController
-                .selectConversation(resolvedConversationId, {
-                  remoteParticipantIds: [contactId],
-                  displayUI: false,
-                  contactNickName: resolvedContactNickName,
-                })
-                .catch((e) => {
-                  console.warn(
-                    'Failed to select conversation on cmd:call:outgoing:initiate',
-                    e,
-                  );
-                });
-            }
-          }
+      //       if (resolvedConversationId) {
+      //         messagingController
+      //           .selectConversation(resolvedConversationId, {
+      //             remoteParticipantIds: [contactId],
+      //             displayUI: false,
+      //             contactNickName: resolvedContactNickName,
+      //           })
+      //           .catch((e) => {
+      //             console.warn(
+      //               'Failed to select conversation on cmd:call:outgoing:initiate',
+      //               e,
+      //             );
+      //           });
+      //       }
+      //     }
 
-          callContact(contactId, resolvedContactNickName, roomId, {
-            audioOnly,
-          });
-        },
-        { signal: ac.signal },
-      );
+      //     callContact(contactId, resolvedContactNickName, roomId, {
+      //       audioOnly,
+      //     });
+      //   },
+      //   { signal: ac.signal },
+      // );
 
       subscribe(
         'evt:call:incoming:accepted',

@@ -2,7 +2,7 @@ import AppTitle from '../auth/AppTitle.jsx';
 import AuthControls from '../auth/AuthControls.jsx';
 import AddContactButton from './AddContactButton.jsx';
 import NotificationsToggle from './NotificationsToggle.jsx';
-import YouTubeSearchControls from './YouTubeSearchControls.jsx';
+// TODO: import YouTubeSearchControls from './YouTubeSearchControls.jsx';
 
 export default function TopBar() {
   return (
@@ -15,7 +15,7 @@ export default function TopBar() {
       <div class='top-bar-right'>
         <AddContactButton />
         <NotificationsToggle />
-        <YouTubeSearchControls />
+        {/* <YouTubeSearchControls /> */}
       </div>
     </header>
   );

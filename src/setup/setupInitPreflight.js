@@ -1,10 +1,6 @@
 import { initIcons } from '../shared/components/ui/icons.js';
-import { initUI } from '../shared/components/ui/core/init-ui.js';
 import { initI18n, onLocaleChange } from '../shared/i18n/index.js';
-import {
-  updateI18nElements,
-  initializeElements,
-} from '../elements.js';
+import { updateI18nElements, initializeElements } from '../elements.js';
 
 let isReady = false;
 let initPromise = null;
@@ -32,7 +28,7 @@ export function setupInitPreflight() {
 
   initPromise = (async () => {
     initializeElements();
-    initUI();
+    //initUI();
     initIcons();
 
     await initI18n();

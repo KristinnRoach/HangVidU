@@ -4,18 +4,19 @@ import type { P2PRoom } from '@kidlib/p2p';
 import type { RoomStatusType } from './RoomStatus';
 import RoomStatus from './RoomStatus';
 import RoomMembers from './RoomMembers';
+import ChatControls from '../app/ChatControls';
 
 import './RoomExample.css';
 
 type Props = {
-  room?: P2PRoom;
+  room: P2PRoom;
   status?: RoomStatusType;
   error?: string;
 };
 
 export default function Room(props: Props) {
   if (!props.room) {
-    console.warn('Room component rendered without a room prop');
+    console.debug('Room component rendered without a room prop');
     return null;
   }
 
@@ -30,6 +31,8 @@ export default function Room(props: Props) {
       </Show>
 
       <RoomMembers room={props.room} />
+
+      <ChatControls />
     </div>
   );
 }

@@ -37,6 +37,20 @@
           ".read": "$userId === auth.uid",
           ".write": "$userId === auth.uid"
         },
+        "calls": {
+          "incoming": {
+            ".read": "$userId === auth.uid",
+            ".write": "$userId === auth.uid || (auth != null && !data.exists())"
+          },
+          "active": {
+            ".read": "$userId === auth.uid",
+            ".write": "$userId === auth.uid"
+          },
+          "response": {
+            ".read": "$userId === auth.uid",
+            ".write": "auth != null && (newData.child('by').val() === auth.uid || ($userId === auth.uid && !newData.exists()))"
+          }
+        },
         "outgoingCall": {
           ".read": "$userId === auth.uid",
           ".write": "$userId === auth.uid"

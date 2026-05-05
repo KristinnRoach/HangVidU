@@ -13,7 +13,7 @@ import createComponent from '@kidlib/create-component';
  * @returns {Object} API with methods to control the toggle
  */
 export function createMessageToggle({
-  parent,
+  parent = document.getElementById('app-root'),
   onToggle,
   icon = '💬',
   initialUnreadCount = 0,

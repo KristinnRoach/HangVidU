@@ -3,6 +3,7 @@ import { dispatchCommand } from '../../shared/events/index.js';
 import { useI18n } from '../../shared/i18n/index.js';
 import { initIcons } from '../../shared/components/ui/icons.js';
 import PresenceIndicator from '../presence/PresenceIndicator.jsx';
+import CallButton from '../app/CallButton.jsx';
 
 const MAX_CONTACT_NAME_CHARS = 18;
 
@@ -33,15 +34,6 @@ export default function ContactEntry(props) {
   const displayName = () => props.name || t('contact.no_name');
   const callLabel = () => t('contact.action.call', { name: displayName() });
   const editLabel = () => t('contact.action.edit');
-  const onCall = () => {
-    if (!props.roomId && !props.id) return;
-    dispatchCommand('cmd:call:outgoing:initiate', {
-      contactId: props.id,
-      contactNickName: displayName(),
-      conversationId: props.conversationId,
-      roomId: props.roomId,
-    });
-  };
 
   const onOpenConversation = () => {
     if (!props.id) return;
@@ -70,15 +62,11 @@ export default function ContactEntry(props) {
 
   return (
     <div class='contact-entry' ref={rootEl}>
-      <button
-        class='contact-call-btn'
-        type='button'
-        onClick={onCall}
+      <CallButton
+        contactId={props.id}
+        roomId={props.roomId}
         title={callLabel()}
-        aria-label={callLabel()}
-      >
-        <i data-lucide='phone' fill='currentColor' stroke-width='0' />
-      </button>
+      />
 
       <PresenceIndicator userId={props.id} />
 
