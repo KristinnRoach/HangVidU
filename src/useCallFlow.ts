@@ -16,7 +16,7 @@ type OutgoingCall = {
   roomId: string;
 };
 
-type CallFlowState =
+export type CallingState =
   | false
   | {
       direction: 'incoming';
@@ -27,16 +27,16 @@ type CallFlowState =
       call: OutgoingCall;
     };
 
-const [calling, setCalling] = createSignal<CallFlowState>(false);
-
 export function useCallFlow({ p2p }: CallFlowOptions) {
+  const [callingState, setCallingState] = createSignal<CallingState>(false);
+
   function outgoingCall(): OutgoingCall | null {
-    const state = calling();
+    const state = callingState();
     return state && state.direction === 'outgoing' ? state.call : null;
   }
 
   function incomingCall(): CallInvite | null {
-    const state = calling();
+    const state = callingState();
     return state && state.direction === 'incoming' ? state.call : null;
   }
 
@@ -74,10 +74,10 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
   }
 
   function cancelOutgoing() {
-    const activeCall = calling();
+    const activeCall = callingState();
     const svc = getCallService();
     if (!activeCall || activeCall.direction !== 'outgoing' || !svc) return;
-    setCalling(false);
+    setCallingState(false);
     svc
       .cancelOutgoingCall({
         recipientUID: activeCall.call.contactId,
@@ -89,10 +89,10 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
   }
 
   function acceptIncoming() {
-    const activeCall = calling();
+    const activeCall = callingState();
     const svc = getCallService();
     if (!activeCall || activeCall.direction !== 'incoming' || !svc) return;
-    setCalling(false);
+    setCallingState(false);
     svc
       .acceptIncomingCall({
         fromUID: activeCall.call.from,
@@ -106,10 +106,10 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
   }
 
   function declineIncoming() {
-    const activeCall = calling();
+    const activeCall = callingState();
     const svc = getCallService();
     if (!activeCall || activeCall.direction !== 'incoming' || !svc) return;
-    setCalling(false);
+    setCallingState(false);
     svc
       .rejectIncomingCall({
         fromUID: activeCall.call.from,
@@ -131,7 +131,7 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
         const outgoingRoomId = callService.sendOutgoingCallInvite({
           recipientUID: contactId,
         });
-        setCalling({
+        setCallingState({
           direction: 'outgoing',
           call: { contactId, roomId: outgoingRoomId },
         });
@@ -153,7 +153,7 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
 
     const unsubscribeIncoming = callService.onIncomingCall((call) => {
       if (!call) return;
-      setCalling({ direction: 'incoming', call });
+      setCallingState({ direction: 'incoming', call });
       console.debug('Received incoming call invite:', { call });
     });
 
@@ -167,7 +167,7 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
         } else if (response.responseType === 'rejected') {
           console.debug('Outgoing call was rejected');
         }
-        setCalling(false);
+        setCallingState(false);
 
         callService.clearOutgoingCallResponse().catch((err) => {
           console.error('Error clearing outgoing call response:', err);
@@ -183,7 +183,7 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
   }
 
   return {
-    calling,
+    calling: callingState,
     incomingCall,
     outgoingCall,
     enterRoom,

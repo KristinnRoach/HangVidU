@@ -670,12 +670,33 @@ export class PushNotifications {
 
 let instance = null;
 
+export const initPushNotifications = async (options = {}) => {
+  if (!instance) {
+    instance = new PushNotifications(options);
+    try {
+      const pushInitialized = await instance.initialize();
+      if (!pushInitialized && !instance.isNotificationSupported()) {
+        const { showPushUnsupportedNotification } = await import(
+          '../notifications/index.js'
+        );
+        showPushUnsupportedNotification();
+      }
+    } catch (error) {
+      console.error('[Push Notifications] init failed:', error);
+    }
+  }
+
+  return instance;
+};
+
 /**
  * Returns the singleton push facade used by app code.
  */
 export const getPushNotifications = () => {
   if (!instance) {
-    instance = new PushNotifications();
+    console.warn(
+      '[Push Notifications] getPushNotifications called before initialization',
+    );
   }
   return instance;
 };

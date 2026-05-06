@@ -13,19 +13,26 @@ import { messagingController } from './features/messaging/messaging-controller.j
 import { setLogger } from '@kidlib/p2p';
 import { useP2PRoom } from '@kidlib/p2p/solid';
 
-import { getPushNotifications } from './features/push-notifications/push-notifications.js';
+import { initPushNotifications } from './features/push-notifications/push-notifications.js';
 import { useCallFlow } from './useCallFlow.js';
-import { showPushUnsupportedNotification } from './features/notifications/index.js';
 
 import MainLayout from './components/MainLayout.jsx';
 import { setupMessagingAppBusHandlers } from './features/messaging/messaging-command-handlers.js';
 import CallDialogs from './components/dialogs/CallDialogs.jsx';
 
-function initP2P() {
-  setLogger((...args) => {
-    console.info('[P2P]', ...args);
-  });
-}
+setupInitPreflight();
+initializeAppCheckDeferred();
+await initI18n();
+await setupAuth();
+setupAppRoot();
+setupMainAppBusListeners();
+await setupContacts();
+setupMessagingAppBusHandlers({ messagingController });
+
+// Initialize push notifications (permission requests happen on auth change)
+initPushNotifications().catch((error) => {
+  console.error('[APP] Push notifications init:', error);
+});
 
 /**
  * SolidJS app shell.
@@ -37,40 +44,19 @@ export default function App() {
   let cleanupCallFlow: (() => void) | undefined;
   let isDisposed = false;
 
+  onMount(async () => {
+    if (isDisposed) return;
+    devDebug('[APP] Start of onMount');
+
+    setLogger((...args) => console.info('[P2P]', ...args));
+    cleanupCallFlow = callFlow.setup();
+
+    devDebug('[APP] End of onMount');
+  });
+
   onCleanup(() => {
     isDisposed = true;
     cleanupCallFlow?.();
-  });
-
-  onMount(async () => {
-    // Remove most of these when Solid-ified:
-    console.info('Mounting app...');
-    setupInitPreflight();
-    initializeAppCheckDeferred();
-    await initI18n();
-    await setupAuth();
-    setupAppRoot();
-    setupMainAppBusListeners();
-    await setupContacts();
-    setupMessagingAppBusHandlers({ messagingController });
-
-    // Initialize push notifications (permission requests happen on auth change)
-    const pushController = getPushNotifications();
-    try {
-      const pushInitialized = await pushController.initialize();
-      if (!pushInitialized && !pushController.isNotificationSupported()) {
-        showPushUnsupportedNotification();
-      }
-    } catch (error) {
-      console.error('[APP.onMount()] Push notifications init:', error);
-    }
-
-    if (isDisposed) return;
-
-    initP2P();
-    cleanupCallFlow = callFlow.setup();
-
-    devDebug('End of onMount');
   });
 
   return (
