@@ -9,7 +9,7 @@ import {
   addRTDBListener,
   getOfferCandidatesRef,
   getAnswerCandidatesRef,
-} from '../../../shared/storage/fb-rtdb/rtdb.js';
+} from '../../shared/storage/fb-rtdb/rtdb.js';
 
 /** @typedef {import('@kidlib/p2p/signaling-transport').IceTransport} IceTransport */
 

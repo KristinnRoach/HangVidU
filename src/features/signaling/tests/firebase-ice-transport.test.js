@@ -48,7 +48,7 @@ import { createFirebaseIceTransport } from '../firebase-ice-transport.js';
 import {
   removeAllRTDBListeners,
   removeRTDBListenersForRoom,
-} from '../../../../shared/storage/fb-rtdb/rtdb.js';
+} from '../../../shared/storage/fb-rtdb/rtdb.js';
 import { off, onChildAdded } from 'firebase/database';
 
 describe('createFirebaseIceTransport', () => {

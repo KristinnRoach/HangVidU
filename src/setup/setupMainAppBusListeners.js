@@ -1,16 +1,12 @@
 import { handleCommand, subscribe } from '../shared/events/index.js';
 import { messagingController } from '../features/messaging/messaging-controller.js';
 import { isDev, tempWarn } from '../shared/utils/dev/dev-utils.js';
-import { callContact } from '../features/call/WIP-start-call-refactor.js';
 import {
   getContactById,
   getContactByRoomId,
   getConversationId,
 } from '../features/contacts/index.js';
-import {
-  listenForIncomingOnRoom,
-  removeIncomingListenersForRoom,
-} from '../features/call/room-listeners.js';
+
 import { getPushNotifications } from '../features/push-notifications/index.js';
 import { setUserOffline } from '../features/presence/index.js';
 import { clearUrlParam } from '../shared/utils/url.js';
@@ -240,47 +236,47 @@ export function setupMainAppBusListeners() {
         { signal: ac.signal },
       );
 
-      subscribe(
-        'evt:contacts:room:created',
-        ({ roomId }) => {
-          listenForIncomingOnRoom(roomId);
-        },
-        { signal: ac.signal },
-      );
+      // subscribe(
+      //   'evt:contacts:room:created',
+      //   ({ roomId }) => {
+      //     listenForIncomingOnRoom(roomId);
+      //   },
+      //   { signal: ac.signal },
+      // );
 
-      subscribe(
-        'evt:contacts:room:updated',
-        ({ roomId, previousRoomId }) => {
-          if (previousRoomId && previousRoomId !== roomId) {
-            removeIncomingListenersForRoom(previousRoomId);
-          }
-          listenForIncomingOnRoom(roomId);
-        },
-        { signal: ac.signal },
-      );
+      // subscribe(
+      //   'evt:contacts:room:updated',
+      //   ({ roomId, previousRoomId }) => {
+      //     if (previousRoomId && previousRoomId !== roomId) {
+      //       removeIncomingListenersForRoom(previousRoomId);
+      //     }
+      //     listenForIncomingOnRoom(roomId);
+      //   },
+      //   { signal: ac.signal },
+      // );
 
-      subscribe(
-        'evt:room:lifecycle:join-or-create-failed',
-        ({ roomId }) => {
-          console.warn(
-            `[AppBus] evt:room:lifecycle:join-or-create-failed 
-      Failed to join or create room with id: ${roomId}`,
-          );
-          clearUrlParam();
-          // ! onCallDisconnected();
-        },
-        { signal: ac.signal },
-      );
+      // subscribe(
+      //   'evt:room:lifecycle:join-or-create-failed',
+      //   ({ roomId }) => {
+      //     console.warn(
+      //       `[AppBus] evt:room:lifecycle:join-or-create-failed
+      // Failed to join or create room with id: ${roomId}`,
+      //     );
+      //     clearUrlParam();
+      //     // ! onCallDisconnected();
+      //   },
+      //   { signal: ac.signal },
+      // );
 
-      subscribe(
-        'evt:contacts:contact:deleted',
-        ({ roomId }) => {
-          if (roomId) {
-            removeIncomingListenersForRoom(roomId);
-          }
-        },
-        { signal: ac.signal },
-      );
+      // subscribe(
+      //   'evt:contacts:contact:deleted',
+      //   ({ roomId }) => {
+      //     if (roomId) {
+      //       removeIncomingListenersForRoom(roomId);
+      //     }
+      //   },
+      //   { signal: ac.signal },
+      // );
 
       cleanup = () => {
         try {

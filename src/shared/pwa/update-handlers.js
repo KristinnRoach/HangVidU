@@ -1,4 +1,3 @@
-import CallController from '../../features/call/call-controller.js';
 import { showInfoToast, showErrorToast } from '../components/toast.js';
 
 // Check for updates every 30 minutes (in milliseconds)
@@ -55,10 +54,11 @@ async function checkForUpdates() {
  * @param {Function} updateSW - The updateSW function from registerSW
  */
 async function attemptAutoUpdate(updateSW) {
-  if (CallController.isInCall()) {
-    deferUpdate(updateSW);
-    return;
-  }
+  // TODO: re-enable call check once the state is properly implemented
+  // if (CallController.isInCall()) {
+  //   deferUpdate(updateSW);
+  //   return;
+  // }
 
   try {
     showInfoToast('Updating...', { duration: 2000 });
@@ -85,14 +85,14 @@ function deferUpdate(updateSW) {
     duration: 4000,
   });
 
-  const onCallEnd = () => {
-    CallController.off('evt:call:session:cleanup', onCallEnd);
-    const sw = pendingUpdateSW;
-    pendingUpdateSW = null;
-    if (sw) attemptAutoUpdate(sw);
-  };
-
-  CallController.on('evt:call:session:cleanup', onCallEnd);
+  // TODO: re-enable call check once the state is properly implemented
+  // const onCallEnd = () => {
+  //   CallController.off('evt:call:session:cleanup', onCallEnd);
+  //   const sw = pendingUpdateSW;
+  //   pendingUpdateSW = null;
+  //   if (sw) attemptAutoUpdate(sw);
+  // };
+  // CallController.on('evt:call:session:cleanup', onCallEnd);
 }
 
 /**

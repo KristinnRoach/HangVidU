@@ -49,7 +49,7 @@ import { createFirebaseCallSignaling } from '../firebase-call-signaling.js';
 import {
   removeAllRTDBListeners,
   removeRTDBListenersForRoom,
-} from '../../../../shared/storage/fb-rtdb/rtdb.js';
+} from '../../../shared/storage/fb-rtdb/rtdb.js';
 import { off, onValue, set } from 'firebase/database';
 
 describe('createFirebaseCallSignaling', () => {
@@ -129,9 +129,9 @@ describe('createFirebaseCallSignaling', () => {
 
     const offEvents = off.mock.calls.map((args) => args[1]);
     expect(off).toHaveBeenCalled();
-    expect(offEvents.filter((e) => e === 'value').length).toBeGreaterThanOrEqual(
-      2,
-    );
+    expect(
+      offEvents.filter((e) => e === 'value').length,
+    ).toBeGreaterThanOrEqual(2);
   });
 
   it('delegates sendCandidate and onRemoteCandidate to the ICE transport', () => {

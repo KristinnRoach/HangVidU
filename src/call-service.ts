@@ -34,7 +34,7 @@ export function cleanupCallService(): void {
   }
 }
 
-class CallService {
+export class CallService {
   private callRepo: CallRepository;
   private localUID: string;
 

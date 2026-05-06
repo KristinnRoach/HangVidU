@@ -15,7 +15,7 @@ import { showErrorToast } from '../../shared/components/toast.js';
 import { t } from '../../shared/i18n/index.js';
 
 import { startP2PSession, joinP2PSession } from '@kidlib/p2p';
-import { createFirebaseCallSignaling } from './signaling/index.js';
+import { createFirebaseCallSignaling } from '../signaling/index.js';
 import { generateRandomId } from '../../shared/utils/gen-random-id.js';
 import RoomService from './room.js';
 import {

@@ -4,7 +4,6 @@ import {
   getAudioConstraints,
   getFallbackAudioConstraints,
 } from './constraints.js';
-import CallController from '../../features/call/call-controller.js';
 import { abortAudioEndedController, setAudioEndedController } from './state.js';
 
 /**
@@ -159,18 +158,23 @@ function replaceAudioTrackInLocalStream({
 async function replaceAudioTrackInActivePeerConnection({
   replacementAudioTrack,
 }) {
-  const callState = CallController.getState();
-  if (!callState?.hasPc) {
-    return;
-  }
+  console.warn(
+    'replaceAudioTrackInActivePeerConnection() is deprecated. Check whether needs replacement or call should be deleted',
+  );
+  return;
 
-  const pc = CallController.getPeerConnection();
-  if (!pc || typeof pc.getSenders !== 'function') return;
+  // const callState = CallController.getState();
+  // if (!callState?.hasPc) {
+  //   return;
+  // }
 
-  const audioSender = pc
-    .getSenders()
-    .find((sender) => sender.track?.kind === 'audio');
-  if (audioSender && typeof audioSender.replaceTrack === 'function') {
-    await audioSender.replaceTrack(replacementAudioTrack);
-  }
+  // const pc = CallController.getPeerConnection();
+  // if (!pc || typeof pc.getSenders !== 'function') return;
+
+  // const audioSender = pc
+  //   .getSenders()
+  //   .find((sender) => sender.track?.kind === 'audio');
+  // if (audioSender && typeof audioSender.replaceTrack === 'function') {
+  //   await audioSender.replaceTrack(replacementAudioTrack);
+  // }
 }

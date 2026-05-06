@@ -1,6 +1,5 @@
-import { onMount } from 'solid-js';
+import { onMount, Show } from 'solid-js';
 
-import { rtdb } from './shared/storage/fb-rtdb/rtdb.js';
 import { devDebug } from './shared/utils/dev/dev-utils.js';
 import { initializeAppCheckDeferred } from './shared/vendors/firebase.js';
 import { initI18n } from './shared/i18n/index.js';
@@ -10,19 +9,27 @@ import { setupInitPreflight } from './setup/setupInitPreflight.js';
 import { setupAppRoot } from './setup/setupAppRoot.js';
 import { setupMainAppBusListeners } from './setup/setupMainAppBusListeners.js';
 import { messagingController } from './features/messaging/messaging-controller.js';
-import { initCallService, getCallService } from './call-service.js';
+import { getCallService } from './call-service.js';
 
 import { setLogger } from '@kidlib/p2p';
 import { useP2PRoom } from '@kidlib/p2p/solid';
-import { createFirebaseRoomSignaling } from './features/call/signaling/firebase-room-signaling';
+import { createFirebaseRoomSignaling } from './features/signaling/firebase-room-signaling.js';
 
-import { getUser, getUserId } from './auth/auth-state.js';
-import { handleCommand } from './shared/events/index.js';
+import { getUserId } from './auth/auth-state.js';
 import { getPushNotifications } from './features/push-notifications/push-notifications.js';
+import { setupCallFlow } from './useCallFlow.js';
 import { showPushUnsupportedNotification } from './features/notifications/index.js';
 
 import MainLayout from './components/MainLayout.jsx';
 import { setupMessagingAppBusHandlers } from './features/messaging/messaging-command-handlers.js';
+import OutgoingCallDialog from './components/dialogs/OutgoingCallDialog.jsx';
+import IncomingCallDialog from './components/dialogs/IncomingCallDialog.jsx';
+import {
+  outgoingCall,
+  incomingCall,
+  setOutgoingCall,
+  setIncomingCall,
+} from './components/dialogs/state.js';
 
 function initP2P() {
   setLogger((...args) => {
@@ -70,9 +77,47 @@ export default function App() {
     }
   }
 
+  function handleCancelOutgoing() {
+    const call = outgoingCall();
+    const svc = getCallService();
+    if (!call || !svc) return;
+    setOutgoingCall(null);
+    svc
+      .cancelOutgoingCall({ recipientUID: call.contactId, roomId: call.roomId })
+      .catch((err) => {
+        console.error('Error cancelling outgoing call:', err);
+      });
+  }
+
+  function handleAcceptIncoming() {
+    const call = incomingCall();
+    const svc = getCallService();
+    if (!call || !svc) return;
+    setIncomingCall(null);
+    svc
+      .acceptIncomingCall({ fromUID: call.from, roomId: call.roomId })
+      .then(() => enterRoom(call.roomId, getUserId()))
+      .catch((err) => {
+        console.error('Error accepting incoming call:', err);
+        exitActiveRoom();
+      });
+  }
+
+  function handleDeclineIncoming() {
+    const call = incomingCall();
+    const svc = getCallService();
+    if (!call || !svc) return;
+    setIncomingCall(null);
+    svc
+      .rejectIncomingCall({ fromUID: call.from, roomId: call.roomId })
+      .catch((err) => {
+        console.error('Error declining incoming call:', err);
+      });
+  }
+
   onMount(async () => {
     // Remove most of these when Solid-ified:
-    console.info('Mounting app.. rtdb:', rtdb);
+    console.info('Mounting app...');
     setupInitPreflight();
     initializeAppCheckDeferred();
     await initI18n();
@@ -93,99 +138,8 @@ export default function App() {
       console.error('[APP.onMount()] Push notifications init:', error);
     }
 
-    const localUID = getUserId();
-    const callService = initCallService({ localUID, rtdb });
     initP2P();
-
-    handleCommand('cmd:room:initiate:call', async ({ contactId }) => {
-      const outgoingRoomId = callService.sendOutgoingCallInvite({
-        recipientUID: contactId,
-      });
-
-      // todo: Send push notification
-      // todo: Show outgoing call UI + start audio + indicators
-
-      const me = getUser();
-      const callerName = me?.userName || me?.email || localUID;
-      const pushCall = getPushNotifications()?.sendIncomingCall({
-        targetUserId: contactId,
-        roomId: outgoingRoomId,
-        callerId: localUID,
-        callerName,
-      });
-
-      if (pushCall) {
-        pushCall
-          .then((pushResult) => {
-            if (!pushResult?.ok) {
-              console.warn(
-                '[CALL] Call-start push notification did not succeed',
-              );
-            }
-          })
-          .catch((error) => {
-            console.warn('[CALL] Failed to send push notification:', error);
-          });
-      }
-
-      console.debug('Initiated outgoing call invite:', {
-        contactId,
-        outgoingRoomId,
-      });
-    });
-
-    handleCommand('cmd:room:exit:call', () => {
-      exitActiveRoom().catch((err) => {
-        console.error('Error exiting room:', err);
-      });
-    });
-
-    callService.onIncomingCall((call) => {
-      if (!call) return;
-      console.debug('Received incoming call invite:', { call });
-      if (call) {
-        const shouldAccept = window.confirm(
-          `Incoming call from ${call.from}. Accept?`,
-        );
-        if (shouldAccept) {
-          callService
-            .acceptIncomingCall({ fromUID: call.from, roomId: call.roomId })
-            .then(() => {
-              enterRoom(call.roomId, localUID).catch((err) => {
-                console.error('Error entering room after accepting call:', err);
-              });
-            })
-            .catch((err) => {
-              console.error('Error accepting incoming call:', err);
-              exitActiveRoom();
-            });
-        } else {
-          console.debug('User declined incoming call invite');
-        }
-      }
-    });
-
-    callService.onOutgoingCallResponse((response) => {
-      if (!response) return;
-      console.debug('Received outgoing call response:', { response });
-
-      // todo: Hide outgoing call UI + stop audio + indicators
-      if (response) {
-        // Clear immediately so stale data doesn't re-trigger on next page load
-        callService.clearOutgoingCallResponse();
-        if (response.responseType === 'accepted') {
-          enterRoom(response.roomId, localUID).catch((err) => {
-            console.error(
-              'Error entering room after outgoing call accepted:',
-              err,
-            );
-            exitActiveRoom();
-          });
-        } else if (response.responseType === 'rejected') {
-          window.alert(`Your call  was rejected.`);
-        }
-      }
-    });
+    setupCallFlow({ enterRoom, exitActiveRoom });
 
     devDebug('End of onMount');
   });
@@ -193,6 +147,23 @@ export default function App() {
   return (
     <div>
       <MainLayout p2p={p2p} />
+      <Show when={outgoingCall()}>
+        {(call) => (
+          <OutgoingCallDialog
+            calleeName={call().contactId}
+            onCancel={handleCancelOutgoing}
+          />
+        )}
+      </Show>
+      <Show when={incomingCall()}>
+        {(call) => (
+          <IncomingCallDialog
+            callerName={call().from}
+            onAccept={handleAcceptIncoming}
+            onDecline={handleDeclineIncoming}
+          />
+        )}
+      </Show>
     </div>
   );
 }

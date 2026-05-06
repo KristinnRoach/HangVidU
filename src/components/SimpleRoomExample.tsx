@@ -1,6 +1,6 @@
 import { For, Show, createEffect, createSignal, onCleanup } from 'solid-js';
 import { useP2PRoom } from '@kidlib/p2p/solid';
-import { createFirebaseRoomSignaling } from '../features/call/signaling/firebase-room-signaling';
+import { createFirebaseRoomSignaling } from '../features/signaling/firebase-room-signaling';
 
 const MAX_MEMBERS = 6;
 

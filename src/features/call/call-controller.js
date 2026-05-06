@@ -7,7 +7,10 @@ import {
   createCall as createCallFlow,
   answerCall as answerCallFlow,
 } from './call-flow.js';
-import { createDataConnection, joinDataConnection } from './signaling/index.js';
+import {
+  createDataConnection,
+  joinDataConnection,
+} from '../signaling/index.js';
 import RoomService from './room.js';
 import { getUserId } from '../../auth/index.js';
 import { ref, off } from 'firebase/database';
