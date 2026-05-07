@@ -70,7 +70,7 @@ function refreshRemoteAvatars(container, { name, photoURL }) {
  * Designed to be a singleton - one instance that displays the active session
  * @returns {Object} API with methods to control messages UI
  */
-export function initMessagesUI() {
+function createMessagesUI() {
   let repositionHandlersAttached = false;
   let fileTransferController = null; // FileTransferController instance set by setFileTransferController()
   let inActiveCall = false; // Track if we're currently in an active call
@@ -1805,9 +1805,17 @@ export function initMessagesUI() {
  */
 let messagesUIInstance = null;
 
+export function initMessagesUI() {
+  if (!messagesUIInstance) {
+    messagesUIInstance = createMessagesUI();
+  }
+  return;
+}
+
 export function getMessagesUI() {
   if (!messagesUIInstance) {
-    messagesUIInstance = initMessagesUI();
+    console.warn('[MessagesUI] getMessagesUI called before initialization');
+    return null;
   }
   return messagesUIInstance;
 }

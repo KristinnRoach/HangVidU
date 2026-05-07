@@ -19,6 +19,7 @@ import { useCallFlow } from './useCallFlow.js';
 import MainLayout from './components/MainLayout.jsx';
 import { setupMessagingAppBusHandlers } from './features/messaging/messaging-command-handlers.js';
 import CallDialogs from './components/dialogs/CallDialogs.jsx';
+import { initMessagesUI } from './features/messaging/components/messages-ui.js';
 
 setupInitPreflight();
 initializeAppCheckDeferred();
@@ -49,6 +50,8 @@ export default function App() {
     devDebug('[APP] Start of onMount');
 
     setLogger((...args) => console.info('[P2P]', ...args));
+
+    initMessagesUI(); // Legacy messages UI - to be migrated
     cleanupCallFlow = callFlow.setup();
 
     devDebug('[APP] End of onMount');
