@@ -172,12 +172,12 @@ function createMessagesUI() {
       return { contactId, contactNickName, conversationId, roomId };
     };
 
-    messageTopBar.setCallHandler(() => {
+    messageTopBar.setVideoCallHandler(() => {
       try {
-        dispatchCommand('cmd:call:outgoing:initiate', buildCallPayload());
+        dispatchCommand('cmd:room:initiate:call', buildCallPayload());
       } catch (err) {
         console.warn(
-          'Failed to emit cmd:call:outgoing:initiate in temp msg-ui code',
+          'Failed to emit cmd:room:initiate:call in temp msg-ui code',
           err,
         );
       }
@@ -185,13 +185,13 @@ function createMessagesUI() {
 
     messageTopBar.setAudioCallHandler(() => {
       try {
-        dispatchCommand('cmd:call:outgoing:initiate', {
+        dispatchCommand('cmd:room:initiate:call', {
           ...buildCallPayload(),
           audioOnly: true,
         });
       } catch (err) {
         console.warn(
-          'Failed to emit cmd:call:outgoing:initiate (audioOnly) in temp msg-ui code',
+          'Failed to emit cmd:room:initiate:call (audioOnly) in temp msg-ui code',
           err,
         );
       }

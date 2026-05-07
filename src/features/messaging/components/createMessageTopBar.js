@@ -36,7 +36,7 @@ export function createMessageTopBar() {
     backBtn.onclick = fn || null;
   };
 
-  const setCallHandler = (fn) => {
+  const setVideoCallHandler = (fn) => {
     callBtn.onclick = fn || null;
   };
 
@@ -56,7 +56,7 @@ export function createMessageTopBar() {
     element: root,
     setContact,
     setBackHandler,
-    setCallHandler,
+    setVideoCallHandler,
     setAudioCallHandler,
     cleanup,
   };

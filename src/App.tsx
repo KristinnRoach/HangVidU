@@ -31,6 +31,8 @@ import {
   createDefaultReceiveStore,
   probeDefaultReceiveStore,
 } from './features/file-transfer/index.js';
+import { get } from 'firebase/database';
+import { createWatchFileHandler } from './features/watch/watch-file-handler.js';
 
 setDevDebugEnabled(true);
 initializeAppCheckDeferred();
@@ -130,7 +132,12 @@ export default function App() {
 
     activeFileTransferKey = nextKey;
     cleanupFileTransfer = () => controller.cleanup();
-    getMessagesUI()?.setFileTransferController(controller);
+
+    // Todo: decouple file transfer controller from messages UI when migrating to solidjs
+    const msgUI = getMessagesUI();
+    msgUI?.setFileTransferController(controller);
+    // Todo: watch-sync: align with new p2p rooms transport / storage and add
+    //msgUI?.setWatchFileHandler?.(createWatchFileHandler());
   });
 
   onMount(async () => {
