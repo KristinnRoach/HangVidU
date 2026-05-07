@@ -16,12 +16,12 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { FileTransferController } from '../../src/features/file-transfer/file-transfer-controller.js';
 import {
+  FileTransferController,
   cleanupDefaultReceiveStore,
   createDefaultReceiveStore,
   probeDefaultReceiveStore,
-} from '../../src/features/file-transfer/receive-stores/default-receive-store.js';
+} from '../../src/features/file-transfer/index.js';
 
 const isFirefox =
   typeof navigator !== 'undefined' && navigator.userAgent.includes('Firefox');

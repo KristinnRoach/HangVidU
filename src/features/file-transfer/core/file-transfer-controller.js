@@ -7,7 +7,7 @@ import {
 } from './chunk-processor.js';
 import { WebRTCFileTransport } from './transport/webrtc-file-transport.js';
 import { createMemoryReceiveStore } from './receive-stores/memory-receive-store.js';
-import { devDebug } from '../../shared/utils/dev/dev-utils.js';
+import { devDebug } from '../../../shared/utils/dev/dev-utils.js';
 
 const CHUNK_SIZE = TransferConfig.FILE_CONFIG.NETWORK_CHUNK_SIZE; // 64KB
 const CHUNK_YIELD_INTERVAL = TransferConfig.CHUNK_YIELD_INTERVAL; // null = disabled

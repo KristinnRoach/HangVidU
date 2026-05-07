@@ -1,4 +1,4 @@
-// src/features/file-transfer/transport/webrtc-file-transport.js
+// src/features/file-transfer/core/transport/webrtc-file-transport.js
 // WebRTC DataChannel adapter for FileTransport
 
 import { FileTransport } from './file-transport.js';

@@ -5,7 +5,7 @@
  * Isolates the storage layer from WebRTC transport.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { StreamingFileWriter } from '../../src/features/file-transfer/streaming-file-writer.js';
+import { StreamingFileWriter } from '../../src/features/file-transfer/app/index.js';
 
 const CHUNK_SIZE = 64 * 1024; // 64KB — matches TransferConfig
 

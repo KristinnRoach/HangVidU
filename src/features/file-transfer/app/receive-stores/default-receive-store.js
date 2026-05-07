@@ -1,5 +1,5 @@
-import { TransferConfig } from '../config.js';
-import { createMemoryReceiveStore } from './memory-receive-store.js';
+import { TransferConfig } from '../../core/config.js';
+import { createMemoryReceiveStore } from '../../core/receive-stores/memory-receive-store.js';
 import {
   createOpfsReceiveStore,
   StreamingFileWriter,

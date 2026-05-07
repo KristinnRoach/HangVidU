@@ -24,13 +24,13 @@ import {
 } from './features/messaging/components/messages-ui.js';
 import { initIcons } from './shared/components/ui/icons.js';
 import { initializeElements, updateI18nElements } from './elements.js';
-import { FileTransferController } from './features/file-transfer/file-transfer-controller.js';
-import { P2PRoomFileTransport } from './features/file-transfer/transport/p2p-room-file-transport.js';
 import {
+  FileTransferController,
+  P2PRoomFileTransport,
   cleanupDefaultReceiveStore,
   createDefaultReceiveStore,
   probeDefaultReceiveStore,
-} from './features/file-transfer/receive-stores/default-receive-store.js';
+} from './features/file-transfer/index.js';
 
 setDevDebugEnabled(true);
 initializeAppCheckDeferred();

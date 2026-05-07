@@ -1,4 +1,4 @@
-## Note some of the below might be outdated
+## NOTE: below is at least partly outdated!
 
 ### Cleanup & Memory Management
 

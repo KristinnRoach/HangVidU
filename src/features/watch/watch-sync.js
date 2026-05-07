@@ -1,5 +1,5 @@
 import { isVideoMime } from '../../shared/utils/is-video-mime.js';
-import { isSwVideoUrl } from '../file-transfer/video-serving.js';
+import { isSwVideoUrl } from '../file-transfer/app/video-serving.js';
 import { set, update, remove } from 'firebase/database';
 import {
   onDataChange,
