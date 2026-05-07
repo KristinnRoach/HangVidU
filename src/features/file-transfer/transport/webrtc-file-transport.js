@@ -7,13 +7,14 @@ import { TransferConfig } from '../config.js';
 const BACKPRESSURE_THRESHOLD = TransferConfig.BACKPRESSURE_THRESHOLD;
 
 /**
- * WebRTCFileTransport - DataChannel adapter implementing the raw FileTransport I/O interface.
+ * FileTransport adapter for a caller-owned WebRTC DataChannel.
  *
- * Owns DataChannel-specific concerns: send, message routing, readiness,
- * and backpressure. Protocol logic lives in FileTransferController.
+ * This legacy adapter also owns the peer connection cleanup path. Use
+ * P2PRoomFileTransport when the media room owns the peer connection.
  */
 export class WebRTCFileTransport extends FileTransport {
   /**
+   * Create an adapter around an RTCDataChannel.
    * @param {RTCPeerConnection} pc
    * @param {RTCDataChannel} dataChannel
    */
@@ -31,7 +32,11 @@ export class WebRTCFileTransport extends FileTransport {
     this._setupMessageHandling();
   }
 
-  /** @private */
+  /**
+   * Forward file-transfer payloads from the data channel.
+   * @returns {void}
+   * @private
+   */
   _setupMessageHandling() {
     this.dataChannel.onmessage = (event) => {
       if (!this._messageCallback) return;
@@ -53,18 +58,36 @@ export class WebRTCFileTransport extends FileTransport {
     };
   }
 
+  /**
+   * Send one raw protocol payload over the data channel.
+   * @param {string|ArrayBuffer|ArrayBufferView|Blob} data
+   * @returns {void}
+   */
   send(data) {
     this.dataChannel.send(data);
   }
 
+  /**
+   * Register the incoming file-transfer payload callback.
+   * @param {(data: string|ArrayBuffer|ArrayBufferView|Blob) => void} callback
+   * @returns {void}
+   */
   onMessage(callback) {
     this._messageCallback = callback;
   }
 
+  /**
+   * Return whether the data channel is open.
+   * @returns {boolean}
+   */
   isReady() {
     return this.dataChannel?.readyState === 'open';
   }
 
+  /**
+   * Return a wait function that resolves after bufferedAmount drains.
+   * @returns {() => Promise<void>}
+   */
   getWaitForDrain() {
     return async () => {
       const dc = this.dataChannel;
@@ -151,6 +174,10 @@ export class WebRTCFileTransport extends FileTransport {
     };
   }
 
+  /**
+   * Close the peer connection owned by this legacy transport.
+   * @returns {void}
+   */
   closePeerConnection() {
     // Close the data PeerConnection
     try {
@@ -166,6 +193,10 @@ export class WebRTCFileTransport extends FileTransport {
     this.pc = null;
   }
 
+  /**
+   * Remove handlers and close owned WebRTC resources.
+   * @returns {void}
+   */
   cleanup() {
     if (this.dataChannel) {
       this.dataChannel.onmessage = null;

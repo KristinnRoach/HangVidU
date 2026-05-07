@@ -26,6 +26,11 @@ import { initIcons } from './shared/components/ui/icons.js';
 import { initializeElements, updateI18nElements } from './elements.js';
 import { FileTransferController } from './features/file-transfer/file-transfer-controller.js';
 import { P2PRoomFileTransport } from './features/file-transfer/transport/p2p-room-file-transport.js';
+import {
+  cleanupDefaultReceiveStore,
+  createDefaultReceiveStore,
+  probeDefaultReceiveStore,
+} from './features/file-transfer/receive-stores/default-receive-store.js';
 
 setDevDebugEnabled(true);
 initializeAppCheckDeferred();
@@ -119,6 +124,8 @@ export default function App() {
 
     const controller = new FileTransferController({
       transport: new P2PRoomFileTransport({ room, memberId }),
+      createReceiveStore: createDefaultReceiveStore,
+      cleanupReceiveStores: cleanupDefaultReceiveStore,
     });
 
     activeFileTransferKey = nextKey;
@@ -134,6 +141,9 @@ export default function App() {
     initializeElements(); // Legacy imperative UI init - to be migrated
     updateI18nElements(); // Legacy - Hydrate i18n attributes in index.html and re-hydrate on locale change
     const unsubscribeLocaleChange = onLocaleChange(() => updateI18nElements());
+    probeDefaultReceiveStore().then((available) => {
+      console.info(`[FileTransferController] Is OPFS available: ${available}`);
+    });
     initMessagesUI(); // Legacy messages UI - to be migrated
     setMessagesUIReady(true);
     initIcons(); // Legacy icons init - to be migrated

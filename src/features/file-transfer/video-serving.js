@@ -38,6 +38,7 @@ export async function registerVideoForServing(fileId, mimeType) {
 /**
  * Unregister a video file from SW serving.
  * @param {string} fileId
+ * @returns {void}
  */
 export function unregisterVideo(fileId) {
   const sw = navigator.serviceWorker?.controller;
@@ -50,7 +51,7 @@ export function unregisterVideo(fileId) {
 }
 
 /**
- * Check if a URL is a SW-served video URL.
+ * Return whether a URL is a SW-served video URL.
  * @param {string} url
  * @returns {boolean}
  */

@@ -17,6 +17,11 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { FileTransferController } from '../../src/features/file-transfer/file-transfer-controller.js';
+import {
+  cleanupDefaultReceiveStore,
+  createDefaultReceiveStore,
+  probeDefaultReceiveStore,
+} from '../../src/features/file-transfer/receive-stores/default-receive-store.js';
 
 const isFirefox =
   typeof navigator !== 'undefined' && navigator.userAgent.includes('Firefox');
@@ -270,14 +275,19 @@ if (isFirefox) {
       console.log(
         `[file-transfer-large] Setting up shared peer connection...\n`,
       );
+      await probeDefaultReceiveStore();
       sharedConnections = await setupPeerConnections();
 
       // Reuse controllers with shared peer connections across tests.
       senderController = new FileTransferController({
         webrtc: sharedConnections.sender,
+        createReceiveStore: createDefaultReceiveStore,
+        cleanupReceiveStores: cleanupDefaultReceiveStore,
       });
       receiverController = new FileTransferController({
         webrtc: sharedConnections.receiver,
+        createReceiveStore: createDefaultReceiveStore,
+        cleanupReceiveStores: cleanupDefaultReceiveStore,
       });
     });
 

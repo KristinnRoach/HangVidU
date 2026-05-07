@@ -13,6 +13,10 @@ const FILE_CHUNK_TYPE = 'FILE_CHUNK';
  * file-transfer protocol so unrelated room messages are ignored.
  */
 export class P2PRoomFileTransport extends FileTransport {
+  /**
+   * Create a transport for one remote room member.
+   * @param {{ room: Object, memberId: string }} options
+   */
   constructor({ room, memberId }) {
     super();
 
@@ -29,10 +33,20 @@ export class P2PRoomFileTransport extends FileTransport {
     this._unsubscribe = null;
   }
 
+  /**
+   * Send one raw protocol payload to the configured member.
+   * @param {string|ArrayBuffer|ArrayBufferView|Blob} data
+   * @returns {void}
+   */
   send(data) {
     this.room.send(this.memberId, data);
   }
 
+  /**
+   * Register the incoming file-transfer payload callback.
+   * @param {(data: string|ArrayBuffer|ArrayBufferView|Blob) => void} callback
+   * @returns {void}
+   */
   onMessage(callback) {
     if (typeof callback !== 'function') {
       throw new Error('P2PRoomFileTransport.onMessage requires callback');
@@ -52,6 +66,10 @@ export class P2PRoomFileTransport extends FileTransport {
     });
   }
 
+  /**
+   * Return whether the member's data channel is open.
+   * @returns {boolean}
+   */
   isReady() {
     const channel = this._getDataChannel();
     if (channel) return channel.readyState === 'open';
@@ -63,6 +81,10 @@ export class P2PRoomFileTransport extends FileTransport {
     );
   }
 
+  /**
+   * Return a wait function that resolves after the member channel drains.
+   * @returns {() => Promise<void>}
+   */
   getWaitForDrain() {
     return async () => {
       const dc = this._getDataChannel();
@@ -120,6 +142,10 @@ export class P2PRoomFileTransport extends FileTransport {
     };
   }
 
+  /**
+   * Remove only this adapter's room listener; never closes the room.
+   * @returns {void}
+   */
   cleanup() {
     this._unsubscribe?.();
     this._unsubscribe = null;
@@ -127,11 +153,21 @@ export class P2PRoomFileTransport extends FileTransport {
     this.room = null;
   }
 
+  /**
+   * Read the current room data channel for this member.
+   * @returns {RTCDataChannel|null}
+   * @private
+   */
   _getDataChannel() {
     return this.room?.dataChannels?.get?.(this.memberId) ?? null;
   }
 }
 
+/**
+ * Return whether a raw room message belongs to this file-transfer protocol.
+ * @param {unknown} data
+ * @returns {Promise<boolean>}
+ */
 async function isFileTransferPayload(data) {
   if (typeof data === 'string') return isFileMetaMessage(data);
   const arrayBuffer = await toArrayBuffer(data);
@@ -139,6 +175,11 @@ async function isFileTransferPayload(data) {
   return isFileChunkPacket(arrayBuffer);
 }
 
+/**
+ * Return whether a string payload is FILE_META JSON.
+ * @param {string} data
+ * @returns {boolean}
+ */
 function isFileMetaMessage(data) {
   try {
     return JSON.parse(data)?.type === FILE_META_TYPE;
@@ -147,6 +188,11 @@ function isFileMetaMessage(data) {
   }
 }
 
+/**
+ * Convert binary-like DataChannel payloads into ArrayBuffer.
+ * @param {unknown} data
+ * @returns {Promise<ArrayBuffer|null>}
+ */
 async function toArrayBuffer(data) {
   if (data instanceof ArrayBuffer) return data;
   if (data instanceof Blob) return data.arrayBuffer();
@@ -156,6 +202,11 @@ async function toArrayBuffer(data) {
   return null;
 }
 
+/**
+ * Return whether an ArrayBuffer contains a FILE_CHUNK packet.
+ * @param {ArrayBuffer} arrayBuffer
+ * @returns {boolean}
+ */
 function isFileChunkPacket(arrayBuffer) {
   try {
     if (arrayBuffer.byteLength < 4) return false;

@@ -12,6 +12,7 @@ const mimeTypes = new Map();
  * Register a video file's MIME type (called from message handler).
  * @param {string} fileId
  * @param {string} mimeType
+ * @returns {void}
  */
 export function registerVideo(fileId, mimeType) {
   mimeTypes.set(fileId, mimeType);
@@ -20,6 +21,7 @@ export function registerVideo(fileId, mimeType) {
 /**
  * Unregister a video file (called from message handler).
  * @param {string} fileId
+ * @returns {void}
  */
 export function unregisterVideo(fileId) {
   mimeTypes.delete(fileId);
@@ -35,7 +37,7 @@ export function isVideoServeRequest(url) {
 }
 
 /**
- * Extract fileId from a video serve URL.
+ * Extract the OPFS file id from a video serve URL.
  * @param {URL} url
  * @returns {string}
  */

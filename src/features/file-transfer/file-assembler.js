@@ -8,8 +8,7 @@
 const MAX_SIZE_DIFFERENCE = 0;
 
 /**
- * Validate file assembly completeness
- *
+ * Validate that all chunks are present and match the expected byte size.
  * @param {Array<ArrayBuffer|null>} chunks - Array of chunks (may contain nulls for missing chunks)
  * @param {number} expectedSize - Expected total file size in bytes
  * @param {number} expectedChunksCount - Expected number of chunks

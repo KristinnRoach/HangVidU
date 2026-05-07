@@ -5,8 +5,9 @@
  */
 
 /**
- * Convert various binary data formats to ArrayBuffer
- * Supports Blob, Uint8Array, and other formats for Firefox compatibility
+ * Convert a binary transport payload to ArrayBuffer.
+ * @param {ArrayBuffer|Blob|ArrayBufferView|unknown} data
+ * @returns {Promise<ArrayBuffer|null>}
  */
 export async function convertToArrayBuffer(data) {
   if (data instanceof ArrayBuffer) {
@@ -42,8 +43,7 @@ export async function convertToArrayBuffer(data) {
 }
 
 /**
- * Parse embedded chunk packet
- * Format: [4 bytes length] + [JSON metadata] + [actual chunk data]
+ * Parse an embedded chunk packet.
  * 
  * @param {ArrayBuffer} arrayBuffer - The binary packet to parse
  * @returns {{chunkMeta: Object, chunkData: ArrayBuffer} | null} Parsed packet or null if invalid
@@ -94,11 +94,10 @@ export function parseEmbeddedChunkPacket(arrayBuffer) {
 }
 
 /**
- * Validate chunk index is within expected bounds
- *
+ * Return whether a chunk index is valid for the transfer.
  * @param {number} chunkIndex - The chunk index to validate
  * @param {number} totalChunks - Expected total number of chunks
- * @returns {boolean} True if valid, false otherwise
+ * @returns {boolean}
  */
 export function isValidChunkIndex(chunkIndex, totalChunks) {
   return (
@@ -109,10 +108,7 @@ export function isValidChunkIndex(chunkIndex, totalChunks) {
 }
 
 /**
- * Create embedded chunk packet
- * Format: [4 bytes length (LE)] + [JSON metadata] + [chunk data]
- * Inverse of parseEmbeddedChunkPacket.
- *
+ * Create an embedded chunk packet.
  * @param {Object} metadata - Chunk metadata (type, fileId, chunkIndex, totalChunks)
  * @param {ArrayBuffer} chunkData - The raw chunk bytes
  * @returns {ArrayBuffer} The assembled binary packet

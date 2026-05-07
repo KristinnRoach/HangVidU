@@ -2,19 +2,18 @@
 // Base class defining the raw file transport I/O interface
 
 /**
- * FileTransport - Base class for file transfer transport implementations
+ * Base class for file-transfer transport adapters.
  *
- * Defines the raw I/O contract that transport adapters must implement.
- * Transports handle sending/receiving raw data through a specific channel
- * (WebRTC DataChannel, WebSocket, etc.). Protocol logic (chunking, assembly,
- * progress) lives in FileTransferController.
+ * Transports move raw strings and binary chunks. Protocol concerns such as
+ * metadata, chunking, validation, and progress live in FileTransferController.
  *
  * @abstract
  */
 export class FileTransport {
   /**
-   * Send raw data (string or ArrayBuffer) through the transport
-   * @param {string|ArrayBuffer} data
+   * Send one raw protocol payload.
+   * @param {string|ArrayBuffer|ArrayBufferView|Blob} data
+   * @returns {void}
    * @abstract
    */
   send(data) {
@@ -22,8 +21,9 @@ export class FileTransport {
   }
 
   /**
-   * Set callback for incoming raw data
-   * @param {Function} callback - Called with raw data (string or ArrayBuffer)
+   * Register the incoming payload callback.
+   * @param {(data: string|ArrayBuffer|ArrayBufferView|Blob) => void} callback
+   * @returns {void}
    * @abstract
    */
   onMessage(callback) {
@@ -31,7 +31,7 @@ export class FileTransport {
   }
 
   /**
-   * Check if the transport is ready to send
+   * Return whether the transport can send immediately.
    * @returns {boolean}
    * @abstract
    */
@@ -40,17 +40,16 @@ export class FileTransport {
   }
 
   /**
-   * Optional backpressure hook. Returns a promise that resolves when
-   * the transport is ready to accept more data. Returns null if no
-   * backpressure handling is needed.
-   * @returns {Function|null} Async function to await, or null
+   * Return a wait function for send-buffer backpressure, if supported.
+   * @returns {(() => Promise<void>)|null}
    */
   getWaitForDrain() {
     return null;
   }
 
   /**
-   * Cleanup resources when transport is no longer needed
+   * Release transport-owned resources and listeners.
+   * @returns {void}
    * @abstract
    */
   cleanup() {

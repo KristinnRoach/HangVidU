@@ -68,4 +68,55 @@ describe('FileTransferController transport injection', () => {
       'transport missing send()',
     );
   });
+
+  it('delegates incoming file storage to an injected receive store', async () => {
+    const senderTransport = new FakeTransport();
+    const receiverTransport = new FakeTransport();
+    senderTransport.connect(receiverTransport);
+    receiverTransport.connect(senderTransport);
+
+    const writes = [];
+    const sender = new FileTransferController({ transport: senderTransport });
+    const receiver = new FileTransferController({
+      transport: receiverTransport,
+      createReceiveStore(metadata) {
+        return {
+          async init(initMetadata) {
+            expect(initMetadata).toBe(metadata);
+          },
+          async writeChunk({ chunk, chunkIndex, offset }) {
+            writes.push({ chunk, chunkIndex, offset });
+          },
+          async complete() {
+            return {
+              file: new File(['from custom store'], metadata.name, {
+                type: metadata.mimeType,
+              }),
+              isOpfsBacked: true,
+              storageKind: 'custom',
+            };
+          },
+        };
+      },
+    });
+
+    const received = new Promise((resolve) => {
+      receiver.onFileReceived = resolve;
+    });
+
+    await sender.sendFile(
+      new File(['custom receive'], 'custom.txt', { type: 'text/plain' }),
+    );
+
+    const result = await received;
+    expect(writes.length).toBe(1);
+    expect(writes[0].chunkIndex).toBe(0);
+    expect(writes[0].offset).toBe(0);
+    expect(result.isOpfsBacked).toBe(true);
+    expect(result.result.storageKind).toBe('custom');
+    expect(await result.file.text()).toBe('from custom store');
+
+    sender.cleanup();
+    receiver.cleanup();
+  });
 });

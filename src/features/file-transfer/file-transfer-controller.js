@@ -5,9 +5,8 @@ import {
   isValidChunkIndex,
   convertToArrayBuffer,
 } from './chunk-processor.js';
-import { validateAssembly } from './file-assembler.js';
 import { WebRTCFileTransport } from './transport/webrtc-file-transport.js';
-import { StreamingFileWriter } from './streaming-file-writer.js';
+import { createMemoryReceiveStore } from './receive-stores/memory-receive-store.js';
 import { devDebug } from '../../shared/utils/dev/dev-utils.js';
 
 const CHUNK_SIZE = TransferConfig.FILE_CONFIG.NETWORK_CHUNK_SIZE; // 64KB
@@ -15,22 +14,36 @@ const CHUNK_YIELD_INTERVAL = TransferConfig.CHUNK_YIELD_INTERVAL; // null = disa
 const MAX_FILE_SIZE_MB = 5000;
 
 /**
+ * @typedef {Object} FileTransferControllerOptions
+ * @property {import('./transport/file-transport.js').FileTransport} [transport]
+ * Transport used for raw file-transfer packets.
+ * @property {{ pc: RTCPeerConnection, dataChannel: RTCDataChannel }} [webrtc]
+ * Legacy convenience input used to create a WebRTCFileTransport.
+ * @property {(metadata: Object) => Object} [createReceiveStore]
+ * Creates storage for one incoming file.
+ * @property {() => void|Promise<void>} [cleanupReceiveStores]
+ * Optional app-level storage cleanup hook.
+ */
+
+/**
  * FileTransferController — orchestrates the chunked file transfer protocol.
  *
  * Owns: file slicing, chunk assembly, progress tracking, validation, callbacks.
  * Delegates all I/O to an injected transport.
  *
- * For large files (above STREAMING_THRESHOLD), streams chunks to OPFS via
- * StreamingFileWriter instead of accumulating them in RAM.
+ * Receive storage is delegated to a receive-store factory.
  */
 export class FileTransferController {
   /**
-   * @param {Object} options
-   * @param {Object} [options.transport] - Transport implementing FileTransport
-   * @param {RTCPeerConnection} [options.webrtc.pc] - The WebRTC PeerConnection
-   * @param {RTCDataChannel} [options.webrtc.dataChannel] - The WebRTC DataChannel
+   * Create a controller over a transport or legacy WebRTC data channel.
+   * @param {FileTransferControllerOptions} [options]
    */
-  constructor({ transport, webrtc } = {}) {
+  constructor({
+    transport,
+    webrtc,
+    createReceiveStore = createMemoryReceiveStore,
+    cleanupReceiveStores = null,
+  } = {}) {
     if (transport) {
       validateTransport(transport);
       this.transport = transport;
@@ -51,15 +64,15 @@ export class FileTransferController {
       );
     }
 
-    this.receivedChunks = new Map(); // fileId -> chunks array (in-memory path)
-    this.fileMetadata = new Map(); // fileId -> metadata
+    if (typeof createReceiveStore !== 'function') {
+      throw new Error(
+        'FileTransferController createReceiveStore must be a function',
+      );
+    }
 
-    // OPFS streaming state
-    this.streamWriters = new Map(); // fileId -> StreamingFileWriter
-    this.streamChunkCounts = new Map(); // fileId -> received count
-    this.pendingInit = new Map(); // fileId -> Promise (writer init in progress)
-    this.earlyChunks = new Map(); // fileId -> [{chunkIndex, chunkData}] (chunks before init)
-    this.writeChains = new Map(); // fileId -> Promise (serializes OPFS writes)
+    this.createReceiveStore = createReceiveStore;
+    this.cleanupReceiveStores = cleanupReceiveStores;
+    this.receiveTransfers = new Map();
 
     // Public callbacks
     this.onFileSent = null;
@@ -70,17 +83,13 @@ export class FileTransferController {
 
     // Wire incoming transport messages to protocol handler
     this.transport.onMessage((data) => this._handleMessage(data));
-
-    // Start OPFS probe early so isOPFSAvailable() is ready by FILE_META time
-    StreamingFileWriter.probeOPFS().then((available) => {
-      console.info(`[FileTransferController] Is OPFS available: ${available}`);
-    });
   }
 
   /**
-   * Send a file by slicing it into chunks.
-   * @param {File} file
-   * @param {Function} [onProgress] - Called with 0–1 progress
+   * Send a file as metadata plus binary chunks.
+   * @param {File} file - Browser File/Blob-like object to send.
+   * @param {(progress: number) => void} [onProgress] - Called with 0..1 send progress.
+   * @returns {Promise<void>}
    */
   async sendFile(file, onProgress) {
     if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
@@ -162,7 +171,7 @@ export class FileTransferController {
   }
 
   /**
-   * Check if the transport is ready to send files
+   * Return whether the underlying transport can send immediately.
    * @returns {boolean}
    */
   isReady() {
@@ -170,7 +179,8 @@ export class FileTransferController {
   }
 
   /**
-   * Cleanup the controller and its transport
+   * Abort active receives, clear callbacks, cleanup storage, and close transport.
+   * @returns {void}
    */
   cleanup() {
     this.onFileSent = null;
@@ -178,29 +188,20 @@ export class FileTransferController {
     this.onFileMetaReceived = null;
     this.onFileError = null;
     this.onReceiveProgress = null;
-    this.receivedChunks.clear();
-    this.fileMetadata.clear();
-    this.streamWriters.clear();
-    this.streamChunkCounts.clear();
-    this.pendingInit.clear();
-    this.earlyChunks.clear();
-    this.writeChains.clear();
-    StreamingFileWriter.cleanup();
+    for (const transfer of this.receiveTransfers.values()) {
+      transfer.store.abort?.('controller_cleanup').catch?.(() => {});
+    }
+    this.receiveTransfers.clear();
+    this.cleanupReceiveStores?.();
     this.transport.cleanup();
   }
 
   /**
-   * Decide whether to use OPFS streaming for this file.
+   * Route one raw incoming transport payload through the file protocol.
+   * @param {string|Blob|ArrayBuffer|ArrayBufferView} data
+   * @returns {Promise<void>}
    * @private
    */
-  _shouldUseOPFS(fileSize) {
-    return (
-      StreamingFileWriter.isOPFSAvailable() === true &&
-      fileSize >= TransferConfig.STREAMING_THRESHOLD
-    );
-  }
-
-  /** @private */
   async _handleMessage(data) {
     if (typeof data === 'string') {
       let msg;
@@ -223,23 +224,12 @@ export class FileTransferController {
           return;
         }
 
-        this.fileMetadata.set(msg.fileId, msg);
+        await this._startReceiveTransfer(msg);
         this.onFileMetaReceived?.(msg);
 
         if (msg.totalChunks === 0) {
-          this._assembleFile(msg.fileId);
+          this._completeReceiveTransfer(msg.fileId);
           return;
-        }
-
-        // Decide path synchronously — probeOPFS() already ran in constructor
-        if (this._shouldUseOPFS(msg.size)) {
-          // OPFS streaming path
-          this.streamChunkCounts.set(msg.fileId, 0);
-          this.earlyChunks.set(msg.fileId, []);
-          this._initStreamWriter(msg.fileId, msg.name);
-        } else {
-          // In-memory path
-          this.receivedChunks.set(msg.fileId, []);
         }
       }
     } else {
@@ -260,7 +250,8 @@ export class FileTransferController {
       }
 
       const { chunkMeta, chunkData } = parsed;
-      const meta = this.fileMetadata.get(chunkMeta.fileId);
+      const transfer = this.receiveTransfers.get(chunkMeta.fileId);
+      const meta = transfer?.metadata;
 
       if (!meta) {
         console.error(
@@ -280,227 +271,142 @@ export class FileTransferController {
         return;
       }
 
-      // Route to OPFS or in-memory path
-      if (
-        this.streamWriters.has(chunkMeta.fileId) ||
-        this.pendingInit.has(chunkMeta.fileId)
-      ) {
-        this._writeStreamChunk(
-          chunkMeta.fileId,
-          chunkMeta.chunkIndex,
-          chunkData,
-          meta,
-        );
-      } else {
-        // In-memory path
-        const chunks = this.receivedChunks.get(chunkMeta.fileId);
-        if (!chunks) {
-          console.error(
-            '[FileTransferController] No chunks array for file:',
-            chunkMeta.fileId,
-          );
-          return;
-        }
-
-        const wasMissing = !chunks[chunkMeta.chunkIndex];
-        chunks[chunkMeta.chunkIndex] = chunkData;
-
-        if (wasMissing) {
-          meta.receivedCount = (meta.receivedCount ?? 0) + 1;
-        }
-
-        const receivedCount = meta.receivedCount ?? 0;
-
-        if (this.onReceiveProgress) {
-          this.onReceiveProgress(receivedCount / meta.totalChunks);
-        }
-
-        if (receivedCount === meta.totalChunks) {
-          this._assembleFile(chunkMeta.fileId);
-        }
-      }
+      this._writeReceiveChunk(transfer, chunkMeta.chunkIndex, chunkData);
     }
   }
 
   /**
-   * Initialize a StreamingFileWriter for a file.
+   * Create and initialize receive state for one incoming file.
+   * @param {Object} metadata - Validated FILE_META payload.
+   * @returns {Promise<void>}
    * @private
    */
-  _initStreamWriter(fileId, fileName) {
-    const writer = new StreamingFileWriter(fileId, fileName);
-    const initPromise = writer
-      .init()
-      .then(() => {
-        this.streamWriters.set(fileId, writer);
-        this.pendingInit.delete(fileId);
+  async _startReceiveTransfer(metadata) {
+    const store = this.createReceiveStore(metadata);
+    validateReceiveStore(store);
 
-        // Flush any chunks that arrived before init completed
-        const queued = this.earlyChunks.get(fileId) || [];
-        this.earlyChunks.delete(fileId);
-        for (const { chunkIndex, chunkData } of queued) {
-          const meta = this.fileMetadata.get(fileId);
-          if (meta) {
-            this._writeStreamChunk(fileId, chunkIndex, chunkData, meta);
-          }
-        }
-      })
-      .catch((err) => {
-        console.error('[FileTransferController] OPFS writer init failed:', err);
-        this.pendingInit.delete(fileId);
-        this.earlyChunks.delete(fileId);
-        this.streamChunkCounts.delete(fileId);
+    const transfer = {
+      metadata,
+      store,
+      receivedChunkIndexes: new Set(),
+      receivedCount: 0,
+      writeChain: Promise.resolve(),
+      initPromise: Promise.resolve(store.init?.(metadata)),
+    };
 
-        // Fallback to in-memory
-        this.receivedChunks.set(fileId, []);
-        this.onFileError?.({
-          fileName,
-          reason: 'opfs_init_failed',
-          details: { error: err.message },
-        });
-      });
-
-    this.pendingInit.set(fileId, initPromise);
+    this.receiveTransfers.set(metadata.fileId, transfer);
   }
 
   /**
-   * Write a chunk to the OPFS stream writer.
+   * Queue one received chunk into the transfer's receive store.
+   * @param {Object} transfer - Internal receive transfer state.
+   * @param {number} chunkIndex - Zero-based chunk index.
+   * @param {ArrayBuffer} chunkData - Raw chunk bytes.
+   * @returns {void}
    * @private
    */
-  _writeStreamChunk(fileId, chunkIndex, chunkData, meta) {
-    const writer = this.streamWriters.get(fileId);
+  _writeReceiveChunk(transfer, chunkIndex, chunkData) {
+    if (transfer.receivedChunkIndexes.has(chunkIndex)) return;
+    transfer.receivedChunkIndexes.add(chunkIndex);
 
-    if (!writer) {
-      // Writer still initializing — queue chunk
-      const queue = this.earlyChunks.get(fileId);
-      if (queue) {
-        queue.push({ chunkIndex, chunkData });
-      }
-      return;
-    }
-
+    const { metadata, store } = transfer;
     const offset = chunkIndex * CHUNK_SIZE;
-    const isOrdered = chunkIndex === (this.streamChunkCounts.get(fileId) ?? 0);
 
-    const prev = this.writeChains.get(fileId) ?? Promise.resolve();
-    const next = prev
-      .then(() => writer.writeChunk(chunkData, offset, isOrdered))
+    transfer.writeChain = transfer.writeChain
+      .then(() => transfer.initPromise)
+      .then(() =>
+        store.writeChunk({
+          chunk: chunkData,
+          offset,
+          chunkIndex,
+          metadata,
+        }),
+      )
       .then(() => {
-        const count = (this.streamChunkCounts.get(fileId) ?? 0) + 1;
-        this.streamChunkCounts.set(fileId, count);
+        transfer.receivedCount += 1;
 
-        if (this.onReceiveProgress) {
-          this.onReceiveProgress(count / meta.totalChunks);
-        }
+        this.onReceiveProgress?.(transfer.receivedCount / metadata.totalChunks);
 
-        if (count === meta.totalChunks) {
-          this._finalizeStream(fileId);
+        if (transfer.receivedCount === metadata.totalChunks) {
+          return this._completeReceiveTransfer(metadata.fileId);
         }
       })
       .catch((err) => {
-        console.error('[FileTransferController] OPFS chunk write failed:', err);
+        console.error(
+          '[FileTransferController] Receive store write failed:',
+          err,
+        );
         this.onFileError?.({
-          fileName: meta.name,
-          reason: 'opfs_write_failed',
-          details: { chunkIndex, error: err.message },
+          fileName: metadata.name,
+          reason: err.reason || 'receive_store_write_failed',
+          details: err.details || { error: err.message },
         });
       });
-    this.writeChains.set(fileId, next);
   }
 
   /**
-   * Finalize an OPFS-streamed file and deliver result via onFileReceived.
+   * Finalize an incoming transfer and emit onFileReceived.
+   * @param {string} fileId
+   * @returns {Promise<void>}
    * @private
    */
-  async _finalizeStream(fileId) {
-    const writer = this.streamWriters.get(fileId);
-    const meta = this.fileMetadata.get(fileId);
+  async _completeReceiveTransfer(fileId) {
+    const transfer = this.receiveTransfers.get(fileId);
+    if (!transfer) return;
 
-    if (!writer || !meta) return;
+    const { metadata, store } = transfer;
 
     try {
-      const file = await writer.finalize();
+      await transfer.initPromise;
+      const result = await store.complete();
 
       this._emitFileReceived({
-        file,
+        file: result.file,
         fileId,
-        name: meta.name,
-        mimeType: meta.mimeType,
-        isOpfsBacked: true,
+        name: metadata.name,
+        mimeType: metadata.mimeType,
+        isOpfsBacked: !!result.isOpfsBacked,
+        result,
       });
     } catch (err) {
-      console.error('[FileTransferController] OPFS finalize failed:', err);
+      console.error('[FileTransferController] File receive failed:', err);
       this.onFileError?.({
-        fileName: meta.name,
-        reason: 'opfs_finalize_failed',
-        details: { error: err.message },
+        fileName: metadata.name,
+        reason: err.reason || 'receive_store_complete_failed',
+        details: err.details || { error: err.message },
       });
     } finally {
-      // Clean up tracking state (but keep OPFS file for SW serving)
-      this.streamWriters.delete(fileId);
-      this.streamChunkCounts.delete(fileId);
-      this.writeChains.delete(fileId);
-      this.fileMetadata.delete(fileId);
+      this.receiveTransfers.delete(fileId);
     }
-  }
-
-  /**
-   * Assemble file from in-memory chunks and deliver result via onFileReceived.
-   * @private
-   */
-  _assembleFile(fileId) {
-    const meta = this.fileMetadata.get(fileId);
-    const chunks = this.receivedChunks.get(fileId);
-
-    const validation = validateAssembly(chunks, meta.size, meta.totalChunks);
-
-    if (!validation.isComplete) {
-      console.error('[FileTransferController] File assembly failed:', {
-        fileId,
-        fileName: meta.name,
-        ...validation,
-      });
-
-      if (this.onFileError) {
-        this.onFileError({
-          fileName: meta.name,
-          reason: 'incomplete',
-          details: validation,
-        });
-      }
-      return;
-    }
-
-    const blob = new Blob(chunks, { type: meta.mimeType });
-    const file = new File([blob], meta.name, { type: meta.mimeType });
-
-    this._emitFileReceived({
-      file,
-      fileId,
-      name: meta.name,
-      mimeType: meta.mimeType,
-      isOpfsBacked: false,
-    });
-
-    this.receivedChunks.delete(fileId);
-    this.fileMetadata.delete(fileId);
   }
 
   /**
    * Emit a normalized file-received payload for all assembly paths.
+   * @param {Object} payload
+   * @param {File|undefined} payload.file - Completed browser File, when available.
+   * @param {string} payload.fileId - Transfer id from FILE_META.
+   * @param {string} payload.name - Original file name.
+   * @param {string} payload.mimeType - Original MIME type.
+   * @param {boolean} payload.isOpfsBacked - Whether storage is OPFS-backed.
+   * @param {Object} payload.result - Raw receive-store completion result.
+   * @returns {void}
    * @private
    */
-  _emitFileReceived({ file, fileId, name, mimeType, isOpfsBacked }) {
+  _emitFileReceived({ file, fileId, name, mimeType, isOpfsBacked, result }) {
     this.onFileReceived?.({
       file,
       fileId,
       name,
       mimeType,
       isOpfsBacked,
+      result,
     });
   }
 
   /**
    * Validate the minimal FILE_META contract before mutating controller state.
+   * @param {Object} msg - Parsed FILE_META payload.
+   * @returns {boolean}
    * @private
    */
   _isValidFileMeta(msg) {
@@ -519,10 +425,30 @@ export class FileTransferController {
   }
 }
 
+/**
+ * Assert that a transport implements the FileTransport contract.
+ * @param {Object} transport
+ * @returns {void}
+ */
 function validateTransport(transport) {
   for (const method of ['send', 'onMessage', 'isReady', 'cleanup']) {
     if (typeof transport?.[method] !== 'function') {
       throw new Error(`FileTransferController transport missing ${method}()`);
+    }
+  }
+}
+
+/**
+ * Assert that a receive store implements the required storage contract.
+ * @param {Object} store
+ * @returns {void}
+ */
+function validateReceiveStore(store) {
+  for (const method of ['writeChunk', 'complete']) {
+    if (typeof store?.[method] !== 'function') {
+      throw new Error(
+        `FileTransferController receive store missing ${method}()`,
+      );
     }
   }
 }

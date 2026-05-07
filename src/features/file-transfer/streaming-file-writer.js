@@ -105,8 +105,9 @@ export class StreamingFileWriter {
   }
 
   /**
-   * @param {string} fileId  — unique transfer identifier
-   * @param {string} fileName — original file name (used for the final File object)
+   * Create an OPFS writer for one incoming file.
+   * @param {string} fileId - Unique transfer identifier.
+   * @param {string} fileName - Original file name.
    */
   constructor(fileId, fileName) {
     this.fileId = fileId;
@@ -120,8 +121,8 @@ export class StreamingFileWriter {
   }
 
   /**
-   * Open (or create) a temp file inside the `file-transfers/` OPFS subdirectory
-   * and obtain a writable stream.
+   * Open the OPFS destination and writable stream.
+   * @returns {Promise<void>}
    */
   async init() {
     const root = await navigator.storage.getDirectory();
@@ -135,9 +136,11 @@ export class StreamingFileWriter {
   }
 
   /**
-   * Write a single chunk at the correct byte offset.
+   * Write a chunk at the expected byte offset.
    * @param {ArrayBuffer} data
-   * @param {number} offset — byte offset within the file
+   * @param {number} offset - Byte offset within the file.
+   * @param {boolean} isOrdered - Whether the stream is already positioned at offset.
+   * @returns {Promise<void>}
    */
   async writeChunk(data, offset, isOrdered) {
     if (!isOrdered) {
@@ -167,7 +170,8 @@ export class StreamingFileWriter {
   }
 
   /**
-   * Abort the transfer — close the stream and remove the temp file.
+   * Close the stream and remove the partial OPFS file.
+   * @returns {Promise<void>}
    */
   async abort() {
     try {
@@ -184,8 +188,8 @@ export class StreamingFileWriter {
   }
 
   /**
-   * Remove ALL temp files from the OPFS `file-transfers/` directory.
-   * Call on hangup / cleanup.
+   * Remove all OPFS temp files for this module and reset probe state.
+   * @returns {Promise<void>}
    */
   static async cleanup() {
     StreamingFileWriter.resetProbeCache();
