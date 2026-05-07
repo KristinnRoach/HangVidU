@@ -28,10 +28,6 @@ export function setupInitPreflight() {
 
   initPromise = (async () => {
     initializeElements();
-    //initUI();
-    initIcons();
-
-    await initI18n();
 
     // Hydrate i18n attributes in index.html and re-hydrate on locale change
     updateI18nElements();

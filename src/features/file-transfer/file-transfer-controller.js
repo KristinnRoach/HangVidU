@@ -18,7 +18,7 @@ const MAX_FILE_SIZE_MB = 5000;
  * FileTransferController — orchestrates the chunked file transfer protocol.
  *
  * Owns: file slicing, chunk assembly, progress tracking, validation, callbacks.
- * Delegates all I/O to an internal WebRTCFileTransport.
+ * Delegates all I/O to an injected transport.
  *
  * For large files (above STREAMING_THRESHOLD), streams chunks to OPFS via
  * StreamingFileWriter instead of accumulating them in RAM.
@@ -26,18 +26,31 @@ const MAX_FILE_SIZE_MB = 5000;
 export class FileTransferController {
   /**
    * @param {Object} options
-   * @param {RTCPeerConnection} options.webrtc.pc - The WebRTC PeerConnection
-   * @param {RTCDataChannel} options.webrtc.dataChannel - The WebRTC DataChannel
+   * @param {Object} [options.transport] - Transport implementing FileTransport
+   * @param {RTCPeerConnection} [options.webrtc.pc] - The WebRTC PeerConnection
+   * @param {RTCDataChannel} [options.webrtc.dataChannel] - The WebRTC DataChannel
    */
-  constructor({ webrtc }) {
-    const { pc, dataChannel } = webrtc || {};
-    if (!pc || !dataChannel) {
+  constructor({ transport, webrtc } = {}) {
+    if (transport) {
+      validateTransport(transport);
+      this.transport = transport;
+    } else {
+      const { pc, dataChannel } = webrtc || {};
+      if (!pc || !dataChannel) {
+        throw new Error(
+          'FileTransferController requires a transport or peerConnection and dataChannel',
+        );
+      }
+
+      this.transport = new WebRTCFileTransport(pc, dataChannel);
+    }
+
+    if (!this.transport) {
       throw new Error(
-        'FileTransferController requires a peerConnection and dataChannel',
+        'FileTransferController requires a transport or peerConnection and dataChannel',
       );
     }
 
-    this.transport = new WebRTCFileTransport(pc, dataChannel);
     this.receivedChunks = new Map(); // fileId -> chunks array (in-memory path)
     this.fileMetadata = new Map(); // fileId -> metadata
 
@@ -80,7 +93,7 @@ export class FileTransferController {
 
     const fileId = `${file.name}-${file.size}-${Date.now()}`;
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-    const waitForDrain = this.transport.getWaitForDrain();
+    const waitForDrain = this.transport.getWaitForDrain?.();
     const sendStartMs = performance.now();
 
     if (!file.type) {
@@ -503,5 +516,13 @@ export class FileTransferController {
       msg.totalChunks >= 0 &&
       typeof msg.mimeType === 'string'
     );
+  }
+}
+
+function validateTransport(transport) {
+  for (const method of ['send', 'onMessage', 'isReady', 'cleanup']) {
+    if (typeof transport?.[method] !== 'function') {
+      throw new Error(`FileTransferController transport missing ${method}()`);
+    }
   }
 }

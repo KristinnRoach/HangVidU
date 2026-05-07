@@ -68,15 +68,15 @@ export function initializeElements() {
   // sharedVideoEl = getElement('shared-video-el');
   // sharedBoxEl = getElement('shared-video-box');
 
-  chatControls = getElement('chat-controls');
-  hangUpBtn = getElement('hang-up-btn');
-  switchCameraBtn = getElement('switch-camera-btn');
+  // chatControls = getElement('chat-controls');
+  // hangUpBtn = getElement('hang-up-btn');
+  // switchCameraBtn = getElement('switch-camera-btn');
 
-  mutePartnerBtn = getElement('mute-btn');
-  fullscreenPartnerBtn = getElement('fullscreen-partner-btn');
-  micBtn = getElement('mic-btn');
-  cameraBtn = getElement('camera-btn');
-  exitWatchModeBtn = getElement('exit-watch-mode-btn');
+  // mutePartnerBtn = getElement('mute-btn');
+  // fullscreenPartnerBtn = getElement('fullscreen-partner-btn');
+  // micBtn = getElement('mic-btn');
+  // cameraBtn = getElement('camera-btn');
+  // exitWatchModeBtn = getElement('exit-watch-mode-btn');
 }
 
 // Export getters to ensure we always return current references

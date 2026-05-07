@@ -675,12 +675,13 @@ export const initPushNotifications = async (options = {}) => {
     instance = new PushNotifications(options);
     try {
       const pushInitialized = await instance.initialize();
-      if (!pushInitialized && !instance.isNotificationSupported()) {
-        const { showPushUnsupportedNotification } = await import(
-          '../notifications/index.js'
-        );
-        showPushUnsupportedNotification();
-      }
+      // TODO: Re-enable in a decoupled way if needed / when notifications get migrated to solidjs
+      // if (!pushInitialized && !instance.isNotificationSupported()) {
+      //   const { showPushUnsupportedNotification } = await import(
+      //     '../notifications/index.js'
+      //   );
+      //   showPushUnsupportedNotification();
+      // }
     } catch (error) {
       console.error('[Push Notifications] init failed:', error);
     }

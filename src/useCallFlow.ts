@@ -53,6 +53,7 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
       createSignaling: createFirebaseRoomSignaling,
       getLocalStream,
       memberCapacity,
+      dataChannel: true,
     });
 
     import.meta.env.DEV &&
