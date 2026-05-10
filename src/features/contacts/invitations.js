@@ -48,7 +48,7 @@ export async function sendInvite(toUserId, toName = 'User') {
 
   await set(inviteRef, inviteData);
 
-  console.log(`[INVITATIONS] Sent invite to ${toName} (${toUserId})`);
+  console.info(`[INVITATIONS] Sent invite to ${toName} (${toUserId})`);
 }
 
 /**
@@ -78,7 +78,7 @@ export async function sendInvites(recipients) {
 
   await Promise.all(promises);
 
-  console.log(
+  console.info(
     `[INVITATIONS] Batch complete: ${results.sent} sent, ${results.failed} failed`,
   );
   return results;
@@ -135,7 +135,7 @@ export async function acceptInvite(fromUserId, inviteData) {
   );
   await remove(inviteRef);
 
-  console.log(
+  console.info(
     `[INVITATIONS] Accepted invite from ${inviteData.fromName} and notified sender`,
   );
 }
@@ -160,7 +160,7 @@ export async function declineInvite(fromUserId) {
   );
   await remove(inviteRef);
 
-  console.log(`[INVITATIONS] Declined invite from ${fromUserId}`);
+  console.info(`[INVITATIONS] Declined invite from ${fromUserId}`);
 }
 
 // ? ==== LISTEN (ACTION?) ======
@@ -212,7 +212,7 @@ export function listenForAcceptedInvites(callback) {
         return;
       }
 
-      console.log(
+      console.info(
         `[INVITATIONS] Auto-saved contact: ${acceptData.acceptedByName} (invite accepted)`,
       );
 
@@ -234,8 +234,6 @@ export function listenForAcceptedInvites(callback) {
       );
     }
   });
-
-  console.log('[INVITATIONS] Listening for accepted invites');
 
   return () => {
     if (acceptedInviteListener) {
@@ -270,12 +268,10 @@ export function listenForInvites(callback) {
     const fromUserId = snapshot.key;
     const inviteData = snapshot.val();
     if (inviteData && inviteData.status === 'pending') {
-      console.log(`[INVITATIONS] New invite from ${inviteData.fromName}`);
+      console.info(`[INVITATIONS] New invite from ${inviteData.fromName}`);
       callback(fromUserId, inviteData);
     }
   });
-
-  console.log('[INVITATIONS] Listening for incoming invites');
 
   return cleanupInviteListeners;
 }
@@ -294,6 +290,4 @@ export function cleanupInviteListeners() {
     acceptedInviteListener();
     acceptedInviteListener = null;
   }
-
-  console.log('[INVITATIONS] Cleaned up all invite listeners');
 }

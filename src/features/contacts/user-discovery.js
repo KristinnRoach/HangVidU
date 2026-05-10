@@ -82,7 +82,6 @@ export async function registerUserInDirectory(user) {
 
   try {
     await set(userRef, userData);
-    console.log('[USER DISCOVERY] Registered user in directory:', user.email);
   } catch (error) {
     console.error('[USER DISCOVERY] Failed to register user:', error);
     throw error;
@@ -176,7 +175,6 @@ export async function removeFromUserByEmailDirectory(email) {
     const emailHash = hashEmail(email);
     const userRef = ref(rtdb, `usersByEmail/${emailHash}`);
     await remove(userRef);
-    console.log('[USER DISCOVERY] Removed user from directory:', email);
   } catch (error) {
     console.error(
       '[USER DISCOVERY] Failed to remove user from directory:',
