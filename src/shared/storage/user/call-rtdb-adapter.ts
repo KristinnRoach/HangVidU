@@ -51,8 +51,9 @@ export class CallRTDBAdapter {
     userId: string,
     callback: (call: CallInvite | null) => void,
   ): () => void {
+    const incomingRef = ref(this.database, this._incomingPath(userId));
     return onValue(
-      ref(this.database, this._incomingPath(userId)),
+      incomingRef,
       (snapshot) => {
         if (!snapshot.exists()) {
           callback(null);
@@ -60,8 +61,16 @@ export class CallRTDBAdapter {
         }
         try {
           callback(parseCallInvite(snapshot.val()));
-        } catch (error) {
-          console.error('Invalid incoming call data:', error);
+        } catch {
+          console.warn(
+            `Removing stale incoming call data at ${this._incomingPath(userId)}`,
+          );
+          void remove(incomingRef).catch((removeError) => {
+            console.error(
+              'Failed to remove stale incoming call data:',
+              removeError,
+            );
+          });
           callback(null);
         }
       },
