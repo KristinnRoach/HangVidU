@@ -64,7 +64,8 @@ export default function ContactEntry(props) {
     <div class='contact-entry' ref={rootEl}>
       <CallButton
         contactId={props.id}
-        roomId={props.roomId}
+        calleeName={displayName()}
+        // roomId={props.roomId}
         title={callLabel()}
       />
 

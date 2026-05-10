@@ -9,7 +9,9 @@ export const CallResponseType = {
 
 export const CallInviteSchema = z.object({
   roomId: z.string().min(1),
-  from: z.string().min(1),
+  callerId: z.string().min(1),
+  callerName: z.string().min(1).optional(),
+  audioOnly: z.boolean().optional(),
   startedAt: z.number(),
 });
 
@@ -30,6 +32,9 @@ export type CallInvite = z.infer<typeof CallInviteSchema>;
 export type CallResponse = z.infer<typeof CallResponseSchema>;
 export type ActiveCall = z.infer<typeof ActiveCallSchema>;
 
-export const parseCallInvite = (data: unknown): CallInvite => CallInviteSchema.parse(data);
-export const parseCallResponse = (data: unknown): CallResponse => CallResponseSchema.parse(data);
-export const parseActiveCall = (data: unknown): ActiveCall => ActiveCallSchema.parse(data);
+export const parseCallInvite = (data: unknown): CallInvite =>
+  CallInviteSchema.parse(data);
+export const parseCallResponse = (data: unknown): CallResponse =>
+  CallResponseSchema.parse(data);
+export const parseActiveCall = (data: unknown): ActiveCall =>
+  ActiveCallSchema.parse(data);

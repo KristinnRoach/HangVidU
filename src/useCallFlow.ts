@@ -2,7 +2,7 @@ import { createSignal } from 'solid-js';
 import { rtdb } from './shared/storage/fb-rtdb/rtdb.js';
 import { handleCommand } from './shared/events/index.js';
 import { initCallService, getCallService } from './call-service.js';
-import { getUserId } from './auth/auth-state.js';
+import { getUser, getUserId } from './auth/auth-state.js';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import { createFirebaseRoomSignaling } from './features/signaling/firebase-room-signaling.js';
 import type { CallInvite } from './shared/storage/user/call-schema';
@@ -12,7 +12,9 @@ interface CallFlowOptions {
 }
 
 type OutgoingCall = {
-  contactId: string;
+  calleeId: string;
+  calleeName: string;
+  audioOnly: boolean;
   roomId: string;
 };
 
@@ -81,7 +83,7 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
     setCallingState(false);
     svc
       .cancelOutgoingCall({
-        recipientUID: activeCall.call.contactId,
+        recipientUID: activeCall.call.calleeId,
         roomId: activeCall.call.roomId,
       })
       .catch((err) => {
@@ -91,12 +93,13 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
 
   function acceptIncoming() {
     const activeCall = callingState();
+    console.info('Accepting incoming call:', { activeCall });
     const svc = getCallService();
     if (!activeCall || activeCall.direction !== 'incoming' || !svc) return;
     setCallingState(false);
     svc
       .acceptIncomingCall({
-        fromUID: activeCall.call.from,
+        fromUID: activeCall.call.callerId,
         roomId: activeCall.call.roomId,
       })
       .then(() => enterRoom(activeCall.call.roomId, getUserId()))
@@ -113,7 +116,7 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
     setCallingState(false);
     svc
       .rejectIncomingCall({
-        fromUID: activeCall.call.from,
+        fromUID: activeCall.call.callerId,
         roomId: activeCall.call.roomId,
       })
       .catch((err) => {
@@ -128,17 +131,24 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
 
     handleCommand(
       'cmd:room:initiate:call',
-      ({ contactId }) => {
+      (details: {
+        calleeId: string;
+        calleeName: string;
+        audioOnly: boolean;
+      }) => {
+        const { calleeId, calleeName, audioOnly } = details;
+        const callerName = getUser()?.userName || 'Unknown';
         const outgoingRoomId = callService.sendOutgoingCallInvite({
-          recipientUID: contactId,
+          calleeId,
+          callerName,
+          audioOnly,
         });
         setCallingState({
           direction: 'outgoing',
-          call: { contactId, roomId: outgoingRoomId },
+          call: { calleeId, calleeName, roomId: outgoingRoomId, audioOnly },
         });
-        console.debug('Initiated outgoing call invite:', {
-          contactId,
-          outgoingRoomId,
+        console.debug('Initiated outgoing call invite, command details:', {
+          details,
         });
       },
       { signal: ac.signal },

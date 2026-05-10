@@ -136,7 +136,7 @@ export default function App() {
     // Todo: decouple file transfer controller from messages UI when migrating to solidjs
     // const msgUI = getMessagesUI();
     // msgUI?.setFileTransferController(controller);
-    // Todo: watch-sync: align with new p2p rooms transport / storage and add
+    // Todo: watch-sync: align with new p2p rooms transport / storage structure
     // msgUI?.setWatchFileHandler?.(createWatchFileHandler());
   });
 

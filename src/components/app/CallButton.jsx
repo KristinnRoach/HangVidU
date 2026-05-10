@@ -15,7 +15,9 @@ export default function CallButton(props) {
     devDebug('[CallButton] clicked', props.title);
 
     dispatchCommand('cmd:room:initiate:call', {
-      contactId: props.contactId,
+      calleeId: props.contactId,
+      calleeName: props.calleeName,
+      audioOnly: false,
     });
   }
 

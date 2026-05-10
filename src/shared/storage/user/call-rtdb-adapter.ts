@@ -1,5 +1,11 @@
 import { onValue, ref, remove, set, type Database } from 'firebase/database';
-import { parseCallInvite, parseCallResponse, type ActiveCall, type CallInvite, type CallResponse } from './call-schema';
+import {
+  parseCallInvite,
+  parseCallResponse,
+  type ActiveCall,
+  type CallInvite,
+  type CallResponse,
+} from './call-schema';
 
 export class CallRTDBAdapter {
   private database: Database;
@@ -26,7 +32,9 @@ export class CallRTDBAdapter {
   async sendInvite(userId: string, call: CallInvite): Promise<void> {
     await set(ref(this.database, this._incomingPath(userId)), {
       roomId: call.roomId,
-      from: call.from,
+      callerId: call.callerId,
+      callerName: call.callerName || 'Unknown',
+      audioOnly: call.audioOnly || false,
       startedAt: call.startedAt,
     });
   }
@@ -39,7 +47,10 @@ export class CallRTDBAdapter {
     });
   }
 
-  onInviteReceived(userId: string, callback: (call: CallInvite | null) => void): () => void {
+  onInviteReceived(
+    userId: string,
+    callback: (call: CallInvite | null) => void,
+  ): () => void {
     return onValue(
       ref(this.database, this._incomingPath(userId)),
       (snapshot) => {
@@ -78,7 +89,10 @@ export class CallRTDBAdapter {
     await remove(ref(this.database, this._responsePath(userId)));
   }
 
-  onResponseReceived(userId: string, callback: (response: CallResponse | null) => void): () => void {
+  onResponseReceived(
+    userId: string,
+    callback: (response: CallResponse | null) => void,
+  ): () => void {
     return onValue(
       ref(this.database, this._responsePath(userId)),
       (snapshot) => {
@@ -97,6 +111,8 @@ export class CallRTDBAdapter {
   }
 }
 
-export function createCallRTDBAdapter(options: { database: Database }): CallRTDBAdapter {
+export function createCallRTDBAdapter(options: {
+  database: Database;
+}): CallRTDBAdapter {
   return new CallRTDBAdapter(options);
 }

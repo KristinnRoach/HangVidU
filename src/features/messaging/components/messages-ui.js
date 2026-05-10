@@ -165,16 +165,18 @@ function createMessagesUI() {
     const buildCallPayload = () => {
       const state = messagingController.getSelectedConversationState();
       const conversationId = state?.conversationId;
-      const contactId = state?.remoteParticipantIds?.[0] ?? null;
-      const roomId = state?.roomId ?? null;
-      const contactNickName =
+      const calleeId = state?.remoteParticipantIds?.[0] ?? null;
+      const calleeName =
         messagingController.getConversationDisplayName(conversationId) || null;
-      return { contactId, contactNickName, conversationId, roomId };
+      return { calleeId, calleeName }; // conversationId
     };
 
     messageTopBar.setVideoCallHandler(() => {
       try {
-        dispatchCommand('cmd:room:initiate:call', buildCallPayload());
+        dispatchCommand('cmd:room:initiate:call', {
+          ...buildCallPayload(),
+          audioOnly: false,
+        });
       } catch (err) {
         console.warn(
           'Failed to emit cmd:room:initiate:call in temp msg-ui code',

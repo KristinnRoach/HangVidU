@@ -14,7 +14,8 @@ export default function CallDialogs(props: Props) {
       <Match when={props.callFlow.outgoingCall()}>
         {(call) => (
           <OutgoingCallDialog
-            calleeName={call().contactId}
+            calleeName={call().calleeName}
+            audioOnly={call().audioOnly}
             onCancel={props.callFlow.cancelOutgoing}
           />
         )}
@@ -22,7 +23,8 @@ export default function CallDialogs(props: Props) {
       <Match when={props.callFlow.incomingCall()}>
         {(call) => (
           <IncomingCallDialog
-            callerName={call().from}
+            callerName={call().callerName}
+            audioOnly={call().audioOnly}
             onAccept={props.callFlow.acceptIncoming}
             onDecline={props.callFlow.declineIncoming}
           />

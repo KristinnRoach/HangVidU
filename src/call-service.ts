@@ -52,11 +52,21 @@ export class CallService {
     return this.callRepo.onInviteReceived(this.localUID, callback);
   }
 
-  sendOutgoingCallInvite({ recipientUID }: { recipientUID: string }): string {
+  sendOutgoingCallInvite({
+    calleeId,
+    callerName,
+    audioOnly,
+  }: {
+    calleeId: string;
+    callerName: string;
+    audioOnly: boolean;
+  }): string {
     const roomId = crypto.randomUUID();
-    this.callRepo.sendInvite(recipientUID, {
+    this.callRepo.sendInvite(calleeId, {
       roomId,
-      from: this.localUID,
+      callerId: this.localUID,
+      callerName,
+      audioOnly,
       startedAt: Date.now(),
     });
     return roomId;
