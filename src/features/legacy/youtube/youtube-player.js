@@ -5,7 +5,7 @@
 import {
   showElement,
   hideElement,
-} from '../../components/ui/utils/ui-utils.js';
+} from '../../../shared/components/ui/utils/ui-utils.js';
 
 const YT_CONTAINER_ID = 'yt-video-box';
 const YT_PLAYER_ROOT_ID = 'yt-player-root';
@@ -123,7 +123,11 @@ export function isYouTubeUrl(url) {
   if (!url) return false;
   try {
     const { hostname } = new URL(url, 'https://placeholder.invalid');
-    return hostname === 'www.youtube.com' || hostname === 'youtube.com' || hostname === 'youtu.be';
+    return (
+      hostname === 'www.youtube.com' ||
+      hostname === 'youtube.com' ||
+      hostname === 'youtu.be'
+    );
   } catch {
     return false;
   }

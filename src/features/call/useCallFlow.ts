@@ -1,11 +1,13 @@
 import { createSignal } from 'solid-js';
-import { rtdb } from './shared/storage/fb-rtdb/rtdb.js';
-import { handleCommand } from './shared/events/index.js';
+import { rtdb } from '../../shared/storage/fb-rtdb/rtdb.js';
+import { handleCommand } from '../../shared/events/index.js';
 import { initCallService, getCallService } from './call-service.js';
-import { getUser, getUserId } from './auth/auth-state.js';
+import { getUser, getUserId } from '../../auth/auth-state.js';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
-import { createFirebaseRoomSignaling } from './features/signaling/firebase-room-signaling.js';
-import type { CallInvite } from './shared/storage/user/call-schema';
+import { createFirebaseRoomSignaling } from '../signaling/firebase-room-signaling.js';
+import type { CallInvite, CallResponse } from './model/call-schema.js';
+
+const OUTGOING_CALL_TIMEOUT_MS = 30_000;
 
 interface CallFlowOptions {
   p2p: SolidP2PRoom;
@@ -31,6 +33,8 @@ export type CallingState =
 
 export function useCallFlow({ p2p }: CallFlowOptions) {
   const [callingState, setCallingState] = createSignal<CallingState>(false);
+  let outgoingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  const terminalCallSignals = new Map<string, CallResponse>();
 
   function outgoingCall(): OutgoingCall | null {
     const state = callingState();
@@ -72,14 +76,58 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
 
     const svc = getCallService();
     if (svc) {
-      await Promise.all([svc.endActiveCall(), svc.clearOutgoingCallResponse()]);
+      await svc.clearOutgoingCallResponse();
     }
+  }
+
+  function clearOutgoingCallTimeout() {
+    if (!outgoingCallTimeoutId) return;
+    clearTimeout(outgoingCallTimeoutId);
+    outgoingCallTimeoutId = undefined;
+  }
+
+  function isTerminalCallSignal(response: CallResponse) {
+    return (
+      response.responseType === 'canceled' ||
+      response.responseType === 'timedOut'
+    );
+  }
+
+  function scheduleOutgoingCallTimeout(
+    callService: NonNullable<ReturnType<typeof getCallService>>,
+    call: OutgoingCall,
+  ) {
+    clearOutgoingCallTimeout();
+    outgoingCallTimeoutId = setTimeout(() => {
+      const state = callingState();
+      if (
+        !state ||
+        state.direction !== 'outgoing' ||
+        state.call.roomId !== call.roomId
+      ) {
+        return;
+      }
+
+      setCallingState(false);
+      callService
+        .timeoutOutgoingCall({
+          recipientUID: call.calleeId,
+          roomId: call.roomId,
+        })
+        .catch((err) => {
+          console.error('Error timing out outgoing call:', err);
+        });
+      callService.clearOutgoingCallResponse().catch((err) => {
+        console.error('Error clearing outgoing call response:', err);
+      });
+    }, OUTGOING_CALL_TIMEOUT_MS);
   }
 
   function cancelOutgoing() {
     const activeCall = callingState();
     const svc = getCallService();
     if (!activeCall || activeCall.direction !== 'outgoing' || !svc) return;
+    clearOutgoingCallTimeout();
     setCallingState(false);
     svc
       .cancelOutgoingCall({
@@ -96,6 +144,7 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
     console.info('Accepting incoming call:', { activeCall });
     const svc = getCallService();
     if (!activeCall || activeCall.direction !== 'incoming' || !svc) return;
+    clearOutgoingCallTimeout();
     setCallingState(false);
     svc
       .acceptIncomingCall({
@@ -113,6 +162,7 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
     const activeCall = callingState();
     const svc = getCallService();
     if (!activeCall || activeCall.direction !== 'incoming' || !svc) return;
+    clearOutgoingCallTimeout();
     setCallingState(false);
     svc
       .rejectIncomingCall({
@@ -124,7 +174,7 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
       });
   }
 
-  function setup(): () => void {
+  function init(): () => void {
     const localUID = getUserId();
     const callService = initCallService({ localUID, rtdb });
     const ac = new AbortController();
@@ -143,10 +193,17 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
           callerName,
           audioOnly,
         });
+        const outgoingCall = {
+          calleeId,
+          calleeName,
+          roomId: outgoingRoomId,
+          audioOnly,
+        };
         setCallingState({
           direction: 'outgoing',
-          call: { calleeId, calleeName, roomId: outgoingRoomId, audioOnly },
+          call: outgoingCall,
         });
+        scheduleOutgoingCallTimeout(callService, outgoingCall);
         console.debug('Initiated outgoing call invite, command details:', {
           details,
         });
@@ -164,6 +221,18 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
 
     const unsubscribeIncoming = callService.onIncomingCall((call) => {
       if (!call) return;
+      const terminalSignal = terminalCallSignals.get(call.roomId);
+      if (terminalSignal && terminalSignal.by === call.callerId) {
+        terminalCallSignals.delete(call.roomId);
+        callService.clearIncomingCallInvite().catch((err) => {
+          console.error('Error clearing canceled incoming call invite:', err);
+        });
+        callService.clearOutgoingCallResponse().catch((err) => {
+          console.error('Error clearing terminal call response:', err);
+        });
+        return;
+      }
+
       setCallingState({ direction: 'incoming', call });
       console.debug('Received incoming call invite:', { call });
     });
@@ -173,6 +242,24 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
         if (!response) return;
         console.debug('Received outgoing call response:', { response });
 
+        if (isTerminalCallSignal(response)) {
+          terminalCallSignals.set(response.roomId, response);
+          const state = callingState();
+          if (
+            state &&
+            state.direction === 'incoming' &&
+            state.call.roomId === response.roomId &&
+            state.call.callerId === response.by
+          ) {
+            setCallingState(false);
+            await callService.clearIncomingCallInvite();
+          }
+
+          await callService.clearOutgoingCallResponse();
+          return;
+        }
+
+        clearOutgoingCallTimeout();
         if (response.responseType === 'accepted') {
           await enterRoom(response.roomId, localUID);
         } else if (response.responseType === 'rejected') {
@@ -187,6 +274,7 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
     );
 
     return () => {
+      clearOutgoingCallTimeout();
       ac.abort();
       unsubscribeIncoming();
       unsubscribeOutgoingResponse();
@@ -202,7 +290,7 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
     cancelOutgoing,
     acceptIncoming,
     declineIncoming,
-    setup,
+    init,
   };
 }
 

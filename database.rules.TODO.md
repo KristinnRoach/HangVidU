@@ -18,7 +18,5 @@ clients are no longer running the `main` branch call code.
     required fields, and define whether only contacts may create call invites.
   - `calls/response`: require response payloads to match the expected room and
     sender, and define who can clear the response.
-  - `calls/active`: decide whether this remains a private local marker or becomes
-    a cross-user source of truth.
 - Once all active clients are migrated, remove obsolete call rules and matching
   storage helpers in the same release.

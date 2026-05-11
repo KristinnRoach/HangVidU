@@ -1,6 +1,6 @@
 import { Match, Switch } from 'solid-js';
 
-import type { useCallFlow } from '../../useCallFlow';
+import type { useCallFlow } from '../useCallFlow';
 import IncomingCallDialog from './IncomingCallDialog.jsx';
 import OutgoingCallDialog from './OutgoingCallDialog.jsx';
 

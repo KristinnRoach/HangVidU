@@ -2,12 +2,9 @@ import type { Database } from 'firebase/database';
 import {
   createCallRepository,
   type CallRepository,
-} from './shared/storage/user/call-repository';
-import { createCallRTDBAdapter } from './shared/storage/user/call-rtdb-adapter';
-import type {
-  CallInvite,
-  CallResponse,
-} from './shared/storage/user/call-schema';
+} from './model/call-repository';
+import { createCallRTDBAdapter } from './model/call-rtdb-adapter';
+import type { CallInvite, CallResponse } from './model/call-schema';
 
 interface CallServiceOptions {
   localUID: string;
@@ -80,11 +77,6 @@ export class CallService {
     roomId: string;
   }): Promise<unknown[]> {
     return Promise.all([
-      this.callRepo.saveActive(this.localUID, {
-        roomId,
-        with: fromUID,
-        startedAt: Date.now(),
-      }),
       this.callRepo.clearInvite(this.localUID),
       this.callRepo.acceptInvite(fromUID, { roomId, by: this.localUID }),
     ]);
@@ -111,8 +103,19 @@ export class CallService {
     roomId: string;
   }): Promise<unknown[]> {
     return Promise.all([
-      this.callRepo.clearInvite(recipientUID),
       this.callRepo.cancelInvite(recipientUID, { roomId, by: this.localUID }),
+    ]);
+  }
+
+  timeoutOutgoingCall({
+    recipientUID,
+    roomId,
+  }: {
+    recipientUID: string;
+    roomId: string;
+  }): Promise<unknown[]> {
+    return Promise.all([
+      this.callRepo.timeoutInvite(recipientUID, { roomId, by: this.localUID }),
     ]);
   }
 
@@ -126,8 +129,8 @@ export class CallService {
     return this.callRepo.clearResponse(this.localUID);
   }
 
-  endActiveCall(): Promise<void> {
-    return this.callRepo.clearActive(this.localUID);
+  clearIncomingCallInvite(): Promise<void> {
+    return this.callRepo.clearInvite(this.localUID);
   }
 
   cleanup(): void {}

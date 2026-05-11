@@ -1,10 +1,10 @@
-import { dispatchCommand } from '../../shared/events';
+import { dispatchCommand } from '../../../shared/events';
 
 const hangUpCommand = () => {
   dispatchCommand('cmd:room:exit:call');
 };
 
-export default function ChatControls() {
+export default function ActiveCallControls() {
   return (
     <div class='chat-controls'>
       <button style={'color: black'} onClick={hangUpCommand}>

@@ -1,6 +1,8 @@
 import boundaries from 'eslint-plugin-boundaries';
 import fs from 'node:fs';
 
+// TODO: Update to include typescript files
+
 function envEnabled(name, defaultValue) {
   const value = process.env[name];
   if (value == null) return defaultValue;
@@ -173,7 +175,12 @@ if (ENABLE_RULE.auth) {
 if (ENABLE_RULE.setup) {
   overrides.push(
     dependencyRule(
-      ['src/setup/*.js', 'src/setup/**/*.js', 'src/setup/*.jsx', 'src/setup/**/*.jsx'],
+      [
+        'src/setup/*.js',
+        'src/setup/**/*.js',
+        'src/setup/*.jsx',
+        'src/setup/**/*.jsx',
+      ],
       [
         {
           from: { type: 'setup' },

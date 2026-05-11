@@ -2,7 +2,6 @@ import { onValue, ref, remove, set, type Database } from 'firebase/database';
 import {
   parseCallInvite,
   parseCallResponse,
-  type ActiveCall,
   type CallInvite,
   type CallResponse,
 } from './call-schema';
@@ -21,10 +20,6 @@ export class CallRTDBAdapter {
     return `users/${userId}/calls/incoming`;
   }
 
-  private _activePath(userId: string): string {
-    return `users/${userId}/calls/active`;
-  }
-
   private _responsePath(userId: string): string {
     return `users/${userId}/calls/response`;
   }
@@ -39,50 +34,35 @@ export class CallRTDBAdapter {
     });
   }
 
-  async saveActive(userId: string, call: ActiveCall): Promise<void> {
-    await set(ref(this.database, this._activePath(userId)), {
-      roomId: call.roomId,
-      with: call.with,
-      startedAt: call.startedAt,
-    });
-  }
-
   onInviteReceived(
     userId: string,
     callback: (call: CallInvite | null) => void,
   ): () => void {
     const incomingRef = ref(this.database, this._incomingPath(userId));
-    return onValue(
-      incomingRef,
-      (snapshot) => {
-        if (!snapshot.exists()) {
-          callback(null);
-          return;
-        }
-        try {
-          callback(parseCallInvite(snapshot.val()));
-        } catch {
-          console.warn(
-            `Removing stale incoming call data at ${this._incomingPath(userId)}`,
+    return onValue(incomingRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        callback(null);
+        return;
+      }
+      try {
+        callback(parseCallInvite(snapshot.val()));
+      } catch {
+        console.warn(
+          `Removing stale incoming call data at ${this._incomingPath(userId)}`,
+        );
+        void remove(incomingRef).catch((removeError) => {
+          console.error(
+            'Failed to remove stale incoming call data:',
+            removeError,
           );
-          void remove(incomingRef).catch((removeError) => {
-            console.error(
-              'Failed to remove stale incoming call data:',
-              removeError,
-            );
-          });
-          callback(null);
-        }
-      },
-    );
+        });
+        callback(null);
+      }
+    });
   }
 
   async clearInvite(userId: string): Promise<void> {
     await remove(ref(this.database, this._incomingPath(userId)));
-  }
-
-  async clearActive(userId: string): Promise<void> {
-    await remove(ref(this.database, this._activePath(userId)));
   }
 
   async sendResponse(userId: string, response: CallResponse): Promise<void> {

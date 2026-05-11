@@ -6,11 +6,11 @@ type Props = {
 } 
 */
 
-import { getCallService } from '../../call-service';
-import { dispatchCommand } from '../../shared/events';
-import { devDebug } from '../../shared/utils/dev/dev-utils';
+import { getCallService } from '../call-service';
+import { dispatchCommand } from '../../../shared/events';
+import { devDebug } from '../../../shared/utils/dev/dev-utils';
 
-export default function CallButton(props) {
+export default function StartCallButton(props) {
   function onCall() {
     devDebug('[CallButton] clicked', props.title);
 

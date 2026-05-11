@@ -13,11 +13,11 @@ import { setLogger } from '@kidlib/p2p';
 import { useP2PRoom } from '@kidlib/p2p/solid';
 
 import { initPushNotifications } from './features/push-notifications/push-notifications.js';
-import { useCallFlow } from './useCallFlow.js';
+import { useCallFlow } from './features/call/useCallFlow.js';
 
 import MainLayout from './components/MainLayout.jsx';
 import { setupMessagingAppBusHandlers } from './features/messaging/messaging-command-handlers.js';
-import CallDialogs from './components/dialogs/CallDialogs.jsx';
+import CallDialogs from './features/call/components/CallDialogs.jsx';
 import {
   initMessagesUI,
   getMessagesUI,
@@ -31,8 +31,6 @@ import {
   createDefaultReceiveStore,
   probeDefaultReceiveStore,
 } from './features/file-transfer/index.js';
-import { get } from 'firebase/database';
-import { createWatchFileHandler } from './features/watch/watch-file-handler.js';
 
 setDevDebugEnabled(true);
 initializeAppCheckDeferred();
@@ -154,7 +152,7 @@ export default function App() {
     initMessagesUI(); // Legacy messages UI - to be migrated
     setMessagesUIReady(true);
     initIcons(); // Legacy icons init - to be migrated
-    const cleanupCallFlow = callFlow.setup();
+    const cleanupCallFlow = callFlow.init();
     cleanupFns.push(cleanupCallFlow, unsubscribeLocaleChange);
 
     devDebug('[APP] End of onMount');

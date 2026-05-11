@@ -1,6 +1,6 @@
 import { Show } from 'solid-js';
 
-import PublicHomepage from './home/PublicHomepage.jsx';
+import PublicHomepage from './app/PublicHomepage.jsx';
 import ContactsList from './contacts/ContactsList.jsx';
 // import LobbyForm from './app/LobbyForm.jsx';
 import Room from './room/Room.jsx';

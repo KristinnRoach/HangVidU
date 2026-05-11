@@ -2,8 +2,8 @@ import { Show, onMount } from 'solid-js';
 import { dispatchCommand } from '../../shared/events/index.js';
 import { useI18n } from '../../shared/i18n/index.js';
 import { initIcons } from '../../shared/components/ui/icons.js';
-import PresenceIndicator from '../presence/PresenceIndicator.jsx';
-import CallButton from '../app/CallButton.jsx';
+import PresenceIndicator from './presence/PresenceIndicator.jsx';
+import StartCallButton from '../../features/call/components/StartCallButton.jsx';
 
 const MAX_CONTACT_NAME_CHARS = 18;
 
@@ -62,7 +62,7 @@ export default function ContactEntry(props) {
 
   return (
     <div class='contact-entry' ref={rootEl}>
-      <CallButton
+      <StartCallButton
         contactId={props.id}
         calleeName={displayName()}
         // roomId={props.roomId}

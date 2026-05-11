@@ -2,7 +2,7 @@ import { Show } from 'solid-js';
 
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import RoomMembers from './RoomMembers';
-import ChatControls from '../app/ChatControls';
+import ActiveCallControls from '../../features/call/components/ActiveCallControls';
 
 import './RoomExample.css';
 
@@ -16,7 +16,7 @@ export default function Room(props: Props) {
       <RoomMembers p2p={props.p2p} />
 
       <Show when={props.p2p.state() === 'joined'}>
-        <ChatControls />
+        <ActiveCallControls />
       </Show>
     </div>
   );

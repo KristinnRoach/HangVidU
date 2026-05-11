@@ -1,14 +1,22 @@
-import { CallResponseType, type ActiveCall, type CallInvite, type CallResponse } from './call-schema';
+import {
+  CallResponseType,
+  type CallInvite,
+  type CallResponse,
+} from './call-schema';
 
 interface ICallAdapter {
   sendInvite(userId: string, call: CallInvite): Promise<void>;
-  saveActive(userId: string, call: ActiveCall): Promise<void>;
   clearInvite(userId: string): Promise<void>;
-  clearActive(userId: string): Promise<void>;
-  onInviteReceived(userId: string, callback: (call: CallInvite | null) => void): () => void;
+  onInviteReceived(
+    userId: string,
+    callback: (call: CallInvite | null) => void,
+  ): () => void;
   sendResponse(userId: string, response: CallResponse): Promise<void>;
   clearResponse(userId: string): Promise<void>;
-  onResponseReceived(userId: string, callback: (response: CallResponse | null) => void): () => void;
+  onResponseReceived(
+    userId: string,
+    callback: (response: CallResponse | null) => void,
+  ): () => void;
 }
 
 function assertAdapter(adapter: unknown): ICallAdapter {
@@ -20,15 +28,17 @@ function assertAdapter(adapter: unknown): ICallAdapter {
     'onInviteReceived',
     'sendInvite',
     'clearInvite',
-    'saveActive',
-    'clearActive',
     'sendResponse',
     'clearResponse',
     'onResponseReceived',
   ];
   for (const methodName of requiredMethods) {
-    if (typeof (adapter as Record<string, unknown>)[methodName] !== 'function') {
-      throw new TypeError(`call storage adapter must implement ${methodName}()`);
+    if (
+      typeof (adapter as Record<string, unknown>)[methodName] !== 'function'
+    ) {
+      throw new TypeError(
+        `call storage adapter must implement ${methodName}()`,
+      );
     }
   }
 
@@ -51,15 +61,6 @@ export class CallRepository {
     }
   }
 
-  async saveActive(userId: string, call: ActiveCall): Promise<void> {
-    if (!userId || !call) return;
-    try {
-      await this.adapter.saveActive(userId, call);
-    } catch (error) {
-      console.error('Failed to save active call:', error);
-    }
-  }
-
   async clearInvite(userId: string): Promise<void> {
     if (!userId) return;
     try {
@@ -69,21 +70,18 @@ export class CallRepository {
     }
   }
 
-  async clearActive(userId: string): Promise<void> {
-    if (!userId) return;
-    try {
-      await this.adapter.clearActive(userId);
-    } catch (error) {
-      console.error('Failed to clear active call:', error);
-    }
-  }
-
-  onInviteReceived(userId: string, callback: (call: CallInvite | null) => void): () => void {
+  onInviteReceived(
+    userId: string,
+    callback: (call: CallInvite | null) => void,
+  ): () => void {
     if (!userId) return () => {};
     return this.adapter.onInviteReceived(userId, callback);
   }
 
-  async acceptInvite(callerUID: string, { roomId, by }: { roomId: string; by: string }): Promise<void> {
+  async acceptInvite(
+    callerUID: string,
+    { roomId, by }: { roomId: string; by: string },
+  ): Promise<void> {
     if (!callerUID || !roomId || !by) return;
     try {
       await this.adapter.sendResponse(callerUID, {
@@ -97,7 +95,10 @@ export class CallRepository {
     }
   }
 
-  async rejectInvite(callerUID: string, { roomId, by }: { roomId: string; by: string }): Promise<void> {
+  async rejectInvite(
+    callerUID: string,
+    { roomId, by }: { roomId: string; by: string },
+  ): Promise<void> {
     if (!callerUID || !roomId || !by) return;
     try {
       await this.adapter.sendResponse(callerUID, {
@@ -111,7 +112,10 @@ export class CallRepository {
     }
   }
 
-  async cancelInvite(recipientUID: string, { roomId, by }: { roomId: string; by: string }): Promise<void> {
+  async cancelInvite(
+    recipientUID: string,
+    { roomId, by }: { roomId: string; by: string },
+  ): Promise<void> {
     if (!recipientUID || !roomId || !by) return;
     try {
       await this.adapter.sendResponse(recipientUID, {
@@ -125,7 +129,27 @@ export class CallRepository {
     }
   }
 
-  onResponseReceived(userId: string, callback: (response: CallResponse | null) => void): () => void {
+  async timeoutInvite(
+    recipientUID: string,
+    { roomId, by }: { roomId: string; by: string },
+  ): Promise<void> {
+    if (!recipientUID || !roomId || !by) return;
+    try {
+      await this.adapter.sendResponse(recipientUID, {
+        roomId,
+        responseType: CallResponseType.TIMED_OUT,
+        by,
+        respondedAt: Date.now(),
+      });
+    } catch (error) {
+      console.error('Failed to send timeout response:', error);
+    }
+  }
+
+  onResponseReceived(
+    userId: string,
+    callback: (response: CallResponse | null) => void,
+  ): () => void {
     if (!userId) return () => {};
     return this.adapter.onResponseReceived(userId, callback);
   }

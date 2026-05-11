@@ -21,10 +21,13 @@ import {
   extractYouTubeId,
   loadYouTubeVideo,
   setYouTubeReady,
-} from '../../shared/media/youtube/youtube-player.js';
+} from '../legacy/youtube/youtube-player.js';
 
 import { sharedVideoEl, sharedBoxEl } from '../../elements.js'; // TODO: refactor?
-import { hideElement, showElement } from '../../shared/components/ui/utils/ui-utils.js';
+import {
+  hideElement,
+  showElement,
+} from '../../shared/components/ui/utils/ui-utils.js';
 
 import { onWatchModeEntered } from '../../shared/components/ui/core/watch-lifecycle-ui.js';
 

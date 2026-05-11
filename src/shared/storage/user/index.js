@@ -9,9 +9,6 @@ import {
   createUserProfileRTDBAdapter,
 } from './user-profile-rtdb-adapter.js';
 
-import { CallRepository, createCallRepository } from './call-repository.js';
-import { CallRTDBAdapter, createCallRTDBAdapter } from './call-rtdb-adapter.js';
-
 export {
   UserProfileSchema,
   PresenceStateSchema,

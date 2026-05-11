@@ -14,7 +14,7 @@ vi.mock('firebase/database', () => ({
   set: mocks.set,
 }));
 
-import { CallRTDBAdapter } from './call-rtdb-adapter.ts';
+import { CallRTDBAdapter } from './call-rtdb-adapter.js';
 
 function createSnapshot(value) {
   return {
