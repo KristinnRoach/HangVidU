@@ -37,6 +37,10 @@
           ".read": "$userId === auth.uid",
           ".write": "$userId === auth.uid"
         },
+        "recentCalls": {
+          ".read": "$userId === auth.uid",
+          ".write": "$userId === auth.uid"
+        },
         "calls": {
           "incoming": {
             ".read": "$userId === auth.uid",
