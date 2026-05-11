@@ -5,7 +5,10 @@ import {
   declineInvite,
 } from './invitations.js';
 import { dispatchCommand } from '../../shared/events/index.js';
-import { showSuccessToast, showErrorToast } from '../../shared/components/toast.js';
+import {
+  showSuccessToast,
+  showErrorToast,
+} from '../../components/base-legacy/toast.js';
 
 // TODO: WIP decoupling considerations:
 // createInviteNotification, inAppNotificationManager, showSuccessToast/showErrorToast

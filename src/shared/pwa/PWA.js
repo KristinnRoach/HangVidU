@@ -1,6 +1,6 @@
 import { devDebug, isDev, tempInfo } from '../utils/dev/dev-utils';
-import { hideElement, showElement } from '../components/ui/utils/ui-utils.js';
-import createIconButton from '../components/base/button/icon-button.js';
+import { hideElement, showElement } from '../utils/ui-utils/ui-utils.js';
+import createIconButton from '../components/base-legacy/button/icon-button.js';
 import { debugPWAInstall } from './debug-pwa.js';
 
 let beforeInstallEvent = null;

@@ -44,11 +44,11 @@ vi.mock('../gmail-send.js', () => ({
   sendBulkEmailsViaGmail: vi.fn(),
 }));
 
-vi.mock('../../../shared/components/ui/icons.js', () => ({
+vi.mock('../../../components/base-legacy/icons.js', () => ({
   initIcons: mocks.initIcons,
 }));
 
-vi.mock('../../../shared/components/toast.js', () => ({
+vi.mock('../../../components/base-legacy/toast.js', () => ({
   showSuccessToast: mocks.showSuccessToast,
   showErrorToast: mocks.showErrorToast,
 }));
@@ -155,7 +155,9 @@ describe('showAddContactModal - share invite platform action', () => {
     const { showAddContactModal } = await import('./add-contact-modal.js');
     const modalPromise = showAddContactModal();
 
-    const btn = document.querySelector('.share-preset-btn[data-provider-id="whatsapp"]');
+    const btn = document.querySelector(
+      '.share-preset-btn[data-provider-id="whatsapp"]',
+    );
     expect(btn).toBeTruthy();
 
     btn.click();

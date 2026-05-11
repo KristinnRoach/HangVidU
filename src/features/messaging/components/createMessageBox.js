@@ -1,7 +1,7 @@
 import { t, onLocaleChange } from '../../../shared/i18n/index.js';
-import { initIcons } from '../../../shared/components/ui/icons.js';
-import { attachKeyboardViewportHandler } from '../../../shared/components/ui/utils/attachKeyboardViewportHandler.js';
-import { keepVirtualKeyboardOpenOnTap } from '../../../shared/components/ui/utils/keepVirtualKeyboardOpenOnTap.js';
+import { initIcons } from '../../../components/base-legacy/icons.js';
+import { attachKeyboardViewportHandler } from '../../../shared/utils/ui-utils/attachKeyboardViewportHandler.js';
+import { keepVirtualKeyboardOpenOnTap } from '../../../shared/utils/ui-utils/keepVirtualKeyboardOpenOnTap.js';
 import { scrollMessagesToEnd } from './utils/scrollMessagesToEnd.js';
 
 /**

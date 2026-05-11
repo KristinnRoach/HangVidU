@@ -1,4 +1,4 @@
-import { showImagePreview } from '../../../shared/components/modal/imagePreview.js';
+import { showImagePreview } from '../../../components/base-legacy/modal/imagePreview.js';
 
 /**
  * Build an image preview element + handlers for message UIs.

@@ -18,7 +18,6 @@ import { initOneTap, showOneTapSignin } from './onetap.js';
 import { clearGISTokenCache } from './gis-tokens.js';
 import { setupAuthCommandHandlers } from './auth-command-handlers.js';
 import { getLocale, onLocaleChange } from '../shared/i18n/index.js';
-import { uiState } from '../shared/components/ui/core/ui-state.js';
 
 // Sync Firebase Auth popup language with app locale
 auth.languageCode = getLocale();

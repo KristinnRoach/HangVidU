@@ -7,7 +7,10 @@ import {
 } from '../../auth/index.js';
 import { acceptInvite } from './invitations.js';
 import { getDeterministicRoomId } from '../../shared/utils/room-id.js';
-import { showInfoToast, showSuccessToast } from '../../shared/components/toast.js';
+import {
+  showInfoToast,
+  showSuccessToast,
+} from '../../components/base-legacy/toast.js';
 import { getUserProfile } from '../../shared/storage/user/index.js';
 import { dispatchCommand } from '../../shared/events/index.js';
 import { t } from '../../shared/i18n/index.js';

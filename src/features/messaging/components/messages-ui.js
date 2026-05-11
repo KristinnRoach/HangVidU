@@ -1,15 +1,15 @@
 import { t } from '../../../shared/i18n/index.js';
-import { initIcons } from '../../../shared/components/ui/icons.js';
-import { onClickOutside } from '../../../shared/components/ui/utils/clickOutside.js';
+import { initIcons } from '../../../components/base-legacy/icons.js';
+import { onClickOutside } from '../../../shared/utils/ui-utils/clickOutside.js';
 import {
   hideElement,
   isHidden,
   showElement,
-} from '../../../shared/components/ui/utils/ui-utils.js';
+} from '../../../shared/utils/ui-utils/ui-utils.js';
 import {
   renderAvatar,
   createAvatar,
-} from '../../../shared/components/ui/utils/avatar.js';
+} from '../../../shared/utils/ui-utils/avatar.js';
 import { createMessageToggle } from './createMessageToggle.js';
 import { isIOSOrAndroidDevice } from '../../../shared/utils/detect-device.js';
 
@@ -22,12 +22,12 @@ import {
   showErrorToast,
   showInfoToast,
   showSuccessToast,
-} from '../../../shared/components/toast.js';
+} from '../../../components/base-legacy/toast.js';
 import { createMessageBox } from './createMessageBox.js';
 import { createMessageTopBar } from './createMessageTopBar.js';
 import { devDebug } from '../../../shared/utils/dev/dev-utils.js';
-import { onTapGesture } from '../../../shared/components/ui/utils/detectDoubleClick.js';
-import { onFileDrop } from '../../../shared/components/ui/utils/onFileDrop.js';
+import { onTapGesture } from '../../../shared/utils/ui-utils/detectDoubleClick.js';
+import { onFileDrop } from '../../../shared/utils/ui-utils/onFileDrop.js';
 import { isSafeDownloadUrl } from '../../../shared/utils/security/validate-url.js';
 import { dispatchCommand } from '../../../shared/events/index.js';
 import { createImagePreviewNode } from './file-preview-renderer.js';

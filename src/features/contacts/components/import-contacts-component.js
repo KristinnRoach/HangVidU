@@ -1,4 +1,4 @@
-import { escapeHtml } from '../../../shared/components/ui/utils/dom-utils.js';
+import { escapeHtml } from '../../../shared/utils/ui-utils/dom-utils.js';
 import { t } from '../../../shared/i18n/index.js';
 
 export function createImportContactsComponent({

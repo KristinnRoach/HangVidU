@@ -3,8 +3,8 @@
 import {
   createNotification,
   buildTemplate,
-} from '../../../shared/components/notification.js';
-import { escapeHtml } from '../../../shared/components/ui/utils/dom-utils.js';
+} from '../../../components/base-legacy/notification.js';
+import { escapeHtml } from '../../../shared/utils/ui-utils/dom-utils.js';
 import { t, onLocaleChange } from '../../../shared/i18n/index.js';
 
 /**

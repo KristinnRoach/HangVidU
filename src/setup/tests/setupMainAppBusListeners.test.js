@@ -67,10 +67,6 @@ vi.mock('../../shared/utils/url.js', () => ({
   clearUrlParam: vi.fn(),
 }));
 
-vi.mock('../../shared/components/ui/core/call-lifecycle-ui.js', () => ({
-  onCallDisconnected: vi.fn(),
-}));
-
 describe('setupMainAppBusListeners', () => {
   beforeEach(() => {
     vi.resetModules();

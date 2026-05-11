@@ -5,7 +5,7 @@
 import {
   showElement,
   hideElement,
-} from '../../../shared/components/ui/utils/ui-utils.js';
+} from '../../../shared/utils/ui-utils/ui-utils.js';
 
 const YT_CONTAINER_ID = 'yt-video-box';
 const YT_PLAYER_ROOT_ID = 'yt-player-root';

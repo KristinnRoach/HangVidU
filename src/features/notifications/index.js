@@ -1,9 +1,8 @@
 export { inAppNotificationManager } from './in-app-notification-manager.js';
-
 export {
   buildTemplate,
   createNotification,
-} from '../../shared/components/notification.js';
+} from '../../components/base-legacy/notification.js';
 
 export { showEnableNotificationsPrompt } from './components/enable-notifications-prompt.js';
 

@@ -1,4 +1,4 @@
-import { initIcons } from '../shared/components/ui/icons.js';
+import { initIcons } from '../components/base-legacy/icons.js';
 import { initI18n, onLocaleChange } from '../shared/i18n/index.js';
 import { updateI18nElements, initializeElements } from '../elements.js';
 

@@ -2,7 +2,7 @@ import { onCleanup, onMount, ParentProps } from 'solid-js';
 import { useI18n } from '../../../shared/i18n';
 import DialogFrame from '../../../components/dialogs/DialogFrame.jsx';
 import { ringtoneManager } from '../audio/ringtone-manager';
-import { callIndicators } from '../../../shared/components/ui/utils/call-indicators';
+import { callIndicators } from '../../../shared/utils/ui-utils/call-indicators';
 
 export interface CallDialogProps {
   idPrefix?: string;

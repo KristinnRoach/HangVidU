@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm kill:silent && concurrently \"vite\" \"pnpm ngrok\" \"sh scripts/show-ngrok-url.sh\"",
-    "dev:media": "vite --open /media-lab.html",
+    "dev:media": "vite --open ./src/shared/media-next/media-lab.html",
     "dev:components": "VITE_ENABLE_PWA=0 vite --open components-lab.html",
     "debug:edge": "zsh scripts/debug/launch-pwa-edge.sh",
     "worktree": "scripts/git-worktree.sh",

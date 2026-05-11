@@ -52,7 +52,7 @@ vi.mock('../../shared/i18n/index.js', () => ({
   onLocaleChange: vi.fn(() => () => {}),
 }));
 
-vi.mock('../../shared/components/ui/icons.js', () => ({
+vi.mock('../../components/ui/icons.js', () => ({
   initIcons: mocks.initIcons,
 }));
 

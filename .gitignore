@@ -108,9 +108,7 @@ backups/
 
 # WIP experiment pages
 components-lab.html
-media-capture.html
-media-lab.html
-media-playback.html
+src/shared/media-next/
 
 # WIP docs
 docs/metrics/

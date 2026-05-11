@@ -1,5 +1,5 @@
-import { copyToClipboard } from '../../shared/components/modal/copyLinkModal.js';
 import { t } from '../../shared/i18n/index.js';
+import { copyToClipboard } from '../../shared/utils/clipboard.js';
 
 /*
  * Invite sharing via the Web Share API, with clipboard-copy fallback.

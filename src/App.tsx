@@ -22,7 +22,7 @@ import {
   initMessagesUI,
   getMessagesUI,
 } from './features/messaging/components/messages-ui.js';
-import { initIcons } from './shared/components/ui/icons.js';
+import { initIcons } from './components/base-legacy/icons.js';
 import { initializeElements, updateI18nElements } from './elements.js';
 import {
   FileTransferController,
@@ -31,6 +31,7 @@ import {
   createDefaultReceiveStore,
   probeDefaultReceiveStore,
 } from './features/file-transfer/index.js';
+import { createFirebaseRoomSignaling } from './features/signaling/firebase-room-signaling.js';
 
 setDevDebugEnabled(true);
 initializeAppCheckDeferred();
@@ -52,7 +53,10 @@ initPushNotifications().catch((error) => {
  */
 export default function App() {
   const p2p = useP2PRoom();
-  const callFlow = useCallFlow({ p2p });
+  const callFlow = useCallFlow({
+    p2p,
+    createSignaling: createFirebaseRoomSignaling,
+  });
   const [messagesUIReady, setMessagesUIReady] = createSignal(false);
   const [dataChannelRevision, setDataChannelRevision] = createSignal(0);
   const cleanupFns: (() => void)[] = [];

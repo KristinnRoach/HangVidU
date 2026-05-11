@@ -27,9 +27,9 @@ import { sharedVideoEl, sharedBoxEl } from '../../elements.js'; // TODO: refacto
 import {
   hideElement,
   showElement,
-} from '../../shared/components/ui/utils/ui-utils.js';
+} from '../../shared/utils/ui-utils/ui-utils.js';
 
-import { onWatchModeEntered } from '../../shared/components/ui/core/watch-lifecycle-ui.js';
+import { onWatchModeEntered } from '../../shared/utils/core/watch-lifecycle-ui.js';
 
 // ============================================================================
 // WATCH-TOGETHER SYNC (Firebase-based)

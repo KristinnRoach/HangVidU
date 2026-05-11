@@ -5,17 +5,9 @@ vi.mock('../../push-notifications/index.js', () => ({
   getPushNotifications: vi.fn(() => ({})),
   pushNotifications: {},
 }));
-vi.mock('../../../shared/components/notification.js', () => ({
-  createNotification: vi.fn(),
-  buildTemplate: vi.fn(),
-}));
+
 vi.mock('../index.js', () => ({
   inAppNotificationManager: { has: vi.fn(), add: vi.fn(), remove: vi.fn() },
-}));
-vi.mock('../../../shared/components/toast.js', () => ({
-  showSuccessToast: vi.fn(),
-  showWarningToast: vi.fn(),
-  showErrorToast: vi.fn(),
 }));
 
 // Mock i18n with a fake t() that returns known values for known keys

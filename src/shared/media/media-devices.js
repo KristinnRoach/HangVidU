@@ -1,6 +1,6 @@
 // media-devices.js
 
-import { getVideoConstraints } from './constraints.js';
+import { getVideoConstraints } from '../../features/call/media-constraints.js';
 
 // ===== UTILS =====
 

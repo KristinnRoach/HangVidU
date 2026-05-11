@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
   copyToClipboard: vi.fn(),
 }));
 
-vi.mock('../../../shared/components/modal/copyLinkModal.js', () => ({
+vi.mock('../../../shared/utils/clipboard.js', () => ({
   copyToClipboard: mocks.copyToClipboard,
 }));
 

@@ -42,10 +42,6 @@ vi.mock('../auth-state.js', () => ({
   getLoggedInUserId: vi.fn(() => null),
 }));
 
-vi.mock('../../shared/components/ui/core/ui-state.js', () => ({
-  uiState: { view: 'lobby:guest', setView: vi.fn() },
-}));
-
 vi.mock('firebase/database', () => ({
   ref: vi.fn(),
   remove: vi.fn(() => Promise.resolve()),
