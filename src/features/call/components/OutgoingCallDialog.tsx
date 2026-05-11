@@ -22,6 +22,7 @@ export default function OutgoingCallDialog(props: OutgoingCallDialogProps) {
       {...props}
       cardClass='outgoing-call-card'
       tone='outgoing'
+      ringtone='outgoing'
       idPrefix={idPrefix()}
       name={props.calleeName}
       defaultName={t('shared.contact')}

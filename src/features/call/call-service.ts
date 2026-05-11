@@ -119,13 +119,13 @@ export class CallService {
     ]);
   }
 
-  onOutgoingCallResponse(
+  onCallSignal(
     callback: (response: CallResponse | null) => void,
   ): () => void {
     return this.callRepo.onResponseReceived(this.localUID, callback);
   }
 
-  clearOutgoingCallResponse(): Promise<void> {
+  clearCallSignal(): Promise<void> {
     return this.callRepo.clearResponse(this.localUID);
   }
 

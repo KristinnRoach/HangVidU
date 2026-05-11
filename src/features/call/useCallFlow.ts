@@ -5,6 +5,7 @@ import { initCallService, getCallService } from './call-service.js';
 import { getUser, getUserId } from '../../auth/auth-state.js';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import { createFirebaseRoomSignaling } from '../signaling/firebase-room-signaling.js';
+import { getPushNotifications } from '../push-notifications/index.js';
 import type { CallInvite, CallResponse } from './model/call-schema.js';
 
 const OUTGOING_CALL_TIMEOUT_MS = 30_000;
@@ -16,6 +17,8 @@ interface CallFlowOptions {
 type OutgoingCall = {
   calleeId: string;
   calleeName: string;
+  callerId: string;
+  callerName: string;
   audioOnly: boolean;
   roomId: string;
 };
@@ -76,7 +79,7 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
 
     const svc = getCallService();
     if (svc) {
-      await svc.clearOutgoingCallResponse();
+      await svc.clearCallSignal();
     }
   }
 
@@ -91,6 +94,34 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
       response.responseType === 'canceled' ||
       response.responseType === 'timedOut'
     );
+  }
+
+  function sendIncomingCallNotification(call: OutgoingCall) {
+    const pushNotifications = getPushNotifications();
+    pushNotifications
+      ?.sendIncomingCall({
+        targetUserId: call.calleeId,
+        roomId: call.roomId,
+        callerId: call.callerId,
+        callerName: call.callerName,
+      })
+      .catch((err) => {
+        console.error('Error sending incoming call notification:', err);
+      });
+  }
+
+  function sendMissedCallNotification(call: OutgoingCall) {
+    const pushNotifications = getPushNotifications();
+    pushNotifications
+      ?.sendMissedCall({
+        targetUserId: call.calleeId,
+        roomId: call.roomId,
+        callerId: call.callerId,
+        callerName: call.callerName,
+      })
+      .catch((err) => {
+        console.error('Error sending missed call notification:', err);
+      });
   }
 
   function scheduleOutgoingCallTimeout(
@@ -117,8 +148,9 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
         .catch((err) => {
           console.error('Error timing out outgoing call:', err);
         });
-      callService.clearOutgoingCallResponse().catch((err) => {
-        console.error('Error clearing outgoing call response:', err);
+      sendMissedCallNotification(call);
+      callService.clearCallSignal().catch((err) => {
+        console.error('Error clearing call signal:', err);
       });
     }, OUTGOING_CALL_TIMEOUT_MS);
   }
@@ -196,6 +228,8 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
         const outgoingCall = {
           calleeId,
           calleeName,
+          callerId: localUID,
+          callerName,
           roomId: outgoingRoomId,
           audioOnly,
         };
@@ -204,6 +238,7 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
           call: outgoingCall,
         });
         scheduleOutgoingCallTimeout(callService, outgoingCall);
+        sendIncomingCallNotification(outgoingCall);
         console.debug('Initiated outgoing call invite, command details:', {
           details,
         });
@@ -227,7 +262,7 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
         callService.clearIncomingCallInvite().catch((err) => {
           console.error('Error clearing canceled incoming call invite:', err);
         });
-        callService.clearOutgoingCallResponse().catch((err) => {
+        callService.clearCallSignal().catch((err) => {
           console.error('Error clearing terminal call response:', err);
         });
         return;
@@ -237,10 +272,10 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
       console.debug('Received incoming call invite:', { call });
     });
 
-    const unsubscribeOutgoingResponse = callService.onOutgoingCallResponse(
+    const unsubscribeCallSignal = callService.onCallSignal(
       async (response) => {
         if (!response) return;
-        console.debug('Received outgoing call response:', { response });
+        console.debug('Received call signal:', { response });
 
         if (isTerminalCallSignal(response)) {
           terminalCallSignals.set(response.roomId, response);
@@ -255,7 +290,7 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
             await callService.clearIncomingCallInvite();
           }
 
-          await callService.clearOutgoingCallResponse();
+          await callService.clearCallSignal();
           return;
         }
 
@@ -267,8 +302,8 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
         }
         setCallingState(false);
 
-        callService.clearOutgoingCallResponse().catch((err) => {
-          console.error('Error clearing outgoing call response:', err);
+        callService.clearCallSignal().catch((err) => {
+          console.error('Error clearing call signal:', err);
         });
       },
     );
@@ -277,7 +312,7 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
       clearOutgoingCallTimeout();
       ac.abort();
       unsubscribeIncoming();
-      unsubscribeOutgoingResponse();
+      unsubscribeCallSignal();
     };
   }
 
@@ -293,6 +328,3 @@ export function useCallFlow({ p2p }: CallFlowOptions) {
     init,
   };
 }
-
-// todo: re-enable push notifications for calls once the flow is solidified
-// getPushNotifications().sendIncomingCall()

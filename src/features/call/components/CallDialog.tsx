@@ -14,6 +14,7 @@ export interface CallDialogProps {
   titleKey?: string;
   subtitle?: any;
   tone?: string;
+  ringtone?: 'incoming' | 'outgoing' | false;
   cardClass?: string;
   details?: any;
   actions?: any;
@@ -28,10 +29,15 @@ export default function CallDialog(props: ParentProps<CallDialogProps>) {
     props.callKindLabel ||
     (props.audioOnly ? t('message.audioCall') : t('message.videoCall'));
   const title = () => props.title || t(props.titleKey, { name: name() });
+  const ringtone = () => props.ringtone ?? false;
 
   onMount(() => {
-    ringtoneManager.playIncoming();
-    callIndicators.startCallIndicators(name());
+    if (ringtone() === 'incoming') {
+      ringtoneManager.playIncoming();
+      callIndicators.startCallIndicators(name());
+    } else if (ringtone() === 'outgoing') {
+      ringtoneManager.playOutgoing({ audioOnly: props.audioOnly });
+    }
   });
 
   onCleanup(() => {

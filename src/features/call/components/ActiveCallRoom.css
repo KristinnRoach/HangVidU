@@ -1,0 +1,126 @@
+.room {
+  --color-bg: currentColor;
+  --color-border: #d7deea;
+  --color-brand: #2f6fed;
+  --color-surface: #ffffff;
+  --color-ink: #172033;
+  --color-muted: #4a5568;
+
+  color: var(--color-ink);
+  background: var(--color-bg);
+
+  --gap: 12px;
+  --pad: 28px;
+  --radius: 8px;
+  --remote-stream-container-min-width: 30rem;
+
+  display: grid;
+  gap: var(--gap);
+  padding: var(--pad);
+
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.primary-button {
+  border-color: var(--color-brand);
+  color: var(--color-surface);
+  background: var(--color-brand);
+}
+
+.remote-stream-container {
+  display: grid;
+  gap: var(--gap);
+}
+
+.lobby-form,
+.room-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--gap);
+}
+
+.room-status {
+  color: var(--color-muted);
+}
+
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(var(--remote-stream-container-min-width, 100%)), 1fr)
+  );
+  gap: var(--gap);
+}
+
+.status-pill,
+.remote-stream-container,
+button,
+input {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.room-id-input {
+  width: min(280px, 100%);
+  min-width: 180px;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 var(--gap);
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+.remote-stream-container {
+  min-width: 0;
+  width: 100%;
+  padding: var(--gap);
+}
+
+.remote-stream {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: calc(var(--radius) - 2px);
+  background: #111827;
+  object-fit: cover;
+}
+
+.local-stream-container {
+  min-width: 0;
+  width: 200px;
+  padding: var(--gap);
+}
+
+.local-stream {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: calc(var(--radius) - 2px);
+  background: #111827;
+  object-fit: cover;
+}
+
+@media (max-width: 560px) {
+  .room {
+    --pad: 18px;
+  }
+
+  .video-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lobby-form button {
+    flex: 1 1 140px;
+  }
+
+  .status-pill {
+    width: 100%;
+  }
+}

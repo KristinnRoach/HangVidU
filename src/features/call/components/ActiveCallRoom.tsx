@@ -1,16 +1,16 @@
 import { Show } from 'solid-js';
 
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
-import RoomMembers from './RoomMembers';
-import ActiveCallControls from '../../features/call/components/ActiveCallControls';
+import RoomMembers from '../../../components/room/RoomMembers';
+import ActiveCallControls from './ActiveCallControls';
 
-import './RoomExample.css';
+import './ActiveCallRoom.css';
 
 type Props = {
   p2p: SolidP2PRoom;
 };
 
-export default function Room(props: Props) {
+export default function ActiveCallRoom(props: Props) {
   return (
     <div class='room'>
       <RoomMembers p2p={props.p2p} />

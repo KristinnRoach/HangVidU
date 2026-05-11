@@ -3,7 +3,7 @@ import { Show } from 'solid-js';
 import PublicHomepage from './app/PublicHomepage.jsx';
 import ContactsList from './contacts/ContactsList.jsx';
 // import LobbyForm from './app/LobbyForm.jsx';
-import Room from './room/Room.jsx';
+import ActiveCallRoom from '../features/call/components/ActiveCallRoom.jsx';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 
 export default function MainContent(props: { p2p: SolidP2PRoom }) {
@@ -13,7 +13,7 @@ export default function MainContent(props: { p2p: SolidP2PRoom }) {
         <div id='lobby' class='lobby'>
           <PublicHomepage />
           <Show when={props.p2p.state() !== 'idle'}>
-            <Room p2p={props.p2p} />
+            <ActiveCallRoom p2p={props.p2p} />
           </Show>
           <ContactsList />
         </div>

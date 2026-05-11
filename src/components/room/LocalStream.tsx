@@ -1,4 +1,4 @@
-import VideoStream from './VideoStream';
+import VideoStream from '../media/VideoStream';
 
 type Props = {
   stream?: MediaStream;
