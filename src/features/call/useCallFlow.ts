@@ -245,19 +245,28 @@ export function useCallFlow({ p2p, createSignaling }: CallFlowOptions) {
       }) => {
         const { calleeId, calleeName, audioOnly } = details;
         const callerName = getUser()?.userName || 'Unknown';
-        const outgoingRoomId = callService.sendOutgoingCallInvite({
+
+        // Create ephemiral unique room ID for this call
+        // (could use getDeterministicRoomId() if stable id needed)
+        const roomId = crypto.randomUUID();
+
+        callService.sendOutgoingCallInvite({
+          // todo: consider awaiting, trycatching, reordering
+          roomId,
           calleeId,
           callerName,
           audioOnly,
         });
+
         const outgoingCall = {
           calleeId,
           calleeName,
           callerId: localUID,
           callerName,
-          roomId: outgoingRoomId,
+          roomId,
           audioOnly,
         };
+
         setCallingState({
           direction: 'outgoing',
           call: outgoingCall,

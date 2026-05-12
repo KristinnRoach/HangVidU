@@ -50,23 +50,23 @@ export class CallService {
   }
 
   sendOutgoingCallInvite({
+    roomId,
     calleeId,
     callerName,
     audioOnly,
   }: {
+    roomId: string;
     calleeId: string;
     callerName: string;
     audioOnly: boolean;
-  }): string {
-    const roomId = crypto.randomUUID();
-    this.callRepo.sendInvite(calleeId, {
+  }) {
+    return this.callRepo.sendInvite(calleeId, {
       roomId,
       callerId: this.localUID,
       callerName,
       audioOnly,
       startedAt: Date.now(),
     });
-    return roomId;
   }
 
   acceptIncomingCall({
@@ -119,9 +119,7 @@ export class CallService {
     ]);
   }
 
-  onCallSignal(
-    callback: (response: CallResponse | null) => void,
-  ): () => void {
+  onCallSignal(callback: (response: CallResponse | null) => void): () => void {
     return this.callRepo.onResponseReceived(this.localUID, callback);
   }
 
