@@ -4,6 +4,8 @@ import {
   type CallResponse,
 } from './call-schema';
 
+const CALL_RESPONSE_TTL_MS = 60_000;
+
 interface ICallAdapter {
   sendInvite(userId: string, call: CallInvite): Promise<void>;
   clearInvite(userId: string): Promise<void>;
@@ -58,6 +60,7 @@ export class CallRepository {
       await this.adapter.sendInvite(userId, call);
     } catch (error) {
       console.error('Failed to save incoming call:', error);
+      throw error;
     }
   }
 
@@ -67,6 +70,7 @@ export class CallRepository {
       await this.adapter.clearInvite(userId);
     } catch (error) {
       console.error('Failed to clear incoming call:', error);
+      throw error;
     }
   }
 
@@ -78,71 +82,49 @@ export class CallRepository {
     return this.adapter.onInviteReceived(userId, callback);
   }
 
-  async acceptInvite(
-    callerUID: string,
-    { roomId, by }: { roomId: string; by: string },
-  ): Promise<void> {
-    if (!callerUID || !roomId || !by) return;
+  async acceptInvite({
+    roomId,
+    by,
+  }: {
+    roomId: string;
+    by: string;
+  }): Promise<void> {
+    if (!roomId || !by) return;
+    const respondedAt = Date.now();
     try {
-      await this.adapter.sendResponse(callerUID, {
+      await this.adapter.sendResponse(by, {
         roomId,
         responseType: CallResponseType.ACCEPTED,
         by,
-        respondedAt: Date.now(),
+        respondedAt,
+        expiresAt: respondedAt + CALL_RESPONSE_TTL_MS,
       });
     } catch (error) {
       console.error('Failed to send accept response:', error);
+      throw error;
     }
   }
 
-  async rejectInvite(
-    callerUID: string,
-    { roomId, by }: { roomId: string; by: string },
-  ): Promise<void> {
-    if (!callerUID || !roomId || !by) return;
+  async rejectInvite({
+    roomId,
+    by,
+  }: {
+    roomId: string;
+    by: string;
+  }): Promise<void> {
+    if (!roomId || !by) return;
+    const respondedAt = Date.now();
     try {
-      await this.adapter.sendResponse(callerUID, {
+      await this.adapter.sendResponse(by, {
         roomId,
         responseType: CallResponseType.REJECTED,
         by,
-        respondedAt: Date.now(),
+        respondedAt,
+        expiresAt: respondedAt + CALL_RESPONSE_TTL_MS,
       });
     } catch (error) {
       console.error('Failed to send reject response:', error);
-    }
-  }
-
-  async cancelInvite(
-    recipientUID: string,
-    { roomId, by }: { roomId: string; by: string },
-  ): Promise<void> {
-    if (!recipientUID || !roomId || !by) return;
-    try {
-      await this.adapter.sendResponse(recipientUID, {
-        roomId,
-        responseType: CallResponseType.CANCELED,
-        by,
-        respondedAt: Date.now(),
-      });
-    } catch (error) {
-      console.error('Failed to send cancel response:', error);
-    }
-  }
-
-  async timeoutInvite(
-    recipientUID: string,
-    { roomId, by }: { roomId: string; by: string },
-  ): Promise<void> {
-    if (!recipientUID || !roomId || !by) return;
-    try {
-      await this.adapter.sendResponse(recipientUID, {
-        roomId,
-        responseType: CallResponseType.TIMED_OUT,
-        by,
-        respondedAt: Date.now(),
-      });
-    } catch (error) {
-      console.error('Failed to send timeout response:', error);
+      throw error;
     }
   }
 
@@ -160,6 +142,7 @@ export class CallRepository {
       await this.adapter.clearResponse(userId);
     } catch (error) {
       console.error('Failed to clear call response:', error);
+      throw error;
     }
   }
 }

@@ -70,6 +70,75 @@ describe('CallRTDBAdapter', () => {
     expect(mocks.remove).not.toHaveBeenCalled();
   });
 
+  it('writes invite lifecycle and callee metadata when provided', async () => {
+    await adapter.sendInvite('callee-1', {
+      roomId: 'room-1',
+      callerId: 'caller-1',
+      calleeId: 'callee-1',
+      callerName: 'Alice',
+      audioOnly: false,
+      startedAt: 123,
+      expiresAt: 456,
+    });
+
+    expect(mocks.set).toHaveBeenCalledWith(
+      { path: 'users/callee-1/calls/incoming' },
+      {
+        roomId: 'room-1',
+        callerId: 'caller-1',
+        calleeId: 'callee-1',
+        callerName: 'Alice',
+        audioOnly: false,
+        startedAt: 123,
+        expiresAt: 456,
+      },
+    );
+  });
+
+  it('writes response lifecycle metadata when provided', async () => {
+    await adapter.sendResponse('callee-1', {
+      roomId: 'room-1',
+      responseType: 'accepted',
+      by: 'callee-1',
+      respondedAt: 123,
+      expiresAt: 456,
+    });
+
+    expect(mocks.set).toHaveBeenCalledWith(
+      { path: 'users/callee-1/calls/response' },
+      {
+        roomId: 'room-1',
+        responseType: 'accepted',
+        by: 'callee-1',
+        respondedAt: 123,
+        expiresAt: 456,
+      },
+    );
+  });
+
+  it('removes expired incoming call data instead of showing a stale call', () => {
+    const callback = vi.fn();
+    const call = {
+      roomId: 'room-1',
+      callerId: 'caller-1',
+      callerName: 'Alice',
+      audioOnly: false,
+      startedAt: 123,
+      expiresAt: Date.now() - 1,
+    };
+    mocks.onValue.mockImplementation((_refArg, handler) => {
+      handler(createSnapshot(call));
+      return vi.fn();
+    });
+
+    adapter.onInviteReceived('user-1', callback);
+
+    expect(callback).toHaveBeenCalledWith(null);
+    expect(mocks.remove).toHaveBeenCalledWith({
+      path: 'users/user-1/calls/incoming',
+    });
+  });
+
   it('removes stale invalid incoming call data instead of logging a ZodError as an active error', () => {
     const callback = vi.fn();
     mocks.onValue.mockImplementation((_refArg, handler) => {

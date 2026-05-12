@@ -4,12 +4,18 @@ import {
   type CallRepository,
 } from './model/call-repository';
 import { createCallRTDBAdapter } from './model/call-rtdb-adapter';
+import {
+  createRoomAccessRTDBAdapter,
+  type RoomAccessRTDBAdapter,
+} from './model/room-access-rtdb-adapter';
 import type { CallInvite, CallResponse } from './model/call-schema';
 
 interface CallServiceOptions {
   localUID: string;
   rtdb: Database;
 }
+
+const CALL_SIGNAL_TTL_MS = 60_000;
 
 let callServiceInstance: CallService | null = null;
 
@@ -33,6 +39,7 @@ export function cleanupCallService(): void {
 
 export class CallService {
   private callRepo: CallRepository;
+  private roomAccess: RoomAccessRTDBAdapter;
   private localUID: string;
 
   constructor({ localUID, rtdb }: CallServiceOptions) {
@@ -42,6 +49,7 @@ export class CallService {
     this.callRepo = createCallRepository(
       createCallRTDBAdapter({ database: rtdb }),
     );
+    this.roomAccess = createRoomAccessRTDBAdapter({ database: rtdb });
     this.localUID = localUID;
   }
 
@@ -49,7 +57,7 @@ export class CallService {
     return this.callRepo.onInviteReceived(this.localUID, callback);
   }
 
-  sendOutgoingCallInvite({
+  async sendOutgoingCallInvite({
     roomId,
     calleeId,
     callerName,
@@ -59,72 +67,56 @@ export class CallService {
     calleeId: string;
     callerName: string;
     audioOnly: boolean;
-  }) {
-    return this.callRepo.sendInvite(calleeId, {
+  }): Promise<void> {
+    const startedAt = Date.now();
+    await this.roomAccess.createRoomAccess({
+      roomId,
+      createdBy: this.localUID,
+      participants: [calleeId],
+      createdAt: startedAt,
+    });
+    await this.callRepo.sendInvite(calleeId, {
       roomId,
       callerId: this.localUID,
+      calleeId,
       callerName,
       audioOnly,
-      startedAt: Date.now(),
+      startedAt,
+      expiresAt: startedAt + CALL_SIGNAL_TTL_MS,
     });
   }
 
-  acceptIncomingCall({
-    fromUID,
-    roomId,
-  }: {
-    fromUID: string;
-    roomId: string;
-  }): Promise<unknown[]> {
+  acceptIncomingCall({ roomId }: { roomId: string }): Promise<unknown[]> {
     return Promise.all([
       this.callRepo.clearInvite(this.localUID),
-      this.callRepo.acceptInvite(fromUID, { roomId, by: this.localUID }),
+      this.callRepo.acceptInvite({ roomId, by: this.localUID }),
     ]);
   }
 
-  rejectIncomingCall({
-    fromUID,
-    roomId,
-  }: {
-    fromUID: string;
-    roomId: string;
-  }): Promise<unknown[]> {
+  rejectIncomingCall({ roomId }: { roomId: string }): Promise<unknown[]> {
     return Promise.all([
       this.callRepo.clearInvite(this.localUID),
-      this.callRepo.rejectInvite(fromUID, { roomId, by: this.localUID }),
+      this.callRepo.rejectInvite({ roomId, by: this.localUID }),
     ]);
   }
 
-  cancelOutgoingCall({
-    recipientUID,
-    roomId,
-  }: {
-    recipientUID: string;
-    roomId: string;
-  }): Promise<unknown[]> {
-    return Promise.all([
-      this.callRepo.cancelInvite(recipientUID, { roomId, by: this.localUID }),
-    ]);
+  cancelOutgoingCall({ recipientUID }: { recipientUID: string }): Promise<void> {
+    return this.callRepo.clearInvite(recipientUID);
   }
 
   timeoutOutgoingCall({
     recipientUID,
-    roomId,
   }: {
     recipientUID: string;
-    roomId: string;
-  }): Promise<unknown[]> {
-    return Promise.all([
-      this.callRepo.timeoutInvite(recipientUID, { roomId, by: this.localUID }),
-    ]);
+  }): Promise<void> {
+    return this.callRepo.clearInvite(recipientUID);
   }
 
-  onCallSignal(callback: (response: CallResponse | null) => void): () => void {
-    return this.callRepo.onResponseReceived(this.localUID, callback);
-  }
-
-  clearCallSignal(): Promise<void> {
-    return this.callRepo.clearResponse(this.localUID);
+  onCalleeResponse(
+    calleeId: string,
+    callback: (response: CallResponse | null) => void,
+  ): () => void {
+    return this.callRepo.onResponseReceived(calleeId, callback);
   }
 
   clearIncomingCallInvite(): Promise<void> {

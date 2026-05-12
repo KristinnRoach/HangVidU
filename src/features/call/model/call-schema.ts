@@ -3,23 +3,24 @@ import { z } from 'zod';
 export const CallResponseType = {
   ACCEPTED: 'accepted',
   REJECTED: 'rejected',
-  CANCELED: 'canceled',
-  TIMED_OUT: 'timedOut',
 } as const;
 
 export const CallInviteSchema = z.object({
   roomId: z.string().min(1),
   callerId: z.string().min(1),
+  calleeId: z.string().min(1).optional(),
   callerName: z.string().min(1).optional(),
   audioOnly: z.boolean().optional(),
   startedAt: z.number(),
+  expiresAt: z.number().optional(),
 });
 
 export const CallResponseSchema = z.object({
   roomId: z.string().min(1),
-  responseType: z.enum(['accepted', 'rejected', 'canceled', 'timedOut']),
+  responseType: z.enum(['accepted', 'rejected']),
   by: z.string().min(1),
   respondedAt: z.number(),
+  expiresAt: z.number().optional(),
 });
 
 export type CallInvite = z.infer<typeof CallInviteSchema>;

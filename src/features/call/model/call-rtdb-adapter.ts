@@ -25,13 +25,17 @@ export class CallRTDBAdapter {
   }
 
   async sendInvite(userId: string, call: CallInvite): Promise<void> {
-    await set(ref(this.database, this._incomingPath(userId)), {
+    const payload: Record<string, unknown> = {
       roomId: call.roomId,
       callerId: call.callerId,
       callerName: call.callerName || 'Unknown',
       audioOnly: call.audioOnly || false,
       startedAt: call.startedAt,
-    });
+    };
+    if (call.calleeId) payload.calleeId = call.calleeId;
+    if (call.expiresAt != null) payload.expiresAt = call.expiresAt;
+
+    await set(ref(this.database, this._incomingPath(userId)), payload);
   }
 
   onInviteReceived(
@@ -45,7 +49,18 @@ export class CallRTDBAdapter {
         return;
       }
       try {
-        callback(parseCallInvite(snapshot.val()));
+        const call = parseCallInvite(snapshot.val());
+        if (call.expiresAt != null && call.expiresAt <= Date.now()) {
+          void remove(incomingRef).catch((removeError) => {
+            console.error(
+              'Failed to remove expired incoming call data:',
+              removeError,
+            );
+          });
+          callback(null);
+          return;
+        }
+        callback(call);
       } catch {
         console.warn(
           `Removing stale incoming call data at ${this._incomingPath(userId)}`,
@@ -66,12 +81,15 @@ export class CallRTDBAdapter {
   }
 
   async sendResponse(userId: string, response: CallResponse): Promise<void> {
-    await set(ref(this.database, this._responsePath(userId)), {
+    const payload: Record<string, unknown> = {
       roomId: response.roomId,
       responseType: response.responseType,
       by: response.by,
       respondedAt: response.respondedAt,
-    });
+    };
+    if (response.expiresAt != null) payload.expiresAt = response.expiresAt;
+
+    await set(ref(this.database, this._responsePath(userId)), payload);
   }
 
   async clearResponse(userId: string): Promise<void> {

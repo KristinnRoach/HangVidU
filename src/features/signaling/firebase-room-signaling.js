@@ -22,10 +22,10 @@ function sortedPairId(a, b) {
  * Firebase RTDB P2PRoomSignaling for watchP2PRoom() / joinP2PRoom().
  *
  * Structure:
- *   rooms/{roomId}/presence/{peerId}              → true  (server-removed on disconnect)
- *   rooms/{roomId}/pairs/{pairId}/sdp/offer       → RTCSessionDescriptionInit
- *   rooms/{roomId}/pairs/{pairId}/sdp/answer      → RTCSessionDescriptionInit
- *   rooms/{roomId}/pairs/{pairId}/ice/{peerId}/   → pushed RTCIceCandidateInit entries
+ *   rooms/{roomId}/p2pSignaling/presence/{peerId}              → true  (server-removed on disconnect)
+ *   rooms/{roomId}/p2pSignaling/pairs/{pairId}/sdp/offer       → RTCSessionDescriptionInit
+ *   rooms/{roomId}/p2pSignaling/pairs/{pairId}/sdp/answer      → RTCSessionDescriptionInit
+ *   rooms/{roomId}/p2pSignaling/pairs/{pairId}/ice/{peerId}/   → pushed RTCIceCandidateInit entries
  *
  * @param {CreateRoomSignalingOptions} options
  * @returns {P2PRoomSignaling}
@@ -33,22 +33,23 @@ function sortedPairId(a, b) {
 export function createFirebaseRoomSignaling({ roomId }) {
   if (!roomId)
     throw new Error('createFirebaseRoomSignaling: roomId is required');
+  const signalingPath = `rooms/${roomId}/p2pSignaling`;
 
   return {
     async join(peerId) {
-      const presenceRef = ref(rtdb, `rooms/${roomId}/presence/${peerId}`);
+      const presenceRef = ref(rtdb, `${signalingPath}/presence/${peerId}`);
       await set(presenceRef, true);
       await onDisconnect(presenceRef).remove();
     },
 
     async leave(peerId) {
-      const presenceRef = ref(rtdb, `rooms/${roomId}/presence/${peerId}`);
+      const presenceRef = ref(rtdb, `${signalingPath}/presence/${peerId}`);
       await onDisconnect(presenceRef).cancel();
       await remove(presenceRef);
     },
 
     onPeers(callback) {
-      const presenceRef = ref(rtdb, `rooms/${roomId}/presence`);
+      const presenceRef = ref(rtdb, `${signalingPath}/presence`);
       return onValue(presenceRef, (snapshot) => {
         const data = snapshot.val();
         callback(data ? Object.keys(data) : []);
@@ -57,7 +58,7 @@ export function createFirebaseRoomSignaling({ roomId }) {
 
     createPeerSignaling({ localPeerId, remotePeerId }) {
       const pairId = sortedPairId(localPeerId, remotePeerId);
-      const basePath = `rooms/${roomId}/pairs/${pairId}`;
+      const basePath = `${signalingPath}/pairs/${pairId}`;
 
       const offerRef = ref(rtdb, `${basePath}/sdp/offer`);
       const answerRef = ref(rtdb, `${basePath}/sdp/answer`);

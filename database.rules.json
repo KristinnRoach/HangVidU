@@ -2,8 +2,25 @@
   "rules": {
     "rooms": {
       "$roomId": {
-        ".read": true,
-        ".write": true
+        ".read": "auth != null && data.child('participants').child(auth.uid).exists()",
+        ".write": "auth != null && !newData.exists() && data.child('meta').child('createdBy').val() === auth.uid",
+        "meta": {
+          ".write": "auth != null && !data.exists() && newData.hasChildren(['createdBy', 'createdAt', 'expiresAt']) && newData.child('createdBy').val() === auth.uid && newData.child('createdAt').isNumber() && newData.child('expiresAt').isNumber()"
+        },
+        "participants": {
+          "$uid": {
+            ".write": "auth != null && root.child('rooms').child($roomId).child('meta').child('createdBy').val() === auth.uid && newData.val() === true"
+          }
+        },
+        "p2pSignaling": {
+          ".write": "auth != null && root.child('rooms').child($roomId).child('participants').child(auth.uid).exists()"
+        },
+        "watch": {
+          ".write": "auth != null && root.child('rooms').child($roomId).child('participants').child(auth.uid).exists()"
+        },
+        "mediaSyncSignaling": {
+          ".write": "auth != null && root.child('rooms').child($roomId).child('participants').child(auth.uid).exists()"
+        }
       }
     },
     "usersByEmail": {
@@ -44,11 +61,11 @@
         "calls": {
           "incoming": {
             ".read": "$userId === auth.uid",
-            ".write": "($userId === auth.uid && !newData.exists()) || (auth != null && !data.exists() && newData.hasChildren(['roomId', 'callerId', 'startedAt']) && newData.child('roomId').isString() && newData.child('callerId').val() === auth.uid && newData.child('startedAt').isNumber() && (!newData.child('callerName').exists() || newData.child('callerName').isString()) && (!newData.child('audioOnly').exists() || newData.child('audioOnly').isBoolean()))"
+            ".write": "($userId === auth.uid && !newData.exists()) || (auth != null && !data.exists() && newData.hasChildren(['roomId', 'callerId', 'startedAt']) && newData.child('roomId').isString() && newData.child('callerId').val() === auth.uid && newData.child('startedAt').isNumber() && (!newData.child('calleeId').exists() || newData.child('calleeId').val() === $userId) && (!newData.child('expiresAt').exists() || newData.child('expiresAt').isNumber()) && (!newData.child('callerName').exists() || newData.child('callerName').isString()) && (!newData.child('audioOnly').exists() || newData.child('audioOnly').isBoolean()))"
           },
           "response": {
-            ".read": "$userId === auth.uid",
-            ".write": "($userId === auth.uid && !newData.exists()) || (auth != null && newData.hasChildren(['roomId', 'responseType', 'by', 'respondedAt']) && newData.child('roomId').isString() && newData.child('by').val() === auth.uid && newData.child('respondedAt').isNumber() && (newData.child('responseType').val() === 'accepted' || newData.child('responseType').val() === 'rejected' || newData.child('responseType').val() === 'canceled' || newData.child('responseType').val() === 'timedOut'))"
+            ".read": "auth != null",
+            ".write": "$userId === auth.uid && (!newData.exists() || (newData.hasChildren(['roomId', 'responseType', 'by', 'respondedAt']) && newData.child('roomId').isString() && newData.child('by').val() === auth.uid && newData.child('respondedAt').isNumber() && (!newData.child('expiresAt').exists() || newData.child('expiresAt').isNumber()) && (newData.child('responseType').val() === 'accepted' || newData.child('responseType').val() === 'rejected')))"
           }
         },
         "outgoingCall": {

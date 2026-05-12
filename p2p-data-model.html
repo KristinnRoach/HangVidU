@@ -471,12 +471,8 @@ footer {
     <button class="tab-btn" data-view="flow-view" onclick="setView('flow-view',this)">Call Flow</button>
   </div>
   <div class="imp-section">
-    <span class="imp-label">Suggestions</span>
-    <button class="imp-chip" data-key="ttl" onclick="toggleImp(this)"><span class="dot"></span>TTL / expiresAt</button>
-    <button class="imp-chip" data-key="calleeId" onclick="toggleImp(this)"><span class="dot"></span>calleeId on invite</button>
-    <button class="imp-chip" data-key="respOwnership" onclick="toggleImp(this)"><span class="dot"></span>Response to callee</button>
-    <button class="imp-chip" data-key="roomMeta" onclick="toggleImp(this)"><span class="dot"></span>Room metadata</button>
-    <button class="imp-chip final-chip" data-key="final" onclick="toggleImp(this)"><span class="dot"></span>Final model</button>
+    <span class="imp-label">Model</span>
+    <span class="imp-label">All shown fields are implemented</span>
   </div>
 </header>
 
@@ -522,7 +518,7 @@ footer {
 const st = {
   view: 'tree-view',
   exp: 'prompt',
-  imps: { ttl: false, calleeId: false, respOwnership: false, roomMeta: false, final: false },
+  imps: {},
   editing: null,   // { nodeId, fieldId }
   collapsed: new Set(),
 };
@@ -539,29 +535,56 @@ const model = [
     fields: [
       { id:'i1', name:'roomId',     type:'string',    req:true,  ex:'"room_a1b2c3d4e5f6g7h8"', desc:'Shared room ID — both peers join this room' },
       { id:'i2', name:'callerId',   type:'string',    req:true,  ex:'"uid_alice"',               desc:'UID of the caller' },
-      { id:'i3', name:'callerName', type:'string',    req:false, ex:'"Alice"',                   desc:'Display name shown in incoming call UI' },
-      { id:'i4', name:'audioOnly',  type:'boolean',   req:false, ex:'false',                     desc:'Omit video track if true' },
-      { id:'i5', name:'startedAt',  type:'timestamp', req:true,  ex:'1715500000000',             desc:'Unix ms — used for freshness/timeout checks' },
+      { id:'i3', name:'calleeId',   type:'string',    req:false, ex:'"uid_bob"',                 desc:'Explicit callee UID for rules/debugging' },
+      { id:'i4', name:'callerName', type:'string',    req:false, ex:'"Alice"',                   desc:'Display name shown in incoming call UI' },
+      { id:'i5', name:'audioOnly',  type:'boolean',   req:false, ex:'false',                     desc:'Omit video track if true' },
+      { id:'i6', name:'startedAt',  type:'timestamp', req:true,  ex:'1715500000000',             desc:'Unix ms — used for freshness/timeout checks' },
+      { id:'i7', name:'expiresAt',  type:'timestamp', req:false, ex:'1715500060000',             desc:'Unix ms — stale invite cleanup hint' },
     ]
   },
   {
     id: 'response',
     zone: 'hv',
-    path: 'users/{callerId}/calls/response',
+    path: 'users/{calleeId}/calls/response',
     label: 'CallResponse',
-    desc: "Caller's response mailbox. Callee writes here to accept/reject. ⚠️ Callee writes to caller's node.",
-    lifecycle: "Written by: callee  ·  Cleared by: caller after reading",
+    desc: "Callee's own response mailbox. Caller watches callee's path after initiating a call.",
+    lifecycle: "Written by: callee (own node) · Cleared by: callee",
     fields: [
       { id:'r1', name:'roomId',       type:'string',    req:true,  ex:'"room_a1b2c3d4e5f6g7h8"', desc:'Echoed back for correlation' },
-      { id:'r2', name:'responseType', type:'enum',      req:true,  ex:'"accepted"',               desc:'Call outcome', enumValues:['accepted','rejected','canceled','timedOut'] },
+      { id:'r2', name:'responseType', type:'enum',      req:true,  ex:'"accepted"',               desc:'Call outcome', enumValues:['accepted','rejected'] },
       { id:'r3', name:'by',           type:'string',    req:true,  ex:'"uid_bob"',                desc:'UID of the responder (callee)' },
       { id:'r4', name:'respondedAt',  type:'timestamp', req:true,  ex:'1715500010000',            desc:'Unix ms response time' },
+      { id:'r5', name:'expiresAt',    type:'timestamp', req:false, ex:'1715500070000',            desc:'Unix ms — stale response cleanup hint' },
+    ]
+  },
+  {
+    id: 'room_meta',
+    zone: 'hv',
+    path: 'rooms/{roomId}/meta',
+    label: 'Room Metadata',
+    desc: 'App-owned room metadata. Created before invite so room access exists before p2p join.',
+    lifecycle: "Written by: caller  ·  Cleaned up by: HangVidU on room cleanup",
+    fields: [
+      { id:'m1', name:'createdBy', type:'string',    req:true, ex:'"uid_alice"',    desc:'UID of room creator (caller)' },
+      { id:'m2', name:'createdAt', type:'timestamp', req:true, ex:'1715500000000', desc:'Room creation timestamp' },
+      { id:'m3', name:'expiresAt', type:'timestamp', req:true, ex:'1715507200000', desc:'Room authorization expiry timestamp' },
+    ]
+  },
+  {
+    id: 'participants',
+    zone: 'hv',
+    path: 'rooms/{roomId}/participants/{uid}',
+    label: 'Room Participants',
+    desc: 'App-owned authorization list. RTDB rules allow p2p signaling only for listed users.',
+    lifecycle: "Written by: room creator  ·  Used by RTDB rules for room access",
+    fields: [
+      { id:'rp1', name:'(value)', type:'boolean', req:true, ex:'true', desc:'Participant membership flag' },
     ]
   },
   {
     id: 'presence',
     zone: 'p2p',
-    path: 'rooms/{roomId}/presence/{peerId}',
+    path: 'rooms/{roomId}/p2pSignaling/presence/{peerId}',
     label: 'Presence',
     desc: 'Peer presence flag. Set on join, auto-removed on disconnect via onDisconnect().',
     lifecycle: "Fully managed by @kidlib/p2p — no app code required",
@@ -572,7 +595,7 @@ const model = [
   {
     id: 'sdp',
     zone: 'p2p',
-    path: 'rooms/{roomId}/pairs/{pairId}/sdp',
+    path: 'rooms/{roomId}/p2pSignaling/pairs/{pairId}/sdp',
     label: 'SDP Exchange',
     desc: 'WebRTC offer/answer exchange. pairId = [peerA, peerB].sort().join(":")',
     lifecycle: "Fully managed by @kidlib/p2p — written during WebRTC handshake",
@@ -584,7 +607,7 @@ const model = [
   {
     id: 'ice',
     zone: 'p2p',
-    path: 'rooms/{roomId}/pairs/{pairId}/ice/{peerId}/',
+    path: 'rooms/{roomId}/p2pSignaling/pairs/{pairId}/ice/{peerId}/',
     label: 'ICE Candidates',
     desc: 'Append-only ICE candidate list per peer. Written with RTDB push() — each entry gets a unique push key.',
     lifecycle: "Fully managed by @kidlib/p2p — appended during ICE gathering",
@@ -594,86 +617,8 @@ const model = [
   },
 ];
 
-// ── IMPROVEMENT INJECTIONS ─────────────────────────────────────────────────
-const IMP_FIELDS = {
-  ttl: {
-    invite:   [{ id:'imp_ttl_i', name:'expiresAt', type:'timestamp', req:false, ex:'1715500060000', desc:'Invite expires at this Unix ms — enables auto-cleanup', _imp:'ttl' }],
-    response: [{ id:'imp_ttl_r', name:'expiresAt', type:'timestamp', req:false, ex:'1715500070000', desc:'Response expires at this Unix ms — enables auto-cleanup', _imp:'ttl' }],
-  },
-  calleeId: {
-    invite: [{ id:'imp_callee', name:'calleeId', type:'string', req:true, ex:'"uid_bob"', desc:'Explicit callee UID — enables server-side Firestore rules: only calleeId can read this invite', _imp:'calleeId' }],
-  },
-};
-
-const IMP_NEW_NODES = {
-  roomMeta: {
-    id: 'room_meta',
-    zone: 'hv',
-    path: 'rooms/{roomId}/meta',
-    label: 'Room Metadata',
-    desc: 'App-owned room metadata alongside the p2p signaling tree. Tracks HangVidU-level room state.',
-    lifecycle: "Written by: HangVidU when creating room  ·  Cleaned up by: HangVidU on call end",
-    _imp: 'roomMeta',
-    fields: [
-      { id:'m1', name:'createdAt', type:'timestamp', req:true,  ex:'1715500000000', desc:'Room creation timestamp', _imp:'roomMeta' },
-      { id:'m2', name:'createdBy', type:'string',    req:true,  ex:'"uid_alice"',    desc:'UID of room creator (caller)', _imp:'roomMeta' },
-      { id:'m3', name:'audioOnly', type:'boolean',   req:false, ex:'false',          desc:'Room-level audio flag', _imp:'roomMeta' },
-    ]
-  }
-};
-
 function getEffectiveModel() {
-  const nodes = model.map(n => ({ ...n, fields: n.fields.map(f => ({...f})) }));
-
-  // "Final model" applies all improvements at once + renames
-  if (st.imps.final) {
-    const invite = nodes.find(n => n.id === 'invite');
-    const resp   = nodes.find(n => n.id === 'response');
-
-    // TTL on both
-    invite.fields.push({ id:'f_ttl_i', name:'expiresAt', type:'timestamp', req:false, ex:'1715500060000', desc:'Invite auto-expires at this Unix ms', _imp:'final' });
-    resp.fields.push(  { id:'f_ttl_r', name:'expiresAt', type:'timestamp', req:false, ex:'1715500070000', desc:'Response auto-expires at this Unix ms', _imp:'final' });
-
-    // calleeId on invite
-    if (!invite.fields.find(f => f.name === 'calleeId')) {
-      invite.fields.splice(2, 0, { id:'f_callee', name:'calleeId', type:'string', req:true, ex:'"uid_bob"', desc:'Explicit callee UID — tightens security rules', _imp:'final' });
-    }
-
-    // Response moves to callee's own node; rename 'by' → 'calleeId'
-    resp.path = 'users/{calleeId}/calls/response';
-    resp.desc = "Callee's own response mailbox. Callee writes to their own node; caller reads from callee's path.";
-    resp.lifecycle = 'Written by: callee (own node)  ·  Cleared by: caller after reading';
-    resp._respImpActive = true;
-    const byField = resp.fields.find(f => f.name === 'by');
-    if (byField) { byField.name = 'calleeId'; byField.desc = 'UID of the callee (responder)'; }
-
-    // Room metadata node
-    nodes.push({ ...IMP_NEW_NODES.roomMeta, fields: IMP_NEW_NODES.roomMeta.fields.map(f => ({...f})) });
-
-    return nodes;
-  }
-
-  // Individual improvements
-  for (const [key, nodeMap] of Object.entries(IMP_FIELDS)) {
-    if (!st.imps[key]) continue;
-    for (const [nodeId, extraFields] of Object.entries(nodeMap)) {
-      const node = nodes.find(n => n.id === nodeId);
-      if (node) node.fields = [...node.fields, ...extraFields];
-    }
-  }
-
-  if (st.imps.roomMeta) nodes.push({ ...IMP_NEW_NODES.roomMeta, fields: [...IMP_NEW_NODES.roomMeta.fields] });
-
-  if (st.imps.respOwnership) {
-    const resp = nodes.find(n => n.id === 'response');
-    if (resp) {
-      resp.path = 'users/{calleeId}/calls/response';
-      resp.desc = "Callee's own response mailbox (improved). Caller watches callee's response path instead of their own.";
-      resp._respImpActive = true;
-    }
-  }
-
-  return nodes;
+  return model.map(n => ({ ...n, fields: n.fields.map(f => ({...f})) }));
 }
 
 // ── TYPE STYLING ───────────────────────────────────────────────────────────
@@ -699,9 +644,8 @@ function renderPath(path) {
 // ── RENDER TREE ────────────────────────────────────────────────────────────
 function renderTree() {
   const nodes = getEffectiveModel();
-  // Update HangVidU zone header subtitle dynamically
   const hvSubtitle = document.querySelector('#tree-view .zone:first-child .zone-subtitle');
-  if (hvSubtitle) hvSubtitle.textContent = 'users/{calleeId}/calls/…';
+  if (hvSubtitle) hvSubtitle.textContent = 'users/{userId}/calls/…';
   document.getElementById('zone-hv').innerHTML  = nodes.filter(n => n.zone === 'hv').map(renderCard).join('');
   document.getElementById('zone-p2p').innerHTML = nodes.filter(n => n.zone === 'p2p').map(renderCard).join('');
 }
@@ -713,14 +657,9 @@ function renderCard(node) {
 
   let inner = '';
   if (!collapsed) {
-    let noteBar = '';
-    if (node._respImpActive) {
-      noteBar = `<div class="imp-note-bar">⚡ Improvement: callee now writes to their own user node. Caller watches <span style="font-family:var(--mono);margin:0 3px">users/{calleeId}/calls/response</span> instead of their own.</div>`;
-    }
     const fieldsHtml = node.fields.map(f => renderFieldRow(node.id, f)).join('');
     inner = `
       <div class="fields-wrap">
-        ${noteBar}
         <div class="fields-cols"><span>Field</span><span>Type</span><span>Req</span><span>Example / Values</span><span></span></div>
         <div id="fields-${node.id}">${fieldsHtml}</div>
         <div class="add-field-row"><button class="btn-add" onclick="addField('${node.id}')">+ add field</button></div>
@@ -799,24 +738,26 @@ function renderFieldRow(nodeId, field) {
 
 // ── RENDER FLOW ────────────────────────────────────────────────────────────
 function renderFlow() {
-  const respImp = st.imps.respOwnership || st.imps.final;
-  const respPath = respImp ? 'users/{calleeId}/calls/response' : 'users/{callerId}/calls/response';
-  const respNote = respImp ? '' : '⚠️ callee writes to caller\'s node';
+  const invPath = 'users/{calleeId}/calls/incoming';
+  const respPath = 'users/{calleeId}/calls/response';
 
   const steps = [
     { phase: 'Phase 1 — Call Signaling  (HangVidU)' },
+    { from:'Caller', to:'RTDB',   dir:'→', action:'createRoomAccess(roomId, participants)',         path:'rooms/{roomId}/meta + participants', owner:'hv' },
     { from:'Caller', to:'RTDB',   dir:'→', action:'sendInvite(calleeId, invite)',                   path: invPath,  owner:'hv' },
     { from:'RTDB',   to:'Callee', dir:'→', action:'onInviteReceived() fires',                        path:'(onValue listener)',              owner:'hv' },
-    { from:'Callee', to:'RTDB',   dir:'→', action:'sendResponse(…, { accepted })',                   path: respPath, note: respNote,         owner:'hv' },
-    { from:'RTDB',   to:'Caller', dir:'→', action:'onResponseReceived() fires',                      path:'(onValue listener)',              owner:'hv' },
+    { from:'Callee', to:'RTDB',   dir:'→', action:'sendResponse({ accepted | rejected })',           path: respPath,                         owner:'hv' },
+    { from:'RTDB',   to:'Caller', dir:'→', action:'onResponseReceived() fires',                      path:'dynamic subscription: users/{calleeId}/calls/response', owner:'hv' },
+    { from:'Caller', to:'RTDB',   dir:'→', action:'Cancel: remove incoming invite',                  path: invPath, note:'no response written', owner:'hv' },
+    { from:'Caller', to:'RTDB',   dir:'→', action:'Timeout: remove incoming invite',                 path: invPath, note:'no response written', owner:'hv' },
     { phase: 'Phase 2 — Room Join  (HangVidU → @kidlib/p2p handoff)' },
-    { from:'Caller', to:'RTDB',   dir:'→', action:'presence.join(callerId)',                         path:'rooms/{roomId}/presence/{callerId}',  owner:'p2p' },
-    { from:'Callee', to:'RTDB',   dir:'→', action:'presence.join(calleeId)',                         path:'rooms/{roomId}/presence/{calleeId}',  owner:'p2p' },
+    { from:'Caller', to:'RTDB',   dir:'→', action:'presence.join(callerId)',                         path:'rooms/{roomId}/p2pSignaling/presence/{callerId}',  owner:'p2p' },
+    { from:'Callee', to:'RTDB',   dir:'→', action:'presence.join(calleeId)',                         path:'rooms/{roomId}/p2pSignaling/presence/{calleeId}',  owner:'p2p' },
     { from:'RTDB',   to:'',       dir:'',  action:'onDisconnect() registered → auto-removes presence on drop', path:'', owner:'p2p' },
     { phase: 'Phase 3 — WebRTC Handshake  (@kidlib/p2p)' },
-    { from:'Caller', to:'RTDB',   dir:'→', action:'sendOffer(offer)',                                path:'rooms/{roomId}/pairs/{pairId}/sdp/offer',   owner:'p2p' },
-    { from:'Callee', to:'RTDB',   dir:'→', action:'sendAnswer(answer)',                              path:'rooms/{roomId}/pairs/{pairId}/sdp/answer',  owner:'p2p' },
-    { from:'Both',   to:'RTDB',   dir:'↔', action:'sendCandidate() / onRemoteCandidate()',           path:'rooms/{roomId}/pairs/{pairId}/ice/{peerId}/', owner:'p2p' },
+    { from:'Caller', to:'RTDB',   dir:'→', action:'sendOffer(offer)',                                path:'rooms/{roomId}/p2pSignaling/pairs/{pairId}/sdp/offer',   owner:'p2p' },
+    { from:'Callee', to:'RTDB',   dir:'→', action:'sendAnswer(answer)',                              path:'rooms/{roomId}/p2pSignaling/pairs/{pairId}/sdp/answer',  owner:'p2p' },
+    { from:'Both',   to:'RTDB',   dir:'↔', action:'sendCandidate() / onRemoteCandidate()',           path:'rooms/{roomId}/p2pSignaling/pairs/{pairId}/ice/{peerId}/', owner:'p2p' },
     { from:'',       to:'',       dir:'',  action:'WebRTC peer connection established — RTDB no longer needed', path:'', owner:'p2p' },
   ];
 
@@ -966,13 +907,6 @@ function toJSON() {
 function toPrompt() {
   const nodes = getEffectiveModel();
   const activeImps = Object.entries(st.imps).filter(([,v]) => v).map(([k]) => k);
-  const impLabels = {
-    ttl: 'TTL / expiresAt fields on invite and response',
-    calleeId: 'explicit calleeId field on CallInvite',
-    respOwnership: 'CallResponse written to callee\'s own user node (users/{calleeId}/calls/response)',
-    roomMeta: 'app-owned room metadata at rooms/{roomId}/meta',
-    final: 'apply all improvements: TTL fields, calleeId on invite, response moved to callee\'s own node, room metadata, and rename response.by → calleeId for consistent naming',
-  };
 
   let out = `Update or document the HangVidU P2P data model.\n\n`;
   out += `OWNERSHIP BOUNDARY\n`;
@@ -1006,7 +940,7 @@ function toPrompt() {
 
   if (activeImps.length > 0) {
     out += `ACTIVE IMPROVEMENTS TO APPLY\n`;
-    activeImps.forEach(k => { out += `  • ${impLabels[k]}\n`; });
+    activeImps.forEach(k => { out += `  • ${k}\n`; });
     out += '\n';
   }
 
