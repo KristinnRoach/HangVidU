@@ -15,7 +15,7 @@ export function useCallFlow({ p2p, createSignaling }: CallFlowOptions) {
   const [callingState, setCallingState] = createSignal<CallingState>(false);
   const [outgoingCallResult, setOutgoingCallResult] = createSignal<OutgoingCallResult>(null);
 
-  const ctrl = new CallFlowController({
+  const controller = new CallFlowController({
     p2p,
     createSignaling,
     onStateChange: setCallingState,
@@ -32,17 +32,17 @@ export function useCallFlow({ p2p, createSignaling }: CallFlowOptions) {
     return state && state.direction === 'outgoing' ? state.call : null;
   };
 
-  onMount(() => ctrl.init());
+  onMount(() => controller.init());
 
   if (typeof window !== 'undefined') {
-    const handleBeforeUnload = () => ctrl.cleanup();
+    const handleBeforeUnload = () => controller.cleanup();
     window.addEventListener('beforeunload', handleBeforeUnload);
     onCleanup(() => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      ctrl.cleanup();
+      controller.cleanup();
     });
   } else {
-    onCleanup(() => ctrl.cleanup());
+    onCleanup(() => controller.cleanup());
   }
 
   return {
@@ -51,9 +51,9 @@ export function useCallFlow({ p2p, createSignaling }: CallFlowOptions) {
     clearOutgoingCallResult: () => setOutgoingCallResult(null),
     incomingCall,
     outgoingCall,
-    exitActiveRoom: () => ctrl.exitActiveRoom(),
-    cancelOutgoing: () => ctrl.cancelOutgoing(),
-    acceptIncoming: () => ctrl.acceptIncoming(),
-    declineIncoming: () => ctrl.declineIncoming(),
+    exitActiveRoom: controller.exitActiveRoom,
+    cancelOutgoing: controller.cancelOutgoing,
+    acceptIncoming: controller.acceptIncoming,
+    declineIncoming: controller.declineIncoming,
   };
 }

@@ -177,7 +177,7 @@ export class CallFlowController {
     }, OUTGOING_CALL_TIMEOUT_MS);
   }
 
-  cancelOutgoing(): void {
+  cancelOutgoing = (): void => {
     const state = this._callingState;
     const svc = getCallService();
     if (!state || state.direction !== 'outgoing' || !svc) return;
@@ -187,9 +187,9 @@ export class CallFlowController {
     svc
       .cancelOutgoingCall({ recipientUID: state.call.calleeId })
       .catch((err) => console.error('Error cancelling outgoing call:', err));
-  }
+  };
 
-  acceptIncoming(): void {
+  acceptIncoming = (): void => {
     const state = this._callingState;
     if (!state || state.direction !== 'incoming') return;
     const svc = getCallService();
@@ -202,9 +202,9 @@ export class CallFlowController {
         console.error('Error accepting incoming call:', err);
         this.exitActiveRoom();
       });
-  }
+  };
 
-  declineIncoming(): void {
+  declineIncoming = (): void => {
     const state = this._callingState;
     const svc = getCallService();
     if (!state || state.direction !== 'incoming' || !svc) return;
@@ -213,11 +213,11 @@ export class CallFlowController {
     svc
       .respondToIncomingCallInvite({ roomId: state.call.roomId, responseType: CallResponseType.REJECTED })
       .catch((err) => console.error('Error declining incoming call:', err));
-  }
+  };
 
-  exitActiveRoom(): void {
+  exitActiveRoom = (): void => {
     this.p2p.close();
-  }
+  };
 
   private clearOutgoingCallTimeout(): void {
     if (!this.outgoingCallTimeoutId) return;
