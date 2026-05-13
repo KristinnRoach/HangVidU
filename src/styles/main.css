@@ -31,10 +31,11 @@
 @import './components/dialog/confirm-dialog.css';
 @import './components/dialog/edit-contact-dialog.css';
 @import './components/legal-footer.css';
+@import './components/ActiveCallRoom.css';
 
-@import './view-state.css'; /* Declarative view-based visibility */
+/* @import './view-state.css'; Declarative view-based visibility */
 
-/* Default visible state for elements that toggle visibility */
+/* LEGACY - Default visible state for elements that toggle visibility */
 .video-box,
 #yt-video-box,
 #shared-video-box,

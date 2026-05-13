@@ -1,0 +1,122 @@
+.room {
+  --color-bg: #080808;
+  --color-border: #d7deea;
+  --color-brand: #2f6fed;
+  --color-text: #dde1e9;
+  --color-muted: #4a5568;
+
+  --gap: 12px;
+  --pad: 28px;
+  --radius: 8px;
+  --remote-stream-container-min-width: 30rem;
+
+  color: var(--color-text);
+  background: var(--color-bg);
+
+  position: relative;
+  height: 100%;
+
+  .chat-controls {
+    position: absolute;
+    bottom: var(--gap);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1;
+  }
+}
+
+.remote-stream-container,
+.local-stream-container,
+button {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* 1:1 CALL LAYOUT - (DRAFT) */
+
+.room-members.direct {
+  position: relative;
+  height: 600px; /* TODO: update dimensions when parent is configured */
+  width: auto;
+
+  .remote-stream-container {
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
+    object-position: center center;
+
+    .remote-stream {
+      width: 100%;
+      height: 100%;
+      border-radius: calc(var(--radius) - 2px);
+      object-fit: cover;
+      object-position: center center;
+      overflow: hidden;
+    }
+  }
+
+  .local-stream-container {
+    position: absolute;
+    top: var(--gap);
+    left: var(--gap);
+    width: 150px;
+    height: 100px;
+
+    .local-stream {
+      width: 100%;
+      height: 100%;
+      border-radius: calc(var(--radius) - 2px);
+      object-fit: cover;
+      object-position: center center;
+      overflow: hidden;
+    }
+  }
+}
+
+/* GROUP CALL LAYOUT - (DRAFT) */
+
+.room-members.group {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(var(--remote-stream-container-min-width, 100%)), 1fr)
+  );
+  gap: var(--gap);
+
+  .remote-stream-container {
+    display: grid;
+    gap: var(--gap);
+    min-width: 0;
+    width: 100%;
+  }
+
+  .remote-stream {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: calc(var(--radius) - 2px);
+    object-fit: cover;
+  }
+
+  .local-stream-container {
+    min-width: 0;
+    width: 200px;
+  }
+
+  .local-stream {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: calc(var(--radius) - 2px);
+    background: #111827;
+    object-fit: cover;
+  }
+
+  @media (max-width: 560px) {
+    .room-members.group {
+      grid-template-columns: 1fr;
+    }
+  }
+}

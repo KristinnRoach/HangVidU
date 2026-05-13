@@ -7,9 +7,7 @@ const hangUpCommand = () => {
 export default function ActiveCallControls() {
   return (
     <div class='chat-controls'>
-      <button style={'color: black'} onClick={hangUpCommand}>
-        End Call
-      </button>
+      <button onClick={hangUpCommand}>End Call</button>
     </div>
   );
 }

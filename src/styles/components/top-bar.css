@@ -19,7 +19,7 @@
   /* border: green solid 3px; */
 
   max-width: calc(100% - 1rem);
-  height: auto;
+  height: 40px;
 
   transition:
     background-color var(--duration-default, 200ms) var(--easing-default, ease),

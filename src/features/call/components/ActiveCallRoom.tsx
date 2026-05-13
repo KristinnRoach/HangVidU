@@ -4,8 +4,6 @@ import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import RoomMembers from '../../../components/room/RoomMembers';
 import ActiveCallControls from './ActiveCallControls';
 
-import './ActiveCallRoom.css';
-
 type Props = {
   p2p: SolidP2PRoom;
 };

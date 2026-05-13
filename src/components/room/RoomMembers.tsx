@@ -8,7 +8,9 @@ type Props = {
 
 export default function RoomMembers(props: Props) {
   return (
-    <div class='video-grid'>
+    <div
+      class={`room-members ${props.p2p.memberCount() > 2 ? 'group' : 'direct'}`}
+    >
       <Show when={props.p2p.localStream()}>
         {(stream) => (
           <section class='local-stream-container'>
