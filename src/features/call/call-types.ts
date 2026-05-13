@@ -20,4 +20,4 @@ export type CallingState =
       call: OutgoingCall;
     };
 
-export type OutgoingCallResult = 'busy' | 'rejected' | 'timeout' | null;
+export type CallResponseType = 'busy' | 'rejected' | 'timeout' | null;

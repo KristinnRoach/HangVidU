@@ -17,11 +17,8 @@ interface CallFlowOptions {
 
 // WIP: This hook is a Solid adapter for CallFlowController. Its only job is to
 // own the reactive signals and tie the controller's init/cleanup to the Solid
-// component lifecycle via onMount/onCleanup. The call logic itself lives in
-// CallFlowController. If the split feels like unnecessary indirection (and
-// there are no isolated unit tests for the controller), consider collapsing
-// both into a single file — or promoting this to a context so consumers don't
-// need the return value passed as a prop.
+// component lifecycle via onMount/onCleanup. This could technically be done in
+// the CallFlowController or component that uses it, but architecture is undecided.
 export function useCallFlow({ p2p, createSignaling }: CallFlowOptions) {
   const [callingState, setCallingState] = createSignal<CallingState>(false);
   const [outgoingCallResponse, setOutgoingCallResponse] =
