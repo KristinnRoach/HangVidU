@@ -1,5 +1,5 @@
 import { createEffect, onCleanup, Show } from 'solid-js';
-import './VideoStream.module.css';
+import styles from './VideoStream.module.css';
 
 type Props = {
   stream?: MediaStream;
@@ -29,9 +29,9 @@ export default function VideoStream(props: Props) {
   });
 
   return (
-    <Show when={props.stream.getVideoTracks().length > 0}>
+    <Show when={props.stream && props.stream.getVideoTracks().length > 0}>
       <video
-        class={props.class || 'video-stream'}
+        class={props.class || styles.videoStream}
         ref={video}
         autoplay
         muted={props.muted}

@@ -2,12 +2,22 @@ import { Show } from 'solid-js';
 
 import PublicHomepage from './app/PublicHomepage.jsx';
 import ContactsList from './contacts/ContactsList.jsx';
-// import LobbyForm from './app/LobbyForm.jsx';
 import ActiveCallRoom from '../features/call/components/ActiveCallRoom.jsx';
-import { useP2P } from '../shared/p2p-context.js';
+import { useP2PContext } from '../shared/p2p-context.js';
+
+// legacy imports:
+import { useP2PFileTransferBridge } from '../features/file-transfer/useP2PFileTransferBridge.js';
+import { useAppMountEffects } from '../app/useAppMountEffects.js';
 
 export default function MainContent() {
-  const p2p = useP2P();
+  const p2p = useP2PContext();
+
+  // START - legacy setup, will be refactored:
+  const { messagesUIReady } = useAppMountEffects();
+  useP2PFileTransferBridge({
+    messagesUIReady,
+  });
+  // END - legacy setup, will be refactored:
 
   return (
     <main id='main-content'>

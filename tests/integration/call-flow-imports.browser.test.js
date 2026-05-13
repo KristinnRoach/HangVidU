@@ -20,7 +20,7 @@ describe('Call-Flow Import Integration', () => {
 
     try {
       await Promise.all([
-        import('../../src/features/call/useCallFlow.js'),
+        import('../../src/features/call/call-flow-context.js'),
         import('../../src/features/call/call-room.js'),
         import('../../src/features/call/call-notifications.js'),
         import('../../src/features/call/call-command-handlers.js'),
@@ -37,24 +37,26 @@ describe('Call-Flow Import Integration', () => {
     }
   });
 
-  it('useCallFlow function exists', async () => {
-    const { useCallFlow } = await import('../../src/features/call/useCallFlow.js');
+  it('call-flow context exports exist', async () => {
+    const { CallFlowProvider, useCallFlowContext } = await import(
+      '../../src/features/call/call-flow-context.js'
+    );
 
-    expect(useCallFlow).toBeDefined();
-    expect(typeof useCallFlow).toBe('function');
+    expect(typeof CallFlowProvider).toBe('function');
+    expect(typeof useCallFlowContext).toBe('function');
   });
 
   it('extracted call helpers exist', async () => {
     const { joinCallRoom } = await import('../../src/features/call/call-room.js');
-    const { sendIncomingCallNotification, sendMissedCallNotification } =
+    const { sendIncomingCallPushNotification, sendMissedCallPushNotification } =
       await import('../../src/features/call/call-notifications.js');
     const { registerCallCommandHandlers } = await import(
       '../../src/features/call/call-command-handlers.js'
     );
 
     expect(typeof joinCallRoom).toBe('function');
-    expect(typeof sendIncomingCallNotification).toBe('function');
-    expect(typeof sendMissedCallNotification).toBe('function');
+    expect(typeof sendIncomingCallPushNotification).toBe('function');
+    expect(typeof sendMissedCallPushNotification).toBe('function');
     expect(typeof registerCallCommandHandlers).toBe('function');
   });
 });

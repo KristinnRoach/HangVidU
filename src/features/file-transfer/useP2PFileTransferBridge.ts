@@ -1,5 +1,4 @@
 import { createEffect, createSignal, onCleanup, type Accessor } from 'solid-js';
-import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 
 import { getMessagesUI } from '../messaging/components/messages-ui.js';
 import {
@@ -9,15 +8,16 @@ import {
   createDefaultReceiveStore,
 } from './index.js';
 
+import { useP2PContext } from '../../shared/p2p-context.js';
+
 type Options = {
-  p2p: SolidP2PRoom;
   messagesUIReady: Accessor<boolean>;
 };
 
 export function useP2PFileTransferBridge({
-  p2p,
   messagesUIReady,
 }: Options) {
+  const p2p = useP2PContext();
   const [dataChannelRevision, setDataChannelRevision] = createSignal(0);
   let cleanupFileTransfer: (() => void) | undefined;
   let activeFileTransferKey = '';
