@@ -5,18 +5,17 @@ import NotificationsToggle from './app/NotificationsToggle.jsx';
 import LegalFooter from './app/LegalFooter.jsx';
 import LocaleToggle from './app/LocaleToggle.jsx';
 import MainContent from './MainContent.jsx';
-import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 
 /**
  * MainLayout - Common SolidJS layout
  */
-export default function MainLayout(props: { p2p: SolidP2PRoom }) {
+export default function MainLayout() {
   return (
     <div id='app' class='main-wrapper'>
       <TopBar />
       <div id='onetap-container' />
 
-      <MainContent p2p={props.p2p} />
+      <MainContent />
 
       <LegalFooter />
       <LocaleToggle />
