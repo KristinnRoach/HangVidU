@@ -116,6 +116,25 @@ describe('CallRTDBAdapter', () => {
     );
   });
 
+  it('parses busy call responses', () => {
+    const callback = vi.fn();
+    const response = {
+      roomId: 'room-1',
+      responseType: 'busy',
+      by: 'callee-1',
+      respondedAt: 123,
+      expiresAt: 456,
+    };
+    mocks.onValue.mockImplementation((_refArg, handler) => {
+      handler(createSnapshot(response));
+      return vi.fn();
+    });
+
+    adapter.onResponseReceived('callee-1', callback);
+
+    expect(callback).toHaveBeenCalledWith(response);
+  });
+
   it('removes expired incoming call data instead of showing a stale call', () => {
     const callback = vi.fn();
     const call = {

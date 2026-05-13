@@ -17,10 +17,12 @@
   "shared.dismiss": "Hunsa",
   "shared.enable": "Virkja",
   "shared.me": "Ég",
+  "shared.ok": "OK",
 
   "call.incoming": "{name} hringir...",
   "call.accept": "Svara",
   "call.decline": "Hafna",
+  "call.busy": "Notandi er á tali",
   "call.calling": "Hringi í {name}...",
   "call.waiting": "Bíður svars...",
   "call.start": "Byrja símtal",

@@ -65,7 +65,7 @@
           },
           "response": {
             ".read": "auth != null",
-            ".write": "$userId === auth.uid && (!newData.exists() || (newData.hasChildren(['roomId', 'responseType', 'by', 'respondedAt']) && newData.child('roomId').isString() && newData.child('by').val() === auth.uid && newData.child('respondedAt').isNumber() && (!newData.child('expiresAt').exists() || newData.child('expiresAt').isNumber()) && (newData.child('responseType').val() === 'accepted' || newData.child('responseType').val() === 'rejected')))"
+            ".write": "$userId === auth.uid && (!newData.exists() || (newData.hasChildren(['roomId', 'responseType', 'by', 'respondedAt']) && newData.child('roomId').isString() && newData.child('by').val() === auth.uid && newData.child('respondedAt').isNumber() && (!newData.child('expiresAt').exists() || newData.child('expiresAt').isNumber()) && (newData.child('responseType').val() === 'accepted' || newData.child('responseType').val() === 'rejected' || newData.child('responseType').val() === 'busy')))"
           }
         },
         "outgoingCall": {

@@ -14,8 +14,9 @@ export interface CallDialogProps {
   titleKey?: string;
   subtitle?: any;
   tone?: string;
-  ringtone?: 'incoming' | 'outgoing' | false;
+  ringtone?: 'incoming' | 'outgoing' | 'busy' | false;
   cardClass?: string;
+  showPersona?: boolean;
   details?: any;
   actions?: any;
 }
@@ -37,6 +38,8 @@ export default function CallDialog(props: ParentProps<CallDialogProps>) {
       callIndicators.startCallIndicators(name());
     } else if (ringtone() === 'outgoing') {
       ringtoneManager.playOutgoing({ audioOnly: props.audioOnly });
+    } else if (ringtone() === 'busy') {
+      ringtoneManager.playBusy();
     }
   });
 
@@ -56,17 +59,19 @@ export default function CallDialog(props: ParentProps<CallDialogProps>) {
       subtitle={props.subtitle}
       actions={props.actions}
     >
-      <div class='dialog-persona'>
-        <div class='dialog-avatar' aria-hidden='true'>
-          {name().slice(0, 1).toUpperCase()}
+      {props.showPersona ?? true ? (
+        <div class='dialog-persona'>
+          <div class='dialog-avatar' aria-hidden='true'>
+            {name().slice(0, 1).toUpperCase()}
+          </div>
+          <div class='dialog-persona-text'>
+            <strong>{name()}</strong>
+            {props.details ? (
+              <span class='dialog-meta'>{props.details}</span>
+            ) : null}
+          </div>
         </div>
-        <div class='dialog-persona-text'>
-          <strong>{name()}</strong>
-          {props.details ? (
-            <span class='dialog-meta'>{props.details}</span>
-          ) : null}
-        </div>
-      </div>
+      ) : null}
     </DialogFrame>
   );
 }

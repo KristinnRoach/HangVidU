@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const CallResponseType = {
   ACCEPTED: 'accepted',
   REJECTED: 'rejected',
+  BUSY: 'busy',
 } as const;
 
 export const CallInviteSchema = z.object({
@@ -17,7 +18,7 @@ export const CallInviteSchema = z.object({
 
 export const CallResponseSchema = z.object({
   roomId: z.string().min(1),
-  responseType: z.enum(['accepted', 'rejected']),
+  responseType: z.enum(['accepted', 'rejected', 'busy']),
   by: z.string().min(1),
   respondedAt: z.number(),
   expiresAt: z.number().optional(),

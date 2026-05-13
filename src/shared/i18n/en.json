@@ -17,10 +17,12 @@
   "shared.dismiss": "Dismiss",
   "shared.enable": "Enable",
   "shared.me": "Me",
+  "shared.ok": "OK",
 
   "call.incoming": "{name} is calling...",
   "call.accept": "Accept",
   "call.decline": "Decline",
+  "call.busy": "Contact is busy",
   "call.calling": "Calling {name}...",
   "call.waiting": "Waiting for answer...",
   "call.start": "Start Call",

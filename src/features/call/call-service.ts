@@ -86,17 +86,20 @@ export class CallService {
     });
   }
 
-  acceptIncomingCall({ roomId }: { roomId: string }): Promise<unknown[]> {
+  respondToIncomingCallInvite({
+    roomId,
+    responseType,
+  }: {
+    roomId: string;
+    responseType: CallResponse['responseType'];
+  }): Promise<unknown[]> {
     return Promise.all([
       this.callRepo.clearInvite(this.localUID),
-      this.callRepo.acceptInvite({ roomId, by: this.localUID }),
-    ]);
-  }
-
-  rejectIncomingCall({ roomId }: { roomId: string }): Promise<unknown[]> {
-    return Promise.all([
-      this.callRepo.clearInvite(this.localUID),
-      this.callRepo.rejectInvite({ roomId, by: this.localUID }),
+      this.callRepo.respondToInvite({
+        roomId,
+        by: this.localUID,
+        responseType,
+      }),
     ]);
   }
 

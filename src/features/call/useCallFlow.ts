@@ -6,7 +6,7 @@ import { getUser, getUserId } from '../../auth/auth-state.js';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import type { P2PRoomStateChangeDetail } from '@kidlib/p2p';
 import { getPushNotifications } from '../push-notifications/index.js';
-import type { CallInvite } from './model/call-schema.js';
+import { CallResponseType, type CallInvite } from './model/call-schema.js';
 import {
   getVideoConstraints,
   getAudioConstraints,
@@ -39,8 +39,12 @@ export type CallingState =
       call: OutgoingCall;
     };
 
+export type OutgoingCallResult = 'busy' | 'rejected' | 'timeout' | null;
+
 export function useCallFlow({ p2p, createSignaling }: CallFlowOptions) {
   const [callingState, setCallingState] = createSignal<CallingState>(false);
+  const [outgoingCallResult, setOutgoingCallResult] =
+    createSignal<OutgoingCallResult>(null);
   let outgoingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
   let unsubCalleeResponse: (() => void) | undefined;
 
@@ -52,6 +56,18 @@ export function useCallFlow({ p2p, createSignaling }: CallFlowOptions) {
   function incomingCall(): CallInvite | null {
     const state = callingState();
     return state && state.direction === 'incoming' ? state.call : null;
+  }
+
+  function clearOutgoingCallResult() {
+    setOutgoingCallResult(null);
+  }
+
+  function isBusyForIncomingCall(call: CallInvite): boolean {
+    const state = callingState();
+    if (state && state.direction === 'incoming') {
+      return state.call.roomId !== call.roomId;
+    }
+    return state !== false || p2p.state() !== 'idle';
   }
 
   async function enterRoom(
@@ -146,6 +162,7 @@ export function useCallFlow({ p2p, createSignaling }: CallFlowOptions) {
       }
 
       setCallingState(false);
+      setOutgoingCallResult('timeout');
       unsubCalleeResponse?.();
       unsubCalleeResponse = undefined;
       callService
@@ -167,6 +184,7 @@ export function useCallFlow({ p2p, createSignaling }: CallFlowOptions) {
     unsubCalleeResponse?.();
     unsubCalleeResponse = undefined;
     setCallingState(false);
+    setOutgoingCallResult(null);
     svc
       .cancelOutgoingCall({
         recipientUID: activeCall.call.calleeId,
@@ -185,8 +203,9 @@ export function useCallFlow({ p2p, createSignaling }: CallFlowOptions) {
     setCallingState(false);
 
     svc
-      .acceptIncomingCall({
+      .respondToIncomingCallInvite({
         roomId: currentState.call.roomId,
+        responseType: CallResponseType.ACCEPTED,
       })
       .then(() =>
         enterRoom(
@@ -208,8 +227,9 @@ export function useCallFlow({ p2p, createSignaling }: CallFlowOptions) {
     clearOutgoingCallTimeout();
     setCallingState(false);
     svc
-      .rejectIncomingCall({
+      .respondToIncomingCallInvite({
         roomId: activeCall.call.roomId,
+        responseType: CallResponseType.REJECTED,
       })
       .catch((err) => {
         console.error('Error declining incoming call:', err);
@@ -260,6 +280,8 @@ export function useCallFlow({ p2p, createSignaling }: CallFlowOptions) {
           direction: 'outgoing',
           call: outgoingCall,
         });
+
+        setOutgoingCallResult(null);
         scheduleOutgoingCallTimeout(callService, outgoingCall);
         sendIncomingCallNotification(outgoingCall);
         unsubCalleeResponse?.();
@@ -271,8 +293,15 @@ export function useCallFlow({ p2p, createSignaling }: CallFlowOptions) {
             unsubCalleeResponse = undefined;
             clearOutgoingCallTimeout();
             if (response.responseType === 'accepted') {
-              await enterRoom(response.roomId, localUID, outgoingCall.audioOnly);
+              await enterRoom(
+                response.roomId,
+                localUID,
+                outgoingCall.audioOnly,
+              );
+            } else if (response.responseType === 'busy') {
+              setOutgoingCallResult('busy');
             } else if (response.responseType === 'rejected') {
+              setOutgoingCallResult('rejected');
               console.debug('Outgoing call was rejected');
             }
             setCallingState(false);
@@ -298,6 +327,17 @@ export function useCallFlow({ p2p, createSignaling }: CallFlowOptions) {
         if (incomingCall()) setCallingState(false);
         return;
       }
+      if (isBusyForIncomingCall(call)) {
+        callService
+          .respondToIncomingCallInvite({
+            roomId: call.roomId,
+            responseType: CallResponseType.BUSY,
+          })
+          .catch((err) => {
+            console.error('Error responding busy to incoming call:', err);
+          });
+        return;
+      }
       setCallingState({ direction: 'incoming', call });
       console.debug('Received incoming call invite:', { call });
     });
@@ -313,6 +353,8 @@ export function useCallFlow({ p2p, createSignaling }: CallFlowOptions) {
 
   return {
     calling: callingState,
+    outgoingCallResult,
+    clearOutgoingCallResult,
     incomingCall,
     outgoingCall,
     enterRoom,

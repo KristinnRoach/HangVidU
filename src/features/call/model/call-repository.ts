@@ -1,8 +1,4 @@
-import {
-  CallResponseType,
-  type CallInvite,
-  type CallResponse,
-} from './call-schema';
+import { type CallInvite, type CallResponse } from './call-schema';
 
 const CALL_RESPONSE_TTL_MS = 60_000;
 
@@ -82,48 +78,27 @@ export class CallRepository {
     return this.adapter.onInviteReceived(userId, callback);
   }
 
-  async acceptInvite({
+  async respondToInvite({
     roomId,
     by,
+    responseType,
   }: {
     roomId: string;
     by: string;
+    responseType: CallResponse['responseType'];
   }): Promise<void> {
     if (!roomId || !by) return;
     const respondedAt = Date.now();
     try {
       await this.adapter.sendResponse(by, {
         roomId,
-        responseType: CallResponseType.ACCEPTED,
+        responseType,
         by,
         respondedAt,
         expiresAt: respondedAt + CALL_RESPONSE_TTL_MS,
       });
     } catch (error) {
-      console.error('Failed to send accept response:', error);
-      throw error;
-    }
-  }
-
-  async rejectInvite({
-    roomId,
-    by,
-  }: {
-    roomId: string;
-    by: string;
-  }): Promise<void> {
-    if (!roomId || !by) return;
-    const respondedAt = Date.now();
-    try {
-      await this.adapter.sendResponse(by, {
-        roomId,
-        responseType: CallResponseType.REJECTED,
-        by,
-        respondedAt,
-        expiresAt: respondedAt + CALL_RESPONSE_TTL_MS,
-      });
-    } catch (error) {
-      console.error('Failed to send reject response:', error);
+      console.error('Failed to send call response:', error);
       throw error;
     }
   }
