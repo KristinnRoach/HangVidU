@@ -22,7 +22,7 @@ export default function App() {
     p2p,
     createSignaling: createFirebaseRoomSignaling,
   });
-  const { messagesUIReady } = useAppMountEffects({ callFlow });
+  const { messagesUIReady } = useAppMountEffects();
   useP2PFileTransferBridge({ p2p, messagesUIReady });
 
   return (

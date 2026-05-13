@@ -7,13 +7,8 @@ import { initializeElements, updateI18nElements } from '../elements.js';
 import { initIcons } from '../components/base-legacy/icons.js';
 import { initMessagesUI } from '../features/messaging/components/messages-ui.js';
 import { probeDefaultReceiveStore } from '../features/file-transfer/index.js';
-import type { useCallFlow } from '../features/call/useCallFlow.js';
 
-type Options = {
-  callFlow: ReturnType<typeof useCallFlow>;
-};
-
-export function useAppMountEffects({ callFlow }: Options) {
+export function useAppMountEffects() {
   const [messagesUIReady, setMessagesUIReady] = createSignal(false);
   const cleanupFns: (() => void)[] = [];
   let isDisposed = false;
@@ -32,7 +27,6 @@ export function useAppMountEffects({ callFlow }: Options) {
     initMessagesUI();
     setMessagesUIReady(true);
     initIcons();
-    callFlow.init();
     cleanupFns.push(unsubscribeLocaleChange);
 
     devDebug('[APP] End of onMount');
