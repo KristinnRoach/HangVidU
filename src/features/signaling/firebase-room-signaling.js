@@ -34,18 +34,27 @@ export function createFirebaseRoomSignaling({ roomId }) {
   if (!roomId)
     throw new Error('createFirebaseRoomSignaling: roomId is required');
   const signalingPath = `rooms/${roomId}/p2pSignaling`;
+  let joinedPeerId = null;
+  const pairPaths = new Set();
+
+  async function removePeerPresence(peerId) {
+    if (!peerId) return;
+    const presenceRef = ref(rtdb, `${signalingPath}/presence/${peerId}`);
+    await onDisconnect(presenceRef).cancel();
+    await remove(presenceRef);
+  }
 
   return {
     async join(peerId) {
+      joinedPeerId = peerId;
       const presenceRef = ref(rtdb, `${signalingPath}/presence/${peerId}`);
       await set(presenceRef, true);
       await onDisconnect(presenceRef).remove();
     },
 
     async leave(peerId) {
-      const presenceRef = ref(rtdb, `${signalingPath}/presence/${peerId}`);
-      await onDisconnect(presenceRef).cancel();
-      await remove(presenceRef);
+      await removePeerPresence(peerId);
+      if (joinedPeerId === peerId) joinedPeerId = null;
     },
 
     onPeers(callback) {
@@ -59,6 +68,7 @@ export function createFirebaseRoomSignaling({ roomId }) {
     createPeerSignaling({ localPeerId, remotePeerId }) {
       const pairId = sortedPairId(localPeerId, remotePeerId);
       const basePath = `${signalingPath}/pairs/${pairId}`;
+      pairPaths.add(basePath);
 
       const offerRef = ref(rtdb, `${basePath}/sdp/offer`);
       const answerRef = ref(rtdb, `${basePath}/sdp/answer`);
@@ -92,6 +102,22 @@ export function createFirebaseRoomSignaling({ roomId }) {
           });
         },
       };
+    },
+
+    cleanupSignaling() {
+      const cleanupPromises = [...pairPaths].map((path) =>
+        remove(ref(rtdb, path)),
+      );
+      pairPaths.clear();
+
+      if (joinedPeerId) {
+        cleanupPromises.push(removePeerPresence(joinedPeerId));
+        joinedPeerId = null;
+      }
+
+      return Promise.all(cleanupPromises).catch((err) => {
+        console.warn('Failed to clean up Firebase room signaling:', err);
+      });
     },
   };
 }

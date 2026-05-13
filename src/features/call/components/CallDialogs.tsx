@@ -1,9 +1,9 @@
 import { createEffect, Match, onCleanup, Switch } from 'solid-js';
 
 import type { useCallFlow } from '../useCallFlow';
-import BusyCallDialog from './BusyCallDialog.jsx';
-import IncomingCallDialog from './IncomingCallDialog.jsx';
-import OutgoingCallDialog from './OutgoingCallDialog.jsx';
+import BusyCallDialog from './dialogs/BusyCallDialog.jsx';
+import IncomingCallDialog from './dialogs/IncomingCallDialog.jsx';
+import OutgoingCallDialog from './dialogs/OutgoingCallDialog.jsx';
 
 type Props = {
   callFlow: ReturnType<typeof useCallFlow>;

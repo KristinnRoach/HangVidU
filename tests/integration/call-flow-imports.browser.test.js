@@ -1,7 +1,7 @@
 /**
  * Call-Flow Import Integration Test
  *
- * Purpose: Verify that call-flow.js has all required imports and can be loaded.
+ * Purpose: Verify that current call-flow modules have all required imports and can be loaded.
  * This catches issues like missing 'ref' or 'onDataChange' imports that mocked
  * tests won't catch.
  *
@@ -15,12 +15,17 @@ describe('Call-Flow Import Integration', () => {
     // Browser mode provides native document and window - no mocking needed
   });
 
-  it('call-flow.js can be imported without ReferenceErrors', async () => {
+  it('call-flow modules can be imported without ReferenceErrors', async () => {
     let importError = null;
 
     try {
-      // Import call-flow - if imports like 'ref' are missing, this will throw ReferenceError
-      await import('../../src/features/call/call-flow.js');
+      await Promise.all([
+        import('../../src/features/call/useCallFlow.js'),
+        import('../../src/features/call/call-room.js'),
+        import('../../src/features/call/call-notifications.js'),
+        import('../../src/features/call/call-command-handlers.js'),
+        import('../../src/features/call/call-types.js'),
+      ]);
     } catch (error) {
       importError = error;
     }
@@ -32,29 +37,24 @@ describe('Call-Flow Import Integration', () => {
     }
   });
 
-  it('createCall function exists and is callable', async () => {
-    const { createCall } = await import('../../src/features/call/call-flow.js');
+  it('useCallFlow function exists', async () => {
+    const { useCallFlow } = await import('../../src/features/call/useCallFlow.js');
 
-    expect(createCall).toBeDefined();
-    expect(typeof createCall).toBe('function');
-
-    // Call with invalid input to test it doesn't throw import errors
-    const result = await createCall({ localStream: null });
-
-    expect(result).toBeDefined();
-    expect(result.success).toBe(false);
+    expect(useCallFlow).toBeDefined();
+    expect(typeof useCallFlow).toBe('function');
   });
 
-  it('answerCall function exists and is callable', async () => {
-    const { answerCall } = await import('../../src/features/call/call-flow.js');
+  it('extracted call helpers exist', async () => {
+    const { joinCallRoom } = await import('../../src/features/call/call-room.js');
+    const { sendIncomingCallNotification, sendMissedCallNotification } =
+      await import('../../src/features/call/call-notifications.js');
+    const { registerCallCommandHandlers } = await import(
+      '../../src/features/call/call-command-handlers.js'
+    );
 
-    expect(answerCall).toBeDefined();
-    expect(typeof answerCall).toBe('function');
-
-    // Call with invalid input to test it doesn't throw import errors
-    const result = await answerCall({ localStream: null });
-
-    expect(result).toBeDefined();
-    expect(result.success).toBe(false);
+    expect(typeof joinCallRoom).toBe('function');
+    expect(typeof sendIncomingCallNotification).toBe('function');
+    expect(typeof sendMissedCallNotification).toBe('function');
+    expect(typeof registerCallCommandHandlers).toBe('function');
   });
 });

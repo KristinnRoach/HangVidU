@@ -1,12 +1,12 @@
 import { For, Show } from 'solid-js';
-import VideoStream from '../media/VideoStream';
+import VideoStream from '../../../components/media/VideoStream';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 
 type Props = {
   p2p: SolidP2PRoom;
 };
 
-export default function RoomMembers(props: Props) {
+export default function MemberStreams(props: Props) {
   return (
     <div
       class={`room-members ${props.p2p.memberCount() > 2 ? 'group' : 'direct'}`}

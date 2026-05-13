@@ -1,4 +1,5 @@
 import { createEffect, onCleanup, Show } from 'solid-js';
+import './VideoStream.module.css';
 
 type Props = {
   stream?: MediaStream;

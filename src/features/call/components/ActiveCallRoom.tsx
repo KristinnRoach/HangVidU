@@ -1,8 +1,10 @@
 import { Show } from 'solid-js';
 
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
-import RoomMembers from '../../../components/room/RoomMembers';
+import MemberStreams from './MemberStreams';
 import ActiveCallControls from './ActiveCallControls';
+
+import './ActiveCallRoom.module.css';
 
 type Props = {
   p2p: SolidP2PRoom;
@@ -11,7 +13,7 @@ type Props = {
 export default function ActiveCallRoom(props: Props) {
   return (
     <div class='room'>
-      <RoomMembers p2p={props.p2p} />
+      <MemberStreams p2p={props.p2p} />
 
       <Show when={props.p2p.state() === 'joined'}>
         <ActiveCallControls />
