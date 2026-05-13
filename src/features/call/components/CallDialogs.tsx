@@ -1,4 +1,4 @@
-import { createEffect, Match, onCleanup, Switch } from 'solid-js';
+import { Match, Switch } from 'solid-js';
 
 import type { useCallFlow } from '../useCallFlow';
 import BusyCallDialog from './dialogs/BusyCallDialog.jsx';
@@ -9,28 +9,7 @@ type Props = {
   callFlow: ReturnType<typeof useCallFlow>;
 };
 
-const BUSY_AUTO_DISMISS_MS = 2_500;
-
 export default function CallDialogs(props: Props) {
-  let busyAutoDismissTimeoutId: ReturnType<typeof setTimeout> | undefined;
-
-  function clearBusyAutoDismissTimeout() {
-    if (!busyAutoDismissTimeoutId) return;
-    clearTimeout(busyAutoDismissTimeoutId);
-    busyAutoDismissTimeoutId = undefined;
-  }
-
-  createEffect(() => {
-    clearBusyAutoDismissTimeout();
-    if (props.callFlow.outgoingCallResult() !== 'busy') return;
-
-    busyAutoDismissTimeoutId = setTimeout(() => {
-      props.callFlow.clearOutgoingCallResult();
-    }, BUSY_AUTO_DISMISS_MS);
-  });
-
-  onCleanup(clearBusyAutoDismissTimeout);
-
   return (
     <Switch>
       <Match when={props.callFlow.outgoingCall()}>
@@ -42,8 +21,8 @@ export default function CallDialogs(props: Props) {
           />
         )}
       </Match>
-      <Match when={props.callFlow.outgoingCallResult() === 'busy'}>
-        <BusyCallDialog onDismiss={props.callFlow.clearOutgoingCallResult} />
+      <Match when={props.callFlow.outgoingCallResponse() === 'busy'}>
+        <BusyCallDialog />
       </Match>
       <Match when={props.callFlow.incomingCall()}>
         {(call) => (

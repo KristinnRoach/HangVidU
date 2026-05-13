@@ -2,9 +2,13 @@ import { createSignal, onCleanup, onMount } from 'solid-js';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import type { CallInvite } from './model/call-schema.js';
 import { CallFlowController } from './call-flow-controller.js';
-import type { CallingState, OutgoingCall, OutgoingCallResult } from './call-types.js';
+import type {
+  CallingState,
+  OutgoingCall,
+  CallResponseType,
+} from './call-types.js';
 
-export type { CallingState, OutgoingCallResult } from './call-types.js';
+export type { CallingState, CallResponseType } from './call-types.js';
 
 interface CallFlowOptions {
   p2p: SolidP2PRoom;
@@ -13,13 +17,14 @@ interface CallFlowOptions {
 
 export function useCallFlow({ p2p, createSignaling }: CallFlowOptions) {
   const [callingState, setCallingState] = createSignal<CallingState>(false);
-  const [outgoingCallResult, setOutgoingCallResult] = createSignal<OutgoingCallResult>(null);
+  const [outgoingCallResponse, setOutgoingCallResponse] =
+    createSignal<CallResponseType>(null);
 
   const controller = new CallFlowController({
     p2p,
     createSignaling,
     onStateChange: setCallingState,
-    onResultChange: setOutgoingCallResult,
+    onResultChange: setOutgoingCallResponse,
   });
 
   const incomingCall = (): CallInvite | null => {
@@ -47,8 +52,7 @@ export function useCallFlow({ p2p, createSignaling }: CallFlowOptions) {
 
   return {
     calling: callingState,
-    outgoingCallResult,
-    clearOutgoingCallResult: () => setOutgoingCallResult(null),
+    outgoingCallResponse,
     incomingCall,
     outgoingCall,
     exitActiveRoom: controller.exitActiveRoom,

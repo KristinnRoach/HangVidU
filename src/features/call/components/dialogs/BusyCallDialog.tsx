@@ -2,11 +2,7 @@ import { useI18n } from '../../../../shared/i18n';
 import CallDialog from './CallDialog';
 import type { CallDialogProps } from './CallDialog';
 
-interface BusyCallDialogProps extends CallDialogProps {
-  onDismiss?: () => void;
-}
-
-export default function BusyCallDialog(props: BusyCallDialogProps) {
+export default function BusyCallDialog(props: CallDialogProps) {
   const { t } = useI18n();
   const idPrefix = () => props.idPrefix || 'busy-call';
 
@@ -20,15 +16,6 @@ export default function BusyCallDialog(props: BusyCallDialogProps) {
       defaultName={t('shared.contact')}
       titleKey='call.busy'
       showPersona={false}
-      actions={
-        <button
-          type='button'
-          class='dialog-btn dialog-btn--danger'
-          onClick={() => props.onDismiss?.()}
-        >
-          {t('shared.ok')}
-        </button>
-      }
     />
   );
 }
