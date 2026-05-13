@@ -1,0 +1,21 @@
+.callControls {
+  position: absolute;
+  bottom: var(--gap);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+
+  button {
+    font-weight: 600;
+    color: var(--color-text);
+    background: var(--color-brand);
+
+    &.hangup {
+      background-color: red;
+    }
+
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.8);
+    }
+  }
+}

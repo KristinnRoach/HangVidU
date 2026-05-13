@@ -6,5 +6,5 @@
   object-position: center center;
   overflow: hidden;
 
-  border-radius: calc(var(--radius) - 2px);
+  border-radius: var(--radius);
 }

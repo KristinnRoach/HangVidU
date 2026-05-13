@@ -10,7 +10,7 @@
 
 .roomMembers.direct {
   position: relative;
-  height: 600px; /* TODO: update dimensions when parent is configured */
+  height: 100%;
   width: auto;
 
   .localStreamContainer {
