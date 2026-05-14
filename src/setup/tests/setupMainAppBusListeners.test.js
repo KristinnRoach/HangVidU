@@ -79,7 +79,7 @@ describe('setupMainAppBusListeners', () => {
       await import('../setupMainAppBusListeners.js');
 
     await setupMainAppBusListeners();
-    const handler = mocks.handlers.get('cmd:call:outgoing:initiate');
+    const handler = mocks.handlers.get('cmd:room:initiate:call');
 
     handler?.({
       contactId: null,
@@ -154,7 +154,7 @@ describe('setupMainAppBusListeners', () => {
       await import('../setupMainAppBusListeners.js');
 
     await setupMainAppBusListeners();
-    const handler = mocks.handlers.get('cmd:call:outgoing:initiate');
+    const handler = mocks.handlers.get('cmd:room:initiate:call');
 
     await handler?.({
       contactId: 'contact-1',

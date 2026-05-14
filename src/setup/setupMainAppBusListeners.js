@@ -113,7 +113,7 @@ export function setupMainAppBusListeners() {
       );
 
       // handleCommand(
-      //   'cmd:call:outgoing:initiate',
+      //   'cmd:room:initiate:call',
       //   async ({
       //     contactId,
       //     contactNickName,
@@ -128,7 +128,7 @@ export function setupMainAppBusListeners() {
 
       //     isDev() &&
       //       tempWarn(
-      //         '[main.js] cmd:call:outgoing:initiate event received with data: ',
+      //         '[main.js] cmd:room:initiate:call event received with data: ',
       //         {
       //           contactId,
       //           contactNickName: resolvedContactNickName,
@@ -151,7 +151,7 @@ export function setupMainAppBusListeners() {
       //           })
       //           .catch((e) => {
       //             console.warn(
-      //               'Failed to select conversation on cmd:call:outgoing:initiate',
+      //               'Failed to select conversation on cmd:room:initiate:call',
       //               e,
       //             );
       //           });

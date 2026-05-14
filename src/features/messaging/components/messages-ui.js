@@ -785,7 +785,7 @@ function createMessagesUI() {
           messagingController.getConversationDisplayName(conversationId) ||
           null;
 
-        dispatchCommand('cmd:call:outgoing:initiate', {
+        dispatchCommand('cmd:room:initiate:call', {
           contactId,
           contactNickName,
           conversationId,

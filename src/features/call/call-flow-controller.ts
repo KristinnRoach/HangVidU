@@ -7,11 +7,14 @@ import {
 import { getUser, getUserId } from '../../auth/auth-state.js';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import { CallResponseType, type CallInvite } from './model/call-schema.js';
-import { joinCallRoom } from './call-room.js';
 import {
   sendIncomingCallPushNotification,
   sendMissedCallPushNotification,
 } from './call-notifications.js';
+import {
+  getAudioConstraints,
+  getVideoConstraints,
+} from './media-constraints.js';
 import {
   registerCallCommandHandlers,
   type InitiateCallCommandDetails,
@@ -182,17 +185,37 @@ export class CallFlowController {
     memberCapacity = 2,
     autoExitOnEmpty = true,
   ) {
-    return joinCallRoom({
-      p2p: this.p2p,
-      createSignaling: this.createSignaling,
+    const room = await this.p2p.join({
       roomId,
-      localUserId,
-      audioOnly,
-      getLocalStream,
+      peerId: localUserId,
+      createSignaling: this.createSignaling,
+      getLocalStream:
+        getLocalStream ??
+        (() =>
+          navigator.mediaDevices.getUserMedia({
+            video: audioOnly ? false : getVideoConstraints(),
+            audio:
+              import.meta.env.DEV && !audioOnly
+                ? false
+                : getAudioConstraints(),
+          })),
       memberCapacity,
-      autoExitOnEmpty,
-      onEmpty: () => this.exitActiveRoom(),
+      dataChannel: true,
+      onMemberLeft: (detail) => {
+        console.debug('Member left room:', { detail });
+        if (autoExitOnEmpty && this.p2p.room()?.memberCount === 1) {
+          this.exitActiveRoom();
+        }
+      },
     });
+
+    import.meta.env.DEV &&
+      room &&
+      console.debug(
+        `Active room: ${room.roomId}, members: ${room.members.join(', ')}`,
+      );
+
+    return room;
   }
 
   private scheduleOutgoingCallTimeout(

@@ -130,7 +130,7 @@ describe('SolidJS ContactsList PoC', () => {
     teardown();
   });
 
-  it('dispatches cmd:call:outgoing:initiate on call button click', async () => {
+  it('dispatches cmd:room:initiate:call on call button click', async () => {
     const ContactsListModule = await import('./ContactsList.jsx');
     const { setupAppRoot } = await import('../../setup/setupAppRoot.js');
 
@@ -141,7 +141,7 @@ describe('SolidJS ContactsList PoC', () => {
     firstCall?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
     expect(mocks.dispatchCommand).toHaveBeenCalledWith(
-      'cmd:call:outgoing:initiate',
+      'cmd:room:initiate:call',
       expect.objectContaining({ contactId: 'contact-1', roomId: 'room-1' }),
     );
 
