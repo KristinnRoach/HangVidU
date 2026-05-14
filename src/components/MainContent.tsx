@@ -7,13 +7,21 @@ import { useP2PContext } from '../shared/p2p-context.js';
 
 // legacy imports:
 import { useP2PFileTransferBridge } from '../features/file-transfer/useP2PFileTransferBridge.js';
-import { useAppMountEffects } from '../app/useAppMountEffects.js';
+import {
+  useLegacyI18nElements,
+  useLegacyIcons,
+  useLegacyMessagesUIReady,
+  useP2PRuntimeDiagnostics,
+} from '../app/useLegacyMountEffects.js';
 
 export default function MainContent() {
   const p2p = useP2PContext();
 
   // START - legacy setup, will be refactored:
-  const { messagesUIReady } = useAppMountEffects();
+  useLegacyI18nElements();
+  useP2PRuntimeDiagnostics();
+  const messagesUIReady = useLegacyMessagesUIReady();
+  useLegacyIcons();
   useP2PFileTransferBridge({
     messagesUIReady,
   });
