@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HangVidU — RTDB Live</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0f1117;
+    --surface:  #1a1d27;
+    --surface2: #22263a;
+    --border:   #2e3348;
+    --text:     #e2e8f0;
+    --muted:    #64748b;
+    --dim:      #94a3b8;
+    --green:    #34d399;
+    --red:      #f87171;
+    --orange:   #fdba74;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .header-left { display: flex; align-items: center; gap: 8px; }
+  .app-name { font-weight: 700; font-size: 14px; }
+  .live-chip {
+    font-size: 10px; font-weight: 700; letter-spacing: .05em;
+    padding: 2px 8px; border-radius: 20px;
+    background: #0a2213; color: var(--green); border: 1px solid #14532d;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .live-dot {
+    width: 6px; height: 6px; background: var(--green); border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  .header-right { display: flex; align-items: center; gap: 8px; }
+
+  .btn {
+    font-size: 12px; font-weight: 500;
+    padding: 5px 11px;
+    border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--dim);
+    cursor: pointer; transition: color .1s, border-color .1s;
+    white-space: nowrap;
+  }
+  .btn:hover { color: var(--text); border-color: #4a5568; }
+
+  .path-bar {
+    padding: 5px 20px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'SF Mono', monospace;
+    font-size: 11px; color: var(--muted);
+    display: flex; align-items: center; gap: 10px;
+    min-height: 28px; background: var(--bg); flex-shrink: 0;
+  }
+  .path-text { color: var(--dim); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .copy-path-btn {
+    font-size: 10px; padding: 2px 8px;
+    border-radius: 4px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--muted);
+    cursor: pointer; display: none; transition: color .1s;
+  }
+  .copy-path-btn.show { display: block; }
+  .copy-path-btn:hover { color: var(--text); }
+  .copy-path-btn.copied { color: var(--green); border-color: #14532d; }
+
+  #tree-wrap { flex: 1; overflow-y: auto; padding-bottom: 40px; }
+  #tree { font-family: 'SF Mono', 'Fira Code', 'Menlo', monospace; font-size: 13px; }
+
+  .node-row {
+    display: flex; align-items: center; gap: 5px;
+    padding-right: 14px; padding-top: 1px; padding-bottom: 1px;
+    border-radius: 4px; line-height: 1.7; min-height: 26px;
+    cursor: pointer; transition: background .07s;
+  }
+  .node-row:hover { background: var(--surface2); }
+  .node-row.leaf { cursor: default; }
+  .node-row.leaf:hover { background: transparent; }
+
+  .node-children { position: relative; }
+  .node-children::before {
+    content: ''; position: absolute;
+    left: 28px; top: 0; bottom: 8px;
+    width: 1px; background: var(--border);
+  }
+
+  .tog {
+    width: 16px; height: 16px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 10px;
+  }
+  .leaf-mark { color: #2e3348; }
+  .node-key { font-weight: 500; }
+
+  .v-string { color: #86efac; }
+  .v-number { color: #fdba74; }
+  .v-bool   { color: #a5b4fc; }
+  .v-ts     { color: #f9a8d4; font-size: 11px; }
+  .v-null   { color: #4b5563; }
+  .v-error  { color: var(--red); font-family: -apple-system, sans-serif; font-size: 11px; }
+
+  .child-count {
+    font-size: 10px; color: var(--muted);
+    background: var(--surface2); border: 1px solid var(--border);
+    padding: 0 5px; border-radius: 3px; margin-left: 4px;
+  }
+
+  .spinner {
+    display: inline-block; width: 9px; height: 9px;
+    border: 1.5px solid var(--border); border-top-color: var(--dim);
+    border-radius: 50%; animation: spin .65s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .more-str {
+    font-size: 10px; color: var(--muted); cursor: pointer;
+    text-decoration: underline; text-underline-offset: 2px; margin-left: 4px;
+  }
+  .more-str:hover { color: var(--dim); }
+
+  .status-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    padding: 6px 20px;
+    background: var(--surface); border-top: 1px solid var(--border);
+    font-size: 11px; color: var(--muted);
+  }
+  #status-msg.err  { color: var(--red); }
+  #status-msg.warn { color: var(--orange); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <span class="app-name">HangVidU</span>
+    <span class="live-chip"><span class="live-dot"></span>LIVE</span>
+  </div>
+  <div class="header-right">
+    <button class="btn" onclick="refreshTree()">↺ Reload</button>
+    <button class="btn" onclick="collapseAll()">Collapse all</button>
+  </div>
+</header>
+
+<div class="path-bar">
+  <span class="path-text" id="path-display">/</span>
+  <button class="copy-path-btn" id="copy-path-btn" onclick="copyHoveredPath()">Copy path</button>
+</div>
+
+<div id="tree-wrap"><div id="tree"></div></div>
+
+<div class="status-bar"><span id="status-msg">Connecting to proxy…</span></div>
+
+<script>
+const PROXY = 'http://localhost:8081';
+let hoveredPath = null;
+
+// ── Fetch via local proxy ───────────────────────────────────────
+async function proxyFetch(path, shallow) {
+  const qs  = shallow ? '?shallow=true' : '';
+  const url = path ? `${PROXY}/${path}${qs}` : `${PROXY}/${qs}`;
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => '');
+    throw new Error(`HTTP ${resp.status}: ${body.slice(0, 120)}`);
+  }
+  return resp.json();
+}
+
+// ── Helpers ────────────────────────────────────────────────────
+const isTs = v => typeof v === 'number' && v > 946684800000 && v < 4102444800000;
+
+function fmtLeaf(val) {
+  if (val === null || val === undefined) return { text: 'null',        cls: 'v-null' };
+  if (typeof val === 'boolean')          return { text: String(val),   cls: 'v-bool' };
+  if (isTs(val))                         return { text: new Date(val).toLocaleString(), cls: 'v-ts' };
+  if (typeof val === 'number')           return { text: String(val),   cls: 'v-number' };
+  if (typeof val === 'string') {
+    const MAX = 100;
+    return val.length > MAX
+      ? { text: `"${val.slice(0, MAX)}…"`, cls: 'v-string', full: `"${val}"` }
+      : { text: `"${val}"`, cls: 'v-string' };
+  }
+  return { text: String(val), cls: 'v-null' };
+}
+
+// ── Tree state ─────────────────────────────────────────────────
+let nid = 0;
+const nodes = new Map();
+
+function mk(path, key) {
+  const id = ++nid;
+  nodes.set(id, { id, path, key, open: false, loaded: false, loading: false,
+                  isLeaf: false, value: undefined, children: [], error: null,
+                  el: null, rowEl: null });
+  return id;
+}
+
+async function boot() {
+  try {
+    const data = await proxyFetch('', true);
+    if (!data || typeof data !== 'object') throw new Error('Unexpected root response');
+    clearTree();
+    const tree = document.getElementById('tree');
+    for (const key of Object.keys(data).sort()) {
+      tree.appendChild(renderEl(mk(key, key), 1));
+    }
+    setStatus('');
+  } catch (err) {
+    setStatus(`Proxy error — is rtdb-proxy.js running? (${err.message})`, 'err');
+  }
+}
+
+async function refreshTree() {
+  setStatus('Reloading…');
+  boot();
+}
+
+// ── Expand / collapse ──────────────────────────────────────────
+async function expandNode(id) {
+  const n = nodes.get(id);
+  if (!n || n.isLeaf || n.loading) return;
+  if (n.loaded) { n.open = true; sync(id); return; }
+
+  n.loading = true;
+  sync(id);
+
+  try {
+    const data = await proxyFetch(n.path, true);
+    n.loading = false;
+    n.loaded  = true;
+
+    if (data !== null && typeof data === 'object') {
+      const depth     = depthOf(n.el);
+      const childrenEl = n.el.querySelector('[data-ch]');
+      for (const key of Object.keys(data)) {
+        const cid = mk(`${n.path}/${key}`, key);
+        n.children.push(cid);
+        if (childrenEl) childrenEl.appendChild(renderEl(cid, depth + 1));
+      }
+      n.open = true;
+    } else {
+      n.isLeaf = true;
+      n.value  = data;
+    }
+    sync(id);
+  } catch (err) {
+    n.loading = false;
+    n.error   = err.message.slice(0, 80);
+    sync(id);
+  }
+}
+
+function collapseNode(id) {
+  const n = nodes.get(id);
+  if (n) { n.open = false; sync(id); }
+}
+
+function depthOf(el) {
+  const row = el?.querySelector('.node-row');
+  return row ? Math.round((parseInt(row.style.paddingLeft || '20') - 8) / 20) : 1;
+}
+
+// ── Render ─────────────────────────────────────────────────────
+function renderEl(id, depth) {
+  const n    = nodes.get(id);
+  const wrap = document.createElement('div');
+  const row  = document.createElement('div');
+  row.className = 'node-row';
+  row.style.paddingLeft = `${depth * 20 + 8}px`;
+  row.addEventListener('click',      () => { const nd = nodes.get(id); nd.open ? collapseNode(id) : expandNode(id); });
+  row.addEventListener('mouseenter', () => { hoveredPath = n.path; updatePathBar(); });
+
+  const ch = document.createElement('div');
+  ch.className = 'node-children';
+  ch.setAttribute('data-ch', id);
+
+  wrap.appendChild(row);
+  wrap.appendChild(ch);
+  n.el    = wrap;
+  n.rowEl = row;
+  sync(id);
+  return wrap;
+}
+
+function sync(id) {
+  const n = nodes.get(id);
+  if (!n?.rowEl) return;
+  const row = n.rowEl;
+  row.innerHTML = '';
+
+  const tog = document.createElement('span');
+  tog.className = 'tog';
+  if (n.loading) {
+    tog.innerHTML = '<span class="spinner"></span>';
+  } else if (n.isLeaf || (n.loaded && n.children.length === 0)) {
+    tog.innerHTML = '<span class="leaf-mark">—</span>';
+    row.classList.add('leaf');
+  } else {
+    tog.textContent = n.open ? '▾' : '▸';
+    row.classList.remove('leaf');
+  }
+  row.appendChild(tog);
+
+  const keyEl = document.createElement('span');
+  keyEl.className = 'node-key';
+  keyEl.textContent = n.key;
+  row.appendChild(keyEl);
+
+  if (n.error) {
+    const e = document.createElement('span');
+    e.className = 'v-error';
+    e.textContent = n.error;
+    row.appendChild(e);
+  } else if (n.isLeaf) {
+    const f = fmtLeaf(n.value);
+    const v = document.createElement('span');
+    v.className = 'node-value ' + f.cls;
+    v.textContent = f.text;
+    row.appendChild(v);
+    if (f.full) {
+      const m = document.createElement('span');
+      m.className = 'more-str';
+      m.textContent = 'more';
+      m.addEventListener('click', e => { e.stopPropagation(); v.textContent = f.full; m.remove(); });
+      row.appendChild(m);
+    }
+  } else if (n.children.length > 0) {
+    const cnt = document.createElement('span');
+    cnt.className = 'child-count';
+    cnt.textContent = n.children.length;
+    row.appendChild(cnt);
+  }
+
+  const chEl = n.el?.querySelector('[data-ch]');
+  if (chEl) chEl.hidden = !n.open;
+}
+
+// ── Path bar ───────────────────────────────────────────────────
+function updatePathBar() {
+  document.getElementById('path-display').textContent = hoveredPath ? '/' + hoveredPath : '/';
+  document.getElementById('copy-path-btn').className = 'copy-path-btn' + (hoveredPath ? ' show' : '');
+}
+
+function copyHoveredPath() {
+  if (!hoveredPath) return;
+  const btn = document.getElementById('copy-path-btn');
+  navigator.clipboard.writeText('/' + hoveredPath).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy path'; btn.classList.remove('copied'); }, 1400);
+  });
+}
+
+function clearTree() {
+  document.getElementById('tree').innerHTML = '';
+  nodes.clear();
+  nid = 0;
+}
+
+function collapseAll() { for (const [id] of nodes) collapseNode(id); }
+
+function setStatus(msg, cls = '') {
+  const el = document.getElementById('status-msg');
+  el.textContent = msg;
+  el.className = cls;
+}
+
+window.refreshTree    = refreshTree;
+window.collapseAll    = collapseAll;
+window.copyHoveredPath = copyHoveredPath;
+
+boot();
+</script>
+</body>
+</html>
