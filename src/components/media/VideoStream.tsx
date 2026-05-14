@@ -3,9 +3,12 @@ import styles from './VideoStream.module.css';
 
 type Props = {
   stream?: MediaStream;
-  muted?: boolean;
-  class?: string;
   id?: string;
+  muted?: boolean;
+  baseClass?: string;
+  classList?: Record<string, boolean | undefined>;
+  local?: boolean;
+  preview?: boolean;
 };
 
 export default function VideoStream(props: Props) {
@@ -23,15 +26,37 @@ export default function VideoStream(props: Props) {
     // set programmatically for Firefox compatibility
     video.setAttribute('playsinline', 'true');
 
+    function debugVideoResize() {
+      {
+        console.info(
+          '[VIDEO RESIZE DEBUG]',
+          video.videoWidth,
+          video.videoHeight,
+          'isLocal:',
+          !!props.local,
+        );
+      }
+    }
+
+    import.meta.env.DEV && video.addEventListener('resize', debugVideoResize);
+
     onCleanup(() => {
       video.srcObject = null;
+      import.meta.env.DEV &&
+        video.removeEventListener('resize', debugVideoResize);
     });
   });
 
   return (
     <Show when={props.stream && props.stream.getVideoTracks().length > 0}>
       <video
-        class={props.class || styles.videoStream}
+        id={props.id}
+        class={props.baseClass ?? styles.videoStream}
+        classList={{
+          [styles.local]: props.local,
+          [styles.preview]: props.preview,
+          ...props.classList,
+        }}
         ref={video}
         autoplay
         muted={props.muted}

@@ -1,28 +1,12 @@
-.remoteStreamContainer,
-.localStreamContainer {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-bg);
-  color: var(--color-text);
-}
-
-/* 1:1 CALL LAYOUT - (DRAFT) */
+/* 1:1 CALL LAYOUT - (DRAFT - WIP) */
 
 .roomMembers.direct {
   position: relative;
   height: 100%;
   width: auto;
-
-  .localStreamContainer {
-    position: absolute;
-    top: var(--gap);
-    left: var(--gap);
-    width: 150px;
-    height: 100px;
-  }
 }
 
-/* GROUP CALL LAYOUT - (DRAFT) */
+/* GROUP CALL LAYOUT - (DRAFT - NOT TESTED) */
 
 .roomMembers.group {
   display: grid;
@@ -31,18 +15,6 @@
     minmax(min(var(--remote-stream-container-min-width, 100%)), 1fr)
   );
   gap: var(--gap);
-
-  .remoteStreamContainer {
-    display: grid;
-    gap: var(--gap);
-    min-width: 0;
-    width: 100%;
-  }
-
-  .localStreamContainer {
-    min-width: 0;
-    width: 200px;
-  }
 
   @media (max-width: 560px) {
     grid-template-columns: 1fr;

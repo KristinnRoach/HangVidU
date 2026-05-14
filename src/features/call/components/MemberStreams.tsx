@@ -16,16 +16,15 @@ export default function MemberStreams() {
     >
       <Show when={p2p.localStream()}>
         {(stream) => (
-          <section class={styles.localStreamContainer}>
-            <VideoStream stream={stream()} />
-          </section>
+          <VideoStream stream={stream()} local={true} preview={true} />
         )}
       </Show>
       <For each={p2p.remoteMemberStreams()}>
         {(remote) => (
-          <section class={styles.remoteStreamContainer}>
-            <VideoStream stream={remote.stream} />
-          </section>
+          <VideoStream
+            stream={remote.stream}
+            classList={{ [styles.remote]: true }}
+          />
         )}
       </For>
     </div>
