@@ -5,6 +5,8 @@ import { updateI18nElements, onLocaleChange } from '../shared/i18n/index.js';
 import { initIcons } from '../components/base-legacy/icons.js';
 import { initMessagesUI } from '../features/messaging/components/messages-ui.js';
 import { probeDefaultReceiveStore } from '../features/file-transfer/index.js';
+import { handleServiceWorkerNavigation } from '../setup/handleServiceWorkerNavigation.js';
+import { setupServiceWorkerNavigation } from '../setup/setupServiceWorkerNavigation.js';
 
 export function useLegacyI18nElements() {
   let unsubscribeLocaleChange: (() => void) | undefined;
@@ -29,10 +31,33 @@ export function useP2PRuntimeDiagnostics() {
 
 export function useLegacyMessagesUIReady() {
   const [messagesUIReady, setMessagesUIReady] = createSignal(false);
+  let cleanupServiceWorkerNavigation: (() => void) | undefined;
+  let isDisposed = false;
 
   onMount(() => {
     initMessagesUI();
     setMessagesUIReady(true);
+    setupServiceWorkerNavigation({
+      handleServiceWorkerNavigation,
+      waitUntilReady: Promise.resolve(),
+    }).then((cleanup) => {
+      if (isDisposed) {
+        cleanup();
+        return;
+      }
+      cleanupServiceWorkerNavigation = cleanup;
+    });
+
+    handleServiceWorkerNavigation(
+      window.location.pathname + window.location.search,
+    ).catch((error) => {
+      console.warn('[APP] Failed to handle initial navigation:', error);
+    });
+  });
+
+  onCleanup(() => {
+    isDisposed = true;
+    cleanupServiceWorkerNavigation?.();
   });
 
   return messagesUIReady;
