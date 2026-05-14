@@ -108,6 +108,8 @@ backups/
 
 # WIP experiment pages
 components-lab.html
+rtdb-schema.html
+rtdb-live.html
 src/shared/media-next/
 
 # WIP docs

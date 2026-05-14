@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm kill:silent && concurrently \"vite\" \"pnpm ngrok\" \"sh scripts/show-ngrok-url.sh\"",
+    "rtdb": "python3 -m http.server 8080 --directory . & sleep 0.3 && open http://localhost:8080/rtdb-live.html && wait",
     "dev:media": "vite --open ./src/shared/media-next/media-lab.html",
     "dev:components": "VITE_ENABLE_PWA=0 vite --open components-lab.html",
     "debug:edge": "zsh scripts/debug/launch-pwa-edge.sh",
