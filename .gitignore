@@ -110,6 +110,7 @@ backups/
 components-lab.html
 rtdb-schema.html
 rtdb-live.html
+rtdb-proxy.js
 src/shared/media-next/
 
 # WIP docs
