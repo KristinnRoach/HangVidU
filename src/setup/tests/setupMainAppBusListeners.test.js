@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => {
   return {
     handlers,
     events: {
+      dispatchCommandAndAwait: vi.fn(() => Promise.resolve()),
       handleCommand: vi.fn((eventName, handler) => {
         handlers.set(eventName, handler);
         return () => handlers.delete(eventName);
@@ -17,13 +18,11 @@ const mocks = vi.hoisted(() => {
     },
     messagingController: {
       selectConversation: vi.fn(() => Promise.resolve()),
+      sendEventMessage: vi.fn(() => Promise.resolve()),
     },
     getContactById: vi.fn(() => null),
     getContactByRoomId: vi.fn(() => null),
     getConversationId: vi.fn(() => null),
-    callContact: vi.fn(),
-    listenForIncomingOnRoom: vi.fn(),
-    removeIncomingListenersForRoom: vi.fn(),
     setUserOffline: vi.fn(() => Promise.resolve()),
     isDev: vi.fn(() => false),
     tempWarn: vi.fn(),
@@ -31,6 +30,7 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock('../../shared/events/index.js', () => ({
+  dispatchCommandAndAwait: mocks.events.dispatchCommandAndAwait,
   handleCommand: mocks.events.handleCommand,
   subscribe: mocks.events.subscribe,
 }));
@@ -50,21 +50,8 @@ vi.mock('../../shared/utils/dev/dev-utils.js', () => ({
   tempWarn: mocks.tempWarn,
 }));
 
-vi.mock('../../features/call/WIP-start-call-refactor.js', () => ({
-  callContact: mocks.callContact,
-}));
-
-vi.mock('../../features/call/room-listeners.js', () => ({
-  listenForIncomingOnRoom: mocks.listenForIncomingOnRoom,
-  removeIncomingListenersForRoom: mocks.removeIncomingListenersForRoom,
-}));
-
 vi.mock('../../features/presence/index.js', () => ({
   setUserOffline: mocks.setUserOffline,
-}));
-
-vi.mock('../../shared/utils/url.js', () => ({
-  clearUrlParam: vi.fn(),
 }));
 
 describe('setupMainAppBusListeners', () => {
@@ -72,30 +59,6 @@ describe('setupMainAppBusListeners', () => {
     vi.resetModules();
     vi.clearAllMocks();
     mocks.handlers.clear();
-  });
-
-  it('does not attempt conversation selection when no contactId is provided', async () => {
-    const { setupMainAppBusListeners } =
-      await import('../setupMainAppBusListeners.js');
-
-    await setupMainAppBusListeners();
-    const handler = mocks.handlers.get('cmd:room:initiate:call');
-
-    handler?.({
-      contactId: null,
-      contactNickName: 'Unknown Caller',
-      conversationId: null,
-      roomId: 'room-123',
-    });
-
-    expect(mocks.getConversationId).not.toHaveBeenCalled();
-    expect(mocks.messagingController.selectConversation).not.toHaveBeenCalled();
-    expect(mocks.callContact).toHaveBeenCalledWith(
-      null,
-      'Unknown Caller',
-      'room-123',
-      { audioOnly: false },
-    );
   });
 
   it('selects a conversation when the messaging selection command is emitted', async () => {
@@ -147,25 +110,24 @@ describe('setupMainAppBusListeners', () => {
     );
   });
 
-  it('passes contactNickName to preselected outgoing-call conversation', async () => {
+  it('dispatches the conversation selection command when an incoming call is accepted', async () => {
     mocks.getConversationId.mockReturnValue('conv-xyz');
+    mocks.getContactById.mockReturnValue({ contactNickName: 'Dial Nick' });
 
     const { setupMainAppBusListeners } =
       await import('../setupMainAppBusListeners.js');
 
     await setupMainAppBusListeners();
-    const handler = mocks.handlers.get('cmd:room:initiate:call');
+    const handler = mocks.handlers.get('evt:call:incoming:accepted');
 
     await handler?.({
       contactId: 'contact-1',
-      contactNickName: 'Dial Nick',
-      conversationId: null,
-      roomId: 'room-123',
     });
 
-    expect(mocks.messagingController.selectConversation).toHaveBeenCalledWith(
-      'conv-xyz',
+    expect(mocks.events.dispatchCommandAndAwait).toHaveBeenCalledWith(
+      'cmd:messaging:conversation:select',
       {
+        conversationId: 'conv-xyz',
         remoteParticipantIds: ['contact-1'],
         displayUI: false,
         contactNickName: 'Dial Nick',
@@ -173,22 +135,41 @@ describe('setupMainAppBusListeners', () => {
     );
   });
 
-  it('removes the previous room listener before listening on an updated room', async () => {
+  it('does not dispatch accepted-call conversation selection without a conversation id', async () => {
+    mocks.getConversationId.mockReturnValue(null);
+
     const { setupMainAppBusListeners } =
       await import('../setupMainAppBusListeners.js');
 
     await setupMainAppBusListeners();
-    const handler = mocks.handlers.get('evt:contacts:room:updated');
+    const handler = mocks.handlers.get('evt:call:incoming:accepted');
 
-    handler?.({
-      roomId: 'room-new',
-      previousRoomId: 'room-old',
+    await handler?.({
+      contactId: 'contact-1',
     });
 
-    expect(mocks.removeIncomingListenersForRoom).toHaveBeenCalledWith(
-      'room-old',
+    expect(mocks.events.dispatchCommandAndAwait).not.toHaveBeenCalled();
+  });
+
+  it('writes an unanswered-call event message to the contact conversation', async () => {
+    mocks.getConversationId.mockReturnValue('conv-xyz');
+
+    const { setupMainAppBusListeners } =
+      await import('../setupMainAppBusListeners.js');
+
+    await setupMainAppBusListeners();
+    const handler = mocks.handlers.get('evt:call:session:unanswered');
+
+    await handler?.({
+      roomId: 'room-123',
+      contactId: 'contact-1',
+    });
+
+    expect(mocks.messagingController.sendEventMessage).toHaveBeenCalledWith(
+      'conv-xyz',
+      'evt:call:session:unanswered',
+      { callId: 'room-123' },
     );
-    expect(mocks.listenForIncomingOnRoom).toHaveBeenCalledWith('room-new');
   });
 
   it('handles the presence offline command through setup wiring', async () => {

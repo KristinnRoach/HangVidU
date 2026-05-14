@@ -1,4 +1,8 @@
-import { handleCommand, subscribe } from '../shared/events/index.js';
+import {
+  dispatchCommandAndAwait,
+  handleCommand,
+  subscribe,
+} from '../shared/events/index.js';
 import { messagingController } from '../features/messaging/messaging-controller.js';
 import { isDev, tempWarn } from '../shared/utils/dev/dev-utils.js';
 import {
@@ -9,7 +13,6 @@ import {
 
 import { getPushNotifications } from '../features/push-notifications/index.js';
 import { setUserOffline } from '../features/presence/index.js';
-import { clearUrlParam } from '../shared/utils/url.js';
 
 let isReady = false;
 let initPromise = null;
@@ -167,7 +170,7 @@ export function setupMainAppBusListeners() {
 
       subscribe(
         'evt:call:incoming:accepted',
-        ({ contactId }) => {
+        async ({ contactId }) => {
           isDev() &&
             tempWarn(
               `[APPBUS] Handling call answered event from contact ${contactId}`,
@@ -186,18 +189,22 @@ export function setupMainAppBusListeners() {
           const contact = getContactById(contactId);
           const contactNickName = contact?.contactNickName || null;
 
-          messagingController
-            .selectConversation(conversationId, {
-              remoteParticipantIds: [contactId],
-              displayUI: false,
-              contactNickName,
-            })
-            .catch((e) => {
-              console.warn(
-                'Failed to select conversation on evt:call:incoming:accepted:',
-                e,
-              );
-            });
+          try {
+            await dispatchCommandAndAwait(
+              'cmd:messaging:conversation:select',
+              {
+                conversationId,
+                remoteParticipantIds: [contactId],
+                displayUI: false,
+                contactNickName,
+              },
+            );
+          } catch (e) {
+            console.warn(
+              'Failed to select conversation on evt:call:incoming:accepted:',
+              e,
+            );
+          }
         },
         { signal: ac.signal },
       );
