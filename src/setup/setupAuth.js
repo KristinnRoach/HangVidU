@@ -1,6 +1,7 @@
 import { subscribe } from '../shared/events/index.js';
-import { initAuth } from '../auth/index.js';
+import { initAuth, getAuthState } from '../auth/index.js';
 import { devDebug } from '../shared/utils/dev/dev-utils.js';
+import { saveUserProfile } from '../shared/storage/user/index.js';
 // import {
 //   removeAllIncomingListeners,
 //   startListeningForSavedRooms,
@@ -84,10 +85,9 @@ function clearLocalStorageOnLogout() {
  * - register auth-driven listeners first
  * - initialize auth second (so initial auth lifecycle facts are observed)
  *
- * @param {{ lobbyElement: HTMLElement }} options
  * @returns {Promise<() => void>}
  */
-export function setupAuth(options = {}) {
+export function setupAuth() {
   if (isReady) {
     return Promise.resolve(cleanup);
   }
@@ -96,7 +96,6 @@ export function setupAuth(options = {}) {
   }
 
   initPromise = (async () => {
-    const { lobbyElement } = options;
     const ac = new AbortController();
     let initialized = false;
     // let savedRoomsCleanup = () => {
@@ -172,15 +171,14 @@ export function setupAuth(options = {}) {
               ),
             );
 
-            cleanupLoginScopedListeners();
-            // const maybeSavedRoomsCleanup =
-            //   await startListeningForSavedRooms().catch((e) => {
-            //     console.warn('Failed to re-attach saved-room listeners', e);
-            //     return undefined;
-            //   });
-            if (typeof maybeSavedRoomsCleanup === 'function') {
-              savedRoomsCleanup = maybeSavedRoomsCleanup;
+            const authState = getAuthState();
+            if (authState?.user) {
+              saveUserProfile(authState.user).catch((e) =>
+                console.warn('[AUTH] Failed to save user profile:', e),
+              );
             }
+
+            cleanupLoginScopedListeners();
 
             const maybeInviteCleanup = setupInviteListener();
             if (typeof maybeInviteCleanup === 'function') {

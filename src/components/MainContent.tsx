@@ -1,7 +1,7 @@
 import { Show } from 'solid-js';
 
 import PublicHomepage from './app/PublicHomepage.jsx';
-import ContactsList from './contacts/ContactsList.jsx';
+import ContactsList from './contacts/ContactsList';
 import ActiveCallRoom from '../features/call/components/ActiveCallRoom.jsx';
 import { useP2PContext } from '../shared/p2p-context.js';
 
