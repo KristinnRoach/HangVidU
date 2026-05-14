@@ -1,4 +1,6 @@
-# `setup<Module>` Direction
+# NOTE - WIP MIGRATING TO SOLIDJS (setup docs are outdated)
+
+## `setup<Module>` Direction
 
 Canonical docs:
 

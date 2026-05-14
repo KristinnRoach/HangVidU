@@ -23,13 +23,16 @@ import {
   setYouTubeReady,
 } from '../legacy/youtube/youtube-player.js';
 
-import { sharedVideoEl, sharedBoxEl } from '../../elements.js'; // TODO: refactor?
 import {
   hideElement,
   showElement,
 } from '../../shared/utils/ui-utils/ui-utils.js';
 
-import { onWatchModeEntered } from '../../shared/utils/core/watch-lifecycle-ui.js';
+function onWatchModeEntered() {
+  // Legacy view-state hooks were removed during the Solid migration.
+  // The temporary P2P file-transfer bridge creates the playback surface and
+  // watch-sync now only needs to load/sync media into that surface.
+}
 
 // ============================================================================
 // WATCH-TOGETHER SYNC (Firebase-based)
@@ -95,8 +98,21 @@ async function updateWatchSyncState(updates) {
 // -----------------------------------------------------------------------------
 // SYNC SETUP
 // -----------------------------------------------------------------------------
-export function setupWatchSync(roomId, role, userId) {
+
+let sharedVideoEl = null;
+let sharedBoxEl = null;
+
+export function setupWatchSync(
+  roomId,
+  role,
+  userId,
+  sharedVideoElement,
+  sharedBoxElement,
+) {
   if (!roomId) return;
+
+  sharedVideoEl = sharedVideoElement;
+  sharedBoxEl = sharedBoxElement;
 
   currentRoomId = roomId;
   currentUserId = userId;

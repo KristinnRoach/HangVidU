@@ -41,6 +41,10 @@
 - `src/features/file-transfer/file-transfer.js` - Add cleanup method
 - `src/features/watch/watch-sync.js` - Revoke blob URLs on watch mode exit
 
+### Google Drive Integration for Large Files
+
+**Goal:** user can connect their personal google drive (potentially other storage platforms as well) and choose to upload to that and send a download link instead of directly transferring the file. This could be especially useful for watching large videos together in sync.
+
 ### IndexedDB Integration for Large Files
 
 **Goal:** Store large files in IndexedDB instead of memory to avoid memory pressure

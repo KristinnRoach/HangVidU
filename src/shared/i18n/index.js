@@ -1,4 +1,5 @@
 import { batch, createSignal } from 'solid-js';
+import { updateI18nElements } from './updateI18nElements';
 
 const STORAGE_KEY = 'locale';
 
@@ -96,6 +97,8 @@ export function t(key, params) {
   const str = dict()[key] || key;
   return formatMessage(str, params);
 }
+
+export { updateI18nElements };
 
 /**
  * Solid-facing i18n helpers.
