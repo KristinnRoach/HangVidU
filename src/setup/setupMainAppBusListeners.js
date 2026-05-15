@@ -115,59 +115,6 @@ export function setupMainAppBusListeners() {
         { signal: ac.signal },
       );
 
-      // handleCommand(
-      //   'cmd:room:initiate:call',
-      //   async ({
-      //     contactId,
-      //     contactNickName,
-      //     conversationId,
-      //     roomId,
-      //     audioOnly = false,
-      //   }) => {
-      //     const resolvedContactNickName =
-      //       typeof contactNickName === 'string' && contactNickName.trim()
-      //         ? contactNickName.trim()
-      //         : null;
-
-      //     isDev() &&
-      //       tempWarn(
-      //         '[main.js] cmd:room:initiate:call event received with data: ',
-      //         {
-      //           contactId,
-      //           contactNickName: resolvedContactNickName,
-      //           conversationId,
-      //           roomId,
-      //           audioOnly,
-      //         },
-      //       );
-
-      //     if (contactId) {
-      //       const resolvedConversationId =
-      //         conversationId ?? getConversationId(contactId);
-
-      //       if (resolvedConversationId) {
-      //         messagingController
-      //           .selectConversation(resolvedConversationId, {
-      //             remoteParticipantIds: [contactId],
-      //             displayUI: false,
-      //             contactNickName: resolvedContactNickName,
-      //           })
-      //           .catch((e) => {
-      //             console.warn(
-      //               'Failed to select conversation on cmd:room:initiate:call',
-      //               e,
-      //             );
-      //           });
-      //       }
-      //     }
-
-      //     callContact(contactId, resolvedContactNickName, roomId, {
-      //       audioOnly,
-      //     });
-      //   },
-      //   { signal: ac.signal },
-      // );
-
       subscribe(
         'evt:call:incoming:accepted',
         async ({ contactId }) => {
@@ -190,15 +137,12 @@ export function setupMainAppBusListeners() {
           const contactNickName = contact?.contactNickName || null;
 
           try {
-            await dispatchCommandAndAwait(
-              'cmd:messaging:conversation:select',
-              {
-                conversationId,
-                remoteParticipantIds: [contactId],
-                displayUI: false,
-                contactNickName,
-              },
-            );
+            await dispatchCommandAndAwait('cmd:messaging:conversation:select', {
+              conversationId,
+              remoteParticipantIds: [contactId],
+              displayUI: false,
+              contactNickName,
+            });
           } catch (e) {
             console.warn(
               'Failed to select conversation on evt:call:incoming:accepted:',
