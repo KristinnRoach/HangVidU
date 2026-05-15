@@ -9,8 +9,8 @@ export type OutgoingCall = {
   roomId: string;
 };
 
-export type CallingState =
-  | false
+export type CallHandshakeState =
+  | null
   | {
       direction: 'incoming';
       call: CallInvite;
@@ -20,4 +20,4 @@ export type CallingState =
       call: OutgoingCall;
     };
 
-export type CallResponseType = 'busy' | 'rejected' | 'timeout' | null;
+export type OutgoingCallOutcome = 'busy' | 'rejected' | 'timeout' | null;

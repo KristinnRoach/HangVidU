@@ -20,27 +20,27 @@ import {
   type InitiateCallCommandDetails,
 } from './call-command-handlers.js';
 import type {
-  CallingState,
+  CallHandshakeState,
   OutgoingCall,
-  CallResponseType,
+  OutgoingCallOutcome,
 } from './call-types.js';
 
 const OUTGOING_CALL_TIMEOUT_MS = 30_000;
 
-type CallFlowControllerOptions = {
+type CallHandshakeControllerOptions = {
   p2p: SolidP2PRoom;
   createSignaling: any; // TODO: Type
-  onStateChange: (state: CallingState) => void;
-  onResultChange: (result: CallResponseType) => void;
+  onStateChange: (state: CallHandshakeState) => void;
+  onResultChange: (result: OutgoingCallOutcome) => void;
 };
 
-export class CallFlowController {
+export class CallHandshakeController {
   private readonly p2p: SolidP2PRoom;
   private readonly createSignaling: any;
-  private readonly onStateChange: (state: CallingState) => void;
-  private readonly onResultChange: (result: CallResponseType) => void;
+  private readonly onStateChange: (state: CallHandshakeState) => void;
+  private readonly onResultChange: (result: OutgoingCallOutcome) => void;
 
-  private _callingState: CallingState = false;
+  private _handshakeState: CallHandshakeState = null;
   private outgoingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private unsubCalleeResponse: (() => void) | undefined;
   private commandAbortController: AbortController | undefined;
@@ -51,19 +51,19 @@ export class CallFlowController {
     createSignaling,
     onStateChange,
     onResultChange,
-  }: CallFlowControllerOptions) {
+  }: CallHandshakeControllerOptions) {
     this.p2p = p2p;
     this.createSignaling = createSignaling;
     this.onStateChange = onStateChange;
     this.onResultChange = onResultChange;
   }
 
-  private setCallingState(state: CallingState): void {
-    this._callingState = state;
+  private setHandshakeState(state: CallHandshakeState): void {
+    this._handshakeState = state;
     this.onStateChange(state);
   }
 
-  private setResult(result: CallResponseType): void {
+  private setOutcome(result: OutgoingCallOutcome): void {
     this.onResultChange(result);
   }
 
@@ -83,8 +83,8 @@ export class CallFlowController {
 
     this.unsubscribeIncomingCall = callService.onIncomingCall((call) => {
       if (!call) {
-        if (this._callingState && this._callingState.direction === 'incoming') {
-          this.setCallingState(false);
+        if (this._handshakeState && this._handshakeState.direction === 'incoming') {
+          this.setHandshakeState(null);
         }
         return;
       }
@@ -99,17 +99,17 @@ export class CallFlowController {
           );
         return;
       }
-      this.setCallingState({ direction: 'incoming', call });
+      this.setHandshakeState({ direction: 'incoming', call });
       console.debug('Received incoming call invite:', { call });
     });
   }
 
   private isBusyForIncomingCall(call: CallInvite): boolean {
-    const state = this._callingState;
+    const state = this._handshakeState;
     if (state && state.direction === 'incoming') {
       return state.call.roomId !== call.roomId;
     }
-    return state !== false || this.p2p.state() !== 'idle';
+    return state !== null || this.p2p.state() !== 'idle';
   }
 
   private async startOutgoingCall(
@@ -144,8 +144,8 @@ export class CallFlowController {
       return;
     }
 
-    this.setCallingState({ direction: 'outgoing', call: nextOutgoingCall });
-    this.setResult(null);
+    this.setHandshakeState({ direction: 'outgoing', call: nextOutgoingCall });
+    this.setOutcome(null);
     this.scheduleOutgoingCallTimeout(svc, nextOutgoingCall);
     sendIncomingCallPushNotification(nextOutgoingCall);
 
@@ -162,13 +162,13 @@ export class CallFlowController {
             nextOutgoingCall.audioOnly,
           );
         } else if (response.responseType === 'busy') {
-          this.setResult('busy');
-          setTimeout(() => this.setResult(null), 2_500);
+          this.setOutcome('busy');
+          setTimeout(() => this.setOutcome(null), 2_500);
         } else if (response.responseType === 'rejected') {
-          this.setResult('rejected');
+          this.setOutcome('rejected');
           console.debug('Outgoing call was rejected');
         }
-        this.setCallingState(false);
+        this.setHandshakeState(null);
       },
     );
 
@@ -224,15 +224,15 @@ export class CallFlowController {
   ): void {
     this.clearOutgoingCallTimeout();
     this.outgoingCallTimeoutId = setTimeout(() => {
-      const state = this._callingState;
+      const state = this._handshakeState;
       if (
         !state ||
         state.direction !== 'outgoing' ||
         state.call.roomId !== call.roomId
       )
         return;
-      this.setCallingState(false);
-      this.setResult('timeout');
+      this.setHandshakeState(null);
+      this.setOutcome('timeout');
       this.clearOutgoingCallTracking();
       callService
         .timeoutOutgoingCall({ recipientUID: call.calleeId })
@@ -242,23 +242,23 @@ export class CallFlowController {
   }
 
   cancelOutgoing = (): void => {
-    const state = this._callingState;
+    const state = this._handshakeState;
     const svc = getCallService();
     if (!state || state.direction !== 'outgoing' || !svc) return;
     this.clearOutgoingCallTracking();
-    this.setCallingState(false);
-    this.setResult(null);
+    this.setHandshakeState(null);
+    this.setOutcome(null);
     svc
       .cancelOutgoingCall({ recipientUID: state.call.calleeId })
       .catch((err) => console.error('Error cancelling outgoing call:', err));
   };
 
   acceptIncoming = (): void => {
-    const state = this._callingState;
+    const state = this._handshakeState;
     if (!state || state.direction !== 'incoming') return;
     const svc = getCallService();
     this.clearOutgoingCallTracking();
-    this.setCallingState(false);
+    this.setHandshakeState(null);
     svc
       .respondToIncomingCallInvite({
         roomId: state.call.roomId,
@@ -278,11 +278,11 @@ export class CallFlowController {
   };
 
   declineIncoming = (): void => {
-    const state = this._callingState;
+    const state = this._handshakeState;
     const svc = getCallService();
     if (!state || state.direction !== 'incoming' || !svc) return;
     this.clearOutgoingCallTracking();
-    this.setCallingState(false);
+    this.setHandshakeState(null);
     svc
       .respondToIncomingCallInvite({
         roomId: state.call.roomId,
@@ -313,8 +313,8 @@ export class CallFlowController {
     this.unsubscribeIncomingCall?.();
     this.unsubscribeIncomingCall = undefined;
     this.clearOutgoingCallTracking();
-    this.setCallingState(false);
-    this.setResult(null);
+    this.setHandshakeState(null);
+    this.setOutcome(null);
     this.p2p.close();
     cleanupCallService();
   }

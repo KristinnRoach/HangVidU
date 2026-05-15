@@ -1,34 +1,34 @@
 import { Match, Switch } from 'solid-js';
 
-import { useCallFlowContext } from '../call-flow-context.js';
+import { useCallHandshake } from '../call-handshake.js';
 import BusyCallDialog from './dialogs/BusyCallDialog.jsx';
 import IncomingCallDialog from './dialogs/IncomingCallDialog.jsx';
 import OutgoingCallDialog from './dialogs/OutgoingCallDialog.jsx';
 
 export default function CallDialogs() {
-  const callFlow = useCallFlowContext();
+  const handshake = useCallHandshake();
 
   return (
     <Switch>
-      <Match when={callFlow.outgoingCall()}>
+      <Match when={handshake.outgoingCall()}>
         {(call) => (
           <OutgoingCallDialog
             calleeName={call().calleeName}
             audioOnly={call().audioOnly}
-            onCancel={callFlow.cancelOutgoing}
+            onCancel={handshake.cancelOutgoing}
           />
         )}
       </Match>
-      <Match when={callFlow.outgoingCallResponse() === 'busy'}>
+      <Match when={handshake.outgoingCallOutcome() === 'busy'}>
         <BusyCallDialog />
       </Match>
-      <Match when={callFlow.incomingCall()}>
+      <Match when={handshake.incomingCall()}>
         {(call) => (
           <IncomingCallDialog
             callerName={call().callerName}
             audioOnly={call().audioOnly}
-            onAccept={callFlow.acceptIncoming}
-            onDecline={callFlow.declineIncoming}
+            onAccept={handshake.acceptIncoming}
+            onDecline={handshake.declineIncoming}
           />
         )}
       </Match>

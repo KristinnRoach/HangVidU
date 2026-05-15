@@ -11,16 +11,16 @@ import {
 import { useP2PContext } from '../../shared/p2p-context.js';
 import { createFirebaseRoomSignaling } from '../signaling/firebase-room-signaling.js';
 import type { CallInvite } from './model/call-schema.js';
-import { CallFlowController } from './call-flow-controller.js';
+import { CallHandshakeController } from './call-handshake-controller.js';
 import type {
-  CallingState,
+  CallHandshakeState,
   OutgoingCall,
-  CallResponseType,
+  OutgoingCallOutcome,
 } from './call-types.js';
 
-type CallFlowContextValue = {
-  calling: Accessor<CallingState>;
-  outgoingCallResponse: Accessor<CallResponseType>;
+type CallHandshakeContextValue = {
+  calling: Accessor<CallHandshakeState>;
+  outgoingCallOutcome: Accessor<OutgoingCallOutcome>;
   incomingCall: Accessor<CallInvite | null>;
   outgoingCall: Accessor<OutgoingCall | null>;
   exitActiveRoom: () => void;
@@ -29,34 +29,35 @@ type CallFlowContextValue = {
   declineIncoming: () => void;
 };
 
-const CallFlowContext = createContext<CallFlowContextValue>();
+const CallHandshakeContext = createContext<CallHandshakeContextValue>();
 
-export function CallFlowProvider(props: ParentProps) {
+export function CallHandshakeProvider(props: ParentProps) {
   const p2p = useP2PContext();
-  const [callingState, setCallingState] = createSignal<CallingState>(false);
-  const [outgoingCallResponse, setOutgoingCallResponse] =
-    createSignal<CallResponseType>(null);
+  const [handshakeState, setHandshakeState] =
+    createSignal<CallHandshakeState>(null);
+  const [outgoingCallOutcome, setOutgoingCallOutcome] =
+    createSignal<OutgoingCallOutcome>(null);
 
-  const controller = new CallFlowController({
+  const controller = new CallHandshakeController({
     p2p,
     createSignaling: createFirebaseRoomSignaling,
-    onStateChange: setCallingState,
-    onResultChange: setOutgoingCallResponse,
+    onStateChange: setHandshakeState,
+    onResultChange: setOutgoingCallOutcome,
   });
 
   const incomingCall = (): CallInvite | null => {
-    const state = callingState();
+    const state = handshakeState();
     return state && state.direction === 'incoming' ? state.call : null;
   };
 
   const outgoingCall = (): OutgoingCall | null => {
-    const state = callingState();
+    const state = handshakeState();
     return state && state.direction === 'outgoing' ? state.call : null;
   };
 
-  const value: CallFlowContextValue = {
-    calling: callingState,
-    outgoingCallResponse,
+  const value: CallHandshakeContextValue = {
+    calling: handshakeState,
+    outgoingCallOutcome,
     incomingCall,
     outgoingCall,
     exitActiveRoom: controller.exitActiveRoom,
@@ -79,18 +80,16 @@ export function CallFlowProvider(props: ParentProps) {
   }
 
   return (
-    <CallFlowContext.Provider value={value}>
+    <CallHandshakeContext.Provider value={value}>
       {props.children}
-    </CallFlowContext.Provider>
+    </CallHandshakeContext.Provider>
   );
 }
 
-export function useCallFlowContext(): CallFlowContextValue {
-  const ctx = useContext(CallFlowContext);
+export function useCallHandshake(): CallHandshakeContextValue {
+  const ctx = useContext(CallHandshakeContext);
   if (!ctx) {
-    throw new Error(
-      'useCallFlowContext must be used inside CallFlowProvider',
-    );
+    throw new Error('useCallHandshake must be used inside CallHandshakeProvider');
   }
   return ctx;
 }
