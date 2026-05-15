@@ -1,6 +1,6 @@
 import type { CallInvite } from './model/call-schema.js';
 
-export type OutgoingCall = {
+export type pendingOutgoingCall = {
   calleeId: string;
   calleeName: string;
   callerId: string;
@@ -17,7 +17,6 @@ export type CallHandshakeState =
     }
   | {
       direction: 'outgoing';
-      call: OutgoingCall;
+      call: pendingOutgoingCall;
     };
 
-export type OutgoingCallOutcome = 'busy' | 'rejected' | 'timeout' | null;

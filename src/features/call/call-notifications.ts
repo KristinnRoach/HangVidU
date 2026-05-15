@@ -1,7 +1,7 @@
 import { getPushNotifications } from '../push-notifications/index.js';
-import type { OutgoingCall } from './call-types.js';
+import type { pendingOutgoingCall } from './call-types.js';
 
-export function sendIncomingCallPushNotification(call: OutgoingCall) {
+export function sendIncomingCallPushNotification(call: pendingOutgoingCall) {
   const pushNotifications = getPushNotifications();
   pushNotifications
     ?.sendIncomingCall({
@@ -15,7 +15,7 @@ export function sendIncomingCallPushNotification(call: OutgoingCall) {
     });
 }
 
-export function sendMissedCallPushNotification(call: OutgoingCall) {
+export function sendMissedCallPushNotification(call: pendingOutgoingCall) {
   const pushNotifications = getPushNotifications();
   pushNotifications
     ?.sendMissedCall({

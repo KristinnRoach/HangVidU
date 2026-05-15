@@ -14,15 +14,13 @@ import type { CallInvite } from './model/call-schema.js';
 import { CallHandshakeController } from './call-handshake-controller.js';
 import type {
   CallHandshakeState,
-  OutgoingCall,
-  OutgoingCallOutcome,
+  pendingOutgoingCall,
 } from './call-types.js';
 
 type CallHandshakeContextValue = {
-  calling: Accessor<CallHandshakeState>;
-  outgoingCallOutcome: Accessor<OutgoingCallOutcome>;
-  incomingCall: Accessor<CallInvite | null>;
-  outgoingCall: Accessor<OutgoingCall | null>;
+  isCalleeBusy: Accessor<boolean>;
+  pendingIncomingCall: Accessor<CallInvite | null>;
+  pendingOutgoingCall: Accessor<pendingOutgoingCall | null>;
   exitActiveRoom: () => void;
   cancelOutgoing: () => void;
   acceptIncoming: () => void;
@@ -35,14 +33,13 @@ export function CallHandshakeProvider(props: ParentProps) {
   const p2p = useP2PContext();
   const [handshakeState, setHandshakeState] =
     createSignal<CallHandshakeState>(null);
-  const [outgoingCallOutcome, setOutgoingCallOutcome] =
-    createSignal<OutgoingCallOutcome>(null);
+  const [isCalleeBusy, setIsCalleeBusy] = createSignal(false);
 
   const controller = new CallHandshakeController({
     p2p,
     createSignaling: createFirebaseRoomSignaling,
     onStateChange: setHandshakeState,
-    onResultChange: setOutgoingCallOutcome,
+    onResultChange: setIsCalleeBusy,
   });
 
   const incomingCall = (): CallInvite | null => {
@@ -50,16 +47,15 @@ export function CallHandshakeProvider(props: ParentProps) {
     return state && state.direction === 'incoming' ? state.call : null;
   };
 
-  const outgoingCall = (): OutgoingCall | null => {
+  const outgoingCall = (): pendingOutgoingCall | null => {
     const state = handshakeState();
     return state && state.direction === 'outgoing' ? state.call : null;
   };
 
   const value: CallHandshakeContextValue = {
-    calling: handshakeState,
-    outgoingCallOutcome,
-    incomingCall,
-    outgoingCall,
+    isCalleeBusy,
+    pendingIncomingCall: incomingCall,
+    pendingOutgoingCall: outgoingCall,
     exitActiveRoom: controller.exitActiveRoom,
     cancelOutgoing: controller.cancelOutgoing,
     acceptIncoming: controller.acceptIncoming,
@@ -89,7 +85,9 @@ export function CallHandshakeProvider(props: ParentProps) {
 export function useCallHandshake(): CallHandshakeContextValue {
   const ctx = useContext(CallHandshakeContext);
   if (!ctx) {
-    throw new Error('useCallHandshake must be used inside CallHandshakeProvider');
+    throw new Error(
+      'useCallHandshake must be used inside CallHandshakeProvider',
+    );
   }
   return ctx;
 }

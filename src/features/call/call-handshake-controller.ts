@@ -4,7 +4,11 @@ import {
   initCallService,
   getCallService,
 } from './call-service.js';
-import { getUser, getUserId } from '../../auth/auth-state.js';
+import {
+  getLoggedInUserId,
+  getUser,
+  waitForAuthReady,
+} from '../../auth/auth-state.js';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import { CallResponseType, type CallInvite } from './model/call-schema.js';
 import {
@@ -21,8 +25,7 @@ import {
 } from './call-command-handlers.js';
 import type {
   CallHandshakeState,
-  OutgoingCall,
-  OutgoingCallOutcome,
+  pendingOutgoingCall,
 } from './call-types.js';
 
 const OUTGOING_CALL_TIMEOUT_MS = 30_000;
@@ -31,14 +34,14 @@ type CallHandshakeControllerOptions = {
   p2p: SolidP2PRoom;
   createSignaling: any; // TODO: Type
   onStateChange: (state: CallHandshakeState) => void;
-  onResultChange: (result: OutgoingCallOutcome) => void;
+  onResultChange: (busy: boolean) => void;
 };
 
 export class CallHandshakeController {
   private readonly p2p: SolidP2PRoom;
   private readonly createSignaling: any;
   private readonly onStateChange: (state: CallHandshakeState) => void;
-  private readonly onResultChange: (result: OutgoingCallOutcome) => void;
+  private readonly onResultChange: (busy: boolean) => void;
 
   private _handshakeState: CallHandshakeState = null;
   private outgoingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -63,27 +66,36 @@ export class CallHandshakeController {
     this.onStateChange(state);
   }
 
-  private setOutcome(result: OutgoingCallOutcome): void {
-    this.onResultChange(result);
+  private setCalleeBusy(busy: boolean): void {
+    this.onResultChange(busy);
   }
 
-  init(): void {
+  async init(): Promise<void> {
     this.cleanup();
 
-    const localUID = getUserId();
-    const callService = initCallService({ localUID, rtdb });
     const ac = new AbortController();
     this.commandAbortController = ac;
 
     registerCallCommandHandlers({
       signal: ac.signal,
-      startOutgoingCall: (details) => this.startOutgoingCall(details, localUID),
+      startOutgoingCall: (details) => this.startOutgoingCall(details),
       exitActiveRoom: () => this.exitActiveRoom(),
     });
 
+    const authState = await waitForAuthReady();
+    if (ac.signal.aborted) return;
+
+    const localUID = authState.user?.uid ?? getLoggedInUserId();
+    if (!localUID) return;
+
+    const callService = initCallService({ localUID, rtdb });
+
     this.unsubscribeIncomingCall = callService.onIncomingCall((call) => {
       if (!call) {
-        if (this._handshakeState && this._handshakeState.direction === 'incoming') {
+        if (
+          this._handshakeState &&
+          this._handshakeState.direction === 'incoming'
+        ) {
           this.setHandshakeState(null);
         }
         return;
@@ -114,16 +126,19 @@ export class CallHandshakeController {
 
   private async startOutgoingCall(
     details: InitiateCallCommandDetails,
-    localUID: string,
   ): Promise<void> {
-    const svc = getCallService();
-    if (!svc) return;
+    const localUID = getLoggedInUserId();
+    if (!localUID) {
+      console.warn('Cannot start outgoing call before login is ready');
+      return;
+    }
+    const svc = initCallService({ localUID, rtdb });
 
     const { calleeId, calleeName, audioOnly } = details;
     const callerName = getUser()?.userName || 'Unknown';
     const roomId = crypto.randomUUID();
 
-    const nextOutgoingCall: OutgoingCall = {
+    const nextOutgoingCall: pendingOutgoingCall = {
       calleeId,
       calleeName,
       callerId: localUID,
@@ -145,7 +160,7 @@ export class CallHandshakeController {
     }
 
     this.setHandshakeState({ direction: 'outgoing', call: nextOutgoingCall });
-    this.setOutcome(null);
+    this.setCalleeBusy(false);
     this.scheduleOutgoingCallTimeout(svc, nextOutgoingCall);
     sendIncomingCallPushNotification(nextOutgoingCall);
 
@@ -162,11 +177,8 @@ export class CallHandshakeController {
             nextOutgoingCall.audioOnly,
           );
         } else if (response.responseType === 'busy') {
-          this.setOutcome('busy');
-          setTimeout(() => this.setOutcome(null), 2_500);
-        } else if (response.responseType === 'rejected') {
-          this.setOutcome('rejected');
-          console.debug('Outgoing call was rejected');
+          this.setCalleeBusy(true);
+          setTimeout(() => this.setCalleeBusy(false), 2_500);
         }
         this.setHandshakeState(null);
       },
@@ -195,9 +207,7 @@ export class CallHandshakeController {
           navigator.mediaDevices.getUserMedia({
             video: audioOnly ? false : getVideoConstraints(),
             audio:
-              import.meta.env.DEV && !audioOnly
-                ? false
-                : getAudioConstraints(),
+              import.meta.env.DEV && !audioOnly ? false : getAudioConstraints(),
           })),
       memberCapacity,
       dataChannel: true,
@@ -220,7 +230,7 @@ export class CallHandshakeController {
 
   private scheduleOutgoingCallTimeout(
     callService: NonNullable<ReturnType<typeof getCallService>>,
-    call: OutgoingCall,
+    call: pendingOutgoingCall,
   ): void {
     this.clearOutgoingCallTimeout();
     this.outgoingCallTimeoutId = setTimeout(() => {
@@ -232,11 +242,10 @@ export class CallHandshakeController {
       )
         return;
       this.setHandshakeState(null);
-      this.setOutcome('timeout');
       this.clearOutgoingCallTracking();
       callService
         .timeoutOutgoingCall({ recipientUID: call.calleeId })
-        .catch((err) => console.error('Error timing out outgoing call:', err));
+        .catch((err) => console.warn('[CallHandshake] Failed to clear callee invite on timeout — callee dialog may not dismiss:', err));
       sendMissedCallPushNotification(call);
     }, OUTGOING_CALL_TIMEOUT_MS);
   }
@@ -247,16 +256,18 @@ export class CallHandshakeController {
     if (!state || state.direction !== 'outgoing' || !svc) return;
     this.clearOutgoingCallTracking();
     this.setHandshakeState(null);
-    this.setOutcome(null);
+    this.setCalleeBusy(false);
     svc
       .cancelOutgoingCall({ recipientUID: state.call.calleeId })
-      .catch((err) => console.error('Error cancelling outgoing call:', err));
+      .catch((err) => console.warn('[CallHandshake] Failed to clear callee invite on cancel — callee dialog may not dismiss:', err));
   };
 
   acceptIncoming = (): void => {
     const state = this._handshakeState;
     if (!state || state.direction !== 'incoming') return;
     const svc = getCallService();
+    const localUID = getLoggedInUserId();
+    if (!localUID) return;
     this.clearOutgoingCallTracking();
     this.setHandshakeState(null);
     svc
@@ -267,7 +278,7 @@ export class CallHandshakeController {
       .then(() =>
         this.enterRoom(
           state.call.roomId,
-          getUserId(),
+          localUID,
           state.call.audioOnly ?? false,
         ),
       )
@@ -314,7 +325,7 @@ export class CallHandshakeController {
     this.unsubscribeIncomingCall = undefined;
     this.clearOutgoingCallTracking();
     this.setHandshakeState(null);
-    this.setOutcome(null);
+    this.setCalleeBusy(false);
     this.p2p.close();
     cleanupCallService();
   }

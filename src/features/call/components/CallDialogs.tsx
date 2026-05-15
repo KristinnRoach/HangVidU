@@ -10,7 +10,7 @@ export default function CallDialogs() {
 
   return (
     <Switch>
-      <Match when={handshake.outgoingCall()}>
+      <Match when={handshake.pendingOutgoingCall()}>
         {(call) => (
           <OutgoingCallDialog
             calleeName={call().calleeName}
@@ -19,10 +19,10 @@ export default function CallDialogs() {
           />
         )}
       </Match>
-      <Match when={handshake.outgoingCallOutcome() === 'busy'}>
+      <Match when={handshake.isCalleeBusy()}>
         <BusyCallDialog />
       </Match>
-      <Match when={handshake.incomingCall()}>
+      <Match when={handshake.pendingIncomingCall()}>
         {(call) => (
           <IncomingCallDialog
             callerName={call().callerName}

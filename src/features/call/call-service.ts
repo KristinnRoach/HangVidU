@@ -20,7 +20,11 @@ const CALL_SIGNAL_TTL_MS = 60_000;
 let callServiceInstance: CallService | null = null;
 
 export function initCallService(options: CallServiceOptions): CallService {
-  if (!callServiceInstance) {
+  if (
+    !callServiceInstance ||
+    callServiceInstance.localUID !== options.localUID
+  ) {
+    callServiceInstance?.cleanup();
     callServiceInstance = new CallService(options);
   }
   return callServiceInstance;
@@ -40,7 +44,7 @@ export function cleanupCallService(): void {
 export class CallService {
   private callRepo: CallRepository;
   private roomAccess: RoomAccessRTDBAdapter;
-  private localUID: string;
+  readonly localUID: string;
 
   constructor({ localUID, rtdb }: CallServiceOptions) {
     if (!localUID || !rtdb) {
