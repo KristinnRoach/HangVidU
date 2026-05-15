@@ -56,14 +56,13 @@ async function initializeAppRuntime(): Promise<Cleanup> {
     cleanupFns.push(await setupNotificationsHandlers());
     cleanupFns.push(setupMessagingContactsIntegration());
     cleanupFns.push(setupMessagingAppBusHandlers({ messagingController }));
+    initPushNotifications().catch((error) => {
+      console.error('[APP] Push notifications init:', error);
+    });
   } catch (error) {
     cleanupAll(cleanupFns);
     throw error;
   }
-
-  initPushNotifications().catch((error) => {
-    console.error('[APP] Push notifications init:', error);
-  });
 
   return () => cleanupAll(cleanupFns);
 }

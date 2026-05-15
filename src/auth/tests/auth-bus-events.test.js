@@ -21,7 +21,7 @@ beforeEach(() => {
 });
 
 describe('auth-state shared auth events', () => {
-  it('emits evt:auth:session:ready and evt:auth:session:login on first stable authenticated state', async () => {
+  it('emits evt:auth:session:ready and evt:auth:session:logged-in on first stable authenticated state', async () => {
     const { setState } = await import('../auth-state.js');
 
     setState({
@@ -44,7 +44,7 @@ describe('auth-state shared auth events', () => {
     );
     expect(mocks.events.publishAndAwait).toHaveBeenNthCalledWith(
       2,
-      'evt:auth:session:login',
+      'evt:auth:session:logged-in',
       expect.objectContaining({
         state: expect.objectContaining({
           status: 'authenticated',
@@ -59,7 +59,7 @@ describe('auth-state shared auth events', () => {
     );
   });
 
-  it('emits evt:auth:session:logout on authenticated to unauthenticated transition', async () => {
+  it('emits evt:auth:session:logged-out on authenticated to unauthenticated transition', async () => {
     const { setState } = await import('../auth-state.js');
 
     setState({
@@ -78,7 +78,7 @@ describe('auth-state shared auth events', () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(mocks.events.publishAndAwait).toHaveBeenCalledWith(
-      'evt:auth:session:logout',
+      'evt:auth:session:logged-out',
       expect.objectContaining({
         state: expect.objectContaining({
           status: 'unauthenticated',

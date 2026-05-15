@@ -3,6 +3,7 @@ import {
   createInviteNotification,
   createReferralNotification,
   inAppNotificationManager,
+  showEnableNotificationsPrompt,
 } from '../features/notifications/index.js';
 
 let isReady = false;
@@ -34,7 +35,7 @@ export function setupNotificationsHandlers() {
       const ac = new AbortController();
 
       handleCommand(
-        'cmd:notifications:invite:add',
+        'cmd:app-notifications:invite:add',
         ({ notificationId, fromUserId, inviteData, onAccept, onDecline }) => {
           if (!notificationId || !fromUserId || !inviteData) {
             return;
@@ -57,7 +58,7 @@ export function setupNotificationsHandlers() {
       );
 
       handleCommand(
-        'cmd:notifications:invite:remove',
+        'cmd:app-notifications:invite:remove',
         ({ notificationId }) => {
           if (!notificationId) {
             return;
@@ -68,7 +69,7 @@ export function setupNotificationsHandlers() {
       );
 
       handleCommand(
-        'cmd:notifications:referral:add',
+        'cmd:app-notifications:referral:add',
         ({ notificationId, referrerName, referrerPhotoURL, onSignIn }) => {
           if (!notificationId) {
             return;
@@ -86,12 +87,20 @@ export function setupNotificationsHandlers() {
       );
 
       handleCommand(
-        'cmd:notifications:referral:remove',
+        'cmd:app-notifications:referral:remove',
         ({ notificationId }) => {
           if (!notificationId) {
             return;
           }
           inAppNotificationManager.remove(notificationId);
+        },
+        { signal: ac.signal },
+      );
+
+      handleCommand(
+        'cmd:app-notifications:show:enable-push',
+        () => {
+          showEnableNotificationsPrompt();
         },
         { signal: ac.signal },
       );

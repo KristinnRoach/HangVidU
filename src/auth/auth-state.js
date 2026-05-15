@@ -65,7 +65,7 @@ export function setState(next) {
 
   if (!previousSnapshot.isLoggedIn && snap.isLoggedIn) {
     events.push([
-      'evt:auth:session:login',
+      'evt:auth:session:logged-in',
       {
         state: snap,
         previousState: previousSnapshot,
@@ -76,7 +76,7 @@ export function setState(next) {
 
   if (previousSnapshot.isLoggedIn && !snap.isLoggedIn) {
     events.push([
-      'evt:auth:session:logout',
+      'evt:auth:session:logged-out',
       {
         state: snap,
         previousState: previousSnapshot,

@@ -20,8 +20,6 @@ const mocks = vi.hoisted(() => {
     processReferral: vi.fn(() => Promise.resolve()),
     ensureContactsHydrated: vi.fn(() => Promise.resolve()),
     resetContactsState: vi.fn(),
-    getPushNotifications: vi.fn(),
-    showEnableNotificationsPrompt: vi.fn(),
     devDebug: vi.fn(),
   };
 });
@@ -63,13 +61,6 @@ vi.mock('../../features/contacts/index.js', () => ({
   resetContactsState: mocks.resetContactsState,
 }));
 
-vi.mock('../../features/push-notifications/index.js', () => ({
-  getPushNotifications: mocks.getPushNotifications,
-}));
-
-vi.mock('../../features/notifications/index.js', () => ({
-  showEnableNotificationsPrompt: mocks.showEnableNotificationsPrompt,
-}));
 
 describe('setupAuth', () => {
   let localStorageClearSpy;
@@ -122,15 +113,9 @@ describe('setupAuth', () => {
     const { setupAuth } = await import('../setupAuth.js');
     const lobbyElement = { id: 'lobby' };
 
-    mocks.getPushNotifications.mockReturnValue({
-      ensureEnabledIfGranted: vi.fn(() =>
-        Promise.resolve({ state: 'prompt-needed' }),
-      ),
-    });
-
     const teardown = await setupAuth({ lobbyElement });
 
-    await mocks.handlers.get('evt:auth:session:login')({
+    await mocks.handlers.get('evt:auth:session:logged-in')({
       isInitialResolution: true,
     });
 
@@ -138,7 +123,6 @@ describe('setupAuth', () => {
     expect(mocks.ensureContactsHydrated).toHaveBeenCalled();
     expect(mocks.startListeningForSavedRooms).not.toHaveBeenCalled();
     expect(mocks.setupInviteListener).toHaveBeenCalledWith();
-    expect(mocks.showEnableNotificationsPrompt).toHaveBeenCalled();
 
     teardown();
   });
@@ -149,7 +133,7 @@ describe('setupAuth', () => {
 
     const teardown = await setupAuth({ lobbyElement });
 
-    await mocks.handlers.get('evt:auth:session:logout')({});
+    await mocks.handlers.get('evt:auth:session:logged-out')({});
 
     expect(mocks.resetContactsState).toHaveBeenCalled();
     expect(mocks.removeAllIncomingListeners).toHaveBeenCalled();
@@ -170,7 +154,7 @@ describe('setupAuth', () => {
 
     const teardown = await setupAuth({ lobbyElement });
 
-    await mocks.handlers.get('evt:auth:session:logout')({});
+    await mocks.handlers.get('evt:auth:session:logged-out')({});
 
     expect(globalThis.localStorage.getItem('locale')).toBe('is');
     expect(globalThis.localStorage.getItem('volatileKey')).toBeNull();
@@ -189,7 +173,7 @@ describe('setupAuth', () => {
     const teardown = await setupAuth({ lobbyElement });
 
     await expect(
-      mocks.handlers.get('evt:auth:session:logout')({}),
+      mocks.handlers.get('evt:auth:session:logged-out')({}),
     ).resolves.toBeUndefined();
 
     expect(mocks.removeAllIncomingListeners).toHaveBeenCalled();

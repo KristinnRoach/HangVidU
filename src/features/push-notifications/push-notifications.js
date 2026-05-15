@@ -1,6 +1,10 @@
 // Public app-facing push notifications facade.
 
-import { dispatchCommandAndAwait } from '../../shared/events/index.js';
+import {
+  dispatchCommandAndAwait,
+  dispatchCommand,
+  subscribe,
+} from '../../shared/events/index.js';
 
 const PERMISSION_REQUEST_TIMEOUT_MS = 8000;
 const AUTH_CLOUD_FUNCTION_COMMAND = 'cmd:auth:cloud-function:call';
@@ -685,6 +689,15 @@ export const initPushNotifications = async (options = {}) => {
     } catch (error) {
       console.error('[Push Notifications] init failed:', error);
     }
+    subscribe('evt:auth:session:logged-in', async () => {
+      const result = await instance.ensureEnabledIfGranted().catch((e) => {
+        console.warn('[Push Notifications] setup failed:', e);
+        return { state: 'error' };
+      });
+      if (result.state === 'prompt-needed') {
+        dispatchCommand('cmd:app-notifications:show:enable-push');
+      }
+    });
   }
 
   return instance;

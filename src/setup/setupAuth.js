@@ -15,8 +15,6 @@ import {
   ensureContactsHydrated,
   resetContactsState,
 } from '../features/contacts/index.js';
-import { getPushNotifications } from '../features/push-notifications/index.js';
-import { showEnableNotificationsPrompt } from '../features/notifications/index.js';
 
 let isReady = false;
 let initPromise = null;
@@ -141,7 +139,7 @@ export function setupAuth() {
       );
 
       subscribe(
-        'evt:auth:session:logout',
+        'evt:auth:session:logged-out',
         async () => {
           try {
             devDebug('[AUTH] User logged out - cleaning up listeners');
@@ -149,14 +147,14 @@ export function setupAuth() {
 
             resetContactsState();
           } catch (e) {
-            console.warn('[AUTH] Failed to handle evt:auth:session:logout:', e);
+            console.warn('[AUTH] Failed to handle evt:auth:session:logged-out:', e);
           }
         },
         { signal: ac.signal },
       );
 
       subscribe(
-        'evt:auth:session:login',
+        'evt:auth:session:logged-in',
         async ({ isInitialResolution }) => {
           try {
             devDebug('[AUTH] User logged in - setting up listeners');
@@ -184,21 +182,8 @@ export function setupAuth() {
             if (typeof maybeInviteCleanup === 'function') {
               inviteCleanup = maybeInviteCleanup;
             }
-
-            const pushController = getPushNotifications();
-            if (pushController) {
-              const notifResult = await pushController
-                .ensureEnabledIfGranted()
-                .catch((e) => {
-                  console.warn('[AUTH] Push notification setup failed:', e);
-                  return { state: 'error' };
-                });
-              if (notifResult.state === 'prompt-needed') {
-                showEnableNotificationsPrompt();
-              }
-            }
           } catch (e) {
-            console.warn('[AUTH] Failed to handle evt:auth:session:login:', e);
+            console.warn('[AUTH] Failed to handle evt:auth:session:logged-in:', e);
           }
         },
         { signal: ac.signal },
