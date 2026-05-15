@@ -39,7 +39,7 @@ export function CallHandshakeProvider(props: ParentProps) {
     p2p,
     createSignaling: createFirebaseRoomSignaling,
     onStateChange: setHandshakeState,
-    onResultChange: setIsCalleeBusy,
+    onCalleeBusy: setIsCalleeBusy,
   });
 
   const incomingCall = (): CallInvite | null => {

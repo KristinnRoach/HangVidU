@@ -34,14 +34,14 @@ type CallHandshakeControllerOptions = {
   p2p: SolidP2PRoom;
   createSignaling: any; // TODO: Type
   onStateChange: (state: CallHandshakeState) => void;
-  onResultChange: (busy: boolean) => void;
+  onCalleeBusy: (busy: boolean) => void;
 };
 
 export class CallHandshakeController {
   private readonly p2p: SolidP2PRoom;
   private readonly createSignaling: any;
   private readonly onStateChange: (state: CallHandshakeState) => void;
-  private readonly onResultChange: (busy: boolean) => void;
+  private readonly onCalleeBusy: (busy: boolean) => void;
 
   private _handshakeState: CallHandshakeState = null;
   private outgoingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -53,12 +53,12 @@ export class CallHandshakeController {
     p2p,
     createSignaling,
     onStateChange,
-    onResultChange,
+    onCalleeBusy,
   }: CallHandshakeControllerOptions) {
     this.p2p = p2p;
     this.createSignaling = createSignaling;
     this.onStateChange = onStateChange;
-    this.onResultChange = onResultChange;
+    this.onCalleeBusy = onCalleeBusy;
   }
 
   private setHandshakeState(state: CallHandshakeState): void {
@@ -67,7 +67,7 @@ export class CallHandshakeController {
   }
 
   private setCalleeBusy(busy: boolean): void {
-    this.onResultChange(busy);
+    this.onCalleeBusy(busy);
   }
 
   async init(): Promise<void> {
