@@ -95,6 +95,8 @@
   --transition-base: 200ms;
   --transition-slow: 300ms;
   --transition-slower: 400ms;
+
+  interpolate-size: allow-keywords;
 }
 
 /* ===== LIGHT MODE - TEMPORARILY DISABLED ===== */
@@ -103,6 +105,8 @@
 /*
 @media (prefers-color-scheme: light) {
   :root {
+    interpolate-size: allow-keywords;
+
     --bg-primary: #f5f5f5;
     --bg-secondary: #e8e8e8;
     --bg-tertiary: #e0e0e0;
