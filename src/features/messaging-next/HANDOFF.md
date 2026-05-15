@@ -1,13 +1,10 @@
 # Messaging Next Handoff
 
-This folder is the TS-first replacement path for the legacy messaging core. The
-legacy messaging implementation is still live; this module is not wired into
-runtime yet.
+This folder is the replacement path for the legacy messaging core. The legacy messaging implementation is still live; this module is not wired into runtime yet.
 
 Current scope:
 
-- `schema.ts` defines direct and group conversation IDs, conversation nodes,
-  conversation drafts, delivery policy, and first-pass message envelopes.
+- `schema.ts` defines direct and group conversation IDs conversation nodes, conversation drafts, delivery policy, and first-pass message envelopes.
 - `types.ts` exports Zod-inferred TypeScript types.
 - `schema.test.js` covers the agreed schema rules.
 - `messaging-core-design.html` is the editable design artifact for core rules.
@@ -24,7 +21,7 @@ Important context:
   event and may include `details.callId`.
 
 Before committing changes in this folder, check whether
-`messaging-core-design.html` needs to be updated to stay accurate.
+`messaging-core-design.html` or any of the related docs need to be updated to stay accurate. Ask the user questions rather than guessing if the design is unclear.
 
 Related docs:
 
