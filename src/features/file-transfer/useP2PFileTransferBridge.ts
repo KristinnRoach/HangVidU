@@ -134,6 +134,18 @@ export function useP2PFileTransferBridge({ messagesUIReady }: Options) {
     const msgUI = getMessagesUI();
     msgUI?.setWatchFileHandler(createWatchFileHandler());
     msgUI?.setFileTransferController(controller);
+
+    sharedBoxElement.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        controller.cleanup();
+        cleanupWatchSync();
+        sharedBoxElement.hidden = true;
+      }
+
+      if (e.key === 'w' && e.shiftKey) {
+        sharedBoxElement.hidden = !sharedBoxElement.hidden;
+      }
+    });
   });
 
   onCleanup(clearFileTransferController);
