@@ -3,23 +3,29 @@
    ============================================ */
 
 .contacts-container {
-  box-sizing: border-box;
-  background-color: rgb(63, 63, 63);
+  background: var(--bg-elevated);
 
-  border: 2px solid #444;
+  /* border-top: 2px solid #8d8d8d;
+  border-bottom: 2px solid #8d8d8d;
+  border-radius: 0 0 12px 12px; */
+
+  border: 2px solid #8d8d8d;
   border-radius: 12px;
 
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  align-items: stretch;
+  align-items: center;
 
   padding: 0.5rem;
   margin: var(--spacing-2xl) auto;
 
   overflow-y: auto;
-  max-width: 95vw;
-  max-height: 88dvh;
+  /* max-height: 88dvh; */
+  /* width: clamp(100%, 400px, 100%); */
+
+  width: fit-content;
+  height: minmax(100%, 100svh);
 
   & .contacts-list {
     display: flex;

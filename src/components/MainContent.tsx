@@ -1,5 +1,12 @@
 import { createSignal, Show, createEffect } from 'solid-js';
 
+import AppTitle from './app/AppTitle.jsx';
+import AuthControls from './auth/AuthControls.jsx';
+import AddContactButton from './contacts/AddContactButton.jsx';
+import NotificationsToggle from './app/NotificationsToggle.jsx';
+import LegalFooter from './app/LegalFooter.jsx';
+import LocaleToggle from './app/LocaleToggle.jsx';
+
 import PublicHomepage from './app/PublicHomepage.jsx';
 import ContactsList from './contacts/ContactsList';
 import ActiveCallRoom from '../features/call/components/ActiveCallRoom';
@@ -7,6 +14,7 @@ import { useP2PContext } from '../shared/p2p-context.js';
 import { isMessagingNextEnabled } from '../features/messaging-next/feature-flag.js';
 import ConversationPanel from '../features/messaging-next/ConversationPanel';
 import CallDialogs from '../features/call/components/CallDialogs.jsx';
+import styles from './MainContent.module.css';
 
 // legacy imports:
 import { useP2PFileTransferBridge } from '../features/file-transfer/useP2PFileTransferBridge.js';
@@ -17,7 +25,16 @@ import {
   useP2PRuntimeDiagnostics,
 } from '../app/useLegacyMountEffects.js';
 
-type ViewMode = 'home' | 'call' | 'contacts' | 'messaging';
+// type ViewMode = 'home' | 'call' | 'contacts' | 'messaging';
+
+const VIEWS = {
+  home: PublicHomepage,
+  call: ActiveCallRoom,
+  contacts: ContactsList,
+  messaging: ConversationPanel,
+} as const;
+
+type ViewMode = keyof typeof VIEWS;
 
 const messagingNext = isMessagingNextEnabled();
 
@@ -47,12 +64,15 @@ export default function MainContent() {
   // END - legacy setup, will be refactored:
 
   return (
-    <main id='main-content'>
-      <div class='relative-wrapper'>
-        <div id='lobby' class='lobby'>
-          {/* Navigation/Test buttons just to demonstrate switching */}
-          <nav>
-            <button onClick={() => setActiveView('home')}>Home</button>
+    <div class={styles.layoutWrapper}>
+      <TopBar />
+      <div id='onetap-container' />
+
+      <main id='main-content' class={styles.mainContent}>
+        <div id='lobby' class={styles.lobby}>
+          {/* Temp Navigation/Test buttons to demonstrate switching */}
+          <nav class={styles.topNav}>
+            {/* <button onClick={() => setActiveView('home')}>Home</button> */}
             <button onClick={() => setActiveView('call')}>Call</button>
             <button onClick={() => setActiveView('contacts')}>Contacts</button>
             <button onClick={() => setActiveView('messaging')}>Messages</button>
@@ -60,37 +80,64 @@ export default function MainContent() {
 
           <CallDialogs />
 
-          {/* Use CSS display for exclusive rendering to keep stateful components mounted */}
-          <div hidden={activeView() !== 'home'}>
+          {/* Currently using CSS display for exclusive rendering to keep stateful components mounted
+        TODO: Consider refactoring to use SolidJS Match + Switch */}
+          <div
+            hidden={activeView() !== 'home'}
+            class={styles.activeViewContainer}
+          >
             <PublicHomepage />
           </div>
 
           <Show when={p2p.state() !== 'idle'}>
-            <div hidden={activeView() !== 'call'}>
+            <div
+              hidden={activeView() !== 'call'}
+              class={styles.activeViewContainer}
+            >
               <ActiveCallRoom />
             </div>
           </Show>
 
-          <div hidden={activeView() !== 'contacts'}>
+          <div
+            hidden={activeView() !== 'contacts'}
+            class={styles.activeViewContainer}
+          >
             <ContactsList />
           </div>
 
           <Show when={messagingNext}>
-            <div class='stretch-height' hidden={activeView() !== 'messaging'}>
+            {/* TODO: remove "Show" when messaging-next is fully rolled out and legacy messaging UI is removed */}
+            <div
+              hidden={activeView() !== 'messaging'}
+              class={styles.activeViewContainer}
+            >
               <ConversationPanel onFocus={() => setActiveView('messaging')} />
             </div>
           </Show>
-
-          {/* <PublicHomepage />
-          <Show when={p2p.state() !== 'idle'}>
-            <ActiveCallRoom />
-          </Show>
-          <ContactsList />
-          <Show when={messagingNext}>
-            <ConversationPanel />
-          </Show> */}
         </div>
+      </main>
+
+      <Show when={activeView() === 'home' || activeView() === 'contacts'}>
+        <LegalFooter />
+        <LocaleToggle />
+      </Show>
+    </div>
+  );
+}
+
+function TopBar() {
+  return (
+    <header id='top-bar' class='top-bar'>
+      <div id='top-bar-left' class='top-bar-left animated-flex'>
+        <AppTitle />
+        <AuthControls />
       </div>
-    </main>
+
+      <div class='top-bar-right'>
+        <AddContactButton />
+        <NotificationsToggle />
+        {/* <YouTubeSearchControls /> */}
+      </div>
+    </header>
   );
 }

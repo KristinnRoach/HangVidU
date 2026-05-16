@@ -14,20 +14,16 @@
   justify-content: space-between;
 
   margin: 0 auto;
-  padding: 0.5rem 0.25rem;
+  padding: 0.75rem 0.5rem;
 
-  /* border: green solid 3px; */
+  /* border: limegreen solid 2px; */
 
-  max-width: calc(100% - 1rem);
-  height: 40px;
+  width: 100svw;
+  height: 50px;
 
   transition:
     background-color var(--duration-default, 200ms) var(--easing-default, ease),
     box-shadow var(--duration-default, 200ms) var(--easing-default, ease);
-}
-
-.top-bar button {
-  height: 35px;
 }
 
 /* Top Bar - Left Side Section (title and auth) */
@@ -265,7 +261,6 @@
   outline-offset: 2px;
 }
 
-/* Consistent button sizing for all top-bar-right items */
 .top-bar-right button,
 .top-bar-right .notifications-toggle-btn {
   display: flex;

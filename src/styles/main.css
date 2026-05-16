@@ -11,9 +11,10 @@
 @import './layout/wrappers.css';
 @import './layout/grid.css';
 
+/* @import './components/lobby.css'; */
+
 @import './components/onetap.css';
 @import './components/top-bar.css';
-@import './components/lobby.css';
 @import './components/public-homepage.css';
 @import './components/contacts-list.css';
 @import './components/add-contact-modal.css';
@@ -32,7 +33,12 @@
 @import './components/dialog/edit-contact-dialog.css';
 @import './components/legal-footer.css';
 
-/* @import './view-state.css'; Declarative view-based visibility */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  /* outline: 2px solid lime; */
+}
 
 /* LEGACY - Default visible state for elements that toggle visibility */
 .video-box,

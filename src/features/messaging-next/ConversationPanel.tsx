@@ -1,4 +1,13 @@
-import { For, Match, Show, Switch, createEffect, on, onCleanup, onMount } from 'solid-js';
+import {
+  For,
+  Match,
+  Show,
+  Switch,
+  createEffect,
+  on,
+  onCleanup,
+  onMount,
+} from 'solid-js';
 import { handleCommand } from '../../shared/events/index.js';
 import { getLoggedInUserId } from '../../auth/auth-state.js';
 import { createConversationState } from './conversation.state.js';
@@ -27,10 +36,15 @@ export default function ConversationPanel(props: { onFocus?: () => void }) {
     if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  createEffect(on(() => state.messages.length, () => {
-    if (suppressScroll) return;
-    queueMicrotask(scrollToEnd);
-  }));
+  createEffect(
+    on(
+      () => state.messages.length,
+      () => {
+        if (suppressScroll) return;
+        queueMicrotask(scrollToEnd);
+      },
+    ),
+  );
 
   onMount(() => {
     const ac = new AbortController();
