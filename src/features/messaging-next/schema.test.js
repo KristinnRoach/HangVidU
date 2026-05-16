@@ -10,7 +10,7 @@ import {
 describe('messaging-next schema', () => {
   it('resolves stable direct conversation ids with sorted participants', () => {
     expect(resolveDirectConversationId('user-b', 'user-a')).toBe(
-      'dm:user-a:user-b',
+      'user-a_user-b',
     );
   });
 
@@ -20,7 +20,7 @@ describe('messaging-next schema', () => {
 
   it('keeps drafts on conversation nodes outside the message stream', () => {
     const node = ConversationNodeSchema.parse({
-      conversationId: 'dm:user-a:user-b',
+      conversationId: 'user-a_user-b',
       kind: 'direct',
       participants: {
         'user-a': {
@@ -97,7 +97,7 @@ describe('messaging-next schema', () => {
     expect(() =>
       MessageEnvelopeSchema.parse({
         messageId: 'msg-1',
-        conversationId: 'dm:user-a:user-b',
+        conversationId: 'user-a_user-b',
         senderId: 'user-a',
         createdAt: 10,
         delivery: 'persistent',

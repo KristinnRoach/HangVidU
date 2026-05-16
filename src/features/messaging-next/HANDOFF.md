@@ -34,13 +34,12 @@ When enabled: legacy `initMessagesUI()` is skipped, the legacy `cmd:messaging:co
 
 - `onChildAdded` replays all historical messages when first attached. `receiveMessage` deduplicates by ID, so no double rendering. But the replay callbacks still fire after `loadMessages` resolves, potentially causing unnecessary work. Low priority — add `afterKey` cursor to `MessageRepository.subscribe()` when this becomes a performance concern.
 
-**Conversation ID compatibility**
+**Conversation IDs**
 
-- `schema.ts` defines direct IDs as `dm:{sortedUserA}:{sortedUserB}`.
-- Existing contacts may still carry legacy underscore IDs from the old
-  `resolveDirectConversationId()` helper.
-- Do not add more runtime behavior until the compatibility path is decided. See
-  `NEXT.md` and `QUESTIONS.md`.
+- Direct conversation IDs currently use `{sortedUserA}_{sortedUserB}` via the
+  existing `resolveDirectConversationId()` helper.
+- Group conversation IDs use generated `grp:{generatedId}` values.
+- Do not introduce another direct ID format without a deliberate migration plan.
 
 **RTDB adapter shape**
 
@@ -82,7 +81,7 @@ Current scope:
 
 Important context:
 
-- Direct conversation IDs use `dm:{sortedUserA}:{sortedUserB}`.
+- Direct conversation IDs currently use `{sortedUserA}_{sortedUserB}`.
 - Group conversation IDs use `grp:{generatedId}`.
 - Drafts live on conversation nodes, not in the sent message stream.
 - Every message envelope carries `conversationId` and `delivery`.

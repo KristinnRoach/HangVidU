@@ -1,23 +1,19 @@
 # Suggested Next Slice
 
-Recommended next slice: resolve direct conversation ID compatibility.
+Recommended next slice: add the canonical conversation repository boundary.
 
 Deliverables:
 
-- Decide whether contacts should migrate stored direct conversation IDs to
-  `dm:{sortedUserA}:{sortedUserB}` or whether `messaging-next` should accept
-  legacy `{sortedUserA}_{sortedUserB}` IDs through an explicit compatibility
-  layer.
-- Implement only the chosen compatibility path.
-- Add focused tests for contact selection into `messaging-next`.
-- Update `messaging-core-design.html`, `DECISIONS.md`, and `QUESTIONS.md` if
-  the compatibility rule changes the core design.
+- Define a small `ConversationRepository` interface for conversation metadata:
+  kind, participants, title, draft, delivery policy, created/updated timestamps.
+- Add an in-memory adapter and focused tests.
+- Do not wire runtime yet unless the repository shape is clear and tiny.
+- Update `messaging-core-design.html`, `DECISIONS.md`, and `QUESTIONS.md` if the
+  public API changes.
 
 Why this next:
 
-- The schema and docs say direct conversations use `dm:` IDs, but existing
-  contacts may still carry legacy underscore IDs.
-- Manual testing through the feature flag depends on contact selection using the
-  same conversation identity as the new core.
-- This is a fundamental rule; leaving it ambiguous will make repository and
-  private transport work harder to reason about.
+- Drafts and group membership are conversation-node state, but current runtime
+  only has message storage plus local UI state.
+- This keeps group-chat and draft fundamentals out of the message repository.
+- It is the next real core boundary before private sessions or file messages.

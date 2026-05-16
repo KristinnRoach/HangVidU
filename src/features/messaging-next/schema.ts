@@ -1,9 +1,8 @@
 import { z } from 'zod';
-import { buildDMConversationId } from '../../shared/utils/conversation-id.js';
 
 export const UserIdSchema = z.string().trim().min(1);
 
-export const DirectConversationIdSchema = z.string().regex(/^dm:[^:]+:[^:]+$/);
+export const DirectConversationIdSchema = z.string().trim().min(1);
 
 export const GroupConversationIdSchema = z
   .string()
@@ -95,7 +94,7 @@ export function resolveDirectConversationId(
     throw new Error('resolveDirectConversationId requires exactly 2 user ids');
   }
 
-  return DirectConversationIdSchema.parse(buildDMConversationId(p1, p2));
+  return DirectConversationIdSchema.parse([p1, p2].sort().join('_'));
 }
 
 export function createGroupConversationId(

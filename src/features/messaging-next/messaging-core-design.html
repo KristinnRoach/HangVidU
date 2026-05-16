@@ -302,11 +302,11 @@
             <h3>Direct Chat</h3>
             <div class="schema">
               <div>ID rule</div>
-              <div><code>dm:{sortedUserA}:{sortedUserB}</code></div>
+              <div><code>{sortedUserA}_{sortedUserB}</code></div>
               <div>Persistence path</div>
               <div><code>conversations/{conversationId}</code></div>
               <div>Compatibility</div>
-              <div>Can map legacy <code>userA_userB</code> IDs on read.</div>
+              <div>Current production format. Do not change without migration.</div>
             </div>
           </div>
           <div class="box">
@@ -324,9 +324,10 @@
         <div class="box decision" style="margin-top: 12px">
           <h3>Decision Point</h3>
           <p class="editable" contenteditable="true">
-            Recommended: deterministic IDs only for 1:1 direct chats. Use
-            generated stable IDs for groups, because group membership changes
-            over time and should not rewrite message history identity.
+            Recommended: keep deterministic IDs only for 1:1 direct chats using
+            the current sorted underscore format. Use generated stable IDs for
+            groups, because group membership changes over time and should not
+            rewrite message history identity.
           </p>
         </div>
       </section>
@@ -338,7 +339,7 @@
             <h3>Conversation</h3>
             <div class="schema">
               <div><code>conversationId</code></div>
-              <div><code>dm:...</code> or <code>grp:...</code></div>
+              <div>Direct deterministic ID or generated <code>grp:...</code>.</div>
               <div><code>kind</code></div>
               <div><code>direct | group</code></div>
               <div><code>participants</code></div>
@@ -540,7 +541,7 @@
         <h2>First Implementation Slice</h2>
         <div class="box">
           <ul>
-            <li>Resolve legacy direct conversation ID compatibility before adding more runtime behavior.</li>
+            <li>Add the canonical conversation repository boundary for metadata, participants, drafts, and delivery policy.</li>
             <li>Keep repository and private transport boundaries centered on <code>MessageEnvelope</code>.</li>
             <li>Treat the current RTDB adapter as a legacy-compatible adapter until the canonical persistence shape is decided.</li>
             <li>Keep legacy messaging live until the new service is tested and can be wired one caller at a time.</li>
