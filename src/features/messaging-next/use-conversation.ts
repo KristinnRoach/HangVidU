@@ -1,10 +1,15 @@
 import { createEffect, onCleanup } from 'solid-js';
 import type {
+  ChatMessage,
   MessageRepository,
   P2PChatEnvelope,
   PrivateMessageTransport,
 } from './interfaces.js';
-import type { ConversationId, DeliveryPolicy } from './types.js';
+import type {
+  ConversationId,
+  DeliveryPolicy,
+  MessageEnvelope,
+} from './types.js';
 import type { ConversationStateStore } from './conversation.state.js';
 import type { ConversationActions } from './conversation.actions.js';
 
@@ -16,6 +21,27 @@ type UseConversationOptions = {
   privateTransport?: PrivateMessageTransport;
 };
 
+function envelopeToChatMessage(
+  message: MessageEnvelope,
+  source: ChatMessage['source'],
+): ChatMessage | null {
+  if (message.payload.type !== 'text') {
+    return null;
+  }
+
+  return {
+    id: message.messageId,
+    conversationId: message.conversationId,
+    senderId: message.senderId,
+    text: message.payload.text,
+    createdAt: message.createdAt,
+    delivery: message.delivery,
+    source,
+    status: 'sent',
+    reactions: {},
+  };
+}
+
 export async function loadConversationMessages(
   repository: MessageRepository,
   conversationId: ConversationId,
@@ -25,7 +51,8 @@ export async function loadConversationMessages(
   const messages = await repository.loadMessages(conversationId);
   if (!shouldApply()) return;
   for (const msg of messages) {
-    actions.receiveMessage({ ...msg, source: 'persisted', reactions: {} });
+    const chatMessage = envelopeToChatMessage(msg, 'persisted');
+    if (chatMessage) actions.receiveMessage(chatMessage);
   }
 }
 
@@ -44,18 +71,12 @@ export function useConversation({
     } catch {
       return;
     }
-    if (envelope?.type !== 'chat') return;
-    if (envelope.conversationId !== state.conversationId) return;
-    actions.receiveMessage({
-      id: envelope.id,
-      conversationId: envelope.conversationId,
-      senderId: envelope.senderId,
-      text: envelope.text,
-      createdAt: envelope.createdAt,
-      delivery: 'private',
-      source: 'private',
-      reactions: {},
-    });
+    if (envelope?.protocol !== 'hangvidu.messaging.v1') return;
+    if (envelope.type !== 'message') return;
+    if (envelope.message.conversationId !== state.conversationId) return;
+
+    const chatMessage = envelopeToChatMessage(envelope.message, 'private');
+    if (chatMessage) actions.receiveMessage(chatMessage);
   }
 
   if (privateTransport) {
@@ -72,7 +93,8 @@ export function useConversation({
     let disposed = false;
 
     const result = repository.subscribe(conversationId, myUserId, (msg) => {
-      actions.receiveMessage({ ...msg, source: 'persisted', reactions: {} });
+      const chatMessage = envelopeToChatMessage(msg, 'persisted');
+      if (chatMessage) actions.receiveMessage(chatMessage);
     });
 
     if (typeof result === 'function') {
@@ -152,21 +174,33 @@ export function useConversation({
           return;
         }
         const envelope: P2PChatEnvelope = {
-          type: 'chat',
-          id: tempId,
-          conversationId,
-          text,
-          senderId: myUserId,
-          createdAt,
+          protocol: 'hangvidu.messaging.v1',
+          type: 'message',
+          message: {
+            messageId: tempId,
+            conversationId,
+            senderId: myUserId,
+            createdAt,
+            delivery,
+            payload: {
+              type: 'text',
+              text,
+            },
+          },
         };
         privateTransport.send(JSON.stringify(envelope));
         actions.markSent(tempId, tempId);
       } else {
         const saved = await repository.send({
+          messageId: tempId,
           conversationId,
           senderId: myUserId,
-          text,
+          createdAt,
           delivery,
+          payload: {
+            type: 'text',
+            text,
+          },
         });
         actions.markSent(tempId, saved.id);
       }

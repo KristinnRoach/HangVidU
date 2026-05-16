@@ -1,34 +1,23 @@
 // Transport and state contracts for messaging-next.
 // No Firebase, no runtime deps — adapters implement these and are swapped freely.
 
-import type { ConversationId, DeliveryPolicy, UserId } from './types.js';
+import type {
+  ConversationId,
+  DeliveryPolicy,
+  MessageEnvelope,
+  UserId,
+} from './types.js';
 
 // ─── Wire types ───────────────────────────────────────────────────────────────
 
-export type IncomingMessage = {
-  id: string;
-  conversationId: ConversationId;
-  senderId: UserId;
-  text: string;
-  createdAt: number;
-  delivery: DeliveryPolicy;
-};
-
-export type OutgoingText = {
-  conversationId: ConversationId;
-  senderId: UserId;
-  text: string;
-  delivery: DeliveryPolicy;
-};
+export type IncomingMessage = MessageEnvelope;
+export type OutgoingMessage = MessageEnvelope;
 
 /** Wire format for chat messages sent over a datachannel (private mode). */
 export type P2PChatEnvelope = {
-  type: 'chat';
-  id: string;
-  conversationId: ConversationId;
-  text: string;
-  senderId: UserId;
-  createdAt: number;
+  protocol: 'hangvidu.messaging.v1';
+  type: 'message';
+  message: MessageEnvelope;
 };
 
 // ─── Persistent backend ───────────────────────────────────────────────────────
@@ -42,9 +31,9 @@ export type MessageRepository = {
     conversationId: ConversationId,
   ): IncomingMessage[] | Promise<IncomingMessage[]>;
 
-  /** Persist a text message. Resolves with the canonical id and server timestamp. */
+  /** Persist a message envelope. Resolves with the canonical id and timestamp. */
   send(
-    msg: OutgoingText,
+    msg: OutgoingMessage,
   ):
     | { id: string; createdAt: number }
     | Promise<{ id: string; createdAt: number }>;

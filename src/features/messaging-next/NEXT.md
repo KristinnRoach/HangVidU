@@ -1,18 +1,23 @@
 # Suggested Next Slice
 
-Recommended next slice: define the core interfaces without wiring runtime.
+Recommended next slice: resolve direct conversation ID compatibility.
 
 Deliverables:
 
-- Add a `MessageRepository` interface for persistent backends.
-- Add a `PrivateMessageTransport` interface for P2PRoom/data-channel delivery.
-- Add a small `MessagingService` interface that depends only on those contracts.
-- Add focused tests using in-memory fakes.
-- Update `messaging-core-design.html` if the interface names or boundaries
-  change.
+- Decide whether contacts should migrate stored direct conversation IDs to
+  `dm:{sortedUserA}:{sortedUserB}` or whether `messaging-next` should accept
+  legacy `{sortedUserA}_{sortedUserB}` IDs through an explicit compatibility
+  layer.
+- Implement only the chosen compatibility path.
+- Add focused tests for contact selection into `messaging-next`.
+- Update `messaging-core-design.html`, `DECISIONS.md`, and `QUESTIONS.md` if
+  the compatibility rule changes the core design.
 
 Why this next:
 
-- It keeps Firebase RTDB swappable before an RTDB implementation is ported.
-- It lets private mode align with P2PRoom lifecycle before UI code depends on it.
-- It avoids carrying over legacy controller responsibilities into the new module.
+- The schema and docs say direct conversations use `dm:` IDs, but existing
+  contacts may still carry legacy underscore IDs.
+- Manual testing through the feature flag depends on contact selection using the
+  same conversation identity as the new core.
+- This is a fundamental rule; leaving it ambiguous will make repository and
+  private transport work harder to reason about.

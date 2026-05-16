@@ -15,11 +15,15 @@ import type {
   MessageRepository,
   ReactionMap,
 } from '../interfaces.js';
-import type { ConversationId, UserId } from '../types.js';
+import type { ConversationId, MessageEnvelope, UserId } from '../types.js';
 
 // Path: conversations/{conversationId}/messages/{messageId}
-// Wire format: { from, text, type, sentAt, reactions? }
+// Legacy wire format: { from, text, type, sentAt, reactions? }
 // reactions wire format { emoji: { userId: true } } matches ReactionMap directly.
+//
+// This adapter translates between the messaging-next envelope contract and the
+// existing RTDB row shape so feature-flag testing can use current production
+// data. It is not the target canonical persistence format.
 
 function msgsRef(conversationId: ConversationId) {
   return ref(rtdb, `conversations/${conversationId}/messages`);
@@ -32,14 +36,24 @@ function toIncoming(
 ): IncomingMessage | null {
   if (!raw || typeof raw.text !== 'string' || !raw.from) return null;
   return {
-    id: key,
+    messageId: key,
     conversationId,
     senderId: raw.from as UserId,
-    text: raw.text,
     // sentAt is a server timestamp (number on read, null briefly after write)
     createdAt: typeof raw.sentAt === 'number' ? raw.sentAt : Date.now(),
     delivery: 'persistent',
+    payload: {
+      type: 'text',
+      text: raw.text,
+    },
   };
+}
+
+function requireTextPayload(message: MessageEnvelope) {
+  if (message.payload.type !== 'text') {
+    throw new Error('RTDB legacy adapter currently supports text payloads only');
+  }
+  return message.payload;
 }
 
 export function createRTDBMessageRepository(): MessageRepository {
@@ -59,11 +73,12 @@ export function createRTDBMessageRepository(): MessageRepository {
       return messages;
     },
 
-    async send({ conversationId, senderId, text }) {
-      const newRef = push(msgsRef(conversationId));
+    async send(message) {
+      const payload = requireTextPayload(message);
+      const newRef = push(msgsRef(message.conversationId));
       await set(newRef, {
-        from: senderId,
-        text,
+        from: message.senderId,
+        text: payload.text,
         type: 'text',
         sentAt: serverTimestamp(),
       });

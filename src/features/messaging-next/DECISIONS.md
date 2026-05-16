@@ -11,7 +11,21 @@ target public API. Keep unsettled items in [QUESTIONS.md](./QUESTIONS.md).
 - Message envelopes include `conversationId`.
 - Message envelopes include `delivery: 'persistent' | 'private'`.
 - First schema slice supports `text`, `event`, and `system` payloads only.
+- `MessageRepository` and private data-channel envelopes use
+  `MessageEnvelope` as the core message contract.
 
 ## Target Public API
 
-To be defined after the repository and private transport interfaces are agreed.
+Current draft API:
+
+- `MessageRepository.loadMessages(conversationId)`
+- `MessageRepository.send(messageEnvelope)`
+- `MessageRepository.subscribe(conversationId, myUserId, onMessage)`
+- `MessageRepository.setReaction(...)`
+- `MessageRepository.subscribeReactions(...)`
+- `PrivateMessageTransport.send(data)`
+- `PrivateMessageTransport.onMessage(callback)`
+
+The current RTDB adapter is a legacy-compatible adapter. It translates between
+`MessageEnvelope` and the existing RTDB row shape and currently supports text
+payloads only.

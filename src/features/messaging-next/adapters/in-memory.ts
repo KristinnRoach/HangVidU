@@ -27,18 +27,15 @@ export function createInMemoryMessageRepository(): MessageRepository {
       return [...getStored(conversationId)];
     },
 
-    send({ conversationId, senderId, text, delivery }) {
+    send(message) {
       const msg: IncomingMessage = {
-        id: crypto.randomUUID(),
-        conversationId,
-        senderId,
-        text,
+        ...message,
+        messageId: crypto.randomUUID(),
         createdAt: Date.now(),
-        delivery,
       };
-      getStored(conversationId).push(msg);
-      for (const cb of msgSubs.get(conversationId) ?? []) cb(msg);
-      return { id: msg.id, createdAt: msg.createdAt };
+      getStored(msg.conversationId).push(msg);
+      for (const cb of msgSubs.get(msg.conversationId) ?? []) cb(msg);
+      return { id: msg.messageId, createdAt: msg.createdAt };
     },
 
     subscribe(conversationId, myUserId, onMessage) {

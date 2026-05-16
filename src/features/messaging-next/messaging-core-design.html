@@ -373,7 +373,7 @@
             <ul>
               <li><code>getConversation(id)</code></li>
               <li><code>upsertConversation(record)</code></li>
-              <li><code>appendMessage(envelope)</code></li>
+              <li><code>send(messageEnvelope)</code></li>
               <li><code>fetchMessages(id, cursor)</code></li>
               <li><code>subscribeMessages(id, cursor, callback)</code></li>
               <li><code>markRead(id, messageIds)</code></li>
@@ -384,7 +384,7 @@
             <ul>
               <li><code>canDeliver(conversation)</code></li>
               <li><code>connect(conversation)</code></li>
-              <li><code>send(envelope)</code></li>
+              <li><code>send(protocolEnvelope)</code></li>
               <li><code>subscribe(callback)</code></li>
               <li><code>disconnect()</code></li>
               <li>No durable storage contract.</li>
@@ -540,9 +540,9 @@
         <h2>First Implementation Slice</h2>
         <div class="box">
           <ul>
-            <li>Create TS schemas and types for conversation, participant, draft, message envelope, and delivery policy.</li>
-            <li>Define repository and private transport interfaces without implementing private room invites yet.</li>
-            <li>Port RTDB message repository behind the new interface for text and call-event messages.</li>
+            <li>Resolve legacy direct conversation ID compatibility before adding more runtime behavior.</li>
+            <li>Keep repository and private transport boundaries centered on <code>MessageEnvelope</code>.</li>
+            <li>Treat the current RTDB adapter as a legacy-compatible adapter until the canonical persistence shape is decided.</li>
             <li>Keep legacy messaging live until the new service is tested and can be wired one caller at a time.</li>
           </ul>
         </div>
