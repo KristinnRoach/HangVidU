@@ -27,9 +27,13 @@ export default function AuthControls() {
   const [avatarFailed, setAvatarFailed] = createSignal(false);
 
   const isLoading = () => status() === 'loading';
-  const displayName = createMemo(() =>
-    smartTruncateName(user()?.userName || user()?.email || t('auth.guest_user')),
-  );
+
+  // TODO: Decide whether to show name, for now just showing avatar
+  const displayName = createMemo(() => {
+    const name = user()?.userName || user()?.email || t('auth.guest_user');
+    return smartTruncateName(name);
+  });
+
   const photoUrl = createMemo(() => user()?.photoURL || '');
   const avatarInitial = createMemo(() =>
     (displayName() || t('auth.guest_user')).trim().slice(0, 1).toUpperCase(),
@@ -66,9 +70,12 @@ export default function AuthControls() {
 
       <Show when={isLoggedIn()}>
         <div class='user-info'>
-          <Show when={photoUrl() && !avatarFailed()} fallback={
-            <span class='user-avatar-placeholder'>{avatarInitial()}</span>
-          }>
+          <Show
+            when={photoUrl() && !avatarFailed()}
+            fallback={
+              <span class='user-avatar-placeholder'>{avatarInitial()}</span>
+            }
+          >
             <img
               src={photoUrl()}
               alt={displayName()}
@@ -77,7 +84,9 @@ export default function AuthControls() {
               onError={() => setAvatarFailed(true)}
             />
           </Show>
-          <span class='user-name'>{displayName()}</span>
+
+          {/* TODO: Decide whether to keep name */}
+          {/* <span class='user-name'>{displayName()}</span> */}
         </div>
         <button
           id='goog-logout-btn'

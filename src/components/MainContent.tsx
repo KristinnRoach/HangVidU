@@ -65,19 +65,15 @@ export default function MainContent() {
 
   return (
     <div class={styles.layoutWrapper}>
-      <TopBar />
+      <TopBar
+        activeView={activeView()}
+        setActiveView={setActiveView}
+        isInCall={p2p.state() !== 'idle'}
+      />
       <div id='onetap-container' />
 
       <main id='main-content' class={styles.mainContent}>
         <div id='lobby' class={styles.lobby}>
-          {/* Temp Navigation/Test buttons to demonstrate switching */}
-          <nav class={styles.topNav}>
-            {/* <button onClick={() => setActiveView('home')}>Home</button> */}
-            <button onClick={() => setActiveView('call')}>Call</button>
-            <button onClick={() => setActiveView('contacts')}>Contacts</button>
-            <button onClick={() => setActiveView('messaging')}>Messages</button>
-          </nav>
-
           <CallDialogs />
 
           {/* Currently using CSS display for exclusive rendering to keep stateful components mounted
@@ -125,13 +121,33 @@ export default function MainContent() {
   );
 }
 
-function TopBar() {
+interface TopBarProps {
+  activeView: ViewMode;
+  setActiveView: (view: ViewMode) => void;
+  isInCall: boolean;
+}
+
+function TopBar(props: TopBarProps) {
   return (
     <header id='top-bar' class='top-bar'>
       <div id='top-bar-left' class='top-bar-left animated-flex'>
         <AppTitle />
         <AuthControls />
       </div>
+
+      {/* Temp Navigation/Test buttons to demonstrate switching */}
+      <nav class={styles.topNav}>
+        {/* <button onClick={() => props.setActiveView?.('home')}>Home</button> */}
+        <Show when={props.isInCall}>
+          <button onClick={() => props.setActiveView('call')}>Call</button>
+        </Show>
+        <button onClick={() => props.setActiveView('contacts')}>
+          Contacts
+        </button>
+        <button onClick={() => props.setActiveView('messaging')}>
+          Messaging
+        </button>
+      </nav>
 
       <div class='top-bar-right'>
         <AddContactButton />
