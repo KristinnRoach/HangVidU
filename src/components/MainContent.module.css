@@ -32,9 +32,9 @@ main {
   padding: 0.5rem;
   background-color: transparent;
 
-  button {
+  /* button {
     border: 1px solid var(--border-primary);
-  }
+  } */
 }
 
 .lobby {
@@ -47,5 +47,12 @@ main {
 }
 
 .activeViewContainer {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   min-height: 0;
+}
+
+.activeViewContainer[hidden] {
+  display: none;
 }

@@ -24,6 +24,7 @@ import {
   useLegacyMessagesUIReady,
   useP2PRuntimeDiagnostics,
 } from '../app/useLegacyMountEffects.js';
+import { useAuth } from '../auth/solid-auth.js';
 
 // type ViewMode = 'home' | 'call' | 'contacts' | 'messaging';
 
@@ -40,13 +41,25 @@ const messagingNext = isMessagingNextEnabled();
 
 export default function MainContent() {
   const p2p = useP2PContext();
+  const { isLoggedIn } = useAuth();
+  const initialView: ViewMode = isLoggedIn() ? 'contacts' : 'home';
 
-  const [activeView, setActiveView] = createSignal<ViewMode>('home');
+  const [activeView, setActiveView] = createSignal<ViewMode>(initialView);
 
-  // Automatically switch to call view when connected/joining
   createEffect(() => {
+    // Contacts vs home view:
+    if (isLoggedIn()) {
+      setActiveView((prev) => (prev === 'home' ? 'contacts' : prev));
+    } else {
+      setActiveView((prev) => (prev === 'contacts' ? 'home' : prev));
+    }
+
+    // Call view:
     if (p2p.state() === 'joined') {
       setActiveView('call');
+    }
+    if (p2p.state() === 'idle' && activeView() === 'call') {
+      setActiveView(isLoggedIn() ? 'contacts' : 'home');
     }
   });
 
@@ -63,6 +76,8 @@ export default function MainContent() {
   }
   // END - legacy setup, will be refactored:
 
+  console.log('isloggedin', isLoggedIn());
+
   return (
     <div class={styles.layoutWrapper}>
       <TopBar
@@ -78,8 +93,9 @@ export default function MainContent() {
 
           {/* Currently using CSS display for exclusive rendering to keep stateful components mounted
         TODO: Consider refactoring to use SolidJS Match + Switch */}
+
           <div
-            hidden={activeView() !== 'home'}
+            hidden={activeView() !== 'home' || isLoggedIn()}
             class={styles.activeViewContainer}
           >
             <PublicHomepage />
@@ -95,7 +111,7 @@ export default function MainContent() {
           </Show>
 
           <div
-            hidden={activeView() !== 'contacts'}
+            hidden={activeView() !== 'contacts' || !isLoggedIn()}
             class={styles.activeViewContainer}
           >
             <ContactsList />
@@ -128,6 +144,8 @@ interface TopBarProps {
 }
 
 function TopBar(props: TopBarProps) {
+  const { isLoggedIn } = useAuth();
+
   return (
     <header id='top-bar' class='top-bar'>
       <div id='top-bar-left' class='top-bar-left animated-flex'>
@@ -141,12 +159,15 @@ function TopBar(props: TopBarProps) {
         <Show when={props.isInCall}>
           <button onClick={() => props.setActiveView('call')}>Call</button>
         </Show>
-        <button onClick={() => props.setActiveView('contacts')}>
-          Contacts
-        </button>
-        <button onClick={() => props.setActiveView('messaging')}>
-          Messaging
-        </button>
+
+        <Show when={isLoggedIn()}>
+          <button onClick={() => props.setActiveView('contacts')}>
+            Contacts
+          </button>
+          <button onClick={() => props.setActiveView('messaging')}>
+            Messaging
+          </button>
+        </Show>
       </nav>
 
       <div class='top-bar-right'>

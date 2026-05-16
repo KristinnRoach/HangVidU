@@ -1,7 +1,14 @@
 .public-homepage {
   display: flex;
-  justify-content: center;
-  width: min(100%, 720px);
+  flex-direction: column;
+  align-items: center;
+
+  flex: 1;
+  min-height: 0;
+  margin-inline: auto;
+  /* width: 100%; if using 100% margin-inline is redundant
+  border: lime 1px solid; */
+
   padding: clamp(24px, 6dvh, 56px) var(--spacing-xl) var(--spacing-3xl);
 }
 
