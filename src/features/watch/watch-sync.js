@@ -21,7 +21,7 @@ import {
   extractYouTubeId,
   loadYouTubeVideo,
   setYouTubeReady,
-} from '../legacy/youtube/youtube-player.js';
+} from './youtube/youtube-player.js';
 
 import {
   hideElement,

@@ -13,6 +13,7 @@ import {
 
 import { getPushNotifications } from '../features/push-notifications/index.js';
 import { setUserOffline } from '../features/presence/index.js';
+import { isMessagingNextEnabled } from '../features/messaging-next/feature-flag.js';
 
 let isReady = false;
 let initPromise = null;
@@ -75,7 +76,7 @@ export function setupMainAppBusListeners() {
         { signal: ac.signal },
       );
 
-      handleCommand(
+      if (!isMessagingNextEnabled()) handleCommand(
         'cmd:messaging:conversation:select',
         async ({
           conversationId,

@@ -7,6 +7,7 @@ import { initMessagesUI } from '../features/messaging/components/messages-ui.js'
 import { probeDefaultReceiveStore } from '../features/file-transfer/index.js';
 import { handleServiceWorkerNavigation } from '../setup/handleServiceWorkerNavigation.js';
 import { setupServiceWorkerNavigation } from '../setup/setupServiceWorkerNavigation.js';
+import { isMessagingNextEnabled } from '../features/messaging-next/feature-flag.js';
 
 export function useLegacyI18nElements() {
   let unsubscribeLocaleChange: (() => void) | undefined;
@@ -35,7 +36,7 @@ export function useLegacyMessagesUIReady() {
   let isDisposed = false;
 
   onMount(() => {
-    initMessagesUI();
+    if (!isMessagingNextEnabled()) initMessagesUI();
     setMessagesUIReady(true);
     setupServiceWorkerNavigation({
       handleServiceWorkerNavigation,

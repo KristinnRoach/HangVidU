@@ -1,0 +1,117 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  /* Self-contained height: viewport minus top-bar (40px, defined in top-bar.css).
+     Revisit when the test nav is replaced with a real tab bar. */
+  height: calc(100dvh - 40px);
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.empty {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+}
+
+.messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  gap: 0.5rem;
+}
+
+.msg {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background-color: #3e3e3e;
+  width: fit-content;
+  max-width: 80%;
+  position: relative;
+}
+
+.msgSystem {
+  background-color: transparent;
+  color: #888;
+  font-size: 0.85em;
+  align-self: center;
+  text-align: center;
+}
+
+.msgOwn {
+  background-color: #007aff;
+  color: white;
+  align-self: flex-end;
+}
+
+.msgFailed {
+  opacity: 0.7;
+  border: 1px solid red;
+}
+
+.msgText {
+  word-break: break-word;
+}
+
+.msgStatus {
+  font-size: 0.7em;
+  margin-left: 0.5rem;
+  vertical-align: bottom;
+  opacity: 0.8;
+}
+
+.msgActions {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin-left: 0.5rem;
+}
+
+.msgActionBtn {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.85em;
+  background-color: #3e3e3e;
+  color: #ddd;
+  border: 1px solid #555;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.msgActionBtn:hover {
+  background-color: #4a4a4a;
+}
+
+.form {
+  display: flex;
+  flex-shrink: 0;
+  padding: 1rem;
+  gap: 0.5rem;
+  border-top: 1px solid #eee;
+}
+
+.input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 0.25rem;
+}
+
+.send {
+  padding: 0.5rem 1rem;
+  background-color: #007aff;
+  color: white;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.send:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
