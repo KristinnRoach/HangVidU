@@ -5,7 +5,7 @@ import {
   MessageEnvelopeSchema,
   createGroupConversationId,
   resolveDirectConversationId,
-} from './schema.js';
+} from '../schema.js';
 
 describe('messaging-next schema', () => {
   it('resolves stable direct conversation ids with sorted participants', () => {

@@ -1,12 +1,12 @@
 import { createRoot, createSignal } from 'solid-js';
 import { describe, expect, it, vi } from 'vitest';
-import { createConversationActions } from './conversation.actions.js';
-import { createConversationState } from './conversation.state.js';
+import { createConversationActions } from '../conversation.actions.js';
+import { createConversationState } from '../conversation.state.js';
 import {
   ensureDirectConversation,
   loadConversationHistory,
   useConversation,
-} from './use-conversation.js';
+} from '../use-conversation.js';
 
 function envelope(overrides) {
   return {
@@ -93,12 +93,9 @@ describe('messaging-next useConversation', () => {
       },
     };
 
-    await ensureDirectConversation(
-      repository,
-      'user-a_user-b',
-      'user-a',
-      ['user-b'],
-    );
+    await ensureDirectConversation(repository, 'user-a_user-b', 'user-a', [
+      'user-b',
+    ]);
 
     expect(upserts).toHaveLength(1);
     expect(upserts[0].kind).toBe('direct');

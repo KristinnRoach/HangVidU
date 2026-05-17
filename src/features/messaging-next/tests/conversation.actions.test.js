@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createConversationActions } from './conversation.actions.js';
-import { createConversationState } from './conversation.state.js';
+import { createConversationActions } from '../conversation.actions.js';
+import { createConversationState } from '../conversation.state.js';
 
 function message(overrides) {
   return {
@@ -33,12 +33,8 @@ describe('messaging-next conversation actions', () => {
     actions.receiveMessage(
       message({ id: 'remote-4', senderId: 'other', sentAt: 4 }),
     );
-    actions.receiveMessage(
-      message({ id: 'own-1', senderId: 'me', sentAt: 1 }),
-    );
-    actions.receiveMessage(
-      message({ id: 'own-3', senderId: 'me', sentAt: 3 }),
-    );
+    actions.receiveMessage(message({ id: 'own-1', senderId: 'me', sentAt: 1 }));
+    actions.receiveMessage(message({ id: 'own-3', senderId: 'me', sentAt: 3 }));
 
     expect(store.state.messages.map((msg) => msg.id)).toEqual([
       'own-1',
