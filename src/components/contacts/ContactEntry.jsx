@@ -15,8 +15,8 @@ function shortName(name) {
 }
 
 /**
- * One contact row. Reads props from a reactive store row; dispatches commands
- * on interaction. Owns no business logic.
+ * One contact row. Reads props from a reactive store row and delegates
+ * conversation selection to its parent. Owns no business logic.
  *
  * Props (reactive; read via `props.x` not destructuring to preserve reactivity):
  *   id: string
@@ -24,6 +24,7 @@ function shortName(name) {
  *   roomId: string|null
  *   conversationId: string|null
  *   unreadCount: number
+ *   onOpenConversation?: (selection: object) => void
  */
 export default function ContactEntry(props) {
   const { t } = useI18n();
@@ -43,7 +44,7 @@ export default function ContactEntry(props) {
       });
       return;
     }
-    dispatchCommand('cmd:messaging:conversation:select', {
+    props.onOpenConversation?.({
       conversationId: props.conversationId,
       remoteParticipantIds: [props.id],
       displayUI: true,

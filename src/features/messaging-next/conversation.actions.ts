@@ -1,29 +1,41 @@
 import type { ConversationStateStore } from './conversation.state.js';
 import type {
   ChatMessage,
+  ConversationSelection,
   MessageAction,
   ReactionMap,
   TransportMode,
 } from './interfaces.js';
-import type { ConversationId, UserId } from './types.js';
+import type { UserId } from './types.js';
 import { sortMessagesBySentAt } from './message-ordering.js';
+import { loadLocalDraft } from './local-drafts.js';
 
 export function createConversationActions(store: ConversationStateStore) {
   const { state, setState } = store;
 
-  function openConversation(conversationId: ConversationId, myUserId: UserId) {
-    setState('conversationId', conversationId);
-    setState('myUserId', myUserId);
+  function resetConversation() {
+    setState('conversationId', null);
+    setState('myUserId', null);
     setState('messages', []);
     setState('unreadCount', 0);
     setState('draft', '');
-    setState('isLoading', true);
+    setState('sending', false);
     setState('transportMode', 'persisted');
     setState('isPendingPrivateResponse', false);
   }
 
-  function setLoading(v: boolean) {
-    setState('isLoading', v);
+  function startConversation(
+    selection: ConversationSelection,
+    myUserId: UserId,
+  ) {
+    setState('conversationId', selection.conversationId);
+    setState('myUserId', myUserId);
+    setState('messages', []);
+    setState('unreadCount', 0);
+    setState('draft', loadLocalDraft(myUserId, selection.conversationId));
+    setState('sending', false);
+    setState('transportMode', 'persisted');
+    setState('isPendingPrivateResponse', false);
   }
 
   function setDraft(text: string) {
@@ -40,6 +52,16 @@ export function createConversationActions(store: ConversationStateStore) {
 
   function addOptimisticMessage(msg: ChatMessage) {
     setState('messages', (msgs) => sortMessagesBySentAt([...msgs, msg]));
+  }
+
+  function mergeLoadedMessages(messages: ChatMessage[]) {
+    setState('messages', (current) => {
+      const byId = new Map(current.map((msg) => [msg.id, msg]));
+      for (const msg of messages) {
+        byId.set(msg.id, msg);
+      }
+      return sortMessagesBySentAt([...byId.values()]);
+    });
   }
 
   function receiveMessage(msg: Omit<ChatMessage, 'status'>) {
@@ -117,11 +139,12 @@ export function createConversationActions(store: ConversationStateStore) {
   }
 
   return {
-    openConversation,
+    resetConversation,
+    startConversation,
     setDraft,
     clearDraft,
     setSending,
-    setLoading,
+    mergeLoadedMessages,
     addOptimisticMessage,
     receiveMessage,
     markSent,

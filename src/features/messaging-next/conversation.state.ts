@@ -7,7 +7,6 @@ const initial: ConversationChatState = {
   draft: '',
   messages: [],
   sending: false,
-  isLoading: false,
   transportMode: 'persisted',
   unreadCount: 0,
   isPendingPrivateResponse: false,

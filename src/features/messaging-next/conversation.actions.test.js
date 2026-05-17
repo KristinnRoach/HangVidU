@@ -11,9 +11,14 @@ function message(overrides) {
     sentAt: 1,
     source: 'persisted',
     delivery: 'persistent',
+    status: 'sent',
     reactions: {},
     ...overrides,
   };
+}
+
+function start(actions) {
+  actions.startConversation({ conversationId: 'conversation-1' }, 'me');
 }
 
 describe('messaging-next conversation actions', () => {
@@ -21,7 +26,7 @@ describe('messaging-next conversation actions', () => {
     const store = createConversationState();
     const actions = createConversationActions(store);
 
-    actions.openConversation('conversation-1', 'me');
+    start(actions);
     actions.receiveMessage(
       message({ id: 'remote-2', senderId: 'other', sentAt: 2 }),
     );
@@ -47,7 +52,7 @@ describe('messaging-next conversation actions', () => {
     const store = createConversationState();
     const actions = createConversationActions(store);
 
-    actions.openConversation('conversation-1', 'me');
+    start(actions);
     actions.receiveMessage(message({ id: 'msg-a', sentAt: 10 }));
     actions.receiveMessage(message({ id: 'msg-b', sentAt: 20 }));
     actions.receiveMessage(message({ id: 'msg-b', sentAt: 5 }));
@@ -62,7 +67,7 @@ describe('messaging-next conversation actions', () => {
     const store = createConversationState();
     const actions = createConversationActions(store);
 
-    actions.openConversation('conversation-1', 'me');
+    start(actions);
     actions.addOptimisticMessage({
       ...message({ id: 'temp-z', senderId: 'me', sentAt: 10 }),
       status: 'sending',
@@ -75,5 +80,42 @@ describe('messaging-next conversation actions', () => {
       'msg-a',
       'msg-z',
     ]);
+  });
+
+  it('merges loaded history in chronological order without marking it unread', () => {
+    const store = createConversationState();
+    const actions = createConversationActions(store);
+
+    start(actions);
+    actions.mergeLoadedMessages([
+      message({ id: 'msg-3', senderId: 'other', sentAt: 3 }),
+      message({ id: 'msg-1', senderId: 'other', sentAt: 1 }),
+      message({ id: 'msg-2', senderId: 'other', sentAt: 2 }),
+    ]);
+
+    expect(store.state.messages.map((msg) => msg.id)).toEqual([
+      'msg-1',
+      'msg-2',
+      'msg-3',
+    ]);
+    expect(store.state.unreadCount).toBe(0);
+  });
+
+  it('dedupes replayed live messages and only counts new remote messages unread', () => {
+    const store = createConversationState();
+    const actions = createConversationActions(store);
+
+    start(actions);
+    actions.mergeLoadedMessages([
+      message({ id: 'msg-1', senderId: 'other', sentAt: 1 }),
+    ]);
+    actions.receiveMessage(message({ id: 'msg-1', senderId: 'other' }));
+    actions.receiveMessage(message({ id: 'msg-2', senderId: 'other' }));
+
+    expect(store.state.messages.map((msg) => msg.id)).toEqual([
+      'msg-1',
+      'msg-2',
+    ]);
+    expect(store.state.unreadCount).toBe(1);
   });
 });

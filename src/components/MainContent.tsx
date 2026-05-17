@@ -1,7 +1,11 @@
-import { createSignal, Show, createEffect } from 'solid-js';
+import { createSignal, Show, createEffect, onCleanup, onMount } from 'solid-js';
 
 import { useP2PContext } from '../shared/p2p-context.js';
 import { useAuth } from '../auth/solid-auth.js';
+import {
+  dispatchCommand,
+  handleCommand,
+} from '../shared/events/index.js';
 
 // Top-bar
 import AppTitle from './app/AppTitle.jsx';
@@ -31,7 +35,8 @@ import {
   useP2PRuntimeDiagnostics,
 } from '../app/useLegacyMountEffects.js';
 import { isMessagingNextEnabled } from '../features/messaging-next/feature-flag.js';
-import { set } from 'zod';
+import type { ConversationSelection } from '../features/messaging-next/interfaces.js';
+import type { UserId } from '../features/messaging-next/types.js';
 
 // type ViewMode = 'home' | 'call' | 'contacts' | 'messaging';
 
@@ -52,6 +57,35 @@ export default function MainContent() {
   const initialView: ViewMode = isLoggedIn() ? 'contacts' : 'home';
 
   const [activeView, setActiveView] = createSignal<ViewMode>(initialView);
+  const [selectedConversation, setSelectedConversation] =
+    createSignal<ConversationSelection | null>(null);
+
+  function openConversation(selection: ConversationSelection) {
+    if (messagingNext) {
+      setSelectedConversation(selection);
+      if (selection.displayUI !== false) {
+        setActiveView('messaging');
+      }
+      return;
+    }
+
+    dispatchCommand('cmd:messaging:conversation:select', selection);
+  }
+
+  onMount(() => {
+    if (!messagingNext) return;
+
+    const ac = new AbortController();
+    handleCommand(
+      'cmd:messaging:conversation:select',
+      (selection: ConversationSelection) => {
+        openConversation(selection);
+      },
+      { signal: ac.signal },
+    );
+
+    onCleanup(() => ac.abort());
+  });
 
   // Active view - On p2p state changes:
   createEffect(() => {
@@ -153,7 +187,7 @@ export default function MainContent() {
             hidden={activeView() !== 'contacts' || !isLoggedIn()}
             class={styles.activeViewContainer}
           >
-            <ContactsList />
+            <ContactsList onOpenConversation={openConversation} />
           </div>
 
           <Show when={messagingNext}>
@@ -162,7 +196,10 @@ export default function MainContent() {
               hidden={activeView() !== 'messaging'}
               class={styles.activeViewContainer}
             >
-              <ConversationPanel onFocus={() => setActiveView('messaging')} />
+              <ConversationPanel
+                selection={selectedConversation()}
+                myUserId={(authState().user?.uid as UserId | undefined) ?? null}
+              />
             </div>
           </Show>
         </div>

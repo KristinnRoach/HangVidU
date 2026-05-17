@@ -175,6 +175,13 @@ export type TransportMode = 'persisted' | 'private';
 
 export type MessageAction = { label: string; onClick: () => void };
 
+export type ConversationSelection = {
+  conversationId: ConversationId;
+  remoteParticipantIds?: UserId[];
+  contactNickName?: string | null;
+  displayUI?: boolean;
+};
+
 export type ChatMessage = {
   id: string;
   conversationId: ConversationId;
@@ -194,7 +201,6 @@ export type ConversationChatState = {
   draft: string;
   messages: ChatMessage[];
   sending: boolean;
-  isLoading: boolean;
   transportMode: TransportMode;
   unreadCount: number;
   isPendingPrivateResponse: boolean;

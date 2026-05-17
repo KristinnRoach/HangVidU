@@ -2,8 +2,13 @@ import { For, Show } from 'solid-js';
 import { useI18n } from '../../shared/i18n/index.js';
 import ContactEntry from './ContactEntry.jsx';
 import { useContactsList } from './useContactsList';
+import type { ConversationSelection } from '../../features/messaging-next/interfaces.js';
 
-export default function ContactsList() {
+type ContactsListProps = {
+  onOpenConversation?: (selection: ConversationSelection) => void;
+};
+
+export default function ContactsList(props: ContactsListProps) {
   const { t } = useI18n();
   const contacts = useContactsList();
 
@@ -19,6 +24,7 @@ export default function ContactsList() {
                 roomId={row.roomId}
                 conversationId={row.conversationId}
                 unreadCount={row.unreadCount}
+                onOpenConversation={props.onOpenConversation}
               />
             )}
           </For>

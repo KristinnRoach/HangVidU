@@ -1,7 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { createRoot, createSignal } from 'solid-js';
+import { describe, expect, it, vi } from 'vitest';
+import { createConversationActions } from './conversation.actions.js';
+import { createConversationState } from './conversation.state.js';
 import {
   ensureDirectConversation,
-  loadConversationMessages,
+  loadConversationHistory,
+  useConversation,
 } from './use-conversation.js';
 
 function envelope(overrides) {
@@ -20,8 +24,7 @@ function envelope(overrides) {
 }
 
 describe('messaging-next useConversation', () => {
-  it('applies loaded messages in chronological order regardless of repository order', async () => {
-    const received = [];
+  it('loads message history in chronological order regardless of repository order', async () => {
     const repository = {
       loadMessages: () => [
         envelope({ messageId: 'msg-3', sentAt: 3 }),
@@ -30,16 +33,54 @@ describe('messaging-next useConversation', () => {
       ],
     };
 
-    await loadConversationMessages(
-      repository,
-      'conversation-1',
-      {
-        receiveMessage: (message) => received.push(message),
-      },
-      () => true,
-    );
+    const loaded = await loadConversationHistory(repository, 'conversation-1');
 
-    expect(received.map((msg) => msg.id)).toEqual(['msg-1', 'msg-2', 'msg-3']);
+    expect(loaded.map((msg) => msg.id)).toEqual(['msg-1', 'msg-2', 'msg-3']);
+  });
+
+  it('starts live subscriptions only after history is ready', async () => {
+    const store = createConversationState();
+    const actions = createConversationActions(store);
+    actions.startConversation({ conversationId: 'conversation-1' }, 'me');
+
+    const repository = {
+      subscribe: vi.fn(() => () => {}),
+      subscribeReactions: vi.fn(() => () => {}),
+      send: vi.fn(),
+    };
+
+    await new Promise((resolve) => {
+      createRoot((dispose) => {
+        const [historyReady, setHistoryReady] = createSignal(false);
+        useConversation({
+          repository,
+          store,
+          actions,
+          historyReady,
+        });
+
+        queueMicrotask(() => {
+          expect(repository.subscribe).not.toHaveBeenCalled();
+          expect(repository.subscribeReactions).not.toHaveBeenCalled();
+
+          setHistoryReady(true);
+
+          queueMicrotask(() => {
+            expect(repository.subscribe).toHaveBeenCalledWith(
+              'conversation-1',
+              'me',
+              expect.any(Function),
+            );
+            expect(repository.subscribeReactions).toHaveBeenCalledWith(
+              'conversation-1',
+              expect.any(Function),
+            );
+            dispose();
+            resolve();
+          });
+        });
+      });
+    });
   });
 
   it('creates missing direct conversation metadata from the selected contact', async () => {

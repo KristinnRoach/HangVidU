@@ -1,4 +1,5 @@
 import { createEffect, onCleanup } from 'solid-js';
+import type { Accessor } from 'solid-js';
 import type {
   ChatMessage,
   ConversationRepository,
@@ -21,11 +22,12 @@ type UseConversationOptions = {
   store: ConversationStateStore;
   actions: ConversationActions;
   getSenderName?: () => string | null | undefined;
+  historyReady?: Accessor<boolean>;
   /** Optional datachannel transport for private mode. Without it, private sends fail. */
   privateTransport?: PrivateMessageTransport;
 };
 
-function envelopeToChatMessage(
+export function envelopeToChatMessage(
   message: MessageEnvelope,
   source: ChatMessage['source'],
 ): ChatMessage | null {
@@ -46,20 +48,15 @@ function envelopeToChatMessage(
   };
 }
 
-export async function loadConversationMessages(
+export async function loadConversationHistory(
   repository: MessageRepository,
   conversationId: ConversationId,
-  actions: ConversationActions,
-  shouldApply: () => boolean,
 ) {
-  const messages = sortMessagesBySentAt(
-    await repository.loadMessages(conversationId),
+  return sortMessagesBySentAt(
+    (await repository.loadMessages(conversationId))
+      .map((msg) => envelopeToChatMessage(msg, 'persisted'))
+      .filter((msg): msg is ChatMessage => Boolean(msg)),
   );
-  if (!shouldApply()) return;
-  for (const msg of messages) {
-    const chatMessage = envelopeToChatMessage(msg, 'persisted');
-    if (chatMessage) actions.receiveMessage(chatMessage);
-  }
 }
 
 export async function ensureDirectConversation(
@@ -96,6 +93,7 @@ export function useConversation({
   store,
   actions,
   getSenderName,
+  historyReady = () => true,
   privateTransport,
 }: UseConversationOptions) {
   const { state } = store;
@@ -123,7 +121,7 @@ export function useConversation({
   createEffect(() => {
     const conversationId = state.conversationId;
     const myUserId = state.myUserId;
-    if (!conversationId || !myUserId) return;
+    if (!conversationId || !myUserId || !historyReady()) return;
 
     let cleanup: (() => void) | undefined;
     let disposed = false;
@@ -150,7 +148,7 @@ export function useConversation({
 
   createEffect(() => {
     const conversationId = state.conversationId;
-    if (!conversationId) return;
+    if (!conversationId || !historyReady()) return;
 
     let cleanup: (() => void) | undefined;
     let disposed = false;

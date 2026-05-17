@@ -4,26 +4,24 @@ import {
   Show,
   Switch,
   createEffect,
+  createMemo,
+  createResource,
+  createSignal,
   on,
   onCleanup,
-  onMount,
 } from 'solid-js';
-import { handleCommand } from '../../shared/events/index.js';
-import { getLoggedInUserId, getUserName } from '../../auth/auth-state.js';
+import { getUserName } from '../../auth/auth-state.js';
 import { LoadBoundary } from '../../shared/components/LoadBoundary.jsx';
 import { createConversationState } from './conversation.state.js';
 import { createConversationActions } from './conversation.actions.js';
 import {
-  loadConversationMessages,
+  loadConversationHistory,
   useConversation,
 } from './use-conversation.js';
-import {
-  clearLocalDraft,
-  loadLocalDraft,
-  saveLocalDraft,
-} from './local-drafts.js';
+import { clearLocalDraft, saveLocalDraft } from './local-drafts.js';
 import { createMessagingRuntime } from './messaging-runtime.js';
 import type { ConversationId, UserId } from './types.js';
+import type { ConversationSelection } from './interfaces.js';
 import styles from './ConversationPanel.module.css';
 
 const runtime = createMessagingRuntime();
@@ -44,19 +42,18 @@ function MessageHistorySkeleton() {
   );
 }
 
-export default function ConversationPanel(props: { onFocus?: () => void }) {
+type ConversationPanelProps = {
+  selection: ConversationSelection | null;
+  myUserId: UserId | null;
+};
+
+export default function ConversationPanel(props: ConversationPanelProps) {
   const store = createConversationState();
   const actions = createConversationActions(store);
   const { state } = store;
-  const { send } = useConversation({
-    repository: runtime.messageRepository,
-    store,
-    actions,
-    getSenderName: getUserName,
-  });
 
   let messagesEl: HTMLDivElement | undefined;
-  let loadVersion = 0;
+  let inputEl: HTMLInputElement | undefined;
   let suppressScroll = false;
   let draftSaveTimer: ReturnType<typeof setTimeout> | undefined;
   let pendingDraft:
@@ -68,8 +65,7 @@ export default function ConversationPanel(props: { onFocus?: () => void }) {
   }
 
   function focusInput() {
-    const input = messagesEl?.parentElement?.querySelector('input');
-    input?.focus();
+    inputEl?.focus();
   }
 
   function clearDraftSaveTimer() {
@@ -103,6 +99,22 @@ export default function ConversationPanel(props: { onFocus?: () => void }) {
     }, DRAFT_SAVE_DELAY_MS);
   }
 
+  const historySource = createMemo(() => {
+    const selection = props.selection;
+    const myUserId = props.myUserId;
+    if (!selection || !myUserId) return null;
+    return {
+      conversationId: selection.conversationId,
+      myUserId,
+    };
+  });
+
+  const [history] = createResource(historySource, ({ conversationId }) =>
+    loadConversationHistory(runtime.messageRepository, conversationId),
+  );
+
+  const [historyReady, setHistoryReady] = createSignal(false);
+
   createEffect(
     on(
       () => state.messages.length,
@@ -113,46 +125,49 @@ export default function ConversationPanel(props: { onFocus?: () => void }) {
     ),
   );
 
-  onMount(() => {
-    const ac = new AbortController();
-
-    handleCommand(
-      'cmd:messaging:conversation:select',
-      async ({ conversationId }: { conversationId: ConversationId }) => {
-        const myUserId = getLoggedInUserId();
-        if (!myUserId) return;
-
-        props.onFocus?.();
-        suppressScroll = true;
+  createEffect(
+    on(
+      () => historySource(),
+      (source) => {
         flushDraftSave();
+        setHistoryReady(false);
+        suppressScroll = true;
 
-        const version = ++loadVersion;
-        const typedMyUserId = myUserId as UserId;
-        actions.openConversation(conversationId, typedMyUserId);
-        actions.setDraft(loadLocalDraft(typedMyUserId, conversationId));
-        await loadConversationMessages(
-          runtime.messageRepository,
-          conversationId,
-          actions,
-          () => version === loadVersion,
-        );
-
-        if (version === loadVersion) {
-          actions.setLoading(false);
+        const selection = props.selection;
+        if (!source || !selection) {
+          actions.resetConversation();
           suppressScroll = false;
-          queueMicrotask(scrollToEnd);
+          return;
         }
 
-        focusInput();
+        actions.startConversation(selection, source.myUserId);
       },
-      { signal: ac.signal },
-    );
+    ),
+  );
 
-    onCleanup(() => {
-      loadVersion++;
-      flushDraftSave();
-      ac.abort();
-    });
+  createEffect(() => {
+    const source = historySource();
+    const loadedMessages = history();
+    if (!source || history.loading || history.error || !loadedMessages) return;
+    if (source.conversationId !== state.conversationId) return;
+
+    actions.mergeLoadedMessages(loadedMessages);
+    setHistoryReady(true);
+    suppressScroll = false;
+    queueMicrotask(scrollToEnd);
+    queueMicrotask(focusInput);
+  });
+
+  const { send } = useConversation({
+    repository: runtime.messageRepository,
+    store,
+    actions,
+    getSenderName: getUserName,
+    historyReady,
+  });
+
+  onCleanup(() => {
+    flushDraftSave();
   });
 
   function onSubmit(e: SubmitEvent) {
@@ -175,8 +190,12 @@ export default function ConversationPanel(props: { onFocus?: () => void }) {
         }
       >
         <LoadBoundary
-          loading={state.isLoading}
+          loading={history.loading}
           fallback={<MessageHistorySkeleton />}
+          error={history.error}
+          errorFallback={
+            <div class={styles.empty}>Unable to load message history</div>
+          }
         >
           <div class={styles.messages} ref={messagesEl}>
             <For each={state.messages}>
@@ -227,6 +246,7 @@ export default function ConversationPanel(props: { onFocus?: () => void }) {
 
         <form class={styles.form} onSubmit={onSubmit}>
           <input
+            ref={inputEl}
             class={styles.input}
             type='text'
             placeholder='Message…'

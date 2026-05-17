@@ -13,7 +13,7 @@ localStorage.removeItem('__msgnext');
 location.reload();
 ```
 
-When enabled: legacy `initMessagesUI()` is skipped, the legacy `cmd:messaging:conversation:select` handler is skipped, and `<ConversationPanel>` is rendered in `MainContent`.
+When enabled: legacy `initMessagesUI()` is skipped, the legacy `cmd:messaging:conversation:select` handler is skipped, `MainContent` registers the Solid messaging-next command adapter, and `<ConversationPanel>` is rendered from Solid selection state.
 
 ---
 
@@ -38,9 +38,12 @@ When enabled: legacy `initMessagesUI()` is skipped, the legacy `cmd:messaging:co
 - `.panel` uses `height: calc(100dvh - 40px)` — self-contained but tied to the `40px` top-bar constant. When the test nav in `MainContent` is replaced with a real tab bar, update this to subtract the tab bar height too. The long-term fix is to establish a proper flex height chain through `.main-wrapper → main → .relative-wrapper → #lobby → .stretch-height wrapper` so `.panel` can use `height: 100%`. The `94%` on `.relative-wrapper` is a known leftover hack.
 - `.lobby-fill` / `.stretch-height` utility is in `lobby.css`. The messaging wrapper div in `MainContent` uses `stretch-height` for `align-self: stretch` (overrides `#lobby`'s `align-items: center`). Works for now.
 
-**Scroll to end**
+**Selection / history loading**
 
-- Implemented via `suppressScroll` flag + `state.isLoading` (`hidden` attr) + one `queueMicrotask(scrollToEnd)` after load. Should work once the layout height chain is correct. Verify manually after the layout fix lands.
+- Conversation selection is owned by `MainContent` as Solid state. Contact rows call an `onOpenConversation` callback instead of dispatching the messaging command directly.
+- `ConversationPanel` receives the selected conversation and authenticated user id as props. It no longer registers `cmd:messaging:conversation:select`.
+- Initial message history is loaded with a Solid `createResource`; loaded history is merged without incrementing unread counts, then live message/reaction subscriptions start.
+- Scroll-to-end still uses `suppressScroll` plus one `queueMicrotask(scrollToEnd)` after resource load. Verify manually after the layout fix lands.
 
 **RTDB subscription replay**
 

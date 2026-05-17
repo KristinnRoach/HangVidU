@@ -52,7 +52,7 @@ vi.mock('../../shared/i18n/index.js', () => ({
   onLocaleChange: vi.fn(() => () => {}),
 }));
 
-vi.mock('../../components/ui/icons.js', () => ({
+vi.mock('../../components/base-legacy/icons.js', () => ({
   initIcons: mocks.initIcons,
 }));
 
@@ -79,9 +79,7 @@ describe('SolidJS ContactsList PoC', () => {
 
   it('renders a row per contact from hydrated state', async () => {
     const ContactsListModule = await import('./ContactsList.jsx');
-    const { setupAppRoot } = await import('../../setup/setupAppRoot.js');
 
-    const teardown = setupAppRoot();
     const { container, unmount } = render(() => <ContactsListModule.default />);
 
     const rows = container.querySelectorAll('.contact-entry');
@@ -90,7 +88,6 @@ describe('SolidJS ContactsList PoC', () => {
     expect(container.textContent).toContain('Bob');
 
     unmount();
-    teardown();
   });
 
   // TODO(SOLIDJS_POC): DOM update for Show/badge doesn't propagate in jsdom
@@ -99,9 +96,7 @@ describe('SolidJS ContactsList PoC', () => {
   // interaction with Solid's scheduler — not a regression in production code.
   it.skip('reflects unread count via the messaging event bridge', async () => {
     const ContactsListModule = await import('./ContactsList.jsx');
-    const { setupAppRoot } = await import('../../setup/setupAppRoot.js');
 
-    const teardown = setupAppRoot();
     const { container, unmount } = render(() => <ContactsListModule.default />);
 
     expect(mocks.dispatchCommand).toHaveBeenCalledWith(
@@ -127,14 +122,11 @@ describe('SolidJS ContactsList PoC', () => {
     expect(badge?.textContent).toBe('3');
 
     unmount();
-    teardown();
   });
 
   it('dispatches cmd:room:initiate:call on call button click', async () => {
     const ContactsListModule = await import('./ContactsList.jsx');
-    const { setupAppRoot } = await import('../../setup/setupAppRoot.js');
 
-    const teardown = setupAppRoot();
     const { container, unmount } = render(() => <ContactsListModule.default />);
 
     const firstCall = container.querySelector('.contact-call-btn');
@@ -142,10 +134,34 @@ describe('SolidJS ContactsList PoC', () => {
 
     expect(mocks.dispatchCommand).toHaveBeenCalledWith(
       'cmd:room:initiate:call',
-      expect.objectContaining({ contactId: 'contact-1', roomId: 'room-1' }),
+      expect.objectContaining({ calleeId: 'contact-1' }),
     );
 
     unmount();
-    teardown();
+  });
+
+  it('delegates conversation selection to the parent callback', async () => {
+    const ContactsListModule = await import('./ContactsList.jsx');
+    const onOpenConversation = vi.fn();
+
+    const { container, unmount } = render(() => (
+      <ContactsListModule.default onOpenConversation={onOpenConversation} />
+    ));
+
+    const firstContactName = container.querySelector('.contact-name');
+    firstContactName?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(onOpenConversation).toHaveBeenCalledWith({
+      conversationId: 'conv-1',
+      remoteParticipantIds: ['contact-1'],
+      displayUI: true,
+      contactNickName: 'Alice',
+    });
+    expect(mocks.dispatchCommand).not.toHaveBeenCalledWith(
+      'cmd:messaging:conversation:select',
+      expect.anything(),
+    );
+
+    unmount();
   });
 });
