@@ -1,6 +1,7 @@
 import { createEffect, onCleanup } from 'solid-js';
 import type {
   ChatMessage,
+  ConversationRepository,
   MessageRepository,
   P2PChatEnvelope,
   PrivateMessageTransport,
@@ -9,6 +10,7 @@ import type {
   ConversationId,
   DeliveryPolicy,
   MessageEnvelope,
+  UserId,
 } from './types.js';
 import type { ConversationStateStore } from './conversation.state.js';
 import type { ConversationActions } from './conversation.actions.js';
@@ -58,6 +60,57 @@ export async function loadConversationMessages(
     const chatMessage = envelopeToChatMessage(msg, 'persisted');
     if (chatMessage) actions.receiveMessage(chatMessage);
   }
+}
+
+export async function ensureDirectConversation(
+  repository: ConversationRepository,
+  conversationId: ConversationId,
+  myUserId: UserId,
+  remoteParticipantIds: UserId[],
+) {
+  const existing = await repository.loadConversation(conversationId);
+  if (existing || remoteParticipantIds.length !== 1) return existing;
+
+  const now = Date.now();
+  const remoteUserId = remoteParticipantIds[0];
+  return repository.upsertConversation({
+    conversationId,
+    kind: 'direct',
+    participants: {
+      [myUserId]: {
+        userId: myUserId,
+        joinedAt: now,
+      },
+      [remoteUserId]: {
+        userId: remoteUserId,
+        joinedAt: now,
+      },
+    },
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
+export async function loadConversationDraft(
+  repository: ConversationRepository,
+  conversationId: ConversationId,
+  actions: Pick<ConversationActions, 'setDraft'>,
+  shouldApply: () => boolean,
+) {
+  const conversation = await repository.loadConversation(conversationId);
+  if (!shouldApply()) return;
+  actions.setDraft(conversation?.draft?.text ?? '');
+}
+
+export async function persistConversationDraft(
+  repository: ConversationRepository,
+  conversationId: ConversationId,
+  text: string,
+) {
+  await repository.setDraft(
+    conversationId,
+    text ? { text, updatedAt: Date.now() } : null,
+  );
 }
 
 export function useConversation({

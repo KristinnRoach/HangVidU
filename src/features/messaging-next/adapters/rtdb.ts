@@ -5,17 +5,28 @@ import {
   get,
   onChildAdded,
   onChildChanged,
+  onValue,
   off,
   serverTimestamp,
+  update,
   type DataSnapshot,
 } from 'firebase/database';
 import { rtdb } from '../../../shared/storage/fb-rtdb/rtdb.js';
 import type {
+  ConversationRepository,
+  ConversationUpsert,
   IncomingMessage,
   MessageRepository,
   ReactionMap,
 } from '../interfaces.js';
-import type { ConversationId, MessageEnvelope, UserId } from '../types.js';
+import { ConversationNodeSchema } from '../schema.js';
+import type {
+  ConversationDraft,
+  ConversationId,
+  ConversationNode,
+  MessageEnvelope,
+  UserId,
+} from '../types.js';
 
 // Path: conversations/{conversationId}/messages/{messageId}
 // Legacy wire format: { from, fromName, text, type, sentAt, read, reactions? }
@@ -27,6 +38,14 @@ import type { ConversationId, MessageEnvelope, UserId } from '../types.js';
 
 function msgsRef(conversationId: ConversationId) {
   return ref(rtdb, `conversations/${conversationId}/messages`);
+}
+
+function conversationRef(conversationId: ConversationId) {
+  return ref(rtdb, `conversations/${conversationId}`);
+}
+
+function conversationDraftRef(conversationId: ConversationId) {
+  return ref(rtdb, `conversations/${conversationId}/draft`);
 }
 
 function toIncoming(
@@ -55,6 +74,29 @@ function requireTextPayload(message: MessageEnvelope) {
     throw new Error('RTDB legacy adapter currently supports text payloads only');
   }
   return message.payload;
+}
+
+function toConversationNode(raw: unknown): ConversationNode | null {
+  const parsed = ConversationNodeSchema.safeParse(raw);
+  return parsed.success ? parsed.data : null;
+}
+
+function conversationUpdate(
+  input: ConversationUpsert,
+  existing: ConversationNode | null,
+) {
+  const now = Date.now();
+  const payload: Record<string, unknown> = {
+    conversationId: input.conversationId,
+    kind: input.kind,
+    title: input.title ?? null,
+    participants: input.participants,
+    deliveryPolicy: input.deliveryPolicy ?? 'persistent',
+    createdAt: input.createdAt ?? existing?.createdAt ?? now,
+    updatedAt: input.updatedAt ?? now,
+  };
+  if (input.draft !== undefined) payload.draft = input.draft;
+  return payload;
 }
 
 export function createRTDBMessageRepository(): MessageRepository {
@@ -118,6 +160,57 @@ export function createRTDBMessageRepository(): MessageRepository {
 
       onChildChanged(msgRef, handler);
       return () => off(msgRef, 'child_changed', handler);
+    },
+  };
+}
+
+export function createRTDBConversationRepository(): ConversationRepository {
+  return {
+    async loadConversation(conversationId) {
+      const snapshot = await get(conversationRef(conversationId));
+      if (!snapshot.exists()) return null;
+      return toConversationNode(snapshot.val());
+    },
+
+    async upsertConversation(input) {
+      const existingSnapshot = await get(conversationRef(input.conversationId));
+      const existing = existingSnapshot.exists()
+        ? toConversationNode(existingSnapshot.val())
+        : null;
+
+      await update(
+        conversationRef(input.conversationId),
+        conversationUpdate(input, existing),
+      );
+
+      const snapshot = await get(conversationRef(input.conversationId));
+      const conversation = toConversationNode(snapshot.val());
+      if (!conversation) {
+        throw new Error(`Invalid conversation node: ${input.conversationId}`);
+      }
+      return conversation;
+    },
+
+    async setDraft(conversationId, draft: ConversationDraft | null) {
+      await set(conversationDraftRef(conversationId), draft);
+      await update(conversationRef(conversationId), {
+        updatedAt: draft?.updatedAt ?? Date.now(),
+      });
+
+      const snapshot = await get(conversationRef(conversationId));
+      const conversation = toConversationNode(snapshot.val());
+      if (!conversation) {
+        throw new Error(`Invalid conversation node: ${conversationId}`);
+      }
+      return conversation;
+    },
+
+    subscribeConversation(conversationId, onConversation) {
+      return onValue(conversationRef(conversationId), (snapshot) => {
+        onConversation(
+          snapshot.exists() ? toConversationNode(snapshot.val()) : null,
+        );
+      });
     },
   };
 }

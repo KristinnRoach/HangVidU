@@ -21,6 +21,18 @@ When enabled: legacy `initMessagesUI()` is skipped, the legacy `cmd:messaging:co
 
 ### Known issues / remaining work
 
+**Runtime composition / drafts**
+
+- `messaging-runtime.ts` now composes the RTDB `MessageRepository` and
+  `ConversationRepository` for the feature-flagged panel.
+- Direct conversations opened with one `remoteParticipantIds` entry now ensure a
+  conversation node exists, hydrate `state.draft` from `conversation.draft`, and
+  debounce draft writes back to the conversation node.
+- Draft metadata is stored as sibling conversation fields under
+  `conversations/{conversationId}`; message rows stay at
+  `conversations/{conversationId}/messages/{messageId}` in the legacy-compatible
+  shape.
+
 **Layout**
 
 - `.panel` uses `height: calc(100dvh - 40px)` — self-contained but tied to the `40px` top-bar constant. When the test nav in `MainContent` is replaced with a real tab bar, update this to subtract the tab bar height too. The long-term fix is to establish a proper flex height chain through `.main-wrapper → main → .relative-wrapper → #lobby → .stretch-height wrapper` so `.panel` can use `height: 100%`. The `94%` on `.relative-wrapper` is a known leftover hack.
@@ -47,8 +59,8 @@ When enabled: legacy `initMessagesUI()` is skipped, the legacy `cmd:messaging:co
   metadata: kind, participants, title, draft, delivery policy, and timestamps.
 - `adapters/in-memory-conversations.ts` is the first functional adapter and is
   covered by focused tests.
-- Runtime is not wired yet. The recommended next slice is to hydrate and persist
-  direct-conversation drafts through this boundary.
+- `adapters/rtdb.ts` now includes the runtime RTDB conversation adapter used for
+  direct-conversation draft hydration and persistence.
 
 **RTDB adapter shape**
 

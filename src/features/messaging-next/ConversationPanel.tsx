@@ -13,21 +13,25 @@ import { getLoggedInUserId, getUserName } from '../../auth/auth-state.js';
 import { createConversationState } from './conversation.state.js';
 import { createConversationActions } from './conversation.actions.js';
 import {
+  ensureDirectConversation,
+  loadConversationDraft,
   loadConversationMessages,
+  persistConversationDraft,
   useConversation,
 } from './use-conversation.js';
-import { createRTDBMessageRepository } from './adapters/rtdb.js';
+import { createMessagingRuntime } from './messaging-runtime.js';
 import type { ConversationId, UserId } from './types.js';
 import styles from './ConversationPanel.module.css';
 
-const repository = createRTDBMessageRepository();
+const runtime = createMessagingRuntime();
+const DRAFT_SAVE_DELAY_MS = 250;
 
 export default function ConversationPanel(props: { onFocus?: () => void }) {
   const store = createConversationState();
   const actions = createConversationActions(store);
   const { state } = store;
   const { send } = useConversation({
-    repository,
+    repository: runtime.messageRepository,
     store,
     actions,
     getSenderName: getUserName,
@@ -36,9 +40,37 @@ export default function ConversationPanel(props: { onFocus?: () => void }) {
   let messagesEl: HTMLDivElement | undefined;
   let loadVersion = 0;
   let suppressScroll = false;
+  let draftSaveTimer: ReturnType<typeof setTimeout> | undefined;
 
   function scrollToEnd() {
     if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function clearDraftSaveTimer() {
+    if (draftSaveTimer) {
+      clearTimeout(draftSaveTimer);
+      draftSaveTimer = undefined;
+    }
+  }
+
+  function saveDraft(conversationId: ConversationId, text: string) {
+    void persistConversationDraft(
+      runtime.conversationRepository,
+      conversationId,
+      text,
+    ).catch((err) => {
+      console.warn('[messaging-next] Failed to persist draft:', err);
+    });
+  }
+
+  function queueDraftSave(text: string) {
+    const conversationId = state.conversationId;
+    if (!conversationId) return;
+
+    clearDraftSaveTimer();
+    draftSaveTimer = setTimeout(() => {
+      saveDraft(conversationId, text);
+    }, DRAFT_SAVE_DELAY_MS);
   }
 
   createEffect(
@@ -56,17 +88,40 @@ export default function ConversationPanel(props: { onFocus?: () => void }) {
 
     handleCommand(
       'cmd:messaging:conversation:select',
-      async ({ conversationId }: { conversationId: ConversationId }) => {
+      async ({
+        conversationId,
+        remoteParticipantIds = [],
+      }: {
+        conversationId: ConversationId;
+        remoteParticipantIds?: UserId[];
+      }) => {
         const myUserId = getLoggedInUserId();
         if (!myUserId) return;
 
         props.onFocus?.();
         suppressScroll = true;
+        clearDraftSaveTimer();
 
         const version = ++loadVersion;
         actions.openConversation(conversationId, myUserId as UserId);
+        try {
+          await ensureDirectConversation(
+            runtime.conversationRepository,
+            conversationId,
+            myUserId as UserId,
+            remoteParticipantIds,
+          );
+          await loadConversationDraft(
+            runtime.conversationRepository,
+            conversationId,
+            actions,
+            () => version === loadVersion,
+          );
+        } catch (err) {
+          console.warn('[messaging-next] Failed to load draft:', err);
+        }
         await loadConversationMessages(
-          repository,
+          runtime.messageRepository,
           conversationId,
           actions,
           () => version === loadVersion,
@@ -83,12 +138,18 @@ export default function ConversationPanel(props: { onFocus?: () => void }) {
 
     onCleanup(() => {
       loadVersion++;
+      clearDraftSaveTimer();
       ac.abort();
     });
   });
 
   function onSubmit(e: SubmitEvent) {
     e.preventDefault();
+    const conversationId = state.conversationId;
+    if (conversationId && state.draft.trim()) {
+      clearDraftSaveTimer();
+      saveDraft(conversationId, '');
+    }
     void send();
   }
 
@@ -152,7 +213,11 @@ export default function ConversationPanel(props: { onFocus?: () => void }) {
             type='text'
             placeholder='Message…'
             value={state.draft}
-            onInput={(e) => actions.setDraft(e.currentTarget.value)}
+            onInput={(e) => {
+              const text = e.currentTarget.value;
+              actions.setDraft(text);
+              queueDraftSave(text);
+            }}
             disabled={state.sending}
           />
           <button
