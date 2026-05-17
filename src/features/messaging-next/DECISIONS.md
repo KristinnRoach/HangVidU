@@ -13,10 +13,8 @@ target public API. Keep unsettled items in [QUESTIONS.md](./QUESTIONS.md).
 - Message envelopes include `delivery: 'persistent' | 'private'`.
 - Message envelopes use `sentAt` for message send time.
 - First schema slice supports `text`, `event`, and `system` payloads only.
-- Read state is modeled outside message envelopes as per-user conversation
-  read state.
 - Typing state is modeled outside message envelopes as ephemeral participant
-  presence with optional `isWriting`.
+  presence with optional UI indicator for `isTyping`.
 - `ConversationRepository` owns shared conversation-node metadata: kind,
   participants, title, delivery policy, and timestamps. User drafts are not
   shared conversation metadata.

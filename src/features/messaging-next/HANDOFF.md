@@ -113,7 +113,6 @@ Important context:
 
 - Direct conversation IDs currently use `{sortedUserA}_{sortedUserB}`.
 - Group conversation IDs use `group:{generatedId}`.
-- Drafts live on conversation nodes, not in the sent message stream.
 - Every message envelope carries `conversationId` and `delivery`.
 - First-pass payloads are `text`, `event`, and `system`; file payloads are not
   part of the contract yet.
