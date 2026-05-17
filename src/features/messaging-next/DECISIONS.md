@@ -6,7 +6,7 @@ target public API. Keep unsettled items in [QUESTIONS.md](./QUESTIONS.md).
 ## Stable Decisions
 
 - Direct conversation IDs currently use `{sortedUserA}_{sortedUserB}`.
-- Group conversation IDs use `grp:{generatedId}`.
+- Group conversation IDs use `group:{generatedId}`.
 - Drafts are conversation-node state and are not sent messages.
 - Message envelopes include `conversationId`.
 - Message envelopes include `delivery: 'persistent' | 'private'`.

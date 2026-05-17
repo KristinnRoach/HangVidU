@@ -313,7 +313,7 @@
             <h3>Group Chat</h3>
             <div class="schema">
               <div>ID rule</div>
-              <div><code>grp:{stableGeneratedId}</code></div>
+              <div><code>group:{stableGeneratedId}</code></div>
               <div>Membership</div>
               <div>Stored as conversation metadata, not encoded in the ID.</div>
               <div>Why</div>
@@ -339,7 +339,7 @@
             <h3>Conversation</h3>
             <div class="schema">
               <div><code>conversationId</code></div>
-              <div>Direct deterministic ID or generated <code>grp:...</code>.</div>
+              <div>Direct deterministic ID or generated <code>group:...</code>.</div>
               <div><code>kind</code></div>
               <div><code>direct | group</code></div>
               <div><code>participants</code></div>
@@ -508,7 +508,7 @@
           <div class="box decision">
             <h3>Group ID Strategy</h3>
             <p class="editable" contenteditable="true">
-              Choose generated stable <code>grp:</code> IDs, with membership in
+              Choose generated stable <code>group:</code> IDs, with membership in
               metadata. Avoid participant-list-derived group IDs.
             </p>
           </div>

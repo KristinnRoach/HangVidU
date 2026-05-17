@@ -1,16 +1,27 @@
 import { z } from 'zod';
+import { resolveDirectConversationId as resolveSharedDirectConversationId } from '../../shared/utils/direct-conversation-id.js';
 
 export const UserIdSchema = z.string().trim().min(1);
 
-export const DirectConversationIdSchema = z.string().trim().min(1);
-
+// Group ids carry a `group:` prefix; direct ids are the legacy sorted `a_b` form.
+// Group is listed first in the union so the prefix wins discrimination — without
+// this, Direct's permissive rule would swallow any string including `group:*`.
 export const GroupConversationIdSchema = z
   .string()
-  .regex(/^grp:[A-Za-z0-9_-]+$/);
+  .regex(/^group:[A-Za-z0-9_-]+$/);
+
+export const DirectConversationIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .regex(
+    /^(?!group:).+/,
+    'direct conversation id must not start with "group:"',
+  );
 
 export const ConversationIdSchema = z.union([
-  DirectConversationIdSchema,
   GroupConversationIdSchema,
+  DirectConversationIdSchema,
 ]);
 
 export const DeliveryPolicySchema = z.enum(['persistent', 'private']);
@@ -83,22 +94,12 @@ export const MessageEnvelopeSchema = MessageBaseSchema.extend({
   payload: MessagePayloadSchema,
 });
 
-export function resolveDirectConversationId(
-  userA: string,
-  userB: string,
-): z.infer<typeof DirectConversationIdSchema> {
-  const p1 = String(userA || '').trim();
-  const p2 = String(userB || '').trim();
-
-  if (!p1 || !p2) {
-    throw new Error('resolveDirectConversationId requires exactly 2 user ids');
-  }
-
-  return DirectConversationIdSchema.parse([p1, p2].sort().join('_'));
-}
+// Single canonical pair-id resolver lives in `src/shared/utils/direct-conversation-id.js`.
+// Re-exported here so messaging-next callers don't need to know the path.
+export const resolveDirectConversationId = resolveSharedDirectConversationId;
 
 export function createGroupConversationId(
   id: string,
 ): z.infer<typeof GroupConversationIdSchema> {
-  return GroupConversationIdSchema.parse(`grp:${id}`);
+  return GroupConversationIdSchema.parse(`group:${id}`);
 }

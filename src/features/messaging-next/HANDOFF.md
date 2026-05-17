@@ -38,7 +38,7 @@ When enabled: legacy `initMessagesUI()` is skipped, the legacy `cmd:messaging:co
 
 - Direct conversation IDs currently use `{sortedUserA}_{sortedUserB}` via the
   existing `resolveDirectConversationId()` helper.
-- Group conversation IDs use generated `grp:{generatedId}` values.
+- Group conversation IDs use generated `group:{generatedId}` values.
 - Do not introduce another direct ID format without a deliberate migration plan.
 
 **RTDB adapter shape**
@@ -66,7 +66,7 @@ When enabled: legacy `initMessagesUI()` is skipped, the legacy `cmd:messaging:co
 
 **Group chat**
 
-- Schema supports `grp:` IDs. No runtime support yet.
+- Schema supports `group:` IDs. No runtime support yet.
 
 ---
 
@@ -82,7 +82,7 @@ Current scope:
 Important context:
 
 - Direct conversation IDs currently use `{sortedUserA}_{sortedUserB}`.
-- Group conversation IDs use `grp:{generatedId}`.
+- Group conversation IDs use `group:{generatedId}`.
 - Drafts live on conversation nodes, not in the sent message stream.
 - Every message envelope carries `conversationId` and `delivery`.
 - First-pass payloads are `text`, `event`, and `system`; file payloads are not

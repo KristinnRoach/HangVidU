@@ -553,7 +553,7 @@
             {
               id: 'convId',
               label: 'ConversationId',
-              sub: "sort(a,b).join('_') | grp_xxx",
+              sub: "sort(a,b).join('_') | group:xxx",
               layer: 'identity',
               x: 40,
               y: 210,
@@ -771,7 +771,7 @@
             {
               id: 'convId',
               label: 'ConversationId',
-              sub: "sort(a,b).join('_') | grp_xxx",
+              sub: "sort(a,b).join('_') | group:xxx",
               layer: 'identity',
               x: 40,
               y: 230,
@@ -1202,7 +1202,7 @@
         if (state.view === 'actual') {
           lines.push(`Anchor facts from the code:`);
           lines.push(
-            `- ConversationId is sorted "<uidA>_<uidB>" for direct, "grp_<id>" for group — already covers DM + group. The "grp_" prefix is the discriminator at the id level; ConversationRecord.kind is authoritative at the model level.`,
+            `- ConversationId is sorted "<uidA>_<uidB>" for direct, "group:<id>" for group — already covers direct + group. The "group:" prefix is the discriminator at the id level; ConversationRecord.kind is authoritative at the model level.`,
           );
           lines.push(
             `- ConversationRecord carries kind, participants map ({userId → {role,status,joinedAt}}), deliveryPolicy ('persistent' | 'private'), createdAt/updatedAt.`,

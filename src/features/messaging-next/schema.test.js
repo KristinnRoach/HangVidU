@@ -15,7 +15,7 @@ describe('messaging-next schema', () => {
   });
 
   it('creates generated group conversation ids', () => {
-    expect(createGroupConversationId('group_123')).toBe('grp:group_123');
+    expect(createGroupConversationId('group-123')).toBe('group:group-123');
   });
 
   it('keeps drafts on conversation nodes outside the message stream', () => {
@@ -47,7 +47,7 @@ describe('messaging-next schema', () => {
 
   it('defaults missing conversation drafts to null', () => {
     const node = ConversationNodeSchema.parse({
-      conversationId: 'grp:team_1',
+      conversationId: 'group:team_1',
       kind: 'group',
       participants: {
         owner: {
@@ -66,7 +66,7 @@ describe('messaging-next schema', () => {
   it('requires every message envelope to carry conversation id and delivery', () => {
     const message = MessageEnvelopeSchema.parse({
       messageId: 'msg-1',
-      conversationId: 'grp:team_1',
+      conversationId: 'group:team_1',
       senderId: 'user-a',
       senderName: 'User A',
       createdAt: 10,
@@ -77,7 +77,7 @@ describe('messaging-next schema', () => {
       },
     });
 
-    expect(message.conversationId).toBe('grp:team_1');
+    expect(message.conversationId).toBe('group:team_1');
     expect(message.delivery).toBe('private');
   });
 
