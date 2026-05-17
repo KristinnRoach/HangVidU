@@ -1,0 +1,1330 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>HangVidU — messaging-next Data Model</title>
+    <style>
+      :root {
+        --bg: #0b0d10;
+        --panel: #14181d;
+        --panel-2: #1a1f25;
+        --line: #262c34;
+        --text: #e6e8eb;
+        --muted: #8a93a0;
+        --accent: #6ea8fe;
+        --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font:
+          13px/1.45 system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        grid-template-rows: 1fr 6px var(--prompt-h, 220px);
+        grid-template-areas:
+          'controls canvas'
+          'controls divider'
+          'controls prompt';
+        height: 100vh;
+      }
+      #divider {
+        grid-area: divider;
+        background: var(--line);
+        cursor: ns-resize;
+        position: relative;
+      }
+      #divider:hover,
+      #divider.dragging {
+        background: var(--accent);
+      }
+      #divider::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 40px;
+        height: 2px;
+        background: var(--muted);
+        opacity: 0.4;
+        border-radius: 2px;
+      }
+      body.resizing {
+        cursor: ns-resize;
+        user-select: none;
+      }
+      #controls {
+        grid-area: controls;
+        background: var(--panel);
+        border-right: 1px solid var(--line);
+        overflow-y: auto;
+        padding: 16px 16px 24px;
+      }
+      #canvas-wrap {
+        grid-area: canvas;
+        position: relative;
+        overflow: hidden;
+        background: radial-gradient(circle at 30% 20%, #11161c 0%, #0b0d10 70%);
+      }
+      #prompt-wrap {
+        grid-area: prompt;
+        background: var(--panel);
+        border-top: 1px solid var(--line);
+        padding: 12px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-height: 0;
+        overflow: hidden;
+      }
+      h1 {
+        font-size: 14px;
+        margin: 0 0 4px;
+        letter-spacing: 0.3px;
+      }
+      h2 {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+        margin: 18px 0 8px;
+        font-weight: 600;
+      }
+      p.tag {
+        color: var(--muted);
+        font-size: 12px;
+        margin: 0 0 12px;
+      }
+      .preset-row {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      button.preset,
+      button.tog {
+        background: var(--panel-2);
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 6px 10px;
+        font: inherit;
+        cursor: pointer;
+      }
+      button.preset.active {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      label.check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 0;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      label.check input {
+        accent-color: var(--accent);
+      }
+      .swatch {
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+        display: inline-block;
+      }
+
+      #comments-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .comment {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 6px 8px;
+        font-size: 12px;
+      }
+      .comment .who {
+        color: var(--accent);
+        font-family: var(--mono);
+        font-size: 11px;
+      }
+      .comment .x {
+        float: right;
+        cursor: pointer;
+        color: var(--muted);
+      }
+      .comment .x:hover {
+        color: #ff7676;
+      }
+
+      svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .node rect {
+        cursor: pointer;
+        transition:
+          filter 0.12s ease,
+          stroke-width 0.12s ease;
+      }
+      .node:hover rect {
+        filter: brightness(1.15);
+      }
+      .node text {
+        pointer-events: none;
+        user-select: none;
+      }
+      .node .title {
+        font: 600 13px system-ui;
+        fill: #0b0d10;
+      }
+      .node .sub {
+        font: 500 12px system-ui;
+        fill: #0b0d10;
+        opacity: 0.72;
+      }
+      .node.commented rect {
+        stroke: #fde047;
+        stroke-width: 3;
+      }
+
+      .edge {
+        fill: none;
+        stroke-width: 1.6;
+        transition: stroke-width 0.12s;
+      }
+      .edge-hit {
+        fill: none;
+        stroke: transparent;
+        stroke-width: 16;
+        cursor: help;
+      }
+      .edge-group:hover .edge,
+      .edge-group.pinned .edge {
+        stroke-width: 2.6;
+      }
+      .edge-label {
+        font: 600 12px system-ui;
+        fill: #e6e8eb;
+        pointer-events: none;
+        stroke: #0b0d10;
+        stroke-width: 4;
+        paint-order: stroke;
+        stroke-linejoin: round;
+        opacity: 0;
+        transition: opacity 0.1s;
+      }
+      .edge-label.show {
+        opacity: 1;
+      }
+
+      #prompt {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 10px 12px;
+        font-family: var(--mono);
+        font-size: 12px;
+        white-space: pre-wrap;
+        overflow-y: auto;
+        flex: 1;
+        min-height: 80px;
+        color: #cfd4dc;
+      }
+      .prompt-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .prompt-bar h2 {
+        margin: 0;
+      }
+      #copy-btn {
+        margin-left: auto;
+        background: var(--accent);
+        color: #08111f;
+        border: 0;
+        border-radius: 6px;
+        padding: 6px 12px;
+        font: 600 12px system-ui;
+        cursor: pointer;
+      }
+      #copy-btn.ok {
+        background: #34d399;
+      }
+
+      #modal-back {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 50;
+      }
+      #modal-back.on {
+        display: flex;
+      }
+      #modal {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 16px;
+        width: 380px;
+        max-width: 90vw;
+      }
+      #modal h3 {
+        margin: 0 0 4px;
+        font-size: 14px;
+      }
+      #modal .file {
+        font-family: var(--mono);
+        color: var(--muted);
+        font-size: 11px;
+        margin-bottom: 10px;
+      }
+      #modal textarea {
+        width: 100%;
+        height: 90px;
+        background: var(--panel-2);
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 8px;
+        font: inherit;
+        resize: vertical;
+      }
+      #modal .row {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+        justify-content: flex-end;
+      }
+      #modal button {
+        background: var(--panel-2);
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 6px 12px;
+        cursor: pointer;
+        font: inherit;
+      }
+      #modal button.primary {
+        background: var(--accent);
+        color: #08111f;
+        border: 0;
+        font-weight: 600;
+      }
+
+      .legend {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .legend-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .edge-key {
+        width: 22px;
+        height: 0;
+        border-top: 2px solid;
+        display: inline-block;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="controls">
+      <h1>messaging-next Data Model</h1>
+      <p class="tag">
+        Only entities defined in <code>src/features/messaging-next/</code>.
+        Click a node to comment. Hover an edge to see its label; click to pin.
+      </p>
+
+      <h2>View</h2>
+      <div class="preset-row" id="presets">
+        <button class="preset active" data-view="actual">As built today</button>
+        <button class="preset" data-view="unified">Unified w/ calls</button>
+      </div>
+
+      <h2>Show layers</h2>
+      <label class="check"
+        ><input type="checkbox" data-layer="identity" checked /><span
+          class="swatch"
+          style="background: #fef3c7"
+        ></span
+        >Identity</label
+      >
+      <label class="check"
+        ><input type="checkbox" data-layer="convo" checked /><span
+          class="swatch"
+          style="background: #ede9fe"
+        ></span
+        >Conversation</label
+      >
+      <label class="check"
+        ><input type="checkbox" data-layer="content" checked /><span
+          class="swatch"
+          style="background: #d1fae5"
+        ></span
+        >Messages / payload</label
+      >
+      <label class="check"
+        ><input type="checkbox" data-layer="transport" checked /><span
+          class="swatch"
+          style="background: #fce7f3"
+        ></span
+        >Transport adapters</label
+      >
+      <label class="check"
+        ><input type="checkbox" data-layer="ui" checked /><span
+          class="swatch"
+          style="background: #dbeafe"
+        ></span
+        >UI state</label
+      >
+      <label class="check"
+        ><input type="checkbox" data-layer="session" checked /><span
+          class="swatch"
+          style="background: #ffedd5"
+        ></span
+        >Live session (call)</label
+      >
+
+      <h2>Edges</h2>
+      <div class="legend" id="legend">
+        <div class="legend-row">
+          <span class="edge-key" style="border-color: var(--accent)"></span>
+          owns / contains
+        </div>
+        <div class="legend-row">
+          <span
+            class="edge-key"
+            style="border-color: #34d399; border-style: dashed"
+          ></span>
+          persisted via
+        </div>
+        <div class="legend-row">
+          <span
+            class="edge-key"
+            style="border-color: #f97316; border-style: dashed"
+          ></span>
+          real-time via
+        </div>
+        <div class="legend-row">
+          <span
+            class="edge-key"
+            style="border-color: #6b7280; border-style: dotted"
+          ></span>
+          derives / references
+        </div>
+      </div>
+
+      <h2>Comments (<span id="comment-count">0</span>)</h2>
+      <div id="comments-list">
+        <div style="color: var(--muted); font-size: 12px">No comments yet.</div>
+      </div>
+    </div>
+
+    <div id="canvas-wrap">
+      <svg id="svg" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <marker
+            id="arr-accent"
+            markerWidth="8"
+            markerHeight="6"
+            refX="7"
+            refY="3"
+            orient="auto"
+          >
+            <polygon points="0 0, 8 3, 0 6" fill="#6ea8fe" />
+          </marker>
+          <marker
+            id="arr-green"
+            markerWidth="8"
+            markerHeight="6"
+            refX="7"
+            refY="3"
+            orient="auto"
+          >
+            <polygon points="0 0, 8 3, 0 6" fill="#34d399" />
+          </marker>
+          <marker
+            id="arr-orange"
+            markerWidth="8"
+            markerHeight="6"
+            refX="7"
+            refY="3"
+            orient="auto"
+          >
+            <polygon points="0 0, 8 3, 0 6" fill="#f97316" />
+          </marker>
+          <marker
+            id="arr-gray"
+            markerWidth="8"
+            markerHeight="6"
+            refX="7"
+            refY="3"
+            orient="auto"
+          >
+            <polygon points="0 0, 8 3, 0 6" fill="#6b7280" />
+          </marker>
+        </defs>
+        <g id="edges"></g>
+        <g id="nodes"></g>
+        <g id="edge-labels"></g>
+        <text
+          id="view-title"
+          x="500"
+          y="28"
+          text-anchor="middle"
+          font="500 13px system-ui"
+          fill="#8a93a0"
+        ></text>
+      </svg>
+    </div>
+
+    <div id="divider" title="Drag to resize"></div>
+
+    <div id="prompt-wrap">
+      <div class="prompt-bar">
+        <h2>Prompt</h2>
+        <button id="copy-btn">Copy</button>
+      </div>
+      <div id="prompt"></div>
+    </div>
+
+    <div id="modal-back">
+      <div id="modal">
+        <h3 id="m-title">Component</h3>
+        <div class="file" id="m-file">file path</div>
+        <textarea
+          id="m-text"
+          placeholder="What feels off or right? What would you change?"
+        ></textarea>
+        <div class="row">
+          <button id="m-cancel">Cancel</button>
+          <button class="primary" id="m-save">Save comment</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      /* =========================================================================
+   messaging-next data model — sourced from src/features/messaging-next/
+     schema.ts, types.ts, interfaces.ts, conversation.state.ts, adapters/*
+   ========================================================================= */
+
+      const NODE_W = 210,
+        NODE_H = 54;
+
+      const VIEWS = {
+        actual: {
+          title:
+            'messaging-next as built — Conversation (direct | group) + adapters',
+          nodes: [
+            // identity
+            {
+              id: 'user',
+              label: 'UserId',
+              sub: 'z.string().min(1)',
+              layer: 'identity',
+              x: 40,
+              y: 90,
+              color: '#fef3c7',
+            },
+            {
+              id: 'convId',
+              label: 'ConversationId',
+              sub: "sort(a,b).join('_') | grp_xxx",
+              layer: 'identity',
+              x: 40,
+              y: 210,
+              color: '#fef3c7',
+            },
+
+            // conversation node
+            {
+              id: 'conv',
+              label: 'ConversationRecord',
+              sub: 'kind, deliveryPolicy, participants',
+              layer: 'convo',
+              x: 280,
+              y: 90,
+              color: '#ede9fe',
+            },
+            {
+              id: 'part',
+              label: 'Participant',
+              sub: 'role | status | joinedAt',
+              layer: 'convo',
+              x: 280,
+              y: 210,
+              color: '#ede9fe',
+            },
+            {
+              id: 'draft',
+              label: 'ConversationDraft',
+              sub: 'text + updatedAt',
+              layer: 'convo',
+              x: 280,
+              y: 330,
+              color: '#ede9fe',
+            },
+            {
+              id: 'node',
+              label: 'ConversationNode',
+              sub: 'Record + draft (read model)',
+              layer: 'convo',
+              x: 280,
+              y: 450,
+              color: '#ede9fe',
+            },
+
+            // messages / payload
+            {
+              id: 'env',
+              label: 'MessageEnvelope',
+              sub: 'id, convId, sender, delivery, payload',
+              layer: 'content',
+              x: 540,
+              y: 90,
+              color: '#d1fae5',
+            },
+            {
+              id: 'pText',
+              label: 'TextPayload',
+              sub: "{ type:'text', text }",
+              layer: 'content',
+              x: 540,
+              y: 210,
+              color: '#d1fae5',
+            },
+            {
+              id: 'pEvent',
+              label: 'EventPayload',
+              sub: 'evt:call:session:unanswered',
+              layer: 'content',
+              x: 540,
+              y: 280,
+              color: '#d1fae5',
+            },
+            {
+              id: 'pSystem',
+              label: 'SystemPayload',
+              sub: 'systemType + details',
+              layer: 'content',
+              x: 540,
+              y: 350,
+              color: '#d1fae5',
+            },
+            {
+              id: 'react',
+              label: 'ReactionMap',
+              sub: 'emoji → userId → true',
+              layer: 'content',
+              x: 540,
+              y: 450,
+              color: '#d1fae5',
+            },
+
+            // transport
+            {
+              id: 'repo',
+              label: 'MessageRepository',
+              sub: 'load/send/subscribe + reactions',
+              layer: 'transport',
+              x: 800,
+              y: 90,
+              color: '#fce7f3',
+            },
+            {
+              id: 'rtdb',
+              label: 'RtdbAdapter',
+              sub: 'adapters/rtdb.ts',
+              layer: 'transport',
+              x: 800,
+              y: 160,
+              color: '#fce7f3',
+            },
+            {
+              id: 'mem',
+              label: 'InMemoryAdapter',
+              sub: 'adapters/in-memory.ts',
+              layer: 'transport',
+              x: 800,
+              y: 230,
+              color: '#fce7f3',
+            },
+            {
+              id: 'p2p',
+              label: 'PrivateTransport',
+              sub: 'raw datachannel bridge',
+              layer: 'transport',
+              x: 800,
+              y: 330,
+              color: '#fce7f3',
+            },
+            {
+              id: 'sig',
+              label: 'PrivateSignaling',
+              sub: 'invite/accept handshake',
+              layer: 'transport',
+              x: 800,
+              y: 400,
+              color: '#fce7f3',
+            },
+            {
+              id: 'callBr',
+              label: 'CallChannelBridge',
+              sub: 'reuses active call DC',
+              layer: 'transport',
+              x: 800,
+              y: 470,
+              color: '#fce7f3',
+            },
+
+            // ui state
+            {
+              id: 'chat',
+              label: 'ChatMessage',
+              sub: 'id, status, source, reactions',
+              layer: 'ui',
+              x: 40,
+              y: 450,
+              color: '#dbeafe',
+            },
+            {
+              id: 'uiState',
+              label: 'ConvChatState',
+              sub: 'messages, draft, transportMode...',
+              layer: 'ui',
+              x: 40,
+              y: 570,
+              color: '#dbeafe',
+            },
+          ],
+          edges: [
+            {
+              from: 'user',
+              to: 'convId',
+              type: 'derive',
+              label: "sort(a,b).join('_')",
+            },
+            { from: 'convId', to: 'conv', type: 'own' },
+            { from: 'conv', to: 'part', type: 'own', label: 'participants{}' },
+            { from: 'conv', to: 'draft', type: 'derive' },
+            { from: 'conv', to: 'node', type: 'derive' },
+            { from: 'draft', to: 'node', type: 'derive' },
+            { from: 'conv', to: 'env', type: 'own', label: 'messages' },
+            { from: 'env', to: 'pText', type: 'derive', label: 'payload' },
+            { from: 'env', to: 'pEvent', type: 'derive' },
+            { from: 'env', to: 'pSystem', type: 'derive' },
+            { from: 'env', to: 'react', type: 'derive', label: 'side-stored' },
+            { from: 'env', to: 'repo', type: 'persist' },
+            { from: 'repo', to: 'rtdb', type: 'derive', label: 'impl' },
+            { from: 'repo', to: 'mem', type: 'derive', label: 'impl' },
+            { from: 'env', to: 'p2p', type: 'live', label: 'private' },
+            { from: 'sig', to: 'p2p', type: 'derive', label: 'establishes' },
+            {
+              from: 'callBr',
+              to: 'p2p',
+              type: 'derive',
+              label: 'shape-compat',
+            },
+            { from: 'env', to: 'chat', type: 'derive', label: '→ UI' },
+            { from: 'chat', to: 'uiState', type: 'own' },
+            { from: 'draft', to: 'uiState', type: 'derive' },
+          ],
+        },
+
+        unified: {
+          title:
+            'Unified — calls modeled as a LiveSession child of Conversation (room-pattern)',
+          nodes: [
+            {
+              id: 'user',
+              label: 'UserId',
+              sub: 'z.string().min(1)',
+              layer: 'identity',
+              x: 40,
+              y: 110,
+              color: '#fef3c7',
+            },
+            {
+              id: 'convId',
+              label: 'ConversationId',
+              sub: "sort(a,b).join('_') | grp_xxx",
+              layer: 'identity',
+              x: 40,
+              y: 230,
+              color: '#fef3c7',
+            },
+
+            {
+              id: 'conv',
+              label: 'ConversationRecord',
+              sub: 'kind, deliveryPolicy, participants',
+              layer: 'convo',
+              x: 290,
+              y: 110,
+              color: '#ede9fe',
+            },
+            {
+              id: 'part',
+              label: 'Participant',
+              sub: 'role | status | joinedAt',
+              layer: 'convo',
+              x: 290,
+              y: 230,
+              color: '#ede9fe',
+            },
+            {
+              id: 'node',
+              label: 'ConversationNode',
+              sub: 'Record + draft',
+              layer: 'convo',
+              x: 290,
+              y: 350,
+              color: '#ede9fe',
+            },
+
+            {
+              id: 'env',
+              label: 'MessageEnvelope',
+              sub: 'delivery: persistent | private',
+              layer: 'content',
+              x: 540,
+              y: 110,
+              color: '#d1fae5',
+            },
+            {
+              id: 'payload',
+              label: 'Payload (union)',
+              sub: 'text | event | system',
+              layer: 'content',
+              x: 540,
+              y: 230,
+              color: '#d1fae5',
+            },
+            {
+              id: 'react',
+              label: 'ReactionMap',
+              sub: 'emoji → userId → true',
+              layer: 'content',
+              x: 540,
+              y: 350,
+              color: '#d1fae5',
+            },
+
+            {
+              id: 'session',
+              label: 'LiveSession',
+              sub: '0..1 per Conversation (active call)',
+              layer: 'session',
+              x: 540,
+              y: 480,
+              color: '#ffedd5',
+            },
+
+            {
+              id: 'repo',
+              label: 'MessageRepository',
+              sub: 'persisted transport (RTDB / memory)',
+              layer: 'transport',
+              x: 800,
+              y: 110,
+              color: '#fce7f3',
+            },
+            {
+              id: 'p2p',
+              label: 'P2PTransport',
+              sub: 'ephemeral (DataChannel)',
+              layer: 'transport',
+              x: 800,
+              y: 230,
+              color: '#fce7f3',
+            },
+            {
+              id: 'sig',
+              label: 'SessionSignaling',
+              sub: 'one handshake: private OR call',
+              layer: 'transport',
+              x: 800,
+              y: 350,
+              color: '#fce7f3',
+            },
+            {
+              id: 'media',
+              label: 'MediaTransport',
+              sub: 'WebRTC audio/video tracks',
+              layer: 'transport',
+              x: 800,
+              y: 480,
+              color: '#fce7f3',
+            },
+
+            {
+              id: 'uiState',
+              label: 'ConvChatState',
+              sub: '+ session state inline',
+              layer: 'ui',
+              x: 40,
+              y: 470,
+              color: '#dbeafe',
+            },
+          ],
+          edges: [
+            { from: 'user', to: 'convId', type: 'derive', label: "sort.join('_')" },
+            { from: 'convId', to: 'conv', type: 'own' },
+            { from: 'conv', to: 'part', type: 'own' },
+            { from: 'conv', to: 'node', type: 'derive' },
+            { from: 'conv', to: 'env', type: 'own', label: 'messages' },
+            { from: 'conv', to: 'session', type: 'own', label: '0..1 live' },
+            { from: 'env', to: 'payload', type: 'derive' },
+            { from: 'env', to: 'react', type: 'derive' },
+            {
+              from: 'env',
+              to: 'repo',
+              type: 'persist',
+              label: 'delivery=persistent',
+            },
+            { from: 'env', to: 'p2p', type: 'live', label: 'delivery=private' },
+            { from: 'session', to: 'p2p', type: 'live', label: 'DC for chat' },
+            { from: 'session', to: 'media', type: 'live', label: 'tracks' },
+            {
+              from: 'sig',
+              to: 'session',
+              type: 'derive',
+              label: 'establishes',
+            },
+            { from: 'sig', to: 'p2p', type: 'derive', label: 'establishes' },
+            { from: 'session', to: 'uiState', type: 'derive' },
+            {
+              from: 'env',
+              to: 'uiState',
+              type: 'derive',
+              label: '→ ChatMessage',
+            },
+          ],
+        },
+      };
+
+      const EDGE_STYLE = {
+        own: { stroke: '#6ea8fe', dash: '', marker: 'arr-accent' },
+        persist: { stroke: '#34d399', dash: '5 4', marker: 'arr-green' },
+        live: { stroke: '#f97316', dash: '6 3', marker: 'arr-orange' },
+        derive: { stroke: '#6b7280', dash: '2 4', marker: 'arr-gray' },
+      };
+
+      const state = {
+        view: 'actual',
+        layers: {
+          identity: true,
+          convo: true,
+          content: true,
+          transport: true,
+          ui: true,
+          session: true,
+        },
+        comments: [],
+      };
+
+      const svg = document.getElementById('svg');
+      const gNodes = document.getElementById('nodes');
+      const gEdges = document.getElementById('edges');
+      const gLabels = document.getElementById('edge-labels');
+      const viewTitle = document.getElementById('view-title');
+
+      function $(s, r = document) {
+        return r.querySelector(s);
+      }
+      function $$(s, r = document) {
+        return [...r.querySelectorAll(s)];
+      }
+      function center(n) {
+        return { cx: n.x + NODE_W / 2, cy: n.y + NODE_H / 2 };
+      }
+      function ns(tag, attrs = {}) {
+        const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+        for (const k in attrs) el.setAttribute(k, attrs[k]);
+        return el;
+      }
+      function curvePath(a, b) {
+        const { cx: x1, cy: y1 } = center(a);
+        const { cx: x2, cy: y2 } = center(b);
+        const ang = Math.atan2(y2 - y1, x2 - x1);
+        const rx1 = x1 + Math.cos(ang) * (NODE_W / 2);
+        const ry1 = y1 + Math.sin(ang) * (NODE_H / 2);
+        const rx2 = x2 - Math.cos(ang) * (NODE_W / 2);
+        const ry2 = y2 - Math.sin(ang) * (NODE_H / 2);
+        const mx = (x1 + x2) / 2;
+        const my = (y1 + y2) / 2 - Math.abs(x2 - x1) * 0.05;
+        return `M ${rx1} ${ry1} Q ${mx} ${my} ${rx2} ${ry2}`;
+      }
+
+      function render() {
+        const v = VIEWS[state.view];
+        viewTitle.textContent = v.title;
+        gEdges.innerHTML = '';
+        gNodes.innerHTML = '';
+        gLabels.innerHTML = '';
+
+        const visible = new Set(
+          v.nodes.filter((n) => state.layers[n.layer]).map((n) => n.id),
+        );
+        const byId = Object.fromEntries(v.nodes.map((n) => [n.id, n]));
+
+        v.edges.forEach((e, i) => {
+          if (!visible.has(e.from) || !visible.has(e.to)) return;
+          const a = byId[e.from],
+            b = byId[e.to];
+          const st = EDGE_STYLE[e.type] || EDGE_STYLE.own;
+          const d = curvePath(a, b);
+
+          const group = ns('g', { class: 'edge-group', 'data-edge': i });
+          const line = ns('path', {
+            d,
+            class: 'edge',
+            stroke: st.stroke,
+            'stroke-dasharray': st.dash,
+            'marker-end': `url(#${st.marker})`,
+          });
+          group.appendChild(line);
+
+          if (e.label) {
+            // Fat invisible path for easier hovering of the thin line.
+            const hit = ns('path', { d, class: 'edge-hit' });
+            group.appendChild(hit);
+
+            // Native browser tooltip fallback.
+            const ttl = ns('title');
+            ttl.textContent = e.label;
+            group.appendChild(ttl);
+
+            const c1 = center(a),
+              c2 = center(b);
+            const t = 0.38;
+            const lx = c1.cx + (c2.cx - c1.cx) * t;
+            const ly = c1.cy + (c2.cy - c1.cy) * t;
+            const lab = ns('text', {
+              x: lx,
+              y: ly - 4,
+              'text-anchor': 'middle',
+              class: 'edge-label',
+              'data-edge': i,
+            });
+            lab.textContent = e.label;
+            gLabels.appendChild(lab);
+
+            const show = () => {
+              lab.classList.add('show');
+              group.classList.add('hover');
+            };
+            const hide = () => {
+              if (group.classList.contains('pinned')) return;
+              lab.classList.remove('show');
+              group.classList.remove('hover');
+            };
+            group.addEventListener('mouseenter', show);
+            group.addEventListener('mouseleave', hide);
+            group.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              const pinned = group.classList.toggle('pinned');
+              lab.classList.toggle('show', pinned);
+            });
+          }
+
+          gEdges.appendChild(group);
+        });
+
+        v.nodes.forEach((n) => {
+          if (!visible.has(n.id)) return;
+          const hasComment = state.comments.some(
+            (c) => c.target === n.id && c.view === state.view,
+          );
+          const g = ns('g', {
+            class: 'node' + (hasComment ? ' commented' : ''),
+            transform: `translate(${n.x} ${n.y})`,
+          });
+          g.appendChild(
+            ns('rect', {
+              width: NODE_W,
+              height: NODE_H,
+              rx: 8,
+              ry: 8,
+              fill: n.color,
+              stroke: '#0b0d10',
+              'stroke-width': 1,
+            }),
+          );
+          const title = ns('text', {
+            x: NODE_W / 2,
+            y: 22,
+            'text-anchor': 'middle',
+            class: 'title',
+          });
+          title.textContent = n.label;
+          const sub = ns('text', {
+            x: NODE_W / 2,
+            y: 42,
+            'text-anchor': 'middle',
+            class: 'sub',
+          });
+          sub.textContent = n.sub;
+          // Only squish text that would overflow the node (others render at natural size).
+          requestAnimationFrame(() => {
+            try {
+              const max = NODE_W - 16;
+              const w = sub.getComputedTextLength();
+              if (w > max) {
+                sub.setAttribute('textLength', max);
+                sub.setAttribute('lengthAdjust', 'spacingAndGlyphs');
+              }
+            } catch {}
+          });
+          g.appendChild(title);
+          g.appendChild(sub);
+          g.addEventListener('click', () => openModal(n));
+          gNodes.appendChild(g);
+        });
+      }
+
+      const modalBack = $('#modal-back');
+      const mTitle = $('#m-title'),
+        mFile = $('#m-file'),
+        mText = $('#m-text');
+      let activeNode = null;
+
+      function openModal(n) {
+        activeNode = n;
+        mTitle.textContent = n.label;
+        mFile.textContent = n.sub;
+        const existing = state.comments.find(
+          (c) => c.target === n.id && c.view === state.view,
+        );
+        mText.value = existing ? existing.text : '';
+        modalBack.classList.add('on');
+        mText.focus();
+      }
+      function closeModal() {
+        modalBack.classList.remove('on');
+        activeNode = null;
+      }
+
+      $('#m-cancel').addEventListener('click', closeModal);
+      modalBack.addEventListener('click', (e) => {
+        if (e.target === modalBack) closeModal();
+      });
+      $('#m-save').addEventListener('click', () => {
+        if (!activeNode) return;
+        const text = mText.value.trim();
+        state.comments = state.comments.filter(
+          (c) => !(c.target === activeNode.id && c.view === state.view),
+        );
+        if (text) {
+          state.comments.push({
+            id: Date.now(),
+            view: state.view,
+            target: activeNode.id,
+            targetLabel: activeNode.label,
+            targetFile: activeNode.sub,
+            text,
+          });
+        }
+        closeModal();
+        updateAll();
+      });
+
+      function renderComments() {
+        const list = $('#comments-list');
+        $('#comment-count').textContent = state.comments.length;
+        if (!state.comments.length) {
+          list.innerHTML =
+            '<div style="color:var(--muted);font-size:12px">No comments yet.</div>';
+          return;
+        }
+        list.innerHTML = '';
+        state.comments.forEach((c) => {
+          const el = document.createElement('div');
+          el.className = 'comment';
+          const safe = c.text.replace(
+            /[<>&]/g,
+            (s) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' })[s],
+          );
+          el.innerHTML = `<span class="x" data-id="${c.id}">×</span>
+      <div class="who">[${c.view}] ${c.targetLabel}</div>
+      <div>${safe}</div>`;
+          list.appendChild(el);
+        });
+        $$('.comment .x').forEach((x) =>
+          x.addEventListener('click', (e) => {
+            const id = +e.target.dataset.id;
+            state.comments = state.comments.filter((c) => c.id !== id);
+            updateAll();
+          }),
+        );
+      }
+
+      function updatePrompt() {
+        const v = VIEWS[state.view];
+        const visibleLayers = Object.entries(state.layers)
+          .filter(([, on]) => on)
+          .map(([k]) => k);
+        const allOn = visibleLayers.length === 6;
+
+        const lines = [];
+        lines.push(
+          `I'm reviewing the messaging-next data model (src/features/messaging-next/) to simplify the core before further migration. Legacy messaging/ is intentionally out of scope.`,
+        );
+        lines.push('');
+        lines.push(`View: **${state.view}** — ${v.title}`);
+        if (!allOn) lines.push(`Visible layers: ${visibleLayers.join(', ')}.`);
+        lines.push('');
+
+        if (state.view === 'actual') {
+          lines.push(`Anchor facts from the code:`);
+          lines.push(
+            `- ConversationId is sorted "<uidA>_<uidB>" for direct, "grp_<id>" for group — already covers DM + group. The "grp_" prefix is the discriminator at the id level; ConversationRecord.kind is authoritative at the model level.`,
+          );
+          lines.push(
+            `- ConversationRecord carries kind, participants map ({userId → {role,status,joinedAt}}), deliveryPolicy ('persistent' | 'private'), createdAt/updatedAt.`,
+          );
+          lines.push(
+            `- ConversationNode = ConversationRecord + draft (ConversationDraft is its own type).`,
+          );
+          lines.push(
+            `- MessageEnvelope wraps a discriminated payload union: TextPayload | EventPayload (only 'evt:call:session:unanswered' today) | SystemPayload. delivery is per-message ('persistent'|'private').`,
+          );
+          lines.push(
+            `- ReactionMap is side-stored (RTDB nested object), not nested in the envelope.`,
+          );
+          lines.push(
+            `- Transport split into 4 contracts: MessageRepository (persistent, with RTDB + InMemory impls), PrivateMessageTransport (raw DC), PrivateSessionSignaling (handshake), CallChannelBridge (reuse the call's DC for chat).`,
+          );
+          lines.push(
+            `- UI projection: ChatMessage adds status/source; ConversationChatState holds messages + draft + transportMode + unreadCount.`,
+          );
+        } else {
+          lines.push(
+            `Proposed simplification: collapse the four transport contracts into two — MessageRepository (persistent) and P2PTransport (ephemeral, used for both private messaging and call chat). One SessionSignaling handshake covers both "open private chat" and "start call". A LiveSession is a 0..1 child of a Conversation that exists while a call is active and owns the media tracks plus a DataChannel that P2PTransport can subscribe to. ConversationId stays the single key for chat, calls, and watch.`,
+          );
+        }
+        lines.push('');
+
+        if (state.comments.length) {
+          lines.push(`Feedback on specific entities:`);
+          state.comments.forEach((c) => {
+            lines.push(
+              `- **${c.targetLabel}** (${c.targetFile}) [view: ${c.view}]`,
+            );
+            lines.push(`  ${c.text}`);
+          });
+          lines.push('');
+        }
+
+        lines.push(
+          `Pressure-test for me: (1) does collapsing PrivateMessageTransport + CallChannelBridge into one P2PTransport break the "private mode without an active call" path? (2) is there any field in ConversationRecord that should actually move onto LiveSession (e.g. is deliveryPolicy a conversation property or a per-session mode)? (3) where does EventPayload belong long-term once calls are first-class — system message, session event, or its own stream?`,
+        );
+
+        $('#prompt').textContent = lines.join('\n');
+      }
+
+      function updateAll() {
+        render();
+        renderComments();
+        updatePrompt();
+      }
+
+      $$('#presets button').forEach((b) =>
+        b.addEventListener('click', () => {
+          $$('#presets button').forEach((x) => x.classList.remove('active'));
+          b.classList.add('active');
+          state.view = b.dataset.view;
+          updateAll();
+        }),
+      );
+      $$('input[data-layer]').forEach((cb) =>
+        cb.addEventListener('change', () => {
+          state.layers[cb.dataset.layer] = cb.checked;
+          updateAll();
+        }),
+      );
+      $('#copy-btn').addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText($('#prompt').textContent);
+          const b = $('#copy-btn');
+          b.textContent = 'Copied!';
+          b.classList.add('ok');
+          setTimeout(() => {
+            b.textContent = 'Copy';
+            b.classList.remove('ok');
+          }, 1200);
+        } catch {}
+      });
+
+      updateAll();
+
+      /* Divider drag */
+      (function () {
+        const divider = document.getElementById('divider');
+        let startY = 0,
+          startH = 0,
+          dragging = false;
+        const MIN = 80,
+          MAX_FRAC = 0.85;
+
+        function getH() {
+          const v = getComputedStyle(document.body)
+            .getPropertyValue('--prompt-h')
+            .trim();
+          return parseFloat(v) || 220;
+        }
+        function setH(px) {
+          const max = window.innerHeight * MAX_FRAC;
+          const clamped = Math.max(MIN, Math.min(max, px));
+          document.body.style.setProperty('--prompt-h', clamped + 'px');
+        }
+        function onMove(e) {
+          if (!dragging) return;
+          const dy = e.clientY - startY;
+          setH(startH - dy);
+        }
+        function onUp() {
+          dragging = false;
+          divider.classList.remove('dragging');
+          document.body.classList.remove('resizing');
+          window.removeEventListener('mousemove', onMove);
+          window.removeEventListener('mouseup', onUp);
+        }
+        divider.addEventListener('mousedown', (e) => {
+          dragging = true;
+          startY = e.clientY;
+          startH = getH();
+          divider.classList.add('dragging');
+          document.body.classList.add('resizing');
+          window.addEventListener('mousemove', onMove);
+          window.addEventListener('mouseup', onUp);
+          e.preventDefault();
+        });
+      })();
+    </script>
+  </body>
+</html>
