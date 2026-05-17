@@ -1,4 +1,4 @@
-// import { Phone, PhoneOff, Video } from 'lucide';
+import { Phone, PhoneOff, Video } from 'lucide-solid';
 import { useCallHandshake } from '../call-handshake';
 import styles from './CallControls.module.css';
 
@@ -29,7 +29,7 @@ export function StartCallButton(props: StartCallButtonProps) {
       title={title}
       aria-label={title}
     >
-      <i data-lucide={audioOnly ? 'phone' : 'video'}></i>
+      {audioOnly ? <Phone /> : <Video />}
     </button>
   );
 }
@@ -54,8 +54,7 @@ function EndCallButton() {
       title={'End Call'}
       aria-label={'End Call'}
     >
-      Hang Up
-      {/* TODO: <i data-lucide={'phone-off'}></i> */}
+      <PhoneOff />
     </button>
   );
 }

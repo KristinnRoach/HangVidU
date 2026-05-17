@@ -1,9 +1,9 @@
 import { For, Show, createSignal, onCleanup, onMount } from 'solid-js';
 import { onClickOutside } from '../../../../shared/utils/ui-utils/clickOutside.js';
 import { useI18n } from '../../../../shared/i18n/index.js';
-import { initIcons } from '../../../../components/base-legacy/icons.js';
 import { ensureYouTubeAPILoaded } from '../youtube-player.js';
 import { devDebug } from '../../../../shared/utils/dev/dev-utils.js';
+import { Search } from 'lucide-solid';
 
 const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
 const YOUTUBE_API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
@@ -125,7 +125,6 @@ export default function YouTubeSearchControls() {
   const [focusedResultIndex, setFocusedResultIndex] = createSignal(-1);
   let searchResultsCache = [];
   let activeSearchRequestId = 0;
-  let rootEl;
   let inputEl;
   let resultsEl;
   let searchBtnEl;
@@ -333,7 +332,6 @@ export default function YouTubeSearchControls() {
   }
 
   onMount(() => {
-    initIcons(rootEl);
     ensureYouTubeAPILoaded().catch((error) => {
       console.warn(
         'YouTube IFrame API preload failed; it will retry on video playback:',
@@ -361,7 +359,7 @@ export default function YouTubeSearchControls() {
   });
 
   return (
-    <div ref={rootEl} class='search-section' onKeyDown={handleKeyDown}>
+    <div class='search-section' onKeyDown={handleKeyDown}>
       <div class='search-controls'>
         <input
           ref={inputEl}
@@ -394,7 +392,7 @@ export default function YouTubeSearchControls() {
           disabled={status() === 'loading'}
           onClick={handleSearchClick}
         >
-          <i data-lucide='search' />
+          <Search />
         </button>
       </div>
       <div

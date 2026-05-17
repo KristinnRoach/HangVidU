@@ -1,11 +1,8 @@
 import { createSignal, Show, createEffect, onCleanup, onMount } from 'solid-js';
-
+import { User, PhoneCall, MessageCircle, Mail } from 'lucide-solid';
 import { useP2PContext } from '../shared/p2p-context.js';
 import { useAuth } from '../auth/solid-auth.js';
-import {
-  dispatchCommand,
-  handleCommand,
-} from '../shared/events/index.js';
+import { dispatchCommand, handleCommand } from '../shared/events/index.js';
 
 // Top-bar
 import AppTitle from './app/AppTitle.jsx';
@@ -75,6 +72,7 @@ export default function MainContent() {
   onMount(() => {
     if (!messagingNext) return;
 
+    // TODO: replace both dispatch and handler with { selectConversation } = useMessaging() ?
     const ac = new AbortController();
     handleCommand(
       'cmd:messaging:conversation:select',
@@ -233,21 +231,32 @@ function TopBar(props: TopBarProps) {
       <nav class={styles.topNav}>
         {/* <button onClick={() => props.setActiveView?.('home')}>Home</button> */}
         <Show when={props.isInCall}>
-          <button onClick={() => props.setActiveView('call')}>Call</button>
+          <button
+            title='View Active Call'
+            onClick={() => props.setActiveView('call')}
+          >
+            <PhoneCall />
+          </button>
         </Show>
 
-        <Show when={isLoggedIn()}>
-          <button onClick={() => props.setActiveView('contacts')}>
-            Contacts
+        <Show when={isLoggedIn()} fallback={null}>
+          <button
+            title='Contacts'
+            onClick={() => props.setActiveView('contacts')}
+          >
+            <User />
           </button>
-          <button onClick={() => props.setActiveView('messaging')}>
-            Messaging
+          <button
+            title='Messages'
+            onClick={() => props.setActiveView('messaging')}
+          >
+            <Mail />
           </button>
         </Show>
       </nav>
 
       <div class='top-bar-right'>
-        <AddContactButton />
+        {props.activeView === 'contacts' && <AddContactButton />}
         <NotificationsToggle />
         {/* <YouTubeSearchControls /> */}
       </div>

@@ -7,6 +7,7 @@ import {
 import { dispatchCommand } from '../../shared/events/index.js';
 import { useI18n } from '../../shared/i18n/index.js';
 import GoogleSignInButton from './GoogleSignInButton.jsx';
+import { LogOut } from 'lucide-solid';
 
 function smartTruncateName(fullName, maxLength = 20) {
   if (!fullName || fullName.length <= maxLength) {
@@ -92,10 +93,12 @@ export default function AuthControls() {
           id='goog-logout-btn'
           class='logout-btn'
           type='button'
+          title={t('auth.logout')}
+          aria-title={t('auth.logout')}
           disabled={isLoading()}
           onClick={requestLogout}
         >
-          {t('auth.logout')}
+          <LogOut />
         </button>
       </Show>
     </div>

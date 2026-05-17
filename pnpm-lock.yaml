@@ -42,6 +42,9 @@ importers:
       lucide:
         specifier: ^1.8.0
         version: 1.8.0
+      lucide-solid:
+        specifier: ^1.16.0
+        version: 1.16.0(solid-js@1.9.12)
       mediabunny:
         specifier: ^1.40.1
         version: 1.40.1
@@ -2966,6 +2969,11 @@ packages:
 
   lru-memoizer@2.3.0:
     resolution: {integrity: sha512-GXn7gyHAMhO13WSKrIiNfztwxodVsP8IoZ3XfrJV4yH2x0/OeTO/FIaAHTY5YekdGgW94njfuKmyyt1E0mR6Ug==}
+
+  lucide-solid@1.16.0:
+    resolution: {integrity: sha512-GNmq56033vcjPnmFYwzji+8wkRZxBhDT1p+dzSI7+DeFQXzitStLovrtiC4l61Kbk7X2R+abIDIYAJM99ONKMQ==}
+    peerDependencies:
+      solid-js: ^1.4.7
 
   lucide@1.8.0:
     resolution: {integrity: sha512-JjV/QnadgFLj1Pyu9IKl0lknrolFEzo04B64QcYLLeRzZl/iEHpdbSrRRKbyXcv45SZNv+WGjIUCT33e7xHO6Q==}
@@ -7291,6 +7299,10 @@ snapshots:
     dependencies:
       lodash.clonedeep: 4.5.0
       lru-cache: 6.0.0
+
+  lucide-solid@1.16.0(solid-js@1.9.12):
+    dependencies:
+      solid-js: 1.9.12
 
   lucide@1.8.0: {}
 

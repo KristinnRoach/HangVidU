@@ -1,12 +1,13 @@
 import { createSignal, onCleanup, onMount } from 'solid-js';
 import { inAppNotificationManager } from '../../features/notifications/index.js';
 import { useI18n } from '../../shared/i18n/index.js';
-import { initIcons } from '../../components/base-legacy/icons.js';
+import { Bell } from 'lucide-solid';
 
 export default function NotificationsToggle() {
   const { t } = useI18n();
   const [count, setCount] = createSignal(0);
   const [unreadCount, setUnreadCount] = createSignal(0);
+
   let manager = inAppNotificationManager;
   let rootEl;
 
@@ -29,7 +30,6 @@ export default function NotificationsToggle() {
       rootEl.style.display = 'none';
     };
 
-    initIcons(rootEl);
     inAppNotificationManager.setToggle(rootEl);
   });
 
@@ -49,7 +49,7 @@ export default function NotificationsToggle() {
         disabled={count() === 0}
         onClick={toggleList}
       >
-        <i data-lucide='bell' />
+        <Bell />
         <span
           class='notification-badge'
           style={{ display: unreadCount() > 0 ? 'flex' : 'none' }}

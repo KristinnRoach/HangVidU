@@ -66,11 +66,16 @@ export default function ContactEntry(props) {
       <StartCallButton
         calleeId={props.id}
         calleeName={displayName()}
-        audioOnly={false}
+        audioOnly={true}
         title={callLabel()}
       />
 
-      <PresenceIndicator userId={props.id} />
+      <StartCallButton
+        calleeId={props.id}
+        calleeName={displayName()}
+        audioOnly={false}
+        title={callLabel()}
+      />
 
       <button
         type='button'
@@ -88,7 +93,9 @@ export default function ContactEntry(props) {
         </span>
       </Show>
 
-      <button
+      <PresenceIndicator userId={props.id} />
+
+      {/* <button
         class='contact-edit-btn'
         type='button'
         onClick={onEdit}
@@ -96,7 +103,7 @@ export default function ContactEntry(props) {
         aria-label={editLabel()}
       >
         ⋮
-      </button>
+      </button> */}
     </div>
   );
 }

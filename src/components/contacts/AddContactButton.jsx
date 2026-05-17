@@ -1,14 +1,9 @@
 import { onMount } from 'solid-js';
 import { useI18n } from '../../shared/i18n/index.js';
-import { initIcons } from '../../components/base-legacy/icons.js';
+import { UserPlus } from 'lucide-solid';
 
 export default function AddContactButton() {
   const { t } = useI18n();
-  let rootEl;
-
-  onMount(() => {
-    initIcons(rootEl);
-  });
 
   async function handleClick() {
     try {
@@ -22,14 +17,13 @@ export default function AddContactButton() {
 
   return (
     <button
-      ref={rootEl}
       type='button'
       title={t('a11y.add_contact')}
       aria-label={t('a11y.add_contact')}
       id='add-contact-btn'
       onClick={handleClick}
     >
-      <i data-lucide='user-plus' />
+      <UserPlus />
     </button>
   );
 }
