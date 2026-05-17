@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ensureDirectConversation,
-  loadConversationDraft,
   loadConversationMessages,
-  persistConversationDraft,
 } from './use-conversation.js';
 
 function envelope(overrides) {
@@ -42,46 +40,6 @@ describe('messaging-next useConversation', () => {
     );
 
     expect(received.map((msg) => msg.id)).toEqual(['msg-1', 'msg-2', 'msg-3']);
-  });
-
-  it('hydrates the open draft from the conversation node', async () => {
-    let draft = '';
-    const repository = {
-      loadConversation: () => ({
-        draft: {
-          text: 'finish later',
-        },
-      }),
-    };
-
-    await loadConversationDraft(
-      repository,
-      'conversation-1',
-      {
-        setDraft: (text) => {
-          draft = text;
-        },
-      },
-      () => true,
-    );
-
-    expect(draft).toBe('finish later');
-  });
-
-  it('persists blank drafts as null and non-blank drafts with timestamps', async () => {
-    const saved = [];
-    const repository = {
-      setDraft: (_conversationId, draft) => {
-        saved.push(draft);
-      },
-    };
-
-    await persistConversationDraft(repository, 'conversation-1', 'hello');
-    await persistConversationDraft(repository, 'conversation-1', '');
-
-    expect(saved[0].text).toBe('hello');
-    expect(typeof saved[0].updatedAt).toBe('number');
-    expect(saved[1]).toBeNull();
   });
 
   it('creates missing direct conversation metadata from the selected contact', async () => {

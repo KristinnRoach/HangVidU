@@ -91,28 +91,6 @@ export async function ensureDirectConversation(
   });
 }
 
-export async function loadConversationDraft(
-  repository: ConversationRepository,
-  conversationId: ConversationId,
-  actions: Pick<ConversationActions, 'setDraft'>,
-  shouldApply: () => boolean,
-) {
-  const conversation = await repository.loadConversation(conversationId);
-  if (!shouldApply()) return;
-  actions.setDraft(conversation?.draft?.text ?? '');
-}
-
-export async function persistConversationDraft(
-  repository: ConversationRepository,
-  conversationId: ConversationId,
-  text: string,
-) {
-  await repository.setDraft(
-    conversationId,
-    text ? { text, updatedAt: Date.now() } : null,
-  );
-}
-
 export function useConversation({
   repository,
   store,

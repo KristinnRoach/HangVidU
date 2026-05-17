@@ -347,7 +347,7 @@
               <div><code>deliveryPolicy</code></div>
               <div><code>persistent | private</code></div>
               <div><code>draft</code></div>
-              <div>Nullable written-but-not-sent text for this conversation node.</div>
+              <div>Do not use shared conversation-node drafts for runtime user input; drafts are private per participant.</div>
             </div>
           </div>
           <div class="box">
@@ -374,9 +374,8 @@
             <ul>
               <li><code>loadConversation(id)</code></li>
               <li><code>upsertConversation(record)</code></li>
-              <li><code>setDraft(id, draftOrNull)</code></li>
               <li><code>subscribeConversation(id, callback)</code></li>
-              <li>Owns metadata, participants, delivery policy, and drafts.</li>
+              <li>Owns metadata, participants, and delivery policy.</li>
             </ul>
           </div>
           <div class="box">
@@ -553,7 +552,7 @@
         <h2>First Implementation Slice</h2>
         <div class="box">
           <ul>
-            <li>Added the canonical conversation repository boundary for metadata, participants, drafts, and delivery policy.</li>
+            <li>Added the canonical conversation repository boundary for metadata, participants, and delivery policy.</li>
             <li>Added an in-memory conversation repository adapter for focused testing and early runtime wiring.</li>
             <li>Keep repository and private transport boundaries centered on <code>MessageEnvelope</code>.</li>
             <li>Treat the current RTDB adapter as a legacy-compatible adapter until the canonical persistence shape is decided.</li>

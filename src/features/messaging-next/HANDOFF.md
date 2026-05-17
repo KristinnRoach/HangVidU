@@ -25,13 +25,13 @@ When enabled: legacy `initMessagesUI()` is skipped, the legacy `cmd:messaging:co
 
 - `messaging-runtime.ts` now composes the RTDB `MessageRepository` and
   `ConversationRepository` for the feature-flagged panel.
-- Direct conversations opened with one `remoteParticipantIds` entry now ensure a
-  conversation node exists, hydrate `state.draft` from `conversation.draft`, and
-  debounce draft writes back to the conversation node.
-- Draft metadata is stored as sibling conversation fields under
-  `conversations/{conversationId}`; message rows stay at
-  `conversations/{conversationId}/messages/{messageId}` in the legacy-compatible
-  shape.
+- Runtime drafts are per-user and per-conversation in localStorage, then mirrored
+  into in-memory Solid state while the panel is open.
+- Drafts are not written to RTDB. The earlier conversation-node draft approach
+  leaked one participant's unsent text to the other participant because
+  `conversation.draft` is shared conversation state.
+- `TODO.md` tracks the follow-up privacy/security review for localStorage draft
+  persistence.
 
 **Layout**
 
@@ -56,11 +56,11 @@ When enabled: legacy `initMessagesUI()` is skipped, the legacy `cmd:messaging:co
 **Conversation repository**
 
 - `ConversationRepository` is defined in `interfaces.ts` for conversation-node
-  metadata: kind, participants, title, draft, delivery policy, and timestamps.
+  metadata: kind, participants, title, delivery policy, and timestamps.
 - `adapters/in-memory-conversations.ts` is the first functional adapter and is
   covered by focused tests.
-- `adapters/rtdb.ts` now includes the runtime RTDB conversation adapter used for
-  direct-conversation draft hydration and persistence.
+- `adapters/rtdb.ts` includes an RTDB conversation adapter, but runtime draft
+  persistence deliberately does not use shared conversation-node state.
 
 **RTDB adapter shape**
 
@@ -96,7 +96,8 @@ When enabled: legacy `initMessagesUI()` is skipped, the legacy `cmd:messaging:co
 
 Current scope:
 
-- `schema.ts` defines direct and group conversation IDs conversation nodes, conversation drafts, delivery policy, and first-pass message envelopes.
+- `schema.ts` defines direct and group conversation IDs, conversation nodes,
+  delivery policy, and first-pass message envelopes.
 - `interfaces.ts` defines `ConversationRepository`, `MessageRepository`,
   private transport, private signaling, and call-channel bridge boundaries.
 - `adapters/in-memory-conversations.ts` provides the initial functional

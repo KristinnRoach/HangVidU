@@ -7,7 +7,8 @@ target public API. Keep unsettled items in [QUESTIONS.md](./QUESTIONS.md).
 
 - Direct conversation IDs currently use `{sortedUserA}_{sortedUserB}`.
 - Group conversation IDs use `group:{generatedId}`.
-- Drafts are conversation-node state and are not sent messages.
+- Runtime user drafts are private per-user/per-conversation local state and are
+  not sent messages. They must not be stored as shared conversation-node state.
 - Message envelopes include `conversationId`.
 - Message envelopes include `delivery: 'persistent' | 'private'`.
 - Message envelopes use `sentAt` for message send time.
@@ -16,8 +17,9 @@ target public API. Keep unsettled items in [QUESTIONS.md](./QUESTIONS.md).
   read state.
 - Typing state is modeled outside message envelopes as ephemeral participant
   presence with optional `isWriting`.
-- `ConversationRepository` owns conversation-node metadata: kind,
-  participants, title, draft, delivery policy, and timestamps.
+- `ConversationRepository` owns shared conversation-node metadata: kind,
+  participants, title, delivery policy, and timestamps. User drafts are not
+  shared conversation metadata.
 - `MessageRepository` and private data-channel envelopes use
   `MessageEnvelope` as the core message contract.
 
@@ -25,9 +27,11 @@ target public API. Keep unsettled items in [QUESTIONS.md](./QUESTIONS.md).
 
 Current draft API:
 
+- `loadLocalDraft(userId, conversationId)`
+- `saveLocalDraft(userId, conversationId, text)`
+- `clearLocalDraft(userId, conversationId)`
 - `ConversationRepository.loadConversation(conversationId)`
 - `ConversationRepository.upsertConversation(conversationUpsert)`
-- `ConversationRepository.setDraft(conversationId, draftOrNull)`
 - `ConversationRepository.subscribeConversation(conversationId, onConversation)`
 - `MessageRepository.loadMessages(conversationId)`
 - `MessageRepository.send(messageEnvelope)`

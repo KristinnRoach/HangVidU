@@ -13,12 +13,14 @@ import { getLoggedInUserId, getUserName } from '../../auth/auth-state.js';
 import { createConversationState } from './conversation.state.js';
 import { createConversationActions } from './conversation.actions.js';
 import {
-  ensureDirectConversation,
-  loadConversationDraft,
   loadConversationMessages,
-  persistConversationDraft,
   useConversation,
 } from './use-conversation.js';
+import {
+  clearLocalDraft,
+  loadLocalDraft,
+  saveLocalDraft,
+} from './local-drafts.js';
 import { createMessagingRuntime } from './messaging-runtime.js';
 import type { ConversationId, UserId } from './types.js';
 import styles from './ConversationPanel.module.css';
@@ -41,6 +43,9 @@ export default function ConversationPanel(props: { onFocus?: () => void }) {
   let loadVersion = 0;
   let suppressScroll = false;
   let draftSaveTimer: ReturnType<typeof setTimeout> | undefined;
+  let pendingDraft:
+    | { userId: UserId; conversationId: ConversationId; text: string }
+    | undefined;
 
   function scrollToEnd() {
     if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -53,23 +58,27 @@ export default function ConversationPanel(props: { onFocus?: () => void }) {
     }
   }
 
-  function saveDraft(conversationId: ConversationId, text: string) {
-    void persistConversationDraft(
-      runtime.conversationRepository,
-      conversationId,
-      text,
-    ).catch((err) => {
-      console.warn('[messaging-next] Failed to persist draft:', err);
-    });
+  function flushDraftSave() {
+    clearDraftSaveTimer();
+    if (!pendingDraft) return;
+
+    saveLocalDraft(
+      pendingDraft.userId,
+      pendingDraft.conversationId,
+      pendingDraft.text,
+    );
+    pendingDraft = undefined;
   }
 
   function queueDraftSave(text: string) {
     const conversationId = state.conversationId;
-    if (!conversationId) return;
+    const myUserId = state.myUserId;
+    if (!conversationId || !myUserId) return;
 
     clearDraftSaveTimer();
+    pendingDraft = { userId: myUserId, conversationId, text };
     draftSaveTimer = setTimeout(() => {
-      saveDraft(conversationId, text);
+      flushDraftSave();
     }, DRAFT_SAVE_DELAY_MS);
   }
 
@@ -90,36 +99,20 @@ export default function ConversationPanel(props: { onFocus?: () => void }) {
       'cmd:messaging:conversation:select',
       async ({
         conversationId,
-        remoteParticipantIds = [],
       }: {
         conversationId: ConversationId;
-        remoteParticipantIds?: UserId[];
       }) => {
         const myUserId = getLoggedInUserId();
         if (!myUserId) return;
 
         props.onFocus?.();
         suppressScroll = true;
-        clearDraftSaveTimer();
+        flushDraftSave();
 
         const version = ++loadVersion;
-        actions.openConversation(conversationId, myUserId as UserId);
-        try {
-          await ensureDirectConversation(
-            runtime.conversationRepository,
-            conversationId,
-            myUserId as UserId,
-            remoteParticipantIds,
-          );
-          await loadConversationDraft(
-            runtime.conversationRepository,
-            conversationId,
-            actions,
-            () => version === loadVersion,
-          );
-        } catch (err) {
-          console.warn('[messaging-next] Failed to load draft:', err);
-        }
+        const typedMyUserId = myUserId as UserId;
+        actions.openConversation(conversationId, typedMyUserId);
+        actions.setDraft(loadLocalDraft(typedMyUserId, conversationId));
         await loadConversationMessages(
           runtime.messageRepository,
           conversationId,
@@ -138,17 +131,18 @@ export default function ConversationPanel(props: { onFocus?: () => void }) {
 
     onCleanup(() => {
       loadVersion++;
-      clearDraftSaveTimer();
+      flushDraftSave();
       ac.abort();
     });
   });
 
   function onSubmit(e: SubmitEvent) {
     e.preventDefault();
-    const conversationId = state.conversationId;
-    if (conversationId && state.draft.trim()) {
+    const { conversationId, myUserId } = state;
+    if (conversationId && myUserId && state.draft.trim()) {
       clearDraftSaveTimer();
-      saveDraft(conversationId, '');
+      pendingDraft = undefined;
+      clearLocalDraft(myUserId, conversationId);
     }
     void send();
   }
