@@ -9,6 +9,12 @@ export type pendingOutgoingCall = {
   roomId: string;
 };
 
+export type StartCallDetails = {
+  calleeId: string;
+  calleeName: string;
+  audioOnly: boolean;
+};
+
 export type CallHandshakeState =
   | null
   | {
@@ -19,4 +25,3 @@ export type CallHandshakeState =
       direction: 'outgoing';
       call: pendingOutgoingCall;
     };
-

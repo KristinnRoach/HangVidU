@@ -8,6 +8,11 @@ const mocks = vi.hoisted(() => ({
   subscribe: vi.fn(),
   initIcons: vi.fn(),
   subscriptions: new Map(),
+  startCall: vi.fn(),
+}));
+
+vi.mock('../../features/call/call-handshake', () => ({
+  useCallHandshake: () => ({ startCall: mocks.startCall }),
 }));
 
 vi.mock('../../features/presence/index.js', () => ({
@@ -124,7 +129,7 @@ describe('SolidJS ContactsList PoC', () => {
     unmount();
   });
 
-  it('dispatches cmd:room:initiate:call on call button click', async () => {
+  it('triggers a call on call button click', async () => {
     const ContactsListModule = await import('./ContactsList.jsx');
 
     const { container, unmount } = render(() => <ContactsListModule.default />);
@@ -132,8 +137,7 @@ describe('SolidJS ContactsList PoC', () => {
     const firstCall = container.querySelector('.contact-call-btn');
     firstCall?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-    expect(mocks.dispatchCommand).toHaveBeenCalledWith(
-      'cmd:room:initiate:call',
+    expect(mocks.startCall).toHaveBeenCalledWith(
       expect.objectContaining({ calleeId: 'contact-1' }),
     );
 

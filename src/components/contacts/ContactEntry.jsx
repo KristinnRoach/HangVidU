@@ -3,7 +3,7 @@ import { dispatchCommand } from '../../shared/events/index.js';
 import { useI18n } from '../../shared/i18n/index.js';
 import { initIcons } from '../../components/base-legacy/icons.js';
 import PresenceIndicator from './presence/PresenceIndicator.jsx';
-import StartCallButton from '../../features/call/components/StartCallButton.jsx';
+import { StartCallButton } from '../../features/call/components/CallControls.jsx';
 
 const MAX_CONTACT_NAME_CHARS = 18;
 
@@ -64,9 +64,9 @@ export default function ContactEntry(props) {
   return (
     <div class='contact-entry' ref={rootEl}>
       <StartCallButton
-        contactId={props.id}
+        calleeId={props.id}
         calleeName={displayName()}
-        // roomId={props.roomId}
+        audioOnly={false}
         title={callLabel()}
       />
 

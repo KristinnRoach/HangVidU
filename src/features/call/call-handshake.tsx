@@ -15,9 +15,13 @@ import { CallHandshakeController } from './call-handshake-controller.js';
 import type {
   CallHandshakeState,
   pendingOutgoingCall,
+  StartCallDetails,
 } from './call-types.js';
 
 type CallHandshakeContextValue = {
+  startCall: (details: StartCallDetails) => Promise<void>;
+  hangUp: () => void;
+
   isCalleeBusy: Accessor<boolean>;
   pendingIncomingCall: Accessor<CallInvite | null>;
   pendingOutgoingCall: Accessor<pendingOutgoingCall | null>;
@@ -52,7 +56,15 @@ export function CallHandshakeProvider(props: ParentProps) {
     return state && state.direction === 'outgoing' ? state.call : null;
   };
 
+  const startCall = async (details: StartCallDetails) => {
+    await controller.sendOutgoingCallInvite(details);
+  };
+
+  const hangUp = () => controller.exitActiveRoom();
+
   const value: CallHandshakeContextValue = {
+    startCall,
+    hangUp,
     isCalleeBusy,
     pendingIncomingCall: incomingCall,
     pendingOutgoingCall: outgoingCall,

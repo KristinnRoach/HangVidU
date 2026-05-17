@@ -19,13 +19,10 @@ import {
   getAudioConstraints,
   getVideoConstraints,
 } from './media-constraints.js';
-import {
-  registerCallCommandHandlers,
-  type InitiateCallCommandDetails,
-} from './call-command-handlers.js';
 import type {
   CallHandshakeState,
   pendingOutgoingCall,
+  StartCallDetails,
 } from './call-types.js';
 
 const OUTGOING_CALL_TIMEOUT_MS = 30_000;
@@ -46,7 +43,7 @@ export class CallHandshakeController {
   private _handshakeState: CallHandshakeState = null;
   private outgoingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private unsubCalleeResponse: (() => void) | undefined;
-  private commandAbortController: AbortController | undefined;
+  private initAbortController: AbortController | undefined;
   private unsubscribeIncomingCall: (() => void) | undefined;
 
   constructor({
@@ -74,15 +71,10 @@ export class CallHandshakeController {
     this.cleanup();
 
     const ac = new AbortController();
-    this.commandAbortController = ac;
-
-    registerCallCommandHandlers({
-      signal: ac.signal,
-      startOutgoingCall: (details) => this.startOutgoingCall(details),
-      exitActiveRoom: () => this.exitActiveRoom(),
-    });
+    this.initAbortController = ac;
 
     const authState = await waitForAuthReady();
+
     if (ac.signal.aborted) return;
 
     const localUID = authState.user?.uid ?? getLoggedInUserId();
@@ -124,8 +116,8 @@ export class CallHandshakeController {
     return state !== null || this.p2p.state() !== 'idle';
   }
 
-  private async startOutgoingCall(
-    details: InitiateCallCommandDetails,
+  async sendOutgoingCallInvite(
+    details: StartCallDetails,
   ): Promise<void> {
     const localUID = getLoggedInUserId();
     if (!localUID) {
@@ -245,7 +237,12 @@ export class CallHandshakeController {
       this.clearOutgoingCallTracking();
       callService
         .timeoutOutgoingCall({ recipientUID: call.calleeId })
-        .catch((err) => console.warn('[CallHandshake] Failed to clear callee invite on timeout — callee dialog may not dismiss:', err));
+        .catch((err) =>
+          console.warn(
+            '[CallHandshake] Failed to clear callee invite on timeout — callee dialog may not dismiss:',
+            err,
+          ),
+        );
       sendMissedCallPushNotification(call);
     }, OUTGOING_CALL_TIMEOUT_MS);
   }
@@ -259,7 +256,12 @@ export class CallHandshakeController {
     this.setCalleeBusy(false);
     svc
       .cancelOutgoingCall({ recipientUID: state.call.calleeId })
-      .catch((err) => console.warn('[CallHandshake] Failed to clear callee invite on cancel — callee dialog may not dismiss:', err));
+      .catch((err) =>
+        console.warn(
+          '[CallHandshake] Failed to clear callee invite on cancel — callee dialog may not dismiss:',
+          err,
+        ),
+      );
   };
 
   acceptIncoming = (): void => {
@@ -319,8 +321,8 @@ export class CallHandshakeController {
   }
 
   cleanup(): void {
-    this.commandAbortController?.abort();
-    this.commandAbortController = undefined;
+    this.initAbortController?.abort();
+    this.initAbortController = undefined;
     this.unsubscribeIncomingCall?.();
     this.unsubscribeIncomingCall = undefined;
     this.clearOutgoingCallTracking();

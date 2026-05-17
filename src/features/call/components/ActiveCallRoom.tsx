@@ -1,7 +1,7 @@
 import { Show } from 'solid-js';
 
 import MemberStreams from './MemberStreams';
-import ActiveCallControls from './ActiveCallControls';
+import { ActiveCallControls } from './CallControls';
 import { useP2PContext } from '../../../shared/p2p-context.js';
 
 import styles from './ActiveCallRoom.module.css';

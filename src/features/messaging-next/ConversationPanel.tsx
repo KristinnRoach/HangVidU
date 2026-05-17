@@ -183,6 +183,12 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
   return (
     <div class={styles.panel}>
+      <div class={styles.header}>
+        {/* <Show when={state.conversationName} fallback={'Select a conversation'}>
+          {state.conversationName}
+        </Show> */}
+      </div>
+
       <Show
         when={state.conversationId}
         fallback={
