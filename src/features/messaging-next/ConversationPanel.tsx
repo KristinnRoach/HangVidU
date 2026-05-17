@@ -51,6 +51,11 @@ export default function ConversationPanel(props: { onFocus?: () => void }) {
     if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
+  function focusInput() {
+    const input = messagesEl?.parentElement?.querySelector('input');
+    input?.focus();
+  }
+
   function clearDraftSaveTimer() {
     if (draftSaveTimer) {
       clearTimeout(draftSaveTimer);
@@ -97,11 +102,7 @@ export default function ConversationPanel(props: { onFocus?: () => void }) {
 
     handleCommand(
       'cmd:messaging:conversation:select',
-      async ({
-        conversationId,
-      }: {
-        conversationId: ConversationId;
-      }) => {
+      async ({ conversationId }: { conversationId: ConversationId }) => {
         const myUserId = getLoggedInUserId();
         if (!myUserId) return;
 
@@ -125,6 +126,8 @@ export default function ConversationPanel(props: { onFocus?: () => void }) {
           suppressScroll = false;
           queueMicrotask(scrollToEnd);
         }
+
+        focusInput();
       },
       { signal: ac.signal },
     );

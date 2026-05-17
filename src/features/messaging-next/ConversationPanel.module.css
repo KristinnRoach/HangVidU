@@ -34,12 +34,15 @@
 }
 
 .msg {
+  position: relative;
   padding: 0.5rem 0.75rem;
   border-radius: 0.5rem;
   background-color: #3e3e3e;
+
   width: fit-content;
   max-width: 80%;
-  position: relative;
+  line-height: 1.4;
+  text-wrap: pretty;
 }
 
 .msgSystem {

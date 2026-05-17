@@ -28,7 +28,12 @@ export function useAuth() {
   return {
     authState,
     isLoggedIn: () => authState().isLoggedIn,
-    status: () => authState().status,
+    status: () => authState().status, // 'idle' | 'loading' | 'authenticated' | 'unauthenticated'
     user: () => authState().user,
+    isLoading: () => authState().status === 'loading',
+    isLoggingIn: () =>
+      authState().status === 'loading' && !authState().isLoggedIn,
+    isLoggingOut: () =>
+      authState().status === 'loading' && authState().isLoggedIn,
   };
 }

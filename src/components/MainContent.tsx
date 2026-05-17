@@ -1,5 +1,9 @@
 import { createSignal, Show, createEffect } from 'solid-js';
 
+import { useP2PContext } from '../shared/p2p-context.js';
+import { useAuth } from '../auth/solid-auth.js';
+
+// Top-bar
 import AppTitle from './app/AppTitle.jsx';
 import AuthControls from './auth/AuthControls.jsx';
 import AddContactButton from './contacts/AddContactButton.jsx';
@@ -7,16 +11,18 @@ import NotificationsToggle from './app/NotificationsToggle.jsx';
 import LegalFooter from './app/LegalFooter.jsx';
 import LocaleToggle from './app/LocaleToggle.jsx';
 
+// Main
 import PublicHomepage from './app/PublicHomepage.jsx';
 import ContactsList from './contacts/ContactsList';
 import ActiveCallRoom from '../features/call/components/ActiveCallRoom';
-import { useP2PContext } from '../shared/p2p-context.js';
-import { isMessagingNextEnabled } from '../features/messaging-next/feature-flag.js';
 import ConversationPanel from '../features/messaging-next/ConversationPanel';
+
+// Dialogs
 import CallDialogs from '../features/call/components/CallDialogs.jsx';
+
 import styles from './MainContent.module.css';
 
-// legacy imports:
+// Legacy:
 import { useP2PFileTransferBridge } from '../features/file-transfer/useP2PFileTransferBridge.js';
 import {
   useLegacyI18nElements,
@@ -24,7 +30,8 @@ import {
   useLegacyMessagesUIReady,
   useP2PRuntimeDiagnostics,
 } from '../app/useLegacyMountEffects.js';
-import { useAuth } from '../auth/solid-auth.js';
+import { isMessagingNextEnabled } from '../features/messaging-next/feature-flag.js';
+import { set } from 'zod';
 
 // type ViewMode = 'home' | 'call' | 'contacts' | 'messaging';
 
@@ -41,26 +48,58 @@ const messagingNext = isMessagingNextEnabled();
 
 export default function MainContent() {
   const p2p = useP2PContext();
-  const { isLoggedIn } = useAuth();
+  const { authState, isLoggedIn, isLoggingIn, isLoggingOut } = useAuth();
   const initialView: ViewMode = isLoggedIn() ? 'contacts' : 'home';
 
   const [activeView, setActiveView] = createSignal<ViewMode>(initialView);
 
+  // Active view - On p2p state changes:
   createEffect(() => {
-    // Contacts vs home view:
+    // Uncomment for debugging:
+    const prevView = activeView();
+    console.warn('P2P state:', p2p.state());
+    console.warn('View:', prevView);
+
+    // On call join:
+    const justJoinedCall = p2p.state() === 'joined' && prevView !== 'call';
+    if (justJoinedCall) {
+      setActiveView('call');
+    }
+    // On call end:
+    const justLeftCall = p2p.state() === 'closed' && prevView === 'call';
+    if (justLeftCall) {
+      // setActiveView(isLoggedIn() ? 'contacts' : 'home'); // avoid using auth state here?
+      setActiveView('contacts');
+    }
+
+    // Uncomment for debugging:
+    const wasViewChanged = prevView !== activeView();
+    wasViewChanged && console.warn('View: UPDATED', activeView());
+    !wasViewChanged && console.warn('View: NO-OP');
+  });
+
+  // Active view - On auth state changes:
+  createEffect(() => {
+    // Uncomment for debugging:
+    const prevView = activeView();
+    console.warn('Auth state:', authState().status);
+    console.warn('View:', prevView);
+
+    // TODO: Replace this with proper Loading UI
+    isLoggingIn() && setActiveView('contacts');
+    isLoggingOut() && setActiveView('home');
+
+    // Not in a call:
     if (isLoggedIn()) {
       setActiveView((prev) => (prev === 'home' ? 'contacts' : prev));
     } else {
       setActiveView((prev) => (prev === 'contacts' ? 'home' : prev));
     }
 
-    // Call view:
-    if (p2p.state() === 'joined') {
-      setActiveView('call');
-    }
-    if (p2p.state() === 'idle' && activeView() === 'call') {
-      setActiveView(isLoggedIn() ? 'contacts' : 'home');
-    }
+    // Uncomment for debugging:
+    const wasViewChanged = prevView !== activeView();
+    wasViewChanged && console.warn('View: UPDATED', activeView());
+    !wasViewChanged && console.warn('View: NO-OP');
   });
 
   // START - legacy setup, will be refactored:
