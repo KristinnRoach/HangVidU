@@ -1,6 +1,7 @@
 import type { z } from 'zod';
 import type {
   ConversationDraftSchema,
+  ConversationKindSchema,
   ConversationNodeSchema,
   ConversationParticipantSchema,
   ConversationRecordSchema,
@@ -20,6 +21,7 @@ export type DirectConversationId = z.infer<typeof DirectConversationIdSchema>;
 export type GroupConversationId = z.infer<typeof GroupConversationIdSchema>;
 export type ConversationId = DirectConversationId | GroupConversationId;
 export type DeliveryPolicy = z.infer<typeof DeliveryPolicySchema>;
+export type ConversationKind = z.infer<typeof ConversationKindSchema>;
 
 export type ConversationParticipant = z.infer<
   typeof ConversationParticipantSchema

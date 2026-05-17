@@ -370,16 +370,28 @@
         <h2>Backend Interface</h2>
         <div class="grid two">
           <div class="box">
-            <h3>Repository</h3>
+            <h3>Conversation Repository</h3>
             <ul>
-              <li><code>getConversation(id)</code></li>
+              <li><code>loadConversation(id)</code></li>
               <li><code>upsertConversation(record)</code></li>
-              <li><code>send(messageEnvelope)</code></li>
-              <li><code>fetchMessages(id, cursor)</code></li>
-              <li><code>subscribeMessages(id, cursor, callback)</code></li>
-              <li><code>markRead(id, messageIds)</code></li>
+              <li><code>setDraft(id, draftOrNull)</code></li>
+              <li><code>subscribeConversation(id, callback)</code></li>
+              <li>Owns metadata, participants, delivery policy, and drafts.</li>
             </ul>
           </div>
+          <div class="box">
+            <h3>Message Repository</h3>
+            <ul>
+              <li><code>loadMessages(id)</code></li>
+              <li><code>send(messageEnvelope)</code></li>
+              <li><code>subscribe(id, myUserId, callback)</code></li>
+              <li><code>setReaction(...)</code></li>
+              <li><code>subscribeReactions(id, callback)</code></li>
+              <li>Owns durable message envelopes and reaction deltas.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="grid two" style="margin-top: 12px">
           <div class="box">
             <h3>Private Transport</h3>
             <ul>
@@ -541,7 +553,8 @@
         <h2>First Implementation Slice</h2>
         <div class="box">
           <ul>
-            <li>Add the canonical conversation repository boundary for metadata, participants, drafts, and delivery policy.</li>
+            <li>Added the canonical conversation repository boundary for metadata, participants, drafts, and delivery policy.</li>
+            <li>Added an in-memory conversation repository adapter for focused testing and early runtime wiring.</li>
             <li>Keep repository and private transport boundaries centered on <code>MessageEnvelope</code>.</li>
             <li>Treat the current RTDB adapter as a legacy-compatible adapter until the canonical persistence shape is decided.</li>
             <li>Keep legacy messaging live until the new service is tested and can be wired one caller at a time.</li>

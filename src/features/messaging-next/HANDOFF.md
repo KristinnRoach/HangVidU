@@ -41,6 +41,15 @@ When enabled: legacy `initMessagesUI()` is skipped, the legacy `cmd:messaging:co
 - Group conversation IDs use generated `group:{generatedId}` values.
 - Do not introduce another direct ID format without a deliberate migration plan.
 
+**Conversation repository**
+
+- `ConversationRepository` is defined in `interfaces.ts` for conversation-node
+  metadata: kind, participants, title, draft, delivery policy, and timestamps.
+- `adapters/in-memory-conversations.ts` is the first functional adapter and is
+  covered by focused tests.
+- Runtime is not wired yet. The recommended next slice is to hydrate and persist
+  direct-conversation drafts through this boundary.
+
 **RTDB adapter shape**
 
 - `adapters/rtdb.ts` uses the `MessageEnvelope` repository contract but
@@ -76,6 +85,10 @@ When enabled: legacy `initMessagesUI()` is skipped, the legacy `cmd:messaging:co
 Current scope:
 
 - `schema.ts` defines direct and group conversation IDs conversation nodes, conversation drafts, delivery policy, and first-pass message envelopes.
+- `interfaces.ts` defines `ConversationRepository`, `MessageRepository`,
+  private transport, private signaling, and call-channel bridge boundaries.
+- `adapters/in-memory-conversations.ts` provides the initial functional
+  conversation repository adapter.
 - `types.ts` exports Zod-inferred TypeScript types.
 - `schema.test.js` covers the agreed schema rules.
 - `messaging-core-design.html` is the editable design artifact for core rules.

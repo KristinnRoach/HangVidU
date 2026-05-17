@@ -16,6 +16,8 @@ target public API. Keep unsettled items in [QUESTIONS.md](./QUESTIONS.md).
   read state.
 - Typing state is modeled outside message envelopes as ephemeral participant
   presence with optional `isWriting`.
+- `ConversationRepository` owns conversation-node metadata: kind,
+  participants, title, draft, delivery policy, and timestamps.
 - `MessageRepository` and private data-channel envelopes use
   `MessageEnvelope` as the core message contract.
 
@@ -23,6 +25,10 @@ target public API. Keep unsettled items in [QUESTIONS.md](./QUESTIONS.md).
 
 Current draft API:
 
+- `ConversationRepository.loadConversation(conversationId)`
+- `ConversationRepository.upsertConversation(conversationUpsert)`
+- `ConversationRepository.setDraft(conversationId, draftOrNull)`
+- `ConversationRepository.subscribeConversation(conversationId, onConversation)`
 - `MessageRepository.loadMessages(conversationId)`
 - `MessageRepository.send(messageEnvelope)`
 - `MessageRepository.subscribe(conversationId, myUserId, onMessage)`

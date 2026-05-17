@@ -2,7 +2,11 @@
 // No Firebase, no runtime deps — adapters implement these and are swapped freely.
 
 import type {
+  ConversationDraft,
   ConversationId,
+  ConversationKind,
+  ConversationNode,
+  ConversationParticipant,
   DeliveryPolicy,
   MessageEnvelope,
   UserId,
@@ -69,6 +73,46 @@ export type MessageRepository = {
   subscribeReactions(
     conversationId: ConversationId,
     onReactions: (messageId: string, reactions: ReactionMap) => void,
+  ): (() => void) | Promise<() => void>;
+};
+
+// ─── Conversation metadata backend ───────────────────────────────────────────
+
+export type ConversationUpsert = {
+  conversationId: ConversationId;
+  kind: ConversationKind;
+  title?: string;
+  participants: Record<UserId, ConversationParticipant>;
+  deliveryPolicy?: DeliveryPolicy;
+  draft?: ConversationDraft | null;
+  createdAt?: number;
+  updatedAt?: number;
+};
+
+export type ConversationRepository = {
+  /** Load a conversation node, including metadata and draft state. */
+  loadConversation(
+    conversationId: ConversationId,
+  ): ConversationNode | null | Promise<ConversationNode | null>;
+
+  /** Create or replace a conversation node. Adapter fills missing timestamps. */
+  upsertConversation(
+    conversation: ConversationUpsert,
+  ): ConversationNode | Promise<ConversationNode>;
+
+  /** Persist or clear the per-conversation draft. */
+  setDraft(
+    conversationId: ConversationId,
+    draft: ConversationDraft | null,
+  ): ConversationNode | Promise<ConversationNode>;
+
+  /**
+   * Subscribe to conversation-node changes. Called with null if deleted or
+   * unavailable in a future persistent adapter.
+   */
+  subscribeConversation(
+    conversationId: ConversationId,
+    onConversation: (conversation: ConversationNode | null) => void,
   ): (() => void) | Promise<() => void>;
 };
 
