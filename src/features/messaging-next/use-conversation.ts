@@ -12,11 +12,13 @@ import type {
 } from './types.js';
 import type { ConversationStateStore } from './conversation.state.js';
 import type { ConversationActions } from './conversation.actions.js';
+import { sortMessagesBySentAt } from './message-ordering.js';
 
 type UseConversationOptions = {
   repository: MessageRepository;
   store: ConversationStateStore;
   actions: ConversationActions;
+  getSenderName?: () => string | null | undefined;
   /** Optional datachannel transport for private mode. Without it, private sends fail. */
   privateTransport?: PrivateMessageTransport;
 };
@@ -34,7 +36,7 @@ function envelopeToChatMessage(
     conversationId: message.conversationId,
     senderId: message.senderId,
     text: message.payload.text,
-    createdAt: message.createdAt,
+    sentAt: message.sentAt,
     delivery: message.delivery,
     source,
     status: 'sent',
@@ -48,7 +50,9 @@ export async function loadConversationMessages(
   actions: ConversationActions,
   shouldApply: () => boolean,
 ) {
-  const messages = await repository.loadMessages(conversationId);
+  const messages = sortMessagesBySentAt(
+    await repository.loadMessages(conversationId),
+  );
   if (!shouldApply()) return;
   for (const msg of messages) {
     const chatMessage = envelopeToChatMessage(msg, 'persisted');
@@ -60,6 +64,7 @@ export function useConversation({
   repository,
   store,
   actions,
+  getSenderName,
   privateTransport,
 }: UseConversationOptions) {
   const { state } = store;
@@ -151,14 +156,15 @@ export function useConversation({
       transportMode === 'private' ? 'private' : 'persistent';
 
     const source = transportMode === 'private' ? 'private' : 'persisted';
-    const createdAt = Date.now();
+    const sentAt = Date.now();
+    const senderName = getSenderName?.() ?? undefined;
 
     actions.addOptimisticMessage({
       id: tempId,
       conversationId,
       text,
       senderId: myUserId,
-      createdAt,
+      sentAt,
       status: 'sending',
       source,
       delivery,
@@ -180,7 +186,8 @@ export function useConversation({
             messageId: tempId,
             conversationId,
             senderId: myUserId,
-            createdAt,
+            senderName,
+            sentAt,
             delivery,
             payload: {
               type: 'text',
@@ -195,7 +202,8 @@ export function useConversation({
           messageId: tempId,
           conversationId,
           senderId: myUserId,
-          createdAt,
+          senderName,
+          sentAt,
           delivery,
           payload: {
             type: 'text',

@@ -6,6 +6,7 @@ import type {
   TransportMode,
 } from './interfaces.js';
 import type { ConversationId, UserId } from './types.js';
+import { sortMessagesBySentAt } from './message-ordering.js';
 
 export function createConversationActions(store: ConversationStateStore) {
   const { state, setState } = store;
@@ -38,25 +39,36 @@ export function createConversationActions(store: ConversationStateStore) {
   }
 
   function addOptimisticMessage(msg: ChatMessage) {
-    setState('messages', (msgs) => [...msgs, msg]);
+    setState('messages', (msgs) => sortMessagesBySentAt([...msgs, msg]));
   }
 
   function receiveMessage(msg: Omit<ChatMessage, 'status'>) {
-    const idx = state.messages.findIndex((m) => m.id === msg.id);
     const next: ChatMessage = { ...msg, status: 'sent' };
-    if (idx === -1) {
-      setState('messages', (msgs) => [...msgs, next]);
+    const isNew = !state.messages.some((m) => m.id === msg.id);
+
+    setState('messages', (msgs) =>
+      sortMessagesBySentAt(
+        isNew ? [...msgs, next] : msgs.map((m) => (m.id === msg.id ? next : m)),
+      ),
+    );
+
+    if (isNew) {
       if (msg.senderId !== state.myUserId) {
         setState('unreadCount', (n) => n + 1);
       }
-    } else {
-      setState('messages', idx, next);
     }
   }
 
   function markSent(tempId: string, realId: string) {
-    setState('messages', (m) => m.id === tempId, 'id', realId);
-    setState('messages', (m) => m.id === realId, 'status', 'sent');
+    setState('messages', (msgs) =>
+      sortMessagesBySentAt(
+        msgs.map((msg) => {
+          if (msg.id === tempId) return { ...msg, id: realId, status: 'sent' };
+          if (msg.id === realId) return { ...msg, status: 'sent' };
+          return msg;
+        }),
+      ),
+    );
   }
 
   function markFailed(tempId: string) {
@@ -77,7 +89,7 @@ export function createConversationActions(store: ConversationStateStore) {
         conversationId: state.conversationId!,
         text,
         senderId: 'system' as UserId,
-        createdAt: Date.now(),
+        sentAt: Date.now(),
         status: 'sent' as const,
         source: 'system' as const,
         delivery: 'persistent' as const,

@@ -18,7 +18,7 @@ import type {
 import type { ConversationId, MessageEnvelope, UserId } from '../types.js';
 
 // Path: conversations/{conversationId}/messages/{messageId}
-// Legacy wire format: { from, text, type, sentAt, reactions? }
+// Legacy wire format: { from, fromName, text, type, sentAt, read, reactions? }
 // reactions wire format { emoji: { userId: true } } matches ReactionMap directly.
 //
 // This adapter translates between the messaging-next envelope contract and the
@@ -39,8 +39,9 @@ function toIncoming(
     messageId: key,
     conversationId,
     senderId: raw.from as UserId,
+    senderName: typeof raw.fromName === 'string' ? raw.fromName : undefined,
     // sentAt is a server timestamp (number on read, null briefly after write)
-    createdAt: typeof raw.sentAt === 'number' ? raw.sentAt : Date.now(),
+    sentAt: typeof raw.sentAt === 'number' ? raw.sentAt : Date.now(),
     delivery: 'persistent',
     payload: {
       type: 'text',
@@ -78,11 +79,13 @@ export function createRTDBMessageRepository(): MessageRepository {
       const newRef = push(msgsRef(message.conversationId));
       await set(newRef, {
         from: message.senderId,
+        fromName: message.senderName ?? 'Guest User',
         text: payload.text,
         type: 'text',
         sentAt: serverTimestamp(),
+        read: false,
       });
-      return { id: newRef.key!, createdAt: Date.now() };
+      return { id: newRef.key!, sentAt: Date.now() };
     },
 
     subscribe(conversationId, myUserId, onMessage) {

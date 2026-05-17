@@ -44,7 +44,8 @@ When enabled: legacy `initMessagesUI()` is skipped, the legacy `cmd:messaging:co
 **RTDB adapter shape**
 
 - `adapters/rtdb.ts` uses the `MessageEnvelope` repository contract but
-  translates to/from the existing RTDB row shape `{ from, text, type, sentAt }`.
+  translates to/from the existing RTDB row shape
+  `{ from, fromName, text, type, sentAt, read }`.
 - This is for feature-flag testing against current data, not a final canonical
   persistence model.
 

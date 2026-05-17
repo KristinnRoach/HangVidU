@@ -69,7 +69,7 @@ describe('messaging-next schema', () => {
       conversationId: 'group:team_1',
       senderId: 'user-a',
       senderName: 'User A',
-      createdAt: 10,
+      sentAt: 10,
       delivery: 'private',
       payload: {
         type: 'text',
@@ -78,6 +78,7 @@ describe('messaging-next schema', () => {
     });
 
     expect(message.conversationId).toBe('group:team_1');
+    expect(message.sentAt).toBe(10);
     expect(message.delivery).toBe('private');
   });
 
@@ -99,7 +100,7 @@ describe('messaging-next schema', () => {
         messageId: 'msg-1',
         conversationId: 'user-a_user-b',
         senderId: 'user-a',
-        createdAt: 10,
+        sentAt: 10,
         delivery: 'persistent',
         payload: {
           type: 'file',

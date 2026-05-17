@@ -31,11 +31,11 @@ export function createInMemoryMessageRepository(): MessageRepository {
       const msg: IncomingMessage = {
         ...message,
         messageId: crypto.randomUUID(),
-        createdAt: Date.now(),
+        sentAt: Date.now(),
       };
       getStored(msg.conversationId).push(msg);
       for (const cb of msgSubs.get(msg.conversationId) ?? []) cb(msg);
-      return { id: msg.messageId, createdAt: msg.createdAt };
+      return { id: msg.messageId, sentAt: msg.sentAt };
     },
 
     subscribe(conversationId, myUserId, onMessage) {

@@ -59,7 +59,7 @@ const MessageBaseSchema = z.object({
   conversationId: ConversationIdSchema,
   senderId: UserIdSchema,
   senderName: z.string().trim().min(1).optional(),
-  createdAt: z.number().int().nonnegative(),
+  sentAt: z.number().int().nonnegative(),
   delivery: DeliveryPolicySchema,
 });
 

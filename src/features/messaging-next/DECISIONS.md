@@ -10,7 +10,12 @@ target public API. Keep unsettled items in [QUESTIONS.md](./QUESTIONS.md).
 - Drafts are conversation-node state and are not sent messages.
 - Message envelopes include `conversationId`.
 - Message envelopes include `delivery: 'persistent' | 'private'`.
+- Message envelopes use `sentAt` for message send time.
 - First schema slice supports `text`, `event`, and `system` payloads only.
+- Read state is modeled outside message envelopes as per-user conversation
+  read state.
+- Typing state is modeled outside message envelopes as ephemeral participant
+  presence with optional `isWriting`.
 - `MessageRepository` and private data-channel envelopes use
   `MessageEnvelope` as the core message contract.
 
@@ -27,5 +32,6 @@ Current draft API:
 - `PrivateMessageTransport.onMessage(callback)`
 
 The current RTDB adapter is a legacy-compatible adapter. It translates between
-`MessageEnvelope` and the existing RTDB row shape and currently supports text
+`MessageEnvelope` and the existing RTDB row shape
+`{ from, fromName, text, type, sentAt, read }` and currently supports text
 payloads only.

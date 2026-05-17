@@ -9,7 +9,7 @@ import {
   onMount,
 } from 'solid-js';
 import { handleCommand } from '../../shared/events/index.js';
-import { getLoggedInUserId } from '../../auth/auth-state.js';
+import { getLoggedInUserId, getUserName } from '../../auth/auth-state.js';
 import { createConversationState } from './conversation.state.js';
 import { createConversationActions } from './conversation.actions.js';
 import {
@@ -26,7 +26,12 @@ export default function ConversationPanel(props: { onFocus?: () => void }) {
   const store = createConversationState();
   const actions = createConversationActions(store);
   const { state } = store;
-  const { send } = useConversation({ repository, store, actions });
+  const { send } = useConversation({
+    repository,
+    store,
+    actions,
+    getSenderName: getUserName,
+  });
 
   let messagesEl: HTMLDivElement | undefined;
   let loadVersion = 0;

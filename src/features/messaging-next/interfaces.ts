@@ -35,8 +35,8 @@ export type MessageRepository = {
   send(
     msg: OutgoingMessage,
   ):
-    | { id: string; createdAt: number }
-    | Promise<{ id: string; createdAt: number }>;
+    | { id: string; sentAt: number }
+    | Promise<{ id: string; sentAt: number }>;
 
   /**
    * Subscribe to new remote messages.
@@ -144,7 +144,7 @@ export type ChatMessage = {
   conversationId: ConversationId;
   text: string;
   senderId: UserId;
-  createdAt: number;
+  sentAt: number;
   status: MessageStatus;
   source: MessageSource;
   delivery: DeliveryPolicy;
