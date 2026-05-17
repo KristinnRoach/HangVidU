@@ -35,11 +35,6 @@ export const ConversationParticipantSchema = z.object({
   joinedAt: z.number().int().nonnegative(),
 });
 
-export const ConversationDraftSchema = z.object({
-  text: z.string(),
-  updatedAt: z.number().int().nonnegative(),
-});
-
 export const ConversationRecordSchema = z.object({
   conversationId: ConversationIdSchema,
   kind: ConversationKindSchema,
@@ -50,9 +45,7 @@ export const ConversationRecordSchema = z.object({
   updatedAt: z.number().int().nonnegative(),
 });
 
-export const ConversationNodeSchema = ConversationRecordSchema.extend({
-  draft: ConversationDraftSchema.nullable().default(null),
-});
+export const ConversationNodeSchema = ConversationRecordSchema;
 
 const MessageBaseSchema = z.object({
   messageId: z.string().trim().min(1),

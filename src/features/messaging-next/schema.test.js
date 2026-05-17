@@ -18,7 +18,7 @@ describe('messaging-next schema', () => {
     expect(createGroupConversationId('group-123')).toBe('group:group-123');
   });
 
-  it('keeps drafts on conversation nodes outside the message stream', () => {
+  it('parses conversation metadata without shared draft state', () => {
     const node = ConversationNodeSchema.parse({
       conversationId: 'user-a_user-b',
       kind: 'direct',
@@ -34,33 +34,10 @@ describe('messaging-next schema', () => {
       },
       createdAt: 1,
       updatedAt: 2,
-      draft: {
-        text: 'not sent yet',
-        updatedAt: 3,
-      },
     });
 
     expect(node.deliveryPolicy).toBe('persistent');
-    expect(node.draft?.text).toBe('not sent yet');
     expect(node.participants['user-a'].role).toBe('member');
-  });
-
-  it('defaults missing conversation drafts to null', () => {
-    const node = ConversationNodeSchema.parse({
-      conversationId: 'group:team_1',
-      kind: 'group',
-      participants: {
-        owner: {
-          userId: 'owner',
-          role: 'owner',
-          joinedAt: 1,
-        },
-      },
-      createdAt: 1,
-      updatedAt: 1,
-    });
-
-    expect(node.draft).toBeNull();
   });
 
   it('requires every message envelope to carry conversation id and delivery', () => {

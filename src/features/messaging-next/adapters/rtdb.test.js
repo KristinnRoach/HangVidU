@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { get, serverTimestamp, set, update } from 'firebase/database';
+import { get, serverTimestamp, set } from 'firebase/database';
 import {
   createRTDBConversationRepository,
   createRTDBMessageRepository,
@@ -56,7 +56,7 @@ describe('messaging-next RTDB adapter', () => {
     );
   });
 
-  it('persists drafts as conversation metadata without changing message rows', async () => {
+  it('loads shared conversation metadata without draft state', async () => {
     vi.mocked(get).mockResolvedValue({
       exists: () => true,
       val: () => ({
@@ -69,31 +69,14 @@ describe('messaging-next RTDB adapter', () => {
         deliveryPolicy: 'persistent',
         createdAt: 1,
         updatedAt: 10,
-        draft: {
-          text: 'typed but not sent',
-          updatedAt: 10,
-        },
       }),
     });
 
     const repository = createRTDBConversationRepository();
 
-    const conversation = await repository.setDraft('user-a_user-b', {
-      text: 'typed but not sent',
-      updatedAt: 10,
-    });
+    const conversation = await repository.loadConversation('user-a_user-b');
 
-    expect(set).toHaveBeenCalledWith(
-      { path: 'conversations/user-a_user-b/draft' },
-      {
-        text: 'typed but not sent',
-        updatedAt: 10,
-      },
-    );
-    expect(update).toHaveBeenCalledWith(
-      { path: 'conversations/user-a_user-b' },
-      { updatedAt: 10 },
-    );
-    expect(conversation.draft.text).toBe('typed but not sent');
+    expect(conversation?.conversationId).toBe('user-a_user-b');
+    expect(conversation).not.toHaveProperty('draft');
   });
 });

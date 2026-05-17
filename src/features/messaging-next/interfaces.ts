@@ -2,7 +2,6 @@
 // No Firebase, no runtime deps — adapters implement these and are swapped freely.
 
 import type {
-  ConversationDraft,
   ConversationId,
   ConversationKind,
   ConversationNode,
@@ -84,13 +83,12 @@ export type ConversationUpsert = {
   title?: string;
   participants: Record<UserId, ConversationParticipant>;
   deliveryPolicy?: DeliveryPolicy;
-  draft?: ConversationDraft | null;
   createdAt?: number;
   updatedAt?: number;
 };
 
 export type ConversationRepository = {
-  /** Load a conversation node, including metadata and draft state. */
+  /** Load shared conversation metadata. */
   loadConversation(
     conversationId: ConversationId,
   ): ConversationNode | null | Promise<ConversationNode | null>;
@@ -98,12 +96,6 @@ export type ConversationRepository = {
   /** Create or replace a conversation node. Adapter fills missing timestamps. */
   upsertConversation(
     conversation: ConversationUpsert,
-  ): ConversationNode | Promise<ConversationNode>;
-
-  /** Persist or clear the per-conversation draft. */
-  setDraft(
-    conversationId: ConversationId,
-    draft: ConversationDraft | null,
   ): ConversationNode | Promise<ConversationNode>;
 
   /**

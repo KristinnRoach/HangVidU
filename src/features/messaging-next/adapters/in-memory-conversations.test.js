@@ -33,24 +33,19 @@ describe('messaging-next in-memory conversation repository', () => {
       expect(conversation.createdAt).toBe(1000);
       expect(conversation.updatedAt).toBe(1000);
       expect(conversation.deliveryPolicy).toBe('persistent');
-      expect(conversation.draft).toBeNull();
       expect(conversation.participants['user-a'].role).toBe('member');
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it('preserves createdAt and existing draft when metadata is updated', () => {
+  it('preserves createdAt when metadata is updated', () => {
     const repository = createInMemoryConversationRepository();
 
     repository.upsertConversation(
       directConversation({
         createdAt: 1,
         updatedAt: 1,
-        draft: {
-          text: 'half typed',
-          updatedAt: 2,
-        },
       }),
     );
 
@@ -64,24 +59,6 @@ describe('messaging-next in-memory conversation repository', () => {
     expect(updated.createdAt).toBe(1);
     expect(updated.updatedAt).toBe(3);
     expect(updated.title).toBe('Direct chat');
-    expect(updated.draft?.text).toBe('half typed');
-  });
-
-  it('persists and clears drafts on the conversation node', () => {
-    const repository = createInMemoryConversationRepository();
-
-    repository.upsertConversation(directConversation({ createdAt: 1 }));
-
-    const withDraft = repository.setDraft('user-a_user-b', {
-      text: 'send later',
-      updatedAt: 4,
-    });
-    expect(withDraft.draft?.text).toBe('send later');
-    expect(withDraft.updatedAt).toBe(4);
-
-    const cleared = repository.setDraft('user-a_user-b', null);
-    expect(cleared.draft).toBeNull();
-    expect(repository.loadConversation('user-a_user-b')?.draft).toBeNull();
   });
 
   it('notifies subscribers and returns defensive copies', () => {

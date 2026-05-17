@@ -3,11 +3,7 @@ import type {
   ConversationRepository,
   ConversationUpsert,
 } from '../interfaces.js';
-import type {
-  ConversationDraft,
-  ConversationId,
-  ConversationNode,
-} from '../types.js';
+import type { ConversationId, ConversationNode } from '../types.js';
 
 function cloneConversation(conversation: ConversationNode): ConversationNode {
   return ConversationNodeSchema.parse(structuredClone(conversation));
@@ -39,31 +35,10 @@ export function createInMemoryConversationRepository(): ConversationRepository {
         ...input,
         createdAt: input.createdAt ?? existing?.createdAt ?? now,
         updatedAt: input.updatedAt ?? now,
-        draft:
-          input.draft === undefined
-            ? (existing?.draft ?? null)
-            : input.draft,
       });
 
       stored.set(conversation.conversationId, conversation);
       notify(conversation.conversationId, conversation);
-      return cloneConversation(conversation);
-    },
-
-    setDraft(conversationId: ConversationId, draft: ConversationDraft | null) {
-      const existing = stored.get(conversationId);
-      if (!existing) {
-        throw new Error(`No conversation: ${conversationId}`);
-      }
-
-      const conversation = ConversationNodeSchema.parse({
-        ...existing,
-        draft,
-        updatedAt: draft?.updatedAt ?? Date.now(),
-      });
-
-      stored.set(conversationId, conversation);
-      notify(conversationId, conversation);
       return cloneConversation(conversation);
     },
 

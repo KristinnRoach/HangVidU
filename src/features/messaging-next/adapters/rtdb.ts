@@ -21,7 +21,6 @@ import type {
 } from '../interfaces.js';
 import { ConversationNodeSchema } from '../schema.js';
 import type {
-  ConversationDraft,
   ConversationId,
   ConversationNode,
   MessageEnvelope,
@@ -42,10 +41,6 @@ function msgsRef(conversationId: ConversationId) {
 
 function conversationRef(conversationId: ConversationId) {
   return ref(rtdb, `conversations/${conversationId}`);
-}
-
-function conversationDraftRef(conversationId: ConversationId) {
-  return ref(rtdb, `conversations/${conversationId}/draft`);
 }
 
 function toIncoming(
@@ -95,7 +90,6 @@ function conversationUpdate(
     createdAt: input.createdAt ?? existing?.createdAt ?? now,
     updatedAt: input.updatedAt ?? now,
   };
-  if (input.draft !== undefined) payload.draft = input.draft;
   return payload;
 }
 
@@ -187,20 +181,6 @@ export function createRTDBConversationRepository(): ConversationRepository {
       const conversation = toConversationNode(snapshot.val());
       if (!conversation) {
         throw new Error(`Invalid conversation node: ${input.conversationId}`);
-      }
-      return conversation;
-    },
-
-    async setDraft(conversationId, draft: ConversationDraft | null) {
-      await set(conversationDraftRef(conversationId), draft);
-      await update(conversationRef(conversationId), {
-        updatedAt: draft?.updatedAt ?? Date.now(),
-      });
-
-      const snapshot = await get(conversationRef(conversationId));
-      const conversation = toConversationNode(snapshot.val());
-      if (!conversation) {
-        throw new Error(`Invalid conversation node: ${conversationId}`);
       }
       return conversation;
     },

@@ -118,6 +118,7 @@
 }
 
 .send:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
+  background-color: #818181;
+  color: whitesmoke;
+  cursor: default;
 }

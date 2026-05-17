@@ -1,6 +1,5 @@
 import type { z } from 'zod';
 import type {
-  ConversationDraftSchema,
   ConversationKindSchema,
   ConversationNodeSchema,
   ConversationParticipantSchema,
@@ -26,7 +25,6 @@ export type ConversationKind = z.infer<typeof ConversationKindSchema>;
 export type ConversationParticipant = z.infer<
   typeof ConversationParticipantSchema
 >;
-export type ConversationDraft = z.infer<typeof ConversationDraftSchema>;
 export type ConversationRecord = z.infer<typeof ConversationRecordSchema>;
 export type ConversationNode = z.infer<typeof ConversationNodeSchema>;
 

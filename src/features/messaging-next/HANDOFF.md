@@ -27,9 +27,9 @@ When enabled: legacy `initMessagesUI()` is skipped, the legacy `cmd:messaging:co
   `ConversationRepository` for the feature-flagged panel.
 - Runtime drafts are per-user and per-conversation in localStorage, then mirrored
   into in-memory Solid state while the panel is open.
-- Drafts are not written to RTDB. The earlier conversation-node draft approach
-  leaked one participant's unsent text to the other participant because
-  `conversation.draft` is shared conversation state.
+- Drafts are not written to RTDB. The unsafe shared conversation-node draft
+  field and repository methods were removed after they leaked one participant's
+  unsent text to the other participant.
 - `TODO.md` tracks the follow-up privacy/security review for localStorage draft
   persistence.
 
@@ -59,8 +59,8 @@ When enabled: legacy `initMessagesUI()` is skipped, the legacy `cmd:messaging:co
   metadata: kind, participants, title, delivery policy, and timestamps.
 - `adapters/in-memory-conversations.ts` is the first functional adapter and is
   covered by focused tests.
-- `adapters/rtdb.ts` includes an RTDB conversation adapter, but runtime draft
-  persistence deliberately does not use shared conversation-node state.
+- `adapters/rtdb.ts` includes an RTDB conversation metadata adapter. Runtime
+  draft persistence deliberately uses local drafts instead.
 
 **RTDB adapter shape**
 
