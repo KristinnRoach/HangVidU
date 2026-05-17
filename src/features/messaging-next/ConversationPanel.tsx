@@ -10,6 +10,7 @@ import {
 } from 'solid-js';
 import { handleCommand } from '../../shared/events/index.js';
 import { getLoggedInUserId, getUserName } from '../../auth/auth-state.js';
+import { LoadBoundary } from '../../shared/components/LoadBoundary.jsx';
 import { createConversationState } from './conversation.state.js';
 import { createConversationActions } from './conversation.actions.js';
 import {
@@ -27,6 +28,21 @@ import styles from './ConversationPanel.module.css';
 
 const runtime = createMessagingRuntime();
 const DRAFT_SAVE_DELAY_MS = 250;
+
+function MessageHistorySkeleton() {
+  return (
+    <div
+      class={`${styles.messages} ${styles.messageSkeleton}`}
+      aria-busy='true'
+      aria-label='Loading message history'
+    >
+      <div class={`${styles.skeletonBubble} ${styles.skeletonIncoming}`} />
+      <div class={`${styles.skeletonBubble} ${styles.skeletonOwn}`} />
+      <div class={`${styles.skeletonBubble} ${styles.skeletonIncoming}`} />
+      <div class={`${styles.skeletonBubble} ${styles.skeletonOwn}`} />
+    </div>
+  );
+}
 
 export default function ConversationPanel(props: { onFocus?: () => void }) {
   const store = createConversationState();
@@ -158,51 +174,56 @@ export default function ConversationPanel(props: { onFocus?: () => void }) {
           <div class={styles.empty}>Select a contact to start chatting</div>
         }
       >
-        <div class={styles.messages} ref={messagesEl} hidden={state.isLoading}>
-          <For each={state.messages}>
-            {(msg) => (
-              <Switch>
-                <Match when={msg.source === 'system'}>
-                  <div class={`${styles.msg} ${styles.msgSystem}`}>
-                    <span>{msg.text}</span>
-                    <Show when={msg.actions?.length}>
-                      <span class={styles.msgActions}>
-                        <For each={msg.actions}>
-                          {(action) => (
-                            <button
-                              type='button'
-                              class={styles.msgActionBtn}
-                              onClick={action.onClick}
-                            >
-                              {action.label}
-                            </button>
-                          )}
-                        </For>
-                      </span>
-                    </Show>
-                  </div>
-                </Match>
-                <Match when={msg.source !== 'system'}>
-                  <div
-                    class={styles.msg}
-                    classList={{
-                      [styles.msgOwn]: msg.senderId === state.myUserId,
-                      [styles.msgFailed]: msg.status === 'failed',
-                    }}
-                  >
-                    <span class={styles.msgText}>{msg.text}</span>
-                    <Show when={msg.status === 'sending'}>
-                      <span class={styles.msgStatus}>…</span>
-                    </Show>
-                    <Show when={msg.status === 'failed'}>
-                      <span class={styles.msgStatus}>!</span>
-                    </Show>
-                  </div>
-                </Match>
-              </Switch>
-            )}
-          </For>
-        </div>
+        <LoadBoundary
+          loading={state.isLoading}
+          fallback={<MessageHistorySkeleton />}
+        >
+          <div class={styles.messages} ref={messagesEl}>
+            <For each={state.messages}>
+              {(msg) => (
+                <Switch>
+                  <Match when={msg.source === 'system'}>
+                    <div class={`${styles.msg} ${styles.msgSystem}`}>
+                      <span>{msg.text}</span>
+                      <Show when={msg.actions?.length}>
+                        <span class={styles.msgActions}>
+                          <For each={msg.actions}>
+                            {(action) => (
+                              <button
+                                type='button'
+                                class={styles.msgActionBtn}
+                                onClick={action.onClick}
+                              >
+                                {action.label}
+                              </button>
+                            )}
+                          </For>
+                        </span>
+                      </Show>
+                    </div>
+                  </Match>
+                  <Match when={msg.source !== 'system'}>
+                    <div
+                      class={styles.msg}
+                      classList={{
+                        [styles.msgOwn]: msg.senderId === state.myUserId,
+                        [styles.msgFailed]: msg.status === 'failed',
+                      }}
+                    >
+                      <span class={styles.msgText}>{msg.text}</span>
+                      <Show when={msg.status === 'sending'}>
+                        <span class={styles.msgStatus}>…</span>
+                      </Show>
+                      <Show when={msg.status === 'failed'}>
+                        <span class={styles.msgStatus}>!</span>
+                      </Show>
+                    </div>
+                  </Match>
+                </Switch>
+              )}
+            </For>
+          </div>
+        </LoadBoundary>
 
         <form class={styles.form} onSubmit={onSubmit}>
           <input

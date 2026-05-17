@@ -33,6 +33,45 @@
   overflow-y: auto;
 }
 
+.messageSkeleton {
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.skeletonBubble {
+  width: min(68%, 18rem);
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  background: linear-gradient(90deg, #3a3a3a 0%, #474747 50%, #3a3a3a 100%);
+  background-size: 200% 100%;
+  animation: messageSkeletonPulse 1.2s ease-in-out infinite;
+}
+
+.skeletonIncoming {
+  align-self: flex-start;
+}
+
+.skeletonOwn {
+  align-self: flex-end;
+  width: min(54%, 14rem);
+}
+
+@keyframes messageSkeletonPulse {
+  from {
+    background-position: 100% 0;
+  }
+
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonBubble {
+    animation: none;
+  }
+}
+
 .msg {
   position: relative;
   padding: 0.5rem 0.75rem;
