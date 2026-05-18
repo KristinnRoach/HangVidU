@@ -3,8 +3,6 @@
 
 body {
   font-family: var(--font-family-primary);
-  color: var(--text-secondary);
-  background: var(--bg-primary);
 }
 
 h1 {

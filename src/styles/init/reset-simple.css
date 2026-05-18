@@ -41,7 +41,7 @@ picture {
 
 /* Set default font family and size */
 body {
-  min-height: 100vh;
+  min-height: 100svh;
   line-height: 1.5;
   font-family: system-ui, sans-serif;
 }

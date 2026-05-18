@@ -1,6 +1,7 @@
 /* src/style.css */
 
-@import './init/reset-normalize.css';
+/* @import './init/reset-normalize.css'; */
+@import './init/reset.css';
 @import './init/typography.css';
 @import './init/scrollbar.css';
 @import './element/button.css';
@@ -32,13 +33,6 @@
 @import './components/dialog/confirm-dialog.css';
 @import './components/dialog/edit-contact-dialog.css';
 @import './components/legal-footer.css';
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  /* outline: 2px solid lime; */
-}
 
 /* LEGACY - Default visible state for elements that toggle visibility */
 .video-box,

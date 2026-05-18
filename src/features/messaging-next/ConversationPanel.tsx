@@ -155,7 +155,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     setHistoryReady(true);
     suppressScroll = false;
     queueMicrotask(scrollToEnd);
-    queueMicrotask(focusInput);
+    queueMicrotask(focusInput); // Not needed with autofocus attribute?
   });
 
   const { send } = useConversation({
@@ -252,6 +252,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
         <form class={styles.form} onSubmit={onSubmit}>
           <input
+            autofocus
             ref={inputEl}
             class={styles.input}
             type='text'

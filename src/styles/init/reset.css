@@ -1,0 +1,22 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  /* outline: 2px solid lime; */
+}
+
+html {
+  interpolate-size: allow-keywords;
+  scrollbar-gutter: stable;
+}
+
+body {
+  margin: 0;
+  min-block-size: 100svh;
+
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+
+  color: var(--text-secondary);
+  background: var(--bg-primary);
+}
