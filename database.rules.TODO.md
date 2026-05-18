@@ -6,6 +6,34 @@ clients are no longer running the `main` branch call code.
 
 ## After the new call-flow is deployed
 
+- Restore the scoped `rooms/{roomId}` access rules that were temporarily rolled
+  back for production legacy call compatibility:
+
+  ```json
+  "rooms": {
+    "$roomId": {
+      ".read": "auth != null && data.child('participants').child(auth.uid).exists()",
+      ".write": "auth != null && !newData.exists() && data.child('meta').child('createdBy').val() === auth.uid",
+      "meta": {
+        ".write": "auth != null && !data.exists() && newData.hasChildren(['createdBy', 'createdAt', 'expiresAt']) && newData.child('createdBy').val() === auth.uid && newData.child('createdAt').isNumber() && newData.child('expiresAt').isNumber()"
+      },
+      "participants": {
+        "$uid": {
+          ".write": "auth != null && root.child('rooms').child($roomId).child('meta').child('createdBy').val() === auth.uid && newData.val() === true"
+        }
+      },
+      "p2pSignaling": {
+        ".write": "auth != null && root.child('rooms').child($roomId).child('participants').child(auth.uid).exists()"
+      },
+      "watch": {
+        ".write": "auth != null && root.child('rooms').child($roomId).child('participants').child(auth.uid).exists()"
+      },
+      "mediaSyncSignaling": {
+        ".write": "auth != null && root.child('rooms').child($roomId).child('participants').child(auth.uid).exists()"
+      }
+    }
+  }
+  ```
 - Review whether `users/{userId}/recentCalls` is still used. It is required by
   the current production `main` branch call listeners, so it must stay until the
   legacy call module is fully retired in production.

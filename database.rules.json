@@ -2,25 +2,8 @@
   "rules": {
     "rooms": {
       "$roomId": {
-        ".read": "auth != null && data.child('participants').child(auth.uid).exists()",
-        ".write": "auth != null && !newData.exists() && data.child('meta').child('createdBy').val() === auth.uid",
-        "meta": {
-          ".write": "auth != null && !data.exists() && newData.hasChildren(['createdBy', 'createdAt', 'expiresAt']) && newData.child('createdBy').val() === auth.uid && newData.child('createdAt').isNumber() && newData.child('expiresAt').isNumber()"
-        },
-        "participants": {
-          "$uid": {
-            ".write": "auth != null && root.child('rooms').child($roomId).child('meta').child('createdBy').val() === auth.uid && newData.val() === true"
-          }
-        },
-        "p2pSignaling": {
-          ".write": "auth != null && root.child('rooms').child($roomId).child('participants').child(auth.uid).exists()"
-        },
-        "watch": {
-          ".write": "auth != null && root.child('rooms').child($roomId).child('participants').child(auth.uid).exists()"
-        },
-        "mediaSyncSignaling": {
-          ".write": "auth != null && root.child('rooms').child($roomId).child('participants').child(auth.uid).exists()"
-        }
+        ".read": true,
+        ".write": true
       }
     },
     "usersByEmail": {
