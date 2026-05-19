@@ -1,7 +1,16 @@
 /* ===== TOP BAR COMPONENT ===== */
-/* Navigation bar with title, auth, and menu */
 
-.top-bar {
+.topNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  flex: 1;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background-color: transparent;
+}
+
+.topBar {
   background: var(--bg-elevated);
   box-shadow: var(--shadow-md);
 
@@ -28,7 +37,7 @@
 
 /* Top Bar - Left Side Section (title and auth) */
 
-.top-bar-left {
+.topBarLeft {
   display: flex;
   flex-direction: row;
   gap: 1rem;
@@ -80,7 +89,7 @@
 }
 
 @media (max-width: 520px) {
-  .top-bar {
+  .topBar {
     padding: 0.5rem 0;
   }
 
@@ -101,21 +110,19 @@
 }
 
 @media (max-width: 400px) {
-  .user-name {
+  .userName {
     max-width: 0ch;
   }
 }
 
-/* Auth Component */
-
-.auth-component {
+.authControls {
   /* Uses auto-animate pattern from animations.css */
   display: flex;
   gap: var(--spacing-sm, 0.5rem);
   align-items: center;
   width: fit-content;
 
-  & .user-info {
+  & .userInfo {
     @starting-style {
       opacity: 0;
       transform: translateX(10px);
@@ -125,9 +132,9 @@
     transition: var(--transition-default);
   }
 
-  & .login-btn,
-  & .logout-btn,
-  & .delete-account-btn {
+  & .loginBtn,
+  & .logoutBtn,
+  & .deleteAccountBtn {
     /* Hidden by default */
     opacity: 0;
     display: none;
@@ -136,47 +143,25 @@
     transform: translateX(0);
     transition: var(--transition-default);
 
-    border: none;
-    border-radius: var(--radius-lg, 8px);
-    white-space: nowrap;
-
-    /* Fallback for browsers without hsl(from ...) support */
-    background-color: rgba(76, 129, 175, 0.6);
-
-    &:active {
-      background-color: rgba(76, 129, 175, 0.3);
-    }
-
-    &:hover {
-      background-color: rgba(76, 129, 175, 0.4);
-    }
-
-    @supports (background-color: hsl(from var(--color-primary) h s l / 0.6)) {
-      background-color: hsl(from var(--color-primary) h s l / 0.6);
-      &:active {
-        background-color: hsl(from var(--color-primary) h s l / 0.3);
-      }
-      &:hover {
-        background-color: hsl(from var(--color-primary) h s l / 0.4);
-      }
-    }
-
     /* Only show when explicitly enabled */
     &:enabled {
       opacity: 1;
       display: inline-block;
       cursor: pointer;
       pointer-events: auto;
+      transition:
+        opacity 500ms var(--easing-default) 100ms,
+        transform 500ms var(--easing-default) 100ms;
 
       @starting-style {
         opacity: 0;
-        transform: translateX(10px);
+        transform: translateX(-25px);
       }
     }
   }
 
   /* Delete button gets warning color */
-  & .delete-account-btn {
+  & .deleteAccountBtn {
     /* Fallback for browsers without hsl(from ...) support */
     background-color: rgba(220, 53, 69, 0.6);
 
@@ -204,7 +189,7 @@
 
 /* Top Bar - Right Side Section */
 
-.top-bar-right {
+.topBarRight {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -221,48 +206,24 @@
 
 /* Left to right element order of top-bar-right */
 
-.top-bar-right .search-section {
+.topBarRight .search-section {
   order: 1;
 }
 
-.top-bar-right #add-contact-btn {
+.topBarRight .add-contact-btn {
   order: 2;
 }
 
-.top-bar-right #main-messages-toggle-btn {
+.topBarRight #main-messages-toggle-btn {
   order: 3;
 }
 
-.top-bar-right .notifications-toggle-container {
+.topBarRight .notifications-toggle-container {
   order: 4;
 }
 
-#toggle-lang-btn {
-  position: fixed;
-  bottom: 2px;
-  left: 2px;
-  z-index: var(--z-high);
-  padding: 8px 12px;
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-  border: 1px solid var(--border-secondary);
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: bold;
-  white-space: nowrap;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
-}
-
-#toggle-lang-btn:hover,
-#toggle-lang-btn:focus-visible {
-  border-color: var(--color-primary);
-  outline: 2px solid var(--color-primary-subtle);
-  outline-offset: 2px;
-}
-
-.top-bar-right button,
-.top-bar-right .notifications-toggle-btn {
+.topBarRight button,
+.topBarRight .notifications-toggle-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -282,12 +243,12 @@
     color 0.2s ease;
 }
 
-.top-bar-right button:hover,
-.top-bar-right .notifications-toggle-btn:hover {
+.topBarRight button:hover,
+.topBarRight .notifications-toggle-btn:hover {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.user-info {
+.userInfo {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -298,15 +259,14 @@
 
   overflow: hidden;
 
-  & .user-avatar {
+  & .userAvatar {
     width: 36px;
     height: 36px;
     border-radius: 50%;
     object-fit: cover;
-    border: 1px solid rgba(158, 158, 158, 0.25);
   }
 
-  & .user-avatar-placeholder {
+  & .userAvatarPlaceholder {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -318,7 +278,7 @@
     flex-shrink: 0;
   }
 
-  & .user-name {
+  & .userName {
     overflow-x: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -333,12 +293,12 @@
 
 /* Respect reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
-  .auth-component > button {
+  .authControls > button {
     transition: none;
   }
 
-  .top-bar,
-  .top-bar-right,
+  .topBar,
+  .topBarRight,
   #app-title-h1 {
     transition: none;
   }

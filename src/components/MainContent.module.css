@@ -23,20 +23,6 @@ main {
   container-name: main; /* Todo: rename to layout (or remove if unused) */
 }
 
-.topNav {
-  display: flex;
-  align-items: center;
-  justify-content: space-evenly;
-  flex: 1;
-  gap: 0.5rem;
-  padding: 0.5rem;
-  background-color: transparent;
-
-  /* button {
-    border: 1px solid var(--border-primary);
-  } */
-}
-
 .lobby {
   display: flex;
   flex-direction: column;

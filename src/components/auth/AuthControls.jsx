@@ -9,6 +9,9 @@ import { useI18n } from '../../shared/i18n/index.js';
 import GoogleSignInButton from './GoogleSignInButton.jsx';
 import { LogOut } from 'lucide-solid';
 
+// import './AuthControls.css';
+import styles from '../TopBar.module.css';
+
 function smartTruncateName(fullName, maxLength = 20) {
   if (!fullName || fullName.length <= maxLength) {
     return fullName;
@@ -58,7 +61,7 @@ export default function AuthControls() {
   }
 
   return (
-    <div class='auth-component'>
+    <div class={styles.authControls}>
       <Show when={!isLoggedIn()}>
         <GoogleSignInButton />
       </Show>
@@ -70,28 +73,30 @@ export default function AuthControls() {
       </Show>
 
       <Show when={isLoggedIn()}>
-        <div class='user-info'>
+        <div class={styles.userInfo}>
           <Show
             when={photoUrl() && !avatarFailed()}
             fallback={
-              <span class='user-avatar-placeholder'>{avatarInitial()}</span>
+              <span class={styles.userAvatarPlaceholder}>
+                {avatarInitial()}
+              </span>
             }
           >
             <img
               src={photoUrl()}
               alt={displayName()}
-              class='user-avatar'
+              class={styles.userAvatar}
               referrerpolicy='no-referrer'
               onError={() => setAvatarFailed(true)}
             />
           </Show>
 
           {/* TODO: Decide whether to keep name */}
-          {/* <span class='user-name'>{displayName()}</span> */}
+          {/* <span class={styles.userName}>{displayName()}</span> */}
         </div>
         <button
           id='goog-logout-btn'
-          class='logout-btn'
+          class={styles.logoutBtn}
           type='button'
           title={t('auth.logout')}
           aria-title={t('auth.logout')}

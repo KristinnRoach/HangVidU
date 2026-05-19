@@ -20,6 +20,7 @@ export default function AddContactButton() {
       type='button'
       title={t('a11y.add_contact')}
       aria-label={t('a11y.add_contact')}
+      class='add-contact-btn'
       id='add-contact-btn'
       onClick={handleClick}
     >

@@ -1,0 +1,76 @@
+/* LEFT SIDE */
+
+.localeToggle {
+  position: fixed;
+  bottom: 4px;
+  left: 8px;
+  z-index: var(--z-high);
+  padding: 5px 10px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-secondary);
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
+}
+
+.localeToggle:hover,
+.localeToggle:focus-visible {
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  border-color: var(--color-primary);
+  outline: 1px solid var(--color-primary-subtle);
+  outline-offset: 2px;
+}
+
+/* RIGHT SIDE */
+
+.legalFooter {
+  position: fixed;
+  bottom: 4px;
+  right: 8px;
+
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+
+  padding: 5px 10px;
+  border-radius: 10px;
+  z-index: 0;
+  font-size: 12px;
+  font-weight: 325;
+  font-family: sans-serif;
+  pointer-events: none;
+
+  background-color: rgb(0, 0, 0);
+}
+
+.legalFooter:hover,
+.legalFooter:focus-within {
+  opacity: 0.9;
+  pointer-events: auto;
+  background-color: rgb(0, 0, 0);
+}
+
+.legalFooterSeparator {
+  color: #888;
+  cursor: none;
+  pointer-events: none;
+}
+
+.legalFooterLink {
+  color: #cdcdcdd2;
+  pointer-events: auto;
+  text-decoration: none;
+}
+
+.legalFooterLink:hover {
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  border-color: var(--color-primary);
+  text-decoration: underline;
+}

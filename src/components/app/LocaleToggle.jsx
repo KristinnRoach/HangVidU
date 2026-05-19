@@ -1,4 +1,5 @@
 import { useI18n } from '../../shared/i18n/index.js';
+import styles from './Footer.module.css';
 
 export default function LocaleToggle() {
   const { locale, setLocale } = useI18n();
@@ -8,7 +9,12 @@ export default function LocaleToggle() {
   }
 
   return (
-    <button id='toggle-lang-btn' type='button' onClick={toggleLocale}>
+    <button
+      id='toggle-lang-btn'
+      class={styles.localeToggle}
+      type='button'
+      onClick={toggleLocale}
+    >
       🌐 {locale().toUpperCase()}
     </button>
   );

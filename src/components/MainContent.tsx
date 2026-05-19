@@ -1,10 +1,10 @@
 import { createSignal, Show, createEffect, onCleanup, onMount } from 'solid-js';
+
 import { User, PhoneCall, MessageCircle, Mail } from 'lucide-solid';
 import { useP2PContext } from '../shared/p2p-context.js';
 import { useAuth } from '../auth/solid-auth.js';
 import { dispatchCommand, handleCommand } from '../shared/events/index.js';
 
-// Top-bar
 import AppTitle from './app/AppTitle.jsx';
 import AuthControls from './auth/AuthControls.jsx';
 import AddContactButton from './contacts/AddContactButton.jsx';
@@ -12,16 +12,14 @@ import NotificationsToggle from './app/NotificationsToggle.jsx';
 import LegalFooter from './app/LegalFooter.jsx';
 import LocaleToggle from './app/LocaleToggle.jsx';
 
-// Main
 import PublicHomepage from './app/PublicHomepage.jsx';
 import ContactsList from './contacts/ContactsList';
 import ActiveCallRoom from '../features/call/components/ActiveCallRoom';
 import ConversationPanel from '../features/messaging-next/ConversationPanel';
-
-// Dialogs
 import CallDialogs from '../features/call/components/CallDialogs.jsx';
 
-import styles from './MainContent.module.css';
+import mainStyles from './MainContent.module.css';
+import topbarStyles from './TopBar.module.css';
 
 // Legacy:
 import { useP2PFileTransferBridge } from '../features/file-transfer/useP2PFileTransferBridge.js';
@@ -150,7 +148,7 @@ export default function MainContent() {
   console.log('isloggedin', isLoggedIn());
 
   return (
-    <div class={styles.layoutWrapper}>
+    <div class={mainStyles.layoutWrapper}>
       <TopBar
         activeView={activeView()}
         setActiveView={setActiveView}
@@ -158,8 +156,8 @@ export default function MainContent() {
       />
       <div id='onetap-container' />
 
-      <main id='main-content' class={styles.mainContent}>
-        <div id='lobby' class={styles.lobby}>
+      <main id='main-content' class={mainStyles.mainContent}>
+        <div id='lobby' class={mainStyles.lobby}>
           <CallDialogs />
 
           {/* Currently using CSS display for exclusive rendering to keep stateful components mounted
@@ -167,7 +165,7 @@ export default function MainContent() {
 
           <div
             hidden={activeView() !== 'home' || isLoggedIn()}
-            class={styles.activeViewContainer}
+            class={mainStyles.activeViewContainer}
           >
             <PublicHomepage />
           </div>
@@ -175,7 +173,7 @@ export default function MainContent() {
           <Show when={p2p.state() !== 'idle'}>
             <div
               hidden={activeView() !== 'call'}
-              class={styles.activeViewContainer}
+              class={mainStyles.activeViewContainer}
             >
               <ActiveCallRoom />
             </div>
@@ -183,7 +181,7 @@ export default function MainContent() {
 
           <div
             hidden={activeView() !== 'contacts' || !isLoggedIn()}
-            class={styles.activeViewContainer}
+            class={mainStyles.activeViewContainer}
           >
             <ContactsList onOpenConversation={openConversation} />
           </div>
@@ -192,7 +190,7 @@ export default function MainContent() {
             {/* TODO: remove "Show" when messaging-next is fully rolled out and legacy messaging UI is removed */}
             <div
               hidden={activeView() !== 'messaging'}
-              class={styles.activeViewContainer}
+              class={mainStyles.activeViewContainer}
             >
               <ConversationPanel
                 selection={selectedConversation()}
@@ -221,14 +219,14 @@ function TopBar(props: TopBarProps) {
   const { isLoggedIn } = useAuth();
 
   return (
-    <header id='top-bar' class='top-bar'>
-      <div id='top-bar-left' class='top-bar-left animated-flex'>
+    <header id='top-bar' class={topbarStyles.topBar}>
+      <div id='top-bar-left' class={`${topbarStyles.topBarLeft} animated-flex`}>
         <AppTitle />
         <AuthControls />
       </div>
 
       {/* Temp Navigation/Test buttons to demonstrate switching */}
-      <nav class={styles.topNav}>
+      <nav class={topbarStyles.topNav}>
         {/* <button onClick={() => props.setActiveView?.('home')}>Home</button> */}
         <Show when={props.isInCall}>
           <button
@@ -255,7 +253,7 @@ function TopBar(props: TopBarProps) {
         </Show>
       </nav>
 
-      <div class='top-bar-right'>
+      <div class={topbarStyles.topBarRight}>
         {props.activeView === 'contacts' && <AddContactButton />}
         <NotificationsToggle />
         {/* <YouTubeSearchControls /> */}
