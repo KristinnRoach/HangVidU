@@ -6,9 +6,9 @@ import { getAllContactsSorted } from '../../features/contacts/index.js';
 type ContactRow = {
   id: string;
   name: string | null;
-  roomId: string | null;
   conversationId: string | null;
   unreadCount: number;
+  // roomId: string | null;
 };
 
 export function useContactsList() {
@@ -31,7 +31,7 @@ export function useContactsList() {
         if (updatedId !== conversationId) return;
         lastUnreadByConv.set(conversationId, unreadCount);
         setContacts(
-          produce((arr) => {
+          produce((arr: ContactRow[]) => {
             for (const row of arr) {
               if (row.conversationId === conversationId)
                 row.unreadCount = unreadCount;
@@ -44,7 +44,7 @@ export function useContactsList() {
     if (lastUnreadByConv.has(conversationId)) {
       const cached = lastUnreadByConv.get(conversationId)!;
       setContacts(
-        produce((arr) => {
+        produce((arr: ContactRow[]) => {
           for (const row of arr) {
             if (row.conversationId === conversationId) row.unreadCount = cached;
           }
@@ -52,7 +52,7 @@ export function useContactsList() {
       );
     }
 
-    unreadTeardowns.set(conversationId, off);
+    unreadTeardowns.set(conversationId, off as () => void);
   }
 
   function removeUnreadListener(conversationId: string) {
@@ -67,7 +67,7 @@ export function useContactsList() {
     const rows: ContactRow[] = getAllContactsSorted().map((c) => ({
       id: c.contactId ?? '',
       name: c.contactNickName ?? null,
-      roomId: c.roomId ?? null,
+      // roomId: c.roomId ?? null,
       conversationId: c.conversationId ?? null,
       unreadCount: lastUnreadByConv.get(c.conversationId ?? '') ?? 0,
     }));
@@ -79,7 +79,7 @@ export function useContactsList() {
     );
 
     setContacts(
-      produce((arr) => {
+      produce((arr: ContactRow[]) => {
         arr.length = 0;
         for (const row of rows) arr.push(row);
       }),
@@ -114,5 +114,5 @@ export function useContactsList() {
     });
   });
 
-  return contacts as ContactRow[];
+  return { contacts };
 }

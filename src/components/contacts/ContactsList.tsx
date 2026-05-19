@@ -10,7 +10,7 @@ type ContactsListProps = {
 
 export default function ContactsList(props: ContactsListProps) {
   const { t } = useI18n();
-  const contacts = useContactsList();
+  const { contacts } = useContactsList();
 
   return (
     <div class='contacts-container'>
@@ -21,7 +21,6 @@ export default function ContactsList(props: ContactsListProps) {
               <ContactEntry
                 id={row.id}
                 name={row.name}
-                roomId={row.roomId}
                 conversationId={row.conversationId}
                 unreadCount={row.unreadCount}
                 onOpenConversation={props.onOpenConversation}

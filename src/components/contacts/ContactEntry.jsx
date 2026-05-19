@@ -21,7 +21,6 @@ function shortName(name) {
  * Props (reactive; read via `props.x` not destructuring to preserve reactivity):
  *   id: string
  *   name: string|null
- *   roomId: string|null
  *   conversationId: string|null
  *   unreadCount: number
  *   onOpenConversation?: (selection: object) => void
@@ -57,7 +56,6 @@ export default function ContactEntry(props) {
     dispatchCommand('cmd:dialog:contact-edit:open', {
       contactId: props.id,
       currentName: props.name ?? '',
-      roomId: props.roomId,
     });
   };
 

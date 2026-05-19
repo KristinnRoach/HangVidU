@@ -33,6 +33,8 @@ import { isMessagingNextEnabled } from '../features/messaging-next/feature-flag.
 import type { ConversationSelection } from '../features/messaging-next/interfaces.js';
 import type { UserId } from '../features/messaging-next/types.js';
 
+import { useContactsList } from './contacts/useContactsList.js';
+
 // type ViewMode = 'home' | 'call' | 'contacts' | 'messaging';
 
 const VIEWS = {
@@ -261,3 +263,13 @@ function TopBar(props: TopBarProps) {
     </header>
   );
 }
+
+//  if (!selection) {
+//       const { contacts } = useContactsList();
+//       if (contacts.length > 0) {
+//         const firstConv = contacts[0].conversationId;
+//         if (firstConv) {
+//           openConversation({ conversationId: firstConv });
+//         }
+//       }
+//     }
