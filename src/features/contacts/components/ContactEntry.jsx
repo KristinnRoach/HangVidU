@@ -1,9 +1,8 @@
 import { Show, onMount } from 'solid-js';
-import { dispatchCommand } from '../../shared/events/index.js';
-import { useI18n } from '../../shared/i18n/index.js';
-import { initIcons } from '../../components/base-legacy/icons.js';
-import PresenceIndicator from './presence/PresenceIndicator.jsx';
-import { StartCallButton } from '../../features/call/components/CallControls.jsx';
+import { dispatchCommand } from '../../../shared/events/index.js';
+import { useI18n } from '../../../shared/i18n/index.js';
+import PresenceIndicator from '../../../components/presence/PresenceIndicator.jsx';
+import { StartCallButton } from '../../call/components/CallControls.jsx';
 
 const MAX_CONTACT_NAME_CHARS = 18;
 
@@ -28,8 +27,6 @@ function shortName(name) {
 export default function ContactEntry(props) {
   const { t } = useI18n();
   let rootEl;
-
-  onMount(() => initIcons(rootEl));
 
   const displayName = () => props.name || t('contact.no_name');
   const callLabel = () => t('contact.action.call', { name: displayName() });

@@ -1,5 +1,5 @@
 import { createEffect, createSignal, onCleanup } from 'solid-js';
-import { watchUserPresence } from '../../../features/presence';
+import { watchUserPresence } from '../../features/presence/index.js';
 
 /**
  * Standalone presence dot. Given a userId, it watches that user's presence and

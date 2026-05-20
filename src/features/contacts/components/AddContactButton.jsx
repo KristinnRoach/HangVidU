@@ -1,16 +1,13 @@
 import { onMount } from 'solid-js';
-import { useI18n } from '../../shared/i18n/index.js';
+import { useI18n } from '../../../shared/i18n/index.js';
 import { UserPlus } from 'lucide-solid';
-
-import styles from '../TopBar.module.css';
 
 export default function AddContactButton() {
   const { t } = useI18n();
 
   async function handleClick() {
     try {
-      const { showAddContactModal } =
-        await import('../../features/contacts/index.js');
+      const { showAddContactModal } = await import('../index.js');
       await showAddContactModal();
     } catch (error) {
       console.error('[AddContactButton] failed to open modal:', error);

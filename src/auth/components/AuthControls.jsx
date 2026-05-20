@@ -1,16 +1,15 @@
 import { Show, createEffect, createMemo, createSignal } from 'solid-js';
-import { useAuth } from '../../auth/solid-auth.js';
+import { useAuth } from '../solid-auth.js';
 import {
   AUTH_COMMANDS,
   parseAuthLogoutRequested,
-} from '../../auth/auth-events-schema.js';
+} from '../auth-events-schema.js';
 import { dispatchCommand } from '../../shared/events/index.js';
 import { useI18n } from '../../shared/i18n/index.js';
 import GoogleSignInButton from './GoogleSignInButton.jsx';
 import { LogOut } from 'lucide-solid';
 
-// import './AuthControls.css';
-import styles from '../TopBar.module.css';
+import styles from '../../components/TopBar.module.css'; // Temp styles
 
 function smartTruncateName(fullName, maxLength = 20) {
   if (!fullName || fullName.length <= maxLength) {

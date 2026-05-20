@@ -5,14 +5,14 @@ import { useP2PContext } from '../shared/p2p-context.js';
 import { useAuth } from '../auth/solid-auth.js';
 
 import AppTitle from './app/AppTitle.jsx';
-import AuthControls from './auth/AuthControls.jsx';
-import AddContactButton from './contacts/AddContactButton.jsx';
+import AuthControls from '../auth/components/AuthControls.jsx';
+import AddContactButton from '../features/contacts/components/AddContactButton.jsx';
 import NotificationsToggle from './app/NotificationsToggle.jsx';
 import LegalFooter from './app/LegalFooter.jsx';
 import LocaleToggle from './app/LocaleToggle.jsx';
 
 import PublicHomepage from './app/PublicHomepage.jsx';
-import ContactsList from './contacts/ContactsList';
+import ContactsList from '../features/contacts/components/ContactsList.jsx';
 import ActiveCallRoom from '../features/call/components/ActiveCallRoom';
 import ConversationPanel from '../features/messaging-next/ConversationPanel';
 import CallDialogs from '../features/call/components/CallDialogs.jsx';

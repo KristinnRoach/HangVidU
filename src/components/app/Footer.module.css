@@ -6,23 +6,25 @@
   left: 8px;
   z-index: var(--z-high);
   padding: 5px 10px;
-  background: var(--bg-brighter);
   color: var(--text-secondary);
-  border: 1px solid var(--border-secondary);
-  border-radius: 10px;
   font-size: 12px;
   font-weight: bold;
   white-space: nowrap;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
 }
 
 .localeToggle:hover,
-.localeToggle:focus-visible {
+.localeToggle:focus-visible,
+.legalFooter:hover,
+.legalFooter:focus-visible {
+  /* background: var(--bg-darker); */
+  background: transparent;
   color: var(--text-primary);
   border-color: var(--color-primary);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
   outline: 1px solid var(--color-primary-subtle);
   outline-offset: 2px;
+  pointer-events: auto;
 }
 
 /* RIGHT SIDE */
@@ -31,6 +33,7 @@
   position: fixed;
   bottom: 4px;
   right: 8px;
+  height: 28px;
 
   display: flex;
   gap: 6px;
@@ -45,8 +48,8 @@
   font-family: sans-serif;
   pointer-events: none;
 
-  background-color: rgb(14, 14, 14);
-  height: 28px;
+  /* background: var(--bg-darker); */
+  background: transparent;
 }
 
 .legalFooter:hover,

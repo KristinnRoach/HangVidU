@@ -1,6 +1,6 @@
 import { createSignal, onCleanup, onMount } from 'solid-js';
-import { useI18n } from '../../shared/i18n/index.js';
-import { contactsService } from '../../features/contacts/index.js';
+import { useI18n } from '../../../shared/i18n/index.js';
+import { contactsService } from '../index.js';
 
 export default function SaveContactDialog(props) {
   const { t } = useI18n();

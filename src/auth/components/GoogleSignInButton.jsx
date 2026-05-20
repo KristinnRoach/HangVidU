@@ -1,8 +1,5 @@
 import { createEffect, onCleanup, onMount } from 'solid-js';
-import {
-  initOneTap,
-  renderGoogleSignInButton,
-} from '../../auth/onetap.js';
+import { initOneTap, renderGoogleSignInButton } from '../onetap.js';
 import { useI18n } from '../../shared/i18n/index.js';
 
 export default function GoogleSignInButton() {

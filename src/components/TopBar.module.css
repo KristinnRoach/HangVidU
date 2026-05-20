@@ -30,6 +30,8 @@
     white-space: nowrap;
     text-overflow: ellipsis;
     margin-right: 2px;
+    -webkit-user-select: none;
+    user-select: none;
 
     a:hover {
       cursor: default;

@@ -1,7 +1,7 @@
 import { onCleanup, onMount } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
-import { subscribe } from '../../shared/events/index.js';
-import { getAllContactsSorted } from '../../features/contacts/index.js';
+import { subscribe } from '../../../shared/events/index.js';
+import { getAllContactsSorted } from '../index.js';
 
 type ContactRow = {
   id: string;
