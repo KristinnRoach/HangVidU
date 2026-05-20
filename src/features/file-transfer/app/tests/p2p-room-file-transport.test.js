@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createEmbeddedChunkPacket } from '../chunk-processor.js';
-import { P2PRoomFileTransport } from './p2p-room-file-transport.js';
+import { createEmbeddedChunkPacket } from '../../core/chunk-processor.js';
+import { P2PRoomFileTransport } from '../transport/p2p-room-file-transport.js';
 
 function createRoom() {
   const listeners = new Map();

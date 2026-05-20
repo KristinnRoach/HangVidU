@@ -21,19 +21,20 @@ import CallDialogs from '../features/call/components/CallDialogs.jsx';
 import mainStyles from './MainContent.module.css';
 import topbarStyles from './TopBar.module.css';
 
+import { useP2PFileTransfer } from '../features/file-transfer/useP2PFileTransfer.js';
+
 // Legacy:
-import { useP2PFileTransferBridge } from '../features/file-transfer/useP2PFileTransferBridge.js';
+// import { useP2PFileTransferBridge } from '../features/file-transfer/useP2PFileTransferBridge.js';
 import {
   useLegacyI18nElements,
   useLegacyIcons,
-  useLegacyMessagesUIReady,
   useP2PRuntimeDiagnostics,
 } from '../app/useLegacyMountEffects.js';
-import { isMessagingNextEnabled } from '../features/messaging-next/feature-flag.js';
+
 import type { ConversationSelection } from '../features/messaging-next/interfaces.js';
 import type { UserId } from '../features/messaging-next/types.js';
 
-import { useContactsList } from './contacts/useContactsList.js';
+// import { useContactsList } from './contacts/useContactsList.js';
 
 // type ViewMode = 'home' | 'call' | 'contacts' | 'messaging';
 
@@ -46,8 +47,6 @@ const VIEWS = {
 
 type ViewMode = keyof typeof VIEWS;
 
-const messagingNext = isMessagingNextEnabled();
-
 export default function MainContent() {
   const p2p = useP2PContext();
   const { authState, isLoggedIn, isLoggingIn, isLoggingOut } = useAuth();
@@ -58,32 +57,11 @@ export default function MainContent() {
     createSignal<ConversationSelection | null>(null);
 
   function openConversation(selection: ConversationSelection) {
-    if (messagingNext) {
-      setSelectedConversation(selection);
-      if (selection.displayUI !== false) {
-        setActiveView('messaging');
-      }
-      return;
+    setSelectedConversation(selection);
+    if (selection.displayUI !== false) {
+      setActiveView('messaging');
     }
-
-    dispatchCommand('cmd:messaging:conversation:select', selection);
   }
-
-  onMount(() => {
-    if (!messagingNext) return;
-
-    // TODO: replace both dispatch and handler with { selectConversation } = useMessaging() ?
-    const ac = new AbortController();
-    handleCommand(
-      'cmd:messaging:conversation:select',
-      (selection: ConversationSelection) => {
-        openConversation(selection);
-      },
-      { signal: ac.signal },
-    );
-
-    onCleanup(() => ac.abort());
-  });
 
   // Active view - On p2p state changes:
   createEffect(() => {
@@ -111,6 +89,7 @@ export default function MainContent() {
   });
 
   // Active view - On auth state changes:
+  // TODO: Consider refactoring to use SolidJS Match + Switch
   createEffect(() => {
     // Uncomment for debugging:
     const prevView = activeView();
@@ -137,17 +116,8 @@ export default function MainContent() {
   // START - legacy setup, will be refactored:
   useLegacyI18nElements();
   useP2PRuntimeDiagnostics();
-  const messagesUIReady = useLegacyMessagesUIReady();
   useLegacyIcons();
-
-  if (!messagingNext) {
-    useP2PFileTransferBridge({
-      messagesUIReady,
-    });
-  }
   // END - legacy setup, will be refactored:
-
-  console.log('isloggedin', isLoggedIn());
 
   return (
     <div class={mainStyles.layoutWrapper}>
@@ -162,8 +132,7 @@ export default function MainContent() {
         <div id='lobby' class={mainStyles.lobby}>
           <CallDialogs />
 
-          {/* Currently using CSS display for exclusive rendering to keep stateful components mounted
-        TODO: Consider refactoring to use SolidJS Match + Switch */}
+          {/* Currently using CSS display for exclusive rendering (keeps stateful components mounted) */}
 
           <div
             hidden={activeView() !== 'home' || isLoggedIn()}
@@ -188,18 +157,15 @@ export default function MainContent() {
             <ContactsList onOpenConversation={openConversation} />
           </div>
 
-          <Show when={messagingNext}>
-            {/* TODO: remove "Show" when messaging-next is fully rolled out and legacy messaging UI is removed */}
-            <div
-              hidden={activeView() !== 'messaging'}
-              class={mainStyles.activeViewContainer}
-            >
-              <ConversationPanel
-                selection={selectedConversation()}
-                myUserId={(authState().user?.uid as UserId | undefined) ?? null}
-              />
-            </div>
-          </Show>
+          <div
+            hidden={activeView() !== 'messaging'}
+            class={mainStyles.activeViewContainer}
+          >
+            <ConversationPanel
+              selection={selectedConversation()}
+              myUserId={(authState().user?.uid as UserId | undefined) ?? null}
+            />
+          </div>
         </div>
       </main>
 

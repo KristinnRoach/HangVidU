@@ -1,13 +1,11 @@
-import { createSignal, onCleanup, onMount } from 'solid-js';
+import { onCleanup, onMount } from 'solid-js';
 import { setLogger } from '@kidlib/p2p';
 
 import { updateI18nElements, onLocaleChange } from '../shared/i18n/index.js';
 import { initIcons } from '../components/base-legacy/icons.js';
-import { initMessagesUI } from '../features/messaging/components/messages-ui.js';
 import { probeDefaultReceiveStore } from '../features/file-transfer/index.js';
 import { handleServiceWorkerNavigation } from '../setup/handleServiceWorkerNavigation.js';
 import { setupServiceWorkerNavigation } from '../setup/setupServiceWorkerNavigation.js';
-import { isMessagingNextEnabled } from '../features/messaging-next/feature-flag.js';
 
 export function useLegacyI18nElements() {
   let unsubscribeLocaleChange: (() => void) | undefined;
@@ -31,13 +29,10 @@ export function useP2PRuntimeDiagnostics() {
 }
 
 export function useLegacyMessagesUIReady() {
-  const [messagesUIReady, setMessagesUIReady] = createSignal(false);
   let cleanupServiceWorkerNavigation: (() => void) | undefined;
   let isDisposed = false;
 
   onMount(() => {
-    if (!isMessagingNextEnabled()) initMessagesUI();
-    setMessagesUIReady(true);
     setupServiceWorkerNavigation({
       handleServiceWorkerNavigation,
       waitUntilReady: Promise.resolve(),
@@ -61,7 +56,7 @@ export function useLegacyMessagesUIReady() {
     cleanupServiceWorkerNavigation?.();
   });
 
-  return messagesUIReady;
+  return true;
 }
 
 export function useLegacyIcons() {

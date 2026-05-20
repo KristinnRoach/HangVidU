@@ -1,5 +1,5 @@
-import { FileTransport } from './file-transport.js';
-import { TransferConfig } from '../config.js';
+import { FileTransport } from '../../core/transport/file-transport.js';
+import { TransferConfig } from '../../core/config.js';
 
 const BACKPRESSURE_THRESHOLD = TransferConfig.BACKPRESSURE_THRESHOLD;
 const FILE_META_TYPE = 'FILE_META';
@@ -20,7 +20,11 @@ export class P2PRoomFileTransport extends FileTransport {
   constructor({ room, memberId }) {
     super();
 
-    if (!room || typeof room.send !== 'function' || typeof room.on !== 'function') {
+    if (
+      !room ||
+      typeof room.send !== 'function' ||
+      typeof room.on !== 'function'
+    ) {
       throw new Error('P2PRoomFileTransport requires a p2p room');
     }
     if (!memberId || typeof memberId !== 'string') {
@@ -197,7 +201,10 @@ async function toArrayBuffer(data) {
   if (data instanceof ArrayBuffer) return data;
   if (data instanceof Blob) return data.arrayBuffer();
   if (ArrayBuffer.isView(data)) {
-    return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+    return data.buffer.slice(
+      data.byteOffset,
+      data.byteOffset + data.byteLength,
+    );
   }
   return null;
 }

@@ -13,7 +13,6 @@ import {
 
 import { getPushNotifications } from '../features/push-notifications/index.js';
 import { setUserOffline } from '../features/presence/index.js';
-import { isMessagingNextEnabled } from '../features/messaging-next/feature-flag.js';
 
 let isReady = false;
 let initPromise = null;
@@ -72,46 +71,6 @@ export function setupMainAppBusListeners() {
             return null;
           }
           return getContactByRoomId(roomId);
-        },
-        { signal: ac.signal },
-      );
-
-      if (!isMessagingNextEnabled()) handleCommand(
-        'cmd:messaging:conversation:select',
-        async ({
-          conversationId,
-          remoteParticipantIds = [],
-          displayUI = true,
-          contactNickName,
-        }) => {
-          try {
-            const contactId =
-              remoteParticipantIds.length === 1
-                ? remoteParticipantIds[0]
-                : null;
-            const providedContactNickName =
-              typeof contactNickName === 'string' && contactNickName.trim()
-                ? contactNickName.trim()
-                : null;
-            const localContact =
-              !providedContactNickName && contactId
-                ? getContactById(contactId)
-                : null;
-            const resolvedContactNickName = providedContactNickName
-              ? providedContactNickName
-              : localContact?.contactNickName || null;
-
-            await messagingController.selectConversation(conversationId, {
-              remoteParticipantIds,
-              displayUI,
-              contactNickName: resolvedContactNickName,
-            });
-          } catch (e) {
-            console.warn(
-              'Failed to select conversation on cmd:messaging:conversation:select:',
-              e,
-            );
-          }
         },
         { signal: ac.signal },
       );

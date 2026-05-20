@@ -5,9 +5,7 @@ import {
   isValidChunkIndex,
   convertToArrayBuffer,
 } from './chunk-processor.js';
-import { WebRTCFileTransport } from './transport/webrtc-file-transport.js';
 import { createMemoryReceiveStore } from './receive-stores/memory-receive-store.js';
-import { devDebug } from '../../../shared/utils/dev/dev-utils.js';
 
 const CHUNK_SIZE = TransferConfig.FILE_CONFIG.NETWORK_CHUNK_SIZE; // 64KB
 const CHUNK_YIELD_INTERVAL = TransferConfig.CHUNK_YIELD_INTERVAL; // null = disabled
@@ -15,12 +13,13 @@ const MAX_FILE_SIZE_MB = 5000;
 
 /**
  * @typedef {Object} FileTransferControllerOptions
- * @property {import('./transport/file-transport.js').FileTransport} [transport]
+ *
+ * @property {import('./transport/file-transport.js').FileTransport} transport
  * Transport used for raw file-transfer packets.
- * @property {{ pc: RTCPeerConnection, dataChannel: RTCDataChannel }} [webrtc]
- * Legacy convenience input used to create a WebRTCFileTransport.
+ *
  * @property {(metadata: Object) => Object} [createReceiveStore]
  * Creates storage for one incoming file.
+ *
  * @property {() => void|Promise<void>} [cleanupReceiveStores]
  * Optional app-level storage cleanup hook.
  */
@@ -36,33 +35,19 @@ const MAX_FILE_SIZE_MB = 5000;
 export class FileTransferController {
   /**
    * Create a controller over a transport or legacy WebRTC data channel.
-   * @param {FileTransferControllerOptions} [options]
+   * @param {FileTransferControllerOptions} options
    */
   constructor({
     transport,
-    webrtc,
     createReceiveStore = createMemoryReceiveStore,
     cleanupReceiveStores = null,
-  } = {}) {
-    if (transport) {
-      validateTransport(transport);
-      this.transport = transport;
-    } else {
-      const { pc, dataChannel } = webrtc || {};
-      if (!pc || !dataChannel) {
-        throw new Error(
-          'FileTransferController requires a transport or peerConnection and dataChannel',
-        );
-      }
-
-      this.transport = new WebRTCFileTransport(pc, dataChannel);
+  }) {
+    if (!transport) {
+      throw new Error('FileTransferController requires a transport');
     }
 
-    if (!this.transport) {
-      throw new Error(
-        'FileTransferController requires a transport or peerConnection and dataChannel',
-      );
-    }
+    validateTransport(transport);
+    this.transport = transport;
 
     if (typeof createReceiveStore !== 'function') {
       throw new Error(
@@ -131,7 +116,7 @@ export class FileTransferController {
       const chunk = await file.slice(start, end).arrayBuffer();
 
       if (i === 0) {
-        devDebug('[FileTransferController][SendTrace] First chunk ready', {
+        console.debug('[FileTransferController][SendTrace] First chunk ready', {
           elapsedMs: Math.round(performance.now() - sendStartMs),
           chunkBytes: chunk.byteLength,
         });

@@ -13,3 +13,5 @@ export {
   registerVideoForServing,
   unregisterVideo,
 } from './video-serving.js';
+
+export { P2PRoomFileTransport } from './transport/p2p-room-file-transport.js';

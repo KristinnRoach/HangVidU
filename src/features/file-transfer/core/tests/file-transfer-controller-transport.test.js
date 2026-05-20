@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FileTransferController } from './file-transfer-controller.js';
+import { FileTransferController } from '../file-transfer-controller.js';
 
 class FakeTransport {
   constructor() {
