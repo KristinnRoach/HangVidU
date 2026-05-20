@@ -210,7 +210,7 @@
   overflow-y: auto;
   overflow-x: hidden; /* Prevent horizontal scrolling */
 
-  background: var(--bg-elevated);
+  background: var(--bg-brighter);
   color: var(--text-secondary);
   padding: 6px;
 
@@ -476,7 +476,7 @@
   padding: 6px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-secondary);
-  background: var(--bg-elevated);
+  background: var(--bg-brighter);
   color: var(--text-primary);
   box-sizing: border-box;
   font-family: inherit;

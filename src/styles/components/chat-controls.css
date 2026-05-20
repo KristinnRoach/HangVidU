@@ -117,10 +117,14 @@
 
 /* Hide disabled buttons on mobile to save space */
 @media (max-width: 768px) {
-  button:disabled {
-    opacity: 0;
-    width: 0;
-    padding: 0;
-    overflow: hidden;
+  .chat-controls {
+    .chat-btn {
+      button:disabled {
+        opacity: 0;
+        width: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+    }
   }
 }

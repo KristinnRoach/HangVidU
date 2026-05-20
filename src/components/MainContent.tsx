@@ -122,43 +122,41 @@ export default function MainContent() {
       <div id='onetap-container' />
 
       <main id='main-content' class={mainStyles.mainContent}>
-        <div id='lobby' class={mainStyles.lobby}>
-          <CallDialogs />
+        <CallDialogs />
 
-          {/* Currently using CSS display for exclusive rendering (keeps stateful components mounted) */}
+        {/* Currently using CSS display for exclusive rendering (keeps stateful components mounted) */}
 
+        <div
+          hidden={activeView() !== 'home' || isLoggedIn()}
+          class={mainStyles.activeViewContainer}
+        >
+          <PublicHomepage />
+        </div>
+
+        <Show when={p2p.state() !== 'idle'}>
           <div
-            hidden={activeView() !== 'home' || isLoggedIn()}
+            hidden={activeView() !== 'call'}
             class={mainStyles.activeViewContainer}
           >
-            <PublicHomepage />
+            <ActiveCallRoom />
           </div>
+        </Show>
 
-          <Show when={p2p.state() !== 'idle'}>
-            <div
-              hidden={activeView() !== 'call'}
-              class={mainStyles.activeViewContainer}
-            >
-              <ActiveCallRoom />
-            </div>
-          </Show>
+        <div
+          hidden={activeView() !== 'contacts' || !isLoggedIn()}
+          class={mainStyles.activeViewContainer}
+        >
+          <ContactsList onOpenConversation={openConversation} />
+        </div>
 
-          <div
-            hidden={activeView() !== 'contacts' || !isLoggedIn()}
-            class={mainStyles.activeViewContainer}
-          >
-            <ContactsList onOpenConversation={openConversation} />
-          </div>
-
-          <div
-            hidden={activeView() !== 'messaging'}
-            class={mainStyles.activeViewContainer}
-          >
-            <ConversationPanel
-              selection={selectedConversation()}
-              myUserId={(authState().user?.uid as UserId | undefined) ?? null}
-            />
-          </div>
+        <div
+          hidden={activeView() !== 'messaging'}
+          class={mainStyles.activeViewContainer}
+        >
+          <ConversationPanel
+            selection={selectedConversation()}
+            myUserId={(authState().user?.uid as UserId | undefined) ?? null}
+          />
         </div>
       </main>
 

@@ -1,4 +1,6 @@
 .layoutWrapper {
+  background: var(--bg-primary);
+
   position: relative;
 
   display: flex;
@@ -19,20 +21,16 @@
   min-height: 0;
 }
 
-.lobby {
-  display: flex;
-  flex-direction: column;
-
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-
 .activeViewContainer {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 0;
+  margin-inline: auto;
+  overflow: hidden;
+
+  height: 100svh;
+  width: clamp(200px, 100%, 480px);
+
+  background: var(--bg-primary);
 }
 
 .activeViewContainer[hidden] {

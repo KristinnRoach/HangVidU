@@ -6,7 +6,7 @@
   left: 8px;
   z-index: var(--z-high);
   padding: 5px 10px;
-  background: var(--bg-elevated);
+  background: var(--bg-brighter);
   color: var(--text-secondary);
   border: 1px solid var(--border-secondary);
   border-radius: 10px;
@@ -20,7 +20,6 @@
 .localeToggle:hover,
 .localeToggle:focus-visible {
   color: var(--text-primary);
-  background: var(--bg-elevated);
   border-color: var(--color-primary);
   outline: 1px solid var(--color-primary-subtle);
   outline-offset: 2px;
@@ -46,14 +45,14 @@
   font-family: sans-serif;
   pointer-events: none;
 
-  background-color: rgb(0, 0, 0);
+  background-color: rgb(14, 14, 14);
+  height: 28px;
 }
 
 .legalFooter:hover,
 .legalFooter:focus-within {
   opacity: 0.9;
   pointer-events: auto;
-  background-color: rgb(0, 0, 0);
 }
 
 .legalFooterSeparator {
@@ -70,7 +69,6 @@
 
 .legalFooterLink:hover {
   color: var(--text-primary);
-  background: var(--bg-elevated);
   border-color: var(--color-primary);
   text-decoration: underline;
 }

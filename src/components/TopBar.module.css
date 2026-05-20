@@ -4,8 +4,8 @@
   display: grid;
   grid-template-columns: auto 1fr auto;
 
-  background: var(--bg-elevated);
-  box-shadow: var(--shadow-md);
+  background: inherit;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 
   position: relative;
   z-index: var(--z-mid);
@@ -132,6 +132,11 @@
   align-items: center;
   height: 100%;
   padding-right: 0.5rem;
+  icon {
+    color: var(--text-secondary) !important;
+    fill: var(--text-secondary) !important;
+    stroke: var(--text-secondary) !important;
+  }
 }
 
 .stickyRight button {
@@ -143,6 +148,8 @@
 
   font-size: 1.2rem;
   border-radius: 50%;
+
+  color: var(--text-secondary) !important;
 }
 
 .userInfo {
@@ -171,7 +178,7 @@
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: var(--bg-elevated);
+    background: var(--bg-brighter);
     font-size: 1.2rem;
     flex-shrink: 0;
   }

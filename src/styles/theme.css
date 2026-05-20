@@ -9,7 +9,10 @@
   --bg-primary: #1a1a1a;
   --bg-secondary: #2a2a2a;
   --bg-tertiary: #2d2d2d;
-  --bg-elevated: rgba(0, 0, 0, 0.5);
+
+  /* TODO: change to dark/light mode compatible naming  */
+  --bg-darker: rgba(0, 0, 0, 0.5);
+  --bg-brighter: rgba(255, 255, 255, 0.05);
 
   /* Text */
   --text-primary: #eee;
