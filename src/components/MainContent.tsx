@@ -1,9 +1,8 @@
-import { createSignal, Show, createEffect, onCleanup, onMount } from 'solid-js';
+import { createSignal, Show, createEffect } from 'solid-js';
 
-import { User, PhoneCall, MessageCircle, Mail } from 'lucide-solid';
+import { User, PhoneCall, Mail } from 'lucide-solid';
 import { useP2PContext } from '../shared/p2p-context.js';
 import { useAuth } from '../auth/solid-auth.js';
-import { dispatchCommand, handleCommand } from '../shared/events/index.js';
 
 import AppTitle from './app/AppTitle.jsx';
 import AuthControls from './auth/AuthControls.jsx';
@@ -21,22 +20,15 @@ import CallDialogs from '../features/call/components/CallDialogs.jsx';
 import mainStyles from './MainContent.module.css';
 import topbarStyles from './TopBar.module.css';
 
-import { useP2PFileTransfer } from '../features/file-transfer/useP2PFileTransfer.js';
+import type { ConversationSelection } from '../features/messaging-next/interfaces.js';
+import type { UserId } from '../features/messaging-next/types.js';
 
 // Legacy:
-// import { useP2PFileTransferBridge } from '../features/file-transfer/useP2PFileTransferBridge.js';
 import {
   useLegacyI18nElements,
   useLegacyIcons,
   useP2PRuntimeDiagnostics,
 } from '../app/useLegacyMountEffects.js';
-
-import type { ConversationSelection } from '../features/messaging-next/interfaces.js';
-import type { UserId } from '../features/messaging-next/types.js';
-
-// import { useContactsList } from './contacts/useContactsList.js';
-
-// type ViewMode = 'home' | 'call' | 'contacts' | 'messaging';
 
 const VIEWS = {
   home: PublicHomepage,
