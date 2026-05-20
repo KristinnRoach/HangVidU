@@ -118,6 +118,7 @@ export default function MainContent() {
         setActiveView={setActiveView}
         isInCall={p2p.state() !== 'idle'}
       />
+
       <div id='onetap-container' />
 
       <main id='main-content' class={mainStyles.mainContent}>
@@ -180,7 +181,7 @@ function TopBar(props: TopBarProps) {
 
   return (
     <header id='top-bar' class={topbarStyles.topBar}>
-      <div id='top-bar-left' class={`${topbarStyles.topBarLeft} animated-flex`}>
+      <div id='top-bar-left' class={`${topbarStyles.stickyLeft} animated-flex`}>
         <AppTitle />
         <AuthControls />
       </div>
@@ -190,6 +191,8 @@ function TopBar(props: TopBarProps) {
         {/* <button onClick={() => props.setActiveView?.('home')}>Home</button> */}
         <Show when={props.isInCall}>
           <button
+            type='button'
+            class={topbarStyles.navItem}
             title='View Active Call'
             onClick={() => props.setActiveView('call')}
           >
@@ -198,25 +201,40 @@ function TopBar(props: TopBarProps) {
         </Show>
 
         <Show when={isLoggedIn()} fallback={null}>
-          <button
-            title='Contacts'
-            onClick={() => props.setActiveView('contacts')}
-          >
-            <User />
-          </button>
-          <button
-            title='Messages'
-            onClick={() => props.setActiveView('messaging')}
-          >
-            <Mail />
-          </button>
+          <div class={topbarStyles.navItem}>
+            <button
+              type='button'
+              class={topbarStyles.navBtn}
+              title='Contacts'
+              onClick={() => props.setActiveView('contacts')}
+            >
+              <User />
+            </button>
+            <div
+              class={topbarStyles.toolbar}
+              hidden={props.activeView !== 'contacts'}
+            >
+              <AddContactButton />
+            </div>
+          </div>
+
+          <div class={topbarStyles.navItem}>
+            <button
+              type='button'
+              class={topbarStyles.navBtn}
+              title='Messages'
+              onClick={() => props.setActiveView('messaging')}
+            >
+              <Mail />
+            </button>
+          </div>
         </Show>
       </nav>
 
-      <div class={topbarStyles.topBarRight}>
-        {props.activeView === 'contacts' && <AddContactButton />}
+      {/* <YouTubeSearchControls /> */}
+
+      <div class={topbarStyles.stickyRight}>
         <NotificationsToggle />
-        {/* <YouTubeSearchControls /> */}
       </div>
     </header>
   );

@@ -23,8 +23,9 @@ export default function NotificationsToggle() {
     rootEl.setCount = setCount;
     rootEl.setUnread = setUnreadCount;
     rootEl.setManager = setManager;
+
     rootEl.show = () => {
-      rootEl.style.display = 'block';
+      rootEl.style.display = 'flex';
     };
     rootEl.hide = () => {
       rootEl.style.display = 'none';

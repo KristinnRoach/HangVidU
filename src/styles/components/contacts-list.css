@@ -46,8 +46,7 @@
         box-shadow: none;
         padding: 0.2rem;
         cursor: pointer;
-        color: rgb(74, 172, 74);
-        opacity: 0.85;
+        color: rgba(74, 172, 74, 0.9);
         flex-shrink: 0;
 
         & .lucide-icon {
@@ -59,8 +58,6 @@
       }
 
       & .contact-call-btn:hover {
-        opacity: 1;
-
         & .lucide-icon {
           opacity: 1;
           rotate: 15deg;

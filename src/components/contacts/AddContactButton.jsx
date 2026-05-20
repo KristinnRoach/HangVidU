@@ -2,6 +2,8 @@ import { onMount } from 'solid-js';
 import { useI18n } from '../../shared/i18n/index.js';
 import { UserPlus } from 'lucide-solid';
 
+import styles from '../TopBar.module.css';
+
 export default function AddContactButton() {
   const { t } = useI18n();
 
@@ -20,7 +22,6 @@ export default function AddContactButton() {
       type='button'
       title={t('a11y.add_contact')}
       aria-label={t('a11y.add_contact')}
-      class='add-contact-btn'
       id='add-contact-btn'
       onClick={handleClick}
     >

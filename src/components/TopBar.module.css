@@ -1,251 +1,148 @@
 /* ===== TOP BAR COMPONENT ===== */
 
-.topNav {
-  display: flex;
-  align-items: center;
-  justify-content: space-evenly;
-  flex: 1;
-  gap: 0.5rem;
-  padding: 0.5rem;
-  background-color: transparent;
-}
-
 .topBar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+
   background: var(--bg-elevated);
   box-shadow: var(--shadow-md);
 
   position: relative;
   z-index: var(--z-mid);
 
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-
-  margin: 0 auto;
-  padding: 0.75rem 0.5rem;
-
-  /* border: limegreen solid 2px; */
-
   width: 100svw;
+  max-width: 100svw;
   height: 50px;
+  line-height: 50px;
+
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity var(--duration-default) var(--easing-default),
+    transform var(--duration-default) var(--easing-default);
+
+  /* Logo placeholder (AppTitle.jsx) */
+  h1 {
+    font-family: 'Futura', 'Trebuchet MS', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 500;
+    letter-spacing: -0.15em;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    margin-right: 2px;
+
+    a:hover {
+      cursor: default;
+    }
+  }
+}
+
+.topBar > .topNav {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.topBar > .topNav > .navItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+}
+
+/* separator */
+.topBar > .topNav > .navItem:not(:first-child)::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 20%;
+  height: 60%;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.navItem > .toolbar[hidden] {
+  display: none;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50px);
+  max-width: 0;
+}
+
+.navItem .toolbar {
+  border-radius: var(--radius-lg);
+
+  display: flex;
+  opacity: 1;
+  transform: translateX(0);
+  max-width: 200px; /* ensure this is larger than the hidden button's actual width */
+  overflow: hidden;
 
   transition:
-    background-color var(--duration-default, 200ms) var(--easing-default, ease),
-    box-shadow var(--duration-default, 200ms) var(--easing-default, ease);
+    max-width 0.2s ease-out,
+    opacity 0.2s ease-out,
+    transform 0.2s ease-out,
+    display 0.2s ease-out allow-discrete;
+
+  button {
+    color: var(--color-primary);
+  }
+  button:hover {
+    color: var(--color-primary-hover);
+  }
 }
 
-/* Top Bar - Left Side Section (title and auth) */
-
-.topBarLeft {
-  display: flex;
-  flex-direction: row;
-  gap: 1rem;
-  width: fit-content;
-
-  transition: gap var(--duration-default, 200ms) var(--easing-default, ease);
-}
-
-/* App Title */
-
-#app-title-h1 {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  font-size: 2rem;
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-  transition: max-width var(--duration-default) var(--easing-default);
-  margin: 0 0;
-  padding: 0 0;
-  border: none;
-}
-
-#app-title-a {
-  color: var(--color-primary);
-  height: 100%;
-  max-width: 100%;
-  text-decoration: underline var(--color-primary-subtle);
-}
-
-#app-title-a:hover {
-  text-decoration: underline var(--color-primary-hover);
-  cursor: auto;
-}
-
-#app-title-a:active {
-  text-decoration: underline var(--color-primary-hover);
-  cursor: grabbing;
-}
-
-#app-title-span {
-  margin: 0;
-  padding: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-@media (max-width: 520px) {
+@starting-style {
   .topBar {
-    padding: 0.5rem 0;
+    opacity: 0;
+    transform: translateY(-50px);
   }
 
-  #app-title-h1 {
-    justify-content: flex-start;
-    align-items: center;
-    max-width: 0; /* Switch to 1.3ch to see only "H" */
+  .navItem .toolbar {
+    opacity: 0;
+    max-width: 0;
+    transform: translateX(-50px);
   }
 
-  #app-title-span {
-    display: block;
-  }
-
-  #app-title-a {
-    cursor: default;
-    text-decoration: none;
-  }
-}
-
-@media (max-width: 400px) {
-  .userName {
-    max-width: 0ch;
+  .authControls .userInfo {
+    opacity: 0;
+    transform: translateX(10px);
   }
 }
 
 .authControls {
   /* Uses auto-animate pattern from animations.css */
   display: flex;
-  gap: var(--spacing-sm, 0.5rem);
-  align-items: center;
-  width: fit-content;
-
-  & .userInfo {
-    @starting-style {
-      opacity: 0;
-      transform: translateX(10px);
-    }
-
-    transform: translateX(0);
-    transition: var(--transition-default);
-  }
-
-  & .loginBtn,
-  & .logoutBtn,
-  & .deleteAccountBtn {
-    /* Hidden by default */
-    opacity: 0;
-    display: none;
-    cursor: none;
-    pointer-events: none;
-    transform: translateX(0);
-    transition: var(--transition-default);
-
-    /* Only show when explicitly enabled */
-    &:enabled {
-      opacity: 1;
-      display: inline-block;
-      cursor: pointer;
-      pointer-events: auto;
-      transition:
-        opacity 500ms var(--easing-default) 100ms,
-        transform 500ms var(--easing-default) 100ms;
-
-      @starting-style {
-        opacity: 0;
-        transform: translateX(-25px);
-      }
-    }
-  }
-
-  /* Delete button gets warning color */
-  & .deleteAccountBtn {
-    /* Fallback for browsers without hsl(from ...) support */
-    background-color: rgba(220, 53, 69, 0.6);
-
-    &:active {
-      background-color: rgba(220, 53, 69, 0.3);
-    }
-
-    &:hover {
-      background-color: rgba(220, 53, 69, 0.7);
-    }
-
-    @supports (
-      background-color: hsl(from var(--color-danger, #dc3545) h s l / 0.6)
-    ) {
-      background-color: hsl(from var(--color-danger, #dc3545) h s l / 0.6);
-      &:active {
-        background-color: hsl(from var(--color-danger, #dc3545) h s l / 0.3);
-      }
-      &:hover {
-        background-color: hsl(from var(--color-danger, #dc3545) h s l / 0.7);
-      }
-    }
-  }
+  transform: translateX(0);
+  transition: var(--transition-default);
 }
 
-/* Top Bar - Right Side Section */
-
-.topBarRight {
+.stickyLeft {
   display: flex;
-  flex-direction: row;
   align-items: center;
-  gap: 1rem;
-  flex-shrink: 1;
-  min-width: 0;
-
-  /* border: solid red 3px; */
-
-  transition:
-    background-color var(--duration-default, 200ms) var(--easing-default, ease),
-    box-shadow var(--duration-default, 200ms) var(--easing-default, ease);
+  gap: 0.5rem;
+  height: 100%;
+  padding-left: 0.5rem;
 }
 
-/* Left to right element order of top-bar-right */
-
-.topBarRight .search-section {
-  order: 1;
+.stickyRight {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding-right: 0.5rem;
 }
 
-.topBarRight .add-contact-btn {
-  order: 2;
-}
-
-.topBarRight #main-messages-toggle-btn {
-  order: 3;
-}
-
-.topBarRight .notifications-toggle-container {
-  order: 4;
-}
-
-.topBarRight button,
-.topBarRight .notifications-toggle-btn {
+.stickyRight button {
   display: flex;
   align-items: center;
   justify-content: center;
-
-  padding: 0;
-  margin: 0;
-
   width: 40px;
   height: 40px;
 
   font-size: 1.2rem;
   border-radius: 50%;
-
-  background: transparent;
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease;
-}
-
-.topBarRight button:hover,
-.topBarRight .notifications-toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
 }
 
 .userInfo {
@@ -254,7 +151,8 @@
   gap: 0.5rem;
   font-size: 1rem;
   color: var(--text-secondary);
-  max-width: 250px;
+
+  flex: 1;
   min-width: 0;
 
   overflow: hidden;
@@ -282,24 +180,5 @@
     overflow-x: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-}
-
-#install-btn {
-  margin-right: 0.5rem;
-}
-
-/* ===== ACCESSIBILITY ===== */
-
-/* Respect reduced motion preference */
-@media (prefers-reduced-motion: reduce) {
-  .authControls > button {
-    transition: none;
-  }
-
-  .topBar,
-  .topBarRight,
-  #app-title-h1 {
-    transition: none;
   }
 }
