@@ -178,63 +178,68 @@ function TopBar(props: TopBarProps) {
   const { isLoggedIn } = useAuth();
 
   return (
-    <header id='top-bar' class={topbarStyles.topBar}>
-      <div id='top-bar-left' class={`${topbarStyles.stickyLeft} animated-flex`}>
-        <AppTitle />
-        <AuthControls />
-      </div>
+    <Show when={!props.isInCall}>
+      <header id='top-bar' class={topbarStyles.topBar}>
+        <div
+          id='top-bar-left'
+          class={`${topbarStyles.stickyLeft} animated-flex`}
+        >
+          <AppTitle />
+          <AuthControls />
+        </div>
 
-      {/* Temp Navigation/Test buttons to demonstrate switching */}
-      <nav class={topbarStyles.topNav}>
-        {/* <button onClick={() => props.setActiveView?.('home')}>Home</button> */}
-        <Show when={props.isInCall}>
-          <button
-            type='button'
-            class={topbarStyles.navItem}
-            title='View Active Call'
-            onClick={() => props.setActiveView('call')}
-          >
-            <PhoneCall />
-          </button>
-        </Show>
-
-        <Show when={isLoggedIn()} fallback={null}>
-          <div class={topbarStyles.navItem}>
+        {/* Temp Navigation/Test buttons to demonstrate switching */}
+        <nav class={topbarStyles.topNav}>
+          {/* <button onClick={() => props.setActiveView?.('home')}>Home</button> */}
+          <Show when={props.isInCall}>
             <button
               type='button'
-              class={topbarStyles.navBtn}
-              title='Contacts'
-              onClick={() => props.setActiveView('contacts')}
+              class={topbarStyles.navItem}
+              title='View Active Call'
+              onClick={() => props.setActiveView('call')}
             >
-              <User />
+              <PhoneCall />
             </button>
-            <div
-              class={topbarStyles.toolbar}
-              hidden={props.activeView !== 'contacts'}
-            >
-              <AddContactButton />
+          </Show>
+
+          <Show when={isLoggedIn()} fallback={null}>
+            <div class={topbarStyles.navItem}>
+              <button
+                type='button'
+                class={topbarStyles.navBtn}
+                title='Contacts'
+                onClick={() => props.setActiveView('contacts')}
+              >
+                <User />
+              </button>
+              <div
+                class={topbarStyles.toolbar}
+                hidden={props.activeView !== 'contacts'}
+              >
+                <AddContactButton />
+              </div>
             </div>
-          </div>
 
-          <div class={topbarStyles.navItem}>
-            <button
-              type='button'
-              class={topbarStyles.navBtn}
-              title='Messages'
-              onClick={() => props.setActiveView('messaging')}
-            >
-              <Mail />
-            </button>
-          </div>
-        </Show>
-      </nav>
+            <div class={topbarStyles.navItem}>
+              <button
+                type='button'
+                class={topbarStyles.navBtn}
+                title='Messages'
+                onClick={() => props.setActiveView('messaging')}
+              >
+                <Mail />
+              </button>
+            </div>
+          </Show>
+        </nav>
 
-      {/* <YouTubeSearchControls /> */}
+        {/* <YouTubeSearchControls /> */}
 
-      <div class={topbarStyles.stickyRight}>
-        <NotificationsToggle />
-      </div>
-    </header>
+        <div class={topbarStyles.stickyRight}>
+          <NotificationsToggle />
+        </div>
+      </header>
+    </Show>
   );
 }
 

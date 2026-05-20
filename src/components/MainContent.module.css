@@ -1,6 +1,10 @@
 .layoutWrapper {
-  background: var(--bg-primary);
-
+  background: linear-gradient(
+    180deg,
+    rgba(18, 66, 116, 0.8) 0%,
+    rgba(20, 65, 112, 0.6) 50%,
+    rgba(25, 62, 101, 0.8) 100%
+  );
   position: relative;
 
   display: flex;
@@ -30,7 +34,7 @@
   height: 100svh;
   width: clamp(200px, 100%, 480px);
 
-  background: var(--bg-primary);
+  background: var(--bg-darker);
 }
 
 .activeViewContainer[hidden] {
