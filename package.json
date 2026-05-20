@@ -46,7 +46,8 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "check-deps": "pnpm why glob pnpm why node-domexception pnpm why source-map pnpm why sourcemap-codec"
   },
   "repository": {
     "type": "git",
@@ -90,7 +91,7 @@
   },
   "dependencies": {
     "@kidlib/create-component": "^0.1.5",
-    "@kidlib/p2p": "^0.1.9",
+    "@kidlib/p2p": "^0.1.10",
     "@mediabunny/ac3": "^1.40.1",
     "@sentry/browser": "^10.49.0",
     "dexie": "^4.4.2",

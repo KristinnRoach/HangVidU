@@ -27,7 +27,7 @@ describe('createFirebaseRoomSignaling', () => {
     vi.clearAllMocks();
   });
 
-  it('cleans up local presence and tracked pair signaling data on close', async () => {
+  it('cleans up local presence and tracked pair signaling data on cleanup', async () => {
     const signaling = createFirebaseRoomSignaling({ roomId: 'room-1' });
 
     await signaling.join('peer-a');
@@ -36,7 +36,7 @@ describe('createFirebaseRoomSignaling', () => {
       remotePeerId: 'peer-b',
     });
     await pairSignaling.sendOffer({ type: 'offer', sdp: 'sdp' });
-    await signaling.close();
+    await signaling.cleanupSignaling();
 
     expect(mocks.remove).toHaveBeenCalledWith({
       path: 'rooms/room-1/p2pSignaling/pairs/peer-a:peer-b',
