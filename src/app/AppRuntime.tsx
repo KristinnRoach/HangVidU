@@ -1,7 +1,7 @@
 import { createResource, onCleanup, Suspense } from 'solid-js';
 import type { JSX } from 'solid-js';
 
-import { setupSolidAuthState } from '../auth/solid-auth.js';
+import { AuthProvider } from '../auth/solid-auth';
 import { messagingController } from '../features/messaging/messaging-controller.js';
 import { setupMessagingAppBusHandlers } from '../features/messaging/messaging-command-handlers.js';
 import { initPushNotifications } from '../features/push-notifications/push-notifications.js';
@@ -51,7 +51,6 @@ async function initializeAppRuntime(): Promise<Cleanup> {
 
     cleanupFns.push(await setupAuth());
     cleanupFns.push(await setupContacts());
-    cleanupFns.push(setupSolidAuthState());
     cleanupFns.push(await setupMainAppBusListeners());
     cleanupFns.push(await setupNotificationsHandlers());
     cleanupFns.push(setupMessagingContactsIntegration());
@@ -78,7 +77,9 @@ export function AppRuntime(props: { children: JSX.Element }) {
 
   return (
     <Suspense fallback={<LoadingScreen />}>
-      <RuntimeReady>{props.children}</RuntimeReady>
+      <RuntimeReady>
+        <AuthProvider>{props.children}</AuthProvider>
+      </RuntimeReady>
     </Suspense>
   );
 }

@@ -3,7 +3,7 @@ import { createAutoHide } from '../shared/createAutoHide';
 
 import { User, PhoneCall, Mail } from 'lucide-solid';
 import { useP2PContext } from '../shared/p2p-context.js';
-import { useAuth } from '../auth/solid-auth.js';
+import { useAuth } from '../auth/solid-auth';
 
 import AppTitle from './app/AppTitle.jsx';
 import AuthControls from '../auth/components/AuthControls.jsx';
@@ -37,7 +37,8 @@ type ViewMode = 'home' | 'call' | 'contacts' | 'messaging';
 
 export default function MainContent() {
   const p2p = useP2PContext();
-  const { authState, isLoggedIn, isLoggingIn, isLoggingOut } = useAuth();
+  const { isAuthReady, user, isLoggedIn, isLoggingIn, isLoggingOut } =
+    useAuth();
 
   const [userView, setUserView] = createSignal<ViewMode>('contacts');
   const [selectedConversation, setSelectedConversation] =
@@ -91,63 +92,82 @@ export default function MainContent() {
 
   return (
     <div class={mainStyles.layoutWrapper}>
-      <TopBar
-        activeView={activeView()}
-        setActiveView={navigate}
-        isInCall={p2p.state() !== 'idle'}
-        visible={headerVisible()}
-      />
+      <LoadBoundary
+        loading={!isAuthReady()}
+        fallback={
+          <div class={mainStyles.loading}>
+            <Spinner />
+          </div>
+        }
+      >
+        <TopBar
+          activeView={activeView()}
+          setActiveView={navigate}
+          isInCall={p2p.state() !== 'idle'}
+          visible={headerVisible()}
+        />
 
-      <div id='onetap-container' />
+        <div id='onetap-container' />
 
-      <main id='main-content' class={mainStyles.mainContent}>
-        <CallDialogs />
+        <main id='main-content' class={mainStyles.mainContent}>
+          <CallDialogs />
 
-        {/* CSS display toggles keep stateful views mounted across nav. */}
+          {/* CSS display toggles keep stateful views mounted across nav. */}
 
-        <div
-          hidden={activeView() !== 'home'}
-          class={mainStyles.activeViewContainer}
-        >
-          <PublicHomepage />
-        </div>
-        <Show when={p2p.state() !== 'idle'}>
-          <div class={mainStyles.activeViewContainer}>
-            <LoadBoundary
-              loading={isConnecting()}
+          <div
+            hidden={activeView() !== 'home'}
+            class={mainStyles.activeViewContainer}
+          >
+            <PublicHomepage />
+          </div>
+          <Show when={p2p.state() !== 'idle'}>
+            <div class={mainStyles.activeViewContainer}>
+              <LoadBoundary
+                loading={isConnecting()}
+                fallback={
+                  <div class={mainStyles.callLoading}>
+                    <Spinner />
+                  </div>
+                }
+              >
+                <ActiveCallRoom />
+              </LoadBoundary>
+            </div>
+          </Show>
+
+          <div
+            hidden={activeView() !== 'contacts'}
+            class={mainStyles.activeViewContainer}
+          >
+            <ContactsList onOpenConversation={openConversation} />
+          </div>
+
+          <div
+            hidden={activeView() !== 'messaging'}
+            class={mainStyles.activeViewContainer}
+          >
+            <Show
+              when={user()}
               fallback={
-                <div class={mainStyles.callLoading}>
-                  <Spinner size={48} />
+                <div>
+                  DEBUG: user() is null! Should not happen since this is inside
+                  LoadingBoundary waiting for isAuthReady{' '}
                 </div>
               }
             >
-              <ActiveCallRoom />
-            </LoadBoundary>
+              <ConversationPanel
+                selection={selectedConversation()}
+                myUserId={(user().uid as UserId | undefined) ?? null}
+              />
+            </Show>
           </div>
+        </main>
+
+        <Show when={activeView() === 'home' || activeView() === 'contacts'}>
+          <LegalFooter />
+          <LocaleToggle />
         </Show>
-
-        <div
-          hidden={activeView() !== 'contacts'}
-          class={mainStyles.activeViewContainer}
-        >
-          <ContactsList onOpenConversation={openConversation} />
-        </div>
-
-        <div
-          hidden={activeView() !== 'messaging'}
-          class={mainStyles.activeViewContainer}
-        >
-          <ConversationPanel
-            selection={selectedConversation()}
-            myUserId={(authState().user?.uid as UserId | undefined) ?? null}
-          />
-        </div>
-      </main>
-
-      <Show when={activeView() === 'home' || activeView() === 'contacts'}>
-        <LegalFooter />
-        <LocaleToggle />
-      </Show>
+      </LoadBoundary>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { Show, createEffect, createMemo, createSignal } from 'solid-js';
-import { useAuth } from '../solid-auth.js';
+import { useAuth } from '../solid-auth';
 import {
   AUTH_COMMANDS,
   parseAuthLogoutRequested,
@@ -26,10 +26,8 @@ function smartTruncateName(fullName, maxLength = 20) {
 
 export default function AuthControls() {
   const { t } = useI18n();
-  const { isLoggedIn, status, user } = useAuth();
+  const { isLoggedIn, isLoading, user } = useAuth();
   const [avatarFailed, setAvatarFailed] = createSignal(false);
-
-  const isLoading = () => status() === 'loading';
 
   // TODO: Decide whether to show name, for now just showing avatar
   const displayName = createMemo(() => {
