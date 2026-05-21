@@ -33,15 +33,9 @@ importers:
       '@sentry/browser':
         specifier: ^10.49.0
         version: 10.49.0
-      dexie:
-        specifier: ^4.4.2
-        version: 4.4.2
       firebase:
         specifier: ^12.12.0
         version: 12.12.0
-      lucide:
-        specifier: ^1.8.0
-        version: 1.8.0
       lucide-solid:
         specifier: ^1.16.0
         version: 1.16.0(solid-js@1.9.12)
@@ -2066,9 +2060,6 @@ packages:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
 
-  dexie@4.4.2:
-    resolution: {integrity: sha512-zMtV8q79EFE5U8FKZvt0Y/77PCU/Hr/RDxv1EDeo228L+m/HTbeN2AjoQm674rhQCX8n3ljK87lajt7UQuZfvw==}
-
   dom-accessibility-api@0.5.16:
     resolution: {integrity: sha512-X7BJ2yElsnOJ30pZF4uIIDfBEVgF4XEBxL9Bxhy6dnrm5hkzqmsWHGTiHqRiITNhMyFLyAiWndIJP7Z1NTteDg==}
 
@@ -2974,9 +2965,6 @@ packages:
     resolution: {integrity: sha512-GNmq56033vcjPnmFYwzji+8wkRZxBhDT1p+dzSI7+DeFQXzitStLovrtiC4l61Kbk7X2R+abIDIYAJM99ONKMQ==}
     peerDependencies:
       solid-js: ^1.4.7
-
-  lucide@1.8.0:
-    resolution: {integrity: sha512-JjV/QnadgFLj1Pyu9IKl0lknrolFEzo04B64QcYLLeRzZl/iEHpdbSrRRKbyXcv45SZNv+WGjIUCT33e7xHO6Q==}
 
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
@@ -6179,8 +6167,6 @@ snapshots:
   detect-libc@2.1.2:
     optional: true
 
-  dexie@4.4.2: {}
-
   dom-accessibility-api@0.5.16: {}
 
   dunder-proto@1.0.1:
@@ -7303,8 +7289,6 @@ snapshots:
   lucide-solid@1.16.0(solid-js@1.9.12):
     dependencies:
       solid-js: 1.9.12
-
-  lucide@1.8.0: {}
 
   lz-string@1.5.0: {}
 
