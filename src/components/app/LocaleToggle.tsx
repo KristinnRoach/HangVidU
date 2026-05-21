@@ -6,7 +6,7 @@ export default function LocaleToggle() {
 
   async function toggleLocale() {
     const nextLocale = locale() === 'en' ? 'is' : 'en';
-    await setLocale(nextLocale);
+    setLocale(nextLocale);
   }
 
   return (

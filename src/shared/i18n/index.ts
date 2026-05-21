@@ -1,23 +1,27 @@
-import { batch, createSignal } from 'solid-js';
+import { createSignal } from 'solid-js';
 
 import en from './en.json';
+import is from './is.json';
 
 export type MessageKey = keyof typeof en;
 export type Locale = 'en' | 'is';
 export type MessageParams = Record<string, string | number>;
 
 const STORAGE_KEY = 'locale';
+const DICTS = { en, is } as const satisfies Record<Locale, Record<string, string>>;
 
-const loaders: Record<Locale, () => Promise<{ default: Record<string, string> }>> = {
-  en: () => import('./en.json'),
-  is: () => import('./is.json'),
-};
+function readSavedLocale(): Locale {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved === 'en' || saved === 'is' ? saved : 'en';
+  } catch (e) {
+    console.warn('[i18n] Failed to read saved locale:', e);
+    return 'en';
+  }
+}
 
-const [currentLocale, setCurrentLocale] = createSignal<Locale>('en');
-const [dict, setDict] = createSignal<Record<string, string>>({});
+const [locale, setLocaleSignal] = createSignal<Locale>(readSavedLocale());
 const listeners = new Set<(locale: Locale) => void>();
-let initPromise: Promise<void> | null = null;
-let initialized = false;
 
 function formatMessage(str: string, params?: MessageParams) {
   if (!params) return str;
@@ -34,78 +38,44 @@ export function onLocaleChange(cb: (locale: Locale) => void) {
 function notify() {
   for (const cb of listeners) {
     try {
-      cb(currentLocale());
+      cb(locale());
     } catch (e) {
-      console.error('[i18n]: Error in locale change listener:', e);
+      console.error('[i18n] Error in locale change listener:', e);
     }
   }
-}
-
-export async function initI18n() {
-  if (initialized) return;
-  if (initPromise) return initPromise;
-
-  initPromise = (async () => {
-    let saved: string | null = null;
-    try {
-      saved = localStorage.getItem(STORAGE_KEY);
-    } catch (e) {
-      console.warn('Failed to read saved locale from localStorage:', e);
-    }
-    // Default to 'en' until Icelandic translations are complete
-    await setLocale((saved as Locale) || 'en');
-    initialized = true;
-  })().finally(() => {
-    initPromise = null;
-  });
-
-  return initPromise;
 }
 
 export function getLocale(): Locale {
-  return currentLocale();
+  return locale();
 }
 
-export async function setLocale(locale: Locale | string) {
-  const next: Locale =
-    locale === 'en' || locale === 'is' ? locale : 'en';
-
+export function setLocale(next: Locale | string) {
+  const n: Locale = next === 'en' || next === 'is' ? next : 'en';
+  if (n === locale()) return;
+  setLocaleSignal(n);
   try {
-    const mod = await loaders[next]();
-    const newDict = (mod.default || mod) as Record<string, string>;
-    batch(() => {
-      setDict(newDict);
-      setCurrentLocale(next);
-    });
-    try {
-      localStorage.setItem(STORAGE_KEY, next);
-    } catch (e) {
-      console.warn('Failed to persist locale:', e);
-    }
-    notify();
-  } catch (error) {
-    console.error(`Failed to load locale "${next}":`, error);
-    if (next !== 'en') {
-      return setLocale('en');
-    }
+    localStorage.setItem(STORAGE_KEY, n);
+  } catch (e) {
+    console.warn('[i18n] Failed to persist locale:', e);
   }
+  notify();
 }
 
 export function t<K extends MessageKey>(key: K, params?: MessageParams): string;
 export function t(key: string, params?: MessageParams): string;
 export function t(key: string, params?: MessageParams): string {
-  const str = dict()[key] || key;
-  return formatMessage(str, params);
+  const dict = DICTS[locale()] as Record<string, string>;
+  return formatMessage(dict[key] ?? key, params);
 }
 
 /**
  * Solid-facing i18n helpers.
- * The shared `t()` is reactive (reads the `dict` signal) — calling it
- * inside JSX or a Solid memo will re-run when the locale changes.
+ * `t()` reads the `locale` signal, so calling it inside JSX or a memo
+ * will re-run when the locale changes.
  */
 export function useI18n() {
   return {
-    locale: currentLocale,
+    locale,
     setLocale,
     t,
   };
