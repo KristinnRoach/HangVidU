@@ -21,6 +21,20 @@
     opacity var(--duration-default) var(--easing-default),
     transform var(--duration-default) var(--easing-default);
 
+  &.hidden {
+    opacity: 0;
+    transform: translateY(-100%);
+    pointer-events: none;
+  }
+
+  /* Float over content (e.g. full-bleed video during a call) instead of
+     occupying layout space. */
+  &.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
   /* Logo placeholder (AppTitle.jsx) */
   h1 {
     font-family: 'Futura', 'Trebuchet MS', sans-serif;

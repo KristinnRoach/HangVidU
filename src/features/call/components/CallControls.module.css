@@ -5,6 +5,19 @@
   transform: translateX(-50%);
   z-index: 1;
 
+  display: flex;
+  gap: var(--gap);
+
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+
+  &.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(20px);
+  }
+
   button {
     display: flex;
     align-items: center;
@@ -22,6 +35,10 @@
 
     &.hangup {
       background-color: rgb(216, 0, 0);
+    }
+
+    &.off {
+      background-color: rgba(0, 0, 0, 0.55);
     }
 
     &:hover {

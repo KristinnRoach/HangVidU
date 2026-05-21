@@ -1,4 +1,5 @@
-import { createSignal, Show, createEffect } from 'solid-js';
+import { createSignal, createMemo, createEffect, on, Show } from 'solid-js';
+import { createAutoHide } from '../shared/createAutoHide';
 
 import { User, PhoneCall, Mail } from 'lucide-solid';
 import { useP2PContext } from '../shared/p2p-context.js';
@@ -16,6 +17,8 @@ import ContactsList from '../features/contacts/components/ContactsList.jsx';
 import ActiveCallRoom from '../features/call/components/ActiveCallRoom';
 import ConversationPanel from '../features/messaging-next/ConversationPanel';
 import CallDialogs from '../features/call/components/CallDialogs.jsx';
+import { LoadBoundary } from './app/LoadBoundary';
+import { Spinner } from './app/Spinner';
 
 import mainStyles from './MainContent.module.css';
 import topbarStyles from './TopBar.module.css';
@@ -30,80 +33,55 @@ import {
   useP2PRuntimeDiagnostics,
 } from '../app/useLegacyMountEffects.js';
 
-const VIEWS = {
-  home: PublicHomepage,
-  call: ActiveCallRoom,
-  contacts: ContactsList,
-  messaging: ConversationPanel,
-} as const;
-
-type ViewMode = keyof typeof VIEWS;
+type ViewMode = 'home' | 'call' | 'contacts' | 'messaging';
 
 export default function MainContent() {
   const p2p = useP2PContext();
   const { authState, isLoggedIn, isLoggingIn, isLoggingOut } = useAuth();
-  const initialView: ViewMode = isLoggedIn() ? 'contacts' : 'home';
 
-  const [activeView, setActiveView] = createSignal<ViewMode>(initialView);
+  const [userView, setUserView] = createSignal<ViewMode>('contacts');
   const [selectedConversation, setSelectedConversation] =
     createSignal<ConversationSelection | null>(null);
 
-  function openConversation(selection: ConversationSelection) {
-    setSelectedConversation(selection);
-    if (selection.displayUI !== false) {
-      setActiveView('messaging');
-    }
+  // Switch into the call view on call-start, and out on call-end.
+  // Edge-triggered: doesn't override user nav while a call is ongoing.
+  createEffect(
+    on(
+      () => p2p.state(),
+      (state, prev) => {
+        if (state !== 'idle' && prev !== 'joined') {
+          setUserView('call');
+        } else if (prev === 'joined' && state !== 'joined') {
+          setUserView((v) => (v === 'call' ? 'contacts' : v));
+        }
+      },
+    ),
+  );
+
+  // Sanitize against auth + p2p. TODO: replace transition cases with
+  // proper Loading UI.
+  const activeView = createMemo<ViewMode>(() => {
+    if (isLoggingOut()) return 'home';
+    if (!isLoggedIn() && !isLoggingIn()) return 'home';
+    if (userView() === 'call' && p2p.state() === 'idle') return 'contacts';
+    return userView();
+  });
+
+  function navigate(view: ViewMode) {
+    setUserView(view);
   }
 
-  // Active view - On p2p state changes:
-  createEffect(() => {
-    // Uncomment for debugging:
-    const prevView = activeView();
-    console.warn('P2P state:', p2p.state());
-    console.warn('View:', prevView);
+  function openConversation(selection: ConversationSelection) {
+    setSelectedConversation(selection);
+    if (selection.displayUI !== false) setUserView('messaging');
+  }
 
-    // On call join:
-    const justJoinedCall = p2p.state() === 'joined' && prevView !== 'call';
-    if (justJoinedCall) {
-      setActiveView('call');
-    }
-    // On call end:
-    const justLeftCall = p2p.state() === 'closed' && prevView === 'call';
-    if (justLeftCall) {
-      // setActiveView(isLoggedIn() ? 'contacts' : 'home'); // avoid using auth state here?
-      setActiveView('contacts');
-    }
+  const headerVisible = createAutoHide(3000, () => p2p.state() !== 'idle');
 
-    // Uncomment for debugging:
-    const wasViewChanged = prevView !== activeView();
-    wasViewChanged && console.warn('View: UPDATED', activeView());
-    !wasViewChanged && console.warn('View: NO-OP');
-  });
-
-  // Active view - On auth state changes:
-  // TODO: Consider refactoring to use SolidJS Match + Switch
-  createEffect(() => {
-    // Uncomment for debugging:
-    const prevView = activeView();
-    console.warn('Auth state:', authState().status);
-    console.warn('View:', prevView);
-
-    // TODO: Replace this with proper Loading UI
-    isLoggingIn() && setActiveView('contacts');
-    isLoggingOut() && setActiveView('home');
-
-    // Not in a call:
-    if (isLoggedIn()) {
-      setActiveView((prev) => (prev === 'home' ? 'contacts' : prev));
-    } else {
-      setActiveView((prev) => (prev === 'contacts' ? 'home' : prev));
-    }
-
-    // Uncomment for debugging:
-    const wasViewChanged = prevView !== activeView();
-    wasViewChanged && console.warn('View: UPDATED', activeView());
-    !wasViewChanged && console.warn('View: NO-OP');
-  });
+  const isConnecting = () => {
+    const s = p2p.state();
+    return s === 'creating' || s === 'watching' || s === 'joining';
+  };
 
   // START - legacy setup, will be refactored:
   useLegacyI18nElements();
@@ -115,8 +93,9 @@ export default function MainContent() {
     <div class={mainStyles.layoutWrapper}>
       <TopBar
         activeView={activeView()}
-        setActiveView={setActiveView}
+        setActiveView={navigate}
         isInCall={p2p.state() !== 'idle'}
+        visible={headerVisible()}
       />
 
       <div id='onetap-container' />
@@ -124,26 +103,31 @@ export default function MainContent() {
       <main id='main-content' class={mainStyles.mainContent}>
         <CallDialogs />
 
-        {/* Currently using CSS display for exclusive rendering (keeps stateful components mounted) */}
+        {/* CSS display toggles keep stateful views mounted across nav. */}
 
         <div
-          hidden={activeView() !== 'home' || isLoggedIn()}
+          hidden={activeView() !== 'home'}
           class={mainStyles.activeViewContainer}
         >
           <PublicHomepage />
         </div>
-
         <Show when={p2p.state() !== 'idle'}>
-          <div
-            hidden={activeView() !== 'call'}
-            class={mainStyles.activeViewContainer}
-          >
-            <ActiveCallRoom />
+          <div class={mainStyles.activeViewContainer}>
+            <LoadBoundary
+              loading={isConnecting()}
+              fallback={
+                <div class={mainStyles.callLoading}>
+                  <Spinner size={48} />
+                </div>
+              }
+            >
+              <ActiveCallRoom />
+            </LoadBoundary>
           </div>
         </Show>
 
         <div
-          hidden={activeView() !== 'contacts' || !isLoggedIn()}
+          hidden={activeView() !== 'contacts'}
           class={mainStyles.activeViewContainer}
         >
           <ContactsList onOpenConversation={openConversation} />
@@ -172,74 +156,78 @@ interface TopBarProps {
   activeView: ViewMode;
   setActiveView: (view: ViewMode) => void;
   isInCall: boolean;
+  visible: boolean;
 }
 
 function TopBar(props: TopBarProps) {
   const { isLoggedIn } = useAuth();
 
   return (
-    <Show when={!props.isInCall}>
-      <header id='top-bar' class={topbarStyles.topBar}>
-        <div
-          id='top-bar-left'
-          class={`${topbarStyles.stickyLeft} animated-flex`}
-        >
-          <AppTitle />
-          <AuthControls />
-        </div>
+    <header
+      id='top-bar'
+      class={topbarStyles.topBar}
+      classList={{
+        [topbarStyles.hidden]: !props.visible,
+        [topbarStyles.overlay]: props.isInCall,
+      }}
+    >
+      <div id='top-bar-left' class={`${topbarStyles.stickyLeft} animated-flex`}>
+        <AppTitle />
+        <AuthControls />
+      </div>
 
-        {/* Temp Navigation/Test buttons to demonstrate switching */}
-        <nav class={topbarStyles.topNav}>
-          {/* <button onClick={() => props.setActiveView?.('home')}>Home</button> */}
-          <Show when={props.isInCall}>
+      {/* Temp Navigation/Test buttons to demonstrate switching */}
+      <nav class={topbarStyles.topNav}>
+        {/* <button onClick={() => props.setActiveView?.('home')}>Home</button> */}
+
+        <Show when={isLoggedIn()} fallback={null}>
+          <div class={topbarStyles.navItem}>
             <button
               type='button'
-              class={topbarStyles.navItem}
-              title='View Active Call'
-              onClick={() => props.setActiveView('call')}
+              class={topbarStyles.navBtn}
+              title='Contacts'
+              onClick={() => props.setActiveView('contacts')}
             >
-              <PhoneCall />
+              <User />
             </button>
-          </Show>
-
-          <Show when={isLoggedIn()} fallback={null}>
-            <div class={topbarStyles.navItem}>
-              <button
-                type='button'
-                class={topbarStyles.navBtn}
-                title='Contacts'
-                onClick={() => props.setActiveView('contacts')}
-              >
-                <User />
-              </button>
-              <div
-                class={topbarStyles.toolbar}
-                hidden={props.activeView !== 'contacts'}
-              >
-                <AddContactButton />
-              </div>
+            <div
+              class={topbarStyles.toolbar}
+              hidden={props.activeView !== 'contacts'}
+            >
+              <AddContactButton />
             </div>
+          </div>
 
-            <div class={topbarStyles.navItem}>
-              <button
-                type='button'
-                class={topbarStyles.navBtn}
-                title='Messages'
-                onClick={() => props.setActiveView('messaging')}
-              >
-                <Mail />
-              </button>
-            </div>
-          </Show>
-        </nav>
+          <div class={topbarStyles.navItem}>
+            <button
+              type='button'
+              class={topbarStyles.navBtn}
+              title='Messages'
+              onClick={() => props.setActiveView('messaging')}
+            >
+              <Mail />
+            </button>
+          </div>
+        </Show>
 
-        {/* <YouTubeSearchControls /> */}
+        <Show when={props.isInCall}>
+          <button
+            type='button'
+            class={topbarStyles.navItem}
+            title='View Active Call'
+            onClick={() => props.setActiveView('call')}
+          >
+            <PhoneCall />
+          </button>
+        </Show>
+      </nav>
 
-        <div class={topbarStyles.stickyRight}>
-          <NotificationsToggle />
-        </div>
-      </header>
-    </Show>
+      {/* <YouTubeSearchControls /> */}
+
+      <div class={topbarStyles.stickyRight}>
+        <NotificationsToggle />
+      </div>
+    </header>
   );
 }
 
