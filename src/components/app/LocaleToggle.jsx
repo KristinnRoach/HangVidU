@@ -1,11 +1,12 @@
-import { useI18n } from '../../shared/i18n/index.js';
+import { useI18n } from '../../shared/i18n';
 import styles from './Footer.module.css';
 
 export default function LocaleToggle() {
   const { locale, setLocale } = useI18n();
 
   async function toggleLocale() {
-    await setLocale(locale() === 'en' ? 'is' : 'en');
+    const nextLocale = locale() === 'en' ? 'is' : 'en';
+    await setLocale(nextLocale);
   }
 
   return (

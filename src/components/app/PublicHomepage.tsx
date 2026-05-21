@@ -1,5 +1,4 @@
-import { Show } from 'solid-js';
-import { useI18n } from '../../shared/i18n/index.js';
+import { useI18n } from '../../shared/i18n';
 
 export default function PublicHomepage() {
   const { t } = useI18n();

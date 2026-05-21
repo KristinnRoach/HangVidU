@@ -1,5 +1,5 @@
 import { onCleanup, onMount, ParentProps } from 'solid-js';
-import { useI18n } from '../../../../shared/i18n';
+import { useI18n, type MessageKey } from '../../../../shared/i18n';
 import DialogFrame from '../../../../components/dialogs/DialogFrame.jsx';
 import { ringtoneManager } from '../../audio/ringtone-manager';
 import { callIndicators } from '../../../../shared/utils/ui-utils/call-indicators';
@@ -11,7 +11,7 @@ export interface CallDialogProps {
   callKindLabel?: string;
   audioOnly?: boolean;
   title?: string;
-  titleKey?: string;
+  titleKey?: MessageKey;
   subtitle?: any;
   tone?: string;
   ringtone?: 'incoming' | 'outgoing' | 'busy' | false;

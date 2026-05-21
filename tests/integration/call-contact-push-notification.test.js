@@ -244,7 +244,6 @@ vi.mock('../../src/elements.js', () => {
       chatControls: document.createElement('div'),
       lobbyDiv,
     })),
-    updateI18nElements: vi.fn(),
     initializeElements: vi.fn(),
   };
 });

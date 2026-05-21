@@ -5,7 +5,7 @@ import { AuthProvider } from '../auth/solid-auth';
 import { Spinner } from '../components/app/Spinner.jsx';
 
 import { initPushNotifications } from '../features/push-notifications/push-notifications.js';
-import { initI18n } from '../shared/i18n/index.js';
+import { initI18n } from '../shared/i18n';
 import { initializeAppCheckDeferred } from '../shared/vendors/firebase.js';
 import { setupAuth } from '../setup/setupAuth.js';
 import { setupContacts } from '../setup/setupContacts.js';

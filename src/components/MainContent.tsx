@@ -26,9 +26,6 @@ import topbarStyles from './TopBar.module.css';
 import type { ConversationSelection } from '../features/messaging-next/interfaces.js';
 import type { UserId } from '../features/messaging-next/types.js';
 
-// Legacy:
-import { useLegacyI18nElements } from '../app/useLegacyMountEffects.js';
-
 type ViewMode = 'home' | 'call' | 'contacts' | 'messaging';
 
 export default function MainContent() {
@@ -79,10 +76,6 @@ export default function MainContent() {
     const s = p2p.state();
     return s === 'creating' || s === 'watching' || s === 'joining';
   };
-
-  // START - legacy setup, will be refactored:
-  useLegacyI18nElements();
-  // END - legacy setup, will be refactored:
 
   return (
     <div class={mainStyles.layoutWrapper}>
