@@ -18,7 +18,6 @@ import {
   shareInviteViaProvider,
 } from '../share-invite-presets.js';
 import { t } from '../../../shared/i18n/index.js';
-import { initIcons } from '../../../components/base-legacy/icons.js';
 import { escapeHtml } from '../../../shared/utils/ui-utils/dom-utils.js';
 import {
   showErrorToast,
@@ -35,6 +34,8 @@ import { createDebouncedAsyncAction } from '../debounce.js';
 // TODO: WIP decoupling considerations:
 // This modal mixes feature UI with auth/OAuth and external contact-import side effects.
 // Keep the UI here, but push reusable import/auth orchestration down before standardizing the pattern.
+
+// ! Note - vanilla js icons currently missing
 
 const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
 
@@ -609,7 +610,6 @@ export async function showAddContactModal() {
     }
 
     document.body.appendChild(dialog);
-    initIcons(dialog);
     dialog.showModal();
   });
 }

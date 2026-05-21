@@ -1,7 +1,6 @@
 import { onCleanup, onMount } from 'solid-js';
 
 import { updateI18nElements, onLocaleChange } from '../shared/i18n/index.js';
-import { initIcons } from '../components/base-legacy/icons.js';
 import { handleServiceWorkerNavigation } from '../setup/handleServiceWorkerNavigation.js';
 import { setupServiceWorkerNavigation } from '../setup/setupServiceWorkerNavigation.js';
 
@@ -46,10 +45,4 @@ export function useLegacyMessagesUIReady() {
   });
 
   return true;
-}
-
-export function useLegacyIcons() {
-  onMount(() => {
-    initIcons();
-  });
 }

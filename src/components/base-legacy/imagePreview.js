@@ -1,5 +1,6 @@
 import { onSwipe } from '../../shared/utils/ui-utils/swipe-interactions.js';
-import { initIcons } from './icons.js';
+
+// ! Note - vanilla js icons currently missing
 
 /**
  * Opens a full-screen preview modal for an image using the native <dialog> element.
@@ -77,6 +78,5 @@ export function showImagePreview(src, fileName, downloadLabel = null) {
   dialog.addEventListener('close', onClose);
 
   document.body.appendChild(dialog);
-  initIcons(dialog);
   dialog.showModal();
 }

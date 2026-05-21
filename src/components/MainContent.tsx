@@ -27,10 +27,7 @@ import type { ConversationSelection } from '../features/messaging-next/interface
 import type { UserId } from '../features/messaging-next/types.js';
 
 // Legacy:
-import {
-  useLegacyI18nElements,
-  useLegacyIcons,
-} from '../app/useLegacyMountEffects.js';
+import { useLegacyI18nElements } from '../app/useLegacyMountEffects.js';
 
 type ViewMode = 'home' | 'call' | 'contacts' | 'messaging';
 
@@ -85,7 +82,6 @@ export default function MainContent() {
 
   // START - legacy setup, will be refactored:
   useLegacyI18nElements();
-  useLegacyIcons();
   // END - legacy setup, will be refactored:
 
   return (
