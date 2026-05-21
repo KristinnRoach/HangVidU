@@ -12,7 +12,7 @@ import {
   getDataAnswerRef,
   getDataOfferCandidatesRef,
   getDataAnswerCandidatesRef,
-} from '../../../shared/storage/fb-rtdb/rtdb.js';
+} from '../../../../shared/storage/fb-rtdb/rtdb.js';
 import { createFirebaseIceTransport } from './firebase-ice-transport.js';
 
 /** @typedef {import('@kidlib/p2p/signaling-transport').DataSignalingChannel} DataSignalingChannel */

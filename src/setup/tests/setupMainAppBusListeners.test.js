@@ -35,10 +35,6 @@ vi.mock('../../shared/events/index.js', () => ({
   subscribe: mocks.events.subscribe,
 }));
 
-vi.mock('../../features/messaging/messaging-controller.js', () => ({
-  messagingController: mocks.messagingController,
-}));
-
 vi.mock('../../features/contacts/index.js', () => ({
   getContactById: mocks.getContactById,
   getContactByRoomId: mocks.getContactByRoomId,

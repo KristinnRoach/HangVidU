@@ -41,18 +41,6 @@ vi.mock('../../features/call/room-listeners.js', () => ({
   startListeningForSavedRooms: mocks.startListeningForSavedRooms,
 }));
 
-vi.mock('../../features/messaging/messaging-controller.js', () => ({
-  messagingController: {
-    closeAllConversations: mocks.closeAllConversations,
-  },
-}));
-
-vi.mock('../../features/messaging/components/messages-ui.js', () => ({
-  messagesUI: {
-    reset: mocks.resetMessagesUI,
-  },
-}));
-
 vi.mock('../../features/contacts/index.js', () => ({
   cleanupInviteListeners: mocks.cleanupInviteListeners,
   setupInviteListener: mocks.setupInviteListener,
@@ -60,7 +48,6 @@ vi.mock('../../features/contacts/index.js', () => ({
   ensureContactsHydrated: mocks.ensureContactsHydrated,
   resetContactsState: mocks.resetContactsState,
 }));
-
 
 describe('setupAuth', () => {
   let localStorageClearSpy;

@@ -1,3 +1,5 @@
+# NOTE: DEPRECATED MODULE \_ IS ONLY FOR REFERENCE TEMPORARILY
+
 # Messaging System Simplification Roadmap
 
 **Current status**: Phase 1 ✅ | Phase 2.1-2.2 ✅ | Phase 3.2 ✅ (PR #401)
@@ -67,11 +69,11 @@ The goal: reduce complexity, clarify ownership, improve testability and reusabil
 
 Deferred issues identified during implementation. Mapped to phases for resolution.
 
-| Issue                   | Description                                                                                                                         | Phase     | Notes                                                                        |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------- |
-| Reaction deletion guard | Last reaction removal not detected; RTDB deletes `reactions` key, stale chips rendered                                              | Phase 3.3 | Fix: track previous reaction state in `onReactionUpdate()` callback          |
+| Issue                   | Description                                                                                                                                     | Phase     | Notes                                                                        |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------- |
+| Reaction deletion guard | Last reaction removal not detected; RTDB deletes `reactions` key, stale chips rendered                                                          | Phase 3.3 | Fix: track previous reaction state in `onReactionUpdate()` callback          |
 | ~~Event ownership~~     | ~~`rejected_call` `from` is callerId, not writer.~~ Resolved: single `evt:call:session:unanswered` event, `from` is always the writer (caller). | ✅ Done   |                                                                              |
-| History event path      | Cached history not yet routed through `message:received` events                                                                     | Phase 2.3 | Phase 2.3 will emit cached messages through same event path as live messages |
+| History event path      | Cached history not yet routed through `message:received` events                                                                                 | Phase 2.3 | Phase 2.3 will emit cached messages through same event path as live messages |
 
 **Resolved**:
 

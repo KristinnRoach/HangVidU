@@ -2,12 +2,6 @@ import { subscribe } from '../shared/events/index.js';
 import { initAuth, getAuthState } from '../auth/index.js';
 import { devDebug } from '../shared/utils/dev/dev-utils.js';
 import { saveUserProfile } from '../shared/storage/user/index.js';
-// import {
-//   removeAllIncomingListeners,
-//   startListeningForSavedRooms,
-// } from '../features/call/room-listeners.js';
-import { messagingController } from '../features/messaging/messaging-controller.js';
-import { getMessagesUI } from '../features/messaging/components/messages-ui.js';
 import {
   cleanupInviteListeners,
   setupInviteListener,
@@ -96,19 +90,14 @@ export function setupAuth() {
   initPromise = (async () => {
     const ac = new AbortController();
     let initialized = false;
-    // let savedRoomsCleanup = () => {
-    //   runSafe(removeAllIncomingListeners, 'removeAllIncomingListeners');
-    // };
+
     let inviteCleanup = () => {
       runSafe(cleanupInviteListeners, 'cleanupInviteListeners');
     };
 
     const cleanupLoginScopedListeners = () => {
-      // runSafe(savedRoomsCleanup, 'savedRooms cleanup');
       runSafe(inviteCleanup, 'invite cleanup');
-      // savedRoomsCleanup = () => {
-      //   runSafe(removeAllIncomingListeners, 'removeAllIncomingListeners');
-      // };
+
       inviteCleanup = () => {
         runSafe(cleanupInviteListeners, 'cleanupInviteListeners');
       };
@@ -116,11 +105,6 @@ export function setupAuth() {
 
     const runMainLogoutCleanup = () => {
       runSafe(cleanupLoginScopedListeners, 'cleanupLoginScopedListeners');
-      runSafe(
-        () => messagingController.closeAllConversations(),
-        'messagingController.closeAllConversations',
-      );
-      runSafe(() => getMessagesUI()?.reset?.(), 'getMessagesUI().reset');
       // NOTE: Local storage is cleared on log out, while selected keys are preserved.
       clearLocalStorageOnLogout();
     };
@@ -147,7 +131,10 @@ export function setupAuth() {
 
             resetContactsState();
           } catch (e) {
-            console.warn('[AUTH] Failed to handle evt:auth:session:logged-out:', e);
+            console.warn(
+              '[AUTH] Failed to handle evt:auth:session:logged-out:',
+              e,
+            );
           }
         },
         { signal: ac.signal },
@@ -183,7 +170,10 @@ export function setupAuth() {
               inviteCleanup = maybeInviteCleanup;
             }
           } catch (e) {
-            console.warn('[AUTH] Failed to handle evt:auth:session:logged-in:', e);
+            console.warn(
+              '[AUTH] Failed to handle evt:auth:session:logged-in:',
+              e,
+            );
           }
         },
         { signal: ac.signal },

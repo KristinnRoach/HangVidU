@@ -1,6 +1,6 @@
 import { RTDBMessageStore } from './storage/rtdb-message-store.js';
 import { fileToBase64 } from '../../shared/utils/file-to-base64.js';
-import { compressImage } from '../../shared/media/image-compress.js';
+import { compressImage } from '../../lib/media/image-compress.js';
 import { EventEmitter } from '../../lib/event-emitter/index.js';
 import { getUserId } from '../../auth/index.js';
 import { getUserProfile } from '../../shared/storage/user/index.js';

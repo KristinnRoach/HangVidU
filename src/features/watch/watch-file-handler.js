@@ -1,4 +1,7 @@
-import { isVideoMime, mimeFromExtension } from '../../shared/utils/is-video-mime.js';
+import {
+  isVideoMime,
+  mimeFromExtension,
+} from '../../shared/utils/is-video-mime.js';
 import {
   handleVideoSelection,
   createWatchRequest,
@@ -13,7 +16,7 @@ import {
   convertToMp4,
   promptUserForEac3Support,
   trackNeedsAc3Decoder,
-} from '../../shared/media/convert/index.js';
+} from '../../lib/media/convert/index.js';
 import { devDebug } from '../../shared/utils/dev/dev-utils.js';
 
 const MKV_MIMES = new Set(['video/x-matroska', 'video/matroska']);
