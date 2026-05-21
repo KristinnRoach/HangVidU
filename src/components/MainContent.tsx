@@ -30,7 +30,6 @@ import type { UserId } from '../features/messaging-next/types.js';
 import {
   useLegacyI18nElements,
   useLegacyIcons,
-  useP2PRuntimeDiagnostics,
 } from '../app/useLegacyMountEffects.js';
 
 type ViewMode = 'home' | 'call' | 'contacts' | 'messaging';
@@ -86,7 +85,6 @@ export default function MainContent() {
 
   // START - legacy setup, will be refactored:
   useLegacyI18nElements();
-  useP2PRuntimeDiagnostics();
   useLegacyIcons();
   // END - legacy setup, will be refactored:
 
