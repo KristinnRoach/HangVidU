@@ -6,10 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm kill:silent && concurrently \"vite\" \"pnpm ngrok\" \"sh scripts/show-ngrok-url.sh\"",
-    "rtdb": "open rtdb-schema.html",
-    "rtdb-live": "fkill :8080 :8081 --silent; node --env-file=.env.development rtdb-proxy.js & python3 -m http.server 8080 --directory . & sleep 0.5 && open http://localhost:8080/rtdb-live.html && wait",
+    "rtdb": "open ./playgrounds/rtdb-schema.html",
+    "rtdb-live": "fkill :8080 :8081 --silent; node --env-file=.env.development ./playgrounds/rtdb-proxy.js & python3 -m http.server 8080 --directory . & sleep 0.5 && open http://localhost:8080/playgrounds/rtdb-live.html && wait",
     "dev:media": "vite --open ./src/shared/media-next/media-lab.html",
-    "dev:components": "VITE_ENABLE_PWA=0 vite --open components-lab.html",
     "debug:edge": "zsh scripts/debug/launch-pwa-edge.sh",
     "worktree": "scripts/git-worktree.sh",
     "delete:user": "node scripts/delete-user-account.js",
