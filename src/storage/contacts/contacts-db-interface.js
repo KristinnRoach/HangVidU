@@ -4,7 +4,7 @@
  * Adapters handle backend-specific IO only.
  * They do not validate domain policy, log, sort, localize, or emit events.
  */
-export class ContactsStorageAdapter {
+export class ContactsDBInterface {
   /**
    * Read one contact record by id.
    * @param {string} contactId

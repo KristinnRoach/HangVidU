@@ -33,7 +33,7 @@ function assertAdapter(adapter) {
  */
 export class ContactsRepository {
   /**
-   * @param {import('./contacts-storage-adapter.js').ContactsStorageAdapter} adapter
+   * @param {import('./contacts-db-interface.js').ContactsDBInterface} adapter
    */
   constructor(adapter) {
     this.adapter = assertAdapter(adapter);
@@ -116,7 +116,7 @@ export class ContactsRepository {
 }
 
 /**
- * @param {import('./contacts-storage-adapter.js').ContactsStorageAdapter} adapter
+ * @param {import('./contacts-db-interface.js').ContactsDBInterface} adapter
  * @returns {ContactsRepository}
  */
 export function createContactsRepository(adapter) {

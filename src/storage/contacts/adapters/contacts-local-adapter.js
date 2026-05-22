@@ -1,5 +1,8 @@
-import { ContactsStorageAdapter } from './contacts-storage-adapter.js';
-import { mergeContactRecord, normalizeContactRecord } from './contact-transform.js';
+import { ContactsDBInterface } from '../contacts-db-interface.js';
+import {
+  mergeContactRecord,
+  normalizeContactRecord,
+} from '../contact-transform.js';
 
 function getDefaultStorage() {
   if (!globalThis.localStorage) {
@@ -20,7 +23,7 @@ function assertStorageKey(storageKey) {
 /**
  * localStorage adapter for contacts storage.
  */
-export class ContactsLocalAdapter extends ContactsStorageAdapter {
+export class ContactsLocalAdapter extends ContactsDBInterface {
   /**
    * @param {{
    *   storage?: Pick<Storage, 'getItem' | 'setItem'>,
@@ -33,7 +36,7 @@ export class ContactsLocalAdapter extends ContactsStorageAdapter {
     this.storageKey = assertStorageKey(storageKey);
   }
 
-  _readMap() {
+  #readMap() {
     const raw = this.storage.getItem(this.storageKey);
     if (!raw) {
       return {};
@@ -49,19 +52,19 @@ export class ContactsLocalAdapter extends ContactsStorageAdapter {
   }
 
   /**
-   * @param {Record<string, import('./contact-schema.js').ContactRecord>} map
+   * @param {Record<string, import('../contact-schema.js').ContactRecord>} map
    * @returns {void}
    */
-  _writeMap(map) {
+  #writeMap(map) {
     this.storage.setItem(this.storageKey, JSON.stringify(map));
   }
 
   /**
    * @param {string} contactId
-   * @returns {Promise<import('./contact-schema.js').ContactRecord|null>}
+   * @returns {Promise<import('../contact-schema.js').ContactRecord|null>}
    */
   async get(contactId) {
-    const map = this._readMap();
+    const map = this.#readMap();
     const existing = map[contactId] ?? null;
     if (!existing) {
       return null;
@@ -71,30 +74,30 @@ export class ContactsLocalAdapter extends ContactsStorageAdapter {
   }
 
   /**
-   * @returns {Promise<import('./contact-schema.js').ContactRecord[]>}
+   * @returns {Promise<import('../contact-schema.js').ContactRecord[]>}
    */
   async list() {
-    const map = this._readMap();
+    const map = this.#readMap();
     return Object.values(map).map((record) => normalizeContactRecord(record));
   }
 
   /**
-   * @param {import('./contact-schema.js').ContactRecord} contactRecord
+   * @param {import('../contact-schema.js').ContactRecord} contactRecord
    * @returns {Promise<void>}
    */
   async put(contactRecord) {
-    const map = this._readMap();
+    const map = this.#readMap();
     map[contactRecord.contactId] = contactRecord;
-    this._writeMap(map);
+    this.#writeMap(map);
   }
 
   /**
    * @param {string} contactId
-   * @param {import('./contact-schema.js').ContactPatch} patch
-   * @returns {Promise<import('./contact-schema.js').ContactRecord|null>}
+   * @param {import('../contact-schema.js').ContactPatch} patch
+   * @returns {Promise<import('../contact-schema.js').ContactRecord|null>}
    */
   async patch(contactId, patch) {
-    const map = this._readMap();
+    const map = this.#readMap();
     const existing = map[contactId] ?? null;
 
     if (!existing) {
@@ -103,7 +106,7 @@ export class ContactsLocalAdapter extends ContactsStorageAdapter {
 
     const nextRecord = mergeContactRecord(existing, patch);
     map[contactId] = nextRecord;
-    this._writeMap(map);
+    this.#writeMap(map);
     return nextRecord;
   }
 
@@ -112,14 +115,14 @@ export class ContactsLocalAdapter extends ContactsStorageAdapter {
    * @returns {Promise<void>}
    */
   async remove(contactId) {
-    const map = this._readMap();
+    const map = this.#readMap();
 
     if (!(contactId in map)) {
       return;
     }
 
     delete map[contactId];
-    this._writeMap(map);
+    this.#writeMap(map);
   }
 }
 

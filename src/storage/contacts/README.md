@@ -59,16 +59,6 @@ patches.
 If the service later needs its own command/input validation, that should be a
 separate service-layer schema, not a second copy of the storage record schema.
 
-### Files
-
-- `contacts-store.js`: public storage facade and contract
-- `contact-schema.js`: canonical Zod schemas for records and patches
-- `contacts-storage-adapter.js`: backend adapter contract
-- `contacts-rtdb-adapter.js`: RTDB adapter
-- `contacts-local-adapter.js`: localStorage adapter
-- `contact-transform.js`: canonical normalization and merge helpers
-- `index.js`: entrypoint and factory helpers
-
 ### Deferred On Purpose
 
 - auth readiness policy

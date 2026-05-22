@@ -3,8 +3,8 @@ import { getIsLoggedIn, getLoggedInUserId } from '../auth/index.js';
 import { rtdb } from '../shared/storage/fb-rtdb/rtdb.js';
 import {
   createContactsLocalStorageRepository,
-  createContactsRTDBStoreRepository,
-} from '../storage/repositories/contacts/index.js';
+  createContactsRTDBRepository,
+} from '../storage/contacts/index.js';
 import {
   resolveContactIdFromDirectConversationId,
   resolveDirectConversationId,
@@ -27,7 +27,7 @@ function getScopeKey(ownerId: string | null = getLoggedInUserId()): string {
 
 function getRepo(ownerId: string | null = getLoggedInUserId()) {
   if (ownerId) {
-    return createContactsRTDBStoreRepository({
+    return createContactsRTDBRepository({
       database: rtdb,
       getOwnerId: () => ownerId,
     });

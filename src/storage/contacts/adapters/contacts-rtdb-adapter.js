@@ -1,6 +1,9 @@
 import { get, ref, remove, runTransaction, set } from 'firebase/database';
-import { ContactsStorageAdapter } from './contacts-storage-adapter.js';
-import { mergeContactRecord, normalizeContactRecord } from './contact-transform.js';
+import { ContactsDBInterface } from '../contacts-db-interface.js';
+import {
+  mergeContactRecord,
+  normalizeContactRecord,
+} from '../contact-transform.js';
 
 function assertGetOwnerId(getOwnerId) {
   if (typeof getOwnerId !== 'function') {
@@ -14,7 +17,10 @@ function safelyNormalizeContactRecord(record, context) {
   try {
     return normalizeContactRecord(record);
   } catch (error) {
-    console.warn(`[ContactsRTDBAdapter] Skipping invalid contact record (${context})`, error);
+    console.warn(
+      `[ContactsRTDBAdapter] Skipping invalid contact record (${context})`,
+      error,
+    );
     return null;
   }
 }
@@ -22,7 +28,7 @@ function safelyNormalizeContactRecord(record, context) {
 /**
  * RTDB adapter for contacts storage.
  */
-export class ContactsRTDBAdapter extends ContactsStorageAdapter {
+export class ContactsRTDBAdapter extends ContactsDBInterface {
   /**
    * @param {{
    *   database: import('firebase/database').Database,
@@ -40,7 +46,7 @@ export class ContactsRTDBAdapter extends ContactsStorageAdapter {
     this.getOwnerId = assertGetOwnerId(getOwnerId);
   }
 
-  _resolveOwnerId() {
+  #resolveOwnerId() {
     const ownerId = this.getOwnerId();
 
     if (typeof ownerId !== 'string' || !ownerId.trim()) {
@@ -50,20 +56,20 @@ export class ContactsRTDBAdapter extends ContactsStorageAdapter {
     return ownerId.trim();
   }
 
-  _contactPath(contactId) {
-    return `users/${this._resolveOwnerId()}/contacts/${contactId}`;
+  #contactPath(contactId) {
+    return `users/${this.#resolveOwnerId()}/contacts/${contactId}`;
   }
 
-  _contactsPath() {
-    return `users/${this._resolveOwnerId()}/contacts`;
+  #contactsPath() {
+    return `users/${this.#resolveOwnerId()}/contacts`;
   }
 
   /**
    * @param {string} contactId
-   * @returns {Promise<import('./contact-schema.js').ContactRecord|null>}
+   * @returns {Promise<import('../contact-schema.js').ContactRecord|null>}
    */
   async get(contactId) {
-    const contactRef = ref(this.database, this._contactPath(contactId));
+    const contactRef = ref(this.database, this.#contactPath(contactId));
     const snapshot = await get(contactRef);
     if (!snapshot.exists()) {
       return null;
@@ -73,22 +79,25 @@ export class ContactsRTDBAdapter extends ContactsStorageAdapter {
   }
 
   /**
-   * @returns {Promise<import('./contact-schema.js').ContactRecord[]>}
+   * @returns {Promise<import('../contact-schema.js').ContactRecord[]>}
    */
   async list() {
-    const snapshot = await get(ref(this.database, this._contactsPath()));
+    const snapshot = await get(ref(this.database, this.#contactsPath()));
     if (!snapshot.exists()) {
       return [];
     }
 
     return Object.entries(snapshot.val()).flatMap(([contactId, record]) => {
-      const normalized = safelyNormalizeContactRecord(record, `list:${contactId}`);
+      const normalized = safelyNormalizeContactRecord(
+        record,
+        `list:${contactId}`,
+      );
       return normalized ? [normalized] : [];
     });
   }
 
   /**
-   * @param {import('./contact-schema.js').ContactRecord} contactRecord
+   * @param {import('../contact-schema.js').ContactRecord} contactRecord
    * @returns {Promise<void>}
    */
   async put(contactRecord) {
@@ -97,18 +106,18 @@ export class ContactsRTDBAdapter extends ContactsStorageAdapter {
     }
 
     await set(
-      ref(this.database, this._contactPath(contactRecord.contactId)),
+      ref(this.database, this.#contactPath(contactRecord.contactId)),
       contactRecord,
     );
   }
 
   /**
    * @param {string} contactId
-   * @param {import('./contact-schema.js').ContactPatch} patch
-   * @returns {Promise<import('./contact-schema.js').ContactRecord|null>}
+   * @param {import('../contact-schema.js').ContactPatch} patch
+   * @returns {Promise<import('../contact-schema.js').ContactRecord|null>}
    */
   async patch(contactId, patch) {
-    const contactRef = ref(this.database, this._contactPath(contactId));
+    const contactRef = ref(this.database, this.#contactPath(contactId));
 
     const result = await runTransaction(
       contactRef,
@@ -144,7 +153,7 @@ export class ContactsRTDBAdapter extends ContactsStorageAdapter {
    * @returns {Promise<void>}
    */
   async remove(contactId) {
-    await remove(ref(this.database, this._contactPath(contactId)));
+    await remove(ref(this.database, this.#contactPath(contactId)));
   }
 }
 
