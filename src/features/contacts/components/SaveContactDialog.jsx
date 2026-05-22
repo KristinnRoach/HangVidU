@@ -1,6 +1,6 @@
 import { createSignal, onCleanup, onMount } from 'solid-js';
 import { useI18n } from '../../../shared/i18n/index.js';
-import { getContactsService } from '../index.js';
+import { saveContact } from '../contacts-store.js';
 
 export default function SaveContactDialog(props) {
   const { t } = useI18n();
@@ -21,17 +21,12 @@ export default function SaveContactDialog(props) {
     event.preventDefault();
     if (isSubmitting()) return;
 
-    const contactsService = getContactsService();
-    if (!contactsService) {
-      throw new Error('ContactsService is not initialized');
-    }
-
     setIsSubmitting(true);
 
     try {
       setError(null);
       const nextName = trimmedName() || props.contactId;
-      const savedContact = await contactsService.saveContact(
+      const savedContact = await saveContact(
         props.contactId,
         nextName,
         props.roomId,

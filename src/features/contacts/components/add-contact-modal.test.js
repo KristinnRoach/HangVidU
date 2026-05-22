@@ -13,12 +13,6 @@ vi.mock('../../../shared/i18n/index.js', () => ({
   t: vi.fn((key) => key),
 }));
 
-vi.mock('../contacts-service.js', () => ({
-  contactsService: {
-    getAllContacts: vi.fn().mockResolvedValue({}),
-  },
-}));
-
 vi.mock('../helpers/user-discovery.js', () => ({
   findUsersByEmails: vi.fn().mockResolvedValue({}),
   lookupUserByEmail: vi.fn().mockResolvedValue({ status: 'not_found' }),

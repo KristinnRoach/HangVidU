@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
   lookupUserByEmail: vi.fn(),
   sendContactInvite: vi.fn(),
   getAllContacts: vi.fn(),
-  ensureContactsHydrated: vi.fn(),
+  hydrateContacts: vi.fn(),
 }));
 
 vi.mock('../helpers/user-discovery.js', () => ({
@@ -15,12 +15,9 @@ vi.mock('../helpers/send-contact-invite.js', () => ({
   sendContactInvite: mocks.sendContactInvite,
 }));
 
-vi.mock('../contacts-service.js', () => ({
-  ensureContactsHydrated: mocks.ensureContactsHydrated,
-}));
-
-vi.mock('../contacts-state.js', () => ({
+vi.mock('../contacts-store.js', () => ({
   getAllContacts: mocks.getAllContacts,
+  hydrateContacts: mocks.hydrateContacts,
 }));
 
 vi.mock('../../../auth/index.js', () => ({
@@ -32,7 +29,7 @@ import { inviteContactByEmail } from '../helpers/manual-contact-invite.js';
 describe('inviteContactByEmail', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.ensureContactsHydrated.mockResolvedValue();
+    mocks.hydrateContacts.mockResolvedValue();
     mocks.getAllContacts.mockReturnValue({});
   });
 
@@ -85,7 +82,7 @@ describe('inviteContactByEmail', () => {
 
     const result = await inviteContactByEmail('alice@example.com');
 
-    expect(mocks.ensureContactsHydrated).toHaveBeenCalledTimes(1);
+    expect(mocks.hydrateContacts).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ ok: false, status: 'already_saved' });
     expect(mocks.sendContactInvite).not.toHaveBeenCalled();
   });

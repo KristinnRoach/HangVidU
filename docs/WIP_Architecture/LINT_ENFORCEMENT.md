@@ -27,7 +27,7 @@ What is automatically enforced today. Source of truth: `eslint.config.js`, `esli
 
 ## Adding a new state file to the privacy rule
 
-When `contacts-state.js`, `messaging-state.js`, or `call-state.js` lands, extend the `no-restricted-imports` patterns block in `eslint.config.js` with the same shape used for `auth-state`.
+When a module opts into the dedicated state-file shape (see [`STATE_RULES.md`](./STATE_RULES.md)), extend the `no-restricted-imports` patterns block in `eslint.config.js` with the same shape used for `auth-state`.
 
 ## Current Solid coverage
 

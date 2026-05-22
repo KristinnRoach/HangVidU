@@ -16,7 +16,7 @@ import type {
 import type { ConversationStateStore } from './conversation.state.js';
 import type { ConversationActions } from './conversation.actions.js';
 import { sortMessagesBySentAt } from './message-ordering.js';
-import { dispatchCommand } from '../../shared/events/index.js';
+import { recordInteractionByConversation } from '../contacts/index.js';
 
 type UseConversationOptions = {
   repository: MessageRepository;
@@ -117,9 +117,7 @@ export function useConversation({
     const chatMessage = envelopeToChatMessage(envelope.message, 'private');
     if (chatMessage) {
       actions.receiveMessage(chatMessage);
-      dispatchCommand('cmd:contacts:record:interaction', {
-        conversationId: chatMessage.conversationId,
-      });
+      void recordInteractionByConversation(chatMessage.conversationId);
     }
   }
 
@@ -140,9 +138,6 @@ export function useConversation({
       const chatMessage = envelopeToChatMessage(msg, 'persisted');
       if (chatMessage) {
         actions.receiveMessage(chatMessage);
-        // dispatchCommand('cmd:contacts:record:interaction', {
-        //   conversationId: chatMessage.conversationId,
-        // });
       }
     });
 
@@ -260,7 +255,7 @@ export function useConversation({
       actions.markFailed(tempId);
     } finally {
       actions.setSending(false);
-      dispatchCommand('cmd:contacts:record:interaction', { conversationId });
+      void recordInteractionByConversation(conversationId);
     }
   }
 

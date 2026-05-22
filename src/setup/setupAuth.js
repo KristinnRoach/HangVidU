@@ -6,8 +6,8 @@ import {
   cleanupInviteListeners,
   setupInviteListener,
   processReferral,
-  ensureContactsHydrated,
-  resetContactsState,
+  hydrateContacts,
+  resetContacts,
 } from '../features/contacts/index.js';
 
 let isReady = false;
@@ -114,7 +114,7 @@ export function setupAuth() {
         'evt:auth:session:ready',
         async () => {
           try {
-            await ensureContactsHydrated();
+            await hydrateContacts();
           } catch (e) {
             console.warn('[AUTH] Failed to handle evt:auth:session:ready:', e);
           }
@@ -129,7 +129,7 @@ export function setupAuth() {
             devDebug('[AUTH] User logged out - cleaning up listeners');
             runMainLogoutCleanup();
 
-            resetContactsState();
+            resetContacts();
           } catch (e) {
             console.warn(
               '[AUTH] Failed to handle evt:auth:session:logged-out:',
@@ -149,7 +149,7 @@ export function setupAuth() {
             await processReferral().catch((e) =>
               console.warn('[REFERRAL] Failed to process referral:', e),
             );
-            await ensureContactsHydrated().catch((e) =>
+            await hydrateContacts().catch((e) =>
               console.warn(
                 '[AUTH] Failed to hydrate contacts state on login:',
                 e,

@@ -1,17 +1,8 @@
-// src/contacts/index.js — barrel re-exports (public API)
+// src/features/contacts/index.js — barrel re-exports (public API)
 
 export {
-  getContactsService,
-  ContactsService,
-  ensureContactsHydrated,
-  hydrateContactsState,
-  resetContactsState,
-} from './contacts-service.js';
-
-// Read-only state API. `setState` is intentionally NOT re-exported — writers
-// live inside the contacts module only. External consumers read via getters and
-// subscribe to `evt:contacts:state:changed`. See docs/WIP_Architecture/STATE_RULES.md.
-export {
+  // reads
+  getContactsStore,
   getAllContacts,
   getContactById,
   getContactByRoomId,
@@ -19,7 +10,19 @@ export {
   getAllContactsSorted,
   getContactByMostRecentInteraction,
   getContactsIsHydrated,
-} from './contacts-state.js';
+  // mutations
+  saveContact,
+  updateContact,
+  deleteContact,
+  recordInteraction,
+  recordInteractionByConversation,
+  handleHangUp,
+  // lifecycle
+  hydrateContacts,
+  resetContacts,
+} from './contacts-store.js';
+
+export { useContacts } from './useContacts.js';
 
 export { cleanupInviteListeners } from './helpers/invitations.js';
 export { setupInviteListener } from './helpers/invite-listener.js';

@@ -1,5 +1,4 @@
-import { getAllContacts } from '../contacts-state.js';
-import { ensureContactsHydrated } from '../contacts-service.js';
+import { getAllContacts, hydrateContacts } from '../contacts-store.js';
 import { lookupUserByEmail } from './user-discovery.js';
 import { getUser } from '../../../auth/index.js';
 import { sendContactInvite } from './send-contact-invite.js';
@@ -38,7 +37,7 @@ export async function inviteContactByEmail(email, { onNotFound } = {}) {
       return { ok: false, status: 'self' };
     }
 
-    await ensureContactsHydrated();
+    await hydrateContacts();
     const savedContacts = getAllContacts();
     if (savedContacts && savedContacts[user.uid]) {
       return { ok: false, status: 'already_saved' };

@@ -18,8 +18,8 @@ const mocks = vi.hoisted(() => {
     cleanupInviteListeners: vi.fn(),
     setupInviteListener: vi.fn(),
     processReferral: vi.fn(() => Promise.resolve()),
-    ensureContactsHydrated: vi.fn(() => Promise.resolve()),
-    resetContactsState: vi.fn(),
+    hydrateContacts: vi.fn(() => Promise.resolve()),
+    resetContacts: vi.fn(),
     devDebug: vi.fn(),
   };
 });
@@ -45,8 +45,8 @@ vi.mock('../../features/contacts/index.js', () => ({
   cleanupInviteListeners: mocks.cleanupInviteListeners,
   setupInviteListener: mocks.setupInviteListener,
   processReferral: mocks.processReferral,
-  ensureContactsHydrated: mocks.ensureContactsHydrated,
-  resetContactsState: mocks.resetContactsState,
+  hydrateContacts: mocks.hydrateContacts,
+  resetContacts: mocks.resetContacts,
 }));
 
 describe('setupAuth', () => {
@@ -58,7 +58,7 @@ describe('setupAuth', () => {
     vi.resetModules();
     vi.clearAllMocks();
     mocks.handlers.clear();
-    mocks.ensureContactsHydrated.mockResolvedValue();
+    mocks.hydrateContacts.mockResolvedValue();
     localStorageData = new Map();
     localStorageRef = {
       get length() {
@@ -91,7 +91,7 @@ describe('setupAuth', () => {
 
     await mocks.handlers.get('evt:auth:session:ready')({});
 
-    expect(mocks.ensureContactsHydrated).toHaveBeenCalled();
+    expect(mocks.hydrateContacts).toHaveBeenCalled();
 
     teardown();
   });
@@ -107,7 +107,7 @@ describe('setupAuth', () => {
     });
 
     expect(mocks.processReferral).toHaveBeenCalled();
-    expect(mocks.ensureContactsHydrated).toHaveBeenCalled();
+    expect(mocks.hydrateContacts).toHaveBeenCalled();
     expect(mocks.startListeningForSavedRooms).not.toHaveBeenCalled();
     expect(mocks.setupInviteListener).toHaveBeenCalledWith();
 
@@ -122,7 +122,7 @@ describe('setupAuth', () => {
 
     await mocks.handlers.get('evt:auth:session:logged-out')({});
 
-    expect(mocks.resetContactsState).toHaveBeenCalled();
+    expect(mocks.resetContacts).toHaveBeenCalled();
     expect(mocks.removeAllIncomingListeners).toHaveBeenCalled();
     expect(mocks.cleanupInviteListeners).toHaveBeenCalled();
     expect(mocks.closeAllConversations).toHaveBeenCalled();
