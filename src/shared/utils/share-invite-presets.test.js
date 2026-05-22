@@ -4,11 +4,11 @@ const mocks = vi.hoisted(() => ({
   copyToClipboard: vi.fn(),
 }));
 
-vi.mock('../../../shared/utils/clipboard.js', () => ({
+vi.mock('./clipboard.js', () => ({
   copyToClipboard: mocks.copyToClipboard,
 }));
 
-vi.mock('../helpers/share-invite.js', () => ({
+vi.mock('./share-invite.js', () => ({
   buildReferralLink: vi.fn(() => 'https://hangvidu.com/?ref=user-123'),
   buildInviteText: vi.fn(
     () => 'Alice invited you to HangVidU: https://hangvidu.com/?ref=user-123',
@@ -19,7 +19,7 @@ import {
   buildProviderShareUrl,
   getInviteShareProviders,
   shareInviteViaProvider,
-} from '../helpers/share-invite-presets.js';
+} from './share-invite-presets.js';
 
 describe('share-invite-presets', () => {
   it('exposes WhatsApp and Telegram providers', () => {

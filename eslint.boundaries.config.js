@@ -116,6 +116,7 @@ if (ENABLE_RULE.shared) {
         allow: {
           to: [
             { type: 'shared' },
+            { type: 'auth' },
             ...SHARED_TEMP_FEATURE_EXCEPTIONS.map((featureName) => ({
               type: 'feature',
               captured: { featureName },
@@ -123,7 +124,7 @@ if (ENABLE_RULE.shared) {
           ],
         },
         message:
-          'Shared code may only import shared code (plus explicit temporary feature exceptions).',
+          'Shared code may import shared and auth (plus explicit temporary feature exceptions).',
       },
     ]),
   );
@@ -146,10 +147,33 @@ overrides.push(
             { type: 'shared' },
             { type: 'feature' },
             { type: 'components' },
+            { type: 'contacts' },
           ],
         },
         message:
-          'Features may import from auth, shared, components, or other features.',
+          'Features may import from auth, shared, components, contacts, or other features.',
+      },
+    ],
+  ),
+);
+
+overrides.push(
+  dependencyRule(
+    ['src/contacts/*.js', 'src/contacts/**/*.js'],
+    [
+      {
+        from: { type: 'contacts' },
+        allow: {
+          to: [
+            { type: 'auth' },
+            { type: 'shared' },
+            { type: 'components' },
+            { type: 'contacts' },
+            { type: 'feature' },
+          ],
+        },
+        message:
+          'Contacts may import from auth, shared, components, features, or itself.',
       },
     ],
   ),
@@ -191,10 +215,11 @@ if (ENABLE_RULE.setup) {
               { type: 'feature' },
               { type: 'shared' },
               { type: 'components' },
+              { type: 'contacts' },
             ],
           },
           message:
-            'Setup may only import from setup, auth, feature, shared, and components.',
+            'Setup may only import from setup, auth, feature, shared, components, and contacts.',
         },
       ],
     ),
@@ -219,10 +244,11 @@ if (ENABLE_RULE.components) {
               { type: 'auth' },
               { type: 'feature' },
               { type: 'shared' },
+              { type: 'contacts' },
             ],
           },
           message:
-            'Components may only import from components, auth, feature, and shared.',
+            'Components may only import from components, auth, feature, shared, and contacts.',
         },
       ],
     ),
@@ -282,6 +308,16 @@ export default [
             'src/components/*.jsx',
             'src/components/**/*.jsx',
           ],
+        },
+        {
+          type: 'storage',
+          mode: 'full',
+          pattern: ['src/storage/*.js', 'src/storage/**/*.js'],
+        },
+        {
+          type: 'contacts',
+          mode: 'full',
+          pattern: ['src/contacts/*.js', 'src/contacts/**/*.js'],
         },
       ],
     },

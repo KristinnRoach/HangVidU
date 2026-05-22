@@ -1,7 +1,7 @@
 import { createEffect, onCleanup, onMount } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
-import { subscribe } from '../../shared/events/index.js';
-import { getContactsStore } from '../../stores/contact-store.js';
+import { subscribe } from '../shared/events/index.js';
+import { getContactsStore } from '../stores/contact-store.js';
 
 type ContactRow = {
   id: string;

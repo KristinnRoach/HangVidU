@@ -2,7 +2,7 @@ import { dispatchCommandAndAwait } from '../shared/events/index.js';
 import {
   getContactById,
   getConversationId,
-} from '../features/contacts/index.js';
+} from '../stores/contact-store.js';
 
 // TODO: Add nav to join incoming calls directly, /?room=room-1
 

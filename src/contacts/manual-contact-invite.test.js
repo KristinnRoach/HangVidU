@@ -7,24 +7,24 @@ const mocks = vi.hoisted(() => ({
   hydrateContacts: vi.fn(),
 }));
 
-vi.mock('../helpers/user-discovery.js', () => ({
+vi.mock('../shared/storage/user/user-discovery.js', () => ({
   lookupUserByEmail: mocks.lookupUserByEmail,
 }));
 
-vi.mock('../helpers/send-contact-invite.js', () => ({
+vi.mock('./send-contact-invite.js', () => ({
   sendContactInvite: mocks.sendContactInvite,
 }));
 
-vi.mock('../../../stores/contact-store.js', () => ({
+vi.mock('../stores/contact-store.js', () => ({
   getAllContacts: mocks.getAllContacts,
   hydrateContacts: mocks.hydrateContacts,
 }));
 
-vi.mock('../../../auth/index.js', () => ({
+vi.mock('../auth/index.js', () => ({
   getUser: vi.fn(() => ({ uid: 'me' })),
 }));
 
-import { inviteContactByEmail } from '../helpers/manual-contact-invite.js';
+import { inviteContactByEmail } from './manual-contact-invite.js';
 
 describe('inviteContactByEmail', () => {
   beforeEach(() => {

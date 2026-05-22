@@ -13,9 +13,9 @@ import {
   hashEmail,
   lookupUserByEmail,
   removeFromUserByEmailDirectory,
-} from '../helpers/user-discovery.js';
+} from './user-discovery.js';
 
-vi.mock('../../../shared/storage/fb-rtdb/rtdb.js', () => ({
+vi.mock('../fb-rtdb/rtdb.js', () => ({
   rtdb: {},
 }));
 

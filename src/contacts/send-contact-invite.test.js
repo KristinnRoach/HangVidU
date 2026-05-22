@@ -4,11 +4,11 @@ const mocks = vi.hoisted(() => ({
   sendInvite: vi.fn(),
 }));
 
-vi.mock('../helpers/invitations.js', () => ({
+vi.mock('./invitations.js', () => ({
   sendInvite: mocks.sendInvite,
 }));
 
-import { sendContactInvite } from '../helpers/send-contact-invite.js';
+import { sendContactInvite } from './send-contact-invite.js';
 
 describe('sendContactInvite', () => {
   it('returns sent on successful invite write', async () => {

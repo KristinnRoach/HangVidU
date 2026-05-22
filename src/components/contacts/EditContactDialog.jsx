@@ -1,6 +1,6 @@
 import { createSignal, onCleanup, onMount } from 'solid-js';
-import { useI18n } from '../../../shared/i18n/index.js';
-import { deleteContact, updateContact } from '../../../stores/contact-store.js';
+import { useI18n } from '../../shared/i18n/index.js';
+import { deleteContact, updateContact } from '../../stores/contact-store.js';
 
 export default function EditContactDialog(props) {
   const { t } = useI18n();

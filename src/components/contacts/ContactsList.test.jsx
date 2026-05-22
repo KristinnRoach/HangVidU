@@ -19,7 +19,7 @@ vi.mock('../../features/presence/index.js', () => ({
   watchUserPresence: mocks.watchUserPresence,
 }));
 
-vi.mock('../../features/contacts/index.js', () => ({
+vi.mock('../../stores/contact-store.js', () => ({
   getAllContactsSorted: mocks.getAllContactsSorted,
 }));
 

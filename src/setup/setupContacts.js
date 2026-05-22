@@ -1,7 +1,5 @@
-import {
-  captureReferral,
-  hydrateContacts,
-} from '../features/contacts/index.js';
+import { captureReferral } from '../contacts/referral-handler.js';
+import { hydrateContacts } from '../stores/contact-store.js';
 
 let isReady = false;
 let initPromise = null;

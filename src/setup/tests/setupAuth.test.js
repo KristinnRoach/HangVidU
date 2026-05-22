@@ -41,10 +41,16 @@ vi.mock('../../features/call/room-listeners.js', () => ({
   startListeningForSavedRooms: mocks.startListeningForSavedRooms,
 }));
 
-vi.mock('../../features/contacts/index.js', () => ({
+vi.mock('../../contacts/invitations.js', () => ({
   cleanupInviteListeners: mocks.cleanupInviteListeners,
+}));
+vi.mock('../../contacts/invite-listener.js', () => ({
   setupInviteListener: mocks.setupInviteListener,
+}));
+vi.mock('../../contacts/referral-handler.js', () => ({
   processReferral: mocks.processReferral,
+}));
+vi.mock('../../stores/contact-store.js', () => ({
   hydrateContacts: mocks.hydrateContacts,
   resetContacts: mocks.resetContacts,
 }));

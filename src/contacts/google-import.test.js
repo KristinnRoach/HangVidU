@@ -10,29 +10,29 @@ const mocks = vi.hoisted(() => ({
   buildImportableContacts: vi.fn(),
 }));
 
-vi.mock('../../../auth/index.js', () => ({
+vi.mock('../auth/index.js', () => ({
   requestContactsAccess: mocks.requestContactsAccess,
   getUser: mocks.getUser,
 }));
 
-vi.mock('../../../stores/contact-store.js', () => ({
+vi.mock('../stores/contact-store.js', () => ({
   getAllContacts: mocks.getAllContacts,
   hydrateContacts: mocks.hydrateContacts,
 }));
 
-vi.mock('../helpers/user-discovery.js', () => ({
+vi.mock('../shared/storage/user/user-discovery.js', () => ({
   findUsersByEmails: mocks.findUsersByEmails,
 }));
 
-vi.mock('../helpers/google-contacts.js', () => ({
+vi.mock('../shared/utils/google/google-contacts.js', () => ({
   fetchGoogleContacts: mocks.fetchGoogleContacts,
 }));
 
-vi.mock('../helpers/import-contacts-utils.js', () => ({
+vi.mock('./import-contacts-utils.js', () => ({
   buildImportableContacts: mocks.buildImportableContacts,
 }));
 
-import { importGoogleContacts } from '../helpers/google-import.js';
+import { importGoogleContacts } from './google-import.js';
 
 describe('importGoogleContacts', () => {
   beforeEach(() => {

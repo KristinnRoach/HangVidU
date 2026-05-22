@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../../shared/i18n/index.js', () => ({
+vi.mock('../i18n/index.js', () => ({
   t: (key, params) => {
     if (!params) return key;
     return `${key} ${Object.values(params).join(' ')}`;
@@ -12,7 +12,7 @@ import {
   buildInviteText,
   copyInviteLink,
   shareInvite,
-} from '../helpers/share-invite.js';
+} from './share-invite.js';
 
 describe('share-invite', () => {
   beforeEach(() => {

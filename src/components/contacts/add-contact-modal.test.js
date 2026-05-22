@@ -9,20 +9,20 @@ const mocks = vi.hoisted(() => ({
   initIcons: vi.fn(),
 }));
 
-vi.mock('../../../shared/i18n/index.js', () => ({
+vi.mock('../../shared/i18n/index.js', () => ({
   t: vi.fn((key) => key),
 }));
 
-vi.mock('../helpers/user-discovery.js', () => ({
+vi.mock('../../shared/storage/user/user-discovery.js', () => ({
   findUsersByEmails: vi.fn().mockResolvedValue({}),
   lookupUserByEmail: vi.fn().mockResolvedValue({ status: 'not_found' }),
 }));
 
-vi.mock('../helpers/invitations.js', () => ({
+vi.mock('../../contacts/invitations.js', () => ({
   sendInvite: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../../../auth/index.js', () => ({
+vi.mock('../../auth/index.js', () => ({
   requestContactsAccess: vi.fn(),
   requestGmailSendAccess: vi.fn(),
   getLoggedInUserId: vi.fn(() => 'user-123'),
@@ -30,30 +30,30 @@ vi.mock('../../../auth/index.js', () => ({
   getIsLoggedIn: vi.fn(() => true),
 }));
 
-vi.mock('../helpers/google-contacts.js', () => ({
+vi.mock('../../shared/utils/google/google-contacts.js', () => ({
   fetchGoogleContacts: vi.fn(),
 }));
 
-vi.mock('../helpers/gmail-send.js', () => ({
+vi.mock('../../shared/utils/google/gmail-send.js', () => ({
   sendBulkEmailsViaGmail: vi.fn(),
 }));
 
-vi.mock('../../../components/base-legacy/icons.js', () => ({
+vi.mock('../base-legacy/icons.js', () => ({
   initIcons: mocks.initIcons,
 }));
 
-vi.mock('../../../components/base-legacy/toast.js', () => ({
+vi.mock('../base-legacy/toast.js', () => ({
   showSuccessToast: mocks.showSuccessToast,
   showErrorToast: mocks.showErrorToast,
 }));
 
-vi.mock('../helpers/share-invite.js', () => ({
+vi.mock('../../shared/utils/share-invite.js', () => ({
   shareInvite: mocks.shareInvite,
   copyInviteLink: mocks.copyInviteLink,
   buildReferralLink: vi.fn(() => 'https://hangvidu.com/?ref=user-123'),
 }));
 
-vi.mock('../helpers/share-invite-presets.js', () => ({
+vi.mock('../../shared/utils/share-invite-presets.js', () => ({
   shareInviteViaProvider: mocks.shareInviteViaProvider,
   getInviteShareProviders: vi.fn(() => [
     {

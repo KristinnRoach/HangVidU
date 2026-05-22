@@ -4,7 +4,7 @@ import { rtdb } from '../shared/storage/fb-rtdb/rtdb.js';
 import {
   createContactsLocalStorageRepository,
   createContactsRTDBStoreRepository,
-} from '../features/contacts/storage/index.js';
+} from '../storage/repositories/contacts/index.js';
 import {
   resolveContactIdFromDirectConversationId,
   resolveDirectConversationId,

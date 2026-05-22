@@ -2,7 +2,7 @@
 // User discovery system - allows users to find each other by email
 
 import { ref, set, get, remove } from 'firebase/database';
-import { rtdb } from '../../../shared/storage/fb-rtdb/rtdb.js';
+import { rtdb } from '../fb-rtdb/rtdb.js';
 import { onAuthStateChanged } from '../../../auth/index.js';
 
 function canonicalizeDirectoryUser(userData) {

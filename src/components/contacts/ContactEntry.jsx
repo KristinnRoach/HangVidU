@@ -1,8 +1,8 @@
 import { Show, onMount } from 'solid-js';
-import { dispatchCommand } from '../../../shared/events/index.js';
-import { useI18n } from '../../../shared/i18n/index.js';
-import PresenceIndicator from '../../../components/presence/PresenceIndicator.jsx';
-import { StartCallButton } from '../../call/components/CallControls.jsx';
+import { dispatchCommand } from '../../shared/events/index.js';
+import { useI18n } from '../../shared/i18n/index.js';
+import PresenceIndicator from '../presence/PresenceIndicator.jsx';
+import { StartCallButton } from '../../features/call/components/CallControls.jsx';
 
 const MAX_CONTACT_NAME_CHARS = 18;
 

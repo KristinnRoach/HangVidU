@@ -1,8 +1,8 @@
 import { For, Show, createSignal, createEffect } from 'solid-js';
-import { useI18n } from '../../../shared/i18n/index.js';
+import { useI18n } from '../../shared/i18n/index.js';
 import ContactEntry from './ContactEntry.jsx';
-import { useContacts } from '../useContacts.js';
-import type { ConversationSelection } from '../../messaging-next/interfaces.js';
+import { useContacts } from '../../contacts/useContacts.js';
+import type { ConversationSelection } from '../../features/messaging-next/interfaces.js';
 
 type ContactsListProps = {
   onOpenConversation?: (selection: ConversationSelection) => void;

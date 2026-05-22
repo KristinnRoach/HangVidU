@@ -10,7 +10,7 @@ vi.mock('../../shared/events/index.js', () => ({
   dispatchCommandAndAwait: mocks.dispatchCommandAndAwait,
 }));
 
-vi.mock('../../features/contacts/index.js', () => ({
+vi.mock('../../stores/contact-store.js', () => ({
   getContactById: mocks.getContactById,
   getConversationId: mocks.getConversationId,
 }));

@@ -169,7 +169,7 @@ const appConfig = [
 // See docs/WIP_Architecture/MIGRATE_COMPONENT_TO_SOLIDJS.md.
 const solidComponentsI18nConfig = [
   {
-    files: ['src/components/**/*.js', 'src/components/**/*.jsx'],
+    files: ['src/components/**/*.jsx', 'src/components/**/*.tsx'],
     ignores: ['src/**/*.test.js', 'src/**/*.test.jsx'],
     rules: {
       'no-restricted-imports': [
