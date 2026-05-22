@@ -1,13 +1,22 @@
 import { getIsLoggedIn, getLoggedInUserId } from '../../auth/index.js';
 import { rtdb } from '../../shared/storage/fb-rtdb/rtdb.js';
 import {
-  createContactsLocalStore,
-  createContactsRTDBStore,
+  createContactsLocalStorageRepository,
+  createContactsRTDBStoreRepository,
 } from './storage/index.js';
-import { resolveDirectConversationId } from '../../shared/utils/direct-conversation-id.js';
+import {
+  resolveDirectConversationId,
+  resolveContactIdFromDirectConversationId,
+} from '../../shared/utils/direct-conversation-id.js';
 import { publish } from '../../shared/events/index.js';
-import { setState, getAllContacts, getIsHydrated } from './contacts-state.js';
-// PAUSED: claude --resume edf6030f-72fb-4503-9175-bfc21d2d973c
+import {
+  setState,
+  getAllContacts,
+  getContactsIsHydrated,
+} from './contacts-state.js';
+import { setupContactsCommandHandlers } from './contacts-command-handlers.js';
+
+// TODO: Maybe this can be collapsed in to
 
 /**
  * @typedef {import('./storage/contact-schema.js').ContactRecord} ContactRecord
@@ -42,17 +51,17 @@ function getHydrationScopeKey(ownerId = getLoggedInUserId()) {
  * Resolve the active storage backend for the current auth state.
  *
  * @param {string|null} [ownerId=getLoggedInUserId()]
- * @returns {import('./storage/contacts-store.js').ContactsStore}
+ * @returns {import('./storage/contacts-repository.js').ContactsRepository}
  */
 function getContactsStorage(ownerId = getLoggedInUserId()) {
   if (ownerId) {
-    return createContactsRTDBStore({
+    return createContactsRTDBStoreRepository({
       database: rtdb,
       getOwnerId: () => ownerId,
     });
   }
 
-  return createContactsLocalStore({
+  return createContactsLocalStorageRepository({
     storageKey: 'contacts',
   });
 }
@@ -75,7 +84,7 @@ function logServiceFailure(action, error, context = {}) {
 /**
  * Read all contacts from storage and key them by contact id.
  *
- * @param {import('./storage/contacts-store.js').ContactsStore} storage
+ * @param {import('./storage/contacts-repository.js').ContactsRepository} storage
  * @returns {Promise<Record<string, ContactRecord>>}
  */
 async function loadContactsById(storage) {
@@ -153,6 +162,10 @@ async function emitContactDeleted(contactId, roomId) {
  * contact-specific query helpers that should not live in storage.
  */
 export class ContactsService {
+  constructor() {
+    setupContactsCommandHandlers(this);
+  }
+
   /**
    * Update an existing contact.
    * Returns `null` when the contact does not exist.
@@ -314,7 +327,7 @@ export class ContactsService {
    * @returns {Promise<HangUpResult>}
    */
   async handleHangUp(contactUserId, roomId) {
-    if (getIsLoggedIn() && !getIsHydrated()) {
+    if (getIsLoggedIn() && !getContactsIsHydrated()) {
       try {
         await ensureContactsHydrated();
       } catch (error) {
@@ -354,7 +367,7 @@ export async function ensureContactsHydrated() {
   const ownerId = getLoggedInUserId();
   const scopeKey = getHydrationScopeKey(ownerId);
 
-  if (getIsHydrated() && hydratedScopeKey === scopeKey) {
+  if (getContactsIsHydrated() && hydratedScopeKey === scopeKey) {
     return;
   }
 
@@ -410,4 +423,11 @@ export function resetContactsState() {
   setState({ byId: {}, isHydrated: false });
 }
 
-export const contactsService = new ContactsService();
+let instance = null;
+
+export const getContactsService = () => {
+  if (!instance) {
+    instance = new ContactsService();
+  }
+  return instance;
+};

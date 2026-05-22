@@ -23,19 +23,19 @@ vi.mock('../contacts-service.js', () => ({
   ensureContactsHydrated: mocks.ensureContactsHydrated,
 }));
 
-vi.mock('../user-discovery.js', () => ({
+vi.mock('../helpers/user-discovery.js', () => ({
   findUsersByEmails: mocks.findUsersByEmails,
 }));
 
-vi.mock('../google-contacts.js', () => ({
+vi.mock('../helpers/google-contacts.js', () => ({
   fetchGoogleContacts: mocks.fetchGoogleContacts,
 }));
 
-vi.mock('../import-contacts-utils.js', () => ({
+vi.mock('../helpers/import-contacts-utils.js', () => ({
   buildImportableContacts: mocks.buildImportableContacts,
 }));
 
-import { importGoogleContacts } from '../google-import.js';
+import { importGoogleContacts } from '../helpers/google-import.js';
 
 describe('importGoogleContacts', () => {
   beforeEach(() => {

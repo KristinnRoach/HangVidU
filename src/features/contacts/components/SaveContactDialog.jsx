@@ -1,6 +1,6 @@
 import { createSignal, onCleanup, onMount } from 'solid-js';
 import { useI18n } from '../../../shared/i18n/index.js';
-import { contactsService } from '../index.js';
+import { getContactsService } from '../index.js';
 
 export default function SaveContactDialog(props) {
   const { t } = useI18n();
@@ -20,6 +20,11 @@ export default function SaveContactDialog(props) {
   const onSave = async (event) => {
     event.preventDefault();
     if (isSubmitting()) return;
+
+    const contactsService = getContactsService();
+    if (!contactsService) {
+      throw new Error('ContactsService is not initialized');
+    }
 
     setIsSubmitting(true);
 

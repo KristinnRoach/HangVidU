@@ -31,7 +31,7 @@ function assertAdapter(adapter) {
  * - stays backend-agnostic
  * TODO: Add direct contract tests for get/patch/remove semantics.
  */
-export class ContactsStore {
+export class ContactsRepository {
   /**
    * @param {import('./contacts-storage-adapter.js').ContactsStorageAdapter} adapter
    */
@@ -117,8 +117,8 @@ export class ContactsStore {
 
 /**
  * @param {import('./contacts-storage-adapter.js').ContactsStorageAdapter} adapter
- * @returns {ContactsStore}
+ * @returns {ContactsRepository}
  */
-export function createContactsStore(adapter) {
-  return new ContactsStore(adapter);
+export function createContactsRepository(adapter) {
+  return new ContactsRepository(adapter);
 }

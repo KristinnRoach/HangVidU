@@ -1,8 +1,8 @@
-import { ContactsStore } from './contacts-store.js';
+import { ContactsRepository } from './contacts-repository.js';
 import { ContactsLocalAdapter } from './contacts-local-adapter.js';
 import { ContactsRTDBAdapter } from './contacts-rtdb-adapter.js';
 
-export { ContactsStore } from './contacts-store.js';
+export { ContactsRepository } from './contacts-repository.js';
 export { ContactsStorageAdapter } from './contacts-storage-adapter.js';
 export { ContactsRTDBAdapter } from './contacts-rtdb-adapter.js';
 export { ContactsLocalAdapter } from './contacts-local-adapter.js';
@@ -24,17 +24,17 @@ export {
 /**
  * Create a contacts store backed by Firebase RTDB.
  * @param {ConstructorParameters<typeof ContactsRTDBAdapter>[0]} options
- * @returns {ContactsStore}
+ * @returns {ContactsRepository}
  */
-export function createContactsRTDBStore(options) {
-  return new ContactsStore(new ContactsRTDBAdapter(options));
+export function createContactsRTDBStoreRepository(options) {
+  return new ContactsRepository(new ContactsRTDBAdapter(options));
 }
 
 /**
  * Create a contacts store backed by localStorage.
  * @param {ConstructorParameters<typeof ContactsLocalAdapter>[0]} [options]
- * @returns {ContactsStore}
+ * @returns {ContactsRepository}
  */
-export function createContactsLocalStore(options) {
-  return new ContactsStore(new ContactsLocalAdapter(options));
+export function createContactsLocalStorageRepository(options) {
+  return new ContactsRepository(new ContactsLocalAdapter(options));
 }

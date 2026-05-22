@@ -11,7 +11,11 @@ import {
   onCleanup,
 } from 'solid-js';
 import { getUserName } from '../../auth/auth-state.js';
+
+import { useI18n } from '../../shared/i18n';
 import { LoadBoundary } from '../../components/app/LoadBoundary.jsx';
+
+import { createMessagingRuntime } from './messaging-runtime.js';
 
 import { createConversationState } from './conversation.state.js';
 import { createConversationActions } from './conversation.actions.js';
@@ -20,7 +24,6 @@ import {
   useConversation,
 } from './use-conversation.js';
 import { clearLocalDraft, saveLocalDraft } from './local-drafts.js';
-import { createMessagingRuntime } from './messaging-runtime.js';
 import type { ConversationId, UserId } from './types.js';
 import type { ConversationSelection } from './interfaces.js';
 import styles from './ConversationPanel.module.css';
@@ -52,6 +55,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   const store = createConversationState();
   const actions = createConversationActions(store);
   const { state } = store;
+  const { t } = useI18n();
 
   let messagesEl: HTMLDivElement | undefined;
   let inputEl: HTMLInputElement | undefined;
@@ -186,16 +190,14 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     <div class={styles.panel}>
       <Show
         when={state.conversationId}
-        fallback={
-          <div class={styles.empty}>Select a contact to start chatting</div>
-        }
+        fallback={<div class={styles.empty}>Nothing here</div>}
       >
         <LoadBoundary
           loading={history.loading}
           fallback={<MessageHistorySkeleton />}
           error={history.error}
           errorFallback={
-            <div class={styles.empty}>Unable to load message history</div>
+            <div class={styles.empty}>{t('conversation.load_error')}</div>
           }
         >
           <div class={styles.messages} ref={messagesEl}>

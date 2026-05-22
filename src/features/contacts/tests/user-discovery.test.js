@@ -13,7 +13,7 @@ import {
   hashEmail,
   lookupUserByEmail,
   removeFromUserByEmailDirectory,
-} from '../user-discovery.js';
+} from '../helpers/user-discovery.js';
 
 vi.mock('../../../shared/storage/fb-rtdb/rtdb.js', () => ({
   rtdb: {},

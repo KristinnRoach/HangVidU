@@ -1,17 +1,16 @@
 import { onCleanup, onMount } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
-import { subscribe } from '../../../shared/events/index.js';
-import { getAllContactsSorted } from '../index.js';
+import { subscribe } from '../../shared/events/index.js';
+import { getAllContactsSorted } from './index.js';
 
 type ContactRow = {
   id: string;
   name: string | null;
   conversationId: string | null;
   unreadCount: number;
-  // roomId: string | null;
 };
 
-export function useContactsList() {
+export function useContacts() {
   const [contacts, setContacts] = createStore<ContactRow[]>([]);
   const unreadTeardowns = new Map<string, () => void>();
   const lastUnreadByConv = new Map<string, number>();
@@ -67,7 +66,6 @@ export function useContactsList() {
     const rows: ContactRow[] = getAllContactsSorted().map((c) => ({
       id: c.contactId ?? '',
       name: c.contactNickName ?? null,
-      // roomId: c.roomId ?? null,
       conversationId: c.conversationId ?? null,
       unreadCount: lastUnreadByConv.get(c.conversationId ?? '') ?? 0,
     }));

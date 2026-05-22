@@ -16,6 +16,7 @@ import type {
 import type { ConversationStateStore } from './conversation.state.js';
 import type { ConversationActions } from './conversation.actions.js';
 import { sortMessagesBySentAt } from './message-ordering.js';
+import { dispatchCommand } from '../../shared/events/index.js';
 
 type UseConversationOptions = {
   repository: MessageRepository;
@@ -59,34 +60,38 @@ export async function loadConversationHistory(
   );
 }
 
-export async function ensureDirectConversation(
-  repository: ConversationRepository,
-  conversationId: ConversationId,
-  myUserId: UserId,
-  remoteParticipantIds: UserId[],
-) {
-  const existing = await repository.loadConversation(conversationId);
-  if (existing || remoteParticipantIds.length !== 1) return existing;
+// export async function ensureDirectConversation(
+//   repository: ConversationRepository,
+//   conversationId: ConversationId,
+//   myUserId: UserId,
+//   remoteParticipantIds: UserId[],
+// ) {
+//   const existing = await repository.loadConversation(conversationId);
+//   if (existing || remoteParticipantIds.length !== 1) return existing;
 
-  const now = Date.now();
-  const remoteUserId = remoteParticipantIds[0];
-  return repository.upsertConversation({
-    conversationId,
-    kind: 'direct',
-    participants: {
-      [myUserId]: {
-        userId: myUserId,
-        joinedAt: now,
-      },
-      [remoteUserId]: {
-        userId: remoteUserId,
-        joinedAt: now,
-      },
-    },
-    createdAt: now,
-    updatedAt: now,
-  });
-}
+//   const now = Date.now();
+//   const remoteUserId = remoteParticipantIds[0];
+//   return repository.upsertConversation({
+//     conversationId,
+//     kind: 'direct',
+//     participants: {
+//       [myUserId]: {
+//         userId: myUserId,
+//         joinedAt: now,
+//         role: 'member', // "owner" | "admin" | "member"
+//         status: 'active', // "active" | "left" | "removed"
+//       },
+//       [remoteUserId]: {
+//         userId: remoteUserId,
+//         joinedAt: now,
+//         role: 'member', // "owner" | "admin" | "member"
+//         // status: 'active' // "active" | "left" | "removed"
+//       },
+//     },
+//     createdAt: now,
+//     updatedAt: now,
+//   });
+// }
 
 export function useConversation({
   repository,
@@ -110,7 +115,12 @@ export function useConversation({
     if (envelope.message.conversationId !== state.conversationId) return;
 
     const chatMessage = envelopeToChatMessage(envelope.message, 'private');
-    if (chatMessage) actions.receiveMessage(chatMessage);
+    if (chatMessage) {
+      actions.receiveMessage(chatMessage);
+      dispatchCommand('cmd:contacts:record:interaction', {
+        conversationId: chatMessage.conversationId,
+      });
+    }
   }
 
   if (privateTransport) {
@@ -128,7 +138,12 @@ export function useConversation({
 
     const result = repository.subscribe(conversationId, myUserId, (msg) => {
       const chatMessage = envelopeToChatMessage(msg, 'persisted');
-      if (chatMessage) actions.receiveMessage(chatMessage);
+      if (chatMessage) {
+        actions.receiveMessage(chatMessage);
+        // dispatchCommand('cmd:contacts:record:interaction', {
+        //   conversationId: chatMessage.conversationId,
+        // });
+      }
     });
 
     if (typeof result === 'function') {
@@ -245,6 +260,7 @@ export function useConversation({
       actions.markFailed(tempId);
     } finally {
       actions.setSending(false);
+      dispatchCommand('cmd:contacts:record:interaction', { conversationId });
     }
   }
 

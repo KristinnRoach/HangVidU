@@ -1,10 +1,10 @@
 // In-app contact invitation system
 
 import { ref, set, remove, onChildAdded } from 'firebase/database';
-import { rtdb } from '../../shared/storage/fb-rtdb/rtdb.js';
-import { getLoggedInUserId, getUser } from '../../auth/index.js';
-import { getDeterministicRoomId } from '../../shared/utils/room-id.js';
-import { contactsService } from './contacts-service.js';
+import { rtdb } from '../../../shared/storage/fb-rtdb/rtdb.js';
+import { getLoggedInUserId, getUser } from '../../../auth/index.js';
+import { getDeterministicRoomId } from '../../../shared/utils/room-id.js';
+import { getContactsService } from '../contacts-service.js';
 
 // Track invite listeners for cleanup
 let inviteListener = null;
@@ -92,6 +92,10 @@ export async function sendInvites(recipients) {
  * @returns {Promise<void>}
  */
 export async function acceptInvite(fromUserId, inviteData) {
+  if (!getContactsService()) {
+    throw new Error('ContactsService is not initialized');
+  }
+
   const myUserId = getLoggedInUserId();
   const currentUser = getUser();
 
@@ -99,7 +103,7 @@ export async function acceptInvite(fromUserId, inviteData) {
     throw new Error('Must be logged in to accept invites');
   }
 
-  const savedContact = await contactsService.saveContact(
+  const savedContact = await getContactsService.saveContact(
     fromUserId,
     inviteData.fromName || 'User',
     inviteData.roomId,
@@ -190,12 +194,16 @@ export function listenForAcceptedInvites(callback) {
   const acceptedRef = ref(rtdb, `users/${myUserId}/acceptedInvites`);
 
   acceptedInviteListener = onChildAdded(acceptedRef, async (snapshot) => {
+    if (!getContactsService()) {
+      throw new Error('ContactsService is not initialized');
+    }
+
     const acceptedByUserId = snapshot.key;
     const acceptData = snapshot.val();
     if (!acceptData) return;
 
     try {
-      const savedContact = await contactsService.saveContact(
+      const savedContact = await getContactsService.saveContact(
         acceptedByUserId,
         acceptData.acceptedByName || 'User',
         acceptData.roomId,

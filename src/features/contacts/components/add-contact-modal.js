@@ -12,24 +12,24 @@ import {
   buildReferralLink,
   copyInviteLink,
   shareInvite,
-} from '../share-invite.js';
+} from '../helpers/share-invite.js';
 import {
   getInviteShareProviders,
   shareInviteViaProvider,
-} from '../share-invite-presets.js';
+} from '../helpers/share-invite-presets.js';
 import { t } from '../../../shared/i18n/index.js';
 import { escapeHtml } from '../../../shared/utils/ui-utils/dom-utils.js';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../components/base-legacy/toast.js';
-import { sendBulkEmailsViaGmail } from '../gmail-send.js';
-import { filterImportableContacts } from '../import-contacts-utils.js';
+import { sendBulkEmailsViaGmail } from '../helpers/gmail-send.js';
+import { filterImportableContacts } from '../helpers/import-contacts-utils.js';
 import { createImportContactsComponent } from './import-contacts-component.js';
-import { importGoogleContacts as importGoogleContactsFlow } from '../google-import.js';
-import { inviteContactByEmail } from '../manual-contact-invite.js';
-import { sendContactInvite } from '../send-contact-invite.js';
-import { createDebouncedAsyncAction } from '../debounce.js';
+import { importGoogleContacts as importGoogleContactsFlow } from '../helpers/google-import.js';
+import { inviteContactByEmail } from '../helpers/manual-contact-invite.js';
+import { sendContactInvite } from '../helpers/send-contact-invite.js';
+import { createDebouncedAsyncAction } from '../helpers/debounce.js';
 
 // TODO: WIP decoupling considerations:
 // This modal mixes feature UI with auth/OAuth and external contact-import side effects.

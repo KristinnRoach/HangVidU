@@ -107,14 +107,16 @@ export function getConversationId(contactId) {
  * @returns {ContactRecord[]}
  */
 export function getAllContactsSorted(_sortedBy = 'lastInteractionAt') {
-  return [...Object.values(state.byId)].sort((a, b) => {
-    const aTime = a?.lastInteractionAt || a?.savedAt || 0;
-    const bTime = b?.lastInteractionAt || b?.savedAt || 0;
-    if (aTime !== bTime) return bTime - aTime;
-    const aName = (a?.contactNickName || '').toLowerCase();
-    const bName = (b?.contactNickName || '').toLowerCase();
-    return aName.localeCompare(bName);
-  }).map((contact) => ({ ...contact }));
+  return [...Object.values(state.byId)]
+    .sort((a, b) => {
+      const aTime = a?.lastInteractionAt || a?.savedAt || 0;
+      const bTime = b?.lastInteractionAt || b?.savedAt || 0;
+      if (aTime !== bTime) return bTime - aTime;
+      const aName = (a?.contactNickName || '').toLowerCase();
+      const bName = (b?.contactNickName || '').toLowerCase();
+      return aName.localeCompare(bName);
+    })
+    .map((contact) => ({ ...contact }));
 }
 
 /**
@@ -129,6 +131,6 @@ export function getContactByMostRecentInteraction() {
  *
  * @returns {boolean}
  */
-export function getIsHydrated() {
+export function getContactsIsHydrated() {
   return state.isHydrated;
 }

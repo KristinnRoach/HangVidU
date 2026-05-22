@@ -14,18 +14,19 @@ const mocks = vi.hoisted(() => ({
   },
   events: {
     publish: vi.fn(),
+    handleCommand: vi.fn(),
   },
   state: {
     setState: vi.fn(),
     getAllContacts: vi.fn(() => ({})),
-    getIsHydrated: vi.fn(() => false),
+    getContactsIsHydrated: vi.fn(() => false),
   },
 }));
 
 vi.mock('../contacts-state.js', () => ({
   setState: mocks.state.setState,
   getAllContacts: mocks.state.getAllContacts,
-  getIsHydrated: mocks.state.getIsHydrated,
+  getContactsIsHydrated: mocks.state.getContactsIsHydrated,
 }));
 
 vi.mock('../../../auth/index.js', () => ({
@@ -35,6 +36,7 @@ vi.mock('../../../auth/index.js', () => ({
 
 vi.mock('../../../shared/events/index.js', () => ({
   publish: mocks.events.publish,
+  handleCommand: mocks.events.handleCommand,
 }));
 
 vi.mock('../../../shared/storage/fb-rtdb/rtdb.js', () => ({
@@ -42,13 +44,15 @@ vi.mock('../../../shared/storage/fb-rtdb/rtdb.js', () => ({
 }));
 
 vi.mock('../storage/index.js', () => ({
-  createContactsRTDBStore: vi.fn(() => mocks.store),
-  createContactsLocalStore: vi.fn(() => mocks.store),
+  createContactsRTDBStoreRepository: vi.fn(() => mocks.store),
+  createContactsLocalStorageRepository: vi.fn(() => mocks.store),
 }));
 
 vi.mock('../../../shared/utils/direct-conversation-id.js', () => ({
   resolveDirectConversationId: (userA, userB) =>
     [userA, userB].sort().join('_'),
+  resolveContactIdFromDirectConversationId: (conversationId, myUserId) =>
+    conversationId.split('_').find((id) => id !== myUserId) ?? null,
 }));
 
 describe('contacts-service', () => {
@@ -62,9 +66,10 @@ describe('contacts-service', () => {
     mocks.store.patch.mockReset();
     mocks.store.remove.mockReset();
     mocks.events.publish.mockReset();
+    mocks.events.handleCommand.mockReset();
     mocks.state.setState.mockReset();
     mocks.state.getAllContacts.mockReset().mockReturnValue({});
-    mocks.state.getIsHydrated.mockReset().mockReturnValue(false);
+    mocks.state.getContactsIsHydrated.mockReset().mockReturnValue(false);
 
     vi.restoreAllMocks();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -96,9 +101,12 @@ describe('contacts-service', () => {
       lastInteractionAt: expect.any(Number),
     });
 
-    expect(mocks.events.publish).toHaveBeenCalledWith('evt:contacts:room:created', {
-      roomId: 'room-1',
-    });
+    expect(mocks.events.publish).toHaveBeenCalledWith(
+      'evt:contacts:room:created',
+      {
+        roomId: 'room-1',
+      },
+    );
   });
 
   it('saveContact preserves timestamps for an existing contact', async () => {
@@ -186,12 +194,15 @@ describe('contacts-service', () => {
       roomId: 'room-2',
     });
 
-    expect(mocks.events.publish).toHaveBeenCalledWith('evt:contacts:room:updated', {
-      contactId: 'u1',
-      contactNickName: 'Alice B',
-      roomId: 'room-2',
-      previousRoomId: 'room-1',
-    });
+    expect(mocks.events.publish).toHaveBeenCalledWith(
+      'evt:contacts:room:updated',
+      {
+        contactId: 'u1',
+        contactNickName: 'Alice B',
+        roomId: 'room-2',
+        previousRoomId: 'room-1',
+      },
+    );
   });
 
   it('updateContact returns null when the contact does not exist', async () => {
@@ -287,7 +298,7 @@ describe('contacts-service', () => {
     const { ContactsService } = await import('../contacts-service.js');
     const service = new ContactsService();
 
-    mocks.state.getIsHydrated.mockReturnValue(true);
+    mocks.state.getContactsIsHydrated.mockReturnValue(true);
     mocks.state.getAllContacts.mockReturnValue({
       u1: {
         contactId: 'u1',
@@ -318,17 +329,15 @@ describe('contacts-service', () => {
   it('rehydrates when auth scope changes after an earlier guest hydration', async () => {
     const { ensureContactsHydrated } = await import('../contacts-service.js');
 
-    mocks.store.list
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          contactId: 'u1',
-          contactNickName: 'Alice',
-          roomId: 'room-1',
-          savedAt: 1,
-          lastInteractionAt: 1,
-        },
-      ]);
+    mocks.store.list.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        contactId: 'u1',
+        contactNickName: 'Alice',
+        roomId: 'room-1',
+        savedAt: 1,
+        lastInteractionAt: 1,
+      },
+    ]);
 
     await ensureContactsHydrated();
     expect(mocks.state.setState).toHaveBeenLastCalledWith({
@@ -336,7 +345,7 @@ describe('contacts-service', () => {
       isHydrated: true,
     });
 
-    mocks.state.getIsHydrated.mockReturnValue(true);
+    mocks.state.getContactsIsHydrated.mockReturnValue(true);
     mocks.auth.ownerId = 'me';
 
     await ensureContactsHydrated();

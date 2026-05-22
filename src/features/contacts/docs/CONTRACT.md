@@ -14,7 +14,7 @@
 
 - Current split
   - service: `saveContact`, `updateContact`, `deleteContact`, `updateLastInteraction`, `handleHangUp`, `ensureContactsHydrated`, `hydrateContactsState`
-  - state: `getAllContacts`, `getContactById`, `getContactByRoomId`, `getConversationId`, `getAllContactsSorted`, `getContactByMostRecentInteraction`, `getIsHydrated`
+  - state: `getAllContacts`, `getContactById`, `getContactByRoomId`, `getConversationId`, `getAllContactsSorted`, `getContactByMostRecentInteraction`, `getContactsIsHydrated`
 
 - Published facts
   - `evt:contacts:room:created`

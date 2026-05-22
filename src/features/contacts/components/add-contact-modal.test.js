@@ -19,12 +19,12 @@ vi.mock('../contacts-service.js', () => ({
   },
 }));
 
-vi.mock('../user-discovery.js', () => ({
+vi.mock('../helpers/user-discovery.js', () => ({
   findUsersByEmails: vi.fn().mockResolvedValue({}),
   lookupUserByEmail: vi.fn().mockResolvedValue({ status: 'not_found' }),
 }));
 
-vi.mock('../invitations.js', () => ({
+vi.mock('../helpers/invitations.js', () => ({
   sendInvite: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -36,11 +36,11 @@ vi.mock('../../../auth/index.js', () => ({
   getIsLoggedIn: vi.fn(() => true),
 }));
 
-vi.mock('../google-contacts.js', () => ({
+vi.mock('../helpers/google-contacts.js', () => ({
   fetchGoogleContacts: vi.fn(),
 }));
 
-vi.mock('../gmail-send.js', () => ({
+vi.mock('../helpers/gmail-send.js', () => ({
   sendBulkEmailsViaGmail: vi.fn(),
 }));
 
@@ -53,13 +53,13 @@ vi.mock('../../../components/base-legacy/toast.js', () => ({
   showErrorToast: mocks.showErrorToast,
 }));
 
-vi.mock('../share-invite.js', () => ({
+vi.mock('../helpers/share-invite.js', () => ({
   shareInvite: mocks.shareInvite,
   copyInviteLink: mocks.copyInviteLink,
   buildReferralLink: vi.fn(() => 'https://hangvidu.com/?ref=user-123'),
 }));
 
-vi.mock('../share-invite-presets.js', () => ({
+vi.mock('../helpers/share-invite-presets.js', () => ({
   shareInviteViaProvider: mocks.shareInviteViaProvider,
   getInviteShareProviders: vi.fn(() => [
     {

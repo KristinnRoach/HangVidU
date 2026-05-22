@@ -1,7 +1,7 @@
 // src/contacts/index.js — barrel re-exports (public API)
 
 export {
-  contactsService,
+  getContactsService,
   ContactsService,
   ensureContactsHydrated,
   hydrateContactsState,
@@ -18,28 +18,28 @@ export {
   getConversationId,
   getAllContactsSorted,
   getContactByMostRecentInteraction,
-  getIsHydrated as getContactsIsHydrated,
+  getContactsIsHydrated,
 } from './contacts-state.js';
 
-export { cleanupInviteListeners } from './invitations.js';
-export { setupInviteListener } from './invite-listener.js';
+export { cleanupInviteListeners } from './helpers/invitations.js';
+export { setupInviteListener } from './helpers/invite-listener.js';
 
-export { captureReferral, processReferral } from './referral-handler.js';
-
-// Contacts list UI now lives in src/components/ (SolidJS). It is not re-exported
-// from the contacts barrel.
+export {
+  captureReferral,
+  processReferral,
+} from './helpers/referral-handler.js';
 
 export { showAddContactModal } from './components/add-contact-modal.js';
 
-export { hashEmail, lookupUserByEmail } from './user-discovery.js';
+export { hashEmail, lookupUserByEmail } from './helpers/user-discovery.js';
 export {
   buildReferralLink,
   buildInviteText,
   copyInviteLink,
   shareInvite,
-} from './share-invite.js';
+} from './helpers/share-invite.js';
 export {
   getInviteShareProviders,
   buildProviderShareUrl,
   shareInviteViaProvider,
-} from './share-invite-presets.js';
+} from './helpers/share-invite-presets.js';

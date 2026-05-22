@@ -7,11 +7,11 @@ const mocks = vi.hoisted(() => ({
   ensureContactsHydrated: vi.fn(),
 }));
 
-vi.mock('../user-discovery.js', () => ({
+vi.mock('../helpers/user-discovery.js', () => ({
   lookupUserByEmail: mocks.lookupUserByEmail,
 }));
 
-vi.mock('../send-contact-invite.js', () => ({
+vi.mock('../helpers/send-contact-invite.js', () => ({
   sendContactInvite: mocks.sendContactInvite,
 }));
 
@@ -27,7 +27,7 @@ vi.mock('../../../auth/index.js', () => ({
   getUser: vi.fn(() => ({ uid: 'me' })),
 }));
 
-import { inviteContactByEmail } from '../manual-contact-invite.js';
+import { inviteContactByEmail } from '../helpers/manual-contact-invite.js';
 
 describe('inviteContactByEmail', () => {
   beforeEach(() => {

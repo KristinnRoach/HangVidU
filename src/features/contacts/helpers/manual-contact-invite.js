@@ -1,7 +1,7 @@
-import { getAllContacts } from './contacts-state.js';
-import { ensureContactsHydrated } from './contacts-service.js';
+import { getAllContacts } from '../contacts-state.js';
+import { ensureContactsHydrated } from '../contacts-service.js';
 import { lookupUserByEmail } from './user-discovery.js';
-import { getUser } from '../../auth/index.js';
+import { getUser } from '../../../auth/index.js';
 import { sendContactInvite } from './send-contact-invite.js';
 
 /**

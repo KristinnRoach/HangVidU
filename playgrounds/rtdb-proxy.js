@@ -8,11 +8,15 @@ import admin from 'firebase-admin';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const serviceAccount = JSON.parse(
-  readFileSync(join(__dirname, 'functions/service-account-key.json'), 'utf-8')
+  readFileSync(
+    join(__dirname, '../functions/service-account-key.json'),
+    'utf-8',
+  ),
 );
 
 const databaseURL = process.env.VITE_FIREBASE_DATABASE_URL;
-if (!databaseURL) throw new Error('VITE_FIREBASE_DATABASE_URL not set — run via pnpm rtdb');
+if (!databaseURL)
+  throw new Error('VITE_FIREBASE_DATABASE_URL not set — run via pnpm rtdb');
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -23,7 +27,7 @@ const db = admin.database();
 
 function shallowify(val) {
   if (val !== null && typeof val === 'object') {
-    return Object.fromEntries(Object.keys(val).map(k => [k, true]));
+    return Object.fromEntries(Object.keys(val).map((k) => [k, true]));
   }
   return val;
 }
@@ -31,10 +35,14 @@ function shallowify(val) {
 const server = createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', 'http://localhost:8080');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
-  if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
 
-  const url   = new URL(req.url, 'http://localhost:8081');
-  const path  = url.pathname.replace(/^\//, '') || '/';
+  const url = new URL(req.url, 'http://localhost:8081');
+  const path = url.pathname.replace(/^\//, '') || '/';
   const shallow = url.searchParams.get('shallow') === 'true';
 
   try {
@@ -52,5 +60,5 @@ const server = createServer(async (req, res) => {
 
 const PORT = 8081;
 server.listen(PORT, () =>
-  console.log(`[rtdb-proxy] listening on http://localhost:${PORT}`)
+  console.log(`[rtdb-proxy] listening on http://localhost:${PORT}`),
 );

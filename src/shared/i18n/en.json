@@ -81,6 +81,8 @@
   "contact.action.call": "Call {name}",
   "contact.action.edit": "Edit contact",
   "contact.action.delete": "Delete contact",
+  "conversation.load_error": "Failed to load messages.",
+  "message_input.placeholder": "Type a message...",
   "message.audioCall": "Audio call",
   "message.videoCall": "Video call",
   "notification.enable.title": "Enable Notifications",

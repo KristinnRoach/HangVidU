@@ -107,47 +107,39 @@ export default function MainContent() {
           >
             <PublicHomepage />
           </div>
-          <Show when={p2p.state() !== 'idle'}>
-            <div class={mainStyles.activeViewContainer}>
-              <LoadBoundary
-                loading={isConnecting()}
-                fallback={
-                  <div class={mainStyles.callLoading}>
-                    <Spinner />
-                  </div>
-                }
-              >
-                <ActiveCallRoom />
-              </LoadBoundary>
+          <Show when={isLoggedIn()}>
+            <Show when={p2p.state() !== 'idle'}>
+              <div class={mainStyles.activeViewContainer}>
+                <LoadBoundary
+                  loading={isConnecting()}
+                  fallback={
+                    <div class={mainStyles.callLoading}>
+                      <Spinner />
+                    </div>
+                  }
+                >
+                  <ActiveCallRoom />
+                </LoadBoundary>
+              </div>
+            </Show>
+
+            <div
+              hidden={activeView() !== 'contacts'}
+              class={mainStyles.activeViewContainer}
+            >
+              <ContactsList onOpenConversation={openConversation} />
             </div>
-          </Show>
 
-          <div
-            hidden={activeView() !== 'contacts'}
-            class={mainStyles.activeViewContainer}
-          >
-            <ContactsList onOpenConversation={openConversation} />
-          </div>
-
-          <div
-            hidden={activeView() !== 'messaging'}
-            class={mainStyles.activeViewContainer}
-          >
-            <Show
-              when={user()}
-              fallback={
-                <div>
-                  DEBUG: user() is null! Should not happen since this is inside
-                  LoadingBoundary waiting for isAuthReady{' '}
-                </div>
-              }
+            <div
+              hidden={activeView() !== 'messaging'}
+              class={mainStyles.activeViewContainer}
             >
               <ConversationPanel
                 selection={selectedConversation()}
-                myUserId={(user().uid as UserId | undefined) ?? null}
+                myUserId={(user()?.uid as UserId | undefined) ?? null}
               />
-            </Show>
-          </div>
+            </div>
+          </Show>
         </main>
 
         <Show when={activeView() === 'home' || activeView() === 'contacts'}>

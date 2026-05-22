@@ -1,7 +1,7 @@
-import { For, Show } from 'solid-js';
+import { For, Show, createSignal, createEffect } from 'solid-js';
 import { useI18n } from '../../../shared/i18n/index.js';
 import ContactEntry from './ContactEntry.jsx';
-import { useContactsList } from './useContactsList';
+import { useContacts } from '../useContacts.js';
 import type { ConversationSelection } from '../../messaging-next/interfaces.js';
 
 type ContactsListProps = {
@@ -10,7 +10,27 @@ type ContactsListProps = {
 
 export default function ContactsList(props: ContactsListProps) {
   const { t } = useI18n();
-  const { contacts } = useContactsList();
+  const { contacts } = useContacts();
+
+  const [mruConversationId, setMruConversationId] = createSignal<string | null>(
+    null,
+  );
+
+  createEffect(() => {
+    if (contacts.length === 0) return;
+    if (!mruConversationId() && contacts[0].conversationId) {
+      props.onOpenConversation?.({
+        conversationId: contacts[0].conversationId,
+        displayUI: false,
+      });
+      setMruConversationId(contacts[0].conversationId);
+    }
+  });
+
+  const openConversation = (selection: ConversationSelection) => {
+    setMruConversationId(selection.conversationId);
+    props.onOpenConversation?.(selection);
+  };
 
   return (
     <div class='contacts-container'>
@@ -23,7 +43,7 @@ export default function ContactsList(props: ContactsListProps) {
                 name={row.name}
                 conversationId={row.conversationId}
                 unreadCount={row.unreadCount}
-                onOpenConversation={props.onOpenConversation}
+                onOpenConversation={openConversation}
               />
             )}
           </For>

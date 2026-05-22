@@ -81,6 +81,8 @@
   "contact.action.call": "Hringja í {name}",
   "contact.action.edit": "Uppfæra tengilið",
   "contact.action.delete": "Eyða tengilið",
+  "conversation.load_error": "Villa kom upp við að sækja skilaboð.",
+  "message_input.placeholder": "Skrifaðu skilaboð...",
   "message.audioCall": "Símtal",
   "message.videoCall": "Myndsímtal",
   "notification.enable.title": "Virkja tilkynningar",

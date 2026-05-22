@@ -12,7 +12,7 @@ import {
   buildInviteText,
   copyInviteLink,
   shareInvite,
-} from '../share-invite.js';
+} from '../helpers/share-invite.js';
 
 describe('share-invite', () => {
   beforeEach(() => {

@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ContactsStore } from './contacts-store.js';
+import { ContactsRepository } from './contacts-repository.js';
 
-describe('ContactsStore', () => {
+describe('ContactsRepository', () => {
   let adapter;
   let store;
 
@@ -14,7 +14,7 @@ describe('ContactsStore', () => {
       patch: vi.fn(),
       remove: vi.fn(),
     };
-    store = new ContactsStore(adapter);
+    store = new ContactsRepository(adapter);
   });
 
   it('delegates patch() to the adapter with a normalized patch', async () => {
@@ -47,6 +47,8 @@ describe('ContactsStore', () => {
   it('returns null when the adapter patch() reports a missing contact', async () => {
     adapter.patch.mockResolvedValue(null);
 
-    await expect(store.patch('missing', { roomId: 'room-1' })).resolves.toBeNull();
+    await expect(
+      store.patch('missing', { roomId: 'room-1' }),
+    ).resolves.toBeNull();
   });
 });
