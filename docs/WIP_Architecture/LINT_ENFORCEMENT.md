@@ -22,7 +22,6 @@ What is automatically enforced today. Source of truth: `eslint.config.js`, `esli
 
 - `pnpm lint` — ESLint first, then boundary rules.
 - `pnpm lint:boundaries` — boundaries only.
-- `pnpm lint:b:all` — boundaries with every feature enforced.
 
 ## Adding a new state file to the privacy rule
 
