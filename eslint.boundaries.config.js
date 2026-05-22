@@ -129,31 +129,31 @@ if (ENABLE_RULE.shared) {
   );
 }
 
-for (const featureName of ENFORCED_FEATURES) {
-  overrides.push(
-    dependencyRule(
-      [
-        `src/features/${featureName}/*.js`,
-        `src/features/${featureName}/**/*.js`,
-        `src/features/${featureName}/*.jsx`,
-        `src/features/${featureName}/**/*.jsx`,
-      ],
-      [
-        {
-          from: { type: 'feature', captured: { featureName } },
-          allow: {
-            to: [
-              { type: 'auth' },
-              { type: 'shared' },
-              { type: 'feature', captured: { featureName } },
-            ],
-          },
-          message: `${featureName} may only import from auth, shared, or itself.`,
+overrides.push(
+  dependencyRule(
+    [
+      'src/features/*/*.js',
+      'src/features/*/**/*.js',
+      'src/features/*/*.jsx',
+      'src/features/*/**/*.jsx',
+    ],
+    [
+      {
+        from: { type: 'feature' },
+        allow: {
+          to: [
+            { type: 'auth' },
+            { type: 'shared' },
+            { type: 'feature' },
+            { type: 'components' },
+          ],
         },
-      ],
-    ),
-  );
-}
+        message:
+          'Features may import from auth, shared, components, or other features.',
+      },
+    ],
+  ),
+);
 
 if (ENABLE_RULE.auth) {
   overrides.push(

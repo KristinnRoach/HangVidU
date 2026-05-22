@@ -1,14 +1,14 @@
 import { createStore, produce } from 'solid-js/store';
-import { getIsLoggedIn, getLoggedInUserId } from '../../auth/index.js';
-import { rtdb } from '../../shared/storage/fb-rtdb/rtdb.js';
+import { getIsLoggedIn, getLoggedInUserId } from '../auth/index.js';
+import { rtdb } from '../shared/storage/fb-rtdb/rtdb.js';
 import {
   createContactsLocalStorageRepository,
   createContactsRTDBStoreRepository,
-} from './storage/index.js';
+} from '../features/contacts/storage/index.js';
 import {
   resolveContactIdFromDirectConversationId,
   resolveDirectConversationId,
-} from '../../shared/utils/direct-conversation-id.js';
+} from '../shared/utils/direct-conversation-id.js';
 
 type Contact = any;
 

@@ -20,7 +20,7 @@ export {
   // lifecycle
   hydrateContacts,
   resetContacts,
-} from './contacts-store.js';
+} from '../../stores/contact-store.js';
 
 export { useContacts } from './useContacts.js';
 

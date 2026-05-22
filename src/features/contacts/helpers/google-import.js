@@ -1,5 +1,5 @@
 import { requestContactsAccess, getUser } from '../../../auth/index.js';
-import { getAllContacts, hydrateContacts } from '../contacts-store.js';
+import { getAllContacts, hydrateContacts } from '../../../stores/contact-store.js';
 import { findUsersByEmails } from './user-discovery.js';
 import { fetchGoogleContacts } from './google-contacts.js';
 import { buildImportableContacts } from './import-contacts-utils.js';
