@@ -70,10 +70,7 @@ overrides.push(
 
 overrides.push(
   dependencyRule(
-    [
-      'src/features/*/*.{js,jsx,ts,tsx}',
-      'src/features/*/**/*.{js,jsx,ts,tsx}',
-    ],
+    ['src/features/*/*.{js,jsx,ts,tsx}', 'src/features/*/**/*.{js,jsx,ts,tsx}'],
     [
       {
         from: { type: 'feature' },
@@ -132,10 +129,7 @@ overrides.push(
 
 overrides.push(
   dependencyRule(
-    [
-      'src/setup/*.{js,jsx,ts,tsx}',
-      'src/setup/**/*.{js,jsx,ts,tsx}',
-    ],
+    ['src/setup/*.{js,jsx,ts,tsx}', 'src/setup/**/*.{js,jsx,ts,tsx}'],
     [
       {
         from: { type: 'setup' },
@@ -158,10 +152,7 @@ overrides.push(
 
 overrides.push(
   dependencyRule(
-    [
-      'src/components/*.{js,jsx,ts,tsx}',
-      'src/components/**/*.{js,jsx,ts,tsx}',
-    ],
+    ['src/components/*.{js,jsx,ts,tsx}', 'src/components/**/*.{js,jsx,ts,tsx}'],
     [
       {
         from: { type: 'components' },
@@ -176,6 +167,41 @@ overrides.push(
         },
         message:
           'Components may only import from components, auth, feature, shared, and contacts.',
+      },
+    ],
+  ),
+);
+
+overrides.push(
+  dependencyRule(
+    ['src/storage/*.{js,jsx,ts,tsx}', 'src/storage/**/*.{js,jsx,ts,tsx}'],
+    [
+      {
+        from: { type: 'storage' },
+        allow: { to: [{ type: 'storage' }, { type: 'shared' }] },
+        message:
+          'Storage is the persistence layer — may only import from storage and shared.',
+      },
+    ],
+  ),
+);
+
+overrides.push(
+  dependencyRule(
+    ['src/stores/*.{js,jsx,ts,tsx}', 'src/stores/**/*.{js,jsx,ts,tsx}'],
+    [
+      {
+        from: { type: 'stores' },
+        allow: {
+          to: [
+            { type: 'stores' },
+            { type: 'auth' },
+            { type: 'shared' },
+            { type: 'storage' },
+          ],
+        },
+        message:
+          'Stores may only import from stores, auth, shared, and storage — they sit below features/components/contacts/setup.',
       },
     ],
   ),
@@ -233,12 +259,18 @@ export default [
         {
           type: 'auth',
           mode: 'full',
-          pattern: ['src/auth/*.{js,jsx,ts,tsx}', 'src/auth/**/*.{js,jsx,ts,tsx}'],
+          pattern: [
+            'src/auth/*.{js,jsx,ts,tsx}',
+            'src/auth/**/*.{js,jsx,ts,tsx}',
+          ],
         },
         {
           type: 'setup',
           mode: 'full',
-          pattern: ['src/setup/*.{js,jsx,ts,tsx}', 'src/setup/**/*.{js,jsx,ts,tsx}'],
+          pattern: [
+            'src/setup/*.{js,jsx,ts,tsx}',
+            'src/setup/**/*.{js,jsx,ts,tsx}',
+          ],
         },
         {
           type: 'components',
@@ -257,12 +289,26 @@ export default [
         {
           type: 'storage',
           mode: 'full',
-          pattern: ['src/storage/*.{js,jsx,ts,tsx}', 'src/storage/**/*.{js,jsx,ts,tsx}'],
+          pattern: [
+            'src/storage/*.{js,jsx,ts,tsx}',
+            'src/storage/**/*.{js,jsx,ts,tsx}',
+          ],
+        },
+        {
+          type: 'stores',
+          mode: 'full',
+          pattern: [
+            'src/stores/*.{js,jsx,ts,tsx}',
+            'src/stores/**/*.{js,jsx,ts,tsx}',
+          ],
         },
         {
           type: 'contacts',
           mode: 'full',
-          pattern: ['src/contacts/*.{js,jsx,ts,tsx}', 'src/contacts/**/*.{js,jsx,ts,tsx}'],
+          pattern: [
+            'src/contacts/*.{js,jsx,ts,tsx}',
+            'src/contacts/**/*.{js,jsx,ts,tsx}',
+          ],
         },
       ],
     },
