@@ -1,4 +1,4 @@
-import { onCleanup, onMount, ParentProps } from 'solid-js';
+import { onCleanup, onMount, type ParentProps } from 'solid-js';
 import { useI18n, type MessageKey } from '../../../../shared/i18n';
 import DialogFrame from '../../../../components/dialogs/DialogFrame.jsx';
 import { ringtoneManager } from '../../audio/ringtone-manager';
@@ -25,11 +25,13 @@ export default function CallDialog(props: ParentProps<CallDialogProps>) {
   const { t } = useI18n();
   const idPrefix = () => props.idPrefix || 'call-dialog';
 
-  const name = () => props.name || props.defaultName;
+  const name = () => props.name || props.defaultName || t('shared.unknown');
   const callKindLabel = () =>
     props.callKindLabel ||
     (props.audioOnly ? t('message.audioCall') : t('message.videoCall'));
-  const title = () => props.title || t(props.titleKey, { name: name() });
+  const title = () =>
+    props.title ||
+    (props.titleKey ? t(props.titleKey, { name: name() }) : name());
   const ringtone = () => props.ringtone ?? false;
 
   onMount(() => {

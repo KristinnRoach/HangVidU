@@ -46,10 +46,12 @@ const AuthContext = createContext<Auth>();
  * down on unmount.
  */
 export function AuthProvider(props: { children: JSX.Element }) {
-  const [snapshot, setSnapshot] = createSignal<AuthSnapshot>(getAuthState());
+  const [snapshot, setSnapshot] = createSignal<AuthSnapshot>(
+    getAuthState() as AuthSnapshot,
+  );
 
-  const unsubscribe = onAuthStateChanged((next: AuthSnapshot) =>
-    setSnapshot(next),
+  const unsubscribe = onAuthStateChanged((next) =>
+    setSnapshot(next as AuthSnapshot),
   );
   onCleanup(unsubscribe);
 

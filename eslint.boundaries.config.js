@@ -1,19 +1,24 @@
 import boundaries from 'eslint-plugin-boundaries';
+import tseslint from 'typescript-eslint';
+
+const JS_FILES = ['src/**/*.js', 'src/**/*.jsx'];
+const TS_FILES = ['src/**/*.ts', 'src/**/*.tsx'];
+const SOURCE_FILES = [...JS_FILES, ...TS_FILES];
 
 const SHARED_TEMP_FEATURE_EXCEPTIONS = ['watch', 'notifications', 'call'];
 
 const SHARED_GLOBS = [
   'src/elements.js',
-  'src/shared/components/**/*.js',
-  'src/shared/events/**/*.js',
-  'src/shared/vendors/**/*.js',
-  'src/shared/i18n/**/*.js',
-  'src/shared/media/**/*.js',
-  'src/shared/media-next/**/*.js',
-  'src/shared/pwa/**/*.js',
-  'src/shared/storage/**/*.js',
-  'src/shared/styles/**/*.js',
-  'src/shared/utils/**/*.js',
+  'src/shared/components/**/*.{js,jsx,ts,tsx}',
+  'src/shared/events/**/*.{js,jsx,ts,tsx}',
+  'src/shared/vendors/**/*.{js,jsx,ts,tsx}',
+  'src/shared/i18n/**/*.{js,jsx,ts,tsx}',
+  'src/shared/media/**/*.{js,jsx,ts,tsx}',
+  'src/shared/media-next/**/*.{js,jsx,ts,tsx}',
+  'src/shared/pwa/**/*.{js,jsx,ts,tsx}',
+  'src/shared/storage/**/*.{js,jsx,ts,tsx}',
+  'src/shared/styles/**/*.{js,jsx,ts,tsx}',
+  'src/shared/utils/**/*.{js,jsx,ts,tsx}',
 ];
 
 function dependencyRule(files, rules) {
@@ -22,8 +27,12 @@ function dependencyRule(files, rules) {
     ignores: [
       'src/**/*.test.js',
       'src/**/*.test.jsx',
+      'src/**/*.test.ts',
+      'src/**/*.test.tsx',
       'src/**/*.browser.test.js',
       'src/**/*.browser.test.jsx',
+      'src/**/*.browser.test.ts',
+      'src/**/*.browser.test.tsx',
     ],
     rules: {
       'boundaries/dependencies': [
@@ -62,10 +71,8 @@ overrides.push(
 overrides.push(
   dependencyRule(
     [
-      'src/features/*/*.js',
-      'src/features/*/**/*.js',
-      'src/features/*/*.jsx',
-      'src/features/*/**/*.jsx',
+      'src/features/*/*.{js,jsx,ts,tsx}',
+      'src/features/*/**/*.{js,jsx,ts,tsx}',
     ],
     [
       {
@@ -88,7 +95,7 @@ overrides.push(
 
 overrides.push(
   dependencyRule(
-    ['src/contacts/*.js', 'src/contacts/**/*.js'],
+    ['src/contacts/*.{js,jsx,ts,tsx}', 'src/contacts/**/*.{js,jsx,ts,tsx}'],
     [
       {
         from: { type: 'contacts' },
@@ -110,7 +117,7 @@ overrides.push(
 
 overrides.push(
   dependencyRule(
-    ['src/auth/*.js', 'src/auth/**/*.js'],
+    ['src/auth/*.{js,jsx,ts,tsx}', 'src/auth/**/*.{js,jsx,ts,tsx}'],
     [
       {
         from: { type: 'auth' },
@@ -126,10 +133,8 @@ overrides.push(
 overrides.push(
   dependencyRule(
     [
-      'src/setup/*.js',
-      'src/setup/**/*.js',
-      'src/setup/*.jsx',
-      'src/setup/**/*.jsx',
+      'src/setup/*.{js,jsx,ts,tsx}',
+      'src/setup/**/*.{js,jsx,ts,tsx}',
     ],
     [
       {
@@ -154,10 +159,8 @@ overrides.push(
 overrides.push(
   dependencyRule(
     [
-      'src/components/*.js',
-      'src/components/**/*.js',
-      'src/components/*.jsx',
-      'src/components/**/*.jsx',
+      'src/components/*.{js,jsx,ts,tsx}',
+      'src/components/**/*.{js,jsx,ts,tsx}',
     ],
     [
       {
@@ -180,6 +183,17 @@ overrides.push(
 
 export default [
   {
+    files: TS_FILES,
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        ecmaFeatures: { jsx: true },
+      },
+    },
+  },
+  {
     files: ['src/**/*.jsx'],
     languageOptions: {
       parserOptions: {
@@ -190,7 +204,7 @@ export default [
     },
   },
   {
-    files: ['src/**/*.js', 'src/**/*.jsx'],
+    files: SOURCE_FILES,
     plugins: {
       boundaries,
     },
@@ -209,18 +223,22 @@ export default [
             'src/features/*/**/*.js',
             'src/features/*/*.jsx',
             'src/features/*/**/*.jsx',
+            'src/features/*/*.ts',
+            'src/features/*/**/*.ts',
+            'src/features/*/*.tsx',
+            'src/features/*/**/*.tsx',
           ],
           capture: ['featureName'],
         },
         {
           type: 'auth',
           mode: 'full',
-          pattern: ['src/auth/*.js', 'src/auth/**/*.js'],
+          pattern: ['src/auth/*.{js,jsx,ts,tsx}', 'src/auth/**/*.{js,jsx,ts,tsx}'],
         },
         {
           type: 'setup',
           mode: 'full',
-          pattern: ['src/setup/*.js', 'src/setup/**/*.js'],
+          pattern: ['src/setup/*.{js,jsx,ts,tsx}', 'src/setup/**/*.{js,jsx,ts,tsx}'],
         },
         {
           type: 'components',
@@ -230,17 +248,21 @@ export default [
             'src/components/**/*.js',
             'src/components/*.jsx',
             'src/components/**/*.jsx',
+            'src/components/*.ts',
+            'src/components/**/*.ts',
+            'src/components/*.tsx',
+            'src/components/**/*.tsx',
           ],
         },
         {
           type: 'storage',
           mode: 'full',
-          pattern: ['src/storage/*.js', 'src/storage/**/*.js'],
+          pattern: ['src/storage/*.{js,jsx,ts,tsx}', 'src/storage/**/*.{js,jsx,ts,tsx}'],
         },
         {
           type: 'contacts',
           mode: 'full',
-          pattern: ['src/contacts/*.js', 'src/contacts/**/*.js'],
+          pattern: ['src/contacts/*.{js,jsx,ts,tsx}', 'src/contacts/**/*.{js,jsx,ts,tsx}'],
         },
       ],
     },

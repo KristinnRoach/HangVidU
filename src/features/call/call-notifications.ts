@@ -10,7 +10,7 @@ export function sendIncomingCallPushNotification(call: pendingOutgoingCall) {
       callerId: call.callerId,
       callerName: call.callerName,
     })
-    .catch((err) => {
+    .catch((err: unknown) => {
       console.error('Error sending incoming call notification:', err);
     });
 }
@@ -24,7 +24,7 @@ export function sendMissedCallPushNotification(call: pendingOutgoingCall) {
       callerId: call.callerId,
       callerName: call.callerName,
     })
-    .catch((err) => {
+    .catch((err: unknown) => {
       console.error('Error sending missed call notification:', err);
     });
 }

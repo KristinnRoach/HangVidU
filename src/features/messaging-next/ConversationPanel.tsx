@@ -10,7 +10,7 @@ import {
   on,
   onCleanup,
 } from 'solid-js';
-import { getUserName } from '../../auth/auth-state.js';
+import { getUserName } from '../../auth/index.js';
 
 import { useI18n } from '../../shared/i18n';
 import { LoadBoundary } from '../../components/app/LoadBoundary.jsx';

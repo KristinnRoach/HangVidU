@@ -8,7 +8,7 @@ import {
   getLoggedInUserId,
   getUser,
   waitForAuthReady,
-} from '../../auth/auth-state.js';
+} from '../../auth/index.js';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import { CallResponseType, type CallInvite } from './model/call-schema.js';
 import {
@@ -269,7 +269,7 @@ export class CallHandshakeController {
     if (!state || state.direction !== 'incoming') return;
     const svc = getCallService();
     const localUID = getLoggedInUserId();
-    if (!localUID) return;
+    if (!svc || !localUID) return;
     this.clearOutgoingCallTracking();
     this.setHandshakeState(null);
     svc
