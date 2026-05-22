@@ -11,15 +11,13 @@ const mocks = vi.hoisted(() => {
         return () => handlers.delete(eventName);
       }),
     },
-    closeAllConversations: vi.fn(),
-    resetMessagesUI: vi.fn(),
-    removeAllIncomingListeners: vi.fn(),
-    startListeningForSavedRooms: vi.fn(() => Promise.resolve()),
     cleanupInviteListeners: vi.fn(),
     setupInviteListener: vi.fn(),
     processReferral: vi.fn(() => Promise.resolve()),
     hydrateContacts: vi.fn(() => Promise.resolve()),
     resetContacts: vi.fn(),
+    getAuthState: vi.fn(() => ({ user: null })),
+    saveUserProfile: vi.fn(() => Promise.resolve()),
     devDebug: vi.fn(),
   };
 });
@@ -30,15 +28,15 @@ vi.mock('../../shared/events/index.js', () => ({
 
 vi.mock('../../auth/index.js', () => ({
   initAuth: vi.fn(() => Promise.resolve()),
+  getAuthState: mocks.getAuthState,
+}));
+
+vi.mock('../../shared/storage/user/index.js', () => ({
+  saveUserProfile: mocks.saveUserProfile,
 }));
 
 vi.mock('../../shared/utils/dev/dev-utils.js', () => ({
   devDebug: mocks.devDebug,
-}));
-
-vi.mock('../../features/call/room-listeners.js', () => ({
-  removeAllIncomingListeners: mocks.removeAllIncomingListeners,
-  startListeningForSavedRooms: mocks.startListeningForSavedRooms,
 }));
 
 vi.mock('../../contacts/invitations.js', () => ({
@@ -102,7 +100,7 @@ describe('setupAuth', () => {
     teardown();
   });
 
-  it('handles login through shared auth facts without re-attaching saved room listeners on initial resolution', async () => {
+  it('runs the login flow through shared auth facts', async () => {
     const { setupAuth } = await import('../setupAuth.js');
     const lobbyElement = { id: 'lobby' };
 
@@ -114,13 +112,12 @@ describe('setupAuth', () => {
 
     expect(mocks.processReferral).toHaveBeenCalled();
     expect(mocks.hydrateContacts).toHaveBeenCalled();
-    expect(mocks.startListeningForSavedRooms).not.toHaveBeenCalled();
     expect(mocks.setupInviteListener).toHaveBeenCalledWith();
 
     teardown();
   });
 
-  it('handles logout through shared auth facts', async () => {
+  it('resets contacts and clears local storage on logout', async () => {
     const { setupAuth } = await import('../setupAuth.js');
     const lobbyElement = { id: 'lobby' };
 
@@ -129,10 +126,7 @@ describe('setupAuth', () => {
     await mocks.handlers.get('evt:auth:session:logged-out')({});
 
     expect(mocks.resetContacts).toHaveBeenCalled();
-    expect(mocks.removeAllIncomingListeners).toHaveBeenCalled();
     expect(mocks.cleanupInviteListeners).toHaveBeenCalled();
-    expect(mocks.closeAllConversations).toHaveBeenCalled();
-    expect(mocks.resetMessagesUI).toHaveBeenCalled();
     expect(localStorageClearSpy).toHaveBeenCalled();
 
     teardown();
@@ -151,29 +145,6 @@ describe('setupAuth', () => {
 
     expect(globalThis.localStorage.getItem('locale')).toBe('is');
     expect(globalThis.localStorage.getItem('volatileKey')).toBeNull();
-
-    teardown();
-  });
-
-  it('continues logout cleanup when conversation close throws', async () => {
-    const { setupAuth } = await import('../setupAuth.js');
-    const lobbyElement = { id: 'lobby' };
-
-    mocks.closeAllConversations.mockImplementationOnce(() => {
-      throw new Error('close failed');
-    });
-
-    const teardown = await setupAuth({ lobbyElement });
-
-    await expect(
-      mocks.handlers.get('evt:auth:session:logged-out')({}),
-    ).resolves.toBeUndefined();
-
-    expect(mocks.removeAllIncomingListeners).toHaveBeenCalled();
-    expect(mocks.cleanupInviteListeners).toHaveBeenCalled();
-    expect(mocks.closeAllConversations).toHaveBeenCalled();
-    expect(mocks.resetMessagesUI).toHaveBeenCalled();
-    expect(localStorageClearSpy).toHaveBeenCalled();
 
     teardown();
   });

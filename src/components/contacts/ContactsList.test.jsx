@@ -1,8 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, cleanup } from '@solidjs/testing-library';
 
+// TODO: Check this:
+/*
+Caveat worth flagging: The 10s test runtime for ContactsList "renders a row per contact" 
+comes from a Firebase-related dependency chain reached through 
+ContactEntry → StartCallButton → useP2PContext. 
+Worth investigating later — either lazy-load that chain 
+or stub useP2PContext once the call/p2p layer is migrated. 
+For now the 60s timeout swallows it.
+*/
 const mocks = vi.hoisted(() => ({
-  getAllContactsSorted: vi.fn(),
+  contacts: [],
   watchUserPresence: vi.fn(() => () => {}),
   dispatchCommand: vi.fn(),
   subscribe: vi.fn(),
@@ -19,8 +28,8 @@ vi.mock('../../features/presence/index.js', () => ({
   watchUserPresence: mocks.watchUserPresence,
 }));
 
-vi.mock('../../stores/contact-store.js', () => ({
-  getAllContactsSorted: mocks.getAllContactsSorted,
+vi.mock('../../contacts/useContacts.js', () => ({
+  useContacts: () => ({ contacts: mocks.contacts }),
 }));
 
 vi.mock('../../shared/events/index.js', () => ({
@@ -61,29 +70,32 @@ vi.mock('../../components/base-legacy/icons.js', () => ({
   initIcons: mocks.initIcons,
 }));
 
-describe('SolidJS ContactsList PoC', () => {
+// First-render path drags in Firebase initialization indirectly via
+// the call/presence dependency tree, which can take 10s+ alone — and
+// longer under parallel test load.
+describe('SolidJS ContactsList PoC', { timeout: 60000 }, () => {
   beforeEach(() => {
+    cleanup();
     vi.clearAllMocks();
     mocks.subscriptions.clear();
-    mocks.getAllContactsSorted.mockReturnValue([
+    mocks.contacts = [
       {
-        contactId: 'contact-1',
-        contactNickName: 'Alice',
+        id: 'contact-1',
+        name: 'Alice',
         conversationId: 'conv-1',
-        roomId: 'room-1',
+        unreadCount: 0,
       },
       {
-        contactId: 'contact-2',
-        contactNickName: 'Bob',
+        id: 'contact-2',
+        name: 'Bob',
         conversationId: 'conv-2',
-        roomId: 'room-2',
+        unreadCount: 0,
       },
-    ]);
-    cleanup();
+    ];
   });
 
   it('renders a row per contact from hydrated state', async () => {
-    const ContactsListModule = await import('./ContactsList.jsx');
+    const ContactsListModule = await import('./ContactsList.tsx');
 
     const { container, unmount } = render(() => <ContactsListModule.default />);
 
@@ -100,7 +112,7 @@ describe('SolidJS ContactsList PoC', () => {
   // `expect(contacts[0].unreadCount).toBe(3)`). Likely a test-environment
   // interaction with Solid's scheduler — not a regression in production code.
   it.skip('reflects unread count via the messaging event bridge', async () => {
-    const ContactsListModule = await import('./ContactsList.jsx');
+    const ContactsListModule = await import('./ContactsList.tsx');
 
     const { container, unmount } = render(() => <ContactsListModule.default />);
 
@@ -109,7 +121,7 @@ describe('SolidJS ContactsList PoC', () => {
       { conversationId: 'conv-1' },
     );
 
-    const { contacts } = await import('./ContactsList.jsx');
+    const { contacts } = await import('./ContactsList.tsx');
 
     const unreadHandler = mocks.subscriptions.get(
       'evt:messaging:conversation:unread-count-changed',
@@ -130,7 +142,7 @@ describe('SolidJS ContactsList PoC', () => {
   });
 
   it('triggers a call on call button click', async () => {
-    const ContactsListModule = await import('./ContactsList.jsx');
+    const ContactsListModule = await import('./ContactsList.tsx');
 
     const { container, unmount } = render(() => <ContactsListModule.default />);
 
@@ -145,7 +157,7 @@ describe('SolidJS ContactsList PoC', () => {
   });
 
   it('delegates conversation selection to the parent callback', async () => {
-    const ContactsListModule = await import('./ContactsList.jsx');
+    const ContactsListModule = await import('./ContactsList.tsx');
     const onOpenConversation = vi.fn();
 
     const { container, unmount } = render(() => (

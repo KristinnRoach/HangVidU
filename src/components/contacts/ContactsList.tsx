@@ -1,4 +1,4 @@
-import { For, Show, createSignal, createEffect } from 'solid-js';
+import { For, Show, createEffect } from 'solid-js';
 import { useI18n } from '../../shared/i18n/index.js';
 import ContactEntry from './ContactEntry.jsx';
 import { useContacts } from '../../contacts/useContacts.js';
@@ -12,23 +12,17 @@ export default function ContactsList(props: ContactsListProps) {
   const { t } = useI18n();
   const { contacts } = useContacts();
 
-  const [mruConversationId, setMruConversationId] = createSignal<string | null>(
-    null,
-  );
-
   createEffect(() => {
     if (contacts.length === 0) return;
-    if (!mruConversationId() && contacts[0].conversationId) {
+    if (contacts[0].conversationId) {
       props.onOpenConversation?.({
         conversationId: contacts[0].conversationId,
         displayUI: false,
       });
-      setMruConversationId(contacts[0].conversationId);
     }
   });
 
   const openConversation = (selection: ConversationSelection) => {
-    setMruConversationId(selection.conversationId);
     props.onOpenConversation?.(selection);
   };
 

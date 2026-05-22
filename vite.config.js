@@ -5,6 +5,7 @@ import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
 import mkcert from 'vite-plugin-mkcert';
 import solid from 'vite-plugin-solid';
+import devtools from 'solid-devtools/vite';
 
 export default defineConfig(({ mode }) => {
   // Firebase Hosting is the only production target.
@@ -32,6 +33,10 @@ export default defineConfig(({ mode }) => {
 
     plugins: [
       ...(mode === 'development' ? [mkcert()] : []),
+      devtools({
+        /* features options - all disabled by default */
+        autoname: true, // e.g. enable autoname
+      }),
       solid(),
       VitePWA({
         includeAssets: ['index.html', 'favicon.ico'],
