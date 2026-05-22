@@ -7,7 +7,7 @@ export default function AddContactButton() {
 
   async function handleClick() {
     try {
-      const { showAddContactModal } = await import('../index.js');
+      const { showAddContactModal } = await import('./add-contact-modal.js');
       await showAddContactModal();
     } catch (error) {
       console.error('[AddContactButton] failed to open modal:', error);
