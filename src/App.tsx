@@ -5,8 +5,9 @@ import { P2PProvider } from './shared/p2p-context.js';
 import { setDevDebugEnabled } from './shared/utils/dev/dev-utils.js';
 import { setLogger } from '@kidlib/p2p';
 
-setDevDebugEnabled(true);
-setLogger((...args) => console.info('[P2P]', ...args));
+const isDev = import.meta.env.DEV;
+setDevDebugEnabled(isDev);
+isDev && setLogger((...args) => console.info('[P2P]', ...args));
 
 export default function App() {
   return (

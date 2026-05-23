@@ -18,6 +18,8 @@ export {
   parseDirectoryEntry,
 } from './schema.js';
 
+export { registerUserInDirectory } from './user-discovery.js';
+
 // TODO: possibly move the below into services
 
 const userProfileRepo = createUserProfileRepository(

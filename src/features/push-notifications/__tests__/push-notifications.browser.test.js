@@ -33,6 +33,8 @@ vi.mock('../../../shared/events/index.js', () => ({
 
     return undefined;
   }),
+  dispatchCommand: vi.fn(),
+  subscribe: vi.fn(() => () => {}),
 }));
 
 vi.mock('../../../auth/auth-setup.js', () => ({

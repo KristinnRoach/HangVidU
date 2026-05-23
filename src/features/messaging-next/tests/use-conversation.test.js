@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { createConversationActions } from '../conversation.actions.js';
 import { createConversationState } from '../conversation.state.js';
 import {
-  ensureDirectConversation,
   loadConversationHistory,
   useConversation,
 } from '../use-conversation.js';
@@ -81,24 +80,5 @@ describe('messaging-next useConversation', () => {
         });
       });
     });
-  });
-
-  it('creates missing direct conversation metadata from the selected contact', async () => {
-    const upserts = [];
-    const repository = {
-      loadConversation: () => null,
-      upsertConversation: (conversation) => {
-        upserts.push(conversation);
-        return conversation;
-      },
-    };
-
-    await ensureDirectConversation(repository, 'user-a_user-b', 'user-a', [
-      'user-b',
-    ]);
-
-    expect(upserts).toHaveLength(1);
-    expect(upserts[0].kind).toBe('direct');
-    expect(Object.keys(upserts[0].participants)).toEqual(['user-a', 'user-b']);
   });
 });

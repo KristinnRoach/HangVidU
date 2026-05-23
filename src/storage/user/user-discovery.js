@@ -2,7 +2,6 @@
 
 import { ref, set, get, remove } from 'firebase/database';
 import { rtdb } from '../../infra/firebase-rtdb.js';
-import { onAuthStateChanged } from '../../auth/index.js';
 
 function canonicalizeDirectoryUser(userData) {
   if (!userData || typeof userData !== 'object') {
@@ -21,15 +20,6 @@ function canonicalizeDirectoryUser(userData) {
     userName,
   };
 }
-
-// Auto-register user in directory when they log in
-onAuthStateChanged((state) => {
-  if (state.isLoggedIn && state.user) {
-    registerUserInDirectory(state.user).catch((err) => {
-      console.warn('Failed to register user in directory:', err);
-    });
-  }
-});
 
 /**
  * Create a Firebase-safe hash from an email address.
