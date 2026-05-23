@@ -15,7 +15,7 @@ vi.mock('./send-contact-invite.js', () => ({
   sendContactInvite: mocks.sendContactInvite,
 }));
 
-vi.mock('../stores/contact-store.js', () => ({
+vi.mock('../stores/contactsStore.js', () => ({
   getAllContacts: mocks.getAllContacts,
   hydrateContacts: mocks.hydrateContacts,
 }));

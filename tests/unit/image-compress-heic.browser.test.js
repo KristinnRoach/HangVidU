@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { compressImage } from '../../src/shared/media/image-compress.js';
+import { compressImage } from '../../src/lib/media/image-compress.js';
 
 // Resolve optional HEIC fixtures without hard-failing when they are absent.
 const heicFileUrls = import.meta.glob('../../src/media/test-images/*.{heic,HEIC}', {

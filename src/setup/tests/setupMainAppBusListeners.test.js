@@ -35,7 +35,7 @@ vi.mock('../../shared/events/index.js', () => ({
   subscribe: mocks.events.subscribe,
 }));
 
-vi.mock('../../stores/contact-store.js', () => ({
+vi.mock('../../stores/contactsStore.js', () => ({
   getContactById: mocks.getContactById,
   getContactByRoomId: mocks.getContactByRoomId,
   getConversationId: mocks.getConversationId,

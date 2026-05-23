@@ -5,7 +5,7 @@ import { saveUserProfile } from '../shared/storage/user/index.js';
 import { cleanupInviteListeners } from '../contacts/invitations.js';
 import { setupInviteListener } from '../contacts/invite-listener.js';
 import { processReferral } from '../contacts/referral-handler.js';
-import { hydrateContacts, resetContacts } from '../stores/contact-store.js';
+import { hydrateContacts, resetContacts } from '../stores/contactsStore.js';
 
 let isReady = false;
 let initPromise = null;

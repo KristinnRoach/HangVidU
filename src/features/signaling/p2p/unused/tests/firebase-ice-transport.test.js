@@ -36,19 +36,19 @@ vi.mock('firebase/database', () => {
   };
 });
 
-vi.mock('../../../../shared/vendors/firebase.js', () => ({
+vi.mock('../../../../../shared/vendors/firebase.js', () => ({
   app: {},
 }));
 
-vi.mock('../../../../shared/utils/dev/dev-utils.js', () => ({
+vi.mock('../../../../../shared/utils/dev/dev-utils.js', () => ({
   devDebug: vi.fn(),
 }));
 
-import { createFirebaseIceTransport } from '../unused/firebase-ice-transport.js';
+import { createFirebaseIceTransport } from '../firebase-ice-transport.js';
 import {
   removeAllRTDBListeners,
   removeRTDBListenersForRoom,
-} from '../../../shared/storage/fb-rtdb/rtdb.js';
+} from '../../../../../shared/storage/fb-rtdb/rtdb.js';
 import { off, onChildAdded } from 'firebase/database';
 
 describe('createFirebaseIceTransport', () => {

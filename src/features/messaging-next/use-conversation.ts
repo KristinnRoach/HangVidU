@@ -16,7 +16,7 @@ import type {
 import type { ConversationStateStore } from './conversation.state.js';
 import type { ConversationActions } from './conversation.actions.js';
 import { sortMessagesBySentAt } from './message-ordering.js';
-import { recordInteractionByConversation } from '../../stores/contact-store.js';
+import { recordInteractionByConversation } from '../../stores/contactsStore.js';
 
 type UseConversationOptions = {
   repository: MessageRepository;

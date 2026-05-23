@@ -1,8 +1,5 @@
 import { dispatchCommandAndAwait } from '../shared/events/index.js';
-import {
-  getContactById,
-  getConversationId,
-} from '../stores/contact-store.js';
+import { getContactById, getConversationId } from '../stores/contactsStore.js';
 
 // TODO: Add nav to join incoming calls directly, /?room=room-1
 

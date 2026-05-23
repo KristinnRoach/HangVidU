@@ -1,5 +1,5 @@
 import { handleCommand, subscribe } from '../shared/events/index.js';
-import { getContactByRoomId } from '../stores/contact-store.js';
+import { getContactByRoomId } from '../stores/contactsStore.js';
 import { getPushNotifications } from '../features/push-notifications/index.js';
 import { setUserOffline } from '../features/presence/index.js';
 

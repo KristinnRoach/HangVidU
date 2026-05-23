@@ -15,7 +15,7 @@ vi.mock('../auth/index.js', () => ({
   getUser: mocks.getUser,
 }));
 
-vi.mock('../stores/contact-store.js', () => ({
+vi.mock('../stores/contactsStore.js', () => ({
   getAllContacts: mocks.getAllContacts,
   hydrateContacts: mocks.hydrateContacts,
 }));

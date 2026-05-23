@@ -48,7 +48,7 @@ vi.mock('../../contacts/invite-listener.js', () => ({
 vi.mock('../../contacts/referral-handler.js', () => ({
   processReferral: mocks.processReferral,
 }));
-vi.mock('../../stores/contact-store.js', () => ({
+vi.mock('../../stores/contactsStore.js', () => ({
   hydrateContacts: mocks.hydrateContacts,
   resetContacts: mocks.resetContacts,
 }));
