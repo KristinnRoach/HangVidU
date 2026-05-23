@@ -3,12 +3,14 @@ import {
   signInWithUsernameOrEmail,
   signUpWithUsername,
 } from '../password-auth.js';
+import { useI18n } from '../../shared/i18n/index.js';
 import styles from './UsernamePasswordForm.module.css';
 
 // Minimal sign-up / sign-in form. No dedicated styles yet — uses semantic
 // elements + native browser defaults. Replace with the chosen design when
 // the sustainable auth-UI strategy is picked.
 export default function UsernamePasswordForm() {
+  const { t } = useI18n();
   const [mode, setMode] = createSignal('signin'); // 'signin' | 'signup'
   const [identifier, setIdentifier] = createSignal('');
   const [username, setUsername] = createSignal('');
@@ -50,7 +52,7 @@ export default function UsernamePasswordForm() {
         fallback={
           <input
             type='text'
-            placeholder='username or email'
+            placeholder={t('auth.placeholder.identifier')}
             autocomplete='username'
             value={identifier()}
             onInput={(e) => setIdentifier(e.currentTarget.value)}
@@ -60,7 +62,7 @@ export default function UsernamePasswordForm() {
       >
         <input
           type='text'
-          placeholder='username (a-z, 0-9, _)'
+          placeholder={t('auth.placeholder.username')}
           autocomplete='username'
           value={username()}
           onInput={(e) => setUsername(e.currentTarget.value)}
@@ -68,14 +70,14 @@ export default function UsernamePasswordForm() {
         />
         <input
           type='email'
-          placeholder='email (optional)'
+          placeholder={t('auth.placeholder.email')}
           autocomplete='email'
           value={email()}
           onInput={(e) => setEmail(e.currentTarget.value)}
         />
         <input
           type='text'
-          placeholder='display name (optional)'
+          placeholder={t('auth.placeholder.display_name')}
           autocomplete='nickname'
           value={displayName()}
           onInput={(e) => setDisplayName(e.currentTarget.value)}
@@ -83,14 +85,14 @@ export default function UsernamePasswordForm() {
       </Show>
       <input
         type='password'
-        placeholder='password (min 8)'
+        placeholder={t('auth.placeholder.password')}
         autocomplete={mode() === 'signup' ? 'new-password' : 'current-password'}
         value={password()}
         onInput={(e) => setPassword(e.currentTarget.value)}
         required
       />
       <button type='submit' disabled={busy()}>
-        {mode() === 'signup' ? 'Sign up' : 'Sign in'}
+        {mode() === 'signup' ? t('auth.sign_up') : t('auth.sign_in')}
       </button>
 
       <button
@@ -102,8 +104,8 @@ export default function UsernamePasswordForm() {
         }}
       >
         {mode() === 'signup'
-          ? 'Have an account? Sign in'
-          : 'No account? Sign up'}
+          ? t('auth.toggle.to_signin')
+          : t('auth.toggle.to_signup')}
       </button>
 
       <Show when={error()}>

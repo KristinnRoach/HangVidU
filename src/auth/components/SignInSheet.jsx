@@ -3,6 +3,8 @@ import { LogIn } from 'lucide-solid';
 import { useI18n } from '../../shared/i18n/index.js';
 import GoogleSignInButton from './GoogleSignInButton.jsx';
 import UsernamePasswordForm from './UsernamePasswordForm.jsx';
+import LegalFooter from '../../components/app/LegalFooter.jsx';
+import LocaleToggle from '../../components/app/LocaleToggle.jsx';
 import styles from './SignInSheet.module.css';
 
 // Minimal sign-in sheet. Primary provider (Google) is shown first; password
@@ -40,6 +42,8 @@ export default function SignInSheet() {
             </h3> */}
           </div>
 
+          <div class={styles.divider}></div>
+
           <section class={styles.providersSection}>
             <GoogleSignInButton />
           </section>
@@ -68,6 +72,11 @@ export default function SignInSheet() {
               &times;
             </button>
           </form>
+
+          <div class={styles.divider}></div>
+
+          <LegalFooter />
+          <LocaleToggle />
         </div>
       </dialog>
     </>

@@ -15,11 +15,11 @@ export default function GoogleSignInButton() {
     if (isDisposed) return;
 
     renderGoogleSignInButton(buttonContainer, {
-      theme: 'filled_black',
+      text: 'signin_with',
       size: 'medium',
       shape: 'pill',
-      text: 'signin_with',
-      width: '240',
+      // theme: 'filled_black',
+      // width: '240',
     });
   }
 
