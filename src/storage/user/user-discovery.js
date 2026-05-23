@@ -1,9 +1,8 @@
-// src/contacts/user-discovery.js
 // User discovery system - allows users to find each other by email
 
 import { ref, set, get, remove } from 'firebase/database';
-import { rtdb } from '../fb-rtdb/rtdb.js';
-import { onAuthStateChanged } from '../../../auth/index.js';
+import { rtdb } from '../../infra/firebase-rtdb.js';
+import { onAuthStateChanged } from '../../auth/index.js';
 
 function canonicalizeDirectoryUser(userData) {
   if (!userData || typeof userData !== 'object') {

@@ -1,4 +1,4 @@
-// src/shared/storage/user/schema.js
+// src/storage/user/schema.js
 // Data shapes for user profiles, presence, and discovery
 
 import { z } from 'zod';

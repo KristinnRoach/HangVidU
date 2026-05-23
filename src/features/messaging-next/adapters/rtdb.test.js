@@ -5,7 +5,7 @@ import {
   createRTDBMessageRepository,
 } from './rtdb.js';
 
-vi.mock('../../../shared/storage/fb-rtdb/rtdb.js', () => ({
+vi.mock('../../../infra/firebase-rtdb.js', () => ({
   rtdb: {},
 }));
 

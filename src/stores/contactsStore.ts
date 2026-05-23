@@ -1,6 +1,6 @@
 import { createStore, produce } from 'solid-js/store';
 import { getIsLoggedIn, getLoggedInUserId } from '../auth/index.js';
-import { rtdb } from '../shared/storage/fb-rtdb/rtdb.js';
+import { rtdb } from '../infra/firebase-rtdb.js';
 import {
   createContactsLocalStorageRepository,
   createContactsRTDBRepository,

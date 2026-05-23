@@ -14,7 +14,7 @@ vi.mock('../../shared/i18n/index.js', () => ({
   t: vi.fn((key) => key),
 }));
 
-vi.mock('../../shared/storage/user/user-discovery.js', () => ({
+vi.mock('../../storage/user/user-discovery.js', () => ({
   findUsersByEmails: vi.fn().mockResolvedValue({}),
   lookupUserByEmail: vi.fn().mockResolvedValue({ status: 'not_found' }),
 }));

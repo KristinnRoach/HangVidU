@@ -20,7 +20,7 @@ vi.mock('../stores/contactsStore.js', () => ({
   hydrateContacts: mocks.hydrateContacts,
 }));
 
-vi.mock('../shared/storage/user/user-discovery.js', () => ({
+vi.mock('../storage/user/user-discovery.js', () => ({
   findUsersByEmails: mocks.findUsersByEmails,
 }));
 

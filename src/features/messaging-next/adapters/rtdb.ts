@@ -11,7 +11,7 @@ import {
   update,
   type DataSnapshot,
 } from 'firebase/database';
-import { rtdb } from '../../../shared/storage/fb-rtdb/rtdb.js';
+import { rtdb } from '../../../infra/firebase-rtdb.js';
 import type {
   ConversationRepository,
   ConversationUpsert,

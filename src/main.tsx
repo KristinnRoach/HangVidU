@@ -5,7 +5,7 @@ import 'solid-devtools';
 
 import App from './App';
 import { initPushNotifications } from './features/push-notifications/push-notifications.js';
-import { initializeAppCheckDeferred } from './shared/vendors/firebase.js';
+import { initializeAppCheckDeferred } from './infra/firebase.js';
 import { setupAuth } from './setup/setupAuth.js';
 import { setupContacts } from './setup/setupContacts.js';
 import { setupMainAppBusListeners } from './setup/setupMainAppBusListeners.js';

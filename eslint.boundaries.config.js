@@ -11,12 +11,10 @@ const SHARED_GLOBS = [
   'src/elements.js',
   'src/shared/components/**/*.{js,jsx,ts,tsx}',
   'src/shared/events/**/*.{js,jsx,ts,tsx}',
-  'src/shared/vendors/**/*.{js,jsx,ts,tsx}',
   'src/shared/i18n/**/*.{js,jsx,ts,tsx}',
   'src/shared/media/**/*.{js,jsx,ts,tsx}',
   'src/shared/media-next/**/*.{js,jsx,ts,tsx}',
   'src/shared/pwa/**/*.{js,jsx,ts,tsx}',
-  'src/shared/storage/**/*.{js,jsx,ts,tsx}',
   'src/shared/styles/**/*.{js,jsx,ts,tsx}',
   'src/shared/utils/**/*.{js,jsx,ts,tsx}',
 ];
@@ -55,7 +53,6 @@ overrides.push(
       allow: {
         to: [
           { type: 'shared' },
-          { type: 'auth' },
           ...SHARED_TEMP_FEATURE_EXCEPTIONS.map((featureName) => ({
             type: 'feature',
             captured: { featureName },
@@ -63,7 +60,7 @@ overrides.push(
         ],
       },
       message:
-        'Shared code may import shared and auth (plus explicit temporary feature exceptions).',
+        'Shared is pure cross-cutting code — may only import from shared (plus explicit temporary feature exceptions).',
     },
   ]),
 );
@@ -81,10 +78,11 @@ overrides.push(
             { type: 'feature' },
             { type: 'components' },
             { type: 'contacts' },
+            { type: 'infra' },
           ],
         },
         message:
-          'Features may import from auth, shared, components, contacts, or other features.',
+          'Features may import from auth, shared, components, contacts, infra, or other features.',
       },
     ],
   ),
@@ -103,10 +101,11 @@ overrides.push(
             { type: 'components' },
             { type: 'contacts' },
             { type: 'feature' },
+            { type: 'infra' },
           ],
         },
         message:
-          'Contacts may import from auth, shared, components, features, or itself.',
+          'Contacts may import from auth, shared, components, features, infra, or itself.',
       },
     ],
   ),
@@ -119,9 +118,23 @@ overrides.push(
       {
         from: { type: 'auth' },
         allow: {
-          to: [{ type: 'auth' }, { type: 'shared' }],
+          to: [{ type: 'auth' }, { type: 'shared' }, { type: 'infra' }],
         },
-        message: 'Auth may only import from auth and shared.',
+        message: 'Auth may only import from auth, shared, and infra.',
+      },
+    ],
+  ),
+);
+
+overrides.push(
+  dependencyRule(
+    ['src/infra/*.{js,jsx,ts,tsx}', 'src/infra/**/*.{js,jsx,ts,tsx}'],
+    [
+      {
+        from: { type: 'infra' },
+        allow: { to: [{ type: 'infra' }] },
+        message:
+          'Infra is the external-system bootstrap layer — may only import from infra (vendor SDKs + env config only).',
       },
     ],
   ),
@@ -141,10 +154,11 @@ overrides.push(
             { type: 'shared' },
             { type: 'components' },
             { type: 'contacts' },
+            { type: 'infra' },
           ],
         },
         message:
-          'Setup may only import from setup, auth, feature, shared, components, and contacts.',
+          'Setup may only import from setup, auth, feature, shared, components, contacts, and infra.',
       },
     ],
   ),
@@ -163,10 +177,11 @@ overrides.push(
             { type: 'feature' },
             { type: 'shared' },
             { type: 'contacts' },
+            { type: 'infra' },
           ],
         },
         message:
-          'Components may only import from components, auth, feature, shared, and contacts.',
+          'Components may only import from components, auth, feature, shared, contacts, and infra.',
       },
     ],
   ),
@@ -178,9 +193,11 @@ overrides.push(
     [
       {
         from: { type: 'storage' },
-        allow: { to: [{ type: 'storage' }, { type: 'shared' }] },
+        allow: {
+          to: [{ type: 'storage' }, { type: 'shared' }, { type: 'infra' }],
+        },
         message:
-          'Storage is the persistence layer — may only import from storage and shared.',
+          'Storage is the persistence layer — may only import from storage, shared, and infra.',
       },
     ],
   ),
@@ -198,10 +215,11 @@ overrides.push(
             { type: 'auth' },
             { type: 'shared' },
             { type: 'storage' },
+            { type: 'infra' },
           ],
         },
         message:
-          'Stores may only import from stores, auth, shared, and storage — they sit below features/components/contacts/setup.',
+          'Stores may only import from stores, auth, shared, storage, and infra — they sit below features/components/contacts/setup.',
       },
     ],
   ),
@@ -308,6 +326,14 @@ export default [
           pattern: [
             'src/contacts/*.{js,jsx,ts,tsx}',
             'src/contacts/**/*.{js,jsx,ts,tsx}',
+          ],
+        },
+        {
+          type: 'infra',
+          mode: 'full',
+          pattern: [
+            'src/infra/*.{js,jsx,ts,tsx}',
+            'src/infra/**/*.{js,jsx,ts,tsx}',
           ],
         },
       ],

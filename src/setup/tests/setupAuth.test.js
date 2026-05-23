@@ -31,7 +31,7 @@ vi.mock('../../auth/index.js', () => ({
   getAuthState: mocks.getAuthState,
 }));
 
-vi.mock('../../shared/storage/user/index.js', () => ({
+vi.mock('../../storage/user/index.js', () => ({
   saveUserProfile: mocks.saveUserProfile,
 }));
 

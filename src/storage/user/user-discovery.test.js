@@ -15,7 +15,7 @@ import {
   removeFromUserByEmailDirectory,
 } from './user-discovery.js';
 
-vi.mock('../fb-rtdb/rtdb.js', () => ({
+vi.mock('../../infra/firebase-rtdb.js', () => ({
   rtdb: {},
 }));
 

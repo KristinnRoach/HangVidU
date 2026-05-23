@@ -1,4 +1,4 @@
-import { rtdb } from '../../shared/storage/fb-rtdb/rtdb.js';
+import { rtdb } from '../../infra/firebase-rtdb.js';
 import {
   cleanupCallService,
   initCallService,

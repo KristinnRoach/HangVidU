@@ -1,7 +1,7 @@
 import { subscribe } from '../shared/events/index.js';
 import { initAuth, getAuthState } from '../auth/index.js';
 import { devDebug } from '../shared/utils/dev/dev-utils.js';
-import { saveUserProfile } from '../shared/storage/user/index.js';
+import { saveUserProfile } from '../storage/user/index.js';
 import { cleanupInviteListeners } from '../contacts/invitations.js';
 import { setupInviteListener } from '../contacts/invite-listener.js';
 import { processReferral } from '../contacts/referral-handler.js';

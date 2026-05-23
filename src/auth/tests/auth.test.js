@@ -21,7 +21,7 @@ vi.mock('firebase/auth', () => ({
   inMemoryPersistence: {},
 }));
 
-vi.mock('../../shared/vendors/firebase.js', () => ({
+vi.mock('../../infra/firebase.js', () => ({
   app: {},
   fcmVapidKey: 'test-vapid-key',
 }));
@@ -56,7 +56,7 @@ vi.mock('firebase/database', () => ({
   serverTimestamp: vi.fn(() => ({ '.sv': 'timestamp' })),
 }));
 
-vi.mock('../../shared/storage/fb-rtdb/rtdb.js', () => ({
+vi.mock('../../infra/firebase-rtdb.js', () => ({
   rtdb: {},
 }));
 
