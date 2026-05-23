@@ -48,3 +48,43 @@ clients are no longer running the `main` branch call code.
     sender, and define who can clear the response.
 - Once all active clients are migrated, remove obsolete call rules and matching
   storage helpers in the same release.
+
+## Password / username sign-in (deferred until verified or BetterAuth migration)
+
+The username + password sign-in flow uses Firebase Auth's built-in email
+uniqueness via a synthetic `{username}@hangvidu.invalid` principal, so it
+required **no rules change**. The following follow-ups are deferred so they do
+not affect production before the new flow is verified:
+
+- **Username change flow** — deferred until core functionality is manually
+  verified. When added, it needs either a `usernames/{username}` claim node
+  (with `.read: true` for availability checks and write rules that prevent
+  hijacking) or an Admin-SDK Cloud Function. Don't introduce until after the
+  basic sign-up/sign-in is working in DEV.
+
+- **Password reset for username-only accounts** — deferred. Firebase's reset
+  flow needs a real email. Punting on this until we decide whether to migrate
+  to BetterAuth; username-only users currently have no recovery path and the
+  sign-up UI should communicate that.
+
+- **`usersByEmail/{hash}` validation tightening** — current write rule is
+  permissive about value shape. Consider adding `.validate` to require
+  `uid`/`userName`/`registeredAt` and to allow the optional `username` field
+  introduced for email→handle lookup during password sign-in by email.
+
+## Field rename: `userName` → `displayName` (or `appNickname`)
+
+Before deploying the username + password flow, rename the existing display-name
+field `userName` (used everywhere as a non-unique display string) to
+`displayName` or `appNickname` to disambiguate from the new `username` (unique
+login handle). This is a breaking data-shape change that touches:
+
+- `users/{uid}/profile/userName` (RTDB path key)
+- `usersByEmail/{hash}.userName` (directory entry)
+- `UserProfileSchema` / `DirectoryEntrySchema` in
+  `src/storage/user/schema.js`
+- All consumers of `getUserName()` / `authState.user.userName`
+
+Plan a one-time migration (read old field, write new, delete old) and ship the
+rename and migration in the same release. Do not start until both DEV and PROD
+clients have been updated to read both keys during a transition window.

@@ -11,6 +11,7 @@
 html {
   line-height: 1.15; /* 1 */
   -webkit-text-size-adjust: 100%; /* 2 */
+  text-size-adjust: 100%; /* 2 */
 }
 
 /* Sections
@@ -198,8 +199,8 @@ button,
 [type='button'],
 [type='reset'],
 [type='submit'] {
-  appearance: button;
   -webkit-appearance: button;
+  appearance: button;
 }
 
 /**
@@ -291,8 +292,8 @@ textarea {
  */
 
 [type='search'] {
-  appearance: textfield; /* standard */
   -webkit-appearance: textfield; /* 1 */
+  appearance: textfield; /* standard */
   outline-offset: -2px; /* 2 */
 }
 

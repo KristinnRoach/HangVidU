@@ -2,6 +2,7 @@
 
 import { ref, set, get, remove } from 'firebase/database';
 import { rtdb } from '../../infra/firebase-rtdb.js';
+import { hashEmail as sharedHashEmail } from '../../shared/utils/email-hash.js';
 
 function canonicalizeDirectoryUser(userData) {
   if (!userData || typeof userData !== 'object') {
@@ -22,39 +23,32 @@ function canonicalizeDirectoryUser(userData) {
 }
 
 /**
- * Create a Firebase-safe hash from an email address.
- * Uses base64 encoding with Firebase-incompatible characters replaced.
- * @param {string} email - Email address to hash
- * @returns {string} - Firebase-safe hash
+ * Re-export of the shared email hash helper. The canonical implementation
+ * lives in `src/shared/utils/email-hash.js` so both storage and auth layers
+ * can use it without crossing the storage boundary.
+ * @param {string} email
+ * @returns {string}
  */
 export function hashEmail(email) {
-  if (!email || typeof email !== 'string') {
-    throw new Error('Invalid email: must be a non-empty string');
-  }
-
-  // Normalize: lowercase and trim
-  const normalized = email.toLowerCase().trim();
-
-  // UTF-8 safe base64 encode, then replace / for Firebase compatibility
-  let binary = '';
-  for (const b of new TextEncoder().encode(normalized))
-    binary += String.fromCharCode(b);
-  const safe = btoa(binary).replace(/\//g, '-');
-
-  return safe;
+  return sharedHashEmail(email);
 }
 
 /**
  * Register a user in the public directory for discovery by email.
- * Called after successful Google sign-in.
+ * Called after successful sign-in for any user that has an email.
+ *
  * @param {Object} user - Firebase user object
  * @param {string} user.uid - User ID
  * @param {string} user.email - User email
  * @param {string} user.userName - User display name
  * @param {string} [user.photoURL] - User photo URL
+ * @param {Object} [extra]
+ * @param {string|null} [extra.username] - Unique login handle, when the user
+ *   has one. Stored so email-based password sign-in can resolve back to the
+ *   handle that is the Firebase Auth principal.
  * @returns {Promise<void>}
  */
-export async function registerUserInDirectory(user) {
+export async function registerUserInDirectory(user, { username = null } = {}) {
   if (!user || !user.uid || !user.email) {
     throw new Error('Invalid user: must have uid and email');
   }
@@ -68,6 +62,7 @@ export async function registerUserInDirectory(user) {
     photoURL: user.photoURL || null,
     registeredAt: Date.now(),
   };
+  if (username) userData.username = username;
 
   try {
     await set(userRef, userData);

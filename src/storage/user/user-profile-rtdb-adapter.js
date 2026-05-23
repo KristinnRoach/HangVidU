@@ -1,4 +1,4 @@
-import { get, ref, set } from 'firebase/database';
+import { get, ref, update } from 'firebase/database';
 
 /**
  * RTDB adapter for user-profile storage.
@@ -41,7 +41,9 @@ export class UserProfileRTDBAdapter {
    * @returns {Promise<void>}
    */
   async save(user) {
-    await set(ref(this.database, this._profilePath(user.uid)), {
+    // update() merges so additional profile fields written by other flows
+    // (e.g. `username`, `email` set during password sign-up) are preserved.
+    await update(ref(this.database, this._profilePath(user.uid)), {
       userName: user.userName ?? null,
       photoURL: user.photoURL || null,
     });

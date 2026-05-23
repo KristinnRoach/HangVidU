@@ -118,6 +118,9 @@
   "notification.update.update": "Update",
   "notification.update.later": "Later",
   "auth.logout": "Logout",
+  "auth.sign_in": "Sign in",
+  "auth.continue_with_username": "Continue with username",
+  "auth.sign_up": "Sign up",
   "auth.signing_in": "Signing in...",
   "auth.signing_out": "Signing out...",
   "auth.guest_user": "Guest User",
@@ -127,6 +130,7 @@
   "auth.sign_in_failed": "Sign-in failed: {error}",
   "auth.account_exists": "An account already exists with the same email but different sign-in credentials.",
   "auth.onetap_failed": "One Tap sign-in failed: {error}",
+  "auth.logout_failed": "Logout failed. Please try again.",
   "a11y.add_contact": "Add contact by email",
   "nav.app_title": "HangVidU",
   "nav.privacy": "View Privacy Policy",
@@ -136,5 +140,8 @@
   "referral.sign_in_banner": "Tap here to sign in and connect with your inviter",
   "referral.sign_in_named": "{name} invited you — tap here to sign in and connect",
   "referral.connected": "✅ Connected with {name}!",
-  "auth.logout_failed": "Logout failed. Please try again."
+
+  "word.or": "or",
+  "word.and": "and",
+  "word.with": "with"
 }

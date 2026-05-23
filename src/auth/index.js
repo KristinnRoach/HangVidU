@@ -15,6 +15,12 @@ export {
 } from './auth-commands.js';
 
 export {
+  signUpWithUsername,
+  signInWithUsernameOrEmail,
+  validateUsername,
+} from './password-auth.js';
+
+export {
   requestContactsAccess,
   requestGmailSendAccess,
   clearGISTokenCache,

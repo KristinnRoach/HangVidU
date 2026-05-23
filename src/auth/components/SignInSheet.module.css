@@ -1,0 +1,95 @@
+.signInSheetModal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  background: rgba(1, 1, 1, 0.95);
+  color: #eee;
+  padding: 2rem;
+  border: 1px solid #444;
+  border-radius: 8px;
+  max-width: 400px;
+}
+
+.signInSheetModal::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.openButton {
+  /* placeholder */
+  color: inherit;
+}
+
+.closeBtn {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  line-height: 1.5;
+
+  .header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    line-height: 1.5;
+
+    .title {
+      font-size: 1.25rem;
+      font-weight: bold;
+    }
+
+    .description {
+      font-size: 0.9rem;
+      font-weight: 100;
+      color: var(--text-secondary, #888);
+    }
+  }
+  .providersSection {
+    display: grid;
+    gap: 0.75rem;
+    justify-items: center;
+  }
+
+  .passwordSection {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary, #888);
+    font-size: 0.85rem;
+    margin: 0.25rem 0;
+  }
+
+  .divider::before,
+  .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-primary, currentColor);
+    opacity: 0.3;
+  }
+
+  .passwordToggle {
+    background: none;
+    border: none;
+    color: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0.25rem;
+    font: inherit;
+  }
+}

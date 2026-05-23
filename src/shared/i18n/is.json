@@ -118,6 +118,9 @@
   "notification.update.update": "Uppfæra",
   "notification.update.later": "Seinna",
   "auth.logout": "Skrá út",
+  "auth.sign_in": "Skrá inn",
+  "auth.continue_with_username": "Halda áfram með notandanafn",
+  "auth.sign_up": "Nýskráning",
   "auth.signing_in": "Skrái inn...",
   "auth.signing_out": "Skrái út...",
   "auth.guest_user": "Gestur",
@@ -127,6 +130,7 @@
   "auth.sign_in_failed": "Skráning mistókst: {error}",
   "auth.account_exists": "Reikningur er nú þegar til staðar með sama netfangið en mismunandi skráningarauðkenni.",
   "auth.onetap_failed": "One Tap skráning mistókst: {error}",
+  "auth.logout_failed": "Útskráning mistókst. Reyndu aftur.",
   "a11y.add_contact": "Bæta tengilið við með netfangi",
   "nav.app_title": "HangVidU",
   "nav.privacy": "Skoða persónuverndarstefnu",
@@ -136,5 +140,8 @@
   "referral.sign_in_banner": "Smelltu hér til að skrá þig inn og tengjast boðanda þínum",
   "referral.sign_in_named": "{name} býður þér - smelltu hér til að skrá þig inn og tengjast",
   "referral.connected": "Tengdur við {name}!",
-  "auth.logout_failed": "Útskráning mistókst. Reyndu aftur."
+
+  "word.or": "eða",
+  "word.and": "og",
+  "word.with": "með"
 }

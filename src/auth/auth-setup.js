@@ -18,6 +18,7 @@ import { initOneTap, showOneTapSignin } from './onetap.js';
 import { clearGISTokenCache } from './gis-tokens.js';
 import { setupAuthCommandHandlers } from './auth-command-handlers.js';
 import { getLocale, onLocaleChange } from '../shared/i18n/index.js';
+import { isSyntheticEmail } from './password-auth.js';
 
 // Sync Firebase Auth popup language with app locale
 auth.languageCode = getLocale();
@@ -132,12 +133,16 @@ async function _initAuthInternal() {
 }
 
 // --- Normalize Firebase User to plain object for auth-state ---
+// Username-only accounts use a synthetic email as the Firebase Auth principal;
+// strip it so consumers see `email: null` for those accounts.
 function normalizeUser(firebaseUser) {
   if (!firebaseUser) return null;
+  const rawEmail = firebaseUser.email;
+  const email = isSyntheticEmail(rawEmail) ? null : rawEmail;
   return {
     uid: firebaseUser.uid,
     userName: firebaseUser.displayName,
-    email: firebaseUser.email,
+    email,
     photoURL: firebaseUser.photoURL,
   };
 }

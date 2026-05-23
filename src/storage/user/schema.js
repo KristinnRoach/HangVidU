@@ -6,6 +6,8 @@ import { z } from 'zod';
 export const UserProfileSchema = z.object({
   userName: z.string().nullable().optional(),
   photoURL: z.string().nullable().optional(),
+  username: z.string().nullable().optional(),
+  email: z.string().nullable().optional(),
 });
 
 export const PresenceStateSchema = z.object({
@@ -19,6 +21,7 @@ export const DirectoryEntrySchema = z.object({
   userName: z.string(),
   photoURL: z.string().nullable().optional(),
   registeredAt: z.number(),
+  username: z.string().nullable().optional(),
 });
 
 export const parseUserProfile = (data) => UserProfileSchema.parse(data);

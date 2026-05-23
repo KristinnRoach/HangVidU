@@ -30,10 +30,10 @@ function AppSideEffects(props: { children: JSX.Element }) {
 
   onMount(async () => {
     try {
-      cleanups.push(await setupAuth());
-      cleanups.push(await setupContacts());
-      cleanups.push(await setupMainAppBusListeners());
       cleanups.push(await setupNotificationsHandlers());
+      cleanups.push(await setupMainAppBusListeners());
+      cleanups.push(await setupContacts());
+      cleanups.push(await setupAuth());
       initPushNotifications().catch((error) => {
         console.error('[main] Push notifications init:', error);
       });

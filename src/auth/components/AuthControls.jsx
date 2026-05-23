@@ -6,7 +6,7 @@ import {
 } from '../auth-events-schema.js';
 import { dispatchCommand } from '../../shared/events/index.js';
 import { useI18n } from '../../shared/i18n/index.js';
-import GoogleSignInButton from './GoogleSignInButton.jsx';
+import SignInSheet from './SignInSheet.jsx';
 import { LogOut } from 'lucide-solid';
 
 import styles from '../../components/TopBar.module.css'; // Temp styles
@@ -60,7 +60,7 @@ export default function AuthControls() {
   return (
     <div class={styles.authControls}>
       <Show when={!isLoggedIn()}>
-        <GoogleSignInButton />
+        <SignInSheet />
       </Show>
 
       <Show when={isLoading()}>

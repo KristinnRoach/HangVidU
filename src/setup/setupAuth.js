@@ -4,6 +4,7 @@ import { devDebug } from '../shared/utils/dev/dev-utils.js';
 import {
   saveUserProfile,
   registerUserInDirectory,
+  getUserProfile,
 } from '../storage/user/index.js';
 import { cleanupInviteListeners } from '../contacts/invitations.js';
 import { setupInviteListener } from '../contacts/invite-listener.js';
@@ -161,12 +162,22 @@ export function setupAuth() {
               saveUserProfile(authState.user).catch((e) =>
                 console.warn('[AUTH] Failed to save user profile:', e),
               );
-              registerUserInDirectory(authState.user).catch((e) =>
-                console.warn(
-                  '[AUTH] Failed to register user in directory:',
-                  e,
-                ),
-              );
+              // Directory entry is the email→account index; skip when the
+              // user has no email (e.g. username-only password accounts).
+              if (authState.user.email) {
+                getUserProfile(authState.user.uid)
+                  .then((profile) =>
+                    registerUserInDirectory(authState.user, {
+                      username: profile?.username ?? null,
+                    }),
+                  )
+                  .catch((e) =>
+                    console.warn(
+                      '[AUTH] Failed to register user in directory:',
+                      e,
+                    ),
+                  );
+              }
             }
 
             cleanupLoginScopedListeners();
