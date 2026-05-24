@@ -119,9 +119,15 @@ overrides.push(
       {
         from: { type: 'auth' },
         allow: {
-          to: [{ type: 'auth' }, { type: 'shared' }, { type: 'infra' }],
+          to: [
+            { type: 'auth' },
+            { type: 'shared' },
+            { type: 'infra' },
+            { type: 'components' },
+          ],
         },
-        message: 'Auth may only import from auth, shared, and infra.',
+        message:
+          'Auth may only import from auth, shared, components and infra.',
       },
     ],
   ),
