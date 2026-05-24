@@ -10,7 +10,6 @@ const mocks = vi.hoisted(() => ({
 vi.mock('firebase/database', () => mocks);
 
 import {
-  hashEmail,
   lookupUserByEmail,
   removeFromUserByEmailDirectory,
 } from './user-discovery.js';
@@ -26,26 +25,6 @@ vi.mock('../../../auth/index.js', () => ({
 describe('user-discovery', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  describe('hashEmail', () => {
-    it('should create consistent hash for same email', () => {
-      const email = 'test@example.com';
-      const hash1 = hashEmail(email);
-      const hash2 = hashEmail(email);
-      expect(hash1).toBe(hash2);
-    });
-
-    it('should normalize email to lowercase', () => {
-      const hash1 = hashEmail('Test@Example.COM');
-      const hash2 = hashEmail('test@example.com');
-      expect(hash1).toBe(hash2);
-    });
-
-    it('should replace forward slashes for Firebase compatibility', () => {
-      const hash = hashEmail('test@example.com');
-      expect(hash).not.toContain('/');
-    });
   });
 
   describe('removeFromUserByEmailDirectory', () => {

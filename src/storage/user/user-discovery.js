@@ -2,7 +2,7 @@
 
 import { ref, set, get, remove } from 'firebase/database';
 import { rtdb } from '../../infra/firebase-rtdb.js';
-import { hashEmail as sharedHashEmail } from '../../shared/utils/email-hash.js';
+import { hashEmail } from '../../shared/utils/email-hash.js';
 
 function canonicalizeDirectoryUser(userData) {
   if (!userData || typeof userData !== 'object') {
@@ -20,17 +20,6 @@ function canonicalizeDirectoryUser(userData) {
     ...userData,
     userName,
   };
-}
-
-/**
- * Re-export of the shared email hash helper. The canonical implementation
- * lives in `src/shared/utils/email-hash.js` so both storage and auth layers
- * can use it without crossing the storage boundary.
- * @param {string} email
- * @returns {string}
- */
-export function hashEmail(email) {
-  return sharedHashEmail(email);
 }
 
 /**

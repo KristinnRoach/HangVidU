@@ -1,5 +1,3 @@
-import { isDev } from '../utils/dev/dev-utils';
-
 /**
  * Debug utility for PWA install prompt diagnostics
  * @param {Object} options
@@ -7,9 +5,10 @@ import { isDev } from '../utils/dev/dev-utils';
  */
 export const debugPWAInstall = ({ shouldShowInProd = false } = {}) => {
   const enabled = localStorage.getItem('debug:console') === '1';
+  const isDev = import.meta.env.DEV;
 
   // In dev, respect the debug:console flag; in prod, respect shouldShowInProd
-  if (isDev()) {
+  if (isDev) {
     if (!enabled) return;
   } else if (!shouldShowInProd) {
     return;
@@ -59,7 +58,7 @@ export const debugPWAInstall = ({ shouldShowInProd = false } = {}) => {
   console.groupEnd();
 
   // Show alert in dev mode
-  if (isDev()) {
+  if (isDev) {
     alert(
       '⚠️ Install prompt blocked (Chrome throttling)\n\n' +
         '✅ Workarounds:\n' +
