@@ -19,7 +19,7 @@ import {
 } from '../../shared/utils/share-invite-presets.js';
 import { t } from '../../shared/i18n/index.js';
 import { escapeHtml } from '../../shared/utils/ui-utils/dom-utils.js';
-import { showErrorToast, showSuccessToast } from '../base-legacy/toast.js';
+import { showErrorToast, showSuccessToast } from '../../components/base-legacy/toast.js';
 import { sendBulkEmailsViaGmail } from '../../shared/utils/google/gmail-send.js';
 import { filterImportableContacts } from '../import-contacts-utils.js';
 import { createImportContactsComponent } from './import-contacts-component.js';
