@@ -1,7 +1,7 @@
 import { For, Show, createEffect } from 'solid-js';
 import { useI18n } from '../../shared/i18n/index';
 import ContactEntry from './ContactEntry';
-import { useContacts } from '../../contacts/useContacts';
+import { useContacts } from '../useContacts';
 import type { ConversationSelection } from '../../features/messaging-next/interfaces';
 
 type ContactsListProps = {

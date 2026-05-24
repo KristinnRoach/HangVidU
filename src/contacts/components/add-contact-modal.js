@@ -21,11 +21,11 @@ import { t } from '../../shared/i18n/index.js';
 import { escapeHtml } from '../../shared/utils/ui-utils/dom-utils.js';
 import { showErrorToast, showSuccessToast } from '../base-legacy/toast.js';
 import { sendBulkEmailsViaGmail } from '../../shared/utils/google/gmail-send.js';
-import { filterImportableContacts } from '../../contacts/import-contacts-utils.js';
+import { filterImportableContacts } from '../import-contacts-utils.js';
 import { createImportContactsComponent } from './import-contacts-component.js';
-import { importGoogleContacts as importGoogleContactsFlow } from '../../contacts/google-import.js';
-import { inviteContactByEmail } from '../../contacts/manual-contact-invite.js';
-import { sendContactInvite } from '../../contacts/send-contact-invite.js';
+import { importGoogleContacts as importGoogleContactsFlow } from '../google-import.js';
+import { inviteContactByEmail } from '../manual-contact-invite.js';
+import { sendContactInvite } from '../send-contact-invite.js';
 
 // TODO: WIP decoupling considerations:
 // This modal mixes feature UI with auth/OAuth and external contact-import side effects.
