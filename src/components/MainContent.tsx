@@ -17,6 +17,8 @@ import ContactsList from './contacts/ContactsList.jsx';
 import ActiveCallRoom from '../features/call/components/ActiveCallRoom';
 import ConversationPanel from '../features/messaging-next/ConversationPanel';
 import CallDialogs from '../features/call/components/CallDialogs.jsx';
+import { StartCallButton } from '../features/call/components/CallControls.jsx';
+
 import { LoadBoundary } from './app/LoadBoundary';
 import { Spinner } from './app/Spinner';
 
@@ -90,6 +92,7 @@ export default function MainContent() {
         <TopBar
           activeView={activeView()}
           setActiveView={navigate}
+          selectedConversation={selectedConversation()}
           isInCall={p2p.state() !== 'idle'}
           visible={headerVisible()}
         />
@@ -154,6 +157,7 @@ export default function MainContent() {
 interface TopBarProps {
   activeView: ViewMode;
   setActiveView: (view: ViewMode) => void;
+  selectedConversation: unknown;
   isInCall: boolean;
   visible: boolean;
 }
@@ -183,7 +187,11 @@ function TopBar(props: TopBarProps) {
           <div class={topbarStyles.navItem}>
             <button
               type='button'
-              class={topbarStyles.navBtn}
+              class={
+                props.activeView === 'contacts'
+                  ? topbarStyles.navBtnSelected
+                  : topbarStyles.navBtn
+              }
               title='Contacts'
               onClick={() => props.setActiveView('contacts')}
             >
@@ -200,19 +208,56 @@ function TopBar(props: TopBarProps) {
           <div class={topbarStyles.navItem}>
             <button
               type='button'
-              class={topbarStyles.navBtn}
+              class={
+                props.activeView === 'messaging'
+                  ? topbarStyles.navBtnSelected
+                  : topbarStyles.navBtn
+              }
               title='Messages'
               onClick={() => props.setActiveView('messaging')}
             >
               <Mail />
             </button>
+
+            <div
+              class={topbarStyles.toolbar}
+              hidden={props.activeView !== 'messaging'}
+            >
+              <Show
+                when={
+                  props.selectedConversation?.remoteParticipantIds?.length ===
+                    1 && props.selectedConversation?.conversationId
+                }
+              >
+                <StartCallButton
+                  audioOnly={false}
+                  calleeId={props.selectedConversation.remoteParticipantIds[0]}
+                  calleeName={
+                    props.selectedConversation.contactNickName ??
+                    'Unknown Contact'
+                  }
+                />
+                <StartCallButton
+                  audioOnly={true}
+                  calleeId={props.selectedConversation.remoteParticipantIds[0]}
+                  calleeName={
+                    props.selectedConversation.contactNickName ??
+                    'Unknown Contact'
+                  }
+                />
+              </Show>
+            </div>
           </div>
         </Show>
 
         <Show when={props.isInCall}>
           <button
             type='button'
-            class={topbarStyles.navItem}
+            class={
+              props.activeView === 'call'
+                ? topbarStyles.navBtnSelected
+                : topbarStyles.navBtn
+            }
             title='View Active Call'
             onClick={() => props.setActiveView('call')}
           >

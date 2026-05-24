@@ -68,6 +68,11 @@
   min-width: 0;
 }
 
+.navBtnSelected {
+  /* border: 1px solid rgba(255, 255, 255, 0.75); */
+  color: rgb(73, 186, 234);
+}
+
 /* separator */
 .topBar > .topNav > .navItem:not(:first-child)::before {
   content: '';
@@ -93,7 +98,7 @@
   display: flex;
   opacity: 1;
   transform: translateX(0);
-  max-width: 200px; /* ensure this is larger than the hidden button's actual width */
+  max-width: 200px;
   overflow: hidden;
 
   transition:
@@ -103,10 +108,10 @@
     display 0.2s ease-out allow-discrete;
 
   button {
-    color: var(--color-primary);
+    color: var(--text-secondary);
   }
   button:hover {
-    color: var(--color-primary-hover);
+    color: var(--text-secondary-hover);
   }
 }
 

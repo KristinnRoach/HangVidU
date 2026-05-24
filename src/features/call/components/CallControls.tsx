@@ -11,12 +11,17 @@ type StartCallButtonProps = {
   calleeId: string;
   calleeName: string;
   audioOnly?: boolean;
-  title: string;
+  title?: string;
 };
 
 export function StartCallButton(props: StartCallButtonProps) {
   const { startCall } = useCallHandshake();
-  const { calleeId, calleeName, audioOnly = false, title } = props;
+  const {
+    calleeId,
+    calleeName,
+    audioOnly = false,
+    title = 'Start Call',
+  } = props;
 
   function onCall() {
     startCall({
