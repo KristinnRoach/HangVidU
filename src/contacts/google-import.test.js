@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
   getAllContacts: vi.fn(),
   hydrateContacts: vi.fn(),
-  findUsersByEmails: vi.fn(),
+  findRegisteredUsersByEmails: vi.fn(),
   fetchGoogleContacts: vi.fn(),
   buildImportableContacts: vi.fn(),
 }));
@@ -20,8 +20,8 @@ vi.mock('../stores/contactsStore.js', () => ({
   hydrateContacts: mocks.hydrateContacts,
 }));
 
-vi.mock('../storage/user/user-discovery.js', () => ({
-  findUsersByEmails: mocks.findUsersByEmails,
+vi.mock('../stores/userDirectoryStore.js', () => ({
+  findRegisteredUsersByEmails: mocks.findRegisteredUsersByEmails,
 }));
 
 vi.mock('../shared/utils/google/google-contacts.js', () => ({
@@ -52,7 +52,7 @@ describe('importGoogleContacts', () => {
     mocks.requestContactsAccess.mockResolvedValue('token-123');
     mocks.fetchGoogleContacts.mockResolvedValue(googleContacts);
     mocks.getAllContacts.mockReturnValue(savedContacts);
-    mocks.findUsersByEmails.mockResolvedValue(registeredUsers);
+    mocks.findRegisteredUsersByEmails.mockResolvedValue(registeredUsers);
     mocks.getUser.mockReturnValue({ uid: 'me' });
     mocks.buildImportableContacts.mockReturnValue(importableContacts);
 

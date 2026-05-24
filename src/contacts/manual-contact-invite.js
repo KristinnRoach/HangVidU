@@ -1,5 +1,5 @@
 import { getAllContacts, hydrateContacts } from '../stores/contactsStore.js';
-import { lookupUserByEmail } from '../storage/user/user-discovery.js';
+import { lookupRegisteredUserByEmail } from '../stores/userDirectoryStore.js';
 import { getUser } from '../auth/index.js';
 import { sendContactInvite } from './send-contact-invite.js';
 
@@ -16,7 +16,7 @@ import { sendContactInvite } from './send-contact-invite.js';
  */
 export async function inviteContactByEmail(email, { onNotFound } = {}) {
   try {
-    const lookupResult = await lookupUserByEmail(email);
+    const lookupResult = await lookupRegisteredUserByEmail(email);
 
     if (lookupResult.status === 'lookup_error') {
       return {

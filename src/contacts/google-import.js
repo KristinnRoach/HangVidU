@@ -1,6 +1,6 @@
 import { requestContactsAccess, getUser } from '../auth/index.js';
 import { getAllContacts, hydrateContacts } from '../stores/contactsStore.js';
-import { findUsersByEmails } from '../storage/user/user-discovery.js';
+import { findRegisteredUsersByEmails } from '../stores/userDirectoryStore.js';
 import { fetchGoogleContacts } from '../shared/utils/google/google-contacts.js';
 import { buildImportableContacts } from './import-contacts-utils.js';
 
@@ -37,7 +37,7 @@ export async function importGoogleContacts({ onProgress = () => {} } = {}) {
     await hydrateContacts();
     const savedContacts = getAllContacts();
     const savedContactIds = new Set(Object.keys(savedContacts || {}));
-    const registeredUsers = await findUsersByEmails(
+    const registeredUsers = await findRegisteredUsersByEmails(
       contacts.map((contact) => contact.email),
     );
     const currentUser = getUser();

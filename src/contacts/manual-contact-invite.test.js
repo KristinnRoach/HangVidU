@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  lookupUserByEmail: vi.fn(),
+  lookupRegisteredUserByEmail: vi.fn(),
   sendContactInvite: vi.fn(),
   getAllContacts: vi.fn(),
   hydrateContacts: vi.fn(),
 }));
 
-vi.mock('../storage/user/user-discovery.js', () => ({
-  lookupUserByEmail: mocks.lookupUserByEmail,
+vi.mock('../stores/userDirectoryStore.js', () => ({
+  lookupRegisteredUserByEmail: mocks.lookupRegisteredUserByEmail,
 }));
 
 vi.mock('./send-contact-invite.js', () => ({
@@ -35,7 +35,7 @@ describe('inviteContactByEmail', () => {
 
   it('invokes not-found fallback only when lookup returns not_found', async () => {
     const onNotFound = vi.fn().mockResolvedValue(undefined);
-    mocks.lookupUserByEmail.mockResolvedValue({
+    mocks.lookupRegisteredUserByEmail.mockResolvedValue({
       status: 'not_found',
       user: null,
     });
@@ -51,7 +51,7 @@ describe('inviteContactByEmail', () => {
   it('returns lookup_error and skips fallback when directory lookup fails', async () => {
     const error = new Error('network down');
     const onNotFound = vi.fn().mockResolvedValue(undefined);
-    mocks.lookupUserByEmail.mockResolvedValue({
+    mocks.lookupRegisteredUserByEmail.mockResolvedValue({
       status: 'lookup_error',
       user: null,
       error,
@@ -72,7 +72,7 @@ describe('inviteContactByEmail', () => {
   });
 
   it('checks duplicates after contacts hydration', async () => {
-    mocks.lookupUserByEmail.mockResolvedValue({
+    mocks.lookupRegisteredUserByEmail.mockResolvedValue({
       status: 'found',
       user: { uid: 'user-1', userName: 'Alice' },
     });

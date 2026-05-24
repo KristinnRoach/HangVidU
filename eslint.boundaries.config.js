@@ -102,7 +102,7 @@ overrides.push(
             { type: 'contacts' },
             { type: 'feature' },
             { type: 'infra' },
-            { type: 'storage' },
+            { type: 'stores' },
           ],
         },
         message:
