@@ -4,7 +4,7 @@
   display: grid;
   grid-template-columns: auto 1fr auto;
 
-  background: rgba(16, 57, 100, 0.8);
+  background: inherit;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 
   position: relative;
@@ -115,24 +115,6 @@
   }
 }
 
-@starting-style {
-  .topBar {
-    opacity: 0;
-    transform: translateY(-50px);
-  }
-
-  .navItem .toolbar {
-    opacity: 0;
-    max-width: 0;
-    transform: translateX(-50px);
-  }
-
-  .authControls .userInfo {
-    opacity: 0;
-    transform: translateX(10px);
-  }
-}
-
 .authControls {
   /* Uses auto-animate pattern from animations.css */
   display: flex;
@@ -208,5 +190,23 @@
     overflow-x: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+}
+
+@starting-style {
+  .topBar {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+
+  .navItem .toolbar {
+    opacity: 0;
+    max-width: 0;
+    transform: translateX(-50px);
+  }
+
+  .authControls .userInfo {
+    opacity: 0;
+    transform: translateX(10px);
   }
 }

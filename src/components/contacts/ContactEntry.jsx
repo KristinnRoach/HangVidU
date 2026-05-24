@@ -28,8 +28,7 @@ export default function ContactEntry(props) {
   const { t } = useI18n();
   let rootEl;
 
-  const displayName = () => props.name || t('contact.no_name');
-  const callLabel = () => t('contact.action.call', { name: displayName() });
+  const displayName = () => props.name || t('call.unknown_caller');
   const editLabel = () => t('contact.action.edit');
 
   const onOpenConversation = () => {
@@ -58,19 +57,9 @@ export default function ContactEntry(props) {
 
   return (
     <div class='contact-entry' ref={rootEl}>
-      <StartCallButton
-        calleeId={props.id}
-        calleeName={displayName()}
-        audioOnly={true}
-        title={callLabel()}
-      />
+      <StartCallButton calleeId={props.id} audioOnly={true} />
 
-      <StartCallButton
-        calleeId={props.id}
-        calleeName={displayName()}
-        audioOnly={false}
-        title={callLabel()}
-      />
+      <StartCallButton calleeId={props.id} audioOnly={false} />
 
       <button
         type='button'

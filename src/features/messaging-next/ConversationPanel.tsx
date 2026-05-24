@@ -26,6 +26,7 @@ import {
 import { clearLocalDraft, saveLocalDraft } from './local-drafts.js';
 import type { ConversationId, UserId } from './types.js';
 import type { ConversationSelection } from './interfaces.js';
+
 import styles from './ConversationPanel.module.css';
 
 const runtime = createMessagingRuntime();
@@ -190,7 +191,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     <div class={styles.panel}>
       <Show
         when={state.conversationId}
-        fallback={<div class={styles.empty}>Nothing here</div>}
+        fallback={<div class={styles.empty}>Conversation not found</div>}
       >
         <LoadBoundary
           loading={history.loading}
@@ -200,51 +201,58 @@ export default function ConversationPanel(props: ConversationPanelProps) {
             <div class={styles.empty}>{t('conversation.load_error')}</div>
           }
         >
-          <div class={styles.messages} ref={messagesEl}>
-            <For each={state.messages}>
-              {(msg) => (
-                <Switch>
-                  <Match when={msg.source === 'system'}>
-                    <div class={`${styles.msg} ${styles.msgSystem}`}>
-                      <span>{msg.text}</span>
-                      <Show when={msg.actions?.length}>
-                        <span class={styles.msgActions}>
-                          <For each={msg.actions}>
-                            {(action) => (
-                              <button
-                                type='button'
-                                class={styles.msgActionBtn}
-                                onClick={action.onClick}
-                              >
-                                {action.label}
-                              </button>
-                            )}
-                          </For>
-                        </span>
-                      </Show>
-                    </div>
-                  </Match>
-                  <Match when={msg.source !== 'system'}>
-                    <div
-                      class={styles.msg}
-                      classList={{
-                        [styles.msgOwn]: msg.senderId === state.myUserId,
-                        [styles.msgFailed]: msg.status === 'failed',
-                      }}
-                    >
-                      <span class={styles.msgText}>{msg.text}</span>
-                      <Show when={msg.status === 'sending'}>
-                        <span class={styles.msgStatus}>…</span>
-                      </Show>
-                      <Show when={msg.status === 'failed'}>
-                        <span class={styles.msgStatus}>!</span>
-                      </Show>
-                    </div>
-                  </Match>
-                </Switch>
-              )}
-            </For>
-          </div>
+          <Show
+            when={state.messages.length > 0}
+            fallback={
+              <div class={styles.messagesEmpty}>{t('conversation.empty')}</div>
+            }
+          >
+            <div class={styles.messages} ref={messagesEl}>
+              <For each={state.messages}>
+                {(msg) => (
+                  <Switch>
+                    <Match when={msg.source === 'system'}>
+                      <div class={`${styles.msg} ${styles.msgSystem}`}>
+                        <span>{msg.text}</span>
+                        <Show when={msg.actions?.length}>
+                          <span class={styles.msgActions}>
+                            <For each={msg.actions}>
+                              {(action) => (
+                                <button
+                                  type='button'
+                                  class={styles.msgActionBtn}
+                                  onClick={action.onClick}
+                                >
+                                  {action.label}
+                                </button>
+                              )}
+                            </For>
+                          </span>
+                        </Show>
+                      </div>
+                    </Match>
+                    <Match when={msg.source !== 'system'}>
+                      <div
+                        class={styles.msg}
+                        classList={{
+                          [styles.msgOwn]: msg.senderId === state.myUserId,
+                          [styles.msgFailed]: msg.status === 'failed',
+                        }}
+                      >
+                        <span class={styles.msgText}>{msg.text}</span>
+                        <Show when={msg.status === 'sending'}>
+                          <span class={styles.msgStatus}>…</span>
+                        </Show>
+                        <Show when={msg.status === 'failed'}>
+                          <span class={styles.msgStatus}>!</span>
+                        </Show>
+                      </div>
+                    </Match>
+                  </Switch>
+                )}
+              </For>
+            </div>
+          </Show>
         </LoadBoundary>
 
         <form class={styles.form} onSubmit={onSubmit}>

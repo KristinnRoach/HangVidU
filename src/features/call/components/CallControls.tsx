@@ -6,21 +6,24 @@ import { useP2PContext } from '../../../shared/p2p-context.js';
 import { createAutoHide } from '../../../shared/createAutoHide';
 
 import styles from './CallControls.module.css';
+import { useI18n } from '../../../shared/i18n';
 
 type StartCallButtonProps = {
   calleeId: string;
-  calleeName: string;
+  calleeName?: string;
   audioOnly?: boolean;
   title?: string;
 };
 
 export function StartCallButton(props: StartCallButtonProps) {
   const { startCall } = useCallHandshake();
+  const { t } = useI18n();
+
   const {
     calleeId,
-    calleeName,
+    calleeName = t('call.unknown_caller'),
     audioOnly = false,
-    title = 'Start Call',
+    title = t('contact.action.call', { name: calleeName }),
   } = props;
 
   function onCall() {

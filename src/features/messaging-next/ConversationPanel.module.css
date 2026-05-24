@@ -7,7 +7,7 @@
   height: 100%;
 }
 
-.empty {
+.messagesEmpty {
   display: flex;
   justify-content: center;
   align-items: center;

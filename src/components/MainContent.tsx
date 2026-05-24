@@ -27,6 +27,7 @@ import topbarStyles from './TopBar.module.css';
 
 import type { ConversationSelection } from '../features/messaging-next/interfaces.js';
 import type { UserId } from '../features/messaging-next/types.js';
+import { resolveContactIdFromDirectConversationId } from '../shared/utils/direct-conversation-id';
 
 type ViewMode = 'home' | 'call' | 'contacts' | 'messaging';
 
@@ -92,7 +93,7 @@ export default function MainContent() {
         <TopBar
           activeView={activeView()}
           setActiveView={navigate}
-          selectedConversation={selectedConversation()}
+          selectedConversation={selectedConversation() ?? undefined}
           isInCall={p2p.state() !== 'idle'}
           visible={headerVisible()}
         />
@@ -157,13 +158,13 @@ export default function MainContent() {
 interface TopBarProps {
   activeView: ViewMode;
   setActiveView: (view: ViewMode) => void;
-  selectedConversation: unknown;
+  selectedConversation?: ConversationSelection;
   isInCall: boolean;
   visible: boolean;
 }
 
 function TopBar(props: TopBarProps) {
-  const { isLoggedIn } = useAuth();
+  const { user } = useAuth();
 
   return (
     <header
@@ -183,7 +184,7 @@ function TopBar(props: TopBarProps) {
       <nav class={topbarStyles.topNav}>
         {/* <button onClick={() => props.setActiveView?.('home')}>Home</button> */}
 
-        <Show when={isLoggedIn()} fallback={null}>
+        <Show when={user()?.uid}>
           <div class={topbarStyles.navItem}>
             <button
               type='button'
@@ -225,24 +226,30 @@ function TopBar(props: TopBarProps) {
             >
               <Show
                 when={
-                  props.selectedConversation?.remoteParticipantIds?.length ===
-                    1 && props.selectedConversation?.conversationId
+                  !props.isInCall &&
+                  props.selectedConversation &&
+                  props.selectedConversation.conversationId &&
+                  user()?.uid
                 }
               >
                 <StartCallButton
                   audioOnly={false}
-                  calleeId={props.selectedConversation.remoteParticipantIds[0]}
+                  calleeId={resolveContactIdFromDirectConversationId(
+                    props?.selectedConversation?.conversationId,
+                    user()?.uid,
+                  )}
                   calleeName={
-                    props.selectedConversation.contactNickName ??
-                    'Unknown Contact'
+                    props?.selectedConversation?.contactNickName || undefined
                   }
                 />
                 <StartCallButton
                   audioOnly={true}
-                  calleeId={props.selectedConversation.remoteParticipantIds[0]}
+                  calleeId={resolveContactIdFromDirectConversationId(
+                    props?.selectedConversation?.conversationId,
+                    user()?.uid,
+                  )}
                   calleeName={
-                    props.selectedConversation.contactNickName ??
-                    'Unknown Contact'
+                    props?.selectedConversation?.contactNickName || undefined
                   }
                 />
               </Show>
