@@ -1,0 +1,73 @@
+/* AddContactModal.module.css */
+
+.directActions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.manualEmailRow {
+  display: flex;
+  gap: 0.5rem;
+
+  input {
+    flex: 1;
+    min-width: 0;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border-subtle, #ccc);
+    border-radius: 4px;
+    background: var(--bg-input, transparent);
+    color: inherit;
+    font-size: 0.9rem;
+  }
+}
+
+.sharePresetsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.sharePresetBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--border-subtle, #ccc);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Icon-only buttons (share / copy) */
+  &:has(svg):not(:has(span > span)) {
+    padding: 0.35rem 0.5rem;
+  }
+}
+
+.divider {
+  margin: 0.75rem 0;
+  border: none;
+  border-top: 1px solid var(--border-subtle, #ccc);
+}
+
+.importStatus {
+  min-height: 1.25rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+
+  &:empty {
+    display: none;
+  }
+
+  &:global(.success) { color: var(--color-success, green); }
+  &:global(.error)   { color: var(--color-error, red); }
+  &:global(.info)    { color: var(--text-secondary); }
+  &:global(.loading) { opacity: 0.7; }
+}
