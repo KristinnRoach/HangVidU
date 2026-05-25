@@ -21,9 +21,6 @@ interface ImportMetaEnv {
   // Application
   readonly VITE_ENABLE_PWA: string;
   readonly VITE_SENTRY_DSN: string;
-
-  // Development
-  readonly NGROK_DOMAIN: string;
 }
 
 interface ImportMeta {

@@ -3,7 +3,6 @@
 import { defineConfig } from 'vite';
 import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
-import mkcert from 'vite-plugin-mkcert';
 import solid from 'vite-plugin-solid';
 import devtools from 'solid-devtools/vite';
 
@@ -32,7 +31,6 @@ export default defineConfig(({ mode }) => {
     },
 
     plugins: [
-      ...(mode === 'development' ? [mkcert()] : []),
       devtools({
         /* features options - all disabled by default */
         autoname: true, // e.g. enable autoname
@@ -111,14 +109,10 @@ export default defineConfig(({ mode }) => {
       }),
     ],
     server: {
-      port: 5173, // Vite default - keep it simple
-      https: true, // use trusted dev cert from mkcert
-      host: true, // To expose to LAN devices as well
-      allowedHosts: [
-        'haunted-salley-cunningly.ngrok-free.dev',
-        '192.168.8.100',
-        '169.254.123.79',
-      ],
+      port: 5173,
+      strictPort: true,
+      host: true,
+      allowedHosts: ['dev.hangvidu.com'],
 
       proxy: {
         // Proxy Firebase Auth handler and init.json requests
@@ -135,15 +129,15 @@ export default defineConfig(({ mode }) => {
       },
     },
 
-    // Preview server configuration (for testing production builds locally)
+    optimizeDeps: {
+      include: ['lucide-solid'],
+    },
+
     preview: {
-      port: 4173,
-      // Enable HTTPS if PREVIEW_HTTPS env var is set
-      https: process.env.PREVIEW_HTTPS === '1' ? true : false,
+      port: 5173,
+      strictPort: true,
       host: true,
-      allowedHosts: [
-        'dev.hangvidu.com',
-      ],
+      allowedHosts: ['dev.hangvidu.com'],
     },
   };
 });
