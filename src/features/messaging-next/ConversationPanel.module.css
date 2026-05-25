@@ -5,6 +5,7 @@
   min-height: 0;
   overflow: auto;
   height: 100%;
+  max-height: 100svh;
 }
 
 .messagesEmpty {
@@ -12,6 +13,7 @@
   justify-content: center;
   align-items: center;
   height: 100svh;
+  max-height: 100svh;
   background-color: transparent;
   color: #c0c0c0;
 }
