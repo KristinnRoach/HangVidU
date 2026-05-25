@@ -550,19 +550,9 @@
       }
 
       // -----------------------------------------------------------------
-      // Color palette per element type (stable hash → HSL)
+      // Color palette per element type (stable hash → HSL, auto-derived)
       // -----------------------------------------------------------------
-      const TYPE_COLORS = {
-        shared: '#6ea8fe',
-        feature: '#e0a44a',
-        auth: '#d65d5d',
-        setup: '#b574e8',
-        components: '#5ac08c',
-        storage: '#74c8e8',
-        contacts: '#e87bd9',
-      };
       function colorFor(type) {
-        if (TYPE_COLORS[type]) return TYPE_COLORS[type];
         let h = 0;
         for (const ch of type) h = (h * 31 + ch.charCodeAt(0)) % 360;
         return `hsl(${h}, 55%, 62%)`;
@@ -919,7 +909,7 @@
 # then open: http://localhost:8080/playgrounds/boundary-rules.html
 
 # or:
-pnpm boundary-rules</pre>
+pnpm play:boundaries</pre>
             <p style="margin-top:14px;color:var(--muted)">Error: <code>${(err && err.message) || err}</code></p>
           </div>`;
       }
