@@ -11,7 +11,6 @@ const SHARED_GLOBS = [
   'src/shared/*.{js,jsx,ts,tsx}',
   'src/shared/events/**/*.{js,jsx,ts,tsx}',
   'src/shared/i18n/**/*.{js,jsx,ts,tsx}',
-  'src/shared/pwa/**/*.{js,jsx,ts,tsx}',
   'src/shared/utils/**/*.{js,jsx,ts,tsx}',
 ];
 

@@ -1,7 +1,7 @@
 import {
   setupUpdateHandler,
   stopUpdateChecks,
-} from '../pwa/update-handlers.js';
+} from '../features/pwa/update-handlers.js';
 
 let isReady = false;
 let initPromise = null;

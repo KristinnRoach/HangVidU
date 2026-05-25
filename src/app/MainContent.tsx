@@ -9,6 +9,7 @@ import AppTitle from '../components/app/AppTitle.jsx';
 import AuthControls from '../auth/components/AuthControls.jsx';
 import AddContactButton from '../features/contacts/components/AddContactButton.jsx';
 import NotificationsToggle from '../features/notifications/components/NotificationsToggle.jsx';
+import InstallButton from '../features/pwa/InstallButton';
 import LegalFooter from '../components/app/LegalFooter.jsx';
 import LocaleToggle from '../components/app/LocaleToggle.jsx';
 
@@ -276,6 +277,7 @@ function TopBar(props: TopBarProps) {
       {/* <YouTubeSearchControls /> */}
 
       <div class={topbarStyles.stickyRight}>
+        <InstallButton />
         <NotificationsToggle />
       </div>
     </header>
