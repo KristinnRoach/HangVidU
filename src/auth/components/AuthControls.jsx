@@ -9,7 +9,7 @@ import { useI18n } from '../../shared/i18n/index.js';
 import SignInSheet from './SignInSheet.jsx';
 import { LogOut } from 'lucide-solid';
 
-import styles from '../../components/TopBar.module.css'; // Temp styles
+import styles from './AuthControls.module.css';
 
 function smartTruncateName(fullName, maxLength = 20) {
   if (!fullName || fullName.length <= maxLength) {

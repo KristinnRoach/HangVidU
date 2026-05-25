@@ -1,4 +1,8 @@
-import { getUserProfile } from '../storage/user/index.js';
+import {
+  getUserProfile,
+  saveUserProfile,
+  registerUserInDirectory,
+} from '../storage/user/index.js';
 import {
   lookupUserByEmail,
   findUsersByEmails,
@@ -6,6 +10,14 @@ import {
 
 export function getPublicUserProfile(userId) {
   return getUserProfile(userId);
+}
+
+export function savePublicUserProfile(user) {
+  return saveUserProfile(user);
+}
+
+export function registerInUserDirectory(user, opts) {
+  return registerUserInDirectory(user, opts);
 }
 
 export function lookupRegisteredUserByEmail(email) {

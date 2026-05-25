@@ -5,22 +5,22 @@ import { User, PhoneCall, Mail } from 'lucide-solid';
 import { useP2PContext } from '../shared/p2p-context.js';
 import { useAuth } from '../auth/solid-auth';
 
-import AppTitle from './app/AppTitle.jsx';
+import AppTitle from '../components/app/AppTitle.jsx';
 import AuthControls from '../auth/components/AuthControls.jsx';
 import AddContactButton from '../features/contacts/components/AddContactButton.jsx';
 import NotificationsToggle from '../features/notifications/components/NotificationsToggle.jsx';
-import LegalFooter from './app/LegalFooter.jsx';
-import LocaleToggle from './app/LocaleToggle.jsx';
+import LegalFooter from '../components/app/LegalFooter.jsx';
+import LocaleToggle from '../components/app/LocaleToggle.jsx';
 
-import PublicHomepage from './app/PublicHomepage.jsx';
+import PublicHomepage from '../components/app/PublicHomepage.jsx';
 import ContactsList from '../features/contacts/components/ContactsList.jsx';
 import ActiveCallRoom from '../features/call/components/ActiveCallRoom';
 import ConversationPanel from '../features/messaging-next/ConversationPanel';
 import CallDialogs from '../features/call/components/CallDialogs.jsx';
 import { StartCallButton } from '../features/call/components/CallControls.jsx';
 
-import { LoadBoundary } from './app/LoadBoundary';
-import { Spinner } from './app/Spinner';
+import { LoadBoundary } from '../components/app/LoadBoundary';
+import { Spinner } from '../components/app/Spinner';
 
 import mainStyles from './MainContent.module.css';
 import topbarStyles from './TopBar.module.css';

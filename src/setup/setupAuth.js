@@ -2,10 +2,10 @@ import { subscribe } from '../shared/events/index.js';
 import { initAuth, getAuthState } from '../auth/index.js';
 import { devDebug } from '../shared/utils/dev/dev-utils.js';
 import {
-  saveUserProfile,
-  registerUserInDirectory,
-  getUserProfile,
-} from '../storage/user/index.js';
+  savePublicUserProfile,
+  registerInUserDirectory,
+  getPublicUserProfile,
+} from '../stores/userDirectoryStore.js';
 import { cleanupInviteListeners } from '../features/contacts/invites/invitations.js';
 import { setupInviteListener } from '../features/contacts/invites/invite-listener.js';
 import { processReferral } from '../features/contacts/referrals/referral-handler.js';
@@ -159,15 +159,15 @@ export function setupAuth() {
 
             const authState = getAuthState();
             if (authState?.user) {
-              saveUserProfile(authState.user).catch((e) =>
+              savePublicUserProfile(authState.user).catch((e) =>
                 console.warn('[AUTH] Failed to save user profile:', e),
               );
               // Directory entry is the email→account index; skip when the
               // user has no email (e.g. username-only password accounts).
               if (authState.user.email) {
-                getUserProfile(authState.user.uid)
+                getPublicUserProfile(authState.user.uid)
                   .then((profile) =>
-                    registerUserInDirectory(authState.user, {
+                    registerInUserDirectory(authState.user, {
                       username: profile?.username ?? null,
                     }),
                   )

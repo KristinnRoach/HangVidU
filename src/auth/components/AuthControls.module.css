@@ -1,0 +1,51 @@
+.authControls {
+  /* Uses auto-animate pattern from animations.css */
+  display: flex;
+  transform: translateX(0);
+  transition: var(--transition-default);
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  color: var(--text-secondary);
+
+  flex: 1;
+  min-width: 0;
+
+  overflow: hidden;
+
+  & .userAvatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  & .userAvatarPlaceholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg-brighter);
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  & .userName {
+    overflow-x: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@starting-style {
+  .authControls .userInfo {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}

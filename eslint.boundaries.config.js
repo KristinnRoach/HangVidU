@@ -8,14 +8,10 @@ const SOURCE_FILES = [...JS_FILES, ...TS_FILES];
 const SHARED_TEMP_FEATURE_EXCEPTIONS = ['notifications']; // Todo: Remove when notifications get refactored.
 
 const SHARED_GLOBS = [
-  'src/elements.js',
-  'src/shared/components/**/*.{js,jsx,ts,tsx}',
+  'src/shared/*.{js,jsx,ts,tsx}',
   'src/shared/events/**/*.{js,jsx,ts,tsx}',
   'src/shared/i18n/**/*.{js,jsx,ts,tsx}',
-  'src/shared/media/**/*.{js,jsx,ts,tsx}',
-  'src/shared/media-next/**/*.{js,jsx,ts,tsx}',
   'src/shared/pwa/**/*.{js,jsx,ts,tsx}',
-  'src/shared/styles/**/*.{js,jsx,ts,tsx}',
   'src/shared/utils/**/*.{js,jsx,ts,tsx}',
 ];
 
@@ -23,14 +19,8 @@ function dependencyRule(files, rules) {
   return {
     files,
     ignores: [
-      'src/**/*.test.js',
-      'src/**/*.test.jsx',
-      'src/**/*.test.ts',
-      'src/**/*.test.tsx',
-      'src/**/*.browser.test.js',
-      'src/**/*.browser.test.jsx',
-      'src/**/*.browser.test.ts',
-      'src/**/*.browser.test.tsx',
+      'src/**/*.test.{js,jsx,ts,tsx}',
+      'src/**/*.browser.test.{js,jsx,ts,tsx}',
     ],
     rules: {
       'boundaries/dependencies': [
@@ -137,11 +127,11 @@ overrides.push(
             { type: 'shared' },
             { type: 'components' },
             { type: 'infra' },
-            { type: 'storage' },
+            { type: 'stores' },
           ],
         },
         message:
-          'Setup may only import from setup, auth, feature, shared, components, infra, and storage.',
+          'Setup may only import from setup, auth, feature, shared, components, infra, and stores.',
       },
     ],
   ),
@@ -157,13 +147,12 @@ overrides.push(
           to: [
             { type: 'components' },
             { type: 'auth' },
-            { type: 'feature' },
             { type: 'shared' },
             { type: 'infra' },
           ],
         },
         message:
-          'Components may only import from components, auth, feature, shared, and infra.',
+          'Components may only import from components, auth, shared and infra.',
       },
     ],
   ),
@@ -207,6 +196,28 @@ overrides.push(
   ),
 );
 
+overrides.push(
+  dependencyRule(
+    ['src/app/*.{js,jsx,ts,tsx}', 'src/app/**/*.{js,jsx,ts,tsx}'],
+    [
+      {
+        from: { type: 'app' },
+        allow: {
+          to: [
+            { type: 'app' },
+            { type: 'auth' },
+            { type: 'shared' },
+            { type: 'components' },
+            { type: 'feature' },
+          ],
+        },
+        message:
+          'App shell may only import from app, auth, shared, components, and feature.',
+      },
+    ],
+  ),
+);
+
 export default [
   {
     files: TS_FILES,
@@ -235,6 +246,10 @@ export default [
       boundaries,
     },
     settings: {
+      'import/resolver': {
+        typescript: { alwaysTryTypes: true },
+      },
+      'boundaries/include': ['src/**/*.{js,jsx,ts,tsx}'],
       'boundaries/elements': [
         {
           type: 'shared',
@@ -245,14 +260,8 @@ export default [
           type: 'feature',
           mode: 'full',
           pattern: [
-            'src/features/*/*.js',
-            'src/features/*/**/*.js',
-            'src/features/*/*.jsx',
-            'src/features/*/**/*.jsx',
-            'src/features/*/*.ts',
-            'src/features/*/**/*.ts',
-            'src/features/*/*.tsx',
-            'src/features/*/**/*.tsx',
+            'src/features/*/*.{js,jsx,ts,tsx}',
+            'src/features/*/**/*.{js,jsx,ts,tsx}',
           ],
           capture: ['featureName'],
         },
@@ -276,14 +285,8 @@ export default [
           type: 'components',
           mode: 'full',
           pattern: [
-            'src/components/*.js',
-            'src/components/**/*.js',
-            'src/components/*.jsx',
-            'src/components/**/*.jsx',
-            'src/components/*.ts',
-            'src/components/**/*.ts',
-            'src/components/*.tsx',
-            'src/components/**/*.tsx',
+            'src/components/*.{js,jsx,ts,tsx}',
+            'src/components/**/*.{js,jsx,ts,tsx}',
           ],
         },
         {
@@ -308,6 +311,14 @@ export default [
           pattern: [
             'src/infra/*.{js,jsx,ts,tsx}',
             'src/infra/**/*.{js,jsx,ts,tsx}',
+          ],
+        },
+        {
+          type: 'app',
+          mode: 'full',
+          pattern: [
+            'src/app/*.{js,jsx,ts,tsx}',
+            'src/app/**/*.{js,jsx,ts,tsx}',
           ],
         },
       ],
