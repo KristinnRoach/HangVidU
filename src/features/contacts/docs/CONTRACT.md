@@ -6,7 +6,7 @@
   - hydrates contacts state from storage
   - exposes app-facing read APIs for contacts state
 
-- `src/contacts/*`
+- `src/features/contacts/*`
   - owns contacts workflows and UI
   - imports contacts state through `stores/contactsStore`
   - does not import persistence directly

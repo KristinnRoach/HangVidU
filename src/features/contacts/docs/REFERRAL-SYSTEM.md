@@ -17,14 +17,14 @@ const referralLink = `${window.location.origin}/?ref=${myUserId}`;
 ### 2. Capture Referral (Contacts Setup)
 
 ```javascript
-import { captureReferral } from '../contacts/referral-handler.js';
+import { captureReferral } from '../features/contacts/referrals/referral-handler.js';
 captureReferral(); // Stores referrerId in localStorage
 ```
 
 ### 3. Process Referral (After Sign-in)
 
 ```javascript
-import { processReferral } from '../contacts/referral-handler.js';
+import { processReferral } from '../features/contacts/referrals/referral-handler.js';
 await processReferral(); // Auto-adds both users as contacts
 ```
 
@@ -49,11 +49,11 @@ The referral system leverages the existing `invitations.js` infrastructure:
 
 ```javascript
 // src/setup/setupContacts.js
-import { captureReferral } from '../contacts/referral-handler.js';
+import { captureReferral } from '../features/contacts/referrals/referral-handler.js';
 captureReferral();
 
 // src/setup/setupAuth.js
-import { processReferral } from '../contacts/referral-handler.js';
+import { processReferral } from '../features/contacts/referrals/referral-handler.js';
 await processReferral();
 ```
 
@@ -84,6 +84,6 @@ Consistent description across all invites:
 
 ## Files
 
-- `src/contacts/invitations.js` - Mutual contact-add system
-- `src/contacts/referral-handler.js` - Core referral logic
+- `src/features/contacts/invites/invitations.js` - Mutual contact-add system
+- `src/features/contacts/referrals/referral-handler.js` - Core referral logic
 - `src/shared/utils/room-id.js` - Deterministic room ID generation

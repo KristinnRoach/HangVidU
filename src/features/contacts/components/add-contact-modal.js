@@ -1,4 +1,4 @@
-// src/contacts/components/add-contact-modal.js
+// src/features/contacts/components/add-contact-modal.js
 
 // Modal for adding contacts by email or importing from Google
 
@@ -7,25 +7,25 @@ import {
   getLoggedInUserId,
   getUser,
   getIsLoggedIn,
-} from '../../auth/index.js';
+} from '../../../auth/index.js';
 import {
   buildReferralLink,
   copyInviteLink,
   shareInvite,
-} from '../../shared/utils/share-invite.js';
+} from '../../../shared/utils/share-invite.js';
 import {
   getInviteShareProviders,
   shareInviteViaProvider,
-} from '../../shared/utils/share-invite-presets.js';
-import { t } from '../../shared/i18n/index.js';
-import { escapeHtml } from '../../shared/utils/ui-utils/dom-utils.js';
-import { showErrorToast, showSuccessToast } from '../../components/base-legacy/toast.js';
-import { sendBulkEmailsViaGmail } from '../../shared/utils/google/gmail-send.js';
-import { filterImportableContacts } from '../import-contacts-utils.js';
+} from '../../../shared/utils/share-invite-presets.js';
+import { t } from '../../../shared/i18n/index.js';
+import { escapeHtml } from '../../../shared/utils/ui-utils/dom-utils.js';
+import { showErrorToast, showSuccessToast } from '../../../components/base-legacy/toast.js';
+import { sendBulkEmailsViaGmail } from '../../../shared/utils/google/gmail-send.js';
+import { filterImportableContacts } from '../import/import-contacts-utils.js';
 import { createImportContactsComponent } from './import-contacts-component.js';
-import { importGoogleContacts as importGoogleContactsFlow } from '../google-import.js';
-import { inviteContactByEmail } from '../manual-contact-invite.js';
-import { sendContactInvite } from '../send-contact-invite.js';
+import { importGoogleContacts as importGoogleContactsFlow } from '../import/google-import.js';
+import { inviteContactByEmail } from '../invites/manual-contact-invite.js';
+import { sendContactInvite } from '../invites/send-contact-invite.js';
 
 // TODO: WIP decoupling considerations:
 // This modal mixes feature UI with auth/OAuth and external contact-import side effects.

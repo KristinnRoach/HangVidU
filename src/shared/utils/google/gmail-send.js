@@ -1,4 +1,4 @@
-// src/contacts/gmail-send.js
+// Google Gmail send helper.
 // Gmail API integration for sending emails
 
 /** Convert a Uint8Array to a base64url string (no padding). */

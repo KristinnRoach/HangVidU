@@ -39,13 +39,13 @@ vi.mock('../../shared/utils/dev/dev-utils.js', () => ({
   devDebug: mocks.devDebug,
 }));
 
-vi.mock('../../contacts/invitations.js', () => ({
+vi.mock('../../features/contacts/invites/invitations.js', () => ({
   cleanupInviteListeners: mocks.cleanupInviteListeners,
 }));
-vi.mock('../../contacts/invite-listener.js', () => ({
+vi.mock('../../features/contacts/invites/invite-listener.js', () => ({
   setupInviteListener: mocks.setupInviteListener,
 }));
-vi.mock('../../contacts/referral-handler.js', () => ({
+vi.mock('../../features/contacts/referrals/referral-handler.js', () => ({
   processReferral: mocks.processReferral,
 }));
 vi.mock('../../stores/contactsStore.js', () => ({

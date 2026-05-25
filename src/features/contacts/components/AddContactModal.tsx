@@ -1,39 +1,39 @@
-// src/contacts/components/AddContactModal.tsx
+// src/features/contacts/components/AddContactModal.tsx
 //
 // Minimal SolidJS port of add-contact-modal.js.
 // The import-contacts section is mounted as a vanilla JS island via ref.
 // TODO: Port import-contacts-component.js to SolidJS (ImportContactsSection.tsx)
 
 import { createSignal, createEffect, For, onMount, onCleanup } from 'solid-js';
-import Modal from '../../components/dialogs/Modal.js';
+import Modal from '../../../components/dialogs/Modal.js';
 import styles from './AddContactModal.module.css';
 import { Share2, Copy } from 'lucide-solid';
-import { t as t_, useI18n } from '../../shared/i18n/index.js';
+import { t as t_, useI18n } from '../../../shared/i18n/index.js';
 import {
   getInviteShareProviders,
   shareInviteViaProvider,
-} from '../../shared/utils/share-invite-presets.js';
+} from '../../../shared/utils/share-invite-presets.js';
 import {
   buildReferralLink,
   copyInviteLink,
   shareInvite,
-} from '../../shared/utils/share-invite.js';
+} from '../../../shared/utils/share-invite.js';
 import {
   getLoggedInUserId,
   getUser,
   requestGmailSendAccess,
-} from '../../auth/index.js';
-import { inviteContactByEmail } from '../manual-contact-invite.js';
-import { sendContactInvite } from '../send-contact-invite.js';
-import { sendBulkEmailsViaGmail } from '../../shared/utils/google/gmail-send.js';
-import { filterImportableContacts } from '../import-contacts-utils.js';
+} from '../../../auth/index.js';
+import { inviteContactByEmail } from '../invites/manual-contact-invite.js';
+import { sendContactInvite } from '../invites/send-contact-invite.js';
+import { sendBulkEmailsViaGmail } from '../../../shared/utils/google/gmail-send.js';
+import { filterImportableContacts } from '../import/import-contacts-utils.js';
 import { createImportContactsComponent } from './import-contacts-component.js';
-import { importGoogleContacts as importGoogleContactsFlow } from '../google-import.js';
+import { importGoogleContacts as importGoogleContactsFlow } from '../import/google-import.js';
 import { createDebouncedAsyncAction } from './add-contact-modal.js';
 import {
   showErrorToast,
   showSuccessToast,
-} from '../../components/base-legacy/toast.js';
+} from '../../../components/base-legacy/toast.js';
 
 const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
 

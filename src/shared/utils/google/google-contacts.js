@@ -1,4 +1,4 @@
-// src/contacts/google-contacts.js
+// Google People API contacts helper.
 // Fetches contacts from Google People API
 
 const CONNECTIONS_URL = 'https://people.googleapis.com/v1/people/me/connections';

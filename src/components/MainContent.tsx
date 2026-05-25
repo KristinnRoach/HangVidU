@@ -7,13 +7,13 @@ import { useAuth } from '../auth/solid-auth';
 
 import AppTitle from './app/AppTitle.jsx';
 import AuthControls from '../auth/components/AuthControls.jsx';
-import AddContactButton from '../contacts/components/AddContactButton.jsx';
+import AddContactButton from '../features/contacts/components/AddContactButton.jsx';
 import NotificationsToggle from './app/NotificationsToggle.jsx';
 import LegalFooter from './app/LegalFooter.jsx';
 import LocaleToggle from './app/LocaleToggle.jsx';
 
 import PublicHomepage from './app/PublicHomepage.jsx';
-import ContactsList from '../contacts/components/ContactsList.jsx';
+import ContactsList from '../features/contacts/components/ContactsList.jsx';
 import ActiveCallRoom from '../features/call/components/ActiveCallRoom';
 import ConversationPanel from '../features/messaging-next/ConversationPanel';
 import CallDialogs from '../features/call/components/CallDialogs.jsx';

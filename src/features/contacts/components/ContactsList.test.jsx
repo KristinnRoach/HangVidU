@@ -20,19 +20,19 @@ const mocks = vi.hoisted(() => ({
   startCall: vi.fn(),
 }));
 
-vi.mock('../../features/call/call-handshake', () => ({
+vi.mock('../../call/call-handshake', () => ({
   useCallHandshake: () => ({ startCall: mocks.startCall }),
 }));
 
-vi.mock('../../features/presence/index.js', () => ({
+vi.mock('../../presence/index.js', () => ({
   watchUserPresence: mocks.watchUserPresence,
 }));
 
-vi.mock('../../contacts/useContacts.js', () => ({
+vi.mock('../useContacts.js', () => ({
   useContacts: () => ({ contacts: mocks.contacts }),
 }));
 
-vi.mock('../../shared/events/index.js', () => ({
+vi.mock('../../../shared/events/index.js', () => ({
   dispatchCommand: mocks.dispatchCommand,
   subscribe: (eventName, handler) => {
     if (!mocks.subscriptions.has(eventName)) {
@@ -51,7 +51,7 @@ vi.mock('../../shared/events/index.js', () => ({
   },
 }));
 
-vi.mock('../../shared/i18n/index.js', () => ({
+vi.mock('../../../shared/i18n/index.js', () => ({
   t: vi.fn((key, params) => {
     if (params?.name) return `${key}:${params.name}`;
     return key;
@@ -66,7 +66,7 @@ vi.mock('../../shared/i18n/index.js', () => ({
   onLocaleChange: vi.fn(() => () => {}),
 }));
 
-vi.mock('../../components/base-legacy/icons.js', () => ({
+vi.mock('../../../components/base-legacy/icons.js', () => ({
   initIcons: mocks.initIcons,
 }));
 

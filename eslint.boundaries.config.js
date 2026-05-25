@@ -77,36 +77,12 @@ overrides.push(
             { type: 'shared' },
             { type: 'feature' },
             { type: 'components' },
-            { type: 'contacts' },
-            { type: 'infra' },
-          ],
-        },
-        message:
-          'Features may import from auth, shared, components, contacts, infra, or other features.',
-      },
-    ],
-  ),
-);
-
-overrides.push(
-  dependencyRule(
-    ['src/contacts/*.{js,jsx,ts,tsx}', 'src/contacts/**/*.{js,jsx,ts,tsx}'],
-    [
-      {
-        from: { type: 'contacts' },
-        allow: {
-          to: [
-            { type: 'auth' },
-            { type: 'shared' },
-            { type: 'components' },
-            { type: 'contacts' },
-            { type: 'feature' },
             { type: 'infra' },
             { type: 'stores' },
           ],
         },
         message:
-          'Contacts may import from auth, shared, components, features, infra, storage, or itself.',
+          'Features may import from auth, shared, components, infra, stores, or other features.',
       },
     ],
   ),
@@ -160,13 +136,12 @@ overrides.push(
             { type: 'feature' },
             { type: 'shared' },
             { type: 'components' },
-            { type: 'contacts' },
             { type: 'infra' },
             { type: 'storage' },
           ],
         },
         message:
-          'Setup may only import from setup, auth, feature, shared, components, contacts, infra, and storage.',
+          'Setup may only import from setup, auth, feature, shared, components, infra, and storage.',
       },
     ],
   ),
@@ -184,12 +159,11 @@ overrides.push(
             { type: 'auth' },
             { type: 'feature' },
             { type: 'shared' },
-            { type: 'contacts' },
             { type: 'infra' },
           ],
         },
         message:
-          'Components may only import from components, auth, feature, shared, contacts, and infra.',
+          'Components may only import from components, auth, feature, shared, and infra.',
       },
     ],
   ),
@@ -227,7 +201,7 @@ overrides.push(
           ],
         },
         message:
-          'Stores may only import from stores, auth, shared, storage, and infra — they sit below features/components/contacts/setup.',
+          'Stores may only import from stores, auth, shared, storage, and infra — they sit below features/components/setup.',
       },
     ],
   ),
@@ -326,14 +300,6 @@ export default [
           pattern: [
             'src/stores/*.{js,jsx,ts,tsx}',
             'src/stores/**/*.{js,jsx,ts,tsx}',
-          ],
-        },
-        {
-          type: 'contacts',
-          mode: 'full',
-          pattern: [
-            'src/contacts/*.{js,jsx,ts,tsx}',
-            'src/contacts/**/*.{js,jsx,ts,tsx}',
           ],
         },
         {

@@ -10,21 +10,21 @@ const mocks = vi.hoisted(() => ({
   buildImportableContacts: vi.fn(),
 }));
 
-vi.mock('../auth/index.js', () => ({
+vi.mock('../../../auth/index.js', () => ({
   requestContactsAccess: mocks.requestContactsAccess,
   getUser: mocks.getUser,
 }));
 
-vi.mock('../stores/contactsStore.js', () => ({
+vi.mock('../../../stores/contactsStore.js', () => ({
   getAllContacts: mocks.getAllContacts,
   hydrateContacts: mocks.hydrateContacts,
 }));
 
-vi.mock('../stores/userDirectoryStore.js', () => ({
+vi.mock('../../../stores/userDirectoryStore.js', () => ({
   findRegisteredUsersByEmails: mocks.findRegisteredUsersByEmails,
 }));
 
-vi.mock('../shared/utils/google/google-contacts.js', () => ({
+vi.mock('../../../shared/utils/google/google-contacts.js', () => ({
   fetchGoogleContacts: mocks.fetchGoogleContacts,
 }));
 

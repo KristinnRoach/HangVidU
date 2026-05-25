@@ -4,16 +4,16 @@
 import {
   signInWithAccountSelection,
   getLoggedInUserId,
-} from '../auth/index.js';
-import { acceptInvite } from './invitations.js';
-import { getDeterministicRoomId } from '../shared/utils/room-id.js';
+} from '../../../auth/index.js';
+import { acceptInvite } from '../invites/invitations.js';
+import { getDeterministicRoomId } from '../../../shared/utils/room-id.js';
 import {
   showInfoToast,
   showSuccessToast,
-} from '../components/base-legacy/toast.js';
-import { getPublicUserProfile } from '../stores/userDirectoryStore.js';
-import { dispatchCommand } from '../shared/events/index.js';
-import { t } from '../shared/i18n/index.js';
+} from '../../../components/base-legacy/toast.js';
+import { getPublicUserProfile } from '../../../stores/userDirectoryStore.js';
+import { dispatchCommand } from '../../../shared/events/index.js';
+import { t } from '../../../shared/i18n/index.js';
 
 /**
  * Store referrer ID when user arrives via referral link.

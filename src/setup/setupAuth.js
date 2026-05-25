@@ -6,9 +6,9 @@ import {
   registerUserInDirectory,
   getUserProfile,
 } from '../storage/user/index.js';
-import { cleanupInviteListeners } from '../contacts/invitations.js';
-import { setupInviteListener } from '../contacts/invite-listener.js';
-import { processReferral } from '../contacts/referral-handler.js';
+import { cleanupInviteListeners } from '../features/contacts/invites/invitations.js';
+import { setupInviteListener } from '../features/contacts/invites/invite-listener.js';
+import { processReferral } from '../features/contacts/referrals/referral-handler.js';
 import { hydrateContacts, resetContacts } from '../stores/contactsStore.js';
 
 let isReady = false;
