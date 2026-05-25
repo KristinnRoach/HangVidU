@@ -14,11 +14,15 @@ import {
 const appCheckExplicitDebugToken = import.meta.env
   .VITE_FIREBASE_APP_CHECK_DEBUG_TOKEN;
 
-if (import.meta.env.MODE === 'development' && typeof self !== 'undefined') {
-  if (
-    typeof appCheckExplicitDebugToken === 'string' &&
-    appCheckExplicitDebugToken.trim() !== ''
-  ) {
+const hasExplicitDebugToken =
+  typeof appCheckExplicitDebugToken === 'string' &&
+  appCheckExplicitDebugToken.trim() !== '';
+
+if (
+  (import.meta.env.MODE === 'development' || hasExplicitDebugToken) &&
+  typeof self !== 'undefined'
+) {
+  if (hasExplicitDebugToken) {
     // If an explicit debug token is provided in .env.development, use it.
     // This tells App Check to use this specific token for debugging.
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = appCheckExplicitDebugToken;
