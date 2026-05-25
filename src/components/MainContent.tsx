@@ -8,7 +8,7 @@ import { useAuth } from '../auth/solid-auth';
 import AppTitle from './app/AppTitle.jsx';
 import AuthControls from '../auth/components/AuthControls.jsx';
 import AddContactButton from '../features/contacts/components/AddContactButton.jsx';
-import NotificationsToggle from './app/NotificationsToggle.jsx';
+import NotificationsToggle from '../features/notifications/components/NotificationsToggle.jsx';
 import LegalFooter from './app/LegalFooter.jsx';
 import LocaleToggle from './app/LocaleToggle.jsx';
 
