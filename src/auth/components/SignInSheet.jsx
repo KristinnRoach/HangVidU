@@ -10,25 +10,15 @@ import styles from './SignInSheet.module.css';
 // Minimal sign-in sheet. Primary provider (Google) is shown first; password
 // flow is opt-in to keep the default view compact. Add new providers by
 // dropping their button into the `.providersSection` grid.
-export default function SignInSheet() {
+export default function SignInSheet(props) {
   const { t } = useI18n();
   const [showPassword, setShowPassword] = createSignal(false);
-  let dialogRef;
 
   return (
     <>
-      <button
-        type='button'
-        class={styles.openButton}
-        aria-label={t('auth.sign_in')}
-        title={t('auth.sign_in')}
-        onClick={() => dialogRef.showModal()}
-      >
-        <LogIn />
-      </button>
-
-      <dialog
-        ref={dialogRef}
+      <div
+        id={props.id}
+        popover
         aria-labelledby='signin-sheet-title'
         class={styles.signInSheetModal}
       >
@@ -67,18 +57,21 @@ export default function SignInSheet() {
             </Show>
           </section>
 
-          <form method='dialog'>
-            <button class={styles.closeBtn} aria-label='Close'>
-              &times;
-            </button>
-          </form>
+          <button
+            popoverTarget={props.id}
+            popoverTargetAction='hide'
+            class={styles.closeBtn}
+            aria-label='Close'
+          >
+            &times;
+          </button>
 
           <div class={styles.divider}></div>
 
           <LegalFooter />
           <LocaleToggle />
         </div>
-      </dialog>
+      </div>
     </>
   );
 }

@@ -1,18 +1,33 @@
-.signInSheetModal {
-  position: fixed;
+[popover]:popover-open {
+  inset: auto;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  min-width: 300px;
 
   background: rgb(2, 7, 18);
   color: #eee;
-  border: 1px solid #444;
+  border: 1px solid #747474;
   border-radius: 8px;
   padding: 1rem 2rem 2rem 2rem;
+
+  opacity: 1;
+  transition: opacity 0.2s;
+  transition-behavior: allow-discrete;
 }
 
-.signInSheetModal::backdrop {
-  background: rgba(0, 0, 0, 0.5);
+[popover]:popover-open::backdrop {
+  opacity: 1;
+  background: rgba(0 0 0 / 0.4);
+}
+
+@starting-style {
+  [popover]:popover-open {
+    opacity: 0;
+  }
+  [popover]:popover-open::backdrop {
+    opacity: 0;
+  }
 }
 
 .openButton {

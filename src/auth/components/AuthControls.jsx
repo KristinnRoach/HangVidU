@@ -6,6 +6,7 @@ import {
 } from '../auth-events-schema.js';
 import { dispatchCommand } from '../../shared/events/index.js';
 import { useI18n } from '../../shared/i18n/index.js';
+import LoginButton from './LoginButton.jsx';
 import SignInSheet from './SignInSheet.jsx';
 import { LogOut } from 'lucide-solid';
 
@@ -60,7 +61,8 @@ export default function AuthControls() {
   return (
     <div class={styles.authControls}>
       <Show when={!isLoggedIn()}>
-        <SignInSheet />
+        <LoginButton popoverTarget='signinSheet' />
+        <SignInSheet id='signinSheet' />
       </Show>
 
       <Show when={isLoading()}>
