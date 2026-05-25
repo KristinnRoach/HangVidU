@@ -5,7 +5,7 @@ const JS_FILES = ['src/**/*.js', 'src/**/*.jsx'];
 const TS_FILES = ['src/**/*.ts', 'src/**/*.tsx'];
 const SOURCE_FILES = [...JS_FILES, ...TS_FILES];
 
-const SHARED_TEMP_FEATURE_EXCEPTIONS = ['notifications']; // Todo: Remove when notifications get refactored.
+const SHARED_TEMP_FEATURE_EXCEPTIONS = [];
 
 const SHARED_GLOBS = [
   'src/shared/*.{js,jsx,ts,tsx}',

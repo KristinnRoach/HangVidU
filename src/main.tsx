@@ -10,6 +10,7 @@ import { setupAuth } from './setup/setupAuth.js';
 import { setupContacts } from './setup/setupContacts.js';
 import { setupMainAppBusListeners } from './setup/setupMainAppBusListeners.js';
 import { setupNotificationsHandlers } from './setup/setupNotificationsHandlers.js';
+import { setupPWAUpdates } from './setup/setupPWAUpdates.js';
 
 type Cleanup = () => void;
 
@@ -34,6 +35,7 @@ function AppSideEffects(props: { children: JSX.Element }) {
       cleanups.push(await setupMainAppBusListeners());
       cleanups.push(await setupContacts());
       cleanups.push(await setupAuth());
+      cleanups.push(await setupPWAUpdates());
       initPushNotifications().catch((error) => {
         console.error('[main] Push notifications init:', error);
       });

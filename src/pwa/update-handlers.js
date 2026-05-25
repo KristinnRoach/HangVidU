@@ -1,4 +1,7 @@
-import { showInfoToast, showErrorToast } from '../components/toast.js';
+import {
+  showInfoToast,
+  showErrorToast,
+} from '../components/base-legacy/toast.js';
 
 // Check for updates every 30 minutes (in milliseconds)
 const UPDATE_CHECK_INTERVAL = 30 * 60 * 1000;
