@@ -7,7 +7,7 @@ import App from './App';
 import { initPushNotifications } from './features/push-notifications/push-notifications.js';
 import { initializeAppCheckDeferred } from './infra/firebase.js';
 import { setupAuth } from './setup/setupAuth.js';
-import { setupContacts } from './setup/setupContacts.js';
+import { setup as setupContacts } from './features/contacts';
 import { setupMainAppBusListeners } from './setup/setupMainAppBusListeners.js';
 import { setup as setupNotifications } from './features/notifications/index.js';
 import { setup as setupPWA } from './features/pwa';
