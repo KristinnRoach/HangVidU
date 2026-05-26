@@ -1,5 +1,4 @@
-import { handleCommand, subscribe } from '../shared/events/index.js';
-import { getContactByRoomId } from '../stores/contactsStore.js';
+import { handleCommand } from '../shared/events/index.js';
 import { getPushNotifications } from '../features/push-notifications/index.js';
 import { setUserOffline } from '../features/presence/index.js';
 
@@ -49,17 +48,6 @@ export function setupMainAppBusListeners() {
           } catch (e) {
             console.warn('[push] Failed to disable notifications:', e);
           }
-        },
-        { signal: ac.signal },
-      );
-
-      handleCommand(
-        'cmd:contacts:contact:get-by-room-id',
-        ({ roomId } = {}) => {
-          if (!roomId) {
-            return null;
-          }
-          return getContactByRoomId(roomId);
         },
         { signal: ac.signal },
       );
