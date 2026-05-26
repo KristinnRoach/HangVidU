@@ -1,11 +1,11 @@
 import {
   setupUpdateHandler,
   stopUpdateChecks,
-} from '../features/pwa/update-handlers.js';
+} from './update-handlers.js';
 
 let isReady = false;
-let initPromise = null;
-let cleanup = () => {
+let initPromise: Promise<() => void> | null = null;
+let cleanup: () => void = () => {
   isReady = false;
 };
 
@@ -18,10 +18,8 @@ let cleanup = () => {
  * Registers the PWA service-worker update handler so the app auto-applies
  * new versions (startup check, onNeedRefresh, visibility check, 30-min poll).
  * No-op when VITE_ENABLE_PWA === '0'.
- *
- * @returns {Promise<() => void>}
  */
-export function setupPWAUpdates() {
+export function setup(): Promise<() => void> {
   if (isReady) {
     return Promise.resolve(cleanup);
   }
@@ -37,7 +35,7 @@ export function setupPWAUpdates() {
         try {
           stopUpdateChecks();
         } catch (error) {
-          console.warn('[setupPWAUpdates] cleanup failed:', error);
+          console.warn('[pwa] cleanup failed:', error);
         } finally {
           isReady = false;
         }
