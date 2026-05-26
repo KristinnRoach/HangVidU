@@ -42,6 +42,7 @@ export class CallHandshakeController {
 
   private _handshakeState: CallHandshakeState = null;
   private outgoingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  private calleeBusyResetTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private unsubCalleeResponse: (() => void) | undefined;
   private initAbortController: AbortController | undefined;
   private unsubscribeIncomingCall: (() => void) | undefined;
@@ -171,7 +172,11 @@ export class CallHandshakeController {
             );
           } else if (response.responseType === 'busy') {
             this.setCalleeBusy(true);
-            setTimeout(() => this.setCalleeBusy(false), 2_500);
+            this.clearCalleeBusyResetTimeout();
+            this.calleeBusyResetTimeoutId = setTimeout(() => {
+              this.calleeBusyResetTimeoutId = undefined;
+              this.setCalleeBusy(false);
+            }, 2_500);
           }
         } catch (err) {
           console.error('Error entering room on callee accept:', err);
@@ -320,6 +325,12 @@ export class CallHandshakeController {
     this.outgoingCallTimeoutId = undefined;
   }
 
+  private clearCalleeBusyResetTimeout(): void {
+    if (!this.calleeBusyResetTimeoutId) return;
+    clearTimeout(this.calleeBusyResetTimeoutId);
+    this.calleeBusyResetTimeoutId = undefined;
+  }
+
   private clearOutgoingCallTracking(): void {
     this.clearOutgoingCallTimeout();
     this.unsubCalleeResponse?.();
@@ -332,6 +343,7 @@ export class CallHandshakeController {
     this.unsubscribeIncomingCall?.();
     this.unsubscribeIncomingCall = undefined;
     this.clearOutgoingCallTracking();
+    this.clearCalleeBusyResetTimeout();
     this.setHandshakeState(null);
     this.setCalleeBusy(false);
     this.p2p.close();
