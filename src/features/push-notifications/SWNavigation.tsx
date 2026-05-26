@@ -4,10 +4,10 @@ import {
   getContactsIsHydrated,
   getConversationId,
 } from '../../stores/contactsStore';
+import { open as openSelectedConversation } from '../../stores/selectedConversationStore';
 import type { ConversationSelection } from '../messaging-next/interfaces.js';
 
 type Props = {
-  onNavigate: (selection: ConversationSelection) => void;
   queueLimit?: number;
 };
 
@@ -52,19 +52,19 @@ function resolveSelection(path: string): ConversationSelection | null {
 
 /**
  * Listens for SW NAVIGATE messages (posted by the SW notification-click
- * handler when the user taps a push notification) and routes them to the
- * provided onNavigate callback. Queues until contacts are hydrated so
- * room/contact lookups can succeed.
+ * handler when the user taps a push notification) and writes the resolved
+ * selection to the selected-conversation store. Queues until contacts are
+ * hydrated so room/contact lookups can succeed.
  *
  * Renders nothing.
  */
-export default function SWNavigation(props: Props) {
+export default function SWNavigation(props: Props = {}) {
   const queueLimit = props.queueLimit ?? DEFAULT_QUEUE_LIMIT;
   const pending: string[] = [];
 
   const dispatchPath = (path: string) => {
     const selection = resolveSelection(path);
-    if (selection) props.onNavigate(selection);
+    if (selection) openSelectedConversation(selection);
   };
 
   const flushPending = () => {

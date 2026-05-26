@@ -19,7 +19,6 @@ import ContactsList from '../features/contacts/components/ContactsList';
 import ActiveCallRoom from '../features/call/components/ActiveCallRoom';
 import ConversationPanel from '../features/messaging-next/ConversationPanel';
 import CallDialogs from '../features/call/components/CallDialogs';
-import SWNavigation from '../features/push-notifications/SWNavigation';
 import { StartCallButton } from '../features/call/components/CallControls';
 
 import { LoadBoundary } from '../components/app/LoadBoundary';
@@ -31,6 +30,7 @@ import topbarStyles from './TopBar.module.css';
 import type { ConversationSelection } from '../features/messaging-next/interfaces.js';
 import type { UserId } from '../features/messaging-next/types.js';
 import { resolveContactIdFromDirectConversationId } from '../shared/utils/direct-conversation-id';
+import { selection as selectedConversation } from '../stores/selectedConversationStore';
 
 type ViewMode = 'home' | 'call' | 'contacts' | 'messaging';
 
@@ -40,8 +40,6 @@ export default function MainContent() {
     useAuth();
 
   const [userView, setUserView] = createSignal<ViewMode>('contacts');
-  const [selectedConversation, setSelectedConversation] =
-    createSignal<ConversationSelection | null>(null);
 
   // Switch into the call view on call-start, and out on call-end.
   // Edge-triggered: doesn't override user nav while a call is ongoing.
@@ -58,6 +56,19 @@ export default function MainContent() {
     ),
   );
 
+  // Selection-driven view switch: external openers (push-nav, future
+  // deep links) set the selection; we flip the view unless explicitly
+  // told not to (displayUI: false, used by ContactsList autoselect).
+  createEffect(
+    on(
+      selectedConversation,
+      (sel) => {
+        if (sel && sel.displayUI !== false) setUserView('messaging');
+      },
+      { defer: true },
+    ),
+  );
+
   // Sanitize against auth + p2p. TODO: replace transition cases with
   // proper Loading UI.
   const activeView = createMemo<ViewMode>(() => {
@@ -69,11 +80,6 @@ export default function MainContent() {
 
   function navigate(view: ViewMode) {
     setUserView(view);
-  }
-
-  function openConversation(selection: ConversationSelection) {
-    setSelectedConversation(selection);
-    if (selection.displayUI !== false) setUserView('messaging');
   }
 
   const headerVisible = createAutoHide(3000, () => p2p.state() !== 'idle');
@@ -104,7 +110,6 @@ export default function MainContent() {
         <div id='onetap-container' />
 
         <main id='main-content' class={mainStyles.mainContent}>
-          <SWNavigation onNavigate={openConversation} />
           <CallDialogs />
 
           {/* CSS display toggles keep stateful views mounted across nav. */}
@@ -135,7 +140,7 @@ export default function MainContent() {
               hidden={activeView() !== 'contacts'}
               class={mainStyles.activeViewContainer}
             >
-              <ContactsList onOpenConversation={openConversation} />
+              <ContactsList />
             </div>
 
             <div

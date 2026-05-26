@@ -18,6 +18,13 @@ const mocks = vi.hoisted(() => ({
   initIcons: vi.fn(),
   subscriptions: new Map(),
   startCall: vi.fn(),
+  openSelectedConversation: vi.fn(),
+}));
+
+vi.mock('../../../stores/selectedConversationStore', () => ({
+  open: mocks.openSelectedConversation,
+  clear: vi.fn(),
+  selection: () => null,
 }));
 
 vi.mock('../../call/call-handshake', () => ({
@@ -156,27 +163,20 @@ describe('SolidJS ContactsList PoC', { timeout: 60000 }, () => {
     unmount();
   });
 
-  it('delegates conversation selection to the parent callback', async () => {
+  it('writes selection to the store on row click', async () => {
     const ContactsListModule = await import('./ContactsList.tsx');
-    const onOpenConversation = vi.fn();
 
-    const { container, unmount } = render(() => (
-      <ContactsListModule.default onOpenConversation={onOpenConversation} />
-    ));
+    const { container, unmount } = render(() => <ContactsListModule.default />);
 
     const firstContactName = container.querySelector('.contact-name');
     firstContactName?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-    expect(onOpenConversation).toHaveBeenCalledWith({
+    expect(mocks.openSelectedConversation).toHaveBeenCalledWith({
       conversationId: 'conv-1',
       remoteParticipantIds: ['contact-1'],
       displayUI: true,
       contactNickName: 'Alice',
     });
-    expect(mocks.dispatchCommand).not.toHaveBeenCalledWith(
-      'cmd:messaging:conversation:select',
-      expect.anything(),
-    );
 
     unmount();
   });

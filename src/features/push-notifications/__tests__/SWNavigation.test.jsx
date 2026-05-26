@@ -8,12 +8,19 @@ const mocks = vi.hoisted(() => ({
   getContactById: vi.fn(),
   getContactsIsHydrated: vi.fn(),
   getConversationId: vi.fn(),
+  openSelectedConversation: vi.fn(),
 }));
 
 vi.mock('../../../stores/contactsStore', () => ({
   getContactById: mocks.getContactById,
   getContactsIsHydrated: mocks.getContactsIsHydrated,
   getConversationId: mocks.getConversationId,
+}));
+
+vi.mock('../../../stores/selectedConversationStore', () => ({
+  open: mocks.openSelectedConversation,
+  clear: vi.fn(),
+  selection: () => null,
 }));
 
 describe('SWNavigation', () => {
@@ -66,9 +73,7 @@ describe('SWNavigation', () => {
   });
 
   it('queues NAVIGATE messages until contacts hydrate, then opens the conversation', async () => {
-    const onNavigate = vi.fn();
-
-    const { unmount } = render(() => <SWNavigation onNavigate={onNavigate} />);
+    const { unmount } = render(() => <SWNavigation />);
 
     expect(navigator.serviceWorker.startMessages).toHaveBeenCalledTimes(1);
     expect(navigator.serviceWorker.addEventListener).toHaveBeenCalledWith(
@@ -80,12 +85,12 @@ describe('SWNavigation', () => {
       data: { type: 'NAVIGATE', path: '/?contact=sender-1' },
     });
 
-    expect(onNavigate).not.toHaveBeenCalled();
+    expect(mocks.openSelectedConversation).not.toHaveBeenCalled();
 
     setHydrated(true);
 
     await waitFor(() => {
-      expect(onNavigate).toHaveBeenCalledWith({
+      expect(mocks.openSelectedConversation).toHaveBeenCalledWith({
         conversationId: 'conversation-1',
         remoteParticipantIds: ['sender-1'],
         displayUI: true,

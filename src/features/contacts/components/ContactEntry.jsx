@@ -3,6 +3,7 @@ import { dispatchCommand } from '../../../shared/events/index.js';
 import { useI18n } from '../../../shared/i18n/index.js';
 import PresenceIndicator from '../../presence/components/PresenceIndicator';
 import { StartCallButton } from '../../call/components/CallControls';
+import { open as openSelectedConversation } from '../../../stores/selectedConversationStore';
 
 const MAX_CONTACT_NAME_CHARS = 18;
 
@@ -22,7 +23,6 @@ function shortName(name) {
  *   name: string|null
  *   conversationId: string|null
  *   unreadCount: number
- *   onOpenConversation?: (selection: object) => void
  */
 export default function ContactEntry(props) {
   const { t } = useI18n();
@@ -39,7 +39,7 @@ export default function ContactEntry(props) {
       });
       return;
     }
-    props.onOpenConversation?.({
+    openSelectedConversation({
       conversationId: props.conversationId,
       remoteParticipantIds: [props.id],
       displayUI: true,
