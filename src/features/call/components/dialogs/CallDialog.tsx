@@ -1,6 +1,6 @@
 import { onCleanup, onMount, type ParentProps } from 'solid-js';
 import { useI18n, type MessageKey } from '../../../../shared/i18n';
-import DialogFrame from '../../../../components/dialogs/DialogFrame.jsx';
+import DialogFrame from '../../../../components/dialogs/DialogFrame';
 import { ringtoneManager } from '../../audio/ringtone-manager';
 import { callIndicators } from '../../../../shared/utils/ui-utils/call-indicators';
 

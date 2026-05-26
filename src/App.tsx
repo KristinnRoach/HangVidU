@@ -1,5 +1,5 @@
 import { AuthProvider } from './auth/solid-auth';
-import MainContent from './app/MainContent.jsx';
+import MainContent from './app/MainContent';
 import { CallHandshakeProvider } from './features/call/call-handshake.js';
 import { P2PProvider } from './shared/p2p-context.js';
 import { setDevDebugEnabled } from './shared/utils/dev/dev-utils.js';

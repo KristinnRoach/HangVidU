@@ -6,21 +6,21 @@ import { useP2PContext } from '../shared/p2p-context.js';
 import { useAuth } from '../auth/solid-auth';
 import { useI18n } from '../shared/i18n';
 
-import AppTitle from '../components/app/AppTitle.jsx';
-import AuthControls from '../auth/components/AuthControls.jsx';
-import AddContactButton from '../features/contacts/components/AddContactButton.jsx';
-import NotificationsToggle from '../features/notifications/components/NotificationsToggle.jsx';
+import AppTitle from '../components/app/AppTitle';
+import AuthControls from '../auth/components/AuthControls';
+import AddContactButton from '../features/contacts/components/AddContactButton';
+import NotificationsToggle from '../features/notifications/components/NotificationsToggle';
 import InstallButton from '../features/pwa/InstallButton';
-import LegalFooter from '../components/app/LegalFooter.jsx';
-import LocaleToggle from '../components/app/LocaleToggle.jsx';
+import LegalFooter from '../components/app/LegalFooter';
+import LocaleToggle from '../components/app/LocaleToggle';
 
-import PublicHomepage from '../components/app/PublicHomepage.jsx';
-import ContactsList from '../features/contacts/components/ContactsList.jsx';
+import PublicHomepage from '../components/app/PublicHomepage';
+import ContactsList from '../features/contacts/components/ContactsList';
 import ActiveCallRoom from '../features/call/components/ActiveCallRoom';
 import ConversationPanel from '../features/messaging-next/ConversationPanel';
-import CallDialogs from '../features/call/components/CallDialogs.jsx';
+import CallDialogs from '../features/call/components/CallDialogs';
 import SWNavigation from '../features/push-notifications/SWNavigation';
-import { StartCallButton } from '../features/call/components/CallControls.jsx';
+import { StartCallButton } from '../features/call/components/CallControls';
 
 import { LoadBoundary } from '../components/app/LoadBoundary';
 import { Spinner } from '../components/app/Spinner';

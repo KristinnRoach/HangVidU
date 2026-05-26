@@ -6,8 +6,8 @@ import {
 } from '../auth-events-schema.js';
 import { dispatchCommand } from '../../shared/events/index.js';
 import { useI18n } from '../../shared/i18n/index.js';
-import LoginButton from './LoginButton.tsx';
-import SignInSheet from './SignInSheet.jsx';
+import LoginButton from './LoginButton';
+import SignInSheet from './SignInSheet';
 import { LogOut } from 'lucide-solid';
 
 import styles from './AuthControls.module.css';

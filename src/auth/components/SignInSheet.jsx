@@ -1,10 +1,10 @@
 import { Show, createSignal } from 'solid-js';
 import { LogIn } from 'lucide-solid';
 import { useI18n } from '../../shared/i18n/index.js';
-import GoogleSignInButton from './GoogleSignInButton.jsx';
-import UsernamePasswordForm from './UsernamePasswordForm.jsx';
-import LegalFooter from '../../components/app/LegalFooter.jsx';
-import LocaleToggle from '../../components/app/LocaleToggle.tsx';
+import GoogleSignInButton from './GoogleSignInButton';
+import UsernamePasswordForm from './UsernamePasswordForm';
+import LegalFooter from '../../components/app/LegalFooter';
+import LocaleToggle from '../../components/app/LocaleToggle';
 import styles from './SignInSheet.module.css';
 
 // Minimal sign-in sheet. Primary provider (Google) is shown first; password

@@ -1,5 +1,5 @@
 import { useI18n } from '../../../../shared/i18n';
-import CallDialog from './CallDialog.jsx';
+import CallDialog from './CallDialog';
 import type { CallDialogProps } from './CallDialog';
 
 interface IncomingCallDialogProps extends CallDialogProps {
