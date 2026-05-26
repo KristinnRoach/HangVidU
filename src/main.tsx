@@ -6,7 +6,7 @@ import 'solid-devtools';
 import App from './App';
 import { initPushNotifications } from './features/push-notifications/push-notifications.js';
 import { initializeAppCheckDeferred } from './infra/firebase.js';
-import { setupAuth } from './setup/setupAuth.js';
+import { setupAuth } from './app/setupAuth.js';
 import { setup as setupContacts } from './features/contacts';
 import { setup as setupNotifications } from './features/notifications/index.js';
 import { setup as setupPresence } from './features/presence/index.js';
