@@ -10,7 +10,11 @@
 
 import { logAuthError } from './auth-setup.js';
 import { clearGISTokenCache } from './gis-tokens.js';
-import { setState } from './auth-state.js';
+import {
+  getAuthState,
+  setState,
+  toStableAuthState,
+} from './auth-state.js';
 import { showOneTapSignin } from './onetap.js';
 import {
   auth,
@@ -108,6 +112,7 @@ export const signInWithAccountSelection = async () => {
   });
 
   const { isIOSStandalone } = detectIOSStandalone();
+  const previousAuthState = getAuthState();
 
   // Signal sign-in is in progress (will be cleared by onAuthStateChanged)
   setState({ status: 'loading' });
@@ -119,7 +124,7 @@ export const signInWithAccountSelection = async () => {
       devDebug('[AUTH] Using Safari external fallback');
       setSafariExternalOpenArmed(false);
       openInSafariExternal();
-      setState({ status: 'idle' });
+      setState(toStableAuthState(previousAuthState));
       return;
     }
 
@@ -132,12 +137,13 @@ export const signInWithAccountSelection = async () => {
     return result;
   } catch (error) {
     handleSignInError(error);
-    setState({ status: 'idle' });
+    setState(toStableAuthState(previousAuthState));
     // Don't re-throw - errors are handled gracefully by handleSignInError
   }
 };
 
 export async function signOutUser() {
+  const previousAuthState = getAuthState();
   // Signal sign-out is in progress (will be cleared by onAuthStateChanged)
   setState({ status: 'loading' });
 
@@ -154,7 +160,7 @@ export async function signOutUser() {
     setTimeout(() => showOneTapSignin(), 1500); // TODO: decide whether this is annoying
   } catch (error) {
     logAuthError('Sign out', error);
-    setState({ status: 'idle' });
+    setState(toStableAuthState(previousAuthState));
     // Re-throw the error to allow callers to handle it
     throw error;
   }
@@ -173,6 +179,7 @@ export async function deleteAccount({ scrubMessages = true } = {}) {
     throw new Error('No user logged in, user: ' + user);
   }
 
+  const previousAuthState = getAuthState();
   setState({ status: 'loading' });
 
   try {
@@ -193,7 +200,7 @@ export async function deleteAccount({ scrubMessages = true } = {}) {
     setTimeout(() => showOneTapSignin(), 1500);
   } catch (error) {
     logAuthError('Delete account', error);
-    setState({ status: 'idle' });
+    setState(toStableAuthState(previousAuthState));
     throw error;
   }
 }

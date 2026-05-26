@@ -14,7 +14,11 @@ import {
   signInPassword,
   updateFirebaseProfile,
 } from './adapters/firebase-auth-adapter.js';
-import { setState } from './auth-state.js';
+import {
+  getAuthState,
+  setState,
+  toStableAuthState,
+} from './auth-state.js';
 import { logAuthError } from './auth-setup.js';
 import { hashEmail } from '../shared/utils/email-hash.js';
 
@@ -89,6 +93,7 @@ export async function signUpWithUsername({
   // Default display name: user-provided > email > username
   const resolvedDisplayName = trimmedDisplayName || trimmedEmail || handle;
 
+  const previousAuthState = getAuthState();
   setState({ status: 'loading' });
 
   try {
@@ -136,7 +141,7 @@ export async function signUpWithUsername({
 
     return cred;
   } catch (e) {
-    setState({ status: 'idle' });
+    setState(toStableAuthState(previousAuthState));
     logAuthError('Sign up (password)', e);
     throw e;
   }
@@ -157,6 +162,7 @@ export async function signInWithUsernameOrEmail({ identifier, password }) {
     throw new Error('password_required');
   }
 
+  const previousAuthState = getAuthState();
   setState({ status: 'loading' });
 
   try {
@@ -177,7 +183,7 @@ export async function signInWithUsernameOrEmail({ identifier, password }) {
 
     return await signInPassword(syntheticEmail(handle), password);
   } catch (e) {
-    setState({ status: 'idle' });
+    setState(toStableAuthState(previousAuthState));
     logAuthError('Sign in (password)', e);
     throw e;
   }

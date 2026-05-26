@@ -67,3 +67,27 @@ describe('onAuthStateChanged', () => {
     expect(calls[0].user?.uid).toBe('user-2');
   });
 });
+
+describe('setState', () => {
+  it('guards against resetting to idle after auth has initialized', async () => {
+    const { setState, getAuthState } = await import('../auth-state.js');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      setState({ status: 'unauthenticated', isLoggedIn: false, user: null });
+      setState({ status: 'loading' });
+      setState({ status: 'idle' });
+
+      expect(getAuthState()).toEqual({
+        status: 'unauthenticated',
+        isLoggedIn: false,
+        user: null,
+      });
+      expect(warn).toHaveBeenCalledWith(
+        '[auth-state] Ignoring reset to idle after auth initialization',
+      );
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});
