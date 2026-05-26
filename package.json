@@ -5,7 +5,7 @@
   "description": "P2P video chat with watch-together mode",
   "type": "module",
   "scripts": {
-    "dev": "pnpm kill:silent && concurrently -k -n vite,tunnel \"vite\" \"cloudflared --no-autoupdate tunnel --config /dev/null run --url https://localhost:5173 --no-tls-verify vidu-dev\"",
+    "dev": "pnpm kill:silent && concurrently -k -n vite,tunnel \"vite\" \"cloudflared --no-autoupdate tunnel --config /dev/null --url https://localhost:5173 --no-tls-verify run vidu-dev\"",
     "dev:local": "vite",
     "debug:edge": "zsh scripts/debug/launch-pwa-edge.sh",
     "worktree": "scripts/git-worktree.sh",
