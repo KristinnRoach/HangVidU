@@ -40,6 +40,11 @@ const server = createServer(async (req, res) => {
     res.end();
     return;
   }
+  if (req.method !== 'GET') {
+    res.writeHead(405, { Allow: 'GET, OPTIONS' });
+    res.end();
+    return;
+  }
 
   const url = new URL(req.url, 'http://localhost:8081');
   const path = url.pathname.replace(/^\//, '') || '/';

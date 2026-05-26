@@ -632,12 +632,21 @@ function tc(t) { return TYPE_CLASS[t] || 't-object'; }
 
 const FIELD_TYPES = ['string','number','boolean','timestamp','enum','RTCSessionDescriptionInit','RTCIceCandidateInit','object'];
 
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ── PATH RENDER ────────────────────────────────────────────────────────────
 function renderPath(path) {
   return path.split('/').map((seg, i, arr) => {
     const cls = seg.startsWith('{') ? 'pp' : 'ps';
     const slash = i < arr.length - 1 ? '<span style="color:var(--border)">/</span>' : '';
-    return `<span class="${cls}">${seg}</span>${slash}`;
+    return `<span class="${cls}">${esc(seg)}</span>${slash}`;
   }).join('');
 }
 
@@ -671,9 +680,9 @@ function renderCard(node) {
       <span class="caret">▼</span>
       <div class="node-meta">
         <div class="node-path">${renderPath(node.path)}</div>
-        <div class="node-label">${node.label}${isImp ? ` <span class="imp-badge">suggestion</span>` : ''}</div>
-        <div class="node-desc">${node.desc}</div>
-        <div class="node-lc">${node.lifecycle}</div>
+        <div class="node-label">${esc(node.label)}${isImp ? ` <span class="imp-badge">suggestion</span>` : ''}</div>
+        <div class="node-desc">${esc(node.desc)}</div>
+        <div class="node-lc">${esc(node.lifecycle)}</div>
       </div>
     </div>
     ${inner}
@@ -688,8 +697,8 @@ function renderFieldRow(nodeId, field) {
   const canDel     = !isImpField && !['p1'].includes(field.id);
 
   const exDisplay = field.type === 'enum' && field.enumValues
-    ? `<div class="enum-chips">${field.enumValues.map(v => `<span class="enum-chip">${v}</span>`).join('')}</div>`
-    : `<span class="fex" title="${field.ex}">${field.ex}</span>`;
+    ? `<div class="enum-chips">${field.enumValues.map(v => `<span class="enum-chip">${esc(v)}</span>`).join('')}</div>`
+    : `<span class="fex" title="${esc(field.ex)}">${esc(field.ex)}</span>`;
 
   const rowCls = `field-row${isImpField ? ' imp-field' : ''}${isEditing ? ' editing-row' : ''}`;
 
@@ -700,7 +709,7 @@ function renderFieldRow(nodeId, field) {
       <div class="field-editor">
         <div class="ed-grp" style="min-width:110px">
           <label class="ed-lbl">Name</label>
-          <input class="ed-inp" id="ed-name" value="${field.name}">
+          <input class="ed-inp" id="ed-name" value="${esc(field.name)}">
         </div>
         <div class="ed-grp" style="min-width:130px">
           <label class="ed-lbl">Type</label>
@@ -708,11 +717,11 @@ function renderFieldRow(nodeId, field) {
         </div>
         <div class="ed-grp" style="flex:2">
           <label class="ed-lbl">Example</label>
-          <input class="ed-inp" id="ed-ex" value="${field.ex.replace(/"/g,'&quot;')}">
+          <input class="ed-inp" id="ed-ex" value="${esc(field.ex)}">
         </div>
         <div class="ed-grp" style="min-width:60px">
           <label class="ed-lbl">Description</label>
-          <input class="ed-inp" id="ed-desc" value="${field.desc || ''}">
+          <input class="ed-inp" id="ed-desc" value="${esc(field.desc || '')}">
         </div>
         <div class="ed-actions">
           <label class="ed-req"><input type="checkbox" id="ed-req"${field.req ? ' checked' : ''}> req</label>
@@ -724,8 +733,8 @@ function renderFieldRow(nodeId, field) {
 
   return `
     <div class="${rowCls}" id="fr-${nodeId}-${field.id}">
-      <span class="fn${isParam ? ' param-name' : ''}" title="${field.desc || ''}">${field.name}</span>
-      <span class="ftype ${tc(field.type)}">${field.type}</span>
+      <span class="fn${isParam ? ' param-name' : ''}" title="${esc(field.desc || '')}">${esc(field.name)}</span>
+      <span class="ftype ${tc(field.type)}">${esc(field.type)}</span>
       <span class="freq ${field.req ? 'req-y' : 'req-n'}">${field.req ? 'req' : 'opt'}</span>
       <div>${exDisplay}</div>
       <div class="fbtns">
