@@ -36,18 +36,14 @@ vi.mock('./adapters/firebase-auth-adapter.js', () => ({
   updateFirebaseProfile: mocks.updateFirebaseProfile,
 }));
 
-vi.mock('./auth-state.js', () => ({
-  getAuthState: mocks.getAuthState,
-  setState: mocks.setState,
-  toStableAuthState: (authState) =>
-    authState?.isLoggedIn
-      ? {
-          status: 'authenticated',
-          isLoggedIn: true,
-          user: authState.user ? { ...authState.user } : null,
-        }
-      : { status: 'unauthenticated', isLoggedIn: false, user: null },
-}));
+vi.mock('./auth-state.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    getAuthState: mocks.getAuthState,
+    setState: mocks.setState,
+    toStableAuthState: actual.toStableAuthState,
+  };
+});
 
 vi.mock('./auth-setup.js', () => ({
   logAuthError: mocks.logAuthError,
