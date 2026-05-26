@@ -79,32 +79,47 @@ export class CallService {
       participants: [calleeId],
       createdAt: startedAt,
     });
-    await this.callRepo.sendInvite(calleeId, {
-      roomId,
-      callerId: this.localUID,
-      calleeId,
-      callerName,
-      audioOnly,
-      startedAt,
-      expiresAt: startedAt + CALL_SIGNAL_TTL_MS,
-    });
+    try {
+      await this.callRepo.sendInvite(calleeId, {
+        roomId,
+        callerId: this.localUID,
+        calleeId,
+        callerName,
+        audioOnly,
+        startedAt,
+        expiresAt: startedAt + CALL_SIGNAL_TTL_MS,
+      });
+    } catch (err) {
+      // Rollback orphaned room access; best-effort, TTL covers leftover state.
+      this.roomAccess.clearRoomAccess(roomId).catch((cleanupErr) =>
+        console.warn(
+          '[CallService] Failed to rollback room access after invite failure:',
+          cleanupErr,
+        ),
+      );
+      throw err;
+    }
   }
 
-  respondToIncomingCallInvite({
+  async respondToIncomingCallInvite({
     roomId,
     responseType,
   }: {
     roomId: string;
     responseType: CallResponse['responseType'];
-  }): Promise<unknown[]> {
-    return Promise.all([
-      this.callRepo.clearInvite(this.localUID),
-      this.callRepo.respondToInvite({
-        roomId,
-        by: this.localUID,
-        responseType,
-      }),
-    ]);
+  }): Promise<void> {
+    await this.callRepo.respondToInvite({
+      roomId,
+      by: this.localUID,
+      responseType,
+    });
+    // Invite-clear is best-effort cleanup; the response is what unblocks the caller.
+    this.callRepo.clearInvite(this.localUID).catch((err) =>
+      console.warn(
+        '[CallService] Failed to clear invite after responding:',
+        err,
+      ),
+    );
   }
 
   cancelOutgoingCall({ recipientUID }: { recipientUID: string }): Promise<void> {

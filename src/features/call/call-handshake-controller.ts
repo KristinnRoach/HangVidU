@@ -162,17 +162,23 @@ export class CallHandshakeController {
       async (response) => {
         if (!response || response.roomId !== roomId) return;
         this.clearOutgoingCallTracking();
-        if (response.responseType === 'accepted') {
-          await this.enterRoom(
-            response.roomId,
-            localUID,
-            nextOutgoingCall.audioOnly,
-          );
-        } else if (response.responseType === 'busy') {
-          this.setCalleeBusy(true);
-          setTimeout(() => this.setCalleeBusy(false), 2_500);
+        try {
+          if (response.responseType === 'accepted') {
+            await this.enterRoom(
+              response.roomId,
+              localUID,
+              nextOutgoingCall.audioOnly,
+            );
+          } else if (response.responseType === 'busy') {
+            this.setCalleeBusy(true);
+            setTimeout(() => this.setCalleeBusy(false), 2_500);
+          }
+        } catch (err) {
+          console.error('Error entering room on callee accept:', err);
+          this.exitActiveRoom();
+        } finally {
+          this.setHandshakeState(null);
         }
-        this.setHandshakeState(null);
       },
     );
 
