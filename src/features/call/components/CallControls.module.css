@@ -1,0 +1,48 @@
+.callControls {
+  position: absolute;
+  bottom: var(--gap);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+
+  display: flex;
+  gap: var(--gap);
+
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+
+  &.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(20px);
+  }
+
+  button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-weight: 600;
+    color: var(--color-text);
+    background: var(--color-brand);
+    border: none;
+    border-radius: 50%;
+    width: 3.5em;
+    height: 3.5em;
+
+    transition: background-color 0.2s ease;
+
+    &.hangup {
+      background-color: rgb(216, 0, 0);
+    }
+
+    &.off {
+      background-color: rgba(0, 0, 0, 0.55);
+    }
+
+    &:hover {
+      background-color: rgba(156, 0, 0);
+    }
+  }
+}

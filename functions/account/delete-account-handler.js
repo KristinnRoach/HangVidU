@@ -155,7 +155,7 @@ async function handleDeleteAccount(req, res) {
 
 /**
  * Produces a Firebase-safe base64 hash from an email address.
- * Must match the client-side hashEmail in src/contacts/user-discovery.js.
+ * Must match the client-side hashEmail in src/shared/utils/email-hash.js.
  *
  * @param {string} email
  * @returns {string} Firebase-safe base64 key

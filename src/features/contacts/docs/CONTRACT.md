@@ -1,27 +1,22 @@
 ## Contacts Contract
 
-- `contacts-service.js`
-  - owns writes
+- `src/stores/contactsStore.ts`
+  - owns contacts writes
   - owns backend selection
   - hydrates contacts state from storage
-  - publishes cross-module contact facts when writes succeed
-  - owns contact-module policy helpers
+  - exposes app-facing read APIs for contacts state
 
-- `contacts-state.js`
-  - owns synchronous read getters
-  - publishes `evt:contacts:state:changed`
-  - mirrors the current contacts snapshot for cross-module reads
+- `src/features/contacts/*`
+  - owns contacts workflows and UI
+  - imports contacts state through `stores/contactsStore`
+  - does not import persistence directly
 
 - Current split
-  - service: `saveContact`, `updateContact`, `deleteContact`, `updateLastInteraction`, `handleHangUp`, `ensureContactsHydrated`, `hydrateContactsState`
-  - state: `getAllContacts`, `getContactById`, `getContactByRoomId`, `getConversationId`, `getAllContactsSorted`, `getContactByMostRecentInteraction`, `getIsHydrated`
-
-- Published facts
-  - `evt:contacts:room:created`
-  - `evt:contacts:room:updated`
-  - `evt:contacts:contact:deleted`
+  - writes: `saveContact`, `updateContact`, `deleteContact`, `recordInteraction`, `recordInteractionByConversation`, `handleHangUp`
+  - reads: `getAllContacts`, `getContactById`, `getContactByRoomId`, `getConversationId`, `getAllContactsSorted`, `getContactByMostRecentInteraction`, `getContactsIsHydrated`
+  - lifecycle: `hydrateContacts`, `resetContacts`
 
 - Storage boundary
-  - service depends on `contacts/storage/*`
-  - storage stays generic
-  - external reads go through contacts state, not storage
+  - `stores/contactsStore` depends on `storage/contacts`
+  - contacts feature code depends on `stores`
+  - external reads go through contacts store APIs, not storage

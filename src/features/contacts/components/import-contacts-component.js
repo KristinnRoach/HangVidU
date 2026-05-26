@@ -1,5 +1,7 @@
-import { escapeHtml } from '../../../shared/components/ui/utils/dom-utils.js';
+import { escapeHtml } from '../../../shared/utils/ui-utils/dom-utils.js';
 import { t } from '../../../shared/i18n/index.js';
+
+import './import-contacts-component.css';
 
 export function createImportContactsComponent({
   onPlatformSelect,
@@ -18,7 +20,7 @@ export function createImportContactsComponent({
       <div class="platform-selector">
 
         <button id="import-google-contacts-btn" type="button" class="platform-btn" data-platform="google">
-          <span>${escapeHtml(googleImportLabel)}</span>
+        <!--  <span>${escapeHtml(googleImportLabel)}</span> -->
           <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -46,9 +48,11 @@ export function createImportContactsComponent({
         />
       </div>
 
+      <!--
       <p class="disclosure-note">
         ${escapeHtml(importDisclosure)}
       </p>
+      -->
 
       <div id="contacts-container" class="contacts-container-modal"></div>
 
@@ -209,15 +213,15 @@ export function createImportContactsComponent({
       }
 
       li.innerHTML = `
-        <label class="contact-item-label">
-          <input type="checkbox" class="contact-checkbox" data-email="${escapeHtml(email)}" ${isAlreadySaved || isAlreadyInvited || isSentInvite ? 'disabled' : ''} />
-          <span class="contact-info">
-            <strong class="contact-name">${escapeHtml(name)}</strong>
-            <small class="contact-email">${escapeHtml(email)}</small>
+          <span style="display: flex; align-items: center; gap: 0.75rem; width: 100%;">
+            <input type="checkbox" class="contact-checkbox" data-email="${escapeHtml(email)}" ${isAlreadySaved || isAlreadyInvited || isSentInvite ? 'disabled' : ''} />
+            <span class="contact-info">
+              <strong class="contact-name">${escapeHtml(name)}</strong>
+              <small class="contact-email">${escapeHtml(email)}</small>
+            </span>
           </span>
           ${statusBadge}
-        </label>
-        ${actionButton}
+          ${actionButton}
       `;
 
       const inviteBtn = li.querySelector('.invite-btn');
@@ -306,9 +310,12 @@ export function createImportContactsComponent({
           ${t('contact.invite.email', { count: 0 })}
         </button>
       </div>
+
+      <!--
       <p class="disclosure-note bulk-action-disclosure">
         ${escapeHtml(gmailDisclosure)}
       </p>
+      -->
     `;
 
     const selectAllCheckbox = header.querySelector('#select-all-checkbox');

@@ -15,7 +15,9 @@ export default defineConfig({
     baseURL: 'http://localhost:4173',
     trace: 'on-first-retry',
     video: 'retain-on-failure',
-    screenshot: 'only-on-failure',
+    // Disable automatic screenshot artifact creation (was 'only-on-failure')
+    // Empty/white screenshots were being generated when pages didn't render.
+    screenshot: 'off',
     // Increase timeouts for WebRTC operations
     actionTimeout: 10000,
     navigationTimeout: 15000,

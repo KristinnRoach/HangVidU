@@ -41,6 +41,16 @@
           ".read": "$userId === auth.uid",
           ".write": "$userId === auth.uid"
         },
+        "calls": {
+          "incoming": {
+            ".read": "$userId === auth.uid",
+            ".write": "($userId === auth.uid && !newData.exists()) || (auth != null && !newData.exists() && data.child('callerId').val() === auth.uid) || (auth != null && !data.exists() && newData.hasChildren(['roomId', 'callerId', 'startedAt']) && newData.child('roomId').isString() && newData.child('callerId').val() === auth.uid && newData.child('startedAt').isNumber() && (!newData.child('calleeId').exists() || newData.child('calleeId').val() === $userId) && (!newData.child('expiresAt').exists() || newData.child('expiresAt').isNumber()) && (!newData.child('callerName').exists() || newData.child('callerName').isString()) && (!newData.child('audioOnly').exists() || newData.child('audioOnly').isBoolean()))"
+          },
+          "response": {
+            ".read": "auth != null",
+            ".write": "$userId === auth.uid && (!newData.exists() || (newData.hasChildren(['roomId', 'responseType', 'by', 'respondedAt']) && newData.child('roomId').isString() && newData.child('by').val() === auth.uid && newData.child('respondedAt').isNumber() && (!newData.child('expiresAt').exists() || newData.child('expiresAt').isNumber()) && (newData.child('responseType').val() === 'accepted' || newData.child('responseType').val() === 'rejected' || newData.child('responseType').val() === 'busy')))"
+          }
+        },
         "outgoingCall": {
           ".read": "$userId === auth.uid",
           ".write": "$userId === auth.uid"

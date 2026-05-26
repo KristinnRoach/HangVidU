@@ -27,12 +27,14 @@ vi.mock('../../../shared/events/index.js', () => ({
       return { status: response.status, payload: body };
     }
 
-    if (commandName === 'cmd:contacts:contact:get-by-room-id') {
-      return null;
-    }
-
     return undefined;
   }),
+  dispatchCommand: vi.fn(),
+  subscribe: vi.fn(() => () => {}),
+}));
+
+vi.mock('../../../stores/contactsStore.js', () => ({
+  getContactByRoomId: vi.fn(() => null),
 }));
 
 vi.mock('../../../auth/auth-setup.js', () => ({

@@ -1,6 +1,11 @@
 // Public app-facing push notifications facade.
 
-import { dispatchCommandAndAwait } from '../../shared/events/index.js';
+import {
+  dispatchCommandAndAwait,
+  dispatchCommand,
+  subscribe,
+} from '../../shared/events/index.js';
+import { getContactByRoomId } from '../../stores/contactsStore.js';
 
 const PERMISSION_REQUEST_TIMEOUT_MS = 8000;
 const AUTH_CLOUD_FUNCTION_COMMAND = 'cmd:auth:cloud-function:call';
@@ -63,6 +68,9 @@ export class PushNotifications {
       ...options,
     };
     this.vapidKey = import.meta.env.VITE_PUSH_VAPID_KEY;
+    if (!this.vapidKey.length) {
+      console.error('[Push Notifications] VAPID key is not set');
+    }
   }
 
   // Runtime setup used by app bootstrap. This is intentionally separate from
@@ -525,9 +533,7 @@ export class PushNotifications {
 
     if (!callerName) {
       try {
-        const contact = await dispatchCommandAndAwait('cmd:contacts:contact:get-by-room-id', {
-          roomId,
-        });
+        const contact = getContactByRoomId(roomId);
         callerLabel = contact?.contactNickName || callerId || 'Unknown caller';
       } catch (error) {
         console.warn(
@@ -664,12 +670,43 @@ export class PushNotifications {
 
 let instance = null;
 
+export const initPushNotifications = async (options = {}) => {
+  if (!instance) {
+    instance = new PushNotifications(options);
+    try {
+      const pushInitialized = await instance.initialize();
+      // TODO: Re-enable in a decoupled way if needed / when notifications get migrated to solidjs
+      // if (!pushInitialized && !instance.isNotificationSupported()) {
+      //   const { showPushUnsupportedNotification } = await import(
+      //     '../notifications/index.js'
+      //   );
+      //   showPushUnsupportedNotification();
+      // }
+    } catch (error) {
+      console.error('[Push Notifications] init failed:', error);
+    }
+    subscribe('evt:auth:session:logged-in', async () => {
+      const result = await instance.ensureEnabledIfGranted().catch((e) => {
+        console.warn('[Push Notifications] setup failed:', e);
+        return { state: 'error' };
+      });
+      if (result.state === 'prompt-needed') {
+        dispatchCommand('cmd:app-notifications:show:enable-push');
+      }
+    });
+  }
+
+  return instance;
+};
+
 /**
  * Returns the singleton push facade used by app code.
  */
 export const getPushNotifications = () => {
   if (!instance) {
-    instance = new PushNotifications();
+    console.warn(
+      '[Push Notifications] getPushNotifications called before initialization',
+    );
   }
   return instance;
 };

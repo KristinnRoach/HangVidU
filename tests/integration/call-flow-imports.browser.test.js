@@ -1,7 +1,7 @@
 /**
- * Call-Flow Import Integration Test
+ * Call Import Integration Test
  *
- * Purpose: Verify that call-flow.js has all required imports and can be loaded.
+ * Purpose: Verify that current call-flow modules have all required imports and can be loaded.
  * This catches issues like missing 'ref' or 'onDataChange' imports that mocked
  * tests won't catch.
  *
@@ -10,17 +10,21 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 
-describe('Call-Flow Import Integration', () => {
+describe('Call Import Integration', () => {
   beforeAll(() => {
     // Browser mode provides native document and window - no mocking needed
   });
 
-  it('call-flow.js can be imported without ReferenceErrors', async () => {
+  it('call modules can be imported without ReferenceErrors', async () => {
     let importError = null;
 
     try {
-      // Import call-flow - if imports like 'ref' are missing, this will throw ReferenceError
-      await import('../../src/features/call/call-flow.js');
+      await Promise.all([
+        import('../../src/features/call/call-handshake.js'),
+        import('../../src/features/call/call-handshake-controller.js'),
+        import('../../src/features/call/call-notifications.js'),
+        import('../../src/features/call/call-types.js'),
+      ]);
     } catch (error) {
       importError = error;
     }
@@ -32,29 +36,24 @@ describe('Call-Flow Import Integration', () => {
     }
   });
 
-  it('createCall function exists and is callable', async () => {
-    const { createCall } = await import('../../src/features/call/call-flow.js');
+  it('call handshake context exports exist', async () => {
+    const { CallHandshakeProvider, useCallHandshake } = await import(
+      '../../src/features/call/call-handshake.js'
+    );
 
-    expect(createCall).toBeDefined();
-    expect(typeof createCall).toBe('function');
-
-    // Call with invalid input to test it doesn't throw import errors
-    const result = await createCall({ localStream: null });
-
-    expect(result).toBeDefined();
-    expect(result.success).toBe(false);
+    expect(typeof CallHandshakeProvider).toBe('function');
+    expect(typeof useCallHandshake).toBe('function');
   });
 
-  it('answerCall function exists and is callable', async () => {
-    const { answerCall } = await import('../../src/features/call/call-flow.js');
+  it('extracted call helpers exist', async () => {
+    const { sendIncomingCallPushNotification, sendMissedCallPushNotification } =
+      await import('../../src/features/call/call-notifications.js');
+    const { CallHandshakeController } = await import(
+      '../../src/features/call/call-handshake-controller.js'
+    );
 
-    expect(answerCall).toBeDefined();
-    expect(typeof answerCall).toBe('function');
-
-    // Call with invalid input to test it doesn't throw import errors
-    const result = await answerCall({ localStream: null });
-
-    expect(result).toBeDefined();
-    expect(result.success).toBe(false);
+    expect(typeof sendIncomingCallPushNotification).toBe('function');
+    expect(typeof sendMissedCallPushNotification).toBe('function');
+    expect(typeof CallHandshakeController).toBe('function');
   });
 });

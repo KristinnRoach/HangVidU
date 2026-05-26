@@ -1,0 +1,22 @@
+/* 1:1 CALL LAYOUT - (DRAFT - WIP) */
+
+.roomMembers.direct {
+  position: relative;
+  height: 100%;
+  width: auto;
+}
+
+/* GROUP CALL LAYOUT - (DRAFT - NOT TESTED) */
+
+.roomMembers.group {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(var(--remote-stream-container-min-width, 100%)), 1fr)
+  );
+  gap: var(--gap);
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
+  }
+}

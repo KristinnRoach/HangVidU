@@ -9,25 +9,23 @@ What is automatically enforced today. Source of truth: `eslint.config.js`, `esli
   - Block direct `firebase/auth` imports (route through adapter).
   - Block `**/auth-state`, `**/auth-state.js` imports outside `src/auth/`.
   - Block bare `t`, `getLocale`, `setLocale`, `onLocaleChange` imports from `shared/i18n` inside `src/components/**` — Solid components must use `useI18n()`.
-- `boundaries/dependencies` — per-module import boundaries (incremental rollout).
+- `boundaries/dependencies` — layer-based import boundaries (features, auth, shared, components, setup).
 - JSX parsing is enabled for `src/**/*.jsx`.
 - Boundary lint includes the `components` layer in addition to `setup`, `auth`, `feature`, and `shared`.
 
-## Current status (April 15, 2026)
+## Current status
 
-- Enforced features (default mode): `contacts`, `push-notifications`, `messaging`, `call`.
-- Temporary `shared -> feature` allowlist: `watch`, `notifications`.
-- `pnpm lint:boundaries` currently fails with 13 errors (pre-existing, in `call/`).
+- All features checked together — features may import from `auth`, `shared`, `components`, or other features.
+- Temporary `shared -> feature` allowlist: `watch`, `notifications`, `call`.
 
 ## Run
 
 - `pnpm lint` — ESLint first, then boundary rules.
 - `pnpm lint:boundaries` — boundaries only.
-- `pnpm lint:b:all` — boundaries with every feature enforced.
 
 ## Adding a new state file to the privacy rule
 
-When `contacts-state.js`, `messaging-state.js`, or `call-state.js` lands, extend the `no-restricted-imports` patterns block in `eslint.config.js` with the same shape used for `auth-state`.
+When a module opts into the dedicated state-file shape (see [`STATE_RULES.md`](./STATE_RULES.md)), extend the `no-restricted-imports` patterns block in `eslint.config.js` with the same shape used for `auth-state`.
 
 ## Current Solid coverage
 

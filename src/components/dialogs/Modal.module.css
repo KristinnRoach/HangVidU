@@ -1,0 +1,67 @@
+/* Modal.module.css */
+
+/* NOTE: Force centering dialog element styles for now, should not be needed for native dialogs */
+
+dialog {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
+  width: fit-content;
+  height: fit-content;
+  margin: auto;
+}
+
+dialog:modal {
+  position: fixed;
+  inset-block: 0;
+}
+
+.modal {
+  inline-size: min(32rem, calc(100vw - 2rem));
+  max-block-size: calc(100vh - 2rem);
+  border: 0;
+  border-radius: 8px;
+  padding: 0;
+  overflow: auto;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 0.25);
+
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* unused drawer variant draft */
+.modalDrawer {
+  margin-inline-end: 0;
+  margin-block: 0;
+  block-size: 100vh;
+  max-block-size: 100vh;
+}
+
+.modal::backdrop,
+.modalDrawer::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1rem 0.75rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.closeButton {
+  border: 0;
+  background: transparent;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.body {
+  padding: 0 1rem 1rem;
+}

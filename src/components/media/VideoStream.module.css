@@ -1,0 +1,23 @@
+.videoStream {
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+  object-position: center center;
+  overflow: hidden;
+
+  border-radius: var(--radius);
+
+  &.local {
+    transform: scaleX(-1); /* Flip */
+  }
+
+  /* DRAFT - default preview frame (only one at a time) */
+  &.preview {
+    position: absolute;
+    top: var(--gap);
+    left: var(--gap);
+    width: 150px;
+    height: 100px;
+  }
+}

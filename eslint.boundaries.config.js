@@ -1,96 +1,25 @@
 import boundaries from 'eslint-plugin-boundaries';
-import fs from 'node:fs';
+import tseslint from 'typescript-eslint';
 
-function envEnabled(name, defaultValue) {
-  const value = process.env[name];
-  if (value == null) return defaultValue;
-  return value === '1' || value.toLowerCase() === 'true';
-}
+const JS_FILES = ['src/**/*.js', 'src/**/*.jsx'];
+const TS_FILES = ['src/**/*.ts', 'src/**/*.tsx'];
+const SOURCE_FILES = [...JS_FILES, ...TS_FILES];
 
-function discoverFeatures() {
-  const root = 'src/features';
-  if (!fs.existsSync(root)) return [];
-
-  return fs
-    .readdirSync(root, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort();
-}
-
-const ENFORCE_ALL = envEnabled('BOUNDARIES_ENFORCE_ALL', false);
-const ALL_FEATURES = discoverFeatures();
-const ALL_FEATURES_SET = new Set(ALL_FEATURES);
-
-// Incremental feature rollout:
-// - default: only what is already enforced + current WIP
-// - BOUNDARIES_ENFORCE_ALL=1: all discovered features
-// - BOUNDARIES_ENFORCED_FEATURES=a,b,c: explicit list
-const requestedFeatures = process.env.BOUNDARIES_ENFORCED_FEATURES
-  ? process.env.BOUNDARIES_ENFORCED_FEATURES.split(',')
-      .map((name) => name.trim())
-      .filter(Boolean)
-  : null;
-
-if (requestedFeatures) {
-  const unknownFeatures = requestedFeatures.filter(
-    (featureName) => !ALL_FEATURES_SET.has(featureName),
-  );
-  if (unknownFeatures.length > 0) {
-    throw new Error(
-      `Unknown BOUNDARIES_ENFORCED_FEATURES: ${unknownFeatures.join(', ')}`,
-    );
-  }
-}
-
-// ____________________________________
-
-// Boundary rollout (incremental rules — modify freely):
-// - normal incremental mode: `pnpm lint:boundaries`
-// - hotspot scan (all rules + all features): `BOUNDARIES_ENFORCE_ALL=1 pnpm lint:boundaries`
-// - single-rule drill-down examples:
-//   - `BOUNDARIES_AUTH=1 pnpm lint:boundaries`
-//   - `BOUNDARIES_SETUP=1 pnpm lint:boundaries`
-// - specific feature set: `BOUNDARIES_ENFORCED_FEATURES=contacts,messaging pnpm lint:boundaries`
-
-const ENABLE_RULE = {
-  shared: envEnabled('BOUNDARIES_SHARED', true),
-  auth: envEnabled('BOUNDARIES_AUTH', true),
-  setup: envEnabled('BOUNDARIES_SETUP', true),
-  components: envEnabled('BOUNDARIES_COMPONENTS', true),
-};
-
-// enforced features - add one at a time until all are included
-const ENFORCED_FEATURES = requestedFeatures
-  ? requestedFeatures
-  : ENFORCE_ALL
-    ? ALL_FEATURES
-    : ['contacts', 'push-notifications', 'messaging'];
-
-const SHARED_TEMP_FEATURE_EXCEPTIONS = ['watch', 'notifications', 'call'];
+const SHARED_TEMP_FEATURE_EXCEPTIONS = [];
 
 const SHARED_GLOBS = [
-  'src/elements.js',
-  'src/shared/components/**/*.js',
-  'src/shared/events/**/*.js',
-  'src/shared/vendors/**/*.js',
-  'src/shared/i18n/**/*.js',
-  'src/shared/media/**/*.js',
-  'src/shared/media-next/**/*.js',
-  'src/shared/pwa/**/*.js',
-  'src/shared/storage/**/*.js',
-  'src/shared/styles/**/*.js',
-  'src/shared/utils/**/*.js',
+  'src/shared/*.{js,jsx,ts,tsx}',
+  'src/shared/events/**/*.{js,jsx,ts,tsx}',
+  'src/shared/i18n/**/*.{js,jsx,ts,tsx}',
+  'src/shared/utils/**/*.{js,jsx,ts,tsx}',
 ];
 
 function dependencyRule(files, rules) {
   return {
     files,
     ignores: [
-      'src/**/*.test.js',
-      'src/**/*.test.jsx',
-      'src/**/*.browser.test.js',
-      'src/**/*.browser.test.jsx',
+      'src/**/*.test.{js,jsx,ts,tsx}',
+      'src/**/*.browser.test.{js,jsx,ts,tsx}',
     ],
     rules: {
       'boundaries/dependencies': [
@@ -106,123 +35,174 @@ function dependencyRule(files, rules) {
 
 const overrides = [];
 
-if (ENABLE_RULE.shared) {
-  overrides.push(
-    dependencyRule(SHARED_GLOBS, [
+overrides.push(
+  dependencyRule(SHARED_GLOBS, [
+    {
+      from: { type: 'shared' },
+      allow: {
+        to: [
+          { type: 'shared' },
+          ...SHARED_TEMP_FEATURE_EXCEPTIONS.map((featureName) => ({
+            type: 'feature',
+            captured: { featureName },
+          })),
+        ],
+      },
+      message:
+        'Shared is pure cross-cutting code — may only import from shared (plus explicit temporary feature exceptions).',
+    },
+  ]),
+);
+
+overrides.push(
+  dependencyRule(
+    ['src/features/*/*.{js,jsx,ts,tsx}', 'src/features/*/**/*.{js,jsx,ts,tsx}'],
+    [
       {
-        from: { type: 'shared' },
+        from: { type: 'feature' },
         allow: {
           to: [
+            { type: 'auth' },
             { type: 'shared' },
-            ...SHARED_TEMP_FEATURE_EXCEPTIONS.map((featureName) => ({
-              type: 'feature',
-              captured: { featureName },
-            })),
+            { type: 'feature' },
+            { type: 'components' },
+            { type: 'infra' },
+            { type: 'stores' },
           ],
         },
         message:
-          'Shared code may only import shared code (plus explicit temporary feature exceptions).',
+          'Features may import from auth, shared, components, infra, stores, or other features.',
       },
-    ]),
-  );
-}
+    ],
+  ),
+);
 
-for (const featureName of ENFORCED_FEATURES) {
-  overrides.push(
-    dependencyRule(
-      [
-        `src/features/${featureName}/*.js`,
-        `src/features/${featureName}/**/*.js`,
-        `src/features/${featureName}/*.jsx`,
-        `src/features/${featureName}/**/*.jsx`,
-      ],
-      [
-        {
-          from: { type: 'feature', captured: { featureName } },
-          allow: {
-            to: [
-              { type: 'auth' },
-              { type: 'shared' },
-              { type: 'feature', captured: { featureName } },
-            ],
-          },
-          message: `${featureName} may only import from auth, shared, or itself.`,
+overrides.push(
+  dependencyRule(
+    ['src/auth/*.{js,jsx,ts,tsx}', 'src/auth/**/*.{js,jsx,ts,tsx}'],
+    [
+      {
+        from: { type: 'auth' },
+        allow: {
+          to: [
+            { type: 'auth' },
+            { type: 'shared' },
+            { type: 'infra' },
+            { type: 'components' },
+          ],
         },
-      ],
-    ),
-  );
-}
+        message:
+          'Auth may only import from auth, shared, components and infra.',
+      },
+    ],
+  ),
+);
 
-if (ENABLE_RULE.auth) {
-  overrides.push(
-    dependencyRule(
-      ['src/auth/*.js', 'src/auth/**/*.js'],
-      [
-        {
-          from: { type: 'auth' },
-          allow: {
-            to: [{ type: 'auth' }, { type: 'shared' }],
-          },
-          message: 'Auth may only import from auth and shared.',
-        },
-      ],
-    ),
-  );
-}
+// TODO: Move rtdb to storage? Is this worth keeping?
+overrides.push(
+  dependencyRule(
+    ['src/infra/*.{js,jsx,ts,tsx}', 'src/infra/**/*.{js,jsx,ts,tsx}'],
+    [
+      {
+        from: { type: 'infra' },
+        allow: { to: [{ type: 'infra' }] },
+        message:
+          'Infra is the external-system bootstrap layer — may only import from infra (vendor SDKs + env config only).',
+      },
+    ],
+  ),
+);
 
-if (ENABLE_RULE.setup) {
-  overrides.push(
-    dependencyRule(
-      ['src/setup/*.js', 'src/setup/**/*.js', 'src/setup/*.jsx', 'src/setup/**/*.jsx'],
-      [
-        {
-          from: { type: 'setup' },
-          allow: {
-            to: [
-              { type: 'setup' },
-              { type: 'auth' },
-              { type: 'feature' },
-              { type: 'shared' },
-              { type: 'components' },
-            ],
-          },
-          message:
-            'Setup may only import from setup, auth, feature, shared, and components.',
+overrides.push(
+  dependencyRule(
+    ['src/components/*.{js,jsx,ts,tsx}', 'src/components/**/*.{js,jsx,ts,tsx}'],
+    [
+      {
+        from: { type: 'components' },
+        allow: {
+          to: [{ type: 'components' }, { type: 'auth' }, { type: 'shared' }],
         },
-      ],
-    ),
-  );
-}
+        message: 'Components may only import from components, auth and shared',
+      },
+    ],
+  ),
+);
 
-if (ENABLE_RULE.components) {
-  overrides.push(
-    dependencyRule(
-      [
-        'src/components/*.js',
-        'src/components/**/*.js',
-        'src/components/*.jsx',
-        'src/components/**/*.jsx',
-      ],
-      [
-        {
-          from: { type: 'components' },
-          allow: {
-            to: [
-              { type: 'components' },
-              { type: 'auth' },
-              { type: 'feature' },
-              { type: 'shared' },
-            ],
-          },
-          message:
-            'Components may only import from components, auth, feature, and shared.',
+overrides.push(
+  dependencyRule(
+    ['src/storage/*.{js,jsx,ts,tsx}', 'src/storage/**/*.{js,jsx,ts,tsx}'],
+    [
+      {
+        from: { type: 'storage' },
+        allow: {
+          to: [{ type: 'storage' }, { type: 'shared' }, { type: 'infra' }],
         },
-      ],
-    ),
-  );
-}
+        message:
+          'Storage is the persistence layer — may only import from storage, shared, and infra.',
+      },
+    ],
+  ),
+);
+
+// TODO: If keeping stores as solid state for mirroring storage, keep it clean and remove this (move messaging and any feature storage accessors here)
+overrides.push(
+  dependencyRule(
+    ['src/stores/*.{js,jsx,ts,tsx}', 'src/stores/**/*.{js,jsx,ts,tsx}'],
+    [
+      {
+        from: { type: 'stores' },
+        allow: {
+          to: [
+            { type: 'stores' },
+            { type: 'auth' },
+            { type: 'shared' },
+            { type: 'storage' },
+            { type: 'infra' },
+            { type: 'feature' },
+          ],
+        },
+        message:
+          'Stores may only import from stores, auth, shared, storage, infra and feature.',
+      },
+    ],
+  ),
+);
+
+overrides.push(
+  dependencyRule(
+    ['src/app/*.{js,jsx,ts,tsx}', 'src/app/**/*.{js,jsx,ts,tsx}'],
+    [
+      {
+        from: { type: 'app' },
+        allow: {
+          to: [
+            { type: 'app' },
+            { type: 'auth' },
+            { type: 'stores' },
+            { type: 'feature' },
+            { type: 'components' },
+            { type: 'shared' },
+          ],
+        },
+        message:
+          'App shell may only import from app, auth, shared, components, and feature.',
+      },
+    ],
+  ),
+);
 
 export default [
+  {
+    files: TS_FILES,
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        ecmaFeatures: { jsx: true },
+      },
+    },
+  },
   {
     files: ['src/**/*.jsx'],
     languageOptions: {
@@ -234,11 +214,15 @@ export default [
     },
   },
   {
-    files: ['src/**/*.js', 'src/**/*.jsx'],
+    files: SOURCE_FILES,
     plugins: {
       boundaries,
     },
     settings: {
+      'import/resolver': {
+        typescript: { alwaysTryTypes: true },
+      },
+      'boundaries/include': ['src/**/*.{js,jsx,ts,tsx}'],
       'boundaries/elements': [
         {
           type: 'shared',
@@ -249,31 +233,57 @@ export default [
           type: 'feature',
           mode: 'full',
           pattern: [
-            'src/features/*/*.js',
-            'src/features/*/**/*.js',
-            'src/features/*/*.jsx',
-            'src/features/*/**/*.jsx',
+            'src/features/*/*.{js,jsx,ts,tsx}',
+            'src/features/*/**/*.{js,jsx,ts,tsx}',
           ],
           capture: ['featureName'],
         },
         {
           type: 'auth',
           mode: 'full',
-          pattern: ['src/auth/*.js', 'src/auth/**/*.js'],
-        },
-        {
-          type: 'setup',
-          mode: 'full',
-          pattern: ['src/setup/*.js', 'src/setup/**/*.js'],
+          pattern: [
+            'src/auth/*.{js,jsx,ts,tsx}',
+            'src/auth/**/*.{js,jsx,ts,tsx}',
+          ],
         },
         {
           type: 'components',
           mode: 'full',
           pattern: [
-            'src/components/*.js',
-            'src/components/**/*.js',
-            'src/components/*.jsx',
-            'src/components/**/*.jsx',
+            'src/components/*.{js,jsx,ts,tsx}',
+            'src/components/**/*.{js,jsx,ts,tsx}',
+          ],
+        },
+        {
+          type: 'storage',
+          mode: 'full',
+          pattern: [
+            'src/storage/*.{js,jsx,ts,tsx}',
+            'src/storage/**/*.{js,jsx,ts,tsx}',
+          ],
+        },
+        {
+          type: 'stores',
+          mode: 'full',
+          pattern: [
+            'src/stores/*.{js,jsx,ts,tsx}',
+            'src/stores/**/*.{js,jsx,ts,tsx}',
+          ],
+        },
+        {
+          type: 'infra',
+          mode: 'full',
+          pattern: [
+            'src/infra/*.{js,jsx,ts,tsx}',
+            'src/infra/**/*.{js,jsx,ts,tsx}',
+          ],
+        },
+        {
+          type: 'app',
+          mode: 'full',
+          pattern: [
+            'src/app/*.{js,jsx,ts,tsx}',
+            'src/app/**/*.{js,jsx,ts,tsx}',
           ],
         },
       ],

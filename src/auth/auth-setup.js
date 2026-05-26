@@ -18,7 +18,7 @@ import { initOneTap, showOneTapSignin } from './onetap.js';
 import { clearGISTokenCache } from './gis-tokens.js';
 import { setupAuthCommandHandlers } from './auth-command-handlers.js';
 import { getLocale, onLocaleChange } from '../shared/i18n/index.js';
-import { uiState } from '../shared/components/ui/core/ui-state.js';
+import { isSyntheticEmail } from './password-auth.js';
 
 // Sync Firebase Auth popup language with app locale
 auth.languageCode = getLocale();
@@ -37,7 +37,6 @@ export async function getLoggedInUserToken() {
   return user.getIdToken(false);
 }
 
-// Production-aware auth logger: avoid printing PII in production builds
 const isProd =
   typeof import.meta !== 'undefined' && Boolean(import.meta.env?.PROD);
 
@@ -117,14 +116,9 @@ async function _initAuthInternal() {
     if (!loggedIn) clearGISTokenCache();
   });
 
-  // 4. DOM/UI sync subscriber
+  // 4. UI sync subscriber // TODO: Delete or use
   onAuthStateChanged((state) => {
-    document.body.dataset.loggedIn = state.isLoggedIn ? 'true' : 'false';
-    uiState.setView(uiState.view);
-    devDebug(
-      '[AUTH] document.body.dataset.loggedIn set to',
-      document.body.dataset.loggedIn,
-    );
+    devDebug('[AUTH] Unused onAuthStateChanged subscriber - state:', { state });
   });
 
   devDebug('[AUTH] Auth initialization complete, scheduling One Tap...');
@@ -135,16 +129,20 @@ async function _initAuthInternal() {
     await initOneTap();
     await waitForAuthReady();
     showOneTapSignin();
-  }, 500);
+  }, 100);
 }
 
 // --- Normalize Firebase User to plain object for auth-state ---
+// Username-only accounts use a synthetic email as the Firebase Auth principal;
+// strip it so consumers see `email: null` for those accounts.
 function normalizeUser(firebaseUser) {
   if (!firebaseUser) return null;
+  const rawEmail = firebaseUser.email;
+  const email = isSyntheticEmail(rawEmail) ? null : rawEmail;
   return {
     uid: firebaseUser.uid,
     userName: firebaseUser.displayName,
-    email: firebaseUser.email,
+    email,
     photoURL: firebaseUser.photoURL,
   };
 }

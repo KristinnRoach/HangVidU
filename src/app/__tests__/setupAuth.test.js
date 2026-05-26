@@ -1,0 +1,151 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => {
+  const handlers = new Map();
+
+  return {
+    handlers,
+    events: {
+      subscribe: vi.fn((eventName, handler) => {
+        handlers.set(eventName, handler);
+        return () => handlers.delete(eventName);
+      }),
+    },
+    cleanupInviteListeners: vi.fn(),
+    setupInviteListener: vi.fn(),
+    processReferral: vi.fn(() => Promise.resolve()),
+    hydrateContacts: vi.fn(() => Promise.resolve()),
+    resetContacts: vi.fn(),
+    getAuthState: vi.fn(() => ({ user: null })),
+    saveUserProfile: vi.fn(() => Promise.resolve()),
+    devDebug: vi.fn(),
+  };
+});
+
+vi.mock('../../shared/events/index.js', () => ({
+  subscribe: mocks.events.subscribe,
+}));
+
+vi.mock('../../auth/index.js', () => ({
+  initAuth: vi.fn(() => Promise.resolve()),
+  getAuthState: mocks.getAuthState,
+}));
+
+vi.mock('../../storage/user/index.js', () => ({
+  saveUserProfile: mocks.saveUserProfile,
+}));
+
+vi.mock('../../shared/utils/dev/dev-utils.js', () => ({
+  devDebug: mocks.devDebug,
+}));
+
+vi.mock('../../features/contacts/invites/invitations.js', () => ({
+  cleanupInviteListeners: mocks.cleanupInviteListeners,
+}));
+vi.mock('../../features/contacts/invites/invite-listener.js', () => ({
+  setupInviteListener: mocks.setupInviteListener,
+}));
+vi.mock('../../features/contacts/referrals/referral-handler.js', () => ({
+  processReferral: mocks.processReferral,
+}));
+vi.mock('../../stores/contactsStore.js', () => ({
+  hydrateContacts: mocks.hydrateContacts,
+  resetContacts: mocks.resetContacts,
+}));
+
+describe('setupAuth', () => {
+  let localStorageClearSpy;
+  let localStorageRef;
+  let localStorageData;
+
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    mocks.handlers.clear();
+    mocks.hydrateContacts.mockResolvedValue();
+    localStorageData = new Map();
+    localStorageRef = {
+      get length() {
+        return localStorageData.size;
+      },
+      key: (index) => Array.from(localStorageData.keys())[index] ?? null,
+      getItem: (key) =>
+        localStorageData.has(String(key))
+          ? localStorageData.get(String(key))
+          : null,
+      setItem: (key, value) => localStorageData.set(String(key), String(value)),
+      removeItem: (key) => localStorageData.delete(String(key)),
+      clear: () => localStorageData.clear(),
+    };
+
+    vi.stubGlobal('localStorage', localStorageRef);
+    localStorageClearSpy = vi.spyOn(globalThis.localStorage, 'clear');
+  });
+
+  afterEach(() => {
+    localStorageClearSpy?.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
+  it('renders contacts when auth becomes ready', async () => {
+    const { setupAuth } = await import('../setupAuth.js');
+    const lobbyElement = { id: 'lobby' };
+
+    const teardown = await setupAuth({ lobbyElement });
+
+    await mocks.handlers.get('evt:auth:session:ready')({});
+
+    expect(mocks.hydrateContacts).toHaveBeenCalled();
+
+    teardown();
+  });
+
+  it('runs the login flow through shared auth facts', async () => {
+    const { setupAuth } = await import('../setupAuth.js');
+    const lobbyElement = { id: 'lobby' };
+
+    const teardown = await setupAuth({ lobbyElement });
+
+    await mocks.handlers.get('evt:auth:session:logged-in')({
+      isInitialResolution: true,
+    });
+
+    expect(mocks.processReferral).toHaveBeenCalled();
+    expect(mocks.hydrateContacts).toHaveBeenCalled();
+    expect(mocks.setupInviteListener).toHaveBeenCalledWith();
+
+    teardown();
+  });
+
+  it('resets contacts and clears local storage on logout', async () => {
+    const { setupAuth } = await import('../setupAuth.js');
+    const lobbyElement = { id: 'lobby' };
+
+    const teardown = await setupAuth({ lobbyElement });
+
+    await mocks.handlers.get('evt:auth:session:logged-out')({});
+
+    expect(mocks.resetContacts).toHaveBeenCalled();
+    expect(mocks.cleanupInviteListeners).toHaveBeenCalled();
+    expect(localStorageClearSpy).toHaveBeenCalled();
+
+    teardown();
+  });
+
+  it('preserves selected localStorage keys on logout', async () => {
+    const { setupAuth } = await import('../setupAuth.js');
+    const lobbyElement = { id: 'lobby' };
+
+    globalThis.localStorage.setItem('locale', 'is');
+    globalThis.localStorage.setItem('volatileKey', 'drop-me');
+
+    const teardown = await setupAuth({ lobbyElement });
+
+    await mocks.handlers.get('evt:auth:session:logged-out')({});
+
+    expect(globalThis.localStorage.getItem('locale')).toBe('is');
+    expect(globalThis.localStorage.getItem('volatileKey')).toBeNull();
+
+    teardown();
+  });
+});

@@ -1,5 +1,18 @@
 import boundariesConfig from './eslint.boundaries.config.js';
+import tseslint from 'typescript-eslint';
 import { EVENT_NAME_REGEX, isCanonicalEventName } from './src/shared/events/naming.js';
+
+const JS_FILES = ['src/**/*.js', 'src/**/*.jsx'];
+const TS_FILES = ['src/**/*.ts', 'src/**/*.tsx'];
+const SOURCE_FILES = [...JS_FILES, ...TS_FILES];
+const TEST_FILES = [
+  'src/**/*.test.js',
+  'src/**/*.test.jsx',
+  'src/**/*.test.ts',
+  'src/**/*.test.tsx',
+  'src/**/__tests__/**',
+  'src/**/tests/**',
+];
 
 const EVENT_API_CALLS = new Set([
   'dispatchCommand',
@@ -11,6 +24,17 @@ const EVENT_API_CALLS = new Set([
 ]);
 
 const appConfig = [
+  {
+    files: TS_FILES,
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        ecmaFeatures: { jsx: true },
+      },
+    },
+  },
   // JSX parser support for *.jsx files. Solid JSX uses standard ECMA JSX
   // grammar — no plugin required for lint-level parsing.
   {
@@ -24,12 +48,9 @@ const appConfig = [
     },
   },
   {
-    files: ['src/**/*.js', 'src/**/*.jsx'],
+    files: SOURCE_FILES,
     ignores: [
-      'src/**/*.test.js',
-      'src/**/*.test.jsx',
-      'src/**/__tests__/**',
-      'src/**/tests/**',
+      ...TEST_FILES,
       'src/**/wip-*/**',
     ],
     plugins: {
@@ -122,14 +143,11 @@ const appConfig = [
   // External consumers must go through the module barrel and subscribe to
   // `evt:<module>:state:changed`. Listed per-module as we adopt the pattern.
   {
-    files: ['src/**/*.js', 'src/**/*.jsx'],
+    files: SOURCE_FILES,
     ignores: [
       'src/auth/**',
       'src/features/contacts/**',
-      'src/**/*.test.js',
-      'src/**/*.test.jsx',
-      'src/**/__tests__/**',
-      'src/**/tests/**',
+      ...TEST_FILES,
     ],
     rules: {
       'no-restricted-imports': [
@@ -169,8 +187,13 @@ const appConfig = [
 // See docs/WIP_Architecture/MIGRATE_COMPONENT_TO_SOLIDJS.md.
 const solidComponentsI18nConfig = [
   {
-    files: ['src/components/**/*.js', 'src/components/**/*.jsx'],
-    ignores: ['src/**/*.test.js', 'src/**/*.test.jsx'],
+    files: ['src/components/**/*.jsx', 'src/components/**/*.tsx'],
+    ignores: [
+      'src/**/*.test.js',
+      'src/**/*.test.jsx',
+      'src/**/*.test.ts',
+      'src/**/*.test.tsx',
+    ],
     rules: {
       'no-restricted-imports': [
         'error',

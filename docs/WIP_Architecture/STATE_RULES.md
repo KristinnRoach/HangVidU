@@ -2,8 +2,6 @@
 
 Pattern for module state that other modules observe (`isLoggedIn`, `isInCall`, `contactsById`, …).
 
-Do not call state a **store**. `store` = persistence only.
-
 This file is for domain/module state only.
 Solid UI-only reactive state in `src/components/` is covered by [`SOLID_UI_STATE_RULES.md`](./SOLID_UI_STATE_RULES.md).
 
@@ -11,9 +9,16 @@ See also: [`NAMING.md`](./NAMING.md), [`STRUCTURE.md`](./STRUCTURE.md), [`EVENTS
 
 ---
 
-## Shape
+## When to use a dedicated state file
 
-Each module owning cross-module state has one file: `src/<module>/<module>-state.js`.
+A `src/<module>/<module>-state.js` file is **optional**. Use one only when:
+
+- ≥1 non-Solid consumer must observe changes via the event bus, **or**
+- the module owns coordinating behavior beyond mirroring storage into a reactive store.
+
+When the only consumers are Solid surfaces in the same feature, a Solid store (`createStore`) inside the module is sufficient — it is the reactive in-memory mirror. Read it directly or via a `use<X>()` hook.
+
+## Shape (when a dedicated state file is used)
 
 It exposes:
 
@@ -32,44 +37,14 @@ It exposes:
 ## Reader rules
 
 - Sync getters only. No `await`, no Firebase, no remote reads.
-- Getters return immutable snapshots (defensive copies).
-- Each state file owns one outward snapshot boundary:
-  `snapshot()` returns a fully detached copy of every mutable value exposed outside the module.
-- Public getters either return primitives or derive their results from that same clone pattern.
-- Never return references from private `state`, even for nested records inside maps/arrays.
+- Reads are **read-only**: callers must not mutate returned values. Solid stores enforce this naturally; plain objects/maps rely on convention (freeze in dev if needed).
 - If the truth lives remotely, the state file mirrors it on change.
-
-Example:
-
-```js
-function cloneItem(item) {
-  return item ? { ...item } : null;
-}
-
-function cloneById(byId) {
-  return Object.fromEntries(
-    Object.entries(byId).map(([id, item]) => [id, cloneItem(item)]),
-  );
-}
-
-function snapshot() {
-  return {
-    byId: cloneById(state.byId),
-    isHydrated: state.isHydrated,
-  };
-}
-
-export function getItemById(id) {
-  return cloneItem(state.byId[id] ?? null);
-}
-```
 
 ## Consumer rules
 
 - External reads: import getters from the module barrel.
-- External reactions: `subscribe('evt:<module>:state:changed', …)`.
-- External writes: `dispatchCommand('cmd:<module>:*', …)`.
-- No other read, subscribe, or write path.
+- External reactions: `subscribe('evt:<module>:state:changed', …)` when an event-bus reaction is the natural fit; Solid surfaces can read the store directly.
+- External writes: see [`EVENTS.md`](./EVENTS.md) — direct barrel calls are fine for typed in-process intent; reserve `cmd:*` for fire-and-forget cross-module triggers.
 
 ## Derived state
 
@@ -79,12 +54,12 @@ export function getItemById(id) {
 
 ## Adoption status
 
-| Module    | State file      | `evt:<module>:state:changed` | `setState` private | Boundary enforced |
-| --------- | --------------- | ---------------------------- | ------------------ | ----------------- |
-| auth      | `auth-state.js` | yes                          | yes                | yes               |
-| contacts  | `contacts-state.js` | yes | yes | yes |
-| messaging | —               | —                            | —                  | —                 |
-| call      | —               | —                            | —                  | —                 |
+| Module    | Shape                                  | Notes                                                              |
+| --------- | -------------------------------------- | ------------------------------------------------------------------ |
+| auth      | dedicated `auth-state.js`              | non-Solid consumers subscribe to `evt:auth:session:*`              |
+| contacts  | Solid store in `contacts-store.ts`     | Solid-only consumers; no `evt:contacts:state:changed`              |
+| messaging | —                                      |                                                                    |
+| call      | —                                      |                                                                    |
 
 ## Migration notes
 

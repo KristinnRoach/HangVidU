@@ -1,0 +1,49 @@
+/* src/style.css */
+
+/* @import './init/reset-normalize.css'; */
+@import './init/reset.css';
+@import './init/typography.css';
+@import './init/scrollbar.css';
+@import './element/button.css';
+@import './element/input.css';
+@import './theme.css';
+@import './animations.css';
+@import './utilities.css';
+@import './layout/wrappers.css';
+@import './layout/grid.css';
+
+/* @import './components/lobby.css'; */
+
+@import './components/onetap.css';
+@import './components/public-homepage.css';
+@import './components/contacts-list.css';
+/* @import './components/add-contact-modal.css';
+@import './components/import-contacts-component.css';
+@import './components/videos.css';
+@import './components/chat-controls.css';
+@import './components/messages.css';
+@import './components/reactions.css'; */
+@import './components/search.css';
+@import './components/notifications.css';
+@import './components/toast.css';
+@import './components/dialog/incoming-call.css';
+@import './components/dialog/call-ui.css';
+@import './components/dialog/image-preview-dialog.css';
+@import './components/dialog/confirm-dialog.css';
+@import './components/dialog/edit-contact-dialog.css';
+
+/* LEGACY - Default visible state for elements that toggle visibility */
+.video-box,
+#yt-video-box,
+#shared-video-box,
+#yt-video-box iframe,
+#main-messages-toggle-btn,
+.messages-box,
+.top-bar-right {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* #recaptcha-container {} */
+
+/* Todo: Review components to minimize redundant lines of CSS, simplify, consolidate and align styles to current system */

@@ -1,0 +1,19 @@
+.room {
+  --color-bg: #080808;
+  --color-border: #bcc1c9;
+  --color-brand: #2f6fed;
+  --color-text: #dde1e9;
+  --color-muted: #4a5568;
+
+  --gap: 12px;
+  --pad: 28px;
+  --radius: 8px;
+  --remote-stream-container-min-width: 200px;
+
+  color: var(--color-text);
+  background: var(--color-bg);
+
+  position: relative;
+
+  height: 100%;
+}

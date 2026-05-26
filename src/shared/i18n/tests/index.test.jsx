@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanup, render, waitFor } from '@solidjs/testing-library';
-import { initI18n, setLocale, useI18n } from '../index.js';
+import { setLocale, useI18n } from '../index.js';
 
 function TestLabel() {
   const { t } = useI18n();
@@ -8,13 +8,19 @@ function TestLabel() {
 }
 
 describe('shared i18n', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     localStorage.clear();
-    await setLocale('en');
+    setLocale('en');
   });
 
   afterEach(() => {
     cleanup();
+  });
+
+  it('renders translated strings synchronously on first render', () => {
+    const { getByText, queryByText } = render(() => <TestLabel />);
+    getByText('Save');
+    expect(queryByText('shared.save')).toBeNull();
   });
 
   it('rerenders Solid components when locale changes', async () => {
@@ -22,19 +28,10 @@ describe('shared i18n', () => {
 
     getByText('Save');
 
-    await setLocale('is');
+    setLocale('is');
 
     await waitFor(() => {
       expect(getByText('Vista')).toBeTruthy();
     });
-  });
-
-  it('initializes before first render so keys are not shown', async () => {
-    await initI18n();
-
-    const { getByText, queryByText } = render(() => <TestLabel />);
-
-    getByText('Save');
-    expect(queryByText('shared.save')).toBeNull();
   });
 });

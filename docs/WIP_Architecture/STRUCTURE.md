@@ -2,8 +2,8 @@
 
 ## Module layout
 
-- Every module has one barrel: `src/<module>/index.js`.
-- Outsiders import **only** from the barrel.
+- Every module has one barrel: `src/<module>/index.js` (or `index.ts`).
+- **Cross-feature** imports go through the barrel. Same-feature subpath imports (e.g. helpers/components reaching into siblings inside `src/features/<x>/`) are allowed.
 - Tests live in `src/<module>/tests/`.
 
 ## UI layer layout

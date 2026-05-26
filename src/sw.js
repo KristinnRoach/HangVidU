@@ -4,12 +4,6 @@
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
 import { NetworkFirst } from 'workbox-strategies';
-import {
-  registerVideo,
-  unregisterVideo,
-  isVideoServeRequest,
-  handleVideoFetch,
-} from './features/file-transfer/sw-video-handler.js';
 import { handlePushEvent } from './features/push-notifications/sw/push-event-handler.js';
 import { handleNotificationClickEvent } from './features/push-notifications/sw/notification-click-handler.js';
 
@@ -31,18 +25,6 @@ precacheAndRoute(manifest);
 
 // Clean up outdated caches
 cleanupOutdatedCaches();
-
-// Intercept video serve requests (OPFS-backed streaming)
-self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  if (isVideoServeRequest(url)) {
-    event.respondWith(
-      handleVideoFetch(event.request).then(
-        (response) => response || new Response('Not found', { status: 404 }),
-      ),
-    );
-  }
-});
 
 // Navigation fallback for SPA
 const navigationRoute = new NavigationRoute(
@@ -85,14 +67,6 @@ self.addEventListener('message', (event) => {
         version: '1.0.0',
         timestamp: Date.now(),
       });
-      break;
-
-    case 'REGISTER_VIDEO':
-      registerVideo(data.fileId, data.mimeType);
-      break;
-
-    case 'UNREGISTER_VIDEO':
-      unregisterVideo(data.fileId);
       break;
 
     default:

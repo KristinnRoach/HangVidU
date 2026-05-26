@@ -1,0 +1,163 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  height: 100%;
+  max-height: 100svh;
+}
+
+.messagesEmpty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100svh;
+  max-height: 100svh;
+  background-color: transparent;
+  color: #c0c0c0;
+}
+
+.messages {
+  display: flex;
+  flex-direction: column;
+
+  padding: 1rem;
+  gap: 1rem;
+
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.messageSkeleton {
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.skeletonBubble {
+  width: min(68%, 18rem);
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  background: linear-gradient(90deg, #3a3a3a 0%, #474747 50%, #3a3a3a 100%);
+  background-size: 200% 100%;
+  animation: messageSkeletonPulse 1.2s ease-in-out infinite;
+}
+
+.skeletonIncoming {
+  align-self: flex-start;
+}
+
+.skeletonOwn {
+  align-self: flex-end;
+  width: min(54%, 14rem);
+}
+
+@keyframes messageSkeletonPulse {
+  from {
+    background-position: 100% 0;
+  }
+
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonBubble {
+    animation: none;
+  }
+}
+
+.msg {
+  position: relative;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background-color: #3e3e3e;
+
+  width: fit-content;
+  max-width: 80%;
+  line-height: 1.4;
+  text-wrap: pretty;
+}
+
+.msgSystem {
+  background-color: transparent;
+  color: #888;
+  font-size: 0.85em;
+  align-self: center;
+  text-align: center;
+}
+
+.msgOwn {
+  background-color: #007aff;
+  color: white;
+  align-self: flex-end;
+}
+
+.msgFailed {
+  opacity: 0.7;
+  border: 1px solid red;
+}
+
+.msgText {
+  word-break: break-word;
+}
+
+.msgStatus {
+  font-size: 0.7em;
+  margin-left: 0.5rem;
+  vertical-align: bottom;
+  opacity: 0.8;
+}
+
+.msgActions {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin-left: 0.5rem;
+}
+
+.msgActionBtn {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.85em;
+  background-color: #3e3e3e;
+  color: #ddd;
+  border: 1px solid #555;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.msgActionBtn:hover {
+  background-color: #4a4a4a;
+}
+
+.form {
+  display: flex;
+  flex-shrink: 0;
+
+  padding: 1rem;
+  gap: 0.5rem;
+}
+
+.input {
+  flex: 1;
+  min-height: 0;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 0.25rem;
+}
+
+.send {
+  padding: 0.5rem 1rem;
+  background-color: #007aff;
+  color: white;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.send:disabled {
+  background-color: #818181;
+  color: whitesmoke;
+  cursor: default;
+}

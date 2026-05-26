@@ -5,6 +5,7 @@ import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
 import mkcert from 'vite-plugin-mkcert';
 import solid from 'vite-plugin-solid';
+import devtools from 'solid-devtools/vite';
 
 export default defineConfig(({ mode }) => {
   // Firebase Hosting is the only production target.
@@ -22,7 +23,6 @@ export default defineConfig(({ mode }) => {
           main: path.resolve(__dirname, 'index.html'),
           ...(mode === 'development' && {
             // These are currently only local:
-            components: path.resolve(__dirname, 'components-lab.html'),
             media: path.resolve(__dirname, 'media-lab.html'),
             mediaPlayback: path.resolve(__dirname, 'media-playback.html'),
             mediaCapture: path.resolve(__dirname, 'media-capture.html'),
@@ -32,7 +32,13 @@ export default defineConfig(({ mode }) => {
     },
 
     plugins: [
-      ...(mode === 'development' ? [mkcert()] : []),
+      ...(mode === 'development'
+        ? [mkcert({ savePath: path.resolve(__dirname, '.vite-plugin-mkcert') })]
+        : []),
+      devtools({
+        jsxLocation: true,
+        autoname: true,
+      }),
       solid(),
       VitePWA({
         includeAssets: ['index.html', 'favicon.ico'],
@@ -107,14 +113,11 @@ export default defineConfig(({ mode }) => {
       }),
     ],
     server: {
-      port: 5173, // Vite default - keep it simple
-      https: true, // use trusted dev cert from mkcert
-      host: true, // To expose to LAN devices as well
-      allowedHosts: [
-        'haunted-salley-cunningly.ngrok-free.dev',
-        '192.168.8.100',
-        '169.254.123.79',
-      ],
+      port: 5173,
+      strictPort: true,
+      https: true,
+      host: true,
+      allowedHosts: ['dev.hangvidu.com'],
 
       proxy: {
         // Proxy Firebase Auth handler and init.json requests
@@ -131,12 +134,15 @@ export default defineConfig(({ mode }) => {
       },
     },
 
-    // Preview server configuration (for testing production builds locally)
+    optimizeDeps: {
+      include: ['lucide-solid'],
+    },
+
     preview: {
-      port: 4173,
-      // Enable HTTPS if PREVIEW_HTTPS env var is set
-      https: process.env.PREVIEW_HTTPS === '1' ? true : false,
+      port: 5173,
+      strictPort: true,
       host: true,
+      allowedHosts: ['dev.hangvidu.com'],
     },
   };
 });

@@ -1,4 +1,3 @@
-import { createRoot } from 'solid-js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -19,7 +18,7 @@ vi.mock('./auth-state.js', () => ({
   },
 }));
 
-describe('solid auth bridge', () => {
+describe('AuthProvider', () => {
   beforeEach(() => {
     vi.resetModules();
     mocks.listeners.clear();
@@ -30,42 +29,86 @@ describe('solid auth bridge', () => {
     };
   });
 
+  // Import createRoot from the same solid-js instance the SUT will load
+  // (vi.resetModules() gives each test fresh module state).
+  async function loadModules() {
+    const [{ AuthProvider, useAuth }, { createRoot }] = await Promise.all([
+      import('./solid-auth'),
+      import('solid-js'),
+    ]);
+    return { AuthProvider, useAuth, createRoot };
+  }
+
   it('syncs auth-state snapshots into Solid accessors', async () => {
-    const { setupSolidAuthState, useAuth } = await import('./solid-auth.js');
+    const { AuthProvider, useAuth, createRoot } = await loadModules();
 
     createRoot((dispose) => {
-      const teardown = setupSolidAuthState();
-      const { isLoggedIn, user } = useAuth();
+      let auth;
+      AuthProvider({
+        get children() {
+          auth = useAuth();
+          return null;
+        },
+      });
 
-      expect(isLoggedIn()).toBe(false);
+      expect(auth.isLoggedIn()).toBe(false);
+      expect(auth.isAuthReady()).toBe(true);
 
-      const nextState = {
-        status: 'authenticated',
-        user: { uid: 'u1', userName: 'User', email: 'user@example.com' },
-        isLoggedIn: true,
-      };
-      for (const listener of mocks.listeners) listener(nextState);
+      for (const listener of mocks.listeners) {
+        listener({
+          status: 'authenticated',
+          user: { uid: 'u1', userName: 'User', email: 'user@example.com' },
+          isLoggedIn: true,
+        });
+      }
 
-      expect(isLoggedIn()).toBe(true);
-      expect(user()?.uid).toBe('u1');
+      expect(auth.isLoggedIn()).toBe(true);
+      expect(auth.user()?.uid).toBe('u1');
+      expect(auth.isLoading()).toBe(false);
 
-      teardown();
+      dispose();
+      expect(mocks.listeners.size).toBe(0);
+    });
+  });
+
+  it('exposes isLoggingIn / isLoggingOut during transitions', async () => {
+    const { AuthProvider, useAuth, createRoot } = await loadModules();
+
+    createRoot((dispose) => {
+      let auth;
+      AuthProvider({
+        get children() {
+          auth = useAuth();
+          return null;
+        },
+      });
+
+      for (const listener of mocks.listeners) {
+        listener({ status: 'loading', user: null, isLoggedIn: false });
+      }
+      expect(auth.isLoggingIn()).toBe(true);
+      expect(auth.isLoggingOut()).toBe(false);
+
+      for (const listener of mocks.listeners) {
+        listener({
+          status: 'loading',
+          user: { uid: 'u1', userName: 'U', email: null, photoURL: null },
+          isLoggedIn: true,
+        });
+      }
+      expect(auth.isLoggingIn()).toBe(false);
+      expect(auth.isLoggingOut()).toBe(true);
+
       dispose();
     });
   });
 
-  it('subscribes once while setup is already active', async () => {
-    const { setupSolidAuthState } = await import('./solid-auth.js');
+  it('throws when useAuth is called outside <AuthProvider>', async () => {
+    const { useAuth, createRoot } = await loadModules();
 
-    const teardown = setupSolidAuthState();
-    const duplicateTeardown = setupSolidAuthState();
-
-    expect(mocks.listeners.size).toBe(1);
-
-    duplicateTeardown();
-    expect(mocks.listeners.size).toBe(1);
-
-    teardown();
-    expect(mocks.listeners.size).toBe(0);
+    createRoot((dispose) => {
+      expect(() => useAuth()).toThrow(/AuthProvider/);
+      dispose();
+    });
   });
 });

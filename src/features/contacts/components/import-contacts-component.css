@@ -1,0 +1,270 @@
+/* Import Contacts Component */
+
+.import-section {
+  width: var(--add-contact-content-width);
+  margin: 0 auto;
+  margin-bottom: 0;
+}
+
+.platform-selector {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.platform-btn {
+  display: flex;
+  /* flex: 1 1 0; */
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  border: 2px solid #555;
+  background-color: #444;
+  color: #aaa;
+  text-shadow: var(--text-shadow-subtle);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.platform-btn svg {
+  width: 20px;
+  height: 20px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  /* background: rgb(0, 0, 0); */
+  /* box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.159); */
+  /* padding: 4px; */
+  /* border-radius: 50%; */
+}
+
+.platform-btn:hover:not(:disabled) {
+  background-color: #555;
+  border-color: rgb(74, 172, 74, 0.6);
+  color: white;
+  transform: scale(1.025);
+}
+
+.platform-btn.active {
+  background-color: rgba(74, 172, 74, 0.6);
+  border-color: rgb(70, 200, 70, 0.6);
+  color: white;
+}
+
+.platform-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.search-section {
+  margin-bottom: 1rem;
+}
+
+.contact-search-input {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background-color: #444;
+  color: white;
+  box-sizing: border-box;
+}
+
+.contact-search-input:focus {
+  outline: none;
+  border-color: rgb(74, 172, 74);
+}
+
+.contact-search-input::placeholder {
+  color: #888;
+}
+
+.disclosure-note {
+  margin: 0 0 0.75rem;
+  color: #b9c1c8;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.contacts-container-modal {
+  min-height: 300px;
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background-color: #444;
+  margin-bottom: 1rem;
+}
+
+.results-header {
+  padding: 0.75rem;
+  background-color: #555;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+}
+
+.select-all-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.select-all-label input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.contacts-scroll-list {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background-color: #444;
+}
+
+.contact-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.contact-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #555;
+
+  line-height: 1.5;
+  height: fit-content;
+  padding: 0.25rem 0.75rem;
+  margin: 0;
+}
+
+.contact-item:last-child {
+  border-bottom: none;
+}
+
+.contact-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.contact-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.contact-checkbox:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.contact-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contact-info strong {
+  font-size: 1rem;
+  max-width: 15em;
+  color: white;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contact-info small {
+  font-size: 0.85rem;
+  max-width: 15em;
+  color: #aaa;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  margin: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  margin-top: 0.25rem;
+}
+
+.status-badge.saved {
+  background-color: rgba(74, 172, 74, 0.3);
+  color: rgb(70, 200, 70);
+}
+
+.status-badge.on-app {
+  background-color: rgba(74, 172, 255, 0.3);
+  color: rgb(100, 180, 255);
+}
+
+.status-badge.not-on-app {
+  background-color: rgba(249, 199, 79, 0.3);
+  color: #f9c74f;
+}
+
+.invite-btn {
+  background-color: rgb(56, 145, 56);
+  color: white;
+  font-size: 0.9rem;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  transform: scale(1);
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.invite-btn:hover:not(:disabled) {
+  background-color: rgb(70, 200, 70);
+  transform: scale(1.025);
+}
+
+.invite-btn.sent {
+  background-color: #555;
+  cursor: default;
+}
+
+.invite-btn.sent:hover {
+  background-color: #555;
+}
+
+.bulk-actions-container {
+  margin-top: 1rem;
+}
+
+.bulk-action-disclosure {
+  margin-top: 0.75rem;
+}
+
+.bulk-actions {
+  display: flex;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid #555;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: #aaa;
+}

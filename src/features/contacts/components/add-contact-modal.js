@@ -1,4 +1,4 @@
-// src/contacts/components/add-contact-modal.js
+// src/features/contacts/components/add-contact-modal.js
 
 // Modal for adding contacts by email or importing from Google
 
@@ -12,29 +12,26 @@ import {
   buildReferralLink,
   copyInviteLink,
   shareInvite,
-} from '../share-invite.js';
+} from '../../../shared/utils/share-invite.js';
 import {
   getInviteShareProviders,
   shareInviteViaProvider,
-} from '../share-invite-presets.js';
+} from '../../../shared/utils/share-invite-presets.js';
 import { t } from '../../../shared/i18n/index.js';
-import { initIcons } from '../../../shared/components/ui/icons.js';
-import { escapeHtml } from '../../../shared/components/ui/utils/dom-utils.js';
-import {
-  showErrorToast,
-  showSuccessToast,
-} from '../../../shared/components/toast.js';
-import { sendBulkEmailsViaGmail } from '../gmail-send.js';
-import { filterImportableContacts } from '../import-contacts-utils.js';
+import { escapeHtml } from '../../../shared/utils/ui-utils/dom-utils.js';
+import { showErrorToast, showSuccessToast } from '../../../components/base-legacy/toast.js';
+import { sendBulkEmailsViaGmail } from '../../../shared/utils/google/gmail-send.js';
+import { filterImportableContacts } from '../import/import-contacts-utils.js';
 import { createImportContactsComponent } from './import-contacts-component.js';
-import { importGoogleContacts as importGoogleContactsFlow } from '../google-import.js';
-import { inviteContactByEmail } from '../manual-contact-invite.js';
-import { sendContactInvite } from '../send-contact-invite.js';
-import { createDebouncedAsyncAction } from '../debounce.js';
+import { importGoogleContacts as importGoogleContactsFlow } from '../import/google-import.js';
+import { inviteContactByEmail } from '../invites/manual-contact-invite.js';
+import { sendContactInvite } from '../invites/send-contact-invite.js';
 
 // TODO: WIP decoupling considerations:
 // This modal mixes feature UI with auth/OAuth and external contact-import side effects.
 // Keep the UI here, but push reusable import/auth orchestration down before standardizing the pattern.
+
+// ! Note - vanilla js icons currently missing
 
 const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
 
@@ -609,7 +606,64 @@ export async function showAddContactModal() {
     }
 
     document.body.appendChild(dialog);
-    initIcons(dialog);
     dialog.showModal();
   });
+}
+
+/**
+ * Create an async action wrapper that runs immediately on first call,
+ * then suppresses repeated calls while in-flight and during cooldown.
+ *
+ * @param {(...args: any[]) => Promise<any>} action
+ * @param {{ waitMs?: number, onPendingChange?: ((isPending: boolean) => void) | null }} [options]
+ * @returns {((...args: any[]) => Promise<any>) & { isPending: () => boolean, cancel: () => void }}
+ */
+export function createDebouncedAsyncAction(action, options = {}) {
+  const waitMs =
+    typeof options.waitMs === 'number' && options.waitMs >= 0
+      ? options.waitMs
+      : 500;
+  const onPendingChange =
+    typeof options.onPendingChange === 'function'
+      ? options.onPendingChange
+      : null;
+
+  let isPending = false;
+  let cooldownTimer = null;
+
+  function setPending(nextValue) {
+    if (isPending === nextValue) return;
+    isPending = nextValue;
+    onPendingChange?.(isPending);
+  }
+
+  const wrapped = async (...args) => {
+    if (isPending) {
+      return { ok: false, status: 'debounced' };
+    }
+
+    setPending(true);
+    try {
+      return await action(...args);
+    } finally {
+      if (cooldownTimer) {
+        clearTimeout(cooldownTimer);
+      }
+      cooldownTimer = setTimeout(() => {
+        cooldownTimer = null;
+        setPending(false);
+      }, waitMs);
+    }
+  };
+
+  wrapped.isPending = () => isPending;
+  wrapped.cancel = () => {
+    if (cooldownTimer) {
+      clearTimeout(cooldownTimer);
+      cooldownTimer = null;
+    }
+    setPending(false);
+  };
+
+  return wrapped;
 }

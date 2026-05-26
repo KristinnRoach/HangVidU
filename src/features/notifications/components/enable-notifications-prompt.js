@@ -3,14 +3,14 @@
 import {
   createNotification,
   buildTemplate,
-} from '../../../shared/components/notification.js';
+} from '../../../components/base-legacy/notification.js';
 import { inAppNotificationManager } from '../in-app-notification-manager.js';
 import { getPushNotifications } from '../../push-notifications/index.js';
 import {
   showSuccessToast,
   showWarningToast,
   showErrorToast,
-} from '../../../shared/components/toast.js';
+} from '../../../components/base-legacy/toast.js';
 import { t, onLocaleChange } from '../../../shared/i18n/index.js';
 
 const NOTIFICATION_ID = 'enable-notifications';

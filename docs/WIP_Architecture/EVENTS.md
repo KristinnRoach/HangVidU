@@ -27,10 +27,9 @@
 
 ## Commands
 
-- External modules write via commands: `dispatchCommand('cmd:<module>:<entity>:<action>', payload)`.
+- Use `dispatchCommand('cmd:<module>:<entity>:<action>', payload)` for **fire-and-forget cross-module intent** where the caller does not want a typed return value or to depend on the owning module's API surface (e.g. UI opening, side-effect triggers from boundary-restricted layers).
+- For typed in-process intent (a function call that returns a value or a promise the caller awaits), prefer a direct import from the owning module's barrel. Wrapping that in a command adds ad-hoc dispatching with no benefit.
 - Commands are handled inside the owning module only.
-- The owning module applies the change via its private `setState` and publishes `evt:<module>:state:changed`.
-- `dispatchCommand` is allowed from UI and non-UI code. Use it for cross-module intent, not for generic state reads.
 - Avoid `*:get-*` commands by default. Allowed only for explicitly documented edge cases or deferred migration steps.
 
 ## Naming

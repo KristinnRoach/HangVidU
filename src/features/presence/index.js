@@ -1,4 +1,5 @@
 import { getLoggedInUserId, onAuthStateChanged } from '../../auth/index.js';
+import { handleCommand } from '../../shared/events/index.js';
 import { writeOnline, writeOffline, observePresence } from './presence-rtdb.js';
 
 let initializedForUserId = null;
@@ -48,4 +49,64 @@ export async function setUserOffline(userId = getLoggedInUserId()) {
 
 export function watchUserPresence(userId, callback) {
   return observePresence(userId, callback);
+}
+
+let isReady = false;
+let initPromise = null;
+let cleanup = () => {
+  isReady = false;
+};
+
+/**
+ * Setup contract:
+ * - idempotent: returns existing cleanup when already ready
+ * - single-flight: concurrent callers share one init promise
+ * - teardown: cleanup aborts registered command handlers
+ *
+ * @returns {Promise<() => void>}
+ */
+export function setup() {
+  if (isReady) {
+    return Promise.resolve(cleanup);
+  }
+  if (initPromise) {
+    return initPromise;
+  }
+
+  initPromise = Promise.resolve()
+    .then(() => {
+      const ac = new AbortController();
+
+      handleCommand(
+        'cmd:user:presence:set-offline',
+        async ({ userId } = {}) => {
+          try {
+            await setUserOffline(userId);
+          } catch (e) {
+            console.warn('Failed to set user presence offline:', e);
+          }
+        },
+        { signal: ac.signal },
+      );
+
+      cleanup = () => {
+        try {
+          ac.abort();
+        } catch (error) {
+          console.warn(
+            '[presence] cleanup failed to abort handlers:',
+            error,
+          );
+        } finally {
+          isReady = false;
+        }
+      };
+      isReady = true;
+      return cleanup;
+    })
+    .finally(() => {
+      initPromise = null;
+    });
+
+  return initPromise;
 }

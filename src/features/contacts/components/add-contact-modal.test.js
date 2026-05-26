@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createDebouncedAsyncAction } from './add-contact-modal.js';
 
 const mocks = vi.hoisted(() => ({
   shareInvite: vi.fn(),
@@ -13,18 +14,14 @@ vi.mock('../../../shared/i18n/index.js', () => ({
   t: vi.fn((key) => key),
 }));
 
-vi.mock('../contacts-service.js', () => ({
-  contactsService: {
-    getAllContacts: vi.fn().mockResolvedValue({}),
-  },
+vi.mock('../../../stores/userDirectoryStore.js', () => ({
+  findRegisteredUsersByEmails: vi.fn().mockResolvedValue({}),
+  lookupRegisteredUserByEmail: vi.fn().mockResolvedValue({
+    status: 'not_found',
+  }),
 }));
 
-vi.mock('../user-discovery.js', () => ({
-  findUsersByEmails: vi.fn().mockResolvedValue({}),
-  lookupUserByEmail: vi.fn().mockResolvedValue({ status: 'not_found' }),
-}));
-
-vi.mock('../invitations.js', () => ({
+vi.mock('../invites/invitations.js', () => ({
   sendInvite: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -36,30 +33,30 @@ vi.mock('../../../auth/index.js', () => ({
   getIsLoggedIn: vi.fn(() => true),
 }));
 
-vi.mock('../google-contacts.js', () => ({
+vi.mock('../../../shared/utils/google/google-contacts.js', () => ({
   fetchGoogleContacts: vi.fn(),
 }));
 
-vi.mock('../gmail-send.js', () => ({
+vi.mock('../../../shared/utils/google/gmail-send.js', () => ({
   sendBulkEmailsViaGmail: vi.fn(),
 }));
 
-vi.mock('../../../shared/components/ui/icons.js', () => ({
+vi.mock('../../../components/base-legacy/icons.js', () => ({
   initIcons: mocks.initIcons,
 }));
 
-vi.mock('../../../shared/components/toast.js', () => ({
+vi.mock('../../../components/base-legacy/toast.js', () => ({
   showSuccessToast: mocks.showSuccessToast,
   showErrorToast: mocks.showErrorToast,
 }));
 
-vi.mock('../share-invite.js', () => ({
+vi.mock('../../../shared/utils/share-invite.js', () => ({
   shareInvite: mocks.shareInvite,
   copyInviteLink: mocks.copyInviteLink,
   buildReferralLink: vi.fn(() => 'https://hangvidu.com/?ref=user-123'),
 }));
 
-vi.mock('../share-invite-presets.js', () => ({
+vi.mock('../../../shared/utils/share-invite-presets.js', () => ({
   shareInviteViaProvider: mocks.shareInviteViaProvider,
   getInviteShareProviders: vi.fn(() => [
     {
@@ -155,7 +152,9 @@ describe('showAddContactModal - share invite platform action', () => {
     const { showAddContactModal } = await import('./add-contact-modal.js');
     const modalPromise = showAddContactModal();
 
-    const btn = document.querySelector('.share-preset-btn[data-provider-id="whatsapp"]');
+    const btn = document.querySelector(
+      '.share-preset-btn[data-provider-id="whatsapp"]',
+    );
     expect(btn).toBeTruthy();
 
     btn.click();
@@ -225,5 +224,48 @@ describe('showAddContactModal - share invite platform action', () => {
 
     document.querySelector('[data-action="cancel"]')?.click();
     await modalPromise;
+  });
+});
+
+describe('createDebouncedAsyncAction', () => {
+  it('runs immediately and suppresses repeated calls while pending', async () => {
+    vi.useFakeTimers();
+    const action = vi.fn().mockResolvedValue({ ok: true });
+    const guarded = createDebouncedAsyncAction(action, { waitMs: 300 });
+
+    const first = guarded('a');
+    const second = guarded('b');
+
+    expect(action).toHaveBeenCalledTimes(1);
+    await expect(second).resolves.toEqual({ ok: false, status: 'debounced' });
+    await first;
+
+    await vi.advanceTimersByTimeAsync(300);
+    await guarded('c');
+    expect(action).toHaveBeenCalledTimes(2);
+
+    vi.useRealTimers();
+  });
+
+  it('reports pending state changes for in-flight + cooldown', async () => {
+    vi.useFakeTimers();
+    const pendingStates = [];
+
+    const action = vi.fn().mockResolvedValue({ ok: true });
+    const guarded = createDebouncedAsyncAction(action, {
+      waitMs: 200,
+      onPendingChange: (isPending) => pendingStates.push(isPending),
+    });
+
+    const promise = guarded();
+    expect(guarded.isPending()).toBe(true);
+    await promise;
+    expect(guarded.isPending()).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(200);
+    expect(guarded.isPending()).toBe(false);
+    expect(pendingStates).toEqual([true, false]);
+
+    vi.useRealTimers();
   });
 });

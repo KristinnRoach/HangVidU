@@ -3,6 +3,7 @@
 
 import {
   browserLocalPersistence,
+  createUserWithEmailAndPassword,
   getAuth,
   getRedirectResult,
   GoogleAuthProvider,
@@ -11,10 +12,12 @@ import {
   onAuthStateChanged as firebaseOnAuthStateChanged,
   setPersistence,
   signInWithCredential,
+  signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
+  updateProfile,
 } from 'firebase/auth';
-import { app } from '../../shared/vendors/firebase.js';
+import { app } from '../../infra/firebase.js';
 
 export const auth = getAuth(app);
 
@@ -54,4 +57,16 @@ export function signInWithGoogleCredential(credential) {
 
 export function signOutFirebaseUser() {
   return signOut(auth);
+}
+
+export function createPasswordUser(email, password) {
+  return createUserWithEmailAndPassword(auth, email, password);
+}
+
+export function signInPassword(email, password) {
+  return signInWithEmailAndPassword(auth, email, password);
+}
+
+export function updateFirebaseProfile(user, patch) {
+  return updateProfile(user, patch);
 }

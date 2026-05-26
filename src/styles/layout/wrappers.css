@@ -1,0 +1,27 @@
+/* ===== LAYOUT WRAPPERS ===== */
+/* Container query-ready layout wrappers */
+
+.layout-wrapper {
+  position: relative;
+
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+
+  /* Enable container queries for child elements */
+  container-type: size;
+  container-name: main; /* Todo: rename to layout (or remove if unused) */
+}
+
+/* 
+.relative-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+
+  container-type: inline-size;
+  container-name: content;
+} */
