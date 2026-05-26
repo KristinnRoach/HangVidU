@@ -113,6 +113,25 @@ export async function signUpWithUsername({
         ref(rtdb, `users/${cred.user.uid}/profile/email`),
         trimmedEmail,
       );
+      // Populate the email lookup index so email-based sign-in and
+      // contact-add-by-email can resolve this account. Mirrors the write in
+      // `registerUserInDirectory` (src/storage/user/user-discovery.js);
+      // inlined here because the auth layer doesn't import from storage,
+      // and authState.user.email is null for password accounts (the
+      // Firebase Auth principal is synthetic), so the post-login registration
+      // in setupAuth.js skips them.
+      await set(ref(rtdb, `usersByEmail/${hashEmail(trimmedEmail)}`), {
+        uid: cred.user.uid,
+        userName: resolvedDisplayName,
+        photoURL: null,
+        registeredAt: Date.now(),
+        username: handle,
+      }).catch((err) =>
+        console.warn(
+          '[AUTH] Failed to register password user in email directory:',
+          err,
+        ),
+      );
     }
 
     return cred;
