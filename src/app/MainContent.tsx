@@ -4,6 +4,7 @@ import { createAutoHide } from '../shared/createAutoHide';
 import { User, PhoneCall, Mail } from 'lucide-solid';
 import { useP2PContext } from '../shared/p2p-context.js';
 import { useAuth } from '../auth/solid-auth';
+import { useI18n } from '../shared/i18n';
 
 import AppTitle from '../components/app/AppTitle.jsx';
 import AuthControls from '../auth/components/AuthControls.jsx';
@@ -168,6 +169,14 @@ interface TopBarProps {
 
 function TopBar(props: TopBarProps) {
   const { user } = useAuth();
+  const { t } = useI18n();
+
+  const calleeId = createMemo(() => {
+    const conversationId = props.selectedConversation?.conversationId;
+    const uid = user()?.uid;
+    if (!conversationId || !uid) return null;
+    return resolveContactIdFromDirectConversationId(conversationId, uid);
+  });
 
   return (
     <header
@@ -196,7 +205,8 @@ function TopBar(props: TopBarProps) {
                   ? topbarStyles.navBtnSelected
                   : topbarStyles.navBtn
               }
-              title='Contacts'
+              title={t('nav.contacts')}
+              aria-label={t('nav.contacts')}
               onClick={() => props.setActiveView('contacts')}
             >
               <User />
@@ -217,7 +227,8 @@ function TopBar(props: TopBarProps) {
                   ? topbarStyles.navBtnSelected
                   : topbarStyles.navBtn
               }
-              title='Messages'
+              title={t('nav.messages')}
+              aria-label={t('nav.messages')}
               onClick={() => props.setActiveView('messaging')}
             >
               <Mail />
@@ -227,34 +238,27 @@ function TopBar(props: TopBarProps) {
               class={topbarStyles.toolbar}
               hidden={props.activeView !== 'messaging'}
             >
-              <Show
-                when={
-                  !props.isInCall &&
-                  props.selectedConversation &&
-                  props.selectedConversation.conversationId &&
-                  user()?.uid
-                }
-              >
-                <StartCallButton
-                  audioOnly={false}
-                  calleeId={resolveContactIdFromDirectConversationId(
-                    props?.selectedConversation?.conversationId,
-                    user()?.uid,
-                  )}
-                  calleeName={
-                    props?.selectedConversation?.contactNickName || undefined
-                  }
-                />
-                <StartCallButton
-                  audioOnly={true}
-                  calleeId={resolveContactIdFromDirectConversationId(
-                    props?.selectedConversation?.conversationId,
-                    user()?.uid,
-                  )}
-                  calleeName={
-                    props?.selectedConversation?.contactNickName || undefined
-                  }
-                />
+              <Show when={!props.isInCall && calleeId()}>
+                {(resolvedCalleeId) => (
+                  <>
+                    <StartCallButton
+                      audioOnly={false}
+                      calleeId={resolvedCalleeId()}
+                      calleeName={
+                        props?.selectedConversation?.contactNickName ||
+                        undefined
+                      }
+                    />
+                    <StartCallButton
+                      audioOnly={true}
+                      calleeId={resolvedCalleeId()}
+                      calleeName={
+                        props?.selectedConversation?.contactNickName ||
+                        undefined
+                      }
+                    />
+                  </>
+                )}
               </Show>
             </div>
           </div>
@@ -268,7 +272,8 @@ function TopBar(props: TopBarProps) {
                 ? topbarStyles.navBtnSelected
                 : topbarStyles.navBtn
             }
-            title='View Active Call'
+            title={t('nav.active_call')}
+            aria-label={t('nav.active_call')}
             onClick={() => props.setActiveView('call')}
           >
             <PhoneCall />

@@ -1,6 +1,10 @@
 {
   "share": "Deila",
   "shared.cancel": "Hætta við",
+  "shared.close": "Loka",
+  "nav.contacts": "Tengiliðir",
+  "nav.messages": "Skilaboð",
+  "nav.active_call": "Skoða virkt símtal",
   "shared.error": "Villa",
   "shared.sending": "Sendi...",
   "shared.contact": "tengiliður",

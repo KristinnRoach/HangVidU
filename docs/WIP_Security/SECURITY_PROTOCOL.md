@@ -17,7 +17,7 @@ Purpose: remember to make the P2P call security answer explicit later.
 
 ## Current Supporting Security Controls
 
-- Current authentication implementation: Google Sign-In through Firebase Auth.
+- Current authentication implementation: Google Sign-In and username + password (Firebase Auth).
 - Current authorization implementation: Firebase RTDB Security Rules restrict room, user, call, contact, message, and push subscription data by authenticated user.
 - Current abuse protection implementation: Firebase App Check with reCAPTCHA Enterprise in production.
 - Current Cloud Functions implementation: protected endpoints verify Firebase ID tokens.

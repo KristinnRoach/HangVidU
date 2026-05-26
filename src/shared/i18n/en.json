@@ -1,6 +1,10 @@
 {
   "share": "Share",
   "shared.cancel": "Cancel",
+  "shared.close": "Close",
+  "nav.contacts": "Contacts",
+  "nav.messages": "Messages",
+  "nav.active_call": "View active call",
   "shared.error": "Error",
   "shared.sending": "Sending...",
   "shared.contact": "contact",

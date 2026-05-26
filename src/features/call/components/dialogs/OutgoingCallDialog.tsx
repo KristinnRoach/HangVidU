@@ -4,18 +4,14 @@ import type { CallDialogProps } from './CallDialog';
 
 interface OutgoingCallDialogProps extends CallDialogProps {
   calleeName?: string;
-  disabled?: boolean;
-  isCancelling?: boolean;
   cancelLabel?: string;
+  disabled?: boolean;
   onCancel?: () => void;
 }
 
 export default function OutgoingCallDialog(props: OutgoingCallDialogProps) {
   const { t } = useI18n();
-  const idPrefix = () => props.idPrefix || 'outgoing-call';
-  const cancelLabel = () =>
-    props.cancelLabel ||
-    (props.isCancelling ? t('shared.sending') : t('shared.cancel'));
+  const cancelLabel = () => props.cancelLabel || t('shared.cancel');
 
   return (
     <CallDialog
@@ -23,7 +19,7 @@ export default function OutgoingCallDialog(props: OutgoingCallDialogProps) {
       cardClass='outgoing-call-card'
       tone='outgoing'
       ringtone='outgoing'
-      idPrefix={idPrefix()}
+      idPrefix='outgoing-call'
       name={props.calleeName}
       defaultName={t('shared.contact')}
       titleKey='call.calling'
@@ -32,8 +28,7 @@ export default function OutgoingCallDialog(props: OutgoingCallDialogProps) {
         <button
           type='button'
           class='dialog-btn dialog-btn--danger'
-          disabled={!!props.disabled || !!props.isCancelling}
-          attr:aria-busy={props.isCancelling ? 'true' : 'false'}
+          disabled={!!props.disabled}
           onClick={() => props.onCancel?.()}
         >
           {cancelLabel()}

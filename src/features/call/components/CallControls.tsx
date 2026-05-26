@@ -66,16 +66,20 @@ export function ActiveCallControls() {
   function toggleMic() {
     const stream = p2p.localStream();
     if (!stream) return;
+    const tracks = stream.getAudioTracks();
+    if (!tracks.length) return;
     const next = !micOn();
-    stream.getAudioTracks().forEach((t) => (t.enabled = next));
+    tracks.forEach((t) => (t.enabled = next));
     setMicOn(next);
   }
 
   function toggleCam() {
     const stream = p2p.localStream();
     if (!stream) return;
+    const tracks = stream.getVideoTracks();
+    if (!tracks.length) return;
     const next = !camOn();
-    stream.getVideoTracks().forEach((t) => (t.enabled = next));
+    tracks.forEach((t) => (t.enabled = next));
     setCamOn(next);
   }
 

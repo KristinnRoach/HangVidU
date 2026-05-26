@@ -4,7 +4,7 @@ import { useI18n } from '../../shared/i18n/index.js';
 import GoogleSignInButton from './GoogleSignInButton.jsx';
 import UsernamePasswordForm from './UsernamePasswordForm.jsx';
 import LegalFooter from '../../components/app/LegalFooter.jsx';
-import LocaleToggle from '../../components/app/LocaleToggle.jsx';
+import LocaleToggle from '../../components/app/LocaleToggle.tsx';
 import styles from './SignInSheet.module.css';
 
 // Minimal sign-in sheet. Primary provider (Google) is shown first; password
@@ -61,7 +61,7 @@ export default function SignInSheet(props) {
             popoverTarget={props.id}
             popoverTargetAction='hide'
             class={styles.closeBtn}
-            aria-label='Close'
+            aria-label={t('shared.close')}
           >
             &times;
           </button>

@@ -6,7 +6,7 @@ import {
 } from '../auth-events-schema.js';
 import { dispatchCommand } from '../../shared/events/index.js';
 import { useI18n } from '../../shared/i18n/index.js';
-import LoginButton from './LoginButton.jsx';
+import LoginButton from './LoginButton.tsx';
 import SignInSheet from './SignInSheet.jsx';
 import { LogOut } from 'lucide-solid';
 
@@ -98,7 +98,7 @@ export default function AuthControls() {
           class={styles.logoutBtn}
           type='button'
           title={t('auth.logout')}
-          aria-title={t('auth.logout')}
+          aria-label={t('auth.logout')}
           disabled={isLoading()}
           onClick={requestLogout}
         >
