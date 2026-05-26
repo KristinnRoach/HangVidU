@@ -36,8 +36,8 @@ export default defineConfig(({ mode }) => {
         ? [mkcert({ savePath: path.resolve(__dirname, '.vite-plugin-mkcert') })]
         : []),
       devtools({
-        /* features options - all disabled by default */
-        autoname: true, // e.g. enable autoname
+        jsxLocation: true,
+        autoname: true,
       }),
       solid(),
       VitePWA({
