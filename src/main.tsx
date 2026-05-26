@@ -9,7 +9,7 @@ import { initializeAppCheckDeferred } from './infra/firebase.js';
 import { setupAuth } from './setup/setupAuth.js';
 import { setupContacts } from './setup/setupContacts.js';
 import { setupMainAppBusListeners } from './setup/setupMainAppBusListeners.js';
-import { setupNotificationsHandlers } from './setup/setupNotificationsHandlers.js';
+import { setup as setupNotifications } from './features/notifications/index.js';
 import { setup as setupPWA } from './features/pwa';
 
 type Cleanup = () => void;
@@ -31,7 +31,7 @@ function AppSideEffects(props: { children: JSX.Element }) {
 
   onMount(async () => {
     try {
-      cleanups.push(await setupNotificationsHandlers());
+      cleanups.push(await setupNotifications());
       cleanups.push(await setupMainAppBusListeners());
       cleanups.push(await setupContacts());
       cleanups.push(await setupAuth());
