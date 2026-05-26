@@ -13,11 +13,18 @@ import styles from './SignInSheet.module.css';
 export default function SignInSheet(props) {
   const { t } = useI18n();
   const [showPassword, setShowPassword] = createSignal(false);
+  let sheetEl;
+
+  function keepSheetOpen() {
+    if (!sheetEl || sheetEl.matches?.(':popover-open')) return;
+    sheetEl.showPopover?.();
+  }
 
   return (
     <>
       <div
         id={props.id}
+        ref={sheetEl}
         popover
         aria-labelledby='signin-sheet-title'
         class={styles.signInSheetModal}
@@ -53,7 +60,7 @@ export default function SignInSheet(props) {
                 </button>
               }
             >
-              <UsernamePasswordForm />
+              <UsernamePasswordForm onAuthFailure={keepSheetOpen} />
             </Show>
           </section>
 
