@@ -37,18 +37,23 @@
 
   /* Logo placeholder (AppTitle.jsx) */
   h1 {
-    font-family: 'Futura', 'Trebuchet MS', sans-serif;
-    font-size: 1.8rem;
-    font-weight: 500;
-    letter-spacing: -0.15em;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    margin-right: 2px;
+    display: none;
+    margin: 0;
     -webkit-user-select: none;
     user-select: none;
+  }
 
-    a:hover {
-      cursor: default;
+  /* Only style and show it from 601px and up */
+  @media (min-width: 37.5625rem) {
+    h1 {
+      display: block;
+      font-family: 'Futura', 'Trebuchet MS', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 500;
+      letter-spacing: -0.15em;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      margin-inline-end: 0;
     }
   }
 }
