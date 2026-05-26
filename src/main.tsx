@@ -8,8 +8,9 @@ import { initPushNotifications } from './features/push-notifications/push-notifi
 import { initializeAppCheckDeferred } from './infra/firebase.js';
 import { setupAuth } from './setup/setupAuth.js';
 import { setup as setupContacts } from './features/contacts';
-import { setupMainAppBusListeners } from './setup/setupMainAppBusListeners.js';
 import { setup as setupNotifications } from './features/notifications/index.js';
+import { setup as setupPresence } from './features/presence/index.js';
+import { setup as setupPushNotifications } from './features/push-notifications/index.js';
 import { setup as setupPWA } from './features/pwa';
 
 type Cleanup = () => void;
@@ -32,7 +33,8 @@ function AppSideEffects(props: { children: JSX.Element }) {
   onMount(async () => {
     try {
       cleanups.push(await setupNotifications());
-      cleanups.push(await setupMainAppBusListeners());
+      cleanups.push(await setupPresence());
+      cleanups.push(await setupPushNotifications());
       cleanups.push(await setupContacts());
       cleanups.push(await setupAuth());
       cleanups.push(await setupPWA());
