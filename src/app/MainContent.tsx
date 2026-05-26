@@ -36,7 +36,7 @@ type ViewMode = 'home' | 'call' | 'contacts' | 'messaging';
 
 export default function MainContent() {
   const p2p = useP2PContext();
-  const { isAuthReady, user, isLoggedIn, isLoggingIn, isLoggingOut } =
+  const { isAuthInitialized, user, isLoggedIn, isLoggingIn, isLoggingOut } =
     useAuth();
 
   const [userView, setUserView] = createSignal<ViewMode>('contacts');
@@ -88,11 +88,14 @@ export default function MainContent() {
     const s = p2p.state();
     return s === 'creating' || s === 'watching' || s === 'joining';
   };
+  const showAuthenticatedUi = createMemo(
+    () => isLoggedIn() && !isLoggingOut(),
+  );
 
   return (
     <div class={mainStyles.layoutWrapper}>
       <LoadBoundary
-        loading={!isAuthReady()}
+        loading={!isAuthInitialized()}
         fallback={
           <div class={mainStyles.loading}>
             <Spinner />
@@ -104,6 +107,7 @@ export default function MainContent() {
           setActiveView={navigate}
           selectedConversation={selectedConversation() ?? undefined}
           isInCall={p2p.state() !== 'idle'}
+          showAuthenticatedUi={showAuthenticatedUi()}
           visible={headerVisible()}
         />
 
@@ -120,7 +124,7 @@ export default function MainContent() {
           >
             <PublicHomepage />
           </div>
-          <Show when={isLoggedIn()}>
+          <Show when={showAuthenticatedUi()}>
             <Show when={p2p.state() !== 'idle'}>
               <div class={mainStyles.activeViewContainer}>
                 <LoadBoundary
@@ -169,6 +173,7 @@ interface TopBarProps {
   setActiveView: (view: ViewMode) => void;
   selectedConversation?: ConversationSelection;
   isInCall: boolean;
+  showAuthenticatedUi: boolean;
   visible: boolean;
 }
 
@@ -201,7 +206,7 @@ function TopBar(props: TopBarProps) {
       <nav class={topbarStyles.topNav}>
         {/* <button onClick={() => props.setActiveView?.('home')}>Home</button> */}
 
-        <Show when={user()?.uid}>
+        <Show when={props.showAuthenticatedUi && user()?.uid}>
           <div class={topbarStyles.navItem}>
             <button
               type='button'

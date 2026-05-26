@@ -52,7 +52,7 @@ describe('AuthProvider', () => {
       });
 
       expect(auth.isLoggedIn()).toBe(false);
-      expect(auth.isAuthReady()).toBe(true);
+      expect(auth.isAuthInitialized()).toBe(true);
 
       for (const listener of mocks.listeners) {
         listener({
@@ -86,6 +86,7 @@ describe('AuthProvider', () => {
       for (const listener of mocks.listeners) {
         listener({ status: 'loading', user: null, isLoggedIn: false });
       }
+      expect(auth.isAuthInitialized()).toBe(true);
       expect(auth.isLoggingIn()).toBe(true);
       expect(auth.isLoggingOut()).toBe(false);
 

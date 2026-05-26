@@ -16,8 +16,15 @@ export default function SignInSheet(props) {
   let sheetEl;
 
   function keepSheetOpen() {
-    if (!sheetEl || sheetEl.matches?.(':popover-open')) return;
-    sheetEl.showPopover?.();
+    if (!sheetEl || !sheetEl.isConnected || sheetEl.matches?.(':popover-open')) {
+      return;
+    }
+
+    try {
+      sheetEl.showPopover?.();
+    } catch {
+      // Best-effort only: the form has already rendered the inline error.
+    }
   }
 
   return (

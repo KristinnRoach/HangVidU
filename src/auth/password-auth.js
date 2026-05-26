@@ -27,6 +27,15 @@ export const SYNTHETIC_DOMAIN = 'hangvidu.invalid';
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 const MIN_PASSWORD_LENGTH = 8;
+const EXPECTED_PASSWORD_AUTH_FAILURES = new Set([
+  'account_has_no_username',
+  'auth/email-already-in-use',
+  'auth/invalid-credential',
+  'auth/user-not-found',
+  'auth/wrong-password',
+  'no_account_for_email',
+  'username_taken',
+]);
 
 export function isSyntheticEmail(email) {
   return typeof email === 'string' && email.endsWith(`@${SYNTHETIC_DOMAIN}`);
@@ -57,6 +66,10 @@ function validatePassword(password) {
     return 'password_too_short';
   }
   return null;
+}
+
+function isExpectedPasswordAuthFailure(error) {
+  return EXPECTED_PASSWORD_AUTH_FAILURES.has(error?.code || error?.message);
 }
 
 /**
@@ -142,7 +155,9 @@ export async function signUpWithUsername({
     return cred;
   } catch (e) {
     setState(toStableAuthState(previousAuthState));
-    logAuthError('Sign up (password)', e);
+    if (!isExpectedPasswordAuthFailure(e)) {
+      logAuthError('Sign up (password)', e);
+    }
     throw e;
   }
 }
@@ -184,7 +199,9 @@ export async function signInWithUsernameOrEmail({ identifier, password }) {
     return await signInPassword(syntheticEmail(handle), password);
   } catch (e) {
     setState(toStableAuthState(previousAuthState));
-    logAuthError('Sign in (password)', e);
+    if (!isExpectedPasswordAuthFailure(e)) {
+      logAuthError('Sign in (password)', e);
+    }
     throw e;
   }
 }

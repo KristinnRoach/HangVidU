@@ -96,6 +96,7 @@ describe('password auth failure state', () => {
       isLoggedIn: false,
       user: null,
     });
+    expect(mocks.logAuthError).not.toHaveBeenCalled();
   });
 
   it('restores unauthenticated state when username sign-up fails', async () => {
@@ -121,5 +122,6 @@ describe('password auth failure state', () => {
       isLoggedIn: false,
       user: null,
     });
+    expect(mocks.logAuthError).not.toHaveBeenCalled();
   });
 });

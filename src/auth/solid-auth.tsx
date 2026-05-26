@@ -32,7 +32,7 @@ export type Auth = {
   user: Accessor<AuthUser | null>;
   status: Accessor<AuthStatus>;
   isLoggedIn: Accessor<boolean>;
-  isAuthReady: Accessor<boolean>;
+  isAuthInitialized: Accessor<boolean>;
   isLoading: Accessor<boolean>;
   isLoggingIn: Accessor<boolean>;
   isLoggingOut: Accessor<boolean>;
@@ -55,14 +55,11 @@ export function AuthProvider(props: { children: JSX.Element }) {
   );
   onCleanup(unsubscribe);
 
-  const status = createMemo(() => snapshot().status);
-  const isLoggedIn = createMemo(() => snapshot().isLoggedIn);
   const user = createMemo(() => snapshot().user);
+  const status = createMemo(() => snapshot().status);
+  const isAuthInitialized = createMemo(() => status() !== 'idle');
   const isLoading = createMemo(() => status() === 'loading');
-  const isAuthReady = createMemo(() => {
-    const s = status();
-    return s !== 'idle' && s !== 'loading';
-  });
+  const isLoggedIn = createMemo(() => snapshot().isLoggedIn);
   const isLoggingIn = createMemo(() => isLoading() && !isLoggedIn());
   const isLoggingOut = createMemo(() => isLoading() && isLoggedIn());
 
@@ -70,7 +67,7 @@ export function AuthProvider(props: { children: JSX.Element }) {
     user,
     status,
     isLoggedIn,
-    isAuthReady,
+    isAuthInitialized,
     isLoading,
     isLoggingIn,
     isLoggingOut,
