@@ -90,6 +90,7 @@ describe('password auth failure state', () => {
     ).rejects.toBe(error);
 
     expect(mocks.setState).toHaveBeenNthCalledWith(1, { status: 'loading' });
+    expect(mocks.setState).toHaveBeenCalledTimes(2);
     expect(mocks.setState).toHaveBeenLastCalledWith({
       status: 'unauthenticated',
       isLoggedIn: false,
@@ -114,6 +115,7 @@ describe('password auth failure state', () => {
     ).rejects.toThrow('username_taken');
 
     expect(mocks.setState).toHaveBeenNthCalledWith(1, { status: 'loading' });
+    expect(mocks.setState).toHaveBeenCalledTimes(2);
     expect(mocks.setState).toHaveBeenLastCalledWith({
       status: 'unauthenticated',
       isLoggedIn: false,
