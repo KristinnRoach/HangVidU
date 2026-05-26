@@ -46,6 +46,12 @@ clients are no longer running the `main` branch call code.
     required fields, and define whether only contacts may create call invites.
   - `calls/response`: require response payloads to match the expected room and
     sender, and define who can clear the response.
+  - `calls/response` `.read` is currently `auth != null`, so any signed-in user
+    can read any other user's call-response signaling (caller/callee uids,
+    roomId, response type, timestamps). Scope to the participants of the call
+    — either by including `callerId` in the payload and gating
+    `.read` on `auth.uid === data.child('callerId').val()`, or by moving the
+    response under `rooms/{roomId}` so room-access gates the read.
 - Once all active clients are migrated, remove obsolete call rules and matching
   storage helpers in the same release.
 

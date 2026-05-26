@@ -1,4 +1,4 @@
-import { ref, remove, set, type Database } from 'firebase/database';
+import { ref, remove, update, type Database } from 'firebase/database';
 
 const ROOM_ACCESS_TTL_MS = 2 * 60 * 60 * 1000;
 
@@ -30,17 +30,15 @@ export class RoomAccessRTDBAdapter {
     if (!roomId || !createdBy || participants.length === 0) return;
 
     const uniqueParticipants = [...new Set([createdBy, ...participants])];
-    await set(ref(this.database, `rooms/${roomId}/meta`), {
-      createdBy,
-      createdAt,
-      expiresAt,
-    });
-
-    await Promise.all(
-      uniqueParticipants.map((uid) =>
-        set(ref(this.database, `rooms/${roomId}/participants/${uid}`), true),
-      ),
-    );
+    const updates: Record<string, unknown> = {
+      [`rooms/${roomId}/meta/createdBy`]: createdBy,
+      [`rooms/${roomId}/meta/createdAt`]: createdAt,
+      [`rooms/${roomId}/meta/expiresAt`]: expiresAt,
+    };
+    for (const uid of uniqueParticipants) {
+      updates[`rooms/${roomId}/participants/${uid}`] = true;
+    }
+    await update(ref(this.database), updates);
   }
 
   async clearRoomAccess(roomId: string): Promise<void> {
