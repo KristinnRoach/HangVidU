@@ -18,6 +18,7 @@ import ContactsList from '../features/contacts/components/ContactsList.jsx';
 import ActiveCallRoom from '../features/call/components/ActiveCallRoom';
 import ConversationPanel from '../features/messaging-next/ConversationPanel';
 import CallDialogs from '../features/call/components/CallDialogs.jsx';
+import SWNavigation from '../features/push-notifications/SWNavigation';
 import { StartCallButton } from '../features/call/components/CallControls.jsx';
 
 import { LoadBoundary } from '../components/app/LoadBoundary';
@@ -102,6 +103,7 @@ export default function MainContent() {
         <div id='onetap-container' />
 
         <main id='main-content' class={mainStyles.mainContent}>
+          <SWNavigation onNavigate={openConversation} />
           <CallDialogs />
 
           {/* CSS display toggles keep stateful views mounted across nav. */}
