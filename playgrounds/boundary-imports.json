@@ -1,41 +1,81 @@
 {
-  "generatedAt": "2026-05-25T03:33:40.407Z",
-  "scannedFiles": 228,
-  "importsScanned": 552,
-  "importsResolved": 297,
+  "generatedAt": "2026-05-26T21:19:06.509Z",
+  "scannedFiles": 227,
+  "importsScanned": 563,
+  "importsResolved": 409,
   "edges": {
+    "app->app": {
+      "count": 4,
+      "files": [
+        {
+          "from": "src/app/__tests__/setupAuth.test.js",
+          "to": "src/app/setupAuth.js",
+          "importPath": "../setupAuth.js"
+        },
+        {
+          "from": "src/app/__tests__/setupAuth.test.js",
+          "to": "src/app/setupAuth.js",
+          "importPath": "../setupAuth.js"
+        },
+        {
+          "from": "src/app/__tests__/setupAuth.test.js",
+          "to": "src/app/setupAuth.js",
+          "importPath": "../setupAuth.js"
+        },
+        {
+          "from": "src/app/__tests__/setupAuth.test.js",
+          "to": "src/app/setupAuth.js",
+          "importPath": "../setupAuth.js"
+        }
+      ]
+    },
     "app->auth": {
-      "count": 2,
+      "count": 3,
       "files": [
         {
           "from": "src/app/MainContent.tsx",
           "to": "src/auth/components/AuthControls.jsx",
-          "importPath": "../auth/components/AuthControls.jsx"
+          "importPath": "../auth/components/AuthControls"
         },
         {
           "from": "src/app/MainContent.tsx",
           "to": "src/auth/solid-auth.tsx",
           "importPath": "../auth/solid-auth"
+        },
+        {
+          "from": "src/app/setupAuth.js",
+          "to": "src/auth/index.js",
+          "importPath": "../auth/index.js"
         }
       ]
     },
     "app->components": {
-      "count": 4,
+      "count": 6,
       "files": [
         {
           "from": "src/app/MainContent.tsx",
           "to": "src/components/app/AppTitle.jsx",
-          "importPath": "../components/app/AppTitle.jsx"
+          "importPath": "../components/app/AppTitle"
         },
         {
           "from": "src/app/MainContent.tsx",
           "to": "src/components/app/LegalFooter.jsx",
-          "importPath": "../components/app/LegalFooter.jsx"
+          "importPath": "../components/app/LegalFooter"
         },
         {
           "from": "src/app/MainContent.tsx",
           "to": "src/components/app/LoadBoundary.tsx",
           "importPath": "../components/app/LoadBoundary"
+        },
+        {
+          "from": "src/app/MainContent.tsx",
+          "to": "src/components/app/LocaleToggle.tsx",
+          "importPath": "../components/app/LocaleToggle"
+        },
+        {
+          "from": "src/app/MainContent.tsx",
+          "to": "src/components/app/PublicHomepage.tsx",
+          "importPath": "../components/app/PublicHomepage"
         },
         {
           "from": "src/app/MainContent.tsx",
@@ -45,7 +85,7 @@
       ]
     },
     "app->feature": {
-      "count": 4,
+      "count": 13,
       "files": [
         {
           "from": "src/app/MainContent.tsx",
@@ -54,23 +94,68 @@
         },
         {
           "from": "src/app/MainContent.tsx",
+          "to": "src/features/call/components/CallControls.tsx",
+          "importPath": "../features/call/components/CallControls"
+        },
+        {
+          "from": "src/app/MainContent.tsx",
+          "to": "src/features/call/components/CallDialogs.tsx",
+          "importPath": "../features/call/components/CallDialogs"
+        },
+        {
+          "from": "src/app/MainContent.tsx",
+          "to": "src/features/contacts/components/AddContactButton.tsx",
+          "importPath": "../features/contacts/components/AddContactButton"
+        },
+        {
+          "from": "src/app/MainContent.tsx",
+          "to": "src/features/contacts/components/ContactsList.tsx",
+          "importPath": "../features/contacts/components/ContactsList"
+        },
+        {
+          "from": "src/app/MainContent.tsx",
           "to": "src/features/messaging-next/ConversationPanel.tsx",
           "importPath": "../features/messaging-next/ConversationPanel"
         },
         {
           "from": "src/app/MainContent.tsx",
+          "to": "src/features/messaging-next/interfaces.ts",
+          "importPath": "../features/messaging-next/interfaces.js"
+        },
+        {
+          "from": "src/app/MainContent.tsx",
+          "to": "src/features/messaging-next/types.ts",
+          "importPath": "../features/messaging-next/types.js"
+        },
+        {
+          "from": "src/app/MainContent.tsx",
           "to": "src/features/notifications/components/NotificationsToggle.jsx",
-          "importPath": "../features/notifications/components/NotificationsToggle.jsx"
+          "importPath": "../features/notifications/components/NotificationsToggle"
         },
         {
           "from": "src/app/MainContent.tsx",
           "to": "src/features/pwa/InstallButton.tsx",
           "importPath": "../features/pwa/InstallButton"
+        },
+        {
+          "from": "src/app/setupAuth.js",
+          "to": "src/features/contacts/invites/invitations.js",
+          "importPath": "../features/contacts/invites/invitations.js"
+        },
+        {
+          "from": "src/app/setupAuth.js",
+          "to": "src/features/contacts/invites/invite-listener.js",
+          "importPath": "../features/contacts/invites/invite-listener.js"
+        },
+        {
+          "from": "src/app/setupAuth.js",
+          "to": "src/features/contacts/referrals/referral-handler.js",
+          "importPath": "../features/contacts/referrals/referral-handler.js"
         }
       ]
     },
     "app->shared": {
-      "count": 2,
+      "count": 5,
       "files": [
         {
           "from": "src/app/MainContent.tsx",
@@ -79,13 +164,48 @@
         },
         {
           "from": "src/app/MainContent.tsx",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../shared/i18n"
+        },
+        {
+          "from": "src/app/MainContent.tsx",
           "to": "src/shared/utils/direct-conversation-id.js",
           "importPath": "../shared/utils/direct-conversation-id"
+        },
+        {
+          "from": "src/app/setupAuth.js",
+          "to": "src/shared/events/index.js",
+          "importPath": "../shared/events/index.js"
+        },
+        {
+          "from": "src/app/setupAuth.js",
+          "to": "src/shared/utils/dev/dev-utils.js",
+          "importPath": "../shared/utils/dev/dev-utils.js"
+        }
+      ]
+    },
+    "app->stores": {
+      "count": 3,
+      "files": [
+        {
+          "from": "src/app/MainContent.tsx",
+          "to": "src/stores/selectedConversationStore.ts",
+          "importPath": "../stores/selectedConversationStore"
+        },
+        {
+          "from": "src/app/setupAuth.js",
+          "to": "src/stores/contactsStore.ts",
+          "importPath": "../stores/contactsStore.js"
+        },
+        {
+          "from": "src/app/setupAuth.js",
+          "to": "src/stores/userDirectoryStore.js",
+          "importPath": "../stores/userDirectoryStore.js"
         }
       ]
     },
     "auth->auth": {
-      "count": 50,
+      "count": 51,
       "files": [
         {
           "from": "src/auth/auth-command-handlers.js",
@@ -194,8 +314,13 @@
         },
         {
           "from": "src/auth/components/AuthControls.jsx",
+          "to": "src/auth/components/LoginButton.tsx",
+          "importPath": "./LoginButton"
+        },
+        {
+          "from": "src/auth/components/AuthControls.jsx",
           "to": "src/auth/components/SignInSheet.jsx",
-          "importPath": "./SignInSheet.jsx"
+          "importPath": "./SignInSheet"
         },
         {
           "from": "src/auth/components/AuthControls.jsx",
@@ -210,12 +335,12 @@
         {
           "from": "src/auth/components/SignInSheet.jsx",
           "to": "src/auth/components/GoogleSignInButton.jsx",
-          "importPath": "./GoogleSignInButton.jsx"
+          "importPath": "./GoogleSignInButton"
         },
         {
           "from": "src/auth/components/SignInSheet.jsx",
           "to": "src/auth/components/UsernamePasswordForm.jsx",
-          "importPath": "./UsernamePasswordForm.jsx"
+          "importPath": "./UsernamePasswordForm"
         },
         {
           "from": "src/auth/components/UsernamePasswordForm.jsx",
@@ -340,12 +465,17 @@
       ]
     },
     "auth->components": {
-      "count": 1,
+      "count": 2,
       "files": [
         {
           "from": "src/auth/components/SignInSheet.jsx",
           "to": "src/components/app/LegalFooter.jsx",
-          "importPath": "../../components/app/LegalFooter.jsx"
+          "importPath": "../../components/app/LegalFooter"
+        },
+        {
+          "from": "src/auth/components/SignInSheet.jsx",
+          "to": "src/components/app/LocaleToggle.tsx",
+          "importPath": "../../components/app/LocaleToggle"
         }
       ]
     },
@@ -365,7 +495,7 @@
       ]
     },
     "auth->shared": {
-      "count": 8,
+      "count": 16,
       "files": [
         {
           "from": "src/auth/auth-command-handlers.js",
@@ -379,8 +509,18 @@
         },
         {
           "from": "src/auth/auth-commands.js",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../shared/i18n/index.js"
+        },
+        {
+          "from": "src/auth/auth-commands.js",
           "to": "src/shared/utils/dev/dev-utils.js",
           "importPath": "../shared/utils/dev/dev-utils.js"
+        },
+        {
+          "from": "src/auth/auth-setup.js",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../shared/i18n/index.js"
         },
         {
           "from": "src/auth/auth-setup.js",
@@ -398,6 +538,36 @@
           "importPath": "../../shared/events/index.js"
         },
         {
+          "from": "src/auth/components/AuthControls.jsx",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../shared/i18n/index.js"
+        },
+        {
+          "from": "src/auth/components/GoogleSignInButton.jsx",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../shared/i18n/index.js"
+        },
+        {
+          "from": "src/auth/components/LoginButton.tsx",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../shared/i18n/index.js"
+        },
+        {
+          "from": "src/auth/components/SignInSheet.jsx",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../shared/i18n/index.js"
+        },
+        {
+          "from": "src/auth/components/UsernamePasswordForm.jsx",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../shared/i18n/index.js"
+        },
+        {
+          "from": "src/auth/onetap.js",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../shared/i18n/index.js"
+        },
+        {
           "from": "src/auth/onetap.js",
           "to": "src/shared/utils/dev/dev-utils.js",
           "importPath": "../shared/utils/dev/dev-utils.js"
@@ -410,8 +580,18 @@
       ]
     },
     "components->shared": {
-      "count": 4,
+      "count": 6,
       "files": [
+        {
+          "from": "src/components/app/AppTitle.jsx",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../shared/i18n/index.js"
+        },
+        {
+          "from": "src/components/app/LegalFooter.jsx",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../shared/i18n/index.js"
+        },
         {
           "from": "src/components/app/LocaleToggle.tsx",
           "to": "src/shared/i18n/index.ts",
@@ -485,8 +665,13 @@
       ]
     },
     "feature->components": {
-      "count": 15,
+      "count": 17,
       "files": [
+        {
+          "from": "src/features/call/components/dialogs/CallDialog.tsx",
+          "to": "src/components/dialogs/DialogFrame.tsx",
+          "importPath": "../../../../components/dialogs/DialogFrame"
+        },
         {
           "from": "src/features/call/components/MemberStreams.tsx",
           "to": "src/components/media/VideoStream.tsx",
@@ -511,6 +696,11 @@
           "from": "src/features/contacts/referrals/referral-handler.js",
           "to": "src/components/base-legacy/toast.js",
           "importPath": "../../../components/base-legacy/toast.js"
+        },
+        {
+          "from": "src/features/messaging-next/ConversationPanel.tsx",
+          "to": "src/components/app/LoadBoundary.tsx",
+          "importPath": "../../components/app/LoadBoundary"
         },
         {
           "from": "src/features/notifications/components/enable-notifications-prompt.js",
@@ -565,7 +755,7 @@
       ]
     },
     "feature->feature": {
-      "count": 84,
+      "count": 153,
       "files": [
         {
           "from": "src/features/call/audio/ringtone-manager.js",
@@ -584,8 +774,43 @@
         },
         {
           "from": "src/features/call/call-handshake-controller.ts",
+          "to": "src/features/call/call-notifications.ts",
+          "importPath": "./call-notifications.js"
+        },
+        {
+          "from": "src/features/call/call-handshake-controller.ts",
+          "to": "src/features/call/call-service.ts",
+          "importPath": "./call-service.js"
+        },
+        {
+          "from": "src/features/call/call-handshake-controller.ts",
+          "to": "src/features/call/call-types.ts",
+          "importPath": "./call-types.js"
+        },
+        {
+          "from": "src/features/call/call-handshake-controller.ts",
           "to": "src/features/call/media-constraints.js",
           "importPath": "./media-constraints.js"
+        },
+        {
+          "from": "src/features/call/call-handshake-controller.ts",
+          "to": "src/features/call/model/call-schema.ts",
+          "importPath": "./model/call-schema.js"
+        },
+        {
+          "from": "src/features/call/call-handshake.tsx",
+          "to": "src/features/call/call-handshake-controller.ts",
+          "importPath": "./call-handshake-controller.js"
+        },
+        {
+          "from": "src/features/call/call-handshake.tsx",
+          "to": "src/features/call/call-types.ts",
+          "importPath": "./call-types.js"
+        },
+        {
+          "from": "src/features/call/call-handshake.tsx",
+          "to": "src/features/call/model/call-schema.ts",
+          "importPath": "./model/call-schema.js"
         },
         {
           "from": "src/features/call/call-handshake.tsx",
@@ -594,8 +819,18 @@
         },
         {
           "from": "src/features/call/call-notifications.ts",
+          "to": "src/features/call/call-types.ts",
+          "importPath": "./call-types.js"
+        },
+        {
+          "from": "src/features/call/call-notifications.ts",
           "to": "src/features/push-notifications/index.js",
           "importPath": "../push-notifications/index.js"
+        },
+        {
+          "from": "src/features/call/call-service.test.js",
+          "to": "src/features/call/call-service.ts",
+          "importPath": "./call-service.js"
         },
         {
           "from": "src/features/call/call-service.ts",
@@ -618,6 +853,11 @@
           "importPath": "./model/room-access-rtdb-adapter"
         },
         {
+          "from": "src/features/call/call-types.ts",
+          "to": "src/features/call/model/call-schema.ts",
+          "importPath": "./model/call-schema.js"
+        },
+        {
           "from": "src/features/call/components/ActiveCallRoom.tsx",
           "to": "src/features/call/components/CallControls.tsx",
           "importPath": "./CallControls"
@@ -631,6 +871,21 @@
           "from": "src/features/call/components/CallControls.tsx",
           "to": "src/features/call/call-handshake.tsx",
           "importPath": "../call-handshake"
+        },
+        {
+          "from": "src/features/call/components/CallDialogs.tsx",
+          "to": "src/features/call/components/dialogs/BusyCallDialog.tsx",
+          "importPath": "./dialogs/BusyCallDialog"
+        },
+        {
+          "from": "src/features/call/components/CallDialogs.tsx",
+          "to": "src/features/call/components/dialogs/IncomingCallDialog.tsx",
+          "importPath": "./dialogs/IncomingCallDialog"
+        },
+        {
+          "from": "src/features/call/components/CallDialogs.tsx",
+          "to": "src/features/call/components/dialogs/OutgoingCallDialog.tsx",
+          "importPath": "./dialogs/OutgoingCallDialog"
         },
         {
           "from": "src/features/call/components/dialogs/BusyCallDialog.tsx",
@@ -653,6 +908,16 @@
           "importPath": "./CallDialog"
         },
         {
+          "from": "src/features/call/components/dialogs/IncomingCallDialog.tsx",
+          "to": "src/features/call/components/dialogs/CallDialog.tsx",
+          "importPath": "./CallDialog"
+        },
+        {
+          "from": "src/features/call/components/dialogs/OutgoingCallDialog.tsx",
+          "to": "src/features/call/components/dialogs/CallDialog.tsx",
+          "importPath": "./CallDialog"
+        },
+        {
           "from": "src/features/call/components/dialogs/OutgoingCallDialog.tsx",
           "to": "src/features/call/components/dialogs/CallDialog.tsx",
           "importPath": "./CallDialog"
@@ -663,9 +928,19 @@
           "importPath": "./call-schema"
         },
         {
+          "from": "src/features/call/model/call-rtdb-adapter.test.js",
+          "to": "src/features/call/model/call-rtdb-adapter.ts",
+          "importPath": "./call-rtdb-adapter.js"
+        },
+        {
           "from": "src/features/call/model/call-rtdb-adapter.ts",
           "to": "src/features/call/model/call-schema.ts",
           "importPath": "./call-schema"
+        },
+        {
+          "from": "src/features/call/model/room-access-rtdb-adapter.test.js",
+          "to": "src/features/call/model/room-access-rtdb-adapter.ts",
+          "importPath": "./room-access-rtdb-adapter.js"
         },
         {
           "from": "src/features/call/reference-examples/SimpleRoomExample.tsx",
@@ -764,8 +1039,13 @@
         },
         {
           "from": "src/features/contacts/components/ContactEntry.jsx",
+          "to": "src/features/call/components/CallControls.tsx",
+          "importPath": "../../call/components/CallControls"
+        },
+        {
+          "from": "src/features/contacts/components/ContactEntry.jsx",
           "to": "src/features/presence/components/PresenceIndicator.jsx",
-          "importPath": "../../presence/components/PresenceIndicator.jsx"
+          "importPath": "../../presence/components/PresenceIndicator"
         },
         {
           "from": "src/features/contacts/components/ContactsList.test.jsx",
@@ -803,11 +1083,6 @@
           "importPath": "../useContacts"
         },
         {
-          "from": "src/features/contacts/components/ContactsList.tsx",
-          "to": "src/features/messaging-next/interfaces.ts",
-          "importPath": "../../messaging-next/interfaces"
-        },
-        {
           "from": "src/features/contacts/import/google-import.js",
           "to": "src/features/contacts/import/import-contacts-utils.js",
           "importPath": "./import-contacts-utils.js"
@@ -816,6 +1091,11 @@
           "from": "src/features/contacts/import/google-import.test.js",
           "to": "src/features/contacts/import/google-import.js",
           "importPath": "./google-import.js"
+        },
+        {
+          "from": "src/features/contacts/index.ts",
+          "to": "src/features/contacts/referrals/referral-handler.js",
+          "importPath": "./referrals/referral-handler.js"
         },
         {
           "from": "src/features/contacts/invites/invite-listener.js",
@@ -846,6 +1126,211 @@
           "from": "src/features/contacts/referrals/referral-handler.js",
           "to": "src/features/contacts/invites/invitations.js",
           "importPath": "../invites/invitations.js"
+        },
+        {
+          "from": "src/features/messaging-next/adapters/in-memory-conversations.test.js",
+          "to": "src/features/messaging-next/adapters/in-memory-conversations.ts",
+          "importPath": "./in-memory-conversations.js"
+        },
+        {
+          "from": "src/features/messaging-next/adapters/in-memory-conversations.ts",
+          "to": "src/features/messaging-next/interfaces.ts",
+          "importPath": "../interfaces.js"
+        },
+        {
+          "from": "src/features/messaging-next/adapters/in-memory-conversations.ts",
+          "to": "src/features/messaging-next/schema.ts",
+          "importPath": "../schema.js"
+        },
+        {
+          "from": "src/features/messaging-next/adapters/in-memory-conversations.ts",
+          "to": "src/features/messaging-next/types.ts",
+          "importPath": "../types.js"
+        },
+        {
+          "from": "src/features/messaging-next/adapters/in-memory.ts",
+          "to": "src/features/messaging-next/interfaces.ts",
+          "importPath": "../interfaces.js"
+        },
+        {
+          "from": "src/features/messaging-next/adapters/in-memory.ts",
+          "to": "src/features/messaging-next/types.ts",
+          "importPath": "../types.js"
+        },
+        {
+          "from": "src/features/messaging-next/adapters/rtdb.test.js",
+          "to": "src/features/messaging-next/adapters/rtdb.ts",
+          "importPath": "./rtdb.js"
+        },
+        {
+          "from": "src/features/messaging-next/adapters/rtdb.ts",
+          "to": "src/features/messaging-next/interfaces.ts",
+          "importPath": "../interfaces.js"
+        },
+        {
+          "from": "src/features/messaging-next/adapters/rtdb.ts",
+          "to": "src/features/messaging-next/schema.ts",
+          "importPath": "../schema.js"
+        },
+        {
+          "from": "src/features/messaging-next/adapters/rtdb.ts",
+          "to": "src/features/messaging-next/types.ts",
+          "importPath": "../types.js"
+        },
+        {
+          "from": "src/features/messaging-next/conversation.actions.ts",
+          "to": "src/features/messaging-next/conversation.state.ts",
+          "importPath": "./conversation.state.js"
+        },
+        {
+          "from": "src/features/messaging-next/conversation.actions.ts",
+          "to": "src/features/messaging-next/interfaces.ts",
+          "importPath": "./interfaces.js"
+        },
+        {
+          "from": "src/features/messaging-next/conversation.actions.ts",
+          "to": "src/features/messaging-next/local-drafts.ts",
+          "importPath": "./local-drafts.js"
+        },
+        {
+          "from": "src/features/messaging-next/conversation.actions.ts",
+          "to": "src/features/messaging-next/message-ordering.ts",
+          "importPath": "./message-ordering.js"
+        },
+        {
+          "from": "src/features/messaging-next/conversation.actions.ts",
+          "to": "src/features/messaging-next/types.ts",
+          "importPath": "./types.js"
+        },
+        {
+          "from": "src/features/messaging-next/conversation.state.ts",
+          "to": "src/features/messaging-next/interfaces.ts",
+          "importPath": "./interfaces.js"
+        },
+        {
+          "from": "src/features/messaging-next/ConversationPanel.tsx",
+          "to": "src/features/messaging-next/conversation.actions.ts",
+          "importPath": "./conversation.actions.js"
+        },
+        {
+          "from": "src/features/messaging-next/ConversationPanel.tsx",
+          "to": "src/features/messaging-next/conversation.state.ts",
+          "importPath": "./conversation.state.js"
+        },
+        {
+          "from": "src/features/messaging-next/ConversationPanel.tsx",
+          "to": "src/features/messaging-next/interfaces.ts",
+          "importPath": "./interfaces.js"
+        },
+        {
+          "from": "src/features/messaging-next/ConversationPanel.tsx",
+          "to": "src/features/messaging-next/local-drafts.ts",
+          "importPath": "./local-drafts.js"
+        },
+        {
+          "from": "src/features/messaging-next/ConversationPanel.tsx",
+          "to": "src/features/messaging-next/messaging-runtime.ts",
+          "importPath": "./messaging-runtime.js"
+        },
+        {
+          "from": "src/features/messaging-next/ConversationPanel.tsx",
+          "to": "src/features/messaging-next/types.ts",
+          "importPath": "./types.js"
+        },
+        {
+          "from": "src/features/messaging-next/ConversationPanel.tsx",
+          "to": "src/features/messaging-next/use-conversation.ts",
+          "importPath": "./use-conversation.js"
+        },
+        {
+          "from": "src/features/messaging-next/interfaces.ts",
+          "to": "src/features/messaging-next/types.ts",
+          "importPath": "./types.js"
+        },
+        {
+          "from": "src/features/messaging-next/local-drafts.ts",
+          "to": "src/features/messaging-next/types.ts",
+          "importPath": "./types.js"
+        },
+        {
+          "from": "src/features/messaging-next/message-ordering.ts",
+          "to": "src/features/messaging-next/interfaces.ts",
+          "importPath": "./interfaces.js"
+        },
+        {
+          "from": "src/features/messaging-next/message-ordering.ts",
+          "to": "src/features/messaging-next/types.ts",
+          "importPath": "./types.js"
+        },
+        {
+          "from": "src/features/messaging-next/messaging-runtime.ts",
+          "to": "src/features/messaging-next/adapters/rtdb.ts",
+          "importPath": "./adapters/rtdb.js"
+        },
+        {
+          "from": "src/features/messaging-next/tests/conversation.actions.test.js",
+          "to": "src/features/messaging-next/conversation.actions.ts",
+          "importPath": "../conversation.actions.js"
+        },
+        {
+          "from": "src/features/messaging-next/tests/conversation.actions.test.js",
+          "to": "src/features/messaging-next/conversation.state.ts",
+          "importPath": "../conversation.state.js"
+        },
+        {
+          "from": "src/features/messaging-next/tests/local-drafts.test.js",
+          "to": "src/features/messaging-next/local-drafts.ts",
+          "importPath": "../local-drafts.js"
+        },
+        {
+          "from": "src/features/messaging-next/tests/schema.test.js",
+          "to": "src/features/messaging-next/schema.ts",
+          "importPath": "../schema.js"
+        },
+        {
+          "from": "src/features/messaging-next/tests/use-conversation.test.js",
+          "to": "src/features/messaging-next/conversation.actions.ts",
+          "importPath": "../conversation.actions.js"
+        },
+        {
+          "from": "src/features/messaging-next/tests/use-conversation.test.js",
+          "to": "src/features/messaging-next/conversation.state.ts",
+          "importPath": "../conversation.state.js"
+        },
+        {
+          "from": "src/features/messaging-next/tests/use-conversation.test.js",
+          "to": "src/features/messaging-next/use-conversation.ts",
+          "importPath": "../use-conversation.js"
+        },
+        {
+          "from": "src/features/messaging-next/types.ts",
+          "to": "src/features/messaging-next/schema.ts",
+          "importPath": "./schema.js"
+        },
+        {
+          "from": "src/features/messaging-next/use-conversation.ts",
+          "to": "src/features/messaging-next/conversation.actions.ts",
+          "importPath": "./conversation.actions.js"
+        },
+        {
+          "from": "src/features/messaging-next/use-conversation.ts",
+          "to": "src/features/messaging-next/conversation.state.ts",
+          "importPath": "./conversation.state.js"
+        },
+        {
+          "from": "src/features/messaging-next/use-conversation.ts",
+          "to": "src/features/messaging-next/interfaces.ts",
+          "importPath": "./interfaces.js"
+        },
+        {
+          "from": "src/features/messaging-next/use-conversation.ts",
+          "to": "src/features/messaging-next/message-ordering.ts",
+          "importPath": "./message-ordering.js"
+        },
+        {
+          "from": "src/features/messaging-next/use-conversation.ts",
+          "to": "src/features/messaging-next/types.ts",
+          "importPath": "./types.js"
         },
         {
           "from": "src/features/notifications/__tests__/enable-notifications-prompt.test.js",
@@ -899,6 +1384,16 @@
         },
         {
           "from": "src/features/notifications/index.js",
+          "to": "src/features/notifications/components/enable-notifications-prompt.js",
+          "importPath": "./components/enable-notifications-prompt.js"
+        },
+        {
+          "from": "src/features/notifications/index.js",
+          "to": "src/features/notifications/components/invite-notification.js",
+          "importPath": "./components/invite-notification.js"
+        },
+        {
+          "from": "src/features/notifications/index.js",
           "to": "src/features/notifications/components/invite-notification.js",
           "importPath": "./components/invite-notification.js"
         },
@@ -919,6 +1414,11 @@
         },
         {
           "from": "src/features/notifications/index.js",
+          "to": "src/features/notifications/components/referral-notification.js",
+          "importPath": "./components/referral-notification.js"
+        },
+        {
+          "from": "src/features/notifications/index.js",
           "to": "src/features/notifications/components/update-notification.js",
           "importPath": "./components/update-notification.js"
         },
@@ -926,6 +1426,16 @@
           "from": "src/features/notifications/index.js",
           "to": "src/features/notifications/in-app-notification-manager.js",
           "importPath": "./in-app-notification-manager.js"
+        },
+        {
+          "from": "src/features/notifications/index.js",
+          "to": "src/features/notifications/in-app-notification-manager.js",
+          "importPath": "./in-app-notification-manager.js"
+        },
+        {
+          "from": "src/features/presence/__tests__/setup.test.js",
+          "to": "src/features/presence/index.js",
+          "importPath": "../index.js"
         },
         {
           "from": "src/features/presence/components/PresenceIndicator.jsx",
@@ -946,6 +1456,21 @@
           "from": "src/features/push-notifications/__tests__/push-notifications.browser.test.js",
           "to": "src/features/push-notifications/push-notifications.js",
           "importPath": "../push-notifications.js"
+        },
+        {
+          "from": "src/features/push-notifications/__tests__/setup.test.js",
+          "to": "src/features/push-notifications/index.js",
+          "importPath": "../index.js"
+        },
+        {
+          "from": "src/features/push-notifications/__tests__/SWNavigation.test.jsx",
+          "to": "src/features/push-notifications/SWNavigation.tsx",
+          "importPath": "../SWNavigation"
+        },
+        {
+          "from": "src/features/push-notifications/index.js",
+          "to": "src/features/push-notifications/push-notifications.js",
+          "importPath": "./push-notifications.js"
         },
         {
           "from": "src/features/push-notifications/index.js",
@@ -976,6 +1501,16 @@
           "from": "src/features/push-notifications/sw/push-event-handler.js",
           "to": "src/features/push-notifications/sw/notification-presentation.js",
           "importPath": "./notification-presentation.js"
+        },
+        {
+          "from": "src/features/push-notifications/SWNavigation.tsx",
+          "to": "src/features/messaging-next/interfaces.ts",
+          "importPath": "../messaging-next/interfaces.js"
+        },
+        {
+          "from": "src/features/pwa/index.ts",
+          "to": "src/features/pwa/update-handlers.js",
+          "importPath": "./update-handlers.js"
         },
         {
           "from": "src/features/signaling/index.js",
@@ -1020,7 +1555,7 @@
       ]
     },
     "feature->shared": {
-      "count": 32,
+      "count": 50,
       "files": [
         {
           "from": "src/features/call/components/CallControls.tsx",
@@ -1064,6 +1599,11 @@
         },
         {
           "from": "src/features/contacts/components/add-contact-modal.js",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../../shared/i18n/index.js"
+        },
+        {
+          "from": "src/features/contacts/components/add-contact-modal.js",
           "to": "src/shared/utils/google/gmail-send.js",
           "importPath": "../../../shared/utils/google/gmail-send.js"
         },
@@ -1081,6 +1621,16 @@
           "from": "src/features/contacts/components/add-contact-modal.js",
           "to": "src/shared/utils/ui-utils/dom-utils.js",
           "importPath": "../../../shared/utils/ui-utils/dom-utils.js"
+        },
+        {
+          "from": "src/features/contacts/components/AddContactButton.tsx",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../../shared/i18n/index.js"
+        },
+        {
+          "from": "src/features/contacts/components/AddContactModal.tsx",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../../shared/i18n/index.js"
         },
         {
           "from": "src/features/contacts/components/AddContactModal.tsx",
@@ -1103,14 +1653,34 @@
           "importPath": "../../../shared/events/index.js"
         },
         {
+          "from": "src/features/contacts/components/ContactEntry.jsx",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../../shared/i18n/index.js"
+        },
+        {
           "from": "src/features/contacts/components/ContactsList.tsx",
           "to": "src/shared/i18n/index.ts",
           "importPath": "../../../shared/i18n/index"
         },
         {
+          "from": "src/features/contacts/components/EditContactDialog.jsx",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../../shared/i18n/index.js"
+        },
+        {
+          "from": "src/features/contacts/components/import-contacts-component.js",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../../shared/i18n/index.js"
+        },
+        {
           "from": "src/features/contacts/components/import-contacts-component.js",
           "to": "src/shared/utils/ui-utils/dom-utils.js",
           "importPath": "../../../shared/utils/ui-utils/dom-utils.js"
+        },
+        {
+          "from": "src/features/contacts/components/SaveContactDialog.jsx",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../../shared/i18n/index.js"
         },
         {
           "from": "src/features/contacts/import/google-import.js",
@@ -1131,6 +1701,11 @@
           "from": "src/features/contacts/referrals/referral-handler.js",
           "to": "src/shared/events/index.js",
           "importPath": "../../../shared/events/index.js"
+        },
+        {
+          "from": "src/features/contacts/referrals/referral-handler.js",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../../shared/i18n/index.js"
         },
         {
           "from": "src/features/contacts/referrals/referral-handler.js",
@@ -1158,9 +1733,24 @@
           "importPath": "../../../shared/utils/dev/dev-utils.js"
         },
         {
+          "from": "src/features/notifications/components/enable-notifications-prompt.js",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../../shared/i18n/index.js"
+        },
+        {
+          "from": "src/features/notifications/components/invite-notification.js",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../../shared/i18n/index.js"
+        },
+        {
           "from": "src/features/notifications/components/invite-notification.js",
           "to": "src/shared/utils/ui-utils/dom-utils.js",
           "importPath": "../../../shared/utils/ui-utils/dom-utils.js"
+        },
+        {
+          "from": "src/features/notifications/components/missed-call-notification.js",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../../shared/i18n/index.js"
         },
         {
           "from": "src/features/notifications/components/missed-call-notification.js",
@@ -1168,14 +1758,49 @@
           "importPath": "../../../shared/utils/ui-utils/dom-utils.js"
         },
         {
+          "from": "src/features/notifications/components/NotificationsToggle.jsx",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../../shared/i18n/index.js"
+        },
+        {
+          "from": "src/features/notifications/components/push-unsupported-notification.js",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../../shared/i18n/index.js"
+        },
+        {
+          "from": "src/features/notifications/components/referral-notification.js",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../../shared/i18n/index.js"
+        },
+        {
           "from": "src/features/notifications/components/referral-notification.js",
           "to": "src/shared/utils/ui-utils/dom-utils.js",
           "importPath": "../../../shared/utils/ui-utils/dom-utils.js"
         },
         {
+          "from": "src/features/notifications/components/update-notification.js",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../../../shared/i18n/index.js"
+        },
+        {
           "from": "src/features/notifications/in-app-notification-manager.js",
           "to": "src/shared/utils/ui-utils/clickOutside.js",
           "importPath": "../../shared/utils/ui-utils/clickOutside.js"
+        },
+        {
+          "from": "src/features/notifications/index.js",
+          "to": "src/shared/events/index.js",
+          "importPath": "../../shared/events/index.js"
+        },
+        {
+          "from": "src/features/presence/index.js",
+          "to": "src/shared/events/index.js",
+          "importPath": "../../shared/events/index.js"
+        },
+        {
+          "from": "src/features/push-notifications/index.js",
+          "to": "src/shared/events/index.js",
+          "importPath": "../../shared/events/index.js"
         },
         {
           "from": "src/features/push-notifications/push-notifications.js",
@@ -1185,12 +1810,52 @@
       ]
     },
     "feature->stores": {
-      "count": 3,
+      "count": 16,
       "files": [
+        {
+          "from": "src/features/contacts/components/ContactEntry.jsx",
+          "to": "src/stores/selectedConversationStore.ts",
+          "importPath": "../../../stores/selectedConversationStore"
+        },
+        {
+          "from": "src/features/contacts/components/ContactsList.tsx",
+          "to": "src/stores/selectedConversationStore.ts",
+          "importPath": "../../../stores/selectedConversationStore"
+        },
+        {
+          "from": "src/features/contacts/components/EditContactDialog.jsx",
+          "to": "src/stores/contactsStore.ts",
+          "importPath": "../../../stores/contactsStore.js"
+        },
+        {
+          "from": "src/features/contacts/components/SaveContactDialog.jsx",
+          "to": "src/stores/contactsStore.ts",
+          "importPath": "../../../stores/contactsStore.js"
+        },
+        {
+          "from": "src/features/contacts/import/google-import.js",
+          "to": "src/stores/contactsStore.ts",
+          "importPath": "../../../stores/contactsStore.js"
+        },
         {
           "from": "src/features/contacts/import/google-import.js",
           "to": "src/stores/userDirectoryStore.js",
           "importPath": "../../../stores/userDirectoryStore.js"
+        },
+        {
+          "from": "src/features/contacts/index.ts",
+          "to": "src/stores/contactsStore.ts",
+          "importPath": "../../stores/contactsStore.js"
+        },
+        {
+          "from": "src/features/contacts/invites/invitations.js",
+          "to": "src/stores/contactsStore.ts",
+          "importPath": "../../../stores/contactsStore.js"
+        },
+        {
+          "from": "src/features/contacts/invites/manual-contact-invite.js",
+          "to": "src/stores/contactsStore.ts",
+          "importPath": "../../../stores/contactsStore.js"
         },
         {
           "from": "src/features/contacts/invites/manual-contact-invite.js",
@@ -1201,6 +1866,31 @@
           "from": "src/features/contacts/referrals/referral-handler.js",
           "to": "src/stores/userDirectoryStore.js",
           "importPath": "../../../stores/userDirectoryStore.js"
+        },
+        {
+          "from": "src/features/contacts/useContacts.ts",
+          "to": "src/stores/contactsStore.ts",
+          "importPath": "../../stores/contactsStore.js"
+        },
+        {
+          "from": "src/features/messaging-next/use-conversation.ts",
+          "to": "src/stores/contactsStore.ts",
+          "importPath": "../../stores/contactsStore.js"
+        },
+        {
+          "from": "src/features/push-notifications/push-notifications.js",
+          "to": "src/stores/contactsStore.ts",
+          "importPath": "../../stores/contactsStore.js"
+        },
+        {
+          "from": "src/features/push-notifications/SWNavigation.tsx",
+          "to": "src/stores/contactsStore.ts",
+          "importPath": "../../stores/contactsStore"
+        },
+        {
+          "from": "src/features/push-notifications/SWNavigation.tsx",
+          "to": "src/stores/selectedConversationStore.ts",
+          "importPath": "../../stores/selectedConversationStore"
         }
       ]
     },
@@ -1214,168 +1904,8 @@
         }
       ]
     },
-    "setup->auth": {
-      "count": 1,
-      "files": [
-        {
-          "from": "src/setup/setupAuth.js",
-          "to": "src/auth/index.js",
-          "importPath": "../auth/index.js"
-        }
-      ]
-    },
-    "setup->feature": {
-      "count": 8,
-      "files": [
-        {
-          "from": "src/setup/setupAuth.js",
-          "to": "src/features/contacts/invites/invitations.js",
-          "importPath": "../features/contacts/invites/invitations.js"
-        },
-        {
-          "from": "src/setup/setupAuth.js",
-          "to": "src/features/contacts/invites/invite-listener.js",
-          "importPath": "../features/contacts/invites/invite-listener.js"
-        },
-        {
-          "from": "src/setup/setupAuth.js",
-          "to": "src/features/contacts/referrals/referral-handler.js",
-          "importPath": "../features/contacts/referrals/referral-handler.js"
-        },
-        {
-          "from": "src/setup/setupContacts.js",
-          "to": "src/features/contacts/referrals/referral-handler.js",
-          "importPath": "../features/contacts/referrals/referral-handler.js"
-        },
-        {
-          "from": "src/setup/setupMainAppBusListeners.js",
-          "to": "src/features/presence/index.js",
-          "importPath": "../features/presence/index.js"
-        },
-        {
-          "from": "src/setup/setupMainAppBusListeners.js",
-          "to": "src/features/push-notifications/index.js",
-          "importPath": "../features/push-notifications/index.js"
-        },
-        {
-          "from": "src/setup/setupNotificationsHandlers.js",
-          "to": "src/features/notifications/index.js",
-          "importPath": "../features/notifications/index.js"
-        },
-        {
-          "from": "src/setup/setupPWAUpdates.js",
-          "to": "src/features/pwa/update-handlers.js",
-          "importPath": "../features/pwa/update-handlers.js"
-        }
-      ]
-    },
-    "setup->setup": {
-      "count": 12,
-      "files": [
-        {
-          "from": "src/setup/tests/handleServiceWorkerNavigation.test.js",
-          "to": "src/setup/handleServiceWorkerNavigation.js",
-          "importPath": "../handleServiceWorkerNavigation.js"
-        },
-        {
-          "from": "src/setup/tests/handleServiceWorkerNavigation.test.js",
-          "to": "src/setup/handleServiceWorkerNavigation.js",
-          "importPath": "../handleServiceWorkerNavigation.js"
-        },
-        {
-          "from": "src/setup/tests/handleServiceWorkerNavigation.test.js",
-          "to": "src/setup/handleServiceWorkerNavigation.js",
-          "importPath": "../handleServiceWorkerNavigation.js"
-        },
-        {
-          "from": "src/setup/tests/handleServiceWorkerNavigation.test.js",
-          "to": "src/setup/handleServiceWorkerNavigation.js",
-          "importPath": "../handleServiceWorkerNavigation.js"
-        },
-        {
-          "from": "src/setup/tests/setupAuth.test.js",
-          "to": "src/setup/setupAuth.js",
-          "importPath": "../setupAuth.js"
-        },
-        {
-          "from": "src/setup/tests/setupAuth.test.js",
-          "to": "src/setup/setupAuth.js",
-          "importPath": "../setupAuth.js"
-        },
-        {
-          "from": "src/setup/tests/setupAuth.test.js",
-          "to": "src/setup/setupAuth.js",
-          "importPath": "../setupAuth.js"
-        },
-        {
-          "from": "src/setup/tests/setupAuth.test.js",
-          "to": "src/setup/setupAuth.js",
-          "importPath": "../setupAuth.js"
-        },
-        {
-          "from": "src/setup/tests/setupMainAppBusListeners.test.js",
-          "to": "src/setup/setupMainAppBusListeners.js",
-          "importPath": "../setupMainAppBusListeners.js"
-        },
-        {
-          "from": "src/setup/tests/setupMainAppBusListeners.test.js",
-          "to": "src/setup/setupMainAppBusListeners.js",
-          "importPath": "../setupMainAppBusListeners.js"
-        },
-        {
-          "from": "src/setup/tests/setupMainAppBusListeners.test.js",
-          "to": "src/setup/setupMainAppBusListeners.js",
-          "importPath": "../setupMainAppBusListeners.js"
-        },
-        {
-          "from": "src/setup/tests/setupServiceWorkerNavigation.test.js",
-          "to": "src/setup/setupServiceWorkerNavigation.js",
-          "importPath": "../setupServiceWorkerNavigation.js"
-        }
-      ]
-    },
-    "setup->shared": {
-      "count": 5,
-      "files": [
-        {
-          "from": "src/setup/handleServiceWorkerNavigation.js",
-          "to": "src/shared/events/index.js",
-          "importPath": "../shared/events/index.js"
-        },
-        {
-          "from": "src/setup/setupAuth.js",
-          "to": "src/shared/events/index.js",
-          "importPath": "../shared/events/index.js"
-        },
-        {
-          "from": "src/setup/setupAuth.js",
-          "to": "src/shared/utils/dev/dev-utils.js",
-          "importPath": "../shared/utils/dev/dev-utils.js"
-        },
-        {
-          "from": "src/setup/setupMainAppBusListeners.js",
-          "to": "src/shared/events/index.js",
-          "importPath": "../shared/events/index.js"
-        },
-        {
-          "from": "src/setup/setupNotificationsHandlers.js",
-          "to": "src/shared/events/index.js",
-          "importPath": "../shared/events/index.js"
-        }
-      ]
-    },
-    "setup->stores": {
-      "count": 1,
-      "files": [
-        {
-          "from": "src/setup/setupAuth.js",
-          "to": "src/stores/userDirectoryStore.js",
-          "importPath": "../stores/userDirectoryStore.js"
-        }
-      ]
-    },
     "shared->shared": {
-      "count": 12,
+      "count": 14,
       "files": [
         {
           "from": "src/shared/events/index.js",
@@ -1386,6 +1916,11 @@
           "from": "src/shared/events/index.test.js",
           "to": "src/shared/events/index.js",
           "importPath": "./index.js"
+        },
+        {
+          "from": "src/shared/i18n/tests/index.test.jsx",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../index.js"
         },
         {
           "from": "src/shared/utils/email-hash.test.js",
@@ -1411,6 +1946,11 @@
           "from": "src/shared/utils/share-invite-presets.test.js",
           "to": "src/shared/utils/share-invite-presets.js",
           "importPath": "./share-invite-presets.js"
+        },
+        {
+          "from": "src/shared/utils/share-invite.js",
+          "to": "src/shared/i18n/index.ts",
+          "importPath": "../i18n/index.js"
         },
         {
           "from": "src/shared/utils/share-invite.js",
@@ -1591,6 +2131,16 @@
           "from": "src/stores/contactsStore.ts",
           "to": "src/auth/index.js",
           "importPath": "../auth/index.js"
+        }
+      ]
+    },
+    "stores->feature": {
+      "count": 1,
+      "files": [
+        {
+          "from": "src/stores/selectedConversationStore.ts",
+          "to": "src/features/messaging-next/interfaces.ts",
+          "importPath": "../features/messaging-next/interfaces.js"
         }
       ]
     },

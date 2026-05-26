@@ -98,6 +98,7 @@ overrides.push(
   ),
 );
 
+// TODO: Move rtdb to storage? Is this worth keeping?
 overrides.push(
   dependencyRule(
     ['src/infra/*.{js,jsx,ts,tsx}', 'src/infra/**/*.{js,jsx,ts,tsx}'],
@@ -114,44 +115,14 @@ overrides.push(
 
 overrides.push(
   dependencyRule(
-    ['src/setup/*.{js,jsx,ts,tsx}', 'src/setup/**/*.{js,jsx,ts,tsx}'],
-    [
-      {
-        from: { type: 'setup' },
-        allow: {
-          to: [
-            { type: 'setup' },
-            { type: 'auth' },
-            { type: 'feature' },
-            { type: 'shared' },
-            { type: 'components' },
-            { type: 'infra' },
-            { type: 'stores' },
-          ],
-        },
-        message:
-          'Setup may only import from setup, auth, feature, shared, components, infra, and stores.',
-      },
-    ],
-  ),
-);
-
-overrides.push(
-  dependencyRule(
     ['src/components/*.{js,jsx,ts,tsx}', 'src/components/**/*.{js,jsx,ts,tsx}'],
     [
       {
         from: { type: 'components' },
         allow: {
-          to: [
-            { type: 'components' },
-            { type: 'auth' },
-            { type: 'shared' },
-            { type: 'infra' },
-          ],
+          to: [{ type: 'components' }, { type: 'auth' }, { type: 'shared' }],
         },
-        message:
-          'Components may only import from components, auth, shared and infra.',
+        message: 'Components may only import from components, auth and shared',
       },
     ],
   ),
@@ -173,6 +144,7 @@ overrides.push(
   ),
 );
 
+// TODO: If keeping stores as solid state for mirroring storage, keep it clean and remove this (move messaging and any feature storage accessors here)
 overrides.push(
   dependencyRule(
     ['src/stores/*.{js,jsx,ts,tsx}', 'src/stores/**/*.{js,jsx,ts,tsx}'],
@@ -186,10 +158,11 @@ overrides.push(
             { type: 'shared' },
             { type: 'storage' },
             { type: 'infra' },
+            { type: 'feature' },
           ],
         },
         message:
-          'Stores may only import from stores, auth, shared, storage, and infra — they sit below features/components/setup.',
+          'Stores may only import from stores, auth, shared, storage, infra and feature.',
       },
     ],
   ),
@@ -205,9 +178,10 @@ overrides.push(
           to: [
             { type: 'app' },
             { type: 'auth' },
-            { type: 'shared' },
-            { type: 'components' },
+            { type: 'stores' },
             { type: 'feature' },
+            { type: 'components' },
+            { type: 'shared' },
           ],
         },
         message:
@@ -270,14 +244,6 @@ export default [
           pattern: [
             'src/auth/*.{js,jsx,ts,tsx}',
             'src/auth/**/*.{js,jsx,ts,tsx}',
-          ],
-        },
-        {
-          type: 'setup',
-          mode: 'full',
-          pattern: [
-            'src/setup/*.{js,jsx,ts,tsx}',
-            'src/setup/**/*.{js,jsx,ts,tsx}',
           ],
         },
         {

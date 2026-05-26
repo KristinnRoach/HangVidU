@@ -729,6 +729,10 @@
         });
       }
 
+      // Strip the universal `src/` prefix — every classified file lives there,
+      // so it's pure noise in the UI.
+      const trimSrc = (p) => (p.startsWith('src/') ? p.slice(4) : p);
+
       function renderEdgeDetail() {
         const [from, to] = state.focusedEdge.split('->');
         const entry = state.imports?.edges?.[state.focusedEdge];
@@ -753,11 +757,11 @@
             const items = list
               .map(
                 (f) =>
-                  `<li><code>${f.to}</code> <span class="muted">via <code>${f.importPath}</code></span></li>`,
+                  `<li><code>${trimSrc(f.to)}</code> <span class="muted">via <code>${f.importPath}</code></span></li>`,
               )
               .join('');
             return `<div class="edge-group">
-              <div class="edge-source"><code>${src}</code></div>
+              <div class="edge-source"><code>${trimSrc(src)}</code></div>
               <ul>${items}</ul>
             </div>`;
           })
@@ -949,8 +953,22 @@
         document.querySelectorAll('g.gedge.clickable').forEach((g) => {
           g.onclick = (ev) => {
             ev.stopPropagation();
+            // Bidirectional pairs (A→B and B→A) render two overlapping <g>
+            // elements at the same coords; the click may hit the wrong one.
+            // Resolve to the direction relevant to the focused node:
+            // prefer outgoing (focused → other), fall back to incoming.
             const k = g.dataset.key;
-            focusEdge(state.focusedEdge === k ? null : k);
+            const [a, b] = k.split('->');
+            const other = a === state.focused ? b : a;
+            const outgoing = `${state.focused}->${other}`;
+            const incoming = `${other}->${state.focused}`;
+            const edges = state.imports?.edges || {};
+            const resolved = edges[outgoing]
+              ? outgoing
+              : edges[incoming]
+                ? incoming
+                : k;
+            focusEdge(state.focusedEdge === resolved ? null : resolved);
           };
         });
       }
@@ -969,7 +987,7 @@
           } else {
             lines.push(`  ${entry.count} import(s) across the codebase:`);
             entry.files.forEach((f) => {
-              lines.push(`    - ${f.from}  →  ${f.to}`);
+              lines.push(`    - ${trimSrc(f.from)}  →  ${trimSrc(f.to)}`);
             });
           }
           el.textContent = lines.join('\n');

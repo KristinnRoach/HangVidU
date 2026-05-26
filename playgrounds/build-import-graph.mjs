@@ -97,10 +97,20 @@ async function resolveImport(fromFile, spec) {
   if (!spec.startsWith('.')) return null; // npm pkg, skip
   const baseDir = dirname(fromFile);
   const target = resolve(baseDir, spec);
-  // Strip a trailing extension we should already match
+  // If the spec already ends in a known extension, try it as-is first,
+  // then try swapping .js↔.ts / .jsx↔.tsx (TS NodeNext convention where
+  // source is .ts but the import path uses .js).
   const hasExt = SRC_EXTS.some((e) => target.endsWith(e));
   if (hasExt) {
-    return (await exists(target)) ? target : null;
+    if (await exists(target)) return target;
+    const swaps = { '.js': '.ts', '.jsx': '.tsx', '.ts': '.js', '.tsx': '.jsx' };
+    for (const [from, to] of Object.entries(swaps)) {
+      if (target.endsWith(from)) {
+        const swapped = target.slice(0, -from.length) + to;
+        if (await exists(swapped)) return swapped;
+      }
+    }
+    return null;
   }
   // Try direct file w/ each ext
   for (const ext of SRC_EXTS) {
