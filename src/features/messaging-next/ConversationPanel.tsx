@@ -274,9 +274,19 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                                     class={styles.filePreviewImg}
                                     src={file.data}
                                     alt={file.fileName}
+                                    role='button'
+                                    tabIndex={0}
+                                    aria-label={`Open preview for ${file.fileName}`}
                                     onClick={() =>
                                       showImagePreview(file.data, file.fileName)
                                     }
+                                    onKeyDown={(e) => {
+                                      if (e.key !== 'Enter' && e.key !== ' ') {
+                                        return;
+                                      }
+                                      e.preventDefault();
+                                      showImagePreview(file.data, file.fileName);
+                                    }}
                                   />
                                 </Show>
                                 <span class={styles.fileMessageMeta}>

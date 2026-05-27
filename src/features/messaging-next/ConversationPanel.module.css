@@ -82,11 +82,9 @@
 }
 
 .msg:has(.filePreviewImg) {
-.msg:has(.filePreviewImg) {
   background: transparent;
   padding: 0;
   margin-bottom: 0.75rem;
-}
 }
 
 .filePreviewImg {
