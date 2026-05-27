@@ -1,7 +1,7 @@
 /* LEFT SIDE */
 
 .localeToggle {
-  position: fixed;
+  position: absolute;
   bottom: 4px;
   left: 8px;
   z-index: var(--z-high);
@@ -30,7 +30,7 @@
 /* RIGHT SIDE */
 
 .legalFooter {
-  position: fixed;
+  position: absolute;
   bottom: 4px;
   right: 8px;
   height: 28px;

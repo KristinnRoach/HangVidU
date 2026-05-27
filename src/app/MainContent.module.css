@@ -32,13 +32,18 @@
   overflow: hidden;
 
   height: 100svh;
-  width: clamp(200px, 100%, 600px);
+  width: var(--content-width);
 
   background: var(--bg-darker);
 }
 
 .activeViewContainer[hidden] {
   display: none;
+}
+
+.footer {
+  width: var(--content-width);
+  margin-inline: auto;
 }
 
 .loading,

@@ -3,6 +3,7 @@
 .topBar {
   display: grid;
   grid-template-columns: auto 1fr auto;
+  margin-inline: auto;
 
   background: inherit;
   border-bottom: 1px solid rgba(198, 198, 198, 0.03);
@@ -10,8 +11,7 @@
   position: relative;
   z-index: var(--z-mid);
 
-  width: 100svw;
-  max-width: 100svw;
+  width: var(--content-width);
   height: 50px;
   line-height: 50px;
 

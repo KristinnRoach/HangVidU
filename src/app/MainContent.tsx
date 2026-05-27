@@ -158,8 +158,10 @@ export default function MainContent() {
         </main>
 
         <Show when={activeView() === 'home' || activeView() === 'contacts'}>
-          <LegalFooter />
-          <LocaleToggle />
+          <div class={mainStyles.footer}>
+            <LegalFooter />
+            <LocaleToggle />
+          </div>
         </Show>
       </LoadBoundary>
     </div>
