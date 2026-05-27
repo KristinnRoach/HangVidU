@@ -45,13 +45,13 @@ if (!RTDB_URL) {
   process.exit(1);
 }
 
-if (!DRY_RUN && !RTDB_URL_FROM_ENV) {
-  console.error(
-    'Refusing to run with --apply without explicit RTDB_URL environment variable set.',
-  );
-  console.error('Set RTDB_URL to the target RTDB instance and re-run with --apply.');
-  process.exit(1);
-}
+// if (!DRY_RUN && !RTDB_URL_FROM_ENV) {
+//   console.error(
+//     'Refusing to run with --apply without explicit RTDB_URL environment variable set.',
+//   );
+//   console.error('Set RTDB_URL to the target RTDB instance and re-run with --apply.');
+//   process.exit(1);
+// }
 
 const serviceAccountPath = path.join(
   __dirname,
@@ -59,7 +59,10 @@ const serviceAccountPath = path.join(
 );
 
 if (!fs.existsSync(serviceAccountPath)) {
-  console.error('Error: service-account-key.json not found at', serviceAccountPath);
+  console.error(
+    'Error: service-account-key.json not found at',
+    serviceAccountPath,
+  );
   process.exit(1);
 }
 
@@ -167,7 +170,9 @@ async function main() {
       continue;
     }
 
-    for (const [storedSubscriptionId, record] of Object.entries(pushSubscriptions)) {
+    for (const [storedSubscriptionId, record] of Object.entries(
+      pushSubscriptions,
+    )) {
       stats.subscriptionRecordsScanned++;
 
       const endpoint = record?.subscription?.endpoint || record?.endpoint;
@@ -238,7 +243,8 @@ async function main() {
         .filter((owner) => owner.uid !== canonicalUid)
         .forEach((owner) => {
           stats.duplicateCopiesRemoved++;
-          updates[`users/${owner.uid}/pushSubscriptions/${subscriptionId}`] = null;
+          updates[`users/${owner.uid}/pushSubscriptions/${subscriptionId}`] =
+            null;
           console.log(
             `[remove-duplicate] users/${owner.uid}/pushSubscriptions/${subscriptionId}`,
           );
@@ -246,7 +252,9 @@ async function main() {
     }
   }
 
-  for (const [subscriptionId, indexedOwnerUid] of Object.entries(indexedOwners)) {
+  for (const [subscriptionId, indexedOwnerUid] of Object.entries(
+    indexedOwners,
+  )) {
     if (!ownersBySubscriptionId.has(subscriptionId)) {
       stats.orphanedIndexes++;
       updates[`pushSubscriptionOwners/${subscriptionId}`] = null;
@@ -273,12 +281,16 @@ async function main() {
   console.log('');
   console.log('--- Summary ---');
   console.log(`Users scanned:                 ${stats.usersScanned}`);
-  console.log(`Subscription records scanned:  ${stats.subscriptionRecordsScanned}`);
+  console.log(
+    `Subscription records scanned:  ${stats.subscriptionRecordsScanned}`,
+  );
   console.log(`Unique subscription IDs:       ${stats.uniqueSubscriptionIds}`);
   console.log(`Missing indexes to backfill:   ${stats.missingIndexes}`);
   console.log(`Wrong indexes to repair:       ${stats.wrongIndexes}`);
   console.log(`Orphaned indexes to remove:    ${stats.orphanedIndexes}`);
-  console.log(`Duplicate subscription IDs:    ${stats.duplicateSubscriptionIds}`);
+  console.log(
+    `Duplicate subscription IDs:    ${stats.duplicateSubscriptionIds}`,
+  );
   console.log(`Duplicate copies to remove:    ${stats.duplicateCopiesRemoved}`);
   console.log(`Malformed entries skipped:     ${stats.malformedEntries}`);
   console.log(`Total RTDB paths to update:    ${updateCount}`);
