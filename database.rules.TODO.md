@@ -1,13 +1,15 @@
 # Database Rules Migration TODO
 
-These rules are shared by production and development. Do not remove legacy paths
-until the Solid/p2p call-flow branch has been merged, deployed, and production
-clients are no longer running the `main` branch call code.
+These rules are shared by production and development. Items below are deferred
+to subsequent releases — they must not block the Solid cutover deploy.
 
-## After the new call-flow is deployed
+## After the new call-flow is deployed (legacy clients fully retired)
 
-- Restore the scoped `rooms/{roomId}` access rules that were temporarily rolled
-  back for production legacy call compatibility:
+The Solid deploy keeps `rooms/{roomId}` permissive (`read: true / write: true`)
+for one release as a safety net for any cached PWA clients still running
+`archive-pre-solid-main` call code. Once those clients are confirmed gone:
+
+- Restore the scoped `rooms/{roomId}` access rules:
 
   ```json
   "rooms": {
@@ -24,36 +26,50 @@ clients are no longer running the `main` branch call code.
       },
       "p2pSignaling": {
         ".write": "auth != null && root.child('rooms').child($roomId).child('participants').child(auth.uid).exists()"
-      },
-      "watch": {
-        ".write": "auth != null && root.child('rooms').child($roomId).child('participants').child(auth.uid).exists()"
-      },
-      "mediaSyncSignaling": {
-        ".write": "auth != null && root.child('rooms').child($roomId).child('participants').child(auth.uid).exists()"
       }
     }
   }
   ```
-- Review whether `users/{userId}/recentCalls` is still used. It is required by
-  the current production `main` branch call listeners, so it must stay until the
-  legacy call module is fully retired in production.
-- Review whether `users/{userId}/outgoingCall` is still used. It belongs to the
-  legacy outgoing-call UI state and may be removable after the new call-flow owns
-  all outgoing call state.
-- Review whether `users/{userId}/calls/*` can replace any legacy call lifecycle
-  paths, and tighten validation for:
-  - `calls/incoming`: require the invite writer to match `callerId`, validate
-    required fields, and define whether only contacts may create call invites.
-  - `calls/response`: require response payloads to match the expected room and
-    sender, and define who can clear the response.
-  - `calls/response` `.read` is currently `auth != null`, so any signed-in user
-    can read any other user's call-response signaling (caller/callee uids,
-    roomId, response type, timestamps). Scope to the participants of the call
-    — either by including `callerId` in the payload and gating
-    `.read` on `auth.uid === data.child('callerId').val()`, or by moving the
-    response under `rooms/{roomId}` so room-access gates the read.
-- Once all active clients are migrated, remove obsolete call rules and matching
-  storage helpers in the same release.
+
+  The legacy `watch` and `mediaSyncSignaling` sub-rules can be dropped — the
+  Solid code does not use those paths (watch-together has not been re-wired
+  onto the new room model yet; add the sub-rule back when it is).
+
+- `users/{uid}/calls/response` `.read` is currently `auth != null`, which lets
+  any signed-in user read any other user's call-response signaling (caller/
+  callee uids, roomId, response type, timestamps). Scope to call participants
+  — either by including `callerId` in the payload and gating `.read` on
+  `auth.uid === data.child('callerId').val() || auth.uid === $userId`, or by
+  moving the response under `rooms/{roomId}` so room-access gates the read.
+
+- Tighten the remaining `calls/incoming` and `calls/response` `.write`
+  validation if any field constraints are still missing once the call flow is
+  fully exercised in prod (e.g. require `callerId === auth.uid` on writes,
+  bound expiresAt windows, restrict to contacts).
+
+## Conversations: backfill `members/` and drop the substring fallback
+
+Today both `conversations/{id}` `.read` and `messages/{messageId}` `.write`
+fall back to `$conversationId.contains(auth.uid + '_')` because neither the
+archive code nor the new Solid `messaging-next` adapter writes
+`conversations/{id}/members/{uid}`. The fallback is load-bearing: dropping it
+without a backfill would break every existing direct conversation. The
+substring rule is safe in practice because Firebase Auth UIDs are alphanumeric
+(no `_`), but is fragile in principle and ties us to the
+`{userA}_{userB}`-sorted direct-id format.
+
+Steps for a future release:
+
+1. Update the messaging RTDB adapter to write `members/{senderId}` and
+   `members/{recipientId}` on first send (or on conversation open) for direct
+   conversations.
+2. Run an admin backfill that derives both participants from the existing
+   `{userA}_{userB}` conversation id and writes `members/{uid}: true` for each.
+3. Drop both substring fallbacks from `database.rules.json`.
+4. While there, fix the direct-id format itself (see top of
+   [`src/shared/utils/direct-conversation-id.js`](./src/shared/utils/direct-conversation-id.js))
+   — `split('_')` breaks if uids ever contain `_`. Use a safer encoded id or
+   pass participant ids from conversation metadata.
 
 ## Password / username sign-in (deferred until verified or BetterAuth migration)
 
@@ -80,10 +96,10 @@ not affect production before the new flow is verified:
 
 ## Field rename: `userName` → `displayName` (or `appNickname`)
 
-Before deploying the username + password flow, rename the existing display-name
-field `userName` (used everywhere as a non-unique display string) to
-`displayName` or `appNickname` to disambiguate from the new `username` (unique
-login handle). This is a breaking data-shape change that touches:
+Before deploying the username + password flow widely, rename the existing
+display-name field `userName` (used everywhere as a non-unique display string)
+to `displayName` or `appNickname` to disambiguate from the new `username`
+(unique login handle). This is a breaking data-shape change that touches:
 
 - `users/{uid}/profile/userName` (RTDB path key)
 - `usersByEmail/{hash}.userName` (directory entry)
@@ -94,3 +110,16 @@ login handle). This is a breaking data-shape change that touches:
 Plan a one-time migration (read old field, write new, delete old) and ship the
 rename and migration in the same release. Do not start until both DEV and PROD
 clients have been updated to read both keys during a transition window.
+
+## Minor cleanups (low priority)
+
+- `notifications/{userId}` RTDB node is unused at runtime — only the
+  `delete-account-handler` cloud function ever writes to it (with `null`),
+  and no client reads or writes it. Rule is also too permissive
+  (`.write: "auth != null"` lets any signed-in user write to anyone's node).
+  Drop the rule block and the cloud-function cleanup line in the same release.
+- `users/{uid}/profile` `.write` has no shape validation. Restrict to known
+  keys (`userName`, `photoURL`, `username`, `email`) with `.validate` rules.
+- `users/{uid}` parent `.write: "$userId === auth.uid && !newData.exists()"`
+  is effectively dead — the account-delete cloud function uses admin SDK,
+  which bypasses rules. Can be removed, leaving per-child rules.
