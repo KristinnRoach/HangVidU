@@ -20,6 +20,8 @@
     "deploy:all": "pnpm build && pnpm test:compat && firebase deploy",
     "deploy:all:skip-tests": "pnpm build  && firebase deploy",
     "check:deployment": "if curl -s -o /dev/null -w '%{http_code}' -X POST https://europe-west1-vidu-aae11.cloudfunctions.net/sendCallNotification | grep -E '400|401|405' -q; then echo '✅ Cloud Function is ready'; else echo '❌ Cloud Function not ready'; exit 1; fi",
+    "check:prod-routing": "bash scripts/check-production-routing.sh",
+    "check:prod-routing:strict": "STRICT_IPV4=1 bash scripts/check-production-routing.sh",
     "play:rtdb": "open ./playgrounds/rtdb-schema.html",
     "play:rtdb-live": "fkill :8080 :8081 --silent; node --env-file=.env.development ./playgrounds/rtdb-proxy.js & python3 -m http.server 8080 --directory . & sleep 0.5 && open http://localhost:8080/playgrounds/rtdb-live.html && wait",
     "play:boundaries:scan": "node ./playgrounds/build-import-graph.mjs",

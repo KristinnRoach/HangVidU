@@ -6,6 +6,18 @@
 
 ## TODO
 
+- [ ] After each Firebase Hosting deploy, run:
+  ```
+  pnpm check:prod-routing
+  ```
+  If pnpm is repairing local dependencies, the script can be run directly:
+  ```
+  bash scripts/check-production-routing.sh
+  ```
+  Use strict mode when the production domain should be healthy for IPv4-only clients too:
+  ```
+  pnpm check:prod-routing:strict
+  ```
 - [ ] Re-test `.101` in ~1 week:
   ```
   curl --resolve hangvidu.com:443:199.36.158.101 -I https://hangvidu.com
@@ -22,3 +34,26 @@
 
 - Firebase Console shows "Connected" even when an anchor edge is broken — not a reliable health signal.
 - SSL Labs (`https://www.ssllabs.com/ssltest/analyze.html?d=hangvidu.com`) is the best external probe for per-IP TLS status.
+
+## 2026-05-27 follow-up
+
+After `pnpm deploy:fb`, Firebase Hosting reported the custom domain as "Connected" and the default site
+`https://vidu-aae11.web.app/` served the new release, but `https://hangvidu.com/` timed out for many clients.
+
+Findings:
+
+- Live channel release time: `2026-05-27 17:36:58`.
+- `https://vidu-aae11.web.app/` returned `200`.
+- `https://hangvidu.com/` returned `200` only after adding `AAAA hangvidu.com -> 2620:0:890::100`.
+- Forced IPv6 worked: `curl --resolve 'hangvidu.com:443:[2620:0:890::100]' -I https://hangvidu.com/`.
+- Forced IPv4 to `.100` still timed out.
+- Forced IPv4 to `.101` still reset TLS.
+- Cloudflare production records remained DNS-only; the working path was Firebase IPv6, not Cloudflare proxying.
+
+Remaining robustness options:
+
+- Keep the apex `AAAA` record in place.
+- Keep monitoring both address families after deploys; Firebase Console "Connected" does not prove all anchor IPs are healthy.
+- If IPv4 remains unhealthy, consider Cloudflare proxy or Cloudflare Load Balancing as a production failover layer.
+- If proxying with both `A` and `AAAA` origins fails, test removing the broken `A` origin while keeping the proxied `AAAA` origin.
+- Keep Firebase Hosting cache headers explicit for PWA-sensitive files (`index.html`, `sw.js`, `manifest.webmanifest`) so deploys are easier to reason about.
