@@ -27,6 +27,25 @@ const snapshot = () => ({
 });
 
 /**
+ * Convert an auth snapshot into a stable post-initialization state.
+ * Use this when an auth operation fails and the UI should leave loading.
+ *
+ * @param {ReturnType<typeof snapshot>} authSnapshot
+ * @returns {Partial<typeof state>}
+ */
+export function toStableAuthState(authSnapshot = snapshot()) {
+  if (authSnapshot?.isLoggedIn) {
+    return {
+      status: 'authenticated',
+      isLoggedIn: true,
+      user: authSnapshot.user ? { ...authSnapshot.user } : null,
+    };
+  }
+
+  return { status: 'unauthenticated', isLoggedIn: false, user: null };
+}
+
+/**
  * Update auth state and notify subscribers.
  * Called by auth.js when Firebase auth state changes — not part of the public API.
  *
@@ -37,7 +56,15 @@ export function setState(next) {
   const previousSnapshot = snapshot();
   const wasReadyResolved = hasResolvedReady;
 
-  state = { ...state, ...next };
+  let patch = next;
+  if (patch?.status === 'idle' && state.status !== 'idle') {
+    console.warn(
+      '[auth-state] Ignoring reset to idle after auth initialization',
+    );
+    patch = toStableAuthState(state);
+  }
+
+  state = { ...state, ...patch };
   const snap = snapshot();
   for (const fn of listeners) {
     try {

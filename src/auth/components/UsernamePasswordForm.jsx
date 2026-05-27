@@ -6,10 +6,30 @@ import {
 import { useI18n } from '../../shared/i18n/index.js';
 import styles from './UsernamePasswordForm.module.css';
 
+const FRIENDLY_ERROR_KEYS = {
+  account_has_no_username: 'auth.error.invalid_credentials',
+  identifier_required: 'auth.error.identifier_required',
+  no_account_for_email: 'auth.error.invalid_credentials',
+  password_required: 'auth.error.password_required',
+  password_too_short: 'auth.error.password_too_short',
+  username_invalid: 'auth.error.username_invalid',
+  username_required: 'auth.error.username_required',
+  username_taken: 'auth.error.username_taken',
+  'auth/email-already-in-use': 'auth.error.username_taken',
+  'auth/invalid-credential': 'auth.error.invalid_credentials',
+  'auth/user-not-found': 'auth.error.invalid_credentials',
+  'auth/wrong-password': 'auth.error.invalid_credentials',
+};
+
+function getFriendlyAuthErrorKey(error) {
+  const code = error?.code || error?.message;
+  return FRIENDLY_ERROR_KEYS[code] || 'auth.error.generic';
+}
+
 // Minimal sign-up / sign-in form. No dedicated styles yet — uses semantic
 // elements + native browser defaults. Replace with the chosen design when
 // the sustainable auth-UI strategy is picked.
-export default function UsernamePasswordForm() {
+export default function UsernamePasswordForm(props) {
   const { t } = useI18n();
   const [mode, setMode] = createSignal('signin'); // 'signin' | 'signup'
   const [identifier, setIdentifier] = createSignal('');
@@ -39,7 +59,8 @@ export default function UsernamePasswordForm() {
         });
       }
     } catch (err) {
-      setError(err?.code || err?.message || 'failed');
+      setError(t(getFriendlyAuthErrorKey(err)));
+      props.onAuthFailure?.();
     } finally {
       setBusy(false);
     }
@@ -55,7 +76,12 @@ export default function UsernamePasswordForm() {
             placeholder={t('auth.placeholder.identifier')}
             autocomplete='username'
             value={identifier()}
-            onInput={(e) => setIdentifier(e.currentTarget.value)}
+            aria-invalid={!!error()}
+            aria-describedby={error() ? 'auth-password-error' : undefined}
+            onInput={(e) => {
+              setError('');
+              setIdentifier(e.currentTarget.value);
+            }}
             required
           />
         }
@@ -65,7 +91,12 @@ export default function UsernamePasswordForm() {
           placeholder={t('auth.placeholder.username')}
           autocomplete='username'
           value={username()}
-          onInput={(e) => setUsername(e.currentTarget.value)}
+          aria-invalid={!!error()}
+          aria-describedby={error() ? 'auth-password-error' : undefined}
+          onInput={(e) => {
+            setError('');
+            setUsername(e.currentTarget.value);
+          }}
           required
         />
         <input
@@ -73,14 +104,20 @@ export default function UsernamePasswordForm() {
           placeholder={t('auth.placeholder.email')}
           autocomplete='email'
           value={email()}
-          onInput={(e) => setEmail(e.currentTarget.value)}
+          onInput={(e) => {
+            setError('');
+            setEmail(e.currentTarget.value);
+          }}
         />
         <input
           type='text'
           placeholder={t('auth.placeholder.display_name')}
           autocomplete='nickname'
           value={displayName()}
-          onInput={(e) => setDisplayName(e.currentTarget.value)}
+          onInput={(e) => {
+            setError('');
+            setDisplayName(e.currentTarget.value);
+          }}
         />
       </Show>
       <input
@@ -88,7 +125,12 @@ export default function UsernamePasswordForm() {
         placeholder={t('auth.placeholder.password')}
         autocomplete={mode() === 'signup' ? 'new-password' : 'current-password'}
         value={password()}
-        onInput={(e) => setPassword(e.currentTarget.value)}
+        aria-invalid={!!error()}
+        aria-describedby={error() ? 'auth-password-error' : undefined}
+        onInput={(e) => {
+          setError('');
+          setPassword(e.currentTarget.value);
+        }}
         required
       />
       <button type='submit' disabled={busy()}>
@@ -109,7 +151,9 @@ export default function UsernamePasswordForm() {
       </button>
 
       <Show when={error()}>
-        <small class={styles.error}>{error()}</small>
+        <small id='auth-password-error' class={styles.error} role='alert'>
+          {error()}
+        </small>
       </Show>
     </form>
   );

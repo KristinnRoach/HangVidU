@@ -13,11 +13,37 @@ import styles from './SignInSheet.module.css';
 export default function SignInSheet(props) {
   const { t } = useI18n();
   const [showPassword, setShowPassword] = createSignal(false);
+  let sheetEl;
+
+  function isSheetPopoverOpen() {
+    if (!sheetEl || !sheetEl.isConnected || !sheetEl.matches) {
+      return false;
+    }
+
+    try {
+      return sheetEl.matches(':popover-open');
+    } catch {
+      return false;
+    }
+  }
+
+  function keepSheetOpen() {
+    if (!sheetEl || !sheetEl.isConnected || isSheetPopoverOpen()) {
+      return;
+    }
+
+    try {
+      sheetEl.showPopover?.();
+    } catch {
+      // Best-effort only: the form has already rendered the inline error.
+    }
+  }
 
   return (
     <>
       <div
         id={props.id}
+        ref={sheetEl}
         popover
         aria-labelledby='signin-sheet-title'
         class={styles.signInSheetModal}
@@ -53,7 +79,7 @@ export default function SignInSheet(props) {
                 </button>
               }
             >
-              <UsernamePasswordForm />
+              <UsernamePasswordForm onAuthFailure={keepSheetOpen} />
             </Show>
           </section>
 

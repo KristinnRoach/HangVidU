@@ -14,7 +14,11 @@ import {
   signInPassword,
   updateFirebaseProfile,
 } from './adapters/firebase-auth-adapter.js';
-import { setState } from './auth-state.js';
+import {
+  getAuthState,
+  setState,
+  toStableAuthState,
+} from './auth-state.js';
 import { logAuthError } from './auth-setup.js';
 import { hashEmail } from '../shared/utils/email-hash.js';
 
@@ -23,6 +27,15 @@ export const SYNTHETIC_DOMAIN = 'hangvidu.invalid';
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 const MIN_PASSWORD_LENGTH = 8;
+const EXPECTED_PASSWORD_AUTH_FAILURES = new Set([
+  'account_has_no_username',
+  'auth/email-already-in-use',
+  'auth/invalid-credential',
+  'auth/user-not-found',
+  'auth/wrong-password',
+  'no_account_for_email',
+  'username_taken',
+]);
 
 export function isSyntheticEmail(email) {
   return typeof email === 'string' && email.endsWith(`@${SYNTHETIC_DOMAIN}`);
@@ -53,6 +66,10 @@ function validatePassword(password) {
     return 'password_too_short';
   }
   return null;
+}
+
+function isExpectedPasswordAuthFailure(error) {
+  return EXPECTED_PASSWORD_AUTH_FAILURES.has(error?.code || error?.message);
 }
 
 /**
@@ -89,6 +106,7 @@ export async function signUpWithUsername({
   // Default display name: user-provided > email > username
   const resolvedDisplayName = trimmedDisplayName || trimmedEmail || handle;
 
+  const previousAuthState = getAuthState();
   setState({ status: 'loading' });
 
   try {
@@ -136,8 +154,10 @@ export async function signUpWithUsername({
 
     return cred;
   } catch (e) {
-    setState({ status: 'idle' });
-    logAuthError('Sign up (password)', e);
+    setState(toStableAuthState(previousAuthState));
+    if (!isExpectedPasswordAuthFailure(e)) {
+      logAuthError('Sign up (password)', e);
+    }
     throw e;
   }
 }
@@ -157,6 +177,7 @@ export async function signInWithUsernameOrEmail({ identifier, password }) {
     throw new Error('password_required');
   }
 
+  const previousAuthState = getAuthState();
   setState({ status: 'loading' });
 
   try {
@@ -177,8 +198,10 @@ export async function signInWithUsernameOrEmail({ identifier, password }) {
 
     return await signInPassword(syntheticEmail(handle), password);
   } catch (e) {
-    setState({ status: 'idle' });
-    logAuthError('Sign in (password)', e);
+    setState(toStableAuthState(previousAuthState));
+    if (!isExpectedPasswordAuthFailure(e)) {
+      logAuthError('Sign in (password)', e);
+    }
     throw e;
   }
 }
