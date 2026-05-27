@@ -3,8 +3,8 @@ import {
   showErrorToast,
 } from '../../components/base-legacy/toast.js';
 
-// Check for updates every 30 minutes (in milliseconds)
-const UPDATE_CHECK_INTERVAL = 30 * 60 * 1000;
+// TODO: Consider reverting to 30min once migration has settled.
+const UPDATE_CHECK_INTERVAL = 15 * 60 * 1000;
 
 let updateCheckIntervalId = null;
 let visibilityAbortController = null;
@@ -214,6 +214,7 @@ export async function setupUpdateHandler() {
 
     // Set up all update check mechanisms
     await startupUpdateCheck(updateSW);
+    await checkForUpdates();
     visibilityChangeCheck();
     startPeriodicUpdateChecks();
 
