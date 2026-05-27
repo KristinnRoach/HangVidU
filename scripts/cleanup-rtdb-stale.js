@@ -44,7 +44,9 @@ const DATABASE_URL =
 
 const shouldDelete = process.argv.includes('--delete');
 const skipPrompt = process.argv.includes('--yes');
-const taskArg = process.argv[2];
+// First non-flag argument after the script path is the task name, so flag
+// order doesn't matter (e.g. `--delete rooms-legacy` works).
+const taskArg = process.argv.slice(2).find((a) => !a.startsWith('--'));
 
 const TASKS = [
   'rooms-legacy',
@@ -139,6 +141,12 @@ async function confirmAndApply(label, updates) {
   return paths.length;
 }
 
+// New-flow rooms write meta.createdAt up-front, but the write is not atomic
+// with the room being touched for the first time — a room read mid-creation
+// could legitimately have no meta yet. Skip no-meta rooms younger than this
+// window so we don't race in-flight Solid call handshakes.
+const NO_META_MIN_AGE_MS = 60 * 60 * 1000; // 1 hour
+
 async function taskRoomsLegacy() {
   console.log('\n=== rooms-legacy ===');
   const snap = await db.ref('rooms').once('value');
@@ -147,9 +155,11 @@ async function taskRoomsLegacy() {
     return 0;
   }
   const rooms = snap.val();
+  const now = Date.now();
   const updates = {};
   let legacyKeyHits = 0;
   let noMetaHits = 0;
+  let noMetaSkippedTooNew = 0;
 
   for (const [roomId, room] of Object.entries(rooms)) {
     if (!room || typeof room !== 'object') continue;
@@ -161,14 +171,28 @@ async function taskRoomsLegacy() {
       updates[`rooms/${roomId}`] = null;
       legacyKeyHits += 1;
     } else if (!hasMetaCreatedAt) {
-      updates[`rooms/${roomId}`] = null;
-      noMetaHits += 1;
+      // Fallback timestamps that the archive code may have written at the
+      // top level. If none exist, treat the room as ancient (legacy).
+      const fallbackTs =
+        typeof room.createdAt === 'number' ? room.createdAt : null;
+      const ageMs = fallbackTs != null ? now - fallbackTs : Infinity;
+      if (ageMs >= NO_META_MIN_AGE_MS) {
+        updates[`rooms/${roomId}`] = null;
+        noMetaHits += 1;
+      } else {
+        noMetaSkippedTooNew += 1;
+      }
     }
   }
 
   console.log(`Total rooms: ${Object.keys(rooms).length}`);
   console.log(`Rooms with legacy sub-keys: ${legacyKeyHits}`);
-  console.log(`Rooms without meta.createdAt: ${noMetaHits}`);
+  console.log(`Rooms without meta.createdAt (>=1h old): ${noMetaHits}`);
+  if (noMetaSkippedTooNew > 0) {
+    console.log(
+      `Rooms without meta.createdAt but <1h old (skipped — possibly in-flight): ${noMetaSkippedTooNew}`,
+    );
+  }
   return confirmAndApply('rooms-legacy', updates);
 }
 

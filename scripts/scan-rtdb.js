@@ -121,14 +121,14 @@ function ageBucket(days) {
   return '>1y';
 }
 
-async function shallowList(path) {
+async function shallowList(dbPath) {
   const accessToken = await admin.credential
     .cert(serviceAccount)
     .getAccessToken();
-  const url = `${DATABASE_URL}/${path}.json?shallow=true&access_token=${accessToken.access_token}`;
+  const url = `${DATABASE_URL}/${dbPath}.json?shallow=true&access_token=${accessToken.access_token}`;
   const res = await fetch(url);
   if (!res.ok) {
-    throw new Error(`shallow read ${path} failed: ${res.status} ${await res.text()}`);
+    throw new Error(`shallow read ${dbPath} failed: ${res.status} ${await res.text()}`);
   }
   return res.json();
 }
