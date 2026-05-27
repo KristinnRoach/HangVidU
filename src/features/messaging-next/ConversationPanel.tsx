@@ -261,6 +261,11 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                             const safeDataUrl = isSafeDataUrl(file.data);
                             const canPreview =
                               safeDataUrl && isImageAttachment(file);
+                            const canDownload =
+                              safeDataUrl ||
+                              file.data.startsWith('blob:') ||
+                              file.data.startsWith('https://') ||
+                              file.data.startsWith('http://');
 
                             return (
                               <span class={styles.fileMessage}>
@@ -269,25 +274,14 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                                     class={styles.filePreviewImg}
                                     src={file.data}
                                     alt={file.fileName}
-                                    role='button'
-                                    tabIndex={0}
                                     onClick={() =>
-                                      showImagePreview(
-                                        file.data,
-                                        file.fileName,
-                                      )
+                                      showImagePreview(file.data, file.fileName)
                                     }
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter' || e.key === ' ') {
-                                        e.preventDefault();
-                                        showImagePreview(file.data, file.fileName);
-                                      }
-                                    }}
                                   />
                                 </Show>
                                 <span class={styles.fileMessageMeta}>
                                   <Show
-                                    when={safeDataUrl}
+                                    when={canDownload}
                                     fallback={
                                       <span class={styles.fileMessageName}>
                                         {file.fileName}
