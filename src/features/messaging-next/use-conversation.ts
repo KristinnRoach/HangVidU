@@ -48,6 +48,8 @@ export function envelopeToChatMessage(
           mimeType: message.payload.mimeType,
           fileSize: message.payload.fileSize,
           data: message.payload.data,
+          url: message.payload.url,
+          storage: message.payload.storage,
         }
       : undefined;
 

@@ -180,7 +180,14 @@ export type MessageAttachment = {
   fileName: string;
   mimeType: string;
   fileSize: number;
-  data: string;
+  data?: string;
+  url?: string;
+  storage?: {
+    provider: 'r2';
+    bucket: string;
+    key: string;
+    [key: string]: unknown;
+  };
 };
 
 export type ConversationSelection = {

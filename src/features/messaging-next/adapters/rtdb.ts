@@ -71,11 +71,18 @@ function toIncoming(
   };
 
   if (raw.type === 'file') {
+    const data = typeof raw.data === 'string' ? raw.data : undefined;
+    const url = typeof raw.url === 'string' ? raw.url : undefined;
+    const storage =
+      raw.storage && typeof raw.storage === 'object'
+        ? (raw.storage as Record<string, unknown>)
+        : undefined;
+
     if (
       typeof raw.fileName !== 'string' ||
       typeof raw.mimeType !== 'string' ||
       typeof raw.fileSize !== 'number' ||
-      typeof raw.data !== 'string'
+      (!data && !url && !storage)
     ) {
       return null;
     }
@@ -87,7 +94,18 @@ function toIncoming(
         fileName: raw.fileName,
         mimeType: raw.mimeType,
         fileSize: raw.fileSize,
-        data: raw.data,
+        data,
+        url,
+        storage:
+          storage?.provider === 'r2' &&
+          typeof storage.bucket === 'string' &&
+          typeof storage.key === 'string'
+            ? {
+                provider: 'r2',
+                bucket: storage.bucket,
+                key: storage.key,
+              }
+            : undefined,
         text: typeof raw.text === 'string' ? raw.text : undefined,
       },
     };
@@ -106,7 +124,9 @@ function toIncoming(
 
 function requireTextPayload(message: MessageEnvelope) {
   if (message.payload.type !== 'text') {
-    throw new Error('RTDB legacy adapter currently supports text payloads only');
+    throw new Error(
+      'RTDB legacy adapter currently supports text payloads only',
+    );
   }
   return message.payload;
 }

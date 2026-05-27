@@ -39,6 +39,7 @@ function dataUrlMimeType(url: string) {
 }
 
 function hasAllowedDataUrl(attachment: MessageAttachment) {
+  if (!attachment.data) return false;
   if (!attachment.data.startsWith('data:')) return false;
 
   const declaredMimeType = attachment.mimeType.trim().toLowerCase();
@@ -52,6 +53,14 @@ function hasAllowedDataUrl(attachment: MessageAttachment) {
 
 function isImageAttachment(attachment: MessageAttachment) {
   return attachment.mimeType.trim().toLowerCase().startsWith('image/');
+}
+
+function getAttachmentUrl(attachment: MessageAttachment) {
+  return attachment.url ?? attachment.data ?? null;
+}
+
+function isAllowedRemoteUrl(url: string | null) {
+  return Boolean(url?.startsWith('https://'));
 }
 
 function formatFileSize(bytes: number) {
@@ -283,34 +292,47 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                         <Show when={msg.attachment}>
                           {(attachment) => {
                             const file = attachment();
+                            const attachmentUrl = getAttachmentUrl(file);
                             const allowedDataUrl = hasAllowedDataUrl(file);
                             const canPreview =
-                              allowedDataUrl && isImageAttachment(file);
+                              Boolean(attachmentUrl) &&
+                              (allowedDataUrl ||
+                                isAllowedRemoteUrl(attachmentUrl)) &&
+                              isImageAttachment(file);
                             const canDownload =
-                              allowedDataUrl || file.data.startsWith('blob:');
+                              Boolean(attachmentUrl) &&
+                              (allowedDataUrl ||
+                                attachmentUrl?.startsWith('blob:') ||
+                                isAllowedRemoteUrl(attachmentUrl));
 
                             return (
                               <span class={styles.fileMessage}>
                                 <Show when={canPreview}>
                                   <img
                                     class={styles.filePreviewImg}
-                                    src={file.data}
+                                    src={attachmentUrl ?? undefined}
                                     alt={file.fileName}
                                     role='button'
                                     tabIndex={0}
                                     aria-label={`Open preview for ${file.fileName}`}
                                     onClick={() =>
-                                      showImagePreview(file.data, file.fileName)
+                                      attachmentUrl &&
+                                      showImagePreview(
+                                        attachmentUrl,
+                                        file.fileName,
+                                      )
                                     }
                                     onKeyDown={(e) => {
                                       if (e.key !== 'Enter' && e.key !== ' ') {
                                         return;
                                       }
                                       e.preventDefault();
-                                      showImagePreview(
-                                        file.data,
-                                        file.fileName,
-                                      );
+                                      if (attachmentUrl) {
+                                        showImagePreview(
+                                          attachmentUrl,
+                                          file.fileName,
+                                        );
+                                      }
                                     }}
                                   />
                                 </Show>
@@ -324,7 +346,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                                     }
                                   >
                                     <a
-                                      href={file.data}
+                                      href={attachmentUrl ?? undefined}
                                       download={file.fileName}
                                       class={styles.fileMessageName}
                                     >
