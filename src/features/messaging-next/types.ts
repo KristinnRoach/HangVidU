@@ -7,6 +7,7 @@ import type {
   DeliveryPolicySchema,
   DirectConversationIdSchema,
   EventMessagePayloadSchema,
+  FileMessagePayloadSchema,
   GroupConversationIdSchema,
   MessageEnvelopeSchema,
   MessagePayloadSchema,
@@ -29,6 +30,7 @@ export type ConversationRecord = z.infer<typeof ConversationRecordSchema>;
 export type ConversationNode = z.infer<typeof ConversationNodeSchema>;
 
 export type TextMessagePayload = z.infer<typeof TextMessagePayloadSchema>;
+export type FileMessagePayload = z.infer<typeof FileMessagePayloadSchema>;
 export type EventMessagePayload = z.infer<typeof EventMessagePayloadSchema>;
 export type SystemMessagePayload = z.infer<typeof SystemMessagePayloadSchema>;
 export type MessagePayload = z.infer<typeof MessagePayloadSchema>;

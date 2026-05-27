@@ -81,6 +81,43 @@
   text-wrap: pretty;
 }
 
+.msg:has(.filePreviewImg) {
+  background: transparent;
+  padding: 0;
+  margin-bottom: 0.75rem;
+}
+
+.filePreviewImg {
+  display: block;
+  max-width: 100%;
+  max-height: 400px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 0.45rem;
+  cursor: pointer;
+}
+
+.fileMessageMeta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
+  font-size: 0.9em;
+}
+
+.fileMessageName {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: inherit;
+  text-decoration: underline;
+}
+
+.fileMessageSize {
+  flex: 0 0 auto;
+  opacity: 0.75;
+}
+
 .msgSystem {
   background-color: transparent;
   color: #888;
@@ -102,6 +139,16 @@
 
 .msgText {
   word-break: break-word;
+}
+
+.fileMessage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.msgText:not(:empty) + .fileMessage {
+  margin-top: 0.4rem;
 }
 
 .msgStatus {

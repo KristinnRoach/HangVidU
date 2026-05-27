@@ -32,15 +32,31 @@ export function envelopeToChatMessage(
   message: MessageEnvelope,
   source: ChatMessage['source'],
 ): ChatMessage | null {
-  if (message.payload.type !== 'text') {
+  if (message.payload.type === 'system' || message.payload.type === 'event') {
     return null;
   }
+
+  const text =
+    message.payload.type === 'text'
+      ? message.payload.text
+      : (message.payload.text ?? '');
+  const attachment =
+    message.payload.type === 'file'
+      ? {
+          type: 'file' as const,
+          fileName: message.payload.fileName,
+          mimeType: message.payload.mimeType,
+          fileSize: message.payload.fileSize,
+          data: message.payload.data,
+        }
+      : undefined;
 
   return {
     id: message.messageId,
     conversationId: message.conversationId,
     senderId: message.senderId,
-    text: message.payload.text,
+    text,
+    attachment,
     sentAt: message.sentAt,
     delivery: message.delivery,
     source,

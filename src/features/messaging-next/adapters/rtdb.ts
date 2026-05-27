@@ -48,15 +48,45 @@ function toIncoming(
   key: string,
   conversationId: ConversationId,
 ): IncomingMessage | null {
-  if (!raw || typeof raw.text !== 'string' || !raw.from) return null;
-  return {
+  if (!raw || !raw.from) return null;
+
+  const base = {
     messageId: key,
     conversationId,
     senderId: raw.from as UserId,
     senderName: typeof raw.fromName === 'string' ? raw.fromName : undefined,
     // sentAt is a server timestamp (number on read, null briefly after write)
     sentAt: typeof raw.sentAt === 'number' ? raw.sentAt : Date.now(),
-    delivery: 'persistent',
+    delivery: 'persistent' as const,
+  };
+
+  if (raw.type === 'file') {
+    if (
+      typeof raw.fileName !== 'string' ||
+      typeof raw.mimeType !== 'string' ||
+      typeof raw.fileSize !== 'number' ||
+      typeof raw.data !== 'string'
+    ) {
+      return null;
+    }
+
+    return {
+      ...base,
+      payload: {
+        type: 'file',
+        fileName: raw.fileName,
+        mimeType: raw.mimeType,
+        fileSize: raw.fileSize,
+        data: raw.data,
+        text: typeof raw.text === 'string' ? raw.text : undefined,
+      },
+    };
+  }
+
+  if (typeof raw.text !== 'string') return null;
+
+  return {
+    ...base,
     payload: {
       type: 'text',
       text: raw.text,

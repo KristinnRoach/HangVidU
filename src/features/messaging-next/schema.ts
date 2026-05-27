@@ -61,6 +61,15 @@ export const TextMessagePayloadSchema = z.object({
   text: z.string().min(1),
 });
 
+export const FileMessagePayloadSchema = z.object({
+  type: z.literal('file'),
+  fileName: z.string().trim().min(1),
+  mimeType: z.string().trim().min(1),
+  fileSize: z.number().int().nonnegative(),
+  data: z.string().min(1),
+  text: z.string().optional(),
+});
+
 export const EventMessagePayloadSchema = z.object({
   type: z.literal('event'),
   eventType: z.literal('evt:call:session:unanswered'),
@@ -79,6 +88,7 @@ export const SystemMessagePayloadSchema = z.object({
 
 export const MessagePayloadSchema = z.discriminatedUnion('type', [
   TextMessagePayloadSchema,
+  FileMessagePayloadSchema,
   EventMessagePayloadSchema,
   SystemMessagePayloadSchema,
 ]);

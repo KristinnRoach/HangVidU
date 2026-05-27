@@ -14,6 +14,7 @@ import { getUserName } from '../../auth/index.js';
 
 import { useI18n } from '../../shared/i18n';
 import { LoadBoundary } from '../../components/app/LoadBoundary';
+import { showImagePreview } from '../../components/base-legacy/imagePreview.js';
 
 import { createMessagingRuntime } from './messaging-runtime.js';
 
@@ -25,12 +26,39 @@ import {
 } from './use-conversation.js';
 import { clearLocalDraft, saveLocalDraft } from './local-drafts.js';
 import type { ConversationId, UserId } from './types.js';
-import type { ConversationSelection } from './interfaces.js';
+import type { ConversationSelection, MessageAttachment } from './interfaces.js';
 
 import styles from './ConversationPanel.module.css';
 
 const runtime = createMessagingRuntime();
 const DRAFT_SAVE_DELAY_MS = 250;
+
+function dataUrlMimeType(url: string) {
+  const match = /^data:([^;,]+)[;,]/i.exec(url);
+  return match?.[1]?.toLowerCase() ?? 'text/plain';
+}
+
+function hasAllowedDataUrl(attachment: MessageAttachment) {
+  if (!attachment.data.startsWith('data:')) return false;
+
+  const declaredMimeType = attachment.mimeType.trim().toLowerCase();
+  const actualMimeType = dataUrlMimeType(attachment.data);
+  return (
+    actualMimeType === declaredMimeType &&
+    actualMimeType !== 'text/html' &&
+    actualMimeType !== 'image/svg+xml'
+  );
+}
+
+function isImageAttachment(attachment: MessageAttachment) {
+  return attachment.mimeType.trim().toLowerCase().startsWith('image/');
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 function MessageHistorySkeleton() {
   return (
@@ -240,6 +268,62 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                         }}
                       >
                         <span class={styles.msgText}>{msg.text}</span>
+                        <Show when={msg.attachment}>
+                          {(attachment) => {
+                            const file = attachment();
+                            const allowedDataUrl = hasAllowedDataUrl(file);
+                            const canPreview =
+                              allowedDataUrl && isImageAttachment(file);
+                            const canDownload =
+                              allowedDataUrl || file.data.startsWith('blob:');
+
+                            return (
+                              <span class={styles.fileMessage}>
+                                <Show when={canPreview}>
+                                  <img
+                                    class={styles.filePreviewImg}
+                                    src={file.data}
+                                    alt={file.fileName}
+                                    role='button'
+                                    tabIndex={0}
+                                    aria-label={`Open preview for ${file.fileName}`}
+                                    onClick={() =>
+                                      showImagePreview(file.data, file.fileName)
+                                    }
+                                    onKeyDown={(e) => {
+                                      if (e.key !== 'Enter' && e.key !== ' ') {
+                                        return;
+                                      }
+                                      e.preventDefault();
+                                      showImagePreview(file.data, file.fileName);
+                                    }}
+                                  />
+                                </Show>
+                                <span class={styles.fileMessageMeta}>
+                                  <Show
+                                    when={canDownload}
+                                    fallback={
+                                      <span class={styles.fileMessageName}>
+                                        {file.fileName}
+                                      </span>
+                                    }
+                                  >
+                                    <a
+                                      href={file.data}
+                                      download={file.fileName}
+                                      class={styles.fileMessageName}
+                                    >
+                                      {file.fileName}
+                                    </a>
+                                  </Show>
+                                  <span class={styles.fileMessageSize}>
+                                    ({formatFileSize(file.fileSize)})
+                                  </span>
+                                </span>
+                              </span>
+                            );
+                          }}
+                        </Show>
                         <Show when={msg.status === 'sending'}>
                           <span class={styles.msgStatus}>…</span>
                         </Show>
