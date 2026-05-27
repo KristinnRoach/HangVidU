@@ -15,8 +15,20 @@ export default function SignInSheet(props) {
   const [showPassword, setShowPassword] = createSignal(false);
   let sheetEl;
 
+  function isSheetPopoverOpen() {
+    if (!sheetEl || !sheetEl.isConnected || !sheetEl.matches) {
+      return false;
+    }
+
+    try {
+      return sheetEl.matches(':popover-open');
+    } catch {
+      return false;
+    }
+  }
+
   function keepSheetOpen() {
-    if (!sheetEl || !sheetEl.isConnected || sheetEl.matches?.(':popover-open')) {
+    if (!sheetEl || !sheetEl.isConnected || isSheetPopoverOpen()) {
       return;
     }
 
