@@ -7,6 +7,8 @@ import {
   onChildChanged,
   onValue,
   off,
+  query,
+  limitToLast,
   serverTimestamp,
   update,
   type DataSnapshot,
@@ -35,8 +37,14 @@ import type {
 // existing RTDB row shape so feature-flag testing can use current production
 // data. It is not the target canonical persistence format.
 
+const RECENT_MESSAGES_WINDOW = 20;
+
 function msgsRef(conversationId: ConversationId) {
   return ref(rtdb, `conversations/${conversationId}/messages`);
+}
+
+function recentMsgsQuery(conversationId: ConversationId) {
+  return query(msgsRef(conversationId), limitToLast(RECENT_MESSAGES_WINDOW));
 }
 
 function conversationRef(conversationId: ConversationId) {
@@ -126,7 +134,7 @@ function conversationUpdate(
 export function createRTDBMessageRepository(): MessageRepository {
   return {
     async loadMessages(conversationId) {
-      const snapshot = await get(msgsRef(conversationId));
+      const snapshot = await get(recentMsgsQuery(conversationId));
       if (!snapshot.exists()) return [];
       const messages: IncomingMessage[] = [];
       snapshot.forEach((child) => {
@@ -155,7 +163,7 @@ export function createRTDBMessageRepository(): MessageRepository {
     },
 
     subscribe(conversationId, myUserId, onMessage) {
-      const msgRef = msgsRef(conversationId);
+      const msgQuery = recentMsgsQuery(conversationId);
 
       const handler = (snapshot: DataSnapshot) => {
         const raw = snapshot.val() as Record<string, unknown>;
@@ -164,8 +172,8 @@ export function createRTDBMessageRepository(): MessageRepository {
         if (msg) onMessage(msg);
       };
 
-      onChildAdded(msgRef, handler);
-      return () => off(msgRef, 'child_added', handler);
+      onChildAdded(msgQuery, handler);
+      return () => off(msgQuery, 'child_added', handler);
     },
 
     async setReaction(conversationId, messageId, emoji, userId, active) {

@@ -4,7 +4,7 @@ import {
 } from '../../components/base-legacy/toast.js';
 
 // TODO: Consider reverting to 30min once migration has settled.
-const UPDATE_CHECK_INTERVAL = 15 * 60 * 1000;
+const UPDATE_CHECK_INTERVAL = 20 * 60 * 1000;
 
 let updateCheckIntervalId = null;
 let visibilityAbortController = null;
