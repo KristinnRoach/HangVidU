@@ -33,8 +33,21 @@ import styles from './ConversationPanel.module.css';
 const runtime = createMessagingRuntime();
 const DRAFT_SAVE_DELAY_MS = 250;
 
-function isSafeDataUrl(url: string) {
-  return url.startsWith('data:');
+function dataUrlMimeType(url: string) {
+  const match = /^data:([^;,]+)[;,]/i.exec(url);
+  return match?.[1]?.toLowerCase() ?? 'text/plain';
+}
+
+function hasAllowedDataUrl(attachment: MessageAttachment) {
+  if (!attachment.data.startsWith('data:')) return false;
+
+  const declaredMimeType = attachment.mimeType.trim().toLowerCase();
+  const actualMimeType = dataUrlMimeType(attachment.data);
+  return (
+    actualMimeType === declaredMimeType &&
+    actualMimeType !== 'text/html' &&
+    actualMimeType !== 'image/svg+xml'
+  );
 }
 
 function isImageAttachment(attachment: MessageAttachment) {
@@ -258,14 +271,11 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                         <Show when={msg.attachment}>
                           {(attachment) => {
                             const file = attachment();
-                            const safeDataUrl = isSafeDataUrl(file.data);
+                            const allowedDataUrl = hasAllowedDataUrl(file);
                             const canPreview =
-                              safeDataUrl && isImageAttachment(file);
+                              allowedDataUrl && isImageAttachment(file);
                             const canDownload =
-                              safeDataUrl ||
-                              file.data.startsWith('blob:') ||
-                              file.data.startsWith('https://') ||
-                              file.data.startsWith('http://');
+                              allowedDataUrl || file.data.startsWith('blob:');
 
                             return (
                               <span class={styles.fileMessage}>

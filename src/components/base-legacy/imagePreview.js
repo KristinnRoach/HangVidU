@@ -26,10 +26,6 @@ export function showImagePreview(src, fileName, downloadLabel = null) {
   downloadBtn.setAttribute('aria-label', `Download`);
   downloadBtn.setAttribute('title', `Download`);
 
-  // const downloadIcon = document.createElement('i');
-  // downloadIcon.setAttribute('data-lucide', 'download');
-  // downloadBtn.appendChild(downloadIcon);
-
   if (typeof downloadLabel === 'string' && downloadLabel.trim() !== '') {
     const labelSpan = document.createElement('span');
     labelSpan.textContent = ' ' + downloadLabel;
@@ -41,10 +37,6 @@ export function showImagePreview(src, fileName, downloadLabel = null) {
   closeBtn.setAttribute('aria-label', 'Close');
   closeBtn.setAttribute('title', 'Close Image Preview');
   closeBtn.addEventListener('click', () => dialog.close());
-
-  // const closeIcon = document.createElement('i');
-  // closeIcon.setAttribute('data-lucide', 'x');
-  // closeBtn.appendChild(closeIcon);
 
   dialog.appendChild(img);
   dialog.appendChild(downloadBtn);
