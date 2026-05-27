@@ -5,7 +5,7 @@
   grid-template-columns: auto 1fr auto;
 
   background: inherit;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(198, 198, 198, 0.03);
 
   position: relative;
   z-index: var(--z-mid);
@@ -59,7 +59,11 @@
 
 .topBar > .topNav {
   display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1rem;
   flex: 1;
+  min-width: -webkit-fill-available;
   min-width: 0;
 }
 
@@ -69,7 +73,12 @@
   align-items: center;
   justify-content: center;
   flex: 1;
-  min-width: 0;
+  min-width: -webkit-fill-available;
+  min-width: fit-content;
+
+  &.selected {
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.75);
+  }
 }
 
 .navBtnSelected {

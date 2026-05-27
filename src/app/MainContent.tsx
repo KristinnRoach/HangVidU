@@ -88,9 +88,7 @@ export default function MainContent() {
     const s = p2p.state();
     return s === 'creating' || s === 'watching' || s === 'joining';
   };
-  const showAuthenticatedUi = createMemo(
-    () => isLoggedIn() && !isLoggingOut(),
-  );
+  const showAuthenticatedUi = createMemo(() => isLoggedIn() && !isLoggingOut());
 
   return (
     <div class={mainStyles.layoutWrapper}>
@@ -188,6 +186,12 @@ function TopBar(props: TopBarProps) {
     return resolveContactIdFromDirectConversationId(conversationId, uid);
   });
 
+  const isViewSelected = (view: ViewMode) => props.activeView === view;
+  const getNavItemClass = (view: ViewMode) => {
+    if (!isViewSelected(view)) return topbarStyles.navItem;
+    return `${topbarStyles.navItem} ${topbarStyles.selected}`;
+  };
+
   return (
     <header
       id='top-bar'
@@ -207,7 +211,7 @@ function TopBar(props: TopBarProps) {
         {/* <button onClick={() => props.setActiveView?.('home')}>Home</button> */}
 
         <Show when={props.showAuthenticatedUi && user()?.uid}>
-          <div class={topbarStyles.navItem}>
+          <div class={getNavItemClass('contacts')}>
             <button
               type='button'
               class={
@@ -229,7 +233,7 @@ function TopBar(props: TopBarProps) {
             </div>
           </div>
 
-          <div class={topbarStyles.navItem}>
+          <div class={getNavItemClass('messaging')}>
             <button
               type='button'
               class={
