@@ -51,7 +51,7 @@ function hasAllowedDataUrl(attachment: MessageAttachment) {
 }
 
 function isImageAttachment(attachment: MessageAttachment) {
-  return attachment.mimeType.startsWith('image/');
+  return attachment.mimeType.trim().toLowerCase().startsWith('image/');
 }
 
 function formatFileSize(bytes: number) {
