@@ -269,7 +269,7 @@ async function scanUsers() {
   for (const k of Object.keys(legacyOwners)) {
     const owners = legacyOwners[k];
     if (owners.length > 0 && verbose) {
-      printHeader(`users/*/​${k} — owners`);
+      printHeader(`users/*/${k} — owners`);
       owners.slice(0, TOP_N).forEach((u) => printRow(u, ''));
       if (owners.length > TOP_N) printRow('...', `${owners.length - TOP_N} more`);
     }
