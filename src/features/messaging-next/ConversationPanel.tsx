@@ -295,7 +295,10 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                                         return;
                                       }
                                       e.preventDefault();
-                                      showImagePreview(file.data, file.fileName);
+                                      showImagePreview(
+                                        file.data,
+                                        file.fileName,
+                                      );
                                     }}
                                   />
                                 </Show>
