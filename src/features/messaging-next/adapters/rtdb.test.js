@@ -18,6 +18,8 @@ vi.mock('firebase/database', () => ({
   onChildChanged: vi.fn(),
   onValue: vi.fn(),
   off: vi.fn(),
+  query: vi.fn((ref) => ref),
+  limitToLast: vi.fn((count) => ({ count })),
   serverTimestamp: vi.fn(() => ({ '.sv': 'timestamp' })),
   update: vi.fn(),
 }));

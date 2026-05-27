@@ -80,6 +80,11 @@ type ConversationPanelProps = {
   myUserId: UserId | null;
 };
 
+type HistorySource = {
+  conversationId: ConversationId;
+  myUserId: UserId;
+} | null;
+
 export default function ConversationPanel(props: ConversationPanelProps) {
   const store = createConversationState();
   const actions = createConversationActions(store);
@@ -133,15 +138,22 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     }, DRAFT_SAVE_DELAY_MS);
   }
 
-  const historySource = createMemo(() => {
-    const selection = props.selection;
-    const myUserId = props.myUserId;
-    if (!selection || !myUserId) return null;
-    return {
-      conversationId: selection.conversationId,
-      myUserId,
-    };
-  });
+  const historySource = createMemo<HistorySource>(
+    () => {
+      const conversationId = props.selection?.conversationId;
+      const myUserId = props.myUserId;
+      if (!conversationId || !myUserId) return null;
+      return {
+        conversationId,
+        myUserId,
+      };
+    },
+    null,
+    {
+      equals: (a, b) =>
+        a?.conversationId === b?.conversationId && a?.myUserId === b?.myUserId,
+    },
+  );
 
   const [history] = createResource(historySource, ({ conversationId }) =>
     loadConversationHistory(runtime.messageRepository, conversationId),

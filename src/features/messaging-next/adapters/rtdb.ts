@@ -11,6 +11,8 @@ import {
   limitToLast,
   serverTimestamp,
   update,
+  orderByKey,
+  startAfter,
   type DataSnapshot,
 } from 'firebase/database';
 import { rtdb } from '../../../infra/firebase-rtdb.js';
@@ -163,7 +165,12 @@ export function createRTDBMessageRepository(): MessageRepository {
     },
 
     subscribe(conversationId, myUserId, onMessage) {
-      const msgQuery = recentMsgsQuery(conversationId);
+      const msgRef = msgsRef(conversationId);
+      // Generated push keys are time-ordered. Generating one without writing
+      // gives a "now" cursor — onChildAdded only fires for messages added
+      // after attach, no historical replay over the wire.
+      const sinceKey = push(msgRef).key!;
+      const msgQuery = query(msgRef, orderByKey(), startAfter(sinceKey));
 
       const handler = (snapshot: DataSnapshot) => {
         const raw = snapshot.val() as Record<string, unknown>;

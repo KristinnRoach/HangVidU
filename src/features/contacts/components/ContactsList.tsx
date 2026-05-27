@@ -2,13 +2,17 @@ import { For, Show, createEffect } from 'solid-js';
 import { useI18n } from '../../../shared/i18n/index';
 import ContactEntry from './ContactEntry';
 import { useContacts } from '../useContacts';
-import { open as openSelectedConversation } from '../../../stores/selectedConversationStore';
+import {
+  open as openSelectedConversation,
+  selection as selectedConversation,
+} from '../../../stores/selectedConversationStore';
 
 export default function ContactsList() {
   const { t } = useI18n();
   const { contacts } = useContacts();
 
   createEffect(() => {
+    if (selectedConversation()?.conversationId) return;
     if (contacts.length === 0) return;
     if (contacts[0].conversationId) {
       openSelectedConversation({
