@@ -56,6 +56,45 @@ describe('messaging-next RTDB adapter', () => {
     );
   });
 
+  it('loads legacy file message rows for read-side rendering', async () => {
+    vi.mocked(get).mockResolvedValue({
+      exists: () => true,
+      forEach: (visit) => {
+        visit({
+          key: 'file-1',
+          val: () => ({
+            from: 'user-a',
+            fromName: 'User A',
+            type: 'file',
+            fileName: 'demo.png',
+            mimeType: 'image/png',
+            fileSize: 123,
+            data: 'data:image/png;base64,abc',
+            sentAt: 10,
+            read: false,
+          }),
+        });
+      },
+    });
+
+    const repository = createRTDBMessageRepository();
+    const messages = await repository.loadMessages('user-a_user-b');
+
+    expect(messages).toEqual([
+      expect.objectContaining({
+        messageId: 'file-1',
+        payload: {
+          type: 'file',
+          fileName: 'demo.png',
+          mimeType: 'image/png',
+          fileSize: 123,
+          data: 'data:image/png;base64,abc',
+          text: undefined,
+        },
+      }),
+    ]);
+  });
+
   it('loads shared conversation metadata without draft state', async () => {
     vi.mocked(get).mockResolvedValue({
       exists: () => true,

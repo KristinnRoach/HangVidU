@@ -37,6 +37,36 @@ describe('messaging-next useConversation', () => {
     expect(loaded.map((msg) => msg.id)).toEqual(['msg-1', 'msg-2', 'msg-3']);
   });
 
+  it('maps legacy file envelopes into chat attachments', async () => {
+    const repository = {
+      loadMessages: () => [
+        envelope({
+          payload: {
+            type: 'file',
+            fileName: 'demo.png',
+            mimeType: 'image/png',
+            fileSize: 123,
+            data: 'data:image/png;base64,abc',
+          },
+        }),
+      ],
+    };
+
+    const loaded = await loadConversationHistory(repository, 'conversation-1');
+
+    expect(loaded[0]).toMatchObject({
+      id: 'msg-1',
+      text: '',
+      attachment: {
+        type: 'file',
+        fileName: 'demo.png',
+        mimeType: 'image/png',
+        fileSize: 123,
+        data: 'data:image/png;base64,abc',
+      },
+    });
+  });
+
   it('starts live subscriptions only after history is ready', async () => {
     const store = createConversationState();
     const actions = createConversationActions(store);

@@ -21,32 +21,49 @@
 
 .image-preview-close,
 .image-preview-download {
-  mix-blend-mode: lighten;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* mix-blend-mode: lighten; */
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   border-radius: 50%;
-  padding: var(--spacing-xs);
-
-  background-color: rgba(255 255 255 / 0.05);
   border: none;
-  color: var(--text-secondary);
+  width: 36px;
+  height: 36px;
+  background-color: rgba(131 131 131 / 0.639);
+  color: var(--text-primary);
+  text-shadow: 0 0 4px rgba(0 0 0 / 0.5);
+  cursor: pointer;
+  overflow: hidden;
+  font-size: 28px;
 
   transition: color 0.2s ease;
 }
 
 .image-preview-close:hover,
 .image-preview-download:hover {
-  background: rgba(255 255 255 / 0.1);
+  background: rgb(0 0 0 / 0.8);
   color: var(--text-primary);
 }
 
 .image-preview-download {
   position: absolute;
   top: var(--spacing-sm);
-  right: var(--spacing-sm);
+  left: var(--spacing-sm);
 }
 
 .image-preview-close {
   position: absolute;
   top: var(--spacing-sm);
-  left: var(--spacing-sm);
+  right: var(--spacing-sm);
+}
+
+.image-preview-close::before {
+  content: '×';
+}
+
+.image-preview-download::before {
+  content: '⤓';
 }

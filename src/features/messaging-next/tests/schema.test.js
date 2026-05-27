@@ -71,19 +71,22 @@ describe('messaging-next schema', () => {
     expect(payload.details?.callId).toBe('room-123');
   });
 
-  it('rejects file payloads until the file-message contract is designed', () => {
-    expect(() =>
-      MessageEnvelopeSchema.parse({
-        messageId: 'msg-1',
-        conversationId: 'user-a_user-b',
-        senderId: 'user-a',
-        sentAt: 10,
-        delivery: 'persistent',
-        payload: {
-          type: 'file',
-          fileName: 'demo.png',
-        },
-      }),
-    ).toThrow();
+  it('accepts legacy file payloads for read-side rendering', () => {
+    const message = MessageEnvelopeSchema.parse({
+      messageId: 'msg-1',
+      conversationId: 'user-a_user-b',
+      senderId: 'user-a',
+      sentAt: 10,
+      delivery: 'persistent',
+      payload: {
+        type: 'file',
+        fileName: 'demo.png',
+        mimeType: 'image/png',
+        fileSize: 123,
+        data: 'data:image/png;base64,abc',
+      },
+    });
+
+    expect(message.payload.type).toBe('file');
   });
 });

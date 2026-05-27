@@ -175,6 +175,14 @@ export type TransportMode = 'persisted' | 'private';
 
 export type MessageAction = { label: string; onClick: () => void };
 
+export type MessageAttachment = {
+  type: 'file';
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  data: string;
+};
+
 export type ConversationSelection = {
   conversationId: ConversationId;
   remoteParticipantIds?: UserId[];
@@ -186,6 +194,7 @@ export type ChatMessage = {
   id: string;
   conversationId: ConversationId;
   text: string;
+  attachment?: MessageAttachment;
   senderId: UserId;
   sentAt: number;
   status: MessageStatus;

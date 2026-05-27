@@ -40,9 +40,10 @@ export function showImagePreview(src, fileName, downloadLabel = null) {
   closeBtn.setAttribute('aria-label', 'Close');
   closeBtn.setAttribute('title', 'Close Image Preview');
 
-  const closeIcon = document.createElement('i');
-  closeIcon.setAttribute('data-lucide', 'x');
-  closeBtn.appendChild(closeIcon);
+  const closeIcon = document.createElement('button');
+  // closeIcon.textContent = '×';
+  // closeIcon.setAttribute('data-lucide', 'x');
+  // closeBtn.appendChild(closeIcon);
   closeBtn.addEventListener('click', () => dialog.close());
 
   dialog.appendChild(img);
