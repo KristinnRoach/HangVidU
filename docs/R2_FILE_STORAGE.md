@@ -42,7 +42,18 @@ FIREBASE_DATABASE_URL=https://your_project-default-rtdb.region.firebasedatabase.
 
 `.env.r2.local` is ignored by git through the existing `.env.*.local` rule.
 
-## 3. Dry-Run The RTDB Scan
+## 3. Configure Browser Downloads
+
+Direct downloads for files served from `files.hangvidu.com` use browser `fetch`
+and Blob URLs because the native `download` attribute is ignored for many
+cross-origin links. Apply the checked-in CORS policy before relying on those
+downloads:
+
+```bash
+pnpm dlx wrangler@latest r2 bucket cors set hangvidu-files --file r2-cors.hangvidu-files.json
+```
+
+## 4. Dry-Run The RTDB Scan
 
 ```bash
 pnpm migrate:rtdb-files:r2:dry
@@ -58,7 +69,7 @@ pnpm migrate:rtdb-files:r2:dry -- --limit=5
 The dry run prints migratable RTDB image messages with `type: "file"`, an
 `image/*` MIME type, and a `data:` URL, but does not upload or write RTDB.
 
-## 4. Upload And Patch RTDB
+## 5. Upload And Patch RTDB
 
 ```bash
 pnpm migrate:rtdb-files:r2 -- --limit=5
@@ -71,13 +82,14 @@ pnpm migrate:rtdb-files:r2
 ```
 
 By default the script keeps the original RTDB `data` field as a fallback. After
-verification, remove old inline bytes with:
+verification, remove old inline bytes from already-migrated R2 image messages
+with:
 
 ```bash
 pnpm migrate:rtdb-files:r2 -- --remove-data
 ```
 
-## 5. RTDB File Shape After Migration
+## 6. RTDB File Shape After Migration
 
 The migration patches each file message with:
 

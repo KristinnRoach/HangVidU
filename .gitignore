@@ -8,6 +8,7 @@
 .env.*.local
 
 # Playwright
+output/
 test-results/
 playwright-report/
 playwright/.cache/

@@ -1,4 +1,5 @@
 import { onSwipe } from '../../shared/utils/ui-utils/swipe-interactions.js';
+import { downloadUrl } from '../../shared/utils/download-url.js';
 
 // ! Note - vanilla js icons currently missing
 
@@ -25,6 +26,10 @@ export function showImagePreview(src, fileName, downloadLabel = null) {
   downloadBtn.className = 'image-preview-download';
   downloadBtn.setAttribute('aria-label', `Download`);
   downloadBtn.setAttribute('title', `Download`);
+  downloadBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    void downloadUrl(src, fileName);
+  });
 
   if (typeof downloadLabel === 'string' && downloadLabel.trim() !== '') {
     const labelSpan = document.createElement('span');

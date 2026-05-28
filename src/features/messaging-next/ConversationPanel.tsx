@@ -14,6 +14,7 @@ import { getUserName } from '../../auth/index.js';
 import { useI18n } from '../../shared/i18n';
 import { LoadBoundary } from '../../components/app/LoadBoundary';
 import { showImagePreview } from '../../components/base-legacy/imagePreview.js';
+import { downloadUrl } from '../../shared/utils/download-url.js';
 
 import { createMessagingRuntime } from './messaging-runtime.js';
 
@@ -405,6 +406,14 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                                       href={attachmentUrl ?? undefined}
                                       download={file.fileName}
                                       class={styles.fileMessageName}
+                                      onClick={(event) => {
+                                        if (!attachmentUrl) return;
+                                        event.preventDefault();
+                                        void downloadUrl(
+                                          attachmentUrl,
+                                          file.fileName,
+                                        );
+                                      }}
                                     >
                                       {file.fileName}
                                     </a>
