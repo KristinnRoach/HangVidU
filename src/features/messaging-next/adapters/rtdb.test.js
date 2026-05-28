@@ -153,7 +153,7 @@ describe('messaging-next RTDB adapter', () => {
     );
   });
 
-  it('emits hasUnread when the latest message is from someone else and newer than lastReadAt', () => {
+  it('emits conversation activity with latest message and lastReadAt', () => {
     const unsubscribeLatest = vi.fn();
     const unsubscribeRead = vi.fn();
     const calls = [];
@@ -175,20 +175,22 @@ describe('messaging-next RTDB adapter', () => {
       });
 
     const repository = createRTDBMessageRepository();
-    const unsubscribe = repository.watchHasUnread(
+    const unsubscribe = repository.watchConversationActivity(
       'user-a_user-b',
       'user-a',
-      (hasUnread) => calls.push(hasUnread),
+      (activity) => calls.push(activity),
     );
 
-    expect(calls).toEqual([true]);
+    expect(calls).toEqual([
+      { latestSentAt: 200, latestSenderId: 'user-b', lastReadAt: 100 },
+    ]);
 
     unsubscribe();
     expect(unsubscribeLatest).toHaveBeenCalled();
     expect(unsubscribeRead).toHaveBeenCalled();
   });
 
-  it('emits hasUnread=false when the latest message is the users own', () => {
+  it('emits activity reflecting the users own latest message', () => {
     const calls = [];
     vi.mocked(onValue)
       .mockImplementationOnce((_queryRef, next) => {
@@ -205,9 +207,13 @@ describe('messaging-next RTDB adapter', () => {
       });
 
     const repository = createRTDBMessageRepository();
-    repository.watchHasUnread('user-a_user-b', 'user-a', (h) => calls.push(h));
+    repository.watchConversationActivity('user-a_user-b', 'user-a', (a) =>
+      calls.push(a),
+    );
 
-    expect(calls).toEqual([false]);
+    expect(calls).toEqual([
+      { latestSentAt: 200, latestSenderId: 'user-a', lastReadAt: 0 },
+    ]);
   });
 
   it('loads shared conversation metadata without draft state', async () => {

@@ -28,6 +28,17 @@ export type P2PChatEnvelope = {
 /** emoji → userId → true  (RTDB nested-object shape, JSON-safe) */
 export type ReactionMap = Record<string, Record<UserId, true>>;
 
+/**
+ * Per-conversation activity snapshot. Single source for both list-ordering
+ * (latestSentAt) and the unread badge (latestSenderId !== me && latestSentAt > lastReadAt).
+ * Zero values mean "no data yet."
+ */
+export type ConversationActivity = {
+  latestSentAt: number;
+  latestSenderId: UserId | null;
+  lastReadAt: number;
+};
+
 export type MessageRepository = {
   /** Load recent messages for a conversation, newest last. */
   loadMessages(
@@ -59,13 +70,14 @@ export type MessageRepository = {
   ): void | Promise<void>;
 
   /**
-   * Watch whether a user has any unread remote messages in a conversation.
-   * Binary signal — counts are intentionally omitted for now.
+   * Watch a conversation's activity signal — the latest message timestamp and
+   * sender, plus the user's lastReadAt. Consumers derive sort order and unread
+   * state from this single source.
    */
-  watchHasUnread(
+  watchConversationActivity(
     conversationId: ConversationId,
     userId: UserId,
-    onChange: (hasUnread: boolean) => void,
+    onChange: (activity: ConversationActivity) => void,
     onError?: (error: unknown) => void,
   ): (() => void) | Promise<() => void>;
 

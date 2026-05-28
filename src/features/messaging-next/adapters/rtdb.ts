@@ -213,24 +213,16 @@ export function createRTDBMessageRepository(): MessageRepository {
       });
     },
 
-    watchHasUnread(conversationId, userId, onChange, onError) {
+    watchConversationActivity(conversationId, userId, onChange, onError) {
       let latestSenderId: UserId | null = null;
       let latestSentAt = 0;
       let lastReadAt = 0;
       let hasLatest = false;
       let hasRead = false;
-      let lastEmitted: boolean | null = null;
 
       function emit() {
         if (!hasLatest || !hasRead) return;
-        const hasUnread =
-          latestSenderId !== null &&
-          latestSenderId !== userId &&
-          latestSentAt > lastReadAt;
-        if (hasUnread !== lastEmitted) {
-          lastEmitted = hasUnread;
-          onChange(hasUnread);
-        }
+        onChange({ latestSentAt, latestSenderId, lastReadAt });
       }
 
       const unsubscribeLatest = onValue(

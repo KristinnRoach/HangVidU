@@ -12,8 +12,9 @@
   - does not import persistence directly
 
 - Current split
-  - writes: `saveContact`, `updateContact`, `deleteContact`, `recordInteraction`, `recordInteractionByConversation`, `handleHangUp`
-  - reads: `getAllContacts`, `getContactById`, `getContactByRoomId`, `getConversationId`, `getAllContactsSorted`, `getContactByMostRecentInteraction`, `getContactsIsHydrated`
+  - writes: `saveContact`, `updateContact`, `deleteContact`, `handleHangUp`
+  - reads: `getAllContacts`, `getContactById`, `getContactByRoomId`, `getConversationId`, `getContactsIsHydrated`
+  - per-conversation activity (sort key + unread badge) comes from `MessageRepository.watchConversationActivity`, not the contacts store
   - lifecycle: `hydrateContacts`, `resetContacts`
 
 - Storage boundary
