@@ -17,6 +17,9 @@ export function createInMemoryMessageRepository(): MessageRepository {
     Array<{
       userId: UserId;
       onChange: (activity: ConversationActivity) => void;
+      lastEmittedSentAt: number;
+      lastEmittedReadAt: number;
+      lastEmittedSenderId: UserId | null | undefined;
     }>
   >();
   const rxnSubs = new Map<
@@ -54,7 +57,16 @@ export function createInMemoryMessageRepository(): MessageRepository {
 
   function notifyActivity(conversationId: ConversationId) {
     for (const sub of activitySubs.get(conversationId) ?? []) {
-      sub.onChange(activitySnapshot(conversationId, sub.userId));
+      const next = activitySnapshot(conversationId, sub.userId);
+      if (
+        next.latestSentAt === sub.lastEmittedSentAt &&
+        next.lastReadAt === sub.lastEmittedReadAt &&
+        next.latestSenderId === sub.lastEmittedSenderId
+      ) continue;
+      sub.lastEmittedSentAt = next.latestSentAt;
+      sub.lastEmittedReadAt = next.lastReadAt;
+      sub.lastEmittedSenderId = next.latestSenderId;
+      sub.onChange(next);
     }
   }
 
@@ -97,10 +109,17 @@ export function createInMemoryMessageRepository(): MessageRepository {
 
     watchConversationActivity(conversationId, userId, onChange) {
       const list = activitySubs.get(conversationId) ?? [];
-      const sub = { userId, onChange };
+      const initial = activitySnapshot(conversationId, userId);
+      const sub = {
+        userId,
+        onChange,
+        lastEmittedSentAt: initial.latestSentAt,
+        lastEmittedReadAt: initial.lastReadAt,
+        lastEmittedSenderId: initial.latestSenderId,
+      };
       list.push(sub);
       activitySubs.set(conversationId, list);
-      onChange(activitySnapshot(conversationId, userId));
+      onChange(initial);
       return () => {
         activitySubs.set(
           conversationId,

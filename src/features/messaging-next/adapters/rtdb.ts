@@ -219,9 +219,22 @@ export function createRTDBMessageRepository(): MessageRepository {
       let lastReadAt = 0;
       let hasLatest = false;
       let hasRead = false;
+      let lastEmittedSentAt = -1;
+      let lastEmittedReadAt = -1;
+      let lastEmittedSenderId: UserId | null | undefined = undefined;
 
       function emit() {
         if (!hasLatest || !hasRead) return;
+        if (
+          latestSentAt === lastEmittedSentAt &&
+          lastReadAt === lastEmittedReadAt &&
+          latestSenderId === lastEmittedSenderId
+        )
+          return;
+
+        lastEmittedSentAt = latestSentAt;
+        lastEmittedReadAt = lastReadAt;
+        lastEmittedSenderId = latestSenderId;
         onChange({ latestSentAt, latestSenderId, lastReadAt });
       }
 
