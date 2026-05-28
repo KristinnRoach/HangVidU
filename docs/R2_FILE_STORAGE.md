@@ -55,8 +55,8 @@ pnpm migrate:rtdb-files:r2:dry -- --conversation=user-a_user-b
 pnpm migrate:rtdb-files:r2:dry -- --limit=5
 ```
 
-The dry run prints migratable RTDB file messages with `type: "file"` and a
-`data:` URL, but does not upload or write RTDB.
+The dry run prints migratable RTDB image messages with `type: "file"`, an
+`image/*` MIME type, and a `data:` URL, but does not upload or write RTDB.
 
 ## 4. Upload And Patch RTDB
 
@@ -87,11 +87,11 @@ The migration patches each file message with:
   "fileName": "demo.png",
   "mimeType": "image/png",
   "fileSize": 123,
-  "url": "https://files.example.com/message-files/conversation/message/demo.png",
+  "url": "https://files.example.com/conversations/conversation/media/images/message/demo.png",
   "storage": {
     "provider": "r2",
     "bucket": "hangvidu-files",
-    "key": "message-files/conversation/message/demo.png"
+    "key": "conversations/conversation/media/images/message/demo.png"
   }
 }
 ```
