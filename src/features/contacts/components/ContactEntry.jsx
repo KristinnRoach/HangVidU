@@ -77,7 +77,7 @@ export default function ContactEntry(props) {
           aria-live='polite'
           aria-atomic='true'
           role='status'
-          aria-label='Unread'
+          aria-label={t('contact.unread')}
         >
           <span aria-hidden='true'>•</span>
         </span>

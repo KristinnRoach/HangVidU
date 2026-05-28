@@ -220,6 +220,11 @@
       .formula .op {
         color: var(--reset);
       }
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+        margin: 10px 0 12px;
+      }
     </style>
   </head>
   <body>
@@ -238,7 +243,7 @@
       </header>
 
       <section class="panel">
-        <h2>Members (contacts list view)</h2>
+        <h2>Members (simulated global teaching view)</h2>
         <div class="formula">
           <span class="hi">hasUnread(uid)</span>
           <span class="op"> = </span>
@@ -246,6 +251,10 @@
           <span class="op">&amp;&amp;</span>
           latestSenderId <span class="op">!==</span> uid
         </div>
+        <p class="muted">
+          This panel is omniscient for teaching. The runtime subscription below
+          is actor-scoped and reads only <code>members/${actor}</code>.
+        </p>
         <div class="members" id="members"></div>
       </section>
 
