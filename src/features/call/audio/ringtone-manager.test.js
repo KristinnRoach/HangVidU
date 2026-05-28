@@ -1,7 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const audioPlayerMocks = vi.hoisted(() => ({
+  constructor: vi.fn(),
+}));
+
 vi.mock('./audio-player.js', () => ({
   AudioPlayer: class {
+    constructor(src, options) {
+      audioPlayerMocks.constructor(src, options);
+    }
+
     play = vi.fn().mockResolvedValue(true);
     stop = vi.fn();
     dispose = vi.fn();
@@ -17,6 +25,21 @@ describe('ringtoneManager', () => {
       configurable: true,
       writable: true,
     });
+    audioPlayerMocks.constructor.mockClear();
+  });
+
+  it('uses the local default busy tone by default', async () => {
+    const { ringtoneManager } = await import('./ringtone-manager.js');
+
+    await ringtoneManager.playBusy();
+
+    expect(audioPlayerMocks.constructor).toHaveBeenCalledWith(
+      '/sounds/busy.default.opus',
+      expect.objectContaining({
+        loop: false,
+        volume: expect.any(Number),
+      }),
+    );
   });
 
   it('switches to play-and-record for audio-only outgoing ringtones when supported', async () => {

@@ -13,9 +13,9 @@ import { AudioPlayer } from './audio-player.js';
 class RingtoneManager {
   constructor({ incomingSrc, outgoingSrc, busySrc, volume } = {}) {
     const baseUrl = import.meta.env.BASE_URL;
-    this.incomingSrc = incomingSrc ?? `${baseUrl}sounds/incoming.mp3`;
-    this.outgoingSrc = outgoingSrc ?? `${baseUrl}sounds/outgoing.mp3`;
-    this.busySrc = busySrc ?? `${baseUrl}sounds/busy.opus`;
+    this.incomingSrc = incomingSrc ?? `${baseUrl}sounds/incoming.default.mp3`;
+    this.outgoingSrc = outgoingSrc ?? `${baseUrl}sounds/outgoing.default.mp3`;
+    this.busySrc = busySrc ?? `${baseUrl}sounds/busy.default.opus`;
     this.defaultVolume = volume ?? 0.4; // 0.0 to 1.0;
     this.currentPlayer = null;
     this.currentType = null; // 'incoming', 'outgoing', 'busy', or null
@@ -139,7 +139,7 @@ class RingtoneManager {
    * Internal method to play a ringtone
    * @private
    * @param {string} type - Type of ringtone ('incoming', 'outgoing', or 'busy')
-   * @param {string} src - Path to audio file
+   * @param {string|string[]} src - Path or URL to audio file, or fallback list
    * @returns {Promise<boolean>}
    */
   async _play(type, src, { loop, beforePlayback } = { loop: true }) {
@@ -147,38 +147,41 @@ class RingtoneManager {
     this.stop();
     beforePlayback?.();
 
-    try {
-      // Create new player with looping enabled
-      this.currentPlayer = new AudioPlayer(src, {
-        loop: loop,
-        volume: this.defaultVolume,
-      });
+    const sources = Array.isArray(src) ? src : [src];
 
-      this.currentType = type;
+    for (const source of sources) {
+      try {
+        // Create new player with looping enabled
+        this.currentPlayer = new AudioPlayer(source, {
+          loop: loop,
+          volume: this.defaultVolume,
+        });
 
-      // Attempt to play
-      const success = await this.currentPlayer.play();
+        this.currentType = type;
 
-      if (success) {
-        console.log(`[Ringtone] Playing ${type} ringtone`);
-      } else {
+        // Attempt to play
+        const success = await this.currentPlayer.play();
+
+        if (success) {
+          console.log(`[Ringtone] Playing ${type} ringtone`);
+          return true;
+        }
+
         console.warn(
           `[Ringtone] Failed to start ${type} ringtone (likely autoplay blocked)`,
         );
-        // Clean up failed player
+        this.currentPlayer?.dispose();
+        this.currentPlayer = null;
+        this.currentType = null;
+      } catch (err) {
+        console.error(`[Ringtone] Error playing ${type} ringtone:`, err);
         this.currentPlayer?.dispose();
         this.currentPlayer = null;
         this.currentType = null;
       }
-
-      return success;
-    } catch (err) {
-      console.error(`[Ringtone] Error playing ${type} ringtone:`, err);
-      this.currentPlayer?.dispose();
-      this.currentPlayer = null;
-      this.currentType = null;
-      return false;
     }
+
+    return false;
   }
 
   /**

@@ -9,7 +9,7 @@ Create one private R2 bucket in Cloudflare:
 
 ```bash
 pnpm dlx wrangler@latest login
-pnpm dlx wrangler@latest r2 bucket create hangvidu-message-files
+pnpm dlx wrangler@latest r2 bucket create hangvidu-files
 ```
 
 Dashboard path: **R2 Object Storage > Create bucket**.
@@ -26,7 +26,7 @@ and conversation membership before streaming the R2 object.
 ## 2. Create Migration Credentials
 
 In Cloudflare, create an R2 API token with object read/write access scoped to
-`hangvidu-message-files`.
+`hangvidu-files`.
 
 Copy [.env.r2.example](../.env.r2.example) to `.env.r2.local` and fill in:
 
@@ -34,7 +34,7 @@ Copy [.env.r2.example](../.env.r2.example) to `.env.r2.local` and fill in:
 R2_ACCOUNT_ID=...
 R2_ACCESS_KEY_ID=...
 R2_SECRET_ACCESS_KEY=...
-R2_BUCKET=hangvidu-message-files
+R2_BUCKET=hangvidu-files
 R2_PUBLIC_BASE_URL=https://files.your-domain.com
 GOOGLE_APPLICATION_CREDENTIALS=functions/service-account-key.json
 FIREBASE_DATABASE_URL=https://your_project-default-rtdb.region.firebasedatabase.app
@@ -42,7 +42,18 @@ FIREBASE_DATABASE_URL=https://your_project-default-rtdb.region.firebasedatabase.
 
 `.env.r2.local` is ignored by git through the existing `.env.*.local` rule.
 
-## 3. Dry-Run The RTDB Scan
+## 3. Configure Browser Downloads
+
+Direct downloads for files served from `files.hangvidu.com` use browser `fetch`
+and Blob URLs because the native `download` attribute is ignored for many
+cross-origin links. Apply the checked-in CORS policy before relying on those
+downloads:
+
+```bash
+pnpm dlx wrangler@latest r2 bucket cors set hangvidu-files --file r2-cors.hangvidu-files.json
+```
+
+## 4. Dry-Run The RTDB Scan
 
 ```bash
 pnpm migrate:rtdb-files:r2:dry
@@ -55,10 +66,10 @@ pnpm migrate:rtdb-files:r2:dry -- --conversation=user-a_user-b
 pnpm migrate:rtdb-files:r2:dry -- --limit=5
 ```
 
-The dry run prints migratable RTDB file messages with `type: "file"` and a
-`data:` URL, but does not upload or write RTDB.
+The dry run prints migratable RTDB image messages with `type: "file"`, an
+`image/*` MIME type, and a `data:` URL, but does not upload or write RTDB.
 
-## 4. Upload And Patch RTDB
+## 5. Upload And Patch RTDB
 
 ```bash
 pnpm migrate:rtdb-files:r2 -- --limit=5
@@ -71,13 +82,14 @@ pnpm migrate:rtdb-files:r2
 ```
 
 By default the script keeps the original RTDB `data` field as a fallback. After
-verification, remove old inline bytes with:
+verification, remove old inline bytes from already-migrated R2 image messages
+with:
 
 ```bash
 pnpm migrate:rtdb-files:r2 -- --remove-data
 ```
 
-## 5. RTDB File Shape After Migration
+## 6. RTDB File Shape After Migration
 
 The migration patches each file message with:
 
@@ -87,11 +99,11 @@ The migration patches each file message with:
   "fileName": "demo.png",
   "mimeType": "image/png",
   "fileSize": 123,
-  "url": "https://files.example.com/message-files/conversation/message/demo.png",
+  "url": "https://files.example.com/conversations/conversation/media/images/message/demo.png",
   "storage": {
     "provider": "r2",
-    "bucket": "hangvidu-message-files",
-    "key": "message-files/conversation/message/demo.png"
+    "bucket": "hangvidu-files",
+    "key": "conversations/conversation/media/images/message/demo.png"
   }
 }
 ```

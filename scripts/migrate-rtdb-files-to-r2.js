@@ -24,7 +24,7 @@ const config = {
   publicBaseUrl: args['public-base'] ?? process.env.R2_PUBLIC_BASE_URL ?? null,
 };
 
-if (!Number.isFinite(limit) || limit <= 0) {
+if (limit !== Infinity && (!Number.isFinite(limit) || limit <= 0)) {
   throw new Error('--limit must be a positive number');
 }
 
@@ -36,17 +36,46 @@ let scanned = 0;
 let candidates = 0;
 let uploaded = 0;
 let patched = 0;
+let removed = 0;
 let skipped = 0;
 let failed = 0;
 
 for (const [conversationId, conversation] of Object.entries(conversations)) {
+  if (candidates >= limit) break;
   if (onlyConversation && conversationId !== onlyConversation) continue;
   const messages = conversation?.messages ?? {};
 
   for (const [messageId, message] of Object.entries(messages)) {
     scanned += 1;
     if (candidates >= limit) break;
-    if (!isMigratableFileMessage(message)) {
+
+    if (removeData && isMigratedImageMessageWithInlineData(message)) {
+      candidates += 1;
+      console.log(
+        `${dryRun ? '[dry-run]' : '[cleanup]'} ${conversationId}/${messageId} remove RTDB inline data`,
+      );
+
+      if (dryRun) continue;
+
+      try {
+        await database
+          .ref('conversations')
+          .child(conversationId)
+          .child('messages')
+          .child(messageId)
+          .update({ data: null });
+        patched += 1;
+        removed += 1;
+      } catch (error) {
+        failed += 1;
+        console.error(
+          `[failed] ${conversationId}/${messageId}: ${error?.message || error}`,
+        );
+      }
+      continue;
+    }
+
+    if (!isMigratableImageMessage(message)) {
       skipped += 1;
       continue;
     }
@@ -115,6 +144,7 @@ console.log(
       candidates,
       uploaded,
       patched,
+      removed,
       skipped,
       failed,
       removedData: removeData,
@@ -127,6 +157,8 @@ console.log(
 if (failed > 0) {
   process.exitCode = 1;
 }
+
+await shutdownFirebaseAdmin();
 
 function loadEnvFile(file) {
   const absolute = path.resolve(file);
@@ -203,13 +235,33 @@ function initializeFirebaseAdmin() {
   return admin.database();
 }
 
-function isMigratableFileMessage(message) {
+async function shutdownFirebaseAdmin() {
+  await Promise.all(admin.apps.filter(Boolean).map((app) => app.delete()));
+}
+
+function isMigratableImageMessage(message) {
   return (
     message &&
     message.type === 'file' &&
+    typeof message.mimeType === 'string' &&
+    message.mimeType.toLowerCase().startsWith('image/') &&
     typeof message.data === 'string' &&
     message.data.startsWith('data:') &&
     !(message.storage && message.storage.provider === 'r2')
+  );
+}
+
+function isMigratedImageMessageWithInlineData(message) {
+  return (
+    message &&
+    message.type === 'file' &&
+    typeof message.mimeType === 'string' &&
+    message.mimeType.toLowerCase().startsWith('image/') &&
+    typeof message.data === 'string' &&
+    message.data.startsWith('data:') &&
+    message.storage &&
+    message.storage.provider === 'r2' &&
+    typeof message.storage.key === 'string'
   );
 }
 
@@ -236,7 +288,14 @@ function sanitizeFileName(fileName) {
 }
 
 function buildR2Key(conversationId, messageId, fileName) {
-  return ['message-files', conversationId, messageId, fileName].join('/');
+  return [
+    'conversations',
+    conversationId,
+    'media',
+    'images',
+    messageId,
+    fileName,
+  ].join('/');
 }
 
 function joinPublicUrl(baseUrl, key) {
