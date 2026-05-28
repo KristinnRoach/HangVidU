@@ -72,8 +72,14 @@ export default function ContactEntry(props) {
       </button>
 
       <Show when={props.hasUnread}>
-        <span class='unread-badge' aria-live='polite' aria-atomic='true'>
-          •
+        <span
+          class='unread-badge'
+          aria-live='polite'
+          aria-atomic='true'
+          role='status'
+          aria-label='Unread'
+        >
+          <span aria-hidden='true'>•</span>
         </span>
       </Show>
 

@@ -1,4 +1,5 @@
 import type {
+  ConversationActivity,
   IncomingMessage,
   MessageRepository,
   ReactionMap,
@@ -11,12 +12,14 @@ export function createInMemoryMessageRepository(): MessageRepository {
     ConversationId,
     Array<(messages: IncomingMessage[]) => void>
   >();
-  const unreadSubs = new Map<
+  const activitySubs = new Map<
     ConversationId,
     Array<{
       userId: UserId;
-      onChange: (hasUnread: boolean) => void;
-      last: boolean | null;
+      onChange: (activity: ConversationActivity) => void;
+      lastEmittedSentAt: number;
+      lastEmittedReadAt: number;
+      lastEmittedSenderId: UserId | null | undefined;
     }>
   >();
   const rxnSubs = new Map<
@@ -40,20 +43,30 @@ export function createInMemoryMessageRepository(): MessageRepository {
     for (const cb of recentSubs.get(conversationId) ?? []) cb(messages);
   }
 
-  function hasUnread(conversationId: ConversationId, userId: UserId) {
+  function activitySnapshot(
+    conversationId: ConversationId,
+    userId: UserId,
+  ): ConversationActivity {
     const latest = getStored(conversationId).at(-1);
-    if (!latest || latest.senderId === userId) return false;
-    const readAt = lastReadAt.get(readKey(conversationId, userId)) ?? 0;
-    return latest.sentAt > readAt;
+    return {
+      latestSentAt: latest?.sentAt ?? 0,
+      latestSenderId: latest?.senderId ?? null,
+      lastReadAt: lastReadAt.get(readKey(conversationId, userId)) ?? 0,
+    };
   }
 
-  function notifyUnread(conversationId: ConversationId) {
-    for (const sub of unreadSubs.get(conversationId) ?? []) {
-      const next = hasUnread(conversationId, sub.userId);
-      if (next !== sub.last) {
-        sub.last = next;
-        sub.onChange(next);
-      }
+  function notifyActivity(conversationId: ConversationId) {
+    for (const sub of activitySubs.get(conversationId) ?? []) {
+      const next = activitySnapshot(conversationId, sub.userId);
+      if (
+        next.latestSentAt === sub.lastEmittedSentAt &&
+        next.lastReadAt === sub.lastEmittedReadAt &&
+        next.latestSenderId === sub.lastEmittedSenderId
+      ) continue;
+      sub.lastEmittedSentAt = next.latestSentAt;
+      sub.lastEmittedReadAt = next.lastReadAt;
+      sub.lastEmittedSenderId = next.latestSenderId;
+      sub.onChange(next);
     }
   }
 
@@ -85,26 +98,34 @@ export function createInMemoryMessageRepository(): MessageRepository {
       };
       getStored(msg.conversationId).push(msg);
       notifyRecent(msg.conversationId);
-      notifyUnread(msg.conversationId);
+      notifyActivity(msg.conversationId);
       return { id: msg.messageId, sentAt: msg.sentAt };
     },
 
     markConversationRead(conversationId, userId) {
       lastReadAt.set(readKey(conversationId, userId), Date.now());
-      notifyUnread(conversationId);
+      notifyActivity(conversationId);
     },
 
-    watchHasUnread(conversationId, userId, onChange) {
-      const list = unreadSubs.get(conversationId) ?? [];
-      const initial = hasUnread(conversationId, userId);
-      const sub = { userId, onChange, last: initial };
+    watchConversationActivity(conversationId, userId, onChange) {
+      const list = activitySubs.get(conversationId) ?? [];
+      const initial = activitySnapshot(conversationId, userId);
+      const sub = {
+        userId,
+        onChange,
+        lastEmittedSentAt: initial.latestSentAt,
+        lastEmittedReadAt: initial.lastReadAt,
+        lastEmittedSenderId: initial.latestSenderId,
+      };
       list.push(sub);
-      unreadSubs.set(conversationId, list);
+      activitySubs.set(conversationId, list);
       onChange(initial);
       return () => {
-        unreadSubs.set(
+        activitySubs.set(
           conversationId,
-          (unreadSubs.get(conversationId) ?? []).filter((item) => item !== sub),
+          (activitySubs.get(conversationId) ?? []).filter(
+            (item) => item !== sub,
+          ),
         );
       };
     },

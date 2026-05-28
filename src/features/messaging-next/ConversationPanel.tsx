@@ -219,10 +219,17 @@ export default function ConversationPanel(props: ConversationPanelProps) {
             queueMicrotask(scrollToEnd);
             queueMicrotask(focusInput);
             if (latestMessageId) {
-              void runtime.messageRepository.markConversationRead(
-                source.conversationId,
-                source.myUserId,
-              );
+              void Promise.resolve(
+                runtime.messageRepository.markConversationRead(
+                  source.conversationId,
+                  source.myUserId,
+                ),
+              ).catch((error) => {
+                console.warn('[conversation] failed to mark conversation read', {
+                  conversationId: source.conversationId,
+                  error,
+                });
+              });
             }
           },
           (error) => {
@@ -239,10 +246,19 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         if (typeof result === 'function') {
           cleanup = result;
         } else {
-          void result.then((unsub) => {
-            if (disposed) unsub();
-            else cleanup = unsub;
-          });
+          void result
+            .then((unsub) => {
+              if (disposed) unsub();
+              else cleanup = unsub;
+            })
+            .catch((error) => {
+              if (disposed || source.conversationId !== state.conversationId) {
+                return;
+              }
+              setHistoryError(error);
+              setHistoryLoading(false);
+              suppressScroll = false;
+            });
         }
 
         onCleanup(() => {

@@ -51,6 +51,7 @@ admin.initializeApp({
 });
 
 const db = admin.database();
+const conversationOwnership = new Map();
 
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -79,6 +80,36 @@ async function applyInBatches(updates) {
 }
 
 const latestSentAtByConversation = new Map();
+
+function directConversationIdHasUser(conversationId, userId) {
+  return conversationId.split('_').includes(userId);
+}
+
+async function userBelongsToConversation(
+  conversationId,
+  userId,
+  currentMemberExists,
+) {
+  if (currentMemberExists) return true;
+
+  const cacheKey = `${conversationId}:${userId}`;
+  if (conversationOwnership.has(cacheKey)) {
+    return conversationOwnership.get(cacheKey);
+  }
+
+  const snap = await db.ref(`conversations/${conversationId}`).once('value');
+  const conversation = snap.val();
+  const belongs =
+    isObject(conversation) &&
+    ((isObject(conversation.members) &&
+      isObject(conversation.members[userId])) ||
+      (isObject(conversation.participants) &&
+        isObject(conversation.participants[userId])) ||
+      directConversationIdHasUser(conversationId, userId));
+
+  conversationOwnership.set(cacheKey, belongs);
+  return belongs;
+}
 
 async function getLatestSentAt(conversationId) {
   if (latestSentAtByConversation.has(conversationId)) {
@@ -109,6 +140,7 @@ async function run() {
   let userCount = 0;
   let contactCount = 0;
   let skippedNoConversation = 0;
+  let skippedNotMember = 0;
   let skippedExisting = 0;
   let legacyNoTimestampedMessage = 0;
 
@@ -134,6 +166,17 @@ async function run() {
         .ref(`conversations/${conversationId}/members/${userId}`)
         .once('value');
       const current = currentMember.val();
+      const belongsToConversation = await userBelongsToConversation(
+        conversationId,
+        userId,
+        currentMember.exists(),
+      );
+
+      if (!belongsToConversation) {
+        skippedNotMember += 1;
+        continue;
+      }
+
       const hasExistingLastRead =
         isObject(current) && typeof current.lastReadAt === 'number';
 
@@ -160,6 +203,7 @@ async function run() {
   console.log(`Queued writes: ${paths.length}`);
   console.log(`Skipped existing lastReadAt: ${skippedExisting}`);
   console.log(`Skipped missing conversationId: ${skippedNoConversation}`);
+  console.log(`Skipped non-member contacts: ${skippedNotMember}`);
   console.log(`Legacy no timestamped messages: ${legacyNoTimestampedMessage}`);
 
   if (paths.length > 0) {

@@ -16,7 +16,6 @@ import type {
 import type { ConversationStateStore } from './conversation.state.js';
 import type { ConversationActions } from './conversation.actions.js';
 import { sortMessagesBySentAt } from './message-ordering.js';
-import { recordInteractionByConversation } from '../../stores/contactsStore.js';
 
 type UseConversationOptions = {
   repository: MessageRepository;
@@ -135,7 +134,6 @@ export function useConversation({
     const chatMessage = envelopeToChatMessage(envelope.message, 'private');
     if (chatMessage) {
       actions.receiveMessage(chatMessage);
-      void recordInteractionByConversation(chatMessage.conversationId);
     }
   }
 
@@ -243,7 +241,6 @@ export function useConversation({
       actions.markFailed(tempId);
     } finally {
       actions.setSending(false);
-      void recordInteractionByConversation(conversationId);
     }
   }
 
