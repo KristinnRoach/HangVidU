@@ -9,7 +9,7 @@ Create one private R2 bucket in Cloudflare:
 
 ```bash
 pnpm dlx wrangler@latest login
-pnpm dlx wrangler@latest r2 bucket create hangvidu-message-files
+pnpm dlx wrangler@latest r2 bucket create hangvidu-files
 ```
 
 Dashboard path: **R2 Object Storage > Create bucket**.
@@ -26,7 +26,7 @@ and conversation membership before streaming the R2 object.
 ## 2. Create Migration Credentials
 
 In Cloudflare, create an R2 API token with object read/write access scoped to
-`hangvidu-message-files`.
+`hangvidu-files`.
 
 Copy [.env.r2.example](../.env.r2.example) to `.env.r2.local` and fill in:
 
@@ -34,7 +34,7 @@ Copy [.env.r2.example](../.env.r2.example) to `.env.r2.local` and fill in:
 R2_ACCOUNT_ID=...
 R2_ACCESS_KEY_ID=...
 R2_SECRET_ACCESS_KEY=...
-R2_BUCKET=hangvidu-message-files
+R2_BUCKET=hangvidu-files
 R2_PUBLIC_BASE_URL=https://files.your-domain.com
 GOOGLE_APPLICATION_CREDENTIALS=functions/service-account-key.json
 FIREBASE_DATABASE_URL=https://your_project-default-rtdb.region.firebasedatabase.app
@@ -90,7 +90,7 @@ The migration patches each file message with:
   "url": "https://files.example.com/message-files/conversation/message/demo.png",
   "storage": {
     "provider": "r2",
-    "bucket": "hangvidu-message-files",
+    "bucket": "hangvidu-files",
     "key": "message-files/conversation/message/demo.png"
   }
 }
