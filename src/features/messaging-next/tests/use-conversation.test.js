@@ -67,13 +67,12 @@ describe('messaging-next useConversation', () => {
     });
   });
 
-  it('starts live subscriptions only after history is ready', async () => {
+  it('starts reaction subscriptions only after history is ready', async () => {
     const store = createConversationState();
     const actions = createConversationActions(store);
     actions.startConversation({ conversationId: 'conversation-1' }, 'me');
 
     const repository = {
-      subscribe: vi.fn(() => () => {}),
       subscribeReactions: vi.fn(() => () => {}),
       send: vi.fn(),
     };
@@ -89,17 +88,11 @@ describe('messaging-next useConversation', () => {
         });
 
         queueMicrotask(() => {
-          expect(repository.subscribe).not.toHaveBeenCalled();
           expect(repository.subscribeReactions).not.toHaveBeenCalled();
 
           setHistoryReady(true);
 
           queueMicrotask(() => {
-            expect(repository.subscribe).toHaveBeenCalledWith(
-              'conversation-1',
-              'me',
-              expect.any(Function),
-            );
             expect(repository.subscribeReactions).toHaveBeenCalledWith(
               'conversation-1',
               expect.any(Function),

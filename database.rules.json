@@ -68,11 +68,11 @@
         ".read": "auth != null && (data.child('members').child(auth.uid).exists() || $conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid))",
         "members": {
           "$uid": {
-            ".write": "auth != null && !data.exists() && newData.val() === true && (($conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid)) && ($conversationId.contains($uid + '_') || $conversationId.contains('_' + $uid)))"
+            ".write": "auth != null && $uid === auth.uid && (data.exists() || $conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid))"
           }
         },
         "messages": {
-          ".indexOn": ["from"],
+          ".indexOn": ["from", "sentAt"],
           "$messageId": {
             ".write": "auth != null && (root.child('conversations').child($conversationId).child('members').child(auth.uid).exists() || $conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid))"
           }

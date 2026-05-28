@@ -28,11 +28,33 @@ export type P2PChatEnvelope = {
 /** emoji → userId → true  (RTDB nested-object shape, JSON-safe) */
 export type ReactionMap = Record<string, Record<UserId, true>>;
 
+/**
+ * Per-conversation activity snapshot. Single source for both list-ordering
+ * (latestSentAt) and the unread badge (latestSenderId !== me && latestSentAt > lastReadAt).
+ * Zero values mean "no data yet."
+ */
+export type ConversationActivity = {
+  latestSentAt: number;
+  latestSenderId: UserId | null;
+  lastReadAt: number;
+};
+
 export type MessageRepository = {
   /** Load recent messages for a conversation, newest last. */
   loadMessages(
     conversationId: ConversationId,
   ): IncomingMessage[] | Promise<IncomingMessage[]>;
+
+  /**
+   * Watch the current recent message window for an open conversation.
+   * The first callback is the current recent history; later callbacks include
+   * subsequent backend changes in the same window.
+   */
+  watchRecentMessages(
+    conversationId: ConversationId,
+    onMessages: (messages: IncomingMessage[]) => void,
+    onError?: (error: unknown) => void,
+  ): (() => void) | Promise<() => void>;
 
   /** Persist a message envelope. Resolves with the canonical id and timestamp. */
   send(
@@ -41,15 +63,25 @@ export type MessageRepository = {
     | { id: string; sentAt: number }
     | Promise<{ id: string; sentAt: number }>;
 
-  /**
-   * Subscribe to new remote messages.
-   * The adapter must skip messages sent by myUserId.
-   * Returns unsubscribe.
-   */
-  subscribe(
+  /** Mark a conversation read by userId at the current backend time. */
+  markConversationRead(
     conversationId: ConversationId,
-    myUserId: UserId,
-    onMessage: (msg: IncomingMessage) => void,
+    userId: UserId,
+  ): void | Promise<void>;
+
+  /**
+   * Watch a conversation's activity signal — the latest message timestamp and
+   * sender, plus the user's lastReadAt. Consumers derive sort order and unread
+   * state from this single source. Implementations must invoke onChange once
+   * with the current ConversationActivity immediately after a successful
+   * subscription, then invoke it again whenever any field changes. onError may
+   * be called if the initial snapshot cannot be delivered.
+   */
+  watchConversationActivity(
+    conversationId: ConversationId,
+    userId: UserId,
+    onChange: (activity: ConversationActivity) => void,
+    onError?: (error: unknown) => void,
   ): (() => void) | Promise<() => void>;
 
   /**

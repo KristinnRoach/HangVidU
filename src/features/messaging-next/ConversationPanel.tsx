@@ -5,7 +5,6 @@ import {
   Switch,
   createEffect,
   createMemo,
-  createResource,
   createSignal,
   on,
   onCleanup,
@@ -20,13 +19,15 @@ import { createMessagingRuntime } from './messaging-runtime.js';
 
 import { createConversationState } from './conversation.state.js';
 import { createConversationActions } from './conversation.actions.js';
-import {
-  loadConversationHistory,
-  useConversation,
-} from './use-conversation.js';
+import { envelopeToChatMessage, useConversation } from './use-conversation.js';
+import { sortMessagesBySentAt } from './message-ordering.js';
 import { clearLocalDraft, saveLocalDraft } from './local-drafts.js';
 import type { ConversationId, UserId } from './types.js';
-import type { ConversationSelection, MessageAttachment } from './interfaces.js';
+import type {
+  ChatMessage,
+  ConversationSelection,
+  MessageAttachment,
+} from './interfaces.js';
 
 import styles from './ConversationPanel.module.css';
 
@@ -82,6 +83,10 @@ function MessageHistorySkeleton() {
       <div class={`${styles.skeletonBubble} ${styles.skeletonOwn}`} />
     </div>
   );
+}
+
+function isChatMessage(message: ChatMessage | null): message is ChatMessage {
+  return Boolean(message);
 }
 
 type ConversationPanelProps = {
@@ -158,16 +163,10 @@ export default function ConversationPanel(props: ConversationPanelProps) {
       };
     },
     null,
-    {
-      equals: (a, b) =>
-        a?.conversationId === b?.conversationId && a?.myUserId === b?.myUserId,
-    },
   );
 
-  const [history] = createResource(historySource, ({ conversationId }) =>
-    loadConversationHistory(runtime.messageRepository, conversationId),
-  );
-
+  const [historyLoading, setHistoryLoading] = createSignal(false);
+  const [historyError, setHistoryError] = createSignal<unknown>(null);
   const [historyReady, setHistoryReady] = createSignal(false);
 
   createEffect(
@@ -192,26 +191,83 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         if (!source || !selection) {
           actions.resetConversation();
           suppressScroll = false;
+          setHistoryLoading(false);
+          setHistoryError(null);
           return;
         }
 
         actions.startConversation(selection, source.myUserId);
+
+        setHistoryLoading(true);
+        setHistoryError(null);
+
+        const result = runtime.messageRepository.watchRecentMessages(
+          source.conversationId,
+          (messages) => {
+            if (source.conversationId !== state.conversationId) return;
+
+            const latestMessageId = messages.at(-1)?.messageId;
+            const loadedMessages = sortMessagesBySentAt(
+              messages
+                .map((msg) => envelopeToChatMessage(msg, 'persisted'))
+                .filter(isChatMessage),
+            );
+            actions.mergeLoadedMessages(loadedMessages);
+            setHistoryReady(true);
+            setHistoryLoading(false);
+            suppressScroll = false;
+            queueMicrotask(scrollToEnd);
+            queueMicrotask(focusInput);
+            if (latestMessageId) {
+              void Promise.resolve(
+                runtime.messageRepository.markConversationRead(
+                  source.conversationId,
+                  source.myUserId,
+                ),
+              ).catch((error) => {
+                console.warn('[conversation] failed to mark conversation read', {
+                  conversationId: source.conversationId,
+                  error,
+                });
+              });
+            }
+          },
+          (error) => {
+            if (source.conversationId !== state.conversationId) return;
+            setHistoryError(error);
+            setHistoryLoading(false);
+            suppressScroll = false;
+          },
+        );
+
+        let cleanup: (() => void) | undefined;
+        let disposed = false;
+
+        if (typeof result === 'function') {
+          cleanup = result;
+        } else {
+          void result
+            .then((unsub) => {
+              if (disposed) unsub();
+              else cleanup = unsub;
+            })
+            .catch((error) => {
+              if (disposed || source.conversationId !== state.conversationId) {
+                return;
+              }
+              setHistoryError(error);
+              setHistoryLoading(false);
+              suppressScroll = false;
+            });
+        }
+
+        onCleanup(() => {
+          disposed = true;
+          cleanup?.();
+        });
       },
     ),
   );
-
-  createEffect(() => {
-    const source = historySource();
-    const loadedMessages = history();
-    if (!source || history.loading || history.error || !loadedMessages) return;
-    if (source.conversationId !== state.conversationId) return;
-
-    actions.mergeLoadedMessages(loadedMessages);
-    setHistoryReady(true);
-    suppressScroll = false;
-    queueMicrotask(scrollToEnd);
-    queueMicrotask(focusInput); // Not needed with autofocus attribute?
-  });
 
   const { send } = useConversation({
     repository: runtime.messageRepository,
@@ -243,9 +299,9 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         fallback={<div class={styles.empty}>Conversation not found</div>}
       >
         <LoadBoundary
-          loading={history.loading}
+          loading={historyLoading()}
           fallback={<MessageHistorySkeleton />}
-          error={history.error}
+          error={historyError()}
           errorFallback={
             <div class={styles.empty}>{t('conversation.load_error')}</div>
           }

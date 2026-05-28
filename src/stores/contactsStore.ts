@@ -5,10 +5,7 @@ import {
   createContactsLocalStorageRepository,
   createContactsRTDBRepository,
 } from '../storage/contacts/index.js';
-import {
-  resolveContactIdFromDirectConversationId,
-  resolveDirectConversationId,
-} from '../shared/utils/direct-conversation-id.js';
+import { resolveDirectConversationId } from '../shared/utils/direct-conversation-id.js';
 
 type Contact = any;
 
@@ -69,21 +66,6 @@ export function getContactByRoomId(
 
 export function getConversationId(contactId: string): string | null {
   return state.byId[contactId]?.conversationId ?? null;
-}
-
-export function getAllContactsSorted(): Contact[] {
-  return Object.values(state.byId).sort((a: any, b: any) => {
-    const aTime = a?.lastInteractionAt || a?.savedAt || 0;
-    const bTime = b?.lastInteractionAt || b?.savedAt || 0;
-    if (aTime !== bTime) return bTime - aTime;
-    const aName = (a?.contactNickName || '').toLowerCase();
-    const bName = (b?.contactNickName || '').toLowerCase();
-    return aName.localeCompare(bName);
-  });
-}
-
-export function getContactByMostRecentInteraction(): Contact | null {
-  return getAllContactsSorted()[0] ?? null;
 }
 
 export function getContactsIsHydrated(): boolean {
@@ -157,31 +139,6 @@ export async function deleteContact(contactId: string): Promise<boolean> {
     logFailure('deleteContact', error, { contactId });
     return false;
   }
-}
-
-export async function recordInteraction(contactId: string) {
-  if (!contactId || !getLoggedInUserId()) return null;
-  try {
-    const updated = await getRepo().patch(contactId, {
-      lastInteractionAt: Date.now(),
-    });
-    if (updated) setState('byId', contactId, updated);
-    return updated;
-  } catch (error) {
-    logFailure('recordInteraction', error, { contactId });
-    return null;
-  }
-}
-
-export async function recordInteractionByConversation(conversationId: string) {
-  const myUserId = getLoggedInUserId();
-  if (!conversationId || !myUserId) return null;
-  const contactId = resolveContactIdFromDirectConversationId(
-    conversationId,
-    myUserId,
-  );
-  if (!contactId) return null;
-  return recordInteraction(contactId);
 }
 
 export async function handleHangUp(contactUserId: string, roomId: string) {

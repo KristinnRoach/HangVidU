@@ -83,6 +83,7 @@
   "contact.no_name": "Ekkert nafn",
   "contact.save.confirm": "Vista tengilið?",
   "contact.none": "Engir vistaðir tengiliðir enn.",
+  "contact.unread": "Ólesið",
   "contact.action.call": "Hringja í {name}",
   "contact.action.edit": "Uppfæra tengilið",
   "contact.action.delete": "Eyða tengilið",

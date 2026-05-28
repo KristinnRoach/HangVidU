@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Unread Counter Model</title>
+    <style>
+      :root {
+        --bg: #0e1014;
+        --panel: #161a21;
+        --panel-2: #1d222b;
+        --border: #2a313d;
+        --text: #e6e9ef;
+        --muted: #8b95a7;
+        --accent: #7aa2f7;
+        --send: #9ece6a;
+        --read: #e0af68;
+        --reset: #f7768e;
+        --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          14px/1.5 system-ui,
+          -apple-system,
+          sans-serif;
+        min-height: 100vh;
+      }
+      .app {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+      header {
+        grid-column: 1 / -1;
+      }
+      h1 {
+        font-size: 18px;
+        margin: 0 0 4px;
+      }
+      header p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px;
+      }
+      .panel h2 {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin: 0 0 12px;
+        font-weight: 600;
+      }
+      .members {
+        display: grid;
+        gap: 10px;
+      }
+      .member {
+        display: grid;
+        grid-template-columns: 80px 28px 1fr auto;
+        gap: 10px;
+        align-items: center;
+        padding: 10px 12px;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      .name {
+        font-weight: 600;
+      }
+      .badge-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--border);
+        transition:
+          background-color 0.2s,
+          transform 0.2s;
+        justify-self: center;
+      }
+      .badge-dot.unread {
+        background: var(--reset);
+        transform: scale(1.3);
+      }
+      .meta {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .meta .derived {
+        color: var(--accent);
+        font-size: 10px;
+        display: block;
+        margin-top: 1px;
+      }
+      .actions {
+        display: flex;
+        gap: 6px;
+      }
+      button {
+        background: var(--panel-2);
+        color: var(--text);
+        border: 1px solid var(--border);
+        padding: 6px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font: inherit;
+        font-size: 12px;
+      }
+      button:hover {
+        border-color: var(--accent);
+      }
+      button.send {
+        border-color: #3a5a2e;
+        color: var(--send);
+      }
+      button.read {
+        border-color: #5a4a1e;
+        color: var(--read);
+      }
+      .log {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+        max-height: 180px;
+        overflow-y: auto;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px;
+      }
+      .log .entry {
+        padding: 2px 0;
+      }
+      .log .entry.latest {
+        color: var(--text);
+      }
+      pre.tree {
+        font-family: var(--mono);
+        font-size: 12px;
+        margin: 0;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        overflow-x: auto;
+        line-height: 1.55;
+        color: var(--text);
+      }
+      pre.tree .k {
+        color: var(--accent);
+      }
+      pre.tree .s {
+        color: var(--send);
+      }
+      pre.tree .n {
+        color: var(--read);
+      }
+      pre.tree .c {
+        color: var(--muted);
+      }
+      pre.tree .d {
+        color: var(--reset);
+      }
+      .legend {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 18px;
+        font-size: 12px;
+        color: var(--muted);
+        flex-wrap: wrap;
+      }
+      .legend code {
+        font-family: var(--mono);
+        background: var(--panel-2);
+        padding: 1px 6px;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+      .reset-btn {
+        background: transparent;
+        color: var(--muted);
+        font-size: 11px;
+        border: none;
+        padding: 0;
+        text-decoration: underline;
+        cursor: pointer;
+      }
+      .reset-btn:hover {
+        color: var(--reset);
+      }
+      .formula {
+        font-family: var(--mono);
+        font-size: 12px;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-bottom: 14px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+      .formula .hi {
+        color: var(--accent);
+      }
+      .formula .op {
+        color: var(--reset);
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+        margin: 10px 0 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <h1>Unread counter model</h1>
+        <p>
+          Unread is <strong>derived</strong>, not stored. On send: write message
+          — no member node touched. On read: write
+          <code>lastReadAt</code> timestamp to own member node. Badge =
+          <code
+            >latestSentAt &gt; lastReadAt &amp;&amp; latestSenderId !== me</code
+          >.
+          <button class="reset-btn" id="resetAll">reset</button>
+        </p>
+      </header>
+
+      <section class="panel">
+        <h2>Members (simulated global teaching view)</h2>
+        <div class="formula">
+          <span class="hi">hasUnread(uid)</span>
+          <span class="op"> = </span>
+          latestSentAt <span class="op">&gt;</span> members[uid].lastReadAt
+          <span class="op">&amp;&amp;</span>
+          latestSenderId <span class="op">!==</span> uid
+        </div>
+        <p class="muted">
+          This panel is omniscient for teaching. The runtime subscription below
+          is actor-scoped and reads only <code>members/${actor}</code>.
+        </p>
+        <div class="members" id="members"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Backend state (RTDB shape)</h2>
+        <pre class="tree" id="tree"></pre>
+      </section>
+
+      <section class="panel" style="grid-column: 1 / -1">
+        <h2>
+          watchConversationActivity — two subscriptions (acting as
+          <span id="actorName" style="color: var(--accent)">Alice</span>)
+        </h2>
+        <div style="display: flex; gap: 8px; margin-bottom: 12px">
+          <button data-actor="alice">as Alice</button>
+          <button data-actor="bob">as Bob</button>
+          <button data-actor="carol">as Carol</button>
+        </div>
+        <pre class="tree" id="rules"></pre>
+      </section>
+
+      <section class="panel" style="grid-column: 1 / -1">
+        <h2>Action log</h2>
+        <div class="log" id="log"></div>
+      </section>
+
+      <div class="legend">
+        <span><code>send</code> → push message, members untouched</span>
+        <span
+          ><code>read</code> → write
+          <code>lastReadAt = serverTimestamp()</code></span
+        >
+        <span
+          >badge derived from
+          <code
+            >latestSentAt &gt; lastReadAt &amp;&amp; latestSenderId !== me</code
+          ></span
+        >
+      </div>
+    </div>
+
+    <script>
+      const MEMBERS = ['alice', 'bob', 'carol'];
+      const NAMES = { alice: 'Alice', bob: 'Bob', carol: 'Carol' };
+      let state = freshState();
+      let log = [];
+      let lastSentBy = null;
+      let lastReadBy = null;
+      let actor = 'alice';
+      let tick = 1000; // simulated time counter
+
+      function freshState() {
+        return {
+          messages: [],
+          members: Object.fromEntries(
+            MEMBERS.map((u) => [u, { lastReadAt: 0 }]),
+          ),
+        };
+      }
+
+      function latestMsg() {
+        return state.messages.at(-1) ?? null;
+      }
+
+      function hasUnread(uid) {
+        const latest = latestMsg();
+        if (!latest) return false;
+        return (
+          latest.sentAt > state.members[uid].lastReadAt && latest.from !== uid
+        );
+      }
+
+      function send(uid) {
+        tick += 1000;
+        const msgId = `m${state.messages.length + 1}`;
+        state.messages.push({ id: msgId, from: uid, sentAt: tick });
+        lastSentBy = uid;
+        lastReadBy = null;
+        const unreadFor = MEMBERS.filter((u) => hasUnread(u));
+        log.unshift({
+          text: `${NAMES[uid]} sent ${msgId} (sentAt=${tick}) — unread for: ${unreadFor.map((u) => NAMES[u]).join(', ') || 'none'}`,
+        });
+        render();
+      }
+
+      function read(uid) {
+        tick += 100;
+        const prev = hasUnread(uid);
+        state.members[uid].lastReadAt = tick;
+        lastReadBy = uid;
+        lastSentBy = null;
+        log.unshift({
+          text: `${NAMES[uid]} read → lastReadAt=${tick} (was unread: ${prev})`,
+        });
+        render();
+      }
+
+      function reset() {
+        state = freshState();
+        log = [];
+        lastSentBy = null;
+        lastReadBy = null;
+        tick = 1000;
+        render();
+      }
+
+      function fmtTs(ts) {
+        if (!ts) return '—';
+        return `t=${ts}`;
+      }
+
+      function render() {
+        const m = document.getElementById('members');
+        m.innerHTML = '';
+        for (const uid of MEMBERS) {
+          const unread = hasUnread(uid);
+          const latest = latestMsg();
+          const lra = state.members[uid].lastReadAt;
+
+          const derivation = latest
+            ? `${latest.sentAt} > ${lra} && from≠${uid} → ${unread}`
+            : 'no messages';
+
+          const row = document.createElement('div');
+          row.className = 'member';
+          row.innerHTML = `
+            <span class="name">${NAMES[uid]}</span>
+            <span class="badge-dot ${unread ? 'unread' : ''}" title="hasUnread=${unread}"></span>
+            <span class="meta">
+              lastReadAt: ${fmtTs(lra)}
+              <span class="derived">${derivation}</span>
+            </span>
+            <span class="actions">
+              <button class="send" data-act="send" data-uid="${uid}">send</button>
+              <button class="read" data-act="read" data-uid="${uid}">read</button>
+            </span>
+          `;
+          m.appendChild(row);
+        }
+
+        // RTDB tree
+        const tree = document.getElementById('tree');
+        const lines = [];
+        lines.push(
+          `<span class="k">conversations/</span><span class="c">abc/</span>`,
+        );
+        lines.push(`  <span class="k">members/</span>`);
+        for (const uid of MEMBERS) {
+          const lra = state.members[uid].lastReadAt;
+          const isRecentReader = lastReadBy === uid;
+          lines.push(`    <span class="k">${uid}/</span>`);
+          lines.push(
+            `      lastReadAt: <span class="${isRecentReader ? 'd' : 'n'}">${lra || 0}</span>`,
+          );
+        }
+        lines.push(
+          `  <span class="k">messages/</span><span class="c"> ← limitToLast(1) for activity</span>`,
+        );
+        const recent = state.messages.slice(-4);
+        if (recent.length === 0) {
+          lines.push(`    <span class="c">(none)</span>`);
+        } else {
+          for (const msg of recent) {
+            const isLatest = msg === latestMsg();
+            const cls = isLatest ? 's' : 'c';
+            lines.push(
+              `    <span class="${cls}">${msg.id}</span>: { from: <span class="s">"${msg.from}"</span>, sentAt: <span class="n">${msg.sentAt}</span> }${isLatest ? ' <span class="c">← latest</span>' : ''}`,
+            );
+          }
+          if (state.messages.length > 4) {
+            lines.push(
+              `    <span class="c">… ${state.messages.length - 4} earlier</span>`,
+            );
+          }
+        }
+        tree.innerHTML = lines.join('\n');
+
+        // Log
+        const lg = document.getElementById('log');
+        lg.innerHTML =
+          log
+            .slice(0, 30)
+            .map(
+              (e, i) =>
+                `<div class="entry ${i === 0 ? 'latest' : ''}">${e.text}</div>`,
+            )
+            .join('') || '<div class="entry">No actions yet.</div>';
+
+        renderRules();
+      }
+
+      function renderRules() {
+        document.getElementById('actorName').textContent = NAMES[actor];
+        const rows = [];
+        rows.push(`<span class="c"># auth.uid === "${actor}"</span>`);
+        rows.push('');
+        rows.push(`<span class="k">sub 1 — messages (limitToLast 1)</span>`);
+        rows.push(
+          `  path:    conversations/abc/<span class="s">messages</span>`,
+        );
+        rows.push(`  purpose: get latestSentAt + latestSenderId`);
+        rows.push(
+          `  read:    <span class="s">ALLOW</span> <span class="c">// member of conversation</span>`,
+        );
+        rows.push(
+          `  write:   <span class="s">ALLOW</span> <span class="c">// if newData.from === "${actor}" (send)</span>`,
+        );
+        rows.push('');
+        rows.push(`<span class="k">sub 2 — own member node</span>`);
+        rows.push(
+          `  path:    conversations/abc/<span class="s">members/${actor}</span>`,
+        );
+        rows.push(`  purpose: get lastReadAt for "${actor}" only`);
+        rows.push(
+          `  read:    <span class="s">ALLOW</span> <span class="c">// own node</span>`,
+        );
+        rows.push(
+          `  write:   <span class="s">ALLOW</span> <span class="c">// markConversationRead() writes lastReadAt: serverTimestamp()</span>`,
+        );
+        rows.push('');
+        for (const uid of MEMBERS) {
+          if (uid === actor) continue;
+          rows.push(
+            `  members/<span class="k">${uid}</span> <span class="c">(peer — not subscribed, not needed)</span>`,
+          );
+          rows.push(`    read:  <span class="d">DENY</span>`);
+          rows.push(`    write: <span class="d">DENY</span>`);
+        }
+        document.getElementById('rules').innerHTML = rows.join('\n');
+      }
+
+      document.addEventListener('click', (e) => {
+        const t = e.target;
+        if (t.tagName !== 'BUTTON') return;
+        if (t.dataset.act === 'send') send(t.dataset.uid);
+        else if (t.dataset.act === 'read') read(t.dataset.uid);
+      });
+
+      document.querySelectorAll('[data-actor]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          actor = btn.dataset.actor;
+          renderRules();
+        });
+      });
+
+      document.getElementById('resetAll').addEventListener('click', reset);
+
+      renderRules();
+      render();
+    </script>
+  </body>
+</html>

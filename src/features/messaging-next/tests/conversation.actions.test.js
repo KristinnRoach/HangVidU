@@ -78,6 +78,23 @@ describe('messaging-next conversation actions', () => {
     ]);
   });
 
+  it('removes an optimistic message when the canonical message already arrived', () => {
+    const store = createConversationState();
+    const actions = createConversationActions(store);
+
+    start(actions);
+    actions.addOptimisticMessage({
+      ...message({ id: 'temp-1', senderId: 'me', sentAt: 10 }),
+      status: 'sending',
+    });
+    actions.receiveMessage(message({ id: 'real-1', senderId: 'me', sentAt: 10 }));
+
+    actions.markSent('temp-1', 'real-1');
+
+    expect(store.state.messages.map((msg) => msg.id)).toEqual(['real-1']);
+    expect(store.state.messages[0].status).toBe('sent');
+  });
+
   it('merges loaded history in chronological order without marking it unread', () => {
     const store = createConversationState();
     const actions = createConversationActions(store);

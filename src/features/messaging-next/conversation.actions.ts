@@ -82,15 +82,22 @@ export function createConversationActions(store: ConversationStateStore) {
   }
 
   function markSent(tempId: string, realId: string) {
-    setState('messages', (msgs) =>
-      sortMessagesBySentAt(
-        msgs.map((msg) => {
-          if (msg.id === tempId) return { ...msg, id: realId, status: 'sent' };
-          if (msg.id === realId) return { ...msg, status: 'sent' };
-          return msg;
+    setState('messages', (msgs) => {
+      const realMessageAlreadyArrived =
+        tempId !== realId && msgs.some((msg) => msg.id === realId);
+
+      return sortMessagesBySentAt(
+        msgs.flatMap((msg) => {
+          if (msg.id === tempId) {
+            return realMessageAlreadyArrived
+              ? []
+              : [{ ...msg, id: realId, status: 'sent' as const }];
+          }
+          if (msg.id === realId) return [{ ...msg, status: 'sent' as const }];
+          return [msg];
         }),
-      ),
-    );
+      );
+    });
   }
 
   function markFailed(tempId: string) {

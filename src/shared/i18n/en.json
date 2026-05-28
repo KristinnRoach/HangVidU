@@ -83,6 +83,7 @@
   "contact.save.confirm": "Save contact?",
   "contact.no_name": "No Name",
   "contact.none": "No saved contacts yet.",
+  "contact.unread": "Unread",
   "contact.action.call": "Call {name}",
   "contact.action.edit": "Edit contact",
   "contact.action.delete": "Delete contact",

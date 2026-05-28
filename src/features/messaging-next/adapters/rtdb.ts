@@ -3,7 +3,6 @@ import {
   push,
   set,
   get,
-  onChildAdded,
   onChildChanged,
   onValue,
   off,
@@ -11,8 +10,7 @@ import {
   limitToLast,
   serverTimestamp,
   update,
-  orderByKey,
-  startAfter,
+  orderByChild,
   type DataSnapshot,
 } from 'firebase/database';
 import { rtdb } from '../../../infra/firebase-rtdb.js';
@@ -45,8 +43,16 @@ function msgsRef(conversationId: ConversationId) {
   return ref(rtdb, `conversations/${conversationId}/messages`);
 }
 
+function memberRef(conversationId: ConversationId, userId: UserId) {
+  return ref(rtdb, `conversations/${conversationId}/members/${userId}`);
+}
+
 function recentMsgsQuery(conversationId: ConversationId) {
-  return query(msgsRef(conversationId), limitToLast(RECENT_MESSAGES_WINDOW));
+  return query(
+    msgsRef(conversationId),
+    orderByChild('sentAt'),
+    limitToLast(RECENT_MESSAGES_WINDOW),
+  );
 }
 
 function conversationRef(conversationId: ConversationId) {
@@ -136,6 +142,23 @@ function toConversationNode(raw: unknown): ConversationNode | null {
   return parsed.success ? parsed.data : null;
 }
 
+function messagesFromSnapshot(
+  snapshot: DataSnapshot,
+  conversationId: ConversationId,
+) {
+  if (!snapshot.exists()) return [];
+  const messages: IncomingMessage[] = [];
+  snapshot.forEach((child) => {
+    const msg = toIncoming(
+      child.val() as Record<string, unknown>,
+      child.key!,
+      conversationId,
+    );
+    if (msg) messages.push(msg);
+  });
+  return messages;
+}
+
 function conversationUpdate(
   input: ConversationUpsert,
   existing: ConversationNode | null,
@@ -157,17 +180,17 @@ export function createRTDBMessageRepository(): MessageRepository {
   return {
     async loadMessages(conversationId) {
       const snapshot = await get(recentMsgsQuery(conversationId));
-      if (!snapshot.exists()) return [];
-      const messages: IncomingMessage[] = [];
-      snapshot.forEach((child) => {
-        const msg = toIncoming(
-          child.val() as Record<string, unknown>,
-          child.key!,
-          conversationId,
-        );
-        if (msg) messages.push(msg);
-      });
-      return messages;
+      return messagesFromSnapshot(snapshot, conversationId);
+    },
+
+    watchRecentMessages(conversationId, onMessages, onError) {
+      return onValue(
+        recentMsgsQuery(conversationId),
+        (snapshot) => {
+          onMessages(messagesFromSnapshot(snapshot, conversationId));
+        },
+        (error) => onError?.(error),
+      );
     },
 
     async send(message) {
@@ -184,23 +207,68 @@ export function createRTDBMessageRepository(): MessageRepository {
       return { id: newRef.key!, sentAt: Date.now() };
     },
 
-    subscribe(conversationId, myUserId, onMessage) {
-      const msgRef = msgsRef(conversationId);
-      // Generated push keys are time-ordered. Generating one without writing
-      // gives a "now" cursor — onChildAdded only fires for messages added
-      // after attach, no historical replay over the wire.
-      const sinceKey = push(msgRef).key!;
-      const msgQuery = query(msgRef, orderByKey(), startAfter(sinceKey));
+    async markConversationRead(conversationId, userId) {
+      await update(memberRef(conversationId, userId), {
+        lastReadAt: serverTimestamp(),
+      });
+    },
 
-      const handler = (snapshot: DataSnapshot) => {
-        const raw = snapshot.val() as Record<string, unknown>;
-        if (!raw || raw.from === myUserId) return;
-        const msg = toIncoming(raw, snapshot.key!, conversationId);
-        if (msg) onMessage(msg);
+    watchConversationActivity(conversationId, userId, onChange, onError) {
+      let latestSenderId: UserId | null = null;
+      let latestSentAt = 0;
+      let lastReadAt = 0;
+      let hasLatest = false;
+      let hasRead = false;
+      let lastEmittedSentAt = -1;
+      let lastEmittedReadAt = -1;
+      let lastEmittedSenderId: UserId | null | undefined = undefined;
+
+      function emit() {
+        if (!hasLatest || !hasRead) return;
+        if (
+          latestSentAt === lastEmittedSentAt &&
+          lastReadAt === lastEmittedReadAt &&
+          latestSenderId === lastEmittedSenderId
+        )
+          return;
+
+        lastEmittedSentAt = latestSentAt;
+        lastEmittedReadAt = lastReadAt;
+        lastEmittedSenderId = latestSenderId;
+        onChange({ latestSentAt, latestSenderId, lastReadAt });
+      }
+
+      const unsubscribeLatest = onValue(
+        query(msgsRef(conversationId), orderByChild('sentAt'), limitToLast(1)),
+        (snapshot) => {
+          latestSenderId = null;
+          latestSentAt = 0;
+          snapshot.forEach((child) => {
+            const raw = child.val() as Record<string, unknown> | null;
+            latestSenderId = (raw?.from as UserId) ?? null;
+            latestSentAt = typeof raw?.sentAt === 'number' ? raw.sentAt : 0;
+          });
+          hasLatest = true;
+          emit();
+        },
+        (error) => onError?.(error),
+      );
+
+      const unsubscribeRead = onValue(
+        memberRef(conversationId, userId),
+        (snapshot) => {
+          const raw = snapshot.val() as { lastReadAt?: unknown } | null;
+          lastReadAt = typeof raw?.lastReadAt === 'number' ? raw.lastReadAt : 0;
+          hasRead = true;
+          emit();
+        },
+        (error) => onError?.(error),
+      );
+
+      return () => {
+        unsubscribeLatest();
+        unsubscribeRead();
       };
-
-      onChildAdded(msgQuery, handler);
-      return () => off(msgQuery, 'child_added', handler);
     },
 
     async setReaction(conversationId, messageId, emoji, userId, active) {
