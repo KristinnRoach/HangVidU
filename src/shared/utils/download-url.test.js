@@ -51,4 +51,34 @@ describe('downloadUrl', () => {
       vi.useRealTimers();
     }
   });
+
+  it('returns false and falls back to direct download when fetch fails', async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {});
+
+    const result = await downloadUrl(
+      'https://example.com/file.pdf',
+      'file.pdf',
+    );
+
+    expect(result).toBe(false);
+    expect(click).toHaveBeenCalled();
+    // verify the anchor was created with the original URL, not a blob URL
+  });
+
+  it('returns false when url is falsy', async () => {
+    const result = await downloadUrl(null, 'file.pdf');
+    expect(result).toBe(false);
+  });
+
+  it('falls back when response is not OK', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 });
+    const result = await downloadUrl(
+      'https://example.com/file.pdf',
+      'file.pdf',
+    );
+    expect(result).toBe(false);
+  });
 });
