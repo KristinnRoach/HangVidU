@@ -72,7 +72,10 @@ export type MessageRepository = {
   /**
    * Watch a conversation's activity signal — the latest message timestamp and
    * sender, plus the user's lastReadAt. Consumers derive sort order and unread
-   * state from this single source.
+   * state from this single source. Implementations must invoke onChange once
+   * with the current ConversationActivity immediately after a successful
+   * subscription, then invoke it again whenever any field changes. onError may
+   * be called if the initial snapshot cannot be delivered.
    */
   watchConversationActivity(
     conversationId: ConversationId,

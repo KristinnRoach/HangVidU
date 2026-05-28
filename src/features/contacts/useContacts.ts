@@ -27,6 +27,18 @@ export function useContacts() {
   const runtime = createMessagingRuntime();
 
   const activityWatchers = new Map<string, () => void>();
+  let activityWatchUserId: string | null = null;
+  let activityWatchGeneration = 0;
+
+  function clearActivity() {
+    setActivity(
+      produce((current) => {
+        for (const conversationId of Object.keys(current)) {
+          delete current[conversationId];
+        }
+      }),
+    );
+  }
 
   function stopActivityWatchers() {
     for (const unsubscribe of activityWatchers.values()) unsubscribe();
@@ -74,6 +86,7 @@ export function useContacts() {
 
     createEffect(() => {
       const userId = getLoggedInUserId();
+      const generation = ++activityWatchGeneration;
       const conversationIds = new Set(
         Object.values(contactsState.byId)
           .map((c: any) => c?.conversationId as string | null | undefined)
@@ -82,7 +95,15 @@ export function useContacts() {
 
       if (!userId) {
         stopActivityWatchers();
+        clearActivity();
+        activityWatchUserId = null;
         return;
+      }
+
+      if (activityWatchUserId !== userId) {
+        stopActivityWatchers();
+        clearActivity();
+        activityWatchUserId = userId;
       }
 
       for (const [conversationId, unsubscribe] of activityWatchers) {
@@ -100,6 +121,12 @@ export function useContacts() {
           conversationId,
           userId,
           (next) => {
+            if (
+              generation !== activityWatchGeneration ||
+              activityWatchUserId !== userId ||
+              !conversationIds.has(conversationId)
+            )
+              return;
             setActivity(conversationId, next);
           },
           (error) => {
@@ -113,20 +140,38 @@ export function useContacts() {
         if (typeof result === 'function') {
           activityWatchers.set(conversationId, result);
         } else {
-          void result.then((unsubscribe) => {
-            if (conversationIds.has(conversationId)) {
-              activityWatchers.set(conversationId, unsubscribe);
-            } else {
-              unsubscribe();
-            }
-          });
+          void result
+            .then((unsubscribe) => {
+              if (
+                generation === activityWatchGeneration &&
+                activityWatchUserId === userId &&
+                conversationIds.has(conversationId)
+              ) {
+                activityWatchers.set(conversationId, unsubscribe);
+              } else {
+                unsubscribe();
+              }
+            })
+            .catch((error) => {
+              if (
+                generation !== activityWatchGeneration ||
+                activityWatchUserId !== userId
+              )
+                return;
+              console.warn('[contacts] activity watch failed', {
+                conversationId,
+                error,
+              });
+            });
         }
       }
     });
   });
 
   onCleanup(() => {
+    activityWatchGeneration += 1;
     stopActivityWatchers();
+    clearActivity();
   });
 
   return { contacts };
