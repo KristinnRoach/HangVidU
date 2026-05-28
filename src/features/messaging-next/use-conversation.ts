@@ -146,36 +146,6 @@ export function useConversation({
 
   createEffect(() => {
     const conversationId = state.conversationId;
-    const myUserId = state.myUserId;
-    if (!conversationId || !myUserId || !historyReady()) return;
-
-    let cleanup: (() => void) | undefined;
-    let disposed = false;
-
-    const result = repository.subscribe(conversationId, myUserId, (msg) => {
-      const chatMessage = envelopeToChatMessage(msg, 'persisted');
-      if (chatMessage) {
-        actions.receiveMessage(chatMessage);
-      }
-    });
-
-    if (typeof result === 'function') {
-      cleanup = result;
-    } else {
-      void result.then((unsub) => {
-        if (disposed) unsub();
-        else cleanup = unsub;
-      });
-    }
-
-    onCleanup(() => {
-      disposed = true;
-      cleanup?.();
-    });
-  });
-
-  createEffect(() => {
-    const conversationId = state.conversationId;
     if (!conversationId || !historyReady()) return;
 
     let cleanup: (() => void) | undefined;

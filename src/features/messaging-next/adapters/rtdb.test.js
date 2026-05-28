@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { get, serverTimestamp, set } from 'firebase/database';
+import {
+  get,
+  onValue,
+  orderByChild,
+  serverTimestamp,
+  set,
+  startAfter,
+  update,
+} from 'firebase/database';
 import {
   createRTDBConversationRepository,
   createRTDBMessageRepository,
@@ -16,12 +24,14 @@ vi.mock('firebase/database', () => ({
   get: vi.fn(),
   onChildAdded: vi.fn(),
   onChildChanged: vi.fn(),
-  onValue: vi.fn(),
+  onValue: vi.fn(() => vi.fn()),
   off: vi.fn(),
-  query: vi.fn((ref) => ref),
+  query: vi.fn((ref, ...constraints) => ({ ref, constraints })),
   limitToLast: vi.fn((count) => ({ count })),
   serverTimestamp: vi.fn(() => ({ '.sv': 'timestamp' })),
   update: vi.fn(),
+  orderByChild: vi.fn((key) => ({ orderByChild: key })),
+  startAfter: vi.fn((key) => ({ startAfter: key })),
 }));
 
 describe('messaging-next RTDB adapter', () => {
@@ -95,6 +105,109 @@ describe('messaging-next RTDB adapter', () => {
         },
       }),
     ]);
+  });
+
+  it('watches the recent message window as a full snapshot', () => {
+    const unsubscribe = vi.fn();
+    vi.mocked(onValue).mockImplementationOnce((queryRef, next) => {
+      next({
+        exists: () => true,
+        forEach: (visit) => {
+          visit({
+            key: 'msg-1',
+            val: () => ({
+              from: 'user-a',
+              fromName: 'User A',
+              text: 'hello',
+              type: 'text',
+              sentAt: 10,
+              read: false,
+            }),
+          });
+        },
+      });
+      return unsubscribe;
+    });
+
+    const repository = createRTDBMessageRepository();
+    const onMessages = vi.fn();
+    const result = repository.watchRecentMessages('user-a_user-b', onMessages);
+
+    expect(result).toBe(unsubscribe);
+    expect(onMessages).toHaveBeenCalledWith([
+      expect.objectContaining({
+        messageId: 'msg-1',
+        senderId: 'user-a',
+        payload: { type: 'text', text: 'hello' },
+      }),
+    ]);
+  });
+
+  it('marks a conversation read with a server timestamp', async () => {
+    const repository = createRTDBMessageRepository();
+    await repository.markConversationRead('user-a_user-b', 'user-a');
+
+    expect(update).toHaveBeenCalledWith(
+      { path: 'conversations/user-a_user-b/members/user-a' },
+      { lastReadAt: serverTimestamp() },
+    );
+  });
+
+  it('emits hasUnread when the latest message is from someone else and newer than lastReadAt', () => {
+    const unsubscribeLatest = vi.fn();
+    const unsubscribeRead = vi.fn();
+    const calls = [];
+
+    vi.mocked(onValue)
+      .mockImplementationOnce((_queryRef, next) => {
+        next({
+          forEach: (visit) => {
+            visit({
+              val: () => ({ from: 'user-b', sentAt: 200 }),
+            });
+          },
+        });
+        return unsubscribeLatest;
+      })
+      .mockImplementationOnce((_queryRef, next) => {
+        next({ val: () => ({ lastReadAt: 100 }) });
+        return unsubscribeRead;
+      });
+
+    const repository = createRTDBMessageRepository();
+    const unsubscribe = repository.watchHasUnread(
+      'user-a_user-b',
+      'user-a',
+      (hasUnread) => calls.push(hasUnread),
+    );
+
+    expect(calls).toEqual([true]);
+
+    unsubscribe();
+    expect(unsubscribeLatest).toHaveBeenCalled();
+    expect(unsubscribeRead).toHaveBeenCalled();
+  });
+
+  it('emits hasUnread=false when the latest message is the users own', () => {
+    const calls = [];
+    vi.mocked(onValue)
+      .mockImplementationOnce((_queryRef, next) => {
+        next({
+          forEach: (visit) => {
+            visit({ val: () => ({ from: 'user-a', sentAt: 200 }) });
+          },
+        });
+        return vi.fn();
+      })
+      .mockImplementationOnce((_queryRef, next) => {
+        next({ val: () => ({ lastReadAt: 0 }) });
+        return vi.fn();
+      });
+
+    const repository = createRTDBMessageRepository();
+    repository.watchHasUnread('user-a_user-b', 'user-a', (h) => calls.push(h));
+
+    expect(calls).toEqual([false]);
   });
 
   it('loads shared conversation metadata without draft state', async () => {

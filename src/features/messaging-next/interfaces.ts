@@ -34,6 +34,17 @@ export type MessageRepository = {
     conversationId: ConversationId,
   ): IncomingMessage[] | Promise<IncomingMessage[]>;
 
+  /**
+   * Watch the current recent message window for an open conversation.
+   * The first callback is the current recent history; later callbacks include
+   * subsequent backend changes in the same window.
+   */
+  watchRecentMessages(
+    conversationId: ConversationId,
+    onMessages: (messages: IncomingMessage[]) => void,
+    onError?: (error: unknown) => void,
+  ): (() => void) | Promise<() => void>;
+
   /** Persist a message envelope. Resolves with the canonical id and timestamp. */
   send(
     msg: OutgoingMessage,
@@ -41,15 +52,21 @@ export type MessageRepository = {
     | { id: string; sentAt: number }
     | Promise<{ id: string; sentAt: number }>;
 
-  /**
-   * Subscribe to new remote messages.
-   * The adapter must skip messages sent by myUserId.
-   * Returns unsubscribe.
-   */
-  subscribe(
+  /** Mark a conversation read by userId at the current backend time. */
+  markConversationRead(
     conversationId: ConversationId,
-    myUserId: UserId,
-    onMessage: (msg: IncomingMessage) => void,
+    userId: UserId,
+  ): void | Promise<void>;
+
+  /**
+   * Watch whether a user has any unread remote messages in a conversation.
+   * Binary signal — counts are intentionally omitted for now.
+   */
+  watchHasUnread(
+    conversationId: ConversationId,
+    userId: UserId,
+    onChange: (hasUnread: boolean) => void,
+    onError?: (error: unknown) => void,
   ): (() => void) | Promise<() => void>;
 
   /**

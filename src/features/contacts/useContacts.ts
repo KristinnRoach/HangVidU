@@ -1,34 +1,33 @@
 import { createEffect, onCleanup, onMount } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
-import { subscribe } from '../../shared/events/index.js';
-import { getContactsStore } from '../../stores/contactsStore.js';
+import { getLoggedInUserId } from '../../auth/index.js';
+import {
+  getContactsStore,
+  recordInteractionByConversation,
+} from '../../stores/contactsStore.js';
+import { createMessagingRuntime } from '../messaging-next/messaging-runtime.js';
 
 type ContactRow = {
   id: string;
   name: string | null;
   conversationId: string | null;
-  unreadCount: number;
+  hasUnread: boolean;
 };
 
 export function useContacts() {
   const contactsState = getContactsStore();
   const [contacts, setContacts] = createStore<ContactRow[]>([]);
-  const [unread, setUnread] = createStore<Record<string, number>>({});
+  const [unread, setUnread] = createStore<Record<string, boolean>>({});
+  const runtime = createMessagingRuntime();
 
-  let offUnread: (() => void) | null = null;
+  const unreadWatchers = new Map<string, () => void>();
+
+  function stopUnreadWatchers() {
+    for (const unsubscribe of unreadWatchers.values()) unsubscribe();
+    unreadWatchers.clear();
+  }
 
   onMount(() => {
-    offUnread = subscribe(
-      'evt:messaging:conversation:unread-count-changed',
-      ({
-        conversationId,
-        unreadCount,
-      }: {
-        conversationId: string;
-        unreadCount: number;
-      }) => setUnread(conversationId, unreadCount),
-    ) as () => void;
-
     createEffect(() => {
       const rows: ContactRow[] = Object.values(contactsState.byId)
         .sort((a: any, b: any) => {
@@ -43,7 +42,9 @@ export function useContacts() {
           id: c.contactId ?? '',
           name: c.contactNickName ?? null,
           conversationId: c.conversationId ?? null,
-          unreadCount: c.conversationId ? (unread[c.conversationId] ?? 0) : 0,
+          hasUnread: c.conversationId
+            ? (unread[c.conversationId] ?? false)
+            : false,
         }));
 
       setContacts(
@@ -53,9 +54,65 @@ export function useContacts() {
         }),
       );
     });
+
+    createEffect(() => {
+      const userId = getLoggedInUserId();
+      const conversationIds = new Set(
+        contacts
+          .map((row) => row.conversationId)
+          .filter((id): id is string => Boolean(id)),
+      );
+
+      if (!userId) {
+        stopUnreadWatchers();
+        return;
+      }
+
+      for (const [conversationId, unsubscribe] of unreadWatchers) {
+        if (!conversationIds.has(conversationId)) {
+          unsubscribe();
+          unreadWatchers.delete(conversationId);
+        }
+      }
+
+      for (const conversationId of conversationIds) {
+        if (unreadWatchers.has(conversationId)) continue;
+
+        const result = runtime.messageRepository.watchHasUnread(
+          conversationId,
+          userId,
+          (hasUnread) => {
+            setUnread(conversationId, hasUnread);
+            if (hasUnread) {
+              void recordInteractionByConversation(conversationId);
+            }
+          },
+          (error) => {
+            console.warn('[contacts] unread watch failed', {
+              conversationId,
+              error,
+            });
+          },
+        );
+
+        if (typeof result === 'function') {
+          unreadWatchers.set(conversationId, result);
+        } else {
+          void result.then((unsubscribe) => {
+            if (conversationIds.has(conversationId)) {
+              unreadWatchers.set(conversationId, unsubscribe);
+            } else {
+              unsubscribe();
+            }
+          });
+        }
+      }
+    });
   });
 
-  onCleanup(() => offUnread?.());
+  onCleanup(() => {
+    stopUnreadWatchers();
+  });
 
   return { contacts };
 }

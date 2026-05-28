@@ -22,7 +22,7 @@ function shortName(name) {
  *   id: string
  *   name: string|null
  *   conversationId: string|null
- *   unreadCount: number
+ *   hasUnread: boolean
  */
 export default function ContactEntry(props) {
   const { t } = useI18n();
@@ -71,9 +71,9 @@ export default function ContactEntry(props) {
         {shortName(displayName())}
       </button>
 
-      <Show when={props.unreadCount > 0}>
+      <Show when={props.hasUnread}>
         <span class='unread-badge' aria-live='polite' aria-atomic='true'>
-          {props.unreadCount > 99 ? '99+' : props.unreadCount}
+          •
         </span>
       </Show>
 
