@@ -10,7 +10,7 @@ export async function downloadUrl(url, fileName) {
     const blob = await response.blob();
     const objectUrl = URL.createObjectURL(blob);
     triggerDownload(objectUrl, fileName);
-    setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     return true;
   } catch (error) {
     console.warn('[downloadUrl] Falling back to opening URL', error);
