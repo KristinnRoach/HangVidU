@@ -107,7 +107,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   const { t } = useI18n();
 
   let messagesEl: HTMLDivElement | undefined;
-  let inputEl: HTMLInputElement | undefined;
+  let inputTextAreaEl: HTMLTextAreaElement | undefined;
   let suppressScroll = false;
   let draftSaveTimer: ReturnType<typeof setTimeout> | undefined;
   let pendingDraft:
@@ -119,7 +119,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   }
 
   function focusInput() {
-    inputEl?.focus();
+    inputTextAreaEl?.focus();
   }
 
   function clearDraftSaveTimer() {
@@ -153,18 +153,15 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     }, DRAFT_SAVE_DELAY_MS);
   }
 
-  const historySource = createMemo<HistorySource>(
-    () => {
-      const conversationId = props.selection?.conversationId;
-      const myUserId = props.myUserId;
-      if (!conversationId || !myUserId) return null;
-      return {
-        conversationId,
-        myUserId,
-      };
-    },
-    null,
-  );
+  const historySource = createMemo<HistorySource>(() => {
+    const conversationId = props.selection?.conversationId;
+    const myUserId = props.myUserId;
+    if (!conversationId || !myUserId) return null;
+    return {
+      conversationId,
+      myUserId,
+    };
+  }, null);
 
   const [historyLoading, setHistoryLoading] = createSignal(false);
   const [historyError, setHistoryError] = createSignal<unknown>(null);
@@ -226,10 +223,13 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                   source.myUserId,
                 ),
               ).catch((error) => {
-                console.warn('[conversation] failed to mark conversation read', {
-                  conversationId: source.conversationId,
-                  error,
-                });
+                console.warn(
+                  '[conversation] failed to mark conversation read',
+                  {
+                    conversationId: source.conversationId,
+                    error,
+                  },
+                );
               });
             }
           },
@@ -442,11 +442,10 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         </LoadBoundary>
 
         <form class={styles.form} onSubmit={onSubmit}>
-          <input
+          <textarea
             autofocus
-            ref={inputEl}
-            class={styles.input}
-            type='text'
+            ref={inputTextAreaEl}
+            class={styles.growableTextArea}
             placeholder='Message…'
             value={state.draft}
             onInput={(e) => {

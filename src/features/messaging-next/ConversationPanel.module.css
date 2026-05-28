@@ -1,19 +1,21 @@
 .panel {
   display: flex;
-  flex-direction: column;
   flex: 1;
   min-height: 0;
+  flex-direction: column;
   overflow: auto;
-  height: 100%;
-  max-height: 100svh;
+
+  letter-spacing: 0.02em;
+  font-weight: 350;
+  font-size: 1em;
 }
 
 .messagesEmpty {
   display: flex;
+  flex: 1;
+  min-height: 0;
   justify-content: center;
   align-items: center;
-  height: 100svh;
-  max-height: 100svh;
   background-color: transparent;
   color: #c0c0c0;
 }
@@ -180,21 +182,52 @@
 
 .form {
   display: flex;
-  flex-shrink: 0;
-
-  padding: 1rem;
+  align-items: flex-end;
   gap: 0.5rem;
+  padding: 0.75rem;
+  margin-inline: 0.5rem;
 }
 
-.input {
+.growableTextArea {
+  font-family: inherit;
+  font-size: inherit;
+  letter-spacing: inherit;
+
   flex: 1;
-  min-height: 0;
-  padding: 0.5rem;
+  min-width: 0;
+  padding: 6px;
   border: 1px solid #ccc;
   border-radius: 0.25rem;
+  line-height: 1.4;
+
+  /* Auto-grow textarea sizing: */
+
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  height: auto; /* Initial height - let field-sizing or JS handle it */
+  min-height: 1.8em; /* line-height + (padding * 2) */
+  max-height: 9em; /* ~5 lines + padding */
+  overflow-x: hidden; /* Hide scrollbar during auto-grow */
+  overflow-y: auto; /* Show scrollbar when max-height reached */
+  scrollbar-gutter: stable;
+  resize: none;
+
+  @supports (field-sizing: content) {
+    field-sizing: content; /* Native auto-grow (Chrome/Edge 123+) */
+  }
 }
 
+/* Fallback for reference if needed in js */
+/* if (!CSS.supports('field-sizing', 'content')) {
+  const el = document.querySelector('.growableTextArea');
+  el.addEventListener('input', () => {
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  });
+} */
+
 .send {
+  align-self: flex-end;
   padding: 0.5rem 1rem;
   background-color: #007aff;
   color: white;

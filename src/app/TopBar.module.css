@@ -12,7 +12,8 @@
   z-index: var(--z-mid);
 
   width: var(--content-width);
-  height: 50px;
+  height: var(--topbar-height);
+  max-height: var(--topbar-height);
   line-height: 50px;
 
   opacity: 1;

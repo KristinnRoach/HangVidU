@@ -71,6 +71,7 @@
 
   /* ===== SIZING ===== */
   --content-width: clamp(200px, 100%, 680px);
+  --topbar-height: 50px;
 
   --radius-sm: 4px;
   --radius-md: 5px;
