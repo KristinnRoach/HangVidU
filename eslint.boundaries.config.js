@@ -1,3 +1,10 @@
+// ⚠️ Keep the boundary playground in sync with this file.
+// The visualizer (playgrounds/boundary-rules.html) reads this config live for
+// element types + allow-rules, but the underlying import data is a generated
+// snapshot. After changing elements, rules, or the tsconfig path aliases,
+// re-run `pnpm play:boundaries:scan` to refresh playgrounds/boundary-imports.json
+// (the scanner playgrounds/build-import-graph.mjs resolves those same aliases).
+
 import boundaries from 'eslint-plugin-boundaries';
 import tseslint from 'typescript-eslint';
 

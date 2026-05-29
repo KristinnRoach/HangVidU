@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-05-28T23:56:56.505Z",
+  "generatedAt": "2026-05-29T00:55:31.840Z",
   "scannedFiles": 231,
-  "importsScanned": 599,
-  "importsResolved": 429,
+  "importsScanned": 598,
+  "importsResolved": 435,
   "edges": {
     "app->app": {
       "count": 4,
@@ -514,6 +514,16 @@
         }
       ]
     },
+    "auth->lib": {
+      "count": 1,
+      "files": [
+        {
+          "from": "src/auth/password-auth.js",
+          "to": "src/lib/utils/email-hash.js",
+          "importPath": "@lib/utils/email-hash.js"
+        }
+      ]
+    },
     "auth->shared": {
       "count": 15,
       "files": [
@@ -591,6 +601,16 @@
           "from": "src/auth/onetap.js",
           "to": "src/shared/utils/dev/dev-utils.js",
           "importPath": "../shared/utils/dev/dev-utils.js"
+        }
+      ]
+    },
+    "components->lib": {
+      "count": 1,
+      "files": [
+        {
+          "from": "src/components/base-legacy/imagePreview.js",
+          "to": "src/lib/utils/download-url.js",
+          "importPath": "@lib/utils/download-url.js"
         }
       ]
     },
@@ -1599,6 +1619,16 @@
         }
       ]
     },
+    "feature->lib": {
+      "count": 1,
+      "files": [
+        {
+          "from": "src/features/messaging-next/ConversationPanel.tsx",
+          "to": "src/lib/utils/download-url.js",
+          "importPath": "@lib/utils/download-url.js"
+        }
+      ]
+    },
     "feature->shared": {
       "count": 49,
       "files": [
@@ -1934,16 +1964,6 @@
         }
       ]
     },
-    "lib->feature": {
-      "count": 1,
-      "files": [
-        {
-          "from": "src/lib/media/media-devices.js",
-          "to": "src/features/call/media-constraints.js",
-          "importPath": "../../features/call/media-constraints.js"
-        }
-      ]
-    },
     "lib->lib": {
       "count": 17,
       "files": [
@@ -2035,12 +2055,27 @@
       ]
     },
     "shared->lib": {
-      "count": 1,
+      "count": 4,
       "files": [
         {
           "from": "src/shared/events/index.js",
           "to": "src/lib/event-emitter/event-emitter.js",
           "importPath": "../../lib/event-emitter/event-emitter.js"
+        },
+        {
+          "from": "src/shared/utils/share-invite-presets.js",
+          "to": "src/lib/utils/clipboard.js",
+          "importPath": "@lib/utils/clipboard.js"
+        },
+        {
+          "from": "src/shared/utils/share-invite.js",
+          "to": "src/lib/utils/clipboard.js",
+          "importPath": "@lib/utils/clipboard.js"
+        },
+        {
+          "from": "src/shared/utils/ui-utils/attachKeyboardViewportHandler.js",
+          "to": "src/lib/utils/detect-device.js",
+          "importPath": "@lib/utils/detect-device.js"
         }
       ]
     },
@@ -2111,6 +2146,16 @@
           "from": "src/storage/user/user-discovery.js",
           "to": "src/infra/firebase-rtdb.js",
           "importPath": "../../infra/firebase-rtdb.js"
+        }
+      ]
+    },
+    "storage->lib": {
+      "count": 1,
+      "files": [
+        {
+          "from": "src/storage/user/user-discovery.js",
+          "to": "src/lib/utils/email-hash.js",
+          "importPath": "@lib/utils/email-hash.js"
         }
       ]
     },

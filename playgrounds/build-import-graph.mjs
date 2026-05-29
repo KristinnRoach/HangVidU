@@ -88,15 +88,39 @@ async function walk(dir, acc = []) {
   return acc;
 }
 
+// ---------- tsconfig path aliases ----------
+// Mirror the `@x/*` aliases so alias imports resolve to real files (otherwise
+// they look like npm packages and their edges silently disappear).
+async function loadAliases() {
+  const raw = await readFile(join(repoRoot, 'tsconfig.json'), 'utf8');
+  const json = JSON.parse(raw);
+  const paths = json.compilerOptions?.paths ?? {};
+  const aliases = [];
+  for (const [key, targets] of Object.entries(paths)) {
+    if (!key.endsWith('/*') || !targets?.length) continue;
+    // '@lib/*' -> prefix '@lib/'; './src/lib/*' -> target 'src/lib/'
+    aliases.push({
+      prefix: key.slice(0, -1),
+      target: targets[0].replace(/^\.\//, '').slice(0, -1),
+    });
+  }
+  return aliases;
+}
+
 // ---------- import resolution ----------
 async function exists(p) {
   try { await stat(p); return true; } catch { return false; }
 }
 
-async function resolveImport(fromFile, spec) {
-  if (!spec.startsWith('.')) return null; // npm pkg, skip
-  const baseDir = dirname(fromFile);
-  const target = resolve(baseDir, spec);
+async function resolveImport(fromFile, spec, aliases) {
+  let target;
+  if (spec.startsWith('.')) {
+    target = resolve(dirname(fromFile), spec);
+  } else {
+    const alias = aliases.find((a) => spec.startsWith(a.prefix));
+    if (!alias) return null; // npm pkg, skip
+    target = resolve(repoRoot, alias.target + spec.slice(alias.prefix.length));
+  }
   // If the spec already ends in a known extension, try it as-is first,
   // then try swapping .js↔.ts / .jsx↔.tsx (TS NodeNext convention where
   // source is .ts but the import path uses .js).
@@ -145,6 +169,7 @@ function extractImports(source) {
 // ---------- main ----------
 async function main() {
   const elements = await loadElements();
+  const aliases = await loadAliases();
   const files = await walk(srcRoot);
 
   // edges[`${from}->${to}`] = [{ from, to, importPath }]
@@ -164,7 +189,7 @@ async function main() {
     const specs = extractImports(src);
     for (const spec of specs) {
       importsScanned++;
-      const resolved = await resolveImport(file, spec);
+      const resolved = await resolveImport(file, spec, aliases);
       if (!resolved) continue;
       const relTo = relative(repoRoot, resolved).split(sep).join(posix.sep);
       const toType = classify(elements, relTo);
