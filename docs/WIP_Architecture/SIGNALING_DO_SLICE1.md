@@ -20,7 +20,7 @@ This establishes the **realtime vs persistence** split:
 | Auth seam | `workers/signaling/src/auth.ts` | `authenticate(request, env) → { userId }` | leak provider choice past return type |
 | Durable Object | `workers/signaling/src/signaling-room.ts` | Presence + relay fan-out | parse SDP, persist, know channels |
 | Transport | `src/realtime/signaling-socket.ts` | Connect / reconnect / heartbeat | hold signaling semantics |
-| Adapter | `src/features/signaling/p2p/do-room-signaling.ts` | Map `P2PRoomSignaling` ↔ protocol | know transport internals |
+| Adapter | `src/realtime/signaling/do-room-signaling.ts` | Map `P2PRoomSignaling` ↔ protocol | know transport internals |
 
 The DO is a **relay**: it holds only presence (who's joined). SDP/ICE are
 forwarded peer-to-peer and discarded. `media-sync` later = a new `channel`
@@ -33,10 +33,10 @@ value in the protocol — no DO or structural change.
 
 ## Auth
 
-Slice 1 verifies a Firebase ID token in `authenticate()`. The return type is
-provider-agnostic (`{ userId }`), so migrating off Firebase later replaces one
-file. Signature verification is a documented TODO (see auth.ts) — acceptable
-for the prototype, must be closed before real users.
+`authenticate()` verifies the Firebase ID token's RS256 signature (Google JWKS,
+WebCrypto) plus claims (aud/iss/exp/iat/sub). Return type is provider-agnostic
+(`Identity | null`), so migrating off Firebase later replaces only this file's
+internals. Production-ready.
 
 ## Checklist
 
@@ -46,8 +46,8 @@ for the prototype, must be closed before real users.
 - [x] 4. `authenticate()` seam — Firebase ID token, **RS256 signature verified** against Google's JWKS (WebCrypto, keys cached per Cache-Control) + claim checks (aud/iss/exp/iat/sub). Provider-agnostic `{ userId }` return.
 - [x] 5. Worker `index.ts` — auth → `getByName(roomId)` → WS handoff
 - [x] 6. `src/realtime/signaling-socket.ts` — reconnecting WS client (+ `src/realtime/protocol.ts` re-export)
-- [x] 7. `src/features/signaling/p2p/do-room-signaling.ts` — implements `P2PRoomSignaling` over the socket
-- [x] 8. Factory in `features/signaling/index.js` (`createRoomSignaling`) — `VITE_SIGNALING_BACKEND` flag, **default `do`**; wired into `call-handshake.tsx`. Client `pnpm ts` clean.
+- [x] 7. `src/realtime/signaling/do-room-signaling.ts` — implements `P2PRoomSignaling` over the socket
+- [x] 8. Factory in `src/realtime/signaling/index.js` (barrel: `src/realtime/index.ts`) (`createRoomSignaling`) — `VITE_SIGNALING_BACKEND` flag, **default `do`**; wired into `call-handshake.tsx`. Client `pnpm ts` clean.
 - [x] 9. Verify — manual browser call ✅ (real 2-peer call through the DO). Automated guards:
   - DO relay/presence test (`test/signaling-room.test.ts`)
   - Worker routing + auth test (`test/worker.test.ts`): 404 / 426 / 401 (missing, expired, bad-aud, tampered-signature) / 101 valid signed token (signs with a generated keypair + stubs the JWKS endpoint)

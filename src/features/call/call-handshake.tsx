@@ -9,7 +9,7 @@ import {
 } from 'solid-js';
 
 import { useP2PContext } from '../../shared/p2p-context.js';
-import { createRoomSignaling } from '../signaling/index.js';
+import { createRoomSignaling } from '../../realtime/index.js';
 import type { CallInvite } from './model/call-schema.js';
 import { CallHandshakeController } from './call-handshake-controller.js';
 import type {

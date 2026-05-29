@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // --- mock the transport so no real WebSocket is opened ---
 let socket;
 
-vi.mock('../../../realtime/signaling-socket', () => ({
+vi.mock('../signaling-socket', () => ({
   createSignalingSocket: vi.fn(() => {
     const messageHandlers = new Set();
     const openHandlers = new Set();
@@ -30,7 +30,7 @@ vi.mock('../../../realtime/signaling-socket', () => ({
   }),
 }));
 
-vi.mock('../../../auth/index.js', () => ({
+vi.mock('../../auth/index.js', () => ({
   getLoggedInUserToken: vi.fn(async () => 'test-token'),
 }));
 

@@ -4,12 +4,12 @@ import type {
   P2PRoomSignaling,
   RtcSignalingSource,
 } from '@kidlib/p2p';
-import { getLoggedInUserToken } from '../../../auth/index.js';
+import { getLoggedInUserToken } from '../../auth/index.js';
 import {
   createSignalingSocket,
   type SignalingSocket,
-} from '../../../realtime/signaling-socket';
-import type { RelayChannel, ServerMessage } from '../../../realtime/protocol';
+} from '../signaling-socket';
+import type { RelayChannel, ServerMessage } from '../protocol';
 
 /**
  * Durable Object `P2PRoomSignaling` — drop-in replacement for

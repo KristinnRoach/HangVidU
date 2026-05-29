@@ -9,7 +9,7 @@ import {
   onChildAdded,
   onDisconnect,
 } from 'firebase/database';
-import { rtdb } from '../../../infra/firebase-rtdb.js';
+import { rtdb } from '../../infra/firebase-rtdb.js';
 
 /** @typedef {import('@kidlib/p2p').P2PRoomSignaling} P2PRoomSignaling */
 /** @typedef {import('@kidlib/p2p').CreateRoomSignalingOptions} CreateRoomSignalingOptions */

@@ -1,4 +1,4 @@
-// src/features/signaling/index.js
+// src/realtime/signaling/index.js
 //
 // Room-signaling factory. Selects the realtime backend behind the stable
 // `@kidlib/p2p` `P2PRoomSignaling` port:
@@ -8,8 +8,8 @@
 // Controlled by VITE_SIGNALING_BACKEND. Both adapters are kept in tree until
 // the DO path is verified in production; then the RTDB adapter is removed.
 
-import { createFirebaseRoomSignaling } from './p2p/firebase-room-signaling.js';
-import { createDoRoomSignaling } from './p2p/do-room-signaling.js';
+import { createFirebaseRoomSignaling } from './firebase-room-signaling.js';
+import { createDoRoomSignaling } from './do-room-signaling.js';
 
 export { createFirebaseRoomSignaling, createDoRoomSignaling };
 
