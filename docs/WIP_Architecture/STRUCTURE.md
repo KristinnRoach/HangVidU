@@ -16,6 +16,13 @@ The two foundational layers:
 Rule of thumb for placing a util: if it has no app/domain knowledge and no
 imports outside `lib`, it belongs in `src/lib/utils/`; otherwise `src/shared/utils/`.
 
+Two sibling infrastructure layers sit below features, splitting state by lifetime:
+
+- **`src/storage/`** — persistence (durable data: contacts, messages, user). Backed by RTDB.
+- **`src/realtime/`** — ephemeral coordination (WebRTC signaling; later media-sync). Backed by a Cloudflare Durable Object (`workers/signaling/`). Holds the DO transport, wire protocol, and `P2PRoomSignaling` adapters behind one barrel.
+
+Both are backend-agnostic behind their ports; features import them (realtime directly, storage via `stores`).
+
 ## Module layout
 
 - Every module has one barrel: `src/<module>/index.js` (or `index.ts`).

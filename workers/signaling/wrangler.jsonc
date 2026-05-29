@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hangvidu-signaling",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-05-01",
+  "observability": { "enabled": true },
+  "durable_objects": {
+    "bindings": [{ "name": "SIGNALING_ROOM", "class_name": "SignalingRoom" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SignalingRoom"] }],
+  "vars": {
+    // Firebase project id used to validate ID-token claims (aud/iss).
+    // Override per environment; not a secret.
+    "FIREBASE_PROJECT_ID": "vidu-aae11",
+  },
+}

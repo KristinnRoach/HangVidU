@@ -1,0 +1,5 @@
+# Only these packages may run install/build scripts (supply-chain hygiene).
+onlyBuiltDependencies:
+  - esbuild
+  - workerd
+  - sharp

@@ -9,7 +9,7 @@ import {
 } from 'solid-js';
 
 import { useP2PContext } from '../../shared/p2p-context.js';
-import { createFirebaseRoomSignaling } from '../signaling/p2p/firebase-room-signaling.js';
+import { createRoomSignaling } from '../../realtime/index.js';
 import type { CallInvite } from './model/call-schema.js';
 import { CallHandshakeController } from './call-handshake-controller.js';
 import type {
@@ -41,7 +41,7 @@ export function CallHandshakeProvider(props: ParentProps) {
 
   const controller = new CallHandshakeController({
     p2p,
-    createSignaling: createFirebaseRoomSignaling,
+    createSignaling: createRoomSignaling,
     onStateChange: setHandshakeState,
     onCalleeBusy: setIsCalleeBusy,
   });

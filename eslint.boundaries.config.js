@@ -81,10 +81,11 @@ overrides.push(
             { type: 'components' },
             { type: 'infra' },
             { type: 'stores' },
+            { type: 'realtime' },
           ],
         },
         message:
-          'Features may import from auth, shared, lib, components, infra, stores, or other features.',
+          'Features may import from auth, shared, lib, components, infra, stores, realtime, or other features.',
       },
     ],
   ),
@@ -164,6 +165,28 @@ overrides.push(
         },
         message:
           'Storage is the persistence layer — may only import from storage, shared, lib, and infra.',
+      },
+    ],
+  ),
+);
+
+overrides.push(
+  dependencyRule(
+    ['src/realtime/*.{js,jsx,ts,tsx}', 'src/realtime/**/*.{js,jsx,ts,tsx}'],
+    [
+      {
+        from: { type: 'realtime' },
+        allow: {
+          to: [
+            { type: 'realtime' },
+            { type: 'shared' },
+            { type: 'lib' },
+            { type: 'infra' },
+            { type: 'auth' },
+          ],
+        },
+        message:
+          'Realtime is the ephemeral-coordination layer (sibling of storage) — may only import from realtime, shared, lib, infra, and auth.',
       },
     ],
   ),
@@ -303,6 +326,14 @@ export default [
           pattern: [
             'src/storage/*.{js,jsx,ts,tsx}',
             'src/storage/**/*.{js,jsx,ts,tsx}',
+          ],
+        },
+        {
+          type: 'realtime',
+          mode: 'full',
+          pattern: [
+            'src/realtime/*.{js,jsx,ts,tsx}',
+            'src/realtime/**/*.{js,jsx,ts,tsx}',
           ],
         },
         {

@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('firebase/database', () => mocks);
-vi.mock('../../../infra/firebase-rtdb.js', () => ({
+vi.mock('../../infra/firebase-rtdb.js', () => ({
   rtdb: {},
 }));
 

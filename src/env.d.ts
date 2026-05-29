@@ -21,6 +21,10 @@ interface ImportMetaEnv {
   // Application
   readonly VITE_ENABLE_PWA: string;
   readonly VITE_SENTRY_DSN: string;
+
+  // Realtime signaling (Cloudflare Durable Object worker)
+  readonly VITE_SIGNALING_URL: string;
+  readonly VITE_SIGNALING_BACKEND: 'do' | 'rtdb';
 }
 
 interface ImportMeta {
