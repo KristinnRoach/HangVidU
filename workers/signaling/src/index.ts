@@ -1,4 +1,4 @@
-import { authenticate, AuthError } from './auth';
+import { authenticate } from './auth';
 import { SignalingRoom } from './signaling-room';
 
 export { SignalingRoom };
@@ -21,14 +21,8 @@ export default {
       return new Response('Expected WebSocket upgrade', { status: 426 });
     }
 
-    try {
-      await authenticate(request, env);
-    } catch (error) {
-      const status = error instanceof AuthError ? 401 : 500;
-      return new Response(status === 401 ? 'Unauthorized' : 'Auth error', {
-        status,
-      });
-    }
+    const identity = await authenticate(request, env);
+    if (!identity) return new Response('Unauthorized', { status: 401 });
 
     const roomId = decodeURIComponent(match[1]);
     const stub = env.SIGNALING_ROOM.getByName(roomId);

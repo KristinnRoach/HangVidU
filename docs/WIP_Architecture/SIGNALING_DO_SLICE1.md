@@ -48,7 +48,14 @@ for the prototype, must be closed before real users.
 - [x] 6. `src/realtime/signaling-socket.ts` — reconnecting WS client (+ `src/realtime/protocol.ts` re-export)
 - [x] 7. `src/features/signaling/p2p/do-room-signaling.ts` — implements `P2PRoomSignaling` over the socket
 - [x] 8. Factory in `features/signaling/index.js` (`createRoomSignaling`) — `VITE_SIGNALING_BACKEND` flag, **default `do`**; wired into `call-handshake.tsx`. Client `pnpm ts` clean.
-- [ ] 9. Verify — **manual browser test first (in progress)**, then DO/E2E tests (deferred until manual pass)
+- [x] 9. Verify — manual browser call ✅ (real 2-peer call through the DO). Automated guards:
+  - DO relay/presence test (`test/signaling-room.test.ts`)
+  - Worker routing + auth test (`test/worker.test.ts`): 404 / 426 / 401 (missing, expired, bad-aud) / 101 valid
+  - Client adapter mapping test (`do-room-signaling.test.js`): join/re-join, presence, offer/answer/ICE relay, peer+channel routing, cleanup
+  - Deferred: full Chromium 2-peer E2E (covered manually for now)
+
+**Auth refactor:** `authenticate()` now returns `Identity | null` (no throwing) —
+cleaner request-path guard and avoids async-throw noise in the test runner.
 
 ## Manual verification (run locally)
 
