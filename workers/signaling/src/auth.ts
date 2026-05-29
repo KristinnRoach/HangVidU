@@ -111,7 +111,14 @@ async function fetchSigningKeys(): Promise<KeyCache> {
   }
   if (!response.ok) return { keys: new Map(), expiresAt: 0 };
 
-  const body = (await response.json()) as { keys?: (JsonWebKey & { kid?: string })[] };
+  let body: { keys?: (JsonWebKey & { kid?: string })[] };
+  try {
+    body = (await response.json()) as {
+      keys?: (JsonWebKey & { kid?: string })[];
+    };
+  } catch {
+    return { keys: new Map(), expiresAt: 0 };
+  }
   const keys = new Map<string, CryptoKey>();
   for (const jwk of body.keys ?? []) {
     if (typeof jwk.kid !== 'string') continue;

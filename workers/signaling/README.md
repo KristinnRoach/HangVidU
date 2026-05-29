@@ -21,8 +21,9 @@ src/features/signaling/p2p/                  │ getByName(roomId)
 - **DO is a relay**: holds only presence; forwards `relay` messages to the
   addressed peer; never inspects SDP/ICE. No persistence — empty rooms evict.
 - **Wire contract**: `shared/signaling/protocol.ts` (shared with the client).
-- **Auth**: `src/auth.ts`, provider-agnostic `{ userId }`. Firebase ID-token
-  verification is minimal in slice 1 — signature check is a documented TODO.
+- **Auth**: `src/auth.ts`, provider-agnostic `{ userId }`. Verifies the Firebase
+  ID token's RS256 signature (Google JWKS, WebCrypto) + claims. Swapping auth
+  provider later touches only this file's internals.
 
 ## Endpoint
 

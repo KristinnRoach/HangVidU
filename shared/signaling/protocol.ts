@@ -29,6 +29,19 @@ export type ServerMessage =
 
 export function isClientMessage(value: unknown): value is ClientMessage {
   if (!value || typeof value !== 'object') return false;
-  const t = (value as { t?: unknown }).t;
-  return t === 'join' || t === 'leave' || t === 'relay';
+  const m = value as Record<string, unknown>;
+  switch (m.t) {
+    case 'join':
+      return typeof m.peerId === 'string' && m.peerId.length > 0;
+    case 'leave':
+      return true;
+    case 'relay':
+      return (
+        typeof m.to === 'string' &&
+        (m.channel === 'sdp' || m.channel === 'ice') &&
+        'data' in m
+      );
+    default:
+      return false;
+  }
 }

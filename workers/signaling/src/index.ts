@@ -24,7 +24,12 @@ export default {
     const identity = await authenticate(request, env);
     if (!identity) return new Response('Unauthorized', { status: 401 });
 
-    const roomId = decodeURIComponent(match[1]);
+    let roomId: string;
+    try {
+      roomId = decodeURIComponent(match[1]);
+    } catch {
+      return new Response('Invalid roomId', { status: 400 });
+    }
     const stub = env.SIGNALING_ROOM.getByName(roomId);
     return stub.fetch(request);
   },
