@@ -140,14 +140,14 @@ export default function MainContent() {
 
             <div
               hidden={activeView() !== 'contacts'}
-              class={mainStyles.activeViewContainer}
+              class={mainStyles.activeViewContainer + ' ' + mainStyles.contacts}
             >
               <ContactsList />
             </div>
 
             <div
               hidden={activeView() !== 'messaging'}
-              class={mainStyles.activeViewContainer}
+              class={mainStyles.activeViewContainer + ' ' + mainStyles.chat}
             >
               <ConversationPanel
                 selection={selectedConversation()}

@@ -22,7 +22,6 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  /* max-height: calc(100svh - var(--topbar-height)); */
 }
 
 .activeViewContainer {
@@ -37,6 +36,12 @@
   max-width: var(--content-width);
 
   background: var(--bg-darker);
+}
+
+/* Temp fix for mobile height issues */
+.contacts,
+.chat {
+  max-height: calc(100svh - var(--topbar-height));
 }
 
 .activeViewContainer[hidden] {
