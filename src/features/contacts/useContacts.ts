@@ -1,9 +1,13 @@
 import { createEffect, onCleanup, onMount } from 'solid-js';
-import { createStore, produce } from 'solid-js/store';
+import { createStore, produce, reconcile } from 'solid-js/store';
 import { getLoggedInUserId } from '../../auth/index.js';
 import { getContactsStore } from '../../stores/contactsStore.js';
+import { loadConversationsList } from '../../stores/conversations-list.js';
 import type { ConversationActivity } from '../messaging-next/interfaces.js';
-import { createMessagingRuntime } from '../messaging-next/messaging-runtime.js';
+import {
+  createMessagingRuntime,
+  getMessageBackend,
+} from '../messaging-next/messaging-runtime.js';
 
 type ContactRow = {
   id: string;
@@ -20,38 +24,30 @@ const EMPTY_ACTIVITY: ConversationActivity = {
 
 export function useContacts() {
   const contactsState = getContactsStore();
+  const backend = getMessageBackend();
   const [contacts, setContacts] = createStore<ContactRow[]>([]);
+  // Activity keyed by conversationId (opaque under d1, legacy derived under rtdb).
   const [activity, setActivity] = createStore<
     Record<string, ConversationActivity>
   >({});
+  // d1 only: contactId (other member's userId) → opaque conversationId.
+  const [convIdByContact, setConvIdByContact] = createStore<
+    Record<string, string>
+  >({});
   const runtime = createMessagingRuntime();
 
-  const activityWatchers = new Map<string, () => void>();
-  let activityWatchUserId: string | null = null;
-  let activityWatchGeneration = 0;
-
-  function clearActivity() {
-    setActivity(
-      produce((current) => {
-        for (const conversationId of Object.keys(current)) {
-          delete current[conversationId];
-        }
-      }),
-    );
-  }
-
-  function stopActivityWatchers() {
-    for (const unsubscribe of activityWatchers.values()) unsubscribe();
-    activityWatchers.clear();
-  }
-
+  // ─── Shared: build the rendered rows from contacts + activity ──────────────
   onMount(() => {
     createEffect(() => {
       const userId = getLoggedInUserId();
 
       const rows: ContactRow[] = Object.values(contactsState.byId)
         .map((c: any) => {
-          const conversationId: string | null = c.conversationId ?? null;
+          const contactId: string = c.contactId ?? '';
+          const conversationId: string | null =
+            backend === 'd1'
+              ? (convIdByContact[contactId] ?? null)
+              : (c.conversationId ?? null);
           const act = conversationId
             ? (activity[conversationId] ?? EMPTY_ACTIVITY)
             : EMPTY_ACTIVITY;
@@ -62,7 +58,7 @@ export function useContacts() {
             act.latestSenderId !== userId &&
             act.latestSentAt > act.lastReadAt;
           return {
-            id: c.contactId ?? '',
+            id: contactId,
             name: c.contactNickName ?? null,
             conversationId,
             hasUnread,
@@ -84,6 +80,72 @@ export function useContacts() {
       );
     });
 
+    if (backend === 'd1') {
+      setupD1ActivityLoad();
+    } else {
+      setupRtdbActivityWatchers();
+    }
+  });
+
+  // ─── d1: one-shot list() per (user, contacts-change). No live push until the
+  //     conversation DO (Slice E); the list refreshes on reload / contact change.
+  let loadGeneration = 0;
+  function setupD1ActivityLoad() {
+    createEffect(() => {
+      const userId = getLoggedInUserId();
+      // Track contacts so the list refetches when a contact is added/removed.
+      void Object.keys(contactsState.byId).length;
+
+      if (!userId) {
+        setActivity(reconcile({}));
+        setConvIdByContact(reconcile({}));
+        return;
+      }
+
+      const generation = ++loadGeneration;
+      void loadConversationsList()
+        .then((entries) => {
+          if (generation !== loadGeneration) return;
+          const nextActivity: Record<string, ConversationActivity> = {};
+          const nextConvId: Record<string, string> = {};
+          for (const entry of entries) {
+            if (entry.kind !== 'direct') continue;
+            const other = entry.members.find((m) => m.user_id !== userId);
+            if (!other) continue;
+            nextActivity[entry.id] = entry.activity;
+            nextConvId[other.user_id] = entry.id;
+          }
+          setActivity(reconcile(nextActivity));
+          setConvIdByContact(reconcile(nextConvId));
+        })
+        .catch((error) => {
+          if (generation !== loadGeneration) return;
+          console.warn('[contacts] conversation list load failed', error);
+        });
+    });
+  }
+
+  // ─── rtdb: per-conversation activity watchers (legacy path, unchanged) ──────
+  const activityWatchers = new Map<string, () => void>();
+  let activityWatchUserId: string | null = null;
+  let activityWatchGeneration = 0;
+
+  function clearActivity() {
+    setActivity(
+      produce((current) => {
+        for (const conversationId of Object.keys(current)) {
+          delete current[conversationId];
+        }
+      }),
+    );
+  }
+
+  function stopActivityWatchers() {
+    for (const unsubscribe of activityWatchers.values()) unsubscribe();
+    activityWatchers.clear();
+  }
+
+  function setupRtdbActivityWatchers() {
     createEffect(() => {
       const userId = getLoggedInUserId();
       const generation = ++activityWatchGeneration;
@@ -166,10 +228,11 @@ export function useContacts() {
         }
       }
     });
-  });
+  }
 
   onCleanup(() => {
     activityWatchGeneration += 1;
+    loadGeneration += 1;
     stopActivityWatchers();
     clearActivity();
   });
