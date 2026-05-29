@@ -43,14 +43,14 @@ for the prototype, must be closed before real users.
 - [x] 1. Scaffold `workers/signaling/` (package.json, wrangler.jsonc, tsconfig, .gitignore) — deps installed standalone (`--ignore-workspace`), `pnpm typecheck` clean
 - [x] 2. `shared/signaling/protocol.ts` — wire types
 - [x] 3. `SignalingRoom` DO — presence + relay over hibernatable WebSockets
-- [x] 4. `authenticate()` seam — Firebase ID token (claims-only; signature TODO), provider-agnostic return
+- [x] 4. `authenticate()` seam — Firebase ID token, **RS256 signature verified** against Google's JWKS (WebCrypto, keys cached per Cache-Control) + claim checks (aud/iss/exp/iat/sub). Provider-agnostic `{ userId }` return.
 - [x] 5. Worker `index.ts` — auth → `getByName(roomId)` → WS handoff
 - [x] 6. `src/realtime/signaling-socket.ts` — reconnecting WS client (+ `src/realtime/protocol.ts` re-export)
 - [x] 7. `src/features/signaling/p2p/do-room-signaling.ts` — implements `P2PRoomSignaling` over the socket
 - [x] 8. Factory in `features/signaling/index.js` (`createRoomSignaling`) — `VITE_SIGNALING_BACKEND` flag, **default `do`**; wired into `call-handshake.tsx`. Client `pnpm ts` clean.
 - [x] 9. Verify — manual browser call ✅ (real 2-peer call through the DO). Automated guards:
   - DO relay/presence test (`test/signaling-room.test.ts`)
-  - Worker routing + auth test (`test/worker.test.ts`): 404 / 426 / 401 (missing, expired, bad-aud) / 101 valid
+  - Worker routing + auth test (`test/worker.test.ts`): 404 / 426 / 401 (missing, expired, bad-aud, tampered-signature) / 101 valid signed token (signs with a generated keypair + stubs the JWKS endpoint)
   - Client adapter mapping test (`do-room-signaling.test.js`): join/re-join, presence, offer/answer/ICE relay, peer+channel routing, cleanup
   - Deferred: full Chromium 2-peer E2E (covered manually for now)
 
@@ -68,9 +68,17 @@ Flip `VITE_SIGNALING_BACKEND=rtdb` to fall back instantly if needed.
 
 Notes:
 - Auth: client sends its real Firebase ID token as the `bearer` subprotocol; the
-  worker validates `aud`/`iss`/`exp` against `vidu-aae11` (signature still TODO).
+  worker verifies the RS256 signature (Google JWKS) + claims against `vidu-aae11`.
+  Production-ready. Switching auth provider later = replace the verify internals
+  in `auth.ts`; the `authenticate()` seam and `{ userId }` contract stay.
 - `localhost` is mixed-content exempt, so `ws://` works from the https dev page.
-- Client changes left uncommitted pending your manual pass.
+
+## Deploy
+
+- `pnpm deploy:do` (wrangler deploy). Set `FIREBASE_PROJECT_ID` var (already
+  `vidu-aae11` in `wrangler.jsonc`) and point `VITE_SIGNALING_URL` at the prod
+  `wss://` worker URL for the client build.
+- Root scripts: `pnpm dev:do` / `deploy:do` / `test:do`.
 
 ## Migration path (preserved, no work now)
 
