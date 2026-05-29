@@ -33,7 +33,11 @@
   &.overlay {
     position: absolute;
     top: 0;
+    /* Keep the auto-margin centering (margin-inline: auto) working while
+       absolutely positioned: anchor both edges so the fixed width centers
+       instead of pinning to the left. */
     left: 0;
+    right: 0;
   }
 
   /* Logo placeholder (AppTitle.jsx) */

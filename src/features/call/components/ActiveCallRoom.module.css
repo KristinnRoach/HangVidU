@@ -13,7 +13,5 @@
   color: var(--color-text);
   background: var(--color-bg);
 
-  position: relative;
-
   height: 100%;
 }
