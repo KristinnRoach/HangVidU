@@ -40,9 +40,15 @@ export interface ConversationActivity {
   lastReadAt: number;
 }
 
+/** A conversation as returned by `list()`: members + activity for the caller. */
+export type ConversationListEntry = Conversation & {
+  members: ConversationMember[];
+  activity: ConversationActivity;
+};
+
 export interface ConversationsClient {
   resolveDirect(otherUserId: string): Promise<string>;
-  list(): Promise<(Conversation & { members: ConversationMember[] })[]>;
+  list(): Promise<ConversationListEntry[]>;
   get(
     conversationId: string,
   ): Promise<{ conversation: Conversation; members: ConversationMember[] }>;
@@ -114,9 +120,10 @@ export function createConversationsClient(
       return conversationId;
     },
     list() {
-      return request<{
-        conversations: (Conversation & { members: ConversationMember[] })[];
-      }>('GET', '/conversations').then((r) => r.conversations);
+      return request<{ conversations: ConversationListEntry[] }>(
+        'GET',
+        '/conversations',
+      ).then((r) => r.conversations);
     },
     get(conversationId) {
       return request('GET', `/conversations/${encodeURIComponent(conversationId)}`);

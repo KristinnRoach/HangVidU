@@ -338,25 +338,56 @@ async function loadReactions(
 }
 
 /** Conversations the user belongs to, each with its full member list. */
+/** Conversation row joined with the caller's read marker + latest-message info. */
+interface ConversationListRow extends ConversationRow {
+  last_read_at: number;
+  latest_sent_at: number | null;
+  latest_sender_id: string | null;
+}
+
 export async function listConversations(
   db: D1Database,
   userId: string,
-): Promise<(ConversationRow & { members: MemberRow[] })[]> {
+): Promise<
+  (ConversationRow & { members: MemberRow[]; activity: ConversationActivity })[]
+> {
+  // One query per list: conversation + the caller's last_read_at + the latest
+  // message's timestamp/sender (correlated subqueries). The unread badge and
+  // list ordering derive from `activity` alone. (Members are still fetched
+  // per-conversation below — acceptable for the PoC; revisit if it bites.)
   const { results } = await db
     .prepare(
-      `SELECT c.* FROM conversations c
-       JOIN conversation_members m ON m.conversation_id = c.id
-       WHERE m.user_id = ?
+      `SELECT c.*,
+              m.last_read_at AS last_read_at,
+              (SELECT created_at FROM messages
+                 WHERE conversation_id = c.id
+                 ORDER BY created_at DESC LIMIT 1) AS latest_sent_at,
+              (SELECT sender_id FROM messages
+                 WHERE conversation_id = c.id
+                 ORDER BY created_at DESC LIMIT 1) AS latest_sender_id
+       FROM conversations c
+       JOIN conversation_members m
+         ON m.conversation_id = c.id AND m.user_id = ?
        ORDER BY c.updated_at DESC`,
     )
     .bind(userId)
-    .all<ConversationRow>();
+    .all<ConversationListRow>();
 
   const conversations = results ?? [];
   return Promise.all(
     conversations.map(async (c) => ({
-      ...c,
+      id: c.id,
+      kind: c.kind,
+      dm_key: c.dm_key,
+      title: c.title,
+      created_at: c.created_at,
+      updated_at: c.updated_at,
       members: await getMembers(db, c.id),
+      activity: {
+        latestSentAt: c.latest_sent_at ?? 0,
+        latestSenderId: c.latest_sender_id ?? null,
+        lastReadAt: c.last_read_at ?? 0,
+      },
     })),
   );
 }
