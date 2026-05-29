@@ -38,6 +38,7 @@ export function isClientMessage(value: unknown): value is ClientMessage {
     case 'relay':
       return (
         typeof m.to === 'string' &&
+        m.to.length > 0 &&
         (m.channel === 'sdp' || m.channel === 'ice') &&
         'data' in m
       );
