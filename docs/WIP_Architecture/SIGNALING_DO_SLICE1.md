@@ -45,10 +45,25 @@ for the prototype, must be closed before real users.
 - [x] 3. `SignalingRoom` DO — presence + relay over hibernatable WebSockets
 - [x] 4. `authenticate()` seam — Firebase ID token (claims-only; signature TODO), provider-agnostic return
 - [x] 5. Worker `index.ts` — auth → `getByName(roomId)` → WS handoff
-- [ ] 6. `src/realtime/signaling-socket.ts` — reconnecting WS client
-- [ ] 7. `src/features/signaling/p2p/do-room-signaling.ts` — implement the port
-- [ ] 8. Factory/flag in `features/signaling/p2p/index.js` — RTDB default, flag → DO
-- [ ] 9. Verify — DO tests (`@cloudflare/vitest-pool-workers`) + Chromium E2E call
+- [x] 6. `src/realtime/signaling-socket.ts` — reconnecting WS client (+ `src/realtime/protocol.ts` re-export)
+- [x] 7. `src/features/signaling/p2p/do-room-signaling.ts` — implements `P2PRoomSignaling` over the socket
+- [x] 8. Factory in `features/signaling/index.js` (`createRoomSignaling`) — `VITE_SIGNALING_BACKEND` flag, **default `do`**; wired into `call-handshake.tsx`. Client `pnpm ts` clean.
+- [ ] 9. Verify — **manual browser test first (in progress)**, then DO/E2E tests (deferred until manual pass)
+
+## Manual verification (run locally)
+
+1. `cd workers/signaling && pnpm dev` — wrangler dev serves the DO at `ws://localhost:8787`.
+2. In repo root: `pnpm dev:local` (https://localhost:5173).
+3. `VITE_SIGNALING_BACKEND=do` and `VITE_SIGNALING_URL=ws://localhost:8787` are already in `.env.development`.
+4. Start a call between two logged-in sessions → signaling now flows through the DO, not RTDB.
+
+Flip `VITE_SIGNALING_BACKEND=rtdb` to fall back instantly if needed.
+
+Notes:
+- Auth: client sends its real Firebase ID token as the `bearer` subprotocol; the
+  worker validates `aud`/`iss`/`exp` against `vidu-aae11` (signature still TODO).
+- `localhost` is mixed-content exempt, so `ws://` works from the https dev page.
+- Client changes left uncommitted pending your manual pass.
 
 ## Migration path (preserved, no work now)
 
