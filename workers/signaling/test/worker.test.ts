@@ -76,7 +76,7 @@ afterAll(() => {
 function upgrade(
   path: string,
   protocol?: string,
-  origin: string | null = 'https://localhost:5173',
+  origin: string | null = 'https://hangvidu.com',
 ): Promise<Response> {
   const headers: Record<string, string> = { Upgrade: 'websocket' };
   if (protocol) headers['Sec-WebSocket-Protocol'] = protocol;

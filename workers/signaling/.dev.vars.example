@@ -1,0 +1,2 @@
+FIREBASE_PROJECT_ID=vidu-aae11
+ALLOWED_ORIGINS=https://hangvidu.com,https://www.hangvidu.com,https://vidu-aae11.web.app,https://vidu-aae11.firebaseapp.com,https://localhost:5173,http://localhost:5173,https://dev.hangvidu.com

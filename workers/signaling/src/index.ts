@@ -6,8 +6,8 @@ export { SignalingRoom };
 export interface Env {
   SIGNALING_ROOM: DurableObjectNamespace<SignalingRoom>;
   FIREBASE_PROJECT_ID: string;
-  /** Comma-separated WebSocket Origin allowlist (prod + dev). */
-  ALLOWED_ORIGINS: string;
+  /** Comma-separated WebSocket Origin allowlist. */
+  ALLOWED_ORIGINS?: string;
 }
 
 // Route: GET /rooms/:roomId/signal  (WebSocket upgrade)
@@ -19,7 +19,8 @@ const ROOM_PATH = /^\/rooms\/([^/]+)\/signal$/;
 function isAllowedOrigin(request: Request, env: Env): boolean {
   const origin = request.headers.get('Origin');
   if (!origin) return false;
-  return env.ALLOWED_ORIGINS.split(',')
+  return (env.ALLOWED_ORIGINS ?? '')
+    .split(',')
     .map((o) => o.trim())
     .filter(Boolean)
     .includes(origin);

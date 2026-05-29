@@ -12,7 +12,8 @@
     // Firebase project id used to validate ID-token claims (aud/iss).
     // Override per environment; not a secret.
     "FIREBASE_PROJECT_ID": "vidu-aae11",
-    // WebSocket Origin allowlist (prod hosts + local dev). Comma-separated.
-    "ALLOWED_ORIGINS": "https://hangvidu.com,https://www.hangvidu.com,https://vidu-aae11.web.app,https://vidu-aae11.firebaseapp.com,https://localhost:5173,http://localhost:5173",
+    // WebSocket Origin allowlist (prod hosts only). Keep in sync with
+    // ../../config/origins.json until origin config generation is automated.
+    "ALLOWED_ORIGINS": "https://hangvidu.com,https://www.hangvidu.com,https://vidu-aae11.web.app,https://vidu-aae11.firebaseapp.com",
   },
 }
