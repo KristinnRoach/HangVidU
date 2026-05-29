@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-05-29T10:25:11.730Z",
-  "scannedFiles": 231,
-  "importsScanned": 598,
-  "importsResolved": 435,
+  "generatedAt": "2026-05-29T22:19:25.434Z",
+  "scannedFiles": 241,
+  "importsScanned": 621,
+  "importsResolved": 455,
   "edges": {
     "app->app": {
       "count": 4,
@@ -800,7 +800,7 @@
       ]
     },
     "feature->feature": {
-      "count": 157,
+      "count": 156,
       "files": [
         {
           "from": "src/features/call/audio/ringtone-manager.js",
@@ -861,11 +861,6 @@
           "from": "src/features/call/call-handshake.tsx",
           "to": "src/features/call/model/call-schema.ts",
           "importPath": "./model/call-schema.js"
-        },
-        {
-          "from": "src/features/call/call-handshake.tsx",
-          "to": "src/features/signaling/p2p/firebase-room-signaling.js",
-          "importPath": "../signaling/p2p/firebase-room-signaling.js"
         },
         {
           "from": "src/features/call/call-notifications.ts",
@@ -991,11 +986,6 @@
           "from": "src/features/call/model/room-access-rtdb-adapter.test.js",
           "to": "src/features/call/model/room-access-rtdb-adapter.ts",
           "importPath": "./room-access-rtdb-adapter.js"
-        },
-        {
-          "from": "src/features/call/reference-examples/SimpleRoomExample.tsx",
-          "to": "src/features/signaling/p2p/firebase-room-signaling.js",
-          "importPath": "../../signaling/p2p/firebase-room-signaling"
         },
         {
           "from": "src/features/contacts/components/add-contact-modal.js",
@@ -1188,6 +1178,16 @@
           "importPath": "../messaging-next/messaging-runtime.js"
         },
         {
+          "from": "src/features/messaging-next/adapters/d1.ts",
+          "to": "src/features/messaging-next/interfaces.ts",
+          "importPath": "../interfaces.js"
+        },
+        {
+          "from": "src/features/messaging-next/adapters/d1.ts",
+          "to": "src/features/messaging-next/types.ts",
+          "importPath": "../types.js"
+        },
+        {
           "from": "src/features/messaging-next/adapters/in-memory-conversations.test.js",
           "to": "src/features/messaging-next/adapters/in-memory-conversations.ts",
           "importPath": "./in-memory-conversations.js"
@@ -1331,6 +1331,11 @@
           "from": "src/features/messaging-next/messaging-runtime.ts",
           "to": "src/features/messaging-next/adapters/rtdb.ts",
           "importPath": "./adapters/rtdb.js"
+        },
+        {
+          "from": "src/features/messaging-next/messaging-runtime.ts",
+          "to": "src/features/messaging-next/interfaces.ts",
+          "importPath": "./interfaces.js"
         },
         {
           "from": "src/features/messaging-next/tests/conversation.actions.test.js",
@@ -1576,21 +1581,11 @@
           "from": "src/features/pwa/index.ts",
           "to": "src/features/pwa/update-handlers.js",
           "importPath": "./update-handlers.js"
-        },
-        {
-          "from": "src/features/signaling/index.js",
-          "to": "src/features/signaling/p2p/firebase-room-signaling.js",
-          "importPath": "./p2p/firebase-room-signaling.js"
-        },
-        {
-          "from": "src/features/signaling/p2p/firebase-room-signaling.test.js",
-          "to": "src/features/signaling/p2p/firebase-room-signaling.js",
-          "importPath": "./firebase-room-signaling.js"
         }
       ]
     },
     "feature->infra": {
-      "count": 5,
+      "count": 4,
       "files": [
         {
           "from": "src/features/call/call-handshake-controller.ts",
@@ -1611,11 +1606,6 @@
           "from": "src/features/presence/presence-rtdb.js",
           "to": "src/infra/firebase-rtdb.js",
           "importPath": "../../infra/firebase-rtdb.js"
-        },
-        {
-          "from": "src/features/signaling/p2p/firebase-room-signaling.js",
-          "to": "src/infra/firebase-rtdb.js",
-          "importPath": "../../../infra/firebase-rtdb.js"
         }
       ]
     },
@@ -1626,6 +1616,21 @@
           "from": "src/features/messaging-next/ConversationPanel.tsx",
           "to": "src/lib/utils/download-url.js",
           "importPath": "@lib/utils/download-url.js"
+        }
+      ]
+    },
+    "feature->realtime": {
+      "count": 2,
+      "files": [
+        {
+          "from": "src/features/call/call-handshake.tsx",
+          "to": "src/realtime/index.ts",
+          "importPath": "../../realtime/index.js"
+        },
+        {
+          "from": "src/features/call/reference-examples/SimpleRoomExample.tsx",
+          "to": "src/realtime/signaling/firebase-room-signaling.js",
+          "importPath": "../../../realtime/signaling/firebase-room-signaling.js"
         }
       ]
     },
@@ -1880,7 +1885,7 @@
       ]
     },
     "feature->stores": {
-      "count": 14,
+      "count": 15,
       "files": [
         {
           "from": "src/features/contacts/components/ContactEntry.jsx",
@@ -1936,6 +1941,11 @@
           "from": "src/features/contacts/useContacts.ts",
           "to": "src/stores/contactsStore.ts",
           "importPath": "../../stores/contactsStore.js"
+        },
+        {
+          "from": "src/features/messaging-next/messaging-runtime.ts",
+          "to": "src/stores/message-repository.ts",
+          "importPath": "../../stores/message-repository"
         },
         {
           "from": "src/features/push-notifications/push-notifications.js",
@@ -2051,6 +2061,76 @@
           "from": "src/lib/utils/email-hash.test.js",
           "to": "src/lib/utils/email-hash.js",
           "importPath": "./email-hash.js"
+        }
+      ]
+    },
+    "realtime->auth": {
+      "count": 1,
+      "files": [
+        {
+          "from": "src/realtime/signaling/do-room-signaling.ts",
+          "to": "src/auth/index.js",
+          "importPath": "../../auth/index.js"
+        }
+      ]
+    },
+    "realtime->infra": {
+      "count": 1,
+      "files": [
+        {
+          "from": "src/realtime/signaling/firebase-room-signaling.js",
+          "to": "src/infra/firebase-rtdb.js",
+          "importPath": "../../infra/firebase-rtdb.js"
+        }
+      ]
+    },
+    "realtime->realtime": {
+      "count": 9,
+      "files": [
+        {
+          "from": "src/realtime/index.ts",
+          "to": "src/realtime/protocol.ts",
+          "importPath": "./protocol"
+        },
+        {
+          "from": "src/realtime/index.ts",
+          "to": "src/realtime/signaling/index.js",
+          "importPath": "./signaling/index.js"
+        },
+        {
+          "from": "src/realtime/signaling-socket.ts",
+          "to": "src/realtime/protocol.ts",
+          "importPath": "./protocol"
+        },
+        {
+          "from": "src/realtime/signaling/do-room-signaling.test.js",
+          "to": "src/realtime/signaling/do-room-signaling.ts",
+          "importPath": "./do-room-signaling.ts"
+        },
+        {
+          "from": "src/realtime/signaling/do-room-signaling.ts",
+          "to": "src/realtime/protocol.ts",
+          "importPath": "../protocol"
+        },
+        {
+          "from": "src/realtime/signaling/do-room-signaling.ts",
+          "to": "src/realtime/signaling-socket.ts",
+          "importPath": "../signaling-socket"
+        },
+        {
+          "from": "src/realtime/signaling/firebase-room-signaling.test.js",
+          "to": "src/realtime/signaling/firebase-room-signaling.js",
+          "importPath": "./firebase-room-signaling.js"
+        },
+        {
+          "from": "src/realtime/signaling/index.js",
+          "to": "src/realtime/signaling/do-room-signaling.ts",
+          "importPath": "./do-room-signaling.js"
+        },
+        {
+          "from": "src/realtime/signaling/index.js",
+          "to": "src/realtime/signaling/firebase-room-signaling.js",
+          "importPath": "./firebase-room-signaling.js"
         }
       ]
     },
@@ -2280,18 +2360,38 @@
       ]
     },
     "stores->auth": {
-      "count": 1,
+      "count": 3,
       "files": [
         {
           "from": "src/stores/contactsStore.ts",
+          "to": "src/auth/index.js",
+          "importPath": "../auth/index.js"
+        },
+        {
+          "from": "src/stores/conversations-client.ts",
+          "to": "src/auth/index.js",
+          "importPath": "../auth/index.js"
+        },
+        {
+          "from": "src/stores/dev-data-client.ts",
           "to": "src/auth/index.js",
           "importPath": "../auth/index.js"
         }
       ]
     },
     "stores->feature": {
-      "count": 1,
+      "count": 3,
       "files": [
+        {
+          "from": "src/stores/message-repository.ts",
+          "to": "src/features/messaging-next/adapters/d1.ts",
+          "importPath": "../features/messaging-next/adapters/d1"
+        },
+        {
+          "from": "src/stores/message-repository.ts",
+          "to": "src/features/messaging-next/interfaces.ts",
+          "importPath": "../features/messaging-next/interfaces.js"
+        },
         {
           "from": "src/stores/selectedConversationStore.ts",
           "to": "src/features/messaging-next/interfaces.ts",
@@ -2320,12 +2420,22 @@
       ]
     },
     "stores->storage": {
-      "count": 3,
+      "count": 5,
       "files": [
         {
           "from": "src/stores/contactsStore.ts",
           "to": "src/storage/contacts/index.js",
           "importPath": "../storage/contacts/index.js"
+        },
+        {
+          "from": "src/stores/conversations-client.ts",
+          "to": "src/storage/conversations/data-client.ts",
+          "importPath": "../storage/conversations/data-client"
+        },
+        {
+          "from": "src/stores/dev-data-client.ts",
+          "to": "src/storage/conversations/data-client.ts",
+          "importPath": "../storage/conversations/data-client"
         },
         {
           "from": "src/stores/userDirectoryStore.js",
@@ -2338,10 +2448,26 @@
           "importPath": "../storage/user/user-discovery.js"
         }
       ]
+    },
+    "stores->stores": {
+      "count": 2,
+      "files": [
+        {
+          "from": "src/stores/message-repository.ts",
+          "to": "src/stores/conversations-client.ts",
+          "importPath": "./conversations-client"
+        },
+        {
+          "from": "src/stores/selectedConversationStore.ts",
+          "to": "src/stores/conversations-client.ts",
+          "importPath": "./conversations-client"
+        }
+      ]
     }
   },
   "unclassified": [
     "shared/push-notifications/index.js",
+    "shared/signaling/protocol.ts",
     "src/App.tsx",
     "src/env.d.ts",
     "src/main.tsx",

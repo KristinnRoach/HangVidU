@@ -20,6 +20,26 @@ export interface Conversation {
   updated_at: number;
 }
 
+/** emoji -> userId -> true (matches messaging-next ReactionMap). */
+export type ReactionMap = Record<string, Record<string, true>>;
+
+export interface MessageRecord {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  sender_name: string | null;
+  kind: string;
+  body: string | null;
+  created_at: number;
+  reactions: ReactionMap;
+}
+
+export interface ConversationActivity {
+  latestSentAt: number;
+  latestSenderId: string | null;
+  lastReadAt: number;
+}
+
 export interface ConversationsClient {
   resolveDirect(otherUserId: string): Promise<string>;
   list(): Promise<(Conversation & { members: ConversationMember[] })[]>;
@@ -27,6 +47,25 @@ export interface ConversationsClient {
     conversationId: string,
   ): Promise<{ conversation: Conversation; members: ConversationMember[] }>;
   me(): Promise<{ userId: string }>;
+
+  // Messages
+  loadMessages(
+    conversationId: string,
+    limit?: number,
+  ): Promise<MessageRecord[]>;
+  sendMessage(
+    conversationId: string,
+    body: string,
+    kind?: string,
+  ): Promise<{ id: string; sentAt: number }>;
+  markRead(conversationId: string): Promise<void>;
+  activity(conversationId: string): Promise<ConversationActivity>;
+  setReaction(
+    conversationId: string,
+    messageId: string,
+    emoji: string,
+    active: boolean,
+  ): Promise<void>;
 }
 
 export interface ConversationsClientOptions {
@@ -84,6 +123,40 @@ export function createConversationsClient(
     },
     me() {
       return request<{ userId: string }>('GET', '/me');
+    },
+
+    loadMessages(conversationId, limit) {
+      const q = limit ? `?limit=${limit}` : '';
+      return request<{ messages: MessageRecord[] }>(
+        'GET',
+        `/conversations/${encodeURIComponent(conversationId)}/messages${q}`,
+      ).then((r) => r.messages);
+    },
+    sendMessage(conversationId, body, kind = 'text') {
+      return request<{ id: string; sentAt: number }>(
+        'POST',
+        `/conversations/${encodeURIComponent(conversationId)}/messages`,
+        { kind, body },
+      );
+    },
+    async markRead(conversationId) {
+      await request(
+        'POST',
+        `/conversations/${encodeURIComponent(conversationId)}/read`,
+      );
+    },
+    activity(conversationId) {
+      return request<ConversationActivity>(
+        'GET',
+        `/conversations/${encodeURIComponent(conversationId)}/activity`,
+      );
+    },
+    async setReaction(conversationId, messageId, emoji, active) {
+      await request(
+        'POST',
+        `/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/reactions`,
+        { emoji, active },
+      );
     },
   };
 }

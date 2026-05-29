@@ -1,10 +1,16 @@
 import { authenticate } from './auth';
 import {
   getConversation,
+  getConversationActivity,
   getMembers,
+  insertMessage,
   isMember,
   listConversations,
+  loadMessages,
+  markConversationRead,
+  RECENT_MESSAGES_WINDOW,
   resolveOrCreateDirect,
+  setReaction,
   upsertUser,
 } from './repo';
 
@@ -67,6 +73,96 @@ export default {
     if (request.method === 'GET' && url.pathname === '/conversations') {
       const conversations = await listConversations(env.DB, callerId);
       return json({ conversations }, 200, cors);
+    }
+
+    // ── Messages (all membership-guarded; 404 to non-members) ──────────────
+
+    // GET /conversations/:id/messages?limit=N -> recent messages, oldest first
+    const messagesMatch = url.pathname.match(
+      /^\/conversations\/([^/]+)\/messages$/,
+    );
+    if (messagesMatch) {
+      const conversationId = decodeURIComponent(messagesMatch[1]);
+      if (!(await isMember(env.DB, conversationId, callerId))) {
+        return json({ error: 'not_found' }, 404, cors);
+      }
+
+      if (request.method === 'GET') {
+        const limitParam = Number(url.searchParams.get('limit'));
+        const limit =
+          Number.isFinite(limitParam) && limitParam > 0
+            ? Math.min(limitParam, 200)
+            : RECENT_MESSAGES_WINDOW;
+        const messages = await loadMessages(env.DB, conversationId, limit);
+        return json({ messages }, 200, cors);
+      }
+
+      // POST /conversations/:id/messages  { kind?, body } -> { id, sentAt }
+      if (request.method === 'POST') {
+        const payload = await readJson(request);
+        const kind = typeof payload?.kind === 'string' ? payload.kind : 'text';
+        const body = typeof payload?.body === 'string' ? payload.body : null;
+        if (kind === 'text' && !body?.trim()) {
+          return json({ error: 'body required for text message' }, 400, cors);
+        }
+        const result = await insertMessage(
+          env.DB,
+          conversationId,
+          callerId,
+          kind,
+          body,
+          now,
+        );
+        return json(result, 200, cors);
+      }
+    }
+
+    // POST /conversations/:id/read -> mark caller's read marker = now
+    const readMatch = url.pathname.match(/^\/conversations\/([^/]+)\/read$/);
+    if (request.method === 'POST' && readMatch) {
+      const conversationId = decodeURIComponent(readMatch[1]);
+      if (!(await isMember(env.DB, conversationId, callerId))) {
+        return json({ error: 'not_found' }, 404, cors);
+      }
+      await markConversationRead(env.DB, conversationId, callerId, now);
+      return json({ ok: true }, 200, cors);
+    }
+
+    // GET /conversations/:id/activity -> { latestSentAt, latestSenderId, lastReadAt }
+    const activityMatch = url.pathname.match(
+      /^\/conversations\/([^/]+)\/activity$/,
+    );
+    if (request.method === 'GET' && activityMatch) {
+      const conversationId = decodeURIComponent(activityMatch[1]);
+      if (!(await isMember(env.DB, conversationId, callerId))) {
+        return json({ error: 'not_found' }, 404, cors);
+      }
+      const activity = await getConversationActivity(
+        env.DB,
+        conversationId,
+        callerId,
+      );
+      return json(activity, 200, cors);
+    }
+
+    // POST /conversations/:id/messages/:messageId/reactions { emoji, active }
+    const reactionMatch = url.pathname.match(
+      /^\/conversations\/([^/]+)\/messages\/([^/]+)\/reactions$/,
+    );
+    if (request.method === 'POST' && reactionMatch) {
+      const conversationId = decodeURIComponent(reactionMatch[1]);
+      const messageId = decodeURIComponent(reactionMatch[2]);
+      if (!(await isMember(env.DB, conversationId, callerId))) {
+        return json({ error: 'not_found' }, 404, cors);
+      }
+      const payload = await readJson(request);
+      const emoji = typeof payload?.emoji === 'string' ? payload.emoji : '';
+      const active = payload?.active === true;
+      if (!emoji.trim()) {
+        return json({ error: 'emoji required' }, 400, cors);
+      }
+      await setReaction(env.DB, messageId, callerId, emoji, active);
+      return json({ ok: true }, 200, cors);
     }
 
     // GET /conversations/:id -> conversation + members (membership-guarded)

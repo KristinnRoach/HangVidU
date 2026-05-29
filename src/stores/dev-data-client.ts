@@ -21,6 +21,7 @@ export function exposeDevDataClient(): void {
   (globalThis as unknown as { dataClient: typeof client }).dataClient = client;
   console.info(
     `[dev] window.dataClient ready (${baseUrl}). Try: await dataClient.me(), ` +
-      `await dataClient.resolveDirect('<otherUid>'), await dataClient.list()`,
+      `await dataClient.resolveDirect('<otherUid>'), await dataClient.list(), ` +
+      `await dataClient.sendMessage(id,'hi'), await dataClient.loadMessages(id)`,
   );
 }

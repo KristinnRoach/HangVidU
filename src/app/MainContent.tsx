@@ -182,10 +182,15 @@ function TopBar(props: TopBarProps) {
   const { t } = useI18n();
 
   const calleeId = createMemo(() => {
-    const conversationId = props.selectedConversation?.conversationId;
+    const sel = props.selectedConversation;
     const uid = user()?.uid;
-    if (!conversationId || !uid) return null;
-    return resolveContactIdFromDirectConversationId(conversationId, uid);
+    if (!sel?.conversationId || !uid) return null;
+    // Prefer the explicit participant from the selection (opaque-id safe); fall
+    // back to splitting a legacy derived `a_b` id when it's absent.
+    return (
+      sel.remoteParticipantIds?.[0] ??
+      resolveContactIdFromDirectConversationId(sel.conversationId, uid)
+    );
   });
 
   const isViewSelected = (view: ViewMode) => props.activeView === view;

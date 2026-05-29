@@ -155,6 +155,188 @@ export async function getMembers(
   return results ?? [];
 }
 
+// ─── Messages ──────────────────────────────────────────────────────────────
+
+export interface MessageRow {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  sender_name: string | null;
+  kind: string;
+  body: string | null;
+  created_at: number;
+}
+
+/** emoji -> userId -> true (matches the client ReactionMap wire shape). */
+export type ReactionMap = Record<string, Record<string, true>>;
+
+/** Default recent-window size; mirrors the RTDB adapter's window intent. */
+export const RECENT_MESSAGES_WINDOW = 50;
+
+/**
+ * Recent messages for a conversation, oldest-first (newest last), capped at
+ * `limit`. Each row carries the sender's current display_name (joined) and its
+ * reaction map (batched lookup), so the client renders without extra round-trips.
+ */
+export async function loadMessages(
+  db: D1Database,
+  conversationId: string,
+  limit: number,
+): Promise<(MessageRow & { reactions: ReactionMap })[]> {
+  // Newest `limit` by created_at, then re-sorted ascending for display.
+  const { results } = await db
+    .prepare(
+      `SELECT m.id, m.conversation_id, m.sender_id, u.display_name AS sender_name,
+              m.kind, m.body, m.created_at
+       FROM messages m
+       JOIN users u ON u.id = m.sender_id
+       WHERE m.conversation_id = ?
+       ORDER BY m.created_at DESC
+       LIMIT ?`,
+    )
+    .bind(conversationId, limit)
+    .all<MessageRow>();
+
+  const rows = (results ?? []).reverse();
+  if (rows.length === 0) return [];
+
+  const reactionsByMessage = await loadReactions(
+    db,
+    rows.map((r) => r.id),
+  );
+  return rows.map((r) => ({ ...r, reactions: reactionsByMessage[r.id] ?? {} }));
+}
+
+/** Insert a message. Server allocates the canonical id and timestamp. */
+export async function insertMessage(
+  db: D1Database,
+  conversationId: string,
+  senderId: string,
+  kind: string,
+  body: string | null,
+  now: number,
+): Promise<{ id: string; sentAt: number }> {
+  const id = crypto.randomUUID();
+  await db.batch([
+    db
+      .prepare(
+        `INSERT INTO messages (id, conversation_id, sender_id, kind, body, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(id, conversationId, senderId, kind, body, now),
+    // Bump conversation ordering so listConversations reflects recency.
+    db
+      .prepare(`UPDATE conversations SET updated_at = ? WHERE id = ?`)
+      .bind(now, conversationId),
+  ]);
+  return { id, sentAt: now };
+}
+
+/** Set the caller's read marker for a conversation to `now`. */
+export async function markConversationRead(
+  db: D1Database,
+  conversationId: string,
+  userId: string,
+  now: number,
+): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE conversation_members SET last_read_at = ?
+       WHERE conversation_id = ? AND user_id = ?`,
+    )
+    .bind(now, conversationId, userId)
+    .run();
+}
+
+export interface ConversationActivity {
+  latestSentAt: number;
+  latestSenderId: string | null;
+  lastReadAt: number;
+}
+
+/**
+ * Activity snapshot for the unread badge + list ordering: latest message
+ * timestamp/sender plus the caller's last_read_at. Zeroes mean "no data yet."
+ */
+export async function getConversationActivity(
+  db: D1Database,
+  conversationId: string,
+  userId: string,
+): Promise<ConversationActivity> {
+  const latest = await db
+    .prepare(
+      `SELECT sender_id, created_at FROM messages
+       WHERE conversation_id = ?
+       ORDER BY created_at DESC LIMIT 1`,
+    )
+    .bind(conversationId)
+    .first<{ sender_id: string; created_at: number }>();
+
+  const member = await db
+    .prepare(
+      `SELECT last_read_at FROM conversation_members
+       WHERE conversation_id = ? AND user_id = ?`,
+    )
+    .bind(conversationId, userId)
+    .first<{ last_read_at: number }>();
+
+  return {
+    latestSentAt: latest?.created_at ?? 0,
+    latestSenderId: latest?.sender_id ?? null,
+    lastReadAt: member?.last_read_at ?? 0,
+  };
+}
+
+/** Add or remove a single (message, user, emoji) reaction. */
+export async function setReaction(
+  db: D1Database,
+  messageId: string,
+  userId: string,
+  emoji: string,
+  active: boolean,
+): Promise<void> {
+  if (active) {
+    await db
+      .prepare(
+        `INSERT INTO message_reactions (message_id, user_id, emoji)
+         VALUES (?, ?, ?) ON CONFLICT DO NOTHING`,
+      )
+      .bind(messageId, userId, emoji)
+      .run();
+  } else {
+    await db
+      .prepare(
+        `DELETE FROM message_reactions
+         WHERE message_id = ? AND user_id = ? AND emoji = ?`,
+      )
+      .bind(messageId, userId, emoji)
+      .run();
+  }
+}
+
+/** Reaction maps for a set of message ids, keyed by message id. */
+async function loadReactions(
+  db: D1Database,
+  messageIds: string[],
+): Promise<Record<string, ReactionMap>> {
+  if (messageIds.length === 0) return {};
+  const placeholders = messageIds.map(() => '?').join(',');
+  const { results } = await db
+    .prepare(
+      `SELECT message_id, user_id, emoji FROM message_reactions
+       WHERE message_id IN (${placeholders})`,
+    )
+    .bind(...messageIds)
+    .all<{ message_id: string; user_id: string; emoji: string }>();
+
+  const out: Record<string, ReactionMap> = {};
+  for (const r of results ?? []) {
+    const byEmoji = (out[r.message_id] ??= {});
+    (byEmoji[r.emoji] ??= {})[r.user_id] = true;
+  }
+  return out;
+}
+
 /** Conversations the user belongs to, each with its full member list. */
 export async function listConversations(
   db: D1Database,

@@ -208,12 +208,10 @@ Tasks:
 - [x] Client caller (HTTPS + bearer): `src/storage/conversations/data-client.ts`
       (boundary-clean, token injected) + `src/stores/dev-data-client.ts` exposes
       `window.dataClient` (dev only). `VITE_DATA_URL` (default `:8788`).
-- [ ] **Verify (browser console) — PENDING MANUAL TEST.** `pnpm dev:data` +
-      `pnpm dev:local`, log in, then:
-      `await dataClient.me()`;
-      `const id = await dataClient.resolveDirect('OTHER_UID')` twice → same id
-      (dedup); `await dataClient.list()` shows it; `await dataClient.get(id)`
-      returns both members.
+- [x] **Verify (browser console) — DONE 2026-05-29.** Logged in, `me()` →
+      caller uid; `resolveDirect('OTHER_UID')` twice → same opaque id (dedup via
+      `dm_key UNIQUE`); `list()` showed it; `get(id)` returned both members with
+      correctly sorted `dm_key`. Local only; remote D1 still to provision.
 
 Decisions made during implementation (carry forward):
 - **Stub `users` row for the other participant** in `resolveOrCreateDirect` —
@@ -232,23 +230,84 @@ Not yet done in Slice A (before calling it complete):
 
 ### Slice B — messages on D1 (replace RTDB read/write path)
 
-- [ ] D1-backed `MessageRepository` (implements existing
-      [interfaces.ts](../../src/features/messaging-next/interfaces.ts)):
-      `loadMessages`, `send`, `markConversationRead`, activity.
-- [ ] Keep realtime delivery as-is (DO/datachannel) for live updates; D1 is the
-      persistent record. Reads on open come from D1.
-- **Verify:** in the browser, open a DM, send text, reload → messages persist and
-  reload from D1. Unread badge reflects `last_read_at`.
+Decision (locked): **pure D1, load-on-open.** D1 is the source of truth; reads
+happen on conversation open and after each send. The `MessageRepository.watch*`
+methods emit one current snapshot then return a no-op unsubscribe — live
+cross-browser push is deferred to Slice E (per-conversation DO). Trade-off
+accepted: two users not in an active call won't see new messages until they
+reopen/reload, during the B→E window.
 
-### Slice C — ConversationList (rename + opaque IDs end-to-end)
+Backend + adapter (DONE 2026-05-29, behind `VITE_MESSAGE_BACKEND=d1`):
+- [x] Worker message endpoints (`workers/data/src/index.ts` + `repo.ts`), all
+      membership-guarded (404 to non-members), reusing the 6 tables from
+      `0001_init.sql` (no new migration):
+      `GET /conversations/:id/messages?limit=N` (oldest-first, default 50, cap
+      200, reactions batched in); `POST .../messages {kind?,body}` (server
+      allocates id + `created_at`, bumps `conversations.updated_at`);
+      `POST .../read`; `GET .../activity`; `POST .../messages/:mid/reactions
+      {emoji,active}`.
+- [x] Client methods on `data-client.ts`: `loadMessages`, `sendMessage`,
+      `markRead`, `activity`, `setReaction` (+ `MessageRecord` / reaction types).
+- [x] D1 `MessageRepository` adapter
+      [adapters/d1.ts](../../src/features/messaging-next/adapters/d1.ts) —
+      boundary-clean (feature can't import storage, so a `D1MessageClient`
+      structural interface is injected). Text-only payload for this slice.
+- [x] `stores/message-repository.ts` injects the real client (token + baseUrl)
+      → repo (stores is the only layer allowed both auth + storage + feature).
+- [x] `messaging-runtime.ts` selects backend via `VITE_MESSAGE_BACKEND`
+      (`rtdb` default | `d1`); conversation metadata stays on RTDB until Slice C.
+- [x] `pnpm ts`, `pnpm lint`, `pnpm lint:boundaries` clean.
+- [x] **Verify (console) — DONE 2026-05-29.** With servers up: `id =
+      resolveDirect('OTHER_UID')`; `sendMessage(id,'hi')`; `loadMessages(id)`
+      shows it; reload page → `loadMessages(id)` still returns it (persisted in
+      D1); `markRead(id)` + `activity(id)` reflect `lastReadAt`; `setReaction`
+      then `loadMessages` shows the reaction map.
 
+Remaining for full UI swap (entangled with Slice C — see note):
+- [ ] **Open-flow must resolve-or-create the D1 conversation and use the opaque
+      id before messaging.** Today the UI opens a DM by the derived `a_b` id,
+      which does not exist in D1 → the membership guard 404s. So flipping
+      `VITE_MESSAGE_BACKEND=d1` for the *UI* requires the opaque-id open flow
+      that Slice C builds. The D1 message layer itself is done and verified via
+      console; the UI flip rides on Slice C.
+- **Verify (UI, after Slice C):** open a DM, send text, reload → messages
+  persist and reload from D1. Unread badge reflects `last_read_at`.
+
+### Slice C — opaque-ID open flow (MINIMAL slice done; full rename deferred)
+
+Scope intentionally trimmed to "just enough to make the `VITE_MESSAGE_BACKEND=d1`
+UI flip testable." The list rename and member-driven rendering are deferred.
+
+Done (2026-05-29, uncommitted):
+- [x] Opaque-id open flow. `openDirectConversation({contactId, fallbackConversationId,
+      contactNickName})` in [selectedConversationStore.ts](../../src/stores/selectedConversationStore.ts):
+      when `VITE_MESSAGE_BACKEND=d1` it `resolveDirect(contactId)`s the opaque id
+      (resolve-or-create) before selecting; otherwise uses the legacy derived id.
+      `ContactEntry` now calls this instead of `open()` with a precomputed id.
+- [x] Shared data-worker client singleton
+      [stores/conversations-client.ts](../../src/stores/conversations-client.ts)
+      (reused by the message repo + the opener).
+- [x] `MainContent` `calleeId` no longer hard-splits the id — prefers
+      `selection.remoteParticipantIds[0]` (opaque-safe), falls back to
+      `resolveContactIdFromDirectConversationId` only for legacy derived ids.
+- [x] `pnpm ts` / `lint` / `lint:boundaries` / `build` clean.
+- **Verify (UI — pending manual):** `pnpm dev:data` + `pnpm dev:local` with
+  `VITE_MESSAGE_BACKEND=d1` (e.g. in `.env.local`), log in, click a contact →
+  conversation opens on a fresh opaque id, send text, reload → message persists
+  from D1. Second account opening the same contact resolves the same id (dedup)
+  and sees the history on open. Live cross-browser updates only on reopen/reload
+  until Slice E (per the Slice B decision).
+
+Deferred from Slice C (not needed for the flip; do later):
 - [ ] Rename `ContactsList` → `ConversationList`, move under messaging-next.
-- [ ] List from `listConversations(userId)`; render the other member from
-      `conversation_members`, not from splitting the ID.
-- [ ] Delete `resolveContactIdFromDirectConversationId` usage; drop `group:`
-      prefix handling.
-- **Verify:** conversation list renders, opening any conversation works with
-  opaque IDs, no ID-splitting code remains on the path.
+- [ ] Drive the list from `listConversations(userId)` and render the other member
+      from `conversation_members` instead of the contacts store.
+- [ ] Remove `resolveContactIdFromDirectConversationId` + `group:` prefix
+      handling entirely (still referenced as the legacy fallback in `MainContent`
+      and `contactsStore`).
+- [ ] Opaque-id open flow for the push-notification deep link
+      ([SWNavigation.tsx](../../src/features/push-notifications/SWNavigation.tsx)
+      still calls `open()` with a raw id).
 
 ### Slice D — files on R2
 
