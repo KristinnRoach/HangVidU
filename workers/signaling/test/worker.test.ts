@@ -73,9 +73,14 @@ afterAll(() => {
   globalThis.fetch = originalFetch;
 });
 
-function upgrade(path: string, protocol?: string): Promise<Response> {
+function upgrade(
+  path: string,
+  protocol?: string,
+  origin: string | null = 'https://localhost:5173',
+): Promise<Response> {
   const headers: Record<string, string> = { Upgrade: 'websocket' };
   if (protocol) headers['Sec-WebSocket-Protocol'] = protocol;
+  if (origin) headers['Origin'] = origin;
   return SELF.fetch(`https://signaling${path}`, { headers });
 }
 
@@ -90,7 +95,17 @@ describe('signaling worker routing + auth', () => {
     );
   });
 
-  it('401s when no token is provided', async () => {
+  it('403s a disallowed origin', async () => {
+    const res = await upgrade('/rooms/r1/signal', undefined, 'https://evil.com');
+    expect(res.status).toBe(403);
+  });
+
+  it('403s a missing origin', async () => {
+    const res = await upgrade('/rooms/r1/signal', undefined, null);
+    expect(res.status).toBe(403);
+  });
+
+  it('401s when no token is provided (allowed origin)', async () => {
     expect((await upgrade('/rooms/r1/signal')).status).toBe(401);
   });
 

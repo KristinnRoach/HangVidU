@@ -6,10 +6,24 @@ export { SignalingRoom };
 export interface Env {
   SIGNALING_ROOM: DurableObjectNamespace<SignalingRoom>;
   FIREBASE_PROJECT_ID: string;
+  /** Comma-separated WebSocket Origin allowlist (prod + dev). */
+  ALLOWED_ORIGINS: string;
 }
 
 // Route: GET /rooms/:roomId/signal  (WebSocket upgrade)
 const ROOM_PATH = /^\/rooms\/([^/]+)\/signal$/;
+
+// Browsers always send Origin on a WebSocket handshake; a missing or
+// non-allowlisted Origin is rejected. Defense-in-depth on top of token auth —
+// stops other web origins from driving the worker with a user's token.
+function isAllowedOrigin(request: Request, env: Env): boolean {
+  const origin = request.headers.get('Origin');
+  if (!origin) return false;
+  return env.ALLOWED_ORIGINS.split(',')
+    .map((o) => o.trim())
+    .filter(Boolean)
+    .includes(origin);
+}
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -19,6 +33,10 @@ export default {
 
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('Expected WebSocket upgrade', { status: 426 });
+    }
+
+    if (!isAllowedOrigin(request, env)) {
+      return new Response('Forbidden origin', { status: 403 });
     }
 
     const identity = await authenticate(request, env);
