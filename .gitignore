@@ -17,12 +17,8 @@ playwright/.cache/
 .vitest-attachments/
 .vite-plugin-mkcert/
 
-# Go executables draft
-go-server/
-
-react-sandbox/
-refactor-draft/
-
+# Generated when running playgrounds
+playgrounds/boundary-imports.json
 
 # Notes / examples / drafts 
 reference-examples/
@@ -43,9 +39,6 @@ trash/
 # Temporary files
 tmp/
 temp/
-
-# Build exectuables to run local server (possibly add later)
-go-server/executables/
 
 # Below are some default gitignore entries from Vite template that might be unecessary (TODO in a cleanup session)
 
@@ -119,7 +112,10 @@ docs/misc/
 docs/WIP_Architecture/REFERENCE_WebDevSimplified.md
 docs/WIP_Architecture/references/solidjs.llms.txt
 
+# Scripts
 scripts/migrate-usersbyemail-display-name-to-user-name.js
+
+# Git worktrees
 .worktrees/
 
 **/OLD_*.js
