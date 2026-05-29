@@ -194,18 +194,41 @@ Decisions (locked):
 Tasks:
 - [ ] Scaffold `workers/data/` (package.json, wrangler.jsonc, tsconfig), D1
       binding, local dev.
-- [ ] `migrations/0001_init.sql` — 6 tables + FKs + 3 indexes + `dm_key UNIQUE`.
-- [ ] Share/port `authenticate()` (Firebase RS256) into the data worker.
-- [ ] Upsert caller into `users` on each authenticated request.
-- [ ] `resolveOrCreateDirect(otherUserId) → conversationId` — `dm_key` =
-      sorted pair, `INSERT ... ON CONFLICT(dm_key) DO NOTHING`, insert both
-      `conversation_members`, return id. Idempotent.
-- [ ] `getConversation(id)` — row + members, membership-guarded.
-- [ ] `listConversations(userId)` — caller's conversations + other member(s).
-- [ ] Client caller (HTTPS + bearer) exposed on `window` for console testing.
-- **Verify (browser console):** `resolveOrCreateDirect` twice with same peer →
-  same id (dedup); `listConversations` shows it; `getConversation` returns
-  members. No UI.
+- [x] `migrations/0001_init.sql` — 6 tables + FKs + 3 indexes + `dm_key UNIQUE`.
+      Applied to local D1; dedup + joins validated via `wrangler d1 execute`.
+- [x] Share/port `authenticate()` (Firebase RS256) into the data worker —
+      `src/auth.ts`, HTTPS `Authorization: Bearer` variant.
+- [x] Upsert caller into `users` on each authenticated request (optional
+      `?name=` seeds `display_name`).
+- [x] `resolveOrCreateDirect(otherUserId) → conversationId` — `src/repo.ts`.
+      `dm_key` = sorted pair, `INSERT ... ON CONFLICT(dm_key) DO NOTHING`, insert
+      both `conversation_members`, return id. Idempotent + race-safe.
+- [x] `getConversation(id)` — row + members, membership-guarded.
+- [x] `listConversations(userId)` — caller's conversations + member(s).
+- [x] Client caller (HTTPS + bearer): `src/storage/conversations/data-client.ts`
+      (boundary-clean, token injected) + `src/stores/dev-data-client.ts` exposes
+      `window.dataClient` (dev only). `VITE_DATA_URL` (default `:8788`).
+- [ ] **Verify (browser console) — PENDING MANUAL TEST.** `pnpm dev:data` +
+      `pnpm dev:local`, log in, then:
+      `await dataClient.me()`;
+      `const id = await dataClient.resolveDirect('OTHER_UID')` twice → same id
+      (dedup); `await dataClient.list()` shows it; `await dataClient.get(id)`
+      returns both members.
+
+Decisions made during implementation (carry forward):
+- **Stub `users` row for the other participant** in `resolveOrCreateDirect` —
+  FK requires it; `display_name` backfills when that user later authenticates.
+- **404 (not 403)** for non-member conversation access, so ids can't be probed.
+- pnpm 11 build-scripts: data worker uses `allowBuilds:` in `pnpm-workspace.yaml`
+  and must install with plain `pnpm install` (NOT `--ignore-workspace`).
+  Signaling worker's stale `onlyBuiltDependencies` deferred in
+  `workers/signaling/TODO.md`.
+
+Not yet done in Slice A (before calling it complete):
+- Remote D1: run `wrangler d1 create hangvidu-data`, paste `database_id` into
+  `workers/data/wrangler.jsonc`, `pnpm -C workers/data migrate:remote`, deploy,
+  set prod `VITE_DATA_URL`. (Local dev needs none of this.)
+- Tests deferred per workflow (after manual e2e sign-off).
 
 ### Slice B — messages on D1 (replace RTDB read/write path)
 

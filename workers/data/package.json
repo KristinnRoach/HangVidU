@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Cloudflare Worker for HangVidU persistence (D1 relational store + R2 files), keyed by conversationId.",
   "scripts": {
-    "dev": "wrangler dev --env-file .dev.vars.example",
+    "dev": "wrangler dev --env-file .dev.vars.example --port 8788",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
     "test": "vitest --run",

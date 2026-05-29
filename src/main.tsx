@@ -4,6 +4,7 @@ import { render } from 'solid-js/web';
 import 'solid-devtools';
 
 import App from './App';
+import { exposeDevDataClient } from './stores/dev-data-client';
 import { initPushNotifications } from './features/push-notifications/push-notifications.js';
 import { initializeAppCheckDeferred } from './infra/firebase.js';
 import { setupAuth } from './app/setupAuth.js';
@@ -29,6 +30,7 @@ function AppSideEffects(props: { children: JSX.Element }) {
   const cleanups: Cleanup[] = [];
 
   initializeAppCheckDeferred();
+  exposeDevDataClient();
 
   onMount(async () => {
     try {

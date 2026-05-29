@@ -1,4 +1,12 @@
 import { authenticate } from './auth';
+import {
+  getConversation,
+  getMembers,
+  isMember,
+  listConversations,
+  resolveOrCreateDirect,
+  upsertUser,
+} from './repo';
 
 export interface Env {
   DB: D1Database;
@@ -23,17 +31,57 @@ export default {
       return json({ ok: true }, 200, cors);
     }
 
+    // Everything below requires authentication.
+    const identity = await authenticate(request, env);
+    if (!identity) return json({ error: 'unauthorized' }, 401, cors);
+    const callerId = identity.userId;
+    const now = Date.now();
+
+    // Record/refresh the caller. `name` query param optionally seeds display_name.
+    await upsertUser(env.DB, callerId, url.searchParams.get('name'), now);
+
     // Identity echo — exercises the Bearer auth seam end-to-end.
     if (request.method === 'GET' && url.pathname === '/me') {
-      const identity = await authenticate(request, env);
-      if (!identity) return json({ error: 'unauthorized' }, 401, cors);
-      return json({ userId: identity.userId }, 200, cors);
+      return json({ userId: callerId }, 200, cors);
     }
 
-    // Routes added in later Slice A tasks:
-    //   POST /conversations/resolve-direct  -> { conversationId }
-    //   GET  /conversations/:id             -> conversation + members
-    //   GET  /conversations                 -> caller's conversations
+    // POST /conversations/resolve-direct  { otherUserId } -> { conversationId }
+    if (request.method === 'POST' && url.pathname === '/conversations/resolve-direct') {
+      const otherUserId = (await readJson(request))?.otherUserId;
+      if (typeof otherUserId !== 'string' || !otherUserId.trim()) {
+        return json({ error: 'otherUserId required' }, 400, cors);
+      }
+      if (otherUserId === callerId) {
+        return json({ error: 'cannot open a direct conversation with self' }, 400, cors);
+      }
+      const conversationId = await resolveOrCreateDirect(
+        env.DB,
+        callerId,
+        otherUserId.trim(),
+        now,
+      );
+      return json({ conversationId }, 200, cors);
+    }
+
+    // GET /conversations -> caller's conversations (each with members)
+    if (request.method === 'GET' && url.pathname === '/conversations') {
+      const conversations = await listConversations(env.DB, callerId);
+      return json({ conversations }, 200, cors);
+    }
+
+    // GET /conversations/:id -> conversation + members (membership-guarded)
+    const convoMatch = url.pathname.match(/^\/conversations\/([^/]+)$/);
+    if (request.method === 'GET' && convoMatch) {
+      const conversationId = decodeURIComponent(convoMatch[1]);
+      if (!(await isMember(env.DB, conversationId, callerId))) {
+        // 404 (not 403) so non-members can't probe which ids exist.
+        return json({ error: 'not_found' }, 404, cors);
+      }
+      const conversation = await getConversation(env.DB, conversationId);
+      if (!conversation) return json({ error: 'not_found' }, 404, cors);
+      const members = await getMembers(env.DB, conversationId);
+      return json({ conversation, members }, 200, cors);
+    }
 
     return json({ error: 'not_found' }, 404, cors);
   },
@@ -51,6 +99,16 @@ function corsHeaders(origin: string | null, env: Env): Record<string, string> {
     headers['Access-Control-Allow-Origin'] = origin;
   }
   return headers;
+}
+
+async function readJson(
+  request: Request,
+): Promise<Record<string, unknown> | null> {
+  try {
+    return (await request.json()) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 }
 
 function json(
