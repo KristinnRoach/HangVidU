@@ -41,13 +41,17 @@ export async function switchVideoStreamFacingMode(
   videoConstraints,
 ) {
   const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+  const nextVideoConstraints =
+    videoConstraints && typeof videoConstraints === 'object'
+      ? { ...videoConstraints, facingMode: newFacingMode }
+      : { facingMode: { ideal: newFacingMode } };
 
   try {
     // Get new video stream with the caller-provided video constraints.
     // Constraints are passed in (not built here) so this stays in the lib
     // layer with no app/feature dependencies.
     const streamWithNewFacingMode = await navigator.mediaDevices.getUserMedia({
-      video: videoConstraints,
+      video: nextVideoConstraints,
     });
 
     const newVideoTrack = streamWithNewFacingMode.getVideoTracks()[0];
