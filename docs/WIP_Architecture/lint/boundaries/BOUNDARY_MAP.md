@@ -1,28 +1,45 @@
-# Boundary Map (Target)
+# Boundary Map
+
+Source of truth is `eslint.boundaries.config.js`. This doc mirrors it.
 
 ## Folder -> layer
 
-- `src/setup/**` -> `setup`
+- `src/app/**` -> `app` (shell / bootstrap / lifecycle root)
 - `src/components/**` -> `components`
 - `src/auth/**` -> `auth`
 - `src/features/<name>/**` -> `feature(<name>)`
-- `src/shared/components/**`, `src/shared/events/**`, `src/shared/vendors/**`, `src/shared/i18n/**`, `src/shared/media/**`, `src/shared/media-next/**`, `src/shared/pwa/**`, `src/shared/storage/**`, `src/shared/styles/**`, `src/shared/utils/**` -> `shared`
+- `src/stores/**` -> `stores`
+- `src/storage/**` -> `storage`
+- `src/infra/**` -> `infra`
+- `src/shared/*`, `src/shared/events/**`, `src/shared/i18n/**`, `src/shared/utils/**` -> `shared`
+- `src/lib/**` -> `lib`
 
-## Allowed imports matrix
+> `src/styles/**` is currently unclassified (no boundary element).
 
-Rows = importer, columns = allowed target.
+## Allowed imports
 
-| from       | setup | components | auth | feature(same) | feature(other) | shared |
-| ---------- | ----: | ---------: | ---: | ------------: | -------------: | -----: |
-| setup      |   yes |        yes |  yes |           yes |            yes |    yes |
-| components |    no |        yes |  yes |           yes |            yes |    yes |
-| auth       |    no |         no |  yes |            no |             no |    yes |
-| feature(X) |    no |         no |  yes |           yes |             no |    yes |
-| shared     |    no |         no |   no |            no |             no |    yes |
+Each layer may import from itself plus:
+
+| from         | may also import                                          |
+| ------------ | -------------------------------------------------------- |
+| `app`        | auth, stores, feature, components, shared, lib           |
+| `feature(X)` | auth, shared, lib, components, infra, stores, feature(X) |
+| `stores`     | auth, shared, lib, storage, infra, feature               |
+| `storage`    | shared, lib, infra                                       |
+| `auth`       | shared, lib, infra, components                           |
+| `components` | auth, shared, lib                                        |
+| `infra`      | lib                                                      |
+| `shared`     | lib                                                      |
+| `lib`        | (lib only)                                               |
 
 ## Short rules
 
 - `feature(A)` cannot import `feature(B)` when `A != B`.
-- `shared` only imports `shared`.
-- `setup` is the bootstrap/lifecycle root. UI bridges live here (`setupAppRoot.js`, `setupXyzAppBusHandlers.js`).
-- `src/components/` is the Solid UI composition root. Components never import `setup` — the arrow points the other way.
+- `lib` is the bottom layer — framework-agnostic primitives with zero app
+  knowledge. Importable by any layer; may only import from `lib` itself.
+- `shared` is app-aware cross-cutting code — may import only `shared` and `lib`
+  (plus explicit temporary feature exceptions, currently none).
+- `infra` is the external-system bootstrap layer (vendor SDKs + env config).
+- `app` is the shell/lifecycle root. UI bridges live here.
+- `src/components/` is the Solid UI composition root. Components never import
+  `app` — the arrow points the other way.

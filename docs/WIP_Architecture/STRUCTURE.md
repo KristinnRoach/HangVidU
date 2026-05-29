@@ -1,5 +1,21 @@
 # Structure
 
+## Layers
+
+Import rules between layers are enforced by `eslint.boundaries.config.js`; the
+full allow-table lives in [`lint/boundaries/BOUNDARY_MAP.md`](./lint/boundaries/BOUNDARY_MAP.md).
+The two foundational layers:
+
+- **`src/lib/`** — the bottom layer: framework-agnostic primitives with **zero
+  app knowledge** (e.g. `event-emitter/`, `utils/`, `media/`). Importable by any
+  layer; may only import from `lib` itself. Think "could be published to npm".
+- **`src/shared/`** — app-aware cross-cutting code that knows HangVidU concepts
+  (canonical event names, i18n, invite/room/conversation helpers). May import
+  only `shared` and `lib`.
+
+Rule of thumb for placing a util: if it has no app/domain knowledge and no
+imports outside `lib`, it belongs in `src/lib/utils/`; otherwise `src/shared/utils/`.
+
 ## Module layout
 
 - Every module has one barrel: `src/<module>/index.js` (or `index.ts`).

@@ -1,3 +1,10 @@
+// ⚠️ Keep the boundary playground in sync with this file.
+// The visualizer (playgrounds/boundary-rules.html) reads this config live for
+// element types + allow-rules, but the underlying import data is a generated
+// snapshot. After changing elements, rules, or the tsconfig path aliases,
+// re-run `pnpm play:boundaries:scan` to refresh playgrounds/boundary-imports.json
+// (the scanner playgrounds/build-import-graph.mjs resolves those same aliases).
+
 import boundaries from 'eslint-plugin-boundaries';
 import tseslint from 'typescript-eslint';
 
@@ -13,6 +20,10 @@ const SHARED_GLOBS = [
   'src/shared/i18n/**/*.{js,jsx,ts,tsx}',
   'src/shared/utils/**/*.{js,jsx,ts,tsx}',
 ];
+
+// Bottom layer: framework-agnostic primitives with zero app knowledge.
+// Importable by any layer; may only import from lib itself.
+const LIB_GLOBS = ['src/lib/**/*.{js,jsx,ts,tsx}'];
 
 function dependencyRule(files, rules) {
   return {
@@ -42,6 +53,7 @@ overrides.push(
       allow: {
         to: [
           { type: 'shared' },
+          { type: 'lib' },
           ...SHARED_TEMP_FEATURE_EXCEPTIONS.map((featureName) => ({
             type: 'feature',
             captured: { featureName },
@@ -49,7 +61,7 @@ overrides.push(
         ],
       },
       message:
-        'Shared is pure cross-cutting code — may only import from shared (plus explicit temporary feature exceptions).',
+        'Shared is pure cross-cutting code — may only import from shared and lib (plus explicit temporary feature exceptions).',
     },
   ]),
 );
@@ -64,6 +76,7 @@ overrides.push(
           to: [
             { type: 'auth' },
             { type: 'shared' },
+            { type: 'lib' },
             { type: 'feature' },
             { type: 'components' },
             { type: 'infra' },
@@ -71,7 +84,7 @@ overrides.push(
           ],
         },
         message:
-          'Features may import from auth, shared, components, infra, stores, or other features.',
+          'Features may import from auth, shared, lib, components, infra, stores, or other features.',
       },
     ],
   ),
@@ -87,12 +100,13 @@ overrides.push(
           to: [
             { type: 'auth' },
             { type: 'shared' },
+            { type: 'lib' },
             { type: 'infra' },
             { type: 'components' },
           ],
         },
         message:
-          'Auth may only import from auth, shared, components and infra.',
+          'Auth may only import from auth, shared, lib, components and infra.',
       },
     ],
   ),
@@ -105,9 +119,9 @@ overrides.push(
     [
       {
         from: { type: 'infra' },
-        allow: { to: [{ type: 'infra' }] },
+        allow: { to: [{ type: 'infra' }, { type: 'lib' }] },
         message:
-          'Infra is the external-system bootstrap layer — may only import from infra (vendor SDKs + env config only).',
+          'Infra is the external-system bootstrap layer — may only import from infra and lib (vendor SDKs + env config + primitives).',
       },
     ],
   ),
@@ -120,9 +134,15 @@ overrides.push(
       {
         from: { type: 'components' },
         allow: {
-          to: [{ type: 'components' }, { type: 'auth' }, { type: 'shared' }],
+          to: [
+            { type: 'components' },
+            { type: 'auth' },
+            { type: 'shared' },
+            { type: 'lib' },
+          ],
         },
-        message: 'Components may only import from components, auth and shared',
+        message:
+          'Components may only import from components, auth, shared and lib',
       },
     ],
   ),
@@ -135,10 +155,15 @@ overrides.push(
       {
         from: { type: 'storage' },
         allow: {
-          to: [{ type: 'storage' }, { type: 'shared' }, { type: 'infra' }],
+          to: [
+            { type: 'storage' },
+            { type: 'shared' },
+            { type: 'lib' },
+            { type: 'infra' },
+          ],
         },
         message:
-          'Storage is the persistence layer — may only import from storage, shared, and infra.',
+          'Storage is the persistence layer — may only import from storage, shared, lib, and infra.',
       },
     ],
   ),
@@ -156,13 +181,14 @@ overrides.push(
             { type: 'stores' },
             { type: 'auth' },
             { type: 'shared' },
+            { type: 'lib' },
             { type: 'storage' },
             { type: 'infra' },
             { type: 'feature' },
           ],
         },
         message:
-          'Stores may only import from stores, auth, shared, storage, infra and feature.',
+          'Stores may only import from stores, auth, shared, lib, storage, infra and feature.',
       },
     ],
   ),
@@ -182,13 +208,25 @@ overrides.push(
             { type: 'feature' },
             { type: 'components' },
             { type: 'shared' },
+            { type: 'lib' },
           ],
         },
         message:
-          'App shell may only import from app, auth, shared, components, and feature.',
+          'App shell may only import from app, auth, shared, lib, components, and feature.',
       },
     ],
   ),
+);
+
+overrides.push(
+  dependencyRule(LIB_GLOBS, [
+    {
+      from: { type: 'lib' },
+      allow: { to: [{ type: 'lib' }] },
+      message:
+        'Lib is the bottom layer of framework-agnostic primitives — may only import from lib (no app knowledge).',
+    },
+  ]),
 );
 
 export default [
@@ -228,6 +266,11 @@ export default [
           type: 'shared',
           mode: 'full',
           pattern: SHARED_GLOBS,
+        },
+        {
+          type: 'lib',
+          mode: 'full',
+          pattern: LIB_GLOBS,
         },
         {
           type: 'feature',

@@ -20,7 +20,7 @@ import {
   toStableAuthState,
 } from './auth-state.js';
 import { logAuthError } from './auth-setup.js';
-import { hashEmail } from '../shared/utils/email-hash.js';
+import { hashEmail } from '@lib/utils/email-hash.js';
 
 // RFC 2606-reserved TLD — guaranteed to never resolve or become real.
 export const SYNTHETIC_DOMAIN = 'hangvidu.invalid';

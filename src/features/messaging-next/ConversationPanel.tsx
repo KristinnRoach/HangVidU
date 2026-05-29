@@ -14,7 +14,7 @@ import { getUserName } from '../../auth/index.js';
 import { useI18n } from '../../shared/i18n';
 import { LoadBoundary } from '../../components/app/LoadBoundary';
 import { showImagePreview } from '../../components/base-legacy/imagePreview.js';
-import { downloadUrl } from '../../shared/utils/download-url.js';
+import { downloadUrl } from '@lib/utils/download-url.js';
 
 import { createMessagingRuntime } from './messaging-runtime.js';
 

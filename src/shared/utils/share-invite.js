@@ -1,5 +1,5 @@
 import { t } from '../i18n/index.js';
-import { copyToClipboard } from './clipboard.js';
+import { copyToClipboard } from '@lib/utils/clipboard.js';
 
 /*
  * Invite sharing via the Web Share API, with clipboard-copy fallback.

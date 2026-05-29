@@ -1,4 +1,4 @@
-import { isIOSDevice } from '../detect-device.js';
+import { isIOSDevice } from '@lib/utils/detect-device.js';
 
 const FIT_STYLE_KEYS = [
   'top',

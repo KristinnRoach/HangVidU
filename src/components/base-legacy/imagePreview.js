@@ -1,5 +1,5 @@
 import { onSwipe } from '../../shared/utils/ui-utils/swipe-interactions.js';
-import { downloadUrl } from '../../shared/utils/download-url.js';
+import { downloadUrl } from '@lib/utils/download-url.js';
 
 // ! Note - vanilla js icons currently missing
 

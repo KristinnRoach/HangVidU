@@ -1,4 +1,4 @@
-import { copyToClipboard } from './clipboard.js';
+import { copyToClipboard } from '@lib/utils/clipboard.js';
 import { buildInviteText, buildReferralLink } from './share-invite.js';
 
 const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
