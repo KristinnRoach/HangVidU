@@ -20,10 +20,10 @@ describe('Call Import Integration', () => {
 
     try {
       await Promise.all([
-        import('../../src/features/call/call-handshake.js'),
-        import('../../src/features/call/call-handshake-controller.js'),
-        import('../../src/features/call/call-notifications.js'),
-        import('../../src/features/call/call-types.js'),
+        import('../../src/features/call/call-handshake.tsx'),
+        import('../../src/features/call/call-handshake-controller.ts'),
+        import('../../src/features/call/call-notifications.ts'),
+        import('../../src/features/call/call-types.ts'),
       ]);
     } catch (error) {
       importError = error;
@@ -38,7 +38,7 @@ describe('Call Import Integration', () => {
 
   it('call handshake context exports exist', async () => {
     const { CallHandshakeProvider, useCallHandshake } = await import(
-      '../../src/features/call/call-handshake.js'
+      '../../src/features/call/call-handshake.tsx'
     );
 
     expect(typeof CallHandshakeProvider).toBe('function');
@@ -47,9 +47,9 @@ describe('Call Import Integration', () => {
 
   it('extracted call helpers exist', async () => {
     const { sendIncomingCallPushNotification, sendMissedCallPushNotification } =
-      await import('../../src/features/call/call-notifications.js');
+      await import('../../src/features/call/call-notifications.ts');
     const { CallHandshakeController } = await import(
-      '../../src/features/call/call-handshake-controller.js'
+      '../../src/features/call/call-handshake-controller.ts'
     );
 
     expect(typeof sendIncomingCallPushNotification).toBe('function');

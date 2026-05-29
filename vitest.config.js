@@ -89,6 +89,7 @@ export default defineConfig({
       // needing real WebRTC, OPFS, ServiceWorker, or other APIs jsdom can't
       // provide
       {
+        plugins: [tsconfigPaths(), solid()],
         test: {
           ...sharedTestConfig,
           name: 'browser',
