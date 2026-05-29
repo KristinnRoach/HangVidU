@@ -91,6 +91,7 @@
     "vite-plugin-mkcert": "^2.0.0",
     "vite-plugin-pwa": "^1.2.0",
     "vite-plugin-solid": "^2.11.12",
+    "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.2",
     "workbox-build": "^7.4.0",
     "workbox-precaching": "^7.4.0",

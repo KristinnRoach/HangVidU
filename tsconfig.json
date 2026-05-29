@@ -6,6 +6,19 @@
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
 
+    "paths": {
+      "@app/*": ["./src/app/*"],
+      "@auth/*": ["./src/auth/*"],
+      "@components/*": ["./src/components/*"],
+      "@features/*": ["./src/features/*"],
+      "@infra/*": ["./src/infra/*"],
+      "@lib/*": ["./src/lib/*"],
+      "@shared/*": ["./src/shared/*"],
+      "@storage/*": ["./src/storage/*"],
+      "@stores/*": ["./src/stores/*"],
+      "@styles/*": ["./src/styles/*"]
+    },
+
     "strict": true,
     "allowJs": true,
     "checkJs": false,

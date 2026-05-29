@@ -2,6 +2,7 @@ import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import { VitePWA } from 'vite-plugin-pwa';
 import solid from 'vite-plugin-solid';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
 // Enable multi-browser testing with COMPAT=true
 const isCompatMode = process.env.COMPAT === 'true';
@@ -30,6 +31,7 @@ export default defineConfig({
     conditions: ['development', 'browser'],
   },
   plugins: [
+    tsconfigPaths(),
     solid(),
     VitePWA({
       includeAssets: ['index.html', 'favicon.ico'],
@@ -56,7 +58,7 @@ export default defineConfig({
       // Default: runs in Node with jsdom (no Playwright RPC overhead)
       // Convention: *.test.js / *.test.jsx
       {
-        plugins: [solid()],
+        plugins: [tsconfigPaths(), solid()],
         resolve: {
           conditions: ['solid', 'development', 'browser'],
         },

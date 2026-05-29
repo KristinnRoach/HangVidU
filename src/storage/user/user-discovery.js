@@ -2,7 +2,7 @@
 
 import { ref, set, get, remove } from 'firebase/database';
 import { rtdb } from '../../infra/firebase-rtdb.js';
-import { hashEmail } from '../../shared/utils/email-hash.js';
+import { hashEmail } from '@lib/utils/email-hash.js';
 
 function canonicalizeDirectoryUser(userData) {
   if (!userData || typeof userData !== 'object') {

@@ -1,7 +1,5 @@
 // media-devices.js
 
-import { getVideoConstraints } from '../../features/call/media-constraints.js';
-
 // ===== UTILS =====
 
 export function isMediaDevicesSupported() {
@@ -40,13 +38,16 @@ export async function switchVideoStreamFacingMode(
   pc,
   localStream,
   currentFacingMode,
+  videoConstraints,
 ) {
   const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
 
   try {
-    // Get new video stream with new facing mode
+    // Get new video stream with the caller-provided video constraints.
+    // Constraints are passed in (not built here) so this stays in the lib
+    // layer with no app/feature dependencies.
     const streamWithNewFacingMode = await navigator.mediaDevices.getUserMedia({
-      video: getVideoConstraints(newFacingMode),
+      video: videoConstraints,
     });
 
     const newVideoTrack = streamWithNewFacingMode.getVideoTracks()[0];

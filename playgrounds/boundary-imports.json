@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-05-26T21:47:40.685Z",
-  "scannedFiles": 227,
-  "importsScanned": 563,
-  "importsResolved": 409,
+  "generatedAt": "2026-05-28T23:56:56.505Z",
+  "scannedFiles": 231,
+  "importsScanned": 599,
+  "importsResolved": 429,
   "edges": {
     "app->app": {
       "count": 4,
@@ -205,7 +205,7 @@
       ]
     },
     "auth->auth": {
-      "count": 51,
+      "count": 55,
       "files": [
         {
           "from": "src/auth/auth-command-handlers.js",
@@ -348,6 +348,11 @@
           "importPath": "../password-auth.js"
         },
         {
+          "from": "src/auth/components/UsernamePasswordForm.test.jsx",
+          "to": "src/auth/components/UsernamePasswordForm.jsx",
+          "importPath": "./UsernamePasswordForm"
+        },
+        {
           "from": "src/auth/gis-token-service.js",
           "to": "src/auth/adapters/google-identity-adapter.js",
           "importPath": "./adapters/google-identity-adapter.js"
@@ -428,6 +433,16 @@
           "importPath": "./auth-state.js"
         },
         {
+          "from": "src/auth/password-auth.test.js",
+          "to": "src/auth/password-auth.js",
+          "importPath": "./password-auth.js"
+        },
+        {
+          "from": "src/auth/password-auth.test.js",
+          "to": "src/auth/password-auth.js",
+          "importPath": "./password-auth.js"
+        },
+        {
           "from": "src/auth/solid-auth.test.jsx",
           "to": "src/auth/solid-auth.tsx",
           "importPath": "./solid-auth"
@@ -444,6 +459,11 @@
         },
         {
           "from": "src/auth/tests/auth-bus-events.test.js",
+          "to": "src/auth/auth-state.js",
+          "importPath": "../auth-state.js"
+        },
+        {
+          "from": "src/auth/tests/auth-state.test.js",
           "to": "src/auth/auth-state.js",
           "importPath": "../auth-state.js"
         },
@@ -495,7 +515,7 @@
       ]
     },
     "auth->shared": {
-      "count": 16,
+      "count": 15,
       "files": [
         {
           "from": "src/auth/auth-command-handlers.js",
@@ -571,11 +591,6 @@
           "from": "src/auth/onetap.js",
           "to": "src/shared/utils/dev/dev-utils.js",
           "importPath": "../shared/utils/dev/dev-utils.js"
-        },
-        {
-          "from": "src/auth/password-auth.js",
-          "to": "src/shared/utils/email-hash.js",
-          "importPath": "../shared/utils/email-hash.js"
         }
       ]
     },
@@ -615,7 +630,7 @@
       ]
     },
     "feature->auth": {
-      "count": 9,
+      "count": 10,
       "files": [
         {
           "from": "src/features/call/call-handshake-controller.ts",
@@ -653,6 +668,11 @@
           "importPath": "../../../auth/index.js"
         },
         {
+          "from": "src/features/contacts/useContacts.ts",
+          "to": "src/auth/index.js",
+          "importPath": "../../auth/index.js"
+        },
+        {
           "from": "src/features/messaging-next/ConversationPanel.tsx",
           "to": "src/auth/index.js",
           "importPath": "../../auth/index.js"
@@ -665,7 +685,7 @@
       ]
     },
     "feature->components": {
-      "count": 17,
+      "count": 18,
       "files": [
         {
           "from": "src/features/call/components/dialogs/CallDialog.tsx",
@@ -701,6 +721,11 @@
           "from": "src/features/messaging-next/ConversationPanel.tsx",
           "to": "src/components/app/LoadBoundary.tsx",
           "importPath": "../../components/app/LoadBoundary"
+        },
+        {
+          "from": "src/features/messaging-next/ConversationPanel.tsx",
+          "to": "src/components/base-legacy/imagePreview.js",
+          "importPath": "../../components/base-legacy/imagePreview.js"
         },
         {
           "from": "src/features/notifications/components/enable-notifications-prompt.js",
@@ -755,12 +780,17 @@
       ]
     },
     "feature->feature": {
-      "count": 153,
+      "count": 157,
       "files": [
         {
           "from": "src/features/call/audio/ringtone-manager.js",
           "to": "src/features/call/audio/audio-player.js",
           "importPath": "./audio-player.js"
+        },
+        {
+          "from": "src/features/call/audio/ringtone-manager.test.js",
+          "to": "src/features/call/audio/ringtone-manager.js",
+          "importPath": "./ringtone-manager.js"
         },
         {
           "from": "src/features/call/audio/ringtone-manager.test.js",
@@ -1128,6 +1158,16 @@
           "importPath": "../invites/invitations.js"
         },
         {
+          "from": "src/features/contacts/useContacts.ts",
+          "to": "src/features/messaging-next/interfaces.ts",
+          "importPath": "../messaging-next/interfaces.js"
+        },
+        {
+          "from": "src/features/contacts/useContacts.ts",
+          "to": "src/features/messaging-next/messaging-runtime.ts",
+          "importPath": "../messaging-next/messaging-runtime.js"
+        },
+        {
           "from": "src/features/messaging-next/adapters/in-memory-conversations.test.js",
           "to": "src/features/messaging-next/adapters/in-memory-conversations.ts",
           "importPath": "./in-memory-conversations.js"
@@ -1226,6 +1266,11 @@
           "from": "src/features/messaging-next/ConversationPanel.tsx",
           "to": "src/features/messaging-next/local-drafts.ts",
           "importPath": "./local-drafts.js"
+        },
+        {
+          "from": "src/features/messaging-next/ConversationPanel.tsx",
+          "to": "src/features/messaging-next/message-ordering.ts",
+          "importPath": "./message-ordering.js"
         },
         {
           "from": "src/features/messaging-next/ConversationPanel.tsx",
@@ -1555,7 +1600,7 @@
       ]
     },
     "feature->shared": {
-      "count": 50,
+      "count": 49,
       "files": [
         {
           "from": "src/features/call/components/CallControls.tsx",
@@ -1713,11 +1758,6 @@
           "importPath": "../../../shared/utils/room-id.js"
         },
         {
-          "from": "src/features/contacts/useContacts.ts",
-          "to": "src/shared/events/index.js",
-          "importPath": "../../shared/events/index.js"
-        },
-        {
           "from": "src/features/messaging-next/ConversationPanel.tsx",
           "to": "src/shared/i18n/index.ts",
           "importPath": "../../shared/i18n"
@@ -1810,15 +1850,10 @@
       ]
     },
     "feature->stores": {
-      "count": 16,
+      "count": 14,
       "files": [
         {
           "from": "src/features/contacts/components/ContactEntry.jsx",
-          "to": "src/stores/selectedConversationStore.ts",
-          "importPath": "../../../stores/selectedConversationStore"
-        },
-        {
-          "from": "src/features/contacts/components/ContactsList.tsx",
           "to": "src/stores/selectedConversationStore.ts",
           "importPath": "../../../stores/selectedConversationStore"
         },
@@ -1873,11 +1908,6 @@
           "importPath": "../../stores/contactsStore.js"
         },
         {
-          "from": "src/features/messaging-next/use-conversation.ts",
-          "to": "src/stores/contactsStore.ts",
-          "importPath": "../../stores/contactsStore.js"
-        },
-        {
           "from": "src/features/push-notifications/push-notifications.js",
           "to": "src/stores/contactsStore.ts",
           "importPath": "../../stores/contactsStore.js"
@@ -1904,8 +1934,118 @@
         }
       ]
     },
+    "lib->feature": {
+      "count": 1,
+      "files": [
+        {
+          "from": "src/lib/media/media-devices.js",
+          "to": "src/features/call/media-constraints.js",
+          "importPath": "../../features/call/media-constraints.js"
+        }
+      ]
+    },
+    "lib->lib": {
+      "count": 17,
+      "files": [
+        {
+          "from": "src/lib/event-emitter/event-emitter.js",
+          "to": "src/lib/event-emitter/emitter.js",
+          "importPath": "./emitter.js"
+        },
+        {
+          "from": "src/lib/event-emitter/event-emitter.js",
+          "to": "src/lib/event-emitter/listener-registry.js",
+          "importPath": "./listener-registry.js"
+        },
+        {
+          "from": "src/lib/event-emitter/index.js",
+          "to": "src/lib/event-emitter/emitter.js",
+          "importPath": "./emitter.js"
+        },
+        {
+          "from": "src/lib/event-emitter/index.js",
+          "to": "src/lib/event-emitter/event-emitter.js",
+          "importPath": "./event-emitter.js"
+        },
+        {
+          "from": "src/lib/event-emitter/index.js",
+          "to": "src/lib/event-emitter/listener-registry.js",
+          "importPath": "./listener-registry.js"
+        },
+        {
+          "from": "src/lib/event-emitter/tests/emitter.test.js",
+          "to": "src/lib/event-emitter/emitter.js",
+          "importPath": "../emitter.js"
+        },
+        {
+          "from": "src/lib/event-emitter/tests/emitter.test.js",
+          "to": "src/lib/event-emitter/listener-registry.js",
+          "importPath": "../listener-registry.js"
+        },
+        {
+          "from": "src/lib/event-emitter/tests/event-emitter.test.js",
+          "to": "src/lib/event-emitter/event-emitter.js",
+          "importPath": "../event-emitter.js"
+        },
+        {
+          "from": "src/lib/event-emitter/tests/listener-registry.test.js",
+          "to": "src/lib/event-emitter/listener-registry.js",
+          "importPath": "../listener-registry.js"
+        },
+        {
+          "from": "src/lib/media/convert/convert-video.js",
+          "to": "src/lib/media/convert/codec-utils.js",
+          "importPath": "./codec-utils.js"
+        },
+        {
+          "from": "src/lib/media/convert/convert-video.js",
+          "to": "src/lib/media/convert/config.js",
+          "importPath": "./config.js"
+        },
+        {
+          "from": "src/lib/media/convert/convert-video.js",
+          "to": "src/lib/media/convert/eac3-lazy.js",
+          "importPath": "./eac3-lazy.js"
+        },
+        {
+          "from": "src/lib/media/convert/index.js",
+          "to": "src/lib/media/convert/codec-utils.js",
+          "importPath": "./codec-utils.js"
+        },
+        {
+          "from": "src/lib/media/convert/index.js",
+          "to": "src/lib/media/convert/convert-video.js",
+          "importPath": "./convert-video.js"
+        },
+        {
+          "from": "src/lib/media/convert/index.js",
+          "to": "src/lib/media/convert/eac3-lazy.js",
+          "importPath": "./eac3-lazy.js"
+        },
+        {
+          "from": "src/lib/utils/download-url.test.js",
+          "to": "src/lib/utils/download-url.js",
+          "importPath": "./download-url.js"
+        },
+        {
+          "from": "src/lib/utils/email-hash.test.js",
+          "to": "src/lib/utils/email-hash.js",
+          "importPath": "./email-hash.js"
+        }
+      ]
+    },
+    "shared->lib": {
+      "count": 1,
+      "files": [
+        {
+          "from": "src/shared/events/index.js",
+          "to": "src/lib/event-emitter/event-emitter.js",
+          "importPath": "../../lib/event-emitter/event-emitter.js"
+        }
+      ]
+    },
     "shared->shared": {
-      "count": 14,
+      "count": 10,
       "files": [
         {
           "from": "src/shared/events/index.js",
@@ -1923,19 +2063,9 @@
           "importPath": "../index.js"
         },
         {
-          "from": "src/shared/utils/email-hash.test.js",
-          "to": "src/shared/utils/email-hash.js",
-          "importPath": "./email-hash.js"
-        },
-        {
           "from": "src/shared/utils/room-id.test.js",
           "to": "src/shared/utils/room-id.js",
           "importPath": "./room-id.js"
-        },
-        {
-          "from": "src/shared/utils/share-invite-presets.js",
-          "to": "src/shared/utils/clipboard.js",
-          "importPath": "./clipboard.js"
         },
         {
           "from": "src/shared/utils/share-invite-presets.js",
@@ -1953,19 +2083,9 @@
           "importPath": "../i18n/index.js"
         },
         {
-          "from": "src/shared/utils/share-invite.js",
-          "to": "src/shared/utils/clipboard.js",
-          "importPath": "./clipboard.js"
-        },
-        {
           "from": "src/shared/utils/share-invite.test.js",
           "to": "src/shared/utils/share-invite.js",
           "importPath": "./share-invite.js"
-        },
-        {
-          "from": "src/shared/utils/ui-utils/attachKeyboardViewportHandler.js",
-          "to": "src/shared/utils/detect-device.js",
-          "importPath": "../detect-device.js"
         },
         {
           "from": "src/shared/utils/ui-utils/keepVirtualKeyboardOpenOnTap.test.js",
@@ -1991,16 +2111,6 @@
           "from": "src/storage/user/user-discovery.js",
           "to": "src/infra/firebase-rtdb.js",
           "importPath": "../../infra/firebase-rtdb.js"
-        }
-      ]
-    },
-    "storage->shared": {
-      "count": 1,
-      "files": [
-        {
-          "from": "src/storage/user/user-discovery.js",
-          "to": "src/shared/utils/email-hash.js",
-          "importPath": "../../shared/utils/email-hash.js"
         }
       ]
     },
@@ -2189,20 +2299,6 @@
     "shared/push-notifications/index.js",
     "src/App.tsx",
     "src/env.d.ts",
-    "src/lib/event-emitter/emitter.js",
-    "src/lib/event-emitter/event-emitter.js",
-    "src/lib/event-emitter/index.js",
-    "src/lib/event-emitter/listener-registry.js",
-    "src/lib/event-emitter/tests/emitter.test.js",
-    "src/lib/event-emitter/tests/event-emitter.test.js",
-    "src/lib/event-emitter/tests/listener-registry.test.js",
-    "src/lib/media/convert/codec-utils.js",
-    "src/lib/media/convert/config.js",
-    "src/lib/media/convert/convert-video.js",
-    "src/lib/media/convert/eac3-lazy.js",
-    "src/lib/media/convert/index.js",
-    "src/lib/media/image-compress.js",
-    "src/lib/media/media-devices.js",
     "src/main.tsx",
     "src/sw.js"
   ]
