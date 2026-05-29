@@ -103,9 +103,14 @@ CONFLICT(dm_key) DO NOTHING` then `SELECT id WHERE dm_key = ?`. Groups leave
 
 ## Schema (D1)
 
-```sql
-PRAGMA foreign_keys = ON;  -- NOTE: per-connection in D1; verify enforcement on the data path
+D1 enforces foreign keys by default (equivalent to `PRAGMA foreign_keys = on`)
+and, because every query runs in an implicit transaction, user queries cannot
+disable it — so no `PRAGMA` is needed here. To temporarily violate constraints
+during a migration/import, use `PRAGMA defer_foreign_keys = on` (holds until the
+end of that transaction only). Note: `defer_foreign_keys` does **not** suppress
+`ON DELETE CASCADE` — cascades still fire.
 
+```sql
 CREATE TABLE users (
   id           TEXT PRIMARY KEY,
   display_name TEXT,
@@ -176,12 +181,31 @@ refinement are deferred until after manual e2e verification per slice.
 
 ### Slice A — D1 schema + conversation resolve/create (no UI change yet)
 
-- [ ] Provision D1, add binding to the worker, write the schema migration above.
-- [ ] Worker endpoints: `resolveOrCreateDirect(otherUserId) → conversationId`,
-      `getConversation(id)`, `listConversations(userId)`.
-- [ ] Seed `users` row on auth (upsert current user).
-- **Verify:** call the endpoints from the browser console (logged in); confirm
-  resolve-or-create returns a stable ID across calls and dedups by `dm_key`.
+Decisions (locked):
+- **Worker:** new `workers/data/` (separate persistence worker; mirrors
+  `workers/signaling/`). Keeps the realtime/persistence split at the deploy
+  boundary.
+- **IDs:** opaque UUID v4 via `crypto.randomUUID()` (Workers built-in). Ordering
+  comes from `created_at` columns, not the ID.
+- **Client transport:** HTTPS `fetch` to the worker with the Firebase ID token as
+  a `Bearer` header (CRUD); realtime stays on the DO socket.
+- **Auth:** reuse the signaling worker's RS256 `authenticate()` seam.
+
+Tasks:
+- [ ] Scaffold `workers/data/` (package.json, wrangler.jsonc, tsconfig), D1
+      binding, local dev.
+- [ ] `migrations/0001_init.sql` — 6 tables + FKs + 3 indexes + `dm_key UNIQUE`.
+- [ ] Share/port `authenticate()` (Firebase RS256) into the data worker.
+- [ ] Upsert caller into `users` on each authenticated request.
+- [ ] `resolveOrCreateDirect(otherUserId) → conversationId` — `dm_key` =
+      sorted pair, `INSERT ... ON CONFLICT(dm_key) DO NOTHING`, insert both
+      `conversation_members`, return id. Idempotent.
+- [ ] `getConversation(id)` — row + members, membership-guarded.
+- [ ] `listConversations(userId)` — caller's conversations + other member(s).
+- [ ] Client caller (HTTPS + bearer) exposed on `window` for console testing.
+- **Verify (browser console):** `resolveOrCreateDirect` twice with same peer →
+  same id (dedup); `listConversations` shows it; `getConversation` returns
+  members. No UI.
 
 ### Slice B — messages on D1 (replace RTDB read/write path)
 
@@ -230,5 +254,5 @@ unless we decide old history must survive.
 - Contact metadata (display name, avatar) as a concern that *decorates* a member
   — not folded back into the conversation model.
 - Tests (unit/integration/E2E) until manual e2e per slice is reported back.
-- FK enforcement hardening, pagination/windowing tuning, optimistic send retry.
+- Pagination/windowing tuning, optimistic send retry.
 - Any RTDB removal — RTDB stays as fallback until each slice is proven.
