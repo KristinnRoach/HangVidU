@@ -298,16 +298,31 @@ Done (2026-05-29, uncommitted):
   and sees the history on open. Live cross-browser updates only on reopen/reload
   until Slice E (per the Slice B decision).
 
-Deferred from Slice C (not needed for the flip; do later):
-- [ ] Rename `ContactsList` → `ConversationList`, move under messaging-next.
-- [ ] Drive the list from `listConversations(userId)` and render the other member
-      from `conversation_members` instead of the contacts store.
+Unread badge + list reorder fix (DONE & VERIFIED 2026-05-29, commits 7159fa52 +
+82eca6a9). Root cause was an id mismatch, not missing live push: the list watched
+`/activity` per contact using the **derived `a_b`** id from `contactsStore`, which
+D1 404s (D1 only has opaque ids). Contained fix:
+- [x] Worker `listConversations` now returns per-conversation `activity`
+      ({latestSentAt, latestSenderId, lastReadAt}) in one query.
+- [x] `useContacts` (d1 backend) replaces the N per-contact derived-id activity
+      watchers with one `loadConversationsList()` call, mapping activity onto the
+      matching contact by the other member's userId (opaque conversationId). Kills
+      the 404 storm; unread + reorder now correct **on reload**. RTDB path
+      unchanged (branches on `getMessageBackend()`).
+- Note: list is still **contact-driven** (all contacts show; ones with no D1
+  conversation just have empty activity). Still reload-based — live push is Slice E.
+
+Deferred from Slice C (do later):
+- [ ] Rename `ContactsList` → `ConversationList`, move under messaging-next; go
+      fully conversation-driven (render the other member from `conversation_members`).
 - [ ] Remove `resolveContactIdFromDirectConversationId` + `group:` prefix
       handling entirely (still referenced as the legacy fallback in `MainContent`
       and `contactsStore`).
 - [ ] Opaque-id open flow for the push-notification deep link
       ([SWNavigation.tsx](../../src/features/push-notifications/SWNavigation.tsx)
       still calls `open()` with a raw id).
+- [ ] Empty conversation history on open (regression A) is by-design clean-start
+      (old RTDB messages not in D1); only the optional Slice F backfill restores it.
 
 ### Slice D — files on R2
 
