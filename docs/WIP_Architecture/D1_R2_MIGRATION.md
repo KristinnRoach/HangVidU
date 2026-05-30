@@ -331,11 +331,30 @@ Deferred from Slice C (do later):
 - [ ] Download/serve guarded by conversation membership.
 - **Verify:** send a file in a conversation, reload, re-download from R2.
 
-### Slice E — call handshake on the conversation DO
+### Slice E — the conversation DO room (one room per conversationId)
 
-- [ ] Key the DO room by `conversationId`; fold the call handshake into messages
-      on that room (reuse `src/realtime/` transport + protocol envelope).
-- [ ] Caller path: resolve-or-create conversation → open room → handshake.
+One Durable Object room per conversation, keyed by `conversationId`, carrying
+both live message push and the call handshake over the same socket + protocol
+envelope (`src/realtime/` transport). This is the realtime half of the spine
+(see the top diagram). Done in two contained, independently-testable sub-steps.
+
+**E1 — live message/activity push** (removes the reload requirement for unread +
+reorder; makes the d1 adapter's one-shot `watch*` methods actually live):
+- [ ] Decide where the room lives + how a D1 write notifies subscribers (the data
+      worker writes to D1, so it must signal the room on send/read/reaction). Pin
+      this down first — it's the only real design question in E1.
+- [ ] Room keyed by `conversationId`; clients subscribe on conversation open and
+      while the conversation is in their list.
+- [ ] On message / read / reaction write, push the change to subscribers; the d1
+      adapter's `watchRecentMessages` / `watchConversationActivity` /
+      `subscribeReactions` emit on push instead of one-shot.
+- **Verify:** two browsers, no reload — send from A → message appears in B's open
+  conversation; B's list unread badge + ordering update live.
+
+**E2 — call handshake on the same room** (after E1 verified):
+- [ ] Fold the call-invite handshake into the conversation room (reuse the
+      `src/realtime/` transport + protocol envelope; a new `channel` value, not a
+      new room). Caller path: resolve-or-create conversation → open room → handshake.
 - **Verify:** start a call from a conversation; 2-peer call connects through the
   conversation's DO room.
 
