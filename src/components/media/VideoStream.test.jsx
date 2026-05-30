@@ -1,0 +1,43 @@
+import { cleanup, render } from '@solidjs/testing-library';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import VideoStream from './VideoStream';
+
+function createStreamWithVideo() {
+  return {
+    getVideoTracks: () => [{ kind: 'video' }],
+  };
+}
+
+describe('VideoStream', () => {
+  beforeEach(() => {
+    HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it('mutes local preview streams by default', () => {
+    const stream = createStreamWithVideo();
+    const { container } = render(() => (
+      <VideoStream stream={stream} local={true} preview={true} />
+    ));
+
+    const video = container.querySelector('video');
+    expect(video).not.toBeNull();
+    expect(video.muted).toBe(true);
+    expect(video.srcObject).toBe(stream);
+  });
+
+  it('leaves remote streams audible by default', () => {
+    const { container } = render(() => (
+      <VideoStream stream={createStreamWithVideo()} />
+    ));
+
+    const video = container.querySelector('video');
+    expect(video).not.toBeNull();
+    expect(video.muted).toBe(false);
+  });
+});
