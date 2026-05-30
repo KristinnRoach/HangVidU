@@ -17,6 +17,10 @@ Peer-to-peer video chat app with text messaging and synced media sharing capabil
 
 - WebRTC for P2P connection, Firebase for signaling
 
+## Documentation
+
+- [SimpleX TypeScript SDK](./SIMPLEX-TYPESCRIPT-SDK.md) - Learn about the SimpleX messaging protocol and how it can be used to build privacy-focused chat applications
+
 ## Limitations
 
 - Currently only supports 1-to-1 chats and calls (no groups)
