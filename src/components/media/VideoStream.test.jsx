@@ -11,7 +11,7 @@ function createStreamWithVideo() {
 
 describe('VideoStream', () => {
   beforeEach(() => {
-    HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
   });
 
   afterEach(() => {
