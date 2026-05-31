@@ -13,12 +13,14 @@ type Props = {
 
 export default function VideoStream(props: Props) {
   let video!: HTMLVideoElement;
+  const shouldMute = () => props.muted ?? props.local ?? props.preview ?? false;
 
   createEffect(() => {
     const stream = props.stream;
     if (!video) return;
 
     video.srcObject = stream ?? null;
+    video.muted = shouldMute();
     if (stream) {
       video.play().catch(() => {});
     }
@@ -59,7 +61,7 @@ export default function VideoStream(props: Props) {
         }}
         ref={video}
         autoplay
-        muted={props.muted}
+        muted={shouldMute()}
       />
     </Show>
   );
