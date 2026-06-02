@@ -57,9 +57,17 @@ export default function ContactEntry(props) {
 
   return (
     <div class='contact-entry' ref={rootEl}>
-      <StartCallButton calleeId={props.id} audioOnly={true} />
+      <StartCallButton
+        calleeId={props.id}
+        calleeName={displayName()}
+        audioOnly={true}
+      />
 
-      <StartCallButton calleeId={props.id} audioOnly={false} />
+      <StartCallButton
+        calleeId={props.id}
+        calleeName={displayName()}
+        audioOnly={false}
+      />
 
       <button
         type='button'
