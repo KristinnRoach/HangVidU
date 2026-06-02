@@ -57,6 +57,7 @@ describe('keepVirtualKeyboardOpenOnTap', () => {
     button.dispatchEvent(event);
 
     expect(onTap).toHaveBeenCalledTimes(1);
+    expect(event.defaultPrevented).toBe(true);
   });
 
   it('does not double-trigger onTap for pointer-driven clicks', () => {

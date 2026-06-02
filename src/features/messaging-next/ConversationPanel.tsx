@@ -38,6 +38,13 @@ const runtime = createMessagingRuntime();
 const DRAFT_SAVE_DELAY_MS = 250;
 const TIMESTAMP_THRESHOLD_MS = 5 * 60 * 1000;
 
+type TimestampFormatters = {
+  time: Intl.DateTimeFormat;
+  day: Intl.DateTimeFormat;
+};
+
+const timestampFormattersByLocale = new Map<string, TimestampFormatters>();
+
 function dataUrlMimeType(url: string) {
   const match = /^data:([^;,]+)[;,]/i.exec(url);
   return match?.[1]?.toLowerCase() ?? 'text/plain';
@@ -82,22 +89,36 @@ function isSameLocalDate(a: Date, b: Date) {
   );
 }
 
+function getTimestampFormatters(locale: string) {
+  const cached = timestampFormattersByLocale.get(locale);
+  if (cached) return cached;
+
+  const formatters = {
+    time: new Intl.DateTimeFormat(locale, {
+      hour: 'numeric',
+      minute: '2-digit',
+      // Product choice: keep message timestamps in 24-hour time for now.
+      hour12: false,
+    }),
+    day: new Intl.DateTimeFormat(locale, {
+      month: 'short',
+      day: 'numeric',
+    }),
+  };
+
+  timestampFormattersByLocale.set(locale, formatters);
+  return formatters;
+}
+
 function formatTimestamp(timestamp: number, locale: string) {
   const date = new Date(timestamp);
   const now = new Date();
-  const time = new Intl.DateTimeFormat(locale, {
-    hour: 'numeric',
-    minute: '2-digit',
-    // Product choice: keep message timestamps in 24-hour time for now.
-    hour12: false,
-  }).format(date);
+  const formatters = getTimestampFormatters(locale);
+  const time = formatters.time.format(date);
 
   if (isSameLocalDate(date, now)) return time;
 
-  const day = new Intl.DateTimeFormat(locale, {
-    month: 'short',
-    day: 'numeric',
-  }).format(date);
+  const day = formatters.day.format(date);
 
   return `${day} - ${time}`;
 }

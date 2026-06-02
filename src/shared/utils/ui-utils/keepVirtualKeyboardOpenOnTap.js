@@ -29,6 +29,7 @@ export function keepVirtualKeyboardOpenOnTap(buttonEl, onTap) {
 
   const clickHandler = (event) => {
     if (event.detail !== 0) return; // pointer activation already handled above
+    event.preventDefault();
     onTap(event);
   };
 
