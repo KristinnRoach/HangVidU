@@ -25,7 +25,6 @@ import { ConversationNodeSchema } from '../schema.js';
 import type {
   ConversationId,
   ConversationNode,
-  MessageEnvelope,
   UserId,
 } from '../types.js';
 
@@ -132,15 +131,6 @@ function toIncoming(
   };
 }
 
-function requireTextPayload(message: MessageEnvelope) {
-  if (message.payload.type !== 'text') {
-    throw new Error(
-      'RTDB legacy adapter currently supports text payloads only',
-    );
-  }
-  return message.payload;
-}
-
 function toConversationNode(raw: unknown): ConversationNode | null {
   const parsed = ConversationNodeSchema.safeParse(raw);
   return parsed.success ? parsed.data : null;
@@ -202,15 +192,47 @@ export function createRTDBMessageRepository(): MessageRepository {
     },
 
     async send(message) {
-      const payload = requireTextPayload(message);
-      await set(msgRef(message.conversationId, message.messageId), {
+      const base = {
         from: message.senderId,
         fromName: message.senderName ?? 'Guest User',
-        text: payload.text,
-        type: 'text',
         sentAt: serverTimestamp(),
         read: false,
-      });
+      };
+
+      const payload: Record<string, unknown> =
+        message.payload.type === 'text'
+          ? {
+              ...base,
+              text: message.payload.text,
+              type: 'text',
+            }
+          : message.payload.type === 'file'
+            ? {
+                ...base,
+                type: 'file',
+                fileName: message.payload.fileName,
+                mimeType: message.payload.mimeType,
+                fileSize: message.payload.fileSize,
+                storage:
+                  message.payload.storage?.provider === 'r2'
+                    ? {
+                        provider: 'r2',
+                        bucket: message.payload.storage.bucket,
+                        key: message.payload.storage.key,
+                      }
+                    : null,
+                text: message.payload.text ?? '',
+              }
+            : {};
+
+      if (message.payload.type !== 'text' && message.payload.type !== 'file') {
+        throw new Error('RTDB adapter only supports text and file messages');
+      }
+      if (message.payload.type === 'file' && !message.payload.storage) {
+        throw new Error('file message payload requires R2 storage metadata');
+      }
+
+      await set(msgRef(message.conversationId, message.messageId), payload);
       return { id: message.messageId, sentAt: Date.now() };
     },
 

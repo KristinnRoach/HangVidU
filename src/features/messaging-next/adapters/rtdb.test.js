@@ -69,6 +69,74 @@ describe('messaging-next RTDB adapter', () => {
     );
   });
 
+  it('writes storage-backed file message rows without inline data or urls', async () => {
+    const repository = createRTDBMessageRepository();
+
+    await repository.send({
+      messageId: 'file-1',
+      conversationId: 'user-a_user-b',
+      senderId: 'user-a',
+      senderName: 'User A',
+      sentAt: 10,
+      delivery: 'persistent',
+      payload: {
+        type: 'file',
+        fileName: 'demo.webp',
+        mimeType: 'image/webp',
+        fileSize: 123,
+        storage: {
+          provider: 'r2',
+          bucket: 'hangvidu-files',
+          key: 'user-a_user-b/file-1',
+        },
+        text: 'caption',
+      },
+    });
+
+    expect(set).toHaveBeenCalledWith(
+      { path: 'conversations/user-a_user-b/messages/file-1' },
+      {
+        from: 'user-a',
+        fromName: 'User A',
+        type: 'file',
+        fileName: 'demo.webp',
+        mimeType: 'image/webp',
+        fileSize: 123,
+        storage: {
+          provider: 'r2',
+          bucket: 'hangvidu-files',
+          key: 'user-a_user-b/file-1',
+        },
+        text: 'caption',
+        sentAt: serverTimestamp(),
+        read: false,
+      },
+    );
+  });
+
+  it('rejects file sends without R2 storage metadata', async () => {
+    const repository = createRTDBMessageRepository();
+
+    await expect(
+      repository.send({
+        messageId: 'file-1',
+        conversationId: 'user-a_user-b',
+        senderId: 'user-a',
+        senderName: 'User A',
+        sentAt: 10,
+        delivery: 'persistent',
+        payload: {
+          type: 'file',
+          fileName: 'demo.webp',
+          mimeType: 'image/webp',
+          fileSize: 123,
+          data: 'data:image/webp;base64,abc',
+        },
+      }),
+    ).rejects.toThrow('file message payload requires R2 storage metadata');
+    expect(set).not.toHaveBeenCalled();
+  });
+
   it('reserves RTDB push keys before optimistic rendering', () => {
     const repository = createRTDBMessageRepository();
 

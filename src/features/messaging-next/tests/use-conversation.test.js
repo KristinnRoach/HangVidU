@@ -137,4 +137,71 @@ describe('messaging-next useConversation', () => {
     ]);
     expect(store.state.messages[0].status).toBe('sent');
   });
+
+  it('sends file payloads with optimistic R2 attachment metadata', async () => {
+    const store = createConversationState();
+    const actions = createConversationActions(store);
+    actions.startConversation({ conversationId: 'conversation-1' }, 'me');
+    actions.setDraft('caption');
+
+    const repository = {
+      createMessageId: vi.fn(() => 'reserved-file-1'),
+      subscribeReactions: vi.fn(() => () => {}),
+      send: vi.fn(() => ({ id: 'reserved-file-1', sentAt: 10 })),
+    };
+
+    await useConversation({
+      repository,
+      store,
+      actions,
+    }).send({
+      type: 'file',
+      fileName: 'demo.webp',
+      mimeType: 'image/webp',
+      fileSize: 123,
+      storage: {
+        provider: 'r2',
+        bucket: 'hangvidu-files',
+        key: 'conversation-1/file-1',
+      },
+      text: 'caption',
+    });
+
+    expect(repository.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messageId: 'reserved-file-1',
+        conversationId: 'conversation-1',
+        senderId: 'me',
+        payload: {
+          type: 'file',
+          fileName: 'demo.webp',
+          mimeType: 'image/webp',
+          fileSize: 123,
+          storage: {
+            provider: 'r2',
+            bucket: 'hangvidu-files',
+            key: 'conversation-1/file-1',
+          },
+          text: 'caption',
+        },
+      }),
+    );
+    expect(store.state.draft).toBe('');
+    expect(store.state.messages[0]).toMatchObject({
+      id: 'reserved-file-1',
+      text: 'caption',
+      status: 'sent',
+      attachment: {
+        type: 'file',
+        fileName: 'demo.webp',
+        mimeType: 'image/webp',
+        fileSize: 123,
+        storage: {
+          provider: 'r2',
+          bucket: 'hangvidu-files',
+          key: 'conversation-1/file-1',
+        },
+      },
+    });
+  });
 });

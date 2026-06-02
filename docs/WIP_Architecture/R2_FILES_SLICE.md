@@ -1,6 +1,7 @@
 # R2 Files Slice — image send/receive (RTDB-based)
 
-Status: PLANNING. Branch `feat/r2-images`, off `main`. First focus: **images**.
+Status: IMPLEMENTED except manual two-browser e2e. Branch `feat/r2-images`,
+off `main`. First focus: **images**.
 
 ## Goal
 
@@ -42,7 +43,7 @@ Useful pieces to port from #532:
 - `useConversation.send(payloadOverride)` / outgoing text-or-file contract so a
   caller can send prepared file metadata instead of only draft text.
 - RTDB `MessageRepository.send` support for `type: 'file'` rows, but only for
-  `storage`/`url` metadata in this branch — not inline `data`.
+  R2 `storage` metadata in this branch — not inline `data` or persisted URLs.
 - Tests for optimistic attachment state and RTDB file-row persistence, rewritten
   to assert R2 `storage` payloads.
 
@@ -64,9 +65,12 @@ Do not carry over:
 - **Worker:** new `workers/files/` (sibling of `workers/data/` /
   `workers/signaling/`), R2 binding. Reuse the Firebase RS256 `authenticate()`
   Bearer seam from `workers/data/src/auth.ts` / `workers/signaling/src/auth.ts`.
-  Endpoints (shape TBD in implementation):
-  - upload (proxied through the worker, or presigned PUT) → returns `{ bucket, key }`
-  - download/serve, content-type set from stored metadata
+  Endpoints:
+  - `POST /conversations/:conversationId/files/images` (proxied upload) →
+    returns `{ provider, bucket, key, fileId }`
+  - `GET /conversations/:conversationId/files/:fileId` (proxied download),
+    content-type set from stored metadata
+  - `DELETE /conversations/:conversationId/files/:fileId` best-effort cleanup
 - **Authorization (hybrid, confirmed feasible & not scattered):**
   - DM (id is derived `a_b`, no `group:` prefix): authorize if caller's uid is in
     `conversationId.split('_')`. No DB read.
@@ -94,22 +98,20 @@ Do not carry over:
 
 ## Checklist (fill in during implementation)
 
-- [ ] Scaffold `workers/files/` (wrangler.jsonc, R2 binding, auth seam, local dev).
-- [ ] Upload endpoint + authz (DM derived-id; group RTDB members read).
-- [ ] Download/serve endpoint + same authz; correct content-type.
-- [ ] Client: upload-then-send-file-message path (images).
-- [ ] Client: render R2-backed image messages.
+- [x] Scaffold `workers/files/` (wrangler.jsonc, R2 binding, auth seam, local dev).
+- [x] Upload endpoint + authz (DM derived-id; group RTDB members read).
+- [x] Download/serve endpoint + same authz; correct content-type.
+- [x] Client: upload-then-send-file-message path (images).
+- [x] Client: render R2-backed image messages.
 - [ ] Manual e2e: send an image in a DM, other browser receives + renders;
       reload → still renders from R2.
-- [ ] `pnpm ts` / `lint` / `lint:boundaries` / `build` clean.
+- [x] `pnpm ts` / `lint` / `lint:boundaries` / `build` clean.
 
-## Open questions (decide in-session)
+## Decisions for v1
 
-- Upload mechanism: proxy through worker vs presigned PUT (presigned avoids
-  Worker egress for the body, but adds a sign step + CORS on the bucket).
-- Serve mechanism: short-lived signed GET URL vs always-proxy through the worker
-  (proxy keeps authz centralized; signed URL is cheaper but leaks time-boxed
-  access).
+- Upload mechanism: proxy through the worker.
+- Serve mechanism: proxy through the worker; the browser fetches with
+  Authorization and renders a temporary object URL.
 - Bucket layout already fixed: `{conversationId}/{fileId}` (per migration doc;
   deleting a conversation = delete the prefix).
-- Port assignment for `pnpm dev:files` (data `:8788`, signaling `:8787`).
+- Port assignment for `pnpm dev:files`: `8789` (signaling uses `8787`).
