@@ -178,7 +178,10 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   function attachSendButton(el: HTMLButtonElement) {
     sendButtonCleanup?.();
     sendButtonCleanup = isIOSOrAndroidDevice()
-      ? keepVirtualKeyboardOpenOnTap(el, () => el.form?.requestSubmit())
+      ? keepVirtualKeyboardOpenOnTap(el, (event) => {
+          event.preventDefault();
+          el.form?.requestSubmit();
+        })
       : undefined;
   }
 
