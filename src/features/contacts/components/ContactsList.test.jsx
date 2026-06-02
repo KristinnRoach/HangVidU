@@ -157,7 +157,11 @@ describe('SolidJS ContactsList PoC', { timeout: 60000 }, () => {
     firstCall?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
     expect(mocks.startCall).toHaveBeenCalledWith(
-      expect.objectContaining({ calleeId: 'contact-1' }),
+      expect.objectContaining({
+        calleeId: 'contact-1',
+        calleeName: 'Alice',
+        audioOnly: true,
+      }),
     );
 
     unmount();

@@ -19,18 +19,16 @@ export function StartCallButton(props: StartCallButtonProps) {
   const { startCall } = useCallHandshake();
   const { t } = useI18n();
 
-  const {
-    calleeId,
-    calleeName = t('call.unknown_caller'),
-    audioOnly = false,
-    title = t('contact.action.call', { name: calleeName }),
-  } = props;
+  const calleeName = () => props.calleeName || t('call.unknown_caller');
+  const audioOnly = () => props.audioOnly ?? false;
+  const title = () =>
+    props.title || t('contact.action.call', { name: calleeName() });
 
   function onCall() {
     startCall({
-      calleeId,
-      calleeName,
-      audioOnly,
+      calleeId: props.calleeId,
+      calleeName: calleeName(),
+      audioOnly: audioOnly(),
     });
   }
 
@@ -39,10 +37,10 @@ export function StartCallButton(props: StartCallButtonProps) {
       class='contact-call-btn'
       type='button'
       onClick={onCall}
-      title={title}
-      aria-label={title}
+      title={title()}
+      aria-label={title()}
     >
-      {audioOnly ? <Phone /> : <Video />}
+      {audioOnly() ? <Phone /> : <Video />}
     </button>
   );
 }
