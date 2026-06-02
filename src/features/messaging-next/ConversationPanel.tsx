@@ -15,6 +15,8 @@ import { useI18n } from '../../shared/i18n';
 import { LoadBoundary } from '../../components/app/LoadBoundary';
 import { showImagePreview } from '../../components/base-legacy/imagePreview.js';
 import { downloadUrl } from '@lib/utils/download-url.js';
+import { isIOSOrAndroidDevice } from '@lib/utils/detect-device.js';
+import { keepVirtualKeyboardOpenOnTap } from '@shared/utils/ui-utils/keepVirtualKeyboardOpenOnTap.js';
 
 import { createMessagingRuntime } from './messaging-runtime.js';
 
@@ -34,6 +36,14 @@ import styles from './ConversationPanel.module.css';
 
 const runtime = createMessagingRuntime();
 const DRAFT_SAVE_DELAY_MS = 250;
+const TIMESTAMP_THRESHOLD_MS = 5 * 60 * 1000;
+
+type TimestampFormatters = {
+  time: Intl.DateTimeFormat;
+  day: Intl.DateTimeFormat;
+};
+
+const timestampFormattersByLocale = new Map<string, TimestampFormatters>();
 
 function dataUrlMimeType(url: string) {
   const match = /^data:([^;,]+)[;,]/i.exec(url);
@@ -71,6 +81,48 @@ function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function isSameLocalDate(a: Date, b: Date) {
+  return (
+    a.getDate() === b.getDate() &&
+    a.getMonth() === b.getMonth() &&
+    a.getFullYear() === b.getFullYear()
+  );
+}
+
+function getTimestampFormatters(locale: string) {
+  const cached = timestampFormattersByLocale.get(locale);
+  if (cached) return cached;
+
+  const formatters = {
+    time: new Intl.DateTimeFormat(locale, {
+      hour: 'numeric',
+      minute: '2-digit',
+      // Product choice: keep message timestamps in 24-hour time for now.
+      hour12: false,
+    }),
+    day: new Intl.DateTimeFormat(locale, {
+      month: 'short',
+      day: 'numeric',
+    }),
+  };
+
+  timestampFormattersByLocale.set(locale, formatters);
+  return formatters;
+}
+
+function formatTimestamp(timestamp: number, locale: string) {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const formatters = getTimestampFormatters(locale);
+  const time = formatters.time.format(date);
+
+  if (isSameLocalDate(date, now)) return time;
+
+  const day = formatters.day.format(date);
+
+  return `${day} - ${time}`;
+}
+
 function MessageHistorySkeleton() {
   return (
     <div
@@ -104,10 +156,11 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   const store = createConversationState();
   const actions = createConversationActions(store);
   const { state } = store;
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   let messagesEl: HTMLDivElement | undefined;
   let inputTextAreaEl: HTMLTextAreaElement | undefined;
+  let sendButtonCleanup: (() => void) | undefined;
   let suppressScroll = false;
   let draftSaveTimer: ReturnType<typeof setTimeout> | undefined;
   let pendingDraft:
@@ -120,6 +173,16 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
   function focusInput() {
     inputTextAreaEl?.focus();
+  }
+
+  function attachSendButton(el: HTMLButtonElement) {
+    sendButtonCleanup?.();
+    sendButtonCleanup = isIOSOrAndroidDevice()
+      ? keepVirtualKeyboardOpenOnTap(el, (event) => {
+          event.preventDefault();
+          el.form?.requestSubmit();
+        })
+      : undefined;
   }
 
   function clearDraftSaveTimer() {
@@ -166,6 +229,13 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   const [historyLoading, setHistoryLoading] = createSignal(false);
   const [historyError, setHistoryError] = createSignal<unknown>(null);
   const [historyReady, setHistoryReady] = createSignal(false);
+
+  function shouldShowTimestamp(message: ChatMessage, index: number) {
+    const previous = state.messages[index - 1];
+    return (
+      !previous || message.sentAt - previous.sentAt > TIMESTAMP_THRESHOLD_MS
+    );
+  }
 
   createEffect(
     on(
@@ -280,10 +350,13 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
   onCleanup(() => {
     flushDraftSave();
+    sendButtonCleanup?.();
   });
 
   function onSubmit(e: SubmitEvent) {
     e.preventDefault();
+    if (state.sending) return;
+
     const { conversationId, myUserId } = state;
     if (conversationId && myUserId && state.draft.trim()) {
       clearDraftSaveTimer();
@@ -291,6 +364,23 @@ export default function ConversationPanel(props: ConversationPanelProps) {
       clearLocalDraft(myUserId, conversationId);
     }
     void send();
+  }
+
+  function onDraftKeyDown(
+    e: KeyboardEvent & { currentTarget: HTMLTextAreaElement },
+  ) {
+    if (
+      e.isComposing ||
+      e.key !== 'Enter' ||
+      e.shiftKey ||
+      isIOSOrAndroidDevice()
+    )
+      return;
+
+    e.preventDefault();
+    if (state.sending) return;
+
+    e.currentTarget.form?.requestSubmit();
   }
 
   return (
@@ -315,126 +405,140 @@ export default function ConversationPanel(props: ConversationPanelProps) {
           >
             <div class={styles.messages} ref={messagesEl}>
               <For each={state.messages}>
-                {(msg) => (
-                  <Switch>
-                    <Match when={msg.source === 'system'}>
-                      <div class={`${styles.msg} ${styles.msgSystem}`}>
-                        <span>{msg.text}</span>
-                        <Show when={msg.actions?.length}>
-                          <span class={styles.msgActions}>
-                            <For each={msg.actions}>
-                              {(action) => (
-                                <button
-                                  type='button'
-                                  class={styles.msgActionBtn}
-                                  onClick={action.onClick}
-                                >
-                                  {action.label}
-                                </button>
-                              )}
-                            </For>
-                          </span>
-                        </Show>
-                      </div>
-                    </Match>
-                    <Match when={msg.source !== 'system'}>
-                      <div
-                        class={styles.msg}
-                        classList={{
-                          [styles.msgOwn]: msg.senderId === state.myUserId,
-                          [styles.msgFailed]: msg.status === 'failed',
-                        }}
+                {(msg, index) => (
+                  <>
+                    <Show when={shouldShowTimestamp(msg, index())}>
+                      <time
+                        class={styles.messageTimestamp}
+                        dateTime={new Date(msg.sentAt).toISOString()}
                       >
-                        <span class={styles.msgText}>{msg.text}</span>
-                        <Show when={msg.attachment}>
-                          {(attachment) => {
-                            const file = attachment();
-                            const attachmentUrl = getAttachmentUrl(file);
-                            const allowedDataUrl = hasAllowedDataUrl(file);
-                            const canPreview =
-                              Boolean(attachmentUrl) &&
-                              (allowedDataUrl ||
-                                isAllowedRemoteUrl(attachmentUrl)) &&
-                              isImageAttachment(file);
-                            const canDownload =
-                              Boolean(attachmentUrl) &&
-                              (allowedDataUrl ||
-                                attachmentUrl?.startsWith('blob:') ||
-                                isAllowedRemoteUrl(attachmentUrl));
+                        {formatTimestamp(msg.sentAt, locale())}
+                      </time>
+                    </Show>
+                    <Switch>
+                      <Match when={msg.source === 'system'}>
+                        <div class={`${styles.msg} ${styles.msgSystem}`}>
+                          <span>{msg.text}</span>
+                          <Show when={msg.actions?.length}>
+                            <span class={styles.msgActions}>
+                              <For each={msg.actions}>
+                                {(action) => (
+                                  <button
+                                    type='button'
+                                    class={styles.msgActionBtn}
+                                    onClick={action.onClick}
+                                  >
+                                    {action.label}
+                                  </button>
+                                )}
+                              </For>
+                            </span>
+                          </Show>
+                        </div>
+                      </Match>
+                      <Match when={msg.source !== 'system'}>
+                        <div
+                          class={styles.msg}
+                          data-timestamp={msg.sentAt}
+                          classList={{
+                            [styles.msgOwn]: msg.senderId === state.myUserId,
+                            [styles.msgFailed]: msg.status === 'failed',
+                          }}
+                        >
+                          <span class={styles.msgText}>{msg.text}</span>
+                          <Show when={msg.attachment}>
+                            {(attachment) => {
+                              const file = attachment();
+                              const attachmentUrl = getAttachmentUrl(file);
+                              const allowedDataUrl = hasAllowedDataUrl(file);
+                              const canPreview =
+                                Boolean(attachmentUrl) &&
+                                (allowedDataUrl ||
+                                  isAllowedRemoteUrl(attachmentUrl)) &&
+                                isImageAttachment(file);
+                              const canDownload =
+                                Boolean(attachmentUrl) &&
+                                (allowedDataUrl ||
+                                  attachmentUrl?.startsWith('blob:') ||
+                                  isAllowedRemoteUrl(attachmentUrl));
 
-                            return (
-                              <span class={styles.fileMessage}>
-                                <Show when={canPreview}>
-                                  <img
-                                    class={styles.filePreviewImg}
-                                    src={attachmentUrl ?? undefined}
-                                    alt={file.fileName}
-                                    role='button'
-                                    tabIndex={0}
-                                    aria-label={`Open preview for ${file.fileName}`}
-                                    onClick={() =>
-                                      attachmentUrl &&
-                                      showImagePreview(
-                                        attachmentUrl,
-                                        file.fileName,
-                                      )
-                                    }
-                                    onKeyDown={(e) => {
-                                      if (e.key !== 'Enter' && e.key !== ' ') {
-                                        return;
-                                      }
-                                      e.preventDefault();
-                                      if (attachmentUrl) {
+                              return (
+                                <span class={styles.fileMessage}>
+                                  <Show when={canPreview}>
+                                    <img
+                                      class={styles.filePreviewImg}
+                                      src={attachmentUrl ?? undefined}
+                                      alt={file.fileName}
+                                      role='button'
+                                      tabIndex={0}
+                                      aria-label={`Open preview for ${file.fileName}`}
+                                      onClick={() =>
+                                        attachmentUrl &&
                                         showImagePreview(
                                           attachmentUrl,
                                           file.fileName,
-                                        );
+                                        )
                                       }
-                                    }}
-                                  />
-                                </Show>
-                                <span class={styles.fileMessageMeta}>
-                                  <Show
-                                    when={canDownload}
-                                    fallback={
-                                      <span class={styles.fileMessageName}>
-                                        {file.fileName}
-                                      </span>
-                                    }
-                                  >
-                                    <a
-                                      href={attachmentUrl ?? undefined}
-                                      download={file.fileName}
-                                      class={styles.fileMessageName}
-                                      onClick={(event) => {
-                                        if (!attachmentUrl) return;
-                                        event.preventDefault();
-                                        void downloadUrl(
-                                          attachmentUrl,
-                                          file.fileName,
-                                        );
+                                      onKeyDown={(e) => {
+                                        if (
+                                          e.key !== 'Enter' &&
+                                          e.key !== ' '
+                                        ) {
+                                          return;
+                                        }
+                                        e.preventDefault();
+                                        if (attachmentUrl) {
+                                          showImagePreview(
+                                            attachmentUrl,
+                                            file.fileName,
+                                          );
+                                        }
                                       }}
-                                    >
-                                      {file.fileName}
-                                    </a>
+                                    />
                                   </Show>
-                                  <span class={styles.fileMessageSize}>
-                                    ({formatFileSize(file.fileSize)})
+                                  <span class={styles.fileMessageMeta}>
+                                    <Show
+                                      when={canDownload}
+                                      fallback={
+                                        <span class={styles.fileMessageName}>
+                                          {file.fileName}
+                                        </span>
+                                      }
+                                    >
+                                      <a
+                                        href={attachmentUrl ?? undefined}
+                                        download={file.fileName}
+                                        class={styles.fileMessageName}
+                                        onClick={(event) => {
+                                          if (!attachmentUrl) return;
+                                          event.preventDefault();
+                                          void downloadUrl(
+                                            attachmentUrl,
+                                            file.fileName,
+                                          );
+                                        }}
+                                      >
+                                        {file.fileName}
+                                      </a>
+                                    </Show>
+                                    <span class={styles.fileMessageSize}>
+                                      ({formatFileSize(file.fileSize)})
+                                    </span>
                                   </span>
                                 </span>
-                              </span>
-                            );
-                          }}
-                        </Show>
-                        <Show when={msg.status === 'sending'}>
-                          <span class={styles.msgStatus}>…</span>
-                        </Show>
-                        <Show when={msg.status === 'failed'}>
-                          <span class={styles.msgStatus}>!</span>
-                        </Show>
-                      </div>
-                    </Match>
-                  </Switch>
+                              );
+                            }}
+                          </Show>
+                          <Show when={msg.status === 'sending'}>
+                            <span class={styles.msgStatus}>…</span>
+                          </Show>
+                          <Show when={msg.status === 'failed'}>
+                            <span class={styles.msgStatus}>!</span>
+                          </Show>
+                        </div>
+                      </Match>
+                    </Switch>
+                  </>
                 )}
               </For>
             </div>
@@ -453,9 +557,10 @@ export default function ConversationPanel(props: ConversationPanelProps) {
               actions.setDraft(text);
               queueDraftSave(text);
             }}
-            disabled={state.sending}
+            onKeyDown={onDraftKeyDown}
           />
           <button
+            ref={attachSendButton}
             class={styles.send}
             type='submit'
             disabled={!state.draft.trim() || state.sending}
