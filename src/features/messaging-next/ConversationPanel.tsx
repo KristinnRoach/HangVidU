@@ -88,6 +88,7 @@ function formatTimestamp(timestamp: number, locale: string) {
   const time = new Intl.DateTimeFormat(locale, {
     hour: 'numeric',
     minute: '2-digit',
+    // Product choice: keep message timestamps in 24-hour time for now.
     hour12: false,
   }).format(date);
 
