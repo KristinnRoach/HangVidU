@@ -84,6 +84,7 @@ functions/service-account-key.json
 
 # Misc / Recently added
 TODO.md
+quick-defer-todos.md
 .planning/codebase/potentially_stale
 /tests/e2e/OUTDATED_IGNORE/
 kill-hanging-dev-processes.sh
