@@ -1,19 +1,30 @@
 # D1 + R2 Migration — Conversation-Centric Core
 
+> **Status / where the code lives.** This is a planning + decision document. The
+> implementation it describes (the `workers/data/` worker, `adapters/d1.ts`, the
+> `stores/` wiring, etc.) lives on the **`D1-R2-migration`** branch, dormant
+> behind `VITE_MESSAGE_BACKEND` (default `rtdb`) — it is **not** on `main`.
+> Production/`main` is unaffected. Relative source links below resolve against
+> the `D1-R2-migration` branch, not `main`. See the DECISION section for why the
+> message migration is paused.
+
 ## Goal
 
 Make `conversationId` the single spine of the data model and split persistence
-from realtime cleanly across Cloudflare primitives:
+from realtime cleanly across Cloudflare primitives. This diagram is the **target
+state**; per the DECISION section, the message-related tables (`messages`,
+`message_attachments`, `message_reactions`) are *not* being migrated yet —
+message bodies stay on RTDB for now.
 
-```
+```text
 conversationId
 ├── D1 (relational, persistent)
 │   ├── users
 │   ├── conversations
 │   ├── conversation_members
-│   ├── messages
-│   ├── message_attachments
-│   └── message_reactions          # added vs the original sketch (see below)
+│   ├── messages                   # target state only — stays on RTDB for now
+│   ├── message_attachments        # target state only
+│   └── message_reactions          # target state only (added vs original sketch)
 ├── R2 (files)
 │   └── {conversationId}/{fileId}
 └── Durable Object (realtime)
@@ -243,7 +254,7 @@ Decisions (locked):
 - **Auth:** reuse the signaling worker's RS256 `authenticate()` seam.
 
 Tasks:
-- [ ] Scaffold `workers/data/` (package.json, wrangler.jsonc, tsconfig), D1
+- [x] Scaffold `workers/data/` (package.json, wrangler.jsonc, tsconfig), D1
       binding, local dev.
 - [x] `migrations/0001_init.sql` — 6 tables + FKs + 3 indexes + `dm_key UNIQUE`.
       Applied to local D1; dedup + joins validated via `wrangler d1 execute`.
@@ -270,8 +281,8 @@ Decisions made during implementation (carry forward):
 - **404 (not 403)** for non-member conversation access, so ids can't be probed.
 - pnpm 11 build-scripts: data worker uses `allowBuilds:` in `pnpm-workspace.yaml`
   and must install with plain `pnpm install` (NOT `--ignore-workspace`).
-  Signaling worker's stale `onlyBuiltDependencies` deferred in
-  `workers/signaling/TODO.md`.
+  Signaling worker's stale `onlyBuiltDependencies` is a known deferred cleanup
+  (tracked alongside the signaling worker config).
 
 Not yet done in Slice A (before calling it complete):
 - Remote D1: run `wrangler d1 create hangvidu-data`, paste `database_id` into
