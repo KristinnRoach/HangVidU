@@ -345,7 +345,13 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   function onDraftKeyDown(
     e: KeyboardEvent & { currentTarget: HTMLTextAreaElement },
   ) {
-    if (e.key !== 'Enter' || e.shiftKey || isIOSOrAndroidDevice()) return;
+    if (
+      e.isComposing ||
+      e.key !== 'Enter' ||
+      e.shiftKey ||
+      isIOSOrAndroidDevice()
+    )
+      return;
 
     e.preventDefault();
     if (state.sending) return;
