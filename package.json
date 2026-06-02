@@ -33,6 +33,7 @@
     "migrate:rtdb-files:r2": "node scripts/migrate-rtdb-files-to-r2.js --write",
     "play:rtdb": "open ./playgrounds/rtdb-schema.html",
     "play:rtdb-live": "fkill :8080 :8081 --silent; node --env-file=.env.development ./playgrounds/rtdb-proxy.js & python3 -m http.server 8080 --directory . & sleep 0.5 && open http://localhost:8080/playgrounds/rtdb-live.html && wait",
+    "play:migration": "open ./playgrounds/migration-status.html",
     "play:boundaries:scan": "node ./playgrounds/build-import-graph.mjs",
     "play:boundaries": "pnpm play:boundaries:scan && fkill :8082 --silent; python3 -m http.server 8082 --directory . & sleep 0.5 && open http://localhost:8082/playgrounds/boundary-rules.html && wait",
     "play:media": "vite --open ./src/shared/media-next/media-lab.html",
