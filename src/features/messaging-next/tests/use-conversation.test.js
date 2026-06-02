@@ -104,4 +104,37 @@ describe('messaging-next useConversation', () => {
       });
     });
   });
+
+  it('uses a reserved persistent id for the optimistic message and send payload', async () => {
+    const store = createConversationState();
+    const actions = createConversationActions(store);
+    actions.startConversation({ conversationId: 'conversation-1' }, 'me');
+    actions.setDraft('hello');
+
+    const repository = {
+      createMessageId: vi.fn(() => 'reserved-1'),
+      subscribeReactions: vi.fn(() => () => {}),
+      send: vi.fn(() => ({ id: 'reserved-1', sentAt: 10 })),
+    };
+
+    await useConversation({
+      repository,
+      store,
+      actions,
+    }).send();
+
+    expect(repository.createMessageId).toHaveBeenCalledWith('conversation-1');
+    expect(repository.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messageId: 'reserved-1',
+        conversationId: 'conversation-1',
+        senderId: 'me',
+        payload: { type: 'text', text: 'hello' },
+      }),
+    );
+    expect(store.state.messages.map((message) => message.id)).toEqual([
+      'reserved-1',
+    ]);
+    expect(store.state.messages[0].status).toBe('sent');
+  });
 });

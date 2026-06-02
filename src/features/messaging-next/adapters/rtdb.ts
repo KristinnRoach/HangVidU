@@ -43,6 +43,10 @@ function msgsRef(conversationId: ConversationId) {
   return ref(rtdb, `conversations/${conversationId}/messages`);
 }
 
+function msgRef(conversationId: ConversationId, messageId: string) {
+  return ref(rtdb, `conversations/${conversationId}/messages/${messageId}`);
+}
+
 function memberRef(conversationId: ConversationId, userId: UserId) {
   return ref(rtdb, `conversations/${conversationId}/members/${userId}`);
 }
@@ -178,6 +182,10 @@ function conversationUpdate(
 
 export function createRTDBMessageRepository(): MessageRepository {
   return {
+    createMessageId(conversationId) {
+      return push(msgsRef(conversationId)).key!;
+    },
+
     async loadMessages(conversationId) {
       const snapshot = await get(recentMsgsQuery(conversationId));
       return messagesFromSnapshot(snapshot, conversationId);
@@ -195,8 +203,7 @@ export function createRTDBMessageRepository(): MessageRepository {
 
     async send(message) {
       const payload = requireTextPayload(message);
-      const newRef = push(msgsRef(message.conversationId));
-      await set(newRef, {
+      await set(msgRef(message.conversationId, message.messageId), {
         from: message.senderId,
         fromName: message.senderName ?? 'Guest User',
         text: payload.text,
@@ -204,7 +211,7 @@ export function createRTDBMessageRepository(): MessageRepository {
         sentAt: serverTimestamp(),
         read: false,
       });
-      return { id: newRef.key!, sentAt: Date.now() };
+      return { id: message.messageId, sentAt: Date.now() };
     },
 
     async markConversationRead(conversationId, userId) {

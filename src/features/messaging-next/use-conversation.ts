@@ -176,11 +176,14 @@ export function useConversation({
     const text = draft.trim();
     if (!conversationId || !myUserId || !text) return;
 
-    const tempId = crypto.randomUUID();
     const delivery: DeliveryPolicy =
       transportMode === 'private' ? 'private' : 'persistent';
 
     const source = transportMode === 'private' ? 'private' : 'persisted';
+    const tempId =
+      transportMode === 'private'
+        ? crypto.randomUUID()
+        : repository.createMessageId(conversationId);
     const sentAt = Date.now();
     const senderName = getSenderName?.() ?? undefined;
 

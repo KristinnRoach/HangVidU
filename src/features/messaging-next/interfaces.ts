@@ -40,6 +40,13 @@ export type ConversationActivity = {
 };
 
 export type MessageRepository = {
+  /**
+   * Reserve the canonical persistent id before optimistic rendering.
+   * send() must persist the message under this same messageId so live backend
+   * echoes reconcile with the optimistic row instead of creating a second row.
+   */
+  createMessageId(conversationId: ConversationId): string;
+
   /** Load recent messages for a conversation, newest last. */
   loadMessages(
     conversationId: ConversationId,
@@ -56,7 +63,10 @@ export type MessageRepository = {
     onError?: (error: unknown) => void,
   ): (() => void) | Promise<() => void>;
 
-  /** Persist a message envelope. Resolves with the canonical id and timestamp. */
+  /**
+   * Persist a message envelope using msg.messageId as its canonical identity.
+   * Resolves with the same id and the backend-acknowledged timestamp metadata.
+   */
   send(
     msg: OutgoingMessage,
   ):

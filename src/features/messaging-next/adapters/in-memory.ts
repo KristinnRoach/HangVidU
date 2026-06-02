@@ -71,6 +71,10 @@ export function createInMemoryMessageRepository(): MessageRepository {
   }
 
   return {
+    createMessageId() {
+      return crypto.randomUUID();
+    },
+
     loadMessages(conversationId) {
       return [...getStored(conversationId)];
     },
@@ -93,7 +97,6 @@ export function createInMemoryMessageRepository(): MessageRepository {
     send(message) {
       const msg: IncomingMessage = {
         ...message,
-        messageId: crypto.randomUUID(),
         sentAt: Date.now(),
       };
       getStored(msg.conversationId).push(msg);

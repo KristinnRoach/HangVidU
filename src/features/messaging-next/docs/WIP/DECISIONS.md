@@ -31,6 +31,7 @@ Current draft API:
 - `ConversationRepository.loadConversation(conversationId)`
 - `ConversationRepository.upsertConversation(conversationUpsert)`
 - `ConversationRepository.subscribeConversation(conversationId, onConversation)`
+- `MessageRepository.createMessageId(conversationId)`
 - `MessageRepository.loadMessages(conversationId)`
 - `MessageRepository.send(messageEnvelope)`
 - `MessageRepository.subscribe(conversationId, myUserId, onMessage)`

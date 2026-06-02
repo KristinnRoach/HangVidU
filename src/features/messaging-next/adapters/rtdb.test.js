@@ -3,6 +3,7 @@ import {
   get,
   onValue,
   orderByChild,
+  push,
   serverTimestamp,
   set,
   startAfter,
@@ -43,7 +44,7 @@ describe('messaging-next RTDB adapter', () => {
     const repository = createRTDBMessageRepository();
 
     await repository.send({
-      messageId: 'temp-1',
+      messageId: 'msg-1',
       conversationId: 'user-a_user-b',
       senderId: 'user-a',
       senderName: 'User A',
@@ -56,7 +57,7 @@ describe('messaging-next RTDB adapter', () => {
     });
 
     expect(set).toHaveBeenCalledWith(
-      { key: 'msg-1' },
+      { path: 'conversations/user-a_user-b/messages/msg-1' },
       {
         from: 'user-a',
         fromName: 'User A',
@@ -66,6 +67,15 @@ describe('messaging-next RTDB adapter', () => {
         read: false,
       },
     );
+  });
+
+  it('reserves RTDB push keys before optimistic rendering', () => {
+    const repository = createRTDBMessageRepository();
+
+    expect(repository.createMessageId('user-a_user-b')).toBe('msg-1');
+    expect(push).toHaveBeenCalledWith({
+      path: 'conversations/user-a_user-b/messages',
+    });
   });
 
   it('loads legacy file message rows for read-side rendering', async () => {
