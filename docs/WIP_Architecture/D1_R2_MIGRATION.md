@@ -28,6 +28,57 @@ which already put room signaling on a DO behind `src/realtime/`.
 
 ---
 
+## DECISION (2026-05-30): message bodies stay on RTDB for now — Slice E paused
+
+**Status:** PAUSED before Slice E. The D1 message adapter (Slice B) stays in the
+tree but **off** behind `VITE_MESSAGE_BACKEND` (default `rtdb`). Production /
+`main` is unaffected — it never sets the flag, so it runs the unchanged RTDB
+adapter. No further conversation-DO push work until this is revisited.
+
+### Why
+
+The Cloudflare targets that stand on their own merits and have no hidden realtime
+cost:
+- **WebRTC signaling** → DO. Realtime is the DO's whole purpose; already done and
+  verified (Slice 1).
+- **Files** → R2. Object storage, no realtime expectation. Clean fit (Slice D).
+- **Relational foundation** (`users`, `conversations`, `conversation_members`,
+  dedup via `dm_key`) → D1. Reference / membership data read on open, not a live
+  feed. Fits D1 without needing push. (Slices A/C.)
+
+**Messages are the exception.** RTDB gives live cross-client delivery *for free*:
+one write to `conversations/{id}/messages`, and every client with a
+`child_added` listener receives it with zero extra infrastructure. RTDB is both
+the store and the push channel; unread/activity and reactions ride the same free
+realtime.
+
+D1 is a plain SQL store with **no subscriptions**. Moving messages there means a
+send becomes an HTTP insert that no one else hears about until they reload — the
+load-on-open limitation Slice B shipped with. Restoring the live behavior RTDB
+already provides requires *building and operating* a per-conversation Durable
+Object push layer (Slice E). That is net-new infrastructure to own, in exchange
+for no functional gain at the current pre-production stage (cost / lock-in are
+not yet pressing).
+
+### Key insight for whoever revisits this
+
+The opaque `conversationId` spine does **not** require message *bodies* to live
+in D1. Membership/dedup can be opaque-ID in D1 while message delivery stays on
+RTDB keyed by that same `conversationId`. So the relational migration and the
+message migration are separable — moving the foundation to D1 does not commit us
+to moving messages off RTDB.
+
+### What stays true while paused
+
+- `adapters/d1.ts`, `workers/data/` message endpoints, and the client methods
+  remain (verified via console). They are dormant, not deleted.
+- Revisit triggers: needing server-authoritative message history/search,
+  consolidating off Firebase for cost/lock-in, or group features that strain the
+  RTDB model. At that point, re-evaluate Slice E (conversation-DO push) with eyes
+  open about the infra it adds.
+
+---
+
 ## THE FUNDAMENTAL CHANGE: opaque conversationId
 
 Read this section before anything else. It changes how the model behaves, not
@@ -332,6 +383,12 @@ Deferred from Slice C (do later):
 - **Verify:** send a file in a conversation, reload, re-download from R2.
 
 ### Slice E — the conversation DO room (one room per conversationId)
+
+> **PAUSED (2026-05-30).** Not being built — see the DECISION banner near the top
+> of this doc. E1 exists only to give messages the live delivery RTDB already
+> provides for free; while message bodies stay on RTDB, this slice is unnecessary.
+> Note E2 (call handshake) is independent of the message-store question and can be
+> picked up on its own if/when the call flow moves onto the conversation room.
 
 One Durable Object room per conversation, keyed by `conversationId`, carrying
 both live message push and the call handshake over the same socket + protocol
