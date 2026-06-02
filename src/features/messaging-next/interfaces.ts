@@ -7,20 +7,25 @@ import type {
   ConversationNode,
   ConversationParticipant,
   DeliveryPolicy,
+  FileMessagePayload,
   MessageEnvelope,
+  TextMessagePayload,
   UserId,
 } from './types.js';
 
 // ─── Wire types ───────────────────────────────────────────────────────────────
 
 export type IncomingMessage = MessageEnvelope;
-export type OutgoingMessage = MessageEnvelope;
+export type OutgoingMessagePayload = TextMessagePayload | FileMessagePayload;
+export type OutgoingMessage = Omit<MessageEnvelope, 'payload'> & {
+  payload: OutgoingMessagePayload;
+};
 
 /** Wire format for chat messages sent over a datachannel (private mode). */
 export type P2PChatEnvelope = {
   protocol: 'hangvidu.messaging.v1';
   type: 'message';
-  message: MessageEnvelope;
+  message: OutgoingMessage;
 };
 
 // ─── Persistent backend ───────────────────────────────────────────────────────
@@ -65,6 +70,10 @@ export type MessageRepository = {
 
   /**
    * Persist a message envelope using msg.messageId as its canonical identity.
+   * Only user-authored text and file payloads are persistable through this
+   * boundary. File payloads must include at least one content pointer
+   * (data, url, or storage), matching FileMessagePayloadSchema, so adapters
+   * remain interchangeable and do not persist rows that cannot be read back.
    * Resolves with the same id and the backend-acknowledged timestamp metadata.
    */
   send(

@@ -10,7 +10,9 @@ import type {
 import type {
   ConversationId,
   DeliveryPolicy,
+  FileMessagePayload,
   MessageEnvelope,
+  TextMessagePayload,
   UserId,
 } from './types.js';
 import type { ConversationStateStore } from './conversation.state.js';
@@ -26,6 +28,8 @@ type UseConversationOptions = {
   /** Optional datachannel transport for private mode. Without it, private sends fail. */
   privateTransport?: PrivateMessageTransport;
 };
+
+type SendPayload = TextMessagePayload | FileMessagePayload;
 
 export function envelopeToChatMessage(
   message: MessageEnvelope,
@@ -171,10 +175,12 @@ export function useConversation({
     });
   });
 
-  async function send() {
+  async function send(payloadOverride?: SendPayload) {
     const { conversationId, myUserId, draft, transportMode } = state;
     const text = draft.trim();
-    if (!conversationId || !myUserId || !text) return;
+    const payload: SendPayload = payloadOverride ?? { type: 'text', text };
+    if (!conversationId || !myUserId) return;
+    if (payload.type === 'text' && !payload.text.trim()) return;
 
     const delivery: DeliveryPolicy =
       transportMode === 'private' ? 'private' : 'persistent';
@@ -186,11 +192,26 @@ export function useConversation({
         : repository.createMessageId(conversationId);
     const sentAt = Date.now();
     const senderName = getSenderName?.() ?? undefined;
+    const optimisticText =
+      payload.type === 'text' ? payload.text : (payload.text?.trim() ?? '');
+    const attachment =
+      payload.type === 'file'
+        ? {
+            type: 'file' as const,
+            fileName: payload.fileName,
+            mimeType: payload.mimeType,
+            fileSize: payload.fileSize,
+            data: payload.data,
+            url: payload.url,
+            storage: payload.storage,
+          }
+        : undefined;
 
     actions.addOptimisticMessage({
       id: tempId,
       conversationId,
-      text,
+      text: optimisticText,
+      attachment,
       senderId: myUserId,
       sentAt,
       status: 'sending',
@@ -217,10 +238,7 @@ export function useConversation({
             senderName,
             sentAt,
             delivery,
-            payload: {
-              type: 'text',
-              text,
-            },
+            payload,
           },
         };
         privateTransport.send(JSON.stringify(envelope));
@@ -233,10 +251,7 @@ export function useConversation({
           senderName,
           sentAt,
           delivery,
-          payload: {
-            type: 'text',
-            text,
-          },
+          payload,
         });
         actions.markSent(tempId, saved.id);
       }

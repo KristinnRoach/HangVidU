@@ -197,6 +197,39 @@
   margin-inline: 0.5rem;
 }
 
+.fileInput {
+  display: none;
+}
+
+.attach {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: 0;
+  border: 1px solid #606060;
+  border-radius: 0.25rem;
+  background-color: #3e3e3e;
+  color: white;
+  cursor: pointer;
+}
+
+.attach:hover:not(:disabled) {
+  background-color: #4a4a4a;
+}
+
+.attach:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.attach:focus-visible {
+  outline: 2px solid #007aff;
+  outline-offset: 2px;
+}
+
 .growableTextArea {
   font-family: inherit;
   font-size: inherit;

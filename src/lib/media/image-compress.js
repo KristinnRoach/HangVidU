@@ -6,7 +6,7 @@
  *
  * @param {File} file - The image file to compress
  * @param {object} [opts]
- * @param {number} [opts.maxBytes=700_000] - Target max file size in bytes (accounts for base64 overhead)
+ * @param {number} [opts.maxBytes=700_000] - Target max compressed Blob size in bytes
  * @param {number} [opts.maxDimension=1280] - Starting max width or height in px
  * @returns {Promise<File|null>}
  */

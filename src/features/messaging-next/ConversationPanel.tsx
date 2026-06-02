@@ -9,12 +9,15 @@ import {
   on,
   onCleanup,
 } from 'solid-js';
+import { ImagePlus } from 'lucide-solid';
 import { getUserName } from '../../auth/index.js';
 
 import { useI18n } from '../../shared/i18n';
 import { LoadBoundary } from '../../components/app/LoadBoundary';
 import { showImagePreview } from '../../components/base-legacy/imagePreview.js';
+import { compressImage } from '@lib/media/image-compress.js';
 import { downloadUrl } from '@lib/utils/download-url.js';
+import { fileToBase64 } from '@lib/utils/file-to-base64.js';
 import { isIOSOrAndroidDevice } from '@lib/utils/detect-device.js';
 import { keepVirtualKeyboardOpenOnTap } from '@shared/utils/ui-utils/keepVirtualKeyboardOpenOnTap.js';
 
@@ -37,6 +40,11 @@ import styles from './ConversationPanel.module.css';
 const runtime = createMessagingRuntime();
 const DRAFT_SAVE_DELAY_MS = 250;
 const TIMESTAMP_THRESHOLD_MS = 5 * 60 * 1000;
+const MAX_INLINE_IMAGE_DATA_URL_CHARS = 700_000;
+const DATA_URL_METADATA_CHARS = 128;
+const MAX_INLINE_IMAGE_BINARY_BYTES = Math.floor(
+  ((MAX_INLINE_IMAGE_DATA_URL_CHARS - DATA_URL_METADATA_CHARS) * 3) / 4,
+);
 
 type TimestampFormatters = {
   time: Intl.DateTimeFormat;
@@ -160,6 +168,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
   let messagesEl: HTMLDivElement | undefined;
   let inputTextAreaEl: HTMLTextAreaElement | undefined;
+  let imageInputEl: HTMLInputElement | undefined;
   let sendButtonCleanup: (() => void) | undefined;
   let suppressScroll = false;
   let draftSaveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -229,6 +238,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   const [historyLoading, setHistoryLoading] = createSignal(false);
   const [historyError, setHistoryError] = createSignal<unknown>(null);
   const [historyReady, setHistoryReady] = createSignal(false);
+  const [imagePreparing, setImagePreparing] = createSignal(false);
 
   function shouldShowTimestamp(message: ChatMessage, index: number) {
     const previous = state.messages[index - 1];
@@ -353,17 +363,76 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     sendButtonCleanup?.();
   });
 
+  function clearPersistedDraftIfNeeded() {
+    const { conversationId, myUserId } = state;
+    if (!conversationId || !myUserId || !state.draft.trim()) return;
+
+    clearDraftSaveTimer();
+    pendingDraft = undefined;
+    clearLocalDraft(myUserId, conversationId);
+  }
+
   function onSubmit(e: SubmitEvent) {
     e.preventDefault();
-    if (state.sending) return;
+    if (state.sending || imagePreparing()) return;
 
-    const { conversationId, myUserId } = state;
-    if (conversationId && myUserId && state.draft.trim()) {
-      clearDraftSaveTimer();
-      pendingDraft = undefined;
-      clearLocalDraft(myUserId, conversationId);
-    }
+    clearPersistedDraftIfNeeded();
     void send();
+  }
+
+  async function onImageInput(
+    e: Event & { currentTarget: HTMLInputElement },
+  ) {
+    const file = e.currentTarget.files?.[0];
+    e.currentTarget.value = '';
+    if (!file || state.sending || imagePreparing()) return;
+
+    const mimeType = file.type.toLowerCase();
+    if (!mimeType.startsWith('image/') || mimeType === 'image/svg+xml') {
+      window.alert('Choose a PNG, JPEG, GIF, WebP, or similar image.');
+      return;
+    }
+
+    setImagePreparing(true);
+    try {
+      const compressed = await compressImage(file, {
+        maxBytes: MAX_INLINE_IMAGE_BINARY_BYTES,
+      });
+      const image =
+        compressed ??
+        (file.size <= MAX_INLINE_IMAGE_BINARY_BYTES ? file : null);
+
+      if (!image) {
+        window.alert('Choose a smaller image for this browser test.');
+        return;
+      }
+
+      const data = await fileToBase64(image);
+      if (typeof data !== 'string') {
+        throw new Error('image data URL conversion failed');
+      }
+      if (data.length > MAX_INLINE_IMAGE_DATA_URL_CHARS) {
+        window.alert('Choose a smaller image for this browser test.');
+        return;
+      }
+
+      const caption = state.draft.trim();
+      clearPersistedDraftIfNeeded();
+      await send({
+        type: 'file',
+        fileName: image.name || file.name || 'image',
+        mimeType: image.type || file.type || 'image/*',
+        fileSize: image.size,
+        data,
+        text: caption || undefined,
+      });
+    } catch (error) {
+      console.warn('[conversation] failed to send image attachment', error);
+      window.alert('Image send failed.');
+    } finally {
+      setImagePreparing(false);
+      inputTextAreaEl?.focus();
+    }
   }
 
   function onDraftKeyDown(
@@ -378,7 +447,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
       return;
 
     e.preventDefault();
-    if (state.sending) return;
+    if (state.sending || imagePreparing()) return;
 
     e.currentTarget.form?.requestSubmit();
   }
@@ -546,6 +615,23 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         </LoadBoundary>
 
         <form class={styles.form} onSubmit={onSubmit}>
+          <input
+            ref={imageInputEl}
+            class={styles.fileInput}
+            type='file'
+            accept='image/*'
+            onChange={onImageInput}
+          />
+          <button
+            class={styles.attach}
+            type='button'
+            aria-label='Attach image'
+            title='Attach image'
+            disabled={state.sending || imagePreparing()}
+            onClick={() => imageInputEl?.click()}
+          >
+            <ImagePlus size={20} aria-hidden='true' />
+          </button>
           <textarea
             autofocus
             ref={inputTextAreaEl}
@@ -563,7 +649,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
             ref={attachSendButton}
             class={styles.send}
             type='submit'
-            disabled={!state.draft.trim() || state.sending}
+            disabled={!state.draft.trim() || state.sending || imagePreparing()}
           >
             Send
           </button>

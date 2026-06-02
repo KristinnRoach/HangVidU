@@ -25,7 +25,6 @@ import { ConversationNodeSchema } from '../schema.js';
 import type {
   ConversationId,
   ConversationNode,
-  MessageEnvelope,
   UserId,
 } from '../types.js';
 
@@ -132,15 +131,6 @@ function toIncoming(
   };
 }
 
-function requireTextPayload(message: MessageEnvelope) {
-  if (message.payload.type !== 'text') {
-    throw new Error(
-      'RTDB legacy adapter currently supports text payloads only',
-    );
-  }
-  return message.payload;
-}
-
 function toConversationNode(raw: unknown): ConversationNode | null {
   const parsed = ConversationNodeSchema.safeParse(raw);
   return parsed.success ? parsed.data : null;
@@ -202,15 +192,42 @@ export function createRTDBMessageRepository(): MessageRepository {
     },
 
     async send(message) {
-      const payload = requireTextPayload(message);
-      await set(msgRef(message.conversationId, message.messageId), {
+      const base = {
         from: message.senderId,
         fromName: message.senderName ?? 'Guest User',
-        text: payload.text,
-        type: 'text',
         sentAt: serverTimestamp(),
         read: false,
-      });
+      };
+      const hasFileContent =
+        message.payload.type === 'file' &&
+        (Boolean(message.payload.data?.trim()) ||
+          Boolean(message.payload.url?.trim()) ||
+          Boolean(message.payload.storage));
+
+      if (message.payload.type === 'file' && !hasFileContent) {
+        throw new Error('file message payload requires data, url, or storage');
+      }
+
+      const payload: Record<string, unknown> =
+        message.payload.type === 'file'
+          ? {
+              ...base,
+              type: 'file',
+              fileName: message.payload.fileName,
+              mimeType: message.payload.mimeType,
+              fileSize: message.payload.fileSize,
+              data: message.payload.data ?? null,
+              url: message.payload.url ?? null,
+              storage: message.payload.storage ?? null,
+              text: message.payload.text ?? '',
+            }
+          : {
+              ...base,
+              type: 'text',
+              text: message.payload.text,
+            };
+
+      await set(msgRef(message.conversationId, message.messageId), payload);
       return { id: message.messageId, sentAt: Date.now() };
     },
 
