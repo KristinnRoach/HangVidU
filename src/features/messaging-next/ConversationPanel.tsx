@@ -16,6 +16,7 @@ import { LoadBoundary } from '../../components/app/LoadBoundary';
 import { showImagePreview } from '../../components/base-legacy/imagePreview.js';
 import { downloadUrl } from '@lib/utils/download-url.js';
 import { isIOSOrAndroidDevice } from '@lib/utils/detect-device.js';
+import { keepVirtualKeyboardOpenOnTap } from '@shared/utils/ui-utils/keepVirtualKeyboardOpenOnTap.js';
 
 import { createMessagingRuntime } from './messaging-runtime.js';
 
@@ -137,6 +138,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
   let messagesEl: HTMLDivElement | undefined;
   let inputTextAreaEl: HTMLTextAreaElement | undefined;
+  let sendButtonCleanup: (() => void) | undefined;
   let suppressScroll = false;
   let draftSaveTimer: ReturnType<typeof setTimeout> | undefined;
   let pendingDraft:
@@ -149,6 +151,13 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
   function focusInput() {
     inputTextAreaEl?.focus();
+  }
+
+  function attachSendButton(el: HTMLButtonElement) {
+    sendButtonCleanup?.();
+    sendButtonCleanup = isIOSOrAndroidDevice()
+      ? keepVirtualKeyboardOpenOnTap(el, () => el.form?.requestSubmit())
+      : undefined;
   }
 
   function clearDraftSaveTimer() {
@@ -316,10 +325,13 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
   onCleanup(() => {
     flushDraftSave();
+    sendButtonCleanup?.();
   });
 
   function onSubmit(e: SubmitEvent) {
     e.preventDefault();
+    if (state.sending) return;
+
     const { conversationId, myUserId } = state;
     if (conversationId && myUserId && state.draft.trim()) {
       clearDraftSaveTimer();
@@ -335,6 +347,8 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     if (e.key !== 'Enter' || e.shiftKey || isIOSOrAndroidDevice()) return;
 
     e.preventDefault();
+    if (state.sending) return;
+
     e.currentTarget.form?.requestSubmit();
   }
 
@@ -513,9 +527,9 @@ export default function ConversationPanel(props: ConversationPanelProps) {
               queueDraftSave(text);
             }}
             onKeyDown={onDraftKeyDown}
-            disabled={state.sending}
           />
           <button
+            ref={attachSendButton}
             class={styles.send}
             type='submit'
             disabled={!state.draft.trim() || state.sending}
