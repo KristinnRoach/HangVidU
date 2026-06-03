@@ -9,7 +9,7 @@ const JWKS_URL =
 
 let privateKey: CryptoKey;
 const originalFetch = globalThis.fetch;
-let allowGroupMember = false;
+const participants = new Map<string, { status?: string }>();
 
 function b64urlFromString(s: string): string {
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -39,6 +39,30 @@ async function signToken(claims: Record<string, unknown>): Promise<string> {
   const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
   const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', privateKey, data);
   return `${headerB64}.${payloadB64}.${b64urlFromBytes(sig)}`;
+}
+
+function allowParticipant(conversationId: string, userId: string) {
+  participants.set(`${conversationId}/${userId}`, { status: 'active' });
+}
+
+function setParticipantStatus(
+  conversationId: string,
+  userId: string,
+  status: string,
+) {
+  participants.set(`${conversationId}/${userId}`, { status });
+}
+
+function participantFromUrl(url: string) {
+  const match = /\/conversations\/([^/]+)\/participants\/([^/]+)\.json/.exec(
+    url,
+  );
+  if (!match) return null;
+
+  return {
+    conversationId: decodeURIComponent(match[1]),
+    userId: decodeURIComponent(match[2]),
+  };
 }
 
 function request(
@@ -94,12 +118,19 @@ beforeAll(async () => {
         headers: { 'cache-control': 'max-age=3600' },
       });
     }
-    if (
-      allowGroupMember &&
-      (url.includes('/conversations/group%3Aabc/members/user-a.json') ||
-        url.includes('/conversations/group:abc/members/user-a.json'))
-    ) {
-      return new Response(JSON.stringify({ role: 'member' }), { status: 200 });
+    const participant = participantFromUrl(url);
+    if (participant) {
+      const record = participants.get(
+        `${participant.conversationId}/${participant.userId}`,
+      );
+      return new Response(
+        JSON.stringify(
+          record
+            ? { userId: participant.userId, role: 'member', ...record }
+            : null,
+        ),
+        { status: 200 },
+      );
     }
     return originalFetch(input, init);
   }) as typeof fetch;
@@ -110,7 +141,7 @@ afterAll(() => {
 });
 
 beforeEach(() => {
-  allowGroupMember = false;
+  participants.clear();
 });
 
 describe('files worker routing + auth', () => {
@@ -149,6 +180,8 @@ describe('files worker routing + auth', () => {
   it('lets direct-message members upload and fetch an image', async () => {
     const uploadToken = await signToken(validClaims('user-a'));
     const getToken = await signToken(validClaims('user-b'));
+    allowParticipant('user-a_user-b', 'user-a');
+    allowParticipant('user-a_user-b', 'user-b');
 
     const upload = await request('/conversations/user-a_user-b/files/images', {
       method: 'POST',
@@ -194,9 +227,22 @@ describe('files worker routing + auth', () => {
     expect(res.status).toBe(403);
   });
 
+  it('403s inactive conversation participants', async () => {
+    const token = await signToken(validClaims('user-a'));
+    setParticipantStatus('user-a_user-b', 'user-a', 'removed');
+    const res = await request('/conversations/user-a_user-b/files/images', {
+      method: 'POST',
+      token,
+      contentType: 'image/png',
+      body: 'image',
+    });
+
+    expect(res.status).toBe(403);
+  });
+
   it('authorizes group conversations through RTDB membership', async () => {
     const token = await signToken(validClaims('user-a'));
-    allowGroupMember = true;
+    allowParticipant('group:abc', 'user-a');
 
     const upload = await request('/conversations/group%3Aabc/files/images', {
       method: 'POST',
@@ -210,6 +256,7 @@ describe('files worker routing + auth', () => {
 
   it('rejects oversized uploads before storing', async () => {
     const token = await signToken(validClaims());
+    allowParticipant('user-a_user-b', 'user-a');
     const res = await request('/conversations/user-a_user-b/files/images', {
       method: 'POST',
       token,
@@ -222,6 +269,7 @@ describe('files worker routing + auth', () => {
 
   it('rejects non-image uploads', async () => {
     const token = await signToken(validClaims());
+    allowParticipant('user-a_user-b', 'user-a');
     const res = await request('/conversations/user-a_user-b/files/images', {
       method: 'POST',
       token,

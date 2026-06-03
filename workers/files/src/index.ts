@@ -93,16 +93,12 @@ async function authorizeConversation(
   identity: Identity,
   env: Env,
 ): Promise<boolean> {
-  if (!conversationId.startsWith('group:')) {
-    return conversationId.split('_').includes(identity.userId);
-  }
-
   const base = env.FIREBASE_DATABASE_URL.replace(/\/$/, '');
   const url = `${base}/conversations/${encodeURIComponent(
     conversationId,
-  )}/members/${encodeURIComponent(identity.userId)}.json?auth=${encodeURIComponent(
-    identity.token,
-  )}`;
+  )}/participants/${encodeURIComponent(
+    identity.userId,
+  )}.json?auth=${encodeURIComponent(identity.token)}`;
 
   let membership: Response;
   try {
@@ -113,7 +109,13 @@ async function authorizeConversation(
   if (!membership.ok) return false;
 
   try {
-    return (await membership.json()) !== null;
+    const participant = (await membership.json()) as
+      | { status?: unknown }
+      | null;
+    return (
+      participant !== null &&
+      (participant.status === undefined || participant.status === 'active')
+    );
   } catch {
     return false;
   }

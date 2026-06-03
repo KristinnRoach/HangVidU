@@ -71,12 +71,11 @@ Do not carry over:
   - `GET /conversations/:conversationId/files/:fileId` (proxied download),
     content-type set from stored metadata
   - `DELETE /conversations/:conversationId/files/:fileId` best-effort cleanup
-- **Authorization (hybrid, confirmed feasible & not scattered):**
-  - DM (id is derived `a_b`, no `group:` prefix): authorize if caller's uid is in
-    `conversationId.split('_')`. No DB read.
-  - Group (`group:` prefix): one RTDB existence read at
-    `conversations/{conversationId}/members/{callerUid}` (the adapter already
-    uses this path — `adapters/rtdb.ts` ~line 47).
+- **Authorization:** one RTDB read for all conversation kinds at
+  `conversations/{conversationId}/participants/{callerUid}` using the caller's
+  Firebase ID token. Missing participants are rejected. Participants are accepted
+  only when `status` is `"active"` or omitted for legacy/default data. The Worker
+  must not infer DM membership from the derived direct conversation id.
 
 ## Client wiring
 
@@ -99,7 +98,7 @@ Do not carry over:
 ## Checklist (fill in during implementation)
 
 - [x] Scaffold `workers/files/` (wrangler.jsonc, R2 binding, auth seam, local dev).
-- [x] Upload endpoint + authz (DM derived-id; group RTDB members read).
+- [x] Upload endpoint + authz (RTDB participants read for all conversations).
 - [x] Download/serve endpoint + same authz; correct content-type.
 - [x] Client: upload-then-send-file-message path (images).
 - [x] Client: render R2-backed image messages.
