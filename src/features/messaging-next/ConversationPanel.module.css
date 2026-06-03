@@ -209,15 +209,16 @@
   width: 2.35rem;
   height: 2.35rem;
   padding: 0;
-  border: 1px solid #606060;
   border-radius: 0.25rem;
-  background-color: #3e3e3e;
-  color: white;
+  background: transparent;
   cursor: pointer;
+  transform: translateY(0);
+  transition: transform 0.1s ease-out;
 }
 
 .attach:hover:not(:disabled) {
-  background-color: #4a4a4a;
+  background: transparent;
+  transform: translateY(-6px);
 }
 
 .attach:disabled {
