@@ -66,19 +66,14 @@ export const FileMessagePayloadSchema = z.object({
   fileName: z.string().trim().min(1),
   mimeType: z.string().trim().min(1),
   fileSize: z.number().int().nonnegative(),
-  data: z.string().min(1).optional(),
-  url: z.string().url().optional(),
   storage: z
     .object({
       provider: z.literal('r2'),
       bucket: z.string().trim().min(1),
       key: z.string().trim().min(1),
     })
-    .passthrough()
-    .optional(),
+    .passthrough(),
   text: z.string().optional(),
-}).refine((payload) => payload.data || payload.url || payload.storage, {
-  message: 'file payload must include data, url, or storage metadata',
 });
 
 export const EventMessagePayloadSchema = z.object({

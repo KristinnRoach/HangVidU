@@ -222,9 +222,7 @@ export type MessageAttachment = {
   fileName: string;
   mimeType: string;
   fileSize: number;
-  data?: string;
-  url?: string;
-  storage?: {
+  storage: {
     provider: 'r2';
     bucket: string;
     key: string;

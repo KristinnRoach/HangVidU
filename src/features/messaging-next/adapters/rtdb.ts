@@ -80,18 +80,26 @@ function toIncoming(
   };
 
   if (raw.type === 'file') {
-    const data = typeof raw.data === 'string' ? raw.data : undefined;
-    const url = typeof raw.url === 'string' ? raw.url : undefined;
     const storage =
       raw.storage && typeof raw.storage === 'object'
         ? (raw.storage as Record<string, unknown>)
+        : undefined;
+    const r2Storage =
+      storage?.provider === 'r2' &&
+      typeof storage.bucket === 'string' &&
+      typeof storage.key === 'string'
+        ? {
+            provider: 'r2' as const,
+            bucket: storage.bucket,
+            key: storage.key,
+          }
         : undefined;
 
     if (
       typeof raw.fileName !== 'string' ||
       typeof raw.mimeType !== 'string' ||
       typeof raw.fileSize !== 'number' ||
-      (!data && !url && !storage)
+      !r2Storage
     ) {
       return null;
     }
@@ -103,18 +111,7 @@ function toIncoming(
         fileName: raw.fileName,
         mimeType: raw.mimeType,
         fileSize: raw.fileSize,
-        data,
-        url,
-        storage:
-          storage?.provider === 'r2' &&
-          typeof storage.bucket === 'string' &&
-          typeof storage.key === 'string'
-            ? {
-                provider: 'r2',
-                bucket: storage.bucket,
-                key: storage.key,
-              }
-            : undefined,
+        storage: r2Storage,
         text: typeof raw.text === 'string' ? raw.text : undefined,
       },
     };

@@ -53,47 +53,12 @@ type TimestampFormatters = {
 
 const timestampFormattersByLocale = new Map<string, TimestampFormatters>();
 
-function dataUrlMimeType(url: string) {
-  const match = /^data:([^;,]+)[;,]/i.exec(url);
-  return match?.[1]?.toLowerCase() ?? 'text/plain';
-}
-
-function hasAllowedDataUrl(attachment: MessageAttachment) {
-  if (!attachment.data) return false;
-  if (!attachment.data.startsWith('data:')) return false;
-
-  const declaredMimeType = attachment.mimeType.trim().toLowerCase();
-  const actualMimeType = dataUrlMimeType(attachment.data);
-  return (
-    actualMimeType === declaredMimeType &&
-    actualMimeType !== 'text/html' &&
-    actualMimeType !== 'image/svg+xml'
-  );
-}
-
 function isImageAttachment(attachment: MessageAttachment) {
   return attachment.mimeType.trim().toLowerCase().startsWith('image/');
 }
 
-function getAttachmentUrl(attachment: MessageAttachment) {
-  return attachment.url ?? attachment.data ?? null;
-}
-
-function isR2ImageAttachment(
-  attachment: MessageAttachment,
-): attachment is MessageAttachment & {
-  storage: NonNullable<MessageAttachment['storage']>;
-} {
-  return (
-    isImageAttachment(attachment) &&
-    !attachment.data &&
-    !attachment.url &&
-    attachment.storage?.provider === 'r2'
-  );
-}
-
-function isAllowedRemoteUrl(url: string | null) {
-  return Boolean(url?.startsWith('https://'));
+function isR2ImageAttachment(attachment: MessageAttachment) {
+  return isImageAttachment(attachment) && attachment.storage.provider === 'r2';
 }
 
 function formatFileSize(bytes: number) {
@@ -640,29 +605,18 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                             {(attachment) => {
                               const file = attachment();
                               const attachmentUrl = () =>
-                                getAttachmentUrl(file) ??
-                                r2AttachmentUrls()[msg.id] ??
-                                null;
-                              const allowedDataUrl = () =>
-                                hasAllowedDataUrl(file);
+                                r2AttachmentUrls()[msg.id] ?? null;
                               const canPreview = () => {
                                 const url = attachmentUrl();
                                 return (
                                   Boolean(url) &&
-                                  (allowedDataUrl() ||
-                                    url?.startsWith('blob:') ||
-                                    isAllowedRemoteUrl(url)) &&
+                                  url?.startsWith('blob:') &&
                                   isImageAttachment(file)
                                 );
                               };
                               const canDownload = () => {
                                 const url = attachmentUrl();
-                                return (
-                                  Boolean(url) &&
-                                  (allowedDataUrl() ||
-                                    url?.startsWith('blob:') ||
-                                    isAllowedRemoteUrl(url))
-                                );
+                                return Boolean(url) && url?.startsWith('blob:');
                               };
                               function openPreview(url: string) {
                                 showImagePreview(url, file.fileName, null, {

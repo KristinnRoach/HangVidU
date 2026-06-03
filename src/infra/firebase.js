@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import {
+  getToken as getAppCheckToken,
   initializeAppCheck,
   ReCaptchaEnterpriseProvider,
   CustomProvider,
@@ -27,7 +28,7 @@ if (
     // This tells App Check to use this specific token for debugging.
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = appCheckExplicitDebugToken;
     console.info(
-      `[Firebase App Check: DEV] Using explicit debug token from .env: ${appCheckExplicitDebugToken}`,
+      `[Firebase App Check: DEV] Using explicit debug token from .env`,
     );
   } else {
     // If no explicit token, allow App Check to auto-generate and log a new one.
@@ -125,19 +126,34 @@ else {
 // Initialize App Check via microtask to avoid synchronous startup cost
 // ReCaptcha Enterprise script will be loaded on-demand by Firebase's internal logic
 let appCheckInitialized = false;
+let appCheckInstance = null;
 
 function initializeAppCheckDeferred() {
-  if (appCheckInitialized) return;
-  if (!appCheckProvider) return;
+  if (appCheckInitialized) return appCheckInstance;
+  if (!appCheckProvider) return null;
 
   try {
-    initializeAppCheck(app, {
+    appCheckInstance = initializeAppCheck(app, {
       provider: appCheckProvider,
       isTokenAutoRefreshEnabled: true,
     });
     appCheckInitialized = true;
   } catch (err) {
     console.error('[Firebase App Check] initializeAppCheck call failed:', err);
+  }
+
+  return appCheckInstance;
+}
+
+async function getFirebaseAppCheckToken() {
+  const appCheck = initializeAppCheckDeferred();
+  if (!appCheck) return null;
+
+  try {
+    return (await getAppCheckToken(appCheck, false)).token;
+  } catch (err) {
+    console.error('[Firebase App Check] getToken call failed:', err);
+    return null;
   }
 }
 
@@ -147,4 +163,4 @@ function initializeAppCheckDeferred() {
 // minimize the race window before first Firebase API calls.
 Promise.resolve().then(initializeAppCheckDeferred);
 
-export { initializeAppCheckDeferred };
+export { getFirebaseAppCheckToken, initializeAppCheckDeferred };

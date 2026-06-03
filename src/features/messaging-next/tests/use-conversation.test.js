@@ -37,7 +37,7 @@ describe('messaging-next useConversation', () => {
     expect(loaded.map((msg) => msg.id)).toEqual(['msg-1', 'msg-2', 'msg-3']);
   });
 
-  it('maps legacy file envelopes into chat attachments', async () => {
+  it('maps R2 file envelopes into chat attachments', async () => {
     const repository = {
       loadMessages: () => [
         envelope({
@@ -46,7 +46,11 @@ describe('messaging-next useConversation', () => {
             fileName: 'demo.png',
             mimeType: 'image/png',
             fileSize: 123,
-            data: 'data:image/png;base64,abc',
+            storage: {
+              provider: 'r2',
+              bucket: 'hangvidu-files',
+              key: 'conversation-files/conversation-1/msg-1',
+            },
           },
         }),
       ],
@@ -62,7 +66,11 @@ describe('messaging-next useConversation', () => {
         fileName: 'demo.png',
         mimeType: 'image/png',
         fileSize: 123,
-        data: 'data:image/png;base64,abc',
+        storage: {
+          provider: 'r2',
+          bucket: 'hangvidu-files',
+          key: 'conversation-files/conversation-1/msg-1',
+        },
       },
     });
   });
@@ -162,7 +170,7 @@ describe('messaging-next useConversation', () => {
       storage: {
         provider: 'r2',
         bucket: 'hangvidu-files',
-        key: 'conversation-1/file-1',
+        key: 'conversation-files/conversation-1/file-1',
       },
       text: '  caption  ',
     });
@@ -180,7 +188,7 @@ describe('messaging-next useConversation', () => {
           storage: {
             provider: 'r2',
             bucket: 'hangvidu-files',
-            key: 'conversation-1/file-1',
+            key: 'conversation-files/conversation-1/file-1',
           },
           text: 'caption',
         },
@@ -199,7 +207,7 @@ describe('messaging-next useConversation', () => {
         storage: {
           provider: 'r2',
           bucket: 'hangvidu-files',
-          key: 'conversation-1/file-1',
+          key: 'conversation-files/conversation-1/file-1',
         },
       },
     });

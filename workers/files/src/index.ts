@@ -9,8 +9,9 @@ export interface Env {
 }
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const CONVERSATION_FILE_PREFIX = 'conversation-files';
 const IMAGE_UPLOAD_PATH = /^\/conversations\/([^/]+)\/files\/images$/;
-const FILE_PATH = /^\/conversations\/([^/]+)\/files\/([^/]+)$/;
+const FILE_OBJECT_PATH = /^\/conversations\/([^/]+)\/files\/object$/;
 
 function allowedOrigin(request: Request, env: Env): string | null {
   const origin = request.headers.get('Origin');
@@ -26,7 +27,8 @@ function corsHeaders(origin: string): HeadersInit {
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
-    'Access-Control-Allow-Headers': 'Authorization,Content-Type',
+    'Access-Control-Allow-Headers':
+      'Authorization,Content-Type,X-Firebase-AppCheck',
     'Access-Control-Expose-Headers': 'Content-Length,Content-Type,ETag',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
@@ -84,11 +86,29 @@ function isImageMimeType(value: string | null): value is string {
   return mimeType.startsWith('image/') && mimeType !== 'image/svg+xml';
 }
 
-function objectKey(conversationId: string, fileId: string) {
-  return `${conversationId}/${fileId}`;
+function objectKey(conversationId: string, objectId: string) {
+  return `${CONVERSATION_FILE_PREFIX}/${conversationId}/${objectId}`;
+}
+
+function keyHasPrefixObject(key: string, prefix: string) {
+  return key.startsWith(prefix) && key.length > prefix.length;
+}
+
+function keyBelongsToConversation(key: string, conversationId: string) {
+  return keyHasPrefixObject(
+    key,
+    `${CONVERSATION_FILE_PREFIX}/${conversationId}/`,
+  );
+}
+
+function storageKeyFromUrl(url: URL, conversationId: string) {
+  const key = url.searchParams.get('key')?.trim();
+  if (!key || !keyBelongsToConversation(key, conversationId)) return null;
+  return key;
 }
 
 async function authorizeConversation(
+  request: Request,
   conversationId: string,
   identity: Identity,
   env: Env,
@@ -96,25 +116,30 @@ async function authorizeConversation(
   const base = env.FIREBASE_DATABASE_URL.replace(/\/$/, '');
   const url = `${base}/conversations/${encodeURIComponent(
     conversationId,
-  )}/participants/${encodeURIComponent(
+  )}/members/${encodeURIComponent(
     identity.userId,
   )}.json?auth=${encodeURIComponent(identity.token)}`;
+  const appCheckToken = request.headers.get('X-Firebase-AppCheck')?.trim();
 
   let membership: Response;
   try {
-    membership = await fetch(url);
+    membership = await fetch(url, {
+      headers: appCheckToken
+        ? { 'X-Firebase-AppCheck': appCheckToken }
+        : undefined,
+    });
   } catch {
     return false;
   }
   if (!membership.ok) return false;
 
   try {
-    const participant = (await membership.json()) as
+    const member = (await membership.json()) as
       | { status?: unknown }
       | null;
     return (
-      participant !== null &&
-      (participant.status === undefined || participant.status === 'active')
+      member !== null &&
+      (member.status === undefined || member.status === 'active')
     );
   } catch {
     return false;
@@ -170,8 +195,7 @@ async function handleUpload(
     return json(request, env, { error: 'image too large' }, { status: 413 });
   }
 
-  const fileId = crypto.randomUUID();
-  const key = objectKey(conversationId, fileId);
+  const key = objectKey(conversationId, crypto.randomUUID());
   await env.FILES_BUCKET.put(key, body, {
     httpMetadata: { contentType: mimeType },
     customMetadata: {
@@ -187,7 +211,6 @@ async function handleUpload(
       provider: 'r2',
       bucket: env.R2_BUCKET_NAME,
       key,
-      fileId,
     },
     { status: 201 },
   );
@@ -196,10 +219,9 @@ async function handleUpload(
 async function handleDownload(
   request: Request,
   env: Env,
-  conversationId: string,
-  fileId: string,
+  key: string,
 ) {
-  const object = await env.FILES_BUCKET.get(objectKey(conversationId, fileId));
+  const object = await env.FILES_BUCKET.get(key);
   if (!object) return response(request, env, 'Not found', { status: 404 });
 
   const headers = new Headers();
@@ -215,10 +237,9 @@ async function handleDownload(
 async function handleDelete(
   request: Request,
   env: Env,
-  conversationId: string,
-  fileId: string,
+  key: string,
 ) {
-  await env.FILES_BUCKET.delete(objectKey(conversationId, fileId));
+  await env.FILES_BUCKET.delete(key);
   return response(request, env, null, { status: 204 });
 }
 
@@ -235,8 +256,8 @@ export default {
 
     const url = new URL(request.url);
     const uploadMatch = url.pathname.match(IMAGE_UPLOAD_PATH);
-    const fileMatch = url.pathname.match(FILE_PATH);
-    if (!uploadMatch && !fileMatch) {
+    const objectMatch = url.pathname.match(FILE_OBJECT_PATH);
+    if (!uploadMatch && !objectMatch) {
       return response(request, env, 'Not found', { status: 404 });
     }
 
@@ -246,15 +267,13 @@ export default {
     }
 
     let conversationId: string;
-    let fileId: string | undefined;
     try {
-      conversationId = decodeURIComponent((uploadMatch ?? fileMatch)![1]);
-      fileId = fileMatch ? decodeURIComponent(fileMatch[2]) : undefined;
+      conversationId = decodeURIComponent((uploadMatch ?? objectMatch)![1]);
     } catch {
       return response(request, env, 'Invalid path', { status: 400 });
     }
 
-    if (!(await authorizeConversation(conversationId, identity, env))) {
+    if (!(await authorizeConversation(request, conversationId, identity, env))) {
       return response(request, env, 'Forbidden', { status: 403 });
     }
 
@@ -265,11 +284,16 @@ export default {
       return handleUpload(request, env, conversationId, identity);
     }
 
-    if (request.method === 'GET' && fileId) {
-      return handleDownload(request, env, conversationId, fileId);
+    const key = storageKeyFromUrl(url, conversationId);
+    if (!key) {
+      return response(request, env, 'Invalid file key', { status: 400 });
     }
-    if (request.method === 'DELETE' && fileId) {
-      return handleDelete(request, env, conversationId, fileId);
+
+    if (request.method === 'GET') {
+      return handleDownload(request, env, key);
+    }
+    if (request.method === 'DELETE') {
+      return handleDelete(request, env, key);
     }
     return response(request, env, 'Method not allowed', { status: 405 });
   },

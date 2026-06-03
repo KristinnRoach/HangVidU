@@ -1,4 +1,5 @@
 import { getLoggedInUserToken } from '../auth/index.js';
+import { getFirebaseAppCheckToken } from '../infra/firebase.js';
 import {
   createFilesClient,
   type R2StorageDescriptor,
@@ -17,6 +18,7 @@ function getFilesBaseUrl() {
 const filesClient = createFilesClient({
   baseUrl: getFilesBaseUrl(),
   getToken: getLoggedInUserToken,
+  getAppCheckToken: getFirebaseAppCheckToken,
 });
 
 export function uploadConversationImage(

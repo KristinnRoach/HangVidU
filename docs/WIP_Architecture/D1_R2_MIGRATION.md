@@ -26,7 +26,7 @@ conversationId
 │   ├── message_attachments        # target state only
 │   └── message_reactions          # target state only (added vs original sketch)
 ├── R2 (files)
-│   └── {conversationId}/{fileId}
+│   └── conversation-files/{conversationId}/{objectId}
 └── Durable Object (realtime)
     └── one room per conversationId  (signaling + presence + call handshake)
 ```
@@ -231,8 +231,9 @@ Decisions baked in:
 - `last_read_at` lives on `conversation_members` (it is per-conversation-per-user
   by definition). `ConversationActivity` becomes a join, no separate store.
 - `message_reactions` replaces the RTDB `emoji → userId → true` nesting.
-- R2 key (`{conversationId}/{fileId}`) is stored whole in `message_attachments`;
-  never string-built at read time. Deleting a conversation = delete the R2 prefix.
+- R2 key (`conversation-files/{conversationId}/{objectId}`) is stored whole in
+  `message_attachments`; never string-built at read time. Deleting a
+  conversation = delete the R2 prefix.
 
 ---
 
@@ -388,8 +389,9 @@ Deferred from Slice C (do later):
 
 ### Slice D — files on R2
 
-- [ ] Worker: presigned/proxied upload to `{conversationId}/{fileId}`; on success
-      insert `message_attachments` + a `file` message.
+- [ ] Worker: presigned/proxied upload to
+      `conversation-files/{conversationId}/{objectId}`; on success insert
+      `message_attachments` + a `file` message.
 - [ ] Download/serve guarded by conversation membership.
 - **Verify:** send a file in a conversation, reload, re-download from R2.
 

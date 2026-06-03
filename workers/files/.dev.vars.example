@@ -1,4 +1,4 @@
-R2_BUCKET_NAME=hangvidu-files
-FIREBASE_PROJECT_ID=vidu-aae11
-FIREBASE_DATABASE_URL=https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app
-ALLOWED_ORIGINS=https://hangvidu.com,https://www.hangvidu.com,https://vidu-aae11.web.app,https://vidu-aae11.firebaseapp.com,http://localhost:5173,https://localhost:5173
+R2_BUCKET_NAME=
+FIREBASE_PROJECT_ID=
+FIREBASE_DATABASE_URL=
+ALLOWED_ORIGINS=

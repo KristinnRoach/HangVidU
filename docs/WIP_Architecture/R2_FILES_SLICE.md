@@ -15,9 +15,8 @@ this is deliberately decoupled from the paused message migration
 The messaging core already supports R2 file payloads on the read/model side —
 the schema and RTDB read adapter can already *carry* an R2 reference:
 
-- `FileMessagePayloadSchema` (`src/features/messaging-next/schema.ts`) already
-  accepts `storage: { provider: 'r2', bucket, key }` (alongside `url` / inline
-  `data`).
+- `FileMessagePayloadSchema` (`src/features/messaging-next/schema.ts`) accepts
+  `storage: { provider: 'r2', bucket, key }`.
 - The RTDB adapter read path (`src/features/messaging-next/adapters/rtdb.ts`,
   the `raw.type === 'file'` branch ~line 79) already parses that `storage`
   descriptor.
@@ -55,9 +54,11 @@ Do not carry over:
 
 ## Design (target for this slice)
 
-- **Blob storage:** R2 object at key `{conversationId}/{fileId}` (`fileId` =
-  `crypto.randomUUID()`). `conversationId` is the existing RTDB id (derived `a_b`
-  for DMs today).
+- **Blob storage:** R2 object at key
+  `conversation-files/{conversationId}/{objectId}` (`objectId` =
+  `crypto.randomUUID()` for new uploads). `conversationId` is the existing RTDB
+  id (derived `a_b` for DMs today). The full R2 key is the storage identifier;
+  there is no separate persisted `fileId`.
 - **Message:** normal RTDB file message with
   `payload.storage = { provider: 'r2', bucket, key }` + `fileName`, `mimeType`,
   `fileSize`. No D1 `message_attachments` row (that's the D1 design — out of
@@ -67,15 +68,16 @@ Do not carry over:
   Bearer seam from `workers/data/src/auth.ts` / `workers/signaling/src/auth.ts`.
   Endpoints:
   - `POST /conversations/:conversationId/files/images` (proxied upload) →
-    returns `{ provider, bucket, key, fileId }`
-  - `GET /conversations/:conversationId/files/:fileId` (proxied download),
-    content-type set from stored metadata
-  - `DELETE /conversations/:conversationId/files/:fileId` best-effort cleanup
+    returns `{ provider, bucket, key }`
+  - `GET /conversations/:conversationId/files/object?key=:key` (proxied
+    download), content-type set from stored metadata
+  - `DELETE /conversations/:conversationId/files/object?key=:key` best-effort
+    cleanup
 - **Authorization:** one RTDB read for all conversation kinds at
-  `conversations/{conversationId}/participants/{callerUid}` using the caller's
-  Firebase ID token. Missing participants are rejected. Participants are accepted
-  only when `status` is `"active"` or omitted for legacy/default data. The Worker
-  must not infer DM membership from the derived direct conversation id.
+  `conversations/{conversationId}/members/{callerUid}` using the caller's
+  Firebase ID token. Missing members are rejected. Members are accepted only
+  when `status` is `"active"` or omitted for default data. The Worker must not
+  infer DM membership from the derived direct conversation id.
 
 ## Client wiring
 
@@ -98,7 +100,7 @@ Do not carry over:
 ## Checklist (fill in during implementation)
 
 - [x] Scaffold `workers/files/` (wrangler.jsonc, R2 binding, auth seam, local dev).
-- [x] Upload endpoint + authz (RTDB participants read for all conversations).
+- [x] Upload endpoint + authz (RTDB members read for all conversations).
 - [x] Download/serve endpoint + same authz; correct content-type.
 - [x] Client: upload-then-send-file-message path (images).
 - [x] Client: render R2-backed image messages.
@@ -111,6 +113,9 @@ Do not carry over:
 - Upload mechanism: proxy through the worker.
 - Serve mechanism: proxy through the worker; the browser fetches with
   Authorization and renders a temporary object URL.
-- Bucket layout already fixed: `{conversationId}/{fileId}` (per migration doc;
-  deleting a conversation = delete the prefix).
+- Bucket layout for new writes:
+  `conversation-files/{conversationId}/{objectId}`. Deleting a conversation =
+  delete that prefix. Earlier migrated keys under
+  `conversations/{conversationId}/media/...` have been rewritten into the
+  canonical prefix.
 - Port assignment for `pnpm dev:files`: `8789` (signaling uses `8787`).

@@ -7,11 +7,10 @@ export type R2StorageDescriptor = {
 type FilesClientOptions = {
   baseUrl: string;
   getToken: () => Promise<string | null>;
+  getAppCheckToken?: () => Promise<string | null>;
 };
 
-type UploadResponse = R2StorageDescriptor & {
-  fileId: string;
-};
+type UploadResponse = R2StorageDescriptor;
 
 function normalizeBaseUrl(baseUrl: string) {
   const normalized = baseUrl.trim().replace(/\/+$/, '');
@@ -33,31 +32,37 @@ function normalizeBaseUrl(baseUrl: string) {
   return normalized;
 }
 
-export function createFilesClient({ baseUrl, getToken }: FilesClientOptions) {
+export function createFilesClient({
+  baseUrl,
+  getToken,
+  getAppCheckToken,
+}: FilesClientOptions) {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
 
   async function authHeaders() {
     const token = await getToken();
     if (!token) throw new Error('files client requires an authenticated user');
-    return { Authorization: `Bearer ${token}` };
-  }
-
-  function fileIdFromKey(conversationId: string, key: string) {
-    const prefix = `${conversationId}/`;
-    if (!key.startsWith(prefix)) {
-      throw new Error('R2 key does not belong to this conversation');
+    const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+    const appCheckToken = await getAppCheckToken?.();
+    if (appCheckToken) {
+      headers['X-Firebase-AppCheck'] = appCheckToken;
     }
-    const fileId = key.slice(prefix.length);
-    if (!fileId || fileId.includes('/')) {
-      throw new Error('R2 key does not contain a direct file id');
-    }
-    return fileId;
+    return headers;
   }
 
   function conversationFilesUrl(conversationId: string) {
     return `${normalizedBaseUrl}/conversations/${encodeURIComponent(
       conversationId,
     )}/files`;
+  }
+
+  function conversationFileObjectUrl(
+    conversationId: string,
+    storage: R2StorageDescriptor,
+  ) {
+    return `${conversationFilesUrl(conversationId)}/object?key=${encodeURIComponent(
+      storage.key,
+    )}`;
   }
 
   return {
@@ -97,8 +102,7 @@ export function createFilesClient({ baseUrl, getToken }: FilesClientOptions) {
       storage: R2StorageDescriptor,
       signal?: AbortSignal,
     ) {
-      const fileId = fileIdFromKey(conversationId, storage.key);
-      const response = await fetch(`${conversationFilesUrl(conversationId)}/${fileId}`, {
+      const response = await fetch(conversationFileObjectUrl(conversationId, storage), {
         headers: await authHeaders(),
         signal,
       });
@@ -110,8 +114,7 @@ export function createFilesClient({ baseUrl, getToken }: FilesClientOptions) {
     },
 
     async deleteFile(conversationId: string, storage: R2StorageDescriptor) {
-      const fileId = fileIdFromKey(conversationId, storage.key);
-      const response = await fetch(`${conversationFilesUrl(conversationId)}/${fileId}`, {
+      const response = await fetch(conversationFileObjectUrl(conversationId, storage), {
         method: 'DELETE',
         headers: await authHeaders(),
       });

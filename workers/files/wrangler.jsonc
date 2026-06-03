@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "hangvidu-files",
+  "account_id": "a9d78083083154be83f36552c213a269",
   "main": "src/index.ts",
   "compatibility_date": "2026-06-02",
   "observability": { "enabled": true },
