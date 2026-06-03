@@ -49,21 +49,18 @@ function request(
     origin = ORIGIN,
     body,
     contentType,
-    contentLength,
   }: {
     method?: string;
     token?: string;
     origin?: string | null;
     body?: BodyInit;
     contentType?: string;
-    contentLength?: string;
   } = {},
 ) {
   const headers: Record<string, string> = {};
   if (origin) headers.Origin = origin;
   if (token) headers.Authorization = `Bearer ${token}`;
   if (contentType) headers['Content-Type'] = contentType;
-  if (contentLength) headers['Content-Length'] = contentLength;
   return SELF.fetch(`https://files${path}`, { method, headers, body });
 }
 
@@ -140,6 +137,15 @@ describe('files worker routing + auth', () => {
     expect(res.status).toBe(403);
   });
 
+  it('sets Vary: Origin on allowed CORS preflight responses', async () => {
+    const res = await request('/conversations/user-a_user-b/files/images', {
+      method: 'OPTIONS',
+    });
+
+    expect(res.status).toBe(204);
+    expect(res.headers.get('Vary')).toBe('Origin');
+  });
+
   it('lets direct-message members upload and fetch an image', async () => {
     const uploadToken = await signToken(validClaims('user-a'));
     const getToken = await signToken(validClaims('user-b'));
@@ -208,8 +214,7 @@ describe('files worker routing + auth', () => {
       method: 'POST',
       token,
       contentType: 'image/png',
-      contentLength: String(5 * 1024 * 1024 + 1),
-      body: 'image',
+      body: new Uint8Array(5 * 1024 * 1024 + 1),
     });
 
     expect(res.status).toBe(413);

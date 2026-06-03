@@ -199,37 +199,34 @@ export function createRTDBMessageRepository(): MessageRepository {
         read: false,
       };
 
-      const payload: Record<string, unknown> =
-        message.payload.type === 'text'
-          ? {
-              ...base,
-              text: message.payload.text,
-              type: 'text',
-            }
-          : message.payload.type === 'file'
-            ? {
-                ...base,
-                type: 'file',
-                fileName: message.payload.fileName,
-                mimeType: message.payload.mimeType,
-                fileSize: message.payload.fileSize,
-                storage:
-                  message.payload.storage?.provider === 'r2'
-                    ? {
-                        provider: 'r2',
-                        bucket: message.payload.storage.bucket,
-                        key: message.payload.storage.key,
-                      }
-                    : null,
-                text: message.payload.text ?? '',
-              }
-            : {};
-
       if (message.payload.type !== 'text' && message.payload.type !== 'file') {
         throw new Error('RTDB adapter only supports text and file messages');
       }
-      if (message.payload.type === 'file' && !message.payload.storage) {
-        throw new Error('file message payload requires R2 storage metadata');
+      let payload: Record<string, unknown>;
+      if (message.payload.type === 'text') {
+        payload = {
+          ...base,
+          text: message.payload.text,
+          type: 'text',
+        };
+      } else {
+        const storage = message.payload.storage;
+        if (storage?.provider !== 'r2') {
+          throw new Error('file message payload requires R2 storage metadata');
+        }
+        payload = {
+          ...base,
+          type: 'file',
+          fileName: message.payload.fileName,
+          mimeType: message.payload.mimeType,
+          fileSize: message.payload.fileSize,
+          storage: {
+            provider: 'r2',
+            bucket: storage.bucket,
+            key: storage.key,
+          },
+          text: message.payload.text ?? '',
+        };
       }
 
       await set(msgRef(message.conversationId, message.messageId), payload);

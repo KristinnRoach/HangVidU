@@ -8,7 +8,10 @@ import type { ConversationId } from '../features/messaging-next/types.js';
 const DEFAULT_FILES_URL = 'http://localhost:8789';
 
 function getFilesBaseUrl() {
-  return (import.meta.env.VITE_FILES_URL ?? DEFAULT_FILES_URL).trim();
+  const configuredUrl = import.meta.env.VITE_FILES_URL?.trim();
+  if (configuredUrl) return configuredUrl;
+  if (import.meta.env.DEV) return DEFAULT_FILES_URL;
+  throw new Error('VITE_FILES_URL is required for the files Worker');
 }
 
 const filesClient = createFilesClient({

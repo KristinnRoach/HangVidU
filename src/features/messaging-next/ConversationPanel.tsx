@@ -184,7 +184,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   let imageInputEl: HTMLInputElement | undefined;
   let sendButtonCleanup: (() => void) | undefined;
   let suppressScroll = false;
-  const pendingR2Loads = new Set<string>();
+  const pendingR2Loads = new Map<string, AbortController>();
   let draftSaveTimer: ReturnType<typeof setTimeout> | undefined;
   let pendingDraft:
     | { userId: UserId; conversationId: ConversationId; text: string }
@@ -289,7 +289,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
       if (currentUrls[msg.id] || pendingR2Loads.has(msg.id)) continue;
 
       const controller = new AbortController();
-      pendingR2Loads.add(msg.id);
+      pendingR2Loads.set(msg.id, controller);
 
       void createConversationFileObjectUrl(
         conversationId,
@@ -325,8 +325,16 @@ export default function ConversationPanel(props: ConversationPanelProps) {
           }
         })
         .finally(() => {
-          pendingR2Loads.delete(msg.id);
+          if (pendingR2Loads.get(msg.id) === controller) {
+            pendingR2Loads.delete(msg.id);
+          }
         });
+    }
+
+    for (const [messageId, controller] of pendingR2Loads) {
+      if (neededIds.has(messageId)) continue;
+      controller.abort();
+      pendingR2Loads.delete(messageId);
     }
 
     setR2AttachmentUrls((urls) => {
@@ -336,6 +344,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         if (neededIds.has(messageId)) continue;
         URL.revokeObjectURL(objectUrl);
         delete next[messageId];
+        pendingR2Loads.get(messageId)?.abort();
         pendingR2Loads.delete(messageId);
         changed = true;
       }
@@ -450,6 +459,10 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     for (const objectUrl of Object.values(r2AttachmentUrls())) {
       URL.revokeObjectURL(objectUrl);
     }
+    for (const controller of pendingR2Loads.values()) {
+      controller.abort();
+    }
+    pendingR2Loads.clear();
   });
 
   function clearPersistedDraftIfNeeded() {
@@ -469,9 +482,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     void send();
   }
 
-  async function onImageInput(
-    e: Event & { currentTarget: HTMLInputElement },
-  ) {
+  async function onImageInput(e: Event & { currentTarget: HTMLInputElement }) {
     const file = e.currentTarget.files?.[0];
     e.currentTarget.value = '';
     if (!file || state.sending || imagePreparing()) return;
@@ -505,6 +516,17 @@ export default function ConversationPanel(props: ConversationPanelProps) {
       }
 
       const storage = await uploadConversationImage(conversationId, image);
+      if (state.conversationId !== conversationId) {
+        void deleteConversationFile(conversationId, storage).catch((error) => {
+          console.warn('[conversation] failed to clean up orphaned image', {
+            conversationId,
+            key: storage.key,
+            error,
+          });
+        });
+        return;
+      }
+
       const caption = state.draft.trim();
       clearPersistedDraftIfNeeded();
       const sent = await send({
@@ -692,10 +714,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                                           const url = attachmentUrl();
                                           if (!url) return;
                                           event.preventDefault();
-                                          void downloadUrl(
-                                            url,
-                                            file.fileName,
-                                          );
+                                          void downloadUrl(url, file.fileName);
                                         }}
                                       >
                                         {file.fileName}
@@ -727,6 +746,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
         <form class={styles.form} onSubmit={onSubmit}>
           <input
+            title='Attach file'
             ref={imageInputEl}
             class={styles.fileInput}
             type='file'

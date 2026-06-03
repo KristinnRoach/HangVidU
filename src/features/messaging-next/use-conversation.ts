@@ -178,7 +178,18 @@ export function useConversation({
   async function send(payloadOverride?: SendPayload) {
     const { conversationId, myUserId, draft, transportMode } = state;
     const text = draft.trim();
-    const payload: SendPayload = payloadOverride ?? { type: 'text', text };
+    const payload: SendPayload =
+      payloadOverride?.type === 'file'
+        ? {
+            ...payloadOverride,
+            text: payloadOverride.text?.trim() || undefined,
+          }
+        : payloadOverride?.type === 'text'
+          ? {
+              ...payloadOverride,
+              text: payloadOverride.text.trim(),
+            }
+          : { type: 'text', text };
     if (!conversationId || !myUserId) return false;
     if (payload.type === 'text' && !payload.text.trim()) return false;
 
@@ -193,7 +204,7 @@ export function useConversation({
     const sentAt = Date.now();
     const senderName = getSenderName?.() ?? undefined;
     const optimisticText =
-      payload.type === 'text' ? payload.text : (payload.text?.trim() ?? '');
+      payload.type === 'text' ? payload.text : (payload.text ?? '');
     const attachment =
       payload.type === 'file'
         ? {

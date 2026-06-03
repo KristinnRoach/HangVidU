@@ -28,7 +28,22 @@ function corsHeaders(origin: string): HeadersInit {
     'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
     'Access-Control-Allow-Headers': 'Authorization,Content-Type',
     'Access-Control-Expose-Headers': 'Content-Length,Content-Type,ETag',
+    'Access-Control-Max-Age': '86400',
+    Vary: 'Origin',
   };
+}
+
+function appendVaryOrigin(headers: Headers) {
+  const vary = headers.get('Vary');
+  if (!vary) {
+    headers.set('Vary', 'Origin');
+    return;
+  }
+
+  const values = vary.split(',').map((value) => value.trim().toLowerCase());
+  if (!values.includes('origin')) {
+    headers.set('Vary', `${vary}, Origin`);
+  }
 }
 
 function response(
@@ -41,8 +56,10 @@ function response(
   const origin = allowedOrigin(request, env);
   if (origin) {
     for (const [key, value] of Object.entries(corsHeaders(origin))) {
+      if (key.toLowerCase() === 'vary') continue;
       headers.set(key, value);
     }
+    appendVaryOrigin(headers);
   }
   return new Response(body, { ...init, headers });
 }
@@ -108,8 +125,31 @@ async function readCappedBody(request: Request): Promise<ArrayBuffer | null> {
     return null;
   }
 
-  const body = await request.arrayBuffer();
-  return body.byteLength <= MAX_IMAGE_BYTES ? body : null;
+  if (!request.body) return new ArrayBuffer(0);
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    totalBytes += value.byteLength;
+    if (totalBytes > MAX_IMAGE_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+
+  const body = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body.buffer;
 }
 
 async function handleUpload(
@@ -185,7 +225,9 @@ export default {
     const origin = allowedOrigin(request, env);
     if (request.method === 'OPTIONS') {
       if (!origin) return new Response('Forbidden origin', { status: 403 });
-      return new Response(null, { status: 204, headers: corsHeaders(origin) });
+      const headers = new Headers(corsHeaders(origin));
+      appendVaryOrigin(headers);
+      return new Response(null, { status: 204, headers });
     }
     if (!origin) return new Response('Forbidden origin', { status: 403 });
 
