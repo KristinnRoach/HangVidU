@@ -136,28 +136,32 @@ async function authorizeConversation(
   } catch (error) {
     clearTimeout(timeoutId);
     console.error('[auth] membership fetch failed', error);
-    return response(request, env, 'Upstream service unavailable', { status: 502 });
+    return response(request, env, 'Upstream service unavailable', {
+      status: 502,
+    });
   }
   clearTimeout(timeoutId);
 
   if (!membership.ok) {
     if (membership.status >= 500) {
-      return response(request, env, 'Upstream service unavailable', { status: 502 });
+      return response(request, env, 'Upstream service unavailable', {
+        status: 502,
+      });
     }
     return false;
   }
 
   try {
-    const member = (await membership.json()) as
-      | { status?: unknown }
-      | null;
+    const member = (await membership.json()) as { status?: unknown } | null;
     return (
       member !== null &&
       (member.status === undefined || member.status === 'active')
     );
   } catch (error) {
     console.error('[auth] membership parse failed', error);
-    return response(request, env, 'Upstream service unavailable', { status: 502 });
+    return response(request, env, 'Upstream service unavailable', {
+      status: 502,
+    });
   }
 }
 
@@ -202,12 +206,22 @@ async function handleUpload(
 ) {
   const mimeType = request.headers.get('Content-Type');
   if (!isImageMimeType(mimeType)) {
-    return json(request, env, { error: 'unsupported image type' }, { status: 415 });
+    return json(
+      request,
+      env,
+      { error: 'unsupported image type' },
+      { status: 415 },
+    );
   }
 
   const body = await readCappedBody(request);
   if (body === null) {
-    return json(request, env, { error: 'image too large or empty' }, { status: 413 });
+    return json(
+      request,
+      env,
+      { error: 'image too large or empty' },
+      { status: 413 },
+    );
   }
   if (body.byteLength === 0) {
     return json(request, env, { error: 'empty image' }, { status: 400 });
@@ -234,11 +248,7 @@ async function handleUpload(
   );
 }
 
-async function handleDownload(
-  request: Request,
-  env: Env,
-  key: string,
-) {
+async function handleDownload(request: Request, env: Env, key: string) {
   const object = await env.FILES_BUCKET.get(key);
   if (!object) return response(request, env, 'Not found', { status: 404 });
 
@@ -264,6 +274,10 @@ async function handleDelete(
   }
 
   const uploadedBy = object.customMetadata?.uploadedBy;
+  if (!uploadedBy) {
+    console.warn('[delete] missing uploadedBy metadata', { key });
+    return response(request, env, 'Forbidden', { status: 403 });
+  }
   if (uploadedBy !== identity.userId) {
     return response(request, env, 'Forbidden', { status: 403 });
   }
@@ -302,7 +316,12 @@ export default {
       return response(request, env, 'Invalid path', { status: 400 });
     }
 
-    const authResult = await authorizeConversation(request, conversationId, identity, env);
+    const authResult = await authorizeConversation(
+      request,
+      conversationId,
+      identity,
+      env,
+    );
     if (authResult instanceof Response) {
       return authResult;
     }
