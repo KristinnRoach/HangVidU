@@ -137,6 +137,33 @@ describe('messaging-next RTDB adapter', () => {
     expect(set).not.toHaveBeenCalled();
   });
 
+  it('rejects file sends with non-R2 storage metadata', async () => {
+    const repository = createRTDBMessageRepository();
+
+    await expect(
+      repository.send({
+        messageId: 'file-1',
+        conversationId: 'user-a_user-b',
+        senderId: 'user-a',
+        senderName: 'User A',
+        sentAt: 10,
+        delivery: 'persistent',
+        payload: {
+          type: 'file',
+          fileName: 'demo.webp',
+          mimeType: 'image/webp',
+          fileSize: 123,
+          storage: {
+            provider: 'public-url',
+            bucket: 'hangvidu-files',
+            key: 'user-a_user-b/file-1',
+          },
+        },
+      }),
+    ).rejects.toThrow('file message payload requires R2 storage metadata');
+    expect(set).not.toHaveBeenCalled();
+  });
+
   it('reserves RTDB push keys before optimistic rendering', () => {
     const repository = createRTDBMessageRepository();
 

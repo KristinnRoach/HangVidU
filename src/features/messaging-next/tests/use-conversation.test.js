@@ -164,7 +164,7 @@ describe('messaging-next useConversation', () => {
         bucket: 'hangvidu-files',
         key: 'conversation-1/file-1',
       },
-      text: 'caption',
+      text: '  caption  ',
     });
 
     expect(repository.send).toHaveBeenCalledWith(

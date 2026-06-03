@@ -5,8 +5,9 @@
   "type": "module",
   "description": "Cloudflare Worker for authenticated R2 image upload and download.",
   "scripts": {
-    "dev": "wrangler dev --port 8789 --env-file .dev.vars.example",
+    "dev": "wrangler dev --port 8789 --env-file .dev.vars",
     "deploy": "wrangler deploy",
+    "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest --run"
   },

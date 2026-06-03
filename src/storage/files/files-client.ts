@@ -13,8 +13,28 @@ type UploadResponse = R2StorageDescriptor & {
   fileId: string;
 };
 
+function normalizeBaseUrl(baseUrl: string) {
+  const normalized = baseUrl.trim().replace(/\/+$/, '');
+  if (!normalized) {
+    throw new Error('files client requires a non-empty base URL');
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(normalized);
+  } catch {
+    throw new Error('files client base URL must be absolute');
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('files client base URL must use HTTP(S)');
+  }
+
+  return normalized;
+}
+
 export function createFilesClient({ baseUrl, getToken }: FilesClientOptions) {
-  const normalizedBaseUrl = baseUrl.trim().replace(/\/$/, '');
+  const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
 
   async function authHeaders() {
     const token = await getToken();
