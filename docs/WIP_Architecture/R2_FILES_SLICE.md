@@ -76,8 +76,7 @@ Do not carry over:
 - **Authorization:** one RTDB read for all conversation kinds at
   `conversations/{conversationId}/members/{callerUid}` using the caller's
   Firebase ID token. Missing members are rejected. Members are accepted only
-  when `status` is `"active"` or omitted for default data. The Worker must not
-  infer DM membership from the derived direct conversation id.
+  when `status` is `"active"` or omitted for default data.
 
 ## Client wiring
 

@@ -95,26 +95,47 @@ function toIncoming(
           }
         : undefined;
 
-    if (
-      typeof raw.fileName !== 'string' ||
-      typeof raw.mimeType !== 'string' ||
-      typeof raw.fileSize !== 'number' ||
-      !r2Storage
-    ) {
+    // Modern R2-backed file message
+    if (r2Storage) {
+      if (
+        typeof raw.fileName !== 'string' ||
+        typeof raw.mimeType !== 'string' ||
+        typeof raw.fileSize !== 'number'
+      ) {
+        return null;
+      }
+
+      return {
+        ...base,
+        payload: {
+          type: 'file',
+          fileName: raw.fileName,
+          mimeType: raw.mimeType,
+          fileSize: raw.fileSize,
+          storage: r2Storage,
+          text: typeof raw.text === 'string' ? raw.text : undefined,
+        },
+      };
+    }
+
+    // Legacy file message: check for raw.url or raw.data
+    if (typeof raw.url === 'string' || typeof raw.data === 'string') {
+      const fileName =
+        typeof raw.fileName === 'string' ? raw.fileName : 'file';
+      const mimeType =
+        typeof raw.mimeType === 'string'
+          ? raw.mimeType
+          : 'application/octet-stream';
+      const fileSize =
+        typeof raw.fileSize === 'number' ? raw.fileSize : 0;
+
+      // For legacy messages, we still need some storage descriptor
+      // Return null since we only support R2 storage in messaging-next
       return null;
     }
 
-    return {
-      ...base,
-      payload: {
-        type: 'file',
-        fileName: raw.fileName,
-        mimeType: raw.mimeType,
-        fileSize: raw.fileSize,
-        storage: r2Storage,
-        text: typeof raw.text === 'string' ? raw.text : undefined,
-      },
-    };
+    // No recognizable storage or legacy fields
+    return null;
   }
 
   if (typeof raw.text !== 'string') return null;
@@ -210,6 +231,14 @@ export function createRTDBMessageRepository(): MessageRepository {
         const storage = message.payload.storage;
         if (storage?.provider !== 'r2') {
           throw new Error('file message payload requires R2 storage metadata');
+        }
+        if (
+          typeof storage.bucket !== 'string' ||
+          storage.bucket.trim() === '' ||
+          typeof storage.key !== 'string' ||
+          storage.key.trim() === ''
+        ) {
+          throw new Error('file message payload requires valid R2 bucket and key');
         }
         payload = {
           ...base,

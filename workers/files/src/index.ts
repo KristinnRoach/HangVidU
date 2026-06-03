@@ -82,8 +82,9 @@ function json(
 }
 
 function isImageMimeType(value: string | null): value is string {
-  const mimeType = value?.trim().toLowerCase() ?? '';
-  return mimeType.startsWith('image/') && mimeType !== 'image/svg+xml';
+  if (!value) return false;
+  const baseType = value.split(';')[0].trim().toLowerCase();
+  return baseType.startsWith('image/') && baseType !== 'image/svg+xml';
 }
 
 function objectKey(conversationId: string, objectId: string) {
@@ -112,7 +113,7 @@ async function authorizeConversation(
   conversationId: string,
   identity: Identity,
   env: Env,
-): Promise<boolean> {
+): Promise<Response | boolean> {
   const base = env.FIREBASE_DATABASE_URL.replace(/\/$/, '');
   const url = `${base}/conversations/${encodeURIComponent(
     conversationId,
@@ -121,17 +122,30 @@ async function authorizeConversation(
   )}.json?auth=${encodeURIComponent(identity.token)}`;
   const appCheckToken = request.headers.get('X-Firebase-AppCheck')?.trim();
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+
   let membership: Response;
   try {
     membership = await fetch(url, {
       headers: appCheckToken
         ? { 'X-Firebase-AppCheck': appCheckToken }
         : undefined,
+      signal: controller.signal,
     });
-  } catch {
+  } catch (error) {
+    clearTimeout(timeoutId);
+    console.error('[auth] membership fetch failed', error);
+    return response(request, env, 'Upstream service unavailable', { status: 502 });
+  }
+  clearTimeout(timeoutId);
+
+  if (!membership.ok) {
+    if (membership.status >= 500) {
+      return response(request, env, 'Upstream service unavailable', { status: 502 });
+    }
     return false;
   }
-  if (!membership.ok) return false;
 
   try {
     const member = (await membership.json()) as
@@ -141,8 +155,9 @@ async function authorizeConversation(
       member !== null &&
       (member.status === undefined || member.status === 'active')
     );
-  } catch {
-    return false;
+  } catch (error) {
+    console.error('[auth] membership parse failed', error);
+    return response(request, env, 'Upstream service unavailable', { status: 502 });
   }
 }
 
@@ -152,7 +167,7 @@ async function readCappedBody(request: Request): Promise<ArrayBuffer | null> {
     return null;
   }
 
-  if (!request.body) return new ArrayBuffer(0);
+  if (!request.body) return null;
 
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -191,8 +206,11 @@ async function handleUpload(
   }
 
   const body = await readCappedBody(request);
-  if (!body) {
-    return json(request, env, { error: 'image too large' }, { status: 413 });
+  if (body === null) {
+    return json(request, env, { error: 'image too large or empty' }, { status: 413 });
+  }
+  if (body.byteLength === 0) {
+    return json(request, env, { error: 'empty image' }, { status: 400 });
   }
 
   const key = objectKey(conversationId, crypto.randomUUID());
@@ -238,7 +256,18 @@ async function handleDelete(
   request: Request,
   env: Env,
   key: string,
+  identity: Identity,
 ) {
+  const object = await env.FILES_BUCKET.head(key);
+  if (!object) {
+    return response(request, env, 'Not found', { status: 404 });
+  }
+
+  const uploadedBy = object.customMetadata?.uploadedBy;
+  if (uploadedBy !== identity.userId) {
+    return response(request, env, 'Forbidden', { status: 403 });
+  }
+
   await env.FILES_BUCKET.delete(key);
   return response(request, env, null, { status: 204 });
 }
@@ -273,7 +302,11 @@ export default {
       return response(request, env, 'Invalid path', { status: 400 });
     }
 
-    if (!(await authorizeConversation(request, conversationId, identity, env))) {
+    const authResult = await authorizeConversation(request, conversationId, identity, env);
+    if (authResult instanceof Response) {
+      return authResult;
+    }
+    if (!authResult) {
       return response(request, env, 'Forbidden', { status: 403 });
     }
 
@@ -293,7 +326,7 @@ export default {
       return handleDownload(request, env, key);
     }
     if (request.method === 'DELETE') {
-      return handleDelete(request, env, key);
+      return handleDelete(request, env, key, identity);
     }
     return response(request, env, 'Method not allowed', { status: 405 });
   },

@@ -77,26 +77,40 @@ async function verifyFirebaseIdToken(
 
 async function getSigningKey(kid: string): Promise<CryptoKey | null> {
   if (!keyCache || keyCache.expiresAt <= Date.now()) {
-    keyCache = await fetchSigningKeys();
+    const refreshed = await fetchSigningKeys();
+    if (refreshed.keys.size > 0) {
+      keyCache = refreshed;
+    }
   }
-  return keyCache.keys.get(kid) ?? null;
+  return keyCache?.keys.get(kid) ?? null;
 }
 
 async function fetchSigningKeys(): Promise<KeyCache> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+
   let response: Response;
   try {
-    response = await fetch(JWKS_URL);
-  } catch {
+    response = await fetch(JWKS_URL, { signal: controller.signal });
+  } catch (error) {
+    clearTimeout(timeoutId);
+    console.error('[auth] failed to fetch signing keys', error);
     return { keys: new Map(), expiresAt: 0 };
   }
-  if (!response.ok) return { keys: new Map(), expiresAt: 0 };
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    console.error('[auth] JWKS fetch returned non-OK status', response.status);
+    return { keys: new Map(), expiresAt: 0 };
+  }
 
   let body: { keys?: (JsonWebKey & { kid?: string })[] };
   try {
     body = (await response.json()) as {
       keys?: (JsonWebKey & { kid?: string })[];
     };
-  } catch {
+  } catch (error) {
+    console.error('[auth] failed to parse JWKS response', error);
     return { keys: new Map(), expiresAt: 0 };
   }
 

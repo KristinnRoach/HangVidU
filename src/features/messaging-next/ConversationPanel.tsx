@@ -155,6 +155,10 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     | { userId: UserId; conversationId: ConversationId; text: string }
     | undefined;
 
+  function makeAttachmentKey(conversationId: ConversationId, messageId: string) {
+    return `${conversationId}:${messageId}`;
+  }
+
   function scrollToEnd() {
     if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
   }
@@ -242,7 +246,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   createEffect(() => {
     const conversationId = state.conversationId;
     const currentUrls = r2AttachmentUrls();
-    const neededIds = new Set<string>();
+    const neededKeys = new Set<string>();
 
     for (const msg of state.messages) {
       const attachment = msg.attachment;
@@ -250,11 +254,12 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         continue;
       }
 
-      neededIds.add(msg.id);
-      if (currentUrls[msg.id] || pendingR2Loads.has(msg.id)) continue;
+      const key = makeAttachmentKey(conversationId, msg.id);
+      neededKeys.add(key);
+      if (currentUrls[key] || pendingR2Loads.has(key)) continue;
 
       const controller = new AbortController();
-      pendingR2Loads.set(msg.id, controller);
+      pendingR2Loads.set(key, controller);
 
       void createConversationFileObjectUrl(
         conversationId,
@@ -278,7 +283,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
           setR2AttachmentUrls((urls) => ({
             ...urls,
-            [msg.id]: objectUrl,
+            [key]: objectUrl,
           }));
         })
         .catch((error) => {
@@ -290,27 +295,27 @@ export default function ConversationPanel(props: ConversationPanelProps) {
           }
         })
         .finally(() => {
-          if (pendingR2Loads.get(msg.id) === controller) {
-            pendingR2Loads.delete(msg.id);
+          if (pendingR2Loads.get(key) === controller) {
+            pendingR2Loads.delete(key);
           }
         });
     }
 
-    for (const [messageId, controller] of pendingR2Loads) {
-      if (neededIds.has(messageId)) continue;
+    for (const [attachmentKey, controller] of pendingR2Loads) {
+      if (neededKeys.has(attachmentKey)) continue;
       controller.abort();
-      pendingR2Loads.delete(messageId);
+      pendingR2Loads.delete(attachmentKey);
     }
 
     setR2AttachmentUrls((urls) => {
       let changed = false;
       const next = { ...urls };
-      for (const [messageId, objectUrl] of Object.entries(urls)) {
-        if (neededIds.has(messageId)) continue;
+      for (const [attachmentKey, objectUrl] of Object.entries(urls)) {
+        if (neededKeys.has(attachmentKey)) continue;
         URL.revokeObjectURL(objectUrl);
-        delete next[messageId];
-        pendingR2Loads.get(messageId)?.abort();
-        pendingR2Loads.delete(messageId);
+        delete next[attachmentKey];
+        pendingR2Loads.get(attachmentKey)?.abort();
+        pendingR2Loads.delete(attachmentKey);
         changed = true;
       }
       return changed ? next : urls;
@@ -604,8 +609,11 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                           <Show when={msg.attachment}>
                             {(attachment) => {
                               const file = attachment();
-                              const attachmentUrl = () =>
-                                r2AttachmentUrls()[msg.id] ?? null;
+                              const attachmentUrl = () => {
+                                const conversationId = state.conversationId;
+                                if (!conversationId) return null;
+                                return r2AttachmentUrls()[makeAttachmentKey(conversationId, msg.id)] ?? null;
+                              };
                               const canPreview = () => {
                                 const url = attachmentUrl();
                                 return (
