@@ -149,6 +149,10 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   let imageInputEl: HTMLInputElement | undefined;
   let sendButtonCleanup: (() => void) | undefined;
   let suppressScroll = false;
+  // True once the user scrolls away from the bottom to read earlier messages.
+  // While set, new messages do not yank the view back down. Updated only on user
+  // scroll, so content growth (new bubble, late-loading image) can't flip it.
+  let userHasScrolledUp = false;
   const pendingR2Loads = new Map<string, AbortController>();
   let draftSaveTimer: ReturnType<typeof setTimeout> | undefined;
   let pendingDraft:
@@ -159,8 +163,32 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     return `${conversationId}:${messageId}`;
   }
 
+  const NEAR_BOTTOM_PX = 80;
+
+  function isNearBottom() {
+    if (!messagesEl) return true;
+    const distance =
+      messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight;
+    return distance <= NEAR_BOTTOM_PX;
+  }
+
   function scrollToEnd() {
-    if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
+    userHasScrolledUp = false;
+    // Run after layout so late-sized content (e.g. images) is measured.
+    requestAnimationFrame(() => {
+      if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
+    });
+  }
+
+  function onMessagesScroll() {
+    userHasScrolledUp = !isNearBottom();
+  }
+
+  // Follow new/grown content to the bottom, unless the user has scrolled up to
+  // read history or we're mid conversation-switch.
+  function followIfPinned() {
+    if (suppressScroll || userHasScrolledUp) return;
+    scrollToEnd();
   }
 
   function focusInput() {
@@ -236,10 +264,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   createEffect(
     on(
       () => state.messages.length,
-      () => {
-        if (suppressScroll) return;
-        queueMicrotask(scrollToEnd);
-      },
+      followIfPinned,
     ),
   );
 
@@ -344,6 +369,11 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         setHistoryLoading(true);
         setHistoryError(null);
 
+        // The watch fires once on open, then again for every later message. Only
+        // the first emission force-scrolls; later ones leave following to the
+        // length effect, which respects userHasScrolledUp.
+        let isInitialLoad = true;
+
         const result = runtime.messageRepository.watchRecentMessages(
           source.conversationId,
           (messages) => {
@@ -359,8 +389,11 @@ export default function ConversationPanel(props: ConversationPanelProps) {
             setHistoryReady(true);
             setHistoryLoading(false);
             suppressScroll = false;
-            queueMicrotask(scrollToEnd);
-            queueMicrotask(focusInput);
+            if (isInitialLoad) {
+              isInitialLoad = false;
+              scrollToEnd();
+              queueMicrotask(focusInput);
+            }
             if (latestMessageId) {
               void Promise.resolve(
                 runtime.messageRepository.markConversationRead(
@@ -563,7 +596,11 @@ export default function ConversationPanel(props: ConversationPanelProps) {
               <div class={styles.messagesEmpty}>{t('conversation.empty')}</div>
             }
           >
-            <div class={styles.messages} ref={messagesEl}>
+            <div
+              class={styles.messages}
+              ref={messagesEl}
+              onScroll={onMessagesScroll}
+            >
               <For each={state.messages}>
                 {(msg, index) => (
                   <>
@@ -639,6 +676,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                                       class={styles.filePreviewImg}
                                       src={attachmentUrl() ?? undefined}
                                       alt={file.fileName}
+                                      onLoad={followIfPinned}
                                       role='button'
                                       tabIndex={0}
                                       aria-label={`Open preview for ${file.fileName}`}
