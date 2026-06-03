@@ -180,7 +180,7 @@ export function useConversation({
       payloadOverride?.type === 'file'
         ? {
             ...payloadOverride,
-            text: payloadOverride.text?.trim() || undefined,
+            text: payloadOverride.text?.trim() || text || undefined,
           }
         : payloadOverride?.type === 'text'
           ? {
