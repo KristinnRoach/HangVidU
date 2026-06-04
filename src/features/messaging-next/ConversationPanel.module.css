@@ -197,6 +197,40 @@
   margin-inline: 0.5rem;
 }
 
+.fileInput {
+  display: none;
+}
+
+.attach {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  cursor: pointer;
+  transform: translateY(0);
+  transition: transform 0.1s ease-out;
+}
+
+.attach:hover:not(:disabled) {
+  background: transparent;
+  transform: translateY(-6px);
+}
+
+.attach:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.attach:focus-visible {
+  outline: 2px solid #007aff;
+  outline-offset: 2px;
+}
+
 .growableTextArea {
   font-family: inherit;
   font-size: inherit;

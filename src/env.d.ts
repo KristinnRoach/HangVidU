@@ -25,6 +25,9 @@ interface ImportMetaEnv {
   // Realtime signaling (Cloudflare Durable Object worker)
   readonly VITE_SIGNALING_URL: string;
   readonly VITE_SIGNALING_BACKEND: 'do' | 'rtdb';
+
+  // R2-backed file storage worker
+  readonly VITE_FILES_URL: string;
 }
 
 interface ImportMeta {

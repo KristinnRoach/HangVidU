@@ -9,14 +9,21 @@ import {
   on,
   onCleanup,
 } from 'solid-js';
+import { ImagePlus } from 'lucide-solid';
 import { getUserName } from '../../auth/index.js';
 
 import { useI18n } from '../../shared/i18n';
 import { LoadBoundary } from '../../components/app/LoadBoundary';
 import { showImagePreview } from '../../components/base-legacy/imagePreview.js';
+import { compressImage } from '@lib/media/image-compress.js';
 import { downloadUrl } from '@lib/utils/download-url.js';
 import { isIOSOrAndroidDevice } from '@lib/utils/detect-device.js';
 import { keepVirtualKeyboardOpenOnTap } from '@shared/utils/ui-utils/keepVirtualKeyboardOpenOnTap.js';
+import {
+  createConversationFileObjectUrl,
+  deleteConversationFile,
+  uploadConversationImage,
+} from '../../stores/filesStore.js';
 
 import { createMessagingRuntime } from './messaging-runtime.js';
 
@@ -37,6 +44,7 @@ import styles from './ConversationPanel.module.css';
 const runtime = createMessagingRuntime();
 const DRAFT_SAVE_DELAY_MS = 250;
 const TIMESTAMP_THRESHOLD_MS = 5 * 60 * 1000;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 type TimestampFormatters = {
   time: Intl.DateTimeFormat;
@@ -45,34 +53,12 @@ type TimestampFormatters = {
 
 const timestampFormattersByLocale = new Map<string, TimestampFormatters>();
 
-function dataUrlMimeType(url: string) {
-  const match = /^data:([^;,]+)[;,]/i.exec(url);
-  return match?.[1]?.toLowerCase() ?? 'text/plain';
-}
-
-function hasAllowedDataUrl(attachment: MessageAttachment) {
-  if (!attachment.data) return false;
-  if (!attachment.data.startsWith('data:')) return false;
-
-  const declaredMimeType = attachment.mimeType.trim().toLowerCase();
-  const actualMimeType = dataUrlMimeType(attachment.data);
-  return (
-    actualMimeType === declaredMimeType &&
-    actualMimeType !== 'text/html' &&
-    actualMimeType !== 'image/svg+xml'
-  );
-}
-
 function isImageAttachment(attachment: MessageAttachment) {
   return attachment.mimeType.trim().toLowerCase().startsWith('image/');
 }
 
-function getAttachmentUrl(attachment: MessageAttachment) {
-  return attachment.url ?? attachment.data ?? null;
-}
-
-function isAllowedRemoteUrl(url: string | null) {
-  return Boolean(url?.startsWith('https://'));
+function isR2ImageAttachment(attachment: MessageAttachment) {
+  return isImageAttachment(attachment) && attachment.storage.provider === 'r2';
 }
 
 function formatFileSize(bytes: number) {
@@ -160,15 +146,54 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
   let messagesEl: HTMLDivElement | undefined;
   let inputTextAreaEl: HTMLTextAreaElement | undefined;
+  let imageInputEl: HTMLInputElement | undefined;
   let sendButtonCleanup: (() => void) | undefined;
   let suppressScroll = false;
+  // True once the user scrolls away from the bottom to read earlier messages.
+  // While set, new messages do not yank the view back down. Updated only on user
+  // scroll, so content growth (new bubble, late-loading image) can't flip it.
+  let userHasScrolledUp = false;
+  const pendingR2Loads = new Map<string, AbortController>();
   let draftSaveTimer: ReturnType<typeof setTimeout> | undefined;
   let pendingDraft:
     | { userId: UserId; conversationId: ConversationId; text: string }
     | undefined;
 
+  function makeAttachmentKey(
+    conversationId: ConversationId,
+    messageId: string,
+  ) {
+    return `${conversationId}:${messageId}`;
+  }
+
+  const NEAR_BOTTOM_PX = 80;
+
+  function isNearBottom() {
+    if (!messagesEl) return true;
+    const distance =
+      messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight;
+    return distance <= NEAR_BOTTOM_PX;
+  }
+
   function scrollToEnd() {
-    if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
+    userHasScrolledUp = false;
+    // Run after layout so late-sized content (e.g. images) is measured. Re-check
+    // the pinned state: the user may have scrolled up before this frame ran.
+    requestAnimationFrame(() => {
+      if (!messagesEl || suppressScroll || userHasScrolledUp) return;
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    });
+  }
+
+  function onMessagesScroll() {
+    userHasScrolledUp = !isNearBottom();
+  }
+
+  // Follow new/grown content to the bottom, unless the user has scrolled up to
+  // read history or we're mid conversation-switch.
+  function followIfPinned() {
+    if (suppressScroll || userHasScrolledUp) return;
+    scrollToEnd();
   }
 
   function focusInput() {
@@ -229,6 +254,10 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   const [historyLoading, setHistoryLoading] = createSignal(false);
   const [historyError, setHistoryError] = createSignal<unknown>(null);
   const [historyReady, setHistoryReady] = createSignal(false);
+  const [imagePreparing, setImagePreparing] = createSignal(false);
+  const [r2AttachmentUrls, setR2AttachmentUrls] = createSignal<
+    Record<string, string>
+  >({});
 
   function shouldShowTimestamp(message: ChatMessage, index: number) {
     const previous = state.messages[index - 1];
@@ -237,15 +266,86 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     );
   }
 
-  createEffect(
-    on(
-      () => state.messages.length,
-      () => {
-        if (suppressScroll) return;
-        queueMicrotask(scrollToEnd);
-      },
-    ),
-  );
+  createEffect(on(() => state.messages.length, followIfPinned));
+
+  createEffect(() => {
+    const conversationId = state.conversationId;
+    const currentUrls = r2AttachmentUrls();
+    const neededKeys = new Set<string>();
+
+    for (const msg of state.messages) {
+      const attachment = msg.attachment;
+      if (!conversationId || !attachment || !isR2ImageAttachment(attachment)) {
+        continue;
+      }
+
+      const key = makeAttachmentKey(conversationId, msg.id);
+      neededKeys.add(key);
+      if (currentUrls[key] || pendingR2Loads.has(key)) continue;
+
+      const controller = new AbortController();
+      pendingR2Loads.set(key, controller);
+
+      void createConversationFileObjectUrl(
+        conversationId,
+        attachment.storage,
+        controller.signal,
+      )
+        .then((objectUrl) => {
+          const stillNeeded =
+            state.conversationId === conversationId &&
+            state.messages.some(
+              (message) =>
+                message.id === msg.id &&
+                message.attachment &&
+                isR2ImageAttachment(message.attachment),
+            );
+
+          if (!stillNeeded) {
+            URL.revokeObjectURL(objectUrl);
+            return;
+          }
+
+          setR2AttachmentUrls((urls) => ({
+            ...urls,
+            [key]: objectUrl,
+          }));
+        })
+        .catch((error) => {
+          if (!controller.signal.aborted) {
+            console.warn('[conversation] failed to load R2 attachment', {
+              messageId: msg.id,
+              error,
+            });
+          }
+        })
+        .finally(() => {
+          if (pendingR2Loads.get(key) === controller) {
+            pendingR2Loads.delete(key);
+          }
+        });
+    }
+
+    for (const [attachmentKey, controller] of pendingR2Loads) {
+      if (neededKeys.has(attachmentKey)) continue;
+      controller.abort();
+      pendingR2Loads.delete(attachmentKey);
+    }
+
+    setR2AttachmentUrls((urls) => {
+      let changed = false;
+      const next = { ...urls };
+      for (const [attachmentKey, objectUrl] of Object.entries(urls)) {
+        if (neededKeys.has(attachmentKey)) continue;
+        URL.revokeObjectURL(objectUrl);
+        delete next[attachmentKey];
+        pendingR2Loads.get(attachmentKey)?.abort();
+        pendingR2Loads.delete(attachmentKey);
+        changed = true;
+      }
+      return changed ? next : urls;
+    });
+  });
 
   createEffect(
     on(
@@ -269,6 +369,11 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         setHistoryLoading(true);
         setHistoryError(null);
 
+        // The watch fires once on open, then again for every later message. Only
+        // the first emission force-scrolls; later ones leave following to the
+        // length effect, which respects userHasScrolledUp.
+        let isInitialLoad = true;
+
         const result = runtime.messageRepository.watchRecentMessages(
           source.conversationId,
           (messages) => {
@@ -284,8 +389,11 @@ export default function ConversationPanel(props: ConversationPanelProps) {
             setHistoryReady(true);
             setHistoryLoading(false);
             suppressScroll = false;
-            queueMicrotask(scrollToEnd);
-            queueMicrotask(focusInput);
+            if (isInitialLoad) {
+              isInitialLoad = false;
+              scrollToEnd();
+              queueMicrotask(focusInput);
+            }
             if (latestMessageId) {
               void Promise.resolve(
                 runtime.messageRepository.markConversationRead(
@@ -351,19 +459,110 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   onCleanup(() => {
     flushDraftSave();
     sendButtonCleanup?.();
+    for (const objectUrl of Object.values(r2AttachmentUrls())) {
+      URL.revokeObjectURL(objectUrl);
+    }
+    for (const controller of pendingR2Loads.values()) {
+      controller.abort();
+    }
+    pendingR2Loads.clear();
   });
+
+  function clearPersistedDraftIfNeeded() {
+    const { conversationId, myUserId } = state;
+    if (!conversationId || !myUserId || !state.draft.trim()) return;
+
+    clearDraftSaveTimer();
+    pendingDraft = undefined;
+    clearLocalDraft(myUserId, conversationId);
+  }
 
   function onSubmit(e: SubmitEvent) {
     e.preventDefault();
-    if (state.sending) return;
+    if (state.sending || imagePreparing()) return;
 
-    const { conversationId, myUserId } = state;
-    if (conversationId && myUserId && state.draft.trim()) {
-      clearDraftSaveTimer();
-      pendingDraft = undefined;
-      clearLocalDraft(myUserId, conversationId);
-    }
+    clearPersistedDraftIfNeeded();
     void send();
+  }
+
+  async function onImageInput(e: Event & { currentTarget: HTMLInputElement }) {
+    const file = e.currentTarget.files?.[0];
+    e.currentTarget.value = '';
+    if (!file || state.sending || imagePreparing()) return;
+
+    const conversationId = state.conversationId;
+    if (!conversationId) return;
+    const uploadConversationId = conversationId;
+
+    const mimeType = file.type.trim().toLowerCase();
+    if (!mimeType.startsWith('image/') || mimeType === 'image/svg+xml') {
+      window.alert('Choose a PNG, JPEG, GIF, WebP, or similar image.');
+      return;
+    }
+
+    let uploadedStorage:
+      | Awaited<ReturnType<typeof uploadConversationImage>>
+      | undefined;
+    function cleanupUploadedImage() {
+      if (!uploadedStorage) return;
+      void deleteConversationFile(uploadConversationId, uploadedStorage).catch(
+        (error) => {
+          console.warn('[conversation] failed to clean up orphaned image', {
+            conversationId: uploadConversationId,
+            key: uploadedStorage?.key,
+            error,
+          });
+        },
+      );
+    }
+
+    setImagePreparing(true);
+    try {
+      let image = file;
+      if (file.size > MAX_IMAGE_BYTES) {
+        const compressed = await compressImage(file, {
+          maxBytes: MAX_IMAGE_BYTES,
+        });
+        if (!compressed) {
+          window.alert('Choose a smaller image.');
+          return;
+        }
+        image = compressed;
+      }
+
+      if (image.size > MAX_IMAGE_BYTES) {
+        window.alert('Choose a smaller image.');
+        return;
+      }
+
+      uploadedStorage = await uploadConversationImage(conversationId, image);
+      if (state.conversationId !== conversationId) {
+        cleanupUploadedImage();
+        return;
+      }
+
+      const caption = state.draft.trim();
+      clearPersistedDraftIfNeeded();
+      const sent = await send({
+        type: 'file',
+        fileName: image.name || file.name || 'image',
+        mimeType: image.type || file.type || 'image/*',
+        fileSize: image.size,
+        storage: uploadedStorage,
+        text: caption || undefined,
+      });
+      if (!sent) {
+        cleanupUploadedImage();
+        window.alert('Image send failed.');
+      }
+    } catch (error) {
+      cleanupUploadedImage();
+      console.warn('[conversation] failed to send image attachment', error);
+      window.alert('Image send failed.');
+    } finally {
+      setImagePreparing(false);
+      inputTextAreaEl?.focus();
+    }
   }
 
   function onDraftKeyDown(
@@ -378,7 +577,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
       return;
 
     e.preventDefault();
-    if (state.sending) return;
+    if (state.sending || imagePreparing()) return;
 
     e.currentTarget.form?.requestSubmit();
   }
@@ -403,7 +602,11 @@ export default function ConversationPanel(props: ConversationPanelProps) {
               <div class={styles.messagesEmpty}>{t('conversation.empty')}</div>
             }
           >
-            <div class={styles.messages} ref={messagesEl}>
+            <div
+              class={styles.messages}
+              ref={messagesEl}
+              onScroll={onMessagesScroll}
+            >
               <For each={state.messages}>
                 {(msg, index) => (
                   <>
@@ -449,36 +652,48 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                           <Show when={msg.attachment}>
                             {(attachment) => {
                               const file = attachment();
-                              const attachmentUrl = getAttachmentUrl(file);
-                              const allowedDataUrl = hasAllowedDataUrl(file);
-                              const canPreview =
-                                Boolean(attachmentUrl) &&
-                                (allowedDataUrl ||
-                                  isAllowedRemoteUrl(attachmentUrl)) &&
-                                isImageAttachment(file);
-                              const canDownload =
-                                Boolean(attachmentUrl) &&
-                                (allowedDataUrl ||
-                                  attachmentUrl?.startsWith('blob:') ||
-                                  isAllowedRemoteUrl(attachmentUrl));
+                              const attachmentUrl = () => {
+                                const conversationId = state.conversationId;
+                                if (!conversationId) return null;
+                                return (
+                                  r2AttachmentUrls()[
+                                    makeAttachmentKey(conversationId, msg.id)
+                                  ] ?? null
+                                );
+                              };
+                              const canPreview = () => {
+                                const url = attachmentUrl();
+                                return (
+                                  Boolean(url) &&
+                                  url?.startsWith('blob:') &&
+                                  isImageAttachment(file)
+                                );
+                              };
+                              const canDownload = () => {
+                                const url = attachmentUrl();
+                                return Boolean(url) && url?.startsWith('blob:');
+                              };
+                              function openPreview(url: string) {
+                                showImagePreview(url, file.fileName, null, {
+                                  revokeOnClose: false,
+                                });
+                              }
 
                               return (
                                 <span class={styles.fileMessage}>
-                                  <Show when={canPreview}>
+                                  <Show when={canPreview()}>
                                     <img
                                       class={styles.filePreviewImg}
-                                      src={attachmentUrl ?? undefined}
+                                      src={attachmentUrl() ?? undefined}
                                       alt={file.fileName}
+                                      onLoad={followIfPinned}
                                       role='button'
                                       tabIndex={0}
                                       aria-label={`Open preview for ${file.fileName}`}
-                                      onClick={() =>
-                                        attachmentUrl &&
-                                        showImagePreview(
-                                          attachmentUrl,
-                                          file.fileName,
-                                        )
-                                      }
+                                      onClick={() => {
+                                        const url = attachmentUrl();
+                                        if (url) openPreview(url);
+                                      }}
                                       onKeyDown={(e) => {
                                         if (
                                           e.key !== 'Enter' &&
@@ -487,18 +702,14 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                                           return;
                                         }
                                         e.preventDefault();
-                                        if (attachmentUrl) {
-                                          showImagePreview(
-                                            attachmentUrl,
-                                            file.fileName,
-                                          );
-                                        }
+                                        const url = attachmentUrl();
+                                        if (url) openPreview(url);
                                       }}
                                     />
                                   </Show>
                                   <span class={styles.fileMessageMeta}>
                                     <Show
-                                      when={canDownload}
+                                      when={canDownload()}
                                       fallback={
                                         <span class={styles.fileMessageName}>
                                           {file.fileName}
@@ -506,16 +717,14 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                                       }
                                     >
                                       <a
-                                        href={attachmentUrl ?? undefined}
+                                        href={attachmentUrl() ?? undefined}
                                         download={file.fileName}
                                         class={styles.fileMessageName}
                                         onClick={(event) => {
-                                          if (!attachmentUrl) return;
+                                          const url = attachmentUrl();
+                                          if (!url) return;
                                           event.preventDefault();
-                                          void downloadUrl(
-                                            attachmentUrl,
-                                            file.fileName,
-                                          );
+                                          void downloadUrl(url, file.fileName);
                                         }}
                                       >
                                         {file.fileName}
@@ -546,6 +755,24 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         </LoadBoundary>
 
         <form class={styles.form} onSubmit={onSubmit}>
+          <input
+            title='Attach file'
+            ref={imageInputEl}
+            class={styles.fileInput}
+            type='file'
+            accept='image/*'
+            onChange={onImageInput}
+          />
+          <button
+            class={styles.attach}
+            type='button'
+            aria-label='Attach image'
+            title='Attach image'
+            disabled={state.sending || imagePreparing()}
+            onClick={() => imageInputEl?.click()}
+          >
+            <ImagePlus size={20} aria-hidden='true' />
+          </button>
           <textarea
             autofocus
             ref={inputTextAreaEl}
@@ -563,7 +790,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
             ref={attachSendButton}
             class={styles.send}
             type='submit'
-            disabled={!state.draft.trim() || state.sending}
+            disabled={!state.draft.trim() || state.sending || imagePreparing()}
           >
             Send
           </button>

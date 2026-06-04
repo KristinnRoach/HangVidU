@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Option A — Full migration to Cloudflare (incl. messages)</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --panel2: #1c2330;
+    --border: #2d3543;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --rtdb: #f97316;     /* orange = still on RTDB */
+    --cf: #2dd4bf;       /* teal = migrated to Cloudflare */
+    --done: #3fb950;
+    --wip: #d29922;
+    --todo: #6e7681;
+    --accent: #58a6ff;
+    --spine: #a371f7;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+  .app { display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
+
+  .banner { background: linear-gradient(90deg, rgba(45,212,191,.16), rgba(88,166,255,.06)); border: 1px solid var(--cf);
+    border-radius: 8px; padding: 9px 11px; margin-bottom: 14px; font-size: 11px; color: #aef0e6; line-height: 1.45; }
+  .banner b { color: var(--cf); }
+  .banner .warn { color: #f0b86e; }
+
+  .sidebar { background: var(--panel); border-right: 1px solid var(--border); padding: 16px; overflow-y: auto; }
+  .sidebar h1 { font-size: 15px; margin: 0 0 2px; }
+  .sidebar .sub { font-size: 12px; color: var(--muted); margin-bottom: 16px; line-height: 1.4; }
+  .group { margin-bottom: 18px; }
+  .group > label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 8px; }
+
+  .stages { display: flex; flex-wrap: wrap; gap: 6px; }
+  .stage-btn { border: 1px solid var(--border); background: var(--panel2); color: var(--text);
+    border-radius: 6px; padding: 6px 9px; font-size: 12px; cursor: pointer; flex: 0 0 auto; transition: all .12s; }
+  .stage-btn:hover { border-color: var(--accent); }
+  .stage-btn.active { background: var(--accent); color: #04101f; border-color: var(--accent); font-weight: 600; }
+  .stage-btn .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  .stage-btn .dot.done { background: var(--done); }
+  .stage-btn .dot.wip { background: var(--wip); }
+  .stage-btn .dot.todo { background: var(--todo); }
+
+  .slider-wrap { margin-top: 12px; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+
+  .stage-info { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+  .stage-info .title { font-size: 13px; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .badge { font-size: 10px; padding: 2px 7px; border-radius: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .badge.done { background: rgba(63,185,80,.15); color: var(--done); }
+  .badge.wip { background: rgba(210,153,34,.15); color: var(--wip); }
+  .badge.todo { background: rgba(110,118,129,.18); color: #adbac7; }
+  .stage-info .desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  .tradeoffs { list-style: none; margin: 0; padding: 0; }
+  .tradeoffs li { font-size: 11.5px; line-height: 1.45; padding: 6px 9px 6px 22px; margin-bottom: 5px; position: relative;
+    border-radius: 6px; background: var(--panel2); border: 1px solid var(--border); color: #c9d1d9; }
+  .tradeoffs li::before { position: absolute; left: 8px; top: 6px; font-weight: 700; }
+  .tradeoffs li.pro { border-left: 3px solid var(--done); }
+  .tradeoffs li.pro::before { content: '+'; color: var(--done); }
+  .tradeoffs li.con { border-left: 3px solid var(--rtdb); }
+  .tradeoffs li.con::before { content: '−'; color: var(--rtdb); }
+
+  .toggles label { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-bottom: 7px; cursor: pointer; color: var(--text); }
+  .toggles input { accent-color: var(--accent); }
+  .swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+
+  .comments-list { margin-top: 6px; }
+  .comment { background: var(--panel2); border: 1px solid var(--border); border-left: 3px solid var(--spine);
+    border-radius: 6px; padding: 8px 10px; font-size: 12px; margin-bottom: 6px; }
+  .comment .ct { font-weight: 600; color: var(--accent); font-size: 11px; }
+  .comment .cx { color: var(--muted); margin-top: 3px; line-height: 1.4; }
+  .comment .del { float: right; cursor: pointer; color: var(--muted); border: none; background: none; font-size: 14px; line-height: 1; }
+  .comment .del:hover { color: #f85149; }
+  .empty-hint { font-size: 11px; color: var(--muted); font-style: italic; }
+
+  .main { display: grid; grid-template-rows: 1fr auto; min-width: 0; }
+  .canvas-wrap { position: relative; overflow: hidden; background: radial-gradient(circle at 30% 20%, #11161f, var(--bg)); }
+  svg { width: 100%; height: 100%; display: block; }
+
+  .legend { position: absolute; bottom: 12px; left: 12px; background: rgba(13,17,23,.85);
+    border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 11px;
+    backdrop-filter: blur(6px); display: flex; flex-direction: column; gap: 6px; }
+  .legend .row { display: flex; align-items: center; gap: 7px; color: var(--muted); }
+  .legend .line { width: 22px; height: 0; border-top-width: 3px; border-top-style: solid; }
+
+  .pill-tip { position: absolute; top: 12px; right: 12px; font-size: 11px; color: var(--muted);
+    background: rgba(13,17,23,.7); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); }
+
+  .prompt-bar { background: var(--panel); border-top: 1px solid var(--border); padding: 12px 16px; }
+  .prompt-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .prompt-head span { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .copy-btn { background: var(--accent); color: #04101f; border: none; border-radius: 6px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .copy-btn:hover { filter: brightness(1.1); }
+  #prompt { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.55;
+    color: #c9d1d9; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+    max-height: 130px; overflow-y: auto; white-space: pre-wrap; }
+
+  .node-grp { cursor: pointer; }
+  .node-grp:hover .node-box { stroke-width: 2.5; }
+  .modal-back { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: center; justify-content: center; z-index: 20; }
+  .modal-back.show { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px; width: 380px; }
+  .modal h3 { margin: 0 0 2px; font-size: 14px; }
+  .modal .mf { font-size: 11px; color: var(--muted); margin-bottom: 12px; font-family: monospace; }
+  .modal textarea { width: 100%; height: 80px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); padding: 8px; font-size: 12px; resize: vertical; font-family: inherit; }
+  .modal .mbtns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+  .modal button { border-radius: 6px; padding: 6px 14px; font-size: 12px; cursor: pointer; border: 1px solid var(--border); background: var(--panel2); color: var(--text); }
+  .modal button.primary { background: var(--accent); color: #04101f; border-color: var(--accent); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <h1>Option A — Full migration to Cloudflare</h1>
+    <div class="banner"><b>Option A of 2</b> · migrate <b>everything incl. conversation messages</b> to Cloudflare. Live message updates require an <b>extra DO push worker</b> (Slice E1) — the cost RTDB gave for free.<br><span class="warn">Reference only — does NOT reflect the <code>feat/r2-images</code> branch state.</span></div>
+    <div class="sub">Drag the timeline to watch each data domain flip from Firebase RTDB onto its Cloudflare primitive, forming the <b style="color:var(--spine)">conversationId</b> spine. End-state: RTDB fully removed.</div>
+
+    <div class="group">
+      <label>Migration timeline</label>
+      <div class="stages" id="stages"></div>
+      <div class="slider-wrap"><input type="range" id="slider" min="0" max="7" value="7" step="1"></div>
+    </div>
+
+    <div class="group">
+      <div class="stage-info">
+        <div class="title"><span id="si-name"></span><span class="badge" id="si-badge"></span></div>
+        <div class="desc" id="si-desc"></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <label>Key trade-offs</label>
+      <ul class="tradeoffs">
+        <li class="pro">One source of truth — conversationId spine across D1/R2/DO; no permanent dual-backend split logic.</li>
+        <li class="pro">Relational queries (unread, membership, search) are clean SQL in D1; reuses the DO + src/realtime transport for push.</li>
+        <li class="con">Loses RTDB's free realtime — must build and run an extra DO push worker (Slice E1) for no-reload updates.</li>
+        <li class="con">Most migration work of the two, plus an optional history backfill; reload-based until E1 lands.</li>
+      </ul>
+    </div>
+
+    <div class="group toggles">
+      <label>Show connections</label>
+      <label><input type="checkbox" id="t-rtdb" checked><span class="swatch" style="background:var(--rtdb)"></span> On RTDB (legacy)</label>
+      <label><input type="checkbox" id="t-cf" checked><span class="swatch" style="background:var(--cf)"></span> Migrated to Cloudflare</label>
+    </div>
+
+    <div class="group">
+      <label>Notes (<span id="ccount">0</span>) — click any domain</label>
+      <div class="comments-list" id="comments"><div class="empty-hint">No notes yet. Click a domain node to attach a question or comment.</div></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="canvas-wrap">
+      <svg id="svg" viewBox="0 0 1000 640" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <marker id="ar-rtdb" markerWidth="9" markerHeight="7" refX="7" refY="3.5" orient="auto"><polygon points="0 0,9 3.5,0 7" fill="#f97316"/></marker>
+          <marker id="ar-cf" markerWidth="9" markerHeight="7" refX="7" refY="3.5" orient="auto"><polygon points="0 0,9 3.5,0 7" fill="#2dd4bf"/></marker>
+        </defs>
+        <g id="links"></g>
+        <g id="backends"></g>
+        <g id="domains"></g>
+      </svg>
+      <div class="pill-tip">Client routes by <code>VITE_*_BACKEND</code> flags → adapters</div>
+      <div class="legend">
+        <div class="row"><span class="line" style="border-color:var(--rtdb)"></span> Still on Firebase RTDB</div>
+        <div class="row"><span class="line" style="border-color:var(--cf)"></span> Migrated to Cloudflare</div>
+        <div class="row"><span class="swatch" style="background:var(--spine)"></span> conversationId spine (D1·R2·DO)</div>
+      </div>
+    </div>
+
+    <div class="prompt-bar">
+      <div class="prompt-head"><span>Prompt</span><button class="copy-btn" id="copy">Copy Prompt</button></div>
+      <div id="prompt"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-back" id="modal-back">
+  <div class="modal">
+    <h3 id="m-name"></h3>
+    <div class="mf" id="m-file"></div>
+    <textarea id="m-text" placeholder="Question, concern, or change request about this domain…"></textarea>
+    <div class="mbtns"><button id="m-cancel">Cancel</button><button class="primary" id="m-save">Add note</button></div>
+  </div>
+</div>
+
+<script>
+const OPTION = 'A';
+const STAGES = [
+  { id:'Legacy', name:'Legacy (pre-migration)', status:'done',
+    desc:'Everything on Firebase RTDB except WebRTC room signaling, which already moved to a Durable Object (Signaling Slice 1, verified).' },
+  { id:'A', name:'Slice A — D1 schema + resolve/create', status:'done',
+    desc:'New workers/data worker. 6 D1 tables, opaque UUID conversationId, dm_key UNIQUE dedup. users + conversation resolve-or-create endpoints.' },
+  { id:'B', name:'Slice B — messages on D1', status:'done',
+    desc:'Message read/write endpoints + D1 adapter behind VITE_MESSAGE_BACKEND=d1. Pure D1, load-on-open. THIS is the contested step in Option A — D1 messages have no free live push.' },
+  { id:'C', name:'Slice C — opaque-id open flow', status:'done',
+    desc:'Opening a DM resolve-or-creates the opaque conversationId. List activity (unread + reorder) sourced from D1. UI flip to d1 browser-verified on reload.' },
+  { id:'D', name:'Slice D — files on R2', status:'todo',
+    desc:'Upload to R2 key {conversationId}/{fileId}; insert message_attachments + a file message; membership-guarded download. The critically-needed piece (files too large for RTDB).' },
+  { id:'E1', name:'Slice E1 — live message push (DO)', status:'todo',
+    desc:'THE EXTRA INFRASTRUCTURE Option A requires: a per-conversation Durable Object pushes message/read/reaction changes so the app updates without reload. This is what RTDB listeners gave for free.' },
+  { id:'E2', name:'Slice E2 — call handshake on DO room', status:'todo',
+    desc:'Fold call-invite handshake into the same conversation room. Call signaling leaves RTDB. RTDB now carries no live traffic.' },
+  { id:'Goal', name:'Goal — RTDB eliminated', status:'todo',
+    desc:'conversationId is the single spine across D1 (relational, incl. messages), R2 (files), DO (room: signaling + presence + live push + call). Firebase RTDB removed; Firebase Auth stays for identity.' },
+];
+
+const BK = {
+  rtdb: { x:70,  y:250, w:150, h:120, label:'Firebase RTDB', sub:'legacy persistence + realtime', kind:'rtdb' },
+  spine:{ x:760, y:60,  w:0,   h:520 },
+  d1:   { x:720, y:120, w:200, h:88,  label:'D1', sub:'relational · users · conversations · messages · members · attachments · reactions', kind:'cf' },
+  r2:   { x:720, y:300, w:200, h:74,  label:'R2', sub:'files · {conversationId}/{fileId}', kind:'cf' },
+  do:   { x:720, y:430, w:200, h:88,  label:'Durable Object', sub:'one room / conversationId · signaling · presence · live push · call', kind:'cf' },
+};
+
+const DOMAINS = [
+  { id:'users',    label:'Users / identity',        file:'D1 users',                    y:95,  target:'d1', migratedAt:1 },
+  { id:'messages', label:'Messages (text)',         file:'D1 messages',                 y:150, target:'d1', migratedAt:2 },
+  { id:'convos',   label:'Conversations / metadata',file:'D1 conversations',            y:205, target:'d1', migratedAt:3 },
+  { id:'activity', label:'Contacts list / unread',  file:'D1 listConversations',        y:260, target:'d1', migratedAt:3 },
+  { id:'files',    label:'Files / attachments',     file:'R2 {conversationId}/{fileId}', y:330, target:'r2', migratedAt:4 },
+  { id:'livepush', label:'Live message push',       file:'conversation DO (extra worker)', y:400, target:'do', migratedAt:5 },
+  { id:'call',     label:'Call-invite handshake',   file:'conversation DO room',        y:455, target:'do', migratedAt:6 },
+  { id:'signal',   label:'WebRTC room signaling',   file:'workers/signaling (Slice 1)', y:510, target:'do', migratedAt:0 },
+];
+const DOMAIN_X = 360, DOMAIN_W = 230, DOMAIN_H = 40;
+
+const state = { stage: STAGES.length-1, showRtdb: true, showCf: true, comments: [] };
+const $ = id => document.getElementById(id);
+const svgNS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs={}) { const e = document.createElementNS(svgNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+
+function renderBackends() {
+  const g = $('backends'); g.innerHTML = '';
+  const spineOpacity = state.stage >= 1 ? 1 : 0.25;
+  g.appendChild(el('line', { x1:BK.spine.x, y1:70, x2:BK.spine.x, y2:560, stroke:'var(--spine)', 'stroke-width':3, 'stroke-dasharray':'2 6', opacity:spineOpacity }));
+  const spl = el('text', { x:BK.spine.x, y:48, fill:'var(--spine)', 'font-size':12, 'font-weight':700, 'text-anchor':'middle', opacity:spineOpacity });
+  spl.textContent = 'conversationId spine'; g.appendChild(spl);
+
+  const rtdbAlive = anyOnRtdb();
+  drawBackendBox(g, BK.rtdb, rtdbAlive ? 1 : 0.28, 'var(--rtdb)', rtdbAlive ? '#1f1206' : '#15110d');
+  if (!rtdbAlive) {
+    const x = el('text', { x:BK.rtdb.x+BK.rtdb.w/2, y:BK.rtdb.y+BK.rtdb.h+20, fill:'var(--cf)', 'font-size':12, 'font-weight':700, 'text-anchor':'middle' });
+    x.textContent = '✓ RTDB eliminated'; g.appendChild(x);
+  }
+  ['d1','r2','do'].forEach(k => {
+    const used = DOMAINS.some(d => d.target===k && state.stage >= d.migratedAt);
+    drawBackendBox(g, BK[k], used ? 1 : 0.35, 'var(--cf)', used ? '#06201d' : '#0e1614');
+  });
+}
+function drawBackendBox(g, b, opacity, stroke, fill) {
+  const grp = el('g', { opacity });
+  grp.appendChild(el('rect', { x:b.x, y:b.y, width:b.w, height:b.h, rx:10, fill, stroke, 'stroke-width':1.6 }));
+  const t = el('text', { x:b.x+12, y:b.y+24, fill:'var(--text)', 'font-size':14, 'font-weight':700 });
+  t.textContent = b.label; grp.appendChild(t);
+  wrapText(grp, b.sub, b.x+12, b.y+42, b.w-24, 11, 'var(--muted)');
+  g.appendChild(grp);
+}
+
+function renderDomains() {
+  const dg = $('domains'); dg.innerHTML = '';
+  const lg = $('links'); lg.innerHTML = '';
+  DOMAINS.forEach(d => {
+    const migrated = state.stage >= d.migratedAt;
+    const color = migrated ? 'var(--cf)' : 'var(--rtdb)';
+    const showThis = migrated ? state.showCf : state.showRtdb;
+    if (showThis) {
+      const cy = d.y + DOMAIN_H/2;
+      if (migrated) {
+        const tb = BK[d.target], tx = tb.x, ty = tb.y + tb.h/2, sx = DOMAIN_X + DOMAIN_W;
+        lg.appendChild(el('path', { d:`M ${sx} ${cy} C ${sx+70} ${cy}, ${tx-70} ${ty}, ${tx} ${ty}`, fill:'none', stroke:'var(--cf)', 'stroke-width':2, 'marker-end':'url(#ar-cf)', opacity:.9 }));
+      } else {
+        const tx = BK.rtdb.x + BK.rtdb.w, ty = BK.rtdb.y + BK.rtdb.h/2, sx = DOMAIN_X;
+        lg.appendChild(el('path', { d:`M ${sx} ${cy} C ${sx-70} ${cy}, ${tx+70} ${ty}, ${tx} ${ty}`, fill:'none', stroke:'var(--rtdb)', 'stroke-width':2, 'marker-end':'url(#ar-rtdb)', opacity:.85 }));
+      }
+    }
+    const grp = el('g', { class:'node-grp' });
+    grp.addEventListener('click', () => openModal(d));
+    const hasNote = state.comments.some(c => c.target === d.id);
+    grp.appendChild(el('rect', { class:'node-box', x:DOMAIN_X, y:d.y, width:DOMAIN_W, height:DOMAIN_H, rx:8, fill:'#161b22', stroke: hasNote ? 'var(--spine)' : color, 'stroke-width': hasNote ? 2.5 : 1.6 }));
+    grp.appendChild(el('circle', { cx:DOMAIN_X+14, cy:d.y+DOMAIN_H/2, r:5, fill:color }));
+    const t = el('text', { x:DOMAIN_X+28, y:d.y+18, fill:'var(--text)', 'font-size':12.5, 'font-weight':600 }); t.textContent = d.label; grp.appendChild(t);
+    const f = el('text', { x:DOMAIN_X+28, y:d.y+32, fill:'var(--muted)', 'font-size':10 }); f.textContent = migrated ? '→ '+d.file : 'RTDB'; grp.appendChild(f);
+    if (hasNote) { const b = el('text', { x:DOMAIN_X+DOMAIN_W-14, y:d.y+18, fill:'var(--spine)', 'font-size':13, 'text-anchor':'end' }); b.textContent = '✎'; grp.appendChild(b); }
+    dg.appendChild(grp);
+  });
+}
+function anyOnRtdb() { return DOMAINS.some(d => state.stage < d.migratedAt); }
+
+function wrapText(g, str, x, y, maxW, size, fill) {
+  const words = str.split(' '); let line=''; let dy=0; const lh=size+3; const approx = size*0.55;
+  words.forEach(w => { const test = line ? line+' '+w : w;
+    if (test.length*approx > maxW && line) { const t = el('text',{x,y:y+dy,fill,'font-size':size}); t.textContent=line; g.appendChild(t); line=w; dy+=lh; } else line=test; });
+  if (line){ const t=el('text',{x,y:y+dy,fill,'font-size':size}); t.textContent=line; g.appendChild(t); }
+}
+
+function renderStages() {
+  const c = $('stages'); c.innerHTML='';
+  STAGES.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.className = 'stage-btn' + (i===state.stage?' active':'');
+    b.innerHTML = `<span class="dot ${s.status}"></span>${s.id}`;
+    b.onclick = () => { state.stage=i; $('slider').value=i; updateAll(); };
+    c.appendChild(b);
+  });
+  const s = STAGES[state.stage];
+  $('si-name').textContent = s.name;
+  $('si-badge').textContent = s.status==='done'?'done':s.status==='wip'?'in progress':'planned';
+  $('si-badge').className = 'badge '+s.status;
+  $('si-desc').textContent = s.desc;
+}
+
+let modalTarget = null;
+function openModal(d){ modalTarget=d; $('m-name').textContent=d.label; $('m-file').textContent=d.file; $('m-text').value=''; $('modal-back').classList.add('show'); $('m-text').focus(); }
+function closeModal(){ $('modal-back').classList.remove('show'); modalTarget=null; }
+$('m-cancel').onclick=closeModal;
+$('modal-back').onclick=e=>{ if(e.target===$('modal-back')) closeModal(); };
+$('m-save').onclick=()=>{ const t=$('m-text').value.trim(); if(t&&modalTarget){ state.comments.push({id:Date.now(),target:modalTarget.id,label:modalTarget.label,file:modalTarget.file,text:t}); } closeModal(); updateAll(); };
+function renderComments(){
+  $('ccount').textContent = state.comments.length;
+  const c = $('comments');
+  if(!state.comments.length){ c.innerHTML='<div class="empty-hint">No notes yet. Click a domain node to attach a question or comment.</div>'; return; }
+  c.innerHTML='';
+  state.comments.forEach(cm=>{ const d=document.createElement('div'); d.className='comment';
+    d.innerHTML=`<button class="del" data-id="${cm.id}">×</button><div class="ct">${cm.label}</div><div class="cx">${cm.text.replace(/</g,'&lt;')}</div>`; c.appendChild(d); });
+  c.querySelectorAll('.del').forEach(b=> b.onclick=()=>{ state.comments=state.comments.filter(x=>x.id!=b.dataset.id); updateAll(); });
+}
+
+function updatePrompt(){
+  const s = STAGES[state.stage];
+  const migrated = DOMAINS.filter(d=>state.stage>=d.migratedAt);
+  const pending = DOMAINS.filter(d=>state.stage<d.migratedAt);
+  let p = `HangVidU migration — OPTION A: full migration to Cloudflare incl. conversation messages.\nViewing stage "${s.id}: ${s.name}" (${s.status}).\n\n${s.desc}\n\n`;
+  if (pending.length) {
+    p += `Still on Firebase RTDB at this stage: ${pending.map(d=>d.label).join(', ')}.\n`;
+    p += `Already on Cloudflare: ${migrated.map(d=>d.label+' ('+d.target.toUpperCase()+')').join(', ')}.\n`;
+  } else {
+    p += `RTDB fully eliminated. conversationId is the single spine across D1 (incl. messages), R2 (files), and the DO room. Trade-off: live message updates require the extra DO push worker (Slice E1) that RTDB provided for free.\n`;
+  }
+  if (state.comments.length) { p += `\nNotes on specific domains:\n`; state.comments.forEach(c=> p += `\n• ${c.label} (${c.file}):\n  ${c.text}\n`); }
+  $('prompt').textContent = p.trim();
+}
+
+function updateAll(){ renderStages(); renderBackends(); renderDomains(); renderComments(); updatePrompt(); }
+$('slider').oninput = e => { state.stage=+e.target.value; updateAll(); };
+$('t-rtdb').onchange = e => { state.showRtdb=e.target.checked; updateAll(); };
+$('t-cf').onchange = e => { state.showCf=e.target.checked; updateAll(); };
+$('copy').onclick = () => { navigator.clipboard.writeText($('prompt').textContent).then(()=>{ const b=$('copy'); const o=b.textContent; b.textContent='Copied!'; setTimeout(()=>b.textContent=o,1200); }); };
+updateAll();
+</script>
+</body>
+</html>

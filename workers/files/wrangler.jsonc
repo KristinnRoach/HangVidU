@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hangvidu-files",
+  "account_id": "a9d78083083154be83f36552c213a269",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-02",
+  "observability": { "enabled": true },
+  "r2_buckets": [
+    { "binding": "FILES_BUCKET", "bucket_name": "hangvidu-files" },
+  ],
+  "vars": {
+    "R2_BUCKET_NAME": "hangvidu-files",
+    "FIREBASE_PROJECT_ID": "vidu-aae11",
+    "FIREBASE_DATABASE_URL": "https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app",
+    "ALLOWED_ORIGINS": "https://hangvidu.com,https://www.hangvidu.com,https://vidu-aae11.web.app,https://vidu-aae11.firebaseapp.com,http://localhost:5173,https://localhost:5173",
+  },
+}

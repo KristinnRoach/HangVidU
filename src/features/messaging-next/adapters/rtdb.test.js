@@ -69,6 +69,101 @@ describe('messaging-next RTDB adapter', () => {
     );
   });
 
+  it('writes storage-backed file message rows without inline data or urls', async () => {
+    const repository = createRTDBMessageRepository();
+
+    await repository.send({
+      messageId: 'file-1',
+      conversationId: 'user-a_user-b',
+      senderId: 'user-a',
+      senderName: 'User A',
+      sentAt: 10,
+      delivery: 'persistent',
+      payload: {
+        type: 'file',
+        fileName: 'demo.webp',
+        mimeType: 'image/webp',
+        fileSize: 123,
+          storage: {
+            provider: 'r2',
+            bucket: 'hangvidu-files',
+            key: 'conversation-files/user-a_user-b/file-1',
+          },
+        text: 'caption',
+      },
+    });
+
+    expect(set).toHaveBeenCalledWith(
+      { path: 'conversations/user-a_user-b/messages/file-1' },
+      {
+        from: 'user-a',
+        fromName: 'User A',
+        type: 'file',
+        fileName: 'demo.webp',
+        mimeType: 'image/webp',
+        fileSize: 123,
+        storage: {
+          provider: 'r2',
+          bucket: 'hangvidu-files',
+          key: 'conversation-files/user-a_user-b/file-1',
+        },
+        text: 'caption',
+        sentAt: serverTimestamp(),
+        read: false,
+      },
+    );
+  });
+
+  it('rejects file sends without R2 storage metadata', async () => {
+    const repository = createRTDBMessageRepository();
+
+    await expect(
+      repository.send({
+        messageId: 'file-1',
+        conversationId: 'user-a_user-b',
+        senderId: 'user-a',
+        senderName: 'User A',
+        sentAt: 10,
+        delivery: 'persistent',
+        payload: {
+          type: 'file',
+          fileName: 'demo.webp',
+          mimeType: 'image/webp',
+          fileSize: 123,
+          data: 'data:image/webp;base64,abc',
+        },
+      }),
+    ).rejects.toThrow('file message payload requires R2 storage metadata');
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  it('rejects file sends with non-R2 storage metadata', async () => {
+    const repository = createRTDBMessageRepository();
+
+    await expect(
+      repository.send({
+        messageId: 'file-1',
+        conversationId: 'user-a_user-b',
+        senderId: 'user-a',
+        senderName: 'User A',
+        sentAt: 10,
+        delivery: 'persistent',
+        payload: {
+          type: 'file',
+          fileName: 'demo.webp',
+          mimeType: 'image/webp',
+          fileSize: 123,
+          storage: {
+            provider: 'public-url',
+            bucket: 'hangvidu-files',
+            key: 'conversation-files/user-a_user-b/file-1',
+          },
+        },
+      }),
+    ).rejects.toThrow('file message payload requires R2 storage metadata');
+    expect(set).not.toHaveBeenCalled();
+  });
+
   it('reserves RTDB push keys before optimistic rendering', () => {
     const repository = createRTDBMessageRepository();
 
@@ -78,7 +173,7 @@ describe('messaging-next RTDB adapter', () => {
     });
   });
 
-  it('loads legacy file message rows for read-side rendering', async () => {
+  it('skips inline file message rows without R2 storage', async () => {
     vi.mocked(get).mockResolvedValue({
       exists: () => true,
       forEach: (visit) => {
@@ -102,6 +197,37 @@ describe('messaging-next RTDB adapter', () => {
     const repository = createRTDBMessageRepository();
     const messages = await repository.loadMessages('user-a_user-b');
 
+    expect(messages).toEqual([]);
+  });
+
+  it('loads R2 file message rows for read-side rendering', async () => {
+    vi.mocked(get).mockResolvedValue({
+      exists: () => true,
+      forEach: (visit) => {
+        visit({
+          key: 'file-1',
+          val: () => ({
+            from: 'user-a',
+            fromName: 'User A',
+            type: 'file',
+            fileName: 'demo.png',
+            mimeType: 'image/png',
+            fileSize: 123,
+            storage: {
+              provider: 'r2',
+              bucket: 'hangvidu-files',
+              key: 'conversation-files/user-a_user-b/file-1',
+            },
+            sentAt: 10,
+            read: false,
+          }),
+        });
+      },
+    });
+
+    const repository = createRTDBMessageRepository();
+    const messages = await repository.loadMessages('user-a_user-b');
+
     expect(messages).toEqual([
       expect.objectContaining({
         messageId: 'file-1',
@@ -110,7 +236,11 @@ describe('messaging-next RTDB adapter', () => {
           fileName: 'demo.png',
           mimeType: 'image/png',
           fileSize: 123,
-          data: 'data:image/png;base64,abc',
+          storage: {
+            provider: 'r2',
+            bucket: 'hangvidu-files',
+            key: 'conversation-files/user-a_user-b/file-1',
+          },
           text: undefined,
         },
       }),

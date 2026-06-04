@@ -25,7 +25,6 @@ import { ConversationNodeSchema } from '../schema.js';
 import type {
   ConversationId,
   ConversationNode,
-  MessageEnvelope,
   UserId,
 } from '../types.js';
 
@@ -81,44 +80,47 @@ function toIncoming(
   };
 
   if (raw.type === 'file') {
-    const data = typeof raw.data === 'string' ? raw.data : undefined;
-    const url = typeof raw.url === 'string' ? raw.url : undefined;
     const storage =
       raw.storage && typeof raw.storage === 'object'
         ? (raw.storage as Record<string, unknown>)
         : undefined;
+    const r2Storage =
+      storage?.provider === 'r2' &&
+      typeof storage.bucket === 'string' &&
+      typeof storage.key === 'string'
+        ? {
+            provider: 'r2' as const,
+            bucket: storage.bucket,
+            key: storage.key,
+          }
+        : undefined;
 
-    if (
-      typeof raw.fileName !== 'string' ||
-      typeof raw.mimeType !== 'string' ||
-      typeof raw.fileSize !== 'number' ||
-      (!data && !url && !storage)
-    ) {
-      return null;
+    // Modern R2-backed file message
+    if (r2Storage) {
+      if (
+        typeof raw.fileName !== 'string' ||
+        typeof raw.mimeType !== 'string' ||
+        typeof raw.fileSize !== 'number'
+      ) {
+        return null;
+      }
+
+      return {
+        ...base,
+        payload: {
+          type: 'file',
+          fileName: raw.fileName,
+          mimeType: raw.mimeType,
+          fileSize: raw.fileSize,
+          storage: r2Storage,
+          text: typeof raw.text === 'string' ? raw.text : undefined,
+        },
+      };
     }
 
-    return {
-      ...base,
-      payload: {
-        type: 'file',
-        fileName: raw.fileName,
-        mimeType: raw.mimeType,
-        fileSize: raw.fileSize,
-        data,
-        url,
-        storage:
-          storage?.provider === 'r2' &&
-          typeof storage.bucket === 'string' &&
-          typeof storage.key === 'string'
-            ? {
-                provider: 'r2',
-                bucket: storage.bucket,
-                key: storage.key,
-              }
-            : undefined,
-        text: typeof raw.text === 'string' ? raw.text : undefined,
-      },
-    };
+    // Legacy inline file rows were migrated before the R2 cutover. Runtime
+    // messaging-next intentionally requires valid R2 storage metadata.
+    return null;
   }
 
   if (typeof raw.text !== 'string') return null;
@@ -130,15 +132,6 @@ function toIncoming(
       text: raw.text,
     },
   };
-}
-
-function requireTextPayload(message: MessageEnvelope) {
-  if (message.payload.type !== 'text') {
-    throw new Error(
-      'RTDB legacy adapter currently supports text payloads only',
-    );
-  }
-  return message.payload;
 }
 
 function toConversationNode(raw: unknown): ConversationNode | null {
@@ -202,15 +195,52 @@ export function createRTDBMessageRepository(): MessageRepository {
     },
 
     async send(message) {
-      const payload = requireTextPayload(message);
-      await set(msgRef(message.conversationId, message.messageId), {
+      const base = {
         from: message.senderId,
         fromName: message.senderName ?? 'Guest User',
-        text: payload.text,
-        type: 'text',
         sentAt: serverTimestamp(),
         read: false,
-      });
+      };
+
+      if (message.payload.type !== 'text' && message.payload.type !== 'file') {
+        throw new Error('RTDB adapter only supports text and file messages');
+      }
+      let payload: Record<string, unknown>;
+      if (message.payload.type === 'text') {
+        payload = {
+          ...base,
+          text: message.payload.text,
+          type: 'text',
+        };
+      } else {
+        const storage = message.payload.storage;
+        if (storage?.provider !== 'r2') {
+          throw new Error('file message payload requires R2 storage metadata');
+        }
+        if (
+          typeof storage.bucket !== 'string' ||
+          storage.bucket.trim() === '' ||
+          typeof storage.key !== 'string' ||
+          storage.key.trim() === ''
+        ) {
+          throw new Error('file message payload requires valid R2 bucket and key');
+        }
+        payload = {
+          ...base,
+          type: 'file',
+          fileName: message.payload.fileName,
+          mimeType: message.payload.mimeType,
+          fileSize: message.payload.fileSize,
+          storage: {
+            provider: 'r2',
+            bucket: storage.bucket,
+            key: storage.key,
+          },
+          text: message.payload.text ?? '',
+        };
+      }
+
+      await set(msgRef(message.conversationId, message.messageId), payload);
       return { id: message.messageId, sentAt: Date.now() };
     },
 

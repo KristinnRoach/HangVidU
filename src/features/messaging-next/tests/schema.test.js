@@ -71,7 +71,7 @@ describe('messaging-next schema', () => {
     expect(payload.details?.callId).toBe('room-123');
   });
 
-  it('accepts legacy file payloads for read-side rendering', () => {
+  it('accepts R2-backed file payloads', () => {
     const message = MessageEnvelopeSchema.parse({
       messageId: 'msg-1',
       conversationId: 'user-a_user-b',
@@ -83,10 +83,33 @@ describe('messaging-next schema', () => {
         fileName: 'demo.png',
         mimeType: 'image/png',
         fileSize: 123,
-        data: 'data:image/png;base64,abc',
+        storage: {
+          provider: 'r2',
+          bucket: 'hangvidu-files',
+          key: 'conversation-files/user-a_user-b/msg-1',
+        },
       },
     });
 
     expect(message.payload.type).toBe('file');
+  });
+
+  it('rejects inline file payloads', () => {
+    expect(() =>
+      MessageEnvelopeSchema.parse({
+        messageId: 'msg-1',
+        conversationId: 'user-a_user-b',
+        senderId: 'user-a',
+        sentAt: 10,
+        delivery: 'persistent',
+        payload: {
+          type: 'file',
+          fileName: 'demo.png',
+          mimeType: 'image/png',
+          fileSize: 123,
+          data: 'data:image/png;base64,abc',
+        },
+      }),
+    ).toThrow();
   });
 });

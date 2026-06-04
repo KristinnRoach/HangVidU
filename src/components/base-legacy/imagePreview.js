@@ -10,8 +10,14 @@ import { downloadUrl } from '@lib/utils/download-url.js';
  * @param {string} src - Image src (data URL or object URL)
  * @param {string} fileName - File name used for the download link
  * @param {string|null} downloadLabel - Label for the download link (string or null)
+ * @param {{ revokeOnClose?: boolean }} options
  */
-export function showImagePreview(src, fileName, downloadLabel = null) {
+export function showImagePreview(
+  src,
+  fileName,
+  downloadLabel = null,
+  { revokeOnClose = true } = {},
+) {
   const dialog = document.createElement('dialog');
   dialog.className = 'image-preview-dialog';
 
@@ -65,7 +71,7 @@ export function showImagePreview(src, fileName, downloadLabel = null) {
   };
 
   const onClose = () => {
-    if (typeof src === 'string' && src.startsWith('blob:')) {
+    if (revokeOnClose && typeof src === 'string' && src.startsWith('blob:')) {
       URL.revokeObjectURL(src);
     }
     cleanup();
