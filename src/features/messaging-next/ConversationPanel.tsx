@@ -492,11 +492,28 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
     const conversationId = state.conversationId;
     if (!conversationId) return;
+    const uploadConversationId = conversationId;
 
     const mimeType = file.type.trim().toLowerCase();
     if (!mimeType.startsWith('image/') || mimeType === 'image/svg+xml') {
       window.alert('Choose a PNG, JPEG, GIF, WebP, or similar image.');
       return;
+    }
+
+    let uploadedStorage:
+      | Awaited<ReturnType<typeof uploadConversationImage>>
+      | undefined;
+    function cleanupUploadedImage() {
+      if (!uploadedStorage) return;
+      void deleteConversationFile(uploadConversationId, uploadedStorage).catch(
+        (error) => {
+          console.warn('[conversation] failed to clean up orphaned image', {
+            conversationId: uploadConversationId,
+            key: uploadedStorage?.key,
+            error,
+          });
+        },
+      );
     }
 
     setImagePreparing(true);
@@ -518,15 +535,9 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         return;
       }
 
-      const storage = await uploadConversationImage(conversationId, image);
+      uploadedStorage = await uploadConversationImage(conversationId, image);
       if (state.conversationId !== conversationId) {
-        void deleteConversationFile(conversationId, storage).catch((error) => {
-          console.warn('[conversation] failed to clean up orphaned image', {
-            conversationId,
-            key: storage.key,
-            error,
-          });
-        });
+        cleanupUploadedImage();
         return;
       }
 
@@ -537,20 +548,15 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         fileName: image.name || file.name || 'image',
         mimeType: image.type || file.type || 'image/*',
         fileSize: image.size,
-        storage,
+        storage: uploadedStorage,
         text: caption || undefined,
       });
       if (!sent) {
-        void deleteConversationFile(conversationId, storage).catch((error) => {
-          console.warn('[conversation] failed to clean up orphaned image', {
-            conversationId,
-            key: storage.key,
-            error,
-          });
-        });
+        cleanupUploadedImage();
         window.alert('Image send failed.');
       }
     } catch (error) {
+      cleanupUploadedImage();
       console.warn('[conversation] failed to send image attachment', error);
       window.alert('Image send failed.');
     } finally {
