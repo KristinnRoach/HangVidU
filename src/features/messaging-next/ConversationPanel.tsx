@@ -159,7 +159,10 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     | { userId: UserId; conversationId: ConversationId; text: string }
     | undefined;
 
-  function makeAttachmentKey(conversationId: ConversationId, messageId: string) {
+  function makeAttachmentKey(
+    conversationId: ConversationId,
+    messageId: string,
+  ) {
     return `${conversationId}:${messageId}`;
   }
 
@@ -174,9 +177,11 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
   function scrollToEnd() {
     userHasScrolledUp = false;
-    // Run after layout so late-sized content (e.g. images) is measured.
+    // Run after layout so late-sized content (e.g. images) is measured. Re-check
+    // the pinned state: the user may have scrolled up before this frame ran.
     requestAnimationFrame(() => {
-      if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
+      if (!messagesEl || suppressScroll || userHasScrolledUp) return;
+      messagesEl.scrollTop = messagesEl.scrollHeight;
     });
   }
 
@@ -261,12 +266,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     );
   }
 
-  createEffect(
-    on(
-      () => state.messages.length,
-      followIfPinned,
-    ),
-  );
+  createEffect(on(() => state.messages.length, followIfPinned));
 
   createEffect(() => {
     const conversationId = state.conversationId;
@@ -649,7 +649,11 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                               const attachmentUrl = () => {
                                 const conversationId = state.conversationId;
                                 if (!conversationId) return null;
-                                return r2AttachmentUrls()[makeAttachmentKey(conversationId, msg.id)] ?? null;
+                                return (
+                                  r2AttachmentUrls()[
+                                    makeAttachmentKey(conversationId, msg.id)
+                                  ] ?? null
+                                );
                               };
                               const canPreview = () => {
                                 const url = attachmentUrl();
