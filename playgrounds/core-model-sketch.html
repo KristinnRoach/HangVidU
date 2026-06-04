@@ -86,7 +86,7 @@
 <div class="app">
   <aside class="sidebar">
     <h1>Core Model</h1>
-    <div class="sub">A sketchboard for the <b>simplest</b> core the rest of the app is built around — persisted (relational) <i>and</i> ephemeral (realtime) together, so ownership is unambiguous. <b>Drag</b> to rearrange · <b>click</b> a node to add a note.</div>
+    <div class="sub"><b style="color:var(--eph)">WIP sketch — not a source of truth.</b> A sketchboard for the <b>simplest</b> core the rest of the app is built around — persisted (relational) <i>and</i> ephemeral (realtime) together, so ownership is unambiguous. <b>Drag</b> to rearrange · <b>click</b> a node to add a note.</div>
 
     <div class="group">
       <label>Diagram</label>
@@ -227,20 +227,21 @@ const OWN_POS = {
   message:{x:360,y:300}, attachment:{x:360,y:470}, callhistory:{x:640,y:300},
   signalingroom:{x:650,y:560}, callinvite:{x:360,y:600},
 };
+// Convention: arrows read "A owns B" (owner → owned). 'access' = who-grants-access-to-what.
 const OWN_RELS = [
-  // access path: a User owns their Memberships; a Membership is the capability that grants Conversation access
+  // a User owns their Memberships; a Membership grants access to a Conversation
   { from:'user', to:'membership', type:'owns', label:'owns' },
   { from:'membership', to:'conversation', type:'access', label:'grants access to' },
-  // content owned by the conversation root
-  { from:'message', to:'conversation', type:'owns', label:'owned by' },
-  { from:'attachment', to:'message', type:'owns', label:'owned by', need:'attachment' },
-  { from:'callhistory', to:'conversation', type:'owns', label:'owned by', need:'callhistory' },
+  // the Conversation root owns its content
+  { from:'conversation', to:'message', type:'owns', label:'owns' },
+  { from:'message', to:'attachment', type:'owns', label:'owns', need:'attachment' },
+  { from:'conversation', to:'callhistory', type:'owns', label:'owns', need:'callhistory' },
   // realtime CURRENT — call identity lives outside the conversation (the ambiguity to resolve)
   { from:'callinvite', to:'user', type:'route', label:'ring → per-user mailbox', mode:'current' },
   { from:'callinvite', to:'signalingroom', type:'route', label:'carries random roomId', mode:'current' },
-  // realtime SUGGESTED — room/call owned by the conversation, authorized by membership
-  { from:'signalingroom', to:'conversation', type:'owns', label:'owned by (= conversationId)', mode:'suggested' },
-  { from:'callinvite', to:'conversation', type:'owns', label:'session under', mode:'suggested' },
+  // realtime SUGGESTED — Conversation owns the room/call; Membership authorizes
+  { from:'conversation', to:'signalingroom', type:'owns', label:'owns (= conversationId)', mode:'suggested' },
+  { from:'conversation', to:'callinvite', type:'owns', label:'owns (call session)', mode:'suggested' },
   { from:'membership', to:'signalingroom', type:'access', label:'authorizes', mode:'suggested' },
 ];
 
@@ -539,10 +540,10 @@ function updatePrompt(){
 }
 
 function updateOwnershipPrompt(){
-  const arrow={owns:'──owned by──>', access:'══grants access══>', route:'- -routes- ->'};
+  const arrow={owns:'──owns──>', access:'══grants access══>', route:'- -routes- ->'};
   let p=`HangVidU — OWNERSHIP / ACCESS view (foundational relationships to lock before building on top).\n`;
   if(state.showRealtime) p+=`Realtime/call ownership model: ${MODES[state.mode]}.\n`;
-  p+=`\nRoot of ownership: Conversation. Access gate: Membership.\n\nDirectional hierarchy (dependent → owner):\n`;
+  p+=`\nRoot of ownership: Conversation. Access gate: Membership.\n\nDirectional hierarchy (owner → owned):\n`;
   OWN_RELS.forEach(r=>{
     if(r.mode && r.mode!==state.mode) return;
     if(r.need && !visible(r.need)) return;
