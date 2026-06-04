@@ -118,23 +118,8 @@ function toIncoming(
       };
     }
 
-    // Legacy file message: check for raw.url or raw.data
-    if (typeof raw.url === 'string' || typeof raw.data === 'string') {
-      const fileName =
-        typeof raw.fileName === 'string' ? raw.fileName : 'file';
-      const mimeType =
-        typeof raw.mimeType === 'string'
-          ? raw.mimeType
-          : 'application/octet-stream';
-      const fileSize =
-        typeof raw.fileSize === 'number' ? raw.fileSize : 0;
-
-      // For legacy messages, we still need some storage descriptor
-      // Return null since we only support R2 storage in messaging-next
-      return null;
-    }
-
-    // No recognizable storage or legacy fields
+    // Legacy inline file rows were migrated before the R2 cutover. Runtime
+    // messaging-next intentionally requires valid R2 storage metadata.
     return null;
   }
 

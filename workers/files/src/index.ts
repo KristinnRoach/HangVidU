@@ -9,9 +9,13 @@ export interface Env {
 }
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const AUTHORIZATION_CACHE_TTL_MS = 30 * 1000;
+const AUTHORIZATION_CACHE_MAX_ENTRIES = 500;
 const CONVERSATION_FILE_PREFIX = 'conversation-files';
 const IMAGE_UPLOAD_PATH = /^\/conversations\/([^/]+)\/files\/images$/;
 const FILE_OBJECT_PATH = /^\/conversations\/([^/]+)\/files\/object$/;
+
+const authorizationCache = new Map<string, number>();
 
 function allowedOrigin(request: Request, env: Env): string | null {
   const origin = request.headers.get('Origin');
@@ -108,6 +112,51 @@ function storageKeyFromUrl(url: URL, conversationId: string) {
   return key;
 }
 
+function bytesToHex(bytes: ArrayBuffer) {
+  return Array.from(new Uint8Array(bytes))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function authorizationCacheKey(
+  conversationId: string,
+  identity: Identity,
+  appCheckToken: string | undefined,
+) {
+  const digest = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(
+      `${conversationId}\0${identity.userId}\0${identity.token}\0${
+        appCheckToken ?? ''
+      }`,
+    ),
+  );
+  return bytesToHex(digest);
+}
+
+function getCachedAuthorization(cacheKey: string, now: number) {
+  const expiresAt = authorizationCache.get(cacheKey);
+  if (!expiresAt) return false;
+  if (expiresAt > now) return true;
+  authorizationCache.delete(cacheKey);
+  return false;
+}
+
+function setCachedAuthorization(cacheKey: string, now: number) {
+  if (authorizationCache.size >= AUTHORIZATION_CACHE_MAX_ENTRIES) {
+    for (const [key, expiresAt] of authorizationCache) {
+      if (
+        expiresAt <= now ||
+        authorizationCache.size >= AUTHORIZATION_CACHE_MAX_ENTRIES
+      ) {
+        authorizationCache.delete(key);
+      }
+      if (authorizationCache.size < AUTHORIZATION_CACHE_MAX_ENTRIES) break;
+    }
+  }
+  authorizationCache.set(cacheKey, now + AUTHORIZATION_CACHE_TTL_MS);
+}
+
 async function authorizeConversation(
   request: Request,
   conversationId: string,
@@ -115,12 +164,21 @@ async function authorizeConversation(
   env: Env,
 ): Promise<Response | boolean> {
   const base = env.FIREBASE_DATABASE_URL.replace(/\/$/, '');
+  // Firebase RTDB REST uses the auth query parameter. Keep this URL scoped to
+  // the fetch call and never log it; it contains the caller's ID token.
   const url = `${base}/conversations/${encodeURIComponent(
     conversationId,
   )}/members/${encodeURIComponent(
     identity.userId,
   )}.json?auth=${encodeURIComponent(identity.token)}`;
-  const appCheckToken = request.headers.get('X-Firebase-AppCheck')?.trim();
+  const appCheckToken =
+    request.headers.get('X-Firebase-AppCheck')?.trim() || undefined;
+  const canUseCache = request.method === 'GET';
+  const now = Date.now();
+  const cacheKey = canUseCache
+    ? await authorizationCacheKey(conversationId, identity, appCheckToken)
+    : null;
+  if (cacheKey && getCachedAuthorization(cacheKey, now)) return true;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -153,10 +211,11 @@ async function authorizeConversation(
 
   try {
     const member = (await membership.json()) as { status?: unknown } | null;
-    return (
+    const authorized =
       member !== null &&
-      (member.status === undefined || member.status === 'active')
-    );
+      (member.status === undefined || member.status === 'active');
+    if (authorized && cacheKey) setCachedAuthorization(cacheKey, now);
+    return authorized;
   } catch (error) {
     console.error('[auth] membership parse failed', error);
     return response(request, env, 'Upstream service unavailable', {

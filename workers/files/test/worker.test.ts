@@ -241,6 +241,36 @@ describe('files worker routing + auth', () => {
     expect(membershipAppCheckTokens).toContain('app-check-token');
   });
 
+  it('reuses successful download membership checks briefly', async () => {
+    const uploadToken = await signToken(validClaims('user-a'));
+    const downloadToken = await signToken(validClaims('user-b'));
+    allowMember('group:cache-test', 'user-a');
+    allowMember('group:cache-test', 'user-b');
+
+    const upload = await request(
+      '/conversations/group%3Acache-test/files/images',
+      {
+        method: 'POST',
+        token: uploadToken,
+        contentType: 'image/png',
+        body: new Uint8Array([1, 2, 3]),
+      },
+    );
+    const metadata = (await upload.json()) as { key: string };
+    membershipAppCheckTokens = [];
+
+    const path = `/conversations/group%3Acache-test/files/object?key=${encodeURIComponent(
+      metadata.key,
+    )}`;
+
+    const firstDownload = await request(path, { token: downloadToken });
+    const secondDownload = await request(path, { token: downloadToken });
+
+    expect(firstDownload.status).toBe(200);
+    expect(secondDownload.status).toBe(200);
+    expect(membershipAppCheckTokens).toHaveLength(1);
+  });
+
   it('403s direct-message non-members', async () => {
     const token = await signToken(validClaims('user-c'));
     const res = await request('/conversations/user-a_user-b/files/images', {
