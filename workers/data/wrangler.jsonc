@@ -11,7 +11,7 @@
     {
       "binding": "DB",
       "database_name": "hangvidu-data",
-      "database_id": "PLACEHOLDER_RUN_wrangler_d1_create",
+      "database_id": "cfac7c1c-cb3c-430d-b33d-6fd12aac48d0",
       "migrations_dir": "migrations",
     },
   ],
