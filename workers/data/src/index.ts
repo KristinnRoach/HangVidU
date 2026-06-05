@@ -51,13 +51,14 @@ export default {
       if (typeof otherUserId !== 'string' || !otherUserId.trim()) {
         return json({ error: 'otherUserId required' }, 400, cors);
       }
-      if (otherUserId === callerId) {
+      const trimmedOtherUserId = otherUserId.trim();
+      if (trimmedOtherUserId === callerId) {
         return json({ error: 'cannot open a direct conversation with self' }, 400, cors);
       }
       const conversationId = await resolveOrCreateDirect(
         env.DB,
         callerId,
-        otherUserId.trim(),
+        trimmedOtherUserId,
         now,
       );
       return json({ conversationId }, 200, cors);

@@ -5,7 +5,8 @@ for users, conversations, and memberships, all keyed by `conversationId`.
 Messages, files, calls, and production contact behavior remain on their current
 paths in this slice.
 
-See the migration plan: [`docs/WIP_Architecture/D1_R2_MIGRATION.md`](../../docs/WIP_Architecture/D1_R2_MIGRATION.md).
+See the deferred decisions note:
+[`docs/WIP_Architecture/D1_CONVERSATION_CORE_DEFERRED_DECISIONS.md`](../../docs/WIP_Architecture/D1_CONVERSATION_CORE_DEFERRED_DECISIONS.md).
 
 ## Layout
 

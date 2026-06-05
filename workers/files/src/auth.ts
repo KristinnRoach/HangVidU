@@ -143,11 +143,17 @@ function parseMaxAge(cacheControl: string | null): number {
   return Number.isFinite(seconds) && seconds > 0 ? seconds : 3600;
 }
 
+function base64UrlToBase64(segment: string): string {
+  const base64 = segment.replace(/-/g, '+').replace(/_/g, '/');
+  return base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+}
+
 function decodeJson(segment: string): Record<string, unknown> | null {
   try {
-    return JSON.parse(
-      atob(segment.replace(/-/g, '+').replace(/_/g, '/')),
-    ) as Record<string, unknown>;
+    return JSON.parse(atob(base64UrlToBase64(segment))) as Record<
+      string,
+      unknown
+    >;
   } catch {
     return null;
   }
@@ -155,7 +161,7 @@ function decodeJson(segment: string): Record<string, unknown> | null {
 
 function base64UrlToBytes(segment: string): ArrayBuffer | null {
   try {
-    const binary = atob(segment.replace(/-/g, '+').replace(/_/g, '/'));
+    const binary = atob(base64UrlToBase64(segment));
     const buffer = new ArrayBuffer(binary.length);
     const bytes = new Uint8Array(buffer);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
