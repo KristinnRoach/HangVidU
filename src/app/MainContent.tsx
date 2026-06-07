@@ -265,6 +265,8 @@ function TopBar(props: TopBarProps) {
                         undefined
                       }
                     />
+                    {/* 
+                    // TODO: fix audio only call UX before uncommenting
                     <StartCallButton
                       audioOnly={true}
                       calleeId={resolvedCalleeId()}
@@ -272,7 +274,7 @@ function TopBar(props: TopBarProps) {
                         props?.selectedConversation?.contactNickName ||
                         undefined
                       }
-                    />
+                    /> */}
                   </>
                 )}
               </Show>
