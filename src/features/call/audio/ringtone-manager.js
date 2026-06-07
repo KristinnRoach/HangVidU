@@ -142,7 +142,7 @@ class RingtoneManager {
    * @param {string|string[]} src - Path or URL to audio file, or fallback list
    * @returns {Promise<boolean>}
    */
-  async _play(type, src, { loop, beforePlayback } = { loop: true }) {
+  async _play(type, src, { loop = true, beforePlayback } = {}) {
     // Stop any currently playing ringtone first
     this.stop();
     beforePlayback?.();

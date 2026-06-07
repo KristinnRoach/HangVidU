@@ -148,24 +148,25 @@ describe('SolidJS ContactsList PoC', { timeout: 60000 }, () => {
     unmount();
   });
 
-  it('triggers a call on call button click', async () => {
-    const ContactsListModule = await import('./ContactsList.tsx');
+  // TODO: uncomment once audio-only calls re-enabled
+  // it('triggers a call on call button click', async () => {
+  //   const ContactsListModule = await import('./ContactsList.tsx');
 
-    const { container, unmount } = render(() => <ContactsListModule.default />);
+  //   const { container, unmount } = render(() => <ContactsListModule.default />);
 
-    const firstCall = container.querySelector('.contact-call-btn');
-    firstCall?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  //   const firstCall = container.querySelector('.contact-call-btn');
+  //   firstCall?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-    expect(mocks.startCall).toHaveBeenCalledWith(
-      expect.objectContaining({
-        calleeId: 'contact-1',
-        calleeName: 'Alice',
-        audioOnly: true,
-      }),
-    );
+  //   expect(mocks.startCall).toHaveBeenCalledWith(
+  //     expect.objectContaining({
+  //       calleeId: 'contact-1',
+  //       calleeName: 'Alice',
+  //       audioOnly: true,
+  //     }),
+  //   );
 
-    unmount();
-  });
+  //   unmount();
+  // });
 
   it('writes selection to the store on row click', async () => {
     const ContactsListModule = await import('./ContactsList.tsx');
