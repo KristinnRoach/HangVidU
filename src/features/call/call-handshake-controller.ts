@@ -24,6 +24,7 @@ import type {
   pendingOutgoingCall,
   StartCallDetails,
 } from './call-types.js';
+import { resolveDirectConversationId } from '../../stores/conversations-client.js';
 
 const OUTGOING_CALL_TIMEOUT_MS = 30_000;
 
@@ -129,7 +130,7 @@ export class CallHandshakeController {
 
     const { calleeId, calleeName, audioOnly } = details;
     const callerName = getUser()?.userName || 'Unknown';
-    const roomId = crypto.randomUUID();
+    const roomId = await this.resolveCallRoomId(calleeId);
 
     const nextOutgoingCall: pendingOutgoingCall = {
       calleeId,
@@ -190,6 +191,24 @@ export class CallHandshakeController {
     console.debug('Initiated outgoing call invite, command details:', {
       details,
     });
+  }
+
+  /**
+   * The call room handle is the opaque conversationId from the D1 registry,
+   * so every interaction between the same participants shares one id.
+   * The registry is not a hard dependency of calling: if it is unreachable,
+   * fall back to a one-off random room id (pre-registry behavior).
+   */
+  private async resolveCallRoomId(calleeId: string): Promise<string> {
+    try {
+      return await resolveDirectConversationId(calleeId);
+    } catch (err) {
+      console.warn(
+        '[CallHandshake] Failed to resolve conversationId — falling back to one-off room id:',
+        err,
+      );
+      return crypto.randomUUID();
+    }
   }
 
   private async enterRoom(
