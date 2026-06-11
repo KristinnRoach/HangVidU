@@ -6,7 +6,6 @@ import { VitePWA } from 'vite-plugin-pwa';
 import mkcert from 'vite-plugin-mkcert';
 import solid from 'vite-plugin-solid';
 import devtools from 'solid-devtools/vite';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig(({ mode }) => {
   // Firebase Hosting is the only production target.
@@ -14,6 +13,10 @@ export default defineConfig(({ mode }) => {
 
   return {
     base: basePath,
+
+    resolve: {
+      tsconfigPaths: true,
+    },
 
     build: {
       // AC3 support is intentionally emitted as a large, on-demand chunk.
@@ -27,7 +30,6 @@ export default defineConfig(({ mode }) => {
     },
 
     plugins: [
-      tsconfigPaths(),
       ...(mode === 'development'
         ? [mkcert({ savePath: path.resolve(__dirname, '.vite-plugin-mkcert') })]
         : []),
