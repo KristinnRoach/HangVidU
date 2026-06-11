@@ -1,3 +1,4 @@
+import { reconcile } from 'solid-js/store';
 import type { ConversationStateStore } from './conversation.state.js';
 import type {
   ChatMessage,
@@ -55,13 +56,17 @@ export function createConversationActions(store: ConversationStateStore) {
   }
 
   function mergeLoadedMessages(messages: ChatMessage[]) {
-    setState('messages', (current) => {
-      const byId = new Map(current.map((msg) => [msg.id, msg]));
-      for (const msg of messages) {
-        byId.set(msg.id, msg);
-      }
-      return sortMessagesBySentAt([...byId.values()]);
-    });
+    const byId = new Map(state.messages.map((msg) => [msg.id, msg]));
+    for (const msg of messages) {
+      byId.set(msg.id, msg);
+    }
+    // Reconcile keyed by id so unchanged messages keep their store identity —
+    // otherwise every snapshot rebuilds the whole <For> list (and remounts
+    // every <img>, collapsing scroll layout).
+    setState(
+      'messages',
+      reconcile(sortMessagesBySentAt([...byId.values()]), { key: 'id' }),
+    );
   }
 
   function receiveMessage(msg: Omit<ChatMessage, 'status'>) {
