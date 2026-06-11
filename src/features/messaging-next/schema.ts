@@ -1,9 +1,10 @@
 import { z } from 'zod';
-import { resolveDirectConversationId as resolveSharedDirectConversationId } from '../../shared/utils/direct-conversation-id.js';
+import { deriveLegacyDirectConversationId as deriveSharedLegacyDirectConversationId } from '../../shared/utils/direct-conversation-id.js';
 
 export const UserIdSchema = z.string().trim().min(1);
 
-// Group ids carry a `group:` prefix; direct ids are the legacy sorted `a_b` form.
+// Group ids carry a `group:` prefix; direct ids are otherwise opaque strings
+// (legacy sorted `a_b` on rtdb, registry UUIDs on d1 — both validate).
 // Group is listed first in the union so the prefix wins discrimination — without
 // this, Direct's permissive rule would swallow any string including `group:*`.
 export const GroupConversationIdSchema = z
@@ -103,9 +104,11 @@ export const MessageEnvelopeSchema = MessageBaseSchema.extend({
   payload: MessagePayloadSchema,
 });
 
-// Single canonical pair-id resolver lives in `src/shared/utils/direct-conversation-id.js`.
-// Re-exported here so messaging-next callers don't need to know the path.
-export const resolveDirectConversationId = resolveSharedDirectConversationId;
+// LEGACY pair-id derivation (sorted `a_b`) — only valid for the rtdb backend.
+// Opaque registry ids (see `src/stores/conversations-client.ts`) replace this;
+// new code must treat conversation ids as opaque strings.
+export const deriveLegacyDirectConversationId =
+  deriveSharedLegacyDirectConversationId;
 
 export function createGroupConversationId(
   id: string,

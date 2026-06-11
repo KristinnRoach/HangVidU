@@ -4,12 +4,12 @@ import {
   EventMessagePayloadSchema,
   MessageEnvelopeSchema,
   createGroupConversationId,
-  resolveDirectConversationId,
+  deriveLegacyDirectConversationId,
 } from '../schema.js';
 
 describe('messaging-next schema', () => {
   it('resolves stable direct conversation ids with sorted participants', () => {
-    expect(resolveDirectConversationId('user-b', 'user-a')).toBe(
+    expect(deriveLegacyDirectConversationId('user-b', 'user-a')).toBe(
       'user-a_user-b',
     );
   });

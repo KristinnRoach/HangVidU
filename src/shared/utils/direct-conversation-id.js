@@ -8,14 +8,14 @@ If this ID pattern changes, migrate pre-existing direct conversation IDs
 and any references stored against them.
 */
 
-export function resolveDirectConversationId(userA, userB) {
+export function deriveLegacyDirectConversationId(userA, userB) {
   const participants = [userA, userB]
     .map((value) => String(value || '').trim())
     .filter(Boolean);
 
   if (participants.length !== 2) {
     throw new Error(
-      'resolveDirectConversationId requires exactly 2 participant ids',
+      'deriveLegacyDirectConversationId requires exactly 2 participant ids',
     );
   }
 

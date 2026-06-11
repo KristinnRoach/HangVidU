@@ -5,7 +5,7 @@ import {
   createContactsLocalStorageRepository,
   createContactsRTDBRepository,
 } from '../storage/contacts/index.js';
-import { resolveDirectConversationId } from '../shared/utils/direct-conversation-id.js';
+import { deriveLegacyDirectConversationId } from '../shared/utils/direct-conversation-id.js';
 
 type Contact = any;
 
@@ -86,7 +86,7 @@ export async function saveContact(
     const now = Date.now();
     const conversationId =
       existing?.conversationId ??
-      (ownerId ? resolveDirectConversationId(ownerId, contactId) : null);
+      (ownerId ? deriveLegacyDirectConversationId(ownerId, contactId) : null);
 
     const contact = await repo.put({
       contactId,

@@ -182,6 +182,11 @@ function TopBar(props: TopBarProps) {
   const { t } = useI18n();
 
   const calleeId = createMemo(() => {
+    // Selection carries participant ids; conversation ids are opaque.
+    // Legacy `a_b` parsing remains only as a fallback for selections that
+    // arrive without participants (old push deep links).
+    const remoteId = props.selectedConversation?.remoteParticipantIds?.[0];
+    if (remoteId) return remoteId;
     const conversationId = props.selectedConversation?.conversationId;
     const uid = user()?.uid;
     if (!conversationId || !uid) return null;
