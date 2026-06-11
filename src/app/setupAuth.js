@@ -10,6 +10,7 @@ import { cleanupInviteListeners } from '../features/contacts/invites/invitations
 import { setupInviteListener } from '../features/contacts/invites/invite-listener.js';
 import { processReferral } from '../features/contacts/referrals/referral-handler.js';
 import { hydrateContacts, resetContacts } from '../stores/contactsStore.js';
+import { resetConversationsState } from '../stores/conversations-client.js';
 
 let isReady = false;
 let initPromise = null;
@@ -131,6 +132,7 @@ export function setupAuth() {
             runMainLogoutCleanup();
 
             resetContacts();
+            resetConversationsState();
           } catch (e) {
             console.warn(
               '[AUTH] Failed to handle evt:auth:session:logged-out:',

@@ -45,6 +45,9 @@ export function createConversationsClient(
   options: ConversationsClientOptions,
 ): ConversationsClient {
   const base = options.baseUrl.replace(/\/$/, '');
+  // Bound every request so callers with a fallback path (e.g. call setup)
+  // degrade quickly instead of hanging on an unreachable worker.
+  const REQUEST_TIMEOUT_MS = 8_000;
 
   async function request<T>(
     method: string,
@@ -61,6 +64,7 @@ export function createConversationsClient(
         ...(body ? { 'Content-Type': 'application/json' } : {}),
       },
       body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
     if (!res.ok) {
