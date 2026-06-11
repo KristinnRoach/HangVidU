@@ -82,6 +82,9 @@ CLAUDE.md
 .firebase/
 functions/service-account-key.json
 
+# Cloudflare Wrangler local state
+**/.wrangler/
+
 # Misc / Recently added
 TODO.md
 .planning/codebase/potentially_stale
