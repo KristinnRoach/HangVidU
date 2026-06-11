@@ -22,12 +22,6 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
-          ...(mode === 'development' && {
-            // These are currently only local:
-            media: path.resolve(__dirname, 'media-lab.html'),
-            mediaPlayback: path.resolve(__dirname, 'media-playback.html'),
-            mediaCapture: path.resolve(__dirname, 'media-capture.html'),
-          }),
         },
       },
     },
@@ -134,10 +128,6 @@ export default defineConfig(({ mode }) => {
           rewrite: (path) => path, // Don't rewrite the path
         },
       },
-    },
-
-    optimizeDeps: {
-      include: ['lucide-solid'],
     },
 
     preview: {
