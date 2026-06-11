@@ -110,8 +110,10 @@ logic only, adapt to current main:
 - `src/features/messaging-next/adapters/d1.ts`: copy from 88ef2de9, then wire `watch*`
   to the channel events (initial snapshot via HTTP load, then live deltas).
 - Open flow: `openDirectConversation` resolves opaque id via existing
-  `resolveDirectConversationId` when backend=d1 (88ef2de9 shows where; adapt —
-  `MainContent.calleeId` prefers `selection.remoteParticipantIds[0]`).
+  `resolveDirectConversationId` when backend=d1 (88ef2de9 shows where).
+  Already done on main (ea4f83fa): `MainContent.calleeId` prefers
+  `selection.remoteParticipantIds[0]`; legacy pair-id derivation renamed to
+  `deriveLegacyDirectConversationId`; ids are format-agnostic in schema.ts.
 - Files: image send path uses the opaque conversationId for `workers/files` upload keys
   (`{conversationId}/{fileId}`); insert a file-message + `message_attachments` row.
 - `workers/files` authz: replace the RTDB membership fetch in `authorizeConversation`
