@@ -2,7 +2,6 @@ import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import { VitePWA } from 'vite-plugin-pwa';
 import solid from 'vite-plugin-solid';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
 // Enable multi-browser testing with COMPAT=true
 const isCompatMode = process.env.COMPAT === 'true';
@@ -29,9 +28,9 @@ export default defineConfig({
   // without it `solid-js/web`'s hot-reload shim throws.
   resolve: {
     conditions: ['development', 'browser'],
+    tsconfigPaths: true,
   },
   plugins: [
-    tsconfigPaths(),
     solid(),
     VitePWA({
       includeAssets: ['index.html', 'favicon.ico'],
@@ -58,9 +57,10 @@ export default defineConfig({
       // Default: runs in Node with jsdom (no Playwright RPC overhead)
       // Convention: *.test.js / *.test.jsx
       {
-        plugins: [tsconfigPaths(), solid()],
+        plugins: [solid()],
         resolve: {
           conditions: ['solid', 'development', 'browser'],
+          tsconfigPaths: true,
         },
         test: {
           ...sharedTestConfig,
@@ -89,7 +89,10 @@ export default defineConfig({
       // needing real WebRTC, OPFS, ServiceWorker, or other APIs jsdom can't
       // provide
       {
-        plugins: [tsconfigPaths(), solid()],
+        plugins: [solid()],
+        resolve: {
+          tsconfigPaths: true,
+        },
         test: {
           ...sharedTestConfig,
           name: 'browser',

@@ -6,7 +6,6 @@ import { VitePWA } from 'vite-plugin-pwa';
 import mkcert from 'vite-plugin-mkcert';
 import solid from 'vite-plugin-solid';
 import devtools from 'solid-devtools/vite';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig(({ mode }) => {
   // Firebase Hosting is the only production target.
@@ -15,6 +14,10 @@ export default defineConfig(({ mode }) => {
   return {
     base: basePath,
 
+    resolve: {
+      tsconfigPaths: true,
+    },
+
     build: {
       // AC3 support is intentionally emitted as a large, on-demand chunk.
       // Keep warnings focused on regressions beyond the current expected ceiling.
@@ -22,18 +25,11 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
-          ...(mode === 'development' && {
-            // These are currently only local:
-            media: path.resolve(__dirname, 'media-lab.html'),
-            mediaPlayback: path.resolve(__dirname, 'media-playback.html'),
-            mediaCapture: path.resolve(__dirname, 'media-capture.html'),
-          }),
         },
       },
     },
 
     plugins: [
-      tsconfigPaths(),
       ...(mode === 'development'
         ? [mkcert({ savePath: path.resolve(__dirname, '.vite-plugin-mkcert') })]
         : []),
@@ -134,10 +130,6 @@ export default defineConfig(({ mode }) => {
           rewrite: (path) => path, // Don't rewrite the path
         },
       },
-    },
-
-    optimizeDeps: {
-      include: ['lucide-solid'],
     },
 
     preview: {
