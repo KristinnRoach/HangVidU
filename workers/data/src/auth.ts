@@ -7,6 +7,11 @@ import type { Env } from './index';
  *
  * Returns `null` on any failure rather than throwing: auth rejection is an
  * expected, non-exceptional outcome on the request path.
+ *
+ * This is the HTTPS variant of the signaling worker's `auth.ts`: the token
+ * arrives in the `Authorization: Bearer <token>` header (the signaling worker
+ * uses the WebSocket subprotocol because browsers can't set headers on the WS
+ * handshake). The verification internals are identical.
  */
 export interface Identity {
   userId: string;
@@ -25,18 +30,15 @@ interface KeyCache {
 let keyCache: KeyCache | null = null;
 
 /**
- * Authenticate a WebSocket-upgrade request. The client passes its token via the
- * `Sec-WebSocket-Protocol` header (browsers cannot set arbitrary headers on the
- * WebSocket handshake, but subprotocols are allowed): `["bearer", "<token>"]`.
+ * Authenticate an HTTPS request via the `Authorization: Bearer <token>` header.
  */
 export async function authenticate(
   request: Request,
   env: Env,
 ): Promise<Identity | null> {
-  const protocols = request.headers.get('Sec-WebSocket-Protocol') ?? '';
-  const parts = protocols.split(',').map((p) => p.trim());
-  const token = parts[0] === 'bearer' ? parts[1] : undefined;
-  if (!token) return null;
+  const header = request.headers.get('Authorization') ?? '';
+  const [scheme, token] = header.split(' ');
+  if (scheme !== 'Bearer' || !token) return null;
 
   return verifyFirebaseIdToken(token, env);
 }
@@ -44,10 +46,6 @@ export async function authenticate(
 /**
  * Verify a Firebase ID token: validates the standard claims (aud / iss / exp /
  * iat / sub) and the RS256 signature against Google's published public keys.
- *
- * This is the minimum required for production. To move off Firebase later,
- * replace the claim expectations + key source below; the `{ userId }` contract
- * and the `authenticate()` seam stay put.
  */
 async function verifyFirebaseIdToken(
   token: string,
