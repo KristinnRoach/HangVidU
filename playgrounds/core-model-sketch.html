@@ -209,7 +209,7 @@ const RELS = [
 
   // current: call identity lives outside the conversation (the ambiguity)
   { one:'user', many:'callinvite', label:'ring mailbox (per user)', kind:'own', mode:'current' },
-  { one:'callinvite', many:'signalingroom', label:'carries random roomId', kind:'own', mode:'current' },
+  { one:'callinvite', many:'signalingroom', label:'carries conversationId as roomId', kind:'own', mode:'current' },
 
   // suggested: conversationId owns the room; membership authorizes; call is a session under it
   { one:'conversation', many:'signalingroom', label:'owns · keyed by conversationId', kind:'own', mode:'suggested' },
@@ -238,7 +238,7 @@ const OWN_RELS = [
   { from:'conversation', to:'callhistory', type:'owns', label:'owns', need:'callhistory' },
   // realtime CURRENT — call identity lives outside the conversation (the ambiguity to resolve)
   { from:'callinvite', to:'user', type:'route', label:'ring → per-user mailbox', mode:'current' },
-  { from:'callinvite', to:'signalingroom', type:'route', label:'carries random roomId', mode:'current' },
+  { from:'callinvite', to:'signalingroom', type:'route', label:'carries conversationId as roomId', mode:'current' },
   // realtime SUGGESTED — Conversation owns the room/call; Membership authorizes
   { from:'conversation', to:'signalingroom', type:'owns', label:'owns (= conversationId)', mode:'suggested' },
   { from:'conversation', to:'callinvite', type:'owns', label:'owns (call session)', mode:'suggested' },

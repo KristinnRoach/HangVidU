@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Option A — Full migration to Cloudflare (incl. messages)</title>
+<title>HangVidU — Cloudflare Migration Roadmap</title>
 <style>
   :root {
     --bg: #0d1117;
@@ -118,9 +118,9 @@
 <body>
 <div class="app">
   <aside class="sidebar">
-    <h1>Option A — Full migration to Cloudflare</h1>
-    <div class="banner"><b>Option A of 2</b> · migrate <b>everything incl. conversation messages</b> to Cloudflare. Live message updates require an <b>extra DO push worker</b> (Slice E1) — the cost RTDB gave for free.<br><span class="warn">Reference only — does NOT reflect the <code>feat/r2-images</code> branch state.</span></div>
-    <div class="sub">Drag the timeline to watch each data domain flip from Firebase RTDB onto its Cloudflare primitive, forming the <b style="color:var(--spine)">conversationId</b> spine. End-state: RTDB fully removed.</div>
+    <h1>Cloudflare Migration Roadmap</h1>
+    <div class="banner"><b>Decided path</b> (was "Option A") · migrate everything conversation-shaped to Cloudflare, keyed by the opaque <b>conversationId</b> registry. Live message updates require an <b>extra DO push channel</b> — the cost RTDB gave for free.<br><span class="warn">Reflects <code>main</code> as of 2026-06-11 (PRs #533 #534 #535 shipped). Source of truth: <code>MIGRATION_STATUS.md</code>.</span></div>
+    <div class="sub">Drag the timeline to watch each data domain flip from Firebase RTDB onto its Cloudflare primitive, forming the <b style="color:var(--spine)">conversationId</b> spine. End-state: RTDB carries only contacts/user-directory (then nothing).</div>
 
     <div class="group">
       <label>Migration timeline</label>
@@ -140,8 +140,8 @@
       <ul class="tradeoffs">
         <li class="pro">One source of truth — conversationId spine across D1/R2/DO; no permanent dual-backend split logic.</li>
         <li class="pro">Relational queries (unread, membership, search) are clean SQL in D1; reuses the DO + src/realtime transport for push.</li>
-        <li class="con">Loses RTDB's free realtime — must build and run an extra DO push worker (Slice E1) for no-reload updates.</li>
-        <li class="con">Most migration work of the two, plus an optional history backfill; reload-based until E1 lands.</li>
+        <li class="con">Loses RTDB's free realtime — must build a per-conversation DO push channel (stage 6) for no-reload updates.</li>
+        <li class="con">Messages are reload-based (load-on-open) between stage 3 and stage 6; old derived-id history needs backfill or a clean start.</li>
       </ul>
     </div>
 
@@ -193,24 +193,24 @@
 </div>
 
 <script>
-const OPTION = 'A';
+const OPTION = 'roadmap';
 const STAGES = [
   { id:'Legacy', name:'Legacy (pre-migration)', status:'done',
-    desc:'Everything on Firebase RTDB except WebRTC room signaling, which already moved to a Durable Object (Signaling Slice 1, verified).' },
-  { id:'A', name:'Slice A — D1 schema + resolve/create', status:'done',
-    desc:'New workers/data worker. 6 D1 tables, opaque UUID conversationId, dm_key UNIQUE dedup. users + conversation resolve-or-create endpoints.' },
-  { id:'B', name:'Slice B — messages on D1', status:'done',
-    desc:'Message read/write endpoints + D1 adapter behind VITE_MESSAGE_BACKEND=d1. Pure D1, load-on-open. THIS is the contested step in Option A — D1 messages have no free live push.' },
-  { id:'C', name:'Slice C — opaque-id open flow', status:'done',
-    desc:'Opening a DM resolve-or-creates the opaque conversationId. List activity (unread + reorder) sourced from D1. UI flip to d1 browser-verified on reload.' },
-  { id:'D', name:'Slice D — files on R2', status:'todo',
-    desc:'Upload to R2 key {conversationId}/{fileId}; insert message_attachments + a file message; membership-guarded download. The critically-needed piece (files too large for RTDB).' },
-  { id:'E1', name:'Slice E1 — live message push (DO)', status:'todo',
-    desc:'THE EXTRA INFRASTRUCTURE Option A requires: a per-conversation Durable Object pushes message/read/reaction changes so the app updates without reload. This is what RTDB listeners gave for free.' },
-  { id:'E2', name:'Slice E2 — call handshake on DO room', status:'todo',
-    desc:'Fold call-invite handshake into the same conversation room. Call signaling leaves RTDB. RTDB now carries no live traffic.' },
-  { id:'Goal', name:'Goal — RTDB eliminated', status:'todo',
-    desc:'conversationId is the single spine across D1 (relational, incl. messages), R2 (files), DO (room: signaling + presence + live push + call). Firebase RTDB removed; Firebase Auth stays for identity.' },
+    desc:'Everything on Firebase RTDB except WebRTC room signaling, which already moved to a Durable Object (workers/signaling, live in prod). Image files already on R2 (workers/files, PR #533) but keyed by derived a_b ids with RTDB-membership authz.' },
+  { id:'1', name:'Conversation registry on D1', status:'done',
+    desc:'SHIPPED (PR #534, deployed). workers/data worker, 3 tables (users, conversations, conversation_members) in migration 0001 — message tables deferred to a future 0002 (0001 is applied to the live remote D1, never edit it). Opaque UUID conversationId; dm_key UNIQUE carries DM dedup; resolve-or-create endpoint.' },
+  { id:'2', name:'Calls on opaque conversationId', status:'done',
+    desc:'SHIPPED (PR #535, deployed). First real consumer: the call room handle is the registry-resolved conversationId (was a per-call random UUID), with fallback to a one-off UUID if the registry is unreachable. Establishes the shared resolve-or-create open flow (src/stores/conversations-client.ts).' },
+  { id:'3', name:'Messages + files on opaque ids', status:'todo',
+    desc:'One slice — files are file-messages. Message/attachment/reaction tables as migration 0002; D1 message endpoints + adapter (prototyped on the frozen D1-R2-migration branch — copy, do not merge); repoint workers/files authz from RTDB to the registry; R2 keys become {conversationId}/{fileId}. Pure D1, load-on-open until the live-push stage. Decide: start clean vs backfill (old derived ids are not portable).' },
+  { id:'4', name:'Retire derived-id plumbing', status:'todo',
+    desc:'Delete direct-conversation-id.js, resolveContactIdFromDirectConversationId, the group: prefix hack, and legacy fallbacks (MainContent, contactsStore, SWNavigation deep-link). Render the conversation list from conversation_members instead of ID-splitting.' },
+  { id:'5', name:'Call-invite mailbox → DO', status:'todo',
+    desc:'Call invites are ephemeral coordination but still live on RTDB. Move to a DO mailbox via src/realtime/ (reuse the signaling transport + protocol envelope), keyed by the same conversationId. Media-playback-sync follows the same pattern.' },
+  { id:'6', name:'Live message push (DO)', status:'todo',
+    desc:'THE EXTRA INFRASTRUCTURE this path requires: a per-conversation Durable Object channel pushes message/read/reaction changes so the app updates without reload. This is what RTDB listeners gave for free.' },
+  { id:'Goal', name:'Goal — conversationId spine everywhere', status:'todo',
+    desc:'conversationId is the single spine across D1 (relational, incl. messages), R2 (files), DO (room: signaling + presence + live push + call). RTDB reduced to contacts/user-directory (migrate or remove last); Firebase Auth stays for identity behind the workers’ auth.ts seam.' },
 ];
 
 const BK = {
@@ -223,13 +223,14 @@ const BK = {
 
 const DOMAINS = [
   { id:'users',    label:'Users / identity',        file:'D1 users',                    y:95,  target:'d1', migratedAt:1 },
-  { id:'messages', label:'Messages (text)',         file:'D1 messages',                 y:150, target:'d1', migratedAt:2 },
-  { id:'convos',   label:'Conversations / metadata',file:'D1 conversations',            y:205, target:'d1', migratedAt:3 },
-  { id:'activity', label:'Contacts list / unread',  file:'D1 listConversations',        y:260, target:'d1', migratedAt:3 },
-  { id:'files',    label:'Files / attachments',     file:'R2 {conversationId}/{fileId}', y:330, target:'r2', migratedAt:4 },
-  { id:'livepush', label:'Live message push',       file:'conversation DO (extra worker)', y:400, target:'do', migratedAt:5 },
-  { id:'call',     label:'Call-invite handshake',   file:'conversation DO room',        y:455, target:'do', migratedAt:6 },
-  { id:'signal',   label:'WebRTC room signaling',   file:'workers/signaling (Slice 1)', y:510, target:'do', migratedAt:0 },
+  { id:'convos',   label:'Conversations / registry',file:'D1 conversations + members',  y:147, target:'d1', migratedAt:1 },
+  { id:'callroom', label:'Call room handle',        file:'registry conversationId',     y:199, target:'d1', migratedAt:2 },
+  { id:'messages', label:'Messages (text)',         file:'D1 messages (0002)',          y:251, target:'d1', migratedAt:3 },
+  { id:'activity', label:'Contacts list / unread',  file:'D1 listConversations',        y:303, target:'d1', migratedAt:3 },
+  { id:'files',    label:'Files / attachments',     file:'R2 {conversationId}/{fileId}', y:355, target:'r2', migratedAt:3 },
+  { id:'call',     label:'Call-invite handshake',   file:'conversation DO mailbox',     y:407, target:'do', migratedAt:5 },
+  { id:'livepush', label:'Live message push',       file:'conversation DO channel',     y:459, target:'do', migratedAt:6 },
+  { id:'signal',   label:'WebRTC room signaling',   file:'workers/signaling (live)',    y:511, target:'do', migratedAt:0 },
 ];
 const DOMAIN_X = 360, DOMAIN_W = 230, DOMAIN_H = 40;
 
@@ -338,7 +339,7 @@ function updatePrompt(){
   const s = STAGES[state.stage];
   const migrated = DOMAINS.filter(d=>state.stage>=d.migratedAt);
   const pending = DOMAINS.filter(d=>state.stage<d.migratedAt);
-  let p = `HangVidU migration — OPTION A: full migration to Cloudflare incl. conversation messages.\nViewing stage "${s.id}: ${s.name}" (${s.status}).\n\n${s.desc}\n\n`;
+  let p = `HangVidU Cloudflare migration roadmap (decided path; see MIGRATION_STATUS.md).\nViewing stage "${s.id}: ${s.name}" (${s.status}).\n\n${s.desc}\n\n`;
   if (pending.length) {
     p += `Still on Firebase RTDB at this stage: ${pending.map(d=>d.label).join(', ')}.\n`;
     p += `Already on Cloudflare: ${migrated.map(d=>d.label+' ('+d.target.toUpperCase()+')').join(', ')}.\n`;
