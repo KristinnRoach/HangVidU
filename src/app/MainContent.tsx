@@ -14,7 +14,9 @@ import InstallButton from '../features/pwa/InstallButton';
 import LegalFooter from '../components/app/LegalFooter';
 import LocaleToggle from '../components/app/LocaleToggle';
 
-import PublicHomepage from '../components/app/PublicHomepage';
+// WIP: guest-call homepage sketch trial — restore if it doesn't pan out.
+// import PublicHomepage from '../components/app/PublicHomepage';
+import WIPHomepage from '../features/call/components/WIPHomepage';
 import ContactsList from '../features/contacts/components/ContactsList';
 import ActiveCallRoom from '../features/call/components/ActiveCallRoom';
 import ConversationPanel from '../features/messaging-next/ConversationPanel';
@@ -73,7 +75,10 @@ export default function MainContent() {
   // proper Loading UI.
   const activeView = createMemo<ViewMode>(() => {
     if (isLoggingOut()) return 'home';
-    if (!isLoggedIn() && !isLoggingIn()) return 'home';
+    // Guests can be in a call (room-link calls from the WIP homepage).
+    if (!isLoggedIn() && !isLoggingIn()) {
+      return p2p.state() !== 'idle' ? 'call' : 'home';
+    }
     if (userView() === 'call' && p2p.state() === 'idle') return 'contacts';
     return userView();
   });
@@ -120,24 +125,27 @@ export default function MainContent() {
             hidden={activeView() !== 'home'}
             class={mainStyles.activeViewContainer}
           >
-            <PublicHomepage />
+            {/* <PublicHomepage /> */}
+            <WIPHomepage />
           </div>
-          <Show when={showAuthenticatedUi()}>
-            <Show when={p2p.state() !== 'idle'}>
-              <div class={mainStyles.activeViewContainer}>
-                <LoadBoundary
-                  loading={isConnecting()}
-                  fallback={
-                    <div class={mainStyles.callLoading}>
-                      <Spinner />
-                    </div>
-                  }
-                >
-                  <ActiveCallRoom />
-                </LoadBoundary>
-              </div>
-            </Show>
 
+          {/* Call room renders for guests too (room-link calls). */}
+          <Show when={p2p.state() !== 'idle'}>
+            <div class={mainStyles.activeViewContainer}>
+              <LoadBoundary
+                loading={isConnecting()}
+                fallback={
+                  <div class={mainStyles.callLoading}>
+                    <Spinner />
+                  </div>
+                }
+              >
+                <ActiveCallRoom />
+              </LoadBoundary>
+            </div>
+          </Show>
+
+          <Show when={showAuthenticatedUi()}>
             <div
               hidden={activeView() !== 'contacts'}
               class={mainStyles.activeViewContainer + ' ' + mainStyles.contacts}

@@ -12,6 +12,7 @@ import {
   onFirebaseAuthStateChanged,
   persistenceBackends,
   setFirebaseAuthPersistence,
+  signInFirebaseAnonymously,
 } from './adapters/firebase-auth-adapter.js';
 import { devDebug } from '../shared/utils/dev/dev-utils.js';
 import { initOneTap, showOneTapSignin } from './onetap.js';
@@ -35,6 +36,19 @@ export async function getLoggedInUserToken() {
   if (!user) return null;
   // forceRefresh: false - use cached token if valid
   return user.getIdToken(false);
+}
+
+/**
+ * Ensure a Firebase user exists whose ID token can authenticate against the
+ * signaling worker, without requiring an account: reuses the current session
+ * (logged-in or anonymous), otherwise signs in anonymously.
+ * Anonymous users are reported as logged-out in app auth state.
+ * @returns {Promise<string>} the user's uid
+ */
+export async function signInAsGuest() {
+  if (auth.currentUser) return auth.currentUser.uid;
+  const { user } = await signInFirebaseAnonymously();
+  return user.uid;
 }
 
 const isProd =
@@ -103,7 +117,10 @@ async function _initAuthInternal() {
 
   // 3. NOW safe to listen — persistence is set, redirects processed
   onFirebaseAuthStateChanged((firebaseUser) => {
-    const loggedIn = !!firebaseUser;
+    // Anonymous sessions (guest calls) carry a real Firebase ID token for the
+    // signaling worker, but are NOT app logins — UI and persistence layers
+    // must keep treating the visitor as logged out.
+    const loggedIn = !!firebaseUser && !firebaseUser.isAnonymous;
     setState(
       loggedIn
         ? {

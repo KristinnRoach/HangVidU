@@ -61,3 +61,51 @@
     font-size: 1.75rem;
   }
 }
+
+/* --- WIP guest-call sketch (WIPHomepage) --- */
+
+.public-homepage__actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-xl);
+}
+
+.public-homepage__cta,
+.public-homepage__secondary {
+  padding: var(--spacing-sm) var(--spacing-xl);
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.public-homepage__cta {
+  background: var(--color-primary);
+  color: var(--bg-primary);
+  border: none;
+}
+
+.public-homepage__cta:hover {
+  background: var(--color-primary-hover);
+}
+
+.public-homepage__cta:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.public-homepage__secondary {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary-subtle);
+}
+
+.public-homepage__hint {
+  font-size: 0.9rem;
+  color: var(--text-tertiary);
+}
+
+.public-homepage__error {
+  color: var(--color-danger);
+}

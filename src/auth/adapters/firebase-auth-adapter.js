@@ -11,6 +11,7 @@ import {
   indexedDBLocalPersistence,
   onAuthStateChanged as firebaseOnAuthStateChanged,
   setPersistence,
+  signInAnonymously,
   signInWithCredential,
   signInWithEmailAndPassword,
   signInWithPopup,
@@ -45,6 +46,10 @@ export function createGoogleAuthProvider() {
 
 export function createGoogleCredential(idToken) {
   return GoogleAuthProvider.credential(idToken);
+}
+
+export function signInFirebaseAnonymously() {
+  return signInAnonymously(auth);
 }
 
 export function signInWithGooglePopup(provider) {
