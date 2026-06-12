@@ -691,6 +691,8 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                                     <img
                                       class={styles.filePreviewImg}
                                       src={attachmentUrl() ?? undefined}
+                                      width={file.width}
+                                      height={file.height}
                                       alt={file.fileName}
                                       onLoad={followIfPinned}
                                       role='button'
