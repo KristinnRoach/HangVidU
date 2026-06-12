@@ -150,9 +150,11 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   let sendButtonCleanup: (() => void) | undefined;
   let suppressScroll = false;
   // True once the user scrolls away from the bottom to read earlier messages.
-  // While set, new messages do not yank the view back down. Updated only on user
-  // scroll, so content growth (new bubble, late-loading image) can't flip it.
+  // While set, new messages do not yank the view back down. Scroll events also
+  // fire on layout changes (clamping, scroll anchoring), so only upward
+  // movement may latch it — see onMessagesScroll.
   let userHasScrolledUp = false;
+  let lastScrollTop = 0;
   const pendingR2Loads = new Map<string, AbortController>();
   let draftSaveTimer: ReturnType<typeof setTimeout> | undefined;
   let pendingDraft:
@@ -186,7 +188,11 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   }
 
   function onMessagesScroll() {
-    userHasScrolledUp = !isNearBottom();
+    const scrollTop = messagesEl?.scrollTop ?? 0;
+    const movedUp = scrollTop < lastScrollTop;
+    lastScrollTop = scrollTop;
+    if (movedUp) userHasScrolledUp = !isNearBottom();
+    else if (isNearBottom()) userHasScrolledUp = false;
   }
 
   // Follow new/grown content to the bottom, unless the user has scrolled up to
@@ -354,6 +360,9 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         flushDraftSave();
         setHistoryReady(false);
         suppressScroll = true;
+        // The messages container remounts on switch; drop the old position so
+        // the first scroll comparison isn't against the previous conversation.
+        lastScrollTop = 0;
 
         const selection = props.selection;
         if (!source || !selection) {
@@ -685,6 +694,8 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                                     <img
                                       class={styles.filePreviewImg}
                                       src={attachmentUrl() ?? undefined}
+                                      width={file.width}
+                                      height={file.height}
                                       alt={file.fileName}
                                       onLoad={followIfPinned}
                                       role='button'

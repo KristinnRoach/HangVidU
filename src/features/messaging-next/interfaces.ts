@@ -222,6 +222,10 @@ export type MessageAttachment = {
   fileName: string;
   mimeType: string;
   fileSize: number;
+  // Natural image dimensions. Optional: populated once upload/schema carry
+  // them; when present the renderer reserves layout space before load.
+  width?: number;
+  height?: number;
   storage: {
     provider: 'r2';
     bucket: string;
