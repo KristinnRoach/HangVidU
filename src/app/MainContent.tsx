@@ -6,7 +6,7 @@ import { useP2PContext } from '../shared/p2p-context.js';
 import { useAuth } from '../auth/solid-auth';
 import { useI18n } from '../shared/i18n';
 
-import AppTitle from '../components/app/AppTitle';
+import AppLogo from '../components/app/AppLogo';
 import AuthControls from '../auth/components/AuthControls';
 import AddContactButton from '../features/contacts/components/AddContactButton';
 import NotificationsToggle from '../features/notifications/components/NotificationsToggle';
@@ -219,7 +219,7 @@ function TopBar(props: TopBarProps) {
       }}
     >
       <div id='top-bar-left' class={`${topbarStyles.stickyLeft} animated-flex`}>
-        <AppTitle />
+        <AppLogo />
         <AuthControls />
       </div>
 

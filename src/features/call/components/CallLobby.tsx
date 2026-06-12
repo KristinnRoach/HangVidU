@@ -11,23 +11,49 @@ import {
   getVideoConstraints,
 } from '../media-constraints.js';
 
+function joinErrorMessage(err: unknown, kind: string | undefined): string {
+  if (kind === 'room-full') return 'This call is already full.';
+  if (
+    kind === 'local-stream' ||
+    (err instanceof DOMException && err.name === 'NotAllowedError')
+  ) {
+    return 'Camera or microphone access was blocked. Allow access in your browser and try again.';
+  }
+  return 'Could not join the call. Please try again.';
+}
+
 export default function CallLobby() {
   const p2p = useP2PContext();
 
-  // Present when the visitor arrived via an invite link.
-  const invitedRoomId = new URLSearchParams(window.location.search).get('room');
+  // Set when the visitor arrived via an invite link; cleared once that
+  // call ends (the room link is single-use).
+  const [invitedRoomId, setInvitedRoomId] = createSignal<string | null>(
+    new URLSearchParams(window.location.search).get('room'),
+  );
 
-  const [roomId, setRoomId] = createSignal<string | null>(invitedRoomId);
+  const [roomId, setRoomId] = createSignal<string | null>(invitedRoomId());
   const [copied, setCopied] = createSignal(false);
   const [joining, setJoining] = createSignal(false);
+  const [callEnded, setCallEnded] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
 
   // Re-enable the join button once a call ends and the lobby returns.
+  // A finished call also means the room link is dead — clear it so a
+  // reload or retry doesn't offer a join into a stale room.
   createEffect(
     on(
       () => p2p.state(),
-      (state) => {
-        if (state === 'idle') setJoining(false);
+      (state, prev) => {
+        if (state !== 'idle') return;
+        setJoining(false);
+        if (prev === 'joined') {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('room');
+          window.history.replaceState(null, '', url);
+          setRoomId(null);
+          setInvitedRoomId(null);
+          setCallEnded(true);
+        }
       },
     ),
   );
@@ -38,6 +64,7 @@ export default function CallLobby() {
     url.searchParams.set('room', id);
     window.history.replaceState(null, '', url);
     setRoomId(id);
+    setCallEnded(false);
     void copyLink();
   }
 
@@ -50,10 +77,23 @@ export default function CallLobby() {
     }
   }
 
+  async function shareLink() {
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ url: window.location.href });
+        return;
+      } catch {
+        // Share sheet dismissed or unavailable — fall back to copying.
+      }
+    }
+    await copyLink();
+  }
+
   async function joinRoom() {
     const id = roomId();
     if (!id || joining()) return;
     setJoining(true);
+    setCallEnded(false);
     setError(null);
     try {
       const uid = await signInAsGuest();
@@ -78,7 +118,7 @@ export default function CallLobby() {
       if (!room) throw p2p.error() ?? new Error('Room join returned no room');
     } catch (err) {
       console.error('[CallLobby] Failed to join guest room:', err);
-      setError('Could not join the call. Please try again.');
+      setError(joinErrorMessage(err, p2p.errorKind()));
       setJoining(false);
     }
   }
@@ -102,25 +142,40 @@ export default function CallLobby() {
           >
             {joining() ? 'Joining…' : 'Join call'}
           </button>
-          <Show when={true /*!invitedRoomId*/}>
-            <button
-              type='button'
-              class='call-lobby__secondary'
-              onClick={copyLink}
-            >
-              {copied() ? 'Link copied' : 'Copy invite link'}
-            </button>
-          </Show>
+          <button
+            type='button'
+            class='call-lobby__secondary'
+            onClick={shareLink}
+          >
+            {copied() ? 'Link copied' : 'Share invite link'}
+          </button>
         </Show>
       </div>
 
-      <Show when={roomId() && !invitedRoomId}>
+      <Show when={roomId() && !invitedRoomId()}>
+        {/* Clipboard write can fail silently — always show the link itself. */}
+        <input
+          class='call-lobby__link'
+          type='text'
+          readonly
+          value={window.location.href}
+          aria-label='Invite link'
+          onFocus={(e) => e.currentTarget.select()}
+        />
         <p class='call-lobby__hint'>
           Send the link to the person you want to call, then join.
         </p>
       </Show>
-      <Show when={invitedRoomId && !joining()}>
+      <Show when={invitedRoomId() && !joining()}>
         <p class='call-lobby__hint'>You've been invited to a video call.</p>
+      </Show>
+      <Show when={joining()}>
+        <p class='call-lobby__hint'>
+          Allow camera and microphone access when prompted.
+        </p>
+      </Show>
+      <Show when={callEnded() && !roomId()}>
+        <p class='call-lobby__hint'>Call ended.</p>
       </Show>
       <Show when={error()}>
         <p class='call-lobby__error' role='alert'>

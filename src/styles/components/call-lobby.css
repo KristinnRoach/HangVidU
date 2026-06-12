@@ -38,6 +38,21 @@
   border: 1px solid var(--color-primary-subtle);
 }
 
+.call-lobby__link {
+  display: block;
+  width: 100%;
+  max-width: 28rem;
+  margin: var(--spacing-md) auto 0;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-primary-subtle);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+  text-align: center;
+  text-overflow: ellipsis;
+}
+
 .call-lobby__hint {
   font-size: 0.9rem;
   color: var(--text-tertiary);
