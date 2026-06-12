@@ -89,11 +89,7 @@ export default function CallLobby() {
         <Show
           when={roomId()}
           fallback={
-            <button
-              type='button'
-              class='call-lobby__cta'
-              onClick={createRoom}
-            >
+            <button type='button' class='call-lobby__cta' onClick={createRoom}>
               Start a call
             </button>
           }
@@ -106,7 +102,7 @@ export default function CallLobby() {
           >
             {joining() ? 'Joining…' : 'Join call'}
           </button>
-          <Show when={!invitedRoomId}>
+          <Show when={true /*!invitedRoomId*/}>
             <button
               type='button'
               class='call-lobby__secondary'
