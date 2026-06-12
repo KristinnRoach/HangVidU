@@ -1,5 +1,5 @@
 import { useI18n } from '../../shared/i18n';
-
+import LobbyForm from '@features/call/reference-examples/LobbyForm';
 export default function PublicHomepage() {
   const { t } = useI18n();
 

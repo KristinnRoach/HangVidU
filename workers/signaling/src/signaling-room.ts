@@ -34,6 +34,11 @@ export class SignalingRoom extends DurableObject<Env> {
     this.ctx.acceptWebSocket(server);
     this.setSocketState(server, { peerId: null });
 
+    // Presence snapshot on connect. The P2PRoomSignaling contract requires
+    // watchers (connected, not joined) to know current occupancy — the client
+    // room checks capacity against it before and after joining.
+    this.send(server, { t: 'peers', peers: this.peerIds() });
+
     // Echo the auth subprotocol; browsers abort the handshake if the server
     // does not confirm one of the offered subprotocols.
     const headers: HeadersInit = {};
@@ -106,8 +111,9 @@ export class SignalingRoom extends DurableObject<Env> {
   private broadcastPeers(): void {
     const peers = this.peerIds();
     const payload: ServerMessage = { t: 'peers', peers };
+    // All sockets, including watchers — see the connect-time snapshot note.
     for (const ws of this.ctx.getWebSockets()) {
-      if (this.getSocketState(ws).peerId) this.send(ws, payload);
+      this.send(ws, payload);
     }
   }
 

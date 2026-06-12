@@ -70,7 +70,7 @@ export default function WIPHomepage() {
         roomId: id,
         peerId,
         createSignaling: createRoomSignaling,
-        memberCapacity: 4,
+        memberCapacity: 3,
         dataChannel: true,
         getLocalStream: () =>
           navigator.mediaDevices.getUserMedia({

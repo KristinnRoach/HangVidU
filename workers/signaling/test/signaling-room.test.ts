@@ -36,13 +36,21 @@ async function connect(roomId: string) {
 describe('SignalingRoom', () => {
   it('tracks presence and relays signaling between peers', async () => {
     const a = await connect('room-1');
+    expect(await a.next()).toEqual({ t: 'peers', peers: [] });
     const b = await connect('room-1');
+    expect(await b.next()).toEqual({ t: 'peers', peers: [] });
 
     a.send({ t: 'join', peerId: 'peer-a' });
+    // Joins broadcast to every socket, watchers included.
     expect(await a.next()).toEqual({ t: 'peers', peers: ['peer-a'] });
+    expect(await b.next()).toEqual({ t: 'peers', peers: ['peer-a'] });
+
+    // A late watcher's connect-time snapshot reflects current occupancy.
+    const c = await connect('room-1');
+    expect(await c.next()).toEqual({ t: 'peers', peers: ['peer-a'] });
 
     b.send({ t: 'join', peerId: 'peer-b' });
-    for (const peer of [a, b]) {
+    for (const peer of [a, b, c]) {
       const msg = await peer.next();
       expect(msg.t).toBe('peers');
       expect(msg.t === 'peers' && [...msg.peers].sort()).toEqual([
