@@ -25,8 +25,8 @@ importers:
         specifier: ^0.1.5
         version: 0.1.5
       '@kidlib/p2p':
-        specifier: ^0.1.10
-        version: 0.1.10(solid-js@1.9.12)
+        specifier: ^0.1.11
+        version: 0.1.11(solid-js@1.9.12)
       '@mediabunny/ac3':
         specifier: ^1.40.1
         version: 1.40.1(mediabunny@1.41.0)
@@ -1352,8 +1352,8 @@ packages:
   '@kidlib/create-component@0.1.5':
     resolution: {integrity: sha512-viom5Q6hIMz13plwb6665OT+2N3OBLs+8T7dNT5G9+0UQFcCtOI0iFE0tq0PNf5nnkNsrhS/NkhkyFvclTbMKA==}
 
-  '@kidlib/p2p@0.1.10':
-    resolution: {integrity: sha512-GZ2Ak2RqpDmHgPZt7dH8O6+aII3LfGBw+GEQGzsBWNM7S9c2amZeOLd+ktLt1l23kxfav6JMJWy04eVIQBsepg==}
+  '@kidlib/p2p@0.1.11':
+    resolution: {integrity: sha512-L+p3Wc8B2izNeDuxG02kgBLRpPmj4HQp0d3msiH2Igvn3Sv1AoYp1r7fRfsm3cjrrAhd5AsQCGEn3lsNScf2SQ==}
     peerDependencies:
       solid-js: '>=1.8.0'
     peerDependenciesMeta:
@@ -5208,7 +5208,7 @@ snapshots:
   '@esbuild/win32-x64@0.27.7':
     optional: true
 
-  '@eslint-community/eslint-utils@4.9.1(eslint@10.2.1)':
+  '@eslint-community/eslint-utils@4.9.1(eslint@10.2.1(supports-color@10.2.2))':
     dependencies:
       eslint: 10.2.1(supports-color@10.2.2)
       eslint-visitor-keys: 3.4.3
@@ -5801,7 +5801,7 @@ snapshots:
 
   '@kidlib/create-component@0.1.5': {}
 
-  '@kidlib/p2p@0.1.10(solid-js@1.9.12)':
+  '@kidlib/p2p@0.1.11(solid-js@1.9.12)':
     optionalDependencies:
       solid-js: 1.9.12
 
@@ -6284,7 +6284,7 @@ snapshots:
 
   '@typescript-eslint/utils@8.59.4(eslint@10.2.1(supports-color@10.2.2))(typescript@6.0.3)':
     dependencies:
-      '@eslint-community/eslint-utils': 4.9.1(eslint@10.2.1)
+      '@eslint-community/eslint-utils': 4.9.1(eslint@10.2.1(supports-color@10.2.2))
       '@typescript-eslint/scope-manager': 8.59.4
       '@typescript-eslint/types': 8.59.4
       '@typescript-eslint/typescript-estree': 8.59.4(typescript@6.0.3)
@@ -6992,7 +6992,7 @@ snapshots:
 
   eslint@10.2.1(supports-color@10.2.2):
     dependencies:
-      '@eslint-community/eslint-utils': 4.9.1(eslint@10.2.1)
+      '@eslint-community/eslint-utils': 4.9.1(eslint@10.2.1(supports-color@10.2.2))
       '@eslint-community/regexpp': 4.12.2
       '@eslint/config-array': 0.23.5(supports-color@10.2.2)
       '@eslint/config-helpers': 0.5.5
