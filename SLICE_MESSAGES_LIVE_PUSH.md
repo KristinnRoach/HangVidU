@@ -76,6 +76,9 @@ logic only, adapt to current main:
 - `messages` (id TEXT PK uuid, conversation_id FK→conversations ON DELETE CASCADE,
   sender_id FK→users, kind TEXT 'text'|'file', body TEXT NULL, created_at INTEGER),
 - `message_attachments` (id, message_id FK→messages CASCADE, r2_key, mime, size, name),
+  - Suggestion: add nullable `width`/`height` (natural image px) and capture them at
+    upload. The renderer already reserves layout space when `MessageAttachment.width/height`
+    are present (PR #538) — populating them here prevents scroll/layout shift as images load.
 - `message_reactions` (message_id FK CASCADE, user_id, emoji, PK(message_id,user_id,emoji)),
 - `ALTER TABLE conversation_members ADD COLUMN last_read_at INTEGER NOT NULL DEFAULT 0`,
 - Indexes: `messages(conversation_id, created_at)`, `message_attachments(message_id)`.
