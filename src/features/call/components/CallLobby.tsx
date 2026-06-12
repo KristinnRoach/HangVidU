@@ -22,13 +22,23 @@ function joinErrorMessage(err: unknown, kind: string | undefined): string {
   return 'Could not join the call. Please try again.';
 }
 
+// Room ids are crypto.randomUUID(); anything else in ?room= is a mangled
+// or forged link — drop it instead of attempting a join that can't work.
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function roomIdFromUrl(): string | null {
+  const raw = new URLSearchParams(window.location.search).get('room');
+  return raw && UUID_RE.test(raw) ? raw : null;
+}
+
 export default function CallLobby() {
   const p2p = useP2PContext();
 
   // Set when the visitor arrived via an invite link; cleared once that
   // call ends (the room link is single-use).
   const [invitedRoomId, setInvitedRoomId] = createSignal<string | null>(
-    new URLSearchParams(window.location.search).get('room'),
+    roomIdFromUrl(),
   );
 
   const [roomId, setRoomId] = createSignal<string | null>(invitedRoomId());
