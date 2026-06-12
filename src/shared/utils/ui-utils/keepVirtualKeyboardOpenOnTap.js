@@ -33,12 +33,23 @@ export function keepVirtualKeyboardOpenOnTap(buttonEl, onTap) {
     onTap(event);
   };
 
+  // iOS WebKit still blurs the focused input at the end of the touch sequence
+  // even when pointerdown was prevented; preventing touchstart suppresses that
+  // (and the synthetic click — onTap already ran from pointerdown).
+  const touchStartHandler = (event) => {
+    event.preventDefault();
+  };
+
   buttonEl.addEventListener('pointerdown', pointerDownHandler, {
+    passive: false,
+  });
+  buttonEl.addEventListener('touchstart', touchStartHandler, {
     passive: false,
   });
   buttonEl.addEventListener('click', clickHandler);
   return () => {
     buttonEl.removeEventListener('pointerdown', pointerDownHandler);
+    buttonEl.removeEventListener('touchstart', touchStartHandler);
     buttonEl.removeEventListener('click', clickHandler);
   };
 }
