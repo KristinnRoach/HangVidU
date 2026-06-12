@@ -10,11 +10,7 @@
 
 import { logAuthError } from './auth-setup.js';
 import { clearGISTokenCache } from './gis-tokens.js';
-import {
-  getAuthState,
-  setState,
-  toStableAuthState,
-} from './auth-state.js';
+import { getAuthState, setState, toStableAuthState } from './auth-state.js';
 import { showOneTapSignin } from './onetap.js';
 import {
   auth,
@@ -22,7 +18,10 @@ import {
   signInWithGooglePopup,
   signOutFirebaseUser,
 } from './adapters/firebase-auth-adapter.js';
-import { dispatchCommand, dispatchCommandAndAwait } from '../shared/events/index.js';
+import {
+  dispatchCommand,
+  dispatchCommandAndAwait,
+} from '../shared/events/index.js';
 import { t } from '../shared/i18n/index.js';
 import { devDebug } from '../shared/utils/dev/dev-utils.js';
 import { callCloudFunction } from './cloud-functions.js';
@@ -30,6 +29,7 @@ import {
   detectIOSStandalone,
   openInSafariExternal,
 } from './auth-platform-utils.js';
+import { disableGoogleAutoSignIn } from './adapters/google-identity-adapter.js';
 
 // iOS standalone PWA Safari fallback: armed after a failed attempt,
 // then the next Login tap opens the app URL in Safari (user gesture).
@@ -149,7 +149,9 @@ export async function signOutUser() {
 
   try {
     // Disable notifications and unregister the current Web Push subscription - Fire and forget
-    dispatchCommand('cmd:push:subscription:disable', { reason: 'auth:signout' });
+    dispatchCommand('cmd:push:subscription:disable', {
+      reason: 'auth:signout',
+    });
 
     await dispatchCommandAndAwait('cmd:user:presence:set-offline', {
       userId: auth.currentUser?.uid,
@@ -157,7 +159,8 @@ export async function signOutUser() {
     clearGISTokenCache();
     await signOutFirebaseUser();
     console.info('User signed out');
-    setTimeout(() => showOneTapSignin(), 1500); // TODO: decide whether this is annoying
+    disableGoogleAutoSignIn();
+    setTimeout(() => showOneTapSignin(), 1500); // ? reshow onetap on signout ?
   } catch (error) {
     logAuthError('Sign out', error);
     setState(toStableAuthState(previousAuthState));

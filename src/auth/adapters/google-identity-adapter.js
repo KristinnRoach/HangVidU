@@ -102,6 +102,16 @@ export function cancelGoogleOneTap() {
 }
 
 /**
+ * Disable One Tap auto_select for the signed-out user (sets g_state cookie),
+ * preventing automatic re-sign-in after an explicit sign-out.
+ */
+export function disableGoogleAutoSignIn() {
+  if (typeof google !== 'undefined' && google.accounts?.id) {
+    google.accounts.id.disableAutoSelect();
+  }
+}
+
+/**
  * Render GIS sign-in button.
  *
  * @param {HTMLElement} containerEl

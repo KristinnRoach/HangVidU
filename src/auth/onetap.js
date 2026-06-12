@@ -92,10 +92,8 @@ export function showOneTapSignin() {
     return;
   }
 
-  if (import.meta.env.DEV) {
-    document.cookie =
-      'g_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-  }
+  // Uncomment this line to wipe cookie in dev if needed for testing
+  // if (import.meta.env.DEV) document.cookie = 'g_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
 
   notifyOneTapStatus('prompting');
 
