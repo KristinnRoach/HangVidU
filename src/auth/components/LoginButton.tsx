@@ -3,16 +3,20 @@ import { t } from '../../shared/i18n/index.js';
 
 import styles from './SignInSheet.module.css';
 
-export default function LoginButton(props: { popoverTarget: string }) {
+export default function LoginButton(props: {
+  popoverTarget: string;
+  textContent?: string;
+  class?: string;
+}) {
   return (
     <button
       type='button'
       popovertarget={props.popoverTarget}
-      class={styles.openButton}
+      class={props.class ? props.class : styles.openButton}
       aria-label={t('auth.sign_in')}
       title={t('auth.sign_in')}
     >
-      <LogIn />
+      {props.textContent ? props.textContent : <LogIn />}
     </button>
   );
 }

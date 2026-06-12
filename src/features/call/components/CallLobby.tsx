@@ -139,9 +139,12 @@ export default function CallLobby() {
         <Show
           when={roomId()}
           fallback={
-            <button type='button' class='call-lobby__cta' onClick={createRoom}>
-              Start a call
-            </button>
+            <>
+              <p>Or make an ephemeral call:</p>
+              <button type='button' class='call-lobby__cta' onClick={createRoom}>
+                Start a call
+              </button>
+            </>
           }
         >
           <button

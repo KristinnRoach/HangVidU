@@ -18,13 +18,14 @@
 }
 
 .call-lobby__cta {
-  background: var(--color-primary);
-  color: var(--bg-primary);
-  border: none;
+  text-shadow: var(--text-shadow-strong);
+  font-weight: 420;
+  letter-spacing: 0.05em;
 }
 
 .call-lobby__cta:hover {
-  background: var(--color-primary-hover);
+  background-color: transparent;
+  text-decoration: underline;
 }
 
 .call-lobby__cta:disabled {

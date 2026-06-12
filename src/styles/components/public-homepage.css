@@ -31,16 +31,31 @@
   margin: 0;
   font-size: 2rem;
   line-height: 1.1;
+  text-shadow: var(--text-shadow-medium);
 
   color: var(--color-primary);
   text-decoration: underline var(--color-primary-subtle);
 }
 
 .public-homepage p {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin: var(--spacing-lg) auto 0;
   max-width: 58ch;
   color: var(--text-secondary);
   line-height: 1.5;
+}
+
+button.public-homepage__login {
+  /* color: rgb(172, 215, 255); */
+  text-transform: capitalize;
+  text-shadow: var(--text-shadow-medium);
+
+  &:hover {
+    text-decoration: underline;
+    background-color: transparent;
+  }
 }
 
 .public-homepage__links {
