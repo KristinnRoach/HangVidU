@@ -492,6 +492,9 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
     clearPersistedDraftIfNeeded();
     void send();
+    // Defensive refocus within the tap gesture so the iOS virtual keyboard
+    // stays open across sends even if something downstream steals focus.
+    inputTextAreaEl?.focus();
   }
 
   async function onImageInput(e: Event & { currentTarget: HTMLInputElement }) {
