@@ -360,6 +360,9 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         flushDraftSave();
         setHistoryReady(false);
         suppressScroll = true;
+        // The messages container remounts on switch; drop the old position so
+        // the first scroll comparison isn't against the previous conversation.
+        lastScrollTop = 0;
 
         const selection = props.selection;
         if (!source || !selection) {
