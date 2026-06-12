@@ -14,9 +14,10 @@ import InstallButton from '../features/pwa/InstallButton';
 import LegalFooter from '../components/app/LegalFooter';
 import LocaleToggle from '../components/app/LocaleToggle';
 
-// WIP: guest-call homepage sketch trial — restore if it doesn't pan out.
-// import PublicHomepage from '../components/app/PublicHomepage';
-import WIPHomepage from '../features/call/components/WIPHomepage';
+import PublicHomepage from '../components/app/PublicHomepage';
+// Injected as a child: PublicHomepage (components layer) can't import
+// features/realtime, which the lobby needs.
+import CallLobby from '../features/call/components/CallLobby';
 import ContactsList from '../features/contacts/components/ContactsList';
 import ActiveCallRoom from '../features/call/components/ActiveCallRoom';
 import ConversationPanel from '../features/messaging-next/ConversationPanel';
@@ -125,8 +126,9 @@ export default function MainContent() {
             hidden={activeView() !== 'home'}
             class={mainStyles.activeViewContainer}
           >
-            {/* <PublicHomepage /> */}
-            <WIPHomepage />
+            <PublicHomepage>
+              <CallLobby />
+            </PublicHomepage>
           </div>
 
           {/* Call room renders for guests too (room-link calls). */}

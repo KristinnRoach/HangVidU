@@ -16,6 +16,7 @@
 
 @import './components/onetap.css';
 @import './components/public-homepage.css';
+@import './components/call-lobby.css';
 @import './components/contacts-list.css';
 /* @import './components/add-contact-modal.css';
 @import './components/import-contacts-component.css';

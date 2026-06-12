@@ -1,8 +1,6 @@
-// WIP guest-call homepage sketch — temporary replacement for PublicHomepage
-// while we try out public room-link calls (no account needed).
-// Lives in features/call (not components/) because it needs realtime + p2p,
-// which the components layer may not import.
-// TODO: i18n for new copy; design pass deferred until the Tailwind migration.
+// Guest call lobby: create a room-link call or join one via ?room=<id>.
+// No account needed — signs in anonymously for the signaling token.
+// TODO: i18n for copy; design pass deferred until the Tailwind migration.
 import { createSignal, createEffect, on, Show } from 'solid-js';
 
 import { useP2PContext } from '../../../shared/p2p-context.js';
@@ -12,11 +10,9 @@ import {
   getAudioConstraints,
   getVideoConstraints,
 } from '../media-constraints.js';
-import { useI18n } from '../../../shared/i18n';
 
-export default function WIPHomepage() {
+export default function CallLobby() {
   const p2p = useP2PContext();
-  const { t } = useI18n();
 
   // Present when the visitor arrived via an invite link.
   const invitedRoomId = new URLSearchParams(window.location.search).get('room');
@@ -26,7 +22,7 @@ export default function WIPHomepage() {
   const [joining, setJoining] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
 
-  // Re-enable the join button once a call ends and the home view returns.
+  // Re-enable the join button once a call ends and the lobby returns.
   createEffect(
     on(
       () => p2p.state(),
@@ -70,7 +66,7 @@ export default function WIPHomepage() {
         roomId: id,
         peerId,
         createSignaling: createRoomSignaling,
-        memberCapacity: 3,
+        memberCapacity: 4,
         dataChannel: true,
         getLocalStream: () =>
           navigator.mediaDevices.getUserMedia({
@@ -81,73 +77,60 @@ export default function WIPHomepage() {
       });
       if (!room) throw p2p.error() ?? new Error('Room join returned no room');
     } catch (err) {
-      console.error('[WIPHomepage] Failed to join guest room:', err);
+      console.error('[CallLobby] Failed to join guest room:', err);
       setError('Could not join the call. Please try again.');
       setJoining(false);
     }
   }
 
   return (
-    <section class='public-homepage' aria-labelledby='public-homepage-title'>
-      <div class='public-homepage__content'>
-        <h2 id='public-homepage-title'>{t('home.title')}</h2>
-        <p>
-          Private peer-to-peer video calls, right in the browser. Start a call
-          and share the link — no account needed. Sign in to save contacts,
-          message them and call them directly.
-        </p>
-
-        <div class='public-homepage__actions'>
-          <Show
-            when={roomId()}
-            fallback={
-              <button
-                type='button'
-                class='public-homepage__cta'
-                onClick={createRoom}
-              >
-                Start a call
-              </button>
-            }
-          >
+    <div class='call-lobby'>
+      <div class='call-lobby__actions'>
+        <Show
+          when={roomId()}
+          fallback={
             <button
               type='button'
-              class='public-homepage__cta'
-              onClick={joinRoom}
-              disabled={joining()}
+              class='call-lobby__cta'
+              onClick={createRoom}
             >
-              {joining() ? 'Joining…' : 'Join call'}
+              Start a call
             </button>
-            <Show when={!invitedRoomId}>
-              <button
-                type='button'
-                class='public-homepage__secondary'
-                onClick={copyLink}
-              >
-                {copied() ? 'Link copied' : 'Copy invite link'}
-              </button>
-            </Show>
+          }
+        >
+          <button
+            type='button'
+            class='call-lobby__cta'
+            onClick={joinRoom}
+            disabled={joining()}
+          >
+            {joining() ? 'Joining…' : 'Join call'}
+          </button>
+          <Show when={!invitedRoomId}>
+            <button
+              type='button'
+              class='call-lobby__secondary'
+              onClick={copyLink}
+            >
+              {copied() ? 'Link copied' : 'Copy invite link'}
+            </button>
           </Show>
-        </div>
-
-        <Show when={roomId() && !invitedRoomId}>
-          <p class='public-homepage__hint'>
-            Send the link to the person you want to call, then join.
-          </p>
         </Show>
-        <Show when={invitedRoomId && !joining()}>
-          <p class='public-homepage__hint'>
-            You've been invited to a video call.
-          </p>
-        </Show>
-        <Show when={error()}>
-          <p class='public-homepage__error' role='alert'>
-            {error()}
-          </p>
-        </Show>
-
-        {/* Privacy/terms intentionally omitted — LegalFooter covers them. */}
       </div>
-    </section>
+
+      <Show when={roomId() && !invitedRoomId}>
+        <p class='call-lobby__hint'>
+          Send the link to the person you want to call, then join.
+        </p>
+      </Show>
+      <Show when={invitedRoomId && !joining()}>
+        <p class='call-lobby__hint'>You've been invited to a video call.</p>
+      </Show>
+      <Show when={error()}>
+        <p class='call-lobby__error' role='alert'>
+          {error()}
+        </p>
+      </Show>
+    </div>
   );
 }
