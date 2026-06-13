@@ -27,7 +27,14 @@ function smartTruncateName(fullName, maxLength = 20) {
 
 export default function AuthControls() {
   const { t } = useI18n();
-  const { isLoggedIn, isLoading, user } = useAuth();
+  const {
+    user,
+    isLoggedIn,
+    isLoading,
+    isLoggingIn,
+    isLoggingOut,
+    isAuthInitialized,
+  } = useAuth();
   const [avatarFailed, setAvatarFailed] = createSignal(false);
 
   // TODO: Decide whether to show name, for now just showing avatar
@@ -60,12 +67,12 @@ export default function AuthControls() {
 
   return (
     <div class={styles.authControls}>
-      <Show when={!isLoggedIn()}>
+      <Show when={isAuthInitialized() && !isLoggedIn()}>
         <LoginButton popoverTarget='signinSheet' />
         <SignInSheet id='signinSheet' />
       </Show>
 
-      <Show when={isLoading()}>
+      <Show when={isLoggingIn() || isLoggingOut()}>
         <span class='signing-in-indicator'>
           {isLoggedIn() ? t('auth.signing_out') : t('auth.signing_in')}
         </span>
@@ -99,7 +106,7 @@ export default function AuthControls() {
           type='button'
           title={t('auth.logout')}
           aria-label={t('auth.logout')}
-          disabled={isLoading()}
+          disabled={isLoading() || !isAuthInitialized()}
           onClick={requestLogout}
         >
           <LogOut />

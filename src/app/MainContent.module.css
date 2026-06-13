@@ -31,6 +31,8 @@
   margin-inline: auto;
   overflow: scroll;
 
+  /* border: lime 1px solid; */
+
   height: 100%;
   width: var(--content-width);
   max-width: var(--content-width);

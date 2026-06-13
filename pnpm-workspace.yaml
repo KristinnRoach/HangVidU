@@ -24,3 +24,6 @@ overrides:
   'picomatch@<2.3.2': 2.3.2
   'picomatch@>=4 <4.0.4': 4.0.4
   serialize-javascript: 7.0.5
+
+minimumReleaseAgeExclude:
+  - '@kidlib/p2p@0.1.11'

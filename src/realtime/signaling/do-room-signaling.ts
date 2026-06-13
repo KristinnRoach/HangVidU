@@ -91,7 +91,25 @@ export function createDoRoomSignaling({
   return {
     join(peerId) {
       joinedPeerId = peerId;
+      // Resolve once the server echoes a peers list containing us, so the
+      // room's post-join capacity check runs against current occupancy
+      // instead of a stale snapshot. Timeout fallback keeps a flaky server
+      // from hanging the join forever (degrades to pre-ack behavior).
+      const ack = new Promise<void>((resolve) => {
+        const handler = (peerIds: string[]) => {
+          if (!peerIds.includes(peerId)) return;
+          peersHandlers.delete(handler);
+          clearTimeout(timeoutId);
+          resolve();
+        };
+        const timeoutId = setTimeout(() => {
+          peersHandlers.delete(handler);
+          resolve();
+        }, 5_000);
+        peersHandlers.add(handler);
+      });
       socket.send({ t: 'join', peerId });
+      return ack;
     },
 
     leave(peerId) {

@@ -4,6 +4,7 @@ export {
   initAuth,
   getCurrentUserAsync,
   getLoggedInUserToken,
+  signInAsGuest,
 } from './auth-setup.js';
 
 export {

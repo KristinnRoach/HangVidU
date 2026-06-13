@@ -1,6 +1,6 @@
 import { useI18n } from '../../shared/i18n/index.js';
 
-export default function AppTitle() {
+export default function AppLogo() {
   const { t } = useI18n();
 
   return (
