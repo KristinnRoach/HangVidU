@@ -1,25 +1,26 @@
 // Guest call lobby: create a room-link call or join one via ?room=<id>.
 // No account needed — signs in anonymously for the signaling token.
-// TODO: i18n for copy; design pass deferred until the Tailwind migration.
+// TODO: design pass deferred until the Tailwind migration.
 import { createSignal, createEffect, on, Show } from 'solid-js';
 
 import { useP2PContext } from '../../../shared/p2p-context.js';
 import { createRoomSignaling } from '../../../realtime/index.js';
 import { signInAsGuest } from '../../../auth/index.js';
+import { t } from '../../../shared/i18n';
 import {
   getAudioConstraints,
   getVideoConstraints,
 } from '../media-constraints.js';
 
 function joinErrorMessage(err: unknown, kind: string | undefined): string {
-  if (kind === 'room-full') return 'This call is already full.';
+  if (kind === 'room-full') return t('call.lobby.error.full');
   if (
     kind === 'local-stream' ||
     (err instanceof DOMException && err.name === 'NotAllowedError')
   ) {
-    return 'Camera or microphone access was blocked. Allow access in your browser and try again.';
+    return t('call.lobby.error.media_blocked');
   }
-  return 'Could not join the call. Please try again.';
+  return t('call.lobby.error.generic');
 }
 
 // Room ids are crypto.randomUUID(); anything else in ?room= is a mangled
@@ -139,14 +140,14 @@ export default function CallLobby() {
         <Show
           when={roomId()}
           fallback={
-            <div style='display: flex; flex-direction: column; gap: 0.5em;'>
-              <p>Or make an ephemeral call:</p>
+            <div class='call-lobby__start'>
+              <p>{t('call.lobby.ephemeral_prompt')}</p>
               <button
                 type='button'
                 class='call-lobby__cta'
                 onClick={createRoom}
               >
-                Start a call
+                {t('call.lobby.start')}
               </button>
             </div>
           }
@@ -157,14 +158,14 @@ export default function CallLobby() {
             onClick={joinRoom}
             disabled={joining()}
           >
-            {joining() ? 'Joining…' : 'Join call'}
+            {joining() ? t('call.lobby.joining') : t('call.lobby.join')}
           </button>
           <button
             type='button'
             class='call-lobby__secondary'
             onClick={shareLink}
           >
-            {copied() ? 'Link copied' : 'Share invite link'}
+            {copied() ? t('call.lobby.link_copied') : t('call.lobby.share_link')}
           </button>
         </Show>
       </div>
@@ -176,23 +177,19 @@ export default function CallLobby() {
           type='text'
           readonly
           value={window.location.href}
-          aria-label='Invite link'
+          aria-label={t('call.lobby.invite_label')}
           onFocus={(e) => e.currentTarget.select()}
         />
-        <p class='call-lobby__hint'>
-          Send the link to the person you want to call, then join.
-        </p>
+        <p class='call-lobby__hint'>{t('call.lobby.send_link_hint')}</p>
       </Show>
       <Show when={invitedRoomId() && !joining()}>
-        <p class='call-lobby__hint'>You've been invited to a video call.</p>
+        <p class='call-lobby__hint'>{t('call.lobby.invited')}</p>
       </Show>
       <Show when={joining()}>
-        <p class='call-lobby__hint'>
-          Allow camera and microphone access when prompted.
-        </p>
+        <p class='call-lobby__hint'>{t('call.lobby.permission_hint')}</p>
       </Show>
       <Show when={callEnded() && !roomId()}>
-        <p class='call-lobby__hint'>Call ended.</p>
+        <p class='call-lobby__hint'>{t('call.lobby.ended')}</p>
       </Show>
       <Show when={error()}>
         <p class='call-lobby__error' role='alert'>

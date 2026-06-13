@@ -9,6 +9,12 @@
   gap: var(--spacing-md);
 }
 
+.call-lobby__start {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
 .call-lobby__cta,
 .call-lobby__secondary {
   padding: var(--spacing-sm) var(--spacing-xl);
