@@ -139,12 +139,16 @@ export default function CallLobby() {
         <Show
           when={roomId()}
           fallback={
-            <>
+            <div style='display: flex; flex-direction: column; gap: 0.5em;'>
               <p>Or make an ephemeral call:</p>
-              <button type='button' class='call-lobby__cta' onClick={createRoom}>
+              <button
+                type='button'
+                class='call-lobby__cta'
+                onClick={createRoom}
+              >
                 Start a call
               </button>
-            </>
+            </div>
           }
         >
           <button

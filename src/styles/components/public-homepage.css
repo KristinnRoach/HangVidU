@@ -47,10 +47,17 @@
   line-height: 1.5;
 }
 
+.public-homepage__login_prompt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* text-wrap: none; */
+}
+
 button.public-homepage__login {
-  /* color: rgb(172, 215, 255); */
   text-transform: capitalize;
   text-shadow: var(--text-shadow-medium);
+  white-space: nowrap;
 
   &:hover {
     text-decoration: underline;

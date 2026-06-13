@@ -17,7 +17,7 @@ export default function PublicHomepage(props: ParentProps) {
             textContent={'Log in'}
             class={'public-homepage__login'}
           />
-          to save contacts and use DM features.
+          to save contacts and send DM's
         </p>
 
         {props.children}
