@@ -6,23 +6,29 @@ const mocks = vi.hoisted(() => ({
     user: null,
     isLoggedIn: false,
   },
-  listeners: new Set(),
+  listeners: new Map(),
 }));
 
 vi.mock('./auth-state.js', () => ({
   getAuthState: () => ({ ...mocks.authState }),
 }));
 
+// Event-name-aware mock so subscribing to the wrong channel fails the test.
 vi.mock('../shared/events/index.js', () => ({
   subscribe: (eventName, listener) => {
-    mocks.listeners.add(listener);
-    return () => mocks.listeners.delete(listener);
+    const bucket = mocks.listeners.get(eventName) ?? new Set();
+    bucket.add(listener);
+    mocks.listeners.set(eventName, bucket);
+    return () => {
+      bucket.delete(listener);
+      if (bucket.size === 0) mocks.listeners.delete(eventName);
+    };
   },
 }));
 
 // Drive the mocked `evt:auth:state:changed` channel.
 function emitAuthState(state) {
-  for (const listener of mocks.listeners) {
+  for (const listener of mocks.listeners.get('evt:auth:state:changed') ?? []) {
     listener({ state });
   }
 }

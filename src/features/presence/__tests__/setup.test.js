@@ -2,9 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
   const handlers = new Map();
-  const register = (eventName, handler) => {
+  const register = (eventName, handler, options = {}) => {
     handlers.set(eventName, handler);
-    return () => handlers.delete(eventName);
+    const unsubscribe = () => handlers.delete(eventName);
+    if (options.signal) {
+      if (options.signal.aborted) unsubscribe();
+      else options.signal.addEventListener('abort', unsubscribe, { once: true });
+    }
+    return unsubscribe;
   };
   return {
     handlers,
@@ -60,5 +65,18 @@ describe('presence setup', () => {
     await Promise.resolve();
 
     expect(mocks.writeOnline).toHaveBeenCalledWith('user-1');
+  });
+
+  it('aborts registered handlers on cleanup', async () => {
+    const presence = await import('../index.js');
+
+    const cleanup = await presence.setup();
+    expect(mocks.handlers.has('evt:auth:session:logged-in')).toBe(true);
+
+    cleanup();
+
+    expect(mocks.handlers.has('evt:auth:session:logged-in')).toBe(false);
+    expect(mocks.handlers.has('evt:auth:session:logged-out')).toBe(false);
+    expect(mocks.handlers.has('cmd:user:presence:set-offline')).toBe(false);
   });
 });
