@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   requestContactsAccess: vi.fn(),
-  getUser: vi.fn(),
+  getLoggedInUserId: vi.fn(),
   getAllContacts: vi.fn(),
   hydrateContacts: vi.fn(),
   findRegisteredUsersByEmails: vi.fn(),
@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../../auth/index.js', () => ({
   requestContactsAccess: mocks.requestContactsAccess,
-  getUser: mocks.getUser,
+  getLoggedInUserId: mocks.getLoggedInUserId,
 }));
 
 vi.mock('../../../stores/contactsStore.js', () => ({
@@ -53,7 +53,7 @@ describe('importGoogleContacts', () => {
     mocks.fetchGoogleContacts.mockResolvedValue(googleContacts);
     mocks.getAllContacts.mockReturnValue(savedContacts);
     mocks.findRegisteredUsersByEmails.mockResolvedValue(registeredUsers);
-    mocks.getUser.mockReturnValue({ uid: 'me' });
+    mocks.getLoggedInUserId.mockReturnValue('me');
     mocks.buildImportableContacts.mockReturnValue(importableContacts);
 
     await expect(importGoogleContacts({ onProgress })).resolves.toEqual({

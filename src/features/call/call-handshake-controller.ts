@@ -75,11 +75,11 @@ export class CallHandshakeController {
     const ac = new AbortController();
     this.initAbortController = ac;
 
-    const authState = await waitForAuthReady();
+    await waitForAuthReady();
 
     if (ac.signal.aborted) return;
 
-    const localUID = authState.user?.uid ?? getLoggedInUserId();
+    const localUID = getLoggedInUserId();
     if (!localUID) return;
 
     const callService = initCallService({ localUID, rtdb });
