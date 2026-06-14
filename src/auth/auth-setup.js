@@ -1,10 +1,6 @@
 // src/auth/auth-setup.js — auth instance, initialization, persistence, onAuthStateChanged
 
-import {
-  setState,
-  onAuthStateChanged,
-  waitForAuthReady,
-} from './auth-state.js';
+import { setState, waitForAuthReady } from './auth-state.js';
 
 import {
   auth,
@@ -152,11 +148,6 @@ async function _initAuthInternal() {
     if (!loggedIn) clearGISTokenCache();
   });
 
-  // 4. UI sync subscriber // TODO: Delete or use
-  onAuthStateChanged((state) => {
-    devDebug('[AUTH] Unused onAuthStateChanged subscriber - state:', { state });
-  });
-
   devDebug('[AUTH] Auth initialization complete, scheduling One Tap...');
 
   // Small delay to ensure page is fully loaded
@@ -181,18 +172,4 @@ function normalizeUser(firebaseUser) {
     email,
     photoURL: firebaseUser.photoURL,
   };
-}
-
-/**
- * Wait for auth state to be initialized and return the current user.
- * Note: onFirebaseAuthStateChanged fires once after initialization, so this always resolves.
- * @returns {Promise<object | null>}
- */
-export function getCurrentUserAsync() {
-  return new Promise((resolve) => {
-    const unsubscribe = onFirebaseAuthStateChanged((user) => {
-      unsubscribe();
-      resolve(user);
-    });
-  });
 }

@@ -40,7 +40,6 @@ vi.mock('../../../stores/contactsStore.js', () => ({
 vi.mock('../../../auth/auth-setup.js', () => ({
   auth: {},
   initAuth: vi.fn(),
-  getCurrentUserAsync: vi.fn(),
   getLoggedInUserToken: vi.fn().mockResolvedValue('test-id-token'),
   logAuthError: vi.fn(),
 }));

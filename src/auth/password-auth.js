@@ -137,7 +137,7 @@ export async function signUpWithUsername({
       // inlined here because the auth layer doesn't import from storage,
       // and authState.user.email is null for password accounts (the
       // Firebase Auth principal is synthetic), so the post-login registration
-      // in setupAuth.js skips them.
+      // in auth-orchestration.js skips them.
       await set(ref(rtdb, `usersByEmail/${hashEmail(trimmedEmail)}`), {
         uid: cred.user.uid,
         userName: resolvedDisplayName,

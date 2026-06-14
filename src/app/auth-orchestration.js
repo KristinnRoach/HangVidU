@@ -22,7 +22,7 @@ function runSafe(fn, label) {
   try {
     fn?.();
   } catch (error) {
-    console.warn(`[setupAuth] ${label} failed:`, error);
+    console.warn(`[auth-orchestration] ${label} failed:`, error);
   }
 }
 
@@ -65,23 +65,30 @@ function clearLocalStorageOnLogout() {
       }
     });
   } catch (error) {
-    console.warn('[setupAuth] Failed to clear localStorage on logout:', error);
+    console.warn(
+      '[auth-orchestration] Failed to clear localStorage on logout:',
+      error,
+    );
   }
 }
 
 /**
- * Setup contract:
- * - idempotent: returns existing cleanup when already ready
+ * Wire cross-feature reactions to auth lifecycle events, then kick off auth.
+ *
+ * This is app-level orchestration, NOT the auth module itself (that's
+ * `src/auth/`, whose `initAuth()` this calls last). Distinct from
+ * `auth/auth-setup.js` despite the historical name overlap.
+ *
+ * Contract:
+ * - register auth-driven listeners first, then call `initAuth()` so the
+ *   initial auth lifecycle facts are observed by those listeners
+ * - idempotent: returns the existing cleanup when already wired
  * - single-flight: concurrent callers share one init promise
  * - teardown: cleanup aborts all auth-bound subscriptions
  *
- * Setup auth at app-composition level:
- * - register auth-driven listeners first
- * - initialize auth second (so initial auth lifecycle facts are observed)
- *
  * @returns {Promise<() => void>}
  */
-export function setupAuth() {
+export function wireAuthReactions() {
   if (isReady) {
     return Promise.resolve(cleanup);
   }

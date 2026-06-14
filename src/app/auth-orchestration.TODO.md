@@ -1,9 +1,14 @@
-# setupAuth.js — pending Option A decomposition
+# auth-orchestration.js (`wireAuthReactions`) — pending Option A decomposition
 
-`setupAuth.js` was relocated wholesale from `src/setup/` into `src/app/` as the
-last step of eliminating `src/setup/`. It is the only remaining cross-feature
-orchestrator in the codebase. The intent is to push each subscription down
-into the feature that owns the reaction, so this file goes away too.
+> Renamed from `setupAuth.js` / `setupAuth()` to remove the name collision with
+> the `auth/auth-setup.js` module. This file is app-level cross-feature wiring,
+> not the auth module.
+
+`auth-orchestration.js` was relocated wholesale from `src/setup/` into
+`src/app/` as the last step of eliminating `src/setup/`. It is the only
+remaining cross-feature orchestrator in the codebase. The intent is to push each
+subscription down into the feature that owns the reaction, so this file goes
+away too.
 
 ## Why it still lives here
 

@@ -1,6 +1,5 @@
 // src/auth/auth-state.js — pure auth state, no Firebase imports
 
-import { getOrCreateGuestId } from './guest-user.js';
 import { publish, publishAndAwait } from '../shared/events/index.js';
 
 let state = {
@@ -150,15 +149,6 @@ export function getIsLoggedIn() {
  */
 export function getUser() {
   return state.user ? { ...state.user } : null;
-}
-
-/**
- * Returns the authenticated user's UID, or a persistent guest ID as fallback.
- *
- * @returns {string}
- */
-export function getUserId() {
-  return state.user?.uid ?? getOrCreateGuestId();
 }
 
 /**
