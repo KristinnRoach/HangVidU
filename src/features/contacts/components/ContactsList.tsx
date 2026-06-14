@@ -1,27 +1,30 @@
 import { For, Show } from 'solid-js';
+import { Spinner } from '../../../components/app/Spinner';
 import { useI18n } from '../../../shared/i18n/index';
 import ContactEntry from './ContactEntry';
 import { useContacts } from '../useContacts';
 
 export default function ContactsList() {
   const { t } = useI18n();
-  const { contacts } = useContacts();
+  const { contacts, isLoading } = useContacts();
 
   return (
     <div class='contacts-container'>
-      <Show when={contacts.length > 0} fallback={<p>{t('contact.none')}</p>}>
-        <div class='contacts-list'>
-          <For each={contacts}>
-            {(row) => (
-              <ContactEntry
-                id={row.id}
-                name={row.name}
-                conversationId={row.conversationId}
-                hasUnread={row.hasUnread}
-              />
-            )}
-          </For>
-        </div>
+      <Show when={!isLoading()} fallback={<Spinner size={32} />}>
+        <Show when={contacts.length > 0} fallback={<p>{t('contact.none')}</p>}>
+          <div class='contacts-list'>
+            <For each={contacts}>
+              {(row) => (
+                <ContactEntry
+                  id={row.id}
+                  name={row.name}
+                  conversationId={row.conversationId}
+                  hasUnread={row.hasUnread}
+                />
+              )}
+            </For>
+          </div>
+        </Show>
       </Show>
     </div>
   );

@@ -8,11 +8,12 @@ import {
 import { deriveLegacyDirectConversationId } from '../shared/utils/direct-conversation-id.js';
 
 type Contact = any;
+type ContactsStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 const [state, setState] = createStore<{
   byId: Record<string, Contact>;
-  isHydrated: boolean;
-}>({ byId: {}, isHydrated: false });
+  status: ContactsStatus;
+}>({ byId: {}, status: 'idle' });
 
 let hydrationPromise: Promise<void> | null = null;
 let hydratedScopeKey: string | null = null;
@@ -69,7 +70,7 @@ export function getConversationId(contactId: string): string | null {
 }
 
 export function getContactsIsHydrated(): boolean {
-  return state.isHydrated;
+  return state.status === 'ready';
 }
 
 // ---------- mutations ----------
@@ -142,7 +143,7 @@ export async function deleteContact(contactId: string): Promise<boolean> {
 }
 
 export async function handleHangUp(contactUserId: string, roomId: string) {
-  if (getIsLoggedIn() && !state.isHydrated) {
+  if (getIsLoggedIn() && state.status !== 'ready') {
     try {
       await hydrateContacts();
     } catch (error) {
@@ -172,10 +173,12 @@ export async function hydrateContacts(): Promise<void> {
   const ownerId = getLoggedInUserId();
   const scopeKey = getScopeKey(ownerId);
 
-  if (state.isHydrated && hydratedScopeKey === scopeKey) return;
+  if (state.status === 'ready' && hydratedScopeKey === scopeKey) return;
   if (hydrationPromise) return hydrationPromise;
 
   const requestId = ++hydrationRequestId;
+  setState({ status: 'loading' });
+
   hydrationPromise = (async () => {
     try {
       const records = await getRepo(ownerId).list();
@@ -185,8 +188,9 @@ export async function hydrateContacts(): Promise<void> {
         if (record?.contactId) byId[record.contactId] = record;
       }
       hydratedScopeKey = scopeKey;
-      setState({ byId, isHydrated: true });
+      setState({ byId, status: 'ready' });
     } catch (error) {
+      if (requestId === hydrationRequestId) setState({ status: 'error' });
       logFailure('hydrateContacts', error);
       throw error;
     } finally {
@@ -201,5 +205,5 @@ export function resetContacts(): void {
   hydrationPromise = null;
   hydratedScopeKey = null;
   hydrationRequestId += 1;
-  setState({ byId: {}, isHydrated: false });
+  setState({ byId: {}, status: 'idle' });
 }

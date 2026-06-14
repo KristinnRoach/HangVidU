@@ -174,5 +174,9 @@ export function useContacts() {
     clearActivity();
   });
 
-  return { contacts };
+  return {
+    contacts,
+    isLoading: () =>
+      contactsState.status === 'idle' || contactsState.status === 'loading',
+  };
 }

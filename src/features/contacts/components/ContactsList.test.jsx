@@ -12,6 +12,7 @@ For now the 60s timeout swallows it.
 */
 const mocks = vi.hoisted(() => ({
   contacts: [],
+  isLoading: false,
   watchUserPresence: vi.fn(() => () => {}),
   dispatchCommand: vi.fn(),
   subscribe: vi.fn(),
@@ -36,7 +37,10 @@ vi.mock('../../presence/index.js', () => ({
 }));
 
 vi.mock('../useContacts.js', () => ({
-  useContacts: () => ({ contacts: mocks.contacts }),
+  useContacts: () => ({
+    contacts: mocks.contacts,
+    isLoading: () => mocks.isLoading,
+  }),
 }));
 
 vi.mock('../../../shared/events/index.js', () => ({
@@ -99,6 +103,7 @@ describe('SolidJS ContactsList PoC', { timeout: 60000 }, () => {
         unreadCount: 0,
       },
     ];
+    mocks.isLoading = false;
   });
 
   it('renders a row per contact from hydrated state', async () => {
@@ -110,6 +115,19 @@ describe('SolidJS ContactsList PoC', { timeout: 60000 }, () => {
     expect(rows.length).toBe(2);
     expect(container.textContent).toContain('Alice');
     expect(container.textContent).toContain('Bob');
+
+    unmount();
+  });
+
+  it('renders loading state before hydrated empty state', async () => {
+    mocks.contacts = [];
+    mocks.isLoading = true;
+    const ContactsListModule = await import('./ContactsList.tsx');
+
+    const { container, unmount } = render(() => <ContactsListModule.default />);
+
+    expect(container.querySelector('[role="status"]')).not.toBeNull();
+    expect(container.textContent).not.toContain('contact.none');
 
     unmount();
   });
