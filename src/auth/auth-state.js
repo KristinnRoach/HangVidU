@@ -4,8 +4,8 @@ import { getOrCreateGuestId } from './guest-user.js';
 import { publish, publishAndAwait } from '../shared/events/index.js';
 
 let state = {
-  status: 'idle', // 'idle' | 'loading' | 'authenticated' | 'unauthenticated'
-  // 'idle' = before initAuth() completes
+  status: 'uninitialized', // 'uninitialized' | 'loading' | 'authenticated' | 'unauthenticated'
+  // 'uninitialized' = auth not yet determined (pre first resolution); not ready
   // 'loading' = auth operation in flight (sign-in/out/delete)
   // 'authenticated' | 'unauthenticated' = stable login state
   user: null, // { uid, userName, email, photoURL } | null
@@ -57,15 +57,17 @@ export function setState(next) {
   const wasReadyResolved = hasResolvedReady;
 
   let patch = next;
-  if (patch?.status === 'idle' && state.status !== 'idle') {
+  if (patch?.status === 'uninitialized' && state.status !== 'uninitialized') {
     console.warn(
-      '[auth-state] Ignoring reset to idle after auth initialization',
+      '[auth-state] Ignoring reset to uninitialized after auth initialization',
     );
     patch = toStableAuthState(state);
   }
 
   state = { ...state, ...patch };
   const snap = snapshot();
+  import.meta.env.DEV && console.info('[AUTH] setState', snap);
+
   for (const fn of listeners) {
     try {
       fn(snap);

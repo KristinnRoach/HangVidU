@@ -23,7 +23,7 @@ describe('waitForAuthReady', () => {
   it('waits for a stable auth state, not loading', async () => {
     const { setState, waitForAuthReady } = await import('../auth-state.js');
 
-    setState({ status: 'idle', isLoggedIn: false, user: null });
+    setState({ status: 'uninitialized', isLoggedIn: false, user: null });
 
     const ready = waitForAuthReady();
     const result = await Promise.race([
@@ -69,14 +69,14 @@ describe('onAuthStateChanged', () => {
 });
 
 describe('setState', () => {
-  it('guards against resetting to idle after auth has initialized', async () => {
+  it('guards against resetting to uninitialized after auth has initialized', async () => {
     const { setState, getAuthState } = await import('../auth-state.js');
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     try {
       setState({ status: 'unauthenticated', isLoggedIn: false, user: null });
       setState({ status: 'loading' });
-      setState({ status: 'idle' });
+      setState({ status: 'uninitialized' });
 
       expect(getAuthState()).toEqual({
         status: 'unauthenticated',
@@ -84,7 +84,7 @@ describe('setState', () => {
         user: null,
       });
       expect(warn).toHaveBeenCalledWith(
-        '[auth-state] Ignoring reset to idle after auth initialization',
+        '[auth-state] Ignoring reset to uninitialized after auth initialization',
       );
     } finally {
       warn.mockRestore();

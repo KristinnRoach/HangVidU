@@ -10,7 +10,7 @@ import {
 import { getAuthState, onAuthStateChanged } from './auth-state.js';
 
 export type AuthStatus =
-  | 'idle'
+  | 'uninitialized'
   | 'loading'
   | 'authenticated'
   | 'unauthenticated';
@@ -57,7 +57,7 @@ export function AuthProvider(props: { children: JSX.Element }) {
 
   const user = createMemo(() => snapshot().user);
   const status = createMemo(() => snapshot().status);
-  const isAuthInitialized = createMemo(() => status() !== 'idle');
+  const isAuthInitialized = createMemo(() => status() !== 'uninitialized');
   const isLoading = createMemo(() => status() === 'loading');
   const isLoggedIn = createMemo(() => snapshot().isLoggedIn);
   const isLoggingIn = createMemo(() => isLoading() && !isLoggedIn());

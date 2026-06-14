@@ -91,12 +91,9 @@ export function initAuth() {
 async function _initAuthInternal() {
   setupAuthCommandHandlers();
 
-  // Signal that auth initialization is in progress
-  setState({ status: 'loading' });
-
   // 1. Set persistence with graceful fallback for Safari/iOS/private mode.
-  // Must never throw: a rejection here would skip listener registration below
-  // and pin auth state at 'loading' forever (stuck UI).
+  // Must never throw: a rejection here would skip listener registration below,
+  // leaving auth state stuck at 'uninitialized' (never ready → stuck UI).
   try {
     await setFirebaseAuthPersistence(
       persistenceBackends.indexedDBLocalPersistence,
@@ -121,8 +118,8 @@ async function _initAuthInternal() {
 
   // 2. Process redirect results (Safari external fallback). Bounded by a
   // timeout so a hung redirect check can't block listener registration and
-  // pin auth state at 'loading'. The auth listener below still reports any
-  // redirect sign-in once Firebase resolves it.
+  // leave auth state stuck at 'uninitialized'. The auth listener below still
+  // reports any redirect sign-in once Firebase resolves it.
   try {
     const result = await Promise.race([
       getFirebaseRedirectResult(),
