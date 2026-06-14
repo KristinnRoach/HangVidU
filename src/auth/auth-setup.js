@@ -51,6 +51,10 @@ export async function signInAsGuest() {
   return user.uid;
 }
 
+// Max wait for the Safari redirect-result check before proceeding to register
+// the auth listener. Prevents a hung check from pinning auth state at 'loading'.
+const REDIRECT_RESULT_TIMEOUT_MS = 4000;
+
 const isProd =
   typeof import.meta !== 'undefined' && Boolean(import.meta.env?.PROD);
 
@@ -90,7 +94,9 @@ async function _initAuthInternal() {
   // Signal that auth initialization is in progress
   setState({ status: 'loading' });
 
-  // 1. Set persistence with graceful fallback for Safari/iOS/private mode
+  // 1. Set persistence with graceful fallback for Safari/iOS/private mode.
+  // Must never throw: a rejection here would skip listener registration below
+  // and pin auth state at 'loading' forever (stuck UI).
   try {
     await setFirebaseAuthPersistence(
       persistenceBackends.indexedDBLocalPersistence,
@@ -101,13 +107,29 @@ async function _initAuthInternal() {
         persistenceBackends.browserLocalPersistence,
       );
     } catch {
-      await setFirebaseAuthPersistence(persistenceBackends.inMemoryPersistence);
+      try {
+        await setFirebaseAuthPersistence(
+          persistenceBackends.inMemoryPersistence,
+        );
+      } catch (e) {
+        // In-memory is the last resort; proceed without persistence rather
+        // than blocking auth initialization.
+        logAuthError('All persistence backends failed', e);
+      }
     }
   }
 
-  // 2. Process redirect results (Safari external fallback)
+  // 2. Process redirect results (Safari external fallback). Bounded by a
+  // timeout so a hung redirect check can't block listener registration and
+  // pin auth state at 'loading'. The auth listener below still reports any
+  // redirect sign-in once Firebase resolves it.
   try {
-    const result = await getFirebaseRedirectResult();
+    const result = await Promise.race([
+      getFirebaseRedirectResult(),
+      new Promise((resolve) =>
+        setTimeout(() => resolve(null), REDIRECT_RESULT_TIMEOUT_MS),
+      ),
+    ]);
     if (result?.user) {
       devDebug('[AUTH] Sign-in completed (via Safari fallback)');
     }
