@@ -90,6 +90,7 @@
     "eslint": "^10.2.1",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-boundaries": "^6.0.2",
+    "fallow": "^2.96.0",
     "fast-check": "^4.7.0",
     "firebase-admin": "^13.8.0",
     "fkill-cli": "~9.0.0",
