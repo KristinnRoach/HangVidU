@@ -62,7 +62,7 @@ events after all subscribers are registered.
 
 These are visible while reading `setupAuth.js`. None are blocking. Capture them so the rewrite addresses them deliberately.
 
-- `savePublicUserProfile` and `registerInUserDirectory` fire-and-forget inside the logged-in handler (not awaited). `setupInviteListener()` runs immediately after. If the user-directory write matters for invite resolution, the current order may race. Verify in the rewrite.
+- `savePublicUserProfile` and `registerInUserDirectory` fire-and-forget inside the logged-in handler (not awaited). `getPublicUserProfile(user.uid)` can run before `savePublicUserProfile(user)` settles; this is non-blocking today because directory display data comes from the auth user, and the profile read only carries the optional `username` handle. Password accounts that need `username` for email sign-in write the directory entry during sign-up and skip this post-login path because their auth email is synthetic/null. When extracting the user-directory setup, either await save-before-fetch if the profile read should reflect the just-saved state, or remove/clarify the fetch if the fallback remains intentional.
 - Logout sequence: invite cleanup → `clearLocalStorageOnLogout()` → `resetContacts()`. `localStorage.clear()` wipes the guest-mode `'contacts'` key as a side effect; intentional today but a coupling worth documenting after the split.
 - All three handlers swallow errors to `console.warn`. Masks bugs in tests where the handler silently fails but the assertion still passes. After the split, prefer surfacing or at least incrementing a counter.
 
