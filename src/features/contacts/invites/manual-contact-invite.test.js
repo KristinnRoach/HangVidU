@@ -21,7 +21,7 @@ vi.mock('../../../stores/contactsStore.js', () => ({
 }));
 
 vi.mock('../../../auth/index.js', () => ({
-  getUser: vi.fn(() => ({ uid: 'me' })),
+  getLoggedInUserId: vi.fn(() => 'me'),
 }));
 
 import { inviteContactByEmail } from './manual-contact-invite.js';

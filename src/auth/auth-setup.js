@@ -1,10 +1,6 @@
 // src/auth/auth-setup.js — auth instance, initialization, persistence, onAuthStateChanged
 
-import {
-  setState,
-  onAuthStateChanged,
-  waitForAuthReady,
-} from './auth-state.js';
+import { setState, waitForAuthReady } from './auth-state.js';
 
 import {
   auth,
@@ -19,7 +15,9 @@ import { initOneTap, showOneTapSignin } from './onetap.js';
 import { clearGISTokenCache } from './gis-tokens.js';
 import { setupAuthCommandHandlers } from './auth-command-handlers.js';
 import { getLocale, onLocaleChange } from '../shared/i18n/index.js';
-import { isSyntheticEmail } from './password-auth.js';
+import { logAuthError } from './shared/auth-error-logging.js';
+import { getLoggedInUserToken } from './shared/auth-token.js';
+import { isSyntheticEmail } from './shared/synthetic-email.js';
 
 // Sync Firebase Auth popup language with app locale
 auth.languageCode = getLocale();
@@ -27,16 +25,7 @@ onLocaleChange((locale) => {
   auth.languageCode = locale;
 });
 
-/**
- * Get current user's ID token (JWT)
- * @returns {Promise<string|null>} ID token or null if not logged in
- */
-export async function getLoggedInUserToken() {
-  const user = auth.currentUser;
-  if (!user) return null;
-  // forceRefresh: false - use cached token if valid
-  return user.getIdToken(false);
-}
+export { getLoggedInUserToken };
 
 /**
  * Ensure a Firebase user exists whose ID token can authenticate against the
@@ -54,23 +43,6 @@ export async function signInAsGuest() {
 // Max wait for the Safari redirect-result check before proceeding to register
 // the auth listener. Prevents a hung check from pinning auth state at 'loading'.
 const REDIRECT_RESULT_TIMEOUT_MS = 4000;
-
-const isProd =
-  typeof import.meta !== 'undefined' && Boolean(import.meta.env?.PROD);
-
-export function logAuthError(context, error, extra = {}) {
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'n/a';
-  if (isProd) {
-    console.error(`[AUTH] ${context}:`, {
-      code: error?.code || 'unknown',
-      message: error?.message || String(error),
-      origin,
-      ...extra,
-    });
-  } else {
-    console.error(`[AUTH] ${context}:`, error, extra, { origin });
-  }
-}
 
 let _initPromise = null;
 
@@ -152,11 +124,6 @@ async function _initAuthInternal() {
     if (!loggedIn) clearGISTokenCache();
   });
 
-  // 4. UI sync subscriber // TODO: Delete or use
-  onAuthStateChanged((state) => {
-    devDebug('[AUTH] Unused onAuthStateChanged subscriber - state:', { state });
-  });
-
   devDebug('[AUTH] Auth initialization complete, scheduling One Tap...');
 
   // Small delay to ensure page is fully loaded
@@ -181,18 +148,4 @@ function normalizeUser(firebaseUser) {
     email,
     photoURL: firebaseUser.photoURL,
   };
-}
-
-/**
- * Wait for auth state to be initialized and return the current user.
- * Note: onFirebaseAuthStateChanged fires once after initialization, so this always resolves.
- * @returns {Promise<object | null>}
- */
-export function getCurrentUserAsync() {
-  return new Promise((resolve) => {
-    const unsubscribe = onFirebaseAuthStateChanged((user) => {
-      unsubscribe();
-      resolve(user);
-    });
-  });
 }

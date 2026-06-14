@@ -3,12 +3,11 @@
 /**
  * TODO(auth commands)
  * This module still includes non-command concerns.
- * - Extract Safari fallback flag helpers (`isSafariExternalOpenArmed`,
- *   `setSafariExternalOpenArmed`) to a dedicated auth session/platform state
- *   module once command and state responsibilities are separated further.
+ * - Command and state responsibilities are still mixed in this module; keep
+ *   provider-agnostic shared helpers in ./shared while that split is pending.
  */
 
-import { logAuthError } from './auth-setup.js';
+import { logAuthError } from './shared/auth-error-logging.js';
 import { clearGISTokenCache } from './gis-tokens.js';
 import { getAuthState, setState, toStableAuthState } from './auth-state.js';
 import { showOneTapSignin } from './onetap.js';
@@ -28,28 +27,14 @@ import { callCloudFunction } from './cloud-functions.js';
 import {
   detectIOSStandalone,
   openInSafariExternal,
-} from './auth-platform-utils.js';
+} from './shared/auth-platform-utils.js';
 import { disableGoogleAutoSignIn } from './adapters/google-identity-adapter.js';
+import {
+  isSafariExternalOpenArmed,
+  setSafariExternalOpenArmed,
+} from './shared/safari-auth-fallback.js';
 
-// iOS standalone PWA Safari fallback: armed after a failed attempt,
-// then the next Login tap opens the app URL in Safari (user gesture).
-let safariExternalOpenArmed = false;
-
-/**
- * Get whether Safari external open fallback is armed.
- * @returns {boolean}
- */
-export function isSafariExternalOpenArmed() {
-  return safariExternalOpenArmed;
-}
-
-/**
- * Set Safari external open fallback armed state.
- * @param {boolean} value
- */
-export function setSafariExternalOpenArmed(value) {
-  safariExternalOpenArmed = value;
-}
+export { isSafariExternalOpenArmed, setSafariExternalOpenArmed };
 
 /**
  * A robust, shared error handler for Google Sign-In popup errors.
@@ -120,7 +105,7 @@ export const signInWithAccountSelection = async () => {
   try {
     // If previous attempt failed in iOS standalone PWA, the user can tap Login again
     // and we open in Safari from the same user gesture.
-    if (isIOSStandalone && safariExternalOpenArmed) {
+    if (isIOSStandalone && isSafariExternalOpenArmed()) {
       devDebug('[AUTH] Using Safari external fallback');
       setSafariExternalOpenArmed(false);
       openInSafariExternal();

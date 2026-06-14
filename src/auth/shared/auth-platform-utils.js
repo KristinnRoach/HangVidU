@@ -1,4 +1,3 @@
-// src/auth/auth-platform-utils.js
 // Browser/platform detection helpers for auth flows.
 
 const isIOS = () => {

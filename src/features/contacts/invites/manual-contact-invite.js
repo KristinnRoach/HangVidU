@@ -1,6 +1,6 @@
 import { getAllContacts, hydrateContacts } from '../../../stores/contactsStore.js';
 import { lookupRegisteredUserByEmail } from '../../../stores/userDirectoryStore.js';
-import { getUser } from '../../../auth/index.js';
+import { getLoggedInUserId } from '../../../auth/index.js';
 import { sendContactInvite } from './send-contact-invite.js';
 
 /**
@@ -32,8 +32,7 @@ export async function inviteContactByEmail(email, { onNotFound } = {}) {
     }
     const user = lookupResult.user;
 
-    const currentUser = getUser();
-    if (user.uid === currentUser?.uid) {
+    if (user.uid === getLoggedInUserId()) {
       return { ok: false, status: 'self' };
     }
 

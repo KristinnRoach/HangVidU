@@ -53,7 +53,7 @@ vi.mock('../../stores/contactsStore.js', () => ({
   resetContacts: mocks.resetContacts,
 }));
 
-describe('setupAuth', () => {
+describe('wireAuthReactions', () => {
   let localStorageClearSpy;
   let localStorageRef;
   let localStorageData;
@@ -88,10 +88,10 @@ describe('setupAuth', () => {
   });
 
   it('renders contacts when auth becomes ready', async () => {
-    const { setupAuth } = await import('../setupAuth.js');
+    const { wireAuthReactions } = await import('../auth-orchestration.js');
     const lobbyElement = { id: 'lobby' };
 
-    const teardown = await setupAuth({ lobbyElement });
+    const teardown = await wireAuthReactions({ lobbyElement });
 
     await mocks.handlers.get('evt:auth:session:ready')({});
 
@@ -101,10 +101,10 @@ describe('setupAuth', () => {
   });
 
   it('runs the login flow through shared auth facts', async () => {
-    const { setupAuth } = await import('../setupAuth.js');
+    const { wireAuthReactions } = await import('../auth-orchestration.js');
     const lobbyElement = { id: 'lobby' };
 
-    const teardown = await setupAuth({ lobbyElement });
+    const teardown = await wireAuthReactions({ lobbyElement });
 
     await mocks.handlers.get('evt:auth:session:logged-in')({
       isInitialResolution: true,
@@ -118,10 +118,10 @@ describe('setupAuth', () => {
   });
 
   it('resets contacts and clears local storage on logout', async () => {
-    const { setupAuth } = await import('../setupAuth.js');
+    const { wireAuthReactions } = await import('../auth-orchestration.js');
     const lobbyElement = { id: 'lobby' };
 
-    const teardown = await setupAuth({ lobbyElement });
+    const teardown = await wireAuthReactions({ lobbyElement });
 
     await mocks.handlers.get('evt:auth:session:logged-out')({});
 
@@ -133,13 +133,13 @@ describe('setupAuth', () => {
   });
 
   it('preserves selected localStorage keys on logout', async () => {
-    const { setupAuth } = await import('../setupAuth.js');
+    const { wireAuthReactions } = await import('../auth-orchestration.js');
     const lobbyElement = { id: 'lobby' };
 
     globalThis.localStorage.setItem('locale', 'is');
     globalThis.localStorage.setItem('volatileKey', 'drop-me');
 
-    const teardown = await setupAuth({ lobbyElement });
+    const teardown = await wireAuthReactions({ lobbyElement });
 
     await mocks.handlers.get('evt:auth:session:logged-out')({});
 

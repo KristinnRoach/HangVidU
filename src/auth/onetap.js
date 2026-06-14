@@ -1,4 +1,4 @@
-import { setSafariExternalOpenArmed } from './auth-commands.js';
+import { setSafariExternalOpenArmed } from './shared/safari-auth-fallback.js';
 import { getIsLoggedIn, setState } from './auth-state.js';
 import {
   createGoogleCredential,
