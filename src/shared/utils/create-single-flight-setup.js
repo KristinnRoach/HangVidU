@@ -15,7 +15,22 @@
  *   handlers/subscriptions against the provided abort signal.
  * @returns {() => Promise<() => void>} the memoized setup function.
  */
-export function createSingleFlightSetup({ label, register }) {
+export function createSingleFlightSetup(options) {
+  if (!options || typeof options !== 'object') {
+    throw new TypeError('createSingleFlightSetup: options must be an object');
+  }
+
+  const { label, register } = options;
+
+  if (typeof label !== 'string' || label.trim() === '') {
+    throw new TypeError(
+      'createSingleFlightSetup: label must be a non-empty string',
+    );
+  }
+  if (typeof register !== 'function') {
+    throw new TypeError('createSingleFlightSetup: register must be a function');
+  }
+
   let isReady = false;
   let initPromise = null;
   let cleanup = () => {
@@ -37,13 +52,8 @@ export function createSingleFlightSetup({ label, register }) {
         register(ac.signal);
 
         cleanup = () => {
-          try {
-            ac.abort();
-          } catch (error) {
-            console.warn(`${label} cleanup failed to abort handlers:`, error);
-          } finally {
-            isReady = false;
-          }
+          ac.abort();
+          isReady = false;
         };
         isReady = true;
         return cleanup;
