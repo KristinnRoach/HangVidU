@@ -99,7 +99,7 @@ export const signInWithAccountSelection = async () => {
   const { isIOSStandalone } = detectIOSStandalone();
   const previousAuthState = getAuthState();
 
-  // Signal sign-in is in progress (will be cleared by onAuthStateChanged)
+  // Signal sign-in is in progress (will be cleared by the auth listener)
   setState({ status: 'loading' });
 
   try {
@@ -129,7 +129,7 @@ export const signInWithAccountSelection = async () => {
 
 export async function signOutUser() {
   const previousAuthState = getAuthState();
-  // Signal sign-out is in progress (will be cleared by onAuthStateChanged)
+  // Signal sign-out is in progress (will be cleared by the auth listener)
   setState({ status: 'loading' });
 
   try {

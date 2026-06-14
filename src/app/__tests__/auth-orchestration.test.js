@@ -16,8 +16,9 @@ const mocks = vi.hoisted(() => {
     processReferral: vi.fn(() => Promise.resolve()),
     hydrateContacts: vi.fn(() => Promise.resolve()),
     resetContacts: vi.fn(),
-    getAuthState: vi.fn(() => ({ user: null })),
-    saveUserProfile: vi.fn(() => Promise.resolve()),
+    savePublicUserProfile: vi.fn(() => Promise.resolve()),
+    getPublicUserProfile: vi.fn(() => Promise.resolve(null)),
+    registerInUserDirectory: vi.fn(() => Promise.resolve()),
     devDebug: vi.fn(),
   };
 });
@@ -28,11 +29,12 @@ vi.mock('../../shared/events/index.js', () => ({
 
 vi.mock('../../auth/index.js', () => ({
   initAuth: vi.fn(() => Promise.resolve()),
-  getAuthState: mocks.getAuthState,
 }));
 
-vi.mock('../../storage/user/index.js', () => ({
-  saveUserProfile: mocks.saveUserProfile,
+vi.mock('../../stores/userDirectoryStore.js', () => ({
+  savePublicUserProfile: mocks.savePublicUserProfile,
+  getPublicUserProfile: mocks.getPublicUserProfile,
+  registerInUserDirectory: mocks.registerInUserDirectory,
 }));
 
 vi.mock('../../shared/utils/dev/dev-utils.js', () => ({
@@ -103,15 +105,28 @@ describe('wireAuthReactions', () => {
   it('runs the login flow through shared auth facts', async () => {
     const { wireAuthReactions } = await import('../auth-orchestration.js');
     const lobbyElement = { id: 'lobby' };
+    const user = {
+      uid: 'user-1',
+      userName: 'Ada',
+      email: 'ada@example.com',
+      photoURL: null,
+    };
+    mocks.getPublicUserProfile.mockResolvedValue({ username: 'ada' });
 
     const teardown = await wireAuthReactions({ lobbyElement });
 
     await mocks.handlers.get('evt:auth:session:logged-in')({
-      isInitialResolution: true,
+      state: { user },
     });
+    await Promise.resolve();
 
     expect(mocks.processReferral).toHaveBeenCalled();
     expect(mocks.hydrateContacts).toHaveBeenCalled();
+    expect(mocks.savePublicUserProfile).toHaveBeenCalledWith(user);
+    expect(mocks.getPublicUserProfile).toHaveBeenCalledWith('user-1');
+    expect(mocks.registerInUserDirectory).toHaveBeenCalledWith(user, {
+      username: 'ada',
+    });
     expect(mocks.setupInviteListener).toHaveBeenCalledWith();
 
     teardown();
