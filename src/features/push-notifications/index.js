@@ -1,4 +1,5 @@
 import { handleCommand } from '../../shared/events/index.js';
+import { createSingleFlightSetup } from '../../shared/utils/create-single-flight-setup.js';
 import {
   PushNotifications,
   getPushNotifications,
@@ -9,62 +10,25 @@ export {
   getPushNotifications,
 } from './push-notifications.js';
 
-let isReady = false;
-let initPromise = null;
-let cleanup = () => {
-  isReady = false;
-};
-
 /**
- * Setup contract:
- * - idempotent: returns existing cleanup when already ready
- * - single-flight: concurrent callers share one init promise
- * - teardown: cleanup aborts registered command handlers
+ * Registers app-level command handlers for push notifications.
+ * See the setup contract in `createSingleFlightSetup`.
  *
- * @returns {Promise<() => void>}
+ * @type {() => Promise<() => void>}
  */
-export function setup() {
-  if (isReady) {
-    return Promise.resolve(cleanup);
-  }
-  if (initPromise) {
-    return initPromise;
-  }
-
-  initPromise = Promise.resolve()
-    .then(() => {
-      const ac = new AbortController();
-
-      handleCommand(
-        'cmd:push:subscription:disable',
-        async () => {
-          try {
-            await getPushNotifications()?.disable?.();
-          } catch (e) {
-            console.warn('[push] Failed to disable notifications:', e);
-          }
-        },
-        { signal: ac.signal },
-      );
-
-      cleanup = () => {
+export const setup = createSingleFlightSetup({
+  label: '[push-notifications]',
+  register: (signal) => {
+    handleCommand(
+      'cmd:push:subscription:disable',
+      async () => {
         try {
-          ac.abort();
-        } catch (error) {
-          console.warn(
-            '[push-notifications] cleanup failed to abort handlers:',
-            error,
-          );
-        } finally {
-          isReady = false;
+          await getPushNotifications()?.disable?.();
+        } catch (e) {
+          console.warn('[push] Failed to disable notifications:', e);
         }
-      };
-      isReady = true;
-      return cleanup;
-    })
-    .finally(() => {
-      initPromise = null;
-    });
-
-  return initPromise;
-}
+      },
+      { signal },
+    );
+  },
+});
