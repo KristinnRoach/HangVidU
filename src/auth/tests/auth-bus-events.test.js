@@ -51,7 +51,7 @@ describe('auth-state shared auth events', () => {
           isLoggedIn: true,
         }),
         previousState: expect.objectContaining({
-          status: 'idle',
+          status: 'uninitialized',
           isLoggedIn: false,
         }),
         isInitialResolution: true,
