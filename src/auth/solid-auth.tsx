@@ -7,7 +7,8 @@ import {
   type Accessor,
   type JSX,
 } from 'solid-js';
-import { getAuthState, onAuthStateChanged } from './auth-state.js';
+import { getAuthState } from './auth-state.js';
+import { subscribe } from '../shared/events/index.js';
 
 export type AuthStatus =
   | 'uninitialized'
@@ -42,18 +43,19 @@ const AuthContext = createContext<Auth>();
 
 /**
  * Provides Solid-reactive auth state to descendants.
- * Owns the subscription to the imperative auth-state module and tears it
- * down on unmount.
+ * Seeds from the current snapshot, then mirrors the canonical
+ * `evt:auth:state:changed` event, tearing the subscription down on unmount.
  */
 export function AuthProvider(props: { children: JSX.Element }) {
   const [snapshot, setSnapshot] = createSignal<AuthSnapshot>(
     getAuthState() as AuthSnapshot,
   );
 
-  const unsubscribe = onAuthStateChanged((next) =>
-    setSnapshot(next as AuthSnapshot),
+  const unsubscribe = subscribe(
+    'evt:auth:state:changed',
+    ({ state }: { state: AuthSnapshot }) => setSnapshot(state),
   );
-  onCleanup(unsubscribe);
+  onCleanup(() => unsubscribe());
 
   const user = createMemo(() => snapshot().user);
   const status = createMemo(() => snapshot().status);

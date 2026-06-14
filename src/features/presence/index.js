@@ -1,5 +1,5 @@
-import { getLoggedInUserId, onAuthStateChanged } from '../../auth/index.js';
-import { handleCommand } from '../../shared/events/index.js';
+import { getLoggedInUserId } from '../../auth/index.js';
+import { handleCommand, subscribe } from '../../shared/events/index.js';
 import { writeOnline, writeOffline, observePresence } from './presence-rtdb.js';
 
 let initializedForUserId = null;
@@ -12,21 +12,21 @@ function enqueuePresenceWrite(task) {
   return run;
 }
 
-onAuthStateChanged((state) => {
-  if (state.isLoggedIn) {
-    const userId = getLoggedInUserId();
-    if (userId && userId !== lastSeenUserId) {
-      initializedForUserId = null;
-      lastSeenUserId = userId;
-    }
-    enqueuePresenceWrite(() => initializePresence()).catch((err) => {
-      console.warn('Failed to initialize presence:', err);
-    });
-  } else {
+function handleLoggedIn() {
+  const userId = getLoggedInUserId();
+  if (userId && userId !== lastSeenUserId) {
     initializedForUserId = null;
-    lastSeenUserId = null;
+    lastSeenUserId = userId;
   }
-});
+  enqueuePresenceWrite(() => initializePresence()).catch((err) => {
+    console.warn('Failed to initialize presence:', err);
+  });
+}
+
+function handleLoggedOut() {
+  initializedForUserId = null;
+  lastSeenUserId = null;
+}
 
 async function initializePresence() {
   const userId = getLoggedInUserId();
@@ -76,6 +76,15 @@ export function setup() {
   initPromise = Promise.resolve()
     .then(() => {
       const ac = new AbortController();
+
+      // Registered before initAuth() fires its first lifecycle events
+      // (main.tsx orders setupPresence() ahead of wireAuthReactions()).
+      subscribe('evt:auth:session:logged-in', handleLoggedIn, {
+        signal: ac.signal,
+      });
+      subscribe('evt:auth:session:logged-out', handleLoggedOut, {
+        signal: ac.signal,
+      });
 
       handleCommand(
         'cmd:user:presence:set-offline',

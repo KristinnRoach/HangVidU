@@ -48,26 +48,6 @@ describe('waitForAuthReady', () => {
   });
 });
 
-describe('onAuthStateChanged', () => {
-  it('invokes the callback immediately with a snapshot', async () => {
-    const { setState, onAuthStateChanged } = await import('../auth-state.js');
-
-    setState({
-      status: 'authenticated',
-      isLoggedIn: true,
-      user: { uid: 'user-2', userName: 'Tester' },
-    });
-
-    const calls = [];
-    const unsubscribe = onAuthStateChanged((state) => calls.push(state));
-    unsubscribe();
-
-    expect(calls.length).toBe(1);
-    expect(calls[0].isLoggedIn).toBe(true);
-    expect(calls[0].user?.uid).toBe('user-2');
-  });
-});
-
 describe('setState', () => {
   it('guards against resetting to uninitialized after auth has initialized', async () => {
     const { setState, getAuthState } = await import('../auth-state.js');
