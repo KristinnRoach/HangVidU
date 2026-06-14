@@ -45,7 +45,7 @@ vi.mock('./auth-state.js', async (importOriginal) => {
   };
 });
 
-vi.mock('./auth-setup.js', () => ({
+vi.mock('./shared/auth-error-logging.js', () => ({
   logAuthError: mocks.logAuthError,
 }));
 

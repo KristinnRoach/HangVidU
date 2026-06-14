@@ -4,6 +4,7 @@
 //   auth-state.js   — state store + read-only getters + lifecycle events
 //   auth-setup.js   — Firebase init (`initAuth`), persistence, token access
 //   auth-commands.js / password-auth.js / gis-tokens.js — auth operations
+//   shared/         — small auth-internal leaf helpers used by multiple modules
 //   solid-auth.tsx  — Solid reactive surface (`AuthProvider` / `useAuth`)
 //
 // Which surface to use:

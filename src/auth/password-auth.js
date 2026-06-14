@@ -19,11 +19,16 @@ import {
   setState,
   toStableAuthState,
 } from './auth-state.js';
-import { logAuthError } from './auth-setup.js';
+import { logAuthError } from './shared/auth-error-logging.js';
+import {
+  SYNTHETIC_DOMAIN,
+  extractUsernameFromSyntheticEmail,
+  isSyntheticEmail,
+  syntheticEmail,
+} from './shared/synthetic-email.js';
 import { hashEmail } from '@lib/utils/email-hash.js';
 
-// RFC 2606-reserved TLD — guaranteed to never resolve or become real.
-export const SYNTHETIC_DOMAIN = 'hangvidu.invalid';
+export { SYNTHETIC_DOMAIN, extractUsernameFromSyntheticEmail, isSyntheticEmail };
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 const MIN_PASSWORD_LENGTH = 8;
@@ -36,19 +41,6 @@ const EXPECTED_PASSWORD_AUTH_FAILURES = new Set([
   'no_account_for_email',
   'username_taken',
 ]);
-
-export function isSyntheticEmail(email) {
-  return typeof email === 'string' && email.endsWith(`@${SYNTHETIC_DOMAIN}`);
-}
-
-export function extractUsernameFromSyntheticEmail(email) {
-  if (!isSyntheticEmail(email)) return null;
-  return email.slice(0, -(`@${SYNTHETIC_DOMAIN}`.length));
-}
-
-function syntheticEmail(username) {
-  return `${username.toLowerCase()}@${SYNTHETIC_DOMAIN}`;
-}
 
 function normalizeUsername(input) {
   return typeof input === 'string' ? input.trim().toLowerCase() : '';
