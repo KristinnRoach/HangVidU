@@ -77,7 +77,11 @@ Warp.md
 CLAUDE.md
 .kiro/
 .claude/
+.planning/
 .fallow/
+.agents/
+skills-lock.json
+
 
 # Firebase
 .firebase/
