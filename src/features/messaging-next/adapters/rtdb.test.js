@@ -14,10 +14,6 @@ import {
   createRTDBMessageRepository,
 } from './rtdb.js';
 
-vi.mock('../../../infra/firebase-rtdb.js', () => ({
-  rtdb: {},
-}));
-
 vi.mock('firebase/database', () => ({
   ref: vi.fn((_db, path) => ({ path })),
   push: vi.fn(() => ({ key: 'msg-1' })),
@@ -35,13 +31,23 @@ vi.mock('firebase/database', () => ({
   startAfter: vi.fn((key) => ({ startAfter: key })),
 }));
 
+const database = {};
+
+function createMessageRepository() {
+  return createRTDBMessageRepository({ database });
+}
+
+function createConversationRepository() {
+  return createRTDBConversationRepository({ database });
+}
+
 describe('messaging-next RTDB adapter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('writes legacy-compatible text message rows', async () => {
-    const repository = createRTDBMessageRepository();
+    const repository = createMessageRepository();
 
     await repository.send({
       messageId: 'msg-1',
@@ -70,7 +76,7 @@ describe('messaging-next RTDB adapter', () => {
   });
 
   it('writes storage-backed file message rows without inline data or urls', async () => {
-    const repository = createRTDBMessageRepository();
+    const repository = createMessageRepository();
 
     await repository.send({
       messageId: 'file-1',
@@ -115,7 +121,7 @@ describe('messaging-next RTDB adapter', () => {
   });
 
   it('rejects file sends without R2 storage metadata', async () => {
-    const repository = createRTDBMessageRepository();
+    const repository = createMessageRepository();
 
     await expect(
       repository.send({
@@ -138,7 +144,7 @@ describe('messaging-next RTDB adapter', () => {
   });
 
   it('rejects file sends with non-R2 storage metadata', async () => {
-    const repository = createRTDBMessageRepository();
+    const repository = createMessageRepository();
 
     await expect(
       repository.send({
@@ -165,7 +171,7 @@ describe('messaging-next RTDB adapter', () => {
   });
 
   it('reserves RTDB push keys before optimistic rendering', () => {
-    const repository = createRTDBMessageRepository();
+    const repository = createMessageRepository();
 
     expect(repository.createMessageId('user-a_user-b')).toBe('msg-1');
     expect(push).toHaveBeenCalledWith({
@@ -194,7 +200,7 @@ describe('messaging-next RTDB adapter', () => {
       },
     });
 
-    const repository = createRTDBMessageRepository();
+    const repository = createMessageRepository();
     const messages = await repository.loadMessages('user-a_user-b');
 
     expect(messages).toEqual([]);
@@ -225,7 +231,7 @@ describe('messaging-next RTDB adapter', () => {
       },
     });
 
-    const repository = createRTDBMessageRepository();
+    const repository = createMessageRepository();
     const messages = await repository.loadMessages('user-a_user-b');
 
     expect(messages).toEqual([
@@ -269,7 +275,7 @@ describe('messaging-next RTDB adapter', () => {
       return unsubscribe;
     });
 
-    const repository = createRTDBMessageRepository();
+    const repository = createMessageRepository();
     const onMessages = vi.fn();
     const result = repository.watchRecentMessages('user-a_user-b', onMessages);
 
@@ -284,7 +290,7 @@ describe('messaging-next RTDB adapter', () => {
   });
 
   it('marks a conversation read with a server timestamp', async () => {
-    const repository = createRTDBMessageRepository();
+    const repository = createMessageRepository();
     await repository.markConversationRead('user-a_user-b', 'user-a');
 
     expect(update).toHaveBeenCalledWith(
@@ -314,7 +320,7 @@ describe('messaging-next RTDB adapter', () => {
         return unsubscribeRead;
       });
 
-    const repository = createRTDBMessageRepository();
+    const repository = createMessageRepository();
     const unsubscribe = repository.watchConversationActivity(
       'user-a_user-b',
       'user-a',
@@ -346,7 +352,7 @@ describe('messaging-next RTDB adapter', () => {
         return vi.fn();
       });
 
-    const repository = createRTDBMessageRepository();
+    const repository = createMessageRepository();
     repository.watchConversationActivity('user-a_user-b', 'user-a', (a) =>
       calls.push(a),
     );
@@ -372,7 +378,7 @@ describe('messaging-next RTDB adapter', () => {
       }),
     });
 
-    const repository = createRTDBConversationRepository();
+    const repository = createConversationRepository();
 
     const conversation = await repository.loadConversation('user-a_user-b');
 

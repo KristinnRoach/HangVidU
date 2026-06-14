@@ -12,8 +12,8 @@ import {
   update,
   orderByChild,
   type DataSnapshot,
+  type Database,
 } from 'firebase/database';
-import { rtdb } from '../../../infra/firebase-rtdb.js';
 import type {
   ConversationRepository,
   ConversationUpsert,
@@ -38,28 +38,40 @@ import type {
 
 const RECENT_MESSAGES_WINDOW = 20;
 
-function msgsRef(conversationId: ConversationId) {
-  return ref(rtdb, `conversations/${conversationId}/messages`);
+type RTDBRepositoryOptions = {
+  database: Database;
+};
+
+function msgsRef(database: Database, conversationId: ConversationId) {
+  return ref(database, `conversations/${conversationId}/messages`);
 }
 
-function msgRef(conversationId: ConversationId, messageId: string) {
-  return ref(rtdb, `conversations/${conversationId}/messages/${messageId}`);
+function msgRef(
+  database: Database,
+  conversationId: ConversationId,
+  messageId: string,
+) {
+  return ref(database, `conversations/${conversationId}/messages/${messageId}`);
 }
 
-function memberRef(conversationId: ConversationId, userId: UserId) {
-  return ref(rtdb, `conversations/${conversationId}/members/${userId}`);
+function memberRef(
+  database: Database,
+  conversationId: ConversationId,
+  userId: UserId,
+) {
+  return ref(database, `conversations/${conversationId}/members/${userId}`);
 }
 
-function recentMsgsQuery(conversationId: ConversationId) {
+function recentMsgsQuery(database: Database, conversationId: ConversationId) {
   return query(
-    msgsRef(conversationId),
+    msgsRef(database, conversationId),
     orderByChild('sentAt'),
     limitToLast(RECENT_MESSAGES_WINDOW),
   );
 }
 
-function conversationRef(conversationId: ConversationId) {
-  return ref(rtdb, `conversations/${conversationId}`);
+function conversationRef(database: Database, conversationId: ConversationId) {
+  return ref(database, `conversations/${conversationId}`);
 }
 
 function toIncoming(
@@ -173,20 +185,22 @@ function conversationUpdate(
   return payload;
 }
 
-export function createRTDBMessageRepository(): MessageRepository {
+export function createRTDBMessageRepository({
+  database,
+}: RTDBRepositoryOptions): MessageRepository {
   return {
     createMessageId(conversationId) {
-      return push(msgsRef(conversationId)).key!;
+      return push(msgsRef(database, conversationId)).key!;
     },
 
     async loadMessages(conversationId) {
-      const snapshot = await get(recentMsgsQuery(conversationId));
+      const snapshot = await get(recentMsgsQuery(database, conversationId));
       return messagesFromSnapshot(snapshot, conversationId);
     },
 
     watchRecentMessages(conversationId, onMessages, onError) {
       return onValue(
-        recentMsgsQuery(conversationId),
+        recentMsgsQuery(database, conversationId),
         (snapshot) => {
           onMessages(messagesFromSnapshot(snapshot, conversationId));
         },
@@ -240,12 +254,15 @@ export function createRTDBMessageRepository(): MessageRepository {
         };
       }
 
-      await set(msgRef(message.conversationId, message.messageId), payload);
+      await set(
+        msgRef(database, message.conversationId, message.messageId),
+        payload,
+      );
       return { id: message.messageId, sentAt: Date.now() };
     },
 
     async markConversationRead(conversationId, userId) {
-      await update(memberRef(conversationId, userId), {
+      await update(memberRef(database, conversationId, userId), {
         lastReadAt: serverTimestamp(),
       });
     },
@@ -276,7 +293,11 @@ export function createRTDBMessageRepository(): MessageRepository {
       }
 
       const unsubscribeLatest = onValue(
-        query(msgsRef(conversationId), orderByChild('sentAt'), limitToLast(1)),
+        query(
+          msgsRef(database, conversationId),
+          orderByChild('sentAt'),
+          limitToLast(1),
+        ),
         (snapshot) => {
           latestSenderId = null;
           latestSentAt = 0;
@@ -292,7 +313,7 @@ export function createRTDBMessageRepository(): MessageRepository {
       );
 
       const unsubscribeRead = onValue(
-        memberRef(conversationId, userId),
+        memberRef(database, conversationId, userId),
         (snapshot) => {
           const raw = snapshot.val() as { lastReadAt?: unknown } | null;
           lastReadAt = typeof raw?.lastReadAt === 'number' ? raw.lastReadAt : 0;
@@ -310,11 +331,11 @@ export function createRTDBMessageRepository(): MessageRepository {
 
     async setReaction(conversationId, messageId, emoji, userId, active) {
       const path = `conversations/${conversationId}/messages/${messageId}/reactions/${emoji}/${userId}`;
-      await set(ref(rtdb, path), active ? true : null);
+      await set(ref(database, path), active ? true : null);
     },
 
     subscribeReactions(conversationId, onReactions) {
-      const msgRef = msgsRef(conversationId);
+      const msgRef = msgsRef(database, conversationId);
 
       const handler = (snapshot: DataSnapshot) => {
         const raw = snapshot.val() as Record<string, unknown>;
@@ -328,26 +349,32 @@ export function createRTDBMessageRepository(): MessageRepository {
   };
 }
 
-export function createRTDBConversationRepository(): ConversationRepository {
+export function createRTDBConversationRepository({
+  database,
+}: RTDBRepositoryOptions): ConversationRepository {
   return {
     async loadConversation(conversationId) {
-      const snapshot = await get(conversationRef(conversationId));
+      const snapshot = await get(conversationRef(database, conversationId));
       if (!snapshot.exists()) return null;
       return toConversationNode(snapshot.val());
     },
 
     async upsertConversation(input) {
-      const existingSnapshot = await get(conversationRef(input.conversationId));
+      const existingSnapshot = await get(
+        conversationRef(database, input.conversationId),
+      );
       const existing = existingSnapshot.exists()
         ? toConversationNode(existingSnapshot.val())
         : null;
 
       await update(
-        conversationRef(input.conversationId),
+        conversationRef(database, input.conversationId),
         conversationUpdate(input, existing),
       );
 
-      const snapshot = await get(conversationRef(input.conversationId));
+      const snapshot = await get(
+        conversationRef(database, input.conversationId),
+      );
       const conversation = toConversationNode(snapshot.val());
       if (!conversation) {
         throw new Error(`Invalid conversation node: ${input.conversationId}`);
@@ -356,7 +383,7 @@ export function createRTDBConversationRepository(): ConversationRepository {
     },
 
     subscribeConversation(conversationId, onConversation) {
-      return onValue(conversationRef(conversationId), (snapshot) => {
+      return onValue(conversationRef(database, conversationId), (snapshot) => {
         onConversation(
           snapshot.exists() ? toConversationNode(snapshot.val()) : null,
         );
