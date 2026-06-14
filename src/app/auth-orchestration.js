@@ -1,5 +1,5 @@
 import { subscribe } from '../shared/events/index.js';
-import { initAuth, getAuthState } from '../auth/index.js';
+import { initAuth } from '../auth/index.js';
 import { devDebug } from '../shared/utils/dev/dev-utils.js';
 import {
   savePublicUserProfile,
@@ -152,7 +152,7 @@ export function wireAuthReactions() {
 
       subscribe(
         'evt:auth:session:logged-in',
-        async ({ isInitialResolution }) => {
+        async ({ state }) => {
           try {
             devDebug('[AUTH] User logged in - setting up listeners');
 
@@ -166,17 +166,17 @@ export function wireAuthReactions() {
               ),
             );
 
-            const authState = getAuthState();
-            if (authState?.user) {
-              savePublicUserProfile(authState.user).catch((e) =>
+            const user = state?.user;
+            if (user) {
+              savePublicUserProfile(user).catch((e) =>
                 console.warn('[AUTH] Failed to save user profile:', e),
               );
               // Directory entry is the email→account index; skip when the
               // user has no email (e.g. username-only password accounts).
-              if (authState.user.email) {
-                getPublicUserProfile(authState.user.uid)
+              if (user.email) {
+                getPublicUserProfile(user.uid)
                   .then((profile) =>
-                    registerInUserDirectory(authState.user, {
+                    registerInUserDirectory(user, {
                       username: profile?.username ?? null,
                     }),
                   )

@@ -1,4 +1,5 @@
 import { handleCommand } from '../../shared/events/index.js';
+import { createSingleFlightSetup } from '../../shared/utils/create-single-flight-setup.js';
 import { inAppNotificationManager } from './in-app-notification-manager.js';
 import { showEnableNotificationsPrompt } from './components/enable-notifications-prompt.js';
 import { createInviteNotification } from './components/invite-notification.js';
@@ -19,123 +20,84 @@ export { createInviteNotification } from './components/invite-notification.js';
 export { createMissedCallNotification } from './components/missed-call-notification.js';
 export { createReferralNotification } from './components/referral-notification.js';
 
-let isReady = false;
-let initPromise = null;
-let cleanup = () => {
-  isReady = false;
-};
-
 /**
- * Setup contract:
- * - idempotent: returns existing cleanup when already ready
- * - single-flight: concurrent callers share one init promise
- * - teardown: cleanup aborts registered command handlers
- *
  * Registers app-level command handlers that project notifications into UI.
+ * See the setup contract in `createSingleFlightSetup`.
  *
- * @returns {Promise<() => void>}
+ * @type {() => Promise<() => void>}
  */
-export function setup() {
-  if (isReady) {
-    return Promise.resolve(cleanup);
-  }
-  if (initPromise) {
-    return initPromise;
-  }
-
-  initPromise = Promise.resolve()
-    .then(() => {
-      const ac = new AbortController();
-
-      handleCommand(
-        'cmd:app-notifications:invite:add',
-        ({ notificationId, fromUserId, inviteData, onAccept, onDecline }) => {
-          if (!notificationId || !fromUserId || !inviteData) {
-            return;
-          }
-
-          const notification = createInviteNotification({
-            fromUserId,
-            inviteData,
-            onAccept,
-            onDecline,
-          });
-
-          inAppNotificationManager.add(notificationId, notification);
-
-          if (!inAppNotificationManager.isListVisible()) {
-            inAppNotificationManager.showList();
-          }
-        },
-        { signal: ac.signal },
-      );
-
-      handleCommand(
-        'cmd:app-notifications:invite:remove',
-        ({ notificationId }) => {
-          if (!notificationId) {
-            return;
-          }
-          inAppNotificationManager.remove(notificationId);
-        },
-        { signal: ac.signal },
-      );
-
-      handleCommand(
-        'cmd:app-notifications:referral:add',
-        ({ notificationId, referrerName, referrerPhotoURL, onSignIn }) => {
-          if (!notificationId) {
-            return;
-          }
-
-          const notification = createReferralNotification({
-            referrerName,
-            referrerPhotoURL,
-            onSignIn,
-          });
-
-          inAppNotificationManager.add(notificationId, notification);
-        },
-        { signal: ac.signal },
-      );
-
-      handleCommand(
-        'cmd:app-notifications:referral:remove',
-        ({ notificationId }) => {
-          if (!notificationId) {
-            return;
-          }
-          inAppNotificationManager.remove(notificationId);
-        },
-        { signal: ac.signal },
-      );
-
-      handleCommand(
-        'cmd:app-notifications:show:enable-push',
-        () => {
-          showEnableNotificationsPrompt();
-        },
-        { signal: ac.signal },
-      );
-
-      cleanup = () => {
-        try {
-          ac.abort();
-        } catch (error) {
-          console.warn(
-            '[notifications] cleanup failed to abort handlers:',
-            error,
-          );
-        } finally {
-          isReady = false;
+export const setup = createSingleFlightSetup({
+  label: '[notifications]',
+  register: (signal) => {
+    handleCommand(
+      'cmd:app-notifications:invite:add',
+      ({ notificationId, fromUserId, inviteData, onAccept, onDecline }) => {
+        if (!notificationId || !fromUserId || !inviteData) {
+          return;
         }
-      };
-      isReady = true;
-      return cleanup;
-    })
-    .finally(() => {
-      initPromise = null;
-    });
 
-  return initPromise;
-}
+        const notification = createInviteNotification({
+          fromUserId,
+          inviteData,
+          onAccept,
+          onDecline,
+        });
+
+        inAppNotificationManager.add(notificationId, notification);
+
+        if (!inAppNotificationManager.isListVisible()) {
+          inAppNotificationManager.showList();
+        }
+      },
+      { signal },
+    );
+
+    handleCommand(
+      'cmd:app-notifications:invite:remove',
+      ({ notificationId }) => {
+        if (!notificationId) {
+          return;
+        }
+        inAppNotificationManager.remove(notificationId);
+      },
+      { signal },
+    );
+
+    handleCommand(
+      'cmd:app-notifications:referral:add',
+      ({ notificationId, referrerName, referrerPhotoURL, onSignIn }) => {
+        if (!notificationId) {
+          return;
+        }
+
+        const notification = createReferralNotification({
+          referrerName,
+          referrerPhotoURL,
+          onSignIn,
+        });
+
+        inAppNotificationManager.add(notificationId, notification);
+      },
+      { signal },
+    );
+
+    handleCommand(
+      'cmd:app-notifications:referral:remove',
+      ({ notificationId }) => {
+        if (!notificationId) {
+          return;
+        }
+        inAppNotificationManager.remove(notificationId);
+      },
+      { signal },
+    );
+
+    handleCommand(
+      'cmd:app-notifications:show:enable-push',
+      () => {
+        showEnableNotificationsPrompt();
+      },
+      { signal },
+    );
+  },
+});

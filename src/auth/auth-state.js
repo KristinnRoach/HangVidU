@@ -1,6 +1,6 @@
 // src/auth/auth-state.js — pure auth state, no Firebase imports
 
-import { publish, publishAndAwait } from '../shared/events/index.js';
+import { publish, publishAndAwait, subscribe } from '../shared/events/index.js';
 
 let state = {
   status: 'uninitialized', // 'uninitialized' | 'loading' | 'authenticated' | 'unauthenticated'
@@ -11,7 +11,6 @@ let state = {
   isLoggedIn: false,
 };
 
-const listeners = new Set();
 let hasResolvedReady = false;
 let emitChain = Promise.resolve();
 
@@ -67,16 +66,9 @@ export function setState(next) {
   const snap = snapshot();
   import.meta.env.DEV && console.info('[AUTH] setState', snap);
 
-  for (const fn of listeners) {
-    try {
-      fn(snap);
-    } catch (e) {
-      console.error('[auth-state] subscriber error:', e);
-    }
-  }
-
-  // Canonical state-change event (STATE_RULES.md pattern).
-  // Fire-and-forget: does not participate in the ordered emit chain below.
+  // Canonical state-change event (STATE_RULES.md pattern) and the single
+  // notification channel for auth state. Fire-and-forget: does not participate
+  // in the ordered emit chain below.
   publish('evt:auth:state:changed', { state: snap, prev: previousSnapshot });
 
   // Build ordered list of auth events to emit.
@@ -165,27 +157,7 @@ export function getUserName() {
   return state.user?.userName ?? null;
 }
 
-// --- Subscribe to state changes ---
-
-/**
- * Subscribe to auth state changes. Called with the full state object.
- * Returns an unsubscribe function.
- *
- * @param {(state: ReturnType<typeof snapshot>) => void} fn
- * @returns {() => boolean}
- */
-export function onAuthStateChanged(fn) {
-  listeners.add(fn);
-
-  // Call the subscriber immediately with the current state
-  try {
-    fn(snapshot());
-  } catch (e) {
-    console.error('[auth-state] subscriber error:', e);
-  }
-
-  return () => listeners.delete(fn);
-}
+// --- Wait for first stable resolution ---
 
 /**
  * Resolve when auth state has reached a stable value
@@ -200,15 +172,14 @@ export function waitForAuthReady() {
   }
 
   return new Promise((resolve) => {
-    const unsubscribe = onAuthStateChanged((current) => {
-      if (
-        current.status !== 'authenticated' &&
-        current.status !== 'unauthenticated'
-      ) {
+    // No await between this check and subscribe, and `publish` is synchronous,
+    // so there is no window to miss the resolving state change.
+    const unsubscribe = subscribe('evt:auth:state:changed', ({ state: next }) => {
+      if (next.status !== 'authenticated' && next.status !== 'unauthenticated') {
         return;
       }
       unsubscribe();
-      resolve(current);
+      resolve(next);
     });
   });
 }

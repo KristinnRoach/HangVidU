@@ -1,4 +1,4 @@
-// src/auth/auth-setup.js — auth instance, initialization, persistence, onAuthStateChanged
+// src/auth/auth-setup.js — auth instance, initialization, persistence, auth listener
 
 import { setState, waitForAuthReady } from './auth-state.js';
 

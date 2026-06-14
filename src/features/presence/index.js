@@ -1,5 +1,6 @@
-import { getLoggedInUserId, onAuthStateChanged } from '../../auth/index.js';
-import { handleCommand } from '../../shared/events/index.js';
+import { getLoggedInUserId } from '../../auth/index.js';
+import { handleCommand, subscribe } from '../../shared/events/index.js';
+import { createSingleFlightSetup } from '../../shared/utils/create-single-flight-setup.js';
 import { writeOnline, writeOffline, observePresence } from './presence-rtdb.js';
 
 let initializedForUserId = null;
@@ -12,21 +13,21 @@ function enqueuePresenceWrite(task) {
   return run;
 }
 
-onAuthStateChanged((state) => {
-  if (state.isLoggedIn) {
-    const userId = getLoggedInUserId();
-    if (userId && userId !== lastSeenUserId) {
-      initializedForUserId = null;
-      lastSeenUserId = userId;
-    }
-    enqueuePresenceWrite(() => initializePresence()).catch((err) => {
-      console.warn('Failed to initialize presence:', err);
-    });
-  } else {
+function handleLoggedIn() {
+  const userId = getLoggedInUserId();
+  if (userId && userId !== lastSeenUserId) {
     initializedForUserId = null;
-    lastSeenUserId = null;
+    lastSeenUserId = userId;
   }
-});
+  enqueuePresenceWrite(() => initializePresence()).catch((err) => {
+    console.warn('Failed to initialize presence:', err);
+  });
+}
+
+function handleLoggedOut() {
+  initializedForUserId = null;
+  lastSeenUserId = null;
+}
 
 async function initializePresence() {
   const userId = getLoggedInUserId();
@@ -51,62 +52,30 @@ export function watchUserPresence(userId, callback) {
   return observePresence(userId, callback);
 }
 
-let isReady = false;
-let initPromise = null;
-let cleanup = () => {
-  isReady = false;
-};
-
 /**
- * Setup contract:
- * - idempotent: returns existing cleanup when already ready
- * - single-flight: concurrent callers share one init promise
- * - teardown: cleanup aborts registered command handlers
+ * Registers presence command/event handlers.
+ * See the setup contract in `createSingleFlightSetup`.
  *
- * @returns {Promise<() => void>}
+ * @type {() => Promise<() => void>}
  */
-export function setup() {
-  if (isReady) {
-    return Promise.resolve(cleanup);
-  }
-  if (initPromise) {
-    return initPromise;
-  }
+export const setup = createSingleFlightSetup({
+  label: '[presence]',
+  register: (signal) => {
+    // Registered before initAuth() fires its first lifecycle events
+    // (main.tsx orders setupPresence() ahead of wireAuthReactions()).
+    subscribe('evt:auth:session:logged-in', handleLoggedIn, { signal });
+    subscribe('evt:auth:session:logged-out', handleLoggedOut, { signal });
 
-  initPromise = Promise.resolve()
-    .then(() => {
-      const ac = new AbortController();
-
-      handleCommand(
-        'cmd:user:presence:set-offline',
-        async ({ userId } = {}) => {
-          try {
-            await setUserOffline(userId);
-          } catch (e) {
-            console.warn('Failed to set user presence offline:', e);
-          }
-        },
-        { signal: ac.signal },
-      );
-
-      cleanup = () => {
+    handleCommand(
+      'cmd:user:presence:set-offline',
+      async ({ userId } = {}) => {
         try {
-          ac.abort();
-        } catch (error) {
-          console.warn(
-            '[presence] cleanup failed to abort handlers:',
-            error,
-          );
-        } finally {
-          isReady = false;
+          await setUserOffline(userId);
+        } catch (e) {
+          console.warn('Failed to set user presence offline:', e);
         }
-      };
-      isReady = true;
-      return cleanup;
-    })
-    .finally(() => {
-      initPromise = null;
-    });
-
-  return initPromise;
-}
+      },
+      { signal },
+    );
+  },
+});

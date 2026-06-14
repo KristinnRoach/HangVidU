@@ -18,10 +18,6 @@ vi.mock('../../infra/firebase-rtdb.js', () => ({
   rtdb: {},
 }));
 
-vi.mock('../../../auth/index.js', () => ({
-  onAuthStateChanged: vi.fn(() => () => {}),
-}));
-
 describe('user-discovery', () => {
   beforeEach(() => {
     vi.clearAllMocks();

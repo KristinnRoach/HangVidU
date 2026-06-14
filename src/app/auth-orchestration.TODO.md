@@ -62,7 +62,6 @@ events after all subscribers are registered.
 
 These are visible while reading `setupAuth.js`. None are blocking. Capture them so the rewrite addresses them deliberately.
 
-- `isInitialResolution` is destructured from the logged-in payload and never used. Vestigial.
 - `savePublicUserProfile` and `registerInUserDirectory` fire-and-forget inside the logged-in handler (not awaited). `setupInviteListener()` runs immediately after. If the user-directory write matters for invite resolution, the current order may race. Verify in the rewrite.
 - Logout sequence: invite cleanup → `clearLocalStorageOnLogout()` → `resetContacts()`. `localStorage.clear()` wipes the guest-mode `'contacts'` key as a side effect; intentional today but a coupling worth documenting after the split.
 - All three handlers swallow errors to `console.warn`. Masks bugs in tests where the handler silently fails but the assertion still passes. After the split, prefer surfacing or at least incrementing a counter.

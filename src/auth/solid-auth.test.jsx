@@ -6,17 +6,32 @@ const mocks = vi.hoisted(() => ({
     user: null,
     isLoggedIn: false,
   },
-  listeners: new Set(),
+  listeners: new Map(),
 }));
 
 vi.mock('./auth-state.js', () => ({
   getAuthState: () => ({ ...mocks.authState }),
-  onAuthStateChanged: (listener) => {
-    mocks.listeners.add(listener);
-    listener({ ...mocks.authState });
-    return () => mocks.listeners.delete(listener);
+}));
+
+// Event-name-aware mock so subscribing to the wrong channel fails the test.
+vi.mock('../shared/events/index.js', () => ({
+  subscribe: (eventName, listener) => {
+    const bucket = mocks.listeners.get(eventName) ?? new Set();
+    bucket.add(listener);
+    mocks.listeners.set(eventName, bucket);
+    return () => {
+      bucket.delete(listener);
+      if (bucket.size === 0) mocks.listeners.delete(eventName);
+    };
   },
 }));
+
+// Drive the mocked `evt:auth:state:changed` channel.
+function emitAuthState(state) {
+  for (const listener of mocks.listeners.get('evt:auth:state:changed') ?? []) {
+    listener({ state });
+  }
+}
 
 describe('AuthProvider', () => {
   beforeEach(() => {
@@ -54,13 +69,11 @@ describe('AuthProvider', () => {
       expect(auth.isLoggedIn()).toBe(false);
       expect(auth.isAuthInitialized()).toBe(true);
 
-      for (const listener of mocks.listeners) {
-        listener({
-          status: 'authenticated',
-          user: { uid: 'u1', userName: 'User', email: 'user@example.com' },
-          isLoggedIn: true,
-        });
-      }
+      emitAuthState({
+        status: 'authenticated',
+        user: { uid: 'u1', userName: 'User', email: 'user@example.com' },
+        isLoggedIn: true,
+      });
 
       expect(auth.isLoggedIn()).toBe(true);
       expect(auth.user()?.uid).toBe('u1');
@@ -83,20 +96,16 @@ describe('AuthProvider', () => {
         },
       });
 
-      for (const listener of mocks.listeners) {
-        listener({ status: 'loading', user: null, isLoggedIn: false });
-      }
+      emitAuthState({ status: 'loading', user: null, isLoggedIn: false });
       expect(auth.isAuthInitialized()).toBe(true);
       expect(auth.isLoggingIn()).toBe(true);
       expect(auth.isLoggingOut()).toBe(false);
 
-      for (const listener of mocks.listeners) {
-        listener({
-          status: 'loading',
-          user: { uid: 'u1', userName: 'U', email: null, photoURL: null },
-          isLoggedIn: true,
-        });
-      }
+      emitAuthState({
+        status: 'loading',
+        user: { uid: 'u1', userName: 'U', email: null, photoURL: null },
+        isLoggedIn: true,
+      });
       expect(auth.isLoggingIn()).toBe(false);
       expect(auth.isLoggingOut()).toBe(true);
 

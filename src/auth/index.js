@@ -50,7 +50,3 @@ export {
   getUserName,
   waitForAuthReady,
 } from './auth-state.js';
-
-// Legacy subscribe API — prefer `subscribe('evt:auth:state:changed', ...)` from
-// shared/events. Kept for existing callers; to be migrated incrementally.
-export { onAuthStateChanged } from './auth-state.js';
