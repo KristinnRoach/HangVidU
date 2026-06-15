@@ -26,7 +26,6 @@ export interface ConversationMember {
   user_id: string;
   display_name: string | null;
   role: string;
-  status: string;
   joined_at: number;
 }
 

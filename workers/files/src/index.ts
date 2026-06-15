@@ -176,14 +176,16 @@ async function authorizeConversation(
     : null;
   if (cacheKey && getCachedAuthorization(cacheKey, now)) return true;
 
-  let member: { status: string } | null;
+  // Membership is delete-based: a row exists iff the user is a member (no
+  // leave/remove flow yet). Matches the data worker's existence-only guard.
+  let member: { user_id: string } | null;
   try {
     member = await env.DB.prepare(
-      `SELECT status FROM conversation_members
+      `SELECT user_id FROM conversation_members
        WHERE conversation_id = ? AND user_id = ?`,
     )
       .bind(conversationId, identity.userId)
-      .first<{ status: string }>();
+      .first<{ user_id: string }>();
   } catch (error) {
     console.error('[auth] membership query failed', error);
     return response(request, env, 'Upstream service unavailable', {
@@ -191,7 +193,7 @@ async function authorizeConversation(
     });
   }
 
-  const authorized = member !== null && member.status === 'active';
+  const authorized = member !== null;
   if (authorized && cacheKey) setCachedAuthorization(cacheKey, now);
   return authorized;
 }

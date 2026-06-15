@@ -14,7 +14,6 @@ export interface MemberRow {
   user_id: string;
   display_name: string | null;
   role: string;
-  status: string;
   joined_at: number;
 }
 
@@ -106,8 +105,8 @@ function memberInsert(
 ): D1PreparedStatement {
   return db
     .prepare(
-      `INSERT INTO conversation_members (conversation_id, user_id, role, status, joined_at)
-       VALUES (?, ?, 'member', 'active', ?)
+      `INSERT INTO conversation_members (conversation_id, user_id, role, joined_at)
+       VALUES (?, ?, 'member', ?)
        ON CONFLICT(conversation_id, user_id) DO NOTHING`,
     )
     .bind(conversationId, userId, now);
@@ -318,7 +317,7 @@ export async function getMembers(
 ): Promise<MemberRow[]> {
   const { results } = await db
     .prepare(
-      `SELECT m.user_id, u.display_name, m.role, m.status, m.joined_at
+      `SELECT m.user_id, u.display_name, m.role, m.joined_at
        FROM conversation_members m
        JOIN users u ON u.id = m.user_id
        WHERE m.conversation_id = ?
