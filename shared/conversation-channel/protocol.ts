@@ -9,21 +9,17 @@
  *
  * ## Event envelope specification
  *
- * The DO broadcasts events using a discriminated union keyed by `t` (type):
+ * The DO broadcasts events using a discriminated union keyed by `t` (type).
+ * Only one variant exists today:
  *
  * - `{ t: 'message', message: WireMessage }` — new message (text or file).
  *   Payload fields: id, conversationId, senderId, senderName, kind, body, sentAt,
  *   attachments (each with id, r2Key, bucket, fileName, mimeType, fileSize, width, height).
  *
- * - `{ t: 'reaction', conversationId: string, reaction: ReactionPayload }` — add/remove
- *   emoji reaction. Payload fields: messageId, userId, emoji, action ('add' | 'remove').
- *   **Deferred to fast-follow PR** — schema + endpoint exist but not wired.
- *
- * - `{ t: 'read', conversationId: string, read: ReadPayload }` — user marked conversation
- *   as read. Payload fields: userId, readAt (timestamp). **Deferred to fast-follow PR**.
- *
- * Extending later = add a new `t` variant. Keep payloads camelCase (wire shape), distinct
- * from the worker's snake_case D1 rows.
+ * Reactions and read-receipts are deferred to a fast-follow PR; when wired they
+ * become additional `t` variants (e.g. `t: 'reaction'`, `t: 'read'`) added to the
+ * union below and to `isConversationServerEvent`. Keep payloads camelCase (wire
+ * shape), distinct from the worker's snake_case D1 rows.
  */
 
 export interface WireAttachment {
@@ -48,80 +44,23 @@ export interface WireMessage {
   attachments: WireAttachment[];
 }
 
-/**
- * Reaction event payload (add/remove emoji reaction on a message).
- * **Not yet implemented** — reserved for fast-follow PR.
- */
-export interface ReactionPayload {
-  messageId: string;
-  userId: string;
-  emoji: string;
-  action: 'add' | 'remove';
-}
-
-/**
- * Read-receipt event payload (user marked conversation as read).
- * **Not yet implemented** — reserved for fast-follow PR.
- */
-export interface ReadPayload {
-  userId: string;
-  readAt: number;
-}
-
-/**
- * Durable Object → client. Broadcast to all connected members of the room.
- *
- * Current implementation: only `t: 'message'` is active. Reaction and read events
- * are defined here as extension points for the fast-follow PR.
- */
-export type ConversationServerEvent =
-  | { t: 'message'; message: WireMessage }
-  | { t: 'reaction'; conversationId: string; reaction: ReactionPayload }
-  | { t: 'read'; conversationId: string; read: ReadPayload };
+/** Durable Object → client. Broadcast to all connected members of the room. */
+export type ConversationServerEvent = { t: 'message'; message: WireMessage };
 
 export function isConversationServerEvent(
   value: unknown,
 ): value is ConversationServerEvent {
   if (!value || typeof value !== 'object') return false;
   const e = value as Record<string, unknown>;
-
-  // Message event (currently implemented).
-  if (e.t === 'message') {
-    const m = e.message as Record<string, unknown> | undefined;
-    return (
-      !!m &&
-      typeof m.id === 'string' &&
-      typeof m.conversationId === 'string' &&
-      typeof m.senderId === 'string' &&
-      (m.kind === 'text' || m.kind === 'file') &&
-      typeof m.sentAt === 'number' &&
-      Array.isArray(m.attachments)
-    );
-  }
-
-  // Reaction event (reserved, not yet broadcast by worker).
-  if (e.t === 'reaction') {
-    const r = e.reaction as Record<string, unknown> | undefined;
-    return (
-      !!r &&
-      typeof e.conversationId === 'string' &&
-      typeof r.messageId === 'string' &&
-      typeof r.userId === 'string' &&
-      typeof r.emoji === 'string' &&
-      (r.action === 'add' || r.action === 'remove')
-    );
-  }
-
-  // Read event (reserved, not yet broadcast by worker).
-  if (e.t === 'read') {
-    const rd = e.read as Record<string, unknown> | undefined;
-    return (
-      !!rd &&
-      typeof e.conversationId === 'string' &&
-      typeof rd.userId === 'string' &&
-      typeof rd.readAt === 'number'
-    );
-  }
-
-  return false;
+  if (e.t !== 'message') return false;
+  const m = e.message as Record<string, unknown> | undefined;
+  return (
+    !!m &&
+    typeof m.id === 'string' &&
+    typeof m.conversationId === 'string' &&
+    typeof m.senderId === 'string' &&
+    (m.kind === 'text' || m.kind === 'file') &&
+    typeof m.sentAt === 'number' &&
+    Array.isArray(m.attachments)
+  );
 }

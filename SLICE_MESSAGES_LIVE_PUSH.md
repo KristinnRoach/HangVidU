@@ -102,12 +102,11 @@ push would be a UX regression vs RTDB listeners.
 
 The following specifications address the underspecified contracts in the original draft:
 
-1. **Event envelope shape**: Defined in `shared/conversation-channel/protocol.ts` with three
-   discriminated union variants:
+1. **Event envelope shape**: Defined in `shared/conversation-channel/protocol.ts`. This PR
+   ships a single union variant:
    - `{ t: 'message', message: WireMessage }` — implemented now.
-   - `{ t: 'reaction', conversationId, reaction: ReactionPayload }` — reserved.
-   - `{ t: 'read', conversationId, read: ReadPayload }` — reserved.
-   Each payload interface specifies exact field names and types (see §2.1 above).
+   The reaction/read envelope shapes below are documented as the planned extension only;
+   they are NOT added to `protocol.ts` until the fast-follow PR wires them (see §2.1).
 
 2. **DO notification pattern**: Worker handlers use **hibernation RPC** — direct method
    invocation `env.CONVERSATION_CHANNEL.getByName(id).broadcast(event)` after successful
@@ -224,11 +223,12 @@ The DO broadcasts events to all connected members using a discriminated union en
 defined in `shared/conversation-channel/protocol.ts`:
 
 ```typescript
-// Actual wire format (uses shorthand `t` for type):
-type ConversationServerEvent =
-  | { t: 'message'; message: WireMessage }
-  | { t: 'reaction'; conversationId: string; reaction: ReactionPayload }
-  | { t: 'read'; conversationId: string; read: ReadPayload };
+// Wire format shipped in this PR (uses shorthand `t` for type):
+type ConversationServerEvent = { t: 'message'; message: WireMessage };
+
+// Planned fast-follow extension (NOT yet in protocol.ts):
+//   | { t: 'reaction'; conversationId: string; reaction: ReactionPayload }
+//   | { t: 'read'; conversationId: string; read: ReadPayload };
 
 // Message event carries the full WireMessage:
 interface WireMessage {
@@ -258,10 +258,11 @@ interface ReadPayload {
 }
 ```
 
-**Current implementation** (this PR): only `t: 'message'` is active. The protocol uses
-shorthand field names (`t` not `type`) to reduce wire size. Reaction and read event types
-are fully specified as extension points for the fast-follow PR, including TypeScript
-interfaces and type guard validation in `isConversationServerEvent()`.
+**Current implementation** (this PR): only `t: 'message'` is in `protocol.ts` — the union,
+the `WireMessage`/`WireAttachment` interfaces, and the `isConversationServerEvent()` guard
+cover the message variant only. The protocol uses shorthand field names (`t` not `type`) to
+reduce wire size. Reaction and read shapes above are the planned extension for the
+fast-follow PR; their interfaces and guard branches land with that PR, not this one.
 
 #### 2.2. DO notification pattern (worker → DO RPC)
 
