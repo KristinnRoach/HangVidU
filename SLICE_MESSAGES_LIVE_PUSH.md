@@ -3,6 +3,38 @@
 > Self-contained brief for this branch (`feat/d1-messages-live-push`, draft PR).
 > Companion docs: `MIGRATION_STATUS.md` (overall roadmap), `docs/WIP_Architecture/D1_R2_MIGRATION.md` (original design, partially stale).
 
+## Implementation progress (2026-06-15)
+
+DONE (committed, tsc + lint:boundaries + eslint + unit tests green; worker boots,
+DO binding verified locally):
+- `0002_messages.sql` applied to **local** D1 (NOT remote yet).
+- Worker: `GET/POST /conversations/:id/messages`, `GET /conversations/:id/ws`
+  upgrade, `ConversationChannel` DO (broadcast-only), shared wire protocol.
+  Client reserves the message id; server honors it (optimistic reconcile).
+- Client text + live push: data-client message methods, `src/realtime/`
+  conversation channel, `adapters/d1.ts` (text path), `stores/message-repository.ts`
+  bridge, `messaging-runtime.ts` selector. Added `stores -> realtime` boundary edge.
+
+TODO (this PR):
+- **File sub-slice** — blocked on two design calls (see "File sub-slice decisions"
+  below): file-message wire mapping (bucket + width/height), upload wiring in
+  `ConversationPanel` to insert a D1 file-message on the opaque id, and
+  `workers/files` `authorizeConversation` repointed from RTDB to a D1
+  `conversation_members` query. `adapters/d1.ts` `toIncoming` currently skips
+  `kind: 'file'` (clearly marked).
+- `RTDB_MESSAGES_RETIREMENT.md` deliverable.
+- Browser e2e (text + push first), then deploy steps.
+
+### File sub-slice decisions (need confirmation before building)
+
+1. **`storage.bucket` is schema-required `min(1)`**, but the wire attachment
+   carries only `r2_key`. Options: (a) add a `bucket` column to `0002` (still
+   local-only, safe to edit) and carry it on the wire; (b) reconstruct
+   client-side from a known constant/env. The files worker owns one bucket.
+2. **`width`/`height` don't exist on `FileMessagePayloadSchema`** (decision #7
+   wants them captured). Plumbing them to the renderer needs a schema +
+   `envelopeToChatMessage` change, not just the DB column already added in 0002.
+
 ## Goal
 
 Move conversation **messages** (text + file-messages) from Firebase RTDB to Cloudflare D1,
