@@ -36,7 +36,7 @@
         "calls": {
           "incoming": {
             ".read": "$userId === auth.uid",
-            ".write": "($userId === auth.uid && !newData.exists()) || (auth != null && !newData.exists() && data.child('callerId').val() === auth.uid) || (auth != null && newData.hasChildren(['roomId', 'callerId', 'startedAt']) && newData.child('roomId').isString() && newData.child('callerId').val() === auth.uid && newData.child('startedAt').isNumber() && (!newData.child('calleeId').exists() || newData.child('calleeId').val() === $userId) && (!newData.child('expiresAt').exists() || newData.child('expiresAt').isNumber()) && (!newData.child('callerName').exists() || newData.child('callerName').isString()) && (!newData.child('audioOnly').exists() || newData.child('audioOnly').isBoolean()))"
+            ".write": "($userId === auth.uid && !newData.exists()) || (auth != null && !newData.exists() && data.child('callerId').val() === auth.uid) || (auth != null && (!data.exists() || data.child('callerId').val() === auth.uid || (data.child('expiresAt').exists() && data.child('expiresAt').isNumber() && data.child('expiresAt').val() <= now)) && newData.hasChildren(['roomId', 'callerId', 'startedAt']) && newData.child('roomId').isString() && newData.child('callerId').val() === auth.uid && newData.child('startedAt').isNumber() && (!newData.child('calleeId').exists() || newData.child('calleeId').val() === $userId) && (!newData.child('expiresAt').exists() || newData.child('expiresAt').isNumber()) && (!newData.child('callerName').exists() || newData.child('callerName').isString()) && (!newData.child('audioOnly').exists() || newData.child('audioOnly').isBoolean()))"
           },
           "response": {
             ".read": "auth != null",

@@ -72,6 +72,7 @@ const rows = d1Select(
 );
 
 const pendingUpdates = [];
+const pendingDeletes = [];
 
 let scanned = 0;
 let aligned = 0;
@@ -111,10 +112,7 @@ for (const row of rows) {
     // Defer the D1 write: copies happen first, then one batched UPDATE.
     pendingUpdates.push({ id, newKey });
 
-    if (deleteOld) {
-      await deleteR2Object(config, oldKey);
-      deleted += 1;
-    }
+    if (deleteOld) pendingDeletes.push(oldKey);
   } catch (error) {
     failed += 1;
     console.error(`[failed] ${id} ${oldKey}: ${error?.message || error}`);
@@ -124,6 +122,17 @@ for (const row of rows) {
 if (pendingUpdates.length > 0) {
   d1ApplyUpdates(pendingUpdates);
   updated = pendingUpdates.length;
+}
+
+// Only sweep old objects once D1 points at the new keys — otherwise a failed
+// update would orphan rows whose source object is already gone (no re-run).
+for (const oldKey of pendingDeletes) {
+  try {
+    await deleteR2Object(config, oldKey);
+    deleted += 1;
+  } catch (error) {
+    console.error(`[delete failed] ${oldKey}: ${error?.message || error}`);
+  }
 }
 
 console.log(
