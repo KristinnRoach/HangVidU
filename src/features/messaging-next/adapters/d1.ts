@@ -51,6 +51,10 @@ export interface D1MessageClient {
 const noop = () => {};
 const EMPTY_REACTIONS: ReactionMap = {};
 
+// Cap the in-memory live window so long-lived sessions don't grow unbounded.
+// Matches the rtdb adapter's RECENT_MESSAGES_WINDOW.
+const RECENT_MESSAGES_WINDOW = 40;
+
 function toIncoming(m: WireMessage): IncomingMessage | null {
   const base = {
     messageId: m.id,
@@ -134,10 +138,19 @@ export function createD1MessageRepository(
     async watchRecentMessages(conversationId, onMessages, onError) {
       // Window keyed by id so the live echo dedupes against the snapshot.
       const window = new Map<string, IncomingMessage>();
-      const emit = () =>
-        onMessages(
-          [...window.values()].sort((a, b) => a.sentAt - b.sentAt),
-        );
+      const emit = () => {
+        const ordered = [...window.values()].sort((a, b) => a.sentAt - b.sentAt);
+        if (ordered.length > RECENT_MESSAGES_WINDOW) {
+          // Evict oldest beyond the window so the Map stays bounded.
+          for (const stale of ordered.splice(
+            0,
+            ordered.length - RECENT_MESSAGES_WINDOW,
+          )) {
+            window.delete(stale.messageId);
+          }
+        }
+        onMessages(ordered);
+      };
 
       try {
         for (const m of await snapshot(conversationId)) {

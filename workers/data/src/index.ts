@@ -168,9 +168,16 @@ export default {
         // already authenticated + validated the write. The DO broadcasts to all
         // connected members, including the sender (client deduplicates by message id).
         const event: ConversationServerEvent = { t: 'message', message: wire };
-        await env.CONVERSATION_CHANNEL.getByName(conversationId).broadcast(
-          event,
-        );
+        // Best-effort live push: the message is already committed, so a transient
+        // DO failure must not fail the send (would cause client retry / dup). The
+        // sender renders optimistically; peers reconcile on next load if missed.
+        try {
+          await env.CONVERSATION_CHANNEL.getByName(conversationId).broadcast(
+            event,
+          );
+        } catch (err) {
+          console.warn('[data] live broadcast failed', { conversationId, err });
+        }
         return json({ message: wire }, 200, cors);
       }
     }

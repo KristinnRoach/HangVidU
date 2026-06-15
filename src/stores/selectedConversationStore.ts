@@ -38,14 +38,24 @@ export async function openDirectConversation(
   const backend =
     (import.meta.env.VITE_MESSAGE_BACKEND as string | undefined) ?? 'rtdb';
 
-  let conversationId: string | null;
-  if (backend === 'd1') {
-    conversationId = await resolveDirectConversationId(contactId);
-  } else {
-    const ownerId = getLoggedInUserId();
-    conversationId = ownerId
-      ? deriveLegacyDirectConversationId(ownerId, contactId)
-      : null;
+  let conversationId: string | null = null;
+  try {
+    if (backend === 'd1') {
+      // Network + auth call; can reject. Callers fire-and-forget, so catch here
+      // to keep failures on the warn-and-return path instead of an unhandled
+      // rejection.
+      conversationId = await resolveDirectConversationId(contactId);
+    } else {
+      const ownerId = getLoggedInUserId();
+      conversationId = ownerId
+        ? deriveLegacyDirectConversationId(ownerId, contactId)
+        : null;
+    }
+  } catch (error) {
+    console.warn('[conversation] failed to resolve conversation id', {
+      contactId,
+      error,
+    });
   }
 
   if (!conversationId) {

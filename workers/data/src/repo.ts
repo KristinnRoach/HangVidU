@@ -171,7 +171,7 @@ export async function loadMessages(
        FROM messages m
        JOIN users u ON u.id = m.sender_id
        WHERE m.conversation_id = ?
-       ORDER BY m.created_at DESC
+       ORDER BY m.created_at DESC, m.id DESC
        LIMIT ?`,
     )
     .bind(conversationId, limit)
