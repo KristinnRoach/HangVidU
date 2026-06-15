@@ -41,9 +41,19 @@ push would be a UX regression vs RTDB listeners.
 - **R2 images** (`workers/files/`, PR #533): authenticated upload/download, but keyed by
   derived `a_b` conversation ids, and `authorizeConversation` checks membership by fetching
   RTDB (`FIREBASE_DATABASE_URL` → `conversations/{id}/members/{uid}.json`).
-- **Messaging runtime**: `src/features/messaging-next/` — `messaging-runtime.ts` selects
-  adapter via `VITE_MESSAGE_BACKEND` (default `rtdb`); `adapters/rtdb.ts` is the live path.
-  Stores wiring in `src/stores/message-repository.ts`.
+- **Messaging runtime**: `src/features/messaging-next/` — `messaging-runtime.ts` is a
+  module singleton (called from `ConversationPanel.tsx` + `contacts/useContacts.ts`) that
+  currently hardwires `adapters/rtdb.ts`. **There is NO `VITE_MESSAGE_BACKEND` selection
+  and NO `src/stores/message-repository.ts` on main** — both lived only on the frozen
+  `D1-R2-migration` branch (88ef2de9). This slice builds the selector + stores bridge;
+  it does not "flip a default" (see Client step below).
+  - **`adapters/rtdb.ts` now takes `{ database }`** (DI refactor 33cd6408). Both repo
+    factories require it; the runtime injects the `rtdb` singleton. Any flag wiring copied
+    from 88ef2de9 must use `createRTDBMessageRepository({ database: rtdb })`, not the old
+    no-arg call — a raw `git cherry-pick` of that file will conflict.
+  - Token injection is already solved by `getConversationsClient()` (PR #535 singleton,
+    carries the auth token). The stores bridge is ~6 lines wrapping it — no component
+    rewiring needed.
 - **Boundary rules** (`eslint.boundaries.config.js`): features may NOT import `storage`
   or `auth`+`storage` together — `stores` is the wiring layer (token injection pattern).
   Realtime client code belongs in `src/realtime/`.
@@ -104,8 +114,17 @@ logic only, adapt to current main:
 
 ### 3. Client
 
+- **Build the backend selector + stores bridge (does not exist on main):**
+  - Recreate `src/stores/message-repository.ts` from 88ef2de9 — near-verbatim:
+    `createD1MessageRepositoryFromEnv()` = `createD1MessageRepository(getConversationsClient())`.
+    Its deps resolve once `data-client.ts` message methods + `adapters/d1.ts` are in place.
+  - Add `selectMessageRepository()` to `messaging-runtime.ts` reading `VITE_MESSAGE_BACKEND`
+    (default `rtdb`), mirroring 88ef2de9 — **but adapt the RTDB branch to the DI signature:**
+    `createRTDBMessageRepository({ database: rtdb })`. Do not `git cherry-pick` that file
+    (it'll conflict on the no-arg call); hand-port the ~10 lines.
 - Restore message methods on `src/storage/conversations/data-client.ts` (from the frozen
-  branch version) — now they'll actually have live endpoints.
+  branch version) — now they'll actually have live endpoints. These satisfy the
+  `D1MessageClient` interface that `adapters/d1.ts` expects via `getConversationsClient()`.
 - New `src/realtime/` adapter for the conversation channel WebSocket (reuse
   `signaling-socket.ts` transport + a `shared/` protocol envelope, mirroring how
   `do-room-signaling.ts` is structured). Boundary: `realtime → auth` is allowed, so the
@@ -114,9 +133,10 @@ logic only, adapt to current main:
   to the channel events (initial snapshot via HTTP load, then live deltas).
 - Open flow: `openDirectConversation` resolves opaque id via existing
   `resolveDirectConversationId` when backend=d1 (88ef2de9 shows where).
-  Already done on main (ea4f83fa): `MainContent.calleeId` prefers
-  `selection.remoteParticipantIds[0]`; legacy pair-id derivation renamed to
-  `deriveLegacyDirectConversationId`; ids are format-agnostic in schema.ts.
+  Already done on main (ea4f83fa): `calleeId` flows from `ContactEntry.jsx` →
+  `src/app/MainContent.tsx`, preferring `selection.remoteParticipantIds[0]`; legacy
+  pair-id derivation renamed to `deriveLegacyDirectConversationId`; ids are
+  format-agnostic in schema.ts.
 - Files: image send path uses the opaque conversationId for `workers/files` upload keys
   (`{conversationId}/{fileId}`); insert a file-message + `message_attachments` row.
 - `workers/files` authz: replace the RTDB membership fetch in `authorizeConversation`
