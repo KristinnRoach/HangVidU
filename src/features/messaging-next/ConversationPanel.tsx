@@ -61,6 +61,24 @@ function isR2ImageAttachment(attachment: MessageAttachment) {
   return isImageAttachment(attachment) && attachment.storage.provider === 'r2';
 }
 
+/**
+ * Natural pixel dimensions of an image file, captured at send so the receiver's
+ * renderer can reserve layout space before the image loads. Best-effort —
+ * resolves undefined on decode failure rather than blocking the send.
+ */
+async function readImageDimensions(
+  file: File,
+): Promise<{ width: number; height: number } | undefined> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const { width, height } = bitmap;
+    bitmap.close();
+    return width > 0 && height > 0 ? { width, height } : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -547,6 +565,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         return;
       }
 
+      const dimensions = await readImageDimensions(image);
       uploadedStorage = await uploadConversationImage(conversationId, image);
       if (state.conversationId !== conversationId) {
         cleanupUploadedImage();
@@ -560,6 +579,8 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         fileName: image.name || file.name || 'image',
         mimeType: image.type || file.type || 'image/*',
         fileSize: image.size,
+        width: dimensions?.width,
+        height: dimensions?.height,
         storage: uploadedStorage,
         text: caption || undefined,
       });

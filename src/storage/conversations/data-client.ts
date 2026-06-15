@@ -13,6 +13,7 @@ export interface SendMessageInput {
   body?: string | null;
   attachment?: {
     r2Key: string;
+    bucket: string;
     fileName: string;
     mimeType: string;
     fileSize: number;

@@ -15,6 +15,7 @@
 export interface WireAttachment {
   id: string;
   r2Key: string;
+  bucket: string;
   fileName: string;
   mimeType: string;
   fileSize: number;

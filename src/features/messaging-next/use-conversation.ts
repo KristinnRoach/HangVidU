@@ -50,6 +50,8 @@ export function envelopeToChatMessage(
           fileName: message.payload.fileName,
           mimeType: message.payload.mimeType,
           fileSize: message.payload.fileSize,
+          width: message.payload.width,
+          height: message.payload.height,
           storage: message.payload.storage,
         }
       : undefined;
@@ -210,6 +212,8 @@ export function useConversation({
             fileName: payload.fileName,
             mimeType: payload.mimeType,
             fileSize: payload.fileSize,
+            width: payload.width,
+            height: payload.height,
             storage: payload.storage,
           }
         : undefined;

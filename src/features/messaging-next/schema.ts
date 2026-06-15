@@ -67,6 +67,10 @@ export const FileMessagePayloadSchema = z.object({
   fileName: z.string().trim().min(1),
   mimeType: z.string().trim().min(1),
   fileSize: z.number().int().nonnegative(),
+  // Natural image dimensions (px). Optional; when present the renderer reserves
+  // layout space before the image loads, avoiding scroll shift.
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
   storage: z
     .object({
       provider: z.literal('r2'),

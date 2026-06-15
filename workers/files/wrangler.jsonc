@@ -8,10 +8,19 @@
   "r2_buckets": [
     { "binding": "FILES_BUCKET", "bucket_name": "hangvidu-files" },
   ],
+  // D1 conversation registry — same database as workers/data. Used for
+  // membership authz (replaces the former RTDB members lookup). One DB shared
+  // by two workers; local dev uses the local SQLite shadow.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hangvidu-data",
+      "database_id": "cfac7c1c-cb3c-430d-b33d-6fd12aac48d0",
+    },
+  ],
   "vars": {
     "R2_BUCKET_NAME": "hangvidu-files",
     "FIREBASE_PROJECT_ID": "vidu-aae11",
-    "FIREBASE_DATABASE_URL": "https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app",
     "ALLOWED_ORIGINS": "https://hangvidu.com,https://www.hangvidu.com,https://vidu-aae11.web.app,https://vidu-aae11.firebaseapp.com,http://localhost:5173,https://localhost:5173",
   },
 }

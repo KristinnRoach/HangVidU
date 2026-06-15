@@ -129,6 +129,7 @@ export interface AttachmentRow {
   id: string;
   message_id: string;
   r2_key: string;
+  bucket: string;
   file_name: string;
   mime_type: string;
   file_size: number;
@@ -145,6 +146,7 @@ export const RECENT_MESSAGES_WINDOW = 50;
 
 export interface NewAttachment {
   r2Key: string;
+  bucket: string;
   fileName: string;
   mimeType: string;
   fileSize: number;
@@ -223,13 +225,14 @@ export async function insertMessage(
       db
         .prepare(
           `INSERT INTO message_attachments
-             (id, message_id, r2_key, file_name, mime_type, file_size, width, height)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+             (id, message_id, r2_key, bucket, file_name, mime_type, file_size, width, height)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           crypto.randomUUID(),
           id,
           attachment.r2Key,
+          attachment.bucket,
           attachment.fileName,
           attachment.mimeType,
           attachment.fileSize,
@@ -271,7 +274,7 @@ async function loadAttachments(
   const placeholders = messageIds.map(() => '?').join(',');
   const { results } = await db
     .prepare(
-      `SELECT id, message_id, r2_key, file_name, mime_type, file_size, width, height
+      `SELECT id, message_id, r2_key, bucket, file_name, mime_type, file_size, width, height
        FROM message_attachments
        WHERE message_id IN (${placeholders})`,
     )

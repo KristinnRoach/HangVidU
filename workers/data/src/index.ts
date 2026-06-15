@@ -189,6 +189,7 @@ function toWireMessage(row: MessageWithAttachments): WireMessage {
     attachments: row.attachments.map((a) => ({
       id: a.id,
       r2Key: a.r2_key,
+      bucket: a.bucket,
       fileName: a.file_name,
       mimeType: a.mime_type,
       fileSize: a.file_size,
@@ -229,6 +230,7 @@ function parseSendBody(payload: Record<string, unknown> | null): SendBody {
     if (
       !a ||
       typeof a.r2Key !== 'string' ||
+      typeof a.bucket !== 'string' ||
       typeof a.fileName !== 'string' ||
       typeof a.mimeType !== 'string' ||
       typeof a.fileSize !== 'number'
@@ -241,6 +243,7 @@ function parseSendBody(payload: Record<string, unknown> | null): SendBody {
       body: typeof payload?.body === 'string' ? payload.body : null,
       attachment: {
         r2Key: a.r2Key,
+        bucket: a.bucket,
         fileName: a.fileName,
         mimeType: a.mimeType,
         fileSize: a.fileSize,

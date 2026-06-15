@@ -23,6 +23,15 @@ export interface D1SendInput {
   messageId: string;
   kind: 'text' | 'file';
   body?: string | null;
+  attachment?: {
+    r2Key: string;
+    bucket: string;
+    fileName: string;
+    mimeType: string;
+    fileSize: number;
+    width?: number | null;
+    height?: number | null;
+  };
 }
 
 /**
@@ -44,24 +53,60 @@ const noop = () => {};
 const EMPTY_REACTIONS: ReactionMap = {};
 
 function toIncoming(m: WireMessage): IncomingMessage | null {
-  // File mapping lands with the file sub-slice; skip non-text for now.
-  if (m.kind !== 'text' || typeof m.body !== 'string') return null;
-  return {
+  const base = {
     messageId: m.id,
     conversationId: m.conversationId as ConversationId,
     senderId: m.senderId as UserId,
     senderName: m.senderName ?? undefined,
     sentAt: m.sentAt,
-    delivery: 'persistent',
-    payload: { type: 'text', text: m.body },
+    delivery: 'persistent' as const,
   };
+
+  if (m.kind === 'file') {
+    const a = m.attachments[0];
+    if (!a) return null;
+    return {
+      ...base,
+      payload: {
+        type: 'file',
+        fileName: a.fileName,
+        mimeType: a.mimeType,
+        fileSize: a.fileSize,
+        width: a.width ?? undefined,
+        height: a.height ?? undefined,
+        storage: { provider: 'r2', bucket: a.bucket, key: a.r2Key },
+        text: m.body ?? undefined,
+      },
+    };
+  }
+
+  if (typeof m.body !== 'string') return null;
+  return { ...base, payload: { type: 'text', text: m.body } };
 }
 
-function requireTextPayload(message: MessageEnvelope) {
-  if (message.payload.type !== 'text') {
-    throw new Error('D1 message adapter currently supports text payloads only');
+/** Build the worker send input from an outgoing envelope (text or file). */
+function toSendInput(message: MessageEnvelope): D1SendInput {
+  const { payload } = message;
+  if (payload.type === 'text') {
+    return { messageId: message.messageId, kind: 'text', body: payload.text };
   }
-  return message.payload;
+  if (payload.type === 'file') {
+    return {
+      messageId: message.messageId,
+      kind: 'file',
+      body: payload.text ?? null,
+      attachment: {
+        r2Key: payload.storage.key,
+        bucket: payload.storage.bucket,
+        fileName: payload.fileName,
+        mimeType: payload.mimeType,
+        fileSize: payload.fileSize,
+        width: payload.width ?? null,
+        height: payload.height ?? null,
+      },
+    };
+  }
+  throw new Error(`D1 message adapter cannot send payload type: ${payload.type}`);
 }
 
 export function createD1MessageRepository(
@@ -113,12 +158,10 @@ export function createD1MessageRepository(
     },
 
     async send(message) {
-      const payload = requireTextPayload(message);
-      const stored = await client.sendMessage(message.conversationId, {
-        messageId: message.messageId,
-        kind: 'text',
-        body: payload.text,
-      });
+      const stored = await client.sendMessage(
+        message.conversationId,
+        toSendInput(message),
+      );
       return { id: stored.id, sentAt: stored.sentAt };
     },
 

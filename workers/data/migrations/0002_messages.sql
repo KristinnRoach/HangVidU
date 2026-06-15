@@ -23,6 +23,7 @@ CREATE TABLE message_attachments (
   id         TEXT PRIMARY KEY,
   message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
   r2_key     TEXT NOT NULL,                        -- "{conversation_id}/{file_id}"
+  bucket     TEXT NOT NULL,                        -- R2 bucket (schema requires non-empty)
   file_name  TEXT NOT NULL,
   mime_type  TEXT NOT NULL,
   file_size  INTEGER NOT NULL,
