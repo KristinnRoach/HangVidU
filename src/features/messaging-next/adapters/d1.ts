@@ -167,21 +167,11 @@ export function createD1MessageRepository(
     // Read receipts are deferred (decision #5); marking is a no-op for now.
     markConversationRead() {},
 
-    // No live activity feed yet. Emit a one-shot snapshot with lastReadAt at
-    // the latest message so open conversations don't show false unread badges
-    // until read receipts land in the fast-follow.
-    async watchConversationActivity(conversationId, _userId, onChange, onError) {
-      try {
-        const rows = await snapshot(conversationId);
-        const latest = rows[rows.length - 1];
-        onChange({
-          latestSentAt: latest?.sentAt ?? 0,
-          latestSenderId: latest?.senderId ?? null,
-          lastReadAt: latest?.sentAt ?? 0,
-        });
-      } catch (error) {
-        onError?.(error);
-      }
+    // Activity / unread badges are deferred (decision #5). The contacts list
+    // watches this for every contact; doing real work here would resolve+load
+    // per contact. Emit one zero snapshot to satisfy the contract, no network.
+    watchConversationActivity(_conversationId, _userId, onChange) {
+      onChange({ latestSentAt: 0, latestSenderId: null, lastReadAt: 0 });
       return noop;
     },
 
