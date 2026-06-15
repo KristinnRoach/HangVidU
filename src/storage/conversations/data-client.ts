@@ -1,15 +1,30 @@
 // HTTPS client for the `workers/data` persistence worker (D1 conversation core).
 // Boundary-clean: storage may not import `auth`, so the bearer token is injected
 // via a `getToken` provider supplied by the wiring layer (src/stores).
-// Surface matches the deployed worker: /me, /conversations/resolve-direct,
-// /conversations, /conversations/:id. Message endpoints land with the
-// messages-on-D1 migration.
+// Surface: /me, /conversations/resolve-direct, /conversations,
+// /conversations/:id, and the message endpoints (/conversations/:id/messages).
+
+import type { WireMessage } from '../../../shared/conversation-channel/protocol';
+
+/** Input for sending a message. `messageId` is client-reserved (optimistic id). */
+export interface SendMessageInput {
+  messageId: string;
+  kind: 'text' | 'file';
+  body?: string | null;
+  attachment?: {
+    r2Key: string;
+    bucket: string;
+    fileName: string;
+    mimeType: string;
+    fileSize: number;
+    width?: number | null;
+    height?: number | null;
+  };
+}
 
 export interface ConversationMember {
   user_id: string;
   display_name: string | null;
-  role: string;
-  status: string;
   joined_at: number;
 }
 
@@ -32,6 +47,13 @@ export interface ConversationsClient {
     conversationId: string,
   ): Promise<{ conversation: Conversation; members: ConversationMember[] }>;
   me(): Promise<{ userId: string }>;
+  /** Recent messages for a conversation, oldest-first. */
+  loadMessages(conversationId: string): Promise<WireMessage[]>;
+  /** Send a message; resolves with the server-stored wire message. */
+  sendMessage(
+    conversationId: string,
+    input: SendMessageInput,
+  ): Promise<WireMessage>;
 }
 
 export interface ConversationsClientOptions {
@@ -98,6 +120,19 @@ export function createConversationsClient(
     },
     me() {
       return request<{ userId: string }>('GET', '/me');
+    },
+    loadMessages(conversationId) {
+      return request<{ messages: WireMessage[] }>(
+        'GET',
+        `/conversations/${encodeURIComponent(conversationId)}/messages`,
+      ).then((r) => r.messages);
+    },
+    sendMessage(conversationId, input) {
+      return request<{ message: WireMessage }>(
+        'POST',
+        `/conversations/${encodeURIComponent(conversationId)}/messages`,
+        input,
+      ).then((r) => r.message);
     },
   };
 }

@@ -2,9 +2,10 @@ import { authenticate, type Identity } from './auth';
 
 export interface Env {
   FILES_BUCKET: R2Bucket;
+  // D1 conversation registry (shared with workers/data) — membership authz.
+  DB: D1Database;
   R2_BUCKET_NAME: string;
   FIREBASE_PROJECT_ID: string;
-  FIREBASE_DATABASE_URL: string;
   ALLOWED_ORIGINS?: string;
 }
 
@@ -163,14 +164,9 @@ async function authorizeConversation(
   identity: Identity,
   env: Env,
 ): Promise<Response | boolean> {
-  const base = env.FIREBASE_DATABASE_URL.replace(/\/$/, '');
-  // Firebase RTDB REST uses the auth query parameter. Keep this URL scoped to
-  // the fetch call and never log it; it contains the caller's ID token.
-  const url = `${base}/conversations/${encodeURIComponent(
-    conversationId,
-  )}/members/${encodeURIComponent(
-    identity.userId,
-  )}.json?auth=${encodeURIComponent(identity.token)}`;
+  // Membership lives in the D1 conversation registry (keyed by the opaque
+  // conversationId), the same store workers/data writes. One DB shared by two
+  // workers — no service binding needed.
   const appCheckToken =
     request.headers.get('X-Firebase-AppCheck')?.trim() || undefined;
   const canUseCache = request.method === 'GET';
@@ -180,48 +176,26 @@ async function authorizeConversation(
     : null;
   if (cacheKey && getCachedAuthorization(cacheKey, now)) return true;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-  let membership: Response;
+  // Membership is delete-based: a row exists iff the user is a member (no
+  // leave/remove flow yet). Matches the data worker's existence-only guard.
+  let member: { user_id: string } | null;
   try {
-    membership = await fetch(url, {
-      headers: appCheckToken
-        ? { 'X-Firebase-AppCheck': appCheckToken }
-        : undefined,
-      signal: controller.signal,
-    });
+    member = await env.DB.prepare(
+      `SELECT user_id FROM conversation_members
+       WHERE conversation_id = ? AND user_id = ?`,
+    )
+      .bind(conversationId, identity.userId)
+      .first<{ user_id: string }>();
   } catch (error) {
-    clearTimeout(timeoutId);
-    console.error('[auth] membership fetch failed', error);
+    console.error('[auth] membership query failed', error);
     return response(request, env, 'Upstream service unavailable', {
       status: 502,
     });
   }
-  clearTimeout(timeoutId);
 
-  if (!membership.ok) {
-    if (membership.status >= 500) {
-      return response(request, env, 'Upstream service unavailable', {
-        status: 502,
-      });
-    }
-    return false;
-  }
-
-  try {
-    const member = (await membership.json()) as { status?: unknown } | null;
-    const authorized =
-      member !== null &&
-      (member.status === undefined || member.status === 'active');
-    if (authorized && cacheKey) setCachedAuthorization(cacheKey, now);
-    return authorized;
-  } catch (error) {
-    console.error('[auth] membership parse failed', error);
-    return response(request, env, 'Upstream service unavailable', {
-      status: 502,
-    });
-  }
+  const authorized = member !== null;
+  if (authorized && cacheKey) setCachedAuthorization(cacheKey, now);
+  return authorized;
 }
 
 async function readCappedBody(request: Request): Promise<ArrayBuffer | null> {

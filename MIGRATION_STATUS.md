@@ -60,6 +60,21 @@ DO channel (old Slice E1) so received messages appear without reload.
 - Eventually: generate worker `ALLOWED_ORIGINS` from `config/origins.json` instead
   of hand-syncing three wrangler.jsonc files.
 
+### Future: eager DM creation on connect-accept (contacts→D1 slice)
+Move DM creation from lazy (on first open) to eager (when a connect request is
+accepted), so both users hold the same `conversationId` from the start. This is
+**additive and non-breaking** — defer it to the contacts→D1 migration, do NOT
+bundle into the messages slice:
+- The data model is unchanged; only the *creation trigger* moves earlier.
+- `resolveOrCreateDirect` is idempotent on `dm_key`, so the accept handler calls
+  it eagerly and the existing lazy `resolveDirectConversationId` on open becomes a
+  no-op fast path / permanent fallback (legacy contacts, re-adds, races, message
+  before accept propagates). Keep both; keep `dm_key` as the convergence guard.
+- Implementation: one `resolveOrCreateDirect(A,B)` call in the accept path, store
+  the returned id on the contact row as a durable cache.
+- `dm_key` only fully retires if we later go invite→accept where the id is minted
+  once and carried in the invite — bigger protocol change, out of scope here.
+
 ## End state
 
 RTDB remains only for contacts/user-directory (and auth stays Firebase Auth behind

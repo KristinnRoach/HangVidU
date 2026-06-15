@@ -1,0 +1,11 @@
+-- Drop the vestigial `status` column from conversation_members.
+--
+-- Membership is delete-based: a row exists iff the user is a member. There is no
+-- leave/remove flow, `status` was only ever written as 'active', and nothing
+-- reads it. Removing it keeps the data + files workers' membership guards on a
+-- single rule (row exists). Re-add a status/soft-delete model only when an
+-- actual leave/remove flow needs it.
+--
+-- 0001 (which created the column) is applied to remote D1 and must not be edited;
+-- this forward migration drops the column cleanly on both local and remote.
+ALTER TABLE conversation_members DROP COLUMN status;
