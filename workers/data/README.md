@@ -39,9 +39,12 @@ pnpm exec wrangler d1 create hangvidu-data
 ## Local dev
 
 ```sh
-pnpm dev                 # wrangler dev — local D1 shadow, no remote id needed
-pnpm migrate:local       # apply migrations to the local D1
+pnpm dev                 # wrangler dev — local D1 shadow in .wrangler/state
+pnpm migrate:local       # apply migrations to the same local D1 state
 ```
+
+The files worker also points at this local persistence directory in dev, so
+message writes and file upload authorization read the same D1 database.
 
 Smoke test:
 

@@ -5,10 +5,10 @@
   "type": "module",
   "description": "Cloudflare Worker for HangVidU conversation registry persistence, keyed by conversationId.",
   "scripts": {
-    "dev": "wrangler dev --env-file .dev.vars.example --port 8788",
+    "dev": "wrangler dev --env-file .dev.vars.example --port 8788 --persist-to .wrangler/state",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
-    "migrate:local": "wrangler d1 migrations apply hangvidu-data --local",
+    "migrate:local": "wrangler d1 migrations apply hangvidu-data --local --persist-to .wrangler/state",
     "migrate:remote": "wrangler d1 migrations apply hangvidu-data --remote"
   },
   "devDependencies": {

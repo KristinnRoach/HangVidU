@@ -9,8 +9,6 @@ const JWKS_URL =
 
 let privateKey: CryptoKey;
 const originalFetch = globalThis.fetch;
-const members = new Map<string, { status?: string }>();
-let membershipAppCheckTokens: (string | null)[] = [];
 
 function b64urlFromString(s: string): string {
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -42,30 +40,6 @@ async function signToken(claims: Record<string, unknown>): Promise<string> {
   return `${headerB64}.${payloadB64}.${b64urlFromBytes(sig)}`;
 }
 
-function allowMember(conversationId: string, userId: string) {
-  members.set(`${conversationId}/${userId}`, { status: 'active' });
-}
-
-function setMemberStatus(
-  conversationId: string,
-  userId: string,
-  status: string,
-) {
-  members.set(`${conversationId}/${userId}`, { status });
-}
-
-function memberFromUrl(url: string) {
-  const match = /\/conversations\/([^/]+)\/members\/([^/]+)\.json/.exec(
-    url,
-  );
-  if (!match) return null;
-
-  return {
-    conversationId: decodeURIComponent(match[1]),
-    userId: decodeURIComponent(match[2]),
-  };
-}
-
 function request(
   path: string,
   {
@@ -92,7 +66,33 @@ function request(
   return SELF.fetch(`https://files${path}`, { method, headers, body });
 }
 
+async function allowMember(conversationId: string, userId: string) {
+  await env.DB.prepare(
+    `INSERT INTO conversation_members (conversation_id, user_id)
+     VALUES (?, ?)`,
+  )
+    .bind(conversationId, userId)
+    .run();
+}
+
+async function removeMember(conversationId: string, userId: string) {
+  await env.DB.prepare(
+    `DELETE FROM conversation_members
+     WHERE conversation_id = ? AND user_id = ?`,
+  )
+    .bind(conversationId, userId)
+    .run();
+}
+
 beforeAll(async () => {
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS conversation_members (
+      conversation_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      PRIMARY KEY (conversation_id, user_id)
+    )`,
+  ).run();
+
   const pair = await crypto.subtle.generateKey(
     {
       name: 'RSASSA-PKCS1-v1_5',
@@ -122,23 +122,6 @@ beforeAll(async () => {
         headers: { 'cache-control': 'max-age=3600' },
       });
     }
-    const member = memberFromUrl(url);
-    if (member) {
-      membershipAppCheckTokens.push(
-        new Headers(init?.headers).get('X-Firebase-AppCheck'),
-      );
-      const record = members.get(
-        `${member.conversationId}/${member.userId}`,
-      );
-      return new Response(
-        JSON.stringify(
-          record
-            ? { userId: member.userId, role: 'member', ...record }
-            : null,
-        ),
-        { status: 200 },
-      );
-    }
     return originalFetch(input, init);
   }) as typeof fetch;
 });
@@ -147,9 +130,8 @@ afterAll(() => {
   globalThis.fetch = originalFetch;
 });
 
-beforeEach(() => {
-  members.clear();
-  membershipAppCheckTokens = [];
+beforeEach(async () => {
+  await env.DB.prepare('DELETE FROM conversation_members').run();
 });
 
 describe('files worker routing + auth', () => {
@@ -188,8 +170,8 @@ describe('files worker routing + auth', () => {
   it('lets direct-message members upload and fetch an image', async () => {
     const uploadToken = await signToken(validClaims('user-a'));
     const getToken = await signToken(validClaims('user-b'));
-    allowMember('user-a_user-b', 'user-a');
-    allowMember('user-a_user-b', 'user-b');
+    await allowMember('user-a_user-b', 'user-a');
+    await allowMember('user-a_user-b', 'user-b');
 
     const upload = await request('/conversations/user-a_user-b/files/images', {
       method: 'POST',
@@ -225,9 +207,9 @@ describe('files worker routing + auth', () => {
     );
   });
 
-  it('forwards app check tokens to RTDB membership authorization', async () => {
+  it('accepts app check tokens while authorizing through D1 membership', async () => {
     const token = await signToken(validClaims('user-a'));
-    allowMember('user-a_user-b', 'user-a');
+    await allowMember('user-a_user-b', 'user-a');
 
     const upload = await request('/conversations/user-a_user-b/files/images', {
       method: 'POST',
@@ -238,14 +220,13 @@ describe('files worker routing + auth', () => {
     });
 
     expect(upload.status).toBe(201);
-    expect(membershipAppCheckTokens).toContain('app-check-token');
   });
 
   it('reuses successful download membership checks briefly', async () => {
     const uploadToken = await signToken(validClaims('user-a'));
     const downloadToken = await signToken(validClaims('user-b'));
-    allowMember('group:cache-test', 'user-a');
-    allowMember('group:cache-test', 'user-b');
+    await allowMember('group:cache-test', 'user-a');
+    await allowMember('group:cache-test', 'user-b');
 
     const upload = await request(
       '/conversations/group%3Acache-test/files/images',
@@ -257,18 +238,17 @@ describe('files worker routing + auth', () => {
       },
     );
     const metadata = (await upload.json()) as { key: string };
-    membershipAppCheckTokens = [];
 
     const path = `/conversations/group%3Acache-test/files/object?key=${encodeURIComponent(
       metadata.key,
     )}`;
 
     const firstDownload = await request(path, { token: downloadToken });
+    await removeMember('group:cache-test', 'user-b');
     const secondDownload = await request(path, { token: downloadToken });
 
     expect(firstDownload.status).toBe(200);
     expect(secondDownload.status).toBe(200);
-    expect(membershipAppCheckTokens).toHaveLength(1);
   });
 
   it('403s direct-message non-members', async () => {
@@ -283,9 +263,10 @@ describe('files worker routing + auth', () => {
     expect(res.status).toBe(403);
   });
 
-  it('403s inactive conversation members', async () => {
+  it('403s removed conversation members', async () => {
     const token = await signToken(validClaims('user-a'));
-    setMemberStatus('user-a_user-b', 'user-a', 'removed');
+    await allowMember('user-a_user-b', 'user-a');
+    await removeMember('user-a_user-b', 'user-a');
     const res = await request('/conversations/user-a_user-b/files/images', {
       method: 'POST',
       token,
@@ -296,9 +277,9 @@ describe('files worker routing + auth', () => {
     expect(res.status).toBe(403);
   });
 
-  it('authorizes group conversations through RTDB membership', async () => {
+  it('authorizes group conversations through D1 membership', async () => {
     const token = await signToken(validClaims('user-a'));
-    allowMember('group:abc', 'user-a');
+    await allowMember('group:abc', 'user-a');
 
     const upload = await request('/conversations/group%3Aabc/files/images', {
       method: 'POST',
@@ -312,7 +293,7 @@ describe('files worker routing + auth', () => {
 
   it('rejects oversized uploads before storing', async () => {
     const token = await signToken(validClaims());
-    allowMember('user-a_user-b', 'user-a');
+    await allowMember('user-a_user-b', 'user-a');
     const res = await request('/conversations/user-a_user-b/files/images', {
       method: 'POST',
       token,
@@ -325,7 +306,7 @@ describe('files worker routing + auth', () => {
 
   it('rejects non-image uploads', async () => {
     const token = await signToken(validClaims());
-    allowMember('user-a_user-b', 'user-a');
+    await allowMember('user-a_user-b', 'user-a');
     const res = await request('/conversations/user-a_user-b/files/images', {
       method: 'POST',
       token,
