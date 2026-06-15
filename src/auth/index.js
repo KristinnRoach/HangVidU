@@ -11,7 +11,12 @@
 //   - Solid components → `useAuth()` from `./solid-auth` (reactive).
 //   - All other code   → the imperative getters/commands below.
 //   - Writes to auth state happen ONLY inside this module; external code reads
-//     via getters and subscribes to `evt:auth:state:changed`.
+//     via getters and subscribes to auth events:
+//       - `evt:auth:state:changed` — every status transition (incl. `loading`).
+//       - `evt:auth:session:logged-in` / `:logged-out` / `:ready` — login/logout
+//         lifecycle. Non-Solid auth-scoped listeners (e.g. `presence`,
+//         `wireAuthReactions`) (re)wire on these so they survive a login that
+//         completes after setup.
 //     See docs/WIP_Architecture/STATE_RULES.md.
 //
 // App-level cross-feature wiring lives in `app/auth-orchestration.js`
