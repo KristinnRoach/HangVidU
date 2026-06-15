@@ -68,10 +68,11 @@ function request(
 
 async function allowMember(conversationId: string, userId: string) {
   await env.DB.prepare(
-    `INSERT INTO conversation_members (conversation_id, user_id)
-     VALUES (?, ?)`,
+    `INSERT INTO conversation_members (conversation_id, user_id, joined_at)
+     VALUES (?, ?, ?)
+     ON CONFLICT(conversation_id, user_id) DO NOTHING`,
   )
-    .bind(conversationId, userId)
+    .bind(conversationId, userId, Date.now())
     .run();
 }
 
@@ -89,6 +90,7 @@ beforeAll(async () => {
     `CREATE TABLE IF NOT EXISTS conversation_members (
       conversation_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
+      joined_at INTEGER NOT NULL,
       PRIMARY KEY (conversation_id, user_id)
     )`,
   ).run();
