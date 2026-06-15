@@ -19,11 +19,11 @@ const mocks = vi.hoisted(() => ({
   initIcons: vi.fn(),
   subscriptions: new Map(),
   startCall: vi.fn(),
-  openSelectedConversation: vi.fn(),
+  openDirectConversation: vi.fn(),
 }));
 
 vi.mock('../../../stores/selectedConversationStore', () => ({
-  open: mocks.openSelectedConversation,
+  openDirectConversation: mocks.openDirectConversation,
   clear: vi.fn(),
   selection: () => null,
 }));
@@ -186,7 +186,7 @@ describe('SolidJS ContactsList PoC', { timeout: 60000 }, () => {
   //   unmount();
   // });
 
-  it('writes selection to the store on row click', async () => {
+  it('opens the direct conversation on row click', async () => {
     const ContactsListModule = await import('./ContactsList.tsx');
 
     const { container, unmount } = render(() => <ContactsListModule.default />);
@@ -194,9 +194,7 @@ describe('SolidJS ContactsList PoC', { timeout: 60000 }, () => {
     const firstContactName = container.querySelector('.contact-name');
     firstContactName?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-    expect(mocks.openSelectedConversation).toHaveBeenCalledWith({
-      conversationId: 'conv-1',
-      remoteParticipantIds: ['contact-1'],
+    expect(mocks.openDirectConversation).toHaveBeenCalledWith('contact-1', {
       displayUI: true,
       contactNickName: 'Alice',
     });
