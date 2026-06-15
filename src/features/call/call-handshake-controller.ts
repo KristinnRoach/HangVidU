@@ -4,11 +4,7 @@ import {
   initCallService,
   getCallService,
 } from './call-service.js';
-import {
-  getLoggedInUserId,
-  getUser,
-  waitForAuthReady,
-} from '../../auth/index.js';
+import { getLoggedInUserId, getUser } from '../../auth/index.js';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import { CallResponseType, type CallInvite } from './model/call-schema.js';
 import {
@@ -45,7 +41,6 @@ export class CallHandshakeController {
   private outgoingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private calleeBusyResetTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private unsubCalleeResponse: (() => void) | undefined;
-  private initAbortController: AbortController | undefined;
   private unsubscribeIncomingCall: (() => void) | undefined;
 
   constructor({
@@ -69,15 +64,14 @@ export class CallHandshakeController {
     this.onCalleeBusy(busy);
   }
 
-  async init(): Promise<void> {
+  /**
+   * (Re)attach the incoming-call listener for the currently logged-in user.
+   * Driven reactively by the provider on auth changes, so it must be safe to
+   * call repeatedly: it tears down any prior subscription first. Callers gate
+   * on a logged-in user, but we re-read the uid defensively.
+   */
+  init(): void {
     this.cleanup();
-
-    const ac = new AbortController();
-    this.initAbortController = ac;
-
-    await waitForAuthReady();
-
-    if (ac.signal.aborted) return;
 
     const localUID = getLoggedInUserId();
     if (!localUID) return;
@@ -357,8 +351,6 @@ export class CallHandshakeController {
   }
 
   cleanup(): void {
-    this.initAbortController?.abort();
-    this.initAbortController = undefined;
     this.unsubscribeIncomingCall?.();
     this.unsubscribeIncomingCall = undefined;
     this.clearOutgoingCallTracking();
