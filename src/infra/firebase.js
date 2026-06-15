@@ -10,32 +10,20 @@ import {
 // APP CHECK DEBUG TOKEN SETUP (MUST BE BEFORE FIREBASE INIT)
 // ============================================================================
 
-// CRITICAL: Set debug token BEFORE initializing Firebase or any providers
-// This prevents reCAPTCHA from showing "localhost not in allowed domains" error
-const appCheckExplicitDebugToken = import.meta.env
-  .VITE_FIREBASE_APP_CHECK_DEBUG_TOKEN;
+// CRITICAL: Set debug token BEFORE initializing Firebase or any providers.
+// Keep this development-only so debug tokens can never ship in production.
+if (import.meta.env.MODE === 'development' && typeof self !== 'undefined') {
+  const debugToken = import.meta.env.VITE_FIREBASE_APP_CHECK_DEBUG_TOKEN?.trim();
 
-const hasExplicitDebugToken =
-  typeof appCheckExplicitDebugToken === 'string' &&
-  appCheckExplicitDebugToken.trim() !== '';
-
-if (
-  (import.meta.env.MODE === 'development' || hasExplicitDebugToken) &&
-  typeof self !== 'undefined'
-) {
-  if (hasExplicitDebugToken) {
-    // If an explicit debug token is provided in .env.development, use it.
-    // This tells App Check to use this specific token for debugging.
-    self.FIREBASE_APPCHECK_DEBUG_TOKEN = appCheckExplicitDebugToken;
+  if (debugToken) {
+    self.FIREBASE_APPCHECK_DEBUG_TOKEN = debugToken;
     console.info(
-      `[Firebase App Check: DEV] Using explicit debug token from .env`,
+      '[Firebase App Check: DEV] Using explicit debug token from .env.development',
     );
   } else {
-    // If no explicit token, allow App Check to auto-generate and log a new one.
-    // This is useful for first-time setup or if local storage is cleared.
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
     console.warn(
-      '[Firebase App Check: DEV] No explicit debug token (VITE_FIREBASE_APPCHECK_DEBUG_TOKEN) found in .env. App Check will auto-generate one. Copy and register this token in Firebase Console. Consider adding it to your .env.development for stable reuse.',
+      '[Firebase App Check: DEV] No explicit debug token (VITE_FIREBASE_APP_CHECK_DEBUG_TOKEN) found. App Check will auto-generate one. Copy and register this token in Firebase Console. Consider adding it to your .env.development for stable reuse.',
     );
   }
 }
