@@ -162,8 +162,11 @@ export default {
           return json({ error: 'insert_failed' }, 500, cors);
         }
         const wire = toWireMessage(stored);
-        // Live push: broadcast to all connected members (incl. sender, who
-        // dedupes against its optimistic row by this server-allocated id).
+        // DO notification pattern: after successful write, notify the Durable Object
+        // to broadcast the event. Uses hibernation RPC (direct method invocation) —
+        // the DO trusts the worker since they share the same process and the worker
+        // already authenticated + validated the write. The DO broadcasts to all
+        // connected members, including the sender (client deduplicates by message id).
         const event: ConversationServerEvent = { t: 'message', message: wire };
         await env.CONVERSATION_CHANNEL.getByName(conversationId).broadcast(
           event,

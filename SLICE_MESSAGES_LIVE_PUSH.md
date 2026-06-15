@@ -98,6 +98,34 @@ push would be a UX regression vs RTDB listeners.
   or `auth`+`storage` together — `stores` is the wiring layer (token injection pattern).
   Realtime client code belongs in `src/realtime/`.
 
+## DO event envelope and notification contracts (resolved 2026-06-15)
+
+The following specifications address the underspecified contracts in the original draft:
+
+1. **Event envelope shape**: Defined in `shared/conversation-channel/protocol.ts` with three
+   discriminated union variants:
+   - `{ t: 'message', message: WireMessage }` — implemented now.
+   - `{ t: 'reaction', conversationId, reaction: ReactionPayload }` — reserved.
+   - `{ t: 'read', conversationId, read: ReadPayload }` — reserved.
+   Each payload interface specifies exact field names and types (see §2.1 above).
+
+2. **DO notification pattern**: Worker handlers use **hibernation RPC** — direct method
+   invocation `env.CONVERSATION_CHANNEL.getByName(id).broadcast(event)` after successful
+   writes. No internal fetch/Authorization header pattern; the DO trusts the worker since
+   they share the same process and the worker already authenticated the request (§2.2).
+
+3. **Broadcast scope**: The DO broadcasts to **all connected sockets** for the conversation,
+   including the sender. No origin filtering — the client deduplicates messages against its
+   optimistic state by server-allocated id. Optional filtering is deferred (§2.3).
+
+4. **Wrangler binding**: Configured in `workers/data/wrangler.jsonc` with binding name
+   `CONVERSATION_CHANNEL`, class `ConversationChannel`, migration tag `v1` with
+   `new_sqlite_classes`. TypeScript binding exists in `workers/data/src/index.ts` Env
+   interface; no client-side declaration needed (§2.0).
+
+All referenced code files (`conversation-channel.ts`, `index.ts`, protocol, client transport)
+have been updated to match these specifications.
+
 ## Prototype code to copy (NOT merge) from frozen branch `D1-R2-migration`
 
 That branch's worker base + schema are **stale** (6-table `0001`, pre-auth-fixes). Copy
@@ -145,12 +173,129 @@ logic only, adapt to current main:
     hibernation API (`state.acceptWebSocket`) — see `workers/signaling/src/` for the
     house style.
   - After successful message/reaction/read writes, the route handler notifies the DO
-    (stub fetch/RPC) → DO broadcasts a small event envelope
-    `{ type: 'message'|'reaction'|'read', conversationId, payload }` to connected sockets.
+    (stub fetch/RPC) → DO broadcasts a small event envelope to connected sockets.
     Persistence stays in D1 — the DO holds no authoritative state.
 - `wrangler.jsonc`: DO binding + `migrations` tag (`new_sqlite_classes` or `new_classes`
   — check current wrangler docs; hibernation needs no special class config).
 - Worker tests optional; manual e2e is the bar (matches Slice A/B precedent).
+
+#### 2.0. Wrangler binding configuration
+
+The DO is bound to the worker via `wrangler.jsonc`:
+
+```json
+{
+  "durable_objects": {
+    "bindings": [
+      { "name": "CONVERSATION_CHANNEL", "class_name": "ConversationChannel" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["ConversationChannel"] }
+  ]
+}
+```
+
+The `migrations` tag is required for Durable Objects that use the SQLite-backed storage
+API (even if using WebSocket hibernation without persistent storage, the tag is still
+required by wrangler). The tag value `"v1"` can be any string; `new_sqlite_classes` is the
+correct field per current wrangler docs (not `new_classes`).
+
+**TypeScript binding**: Add to `src/env.d.ts` (client-side env declarations) or
+`workers/data/src/env.d.ts` (worker-specific, if separate):
+
+```typescript
+// In workers/data/src/index.ts Env interface (already present):
+export interface Env {
+  DB: D1Database;
+  CONVERSATION_CHANNEL: DurableObjectNamespace<ConversationChannel>;
+  FIREBASE_PROJECT_ID: string;
+  ALLOWED_ORIGINS: string;
+}
+```
+
+No client-side declaration is needed in `src/env.d.ts` — the DO binding is only visible to
+the worker, not the browser. The client accesses the channel via the worker's WebSocket
+upgrade endpoint (`GET /conversations/:id/ws`).
+
+#### 2.1. Event envelope specification (shared wire protocol)
+
+The DO broadcasts events to all connected members using a discriminated union envelope
+defined in `shared/conversation-channel/protocol.ts`:
+
+```typescript
+// Actual wire format (uses shorthand `t` for type):
+type ConversationServerEvent =
+  | { t: 'message'; message: WireMessage }
+  | { t: 'reaction'; conversationId: string; reaction: ReactionPayload }
+  | { t: 'read'; conversationId: string; read: ReadPayload };
+
+// Message event carries the full WireMessage:
+interface WireMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  senderName: string | null;
+  kind: 'text' | 'file';
+  body: string | null;
+  sentAt: number;
+  attachments: WireAttachment[];  // each with id, r2Key, bucket, fileName, mimeType,
+                                   // fileSize, width, height (nullable)
+}
+
+// Reaction event (deferred to fast-follow PR):
+interface ReactionPayload {
+  messageId: string;
+  userId: string;
+  emoji: string;
+  action: 'add' | 'remove';
+}
+
+// Read receipt event (deferred to fast-follow PR):
+interface ReadPayload {
+  userId: string;
+  readAt: number;  // Unix timestamp
+}
+```
+
+**Current implementation** (this PR): only `t: 'message'` is active. The protocol uses
+shorthand field names (`t` not `type`) to reduce wire size. Reaction and read event types
+are fully specified as extension points for the fast-follow PR, including TypeScript
+interfaces and type guard validation in `isConversationServerEvent()`.
+
+#### 2.2. DO notification pattern (worker → DO RPC)
+
+After a successful write (message/reaction/read), the worker handler notifies the DO to
+broadcast the event using the **hibernation RPC invocation** pattern:
+
+```typescript
+// Worker handler (e.g., POST /conversations/:id/messages after insertMessage):
+const event: ConversationServerEvent = { t: 'message', message: wireMessage };
+await env.CONVERSATION_CHANNEL.getByName(conversationId).broadcast(event);
+```
+
+The DO exports a `broadcast(event: ConversationServerEvent): void` method that fans the
+event out to all connected WebSockets via `this.ctx.getWebSockets()`. The worker does NOT
+use an internal fetch with Authorization headers — instead it directly invokes the DO's
+RPC method since both components share the same process and trust boundary (the worker
+already authenticated the write request before calling the DO).
+
+**Rationale**: Hibernation RPC is simpler and avoids re-authenticating an already-trusted
+internal call. The DO holds no authoritative state and never validates the event payload —
+the worker is responsible for ensuring only valid, membership-checked events are broadcast.
+
+#### 2.3. Broadcast scope and origin filtering
+
+The DO's `broadcast()` method sends the event to **all connected WebSockets** for the
+conversation. **Optional origin filtering** (to skip echoing the event back to the
+originating connection) is NOT implemented in this PR — all sockets receive all events,
+including the sender. The client deduplicates messages against its optimistic local state
+using the server-allocated message id (decision §6).
+
+**Future extension** (if needed): the worker can pass an optional `originSocketId` in the
+event envelope, and the DO can tag sockets with connection metadata (`state.acceptWebSocket(ws, tags)`)
+to filter the broadcast. This is deferred because client-side deduplication is sufficient
+for the current use case and simpler than managing socket identity in the DO.
 
 ### 3. Client
 

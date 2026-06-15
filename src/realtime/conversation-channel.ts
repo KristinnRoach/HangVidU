@@ -68,7 +68,10 @@ export function createConversationChannel(
         return;
       }
       if (!isConversationServerEvent(parsed)) return;
-      handlers.forEach((h) => h(parsed.message));
+      // Currently only message events are broadcast; reaction/read are deferred.
+      if (parsed.t === 'message') {
+        handlers.forEach((h) => h(parsed.message));
+      }
     });
     socket.addEventListener('close', () => {
       if (ws === socket) ws = null;
