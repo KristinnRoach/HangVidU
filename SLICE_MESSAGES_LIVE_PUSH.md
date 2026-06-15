@@ -26,6 +26,22 @@ push would be a UX regression vs RTDB listeners.
    (see "Cleanup doc" below) so retirement is a mechanical follow-up PR.
 4. **Files migrate with messages** (file-sends are file-_messages_). Same id cutover.
 
+### Resolved 2026-06-15 (this slice)
+
+5. **Scope = messages + files + push only.** Text + file messages, D1 persistence, DO live
+   push, history. **Reactions and read/unread badges are deferred to a fast-follow PR.**
+   The DO + `0002` schema land here, so the follow-up is purely additive (it can still
+   include the `message_reactions` table and `last_read_at` column now — see §1 — but the
+   client/worker reaction + read endpoints and UI are out of scope for this PR).
+6. **DO push = broadcast to all, dedupe by id.** The DO broadcasts the event to every
+   connected socket **including the sender**; the client dedupes against its optimistic row
+   using the server-allocated message id. One code path, self-healing if optimistic state
+   drifts. (Supersedes the RTDB `msg.from === myUserId` receiver-only skip.)
+7. **Include `width`/`height` in `0002`** (nullable) and capture at upload — confirmed.
+8. **Default backend stays `rtdb` in code this PR.** Exercise `d1` via
+   `VITE_MESSAGE_BACKEND=d1` in env for e2e + prod soak; a follow-up commit flips the code
+   default once proven.
+
 ## Current state (what already exists on main, all deployed)
 
 - **D1 registry** (`workers/data/`, PR #534): tables `users`, `conversations`,
@@ -165,7 +181,7 @@ RTDB `conversations/*` security rules + data, `FIREBASE_DATABASE_URL` in workers
 - [ ] Open contact → opaque id resolved (same id both accounts)
 - [ ] Send text → appears on sender instantly AND on receiver **without reload** (DO push)
 - [ ] Reload both → history persists from D1
-- [ ] Reactions + read/unread badge work both directions
+- [ ] ~~Reactions + read/unread badge work both directions~~ (deferred to fast-follow — decision 5)
 - [ ] Image send → uploads under `{conversationId}/…`, receiver sees file-message live,
       download authorized (and 404/403 for a third account)
 - [ ] `VITE_MESSAGE_BACKEND=rtdb` still works (escape hatch intact)
