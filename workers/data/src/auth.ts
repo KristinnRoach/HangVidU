@@ -44,6 +44,23 @@ export async function authenticate(
 }
 
 /**
+ * Authenticate a WebSocket upgrade. Browsers can't set headers on the WS
+ * handshake, so the token rides in the `Sec-WebSocket-Protocol` header as the
+ * second subprotocol after the `bearer` marker (mirrors the signaling worker).
+ */
+export async function authenticateWebSocket(
+  request: Request,
+  env: Env,
+): Promise<Identity | null> {
+  const protocols = request.headers.get('Sec-WebSocket-Protocol') ?? '';
+  const parts = protocols.split(',').map((p) => p.trim());
+  const token = parts[0] === 'bearer' ? parts[1] : undefined;
+  if (!token) return null;
+
+  return verifyFirebaseIdToken(token, env);
+}
+
+/**
  * Verify a Firebase ID token: validates the standard claims (aud / iss / exp /
  * iat / sub) and the RS256 signature against Google's published public keys.
  */

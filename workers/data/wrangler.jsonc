@@ -15,6 +15,16 @@
       "migrations_dir": "migrations",
     },
   ],
+  // Live-push channel: one Durable Object per conversationId. Broadcast-only;
+  // persistence stays in D1. Uses the WebSocket hibernation API.
+  "durable_objects": {
+    "bindings": [
+      { "name": "CONVERSATION_CHANNEL", "class_name": "ConversationChannel" },
+    ],
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["ConversationChannel"] },
+  ],
   "vars": {
     // Firebase project id used to validate ID-token claims (aud/iss).
     // Override per environment; not a secret.
