@@ -20,11 +20,10 @@
 // Old objects are kept (cheap rollback); pass --delete-old to remove them once
 // verified.
 //
-// Env (e.g. in .env.r2.local, same as migrate-rtdb-files-to-r2.js):
+// R2 creds (e.g. in .env.r2.local, same as migrate-rtdb-files-to-r2.js):
 //   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
-//   CLOUDFLARE_API_TOKEN            (D1 edit)
-//   D1_DATABASE_ID                  (hangvidu-data)
-//   CLOUDFLARE_ACCOUNT_ID           (defaults to R2_ACCOUNT_ID)
+// D1 goes through the wrangler CLI (must be `wrangler login`-ed with d1 write),
+// so no Cloudflare API token is required.
 //
 // Usage:
 //   node scripts/migrate-d1-attachment-keys.mjs                  # dry run
@@ -32,8 +31,10 @@
 //   node scripts/migrate-d1-attachment-keys.mjs --write
 //   node scripts/migrate-d1-attachment-keys.mjs --write --delete-old
 
+import { spawnSync } from 'node:child_process';
 import { createHash, createHmac } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -52,21 +53,25 @@ if (limitArg && (!Number.isFinite(limit) || limit <= 0)) {
 
 const PREFIX = 'conversation-files';
 
+// D1 goes through the already-authenticated wrangler CLI (same path as
+// `pnpm migrate:remote`), so no Cloudflare API token is needed.
+const D1_DATABASE = 'hangvidu-data';
+const D1_CONFIG = 'workers/data/wrangler.jsonc';
+
 const config = {
   accountId: requiredEnv('R2_ACCOUNT_ID'),
   accessKeyId: requiredEnv('R2_ACCESS_KEY_ID'),
   secretAccessKey: requiredEnv('R2_SECRET_ACCESS_KEY'),
   bucket: requiredEnv('R2_BUCKET'),
-  apiToken: requiredEnv('CLOUDFLARE_API_TOKEN'),
-  databaseId: requiredEnv('D1_DATABASE_ID'),
 };
-const cfAccountId = process.env.CLOUDFLARE_ACCOUNT_ID || config.accountId;
 
-const rows = await d1Query(
+const rows = d1Select(
   `SELECT a.id AS id, a.r2_key AS r2_key, m.conversation_id AS conversation_id
    FROM message_attachments a
    JOIN messages m ON m.id = a.message_id`,
 );
+
+const pendingUpdates = [];
 
 let scanned = 0;
 let aligned = 0;
@@ -103,12 +108,8 @@ for (const row of rows) {
   try {
     await copyR2Object(config, oldKey, newKey);
     copied += 1;
-
-    await d1Query(`UPDATE message_attachments SET r2_key = ? WHERE id = ?`, [
-      newKey,
-      id,
-    ]);
-    updated += 1;
+    // Defer the D1 write: copies happen first, then one batched UPDATE.
+    pendingUpdates.push({ id, newKey });
 
     if (deleteOld) {
       await deleteR2Object(config, oldKey);
@@ -118,6 +119,11 @@ for (const row of rows) {
     failed += 1;
     console.error(`[failed] ${id} ${oldKey}: ${error?.message || error}`);
   }
+}
+
+if (pendingUpdates.length > 0) {
+  d1ApplyUpdates(pendingUpdates);
+  updated = pendingUpdates.length;
 }
 
 console.log(
@@ -140,25 +146,46 @@ function rekey(key, conversationId) {
   return parts.join('/');
 }
 
-// --- D1 (HTTP API) -------------------------------------------------------
+// --- D1 (via wrangler) ---------------------------------------------------
 
-async function d1Query(sql, params = []) {
-  const res = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/d1/database/${config.databaseId}/query`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${config.apiToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ sql, params }),
-    },
+function wrangler(extraArgs) {
+  const result = spawnSync(
+    'npx',
+    ['wrangler', 'd1', 'execute', D1_DATABASE, '--remote', '--config', D1_CONFIG, ...extraArgs],
+    { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
   );
-  const body = await res.json();
-  if (!res.ok || !body.success) {
-    throw new Error(`D1 query failed: ${res.status} ${JSON.stringify(body.errors ?? body)}`);
+  if (result.status !== 0) {
+    throw new Error(`wrangler failed: ${result.stderr || result.stdout}`);
   }
-  return body.result?.[0]?.results ?? [];
+  return result.stdout;
+}
+
+function d1Select(sql) {
+  const out = wrangler(['--json', '--command', sql]);
+  // `--json` prints a JSON array of result sets, sometimes preceded by banner
+  // lines; slice from the first bracket.
+  const parsed = JSON.parse(out.slice(out.indexOf('[')));
+  return parsed?.[0]?.results ?? [];
+}
+
+function d1ApplyUpdates(updates) {
+  const sql = updates
+    .map(
+      ({ id, newKey }) =>
+        `UPDATE message_attachments SET r2_key='${sqlEscape(newKey)}' WHERE id='${sqlEscape(id)}';`,
+    )
+    .join('\n');
+  const file = path.join(tmpdir(), `attachment-key-updates-${Date.now()}.sql`);
+  writeFileSync(file, sql);
+  try {
+    wrangler(['--file', file]);
+  } finally {
+    rmSync(file, { force: true });
+  }
+}
+
+function sqlEscape(value) {
+  return String(value).replaceAll("'", "''");
 }
 
 // --- R2 (S3 SigV4) -------------------------------------------------------
@@ -310,8 +337,9 @@ function loadEnvFile(file) {
   }
 }
 
-function requiredEnv(name) {
-  const value = process.env[name];
-  if (!value) throw new Error(`${name} is required`);
-  return value;
+function requiredEnv(name, ...fallbacks) {
+  for (const key of [name, ...fallbacks]) {
+    if (process.env[key]) return process.env[key];
+  }
+  throw new Error(`${[name, ...fallbacks].join(' or ')} is required`);
 }
