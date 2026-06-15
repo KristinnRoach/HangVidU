@@ -84,7 +84,10 @@ export async function resolveOrCreateDirect(
     .prepare(`SELECT id FROM conversations WHERE dm_key = ?`)
     .bind(dmKey)
     .first<{ id: string }>();
-  if (!row) throw new Error('resolveOrCreateDirect: conversation not found after upsert');
+  if (!row)
+    throw new Error(
+      'resolveOrCreateDirect: conversation not found after upsert',
+    );
   const conversationId = row.id;
 
   // Ensure both membership rows.
