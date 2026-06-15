@@ -47,4 +47,27 @@ describe('CallHandshakeProvider', () => {
     setUser({ uid: 'u1' });
     expect(mocks.init).toHaveBeenCalledTimes(1);
   });
+
+  it('does not re-attach or clean up when reactive state read inside the controller changes', async () => {
+    const { CallHandshakeProvider } = await import('./call-handshake');
+    const [user] = createSignal({ uid: 'u1' });
+    mocks.user = user;
+
+    // init()/cleanup() read reactive p2p room state in the real controller.
+    // Simulate that read; the effect must stay keyed on the uid only, so a
+    // p2p state change (e.g. joining a room) must NOT re-run init and tear
+    // the call down.
+    const [p2pState, setP2pState] = createSignal('idle');
+    mocks.init.mockImplementation(() => {
+      p2pState();
+    });
+
+    render(() => <CallHandshakeProvider>{null}</CallHandshakeProvider>);
+    expect(mocks.init).toHaveBeenCalledTimes(1);
+    expect(mocks.cleanup).not.toHaveBeenCalled();
+
+    setP2pState('connected');
+    expect(mocks.init).toHaveBeenCalledTimes(1);
+    expect(mocks.cleanup).not.toHaveBeenCalled();
+  });
 });

@@ -1,7 +1,6 @@
 import {
   createContext,
   createEffect,
-  createMemo,
   createSignal,
   onCleanup,
   useContext,
@@ -82,9 +81,13 @@ export function CallHandshakeProvider(props: ParentProps) {
   // reload). Keying on the uid avoids tearing down an active call on unrelated
   // auth-state updates (e.g. token refresh) that don't change the user.
   const auth = useAuth();
-  const activeUid = createMemo(() => auth.user()?.uid ?? null);
+  let attachedUid: string | null | undefined;
   createEffect(() => {
-    if (activeUid()) {
+    const uid = auth.user()?.uid ?? null;
+    if (uid === attachedUid) return;
+
+    attachedUid = uid;
+    if (uid) {
       controller.init();
     } else {
       controller.cleanup();
