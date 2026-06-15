@@ -123,7 +123,7 @@ for (const [convoId, convo] of Object.entries(conversations ?? {})) {
   );
   for (const uid of [a, b]) {
     lines.push(
-      `INSERT OR IGNORE INTO conversation_members (conversation_id, user_id, role, status, joined_at) SELECT id, ${s(uid)}, 'member', 'active', ${n(minTs)} FROM conversations WHERE dm_key=${dmKeyLit};`,
+      `INSERT OR IGNORE INTO conversation_members (conversation_id, user_id, joined_at) SELECT id, ${s(uid)}, ${n(minTs)} FROM conversations WHERE dm_key=${dmKeyLit};`,
     );
   }
 

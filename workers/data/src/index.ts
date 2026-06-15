@@ -243,10 +243,15 @@ function parseSendBody(payload: Record<string, unknown> | null): SendBody {
       typeof a.bucket !== 'string' ||
       typeof a.fileName !== 'string' ||
       typeof a.mimeType !== 'string' ||
-      typeof a.fileSize !== 'number'
+      typeof a.fileSize !== 'number' ||
+      !Number.isFinite(a.fileSize) ||
+      a.fileSize <= 0
     ) {
       return { error: 'file message requires a valid attachment' };
     }
+    // Accept width/height only as finite positive px; anything else → null.
+    const posOrNull = (v: unknown): number | null =>
+      typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
     return {
       messageId,
       kind,
@@ -257,8 +262,8 @@ function parseSendBody(payload: Record<string, unknown> | null): SendBody {
         fileName: a.fileName,
         mimeType: a.mimeType,
         fileSize: a.fileSize,
-        width: typeof a.width === 'number' ? a.width : null,
-        height: typeof a.height === 'number' ? a.height : null,
+        width: posOrNull(a.width),
+        height: posOrNull(a.height),
       },
     };
   }

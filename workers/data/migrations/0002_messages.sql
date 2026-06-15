@@ -4,10 +4,12 @@
 -- Tables plural, columns singular. IDs opaque UUID v4; ordering from created_at.
 -- D1 always enforces FKs (no PRAGMA needed).
 --
--- Scope note (decision 2026-06-15 #5): `message_reactions` and the
--- `last_read_at` column ship in this migration so the reactions + read-receipt
--- fast-follow needs no further migration, but their endpoints/UI are out of
--- scope for the current PR.
+-- Scope: text + file messages with live push. Reactions and read-receipts are
+-- deferred; their table/column (message_reactions, last_read_at) are NOT
+-- pre-provisioned — adding a table/column is a cheap non-destructive migration,
+-- so they land with the fast-follow that actually uses them. CHECK constraints,
+-- by contrast, can only be added via a full table rebuild, so they go in at
+-- creation here while these tables hold no rows in prod.
 
 CREATE TABLE messages (
   id              TEXT PRIMARY KEY,
@@ -15,7 +17,9 @@ CREATE TABLE messages (
   sender_id       TEXT NOT NULL REFERENCES users(id),
   kind            TEXT NOT NULL CHECK (kind IN ('text', 'file')),
   body            TEXT,
-  created_at      INTEGER NOT NULL
+  created_at      INTEGER NOT NULL,
+  -- A text message must carry a body; file messages may omit it.
+  CHECK (kind <> 'text' OR body IS NOT NULL)
 );
 CREATE INDEX idx_messages_convo_time ON messages(conversation_id, created_at);
 
@@ -26,18 +30,8 @@ CREATE TABLE message_attachments (
   bucket     TEXT NOT NULL,                        -- R2 bucket (schema requires non-empty)
   file_name  TEXT NOT NULL,
   mime_type  TEXT NOT NULL,
-  file_size  INTEGER NOT NULL,
-  width      INTEGER,                              -- natural px, nullable (decision #7)
-  height     INTEGER                               -- natural px, nullable (decision #7)
+  file_size  INTEGER NOT NULL CHECK (file_size > 0),
+  width      INTEGER CHECK (width IS NULL OR width > 0),   -- natural px, nullable
+  height     INTEGER CHECK (height IS NULL OR height > 0)  -- natural px, nullable
 );
 CREATE INDEX idx_attachments_message ON message_attachments(message_id);
-
-CREATE TABLE message_reactions (
-  message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
-  user_id    TEXT NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
-  emoji      TEXT NOT NULL,
-  PRIMARY KEY (message_id, user_id, emoji)
-);
-
--- Read receipts (fast-follow consumer). 0 = never read.
-ALTER TABLE conversation_members ADD COLUMN last_read_at INTEGER NOT NULL DEFAULT 0;

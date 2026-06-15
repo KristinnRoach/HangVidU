@@ -22,11 +22,7 @@ import type {
   ReactionMap,
 } from '../interfaces.js';
 import { ConversationNodeSchema } from '../schema.js';
-import type {
-  ConversationId,
-  ConversationNode,
-  UserId,
-} from '../types.js';
+import type { ConversationId, ConversationNode, UserId } from '../types.js';
 
 // Path: conversations/{conversationId}/messages/{messageId}
 // Legacy wire format: { from, fromName, text, type, sentAt, read, reactions? }
@@ -36,7 +32,7 @@ import type {
 // existing RTDB row shape so feature-flag testing can use current production
 // data. It is not the target canonical persistence format.
 
-const RECENT_MESSAGES_WINDOW = 20;
+const RECENT_MESSAGES_WINDOW = 40;
 
 type RTDBRepositoryOptions = {
   database: Database;
@@ -237,7 +233,9 @@ export function createRTDBMessageRepository({
           typeof storage.key !== 'string' ||
           storage.key.trim() === ''
         ) {
-          throw new Error('file message payload requires valid R2 bucket and key');
+          throw new Error(
+            'file message payload requires valid R2 bucket and key',
+          );
         }
         payload = {
           ...base,

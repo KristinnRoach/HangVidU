@@ -25,7 +25,6 @@ export interface SendMessageInput {
 export interface ConversationMember {
   user_id: string;
   display_name: string | null;
-  role: string;
   joined_at: number;
 }
 
