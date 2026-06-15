@@ -12,28 +12,20 @@ DO binding verified locally):
   upgrade, `ConversationChannel` DO (broadcast-only), shared wire protocol.
   Client reserves the message id; server honors it (optimistic reconcile).
 - Client text + live push: data-client message methods, `src/realtime/`
-  conversation channel, `adapters/d1.ts` (text path), `stores/message-repository.ts`
+  conversation channel, `adapters/d1.ts`, `stores/message-repository.ts`
   bridge, `messaging-runtime.ts` selector. Added `stores -> realtime` boundary edge.
+- **File sub-slice** (decisions resolved: store `bucket` in D1 + wire; full
+  width/height plumb to renderer): `message_attachments.bucket` + width/height
+  carried end-to-end, `ConversationPanel` captures natural dims at upload,
+  `adapters/d1.ts` file `toIncoming`/`toSendInput`, schema + `envelopeToChatMessage`.
+  `workers/files` `authorizeConversation` now queries D1 `conversation_members`
+  (shared D1 binding); `FIREBASE_DATABASE_URL` removed. Image keys `{opaqueId}/{fileId}`.
+- `RTDB_MESSAGES_RETIREMENT.md` written.
 
 TODO (this PR):
-- **File sub-slice** — blocked on two design calls (see "File sub-slice decisions"
-  below): file-message wire mapping (bucket + width/height), upload wiring in
-  `ConversationPanel` to insert a D1 file-message on the opaque id, and
-  `workers/files` `authorizeConversation` repointed from RTDB to a D1
-  `conversation_members` query. `adapters/d1.ts` `toIncoming` currently skips
-  `kind: 'file'` (clearly marked).
-- `RTDB_MESSAGES_RETIREMENT.md` deliverable.
-- Browser e2e (text + push first), then deploy steps.
-
-### File sub-slice decisions (need confirmation before building)
-
-1. **`storage.bucket` is schema-required `min(1)`**, but the wire attachment
-   carries only `r2_key`. Options: (a) add a `bucket` column to `0002` (still
-   local-only, safe to edit) and carry it on the wire; (b) reconstruct
-   client-side from a known constant/env. The files worker owns one bucket.
-2. **`width`/`height` don't exist on `FileMessagePayloadSchema`** (decision #7
-   wants them captured). Plumbing them to the renderer needs a schema +
-   `envelopeToChatMessage` change, not just the DB column already added in 0002.
+- Browser e2e: repoint `.env.development` DATA/FILES URLs to localhost, run
+  `dev:data` + `dev:files` + `dev:local`, two accounts — text + push, then files.
+- Deploy: `migrate:remote` (0002), `deploy:data`, `deploy:files`; prod re-test.
 
 ## Goal
 

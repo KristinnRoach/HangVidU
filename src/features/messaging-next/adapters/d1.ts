@@ -10,9 +10,8 @@
 // may import storage, auth, and realtime) injects a concrete implementation
 // that wires the HTTP client + the live channel.
 //
-// Scope (decision 2026-06-15 #5): text messages + live push. File mapping and
-// the reaction/read methods land with the file + fast-follow work; until then
-// file rows are skipped and the deferred methods are inert.
+// Scope (decision 2026-06-15 #5): text + file messages with live push. The
+// reaction/read methods are inert (deferred to the fast-follow).
 
 import type { IncomingMessage, MessageRepository, ReactionMap } from '../interfaces.js';
 import type { ConversationId, MessageEnvelope, UserId } from '../types.js';
