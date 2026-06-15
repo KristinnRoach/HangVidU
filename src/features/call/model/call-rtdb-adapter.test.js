@@ -123,7 +123,7 @@ describe('CallRTDBAdapter', () => {
       responseType: 'busy',
       by: 'callee-1',
       respondedAt: 123,
-      expiresAt: 456,
+      expiresAt: Date.now() + 60_000,
     };
     mocks.onValue.mockImplementation((_refArg, handler) => {
       handler(createSnapshot(response));
@@ -133,6 +133,27 @@ describe('CallRTDBAdapter', () => {
     adapter.onResponseReceived('callee-1', callback);
 
     expect(callback).toHaveBeenCalledWith(response);
+  });
+
+  it('ignores expired call responses so a stale accept cannot join a room', () => {
+    const callback = vi.fn();
+    const response = {
+      roomId: 'room-1',
+      responseType: 'accepted',
+      by: 'callee-1',
+      respondedAt: 123,
+      expiresAt: Date.now() - 1,
+    };
+    mocks.onValue.mockImplementation((_refArg, handler) => {
+      handler(createSnapshot(response));
+      return vi.fn();
+    });
+
+    adapter.onResponseReceived('callee-1', callback);
+
+    expect(callback).toHaveBeenCalledWith(null);
+    // The caller listens to the callee's node and cannot clear it.
+    expect(mocks.remove).not.toHaveBeenCalled();
   });
 
   it('removes expired incoming call data instead of showing a stale call', () => {
