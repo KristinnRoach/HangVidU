@@ -16,6 +16,7 @@ Peer-to-peer video chat app with text messaging and synced media sharing capabil
 ## Stack
 
 - WebRTC for P2P connection, Firebase for signaling
+- Firebase Functions dependencies are npm-managed; use the root `*:fb:functions` scripts or run `npm` inside `functions/`, not `pnpm` there.
 
 ## Limitations
 

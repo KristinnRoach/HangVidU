@@ -2,6 +2,8 @@
 
 Firebase Functions entrypoint: [index.js](./index.js)
 
+Dependencies in this folder are npm-managed; use root `*:fb:functions` scripts or run `npm` here, not `pnpm`.
+
 Push backend internals live under [push-notifications](./push-notifications/):
 
 - `config.js`: region and Web Push setup
