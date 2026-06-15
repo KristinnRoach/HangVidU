@@ -145,8 +145,13 @@ for (const [convoId, convo] of Object.entries(conversations ?? {})) {
 
     if (m.attachment) {
       const at = m.attachment;
+      // The legacy RTDB key is `conversation-files/<a_b>/<fileId>`, but the
+      // conversation now has an opaque id. Rebuild the key from the resolved
+      // conversation_id so it matches what the files worker authorizes against
+      // (keyBelongsToConversation); copying at.key verbatim 400s every image.
+      const fileId = at.key.split('/').pop();
       lines.push(
-        `INSERT INTO message_attachments (id, message_id, r2_key, bucket, file_name, mime_type, file_size, width, height) SELECT ${s(randomUUID())}, ${s(m.key)}, ${s(at.key)}, ${s(at.bucket)}, ${s(at.fileName)}, ${s(at.mimeType)}, ${n(at.fileSize)}, NULL, NULL WHERE NOT EXISTS (SELECT 1 FROM message_attachments WHERE message_id=${s(m.key)});`,
+        `INSERT INTO message_attachments (id, message_id, r2_key, bucket, file_name, mime_type, file_size, width, height) SELECT ${s(randomUUID())}, msg.id, 'conversation-files/' || msg.conversation_id || ${s('/' + fileId)}, ${s(at.bucket)}, ${s(at.fileName)}, ${s(at.mimeType)}, ${n(at.fileSize)}, NULL, NULL FROM messages msg WHERE msg.id=${s(m.key)} AND NOT EXISTS (SELECT 1 FROM message_attachments WHERE message_id=${s(m.key)});`,
       );
     }
   }

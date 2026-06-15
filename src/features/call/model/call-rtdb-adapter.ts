@@ -108,7 +108,17 @@ export class CallRTDBAdapter {
           return;
         }
         try {
-          callback(parseCallResponse(snapshot.val()));
+          const response = parseCallResponse(snapshot.val());
+          // roomId is now the stable conversationId, so it no longer
+          // disambiguates call attempts — a leftover response carries the same
+          // roomId as a fresh call. Reject expired ones so a stale accept/busy
+          // can't trigger a room join. We only read here (the caller listens to
+          // the callee's node and can't clear it), so no remove().
+          if (response.expiresAt != null && response.expiresAt <= Date.now()) {
+            callback(null);
+            return;
+          }
+          callback(response);
         } catch (error) {
           console.error('Invalid call response data:', error);
           callback(null);
