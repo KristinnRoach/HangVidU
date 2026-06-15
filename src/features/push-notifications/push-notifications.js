@@ -33,6 +33,10 @@ function isIncomingCallType(type) {
   return type === 'incoming_call';
 }
 
+function isQuietPushNonDelivery(response) {
+  return response.payload?.delivered === false;
+}
+
 function buildCallNotificationTag(notificationId, roomId) {
   if (notificationId) {
     return `call_${notificationId}`;
@@ -297,6 +301,18 @@ export class PushNotifications {
         callData: payload,
       });
 
+      if (isQuietPushNonDelivery(response)) {
+        return {
+          ok: false,
+          status: response.status,
+          reason: response.payload.reason,
+          body: response.payload,
+          targetUserId,
+          roomId: payload.roomId,
+          notificationId: payload.notificationId,
+        };
+      }
+
       this.trackNotification(
         buildCallNotificationTag(payload.notificationId, payload.roomId),
         {
@@ -360,6 +376,18 @@ export class PushNotifications {
         targetUserId,
         callData: payload,
       });
+      if (isQuietPushNonDelivery(response)) {
+        return {
+          ok: false,
+          status: response.status,
+          reason: response.payload.reason,
+          body: response.payload,
+          targetUserId,
+          roomId: payload.roomId,
+          notificationId: payload.notificationId,
+        };
+      }
+
       this.trackNotification(
         buildCallNotificationTag(payload.notificationId, payload.roomId),
         {

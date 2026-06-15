@@ -4,6 +4,8 @@ const { sendWebPushToUser } = require('./web-push-delivery');
 
 /**
  * Authenticated HTTP handler for direct call-related push sends.
+ * Missing subscriptions are a normal best-effort non-delivery, not a request
+ * failure: the in-app call invite may still succeed without push delivery.
  */
 async function handleSendCallNotification(req, res) {
   try {
@@ -27,16 +29,18 @@ async function handleSendCallNotification(req, res) {
     );
 
     if (!result.sent) {
-      if (
+      const hasNoUsableSubscriptions =
         result.reason === 'no-subscriptions' ||
-        result.reason === 'no-valid-subscriptions'
-      ) {
-        console.warn(
-          '[Push] No push subscriptions found for user when sending call notification:',
+        result.reason === 'no-valid-subscriptions';
+
+      if (hasNoUsableSubscriptions) {
+        console.info(
+          '[Push] No push subscriptions for user when sending call notification:',
           targetUserId,
         );
-        return res.status(404).json({
-          error: 'No push subscriptions found',
+        return res.json({
+          success: false,
+          delivered: false,
           reason: result.reason,
           totalSubscriptions: result.totalSubscriptions,
           successCount: result.successCount,
@@ -63,6 +67,7 @@ async function handleSendCallNotification(req, res) {
 
     return res.json({
       success: true,
+      delivered: true,
       successCount: result.successCount,
       failureCount: result.failureCount,
       failures: result.failures,

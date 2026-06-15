@@ -264,6 +264,36 @@ describe('PushNotifications', () => {
     );
   });
 
+  it('treats missing call push subscriptions as quiet non-delivery', async () => {
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: false,
+        delivered: false,
+        reason: 'no-subscriptions',
+      }),
+    });
+    await controller.initialize();
+
+    const result = await controller.sendIncomingCall({
+      targetUserId: 'target-user',
+      roomId: 'room-no-push',
+      callerId: 'caller-1',
+      callerName: 'Caller Name',
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: false,
+        status: 200,
+        reason: 'no-subscriptions',
+        targetUserId: 'target-user',
+        roomId: 'room-no-push',
+      }),
+    );
+  });
+
   it('sends missed call notifications with explicit missed_call type', async () => {
     await controller.initialize();
 
@@ -286,6 +316,36 @@ describe('PushNotifications', () => {
       expect.any(String),
       expect.objectContaining({
         body: expect.stringContaining('"type":"missed_call"'),
+      }),
+    );
+  });
+
+  it('treats missing missed-call push subscriptions as quiet non-delivery', async () => {
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: false,
+        delivered: false,
+        reason: 'no-valid-subscriptions',
+      }),
+    });
+    await controller.initialize();
+
+    const result = await controller.sendMissedCall({
+      targetUserId: 'target-user',
+      roomId: 'room-no-missed-push',
+      callerId: 'caller-1',
+      callerName: 'Caller Name',
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: false,
+        status: 200,
+        reason: 'no-valid-subscriptions',
+        targetUserId: 'target-user',
+        roomId: 'room-no-missed-push',
       }),
     );
   });
