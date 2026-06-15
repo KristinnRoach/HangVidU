@@ -203,6 +203,7 @@ export async function setupUpdateHandler() {
     }
 
     const updateSW = registerSW({
+      immediate: true,
       onNeedRefresh() {
         console.info('[PWA] New version available');
         attemptAutoUpdate(updateSW);

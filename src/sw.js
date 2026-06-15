@@ -86,6 +86,7 @@ self.addEventListener('message', (event) => {
 
 self.addEventListener('install', () => {
   console.log('[SW] Service worker installing...');
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
