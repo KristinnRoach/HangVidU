@@ -1,13 +1,15 @@
 import {
   createContext,
+  createEffect,
+  createMemo,
   createSignal,
   onCleanup,
-  onMount,
   useContext,
   type Accessor,
   type ParentProps,
 } from 'solid-js';
 
+import { useAuth } from '../../auth/solid-auth.js';
 import { useP2PContext } from '../../shared/p2p-context.js';
 import { createRoomSignaling } from '../../realtime/index.js';
 import type { CallInvite } from './model/call-schema.js';
@@ -74,7 +76,20 @@ export function CallHandshakeProvider(props: ParentProps) {
     declineIncoming: controller.declineIncoming,
   };
 
-  onMount(() => controller.init());
+  // Re-attach the incoming-call listener whenever the logged-in user changes.
+  // A one-shot init at mount missed the common case where login completes
+  // AFTER mount (the listener never attached → no incoming-call dialog until a
+  // reload). Keying on the uid avoids tearing down an active call on unrelated
+  // auth-state updates (e.g. token refresh) that don't change the user.
+  const auth = useAuth();
+  const activeUid = createMemo(() => auth.user()?.uid ?? null);
+  createEffect(() => {
+    if (activeUid()) {
+      controller.init();
+    } else {
+      controller.cleanup();
+    }
+  });
 
   if (typeof window !== 'undefined') {
     const handleBeforeUnload = () => controller.cleanup();
