@@ -54,6 +54,7 @@ pnpm-debug.log*
 
 # Package manager
 package-lock.json
+!functions/package-lock.json
 .pnpm-store/
 
 # Editor directories and files
