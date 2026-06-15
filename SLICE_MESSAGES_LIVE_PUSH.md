@@ -151,14 +151,22 @@ logic only, adapt to current main:
 ### 1. Schema — `workers/data/migrations/0002_messages.sql`
 
 - `messages` (id TEXT PK uuid, conversation_id FK→conversations ON DELETE CASCADE,
-  sender_id FK→users, kind TEXT 'text'|'file', body TEXT NULL, created_at INTEGER),
-- `message_attachments` (id, message_id FK→messages CASCADE, r2_key, mime, size, name),
-  - Suggestion: add nullable `width`/`height` (natural image px) and capture them at
-    upload. The renderer already reserves layout space when `MessageAttachment.width/height`
-    are present (PR #538) — populating them here prevents scroll/layout shift as images load.
-- `message_reactions` (message_id FK CASCADE, user_id, emoji, PK(message_id,user_id,emoji)),
-- `ALTER TABLE conversation_members ADD COLUMN last_read_at INTEGER NOT NULL DEFAULT 0`,
+  sender_id FK→users, kind TEXT 'text'|'file', body TEXT NULL, created_at INTEGER,
+  CHECK kind<>'text' OR body IS NOT NULL),
+- `message_attachments` (id, message_id FK→messages CASCADE, r2_key, bucket, file_name,
+  mime_type, file_size INTEGER CHECK >0, width/height INTEGER nullable CHECK NULL-or->0).
+  width/height are natural image px captured at upload; the renderer reserves layout space
+  when present (PR #538), preventing scroll/layout shift as images load.
 - Indexes: `messages(conversation_id, created_at)`, `message_attachments(message_id)`.
+- **Schema scope (revised 2026-06-15):** `message_reactions` and `last_read_at` are NOT
+  pre-provisioned — adding a table/column later is a cheap non-destructive migration, so
+  they ship with the reactions/read fast-follow that uses them. CHECK constraints DO go in
+  now, at table creation, because retrofitting a constraint needs a full table rebuild.
+  Reverses the earlier "pre-ship so the fast-follow needs no migration" decision.
+- **`conversation_members`:** the vestigial `role` (0004) and `status` (0003) columns are
+  dropped — both were write-only ('member'/'active', never read). Membership is delete-based
+  (row exists iff member); add a status/role model back when a leave/remove or group-perms
+  flow needs it.
 - Apply: `pnpm -C workers/data migrate:local`, later `migrate:remote` (remote D1 always
   enforces FKs; `PRAGMA foreign_keys = ON` is a no-op there).
 
