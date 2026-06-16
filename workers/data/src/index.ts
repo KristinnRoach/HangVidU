@@ -27,6 +27,8 @@ export interface Env {
   ALLOWED_ORIGINS: string;
 }
 
+const MAX_ATTACHMENT_FILE_NAME_LENGTH = 180;
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const origin = request.headers.get('Origin');
@@ -237,11 +239,15 @@ function parseSendBody(payload: Record<string, unknown> | null): SendBody {
   }
   if (kind === 'file') {
     const a = payload?.attachment as Record<string, unknown> | undefined;
+    const fileName =
+      typeof a?.fileName === 'string'
+        ? normalizeAttachmentFileName(a.fileName)
+        : null;
     if (
       !a ||
       typeof a.r2Key !== 'string' ||
       typeof a.bucket !== 'string' ||
-      typeof a.fileName !== 'string' ||
+      fileName === null ||
       typeof a.mimeType !== 'string' ||
       typeof a.fileSize !== 'number' ||
       !Number.isFinite(a.fileSize) ||
@@ -259,7 +265,7 @@ function parseSendBody(payload: Record<string, unknown> | null): SendBody {
       attachment: {
         r2Key: a.r2Key,
         bucket: a.bucket,
-        fileName: a.fileName,
+        fileName,
         mimeType: a.mimeType,
         fileSize: a.fileSize,
         width: posOrNull(a.width),
@@ -268,6 +274,14 @@ function parseSendBody(payload: Record<string, unknown> | null): SendBody {
     };
   }
   return { error: "kind must be 'text' or 'file'" };
+}
+
+function normalizeAttachmentFileName(fileName: string): string | null {
+  const normalized = fileName.replace(/[\x00-\x1f\x7f/\\]/g, '_').trim();
+  if (!normalized || normalized.length > MAX_ATTACHMENT_FILE_NAME_LENGTH) {
+    return null;
+  }
+  return normalized;
 }
 
 function isAllowedOrigin(origin: string | null, env: Env): boolean {

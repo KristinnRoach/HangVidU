@@ -10,6 +10,12 @@
   font-size: 1em;
 }
 
+.panel[dragover] {
+  outline: 2px dashed #007aff;
+  outline-offset: -6px;
+  background-color: rgba(0, 122, 255, 0.06);
+}
+
 .messagesEmpty {
   display: flex;
   flex: 1;
@@ -114,12 +120,16 @@
   align-items: baseline;
   gap: 0.35rem;
   min-width: 0;
+  max-width: 100%;
   font-size: 0.9em;
 }
 
 .fileMessageName {
+  flex: 1 1 auto;
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: inherit;
   text-decoration: underline;
 }
