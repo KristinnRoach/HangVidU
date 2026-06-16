@@ -14,6 +14,7 @@ import { getUserName } from '../../auth/index.js';
 
 import { useI18n } from '../../shared/i18n';
 import { LoadBoundary } from '../../components/app/LoadBoundary';
+import { fileDrop } from '@shared/utils/ui-utils/fileDrop/onFileDrop.solid.js';
 import { showImagePreview } from '../../components/base-legacy/imagePreview.js';
 import { compressImage } from '@lib/media/image-compress.js';
 import { downloadUrl } from '@lib/utils/download-url.js';
@@ -44,7 +45,8 @@ import styles from './ConversationPanel.module.css';
 const runtime = createMessagingRuntime();
 const DRAFT_SAVE_DELAY_MS = 250;
 const TIMESTAMP_THRESHOLD_MS = 5 * 60 * 1000;
-const MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024;
+const MAX_R2_FILE_UPLOAD_BYTES = 5 * 1024 * 1024;
+const DISPLAY_ATTACHMENT_FILE_NAME_LENGTH = 36;
 const IMAGE_COMPRESSION_THRESHOLD_BYTES = Math.round(1.5 * 1024 * 1024);
 
 type TimestampFormatters = {
@@ -64,6 +66,27 @@ function isR2FileAttachment(attachment: MessageAttachment) {
 
 function isImageFile(file: File) {
   return file.type.trim().toLowerCase().startsWith('image/');
+}
+
+// Strip control chars and path separators for a safe optimistic display +
+// download name. Length is the worker's concern (it truncates authoritatively).
+function attachmentFileName(file: File) {
+  return file.name.replace(/[\x00-\x1f\x7f/\\]/g, '_').trim() || 'attachment';
+}
+
+function displayAttachmentFileName(fileName: string) {
+  if (fileName.length <= DISPLAY_ATTACHMENT_FILE_NAME_LENGTH) return fileName;
+
+  const extension = shortFileExtension(fileName);
+  const stemLength = DISPLAY_ATTACHMENT_FILE_NAME_LENGTH - extension.length - 3;
+  return `${fileName.slice(0, Math.max(1, stemLength))}...${extension}`;
+}
+
+function shortFileExtension(fileName: string) {
+  const extensionStart = fileName.lastIndexOf('.');
+  return extensionStart > 0 && fileName.length - extensionStart <= 16
+    ? fileName.slice(extensionStart)
+    : '';
 }
 
 /**
@@ -526,10 +549,30 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     inputTextAreaEl?.focus();
   }
 
-  async function onFileInput(e: Event & { currentTarget: HTMLInputElement }) {
+  function onFileInput(e: Event & { currentTarget: HTMLInputElement }) {
     const file = e.currentTarget.files?.[0];
     e.currentTarget.value = '';
+    void handleFile(file);
+  }
+
+  // Option A: fan out a multi-file drop into one message per file. Sequential
+  // so optimistic messages stay ordered and the shared sending/preparing guards
+  // in handleFile don't trip each other. The text draft becomes a caption on the
+  // first message only (send() clears it), matching the single-file behavior.
+  // TODO: switch to a single message carrying a MessageAttachment[] (Option B).
+  async function handleFiles(files: File[]) {
+    for (const file of files) {
+      await handleFile(file);
+    }
+  }
+
+  async function handleFile(file: File | undefined) {
     if (!file || state.sending || filePreparing()) return;
+    if (file.size === 0) {
+      window.alert('Choose a non-empty file.');
+      inputTextAreaEl?.focus();
+      return;
+    }
 
     const conversationId = state.conversationId;
     if (!conversationId) return;
@@ -565,7 +608,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         if (compressed) attachmentFile = compressed;
       }
 
-      if (attachmentFile.size > MAX_IMAGE_UPLOAD_BYTES) {
+      if (attachmentFile.size > MAX_R2_FILE_UPLOAD_BYTES) {
         window.alert('Choose a smaller file.');
         return;
       }
@@ -586,8 +629,9 @@ export default function ConversationPanel(props: ConversationPanelProps) {
       clearPersistedDraftIfNeeded();
       const sent = await send({
         type: 'file',
-        fileName: attachmentFile.name || file.name || 'attachment',
-        mimeType: attachmentFile.type || file.type || 'application/octet-stream',
+        fileName: attachmentFileName(attachmentFile),
+        mimeType:
+          attachmentFile.type || file.type || 'application/octet-stream',
         fileSize: attachmentFile.size,
         width: dimensions?.width,
         height: dimensions?.height,
@@ -626,7 +670,12 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   }
 
   return (
-    <div class={styles.panel}>
+    <div
+      class={styles.panel}
+      use:fileDrop={{
+        onDrop: (files) => void handleFiles(files),
+      }}
+    >
       <Show
         when={state.conversationId}
         fallback={<div class={styles.empty}>Conversation not found</div>}
@@ -774,6 +823,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                                       href={attachmentUrl() ?? '#'}
                                       download={file.fileName}
                                       class={styles.fileMessageName}
+                                      title={file.fileName}
                                       onClick={(event) => {
                                         event.preventDefault();
                                         void downloadAttachment().catch(
@@ -786,7 +836,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                                         );
                                       }}
                                     >
-                                      {file.fileName}
+                                      {displayAttachmentFileName(file.fileName)}
                                     </a>
                                     <span class={styles.fileMessageSize}>
                                       ({formatFileSize(file.fileSize)})
