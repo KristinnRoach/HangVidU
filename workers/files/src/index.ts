@@ -86,10 +86,10 @@ function json(
   });
 }
 
-function isImageMimeType(value: string | null): value is string {
+function isSupportedFileMimeType(value: string | null): value is string {
   if (!value) return false;
   const baseType = value.split(';')[0].trim().toLowerCase();
-  return baseType.startsWith('image/');
+  return /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(baseType);
 }
 
 function objectKey(conversationId: string, objectId: string) {
@@ -238,11 +238,11 @@ async function handleUpload(
   identity: Identity,
 ) {
   const mimeType = request.headers.get('Content-Type');
-  if (!isImageMimeType(mimeType)) {
+  if (!isSupportedFileMimeType(mimeType)) {
     return json(
       request,
       env,
-      { error: 'unsupported image type' },
+      { error: 'unsupported file type' },
       { status: 415 },
     );
   }
@@ -252,7 +252,7 @@ async function handleUpload(
     return json(
       request,
       env,
-      { error: 'image too large or empty' },
+      { error: 'file too large or empty' },
       { status: 413 },
     );
   }

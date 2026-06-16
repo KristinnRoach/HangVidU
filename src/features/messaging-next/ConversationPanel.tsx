@@ -9,7 +9,7 @@ import {
   on,
   onCleanup,
 } from 'solid-js';
-import { ImagePlus } from 'lucide-solid';
+import { Paperclip } from 'lucide-solid';
 import { getUserName } from '../../auth/index.js';
 
 import { useI18n } from '../../shared/i18n';
@@ -22,7 +22,7 @@ import { keepVirtualKeyboardOpenOnTap } from '@shared/utils/ui-utils/keepVirtual
 import {
   createConversationFileObjectUrl,
   deleteConversationFile,
-  uploadConversationImage,
+  uploadConversationFile,
 } from '../../stores/filesStore.js';
 
 import { createMessagingRuntime } from './messaging-runtime.js';
@@ -58,8 +58,12 @@ function isImageAttachment(attachment: MessageAttachment) {
   return attachment.mimeType.trim().toLowerCase().startsWith('image/');
 }
 
-function isR2ImageAttachment(attachment: MessageAttachment) {
-  return isImageAttachment(attachment) && attachment.storage.provider === 'r2';
+function isR2FileAttachment(attachment: MessageAttachment) {
+  return attachment.storage.provider === 'r2';
+}
+
+function isImageFile(file: File) {
+  return file.type.trim().toLowerCase().startsWith('image/');
 }
 
 /**
@@ -165,7 +169,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
   let messagesEl: HTMLDivElement | undefined;
   let inputTextAreaEl: HTMLTextAreaElement | undefined;
-  let imageInputEl: HTMLInputElement | undefined;
+  let fileInputEl: HTMLInputElement | undefined;
   let sendButtonCleanup: (() => void) | undefined;
   let suppressScroll = false;
   // True once the user scrolls away from the bottom to read earlier messages.
@@ -279,7 +283,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   const [historyLoading, setHistoryLoading] = createSignal(false);
   const [historyError, setHistoryError] = createSignal<unknown>(null);
   const [historyReady, setHistoryReady] = createSignal(false);
-  const [imagePreparing, setImagePreparing] = createSignal(false);
+  const [filePreparing, setFilePreparing] = createSignal(false);
   const [r2AttachmentUrls, setR2AttachmentUrls] = createSignal<
     Record<string, string>
   >({});
@@ -300,7 +304,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
     for (const msg of state.messages) {
       const attachment = msg.attachment;
-      if (!conversationId || !attachment || !isR2ImageAttachment(attachment)) {
+      if (!conversationId || !attachment || !isR2FileAttachment(attachment)) {
         continue;
       }
 
@@ -323,7 +327,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
               (message) =>
                 message.id === msg.id &&
                 message.attachment &&
-                isR2ImageAttachment(message.attachment),
+                isR2FileAttachment(message.attachment),
             );
 
           if (!stillNeeded) {
@@ -507,7 +511,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
   function onSubmit(e: SubmitEvent) {
     e.preventDefault();
-    if (state.sending || imagePreparing()) return;
+    if (state.sending || filePreparing()) return;
 
     clearPersistedDraftIfNeeded();
     void send();
@@ -516,23 +520,17 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     inputTextAreaEl?.focus();
   }
 
-  async function onImageInput(e: Event & { currentTarget: HTMLInputElement }) {
+  async function onFileInput(e: Event & { currentTarget: HTMLInputElement }) {
     const file = e.currentTarget.files?.[0];
     e.currentTarget.value = '';
-    if (!file || state.sending || imagePreparing()) return;
+    if (!file || state.sending || filePreparing()) return;
 
     const conversationId = state.conversationId;
     if (!conversationId) return;
     const uploadConversationId = conversationId;
 
-    const mimeType = file.type.trim().toLowerCase();
-    if (!mimeType.startsWith('image/')) {
-      window.alert('Choose an image file.');
-      return;
-    }
-
     let uploadedStorage:
-      | Awaited<ReturnType<typeof uploadConversationImage>>
+      | Awaited<ReturnType<typeof uploadConversationFile>>
       | undefined;
     function cleanupUploadedImage() {
       if (!uploadedStorage) return;
@@ -547,23 +545,32 @@ export default function ConversationPanel(props: ConversationPanelProps) {
       );
     }
 
-    setImagePreparing(true);
+    setFilePreparing(true);
     try {
-      let image = file;
-      if (file.size > IMAGE_COMPRESSION_THRESHOLD_BYTES) {
+      let attachmentFile = file;
+      const shouldReadImageMetadata = isImageFile(file);
+      if (
+        shouldReadImageMetadata &&
+        file.size > IMAGE_COMPRESSION_THRESHOLD_BYTES
+      ) {
         const compressed = await compressImage(file, {
           maxBytes: IMAGE_COMPRESSION_THRESHOLD_BYTES,
         });
-        if (compressed) image = compressed;
+        if (compressed) attachmentFile = compressed;
       }
 
-      if (image.size > MAX_IMAGE_UPLOAD_BYTES) {
-        window.alert('Choose a smaller image.');
+      if (attachmentFile.size > MAX_IMAGE_UPLOAD_BYTES) {
+        window.alert('Choose a smaller file.');
         return;
       }
 
-      const dimensions = await readImageDimensions(image);
-      uploadedStorage = await uploadConversationImage(conversationId, image);
+      const dimensions = shouldReadImageMetadata
+        ? await readImageDimensions(attachmentFile)
+        : undefined;
+      uploadedStorage = await uploadConversationFile(
+        conversationId,
+        attachmentFile,
+      );
       if (state.conversationId !== conversationId) {
         cleanupUploadedImage();
         return;
@@ -573,9 +580,9 @@ export default function ConversationPanel(props: ConversationPanelProps) {
       clearPersistedDraftIfNeeded();
       const sent = await send({
         type: 'file',
-        fileName: image.name || file.name || 'image',
-        mimeType: image.type || file.type || 'image/*',
-        fileSize: image.size,
+        fileName: attachmentFile.name || file.name || 'attachment',
+        mimeType: attachmentFile.type || file.type || 'application/octet-stream',
+        fileSize: attachmentFile.size,
         width: dimensions?.width,
         height: dimensions?.height,
         storage: uploadedStorage,
@@ -583,14 +590,14 @@ export default function ConversationPanel(props: ConversationPanelProps) {
       });
       if (!sent) {
         cleanupUploadedImage();
-        window.alert('Image send failed.');
+        window.alert('File send failed.');
       }
     } catch (error) {
       cleanupUploadedImage();
-      console.warn('[conversation] failed to send image attachment', error);
-      window.alert('Image send failed.');
+      console.warn('[conversation] failed to send file attachment', error);
+      window.alert('File send failed.');
     } finally {
-      setImagePreparing(false);
+      setFilePreparing(false);
       inputTextAreaEl?.focus();
     }
   }
@@ -607,7 +614,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
       return;
 
     e.preventDefault();
-    if (state.sending || imagePreparing()) return;
+    if (state.sending || filePreparing()) return;
 
     e.currentTarget.form?.requestSubmit();
   }
@@ -789,21 +796,20 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         <form class={styles.form} onSubmit={onSubmit}>
           <input
             title='Attach file'
-            ref={imageInputEl}
+            ref={fileInputEl}
             class={styles.fileInput}
             type='file'
-            accept='image/*'
-            onChange={onImageInput}
+            onChange={onFileInput}
           />
           <button
             class={styles.attach}
             type='button'
-            aria-label='Attach image'
-            title='Attach image'
-            disabled={state.sending || imagePreparing()}
-            onClick={() => imageInputEl?.click()}
+            aria-label='Attach file'
+            title='Attach file'
+            disabled={state.sending || filePreparing()}
+            onClick={() => fileInputEl?.click()}
           >
-            <ImagePlus size={20} aria-hidden='true' />
+            <Paperclip size={20} aria-hidden='true' />
           </button>
           <textarea
             autofocus
@@ -822,7 +828,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
             ref={attachSendButton}
             class={styles.send}
             type='submit'
-            disabled={!state.draft.trim() || state.sending || imagePreparing()}
+            disabled={!state.draft.trim() || state.sending || filePreparing()}
           >
             Send
           </button>

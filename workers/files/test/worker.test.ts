@@ -306,6 +306,19 @@ describe('files worker routing + auth', () => {
     expect(res.status).toBe(201);
   });
 
+  it('accepts small non-image file uploads', async () => {
+    const token = await signToken(validClaims());
+    await allowMember('user-a_user-b', 'user-a');
+    const res = await request('/conversations/user-a_user-b/files/images', {
+      method: 'POST',
+      token,
+      contentType: 'application/pdf',
+      body: '%PDF-1.7',
+    });
+
+    expect(res.status).toBe(201);
+  });
+
   it('rejects oversized uploads before storing', async () => {
     const token = await signToken(validClaims());
     await allowMember('user-a_user-b', 'user-a');
@@ -319,13 +332,13 @@ describe('files worker routing + auth', () => {
     expect(res.status).toBe(413);
   });
 
-  it('rejects non-image uploads', async () => {
+  it('rejects uploads without a supported MIME type', async () => {
     const token = await signToken(validClaims());
     await allowMember('user-a_user-b', 'user-a');
     const res = await request('/conversations/user-a_user-b/files/images', {
       method: 'POST',
       token,
-      contentType: 'text/plain',
+      contentType: 'not-a-mime',
       body: 'image',
     });
 
