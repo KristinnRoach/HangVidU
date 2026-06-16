@@ -44,7 +44,8 @@ import styles from './ConversationPanel.module.css';
 const runtime = createMessagingRuntime();
 const DRAFT_SAVE_DELAY_MS = 250;
 const TIMESTAMP_THRESHOLD_MS = 5 * 60 * 1000;
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024;
+const IMAGE_COMPRESSION_THRESHOLD_BYTES = Math.round(1.5 * 1024 * 1024);
 
 type TimestampFormatters = {
   time: Intl.DateTimeFormat;
@@ -525,8 +526,8 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     const uploadConversationId = conversationId;
 
     const mimeType = file.type.trim().toLowerCase();
-    if (!mimeType.startsWith('image/') || mimeType === 'image/svg+xml') {
-      window.alert('Choose a PNG, JPEG, GIF, WebP, or similar image.');
+    if (!mimeType.startsWith('image/')) {
+      window.alert('Choose an image file.');
       return;
     }
 
@@ -549,18 +550,14 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     setImagePreparing(true);
     try {
       let image = file;
-      if (file.size > MAX_IMAGE_BYTES) {
+      if (file.size > IMAGE_COMPRESSION_THRESHOLD_BYTES) {
         const compressed = await compressImage(file, {
-          maxBytes: MAX_IMAGE_BYTES,
+          maxBytes: IMAGE_COMPRESSION_THRESHOLD_BYTES,
         });
-        if (!compressed) {
-          window.alert('Choose a smaller image.');
-          return;
-        }
-        image = compressed;
+        if (compressed) image = compressed;
       }
 
-      if (image.size > MAX_IMAGE_BYTES) {
+      if (image.size > MAX_IMAGE_UPLOAD_BYTES) {
         window.alert('Choose a smaller image.');
         return;
       }

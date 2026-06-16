@@ -293,6 +293,19 @@ describe('files worker routing + auth', () => {
     expect(upload.status).toBe(201);
   });
 
+  it('accepts svg image uploads', async () => {
+    const token = await signToken(validClaims());
+    await allowMember('user-a_user-b', 'user-a');
+    const res = await request('/conversations/user-a_user-b/files/images', {
+      method: 'POST',
+      token,
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1" />',
+    });
+
+    expect(res.status).toBe(201);
+  });
+
   it('rejects oversized uploads before storing', async () => {
     const token = await signToken(validClaims());
     await allowMember('user-a_user-b', 'user-a');

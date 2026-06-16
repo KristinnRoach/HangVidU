@@ -89,7 +89,7 @@ function json(
 function isImageMimeType(value: string | null): value is string {
   if (!value) return false;
   const baseType = value.split(';')[0].trim().toLowerCase();
-  return baseType.startsWith('image/') && baseType !== 'image/svg+xml';
+  return baseType.startsWith('image/');
 }
 
 function objectKey(conversationId: string, objectId: string) {
