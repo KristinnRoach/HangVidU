@@ -129,12 +129,13 @@ export function createDoRoomSignaling({
       return ack;
     },
 
-    leave(peerId) {
+    // Leave is socket-scoped — the worker clears presence for this connection
+    // regardless of peerId, so the arg is unused. Always reset local join state
+    // so a later reconnect doesn't re-assert presence we've already left.
+    leave() {
       socket.send({ t: 'leave' });
-      if (joinedPeerId === peerId) {
-        joinedPeerId = null;
-        localData = undefined;
-      }
+      joinedPeerId = null;
+      localData = undefined;
     },
 
     // Update our own presence data mid-session (e.g. mute toggle). The worker
