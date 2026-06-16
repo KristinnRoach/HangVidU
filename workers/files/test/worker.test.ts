@@ -204,6 +204,13 @@ describe('files worker routing + auth', () => {
 
     expect(download.status).toBe(200);
     expect(download.headers.get('Content-Type')).toBe('image/png');
+    // Hardening for user-supplied files (e.g. SVG): scripts can't execute and
+    // the type can't be sniffed even if the URL is opened top-level.
+    expect(download.headers.get('Content-Security-Policy')).toBe(
+      "default-src 'none'; sandbox",
+    );
+    expect(download.headers.get('X-Content-Type-Options')).toBe('nosniff');
+    expect(download.headers.get('Content-Disposition')).toBe('attachment');
     expect(new Uint8Array(await download.arrayBuffer())).toEqual(
       new Uint8Array([1, 2, 3]),
     );

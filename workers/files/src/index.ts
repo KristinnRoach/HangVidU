@@ -292,6 +292,12 @@ async function handleDownload(request: Request, env: Env, key: string) {
   );
   headers.set('Content-Length', String(object.size));
   headers.set('ETag', object.etag);
+  // Defense-in-depth for user-supplied files (e.g. SVG): neutralize any
+  // embedded scripts and prevent inline rendering if the URL is ever opened
+  // top-level. Clients fetch this as a blob, so these never hinder normal use.
+  headers.set('Content-Security-Policy', "default-src 'none'; sandbox");
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('Content-Disposition', 'attachment');
   return response(request, env, object.body, { headers });
 }
 

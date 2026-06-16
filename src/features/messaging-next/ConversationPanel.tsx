@@ -538,11 +538,11 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     let uploadedStorage:
       | Awaited<ReturnType<typeof uploadConversationFile>>
       | undefined;
-    function cleanupUploadedImage() {
+    function cleanupUploadedFile() {
       if (!uploadedStorage) return;
       void deleteConversationFile(uploadConversationId, uploadedStorage).catch(
         (error) => {
-          console.warn('[conversation] failed to clean up orphaned image', {
+          console.warn('[conversation] failed to clean up orphaned file', {
             conversationId: uploadConversationId,
             key: uploadedStorage?.key,
             error,
@@ -578,7 +578,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         attachmentFile,
       );
       if (state.conversationId !== conversationId) {
-        cleanupUploadedImage();
+        cleanupUploadedFile();
         return;
       }
 
@@ -595,11 +595,11 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         text: caption || undefined,
       });
       if (!sent) {
-        cleanupUploadedImage();
+        cleanupUploadedFile();
         window.alert('File send failed.');
       }
     } catch (error) {
-      cleanupUploadedImage();
+      cleanupUploadedFile();
       console.warn('[conversation] failed to send file attachment', error);
       window.alert('File send failed.');
     } finally {
