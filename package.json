@@ -15,6 +15,7 @@
     "deploy:data": "pnpm -C workers/data run deploy",
     "test:do": "pnpm -C workers/signaling run test",
     "test:files": "pnpm -C workers/files run test",
+    "test:data": "pnpm -C workers/data run test",
     "lint:files": "pnpm -C workers/files run lint",
     "debug:edge": "zsh scripts/debug/launch-pwa-edge.sh",
     "worktree": "scripts/git-worktree.sh",

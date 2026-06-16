@@ -1,0 +1,139 @@
+import { env, SELF } from 'cloudflare:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { resolveOrCreateDirect } from '../src/repo';
+
+// End-to-end coverage of the security seam: the Bearer-auth + membership guard
+// on a real route (GET /conversations/:id/messages), exercised through the full
+// worker via SELF.fetch with a mocked JWKS and locally signed RS256 tokens. This
+// is the chain we most don't want to break silently; the status codes are
+// deliberate contracts (404 — not 403 — so non-members can't probe which ids
+// exist). The JWKS-mock + signing harness mirrors workers/files/test.
+
+const PROJECT_ID = (env as { FIREBASE_PROJECT_ID: string }).FIREBASE_PROJECT_ID;
+const KID = 'test-key-1';
+const ORIGIN = 'https://hangvidu.com';
+const JWKS_URL =
+  'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
+
+let privateKey: CryptoKey;
+const originalFetch = globalThis.fetch;
+
+function b64urlFromString(s: string): string {
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function b64urlFromBytes(buf: ArrayBuffer): string {
+  let binary = '';
+  const bytes = new Uint8Array(buf);
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return b64urlFromString(binary);
+}
+
+function validClaims(sub = 'user-a'): Record<string, unknown> {
+  const now = Math.floor(Date.now() / 1000);
+  return {
+    aud: PROJECT_ID,
+    iss: `https://securetoken.google.com/${PROJECT_ID}`,
+    iat: now - 10,
+    exp: now + 3600,
+    sub,
+  };
+}
+
+async function signToken(claims: Record<string, unknown>): Promise<string> {
+  const headerB64 = b64urlFromString(JSON.stringify({ alg: 'RS256', kid: KID }));
+  const payloadB64 = b64urlFromString(JSON.stringify(claims));
+  const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', privateKey, data);
+  return `${headerB64}.${payloadB64}.${b64urlFromBytes(sig)}`;
+}
+
+function messagesRequest(conversationId: string, token?: string) {
+  const headers: Record<string, string> = { Origin: ORIGIN };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return SELF.fetch(
+    `https://data/conversations/${encodeURIComponent(conversationId)}/messages`,
+    { headers },
+  );
+}
+
+beforeAll(async () => {
+  const pair = await crypto.subtle.generateKey(
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: 'SHA-256',
+    },
+    true,
+    ['sign', 'verify'],
+  );
+  privateKey = pair.privateKey;
+  const publicJwk = await crypto.subtle.exportKey('jwk', pair.publicKey);
+  const jwks = { keys: [{ ...publicJwk, kid: KID, alg: 'RS256', use: 'sig' }] };
+
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url =
+      typeof input === 'string'
+        ? input
+        : input instanceof Request
+          ? input.url
+          : input.toString();
+    if (url === JWKS_URL) {
+      return new Response(JSON.stringify(jwks), {
+        status: 200,
+        headers: { 'cache-control': 'max-age=3600' },
+      });
+    }
+    return originalFetch(input, init);
+  }) as typeof fetch;
+});
+
+afterAll(() => {
+  globalThis.fetch = originalFetch;
+});
+
+beforeEach(async () => {
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM message_attachments'),
+    env.DB.prepare('DELETE FROM messages'),
+    env.DB.prepare('DELETE FROM conversation_members'),
+    env.DB.prepare('DELETE FROM conversations'),
+    env.DB.prepare('DELETE FROM users'),
+  ]);
+});
+
+describe('auth + membership guard on GET /conversations/:id/messages', () => {
+  it('401s when no bearer token is provided', async () => {
+    const res = await messagesRequest('any-id');
+    expect(res.status).toBe(401);
+  });
+
+  it('401s an expired token', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const token = await signToken({ ...validClaims(), exp: now - 1 });
+    const res = await messagesRequest('any-id', token);
+    expect(res.status).toBe(401);
+  });
+
+  it('401s a token for the wrong Firebase project (aud mismatch)', async () => {
+    const token = await signToken({ ...validClaims(), aud: 'someone-else' });
+    const res = await messagesRequest('any-id', token);
+    expect(res.status).toBe(401);
+  });
+
+  it('404s a valid token for a non-member (no id probing)', async () => {
+    const convoId = await resolveOrCreateDirect(env.DB, 'user-a', 'user-b', 1000);
+    const token = await signToken(validClaims('user-c'));
+    const res = await messagesRequest(convoId, token);
+    expect(res.status).toBe(404);
+  });
+
+  it('200s a valid token for a member (positive control)', async () => {
+    const convoId = await resolveOrCreateDirect(env.DB, 'user-a', 'user-b', 1000);
+    const token = await signToken(validClaims('user-a'));
+    const res = await messagesRequest(convoId, token);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ messages: [] });
+  });
+});
