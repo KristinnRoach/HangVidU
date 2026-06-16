@@ -14,11 +14,11 @@ import { getUserName } from '../../auth/index.js';
 
 import { useI18n } from '../../shared/i18n';
 import { LoadBoundary } from '../../components/app/LoadBoundary';
+import { fileDrop } from '@shared/utils/ui-utils/fileDrop/onFileDrop.solid.js';
 import { showImagePreview } from '../../components/base-legacy/imagePreview.js';
 import { compressImage } from '@lib/media/image-compress.js';
 import { downloadUrl } from '@lib/utils/download-url.js';
 import { isIOSOrAndroidDevice } from '@lib/utils/detect-device.js';
-import { fileDrop } from '@shared/utils/ui-utils/fileDrop/onFileDrop.solid.js';
 import { keepVirtualKeyboardOpenOnTap } from '@shared/utils/ui-utils/keepVirtualKeyboardOpenOnTap.js';
 import {
   createConversationFileObjectUrl,
@@ -46,7 +46,6 @@ const runtime = createMessagingRuntime();
 const DRAFT_SAVE_DELAY_MS = 250;
 const TIMESTAMP_THRESHOLD_MS = 5 * 60 * 1000;
 const MAX_R2_FILE_UPLOAD_BYTES = 5 * 1024 * 1024;
-const MAX_ATTACHMENT_FILE_NAME_LENGTH = 180;
 const DISPLAY_ATTACHMENT_FILE_NAME_LENGTH = 36;
 const IMAGE_COMPRESSION_THRESHOLD_BYTES = Math.round(1.5 * 1024 * 1024);
 
@@ -69,22 +68,17 @@ function isImageFile(file: File) {
   return file.type.trim().toLowerCase().startsWith('image/');
 }
 
+// Strip control chars and path separators for a safe optimistic display +
+// download name. Length is the worker's concern (it truncates authoritatively).
 function attachmentFileName(file: File) {
-  const name =
-    file.name.replace(/[\x00-\x1f\x7f/\\]/g, '_').trim() || 'attachment';
-  if (name.length <= MAX_ATTACHMENT_FILE_NAME_LENGTH) return name;
-
-  const extension = shortFileExtension(name);
-  const stemLength = MAX_ATTACHMENT_FILE_NAME_LENGTH - extension.length;
-  return `${name.slice(0, stemLength)}${extension}`;
+  return file.name.replace(/[\x00-\x1f\x7f/\\]/g, '_').trim() || 'attachment';
 }
 
 function displayAttachmentFileName(fileName: string) {
   if (fileName.length <= DISPLAY_ATTACHMENT_FILE_NAME_LENGTH) return fileName;
 
   const extension = shortFileExtension(fileName);
-  const stemLength =
-    DISPLAY_ATTACHMENT_FILE_NAME_LENGTH - extension.length - 3;
+  const stemLength = DISPLAY_ATTACHMENT_FILE_NAME_LENGTH - extension.length - 3;
   return `${fileName.slice(0, Math.max(1, stemLength))}...${extension}`;
 }
 
@@ -561,6 +555,17 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     void handleFile(file);
   }
 
+  // Option A: fan out a multi-file drop into one message per file. Sequential
+  // so optimistic messages stay ordered and the shared sending/preparing guards
+  // in handleFile don't trip each other. The text draft becomes a caption on the
+  // first message only (send() clears it), matching the single-file behavior.
+  // TODO: switch to a single message carrying a MessageAttachment[] (Option B).
+  async function handleFiles(files: File[]) {
+    for (const file of files) {
+      await handleFile(file);
+    }
+  }
+
   async function handleFile(file: File | undefined) {
     if (!file || state.sending || filePreparing()) return;
     if (file.size === 0) {
@@ -668,9 +673,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     <div
       class={styles.panel}
       use:fileDrop={{
-        // Quick path: one file per message. Extra dropped files are ignored
-        // until multi-attachment messages land (see follow-up options).
-        onDrop: (files) => void handleFile(files[0]),
+        onDrop: (files) => void handleFiles(files),
       }}
     >
       <Show

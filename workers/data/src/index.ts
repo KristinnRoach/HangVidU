@@ -276,12 +276,13 @@ function parseSendBody(payload: Record<string, unknown> | null): SendBody {
   return { error: "kind must be 'text' or 'file'" };
 }
 
+// Authoritative filename sanitization: strip control chars and path separators,
+// reject empty names, and truncate over-long ones (rather than reject) so a long
+// filename degrades gracefully instead of failing the send.
 function normalizeAttachmentFileName(fileName: string): string | null {
   const normalized = fileName.replace(/[\x00-\x1f\x7f/\\]/g, '_').trim();
-  if (!normalized || normalized.length > MAX_ATTACHMENT_FILE_NAME_LENGTH) {
-    return null;
-  }
-  return normalized;
+  if (!normalized) return null;
+  return normalized.slice(0, MAX_ATTACHMENT_FILE_NAME_LENGTH);
 }
 
 function isAllowedOrigin(origin: string | null, env: Env): boolean {
