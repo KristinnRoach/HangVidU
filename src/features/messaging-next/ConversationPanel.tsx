@@ -304,7 +304,12 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
     for (const msg of state.messages) {
       const attachment = msg.attachment;
-      if (!conversationId || !attachment || !isR2FileAttachment(attachment)) {
+      if (
+        !conversationId ||
+        !attachment ||
+        !isR2FileAttachment(attachment) ||
+        !isImageAttachment(attachment)
+      ) {
         continue;
       }
 
@@ -327,7 +332,8 @@ export default function ConversationPanel(props: ConversationPanelProps) {
               (message) =>
                 message.id === msg.id &&
                 message.attachment &&
-                isR2FileAttachment(message.attachment),
+                isR2FileAttachment(message.attachment) &&
+                isImageAttachment(message.attachment),
             );
 
           if (!stillNeeded) {
@@ -706,14 +712,31 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                                   isImageAttachment(file)
                                 );
                               };
-                              const canDownload = () => {
-                                const url = attachmentUrl();
-                                return Boolean(url) && url?.startsWith('blob:');
-                              };
                               function openPreview(url: string) {
                                 showImagePreview(url, file.fileName, null, {
                                   revokeOnClose: false,
                                 });
+                              }
+                              async function downloadAttachment() {
+                                const url = attachmentUrl();
+                                if (url?.startsWith('blob:')) {
+                                  await downloadUrl(url, file.fileName);
+                                  return;
+                                }
+
+                                const conversationId = state.conversationId;
+                                if (!conversationId) return;
+
+                                const objectUrl =
+                                  await createConversationFileObjectUrl(
+                                    conversationId,
+                                    file.storage,
+                                  );
+                                try {
+                                  await downloadUrl(objectUrl, file.fileName);
+                                } finally {
+                                  URL.revokeObjectURL(objectUrl);
+                                }
                               }
 
                               return (
@@ -747,28 +770,24 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                                     />
                                   </Show>
                                   <span class={styles.fileMessageMeta}>
-                                    <Show
-                                      when={canDownload()}
-                                      fallback={
-                                        <span class={styles.fileMessageName}>
-                                          {file.fileName}
-                                        </span>
-                                      }
+                                    <a
+                                      href={attachmentUrl() ?? '#'}
+                                      download={file.fileName}
+                                      class={styles.fileMessageName}
+                                      onClick={(event) => {
+                                        event.preventDefault();
+                                        void downloadAttachment().catch(
+                                          (error) => {
+                                            console.warn(
+                                              '[conversation] failed to download attachment',
+                                              error,
+                                            );
+                                          },
+                                        );
+                                      }}
                                     >
-                                      <a
-                                        href={attachmentUrl() ?? undefined}
-                                        download={file.fileName}
-                                        class={styles.fileMessageName}
-                                        onClick={(event) => {
-                                          const url = attachmentUrl();
-                                          if (!url) return;
-                                          event.preventDefault();
-                                          void downloadUrl(url, file.fileName);
-                                        }}
-                                      >
-                                        {file.fileName}
-                                      </a>
-                                    </Show>
+                                      {file.fileName}
+                                    </a>
                                     <span class={styles.fileMessageSize}>
                                       ({formatFileSize(file.fileSize)})
                                     </span>

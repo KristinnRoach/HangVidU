@@ -257,7 +257,7 @@ async function handleUpload(
     );
   }
   if (body.byteLength === 0) {
-    return json(request, env, { error: 'empty image' }, { status: 400 });
+    return json(request, env, { error: 'empty file' }, { status: 400 });
   }
 
   const key = objectKey(conversationId, crypto.randomUUID());
