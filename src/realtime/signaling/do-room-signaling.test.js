@@ -51,13 +51,50 @@ describe('createDoRoomSignaling', () => {
     expect(socket.sent).toEqual([{ t: 'join', peerId: 'peer-a' }]);
   });
 
-  it('forwards presence to onPeers subscribers', () => {
+  it('maps presence members onto onPeers subscribers', () => {
     const signaling = createDoRoomSignaling({ roomId: 'room-1' });
     const seen = [];
-    signaling.onPeers((peers) => seen.push(peers));
+    signaling.onPeers((members) => seen.push(members));
 
-    socket.emit({ t: 'peers', peers: ['peer-a', 'peer-b'] });
-    expect(seen).toEqual([['peer-a', 'peer-b']]);
+    socket.emit({
+      t: 'peers',
+      peers: [{ peerId: 'peer-a', data: { muted: true } }, { peerId: 'peer-b' }],
+    });
+    expect(seen).toEqual([
+      [
+        { memberId: 'peer-a', data: { muted: true } },
+        { memberId: 'peer-b', data: undefined },
+      ],
+    ]);
+  });
+
+  it('sends presence data on join and restores it on reconnect', () => {
+    const signaling = createDoRoomSignaling({ roomId: 'room-1' });
+    signaling.join('peer-a', { muted: true });
+    expect(socket.sent).toEqual([
+      { t: 'join', peerId: 'peer-a', data: { muted: true } },
+    ]);
+
+    socket.sent.length = 0;
+    socket.open(); // reconnect re-asserts peerId + latest data
+    expect(socket.sent).toEqual([
+      { t: 'join', peerId: 'peer-a', data: { muted: true } },
+    ]);
+  });
+
+  it('updatePresenceData sends a presence message and is restored on reconnect', () => {
+    const signaling = createDoRoomSignaling({ roomId: 'room-1' });
+    signaling.join('peer-a');
+    socket.sent.length = 0;
+
+    signaling.updatePresenceData('peer-a', { muted: true });
+    expect(socket.sent).toEqual([{ t: 'presence', data: { muted: true } }]);
+
+    socket.sent.length = 0;
+    socket.open(); // re-join carries the latest data set via updatePresenceData
+    expect(socket.sent).toEqual([
+      { t: 'join', peerId: 'peer-a', data: { muted: true } },
+    ]);
   });
 
   it('maps offer/answer/ICE onto addressed relay messages', () => {
@@ -111,6 +148,20 @@ describe('createDoRoomSignaling', () => {
     expect(offers).toEqual([{ type: 'offer' }]);
     expect(answers).toEqual([{ type: 'answer' }]);
     expect(candidates).toEqual([{ candidate: 'c1' }]);
+  });
+
+  it('does not re-join on reconnect after leave', () => {
+    const signaling = createDoRoomSignaling({ roomId: 'room-1' });
+    signaling.join('peer-a');
+    socket.sent.length = 0;
+
+    signaling.leave('peer-a');
+    expect(socket.sent).toEqual([{ t: 'leave' }]);
+
+    // Local join state must be cleared so a reconnect doesn't re-assert it.
+    socket.sent.length = 0;
+    socket.open();
+    expect(socket.sent).toEqual([]);
   });
 
   it('closes the socket on cleanup', () => {
