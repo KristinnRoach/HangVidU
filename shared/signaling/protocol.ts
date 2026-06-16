@@ -15,15 +15,29 @@ export type PeerId = string;
 /** Payload bucket for relayed messages. Add values to extend; never reshape. */
 export type RelayChannel = 'sdp' | 'ice';
 
+/**
+ * Opaque, self-asserted per-peer presence metadata (e.g. displayName, muted,
+ * camOff). The relay never inspects it. NEVER trust it for authorization —
+ * any peer asserts its own; authz-sensitive facts stay authoritative in D1/DO.
+ */
+export type PresenceData = Record<string, unknown>;
+
+/** A present peer and its self-asserted presence data. */
+export interface PresenceMember {
+  peerId: PeerId;
+  data?: PresenceData;
+}
+
 /** Client → Durable Object. */
 export type ClientMessage =
-  | { t: 'join'; peerId: PeerId }
+  | { t: 'join'; peerId: PeerId; data?: PresenceData }
   | { t: 'leave' }
+  | { t: 'presence'; data: PresenceData }
   | { t: 'relay'; to: PeerId; channel: RelayChannel; data: unknown };
 
 /** Durable Object → client. */
 export type ServerMessage =
-  | { t: 'peers'; peers: PeerId[] }
+  | { t: 'peers'; peers: PresenceMember[] }
   | { t: 'relay'; from: PeerId; channel: RelayChannel; data: unknown }
   | { t: 'error'; message: string };
 
@@ -32,9 +46,15 @@ export function isClientMessage(value: unknown): value is ClientMessage {
   const m = value as Record<string, unknown>;
   switch (m.t) {
     case 'join':
-      return typeof m.peerId === 'string' && m.peerId.length > 0;
+      return (
+        typeof m.peerId === 'string' &&
+        m.peerId.length > 0 &&
+        isPresenceDataOrAbsent(m.data)
+      );
     case 'leave':
       return true;
+    case 'presence':
+      return isPresenceData(m.data);
     case 'relay':
       return (
         typeof m.to === 'string' &&
@@ -45,4 +65,13 @@ export function isClientMessage(value: unknown): value is ClientMessage {
     default:
       return false;
   }
+}
+
+/** Presence data must be a plain object (never an array or primitive). */
+function isPresenceData(value: unknown): value is PresenceData {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isPresenceDataOrAbsent(value: unknown): boolean {
+  return value === undefined || isPresenceData(value);
 }

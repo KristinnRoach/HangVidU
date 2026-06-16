@@ -27,3 +27,4 @@ overrides:
 
 minimumReleaseAgeExclude:
   - '@kidlib/p2p@0.1.11'
+  - '@kidlib/p2p@0.1.12'

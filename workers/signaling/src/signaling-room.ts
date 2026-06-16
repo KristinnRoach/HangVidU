@@ -3,6 +3,8 @@ import {
   isClientMessage,
   type ClientMessage,
   type PeerId,
+  type PresenceData,
+  type PresenceMember,
   type ServerMessage,
 } from '../../../shared/signaling/protocol';
 import type { Env } from './index';
@@ -10,14 +12,16 @@ import type { Env } from './index';
 /** Survives hibernation via ws.serializeAttachment(). */
 interface SocketState {
   peerId: PeerId | null;
+  data?: PresenceData;
 }
 
 /**
  * One instance per room (keyed by roomId). A dumb relay:
- *   - tracks presence (joined peers)
+ *   - tracks presence (joined peers + their self-asserted presence data)
  *   - forwards `relay` messages to the addressed peer
- * It never inspects SDP/ICE contents. State is derived from the live socket
- * set, so nothing is persisted — an empty room simply hibernates and evicts.
+ * It never inspects SDP/ICE contents, and treats presence `data` as opaque.
+ * State is derived from the live socket set, so nothing is persisted — an empty
+ * room simply hibernates and evicts.
  */
 export class SignalingRoom extends DurableObject<Env> {
   async fetch(request: Request): Promise<Response> {
@@ -37,7 +41,7 @@ export class SignalingRoom extends DurableObject<Env> {
     // Presence snapshot on connect. The P2PRoomSignaling contract requires
     // watchers (connected, not joined) to know current occupancy — the client
     // room checks capacity against it before and after joining.
-    this.send(server, { t: 'peers', peers: this.peerIds() });
+    this.send(server, { t: 'peers', peers: this.presenceMembers() });
 
     // Echo the auth subprotocol; browsers abort the handshake if the server
     // does not confirm one of the offered subprotocols.
@@ -65,13 +69,23 @@ export class SignalingRoom extends DurableObject<Env> {
     const message = parsed as ClientMessage;
     switch (message.t) {
       case 'join':
-        this.setSocketState(ws, { peerId: message.peerId });
+        this.setSocketState(ws, { peerId: message.peerId, data: message.data });
         this.broadcastPeers();
         return;
       case 'leave':
         this.setSocketState(ws, { peerId: null });
         this.broadcastPeers();
         return;
+      case 'presence': {
+        // Update self-asserted presence data; ignore until joined (no identity
+        // to attach it to). Re-broadcast so a data-only change (e.g. mute
+        // toggle) reaches every member, including the sender.
+        const { peerId } = this.getSocketState(ws);
+        if (!peerId) return this.sendError(ws, 'join before setting presence');
+        this.setSocketState(ws, { peerId, data: message.data });
+        this.broadcastPeers();
+        return;
+      }
       case 'relay':
         return this.relay(ws, message.to, message.channel, message.data);
     }
@@ -109,21 +123,22 @@ export class SignalingRoom extends DurableObject<Env> {
   }
 
   private broadcastPeers(): void {
-    const peers = this.peerIds();
-    const payload: ServerMessage = { t: 'peers', peers };
+    const payload: ServerMessage = { t: 'peers', peers: this.presenceMembers() };
     // All sockets, including watchers — see the connect-time snapshot note.
     for (const ws of this.ctx.getWebSockets()) {
       this.send(ws, payload);
     }
   }
 
-  private peerIds(): PeerId[] {
-    const ids: PeerId[] = [];
+  /** Joined peers with their presence data; the local peer is included (its own
+   * socket is in getWebSockets()), so self mute toggles round-trip back. */
+  private presenceMembers(): PresenceMember[] {
+    const members: PresenceMember[] = [];
     for (const ws of this.ctx.getWebSockets()) {
-      const { peerId } = this.getSocketState(ws);
-      if (peerId) ids.push(peerId);
+      const { peerId, data } = this.getSocketState(ws);
+      if (peerId) members.push(data ? { peerId, data } : { peerId });
     }
-    return ids;
+    return members;
   }
 
   private findSocket(peerId: PeerId): WebSocket | null {

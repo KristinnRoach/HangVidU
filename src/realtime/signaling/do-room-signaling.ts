@@ -1,6 +1,8 @@
 import type {
   CreateRoomSignalingOptions,
   P2PRoomPeerSignalingOptions,
+  P2PRoomPresenceData,
+  P2PRoomPresenceMember,
   P2PRoomSignaling,
   RtcSignalingSource,
 } from '@kidlib/p2p';
@@ -52,14 +54,28 @@ export function createDoRoomSignaling({
   });
 
   let joinedPeerId: string | null = null;
-  const peersHandlers = new Set<(peerIds: string[]) => void>();
+  let localData: P2PRoomPresenceData | undefined;
+  const peersHandlers = new Set<(members: P2PRoomPresenceMember[]) => void>();
   const relaySubs = new Set<RelaySubscription>();
+
+  // Build the join message, omitting `data` when absent so the no-presence
+  // wire stays minimal.
+  const joinMessage = (peerId: string, data?: P2PRoomPresenceData) =>
+    data !== undefined
+      ? ({ t: 'join', peerId, data } as const)
+      : ({ t: 'join', peerId } as const);
 
   socket.onMessage((message: ServerMessage) => {
     switch (message.t) {
-      case 'peers':
-        peersHandlers.forEach((h) => h(message.peers));
+      case 'peers': {
+        // Wire `{ peerId, data }` → port `{ memberId, data }`.
+        const members: P2PRoomPresenceMember[] = message.peers.map((p) => ({
+          memberId: p.peerId,
+          data: p.data,
+        }));
+        peersHandlers.forEach((h) => h(members));
         return;
+      }
       case 'relay':
         for (const sub of relaySubs) {
           if (sub.from === message.from && sub.channel === message.channel) {
@@ -73,9 +89,9 @@ export function createDoRoomSignaling({
     }
   });
 
-  // Restore presence after every (re)connect.
+  // Restore presence (peerId + latest data) after every (re)connect.
   socket.onOpen(() => {
-    if (joinedPeerId) socket.send({ t: 'join', peerId: joinedPeerId });
+    if (joinedPeerId) socket.send(joinMessage(joinedPeerId, localData));
   });
 
   function subscribeRelay(
@@ -89,15 +105,16 @@ export function createDoRoomSignaling({
   }
 
   return {
-    join(peerId) {
+    join(peerId, data) {
       joinedPeerId = peerId;
+      localData = data;
       // Resolve once the server echoes a peers list containing us, so the
       // room's post-join capacity check runs against current occupancy
       // instead of a stale snapshot. Timeout fallback keeps a flaky server
       // from hanging the join forever (degrades to pre-ack behavior).
       const ack = new Promise<void>((resolve) => {
-        const handler = (peerIds: string[]) => {
-          if (!peerIds.includes(peerId)) return;
+        const handler = (members: P2PRoomPresenceMember[]) => {
+          if (!members.some((m) => m.memberId === peerId)) return;
           peersHandlers.delete(handler);
           clearTimeout(timeoutId);
           resolve();
@@ -108,13 +125,24 @@ export function createDoRoomSignaling({
         }, 5_000);
         peersHandlers.add(handler);
       });
-      socket.send({ t: 'join', peerId });
+      socket.send(joinMessage(peerId, data));
       return ack;
     },
 
     leave(peerId) {
       socket.send({ t: 'leave' });
-      if (joinedPeerId === peerId) joinedPeerId = null;
+      if (joinedPeerId === peerId) {
+        joinedPeerId = null;
+        localData = undefined;
+      }
+    },
+
+    // Update our own presence data mid-session (e.g. mute toggle). The worker
+    // derives identity from the socket, so peerId is unused on the wire; the
+    // change round-trips back through `onPeers` to reach the local Accessor.
+    updatePresenceData(_peerId, data) {
+      localData = data;
+      socket.send({ t: 'presence', data });
     },
 
     onPeers(callback) {
