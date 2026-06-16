@@ -9,7 +9,7 @@ import {
   on,
   onCleanup,
 } from 'solid-js';
-import { Paperclip } from 'lucide-solid';
+import { Paperclip, Download } from 'lucide-solid';
 import { getUserName } from '../../auth/index.js';
 
 import { useI18n } from '../../shared/i18n';
@@ -46,7 +46,7 @@ const runtime = createMessagingRuntime();
 const DRAFT_SAVE_DELAY_MS = 250;
 const TIMESTAMP_THRESHOLD_MS = 5 * 60 * 1000;
 const MAX_R2_FILE_UPLOAD_BYTES = 5 * 1024 * 1024;
-const DISPLAY_ATTACHMENT_FILE_NAME_LENGTH = 36;
+const DISPLAY_ATTACHMENT_FILE_NAME_LENGTH = 24;
 const IMAGE_COMPRESSION_THRESHOLD_BYTES = Math.round(1.5 * 1024 * 1024);
 
 type TimestampFormatters = {
@@ -837,6 +837,11 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                                       }}
                                     >
                                       {displayAttachmentFileName(file.fileName)}
+                                      <Download
+                                        size={14}
+                                        aria-hidden='true'
+                                        class={styles.fileMessageDownloadIcon}
+                                      />
                                     </a>
                                     <span class={styles.fileMessageSize}>
                                       ({formatFileSize(file.fileSize)})
