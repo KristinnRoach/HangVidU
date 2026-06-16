@@ -2,17 +2,18 @@
 
 > Migration from Firebase-coupled code to backend-agnostic interfaces with
 > Cloudflare implementations (D1 / R2 / Durable Objects), keyed by an opaque
-> `conversationId`. Last updated: 2026-06-11.
+> `conversationId`. Last updated: 2026-06-16.
 
 ## Where we are
 
 | Concern | Backend | Status |
 | --- | --- | --- |
 | WebRTC room signaling | Durable Object (`workers/signaling`) | ✅ Live, default (`VITE_SIGNALING_BACKEND=do`) |
-| Image files | R2 (`workers/files`) | ✅ Live (authz still reads RTDB membership) |
+| Image files | R2 (`workers/files`) | ✅ Live — authz reads D1 membership (PR #536) |
 | Conversation registry | D1 (`workers/data`) | ✅ Live (PR #534) — users, conversations, members; opaque UUID ids |
 | Call room handle | Opaque `conversationId` from registry | ✅ Live (PR #535) — fallback to one-off UUID if registry unreachable |
-| Messages | Firebase RTDB | ⬜ To migrate (D1) |
+| Messages | D1 (`workers/data`) | ✅ Live (PR #536) — D1 persistence + `ConversationChannel` DO live push. Code default now `d1`; legacy RTDB path pending retirement (`RTDB_MESSAGES_RETIREMENT.md`) |
+| Live message push | Durable Object (`ConversationChannel`) | ✅ Live (PR #536) |
 | Contacts, user profiles | Firebase RTDB | ⬜ To migrate (later, lowest priority) |
 | Call-invite mailbox | Firebase RTDB | ⬜ To migrate (Durable Object) |
 | Auth | Firebase Auth | Stays for now (workers verify ID tokens via a swappable `auth.ts` seam) |
@@ -22,17 +23,12 @@ opaque id" — exists and is exercised by calls (`src/stores/conversations-clien
 
 ## Remaining steps (in order)
 
-### 1. Messages + files on opaque ids (one slice — files are file-messages)
-The big one. Both currently key stored data by derived `a_b` ids, so they cut over together.
-- New branch from `main`. Copy the valuable parts from the frozen `D1-R2-migration`
-  branch (worker message endpoints, `messaging-next/adapters/d1.ts`, message-repository
-  wiring) — do **not** merge that branch; its worker base and schema are stale.
-- Message/attachment/reaction tables = **new `0002` migration**. Never edit
-  `0001_init.sql` — it is applied to the live remote D1.
-- Repoint `workers/files` membership authz from RTDB to the D1 registry; R2 keys
-  become `{conversationId}/{fileId}` with opaque ids.
-- Open-conversation flow resolves the opaque id (reuse `resolveDirectConversationId`).
-- Decide: start clean vs backfill old RTDB messages (old derived ids are not portable).
+### 1. Messages + files on opaque ids ✅ SHIPPED (PR #536)
+Messages, attachments and reactions are on D1 (migration `0002`); `workers/files`
+authz reads the D1 registry; R2 keys are `{conversationId}/{fileId}`; live push runs
+through the `ConversationChannel` DO. Started clean — old derived-`a_b` history was
+not backfilled (decision #2). Code default is now `d1`; retiring the dormant RTDB
+message path is the mechanical follow-up tracked in `RTDB_MESSAGES_RETIREMENT.md`.
 
 ### 2. Retire derived-id plumbing
 After (1), nothing should compute ids from user ids:

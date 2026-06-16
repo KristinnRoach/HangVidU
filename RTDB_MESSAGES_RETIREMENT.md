@@ -8,8 +8,8 @@ slice. Delete top-down; run `pnpm ts && pnpm lint:boundaries && pnpm test` after
 each group.
 
 ## Preconditions (do not start until all true)
-- [ ] Code default in `messaging-runtime.ts` is `d1` and has shipped.
-- [ ] No environment still sets `VITE_MESSAGE_BACKEND=rtdb`.
+- [x] Code default in `messaging-runtime.ts` is `d1` and has shipped.
+- [x] No environment still sets `VITE_MESSAGE_BACKEND=rtdb` (prod/dev set `d1`).
 - [ ] Prod soak clean (text, files, live push, multi-account).
 
 ## Client code to delete
