@@ -204,6 +204,13 @@ describe('files worker routing + auth', () => {
 
     expect(download.status).toBe(200);
     expect(download.headers.get('Content-Type')).toBe('image/png');
+    // Hardening for user-supplied files (e.g. SVG): scripts can't execute and
+    // the type can't be sniffed even if the URL is opened top-level.
+    expect(download.headers.get('Content-Security-Policy')).toBe(
+      "default-src 'none'; sandbox",
+    );
+    expect(download.headers.get('X-Content-Type-Options')).toBe('nosniff');
+    expect(download.headers.get('Content-Disposition')).toBe('attachment');
     expect(new Uint8Array(await download.arrayBuffer())).toEqual(
       new Uint8Array([1, 2, 3]),
     );
@@ -293,6 +300,32 @@ describe('files worker routing + auth', () => {
     expect(upload.status).toBe(201);
   });
 
+  it('accepts svg image uploads', async () => {
+    const token = await signToken(validClaims());
+    await allowMember('user-a_user-b', 'user-a');
+    const res = await request('/conversations/user-a_user-b/files/images', {
+      method: 'POST',
+      token,
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1" />',
+    });
+
+    expect(res.status).toBe(201);
+  });
+
+  it('accepts small non-image file uploads', async () => {
+    const token = await signToken(validClaims());
+    await allowMember('user-a_user-b', 'user-a');
+    const res = await request('/conversations/user-a_user-b/files/images', {
+      method: 'POST',
+      token,
+      contentType: 'application/pdf',
+      body: '%PDF-1.7',
+    });
+
+    expect(res.status).toBe(201);
+  });
+
   it('rejects oversized uploads before storing', async () => {
     const token = await signToken(validClaims());
     await allowMember('user-a_user-b', 'user-a');
@@ -306,13 +339,13 @@ describe('files worker routing + auth', () => {
     expect(res.status).toBe(413);
   });
 
-  it('rejects non-image uploads', async () => {
+  it('rejects uploads without a supported MIME type', async () => {
     const token = await signToken(validClaims());
     await allowMember('user-a_user-b', 'user-a');
     const res = await request('/conversations/user-a_user-b/files/images', {
       method: 'POST',
       token,
-      contentType: 'text/plain',
+      contentType: 'not-a-mime',
       body: 'image',
     });
 

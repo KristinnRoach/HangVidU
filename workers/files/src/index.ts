@@ -86,10 +86,10 @@ function json(
   });
 }
 
-function isImageMimeType(value: string | null): value is string {
+function isSupportedFileMimeType(value: string | null): value is string {
   if (!value) return false;
   const baseType = value.split(';')[0].trim().toLowerCase();
-  return baseType.startsWith('image/') && baseType !== 'image/svg+xml';
+  return /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(baseType);
 }
 
 function objectKey(conversationId: string, objectId: string) {
@@ -238,11 +238,11 @@ async function handleUpload(
   identity: Identity,
 ) {
   const mimeType = request.headers.get('Content-Type');
-  if (!isImageMimeType(mimeType)) {
+  if (!isSupportedFileMimeType(mimeType)) {
     return json(
       request,
       env,
-      { error: 'unsupported image type' },
+      { error: 'unsupported file type' },
       { status: 415 },
     );
   }
@@ -252,12 +252,12 @@ async function handleUpload(
     return json(
       request,
       env,
-      { error: 'image too large or empty' },
+      { error: 'file too large or empty' },
       { status: 413 },
     );
   }
   if (body.byteLength === 0) {
-    return json(request, env, { error: 'empty image' }, { status: 400 });
+    return json(request, env, { error: 'empty file' }, { status: 400 });
   }
 
   const key = objectKey(conversationId, crypto.randomUUID());
@@ -292,6 +292,12 @@ async function handleDownload(request: Request, env: Env, key: string) {
   );
   headers.set('Content-Length', String(object.size));
   headers.set('ETag', object.etag);
+  // Defense-in-depth for user-supplied files (e.g. SVG): neutralize any
+  // embedded scripts and prevent inline rendering if the URL is ever opened
+  // top-level. Clients fetch this as a blob, so these never hinder normal use.
+  headers.set('Content-Security-Policy', "default-src 'none'; sandbox");
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('Content-Disposition', 'attachment');
   return response(request, env, object.body, { headers });
 }
 

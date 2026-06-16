@@ -54,6 +54,13 @@ export function uploadConversationImage(
   return client.uploadImage(conversationId, file);
 }
 
+export function uploadConversationFile(
+  conversationId: ConversationId,
+  file: File,
+) {
+  return uploadConversationImage(conversationId, file);
+}
+
 export function createConversationFileObjectUrl(
   conversationId: ConversationId,
   storage: R2StorageDescriptor,
