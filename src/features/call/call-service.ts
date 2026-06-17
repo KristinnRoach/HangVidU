@@ -4,6 +4,10 @@ import {
 } from '../../realtime/mailbox-channel';
 import type { CallInvite, CallResponse } from './model/call-schema';
 
+export type IncomingCallEvent =
+  | { type: 'invite'; invite: CallInvite }
+  | { type: 'cancel'; roomId: string; by: string };
+
 interface CallServiceOptions {
   localUID: string;
   /** Data worker base URL (VITE_DATA_URL). */
@@ -83,14 +87,18 @@ export class CallService {
     }
   }
 
-  /** Incoming invites for this user; emits null when an invite is cancelled. */
-  onIncomingCall(callback: (call: CallInvite | null) => void): () => void {
+  /** Incoming invites and cancel events for this user. */
+  onIncomingCall(callback: (event: IncomingCallEvent) => void): () => void {
     return this.channel.onEnvelope((envelope) => {
       if (envelope.t === 'invite') {
         if (!notExpired(envelope.invite.expiresAt)) return;
-        callback(envelope.invite as CallInvite);
+        callback({ type: 'invite', invite: envelope.invite as CallInvite });
       } else if (envelope.t === 'cancel') {
-        callback(null);
+        callback({
+          type: 'cancel',
+          roomId: envelope.roomId,
+          by: envelope.by,
+        });
       }
     });
   }

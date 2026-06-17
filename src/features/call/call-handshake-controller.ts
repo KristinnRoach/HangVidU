@@ -71,6 +71,12 @@ export class CallHandshakeController {
     this.onCalleeBusy(busy);
   }
 
+  private alertCallStartFailed(): void {
+    if (typeof window !== 'undefined') {
+      window.alert('Could not start call. Please try again.');
+    }
+  }
+
   /**
    * (Re)attach the incoming-call listener for the currently logged-in user.
    * Driven reactively by the provider on auth changes, so it must be safe to
@@ -89,16 +95,18 @@ export class CallHandshakeController {
       getToken: getLoggedInUserToken,
     });
 
-    this.unsubscribeIncomingCall = callService.onIncomingCall((call) => {
-      if (!call) {
+    this.unsubscribeIncomingCall = callService.onIncomingCall((event) => {
+      if (event.type === 'cancel') {
         if (
           this._handshakeState &&
-          this._handshakeState.direction === 'incoming'
+          this._handshakeState.direction === 'incoming' &&
+          this._handshakeState.call.roomId === event.roomId
         ) {
           this.setHandshakeState(null);
         }
         return;
       }
+      const { invite: call } = event;
       if (this.isBusyForIncomingCall(call)) {
         callService
           .respondToIncomingCallInvite({
@@ -146,6 +154,7 @@ export class CallHandshakeController {
         '[CallHandshake] Cannot start call: failed to resolve conversationId:',
         err,
       );
+      this.alertCallStartFailed();
       return;
     }
 
@@ -167,6 +176,7 @@ export class CallHandshakeController {
       });
     } catch (err) {
       console.error('Error sending outgoing call invite:', err);
+      this.alertCallStartFailed();
       return;
     }
 

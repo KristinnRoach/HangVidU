@@ -43,6 +43,10 @@ export class UserMailbox extends DurableObject<Env> {
   /** Clients are receive-only; ignore anything they send. */
   async webSocketMessage(): Promise<void> {}
 
+  async webSocketClose(): Promise<void> {}
+
+  async webSocketError(): Promise<void> {}
+
   /** Fan an envelope out to every connected socket of this user. */
   deliver(envelope: MailboxEnvelope): void {
     const payload = JSON.stringify(envelope);

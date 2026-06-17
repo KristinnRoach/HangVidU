@@ -57,6 +57,50 @@ function messagesRequest(conversationId: string, token?: string) {
   );
 }
 
+function jsonPost(path: string, token: string, body: unknown) {
+  return SELF.fetch(`https://data${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Origin: ORIGIN,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+async function connectMailbox(token: string) {
+  const res = await SELF.fetch('https://data/users/me/mailbox/ws', {
+    headers: {
+      Upgrade: 'websocket',
+      Origin: ORIGIN,
+      'Sec-WebSocket-Protocol': `bearer, ${token}`,
+    },
+  });
+  expect(res.status).toBe(101);
+  const ws = res.webSocket as WebSocket;
+  ws.accept();
+
+  const queue: unknown[] = [];
+  const waiters: ((message: unknown) => void)[] = [];
+  ws.addEventListener('message', (event: MessageEvent) => {
+    const parsed = JSON.parse(event.data as string) as unknown;
+    const waiter = waiters.shift();
+    if (waiter) waiter(parsed);
+    else queue.push(parsed);
+  });
+
+  return {
+    close: () => ws.close(),
+    next: () =>
+      new Promise<unknown>((resolve) => {
+        const queued = queue.shift();
+        if (queued) resolve(queued);
+        else waiters.push(resolve);
+      }),
+  };
+}
+
 beforeAll(async () => {
   const pair = await crypto.subtle.generateKey(
     {
@@ -135,5 +179,44 @@ describe('auth + membership guard on GET /conversations/:id/messages', () => {
     const res = await messagesRequest(convoId, token);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ messages: [] });
+  });
+});
+
+describe('call cancel mailbox route', () => {
+  it('404s when the caller is not a conversation member', async () => {
+    const convoId = await resolveOrCreateDirect(env.DB, 'user-a', 'user-b', 1000);
+    const token = await signToken(validClaims('user-c'));
+
+    const res = await jsonPost('/calls/cancel', token, {
+      conversationId: convoId,
+      calleeId: 'user-b',
+    });
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: 'not_found' });
+  });
+
+  it('delivers the cancel envelope with room and caller identity', async () => {
+    const convoId = await resolveOrCreateDirect(env.DB, 'user-a', 'user-b', 1000);
+    const callerToken = await signToken(validClaims('user-a'));
+    const calleeToken = await signToken(validClaims('user-b'));
+    const mailbox = await connectMailbox(calleeToken);
+
+    try {
+      const res = await jsonPost('/calls/cancel', callerToken, {
+        conversationId: convoId,
+        calleeId: 'user-b',
+      });
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ ok: true });
+      expect(await mailbox.next()).toEqual({
+        t: 'cancel',
+        roomId: convoId,
+        by: 'user-a',
+      });
+    } finally {
+      mailbox.close();
+    }
   });
 });
