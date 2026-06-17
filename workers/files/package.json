@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Cloudflare Worker for authenticated R2 image upload and download.",
   "scripts": {
-    "dev": "wrangler dev --port 8789 --env-file .dev.vars --persist-to ../data/.wrangler/state --local-protocol https",
+    "dev": "wrangler dev --port 8789 --env-file .dev.vars --persist-to ../data/.wrangler/state --local-protocol https --https-cert-path ../../.certs/localhost.pem --https-key-path ../../.certs/localhost-key.pem",
     "deploy": "wrangler deploy",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
