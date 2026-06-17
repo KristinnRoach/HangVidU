@@ -1,4 +1,5 @@
 import { createEffect, createSignal, onCleanup, Show } from 'solid-js';
+import { createMediaPlayback } from '@kidlib/p2p/solid';
 import styles from './VideoStream.module.css';
 
 type Props = {
@@ -35,36 +36,45 @@ export default function VideoStream(props: Props) {
     props.preview ??
     (props.stream?.getAudioTracks().length === 0);
 
+  // Library-owned attach + autoplay/resume core. Surfaces blocked playback
+  // through the shared "Continue call" prompt below.
+  const playback = createMediaPlayback({
+    playsInline: true,
+    onPlaybackBlocked: (err) => {
+      if (import.meta.env.DEV) {
+        const e = err as { name?: string; message?: string };
+        console.warn('[VideoStream] play() rejected', {
+          isLocal: !!props.local,
+          name: e?.name,
+          message: e?.message,
+        });
+      }
+      requestPlaybackPrompt(video);
+    },
+  });
+
   createEffect(() => {
     const stream = props.stream;
     if (!video) return;
 
     // Set playback-affecting flags before assigning the stream. Some browsers
-    // evaluate autoplay eligibility as soon as srcObject changes.
+    // evaluate autoplay eligibility as soon as srcObject changes. attach() sets
+    // muted/playsInline (as properties); the attribute forms below are iOS
+    // belt-and-suspenders the library does not set.
     const muted = shouldMute();
-    video.muted = muted;
     video.defaultMuted = muted;
     if (muted) video.setAttribute('muted', '');
     else video.removeAttribute('muted');
     video.autoplay = true;
-    video.playsInline = true;
     video.setAttribute('playsinline', 'true');
-    video.srcObject = stream ?? null;
-    video.muted = muted;
-    const play = () => {
-      if (!stream || !video.paused) return;
-      video.play().catch((err) => {
-        if (import.meta.env.DEV) {
-          console.warn('[VideoStream] play() rejected', {
-            isLocal: !!props.local,
-            name: err?.name,
-            message: err?.message,
-          });
-        }
-        requestPlaybackPrompt(video);
-      });
+
+    // Attaches the stream and runs the initial play() (autoplay defaults on).
+    playback.attach(video, stream ?? null, { muted });
+
+    // Re-attempt playback once the stream produces frames / on spurious pause.
+    const replay = () => {
+      if (stream && video.paused) playback.resumePlayback();
     };
-    play();
 
     function debugVideoResize() {
       {
@@ -79,21 +89,21 @@ export default function VideoStream(props: Props) {
     }
 
     import.meta.env.DEV && video.addEventListener('resize', debugVideoResize);
-    video.addEventListener('loadedmetadata', play);
-    video.addEventListener('canplay', play);
-    video.addEventListener('pause', play);
+    video.addEventListener('loadedmetadata', replay);
+    video.addEventListener('canplay', replay);
+    video.addEventListener('pause', replay);
 
     onCleanup(() => {
       if (playbackPromptOwner === video) {
         playbackPromptOwner = null;
         setShowPlaybackPrompt(false);
       }
-      video.srcObject = null;
+      playback.detach();
       import.meta.env.DEV &&
         video.removeEventListener('resize', debugVideoResize);
-      video.removeEventListener('loadedmetadata', play);
-      video.removeEventListener('canplay', play);
-      video.removeEventListener('pause', play);
+      video.removeEventListener('loadedmetadata', replay);
+      video.removeEventListener('canplay', replay);
+      video.removeEventListener('pause', replay);
     });
   });
 
