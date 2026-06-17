@@ -12,7 +12,7 @@
 | Image files | R2 (`workers/files`) | ✅ Live — authz reads D1 membership (PR #536) |
 | Conversation registry | D1 (`workers/data`) | ✅ Live (PR #534) — users, conversations, members; opaque UUID ids |
 | Call room handle | Opaque `conversationId` from registry | ✅ Live (PR #535) — fallback to one-off UUID if registry unreachable |
-| Messages | D1 (`workers/data`) | ✅ Live (PR #536) — D1 persistence + `ConversationChannel` DO live push. Code default now `d1`; legacy RTDB path pending retirement (`RTDB_MESSAGES_RETIREMENT.md`) |
+| Messages | D1 (`workers/data`) | ✅ Live (PR #536) — D1 persistence + `ConversationChannel` DO live push. Legacy RTDB message path + derived-`a_b` id plumbing removed from the client (`RTDB_MESSAGES_RETIREMENT.md`); only RTDB rules/data deletion remains |
 | Live message push | Durable Object (`ConversationChannel`) | ✅ Live (PR #536) |
 | Contacts, user profiles | Firebase RTDB | ⬜ To migrate (later, lowest priority) |
 | Call-invite mailbox | Firebase RTDB | ⬜ To migrate (Durable Object) |
@@ -30,11 +30,15 @@ through the `ConversationChannel` DO. Started clean — old derived-`a_b` histor
 not backfilled (decision #2). Code default is now `d1`; retiring the dormant RTDB
 message path is the mechanical follow-up tracked in `RTDB_MESSAGES_RETIREMENT.md`.
 
-### 2. Retire derived-id plumbing
-After (1), nothing should compute ids from user ids:
-- Delete `src/shared/utils/direct-conversation-id.js`, `resolveContactIdFromDirectConversationId`,
-  the `group:` prefix hack, and legacy fallbacks in `MainContent.tsx` / `contactsStore.ts`.
-- Fix push deep-link open flow (`SWNavigation.tsx` opens raw ids).
+### 2. Retire derived-id plumbing 🚧 MOSTLY SHIPPED (this PR)
+Forward `a_b` derivation is gone: the message backend is d1-only, `saveContact`
+no longer stores a derived id, the push deep-link flow resolves opaque ids, and
+`deriveLegacyDirectConversationId` is deleted (see `RTDB_MESSAGES_RETIREMENT.md`).
+Still open:
+- `resolveContactIdFromDirectConversationId` (reverse `a_b` → contact) retained as
+  an inert fallback in `MainContent.tsx`; delete once the call-button callee path
+  always carries `remoteParticipantIds`.
+- `group:` prefix hack — deferred to the conversation-metadata migration.
 - Render conversation list from `conversation_members` instead of ID-splitting
   (ContactsList → ConversationList rename, deferred from old Slice C).
 

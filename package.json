@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "pnpm kill:silent && concurrently -k -n vite,tunnel \"vite\" \"cloudflared --no-autoupdate tunnel --config /dev/null --url https://localhost:5173 --no-tls-verify run vidu-dev\"",
     "dev:local": "vite",
+    "setup:dev-certs": "mkcert -install && mkcert -cert-file .certs/localhost.pem -key-file .certs/localhost-key.pem localhost 127.0.0.1 ::1",
     "dev:do": "pnpm -C workers/signaling run dev",
     "dev:files": "pnpm -C workers/files run dev",
     "dev:data": "pnpm -C workers/data run dev",

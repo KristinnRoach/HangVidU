@@ -1,27 +1,6 @@
-// TODO:
-/* still derives the other participant via conversationId.split('_'). 
-That can break if user IDs contain underscores. 
-Fixing it properly likely needs either a safer encoded ID 
-format or passing participant IDs from conversation metadata
-
-If this ID pattern changes, migrate pre-existing direct conversation IDs
-and any references stored against them.
-*/
-
-export function deriveLegacyDirectConversationId(userA, userB) {
-  const participants = [userA, userB]
-    .map((value) => String(value || '').trim())
-    .filter(Boolean);
-
-  if (participants.length !== 2) {
-    throw new Error(
-      'deriveLegacyDirectConversationId requires exactly 2 participant ids',
-    );
-  }
-
-  return participants.sort().join('_');
-}
-
+// Reverse-derives the other participant from a legacy `a_b` conversation id.
+// Best-effort fallback for selections that arrive without participant ids (old
+// push deep links); opaque registry ids have no `_` and return null here.
 export function resolveContactIdFromDirectConversationId(
   conversationId,
   myUserId,
@@ -32,8 +11,8 @@ export function resolveContactIdFromDirectConversationId(
     return null;
   }
 
-  const otherUserId = participantIds.find((id) => id !== myUserId);
-  if (!otherUserId) {
+  const [first, second] = participantIds;
+  if (myUserId !== first && myUserId !== second) {
     console.warn(
       '[CONTACTS] My user ID not found in conversation ID:',
       conversationId,
@@ -41,5 +20,5 @@ export function resolveContactIdFromDirectConversationId(
     return null;
   }
 
-  return otherUserId;
+  return myUserId === first ? second : first;
 }

@@ -31,7 +31,6 @@ interface ImportMetaEnv {
 
   // D1-backed message persistence worker
   readonly VITE_DATA_URL: string;
-  readonly VITE_MESSAGE_BACKEND: 'd1' | 'rtdb';
 }
 
 interface ImportMeta {
