@@ -336,4 +336,42 @@ describe('call invite retention', () => {
       mailbox.close();
     }
   });
+
+  it('replays pending invites from multiple callers', async () => {
+    const calleeId = `callee-${crypto.randomUUID()}`;
+    const callerAId = `caller-${crypto.randomUUID()}`;
+    const callerBId = `caller-${crypto.randomUUID()}`;
+    const convoA = await resolveOrCreateDirect(env.DB, callerAId, calleeId, 1000);
+    const convoB = await resolveOrCreateDirect(env.DB, callerBId, calleeId, 1000);
+    const calleeToken = await signToken(validClaims(calleeId));
+    const callerAToken = await signToken(validClaims(callerAId));
+    const callerBToken = await signToken(validClaims(callerBId));
+
+    for (const [token, convoId] of [
+      [callerAToken, convoA],
+      [callerBToken, convoB],
+    ] as const) {
+      expect(
+        (
+          await jsonPost('/calls/invite', token, {
+            conversationId: convoId,
+            calleeId,
+            expiresAt: Date.now() + 30_000,
+          })
+        ).status,
+      ).toBe(200);
+    }
+
+    const mailbox = await connectMailbox(calleeToken);
+    try {
+      const a = (await mailbox.next()) as { t: string; invite: { roomId: string } };
+      const b = (await mailbox.next()) as { t: string; invite: { roomId: string } };
+      expect([a.t, b.t]).toEqual(['invite', 'invite']);
+      expect(new Set([a.invite.roomId, b.invite.roomId])).toEqual(
+        new Set([convoA, convoB]),
+      );
+    } finally {
+      mailbox.close();
+    }
+  });
 });

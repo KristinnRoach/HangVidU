@@ -48,5 +48,10 @@ members of `conversationId`.
 
 - Delete unwired RTDB files: `call-rtdb-adapter.ts`, `room-access-rtdb-adapter.ts`,
   `call-repository.ts` (+ tests).
-- Group-call handshake UI (N responses).
+- Group-call handshake UI (N responses). Mailbox already retains one pending invite
+  per room (per-key `invite:<roomId>` storage), so multiple concurrent incoming
+  calls already replay on reconnect; this item is UI only.
+- Retain call responses across a caller reconnect (the "lost accept" gap) —
+  consumed-once with an ack endpoint. Scoped in
+  [FOLLOWUP_CALL_RESPONSE_RETENTION.md](./FOLLOWUP_CALL_RESPONSE_RETENTION.md).
 - `ALLOWED_ORIGINS` already shared across workers — no new origin needed.

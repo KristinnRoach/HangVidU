@@ -3,6 +3,7 @@ import {
   type MailboxChannel,
 } from '../../realtime/mailbox-channel';
 import type { CallInvite, CallResponse } from './model/call-schema';
+import { CALLING_TTL_MS } from '../../../shared/constants';
 
 export type IncomingCallEvent =
   | { type: 'invite'; invite: CallInvite }
@@ -15,8 +16,6 @@ interface CallServiceOptions {
   /** Fresh Firebase ID token provider, or null when logged out. */
   getToken: () => Promise<string | null>;
 }
-
-const CALL_SIGNAL_TTL_MS = 60_000;
 
 let callServiceInstance: CallService | null = null;
 
@@ -119,7 +118,7 @@ export class CallService {
       calleeId,
       callerName,
       audioOnly,
-      expiresAt: Date.now() + CALL_SIGNAL_TTL_MS,
+      expiresAt: Date.now() + CALLING_TTL_MS,
     });
   }
 
@@ -136,7 +135,7 @@ export class CallService {
       conversationId: roomId,
       callerId,
       responseType,
-      expiresAt: Date.now() + CALL_SIGNAL_TTL_MS,
+      expiresAt: Date.now() + CALLING_TTL_MS,
     });
   }
 

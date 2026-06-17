@@ -18,6 +18,7 @@ import type {
   ConversationServerEvent,
   WireMessage,
 } from '../../../shared/conversation-channel/protocol';
+import { CALLING_TTL_MS } from '../../../shared/constants';
 
 export { ConversationChannel, UserMailbox };
 
@@ -30,7 +31,6 @@ export interface Env {
 }
 
 const MAX_ATTACHMENT_FILE_NAME_LENGTH = 180;
-const CALL_SIGNAL_TTL_MS = 60_000;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -121,7 +121,7 @@ export default {
       }
       const startedAt = now;
       const expiresAt =
-        numOrUndef(body?.expiresAt) ?? startedAt + CALL_SIGNAL_TTL_MS;
+        numOrUndef(body?.expiresAt) ?? startedAt + CALLING_TTL_MS;
       await env.USER_MAILBOX.getByName(calleeId).deliver({
         t: 'invite',
         invite: {

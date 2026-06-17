@@ -5,7 +5,12 @@ import type {
 } from '../../../shared/call-mailbox/protocol';
 import type { Env } from './index';
 
-const PENDING_INVITE_KEY = 'pendingInvite';
+// One stored key per pending invite, keyed by roomId (= conversationId). Using a
+// key per invite (rather than one blob) lets concurrent deliver() calls from
+// different callers each write their own key without a read-modify-write race,
+// and makes a re-invite to the same room a natural overwrite.
+const PENDING_INVITE_PREFIX = 'invite:';
+const inviteKey = (roomId: string): string => PENDING_INVITE_PREFIX + roomId;
 
 /**
  * One instance per userId (keyed via getByName). Broadcast-only fan-out across
@@ -13,10 +18,11 @@ const PENDING_INVITE_KEY = 'pendingInvite';
  * the upgrade (you can only open your OWN mailbox) and authorizes each delivery
  * against D1 conversation membership before calling `deliver`.
  *
- * Keeps one pending invite with its TTL so opening, refreshing, or reconnecting
- * the app while the caller is still ringing resurfaces the incoming-call dialog.
- * This deliberately is not a queue/history model; a new invite replaces the old
- * one, and cancel/response clear the matching pending invite.
+ * Keeps the set of currently-pending invites (one per room) with their TTLs, so
+ * opening, refreshing, or reconnecting the app while a caller is still ringing
+ * resurfaces every incoming-call dialog. This is not a queue/history model: a new
+ * invite for a room replaces that room's pending invite, and cancel/response
+ * clear the matching one. Responses are not retained (transient live delivery).
  *
  * ## RPC contract (worker → DO)
  * The worker calls `deliver(envelope)` after authorizing the sender. The DO fans
@@ -33,12 +39,11 @@ export class UserMailbox extends DurableObject<Env> {
     const client = pair[0];
     const server = pair[1];
     this.ctx.acceptWebSocket(server);
-    const pendingInvite = await this.getFreshPendingInvite();
-    if (pendingInvite) {
+    for (const invite of await this.getFreshPendingInvites()) {
       server.send(
         JSON.stringify({
           t: 'invite',
-          invite: pendingInvite,
+          invite,
         } satisfies MailboxEnvelope),
       );
     }
@@ -80,31 +85,34 @@ export class UserMailbox extends DurableObject<Env> {
   }
 
   async clearPendingInvite(roomId: string): Promise<void> {
-    const pending = await this.ctx.storage.get<MailboxInvite>(
-      PENDING_INVITE_KEY,
-    );
-    if (pending?.roomId === roomId) {
-      await this.ctx.storage.delete(PENDING_INVITE_KEY);
-    }
+    await this.ctx.storage.delete(inviteKey(roomId));
   }
 
   private async storePendingInvite(invite: MailboxInvite): Promise<void> {
+    const key = inviteKey(invite.roomId);
     if (invite.expiresAt != null && invite.expiresAt <= Date.now()) {
-      await this.ctx.storage.delete(PENDING_INVITE_KEY);
+      await this.ctx.storage.delete(key);
       return;
     }
-    await this.ctx.storage.put(PENDING_INVITE_KEY, invite);
+    await this.ctx.storage.put(key, invite);
   }
 
-  private async getFreshPendingInvite(): Promise<MailboxInvite | null> {
-    const pending = await this.ctx.storage.get<MailboxInvite>(
-      PENDING_INVITE_KEY,
-    );
-    if (!pending) return null;
-    if (pending.expiresAt != null && pending.expiresAt <= Date.now()) {
-      await this.ctx.storage.delete(PENDING_INVITE_KEY);
-      return null;
+  /** All non-expired pending invites; sweeps any expired keys it encounters. */
+  private async getFreshPendingInvites(): Promise<MailboxInvite[]> {
+    const stored = await this.ctx.storage.list<MailboxInvite>({
+      prefix: PENDING_INVITE_PREFIX,
+    });
+    const now = Date.now();
+    const fresh: MailboxInvite[] = [];
+    const expiredKeys: string[] = [];
+    for (const [key, invite] of stored) {
+      if (invite.expiresAt != null && invite.expiresAt <= now) {
+        expiredKeys.push(key);
+      } else {
+        fresh.push(invite);
+      }
     }
-    return pending;
+    if (expiredKeys.length) await this.ctx.storage.delete(expiredKeys);
+    return fresh;
   }
 }

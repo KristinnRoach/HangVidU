@@ -9,6 +9,10 @@ import {
   getUser,
 } from '../../auth/index.js';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
+import type {
+  CreateRoomSignalingOptions,
+  P2PRoomSignaling,
+} from '@kidlib/p2p';
 import { CallResponseType, type CallInvite } from './model/call-schema.js';
 import {
   sendIncomingCallPushNotification,
@@ -31,16 +35,21 @@ const DATA_URL =
   (import.meta.env.VITE_DATA_URL as string | undefined) ??
   'http://localhost:8788';
 
+/** Lazy room-signaling factory passed to `p2p.join` — see `src/realtime/signaling`. */
+type CreateRoomSignaling = (
+  options: CreateRoomSignalingOptions,
+) => P2PRoomSignaling | Promise<P2PRoomSignaling>;
+
 type CallHandshakeControllerOptions = {
   p2p: SolidP2PRoom;
-  createSignaling: any; // TODO: Type
+  createSignaling: CreateRoomSignaling;
   onStateChange: (state: CallHandshakeState) => void;
   onCalleeBusy: (busy: boolean) => void;
 };
 
 export class CallHandshakeController {
   private readonly p2p: SolidP2PRoom;
-  private readonly createSignaling: any;
+  private readonly createSignaling: CreateRoomSignaling;
   private readonly onStateChange: (state: CallHandshakeState) => void;
   private readonly onCalleeBusy: (busy: boolean) => void;
 
