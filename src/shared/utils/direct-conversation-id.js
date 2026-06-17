@@ -11,8 +11,8 @@ export function resolveContactIdFromDirectConversationId(
     return null;
   }
 
-  const otherUserId = participantIds.find((id) => id !== myUserId);
-  if (!otherUserId) {
+  const [first, second] = participantIds;
+  if (myUserId !== first && myUserId !== second) {
     console.warn(
       '[CONTACTS] My user ID not found in conversation ID:',
       conversationId,
@@ -20,5 +20,5 @@ export function resolveContactIdFromDirectConversationId(
     return null;
   }
 
-  return otherUserId;
+  return myUserId === first ? second : first;
 }

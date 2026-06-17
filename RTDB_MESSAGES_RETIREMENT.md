@@ -1,15 +1,15 @@
 # RTDB messages retirement checklist
 
-Once the D1 message backend (`VITE_MESSAGE_BACKEND=d1`) is proven in production
-(live push + files verified, soak period passed, code default flipped to `d1`
-per decision 2026-06-15 #8), the legacy RTDB message path becomes deletable.
+Once the D1 message backend is proven in production (live push + files verified,
+soak period passed, code default flipped to `d1` per decision 2026-06-15 #8),
+the legacy RTDB message path becomes deletable.
 This is intended as a mechanical follow-up PR — nothing here blocks the current
 slice. Delete top-down; run `pnpm ts && pnpm lint:boundaries && pnpm test` after
 each group.
 
 ## Preconditions (do not start until all true)
 - [x] Code default in `messaging-runtime.ts` is `d1` and has shipped.
-- [x] No environment still sets `VITE_MESSAGE_BACKEND=rtdb` (prod/dev set `d1`).
+- [x] All prod/dev environments are on the shipped `d1` default.
 - [ ] Prod soak clean (text, files, live push, multi-account).
 
 ## Client code to delete
