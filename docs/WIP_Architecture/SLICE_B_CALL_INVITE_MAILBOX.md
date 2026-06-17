@@ -15,8 +15,8 @@ decide refinements.
 - **Host in `workers/data`.** Reuses `auth.ts`, origin allowlist, D1 membership
   authz, deploy target. New DO class, existing worker.
 - **Clean swap, no flag/shim.** Replace the RTDB transport outright (tiny user
-  base, force-immediate SW). RTDB adapter files left unwired for a one-commit
-  revert window, deleted after manual verify.
+  base, force-immediate SW). RTDB adapter files are left unwired for now so prod
+  testing can compare/switch back quickly if the DO mailbox has issues.
 - **Drop dead `room-access` RTDB write.** Only `call-service` referenced it; the
   DO signaling worker authorizes by token identity and never reads it.
 
@@ -33,22 +33,20 @@ members of `conversationId`.
 ## Checklist — minimal core
 
 - [x] `shared/call-mailbox/protocol.ts` — envelope union + `isMailboxEnvelope` guard (plain TS, no deps)
-- [x] `workers/data/src/user-mailbox.ts` — `UserMailbox` DO (hibernatable WS, broadcast-only `deliver(envelope)`)
+- [x] `workers/data/src/user-mailbox.ts` — `UserMailbox` DO (hibernatable WS, one pending invite with TTL replay, live `deliver(envelope)`)
 - [x] `workers/data/src/index.ts` — Env binding, export, `GET /users/me/mailbox/ws`, `POST /calls/{invite,response,cancel}` with D1 authz
 - [x] `workers/data/wrangler.jsonc` — `USER_MAILBOX` binding + migration `v2`
 - [x] `src/realtime/mailbox-channel.ts` — WS transport to own mailbox (reconnect/backoff, bearer subprotocol; mirrors conversation-channel)
 - [x] `src/features/call/call-service.ts` — rewrite onto mailbox (drop rtdb, roomAccess, CallRepository); ctor takes `{localUID, baseUrl, getToken}`
 - [x] `src/features/call/call-handshake-controller.ts` — wire `{localUID, baseUrl, getToken}`; thread `callerId` into respond path
+- [x] Pending-invite retention: replay on connect while caller is still ringing; clear on cancel/response/expiry
+- [x] Cancel correlation + worker cancel/retention tests
 - [x] `tsc` (app + worker) + boundaries lint clean; data-worker `wrangler deploy --dry-run` builds with both DO bindings + migration v2; updated singleton test passes
 - [ ] **Manual e2e**: two accounts, app open both sides — invite, accept→join, decline, busy, cancel, timeout
 
 ## Refinements to weigh AFTER manual verify (do not pre-build)
 
-- Pending-invite **retention w/ TTL** in the DO (replay on connect) so a callee
-  whose socket is mid-reconnect / opens a moment late still gets rung. Broadcast-
-  only covers the both-apps-open happy path; this covers reconnect races.
 - Delete unwired RTDB files: `call-rtdb-adapter.ts`, `room-access-rtdb-adapter.ts`,
   `call-repository.ts` (+ tests).
-- Mailbox unit/integration tests.
 - Group-call handshake UI (N responses).
 - `ALLOWED_ORIGINS` already shared across workers — no new origin needed.

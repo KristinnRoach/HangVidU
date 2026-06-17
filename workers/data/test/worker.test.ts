@@ -17,6 +17,7 @@ const JWKS_URL =
 
 let privateKey: CryptoKey;
 const originalFetch = globalThis.fetch;
+const NO_MESSAGE = Symbol('no message');
 
 function b64urlFromString(s: string): string {
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -99,6 +100,18 @@ async function connectMailbox(token: string) {
         else waiters.push(resolve);
       }),
   };
+}
+
+async function nextOrNoMessage(
+  mailbox: Awaited<ReturnType<typeof connectMailbox>>,
+  timeoutMs = 100,
+): Promise<unknown | typeof NO_MESSAGE> {
+  return Promise.race([
+    mailbox.next(),
+    new Promise<typeof NO_MESSAGE>((resolve) => {
+      setTimeout(() => resolve(NO_MESSAGE), timeoutMs);
+    }),
+  ]);
 }
 
 beforeAll(async () => {
@@ -215,6 +228,110 @@ describe('call cancel mailbox route', () => {
         roomId: convoId,
         by: 'user-a',
       });
+    } finally {
+      mailbox.close();
+    }
+  });
+});
+
+describe('call invite retention', () => {
+  it('replays a fresh pending invite when the callee connects late', async () => {
+    const callerId = `caller-${crypto.randomUUID()}`;
+    const calleeId = `callee-${crypto.randomUUID()}`;
+    const convoId = await resolveOrCreateDirect(env.DB, callerId, calleeId, 1000);
+    const callerToken = await signToken(validClaims(callerId));
+    const calleeToken = await signToken(validClaims(calleeId));
+
+    const res = await jsonPost('/calls/invite', callerToken, {
+      conversationId: convoId,
+      calleeId,
+      callerName: 'Caller',
+      audioOnly: true,
+      expiresAt: Date.now() + 30_000,
+    });
+    expect(res.status).toBe(200);
+
+    const mailbox = await connectMailbox(calleeToken);
+    try {
+      expect(await mailbox.next()).toEqual({
+        t: 'invite',
+        invite: {
+          roomId: convoId,
+          callerId,
+          calleeId,
+          callerName: 'Caller',
+          audioOnly: true,
+          startedAt: expect.any(Number),
+          expiresAt: expect.any(Number),
+        },
+      });
+    } finally {
+      mailbox.close();
+    }
+  });
+
+  it('does not replay a pending invite after caller cancel', async () => {
+    const callerId = `caller-${crypto.randomUUID()}`;
+    const calleeId = `callee-${crypto.randomUUID()}`;
+    const convoId = await resolveOrCreateDirect(env.DB, callerId, calleeId, 1000);
+    const callerToken = await signToken(validClaims(callerId));
+    const calleeToken = await signToken(validClaims(calleeId));
+
+    expect(
+      (
+        await jsonPost('/calls/invite', callerToken, {
+          conversationId: convoId,
+          calleeId,
+          expiresAt: Date.now() + 30_000,
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await jsonPost('/calls/cancel', callerToken, {
+          conversationId: convoId,
+          calleeId,
+        })
+      ).status,
+    ).toBe(200);
+
+    const mailbox = await connectMailbox(calleeToken);
+    try {
+      expect(await nextOrNoMessage(mailbox)).toBe(NO_MESSAGE);
+    } finally {
+      mailbox.close();
+    }
+  });
+
+  it('does not replay a pending invite after callee response', async () => {
+    const callerId = `caller-${crypto.randomUUID()}`;
+    const calleeId = `callee-${crypto.randomUUID()}`;
+    const convoId = await resolveOrCreateDirect(env.DB, callerId, calleeId, 1000);
+    const callerToken = await signToken(validClaims(callerId));
+    const calleeToken = await signToken(validClaims(calleeId));
+
+    expect(
+      (
+        await jsonPost('/calls/invite', callerToken, {
+          conversationId: convoId,
+          calleeId,
+          expiresAt: Date.now() + 30_000,
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await jsonPost('/calls/response', calleeToken, {
+          conversationId: convoId,
+          callerId,
+          responseType: 'accepted',
+        })
+      ).status,
+    ).toBe(200);
+
+    const mailbox = await connectMailbox(calleeToken);
+    try {
+      expect(await nextOrNoMessage(mailbox)).toBe(NO_MESSAGE);
     } finally {
       mailbox.close();
     }

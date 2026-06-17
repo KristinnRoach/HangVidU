@@ -30,6 +30,7 @@ export interface Env {
 }
 
 const MAX_ATTACHMENT_FILE_NAME_LENGTH = 180;
+const CALL_SIGNAL_TTL_MS = 60_000;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -119,6 +120,8 @@ export default {
         return json({ error: 'not_found' }, 404, cors);
       }
       const startedAt = now;
+      const expiresAt =
+        numOrUndef(body?.expiresAt) ?? startedAt + CALL_SIGNAL_TTL_MS;
       await env.USER_MAILBOX.getByName(calleeId).deliver({
         t: 'invite',
         invite: {
@@ -128,7 +131,7 @@ export default {
           callerName: str(body?.callerName) ?? undefined,
           audioOnly: body?.audioOnly === true,
           startedAt,
-          expiresAt: numOrUndef(body?.expiresAt),
+          expiresAt,
         },
       });
       return json({ ok: true }, 200, cors);
@@ -154,6 +157,9 @@ export default {
       ) {
         return json({ error: 'not_found' }, 404, cors);
       }
+      await env.USER_MAILBOX.getByName(callerId).clearPendingInvite(
+        conversationId,
+      );
       await env.USER_MAILBOX.getByName(targetCallerId).deliver({
         t: 'response',
         response: {
