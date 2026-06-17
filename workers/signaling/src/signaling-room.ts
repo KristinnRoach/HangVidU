@@ -13,6 +13,7 @@ import type { Env } from './index';
 interface SocketState {
   peerId: PeerId | null;
   data?: PresenceData;
+  joinedAt?: number;
 }
 
 /**
@@ -24,6 +25,8 @@ interface SocketState {
  * room simply hibernates and evicts.
  */
 export class SignalingRoom extends DurableObject<Env> {
+  private joinSequence = 0;
+
   async fetch(request: Request): Promise<Response> {
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('Expected WebSocket upgrade', { status: 426 });
@@ -69,7 +72,12 @@ export class SignalingRoom extends DurableObject<Env> {
     const message = parsed as ClientMessage;
     switch (message.t) {
       case 'join':
-        this.setSocketState(ws, { peerId: message.peerId, data: message.data });
+        this.replaceExistingPeerSocket(ws, message.peerId);
+        this.setSocketState(ws, {
+          peerId: message.peerId,
+          data: message.data,
+          joinedAt: this.nextJoinOrder(),
+        });
         this.broadcastPeers();
         return;
       case 'leave':
@@ -82,7 +90,11 @@ export class SignalingRoom extends DurableObject<Env> {
         // toggle) reaches every member, including the sender.
         const { peerId } = this.getSocketState(ws);
         if (!peerId) return this.sendError(ws, 'join before setting presence');
-        this.setSocketState(ws, { peerId, data: message.data });
+        this.setSocketState(ws, {
+          peerId,
+          data: message.data,
+          joinedAt: this.getSocketState(ws).joinedAt,
+        });
         this.broadcastPeers();
         return;
       }
@@ -133,19 +145,49 @@ export class SignalingRoom extends DurableObject<Env> {
   /** Joined peers with their presence data; the local peer is included (its own
    * socket is in getWebSockets()), so self mute toggles round-trip back. */
   private presenceMembers(): PresenceMember[] {
-    const members: PresenceMember[] = [];
+    const byPeerId = new Map<
+      PeerId,
+      { member: PresenceMember; joinedAt: number }
+    >();
     for (const ws of this.ctx.getWebSockets()) {
-      const { peerId, data } = this.getSocketState(ws);
-      if (peerId) members.push(data ? { peerId, data } : { peerId });
+      const { peerId, data, joinedAt = 0 } = this.getSocketState(ws);
+      if (!peerId) continue;
+      const existing = byPeerId.get(peerId);
+      if (existing && existing.joinedAt > joinedAt) continue;
+      byPeerId.set(peerId, {
+        member: data ? { peerId, data } : { peerId },
+        joinedAt,
+      });
     }
-    return members;
+    return [...byPeerId.values()].map(({ member }) => member);
   }
 
   private findSocket(peerId: PeerId): WebSocket | null {
+    let target: WebSocket | null = null;
+    let targetJoinedAt = -1;
     for (const ws of this.ctx.getWebSockets()) {
-      if (this.getSocketState(ws).peerId === peerId) return ws;
+      const state = this.getSocketState(ws);
+      if (state.peerId !== peerId) continue;
+      const joinedAt = state.joinedAt ?? 0;
+      if (target && targetJoinedAt > joinedAt) continue;
+      target = ws;
+      targetJoinedAt = joinedAt;
     }
-    return null;
+    return target;
+  }
+
+  private replaceExistingPeerSocket(current: WebSocket, peerId: PeerId): void {
+    for (const ws of this.ctx.getWebSockets()) {
+      if (ws === current) continue;
+      if (this.getSocketState(ws).peerId !== peerId) continue;
+      this.setSocketState(ws, { peerId: null });
+      try {
+        ws.close(4000, 'replaced by newer connection');
+      } catch {
+        // Socket is already closing; clearing attachment above is enough to
+        // keep subsequent relay routing away from the stale connection.
+      }
+    }
   }
 
   private send(ws: WebSocket, message: ServerMessage): void {
@@ -166,5 +208,10 @@ export class SignalingRoom extends DurableObject<Env> {
 
   private setSocketState(ws: WebSocket, state: SocketState): void {
     ws.serializeAttachment(state);
+  }
+
+  private nextJoinOrder(): number {
+    this.joinSequence = (this.joinSequence + 1) % 1000;
+    return Date.now() * 1000 + this.joinSequence;
   }
 }

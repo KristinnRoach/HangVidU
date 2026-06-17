@@ -327,18 +327,13 @@ export class CallHandshakeController {
     if (!svc || !localUID) return;
     this.clearOutgoingCallTracking();
     this.setHandshakeState(null);
-    svc
-      .respondToIncomingCallInvite({
-        roomId: state.call.roomId,
-        callerId: state.call.callerId,
-        responseType: CallResponseType.ACCEPTED,
-      })
+    this.enterRoom(state.call.roomId, localUID, state.call.audioOnly ?? false)
       .then(() =>
-        this.enterRoom(
-          state.call.roomId,
-          localUID,
-          state.call.audioOnly ?? false,
-        ),
+        svc.respondToIncomingCallInvite({
+          roomId: state.call.roomId,
+          callerId: state.call.callerId,
+          responseType: CallResponseType.ACCEPTED,
+        }),
       )
       .catch((err) => {
         console.error('Error accepting incoming call:', err);

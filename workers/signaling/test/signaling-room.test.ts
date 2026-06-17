@@ -104,4 +104,48 @@ describe('SignalingRoom', () => {
       message: 'join before setting presence',
     });
   });
+
+  it('routes relays to the newest socket when a peer rejoins after reload', async () => {
+    const oldB = await connect('room-4');
+    expect(await oldB.next()).toEqual({ t: 'peers', peers: [] });
+    oldB.send({ t: 'join', peerId: 'peer-b' });
+    expect(await oldB.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'peer-b' }],
+    });
+
+    const newB = await connect('room-4');
+    expect(await newB.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'peer-b' }],
+    });
+    newB.send({ t: 'join', peerId: 'peer-b' });
+    expect(await newB.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'peer-b' }],
+    });
+
+    const a = await connect('room-4');
+    expect(await a.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'peer-b' }],
+    });
+    a.send({ t: 'join', peerId: 'peer-a' });
+    expect(memberIds(await a.next())).toEqual(['peer-a', 'peer-b']);
+    expect(memberIds(await newB.next())).toEqual(['peer-a', 'peer-b']);
+
+    a.send({
+      t: 'relay',
+      to: 'peer-b',
+      channel: 'sdp',
+      data: { sdp: 'offer-for-new-page' },
+    });
+
+    expect(await newB.next()).toEqual({
+      t: 'relay',
+      from: 'peer-a',
+      channel: 'sdp',
+      data: { sdp: 'offer-for-new-page' },
+    });
+  });
 });
