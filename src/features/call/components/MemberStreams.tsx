@@ -1,20 +1,10 @@
-import { createMemo, For, Show } from 'solid-js';
+import { For, Show } from 'solid-js';
 import VideoStream from '../../../components/media/VideoStream';
 import { useP2PContext } from '../../../shared/p2p-context.js';
 import styles from './MemberStreams.module.css';
 
 export default function MemberStreams() {
   const p2p = useP2PContext();
-  const remoteStreams = createMemo(() => {
-    const byMemberId = new Map<
-      string,
-      ReturnType<typeof p2p.remoteMemberStreams>[number]
-    >();
-    for (const remote of p2p.remoteMemberStreams()) {
-      byMemberId.set(remote.memberId, remote);
-    }
-    return [...byMemberId.values()];
-  });
 
   return (
     <div
@@ -29,7 +19,7 @@ export default function MemberStreams() {
           <VideoStream stream={stream()} local={true} preview={true} />
         )}
       </Show>
-      <For each={remoteStreams()}>
+      <For each={p2p.remoteMemberStreams()}>
         {(remote) => (
           <VideoStream
             stream={remote.stream}

@@ -25,8 +25,8 @@ importers:
         specifier: ^0.1.5
         version: 0.1.5
       '@kidlib/p2p':
-        specifier: ^0.2.0
-        version: 0.2.0(solid-js@1.9.12)
+        specifier: ^0.2.2
+        version: 0.2.2(solid-js@1.9.12)
       '@mediabunny/ac3':
         specifier: ^1.40.1
         version: 1.40.1(mediabunny@1.41.0)
@@ -1395,8 +1395,8 @@ packages:
   '@kidlib/create-component@0.1.5':
     resolution: {integrity: sha512-viom5Q6hIMz13plwb6665OT+2N3OBLs+8T7dNT5G9+0UQFcCtOI0iFE0tq0PNf5nnkNsrhS/NkhkyFvclTbMKA==}
 
-  '@kidlib/p2p@0.2.0':
-    resolution: {integrity: sha512-tzjEtJr1sEVZSTBvmKDpR92vtXemIU43Cxip2bg78X4ThA529WOswThV0WsgipNlV6sLon3LqCjbFUXZp4utjg==}
+  '@kidlib/p2p@0.2.2':
+    resolution: {integrity: sha512-MHyRKBWtnvXHVEeBXsjAINJcaZkdutEbTP9SAO1rmk7+rR0FVLERHL+vO+SVuGP7cswtMhGrDY5sUIH047sZKA==}
     peerDependencies:
       solid-js: '>=1.8.0'
     peerDependenciesMeta:
@@ -5663,7 +5663,7 @@ snapshots:
   '@google-cloud/promisify@4.0.0':
     optional: true
 
-  '@google-cloud/storage@7.19.0':
+  '@google-cloud/storage@7.19.0(supports-color@10.2.2)':
     dependencies:
       '@google-cloud/paginator': 5.0.2
       '@google-cloud/projectify': 4.0.0
@@ -5672,7 +5672,7 @@ snapshots:
       async-retry: 1.3.3
       duplexify: 4.1.3
       fast-xml-parser: 5.5.7
-      gaxios: 6.7.1
+      gaxios: 6.7.1(supports-color@10.2.2)
       google-auth-library: 9.15.1
       html-entities: 2.6.0
       mime: 3.0.0
@@ -5878,7 +5878,7 @@ snapshots:
 
   '@kidlib/create-component@0.1.5': {}
 
-  '@kidlib/p2p@0.2.0(solid-js@1.9.12)':
+  '@kidlib/p2p@0.2.2(solid-js@1.9.12)':
     optionalDependencies:
       solid-js: 1.9.12
 
@@ -7251,7 +7251,7 @@ snapshots:
       uuid: 11.1.0
     optionalDependencies:
       '@google-cloud/firestore': 7.11.6
-      '@google-cloud/storage': 7.19.0
+      '@google-cloud/storage': 7.19.0(supports-color@10.2.2)
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -7374,10 +7374,10 @@ snapshots:
 
   fuzzy-search@3.2.1: {}
 
-  gaxios@6.7.1:
+  gaxios@6.7.1(supports-color@10.2.2):
     dependencies:
       extend: 3.0.2
-      https-proxy-agent: 7.0.6
+      https-proxy-agent: 7.0.6(supports-color@10.2.2)
       is-stream: 2.0.1
       node-fetch: 2.7.0
       uuid: 9.0.1
@@ -7389,14 +7389,14 @@ snapshots:
   gaxios@7.1.4:
     dependencies:
       extend: 3.0.2
-      https-proxy-agent: 7.0.6
+      https-proxy-agent: 7.0.6(supports-color@10.2.2)
       node-fetch: 3.3.2
     transitivePeerDependencies:
       - supports-color
 
   gcp-metadata@6.1.1:
     dependencies:
-      gaxios: 6.7.1
+      gaxios: 6.7.1(supports-color@10.2.2)
       google-logging-utils: 0.0.2
       json-bigint: 1.0.0
     transitivePeerDependencies:
@@ -7492,7 +7492,7 @@ snapshots:
     dependencies:
       base64-js: 1.5.1
       ecdsa-sig-formatter: 1.0.11
-      gaxios: 6.7.1
+      gaxios: 6.7.1(supports-color@10.2.2)
       gcp-metadata: 6.1.1
       gtoken: 7.1.0
       jws: 4.0.1
@@ -7531,7 +7531,7 @@ snapshots:
 
   gtoken@7.1.0:
     dependencies:
-      gaxios: 6.7.1
+      gaxios: 6.7.1(supports-color@10.2.2)
       jws: 4.0.1
     transitivePeerDependencies:
       - encoding
@@ -7601,7 +7601,7 @@ snapshots:
       - supports-color
     optional: true
 
-  https-proxy-agent@7.0.6:
+  https-proxy-agent@7.0.6(supports-color@10.2.2):
     dependencies:
       agent-base: 7.1.4
       debug: 4.4.3(supports-color@10.2.2)

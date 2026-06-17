@@ -260,11 +260,9 @@ export class CallHandshakeController {
           })),
       memberCapacity,
       dataChannel: true,
-      onMemberLeft: (detail) => {
-        console.debug('Member left room:', { detail });
-        if (autoExitOnEmpty && this.p2p.room()?.memberCount === 1) {
-          this.exitActiveRoom();
-        }
+      onAlone: (detail) => {
+        console.debug('Room is alone:', { detail });
+        if (autoExitOnEmpty) this.exitActiveRoom();
       },
     });
 
