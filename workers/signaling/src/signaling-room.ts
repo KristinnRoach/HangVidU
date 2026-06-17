@@ -81,7 +81,7 @@ export class SignalingRoom extends DurableObject<Env> {
         this.broadcastPeers();
         return;
       case 'leave':
-        this.setSocketState(ws, { peerId: null });
+        this.clearPeerPresence(this.getSocketState(ws).peerId);
         this.broadcastPeers();
         return;
       case 'presence': {
@@ -104,11 +104,12 @@ export class SignalingRoom extends DurableObject<Env> {
   }
 
   async webSocketClose(ws: WebSocket): Promise<void> {
-    // The socket is gone from getWebSockets() by the time presence recomputes.
+    this.clearPeerPresence(this.getSocketState(ws).peerId);
     this.broadcastPeers();
   }
 
   async webSocketError(ws: WebSocket): Promise<void> {
+    this.clearPeerPresence(this.getSocketState(ws).peerId);
     this.broadcastPeers();
   }
 
@@ -186,6 +187,15 @@ export class SignalingRoom extends DurableObject<Env> {
       } catch {
         // Socket is already closing; clearing attachment above is enough to
         // keep subsequent relay routing away from the stale connection.
+      }
+    }
+  }
+
+  private clearPeerPresence(peerId: PeerId | null): void {
+    if (!peerId) return;
+    for (const ws of this.ctx.getWebSockets()) {
+      if (this.getSocketState(ws).peerId === peerId) {
+        this.setSocketState(ws, { peerId: null });
       }
     }
   }
