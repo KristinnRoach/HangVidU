@@ -33,8 +33,8 @@ export default function ContactEntry(props) {
 
   const onOpenConversation = () => {
     if (!props.id) return;
-    // The DM conversation id is resolved from the contact id (opaque for d1,
-    // derived for rtdb) inside the store — see openDirectConversation.
+    // The opaque DM conversation id is resolved from the contact id inside the
+    // store (resolve-or-create) — see openDirectConversation.
     void openDirectConversation(props.id, {
       displayUI: true,
       contactNickName: displayName(),

@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { deriveLegacyDirectConversationId as deriveSharedLegacyDirectConversationId } from '../../shared/utils/direct-conversation-id.js';
 
 export const UserIdSchema = z.string().trim().min(1);
 
@@ -107,12 +106,6 @@ export const MessagePayloadSchema = z.discriminatedUnion('type', [
 export const MessageEnvelopeSchema = MessageBaseSchema.extend({
   payload: MessagePayloadSchema,
 });
-
-// LEGACY pair-id derivation (sorted `a_b`) — only valid for the rtdb backend.
-// Opaque registry ids (see `src/stores/conversations-client.ts`) replace this;
-// new code must treat conversation ids as opaque strings.
-export const deriveLegacyDirectConversationId =
-  deriveSharedLegacyDirectConversationId;
 
 export function createGroupConversationId(
   id: string,

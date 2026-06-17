@@ -13,24 +13,34 @@ each group.
 - [ ] Prod soak clean (text, files, live push, multi-account).
 
 ## Client code to delete
-- [ ] `src/features/messaging-next/adapters/rtdb.ts` (message path) + `rtdb.test.js`.
-      Keep only if the conversation-metadata repository is still RTDB-backed —
-      `createRTDBConversationRepository` is separate; split the file or drop only
-      `createRTDBMessageRepository` and its helpers.
-- [ ] `messaging-runtime.ts`: remove the `rtdb` branch + `selectMessageRepository`
-      indirection once there is a single backend; inline the `d1` construction.
-- [ ] `src/shared/utils/direct-conversation-id.js` + `deriveLegacyDirectConversationId`
-      (re-export in `messaging-next/schema.ts`) once nothing derives `a_b` ids.
-- [ ] `resolveContactIdFromDirectConversationId` and any `group:` prefix handling.
-- [ ] Legacy fallbacks in `MainContent.tsx` (legacy pair-id derivation) and
-      `contactsStore.ts`.
-- [ ] `SWNavigation.tsx` raw-id deep-link `open()` — must resolve an opaque id.
+- [x] `src/features/messaging-next/adapters/rtdb.ts` (message path) + `rtdb.test.js`.
+      Dropped `createRTDBMessageRepository` + its helpers; kept
+      `createRTDBConversationRepository` (conversation metadata is a separate
+      migration).
+- [x] `messaging-runtime.ts`: removed the `rtdb` branch + `selectMessageRepository`
+      indirection; `d1` construction is inlined.
+- [x] `src/shared/utils/direct-conversation-id.js` — deleted
+      `deriveLegacyDirectConversationId` and its `schema.ts` re-export (nothing
+      mints `a_b` ids now). Also dropped the now-unused `VITE_MESSAGE_BACKEND`
+      flag (`env.d.ts` + `.env.example`s).
+- [x] Legacy fallbacks: `contactsStore.saveContact` no longer derives a stored
+      id (opaque id is minted lazily on open); `SWNavigation.tsx` contact-only
+      deep links now resolve-or-create the opaque id via `openDirectConversation`
+      instead of reading the stored derived id (`getConversationId` getter removed).
+- [ ] `resolveContactIdFromDirectConversationId` (reverse `a_b` → contact) is
+      **intentionally retained** as a best-effort fallback in `MainContent.tsx`
+      for selections that arrive without participant ids. It returns null for
+      opaque ids (no `_`), so it is inert under d1; delete once the call-button
+      callee path is proven to always carry `remoteParticipantIds`.
+- [ ] `group:` prefix handling (`GroupConversationIdSchema` / `createGroupConversationId`)
+      is **out of scope** — it discriminates conversation-id shape, not the
+      message path. Revisit with the conversation-metadata migration.
 
-## Backend / infra to retire
+## Backend / infra to retire (deferred — prod ops, not in this PR)
 - [ ] RTDB `conversations/*` security rules covering `messages` + `members`.
 - [ ] RTDB stored message + members data (after any needed export/backup).
-- [ ] Confirm `workers/files` no longer references `FIREBASE_DATABASE_URL`
-      (already removed in the file sub-slice — authz is D1 now).
+- [x] `workers/files` no longer references `FIREBASE_DATABASE_URL` (removed in
+      the file sub-slice — authz is D1 now).
 
 ## Notes
 - Conversation **metadata** (`ConversationNode`) still lives on RTDB via

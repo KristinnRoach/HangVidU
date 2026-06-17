@@ -2,10 +2,11 @@ import { createEffect, onCleanup, onMount } from 'solid-js';
 import {
   getContactById,
   getContactsIsHydrated,
-  getConversationId,
 } from '../../stores/contactsStore';
-import { open as openSelectedConversation } from '../../stores/selectedConversationStore';
-import type { ConversationSelection } from '../messaging-next/interfaces.js';
+import {
+  open as openSelectedConversation,
+  openDirectConversation,
+} from '../../stores/selectedConversationStore';
 
 type Props = {
   queueLimit?: number;
@@ -21,51 +22,44 @@ function trimmedParam(
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
-function resolveSelection(path: string): ConversationSelection | null {
+function dispatchPath(path: string) {
   const url = new URL(path, window.location.origin);
   const conversationId = trimmedParam(url.searchParams, 'conversationId');
   const contactId = trimmedParam(url.searchParams, 'contact');
 
+  // Links may carry an opaque conversationId directly; open it as-is.
   if (conversationId) {
     const contact = contactId ? getContactById(contactId) : null;
-    return {
+    openSelectedConversation({
       conversationId,
       remoteParticipantIds: contactId ? [contactId] : [],
       displayUI: true,
       contactNickName: contact?.contactNickName ?? undefined,
-    };
+    });
+    return;
   }
 
-  if (!contactId) return null;
+  if (!contactId) return;
 
-  const resolvedConversationId = getConversationId(contactId);
-  if (!resolvedConversationId) return null;
-
+  // Contact-only links resolve-or-create the opaque id through the registry,
+  // the same path the in-app open flow uses.
   const contact = getContactById(contactId);
-  return {
-    conversationId: resolvedConversationId,
-    remoteParticipantIds: [contactId],
+  void openDirectConversation(contactId, {
     displayUI: true,
     contactNickName: contact?.contactNickName ?? undefined,
-  };
+  });
 }
 
 /**
  * Listens for SW NAVIGATE messages (posted by the SW notification-click
- * handler when the user taps a push notification) and writes the resolved
- * selection to the selected-conversation store. Queues until contacts are
- * hydrated so room/contact lookups can succeed.
+ * handler when the user taps a push notification) and opens the resolved
+ * conversation. Queues until contacts are hydrated so contact lookups succeed.
  *
  * Renders nothing.
  */
 export default function SWNavigation(props: Props = {}) {
   const queueLimit = props.queueLimit ?? DEFAULT_QUEUE_LIMIT;
   const pending: string[] = [];
-
-  const dispatchPath = (path: string) => {
-    const selection = resolveSelection(path);
-    if (selection) openSelectedConversation(selection);
-  };
 
   const flushPending = () => {
     while (pending.length > 0) {

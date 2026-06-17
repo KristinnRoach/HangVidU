@@ -7,18 +7,18 @@ import SWNavigation from '../SWNavigation';
 const mocks = vi.hoisted(() => ({
   getContactById: vi.fn(),
   getContactsIsHydrated: vi.fn(),
-  getConversationId: vi.fn(),
   openSelectedConversation: vi.fn(),
+  openDirectConversation: vi.fn(),
 }));
 
 vi.mock('../../../stores/contactsStore', () => ({
   getContactById: mocks.getContactById,
   getContactsIsHydrated: mocks.getContactsIsHydrated,
-  getConversationId: mocks.getConversationId,
 }));
 
 vi.mock('../../../stores/selectedConversationStore', () => ({
   open: mocks.openSelectedConversation,
+  openDirectConversation: mocks.openDirectConversation,
   clear: vi.fn(),
   selection: () => null,
 }));
@@ -36,7 +36,6 @@ describe('SWNavigation', () => {
     const [isHydrated, updateHydrated] = createSignal(false);
     setHydrated = updateHydrated;
     mocks.getContactsIsHydrated.mockImplementation(() => isHydrated());
-    mocks.getConversationId.mockReturnValue('conversation-1');
     mocks.getContactById.mockReturnValue({ contactNickName: 'Sender' });
 
     const descriptor = Object.getOwnPropertyDescriptor(
@@ -85,14 +84,12 @@ describe('SWNavigation', () => {
       data: { type: 'NAVIGATE', path: '/?contact=sender-1' },
     });
 
-    expect(mocks.openSelectedConversation).not.toHaveBeenCalled();
+    expect(mocks.openDirectConversation).not.toHaveBeenCalled();
 
     setHydrated(true);
 
     await waitFor(() => {
-      expect(mocks.openSelectedConversation).toHaveBeenCalledWith({
-        conversationId: 'conversation-1',
-        remoteParticipantIds: ['sender-1'],
+      expect(mocks.openDirectConversation).toHaveBeenCalledWith('sender-1', {
         displayUI: true,
         contactNickName: 'Sender',
       });

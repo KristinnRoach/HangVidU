@@ -5,7 +5,6 @@ import {
   createContactsLocalStorageRepository,
   createContactsRTDBRepository,
 } from '../storage/contacts/index.js';
-import { deriveLegacyDirectConversationId } from '../shared/utils/direct-conversation-id.js';
 
 type Contact = any;
 type ContactsStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -65,10 +64,6 @@ export function getContactByRoomId(
   return null;
 }
 
-export function getConversationId(contactId: string): string | null {
-  return state.byId[contactId]?.conversationId ?? null;
-}
-
 export function getContactsIsHydrated(): boolean {
   return state.status === 'ready';
 }
@@ -85,9 +80,9 @@ export async function saveContact(
     const repo = getRepo(ownerId);
     const existing = await repo.get(contactId);
     const now = Date.now();
-    const conversationId =
-      existing?.conversationId ??
-      (ownerId ? deriveLegacyDirectConversationId(ownerId, contactId) : null);
+    // Opaque conversation ids are minted lazily by the registry on first open
+    // (resolveDirectConversationId); contacts no longer carry a derived id.
+    const conversationId = existing?.conversationId ?? null;
 
     const contact = await repo.put({
       contactId,
