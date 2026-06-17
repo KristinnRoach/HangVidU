@@ -62,9 +62,9 @@ export class CallService {
       );
     }
     this.localUID = localUID;
-    this.baseUrl = baseUrl;
+    this.baseUrl = baseUrl.replace(/\/+$/, '');
     this.getToken = getToken;
-    this.channel = createMailboxChannel({ baseUrl, getToken });
+    this.channel = createMailboxChannel({ baseUrl: this.baseUrl, getToken });
   }
 
   private async post(path: string, body: unknown): Promise<void> {

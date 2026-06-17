@@ -25,4 +25,14 @@ describe('initCallService', () => {
     expect(second.localUID).toBe('firebase-auth-uid');
     expect(cleanup).toHaveBeenCalledOnce();
   });
+
+  it('normalizes a trailing slash from the data worker base URL', () => {
+    const service = initCallService({
+      localUID: 'firebase-auth-uid',
+      baseUrl: 'http://localhost:8788/',
+      getToken: async () => null,
+    });
+
+    expect(service.baseUrl).toBe('http://localhost:8788');
+  });
 });
