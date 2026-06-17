@@ -71,6 +71,39 @@ describe('CallHandshakeController', () => {
     mocks.respondToIncomingCallInvite.mockResolvedValue(undefined);
   });
 
+  it("dismisses a matching incoming call when another device handles it", () => {
+    const onStateChange = vi.fn();
+    const controller = new CallHandshakeController({
+      p2p: {
+        close: vi.fn(),
+        state: vi.fn(() => 'idle'),
+        room: vi.fn(),
+      },
+      createSignaling: vi.fn(),
+      onStateChange,
+      onCalleeBusy: vi.fn(),
+    });
+
+    controller.init();
+    mocks.incomingCallback?.({
+      type: 'invite',
+      invite: {
+        roomId: 'room-1',
+        callerId: 'caller-id',
+        callerName: 'Caller',
+        audioOnly: false,
+        expiresAt: Date.now() + 60_000,
+      },
+    });
+    mocks.incomingCallback?.({
+      type: 'handled',
+      roomId: 'room-1',
+      by: 'callee-id',
+    });
+
+    expect(onStateChange).toHaveBeenLastCalledWith(null);
+  });
+
   it('joins the room before notifying the caller that an incoming call was accepted', async () => {
     const join = deferred();
     const p2p = {

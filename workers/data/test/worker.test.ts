@@ -337,6 +337,49 @@ describe('call invite retention', () => {
     }
   });
 
+  it("fans 'handled' to the responder's other sockets on response", async () => {
+    // A second tab/device of the callee is still ringing; answering on one
+    // device must dismiss the incoming dialog everywhere, not just clear storage.
+    const callerId = `caller-${crypto.randomUUID()}`;
+    const calleeId = `callee-${crypto.randomUUID()}`;
+    const convoId = await resolveOrCreateDirect(env.DB, callerId, calleeId, 1000);
+    const callerToken = await signToken(validClaims(callerId));
+    const calleeToken = await signToken(validClaims(calleeId));
+
+    const otherTab = await connectMailbox(calleeToken);
+    try {
+      expect(
+        (
+          await jsonPost('/calls/invite', callerToken, {
+            conversationId: convoId,
+            calleeId,
+            expiresAt: Date.now() + 30_000,
+          })
+        ).status,
+      ).toBe(200);
+      // The live invite reaches the other tab.
+      expect((await otherTab.next() as { t: string }).t).toBe('invite');
+
+      expect(
+        (
+          await jsonPost('/calls/response', calleeToken, {
+            conversationId: convoId,
+            callerId,
+            responseType: 'accepted',
+          })
+        ).status,
+      ).toBe(200);
+
+      expect(await otherTab.next()).toEqual({
+        t: 'handled',
+        roomId: convoId,
+        by: calleeId,
+      });
+    } finally {
+      otherTab.close();
+    }
+  });
+
   it('replays pending invites from multiple callers', async () => {
     const calleeId = `callee-${crypto.randomUUID()}`;
     const callerAId = `caller-${crypto.randomUUID()}`;

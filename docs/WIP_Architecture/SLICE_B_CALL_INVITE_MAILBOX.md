@@ -25,7 +25,7 @@ decide refinements.
 Caller A → callee B in conversation C (roomId === conversationId):
 1. A `POST /calls/invite {conversationId:C, calleeId:B, ...}` → B's mailbox `{t:'invite', invite:{roomId:C, callerId:A, ...}}`
 2. A listens own mailbox for `{t:'response'}` filtered by `roomId===C`
-3. B `POST /calls/response {conversationId:C, callerId:A, responseType}` → A's mailbox `{t:'response', response:{roomId:C, responseType, by:B}}`
+3. B `POST /calls/response {conversationId:C, callerId:A, responseType}` → A's mailbox `{t:'response', response:{roomId:C, responseType, by:B}}`; B's mailbox receives `{t:'handled', roomId:C, by:B}` so B's other tabs/devices dismiss the invite
 4. Cancel/timeout: A `POST /calls/cancel {conversationId:C, calleeId:B}` → B's mailbox `{t:'cancel', roomId:C, by:A}` → B dialog dismiss
 Authz on every POST: authenticated sender AND the target user must both be D1
 members of `conversationId`.
@@ -40,7 +40,7 @@ members of `conversationId`.
 - [x] `src/features/call/call-service.ts` — rewrite onto mailbox (drop rtdb, roomAccess, CallRepository); ctor takes `{localUID, baseUrl, getToken}`
 - [x] `src/features/call/call-handshake-controller.ts` — wire `{localUID, baseUrl, getToken}`; thread `callerId` into respond path
 - [x] Pending-invite retention: replay on connect while caller is still ringing; clear on cancel/response/expiry
-- [x] Cancel correlation + worker cancel/retention tests
+- [x] Cancel/handled correlation + worker cancel/retention/fan-out tests
 - [x] `tsc` (app + worker) + boundaries lint clean; data-worker `wrangler deploy --dry-run` builds with both DO bindings + migration v2; updated singleton test passes
 - [ ] **Manual e2e**: two accounts, app open both sides — invite, accept→join, decline, busy, cancel, timeout
 

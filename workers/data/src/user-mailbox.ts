@@ -70,7 +70,7 @@ export class UserMailbox extends DurableObject<Env> {
   async deliver(envelope: MailboxEnvelope): Promise<void> {
     if (envelope.t === 'invite') {
       await this.storePendingInvite(envelope.invite);
-    } else if (envelope.t === 'cancel') {
+    } else if (envelope.t === 'cancel' || envelope.t === 'handled') {
       await this.clearPendingInvite(envelope.roomId);
     }
 

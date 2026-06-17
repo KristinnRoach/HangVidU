@@ -7,7 +7,8 @@ import { CALLING_TTL_MS } from '../../../shared/constants';
 
 export type IncomingCallEvent =
   | { type: 'invite'; invite: CallInvite }
-  | { type: 'cancel'; roomId: string; by: string };
+  | { type: 'cancel'; roomId: string; by: string }
+  | { type: 'handled'; roomId: string; by: string };
 
 interface CallServiceOptions {
   localUID: string;
@@ -86,15 +87,15 @@ export class CallService {
     }
   }
 
-  /** Incoming invites and cancel events for this user. */
+  /** Incoming invites and dismiss events for this user. */
   onIncomingCall(callback: (event: IncomingCallEvent) => void): () => void {
     return this.channel.onEnvelope((envelope) => {
       if (envelope.t === 'invite') {
         if (!notExpired(envelope.invite.expiresAt)) return;
         callback({ type: 'invite', invite: envelope.invite as CallInvite });
-      } else if (envelope.t === 'cancel') {
+      } else if (envelope.t === 'cancel' || envelope.t === 'handled') {
         callback({
-          type: 'cancel',
+          type: envelope.t,
           roomId: envelope.roomId,
           by: envelope.by,
         });

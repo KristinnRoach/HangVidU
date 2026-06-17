@@ -9,10 +9,7 @@ import {
   getUser,
 } from '../../auth/index.js';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
-import type {
-  CreateRoomSignalingOptions,
-  P2PRoomSignaling,
-} from '@kidlib/p2p';
+import type { CreateRoomSignalingOptions, P2PRoomSignaling } from '@kidlib/p2p';
 import { CallResponseType, type CallInvite } from './model/call-schema.js';
 import {
   sendIncomingCallPushNotification,
@@ -79,6 +76,7 @@ export class CallHandshakeController {
     this.onCalleeBusy(busy);
   }
 
+  // TODO: Proper in-app notification
   private alertCallStartFailed(): void {
     if (typeof window !== 'undefined') {
       window.alert('Could not start call. Please try again.');
@@ -104,7 +102,7 @@ export class CallHandshakeController {
     });
 
     this.unsubscribeIncomingCall = callService.onIncomingCall((event) => {
-      if (event.type === 'cancel') {
+      if (event.type === 'cancel' || event.type === 'handled') {
         if (
           this._handshakeState &&
           this._handshakeState.direction === 'incoming' &&

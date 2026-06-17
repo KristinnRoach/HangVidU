@@ -33,11 +33,19 @@ export interface MailboxResponse {
   expiresAt?: number;
 }
 
-/** DO → client. Delivered to every socket of the addressed user's mailbox. */
+/**
+ * DO → client. Delivered to every socket of the addressed user's mailbox.
+ *
+ * `cancel` vs `handled` both retire a pending invite and dismiss its dialog, but
+ * are distinct on purpose: `cancel` is the caller withdrawing (hang-up/timeout),
+ * `handled` is the callee responding on one device, fanned to their OWN other
+ * devices so the dialog clears everywhere. `by` is whoever retired it.
+ */
 export type MailboxEnvelope =
   | { t: 'invite'; invite: MailboxInvite }
   | { t: 'response'; response: MailboxResponse }
-  | { t: 'cancel'; roomId: string; by: string };
+  | { t: 'cancel'; roomId: string; by: string }
+  | { t: 'handled'; roomId: string; by: string };
 
 export function isMailboxEnvelope(value: unknown): value is MailboxEnvelope {
   if (!value || typeof value !== 'object') return false;
@@ -64,7 +72,7 @@ export function isMailboxEnvelope(value: unknown): value is MailboxEnvelope {
       typeof r.respondedAt === 'number'
     );
   }
-  if (e.t === 'cancel') {
+  if (e.t === 'cancel' || e.t === 'handled') {
     return typeof e.roomId === 'string' && typeof e.by === 'string';
   }
   return false;

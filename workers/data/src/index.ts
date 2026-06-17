@@ -157,9 +157,14 @@ export default {
       ) {
         return json({ error: 'not_found' }, 404, cors);
       }
-      await env.USER_MAILBOX.getByName(callerId).clearPendingInvite(
-        conversationId,
-      );
+      // Retire this invite on the responder's OWN other sockets (other tabs/
+      // devices still ringing): `handled` both clears the retained invite and
+      // fans a dismiss to them. `by` is the responder who handled it.
+      await env.USER_MAILBOX.getByName(callerId).deliver({
+        t: 'handled',
+        roomId: conversationId,
+        by: callerId,
+      });
       await env.USER_MAILBOX.getByName(targetCallerId).deliver({
         t: 'response',
         response: {
