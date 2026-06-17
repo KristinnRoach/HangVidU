@@ -124,9 +124,7 @@ export class CallHandshakeController {
     return state !== null || this.p2p.state() !== 'idle';
   }
 
-  async sendOutgoingCallInvite(
-    details: StartCallDetails,
-  ): Promise<void> {
+  async sendOutgoingCallInvite(details: StartCallDetails): Promise<void> {
     const localUID = getLoggedInUserId();
     if (!localUID) {
       console.warn('Cannot start outgoing call before login is ready');
@@ -140,7 +138,16 @@ export class CallHandshakeController {
 
     const { calleeId, calleeName, audioOnly } = details;
     const callerName = getUser()?.userName || 'Unknown';
-    const roomId = await this.resolveCallRoomId(calleeId);
+    let roomId: string;
+    try {
+      roomId = await this.resolveCallRoomId(calleeId);
+    } catch (err) {
+      console.error(
+        '[CallHandshake] Cannot start call: failed to resolve conversationId:',
+        err,
+      );
+      return;
+    }
 
     const nextOutgoingCall: pendingOutgoingCall = {
       calleeId,
@@ -206,19 +213,11 @@ export class CallHandshakeController {
   /**
    * The call room handle is the opaque conversationId from the D1 registry,
    * so every interaction between the same participants shares one id.
-   * The registry is not a hard dependency of calling: if it is unreachable,
-   * fall back to a one-off random room id (pre-registry behavior).
+   * The data worker authorizes call mailbox writes against that conversation's
+   * D1 membership, so there is no valid random-room fallback.
    */
   private async resolveCallRoomId(calleeId: string): Promise<string> {
-    try {
-      return await resolveDirectConversationId(calleeId);
-    } catch (err) {
-      console.warn(
-        '[CallHandshake] Failed to resolve conversationId — falling back to one-off room id:',
-        err,
-      );
-      return crypto.randomUUID();
-    }
+    return resolveDirectConversationId(calleeId);
   }
 
   private async enterRoom(
@@ -276,7 +275,10 @@ export class CallHandshakeController {
       this.setHandshakeState(null);
       this.clearOutgoingCallTracking();
       callService
-        .timeoutOutgoingCall({ recipientUID: call.calleeId, roomId: call.roomId })
+        .timeoutOutgoingCall({
+          recipientUID: call.calleeId,
+          roomId: call.roomId,
+        })
         .catch((err) =>
           console.warn(
             '[CallHandshake] Failed to clear callee invite on timeout — callee dialog may not dismiss:',
