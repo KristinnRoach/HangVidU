@@ -1,10 +1,13 @@
-import { rtdb } from '../../infra/firebase-rtdb.js';
 import {
   cleanupCallService,
   initCallService,
   getCallService,
 } from './call-service.js';
-import { getLoggedInUserId, getUser } from '../../auth/index.js';
+import {
+  getLoggedInUserId,
+  getLoggedInUserToken,
+  getUser,
+} from '../../auth/index.js';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import { CallResponseType, type CallInvite } from './model/call-schema.js';
 import {
@@ -23,6 +26,10 @@ import type {
 import { resolveDirectConversationId } from '../../stores/conversations-client.js';
 
 const OUTGOING_CALL_TIMEOUT_MS = 30_000;
+
+const DATA_URL =
+  (import.meta.env.VITE_DATA_URL as string | undefined) ??
+  'http://localhost:8788';
 
 type CallHandshakeControllerOptions = {
   p2p: SolidP2PRoom;
@@ -76,7 +83,11 @@ export class CallHandshakeController {
     const localUID = getLoggedInUserId();
     if (!localUID) return;
 
-    const callService = initCallService({ localUID, rtdb });
+    const callService = initCallService({
+      localUID,
+      baseUrl: DATA_URL,
+      getToken: getLoggedInUserToken,
+    });
 
     this.unsubscribeIncomingCall = callService.onIncomingCall((call) => {
       if (!call) {
@@ -92,6 +103,7 @@ export class CallHandshakeController {
         callService
           .respondToIncomingCallInvite({
             roomId: call.roomId,
+            callerId: call.callerId,
             responseType: CallResponseType.BUSY,
           })
           .catch((err) =>
@@ -120,7 +132,11 @@ export class CallHandshakeController {
       console.warn('Cannot start outgoing call before login is ready');
       return;
     }
-    const svc = initCallService({ localUID, rtdb });
+    const svc = initCallService({
+      localUID,
+      baseUrl: DATA_URL,
+      getToken: getLoggedInUserToken,
+    });
 
     const { calleeId, calleeName, audioOnly } = details;
     const callerName = getUser()?.userName || 'Unknown';
@@ -260,7 +276,7 @@ export class CallHandshakeController {
       this.setHandshakeState(null);
       this.clearOutgoingCallTracking();
       callService
-        .timeoutOutgoingCall({ recipientUID: call.calleeId })
+        .timeoutOutgoingCall({ recipientUID: call.calleeId, roomId: call.roomId })
         .catch((err) =>
           console.warn(
             '[CallHandshake] Failed to clear callee invite on timeout — callee dialog may not dismiss:',
@@ -279,7 +295,10 @@ export class CallHandshakeController {
     this.setHandshakeState(null);
     this.setCalleeBusy(false);
     svc
-      .cancelOutgoingCall({ recipientUID: state.call.calleeId })
+      .cancelOutgoingCall({
+        recipientUID: state.call.calleeId,
+        roomId: state.call.roomId,
+      })
       .catch((err) =>
         console.warn(
           '[CallHandshake] Failed to clear callee invite on cancel — callee dialog may not dismiss:',
@@ -299,6 +318,7 @@ export class CallHandshakeController {
     svc
       .respondToIncomingCallInvite({
         roomId: state.call.roomId,
+        callerId: state.call.callerId,
         responseType: CallResponseType.ACCEPTED,
       })
       .then(() =>
@@ -323,6 +343,7 @@ export class CallHandshakeController {
     svc
       .respondToIncomingCallInvite({
         roomId: state.call.roomId,
+        callerId: state.call.callerId,
         responseType: CallResponseType.REJECTED,
       })
       .catch((err) => console.error('Error declining incoming call:', err));

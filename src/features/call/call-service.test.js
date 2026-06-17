@@ -10,13 +10,15 @@ describe('initCallService', () => {
   it('replaces a stale singleton when the authenticated UID changes', () => {
     const first = initCallService({
       localUID: 'guest-id',
-      rtdb: {},
+      baseUrl: 'http://localhost:8788',
+      getToken: async () => null,
     });
     const cleanup = vi.spyOn(first, 'cleanup');
 
     const second = initCallService({
       localUID: 'firebase-auth-uid',
-      rtdb: {},
+      baseUrl: 'http://localhost:8788',
+      getToken: async () => null,
     });
 
     expect(second).not.toBe(first);

@@ -1,18 +1,15 @@
-import type { Database } from 'firebase/database';
 import {
-  createCallRepository,
-  type CallRepository,
-} from './model/call-repository';
-import { createCallRTDBAdapter } from './model/call-rtdb-adapter';
-import {
-  createRoomAccessRTDBAdapter,
-  type RoomAccessRTDBAdapter,
-} from './model/room-access-rtdb-adapter';
+  createMailboxChannel,
+  type MailboxChannel,
+} from '../../realtime/mailbox-channel';
 import type { CallInvite, CallResponse } from './model/call-schema';
 
 interface CallServiceOptions {
   localUID: string;
-  rtdb: Database;
+  /** Data worker base URL (VITE_DATA_URL). */
+  baseUrl: string;
+  /** Fresh Firebase ID token provider, or null when logged out. */
+  getToken: () => Promise<string | null>;
 }
 
 const CALL_SIGNAL_TTL_MS = 60_000;
@@ -41,24 +38,61 @@ export function cleanupCallService(): void {
   }
 }
 
-export class CallService {
-  private callRepo: CallRepository;
-  private roomAccess: RoomAccessRTDBAdapter;
-  readonly localUID: string;
+function notExpired(expiresAt: number | undefined): boolean {
+  return expiresAt == null || expiresAt > Date.now();
+}
 
-  constructor({ localUID, rtdb }: CallServiceOptions) {
-    if (!localUID || !rtdb) {
-      throw new TypeError('[CallService] init(): localUID and rtdb required');
+/**
+ * Call-invite transport over the per-user DO mailbox in the data worker.
+ * Receiving (invites + responses) rides one WebSocket to the user's own mailbox;
+ * sending (invite/response/cancel) is REST with the worker enforcing D1
+ * membership. roomId is the opaque conversationId. Replaces the former RTDB
+ * `users/{uid}/calls/*` mailbox; the dead room-access write went with it.
+ */
+export class CallService {
+  private channel: MailboxChannel;
+  readonly localUID: string;
+  private readonly baseUrl: string;
+  private readonly getToken: () => Promise<string | null>;
+
+  constructor({ localUID, baseUrl, getToken }: CallServiceOptions) {
+    if (!localUID || !baseUrl || !getToken) {
+      throw new TypeError(
+        '[CallService] init(): localUID, baseUrl and getToken required',
+      );
     }
-    this.callRepo = createCallRepository(
-      createCallRTDBAdapter({ database: rtdb }),
-    );
-    this.roomAccess = createRoomAccessRTDBAdapter({ database: rtdb });
     this.localUID = localUID;
+    this.baseUrl = baseUrl;
+    this.getToken = getToken;
+    this.channel = createMailboxChannel({ baseUrl, getToken });
   }
 
+  private async post(path: string, body: unknown): Promise<void> {
+    const token = await this.getToken();
+    if (!token) throw new Error('[CallService] not authenticated');
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      throw new Error(`[CallService] ${path} failed: ${res.status}`);
+    }
+  }
+
+  /** Incoming invites for this user; emits null when an invite is cancelled. */
   onIncomingCall(callback: (call: CallInvite | null) => void): () => void {
-    return this.callRepo.onInviteReceived(this.localUID, callback);
+    return this.channel.onEnvelope((envelope) => {
+      if (envelope.t === 'invite') {
+        if (!notExpired(envelope.invite.expiresAt)) return;
+        callback(envelope.invite as CallInvite);
+      } else if (envelope.t === 'cancel') {
+        callback(null);
+      }
+    });
   }
 
   async sendOutgoingCallInvite({
@@ -72,78 +106,70 @@ export class CallService {
     callerName: string;
     audioOnly: boolean;
   }): Promise<void> {
-    const startedAt = Date.now();
-    await this.roomAccess.createRoomAccess({
-      roomId,
-      createdBy: this.localUID,
-      participants: [calleeId],
-      createdAt: startedAt,
+    await this.post('/calls/invite', {
+      conversationId: roomId,
+      calleeId,
+      callerName,
+      audioOnly,
+      expiresAt: Date.now() + CALL_SIGNAL_TTL_MS,
     });
-    try {
-      await this.callRepo.sendInvite(calleeId, {
-        roomId,
-        callerId: this.localUID,
-        calleeId,
-        callerName,
-        audioOnly,
-        startedAt,
-        expiresAt: startedAt + CALL_SIGNAL_TTL_MS,
-      });
-    } catch (err) {
-      // Rollback orphaned room access; best-effort, TTL covers leftover state.
-      this.roomAccess.clearRoomAccess(roomId).catch((cleanupErr) =>
-        console.warn(
-          '[CallService] Failed to rollback room access after invite failure:',
-          cleanupErr,
-        ),
-      );
-      throw err;
-    }
   }
 
   async respondToIncomingCallInvite({
     roomId,
+    callerId,
     responseType,
   }: {
     roomId: string;
+    callerId: string;
     responseType: CallResponse['responseType'];
   }): Promise<void> {
-    await this.callRepo.respondToInvite({
-      roomId,
-      by: this.localUID,
+    await this.post('/calls/response', {
+      conversationId: roomId,
+      callerId,
       responseType,
+      expiresAt: Date.now() + CALL_SIGNAL_TTL_MS,
     });
-    // Invite-clear is best-effort cleanup; the response is what unblocks the caller.
-    this.callRepo.clearInvite(this.localUID).catch((err) =>
-      console.warn(
-        '[CallService] Failed to clear invite after responding:',
-        err,
-      ),
-    );
   }
 
-  cancelOutgoingCall({ recipientUID }: { recipientUID: string }): Promise<void> {
-    return this.callRepo.clearInvite(recipientUID);
-  }
-
-  timeoutOutgoingCall({
+  cancelOutgoingCall({
     recipientUID,
+    roomId,
   }: {
     recipientUID: string;
+    roomId: string;
   }): Promise<void> {
-    return this.callRepo.clearInvite(recipientUID);
+    return this.post('/calls/cancel', {
+      conversationId: roomId,
+      calleeId: recipientUID,
+    });
   }
 
+  timeoutOutgoingCall(args: {
+    recipientUID: string;
+    roomId: string;
+  }): Promise<void> {
+    return this.cancelOutgoingCall(args);
+  }
+
+  /** Responses addressed to this user (the caller); filters expired/stale. */
   onCalleeResponse(
-    calleeId: string,
+    _calleeId: string,
     callback: (response: CallResponse | null) => void,
   ): () => void {
-    return this.callRepo.onResponseReceived(calleeId, callback);
+    return this.channel.onEnvelope((envelope) => {
+      if (envelope.t !== 'response') return;
+      if (!notExpired(envelope.response.expiresAt)) return;
+      callback(envelope.response as CallResponse);
+    });
   }
 
+  /** No stored invite to clear in the mailbox model; cancel is explicit. */
   clearIncomingCallInvite(): Promise<void> {
-    return this.callRepo.clearInvite(this.localUID);
+    return Promise.resolve();
   }
 
-  cleanup(): void {}
+  cleanup(): void {
+    this.channel.close();
+  }
 }
