@@ -123,6 +123,7 @@ docs/ui-audit-wip/
 docs/misc/
 docs/WIP_Architecture/REFERENCE_WebDevSimplified.md
 docs/WIP_Architecture/references/solidjs.llms.txt
+database.rules.TODO.md
 
 # Scripts
 scripts/migrate-usersbyemail-display-name-to-user-name.js

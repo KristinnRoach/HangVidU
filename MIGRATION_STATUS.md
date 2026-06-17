@@ -2,7 +2,7 @@
 
 > Migration from Firebase-coupled code to backend-agnostic interfaces with
 > Cloudflare implementations (D1 / R2 / Durable Objects), keyed by an opaque
-> `conversationId`. Last updated: 2026-06-16.
+> `conversationId`. Last updated: 2026-06-17.
 
 ## Where we are
 
@@ -12,7 +12,7 @@
 | Image files | R2 (`workers/files`) | ✅ Live — authz reads D1 membership (PR #536) |
 | Conversation registry | D1 (`workers/data`) | ✅ Live (PR #534) — users, conversations, members; opaque UUID ids |
 | Call room handle | Opaque `conversationId` from registry | ✅ Live (PR #535) — fallback to one-off UUID if registry unreachable |
-| Messages | D1 (`workers/data`) | ✅ Live (PR #536) — D1 persistence + `ConversationChannel` DO live push. Legacy RTDB message path + derived-`a_b` id plumbing removed from the client (`RTDB_MESSAGES_RETIREMENT.md`); only RTDB rules/data deletion remains |
+| Messages | D1 (`workers/data`) | ✅ Live (PR #536) — D1 persistence + `ConversationChannel` DO live push. Legacy RTDB message path + derived-`a_b` id plumbing removed from the client (PR #551); only RTDB rules/data deletion remains (see Deferred below) |
 | Live message push | Durable Object (`ConversationChannel`) | ✅ Live (PR #536) |
 | Contacts, user profiles | Firebase RTDB | ⬜ To migrate (later, lowest priority) |
 | Call-invite mailbox | Firebase RTDB | ⬜ To migrate (Durable Object) |
@@ -27,31 +27,64 @@ opaque id" — exists and is exercised by calls (`src/stores/conversations-clien
 Messages, attachments and reactions are on D1 (migration `0002`); `workers/files`
 authz reads the D1 registry; R2 keys are `{conversationId}/{fileId}`; live push runs
 through the `ConversationChannel` DO. Started clean — old derived-`a_b` history was
-not backfilled (decision #2). Code default is now `d1`; retiring the dormant RTDB
-message path is the mechanical follow-up tracked in `RTDB_MESSAGES_RETIREMENT.md`.
+not backfilled (decision #2). Code default is `d1`; the dormant RTDB message path
+and derived-id plumbing were retired in PR #551 (see step 2).
 
-### 2. Retire derived-id plumbing 🚧 MOSTLY SHIPPED (this PR)
+### 2. Retire derived-id plumbing ✅ SHIPPED (PR #551)
 Forward `a_b` derivation is gone: the message backend is d1-only, `saveContact`
 no longer stores a derived id, the push deep-link flow resolves opaque ids, and
-`deriveLegacyDirectConversationId` is deleted (see `RTDB_MESSAGES_RETIREMENT.md`).
-Still open:
-- `resolveContactIdFromDirectConversationId` (reverse `a_b` → contact) retained as
-  an inert fallback in `MainContent.tsx`; delete once the call-button callee path
-  always carries `remoteParticipantIds`.
-- `group:` prefix hack — deferred to the conversation-metadata migration.
-- Render conversation list from `conversation_members` instead of ID-splitting
-  (ContactsList → ConversationList rename, deferred from old Slice C).
+`deriveLegacyDirectConversationId` is deleted. One inert residual remains:
+`resolveContactIdFromDirectConversationId` (reverse `a_b` → contact) is still
+imported by `MainContent.tsx` as a best-effort fallback. It returns null for
+opaque ids, so it is dead under d1; delete once the call-button callee path always
+carries `remoteParticipantIds`. (Live message push already shipped in #536 via the
+`ConversationChannel` DO — it is not a remaining step.)
 
-### 3. Call-invite mailbox → Durable Object
-Call invites are ephemeral coordination but live on RTDB. Move to `src/realtime/` +
-a DO mailbox (reuse the signaling transport + protocol envelope). Keyed by the
-same opaque `conversationId`. Media-playback-sync follows the same pattern.
+## Minimal path to a stable, RTDB-free conversation core
 
-### 4. Live message push (after 1)
-Messages on D1 are load-on-open. Add live cross-client push via a per-conversation
-DO channel (old Slice E1) so received messages appear without reload.
+The conversation/realtime spine (messages, files, calls, signaling) is the core.
+Three slices take it fully off RTDB; each is independently shippable and is gated
+on a backend-agnostic port so the RTDB adapter can be deleted, not just bypassed.
+Do them in this order — cheapest and lowest-risk first.
 
-### 5. Cleanup
+### Slice A — Delete the legacy RTDB signaling fallback (pure deletion)
+DO signaling is the proven default. Remove `firebase-room-signaling.js`, the
+`VITE_SIGNALING_BACKEND=rtdb` branch in `src/realtime/signaling/index.js`, the
+`env.d.ts` flag, and `reference-examples/SimpleRoomExample.tsx` if it only demoed
+the RTDB path. No new code; removes one RTDB consumer and one config fork.
+
+### Slice B — Call-invite mailbox → Durable Object (last realtime RTDB dep)
+Call invites are ephemeral coordination still on RTDB (`call-rtdb-adapter.ts`,
+`room-access-rtdb-adapter.ts`, consumed by `call-service.ts`). Define a
+`CallInviteMailbox` port in `src/realtime/`, implement it on a DO mailbox (reuse
+the signaling transport + protocol envelope), keyed by the opaque `conversationId`.
+After A+B the entire realtime layer is RTDB-free. Media-playback-sync later reuses
+this same pattern.
+
+### Slice C — Conversation metadata → D1 (last persistence RTDB dep in the spine)
+`createRTDBConversationRepository` (`ConversationNode`) is the only RTDB code left
+behind the messaging `conversationRepository` port. Add a D1 adapter in
+`workers/data` + a client adapter, swap it in `messaging-runtime.ts`, delete
+`adapters/rtdb.ts`. Fold in the two items that were waiting on this migration:
+the `group:`-prefix conversation-id rework (`schema.ts`) and rendering the
+conversation list from `conversation_members` (ContactsList → ConversationList)
+instead of ID-splitting.
+
+**After A+B+C the core is stable:** messages, files, calls, signaling, presence-in-call,
+and conversation metadata all hang off the opaque `conversationId` spine with no
+RTDB. RTDB then remains only for the peripheral, explicitly-deferred concerns below.
+
+## Deferred (peripheral — post-core, lowest priority)
+- **Contacts + invites** (`contacts-rtdb-adapter.js`, `invites/invitations.js`),
+  **user profile/directory** (`user-profile-rtdb-adapter.js`, `user-discovery.js`),
+  and **global presence** (`presence-rtdb.js`) stay on RTDB. Migrate behind their
+  existing storage seams when contacts moves to D1 (see the eager-DM note below).
+- RTDB **prod-ops cleanup** (from the now-folded messages retirement): delete the
+  `conversations/*` security rules covering `messages`/`members` and the stored
+  message/member data after any backup. Old `a_b` history is intentionally not
+  backfilled (decision #2).
+
+## Cleanup
 - Archive/delete branches: `D1-R2-migration`, `codex/d1-conversation-core` (merged),
   plus stale `codex/*` experiment branches.
 - Update `docs/WIP_Architecture/D1_R2_MIGRATION.md` to reflect what actually shipped

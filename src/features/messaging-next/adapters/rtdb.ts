@@ -13,8 +13,9 @@ import { ConversationNodeSchema } from '../schema.js';
 import type { ConversationId, ConversationNode } from '../types.js';
 
 // Conversation metadata on RTDB. The message path that used to live here was
-// retired once D1 became the sole message backend (see
-// RTDB_MESSAGES_RETIREMENT.md). Conversation metadata migration is separate.
+// retired in PR #551 once D1 became the sole message backend. Migrating this
+// conversation-metadata repository to D1 is a separate slice (MIGRATION_STATUS
+// slice C).
 
 type RTDBRepositoryOptions = {
   database: Database;
