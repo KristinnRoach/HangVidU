@@ -13,16 +13,19 @@ import {
   type NewAttachment,
 } from './repo';
 import { ConversationChannel } from './conversation-channel';
+import { UserMailbox } from './user-mailbox';
 import type {
   ConversationServerEvent,
   WireMessage,
 } from '../../../shared/conversation-channel/protocol';
+import { CALLING_TTL_MS } from '../../../shared/constants';
 
-export { ConversationChannel };
+export { ConversationChannel, UserMailbox };
 
 export interface Env {
   DB: D1Database;
   CONVERSATION_CHANNEL: DurableObjectNamespace<ConversationChannel>;
+  USER_MAILBOX: DurableObjectNamespace<UserMailbox>;
   FIREBASE_PROJECT_ID: string;
   ALLOWED_ORIGINS: string;
 }
@@ -71,6 +74,20 @@ export default {
       return stub.fetch(request);
     }
 
+    // Per-user call-invite mailbox WS. You can only open your OWN mailbox, so no
+    // D1 check here — identity IS the key. Same subprotocol auth as above.
+    if (url.pathname === '/users/me/mailbox/ws') {
+      if (request.headers.get('Upgrade') !== 'websocket') {
+        return new Response('Expected WebSocket upgrade', { status: 426 });
+      }
+      if (!isAllowedOrigin(origin, env)) {
+        return new Response('Forbidden origin', { status: 403 });
+      }
+      const identity = await authenticateWebSocket(request, env);
+      if (!identity) return new Response('Unauthorized', { status: 401 });
+      return env.USER_MAILBOX.getByName(identity.userId).fetch(request);
+    }
+
     // Everything below requires authentication.
     const identity = await authenticate(request, env);
     if (!identity) return json({ error: 'unauthorized' }, 401, cors);
@@ -83,6 +100,103 @@ export default {
     // Identity echo — exercises the Bearer auth seam end-to-end.
     if (request.method === 'GET' && url.pathname === '/me') {
       return json({ userId: callerId }, 200, cors);
+    }
+
+    // Call-invite mailbox sends. Receiving is the WS above; these REST endpoints
+    // are the writes. Authz is authoritative here: the authenticated sender AND
+    // the target user must both be members of the conversation, then the envelope
+    // is delivered to the target's mailbox DO. roomId === conversationId.
+    if (request.method === 'POST' && url.pathname === '/calls/invite') {
+      const body = await readJson(request);
+      const conversationId = str(body?.conversationId);
+      const calleeId = str(body?.calleeId);
+      if (!conversationId || !calleeId) {
+        return json({ error: 'conversationId and calleeId required' }, 400, cors);
+      }
+      if (
+        !(await isMember(env.DB, conversationId, callerId)) ||
+        !(await isMember(env.DB, conversationId, calleeId))
+      ) {
+        return json({ error: 'not_found' }, 404, cors);
+      }
+      const startedAt = now;
+      const expiresAt =
+        numOrUndef(body?.expiresAt) ?? startedAt + CALLING_TTL_MS;
+      await env.USER_MAILBOX.getByName(calleeId).deliver({
+        t: 'invite',
+        invite: {
+          roomId: conversationId,
+          callerId,
+          calleeId,
+          callerName: str(body?.callerName) ?? undefined,
+          audioOnly: body?.audioOnly === true,
+          startedAt,
+          expiresAt,
+        },
+      });
+      return json({ ok: true }, 200, cors);
+    }
+
+    if (request.method === 'POST' && url.pathname === '/calls/response') {
+      const body = await readJson(request);
+      const conversationId = str(body?.conversationId);
+      const targetCallerId = str(body?.callerId);
+      const responseType = str(body?.responseType);
+      if (
+        !conversationId ||
+        !targetCallerId ||
+        (responseType !== 'accepted' &&
+          responseType !== 'rejected' &&
+          responseType !== 'busy')
+      ) {
+        return json({ error: 'invalid response' }, 400, cors);
+      }
+      if (
+        !(await isMember(env.DB, conversationId, callerId)) ||
+        !(await isMember(env.DB, conversationId, targetCallerId))
+      ) {
+        return json({ error: 'not_found' }, 404, cors);
+      }
+      // Retire this invite on the responder's OWN other sockets (other tabs/
+      // devices still ringing): `handled` both clears the retained invite and
+      // fans a dismiss to them. `by` is the responder who handled it.
+      await env.USER_MAILBOX.getByName(callerId).deliver({
+        t: 'handled',
+        roomId: conversationId,
+        by: callerId,
+      });
+      await env.USER_MAILBOX.getByName(targetCallerId).deliver({
+        t: 'response',
+        response: {
+          roomId: conversationId,
+          responseType,
+          by: callerId,
+          respondedAt: now,
+          expiresAt: numOrUndef(body?.expiresAt),
+        },
+      });
+      return json({ ok: true }, 200, cors);
+    }
+
+    if (request.method === 'POST' && url.pathname === '/calls/cancel') {
+      const body = await readJson(request);
+      const conversationId = str(body?.conversationId);
+      const calleeId = str(body?.calleeId);
+      if (!conversationId || !calleeId) {
+        return json({ error: 'conversationId and calleeId required' }, 400, cors);
+      }
+      if (
+        !(await isMember(env.DB, conversationId, callerId)) ||
+        !(await isMember(env.DB, conversationId, calleeId))
+      ) {
+        return json({ error: 'not_found' }, 404, cors);
+      }
+      await env.USER_MAILBOX.getByName(calleeId).deliver({
+        t: 'cancel',
+        roomId: conversationId,
+        by: callerId,
+      });
+      return json({ ok: true }, 200, cors);
     }
 
     // POST /conversations/resolve-direct  { otherUserId } -> { conversationId }
@@ -315,6 +429,16 @@ async function readJson(
   } catch {
     return null;
   }
+}
+
+/** Non-empty trimmed string, or null. */
+function str(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+/** Finite number, or undefined (for optional payload fields). */
+function numOrUndef(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
 function json(

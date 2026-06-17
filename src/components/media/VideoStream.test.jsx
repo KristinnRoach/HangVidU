@@ -3,9 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import VideoStream from './VideoStream';
 
-function createStreamWithVideo() {
+function createStreamWithVideo({ audio = true } = {}) {
   return {
     getVideoTracks: () => [{ kind: 'video' }],
+    getAudioTracks: () => (audio ? [{ kind: 'audio' }] : []),
   };
 }
 

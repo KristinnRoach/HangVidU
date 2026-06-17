@@ -17,6 +17,7 @@ const JWKS_URL =
 
 let privateKey: CryptoKey;
 const originalFetch = globalThis.fetch;
+const NO_MESSAGE = Symbol('no message');
 
 function b64urlFromString(s: string): string {
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -55,6 +56,62 @@ function messagesRequest(conversationId: string, token?: string) {
     `https://data/conversations/${encodeURIComponent(conversationId)}/messages`,
     { headers },
   );
+}
+
+function jsonPost(path: string, token: string, body: unknown) {
+  return SELF.fetch(`https://data${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Origin: ORIGIN,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+async function connectMailbox(token: string) {
+  const res = await SELF.fetch('https://data/users/me/mailbox/ws', {
+    headers: {
+      Upgrade: 'websocket',
+      Origin: ORIGIN,
+      'Sec-WebSocket-Protocol': `bearer, ${token}`,
+    },
+  });
+  expect(res.status).toBe(101);
+  const ws = res.webSocket as WebSocket;
+  ws.accept();
+
+  const queue: unknown[] = [];
+  const waiters: ((message: unknown) => void)[] = [];
+  ws.addEventListener('message', (event: MessageEvent) => {
+    const parsed = JSON.parse(event.data as string) as unknown;
+    const waiter = waiters.shift();
+    if (waiter) waiter(parsed);
+    else queue.push(parsed);
+  });
+
+  return {
+    close: () => ws.close(),
+    next: () =>
+      new Promise<unknown>((resolve) => {
+        const queued = queue.shift();
+        if (queued) resolve(queued);
+        else waiters.push(resolve);
+      }),
+  };
+}
+
+async function nextOrNoMessage(
+  mailbox: Awaited<ReturnType<typeof connectMailbox>>,
+  timeoutMs = 100,
+): Promise<unknown | typeof NO_MESSAGE> {
+  return Promise.race([
+    mailbox.next(),
+    new Promise<typeof NO_MESSAGE>((resolve) => {
+      setTimeout(() => resolve(NO_MESSAGE), timeoutMs);
+    }),
+  ]);
 }
 
 beforeAll(async () => {
@@ -135,5 +192,229 @@ describe('auth + membership guard on GET /conversations/:id/messages', () => {
     const res = await messagesRequest(convoId, token);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ messages: [] });
+  });
+});
+
+describe('call cancel mailbox route', () => {
+  it('404s when the caller is not a conversation member', async () => {
+    const convoId = await resolveOrCreateDirect(env.DB, 'user-a', 'user-b', 1000);
+    const token = await signToken(validClaims('user-c'));
+
+    const res = await jsonPost('/calls/cancel', token, {
+      conversationId: convoId,
+      calleeId: 'user-b',
+    });
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: 'not_found' });
+  });
+
+  it('delivers the cancel envelope with room and caller identity', async () => {
+    const convoId = await resolveOrCreateDirect(env.DB, 'user-a', 'user-b', 1000);
+    const callerToken = await signToken(validClaims('user-a'));
+    const calleeToken = await signToken(validClaims('user-b'));
+    const mailbox = await connectMailbox(calleeToken);
+
+    try {
+      const res = await jsonPost('/calls/cancel', callerToken, {
+        conversationId: convoId,
+        calleeId: 'user-b',
+      });
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ ok: true });
+      expect(await mailbox.next()).toEqual({
+        t: 'cancel',
+        roomId: convoId,
+        by: 'user-a',
+      });
+    } finally {
+      mailbox.close();
+    }
+  });
+});
+
+describe('call invite retention', () => {
+  it('replays a fresh pending invite when the callee connects late', async () => {
+    const callerId = `caller-${crypto.randomUUID()}`;
+    const calleeId = `callee-${crypto.randomUUID()}`;
+    const convoId = await resolveOrCreateDirect(env.DB, callerId, calleeId, 1000);
+    const callerToken = await signToken(validClaims(callerId));
+    const calleeToken = await signToken(validClaims(calleeId));
+
+    const res = await jsonPost('/calls/invite', callerToken, {
+      conversationId: convoId,
+      calleeId,
+      callerName: 'Caller',
+      audioOnly: true,
+      expiresAt: Date.now() + 30_000,
+    });
+    expect(res.status).toBe(200);
+
+    const mailbox = await connectMailbox(calleeToken);
+    try {
+      expect(await mailbox.next()).toEqual({
+        t: 'invite',
+        invite: {
+          roomId: convoId,
+          callerId,
+          calleeId,
+          callerName: 'Caller',
+          audioOnly: true,
+          startedAt: expect.any(Number),
+          expiresAt: expect.any(Number),
+        },
+      });
+    } finally {
+      mailbox.close();
+    }
+  });
+
+  it('does not replay a pending invite after caller cancel', async () => {
+    const callerId = `caller-${crypto.randomUUID()}`;
+    const calleeId = `callee-${crypto.randomUUID()}`;
+    const convoId = await resolveOrCreateDirect(env.DB, callerId, calleeId, 1000);
+    const callerToken = await signToken(validClaims(callerId));
+    const calleeToken = await signToken(validClaims(calleeId));
+
+    expect(
+      (
+        await jsonPost('/calls/invite', callerToken, {
+          conversationId: convoId,
+          calleeId,
+          expiresAt: Date.now() + 30_000,
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await jsonPost('/calls/cancel', callerToken, {
+          conversationId: convoId,
+          calleeId,
+        })
+      ).status,
+    ).toBe(200);
+
+    const mailbox = await connectMailbox(calleeToken);
+    try {
+      expect(await nextOrNoMessage(mailbox)).toBe(NO_MESSAGE);
+    } finally {
+      mailbox.close();
+    }
+  });
+
+  it('does not replay a pending invite after callee response', async () => {
+    const callerId = `caller-${crypto.randomUUID()}`;
+    const calleeId = `callee-${crypto.randomUUID()}`;
+    const convoId = await resolveOrCreateDirect(env.DB, callerId, calleeId, 1000);
+    const callerToken = await signToken(validClaims(callerId));
+    const calleeToken = await signToken(validClaims(calleeId));
+
+    expect(
+      (
+        await jsonPost('/calls/invite', callerToken, {
+          conversationId: convoId,
+          calleeId,
+          expiresAt: Date.now() + 30_000,
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await jsonPost('/calls/response', calleeToken, {
+          conversationId: convoId,
+          callerId,
+          responseType: 'accepted',
+        })
+      ).status,
+    ).toBe(200);
+
+    const mailbox = await connectMailbox(calleeToken);
+    try {
+      expect(await nextOrNoMessage(mailbox)).toBe(NO_MESSAGE);
+    } finally {
+      mailbox.close();
+    }
+  });
+
+  it("fans 'handled' to the responder's other sockets on response", async () => {
+    // A second tab/device of the callee is still ringing; answering on one
+    // device must dismiss the incoming dialog everywhere, not just clear storage.
+    const callerId = `caller-${crypto.randomUUID()}`;
+    const calleeId = `callee-${crypto.randomUUID()}`;
+    const convoId = await resolveOrCreateDirect(env.DB, callerId, calleeId, 1000);
+    const callerToken = await signToken(validClaims(callerId));
+    const calleeToken = await signToken(validClaims(calleeId));
+
+    const otherTab = await connectMailbox(calleeToken);
+    try {
+      expect(
+        (
+          await jsonPost('/calls/invite', callerToken, {
+            conversationId: convoId,
+            calleeId,
+            expiresAt: Date.now() + 30_000,
+          })
+        ).status,
+      ).toBe(200);
+      // The live invite reaches the other tab.
+      expect((await otherTab.next() as { t: string }).t).toBe('invite');
+
+      expect(
+        (
+          await jsonPost('/calls/response', calleeToken, {
+            conversationId: convoId,
+            callerId,
+            responseType: 'accepted',
+          })
+        ).status,
+      ).toBe(200);
+
+      expect(await otherTab.next()).toEqual({
+        t: 'handled',
+        roomId: convoId,
+        by: calleeId,
+      });
+    } finally {
+      otherTab.close();
+    }
+  });
+
+  it('replays pending invites from multiple callers', async () => {
+    const calleeId = `callee-${crypto.randomUUID()}`;
+    const callerAId = `caller-${crypto.randomUUID()}`;
+    const callerBId = `caller-${crypto.randomUUID()}`;
+    const convoA = await resolveOrCreateDirect(env.DB, callerAId, calleeId, 1000);
+    const convoB = await resolveOrCreateDirect(env.DB, callerBId, calleeId, 1000);
+    const calleeToken = await signToken(validClaims(calleeId));
+    const callerAToken = await signToken(validClaims(callerAId));
+    const callerBToken = await signToken(validClaims(callerBId));
+
+    for (const [token, convoId] of [
+      [callerAToken, convoA],
+      [callerBToken, convoB],
+    ] as const) {
+      expect(
+        (
+          await jsonPost('/calls/invite', token, {
+            conversationId: convoId,
+            calleeId,
+            expiresAt: Date.now() + 30_000,
+          })
+        ).status,
+      ).toBe(200);
+    }
+
+    const mailbox = await connectMailbox(calleeToken);
+    try {
+      const a = (await mailbox.next()) as { t: string; invite: { roomId: string } };
+      const b = (await mailbox.next()) as { t: string; invite: { roomId: string } };
+      expect([a.t, b.t]).toEqual(['invite', 'invite']);
+      expect(new Set([a.invite.roomId, b.invite.roomId])).toEqual(
+        new Set([convoA, convoB]),
+      );
+    } finally {
+      mailbox.close();
+    }
   });
 });

@@ -20,10 +20,14 @@
   "durable_objects": {
     "bindings": [
       { "name": "CONVERSATION_CHANNEL", "class_name": "ConversationChannel" },
+      // Per-user call-invite mailbox. One DO per userId; broadcast-only across
+      // that user's connected sockets. Authz lives in the worker (D1 membership).
+      { "name": "USER_MAILBOX", "class_name": "UserMailbox" },
     ],
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["ConversationChannel"] },
+    { "tag": "v2", "new_sqlite_classes": ["UserMailbox"] },
   ],
   "vars": {
     // Firebase project id used to validate ID-token claims (aud/iss).
