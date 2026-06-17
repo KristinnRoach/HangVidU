@@ -10,7 +10,7 @@ each group.
 ## Preconditions (do not start until all true)
 - [x] Code default in `messaging-runtime.ts` is `d1` and has shipped.
 - [x] All prod/dev environments are on the shipped `d1` default.
-- [ ] Prod soak clean (text, files, live push, multi-account).
+- [x] Prod soak clean (text, files, live push, multi-account).
 
 ## Client code to delete
 - [x] `src/features/messaging-next/adapters/rtdb.ts` (message path) + `rtdb.test.js`.
