@@ -5,8 +5,13 @@
  * `shared/constants/` and re-export them here so import sites stay stable.
  */
 
-/** Seconds a call invite/response stays valid before it is treated as stale. */
-export const CALLING_TTL_SECONDS = 60;
+/**
+ * Single duration governing a call's whole live window: how long the caller rings
+ * before giving up AND how long an invite/response is treated as valid. These are
+ * the same thing — an invite is meaningless once the caller has stopped ringing —
+ * so the ring timeout and the envelope TTL share this one value.
+ */
+export const CALLING_TTL_SECONDS = 45;
 
 /**
  * Milliseconds form of {@link CALLING_TTL_SECONDS}. Call signaling works in ms

@@ -28,8 +28,7 @@ import type {
   StartCallDetails,
 } from './call-types.js';
 import { resolveDirectConversationId } from '../../stores/conversations-client.js';
-
-const OUTGOING_CALL_TIMEOUT_MS = 30_000;
+import { CALLING_TTL_MS } from '../../../shared/constants';
 
 const DATA_URL =
   (import.meta.env.VITE_DATA_URL as string | undefined) ??
@@ -305,7 +304,7 @@ export class CallHandshakeController {
           ),
         );
       sendMissedCallPushNotification(call);
-    }, OUTGOING_CALL_TIMEOUT_MS);
+    }, CALLING_TTL_MS);
   }
 
   cancelOutgoing = (): void => {
