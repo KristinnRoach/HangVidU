@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Cloudflare Worker for HangVidU conversation registry persistence, keyed by conversationId.",
   "scripts": {
-    "dev": "wrangler dev --env-file .dev.vars.example --port 8788 --persist-to .wrangler/state",
+    "dev": "wrangler dev --env-file .dev.vars.example --port 8788 --persist-to .wrangler/state --local-protocol https",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
     "test": "vitest --run",
