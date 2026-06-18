@@ -1,4 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => ({
+  reportApiAuthFailure: vi.fn(),
+}));
+
+vi.mock('../../infra/api-auth-failure.js', () => ({
+  reportApiAuthFailure: mocks.reportApiAuthFailure,
+}));
+
 import { createFilesClient } from './files-client.js';
 
 describe('files client', () => {
@@ -8,6 +17,7 @@ describe('files client', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    mocks.reportApiAuthFailure.mockReset();
   });
 
   it('rejects an empty base URL', () => {
@@ -77,6 +87,30 @@ describe('files client', () => {
         },
         signal: undefined,
       },
+    );
+  });
+
+  it('reports a 401 to the auth-failure helper', async () => {
+    const fetchMock = vi.fn(async () => new Response('unauthorized', { status: 401 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createFilesClient({
+      ...options,
+      baseUrl: 'https://files.example.com',
+    });
+
+    await expect(
+      client.createObjectUrl('conversation-1', {
+        provider: 'r2',
+        bucket: 'hangvidu-files',
+        key: 'conversation-files/conversation-1/object-1',
+      }),
+    ).rejects.toThrow('image download failed: 401 unauthorized');
+
+    expect(mocks.reportApiAuthFailure).toHaveBeenCalledWith(
+      'files download conversation-1',
+      401,
+      'unauthorized',
     );
   });
 });

@@ -5,6 +5,7 @@
 // /conversations/:id, and the message endpoints (/conversations/:id/messages).
 
 import type { WireMessage } from '../../../shared/conversation-channel/protocol';
+import { reportApiAuthFailure } from '../../infra/api-auth-failure.js';
 
 /** Input for sending a message. `messageId` is client-reserved (optimistic id). */
 export interface SendMessageInput {
@@ -91,6 +92,9 @@ export function createConversationsClient(
 
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
+      if (res.status === 401) {
+        reportApiAuthFailure(`data:${method} ${path}`, res.status, detail);
+      }
       throw new Error(
         `data worker ${method} ${path} -> ${res.status} ${detail}`,
       );

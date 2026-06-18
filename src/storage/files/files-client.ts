@@ -1,3 +1,5 @@
+import { reportApiAuthFailure } from '../../infra/api-auth-failure.js';
+
 export type R2StorageDescriptor = {
   provider: 'r2';
   bucket: string;
@@ -79,6 +81,15 @@ export function createFilesClient({
         body: file,
       });
       if (!response.ok) {
+        if (response.status === 401) {
+          const detail = await response.text().catch(() => '');
+          reportApiAuthFailure(
+            `files upload ${conversationId}`,
+            response.status,
+            detail,
+          );
+          throw new Error(`image upload failed: ${response.status} ${detail}`);
+        }
         throw new Error(`image upload failed: ${response.status}`);
       }
 
@@ -107,6 +118,15 @@ export function createFilesClient({
         signal,
       });
       if (!response.ok) {
+        if (response.status === 401) {
+          const detail = await response.text().catch(() => '');
+          reportApiAuthFailure(
+            `files download ${conversationId}`,
+            response.status,
+            detail,
+          );
+          throw new Error(`image download failed: ${response.status} ${detail}`);
+        }
         throw new Error(`image download failed: ${response.status}`);
       }
 
@@ -119,6 +139,15 @@ export function createFilesClient({
         headers: await authHeaders(),
       });
       if (!response.ok && response.status !== 404) {
+        if (response.status === 401) {
+          const detail = await response.text().catch(() => '');
+          reportApiAuthFailure(
+            `files delete ${conversationId}`,
+            response.status,
+            detail,
+          );
+          throw new Error(`file delete failed: ${response.status} ${detail}`);
+        }
         throw new Error(`file delete failed: ${response.status}`);
       }
     },

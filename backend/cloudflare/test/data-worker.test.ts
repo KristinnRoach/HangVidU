@@ -337,6 +337,22 @@ describe('call invite retention', () => {
     }
   });
 
+  it('rejects a forged response that targets the responder instead of the caller', async () => {
+    const callerId = `caller-${crypto.randomUUID()}`;
+    const calleeId = `callee-${crypto.randomUUID()}`;
+    const convoId = await resolveOrCreateDirect(env.DB, callerId, calleeId, 1000);
+    const calleeToken = await signToken(validClaims(calleeId));
+
+    const res = await jsonPost('/calls/response', calleeToken, {
+      conversationId: convoId,
+      callerId: calleeId,
+      responseType: 'accepted',
+    });
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: 'not_found' });
+  });
+
   it("fans 'handled' to the responder's other sockets on response", async () => {
     // A second tab/device of the callee is still ringing; answering on one
     // device must dismiss the incoming dialog everywhere, not just clear storage.

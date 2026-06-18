@@ -143,10 +143,16 @@ export async function handleDataRequest(
       ) {
         return json({ error: 'invalid response' }, 400, cors);
       }
-      if (
-        !(await isMember(env.DB, conversationId, callerId)) ||
-        !(await isMember(env.DB, conversationId, targetCallerId))
-      ) {
+      const members = await getMembers(env.DB, conversationId);
+      if (!members.some((member) => member.user_id === callerId)) {
+        return json({ error: 'not_found' }, 404, cors);
+      }
+      const otherMember =
+        members.length === 2
+          ? members.find((member) => member.user_id !== callerId)?.user_id ??
+            null
+          : null;
+      if (otherMember !== targetCallerId) {
         return json({ error: 'not_found' }, 404, cors);
       }
       // Retire this invite on the responder's OWN other sockets (other tabs/

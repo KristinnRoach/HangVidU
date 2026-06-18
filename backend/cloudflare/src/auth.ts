@@ -97,6 +97,11 @@ async function getSigningKey(kid: string): Promise<CryptoKey | null> {
     const refreshed = await fetchSigningKeys();
     if (refreshed.keys.size > 0) {
       keyCache = refreshed;
+    } else if (keyCache) {
+      console.warn('[auth] JWKS refresh yielded no usable keys; keeping cache', {
+        cachedKeys: keyCache.keys.size,
+        cacheExpiresAt: keyCache.expiresAt,
+      });
     }
   }
   return keyCache?.keys.get(kid) ?? null;
@@ -111,13 +116,13 @@ async function fetchSigningKeys(): Promise<KeyCache> {
     response = await fetch(JWKS_URL, { signal: controller.signal });
   } catch (error) {
     clearTimeout(timeoutId);
-    console.error('[auth] failed to fetch signing keys', error);
+    logJwksProblem('fetch', error);
     return { keys: new Map(), expiresAt: 0 };
   }
   clearTimeout(timeoutId);
 
   if (!response.ok) {
-    console.error('[auth] JWKS fetch returned non-OK status', response.status);
+    logJwksProblem('response', response.status);
     return { keys: new Map(), expiresAt: 0 };
   }
 
@@ -127,7 +132,7 @@ async function fetchSigningKeys(): Promise<KeyCache> {
       keys?: (JsonWebKey & { kid?: string })[];
     };
   } catch (error) {
-    console.error('[auth] failed to parse JWKS response', error);
+    logJwksProblem('parse', error);
     return { keys: new Map(), expiresAt: 0 };
   }
 
@@ -152,6 +157,29 @@ async function fetchSigningKeys(): Promise<KeyCache> {
 
   const maxAge = parseMaxAge(response.headers.get('Cache-Control'));
   return { keys, expiresAt: Date.now() + maxAge * 1000 };
+}
+
+function logJwksProblem(
+  stage: 'fetch' | 'response' | 'parse',
+  errorOrStatus?: unknown,
+): void {
+  console.error('[auth] Firebase JWKS lookup failed', {
+    stage,
+    jwksUrl: JWKS_URL,
+    error:
+      typeof errorOrStatus === 'number'
+        ? { status: errorOrStatus }
+        : describeError(errorOrStatus),
+    cachedKeys: keyCache?.keys.size ?? 0,
+    cacheExpiresAt: keyCache?.expiresAt ?? null,
+  });
+}
+
+function describeError(error: unknown): { name?: string; message?: string } | unknown {
+  if (error instanceof Error) {
+    return { name: error.name, message: error.message };
+  }
+  return error;
 }
 
 function parseMaxAge(cacheControl: string | null): number {
