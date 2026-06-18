@@ -26,10 +26,9 @@ import type {
 } from './call-types.js';
 import { resolveDirectConversationId } from '../../stores/conversations-client.js';
 import { CALLING_TTL_MS } from '../../../shared/constants';
+import { getHangViduApiBaseUrl } from '../../infra/hangvidu-api-url';
 
-const DATA_URL =
-  (import.meta.env.VITE_DATA_URL as string | undefined) ??
-  'http://localhost:8788';
+const DATA_URL = getHangViduApiBaseUrl();
 
 /** Lazy room-signaling factory passed to `p2p.join` — see `src/realtime/signaling`. */
 type CreateRoomSignaling = (

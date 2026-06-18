@@ -5,19 +5,7 @@ import {
   type R2StorageDescriptor,
 } from '../storage/files/index.js';
 import type { ConversationId } from '../features/messaging-next/types.js';
-
-const DEFAULT_FILES_URL = 'http://localhost:8789';
-
-function getFilesBaseUrl(): string | null {
-  try {
-    const configuredUrl = import.meta.env.VITE_FILES_URL?.trim();
-    if (configuredUrl) return configuredUrl;
-    if (import.meta.env.DEV) return DEFAULT_FILES_URL;
-    return null;
-  } catch {
-    return null;
-  }
-}
+import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
 
 let filesClientCache: ReturnType<typeof createFilesClient> | null | undefined;
 
@@ -25,14 +13,8 @@ function getFilesClient() {
   if (filesClientCache !== undefined) return filesClientCache;
 
   try {
-    const baseUrl = getFilesBaseUrl();
-    if (!baseUrl) {
-      filesClientCache = null;
-      return null;
-    }
-
     filesClientCache = createFilesClient({
-      baseUrl,
+      baseUrl: getHangViduApiBaseUrl(),
       getToken: getLoggedInUserToken,
       getAppCheckToken: getFirebaseAppCheckToken,
     });

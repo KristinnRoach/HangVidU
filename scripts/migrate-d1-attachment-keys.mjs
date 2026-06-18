@@ -2,11 +2,11 @@
 // One-off: realign D1 `message_attachments.r2_key` with the opaque
 // conversationId.
 //
-// The RTDB->D1 backfill (workers/data/scripts/backfill-rtdb-messages.mjs)
+// The RTDB->D1 backfill (backend/cloudflare/scripts/backfill-rtdb-messages.mjs)
 // copied the legacy `conversation-files/<a_b>/<fileId>` key verbatim while the
 // conversation got a fresh opaque id. The files worker requires the key to be
 // prefixed with `conversation-files/<conversationId>/` (keyBelongsToConversation
-// in workers/files/src/index.ts), so every migrated image 400s.
+// in backend/cloudflare/src/files/handlers.ts), so every migrated image 400s.
 //
 // This script, per attachment whose key does not match its conversation:
 //   1. server-side-copies the R2 object  conversation-files/<old>/<fileId>
@@ -56,7 +56,7 @@ const PREFIX = 'conversation-files';
 // D1 goes through the already-authenticated wrangler CLI (same path as
 // `pnpm migrate:remote`), so no Cloudflare API token is needed.
 const D1_DATABASE = 'hangvidu-data';
-const D1_CONFIG = 'workers/data/wrangler.jsonc';
+const D1_CONFIG = 'backend/cloudflare/wrangler.jsonc';
 
 const config = {
   accountId: requiredEnv('R2_ACCOUNT_ID'),

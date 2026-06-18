@@ -9,6 +9,7 @@ import {
   isMailboxEnvelope,
   type MailboxEnvelope,
 } from '../../shared/call-mailbox/protocol';
+import { buildHangViduWebSocketUrl } from '../infra/hangvidu-api-url';
 
 export interface MailboxChannelOptions {
   /** Data worker base URL, e.g. https://localhost:8788 (http(s) → ws(s)). */
@@ -24,8 +25,7 @@ export interface MailboxChannel {
 }
 
 function toWsUrl(baseUrl: string): string {
-  const base = baseUrl.replace(/\/$/, '').replace(/^http/, 'ws');
-  return `${base}/users/me/mailbox/ws`;
+  return buildHangViduWebSocketUrl('/users/me/mailbox/ws', baseUrl);
 }
 
 export function createMailboxChannel(

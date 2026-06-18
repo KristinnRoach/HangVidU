@@ -1,4 +1,4 @@
-// HTTPS client for the `workers/data` persistence worker (D1 conversation core).
+// HTTPS client for the consolidated Cloudflare API's D1 conversation core.
 // Boundary-clean: storage may not import `auth`, so the bearer token is injected
 // via a `getToken` provider supplied by the wiring layer (src/stores).
 // Surface: /me, /conversations/resolve-direct, /conversations,

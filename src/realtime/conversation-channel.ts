@@ -8,6 +8,7 @@ import {
   isConversationServerEvent,
   type WireMessage,
 } from './conversation-protocol';
+import { buildHangViduWebSocketUrl } from '../infra/hangvidu-api-url';
 
 export interface ConversationChannelOptions {
   /** Data worker base URL, e.g. http://localhost:8788 (http(s) → ws(s)). */
@@ -24,8 +25,10 @@ export interface ConversationChannel {
 }
 
 function toWsUrl(baseUrl: string, conversationId: string): string {
-  const base = baseUrl.replace(/\/$/, '').replace(/^http/, 'ws');
-  return `${base}/conversations/${encodeURIComponent(conversationId)}/ws`;
+  return buildHangViduWebSocketUrl(
+    `/conversations/${encodeURIComponent(conversationId)}/ws`,
+    baseUrl,
+  );
 }
 
 export function createConversationChannel(

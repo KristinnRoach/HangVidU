@@ -12,7 +12,7 @@ export type IncomingCallEvent =
 
 interface CallServiceOptions {
   localUID: string;
-  /** Data worker base URL (VITE_DATA_URL). */
+  /** Consolidated HangVidU API base URL. */
   baseUrl: string;
   /** Fresh Firebase ID token provider, or null when logged out. */
   getToken: () => Promise<string | null>;
