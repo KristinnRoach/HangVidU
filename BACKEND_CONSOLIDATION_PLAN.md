@@ -1,6 +1,6 @@
 # Backend Consolidation Plan — three Workers → one
 
-**Status:** approved · **Branch:** `refactor/storage-boundaries`
+**Status:** approved
 
 Collapse the three Cloudflare Workers into the existing `hangvidu-data` Worker.
 The source moves to `backend/cloudflare/`; the deployed script name remains
@@ -11,10 +11,15 @@ The source moves to `backend/cloudflare/`; the deployed script name remains
 **Post-migration tracker:** [`BACKEND_CONSOLIDATION_POST.md`](./BACKEND_CONSOLIDATION_POST.md)
 — source of truth for deferred and optional work.
 
+**Post-merge operations:** [`BACKEND_CONSOLIDATION_RUNBOOK.md`](./BACKEND_CONSOLIDATION_RUNBOOK.md)
+— deployment, production verification, compatibility window, and retirement.
+
 ## 1. Current PR scope
 
-This first PR contains the consolidation documents and small preparatory changes
-that reduce later implementation work. It does not perform the Worker cutover.
+Preparatory PR #554 contains the consolidation documents and small changes that
+reduce later implementation work. The implementation PR prepares deployable code
+but does not perform the Worker cutover; operations happen after merge via the
+runbook.
 
 Completed preparatory change:
 
@@ -41,8 +46,7 @@ not justify the migration.
 - No D1 schema or attachment metadata migration.
 - No storage provider beyond R2 or provider-selection UI.
 - No RTDB cleanup or deferred contacts/user-profile work.
-- No custom API domain, named staging environment, or transfer of the existing
-  signaling namespace.
+- No custom API domain or named staging environment.
 - No expanded architecture lint rules, structured route logging, or exhaustive
   header-level auth/CORS parity matrix.
 
@@ -84,6 +88,9 @@ backend/cloudflare/
       r2-file-object-store.ts
     realtime/                 # three DO classes and WS handlers
   migrations/                # existing D1 history, unchanged
+  package.json               # Cloudflare package scripts/dependencies
+  tsconfig.json
+  vitest.config.ts
   wrangler.jsonc              # deployed name: hangvidu-data
 ```
 
@@ -95,6 +102,34 @@ return 404.
 Allowed cross-capability dependency: files may call the narrow membership
 predicate in `data/repo.ts`. Feature code uses `src/storage` or `src/realtime` and
 does not read the API environment variable directly.
+
+### Package/workspace contract
+
+`backend/cloudflare` is a package in the root pnpm workspace and uses the root
+`pnpm-lock.yaml`; do not create another lockfile or nested workspace file.
+
+Add this root workspace entry:
+
+```yaml
+packages:
+  - backend/cloudflare
+```
+
+Replace all four placeholder `allowBuilds` values with `true`, matching the
+existing `onlyBuiltDependencies` intent:
+
+```yaml
+allowBuilds:
+  '@firebase/util': true
+  esbuild: true
+  protobufjs: true
+  unrs-resolver: true
+```
+
+The package provides `dev`, `deploy`, `typecheck`, `test`, `migrate:local`, and
+`migrate:remote` scripts, plus the TypeScript and Workers Vitest configuration
+currently duplicated across the Workers. Root scripts call it with
+`pnpm -C backend/cloudflare`. Avoid unrelated dependency or lockfile cleanup.
 
 ## 6. Public API endpoint and environments
 
@@ -125,10 +160,11 @@ Rename the current tunnel-backed `dev` script unchanged to `dev:mobile`. Mobile
 tunnel performance is outside this migration; the workflow remains available
 without being part of normal desktop development.
 
-Environment selection must be explicit and deterministic: normal `pnpm dev`
-targets the deployed endpoint, while only `pnpm dev:local` overrides it with the
-localhost endpoint. Remove the current `.env.development.local` URL overrides
-so they cannot silently redirect the default workflow.
+Environment selection must be explicit and deterministic. Set
+`VITE_HANGVIDU_API_URL` in the package scripts/process environment so it overrides
+gitignored Vite env files: normal `pnpm dev` targets the deployed endpoint, while
+the Vite process launched by `pnpm dev:local` explicitly uses localhost. The PR
+must not depend on editing or deleting `.env.development.local`.
 
 Wrangler itself still has only two resource modes in this plan:
 
@@ -156,8 +192,16 @@ That optional task is tracked in `BACKEND_CONSOLIDATION_POST.md`.
 
 - Canonical auth is the tested superset: files' JWKS timeout/error logging plus
   data's WebSocket token extraction.
+- Canonical `Identity` retains the raw Firebase token. The files authorization
+  cache hashes that token together with the App Check token; unification must not
+  weaken or silently change its cache key.
 - `config/origins.json` remains the source of truth. Production permits only its
   production origins; local development additionally permits development origins.
+- Add `APP_ENV: 'production' | 'development'` to the Worker environment.
+  Top-level Wrangler vars set `APP_ENV=production`; `dev:cf` passes
+  `APP_ENV=development`. `cors.ts` selects only production origins in production
+  and the production + development union locally. No named Wrangler environment
+  is required.
 - Preserve core tests: valid/invalid authentication, member/non-member access,
   allowed/rejected origin, and WebSocket authentication.
 - Use compatibility date `2026-06-02`. Run all existing Worker tests plus the core
@@ -169,8 +213,8 @@ The destination remains the existing `hangvidu-data` script:
 
 - `ConversationChannel` stays in its existing namespace.
 - `UserMailbox` stays in its existing namespace and retains pending invites.
-- `SignalingRoom` is created as a fresh namespace in `hangvidu-data`; the old
-  namespace is not transferred.
+- `SignalingRoom` transfers from `hangvidu-signaling` into `hangvidu-data` with
+  the existing class name and implementation.
 
 Keep v1/v2 and append:
 
@@ -178,28 +222,33 @@ Keep v1/v2 and append:
 "migrations": [
   { "tag": "v1", "new_sqlite_classes": ["ConversationChannel"] },
   { "tag": "v2", "new_sqlite_classes": ["UserMailbox"] },
-  { "tag": "v3", "new_sqlite_classes": ["SignalingRoom"] }
+  {
+    "tag": "v3",
+    "transferred_classes": [{
+      "from": "SignalingRoom",
+      "from_script": "hangvidu-signaling",
+      "to": "SignalingRoom"
+    }]
+  }
 ]
 ```
 
-This avoids transfer rehearsal and namespace-forwarding complexity. It still is
-an atomic DO migration and creates a rollback boundary: after v3 deploys, backend
-recovery is forward-fix rather than rollback to pre-v3.
-
-During the seven-day transition, old clients signal through
-`hangvidu-signaling`; updated clients use the fresh namespace in `hangvidu-data`.
-Old/new client versions cannot signal each other, and forced updates may drop an
-active call. This is accepted for the current small friends-and-family user base.
+Do not also list `SignalingRoom` under `new_sqlite_classes`. The transfer is
+atomic and creates the v3 rollback boundary, but preserves one namespace so old
+and new clients can signal each other. Existing source bindings forward after
+the transfer. Freeze `hangvidu-signaling` during the compatibility window; if it
+must be redeployed, its binding must explicitly set `script_name: "hangvidu-data"`
+as documented in the runbook.
 
 ## 9. Implementation sequence
 
-1. Create `backend/cloudflare/` with production D1/R2 bindings, existing DO
-   bindings/migrations v1/v2, fresh `SignalingRoom` v3, and compatibility date
-   `2026-06-02`.
+1. Scaffold the root-workspace package described in §5, then create its production
+   D1/R2 bindings, existing DO migrations v1/v2, transferred `SignalingRoom` v3,
+   and compatibility date `2026-06-02`.
 2. Move data handlers/repo and the two existing data DO classes; keep their
    behavior and migration history.
-3. Move signaling routes/class and use the fresh namespace—no transfer config or
-   disposable rehearsal infrastructure.
+3. Move signaling routes/class unchanged and configure only the v3 namespace
+   transfer required by §8.
 4. Move files handlers, `FileObjectStore`, and `R2FileObjectStore`; preserve the
    authorization wrapper and attachment persistence.
 5. Unify auth/CORS and preserve the core tests in §7.
@@ -209,7 +258,8 @@ active call. This is accepted for the current small friends-and-family user base
    Vite-only against the deployed Worker, make `dev:local` run Vite plus
    `dev:cf`, and rename the existing tunnel-backed `dev` script unchanged to
    `dev:mobile`. Update CI/path references required by moved files.
-8. Run verification and execute the production cutover in §11.
+8. Run verification and hand the merged implementation to
+   `BACKEND_CONSOLIDATION_RUNBOOK.md`.
 
 ## 10. Verification gates
 
@@ -220,35 +270,21 @@ active call. This is accepted for the current small friends-and-family user base
   `R2FileObjectStore`.
 - Local smoke: health, resolve-direct, member/non-member reads, image operations,
   live push, mailbox, and signaling.
-- Production smoke: send/receive text and image, place/receive/cancel a call.
 - No old Worker URL variable reads remain under `src/`.
 
-## 11. Production cutover
+## 11. Minimal-churn constraint
 
-The project owner performs the deployment.
-
-Before deploy, abort if any check fails:
-
-- Wrangler config/dry run and all tests are green.
-- Production D1/R2 IDs, DO bindings, v1/v2 history, and v3 fresh-class migration
-  match this plan.
-- `hangvidu-files` and `hangvidu-signaling` remain deployed.
-- Production CORS origins and `VITE_HANGVIDU_API_URL` are correct.
-
-Then:
-
-1. Deploy consolidated `hangvidu-data`; after v3, recovery is forward-fix only.
-2. Smoke-test all REST, file, mailbox/live-push, and signaling paths. Forward-fix
-   the Worker before deploying the client if any check fails.
-3. Deploy the client and force the immediate service-worker update.
-4. Keep `hangvidu-files` and `hangvidu-signaling` deployed for exactly seven days.
-5. After seven days, repeat the production smoke test, retire both old Workers,
-   and update architecture/operations documentation. Dormant clients may require
-   a refresh; indefinite compatibility is explicitly out of scope.
+- Move handlers, protocols, tests, and modules largely unchanged.
+- Extract only shared auth, CORS, membership, and URL logic required by the plan.
+- Preserve class names, routes, wire formats, persistence, and existing test intent.
+- Do not combine formatting, renaming, dependency cleanup, or speculative
+  abstractions with the consolidation.
+- Move operational instructions into the runbook instead of duplicating them.
 
 ## 12. Accepted tradeoff
 
 One Worker increases deployment and security blast radius and removes independent
-release cadence. Fresh signaling temporarily splits old/new clients. At this
-project's scale, simpler configuration, one public endpoint, and removal of
+release cadence. The signaling transfer adds an atomic migration and forward-fix
+boundary, but prevents prolonged old/new client incompatibility. At this project's
+scale, simpler configuration, one public endpoint, and removal of
 auth/CORS/membership drift outweigh those costs.
