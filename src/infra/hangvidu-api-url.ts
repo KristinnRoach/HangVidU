@@ -6,9 +6,10 @@ export function normalizeHangViduApiBaseUrl(value: string): string {
 }
 
 export function getHangViduApiBaseUrl(): string {
-  return normalizeHangViduApiBaseUrl(
-    import.meta.env.VITE_HANGVIDU_API_URL || DEFAULT_HANGVIDU_API_URL,
+  const configured = normalizeHangViduApiBaseUrl(
+    import.meta.env.VITE_HANGVIDU_API_URL ?? '',
   );
+  return configured || DEFAULT_HANGVIDU_API_URL;
 }
 
 export function buildHangViduApiUrl(

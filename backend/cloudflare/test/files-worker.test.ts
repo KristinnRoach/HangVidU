@@ -168,6 +168,9 @@ describe('files worker routing + auth', () => {
 
     expect(res.status).toBe(204);
     expect(res.headers.get('Vary')).toBe('Origin');
+    expect(
+      res.headers.get('Access-Control-Allow-Methods')?.split(/\s*,\s*/),
+    ).toContain('DELETE');
   });
 
   it('lets direct-message members upload and fetch an image', async () => {
