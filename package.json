@@ -104,7 +104,7 @@
     "solid-devtools": "^0.34.5",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.4",
-    "vite": "^7.3.2",
+    "vite": "^7.3.5",
     "vite-plugin-mkcert": "^2.0.0",
     "vite-plugin-pwa": "^1.2.0",
     "vite-plugin-solid": "^2.11.12",

@@ -1,3 +1,5 @@
+allowBuilds:
+  esbuild: true
 # Only these packages may run install/build scripts (supply-chain hygiene).
 onlyBuiltDependencies:
   - esbuild
