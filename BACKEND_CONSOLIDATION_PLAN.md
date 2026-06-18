@@ -6,237 +6,227 @@ Collapse the three Cloudflare Workers into the existing `hangvidu-data` Worker.
 The source moves to `backend/cloudflare/`; the deployed script name remains
 `hangvidu-data`.
 
-**Progress tracker:** [`BACKEND_CONSOLIDATION_CHECKLIST.md`](./BACKEND_CONSOLIDATION_CHECKLIST.md)
+**Implementation tracker:** [`BACKEND_CONSOLIDATION_CHECKLIST.md`](./BACKEND_CONSOLIDATION_CHECKLIST.md)
 
 **Post-migration tracker:** [`BACKEND_CONSOLIDATION_POST.md`](./BACKEND_CONSOLIDATION_POST.md)
-— source of truth for work deliberately deferred from this cutover.
+— source of truth for deferred and optional work.
 
----
+## 1. Current PR scope
 
-## 1. Goal
+This first PR contains the consolidation documents and small preparatory changes
+that reduce later implementation work. It does not perform the Worker cutover.
 
-- Replace the separately deployed `data`, `files`, and `signaling` Workers with
-  one `hangvidu-data` Worker organized as `data/`, `files/`, and `realtime/`.
+Completed preparatory change:
+
+- The files Worker now uses a narrow `FileObjectStore` with an
+  `R2FileObjectStore` adapter. Consolidation moves these unchanged.
+
+## 2. Goal
+
+- Replace separately deployed `data`, `files`, and `signaling` Workers with one
+  `hangvidu-data` Worker organized as `data/`, `files/`, and `realtime/`.
 - Keep one membership predicate, auth implementation, CORS policy, Wrangler
-  config, deployment, and local Worker process.
-- Preserve the existing client ports in `src/storage` and `src/realtime`; feature
-  code must use those ports and must not read the global API URL directly.
-- Use one stable `VITE_HANGVIDU_API_URL` for the public HangVidU API entry point.
-  It identifies HangVidU's API, not a selected backend provider.
-- Put file bytes behind a server-side `FileObjectStore` port with the existing R2
-  implementation as its first adapter, so storage is selected behind the API.
+  config, deployment command, and local Worker process.
+- Preserve existing client ports in `src/storage` and `src/realtime`.
+- Use one stable `VITE_HANGVIDU_API_URL` for the HangVidU-owned API entry point.
+- Preserve current D1, R2, file, message, call, and RTDB behavior.
 
-Consolidation is justified by the combined auth/CORS/config/deploy duplication
-and the tight data/realtime coupling. The duplicated membership predicate alone
-could instead be removed through a shared package.
+The consolidation is justified by the combined auth/CORS/config/deploy
+duplication and tight data/realtime coupling. Membership duplication alone would
+not justify the migration.
 
-## 2. Non-goals
+## 3. Non-goals
 
-- No Firebase Functions move. `functions/` remains at the repository root; moving
-  it is a separate future change.
-- No file-storage provider beyond R2, provider-selection UI, connected-storage
-  credential flow, general capability registry, or feature rewrite.
-- No D1 schema or attachment metadata migration. Provider-neutral persistence is
-  a separate post-consolidation PR tracked in `BACKEND_CONSOLIDATION_POST.md`.
-- No RTDB cleanup or changes to deferred contacts/user-profile paths.
-- No indefinite compatibility shim for old clients. The project uses
-  force-immediate service-worker updates and has a small user base.
+- No Firebase Functions move.
+- No D1 schema or attachment metadata migration.
+- No storage provider beyond R2 or provider-selection UI.
+- No RTDB cleanup or deferred contacts/user-profile work.
+- No custom API domain, named staging environment, or transfer of the existing
+  signaling namespace.
+- No expanded architecture lint rules, structured route logging, or exhaustive
+  header-level auth/CORS parity matrix.
 
-## 3. Current system
+Deferred and optional work belongs in `BACKEND_CONSOLIDATION_POST.md`.
 
-| Path                                       | Responsibility                                          | Consolidated destination     |
-| ------------------------------------------ | ------------------------------------------------------- | ---------------------------- |
-| `workers/data/src/index.ts`                | D1 HTTP routes, call routes, live-push/mailbox WS       | `src/index.ts` + `src/data/` |
-| `workers/data/src/repo.ts`                 | D1 access and authoritative `isMember` predicate        | `src/data/repo.ts`           |
-| `workers/data/src/conversation-channel.ts` | Live message push DO                                    | `src/realtime/`              |
-| `workers/data/src/user-mailbox.ts`         | Call mailbox DO with persisted pending invites          | `src/realtime/`              |
-| `workers/files/src/index.ts`               | R2 upload/download and membership authorization wrapper | `src/files/`                 |
-| `workers/signaling/src/signaling-room.ts`  | WebRTC signaling DO                                     | `src/realtime/`              |
-| `workers/*/src/auth.ts`                    | Three related Firebase RS256 implementations            | `src/auth.ts`                |
+## 4. Current system
 
-Membership is delete-based: a row in `conversation_members` means the user is a
-member. Migrations `0003_drop_member_status.sql` and
-`0004_drop_member_role.sql` removed the unused status and role columns. The data
-and files guards are behaviorally consistent today, but duplicate the predicate.
+| Path | Responsibility | Destination |
+|---|---|---|
+| `workers/data/src/index.ts` | D1 HTTP, call routes, live-push/mailbox WS | `src/index.ts` + `src/data/` |
+| `workers/data/src/repo.ts` | D1 access and `isMember` | `src/data/repo.ts` |
+| `workers/data/src/conversation-channel.ts` | Live message push DO | `src/realtime/` |
+| `workers/data/src/user-mailbox.ts` | Mailbox DO with persisted pending invites | `src/realtime/` |
+| `workers/files/src/index.ts` | R2 HTTP and membership authorization | `src/files/` |
+| `workers/files/src/file-object-store.ts` | Object-storage port | `src/files/` |
+| `workers/files/src/r2-file-object-store.ts` | R2 adapter | `src/files/` |
+| `workers/signaling/src/signaling-room.ts` | WebRTC signaling DO | `src/realtime/` |
+| `workers/*/src/auth.ts` | Three related Firebase RS256 implementations | `src/auth.ts` |
 
-The files authorization wrapper must remain intact: preserve its 30-second GET
-cache, bounded cache size, App Check token cache key, and explicit 502 response on
-D1 failure. Replace only its inner membership query with the shared predicate.
+Membership is delete-based: a `conversation_members` row means the user is a
+member. Data and files implement the same correct rule but duplicate it.
 
-## 4. Target structure and boundaries
+The files authorization wrapper remains intact: preserve its 30-second GET cache,
+bounded cache, App Check token cache key, and explicit 502 on D1 failure. Replace
+only its inner membership query with the shared predicate.
+
+## 5. Target structure and routing
 
 ```text
 backend/cloudflare/
   src/
-    index.ts                 # path-family dispatch only
-    auth.ts                  # canonical Firebase RS256 implementation
-    cors.ts                  # environment-selected shared origin policy
-    data/                    # D1 repo and data/call handlers
+    index.ts                  # route-family dispatch
+    auth.ts                   # canonical Firebase RS256 implementation
+    cors.ts                   # shared environment-aware origin policy
+    data/                     # D1 repo and data/call handlers
     files/
-      handlers.ts            # provider-neutral HTTP/auth behavior
-      file-object-store.ts   # narrow blob-storage port + provider resolver seam
-      adapters/r2.ts         # only provider implemented in this pass
-    realtime/                # all three Durable Object classes and WS handlers
-  migrations/               # existing D1 migration history, unchanged
-  wrangler.jsonc             # deployed name remains hangvidu-data
+      handlers.ts
+      file-object-store.ts
+      r2-file-object-store.ts
+    realtime/                 # three DO classes and WS handlers
+  migrations/                # existing D1 history, unchanged
+  wrangler.jsonc              # deployed name: hangvidu-data
 ```
 
-The client owns one shared HangVidU API URL helper under `src/infra/`; storage and
-realtime adapters use it for REST/WS URL construction.
+The router dispatches by route family before route-specific auth, CORS, method,
+or error behavior. Matching is anchored and most-specific-first: files/messages
+subpaths are checked before generic `^/conversations/([^/]+)$`. Unknown paths
+return 404.
 
-`src/index.ts` dispatches by route family before route-specific auth, CORS, method,
-or error handling runs. Route matching is anchored and most-specific-first:
-files/messages subpaths are checked before generic `^/conversations/([^/]+)$`, so
-the generic conversation route cannot shadow them. Unknown paths return 404.
+Allowed cross-capability dependency: files may call the narrow membership
+predicate in `data/repo.ts`. Feature code uses `src/storage` or `src/realtime` and
+does not read the API environment variable directly.
 
-Backend boundary linting enforces:
+## 6. Public API endpoint and environments
 
-- `data`, `files`, and `realtime` handlers may use shared root modules.
-- `files` may use the narrow membership predicate from `data/repo.ts`; no other
-  cross-capability imports are allowed without updating this plan.
-- Feature code uses `src/storage` or `src/realtime`, never
-  `VITE_HANGVIDU_API_URL` directly.
+Production uses the existing automatically provisioned Workers endpoint:
 
-## 5. Stable public API and composable file storage
-
-`VITE_HANGVIDU_API_URL` is the stable browser entry point for the consolidated
-HangVidU-owned API, for example `https://api.hangvidu.com`. It is expected to
-change only when selecting an environment or moving the public API domain:
-
-```text
-local       https://localhost:8788
-staging     https://api-staging.hangvidu.com
-production  https://api.hangvidu.com
+```env
+VITE_HANGVIDU_API_URL=https://hangvidu-data.kristinnroach.workers.dev
 ```
 
-It is used by the adapters for:
+Local development uses:
 
-- conversations, messages, calls, and file authorization/coordination over HTTP;
-- live conversation push, mailbox, and signaling over WebSockets;
-- initiating file upload/download, even when the API later returns a short-lived
-  direct provider URL.
+```env
+VITE_HANGVIDU_API_URL=https://localhost:8788
+```
 
-Firebase Auth, RTDB contacts/user profiles, and storage-provider credentials do
-not use or live in this variable. Changing R2 to S3 or user-connected storage does
-not change it. `VITE_*` values are public build-time configuration and cannot hold
-provider credentials or express a per-user provider choice.
+There are only two modes in this plan:
 
-The files HTTP handlers depend on a narrow server-side `FileObjectStore`, never
-directly on `env.FILES_BUCKET`. The initial provider resolver always returns
-`R2FileObjectStore`; future policy may resolve by user, conversation, or file
-without changing the client API. Provider credentials remain server-side. This
-pass keeps the existing `r2_key`/`bucket` persistence unchanged behind the adapter.
-Generalizing those fields is intentionally deferred until the consolidated Worker
-is stable; see `BACKEND_CONSOLIDATION_POST.md`.
+- top-level Wrangler configuration = production;
+- local `wrangler dev` bindings/state = development.
 
-## 6. Shared auth, CORS, and compatibility
+Do not add named Wrangler environments or staging resources. The consolidated
+Wrangler config explicitly contains the production D1, R2, DO, vars, and migration
+history. Local development uses the same binding names with local resources.
 
-- The canonical `auth.ts` is the tested superset: files' JWKS timeout/error
-  logging plus data's WebSocket token extraction. Port auth parity tests before
-  deleting the old implementations.
-- `config/origins.json` remains the source of truth and is bundled into `cors.ts`.
-  Wrangler sets an environment selector: production uses only `production`;
-  local/dev uses `production + development`. Production does not accept localhost.
-- REST, files, and WebSocket tests cover allowed, missing, and rejected origins,
-  including their existing response/header behavior.
-- Use compatibility date `2026-06-02`. Advancing data/signaling from `2025-05-01`
-  is treated as behavior-affecting and all three route families are tested against it.
+The shared client URL helper trims trailing slashes, converts `http → ws` and
+`https → wss`, and constructs data/files/realtime paths. All existing consumers
+of `VITE_DATA_URL`, `VITE_FILES_URL`, and `VITE_SIGNALING_URL` move to that helper.
+Completion requires this command to return no client matches:
 
-## 7. Durable Object migration
+```sh
+rg 'VITE_(DATA|FILES|SIGNALING)_URL' src
+```
 
-The destination is the existing `hangvidu-data` script:
+Changing the public endpoint later is straightforward: configure a Worker custom
+domain/route, update CORS, change `VITE_HANGVIDU_API_URL`, and deploy the client.
+That optional task is tracked in `BACKEND_CONSOLIDATION_POST.md`.
+
+## 7. Shared auth, CORS, and compatibility date
+
+- Canonical auth is the tested superset: files' JWKS timeout/error logging plus
+  data's WebSocket token extraction.
+- `config/origins.json` remains the source of truth. Production permits only its
+  production origins; local development additionally permits development origins.
+- Preserve core tests: valid/invalid authentication, member/non-member access,
+  allowed/rejected origin, and WebSocket authentication.
+- Use compatibility date `2026-06-02`. Run all existing Worker tests plus the core
+  smoke tests; do not add a separate exhaustive compatibility matrix.
+
+## 8. Durable Object strategy
+
+The destination remains the existing `hangvidu-data` script:
 
 - `ConversationChannel` stays in its existing namespace.
-- `UserMailbox` stays in its existing namespace and retains pending-invite storage.
-- Only `SignalingRoom` transfers from `hangvidu-signaling`.
+- `UserMailbox` stays in its existing namespace and retains pending invites.
+- `SignalingRoom` is created as a fresh namespace in `hangvidu-data`; the old
+  namespace is not transferred.
 
-Keep the existing `hangvidu-data` migration history and append:
+Keep v1/v2 and append:
 
 ```jsonc
 "migrations": [
   { "tag": "v1", "new_sqlite_classes": ["ConversationChannel"] },
   { "tag": "v2", "new_sqlite_classes": ["UserMailbox"] },
-  {
-    "tag": "v3",
-    "transferred_classes": [
-      {
-        "from": "SignalingRoom",
-        "from_script": "hangvidu-signaling",
-        "to": "SignalingRoom"
-      }
-    ]
-  }
+  { "tag": "v3", "new_sqlite_classes": ["SignalingRoom"] }
 ]
 ```
 
-Do not add `SignalingRoom` to `new_sqlite_classes`; the transfer creates the
-destination namespace. Rehearse the cross-script transfer with disposable Worker
-names before production. See Cloudflare's
-[Durable Object migration reference](https://developers.cloudflare.com/durable-objects/reference/durable-objects-migrations/).
+This avoids transfer rehearsal and namespace-forwarding complexity. It still is
+an atomic DO migration and creates a rollback boundary: after v3 deploys, backend
+recovery is forward-fix rather than rollback to pre-v3.
 
-The migration is the rollback boundary: after production transfer, the backend
-cannot roll back to a pre-v3 Worker version. Recovery is forward-fix only.
+During the seven-day transition, old clients signal through
+`hangvidu-signaling`; updated clients use the fresh namespace in `hangvidu-data`.
+Old/new client versions cannot signal each other, and forced updates may drop an
+active call. This is accepted for the current small friends-and-family user base.
 
-## 8. Implementation sequence
+## 9. Implementation sequence
 
-1. Scaffold `backend/cloudflare/` with deployed name `hangvidu-data`, existing D1
-   migrations/bindings, the R2 binding, all three DO bindings, compatibility date
-   `2026-06-02`, and the unchanged v1/v2 migration history.
-2. Move data handlers/repo and the two in-place data DO classes. Port tests and
-   verify pending mailbox invites survive a normal `hangvidu-data` deployment.
-3. Move signaling code and add the v3 `SignalingRoom` transfer. Rehearse the
-   transfer, source-binding forwarding, and WebSocket reconnect behavior.
-4. Move files code behind `FileObjectStore`; implement only `R2FileObjectStore`.
-   Preserve the authorization wrapper and replace only its inner D1 membership
-   query with the shared predicate. Keep attachment persistence unchanged.
-5. Unify auth and environment-split CORS behind parity tests. Route-family
-   dispatch remains outside global auth/CORS behavior.
-6. Add a tested HangVidU API URL helper: trim trailing slashes, convert
-   `http → ws` / `https → wss`, and construct data/files/realtime paths.
-   Repoint existing storage/realtime clients to `VITE_HANGVIDU_API_URL`; remove
-   per-worker URL variables after the cutover.
-7. Extend backend boundary linting, add route-family log fields, and collapse
-   root dev/deploy/test scripts to `dev:cf`, `deploy:cf`, and `test:cf`.
-8. Execute the cutover runbook in §10; retire old source directories only after
-   production verification.
+1. Create `backend/cloudflare/` with production D1/R2 bindings, existing DO
+   bindings/migrations v1/v2, fresh `SignalingRoom` v3, and compatibility date
+   `2026-06-02`.
+2. Move data handlers/repo and the two existing data DO classes; keep their
+   behavior and migration history.
+3. Move signaling routes/class and use the fresh namespace—no transfer config or
+   disposable rehearsal infrastructure.
+4. Move files handlers, `FileObjectStore`, and `R2FileObjectStore`; preserve the
+   authorization wrapper and attachment persistence.
+5. Unify auth/CORS and preserve the core tests in §7.
+6. Add the shared URL helper, repoint every old client URL consumer, and remove
+   the old URL variables.
+7. Collapse root scripts to `dev:cf`, `deploy:cf`, and `test:cf`; update CI/path
+   references required by moved files.
+8. Run verification and execute the production cutover in §11.
 
-## 9. Verification gates
+## 10. Verification gates
 
-- `pnpm ts`, boundary lint, and `test:cf` with all existing Worker suites ported.
-- Auth and CORS parity across all route families.
-- Files authorization cache behavior and D1-failure 502 behavior.
-- File handlers tested against a fake `FileObjectStore` and R2 adapter contract tests.
+- `pnpm ts` and `test:cf`; port all existing Worker tests into the consolidated suite.
 - Wrangler config validation/dry run.
-- Disposable cross-script `SignalingRoom` transfer rehearsal: destination works,
-  source binding forwards, and clients reconnect after active sockets reset.
-- Normal `hangvidu-data` deployment preserves pending `UserMailbox` invites.
-- Local smoke: health, resolve-direct dedup, member/non-member reads, image
-  upload/download/delete, live message WS, mailbox WS, and signaling WS.
-- Browser smoke: send/receive text and image, place/receive/cancel a call.
+- Core auth, membership, CORS, and WebSocket tests.
+- Existing file upload/download/delete and cache/502 tests through
+  `R2FileObjectStore`.
+- Local smoke: health, resolve-direct, member/non-member reads, image operations,
+  live push, mailbox, and signaling.
+- Production smoke: send/receive text and image, place/receive/cancel a call.
+- No old Worker URL variable reads remain under `src/`.
 
-## 10. Production cutover and retirement
+## 11. Production cutover
 
-1. Confirm production bindings, routes, bucket/database IDs, compatibility date,
-   v1/v2 history, and the exact source script name `hangvidu-signaling`.
-2. Deploy consolidated `hangvidu-data`. This performs the v3 transfer. From this
-   point backend recovery is forward-fix only.
-3. Verify every route family, structured logs, pending-invite persistence, and
-   that the still-deployed `hangvidu-signaling` binding forwards correctly.
-4. Deploy the client with `VITE_HANGVIDU_API_URL` pointing to `hangvidu-data` and
-   force the immediate service-worker update.
-5. Keep `hangvidu-files` live for old clients and keep `hangvidu-signaling` live
-   for source-binding forwarding during a short verification window. This is not
-   a long-term compatibility commitment.
-6. Retire the old services only after the forced-update cycle succeeds, smoke
-   checks pass, and route-family logs show no material legacy endpoint traffic.
-   `hangvidu-files` requires explicit retention because ordinary Worker requests
-   do not auto-forward after consolidation.
-7. Update architecture/operations documentation to the as-built layout.
+The project owner performs the deployment.
 
-## 11. Accepted tradeoff
+Before deploy, abort if any check fails:
 
-One Worker has a larger blast radius and merges deploy cadence and observability.
-At the current scale, simpler configuration and removal of version skew outweigh
-that cost. Route-family logs, boundary linting, and per-capability smoke checks
-are required controls. Files remains the first candidate to split out later if
-upload load or its security profile warrants a separate deploy boundary.
+- Wrangler config/dry run and all tests are green.
+- Production D1/R2 IDs, DO bindings, v1/v2 history, and v3 fresh-class migration
+  match this plan.
+- `hangvidu-files` and `hangvidu-signaling` remain deployed.
+- Production CORS origins and `VITE_HANGVIDU_API_URL` are correct.
+
+Then:
+
+1. Deploy consolidated `hangvidu-data`; after v3, recovery is forward-fix only.
+2. Smoke-test all REST, file, mailbox/live-push, and signaling paths. Forward-fix
+   the Worker before deploying the client if any check fails.
+3. Deploy the client and force the immediate service-worker update.
+4. Keep `hangvidu-files` and `hangvidu-signaling` deployed for exactly seven days.
+5. After seven days, repeat the production smoke test, retire both old Workers,
+   and update architecture/operations documentation. Dormant clients may require
+   a refresh; indefinite compatibility is explicitly out of scope.
+
+## 12. Accepted tradeoff
+
+One Worker increases deployment and security blast radius and removes independent
+release cadence. Fresh signaling temporarily splits old/new clients. At this
+project's scale, simpler configuration, one public endpoint, and removal of
+auth/CORS/membership drift outweigh those costs.

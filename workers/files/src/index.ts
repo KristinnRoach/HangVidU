@@ -1,4 +1,6 @@
 import { authenticate, type Identity } from './auth';
+import type { FileObjectStore } from './file-object-store';
+import { R2FileObjectStore } from './r2-file-object-store';
 
 export interface Env {
   FILES_BUCKET: R2Bucket;
@@ -234,6 +236,7 @@ async function readCappedBody(request: Request): Promise<ArrayBuffer | null> {
 async function handleUpload(
   request: Request,
   env: Env,
+  store: FileObjectStore,
   conversationId: string,
   identity: Identity,
 ) {
@@ -261,12 +264,11 @@ async function handleUpload(
   }
 
   const key = objectKey(conversationId, crypto.randomUUID());
-  await env.FILES_BUCKET.put(key, body, {
-    httpMetadata: { contentType: mimeType },
-    customMetadata: {
-      conversationId,
-      uploadedBy: identity.userId,
-    },
+  await store.put(key, {
+    body,
+    contentType: mimeType,
+    conversationId,
+    uploadedBy: identity.userId,
   });
 
   return json(
@@ -281,14 +283,19 @@ async function handleUpload(
   );
 }
 
-async function handleDownload(request: Request, env: Env, key: string) {
-  const object = await env.FILES_BUCKET.get(key);
+async function handleDownload(
+  request: Request,
+  env: Env,
+  store: FileObjectStore,
+  key: string,
+) {
+  const object = await store.get(key);
   if (!object) return response(request, env, 'Not found', { status: 404 });
 
   const headers = new Headers();
   headers.set(
     'Content-Type',
-    object.httpMetadata?.contentType ?? 'application/octet-stream',
+    object.contentType ?? 'application/octet-stream',
   );
   headers.set('Content-Length', String(object.size));
   headers.set('ETag', object.etag);
@@ -304,15 +311,16 @@ async function handleDownload(request: Request, env: Env, key: string) {
 async function handleDelete(
   request: Request,
   env: Env,
+  store: FileObjectStore,
   key: string,
   identity: Identity,
 ) {
-  const object = await env.FILES_BUCKET.head(key);
+  const object = await store.head(key);
   if (!object) {
     return response(request, env, 'Not found', { status: 404 });
   }
 
-  const uploadedBy = object.customMetadata?.uploadedBy;
+  const uploadedBy = object.uploadedBy;
   if (!uploadedBy) {
     console.warn('[delete] missing uploadedBy metadata', { key });
     return response(request, env, 'Forbidden', { status: 403 });
@@ -321,12 +329,13 @@ async function handleDelete(
     return response(request, env, 'Forbidden', { status: 403 });
   }
 
-  await env.FILES_BUCKET.delete(key);
+  await store.delete(key);
   return response(request, env, null, { status: 204 });
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    const store = new R2FileObjectStore(env.FILES_BUCKET);
     const origin = allowedOrigin(request, env);
     if (request.method === 'OPTIONS') {
       if (!origin) return new Response('Forbidden origin', { status: 403 });
@@ -372,7 +381,7 @@ export default {
       if (request.method !== 'POST') {
         return response(request, env, 'Method not allowed', { status: 405 });
       }
-      return handleUpload(request, env, conversationId, identity);
+      return handleUpload(request, env, store, conversationId, identity);
     }
 
     const key = storageKeyFromUrl(url, conversationId);
@@ -381,10 +390,10 @@ export default {
     }
 
     if (request.method === 'GET') {
-      return handleDownload(request, env, key);
+      return handleDownload(request, env, store, key);
     }
     if (request.method === 'DELETE') {
-      return handleDelete(request, env, key, identity);
+      return handleDelete(request, env, store, key, identity);
     }
     return response(request, env, 'Method not allowed', { status: 405 });
   },

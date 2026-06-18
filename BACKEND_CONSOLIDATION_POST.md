@@ -5,40 +5,60 @@ verified, and stable.
 
 This is the source of truth for work deliberately excluded from
 [`BACKEND_CONSOLIDATION_PLAN.md`](./BACKEND_CONSOLIDATION_PLAN.md). Add future
-post-cutover tasks here instead of widening the consolidation PR.
+post-cutover tasks here instead of widening the consolidation implementation.
 
-## 1. Provider-neutral attachment metadata
+## Required before adding a second file-storage provider
 
-Implement as its own PR after consolidation. It is not required for the
-`FileObjectStore`/`R2FileObjectStore` seam: that seam lands during consolidation
-and initially encapsulates the existing `r2_key` and `bucket` fields.
+### Provider-neutral attachment metadata
+
+The existing `FileObjectStore`/`R2FileObjectStore` seam encapsulates object
+operations while persistence retains `r2_key` and `bucket`. Implement the metadata
+migration as its own PR after consolidation.
 
 Target persistence:
 
 - `storage_provider` — adapter identifier, initially `r2`;
 - `storage_locator` — opaque provider-specific locator interpreted by the adapter.
 
-Do not add `storage_connection_id` until connected user storage is designed and
-there is a concrete ownership/lifecycle model for connections.
-
-Checklist:
+Do not add `storage_connection_id` until connected user storage has a concrete
+ownership and lifecycle design.
 
 - [ ] Design the forward D1 migration from `r2_key`/`bucket`
-- [ ] Preserve every existing row as provider `r2` with its current key as locator
+- [ ] Preserve existing rows as provider `r2` with their current key as locator
 - [ ] Keep the browser-facing file/message contract stable
-- [ ] Keep the R2 bucket in deployment configuration, not attachment domain data
-- [ ] Update repository types/queries and `R2FileObjectStore` mapping
-- [ ] Test migration on a production-shaped D1 copy
-- [ ] Verify upload, download, delete, and existing attachment rendering
-- [ ] Deploy and verify independently from any Durable Object migration
+- [ ] Keep the R2 bucket in deployment configuration
+- [ ] Update repository types/queries and R2 adapter mapping
+- [ ] Test on a production-shaped D1 copy
+- [ ] Verify existing attachment rendering and all file operations
+- [ ] Deploy independently from any Durable Object migration
 
-This migration must complete before adding a second storage provider.
+## OPTIONAL — undecided or nonessential
 
-## 2. Firebase source relocation
+These are not commitments. Promote an item into a dedicated plan only when its
+value justifies the added operational or maintenance cost.
 
-Move `functions/` under `backend/firebase/` only as a separate repository-layout
-change. Update Firebase config, npm scripts, maintenance scripts, secret-file
-paths, ignore rules, CI, and documentation together.
+### Custom API domain
+
+Move from the current Workers endpoint to a stable first-party domain such as
+`https://api.hangvidu.com`. This is a straightforward later change:
+
+- [ ] Configure the Worker custom domain/route and DNS
+- [ ] Add the domain to production CORS origins
+- [ ] Change `VITE_HANGVIDU_API_URL` and deploy the client
+- [ ] Keep the workers.dev endpoint temporarily if a transition window is useful
+
+### Named staging environment
+
+- [ ] Define separate Worker name, D1/R2/DO resources, bindings, migrations, vars,
+  secrets, and deploy commands before introducing a Wrangler named environment
+
+### Expanded observability and architecture enforcement
+
+- [ ] Add structured route-family logging if production diagnosis needs it
+- [ ] Extend boundary linting to `backend/cloudflare` if folder conventions drift
+- [ ] Add an exhaustive auth/CORS header parity matrix if core tests prove insufficient
+
+### Firebase source relocation
 
 - [ ] Write a focused move plan and inventory all `functions/` path references
-- [ ] Move and verify Firebase Functions in its own PR
+- [ ] Move `functions/` under `backend/firebase/` in its own PR
