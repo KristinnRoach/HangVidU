@@ -33,7 +33,10 @@ Deferred/optional work belongs in
 - [ ] Move existing files handlers, `FileObjectStore`, and `R2FileObjectStore`
 - [ ] Preserve `r2_key`/`bucket` persistence and browser contract
 - [ ] Preserve auth cache/bound, App Check key, and D1-failure 502
-- [ ] Replace only the inner membership query with shared `isMember`
+- [ ] Move the `isMember` export from `workers/data/src/repo.ts` to the
+  consolidated `data/repo.ts`, import it from the files handler originating at
+  `workers/files/src/index.ts`, and replace only that handler's inline
+  `conversation_members` SQL query; keep its cache and 502 error handling
 
 ## 4. Router, auth, and CORS
 
@@ -50,7 +53,17 @@ Deferred/optional work belongs in
 - [ ] Add/test normalization, HTTP↔WS conversion, and path construction
 - [ ] Repoint every `src/storage` and `src/realtime` client
 - [ ] Ensure feature code does not read `VITE_HANGVIDU_API_URL` directly
-- [ ] Remove old URL variables and verify `rg 'VITE_(DATA|FILES|SIGNALING)_URL' src` is empty
+- [ ] Replace and remove `VITE_DATA_URL`, `VITE_FILES_URL`, and
+  `VITE_SIGNALING_URL` in all current locations:
+  - `src/stores/message-repository.ts`
+  - `src/stores/conversations-client.ts`
+  - `src/stores/filesStore.ts`
+  - `src/realtime/signaling/do-room-signaling.ts`
+  - `src/features/call/call-handshake-controller.ts`
+  - declarations in `src/env.d.ts`
+- [ ] Update documentation/comment references, including the `VITE_DATA_URL`
+  reference in `src/features/call/call-service.ts`
+- [ ] Verify `rg 'VITE_(DATA|FILES|SIGNALING)_URL' src` returns no matches
 
 ## 6. Tooling and tests
 
