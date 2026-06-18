@@ -12,6 +12,7 @@ export function reportApiAuthFailure(scope, status, detail) {
   window.alert(AUTH_FAILURE_ALERT);
 }
 
+// TODO: Delete or use?
 export function resetApiAuthFailureAlertState() {
   hasAlerted = false;
 }
