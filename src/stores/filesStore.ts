@@ -7,33 +7,21 @@ import {
 import type { ConversationId } from '../features/messaging-next/types.js';
 import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
 
-let filesClientCache: ReturnType<typeof createFilesClient> | null | undefined;
+let filesClientCache: ReturnType<typeof createFilesClient> | undefined;
 
 function getFilesClient() {
-  if (filesClientCache !== undefined) return filesClientCache;
-
-  try {
-    filesClientCache = createFilesClient({
-      baseUrl: getHangViduApiBaseUrl(),
-      getToken: getLoggedInUserToken,
-      getAppCheckToken: getFirebaseAppCheckToken,
-    });
-    return filesClientCache;
-  } catch {
-    filesClientCache = null;
-    return null;
-  }
+  return (filesClientCache ??= createFilesClient({
+    baseUrl: getHangViduApiBaseUrl(),
+    getToken: getLoggedInUserToken,
+    getAppCheckToken: getFirebaseAppCheckToken,
+  }));
 }
 
 export function uploadConversationImage(
   conversationId: ConversationId,
   file: File,
 ) {
-  const client = getFilesClient();
-  if (!client) {
-    return Promise.reject(new Error('Files client not available'));
-  }
-  return client.uploadImage(conversationId, file);
+  return getFilesClient().uploadImage(conversationId, file);
 }
 
 export function uploadConversationFile(
@@ -48,20 +36,12 @@ export function createConversationFileObjectUrl(
   storage: R2StorageDescriptor,
   signal?: AbortSignal,
 ) {
-  const client = getFilesClient();
-  if (!client) {
-    return Promise.reject(new Error('Files client not available'));
-  }
-  return client.createObjectUrl(conversationId, storage, signal);
+  return getFilesClient().createObjectUrl(conversationId, storage, signal);
 }
 
 export function deleteConversationFile(
   conversationId: ConversationId,
   storage: R2StorageDescriptor,
 ) {
-  const client = getFilesClient();
-  if (!client) {
-    return Promise.reject(new Error('Files client not available'));
-  }
-  return client.deleteFile(conversationId, storage);
+  return getFilesClient().deleteFile(conversationId, storage);
 }
